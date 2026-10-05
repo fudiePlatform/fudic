@@ -134,12 +134,18 @@ function schemeOf(url: string): string | undefined {
  * at the call and not once at load, so a test can switch it.
  */
 function dev(): boolean {
-  const meta = import.meta as ImportMeta & { readonly env?: { readonly DEV?: boolean } };
+  // Written out whole, `import.meta.env.DEV`: no alias of `import.meta` and no cast around it
+  // (its type is in `env.d.ts`). Vite rewrites only that static expression, and its SSR
+  // module runner throws on any other read ("Dynamic access of import.meta.env"), which made
+  // every page that paints a URL attribute a 500 under `vite dev`. It is also the only form
+  // `vi.stubEnv` reaches.
+  //
   // A runtime that loads this module without Vite has no `import.meta.env` at all: the server
   // of a published app, reading `@fudic/ssr` from `node_modules`. The test runner is Vite, so
   // there it always has one.
   /* v8 ignore next */
-  return meta.env?.DEV === true;
+  if (typeof import.meta.env !== 'object') return false;
+  return import.meta.env.DEV === true;
 }
 
 /**

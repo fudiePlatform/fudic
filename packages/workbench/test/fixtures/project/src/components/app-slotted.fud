@@ -1,0 +1,14 @@
+<head>
+  <style>
+    h2 { color: rebeccapurple; }
+  </style>
+</head>
+
+<app-slotted>
+  <template shadowrootmode="open">
+    <h2>Hello card</h2>
+    <slot>fallback text</slot>
+    <a href="/one">One</a>
+    <a href="/two">Featured</a>
+  </template>
+</app-slotted>

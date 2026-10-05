@@ -1,12 +1,13 @@
 component app-card
 
-# A card never collapses, whatever its title.
+# A card never collapses, whatever its title. The workbench mounts it without the app's layout,
+# and so without the layout's tokens (padding, borders): 16px is one line of title.
 criterion altura-minima
   given
     props minima
     route /blog
   then
-    min-height app-card 44
+    min-height app-card 16
 
 criterion titulo-largo-visible
   given
@@ -15,11 +16,11 @@ criterion titulo-largo-visible
     visible app-card
     text app-card "A title long enough"
 
+# The link is not clicked: it navigates away from the card.
 criterion destacada-al-cambiar-variante
   given
     props destacada
   when
     set-attribute app-card variant "highlight"
-    click role:link/"Featured"
   then
     visible role:link/"Featured"

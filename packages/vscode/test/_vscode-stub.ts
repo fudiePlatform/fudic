@@ -50,6 +50,24 @@ export interface StubState {
   snippets: [string, number][];
   /** Every replacement applied through `editor.edit`, as `[range, text]`. */
   edits: [RangeStub, string][];
+  /** Every webview panel created, in order (SDD-32). */
+  panels: PanelStub[];
+  /** Every URI handed to `env.openExternal`, as text. */
+  external: string[];
+}
+
+/** A `vscode.WebviewPanel`, as the workbench tab uses it. */
+export interface PanelStub {
+  readonly viewType: string;
+  readonly title: string;
+  readonly column: number;
+  readonly options: unknown;
+  readonly webview: { html: string; readonly posted: unknown[] };
+  revealed: number;
+  /** Posts a message from the page, as its button would. */
+  receive(message: unknown): void;
+  /** Closes the tab, as the user would. */
+  dispose(): void;
 }
 
 export interface EditorStub {
@@ -190,6 +208,8 @@ export const state: StubState = {
   selectionListeners: [],
   snippets: [],
   edits: [],
+  panels: [],
+  external: [],
 };
 
 export const reset = (): void => {
@@ -213,6 +233,8 @@ export const reset = (): void => {
   state.selectionListeners = [];
   state.snippets = [];
   state.edits = [];
+  state.panels = [];
+  state.external = [];
 };
 
 /** Fires `onDidChangeTextEditorSelection`, as moving the caret would. */
@@ -232,6 +254,8 @@ export const focusEditor = (editor: EditorStub | undefined): void => {
 };
 
 export const StatusBarAlignment = { Left: 1, Right: 2 } as const;
+
+export const ViewColumn = { Beside: -2 } as const;
 
 export const window = {
   createOutputChannel: (_name: string) => ({
@@ -287,6 +311,48 @@ export const window = {
   showWarningMessage: (message: string) => {
     state.warnings.push(message);
     return Promise.resolve(undefined);
+  },
+  createWebviewPanel: (viewType: string, title: string, column: number, options: unknown) => {
+    const received: ((message: unknown) => void)[] = [];
+    const disposed: (() => void)[] = [];
+    const posted: unknown[] = [];
+    const panel: PanelStub = {
+      viewType,
+      title,
+      column,
+      options,
+      webview: { html: '', posted },
+      revealed: 0,
+      receive: (message) => {
+        for (const listener of received) listener(message);
+      },
+      dispose: () => {
+        for (const listener of disposed) listener();
+      },
+    };
+    state.panels.push(panel);
+    return {
+      webview: {
+        set html(value: string) {
+          panel.webview.html = value;
+        },
+        onDidReceiveMessage: (listener: (message: unknown) => void) => {
+          received.push(listener);
+          return { dispose: () => undefined };
+        },
+        postMessage: (message: unknown) => {
+          posted.push(message);
+          return Promise.resolve(true);
+        },
+      },
+      reveal: () => {
+        panel.revealed += 1;
+      },
+      onDidDispose: (listener: () => void) => {
+        disposed.push(listener);
+        return { dispose: () => undefined };
+      },
+    };
   },
 };
 
@@ -362,5 +428,9 @@ export class SnippetString {
 export const env = {
   get appRoot() {
     return state.appRoot;
+  },
+  openExternal: (uri: { toString(): string }) => {
+    state.external.push(uri.toString());
+    return Promise.resolve(true);
   },
 };

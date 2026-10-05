@@ -1,5 +1,9 @@
 # Banco de trabajo: la arquitectura, probada (2026-10-03)
 
+> **2026-10-05 — implementado.** Esta arquitectura es hoy
+> [SDD-32](../sdd/SDD-32-banco-de-trabajo.md) (`Hecho`), con el paquete `@fudic/workbench`. Lo que
+> pasó con los dos bugs de §5 está en su §9.
+
 > **Para la sesión que retome esto.** La arquitectura de abajo **está demostrada** con el plugin
 > de fudic real, Playwright real y una ventana de VS Code real. **No hay que volver a probarla**:
 > el siguiente paso es redactar el SDD (reescribir SDD-32 o abrir uno encima) con estas
@@ -132,6 +136,12 @@ banco:
     («fudic.json declares stylesheets and this project defines no component»).
 
 ## 5. Bugs encontrados (en `main`, independientes del banco)
+
+> **2026-10-05.** Reproducidos al redactar [SDD-32](../sdd/SDD-32-banco-de-trabajo.md) §9. El
+> bug B era de `main` y está arreglado en `@fudic/dom`. El bug A **no** es de `main`: el click
+> no se pierde, se atiende ~6 ms después (el capturador lo repite tras hidratar), y la prueba
+> leía antes porque `waitForLoadState('networkidle')` vuelve al instante si la página ya había
+> llegado a ese estado. El arreglo es del motor del banco (SDD-32 §4.6.3).
 
 ### Bug A — el primer click sobre un componente sin hidratar se pierde
 

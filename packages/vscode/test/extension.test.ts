@@ -8,9 +8,11 @@
  * whether or not activation ever got anywhere.
  */
 
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { activate, createClient, deactivate } from '../src/extension.js';
+import { activate, createClient, deactivate, openWorkbenchPanel } from '../src/extension.js';
 import { LanguageClient } from './_languageclient-stub.js';
 import {
   caretEvent,
@@ -333,5 +335,86 @@ describe('deactivate', () => {
     // VS Code calls it on shutdown regardless of how activation went — including after an
     // activation that threw before there was anything to stop.
     await expect(deactivate()).resolves.toBeUndefined();
+  });
+});
+
+describe('the workbench, through the adapter (SDD-32)', () => {
+  const fileEditor = (languageId: string, fsPath: string) =>
+    ({ ...editorFor(languageId), document: { ...editorFor(languageId).document, uri: { fsPath, toString: () => fsPath } } }) as never;
+
+  it('opens a webview beside the editor that frames the URL, with scripts and kept context', () => {
+    const tab = openWorkbenchPanel({ title: 'Workbench · app-card', url: 'http://127.0.0.1:5000/__bench/' });
+    const panel = state.panels[0]!;
+    expect(panel).toMatchObject({
+      viewType: 'fudic.workbench',
+      title: 'Workbench · app-card',
+      column: -2,
+      options: { enableScripts: true, retainContextWhenHidden: true },
+    });
+    expect(panel.webview.html).toContain('<iframe src="http://127.0.0.1:5000/__bench/"');
+
+    // Criterion 26: the button opens the same URL outside.
+    panel.receive('openInBrowser');
+    expect(state.external).toEqual(['http://127.0.0.1:5000/__bench/']);
+
+    tab.reveal();
+    expect(panel.revealed).toBe(1);
+    tab.showStopped('The workbench stopped.');
+    expect(panel.webview.posted).toEqual([{ type: 'stopped', message: 'The workbench stopped.' }]);
+    let closed = 0;
+    tab.onClosed(() => (closed += 1));
+    panel.dispose();
+    expect(closed).toBe(1);
+  });
+
+  it('registers fudic.openWorkbench, and warns when the workspace has no @fudic/workbench', async () => {
+    state.folders = [{ uri: { fsPath: join('/nowhere', 'app') } }];
+    state.activeEditor = fileEditor('fudspec', join('/nowhere', 'app', 'app-card.fudspec'));
+    await activate(context());
+
+    await (state.commandHandlers.get('fudic.openWorkbench') as () => Promise<void>)();
+
+    expect(state.warnings.some((m) => m.includes('`@fudic/workbench` is not installed'))).toBe(true);
+    expect(state.panels).toEqual([]);
+  });
+
+  it('refuses it without a .fud or a .fudspec active', async () => {
+    state.activeEditor = editorFor('typescript');
+    await activate(context());
+
+    await (state.commandHandlers.get('fudic.openWorkbench') as () => Promise<void>)();
+
+    expect(state.warnings.some((message) => message.includes('active .fud'))).toBe(true);
+  });
+
+  it('launches the installed workbench, opens its tab, and deactivate closes its stdin (criterion 25)', async () => {
+    // A stand-in for the real binary, at the path a project that installed it has: it prints
+    // its line, and leaves a mark when its stdin closes — which is how it is told to clean up.
+    const root = mkdtempSync(join(tmpdir(), 'fudic-ext-'));
+    try {
+      const bin = join(root, 'node_modules', '@fudic', 'workbench', 'dist');
+      mkdirSync(bin, { recursive: true });
+      const mark = join(root, 'closed.txt');
+      writeFileSync(
+        join(bin, 'bin.js'),
+        `process.stdout.write(JSON.stringify({ url: 'http://127.0.0.1:5000/__bench/', tag: 'app-card', criteria: 1 }) + '\\n');\n` +
+          `process.stdin.on('end', () => { require('fs').writeFileSync(${JSON.stringify(mark)}, 'closed'); process.exit(0); });\n` +
+          'process.stdin.resume();\n',
+      );
+      state.folders = [{ uri: { fsPath: root } }];
+      state.settings['fudic.workbench.node'] = process.execPath;
+      state.activeEditor = fileEditor('fudic', join(root, 'app-card.fud'));
+      await activate(context());
+
+      await (state.commandHandlers.get('fudic.openWorkbench') as () => Promise<void>)();
+
+      expect(state.panels.map((p) => p.title)).toEqual(['Workbench · app-card']);
+      expect(existsSync(mark)).toBe(false);
+      await deactivate();
+      await vi.waitFor(() => expect(existsSync(mark)).toBe(true), { timeout: 5000 });
+      await expect(deactivate()).resolves.toBeUndefined();
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

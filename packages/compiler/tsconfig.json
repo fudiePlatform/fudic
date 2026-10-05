@@ -13,5 +13,6 @@
       "@fudic/forms": ["../forms/src/index.ts"]
     }
   },
-  "include": ["src", "test", "scripts", "vitest.config.ts"]
+  // `url.ts` of @fudic/dom, reached by source through `paths`, reads `import.meta.env`.
+  "include": ["src", "test", "scripts", "vitest.config.ts", "../dom/src/env.d.ts"]
 }

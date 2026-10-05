@@ -9,6 +9,6 @@
   // `bundle` holds the entries of the published startup pieces (SDD-45 §3.4). They are not
   // part of `dist` — `tsconfig.build.json` keeps its `include` at `src` — but they carry the
   // annotation that makes the uniform `install` a contract, and an annotation nobody checks
-  // is a comment.
-  "include": ["src", "test", "bundle"]
+  // is a comment. `env.d.ts` types the `import.meta.env` that @fudic/dom's `url.ts` reads.
+  "include": ["src", "test", "bundle", "../dom/src/env.d.ts"]
 }

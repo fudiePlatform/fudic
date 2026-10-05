@@ -242,3 +242,20 @@ export const bundledServerPath = (extensionPath: string): string =>
 /** Where VS Code keeps the TypeScript it ships with — the last resort of §4.1. */
 export const vscodeTsdkPath = (appRoot: string): string =>
   join(appRoot, 'extensions', 'node_modules', 'typescript', 'lib');
+
+/** An editor whose document has a file path: what the workbench opens. */
+export interface FileEditorLike {
+  readonly document: {
+    readonly languageId: string;
+    readonly uri: { readonly fsPath: string };
+  };
+}
+
+/** The languages the workbench opens from: a component and its criteria. */
+const WORKBENCH_LANGUAGES: ReadonlySet<string> = new Set(['fudic', 'fudspec']);
+
+/** The POSIX-shaped path of the active `.fud` or `.fudspec`, and nothing otherwise. */
+export const workbenchFileOf = (editor: FileEditorLike | undefined): string | undefined =>
+  editor !== undefined && WORKBENCH_LANGUAGES.has(editor.document.languageId)
+    ? editor.document.uri.fsPath.replaceAll('\\', '/')
+    : undefined;

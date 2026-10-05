@@ -17,7 +17,10 @@ import { activateFudic, type FudicSession } from './activate.js';
 import { watchTypedTags } from './auto-close.js';
 import { registerCommands } from './commands/index.js';
 import { watchEmptyValues } from './empty-value.js';
+import { nodeProcesses } from './spawn.js';
 import { createVirtualDocStore, VIRTUAL_SCHEME } from './virtual-doc-provider.js';
+import { createWorkbenches, type Workbenches } from './workbench.js';
+import { panelHtml } from './workbench-panel.js';
 import {
   bundledServerPath,
   caretAtOf,
@@ -29,10 +32,33 @@ import {
   replaceLines,
   typedTextOf,
   vscodeTsdkPath,
+  workbenchFileOf,
 } from './vscode-shape.js';
-import type { ClientLaunch, LanguageClientPort } from './ports.js';
+import type { ClientLaunch, LanguageClientPort, WorkbenchPanel } from './ports.js';
 
 let session: FudicSession | undefined;
+let workbenches: Workbenches | undefined;
+
+/**
+ * The workbench tab (SDD-32 §4.10): the shell framed beside the editor. Exported, like
+ * `createClient`, so its wiring is assertable through the double.
+ */
+export const openWorkbenchPanel = (view: { readonly title: string; readonly url: string }): WorkbenchPanel => {
+  const panel = vscode.window.createWebviewPanel('fudic.workbench', view.title, vscode.ViewColumn.Beside, {
+    enableScripts: true,
+    retainContextWhenHidden: true,
+  });
+  panel.webview.html = panelHtml(view.url);
+  // The bar posts one message only: «Open in browser».
+  panel.webview.onDidReceiveMessage(() => void vscode.env.openExternal(vscode.Uri.parse(view.url)));
+  return {
+    reveal: () => panel.reveal(),
+    showStopped: (message) => void panel.webview.postMessage({ type: 'stopped', message }),
+    onClosed: (listener) => {
+      panel.onDidDispose(listener);
+    },
+  };
+};
 
 /** The command behind the status bar item. Not contributed: it is not a user command. */
 const SHOW_OUTPUT = 'fudic.showOutput';
@@ -140,6 +166,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscodeTsdk: vscodeTsdkPath(vscode.env.appRoot),
   });
 
+  workbenches = createWorkbenches({
+    fs: { exists: existsSync },
+    workspace: { folders: folderPaths(vscode.workspace.workspaceFolders) },
+    config: { get: (id) => vscode.workspace.getConfiguration().get(id) },
+    processes: nodeProcesses,
+    panels: { open: openWorkbenchPanel },
+    notifications: { warn: (message) => void vscode.window.showWarningMessage(message) },
+  });
+
   registerCommands(
     {
       register: (id, handler) =>
@@ -147,7 +182,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     },
     {
       session,
-      editor: { activeFudUri: () => fudUriOf(vscode.window.activeTextEditor) },
+      editor: {
+        activeFudUri: () => fudUriOf(vscode.window.activeTextEditor),
+        activeWorkbenchFile: () => workbenchFileOf(vscode.window.activeTextEditor),
+      },
       documents: {
         openReadOnly: async (name, languageId, text) => {
           const document = await vscode.workspace.openTextDocument(
@@ -166,6 +204,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       },
       notifications: { warn: (message) => void vscode.window.showWarningMessage(message) },
       logger: { info: (message) => output.appendLine(message) },
+      workbenches,
       selection: {
         current: () => commentSelectionOf(vscode.window.activeTextEditor),
         replaceLines: (replacement) =>
@@ -219,6 +258,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 }
 
 export async function deactivate(): Promise<void> {
+  // No workbench process outlives the editor: each one cleans up when its stdin closes.
+  workbenches?.closeAll();
+  workbenches = undefined;
   const stopping = session?.client.stop();
   session = undefined;
   await stopping;

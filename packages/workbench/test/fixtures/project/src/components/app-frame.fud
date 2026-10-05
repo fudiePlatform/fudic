@@ -1,0 +1,7 @@
+<link rel="component" href="./app-slotted.fud">
+
+<app-frame>
+  <template shadowrootmode="open">
+    <app-slotted>assigned words</app-slotted>
+  </template>
+</app-frame>

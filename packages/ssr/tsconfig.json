@@ -7,5 +7,6 @@
       "@fudic/dom": ["../dom/src/index.ts"]
     }
   },
-  "include": ["src", "test"]
+  // `url.ts` of @fudic/dom, reached by source through `paths`, reads `import.meta.env`.
+  "include": ["src", "test", "../dom/src/env.d.ts"]
 }

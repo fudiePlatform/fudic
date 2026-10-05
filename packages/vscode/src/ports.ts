@@ -51,6 +51,41 @@ export type DelayPort = (ms: number) => Promise<void>;
 export interface EditorPort {
   /** The URI of the active `.fud`, or `undefined` when the active document is not one. */
   activeFudUri(): string | undefined;
+  /**
+   * The file path of the active `.fud` or `.fudspec`, POSIX-shaped: what the workbench opens.
+   * `undefined` when the active document is neither.
+   */
+  activeWorkbenchFile(): string | undefined;
+}
+
+/** A workbench process, reduced to what the extension does with it. */
+export interface WorkbenchProcess {
+  /** The first line of its stdout; rejects when it cannot start (an `ENOENT` keeps its `code`). */
+  readonly firstLine: Promise<string | undefined>;
+  /** Closing its stdin is how it is told to clean up and exit. */
+  closeStdin(): void;
+  /** Called once when it exits, with the last of what it wrote to stderr. */
+  onExit(listener: (stderr: string) => void): void;
+}
+
+/** Starting processes. The adapter binds it to `child_process.spawn`. */
+export interface ProcessPort {
+  spawn(command: string, args: readonly string[], cwd: string): WorkbenchProcess;
+}
+
+/** The workbench tab: a webview beside the editor that frames the shell. */
+export interface WorkbenchPanel {
+  /** Brings the tab to the front. */
+  reveal(): void;
+  /** Says in the tab that its process is gone, and why. */
+  showStopped(message: string): void;
+  /** Called once when the user closes the tab. */
+  onClosed(listener: () => void): void;
+}
+
+/** Opening workbench tabs. The adapter binds it to `vscode.window.createWebviewPanel`. */
+export interface WorkbenchPanelPort {
+  open(view: { readonly title: string; readonly url: string }): WorkbenchPanel;
 }
 
 /** Opening the read-only views the debugging commands produce (§4.3). */

@@ -22,3 +22,16 @@ export const FORMAT_DISABLED = 'Fudic: formatting is off — see the "fudic.form
 /** The reply when a request dies with the server that was answering it. */
 export const requestFailed = (method: string, error: unknown): string =>
   `Fudic: the ${method} request failed: ${String(error)}`;
+
+export const WORKBENCH_NOT_INSTALLED =
+  'Fudic: `@fudic/workbench` is not installed in this workspace. Add it as a devDependency to open the workbench.';
+
+export const nodeNotFound = (node: string): string =>
+  `Fudic: could not run Node (\`${node}\`). Set "fudic.workbench.node" to your Node executable.`;
+
+/** What the workbench said when it could not open. */
+export const workbenchFailed = (message: string): string => `Fudic: ${message}`;
+
+/** The process is gone; `stderr` is the last of what it said, possibly nothing. */
+export const workbenchStopped = (stderr: string): string =>
+  stderr.trim() === '' ? 'The workbench stopped.' : `The workbench stopped: ${stderr.trim()}`;

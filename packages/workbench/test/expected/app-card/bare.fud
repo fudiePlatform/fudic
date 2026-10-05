@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="component" href="C:/proj/src/components/app-card.fud">
+    <script type="module" src="fudic:runtime"></script>
+    <title>app-card · app-card</title>
+  </head>
+  <body>
+    <app-card></app-card>
+  </body>
+</html>

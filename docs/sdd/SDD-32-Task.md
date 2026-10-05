@@ -1,144 +1,104 @@
-# SDD-32 — Abrir en el navegador: el arnés del banco de trabajo
+# SDD-32 — Tareas
 
-**Estado:** `Pendiente` · **Rama:** `worktree-sdd-32-abrir-en-el-navegador` · **SDD:**
-[SDD-32](./SDD-32-banco-de-trabajo.md)
+> **SDD:** [SDD-32 — El banco de trabajo](./SDD-32-banco-de-trabajo.md)
+> **Paquetes:** `@fudic/workbench` (nuevo) · `fudic-vscode` · `@fudic/dom` · `@fudic/vite` ·
+> `@fudic/diagnostics` · `examples/basic`
+> **Rama:** `worktree-SDD-32-1-abrir-en-el-navegador` (nace de `main` en `0ebd073`)
+> **Progreso:** 31 / 31 — `Hecho`.
 
-Diecisiete tareas para un botón. Diez son el paquete nuevo —`@fudic/workbench`, que compila un
-`.fud` suelto, monta una página con él, la sirve y la abre— y siete son cablearlo a la barra del
-editor. **Ninguna toca el compilador, el emit ni el runtime**: este SDD es el primer consumidor
-externo de `resolveComponents` + `emit*`, y si en algún momento hay que modificar
-`@fudic/compiler` para que esto funcione, eso es el hallazgo, no la tarea.
+Sustituye a la lista de tareas de la versión anterior de SDD-32, de la que no se hizo ninguna.
 
-**Lo que de verdad se está construyendo no es la ventana: es la frontera.** Tres documentos
-—shell → iframe → componente—, un solo origen, y el documento del componente **byte a byte como
-lo emitió el compilador**. Todo lo que el banco de trabajo llegue a hacer —el WebSocket que
-graba los criterios, el panel, Lighthouse, CLS e INP— vive fuera de ese documento o no significa
-nada. Esa topología es lo único de este SDD que no se puede añadir después, y por eso las tareas
-5 y 8 existen antes de que haya nada que enchufar en ellas.
+**El orden manda en cuatro puntos.**
 
-Tres hallazgos del terreno que explican por qué la fontanería no es trivial:
-
-| hallazgo | evidencia |
-|---|---|
-| `resolveComponents` llama a `io.read(path)` **sin guarda**: un `<link rel="component">` a un fichero inexistente sube el `ENOENT` de `readFileSync` hasta el llamante. Es el caso normal en un editor —el `<link>` escrito y el fichero todavía no— | [`resolve.ts:139` y `visitComponents`](../../packages/compiler/src/emit/resolve.ts#L139) · el `nodeIo` del plugin no guarda nada ([`io.ts`](../../packages/vite/src/io.ts)) |
-| `emitPageModule` hace `graph.entry as PageDocument` sin preguntar: **no se le puede pasar un componente**. De ahí la página sintética de §4.1, no de una preferencia estética | [`module.ts:225`](../../packages/compiler/src/emit/module.ts#L225) |
-| Con las opciones por defecto (`importExt: '.mjs'`, `linkAssets: false`) los módulos emitidos **no tienen ni un especificador bare**: solo importan hermanos relativos. Por eso Node los importa tal cual y este paquete no necesita bundler, alias ni import map | [`__golden__/home.mjs`](../../packages/compiler/test/emit/__golden__/home.mjs) · [`app-card.mjs`](../../packages/compiler/test/emit/__golden__/app-card.mjs) |
-
-Y dos cosas que **no** trae esta rebanada y conviene tener delante: no hay hidratación (SDD-17
-está `Listo`, no `Hecho`) y **no hay guía de estilos** — no existe SDD que la defina, así que el
-componente se ve desnudo. La costura por la que entrará (`pageHead`, tarea 4) se deja puesta y
-vacía; el análisis de lo que hace falta decidir está en [SDD-32 §4.8](./SDD-32-banco-de-trabajo.md).
-
-`@fudic/workbench` nace con `thresholds` al 100 en las cuatro métricas y
-`coverage.include: ['src/**/*.ts']`.
+- **El bug B va primero y ya está arreglado** (tarea 1). Sin él, `vite dev` da 500 en toda
+  página que pinta una URL, y el banco es `vite dev`.
+- **Lo puro antes que lo que abre Chrome.** `resolveTarget`, `planBench` y el protocolo se
+  prueban sin disco, sin Vite y sin navegador (fase 2). El motor y la sesión vienen después.
+- **El `ctx` antes que la sesión.** La espera del gesto (tarea 13) es el arreglo del bug A, y su
+  criterio (el 11) se pone en rojo antes de escribirla.
+- **El catálogo antes que el código que lo usa.** Ningún `'FUD097n'` escrito a mano.
 
 ---
 
 ## Mapa de dependencias
 
-**Dos carriles arrancan a la vez.** El paquete no espera a la extensión, y la extensión —que
-habla con un binario por una línea de JSON— no espera al paquete: su doble de test son tres
-líneas.
-
 ```
-A · el paquete (@fudic/workbench, Vitest, sin navegador)
-   1 andamiaje ─┬─→ 2 io que no lanza ─┐
-                │                      ├─→ 4 plan (+ pageHead) ─┬─→ 6 escritura ─→ 7 render ─┐
-                └─→ 3 ruta temporal ───┘                        │                            │
-                                                                └─→ 5 página sintética       │
-                    8 shell (iframe + diagnósticos) ────────────────────────────────────┐    │
-                    9 servidor de sesión (upgrade libre) ──────────────────────────────┼────┤
-                   10 puerto de navegador ───────────────────────────────────────────── ┴────┤
-                                                                                             ▼
-                                                                                     11 HITO (sesión)
-B · la extensión (fudic-vscode)                                                              │
-   13 puerto + adaptador ─→ 14 comando + manifiesto ─→ 15 ciclo de vida               12 binario
-                                                             │                               │
-                                                             └──────────┬────────────────────┘
-                                                              16 fixture + README ─→ 17 cierre
+1 bug B (hecho) ──→ 2 tests de regresión
+3 rango e INDEX ──→ 4 códigos
+4 ──→ 5 paquete ──→ 6 resolveTarget ──┐
+                    7 páginas ────────┼──→ 10 tests puros
+                    8 anfitrión ──────┤
+                    9 protocolo ──────┘
+5 ──→ 11 navegador ──→ 12 ctx ──→ 13 espera del gesto ──→ 14 runCriterion ──→ 15 tests del motor
+14 ──→ 16 Vite ──→ 17 sesión ──→ 18 servidor y shell ──→ 19 al guardar ──→ 20 openWorkbench y bin ──→ 21 tests de sesión
+20 ──→ 22 manifiesto ──→ 23 lanzar ──→ 24 pestaña ──→ 25 ciclo de vida ──→ 26 tests de la extensión
+21, 26 ──→ 27 ejemplo ──→ 28 README ──→ 29 cobertura ──→ 30 prueba de Pedro ──→ 31 cierre
 ```
-
-| carril | tareas | arranca | puede ir en paralelo con |
-|---|---|---|---|
-| **A** el paquete | 1–12 | ya | B |
-| **B** la extensión | 13, 14 ya (contra el doble); 15 tras 14; la verificación real tras 12 | ya | A |
-
-Puntos de junta, y hay dos: **11** (el hito: el shell abierto en un Chrome de verdad y el shadow
-DOM del iframe leído desde el padre) y **17** (verde y cerrado).
 
 ---
 
-## Fase 1 — el paquete, y todo lo que se prueba sin tocar disco
-
-| ✓ | # | dep | tarea | fichero |
-|---|---|---|---|---|
-| [ ] | 1 | — | Andamiaje de `@fudic/workbench`: `package.json` (deps `@fudic/compiler`, `@fudic/ssr`, `playwright@1.62.0`; **nada de `@fudic/vite`, `vite`, `@fudic/transport`, `@fudic/core`, `@fudic/dom`, `@fudic/conventions`, ni librería de WebSocket, ni `lighthouse`** — §2.1), `tsconfig`, `tsconfig.build.json`, `vitest.config.ts` con los cuatro umbrales al 100, y `bin` → `dist/bin.js` | `packages/workbench/*` *(nuevo)* |
-| [ ] | 2 | 1 | `nodeRecordingIo()`: el `ResolveIo` que **no lanza**. Lectura fallida → `''` + `FUD0592` con la ruta; `resolve` = `resolve(dirname(from), href)`, que ya acierta con un `href` absoluto. Es el hallazgo 1, resuelto en el llamante y no en el compilador | `src/io.ts` |
-| [ ] | 3 | 1 | `harnessDir(fudPath, outDir?)`: `<tmp>/fudic-workbench/<tag>-<sha256(realpath).slice(0,8)>`. Estable por fichero, distinta para dos ficheros con el mismo tag. Aquí solo el nombre; vaciarla es la 6 | `src/dir.ts` |
-| [ ] | 4 | 2, 3 | `planHarness(fudPath, io, pageHead?)`: parsea el objetivo, rechaza lo que no sea componente (`FUD0590`) y lo ilegible (`FUD0591`), resuelve el grafo y devuelve el `Map` —`page.fud`, `page.mjs`, un `<tag>.mjs` por componente— más los diagnósticos del emit, que **no paran nada**. `pageHead` es la costura de la guía de estilos: entra en el `<head>` y en ningún otro sitio | `src/plan.ts` |
-| [ ] | 5 | 4 | La página sintética: `<link rel="component">` con ruta **absoluta y barras hacia delante** (una `path.relative` entre `C:` y `D:` no existe), `<title>`, `<meta charset>`, `pageHead`, y `<tag></tag>` desnudo. Diez líneas de texto que son la razón de que «y sus dependencias» no haya que programarlo | `src/page.ts` |
-
-Criterios que cierran la fase: **1–8**.
-
-## Fase 2 — disco, render, shell y red
-
-| ✓ | # | dep | tarea | fichero |
-|---|---|---|---|---|
-| [ ] | 6 | 4 | `writePlan(plan, dir)`: **vaciar** (`rm -rf` + `mkdir`) y escribir. Vaciar, no sobrescribir: un `<tag>.mjs` que ya nadie importa sigue en disco y engaña a quien mire la carpeta con `--keep` | `src/write.ts` |
-| [ ] | 7 | 6 | `renderHarness(dir)`: `import(pathToFileURL(dir/page.mjs))`, ejecutar `page({}, io)` con el `io` real de `@fudic/ssr`, juntar el generador y escribir **`component.html`**. El `data` es `{}` porque la página sintética no interpola nada. **Lo que devuelve se escribe tal cual**: el invariante de §4.4 empieza aquí | `src/render.ts` |
-| [ ] | 8 | 1 | `renderShell({ tag, componentPath, diagnostics })` → `shell.html`: la tira de diagnósticos (código `FUD` + mensaje; sin diagnósticos, sin tira) y el `<iframe src="/component.html">` a pantalla completa, **sin `sandbox`** —mismo origen a propósito: leer su shadow DOM es el artefacto de IDEA-01 §4.3—. Función pura, HTML y CSS, **cero JS**: el `<script>` del shell es lo primero que se añade el día del WebSocket, y se añade aquí | `src/shell.ts` |
-| [ ] | 9 | 1 | `serveSession(roots, port)` sobre `node:http`: dos raíces en orden (la temporal, y el directorio del componente para sus assets vecinos), guarda de traversal —el resuelto tiene que seguir **dentro** de la raíz—, mapa corto de tipos, `/` → `shell.html`, 404 para todo lo demás, sin listados, puerto 0 por defecto. **Un `http.Server`, no un handler**: el `upgrade` queda libre para el canal de §4.7 | `src/server.ts` |
-| [ ] | 10 | 1 | El puerto de navegador: `BrowserPort`/`BrowserHandle` y **el único fichero que importa `playwright`**. `chromium.launch({ headless, channel })` con `channel: 'chrome'` por defecto —el del sistema, la misma decisión que [`examples/basic/playwright.config.ts`](../../examples/basic/playwright.config.ts)— y `closed` como promesa del evento `close` | `src/browser.ts` |
-
-Criterios que cierran la fase: **9–13**.
-
-## Fase 3 — la sesión, el hito y la CLI
-
-| ✓ | # | dep | tarea | fichero |
-|---|---|---|---|---|
-| [ ] | 11 | 4–10 | **HITO.** `openComponent(fudPath, options)`: plan → escritura → render → shell → servidor → navegador, en ese orden, cortando antes de escribir un byte si el plan falló. El navegador se abre en **`url` (el shell)**, nunca en `componentUrl`. `close()` idempotente que cierra los tres y borra la carpeta salvo `keepOutput`. El test de aceptación abre **Chrome de verdad**, headless, y desde el documento padre alcanza el `contentDocument` del iframe y lee el shadow root — que es, de paso, la prueba de que el mismo origen funciona | `src/session.ts` · `src/index.ts` |
-| [ ] | 12 | 11 | El binario `fudic-workbench`: flags de §3.1, **una** línea JSON en `stdout` con `url`, **`componentUrl`**, `dir`, `tag` y `diagnostics`; proceso vivo hasta `close` del navegador, `SIGINT` o cierre de `stdin`; `{"error":…}` + código 1 ante `FUD0590`/`FUD0591`. `componentUrl` va desde el primer día aunque hoy no lo use nadie: es lo que un auditor externo necesita, y añadir un campo después obliga a versionar el protocolo | `src/bin.ts` |
-
-Criterios que cierran la fase: **14–16**.
-
-## Fase 4 — el botón
+## Fase 1 — bug B (2)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 13 | — | `WorkbenchPort` (una operación: `open(fudPath)`) y su adaptador: resolver `node_modules/@fudic/workbench/dist/bin.js` desde la carpeta del workspace, `spawn(nodeBin, …)`, leer la primera línea de `stdout`. `EditorPort` gana `activeFudPath()` — el comando necesita una ruta, no una URI, y convertirla es cosa del adaptador | `vscode` | [ports.ts](../../packages/vscode/src/ports.ts) · `src/workbench.ts` *(nuevo)* |
-| [ ] | 14 | 13 | El comando `fudic.openInBrowser`: handler, entrada en `COMMAND_IDS`, los tres mensajes de §4.9 en `messages.ts`, los tres ajustes en `settings.ts`, y el manifiesto —comando con icono `$(preview)`, `contributes.menus` con `editor/title` + `when: resourceExtname == .fud`, y las tres propiedades—. El test de manifiesto pasa a comprobar **seis** comandos | `vscode` | [commands/index.ts](../../packages/vscode/src/commands/index.ts) · `commands/open-in-browser.ts` *(nuevo)* · [messages.ts](../../packages/vscode/src/commands/messages.ts) · [settings.ts](../../packages/vscode/src/settings.ts) · [package.json](../../packages/vscode/package.json) |
-| [ ] | 15 | 14 | Ciclo de vida: `Map<path, ChildProcess>`, un segundo click mata el hijo anterior, `deactivate` los mata todos. Un Chrome huérfano que sobreviva a la ventana del editor es el peor defecto que esta función puede tener | `vscode` | `src/workbench.ts` · [activate.ts](../../packages/vscode/src/activate.ts) |
+| [x] | 1 | — | **El arreglo.** `dev()` lee `import.meta.env.DEV` entero, sin alias ni cast; el tipo en `src/env.d.ts`; guarda `typeof import.meta.env !== 'object'` para Node sin Vite (§9.1). Verificado a mano: `/`, `/blog` y `/about` de `examples/basic` dan 200 en `vite dev`; el `dist` importado con Node no lanza; los tests de `@fudic/dom` pasan | `dom` | `src/url.ts` · `src/env.d.ts` |
+| [x] | 2 | 1 | **Tests de regresión.** En `@fudic/dom`, `url.ts` ejecutado por Node sin Vite (proceso hijo, tipos quitados por Node): no lanza y no avisa; `vi.stubEnv` ya lo cubría `url.test.ts`. En `@fudic/vite`, el dev server sirve con 200 una ruta que pinta un `href` desde un valor, con `@fudic/dom` cargado en el module runner. Con el `url.ts` de `main`, el de Vite sale en rojo. Pedro lo probó en el navegador. `@fudic/dom` sigue al 100 % y `@fudic/vite` en su suelo (97,7 / 93,4 / 97,94 / 97,7) | `dom` · `vite` | `test/url-node.test.ts` · `test/dev.test.ts` |
 
-Criterios que cierran la fase: **17–20**.
-
-## Fase 5 — cierre
+## Fase 2 — catálogo (2)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 16 | 11 | Fixture propia y documentación corta **en inglés**: un componente con un hijo enlazado y un asset vecino (lo que ejercita las dos raíces del servidor), y un README que explique los **tres documentos** y por qué existen, qué **no** hay en la página (JS, SW, props, slots, guía de estilos), y cómo se usa el binario desde la terminal | `workbench` | `fixtures/*` *(nuevo)* · `README.md` *(nuevo)* |
-| [ ] | 17 | todas | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` verdes en el workspace entero; `@fudic/workbench` al 100 % en las cuatro métricas y `fudic-vscode` sin bajar del suyo; SDD-32 a `Hecho`, fila en la tabla maestra y registro de progreso; nota en IDEA-01 §8 diciendo que el paso 1 está entregado, con qué topología, y qué se quedó fuera | — | [INDEX.md](./INDEX.md) · [SDD-32](./SDD-32-banco-de-trabajo.md) · [IDEA-01](./ideas/IDEA-01-banco-de-trabajo-de-componentes.md) |
+| [x] | 3 | — | **El rango.** `FUD0970`–`FUD0989` en la fila de SDD-32 del `INDEX.md` | — | `docs/sdd/INDEX.md` |
+| [x] | 4 | 3 | **Los códigos.** `FUD0970`–`FUD0975` (§4.11): `.ts` con su función tipada, `.md` en inglés con la forma de SDD-50 §4.4 citando `SDD-32`, y su línea en `index.ts`. `@fudic/diagnostics` sigue al 100 % | `diagnostics` | `src/codes/FUD0970`–`0975.{ts,md}` · `src/index.ts` |
 
----
+## Fase 3 — el paquete y lo puro (6)
 
-## Ficheros existentes que se tocan, y por qué
+| ✓ | # | dep | tarea | package | fichero |
+|---|---|---|---|---|---|
+| [x] | 5 | 4 | **El paquete.** `packages/workbench`: `package.json` con las dependencias de §2.1 (versiones exactas, `vite` y `@fudic/vite` como peer), `bin: { "fudic-workbench": "dist/bin.js" }`, `tsconfig` y `tsconfig.build`, Vitest con `thresholds` al 100 en las cuatro métricas y `coverage.include: ['src/**/*.ts']` desde este commit | `workbench` | `package.json` · `tsconfig*.json` · `vitest.config.ts` · `src/index.ts` |
+| [x] | 6 | 5 | **`resolveTarget`.** §4.2, paso 1: `.fud` ↔ `.fudspec` ↔ `.fixture.ts`, componente con tag (`FUD0970`), raíz del proyecto por `fudic.json` y si no `package.json` (`FUD0971`). Sobre un `TargetFs` inyectado | `workbench` | `src/target.ts` |
+| [x] | 7 | 5 | **Las páginas.** `planBench` (§4.3): una página por criterio con la forma exacta, `PlannedStep` con los argumentos como se escribieron, `props` fuera de los pasos, criterio sin `props` sin `@code`, `FUD0972` sin `.fudspec` (una tarjeta, componente desnudo) | `workbench` | `src/pages.ts` |
+| [x] | 8 | 7 | **El anfitrión `Signal`.** §4.3.1: solo cuando un valor de la fixture es un signal (función con `set`), valor inicial literal por `JSON.stringify` con comprobación de ida y vuelta (`FUD0974`), las demás props reenviadas | `workbench` | `src/host.ts` |
+| [x] | 9 | 5 | **El protocolo.** Los tipos de §4.9, `WireDiagnostic` con línea y columna calculadas al serializar, y el frame de texto de RFC 6455 (servidor → cliente, longitudes de 7, 16 y 64 bits) | `workbench` | `src/protocol.ts` · `src/ws.ts` |
+| [x] | 10 | 6–9 | **Tests puros.** Criterios 1–7, con el `app-card.fudspec` y su fixture del ejemplo y una página esperada por fichero | `workbench` | `test/target.test.ts` · `test/pages.test.ts` · `test/host.test.ts` · `test/protocol.test.ts` |
 
-| fichero | qué cambia | por qué |
-|---|---|---|
-| [vscode/package.json](../../packages/vscode/package.json) | un comando con icono, `contributes.menus` (**la sección no existe todavía**) y tres propiedades de configuración | el botón vive en el manifiesto; sin la entrada de `editor/title` el comando solo estaría en la paleta, que no es lo que se pidió |
-| [vscode/src/commands/index.ts](../../packages/vscode/src/commands/index.ts) | `COMMAND_IDS` y `createHandlers` ganan la sexta entrada | la simetría contribuido↔registrado es un test, y se comprueba desde los dos lados |
-| [vscode/src/ports.ts](../../packages/vscode/src/ports.ts) | `WorkbenchPort` nuevo; `EditorPort` gana `activeFudPath()` | nada bajo `src/` importa `vscode`: una capacidad nueva del host es un puerto nuevo, no un import |
-| [vscode/src/commands/deps.ts](../../packages/vscode/src/commands/deps.ts) | `CommandDeps` gana `workbench` | es lo que reciben todos los comandos; el nuevo no puede ser la excepción |
-| [vscode/src/settings.ts](../../packages/vscode/src/settings.ts) | tres ajustes más, con los mismos `asBoolean`/`asPath` | un ajuste con el tipo equivocado no puede abortar la activación (SDD-25 §3.2) |
-| [vscode/src/commands/messages.ts](../../packages/vscode/src/commands/messages.ts) | tres mensajes | los tres fallos de §4.9 que son del editor viven aquí |
-| [docs/sdd/INDEX.md](./INDEX.md) | fila 32 en la tabla maestra y registro de progreso | el índice tiene que poder leerse y saber que existe un paquete más |
-| [docs/sdd/ideas/IDEA-01](./ideas/IDEA-01-banco-de-trabajo-de-componentes.md) | nota de estado en §8 | el paso 1 del troceado deja de ser idea; los otros tres siguen siéndolo |
+## Fase 4 — el motor (5)
 
-**Y lo que NO se toca:** `@fudic/compiler`, `@fudic/ssr`, `@fudic/vite`, `@fudic/core`,
-`@fudic/dom`, `@fudic/transport` y `examples/basic`. Si una tarea empieza a pedir un cambio en
-el compilador, para y anótalo: sería un defecto de la API pública del emit, y eso es un `BUG-NN`
-propio, no un parche dentro de este SDD.
+| ✓ | # | dep | tarea | package | fichero |
+|---|---|---|---|---|---|
+| [x] | 11 | 5 | **El navegador.** `src/browser.ts`, el único que importa `playwright-core`: `chromium.launch({ channel: 'chrome', headless: true })` adaptado a `BrowserLike`/`PageLike`; sin Chrome, `FUD0975` | `workbench` | `src/browser.ts` |
+| [x] | 12 | 11 | **El `ctx`.** §3.4 y §4.6.2: referencias por tag y por rol (con `exact: true`), modo estricto con el número de elementos en el error, `textContent` del árbol aplanado (shadow roots, slots asignados o contenido por defecto, sin `style`/`script`/`template`), `goto` que no navega, 5 s por llamada | `workbench` | `src/context.ts` · `src/flat-text.ts` |
+| [x] | 13 | 12 | **(rojo primero) La espera del gesto.** §4.6.3: el script de observación por `addInitScript` (un `Set` de ids de `fud:hydrated`), el host más cercano con `data-fud-id` cruzando shadow roots, `customElements.get` antes de actuar, espera del id y un fotograma. Antes de escribirla, el criterio 11 en rojo con el componente de pestañas | `workbench` | `src/settle.ts` · `src/context.ts` |
+| [x] | 14 | 13 | **`runCriterion`.** §4.6.1: página nueva, `routeWebSocket` a todo lo que no sea `/__bench`, pasos en orden, conversión por `meta.params`, `layer` en cada paso, veredicto (`error` corta, `fail` no corta los `then`, `pageerror` es `error`), cierre de la página | `workbench` | `src/engine.ts` |
+| [x] | 15 | 14 | **Tests del motor.** Criterios 8–15, con un proyecto de prueba en `test/fixtures/` (componente de pestañas, uno con `Signal<number>` y botón, uno con slot) servido por un Vite de prueba | `workbench` | `test/context.test.ts` · `test/engine.test.ts` · `test/fixtures/**` |
 
-**Y lo que no se toca porque no existe:** la guía de estilos. La tarea 4 deja `pageHead` vacío y
-la 16 lo dice en el README. Ninguna tarea de aquí puede inventarla — [SDD-32
-§4.8](./SDD-32-banco-de-trabajo.md) tiene las cuatro preguntas que su SDD tendrá que contestar, y
-la primera (¿tokens o reglas?) decide si es una línea en el `<head>` o maquinaria de emit.
+## Fase 5 — la sesión, el servidor y el guardado (6)
+
+| ✓ | # | dep | tarea | package | fichero |
+|---|---|---|---|---|---|
+| [x] | 16 | 14 | **Vite dentro.** §4.5: `createServer` con `configFile: false`, `appType: 'custom'`, `middlewareMode`, `hmr: { server, overlay: false }` y `fudic({ routesDir })` hacia `node_modules/.fudic-bench/<tag>/routes`; la carpeta vaciada al arrancar | `workbench` | `src/vite.ts` · `src/bench-dir.ts` |
+| [x] | 17 | 16 | **La sesión.** §4.4: `parseSpec` + `validateSpec` con el catálogo (`fudic/terms/` y la capa del framework si existe), fixture por `ssrLoadModule` invalidando antes (`FUD0973`), términos por `ssrLoadModule`, `planBench` y escritura de páginas | `workbench` | `src/session.ts` |
+| [x] | 18 | 17 | **El servidor y el shell.** §4.8: `/__bench/`, `upgrade /__bench/ws` (el resto de `upgrade`, para Vite), Vite detrás, 404. El shell: tira de diagnósticos, una tarjeta por criterio con sus `describe`, veredicto, evidencia e iframe que se recarga al recibir su `result`. Al conectar, el último `session` y los últimos `result` | `workbench` | `src/bench-server.ts` · `src/shell.ts` |
+| [x] | 19 | 18 | **Al guardar.** §4.7: clasificación por fichero, el primer `full-reload` tras el cambio de un `.fud` (interceptando `vite.environments.client.hot.send`) con 10 s de reserva, recarga de sesión para `.fudspec` y fixture, invalidación para términos; una ejecución a la vez y como mucho una pendiente | `workbench` | `src/rerun.ts` |
+| [x] | 20 | 19 | **`openWorkbench` y el binario.** §3.1 y §3.2: el arranque de §4.2 en orden, la línea JSON, `{error}` con código 1, `stdin` cerrado o `SIGINT` → `close()` (Chrome, Vite, servidor y carpeta salvo `--keep`), idempotente | `workbench` | `src/index.ts` · `src/bin.ts` |
+| [x] | 21 | 20 | **Tests de sesión.** Criterios 16–22, el 18 en rojo primero (pestañas con el bug → guardar el arreglo → `pass`) | `workbench` | `test/session.test.ts` · `test/rerun.test.ts` · `test/server.test.ts` · `test/bin.test.ts` |
+
+## Fase 6 — la extensión (5)
+
+| ✓ | # | dep | tarea | package | fichero |
+|---|---|---|---|---|---|
+| [x] | 22 | 20 | **El manifiesto.** `fudic.openWorkbench` en `commands`, el atajo `ctrl+k v` / `cmd+k v` con `when: editorLangId == fudic \|\| editorLangId == fudspec`, `editor/title` con `$(open-preview)` para los dos lenguajes, y el ajuste `fudic.workbench.node`. `COMMAND_IDS` gana la entrada | `vscode` | `package.json` · `src/commands/index.ts` |
+| [x] | 23 | 22 | **Lanzar.** Un puerto nuevo, `WorkbenchPort.open(file)`, y su adaptador: resolver `node_modules/@fudic/workbench/dist/bin.js` desde la carpeta del workspace, `spawn` con el `node` del ajuste, leer la primera línea, avisos de §4.11. `EditorPort` acepta también un `.fudspec` activo | `vscode` | `src/ports.ts` · `src/workbench.ts` · `src/commands/workbench.ts` · `src/commands/messages.ts` |
+| [x] | 24 | 23 | **La pestaña.** Un `WorkbenchPanelPort` y su adaptador: webview en `ViewColumn.Beside` titulado `Workbench · <tag>`, la URL de la línea JSON tal cual (solo local), CSP con ese origen en `frame-src`, barra como la de la prueba: botón «Abrir en el navegador» → `openExternal` y la URL a la vista | `vscode` | `src/ports.ts` · `src/workbench-panel.ts` · `src/extension.ts` |
+| [x] | 25 | 24 | **El ciclo de vida.** `Map<componente, sesión>`: revelar en vez de relanzar, cerrar la pestaña cierra el `stdin`, el proceso que muere lo dice en la pestaña con su último `stderr`, `deactivate` cierra todos | `vscode` | `src/workbench.ts` · `src/extension.ts` |
+| [x] | 26 | 25 | **Tests de la extensión.** Criterios 23–27, con dobles de los puertos. `fudic-vscode` sigue al 100 % | `vscode` | `test/workbench.test.ts` · `test/manifest.test.ts` |
+
+## Fase 7 — ejemplo y cierre (5)
+
+| ✓ | # | dep | tarea | package | fichero |
+|---|---|---|---|---|---|
+| [x] | 27 | 21, 26 | **El ejemplo.** `examples/basic` gana el componente de pestañas con su `.fudspec` (criterios 11 y 18) y `@fudic/workbench` como devDependency; `app-card.fudspec` queda con al menos un criterio en verde (criterio 30). Qué se cambia en `app-card` o en su `.fudspec` para eso (§4.2 de la prueba: el host `inline`, el link que navega) se decide con Pedro | `examples/basic` | `src/components/app-tabs.{fud,fudspec}` · `src/components/app-card.*` · `package.json` |
+| [x] | 28 | 27 | **README.** Guía corta en inglés del paquete: qué abre, el binario, el `ctx` de los términos y la espera del gesto. Sin citas a SDD | `workbench` | `README.md` |
+| [x] | 29 | 28 | **Cobertura.** `@fudic/workbench` al 100 % en las cuatro métricas, sin `v8 ignore`; `fudic-vscode`, `@fudic/diagnostics` y `@fudic/dom` sin bajar. `pnpm typecheck` y `pnpm build` en verde | todos | — |
+| [x] | 30 | 29 | **Prueba de Pedro.** La de §6 con el `.vsix` instalado: Ctrl+K V, rojo y verde al guardar, «Abrir en el navegador», y ningún Chrome ni `node` vivo al cerrar VS Code | — | — |
+| [x] | 31 | 30 | **Cierre.** Estado `Hecho` en SDD-32 y en el `INDEX.md`, entrada en el registro de progreso, la nota de la prueba apuntando a §9 | — | `docs/sdd/*` · `docs/banco-de-trabajo/prueba-arquitectura.md` |

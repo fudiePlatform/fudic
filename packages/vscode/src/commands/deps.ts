@@ -4,6 +4,7 @@
 
 import { NO_ACTIVE_FUD, SERVER_DOWN } from './messages.js';
 import type { FudicSession } from '../activate.js';
+import type { Workbenches } from '../workbench.js';
 import type {
   DocumentsPort,
   EditorPort,
@@ -22,6 +23,8 @@ export interface CommandDeps {
   readonly logger: LoggerPort;
   /** Only commenting needs the selection; every other command works on the whole document. */
   readonly selection: SelectionPort;
+  /** One workbench process per component (SDD-32). */
+  readonly workbenches: Workbenches;
 }
 
 /**
