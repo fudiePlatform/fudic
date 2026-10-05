@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/workbench` (nuevo) · `fudic-vscode` · `@fudic/dom` · `@fudic/vite` ·
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `worktree-SDD-32-1-abrir-en-el-navegador` (nace de `main` en `0ebd073`)
-> **Progreso:** 2 / 31 — `En curso`.
+> **Progreso:** 4 / 31 — `En curso`.
 
 Sustituye a la lista de tareas de la versión anterior de SDD-32, de la que no se hizo ninguna.
 
@@ -48,8 +48,8 @@ Sustituye a la lista de tareas de la versión anterior de SDD-32, de la que no s
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 3 | — | **El rango.** `FUD0970`–`FUD0989` en la fila de SDD-32 del `INDEX.md` | — | `docs/sdd/INDEX.md` |
-| [ ] | 4 | 3 | **Los códigos.** `FUD0970`–`FUD0975` (§4.11): `.ts` con su función tipada, `.md` en inglés con la forma de SDD-50 §4.4 citando `SDD-32`, y su línea en `index.ts`. `@fudic/diagnostics` sigue al 100 % | `diagnostics` | `src/codes/FUD0970`–`0975.{ts,md}` · `src/index.ts` |
+| [x] | 3 | — | **El rango.** `FUD0970`–`FUD0989` en la fila de SDD-32 del `INDEX.md` | — | `docs/sdd/INDEX.md` |
+| [x] | 4 | 3 | **Los códigos.** `FUD0970`–`FUD0975` (§4.11): `.ts` con su función tipada, `.md` en inglés con la forma de SDD-50 §4.4 citando `SDD-32`, y su línea en `index.ts`. `@fudic/diagnostics` sigue al 100 % | `diagnostics` | `src/codes/FUD0970`–`0975.{ts,md}` · `src/index.ts` |
 
 ## Fase 3 — el paquete y lo puro (6)
 
