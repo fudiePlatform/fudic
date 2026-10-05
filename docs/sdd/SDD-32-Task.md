@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/workbench` (nuevo) · `fudic-vscode` · `@fudic/dom` · `@fudic/vite` ·
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `worktree-SDD-32-1-abrir-en-el-navegador` (nace de `main` en `0ebd073`)
-> **Progreso:** 4 / 31 — `En curso`.
+> **Progreso:** 10 / 31 — `En curso`.
 
 Sustituye a la lista de tareas de la versión anterior de SDD-32, de la que no se hizo ninguna.
 
@@ -55,12 +55,12 @@ Sustituye a la lista de tareas de la versión anterior de SDD-32, de la que no s
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 5 | 4 | **El paquete.** `packages/workbench`: `package.json` con las dependencias de §2.1 (versiones exactas, `vite` y `@fudic/vite` como peer), `bin: { "fudic-workbench": "dist/bin.js" }`, `tsconfig` y `tsconfig.build`, Vitest con `thresholds` al 100 en las cuatro métricas y `coverage.include: ['src/**/*.ts']` desde este commit | `workbench` | `package.json` · `tsconfig*.json` · `vitest.config.ts` · `src/index.ts` |
-| [ ] | 6 | 5 | **`resolveTarget`.** §4.2, paso 1: `.fud` ↔ `.fudspec` ↔ `.fixture.ts`, componente con tag (`FUD0970`), raíz del proyecto por `fudic.json` y si no `package.json` (`FUD0971`). Sobre un `TargetFs` inyectado | `workbench` | `src/target.ts` |
-| [ ] | 7 | 5 | **Las páginas.** `planBench` (§4.3): una página por criterio con la forma exacta, `PlannedStep` con los argumentos como se escribieron, `props` fuera de los pasos, criterio sin `props` sin `@code`, `FUD0972` sin `.fudspec` (una tarjeta, componente desnudo) | `workbench` | `src/pages.ts` |
-| [ ] | 8 | 7 | **El anfitrión `Signal`.** §4.3.1: solo cuando un valor de la fixture es un signal (función con `set`), valor inicial literal por `JSON.stringify` con comprobación de ida y vuelta (`FUD0974`), las demás props reenviadas | `workbench` | `src/host.ts` |
-| [ ] | 9 | 5 | **El protocolo.** Los tipos de §4.9, `WireDiagnostic` con línea y columna calculadas al serializar, y el frame de texto de RFC 6455 (servidor → cliente, longitudes de 7, 16 y 64 bits) | `workbench` | `src/protocol.ts` · `src/ws.ts` |
-| [ ] | 10 | 6–9 | **Tests puros.** Criterios 1–7, con el `app-card.fudspec` y su fixture del ejemplo y una página esperada por fichero | `workbench` | `test/target.test.ts` · `test/pages.test.ts` · `test/host.test.ts` · `test/protocol.test.ts` |
+| [x] | 5 | 4 | **El paquete.** `packages/workbench`: `package.json` con las dependencias de §2.1 (versiones exactas, `vite` y `@fudic/vite` como peer), `bin: { "fudic-workbench": "dist/bin.js" }`, `tsconfig` y `tsconfig.build`, Vitest con `thresholds` al 100 en las cuatro métricas y `coverage.include: ['src/**/*.ts']` desde este commit | `workbench` | `package.json` · `tsconfig*.json` · `vitest.config.ts` · `src/index.ts` |
+| [x] | 6 | 5 | **`resolveTarget`.** §4.2, paso 1: `.fud` ↔ `.fudspec` ↔ `.fixture.ts`, componente con tag (`FUD0970`), raíz del proyecto por `fudic.json` y si no `package.json` (`FUD0971`). Sobre un `TargetFs` inyectado | `workbench` | `src/target.ts` |
+| [x] | 7 | 5 | **Las páginas.** `planBench` (§4.3): una página por criterio con la forma exacta, `PlannedStep` con los argumentos como se escribieron, `props` fuera de los pasos, criterio sin `props` sin `@code`, `FUD0972` sin `.fudspec` (una tarjeta, componente desnudo) | `workbench` | `src/pages.ts` |
+| [x] | 8 | 7 | **El anfitrión `Signal`.** §4.3.1: solo cuando un valor de la fixture es un signal (función con `set`), valor inicial literal por `JSON.stringify` con comprobación de ida y vuelta (`FUD0974`), las demás props reenviadas | `workbench` | `src/host.ts` |
+| [x] | 9 | 5 | **El protocolo.** Los tipos de §4.9, `WireDiagnostic` con línea y columna calculadas al serializar, y el frame de texto de RFC 6455 (servidor → cliente, longitudes de 7, 16 y 64 bits) | `workbench` | `src/protocol.ts` · `src/ws.ts` |
+| [x] | 10 | 6–9 | **Tests puros.** Criterios 1–7, con el `app-card.fudspec` y su fixture del ejemplo y una página esperada por fichero | `workbench` | `test/target.test.ts` · `test/pages.test.ts` · `test/host.test.ts` · `test/protocol.test.ts` |
 
 ## Fase 4 — el motor (5)
 

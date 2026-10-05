@@ -1,0 +1,64 @@
+{
+  "name": "@fudic/workbench",
+  "version": "0.0.1",
+  "description": "The workbench: one component, its acceptance criteria run in a real browser, green or red on every save.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Pedro Hurtado",
+  "homepage": "https://github.com/fudiePlatform/fudic/tree/main/packages/workbench#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fudiePlatform/fudic.git",
+    "directory": "packages/workbench"
+  },
+  "bugs": {
+    "url": "https://github.com/fudiePlatform/fudic/issues"
+  },
+  "keywords": [
+    "fudic",
+    "fudie",
+    "fudspec",
+    "workbench",
+    "acceptance-criteria"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "fudic-workbench": "dist/bin.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@fudic/diagnostics": "workspace:*",
+    "@fudic/spec": "workspace:*",
+    "playwright-core": "1.62.0"
+  },
+  "peerDependencies": {
+    "@fudic/vite": "workspace:*",
+    "vite": "8.0.16"
+  },
+  "devDependencies": {
+    "@fudic/tsconfig": "workspace:*",
+    "@fudic/vite": "workspace:*",
+    "@types/node": "22.20.0",
+    "vite": "8.0.16"
+  }
+}

@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="component" href="C:/proj/src/components/app-card.fud">
+    @code {
+      import fixtures from "C:/proj/src/components/app-card.fixture";
+      const { title, href, variant } = fixtures["destacada"];
+    }
+    <script type="module" src="fudic:runtime"></script>
+    <title>app-card · destacada-al-cambiar-variante</title>
+  </head>
+  <body>
+    <app-card .title=@title .href=@href .variant=@variant></app-card>
+  </body>
+</html>

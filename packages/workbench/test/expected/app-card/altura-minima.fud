@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="component" href="C:/proj/src/components/app-card.fud">
+    @code {
+      import fixtures from "C:/proj/src/components/app-card.fixture";
+      const { title, href } = fixtures["minima"];
+    }
+    <script type="module" src="fudic:runtime"></script>
+    <title>app-card · altura-minima</title>
+  </head>
+  <body>
+    <app-card .title=@title .href=@href></app-card>
+  </body>
+</html>

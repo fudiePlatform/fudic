@@ -1,6 +1,6 @@
 # SDD-32 — El banco de trabajo: un componente, sus criterios, en verde o en rojo al guardar
 
-> **Estado:** `En curso` — [tareas](./SDD-32-Task.md), 4 / 31. Redactado el 2026-10-05, con
+> **Estado:** `En curso` — [tareas](./SDD-32-Task.md), 10 / 31. Redactado el 2026-10-05, con
 > las decisiones de §8.2 cerradas.
 > **Paquetes:** `@fudic/workbench` (**nuevo**) · `fudic-vscode` (un comando, un atajo, un panel)
 > · `@fudic/dom` (bug B, §9.1) · `@fudic/diagnostics` (los códigos) · `examples/basic` (el
@@ -136,6 +136,8 @@ export interface WorkbenchSession {
   readonly tag: string;
   /** Ruta absoluta del `.fud` del componente. */
   readonly component: string;
+  /** Criterios de la primera carga de sesión: los de la línea JSON. */
+  readonly criteria: number;
   /** Cierra navegador, Vite y servidor, y borra la carpeta salvo `keep`. Idempotente. */
   close(): Promise<void>;
 }
@@ -172,6 +174,8 @@ export interface PlannedCriterion {
   readonly route: string;          // '/<slug>'
   readonly fixture: string | null; // el nombre de `props <nombre>`
   readonly steps: readonly PlannedStep[];
+  /** Presente si el criterio no puede ejecutarse (FUD0974, fixture sin la entrada): sale en error sin abrir página. */
+  readonly error?: string;
 }
 export interface PlannedStep {
   readonly block: BlockKind;
@@ -559,6 +563,8 @@ interface ResultMessage {
   readonly ms: number;
   readonly steps: readonly StepResult[];
   readonly pageErrors: readonly string[];
+  /** Por qué el criterio no llegó a ejecutarse: la página no cargó, la fixture falló. */
+  readonly error?: string;
 }
 interface ProblemMessage { readonly v: 1; readonly type: 'problem'; readonly message: string }
 ```
