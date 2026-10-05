@@ -1,5 +1,5 @@
 /**
- * The four commands of §3.1, and their registration (SDD-25 §4.3).
+ * The commands of §3.1, and their registration (SDD-25 §4.3).
  *
  * The ids are the contract with `package.json`: a command contributed but not registered
  * shows in the palette and fails when picked, and one registered but not contributed can
@@ -12,6 +12,7 @@ import { formatDocument } from './format.js';
 import { restartServer } from './restart.js';
 import { showRegistry } from './registry.js';
 import { showVirtualFiles } from './virtual-files.js';
+import { openWorkbench } from './workbench.js';
 import type { CommandDeps } from './deps.js';
 import type { CommandsPort } from '../ports.js';
 
@@ -21,6 +22,7 @@ export const COMMAND_IDS = {
   showRegistry: 'fudic.showRegistry',
   formatDocument: 'fudic.formatDocument',
   toggleComment: 'fudic.toggleComment',
+  openWorkbench: 'fudic.openWorkbench',
 } as const;
 
 /** Every command as a handler, so a test drives them without a command registry. */
@@ -32,11 +34,12 @@ export const createHandlers = (
   [COMMAND_IDS.showRegistry]: () => showRegistry(deps),
   [COMMAND_IDS.formatDocument]: () => formatDocument(deps),
   [COMMAND_IDS.toggleComment]: () => toggleCommentCommand(deps),
+  [COMMAND_IDS.openWorkbench]: () => openWorkbench(deps),
 });
 
 export const registerCommands = (commands: CommandsPort, deps: CommandDeps): void => {
   for (const [id, handler] of Object.entries(createHandlers(deps))) commands.register(id, handler);
 };
 
-export { formatDocument, restartServer, showRegistry, showVirtualFiles, toggleCommentCommand };
+export { formatDocument, openWorkbench, restartServer, showRegistry, showVirtualFiles, toggleCommentCommand };
 export type { CommandDeps };

@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/workbench` (nuevo) · `fudic-vscode` · `@fudic/dom` · `@fudic/vite` ·
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `worktree-SDD-32-1-abrir-en-el-navegador` (nace de `main` en `0ebd073`)
-> **Progreso:** 21 / 31 — `En curso`.
+> **Progreso:** 26 / 31 — `En curso`.
 
 Sustituye a la lista de tareas de la versión anterior de SDD-32, de la que no se hizo ninguna.
 
@@ -87,11 +87,11 @@ Sustituye a la lista de tareas de la versión anterior de SDD-32, de la que no s
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 22 | 20 | **El manifiesto.** `fudic.openWorkbench` en `commands`, el atajo `ctrl+k v` / `cmd+k v` con `when: editorLangId == fudic \|\| editorLangId == fudspec`, `editor/title` con `$(open-preview)` para los dos lenguajes, y el ajuste `fudic.workbench.node`. `COMMAND_IDS` gana la entrada | `vscode` | `package.json` · `src/commands/index.ts` |
-| [ ] | 23 | 22 | **Lanzar.** Un puerto nuevo, `WorkbenchPort.open(file)`, y su adaptador: resolver `node_modules/@fudic/workbench/dist/bin.js` desde la carpeta del workspace, `spawn` con el `node` del ajuste, leer la primera línea, avisos de §4.11. `EditorPort` acepta también un `.fudspec` activo | `vscode` | `src/ports.ts` · `src/workbench.ts` · `src/commands/workbench.ts` · `src/commands/messages.ts` |
-| [ ] | 24 | 23 | **La pestaña.** Un `WorkbenchPanelPort` y su adaptador: webview en `ViewColumn.Beside` titulado `Workbench · <tag>`, la URL de la línea JSON tal cual (solo local), CSP con ese origen en `frame-src`, barra como la de la prueba: botón «Abrir en el navegador» → `openExternal` y la URL a la vista | `vscode` | `src/ports.ts` · `src/workbench-panel.ts` · `src/extension.ts` |
-| [ ] | 25 | 24 | **El ciclo de vida.** `Map<componente, sesión>`: revelar en vez de relanzar, cerrar la pestaña cierra el `stdin`, el proceso que muere lo dice en la pestaña con su último `stderr`, `deactivate` cierra todos | `vscode` | `src/workbench.ts` · `src/extension.ts` |
-| [ ] | 26 | 25 | **Tests de la extensión.** Criterios 23–27, con dobles de los puertos. `fudic-vscode` sigue al 100 % | `vscode` | `test/workbench.test.ts` · `test/manifest.test.ts` |
+| [x] | 22 | 20 | **El manifiesto.** `fudic.openWorkbench` en `commands`, el atajo `ctrl+k v` / `cmd+k v` con `when: editorLangId == fudic \|\| editorLangId == fudspec`, `editor/title` con `$(open-preview)` para los dos lenguajes, y el ajuste `fudic.workbench.node`. `COMMAND_IDS` gana la entrada | `vscode` | `package.json` · `src/commands/index.ts` |
+| [x] | 23 | 22 | **Lanzar.** Un puerto nuevo, `WorkbenchPort.open(file)`, y su adaptador: resolver `node_modules/@fudic/workbench/dist/bin.js` desde la carpeta del workspace, `spawn` con el `node` del ajuste, leer la primera línea, avisos de §4.11. `EditorPort` acepta también un `.fudspec` activo | `vscode` | `src/ports.ts` · `src/workbench.ts` · `src/commands/workbench.ts` · `src/commands/messages.ts` |
+| [x] | 24 | 23 | **La pestaña.** Un `WorkbenchPanelPort` y su adaptador: webview en `ViewColumn.Beside` titulado `Workbench · <tag>`, la URL de la línea JSON tal cual (solo local), CSP con ese origen en `frame-src`, barra como la de la prueba: botón «Abrir en el navegador» → `openExternal` y la URL a la vista | `vscode` | `src/ports.ts` · `src/workbench-panel.ts` · `src/extension.ts` |
+| [x] | 25 | 24 | **El ciclo de vida.** `Map<componente, sesión>`: revelar en vez de relanzar, cerrar la pestaña cierra el `stdin`, el proceso que muere lo dice en la pestaña con su último `stderr`, `deactivate` cierra todos | `vscode` | `src/workbench.ts` · `src/extension.ts` |
+| [x] | 26 | 25 | **Tests de la extensión.** Criterios 23–27, con dobles de los puertos. `fudic-vscode` sigue al 100 % | `vscode` | `test/workbench.test.ts` · `test/manifest.test.ts` |
 
 ## Fase 7 — ejemplo y cierre (5)
 

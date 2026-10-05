@@ -8,17 +8,19 @@ import {
   createHandlers,
   formatDocument,
   registerCommands,
+  openWorkbench,
   restartServer,
   showRegistry,
   showVirtualFiles,
 } from '../../src/commands/index.js';
 import { renderRegistry } from '../../src/commands/registry.js';
+import { NO_ACTIVE_FUD } from '../../src/commands/messages.js';
 import { commandFixture } from './_deps.js';
 
 const URI = 'file:///work/app/blog/[slug].fud';
 
 describe('registration', () => {
-  it('registers exactly the five ids package.json contributes', () => {
+  it('registers exactly the six ids package.json contributes', () => {
     // The other half of this assertion lives in the manifest test. A command contributed
     // and not registered fails when picked; one registered and not contributed can never be
     // picked at all — and neither shows up as a test failure anywhere else.
@@ -33,6 +35,7 @@ describe('registration', () => {
       'fudic.showRegistry',
       'fudic.formatDocument',
       'fudic.toggleComment',
+      'fudic.openWorkbench',
     ]);
     expect(Object.values(COMMAND_IDS)).toEqual(registered);
   });
@@ -211,5 +214,28 @@ describe('fudic.formatDocument', () => {
 
     expect(recording.formatted).toEqual([]);
     expect(recording.warnings[0]).toContain('active .fud');
+  });
+});
+
+describe('fudic.openWorkbench (SDD-32 criterion 24)', () => {
+  it('warns NO_ACTIVE_FUD and opens nothing without a .fud or a .fudspec active', async () => {
+    const { deps, recording } = commandFixture({});
+
+    await openWorkbench(deps);
+
+    expect(recording.warnings).toEqual([NO_ACTIVE_FUD]);
+    expect(recording.workbenchOpens).toEqual([]);
+  });
+
+  it('opens the workbench of the active file, server up or down', async () => {
+    // The workbench does not talk to the language server: it works with the server gone.
+    for (const running of [true, false]) {
+      const { deps, recording } = commandFixture({ running, workbenchFile: 'C:/work/app/src/app-card.fudspec' });
+
+      await openWorkbench(deps);
+
+      expect(recording.workbenchOpens).toEqual(['C:/work/app/src/app-card.fudspec']);
+      expect(recording.warnings).toEqual([]);
+    }
   });
 });

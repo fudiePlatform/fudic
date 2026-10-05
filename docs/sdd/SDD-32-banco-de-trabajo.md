@@ -1,6 +1,6 @@
 # SDD-32 — El banco de trabajo: un componente, sus criterios, en verde o en rojo al guardar
 
-> **Estado:** `En curso` — [tareas](./SDD-32-Task.md), 21 / 31. Redactado el 2026-10-05, con
+> **Estado:** `En curso` — [tareas](./SDD-32-Task.md), 26 / 31. Redactado el 2026-10-05, con
 > las decisiones de §8.2 cerradas.
 > **Paquetes:** `@fudic/workbench` (**nuevo**) · `fudic-vscode` (un comando, un atajo, un panel)
 > · `@fudic/dom` (bug B, §9.1) · `@fudic/diagnostics` (los códigos) · `examples/basic` (el
@@ -589,12 +589,13 @@ interface ProblemMessage { readonly v: 1; readonly type: 'problem'; readonly mes
 **Lo que hace:**
 
 1. El fichero activo es un `.fud` o un `.fudspec`; si no, el aviso `NO_ACTIVE_FUD`.
-2. Resuelve `node_modules/@fudic/workbench/dist/bin.js` desde la carpeta del workspace que
-   contiene el fichero; si no está, el aviso de §4.11.
+2. Resuelve `node_modules/@fudic/workbench/dist/bin.js` en la carpeta más cercana por encima del
+   fichero que lo tenga, sin salir de su carpeta del workspace: en un monorepo el editor abre el
+   repositorio y el banco es devDependency de la app, no de la raíz. Si no está, el aviso de §4.11.
 3. **Un proceso por componente**, en un `Map<componente, Sesión>`. Si ya hay uno para ese
    componente (desde su `.fud` o desde su `.fudspec`), **revela su pestaña** y no lanza nada: el
    banco ya vuelve a ejecutar al guardar.
-4. Si no, `spawn(node, [bin, fichero], { cwd: carpeta del workspace })`, con `node` = el ajuste
+4. Si no, `spawn(node, [bin, fichero], { cwd: la carpeta donde se encontró el binario })`, con `node` = el ajuste
    `fudic.workbench.node` o `'node'`, y lee la primera línea de `stdout`. Con `{error}`, muestra
    el mensaje y no abre nada.
 5. Abre un **webview** en `ViewColumn.Beside`, titulado `Workbench · <tag>`, con

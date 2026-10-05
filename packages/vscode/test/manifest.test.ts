@@ -130,7 +130,7 @@ describe('grammar contribution', () => {
 describe('settings', () => {
   const properties = at(manifest, 'contributes', 'configuration', 'properties');
 
-  it('contributes exactly the five settings of §3.2', () => {
+  it('contributes exactly the six settings of §3.2 and SDD-32', () => {
     // Deliberately short. Each setting is a branch of behaviour that has to be tested; the
     // option zoo of other extensions is debt, and a sixth one must be a decision, not a
     // drift.
@@ -140,6 +140,7 @@ describe('settings', () => {
       'fudic.templateDiagnostics',
       'fudic.format.enable',
       'fudic.exposeVirtualFiles',
+      'fudic.workbench.node',
     ]);
   });
 
@@ -150,17 +151,20 @@ describe('settings', () => {
     expect(at(properties, 'fudic.templateDiagnostics', 'default')).toBe(true);
     expect(at(properties, 'fudic.format.enable', 'default')).toBe(true);
     expect(at(properties, 'fudic.exposeVirtualFiles', 'default')).toBe(false);
+    expect(at(properties, 'fudic.workbench.node', 'default')).toBe(null);
+    expect(at(properties, 'fudic.workbench.node', 'type')).toEqual(['string', 'null']);
   });
 });
 
 describe('commands', () => {
-  it('contributes the five commands with their titles', () => {
+  it('contributes the six commands with their titles', () => {
     expect(at(manifest, 'contributes', 'commands')).toEqual([
       { command: 'fudic.restartServer', title: 'Fudic: Restart Language Server' },
       { command: 'fudic.showVirtualFiles', title: 'Fudic: Show Virtual Files' },
       { command: 'fudic.showRegistry', title: 'Fudic: Show Component Registry' },
       { command: 'fudic.formatDocument', title: 'Fudic: Format Document' },
       { command: 'fudic.toggleComment', title: 'Fudic: Toggle Comment' },
+      { command: 'fudic.openWorkbench', title: 'Fudic: Open Workbench', icon: '$(open-preview)' },
     ]);
   });
 
@@ -174,6 +178,12 @@ describe('commands', () => {
         key: 'ctrl+/',
         mac: 'cmd+/',
         when: 'editorTextFocus && !editorReadonly && editorLangId == fudic',
+      },
+      {
+        command: 'fudic.openWorkbench',
+        key: 'ctrl+k v',
+        mac: 'cmd+k v',
+        when: 'editorLangId == fudic || editorLangId == fudspec',
       },
     ]);
   });
@@ -299,5 +309,30 @@ describe('the .fudspec language (SDD-52 criterion 26)', () => {
     const word = new RegExp(String(at(specConfig, 'wordPattern')), 'g');
     expect('    min-height fud-button 44'.match(word)).toEqual(['min-height', 'fud-button', '44']);
     expect('    click role:button/"Detalles"'.match(word)?.[1]).toBe('role:button/');
+  });
+});
+
+describe('the workbench contributions (SDD-32 criterion 23)', () => {
+  const WHEN = 'editorLangId == fudic || editorLangId == fudspec';
+
+  it('opens with Ctrl+K V (Cmd+K V) on a .fud or a .fudspec, and nowhere else', () => {
+    // The markdown preview claims the same chord, but only under `editorLangId == markdown`:
+    // scoped by language, the two never collide.
+    const bindings = at(manifest, 'contributes', 'keybindings') as readonly { command: string }[];
+    expect(bindings.filter((b) => b.command === 'fudic.openWorkbench')).toEqual([
+      { command: 'fudic.openWorkbench', key: 'ctrl+k v', mac: 'cmd+k v', when: WHEN },
+    ]);
+  });
+
+  it('puts its icon in the editor title bar, for the same two languages', () => {
+    expect(at(manifest, 'contributes', 'menus')).toEqual({
+      'editor/title': [{ command: 'fudic.openWorkbench', when: WHEN, group: 'navigation' }],
+    });
+  });
+
+  it('is contributed exactly as it is registered', async () => {
+    const { COMMAND_IDS } = await import('../src/commands/index.js');
+    const contributed = (at(manifest, 'contributes', 'commands') as readonly { command: string }[]).map((c) => c.command);
+    expect(contributed).toEqual(Object.values(COMMAND_IDS));
   });
 });

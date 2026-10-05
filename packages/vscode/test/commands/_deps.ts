@@ -20,6 +20,8 @@ export interface CommandRecording {
   readonly restarts: number[];
   /** Every line replacement the comment toggle asked for. */
   readonly replacements: LineReplacement[];
+  /** Every file the workbench was asked to open (SDD-32). */
+  readonly workbenchOpens: string[];
 }
 
 export interface CommandFixture {
@@ -39,6 +41,8 @@ export const commandFixture = (options: {
   restartSucceeds?: boolean;
   /** What the editor says is selected. Absent means the focus is not on a `.fud`. */
   selection?: CommentSelection;
+  /** The active `.fud` or `.fudspec`, as the workbench command reads it. */
+  workbenchFile?: string;
 }): CommandFixture => {
   const running = options.running ?? true;
   const answers = options.answers ?? {};
@@ -51,6 +55,7 @@ export const commandFixture = (options: {
   const formatted: number[] = [];
   const restarts: number[] = [];
   const replacements: LineReplacement[] = [];
+  const workbenchOpens: string[] = [];
 
   const settings: FudicSettings = {
     serverPath: null,
@@ -81,7 +86,10 @@ export const commandFixture = (options: {
   return {
     deps: {
       session,
-      editor: { activeFudUri: () => options.activeUri },
+      editor: {
+        activeFudUri: () => options.activeUri,
+        activeWorkbenchFile: () => options.workbenchFile,
+      },
       documents: {
         openReadOnly: async (name, languageId, text) => {
           opened.push({ name, languageId, text });
@@ -93,6 +101,12 @@ export const commandFixture = (options: {
         },
       },
       notifications: { warn: (message) => warnings.push(message) },
+      workbenches: {
+        open: async (file) => {
+          workbenchOpens.push(file);
+        },
+        closeAll: () => undefined,
+      },
       logger: { info: (message) => log.push(message) },
       selection: {
         current: () => options.selection,
@@ -101,6 +115,6 @@ export const commandFixture = (options: {
         },
       },
     },
-    recording: { warnings, log, opened, requests, formatted, restarts, replacements },
+    recording: { warnings, log, opened, requests, formatted, restarts, replacements, workbenchOpens },
   };
 };

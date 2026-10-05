@@ -14,6 +14,7 @@ import {
   replaceLines,
   typedTextOf,
   vscodeTsdkPath,
+  workbenchFileOf,
 } from '../src/vscode-shape.js';
 
 const editor = (languageId: string) => ({
@@ -296,5 +297,19 @@ describe('paths inside the installation', () => {
     expect(vscodeTsdkPath('/vscode')).toBe(
       join('/vscode', 'extensions', 'node_modules', 'typescript', 'lib'),
     );
+  });
+});
+
+describe('workbenchFileOf (SDD-32)', () => {
+  const fileEditor = (languageId: string, fsPath: string) => ({ document: { languageId, uri: { fsPath } } });
+
+  it('gives the path of a .fud or a .fudspec, with forward slashes', () => {
+    expect(workbenchFileOf(fileEditor('fudic', 'c:\\work\\app\\app-card.fud'))).toBe('c:/work/app/app-card.fud');
+    expect(workbenchFileOf(fileEditor('fudspec', '/work/app/app-card.fudspec'))).toBe('/work/app/app-card.fudspec');
+  });
+
+  it('gives nothing for another language, or without an editor', () => {
+    expect(workbenchFileOf(fileEditor('markdown', '/work/README.md'))).toBeUndefined();
+    expect(workbenchFileOf(undefined)).toBeUndefined();
   });
 });

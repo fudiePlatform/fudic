@@ -105,6 +105,11 @@
       {
         "command": "fudic.toggleComment",
         "title": "Fudic: Toggle Comment"
+      },
+      {
+        "command": "fudic.openWorkbench",
+        "title": "Fudic: Open Workbench",
+        "icon": "$(open-preview)"
       }
     ],
     "keybindings": [
@@ -113,8 +118,23 @@
         "key": "ctrl+/",
         "mac": "cmd+/",
         "when": "editorTextFocus && !editorReadonly && editorLangId == fudic"
+      },
+      {
+        "command": "fudic.openWorkbench",
+        "key": "ctrl+k v",
+        "mac": "cmd+k v",
+        "when": "editorLangId == fudic || editorLangId == fudspec"
       }
     ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "fudic.openWorkbench",
+          "when": "editorLangId == fudic || editorLangId == fudspec",
+          "group": "navigation"
+        }
+      ]
+    },
     "configuration": {
       "title": "Fudic",
       "properties": {
@@ -150,6 +170,14 @@
           "type": "boolean",
           "default": false,
           "description": "Expose the virtual files the server hands to TypeScript. For debugging only."
+        },
+        "fudic.workbench.node": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "The Node executable that runs the workbench. Empty uses the one on the PATH."
         }
       }
     },
