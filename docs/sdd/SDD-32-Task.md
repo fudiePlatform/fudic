@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/workbench` (nuevo) · `fudic-vscode` · `@fudic/dom` · `@fudic/vite` ·
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `worktree-SDD-32-1-abrir-en-el-navegador` (nace de `main` en `0ebd073`)
-> **Progreso:** 15 / 31 — `En curso`.
+> **Progreso:** 21 / 31 — `En curso`.
 
 Sustituye a la lista de tareas de la versión anterior de SDD-32, de la que no se hizo ninguna.
 
@@ -76,12 +76,12 @@ Sustituye a la lista de tareas de la versión anterior de SDD-32, de la que no s
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 16 | 14 | **Vite dentro.** §4.5: `createServer` con `configFile: false`, `appType: 'custom'`, `middlewareMode`, `hmr: { server, overlay: false }` y `fudic({ routesDir })` hacia `node_modules/.fudic-bench/<tag>/routes`; la carpeta vaciada al arrancar | `workbench` | `src/vite.ts` · `src/bench-dir.ts` |
-| [ ] | 17 | 16 | **La sesión.** §4.4: `parseSpec` + `validateSpec` con el catálogo (`fudic/terms/` y la capa del framework si existe), fixture por `ssrLoadModule` invalidando antes (`FUD0973`), términos por `ssrLoadModule`, `planBench` y escritura de páginas | `workbench` | `src/session.ts` |
-| [ ] | 18 | 17 | **El servidor y el shell.** §4.8: `/__bench/`, `upgrade /__bench/ws` (el resto de `upgrade`, para Vite), Vite detrás, 404. El shell: tira de diagnósticos, una tarjeta por criterio con sus `describe`, veredicto, evidencia e iframe que se recarga al recibir su `result`. Al conectar, el último `session` y los últimos `result` | `workbench` | `src/bench-server.ts` · `src/shell.ts` |
-| [ ] | 19 | 18 | **Al guardar.** §4.7: clasificación por fichero, el primer `full-reload` tras el cambio de un `.fud` (interceptando `vite.environments.client.hot.send`) con 10 s de reserva, recarga de sesión para `.fudspec` y fixture, invalidación para términos; una ejecución a la vez y como mucho una pendiente | `workbench` | `src/rerun.ts` |
-| [ ] | 20 | 19 | **`openWorkbench` y el binario.** §3.1 y §3.2: el arranque de §4.2 en orden, la línea JSON, `{error}` con código 1, `stdin` cerrado o `SIGINT` → `close()` (Chrome, Vite, servidor y carpeta salvo `--keep`), idempotente | `workbench` | `src/index.ts` · `src/bin.ts` |
-| [ ] | 21 | 20 | **Tests de sesión.** Criterios 16–22, el 18 en rojo primero (pestañas con el bug → guardar el arreglo → `pass`) | `workbench` | `test/session.test.ts` · `test/rerun.test.ts` · `test/server.test.ts` · `test/bin.test.ts` |
+| [x] | 16 | 14 | **Vite dentro.** §4.5: `createServer` con `configFile: false`, `appType: 'custom'`, `middlewareMode`, `hmr: { server, overlay: false }` y `fudic({ routesDir })` hacia `node_modules/.fudic-bench/<tag>/routes`; la carpeta vaciada al arrancar | `workbench` | `src/vite.ts` · `src/bench-dir.ts` |
+| [x] | 17 | 16 | **La sesión.** §4.4: `parseSpec` + `validateSpec` con el catálogo (`fudic/terms/` y la capa del framework si existe), fixture por `ssrLoadModule` invalidando antes (`FUD0973`), términos por `ssrLoadModule`, `planBench` y escritura de páginas | `workbench` | `src/session.ts` |
+| [x] | 18 | 17 | **El servidor y el shell.** §4.8: `/__bench/`, `upgrade /__bench/ws` (el resto de `upgrade`, para Vite), Vite detrás, 404. El shell: tira de diagnósticos, una tarjeta por criterio con sus `describe`, veredicto, evidencia e iframe que se recarga al recibir su `result`. Al conectar, el último `session` y los últimos `result` | `workbench` | `src/bench-server.ts` · `src/shell.ts` |
+| [x] | 19 | 18 | **Al guardar.** §4.7: clasificación por fichero, el primer `full-reload` tras el cambio de un `.fud` (interceptando `vite.environments.client.hot.send`) con 10 s de reserva, recarga de sesión para `.fudspec` y fixture, invalidación para términos; una ejecución a la vez y como mucho una pendiente | `workbench` | `src/rerun.ts` |
+| [x] | 20 | 19 | **`openWorkbench` y el binario.** §3.1 y §3.2: el arranque de §4.2 en orden, la línea JSON, `{error}` con código 1, `stdin` cerrado o `SIGINT` → `close()` (Chrome, Vite, servidor y carpeta salvo `--keep`), idempotente | `workbench` | `src/index.ts` · `src/bin.ts` |
+| [x] | 21 | 20 | **Tests de sesión.** Criterios 16–22, el 18 en rojo primero (pestañas con el bug → guardar el arreglo → `pass`) | `workbench` | `test/session.test.ts` · `test/rerun.test.ts` · `test/server.test.ts` · `test/bin.test.ts` |
 
 ## Fase 6 — la extensión (5)
 

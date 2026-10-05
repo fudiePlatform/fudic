@@ -18,6 +18,11 @@ import type { LoadedTerm } from '../../src/engine.js';
 import { benchDir, planBench, type BenchPlan, type ExecutedFixtures } from '../../src/pages.js';
 import { slashes, type BenchTarget } from '../../src/target.js';
 import { isFailure } from '../../src/types.js';
+import { vi } from 'vitest';
+
+// Every browser test imports this module. Starting or closing a Vite and a Chrome takes seconds,
+// and tens of seconds while the other files do the same in parallel: the defaults are too short.
+vi.setConfig({ hookTimeout: 120_000 });
 
 export const REPO = slashes(fileURLToPath(new URL('../../../../', import.meta.url))).replace(/\/$/u, '');
 export const EXAMPLE = `${REPO}/examples/basic`;

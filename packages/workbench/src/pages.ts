@@ -52,9 +52,12 @@ export interface PlanInput {
 /** The one line that is not a step: it names the fixture entry the page mounts with. */
 const PROPS = 'props';
 
+/** The folder, relative to the project root, that holds one workbench per tag. */
+export const BENCH_FOLDER = 'node_modules/.fudic-bench';
+
 /** Where a project's workbench for a tag lives: inside the project, out of git and the watcher. */
 export function benchDir(target: BenchTarget): string {
-  return `${target.projectRoot.replace(/\/+$/u, '')}/node_modules/.fudic-bench/${target.tag}`;
+  return `${target.projectRoot.replace(/\/+$/u, '')}/${BENCH_FOLDER}/${target.tag}`;
 }
 
 export function planBench(input: PlanInput): BenchPlan {
