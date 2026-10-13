@@ -9,6 +9,7 @@
  * and the container is the only thing that answers that question.
  */
 
+import { ambientContainer } from './ambient.js';
 import { rootOf, state } from './container.js';
 import type { Container, Token } from './types.js';
 
@@ -21,6 +22,19 @@ import type { Container, Token } from './types.js';
  */
 export function publishIn<T>(container: Container, token: Token<T>, value: T): void {
   rootOf(state(container)).seed[token.name] = value;
+}
+
+/**
+ * Publish into the page of the request being served (SDD-56 §3.8): the same as `publishIn`
+ * with the request's root, which the server runtime keeps per request, so two concurrent
+ * responses still write into two tables.
+ */
+export function publish<T>(token: Token<T>, value: T): void {
+  const request = ambientContainer();
+  if (request === undefined) {
+    throw new Error(`publish(${token.name}) outside a request: there is no ambient container`);
+  }
+  publishIn(request, token, value);
 }
 
 /** What this page has published, by token name. Empty when nothing has. */

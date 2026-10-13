@@ -74,6 +74,7 @@ export type {
   GroupNode,
   GroupOptions,
   Issue,
+  Positional,
   Readable,
   Schema,
   TypeTag,

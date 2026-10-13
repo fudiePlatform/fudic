@@ -1,3 +1,4 @@
+import { ambientContainer } from './ambient.js';
 import { rootOf, state, type ContainerState, type Entry } from './container.js';
 import { registered } from './registry.js';
 import type { Container, InjectOptions, Provider } from './types.js';
@@ -19,16 +20,21 @@ const building: unknown[] = [];
 const MISSING = Symbol('missing');
 
 /**
- * Resolve from the AMBIENT container. Legal in exactly one place: a field initializer or
- * the constructor of a service, which run inside the factory `injectFrom` is executing.
+ * Resolve from the AMBIENT container: inside a factory, the one that owns it — a field
+ * initializer or the constructor of a service, which run inside the factory `injectFrom` is
+ * executing — and on the server, outside any factory, the root of the request being served
+ * (`setAmbient`).
  */
 export function inject<T>(provider: Provider<T>): T;
 export function inject<T>(provider: Provider<T>, options: InjectOptions): T | undefined;
 export function inject<T>(provider: Provider<T>, options?: InjectOptions): T | undefined {
-  if (ambient === null) {
+  if (ambient !== null) return resolve(ambient, provider, options);
+  // Outside a factory: the request being served, when the server runtime installed one.
+  const request = ambientContainer();
+  if (request === undefined) {
     throw new Error(`inject(${nameOf(provider)}) outside a factory: there is no ambient container`);
   }
-  return resolve(ambient, provider, options);
+  return resolve(state(request), provider, options);
 }
 
 /** Resolve from ONE container. This is what a component's `inject(…)` compiles to. */

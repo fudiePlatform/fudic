@@ -98,8 +98,9 @@ describe('the render wrapper', () => {
     expect(code).toContain('iocRoot, publishedSeed, withDi');
     expect(code).toContain('const $root = iocRoot();');
     // `load` and the components have to inject the same instances, or a root service would
-    // be built twice for one response.
-    expect(code).toContain('await load(withDi(ctx, $root))');
+    // be built twice for one response. `load` runs inside the request of that container
+    // (SDD-56 §4.6), and still gets `ctx.inject` until the examples migrate (task 47).
+    expect(code).toContain('withRequest($root, () => runLoad(load, {  }, withDi($ctx, $root)))');
     expect(code).toContain('yield* page(data, io(ctx), $root, layout);');
   });
 

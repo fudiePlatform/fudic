@@ -18,6 +18,7 @@
     "@fudic/di": "workspace:*",
     "@fudic/dom": "workspace:*",
     "@fudic/forms": "workspace:*",
+    "@fudic/http": "workspace:*",
     "@fudic/ssr": "workspace:*",
     "@fudic/transport": "workspace:*"
   },

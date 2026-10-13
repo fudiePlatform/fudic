@@ -90,7 +90,9 @@ describe('$set is total (§6.5)', () => {
   it('refuses a value that is not an object, at the root and inside a group', () => {
     const f = form(postSchema);
     expect(() => f.$set(null as never)).toThrow(/expected an object/);
-    expect(() => f.$set([] as never)).toThrow(/expected an object/);
+    // An array is not refused as "not an object": it is read by position (SDD-56 §4.17),
+    // and an empty one has the wrong arity.
+    expect(() => f.$set([] as never)).toThrow(RangeError);
     expect(() => f.$set({ ...filled, seo: 'nope' } as never)).toThrow(
       /expected an object at "seo"/,
     );

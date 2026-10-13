@@ -41,7 +41,14 @@ describe('@fudic/conventions', () => {
   it('names the server-function and error-page prefixes, inside the runtime directory', () => {
     // SDD-56 §4.1 and §4.8: both sides derive these URLs, so they live here once.
     expect(conventions.FN_PREFIX).toBe('/_fudic/fn');
+    // The data endpoint's, which vite and transport each kept a copy of until then.
+    expect(conventions.DATA_PREFIX).toBe('/_fudic/data');
     expect(conventions.ERROR_PREFIX).toBe('/_fudic/error');
+  });
+
+  it('names the invalidation message the page posts to its Service Worker', () => {
+    // SDD-56 §4.9: the stub posts it and the worker answers it; one string for both ends.
+    expect(conventions.INVALIDATE_MESSAGE).toBe('fudic:invalidate');
   });
 
   it('exports those names and nothing else', () => {
@@ -54,11 +61,14 @@ describe('@fudic/conventions', () => {
     // the family name cannot be sliced back off one — a prerelease has hyphens of its own.
     //
     // `FN_PREFIX` and `ERROR_PREFIX` are SDD-56's (§4.1, §4.8): the client stub, the dev
-    // server and the Service Worker all derive the same URLs from them.
+    // server and the Service Worker all derive the same URLs from them. `INVALIDATE_MESSAGE`
+    // is the one the stub and the Service Worker share (§4.9).
     expect(Object.keys(conventions).sort()).toEqual([
       'COMPONENTS_DIR',
+      'DATA_PREFIX',
       'ERROR_PREFIX',
       'FN_PREFIX',
+      'INVALIDATE_MESSAGE',
       'LAYOUTS_DIR',
       'ROUTES_DIR',
       'RUNTIME_CACHE_PREFIX',

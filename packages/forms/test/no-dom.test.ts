@@ -76,9 +76,17 @@ async function sources(dir: string): Promise<readonly string[]> {
   return files;
 }
 
+/**
+ * The model: the root entry point, and `./wire` (SDD-56 §3.10), the binary format a server
+ * reads a typed form with. Both run on the server, so both are held to the same rule.
+ */
+async function model(): Promise<ReadonlySet<string>> {
+  return new Set([...(await reachable(join(SRC, 'index.ts'))), ...(await reachable(join(SRC, 'wire', 'index.ts')))]);
+}
+
 describe('zero DOM', () => {
-  it('names no DOM global in anything reachable from the root entry point', async () => {
-    const files = await reachable(join(SRC, 'index.ts'));
+  it('names no DOM global in anything reachable from the model entry points', async () => {
+    const files = await model();
     // If the walk found nothing, the test is passing for the wrong reason.
     expect(files.size).toBeGreaterThan(1);
 
@@ -97,7 +105,7 @@ describe('zero DOM', () => {
   });
 
   it('does not reach the browser entry points', async () => {
-    const files = await reachable(join(SRC, 'index.ts'));
+    const files = await model();
     const browser = [...files].filter(
       (f) =>
         relative(SRC, f).startsWith('dom') ||
@@ -110,14 +118,14 @@ describe('zero DOM', () => {
   it('accounts for every source file: model, or one of the two browser entry points', async () => {
     // Without this, a module nobody imports could hold anything at all and no rule would see
     // it — the same hole `coverage.include` closes for tests.
-    const model = await reachable(join(SRC, 'index.ts'));
+    const modelFiles = await model();
     // What the browser entry points import is browser code too: the relay of `element.ts`.
     const browser = new Set([
       ...(await reachable(join(SRC, 'element.ts'))),
       ...(await reachable(join(SRC, 'dom', 'index.ts'))),
     ]);
     const all = await sources(SRC);
-    const unaccounted = all.filter((f) => !model.has(f) && !browser.has(f));
+    const unaccounted = all.filter((f) => !modelFiles.has(f) && !browser.has(f));
     expect(unaccounted).toEqual([]);
   });
 });

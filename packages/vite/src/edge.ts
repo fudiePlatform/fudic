@@ -20,6 +20,7 @@
 
 import { build, type Plugin } from 'vite';
 import { readFileSync } from 'node:fs';
+import { builtinModules } from 'node:module';
 import { transformWithOxc } from 'vite';
 import { type ResolveIo } from '@fudic/compiler';
 import { type RouteBuild } from './discover.js';
@@ -44,6 +45,13 @@ export interface EdgeResult {
 }
 
 const EMPTY: EdgeResult = { chunks: [], entries: new Map() };
+
+const BUILTINS = new Set(builtinModules);
+
+/** `node:async_hooks`, and `fs` written without its prefix. */
+export function isNodeBuiltin(id: string): boolean {
+  return id.startsWith('node:') || BUILTINS.has(id);
+}
 
 /** Structural view of a bundler output; see the same note in the link pass. */
 interface OutputChunkLike {
@@ -96,6 +104,8 @@ export function edgePlugin(
         hasPaths: rb.analysis.hasPaths,
         hasLayout: rb.analysis.hasLayout,
         hasDi: routeUsesDi(rb.absPath, io),
+        hasHttp: rb.analysis.hasHttp === true,
+        fluentLoad: rb.analysis.fluentLoad === true,
         withLoad: true, // the edge resolves data in process
         runtime: runtimeFor(pattern),
       });
@@ -185,6 +195,10 @@ export async function runEdgePass(
       sourcemap: nested.sourcemap !== false,
       rollupOptions: {
         input,
+        // Node reads this output, so its builtins stay imports: bundled, each one would be
+        // the browser stub Vite leaves in their place — `AsyncLocalStorage` behind every
+        // `inject()` of a request (SDD-56 §4.6), or a `node:crypto` of a `@server`.
+        external: isNodeBuiltin,
         // `render`, `data` and `paths` are reached through the manifest and by the
         // prerender, never through a static import the bundler can see.
         preserveEntrySignatures: 'strict',

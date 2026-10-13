@@ -3,7 +3,9 @@
   "compilerOptions": {
     // `DOM` because both halves run against the platform's `Request`, `Headers`, `URL` and
     // `AbortSignal`, and the client half also against `location` and `fetch`.
-    "lib": ["ES2024", "DOM", "DOM.Iterable"]
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    // `node` for `./server` alone, which keeps the request in an `AsyncLocalStorage`.
+    "types": ["node"]
   },
   "include": ["src", "test"]
 }

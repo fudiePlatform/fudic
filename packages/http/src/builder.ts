@@ -20,8 +20,13 @@ export interface ServerFn<A, R> {
   readonly form?: AnyForm;
   readonly invalidates: readonly string[];
   readonly handle: (ctx: ServerContext) => unknown;
-  /** Phantom: the arguments it takes and what it resolves to. Never present at runtime. */
-  readonly '~call'?: (args: A) => R;
+  /**
+   * Phantoms: the arguments it takes and what it resolves to. Never present at runtime. Two
+   * fields and not a function type, so a `ServerFn<void, R>` is still a `ServerFn<unknown,
+   * unknown>` for whoever serves it.
+   */
+  readonly '~args'?: A;
+  readonly '~result'?: R;
 }
 
 export interface FnBuilder<A, C extends object> {

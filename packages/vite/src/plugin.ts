@@ -1181,6 +1181,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           hasPaths: rb.analysis.hasPaths,
           hasLayout: rb.analysis.hasLayout,
           hasDi: routeUsesDi(rb.absPath, io),
+          hasHttp: rb.analysis.hasHttp === true,
+          fluentLoad: rb.analysis.fluentLoad === true,
           // In DEV this module IS the edge: the dev server renders through the module
           // graph and resolves data in process. In BUILD it is a chunk of the client
           // output, and the client never gets `load` (BUG-09 §4.1) — the edge pass builds

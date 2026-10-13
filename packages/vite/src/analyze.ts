@@ -44,6 +44,18 @@ export interface PageAnalysis {
    * `export function layout` inside a string or a comment exports nothing.
    */
   readonly hasLayout: boolean;
+  /**
+   * The `@server` region writes the file's level of the chain, `export const http` (SDD-56
+   * §3.3). Absent when it does not.
+   */
+  readonly hasHttp?: true;
+  /**
+   * `load` is exported as a `const` — the fluent `export const load = get()…handle(…)` of
+   * SDD-56 §3.2, which carries its own level of the chain, or an arrow. Which of the two is
+   * decided at runtime by `runLoad`; this only says the wrapper must go through it. Absent for
+   * `export function load` or no `load`.
+   */
+  readonly fluentLoad?: true;
   /** The `strategy()` call, read statically (SDD-20 §4.8). */
   readonly strategy: StrategyAnalysis;
   /** The `href` of `<link rel="layout">`, when the file declares one (SDD-21). */
@@ -98,6 +110,8 @@ export function analyzePage(source: string, file = ''): PageAnalysis {
     hasLoad: names.has('load'),
     hasPaths: names.has('paths'),
     hasLayout: names.has('layout'),
+    ...(names.has('http') ? { hasHttp: true as const } : {}),
+    ...(server.statements.some((s) => exportsConst(s, 'load')) ? { fluentLoad: true as const } : {}),
     strategy: strategyFrom(server.statements, file),
     ...(layoutHref ? { layoutHref } : {}),
     diagnostics: [...parsed.diagnostics, ...server.diagnostics],
@@ -136,6 +150,16 @@ function serverStatements(
     statements.push(...(Array.isArray(root) ? (root as OxcNode[]) : [root as OxcNode]));
   }
   return { statements, diagnostics: result.diagnostics };
+}
+
+/** Whether `stmt` is `export const <name> = …` (or `let`/`var`). */
+function exportsConst(stmt: OxcNode, name: string): boolean {
+  const declaration = is(stmt, 'ExportNamedDeclaration') ? field(stmt, 'declaration') : undefined;
+  if (declaration === undefined || !is(declaration, 'VariableDeclaration')) return false;
+  return fieldArray(declaration, 'declarations').some((d) => {
+    const id = field(d, 'id');
+    return id !== undefined && is(id, 'Identifier') && nameOf(id) === name;
+  });
 }
 
 /** Add the names exported by one `export …` statement (declaration or specifier list). */

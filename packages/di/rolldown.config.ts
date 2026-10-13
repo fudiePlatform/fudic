@@ -64,6 +64,8 @@ const PIECES: Readonly<Record<string, string>> = {
   registry: 'src/registry.ts',
   resolve: 'src/resolve.ts',
   seed: 'src/seed.ts',
+  // SDD-56: `resolve` and `seed` both read it, and its one variable must exist once.
+  ambient: 'src/ambient.ts',
 };
 
 /**

@@ -70,6 +70,12 @@ export const runtimeCacheName = (version: string): string =>
 export const runtimeMarkerUrl = (app: string): string => `/${RUNTIME_DIR}/marker/${app}`;
 
 /**
+ * Where the generated `@server load` endpoints live (SDD-20 §4.5): the plugin serves them and
+ * the Service Worker asks them. It was a copy in each of the two until SDD-56.
+ */
+export const DATA_PREFIX = '/_fudic/data';
+
+/**
  * Where a server function answers (SDD-56 §4.1): the compiler writes the URL into the client
  * stub, the plugin and every adapter serve it, and the Service Worker steps aside for it.
  */
@@ -80,3 +86,10 @@ export const FN_PREFIX = '/_fudic/fn';
  * and the server paints it.
  */
 export const ERROR_PREFIX = '/_fudic/error';
+
+/**
+ * page → SW: "forget the data of these paths" (SDD-56 §4.9), with a `MessagePort` the worker
+ * answers on once it has. The stub of a server function sends it and the worker handles it,
+ * and neither package depends on the other.
+ */
+export const INVALIDATE_MESSAGE = 'fudic:invalidate';

@@ -44,6 +44,9 @@ importers:
       '@fudic/forms':
         specifier: workspace:*
         version: link:../../packages/forms
+      '@fudic/http':
+        specifier: workspace:*
+        version: link:../../packages/http
       '@fudic/ssr':
         specifier: workspace:*
         version: link:../../packages/ssr
@@ -326,6 +329,9 @@ importers:
       '@fudic/conventions':
         specifier: workspace:*
         version: link:../conventions
+      '@fudic/di':
+        specifier: workspace:*
+        version: link:../di
       '@fudic/forms':
         specifier: workspace:*
         version: link:../forms
@@ -475,6 +481,10 @@ importers:
         version: 1.2.1
 
   packages/transport:
+    dependencies:
+      '@fudic/conventions':
+        specifier: workspace:*
+        version: link:../conventions
     devDependencies:
       '@fudic/ssr':
         specifier: workspace:*

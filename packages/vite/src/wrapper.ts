@@ -41,6 +41,12 @@ export interface RenderChunkOptions {
    * does not download a line of DI» is enforced here, where the import is written.
    */
   readonly hasDi?: boolean;
+  /** Whether the `@server` writes `export const http`, the file's level of the chain (SDD-56). */
+  readonly hasHttp?: boolean;
+  /** Whether `load` is written fluent and carries its own level of the chain (SDD-56). */
+  readonly fluentLoad?: boolean;
+  /** Import specifier of `src/http.ts`, the global level of the chain, when the project has one. */
+  readonly globalChain?: string;
   /**
    * The URLs of the two main-thread entries, which the page writes into its `<head>`
    * (BUG-31 §T1): `boot` registers the Service Worker and rides every page, `main` is the
@@ -67,6 +73,21 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
 
   const lines: string[] = [];
   const hasDi = options.hasDi === true;
+  // `load` and `layout` run as part of the request (SDD-56 §4.6): inside `withRequest`, so
+  // `inject()` and `publish()` find this request's container, and through the server halves
+  // of the chain. Only when the route has something for that to do — a container to find or
+  // a chain to walk — so a route without either keeps importing nothing of `@fudic/http`.
+  const hasHttp = options.hasHttp === true;
+  const http =
+    (edgeLoad || edgeLayout) &&
+    (hasDi || hasHttp || options.fluentLoad === true || options.globalChain !== undefined);
+  const outer = [
+    ...(options.globalChain !== undefined ? ['global: $global'] : []),
+    ...(hasHttp ? ['file: $http'] : []),
+  ].join(', ');
+  // The `ctx` `load` receives: the server context, and `ctx.inject` / `ctx.publish` while the
+  // examples still use them (they leave with `withDi` in SDD-56 task 47).
+  const loadCtx = hasDi ? 'withDi($ctx, $root)' : '$ctx';
   const ssr = [
     'SsrDom',
     'serializeChunks',
@@ -80,10 +101,19 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
     // written as a string, and it must come out as the body's `setUrl` writes it (SDD-51 §3.7).
     'guardUrl',
     'jsonBlock',
-    ...(hasDi ? ['iocRoot', 'publishedSeed', 'withDi'] : []),
+    ...(hasDi ? ['iocRoot', 'publishedSeed', 'withDi'] : http ? ['iocRoot'] : []),
   ];
   lines.push(`import { page } from ${spec};`);
   lines.push(`import { ${ssr.join(', ')} } from "@fudic/ssr";`);
+  if (http) {
+    lines.push('import { pageContext, runLoad, withRequest } from "@fudic/http/server";');
+    if (options.globalChain !== undefined) {
+      lines.push(`import $global from ${JSON.stringify(options.globalChain)};`);
+    }
+    if (hasHttp) {
+      lines.push(`import { http as $http } from ${server};`);
+    }
+  }
   if (edgeLoad) {
     lines.push(`import { load } from ${server};`);
   }
@@ -111,7 +141,17 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   // The data endpoint: ONE response carrying both halves (§3.3). It exists whenever the route
   // resolves anything for a render — `load`, `layout`, or both — because the Service Worker
   // executes neither and has no other way to be handed them.
-  if (edgeLoad || edgeLayout) {
+  if (http) {
+    lines.push('export async function data(ctx) {');
+    lines.push('  const $root = iocRoot();');
+    lines.push('  const $ctx = pageContext(ctx);');
+    lines.push('  return withRequest($root, async () => {');
+    lines.push(`    const data = ${edgeLoad ? `await runLoad(load, { ${outer} }, ${loadCtx})` : '{}'};`);
+    lines.push(`    return { data${edgeLayout ? ', layout: await layoutProps($ctx, data)' : ''} };`);
+    lines.push('  });');
+    lines.push('}');
+    lines.push('');
+  } else if (edgeLoad || edgeLayout) {
     lines.push('export async function data(ctx) {');
     lines.push(`  const data = ${edgeLoad ? 'await load(ctx)' : '{}'};`);
     lines.push(`  return { data${edgeLayout ? ', layout: await layoutProps(ctx, data)' : ''} };`);
@@ -124,12 +164,20 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   // ONE container per request, opened before `load` and handed to the page: what `load`
   // injects and what the components inject have to be the same instances, or a `@Service`
   // would be built twice for one response.
-  if (hasDi) {
+  if (hasDi || http) {
     lines.push('    const $root = iocRoot();');
   }
-  if (edgeLoad) {
+  if (http) {
+    lines.push('    const $ctx = pageContext(ctx);');
+  }
+  if (http && edgeLoad) {
     lines.push(
-      `    const data = ctx.data !== undefined ? ctx.data : await load(${hasDi ? 'withDi(ctx, $root)' : 'ctx'});`,
+      `    const data = ctx.data !== undefined ? ctx.data : await withRequest($root, () => runLoad(load, { ${outer} }, ${loadCtx}));`,
+    );
+  } else if (edgeLoad) {
+    lines.push(
+      // Without `http` there is no container: a route that injects always takes the branch above.
+      '    const data = ctx.data !== undefined ? ctx.data : await load(ctx);',
     );
   } else {
     lines.push('    const data = ctx.data !== undefined ? ctx.data : {};');
@@ -141,7 +189,11 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   // The bare `ctx`, never the one with the container on it (BUG-44): a service the props need
   // is `load`'s to inject, and it reaches the resolver in `data`. The data endpoint above
   // already hands it the bare one, so the two paths cannot disagree.
-  if (edgeLayout) {
+  if (http && edgeLayout) {
+    lines.push(
+      '    const layout = ctx.layout !== undefined ? ctx.layout : await withRequest($root, () => layoutProps($ctx, data));',
+    );
+  } else if (edgeLayout) {
     lines.push(
       '    const layout = ctx.layout !== undefined ? ctx.layout : await layoutProps(ctx, data);',
     );
