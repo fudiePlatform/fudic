@@ -239,7 +239,7 @@ Cuando el valor de una `.prop` es **exactamente** el nombre de algo declarado co
 $n0.u([, , titulo()]);
 ```
 
-Es la decisión 84, y su única implementación es
+Es la decisión 151, y su única implementación es
 [`crossingExpr`](../../../packages/compiler/src/emit/attrs.ts#L121), que consulta el conjunto de
 nombres reactivos que `ClientScope.signals` mantiene. La razón de que solo cruce el valor es
 dura: el servidor pintaría `[object Object]` y el cliente le pasaría al hijo un objeto con un
@@ -322,7 +322,7 @@ export function scanImplicitExpression(source: string, atOffset: number): ParseR
 export type HandlerShape = 'reference' | 'call' | 'lambda' | 'unsuitable';
 export function handlerShape(root: OxcNode | undefined): HandlerShape;
 
-// binding/crossing.ts (NUEVO) — la regla de decisión 84, extraída del emit
+// binding/crossing.ts (NUEVO) — la regla de decisión 151, extraída del emit
 /** Los nombres que unas sentencias declaran con `signal(...)` o `computed(...)`. */
 export function reactiveNames(statements: readonly OxcNode[]): ReadonlySet<string>;
 
@@ -345,7 +345,7 @@ export interface ComponentDeclaredProps {
 /**
  * CÓMO cruza un valor la frontera del shadow. Dos formas, y hoy solo se emite una:
  *
- *  - `'value'` — la lectura, `titulo()`. Es la decisión 84 tal y como está implementada.
+ *  - `'value'` — la lectura, `titulo()`. Es la decisión 151 tal y como está implementada.
  *  - `'ref'`   — la celda compartida, con la que padre e hijo tienen el MISMO objeto
  *                (SDD-31 §7). Decidida, no implementada: ningún emisor la produce todavía.
  */
@@ -702,7 +702,7 @@ Cada uno se escribe **en rojo primero**, contra el código de hoy.
 - **Cambiar la reserva `$`.** `$event` sigue siendo del compilador; lo nuevo es que la
   proyección lo declara donde el emit lo declara.
 - **Que una signal cruce por REFERENCIA.** El síntoma 8 hace que el editor cuente lo que el
-  compilador hace hoy —cruzar el valor, decisión 84—; no cambia lo que hace. Que el hijo reciba
+  compilador hace hoy —cruzar el valor, decisión 151—; no cambia lo que hace. Que el hijo reciba
   la signal y se suscriba él **ya está decidido**, con mecanismo y todo, en
   [SDD-31 §7 «Props como signals»](../SDD-31-signals-derivadas.md): la celda compartida, el
   marcador `{"$":[ownerId, slot]}` en la casilla del hijo y el runtime que la materializa al

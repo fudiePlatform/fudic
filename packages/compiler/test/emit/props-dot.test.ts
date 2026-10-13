@@ -112,7 +112,7 @@ describe('a bare `.prop` is `true` (decision 44)', () => {
   });
 });
 
-describe('a signal crosses its VALUE, never the object (decision 84)', () => {
+describe('a signal crosses its VALUE, never the object (decision 151)', () => {
   /** A host whose parent declares a signal, so `.prop="@count"` has something to resolve. */
   const withSignal = (host: string): { server: string; client: string } => {
     const parentWithSignal = `<link rel="component" href="./app-badge.fud">

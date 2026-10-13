@@ -51,6 +51,10 @@ function* serialize(n: SsrNodeImpl): Generator<string> {
     case 'comment':
       yield `<!--${neutralizeComment(n.data)}-->`;
       return;
+    case 'html':
+      // Already the string `htmlOf` decided: markup when trusted, escaped text when not.
+      yield n.data;
+      return;
     case 'fragment':
       yield* serializeChildren(n);
       return;

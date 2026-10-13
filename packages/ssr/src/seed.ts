@@ -4,7 +4,7 @@
  *
  * An `inject` in the neutral zone runs on both sides and builds two instances: the server's
  * painted the markup, and the client's is born empty. What closes that gap is not shipping
- * the instance — decision 84 says only values cross — but shipping the VALUE the service was
+ * the instance — decision 151 says only values cross — but shipping the VALUE the service was
  * built from, under a token, and letting the browser build its own from the same value.
  *
  * **Only what is published crosses.** A value seeded with `provide`/`provideIn` on the server

@@ -1,7 +1,7 @@
 /**
  * The defects `/signal-prop` exposes, measured where they hurt: a real browser.
  *
- * That page is the canonical demonstration of props-spec decision 86 — a `Signal<T>` prop
+ * That page is the canonical demonstration of props-spec decision 153 — a `Signal<T>` prop
  * crosses as the OBJECT, a callback prop crosses as the function — and it is also where the
  * two halves of BUG-24 come apart. Both are reachable by clicking, and which one appears
  * depends only on WHICH BUTTON IS PRESSED FIRST, which is exactly the property a user is

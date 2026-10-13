@@ -23,6 +23,7 @@ import {
   crossing,
   CONTROL_PROP,
   isSummaryFields,
+  spreadExpr,
   type Binding,
   type ComponentDeclaredProps,
 } from '../binding/index.js';
@@ -200,15 +201,58 @@ export interface HostContext {
   readonly declared?: PropTarget;
 }
 
-/** What the CHILD of this host declares about the prop a value is landing on. */
-export type PropTarget = (name: string) => ComponentDeclaredProps | undefined;
+/**
+ * What the CHILD of this host declares about the prop a value is landing on — and, as `all`,
+ * every prop it declares, in order: what a spread expands against (props-spec decision 147).
+ */
+export type PropTarget = ((name: string) => ComponentDeclaredProps | undefined) & {
+  readonly all: readonly ComponentDeclaredProps[];
+};
 
 /** A host with nothing declared around it — a page body, a template with no `@client`. */
 export const NO_SIGNALS: HostContext = { isComponent: false, signals: new Set() };
 
 /** The declared props of a tag, as the lookup `HostContext` and `componentPropsExpr` take. */
 export function propTarget(declared: readonly ComponentDeclaredProps[]): PropTarget {
-  return (name) => declared.find((d) => d.name === name);
+  return Object.assign((name: string) => declared.find((d) => d.name === name), { all: declared });
+}
+
+/**
+ * The props a `...item` hands the child, by name, each read off `item` (decisions 146–149).
+ *
+ * Against the CHILD's keys, never `item`'s: what `item` carries beyond them does not cross
+ * (80). A key the host also writes as a `.prop` is the host's, wherever the spread sits — the
+ * explicit binding is the more specific statement. A spread whose child cannot be read
+ * expands to nothing: with no `T` there is no key to expand against.
+ *
+ * Two spreads on one host: the later one wins a key it HAS, as in JS. «Has» is read as «not
+ * `undefined`», which is what the child's destructuring reads it as too — an `undefined` there
+ * is a missing prop and takes the default either way.
+ */
+export function spreadProps(
+  source: string,
+  el: ElementNode,
+  declared: PropTarget | undefined,
+): readonly { readonly name: string; readonly expr: string }[] {
+  if (declared === undefined) return [];
+  const explicit = new Set<string>();
+  const objects: string[] = [];
+  for (const attr of el.attributes) {
+    const b = classifyAttribute(attr, source).value;
+    if (b.type === 'property') explicit.add(b.name);
+    else if (b.type === 'control') explicit.add(CONTROL_PROP);
+    else if (b.type === 'spread' && b.expr !== null) objects.push(source.slice(b.expr.start, b.expr.end));
+  }
+  if (objects.length === 0) return [];
+  return declared.all
+    .filter((prop) => !explicit.has(prop.name))
+    .map((prop) => ({
+      name: prop.name,
+      expr: objects.reduce<string>((earlier, object, i) => {
+        const read = `(${object}).${prop.name}`;
+        return i === 0 ? read : `(${read} !== undefined ? ${read} : ${earlier})`;
+      }, ''),
+    }));
 }
 
 /**
@@ -243,9 +287,26 @@ export function readsMoving(
 }
 
 /**
+ * The same question for the `...object`s of a host: every prop a spread hands over is read off
+ * its object, so the props move exactly when the object reads something that does (decision
+ * 148). The level rule and the client emit both ask it here, for the reason `readsMoving` gives.
+ */
+export function spreadReadsMoving(
+  el: ElementNode,
+  ast: (at: Span) => FragmentAst,
+  moving: ReadonlySet<string>,
+): boolean {
+  const fragments = el.attributes.flatMap((attr) => {
+    const at = spreadExpr(attr);
+    return at === null ? [] : [ast(at)];
+  });
+  return fragments.length > 0 && freeReferences(fragments).some((name) => moving.has(name));
+}
+
+/**
  * The expression a value crosses the shadow boundary with.
  *
- * Decision 84: a VALUE crosses, never the signal object. So a value whose text is exactly
+ * Decision 151: a VALUE crosses, never the signal object. So a value whose text is exactly
  * the name of a `signal(...)` this component declares crosses as `name()` — otherwise
  * the server would paint `[object Object]` and the client would hand the child a live
  * object it cannot serialize (SDD-17). Anything else crosses as written.
@@ -258,7 +319,7 @@ export function readsMoving(
  * object while the build crossed its value (BUG-23 §2.8). Here it is only spelled out as an
  * expression.
  *
- * With a `target` the answer may be `'ref'` (props-spec decision 86), and then what crosses is
+ * With a `target` the answer may be `'ref'` (props-spec decision 153), and then what crosses is
  * the BARE name: the object itself, because that is what the child declared. Without one it is
  * always `'value'` — which is what an ATTRIBUTE always passes, whatever the child declares,
  * since level 1 is HTML and HTML carries strings (BUG-24 §4.7).
@@ -337,7 +398,8 @@ export function componentPropsExpr(
   declared?: PropTarget,
 ): string {
   const slice = (sp: Span): string => source.slice(sp.start, sp.end);
-  const entries: string[] = [];
+  // `...item` first: `spreadProps` already left out every key an explicit binding writes.
+  const entries: string[] = spreadProps(source, el, declared).map((p) => `${JSON.stringify(p.name)}: ${p.expr}`);
   for (const attr of el.attributes) {
     const b = classifyAttribute(attr, source).value;
     // `control="@f.body"` on a component tag hands the child the NODE (decision 112). On the
@@ -399,6 +461,11 @@ export interface ValueSink {
   readonly repeats: boolean;
   once(expr: string, write: (value: string) => string): void;
   bound(expr: string, write: (value: string) => string): void;
+  /**
+   * A write that needs what it wrote LAST as well as the value — a native spread, which has to
+   * take off the attributes its objects no longer write. `prev` is `undefined` the first time.
+   */
+  diff(expr: string, write: (value: string, prev: string) => string): void;
 }
 
 /** The single-body sink: the server, and the fabricate body inside a `@foreach`. */
@@ -410,6 +477,9 @@ export function inlineSink(w: CodeWriter): ValueSink {
     },
     bound: (expr, write) => {
       w.line(`{ const $v = ${expr}; ${write('$v')} }`);
+    },
+    diff: (expr, write) => {
+      w.line(write(expr, 'undefined'));
     },
   };
 }
@@ -447,7 +517,7 @@ export function writeElementAttrs(
       // Through `crossingExpr` like every other value, and that is BUG-32 T4: composing this
       // from the raw source text made a `class:red="@rojo"` test the signal OBJECT, which is
       // always truthy — the class went on at the first render and `rojo.set(false)` never took
-      // it off. Decision 84 applies here as much as to an attribute; the fallback for anything
+      // it off. Decision 151 applies here as much as to an attribute; the fallback for anything
       // that is not a bare reactive is the very text this used to slice.
       const condition = crossingExpr(source, attr, [b.value], host.signals);
       classExprs.push(`(${condition}) && ${JSON.stringify(b.className)}`);
@@ -498,4 +568,26 @@ export function writeElementAttrs(
     if (classExprs.length === 0) fixed.line(`$dom.setAttr(${v}, 'class', ${expr});`);
     else values.once(expr, ($v) => `$dom.setAttr(${v}, 'class', ${$v});`);
   }
+  if (!host.isComponent) writeSpreadAttrs(source, el, v, values);
+}
+
+/**
+ * `<input ...resto>`: the spreads of a NATIVE element, as one write of all their objects in
+ * order (`$dom.setAttrs`). On a component the same `...` hands props over and never reaches
+ * here as attributes. What the element writes explicitly — a plain attribute, or the `class`
+ * a `class:` composes — is left out of the spread wherever it sits, as an explicit `.prop` wins
+ * over a props spread.
+ */
+function writeSpreadAttrs(source: string, el: ElementNode, v: string, values: ValueSink): void {
+  const objects: string[] = [];
+  const except = new Set<string>();
+  for (const attr of el.attributes) {
+    const b = classifyAttribute(attr, source).value;
+    if (b.type === 'attr') except.add(b.name);
+    else if (b.type === 'class') except.add('class');
+    else if (b.type === 'spread' && b.expr !== null) objects.push(`(${source.slice(b.expr.start, b.expr.end)})`);
+  }
+  if (objects.length === 0) return;
+  const names = JSON.stringify([...except]);
+  values.diff(`[${objects.join(', ')}]`, ($v, prev) => `$dom.setAttrs(${v}, ${$v}, ${prev}, ${names});`);
 }

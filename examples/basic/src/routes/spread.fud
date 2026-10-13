@@ -1,0 +1,28 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/spread-list.fud">
+
+<head>
+  <title>Spread — fudic</title>
+</head>
+
+@section nav {
+  <site-nav .current="spread"></site-nav>
+}
+
+<h1>@("<spread-card ...producto>")</h1>
+<p class="lede">
+  Un objeto entero como props. Se expande contra lo que la tarjeta declara en
+  <code>props&lt;T&gt;()</code>, no contra lo que trae el objeto. Una prop escrita a mano,
+  aquí <code>.etiqueta="oferta"</code>, gana al spread.
+</p>
+
+<spread-list></spread-list>
+
+<h2>Qué comprobar</h2>
+<p>
+  Cada tarjeta enseña su id, su nombre, su precio y «oferta». La alfombrilla no trae precio y
+  sale con 0 €, el valor por defecto de la tarjeta. Ni el <code>stock</code> ni el
+  <code>sku</code> llegan a la tarjeta. «Subir 10 € a todo» cambia los tres precios, y
+  la alfombrilla pasa a 10 €.
+</p>

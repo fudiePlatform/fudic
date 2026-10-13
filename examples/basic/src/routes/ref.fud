@@ -1,0 +1,27 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/ref-demo.fud">
+
+<head>
+  <title>Ref — fudic</title>
+</head>
+
+@section nav {
+  <site-nav .current="ref"></site-nav>
+}
+
+<h1>@("ref=\"@variable\"")</h1>
+<p class="lede">
+  El autor declara un <code>let</code> en <code>@("@client")</code> y escribe
+  <code>@('ref="@campo"')</code> en un elemento. El compilador le asigna el nodo al hidratar
+  o al crear, y lo devuelve a <code>null</code> cuando el nodo se va.
+</p>
+
+<ref-demo></ref-demo>
+
+<h2>Qué comprobar</h2>
+<p>
+  «Enfocar el campo» pone el foco en el input y dice qué hay en <code>campo</code>. «Leer
+  aviso» con el aviso oculto dice <code>null</code>; muéstralo y vuelve a leer: es el
+  <code>&lt;p&gt;</code>. Ocúltalo otra vez y vuelve a leer: <code>null</code> de nuevo.
+</p>

@@ -37,7 +37,7 @@ u: ($p) => { [, , label, value] = $p; $a(); },
 ```
 
 **Se movió `value`, y el trabajo es el de las dos props.** El padre vuelve a escribir `"Total"`
-—que no se ha movido, que nunca se moverá, y que es constante por decisión 75—; el hijo reasigna
+—que no se ha movido, que nunca se moverá, y que es constante por decisión 142—; el hijo reasigna
 las dos; y `$a()` recalcula **todas** las escrituras del componente, la de `label` incluida, para
 descubrir con `$w` que sale igual y no tocar el DOM.
 
@@ -216,7 +216,7 @@ que el canal tiraba.
 ### 4.2. Una prop constante deja de viajar
 
 `label="Total"` participa en el alta y **desaparece de todas las suscripciones**. Es la decisión
-75 de props-spec cumplida por fin en el canal de update: *«una prop no reactiva es `const` en el
+142 de props-spec cumplida por fin en el canal de update: *«una prop no reactiva es `const` en el
 sentido que importa: nadie la reescribe nunca»*. Hoy el padre la reescribe en cada vuelta, y lo
 único que impide que se vea es `$w`.
 
@@ -245,7 +245,7 @@ huecos a **S**.
 
 **Los que el bug violaba**
 
-- ***Una prop no reactiva no la reescribe nadie*** (props-spec 75). El padre la reescribía en cada
+- ***Una prop no reactiva no la reescribe nadie*** (props-spec 142). El padre la reescribía en cada
   notificación de cualquier otra prop; solo `$w` impedía que se viera en el DOM.
 - ***El coste de un `u` es proporcional a lo que se movió*** (BUG-12 §4.2, que lo enuncia para el
   DOM y lo incumple para el canal). Era proporcional al número de props, en las dos puntas.
@@ -329,7 +329,7 @@ bajan. Nada de `/* v8 ignore */`.
 - **Props como signals.** La conversación que originó esta tanda. Queda anotada en
   [SDD-31 §7](../SDD-31-signals-derivadas.md#7-fuera-de-alcance) con su condición de reapertura;
   este BUG es una de las dos mitades que había que tener antes para poder medirla.
-- **El canal ascendente (`bind:`, props callback).** Decisiones 83–85, y sigue siendo otro
+- **El canal ascendente (`bind:`, props callback).** Decisiones 150–152, y sigue siendo otro
   documento.
 - **`u` con recomposición estructural.** Sigue siendo [SDD-30](../SDD-30-renders-de-bloque.md).
 - **Cambiar la forma del payload de `fud-state`.** El alta no se toca (§4.1), así que

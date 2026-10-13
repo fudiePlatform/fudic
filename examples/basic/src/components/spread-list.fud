@@ -1,0 +1,42 @@
+<link rel="component" href="./spread-card.fud">
+
+@code {
+  // Cada producto lleva más de lo que la tarjeta pide (`stock`, `sku`) y el último no lleva
+  // `precio`, que en la tarjeta es opcional: ahí entra su valor por defecto.
+  const inicial = [
+    { id: "p1", nombre: "Teclado", precio: 49, stock: 3, sku: "K-01" },
+    { id: "p2", nombre: "Ratón", precio: 19, stock: 0, sku: "M-07" },
+    { id: "p3", nombre: "Alfombrilla", stock: 12, sku: "P-22" },
+  ];
+
+  @client {
+    import { signal } from "@fudic/core";
+
+    const productos = signal(inicial);
+
+    function subir() {
+      productos.set(productos().map((p) => ({ ...p, precio: (p.precio ?? 0) + 10 })));
+    }
+  }
+}
+
+<head>
+  <style>
+    .lista {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+      gap: var(--gap);
+    }
+  </style>
+</head>
+
+<spread-list>
+  <template shadowrootmode="open">
+    <button class="subir" @click="@subir">Subir 10 € a todo</button>
+    <div class="lista">
+      @foreach (const producto of productos()) key (producto.id) {
+        <spread-card ...producto .etiqueta="oferta"></spread-card>
+      }
+    </div>
+  </template>
+</spread-list>

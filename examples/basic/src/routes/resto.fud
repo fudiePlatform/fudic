@@ -1,0 +1,26 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/resto-demo.fud">
+
+<head>
+  <title>Resto de props — fudic</title>
+</head>
+
+@section nav {
+  <site-nav .current="resto"></site-nav>
+}
+
+<h1>@("const { label, ...resto } = props<T>()")</h1>
+<p class="lede">
+  El componente nombra solo lo que usa por su nombre. Lo demás que declara <code>T</code>
+  llega reunido en <code>resto</code>, en el servidor y en el navegador.
+</p>
+
+<resto-demo></resto-demo>
+
+<h2>Qué comprobar</h2>
+<p>
+  La línea de abajo enseña lo que trae <code>resto</code>: «Escribe tu nombre», <code>true</code>
+  y <code>20</code>, y el input muestra esa pista. «Cambiar las props» pone «¿Cómo te llamas?» y
+  <code>false</code>. Al volver a pulsar recupera lo de antes, y el 20 no cambia.
+</p>

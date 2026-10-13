@@ -61,7 +61,7 @@ propio SDD. Este es exactamente la mitad que había que tener antes: la primitiv
 | Fuente | Aporta |
 |---|---|
 | SDD-14 | `signal<T>` y su contrato: `()`, `peek()`, `set()` (con `Object.is`), `subscribe()`. Este SDD **le recorta la superficie** (§4.0): quedan `()` y `set()`. El comportamiento no cambia; cambia qué se ve. |
-| SDD-15 | La forma del factory (`$s`/`$a`/`$d`), el pase inicial y la suscripción por prop cruzada, y —lo que de verdad hace falta— el `Set<string>` de nombres declarados con `signal(...)` que `ClientScope.signals` mantiene ([`markup-client.ts:131`](../../packages/compiler/src/emit/markup-client.ts#L131)) y que `crossingExpr` consulta para decidir si un `.prop` cruza un valor o una referencia (decisión 84). §4.7 lo amplía; §4.8 reescribe las dos líneas que emite. |
+| SDD-15 | La forma del factory (`$s`/`$a`/`$d`), el pase inicial y la suscripción por prop cruzada, y —lo que de verdad hace falta— el `Set<string>` de nombres declarados con `signal(...)` que `ClientScope.signals` mantiene ([`markup-client.ts:131`](../../packages/compiler/src/emit/markup-client.ts#L131)) y que `crossingExpr` consulta para decidir si un `.prop` cruza un valor o una referencia (decisión 151). §4.7 lo amplía; §4.8 reescribe las dos líneas que emite. |
 | SDD-16 / módulo de servidor | `buildComponentModule` emite hoy una **signal inerte** por declaración ([`module.ts:172`](../../packages/compiler/src/emit/module.ts#L172)). §4.6 le añade las dos formas nuevas y corrige la forma del stub. |
 | BUG-12 | `$a()` como único punto de escritura de valor, y `$w` como filtro por escritura. §4.3 se apoya en `$w` para justificar una renuncia deliberada. |
 
@@ -345,7 +345,7 @@ El emit mantiene `ClientScope.signals`, el conjunto de nombres que el `@code` de
 `signal(...)`, extraído por `extractCode`
 ([`oxc-code.ts`](../../packages/compiler/src/emit/oxc-code.ts)). Ese conjunto es lo que
 `crossingExpr` consulta para decidir **si un `.prop` cruza un valor o una referencia** (decisión
-84, y el defecto (b) que BUG-16 tuvo que arreglar cuando el servidor vio los props por primera
+151, y el defecto (b) que BUG-16 tuvo que arreglar cuando el servidor vio los props por primera
 vez) y lo que `markup-client.ts` usa para decidir si un host de hijo emite suscripción o no
 (BUG-12 §3.4).
 
@@ -549,8 +549,8 @@ Tests en `packages/core/test/` (1–13, 18–19, 21) y `packages/compiler/test/e
 
   **Lo que tocó, ya reescrito:** SDD-15 §3.3 (`fud-state` admite el marcador) y §4.3 (el tramo
   llega resuelto), SDD-17 §3 y §4.4 (`attachAll` resuelve celdas; una celda vacía levanta antes a
-  su dueño), la decisión **84** de [props-spec](./props-spec.md) —que dejó de ser «cruza un
-  valor, siempre» y hoy es «cruza lo que el hijo declara», su decisión **86**— y SDD-12 con
+  su dueño), la decisión **151** de [props-spec](./props-spec.md) —que dejó de ser «cruza un
+  valor, siempre» y hoy es «cruza lo que el hijo declara», su decisión **153**— y SDD-12 con
   `FUD0200`–`FUD0203`. La firma con la que la regla del cruce nació ya con la forma correcta
   —`crossing` devolviendo `Crossing`, con `'ref'` declarado y sin emisor— la dejó
   [BUG-23 §3.1](./bugs/BUG-23-arroba-valvula-de-escape.md).

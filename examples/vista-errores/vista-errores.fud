@@ -269,7 +269,7 @@
       default: <p>default</p>
     }
     @render fila(@window.name)
-    @raw(document.cookie)
+    <div>@raw(document.cookie)</div>
     @* FUD0907 sobre `window`: el valor por defecto de una flecha también se lee. *@
     <p>@(((v = window) => String(v))())</p>
     @* FUD0907 sobre `window`: y una clave computada. *@

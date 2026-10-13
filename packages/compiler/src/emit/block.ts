@@ -29,6 +29,7 @@ import {
   collectTemplateJs,
   isLoop,
   loopHead,
+  refTargets,
   type Branch,
   type LoopNode,
 } from './constructs.js';
@@ -188,7 +189,7 @@ export class BlockEmitter implements BlockSink {
     // A name the body WRITES is not a dependency: it is shared state, and a parameter would
     // swallow the write. See `assignedNames` — it is what lets a `@{ … }` in the body of a
     // `@while` advance the cursor its own header reads.
-    const written = assignedNames(asts);
+    const written = new Set([...assignedNames(asts), ...refTargets(branch.body, this.#ctx.source)]);
     return freeReferences(asts).filter(
       (name) => !owned.has(name) && !written.has(name) && this.#changeable.has(name),
     );
@@ -222,6 +223,9 @@ export class BlockEmitter implements BlockSink {
       // its edges already narrowed to where the construct sits (BUG-21 §4.2.b).
       at: at.at,
       trackRoots: true,
+      // What the block's `u` reassigns moves with the row: a child fed from it is fed again
+      // when the row really changed.
+      params: new Set(block.params),
       // The body's roots are the hole's roots when the construct sits in one (SDD-48 §4.5).
       ...(at.slot === undefined ? {} : { slot: at.slot }),
     });
@@ -265,10 +269,14 @@ export class BlockEmitter implements BlockSink {
       .dedent();
     w.line('},');
     w.line('s: $s,');
+    // `$moved` before the reassignment, and only when a child reads it: whether any parameter
+    // really changed, by identity — the owner calls `u` on every pass, row moved or not.
+    const params = block.params.join(', ');
+    const moved = em.rowMoves ? `const $moved = [${params}].some(($x, $i) => $x !== $p[$i]); ` : '';
     w.line(
       block.params.length === 0
         ? `u: () => { ${renderPass(em.inPlace, updateCalls(bodies.update))} },`
-        : `u: (...$p) => { [${block.params.join(', ')}] = $p; ${renderPass(em.inPlace, updateCalls(bodies.update))} },`,
+        : `u: (...$p) => { ${moved}[${params}] = $p; ${renderPass(em.inPlace, updateCalls(bodies.update))} },`,
     );
     // Back to front, each root before the one that follows it: what every step needs as a
     // reference is where the piece it just placed BEGINS, which is what `move` returns.

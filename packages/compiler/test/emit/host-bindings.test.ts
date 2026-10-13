@@ -128,7 +128,7 @@ describe('BUG-32 T4 — `class:` reads the signal instead of testing the object'
 
   it('calls the signal on the client: the object is always truthy and never came off', () => {
     // `(open) && "red"` tested the signal OBJECT, so the class went on at the first render
-    // and `open.set(false)` never took it off. Decision 84 applies here as much as to an
+    // and `open.set(false)` never took it off. Decision 151 applies here as much as to an
     // attribute.
     const { client } = inner('<p class:red="@open"></p>');
     expect(client).toContain('(open()) && "red"');

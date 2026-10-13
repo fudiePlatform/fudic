@@ -1,97 +1,53 @@
-# Pendientes de v1 — lo que está especificado y NO está implementado
+# Pendientes de v1 — CERRADO
 
-> Fecha: 2026-08-15. **Estos cuatro puntos son lo único abierto de v1.** SDD-17 (hidratación)
-> quedó `Hecho` el 2026-08-15 y con él se cierra el framework: el capturador global, la
-> cascada, el bus, el replay y el warm corren en las tres formas que el framework tiene
-> —`pnpm dev`, un build sin Service Worker y un build con él—. SDD-29 (snippets) va por su
-> cuenta y no bloquea nada.
+> **2026-10-13: no queda nada abierto.** Los cuatro puntos de este documento se cerraron en
+> [SDD-54](../SDD-54-pendientes-v1.md). Tres se implementaron y uno se anuló. Lo que sigue
+> conserva qué faltaba y dice cómo quedó, para quien llegue aquí desde una referencia vieja.
 >
-> Ninguno de los cuatro bloquea: son azúcar de gramática sobre un compilador que ya emite,
-> y una app se escribe entera sin ellos.
->
-> **Para qué es este documento.** Los cuatro puntos de abajo viven repartidos entre la
-> gramática, `props-spec.md` y comentarios del emit. Aquí están juntos, con la evidencia de
-> que faltan, para no volver a buscarlos.
+> Redactado el 2026-08-15, al cerrar SDD-17. SDD-29 (snippets) iba por su cuenta y está `Hecho`.
 
 ---
 
-## 1. `ref="@var"` — se parsea, no se emite
+## 1. `ref="@var"` — implementado
 
-**Spec:** gramática, decisiones 30 y 31.
+**Faltaba:** el parser lo reconocía y lo validaba (`FUD0094`, `ref` en bucle por SDD-12), pero el
+emit lo ignoraba y la variable del usuario quedaba `undefined`.
 
-**Estado:** el parser lo reconoce y lo valida (`binding/classify.ts`, `RefBinding`,
-`FUD0094` si el valor no es un identificador simple; `ref` dentro de bucle es error por
-SDD-12). **El emit lo ignora**: no hay ni un `case 'ref'` en `packages/compiler/src/emit/`.
-Un `ref` escrito hoy no llega al chunk y la variable del usuario queda `undefined`.
+**Quedó:** el `let` lo declara siempre el autor en `@client`. El compilador le asigna el nodo en
+el enganche, que corre al crear y al hidratar, y lo devuelve a `null` al desmontar, también
+dentro de un `@if`. Decisión 155 de la gramática.
 
-**Qué falta:** asignar la referencia del nodo en el camino `c` y en el camino `h` del
-factory (§4.6 de SDD-15), y anularla en `r()`. Decidir si el `let` de la variable lo declara
-el emit o viene de `@client`.
+## 2. `@raw(expr)` — implementado
 
----
+**Faltaba:** el escape existía, el opt-out no, y tampoco el marcador `TrustedHTML`.
 
-## 2. `@raw(expr)` — se parsea, no se emite
+**Quedó:** `@raw` pinta el HTML de un valor marcado con `trustedHtml()` y escapa todo lo demás,
+con la misma función (`htmlOf`) en servidor y navegador. Por decisión de Pedro es el **único
+contenido de su elemento** (`FUD0990`), así que la hidratación nunca cuenta sus nodos. Un
+`string` sin marca es un error de TypeScript en el editor y en el build. Decisión 154.
 
-**Spec:** gramática, decisión 18 (escape automático + opt-out explícito + marcador
-`TrustedHTML`).
+## 3. Spread de props — implementado, sin llaves
 
-**Estado:** el emit lo dice con todas las letras — `emit/markup.ts:75` y `emit/runs.ts:69`:
-*«`@raw(…)` is an interpolation that is not escaped (decision 18); the emit has no
-consumer»*. Es decir: hoy **todo** se escapa y el opt-out no existe.
+**Faltaba:** todo. No había token, nodo, clasificación ni emit.
 
-**Qué falta:** la rama sin escapar en las dos salidas (servidor y cliente), y el tipo
-marcador `TrustedHTML` con su detección en compilación. Ojo a la simetría: el servidor
-serializa y el cliente escribe DOM — `innerHTML` frente a `textContent` — y las dos tienen
-que pintar lo mismo (es la lección de BUG-14).
+**Quedó:** se escribe `<app-card ...item>`, sin llaves, por decisión de Pedro. Se expande contra
+las props del hijo en servidor, cliente y editor; un `.prop` escrito a mano gana su clave, y si a
+`item` le falta una prop requerida es un error de TypeScript sobre el objeto. Decisiones 146–149
+de [props-spec](../props-spec.md) (antes 79–82), `FUD0991` y `FUD0992`.
 
----
+## 4. Two-way binding `bind:` — anulado
 
-## 3. Spread de props: `{...item}`
+**Faltaba:** todo, y además el convenio del nombre de la prop callback.
 
-**Spec:** [props-spec.md](../props-spec.md) §5, decisiones 79–82.
-
-**Estado:** cero código. No hay token, ni nodo de AST, ni clasificación, ni emit.
-
-**La forma es con llaves** — `<app-card {...item}></app-card>` —, no `...item` desnudo
-dentro de la lista de atributos.
-
-**Qué falta, y las reglas que lo definen:**
-
-- Expande a property bindings **contra `T`**, el tipo de props del hijo (79).
-- **Filtro por las claves de `T`, no por las de `item`** (80): lo que sobra en `item` no
-  cruza.
-- La reactividad de cada clave la decide **lo que lleve `item`** en esa clave (81), igual
-  que un `.prop` escrito a mano.
-- Clave ausente en `item`: **error si la prop es requerida, default si es opcional** (82).
+**Quedó:** anulado por decisión de Pedro. La decisión 153 (antes 86) ya pasa por referencia un
+callback y una signal declarados en las props del hijo, como demuestra `examples/basic` en
+`/signal-prop`. `bind:` no tiene nada que añadir. La 152 (antes 85) queda derogada.
 
 ---
 
-## 4. Two-way binding: `bind:`
+## La deuda de documentación, saldada
 
-**Spec:** [props-spec.md](../props-spec.md) §6, decisiones 83–85.
-
-**Estado:** cero código. `BIND_PREFIX` no existe en ningún fichero del compilador.
-
-**Qué falta:**
-
-- El prefijo `bind:` como binding reservado, hermano de `class:` / `style:` / `bus:`
-  (decisión 22 de la gramática).
-- El desazucarado: **el canal de vuelta es una prop callback, no un evento** (83).
-- **Ninguna signal cruza el shadow boundary** (84): `bind:` es azúcar sobre prop de valor +
-  prop callback, y por eso exige que las dos estén declaradas (85).
-
-**Hueco abierto que hay que cerrar antes de escribir código** (props-spec §7): el **nombre
-de la prop callback**. `onChange` fijo, u `on<Prop>Change` derivado del nombre de la prop.
-Sin ese convenio el desazucarado no tiene contra qué emitir.
-
----
-
-## Deuda de documentación que arrastra esto
-
-- `props-spec.md` **no está en la tabla maestra** de [INDEX.md](../INDEX.md): sus decisiones
-  no aparecen en ninguna fila, y por eso estos dos puntos no se ven al leer el índice.
-- **Colisión de numeración:** `props-spec.md` numera 67–85 y la gramática v1 usa 75–85 para
-  documento y layouts. Los mismos números dicen cosas distintas en dos ficheros. Reconciliar
-  antes de implementar, o la primera referencia cruzada que alguien escriba será ambigua.
-- Ninguno de los cuatro puntos tiene rango de diagnósticos reservado. El spread (82) y el
-  `bind:` (85) emiten errores, así que necesitan códigos `FUD` antes de empezar.
+- `props-spec.md` está en la tabla maestra de [INDEX.md](../INDEX.md).
+- **Colisión de numeración resuelta:** la gramática conserva 75–86, y las de props pasan a
+  142–153, con las referencias renumeradas en docs y código.
+- **Rango de diagnósticos:** `FUD0990`–`FUD0999`, de SDD-54.

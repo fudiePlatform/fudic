@@ -2,7 +2,13 @@
 
 Sistema de propiedades del compilador `.fud`. Cómo un componente declara su
 interfaz pública, cómo un consumidor le pasa datos, y qué emite el compilador en
-cada caso. Extiende `gramatica-v1-decisiones.md` con las decisiones **67–78**.
+cada caso. Extiende `gramatica-v1-decisiones.md` con las decisiones **67–74** y **142–153**.
+
+> **Numeración (2026-10-13, SDD-54).** Este documento numeraba 67–86, y 75–86 eran también
+> decisiones de la gramática (identidad DSD, `}` crudo, layouts): dos ficheros decían cosas
+> distintas con el mismo número. La gramática conserva 75–86, y las de aquí pasan a
+> **142–153**, en el mismo orden: 75→142, 76→143, 77→144, 78→145, 79→146, 80→147, 81→148,
+> 82→149, 83→150, 84→151, 85→152, 86→153. Las 67–74 no chocaban y no cambian.
 
 Convención de niveles (ya establecida): `nivel_efectivo = max(nivel_intrínseco,
 nivel_inducido_por_props_entrantes)`. Este documento no redefine los niveles; fija
@@ -62,6 +68,14 @@ puede referenciar son lo mismo.
 **69.** Cero o una llamada a `props<T>()` por componente (consistente con "cero o un
 `@code`", decisión 33.d). Un componente sin `props<T>()` no expone interfaz de
 entrada.
+
+**156.** **Un resto reúne las claves que el patrón no nombra** (SDD-55).
+`const { label, ...resto } = props<T>()` cumple la 68: lo que no se nombra lo cubre `resto`.
+Cada clave reunida es una prop como cualquier otra para quien la pasa —tiene su hueco y el padre
+la escribe con `.`—, y el componente las lee juntas como un objeto, en el servidor y en el
+cliente. Requiere un `T` que el fichero pueda leer (un literal, o un `type`/`interface` del mismo
+`@code`): con uno importado no hay claves que reunir. Una clave reunida `Signal<T>` es reactiva
+igual que una nombrada.
 
 **70.** **Solo lo declarado es visible para el consumidor.** Un consumidor que pase
 una clave ausente de `T` es error de compilación (semántico). Esto es el modelo
@@ -141,7 +155,7 @@ pasa es una fuente reactiva (una signal), por el canal de property binding.
 
 ### Materialización en el hijo
 
-**75.** Una prop **no reactiva** es `const` en el sentido que importa: nadie la
+**142.** Una prop **no reactiva** es `const` en el sentido que importa: nadie la
 reescribe nunca. Su valor se resuelve en compile-time / SSR y se interpola
 directamente en el HTML del shadow root, y el **padre no emite nada** por ella —ni
 pase, ni suscripción—, que es lo que hace de ella una constante. El hijo tampoco
@@ -152,7 +166,7 @@ emite signal ni clase por esa prop.
 > de la closure, alcanzable solo desde dentro, y quien la mueve es el padre llamando a
 > `u` — cosa que para una prop constante no ocurre nunca.
 
-**76. — DEROGADA** por [BUG-12](./bugs/BUG-12-sin-canal-de-update.md) §4.1.
+**143. — DEROGADA** por [BUG-12](./bugs/BUG-12-sin-canal-de-update.md) §4.1.
 
 > *Decía:* «Una prop **reactiva** no puede ser `const` (necesita reasignación). El hijo
 > emite un **setter** que escribe el nodo del DOM directamente.»
@@ -167,7 +181,7 @@ el artefacto emitido, cuando el payload no lleva esquema: solo valores, en orden
 `u(props: readonly unknown[])`, y `FudicElement` el punto de entrada del mismo nombre
 —el **tercero**, hermano de `h` y `c`, no un callback del navegador—. Reasigna los
 bindings de prop desde el array posicional y reaplica las escrituras que dependen de
-ellos. La parte de la 76 que sí valía sigue en pie: la prop reactiva **no es `const`**
+ellos. La parte de la 143 que sí valía sigue en pie: la prop reactiva **no es `const`**
 (se declara con `let`, porque `u` la reasigna), la signal vive en el padre, y el hijo
 no tiene signal interna ni reconciliación.
 
@@ -177,28 +191,28 @@ let [$dom, $shadow, value = 0] = $props;
 u: ($p) => { [, , value = 0] = $p; $a(); },
 ```
 
-**77.** **La declaración no fuerza el nivel.** `props<T>()` fija el contrato; el
+**144.** **La declaración no fuerza el nivel.** `props<T>()` fija el contrato; el
 nivel lo sigue decidiendo `nivel_efectivo`. Tener props no convierte un componente
 en clase. Solo recibir una prop **reactiva** (o un consumo interno que induzca nivel,
 p. ej. `@if`/`@foreach` sobre la prop) eleva el nivel.
 
-**78.** **Variante única por cierre de proyecto.** El mismo componente puede ser N1
+**145.** **Variante única por cierre de proyecto.** El mismo componente puede ser N1
 en una página (todas sus props constantes) y N2/N3 en otra (recibe alguna reactiva).
 El compilador examina **todos** los sitios de uso del proyecto y emite **una sola
 variante**, la del nivel máximo alcanzado en cualquier sitio (consistente con la
 decisión de cierre ya tomada para N1/N2/N3).
 
-### Lo que cruza lo decide el hijo (decisión 86)
+### Lo que cruza lo decide el hijo (decisión 153)
 
-**La 84 ya no dice «cruza un valor, siempre»; dice «cruza lo que el hijo declara».** El padre
+**La 151 ya no dice «cruza un valor, siempre»; dice «cruza lo que el hijo declara».** El padre
 escribe lo mismo en los tres casos —el identificador desnudo—, y la forma del cruce sale del
 `props<T>()` del hijo:
 
 | el hijo declara | `.value=@count` cruza | por qué |
 |---|---|---|
-| `value?: number` | `count()` — el valor | decisión 84, byte a byte lo que sigue abajo |
-| `value: Signal<number>` | `count` — la **celda** | decisión 86: el hijo puede derivar, reenviar y escribir |
-| `onSave: (n) => void` | `save` — la celda de una función | decisión 86: una arista instancia → instancia |
+| `value?: number` | `count()` — el valor | decisión 151, byte a byte lo que sigue abajo |
+| `value: Signal<number>` | `count` — la **celda** | decisión 153: el hijo puede derivar, reenviar y escribir |
+| `onSave: (n) => void` | `save` — la celda de una función | decisión 153: una arista instancia → instancia |
 
 Que la signal cruce no contradice lo que sigue, lo **precisa**: por el cable sigue sin viajar
 un objeto vivo. Lo que viaja es un **marcador** —`{"$":[owner, slot]}`, la dirección de una
@@ -248,7 +262,7 @@ que emit y editor coinciden ahí en mirar el objeto. Qué *debería* hacer el te
 
 > **Y esto vale para las props que el hijo declara como valor.** Las que declara `Signal<T>` —o
 > como una firma de función— cruzan por referencia desde [BUG-24](./bugs/BUG-24-signal-y-callback-no-cruzan.md)
-> (decisión 86, arriba): ahí no hay `u` que renovar nada, porque los dos extremos tienen el
+> (decisión 153, arriba): ahí no hay `u` que renovar nada, porque los dos extremos tienen el
 > mismo objeto. El editor aplica la misma regla y por el mismo camino — `crossing` sigue siendo
 > una sola función, y la proyección le pasa a TypeScript el tipo que el hijo declaró.
 
@@ -394,13 +408,15 @@ El hijo aquí es **N3** por su propia signal, no por la prop. La prop es solo el
 
 ---
 
-## 5. Spread de props: `{...item}`
+## 5. Spread de props: `...item`
 
-Azúcar para pasar varias props desde un objeto, filtrando por `T`.
+Azúcar para pasar varias props desde un objeto, filtrando por `T`. Se escribe **sin llaves**,
+como un atributo más: `...` seguido del objeto, que es un nombre o un camino de nombres
+(`...item`, `...fila.datos`). Implementado en [SDD-54](./SDD-54-pendientes-v1.md).
 
 ```fud
-@foreach (const item of items) {
-  <app-card {...item}></app-card>
+@foreach (const item of items) key (item.id) {
+  <app-card ...item></app-card>
 }
 ```
 
@@ -414,7 +430,7 @@ const { id, title, price, tag } = props<{
 
 ### Reglas
 
-**79.** `{...item}` se expande en compile-time a un property binding por cada clave
+**146.** `...item` se expande en compile-time a un property binding por cada clave
 de **`T`**, tomada de `item`. Es equivalente exacto a:
 
 ```fud
@@ -422,47 +438,79 @@ de **`T`**, tomada de `item`. Es equivalente exacto a:
           .price="@item.price" .tag="@item.tag"></app-card>
 ```
 
-**80.** El filtro es por las claves de **`T`**, no por las de `item`. Si `item` tiene
+Lo que sigue a `...` es el objeto y nada más: un nombre o un camino de nombres, y el atributo no
+lleva valor. Cualquier otra forma (`...`, `...a-b`, `...item="x"`) es `FUD0991`. Sobre un
+elemento nativo el spread escribe atributos (157). Sobre el propio host del componente o su
+`<template shadowrootmode>` es `FUD0992`: ninguno es un elemento en el que la vista escriba
+(precisada en SDD-55; en SDD-54 también lo era sobre un nativo).
+
+Un `.prop` escrito en el mismo host **gana** su clave, esté antes o después del spread: es la
+afirmación más concreta de las dos. Con dos spreads en un host gana el último en las claves que
+tenga, y «tenerla» es no ser `undefined`, que es también lo que el destructuring del hijo lee
+como ausente.
+
+**147.** El filtro es por las claves de **`T`**, no por las de `item`. Si `item` tiene
 10 atributos y `T` declara 4, se pasan solo esas 4; las otras 6 se ignoran.
 
-**81.** Cada prop expandida es reactiva o constante según lo que `item` lleve
+**148.** Cada prop expandida es reactiva o constante según lo que `item` lleve
 (decisión 74). Si `item` viene de un `@foreach` sobre datos SSR no reactivos, todas
 las claves son **valores constantes** → el hijo las resuelve como `const` en el HTML,
-**N1, cero JS**, aunque la sintaxis expandida use `.prop`.
+**N1, cero JS**, aunque la sintaxis expandida use `.prop`. Si el objeto lee algo que se mueve,
+el hijo hidrata y recibe las props de nuevo cuando ese algo cambia. Una fila de un `@foreach`
+con `key` que conserva su clave y cambia sus datos se las vuelve a dar a su hijo; esto vale
+igual para un `.prop="@item.x"` escrito a mano (SDD-54).
 
-**82.** Si `item` **no** tiene una clave que `T` declara: error de compilación si la
+**149.** Si `item` **no** tiene una clave que `T` declara: error de compilación si la
 prop es requerida; se usa el default si es opcional (consistente con decisiones
-71–73).
+71–73). El error lo da TypeScript, en el editor y en el build: la proyección comprueba el
+objeto contra `T` menos lo que el host escribe a mano, y el error cae sobre el objeto. Una clave
+de tipo equivocado también es error; una clave de más no lo es (147).
+
+**157.** **Sobre un elemento nativo, el spread escribe atributos** (SDD-55).
+`<input ...resto>` escribe cada clave escalar del objeto: un texto o un número como su texto,
+`true` como atributo booleano vacío; `false`, `null` y `undefined` lo dejan fuera, como
+`attr=@valor`. Un objeto, una función o un `symbol` no es un atributo y se salta, salvo un
+`trustedUrl(…)` en un atributo URL. Nunca escribe un `on*` (139) ni un nombre que no sea de
+atributo, y un atributo URL pasa por el mismo guardia (140). Lo que el elemento escribe a mano
+gana su nombre esté donde esté el spread; con dos spreads gana el posterior en lo que escribe. Es
+una única función pura en servidor y navegador; al actualizar, quita los atributos que el objeto
+ya no escribe.
 
 ---
 
-## 6. Two-way binding: `bind:`
+## 6. Two-way binding: `bind:` — ANULADO
 
-Sintaxis distinta para semántica distinta:
+> **Anulado por decisión de Pedro el 2026-10-13 ([SDD-54](./SDD-54-pendientes-v1.md)).**
+> `bind:` iba a ser azúcar sobre una prop de valor más una prop callback, y la decisión 153 ya
+> da las dos cosas sin sintaxis nueva: un hijo que declara `onSave: (n: number) => void` recibe
+> la función del padre y la llama, y uno que declara `value: Signal<number>` recibe la signal
+> del padre y puede escribirla. `examples/basic`, ruta `/signal-prop`, lo demuestra en el
+> navegador con las dos. Con eso no queda nada que desazucarar, ni un nombre de callback que
+> fijar, ni una 152 que comprobar.
 
-- `.value="@x"` → **one-way**. El valor baja del padre al hijo. El hijo no puede
-  cambiar la fuente del padre.
-- `bind:value="@x"` → **two-way**. El valor baja **y** el hijo puede actualizar la
-  fuente del padre.
+```fud
+<!-- el padre: el canal de vuelta es una prop como cualquier otra -->
+<signal-form .onSave=@sumar></signal-form>
+<signal-display .value=@count></signal-display>
+```
 
-La distinción es necesaria porque el compilador debe saber si emitir solo el canal
-descendente o también el ascendente. `bind:` encaja con la notación de directivas ya
-existente (`class:`, `style:`, decisión 22).
+Lo que sigue en pie de esta sección son las dos reglas que no dependían de `bind:`.
 
-### Mecanismo: callback como prop (no eventos)
+### El canal de vuelta es una prop, no un evento
 
-**83.** El canal de vuelta se implementa como un **callback pasado como prop**
+**150.** El canal de vuelta se implementa como un **callback pasado como prop**
 (modelo React `onChange`), **no** con `dispatchEvent` / `addEventListener` entre
 padre e hijo. El padre pasa una función por property binding; el hijo la invoca. Es
 una llamada directa a una referencia de función: **no cruza el shadow boundary como
 evento, no hay listener entre componentes, no hay problema de propagación de shadow.**
+Desde la anulación de `bind:` no hay azúcar encima: la prop callback se escribe a mano, y
+cruza por referencia (153).
 
-**84.** **Una prop declarada como VALOR cruza su valor, nunca el objeto signal.** `bind:` es
-azúcar sobre one-way + callback: baja el valor por `u`, sube el cambio por la función. La
+**151.** **Una prop declarada como VALOR cruza su valor, nunca el objeto signal.** La
 fuente de la verdad permanece en el padre. Se preserva el aislamiento de islas (principio de
-la decisión 74–78).
+las decisiones 74 y 142–145).
 
-> **84 dejó de ser «cruza un valor, siempre»: hoy lo decide el hijo (decisión 86).** El
+> **151 dejó de ser «cruza un valor, siempre»: hoy lo decide el hijo (decisión 153).** El
 > enunciado de arriba describe el caso por defecto y sigue siendo lo que se emite para una prop
 > declarada `value?: number`. Una declarada `Signal<T>` —o como una firma de función— cruza por
 > **referencia, con identidad real**, mediante un marcador `{"$":[owner, slot]}` en la casilla
@@ -474,120 +522,27 @@ la decisión 74–78).
 > salto por nivel. La firma con la que la regla distingue las dos formas la dejó
 > [BUG-23 §3.1](./bugs/BUG-23-arroba-valvula-de-escape.md) — `crossing` devolviendo `Crossing`.
 
-### Desazucarado
+**152. — DEROGADA** con `bind:` (SDD-54).
 
-`bind:value="@name"` en el padre se compila a dos property bindings: `.value` (baja)
-+ un callback (sube).
+> *Decía:* «`bind:value` exige que el hijo declare la prop de valor (`value`) **y** la prop
+> callback correspondiente. Si el hijo no declara el callback, `bind:` no tiene canal de vuelta
+> que enganchar → error de compilación.»
 
-**child — `app-input.fud`**
-
-```fud
-@code {
-  const { value, onChange } = props<{
-    value: string;
-    onChange: (v: string) => void;
-  }>();
-
-  @client {
-    function onInput(e) { onChange(e.target.value); }
-  }
-}
-
-<input .value="@value" @input="@onInput">
-```
-
-emitido:
-
-```js
-class AppInput extends HTMLElement {
-  #input; #onChange;
-  connectedCallback() {
-    const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
-    this.#input = root.childNodes[1];
-    this.#input.addEventListener('input', e => this.#onChange?.(e.target.value));
-  }
-  set value(v) { if (this.#input) this.#input.value = String(v); }
-  set onChange(fn) { this.#onChange = fn; }
-}
-customElements.define('app-input', AppInput);
-```
-
-> El `addEventListener` del `<input>` es DOM interno del hijo sobre su propio nodo;
-> **no** cruza ningún boundary. Lo que se elimina frente a la solución de eventos es
-> el `dispatchEvent` / listener **entre** padre e hijo.
-
-**parent — `app-form.fud`**
-
-```fud
-@code {
-  @client {
-    const name = signal('');
-    function setName(v) { name.set(v); }
-  }
-}
-
-<app-input bind:value="@name"></app-input>
-<p>Hola @name</p>
-```
-
-emitido — `bind:value` se desazucara a `.value` (baja) + `.onChange` (sube):
-
-```js
-class AppForm extends HTMLElement {
-  #name = signal('');
-  #input; #p; #unsub;
-
-  connectedCallback() {
-    const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
-    this.#input = root.childNodes[1];
-    this.#p = root.childNodes[2];
-
-    // bind:value  →  baja el valor + sube por callback
-    this.#input.value = this.#name.peek();
-    this.#unsub = this.#name.subscribe(v => { this.#input.value = v; });
-    this.#input.onChange = v => this.#name.set(v);
-
-    // <p>Hola @name</p>
-    this.#p.childNodes[1].textContent = this.#name.peek();
-    this.#name.subscribe(v => { this.#p.childNodes[1].textContent = v; });
-  }
-  disconnectedCallback() { this.#unsub?.(); }
-}
-customElements.define('app-form', AppForm);
-```
-
-Las tres líneas del `bind:`:
-
-```js
-this.#input.value = this.#name.peek();                                // baja: inicial
-this.#unsub = this.#name.subscribe(v => { this.#input.value = v; });  // baja: cambios del padre
-this.#input.onChange = v => this.#name.set(v);                        // sube: cambios del hijo
-```
-
-`name` vive siempre en el padre. Baja como valor por `u`, sube como argumento
-por el callback. La signal nunca cruza.
-
-### Requisito semántico
-
-**85.** `bind:value` exige que el hijo declare la prop de valor (`value`) **y** la
-prop callback correspondiente. Si el hijo no declara el callback, `bind:` no tiene
-canal de vuelta que enganchar → error de compilación.
+Sin `bind:` no hay nada que exigir: una prop callback que el hijo no declara es la misma prop de
+más que cualquier otra, y la dice TypeScript.
 
 ---
 
-## 7. Decisiones abiertas (no cerradas en esta sesión)
+## 7. Decisiones abiertas
 
-- **Nombre de la prop callback en `bind:`.** El desazucarado necesita un nombre fijo
-  para el callback (`onChange`, u `on<Prop>Change` derivado del nombre de la prop).
-  Pendiente de fijar el convenio.
-- Formalización EBNF de `props<T>()`, `{...item}` y `bind:` en
-  `gramatica-v1-decisiones.md`.
-- Interacción del spread con `bind:` (¿`bind:` dentro de un spread? probablemente
-  no).
+- Formalización EBNF de `props<T>()` y de `...item` en `gramatica-v1-decisiones.md`.
+
+Las otras dos se cerraron con la anulación de `bind:` (SDD-54): no hay nombre de callback que
+fijar ni `bind:` que meter en un spread.
 
 ---
 
-## Índice de decisiones (67–86)
+## Índice de decisiones (67–74, 142–153, 156–157)
 
 | # | Sección | Resumen |
 |---|---------|---------|
@@ -599,15 +554,17 @@ canal de vuelta que enganchar → error de compilación.
 | 72 | Props | Opcional = clave con `?` |
 | 73 | Props | Default = valor en el destructuring |
 | 74 | Props | La reactividad la decide el consumidor, no la declaración |
-| 75 | Props | Prop no reactiva → `const`, resuelta en SSR, cero JS |
-| 76 | Props | ~~Prop reactiva → setter en el hijo~~ · **derogada**: el canal es `u(props)`, uno solo y posicional ([BUG-12](./bugs/BUG-12-sin-canal-de-update.md)) |
-| 77 | Props | La declaración no fuerza el nivel |
-| 78 | Props | Variante única por cierre de proyecto |
-| 79 | Spread | `{...item}` expande a property bindings contra `T` |
-| 80 | Spread | Filtro por claves de `T`, no de `item` |
-| 81 | Spread | Reactividad de cada clave según lo que lleve `item` |
-| 82 | Spread | Clave ausente en `item`: error si requerida, default si opcional |
-| 83 | Two-way | Canal de vuelta por callback-prop, no por eventos |
-| 84 | Two-way | Una prop declarada **como valor** cruza su valor, nunca el objeto signal; `bind:` es azúcar. Reescrita por la 86: dejó de ser «siempre» |
-| 85 | Two-way | `bind:` exige prop de valor + prop callback declaradas |
-| 86 | Props | **Lo que cruza lo decide el hijo**: `Signal<T>` o una firma de función cruzan por **referencia** —una celda que crea el runtime—, lo demás cruza su valor ([BUG-24](./bugs/BUG-24-signal-y-callback-no-cruzan.md)). Sin poder leer al hijo no se marca canal alguno |
+| 142 | Props | Prop no reactiva → `const`, resuelta en SSR, cero JS (antes 75) |
+| 143 | Props | ~~Prop reactiva → setter en el hijo~~ · **derogada**: el canal es `u(props)`, uno solo y posicional ([BUG-12](./bugs/BUG-12-sin-canal-de-update.md)) (antes 76) |
+| 144 | Props | La declaración no fuerza el nivel (antes 77) |
+| 145 | Props | Variante única por cierre de proyecto (antes 78) |
+| 146 | Spread | `...item`, sin llaves, expande a property bindings contra `T`; un `.prop` explícito gana su clave; `FUD0991`, `FUD0992` (antes 79; SDD-54). **Precisada por la 157** |
+| 147 | Spread | Filtro por claves de `T`, no de `item` (antes 80) |
+| 148 | Spread | Reactividad de cada clave según lo que lleve `item`; una fila que cambia de datos las vuelve a dar (antes 81; SDD-54) |
+| 149 | Spread | Clave ausente en `item`: error si requerida (TypeScript, sobre el objeto), default si opcional (antes 82) |
+| 150 | Callback | Canal de vuelta por callback-prop, no por eventos; sin azúcar desde la anulación de `bind:` (antes 83) |
+| 151 | Props | Una prop declarada **como valor** cruza su valor, nunca el objeto signal. Reescrita por la 153: dejó de ser «siempre» (antes 84) |
+| 152 | Two-way | ~~`bind:` exige prop de valor + prop callback declaradas~~ · **derogada** con `bind:` (antes 85; SDD-54) |
+| 153 | Props | **Lo que cruza lo decide el hijo**: `Signal<T>` o una firma de función cruzan por **referencia** —una celda que crea el runtime—, lo demás cruza su valor ([BUG-24](./bugs/BUG-24-signal-y-callback-no-cruzan.md)). Sin poder leer al hijo no se marca canal alguno. Hace innecesario `bind:` (antes 86) |
+| 156 | Props | Un resto `...resto` reúne las claves de `T` que el patrón no nombra; cada una es una prop con su hueco, y el componente las lee como un objeto (SDD-55) |
+| 157 | Spread | Sobre un elemento nativo, `...obj` escribe sus escalares como atributos (sin `on*`, URL guardadas, lo explícito gana) y quita los que deja de escribir (SDD-55). Precisa la 146 |

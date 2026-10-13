@@ -36,7 +36,7 @@ import {
   emitSlot,
   emitSlotsContract,
 } from './template/sections.js';
-import { emitDanglingAt, emitInterpolation } from './template/text.js';
+import { emitDanglingAt, emitInterpolation, emitRaw } from './template/text.js';
 import type { FileRegistry, VirtualFile } from './types.js';
 import { VirtualWriter } from './writer.js';
 
@@ -190,7 +190,7 @@ function emitContent(ctx: TemplateContext, content: readonly HtmlContent[]): voi
         emitInterpolation(ctx, node);
         break;
       case 'raw-expression':
-        emitInterpolation(ctx, node.expr);
+        emitRaw(ctx, node.expr);
         break;
       case 'inline-code':
         emitInlineCode(ctx, node);

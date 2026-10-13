@@ -16,7 +16,7 @@
  * offer methods no external consumer may call.
  *
  * **Why there IS a `u` (BUG-12).** What crosses a shadow boundary is a VALUE, never the
- * signal object: decision 84 says so, and SDD-17 makes it structural — the props of a
+ * signal object: decision 151 says so, and SDD-17 makes it structural — the props of a
  * hydrated instance travel serialized in `fud-state`, and a signal is a function with a
  * live `Set` inside, which no payload can carry. So a child cannot subscribe to what its
  * parent owns. The property of a signal belongs to the parent; the child receives values,

@@ -34,6 +34,7 @@ import type { DocumentGraph, ResolvedLayout } from './resolve.js';
 import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
 import { projectAdoptOf, renderProjectStyles } from './project-styles.js';
 import { codeOfDocument, type Prop } from './oxc-code.js';
+import { restGroups } from './rest.js';
 import { layoutCodeOf, requiredLayoutProps, unresolvedLayoutProps } from './layout-code.js';
 import { NO_SIGNALS, writeElementAttrs } from './attrs.js';
 import { holeSlot } from './compose.js';
@@ -87,7 +88,10 @@ function componentPairs(graph: DocumentGraph, styled: ReadonlySet<string>): read
  */
 function writeLayoutProps(w: CodeWriter, props: readonly Prop[]): void {
   if (props.length === 0) return;
-  const pattern = props.map((p) => (p.def !== undefined ? `${p.name} = ${p.def}` : p.name)).join(', ');
+  const pattern = [
+    ...props.flatMap((p) => (p.rest !== undefined ? [] : [p.def !== undefined ? `${p.name} = ${p.def}` : p.name])),
+    ...[...restGroups(props).keys()].map((rest) => `...${rest}`),
+  ].join(', ');
   w.line(`const { ${pattern} } = ${PROPS} ?? {};`);
 }
 

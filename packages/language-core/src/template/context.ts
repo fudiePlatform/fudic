@@ -34,7 +34,7 @@ export interface TemplateContext {
    * The names this `.fud` declares with `signal(...)` / `computed(...)`, from `reactiveNames`.
    *
    * The projection needs them because the emit crosses the READ of a reactive and not the
-   * object (decision 84), and an editor that checks a different expression than the build
+   * object (decision 151), and an editor that checks a different expression than the build
    * emits is BUG-23 §2.8. Empty when nobody handed the emitter a parsed `@client`.
    */
   readonly reactives: ReadonlySet<string>;
