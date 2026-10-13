@@ -93,7 +93,7 @@ export interface BusBinding extends Node {
 
 /**
  * `...item` — props spread (props-spec §5): one `.prop` per key of the CHILD's `T`, each read
- * from `item` (decisions 79–82). The filter is `T`'s keys, so what `item` carries beyond them
+ * from `item` (decisions 146–149). The filter is `T`'s keys, so what `item` carries beyond them
  * never crosses; a key `item` lacks is a type error when the prop is required and the default
  * when it is optional — TypeScript says the first, the destructuring applies the second.
  *

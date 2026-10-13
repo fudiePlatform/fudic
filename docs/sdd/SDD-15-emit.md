@@ -364,7 +364,7 @@ un nombre que el emit tome fuera de la reserva de §4.7 es un nombre que el auto
 
 **`u` (update) sí está en esta interfaz, y es `u` de VALOR**
 ([BUG-12](./bugs/BUG-12-sin-canal-de-update.md) §3.1). Por el shadow boundary cruza un
-**valor**, nunca el objeto signal: lo dice la decisión 84 y lo hace estructural SDD-17 —el
+**valor**, nunca el objeto signal: lo dice la decisión 151 y lo hace estructural SDD-17 —el
 tramo de props de una instancia hidratada viaja serializado en `fud-state`, y una signal es una
 función con un `Set` vivo dentro—. Luego un hijo **no puede suscribirse** a lo que el padre
 posee: la propiedad de la signal es del padre, el hijo recibe valores, y recibirlos otra vez es
@@ -799,7 +799,7 @@ $d.push(count.subscribe(($v) => { $n6.u([, , "Hola", $v]); }));     // cambios
 ```
 
 Un valor que **no** es una signal no emite nada: cruzó una vez, ya está en el HTML que el
-servidor pintó, y `const` es su semántica exacta (decisión 75).
+servidor pintó, y `const` es su semántica exacta (decisión 142).
 
 > **Distinción de nivel (frontera con otro SDD).** Lo anterior es el caso N3: el hijo creado
 > en runtime **es un web component** y `c` es su canal de props. Es **distinto** del caso en

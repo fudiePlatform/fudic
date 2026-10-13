@@ -4,7 +4,7 @@
 `Hecho` · **Rama:** `worktree-bug-24` · **Tareas:** [BUG-24-Task.md](./BUG-24-Task.md)
 
 > **Paquetes:** `core` · `compiler` · `ssr` · `language-core`
-> **Corrige:** props-spec 84, y añade la **86** · SDD-15 §3.3, §3.7, §4.3 · SDD-17 §3, §4.4 ·
+> **Corrige:** props-spec 151, y añade la **153** · SDD-15 §3.3, §3.7, §4.3 · SDD-17 §3, §4.4 ·
 > SDD-31 §7 · BUG-12 §3.4
 > **Rango de diagnósticos:** `FUD0200`–`FUD0203` (del hueco `FUD0197`–`FUD0209` de SDD-12;
 > BUG-23 ocupa `FUD0197`–`FUD0199`)
@@ -13,7 +13,7 @@
 
 ## 1. Contexto y síntoma
 
-Por el shadow boundary cruza **un valor, siempre** (decisión 84). Eso deja dos cosas fuera
+Por el shadow boundary cruza **un valor, siempre** (decisión 151). Eso deja dos cosas fuera
 del framework, y las dos son necesidades, no adornos.
 
 ### Síntoma 1 — una signal cruza leída, así que el hijo no tiene reactividad
@@ -156,8 +156,8 @@ lado cliente necesita para el fallback de §4.4.
 ```ts
 // binding/crossing.ts — el tipo que BUG-23 deja preparado, ahora con su segundo caso vivo
 export type Crossing =
-  | { readonly kind: 'value'; readonly name: string }   // `titulo()` — decisión 84
-  | { readonly kind: 'ref';   readonly name: string };  // la celda   — decisión 86 de props-spec
+  | { readonly kind: 'value'; readonly name: string }   // `titulo()` — decisión 151
+  | { readonly kind: 'ref';   readonly name: string };  // la celda   — decisión 153 de props-spec
 
 // emit/oxc-code.ts — una prop dice si pide un canal
 export interface Prop {
@@ -203,15 +203,15 @@ Sin firmas nuevas. `emitValue` deja de proyectar la lectura cuando `crossing` de
 Es lo que cierra §2.3 y §2.4 a la vez: si el objeto no lo construye el código de nadie, el
 orden en que corre el código de cada uno deja de importar.
 
-### 4.1 Decisión 86 de props-spec — una prop declarada `Signal<T>` cruza por referencia
+### 4.1 Decisión 153 de props-spec — una prop declarada `Signal<T>` cruza por referencia
 
 Lo que decide el modo es **lo que declara el hijo**, leído en compilación con `propsOf`
 (BUG-23 tarea 17). No hay sintaxis nueva en el padre:
 
 | el hijo declara | `.value=@count` cruza | por qué |
 |---|---|---|
-| `value?: number` | `count()` — el valor | decisión 84, byte a byte lo de hoy |
-| `value: Signal<number>` | `count` — la celda | decisión 86 de props-spec |
+| `value?: number` | `count()` — el valor | decisión 151, byte a byte lo de hoy |
+| `value: Signal<number>` | `count` — la celda | decisión 153 de props-spec |
 | `onSave: () => void` | la celda de `save` | §4.6 |
 
 ```fud

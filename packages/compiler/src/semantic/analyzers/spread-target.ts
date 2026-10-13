@@ -1,6 +1,6 @@
 /**
  * `spread-target` (props-spec §5): `...item` goes on a component, because what it expands
- * against is the child's `props<T>()` (decision 79). A native element declares no props, and
+ * against is the child's `props<T>()` (decision 146). A native element declares no props, and
  * neither does the component's own host wrapper — it declares the component, it does not use
  * one — so a spread on either is `FUD0992`.
  *

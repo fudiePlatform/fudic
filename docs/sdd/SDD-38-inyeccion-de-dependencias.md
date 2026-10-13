@@ -533,7 +533,7 @@ navegador, si hace falta, por el módulo IoC de la ruta (§4.5), que no es su ch
 - **Solo tiene contenedor propio quien declara un provider.** Los demás reenvían.
 - **No hay contenedor ambiente en el código del autor.** El ambiente vive dentro de una factoría,
   entre `try` y `finally`, y en ningún otro sitio.
-- **Lo que cruza el cable son valores publicados, nunca instancias.** Es la decisión 84 aplicada al
+- **Lo que cruza el cable son valores publicados, nunca instancias.** Es la decisión 151 aplicada al
   contenedor.
 - **Una ruta sin `inject` no descarga una línea de DI.** Ni módulo IoC, ni `@fudic/di`, ni bloque
   JSON.

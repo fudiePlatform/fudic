@@ -361,13 +361,13 @@ function emitProps(ctx: TemplateContext, el: ElementNode, bindings: readonly Ent
 }
 
 /**
- * `$spread<Omit<$C0, 'written'>>(item);` per `...item` (props-spec decisions 79–82).
+ * `$spread<Omit<$C0, 'written'>>(item);` per `...item` (props-spec decisions 146–149).
  *
  * The parameter is the child's contract minus what the tag writes explicitly, so TypeScript
- * reads decision 82 off `T` exactly as the emit applies it: a required key `item` lacks is
+ * reads decision 149 off `T` exactly as the emit applies it: a required key `item` lacks is
  * `TS2345` over `item`, an optional one it lacks is fine, and a key of the wrong type is an
  * error too. Extra keys of `item` pass, because a named object is not a fresh literal — which
- * is decision 80. The object is copied from the source, so hover, go-to-definition and
+ * is decision 147. The object is copied from the source, so hover, go-to-definition and
  * completion after `...` are TypeScript's own.
  *
  * A bare `...` has no object yet: an anchor stands in for it, so the caret right after the
@@ -621,7 +621,7 @@ function emitOpenInterpolation(ctx: TemplateContext, value: readonly AttributeVa
 
 /**
  * Whether the emit will cross this value as the READ of a reactive rather than as written
- * (decision 84), asked with the very function the emit asks it with.
+ * (decision 151), asked with the very function the emit asks it with.
  *
  * `crossing` is the one definition, in `@fudic/compiler`, and that is the invariant of BUG-23
  * §5: where the emit transforms a value before crossing it, the projection applies the same

@@ -55,7 +55,7 @@ export interface Prop {
    */
   readonly optional: boolean;
   /**
-   * What the child asks to be handed by REFERENCE (props-spec decision 86): `'signal'` when
+   * What the child asks to be handed by REFERENCE (props-spec decision 153): `'signal'` when
    * its type is `Signal<…>`, `'fn'` when it is a function signature, absent otherwise.
    *
    * It is read off `T` and nowhere else, for the same reason `optional` is: what decides the
@@ -81,7 +81,7 @@ export interface Prop {
  *
  * Both kinds go in the SAME list on purpose (SDD-31 §4.7). What that list answers is «can
  * this name move?», and the answer decides whether a `.prop` crosses a value or a reference
- * (decision 84) and whether the parent emits a subscription — and it is the same answer for
+ * (decision 151) and whether the parent emits a subscription — and it is the same answer for
  * the two. Only the server's inert stub cares which one it is, so only `kind` distinguishes
  * them.
  */
@@ -1817,7 +1817,7 @@ interface DeclaredMember {
 const SIGNAL_TYPE = 'Signal';
 
 /**
- * The channel a member's TYPE asks for (props-spec decision 86), or `undefined` for a plain
+ * The channel a member's TYPE asks for (props-spec decision 153), or `undefined` for a plain
  * value.
  *
  * Two shapes and no more. `Signal<T>` — by the name, which is the same commitment

@@ -1,6 +1,6 @@
 # Gramática v1 — Decisiones de diseño
 
-Compendio de las decisiones tomadas durante la definición de la sintaxis Razor adaptada a JS/TS para el compilador. Sirve como referencia de implementación del parser. Numeración 1-62 (v1) + 63-66 (`@code`; 63-65 **retiradas**, ver sección 8) + 75-80 + 81-90 (layouts, sección 12).
+Compendio de las decisiones tomadas durante la definición de la sintaxis Razor adaptada a JS/TS para el compilador. Sirve como referencia de implementación del parser. Numeración 1-62 (v1) + 63-66 (`@code`; 63-65 **retiradas**, ver sección 8) + 75-80 + 81-90 (layouts, sección 12) y siguientes hasta 155; el índice del final es la lista completa. Las 67-74 y 142-153 son de props y viven en [props-spec.md](../sdd/props-spec.md).
 
 Convenciones de notación EBNF extendida usadas a lo largo del documento:
 
@@ -227,7 +227,9 @@ html_block
 
 ### Decisiones
 
-**18.** Escape HTML automático por defecto en toda interpolación. Primitiva explícita `@raw(expr)` para optar out, combinada con tipo marcador `TrustedHTML` (detección por compilador).
+**18.** Escape HTML automático por defecto en toda interpolación. Primitiva explícita `@raw(expr)` para optar out, combinada con tipo marcador `TrustedHTML` (detección por compilador). **Precisada por la 154.**
+
+**154.** **`@raw` es el único contenido de su elemento, y solo pinta HTML marcado** (SDD-54). `<div class="post">@raw(html)</div>`: el elemento es dueño de todo su contenido —texto en blanco y comentarios Razor alrededor se descartan—, la hidratación lo adopta sin entrar en él y una actualización reescribe ese contenido y nada más. Junto a otro contenido, directamente en la raíz de la sombra o en el cuerpo de un constructo es `FUD0990`. La marca va en el **valor**, como `trustedUrl`: `trustedHtml(s)`, de `@fudic/dom`, devuelve un `TrustedHTML`; `htmlOf` escribe el HTML de un valor marcado y escapa como texto cualquier otro, y es la misma función en servidor (`SsrDom.setHtml`, verbatim) y navegador (`innerHTML`). La detección por compilador es TypeScript: la proyección pide un `TrustedHTML` y un `string` es `TS2345`, en el editor y en el build. *Por qué no marcadores de comentario para mezclarlo con texto: el navegador puede parsear el HTML en otro número de nodos que el servidor, y la variante de dos comentarios queda para cuando haga falta (Pedro, 2026-10-13).*
 
 **19.** Interpolación solo de primitivas escalares (`string`, `number`, `boolean`, `bigint`). `null` y `undefined` → string vacío. Array y objeto → error (compilación si detectable, runtime si no).
 
@@ -381,6 +383,8 @@ bus_name
 
 **31.** `ref` dentro de bucle (`@foreach`, `@for`, `@while`) → error de compilación. Ampliación futura posible con sintaxis dedicada si se necesita.
 
+**155.** **La variable de un `ref` la declara el autor, y el compilador solo le asigna el nodo** (SDD-54). `let campo: HTMLInputElement | null = null;` en `@client`, y `<input ref="@campo">` en la vista. La asignación va en el enganche (`$s`), donde convergen crear e hidratar, así que la variable tiene el nodo por cualquiera de los dos caminos; vuelve a `null` con los desmontajes. Dentro de un `@if`/`@switch` lo hace el bloque con su propio enganche, y un `ref` no es dependencia del bloque: un parámetro por valor se tragaría la escritura. El valor de un `ref` no es una lectura de la vista —el servidor no lo evalúa—, así que una variable de `@client` ahí no es `FUD0907`.
+
 **108.** **`control` es un atributo reservado, con valor de expresión `@`.** Es de la familia
 de `ref` (decisión 30), no de `class:`/`bus:` (22, 28.a): esos son **prefijos** porque llevan
 un nombre detrás del `:`, y aquí no hay nada que nombrar — el nodo del formulario lo dice la
@@ -437,8 +441,8 @@ puede producirlo hoy; el atributo solo dice de qué clase hereda lo que se emite
 
 **112.** **Sobre un tag de componente, `control` cruza la referencia del nodo como prop.** El
 hijo recibe el `Control<T>` y lo enlaza a su `<input>` interno con las mismas reglas de la 109.
-Convive con la **decisión 84** —ninguna signal cruza el shadow boundary— y no la deroga: lo que
-84 prohíbe es que el emit construya un grafo reactivo **implícito** entre padre e hijo, y aquí
+Convive con la **decisión 151** —ninguna signal cruza el shadow boundary— y no la deroga: lo que
+151 prohíbe es que el emit construya un grafo reactivo **implícito** entre padre e hijo, y aquí
 lo que cruza no es estado de render del padre sino el **modelo**, nombrado explícitamente por el
 autor en el punto de uso; el hijo se suscribe por su cuenta y no se emite `u` para ese prop.
 
@@ -604,7 +608,7 @@ está enmascarada bajo el Service Worker, así que cada navegación vuelve a cre
 con él el contenedor.
 
 **127.** **Lo que cruza el cable son valores publicados bajo `token()`, nunca instancias de
-servicio.** Es la decisión 84 aplicada al contenedor. Un `inject` en zona neutra corre en los dos
+servicio.** Es la decisión 151 aplicada al contenedor. Un `inject` en zona neutra corre en los dos
 lados y construye **dos** instancias; lo que las hace coincidir es la semilla —`fud-di`— de la
 que las dos nacen. Solo cruza lo que se publica explícitamente: un valor sembrado en el servidor
 y no publicado se queda ahí, y eso es lo que hace seguro inyectar desde `@server`.
@@ -1419,7 +1423,7 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 15 | Control flujo | Expresiones arbitrarias en `case` |
 | 16 | Control flujo | `@{ ... }` solo JS, sin HTML anidado |
 | 17 | Control flujo | Scope léxico para variables en `@{ ... }` |
-| 18 | Interpolación | Escape HTML automático + `@raw` + `TrustedHTML` |
+| 18 | Interpolación | Escape HTML automático + `@raw` + `TrustedHTML`. **Precisada por la 154** |
 | 19 | Interpolación | Solo primitivas escalares |
 | 20 | Interpolación | Atributos como concatenación uniforme |
 | 21 | Interpolación | Atributos booleanos: falsy omite, truthy sin valor |
@@ -1435,7 +1439,7 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 28.c | Interpolación | (Semántica, SDD-12) Resolución a literal + matching por valor (`bus:`+`emit`) |
 | 28.d | Interpolación | `@evento` (host) vs `bus:evento` (document), no inferido |
 | 29 | Interpolación | (Consecuencia) `@` distingue por posición; `bus:` activa bus — **precisada por la 100**: la cadena es la misma en todas partes, y lo que la posición decide es dónde un `(` adyacente es una llamada y dónde es prosa |
-| 30 | Interpolación | `ref` solo identificador simple |
+| 30 | Interpolación | `ref` solo identificador simple. **Precisada por la 155** |
 | 31 | Interpolación | `ref` en bucle → error |
 | 32 | `@code` | `@server`/`@client` sintaxis Razor genuina |
 | 33.a | `@code` | No anidación entre regiones |
@@ -1524,7 +1528,7 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 109 | Interpolación | **El elemento decide** qué se enlaza: `<form>`, elemento que porta valor, tag de componente, cualquier otro (grupo). `type` sin valor de usuario o `file` → `FUD0592`; `type` **dinámico** enlaza con `bindByType` (BUG-25) |
 | 110 | Interpolación | Un nodo, un elemento por componente (`FUD0591`); la única excepción es un grupo de `<input type="radio">` |
 | 111 | Interpolación | `formassociated` en el `<template shadowrootmode>` raíz marca un control-componente; fuera de ahí, `FUD0593`. **Enmendada por la 132** (el puente); `formassociated` es una propuesta de fudic, no del estándar |
-| 112 | Interpolación | Sobre un tag de componente, `control` **cruza la referencia** del nodo como prop; la 84 queda intacta y no se emite `u` |
+| 112 | Interpolación | Sobre un tag de componente, `control` **cruza la referencia** del nodo como prop; la 151 queda intacta y no se emite `u` |
 | 113 | Interpolación | El hueco del error lo escribe el **emit** (id estable + `aria-describedby` siempre); el runtime solo pone texto. **Enmendada por la 130** y **por la 131** (el resumen es una lista) |
 | 114 | Interpolación | `control` dentro de un bucle → error (`FUD0594`), hermana de la 31 |
 | 115 | Interpolación | Un `control` necesita un `<form control>` por encima (`FUD0595`); exento el control-componente, cuyo nodo se comprueba en el fichero del padre (BUG-25) |
@@ -1539,7 +1543,7 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 124 | `@code` | La jerarquía de contenedores es **código emitido** y un mapa publicado (`fud-ioc`), nunca derivada del DOM: el ancestro dueño puede ser N1 y la cascada sube por tag |
 | 125 | `@code` | El dueño es el **primer contenedor de la cadena con registro** y la raíz el último eslabón; la factoría corre en el dueño, y vive en el módulo IoC de la ruta, no en su chunk |
 | 126 | `@code` | **El contenedor raíz es la ruta** —una petición, una página— y muere con ella. No hay nivel «aplicación» |
-| 127 | `@code` | Lo que cruza el cable son **valores publicados** bajo `token()` (`fud-di`), nunca instancias. Es la 84 aplicada al contenedor |
+| 127 | `@code` | Lo que cruza el cable son **valores publicados** bajo `token()` (`fud-di`), nunca instancias. Es la 151 aplicada al contenedor |
 | 128 | `@code` | `load(ctx)` resuelve por `ctx.inject(…)` (`FUD0683`); el contenedor ambiente vive solo dentro de una factoría, y el `@code` de un componente lo reescribe el compilador |
 | 129 | HTML | Un `<script>` de **código** no lleva cuerpo (`FUD0161`) y uno de **datos** sí, verbatim: lista cerrada `application/ld+json` + `importmap`. Precisa la 43, cuyo cuerpo el emit tiraba en silencio |
 | 130 | Interpolación | `error="@nodo"` marca el elemento que dice el error de un nodo, donde el autor quiera; el compilador añade `id`, `aria-describedby` y, en un resumen de `<form>`, `aria-live`. Sin marcador no se emite nada. Mismo bloque que su control (`FUD0596`–`FUD0599`, BUG-41). **Enmendada por la 131** |
@@ -1554,3 +1558,6 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 139 | HTML | Los atributos `on*` nativos son error, estáticos o dinámicos (`FUD0909`): la CSP no los ejecuta (SDD-51) |
 | 140 | Interpolación | Un atributo URL sin origen fijo se escribe con `setUrl`, el mismo guardia en servidor y navegador; `trustedUrl()` marca la excepción en el valor (SDD-51) |
 | 141 | Interpolación | Lo que la revisión añadió: `FUD0910`–`FUD0919`, los manejadores leen nombres de la vista, y el cliente evalúa cada valor en su sitio (SDD-51 §3.8) |
+| 142–153 | Props | Viven en [props-spec.md](../sdd/props-spec.md) (constantes, nivel, spread `...item`, callback, cruce). Eran 75–86 allí y chocaban con las 75–86 de aquí; renumeradas en SDD-54. La 152 y `bind:` están **derogados** |
+| 154 | Interpolación | `@raw` es el único contenido de su elemento (`FUD0990`) y solo pinta un valor `trustedHtml()`; lo demás se escapa. Precisa la 18 (SDD-54) |
+| 155 | Interpolación | La variable de un `ref` la declara el autor en `@client`; el compilador le asigna el nodo al crear o hidratar y la anula al desmontar. Precisa la 30 (SDD-54) |

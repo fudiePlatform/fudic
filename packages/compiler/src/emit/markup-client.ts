@@ -249,7 +249,7 @@ export interface ClientScope {
   childProps(tag: string): readonly Prop[] | undefined;
   /**
    * What a child declares about one of its props — the other half of `childProps`, and the
-   * one that decides the FORM of the crossing (props-spec decision 86). Two questions about
+   * one that decides the FORM of the crossing (props-spec decision 153). Two questions about
    * the same child because they are asked at different moments: the order when the tuple is
    * composed, the channel when each value in it is written.
    */
@@ -309,7 +309,7 @@ interface Slot {
    */
   readonly row?: boolean;
   /**
-   * Whether the value crosses by REFERENCE (props-spec decision 86): the child asked for the
+   * Whether the value crosses by REFERENCE (props-spec decision 153): the child asked for the
    * object, so what is written into the slot is the object itself.
    *
    * It is handed over ONCE and never again, and that is not an omission — it is the whole
@@ -1287,13 +1287,13 @@ export class ClientMarkupEmitter {
    * The values a child host receives, written into `$s()` — the point create and hydrate
    * converge on, so the child is served whichever way this instance came alive.
    *
-   * The property of a signal is the PARENT's: decision 84 lets only a value cross the
+   * The property of a signal is the PARENT's: decision 151 lets only a value cross the
    * shadow boundary, and SDD-17 makes it structural, because the props of a hydrated
    * instance travel serialized in `fud-state` and a signal is a function with a live `Set`
    * inside. A child therefore cannot subscribe to anything; the owner of the value is the
    * one who writes it again, once at hookup and once per notification.
    *
-   * A host with nothing that can move among its values emits NOTHING (decision 75): a
+   * A host with nothing that can move among its values emits NOTHING (decision 142): a
    * constant crossed once, it is already in the markup the server painted, and `const` is
    * its exact semantics — a channel for it would be scaffolding around a value that cannot
    * move.
@@ -1362,7 +1362,7 @@ export class ClientMarkupEmitter {
     for (const source of new Set(bound.flatMap((s) => (s.signal !== undefined ? [s.signal] : [])))) {
       // The update is SPARSE: one subscription per signal, and each writes ONLY the slots
       // that signal feeds. No `peek()` of the others, and a constant prop — `const` in the
-      // sense decision 75 means — never travels again after the handover.
+      // sense decision 142 means — never travels again after the handover.
       //
       // Two statements and not an expression, and that is forced: there is no sparse array
       // literal. `[, , , $v]` is DENSE in its first three holes, each holding `undefined`,
@@ -1391,7 +1391,7 @@ export class ClientMarkupEmitter {
   #slots(el: ElementNode): Map<string, Slot> {
     const out = new Map<string, Slot>();
     const declared = this.#scope.declared(el.name);
-    // `...item` (decisions 79–82): one slot per key of the child's `T` that no `.prop` writes,
+    // `...item` (decisions 146–149): one slot per key of the child's `T` that no `.prop` writes,
     // each a VALUE read off the object — never a bare name, so never a reference — and moving
     // exactly when the object does (81).
     const spread = spreadProps(this.#source, el, declared);
@@ -1406,7 +1406,7 @@ export class ClientMarkupEmitter {
       // (decision 112). It is the `ref` shape and not a new one, and that is the whole
       // argument of §4.6 in one line — what crosses is the model, named by the author at the
       // point of use, so the child subscribes to it on its own and no `u` is emitted for it.
-      // Decision 84 is untouched: the emit builds no implicit reactive graph here.
+      // Decision 151 is untouched: the emit builds no implicit reactive graph here.
       if (b.type === 'control') {
         out.set(CONTROL_PROP, { expr: this.#slice(b.value.expr), changes: false, ref: true });
         continue;

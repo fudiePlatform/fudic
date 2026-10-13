@@ -284,7 +284,7 @@ function induceFrom(
       changed = true;
       return;
     }
-    // A `...object` that reads something moving moves every prop it hands over (decision 81).
+    // A `...object` that reads something moving moves every prop it hands over (decision 148).
     if (spreadReadsMoving(el, code.template.ast, moving)) {
       hydratable.add(child.tag);
       changed = true;

@@ -203,7 +203,7 @@ export interface HostContext {
 
 /**
  * What the CHILD of this host declares about the prop a value is landing on — and, as `all`,
- * every prop it declares, in order: what a spread expands against (props-spec decision 80).
+ * every prop it declares, in order: what a spread expands against (props-spec decision 147).
  */
 export type PropTarget = ((name: string) => ComponentDeclaredProps | undefined) & {
   readonly all: readonly ComponentDeclaredProps[];
@@ -218,7 +218,7 @@ export function propTarget(declared: readonly ComponentDeclaredProps[]): PropTar
 }
 
 /**
- * The props a `...item` hands the child, by name, each read off `item` (decisions 79–82).
+ * The props a `...item` hands the child, by name, each read off `item` (decisions 146–149).
  *
  * Against the CHILD's keys, never `item`'s: what `item` carries beyond them does not cross
  * (80). A key the host also writes as a `.prop` is the host's, wherever the spread sits — the
@@ -289,7 +289,7 @@ export function readsMoving(
 /**
  * The same question for the `...object`s of a host: every prop a spread hands over is read off
  * its object, so the props move exactly when the object reads something that does (decision
- * 81). The level rule and the client emit both ask it here, for the reason `readsMoving` gives.
+ * 148). The level rule and the client emit both ask it here, for the reason `readsMoving` gives.
  */
 export function spreadReadsMoving(
   el: ElementNode,
@@ -306,7 +306,7 @@ export function spreadReadsMoving(
 /**
  * The expression a value crosses the shadow boundary with.
  *
- * Decision 84: a VALUE crosses, never the signal object. So a value whose text is exactly
+ * Decision 151: a VALUE crosses, never the signal object. So a value whose text is exactly
  * the name of a `signal(...)` this component declares crosses as `name()` — otherwise
  * the server would paint `[object Object]` and the client would hand the child a live
  * object it cannot serialize (SDD-17). Anything else crosses as written.
@@ -319,7 +319,7 @@ export function spreadReadsMoving(
  * object while the build crossed its value (BUG-23 §2.8). Here it is only spelled out as an
  * expression.
  *
- * With a `target` the answer may be `'ref'` (props-spec decision 86), and then what crosses is
+ * With a `target` the answer may be `'ref'` (props-spec decision 153), and then what crosses is
  * the BARE name: the object itself, because that is what the child declared. Without one it is
  * always `'value'` — which is what an ATTRIBUTE always passes, whatever the child declares,
  * since level 1 is HTML and HTML carries strings (BUG-24 §4.7).
@@ -509,7 +509,7 @@ export function writeElementAttrs(
       // Through `crossingExpr` like every other value, and that is BUG-32 T4: composing this
       // from the raw source text made a `class:red="@rojo"` test the signal OBJECT, which is
       // always truthy — the class went on at the first render and `rojo.set(false)` never took
-      // it off. Decision 84 applies here as much as to an attribute; the fallback for anything
+      // it off. Decision 151 applies here as much as to an attribute; the fallback for anything
       // that is not a bare reactive is the very text this used to slice.
       const condition = crossingExpr(source, attr, [b.value], host.signals);
       classExprs.push(`(${condition}) && ${JSON.stringify(b.className)}`);

@@ -184,12 +184,12 @@ export interface MarkupOptions {
    * that omits it loses the optimisation, never a node.
    */
   readonly boxes?: Boxes;
-  /** The names this component declares with `signal(...)`: decision 84, see `crossingExpr`. */
+  /** The names this component declares with `signal(...)`: decision 151, see `crossingExpr`. */
   readonly signals?: ReadonlySet<string>;
   /**
    * What a CHILD tag declares about its props, or `undefined` when it cannot be read.
    *
-   * It is what decides the form of the crossing (props-spec decision 86), so it is a fact
+   * It is what decides the form of the crossing (props-spec decision 153), so it is a fact
    * about another file and comes in from whoever holds the graph. Absent — a page compiled
    * with no catalogue, a test that only asks about markup — and every prop crosses by value,
    * which is exactly what BUG-23 §4.4 asks of anything that cannot see the child.

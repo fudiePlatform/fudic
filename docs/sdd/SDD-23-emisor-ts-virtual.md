@@ -305,7 +305,7 @@ antes del cuerpo.
 | `ref="@v"` | `v = $ref<HTMLDivElement>();` — **asignación, no declaración**, con el elemento concreto del tag |
 | `@name` / `@(expr)` en texto | `$text(expr);` ⇒ exige `$Scalar` (decisión 19) |
 | `@data.` — punto colgante (decisión 102) | el punto se **copia** con el perfil de solo-completado: `$text(data.);` es sintaxis incompleta a propósito, TypeScript se recupera y contesta los miembros, y el «Identifier expected» cae en un tramo sin `verification` |
-| `.p="@titulo"` con `titulo` reactivo | `titulo()` — la **lectura**, que es lo que el emit cruza (decisión 84). El `()` es andamiaje sin mapping: lo proyectado con el perfil de usuario sigue siendo `titulo`, así que definición, renombrado y hover no se mueven |
+| `.p="@titulo"` con `titulo` reactivo | `titulo()` — la **lectura**, que es lo que el emit cruza (decisión 151). El `()` es andamiaje sin mapping: lo proyectado con el perfil de usuario sigue siendo `titulo`, así que definición, renombrado y hover no se mueven |
 | `slot="x"` en **cualquier** elemento | `$intoSlot<$S_padre>('x');` — contra el `$Slots` del padre, y `never` cuando no hay padre componente (BUG-23 §2.6) |
 | `@if (c) { A } else { B }` | `if (c) { …A… } else { …B… }` |
 | `@foreach (const x of xs) { … }` | `for (const x of xs) { … }` |

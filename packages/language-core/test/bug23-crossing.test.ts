@@ -1,7 +1,7 @@
 /**
  * BUG-23 §2.8 — the editor judges the object, the build crosses the value.
  *
- * Decision 84 says a value whose text is the bare name of a `signal(...)` crosses the shadow
+ * Decision 151 says a value whose text is the bare name of a `signal(...)` crosses the shadow
  * boundary as `name()`. The emit has applied that rule since SDD-17; the projection has never
  * known about it, so `.tone="@titulo"` is checked as `Signal<Tone>` against `Tone` — a type
  * error about an expression the build never emits.

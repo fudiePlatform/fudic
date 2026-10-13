@@ -187,7 +187,7 @@ describe('§6.7 — the switch is spent at compile time', () => {
   it('no `u` pass is emitted for it: the child is beside the parent, not downstream', () => {
     const { client } = emit('<app-input control="@f.body"></app-input>');
     // The handover is in `$s`, which both `c` and `h` run. The update pass has no slot for
-    // it — writing into the node does not repaint the parent (decision 84 intact).
+    // it — writing into the node does not repaint the parent (decision 151 intact).
     const update = client.slice(client.indexOf('u: ('), client.indexOf('r: ('));
     expect(update).not.toContain('f.body');
   });

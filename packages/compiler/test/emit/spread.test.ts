@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 /**
- * `...item` (props-spec §5, decisions 79–82) — what the emit makes of a spread.
+ * `...item` (props-spec §5, decisions 146–149) — what the emit makes of a spread.
  *
  * `spreadProps` is the one rule both sides expand with, so it is pinned first, on authentic
  * ASTs: the child's keys filter, an explicit `.prop` wins its key, the later of two spreads

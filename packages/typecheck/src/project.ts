@@ -60,7 +60,7 @@ export function projectParsed(path: string, parsed: ParsedSource, index: LinkInd
     document: parsed.document,
     registry,
     // The whole batch, not just the neutral chunks: the projection needs the `@client`
-    // regions for the reactive names (decision 84) and the attribute values for the shape
+    // regions for the reactive names (decision 151) and the attribute values for the shape
     // of a handler (decisions 96–98). Handing them over is what keeps Oxc at one
     // invocation per file.
     js: {

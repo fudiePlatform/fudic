@@ -1,6 +1,6 @@
 @code {
   // Lo que la tarjeta declara es lo ÚNICO que cruza con `...producto`: el `stock` y el `sku`
-  // que trae cada producto se quedan en el padre (decisión 80).
+  // que trae cada producto se quedan en el padre (decisión 147).
   const { id, nombre, precio = 0, etiqueta = "normal" } = props<{
     id: string;
     nombre: string;

@@ -1,10 +1,10 @@
 /**
  * `...item` in the editor (props-spec §5): projected as `$spread<Omit<$C, 'written'>>(item)`.
  *
- * The emit applies decisions 79–82 at runtime; this is where TypeScript reads the same rules
+ * The emit applies decisions 146–149 at runtime; this is where TypeScript reads the same rules
  * off the child's `T`, measured with the real checker over the projected corpus. A required key
  * the object lacks is `TS2345` ON the object; an optional one it lacks is fine; an extra one
- * passes (decision 80); a key written explicitly on the tag is not asked of the object. And a
+ * passes (decision 147); a key written explicitly on the tag is not asked of the object. And a
  * bare `...` is an anchor that offers the names in scope.
  */
 

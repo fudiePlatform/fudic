@@ -1,5 +1,5 @@
 /**
- * HOW a value crosses the shadow boundary (grammar decision 84).
+ * HOW a value crosses the shadow boundary (props-spec decision 151).
  *
  * The rule used to live inside `emit/attrs.ts` as `reactiveName`, where nobody but the emit
  * could reach it — and the consequence was BUG-23 §2.8: the compiler crossed `titulo()`, the
@@ -47,21 +47,21 @@ export interface ComponentDeclaredProps {
   readonly name: string;
   readonly required: boolean;
   /**
-   * What the child asks to be handed by REFERENCE (props-spec decision 86): `'signal'` for a
+   * What the child asks to be handed by REFERENCE (props-spec decision 153): `'signal'` for a
    * `Signal<T>`, `'fn'` for a function signature, absent for a plain value.
    *
    * Absent is also what a child nobody could READ declares, and the two are deliberately the
    * same answer: with no `T` to read there is nothing to prove, and everything keeps crossing
-   * by value exactly as decision 84 left it.
+   * by value exactly as decision 151 left it.
    */
   readonly channel?: 'signal' | 'fn';
 }
 
 /**
  * HOW a value crosses the shadow boundary. Two forms, and what decides between them is what
- * the CHILD declares (props-spec decision 86):
+ * the CHILD declares (props-spec decision 153):
  *
- *  - `'value'` — the READ, `titulo()`. Decision 84, and still the default: a child that
+ *  - `'value'` — the READ, `titulo()`. Decision 151, and still the default: a child that
  *    declares `titulo?: string` gets the string, because that is what it asked for.
  *  - `'ref'`   — the shared cell, with which parent and child hold the SAME object. A child
  *    that declares `Signal<T>` can derive from it, forward it to a grandchild and write it;

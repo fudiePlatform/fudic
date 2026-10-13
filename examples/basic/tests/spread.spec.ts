@@ -2,7 +2,7 @@
  * `...item` in a browser — `/spread`, in the real build.
  *
  * `<spread-list>` hands each product to a `<spread-card ...producto .etiqueta="oferta">`. What
- * has to be visible is the whole of decisions 79–82 at once: every card shows the keys the
+ * has to be visible is the whole of decisions 146–149 at once: every card shows the keys the
  * CARD declares; what the product carries beyond them (`sku`, `stock`) never reaches the page;
  * the product with no `precio` shows the card's default; the explicit `.etiqueta` wins. And a
  * click that changes every product's data — same keys, new objects — repaints every card,
