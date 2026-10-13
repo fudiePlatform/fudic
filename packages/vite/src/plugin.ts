@@ -49,9 +49,10 @@ import {
   routeNameLookup,
   routeUsesDi,
 } from './client.js';
-import { INLINE_QUERY, IOC_SUFFIX, RUNTIME_MARKER } from '@fudic/compiler';
+import { INLINE_QUERY, IOC_SUFFIX, RUNTIME_MARKER, type ResolveIo } from '@fudic/compiler';
 import { RUNTIME_CACHE_PREFIX, RUNTIME_DIR, runtimeMarkerUrl } from '@fudic/conventions';
 import { nodeIo, nodeLinkCheckIo, nodeRuntimeFs } from './io.js';
+import { memoizedGraphs } from './graph-cache.js';
 import { runtimePieces } from './runtime-pieces.js';
 import {
   coordinatorFor,
@@ -246,7 +247,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let manifestFileName = 'fudic-routes.json';
   let bundleStart = 0;
   let writeStart = 0;
-  const io = nodeIo();
+  /**
+   * The io every pass reads `.fud` through. A build swaps it in `buildStart` for one that
+   * remembers each document graph (`memoizedGraphs`), fresh per build; dev keeps this plain
+   * one, because there the files change between two requests.
+   */
+  let io: ResolveIo = nodeIo();
   const linkCheckIo = nodeLinkCheckIo();
   const runtimeFs = nodeRuntimeFs();
   /**
@@ -777,6 +783,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
 
     async buildStart() {
       let t = performance.now();
+      // A new memory per build: a watch rebuild must not answer with the previous graphs.
+      if (!isDev) io = memoizedGraphs(nodeIo());
       // What the editor marks, before anything is compiled (SDD-35 §4.4). The whole project,
       // and not only what a route reaches: a component nobody links yet is red in the editor
       // too. Every problem is printed, and the build fails ONCE with the count — the author
