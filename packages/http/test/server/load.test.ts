@@ -181,7 +181,17 @@ describe('the context helpers', () => {
 describe('the ./server entry', () => {
   it('exports what the plugin and the adapters use', () => {
     expect(Object.keys(server).sort()).toEqual(
-      ['PROBLEM_TYPE', 'dispatch', 'pageContext', 'parseCookies', 'problemOf', 'problemResponse', 'runLoad', 'withRequest'].sort(),
+      [
+        'PROBLEM_TYPE',
+        'dispatch',
+        'functionsHandler',
+        'pageContext',
+        'parseCookies',
+        'problemOf',
+        'problemResponse',
+        'runLoad',
+        'withRequest',
+      ].sort(),
     );
   });
 });

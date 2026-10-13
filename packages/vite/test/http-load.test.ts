@@ -55,6 +55,25 @@ describe('analyzePage: what SDD-56 reads from the @server', () => {
     expect('fluentLoad' in a).toBe(false);
   });
 
+  it('FUD1010: _error.fud declaring load, paths or a server function', () => {
+    const src = page(
+      "import { get } from '@fudic/http';\n" +
+        'export async function load() { return {}; }\n' +
+        'export function paths() { return []; }\n' +
+        'export const save = get().handle(() => 1);',
+    );
+    const found = analyzePage(src, '/app/src/routes/_error.fud').diagnostics.filter((d) => d.code === 'FUD1010');
+    expect(found.map((d) => src.slice(d.span.start, d.span.end)).sort()).toEqual(['load', 'paths', 'save']);
+    // Windows separators too.
+    expect(analyzePage(src, 'C:\\app\\src\\routes\\_error.fud').diagnostics.some((d) => d.code === 'FUD1010')).toBe(true);
+  });
+
+  it('the same @server in any other file is no FUD1010; an _error.fud without @server says nothing', () => {
+    const src = page('export async function load() { return {}; }');
+    expect(analyzePage(src, '/app/src/routes/not_error.fud').diagnostics).toEqual([]);
+    expect(analyzePage('<!DOCTYPE html>\n<html><head></head><body></body></html>', '/r/_error.fud').diagnostics).toEqual([]);
+  });
+
   it('http in a specifier list counts as hasHttp', () => {
     expect(analyzePage(page('const http = chain();\nexport { http };')).hasHttp).toBe(true);
   });

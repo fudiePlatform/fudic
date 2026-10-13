@@ -18,6 +18,7 @@ import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { NONCE_TOKEN, type RenderContext } from '@fudic/transport';
 import { edgeContext } from './serve.js';
+import { classifyError } from './page-errors.js';
 import { serializeMap } from './nested.js';
 
 /** A minimal structural view of a Rollup output bundle (chunks carry code, assets a source). */
@@ -103,7 +104,28 @@ export async function renderChunkToHtml(
   url = pattern,
 ): Promise<string> {
   const mod = await importRenderModule(chunkPath);
-  return drain(mod.render(prerenderContext(pattern, url)));
+  return renderUrl(mod, pattern, url);
+}
+
+/**
+ * One URL rendered — and what it threw, named by that URL and its status (SDD-56 §4.14). A
+ * static site has no way to serve a 404 or a `Location`, so a `load` that answers one for a
+ * URL the build was asked to write is a build that fails, not a page that pretends.
+ */
+async function renderUrl(mod: RenderModule, pattern: string, url: string): Promise<string> {
+  try {
+    return await drain(mod.render(prerenderContext(pattern, url)));
+  } catch (err) {
+    const failure = classifyError(err, true);
+    throw new Error(
+      failure.kind === 'redirect'
+        ? `${url} answered ${failure.status} → ${failure.location}`
+        : failure.unexpected
+          ? `${url}: ${(err as Error).message}`
+          : `${url} answered ${failure.problem.status} ${failure.problem.title}`,
+      { cause: err },
+    );
+  }
 }
 
 /** The prerender context: `origin: 'ssg'` and the nonce placeholder. */
@@ -155,7 +177,7 @@ export async function prerenderEnumerated(chunkPath: string, pattern: string): P
     }
     files.push({
       path: htmlPathFor(built.url),
-      html: await drain(mod.render(prerenderContext(pattern, built.url))),
+      html: await renderUrl(mod, pattern, built.url),
     });
   }
   return { files, incomplete };

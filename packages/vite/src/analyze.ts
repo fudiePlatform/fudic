@@ -12,6 +12,7 @@
 
 import {
   JsBatch,
+  readServerFns,
   type CodeBlockNode,
   type Diagnostic,
   type OxcNode,
@@ -104,6 +105,19 @@ export function analyzePage(source: string, file = ''): PageAnalysis {
   for (const statement of server.statements) {
     collectExports(statement, names);
   }
+  // `_error.fud` is painted with the error it is handed: it declares no data of its own and no
+  // functions to call (SDD-56 §4.8, `FUD1010`). The compiler's reading of the chain answers it.
+  const errorPage =
+    /(^|[\\/])_error\.fud$/u.test(file) && server.statements.length > 0
+      ? readServerFns({
+          server: server.statements,
+          all: server.statements,
+          map: server.map,
+          browserNames: new Set(),
+          component: false,
+          errorPage: true,
+        }).diagnostics.filter((d) => d.code === 'FUD1010')
+      : [];
   return {
     role,
     isPage: true,
@@ -114,7 +128,7 @@ export function analyzePage(source: string, file = ''): PageAnalysis {
     ...(server.statements.some((s) => exportsConst(s, 'load')) ? { fluentLoad: true as const } : {}),
     strategy: strategyFrom(server.statements, file),
     ...(layoutHref ? { layoutHref } : {}),
-    diagnostics: [...parsed.diagnostics, ...server.diagnostics],
+    diagnostics: [...parsed.diagnostics, ...server.diagnostics, ...errorPage],
   };
 }
 
@@ -136,10 +150,15 @@ function roleOf(doc: StructuredDocument): DocumentRole {
 function serverStatements(
   source: string,
   code: CodeBlockNode | undefined,
-): { readonly statements: OxcNode[]; readonly diagnostics: readonly Diagnostic[] } {
+): {
+  readonly statements: OxcNode[];
+  readonly diagnostics: readonly Diagnostic[];
+  /** Buffer offset → source offset. */
+  readonly map: (offset: number) => number;
+} {
   const regions = code?.parts.filter((p): p is ServerRegion => p.type === 'server-region') ?? [];
   if (regions.length === 0) {
-    return { statements: [], diagnostics: [] };
+    return { statements: [], diagnostics: [], map: (offset) => offset };
   }
   const batch = new JsBatch(source);
   const ids = regions.map((r) => batch.add('module-statements', r.js));
@@ -149,7 +168,7 @@ function serverStatements(
     const root = result.value.ast(id);
     statements.push(...(Array.isArray(root) ? (root as OxcNode[]) : [root as OxcNode]));
   }
-  return { statements, diagnostics: result.diagnostics };
+  return { statements, diagnostics: result.diagnostics, map: result.value.mapOffset };
 }
 
 /** Whether `stmt` is `export const <name> = …` (or `let`/`var`). */

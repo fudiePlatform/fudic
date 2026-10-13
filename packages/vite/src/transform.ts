@@ -46,8 +46,10 @@ import {
   type ResolvedLayout,
   type EmitOutput,
   type ProjectStyle,
+  type ServerFnOptions,
   type SourceMapV3,
 } from '@fudic/compiler';
+import { FN_PREFIX } from '@fudic/conventions';
 import { FUD0744 } from '@fudic/diagnostics';
 
 /** The extension the emitted imports point at, so Vite resolves the `.fud` graph. */
@@ -398,11 +400,20 @@ export function transformFud(
  * `null` for a LAYOUT, whose markup is static in this version (SDD-39 §7), and for a route
  * with no client half — which is the base case and the reason a level-1 page costs nothing.
  */
+/** What the client chunk needs to know to write its server functions' stubs (SDD-56 §4.5). */
+export interface ClientFns {
+  /** The route's pattern, when the file is a route. */
+  readonly pattern?: string;
+  /** Import specifier of `src/http.ts`, when the project has one. */
+  readonly httpFile?: string;
+}
+
 export function transformFudClient(
   id: string,
   io: ResolveIo,
   styles: ProjectStyles = NO_STYLES,
   assets?: LinkedAssets,
+  fns: ClientFns = {},
 ): TransformResult | null {
   if (!id.endsWith('.fud')) {
     return null;
@@ -410,8 +421,15 @@ export function transformFudClient(
   const resolved = resolveDocument(id, io);
   const graph = resolved.value;
   const entry = graph.entry;
+  // Where the server functions answer (SDD-56 §4.1): by the route's pattern, with the page's
+  // params inherited, or by the component's tag.
+  const global = fns.httpFile === undefined ? {} : { httpFile: fns.httpFile };
   if (entry.type === 'route-document' || entry.type === 'page-document') {
-    return routeClientResult(id, graph, styles, resolved.diagnostics, assets);
+    const serverFns =
+      fns.pattern === undefined
+        ? undefined
+        : { prefix: `${FN_PREFIX}/r${fns.pattern === '/' ? '' : fns.pattern}`, page: fns.pattern, ...global };
+    return routeClientResult(id, graph, styles, resolved.diagnostics, assets, serverFns);
   }
   if (entry.type !== 'component-document') {
     return null;
@@ -419,11 +437,10 @@ export function transformFudClient(
   // `entryComponent` and not a literal of the same fields: `ExtractedCode` is memoized on
   // the object, so a second one would be a second Oxc invocation for one file.
   const comp = entryComponent(graph)!;
-  const out = emitComponentClientModuleMapped(
-    graph,
-    comp,
-    emitOptionsFor(id, graph, undefined, styles, assets),
-  );
+  const out = emitComponentClientModuleMapped(graph, comp, {
+    ...emitOptionsFor(id, graph, undefined, styles, assets),
+    serverFns: { prefix: `${FN_PREFIX}/c/${comp.tag}`, ...global },
+  });
   return {
     code: out.code,
     map: buildMap(id, redactServerRegions(graph.entryOrigin.source, graph.entryOrigin.document.code), out, graph.entryMap),
@@ -443,11 +460,12 @@ function routeClientResult(
   styles: ProjectStyles,
   graphDiagnostics: readonly Diagnostic[],
   assets: LinkedAssets | undefined,
+  serverFns: ServerFnOptions | undefined,
 ): TransformResult | null {
-  const out = emitRouteClientModuleMapped(
-    graph,
-    emitOptionsFor(id, graph, undefined, styles, assets),
-  );
+  const out = emitRouteClientModuleMapped(graph, {
+    ...emitOptionsFor(id, graph, undefined, styles, assets),
+    ...(serverFns !== undefined ? { serverFns } : {}),
+  });
   if (out === null) {
     return null;
   }

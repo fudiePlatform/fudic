@@ -5,7 +5,7 @@
 > `@fudic/di` · `@fudic/ssr` · `@fudic/forms` · `@fudic/conventions` · `@fudic/language-core` ·
 > `@fudic/diagnostics`
 > **Rama:** `sdd/http` (nace de `main`)
-> **Progreso:** 37 / 50 — `En curso`.
+> **Progreso:** 43 / 50 — `En curso`.
 >
 > *Al implementar:* el código lo escribe una sesión y los tests otra. Las fases 3, 4 y 5 van
 > en un solo commit, porque comparten ficheros (`dispatch.ts` lee el cuerpo de la fase 5,
@@ -122,12 +122,12 @@
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 34 | — | **Constantes.** `FN_PREFIX = '/_fudic/fn'`, `ERROR_PREFIX = '/_fudic/error'` y `DATA_PREFIX` en `@fudic/conventions`. Vite y transport dejan su copia de `DATA_PREFIX` | `conventions` · `vite` · `transport` | `src/index.ts` · `packages/vite/src/constants.ts` · `packages/transport/src/urls.ts` |
-| [ ] | 35 | 13, 34 | **Dev.** Un middleware para `/_fudic/fn/**` con cualquier método: resuelve ruta o componente, carga su `?server` con `ssrLoadModule` y llama a `dispatch`. El endpoint de datos pasa por `dispatch` con la cadena de `load` | `vite` | `src/plugin.ts` · `src/serve.ts` |
-| [ ] | 36 | — | **Borrar `.server(…)` en el build de cliente.** Por el mismo camino que `eraseServerValidators`: el argumento de `.server(` de un `middleware()` se sustituye y Rollup se lleva sus imports (§4.5) | `vite` | `src/server-validators.ts` · `src/plugin.ts` |
-| [ ] | 37 | 13 | **`_error.fud`.** Fuera de la tabla de rutas. `/_fudic/error/:status` lo pinta con su `data`. Un `load`/`layout` que lanza al navegar responde según la tabla de §4.8, con la página mínima si no hay `_error.fud`. En dev, lo que no es `HttpError` también va al overlay | `vite` | `src/discover.ts` · `src/routing.ts` · `src/plugin.ts` · `src/serve.ts` |
-| [ ] | 38 | 14 | **Prerender.** `load` con la cadena de servidor y el `ctx` sin petición de §4.14. Lo que lance para un path de `paths()` hace fallar el build con la URL y el status | `vite` | `src/prerender.ts` |
-| [ ] | 39 | 13, 29 | **`functions.mjs` y `preview`.** El build escribe en `.fudic/edge/` la tabla de §4.15, y `vite preview` sirve `/_fudic/fn/**` desde ella | `vite` | `src/edge.ts` · `src/plugin.ts` |
-| [ ] | 40 | 34–39 | **Tests del plugin.** Criterios 7, 8, 9, 27, 28, 29, 36, 37 y 38 | `vite` | `test/http-*.test.ts` |
+| [x] | 35 | 13, 34 | **Dev.** Un middleware para `/_fudic/fn/**` con cualquier método: resuelve ruta o componente, carga su `?server` con `ssrLoadModule` y llama a `dispatch`. El endpoint de datos pasa por `dispatch` con la cadena de `load` | `vite` | `src/plugin.ts` · `src/serve.ts` |
+| [x] | 36 | — | **Borrar `.server(…)` en el build de cliente.** Por el mismo camino que `eraseServerValidators`: el argumento de `.server(` de un `middleware()` se sustituye y Rollup se lleva sus imports (§4.5). *Al implementar:* se borra el argumento de todo `.server(x)` de un módulo que importa de `@fudic/http`, sea cual sea el receptor, y solo fuera del SSR (decisión de Pedro: la mitad `.server` nunca sale del servidor) | `vite` | `src/server-validators.ts` · `src/plugin.ts` |
+| [x] | 37 | 13 | **`_error.fud`.** Fuera de la tabla de rutas. `/_fudic/error/:status` lo pinta con su `data`. Un `load`/`layout` que lanza al navegar responde según la tabla de §4.8, con la página mínima si no hay `_error.fud`. En dev, lo que no es `HttpError` también va al overlay | `vite` | `src/discover.ts` · `src/routing.ts` · `src/plugin.ts` · `src/serve.ts` |
+| [x] | 38 | 14 | **Prerender.** `load` con la cadena de servidor y el `ctx` sin petición de §4.14. Lo que lance para un path de `paths()` hace fallar el build con la URL y el status | `vite` | `src/prerender.ts` |
+| [x] | 39 | 13, 29 | **`functions.mjs` y `preview`.** El build escribe en `.fudic/edge/` la tabla de §4.15, y `vite preview` sirve `/_fudic/fn/**` desde ella. *Al implementar:* el router de las tres (dev, `functions.mjs`, un adaptador) es uno, `functionsHandler` de `@fudic/http/server`. El pase edge va con `modulePreload: false`: el helper de precarga de Vite usa `document`, y en Node cada función daba 500 | `vite` | `src/edge.ts` · `src/plugin.ts` |
+| [x] | 40 | 34–39 | **Tests del plugin.** Criterios 7, 8, 9, 27, 28, 29, 36, 37 y 38 | `vite` | `test/http-*.test.ts` |
 
 ## Fase 8 — Service Worker (3)
 

@@ -188,6 +188,12 @@ export const CLIENT_NAME_PREFIX = 'h';
  */
 export const EDGE_DIR = '.fudic/edge';
 
+/** The server functions of the app, inside `EDGE_DIR` (SDD-56 §4.15). */
+export const FUNCTIONS_FILE = 'functions.mjs';
+
+/** The id of the module the edge pass builds `FUNCTIONS_FILE` from. */
+export const FUNCTIONS_ID = '\0fudic:functions';
+
 /**
  * Replaced in the emitted Service Worker with the real build id (§4.10).
  *
