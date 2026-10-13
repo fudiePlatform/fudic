@@ -1,6 +1,6 @@
 # SDD-55 — El resto de props y el spread de atributos en elementos nativos
 
-> **Estado:** `Hecho` — [tareas](./SDD-55-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-55-Task.md), 14 / 14. Pendiente del OK de Pedro en el navegador.
 > **Paquetes:** `@fudic/compiler` · `@fudic/dom` · `@fudic/ssr` · `@fudic/language-core` ·
 > `@fudic/diagnostics` · `examples/basic`
 > **Depende de:** 07 (bindings), 12 (semántica), 14 (`Dom<N>`), 15 (emit), 23 (proyección TS),

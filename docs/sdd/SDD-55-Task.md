@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/compiler` · `@fudic/dom` · `@fudic/ssr` · `@fudic/language-core` ·
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `worktree-pendientes-v1-props`
-> **Progreso:** 12 / 14
+> **Progreso:** 14 / 14 — `Hecho`. Falta el OK de Pedro en el navegador, que dará después.
 
 **El código se escribió en una sesión y los tests en otra**, fase a fase, y la especificación al
 final, por decisión de Pedro. A mitad de la fase 2 cambió la sesión de implementación, que se
@@ -29,10 +29,13 @@ quedaba sin contexto. Los tests de la fase 1 encontraron un defecto real: una cl
 - [x] 9. Emit: `writeSpreadAttrs`, `ValueSink.diff`, guarda con `$o` y siembra en `h`.
 - [x] 10. `FUD0992` limitado al host propio y su plantilla; editor `$spreadAttrs`.
 - [x] 11. `examples/basic`: `campo-texto` pasa a `<input ...resto>`.
-- [ ] 12. Tests (otra sesión): dom, ssr, emit, analizador, proyección y E2E de `/resto`.
+- [x] 12. Tests (otra sesión): dom, ssr, emit, analizador, proyección y E2E de `/resto`; `@fudic/dom`,
+  `@fudic/ssr` y `@fudic/language-core` al 100 %.
 
 ## Fase 3 — Documentación y cierre
 
 - [x] 13. Esta spec y su Task; decisiones 156 y 157 en props-spec; índice de la gramática;
   `INDEX.md` (tabla y registro); nota en SDD-54 sobre `FUD0992`.
-- [ ] 14. OK de Pedro en el navegador; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde.
+- [x] 14. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde. El test de `build-di` admite `attrs.js`
+  como módulo compartido, igual que `url.js` y `html.js`, y la foto de `fudic new` lleva `$spreadAttrs`.
+  **Cerrado sin el OK de Pedro en el navegador, por decisión suya: lo comprobará después.**

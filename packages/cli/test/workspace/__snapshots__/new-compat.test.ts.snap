@@ -231,6 +231,11 @@ declare function $required<T, K extends PropertyKey>(rest: $Missing<T, K>): void
  * what the tag writes itself. Required keys have to be there, extra ones may.
  */
 declare function $spread<T>(o: T): void;
+/**
+ * An attributes spread on a native element, \`<input ...resto>\`: any object. Only its scalar
+ * values become attributes, and that is the runtime's to filter, not a type to satisfy.
+ */
+declare function $spreadAttrs(o: object | null | undefined): void;
 declare function $on<K extends keyof HTMLElementEventMap>(
   type: K, h: (ev: HTMLElementEventMap[K]) => unknown): void;
 declare function $section<T extends string>(name: T): void;
