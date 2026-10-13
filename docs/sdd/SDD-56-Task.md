@@ -5,7 +5,7 @@
 > `@fudic/di` · `@fudic/ssr` · `@fudic/forms` · `@fudic/conventions` · `@fudic/language-core` ·
 > `@fudic/diagnostics`
 > **Rama:** `sdd/http` (nace de `main`)
-> **Progreso:** 0 / 50 — `Listo`.
+> **Progreso:** 2 / 50 — `En curso`.
 
 **El orden manda en cinco puntos.**
 
@@ -54,8 +54,8 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **El rango.** `FUD1000`–`FUD1019` reservado en la fila de SDD-56 del `INDEX.md`, y la nota de que `FUD0683` queda quemado | — | `docs/sdd/INDEX.md` |
-| [ ] | 2 | 1 | **Los códigos.** `FUD1000`–`FUD1010` (§5): `.ts` con su función tipada (severidad `error`, mensaje en inglés), `.md` con la forma de SDD-50 §4.4 citando `SDD-56`, y su línea en `index.ts`. `FUD0683.md` gana la nota de retirado. `@fudic/diagnostics` sigue al 100 % | `diagnostics` | `src/codes/FUD1000`–`1010.{ts,md}` · `src/codes/FUD0683.md` · `src/index.ts` |
+| [x] | 1 | — | **El rango.** `FUD1000`–`FUD1019` reservado en la fila de SDD-56 del `INDEX.md`, y la nota de que `FUD0683` queda quemado | — | `docs/sdd/INDEX.md` |
+| [x] | 2 | 1 | **Los códigos.** `FUD1000`–`FUD1010` (§5): `.ts` con su función tipada (severidad `error`, mensaje en inglés), `.md` con la forma de SDD-50 §4.4 citando `SDD-56`, y su línea en `index.ts`. `@fudic/diagnostics` sigue al 100 %. *Al implementar:* la nota de retirado de `FUD0683` pasa a la tarea 30, porque un código retirado no tiene `.ts` (lo exige el barrido del catálogo) y el compilador lo emite hasta esa tarea | `diagnostics` | `src/codes/FUD1000`–`1010.{ts,md}` · `src/codes/FUD0683.md` · `src/index.ts` |
 
 ## Fase 2 — núcleo de `@fudic/http` (7)
 
@@ -108,7 +108,7 @@
 | [ ] | 27 | 26 | **Diagnósticos.** `FUD1000`–`FUD1004`, `FUD1007`, `FUD1009` y `FUD1010`, cada uno con su span. Ninguno detiene el emit del resto | `compiler` | `src/emit/server-fns.ts` |
 | [ ] | 28 | 16, 26 | **Stubs de una ruta.** El chunk de cliente declara un `const X = $fn({…})` por función (§4.5), con su `compress` y si tiene `.form`, y las imports de `@fudic/http/client`, de `src/http.ts` y de cada middleware importado. Visibles en el `@client` y en las expresiones de evento. Ningún stub para `load` | `compiler` | `src/emit/client-fns.ts` · `src/emit/module.ts` |
 | [ ] | 29 | 26 | **Funciones de un componente.** Su URL por tag (§4.1). Las imports del `@server` y las declaraciones de función van al módulo `?server` del componente. Sin la reescritura de `inject` dentro de esas declaraciones. `FUD1008` (§4.13) | `compiler` · `vite` | `src/emit/oxc-code.ts` · `src/emit/module.ts` · `packages/vite/src/server.ts` |
-| [ ] | 30 | 26 | **Se retira `FUD0683`.** `inject` y `publish` a secas en el `@server` de una ruta no diagnostican | `compiler` | `src/emit/di-diagnostics.ts` |
+| [ ] | 30 | 26 | **Se retira `FUD0683`.** `inject` y `publish` a secas en el `@server` de una ruta no diagnostican. `FUD0683.ts` se borra y su `.md` pasa a `retired` (viene de la tarea 2) | `compiler` · `diagnostics` | `src/emit/di-diagnostics.ts` · `packages/diagnostics/src/codes/FUD0683.*` |
 | [ ] | 31 | 28 | **`form:=`.** Lo clasifica el binding de `control` (SDD-34) en un `<form>` con `control=`. El emit pasa la función a `bindForm`, que la llama en el submit válido: un 422 va a `$setErrors` con el foco al resumen, y el resto emite `fudic:result` / `fudic:error` (§4.7). `FUD1005` y `FUD1006` | `compiler` · `forms` | `src/binding/control.ts` · `src/emit/controls.ts` · `packages/forms/src/dom/bind-form.ts` |
 | [ ] | 32 | 28 | **`src/http.ts`.** La convención en `@fudic/conventions` (`HTTP_FILE`). El stub la importa si existe; si no, la cadena global es vacía | `conventions` · `compiler` | `src/index.ts` · `src/emit/client-fns.ts` |
 | [ ] | 33 | 26–32 | **Tests del compilador.** Criterios 10–13 y la parte de compilación del 26. El compilador no baja de su suelo de `main` y lo nuevo entra al 100 | `compiler` | `test/server-fns*.test.ts` |
