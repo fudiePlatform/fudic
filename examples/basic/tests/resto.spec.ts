@@ -21,16 +21,24 @@ async function exercise(page: Page): Promise<void> {
   await expect(eco(page)).toHaveText('placeholder: Escribe tu nombre · required: true · maxlength: 20');
   await expect(input(page)).toHaveAttribute('placeholder', 'Escribe tu nombre');
   await expect(campo(page).locator('.campo > span')).toHaveText('Nombre');
+  // `<input ...resto>`: every scalar of the rest is an attribute of the input.
+  await expect(input(page)).toHaveAttribute('required', '');
+  await expect(input(page)).toHaveAttribute('maxlength', '20');
 
   const cambiar = page.locator('resto-demo .cambiar');
   await cambiar.click();
   await expect(eco(page)).toHaveText('placeholder: ¿Cómo te llamas? · required: false · maxlength: 20');
   await expect(input(page)).toHaveAttribute('placeholder', '¿Cómo te llamas?');
+  // `required: false` takes off the attribute the SERVER painted; `maxlength` stays.
+  await expect(input(page)).not.toHaveAttribute('required');
+  await expect(input(page)).toHaveAttribute('maxlength', '20');
   await expect(campo(page).locator('.campo > span')).toHaveText('Nombre');
 
   await cambiar.click();
   await expect(eco(page)).toHaveText('placeholder: Escribe tu nombre · required: true · maxlength: 20');
   await expect(input(page)).toHaveAttribute('placeholder', 'Escribe tu nombre');
+  await expect(input(page)).toHaveAttribute('required', '');
+  await expect(input(page)).toHaveAttribute('maxlength', '20');
 }
 
 function errorsOf(page: Page): string[] {
