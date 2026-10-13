@@ -504,6 +504,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // nothing here has to pin its name (BUG-03 §4.1). `chunkFileNames` goes back to
       // Vite's default.
       const hasOutputConfig = userConfig?.build?.rollupOptions?.output !== undefined;
+      // Rolldown warns when a plugin takes «significant time» of the build. This one always
+      // does, by construction: it compiles every `.fud`, runs the link, edge and Service
+      // Worker builds inside `generateBundle` and prerenders the routes, so nearly all of a
+      // fudic build is spent here. The warning read as a problem on every build and was not
+      // one. Off unless the project asked for it, either way.
+      // Vite merges what a `config` hook returns into the project's own, so `pluginTimings` is
+      // the only key this has to name.
+      const userTimings =
+        userConfig?.build?.rolldownOptions?.checks?.pluginTimings ??
+        userConfig?.build?.rollupOptions?.checks?.pluginTimings;
+      const checks = userTimings === undefined ? { checks: { pluginTimings: false } } : {};
       const pinned = (chunk: { name: string }): string => {
         // A coordinator is named `fudic-main-<hash of its own source>` (SDD-45 §4.4), so
         // this is a prefix and not an equality: there are as many as there are combinations of
@@ -520,6 +531,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             // The coordinators are NOT inputs: there is one per combination of pieces and
             // they are emitted in `buildStart`, where the routes are known (SDD-45 §4.4).
             input: { 'fudic-boot': BOOT_ID },
+            ...checks,
             ...(hasOutputConfig ? {} : { output: { entryFileNames: pinned } }),
           },
         },
