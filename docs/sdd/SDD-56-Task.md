@@ -5,7 +5,7 @@
 > `@fudic/di` · `@fudic/ssr` · `@fudic/forms` · `@fudic/conventions` · `@fudic/language-core` ·
 > `@fudic/diagnostics`
 > **Rama:** `sdd/http` (nace de `main`)
-> **Progreso:** 43 / 50 — `En curso`.
+> **Progreso:** 46 / 50 — `En curso`.
 >
 > *Al implementar:* el código lo escribe una sesión y los tests otra. Las fases 3, 4 y 5 van
 > en un solo commit, porque comparten ficheros (`dispatch.ts` lee el cuerpo de la fase 5,
@@ -141,9 +141,9 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 44 | 26 | **Tipos.** La proyección declara en el `@client` y en las expresiones de evento cada función como `ServerFunction<A, R>`, con `A` y `R` del builder. `ctx` de un `load(ctx)` sin anotar es `ServerContext` con los params del fichero. Ir a la definición lleva al `export const` (§4.16) | `language-core` | `src/emit-server.ts` · `src/emit-client.ts` |
-| [ ] | 45 | 30 | **`inject` a secas en el editor.** El `@server` de una ruta ve `inject` y `publish` de `@fudic/di` sin diagnóstico | `language-core` | `src/emit-server.ts` |
-| [ ] | 46 | 44, 45 | **Tests del editor.** Criterios 39 y 40 | `language-core` | `test/server-fns.test.ts` |
+| [x] | 44 | 26 | **Tipos.** La proyección declara en el `@client` y en las expresiones de evento cada función como `ServerFunction<A, R>`, con `A` y `R` del builder. `ctx` de un `load(ctx)` sin anotar es `ServerContext` con los params del fichero. Ir a la definición lleva al `export const` (§4.16). *Al implementar:* los nombres los da `readServerFns` del compilador, así que el editor declara justo las funciones que el build convierte en stubs. Decisión de Pedro: `load` recibe **siempre** el `ServerContext`, también sin cadena, así que el wrapper importa `@fudic/http/server` en toda ruta con `load` (una app con `load` necesita `@fudic/http`). El `data` de `_error.fud` sale tipado como dice §3.6, y `ERROR_FILE` pasa a `@fudic/conventions` | `language-core` · `vite` · `conventions` | `src/server-fns.ts` · `src/emit-server.ts` · `src/emit-client.ts` · `src/data.ts` · `src/globals.ts` · `packages/vite/src/wrapper.ts` | `language-core` | `src/emit-server.ts` · `src/emit-client.ts` |
+| [x] | 45 | 30 | **`inject` a secas en el editor.** El `@server` de una ruta ve `inject` y `publish` de `@fudic/di` sin diagnóstico. *Al implementar:* el editor ya no tenía nada propio que lo prohibiera; con `FUD0683` retirado en la tarea 30, basta el test | `language-core` | `src/emit-server.ts` |
+| [x] | 46 | 44, 45 | **Tests del editor.** Criterios 39 y 40 | `language-core` | `test/server-fns.test.ts` |
 
 ## Fase 10 — ejemplo (3)
 

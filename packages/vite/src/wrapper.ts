@@ -75,12 +75,12 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   const hasDi = options.hasDi === true;
   // `load` and `layout` run as part of the request (SDD-56 §4.6): inside `withRequest`, so
   // `inject()` and `publish()` find this request's container, and through the server halves
-  // of the chain. Only when the route has something for that to do — a container to find or
-  // a chain to walk — so a route without either keeps importing nothing of `@fudic/http`.
+  // of the chain. `load` always: its `ctx` is a `ServerContext` whether or not there is a chain
+  // (§4.16). A `layout` alone, only when the route has a container to find or a chain to walk.
   const hasHttp = options.hasHttp === true;
   const http =
-    (edgeLoad || edgeLayout) &&
-    (hasDi || hasHttp || options.fluentLoad === true || options.globalChain !== undefined);
+    edgeLoad ||
+    (edgeLayout && (hasDi || hasHttp || options.fluentLoad === true || options.globalChain !== undefined));
   const outer = [
     ...(options.globalChain !== undefined ? ['global: $global'] : []),
     ...(hasHttp ? ['file: $http'] : []),
@@ -151,10 +151,11 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
     lines.push('  });');
     lines.push('}');
     lines.push('');
-  } else if (edgeLoad || edgeLayout) {
+  } else if (edgeLayout) {
+    // No `load` here: a route with one always takes the branch above.
     lines.push('export async function data(ctx) {');
-    lines.push(`  const data = ${edgeLoad ? 'await load(ctx)' : '{}'};`);
-    lines.push(`  return { data${edgeLayout ? ', layout: await layoutProps(ctx, data)' : ''} };`);
+    lines.push('  const data = {};');
+    lines.push('  return { data, layout: await layoutProps(ctx, data) };');
     lines.push('}');
     lines.push('');
   }
@@ -170,14 +171,9 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   if (http) {
     lines.push('    const $ctx = pageContext(ctx);');
   }
-  if (http && edgeLoad) {
+  if (edgeLoad) {
     lines.push(
       `    const data = ctx.data !== undefined ? ctx.data : await withRequest($root, () => runLoad(load, { ${outer} }, ${loadCtx}));`,
-    );
-  } else if (edgeLoad) {
-    lines.push(
-      // Without `http` there is no container: a route that injects always takes the branch above.
-      '    const data = ctx.data !== undefined ? ctx.data : await load(ctx);',
     );
   } else {
     lines.push('    const data = ctx.data !== undefined ? ctx.data : {};');

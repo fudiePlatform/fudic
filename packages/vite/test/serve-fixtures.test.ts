@@ -28,8 +28,6 @@ import { nodeIo } from '../src/io.js';
 import { materializeBundle, renderChunkToHtml, type BundleItem } from '../src/prerender.js';
 
 const fixtures = fileURLToPath(new URL('../../compiler/fixtures', import.meta.url));
-const ssrDist = fileURLToPath(new URL('../../ssr/dist/index.js', import.meta.url));
-const transportDist = fileURLToPath(new URL('../../transport/dist/index.js', import.meta.url));
 
 let httpServer: Server;
 let html = '';
@@ -69,7 +67,7 @@ beforeAll(async () => {
   // The edge wrappers, built the way the plugin builds them, and run from a temp dir —
   // never from `outDir`, which is the whole point of BUG-09.
   const { routes: builds } = discoverRoutes(root, resolveOptions({}, '/').options);
-  const edge = await runEdgePass(root, '/', builds, nodeIo(), { '@fudic/ssr': ssrDist, '@fudic/transport': transportDist }, { sourcemap: false, minify: false });
+  const edge = await runEdgePass(root, '/', builds, nodeIo(), { ...runtimeAlias }, { sourcemap: false, minify: false });
   const bundle: Record<string, BundleItem> = {};
   for (const chunk of edge.chunks) {
     bundle[chunk.fileName] = { type: 'chunk', code: chunk.code };

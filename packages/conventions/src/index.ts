@@ -94,6 +94,12 @@ export const FN_PREFIX = '/_fudic/fn';
 export const ERROR_PREFIX = '/_fudic/error';
 
 /**
+ * The error page, at the top of the routes directory (SDD-56 §3.6): the plugin keeps it out of
+ * the route table, and the editor types its `data` as `{ status, title, detail? }`.
+ */
+export const ERROR_FILE = '_error.fud';
+
+/**
  * page → SW: "forget the data of these paths" (SDD-56 §4.9), with a `MessagePort` the worker
  * answers on once it has. The stub of a server function sends it and the worker handles it,
  * and neither package depends on the other.

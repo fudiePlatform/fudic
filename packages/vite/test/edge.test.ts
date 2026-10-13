@@ -18,6 +18,7 @@ import { type RouteBuild } from '../src/discover.js';
 import { NO_STRATEGY } from '../src/strategy.js';
 import { nodeIo } from '../src/io.js';
 import { EDGE_PREFIX } from '../src/constants.js';
+import { runtimeAlias } from './helpers/alias.js';
 
 const PAGE = `<!DOCTYPE html>
 <html>
@@ -85,7 +86,8 @@ describe('runEdgePass', () => {
       '/',
       [routeBuild('/about', 'about.fud', mode('ssg'))],
       nodeIo(),
-      undefined,
+      // Its `load` runs through `@fudic/http/server`, which this package does not depend on.
+      { ...runtimeAlias },
       { sourcemap: false, minify: false },
     );
   }, 300000);
@@ -123,7 +125,7 @@ describe('runEdgePass', () => {
       '/',
       [routeBuild('/about', 'about.fud', mode('ssg'))],
       nodeIo(),
-      undefined,
+      { ...runtimeAlias },
       { sourcemap: true, minify: false },
     );
     expect(mapped.chunks.every((c) => c.map !== undefined)).toBe(true);

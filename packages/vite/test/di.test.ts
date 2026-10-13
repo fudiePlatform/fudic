@@ -105,12 +105,23 @@ describe('the render wrapper', () => {
   });
 
   it('names nothing of the injector on a route without a single DI call', () => {
-    const code = emitRenderChunk(options);
+    const code = emitRenderChunk({ ...options, hasLoad: false });
 
     expect(code).not.toContain('iocRoot');
     expect(code).not.toContain('withDi');
     expect(code).not.toContain('publishedSeed');
     // The container's place is held by `undefined`, so the layout props keep theirs.
+    expect(code).toContain('yield* page(data, io(ctx), undefined, layout);');
+  });
+
+  it('with `load` and no DI call, opens the request container for `load` alone', () => {
+    // `load` always runs as part of the request (SDD-56 §4.16), so `inject()` on its own finds
+    // a container there; the page, which injects nothing, is not handed it.
+    const code = emitRenderChunk(options);
+
+    expect(code).toContain('const $root = iocRoot();');
+    expect(code).not.toContain('withDi');
+    expect(code).not.toContain('publishedSeed');
     expect(code).toContain('yield* page(data, io(ctx), undefined, layout);');
   });
 });

@@ -321,6 +321,27 @@ interface $LayoutContext<P extends string> {
   readonly url: URL;
   readonly params: Readonly<Record<P, string>>;
 }
+
+/**
+ * The \`ctx\` a page's \`load(ctx)\` receives, when its author did not type it (SDD-56 §4.16).
+ *
+ * \`@fudic/http\`'s \`ServerContext\` of a GET, written here for the reason \`$LayoutContext\` is:
+ * a route with no chain imports nothing of that package. \`P\` are the route's own params.
+ */
+interface $LoadContext<P extends string> {
+  readonly side: 'server';
+  readonly method: 'GET';
+  /** Always \`load\`. */
+  readonly name: string;
+  readonly url: URL;
+  readonly headers: Headers;
+  readonly args: unknown;
+  readonly signal: AbortSignal;
+  readonly params: Readonly<Record<P, string>>;
+  readonly cookies: ReadonlyMap<string, string>;
+  /** What the response carries besides the page: its status and headers (Set-Cookie…). */
+  readonly response: { status: number; readonly headers: Headers };
+}
 `;
 
 /** File name the CLI writes `GLOBALS_DTS` to, and the server mounts it under. */

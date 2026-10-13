@@ -80,11 +80,17 @@ describe('analyzePage: what SDD-56 reads from the @server', () => {
 });
 
 describe('emitRenderChunk: a route with nothing for @fudic/http to do', () => {
-  it('keeps the text of today and imports nothing of @fudic/http', () => {
-    const code = emitRenderChunk({ pageModule: '/app/r.fud', hasLoad: true, hasLayout: true, withLoad: true });
+  it('a `layout` alone keeps the text of today and imports nothing of @fudic/http', () => {
+    const code = emitRenderChunk({ pageModule: '/app/r.fud', hasLoad: false, hasLayout: true, withLoad: true });
     expect(code).not.toContain('@fudic/http');
     expect(code).not.toContain('withRequest');
-    expect(code).toContain('const data = await load(ctx);');
+    expect(code).toContain('return { data, layout: await layoutProps(ctx, data) };');
+  });
+
+  it('a `load`, even with no chain, runs through @fudic/http: its ctx is a ServerContext (§4.16)', () => {
+    const code = emitRenderChunk({ pageModule: '/app/r.fud', hasLoad: true, hasLayout: true, withLoad: true });
+    expect(code).toContain('import { pageContext, runLoad, withRequest } from "@fudic/http/server";');
+    expect(code).toContain('const data = await runLoad(load, {  }, $ctx);');
   });
 
   it('the linked variant never imports it, whatever the route has', () => {

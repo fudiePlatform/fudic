@@ -26,16 +26,19 @@ import { partitionCode } from './code.js';
 import { emitCssVirtuals } from './css.js';
 import { emitClientVirtual, type TemplateJs } from './emit-client.js';
 import type { FragmentAst } from './template/context.js';
-import { emitServerVirtual, type LayoutContract } from './emit-server.js';
+import { emitServerVirtual, type LayoutContract, type LoadContract } from './emit-server.js';
 import {
   exportsLoad,
   exportsLoadInText,
   findLayoutResolver,
   findLayoutResolverInText,
+  findLoadCtx,
+  findLoadCtxInText,
   type LayoutResolver,
 } from './layout-resolver.js';
 import { routeParams } from './paths.js';
 import { findPropsCall, type PropsCall } from './props.js';
+import { clientFns, type ClientFn } from './server-fns.js';
 import type { FileRegistry, VirtualFile } from './types.js';
 
 /**
@@ -100,12 +103,13 @@ export function emitVirtualFiles(input: EmitInput): readonly VirtualFile[] {
   const js = input.js ?? ownBatch(source, document);
 
   return [
-    emitClientVirtual(source, fileName, document, registry, findProps(js), templateJs(js)),
+    emitClientVirtual(source, fileName, document, registry, findProps(js), templateJs(js), serverFns(js, document)),
     emitServerVirtual(
       source,
       fileName,
       document.code,
       layoutContract(source, fileName, document, js),
+      loadContract(source, fileName, document, js),
     ),
     ...emitCssVirtuals(source, fileName, document),
   ];
@@ -144,6 +148,41 @@ function layoutContract(
     return contract(resolver, spans.some((s) => exportsLoadInText(source, s)));
   }
   return undefined;
+}
+
+/**
+ * Where an untyped `load(ctx)` takes its `ServerContext` (SDD-56 §4.16): a page or a route,
+ * whose `load` the request runs. The AST first, the text when the region does not parse.
+ */
+function loadContract(
+  source: string,
+  fileName: string,
+  document: StructuredDocument,
+  js: EmitJs,
+): LoadContract | undefined {
+  if (document.type !== 'route-document' && document.type !== 'page-document') return undefined;
+  const params = routeParams(fileName);
+  for (const id of js.server ?? []) {
+    const ctxAt = findLoadCtx(statementsOf(js.result, id), (s, e) => js.result.mapSpan(s, e));
+    if (ctxAt !== undefined) return { ctxAt, params };
+  }
+  for (const region of partitionCode(document.code).server) {
+    const ctxAt = findLoadCtxInText(source, region);
+    if (ctxAt !== undefined) return { ctxAt, params };
+  }
+  return undefined;
+}
+
+/** The server functions the client side calls, by the compiler's own reader (SDD-56 §4.16). */
+function serverFns(js: EmitJs, document: StructuredDocument): readonly ClientFn[] {
+  const server = (js.server ?? []).flatMap((id) => statementsOf(js.result, id));
+  if (server.length === 0) return [];
+  return clientFns({
+    result: js.result,
+    server,
+    rest: [...js.neutral, ...(js.client ?? [])].flatMap((id) => statementsOf(js.result, id)),
+    component: document.type === 'component-document',
+  });
 }
 
 /**

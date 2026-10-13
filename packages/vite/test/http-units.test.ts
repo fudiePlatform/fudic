@@ -7,10 +7,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import { fudic } from '../src/index.js';
 import { fakeDevServerParts } from './helpers/dev-server.js';
+import { ERROR_FILE } from '@fudic/conventions';
 import { eraseServerHalves } from '../src/server-halves.js';
 import {
   classifyError,
-  ERROR_FILE,
   ERROR_PATTERN,
   minimalErrorPage,
   problemOfStatus,

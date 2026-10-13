@@ -33,6 +33,14 @@ export interface LayoutContract {
   readonly hasLoad: boolean;
 }
 
+/** Where an untyped `load(ctx)` gets its type (SDD-56 §4.16). */
+export interface LoadContract {
+  /** Just past the `ctx` the author left untyped. */
+  readonly ctxAt: number;
+  /** The route's params, read off its file name: what `ctx.params` carries. */
+  readonly params: readonly string[];
+}
+
 /** One type spliced into the author's text, just past `at`. */
 interface Splice {
   readonly at: number;
@@ -50,6 +58,7 @@ export function emitServerVirtual(
   fudPath: string,
   code: CodeBlockNode | undefined,
   layout?: LayoutContract,
+  load?: LoadContract,
 ): VirtualFile {
   const { neutral, server } = partitionCode(code);
   const w = new VirtualWriter(source);
@@ -69,7 +78,11 @@ export function emitServerVirtual(
     w.copy(chunk, USER_ECHO_CAPS);
     w.scaffold('\n');
   }
-  const splices = layout === undefined ? [] : resolverSplices(layout);
+  // In source order, which is the order `copyWithSplices` walks them in.
+  const splices = [
+    ...(layout === undefined ? [] : resolverSplices(layout)),
+    ...(load === undefined ? [] : [{ at: load.ctxAt, text: `: $LoadContext<${paramUnion(load.params)}>` }]),
+  ].sort((a, b) => a.at - b.at);
   for (const region of server) {
     copyWithSplices(w, region, splices);
     w.scaffold('\n');
@@ -95,7 +108,7 @@ export function emitServerVirtual(
 function resolverSplices(layout: LayoutContract): readonly Splice[] {
   const { resolver } = layout;
   if (resolver === undefined) return [];
-  const params = layout.params.map((name) => `'${name}'`).join(' | ') || 'never';
+  const params = paramUnion(layout.params);
   // `load` is in scope: it is exported from this same region. With no `load` the runtime
   // hands over the empty object, and saying so is what makes `data.x` an error here too.
   const data = layout.hasLoad ? 'Awaited<ReturnType<typeof load>>' : 'Record<string, never>';
@@ -109,6 +122,11 @@ function resolverSplices(layout: LayoutContract): readonly Splice[] {
     out.push({ at: resolver.annotateAt, text: `: ${props}` });
   }
   return out;
+}
+
+/** `['slug', 'id']` → `'slug' | 'id'`; no params → `never`. */
+function paramUnion(params: readonly string[]): string {
+  return params.map((name) => `'${name}'`).join(' | ') || 'never';
 }
 
 /** Copy `region`, splicing in every type whose point falls inside it. */

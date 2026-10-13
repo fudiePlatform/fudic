@@ -51,6 +51,11 @@ describe('@fudic/conventions', () => {
     expect(conventions.HTTP_FILE).toBe('src/http.ts');
   });
 
+  it('names the error page', () => {
+    // SDD-56 §3.6: a file of `src/routes/` with no URL of its own.
+    expect(conventions.ERROR_FILE).toBe('_error.fud');
+  });
+
   it('names the invalidation message the page posts to its Service Worker', () => {
     // SDD-56 §4.9: the stub posts it and the worker answers it; one string for both ends.
     expect(conventions.INVALIDATE_MESSAGE).toBe('fudic:invalidate');
@@ -67,10 +72,12 @@ describe('@fudic/conventions', () => {
     //
     // `FN_PREFIX` and `ERROR_PREFIX` are SDD-56's (§4.1, §4.8): the client stub, the dev
     // server and the Service Worker all derive the same URLs from them. `INVALIDATE_MESSAGE`
-    // is the one the stub and the Service Worker share (§4.9).
+    // is the one the stub and the Service Worker share (§4.9). `ERROR_FILE` is `_error.fud`,
+    // which the plugin routes around and the editor gives the problem's `data` (§3.6, §4.16).
     expect(Object.keys(conventions).sort()).toEqual([
       'COMPONENTS_DIR',
       'DATA_PREFIX',
+      'ERROR_FILE',
       'ERROR_PREFIX',
       'FN_PREFIX',
       'HTTP_FILE',

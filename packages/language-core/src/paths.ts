@@ -71,6 +71,11 @@ export function routeParams(fudPath: string): readonly string[] {
   return params;
 }
 
+/** Whether `fudPath` names the file `name`, in whatever directory. */
+export function isFile(fudPath: string, name: string): boolean {
+  return baseName(fudPath) === name;
+}
+
 function baseName(path: string): string {
   const cut = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
   return cut === -1 ? path : path.slice(cut + 1);

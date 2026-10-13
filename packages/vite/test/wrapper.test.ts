@@ -24,8 +24,10 @@ describe('emitRenderChunk — the edge variant', () => {
   it('imports page, the ssr streaming io, and load/paths from ?server', () => {
     expect(code).toContain('import { page } from "./customer/[id].fud";');
     expect(code).toContain(
-      'import { SsrDom, serializeChunks, htmlToByteStream, escapeText, escapeAttr, guardUrl, jsonBlock } from "@fudic/ssr";',
+      'import { SsrDom, serializeChunks, htmlToByteStream, escapeText, escapeAttr, guardUrl, jsonBlock, iocRoot } from "@fudic/ssr";',
     );
+    // `load` receives a `ServerContext` always, chain or not (SDD-56 §4.16).
+    expect(code).toContain('import { pageContext, runLoad, withRequest } from "@fudic/http/server";');
     expect(code).toContain('import { load } from "./customer/[id].fud?server";');
     expect(code).toContain('export { paths } from "./customer/[id].fud?server";');
   });
@@ -36,13 +38,15 @@ describe('emitRenderChunk — the edge variant', () => {
 
   it('exports data(ctx) so the generated endpoint reuses the same load', () => {
     expect(code).toContain('export async function data(ctx) {');
-    expect(code).toContain('const data = await load(ctx);');
+    expect(code).toContain('const data = await runLoad(load, {  }, $ctx);');
     // One response, two halves (SDD-40 §3.3) — `layout` absent when the route resolves none.
     expect(code).toContain('return { data };');
   });
 
   it('prefers data already resolved by the caller', () => {
-    expect(code).toContain('const data = ctx.data !== undefined ? ctx.data : await load(ctx);');
+    expect(code).toContain(
+      'const data = ctx.data !== undefined ? ctx.data : await withRequest($root, () => runLoad(load, {  }, $ctx));',
+    );
   });
 });
 
@@ -100,7 +104,7 @@ describe('emitRenderChunk — the layout resolver (SDD-40)', () => {
     const layout = edge.indexOf('const layout = ctx.layout !== undefined');
     expect(data).toBeGreaterThan(-1);
     expect(layout).toBeGreaterThan(data);
-    expect(edge).toContain('await layoutProps(ctx, data);');
+    expect(edge).toContain('await withRequest($root, () => layoutProps($ctx, data));');
   });
 
   it('hands what it resolved to the page, behind the container', () => {
@@ -108,8 +112,8 @@ describe('emitRenderChunk — the layout resolver (SDD-40)', () => {
   });
 
   it('the endpoint answers with the two halves in ONE response (§6.10)', () => {
-    expect(edge).toContain('const data = await load(ctx);');
-    expect(edge).toContain('return { data, layout: await layoutProps(ctx, data) };');
+    expect(edge).toContain('const data = await runLoad(load, {  }, $ctx);');
+    expect(edge).toContain('return { data, layout: await layoutProps($ctx, data) };');
   });
 
   it('a route with a resolver and no `load` still gets an endpoint', () => {

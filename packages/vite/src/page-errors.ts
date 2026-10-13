@@ -23,9 +23,6 @@ import { drainStream, edgeContext } from './serve.js';
 /** The pattern `_error.fud` is compiled and rendered under. */
 export const ERROR_PATTERN = `${ERROR_PREFIX}/:status`;
 
-/** The file, at the top of `routesDir`. */
-export const ERROR_FILE = '_error.fud';
-
 /** The `data` of `_error.fud`. */
 export interface PageProblem {
   readonly status: number;

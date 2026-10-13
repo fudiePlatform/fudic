@@ -9,7 +9,8 @@ import { dirname, join, resolve, sep } from 'node:path';
 import { routesFromFiles, type Route } from './routing.js';
 import { analyzePage, type PageAnalysis } from './analyze.js';
 import { resolveMode, type ModeDecision, type PageFacts } from './mode.js';
-import { ERROR_FILE, ERROR_PATTERN } from './page-errors.js';
+import { ERROR_FILE } from '@fudic/conventions';
+import { ERROR_PATTERN } from './page-errors.js';
 import { type ResolvedOptions } from './options.js';
 import { FUD0364, FUD0434, type FileDiagnostic, type SourceDiagnostic } from '@fudic/diagnostics';
 

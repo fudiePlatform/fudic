@@ -345,6 +345,9 @@ importers:
       '@fudic/compiler':
         specifier: workspace:*
         version: link:../compiler
+      '@fudic/conventions':
+        specifier: workspace:*
+        version: link:../conventions
       '@fudic/diagnostics':
         specifier: workspace:*
         version: link:../diagnostics

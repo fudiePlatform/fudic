@@ -25,6 +25,7 @@ import { emitDataDeclaration } from './data.js';
 import { emitImports, emitSnippetImports, templateContent } from './imports.js';
 import { emitRenderCall, emitSnippets } from './template/snippets.js';
 import { clientFileName } from './paths.js';
+import { emitClientFns, type ClientFn } from './server-fns.js';
 import { emitPropsProjection, type PropsCall } from './props.js';
 import { emitElementBindings, emitHostBindings, emitShadowBindings } from './template/attrs.js';
 import type { FragmentAst, TemplateContext } from './template/context.js';
@@ -61,6 +62,8 @@ export function emitClientVirtual(
   registry: FileRegistry,
   props: PropsCall | undefined,
   template: TemplateJs = {},
+  /** The server functions of the `@server`, which the browser side calls by name (SDD-56). */
+  fns: readonly ClientFn[] = [],
 ): VirtualFile {
   const w = new VirtualWriter(source);
   const content = templateContent(doc);
@@ -68,6 +71,7 @@ export function emitClientVirtual(
   const aliases = emitImports(w, content, registry);
   const snippets = emitSnippetImports(w, doc, registry);
   emitDataDeclaration(w, doc, fudPath);
+  emitClientFns(w, fudPath, fns);
 
   emitNeutralZone(w, source, doc, props);
   emitSectionsContract(w, doc);
