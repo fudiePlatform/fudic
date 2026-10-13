@@ -1,6 +1,6 @@
 # SDD-56 — Funciones de servidor y middlewares: `@fudic/http`
 
-> **Estado:** `En curso` — [tareas](./SDD-56-Task.md), 37 / 50.
+> **Estado:** `Hecho` — [tareas](./SDD-56-Task.md), 50 / 50.
 > **Paquetes:** `@fudic/http` (nuevo) · `@fudic/compiler` · `@fudic/vite` · `@fudic/transport` ·
 > `@fudic/di` · `@fudic/ssr` · `@fudic/forms` · `@fudic/conventions` · `@fudic/language-core` ·
 > `@fudic/diagnostics`

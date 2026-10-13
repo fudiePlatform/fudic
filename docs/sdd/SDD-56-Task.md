@@ -5,7 +5,7 @@
 > `@fudic/di` · `@fudic/ssr` · `@fudic/forms` · `@fudic/conventions` · `@fudic/language-core` ·
 > `@fudic/diagnostics`
 > **Rama:** `sdd/http` (nace de `main`)
-> **Progreso:** 49 / 50 — `En curso`.
+> **Progreso:** 50 / 50 — `Hecho`.
 >
 > *Al implementar:* el código lo escribe una sesión y los tests otra. Las fases 3, 4 y 5 van
 > en un solo commit, porque comparten ficheros (`dispatch.ts` lee el cuerpo de la fase 5,
@@ -157,4 +157,4 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 50 | 1–49 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde. `@fudic/http` al 100 % en las cuatro métricas y ningún paquete por debajo de su suelo de `main`. Estado `Hecho` en la SDD, en este fichero y en el `INDEX.md`, con su entrada en el registro de progreso | — | `docs/sdd/SDD-56-*.md` · `docs/sdd/INDEX.md` |
+| [x] | 50 | 1–49 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde. `@fudic/http` al 100 % en las cuatro métricas y ningún paquete por debajo de su suelo de `main`. Estado `Hecho` en la SDD, en este fichero y en el `INDEX.md`, con su entrada en el registro de progreso | — | `docs/sdd/SDD-56-*.md` · `docs/sdd/INDEX.md` |
