@@ -1,8 +1,8 @@
 /**
- * The document graph of a route, resolved once per build.
+ * What a build computes from its `.fud` files, computed once per build.
  *
  * Nothing about the OUTPUT changes with the memory, so most of this file counts work: how many
- * times a `.fud` is read, how many times a route's graph is resolved. The rest is the other
+ * times a `.fud` is read, a route's graph resolved, a module compiled. The rest is the other
  * half of the contract — a fresh memory per build, and none at all in dev, where the files
  * change between two requests.
  */
@@ -38,12 +38,15 @@ vi.mock('@fudic/typecheck', async (importOriginal) => ({
   }),
 }));
 
-const { graphOf, memoizedGraphs } = await import('../src/graph-cache.js');
+const { buildIo, graphOf, remembered } = await import('../src/build-memory.js');
+const { compileFud } = await import('../src/compile.js');
+const { NO_STYLES } = await import('../src/transform.js');
 const { fudic } = await import('../src/index.js');
 
 const fixtures = fileURLToPath(new URL('../../compiler/fixtures', import.meta.url));
 const compilerRoot = fileURLToPath(new URL('../../compiler', import.meta.url));
 const home = join(fixtures, 'home.fud');
+const card = join(fixtures, 'app-card.fud');
 
 /** A `ResolveIo` over the disk that counts what it read. */
 function countingIo(): { io: ResolveIo; reads: string[]; resolves: Array<[string, string]> } {
@@ -64,7 +67,7 @@ function countingIo(): { io: ResolveIo; reads: string[]; resolves: Array<[string
 
 /** A route that links one component, and that component. */
 function project(): { root: string; route: string; component: (name: string) => string } {
-  const root = mkdtempSync(join(tmpdir(), 'fudic-graph-cache-'));
+  const root = mkdtempSync(join(tmpdir(), 'fudic-build-memory-'));
   mkdirSync(join(root, 'routes'), { recursive: true });
   const component = (name: string): string => {
     const file = join(root, 'routes', `${name}.fud`);
@@ -82,34 +85,88 @@ const page = (...tags: string[]): string =>
 
 const tagsOf = (graph: ReturnType<typeof graphOf>): string[] => [...graph.components.keys()].sort();
 
-describe('memoizedGraphs', () => {
+describe('buildIo', () => {
   it('read and resolve are the wrapped io’s', () => {
     const { io, reads, resolves } = countingIo();
-    const memo = memoizedGraphs(io);
+    const memo = buildIo(io);
     expect(memo.read(home)).toBe(readFileSync(home, 'utf8'));
-    expect(memo.resolve(home, './app-card.fud')).toBe(join(fixtures, 'app-card.fud'));
+    expect(memo.resolve(home, './app-card.fud')).toBe(card);
     expect(reads).toEqual([home]);
     expect(resolves).toEqual([[home, './app-card.fud']]);
   });
 
-  it('resolves a document once, however many times it is asked', () => {
+  it('remembers by key: produce runs once per key, whatever it returned', () => {
+    const memo = buildIo(countingIo().io);
+    const produce = vi.fn(() => undefined);
+    expect(memo.remember('a', produce)).toBeUndefined();
+    // An `undefined` answer is an answer: kept, not recomputed.
+    expect(memo.remember('a', produce)).toBeUndefined();
+    expect(produce).toHaveBeenCalledTimes(1);
+    expect(memo.remember('b', () => 2)).toBe(2);
+  });
+
+  it('remembered: from memory over a build io, computed every time over a plain one', () => {
+    const memo = buildIo(countingIo().io);
+    const plain = countingIo().io;
+    const produce = vi.fn(() => ({}));
+    expect(remembered(memo, 'k', produce)).toBe(remembered(memo, 'k', produce));
+    expect(produce).toHaveBeenCalledTimes(1);
+    expect(remembered(plain, 'k', produce)).not.toBe(remembered(plain, 'k', produce));
+    expect(produce).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('graphOf', () => {
+  it('resolves a document once per build io, however many times it is asked', () => {
     const { io, reads } = countingIo();
-    const memo = memoizedGraphs(io);
-    const first = memo.graph(home);
+    const memo = buildIo(io);
+    const first = graphOf(home, memo);
     const readsOfOne = reads.length;
     expect(readsOfOne).toBeGreaterThan(1); // the page and the components it links
-    expect(memo.graph(home)).toBe(first);
     expect(graphOf(home, memo)).toBe(first);
     expect(reads).toHaveLength(readsOfOne);
   });
 
   it('keeps one graph per document', () => {
-    const memo = memoizedGraphs(countingIo().io);
-    const card = memo.graph(join(fixtures, 'app-card.fud'));
-    expect(memo.graph(home)).not.toBe(card);
-    expect(memo.graph(join(fixtures, 'app-card.fud'))).toBe(card);
+    const memo = buildIo(countingIo().io);
+    const ofCard = graphOf(card, memo);
+    expect(graphOf(home, memo)).not.toBe(ofCard);
+    expect(graphOf(card, memo)).toBe(ofCard);
   });
 });
+
+describe('compileFud', () => {
+  it('is null for what is not a `.fud`', async () => {
+    expect(await compileFud(join(fixtures, 'x.ts'), countingIo().io, undefined, NO_STYLES, undefined)).toBeNull();
+  });
+
+  it('strips the TypeScript and keeps a map back to the `.fud`', async () => {
+    const compiled = (await compileFud(card, countingIo().io, undefined, NO_STYLES, undefined))!;
+    expect(compiled.result.code).toBeTypeOf('string');
+    expect(compiled.module.code).not.toMatch(/\bprops<\{/u);
+    expect(compiled.module.map?.sources.some((s) => s.endsWith('app-card.fud'))).toBe(true);
+  });
+
+  it('compiles once per (file, route name) in a build — the same answer, not a copy', async () => {
+    const { io, reads } = countingIo();
+    const memo = buildIo(io);
+    const first = await compileFud(card, memo, undefined, NO_STYLES, undefined);
+    const readsOfOne = reads.length;
+    expect(await compileFud(card, memo, undefined, NO_STYLES, undefined)).toBe(first);
+    expect(reads).toHaveLength(readsOfOne);
+    // Another route name is another module: what the page publishes in `fud-route` differs.
+    expect(await compileFud(card, memo, 'otra', NO_STYLES, undefined)).not.toBe(first);
+  });
+
+  it('compiles afresh over a plain io (dev)', async () => {
+    const { io, reads } = countingIo();
+    await compileFud(card, io, undefined, NO_STYLES, undefined);
+    const readsOfOne = reads.length;
+    await compileFud(card, io, undefined, NO_STYLES, undefined);
+    expect(reads).toHaveLength(readsOfOne * 2);
+  });
+});
+
 
 describe('graphOf over a plain io (dev)', () => {
   it('resolves afresh every time, so a saved file is seen', () => {

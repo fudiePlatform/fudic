@@ -28,7 +28,6 @@ import { emitRenderChunk } from './wrapper.js';
 import { emitServerModule } from './server.js';
 import { emitBootBootstrap, emitSwBootstrap } from './bootstrap.js';
 import {
-  transformFud,
   transformFudClient,
   transformFudIoc,
   NO_STYLES,
@@ -52,7 +51,8 @@ import {
 import { INLINE_QUERY, IOC_SUFFIX, RUNTIME_MARKER, type ResolveIo } from '@fudic/compiler';
 import { RUNTIME_CACHE_PREFIX, RUNTIME_DIR, runtimeMarkerUrl } from '@fudic/conventions';
 import { nodeIo, nodeLinkCheckIo, nodeRuntimeFs } from './io.js';
-import { memoizedGraphs } from './graph-cache.js';
+import { buildIo } from './build-memory.js';
+import { compileFud } from './compile.js';
 import { runtimePieces } from './runtime-pieces.js';
 import {
   coordinatorFor,
@@ -249,8 +249,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let writeStart = 0;
   /**
    * The io every pass reads `.fud` through. A build swaps it in `buildStart` for one that
-   * remembers each document graph (`memoizedGraphs`), fresh per build; dev keeps this plain
-   * one, because there the files change between two requests.
+   * remembers each document graph and each compiled `.fud` (`buildIo`), fresh per build; dev
+   * keeps this plain one, because there the files change between two requests.
    */
   let io: ResolveIo = nodeIo();
   const linkCheckIo = nodeLinkCheckIo();
@@ -784,7 +784,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     async buildStart() {
       let t = performance.now();
       // A new memory per build: a watch rebuild must not answer with the previous graphs.
-      if (!isDev) io = memoizedGraphs(nodeIo());
+      if (!isDev) io = buildIo(nodeIo());
       // What the editor marks, before anything is compiled (SDD-35 §4.4). The whole project,
       // and not only what a route reaches: a component nobody links yet is red in the editor
       // too. Every problem is printed, and the build fails ONCE with the count — the author
@@ -1228,12 +1228,16 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // publishes in `fud-route` and what the runtime derives the chunk URL from (SDD-39
       // §4.7). A component, a layout, or a route the build excluded gets none, and then the
       // page publishes no block and claims no id.
+      //
+      // Compiled through the build's memory (`compileFud`): the link pass and the edge pass
+      // ask for the same module later and get this one instead of compiling it again.
       const tf = performance.now();
-      const result = transformFud(path, io, routeNameOf(path), projectStyles, linked);
-      add('transform.fud (compile)', tf);
-      if (result === null) {
+      const compiled = await compileFud(path, io, routeNameOf(path), projectStyles, linked);
+      add('transform.fud (compile + oxc strip)', tf);
+      if (compiled === null) {
         return null;
       }
+      const result = compiled.result;
       // A literal asset URL with no file on disk: warn (FUD0363) and keep the literal —
       // the emit already left it un-linked, so the build does not abort.
       const diagnostics: FudDiagnostic[] = result.missingAssets.map((spec) => FUD0363({ file: path, spec }));
@@ -1264,24 +1268,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // says so: a snippet's body is reported in the snippet's file. What the typecheck
       // already said is not said again.
       reporter.report(this, [...diagnostics, ...result.diagnostics], path);
-      // Same reason as `?server` and `?client`: since SDD-34 the neutral zone of `@code`
-      // reaches this module too, verbatim, so a `const f: Form<Post> = form(schema)` makes it
-      // TypeScript. The three emitted modules are now stripped by the one rule.
-      //
-      // The `.fud` map goes IN as `inMap` and Oxc composes: `.fud` → TS → JS collapses to one
-      // `.fud` → JS map that describes the code actually returned. It used to be handed over
-      // as it stood, next to the STRIPPED code — a map of a text that no longer existed. It
-      // resolved, it named the right `.fud`, and its offsets were fiction; the chunks it
-      // produced came out with 3 mappings for 5 000 columns.
-      const ts0 = performance.now();
-      const stripped = await transformWithOxc(
-        result.code,
-        `${path}.ts`,
-        { lang: 'ts', sourcemap: true },
-        result.map,
-      );
-      add('transform.fud (oxc strip)', ts0);
-      return stripped.map ? { code: stripped.code, map: stripped.map } : { code: stripped.code };
+      // Already stripped, for the same reason as `?server` and `?client`: since SDD-34 the
+      // neutral zone of `@code` reaches this module verbatim, so a `const f: Form<Post> =
+      // form(schema)` makes it TypeScript. The `.fud` map went IN as `inMap`, so the map
+      // describes the code actually returned — it used to be handed over next to the
+      // STRIPPED code, a map of a text that no longer existed.
+      return compiled.module;
     },
 
     async generateBundle(_outputOptions, bundle) {

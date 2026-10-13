@@ -29,7 +29,7 @@ import {
 } from '@fudic/compiler';
 import { safeName } from '@fudic/transport';
 import { type RouteBuild } from './discover.js';
-import { graphOf } from './graph-cache.js';
+import { graphOf } from './build-memory.js';
 import { CLIENT_NAME_PREFIX } from './constants.js';
 
 /** The query that turns a component id into its client chunk: `<path>.fud?client`. */
