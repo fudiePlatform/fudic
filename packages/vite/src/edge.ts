@@ -28,7 +28,8 @@ import { runtimeUrls, type RuntimeEntries } from './constants.js';
 import { loadWithSourceMap } from './inputmaps.js';
 import { routeNameLookup, routeUsesDi } from './client.js';
 import { emitServerModule } from './server.js';
-import { transformFud, NO_STYLES, type ProjectStyles } from './transform.js';
+import { NO_STYLES, type ProjectStyles } from './transform.js';
+import { compileFud } from './compile.js';
 import type { BuildReporter } from './report.js';
 import { safeName } from './link.js';
 import { EDGE_PREFIX } from './constants.js';
@@ -113,24 +114,14 @@ export function edgePlugin(
         /* v8 ignore next -- Oxc always returns a map for a `.ts` input; the guard is for the type, not for a case. */
         return stripped.map ? { code: stripped.code, map: stripped.map } : { code: stripped.code };
       }
-      const result = transformFud(path, io, routeNameOf(path), styles, assets);
-      /* v8 ignore next -- `transformFud` returns null only for a non-`.fud` id, and that was checked above. */
-      if (result === null) return null;
+      // The same module the host bundle compiled, from the build's memory (`compileFud`).
+      const compiled = await compileFud(path, io, routeNameOf(path), styles, assets);
+      /* v8 ignore next -- `compileFud` returns null only for a non-`.fud` id, and that was checked above. */
+      if (compiled === null) return null;
       // What the emit had to say about the file, which this pass used to drop (SDD-35 §1.1).
-      reporter?.report(this, result.diagnostics, path);
-      // Since SDD-34 the neutral zone of `@code` reaches this module verbatim, so it is
-      // TypeScript whenever the author wrote it — same strip as the host plugin does.
-      // `inMap`, for the same reason as the host plugin and the link pass: Oxc composes
-      // `.fud` → TS with its own TS → JS, so the map describes the code it emitted. The edge
-      // chunks are the ones a `@server load` stack trace comes from.
-      const emitted = await transformWithOxc(
-        result.code,
-        `${path}.ts`,
-        { lang: 'ts', sourcemap: true },
-        result.map,
-      );
-      /* v8 ignore next -- Oxc always returns a map for a `.ts` input; the guard is for the type, not for a case. */
-      return emitted.map ? { code: emitted.code, map: emitted.map } : { code: emitted.code };
+      reporter?.report(this, compiled.result.diagnostics, path);
+      // With its map: the edge chunks are the ones a `@server load` stack trace comes from.
+      return compiled.module;
     },
   };
 }

@@ -13,7 +13,6 @@ import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve as resolvePath } from 'node:path';
 import { type Logger, type Plugin, transformWithOxc } from 'vite';
-import { createProjectChecker } from '@fudic/typecheck';
 import {
   applyNonce,
   cspFor,
@@ -29,7 +28,6 @@ import { emitRenderChunk } from './wrapper.js';
 import { emitServerModule } from './server.js';
 import { emitBootBootstrap, emitSwBootstrap } from './bootstrap.js';
 import {
-  transformFud,
   transformFudClient,
   transformFudIoc,
   NO_STYLES,
@@ -50,9 +48,11 @@ import {
   routeNameLookup,
   routeUsesDi,
 } from './client.js';
-import { INLINE_QUERY, IOC_SUFFIX, RUNTIME_MARKER } from '@fudic/compiler';
+import { INLINE_QUERY, IOC_SUFFIX, RUNTIME_MARKER, type ResolveIo } from '@fudic/compiler';
 import { RUNTIME_CACHE_PREFIX, RUNTIME_DIR, runtimeMarkerUrl } from '@fudic/conventions';
 import { nodeIo, nodeLinkCheckIo, nodeRuntimeFs } from './io.js';
+import { buildIo } from './build-memory.js';
+import { compileFud } from './compile.js';
 import { runtimePieces } from './runtime-pieces.js';
 import {
   coordinatorFor,
@@ -96,7 +96,8 @@ import {
   type BundleItem,
 } from './prerender.js';
 import { policyDeclaresNonce } from './diagnostics.js';
-import { BuildReporter, reportText } from './report.js';
+import { BuildReporter, reportText, type ReportContext } from './report.js';
+import { startBackgroundCheck, type BackgroundCheck } from './background-check.js';
 import { summarize } from './typecheck.js';
 import {
   FUD0362,
@@ -244,7 +245,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let nested: NestedOutputOptions = { sourcemap: false, minify: false };
   let manifestUrl = '/fudic-routes.json';
   let manifestFileName = 'fudic-routes.json';
-  const io = nodeIo();
+  /**
+   * The io every pass reads `.fud` through. A build swaps it in `buildStart` for one that
+   * remembers each document graph and each compiled `.fud` (`buildIo`), fresh per build; dev
+   * keeps this plain one, because there the files change between two requests.
+   */
+  let io: ResolveIo = nodeIo();
   const linkCheckIo = nodeLinkCheckIo();
   const runtimeFs = nodeRuntimeFs();
   /**
@@ -436,6 +442,41 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     return routeNames.of(path);
   };
 
+  /**
+   * The build's typecheck, running in its own process since `buildStart` (`startBackgroundCheck`),
+   * and its verdict: the failure line when it found errors, `undefined` when it found none. Its
+   * problems are printed — once — the moment the report arrives.
+   *
+   * Both `undefined` in dev, which has its live check instead, and once the build is over.
+   */
+  let runningCheck: BackgroundCheck | undefined;
+  let verdict: Promise<string | undefined> | undefined;
+
+  /**
+   * Wait for the typecheck's verdict, and fail with it when it found errors.
+   *
+   * What makes running it in the background invisible: the check used to finish before
+   * anything was compiled, so it was always the first thing a build said, and the reporter
+   * knew what it had said — a diagnostic the emit finds again is not repeated. Every caller
+   * that is about to say something waits here first, so both stay true. A healthy build says
+   * nothing until `buildEnd`, which is why the wait costs it nothing.
+   */
+  const settleCheck = async (context: ReportContext): Promise<void> => {
+    if (verdict === undefined) return;
+    const failure = await verdict;
+    if (failure !== undefined) context.error({ message: failure });
+  };
+
+  /** `reporter.report`, after the typecheck has spoken — when there is anything to report. */
+  const report = async (
+    context: ReportContext,
+    diagnostics: readonly FudDiagnostic[],
+    module?: string,
+  ): Promise<void> => {
+    if (diagnostics.length > 0) await settleCheck(context);
+    reporter.report(context, diagnostics, module);
+  };
+
   return {
     name: 'fudic',
     // Runs before `vite:resolve`, which is what claims this plugin's generated ids before
@@ -463,6 +504,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // nothing here has to pin its name (BUG-03 §4.1). `chunkFileNames` goes back to
       // Vite's default.
       const hasOutputConfig = userConfig?.build?.rollupOptions?.output !== undefined;
+      // Rolldown warns when a plugin takes «significant time» of the build. This one always
+      // does, by construction: it compiles every `.fud`, runs the link, edge and Service
+      // Worker builds inside `generateBundle` and prerenders the routes, so nearly all of a
+      // fudic build is spent here. The warning read as a problem on every build and was not
+      // one. Off unless the project asked for it, either way.
+      // Vite merges what a `config` hook returns into the project's own, so `pluginTimings` is
+      // the only key this has to name.
+      const userTimings =
+        userConfig?.build?.rolldownOptions?.checks?.pluginTimings ??
+        userConfig?.build?.rollupOptions?.checks?.pluginTimings;
+      const checks = userTimings === undefined ? { checks: { pluginTimings: false } } : {};
       const pinned = (chunk: { name: string }): string => {
         // A coordinator is named `fudic-main-<hash of its own source>` (SDD-45 §4.4), so
         // this is a prefix and not an equality: there are as many as there are combinations of
@@ -479,6 +531,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             // The coordinators are NOT inputs: there is one per combination of pieces and
             // they are emitted in `buildStart`, where the routes are known (SDD-45 §4.4).
             input: { 'fudic-boot': BOOT_ID },
+            ...checks,
             ...(hasOutputConfig ? {} : { output: { entryFileNames: pinned } }),
           },
         },
@@ -540,12 +593,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       styleWarnings = resolvedStyles.warnings;
     },
 
-    configureServer(server) {
+    async configureServer(server) {
       builds = discoverRoutes(root, options).routes;
       // What the editor marks, live (SDD-35 §4.5): checked at start, re-checked on every save
       // of a file the program read, pushed to the overlay without a reload, and the page
       // comes back by itself once it is clean.
-      const live = startLiveCheck(server, root);
+      //
+      // Imported HERE and not at the top of this module: the machine that checks loads
+      // TypeScript, most of a second, and `vite preview` loads this plugin without ever
+      // checking anything.
+      const { createProjectChecker } = await import('@fudic/typecheck');
+      const live = startLiveCheck(server, root, createProjectChecker({ root }));
       server.httpServer?.once('close', () => live.dispose());
       // Dev serves the bootstraps at stable root URLs (so the SW would register at root
       // scope), but registers nothing unless `sw.json` says `"dev": "preview"` (§4.11).
@@ -765,35 +823,53 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       });
     },
 
-    buildStart() {
+    async buildStart() {
+      // Nothing of a previous build's check survives into this one.
+      verdict = undefined;
+      runningCheck = undefined;
+      // A new memory per build: a watch rebuild must not answer with the previous graphs.
+      if (!isDev) io = buildIo(nodeIo());
       // What the editor marks, before anything is compiled (SDD-35 §4.4). The whole project,
       // and not only what a route reaches: a component nobody links yet is red in the editor
       // too. Every problem is printed, and the build fails ONCE with the count — the author
       // sees the whole list in the first run. Dev has its own live check (§4.5).
+      //
+      // In a child process, WHILE the build bundles (`startBackgroundCheck`): it used to block
+      // here for one to two seconds before anything was compiled. The verdict is still the
+      // first thing the build says — `report` waits for it before any batch that has something
+      // to say, and `buildEnd` before the build is allowed to finish.
       if (!isDev) {
-        const report = createProjectChecker({ root }).check();
-        reporter.rememberCheck(report);
-        const summary = summarize(report, root);
-        for (const block of summary.blocks) {
-          if (block.severity === 'error') logger?.error(block.text);
-          else logger?.warn(block.text);
-        }
-        if (summary.failure !== undefined) this.error(summary.failure);
+        const check = startBackgroundCheck(root);
+        runningCheck = check;
+        verdict = check.report.then((report) => {
+          reporter.rememberCheck(report);
+          const summary = summarize(report, root);
+          for (const block of summary.blocks) {
+            if (block.severity === 'error') logger?.error(block.text);
+            else logger?.warn(block.text);
+          }
+          return summary.failure;
+        });
+        // Handled here so a check that fails before anyone awaits is not an unhandled
+        // rejection; `settleCheck` still receives the error.
+        verdict.catch(() => undefined);
       }
       // Who this project is, before anything is built with it. A malformed `fudic.json`
       // stops here, as it does in the CLI (`FUD0725`); so does a `sw.json` with no `id`,
       // because caches named after nothing is not a degraded mode (§5).
-      reporter.report(this, project.errors);
+      //
+      // Every batch of `buildStart` goes through `report`, which lets the typecheck speak first.
+      await report(this, project.errors);
       // The style guide's own (SDD-42 §5). Errors, and for the same reason: a sheet that is
       // not there renders exactly like a sheet that did nothing.
-      reporter.report(this, styleErrors);
+      await report(this, styleErrors);
       // And the same questions asked of the LIBRARIES this project consumes (SDD-43 §4.6).
       // Reading the whole chain here, before anything is emitted, is what makes this one
       // report naming the package instead of one per document that happens to compose a
       // component from it.
       if (styleChains !== null) {
         styleChains.chainOfPackage(root);
-        reporter.report(this, styleChains.diagnostics);
+        await report(this, styleChains.diagnostics);
       }
       // The published runtime this build links instead of compiling (SDD-45 §4.2). Discovered
       // here, before anything resolves an import: from `buildStart` on, `@fudic/core` is a set
@@ -803,7 +879,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // and hot-reloadable, and an empty linkage is exactly the instruction to bundle it.
       if (!isDev) {
         const discovery = runtimePieces(root, runtimeFs);
-        reporter.report(this, discovery.diagnostics);
+        await report(this, discovery.diagnostics);
         runtime = runtimeLinkage(discovery.pieces, runtimeFs);
       }
       // Whether each library can be parsed by THIS compiler (SDD-43 §4.7). An ERROR since
@@ -812,11 +888,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // moment a library is shared between two of them, the library decides — and what a
       // mismatch produces is an export that does not exist, in a browser, inside a file the
       // author never wrote.
-      reporter.report(this, checkPeers(root, nodePackageFs()));
+      await report(this, checkPeers(root, nodePackageFs()));
       // And what the sheet says that its destination cannot hear (§4.5). A warning, and
       // the sheet is emitted whole: the same file served to the document too is a legitimate
       // shape, and there those rules are the correct ones.
-      reporter.report(this, styleWarnings);
+      await report(this, styleWarnings);
 
       const discovered = discoverRoutes(root, options);
       builds = discovered.routes;
@@ -827,8 +903,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // In dev, warnings as before: a dev server does not die on a typo at startup, and the
       // parse errors are the live check's to show, in the overlay (§4.5).
       if (!isDev) {
-        reporter.report(this, discovered.diagnostics);
-        reporter.report(this, discovered.parse);
+        await report(this, discovered.diagnostics);
+        await report(this, discovered.parse);
       } else {
         for (const d of discovered.diagnostics) this.warn(reportText(d, root));
       }
@@ -837,7 +913,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // every file it reaches and stops at the first one it cannot, with an `ENOENT` naming
       // a path the author never wrote — so the questions only a resolver can answer are
       // asked here, where there is still something to say about them.
-      reporter.report(
+      await report(
         this,
         checkLinks(
           builds.map((rb) => rb.absPath),
@@ -856,7 +932,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       coordinatorIds.clear();
       if (!isDev) {
         const { params, missing } = coordinatorParams({ mode: 'build', base });
-        reporter.report(this, missing.map((name) => FUD0801({ name })));
+        await report(this, missing.map((name) => FUD0801({ name })));
         for (const rb of builds) {
           if (rb.decision.mode === 'excluded') continue;
           const coordinator = coordinatorFor(
@@ -895,7 +971,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         styleChains.own(root).global.length + styleChains.own(root).optional.length > 0 &&
         discoverComponents(builds, io).length === 0
       ) {
-        reporter.report(this, [FUD0742()]);
+        await report(this, [FUD0742()]);
       }
       if (isDev) {
         // Dev has no emitFile/generateBundle: the module graph serves the wrappers and
@@ -963,7 +1039,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // produce a valid tag — `blog-slug` has no reason to be anybody's element — but
       // «normally» is not a guarantee, and a silent overwrite is a page that hydrates as
       // some other file. Every clash at once, before anything is emitted for them.
-      reporter.report(
+      await report(
         this,
         reactiveRoutes
           .filter((route) => tags.has(route.name))
@@ -1161,7 +1237,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         const ioc = transformFudIoc(path, io);
         if (ioc === null) return null;
         // What resolving its graph had to say, which this path used to drop (SDD-35 §1.1).
-        reporter.report(this, ioc.diagnostics, path);
+        await report(this, ioc.diagnostics, path);
         // The `@code` is copied verbatim, so this module is TypeScript whenever the author
         // wrote TypeScript — the same strip `?client` and `?server` need.
         return (await transformWithOxc(ioc.code, `${path}.ts`, { lang: 'ts' })).code;
@@ -1173,7 +1249,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         }
         // Every diagnostic of the chunk, positioned, and none of them twice (SDD-35 §4.4):
         // this path used to drop the emit's own, so a `@client` that did not compile shipped.
-        reporter.report(this, [
+        await report(this, [
           ...chunk.missingAssets.map((spec) => FUD0363({ file: path, spec })),
           ...chunk.diagnostics,
         ], path);
@@ -1195,10 +1271,14 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // publishes in `fud-route` and what the runtime derives the chunk URL from (SDD-39
       // §4.7). A component, a layout, or a route the build excluded gets none, and then the
       // page publishes no block and claims no id.
-      const result = transformFud(path, io, routeNameOf(path), projectStyles, linked);
-      if (result === null) {
+      //
+      // Compiled through the build's memory (`compileFud`): the link pass and the edge pass
+      // ask for the same module later and get this one instead of compiling it again.
+      const compiled = await compileFud(path, io, routeNameOf(path), projectStyles, linked);
+      if (compiled === null) {
         return null;
       }
+      const result = compiled.result;
       // A literal asset URL with no file on disk: warn (FUD0363) and keep the literal —
       // the emit already left it un-linked, so the build does not abort.
       const diagnostics: FudDiagnostic[] = result.missingAssets.map((spec) => FUD0363({ file: path, spec }));
@@ -1228,23 +1308,26 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // then every error of this file in one failure. A diagnostic that names another file
       // says so: a snippet's body is reported in the snippet's file. What the typecheck
       // already said is not said again.
-      reporter.report(this, [...diagnostics, ...result.diagnostics], path);
-      // Same reason as `?server` and `?client`: since SDD-34 the neutral zone of `@code`
-      // reaches this module too, verbatim, so a `const f: Form<Post> = form(schema)` makes it
-      // TypeScript. The three emitted modules are now stripped by the one rule.
-      //
-      // The `.fud` map goes IN as `inMap` and Oxc composes: `.fud` → TS → JS collapses to one
-      // `.fud` → JS map that describes the code actually returned. It used to be handed over
-      // as it stood, next to the STRIPPED code — a map of a text that no longer existed. It
-      // resolved, it named the right `.fud`, and its offsets were fiction; the chunks it
-      // produced came out with 3 mappings for 5 000 columns.
-      const stripped = await transformWithOxc(
-        result.code,
-        `${path}.ts`,
-        { lang: 'ts', sourcemap: true },
-        result.map,
-      );
-      return stripped.map ? { code: stripped.code, map: stripped.map } : { code: stripped.code };
+      await report(this, [...diagnostics, ...result.diagnostics], path);
+      // Already stripped, for the same reason as `?server` and `?client`: since SDD-34 the
+      // neutral zone of `@code` reaches this module verbatim, so a `const f: Form<Post> =
+      // form(schema)` makes it TypeScript. The `.fud` map went IN as `inMap`, so the map
+      // describes the code actually returned — it used to be handed over next to the
+      // STRIPPED code, a map of a text that no longer existed.
+      return compiled.module;
+    },
+
+    async buildEnd(error) {
+      // The last moment the typecheck can stop the build before anything is written: the
+      // bundle is done, the link and edge passes and the prerender have not started.
+      const check = runningCheck;
+      runningCheck = undefined;
+      if (error !== undefined) {
+        // The build already failed for a reason of its own; nobody will read the verdict.
+        await check?.cancel();
+        return;
+      }
+      await settleCheck(this);
     },
 
     async generateBundle(_outputOptions, bundle) {
@@ -1253,11 +1336,16 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // not something to swallow in the install's `catch` on the client.
       const emitted = new Set<string>(Object.keys(bundle));
 
+      // 1 and 1b run AT THE SAME TIME: two independent nested builds over the same routes.
+      // Neither reads the other's output, both compile through the build's memory, and the
+      // reporter they share says each diagnostic once whoever finds it first. They used to
+      // run one after the other.
+      //
       // 1. The link pass: the chunks the Service Worker will link by hand (§4.3).
-      const link: LinkResult =
+      const linking: Promise<LinkResult> =
         swConfig === null
-          ? { chunks: [], entries: new Map(), deps: new Map() }
-          : await runLinkPass(root, base, builds, io, nested, projectStyles, linked, runtimeEntriesFor, reporter);
+          ? Promise.resolve({ chunks: [], entries: new Map(), deps: new Map() })
+          : runLinkPass(root, base, builds, io, nested, projectStyles, linked, runtimeEntriesFor, reporter);
       // A nested build's output is emitted as an ASSET, so nothing writes its `.map` or
       // appends its `sourceMappingURL` unless we do (BUG-05 §4.3).
       const emitWithMap = (artifact: NestedArtifact): void => {
@@ -1279,18 +1367,21 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // Written to disk in 3b, not here: an edge chunk imports the shared chunks by name and
       // those are renamed there (BUG-31 §T5), so what lands beside `outDir` — and what the
       // prerender runs — has to be the rewritten code.
-      const edge = await runEdgePass(
-        root,
-        base,
-        builds,
-        io,
-        resolveAlias,
-        nested,
-        projectStyles,
-        linked,
-        runtimeEntriesFor,
-        reporter,
-      );
+      const [link, edge] = await Promise.all([
+        linking,
+        runEdgePass(
+          root,
+          base,
+          builds,
+          io,
+          resolveAlias,
+          nested,
+          projectStyles,
+          linked,
+          runtimeEntriesFor,
+          reporter,
+        ),
+      ]);
 
       // 2. The Service Worker's own bundle: one realm, one bundle (BUG-03 §4.1). Its
       //    code still carries BUILD_TOKEN — the id is computed from it, below.

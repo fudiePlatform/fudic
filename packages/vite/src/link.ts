@@ -12,7 +12,7 @@
  * are known in time for the manifest.
  */
 
-import { build, transformWithOxc, type Plugin } from 'vite';
+import { build, type Plugin } from 'vite';
 import { type ResolveIo } from '@fudic/compiler';
 import { safeName } from '@fudic/transport';
 import { type RouteBuild } from './discover.js';
@@ -20,7 +20,8 @@ import { isLinkable } from './mode.js';
 import { emitRenderChunk } from './wrapper.js';
 import { runtimeUrls, type RuntimeEntries } from './constants.js';
 import { routeNameLookup, routeUsesDi } from './client.js';
-import { transformFud, NO_STYLES, type ProjectStyles } from './transform.js';
+import { NO_STYLES, type ProjectStyles } from './transform.js';
+import { compileFud } from './compile.js';
 import type { BuildReporter } from './report.js';
 import { LINK_DIR, LINK_PREFIX } from './constants.js';
 import { loadWithSourceMap } from './inputmaps.js';
@@ -124,28 +125,15 @@ function linkPlugin(
       if (!path.endsWith('.fud')) {
         return null;
       }
-      const result = transformFud(path, io, routeNameOf(path), styles, assets);
-      if (result === null) return null;
+      // The same module the host bundle compiled, from the build's memory (`compileFud`).
+      const compiled = await compileFud(path, io, routeNameOf(path), styles, assets);
+      if (compiled === null) return null;
       // What the emit had to say about the file, which this pass used to drop (SDD-35 §1.1).
-      reporter?.report(this, result.diagnostics, path);
-      // Since SDD-34 the neutral zone of `@code` reaches this module verbatim, so it is
-      // TypeScript whenever the author wrote it — same strip as the host plugin does.
-      // The map goes back too (BUG-05 §4.2). Dropping it was not a missing feature but a
-      // silent one: the nested build would chain its own map onto the GENERATED module and
-      // produce a map that is valid, resolves, and never mentions the `.fud`.
-      //
-      // It goes in as `inMap` rather than alongside the result: Oxc composes `.fud` → TS with
-      // its own TS → JS and returns one map for the code it actually emitted. Returning the
-      // emit's map next to the STRIPPED code described a text that no longer existed — these
-      // are the chunks the Service Worker links, and they came out with a handful of
-      // mappings each, or none at all.
-      const emitted = await transformWithOxc(
-        result.code,
-        `${path}.ts`,
-        { lang: 'ts', sourcemap: true },
-        result.map,
-      );
-      return emitted.map ? { code: emitted.code, map: emitted.map } : { code: emitted.code };
+      reporter?.report(this, compiled.result.diagnostics, path);
+      // With its map (BUG-05 §4.2). Dropping it was not a missing feature but a silent one:
+      // the nested build would chain its own map onto the GENERATED module and produce a map
+      // that is valid, resolves, and never mentions the `.fud`.
+      return compiled.module;
     },
   };
 }

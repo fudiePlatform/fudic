@@ -214,3 +214,69 @@ describe('runLinkPass', () => {
     expect(empty.entries.size).toBe(0);
   });
 });
+
+/**
+ * A diamond in the chunk graph: one page reaches the same shared chunk through two others.
+ * `x-left` and `x-right` both import `shared.js`, and the three routes split them so the
+ * bundler gives each its own chunk; `/both` imports left and right, and both import shared.
+ * The order must still list `shared` ONCE, before the two that need it.
+ */
+describe('runLinkPass — a dep reached twice is listed once', () => {
+  const component = (tag: string): string => `@code {
+  import { shout } from './shared.js';
+}
+
+<${tag}>
+  <template shadowrootmode="open">
+    <span>@shout('${tag}')</span>
+  </template>
+</${tag}>
+`;
+  const page = (title: string, ...tags: string[]): string => `<!DOCTYPE html>
+<html>
+  <head>
+    ${tags.map((t) => `<link rel="component" href="../components/${t}.fud">`).join('\n    ')}
+    <title>${title}</title>
+  </head>
+  <body>${tags.map((t) => `<${t}></${t}>`).join('')}</body>
+</html>
+`;
+  let diamond: LinkResult;
+
+  beforeAll(async () => {
+    root = mkdtempSync(join(tmpdir(), 'fudic-link-diamond-'));
+    mkdirSync(join(root, 'routes'), { recursive: true });
+    mkdirSync(join(root, 'components'), { recursive: true });
+    writeFileSync(join(root, 'components', 'shared.js'), 'export const shout = (s) => `${s}!`;\n');
+    writeFileSync(join(root, 'components', 'x-left.fud'), component('x-left'));
+    writeFileSync(join(root, 'components', 'x-right.fud'), component('x-right'));
+    writeFileSync(join(root, 'routes', 'both.fud'), page('Both', 'x-left', 'x-right'));
+    writeFileSync(join(root, 'routes', 'left.fud'), page('Left', 'x-left'));
+    writeFileSync(join(root, 'routes', 'right.fud'), page('Right', 'x-right'));
+    diamond = await runLinkPass(
+      root,
+      '/',
+      [
+        routeBuild('/both', 'both.fud', mode('sw')),
+        routeBuild('/left', 'left.fud', mode('sw')),
+        routeBuild('/right', 'right.fud', mode('sw')),
+      ],
+      nodeIo(),
+      { sourcemap: false, minify: false },
+    );
+  }, 180000);
+
+  it('lists every dep of `/both` once, and the shared one before the two that import it', () => {
+    const deps = diamond.deps.get('/both') ?? [];
+    const code = (d: string): string => diamond.chunks.find((c) => c.fileName === d)?.code ?? '';
+    expect(new Set(deps).size).toBe(deps.length);
+    // left, right, and the one both of them import.
+    expect(deps).toHaveLength(3);
+    const shared = deps.findIndex((d) => !code(d).includes('x-left') && !code(d).includes('x-right'));
+    const left = deps.findIndex((d) => code(d).includes('"x-left') || code(d).includes("'x-left"));
+    const right = deps.findIndex((d) => code(d).includes('"x-right') || code(d).includes("'x-right"));
+    expect(shared).toBeGreaterThanOrEqual(0);
+    expect(shared).toBeLessThan(left);
+    expect(shared).toBeLessThan(right);
+  });
+});

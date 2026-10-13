@@ -141,10 +141,10 @@ describe('the dev server', () => {
     },
   });
 
-  function serve(): {
+  async function serve(): Promise<{
     handler: (req: { url: string }, r: Res, next: () => void) => void;
     asked: string[];
-  } {
+  }> {
     const root = project({
       'components/x-owner.fud': OWNER,
       'components/x-plain.fud': PLAIN,
@@ -157,7 +157,7 @@ describe('the dev server', () => {
     plugin.config({});
     plugin.configResolved({ root, base: '/', command: 'serve', build: { outDir: 'dist' } });
     let handler!: (req: { url: string }, r: Res, next: () => void) => void;
-    plugin.configureServer({
+    await plugin.configureServer({
       // What the live typecheck (SDD-35) talks to.
       ...fakeDevServerParts(),
       middlewares: { use: (fn: typeof handler) => (handler = fn) },
@@ -171,7 +171,7 @@ describe('the dev server', () => {
   }
 
   it('resolves `<tag>.ioc` to the IoC module and a bare tag to the chunk', async () => {
-    const { handler, asked } = serve();
+    const { handler, asked } = await serve();
     handler({ url: '/@fudic/h/x-owner.ioc.js' }, res(), () => undefined);
     handler({ url: '/@fudic/h/x-owner.js' }, res(), () => undefined);
     await new Promise((r) => setImmediate(r));
@@ -195,8 +195,8 @@ describe('the dev server', () => {
     /* eslint-enable @typescript-eslint/no-explicit-any */
   });
 
-  it('leaves a tag nobody rendered to the rest of the middlewares', () => {
-    const { handler } = serve();
+  it('leaves a tag nobody rendered to the rest of the middlewares', async () => {
+    const { handler } = await serve();
     let nexted = false;
     handler({ url: '/@fudic/h/x-nobody.ioc.js' }, res(), () => {
       nexted = true;
