@@ -144,11 +144,7 @@ describe('run over a live DOM', () => {
     expect(() => ctl.r!()).not.toThrow();
   });
 
-  // KNOWN DEFECT, pinned with `it.fails`: a gathered `Signal<T>` key is left out of the
-  // subscriptions (`p.rest === undefined` in client.ts `reactive` and in state.ts `scopeOf`),
-  // so `@resto.v()` paints the first value and never the next one. A named `Signal<T>` prop
-  // repaints. Flip this to `it` with the fix.
-  it.fails('a gathered Signal<T> key repaints when the parent sets it, as a named one does', () => {
+  it('a gathered Signal<T> key repaints when the parent sets it, as a named one does', () => {
     const SIG = '@code {\n  const { ...resto } = props<{ v: Signal<number> }>();\n}\n<x-sig>\n  <template shadowrootmode="open"><p>@resto.v()</p></template>\n</x-sig>\n';
     const g = graphOf({ '/x-sig.fud': SIG }, 'x-sig');
     const v = signal(1);

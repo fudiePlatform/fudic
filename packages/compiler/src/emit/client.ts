@@ -319,8 +319,9 @@ function buildComponentClientModule(
   // writes and on the owner's alike — and the parent no longer forwards anything to it.
   const reactive = [
     ...signals.flatMap((s) => (s.kind === 'signal' ? [s.name] : [])),
-    // A gathered key has no local the template reads by name, so it subscribes nothing here.
-    ...props.flatMap((p) => (p.channel === 'signal' && p.rest === undefined ? [p.name] : [])),
+    // A gathered key is subscribed through the hidden local it arrived in: the template reads
+    // it as `resto.v()`, which is the same signal object.
+    ...props.flatMap((p) => (p.channel === 'signal' ? [localOf(p)] : [])),
   ];
   // And the names that come from ANOTHER module — a store. The same argument as above ends
   // in a different instruction: a declaration this file can read is subscribed outright, and
