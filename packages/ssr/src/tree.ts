@@ -10,7 +10,8 @@
 
 import { type Ns } from '@fudic/dom';
 
-export type SsrKind = 'element' | 'text' | 'comment' | 'fragment';
+/** `html` is the content `@raw(expr)` writes: markup already made safe by `htmlOf`, verbatim. */
+export type SsrKind = 'element' | 'text' | 'comment' | 'fragment' | 'html';
 
 /** Opaque handle to a node in the SSR tree. Built only by `SsrDom`. */
 export interface SsrNode {
@@ -48,7 +49,7 @@ export class SsrNodeImpl implements SsrNode {
   static element(tag: string, ns: Ns): SsrNodeImpl {
     return new SsrNodeImpl('element', tag, ns, '');
   }
-  static leaf(kind: 'text' | 'comment', data: string): SsrNodeImpl {
+  static leaf(kind: 'text' | 'comment' | 'html', data: string): SsrNodeImpl {
     return new SsrNodeImpl(kind, null, 'html', data);
   }
   static fragment(): SsrNodeImpl {

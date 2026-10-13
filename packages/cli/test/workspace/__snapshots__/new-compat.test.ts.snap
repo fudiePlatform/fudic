@@ -167,6 +167,12 @@ declare function $attr(v: $Scalar): void;
  */
 interface $TrustedURL { readonly fudicTrustedUrl: string }
 declare function $url(v: $Scalar | $TrustedURL): void;
+/**
+ * The value of \`@raw(…)\` (decision 18): HTML \`trustedHtml()\` marked, or nothing. Structural,
+ * like \`$TrustedURL\`, so the projection needs no import to accept it.
+ */
+interface $TrustedHTML { readonly fudicTrustedHtml: string }
+declare function $raw(v: $TrustedHTML | null | undefined): void;
 declare function $attrs<T>(a: T & $GlobalAttrs): void;
 
 /**

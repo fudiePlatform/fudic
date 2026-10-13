@@ -27,6 +27,17 @@ export function emitInterpolation(ctx: TemplateContext, expr: RazorExpression): 
   ctx.w.scaffold(');\n');
 }
 
+/**
+ * `@raw(expr)` (decision 18): the value has to be `trustedHtml(…)` marked. A plain string is
+ * not HTML the author vouched for — at runtime it is escaped as text — so TypeScript says so
+ * here, in the editor and in the build, instead of the page quietly printing the tags.
+ */
+export function emitRaw(ctx: TemplateContext, expr: RazorExpression): void {
+  ctx.w.scaffold('$raw(', expr.span);
+  copyRazor(ctx, expr);
+  ctx.w.scaffold(');\n');
+}
+
 /** A `@` that opens nothing yet, at the very end of a text node: `<p>hola @|</p>`. */
 const DANGLING_AT = /(?:^|[^@\w])@$/u;
 

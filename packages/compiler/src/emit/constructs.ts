@@ -202,6 +202,23 @@ function collectNode(node: HtmlContent, visit: JsFragmentVisitor): void {
 }
 
 /**
+ * The `@raw(…)` that owns the whole content of `el`, or `null` (decision 18).
+ *
+ * Blank text and Razor comments around it are formatting and are dropped. The server and the
+ * client branch both ask THIS function, so they cannot disagree about which elements write
+ * their content as HTML. Any other shape is `FUD0990` and paints nothing for the `@raw`.
+ */
+export function rawChild(el: ElementNode): RawExpressionNode | null {
+  const content = el.children.filter(
+    (n) => !((n.type === 'text' && n.value.trim() === '') || n.type === 'razor-comment'),
+  );
+  const only = content[0];
+  return content.length === 1 && only!.type === 'raw-expression' && el.name !== 'template'
+    ? (only as RawExpressionNode)
+    : null;
+}
+
+/**
  * The variable a well-formed `ref="@name"` writes on one element, or `null` (decision 30).
  *
  * A malformed ref (`@a.b`, `@(x)`) already carries its diagnostic and writes nothing: the

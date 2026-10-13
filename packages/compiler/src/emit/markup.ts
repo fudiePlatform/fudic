@@ -39,7 +39,7 @@ import {
 import { emitItems, type TextRun } from './runs.js';
 import { markerSite } from './marker.js';
 import { adoptListOf, type ProjectAdopt } from './project-styles.js';
-import { loopHead, type LoopNode } from './constructs.js';
+import { loopHead, rawChild, type LoopNode } from './constructs.js';
 import { EMPTY_CONTROLS, type ControlPlan, type MarkerSite } from './controls.js';
 
 /** `render` + PascalCase of a `prefix-name` tag: `app-button` → `renderAppButton`. */
@@ -104,8 +104,8 @@ const SERVER_ROLE: Record<HtmlContent['type'], ServerRole> = {
   // marker of `marker.ts`, planted by `emitChildren` and by nobody else (SDD-30 §3.4).
   comment: 'none',
   'razor-comment': 'none',
-  // `@raw(…)` is an interpolation that is not escaped (decision 18); the emit has no consumer
-  // for it until SDD-07 fixes the escape semantics. Same state `runs.ts` leaves it in.
+  // `@raw(…)` is never painted as a node of a level: it owns its element whole (decision 18),
+  // and `#content` writes it as that element's HTML. One found here is `FUD0990`.
   'raw-expression': 'none',
   // `@{ … }` is author JS that runs IN PLACE (decisions 13, 16, 17): it paints no node, but
   // it is a statement of the render body, at the point the template writes it. It used to sit
@@ -430,6 +430,20 @@ export class MarkupEmitter {
     }
   }
 
+  /**
+   * The content of an element: its children, or — when an `@raw(…)` owns it whole — the HTML
+   * that value writes (decision 18). `setHtml` is the adapter's, and it applies `htmlOf`, the
+   * same function the browser's applies, so the two sides paint the same tree.
+   */
+  #content(el: ElementNode, v: string): void {
+    const raw = rawChild(el);
+    if (raw === null) {
+      this.emitChildren(el.children, v);
+      return;
+    }
+    this.#w.mappedLine(`$dom.setHtml(${v}, (`, { text: this.#slice(raw.expr.expr), src: raw.expr.expr.start }, `));`);
+  }
+
   #fresh(): string {
     return `$n${this.#id++}`;
   }
@@ -499,7 +513,7 @@ export class MarkupEmitter {
       this.#w.line(
         `${renderName(el.name)}($dom, ${s}, ${componentPropsExpr(this.#source, el, this.#signals, this.#declared(el.name))}, ${this.#ioc});`,
       );
-      this.emitChildren(el.children, v); // light DOM (projected by <slot>)
+      this.#content(el, v); // light DOM (projected by <slot>)
       // A marker host's text goes into its light DOM, where the component's `<slot>` paints it.
       this.#markerText(el, v);
     } else {
@@ -513,7 +527,7 @@ export class MarkupEmitter {
       // is the whole question. So the element decides, which is also what keeps `<style>` out
       // of it — a `<style>` body is the component's stylesheet and travels by another door.
       if (dataScriptType(el) !== undefined) this.#rawBody(el, v);
-      else this.emitChildren(el.children, v);
+      else this.#content(el, v);
       this.#markerText(el, v);
     }
     this.#at = outer;

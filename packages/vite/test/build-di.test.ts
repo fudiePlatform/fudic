@@ -215,8 +215,9 @@ describe('the same app with no DI at all', () => {
     // §3.7) is ONE module the server's and the browser's `$dom` both import, so when the
     // runtime is bundled into the app Rollup gives it a chunk of its own — or folds it into
     // another one, depending on what else is shared. Where it lands says nothing about DI.
+    // `htmlOf`, the one function `@raw` writes through on both sides, is the same case.
     const withDi = new Set(unhashed(output));
-    const shared = new Set(['assets/url.js']);
+    const shared = new Set(['assets/url.js', 'assets/html.js']);
     for (const file of unhashed(plain)) if (!shared.has(file)) expect(withDi.has(file)).toBe(true);
     expect(unhashed(plain).some((name) => name.includes('.ioc'))).toBe(false);
     expect(plain.length).toBeLessThan(output.length);

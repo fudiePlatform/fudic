@@ -58,7 +58,7 @@ import {
   type PropTarget,
   type ValueSink,
 } from './attrs.js';
-import { branchesOf, refTarget } from './constructs.js';
+import { branchesOf, rawChild, refTarget } from './constructs.js';
 import { isControlNode, markerSite } from './marker.js';
 import { adoptListOf, type ProjectAdopt } from './project-styles.js';
 import { bodyContext, childrenContext, type RunContext } from './display.js';
@@ -1446,6 +1446,15 @@ export class ClientMarkupEmitter {
         if (child.type !== 'raw-text') continue;
         this.#fab.line(`$dom.append(${v}, $dom.text(${JSON.stringify(child.value)}));`);
       }
+      return;
+    }
+    // An `@raw(…)` that owns the element (decision 18) is ONE value write: `c` paints it with
+    // `$a`, `h` adopts the element without entering it — the HTML arrived inside it — and an
+    // update rewrites the content, never the level around it.
+    const raw = rawChild(el);
+    if (raw !== null) {
+      const expr = raw.expr.expr;
+      this.#applyValue([{ text: this.#slice(expr), src: expr.start }], ($v) => `$dom.setHtml(${v}, ${$v});`);
       return;
     }
     this.#depth += 1;
