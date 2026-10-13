@@ -1,8 +1,8 @@
 # BUG-46 · El build espera a cosas que no necesita, y el preview carga TypeScript para nada
 
-> **Estado:** `En curso` — arreglado en cinco fases y verificado por la sesión de tests; falta el
-> cierre (ver [BUG-46-Task.md](./BUG-46-Task.md)). Redactado al final, por indicación de Pedro,
-> el 2026-10-13.
+> **Estado:** `Hecho` — arreglado en cinco fases, verificado por la sesión de tests y cerrado (ver
+> [BUG-46-Task.md](./BUG-46-Task.md)). Redactado al final, por indicación de Pedro, el
+> 2026-10-13.
 > **Corrige:** [SDD-35](../SDD-35-compilo-o-no-compilo.md) §4.4 (el typecheck del build bloqueaba
 > `buildStart`) · [SDD-19](../SDD-19-plugin-vite.md) (el plugin cargaba el typecheck al
 > importarse) · las tres pasadas de compilación de [BUG-09](./BUG-09-frontera-servidor.md) y
@@ -22,9 +22,9 @@ de pnpm), tres ejecuciones de cada:
 
 | | Antes | Después |
 |---|---|---|
-| `build` (con SW), reloj | 7,3 – 8,4 s | 5,7 – 6,6 s |
-| `build:nosw`, reloj | 5,5 – 7,5 s | 4,8 – 5,3 s |
-| `preview`, hasta que escucha | 1,28 – 1,37 s | 0,82 – 1,19 s |
+| `build` (con SW), reloj | 7,3 – 8,4 s | 5,1 – 5,4 s |
+| `build:nosw`, reloj | 5,5 – 7,5 s | 4,4 – 4,5 s |
+| `preview`, hasta que escucha | 1,28 – 1,37 s | 0,82 – 0,90 s |
 
 Una vez arrancado, el preview siempre fue rápido: cada petición tarda entre 2 y 15 ms, y en Chrome
 el `load` llega entre 16 y 80 ms. La espera que se nota es el arranque, y lo que cuesta pnpm antes
@@ -71,11 +71,22 @@ crece. Encima de ella:
   Oxc, recordado bajo el fichero y el nombre de ruta. Las tres pasadas lo llaman, y cada una sigue
   reportando sus diagnósticos, que el reporter dice una sola vez.
 
-### 3.3. El typecheck en su hilo — `background-check.ts`
+### 3.3. El typecheck en su propio proceso — `background-check.ts`
 
-`buildStart` lanza el chequeo en un `worker_thread` (`worker/check.mjs`) y sigue con el build. El
-script es JavaScript plano, fuera de `src` a propósito: se carga por URL igual desde `src/` en los
-tests que desde `dist/` publicado. Está en `files`.
+`buildStart` lanza el chequeo en un **proceso hijo** (`child_process.fork` de `worker/check.mjs`,
+con `execArgv: []`) y sigue con el build. El script es JavaScript plano, fuera de `src` a
+propósito: se arranca por ruta igual desde `src/` en los tests que desde `dist/` publicado. Está
+en `files`. El informe vuelve por el canal IPC; si el hijo termina sin mandarlo, el chequeo
+falla con su código de salida o su señal (se escucha `close`, que espera al canal, y no `exit`).
+
+**Primero fue un hilo, y se descartó midiendo.** Con un `worker_thread`, TypeScript, Volar y el
+addon nativo de Oxc vivían dentro del proceso de Vite, y Node moría con un *access violation*
+(`0xC0000005`, *Segmentation fault*). Sondas sobre un Node suelto, con la máquina en reposo:
+**2 de 60** muertes al cortar el hilo después de recibir su informe, las dos dentro de
+`terminate()`, y **0 de 60** cuando el hilo salía solo. En el build eso solo pasaba en
+`buildEnd` con error, pero un build que ya fallaba podía acabar en un crash en vez de en su error.
+Con un proceso aparte, un crash del hijo es un código de salida que el build reporta y no la muerte
+de `vite build`.
 
 Lo que no cambia para el autor:
 
@@ -85,7 +96,7 @@ Lo que no cambia para el autor:
   repite. Un build sano no tiene nada que decir y no espera.
 - **Falla antes de escribir nada.** `buildEnd` espera el veredicto antes del link pass, el edge
   pass y el prerender, y falla con `the typecheck failed: …` y la lista completa.
-- Si el build ya falló por otra causa, `buildEnd` corta el hilo (`cancel`).
+- Si el build ya falló por otra causa, `buildEnd` termina el proceso del chequeo (`cancel`).
 
 ### 3.4. Link pass y edge pass a la vez
 
@@ -100,15 +111,19 @@ Lo que no cambia para el autor:
   (413 → 307 ficheros), pero el ahorro se queda en el ruido.
 - Un error que Rollup lanza por su cuenta, como un import que no existe, no pasa por `report`.
   Entonces el build falla sin esperar al typecheck y no imprime sus problemas: es el caso en que
-  `buildEnd` corta el hilo.
+  `buildEnd` termina el proceso del chequeo.
 
 ## 5. Efectos que conviene saber
 
-- El bundle principal tarda más con el hilo al lado: entre 2,8 y 3,3 s, frente a 1,1 s antes. En
-  una máquina de 4 núcleos el hilo del typecheck le quita CPU. Aun así el build termina antes,
-  porque el veredicto llega antes de `buildEnd` en todas las mediciones y la espera es 0 ms.
-- El chequeo en el hilo tarda entre 2,4 y 3,6 s, frente a 1,7–2,2 s en el principal: vuelve a
-  cargar TypeScript y compite por CPU.
+- El bundle principal tarda más con el chequeo al lado: entre 2,8 y 3,3 s, frente a 1,1 s antes.
+  En una máquina de 4 núcleos el typecheck le quita CPU. Aun así el build termina antes, porque el
+  veredicto llega antes de `buildEnd` en todas las mediciones y la espera es 0 ms.
+- El chequeo en paralelo tarda entre 2,4 y 3,6 s, frente a 1,7–2,2 s en el proceso principal:
+  vuelve a cargar TypeScript y compite por CPU.
+- Las cifras de este apartado se tomaron con la versión en hilo (ver §3.3). Las de §1 son de la
+  versión final, con proceso hijo, y salen algo mejores que con el hilo (build con SW 4,7–5,4 s
+  «built in» con hilo, 4,1–4,3 s con proceso): el chequeo ya no comparte proceso con el bundle.
+  Son tres muestras de cada.
 
 ## 6. Criterios de aceptación
 
@@ -122,11 +137,11 @@ Lo que no cambia para el autor:
    ruta, aunque lo pidan las tres pasadas (`vite/test/compile-once.test.ts`).
 4. El typecheck no bloquea `buildStart`. Con errores de tipos, el build falla en `buildEnd` con
    `the typecheck failed: …`, imprime cada problema una vez y antes que ningún diagnóstico propio
-   del build. Si el build falla por otra causa, el hilo se corta (`vite/test/plugin.test.ts`,
-   `build-typecheck.test.ts`, `background-check.test.ts`).
-5. El hilo y su `cancel()` no tumban un proceso Node normal: ni cortándolo al arrancar, ni con el
-   addon nativo de Oxc cargado, ni con carga en la máquina. Medido fuera de vitest: 0 muertes en
-   350 ejecuciones.
+   del build. Si el build falla por otra causa, el proceso del chequeo se termina
+   (`vite/test/plugin.test.ts`, `build-typecheck.test.ts`, `background-check.test.ts`).
+5. El chequeo corre en un proceso aparte, no en el de Vite. Un hijo que termina sin informar,
+   con un código o con una señal, rechaza el informe con ese código o esa señal; un hijo que no
+   arranca, con su error (`background-check.test.ts`, `background-check-spawn-error.test.ts`).
 6. Los mapas de fuente de link, edge y prerender siguen bien, ahora que los tres builds reciben el
    mismo objeto (`build-sourcemaps*`, `build-page-maps`, `inputmaps`).
 7. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde. Los ficheros nuevos al 100 % en las

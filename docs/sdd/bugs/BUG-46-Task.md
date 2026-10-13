@@ -7,7 +7,7 @@
 > **Forma de trabajo, por indicación de Pedro:** se midió antes de tocar nada; la implementación
 > va en esta sesión y los tests, el typecheck y la cobertura los hace otra sesión («Test Vite»);
 > el BUG y sus tareas se escriben al final.
-> **Progreso:** 7 / 10
+> **Progreso:** 9 / 10
 
 ---
 
@@ -30,11 +30,12 @@
 - [x] 4. `build-memory.ts`, con la memoria genérica, y `compile.ts` con `compileFud`. Las tres
   pasadas compilan por ahí (`64153a3`).
 
-## Fase 4 — El typecheck en su hilo
+## Fase 4 — El typecheck en paralelo
 
 - [x] 5. `worker/check.mjs` y `background-check.ts`. `buildStart` lanza el chequeo, `report`
-  espera el veredicto antes de decir nada y `buildEnd` lo espera, o corta el hilo si el build ya
-  falló (`d33d383`).
+  espera el veredicto antes de decir nada y `buildEnd` lo espera, o lo corta si el build ya
+  falló (`d33d383`). Nació como `worker_thread`. En el cierre pasó a proceso hijo, por un crash
+  nativo de `terminate()` (ver BUG §3.3 y la tarea 7).
 
 ## Fase 5 — Link y edge a la vez
 
@@ -52,10 +53,36 @@
   ninguna de esas condiciones. El chequeo real del test pasa a un proceso Node aparte, un driver
   que importa `src/background-check.ts`. La rama `message` se cubre con un worker trivial, y un
   `afterEach` espera a que se cierre cada hilo. Resultado: 10 de 10 pasadas completas sin que
-  muera el fork. Hubo un «exit 1 con stderr vacío» del driver en sus tres primeras ejecuciones
-  que no se reprodujo después: queda **observado y no reproducido**, y el mensaje del test ya
-  trae el código y las salidas.
-- [ ] 8. Quitar la instrumentación de la fase 0.
-- [ ] 9. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde, con la cobertura de §6 del BUG.
-  `INDEX.md` de bugs y el maestro.
+  muera el fork.
+
+  **Y no era solo del test.** Ya en el cierre, con la máquina en reposo, el driver de ese test
+  murió con `0xC0000005` (*access violation*) en un Node normal. Sondas sobre la versión con
+  hilo: 2 de 60 muertes al llamar a `terminate()` después de recibir el informe, y 0 de 60
+  cuando el hilo salía solo. Los «exit 1 con stderr vacío» de antes eran casi seguro lo mismo.
+  Decisión: el chequeo pasa a un **proceso hijo** (`child_process.fork`, `execArgv: []`).
+  `report` rechaza con el código o la señal si el hijo termina sin informar, y escucha `close`
+  y no `exit`, para que un informe enviado justo antes de salir llegue siempre primero. Con un
+  proceso, el chequeo real vuelve a correr dentro de vitest.
+- [x] 8. Quitar la instrumentación de la fase 0: fuera `timing.ts` y todas las marcas
+  `[fudic:t]`.
+- [x] 9. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde, con la cobertura de §6 del BUG.
+  Los tiempos medidos otra vez con la versión del proceso hijo. `INDEX.md` de bugs y el
+  maestro.
+
+  **Cómo se cerró.**
+  - `pnpm typecheck`: 20 de 20 paquetes.
+  - `pnpm test`: todos los paquetes en verde, `@fudic/vite` con 880 y 1 *expected fail*.
+  - `pnpm build`: verde, con `examples/basic` y `examples/workspace`.
+  - Cobertura: `@fudic/vite` en 97,80 / 93,59 / 98,03 / 97,79, sobre su suelo de
+    97,70 / 93,40 / 97,94 / 97,70. `background-check.ts`, `build-memory.ts` y `compile.ts`
+    al 100, con umbral por fichero. `@fudic/typecheck` al 100.
+  - Tres incidencias:
+    - Dos tests de `cli` fallaron con un `dist` desfasado, porque los tests corrieron antes que
+      el build. Con el build hecho, 268 de 268.
+    - Un test de navegador de `workbench` y un `EBUSY` de Windows en `vscode` fallaron una vez
+      cada uno y luego pasaron dos de dos. Son intermitentes y ajenos a este cambio.
+  - Tiempos, versión con proceso hijo:
+    - build con SW: 5,1–5,4 s de reloj.
+    - `nosw`: 4,4–4,5 s.
+    - preview hasta escuchar: 0,82–0,90 s.
 - [ ] 10. Actualizar el pnpm global para que deje de delegar del 10.4 al 11.9.
