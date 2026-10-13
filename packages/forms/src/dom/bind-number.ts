@@ -20,9 +20,14 @@ export function bindNumber(
   slot: ErrorSlot,
 ): Cleanup {
   return undo([
-    ...follow([el], control, () => {
-      control.set(el.value === '' ? null : Number(el.value));
-    }),
+    ...follow(
+      [el],
+      control,
+      () => {
+        control.set(el.value === '' ? null : Number(el.value));
+      },
+      el.value !== el.defaultValue,
+    ),
     effect(() => {
       const value = control();
       // Back through the same door it came: `null` is the empty string, which is what an

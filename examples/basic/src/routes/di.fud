@@ -5,20 +5,20 @@
 @code {
   @server {
     import { strategy } from "@fudic/core";
-    import type { DiContext } from "@fudic/ssr";
+    import { publish } from "@fudic/di";
     import { LINES } from "../services/cart";
 
     strategy({ mode: "ssg" });
 
-    export function load(ctx: DiContext) {
+    export function load() {
       const lines = ["manzanas", "peras"];
       // The ONLY thing that crosses: a value, under a token. The `Cart` the server builds
       // and the one the browser builds start from this same array, and neither of them
       // travels — `fud-di` carries the lines, not the service.
       //
-      // Through `ctx` because a value belongs to ONE response: `ctx` is what names the
-      // request whose page this is.
-      ctx.publish(LINES, lines);
+      // A bare `publish`: it writes into the container of the request being served, so the
+      // value belongs to this response and to no other.
+      publish(LINES, lines);
       return { lines };
     }
   }

@@ -42,6 +42,21 @@ export function subscribe<T>(source: Readable<T>, fn: (v: T) => void): () => voi
   });
 }
 
+/**
+ * Whether any of these signals was written since it was created — what the emit asks right
+ * after hooking an instance up.
+ *
+ * The server painted every signal's INITIAL value, and hydration adopts that markup without
+ * painting. A write that happens before the subscriptions exist — an `effect` of `@client`
+ * reading `localStorage`, which runs as the factory does — notifies nobody, and the page would
+ * keep saying what the server said. Asked once, it costs nothing when nothing was written.
+ *
+ * Signals only: the emit passes the ones the file declares, and a signal always has its leaf.
+ */
+export function written(...sources: readonly Readable<unknown>[]): boolean {
+  return sources.some((source) => leafOf(source)!.version() > 0);
+}
+
 /** One disposer for every name that turned out not to be reactive. */
 const NOTHING = (): void => {};
 

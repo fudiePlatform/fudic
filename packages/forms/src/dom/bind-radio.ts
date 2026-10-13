@@ -20,12 +20,17 @@ export function bindRadio(
   control: Control<string>,
   slot: ErrorSlot,
 ): Cleanup {
-  const offs: Cleanup[] = follow(els, control, () => {
-    // The checked one, or the empty string: a group with nothing chosen holds no value, and
-    // that is what a `required` on it is for.
-    const chosen = els.find((el) => el.checked);
-    control.set(chosen === undefined ? '' : chosen.value);
-  });
+  const offs: Cleanup[] = follow(
+    els,
+    control,
+    () => {
+      // The checked one, or the empty string: a group with nothing chosen holds no value, and
+      // that is what a `required` on it is for.
+      const chosen = els.find((el) => el.checked);
+      control.set(chosen === undefined ? '' : chosen.value);
+    },
+    els.some((el) => el.checked !== el.defaultChecked),
+  );
   offs.push(
     effect(() => {
       const value = control();

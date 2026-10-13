@@ -16,16 +16,7 @@
  * this side never reaches a browser, so a method here costs no bundle.
  */
 
-import {
-  createChild,
-  createRoot,
-  injectFrom,
-  publishIn,
-  type Container,
-  type InjectOptions,
-  type Provider,
-  type Token,
-} from '@fudic/di';
+import { createChild, createRoot, type Container } from '@fudic/di';
 
 /** The published map: parent index per node, and the tag that owns each node. */
 export type IocMap = readonly [parents: readonly number[], tags: readonly string[]];
@@ -49,8 +40,8 @@ interface Collector {
  * the collector the whole tree records itself into.
  */
 export function iocRoot(seed?: Readonly<Record<string, unknown>>): IocNode {
-  // Its own table, born with it and dying with it. `ctx.publish` writes into THIS container
-  // during `load`, and the render injects out of it afterwards, so the service the server
+  // Its own table, born with it and dying with it. `publish` writes into THIS container
+  // during `load` (the request's ambient one, SDD-56 §3.8), and the render injects out of it afterwards, so the service the server
   // builds starts from the same value the browser's will — and no other response can reach it.
   return node(createRoot(seed), 0, { parents: [-1], tags: [''] });
 }
@@ -72,38 +63,4 @@ function node(container: Container, index: number, collector: Collector): IocNod
   };
   self.map = (): IocMap => [collector.parents, collector.tags];
   return self;
-}
-
-/**
- * `ctx`, with the request's container hung off it as `ctx.inject` (SDD-38 §4.7).
- *
- * `load(ctx)` is the only `async` function of the system — the whole render is a synchronous
- * walk inside a generator — and that is why it resolves through `ctx` rather than through an
- * ambient container. An ambient one here would not be a visible error: it would be silent
- * contamination between concurrent requests in dev and in prerender, and there is no
- * `AsyncLocalStorage` in a Service Worker to paper over one end of it.
- */
-export interface DiContext {
-  inject<T>(provider: Provider<T>): T;
-  inject<T>(provider: Provider<T>, options: InjectOptions): T | undefined;
-  /**
-   * Publish a value for the browser to rebuild the same service from — into THIS response.
-   *
-   * Through `ctx` for the same reason `inject` is, and here the reason is not a nicety: a
-   * free `publish(token, value)` has no way of naming the response it belongs to, so it kept
-   * a table of its own and two concurrent requests wrote into one table. What the container
-   * adds is the only thing that was missing, which is WHOSE page this value is for.
-   */
-  publish<T>(token: Token<T>, value: T): void;
-}
-
-export function withDi<C extends object>(ctx: C, container: Container): C & DiContext {
-  const inject = (<T>(provider: Provider<T>, options?: InjectOptions): T | undefined =>
-    options === undefined
-      ? injectFrom(container, provider)
-      : injectFrom(container, provider, options)) as DiContext['inject'];
-  const publish = <T>(token: Token<T>, value: T): void => {
-    publishIn(container, token, value);
-  };
-  return { ...ctx, inject, publish };
 }

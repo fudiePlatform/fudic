@@ -173,10 +173,11 @@ describe('emitRenderChunk: load through the chain', () => {
     expect(code).not.toContain('$http');
   });
 
-  it('with DI too: load still gets withDi until the examples migrate', () => {
+  it('with DI, load gets the plain ServerContext: it injects on its own (§4.6)', () => {
     const code = emitRenderChunk({ ...base, hasDi: true, hasHttp: true });
-    expect(code).toContain('iocRoot, publishedSeed, withDi');
-    expect(code).toContain('runLoad(load, { file: $http }, withDi($ctx, $root))');
+    expect(code).toContain('iocRoot, publishedSeed }');
+    expect(code).not.toContain('withDi');
+    expect(code).toContain('runLoad(load, { file: $http }, $ctx)');
     expect(code).toContain('yield* page(data, io(ctx), $root, layout);');
   });
 });

@@ -872,6 +872,13 @@ export class ClientMarkupEmitter {
     this.#place(name, level.fab);
     const via = marker === undefined ? this.#anchor(level, tail) : this.#front(marker, level);
     this.#adopt.line(`${name} = ${via};`);
+    if (run.interpolated) {
+      // Painted as `''`, the run left no node in the HTML: what `via` found is the node beside
+      // it, or nothing. Before the cursor when it was reached backwards, before what was found
+      // when forwards (a marker's run).
+      const before = marker !== undefined ? name : tail.element || tail.any ? (level.cursor ?? 'null') : 'null';
+      this.#adopt.line(`${name} = $dom.textAt(${level.dom}, ${name}, ${before});`);
+    }
     if (this.#tracked(level) && !this.#shared(run, via, level, first)) {
       this.#adopt.line(`$r.push(${name});`);
     }

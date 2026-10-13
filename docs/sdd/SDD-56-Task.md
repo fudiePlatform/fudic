@@ -5,7 +5,7 @@
 > `@fudic/di` · `@fudic/ssr` · `@fudic/forms` · `@fudic/conventions` · `@fudic/language-core` ·
 > `@fudic/diagnostics`
 > **Rama:** `sdd/http` (nace de `main`)
-> **Progreso:** 46 / 50 — `En curso`.
+> **Progreso:** 49 / 50 — `En curso`.
 >
 > *Al implementar:* el código lo escribe una sesión y los tests otra. Las fases 3, 4 y 5 van
 > en un solo commit, porque comparten ficheros (`dispatch.ts` lee el cuerpo de la fase 5,
@@ -149,9 +149,9 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 47 | 11, 30 | **Migrar.** `examples/basic` deja `ctx.inject`, `ctx.publish` y `DiContext` (`di.fud`, `sesion/[user].fud` y los demás que los usen). Criterio 53 | `example-basic` | `src/routes/*.fud` |
-| [ ] | 48 | 35–42 | **Ejemplo nuevo.** La ruta de §1 con `search`, `save` y `remove`, un `user-form` con su `save`, `src/http.ts` con `csrf`, `errorPages` y `compress`, un `auth` de dos mitades, `_error.fud` y un formulario con todos sus controles tipados. Criterio 54 | `example-basic` | `src/routes/usuarios.fud` · `src/components/user-form.fud` · `src/http.ts` · `src/middlewares/*.ts` · `src/forms/*.ts` · `src/routes/_error.fud` |
-| [ ] | 49 | 48 | **README y prueba.** README de `@fudic/http` en inglés, corto y sin citas a SDD. Pedro prueba el ejemplo en el navegador: buscar, guardar con errores del servidor, borrar, un 500 que navega a la página de error, abortar una búsqueda, y ver en Network el cuerpo posicional, el binario y el comprimido | `http` · `example-basic` | `packages/http/README.md` |
+| [x] | 47 | 11, 30 | **Migrar.** `examples/basic` deja `ctx.inject`, `ctx.publish` y `DiContext` (`di.fud`, `sesion/[user].fud` y los demás que los usen). Criterio 53. *Al implementar:* con ellos salen `withDi` y `DiContext` de `@fudic/ssr` (venía de la tarea 11), y `load` recibe siempre el `ServerContext` a secas | `example-basic` | `src/routes/*.fud` |
+| [x] | 48 | 35–42 | **Ejemplo nuevo.** La ruta de §1 con `search`, `save` y `remove`, un `user-form` con su `save`, `src/http.ts` con `csrf`, `errorPages` y `compress`, un `auth` de dos mitades, `_error.fud` y un formulario con todos sus controles tipados. Criterio 54 | `example-basic` | `src/routes/usuarios.fud` · `src/components/user-form.fud` · `src/http.ts` · `src/middlewares/*.ts` · `src/forms/*.ts` · `src/routes/_error.fud` |
+| [x] | 49 | 48 | **README y prueba.** README de `@fudic/http` en inglés, corto y sin citas a SDD. Pedro prueba el ejemplo en el navegador: buscar, guardar con errores del servidor, borrar, un 500 que navega a la página de error, abortar una búsqueda, y ver en Network el cuerpo posicional, el binario y el comprimido. *Al implementar:* la prueba destapó seis bugs, todos arreglados con su test: el chunk de cliente suscribía los imports del `@server`; `fud-data` no llevaba lo que la plantilla de una ruta reactiva lee; una hidratación que lanzaba dejaba el gesto pendiente y la página sin clics; un texto interpolado pintado vacío no tenía nodo que adoptar (`textAt`); un enlace de formulario pisaba lo tecleado antes de hidratar; y una señal escrita antes del enganche no repintaba (`written`) | `http` · `example-basic` | `packages/http/README.md` |
 
 ## Fase 11 — entrega (1)
 

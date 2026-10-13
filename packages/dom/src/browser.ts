@@ -113,4 +113,11 @@ export const browserDom: DomClient<Node> = {
   lastChild(node: Node): Node | null {
     return node.lastChild;
   },
+  textAt(parent: Node, found: Node | null, before: Node | null): Node {
+    if (found !== null && found.nodeType === 3) return found; // Node.TEXT_NODE
+    // `ownerDocument` for the reason `bus` gives: the parent's document, not the global one.
+    const text = (parent.ownerDocument ?? document).createTextNode('');
+    parent.insertBefore(text, before);
+    return text;
+  },
 };

@@ -357,6 +357,9 @@ function buildComponentClientModule(
     for (const name of imported) bodies.hook.line(`$d.push($subIf(${name}, $u));`);
     // And what is read THROUGH an imported name — `userForm.$valid()` (BUG-42 §4.3).
     if (em.watchImports(imported, bodies.hook)) usage.subscribes = true;
+    // A write that came before these subscriptions — an `effect` that ran with the factory —
+    // reached nobody, and the markup still says what the server painted: one repaint.
+    if (reactive.length > 0) bodies.hook.line(`if ($written(${reactive.join(', ')})) $u();`);
   }
 
   const w = new CodeWriter();
@@ -374,6 +377,7 @@ function buildComponentClientModule(
   const channels = [
     ...(usage.subscribes ? ['subscribe as $sub'] : []),
     ...(usage.guarded ? ['subscribeIf as $subIf'] : []),
+    ...(renews && reactive.length > 0 ? ['written as $written'] : []),
     // Only a file that fabricates a component host pays for it: a template with no child
     // component of its own never names `live`, and never downloads that branch.
     ...(usage.fabricates ? ['live as $live'] : []),

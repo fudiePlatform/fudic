@@ -45,8 +45,9 @@ describe('emitComponentClientModule — the module shape (§6.8)', () => {
     // (§4.5); a component with none imports the base class alone, which §6.20 asserts.
     // `$live` travels because its template holds a child component host, and an instance of
     // that host fabricated at runtime is one nobody painted: its parent has to raise it.
+    // `$written` because that signal is its own: one written before the hookup still repaints.
     expect(src).toContain(
-      "import { FudicElement, subscribe as $sub, live as $live } from '@fudic/core';",
+      "import { FudicElement, subscribe as $sub, written as $written, live as $live } from '@fudic/core';",
     );
     expect(src).toContain('customElements.define("app-card", class extends FudicElement {');
     expect(src).toContain('static c($props) {');
@@ -932,9 +933,14 @@ describe('emitComponentClientModule — a component subscribes its own signals',
 
   it('renews the rendering pass on every signal it declares', () => {
     const src = own('    const n = signal(0);\n', '<span>@(n())</span>');
-    expect(src).toContain("import { FudicElement, subscribe as $sub } from '@fudic/core';");
+    expect(src).toContain(
+      "import { FudicElement, subscribe as $sub, written as $written } from '@fudic/core';",
+    );
     expect(src).toContain('const $u = () => { $a(); };');
     expect(src).toContain('$d.push($sub(n, $u));');
+    // A write that came before the hookup (an `effect` of `@client` runs with the factory)
+    // notified nobody: the pass is renewed once, if any of its own signals was written.
+    expect(src).toContain('if ($written(n)) $u();');
     // `u` runs the same body, so a value that moves by prop and one that moves by signal
     // cannot be applied differently.
     expect(src).toContain('u: () => { $u(); },');

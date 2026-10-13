@@ -85,9 +85,6 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
     ...(options.globalChain !== undefined ? ['global: $global'] : []),
     ...(hasHttp ? ['file: $http'] : []),
   ].join(', ');
-  // The `ctx` `load` receives: the server context, and `ctx.inject` / `ctx.publish` while the
-  // examples still use them (they leave with `withDi` in SDD-56 task 47).
-  const loadCtx = hasDi ? 'withDi($ctx, $root)' : '$ctx';
   const ssr = [
     'SsrDom',
     'serializeChunks',
@@ -101,7 +98,7 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
     // written as a string, and it must come out as the body's `setUrl` writes it (SDD-51 §3.7).
     'guardUrl',
     'jsonBlock',
-    ...(hasDi ? ['iocRoot', 'publishedSeed', 'withDi'] : http ? ['iocRoot'] : []),
+    ...(hasDi ? ['iocRoot', 'publishedSeed'] : http ? ['iocRoot'] : []),
   ];
   lines.push(`import { page } from ${spec};`);
   lines.push(`import { ${ssr.join(', ')} } from "@fudic/ssr";`);
@@ -146,7 +143,7 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
     lines.push('  const $root = iocRoot();');
     lines.push('  const $ctx = pageContext(ctx);');
     lines.push('  return withRequest($root, async () => {');
-    lines.push(`    const data = ${edgeLoad ? `await runLoad(load, { ${outer} }, ${loadCtx})` : '{}'};`);
+    lines.push(`    const data = ${edgeLoad ? `await runLoad(load, { ${outer} }, $ctx)` : '{}'};`);
     lines.push(`    return { data${edgeLayout ? ', layout: await layoutProps($ctx, data)' : ''} };`);
     lines.push('  });');
     lines.push('}');
@@ -173,7 +170,7 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   }
   if (edgeLoad) {
     lines.push(
-      `    const data = ctx.data !== undefined ? ctx.data : await withRequest($root, () => runLoad(load, { ${outer} }, ${loadCtx}));`,
+      `    const data = ctx.data !== undefined ? ctx.data : await withRequest($root, () => runLoad(load, { ${outer} }, $ctx));`,
     );
   } else {
     lines.push('    const data = ctx.data !== undefined ? ctx.data : {};');

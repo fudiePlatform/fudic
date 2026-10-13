@@ -158,11 +158,11 @@ describe('emitRenderChunk — the layout resolver (SDD-40)', () => {
       hasDi: true,
       withLoad: true,
     });
-    expect(withDi).toContain('runLoad(load, {  }, withDi($ctx, $root))');
-    // `$ctx` is the server context of the request (SDD-56 §4.6), never the one with the
-    // container on it.
+    // `$ctx` is the server context of the request (SDD-56 §4.6), for both: `load` injects on
+    // its own, inside the request, and the container rides no ctx at all.
+    expect(withDi).toContain('runLoad(load, {  }, $ctx)');
     expect(withDi).toContain('withRequest($root, () => layoutProps($ctx, data))');
-    expect(withDi).not.toContain('layoutProps(withDi(');
+    expect(withDi).not.toContain('withDi');
     expect(withDi).toContain('yield* page(data, io(ctx), $root, layout);');
   });
 

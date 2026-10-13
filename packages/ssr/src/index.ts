@@ -29,8 +29,6 @@ export { guardUrl } from '@fudic/dom';
 export {
   iocRoot,
   iocIsEmpty,
-  withDi,
-  type DiContext,
   type IocMap,
   type IocNode,
 } from './ioc.js';

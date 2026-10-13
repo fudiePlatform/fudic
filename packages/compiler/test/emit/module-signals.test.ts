@@ -111,10 +111,12 @@ describe('emitComponentClientModule — a signal imported from a module', () => 
       '<span>@count() @(n())</span>',
     );
     expect(src).toContain(
-      "import { FudicElement, subscribe as $sub, subscribeIf as $subIf } from '@fudic/core';",
+      "import { FudicElement, subscribe as $sub, subscribeIf as $subIf, written as $written } from '@fudic/core';",
     );
     expect(hookup(src)).toContain('$d.push($sub(n, $u));');
     expect(hookup(src)).toContain('$d.push($subIf(count, $u));');
+    // Its own signal alone: a store is not the component's to have been written in its factory.
+    expect(hookup(src)).toContain('if ($written(n)) $u();');
   });
 
   it('emits no channel at all when the view has nothing a write could change', () => {

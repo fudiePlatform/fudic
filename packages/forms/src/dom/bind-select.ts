@@ -18,9 +18,16 @@ export function bindSelect(
   slot: ErrorSlot,
 ): Cleanup {
   return undo([
-    ...follow([el], control, () => {
-      control.set(el.value);
-    }),
+    ...follow(
+      [el],
+      control,
+      () => {
+        control.set(el.value);
+      },
+      // What is selected is not what was painted: the option marked `selected`, or the first —
+      // a single select with none marked shows its first, and that is no choice of the user's.
+      el.selectedOptions[0] !== ([...el.options].find((option) => option.defaultSelected) ?? el.options[0]),
+    ),
     effect(() => {
       const value = control();
       if (el.value !== value) el.value = value;

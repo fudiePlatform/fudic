@@ -18,13 +18,18 @@ export function bindSelectMultiple(
   slot: ErrorSlot,
 ): Cleanup {
   return undo([
-    ...follow([el], control, () => {
-      const chosen: string[] = [];
-      for (const option of el.options) {
-        if (option.selected) chosen.push(option.value);
-      }
-      control.set(chosen);
-    }),
+    ...follow(
+      [el],
+      control,
+      () => {
+        const chosen: string[] = [];
+        for (const option of el.options) {
+          if (option.selected) chosen.push(option.value);
+        }
+        control.set(chosen);
+      },
+      [...el.options].some((option) => option.selected !== option.defaultSelected),
+    ),
     effect(() => {
       const value = control();
       for (const option of el.options) {

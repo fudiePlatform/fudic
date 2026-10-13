@@ -193,6 +193,52 @@ describe('a component chunk', () => {
     expect(code).not.toContain('COMPONENT_MARK');
     expect(code).not.toContain('./users');
   });
+
+  it('subscribes nothing the @server imports: the chunk has no such names', () => {
+    // A store the browser reads is subscribed through `$subIf`; an import of the `@server` is
+    // not one, and naming it was a `ReferenceError` that stopped the hydration halfway.
+    const io = memoryIo({
+      '/home.fud': '<!DOCTYPE html><html><head><link rel="component" href="./user-form.fud"></head><body><user-form></user-form></body></html>',
+      '/user-form.fud': USER_FORM,
+    });
+    const graph = resolveComponents('/home.fud', io);
+    const code = emitComponentClientModule(graph, graph.components.get('user-form')!, {
+      serverFns: { prefix: '/_fudic/fn/c/user-form' },
+    });
+    expect(code).not.toContain('$subIf');
+    expect(code).not.toMatch(/\bUsers\b/u);
+    // `auth` reaches the chunk as the middleware it is, aliased, and only so.
+    expect(code).toContain('import { auth as $mw0 } from "./auth";');
+    expect(code).not.toMatch(/[^{] auth\b|\(auth\b/u);
+  });
+});
+
+describe('a route chunk names nothing of its @server imports', () => {
+  it('no $subIf on them, and no other mention either', () => {
+    const code = chunk(
+      route(
+        "    import { get } from '@fudic/http';\n    import { Users } from '../services/users';\n    export const list = get().handle(() => Users.all());",
+        '    const n = signal(0);\n    function more() { n.set(n() + 1); return list(); }',
+        '<button @click=@more>@n()</button>',
+      ),
+    )!;
+    expect(code).not.toContain('$subIf');
+    expect(code).not.toMatch(/\bUsers\b/u);
+    expect(code).not.toContain('../services/users');
+  });
+
+  it('while a store the neutral zone imports is still subscribed', () => {
+    const code = chunk(
+      route(
+        "    import { Users } from '../services/users';\n    export async function load() { return Users.all(); }",
+        '    const n = signal(0);',
+        '<p>@count() @n()</p>',
+        "  import { count } from '../store';",
+      ),
+    )!;
+    expect(code).toContain('$subIf(count, $u)');
+    expect(code).not.toMatch(/\bUsers\b/u);
+  });
 });
 
 describe('the ?server module (§4.13)', () => {

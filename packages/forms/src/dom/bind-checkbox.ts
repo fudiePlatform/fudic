@@ -17,9 +17,14 @@ export function bindCheckbox(
   slot: ErrorSlot,
 ): Cleanup {
   return undo([
-    ...follow([el], control, () => {
-      control.set(el.checked);
-    }),
+    ...follow(
+      [el],
+      control,
+      () => {
+        control.set(el.checked);
+      },
+      el.checked !== el.defaultChecked,
+    ),
     effect(() => {
       const value = control();
       if (el.checked !== value) el.checked = value;

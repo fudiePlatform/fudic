@@ -19,8 +19,12 @@ import {
   type ServerRegion,
   type StructuredDocument,
 } from '@fudic/compiler';
+import { emptySpan, FUD1010 } from '@fudic/diagnostics';
 import { parseFudReporting } from './parse.js';
 import { NO_STRATEGY, strategyFrom, type StrategyAnalysis } from './strategy.js';
+
+/** The code of `_error.fud` declaring what it cannot, read off the catalogue. */
+const ERROR_PAGE_CODE = FUD1010({ span: emptySpan(0), name: '' }).code;
 
 /**
  * What a `.fud` under `routesDir` IS (SDD-21 §4.7). Only `page` and `route` are routes: a
@@ -116,7 +120,7 @@ export function analyzePage(source: string, file = ''): PageAnalysis {
           browserNames: new Set(),
           component: false,
           errorPage: true,
-        }).diagnostics.filter((d) => d.code === 'FUD1010')
+        }).diagnostics.filter((d) => d.code === ERROR_PAGE_CODE)
       : [];
   return {
     role,

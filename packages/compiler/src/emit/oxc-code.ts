@@ -758,9 +758,16 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     clientNames: topLevelBindings(clientStatements),
     clientFunctions: topLevelFunctions(clientStatements),
     setCalls: setCalls(clientStatements),
-    clientImports: importedBindings(allStatements),
+    // Never the `@server`'s: its imports do not exist in the browser chunk, and a `$subIf` on
+    // one is a `ReferenceError` that stops the hydration halfway (`auth`, `Users`…).
+    clientImports: importedBindings(allStatements.filter((stmt) => !serverStatements.includes(stmt))),
     clientEffects: clientStatements.some((stmt) => effectCalls(stmt).length > 0),
-    dataAccess: readDataAccess(clientStatements, map),
+    // The template's reads too: a reactive route repaints it in the browser, and a
+    // `@foreach (const p of data.users)` there iterates what `fud-data` brought — or nothing.
+    dataAccess: readDataAccess(
+      [...clientStatements, ...[...fragments.values()].flatMap((id) => result.value.ast(id))],
+      map,
+    ),
     emitCalls,
     di,
     server: zoneCode(serverStatements, source, map, diEdits, inRender, rewritten),

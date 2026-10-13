@@ -78,12 +78,18 @@ export function undo(all: readonly Cleanup[]): Cleanup {
  * The default, `Blur | Input`, is late to accuse and quick to forgive.
  *
  * `read` is the coercion of each shape — the only thing the bindings do differently.
+ *
+ * `edited` says the element already holds something the user did before this binding existed:
+ * an autofill, or keys pressed while the component was still being fetched. It is newer than
+ * the model, so it is READ at once — the model's write that follows would otherwise erase it.
  */
 export function follow(
   targets: readonly Element[],
   control: Control<unknown>,
   read: () => void,
+  edited: boolean,
 ): Cleanup[] {
+  if (edited) read();
   const edit = (): void => {
     read();
     if ((control.validateOn() & ValidateOn.Input) !== 0 && control.touched()) void control.validate();

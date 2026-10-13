@@ -177,6 +177,69 @@ describe('a chunk that answers with something else', () => {
   });
 });
 
+describe('a route whose factory throws', () => {
+  /** The rejections nobody handled while `body` ran, instead of the runner's own report. */
+  async function unhandled(body: () => Promise<void>): Promise<unknown[]> {
+    const caught: unknown[] = [];
+    const runner = process.listeners('unhandledRejection');
+    process.removeAllListeners('unhandledRejection');
+    const mine = (reason: unknown): void => {
+      caught.push(reason);
+    };
+    process.on('unhandledRejection', mine);
+    try {
+      await body();
+      await settle();
+    } finally {
+      process.off('unhandledRejection', mine);
+      for (const listener of runner) process.on('unhandledRejection', listener);
+    }
+    return caught;
+  }
+
+  beforeEach(() => {
+    publish();
+  });
+
+  it('replays the gesture, lets the next one through, and still rejects with the error', async () => {
+    // Before the fix the cancelled gesture stayed pending for good, and the capturer swallowed
+    // every later one on the host: the menu and the right click stopped working.
+    publish({ route: 'ruta', bodyId: 0, state: [[0, 0], []] });
+    const button = document.createElement('button');
+    document.body.appendChild(button);
+    const trace: string[] = [];
+    document.body.addEventListener('click', () => trace.push('handler'));
+    const boom = new Error('h() threw');
+    installHydration({
+      root: document,
+      document,
+      registry: new TestRegistry(),
+      importDeferred: deferred,
+      resolveChunk: (name) => name,
+      importModule: async () => ({
+        default: () => ({
+          h: (): void => {
+            throw boom;
+          },
+          u: (): void => {},
+          r: (): void => {},
+        }),
+      }),
+    });
+
+    const reasons = await unhandled(async () => {
+      click(button);
+      await settle();
+    });
+
+    expect(trace).toEqual(['handler']);
+    expect(reasons).toEqual([boom]);
+
+    click(button);
+    expect(trace).toEqual(['handler', 'handler']);
+  });
+});
+
 describe('the `<body>` is a backstop, never a competitor (§6.11)', () => {
   beforeEach(() => {
     publish();

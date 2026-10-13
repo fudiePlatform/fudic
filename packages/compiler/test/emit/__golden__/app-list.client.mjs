@@ -34,6 +34,7 @@ customElements.define("app-list", class extends FudicElement {
           $n0 = $c; $c = $dom.nextElementSibling($c);
           $r.push($n0);
           $n1 = $dom.lastChild($n0);
+          $n1 = $dom.textAt($n0, $n1, null);
           return $c;
         },
         m: ($ref = $anchor) => {
@@ -91,6 +92,7 @@ customElements.define("app-list", class extends FudicElement {
               $n11 = $c; $c = $dom.nextElementSibling($c);
               $r.push($n11);
               $n13 = $dom.lastChild($n11);
+              $n13 = $dom.textAt($n11, $n13, null);
               $n12 = $dom.lastChild($parent);
               return $c;
             },
@@ -167,6 +169,7 @@ customElements.define("app-list", class extends FudicElement {
               let $c1 = $dom.firstElementChild($n5);
               $n7 = $c1; $c1 = $dom.nextElementSibling($c1);
               $n9 = $dom.lastChild($n7);
+              $n9 = $dom.textAt($n7, $n9, null);
               for (const mark of row.tags) {
                 const $i = $b3($n5, null, mark);
                 $c1 = $i.h($c1);

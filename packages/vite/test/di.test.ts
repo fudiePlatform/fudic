@@ -95,12 +95,13 @@ describe('the render wrapper', () => {
   it('opens ONE container per request, before load, and hands it to the page', () => {
     const code = emitRenderChunk({ ...options, hasDi: true });
 
-    expect(code).toContain('iocRoot, publishedSeed, withDi');
+    expect(code).toContain('iocRoot, publishedSeed }');
+    expect(code).not.toContain('withDi');
     expect(code).toContain('const $root = iocRoot();');
     // `load` and the components have to inject the same instances, or a root service would
     // be built twice for one response. `load` runs inside the request of that container
-    // (SDD-56 §4.6), and still gets `ctx.inject` until the examples migrate (task 47).
-    expect(code).toContain('withRequest($root, () => runLoad(load, {  }, withDi($ctx, $root)))');
+    // (SDD-56 §4.6), so a bare `inject()` finds it: its ctx carries none.
+    expect(code).toContain('withRequest($root, () => runLoad(load, {  }, $ctx))');
     expect(code).toContain('yield* page(data, io(ctx), $root, layout);');
   });
 

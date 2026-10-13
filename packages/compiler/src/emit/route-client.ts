@@ -233,12 +233,15 @@ function buildRouteClientModule(
     for (const name of imported) bodies.hook.line(`$d.push($subIf(${name}, $u));`);
     // And what is read THROUGH an imported name — `userForm.$valid()` (BUG-42 §4.3).
     if (em.watchImports(imported, bodies.hook)) usage.subscribes = true;
+    // A write before these subscriptions reached nobody: one repaint (see the component's).
+    if (reactive.length > 0) bodies.hook.line(`if ($written(${reactive.join(', ')})) $u();`);
   }
 
   const w = new CodeWriter();
   const channels = [
     ...(usage.subscribes ? ['subscribe as $sub'] : []),
     ...(usage.guarded ? ['subscribeIf as $subIf'] : []),
+    ...(renews && reactive.length > 0 ? ['written as $written'] : []),
     ...(usage.fabricates ? ['live as $live'] : []),
   ];
   if (channels.length > 0) w.line(`import { ${channels.join(', ')} } from '@fudic/core';`);
