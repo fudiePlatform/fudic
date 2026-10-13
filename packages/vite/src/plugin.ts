@@ -1350,12 +1350,16 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       flush();
       let t = lap('main bundle (buildStart end → generateBundle)', bundleStart);
 
+      // 1 and 1b run AT THE SAME TIME: two independent nested builds over the same routes.
+      // Neither reads the other's output, both compile through the build's memory, and the
+      // reporter they share says each diagnostic once whoever finds it first. They used to
+      // run one after the other.
+      //
       // 1. The link pass: the chunks the Service Worker will link by hand (§4.3).
-      const link: LinkResult =
+      const linking: Promise<LinkResult> =
         swConfig === null
-          ? { chunks: [], entries: new Map(), deps: new Map() }
-          : await runLinkPass(root, base, builds, io, nested, projectStyles, linked, runtimeEntriesFor, reporter);
-      t = lap('generateBundle.1 link pass (nested build)', t);
+          ? Promise.resolve({ chunks: [], entries: new Map(), deps: new Map() })
+          : runLinkPass(root, base, builds, io, nested, projectStyles, linked, runtimeEntriesFor, reporter);
       // A nested build's output is emitted as an ASSET, so nothing writes its `.map` or
       // appends its `sourceMappingURL` unless we do (BUG-05 §4.3).
       const emitWithMap = (artifact: NestedArtifact): void => {
@@ -1377,19 +1381,22 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // Written to disk in 3b, not here: an edge chunk imports the shared chunks by name and
       // those are renamed there (BUG-31 §T5), so what lands beside `outDir` — and what the
       // prerender runs — has to be the rewritten code.
-      const edge = await runEdgePass(
-        root,
-        base,
-        builds,
-        io,
-        resolveAlias,
-        nested,
-        projectStyles,
-        linked,
-        runtimeEntriesFor,
-        reporter,
-      );
-      t = lap('generateBundle.1b edge pass (nested build)', t);
+      const [link, edge] = await Promise.all([
+        linking,
+        runEdgePass(
+          root,
+          base,
+          builds,
+          io,
+          resolveAlias,
+          nested,
+          projectStyles,
+          linked,
+          runtimeEntriesFor,
+          reporter,
+        ),
+      ]);
+      t = lap('generateBundle.1+1b link and edge passes (parallel)', t);
 
       // 2. The Service Worker's own bundle: one realm, one bundle (BUG-03 §4.1). Its
       //    code still carries BUILD_TOKEN — the id is computed from it, below.
