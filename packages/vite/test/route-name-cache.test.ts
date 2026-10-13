@@ -33,6 +33,14 @@ vi.mock('@fudic/typecheck', async (importOriginal) => ({
   }),
 }));
 
+// The build runs it on a worker thread, which loads the real package: answered clean here too.
+vi.mock('../src/background-check.js', () => ({
+  startBackgroundCheck: () => ({
+    report: Promise.resolve({ problems: [], project: [], inputs: [] }),
+    cancel: async () => undefined,
+  }),
+}));
+
 // Only `routeNameLookup` is wrapped; every other export of the module stays the real one,
 // so the plugin's component discovery, its DI probe and its id helpers are untouched.
 vi.mock('../src/client.js', async (importOriginal) => {

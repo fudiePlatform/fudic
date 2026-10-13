@@ -38,6 +38,14 @@ vi.mock('@fudic/typecheck', async (importOriginal) => ({
   }),
 }));
 
+// The build runs it on a worker thread, which loads the real package: answered clean here too.
+vi.mock('../src/background-check.js', () => ({
+  startBackgroundCheck: () => ({
+    report: Promise.resolve({ problems: [], project: [], inputs: [] }),
+    cancel: async () => undefined,
+  }),
+}));
+
 const { buildIo, graphOf, remembered } = await import('../src/build-memory.js');
 const { compileFud } = await import('../src/compile.js');
 const { NO_STYLES } = await import('../src/transform.js');

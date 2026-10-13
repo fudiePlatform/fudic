@@ -54,8 +54,13 @@ describe('importing @fudic/vite does not load the checker', () => {
     expect(loaded.has('@fudic/typecheck/problems')).toBe(true);
   });
 
-  it('the checker arrives on demand, in the two hooks that run one', () => {
+  it('the checker arrives on demand in dev, and on its own thread in a build', () => {
     const plugin = readFileSync(join(src, 'plugin.ts'), 'utf8');
-    expect(plugin.match(/await import\('@fudic\/typecheck'\)/gu)).toHaveLength(2);
+    expect(plugin.match(/await import\('@fudic\/typecheck'\)/gu)).toHaveLength(1);
+    // The build's check: the worker imports the machine, `background-check.ts` only the types.
+    const background = readFileSync(join(src, 'background-check.ts'), 'utf8');
+    expect(background).not.toMatch(/from '@fudic\/typecheck'/u);
+    const worker = readFileSync(join(src, '..', 'worker', 'check.mjs'), 'utf8');
+    expect(worker).toMatch(/from '@fudic\/typecheck'/u);
   });
 });

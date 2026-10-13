@@ -35,6 +35,22 @@ vi.mock('@fudic/typecheck', async (importOriginal) => {
   };
 });
 
+// The build runs the same check on a worker thread, which loads the real package: scripted alike.
+/** How many checks the build started, and how many it cancelled. */
+const checks = vi.hoisted(() => ({ started: 0, cancelled: 0, dies: false }));
+
+vi.mock('../src/background-check.js', () => ({
+  startBackgroundCheck: () => {
+    checks.started += 1;
+    return {
+      report: checks.dies ? Promise.reject(new Error('the check thread died')) : Promise.resolve(checked.report),
+      cancel: async () => {
+        checks.cancelled += 1;
+      },
+    };
+  },
+}));
+
 beforeEach(() => {
   checked.report = { problems: [], project: [], inputs: [] };
 });
@@ -190,7 +206,7 @@ describe('buildStart', () => {
     expect(ctx.warn).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('FUD0364') }));
   });
 
-  it('SDD-35 §4.4 — a typecheck error prints every problem and fails once, before anything is emitted', async () => {
+  it('SDD-35 §4.4 — a typecheck error prints every problem once and fails the build at buildEnd, before the passes', async () => {
     const { config } = fakeDevServerParts();
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -213,17 +229,74 @@ describe('buildStart', () => {
     };
     const ctx = {
       ...emitCtx(),
-      error: vi.fn((message: string): never => {
-        throw new Error(message);
+      error: vi.fn((log: { message: string }): never => {
+        throw new Error(log.message);
       }),
     };
-    await expect(plugin.buildStart.call(ctx)).rejects.toThrow('the typecheck failed: 1 error in 1 file');
+    // The check runs beside the bundle: `buildStart` does not wait for it when it has nothing
+    // of its own to say. The verdict is waited for at `buildEnd`, the last hook before the
+    // link pass, the edge pass and the prerender.
+    await plugin.buildStart.call(ctx);
+    await expect(plugin.buildEnd.call(ctx)).rejects.toThrow('the typecheck failed: 1 error in 1 file');
+    expect(ctx.error).toHaveBeenCalledTimes(1);
     expect(errors).toEqual([expect.stringMatching(/^fixtures\/home\.fud:1:1 - error TS2322: first/u)]);
     expect(warnings).toEqual([
       expect.stringContaining('warning FUD0870'),
       expect.stringMatching(/^fixtures\/home\.fud:1:1 - warning TS6133: second/u),
     ]);
-    expect(ctx.emitFile).not.toHaveBeenCalled();
+  });
+
+  it('SDD-35 §4.4 — with a diagnostic of its own to say, buildStart lets the typecheck speak first', async () => {
+    checked.report = {
+      problems: [{ file: toPosix(homeFud), span: span(0, 9), severity: 'error', code: 'TS2322', message: 'first' }],
+      project: [],
+      inputs: [],
+    };
+    const ctx = {
+      ...emitCtx(),
+      error: vi.fn((log: { message: string }): never => {
+        throw new Error(log.message);
+      }),
+    };
+    // FUD0364 is a warning `buildStart` reports: before it, the verdict — and it fails.
+    await expect(
+      setup('build', { defaults: { '/nope': { mode: 'exclude' } } }).buildStart.call(ctx),
+    ).rejects.toThrow('the typecheck failed: 1 error in 1 file');
+    expect(ctx.warn).not.toHaveBeenCalled();
+  });
+
+  it('a build that already failed cancels the check and does not wait for it', async () => {
+    const p = setup('build');
+    await p.buildStart.call(emitCtx());
+    checks.cancelled = 0;
+    await expect(p.buildEnd.call(emitCtx(), new Error('the bundle failed'))).resolves.toBeUndefined();
+    expect(checks.cancelled).toBe(1);
+    // And the next build starts with no check of the last one in flight.
+    await expect(p.buildEnd.call(emitCtx())).resolves.toBeUndefined();
+  });
+
+  it('a check thread that dies fails the build at buildEnd with its error — not as an unhandled rejection', async () => {
+    checks.dies = true;
+    try {
+      const p = setup('build');
+      await p.buildStart.call(emitCtx());
+      // Nobody awaits the verdict until `buildEnd`; a tick passes with it rejected.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await expect(p.buildEnd.call(emitCtx())).rejects.toThrow('the check thread died');
+    } finally {
+      checks.dies = false;
+    }
+  });
+
+  it('a clean check lets buildEnd through; dev never starts one', async () => {
+    const p = setup('build');
+    await p.buildStart.call(emitCtx());
+    await expect(p.buildEnd.call(emitCtx())).resolves.toBeUndefined();
+    checks.started = 0;
+    const dev = setup('serve');
+    await dev.buildStart.call(emitCtx());
+    await expect(dev.buildEnd.call(emitCtx())).resolves.toBeUndefined();
+    expect(checks.started).toBe(0);
   });
 
   it('SDD-35 §4.4 — warnings alone print and do not fail; no logger is not a crash', async () => {

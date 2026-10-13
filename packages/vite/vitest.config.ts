@@ -30,6 +30,7 @@ export default defineConfig({
         // The per-build memory (graphs, compiled modules) and the compile it serves: born at 100.
         'src/build-memory.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/compile.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/background-check.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
       },
     },
   },
