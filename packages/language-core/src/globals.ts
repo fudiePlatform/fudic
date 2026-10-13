@@ -162,6 +162,11 @@ type $Missing<T, K> = Pick<T, Exclude<$RequiredKeys<T>, K>>;
  * tag NAME, which is where the author has to read it anyway.
  */
 declare function $required<T, K extends PropertyKey>(rest: $Missing<T, K>): void;
+/**
+ * A props spread, \`...item\` (props-spec §5): the object against the child's contract minus
+ * what the tag writes itself. Required keys have to be there, extra ones may.
+ */
+declare function $spread<T>(o: T): void;
 declare function $on<K extends keyof HTMLElementEventMap>(
   type: K, h: (ev: HTMLElementEventMap[K]) => unknown): void;
 declare function $section<T extends string>(name: T): void;

@@ -21,6 +21,7 @@ import {
   controlTarget,
   ERROR_NAME,
   SUMMARY_NAME,
+  SPREAD_PREFIX,
   crossing,
   handlerShape,
   isNativeEventAttribute,
@@ -278,8 +279,14 @@ function emitProps(ctx: TemplateContext, el: ElementNode, bindings: readonly Ent
   const globals: Entry[] = [];
   /** The prop names actually WRITTEN — the `K` of `$required`. A bare `.` names none. */
   const written: string[] = [];
+  /** The `...object`s of the tag (props-spec §5), checked against what nothing else writes. */
+  const spreads: Entry[] = [];
 
   for (const entry of bindings) {
+    if (entry.binding.type === 'spread') {
+      spreads.push(entry);
+      continue;
+    }
     if (entry.binding.type === 'property') {
       props.push(entry);
       if (entry.binding.name.length > 0) written.push(`'${entry.binding.name}'`);
@@ -340,7 +347,42 @@ function emitProps(ctx: TemplateContext, el: ElementNode, bindings: readonly Ent
   ctx.w.scaffold(globals.length === 0 ? '});\n' : '\n});\n');
 
   emitGaps(ctx, el, alias);
-  emitRequired(ctx, el, alias, written);
+  emitSpreads(ctx, el, alias, written, spreads);
+  // A spread is checked against EVERY key nothing else writes, required ones included, so the
+  // completeness of the tag is already its call's to report — on the object that lacks the key.
+  if (spreads.length === 0) emitRequired(ctx, el, alias, written);
+}
+
+/**
+ * `$spread<Omit<$C0, 'written'>>(item);` per `...item` (props-spec decisions 79–82).
+ *
+ * The parameter is the child's contract minus what the tag writes explicitly, so TypeScript
+ * reads decision 82 off `T` exactly as the emit applies it: a required key `item` lacks is
+ * `TS2345` over `item`, an optional one it lacks is fine, and a key of the wrong type is an
+ * error too. Extra keys of `item` pass, because a named object is not a fresh literal — which
+ * is decision 80. The object is copied from the source, so hover, go-to-definition and
+ * completion after `...` are TypeScript's own.
+ *
+ * A bare `...` has no object yet: an anchor stands in for it, so the caret right after the
+ * dots asks for the names in scope, as `.|` asks for the props.
+ */
+function emitSpreads(
+  ctx: TemplateContext,
+  el: ElementNode,
+  alias: string,
+  written: readonly string[],
+  spreads: readonly Entry[],
+): void {
+  const contract = ctx.aliases.slotsAliasOf(el.name) === undefined ? 'unknown' : alias;
+  const target = contract === 'unknown' || written.length === 0 ? contract : `Omit<${contract}, ${written.join(' | ')}>`;
+  for (const { attr, binding } of spreads) {
+    if (binding.type !== 'spread') continue;
+    ctx.w.scaffold(`$spread<${target}>(`, attr.span);
+    if (binding.expr !== null) copyExpression(ctx, binding.expr);
+    else if (attr.name === SPREAD_PREFIX) ctx.w.projected(' ', span(attr.span.end, attr.span.end), COMPLETION_ONLY_CAPS);
+    else ctx.w.scaffold('undefined as never');
+    ctx.w.scaffold(');\n');
+  }
 }
 
 /**

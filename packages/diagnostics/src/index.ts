@@ -306,3 +306,5 @@ export * from './codes/FUD0973.js';
 export * from './codes/FUD0974.js';
 export * from './codes/FUD0975.js';
 export * from './codes/FUD0990.js';
+export * from './codes/FUD0991.js';
+export * from './codes/FUD0992.js';

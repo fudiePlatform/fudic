@@ -132,11 +132,10 @@ describe('run over a live DOM', () => {
     expect(article!.querySelector('ul')).toBeNull();
   });
 
-  // KNOWN DEFECT, pinned with `it.fails` so it turns red the day it is fixed: `h` adopts the
-  // element but leaves `$w` empty, so the FIRST update after hydrating — any signal at all —
-  // rewrites every `@raw` with the value it already had, and the HTML's nodes are rebuilt.
-  // `c` does not have it: its `$a` fills `$w`. Flip this to `it` with the fix.
-  it.fails('an update that does not touch the value leaves the HTML´s nodes alone', () => {
+  // `h` adopts the element and seeds `$w` with what the server painted, so the FIRST update
+  // after hydrating — any signal at all — does not rewrite an `@raw` with the value it already
+  // had: the HTML's nodes survive, as they do after `c`, whose `$a` fills `$w`.
+  it('an update that does not touch the value leaves the HTML´s nodes alone', () => {
     const { shadow } = mountAsDsd('x-run-raw', serverShadowHtml(graph, 'x-run-raw', {}));
     controller(clientFactory(graph, 'x-run-raw'), browserDom, shadow, []).h();
     const em = shadow.querySelector('.post em');

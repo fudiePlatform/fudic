@@ -301,6 +301,7 @@
         { "include": "#razor-comment" },
         { "include": "#binding-class-style" },
         { "include": "#binding-delegate" },
+        { "include": "#binding-spread" },
         { "include": "#binding-property" },
         { "include": "#binding-event" },
         { "include": "#binding-ref" },
@@ -325,6 +326,14 @@
         "1": { "name": "entity.other.attribute-name.binding.fudic" },
         "2": { "name": "punctuation.separator.binding.fudic" },
         "3": { "name": "entity.other.attribute-name.binding.fudic" }
+      }
+    },
+
+    "binding-spread": {
+      "match": "(?<=\\s)(\\.\\.\\.)([A-Za-z_$][\\w$]*(?:\\.[A-Za-z_$][\\w$]*)*)?",
+      "captures": {
+        "1": { "name": "keyword.operator.spread.fudic" },
+        "2": { "name": "variable.other.readwrite.binding.spread.fudic" }
       }
     },
 

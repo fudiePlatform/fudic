@@ -93,7 +93,7 @@ function routeChildTags(graph: ComponentGraph, hydratable: ReadonlySet<string>):
     if (!hydratable.has(el.name)) return;
     for (const attr of el.attributes) {
       const b = classifyAttribute(attr, graph.entrySource).value;
-      if (b.type === 'property' || b.type === 'control') seen.add(el.name);
+      if (b.type === 'property' || b.type === 'control' || b.type === 'spread') seen.add(el.name);
     }
   });
   return [...seen];

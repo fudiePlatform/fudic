@@ -20,7 +20,7 @@ import type {
   WhileNode,
 } from '../control/index.js';
 import { keyExpression } from '../control/index.js';
-import { classifyAttribute } from '../binding/index.js';
+import { classifyAttribute, spreadExpr } from '../binding/index.js';
 import type { SectionNode } from '../layout/index.js';
 import type { RenderCallNode, SnippetDeclNode } from '../snippet/index.js';
 import type { RazorExpression } from '../at/index.js';
@@ -137,6 +137,9 @@ export function collectAttributeJs(el: ElementNode, visit: JsFragmentVisitor): v
   for (const attribute of el.attributes) {
     // `bus:(expr)="…"` (decision 28.b) is the only attribute whose NAME is an expression.
     if (typeof attribute.name !== 'string') visit('expression', attribute.name.expr);
+    // `...item` (props-spec §5): the object is in the NAME, and the view reads it like a value.
+    const spread = spreadExpr(attribute);
+    if (spread !== null) visit('expression', spread);
     for (const part of attribute.value) {
       if (part.type === 'razor-expression') visit('expression', part.expr);
     }

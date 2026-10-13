@@ -1,0 +1,41 @@
+@code {
+  // Lo que la tarjeta declara es lo ÚNICO que cruza con `...producto`: el `stock` y el `sku`
+  // que trae cada producto se quedan en el padre (decisión 80).
+  const { id, nombre, precio = 0, etiqueta = "normal" } = props<{
+    id: string;
+    nombre: string;
+    precio?: number;
+    etiqueta?: string;
+  }>();
+}
+
+<head>
+  <style>
+    .card {
+      display: grid;
+      gap: 0.2rem;
+      padding: 0.6rem 0.8rem;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+    .id {
+      font-size: 0.75rem;
+      color: var(--ink-soft);
+    }
+    .etiqueta {
+      font-size: 0.8rem;
+      color: var(--brand);
+    }
+  </style>
+</head>
+
+<spread-card>
+  <template shadowrootmode="open">
+    <div class="card">
+      <span class="id">@id</span>
+      <strong class="nombre">@nombre</strong>
+      <span class="precio">@precio €</span>
+      <span class="etiqueta">@etiqueta</span>
+    </div>
+  </template>
+</spread-card>

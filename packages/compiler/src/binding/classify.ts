@@ -28,6 +28,7 @@ import {
   FUD0590,
   FUD0596,
   FUD0667,
+  FUD0991,
 } from '@fudic/diagnostics';
 import type { RazorExpression } from '../at/index.js';
 import type { Attribute, AttributeValuePart } from '../html/index.js';
@@ -40,6 +41,7 @@ import {
   DELEGATE_PREFIX,
   EVENT_PREFIX,
   PROPERTY_PREFIX,
+  SPREAD_PREFIX,
   REF_NAME,
   CONTROL_NAME,
   ERROR_NAME,
@@ -91,6 +93,10 @@ export function classifyAttribute(attr: Attribute, source: string): ParseResult<
   }
   if (name.startsWith(EVENT_PREFIX)) {
     return classifyEvent(attr, name.slice(EVENT_PREFIX.length));
+  }
+  // `...` before `.`: the spread's prefix starts with the property's.
+  if (name.startsWith(SPREAD_PREFIX)) {
+    return classifySpread(attr);
   }
   if (name.startsWith(PROPERTY_PREFIX)) {
     return classifyProperty(attr, name.slice(PROPERTY_PREFIX.length));
@@ -272,6 +278,30 @@ function classifyDelegate(attr: Attribute, name: string): ParseResult<Binding> {
     { type: 'delegate', span: attr.span, name, nameSpan: span(start, start + name.length) },
     diagnostics,
   );
+}
+
+/** What may follow the `...` of a spread: a name, or a path of names. */
+const SPREAD_PATH = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$/u;
+
+/**
+ * The object of a well-formed `...item` (props-spec §5), or `null` — not a spread, or a
+ * malformed one. The object is the tail of the attribute NAME, so its span is arithmetic over
+ * the attribute's start, as `delegate:` computes its own. Exported for the one reader that has
+ * no source to classify with: the walk that hands every template fragment to Oxc.
+ */
+export function spreadExpr(attr: Attribute): Span | null {
+  const name = attr.name;
+  if (typeof name !== 'string' || !name.startsWith(SPREAD_PREFIX)) return null;
+  const path = name.slice(SPREAD_PREFIX.length);
+  if (!SPREAD_PATH.test(path) || attr.value.length > 0) return null;
+  const start = attr.span.start + SPREAD_PREFIX.length;
+  return span(start, start + path.length);
+}
+
+function classifySpread(attr: Attribute): ParseResult<Binding> {
+  const expr = spreadExpr(attr);
+  const binding: Binding = { type: 'spread', span: attr.span, expr };
+  return expr !== null ? ok(binding) : degrade(binding, FUD0991({ span: attr.span }));
 }
 
 function classifyRef(attr: Attribute, source: string): ParseResult<Binding> {

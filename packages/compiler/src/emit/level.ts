@@ -28,7 +28,7 @@ import type { ControlNode } from '../control/index.js';
 import { bridgeOf, classifyAttribute, isFormAssociated } from '../binding/index.js';
 import { branchesOf } from './constructs.js';
 import { codeOf, codeOfDocument, type ExtractedCode } from './oxc-code.js';
-import { readsMoving } from './attrs.js';
+import { readsMoving, spreadReadsMoving } from './attrs.js';
 
 /**
  * Every `ElementNode` a COMPONENT TEMPLATE can render, however deep and through whatever
@@ -280,6 +280,12 @@ function induceFrom(
     // costs a request during an interaction; the instance appearing with no chunk is an empty
     // element and no diagnostic can catch it.
     if (inBlock) {
+      hydratable.add(child.tag);
+      changed = true;
+      return;
+    }
+    // A `...object` that reads something moving moves every prop it hands over (decision 81).
+    if (spreadReadsMoving(el, code.template.ast, moving)) {
       hydratable.add(child.tag);
       changed = true;
       return;

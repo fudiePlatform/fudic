@@ -53,6 +53,8 @@ import {
   crossingExpr,
   hasHostBindings,
   readsMoving,
+  spreadProps,
+  spreadReadsMoving,
   writeElementAttrs,
   type HostContext,
   type PropTarget,
@@ -300,6 +302,13 @@ interface Slot {
    */
   readonly changes: boolean;
   /**
+   * Whether the value moves only with the ROW: it reads a parameter of this block and nothing
+   * else that moves. The block's `u` runs on every pass of its owner, row changed or not, so
+   * this one is renewed only when a parameter really changed (`$moved`): a row that kept its
+   * data must not hand its child a second payload on top of the one its signals already sent.
+   */
+  readonly row?: boolean;
+  /**
    * Whether the value crosses by REFERENCE (props-spec decision 86): the child asked for the
    * object, so what is written into the slot is the object itself.
    *
@@ -370,6 +379,13 @@ export interface MarkupOptions {
    * that sits at the root of a hole its layout slots.
    */
   readonly slot?: string;
+  /**
+   * The names this walk's own `u` reassigns: a block's parameters — the row of a `@foreach`,
+   * the values its body reads from outside. They move as much as a prop does, so a value read
+   * off them has to be handed to a child again when the block updates; without them a row that
+   * keeps its key and changes its data left its child painting the old one.
+   */
+  readonly params?: ReadonlySet<string>;
 }
 
 export class ClientMarkupEmitter {
@@ -441,6 +457,17 @@ export class ClientMarkupEmitter {
     this.#rebindable = options.rebindable ?? false;
     this.#slot = options.slot;
     this.#at = options.at;
+    this.#params = options.params ?? new Set();
+  }
+
+  /** The names this walk's own `u` reassigns. See `MarkupOptions.params`. */
+  readonly #params: ReadonlySet<string>;
+  /** Whether a child of this walk is renewed only when the row moved — `$moved` is read. */
+  #rowMoves = false;
+
+  /** Whether the block's `u` has to compute `$moved` before reassigning its parameters. */
+  get rowMoves(): boolean {
+    return this.#rowMoves;
   }
 
   /** Whether this tag is a component of the graph. */
@@ -501,7 +528,7 @@ export class ClientMarkupEmitter {
    * because one signal moved. The comparison is a string against a string; the write it
    * saves is a DOM mutation.
    */
-  #applyValue(value: readonly LinePart[], write: (v: string) => string): void {
+  #applyValue(value: readonly LinePart[], write: (v: string) => string): number {
     this.#expressions.push(value);
     const slot = this.#writes++;
     if (this.#inPlace) {
@@ -515,6 +542,7 @@ export class ClientMarkupEmitter {
       this.#apply.mappedLine('$v = ', ...value, ';');
     }
     this.#apply.line(`if ($v !== $w[${slot}]) { $w[${slot}] = $v; ${write('$v')} }`);
+    return slot;
   }
 
   /**
@@ -1310,6 +1338,14 @@ export class ClientMarkupEmitter {
     this.#usage.fabricates = true;
     this.#fab.line(`$live(${v}, [${initial}]);`);
 
+    // A value that moves only with the ROW is renewed when the row moved, and then only — the
+    // update pass below already covers it when something else of the host moves too. No
+    // hookup call for it: `c` composed it into `$live` and `h` adopted what the server painted.
+    if (bound.some((s) => s.row === true) && !bound.some((s) => s.changes)) {
+      this.#rowMoves = true;
+      this.#bodies.update.line(`if ($moved) ${v}.u([, , ${initial}]);`);
+    }
+
     if (!bound.some((s) => s.signal !== undefined || s.changes || s.ref === true)) return;
     this.#hook.line(`${v}.u([, , ${initial}]);`);
 
@@ -1355,6 +1391,15 @@ export class ClientMarkupEmitter {
   #slots(el: ElementNode): Map<string, Slot> {
     const out = new Map<string, Slot>();
     const declared = this.#scope.declared(el.name);
+    // `...item` (decisions 79–82): one slot per key of the child's `T` that no `.prop` writes,
+    // each a VALUE read off the object — never a bare name, so never a reference — and moving
+    // exactly when the object does (81).
+    const spread = spreadProps(this.#source, el, declared);
+    if (spread.length > 0) {
+      const changes = this.#spreadMoves(el);
+      const row = !changes && this.#spreadRow(el);
+      for (const p of spread) out.set(p.name, { expr: p.expr, changes, row });
+    }
     for (const attr of el.attributes) {
       const b = classifyAttribute(attr, this.#source).value;
       // `control="@f.body"` on a component tag: the REFERENCE crosses, under the `ctrl` prop
@@ -1386,7 +1431,8 @@ export class ClientMarkupEmitter {
           b.value.length === 0
             ? 'true'
             : crossingExpr(this.#source, attr, b.value, this.#scope.signals);
-        out.set(b.name, { expr, changes: this.#reads(b.value) });
+        const changes = this.#reads(b.value);
+        out.set(b.name, { expr, changes, row: !changes && this.#readsRow(b.value) });
       }
     }
     return out;
@@ -1434,6 +1480,21 @@ export class ClientMarkupEmitter {
     return readsMoving(value, this.#hookup.template.ast, this.#scope.moving);
   }
 
+  /** Whether an attribute value reads a parameter of this block — it moves with the row. */
+  #readsRow(value: readonly AttributeValuePart[]): boolean {
+    return this.#params.size > 0 && readsMoving(value, this.#hookup.template.ast, this.#params);
+  }
+
+  /** Whether any `...object` of this host reads something that moves — the same question. */
+  #spreadMoves(el: ElementNode): boolean {
+    return spreadReadsMoving(el, this.#hookup.template.ast, this.#scope.moving);
+  }
+
+  /** And whether one reads a parameter of this block. */
+  #spreadRow(el: ElementNode): boolean {
+    return this.#params.size > 0 && spreadReadsMoving(el, this.#hookup.template.ast, this.#params);
+  }
+
   /** Descend into an element: a level of its own, with its own cursor. */
   #children(el: ElementNode, v: string): void {
     if (el.children.length === 0) return;
@@ -1454,7 +1515,13 @@ export class ClientMarkupEmitter {
     const raw = rawChild(el);
     if (raw !== null) {
       const expr = raw.expr.expr;
-      this.#applyValue([{ text: this.#slice(expr), src: expr.start }], ($v) => `$dom.setHtml(${v}, ${$v});`);
+      const value = { text: this.#slice(expr), src: expr.start };
+      const slot = this.#applyValue([value], ($v) => `$dom.setHtml(${v}, ${$v});`);
+      // `h` writes nothing — the HTML arrived inside the element — but it does record what the
+      // server painted, or the first update of ANY value would find the guard empty and rebuild
+      // this HTML from scratch, taking the focus, the selection and what was typed in it along.
+      // A text node does not need this: rewriting it with its own string changes nothing.
+      this.#adopt.mappedLine(`$w[${slot}] = `, value, ';');
       return;
     }
     this.#depth += 1;

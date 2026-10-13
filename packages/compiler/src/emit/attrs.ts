@@ -23,6 +23,7 @@ import {
   crossing,
   CONTROL_PROP,
   isSummaryFields,
+  spreadExpr,
   type Binding,
   type ComponentDeclaredProps,
 } from '../binding/index.js';
@@ -200,15 +201,58 @@ export interface HostContext {
   readonly declared?: PropTarget;
 }
 
-/** What the CHILD of this host declares about the prop a value is landing on. */
-export type PropTarget = (name: string) => ComponentDeclaredProps | undefined;
+/**
+ * What the CHILD of this host declares about the prop a value is landing on — and, as `all`,
+ * every prop it declares, in order: what a spread expands against (props-spec decision 80).
+ */
+export type PropTarget = ((name: string) => ComponentDeclaredProps | undefined) & {
+  readonly all: readonly ComponentDeclaredProps[];
+};
 
 /** A host with nothing declared around it — a page body, a template with no `@client`. */
 export const NO_SIGNALS: HostContext = { isComponent: false, signals: new Set() };
 
 /** The declared props of a tag, as the lookup `HostContext` and `componentPropsExpr` take. */
 export function propTarget(declared: readonly ComponentDeclaredProps[]): PropTarget {
-  return (name) => declared.find((d) => d.name === name);
+  return Object.assign((name: string) => declared.find((d) => d.name === name), { all: declared });
+}
+
+/**
+ * The props a `...item` hands the child, by name, each read off `item` (decisions 79–82).
+ *
+ * Against the CHILD's keys, never `item`'s: what `item` carries beyond them does not cross
+ * (80). A key the host also writes as a `.prop` is the host's, wherever the spread sits — the
+ * explicit binding is the more specific statement. A spread whose child cannot be read
+ * expands to nothing: with no `T` there is no key to expand against.
+ *
+ * Two spreads on one host: the later one wins a key it HAS, as in JS. «Has» is read as «not
+ * `undefined`», which is what the child's destructuring reads it as too — an `undefined` there
+ * is a missing prop and takes the default either way.
+ */
+export function spreadProps(
+  source: string,
+  el: ElementNode,
+  declared: PropTarget | undefined,
+): readonly { readonly name: string; readonly expr: string }[] {
+  if (declared === undefined) return [];
+  const explicit = new Set<string>();
+  const objects: string[] = [];
+  for (const attr of el.attributes) {
+    const b = classifyAttribute(attr, source).value;
+    if (b.type === 'property') explicit.add(b.name);
+    else if (b.type === 'control') explicit.add(CONTROL_PROP);
+    else if (b.type === 'spread' && b.expr !== null) objects.push(source.slice(b.expr.start, b.expr.end));
+  }
+  if (objects.length === 0) return [];
+  return declared.all
+    .filter((prop) => !explicit.has(prop.name))
+    .map((prop) => ({
+      name: prop.name,
+      expr: objects.reduce<string>((earlier, object, i) => {
+        const read = `(${object}).${prop.name}`;
+        return i === 0 ? read : `(${read} !== undefined ? ${read} : ${earlier})`;
+      }, ''),
+    }));
 }
 
 /**
@@ -240,6 +284,23 @@ export function readsMoving(
   }
   if (fragments.length === 0) return false;
   return freeReferences(fragments).some((name) => moving.has(name));
+}
+
+/**
+ * The same question for the `...object`s of a host: every prop a spread hands over is read off
+ * its object, so the props move exactly when the object reads something that does (decision
+ * 81). The level rule and the client emit both ask it here, for the reason `readsMoving` gives.
+ */
+export function spreadReadsMoving(
+  el: ElementNode,
+  ast: (at: Span) => FragmentAst,
+  moving: ReadonlySet<string>,
+): boolean {
+  const fragments = el.attributes.flatMap((attr) => {
+    const at = spreadExpr(attr);
+    return at === null ? [] : [ast(at)];
+  });
+  return fragments.length > 0 && freeReferences(fragments).some((name) => moving.has(name));
 }
 
 /**
@@ -337,7 +398,8 @@ export function componentPropsExpr(
   declared?: PropTarget,
 ): string {
   const slice = (sp: Span): string => source.slice(sp.start, sp.end);
-  const entries: string[] = [];
+  // `...item` first: `spreadProps` already left out every key an explicit binding writes.
+  const entries: string[] = spreadProps(source, el, declared).map((p) => `${JSON.stringify(p.name)}: ${p.expr}`);
   for (const attr of el.attributes) {
     const b = classifyAttribute(attr, source).value;
     // `control="@f.body"` on a component tag hands the child the NODE (decision 112). On the

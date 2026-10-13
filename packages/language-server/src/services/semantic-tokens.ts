@@ -21,6 +21,7 @@ import {
   DELEGATE_PREFIX,
   EVENT_PREFIX,
   PROPERTY_PREFIX,
+  SPREAD_PREFIX,
   REF_NAME,
   STYLE_PREFIX,
   documentRoots,
@@ -86,6 +87,9 @@ function bindingNameSpan(attribute: Attribute): Span | undefined {
   if (typeof attribute.name !== 'string') return attribute.name.span;
 
   const name = attribute.name;
+  // `...item` (props-spec §5): the dots are the binding, the object after them is a variable
+  // TypeScript colours through the projection like any other name the view reads.
+  if (name.startsWith(SPREAD_PREFIX)) return span(attribute.span.start, attribute.span.start + SPREAD_PREFIX.length);
   const isBinding = name === REF_NAME || BINDING_PREFIXES.some((prefix) => name.startsWith(prefix));
   return isBinding ? span(attribute.span.start, attribute.span.start + name.length) : undefined;
 }

@@ -35,6 +35,7 @@ import { nativeEventAttributes } from './analyzers/native-event-attributes.js';
 import { viewAttributes } from './analyzers/view-attributes.js';
 import { snippetRecursion } from './analyzers/snippet-recursion.js';
 import { rawOnlyChild } from './analyzers/raw-only-child.js';
+import { spreadTarget } from './analyzers/spread-target.js';
 
 /** The ordered list of analyzers (§4). One rule per unit. */
 export const ANALYZERS: readonly Analyzer[] = [
@@ -65,6 +66,7 @@ export const ANALYZERS: readonly Analyzer[] = [
   viewAttributes,
   snippetRecursion,
   rawOnlyChild,
+  spreadTarget,
 ];
 
 /** The empty semantic model of v1 (§3): no facts are produced yet. */

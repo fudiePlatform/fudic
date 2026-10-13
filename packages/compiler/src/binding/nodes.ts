@@ -23,7 +23,8 @@ export type Binding =
   | ErrorBinding
   | ClassBinding
   | StyleBinding
-  | DelegateBinding;
+  | DelegateBinding
+  | SpreadBinding;
 
 /** The `Binding.type` discriminants, as a closed union. */
 export type BindingType = Binding['type'];
@@ -88,6 +89,22 @@ export interface BusBinding extends Node {
   readonly type: 'bus';
   readonly eventName: string | RazorExpression;
   readonly value: RazorExpression;
+}
+
+/**
+ * `...item` — props spread (props-spec §5): one `.prop` per key of the CHILD's `T`, each read
+ * from `item` (decisions 79–82). The filter is `T`'s keys, so what `item` carries beyond them
+ * never crosses; a key `item` lacks is a type error when the prop is required and the default
+ * when it is optional — TypeScript says the first, the destructuring applies the second.
+ *
+ * `expr` is the object expression after the `...`: an identifier or a property path, the only
+ * forms an attribute NAME can hold. It is JS the view reads, registered with Oxc like a value.
+ * `null` when what follows the `...` is not one, or the attribute has a value (`FUD0991`): the
+ * binding is kept so the editor still sees a spread, and nobody expands it.
+ */
+export interface SpreadBinding extends Node {
+  readonly type: 'spread';
+  readonly expr: Span | null;
 }
 
 /** `ref="@id"` — a single simple identifier (decision 30). Loop use is rejected in SDD-12 (31). */
@@ -202,6 +219,9 @@ export const EVENT_PREFIX = '@';
 
 /** The property prefix (decisions 23–25). */
 export const PROPERTY_PREFIX = '.';
+
+/** The props-spread prefix (props-spec §5). Asked BEFORE `.`, which is its first character. */
+export const SPREAD_PREFIX = '...';
 
 /** The reserved attribute name for an element reference (decision 30). */
 export const REF_NAME = 'ref';
