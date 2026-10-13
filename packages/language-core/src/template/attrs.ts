@@ -30,6 +30,7 @@ import {
   type Attribute,
   type AttributeValuePart,
   type Binding,
+  type SpreadBinding,
   type ElementNode,
   type OxcNode,
   type RazorExpression,
@@ -107,6 +108,12 @@ function openMarkerValue(ctx: TemplateContext, attr: Attribute, binding: Binding
 interface Entry {
   readonly attr: Attribute;
   readonly binding: Binding;
+}
+
+/** An `Entry` already narrowed to a props spread, so `emitSpreads` has nothing to re-ask. */
+interface SpreadEntry {
+  readonly attr: Attribute;
+  readonly binding: SpreadBinding;
 }
 
 /**
@@ -280,11 +287,11 @@ function emitProps(ctx: TemplateContext, el: ElementNode, bindings: readonly Ent
   /** The prop names actually WRITTEN — the `K` of `$required`. A bare `.` names none. */
   const written: string[] = [];
   /** The `...object`s of the tag (props-spec §5), checked against what nothing else writes. */
-  const spreads: Entry[] = [];
+  const spreads: SpreadEntry[] = [];
 
   for (const entry of bindings) {
     if (entry.binding.type === 'spread') {
-      spreads.push(entry);
+      spreads.push({ attr: entry.attr, binding: entry.binding });
       continue;
     }
     if (entry.binding.type === 'property') {
@@ -371,12 +378,11 @@ function emitSpreads(
   el: ElementNode,
   alias: string,
   written: readonly string[],
-  spreads: readonly Entry[],
+  spreads: readonly SpreadEntry[],
 ): void {
   const contract = ctx.aliases.slotsAliasOf(el.name) === undefined ? 'unknown' : alias;
   const target = contract === 'unknown' || written.length === 0 ? contract : `Omit<${contract}, ${written.join(' | ')}>`;
   for (const { attr, binding } of spreads) {
-    if (binding.type !== 'spread') continue;
     ctx.w.scaffold(`$spread<${target}>(`, attr.span);
     if (binding.expr !== null) copyExpression(ctx, binding.expr);
     else if (attr.name === SPREAD_PREFIX) ctx.w.projected(' ', span(attr.span.end, attr.span.end), COMPLETION_ONLY_CAPS);
