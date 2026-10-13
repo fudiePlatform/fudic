@@ -5,7 +5,7 @@
 > `@fudic/di` · `@fudic/ssr` · `@fudic/forms` · `@fudic/conventions` · `@fudic/language-core` ·
 > `@fudic/diagnostics`
 > **Rama:** `sdd/http` (nace de `main`)
-> **Progreso:** 25 / 50 — `En curso`.
+> **Progreso:** 29 / 50 — `En curso`.
 >
 > *Al implementar:* el código lo escribe una sesión y los tests otra. Las fases 3, 4 y 5 van
 > en un solo commit, porque comparten ficheros (`dispatch.ts` lee el cuerpo de la fase 5,
@@ -121,7 +121,7 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 34 | — | **Constantes.** `FN_PREFIX = '/_fudic/fn'`, `ERROR_PREFIX = '/_fudic/error'` y `DATA_PREFIX` en `@fudic/conventions`. Vite y transport dejan su copia de `DATA_PREFIX` | `conventions` · `vite` · `transport` | `src/index.ts` · `packages/vite/src/constants.ts` · `packages/transport/src/urls.ts` |
+| [x] | 34 | — | **Constantes.** `FN_PREFIX = '/_fudic/fn'`, `ERROR_PREFIX = '/_fudic/error'` y `DATA_PREFIX` en `@fudic/conventions`. Vite y transport dejan su copia de `DATA_PREFIX` | `conventions` · `vite` · `transport` | `src/index.ts` · `packages/vite/src/constants.ts` · `packages/transport/src/urls.ts` |
 | [ ] | 35 | 13, 34 | **Dev.** Un middleware para `/_fudic/fn/**` con cualquier método: resuelve ruta o componente, carga su `?server` con `ssrLoadModule` y llama a `dispatch`. El endpoint de datos pasa por `dispatch` con la cadena de `load` | `vite` | `src/plugin.ts` · `src/serve.ts` |
 | [ ] | 36 | — | **Borrar `.server(…)` en el build de cliente.** Por el mismo camino que `eraseServerValidators`: el argumento de `.server(` de un `middleware()` se sustituye y Rollup se lleva sus imports (§4.5) | `vite` | `src/server-validators.ts` · `src/plugin.ts` |
 | [ ] | 37 | 13 | **`_error.fud`.** Fuera de la tabla de rutas. `/_fudic/error/:status` lo pinta con su `data`. Un `load`/`layout` que lanza al navegar responde según la tabla de §4.8, con la página mínima si no hay `_error.fud`. En dev, lo que no es `HttpError` también va al overlay | `vite` | `src/discover.ts` · `src/routing.ts` · `src/plugin.ts` · `src/serve.ts` |
@@ -133,9 +133,9 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 41 | 34 | **El SW no toca las funciones.** `handle` y `respond` salen sin `respondWith` para `/_fudic/fn/**`, antes de evaluar el shell y las reglas de `sw.json` (§4.10) | `transport` | `src/router.ts` |
-| [ ] | 42 | 41 | **Error de datos e invalidación.** Un endpoint de datos que no responde 2xx va a la red sin marcar la ruta como muerta (§4.8). `invalidatePattern(pattern)` borra los datos de todas las URLs en caché de ese patrón. El SW atiende el mensaje de invalidación de §4.9 y contesta por el puerto cuando ha borrado | `transport` · `vite` | `src/router.ts` · `src/messages.ts` · `packages/vite/src/bootstrap.ts` |
-| [ ] | 43 | 41, 42 | **Tests del SW.** Criterios 30–34 | `transport` | `test/router-fn.test.ts` |
+| [x] | 41 | 34 | **El SW no toca las funciones.** `handle` y `respond` salen sin `respondWith` para `/_fudic/fn/**`, antes de evaluar el shell y las reglas de `sw.json` (§4.10) | `transport` | `src/router.ts` |
+| [x] | 42 | 41 | **Error de datos e invalidación.** Un endpoint de datos que no responde 2xx va a la red sin marcar la ruta como muerta (§4.8). `invalidatePattern(pattern)` borra los datos de todas las URLs en caché de ese patrón. El SW atiende el mensaje de invalidación de §4.9 y contesta por el puerto cuando ha borrado | `transport` · `vite` | `src/router.ts` · `src/messages.ts` · `packages/vite/src/bootstrap.ts` |
+| [x] | 43 | 41, 42 | **Tests del SW.** Criterios 30–34. *Al implementar:* la fase 8 se hizo antes que la 6 y la 7, porque no comparte ficheros con ellas, y con ella la tarea 34. El SW confirma la invalidación en un `finally`, también si un borrado falla | `transport` | `test/router-fn.test.ts` |
 
 ## Fase 9 — editor (3)
 

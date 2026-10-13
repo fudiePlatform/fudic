@@ -57,8 +57,10 @@ describe('createUrlResolver', () => {
 
   it('derives the data endpoint with its `:param` placeholders intact', () => {
     // Unfilled on purpose: whoever holds the match fills them with `fillParams`.
-    expect(urls.dataUrl('/blog/:slug')).toBe(`/${DATA_PREFIX}/blog/:slug`);
-    expect(urls.dataUrl('/')).toBe(`/${DATA_PREFIX}/`);
+    // The prefix is `@fudic/conventions`' since SDD-56 §4.1, leading slash included.
+    expect(DATA_PREFIX).toBe('/_fudic/data');
+    expect(urls.dataUrl('/blog/:slug')).toBe('/_fudic/data/blog/:slug');
+    expect(urls.dataUrl('/')).toBe('/_fudic/data/');
   });
 
   it('applies a non-root base without doubling the slash', () => {
@@ -66,7 +68,7 @@ describe('createUrlResolver', () => {
     expect(scoped.renderUrl(record())).toBe(`/app/${LINK_DIR}/blog-slug-${BUILD}.js`);
     expect(scoped.depUrl('site-nav')).toBe(`/app/${LINK_DIR}/site-nav-${BUILD}.js`);
     expect(scoped.hydrateUrl('site-nav')).toBe(`/app/${CLIENT_DIR}/site-nav-${BUILD}.js`);
-    expect(scoped.dataUrl('/blog')).toBe(`/app/${DATA_PREFIX}/blog`);
+    expect(scoped.dataUrl('/blog')).toBe('/app/_fudic/data/blog');
   });
 
   it('places a file the build named itself, base applied and slash collapsed', () => {

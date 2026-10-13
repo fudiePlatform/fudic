@@ -78,7 +78,7 @@ export function emitSwBootstrap(options: SwBootstrapOptions): string {
 `}import {
   loadManifest, createLinker, canLink, createRouter, createStore, cacheNames,
   isStaleCache, sweepRuntimeCaches, controlBus, LOCATION_MESSAGE, RUNTIME_MESSAGE,
-  WARM_MESSAGE, WARMED_MESSAGE,
+  WARM_MESSAGE, WARMED_MESSAGE, INVALIDATE_MESSAGE,
 } from '@fudic/transport';
 
 const APP = ${JSON.stringify(options.app)};
@@ -264,6 +264,22 @@ self.addEventListener('message', (e) => {
         urls: msg.urls.filter((_, i) => landed.has(msg.tags[i])),
         tags: msg.tags.filter((tag) => landed.has(tag)),
       });
+    }));
+  } else if (msg.type === INVALIDATE_MESSAGE) {
+    // After a server function that changed something (SDD-56 §4.9). The call waits for the
+    // answer on the port, so it is sent once everything is gone — and sent even when there is
+    // no router, or the page would wait for ever.
+    // In a \`finally\`: a cache that fails to delete must not leave the call hanging.
+    e.waitUntil(boot().then(async (r) => {
+      try {
+        if (r) {
+          for (const path of msg.paths) {
+            await (path.includes('/:') ? r.invalidatePattern(path) : r.invalidate(path));
+          }
+        }
+      } finally {
+        e.ports[0]?.postMessage(true);
+      }
     }));
   }
 });

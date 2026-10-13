@@ -163,7 +163,7 @@ export interface RuntimeEntries {
 export const DEV_CLIENT_PREFIX = '@fudic/h/';
 
 /** Where the generated `@server load` endpoints live (SDD-20 §4.5). */
-export const DATA_PREFIX = '/_fudic/data';
+export { DATA_PREFIX } from '@fudic/conventions';
 
 /** Output directory of the `link` pass: the linkable CJS chunks, inside the build output. */
 export const LINK_DIR = 'sw/c';

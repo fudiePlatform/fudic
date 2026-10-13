@@ -17,6 +17,8 @@ export {
   type RuntimeMessage,
   type WarmMessage,
   type WarmedMessage,
+  type InvalidateMessage,
+  INVALIDATE_MESSAGE,
   LOCATION_MESSAGE,
   RUNTIME_MESSAGE,
   WARM_MESSAGE,

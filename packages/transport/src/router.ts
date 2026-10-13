@@ -16,6 +16,7 @@
  * request — two rows in the Network panel for one URL. That was a real bug.
  */
 
+import { FN_PREFIX } from '@fudic/conventions';
 import { applyNonce, applyNonceStream, cspFor, newNonce, NONCE_TOKEN } from './csp.js';
 import { type Linker } from './linker.js';
 import {
@@ -171,6 +172,24 @@ export interface Router {
   ready(): Promise<void>;
   /** Drop a concrete route's cached page and data. */
   invalidate(pathname: string): Promise<void>;
+  /**
+   * Drop the cached page and data of every URL of a route pattern, `/app/blog/:slug`, `base`
+   * included (SDD-56 §4.9). A `:param` segment matches any one segment.
+   */
+  invalidatePattern(pattern: string): Promise<void>;
+}
+
+/** The data endpoint answered with an error: the network serves the navigation (SDD-56 §4.8). */
+class DataUnavailable extends Error {}
+
+/** Whether a concrete pathname is one of the URLs of `pattern`. */
+function matchesPattern(pattern: string, pathname: string): boolean {
+  const want = pattern.split('/');
+  const have = pathname.split('/');
+  return (
+    want.length === have.length &&
+    want.every((seg, i) => (seg.startsWith(':') ? have[i] !== '' : seg === have[i]))
+  );
 }
 
 const HTML_HEADERS = { 'content-type': 'text/html; charset=utf-8' };
@@ -219,6 +238,11 @@ export function createRouter(config: RouterConfig): Router {
    * (BUG-02 §4.4).
    */
   const pageUrlOf = (pathname: string): string => abs(pathname);
+  /**
+   * Where server functions answer, `base` included (SDD-56 §4.10). Nothing under it is this
+   * worker's: not cached, not intercepted, whatever `sw.json` says.
+   */
+  const fnPrefix = new URL(abs(table.urls.assetUrl(`${FN_PREFIX.slice(1)}/`))).pathname;
 
   /**
    * Serve a page this Service Worker rendered earlier (`page.cache: 'persist'`).
@@ -260,6 +284,9 @@ export function createRouter(config: RouterConfig): Router {
       dataPolicy.policy,
       dataPolicy.ttl,
     );
+    // A `load` that threw: a 404, a redirect, a 500. Not this worker's to paint — the server
+    // answers the navigation with its error page or its `Location` (SDD-56 §4.8).
+    if (!response.ok) throw new DataUnavailable();
     return (await response.json()) as { data: unknown; layout?: unknown };
   };
 
@@ -311,6 +338,9 @@ export function createRouter(config: RouterConfig): Router {
       }
       return new Response(applyNonceStream(stream, nonce), { headers });
     } catch (error) {
+      // The route is alive: it is this URL's data that failed, and the next URL of the
+      // pattern still renders here.
+      if (error instanceof DataUnavailable) return net(request);
       // The one exception to "respondWith only when rendering": we WERE going to
       // render, so this is a single rescue request, not a duplicated one.
       config.onError?.(url.pathname, error);
@@ -549,6 +579,7 @@ export function createRouter(config: RouterConfig): Router {
   return {
     handle(event: FetchEvent): void {
       const url = new URL(event.request.url);
+      if (url.pathname.startsWith(fnPrefix)) return;
       if (event.request.method === 'GET' && event.request.mode !== 'navigate') {
         handleResource(event, url);
         return;
@@ -559,6 +590,7 @@ export function createRouter(config: RouterConfig): Router {
 
     respond(event: FetchEvent): Promise<Response> {
       const url = new URL(event.request.url);
+      if (url.pathname.startsWith(fnPrefix)) return net(event.request);
       return decide(event, url) ?? net(event.request);
     },
 
@@ -624,6 +656,21 @@ export function createRouter(config: RouterConfig): Router {
         await stores.data.delete(
           abs(fillParams(table.urls.dataUrl(hit.record.pattern), hit.params)),
         );
+      }
+    },
+
+    async invalidatePattern(pattern: string): Promise<void> {
+      // The concrete URLs this worker holds anything for: every persisted page, and every
+      // data entry read back to the page it belongs to.
+      const dataRoot = new URL(abs(table.urls.dataUrl(''))).pathname;
+      const root = new URL(abs(table.urls.assetUrl(''))).pathname;
+      const held = new Set<string>([...pages].map((page) => new URL(page).pathname));
+      for (const key of await stores.data.keys()) {
+        const path = new URL(key).pathname;
+        if (path.startsWith(dataRoot)) held.add(`${root}${path.slice(dataRoot.length)}`.replace(/\/{2,}/gu, '/'));
+      }
+      for (const path of held) {
+        if (matchesPattern(pattern, path)) await this.invalidate(path);
       }
     },
   };
