@@ -73,6 +73,16 @@ export interface Prop {
    * wrote under the same name, and the editor's repair writes a value OF the type.
    */
   readonly type?: string;
+  /**
+   * The name of the rest binding that gathers this key — `resto` in
+   * `const { label, ...resto } = props<T>()` — or absent for a key destructured by name.
+   *
+   * A gathered key is a prop like any other for whoever hands it over (it has its slot in the
+   * payload, the parent writes it with a `.`), but it has no local of its own: what the
+   * component reads is the rest object. So it exists only when `T` can be read — the keys of a
+   * rest are the keys of `T` nobody named, and a `T` this file cannot read names none.
+   */
+  readonly rest?: string;
 }
 
 /**
@@ -1745,6 +1755,7 @@ function readDeclarator(
     const declared = declaredMembers(init, named, source, map);
     for (const property of fieldArray(id, 'properties'))
       readProp(property, source, map, props, declared);
+    readRest(id, source, map, props, declared);
     // RECOGNISED, and that is what the answer means — not «it produced something». A
     // `const {} = props<Props>()` declares no prop and is still the emit's to write: copying
     // it into a module would call a `props` that exists nowhere.
@@ -1880,6 +1891,37 @@ function declaredMembers(
     });
   }
   return out;
+}
+
+/**
+ * `const { label, ...resto } = props<T>()`: one `Prop` per key of `T` the pattern did not name,
+ * in `T`'s order, each marked with the rest binding that gathers it. Appended AFTER the named
+ * ones, which is where the payload puts them too. A rest whose `T` this file cannot read
+ * gathers nothing it can prove, so it adds nothing.
+ */
+function readRest(
+  pattern: OxcNode,
+  source: string,
+  map: MapOffset,
+  out: Prop[],
+  declared: ReadonlyMap<string, DeclaredMember>,
+): void {
+  const rest = fieldArray(pattern, 'properties').find((p) => is(p, 'RestElement'));
+  const argument = rest === undefined ? undefined : field(rest, 'argument');
+  if (rest === undefined || !is(argument, 'Identifier')) return;
+  const named = new Set(out.map((p) => p.name));
+  const at = span(map(rest.start), map(rest.end));
+  for (const [key, member] of declared) {
+    if (named.has(key)) continue;
+    out.push({
+      name: key,
+      optional: !member.required,
+      at,
+      rest: name(argument),
+      ...(member.type === undefined ? {} : { type: member.type }),
+      ...(member.channel === undefined ? {} : { channel: member.channel }),
+    });
+  }
 }
 
 /** Flatten one `{ a, b = expr }` property, taking the default's source verbatim. */

@@ -23,6 +23,7 @@ import { ClientMarkupEmitter, coreUsage, nodeIds, renderPass } from './markup-cl
 import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js';
 import { AssetLinker } from './assets.js';
 import { codeOf, splicedOffset, type ClientStatement, type Prop } from './oxc-code.js';
+import { localOf, restAssignments, restGroups } from './rest.js';
 import { hookupContext, templateDelegationJs } from './events.js';
 import { planDelegation } from '../semantic/delegation.js';
 import { planControls } from './controls.js';
@@ -55,7 +56,7 @@ function declaration(
   cells: readonly CellSlot[],
   injects: boolean,
 ): string {
-  const names = props.map((p) => (p.def !== undefined ? `${p.name} = ${p.def}` : p.name));
+  const names = props.map((p) => (p.def !== undefined ? `${p.name} = ${p.def}` : localOf(p)));
   // The cells come out under their POSITIONAL names and not under the author's, because the
   // author's is about to be declared by their own `const count = …` a few lines down. What
   // arrives here is the slot; `$pK ?? signal(init)` is where the two meet (BUG-24 §4.4).
@@ -65,8 +66,19 @@ function declaration(
   // position and one hole in front would shift every prop by one (BUG-18 §3.1) — which is
   // exactly what `updateGuards` below must not have to know about.
   const ioc = injects ? [iocName(props, cells)] : [];
-  return `let [$dom, $shadow${[...names, ...slots, ...ioc].map((n) => `, ${n}`).join('')}] = $props;`;
+  // And the rest object, assembled from the locals its keys just arrived in.
+  const rest = restAssignments(props, true);
+  return `let [$dom, $shadow${[...names, ...slots, ...ioc].map((n) => `, ${n}`).join('')}] = $props;${rest === '' ? '' : ` ${rest}`}`;
 }
+
+/**
+ * The names the component's code reads its props by: each named prop, and each rest object
+ * once — never the keys a rest gathered, which are nobody's name in the author's code.
+ */
+const propNames = (props: readonly Prop[]): readonly string[] => [
+  ...props.flatMap((p) => (p.rest === undefined ? [p.name] : [])),
+  ...restGroups(props).keys(),
+];
 
 /** The positional name of the container node: behind every prop and every cell. */
 const iocName = (props: readonly Prop[], cells: readonly CellSlot[]): string =>
@@ -118,13 +130,17 @@ function rebindGuard(props: readonly Prop[], rebound: ReadonlySet<string>): stri
 }
 
 function updateGuards(props: readonly Prop[]): string {
-  return props
+  const guards = props
     .map((p, i) => {
       const cell = `$p[${i + 2}]`;
       const value = p.def !== undefined ? `${cell} === undefined ? ${p.def} : ${cell}` : cell;
-      return `if (${i + 2} in $p) ${p.name} = ${value};`;
+      return `if (${i + 2} in $p) ${localOf(p)} = ${value};`;
     })
     .join(' ');
+  // A rest object is rebuilt whole after the guards: one of its keys may have moved, and the
+  // ones that did not keep the local they had.
+  const rest = restAssignments(props, false);
+  return rest === '' ? guards : `${guards} ${rest}`;
 }
 
 /**
@@ -192,7 +208,7 @@ function buildComponentClientModule(
   const bodies = newBodies();
   // What a block may be handed: the props (an update reassigns every one of them) and the
   // `@client` bindings the author can move. Everything else reaches it through the closure.
-  const changeable = new Set([...props.map((p) => p.name), ...mutable]);
+  const changeable = new Set([...propNames(props), ...mutable]);
   const scope = {
     childProps: (tag: string): readonly Prop[] | undefined => {
       const child = graph.components.get(tag);
@@ -247,7 +263,7 @@ function buildComponentClientModule(
     // What tells a `control` whose node CROSSED from the parent (decision 112) from one this
     // component already holds. The two are hooked up at different moments, and only the first
     // has to be able to happen again.
-    new Set(props.map((p) => p.name)),
+    new Set(propNames(props)),
     delegation,
   );
   // The tables, in the closure the listeners live in (§4.1). A `WeakMap` needs no teardown —
@@ -303,7 +319,8 @@ function buildComponentClientModule(
   // writes and on the owner's alike — and the parent no longer forwards anything to it.
   const reactive = [
     ...signals.flatMap((s) => (s.kind === 'signal' ? [s.name] : [])),
-    ...props.flatMap((p) => (p.channel === 'signal' ? [p.name] : [])),
+    // A gathered key has no local the template reads by name, so it subscribes nothing here.
+    ...props.flatMap((p) => (p.channel === 'signal' && p.rest === undefined ? [p.name] : [])),
   ];
   // And the names that come from ANOTHER module — a store. The same argument as above ends
   // in a different instruction: a declaration this file can read is subscribed outright, and

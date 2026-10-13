@@ -42,6 +42,7 @@ import {
 import { planPageSheets, type PageSheets, type SheetUse } from './page-sheets.js';
 import { compactStyleCss } from './css-compact.js';
 import { codeOf, codeOfDocument, diHelpers } from './oxc-code.js';
+import { restGroups } from './rest.js';
 import { hasDependencyInjection } from './di.js';
 import { cellSlots, childTargets, reactiveScope } from './state.js';
 import { bridgeIds, formAssociatedTags, hydratableTags } from './level.js';
@@ -380,7 +381,13 @@ function buildComponentModule(
   w.line('export function render($dom, $shadow, props, $ioc) {');
   w.indent();
   if (props.length > 0) {
-    const pattern = props.map((p) => (p.def !== undefined ? `${p.name} = ${p.def}` : p.name)).join(', ');
+    // The keys a rest gathers are not named in the pattern: the `...rest` itself collects them,
+    // exactly as the author wrote it.
+    const named = props.filter((p) => p.rest === undefined);
+    const pattern = [
+      ...named.map((p) => (p.def !== undefined ? `${p.name} = ${p.def}` : p.name)),
+      ...[...restGroups(props).keys()].map((rest) => `...${rest}`),
+    ].join(', ');
     w.line(`const { ${pattern} } = props ?? {};`);
   }
   if (owns) {
@@ -428,7 +435,9 @@ function buildComponentModule(
     // every prop by one.
     const trailing =
       cells.length === 0 && !injects ? '' : `, [${cellDecls}]${injects ? ', $ioc.index' : ''}`;
-    w.line(`$dom.state($shadow, [${props.map((p) => p.name).join(', ')}]${trailing});`);
+    // A gathered key travels in its own slot, read off the rest object it landed in.
+    const slice = props.map((p) => (p.rest === undefined ? p.name : `${p.rest}.${p.name}`)).join(', ');
+    w.line(`$dom.state($shadow, [${slice}]${trailing});`);
   };
   if (cells.length === 0) writeState();
   for (const s of signals) {

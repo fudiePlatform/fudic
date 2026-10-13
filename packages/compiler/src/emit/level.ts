@@ -424,7 +424,8 @@ export function movingNames(comp: ResolvedComponent): ReadonlySet<string> {
   const code = codeOf(comp);
   return new Set<string>([
     ...code.signals.map((s) => s.name),
-    ...code.props.map((p) => p.name),
+    // A gathered key moves as its rest object: that is the name the template reads.
+    ...code.props.map((p) => p.rest ?? p.name),
     ...code.mutable,
   ]);
 }

@@ -58,7 +58,7 @@ export function entryReactiveScope(entry: EntryHalf): ReadonlySet<string> {
 function scopeOf(code: ExtractedCode): ReadonlySet<string> {
   return new Set([
     ...code.signals.map((s) => s.name),
-    ...code.props.flatMap((p) => (p.channel === 'signal' ? [p.name] : [])),
+    ...code.props.flatMap((p) => (p.channel === 'signal' && p.rest === undefined ? [p.name] : [])),
   ]);
 }
 

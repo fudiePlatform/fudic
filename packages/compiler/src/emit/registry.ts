@@ -75,6 +75,8 @@ function crossingNames(comp: ResolvedComponent): ReadonlyMap<string, CrossingKin
   for (const reactive of code.signals) out.set(reactive.name, reactive.kind);
   for (const fn of code.clientFunctions) out.set(fn, 'fn');
   for (const prop of code.props) {
+    // A gathered key is no name of this component's code: nothing can forward it by name.
+    if (prop.rest !== undefined) continue;
     if (prop.channel === 'signal') out.set(prop.name, 'signal');
     else if (prop.channel === 'fn') out.set(prop.name, 'fn');
   }

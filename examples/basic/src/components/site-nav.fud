@@ -58,6 +58,7 @@
       <a href="/ref" aria-current=@(current === 'ref' ? 'page' : 'false')>Ref</a>
       <a href="/raw" aria-current=@(current === 'raw' ? 'page' : 'false')>Raw</a>
       <a href="/spread" aria-current=@(current === 'spread' ? 'page' : 'false')>Spread</a>
+      <a href="/resto" aria-current=@(current === 'resto' ? 'page' : 'false')>Resto</a>
       <a href="/about" aria-current=@(current === 'about' ? 'page' : 'false')>Acerca de</a>
     </nav>
   </template>

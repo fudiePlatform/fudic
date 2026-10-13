@@ -1,0 +1,34 @@
+<link rel="component" href="./campo-texto.fud">
+
+@code {
+  @client {
+    import { signal } from "@fudic/core";
+
+    const pista = signal("Escribe tu nombre");
+    const obligatorio = signal(true);
+
+    function cambiar() {
+      pista.set(pista() === "Escribe tu nombre" ? "¿Cómo te llamas?" : "Escribe tu nombre");
+      obligatorio.set(!obligatorio());
+    }
+  }
+}
+
+<head>
+  <style>
+    .panel {
+      display: grid;
+      gap: var(--gap);
+      max-width: 28rem;
+    }
+  </style>
+</head>
+
+<resto-demo>
+  <template shadowrootmode="open">
+    <div class="panel">
+      <campo-texto .label="Nombre" .placeholder=@pista .required=@obligatorio .maxlength=@(20)></campo-texto>
+      <button class="cambiar" @click="@cambiar">Cambiar las props</button>
+    </div>
+  </template>
+</resto-demo>
