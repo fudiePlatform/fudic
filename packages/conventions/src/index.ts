@@ -68,3 +68,15 @@ export const runtimeCacheName = (version: string): string =>
  * application that moves on, or disappears, simply stops refreshing its own.
  */
 export const runtimeMarkerUrl = (app: string): string => `/${RUNTIME_DIR}/marker/${app}`;
+
+/**
+ * Where a server function answers (SDD-56 §4.1): the compiler writes the URL into the client
+ * stub, the plugin and every adapter serve it, and the Service Worker steps aside for it.
+ */
+export const FN_PREFIX = '/_fudic/fn';
+
+/**
+ * The only URL of `_error.fud` (SDD-56 §4.8): `errorPages` navigates to it from the browser
+ * and the server paints it.
+ */
+export const ERROR_PREFIX = '/_fudic/error';

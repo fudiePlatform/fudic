@@ -1,0 +1,9 @@
+{
+  "extends": "@fudic/tsconfig/tsconfig.base.json",
+  "compilerOptions": {
+    // `DOM` because both halves run against the platform's `Request`, `Headers`, `URL` and
+    // `AbortSignal`, and the client half also against `location` and `fetch`.
+    "lib": ["ES2024", "DOM", "DOM.Iterable"]
+  },
+  "include": ["src", "test"]
+}

@@ -38,7 +38,13 @@ describe('@fudic/conventions', () => {
     expect(conventions.runtimeMarkerUrl('shop-admin')).not.toBe(conventions.runtimeMarkerUrl('shop'));
   });
 
-  it('exports those eight names and nothing else', () => {
+  it('names the server-function and error-page prefixes, inside the runtime directory', () => {
+    // SDD-56 §4.1 and §4.8: both sides derive these URLs, so they live here once.
+    expect(conventions.FN_PREFIX).toBe('/_fudic/fn');
+    expect(conventions.ERROR_PREFIX).toBe('/_fudic/error');
+  });
+
+  it('exports those names and nothing else', () => {
     // The door stays shut (BUG-20 §3.4). A ninth export is not a smaller change than a
     // second package: it is how a convention package turns into a drawer of shared strings,
     // so growing the surface has to be a deliberate edit to this list.
@@ -46,8 +52,13 @@ describe('@fudic/conventions', () => {
     // `RUNTIME_CACHE_PREFIX` is the eighth, and it is the deliberate edit SDD-45 §4.9 asked
     // for: the sweep walks the origin looking for OTHER versions of the runtime cache, and
     // the family name cannot be sliced back off one — a prerelease has hyphens of its own.
+    //
+    // `FN_PREFIX` and `ERROR_PREFIX` are SDD-56's (§4.1, §4.8): the client stub, the dev
+    // server and the Service Worker all derive the same URLs from them.
     expect(Object.keys(conventions).sort()).toEqual([
       'COMPONENTS_DIR',
+      'ERROR_PREFIX',
+      'FN_PREFIX',
       'LAYOUTS_DIR',
       'ROUTES_DIR',
       'RUNTIME_CACHE_PREFIX',

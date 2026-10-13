@@ -321,6 +321,19 @@ importers:
         specifier: 1.2.1
         version: 1.2.1
 
+  packages/http:
+    dependencies:
+      '@fudic/conventions':
+        specifier: workspace:*
+        version: link:../conventions
+      '@fudic/forms':
+        specifier: workspace:*
+        version: link:../forms
+    devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+
   packages/language-core:
     dependencies:
       '@fudic/compiler':

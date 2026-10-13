@@ -1,6 +1,6 @@
 # SDD-56 — Funciones de servidor y middlewares: `@fudic/http`
 
-> **Estado:** `En curso` — [tareas](./SDD-56-Task.md), 2 / 50.
+> **Estado:** `En curso` — [tareas](./SDD-56-Task.md), 9 / 50.
 > **Paquetes:** `@fudic/http` (nuevo) · `@fudic/compiler` · `@fudic/vite` · `@fudic/transport` ·
 > `@fudic/di` · `@fudic/ssr` · `@fudic/forms` · `@fudic/conventions` · `@fudic/language-core` ·
 > `@fudic/diagnostics`
@@ -254,10 +254,13 @@ export interface ServerContext<A = unknown> extends BaseContext<A> {
 
 export type Next<C> = (ctx: C) => Promise<unknown>;
 
-/** A middleware with its halves. A missing half does not run on that side. */
+/**
+ * A middleware with its halves, built only by `middleware()`. Opaque: its halves are not
+ * fields anyone reads. A missing half does not run on that side.
+ */
 export interface Middleware<Adds extends object = {}> {
-  readonly client?: (ctx: ClientContext, next: Next<ClientContext>) => unknown;
-  readonly server?: (ctx: ServerContext, next: Next<ServerContext & Adds>) => unknown;
+  /** Phantom: what it leaves in `ctx`. Never present at runtime. */
+  readonly '~adds'?: Adds;
 }
 
 /** A plain function is a middleware that runs on BOTH sides. */
@@ -271,10 +274,22 @@ export type AnyMiddleware = Middleware<object> | SharedMiddleware;
 export function middleware<Adds extends object = {}>(): MiddlewareBuilder<Adds>;
 
 export interface MiddlewareBuilder<Adds extends object> extends Middleware<Adds> {
-  client(step: NonNullable<Middleware<Adds>['client']>): MiddlewareBuilder<Adds>;
-  server(step: NonNullable<Middleware<Adds>['server']>): MiddlewareBuilder<Adds>;
+  client(step: (ctx: ClientContext, next: Next<ClientContext>) => unknown): MiddlewareBuilder<Adds>;
+  server(step: (ctx: ServerContext, next: Next<ServerContext & Adds>) => unknown): MiddlewareBuilder<Adds>;
 }
 ```
+
+**El middleware es opaco** (decidido al implementar, 2026-10-13). La primera redacción hacía de
+`client` y `server` a la vez las mitades (`Middleware`) y los métodos del builder que lo
+hereda, y un nombre no puede ser las dos cosas. Un `Middleware` solo se construye con
+`middleware()`; `csrf` y `errorPages` también. Cada builder es inmutable, como el de una
+función.
+
+**La mitad `.server` nunca sale del servidor.** Es una regla de seguridad, no de tamaño: el
+build de cliente borra el argumento de cada `.server(…)` y Rollup se lleva lo que solo él
+importaba (§4.5), así que en el navegador `.server` recibe nada y su mitad no existe. Una
+función a secas es la única forma de escribir código que corre en los dos lados, y es una
+elección explícita del desarrollador.
 
 **`Adds` es lo que el middleware deja en `ctx` para los que vienen detrás.** `auth` declara
 `{ user: User }`, su mitad de servidor llama a `next(Object.assign(ctx, { user }))`, y en el

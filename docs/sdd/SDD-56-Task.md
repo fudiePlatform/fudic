@@ -5,7 +5,7 @@
 > `@fudic/di` · `@fudic/ssr` · `@fudic/forms` · `@fudic/conventions` · `@fudic/language-core` ·
 > `@fudic/diagnostics`
 > **Rama:** `sdd/http` (nace de `main`)
-> **Progreso:** 2 / 50 — `En curso`.
+> **Progreso:** 9 / 50 — `En curso`.
 
 **El orden manda en cinco puntos.**
 
@@ -61,13 +61,13 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 3 | — | **El paquete.** `packages/http` con tres entradas: `.` (builders, middlewares, errores), `./client` (`$fn`) y `./server` (`dispatch`). `tsconfig` que extiende la base, `vitest.config.ts` con umbrales al 100 en las cuatro métricas e `include: ['src/**/*.ts']`. Versiones exactas | `http` | `package.json` · `tsconfig*.json` · `vitest.config.ts` · `src/index.ts` |
-| [ ] | 4 | 3 | **Tipos y errores.** `Method`, `BaseContext`, `ClientContext`, `ServerContext`, `Next`, `Middleware`, `SharedMiddleware`, `AnyMiddleware` (§3.4). `HttpError`, `ValidationError`, `Redirect`, `Problem` y las seis factorías (§3.6). Un `HttpError` se construye desde un `Problem` y lo devuelve igual | `http` | `src/types.ts` · `src/errors.ts` |
-| [ ] | 5 | 4 | **Builders.** `get`/`post`/`put`/`patch`/`del` → `FnBuilder` inmutable (§3.1), con el tipo de `ctx` que suma cada `.use`. `chain()` → `ChainBuilder` (§3.3). `middleware<Adds>()` → `MiddlewareBuilder` (§3.4). `.handle` devuelve el descriptor `ServerFn`. `.compress` en los dos builders, sin ejecutar nada todavía | `http` | `src/builder.ts` · `src/chain.ts` · `src/middleware.ts` |
-| [ ] | 6 | 5 | **Composición.** `compose(levels, side)`: global → fichero → función, con `use`, `skip(x)` por identidad y `skip('*')` (§4.3). Devuelve la lista de pasos del lado pedido (§4.4) y el `compress` del nivel más interno que lo escriba. `run(steps, ctx, last)` con `next` que devuelve el valor y se puede llamar varias veces | `http` | `src/compose.ts` |
-| [ ] | 7 | 6 | **`csrf`.** Las dos mitades de §4.11 | `http` | `src/csrf.ts` |
-| [ ] | 8 | 6 | **`errorPages`.** La mitad de cliente de §4.8: `Redirect` navega, `ValidationError` y `AbortError` se relanzan, el resto navega a `/_fudic/error/<status>` | `http` | `src/error-pages.ts` |
-| [ ] | 9 | 4–8 | **Tests del núcleo.** Criterios 1–6, la parte de runtime del 35 y la tabla de §4.8 para `errorPages`. Tipos con `expectTypeOf`: `ctx.user` tras `.use(auth)` y `ctx.form` tras `.form(f)` | `http` | `test/*.test.ts` |
+| [x] | 3 | — | **El paquete.** `packages/http` con tres entradas: `.` (builders, middlewares, errores), `./client` (`$fn`) y `./server` (`dispatch`). `tsconfig` que extiende la base, `vitest.config.ts` con umbrales al 100 en las cuatro métricas e `include: ['src/**/*.ts']`. Versiones exactas. *Al implementar:* `./server` y `./client` entran en `exports` con su código (tareas 11 y 16); `@fudic/http` no publica piezas de runtime, y el plugin lo empaqueta como cualquier paquete | `http` | `package.json` · `tsconfig*.json` · `vitest.config.ts` · `src/index.ts` |
+| [x] | 4 | 3 | **Tipos y errores.** `Method`, `BaseContext`, `ClientContext`, `ServerContext`, `Next`, `Middleware`, `SharedMiddleware`, `AnyMiddleware` (§3.4). `HttpError`, `ValidationError`, `Redirect`, `Problem` y las seis factorías (§3.6). Un `HttpError` se construye desde un `Problem` y lo devuelve igual | `http` | `src/types.ts` · `src/errors.ts` |
+| [x] | 5 | 4 | **Builders.** `get`/`post`/`put`/`patch`/`del` → `FnBuilder` inmutable (§3.1), con el tipo de `ctx` que suma cada `.use`. `chain()` → `ChainBuilder` (§3.3). `middleware<Adds>()` → `MiddlewareBuilder` (§3.4), opaco e inmutable (decisión de Pedro al implementar). `.handle` devuelve el descriptor `ServerFn`. `.compress` en los dos builders, sin ejecutar nada todavía | `http` | `src/builder.ts` · `src/chain.ts` · `src/middleware.ts` |
+| [x] | 6 | 5 | **Composición.** `compose(levels, side)`: global → fichero → función, con `use`, `skip(x)` por identidad y `skip('*')` (§4.3). Devuelve la lista de pasos del lado pedido (§4.4) y el `compress` del nivel más interno que lo escriba. `run(steps, ctx, last)` con `next` que devuelve el valor y se puede llamar varias veces | `http` | `src/compose.ts` |
+| [x] | 7 | 6 | **`csrf`.** Las dos mitades de §4.11 | `http` | `src/csrf.ts` |
+| [x] | 8 | 6 | **`errorPages`.** La mitad de cliente de §4.8: `Redirect` navega, `ValidationError` y `AbortError` se relanzan, el resto navega a `/_fudic/error/<status>`. Al navegar, la llamada queda pendiente: la página se va. *Al implementar:* `FN_PREFIX` y `ERROR_PREFIX` entran ya en `@fudic/conventions` (adelantados de la tarea 34) | `http` | `src/error-pages.ts` |
+| [x] | 9 | 4–8 | **Tests del núcleo.** Criterios 1–6, la parte de runtime del 35 y la tabla de §4.8 para `errorPages`. Tipos con `expectTypeOf`: `ctx.user` tras `.use(auth)` y `ctx.form` tras `.form(f)` | `http` | `test/*.test.ts` |
 
 ## Fase 3 — servidor (6)
 
