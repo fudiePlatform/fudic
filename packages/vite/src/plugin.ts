@@ -13,7 +13,6 @@ import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve as resolvePath } from 'node:path';
 import { type Logger, type Plugin, transformWithOxc } from 'vite';
-import { createProjectChecker } from '@fudic/typecheck';
 import {
   applyNonce,
   cspFor,
@@ -143,6 +142,7 @@ import { chunkNamesOf } from './names.js';
 import { runtimeUrls, type RuntimeEntries } from './constants.js';
 import { planRename, rewriteReferences, mapNameOf, isHashedChunk } from './rename.js';
 import { keepSet, reachableChunks, type PruneItem } from './prune.js';
+import { add, flush, lap } from './timing.js';
 
 /**
  * The bundle as reachability items, keyed by its ORIGINAL keys — which is what `imports`
@@ -244,6 +244,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let nested: NestedOutputOptions = { sourcemap: false, minify: false };
   let manifestUrl = '/fudic-routes.json';
   let manifestFileName = 'fudic-routes.json';
+  let bundleStart = 0;
+  let writeStart = 0;
   const io = nodeIo();
   const linkCheckIo = nodeLinkCheckIo();
   const runtimeFs = nodeRuntimeFs();
@@ -486,6 +488,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     },
 
     configResolved(config) {
+      const tcr = performance.now();
+      process.stderr.write(`[fudic:t] ${'process start → configResolved'.padEnd(40)} ${(process.uptime() * 1000).toFixed(0).padStart(6)} ms\n`);
       root = config.root;
       base = config.base;
       logger = config.logger;
@@ -538,14 +542,20 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       styleChains = chains;
       styleErrors = resolvedStyles.errors;
       styleWarnings = resolvedStyles.warnings;
+      lap('configResolved', tcr);
     },
 
-    configureServer(server) {
+    async configureServer(server) {
       builds = discoverRoutes(root, options).routes;
       // What the editor marks, live (SDD-35 §4.5): checked at start, re-checked on every save
       // of a file the program read, pushed to the overlay without a reload, and the page
       // comes back by itself once it is clean.
-      const live = startLiveCheck(server, root);
+      //
+      // Imported HERE and not at the top of this module: the machine that checks loads
+      // TypeScript, most of a second, and `vite preview` loads this plugin without ever
+      // checking anything.
+      const { createProjectChecker } = await import('@fudic/typecheck');
+      const live = startLiveCheck(server, root, createProjectChecker({ root }));
       server.httpServer?.once('close', () => live.dispose());
       // Dev serves the bootstraps at stable root URLs (so the SW would register at root
       // scope), but registers nothing unless `sw.json` says `"dev": "preview"` (§4.11).
@@ -765,13 +775,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       });
     },
 
-    buildStart() {
+    async buildStart() {
+      let t = performance.now();
       // What the editor marks, before anything is compiled (SDD-35 §4.4). The whole project,
       // and not only what a route reaches: a component nobody links yet is red in the editor
       // too. Every problem is printed, and the build fails ONCE with the count — the author
       // sees the whole list in the first run. Dev has its own live check (§4.5).
       if (!isDev) {
+        // Imported on demand, as in `configureServer`: see the note there.
+        const { createProjectChecker } = await import('@fudic/typecheck');
         const report = createProjectChecker({ root }).check();
+        t = lap('buildStart.typecheck', t);
         reporter.rememberCheck(report);
         const summary = summarize(report, root);
         for (const block of summary.blocks) {
@@ -817,9 +831,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // the sheet is emitted whole: the same file served to the document too is a legitimate
       // shape, and there those rules are the correct ones.
       reporter.report(this, styleWarnings);
+      t = lap('buildStart.project+styles+runtime+peers', t);
 
       const discovered = discoverRoutes(root, options);
       builds = discovered.routes;
+      t = lap('buildStart.discoverRoutes', t);
       // With the severity each one has in a build: an error said as a warning is a build that
       // lies (SDD-35 §1.2). And what parsing the routes said, which used to be dropped (§1.1):
       // the typecheck already said it, so the reporter stays quiet about it.
@@ -844,6 +860,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           linkCheckIo,
         ),
       );
+      t = lap('buildStart.checkLinks', t);
 
       // The coordinators (SDD-45 §4.4): one per route, named by its content, so two routes
       // that need the same pieces produce the same file and a route with nothing to hydrate
@@ -884,6 +901,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           });
         }
       }
+      t = lap('buildStart.coordinators', t);
 
       // FUD0742, and it is the BUILD's rather than the emit's because what it is about is
       // the PROJECT: a sheet that nothing adopts. The emit sees one file at a time, so the
@@ -977,6 +995,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           preserveSignature: 'strict',
         });
       }
+      bundleStart = lap('buildStart.emits (FUD0742+components+reactive)', t);
     },
 
     resolveId(id, importer) {
@@ -1147,7 +1166,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         // `serverValidator` would ship with the client unless it is taken out here (SDD-34
         // §4.7). This is the client build: the render graph lives in the edge pass, outside
         // `outDir`, and there the validators stay whole.
+        const te = performance.now();
         const erased = /\.[cm]?[jt]sx?$/u.test(path) ? eraseServerValidators(code) : null;
+        add('transform.js/ts eraseServerValidators', te);
         return erased === null ? null : { code: erased, map: null };
       }
       if (query === 'server') {
@@ -1167,7 +1188,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         return (await transformWithOxc(ioc.code, `${path}.ts`, { lang: 'ts' })).code;
       }
       if (query === CLIENT_QUERY) {
+        const tc = performance.now();
         const chunk = transformFudClient(path, io, projectStyles, linked);
+        add('transform.fud?client (compile)', tc);
         if (chunk === null) {
           return null;
         }
@@ -1183,19 +1206,23 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         // TS → JS. Without it the chunk mapped to a source it called `app-badge.fud?client`
         // whose `sourcesContent` was the GENERATED module: aligned, and about a file the
         // author never wrote.
+        const to = performance.now();
         const stripped = await transformWithOxc(
           chunk.code,
           `${path}.ts`,
           { lang: 'ts', sourcemap: true },
           chunk.map,
         );
+        add('transform.fud?client (oxc strip)', to);
         return stripped.map ? { code: stripped.code, map: stripped.map } : { code: stripped.code };
       }
       // The route's own name, when this `.fud` IS a built route: it is what the page
       // publishes in `fud-route` and what the runtime derives the chunk URL from (SDD-39
       // §4.7). A component, a layout, or a route the build excluded gets none, and then the
       // page publishes no block and claims no id.
+      const tf = performance.now();
       const result = transformFud(path, io, routeNameOf(path), projectStyles, linked);
+      add('transform.fud (compile)', tf);
       if (result === null) {
         return null;
       }
@@ -1238,12 +1265,14 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // as it stood, next to the STRIPPED code — a map of a text that no longer existed. It
       // resolved, it named the right `.fud`, and its offsets were fiction; the chunks it
       // produced came out with 3 mappings for 5 000 columns.
+      const ts0 = performance.now();
       const stripped = await transformWithOxc(
         result.code,
         `${path}.ts`,
         { lang: 'ts', sourcemap: true },
         result.map,
       );
+      add('transform.fud (oxc strip)', ts0);
       return stripped.map ? { code: stripped.code, map: stripped.map } : { code: stripped.code };
     },
 
@@ -1252,12 +1281,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // at the end: an entry that does not exist is a BUILD diagnostic (BUG-01 §4.4),
       // not something to swallow in the install's `catch` on the client.
       const emitted = new Set<string>(Object.keys(bundle));
+      flush();
+      let t = lap('main bundle (buildStart end → generateBundle)', bundleStart);
 
       // 1. The link pass: the chunks the Service Worker will link by hand (§4.3).
       const link: LinkResult =
         swConfig === null
           ? { chunks: [], entries: new Map(), deps: new Map() }
           : await runLinkPass(root, base, builds, io, nested, projectStyles, linked, runtimeEntriesFor, reporter);
+      t = lap('generateBundle.1 link pass (nested build)', t);
       // A nested build's output is emitted as an ASSET, so nothing writes its `.map` or
       // appends its `sourceMappingURL` unless we do (BUG-05 §4.3).
       const emitWithMap = (artifact: NestedArtifact): void => {
@@ -1291,6 +1323,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         runtimeEntriesFor,
         reporter,
       );
+      t = lap('generateBundle.1b edge pass (nested build)', t);
 
       // 2. The Service Worker's own bundle: one realm, one bundle (BUG-03 §4.1). Its
       //    code still carries BUILD_TOKEN — the id is computed from it, below.
@@ -1352,6 +1385,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               resolveAlias,
               nested,
             );
+      t = lap('generateBundle.2 service worker (nested build)', t);
 
       // 2-bis. No `sw.json`, no `boot` — neither the tag nor the FILE (§4.11). The entry is
       //     declared in `config()`, long before this project's `sw.json` has been read, so
@@ -1529,6 +1563,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           writeFileSync(abs, chunk.code);
         }
       }
+      t = lap('generateBundle.3-3b id+rename+edge write', t);
 
       // 3c. Prune the `page` pass (SDD-27 §5.1). Its chunks have no consumer, but the pass
       //     is what made Vite emit the linked ASSET files, so only the chunks go — and
@@ -1596,6 +1631,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         this.emitFile({ type: 'asset', fileName: file.fileName, source: file.code });
         emitted.add(file.fileName);
       }
+      t = lap('generateBundle.3c prune + copy runtime', t);
 
       // 3d. What each hydration chunk IMPORTS (SDD-17 §4.7). The URL of a tag's chunk is
       //     arithmetic, but the code the client pass shares between components keeps a
@@ -1653,6 +1689,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       reporter.report(this, [...unlinked, ...diagnostics]);
       this.emitFile({ type: 'asset', fileName: manifestFileName, source: JSON.stringify(file) });
       emitted.add(manifestFileName);
+      t = lap('generateBundle.3d-4 hydrateDeps + manifest', t);
 
       // 5. Prerender: run each prerenderable route's BUILT chunk and write its `.html`.
       const prerenders = builds.filter((b) => b.decision.prerender);
@@ -1708,6 +1745,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         }
       }
       reporter.report(this, prerenderDiagnostics);
+      t = lap(`generateBundle.5 prerender (${prerenders.length} routes)`, t);
 
       // 5a. A public file somebody reached by a relative path (FUD0366). Reported here
       //     rather than at the transform because the passes repeat: the same `.fud` is
@@ -1756,6 +1794,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         this,
         missingShellEntries(swConfig?.shell ?? [], base, emitted, publicDir).map((entry) => FUD0391({ entry })),
       );
+      lap('generateBundle.5a-6 sheets+linked files+shell', t);
+      writeStart = performance.now();
+    },
+
+    writeBundle() {
+      lap('vite write dist', writeStart);
     },
   };
 }

@@ -28,6 +28,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./problems": {
+      "types": "./dist/problems.d.ts",
+      "import": "./dist/problems.js"
     }
   },
   "files": [

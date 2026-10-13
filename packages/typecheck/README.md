@@ -16,3 +16,10 @@ import { createProjectChecker, formatProblem } from '@fudic/typecheck';
 const checker = createProjectChecker({ root: process.cwd() });
 const report = checker.check();
 ```
+
+The main entry loads TypeScript. To read, sort or print a report without paying for that, use
+the light entry:
+
+```ts
+import { formatProblem, hasErrors, toPosix } from '@fudic/typecheck/problems';
+```

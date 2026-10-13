@@ -14,15 +14,15 @@
 
 import { readFileSync } from 'node:fs';
 import type { ErrorPayload, ViteDevServer } from 'vite';
+// The light entry: the checker arrives as a parameter, so this module never loads TypeScript.
+import type { ProjectChecker } from '@fudic/typecheck';
 import {
-  createProjectChecker,
   locateProblem,
   toPosix,
   type CheckProblem,
   type CheckReport,
-  type ProjectChecker,
   type ProjectProblem,
-} from '@fudic/typecheck';
+} from '@fudic/typecheck/problems';
 import { summarize } from './typecheck.js';
 
 /** What Vite's overlay takes, and what `next(err)` hands its error middleware. */
@@ -43,12 +43,11 @@ export interface LiveCheck {
 /** A burst of saves is one check, not one per file. */
 const SETTLE_MS = 30;
 
-/** Start the live check of a dev server. */
-export function startLiveCheck(
-  server: ViteDevServer,
-  root: string,
-  checker: ProjectChecker = createProjectChecker({ root }),
-): LiveCheck {
+/**
+ * Start the live check of a dev server. The caller builds the checker, after importing the
+ * machine that runs it: that import is what loads TypeScript, and only `dev` and `build` need it.
+ */
+export function startLiveCheck(server: ViteDevServer, root: string, checker: ProjectChecker): LiveCheck {
   const logger = server.config.logger;
   let report: CheckReport = { problems: [], project: [], inputs: [] };
   let inputs = new Set<string>();

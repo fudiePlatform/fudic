@@ -13,7 +13,7 @@ import {
   hasErrors,
   type CheckProblem,
   type CheckReport,
-} from '@fudic/typecheck';
+} from '@fudic/typecheck/problems';
 
 /** One block of terminal text, and whether it breaks the build. */
 export interface ReportBlock {

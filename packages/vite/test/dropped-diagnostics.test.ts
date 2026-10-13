@@ -127,10 +127,10 @@ describe('the host plugin', () => {
     expectPositioned(ctx.errors[0], file, 5);
   });
 
-  it('route discovery — what parsing a route said fails the build, named in its file', () => {
+  it('route discovery — what parsing a route said fails the build, named in its file', async () => {
     const file = join(root, 'routes', 'broken.fud');
     const ctx = context();
-    expect(() => plugin().buildStart.call(ctx)).toThrow(/FUD0051/u);
+    await expect(plugin().buildStart.call(ctx)).rejects.toThrow(/FUD0051/u);
     expectPositioned(ctx.errors[0], file, 4);
   });
 });
