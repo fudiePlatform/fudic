@@ -72,7 +72,7 @@ export interface ComponentRegistry {
  *
  * Its own reactives, its `@client` functions, and the props it received as cells — a component
  * that FORWARDS a callback is feeding a channel with something that is not a function of its
- * own, and reading that as an error would break the one thing props-spec decision 86 exists to
+ * own, and reading that as an error would break the one thing props-spec decision 153 exists to
  * allow.
  */
 export type CrossingKind = 'signal' | 'computed' | 'fn';

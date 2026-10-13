@@ -14,7 +14,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { format, render, type FudDiagnostic } from '@fudic/diagnostics';
-import { relativePath, toPosix, type CheckReport } from '@fudic/typecheck';
+import { relativePath, toPosix, type CheckReport } from '@fudic/typecheck/problems';
 
 /**
  * `module` is the file being compiled when the diagnostic is about it: a compiler diagnostic

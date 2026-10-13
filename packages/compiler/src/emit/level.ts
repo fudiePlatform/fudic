@@ -28,7 +28,7 @@ import type { ControlNode } from '../control/index.js';
 import { bridgeOf, classifyAttribute, isFormAssociated } from '../binding/index.js';
 import { branchesOf } from './constructs.js';
 import { codeOf, codeOfDocument, type ExtractedCode } from './oxc-code.js';
-import { readsMoving } from './attrs.js';
+import { readsMoving, spreadReadsMoving } from './attrs.js';
 
 /**
  * Every `ElementNode` a COMPONENT TEMPLATE can render, however deep and through whatever
@@ -284,6 +284,12 @@ function induceFrom(
       changed = true;
       return;
     }
+    // A `...object` that reads something moving moves every prop it hands over (decision 148).
+    if (spreadReadsMoving(el, code.template.ast, moving)) {
+      hydratable.add(child.tag);
+      changed = true;
+      return;
+    }
     for (const attr of el.attributes) {
       const b = classifyAttribute(attr, source).value;
       if (b.type !== 'property') continue;
@@ -418,7 +424,8 @@ export function movingNames(comp: ResolvedComponent): ReadonlySet<string> {
   const code = codeOf(comp);
   return new Set<string>([
     ...code.signals.map((s) => s.name),
-    ...code.props.map((p) => p.name),
+    // A gathered key moves as its rest object: that is the name the template reads.
+    ...code.props.map((p) => p.rest ?? p.name),
     ...code.mutable,
   ]);
 }

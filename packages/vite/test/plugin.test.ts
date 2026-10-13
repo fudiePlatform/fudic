@@ -35,6 +35,22 @@ vi.mock('@fudic/typecheck', async (importOriginal) => {
   };
 });
 
+// The build runs the same check on a worker thread, which loads the real package: scripted alike.
+/** How many checks the build started, and how many it cancelled. */
+const checks = vi.hoisted(() => ({ started: 0, cancelled: 0, dies: false }));
+
+vi.mock('../src/background-check.js', () => ({
+  startBackgroundCheck: () => {
+    checks.started += 1;
+    return {
+      report: checks.dies ? Promise.reject(new Error('the check thread died')) : Promise.resolve(checked.report),
+      cancel: async () => {
+        checks.cancelled += 1;
+      },
+    };
+  },
+}));
+
 beforeEach(() => {
   checked.report = { problems: [], project: [], inputs: [] };
 });
@@ -101,10 +117,10 @@ describe('resolveId', () => {
 });
 
 describe('load — with and without sw.json', () => {
-  it('no sw.json: the main bootstrap still hydrates, and no SW is emitted (§4.7, SDD-17 §4.7.1)', () => {
+  it('no sw.json: the main bootstrap still hydrates, and no SW is emitted (§4.7, SDD-17 §4.7.1)', async () => {
     const p = setup('build');
     const ctx = emitCtx();
-    p.buildStart.call(ctx);
+    await p.buildStart.call(ctx);
     const main = p.load(MAIN_ID);
     // It used to be `export {};` here, which made "no Service Worker" mean "no hydration".
     expect(main).toContain(
@@ -120,9 +136,9 @@ describe('load — with and without sw.json', () => {
     expect(names.filter((n) => n.startsWith('fudic-main-'))).toHaveLength(1);
   });
 
-  it('with sw.json: main registers the SW and the SW bootstrap renders locally', () => {
+  it('with sw.json: main registers the SW and the SW bootstrap renders locally', async () => {
     const p = setup('build', {}, swRoot());
-    p.buildStart.call(emitCtx());
+    await p.buildStart.call(emitCtx());
     // BUG-03 §4.2: a literal URL, the same expression dev uses. `/fudic-sw.js` has a
     // fixed name because a Service Worker only controls its own directory and below.
     // It is the BOOT module that registers it since BUG-31 T2 — the always-on half, loaded
@@ -154,17 +170,17 @@ describe('load — with and without sw.json', () => {
 });
 
 describe('buildStart', () => {
-  it('emits one wrapper per route — and NOT the SW, which has its own build', () => {
+  it('emits one wrapper per route — and NOT the SW, which has its own build', async () => {
     const ctx = emitCtx();
-    setup('build', {}, swRoot()).buildStart.call(ctx);
+    await setup('build', {}, swRoot()).buildStart.call(ctx);
     // BUG-03: `fudic-sw.js` is no longer a chunk of this output, so `buildStart` does
     // not emit it. Code splitting can therefore never share a file between the two.
     expect(emittedNames(ctx).filter((n) => n.startsWith('c/'))).toEqual(['c/home']);
   });
 
-  it('emits one client chunk per component of the graph (SDD-15 §6.8)', () => {
+  it('emits one client chunk per component of the graph (SDD-15 §6.8)', async () => {
     const ctx = emitCtx();
-    setup('build', {}, swRoot()).buildStart.call(ctx);
+    await setup('build', {}, swRoot()).buildStart.call(ctx);
     // Every component the page reaches, with no level filter: which of them hydrates is
     // decided at render time — on the edge and in the Service Worker — with data in hand.
     expect(emittedNames(ctx).filter((n) => n.startsWith('h/')).sort()).toEqual([
@@ -177,20 +193,20 @@ describe('buildStart', () => {
     ]);
   });
 
-  it('skips an excluded route', () => {
+  it('skips an excluded route', async () => {
     const ctx = emitCtx();
-    setup('build', { defaults: { '/home': { mode: 'exclude' } } }, swRoot()).buildStart.call(ctx);
+    await setup('build', { defaults: { '/home': { mode: 'exclude' } } }, swRoot()).buildStart.call(ctx);
     expect(ctx.emitFile).not.toHaveBeenCalled();
   });
 
-  it('warns route diagnostics (FUD0364 default with no match)', () => {
+  it('warns route diagnostics (FUD0364 default with no match)', async () => {
     const ctx = emitCtx();
-    setup('build', { defaults: { '/nope': { mode: 'exclude' } } }).buildStart.call(ctx);
+    await setup('build', { defaults: { '/nope': { mode: 'exclude' } } }).buildStart.call(ctx);
     // A positioned log since SDD-35 §4.4: the text travels in `message`.
     expect(ctx.warn).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('FUD0364') }));
   });
 
-  it('SDD-35 §4.4 — a typecheck error prints every problem and fails once, before anything is emitted', () => {
+  it('SDD-35 §4.4 — a typecheck error prints every problem once and fails the build at buildEnd, before the passes', async () => {
     const { config } = fakeDevServerParts();
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -213,28 +229,85 @@ describe('buildStart', () => {
     };
     const ctx = {
       ...emitCtx(),
-      error: vi.fn((message: string): never => {
-        throw new Error(message);
+      error: vi.fn((log: { message: string }): never => {
+        throw new Error(log.message);
       }),
     };
-    expect(() => plugin.buildStart.call(ctx)).toThrow('the typecheck failed: 1 error in 1 file');
+    // The check runs beside the bundle: `buildStart` does not wait for it when it has nothing
+    // of its own to say. The verdict is waited for at `buildEnd`, the last hook before the
+    // link pass, the edge pass and the prerender.
+    await plugin.buildStart.call(ctx);
+    await expect(plugin.buildEnd.call(ctx)).rejects.toThrow('the typecheck failed: 1 error in 1 file');
+    expect(ctx.error).toHaveBeenCalledTimes(1);
     expect(errors).toEqual([expect.stringMatching(/^fixtures\/home\.fud:1:1 - error TS2322: first/u)]);
     expect(warnings).toEqual([
       expect.stringContaining('warning FUD0870'),
       expect.stringMatching(/^fixtures\/home\.fud:1:1 - warning TS6133: second/u),
     ]);
-    expect(ctx.emitFile).not.toHaveBeenCalled();
   });
 
-  it('SDD-35 §4.4 — warnings alone print and do not fail; no logger is not a crash', () => {
+  it('SDD-35 §4.4 — with a diagnostic of its own to say, buildStart lets the typecheck speak first', async () => {
+    checked.report = {
+      problems: [{ file: toPosix(homeFud), span: span(0, 9), severity: 'error', code: 'TS2322', message: 'first' }],
+      project: [],
+      inputs: [],
+    };
+    const ctx = {
+      ...emitCtx(),
+      error: vi.fn((log: { message: string }): never => {
+        throw new Error(log.message);
+      }),
+    };
+    // FUD0364 is a warning `buildStart` reports: before it, the verdict — and it fails.
+    await expect(
+      setup('build', { defaults: { '/nope': { mode: 'exclude' } } }).buildStart.call(ctx),
+    ).rejects.toThrow('the typecheck failed: 1 error in 1 file');
+    expect(ctx.warn).not.toHaveBeenCalled();
+  });
+
+  it('a build that already failed cancels the check and does not wait for it', async () => {
+    const p = setup('build');
+    await p.buildStart.call(emitCtx());
+    checks.cancelled = 0;
+    await expect(p.buildEnd.call(emitCtx(), new Error('the bundle failed'))).resolves.toBeUndefined();
+    expect(checks.cancelled).toBe(1);
+    // And the next build starts with no check of the last one in flight.
+    await expect(p.buildEnd.call(emitCtx())).resolves.toBeUndefined();
+  });
+
+  it('a check thread that dies fails the build at buildEnd with its error — not as an unhandled rejection', async () => {
+    checks.dies = true;
+    try {
+      const p = setup('build');
+      await p.buildStart.call(emitCtx());
+      // Nobody awaits the verdict until `buildEnd`; a tick passes with it rejected.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await expect(p.buildEnd.call(emitCtx())).rejects.toThrow('the check thread died');
+    } finally {
+      checks.dies = false;
+    }
+  });
+
+  it('a clean check lets buildEnd through; dev never starts one', async () => {
+    const p = setup('build');
+    await p.buildStart.call(emitCtx());
+    await expect(p.buildEnd.call(emitCtx())).resolves.toBeUndefined();
+    checks.started = 0;
+    const dev = setup('serve');
+    await dev.buildStart.call(emitCtx());
+    await expect(dev.buildEnd.call(emitCtx())).resolves.toBeUndefined();
+    expect(checks.started).toBe(0);
+  });
+
+  it('SDD-35 §4.4 — warnings alone print and do not fail; no logger is not a crash', async () => {
     checked.report = { problems: [], project: [FUD0870()], inputs: [] };
     const ctx = emitCtx();
-    expect(() => setup('build').buildStart.call(ctx)).not.toThrow();
+    await expect(setup('build').buildStart.call(ctx)).resolves.toBeUndefined();
   });
 
-  it('is a no-op in dev (no emitFile)', () => {
+  it('is a no-op in dev (no emitFile)', async () => {
     const ctx = emitCtx();
-    setup('serve').buildStart.call(ctx);
+    await setup('serve').buildStart.call(ctx);
     expect(ctx.emitFile).not.toHaveBeenCalled();
   });
 });
@@ -261,21 +334,21 @@ const flush = (): Promise<void> => new Promise((r) => setImmediate(r));
 const settle = (): Promise<void> => new Promise((r) => setTimeout(r, 1500));
 
 describe('configureServer middleware', () => {
-  function withServer(
+  async function withServer(
     transformRequest: (id: string) => Promise<{ code: string }>,
-  ): (req: { url: string }, res: FakeRes, next: () => void) => void {
+  ): Promise<(req: { url: string }, res: FakeRes, next: () => void) => void> {
     let handler!: (req: { url: string }, res: FakeRes, next: () => void) => void;
     const server = {
       ...fakeDevServerParts(),
       middlewares: { use: (fn: typeof handler) => (handler = fn) },
       transformRequest,
     };
-    setup('serve').configureServer(server);
+    await setup('serve').configureServer(server);
     return handler;
   }
 
-  it('serves the manifest as JSON, every route rendered by the edge in dev', () => {
-    const handler = withServer(async () => ({ code: '' }));
+  it('serves the manifest as JSON, every route rendered by the edge in dev', async () => {
+    const handler = await withServer(async () => ({ code: '' }));
     const res = fakeRes();
     handler({ url: '/fudic-routes.json' }, res, () => undefined);
     expect(res.headers['content-type']).toContain('application/json');
@@ -283,7 +356,7 @@ describe('configureServer middleware', () => {
   });
 
   it('serves the SW with a root-scope header and its own CSP', async () => {
-    const handler = withServer(async () => ({ code: 'createRouter(...)' }));
+    const handler = await withServer(async () => ({ code: 'createRouter(...)' }));
     const res = fakeRes();
     handler({ url: '/fudic-sw.js' }, res, () => undefined);
     await flush();
@@ -293,8 +366,8 @@ describe('configureServer middleware', () => {
     expect(res.body).toContain('createRouter');
   });
 
-  it('calls next() for an unrelated URL', () => {
-    const handler = withServer(async () => ({ code: '' }));
+  it('calls next() for an unrelated URL', async () => {
+    const handler = await withServer(async () => ({ code: '' }));
     const next = vi.fn();
     handler({ url: '/whatever.css' }, fakeRes(), next);
     expect(next).toHaveBeenCalled();
@@ -304,7 +377,7 @@ describe('configureServer middleware', () => {
   // script that loaded, did nothing, and showed no overlay and no log.
   it('hands a failing transform of a bootstrap to next(err), for the overlay — not a 500', async () => {
     const boom = Object.assign(new Error('boom'), { loc: { file: homeFud, line: 1, column: 1 }, frame: 'x' });
-    const handler = withServer(() => Promise.reject(boom));
+    const handler = await withServer(() => Promise.reject(boom));
     for (const url of ['/fudic-main.js', '/fudic-boot.js', '/fudic-sw.js']) {
       const res = fakeRes();
       const next = vi.fn();
@@ -319,7 +392,7 @@ describe('configureServer middleware', () => {
   it('hands a failing transform of a component chunk (/@fudic/h/<tag>.js) to next(err)', async () => {
     const boom = new Error('the chunk did not compile');
     const asked: string[] = [];
-    const handler = withServer((id) => {
+    const handler = await withServer((id) => {
       asked.push(id);
       return Promise.reject(boom);
     });
@@ -338,11 +411,11 @@ describe('configureServer — the page and the live typecheck (SDD-35 §4.5)', (
   type Next = (err?: unknown) => void;
 
   /** The HTML middleware (registered by the post hook), over a fake server. */
-  function htmlMiddleware(): {
+  async function htmlMiddleware(): Promise<{
     handle: (req: Req, res: FakeRes, next: Next) => void;
     parts: ReturnType<typeof fakeDevServerParts>;
     close: () => void;
-  } {
+  }> {
     const handlers: Array<(req: Req, res: FakeRes, next: Next) => void> = [];
     const parts = fakeDevServerParts();
     let onClose: (() => void) | undefined;
@@ -363,7 +436,7 @@ describe('configureServer — the page and the live typecheck (SDD-35 §4.5)', (
       ssrFixStacktrace: vi.fn(),
       transformIndexHtml: async (_url: string, html: string) => html,
     };
-    const post = setup('serve').configureServer(server) as () => void;
+    const post = (await setup('serve').configureServer(server)) as () => void;
     post();
     return { handle: handlers[handlers.length - 1]!, parts, close: () => onClose?.() };
   }
@@ -391,7 +464,7 @@ describe('configureServer — the page and the live typecheck (SDD-35 §4.5)', (
       project: [],
       inputs: [],
     };
-    const { handle, parts, close } = htmlMiddleware();
+    const { handle, parts, close } = await htmlMiddleware();
     const { err, nexted, res } = await run(handle, page('/home'));
     expect(nexted).toBe(true);
     expect(res.statusCode).toBeUndefined();
@@ -415,7 +488,7 @@ describe('configureServer — the page and the live typecheck (SDD-35 §4.5)', (
       project: [],
       inputs: [],
     };
-    const { handle, close } = htmlMiddleware();
+    const { handle, close } = await htmlMiddleware();
     const { res, nexted } = await run(handle, page('/home'));
     expect(nexted).toBe(false);
     expect(res.statusCode).toBe(200);
@@ -424,7 +497,7 @@ describe('configureServer — the page and the live typecheck (SDD-35 §4.5)', (
   });
 
   it('a clean project serves the page', async () => {
-    const { handle, close } = htmlMiddleware();
+    const { handle, close } = await htmlMiddleware();
     const { res } = await run(handle, page('/home'));
     expect(res.statusCode).toBe(200);
     close();

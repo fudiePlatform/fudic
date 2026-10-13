@@ -39,6 +39,19 @@ export interface Dom<N> {
    * what it is, and a string carries no mark.
    */
   setUrl(el: N, name: string, value: unknown): void;
+  /**
+   * Replace the content of `el` with what `@raw(expr)` writes (decision 18): `htmlOf(value)`,
+   * the same string on every adapter. The value is taken UNSTRINGIFIED: a `trustedHtml(…)` is
+   * recognised by what it is, and anything else is written as escaped text.
+   */
+  setHtml(el: N, value: unknown): void;
+  /**
+   * Write what a spread on a native element (`<input ...resto>`) puts on it: `attrsDiff`, the
+   * same function on every adapter. `next` is the spread's objects in order, `prev` the ones
+   * it wrote last (`undefined` the first time), so an attribute an object no longer writes is
+   * taken off. `except` are the attributes the element writes itself, which the spread leaves.
+   */
+  setAttrs(el: N, next: readonly unknown[], prev: readonly unknown[] | undefined, except: readonly string[]): void;
   removeAttr(el: N, name: string): void;
   append(parent: N, child: N): void;
   /** `anchor.before(node)`: in the browser fires `connectedCallback`; in SSR it fixes tree order. */

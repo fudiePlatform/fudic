@@ -143,7 +143,7 @@ ficheros, `bind:` y el códec binario.
 ## Fase 5 — El cruce y el bundle (2)
 
 - [x] **14. `control` sobre un tag de componente.**
-      Decisión 112: cruza la **referencia** del nodo como prop. Convive con la 84 —ninguna signal
+      Decisión 112: cruza la **referencia** del nodo como prop. Convive con la 151 —ninguna signal
       cruza el shadow boundary— y no la deroga: lo que cruza no es estado de render del padre sino
       el **modelo**, nombrado por el autor, y el hijo se suscribe por su cuenta; **no se emite `u`
       para ese prop**. La alternativa (`bind:`, prop de valor + callback) exigiría cruzar además
@@ -193,5 +193,5 @@ puede comprobar —no sabe dónde pondrá la etiqueta quien lo use— y que el L
 - Decisiones de gramática nuevas: 108–114, en
   [`gramatica-v1-decisiones.md`](../gramar/gramatica-v1-decisiones.md) (tarea 1).
 - Extiende [SDD-17](./SDD-17-hidratacion.md) con **una** excepción acotada: la lista `eager`.
-- No toca [`bind:`](./pendings/PENDIENTES-v1.md) (decisiones 83–85), que sigue pendiente con su
+- No toca [`bind:`](./pendings/PENDIENTES-v1.md) (decisiones 150–152), que sigue pendiente con su
   hueco abierto —el nombre de la prop callback— donde estaba.

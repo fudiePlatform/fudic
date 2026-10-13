@@ -167,6 +167,12 @@ declare function $attr(v: $Scalar): void;
  */
 interface $TrustedURL { readonly fudicTrustedUrl: string }
 declare function $url(v: $Scalar | $TrustedURL): void;
+/**
+ * The value of \`@raw(…)\` (decision 18): HTML \`trustedHtml()\` marked, or nothing. Structural,
+ * like \`$TrustedURL\`, so the projection needs no import to accept it.
+ */
+interface $TrustedHTML { readonly fudicTrustedHtml: string }
+declare function $raw(v: $TrustedHTML | null | undefined): void;
 declare function $attrs<T>(a: T & $GlobalAttrs): void;
 
 /**
@@ -220,6 +226,16 @@ type $Missing<T, K> = Pick<T, Exclude<$RequiredKeys<T>, K>>;
  * tag NAME, which is where the author has to read it anyway.
  */
 declare function $required<T, K extends PropertyKey>(rest: $Missing<T, K>): void;
+/**
+ * A props spread, \`...item\` (props-spec §5): the object against the child's contract minus
+ * what the tag writes itself. Required keys have to be there, extra ones may.
+ */
+declare function $spread<T>(o: T): void;
+/**
+ * An attributes spread on a native element, \`<input ...resto>\`: any object. Only its scalar
+ * values become attributes, and that is the runtime's to filter, not a type to satisfy.
+ */
+declare function $spreadAttrs(o: object | null | undefined): void;
 declare function $on<K extends keyof HTMLElementEventMap>(
   type: K, h: (ev: HTMLElementEventMap[K]) => unknown): void;
 declare function $section<T extends string>(name: T): void;
@@ -306,7 +322,7 @@ declare function $node<V>(node: V): V;
 
 /**
  * A value that crosses a \`.prop\` naming a reactive — the OBJECT, or its read (props-spec
- * decision 86).
+ * decision 153).
  *
  * The build decides between the two by what the CHILD declares: a prop typed \`Signal<T>\` gets
  * the signal, one typed \`T\` gets \`name()\`. The projection cannot read the child's \`.fud\`, and
@@ -315,7 +331,7 @@ declare function $node<V>(node: V): V;
  * EXPLICITLY, as the declared type of that very prop: inference from a union parameter would
  * pick the bare \`V\` branch and decide the object every time.
  *
- * That is the invariant of BUG-23 §5 kept under props-spec decision 86: where the emit transforms a
+ * That is the invariant of BUG-23 §5 kept under props-spec decision 153: where the emit transforms a
  * value before crossing it, the projection checks the same transformation — including the one
  * that transforms nothing.
  */

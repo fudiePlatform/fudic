@@ -129,7 +129,7 @@ en el BUG):
       La discriminación no es heurística: `extractCode` ya devuelve `signals` con los nombres de
       cada `const x = signal(...)` del componente (`packages/compiler/src/emit/oxc-code.ts`). Un
       valor que es `Identifier` y está en esa lista → canal reactivo; cualquier otra cosa → no
-      emite nada, la prop es constante y vive en el HTML (decisión 75 intacta). Verde en 4 y §6.6.
+      emite nada, la prop es constante y vive en el HTML (decisión 142 intacta). Verde en 4 y §6.6.
 
 ## Fase 4 — Las specs que decían lo contrario (3)
 
@@ -143,14 +143,14 @@ en el BUG):
       que la reserva `$` obliga **también al emit**, con la colisión de §2.5 como el porqué. Es
       la mitad de la corrección que impide que vuelva a pasar: sin esto, la próxima función
       privada nace otra vez sin prefijo.
-- [x] **16. Derogar la decisión 76 de props-spec.**
-      Modificar `docs/sdd/props-spec.md`: la 76 (*«prop reactiva → setter en el hijo»*) queda
+- [x] **16. Derogar la decisión 143 de props-spec.**
+      Modificar `docs/sdd/props-spec.md`: la 143 (*«prop reactiva → setter en el hijo»*) queda
       **derogada** por `u`, con el porqué (§4.1) y enlace a este BUG; ajustar los ejemplos
-      emitidos de §4.1, §4.2 y la fila de la tabla del índice de decisiones. Las 74, 75, 77, 78
-      y 84 se quedan como están — este BUG las **cumple**, no las cambia.
-      → De la 75 se conserva la decisión y se precisa el enunciado: «constante» significa que el
+      emitidos de §4.1, §4.2 y la fila de la tabla del índice de decisiones. Las 74, 142, 144, 145
+      y 151 se quedan como están — este BUG las **cumple**, no las cambia.
+      → De la 142 se conserva la decisión y se precisa el enunciado: «constante» significa que el
       **padre no emite nada** por ella, no que el hijo la declare `const` — el destructuring del
-      factory es uno solo y con `let`, porque `u` reasigna el array entero. Y donde la 84 y §4.4
+      factory es uno solo y con `let`, porque `u` reasigna el array entero. Y donde la 151 y §4.4
       decían «baja el valor por el setter» ahora dicen «por `u`»: mismo contrato, el nombre del
       canal que ya no existe.
       → Este BUG también se actualiza a sí mismo: §3.3.b (`$w`), §3.3.c (`@foreach`), §3.4 (el

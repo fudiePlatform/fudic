@@ -36,6 +36,14 @@ vi.mock('@fudic/typecheck', async (importOriginal) => {
   return { ...original, createProjectChecker: () => ({ check: () => clean, invalidate: () => undefined }) };
 });
 
+// The build runs it on a worker thread, which loads the real package: answered clean here too.
+vi.mock('../src/background-check.js', () => ({
+  startBackgroundCheck: () => ({
+    report: Promise.resolve({ problems: [], project: [], inputs: [] }),
+    cancel: async () => undefined,
+  }),
+}));
+
 /** A route whose markup closes a tag it never opened: FUD0051 at line 4. */
 const BROKEN_PAGE = `<!DOCTYPE html>
 <html>
@@ -127,10 +135,10 @@ describe('the host plugin', () => {
     expectPositioned(ctx.errors[0], file, 5);
   });
 
-  it('route discovery — what parsing a route said fails the build, named in its file', () => {
+  it('route discovery — what parsing a route said fails the build, named in its file', async () => {
     const file = join(root, 'routes', 'broken.fud');
     const ctx = context();
-    expect(() => plugin().buildStart.call(ctx)).toThrow(/FUD0051/u);
+    await expect(plugin().buildStart.call(ctx)).rejects.toThrow(/FUD0051/u);
     expectPositioned(ctx.errors[0], file, 4);
   });
 });

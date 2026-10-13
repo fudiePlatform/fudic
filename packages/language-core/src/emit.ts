@@ -185,7 +185,7 @@ function templateJs(js: EmitJs): TemplateJs {
  *
  * Three kinds of fragment, and each answers a question the projection cannot answer without
  * it: the neutral chunks hold `props<T>()`, the `@client` regions hold the reactive
- * declarations (decision 84), and every Razor expression in an ATTRIBUTE holds the shape of a
+ * declarations (decision 151), and every Razor expression in an ATTRIBUTE holds the shape of a
  * handler (decisions 96–98). One batch for the lot, which is the golden rule.
  */
 function ownBatch(source: string, doc: StructuredDocument): EmitJs {

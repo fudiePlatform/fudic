@@ -33,6 +33,14 @@ vi.mock('@fudic/typecheck', async (importOriginal) => ({
   }),
 }));
 
+// The build runs it on a worker thread, which loads the real package: answered clean here too.
+vi.mock('../src/background-check.js', () => ({
+  startBackgroundCheck: () => ({
+    report: Promise.resolve({ problems: [], project: [], inputs: [] }),
+    cancel: async () => undefined,
+  }),
+}));
+
 // Only `routeNameLookup` is wrapped; every other export of the module stays the real one,
 // so the plugin's component discovery, its DI probe and its id helpers are untouched.
 vi.mock('../src/client.js', async (importOriginal) => {
@@ -95,7 +103,7 @@ const reactiveRoute = (title: string): string => `<!DOCTYPE html>
 describe('the route→name table is resolved once per build (criterion 1)', () => {
   it('four `.fud` modules share one lookup', async () => {
     const p = setup(compilerRoot, 'fixtures');
-    p.buildStart.call(ctx());
+    await p.buildStart.call(ctx());
     // `buildStart` discovers on its own account; what this test measures is the transforms.
     factory.calls = 0;
 
@@ -110,7 +118,7 @@ describe('the route→name table is resolved once per build (criterion 1)', () =
 
   it('and a module transformed twice does not rebuild it either', async () => {
     const p = setup(compilerRoot, 'fixtures');
-    p.buildStart.call(ctx());
+    await p.buildStart.call(ctx());
     factory.calls = 0;
 
     await p.transform.call(ctx(), '', join(fixtures, 'home.fud'));
@@ -128,7 +136,7 @@ describe('a new set of routes rebuilds it (criterion 2)', () => {
     writeFileSync(join(routes, 'uno.fud'), reactiveRoute('Uno'));
 
     const p = setup(root, 'src/routes');
-    p.buildStart.call(ctx());
+    await p.buildStart.call(ctx());
     factory.calls = 0;
 
     const uno = await p.transform.call(ctx(), '', join(routes, 'uno.fud'));
@@ -138,7 +146,7 @@ describe('a new set of routes rebuilds it (criterion 2)', () => {
     // A second route appears and the plugin rediscovers — which is what the dev server does
     // on every request, and the only reason the cached reader may be thrown away.
     writeFileSync(join(routes, 'dos.fud'), reactiveRoute('Dos'));
-    p.buildStart.call(ctx());
+    await p.buildStart.call(ctx());
 
     const dos = await p.transform.call(ctx(), '', join(routes, 'dos.fud'));
     // Stale by identity would leave this route nameless: it was not in the table the first
@@ -161,7 +169,7 @@ describe('a new set of routes rebuilds it (criterion 2)', () => {
     );
 
     const p = setup(root, 'src/routes');
-    p.buildStart.call(ctx());
+    await p.buildStart.call(ctx());
 
     const out = await p.transform.call(ctx(), '', join(routes, 'estatica.fud'));
     expect(out.code).not.toContain('fud-route');

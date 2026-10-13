@@ -273,7 +273,7 @@ describe('effective level — induced', () => {
   it('a value that reads nothing at all still induces nothing', () => {
     // The line between the two is what the expression READS, not how it is spelled: a literal
     // has no free reference into the component, so it is a constant in the exact sense
-    // decision 75 means, and the child stays level 1.
+    // decision 142 means, and the child stays level 1.
     const graph = graphOf({
       '/app/home.fud': page(['x-parent'], '<x-parent></x-parent>'),
       '/app/x-parent.fud':

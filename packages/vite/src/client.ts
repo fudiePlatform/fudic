@@ -24,12 +24,12 @@ import {
   isReactiveRoute,
   needsRuntime,
   ownsContainer,
-  resolveDocument,
   usesDependencyInjection,
   type ResolveIo,
 } from '@fudic/compiler';
 import { safeName } from '@fudic/transport';
 import { type RouteBuild } from './discover.js';
+import { graphOf } from './build-memory.js';
 import { CLIENT_NAME_PREFIX } from './constants.js';
 
 /** The query that turns a component id into its client chunk: `<path>.fud?client`. */
@@ -96,7 +96,7 @@ export function discoverComponents(
     if (rb.decision.mode === 'excluded') {
       continue;
     }
-    for (const comp of resolveDocument(rb.absPath, io).value.components.values()) {
+    for (const comp of graphOf(rb.absPath, io).components.values()) {
       if (!byTag.has(comp.tag)) {
         byTag.set(comp.tag, {
           tag: comp.tag,
@@ -119,7 +119,7 @@ export function discoverComponents(
  * imports nothing of the injector and publishes no map.
  */
 export function routeUsesDi(absPath: string, io: ResolveIo): boolean {
-  return hasDependencyInjection(resolveDocument(absPath, io).value);
+  return hasDependencyInjection(graphOf(absPath, io));
 }
 
 /**
@@ -131,7 +131,7 @@ export function routeUsesDi(absPath: string, io: ResolveIo): boolean {
  * file nobody wrote or write a file no page ever names — and both are silent.
  */
 export function routeHydrates(absPath: string, io: ResolveIo): boolean {
-  const doc = resolveDocument(absPath, io).value;
+  const doc = graphOf(absPath, io);
   return needsRuntime(
     hydratableTags(doc),
     hasDependencyInjection(doc),
@@ -168,7 +168,7 @@ export function discoverReactiveRoutes(
   const out: RouteChunk[] = [];
   for (const rb of builds) {
     if (rb.decision.mode === 'excluded') continue;
-    if (!isReactiveRoute(resolveDocument(rb.absPath, io).value)) continue;
+    if (!isReactiveRoute(graphOf(rb.absPath, io))) continue;
     out.push({ name: safeName(rb.route.pattern), path: rb.absPath, pattern: rb.route.pattern });
   }
   return out;

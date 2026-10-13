@@ -2,7 +2,7 @@
 
 > **Estado:** `Hecho`
 > **Corrige:** [SDD-15 — Emit](../SDD-15-emit.md) §3.7, §4.7, §7 ·
-> [props-spec](../props-spec.md) decisión 76
+> [props-spec](../props-spec.md) decisión 143
 > **Y de paso:** la colisión de namespace de `m`/`s` en la closure del factory (§2.5). No es un
 > BUG aparte porque la corrección de §3.3 **añade una tercera función** a esa misma closure:
 > separarlo sería publicar a sabiendas un nombre desprotegido más.
@@ -72,7 +72,7 @@ El elemento y el specifier de estilo. **Ninguna prop.**
 La objeción natural es que si el padre pasa la **signal** por referencia el hijo se enlaza solo
 y no hace falta nada más. No es una opción del diseño:
 
-- [props-spec, decisión 84](../props-spec.md): *«Ninguna signal cruza el boundary»*, y §3 del
+- [props-spec, decisión 151](../props-spec.md): *«Ninguna signal cruza el boundary»*, y §3 del
   mismo documento: *«a través del shadow boundary cruza un valor, nunca el objeto signal»*.
 - [SDD-17 §5](../SDD-17-hidratacion.md#L394): *«El payload es autoridad de estado»*. El tramo
   de props de una instancia hidratada viaja **serializado** en `fud-state`. Una signal es una
@@ -100,7 +100,7 @@ que cruza es un valor. El canal de escritura no es una optimización para un cas
 Las dos primeras frases son correctas y son, precisamente, la descripción del defecto. La
 tercera —*«luego no hay quién invoque un update ni qué haría»*— solo se sigue si **toda** prop
 reactiva llega al hijo como signal, porque entonces la notificación nace dentro de la closure.
-Decisión 84 lo prohíbe y SDD-17 lo hace imposible. Con un valor cruzando, hay perfectamente
+Decisión 151 lo prohíbe y SDD-17 lo hace imposible. Con un valor cruzando, hay perfectamente
 quién invoca (el padre, en su suscripción) y qué hacer (reasignar el binding y reaplicar las
 escrituras que dependen de él).
 
@@ -182,12 +182,12 @@ significaría publicar a sabiendas un nombre desprotegido más.
 
 ### 2.6. Alcance
 
-- **Toda prop que no sea una signal**, es decir —por decisión 84— toda prop, en cualquier
+- **Toda prop que no sea una signal**, es decir —por decisión 151— toda prop, en cualquier
   componente, en cualquier página.
 - **Los dos caminos**: el hijo hidratado desde SSR (recibe su tramo del payload y ahí se acaba)
   y el hijo fabricado en runtime por el padre (hoy no recibe ni el pase inicial, §2.4).
 - **Los tres chunks del fixture** están afectados por igual; no hay ninguno que hoy funcione.
-- **[props-spec decisión 76](../props-spec.md)** propone la solución contraria —un **setter por
+- **[props-spec decisión 143](../props-spec.md)** propone la solución contraria —un **setter por
   prop** en el hijo— y es incompatible con el diseño de closure de SDD-15: un setter en la clase
   no alcanza las variables del factory sin un canal hacia el controlador, que es exactamente lo
   que se está añadiendo. Hay que **derogarla**, no implementarla; si no, quedan dos contratos
@@ -328,7 +328,7 @@ $d.push(count.subscribe(($v) => { $n6.u([, , $v]); }));       // cambios
 
 Un `PropertyBinding` cuyo valor **no** es una signal (literal o expresión constante) no emite
 nada: cruza una vez, ya está en el HTML que el servidor pintó, y `const` es su semántica exacta
-(decisión 75, intacta).
+(decisión 142, intacta).
 
 **El array es el payload entero del hijo, no el hueco que se movió.** El `u` del hijo reasigna
 *todas* las props que destructura, así que mandar solo la que cambió devolvería las demás a su
@@ -380,7 +380,7 @@ precisamente en **no ocupar** nombres que son suyos.
 La regla, y es la que hay que poder repetir sin mirar el código: **la propiedad de una signal es
 del padre; el hijo recibe valores, y recibirlos otra vez es una llamada, no una propiedad.**
 
-`u` es el **único** canal descendente. No hay setters por prop (deroga la decisión 76): un
+`u` es el **único** canal descendente. No hay setters por prop (deroga la decisión 143): un
 setter multiplicaría la superficie pública por el número de props, obligaría a nombrarlas en el
 artefacto emitido —hoy el payload no lleva esquema, solo valores— y necesitaría igualmente
 llegar al controlador. Un solo método posicional cierra el canal con una entrada.
@@ -425,7 +425,7 @@ tolerancia mínima que exige el modelo de upgrade del navegador.
 
 **Los que el bug violaba**
 
-- ***«Cruza un valor, nunca la signal»*** (decisión 84) — enunciado, y sin ningún medio de que
+- ***«Cruza un valor, nunca la signal»*** (decisión 151) — enunciado, y sin ningún medio de que
   el valor cruzara más de una vez. Una regla que solo se cumple porque el canal no existe.
 - ***Un componente hidratado es un componente vivo*** (SDD-17). Un hijo cuyas props vienen del
   padre queda congelado en el valor con el que se pintó, se hidrate o no.
@@ -468,7 +468,7 @@ Tests en `packages/core/test/` y `packages/compiler/test/emit/`.
    padre, emite en `$s()` el pase inicial con `peek()` y una suscripción que llama a `u`, con el
    disposer en `$d`.
 6. Un `PropertyBinding` cuyo valor no es una signal **no** emite ni pase ni suscripción (decisión
-   75 intacta).
+   142 intacta).
 7. **(rojo primero, extremo a extremo)** Con el arnés de `test/emit/hydrate/`: padre y hijo
    compilados, servidos por SSR e hidratados sobre un DOM real; un click en el botón del padre
    cambia el texto dentro del shadow root del hijo. **Es el criterio que define el BUG.**
@@ -504,10 +504,10 @@ Tests en `packages/core/test/` y `packages/compiler/test/emit/`.
   **[SDD-30](../SDD-30-renders-de-bloque.md)**. Este BUG añade `u` **de valor**: reasignar y
   reaplicar escrituras sobre nodos que ya existen. Corolario: una escritura dentro de un
   `@foreach` se queda fusionada con la creación de su nodo (§3.3.c).
-- **`bind:` y las props callback** (decisiones 83-85). El canal ascendente es otro documento;
+- **`bind:` y las props callback** (decisiones 150-152). El canal ascendente es otro documento;
   este cierra el descendente.
-- **El spread `{...item}`** (decisiones 79-82).
-- **La validación semántica de props contra `T`** (decisiones 70-73, 82): prop requerida que
+- **El spread `{...item}`** (decisiones 146-149).
+- **La validación semántica de props contra `T`** (decisiones 70-73, 149): prop requerida que
   falta, clave no declarada, default en prop requerida. Es del SDD de props, con su rango `FUD`.
 - **`.prop` sobre un elemento HTML nativo** (`<input .value="@x">`). Comparte el
   `PropertyBinding` sin lector, pero su destino es `setProp`, no `u`, y no cruza ningún shadow

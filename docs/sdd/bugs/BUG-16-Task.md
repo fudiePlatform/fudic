@@ -54,7 +54,7 @@ ejemplos antes de que el punto se emita los deja en rojo y sin salida que compar
       pasa a escribirse en el host, que es lo que §4.2 pide y lo que hace que `slot="meta"`
       proyecte por fin. (c) **Una signal cruza su valor, no el objeto**: al ver el servidor los
       props por primera vez, `.value="@count"` pintaba `[object Object]`. `crossingExpr` aplica la
-      decisión 84 en los dos emisores —era una regla que solo tenía el cliente— y `MarkupEmitter`
+      decisión 151 en los dos emisores —era una regla que solo tenía el cliente— y `MarkupEmitter`
       recibe los nombres de signals para poder aplicarla.
 - [x] **4. Los `.fud` del repo, migrados.**
       `examples/basic` y las fixtures de `compiler` pasan a `.prop`. La salida de nivel 1 tiene

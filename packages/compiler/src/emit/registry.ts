@@ -27,7 +27,7 @@ import { hydratableTags } from './level.js';
  * `required` is the `?` of `T` and NOT whether the destructuring gives a default: the editor
  * checks the very same thing through `$Missing<$Props, …>`, and the two have to say the same
  * (BUG-23 §5). `channel` is read off the same `T`, and it is what decides the FORM of the
- * crossing (props-spec decision 86) — so both facts a parent needs about a child come out of
+ * crossing (props-spec decision 153) — so both facts a parent needs about a child come out of
  * one read.
  *
  * Exported because the crossing rule has more readers than the semantic pass: the cell layout
@@ -67,7 +67,7 @@ export function graphRegistry(graph: ComponentGraph): ComponentRegistry {
  *
  * That last group is not a nicety: a component that FORWARDS a callback is feeding a channel
  * with something that is not a function of its own, and reading that as `FUD0201` would reject
- * the one thing props-spec decision 86 exists to allow.
+ * the one thing props-spec decision 153 exists to allow.
  */
 function crossingNames(comp: ResolvedComponent): ReadonlyMap<string, CrossingKind> {
   const code = codeOf(comp);
@@ -75,6 +75,8 @@ function crossingNames(comp: ResolvedComponent): ReadonlyMap<string, CrossingKin
   for (const reactive of code.signals) out.set(reactive.name, reactive.kind);
   for (const fn of code.clientFunctions) out.set(fn, 'fn');
   for (const prop of code.props) {
+    // A gathered key is no name of this component's code: nothing can forward it by name.
+    if (prop.rest !== undefined) continue;
     if (prop.channel === 'signal') out.set(prop.name, 'signal');
     else if (prop.channel === 'fn') out.set(prop.name, 'fn');
   }

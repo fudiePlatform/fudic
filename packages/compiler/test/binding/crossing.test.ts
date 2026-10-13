@@ -1,5 +1,5 @@
 /**
- * `crossing` and `reactiveNames` (BUG-23 task 26): the rule of decision 84, extracted from
+ * `crossing` and `reactiveNames` (BUG-23 task 26): the rule of decision 151, extracted from
  * `emit/attrs.ts` so the projection decides it with the very same function. The editor was
  * type-checking the signal OBJECT while the build crossed its VALUE (§2.8), and one
  * definition is the whole fix.
@@ -110,7 +110,7 @@ describe('crossing — what the CHILD declares', () => {
     });
   });
 
-  it('is the shared cell when the prop declares Signal<T> (props-spec decision 86)', () => {
+  it('is the shared cell when the prop declares Signal<T> (props-spec decision 153)', () => {
     expect(crossing(markup, valueOf(markup), reactives, declared('signal'))).toEqual({
       kind: 'ref',
       name: 'titulo',

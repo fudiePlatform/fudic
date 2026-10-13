@@ -1,0 +1,34 @@
+@code {
+  // `label` es la única prop que el campo usa por su nombre. Todo lo demás que declara `T`
+  // lo reúne `resto`, sin nombrarlo una por una.
+  const { label, ...resto } = props<{
+    label: string;
+    placeholder?: string;
+    required?: boolean;
+    maxlength?: number;
+  }>();
+}
+
+<head>
+  <style>
+    .campo {
+      display: grid;
+      gap: 0.3rem;
+    }
+    .eco {
+      margin: 0;
+      font-family: ui-monospace, monospace;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+
+<campo-texto>
+  <template shadowrootmode="open">
+    <label class="campo">
+      <span>@label</span>
+      <input ...resto>
+    </label>
+    <p class="eco">placeholder: @resto.placeholder · required: @(String(resto.required)) · maxlength: @(String(resto.maxlength))</p>
+  </template>
+</campo-texto>

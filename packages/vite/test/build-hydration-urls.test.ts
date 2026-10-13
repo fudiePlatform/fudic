@@ -47,7 +47,7 @@ const COUNTER = `<link rel="component" href="./x-out.fud">
 
 /**
  * Its child: nothing of its own, but the parent crosses a reactive value to it — the
- * induced level. What crosses is a VALUE (decision 84), so the child holds a number.
+ * induced level. What crosses is a VALUE (decision 151), so the child holds a number.
  */
 const OUT = `@code {
   const { value = 0 } = props<{ value?: number }>();

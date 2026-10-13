@@ -21,6 +21,7 @@ import {
   controlTarget,
   ERROR_NAME,
   SUMMARY_NAME,
+  SPREAD_PREFIX,
   crossing,
   handlerShape,
   isNativeEventAttribute,
@@ -29,6 +30,7 @@ import {
   type Attribute,
   type AttributeValuePart,
   type Binding,
+  type SpreadBinding,
   type ElementNode,
   type OxcNode,
   type RazorExpression,
@@ -106,6 +108,12 @@ function openMarkerValue(ctx: TemplateContext, attr: Attribute, binding: Binding
 interface Entry {
   readonly attr: Attribute;
   readonly binding: Binding;
+}
+
+/** An `Entry` already narrowed to a props spread, so `emitSpreads` has nothing to re-ask. */
+interface SpreadEntry {
+  readonly attr: Attribute;
+  readonly binding: SpreadBinding;
 }
 
 /**
@@ -278,8 +286,14 @@ function emitProps(ctx: TemplateContext, el: ElementNode, bindings: readonly Ent
   const globals: Entry[] = [];
   /** The prop names actually WRITTEN — the `K` of `$required`. A bare `.` names none. */
   const written: string[] = [];
+  /** The `...object`s of the tag (props-spec §5), checked against what nothing else writes. */
+  const spreads: SpreadEntry[] = [];
 
   for (const entry of bindings) {
+    if (entry.binding.type === 'spread') {
+      spreads.push({ attr: entry.attr, binding: entry.binding });
+      continue;
+    }
     if (entry.binding.type === 'property') {
       props.push(entry);
       if (entry.binding.name.length > 0) written.push(`'${entry.binding.name}'`);
@@ -340,7 +354,48 @@ function emitProps(ctx: TemplateContext, el: ElementNode, bindings: readonly Ent
   ctx.w.scaffold(globals.length === 0 ? '});\n' : '\n});\n');
 
   emitGaps(ctx, el, alias);
-  emitRequired(ctx, el, alias, written);
+  emitSpreads(ctx, el, alias, written, spreads);
+  // A spread is checked against EVERY key nothing else writes, required ones included, so the
+  // completeness of the tag is already its call's to report — on the object that lacks the key.
+  if (spreads.length === 0) emitRequired(ctx, el, alias, written);
+}
+
+/**
+ * `$spread<Omit<$C0, 'written'>>(item);` per `...item` (props-spec decisions 146–149).
+ *
+ * The parameter is the child's contract minus what the tag writes explicitly, so TypeScript
+ * reads decision 149 off `T` exactly as the emit applies it: a required key `item` lacks is
+ * `TS2345` over `item`, an optional one it lacks is fine, and a key of the wrong type is an
+ * error too. Extra keys of `item` pass, because a named object is not a fresh literal — which
+ * is decision 147. The object is copied from the source, so hover, go-to-definition and
+ * completion after `...` are TypeScript's own.
+ *
+ * A bare `...` has no object yet: an anchor stands in for it, so the caret right after the
+ * dots asks for the names in scope, as `.|` asks for the props.
+ */
+function emitSpreads(
+  ctx: TemplateContext,
+  el: ElementNode,
+  alias: string,
+  written: readonly string[],
+  spreads: readonly SpreadEntry[],
+): void {
+  const contract = ctx.aliases.slotsAliasOf(el.name) === undefined ? 'unknown' : alias;
+  const target = contract === 'unknown' || written.length === 0 ? contract : `Omit<${contract}, ${written.join(' | ')}>`;
+  for (const { attr, binding } of spreads) emitSpread(ctx, attr, binding, `$spread<${target}>(`);
+}
+
+/**
+ * One spread call — `$spread<…>(` on a component, `$spreadAttrs(` on a native element. The
+ * object is copied from the source, so hover, go-to-definition and completion after `...` are
+ * TypeScript's own; a bare `...` gets an anchor, so the caret after the dots asks for names.
+ */
+function emitSpread(ctx: TemplateContext, attr: Attribute, binding: SpreadBinding, call: string): void {
+  ctx.w.scaffold(call, attr.span);
+  if (binding.expr !== null) copyExpression(ctx, binding.expr);
+  else if (attr.name === SPREAD_PREFIX) ctx.w.projected(' ', span(attr.span.end, attr.span.end), COMPLETION_ONLY_CAPS);
+  else ctx.w.scaffold('undefined as never');
+  ctx.w.scaffold(');\n');
 }
 
 /**
@@ -522,7 +577,11 @@ export function slotsAlias(ctx: TemplateContext): string | undefined {
 
 /** Native tags: only the interpolations are checked, one `$attr` each. */
 function emitNativeAttrs(ctx: TemplateContext, el: ElementNode, bindings: readonly Entry[]): void {
-  for (const { binding } of bindings) {
+  for (const { attr, binding } of bindings) {
+    if (binding.type === 'spread') {
+      emitSpread(ctx, attr, binding, '$spreadAttrs(');
+      continue;
+    }
     // `.prop` and a plain attribute carry the same shape of value, so a native tag checks
     // them the same way: whatever interpolation is inside, and nothing else.
     if (binding.type !== 'attr' && binding.type !== 'property') continue;
@@ -573,7 +632,7 @@ function emitOpenInterpolation(ctx: TemplateContext, value: readonly AttributeVa
 
 /**
  * Whether the emit will cross this value as the READ of a reactive rather than as written
- * (decision 84), asked with the very function the emit asks it with.
+ * (decision 151), asked with the very function the emit asks it with.
  *
  * `crossing` is the one definition, in `@fudic/compiler`, and that is the invariant of BUG-23
  * §5: where the emit transforms a value before crossing it, the projection applies the same

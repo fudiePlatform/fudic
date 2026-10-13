@@ -149,7 +149,7 @@ de aquella spec.
 - Criterios de aceptación: los 13 de
   [BUG-18 §6](./BUG-18-update-denso.md#6-criterios-de-aceptación).
 - Corrige el lado del padre de [BUG-12 §3.4](./BUG-12-sin-canal-de-update.md) y de
-  [SDD-15 §4.6](../SDD-15-emit.md); cumple por fin la decisión 75 de
+  [SDD-15 §4.6](../SDD-15-emit.md); cumple por fin la decisión 142 de
   [props-spec](../props-spec.md) en el canal de update.
 - Hermano de [SDD-31](../SDD-31-signals-derivadas.md): los dos salen de la misma sesión y no
   comparten un fichero.

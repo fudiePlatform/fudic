@@ -78,8 +78,8 @@ const ROLE: Record<HtmlContent['type'], ContentRole> = {
   cdata: 'node',
   'raw-text': 'node',
   'style-content': 'node',
-  // `@raw(…)` is an interpolation whose value is NOT escaped (decision 18). The emit has
-  // no consumer for it yet — that is SDD-07's escape semantics, not BUG-14's literal text.
+  // `@raw(…)` writes the HTML of the element it owns whole (decision 18), so it never joins a
+  // run: the element's content is written by `setHtml`, and one anywhere else is `FUD0990`.
   'raw-expression': 'node',
   'razor-comment': 'node',
   'inline-code': 'node',

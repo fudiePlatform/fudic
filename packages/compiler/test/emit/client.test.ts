@@ -373,7 +373,7 @@ describe('emitComponentClientModule — anchoring an interpolated run', () => {
 });
 
 /**
- * BUG-12 — the update channel. A child receives a VALUE (decision 84), so receiving it
+ * BUG-12 — the update channel. A child receives a VALUE (decision 151), so receiving it
  * again is a call: `u` reassigns the positional bindings and `$a()` re-applies the writes
  * that depend on them. Create and update converge on `$a()`, so they cannot diverge; `h`
  * stays out of it, because the server already painted those values (§4.3).
@@ -545,7 +545,7 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
 
   it('sends the child ONLY the slot that moved, and the constant stays behind (§6.3, §6.5)', () => {
     // The handover carries `"Hola"` because every prop has to land. The update does not:
-    // `label` is `const` in the sense decision 75 means, and a channel that rewrites it on
+    // `label` is `const` in the sense decision 142 means, and a channel that rewrites it on
     // every notification of `count` is the whole of BUG-18.
     const src = hostChunk(
       '.label="Hola" .value="@count"',
@@ -605,7 +605,7 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
   });
 
   it('emits no channel at all when the value is not a signal (§6.6)', () => {
-    // Decision 75 intact: a constant crosses once, it is already in the HTML the server
+    // Decision 142 intact: a constant crosses once, it is already in the HTML the server
     // painted, and `const` is exactly its semantics. A channel would be scaffolding.
     const src = hostChunk('.value="@41"');
     expect(src).not.toContain('.u([');
@@ -1030,7 +1030,7 @@ describe('emitComponentClientModule — a value that moves without a signal', ()
   });
 
   it('stays quiet for a child whose values cannot move', () => {
-    // `const` in the sense decision 75 means: crossed once, already in the markup the
+    // `const` in the sense decision 142 means: crossed once, already in the markup the
     // server painted. A channel for it would be scaffolding around a value that is fixed.
     const src = middle('.value="@(1 + 1)"');
     expect(src).not.toContain('$n1.u(');

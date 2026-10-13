@@ -10,6 +10,8 @@
 import { NS, type Ns } from './ns.js';
 import { type DomClient } from './dom.js';
 import { guardUrl } from './url.js';
+import { htmlOf } from './html.js';
+import { attrsDiff } from './attrs.js';
 
 export const browserDom: DomClient<Node> = {
   element(tag: string, ns: Ns = 'html'): Node {
@@ -29,6 +31,15 @@ export const browserDom: DomClient<Node> = {
   },
   setUrl(el: Node, name: string, value: unknown): void {
     (el as Element).setAttribute(name, guardUrl((el as Element).localName, name, value));
+  },
+  setHtml(el: Node, value: unknown): void {
+    (el as Element).innerHTML = htmlOf(value);
+  },
+  setAttrs(el: Node, next: readonly unknown[], prev: readonly unknown[] | undefined, except: readonly string[]): void {
+    const element = el as Element;
+    const diff = attrsDiff(element.localName, next, prev, except);
+    for (const name of diff.remove) element.removeAttribute(name);
+    for (const [name, value] of diff.set) element.setAttribute(name, value);
   },
   removeAttr(el: Node, name: string): void {
     (el as Element).removeAttribute(name);

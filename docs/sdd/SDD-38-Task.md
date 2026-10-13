@@ -201,6 +201,6 @@ usuario, `multi:`, `useValue`, el reemplazo en tests y `fudic g service`.
       | 124 | La jerarquía de contenedores es **código emitido**, nunca derivada del árbol de elementos. Ninguna resolución consulta el DOM. |
       | 125 | El dueño de un token es el **primer contenedor de la cadena con registro**; la raíz, donde viven los `@Service`, es el último eslabón. La factoría corre en el contenedor dueño. |
       | 126 | **El contenedor raíz es la ruta** —una petición en el servidor, una página en el navegador— y muere con ella. No hay un nivel «aplicación» por encima. |
-      | 127 | Lo que cruza el cable son **valores publicados** bajo `token()`, nunca instancias de servicio. Es la decisión 84 aplicada al contenedor. |
+      | 127 | Lo que cruza el cable son **valores publicados** bajo `token()`, nunca instancias de servicio. Es la decisión 151 aplicada al contenedor. |
       | 128 | `load(ctx)` resuelve por `ctx.inject(…)`. Es la única función `async` del sistema y no participa del contenedor ambiente. |
       | 33.c | *(precisión)* La inscripción de un módulo de servicio en el registro raíz no es un «side effect» de los que 33.c prohíbe: es determinista, idempotente y acotada a su propia clase. Un módulo de servicio es un import legal en zona neutra. |

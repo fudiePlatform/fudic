@@ -16,6 +16,7 @@ export type {
   ClassBinding,
   StyleBinding,
   DelegateBinding,
+  SpreadBinding,
   Interpolation,
 } from './nodes.js';
 export {
@@ -25,6 +26,7 @@ export {
   DELEGATE_PREFIX,
   EVENT_PREFIX,
   PROPERTY_PREFIX,
+  SPREAD_PREFIX,
   REF_NAME,
   CONTROL_NAME,
   ERROR_NAME,
@@ -32,7 +34,7 @@ export {
   FIELDS_NAME,
 } from './nodes.js';
 
-export { classifyAttribute, interpolate } from './classify.js';
+export { classifyAttribute, interpolate, spreadExpr } from './classify.js';
 
 // The two binding RULES the emit and the editor must decide with the same function
 // (BUG-23 §5): the shape of a handler, and the form a value crosses with.

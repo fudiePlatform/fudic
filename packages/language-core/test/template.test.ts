@@ -21,8 +21,8 @@ describe('interpolation', () => {
     expect(text).toContain('$text(a ? b : c);');
   });
 
-  it('projects @raw() the same way', () => {
-    expect(emitClient(component('    <p>@raw(html)</p>')).text).toContain('$text(html);');
+  it('projects @raw() against TrustedHTML, not as text (decision 18)', () => {
+    expect(emitClient(component('    <p>@raw(html)</p>')).text).toContain('$raw(html);');
   });
 
   it('leaves text, comments and Razor comments out of the program', () => {

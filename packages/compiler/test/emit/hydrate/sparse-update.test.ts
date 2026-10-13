@@ -40,7 +40,7 @@ const DISPLAY =
   '</template>\n' +
   '</x-display>\n';
 
-/** One reactive prop and one constant: `label` cannot move, and decision 75 says so. */
+/** One reactive prop and one constant: `label` cannot move, and decision 142 says so. */
 const PANEL =
   '<link rel="component" href="./x-display.fud">\n' +
   '\n' +

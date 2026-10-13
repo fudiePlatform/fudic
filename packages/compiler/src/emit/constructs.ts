@@ -20,6 +20,7 @@ import type {
   WhileNode,
 } from '../control/index.js';
 import { keyExpression } from '../control/index.js';
+import { classifyAttribute, spreadExpr } from '../binding/index.js';
 import type { SectionNode } from '../layout/index.js';
 import type { RenderCallNode, SnippetDeclNode } from '../snippet/index.js';
 import type { RazorExpression } from '../at/index.js';
@@ -136,6 +137,9 @@ export function collectAttributeJs(el: ElementNode, visit: JsFragmentVisitor): v
   for (const attribute of el.attributes) {
     // `bus:(expr)="…"` (decision 28.b) is the only attribute whose NAME is an expression.
     if (typeof attribute.name !== 'string') visit('expression', attribute.name.expr);
+    // `...item` (props-spec §5): the object is in the NAME, and the view reads it like a value.
+    const spread = spreadExpr(attribute);
+    if (spread !== null) visit('expression', spread);
     for (const part of attribute.value) {
       if (part.type === 'razor-expression') visit('expression', part.expr);
     }
@@ -199,3 +203,59 @@ function collectNode(node: HtmlContent, visit: JsFragmentVisitor): void {
       return;
   }
 }
+
+/**
+ * The `@raw(…)` that owns the whole content of `el`, or `null` (decision 18).
+ *
+ * Blank text and Razor comments around it are formatting and are dropped. The server and the
+ * client branch both ask THIS function, so they cannot disagree about which elements write
+ * their content as HTML. Any other shape is `FUD0990` and paints nothing for the `@raw`.
+ */
+export function rawChild(el: ElementNode): RawExpressionNode | null {
+  const content = el.children.filter(
+    (n) => !((n.type === 'text' && n.value.trim() === '') || n.type === 'razor-comment'),
+  );
+  const only = content[0];
+  return content.length === 1 && only!.type === 'raw-expression' && el.name !== 'template'
+    ? (only as RawExpressionNode)
+    : null;
+}
+
+/**
+ * The variable a well-formed `ref="@name"` writes on one element, or `null` (decision 30).
+ *
+ * A malformed ref (`@a.b`, `@(x)`) already carries its diagnostic and writes nothing: the
+ * emit does not guess which variable the author meant.
+ */
+export function refTarget(el: ElementNode, source: string): string | null {
+  for (const attr of el.attributes) {
+    const { value: b, diagnostics } = classifyAttribute(attr, source);
+    if (b.type === 'ref' && diagnostics.length === 0) return source.slice(b.value.expr.start, b.value.expr.end);
+  }
+  return null;
+}
+
+/**
+ * Every variable a `ref` WRITES inside a markup tree, nested constructs included.
+ *
+ * A block takes the names its body reads as parameters, by value — and a ref is a write to
+ * the author's own `let`, which a parameter would swallow. So these are not dependencies.
+ */
+export function refTargets(nodes: readonly HtmlContent[], source: string): ReadonlySet<string> {
+  const out = new Set<string>();
+  const walk = (list: readonly HtmlContent[]): void => {
+    for (const node of list) {
+      if (node.type === 'element') {
+        const name = refTarget(node as ElementNode, source);
+        if (name !== null) out.add(name);
+        walk((node as ElementNode).children);
+      } else if (CONTROL_TYPES.has(node.type)) {
+        for (const branch of branchesOf(node as unknown as ControlNode)) walk(branch.body);
+      }
+    }
+  };
+  walk(nodes);
+  return out;
+}
+
+const CONTROL_TYPES: ReadonlySet<string> = new Set(['if', 'switch', 'foreach', 'for', 'while']);

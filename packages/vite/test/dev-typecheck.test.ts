@@ -18,6 +18,7 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vite
 import type { ViteDevServer } from 'vite';
 import { FUD0870, FUD0871, span } from '@fudic/diagnostics';
 import {
+  createProjectChecker,
   toPosix,
   type CheckProblem,
   type CheckReport,
@@ -448,8 +449,8 @@ describe('startLiveCheck over the real checker (criterion 19)', () => {
     const badgeFile = `${project}/src/components/app-badge.fud`;
     const pageFile = `${project}/src/routes/index.fud`;
     const { server, watcher, told } = fakeServer();
-    // No checker given: the default is the real one, rooted at the project.
-    const live = startLiveCheck(server, project);
+    // The real checker, rooted at the project: what `configureServer` hands it.
+    const live = startLiveCheck(server, project, createProjectChecker({ root: project }));
 
     expect((await live.current()).problems).toEqual([]);
     expect(await live.blocking([pageFile, badgeFile])).toBeUndefined();

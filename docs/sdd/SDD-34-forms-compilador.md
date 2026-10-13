@@ -408,14 +408,14 @@ padre dependiera de un detalle del template del hijo que ninguno de los dos escr
 no declara `ctrl` no recibe nada: el cruce aterriza **por nombre de prop**, como todos los demás,
 y eso es lo que mantiene el contrato del lado del hijo.
 
-Esto convive con la **decisión 84** —*ninguna signal cruza el shadow boundary*— y no la deroga,
-porque lo que 84 prohíbe es que el **emit** construya un grafo reactivo implícito entre padre e
+Esto convive con la **decisión 151** —*ninguna signal cruza el shadow boundary*— y no la deroga,
+porque lo que 151 prohíbe es que el **emit** construya un grafo reactivo implícito entre padre e
 hijo: un prop es un valor, y si se mueve, el padre reenvía con `u`. Aquí lo que cruza no es estado
 de render del padre: es el **modelo**, nombrado explícitamente por el autor en el punto de uso, y
 el hijo se suscribe a él por su cuenta, con `@fudic/forms`, no por el canal `$sub` del emit. El
 padre no re-renderiza porque el hijo escriba, y no se emite ningún `u` para este prop.
 
-La alternativa —desazucarar a prop de valor más prop callback, como `bind:` (decisiones 83–85)—
+La alternativa —desazucarar a prop de valor más prop callback, como `bind:` (decisiones 150–152)—
 se descarta con su motivo: haría falta cruzar además los errores, el `touched`, el `dirty` y la
 orden de validar, o sea cuatro props más por campo, y el hijo seguiría sin poder llamar a
 `touch()`. Un `Control<T>` es una referencia con identidad, igual que el `FormControl` que un
@@ -510,7 +510,7 @@ schema en el emit sería duplicar el chequeo y quedarse corto.
   `FUD0594`.
 - **`control` sobre un `<form>` enlaza estado, no acción.** Nada de este SDD envía nada.
 - **Lo que cruza a un componente es el nodo, nombrado por el autor.** No hay grafo reactivo
-  implícito entre padre e hijo (decisión 84 intacta), y no se emite `u` para ese prop.
+  implícito entre padre e hijo (decisión 151 intacta), y no se emite `u` para ese prop.
 - **El validador de servidor no llega al bundle de cliente, y el array no cambia de forma.**
 - **Las rutas y los tipos los comprueba TypeScript, no el emit.**
 - **El atributo `control` no sobrevive al HTML emitido.** Es sintaxis del compilador, como
@@ -631,7 +631,7 @@ las cuatro métricas, como el núcleo. En `@fudic/compiler` y `@fudic/vite` el c
   la fila.
 - **Subida de ficheros.** `<input type="file">` es `FUD0592`: exige `multipart/form-data` y un
   modelo de valor que no es JSON-serializable.
-- **`bind:` (decisiones 83–85).** Sigue pendiente y no se toca: `control` no lo implementa, no lo
+- **`bind:` (decisiones 150–152).** Sigue pendiente y no se toca: `control` no lo implementa, no lo
   presupone y no lo bloquea. Son dos mecanismos distintos y el hueco abierto de `bind:` —el nombre
   de la prop callback— sigue abierto donde estaba.
 - ~~**Que el hueco del error lo escriba el autor** en un sitio elegido por él. En v1 lo emite el
