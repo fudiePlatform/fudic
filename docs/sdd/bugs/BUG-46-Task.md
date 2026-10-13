@@ -7,7 +7,7 @@
 > **Forma de trabajo, por indicación de Pedro:** se midió antes de tocar nada; la implementación
 > va en esta sesión y los tests, el typecheck y la cobertura los hace otra sesión («Test Vite»);
 > el BUG y sus tareas se escriben al final.
-> **Progreso:** 9 / 10
+> **Progreso:** 10 / 10
 
 ---
 
@@ -85,4 +85,7 @@
     - build con SW: 5,1–5,4 s de reloj.
     - `nosw`: 4,4–4,5 s.
     - preview hasta escuchar: 0,82–0,90 s.
-- [ ] 10. Actualizar el pnpm global para que deje de delegar del 10.4 al 11.9.
+- [x] 10. Actualizar el pnpm global para que deje de delegar del 10.4 al 11.9. Con
+  `pnpm self-update 11.9.0`, lanzado fuera del proyecto, el global pasa a ser la 11.9.0.
+  `pnpm --version` baja de 1,1–1,6 s a ~0,49 s, dentro y fuera del proyecto. Es un cambio del
+  entorno de Pedro y no va en el repo.
