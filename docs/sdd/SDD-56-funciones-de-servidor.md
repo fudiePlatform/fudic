@@ -1,6 +1,6 @@
 # SDD-56 — Funciones de servidor y middlewares: `@fudic/http`
 
-> **Estado:** `En curso` — [tareas](./SDD-56-Task.md), 29 / 50.
+> **Estado:** `En curso` — [tareas](./SDD-56-Task.md), 37 / 50.
 > **Paquetes:** `@fudic/http` (nuevo) · `@fudic/compiler` · `@fudic/vite` · `@fudic/transport` ·
 > `@fudic/di` · `@fudic/ssr` · `@fudic/forms` · `@fudic/conventions` · `@fudic/language-core` ·
 > `@fudic/diagnostics`
@@ -618,12 +618,20 @@ Con eso, el chunk de cliente de `usuarios.fud` recibe un stub por función y nad
 
 ```js
 // emitido: nunca lo escribe el desarrollador
-import { $fn } from '@fudic/http/client';
-import global from '/src/http.ts';
-import { auth } from '/src/middlewares/auth.ts';
+import { $fn, FORM_STAGES } from '@fudic/http/client';
+import $global from '/src/http.ts';
+import { auth as $mw0 } from '../middlewares/auth';
 const save = $fn({ name: 'save', method: 'PUT', url: '/_fudic/fn/r/usuarios/save',
-                   chain: [global, [auth]], form: true, invalidates: [] });
+                   page: '/usuarios', base: import.meta.env.BASE_URL,
+                   chain: [$global, { steps: [] }, { steps: [{ kind: 'use', mws: [$mw0] }] }],
+                   stages: FORM_STAGES });
 ```
+
+*Al implementar:* el nivel del fichero y el de la función se escriben como el literal
+`{ steps, compression? }` que `$fn` pliega; cada middleware importado entra con un alias del
+compilador, para no chocar con el mismo import en el `@client`; y una función con `.form`
+recibe las cuatro etapas, mientras que una sin `.form` lleva solo `json` y `compress` y no
+descarga el binario.
 
 ### 4.6. El servidor
 

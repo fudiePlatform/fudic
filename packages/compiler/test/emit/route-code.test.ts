@@ -151,7 +151,7 @@ describe('what the render module of a route carries (§6.2)', () => {
     });
     const code = emitRouteModule(resolveDocument('/r.fud', io).value);
     // The import travels — it is hoisted like any other — and the registration does not:
-    // `$own` is a component's, and a route resolves through `ctx.inject(…)` (SDD-38 §6.24).
+    // `$own` is a component's, and a route resolves from the request's container (SDD-56 §3.8).
     expect(code).toContain('import { Cart } from "./cart.js";');
     expect(code).not.toContain('provideIn');
   });

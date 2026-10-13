@@ -46,6 +46,11 @@ describe('@fudic/conventions', () => {
     expect(conventions.ERROR_PREFIX).toBe('/_fudic/error');
   });
 
+  it('names the file of the global chain', () => {
+    // SDD-56 §3.3: its default export is the outermost level of every function's chain.
+    expect(conventions.HTTP_FILE).toBe('src/http.ts');
+  });
+
   it('names the invalidation message the page posts to its Service Worker', () => {
     // SDD-56 §4.9: the stub posts it and the worker answers it; one string for both ends.
     expect(conventions.INVALIDATE_MESSAGE).toBe('fudic:invalidate');
@@ -68,6 +73,7 @@ describe('@fudic/conventions', () => {
       'DATA_PREFIX',
       'ERROR_PREFIX',
       'FN_PREFIX',
+      'HTTP_FILE',
       'INVALIDATE_MESSAGE',
       'LAYOUTS_DIR',
       'ROUTES_DIR',

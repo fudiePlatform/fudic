@@ -16,6 +16,7 @@ import type {
   RouteDocument,
 } from '../document/index.js';
 import type { CodeBlockNode } from '../code/index.js';
+import type { HtmlContent } from '../html/index.js';
 import type { ResolvedComponent } from './resolve.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import { isEmptySpan, span } from '../types/index.js';
@@ -24,6 +25,9 @@ import { JsBatch, type JsFragmentKind, type OxcNode } from '../oxc/index.js';
 import { unwrapParens } from '../binding/index.js';
 import { collectAttributeJs, collectTemplateJs, type JsFragmentVisitor } from './constructs.js';
 import type { Anchor } from './writer.js';
+import { NO_SERVER_FNS, readServerFns, type ServerFns } from './server-fns.js';
+import { sendable } from './client-fns.js';
+import { formSendDiagnostics } from './controls.js';
 import {
   changeableBindings,
   freeReferences,
@@ -490,6 +494,18 @@ export interface ExtractedCode {
    */
   readonly providers: ZoneCode;
   /**
+   * The server functions of the `@server`, read off its AST (SDD-56 §3.11): each one's chain,
+   * the file's `http` level, and the statements that make them up.
+   */
+  readonly serverFns: ServerFns;
+  /**
+   * The `?server` module of this file (SDD-56 §4.13): the imports its statements read — of the
+   * neutral zone too, where a form both ends import usually sits — and, for a route, its whole
+   * `@server`; for a component, its machinery alone, the rest being its `render()`'s. No DI
+   * rewrite: that code runs in a request, and `inject()` there reads the request's container.
+   */
+  readonly serverModule: ZoneCode;
+  /**
    * What Oxc had to say about this `@code`, already in source coordinates (BUG-13 §5.3).
    *
    * Without them the three lists above are ambiguous: empty reads as "there was no code"
@@ -537,6 +553,13 @@ export type CodeDocument = ComponentDocument | RouteDocument | PageDocument | La
  * inside its `<body>`. A section is registered like any other run of markup — it is another
  * position of the same walk, not a second kind of tree (SDD-39 §4.4).
  */
+/** The markup a document's template is made of, sections included; a layout's is its body. */
+function templateRootsOf(doc: CodeDocument): readonly HtmlContent[] {
+  if (doc.type === 'route-document') return [...doc.markup, ...doc.sections.flatMap((s) => s.children)];
+  if (doc.type === 'layout-document' || doc.type === 'page-document') return doc.body.children;
+  return doc.template?.children ?? [];
+}
+
 function collectDocumentJs(doc: CodeDocument, register: JsFragmentVisitor): void {
   if (doc.type === 'route-document') {
     collectTemplateJs(doc.markup, register);
@@ -655,6 +678,30 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
   };
   checkReservedPrefix(clientStatements, map, own);
 
+  // The server functions, read before the DI calls: inside a component's machinery `inject`
+  // is NOT rewritten (SDD-56 §4.13) — that code runs in a request, not in a render.
+  const component = doc.type === 'component-document';
+  const fnsRead =
+    serverStatements.length === 0
+      ? { fns: NO_SERVER_FNS, diagnostics: [] }
+      : readServerFns({
+          server: serverStatements,
+          all: allStatements,
+          map,
+          browserNames: new Set([
+            ...topLevelBindings(clientStatements),
+            ...topLevelBindings(neutralStatements),
+          ]),
+          component,
+          errorPage: false,
+        });
+  own.push(...fnsRead.diagnostics);
+  // `form:=` that cannot send, said HERE and not by the client chunk: a route whose only
+  // client-side thing is a broken `form:=` has no chunk at all, and the error would vanish.
+  own.push(...formSendDiagnostics(source, templateRootsOf(doc), sendable(fnsRead.fns)));
+  const { machinery } = fnsRead.fns;
+  const inRender = (stmt: OxcNode): boolean => !(component && machinery.has(stmt));
+
   const binding = emitBinding(clientStatements);
   const emitCalls: EmitCall[] = [];
   if (binding !== undefined) collectEmitCalls(clientStatements, binding, map, emitCalls);
@@ -677,7 +724,7 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     const imports = importSources(allStatements);
     const scan = { bindings, imports, source, map, out: di };
     collectDiCalls(neutralStatements, { ...scan, zone: 'neutral' });
-    collectDiCalls(serverStatements, { ...scan, zone: 'server' });
+    collectDiCalls(serverStatements.filter(inRender), { ...scan, zone: 'server' });
     collectDiCalls(clientStatements, { ...scan, zone: 'client' });
     checkDiZones(di, own);
   }
@@ -716,7 +763,15 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     dataAccess: readDataAccess(clientStatements, map),
     emitCalls,
     di,
-    server: zoneCode(serverStatements, source, map, diEdits, () => true, rewritten),
+    server: zoneCode(serverStatements, source, map, diEdits, inRender, rewritten),
+    serverFns: fnsRead.fns,
+    serverModule: zoneCode(
+      [...neutralStatements, ...serverStatements],
+      source,
+      map,
+      [],
+      (stmt) => serverStatements.includes(stmt) && (!component || machinery.has(stmt)),
+    ),
     serverExports: exportedNames(serverStatements),
     ...spread('layoutResolver', layoutResolverOf(serverStatements, map)),
     providers: mergeZones(

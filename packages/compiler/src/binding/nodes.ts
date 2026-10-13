@@ -20,6 +20,7 @@ export type Binding =
   | BusBinding
   | RefBinding
   | ControlBinding
+  | FormSendBinding
   | ErrorBinding
   | ClassBinding
   | StyleBinding
@@ -134,6 +135,15 @@ export interface ControlBinding extends Node {
 }
 
 /**
+ * `form:="@save"` on a `<form control=@f>` (SDD-56 §3.5): the server function its valid submit
+ * calls with the form. Not an attribute of the element: it reaches no HTML.
+ */
+export interface FormSendBinding extends Node {
+  readonly type: 'form-send';
+  readonly value: RazorExpression;
+}
+
+/**
  * `error="@f.title"` — the element the author chose to carry that node's message (decision
  * 130, BUG-41 §3.3). A reserved attribute of the `control` family, and its mirror: `control`
  * says which element EDITS a node, `error` says which element SPEAKS for it.
@@ -228,6 +238,9 @@ export const REF_NAME = 'ref';
 
 /** The reserved attribute name for a form binding (decision 108). */
 export const CONTROL_NAME = 'control';
+
+/** The reserved attribute name of a form's declarative send (SDD-56 §3.5): `form:="@save"`. */
+export const FORM_SEND_NAME = 'form:';
 
 /** The reserved attribute name for the element that carries a node's message (decision 130). */
 export const ERROR_NAME = 'error';

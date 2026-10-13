@@ -24,6 +24,12 @@ export const SRC_DIR = 'src';
 export const ROUTES_DIR = 'src/routes';
 export const COMPONENTS_DIR = 'src/components';
 export const LAYOUTS_DIR = 'src/layouts';
+/**
+ * The global level of every server function's chain (SDD-56 §3.3): its default export is a
+ * `chain()`. Optional; without it the global level is empty. Both halves import it: the plugin
+ * on the server, the compiler's stubs in the browser.
+ */
+export const HTTP_FILE = 'src/http.ts';
 
 /**
  * Where the published runtime lives on the origin, OUTSIDE every app's `base`

@@ -41,6 +41,7 @@ import {
   type EmitOutput,
 } from './module.js';
 import type { Diagnostic } from '../types/index.js';
+import { fnStubs } from './client-fns.js';
 
 /**
  * The positional destructuring of `$props` (§4.2) — the exact mirror of the `Object.values`
@@ -401,6 +402,11 @@ function buildComponentClientModule(
   }
   for (const line of client.imports) w.line(line); // hoisted: only legal at module scope
   for (const line of linker.imports()) w.line(line);
+  // The component's server functions, at module scope, where `c` and its handlers reach them
+  // (SDD-56 §4.5). The URL is the tag's: the same function from every page it lives in.
+  const stubs = fnStubs(codeOf(comp).serverFns, options.serverFns);
+  for (const line of stubs?.imports ?? []) w.line(line);
+  for (const line of stubs?.lines ?? []) w.line(line);
   w.line('');
   w.line(`customElements.define(${JSON.stringify(comp.tag)}, class extends ${base} {`);
   w.indent();

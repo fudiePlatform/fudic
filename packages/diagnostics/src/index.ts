@@ -178,7 +178,6 @@ export * from './codes/FUD0667.js';
 export * from './codes/FUD0680.js';
 export * from './codes/FUD0681.js';
 export * from './codes/FUD0682.js';
-export * from './codes/FUD0683.js';
 export * from './codes/FUD0684.js';
 export * from './codes/FUD0700.js';
 export * from './codes/FUD0701.js';

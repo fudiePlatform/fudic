@@ -37,6 +37,7 @@ import { projectAdoptOf } from './project-styles.js';
 import type { DocumentGraph } from './resolve.js';
 import type { RouteDocument, PageDocument } from '../document/index.js';
 import type { Diagnostic } from '../types/index.js';
+import { fnStubs } from './client-fns.js';
 
 /**
  * The three leading slots of a route's array: `$dom`, `$root` and `$data`. One more than a
@@ -246,6 +247,11 @@ function buildRouteClientModule(
   }
   writeImports(w, code);
   for (const line of linker.imports()) w.line(line);
+  // The server functions, at module scope: the `@client` body and the template's handlers
+  // below both reach them by name (SDD-56 §4.5).
+  const stubs = fnStubs(code.serverFns, options.serverFns);
+  for (const line of stubs?.imports ?? []) w.line(line);
+  for (const line of stubs?.lines ?? []) w.line(line);
   w.line('');
   // A default export and NOT a custom element: a route is not defined, not instantiated and
   // never fabricated hot. What the runtime holds is this function and the three entry points

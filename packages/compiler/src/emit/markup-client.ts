@@ -1159,7 +1159,9 @@ export class ClientMarkupEmitter {
     const slotGuard = slot === null ? '' : `${slot} && `;
     // A summary with `fields` hands its map path → id to `bindForm` / `bindGroup` (BUG-42 §4.7).
     const links = site.marker === null ? null : (this.#hookup.controls.markers.get(site.marker)?.links ?? null);
-    const slotArg = (slot ?? 'null') + (links === null ? '' : `, ${JSON.stringify(links)}`);
+    // `form:="@save"`: the function the valid submit sends to, after the links (SDD-56 §4.7).
+    const sendArg = site.send === undefined ? '' : `${links === null ? ', null' : ''}, ${site.send}`;
+    const slotArg = (slot ?? 'null') + (links === null ? '' : `, ${JSON.stringify(links)}`) + sendArg;
     if (site.group.length > 0) {
       const guards = site.group.map((radio) => this.#varOf(radio));
       out.line(

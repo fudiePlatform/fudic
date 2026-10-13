@@ -1,39 +1,12 @@
 /**
- * The `?server` module (SDD-19 §4.3): the RenderChunk wrapper imports `load`/`paths`
- * from `<page>.fud?server`. This emits that module — the page's `@server` REGION(s)
- * verbatim, which is where the `export function load`/`paths` live. Server-only code
- * never reaches any client bundle because it is only ever imported by the WW chunk.
+ * The `?server` module (SDD-19 §4.3): the RenderChunk wrapper imports `load`/`paths` from
+ * `<page>.fud?server`, and since SDD-56 the server functions are served from it too — a
+ * component's as much as a route's. Server-only code never reaches any client bundle because
+ * it is only ever imported by the server side.
  *
- * The region and not the `@code`: the other two zones of a route go somewhere else
- * (SDD-39 §4.1), and that is the whole of what this module leaves out.
+ * What goes in is the compiler's to say, off the same reading of `@code` the rest of the emit
+ * uses: a route's whole `@server`, a component's server functions and what they are built of,
+ * and the imports those statements read, the neutral zone's included (SDD-56 §4.13).
  */
 
-import { type ServerRegion } from '@fudic/compiler';
-import { parseFud } from './parse.js';
-
-const EMPTY = 'export {};\n';
-
-/**
- * Emit the `?server` module for a route: its `@server` region code, or an empty module.
- * Any role that can BE a route qualifies — a page (doctype) and a route fragment
- * (SDD-21), which carries its `@code` at the top level instead of inside `<head>`.
- *
- * Its `@server` REGION, and never the whole `@code`. The filter below has always been the
- * right one, and since SDD-39 the other two zones have a destination of their own: the
- * neutral zone runs on both sides and is written into the render module and into the client
- * chunk, and `@client` reaches the chunk verbatim and the render module as inert stubs
- * (§4.1). What is dropped here is dropped because it is emitted elsewhere.
- */
-export function emitServerModule(source: string): string {
-  const doc = parseFud(source);
-  const isRoute = doc.type === 'page-document' || doc.type === 'route-document';
-  if (!isRoute || !doc.code) {
-    return EMPTY;
-  }
-  const body = doc.code.parts
-    .filter((p): p is ServerRegion => p.type === 'server-region')
-    .map((p) => source.slice(p.js.start, p.js.end).trim())
-    .filter((s) => s.length > 0)
-    .join('\n\n');
-  return body.length > 0 ? `${body}\n` : EMPTY;
-}
+export { emitServerModule } from '@fudic/compiler';

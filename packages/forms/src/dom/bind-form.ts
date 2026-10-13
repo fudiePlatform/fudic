@@ -1,11 +1,12 @@
 /**
  * `bindForm` — the `<form>` itself: STATE, never action (SDD-34 §4.4).
  *
- * Nothing here sends anything. Who submits the data and where is the author's (`@submit`,
- * decision 96) or the native `<form>`'s, and the day `@fudic/http` exists it will be its. What
- * this binds is the three things that are about the FORM and not about any one field: making
- * the hidden errors visible, moving the focus to the first that failed, and announcing the
- * summary.
+ * It sends only when it is told where: `form:="@save"` hands it the server function (SDD-56
+ * §4.7), and then a valid submit calls it instead of navigating. Without it, who submits the
+ * data and where is the author's (`@submit`, decision 96) or the native `<form>`'s. What this
+ * binds besides is the three things that are about the FORM and not about any one field:
+ * making the hidden errors visible, moving the focus to the first that failed, and announcing
+ * the summary.
  *
  * **Why the focus moves.** `aria-describedby` does not cross a shadow boundary, so a summary
  * living in the form's tree cannot describe a field living inside a control-component's. The
@@ -15,7 +16,7 @@
  */
 
 import { internalsOf } from '../internals.js';
-import type { AnyForm, AnyNode } from '../types.js';
+import type { AnyForm, AnyNode, ErrorMap, Errors } from '../types.js';
 import { bindSummary } from './summary.js';
 import type { Cleanup } from './types.js';
 import { onSelf, undo } from './wiring.js';
@@ -40,6 +41,21 @@ function firstInvalid(el: HTMLFormElement): HTMLElement | undefined {
 }
 
 /**
+ * The server's 422, recognised by its shape: `@fudic/http`'s `ValidationError` is a class of a
+ * package this one does not depend on, and the form only needs what it carries.
+ */
+function isRejected(
+  error: unknown,
+): error is { readonly errors: ErrorMap | null; readonly summary: Errors | null } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { readonly status?: unknown }).status === 422 &&
+    'errors' in error
+  );
+}
+
+/**
  * `summary` is the element the author marked with `summary="@form"`, or `null`. `links` is the
  * map path → id the emit writes for a summary with `fields`, and `null` without it (BUG-42 §4.7).
  */
@@ -48,7 +64,17 @@ export function bindForm(
   form: AnyForm,
   summary: HTMLElement | null,
   links: Readonly<Record<string, string>> | null = null,
+  send?: (form: AnyForm) => Promise<unknown>,
 ): Cleanup {
+  // Make the errors visible and move the focus: to the summary that lists the fields, if there
+  // is one (BUG-42 §4.7), or to the first field that failed.
+  const stop = (): void => {
+    // Cascade first: errors are hidden until a control is touched (§4.2), so without this
+    // the user would be stopped by errors they cannot see.
+    form.$touch();
+    if (summary !== null && links !== null) summary.focus();
+    else firstInvalid(el)?.focus();
+  };
   const offs: Cleanup[] = [
     // `onSelf` and not `on`: the form's `submit` is the one subscription in this package that
     // delegation cannot pay for. There is one form per root, so the root would hold the same
@@ -68,15 +94,29 @@ export function bindForm(
       // fields — a summary sums up a submit, it does not chase the user field by field.
       internalsOf(form as unknown as AnyNode).markSubmitted();
       void form.$validate();
-      if (form.$errors() === null && form.$summary() === null) return;
+      const valid = form.$errors() === null && form.$summary() === null;
+      if (valid && send === undefined) return;
       event.preventDefault();
-      // Cascade first: errors are hidden until a control is touched (§4.2), so without this
-      // the user would be stopped by errors they cannot see.
-      form.$touch();
-      // With a summary that lists the fields, the focus goes to IT: the user hears every error
-      // at once and each one links to its field (BUG-42 §4.7). Without one, to the first field.
-      if (summary !== null && links !== null) summary.focus();
-      else firstInvalid(el)?.focus();
+      if (!valid) {
+        stop();
+        return;
+      }
+      // `form:="@save"` (SDD-56 §4.7): a valid form is SENT, never navigated with. A 422 is the
+      // form's own business and goes into it like a client error; anything else is announced
+      // on the `<form>`, where the view listens with `@fudic:result` / `@fudic:error`.
+      void send!(form).then(
+        (value) => {
+          el.dispatchEvent(new CustomEvent('fudic:result', { detail: value, bubbles: true }));
+        },
+        (error: unknown) => {
+          if (isRejected(error)) {
+            form.$setErrors(error.errors, error.summary);
+            stop();
+            return;
+          }
+          el.dispatchEvent(new CustomEvent('fudic:error', { detail: error, bubbles: true }));
+        },
+      );
     }),
   ];
   // Into the live region the author marked with `summary="@form"`. A text that changes INSIDE a
