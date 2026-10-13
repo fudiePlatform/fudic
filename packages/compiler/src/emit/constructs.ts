@@ -20,6 +20,7 @@ import type {
   WhileNode,
 } from '../control/index.js';
 import { keyExpression } from '../control/index.js';
+import { classifyAttribute } from '../binding/index.js';
 import type { SectionNode } from '../layout/index.js';
 import type { RenderCallNode, SnippetDeclNode } from '../snippet/index.js';
 import type { RazorExpression } from '../at/index.js';
@@ -199,3 +200,42 @@ function collectNode(node: HtmlContent, visit: JsFragmentVisitor): void {
       return;
   }
 }
+
+/**
+ * The variable a well-formed `ref="@name"` writes on one element, or `null` (decision 30).
+ *
+ * A malformed ref (`@a.b`, `@(x)`) already carries its diagnostic and writes nothing: the
+ * emit does not guess which variable the author meant.
+ */
+export function refTarget(el: ElementNode, source: string): string | null {
+  for (const attr of el.attributes) {
+    const { value: b, diagnostics } = classifyAttribute(attr, source);
+    if (b.type === 'ref' && diagnostics.length === 0) return source.slice(b.value.expr.start, b.value.expr.end);
+  }
+  return null;
+}
+
+/**
+ * Every variable a `ref` WRITES inside a markup tree, nested constructs included.
+ *
+ * A block takes the names its body reads as parameters, by value — and a ref is a write to
+ * the author's own `let`, which a parameter would swallow. So these are not dependencies.
+ */
+export function refTargets(nodes: readonly HtmlContent[], source: string): ReadonlySet<string> {
+  const out = new Set<string>();
+  const walk = (list: readonly HtmlContent[]): void => {
+    for (const node of list) {
+      if (node.type === 'element') {
+        const name = refTarget(node as ElementNode, source);
+        if (name !== null) out.add(name);
+        walk((node as ElementNode).children);
+      } else if (CONTROL_TYPES.has(node.type)) {
+        for (const branch of branchesOf(node as unknown as ControlNode)) walk(branch.body);
+      }
+    }
+  };
+  walk(nodes);
+  return out;
+}
+
+const CONTROL_TYPES: ReadonlySet<string> = new Set(['if', 'switch', 'foreach', 'for', 'while']);

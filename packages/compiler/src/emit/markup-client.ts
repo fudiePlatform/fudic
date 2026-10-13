@@ -58,7 +58,7 @@ import {
   type PropTarget,
   type ValueSink,
 } from './attrs.js';
-import { branchesOf } from './constructs.js';
+import { branchesOf, refTarget } from './constructs.js';
 import { isControlNode, markerSite } from './marker.js';
 import { adoptListOf, type ProjectAdopt } from './project-styles.js';
 import { bodyContext, childrenContext, type RunContext } from './display.js';
@@ -984,6 +984,7 @@ export class ClientMarkupEmitter {
     this.#place(v, level.fab); // parent last: a node is filled before it joins the tree
     this.#controlBinding(el, v);
     this.#messageBinding(el, v);
+    this.#ref(el, v);
     // A marker the walk has just reached releases the call that was waiting for it.
     this.#awaiting.get(el)?.();
   }
@@ -998,6 +999,21 @@ export class ClientMarkupEmitter {
     if (marker?.bind !== 'bindMessage') return;
     this.#hookup.binds.add(marker.bind);
     this.#hook.line(`${v} && $d.push(bindMessage(${v}, ${marker.node}));`);
+  }
+
+  /**
+   * `ref="@name"` (decision 30): the author's own `let` receives the node.
+   *
+   * Into the hookup, the point create and hydrate converge on, so the variable holds the node
+   * whichever way the instance came alive; and back to `null` with the teardowns, so a removed
+   * node is not kept alive by a variable nobody clears. Inside a block both happen with the
+   * block, because a block has its own hookup and its own teardowns.
+   */
+  #ref(el: ElementNode, v: string): void {
+    const name = refTarget(el, this.#source);
+    if (name === null) return;
+    this.#hook.line(`${name} = ${v};`);
+    this.#hook.line(`$d.push(() => { ${name} = null; });`);
   }
 
   /**

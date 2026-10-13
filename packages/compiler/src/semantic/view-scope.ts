@@ -23,6 +23,7 @@ import type { RazorExpression } from '../at/index.js';
 import type { Attribute } from '../html/index.js';
 import type { ForNode, ForeachNode } from '../control/index.js';
 import type { SnippetDeclNode } from '../snippet/index.js';
+import { REF_NAME } from '../binding/index.js';
 import { loopHeaderNames, patternNames, type OxcNode } from '../oxc/index.js';
 import type { SemanticInput } from './model.js';
 import { documentRoots, walk } from './walk.js';
@@ -208,6 +209,9 @@ function collectFragments(input: SemanticInput): readonly ViewFragment[] {
       add(expr, 'expression', current);
     },
     binding(expr: RazorExpression, attr: Attribute) {
+      // `ref="@name"` is no read of the view: the server never evaluates it, and on the
+      // client it is a WRITE into the author's `@client` variable (decision 30).
+      if (attr.name === REF_NAME) return;
       const prop = typeof attr.name === 'string' && attr.name.startsWith('.');
       add(expr, isDeferred(expr, attr) ? 'handler' : prop ? 'prop' : 'expression', current);
     },

@@ -29,6 +29,7 @@ import {
   collectTemplateJs,
   isLoop,
   loopHead,
+  refTargets,
   type Branch,
   type LoopNode,
 } from './constructs.js';
@@ -188,7 +189,7 @@ export class BlockEmitter implements BlockSink {
     // A name the body WRITES is not a dependency: it is shared state, and a parameter would
     // swallow the write. See `assignedNames` — it is what lets a `@{ … }` in the body of a
     // `@while` advance the cursor its own header reads.
-    const written = assignedNames(asts);
+    const written = new Set([...assignedNames(asts), ...refTargets(branch.body, this.#ctx.source)]);
     return freeReferences(asts).filter(
       (name) => !owned.has(name) && !written.has(name) && this.#changeable.has(name),
     );

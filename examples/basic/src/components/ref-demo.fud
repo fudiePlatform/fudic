@@ -1,0 +1,70 @@
+@code {
+  @client {
+    import { signal } from "@fudic/core";
+
+    // Las dos variables son del autor: las declara aquí y el compilador solo les asigna el
+    // nodo. `campo` vive siempre; `aviso` solo mientras el `@if` lo pinta.
+    let campo: HTMLInputElement | null = null;
+    let aviso: HTMLElement | null = null;
+
+    const abierto = signal(false);
+    const informe = signal("Aún no has pulsado nada.");
+
+    function enfocar() {
+      campo?.focus();
+      informe.set(campo === null ? "campo es null" : `campo es un <${campo.localName}> con "${campo.value}"`);
+    }
+
+    function alternar() {
+      abierto.set(!abierto());
+    }
+
+    function medir() {
+      informe.set(aviso === null ? "aviso es null" : `aviso es un <${aviso.localName}>: "${aviso.textContent}"`);
+    }
+  }
+}
+
+<head>
+  <style>
+    .panel {
+      display: grid;
+      gap: var(--gap);
+      max-width: 32rem;
+    }
+    .fila {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+    }
+    .aviso {
+      margin: 0;
+      padding: 0.6rem 0.8rem;
+      border: 1px solid var(--brand);
+      border-radius: 6px;
+    }
+    .informe {
+      margin: 0;
+      font-family: ui-monospace, monospace;
+    }
+  </style>
+</head>
+
+<ref-demo>
+  <template shadowrootmode="open">
+    <div class="panel">
+      <div class="fila">
+        <input ref="@campo" value="hola">
+        <button class="enfocar" @click="@enfocar">Enfocar el campo</button>
+      </div>
+      <div class="fila">
+        <button class="alternar" @click="@alternar">Mostrar / ocultar aviso</button>
+        <button class="medir" @click="@medir">Leer aviso</button>
+      </div>
+      @if (abierto()) {
+        <p class="aviso" ref="@aviso">Soy el aviso del @("@if")</p>
+      }
+      <p class="informe">@informe()</p>
+    </div>
+  </template>
+</ref-demo>
