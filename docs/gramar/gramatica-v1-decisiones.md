@@ -1561,3 +1561,4 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 142–153 | Props | Viven en [props-spec.md](../sdd/props-spec.md) (constantes, nivel, spread `...item`, callback, cruce). Eran 75–86 allí y chocaban con las 75–86 de aquí; renumeradas en SDD-54. La 152 y `bind:` están **derogados** |
 | 154 | Interpolación | `@raw` es el único contenido de su elemento (`FUD0990`) y solo pinta un valor `trustedHtml()`; lo demás se escapa. Precisa la 18 (SDD-54) |
 | 155 | Interpolación | La variable de un `ref` la declara el autor en `@client`; el compilador le asigna el nodo al crear o hidratar y la anula al desmontar. Precisa la 30 (SDD-54) |
+| 156–157 | Props | Viven en [props-spec.md](../sdd/props-spec.md): el resto `...resto` de `props<T>()` (156) y el spread de atributos sobre un elemento nativo (157) (SDD-55) |

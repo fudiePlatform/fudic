@@ -97,7 +97,8 @@ Códigos: `FUD0990` (`@raw` no es el único contenido), `FUD0991` (spread mal fo
 ### 4.3 Spread (decisiones 146–149)
 
 - `...objeto`: un nombre o camino de nombres, sin valor. Si no, `FUD0991` con `expr: null`.
-  Sobre un elemento nativo o el propio host, `FUD0992`.
+  Sobre un elemento nativo o el propio host, `FUD0992`. *SDD-55 lo precisa: sobre un nativo el
+  spread escribe atributos (157), y `FUD0992` queda para el host propio y su plantilla.*
 - `spreadProps` expande contra `PropTarget.all` y excluye lo que escriben `.prop`/`control`. Con
   varios spreads gana el último cuyo valor no sea `undefined`. Sin contrato legible, nada.
 - Servidor: las entradas del spread van delante en el literal de props. Cliente: un slot por

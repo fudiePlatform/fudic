@@ -69,6 +69,14 @@ puede referenciar son lo mismo.
 `@code`", decisión 33.d). Un componente sin `props<T>()` no expone interfaz de
 entrada.
 
+**156.** **Un resto reúne las claves que el patrón no nombra** (SDD-55).
+`const { label, ...resto } = props<T>()` cumple la 68: lo que no se nombra lo cubre `resto`.
+Cada clave reunida es una prop como cualquier otra para quien la pasa —tiene su hueco y el padre
+la escribe con `.`—, y el componente las lee juntas como un objeto, en el servidor y en el
+cliente. Requiere un `T` que el fichero pueda leer (un literal, o un `type`/`interface` del mismo
+`@code`): con uno importado no hay claves que reunir. Una clave reunida `Signal<T>` es reactiva
+igual que una nombrada.
+
 **70.** **Solo lo declarado es visible para el consumidor.** Un consumidor que pase
 una clave ausente de `T` es error de compilación (semántico). Esto es el modelo
 Svelte: la interfaz es explícita y cerrada.
@@ -431,9 +439,10 @@ de **`T`**, tomada de `item`. Es equivalente exacto a:
 ```
 
 Lo que sigue a `...` es el objeto y nada más: un nombre o un camino de nombres, y el atributo no
-lleva valor. Cualquier otra forma (`...`, `...a-b`, `...item="x"`) es `FUD0991`. Un spread sobre
-un elemento nativo, o sobre el propio host del componente, es `FUD0992`: no hay props contra las
-que expandir.
+lleva valor. Cualquier otra forma (`...`, `...a-b`, `...item="x"`) es `FUD0991`. Sobre un
+elemento nativo el spread escribe atributos (157). Sobre el propio host del componente o su
+`<template shadowrootmode>` es `FUD0992`: ninguno es un elemento en el que la vista escriba
+(precisada en SDD-55; en SDD-54 también lo era sobre un nativo).
 
 Un `.prop` escrito en el mismo host **gana** su clave, esté antes o después del spread: es la
 afirmación más concreta de las dos. Con dos spreads en un host gana el último en las claves que
@@ -456,6 +465,16 @@ prop es requerida; se usa el default si es opcional (consistente con decisiones
 71–73). El error lo da TypeScript, en el editor y en el build: la proyección comprueba el
 objeto contra `T` menos lo que el host escribe a mano, y el error cae sobre el objeto. Una clave
 de tipo equivocado también es error; una clave de más no lo es (147).
+
+**157.** **Sobre un elemento nativo, el spread escribe atributos** (SDD-55).
+`<input ...resto>` escribe cada clave escalar del objeto: un texto o un número como su texto,
+`true` como atributo booleano vacío; `false`, `null` y `undefined` lo dejan fuera, como
+`attr=@valor`. Un objeto, una función o un `symbol` no es un atributo y se salta, salvo un
+`trustedUrl(…)` en un atributo URL. Nunca escribe un `on*` (139) ni un nombre que no sea de
+atributo, y un atributo URL pasa por el mismo guardia (140). Lo que el elemento escribe a mano
+gana su nombre esté donde esté el spread; con dos spreads gana el posterior en lo que escribe. Es
+una única función pura en servidor y navegador; al actualizar, quita los atributos que el objeto
+ya no escribe.
 
 ---
 
@@ -523,7 +542,7 @@ fijar ni `bind:` que meter en un spread.
 
 ---
 
-## Índice de decisiones (67–74, 142–153)
+## Índice de decisiones (67–74, 142–153, 156–157)
 
 | # | Sección | Resumen |
 |---|---------|---------|
@@ -539,7 +558,7 @@ fijar ni `bind:` que meter en un spread.
 | 143 | Props | ~~Prop reactiva → setter en el hijo~~ · **derogada**: el canal es `u(props)`, uno solo y posicional ([BUG-12](./bugs/BUG-12-sin-canal-de-update.md)) (antes 76) |
 | 144 | Props | La declaración no fuerza el nivel (antes 77) |
 | 145 | Props | Variante única por cierre de proyecto (antes 78) |
-| 146 | Spread | `...item`, sin llaves, expande a property bindings contra `T`; un `.prop` explícito gana su clave; `FUD0991`, `FUD0992` (antes 79; SDD-54) |
+| 146 | Spread | `...item`, sin llaves, expande a property bindings contra `T`; un `.prop` explícito gana su clave; `FUD0991`, `FUD0992` (antes 79; SDD-54). **Precisada por la 157** |
 | 147 | Spread | Filtro por claves de `T`, no de `item` (antes 80) |
 | 148 | Spread | Reactividad de cada clave según lo que lleve `item`; una fila que cambia de datos las vuelve a dar (antes 81; SDD-54) |
 | 149 | Spread | Clave ausente en `item`: error si requerida (TypeScript, sobre el objeto), default si opcional (antes 82) |
@@ -547,3 +566,5 @@ fijar ni `bind:` que meter en un spread.
 | 151 | Props | Una prop declarada **como valor** cruza su valor, nunca el objeto signal. Reescrita por la 153: dejó de ser «siempre» (antes 84) |
 | 152 | Two-way | ~~`bind:` exige prop de valor + prop callback declaradas~~ · **derogada** con `bind:` (antes 85; SDD-54) |
 | 153 | Props | **Lo que cruza lo decide el hijo**: `Signal<T>` o una firma de función cruzan por **referencia** —una celda que crea el runtime—, lo demás cruza su valor ([BUG-24](./bugs/BUG-24-signal-y-callback-no-cruzan.md)). Sin poder leer al hijo no se marca canal alguno. Hace innecesario `bind:` (antes 86) |
+| 156 | Props | Un resto `...resto` reúne las claves de `T` que el patrón no nombra; cada una es una prop con su hueco, y el componente las lee como un objeto (SDD-55) |
+| 157 | Spread | Sobre un elemento nativo, `...obj` escribe sus escalares como atributos (sin `on*`, URL guardadas, lo explícito gana) y quita los que deja de escribir (SDD-55). Precisa la 146 |
