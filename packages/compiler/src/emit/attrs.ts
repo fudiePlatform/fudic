@@ -461,6 +461,11 @@ export interface ValueSink {
   readonly repeats: boolean;
   once(expr: string, write: (value: string) => string): void;
   bound(expr: string, write: (value: string) => string): void;
+  /**
+   * A write that needs what it wrote LAST as well as the value — a native spread, which has to
+   * take off the attributes its objects no longer write. `prev` is `undefined` the first time.
+   */
+  diff(expr: string, write: (value: string, prev: string) => string): void;
 }
 
 /** The single-body sink: the server, and the fabricate body inside a `@foreach`. */
@@ -472,6 +477,9 @@ export function inlineSink(w: CodeWriter): ValueSink {
     },
     bound: (expr, write) => {
       w.line(`{ const $v = ${expr}; ${write('$v')} }`);
+    },
+    diff: (expr, write) => {
+      w.line(write(expr, 'undefined'));
     },
   };
 }
@@ -560,4 +568,26 @@ export function writeElementAttrs(
     if (classExprs.length === 0) fixed.line(`$dom.setAttr(${v}, 'class', ${expr});`);
     else values.once(expr, ($v) => `$dom.setAttr(${v}, 'class', ${$v});`);
   }
+  if (!host.isComponent) writeSpreadAttrs(source, el, v, values);
+}
+
+/**
+ * `<input ...resto>`: the spreads of a NATIVE element, as one write of all their objects in
+ * order (`$dom.setAttrs`). On a component the same `...` hands props over and never reaches
+ * here as attributes. What the element writes explicitly — a plain attribute, or the `class`
+ * a `class:` composes — is left out of the spread wherever it sits, as an explicit `.prop` wins
+ * over a props spread.
+ */
+function writeSpreadAttrs(source: string, el: ElementNode, v: string, values: ValueSink): void {
+  const objects: string[] = [];
+  const except = new Set<string>();
+  for (const attr of el.attributes) {
+    const b = classifyAttribute(attr, source).value;
+    if (b.type === 'attr') except.add(b.name);
+    else if (b.type === 'class') except.add('class');
+    else if (b.type === 'spread' && b.expr !== null) objects.push(`(${source.slice(b.expr.start, b.expr.end)})`);
+  }
+  if (objects.length === 0) return;
+  const names = JSON.stringify([...except]);
+  values.diff(`[${objects.join(', ')}]`, ($v, prev) => `$dom.setAttrs(${v}, ${$v}, ${prev}, ${names});`);
 }

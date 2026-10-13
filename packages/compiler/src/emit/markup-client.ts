@@ -528,7 +528,7 @@ export class ClientMarkupEmitter {
    * because one signal moved. The comparison is a string against a string; the write it
    * saves is a DOM mutation.
    */
-  #applyValue(value: readonly LinePart[], write: (v: string) => string): number {
+  #applyValue(value: readonly LinePart[], write: (v: string) => string, keepPrev = false): number {
     this.#expressions.push(value);
     const slot = this.#writes++;
     if (this.#inPlace) {
@@ -541,7 +541,9 @@ export class ClientMarkupEmitter {
     } else {
       this.#apply.mappedLine('$v = ', ...value, ';');
     }
-    this.#apply.line(`if ($v !== $w[${slot}]) { $w[${slot}] = $v; ${write('$v')} }`);
+    // `$o` is what the slot held before this write, for the one write that reads it: a spread.
+    const prev = keepPrev ? `const $o = $w[${slot}]; ` : '';
+    this.#apply.line(`if ($v !== $w[${slot}]) { ${prev}$w[${slot}] = $v; ${write('$v')} }`);
     return slot;
   }
 
@@ -569,6 +571,13 @@ export class ClientMarkupEmitter {
       repeats: true,
       once: (expr, write) => this.#applyValue([expr], write),
       bound: (expr, write) => this.#applyValue([expr], write),
+      // A native spread. `h` writes nothing — the server painted the attributes — but it does
+      // record which objects painted them, or the first update would not know which attributes
+      // are the spread's to take off.
+      diff: (expr, write) => {
+        const slot = this.#applyValue([expr], ($v) => write($v, '$o'), true);
+        this.#adopt.line(`$w[${slot}] = ${expr};`);
+      },
     };
   }
 

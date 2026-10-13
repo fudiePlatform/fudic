@@ -19,3 +19,4 @@ export { type Cursor, cursorOf } from './cursor.js';
 export { emit } from './emit.js';
 export { type TrustedURL, trustedUrl, isTrustedUrl, safeUrl, guardUrl, INERT_URL } from './url.js';
 export { type TrustedHTML, trustedHtml, isTrustedHtml, htmlOf } from './html.js';
+export { type AttrsDiff, attrsOf, attrsDiff } from './attrs.js';

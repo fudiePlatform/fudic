@@ -241,21 +241,16 @@ function reported(source: string): readonly string[] {
   return out.map((d) => `${d.code} ${source.slice(d.span.start, d.span.end)}`);
 }
 
-describe('FUD0992 — a spread goes on a component', () => {
+describe('FUD0992 — a spread goes on a component or a native element', () => {
   const comp = (markup: string): string =>
     '@code {\n  const item = {};\n}\n' + `<x-a ...item><template shadowrootmode="open">${markup}</template></x-a>\n`;
 
-  it('on a native element', () => {
-    // Three: the `<div>`, the nested `<span>` and — first in document order — the wrapper.
-    expect(reported(comp('<div ...item></div><p><span ...item></span></p>'))).toEqual([
-      'FUD0992 ...item',
-      'FUD0992 ...item',
-      'FUD0992 ...item',
-    ]);
+  it('not on a native element, where it writes attributes: only the wrapper is reported', () => {
+    expect(reported(comp('<div ...item></div><p><span ...item></span></p>'))).toEqual(['FUD0992 ...item']);
   });
 
-  it('on the component´s own host wrapper, and on an SVG element', () => {
-    const source = '@code {\n  const item = {};\n}\n<x-a ...item><template shadowrootmode="open"><svg><font-face ...item></font-face></svg></template></x-a>\n';
+  it('on the component´s own host wrapper and its shadow template, and not on an SVG element', () => {
+    const source = '@code {\n  const item = {};\n}\n<x-a ...item><template shadowrootmode="open" ...item><svg><font-face ...item></font-face></svg></template></x-a>\n';
     expect(reported(source)).toEqual(['FUD0992 ...item', 'FUD0992 ...item']);
   });
 

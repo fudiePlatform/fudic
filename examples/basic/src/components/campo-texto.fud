@@ -27,7 +27,7 @@
   <template shadowrootmode="open">
     <label class="campo">
       <span>@label</span>
-      <input placeholder=@resto.placeholder>
+      <input ...resto>
     </label>
     <p class="eco">placeholder: @resto.placeholder · required: @(String(resto.required)) · maxlength: @(String(resto.maxlength))</p>
   </template>
