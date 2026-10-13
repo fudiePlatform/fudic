@@ -174,6 +174,13 @@ describe('the shapes the example does not hold (§3.8)', () => {
     expect(view('<x-b .v=@(deCliente2 + 1)></x-b>')).toEqual(['FUD0907 deCliente2']);
   });
 
+  it('a ref is no read of the view: it names a @client variable it WRITES (decision 30)', () => {
+    expect(view('<input ref=@deCliente2>')).toEqual([]);
+    expect(view('<x-b .v=@deCliente2 ref=@deCliente2></x-b><p>@(deCliente2 + 1)</p>')).toEqual([
+      'FUD0907 deCliente2',
+    ]);
+  });
+
   it('the attributes by their values', () => {
     expect(view('<a href="data:text/html,x">x</a><img alt="" src="data:image/png,x">')).toEqual([
       'FUD0915 href',
