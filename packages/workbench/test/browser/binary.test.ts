@@ -4,7 +4,7 @@
  */
 
 import { execFileSync, execSync, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { tempProject, type TempProject } from '../helpers/project.js';
@@ -76,6 +76,47 @@ function running(text: string): boolean {
   return out.includes(text);
 }
 
+/** Closes a binary as the editor does and waits for it: its folder is locked while it lives. */
+async function closed(proc: ChildProcessWithoutNullStreams | undefined): Promise<void> {
+  if (proc === undefined || proc.exitCode !== null) return;
+  const exited = new Promise((done) => proc.on('exit', done));
+  proc.stdin.end();
+  await exited;
+}
+
+describe('two binaries — criterion 4 of BUG-48', () => {
+  let other: ChildProcessWithoutNullStreams | undefined;
+
+  afterEach(async () => {
+    await closed(other);
+    await closed(child);
+    other = undefined;
+  });
+
+  it('on the same component, closing one leaves the pages of the other in 200', async () => {
+    project = tempProject('bin-two');
+    const first = await launch([project.path(TABS)]);
+    other = child;
+    const second = await launch([project.path(TABS)]);
+    const page = `${String(second.line['url']).replace(/\/__bench\/.*$/u, '')}/app-tabs/app-tabs`;
+    expect((await fetch(page, { headers: { accept: 'text/html' } })).status).toBe(200);
+
+    other!.stdin.end();
+    expect(await first.exited).toBe(0);
+    expect((await fetch(page, { headers: { accept: 'text/html' } })).status).toBe(200);
+    expect(existsSync(project.path(`node_modules/.fudic-bench/${child!.pid}`))).toBe(true);
+  }, 90_000);
+
+  it('sweeps the folder of a dead process when it starts', async () => {
+    project = tempProject('bin-sweep');
+    // Above Linux's pid_max and not a multiple of 4 (no Windows pid is); and the per-tag layout.
+    mkdirSync(project.path('node_modules/.fudic-bench/999999999/routes'), { recursive: true });
+    mkdirSync(project.path('node_modules/.fudic-bench/app-tabs/routes'), { recursive: true });
+    await launch([project.path(TABS)]);
+    expect(readdirSync(project.path('node_modules/.fudic-bench'))).toEqual([String(child!.pid)]);
+  }, 90_000);
+});
+
 describe('the binary — criterion 22', () => {
   it('prints the JSON line and lives; closing stdin closes Chrome and deletes the folder', async () => {
     project = tempProject('bin');
@@ -87,7 +128,7 @@ describe('the binary — criterion 22', () => {
       criteria: 1,
     });
     expect((await fetch(String(line['url']))).status).toBe(200);
-    expect(existsSync(project.path('node_modules/.fudic-bench/app-tabs'))).toBe(true);
+    expect(existsSync(project.path(`node_modules/.fudic-bench/${child!.pid}`))).toBe(true);
 
     // Playwright's Chrome is a child of the binary, with a profile folder of its own.
     const chrome = children(child!.pid!).find((c) => /chrome/iu.test(c));
@@ -103,9 +144,10 @@ describe('the binary — criterion 22', () => {
   it('with --keep, leaves the folder of pages', async () => {
     project = tempProject('bin-keep');
     const { exited } = await launch([TABS, '--keep', '--port', '0']);
+    const pid = child!.pid!;
     child!.stdin.end();
     expect(await exited).toBe(0);
-    expect(existsSync(project.path('node_modules/.fudic-bench/app-tabs/routes/app-tabs.fud'))).toBe(true);
+    expect(existsSync(project.path(`node_modules/.fudic-bench/${pid}/routes/app-tabs/app-tabs.fud`))).toBe(true);
   }, 90_000);
 
   it('with a page, an error line with FUD0970 and exit code 1', async () => {

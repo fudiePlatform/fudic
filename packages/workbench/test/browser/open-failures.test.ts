@@ -132,6 +132,6 @@ describe('openWorkbench, failing', () => {
     const s = await open(TABS, { keep: true });
     await shell!.next(resultOf('a'));
     await s.close();
-    expect(existsSync(project.path('node_modules/.fudic-bench/app-tabs/routes/a.fud'))).toBe(true);
+    expect(existsSync(project.path(`node_modules/.fudic-bench/${process.pid}/routes/app-tabs/a.fud`))).toBe(true);
   }, 60_000);
 });

@@ -24,7 +24,7 @@ describe('app-slotted and app-frame', () => {
   let bench: TestBench;
 
   beforeAll(async () => {
-    bench = await startBench(PROJECT, 'app-frame');
+    bench = await startBench(PROJECT);
   }, 60_000);
 
   afterAll(async () => {
@@ -75,7 +75,7 @@ describe('criterion 15 — the signal the component writes is the host\'s, alive
   let bench: TestBench;
 
   beforeAll(async () => {
-    bench = await startBench(PROJECT, 'app-bump');
+    bench = await startBench(PROJECT);
   }, 60_000);
 
   afterAll(async () => {

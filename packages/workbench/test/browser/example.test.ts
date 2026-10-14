@@ -24,7 +24,7 @@ describe('app-card of the example', () => {
   let bench: TestBench;
 
   beforeAll(async () => {
-    bench = await startBench(EXAMPLE, 'app-card', 'app-card-engine-test');
+    bench = await startBench(EXAMPLE);
   }, 60_000);
 
   afterAll(async () => {
@@ -76,7 +76,7 @@ describe('criterion 15 — a Signal prop from the fixture, alive', () => {
   let bench: TestBench;
 
   beforeAll(async () => {
-    bench = await startBench(EXAMPLE, 'signal-display');
+    bench = await startBench(EXAMPLE);
   }, 60_000);
 
   afterAll(async () => {

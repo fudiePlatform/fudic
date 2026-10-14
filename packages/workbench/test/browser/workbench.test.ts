@@ -137,8 +137,28 @@ describe('criterion 18 — red, save the fix, green', () => {
     expect(running.ids).toEqual(['cambia-de-pestana']);
     const after = sh.messages.indexOf(running);
     expect(await sh.next(resultOf('cambia-de-pestana'), after)).toMatchObject({ verdict: 'pass' });
-    // Vite's full-reload, not the 10 s fallback, started the run.
     expect(Date.now() - saved).toBeLessThan(9_000);
+  }, 90_000);
+});
+
+describe('criterion 1 of BUG-48 — saving a .fud with no client JS', () => {
+  /** Nothing hydrates: no client graph holds it, and Vite sends no full-reload for it. */
+  const STILL = (word: string) =>
+    `<app-still>\n  <template shadowrootmode="open">\n    <p>${word}</p>\n  </template>\n</app-still>\n`;
+
+  it('is running in well under a second, with no timer in between', async () => {
+    project = tempProject('no-client-js');
+    project.write('src/components/app-still.fud', STILL('before'));
+    project.write('src/components/app-still.fudspec', 'component app-still\n\ncriterion dice\n  then\n    text app-still "after"\n');
+    const { shell: sh } = await open(project, 'src/components/app-still.fud');
+    expect(await sh.next(resultOf('dice'))).toMatchObject({ verdict: 'fail' });
+
+    const from = sh.messages.length;
+    const saved = Date.now();
+    project.write('src/components/app-still.fud', STILL('after'));
+    await sh.next(isRunning, from, 5_000);
+    expect(Date.now() - saved).toBeLessThan(2_000);
+    expect(await sh.next(resultOf('dice'), from)).toMatchObject({ verdict: 'pass' });
   }, 90_000);
 });
 
@@ -157,12 +177,12 @@ describe('criterion 19 — saving the .fudspec or a term', () => {
     expect(next.criteria.map((c) => c.id)).toEqual(['cambia-de-pestana', 'empieza-en-a']);
     expect(next.criteria[1]).toEqual({
       id: 'empieza-en-a',
-      route: '/empieza-en-a',
+      route: '/app-tabs/empieza-en-a',
       steps: [{ block: 'then', text: 'role:tabpanel says "panel A"' }],
     });
     expect(await sh.next(resultOf('empieza-en-a'), from)).toMatchObject({ verdict: 'pass' });
     const origin = s.url.replace('/__bench/', '');
-    const page = await fetch(`${origin}/empieza-en-a`, { headers: { accept: "text/html" } });
+    const page = await fetch(`${origin}/app-tabs/empieza-en-a`, { headers: { accept: "text/html" } });
     expect(page.status).toBe(200);
   }, 90_000);
 
@@ -228,8 +248,8 @@ describe('criterion 21 — one port: shell, its socket and Vite\'s HMR', () => {
         '() => [...document.querySelectorAll(".card")].map((c) => [c.querySelector("h2").firstChild.textContent, c.dataset.verdict, new URL(c.querySelector("iframe").src).pathname])',
       );
       expect(cards).toEqual([
-        ['cambia-de-pestana', 'pass', '/cambia-de-pestana'],
-        ['falla', 'fail', '/falla'],
+        ['cambia-de-pestana', 'pass', '/app-tabs/cambia-de-pestana'],
+        ['falla', 'fail', '/app-tabs/falla'],
       ]);
       expect(await page.evaluate<string>('() => document.title')).toBe('Workbench · app-tabs');
     } finally {

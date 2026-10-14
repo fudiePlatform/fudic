@@ -25,7 +25,7 @@ tareas «Tests» y deja la cobertura en el suelo, en su propio worktree sobre es
 | [x] | 2 | — | **Sin typecheck.** `fudic({ routesDir, liveCheck: false })` (BUG §4.2) | `src/vite.ts` |
 | [x] | 3 | — | **Carpeta por proceso.** `node_modules/.fudic-bench/<pid>/`; al arrancar se borran las hermanas de `pid` muerto (BUG §4.3) | `src/pages.ts` · `src/bench-dir.ts` |
 | [x] | 4 | 3 | **Páginas antes que Vite.** La página desnuda `routes/<tag>.fud` se escribe antes de `startVite`; los criterios pasan ya a `routes/<tag>/<slug>.fud` (BUG §4.2, corregido: un slug puede empezar por `_`) | `src/pages.ts` · `src/open.ts` |
-| [ ] | 5 | 1–4 | **Tests.** Criterios 1, 2, 3 y 4. El 1 con un Vite real y un `.fud` sin JS de cliente; se ve en rojo con el código de `main` | `test/rerun.test.ts` · `test/launch.test.ts` · `test/bench-dir.test.ts` |
+| [x] | 5 | 1–4 | **Tests.** Criterios 1, 2, 3 y 4. El 1 con un Vite real y un `.fud` sin JS de cliente; se ve en rojo con el código de `main` | `test/rerun.test.ts` · `test/launch.test.ts` · `test/bench-dir.test.ts` |
 | [ ] | 6 | 5 | **Prueba rápida de Pedro.** Guardar `app-card.fud` con el banco abierto se ve en menos de un segundo | — |
 
 ## Fase 2 — Un proceso por proyecto (4)

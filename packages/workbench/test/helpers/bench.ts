@@ -45,11 +45,11 @@ export interface TestBench {
 }
 
 /**
- * One workbench folder per project and tag, as the session lays it out. `folder` names it
- * otherwise, for a test that shares a project with a real workbench running in parallel.
+ * The workbench folder of this test process, as a real workbench lays it out: keyed by pid, so
+ * a real workbench running in parallel on the same project neither shares nor sweeps it.
  */
-export async function startBench(root: string, tag: string, folder = tag): Promise<TestBench> {
-  const dir = benchDir({ tag: folder, component: '', spec: null, fixture: null, projectRoot: root });
+export async function startBench(root: string): Promise<TestBench> {
+  const dir = benchDir(root);
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(`${dir}/routes`, { recursive: true });
 
@@ -59,7 +59,7 @@ export async function startBench(root: string, tag: string, folder = tag): Promi
     configFile: false,
     appType: 'custom',
     logLevel: (process.env.BENCH_LOG as 'info' | undefined) ?? 'silent',
-    plugins: [fudic({ routesDir: slashes(relative(root, `${dir}/routes`)) })],
+    plugins: [fudic({ routesDir: slashes(relative(root, `${dir}/routes`)), liveCheck: false })],
     server: { middlewareMode: true, hmr: { server: http, overlay: false } },
   });
   const requests: string[] = [];
@@ -84,7 +84,7 @@ export async function startBench(root: string, tag: string, folder = tag): Promi
     requests,
     slow: null,
     plan(target, spec, fixtures = {}) {
-      const plan = planBench({ target, spec: parseSpec(spec).value, fixtures });
+      const plan = planBench({ target, spec: parseSpec(spec).value, fixtures, dir });
       for (const [file, content] of plan.files) {
         const path = `${dir}/${file}`;
         mkdirSync(dirname(path), { recursive: true });

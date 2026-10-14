@@ -38,7 +38,7 @@ let browser: BrowserLike;
 let criteria: readonly PlannedCriterion[];
 
 beforeAll(async () => {
-  bench = await startBench(PROJECT, 'app-tabs');
+  bench = await startBench(PROJECT);
   browser = await chrome();
   criteria = bench.plan(target(PROJECT, 'app-tabs', false), SPEC).criteria;
 }, 60_000);
