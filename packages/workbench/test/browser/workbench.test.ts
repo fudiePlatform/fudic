@@ -134,10 +134,11 @@ describe('criterion 18 — red, save the fix, green', () => {
     const saved = Date.now();
     project.write(TABS, fixed);
     const running = await sh.next(isRunning, from);
+    // Vite processed the save: no timer in between.
+    expect(Date.now() - saved).toBeLessThan(2_000);
     expect(running.ids).toEqual(['cambia-de-pestana']);
     const after = sh.messages.indexOf(running);
     expect(await sh.next(resultOf('cambia-de-pestana'), after)).toMatchObject({ verdict: 'pass' });
-    expect(Date.now() - saved).toBeLessThan(2_000);
   }, 90_000);
 });
 

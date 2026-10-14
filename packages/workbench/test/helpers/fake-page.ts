@@ -35,6 +35,8 @@ export function fakePage(
     closed: false,
     fail: (message) => listener(message),
     async goto(url) {
+      // As Playwright does: a closed page refuses to navigate.
+      if (page.closed) throw new Error('page.goto: Target page, context or browser has been closed');
       calls.push(`goto ${url}`);
       if (options.goto !== undefined) return options.goto();
       return options.status === undefined ? 200 : options.status;

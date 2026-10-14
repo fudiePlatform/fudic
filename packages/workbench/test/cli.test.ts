@@ -193,6 +193,7 @@ describe('main — criteria 5 and 10, commands on stdin', () => {
         tag: 'app-badge',
         component: 'C:/p/app-badge.fud',
         criteria: 1,
+        file: 'C:/p/app-badge.fud',
       },
       {
         v: 2,
