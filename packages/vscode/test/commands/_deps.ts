@@ -105,6 +105,8 @@ export const commandFixture = (options: {
         open: async (file) => {
           workbenchOpens.push(file);
         },
+        run: async () => undefined,
+        focus: () => undefined,
         closeAll: () => undefined,
       },
       logger: { info: (message) => log.push(message) },

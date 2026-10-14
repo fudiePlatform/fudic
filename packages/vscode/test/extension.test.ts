@@ -8,23 +8,28 @@
  * whether or not activation ever got anywhere.
  */
 
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { activate, createClient, deactivate, openWorkbenchPanel } from '../src/extension.js';
+import { activate, createClient, createWorkbenchResults, deactivate, openWorkbenchPanel } from '../src/extension.js';
 import { LanguageClient } from './_languageclient-stub.js';
 import {
   caretEvent,
+  changeTheme,
+  DiagnosticSeverity,
   editorFor,
   focusEditor,
   moveCaret,
+  Range,
   reset,
+  showEditors,
   state,
   typeInto,
+  visibleEditor,
 } from './_vscode-stub.js';
 import type { ExtensionContext, OutputChannel } from 'vscode';
-import type { ClientLaunch } from '../src/ports.js';
+import type { ClientLaunch, CriterionView } from '../src/ports.js';
 
 const context = (): ExtensionContext =>
   ({ extensionPath: '/ext', subscriptions: [] }) as unknown as ExtensionContext;
@@ -342,8 +347,9 @@ describe('the workbench, through the adapter (SDD-32)', () => {
   const fileEditor = (languageId: string, fsPath: string) =>
     ({ ...editorFor(languageId), document: { ...editorFor(languageId).document, uri: { fsPath, toString: () => fsPath } } }) as never;
 
-  it('opens a webview beside the editor that frames the URL, with scripts and kept context', () => {
-    const tab = openWorkbenchPanel({ title: 'Workbench · app-card', url: 'http://127.0.0.1:5000/__bench/' });
+  it('opens a webview beside the editor that frames the shell in the editor\'s theme, with scripts and kept context', () => {
+    state.themeKind = 2;
+    const tab = openWorkbenchPanel({ title: 'Workbench · app-card', url: 'http://127.0.0.1:5000/__bench/app-card/' });
     const panel = state.panels[0]!;
     expect(panel).toMatchObject({
       viewType: 'fudic.workbench',
@@ -351,11 +357,11 @@ describe('the workbench, through the adapter (SDD-32)', () => {
       column: -2,
       options: { enableScripts: true, retainContextWhenHidden: true },
     });
-    expect(panel.webview.html).toContain('<iframe src="http://127.0.0.1:5000/__bench/"');
+    expect(panel.webview.html).toContain('src="http://127.0.0.1:5000/__bench/app-card/?host=vscode&amp;theme=dark"');
 
     // Criterion 26: the button opens the same URL outside.
     panel.receive('openInBrowser');
-    expect(state.external).toEqual(['http://127.0.0.1:5000/__bench/']);
+    expect(state.external).toEqual(['http://127.0.0.1:5000/__bench/app-card/']);
 
     tab.reveal();
     expect(panel.revealed).toBe(1);
@@ -365,6 +371,27 @@ describe('the workbench, through the adapter (SDD-32)', () => {
     tab.onClosed(() => (closed += 1));
     panel.dispose();
     expect(closed).toBe(1);
+  });
+
+  it('opens the file the shell asks for at its line, and tells the shell when the theme changes', () => {
+    openWorkbenchPanel({ title: 'Workbench · app-card', url: 'http://127.0.0.1:5000/__bench/app-card/' });
+    const panel = state.panels[0]!;
+    panel.receive({ type: 'open', file: '/work/app/app-card.fudspec', line: 8 });
+    expect(state.shownDocuments).toHaveLength(1);
+    const [uri, options] = state.shownDocuments[0] as [{ fsPath: string }, { viewColumn: number; selection: unknown }];
+    expect(uri.fsPath.replaceAll('\\', '/')).toBe('/work/app/app-card.fudspec');
+    expect(options).toEqual({ viewColumn: 1, selection: new Range(7, 0, 7, 0) });
+
+    changeTheme(1);
+    changeTheme(3);
+    expect(panel.webview.posted).toEqual([
+      { type: 'theme', theme: 'light' },
+      { type: 'theme', theme: 'dark' },
+    ]);
+    // Closed, it listens no more.
+    panel.dispose();
+    changeTheme(2);
+    expect(panel.webview.posted).toHaveLength(2);
   });
 
   it('registers fudic.openWorkbench, and warns when the workspace has no @fudic/workbench', async () => {
@@ -397,7 +424,7 @@ describe('the workbench, through the adapter (SDD-32)', () => {
       const mark = join(root, 'closed.txt');
       writeFileSync(
         join(bin, 'bin.js'),
-        `process.stdout.write(JSON.stringify({ url: 'http://127.0.0.1:5000/__bench/', tag: 'app-card', criteria: 1 }) + '\\n');\n` +
+        `process.stdout.write(JSON.stringify({ url: 'http://127.0.0.1:5000/__bench/app-card/', tag: 'app-card', component: ${JSON.stringify(join(root, 'app-card.fud'))}, criteria: 1 }) + '\\n');\n` +
           `process.stdin.on('end', () => { require('fs').writeFileSync(${JSON.stringify(mark)}, 'closed'); process.exit(0); });\n` +
           'process.stdin.resume();\n',
       );
@@ -417,4 +444,131 @@ describe('the workbench, through the adapter (SDD-32)', () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+});
+
+describe('the .fudspec, through the adapter — criterion 14 (BUG-48)', () => {
+  const SPEC = '/work/app/app-card.fudspec';
+  const views: CriterionView[] = [
+    { id: 'a', line: 2, state: 'pass' },
+    { id: 'b', line: 7, state: 'fail', problem: 'b: app-card says "A title" — expected "A title", got "A tilte"' },
+    { id: 'c', line: 12, state: 'error', problem: 'c: the page answered 500' },
+    { id: 'd', line: 17, state: 'running' },
+    { id: 'e', line: 22, state: 'waiting' },
+  ];
+
+  it('puts each criterion that did not pass in Problems at its line, and paints the margin of the editors in view', () => {
+    const results = createWorkbenchResults();
+    const spec = visibleEditor(SPEC);
+    const other = visibleEditor('/work/app/app-tabs.fudspec');
+    state.visibleEditors = [spec, other];
+    results.show('\\work\\app\\app-card.fudspec', views);
+
+    const problems = state.problems.get('fudic-workbench')!.byPath.get(SPEC)!;
+    expect(problems.map((d) => [d.range.startLine, d.message, d.severity, d.source])).toEqual([
+      [7, views[1]!.problem, DiagnosticSeverity.Error, 'fudic workbench'],
+      [12, views[2]!.problem, DiagnosticSeverity.Error, 'fudic workbench'],
+    ]);
+
+    const [pass, fail, running] = state.decorationTypes.map((_, i) => i);
+    const painted = (editor: ReturnType<typeof visibleEditor>, index: number) =>
+      [...editor.painted.entries()].find(([type]) => (type as { type: unknown }).type === state.decorationTypes[index])![1].map(
+        (range) => range.startLine,
+      );
+    expect([painted(spec, pass!), painted(spec, fail!), painted(spec, running!)]).toEqual([[2], [7, 12], [17]]);
+    expect([painted(other, pass!), painted(other, fail!), painted(other, running!)]).toEqual([[], [], []]);
+    expect(state.decorationTypes.map((t) => (t.options as { gutterIconPath: { toString(): string } }).gutterIconPath.toString())).toEqual(
+      ['#2ea043', '#e5534b', '#8e8e93'].map((color) => expect.stringContaining(encodeURIComponent(color).replace('#', '%23').slice(3)) as unknown),
+    );
+
+    // An editor that comes into view later is painted on the next repaint.
+    const late = visibleEditor(SPEC);
+    state.visibleEditors = [late];
+    results.repaint();
+    expect(painted(late, fail!)).toEqual([7, 12]);
+
+    results.clear(SPEC);
+    expect(state.problems.get('fudic-workbench')!.byPath.has(SPEC)).toBe(false);
+    expect(painted(late, fail!)).toEqual([]);
+
+    results.dispose();
+    expect(state.problems.get('fudic-workbench')!.disposed).toBe(true);
+    expect(state.decorationTypes.every((t) => t.disposed)).toBe(true);
+  });
+
+  it('offers Run over each criterion and Run failing over the first, running fudic.runCriterion', async () => {
+    await activate(context());
+    const lenses = state.codeLensProviders[0]!;
+    expect(lenses.selector).toEqual({ language: 'fudspec' });
+    const document = { getText: () => 'component app-card\n\ncriterion a\n\ncriterion b\n', uri: { fsPath: 'C:\\work\\app-card.fudspec' } };
+    expect(lenses.provider.provideCodeLenses(document).map((l) => [l.range.startLine, l.command])).toEqual([
+      [2, { title: '▶ Run failing', command: 'fudic.runCriterion', arguments: ['C:/work/app-card.fudspec', null] }],
+      [2, { title: '▶ Run', command: 'fudic.runCriterion', arguments: ['C:/work/app-card.fudspec', 'a'] }],
+      [4, { title: '▶ Run', command: 'fudic.runCriterion', arguments: ['C:/work/app-card.fudspec', 'b'] }],
+    ]);
+    expect(state.commandHandlers.has('fudic.runCriterion')).toBe(true);
+    expect(state.benchBar).toMatchObject({ command: 'fudic.openWorkbench', visible: false });
+  });
+
+  it('end to end with a stand-in binary: Problems, margin and status follow its lines, and a lens sends run on its stdin', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'fudic-ext-'));
+    try {
+      const bin = join(root, 'node_modules', '@fudic', 'workbench', 'dist');
+      mkdirSync(bin, { recursive: true });
+      const spec = join(root, 'app-card.fudspec').replaceAll('\\', '/');
+      const stdin = join(root, 'stdin.txt');
+      const line = (value: object) => `process.stdout.write(${JSON.stringify(JSON.stringify(value))} + '\\n');\n`;
+      writeFileSync(
+        join(bin, 'bin.js'),
+        line({ url: 'http://127.0.0.1:5000/__bench/app-card/', tag: 'app-card', component: join(root, 'app-card.fud'), criteria: 1 }) +
+          line({
+            v: 2,
+            type: 'session',
+            tag: 'app-card',
+            spec,
+            diagnostics: [],
+            criteria: [{ id: 'a', route: '/app-card/a', line: 3, steps: [{ block: 'then', text: 'app-card says "x"', file: null }] }],
+          }) +
+          line({
+            v: 2,
+            type: 'result',
+            tag: 'app-card',
+            id: 'a',
+            verdict: 'fail',
+            ms: 1,
+            steps: [{ block: 'then', term: 'text', pass: false, evidence: { expected: 'x', actual: 'y' } }],
+            shots: {},
+            marks: [],
+            pageErrors: [],
+          }) +
+          `process.stdin.on('data', (d) => require('fs').appendFileSync(${JSON.stringify(stdin)}, d));\n` +
+          `process.stdin.on('end', () => { require('fs').writeFileSync(${JSON.stringify(join(root, 'closed.txt'))}, 'closed'); process.exit(0); });\n`,
+      );
+      state.folders = [{ uri: { fsPath: root } }];
+      state.settings['fudic.workbench.node'] = process.execPath;
+      state.activeEditor = { ...editorFor('fudspec'), document: { ...editorFor('fudspec').document, uri: { fsPath: spec, toString: () => spec } } } as never;
+      const editor = visibleEditor(spec);
+      await activate(context());
+      showEditors([editor]);
+
+      await (state.commandHandlers.get('fudic.runCriterion') as (file: string, id: string | null) => Promise<void>)(spec, 'a');
+      await vi.waitFor(() => expect(state.problems.get('fudic-workbench')!.byPath.get(spec)?.map((d) => d.message)).toEqual([
+        'a: app-card says "x" — expected "x", got "y"',
+      ]));
+      expect([...editor.painted.values()].map((ranges) => ranges.map((r) => r.startLine))).toEqual([[], [2], []]);
+      expect(state.benchBar).toMatchObject({ text: '$(beaker) app-card 0/1', visible: true });
+
+      // Open now: the lens runs that criterion on the process's stdin.
+      await (state.commandHandlers.get('fudic.runCriterion') as (file: string, id: string | null) => Promise<void>)(spec, 'a');
+      await vi.waitFor(() => expect(existsSync(stdin) && readFileSync(stdin, 'utf8')).toBe('{"v":2,"type":"run","tag":"app-card","ids":["a"]}\n'));
+
+      // Another editor in focus: the status bar has nothing to say of it.
+      focusEditor(editorFor('typescript'));
+      expect(state.benchBar.visible).toBe(false);
+      await deactivate();
+      await vi.waitFor(() => expect(existsSync(join(root, 'closed.txt'))).toBe(true), { timeout: 5000 });
+    } finally {
+      // Windows holds the folder while the stand-in is still going away.
+      await vi.waitFor(() => rmSync(root, { recursive: true, force: true }), { timeout: 10_000 });
+    }
+  }, 30_000);
 });

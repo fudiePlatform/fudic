@@ -11,7 +11,7 @@ const MOUNT = 'body > app-card';
 const SHOT = `screenshot {"css":"${MOUNT}"}`;
 
 function criterion(steps: PlannedStep[], extra: { error?: string } = {}): PlannedCriterion {
-  return { id: 'c', route: '/c', mount: MOUNT, fixture: null, steps, ...extra };
+  return { id: 'c', route: '/c', mount: MOUNT, offset: 0, fixture: null, steps, ...extra };
 }
 
 type Run = (ctx: TermContext, args: Readonly<Record<string, unknown>>) => Promise<{ pass: boolean; evidence: unknown }>;

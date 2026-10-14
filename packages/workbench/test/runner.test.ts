@@ -5,7 +5,7 @@ import type { Verdict } from '../src/protocol.js';
 import { DEFAULT_WORKERS, runOrder, runPool } from '../src/runner.js';
 
 function criterion(id: string): PlannedCriterion {
-  return { id, route: `/t/${id}`, mount: 'body > t', fixture: null, steps: [] };
+  return { id, route: `/t/${id}`, mount: 'body > t', offset: 0, fixture: null, steps: [] };
 }
 
 function result(id: string): CriterionResult {

@@ -118,7 +118,14 @@ describe('planBench — criterion 4, a criterion without props', () => {
       dir: DIR,
     });
     expect(plan.criteria).toEqual([
-      { id: 'bare', route: '/app-card/bare', mount: 'body > app-card', fixture: null, steps: [{ block: 'then', term: 'visible', args: ['app-card'] }] },
+      {
+        id: 'bare',
+        route: '/app-card/bare',
+        mount: 'body > app-card',
+        offset: 20,
+        fixture: null,
+        steps: [{ block: 'then', term: 'visible', args: ['app-card'] }],
+      },
     ]);
     expect(plan.files.get('routes/app-card/bare.fud')).toBe(expected('bare').replace('app-card · app-card', 'app-card · bare'));
     expect(plan.files.get('routes/app-card/bare.fud')).not.toContain('@code');
@@ -131,7 +138,7 @@ describe('planBench — criterion 4, a criterion without props', () => {
       fixtures: { vacia: {} },
       dir: DIR,
     });
-    expect(plan.criteria[0]).toEqual({ id: 'empty', route: '/app-card/empty', mount: 'body > app-card', fixture: 'vacia', steps: [] });
+    expect(plan.criteria[0]).toEqual({ id: 'empty', route: '/app-card/empty', mount: 'body > app-card', offset: 20, fixture: 'vacia', steps: [] });
     expect(plan.files.get('routes/app-card/empty.fud')).not.toContain('@code');
     expect(plan.files.get('routes/app-card/empty.fud')).toContain('    <app-card></app-card>\n');
   });
@@ -143,7 +150,7 @@ describe('planBench — criterion 4, a criterion without props', () => {
       fixtures: {},
       dir: DIR,
     });
-    expect(plan.criteria).toEqual([{ id: 'app-card', route: '/app-card/app-card', mount: 'body > app-card', fixture: null, steps: [] }]);
+    expect(plan.criteria).toEqual([{ id: 'app-card', route: '/app-card/app-card', mount: 'body > app-card', offset: 0, fixture: null, steps: [] }]);
     expect([...plan.files]).toEqual([
       [MOUNT, expected('bare')],
       ['routes/app-card/app-card.fud', expected('bare')],
@@ -168,7 +175,7 @@ describe('planBench — criterion 4, a criterion without props', () => {
       fixtures: {},
       dir: DIR,
     });
-    expect(plan.criteria[0]).toEqual({ id: 'bare', route: '/app-card/bare', mount: 'body > app-card', fixture: null, steps: [] });
+    expect(plan.criteria[0]).toEqual({ id: 'bare', route: '/app-card/bare', mount: 'body > app-card', offset: 20, fixture: null, steps: [] });
     expect(plan.files.get('routes/app-card/bare.fud')).not.toContain('@code');
   });
 });
@@ -179,7 +186,7 @@ describe('planBench — a fixture entry it cannot mount', () => {
   it('ends the criterion in error, without a page, when the entry is not in the fixture', () => {
     const plan = planBench({ target: TARGET, spec: source, fixtures: { other: { title: 'x' } }, dir: DIR });
     expect(plan.criteria).toEqual([
-      { id: 'c', route: '/app-card/c', mount: 'body > app-card', fixture: 'missing', steps: [], error: 'the fixture has no entry "missing"' },
+      { id: 'c', route: '/app-card/c', mount: 'body > app-card', offset: 20, fixture: 'missing', steps: [], error: 'the fixture has no entry "missing"' },
     ]);
     expect([...plan.files.keys()]).toEqual([MOUNT]);
   });
@@ -248,6 +255,7 @@ describe('planBench — criterion 5, a Signal prop', () => {
       id: 'diez',
       route: '/signal-display/diez',
       mount: 'body > bench-host-signal-display-diez',
+      offset: 26,
       fixture: 'diez',
       steps: [{ block: 'then', term: 'text', args: ['signal-display', '10'] }],
     });
@@ -322,6 +330,7 @@ describe('planBench — criterion 6, an initial value that is not a JSON literal
       id: 'fecha',
       route: '/app-card/fecha',
       mount: 'body > app-card',
+      offset: 20,
       fixture: 'fecha',
       steps: [],
       error: 'the initial value of signal prop "value" is not a JSON literal',
