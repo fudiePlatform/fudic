@@ -330,6 +330,10 @@ Levanta el mismo servidor y el mismo motor, sin shell ni WebSocket, ejecuta toda
   `after` con las cajas de las marcas encima, y los botones *Run* (▶), *Pin* y *Live*.
 - **Sin un iframe por tarjeta.** *Live* abre **un** panel con el iframe del criterio elegido,
   vivo, que se recarga solo cuando llega un resultado de ese criterio. Cerrado por defecto.
+- **Las capturas a su tamaño real**, con scroll horizontal si el componente es ancho: encogidas
+  a la tarjeta no se leían (corregido al implementar).
+- **Un shell que se abre tarde** recibe también el último `running`, para decir cuándo y por qué
+  se ejecutó (añadido al implementar).
 - **Al recibir `session`** las tarjetas se actualizan en su sitio: se conserva el scroll y lo
   desplegado, se añaden las nuevas y se quitan las que ya no están.
 - **Teclado**: `j`/`k` mueven el foco entre tarjetas, `Enter` despliega, `l` abre *Live*.

@@ -3,7 +3,7 @@
 > **BUG:** [BUG-48 — El banco que nadie usaría](./BUG-48-el-banco-que-nadie-usaria.md)
 > **Paquetes:** `@fudic/workbench` · `fudic-vscode` · `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `bug/48-banco-usable`, desde `main`.
-> **Progreso:** 17 / 31 — `En curso` (la tarea 5 está marcada en la rama de tests).
+> **Progreso:** 18 / 31 — `En curso` (la tarea 5 está marcada en la rama de tests).
 
 Lo nuevo nace al 100 % en las cuatro métricas. `@fudic/workbench` y `fudic-vscode` no bajan de su
 suelo de `main`: antes de tocar nada se mide con `pnpm --filter <pkg> coverage` y se anota aquí.
@@ -68,7 +68,7 @@ tareas «Tests» y deja la cobertura en el suelo, en su propio worktree sobre es
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 23 | 8, 14, 16 | **El shell nuevo.** Cabecera con resumen y botones, tarjetas rojas arriba y verdes plegadas, capturas con marcas, esperado frente a obtenido, paso `ignored` atenuado, *Run*/*Pin*/*Live* por tarjeta, un solo panel *Live*, actualización en su sitio, teclado, tema y enlaces a fichero (BUG §4.8) | `src/shell.ts` |
+| [x] | 23 | 8, 14, 16 | **El shell nuevo.** Cabecera con resumen y botones, tarjetas rojas arriba y verdes plegadas, capturas con marcas, esperado frente a obtenido, paso `ignored` atenuado, *Run*/*Pin*/*Live* por tarjeta, un solo panel *Live*, actualización en su sitio, teclado, tema y enlaces a fichero (BUG §4.8) | `src/shell.ts` |
 | [ ] | 24 | 23 | **Tests.** Criterio 13, con el script del shell sobre un DOM de test y mensajes simulados | `test/shell.test.ts` |
 | [ ] | 25 | 24 | **Prueba de Pedro en el navegador.** La parte del shell del criterio 15 | — |
 
