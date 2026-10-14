@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/testing` (nuevo) · `@fudic/vite` · `@fudic/core` · `@fudic/http` ·
 > `@fudic/example-basic`
 > **Rama:** `sdd-57-tests-unitarios` (nace de `main`)
-> **Progreso:** 4 / 30 — `Listo`.
+> **Progreso:** 11 / 30 — `Listo`.
 
 **El orden manda en cuatro puntos.**
 
@@ -63,13 +63,13 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 5 | 3 | **Aplicar el DSD** (§4.2, pasos 2 y 3): del template más interno al más externo, `attachShadow` con el `init` de sus atributos, mover el contenido y quitar el template | `testing` | `src/dsd.ts` |
-| [ ] | 6 | 5 | **Apuntar el `init` y `shadowOf`** (§4.4). Envolver `attachShadow` mientras el entorno vive; `shadowOf` con el specifier de cada hoja adoptada y `'self'` para la propia | `testing` | `src/shadow.ts` |
-| [ ] | 7 | 6 | **`mount` vía `ssr`** (§4.2, paso 1): `render` con `SsrDom` y `renderToString` | `testing` | `src/mount.ts` |
-| [ ] | 8 | 7 | **Hidratación** (§4.5): `installHydration` con `document`, `resolveChunk` e `importModule` por el grafo de vitest | `testing` | `src/hydrate.ts` |
-| [ ] | 9 | 7 | **`mount` vía `client`** (§4.3): `createElement`, props como las asigna un padre | `testing` | `src/mount.ts` |
-| [ ] | 10 | 7 | **`providers` en el cliente:** un contenedor raíz del test con los proveedores encima del árbol | `testing` | `src/providers.ts` |
-| [ ] | 11 | 7–10 | **Tests.** Criterios 3, 4, 5, 7 y 8, con componentes de prueba en `test/fixtures/` | `testing` | `test/mount.test.ts` · `test/fixtures/*.fud` |
+| [x] | 5 | 3 | **Aplicar el DSD** (§4.2, pasos 2 y 3): del template más interno al más externo, `attachShadow` con el `init` de sus atributos, adoptar las hojas de `shadowrootadoptedstylesheets`, mover el contenido y quitar el template. El contenido se importa al documento antes de aplicar nada: lo que parsea un `<template>` es de su documento inerte | `testing` | `src/dsd.ts` · `src/document.ts` |
+| [x] | 6 | 5 | **Apuntar el `init` y `shadowOf`** (§4.4). Envolver `attachShadow` mientras el entorno vive; `shadowOf` con el specifier de cada hoja adoptada y `'self'` para la propia. Se instala en el `setupFiles` que registra `fudicTest()`; `forgetShadowInits` queda listo para el `afterEach` de la tarea 14 | `testing` | `src/shadow.ts` · `src/setup.ts` |
+| [x] | 7 | 6 | **`mount` vía `ssr`** (§4.2, paso 1; decisión 8.1.9): una página anfitriona virtual instancia el componente con sus props como literales JSON, y se pinta con `emitRenderChunk` + `renderRouteHtml` por el grafo de vitest. El generador del anfitrión (`src/host.ts`) es el que usará `renderSnippet` (tarea 27); el pintado de una página (`src/page.ts`) es el que reutilizará `visit` (tarea 25). Los ficheros generados van a `node_modules/.fudic-test/` (`src/cache.ts`), y el plugin `fudic:test` añade `$file` al módulo de un `.fud` | `testing` | `src/mount.ts` · `src/host.ts` · `src/page.ts` · `src/cache.ts` · `src/config.ts` |
+| [x] | 8 | 7 | **Hidratación** (§4.5): `installHydration` con `document`, `resolveChunk` e `importModule` por el grafo de vitest, e `importDeferred` con las piezas de ese grafo. El upgrade en el sitio que happy-dom no hace (decisión 8.1.10). Cada import cuenta como pendiente: `src/pending.ts` nace aquí y la tarea 13 lo completa | `testing` | `src/hydrate.ts` · `src/upgrade.ts` · `src/pending.ts` |
+| [x] | 9 | 7 | **`mount` vía `client`** (§4.3): `createElement`, props como las asigna un padre: `c([props])` en el orden de `propsOf`, y `t.props` con `u()` | `testing` | `src/mount.ts` |
+| [x] | 10 | 7 | **`providers` en el cliente:** un contenedor raíz del test con los proveedores encima del árbol, como pares `{ provide, use }` (decisión 8.1.11). El árbol se levanta como el coordinador: desde `fud-ioc` y `fud-di`, o una raíz sola | `testing` | `src/providers.ts` |
+| [x] | 11 | 7–10 | **Tests.** Criterios 3, 4, 5, 7 y 8, con componentes de prueba en `test/fixtures/` | `testing` | `test/mount.test.ts` · `test/fixtures/*.fud` |
 
 ## Fase 3 — consultas, gestos y espera (4)
 
@@ -101,14 +101,14 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 23 | 6, 9 | **La matriz.** Siete componentes de prueba (sin atributos, cada uno de los cinco `shadowroot*` y los cuatro de §6.9 juntos) montados por los dos caminos. Cada diferencia entre `ssr` y `client` se arregla en el compilador o en el runtime (decisión 8.1.5) y se anota aquí. Criterios 9 y 10 | `testing` · `core` · `compiler` | `test/template.test.ts` · `test/fixtures/tpl-*.fud` |
+| [ ] | 23 | 6, 9 | **La matriz.** Siete componentes de prueba (sin atributos, cada uno de los cinco `shadowroot*` y los cuatro de §6.9 juntos) montados por los dos caminos. Cada diferencia entre `ssr` y `client` se arregla en el compilador o en el runtime (decisión 8.1.5) y se anota aquí. Criterios 9 y 10. **Ya visto:** el serializador de `@fudic/ssr` no escribe `shadowrootclonable` ni `shadowrootserializable` en el `<template>`, así que por `ssr` esas dos opciones salen siempre a `false` | `testing` · `core` · `compiler` | `test/template.test.ts` · `test/fixtures/tpl-*.fud` |
 | [ ] | 24 | 7 | **El contrato del HTML:** `renderToHtml` y el matcher `toContainTemplate`. Criterio 11 | `testing` | `src/matchers.ts` · `test/template.test.ts` |
 
 ## Fase 7 — rutas, layouts y snippets (3)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 25 | 8, 17 | **`visit`** (§4.9): routing del plugin, `emitRenderChunk`, `load` por el grafo de vitest o `data` en su lugar, y el documento entero sustituido. `@fudic/vite` expone lo que haga falta sin cambiar `vite dev`. Criterios 21, 22 y 23 | `testing` · `vite` | `src/visit.ts` · `test/visit.test.ts` · `test/fixtures/app/` |
+| [ ] | 25 | 8, 17 | **`visit`** (§4.9): routing del plugin, `emitRenderChunk`, `load` por el grafo de vitest o `data` en su lugar, y el documento entero sustituido. `@fudic/vite` expone lo que haga falta sin cambiar `vite dev`. Criterios 21, 22 y 23. Reutiliza `renderPage` (`src/page.ts`) y `showPage` (`src/document.ts`) de la tarea 7 | `testing` · `vite` | `src/visit.ts` · `test/visit.test.ts` · `test/fixtures/app/` |
 | [ ] | 26 | 25 | **`renderLayout`:** `route` con closures que escriben `head`, `body` y las secciones. Criterio 24 | `testing` | `src/layout.ts` · `test/layout.test.ts` |
 | [ ] | 27 | 7 | **`renderSnippet`** (§4.10): el anfitrión virtual con `<link rel="snippet">`, el `scope` como literales y `@render <call>`. Criterios 25 y 26 | `testing` | `src/snippet.ts` · `test/snippet.test.ts` |
 

@@ -40,6 +40,16 @@ export interface LiveCheck {
   dispose(): void;
 }
 
+/**
+ * The live check of a dev server started with `liveCheck: false`: it checks nothing, so it
+ * reports nothing and blocks no page.
+ */
+export const NO_LIVE_CHECK: LiveCheck = {
+  current: () => Promise.resolve({ problems: [], project: [], inputs: [] }),
+  blocking: () => Promise.resolve(undefined),
+  dispose: () => undefined,
+};
+
 /** A burst of saves is one check, not one per file. */
 const SETTLE_MS = 30;
 

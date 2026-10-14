@@ -1,0 +1,20 @@
+@code {
+  const { label = "none" } = props<{ label?: string }>();
+
+  @client {
+    import { signal } from "@fudic/core";
+
+    const clicks = signal(0);
+
+    function more() {
+      clicks.set(clicks() + 1);
+    }
+  }
+}
+
+<x-label>
+  <template shadowrootmode="open">
+    <span>@label</span>
+    <button @click=@more>@clicks()</button>
+  </template>
+</x-label>

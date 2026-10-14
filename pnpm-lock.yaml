@@ -485,12 +485,18 @@ importers:
 
   packages/testing:
     dependencies:
+      '@fudic/compiler':
+        specifier: workspace:*
+        version: link:../compiler
       '@fudic/core':
         specifier: workspace:*
         version: link:../core
       '@fudic/di':
         specifier: workspace:*
         version: link:../di
+      '@fudic/dom':
+        specifier: workspace:*
+        version: link:../dom
       '@fudic/http':
         specifier: workspace:*
         version: link:../http

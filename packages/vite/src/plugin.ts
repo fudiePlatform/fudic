@@ -147,7 +147,7 @@ import {
   loadRouteData,
   type RenderModule,
 } from './serve.js';
-import { asError, startLiveCheck } from './dev-typecheck.js';
+import { asError, NO_LIVE_CHECK, startLiveCheck } from './dev-typecheck.js';
 import {
   WRAPPER_PREFIX,
   SW_ID,
@@ -630,9 +630,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // Imported HERE and not at the top of this module: the machine that checks loads
       // TypeScript, most of a second, and `vite preview` loads this plugin without ever
       // checking anything.
-      const { createProjectChecker } = await import('@fudic/typecheck');
-      const live = startLiveCheck(server, root, createProjectChecker({ root }));
-      server.httpServer?.once('close', () => live.dispose());
+      let live = NO_LIVE_CHECK;
+      if (userOptions.liveCheck !== false) {
+        const { createProjectChecker } = await import('@fudic/typecheck');
+        const started = startLiveCheck(server, root, createProjectChecker({ root }));
+        server.httpServer?.once('close', () => started.dispose());
+        live = started;
+      }
       // Dev serves the bootstraps at stable root URLs (so the SW would register at root
       // scope), but registers nothing unless `sw.json` says `"dev": "preview"` (§4.11).
       const scripts = new Map<string, string>([

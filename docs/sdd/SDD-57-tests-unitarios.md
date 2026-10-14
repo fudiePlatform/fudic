@@ -1,6 +1,6 @@
 # SDD-57 — Tests unitarios de componentes, rutas, layouts y snippets: `@fudic/testing`
 
-> **Estado:** `Listo` — [tareas](./SDD-57-Task.md), 4 / 30.
+> **Estado:** `Listo` — [tareas](./SDD-57-Task.md), 11 / 30.
 > **Paquetes:** `@fudic/testing` (nuevo) · `@fudic/vite` · `@fudic/core` · `@fudic/http` ·
 > `@fudic/example-basic`
 > **Depende de:** 17 (hidratación), 19 (plugin, routing y dev server), 20 (Service Worker),
@@ -126,7 +126,7 @@ interface MountOptions<P> {
   /** La URL de la página donde vive. Por defecto `/`. Los params de una función de ruta salen de aquí. */
   url?: string;
   /** Proveedores que sustituyen a los del árbol, en cliente y en servidor. */
-  providers?: readonly Provider[];
+  providers?: readonly { provide: Provider<unknown>; use: () => unknown }[];
   /** Sustituye al servidor en memoria para las peticiones de este test (§3.5). */
   fetch?: (request: Request) => Response | Promise<Response>;
   /** Simula un Service Worker que controla la página (§3.6). */
@@ -135,13 +135,22 @@ interface MountOptions<P> {
 ```
 
 `component` es el namespace que da `import * as X from './x.fud'`: `FudModule` es `tag`, `css`
-y `render` (`layout` en un layout). Un `.fud` compilado no tiene `export default`. Las props se
-pueden sacar de la fixture de la `.fudspec`:
+y `render` (`layout` en un layout). Un `.fud` compilado no tiene `export default`. En el entorno
+`fudic`, y solo ahí, el plugin `fudic:test` le añade `$file`, la ruta del `.fud`, para que la
+página anfitriona de §4.2 pueda enlazarlo. Las props se pueden sacar de la fixture de la
+`.fudspec`:
 
 ```ts
 import fixtures from './app-card.fixture';
 const t = await mount(AppCard, { props: fixtures.destacada });
 ```
+
+Con `via: 'ssr'` (el valor por defecto) **las props tienen que ser JSON**: viajan como
+el `data` de la página anfitriona y las pinta el servidor, y lo que el servidor pinta viaja por el
+estado de hidratación. Una prop que no lo es (`undefined`, una función, una fecha, una señal)
+hace que `mount` lance un `Error` que nombra la prop y propone `via: 'client'`, donde las props
+se asignan como las asigna un padre y pueden ser cualquier valor. Una prop que el componente no
+declara también lanza, por los dos caminos.
 
 Un `.fud` con errores no llega a `mount`: importarlo rechaza con los diagnósticos pintados como
 los pinta el build (`ruta:línea:col - error FUDnnnn: mensaje`). Una expresión rota (`@(`) también:
@@ -270,7 +279,7 @@ visit(url: string, options?: VisitOptions): Promise<Visited>;
 interface VisitOptions {
   /** Sustituye a lo que devuelve `load`. `layout(ctx, data)` corre igual, con este `data`. */
   data?: unknown;
-  providers?: readonly Provider[];
+  providers?: readonly { provide: Provider<unknown>; use: () => unknown }[];
   fetch?: (request: Request) => Response | Promise<Response>;
   sw?: boolean;
 }
@@ -375,21 +384,34 @@ del test. En producción son dos. Un test que dependa de que no se compartan va 
 
 ### 4.2. `via: 'ssr'`: el DSD lo aplica el harness
 
-1. `render($dom, $shadow, props, $ioc)` del módulo con un `SsrDom`, y `renderToString`. Es el
-   mismo HTML que da `vite dev`.
-2. El HTML entra en `document.body` por un `<template>` (sin DSD: `innerHTML` no lo aplica).
+1. Una **página anfitriona virtual** instancia el componente: un documento de página que lo
+   enlaza con `<link rel="component">` y lo escribe con cada prop leída de su `data`
+   (`<x-tag .prop=@(data["prop"])>`, decisión 8.1.14). Se pinta como `vite dev` pinta una ruta,
+   con las props como `data`: el wrapper de `emitRenderChunk` y el drenado de `renderRouteHtml`, importados por el grafo de vitest. Así
+   el host (`claim`, `data-fud-adopt`, las opciones de su shadow root), los mapas de hidratación
+   (`fud-state`, `fud-tree`…) y las hojas `<style type="module">` del `<head>` los escribe el
+   compilador, no el harness: el `render` de un componente no los escribe, los escribe quien lo
+   instancia y la página que lo contiene (decisión 8.1.9). La página y su wrapper se escriben en
+   `node_modules/.fudic-test/` del proyecto, nombrados por su contenido.
+2. El HTML entra en el documento: los atributos de `<html>` y el `<head>` tal cual, y el
+   contenido del `<body>` por un `<template>` (sin DSD: `innerHTML` no lo aplica), importado al
+   documento, en un `<body>` nuevo que sustituye al anterior.
 3. Por cada `<template shadowrootmode>`, del más interno al más externo, el harness hace
    `host.attachShadow(init)` con `init` sacado de sus atributos (`shadowrootdelegatesfocus`,
-   `shadowrootclonable`, `shadowrootserializable`, `shadowrootreferencetarget`), mueve el
-   contenido y quita el `<template>`. No depende del parser de happy-dom, que solo conoce
-   `shadowrootmode` y `shadowrootserializable`.
-4. Instala la hidratación como la instala `fudic:runtime` (§4.4).
+   `shadowrootclonable`, `shadowrootserializable`, `shadowrootreferencetarget`), adopta las hojas
+   que nombra `shadowrootadoptedstylesheets`, mueve el contenido y quita el `<template>`. No
+   depende del parser de happy-dom, que solo conoce `shadowrootmode` y `shadowrootserializable`.
+4. Instala la hidratación como la instala `fudic:runtime` (§4.5), con la escucha de captura en
+   ese `<body>` nuevo: la del test anterior muere con el suyo.
 
 ### 4.3. `via: 'client'`: lo crea el runtime
 
 `document.createElement(tag)` con el chunk `?client` ya definido, las props asignadas como
-las asigna un padre, y al `body`. El shadow root lo crea `FudicElement.c()` con
-`shadowInit()`.
+las asigna un padre, y al `body`. Como `live()` cuando un padre fabrica un hijo: `c([props])`
+con las props en el orden en que el componente las declara (el mismo `propsOf` del registro del
+compilador que lee el padre). `t.props(next)` llama a `u()` con el array disperso, como un padre.
+El shadow root lo crea `FudicElement.c()` con `shadowInit()`. Aquí las props pueden ser
+cualquier valor.
 
 ### 4.4. `shadowOf`: lo que de verdad se pidió
 
@@ -404,9 +426,17 @@ compilador o del runtime, y se arregla en esta spec (tarea 23).
 
 ### 4.5. La hidratación
 
-`installHydration` con `document` del entorno, `resolveChunk` que da el id `?client` del
-componente e `importModule` que lo importa por el grafo de vitest. Un gesto sobre un
-componente sin hidratar lo levanta igual que en el navegador: el primer clic cuenta.
+`installHydration` con `document` del entorno, `root` el `<body>` de la página,
+`resolveChunk` que da el id `?client` de cada tag del grafo de la página anfitriona,
+`importModule` que lo importa por el grafo de vitest e `importDeferred` que entrega el
+adaptador DOM y la señal de ese mismo grafo. Un gesto sobre un componente sin hidratar lo
+levanta igual que en el navegador, por el camino 2: el primer clic cuenta.
+
+happy-dom no hace el upgrade de un custom element en su sitio: al definir un tag **sustituye**
+cada instancia conectada por un elemento nuevo y el shadow root se queda con el viejo. Mientras
+el entorno vive, el harness envuelve `customElements.define`, retira esas sustituciones y hace
+el upgrade en el sitio, como el algoritmo estándar: el constructor de la clase sobre el mismo
+elemento (decisión 8.1.10).
 
 ### 4.6. El servidor en memoria
 
@@ -433,8 +463,10 @@ mano. Nunca hay un `setTimeout` de espera fija.
 
 Tras cada test (`afterEach` que registra el entorno): se vacía el `document`, se desinstala la
 hidratación, se restaura `fetch`, se quita el worker simulado y se olvidan los `init`
-apuntados. Un `customElements.define` no se puede deshacer, y no hace falta: el chunk de un
-componente se importa una vez por fichero de test y define su tag una vez.
+apuntados. Un `customElements.define` no se puede deshacer, y el chunk de un componente se
+importa una vez por fichero de test. Para que eso no se note, cada página instalada ve un tag
+como definido solo cuando su propio cargador lo ha pedido (decisión 8.1.12): la siguiente página
+del mismo fichero levanta sus instancias por el camino 2, como una página recién cargada.
 
 ### 4.9. Rutas y layouts
 
@@ -600,3 +632,45 @@ Tomadas con Pedro el 2026-10-14, antes de redactar:
 8. **Un `.fud` se importa como namespace** (2026-10-14): `import * as X from './x.fud'`. Un
    `.fud` compilado exporta `tag`, `css` y `render` (`layout` en un layout) y ningún `export
    default`. `FudModule` es ese namespace. El compilador no cambia.
+9. **`mount` con `via: 'ssr'` pinta una página anfitriona virtual** (2026-10-14). El `render` de
+   un componente no da el HTML que el servidor manda por él: el host —si se reclama para
+   hidratar, las hojas que adopta, las opciones de su shadow root— lo escribe quien lo
+   instancia, y los mapas de hidratación (`fud-state`, `fud-tree`…) y las hojas del `<head>` los
+   escribe la página. Una página que instancia el componente con sus props como literales, pintada
+   como `vite dev` pinta una ruta, deja todo eso al compilador (§4.2). Consecuencia: en `ssr` las
+   props son JSON (§3.2). El generador del anfitrión es uno y lo comparte `renderSnippet`
+   (§4.10); el pintado de una página por el grafo de vitest es un módulo propio que reutiliza
+   `visit` (§4.9).
+10. **El harness hace el upgrade de custom elements en su sitio** (2026-10-14). happy-dom
+    sustituye cada instancia conectada al definir su tag, y el shadow root se queda con el
+    elemento viejo; el runtime, además, toma la foto de las instancias al empezar el gesto y
+    define el tag después, así que entregaría su estado a un elemento que ya no está en la página.
+    Definir los tags antes de pintar no vale: el runtime tomaría el camino 3 en vez del 2 y el
+    primer clic se perdería. El harness envuelve `customElements.define` mientras el entorno vive
+    y hace lo que el algoritmo estándar: el constructor de la clase sobre el mismo elemento
+    (§4.5). Depende de dos detalles internos de happy-dom 20.10.6 —la lista `callbacks` del
+    registro y el nombre del callback que sustituye—, y se revisa al subir happy-dom. Si no
+    están donde se esperan, el entorno lanza un `Error` que nombra la versión esperada.
+11. **`providers` son pares `{ provide, use }`** (2026-10-14). Un `Provider` de `@fudic/di` es
+    solo la clave; sin la implementación no hay con qué sustituir. Se registran con `provideIn`
+    en el contenedor raíz del árbol de la página —el que levanta el coordinador desde
+    `fud-ioc` y `fud-di`, o una raíz sola si la página no imprimió árbol—, así que ganan a un
+    `@Service` y a un `provide` global. Lo que un componente propietario provee en su subárbol
+    sigue ganando ahí: así resuelve `@fudic/di`, y no se toca.
+12. **Cada página ve definidos solo los tags que su cargador pidió** (2026-10-14). Un tag
+    definido por un test anterior del mismo fichero hacía que el runtime tomara el camino 3
+    («el chunk ya estaba, la instancia ya se levantó») y no levantara la instancia de la página
+    nueva: el primer clic se perdía. `installHydration` recibe un `registry` por página que
+    responde «no definido» hasta que su propio cargador importa el chunk. Es la opción que el
+    runtime ya tenía; `@fudic/core` no cambia.
+13. **`fudicTest()` apaga la comprobación de tipos en vivo** (2026-10-14). `fudic()` arrancaba
+    en vitest la comprobación de tipos de todo el proyecto que `vite dev` usa para el overlay:
+    TypeScript cargado en cada ejecución y la consola llena con los errores de cualquier
+    `.fud` roto a propósito. `@fudic/vite` gana la opción `liveCheck` (por defecto `true`, así
+    que `vite dev` no cambia) y `fudicTest()` la pone a `false`.
+14. **La página anfitriona recibe las props por `data`** (2026-10-14). Con las props como
+    literales, cada juego de valores era una página nueva que compilar (~40 ms por `mount`).
+    La página escribe `.prop=@(data["prop"])` y el harness pasa las props como el `data` del
+    render, igual que el wrapper recibe el `data` ya resuelto: una página por componente y
+    juego de nombres, compilada una vez. La regla de §3.2 (props JSON en `ssr`) no cambia: es
+    lo que viaja en el estado de hidratación.

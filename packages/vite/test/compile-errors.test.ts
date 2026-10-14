@@ -57,7 +57,7 @@ describe('a broken expression', () => {
       logLevel: 'silent',
       configFile: false,
       server: { middlewareMode: true, ws: false },
-      plugins: [fudic()],
+      plugins: [fudic({ liveCheck: false })],
     });
     try {
       const error = await server.ssrLoadModule(file).then(

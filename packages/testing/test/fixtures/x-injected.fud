@@ -1,0 +1,19 @@
+@code {
+  import { inject } from "@fudic/di";
+  import { GREETING } from "./greeting";
+
+  const text = inject(GREETING);
+
+  @client {
+    import { signal } from "@fudic/core";
+
+    const seen = signal(0);
+  }
+}
+
+<x-injected>
+  <template shadowrootmode="open">
+    <p>@text</p>
+    <button @click=@(() => seen.set(seen() + 1))>@seen()</button>
+  </template>
+</x-injected>

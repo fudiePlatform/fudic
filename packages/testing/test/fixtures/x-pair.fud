@@ -1,0 +1,8 @@
+<link rel="component" href="./x-counter.fud">
+
+<x-pair>
+  <template shadowrootmode="open">
+    <x-counter .start=@(10)></x-counter>
+    <x-counter .start=@(20)></x-counter>
+  </template>
+</x-pair>
