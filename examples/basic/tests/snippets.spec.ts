@@ -35,12 +35,17 @@ test('the markup a snippet declares is in the document, and the snippet is not',
 test('a file imported with no `as` lends its snippets by name, defaults included', async ({
   page,
 }) => {
+  // Three under «Importado sin as», and a fourth under «Con valores del scope».
   const fichas = page.locator('main > article.ficha');
-  await expect(fichas).toHaveCount(3);
+  await expect(fichas).toHaveCount(4);
   await expect(fichas.nth(0).locator('h3')).toHaveText('Primera');
   await expect(fichas.nth(1).locator('h3')).toHaveText('Segunda');
   // The third call passes no `tono`, so the default of the signature is what renders.
+  await expect(fichas.nth(2).locator('h3')).toHaveText('Tercera');
   await expect(fichas.nth(2).locator('app-badge')).toHaveText('neutral');
+  // The fourth takes both arguments from the scope: `destacada` is "Cuarta", longer than five.
+  await expect(fichas.nth(3).locator('h3')).toHaveText('Cuarta');
+  await expect(fichas.nth(3).locator('app-badge')).toHaveText('info');
 });
 
 test('a file imported with `as` lends the same name under a namespace (criterion 17)', async ({

@@ -316,6 +316,29 @@ test.describe('the bus: the receiver, before the emitter', () => {
  * but the propositions are the same propositions.
  */
 test.describe('warm: the network spent in proportion to what is seen', () => {
+  // What these criteria measure is a FIRST VIEWPORT, so its height is part of the fixture,
+  // not the browser's default. At 1280×720 `app-parent` fell out of it as `/hidratacion` grew
+  // (SDD-49's document styles, the links of `site-nav`), and with it the whole closure the
+  // tests expect warmed. 1200 keeps it in; `app-below` stays out, past a `.fold` of 140vh, and
+  // `app-cold` stays inside its closed `<details>`. `openFolded` says so when it stops being true.
+  test.use({ viewport: { width: 1280, height: 1200 } });
+
+  /**
+   * Open the page and check the premise the warm criteria stand on: `app-parent` is in the
+   * first viewport and `app-below` is not. A layout change then fails here, by name, instead
+   * of as a timeout waiting for a warm that was never due.
+   */
+  const openFolded = async (page: Page): Promise<void> => {
+    await open(page);
+    const height = page.viewportSize()!.height;
+    const parent = await page.locator('app-parent').first().boundingBox();
+    expect(parent, 'app-parent is on the page').not.toBeNull();
+    expect(parent!.y, 'app-parent must be in the first viewport').toBeLessThan(height);
+    const below = await page.locator('app-below').first().boundingBox();
+    expect(below, 'app-below is on the page').not.toBeNull();
+    expect(below!.y, 'app-below must be out of the first viewport').toBeGreaterThanOrEqual(height);
+  };
+
   /** The tags the channel has confirmed as deposited, whole graph included. */
   const warmed = (page: Page): Promise<string[]> => page.evaluate(() => window.__warmed);
 
@@ -360,7 +383,7 @@ test.describe('warm: the network spent in proportion to what is seen', () => {
   test('15 · only the chunks of what the first viewport shows are anticipated', async ({
     page,
   }) => {
-    await open(page);
+    await openFolded(page);
     await waitWarmed(page, 'app-counter');
     await page.waitForTimeout(1000); // room for an order that should never come
 
@@ -396,7 +419,7 @@ test.describe('warm: the network spent in proportion to what is seen', () => {
   });
 
   test('18 · the transitive closure travels with the tag', async ({ page }) => {
-    await open(page);
+    await openFolded(page);
 
     // The subtree: `app-parent` is visible, and the whole chain comes with it (§4.4).
     for (const tag of ['app-child', 'app-grandchild', 'app-greatgrandchild']) {
@@ -485,7 +508,7 @@ test.describe('warm: the network spent in proportion to what is seen', () => {
     context,
   }) => {
     const recorder = record(context);
-    await open(page);
+    await openFolded(page);
     await settleWarm(page);
 
     recorder.reset();

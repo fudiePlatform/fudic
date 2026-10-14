@@ -272,7 +272,14 @@ test.describe('BUG-42 §0.6 — what the example does in the browser', () => {
     // The example ships `Interacted`, so the other policy is built here from the SAME published
     // pieces the page runs on: a form with a `required` nobody has touched.
     const seen = await page.evaluate(async () => {
-      const at = '/_fudic/0.0.1/forms/';
+      // The folder is read off what the page loaded, never spelled: since BUG-47 the runtime is
+      // published under `/_fudic/<version>-<fingerprint>/`, and app-form has hydrated by now.
+      const url = performance
+        .getEntriesByType('resource')
+        .map((e) => e.name)
+        .find((n) => /\/_fudic\/[^/]+\/forms\/form\.js$/u.test(n));
+      if (url === undefined) throw new Error('the page loaded no /_fudic/<version>/forms/form.js');
+      const at = url.slice(0, url.lastIndexOf('/') + 1);
       const { form } = (await import(`${at}form.js`)) as typeof import('@fudic/forms');
       const { control } = (await import(`${at}control.js`)) as typeof import('@fudic/forms');
       const { required } = (await import(`${at}validators.js`)) as typeof import('@fudic/forms');
