@@ -9,6 +9,7 @@
 
 import { render, type FudCode, type FudDiagnostic, type Severity } from '@fudic/diagnostics';
 import type { BlockKind, Layer } from '@fudic/spec';
+import type { BrowserName } from './browser.js';
 
 /** A diagnostic as the shell paints it: line and column are computed here, never stored. */
 export interface WireDiagnostic {
@@ -67,6 +68,8 @@ export interface SessionMessage {
   readonly tag: string;
   /** The `.fudspec`, absolute; null when the component has none. */
   readonly spec: string | null;
+  /** The browser the criteria run in; set by the workbench when it publishes. */
+  readonly browser?: BrowserName;
   readonly diagnostics: readonly WireDiagnostic[];
   readonly criteria: readonly DescribedCriterion[];
 }

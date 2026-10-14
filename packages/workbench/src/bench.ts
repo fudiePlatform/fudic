@@ -44,7 +44,7 @@ export async function openBench(input: BenchInput): Promise<Bench> {
     const again = resolveTarget(target.component, input.fs);
     if (!isFailure(again)) target = again;
     const loaded = await loadSession({ target, vite: input.vite, dir: input.dir });
-    input.publish(loaded.message);
+    input.publish({ ...loaded.message, browser: input.browser.name });
     return loaded;
   }
 

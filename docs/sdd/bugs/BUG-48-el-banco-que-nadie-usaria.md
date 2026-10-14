@@ -157,6 +157,7 @@ sirve ya varios componentes (§4.4).
 interface SessionMessage {
   readonly v: 2; readonly type: 'session'; readonly tag: string;
   readonly spec: string | null;                     // ruta de la .fudspec
+  readonly browser?: BrowserName;                   // lo pone el banco al publicar (§4.5)
   readonly diagnostics: readonly WireDiagnostic[];
   readonly criteria: readonly {
     readonly id: string; readonly route: string;

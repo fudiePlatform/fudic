@@ -3,7 +3,7 @@
 > **BUG:** [BUG-48 — El banco que nadie usaría](./BUG-48-el-banco-que-nadie-usaria.md)
 > **Paquetes:** `@fudic/workbench` · `fudic-vscode` · `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `bug/48-banco-usable`, desde `main`.
-> **Progreso:** 7 / 31 — `En curso`.
+> **Progreso:** 8 / 31 — `En curso`.
 
 Lo nuevo nace al 100 % en las cuatro métricas. `@fudic/workbench` y `fudic-vscode` no bajan de su
 suelo de `main`: antes de tocar nada se mide con `pnpm --filter <pkg> coverage` y se anota aquí.
@@ -41,7 +41,7 @@ tareas «Tests» y deja la cobertura en el suelo, en su propio worktree sobre es
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 11 | — | **`--browser`.** `auto` = `chrome` → `msedge` → `chromium`; un nombre prueba solo ese. Texto nuevo de `FUD0975` con lo probado y la orden de instalación. El navegador va en la línea JSON (BUG §4.5) | `src/browser.ts` · `src/cli.ts` · `packages/diagnostics/src/codes/FUD0975.*` |
+| [x] | 11 | — | **`--browser`.** `auto` = `chrome` → `msedge` → `chromium`; un nombre prueba solo ese. Texto nuevo de `FUD0975` con lo probado y la orden de instalación. El navegador va en la línea JSON (BUG §4.5) | `src/browser.ts` · `src/cli.ts` · `packages/diagnostics/src/codes/FUD0975.*` |
 | [ ] | 12 | 11 | **Tests.** Criterio 6, con un `Launcher` inyectado | `test/browser/*` |
 
 ## Fase 4 — El motor (6)

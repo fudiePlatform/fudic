@@ -58,7 +58,7 @@ export async function openWorkbench(
   });
   server.mount(vite.middlewares);
 
-  const browser = await launchBrowser();
+  const browser = await launchBrowser(options.browser);
   const shutdown = async (opened?: BrowserLike) => {
     await opened?.close();
     await vite.close();
@@ -89,6 +89,7 @@ export async function openWorkbench(
   let closing: Promise<void> | undefined;
   return {
     ...firstOpened,
+    browser: browser.name,
     async open(another) {
       const target = resolveTarget(resolve(another), nodeTargetFs);
       if (isFailure(target)) return target;

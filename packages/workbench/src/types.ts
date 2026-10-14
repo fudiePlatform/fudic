@@ -4,6 +4,7 @@
  */
 
 import type { FudDiagnostic } from '@fudic/diagnostics';
+import type { BrowserChoice, BrowserName } from './browser.js';
 import type { BenchMessage } from './protocol.js';
 
 export interface WorkbenchOptions {
@@ -11,6 +12,8 @@ export interface WorkbenchOptions {
   readonly port?: number;
   /** Keep the folder of generated pages on close. */
   readonly keep?: boolean;
+  /** The browser the criteria run in; `auto` by default. */
+  readonly browser?: BrowserChoice;
   /** Every message the shells receive, from the first one: what the binary writes on stdout. */
   readonly onMessage?: (message: BenchMessage) => void;
 }
@@ -28,6 +31,8 @@ export interface OpenedComponent {
 
 /** A workbench: one project, the component it was opened with first, and any opened later. */
 export interface WorkbenchSession extends OpenedComponent {
+  /** The browser the criteria run in. */
+  readonly browser: BrowserName;
   /** Opens another component of the same project; one already open answers as it is. */
   open(file: string): Promise<OpenedComponent | WorkbenchFailure>;
   /** Closes one component: its runs stop and its pages go. Unknown tags are ignored. */

@@ -8,7 +8,7 @@
  * Nothing reaches the user as a stack: a failure is a `{error}` line and exit code 1.
  */
 
-import { firstLine } from './browser.js';
+import { BROWSER_CHOICES, firstLine, type BrowserChoice } from './browser.js';
 import { obey } from './control.js';
 import { openWorkbench } from './open.js';
 import { parseCommand, type BenchMessage } from './protocol.js';
@@ -24,7 +24,7 @@ export interface CliIo {
   exit(code: number): void;
 }
 
-export const USAGE = 'usage: fudic-workbench <file> [--port <n>] [--keep]';
+export const USAGE = `usage: fudic-workbench <file> [--port <n>] [--keep] [--browser <${BROWSER_CHOICES.join('|')}>]`;
 
 export interface CliArgs {
   readonly file: string;
@@ -35,17 +35,23 @@ export function parseArgs(argv: readonly string[]): CliArgs | undefined {
   let file: string | undefined;
   let port: number | undefined;
   let keep = false;
+  let browser: BrowserChoice | undefined;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
     if (arg === '--keep') keep = true;
     else if (arg === '--port') {
       port = Number(argv[++i]);
       if (!Number.isInteger(port) || port < 0) return undefined;
+    } else if (arg === '--browser') {
+      browser = BROWSER_CHOICES.find((choice) => choice === argv[i + 1]);
+      i++;
+      if (browser === undefined) return undefined;
     } else if (file === undefined && !arg.startsWith('--')) file = arg;
     else return undefined;
   }
   if (file === undefined) return undefined;
-  return { file, options: { ...(port !== undefined ? { port } : {}), ...(keep ? { keep } : {}) } };
+  const options = { ...(port !== undefined ? { port } : {}), ...(keep ? { keep } : {}), ...(browser !== undefined ? { browser } : {}) };
+  return { file, options };
 }
 
 export async function main(argv: readonly string[], io: CliIo): Promise<void> {
@@ -79,7 +85,8 @@ export async function main(argv: readonly string[], io: CliIo): Promise<void> {
     return;
   }
 
-  io.write(JSON.stringify({ url: session.url, tag: session.tag, component: session.component, criteria: session.criteria }));
+  const { url, tag, component, criteria, browser } = session;
+  io.write(JSON.stringify({ url, tag, component, criteria, browser }));
   for (const message of waiting) io.write(JSON.stringify(message));
   waiting = undefined;
 
