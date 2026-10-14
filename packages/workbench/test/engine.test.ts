@@ -307,6 +307,33 @@ describe('runCriterion — criterion 8, shots and marks', () => {
 });
 
 describe('runCriterion — criterion 10, cancel', () => {
+  it('a cancel that arrives while the page is still opening stops it too, and no step runs', async () => {
+    const page = fakePage();
+    const controller = new AbortController();
+    let ran = false;
+    const browser = fakeBrowser(page);
+    const opening = browser.newPage.bind(browser);
+    // The cancel lands between asking for the page and having it: the race of a cancel right after `running`.
+    browser.newPage = async () => {
+      controller.abort();
+      return opening();
+    };
+    await runCriterion(
+      browser,
+      ORIGIN,
+      criterion([{ block: 'then', term: 'ok', args: [] }]),
+      terms({
+        ok: async () => {
+          ran = true;
+          return { pass: true, evidence: 'ok' };
+        },
+      }),
+      controller.signal,
+    );
+    expect(ran).toBe(false);
+    expect(page.closed).toBe(true);
+  });
+
   it('an abort closes the page under the run, and it ends', async () => {
     const page = fakePage();
     const controller = new AbortController();

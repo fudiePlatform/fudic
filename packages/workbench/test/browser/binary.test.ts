@@ -30,6 +30,8 @@ afterEach(async () => {
 
 interface Launched {
   readonly line: Record<string, unknown>;
+  /** Every line on stdout, the first one included, parsed. */
+  readonly lines: Record<string, unknown>[];
   readonly exited: Promise<number | null>;
 }
 
@@ -37,14 +39,18 @@ function launch(args: readonly string[]): Promise<Launched> {
   const proc = spawn(process.execPath, [BIN, ...args], { cwd: project?.root ?? PACKAGE });
   child = proc;
   const exited = new Promise<number | null>((done) => proc.on('exit', done));
+  const lines: Record<string, unknown>[] = [];
   return new Promise((done, fail) => {
     let out = '';
     let err = '';
     proc.stderr.on('data', (chunk: Buffer) => (err += String(chunk)));
     proc.stdout.on('data', (chunk: Buffer) => {
       out += String(chunk);
-      const end = out.indexOf('\n');
-      if (end >= 0) done({ line: JSON.parse(out.slice(0, end)) as Record<string, unknown>, exited });
+      for (let end = out.indexOf('\n'); end >= 0; end = out.indexOf('\n')) {
+        lines.push(JSON.parse(out.slice(0, end)) as Record<string, unknown>);
+        out = out.slice(end + 1);
+      }
+      if (lines.length > 0) done({ line: lines[0]!, lines, exited });
     });
     void exited.then((code) => fail(new Error(`exited ${code} before a line; stderr: ${err}`)));
   });
@@ -115,6 +121,43 @@ describe('two binaries — criterion 4 of BUG-48', () => {
     await launch([project.path(TABS)]);
     expect(readdirSync(project.path('node_modules/.fudic-bench'))).toEqual([String(child!.pid)]);
   }, 90_000);
+});
+
+describe('commands on stdin — criteria 5 and 10 of BUG-48', () => {
+  /** The first line from `from` on that matches. */
+  async function next(lines: Record<string, unknown>[], match: (l: Record<string, unknown>) => boolean, from = 0) {
+    await expect.poll(() => lines.slice(from).some(match), { timeout: 60_000 }).toBe(true);
+    return lines.slice(from).find(match)!;
+  }
+
+  it('open answers opened on stdout, every message is a line, and run with ids runs those', async () => {
+    project = tempProject('bin-stdin');
+    project.write('src/components/app-frame.fudspec', 'component app-frame\n\ncriterion asignado\n  then\n    visible app-frame\n');
+    const { lines } = await launch([project.path(TABS)]);
+    await next(lines, (l) => l['type'] === 'result' && l['tag'] === 'app-tabs');
+
+    child!.stdin.write(`${JSON.stringify({ v: 2, type: 'open', file: project.path('src/components/app-frame.fud') })}\n`);
+    expect(await next(lines, (l) => l['type'] === 'opened')).toMatchObject({
+      v: 2,
+      type: 'opened',
+      tag: 'app-frame',
+      url: expect.stringMatching(/\/__bench\/app-frame\/$/u) as unknown,
+      criteria: 1,
+    });
+    expect(await next(lines, (l) => l['type'] === 'result' && l['tag'] === 'app-frame')).toMatchObject({ v: 2, verdict: 'pass' });
+
+    const from = lines.length;
+    child!.stdin.write('not a command\n');
+    child!.stdin.write(`${JSON.stringify({ v: 2, type: 'run', tag: 'app-frame', ids: ['asignado'] })}\n`);
+    expect(await next(lines, (l) => l['type'] === 'running', from)).toMatchObject({ tag: 'app-frame', ids: ['asignado'] });
+
+    child!.stdin.write(`${JSON.stringify({ v: 2, type: 'open', file: project.path('src/nothing.txt') })}\n`);
+    expect(await next(lines, (l) => l['type'] === 'error')).toMatchObject({
+      v: 2,
+      type: 'error',
+      error: { code: expect.stringMatching(/^FUD09\d\d$/u) as unknown },
+    });
+  }, 120_000);
 });
 
 describe('the binary — criterion 22', () => {
