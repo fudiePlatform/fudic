@@ -33,10 +33,13 @@ export type Target = { readonly css: string } | { readonly role: string; readonl
 
 export interface LocatorLike {
   count(): Promise<number>;
-  box(): Promise<{ readonly width: number; readonly height: number } | null>;
+  /** Its box in the page, in pixels; null when it is not rendered. */
+  box(): Promise<{ readonly x: number; readonly y: number; readonly width: number; readonly height: number } | null>;
   isVisible(): Promise<boolean>;
   click(): Promise<void>;
   evaluate<R>(script: PageScript, arg?: unknown): Promise<R>;
+  /** A PNG of the element as the page shows it. */
+  screenshot(): Promise<Buffer>;
 }
 
 export interface PageLike {
@@ -162,5 +165,6 @@ function adaptLocator(locator: Locator): LocatorLike {
     isVisible: () => locator.isVisible(),
     click: () => locator.click(),
     evaluate: (script, arg) => locator.evaluate(inPage(script, 'element, arg') as never, arg),
+    screenshot: () => locator.screenshot({ animations: 'disabled' }),
   };
 }

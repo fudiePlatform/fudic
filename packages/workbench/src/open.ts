@@ -14,7 +14,8 @@ import { emptyBenchDir, removeBenchDir, removeTagFiles, sweepBenchDirs, writePla
 import { shellPath, startBenchServer } from './bench-server.js';
 import { launchBrowser, type BrowserLike } from './browser.js';
 import { benchDir, benchRoutesDir, mountFiles } from './pages.js';
-import type { BenchMessage } from './protocol.js';
+import type { BenchMessage, RunCommand } from './protocol.js';
+import { DEFAULT_WORKERS } from './runner.js';
 import { readText } from './session.js';
 import { resolveTarget, type BenchTarget } from './target.js';
 import {
@@ -80,14 +81,28 @@ export async function openWorkbench(
   async function add(target: BenchTarget): Promise<OpenedComponent> {
     // Its bare page first: a component opened late is new to the plugin's next look too.
     writePlanFiles(dir, target.tag, mountFiles(target));
-    const bench = await openBench({ target, vite, dir, browser: browser as BrowserLike, origin: server.origin, fs: nodeTargetFs, publish });
+    const bench = await openBench({
+      target,
+      vite,
+      dir,
+      browser: browser as BrowserLike,
+      origin: server.origin,
+      fs: nodeTargetFs,
+      workers: options.workers ?? DEFAULT_WORKERS,
+      shots: { put: (tag, id, kind, png) => server.putShot(tag, id, kind, png) },
+      publish,
+    });
     benches.set(target.tag, bench);
     return opened(bench);
   }
 
+  const command = (asked: RunCommand) => benches.get(asked.tag)?.command(asked);
+  server.onCommand(command);
+
   const firstOpened = await add(first);
   let closing: Promise<void> | undefined;
   return {
+    command,
     ...firstOpened,
     browser: browser.name,
     async open(another) {

@@ -16,8 +16,11 @@ export type Change = 'component' | 'session' | 'none';
 export interface RerunDeps {
   /** Loads the session again. Must not throw. */
   reload(): Promise<void>;
-  /** Runs every criterion; `trigger` is the saved file, or null. Must not throw. */
-  run(trigger: string | null): Promise<void>;
+  /**
+   * Runs the criteria `ids` — every one when undefined; `trigger` is the saved file, or null.
+   * Must not throw.
+   */
+  run(trigger: string | null, ids: readonly string[] | undefined): Promise<void>;
 }
 
 /**
@@ -37,6 +40,14 @@ export function classify(file: string, target: BenchTarget, reads: ReadonlySet<s
 interface Pending {
   readonly reload: boolean;
   readonly trigger: string | null;
+  /** Undefined: every criterion. */
+  readonly ids: readonly string[] | undefined;
+}
+
+/** Two selections as one: every criterion if either asked for every one, else both lists. */
+function union(a: readonly string[] | undefined, b: readonly string[] | undefined): readonly string[] | undefined {
+  if (a === undefined || b === undefined) return undefined;
+  return [...new Set([...a, ...b])];
 }
 
 export class Rerunner {
@@ -50,18 +61,23 @@ export class Rerunner {
     this.#deps = deps;
   }
 
-  changed(change: Change, file: string): void {
-    if (change !== 'none') this.request(change === 'session', file);
+  /** A change that asks for something: reload (or not) and run `ids`, every criterion by default. */
+  changed(change: Change, file: string, ids?: readonly string[]): void {
+    if (change !== 'none') this.request(change === 'session', file, ids);
   }
 
   /** Runs now, or once the current run ends. */
-  request(reload: boolean, trigger: string | null = null): void {
+  request(reload: boolean, trigger: string | null = null, ids?: readonly string[]): void {
     if (this.#stopped) return;
     if (this.#busy) {
-      this.#pending = { reload: reload || this.#pending?.reload === true, trigger: trigger ?? this.#pending?.trigger ?? null };
+      const pending = this.#pending;
+      this.#pending =
+        pending === undefined
+          ? { reload, trigger, ids }
+          : { reload: reload || pending.reload, trigger: trigger ?? pending.trigger, ids: union(ids, pending.ids) };
       return;
     }
-    void this.#drain({ reload, trigger });
+    void this.#drain({ reload, trigger, ids });
   }
 
   /** Forgets a pending run and refuses new ones: the workbench is closing. */
@@ -73,7 +89,7 @@ export class Rerunner {
   async #drain(run: Pending): Promise<void> {
     this.#busy = true;
     if (run.reload) await this.#deps.reload();
-    await this.#deps.run(run.trigger);
+    await this.#deps.run(run.trigger, run.ids);
     this.#busy = false;
     const next = this.#pending;
     this.#pending = undefined;

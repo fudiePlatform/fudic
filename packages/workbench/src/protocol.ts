@@ -33,7 +33,10 @@ interface StepBase {
 
 export interface StepPassed extends StepBase {
   readonly pass: boolean;
+  /** Whatever the term returned; null when the step was ignored. */
   readonly evidence: unknown;
+  /** The term asked for something the workbench does not do (`goto`): it did not apply. */
+  readonly ignored?: true;
 }
 
 export interface StepFailed extends StepBase {
@@ -83,6 +86,22 @@ export interface RunningMessage {
   readonly trigger: { readonly file: string | null; readonly at: number };
 }
 
+/** A rectangle in pixels. */
+export interface Box {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** Where a step's reference was, in the `after` shot. */
+export interface Mark {
+  /** Index of the step in the criterion. */
+  readonly step: number;
+  readonly ref: string;
+  readonly box: Box;
+}
+
 export interface ResultMessage {
   readonly v: 2;
   readonly type: 'result';
@@ -90,10 +109,33 @@ export interface ResultMessage {
   readonly id: string;
   readonly verdict: Verdict;
   readonly ms: number;
+  /** The criterion's previous verdict in this process, when it ran before. */
+  readonly was?: Verdict;
   readonly steps: readonly StepResult[];
+  /** URLs of what the measuring browser saw: before the first `when`, and at the end. */
+  readonly shots: { readonly before?: string; readonly after?: string };
+  readonly marks: readonly Mark[];
   readonly pageErrors: readonly string[];
   /** Why the criterion could not run at all: its page did not load, its fixture failed. */
   readonly error?: string;
+}
+
+/** What the runs of a component are doing: pinned, paused, and how many saves wait. */
+export interface StateMessage {
+  readonly v: 2;
+  readonly type: 'state';
+  readonly tag: string;
+  readonly paused: boolean;
+  readonly pinned: string | null;
+  readonly pending: number;
+}
+
+/** Criteria a `cancel` stopped: their cards go back to their last result. */
+export interface CancelledMessage {
+  readonly v: 2;
+  readonly type: 'cancelled';
+  readonly tag: string;
+  readonly ids: readonly string[];
 }
 
 /** What is not about one criterion: Vite does not start, the browser went away. To every shell. */
@@ -103,12 +145,26 @@ export interface ProblemMessage {
   readonly message: string;
 }
 
-export type BenchMessage = SessionMessage | RunningMessage | ResultMessage | ProblemMessage;
+export type BenchMessage =
+  | SessionMessage
+  | RunningMessage
+  | ResultMessage
+  | StateMessage
+  | CancelledMessage
+  | ProblemMessage;
 
-/** The commands a parent process sends on stdin, one JSON line each. */
+/** What a shell may ask of its component: what the buttons do. */
+export type RunCommand =
+  | { readonly v: 2; readonly type: 'run'; readonly tag: string; readonly ids?: readonly string[]; readonly failing?: true }
+  | { readonly v: 2; readonly type: 'pin'; readonly tag: string; readonly id: string | null }
+  | { readonly v: 2; readonly type: 'pause'; readonly tag: string; readonly paused: boolean }
+  | { readonly v: 2; readonly type: 'cancel'; readonly tag: string };
+
+/** Every command: the parent process on stdin may also open and close components. */
 export type Command =
   | { readonly v: 2; readonly type: 'open'; readonly file: string }
-  | { readonly v: 2; readonly type: 'close'; readonly tag: string };
+  | { readonly v: 2; readonly type: 'close'; readonly tag: string }
+  | RunCommand;
 
 /** `open` answered: the component's shell. */
 export interface OpenedMessage {
@@ -137,11 +193,40 @@ export function parseCommand(line: string): Command | undefined {
     return undefined;
   }
   if (typeof value !== 'object' || value === null) return undefined;
-  const command = value as { v?: unknown; type?: unknown; file?: unknown; tag?: unknown };
-  if (command.v !== VERSION) return undefined;
-  if (command.type === 'open' && typeof command.file === 'string') return { v: 2, type: 'open', file: command.file };
-  if (command.type === 'close' && typeof command.tag === 'string') return { v: 2, type: 'close', tag: command.tag };
-  return undefined;
+  const command = value as Record<string, unknown>;
+  if (command['v'] !== VERSION) return undefined;
+  const { type, file, tag } = command;
+  if (type === 'open') return typeof file === 'string' ? { v: 2, type, file } : undefined;
+  if (typeof tag !== 'string') return undefined;
+  switch (type) {
+    case 'close':
+    case 'cancel':
+      return { v: 2, type, tag };
+    case 'run':
+      return runCommand(tag, command['ids'], command['failing']);
+    case 'pin': {
+      const id = command['id'];
+      return id === null || typeof id === 'string' ? { v: 2, type, tag, id } : undefined;
+    }
+    case 'pause': {
+      const paused = command['paused'];
+      return typeof paused === 'boolean' ? { v: 2, type, tag, paused } : undefined;
+    }
+    default:
+      return undefined;
+  }
+}
+
+function runCommand(tag: string, ids: unknown, failing: unknown): RunCommand | undefined {
+  if (ids !== undefined && !(Array.isArray(ids) && ids.every((id) => typeof id === 'string'))) return undefined;
+  if (failing !== undefined && failing !== true) return undefined;
+  return {
+    v: 2,
+    type: 'run',
+    tag,
+    ...(ids !== undefined ? { ids: ids as string[] } : {}),
+    ...(failing === true ? { failing: true as const } : {}),
+  };
 }
 
 /**

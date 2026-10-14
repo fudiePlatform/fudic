@@ -179,7 +179,7 @@ interface ResultMessage {
   readonly was?: Verdict;                           // el veredicto anterior, si lo había
   readonly steps: readonly StepResult[];            // StepPassed gana `ignored?: true`
   readonly shots: { readonly before?: string; readonly after?: string };  // URLs
-  readonly marks: readonly { readonly step: number; readonly box: Box }[];
+  readonly marks: readonly { readonly step: number; readonly ref: string; readonly box: Box }[];
   readonly pageErrors: readonly string[];
   readonly error?: string;
 }
@@ -274,8 +274,10 @@ se dice en la línea JSON y en la cabecera del shell.
   veredicto no fue `pass`.
 - **Capturas.** Al terminar un criterio, el navegador que mide fotografía el elemento montado
   (`after`). Si el criterio tiene `when`, también justo antes del primero (`before`). Las sirve el
-  servidor en `/__bench/shot/<tag>/<id>/<n>.png`, con `n` el número de ejecución. Solo se guarda
-  en memoria la última de cada criterio. Un elemento sin caja no tiene captura.
+  servidor en `/__bench/<tag>/shot/<id>/<n>-<before|after>.png` (corregido al implementar: dentro
+  de la ruta del componente), con `n` un contador del proceso. Solo se guarda en memoria la última
+  de cada criterio y tipo. Un elemento sin caja, o una captura que falla, no da captura y no
+  cambia el veredicto.
 - **Marcas.** Cada `locate` que resuelve a un elemento deja su caja, relativa a la captura
   `after`, asociada al paso.
 - **`goto` ignorado** deja el paso con `ignored: true` y sin evidencia, en vez del texto de hoy.

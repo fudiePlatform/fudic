@@ -5,7 +5,7 @@
 
 import type { FudDiagnostic } from '@fudic/diagnostics';
 import type { BrowserChoice, BrowserName } from './browser.js';
-import type { BenchMessage } from './protocol.js';
+import type { BenchMessage, RunCommand } from './protocol.js';
 
 export interface WorkbenchOptions {
   /** Port of the server. 0 by default: ephemeral. */
@@ -14,6 +14,8 @@ export interface WorkbenchOptions {
   readonly keep?: boolean;
   /** The browser the criteria run in; `auto` by default. */
   readonly browser?: BrowserChoice;
+  /** Criteria that run at once; 4 by default. */
+  readonly workers?: number;
   /** Every message the shells receive, from the first one: what the binary writes on stdout. */
   readonly onMessage?: (message: BenchMessage) => void;
 }
@@ -37,6 +39,8 @@ export interface WorkbenchSession extends OpenedComponent {
   open(file: string): Promise<OpenedComponent | WorkbenchFailure>;
   /** Closes one component: its runs stop and its pages go. Unknown tags are ignored. */
   closeComponent(tag: string): void;
+  /** Run, pin, pause or cancel, for the component the command names. Unknown tags are ignored. */
+  command(command: RunCommand): void;
   /** Closes browser, Vite and server, and deletes the folder unless `keep`. Idempotent. */
   close(): Promise<void>;
 }

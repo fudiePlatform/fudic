@@ -24,7 +24,7 @@ export interface CliIo {
   exit(code: number): void;
 }
 
-export const USAGE = `usage: fudic-workbench <file> [--port <n>] [--keep] [--browser <${BROWSER_CHOICES.join('|')}>]`;
+export const USAGE = `usage: fudic-workbench <file> [--port <n>] [--keep] [--browser <${BROWSER_CHOICES.join('|')}>] [--workers <n>]`;
 
 export interface CliArgs {
   readonly file: string;
@@ -36,12 +36,16 @@ export function parseArgs(argv: readonly string[]): CliArgs | undefined {
   let port: number | undefined;
   let keep = false;
   let browser: BrowserChoice | undefined;
+  let workers: number | undefined;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
     if (arg === '--keep') keep = true;
     else if (arg === '--port') {
       port = Number(argv[++i]);
       if (!Number.isInteger(port) || port < 0) return undefined;
+    } else if (arg === '--workers') {
+      workers = Number(argv[++i]);
+      if (!Number.isInteger(workers) || workers < 1) return undefined;
     } else if (arg === '--browser') {
       browser = BROWSER_CHOICES.find((choice) => choice === argv[i + 1]);
       i++;
@@ -50,7 +54,12 @@ export function parseArgs(argv: readonly string[]): CliArgs | undefined {
     else return undefined;
   }
   if (file === undefined) return undefined;
-  const options = { ...(port !== undefined ? { port } : {}), ...(keep ? { keep } : {}), ...(browser !== undefined ? { browser } : {}) };
+  const options = {
+    ...(port !== undefined ? { port } : {}),
+    ...(keep ? { keep } : {}),
+    ...(browser !== undefined ? { browser } : {}),
+    ...(workers !== undefined ? { workers } : {}),
+  };
   return { file, options };
 }
 
