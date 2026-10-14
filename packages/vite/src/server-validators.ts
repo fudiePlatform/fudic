@@ -11,8 +11,8 @@
  * `serverValidator(() => null)`, so the array of validators keeps its length, its order and
  * its behaviour in `$validate()`: a rule that is skipped on the client is skipped in the same
  * position it occupied. Deleting the call would renumber everything after it. And with the
- * original function left with no references, Rollup takes away what hung off it — the import
- * of `db` included, which is the whole point.
+ * original function gone, the imports only it used go with it (BUG-47 §4.1) — the import of
+ * `db` included, which is the whole point.
  *
  * **Recognised by the imported BINDING, never by the word.** A local function called
  * `serverValidator` is not this one, and a `serverValidator` imported under another name is:
@@ -22,6 +22,8 @@
  */
 
 import { JsBatch, type OxcNode } from '@fudic/compiler';
+import { applyReplacements, orphanImports } from './orphan-imports.js';
+import { type ErasedModule } from './server-halves.js';
 
 /** The module a real `serverValidator` comes from. */
 const FORMS = '@fudic/forms';
@@ -87,7 +89,7 @@ function collect(node: unknown, names: ReadonlySet<string>, out: Edit[]): void {
  * The cheap text check first: parsing every `.ts` of a build to find the two or three that
  * mention this would be a cost paid by projects that have no forms at all.
  */
-export function eraseServerValidators(code: string): string | null {
+export function eraseServerValidators(code: string): ErasedModule | null {
   if (!code.includes(VALIDATOR) || !code.includes(FORMS)) return null;
 
   const batch = new JsBatch(code);
@@ -108,8 +110,10 @@ export function eraseServerValidators(code: string): string | null {
   // Oxc offsets are BUFFER coordinates: mapped back before a single character is cut.
   const map = parsed.value.mapOffset;
 
-  // Descending, so an earlier edit does not move a later one's offsets.
   const spans = edits.map((e) => ({ start: map(e.start), end: map(e.end) }));
-  spans.sort((a, b) => b.start - a.start);
-  return spans.reduce((out, span) => out.slice(0, span.start) + EMPTY + out.slice(span.end), code);
+  const replacements = [
+    ...spans.map((span) => ({ ...span, text: EMPTY })),
+    ...orphanImports(code, statements, spans, map),
+  ];
+  return { code: applyReplacements(code, replacements), erased: spans };
 }

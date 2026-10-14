@@ -3,7 +3,7 @@
 > **BUG:** [BUG-47 — El navegador recibe código del servidor y un runtime que no se renueva](./BUG-47-lo-que-el-navegador-no-deberia-ver.md)
 > **Paquetes:** `@fudic/vite`
 > **Rama:** `bug/47-servidor-y-runtime`, desde `main` una vez fusionada `sdd/http`.
-> **Progreso:** 0 / 9 — `Listo`.
+> **Progreso:** 3 / 9 — `En curso`.
 
 Lo nuevo nace al 100 % en las cuatro métricas, y `@fudic/vite` no baja de su suelo de `main`.
 Antes de tocar nada, se mide ese suelo con `pnpm --filter @fudic/vite coverage`.
@@ -14,9 +14,9 @@ Antes de tocar nada, se mide ese suelo con `pnpm --filter @fudic/vite coverage`.
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 1 | — | **Imports huérfanas.** Un módulo nuevo, que recibe el código, su AST y los tramos borrados, y quita cada especificador cuyo nombre local ya no aparece fuera de esos tramos. Si una declaración se queda vacía, se quita entera; `import './x'` se queda (BUG §4.1). Una sola pasada de Oxc por módulo: reutiliza el AST del borrado | `src/orphan-imports.ts` |
-| [ ] | 2 | 1 | **Los dos borrados lo usan.** `eraseServerHalves` y `eraseServerValidators` devuelven, además del código, los tramos que borraron, y aplican la tarea 1. El transform del plugin encadena los dos como hoy | `src/server-halves.ts` · `src/server-validators.ts` · `src/plugin.ts` |
-| [ ] | 3 | 1, 2 | **Tests.** Criterios 1, 2 y 3. El 3 con un build real y un `tokens.ts` que acaba en `Service(Tokens)` | `test/orphan-imports.test.ts` · `test/http-build.test.ts` |
+| [x] | 1 | — | **Imports huérfanas.** Un módulo nuevo, que recibe el código, su AST y los tramos borrados, y quita cada especificador cuyo nombre local ya no aparece fuera de esos tramos. Si una declaración se queda vacía, se quita entera; `import './x'` se queda (BUG §4.1). Una sola pasada de Oxc por módulo: reutiliza el AST del borrado | `src/orphan-imports.ts` |
+| [x] | 2 | 1 | **Los dos borrados lo usan.** `eraseServerHalves` y `eraseServerValidators` devuelven, además del código, los tramos que borraron, y aplican la tarea 1. El transform del plugin encadena los dos como hoy | `src/server-halves.ts` · `src/server-validators.ts` · `src/plugin.ts` |
+| [x] | 3 | 1, 2 | **Tests.** Criterios 1, 2 y 3. El 3 con un build real y un `tokens.ts` que acaba en `Service(Tokens)` | `test/orphan-imports.test.ts` · `test/http-build.test.ts` |
 
 ## Fase 2 — Los mapas no llevan lo borrado (2)
 

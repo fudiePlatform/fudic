@@ -1388,9 +1388,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         // dev server's SSR graph runs both, and the edge pass is a build of its own.
         if (transformOptions?.ssr === true || !/\.[cm]?[jt]sx?$/u.test(path)) return null;
         const validators = eraseServerValidators(code);
-        const halves = eraseServerHalves(validators ?? code);
+        const halves = eraseServerHalves(validators?.code ?? code);
         const erased = halves ?? validators;
-        return erased === null ? null : { code: erased, map: null };
+        return erased === null ? null : { code: erased.code, map: null };
       }
       if (query === 'server') {
         // The `@server` region is TS (typed `load`/`paths`); strip types to plain JS so

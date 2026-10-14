@@ -29,8 +29,8 @@ export const httpAlias = Object.entries(ENTRIES).map(([name, replacement]) => ({
   replacement,
 }));
 
-/** A `tsconfig.json` that types those entries from the same `dist`. */
-export function writeHttpTypecheckConfig(root: string): void {
+/** A `tsconfig.json` that types those entries from the same `dist`, plus any `extra` option. */
+export function writeHttpTypecheckConfig(root: string, extra: Readonly<Record<string, unknown>> = {}): void {
   const paths: Record<string, string[]> = {
     '@fudic/http/server': [at('http/dist/server/index.d.ts')],
     '@fudic/http/client': [at('http/dist/client/index.d.ts')],
@@ -49,6 +49,7 @@ export function writeHttpTypecheckConfig(root: string): void {
         allowSyntheticDefaultImports: true,
         resolveJsonModule: true,
         paths,
+        ...extra,
       },
     }),
   );
