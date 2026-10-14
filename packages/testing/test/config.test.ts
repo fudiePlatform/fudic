@@ -28,10 +28,19 @@ describe('fudicTest', () => {
     expect(fudicTest({ routesDir: 'src/pages' }).map((p) => p.name)).toEqual(['fudic', 'fudic:test']);
   });
 
-  test('puts vitest in the fudic environment at http://localhost/, with its setup file', () => {
+  test('puts vitest in the fudic environment at http://localhost/, off the network, with its setup file', () => {
     const config = configOf({});
     expect(config.test?.environment).toBe(ENVIRONMENT);
-    expect(config.test?.environmentOptions).toEqual({ happyDOM: { url: BASE_URL } });
+    expect(config.test?.environmentOptions).toEqual({
+      happyDOM: {
+        url: BASE_URL,
+        settings: {
+          disableCSSFileLoading: true,
+          disableJavaScriptFileLoading: true,
+          handleDisabledFileLoadingAsSuccess: true,
+        },
+      },
+    });
     expect(config.test?.setupFiles).toEqual([SETUP]);
     expect(BASE_URL).toBe('http://localhost/');
   });

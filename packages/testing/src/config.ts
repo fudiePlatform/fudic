@@ -53,7 +53,19 @@ export function fudicTest(options: FudicOptions = {}): Plugin[] {
       config: (user) => ({
         test: {
           environment: ENVIRONMENT,
-          environmentOptions: { happyDOM: { url: BASE_URL } },
+          environmentOptions: {
+            happyDOM: {
+              url: BASE_URL,
+              // happy-dom would fetch a page's `<link>` and `<script src>` from the real network,
+              // where nothing listens: the harness imports every module itself, and a sheet is
+              // the browser's to load (§1.1). Disabled, and taken as loaded.
+              settings: {
+                disableCSSFileLoading: true,
+                disableJavaScriptFileLoading: true,
+                handleDisabledFileLoadingAsSuccess: true,
+              },
+            },
+          },
           setupFiles: [SETUP],
           provide: {
             [ROOT_KEY]: resolve(user.root ?? process.cwd()),

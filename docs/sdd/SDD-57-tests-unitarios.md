@@ -1,6 +1,6 @@
 # SDD-57 — Tests unitarios de componentes, rutas, layouts y snippets: `@fudic/testing`
 
-> **Estado:** `Listo` — [tareas](./SDD-57-Task.md), 27 / 30.
+> **Estado:** `Listo` — [tareas](./SDD-57-Task.md), 28 / 30.
 > **Paquetes:** `@fudic/testing` (nuevo) · `@fudic/vite` · `@fudic/core` · `@fudic/http` ·
 > `@fudic/example-basic`
 > **Depende de:** 17 (hidratación), 19 (plugin, routing y dev server), 20 (Service Worker),
@@ -765,3 +765,13 @@ Tomadas con Pedro el 2026-10-14, antes de redactar:
 30. **`visit` de una ruta que redirige lanza** (2026-10-14), con el status y el destino.
     Navegar a otra ruta queda fuera de alcance (§7). Sin `_error.fud`, un error se pinta con la
     página mínima de `vite dev`, con su status.
+31. **`attachInternals` de sustitución** (2026-10-14). happy-dom 20.10.6 no lo trae, y sin él un
+    componente form-associated ni se construye. El sustituto guarda el valor y la validity que
+    recibe, no tiene labels y no simula `FormData` ni `:invalid`, que siguen en `.fudspec`.
+    happy-dom tampoco descarga hojas ni scripts por red: el harness importa cada módulo él mismo.
+32. **La matriz de `app-input` se monta a través de `app-form`** (2026-10-14). Su prop `ctrl`
+    es un `Control`, que no es JSON y solo se lo da un padre. Montar el padre por los dos
+    caminos es además el camino real: por `client`, `app-form` fabrica `app-input` como en
+    runtime. Al hacerlo salió un bug de `@fudic/forms`: un control con `aria-describedby`
+    creado sin conectar lanzaba al buscar ids en una raíz que no es documento. Se arregla aquí
+    (decisión 8.1.5).

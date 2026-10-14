@@ -54,9 +54,13 @@ export function blankPage(): HTMLElement {
   return showPage('<html><head></head><body></body></html>');
 }
 
-/** The value of `attr` on the first `<tag>` of the body of `html`, or `null`. */
+/**
+ * The value of `attr` on the first `<tag>` of the body of `html`, or `null`. Read off the text:
+ * parsed into the document, a `<tag>` already defined would run its constructor.
+ */
 export function hostAttribute(html: string, tag: string, attr: string): string | null {
-  const holder = document.createElement('template');
-  holder.innerHTML = innerOf(html, 'body');
-  return holder.content.querySelector(tag)!.getAttribute(attr);
+  const open = new RegExp(`<${tag}(\\s[^>]*)?>`, 'u').exec(innerOf(html, 'body'))![1] ?? '';
+  // The serializer writes every attribute value in double quotes, with `"` escaped.
+  const value = new RegExp(`\\s${attr}="([^"]*)"`, 'u').exec(open)?.[1];
+  return value === undefined ? null : value.replaceAll('&amp;', '&');
 }
