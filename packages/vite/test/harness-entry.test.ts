@@ -41,7 +41,20 @@ describe('@fudic/vite/harness', () => {
 
   it('exposes what the harness paints and serves with', () => {
     expect(Object.keys(harness).sort()).toEqual(
-      ['devSource', 'discoverRoutes', 'drainStream', 'edgeContext', 'emitRenderChunk', 'httpFileOf', 'nodeIo', 'resolveOptions'],
+      [
+        'classifyError',
+        'devSource',
+        'discoverRoutes',
+        'drainStream',
+        'edgeContext',
+        'emitRenderChunk',
+        'httpFileOf',
+        'matchRouteBuild',
+        'nodeIo',
+        'renderErrorPage',
+        'resolveOptions',
+        'routeUsesDi',
+      ],
     );
   });
 });

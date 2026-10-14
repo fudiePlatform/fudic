@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/testing` (nuevo) · `@fudic/vite` · `@fudic/core` · `@fudic/http` ·
 > `@fudic/example-basic`
 > **Rama:** `sdd-57-tests-unitarios` (nace de `main`)
-> **Progreso:** 24 / 30 — `Listo`.
+> **Progreso:** 27 / 30 — `Listo`.
 
 **El orden manda en cuatro puntos.**
 
@@ -108,9 +108,9 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 25 | 8, 17 | **`visit`** (§4.9): routing del plugin, `emitRenderChunk`, `load` por el grafo de vitest o `data` en su lugar, y el documento entero sustituido. `@fudic/vite` expone lo que haga falta sin cambiar `vite dev`. Criterios 21, 22 y 23. Reutiliza `renderPage` (`src/page.ts`) y `showPage` (`src/document.ts`) de la tarea 7 | `testing` · `vite` | `src/visit.ts` · `test/app/visit.test.ts` · `test/app/src/routes/` |
-| [ ] | 26 | 25 | **`renderLayout`:** `route` con closures que escriben `head`, `body` y las secciones. Criterio 24 | `testing` | `src/layout.ts` · `test/layout.test.ts` |
-| [ ] | 27 | 7 | **`renderSnippet`** (§4.10): el anfitrión virtual con `<link rel="snippet">`, el `scope` como literales y `@render <call>`. Criterios 25 y 26 | `testing` | `src/snippet.ts` · `test/snippet.test.ts` |
+| [x] | 25 | 8, 17 | **`visit`** (§4.9): routing del plugin, `emitRenderChunk`, `load` por el grafo de vitest o `data` en su lugar, y el documento entero sustituido. `@fudic/vite` expone lo que haga falta sin cambiar `vite dev`. Criterios 21, 22 y 23. Reutiliza `renderPage` (`src/page.ts`) y `showPage` (`src/document.ts`) de la tarea 7 | `testing` · `vite` | `src/visit.ts` · `test/app/visit.test.ts` · `test/app/src/routes/` |
+| [x] | 26 | 25 | **`renderLayout`:** una ruta virtual que usa el layout y escribe `head`, `body` y las secciones (decisión 8.1.28). Criterio 24 | `testing` | `src/layout.ts` · `test/app/layout.test.ts` |
+| [x] | 27 | 7 | **`renderSnippet`** (§4.10): el anfitrión virtual con `<link rel="snippet">`, el `scope` como literales y `@render <call>`. Criterios 25 y 26 | `testing` | `src/snippet.ts` · `test/app/snippet.test.ts` |
 
 ## Fase 8 — ejemplo y entrega (3)
 

@@ -1,6 +1,6 @@
 # SDD-57 — Tests unitarios de componentes, rutas, layouts y snippets: `@fudic/testing`
 
-> **Estado:** `Listo` — [tareas](./SDD-57-Task.md), 24 / 30.
+> **Estado:** `Listo` — [tareas](./SDD-57-Task.md), 27 / 30.
 > **Paquetes:** `@fudic/testing` (nuevo) · `@fudic/vite` · `@fudic/core` · `@fudic/http` ·
 > `@fudic/example-basic`
 > **Depende de:** 17 (hidratación), 19 (plugin, routing y dev server), 20 (Service Worker),
@@ -348,7 +348,7 @@ test('ficha con tono', async () => {
 });
 
 test('con un objeto', async () => {
-  const t = await renderSnippet('./campos.fud', 'fila(item)', { scope: { item: { id: 1, name: 'A' } } });
+  const t = await renderSnippet('./campos.fud', 'fila(@item)', { scope: { item: { id: 1, name: 'A' } } });
 });
 ```
 
@@ -479,13 +479,13 @@ Con `data` el wrapper recibe ese valor en vez de llamar a `load`, y `layout(ctx,
 igual. El HTML resultante sustituye al `document` entero, y desde ahí siguen los pasos 3 y 4
 del §4.2.
 
-`renderLayout` llama a `layout(data, io, route, $ioc, props)` con un `route` cuyos closures
-escriben el HTML de `head`, `body` y cada sección.
+`renderLayout` pinta una ruta virtual que usa el layout y escribe tal cual `head`, `body` y cada
+sección, con las props en su `@server layout()` (decisión 8.1.28).
 
 ### 4.10. Snippets
 
 Un snippet no existe en runtime. `renderSnippet` escribe un componente anfitrión virtual
-(`\0fudic-test-snippet:<n>.fud`), como el anfitrión del banco de trabajo
+(`fudic-snippet-<hash>.fud`, decisión 8.1.29), como el anfitrión del banco de trabajo
 ([host.ts:41](../../packages/workbench/src/host.ts#L41)): enlaza `file` con
 `<link rel="snippet">`, declara cada clave de `scope` en su `@code` con su valor como literal y
 escribe `@render <call>` en su plantilla. Luego lo monta como §3.2. Los componentes que el
@@ -737,7 +737,7 @@ Tomadas con Pedro el 2026-10-14, antes de redactar:
 25. **Las opciones que el autor escribe en el `<template>` llegan a los dos caminos** (2026-10-14).
     La matriz encontró que `shadowrootdelegatesfocus` (fuera de un componente form-associated),
     `shadowrootclonable` y `shadowrootserializable` se perdían en `ssr` y en `client`. Se arregla
-    en el compilador y el runtime (decisión 8.5): el compilador las lee de la plantilla raíz de
+    en el compilador y el runtime (decisión 8.1.5): el compilador las lee de la plantilla raíz de
     cada componente (`shadowOptionsOf`); el padre las pasa a `$dom.attachShadow`, que gana dos
     posiciones (`clonable`, `serializable`) y solo escribe hasta la última que dice algo, así que
     una página sin ellas emite los mismos bytes; el serializador de `@fudic/ssr` escribe
@@ -753,3 +753,15 @@ Tomadas con Pedro el 2026-10-14, antes de redactar:
     contesta por el componente. `toContainTemplate` lee el primer `<template shadowrootmode>` del
     `<body>`, que es el del host, y compara sus atributos `shadowroot*` exactamente: uno sin valor
     se escribe `true`.
+28. **`renderLayout` pinta una ruta virtual que usa el layout** (2026-10-14), en vez de llamar a
+    `layout(data, io, route, $ioc, props)` a mano como decía §4.9. El `route` de un layout lleva
+    más que `head`, `body` y las secciones: el runtime, las hojas recortadas y los bloques de
+    hidratación. Escribirlo en el harness sería una plantilla propia (§5). La ruta virtual
+    escribe tal cual el `head`, cada sección y el `body` (con `@` escapado como `@@`), y las
+    props en su `@server layout()`. Se pinta como `visit` pinta una ruta.
+29. **`renderSnippet` resuelve `file` contra el test que corre** (2026-10-14), y su anfitrión se
+    llama `fudic-snippet-<hash>`, en un fichero con ese nombre bajo `node_modules/.fudic-test`.
+    La llamada lee el `scope` con `@`, como en un `.fud`: `fila(@item)`.
+30. **`visit` de una ruta que redirige lanza** (2026-10-14), con el status y el destino.
+    Navegar a otra ruta queda fuera de alcance (§7). Sin `_error.fud`, un error se pinta con la
+    página mínima de `vite dev`, con su status.

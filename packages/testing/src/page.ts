@@ -15,8 +15,11 @@ import {
   drainStream,
   edgeContext,
   emitRenderChunk,
+  nodeIo,
+  routeUsesDi,
   type RenderChunkOptions,
   type RenderModule,
+  type RouteBuild,
 } from '@fudic/vite/harness';
 import { cached } from './cache.js';
 
@@ -37,6 +40,25 @@ function wrapperOf(file: string, facts: PageFacts): string {
   return `import { overridden as $overridden } from ${JSON.stringify(PROVIDERS)};\n${source.replaceAll('iocRoot()', '$overridden(iocRoot())')}`;
 }
 
+/** The wrapper of the page at `file`, imported through vitest's graph. */
+export async function loadWrapper(file: string, facts: PageFacts): Promise<RenderModule> {
+  const wrapper = cached('wrapper', 'js', wrapperOf(file, facts));
+  return (await import(/* @vite-ignore */ wrapper)) as RenderModule;
+}
+
+/** What the plugin tells the wrapper of a discovered route, as `vite dev` writes it. */
+export function routeFacts(rb: RouteBuild, httpFile: string | undefined): PageFacts {
+  return {
+    hasLoad: rb.analysis.hasLoad,
+    hasPaths: rb.analysis.hasPaths,
+    hasLayout: rb.analysis.hasLayout,
+    hasDi: routeUsesDi(rb.absPath, nodeIo()),
+    hasHttp: rb.analysis.hasHttp === true,
+    fluentLoad: rb.analysis.fluentLoad === true,
+    ...(httpFile === undefined ? {} : { globalChain: httpFile }),
+  };
+}
+
 /**
  * The HTML `vite dev` would answer for `url` with the page at `file`, matched by `pattern`.
  * With `data`, the page is handed it in place of what `load` would resolve.
@@ -48,8 +70,7 @@ export async function renderPage(
   url: string,
   data?: unknown,
 ): Promise<string> {
-  const wrapper = cached('wrapper', 'js', wrapperOf(file, facts));
-  const mod = (await import(/* @vite-ignore */ wrapper)) as RenderModule;
+  const mod = await loadWrapper(file, facts);
   // `data` undefined is what the wrapper reads as «call `load`»: no branch here.
   return drainStream(mod.render({ ...edgeContext(pattern, url, ''), data }));
 }

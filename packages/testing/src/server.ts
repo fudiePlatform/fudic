@@ -9,16 +9,9 @@
 
 import { createRoot } from '@fudic/di';
 import { functionsHandler, type FnSource } from '@fudic/http/server';
-import { devSource, discoverRoutes, httpFileOf, resolveOptions, type FudicOptions } from '@fudic/vite/harness';
-import { inject } from 'vitest';
-import { OPTIONS_KEY, ROOT_KEY } from './constants.js';
+import { devSource } from '@fudic/vite/harness';
+import { projectOf } from './project.js';
 import { overridden } from './providers.js';
-
-declare module 'vitest' {
-  export interface ProvidedContext {
-    fudicOptions: FudicOptions & { readonly base: string };
-  }
-}
 
 /** The components a page of the test reached, by tag: their functions answer at `/c/<tag>/`. */
 const components = new Map<string, string>();
@@ -36,12 +29,10 @@ let handler: ((request: Request) => Promise<Response | null>) | undefined;
 /** The handler of `/_fudic/fn/`, armed once per test file. */
 export function functions(): (request: Request) => Promise<Response | null> {
   if (handler === undefined) {
-    const root = inject(ROOT_KEY);
-    const { base, ...options } = inject(OPTIONS_KEY);
-    const builds = discoverRoutes(root, resolveOptions(options, base).options).routes;
+    const { root, base, routes, httpFile } = projectOf();
     // Typed loosely on the plugin's side, which loads `@fudic/http` from the project's graph and
     // does not depend on it: what it reads is a module's exports, which is what `FnSource` names.
-    const source = devSource({ builds, componentPath: (tag) => components.get(tag), load, httpFile: httpFileOf(root) }) as FnSource;
+    const source = devSource({ builds: routes, componentPath: (tag) => components.get(tag), load, httpFile }) as FnSource;
     handler = functionsHandler(source, { base, dev: true, container: () => overridden(createRoot()) });
   }
   return handler;

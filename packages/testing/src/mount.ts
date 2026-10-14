@@ -11,21 +11,18 @@
  */
 
 import { isDeepStrictEqual } from 'node:util';
-import { graphRegistry, resolveDocument, type ComponentGraph } from '@fudic/compiler';
-import { nodeIo } from '@fudic/vite/harness';
+import { graphRegistry } from '@fudic/compiler';
 import { cached } from './cache.js';
-import { BASE_URL, FILE_EXPORT } from './constants.js';
+import { FILE_EXPORT } from './constants.js';
 import { hostAttribute, pageShell, showPage } from './document.js';
+import { graphOf } from './graph.js';
 import { hostPage } from './host.js';
 import { chunkMap, hydrate, resolverOf } from './hydrate.js';
 import { renderPage } from './page.js';
 import { settled, track } from './pending.js';
-import { serveOverrides, standTree, type ProviderOverride } from './providers.js';
-import { answerWith, type FetchOverride } from './fetch.js';
+import { standTree, type ProviderOverride } from './providers.js';
 import { knowComponents } from './server.js';
-import { controlWith, invalidated } from './sw.js';
-import { gesturesOf, type Gestures } from './gestures.js';
-import { queriesOf, type Queries } from './queries.js';
+import { enterWorld, harnessOf, type Harness, type WorldOptions } from './session.js';
 
 /** What `import * as X from './x.fud'` gives in the `fudic` environment. */
 export interface FudModule {
@@ -36,27 +33,22 @@ export interface FudModule {
   readonly [FILE_EXPORT]: string;
 }
 
-export interface MountOptions<P> {
+/** The part of a module `mount` reads: its tag and its file. */
+export type MountTarget = Pick<FudModule, 'tag' | typeof FILE_EXPORT>;
+
+export interface MountOptions<P> extends WorldOptions {
   readonly props?: P;
   /** `'ssr'` (by default): the server's HTML, DSD and hydration. `'client'`: `createElement`. */
   readonly via?: 'ssr' | 'client';
   /** The URL of the page it lives in. `/` by default. */
   readonly url?: string;
-  /** Services that take the place of the tree's (decision 8.1.11). */
-  readonly providers?: readonly ProviderOverride[];
-  /** Answers this test's requests in place of the in-memory server (§3.5). */
-  readonly fetch?: FetchOverride;
-  /** A simulated Service Worker controls the page (§3.6). */
-  readonly sw?: boolean;
 }
 
-export interface Mounted<P> extends Queries, Gestures {
+export interface Mounted<P> extends Harness {
   /** The component's element. */
   readonly host: HTMLElement;
   /** Its shadow root. */
   readonly root: ShadowRoot;
-  /** The paths the simulated worker was told to invalidate (§3.6). Empty without `sw`. */
-  readonly invalidated: readonly string[];
   /** Change props as a parent would, and wait for the repaint. */
   props(next: Partial<P>): Promise<void>;
   unmount(): void;
@@ -70,22 +62,6 @@ interface ComponentElement extends HTMLElement {
 
 /** The slots before the props in the payload `u` takes: the DOM adapter and the shadow root. */
 const PAYLOAD_OFFSET = 2;
-
-/**
- * The graph of each `.fud` asked about, resolved once per test file: a test that mounts the
- * same component ten times reads and resolves its sources once.
- */
-const graphs = new Map<string, ComponentGraph>();
-
-/** The graph of a `.fud`: the components it reaches, itself included. */
-function graphOf(file: string): ComponentGraph {
-  let graph = graphs.get(file);
-  if (graph === undefined) {
-    graph = resolveDocument(file, nodeIo()).value;
-    graphs.set(file, graph);
-  }
-  return graph;
-}
 
 /** The names of the props `tag` declares, in the order its payload carries them. */
 function propOrder(file: string, tag: string): readonly string[] {
@@ -115,17 +91,12 @@ function assertJson(tag: string, name: string, value: unknown): void {
   }
 }
 
-/** Point the environment's location at `url`. */
-function visitUrl(url: string): void {
-  (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM.setURL(new URL(url, BASE_URL).href);
-}
-
 /**
  * The host page of `component` with `props` named on it, painted to HTML: one page per
  * component and set of prop names, compiled once, whatever values each test hands it — the page
  * takes them from its `data`. Its components are noted, so their server functions answer.
  */
-async function paintHost(component: FudModule, props: object, url: string): Promise<string> {
+async function paintHost(component: MountTarget, props: object, url: string): Promise<string> {
   const { tag } = component;
   const attrs = Object.keys(props).map((name) => ` .${name}=@(data[${JSON.stringify(name)}])`);
   const page = cached(
@@ -138,7 +109,7 @@ async function paintHost(component: FudModule, props: object, url: string): Prom
 }
 
 async function viaSsr(
-  component: FudModule,
+  component: MountTarget,
   props: object,
   url: string,
   providers: readonly ProviderOverride[],
@@ -152,7 +123,7 @@ async function viaSsr(
 }
 
 async function viaClient(
-  component: FudModule,
+  component: MountTarget,
   props: object,
   url: string,
   order: readonly string[],
@@ -181,35 +152,27 @@ async function viaClient(
 
 /** Mount `component` and hand back what a test reads and drives. */
 export async function mount<P extends object = Record<string, unknown>>(
-  component: FudModule,
+  component: MountTarget,
   options: MountOptions<P> = {},
 ): Promise<Mounted<P>> {
   const props: object = options.props ?? {};
-  const providers = options.providers ?? [];
-  serveOverrides(providers);
-  answerWith(options.fetch);
-  controlWith(options.sw === true);
+  const url = options.url ?? '/';
+  const providers = enterWorld(options, url);
   const order = propOrder(component[FILE_EXPORT], component.tag);
   // Checked before anything is painted: a prop the component does not declare is the test's
   // mistake, whichever road it takes.
   positions(component.tag, order, props);
-  const url = options.url ?? '/';
-  visitUrl(url);
   const host =
     options.via === 'client'
       ? await viaClient(component, props, url, order, providers)
       : await viaSsr(component, props, url, providers);
   await settled();
   const root = host.shadowRoot!;
-  return {
-    ...queriesOf(root),
-    ...gesturesOf(root),
+  // Onto the harness, not spread from it: `invalidated` is a getter, and a spread would freeze it.
+  return Object.assign(harnessOf(root), {
     host,
-    get invalidated() {
-      return invalidated();
-    },
     root,
-    async props(next) {
+    async props(next: Partial<P>) {
       const payload: unknown[] = [];
       for (const [at, value] of positions(component.tag, order, next)) payload[PAYLOAD_OFFSET + at] = value;
       host.u(payload);
@@ -218,7 +181,7 @@ export async function mount<P extends object = Record<string, unknown>>(
     unmount() {
       host.remove();
     },
-  };
+  });
 }
 
 /**
@@ -227,7 +190,7 @@ export async function mount<P extends object = Record<string, unknown>>(
  * are on the server road.
  */
 export async function renderToHtml<P extends object = Record<string, unknown>>(
-  component: FudModule,
+  component: MountTarget,
   options: { readonly props?: P; readonly url?: string } = {},
 ): Promise<string> {
   const props: object = options.props ?? {};

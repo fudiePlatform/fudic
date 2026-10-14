@@ -19,14 +19,23 @@ declare module 'vitest' {
   }
 }
 
-/** Write `source` under the cache as `<name>-<hash>.<ext>` and hand back its absolute path. */
-export function cached(name: string, ext: string, source: string): string {
+/** The hash a generated module is named by. */
+export function hashOf(source: string): string {
+  return createHash('sha256').update(source).digest('hex').slice(0, 16);
+}
+
+/** Write `source` under the cache as `fileName` and hand back its absolute path. */
+export function cachedAs(fileName: string, source: string): string {
   const dir = join(inject(ROOT_KEY), CACHE_FOLDER);
-  const hash = createHash('sha256').update(source).digest('hex').slice(0, 16);
-  const file = join(dir, `${name}-${hash}.${ext}`).replace(/\\/gu, '/');
+  const file = join(dir, fileName).replace(/\\/gu, '/');
   if (!existsSync(file)) {
     mkdirSync(dir, { recursive: true });
     writeFileSync(file, source);
   }
   return file;
+}
+
+/** Write `source` under the cache as `<name>-<hash>.<ext>` and hand back its absolute path. */
+export function cached(name: string, ext: string, source: string): string {
+  return cachedAs(`${name}-${hashOf(source)}.${ext}`, source);
 }

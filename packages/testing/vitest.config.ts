@@ -9,6 +9,14 @@ export default defineConfig({
     projects: [
       { plugins: [fudicTest()], test: { name: 'unit', include: ['test/*.test.ts'] } },
       { plugins: [fudicTest()], root: 'test/app', test: { name: 'app', include: ['*.test.ts'] } },
+      // And one with neither `_error.fud` nor `src/http.ts`, served under a `base`, for what the
+      // harness does without them and with it.
+      {
+        plugins: [fudicTest()],
+        root: 'test/bare-app',
+        base: '/sub/',
+        test: { name: 'bare-app', include: ['*.test.ts'] },
+      },
     ],
     coverage: {
       provider: 'v8',

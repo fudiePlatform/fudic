@@ -24,12 +24,70 @@ export interface HostInput {
   readonly body: string;
 }
 
+/** `html` as `.fud` text that paints it verbatim: every `@` escaped as `@@`. */
+export function verbatim(html: string): string {
+  return html.replaceAll('@', '@@');
+}
+
+/** A forward-slashed path, as a `<link href>` takes it. */
+const hrefOf = (path: string): string => path.replace(/\\/gu, '/');
+
+export interface LayoutHostInput {
+  /** Absolute path of the layout. */
+  readonly layout: string;
+  /** The layout's props, as the route's `@server layout(ctx, data)` would resolve them. */
+  readonly props: Readonly<Record<string, unknown>> | undefined;
+  readonly head: string | undefined;
+  readonly body: string | undefined;
+  readonly sections: Readonly<Record<string, string>> | undefined;
+}
+
+/**
+ * The source of a route that does nothing but use `layout` (§3.8): what it contributes to the
+ * head, its sections and its body, written verbatim, and the props a route resolves for it.
+ */
+export function layoutHost(input: LayoutHostInput): string {
+  const props =
+    input.props === undefined
+      ? ''
+      : `@code {\n@server {\nexport function layout() { return ${JSON.stringify(input.props)}; }\n}\n}\n`;
+  const head = input.head === undefined ? '' : `<head>\n${verbatim(input.head)}\n</head>\n`;
+  const sections = Object.entries(input.sections ?? {}).map(
+    ([name, html]) => `@section ${name} {\n${verbatim(html)}\n}\n`,
+  );
+  return `<link rel="layout" href="${hrefOf(input.layout)}">\n${props}${head}${sections.join('')}${verbatim(input.body ?? '')}\n`;
+}
+
+export interface SnippetHostInput {
+  /** The host component's own tag. */
+  readonly tag: string;
+  /** Absolute path of the snippet file. */
+  readonly file: string;
+  /** What follows `@render`, in `.fud` syntax. */
+  readonly call: string;
+  /** The values the call reads by name, written as literals. */
+  readonly scope: Readonly<Record<string, unknown>>;
+}
+
+/**
+ * The source of the component that renders one snippet (§4.10): it links the snippet file,
+ * declares each value of `scope` in its `@code`, and renders the call in its shadow root.
+ */
+export function snippetHost(input: SnippetHostInput): string {
+  const scope = Object.entries(input.scope).map(([name, value]) => `const ${name} = ${JSON.stringify(value)};\n`);
+  const code = scope.length === 0 ? '' : `@code {\n${scope.join('')}}\n`;
+  return (
+    `<link rel="snippet" href="${hrefOf(input.file)}">\n${code}` +
+    `<${input.tag}>\n<template shadowrootmode="open">\n@render ${input.call}\n</template>\n</${input.tag}>\n`
+  );
+}
+
 /**
  * The source of the host page: a standalone page document, so the compiler emits it as a
  * page — head, body and the hydration maps — and not as a component.
  */
 export function hostPage(input: HostInput): string {
-  const links = input.links.map((link) => `<link rel="${link.rel}" href="${link.href.replace(/\\/gu, '/')}">\n`);
+  const links = input.links.map((link) => `<link rel="${link.rel}" href="${hrefOf(link.href)}">\n`);
   const code = input.code === undefined ? '' : `@code {\n${input.code}\n}\n`;
   return `<!DOCTYPE html>\n<html>\n<head>\n${links.join('')}${code}</head>\n<body>\n${input.body}\n</body>\n</html>\n`;
 }
