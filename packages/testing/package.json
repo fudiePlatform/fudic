@@ -52,6 +52,7 @@
   },
   "dependencies": {
     "@fudic/compiler": "workspace:*",
+    "@fudic/conventions": "workspace:*",
     "@fudic/core": "workspace:*",
     "@fudic/di": "workspace:*",
     "@fudic/dom": "workspace:*",

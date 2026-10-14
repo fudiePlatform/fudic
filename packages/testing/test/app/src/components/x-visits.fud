@@ -1,0 +1,29 @@
+@code {
+  @server {
+    import { post } from "@fudic/http";
+
+    // Counts in a cookie: the page's jar carries it back on the next call.
+    export const visit = post().handle((ctx) => {
+      const visits = Number(ctx.cookies.get("visits") ?? "0") + 1;
+      ctx.response.headers.append("set-cookie", `visits=${String(visits)}; Path=/`);
+      return visits;
+    });
+  }
+
+  @client {
+    import { signal } from "@fudic/core";
+
+    const visits = signal(0);
+
+    async function go() {
+      visits.set(await visit());
+    }
+  }
+}
+
+<x-visits>
+  <template shadowrootmode="open">
+    <button @click=@go>Visit</button>
+    <output role="status">@visits()</output>
+  </template>
+</x-visits>

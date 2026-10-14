@@ -18,3 +18,6 @@ export const CACHE_FOLDER = 'node_modules/.fudic-test';
  * it (§4.2). Added in the `fudic` environment only: production modules never carry it.
  */
 export const FILE_EXPORT = '$file';
+
+/** The key the plugin options and Vite's `base` are provided under, for the in-memory server. */
+export const OPTIONS_KEY = 'fudicOptions';

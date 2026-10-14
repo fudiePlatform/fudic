@@ -21,6 +21,23 @@ function override(root: Container, providers: readonly ProviderOverride[]): void
   for (const { provide, use } of providers) provideIn(root, provide, use);
 }
 
+/** The overrides of the test that is running, for the server's side of it. */
+let current: readonly ProviderOverride[] = [];
+
+/** The overrides the server's containers get from now on, until the test ends. */
+export function serveOverrides(providers: readonly ProviderOverride[]): void {
+  current = providers;
+}
+
+/**
+ * `container` with the running test's overrides in it: what a request of the in-memory server
+ * resolves from, and what a page the harness paints renders with (§4.6).
+ */
+export function overridden<C extends Container>(container: C): C {
+  override(container, current);
+  return container;
+}
+
 /** The JSON a page published under `id`, or `undefined` when it published none. */
 function block<T>(id: string): T | undefined {
   const el = document.getElementById(id);

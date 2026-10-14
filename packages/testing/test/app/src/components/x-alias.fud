@@ -1,0 +1,31 @@
+@code {
+  import { aliasForm } from "../forms/alias.form";
+
+  @server {
+    import { put } from "@fudic/http";
+
+    export const save = put().form(aliasForm).handle(() => "saved");
+  }
+
+  @client {
+    import { signal } from "@fudic/core";
+
+    const result = signal("");
+
+    function done(e: Event) {
+      result.set(String((e as CustomEvent<string>).detail));
+    }
+  }
+}
+
+<x-alias>
+  <template shadowrootmode="open">
+    <form control=@aliasForm form:="@save" @fudic:result=@done>
+      <label for="alias">Alias</label>
+      <input id="alias" control=@aliasForm.alias type="text">
+      <small error=@aliasForm.alias></small>
+      <button type="submit">Save</button>
+      <output role="status">@result()</output>
+    </form>
+  </template>
+</x-alias>

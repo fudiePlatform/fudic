@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { inject, Service } from '@fudic/di';
+import { createRoot, inject, Service } from '@fudic/di';
 import { control, form, serverValidator } from '@fudic/forms';
 import { chain } from '../../src/chain.js';
 import { get, put } from '../../src/builder.js';
@@ -344,5 +344,17 @@ describe('.form(f): the validation, just before handle', () => {
   it('criterion 18: a body that is not even an object is 400', async () => {
     const res = await dispatch(putJson(42), target(put().form(userForm).handle(() => 1)));
     expect(res.status).toBe(400);
+  });
+});
+
+describe('the container of a request', () => {
+  it('is a fresh root by default, or the one `container` makes', async () => {
+    const fn = get().handle(() => inject(Cart).id);
+    const first = await (await dispatch(new Request(URL_SAVE), target(fn))).json();
+    const second = await (await dispatch(new Request(URL_SAVE), target(fn))).json();
+    expect(second).not.toBe(first);
+    const made = vi.fn(() => createRoot());
+    await dispatch(new Request(URL_SAVE), target(fn), { container: made });
+    expect(made).toHaveBeenCalledOnce();
   });
 });

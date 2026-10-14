@@ -12,7 +12,7 @@
 
 import { isDeepStrictEqual } from 'node:util';
 import { graphRegistry, resolveDocument, type ComponentGraph } from '@fudic/compiler';
-import { nodeIo } from '@fudic/vite';
+import { nodeIo } from '@fudic/vite/harness';
 import { cached } from './cache.js';
 import { BASE_URL, FILE_EXPORT } from './constants.js';
 import { blankPage, showPage } from './document.js';
@@ -20,7 +20,9 @@ import { hostPage } from './host.js';
 import { chunkMap, hydrate, resolverOf } from './hydrate.js';
 import { renderPage } from './page.js';
 import { settled, track } from './pending.js';
-import { standTree, type ProviderOverride } from './providers.js';
+import { serveOverrides, standTree, type ProviderOverride } from './providers.js';
+import { answerWith, type FetchOverride } from './fetch.js';
+import { knowComponents } from './server.js';
 import { gesturesOf, type Gestures } from './gestures.js';
 import { queriesOf, type Queries } from './queries.js';
 
@@ -41,6 +43,8 @@ export interface MountOptions<P> {
   readonly url?: string;
   /** Services that take the place of the tree's (decision 8.1.11). */
   readonly providers?: readonly ProviderOverride[];
+  /** Answers this test's requests in place of the in-memory server (§3.5). */
+  readonly fetch?: FetchOverride;
 }
 
 export interface Mounted<P> extends Queries, Gestures {
@@ -128,7 +132,9 @@ async function viaSsr(
     hostPage({ links: [{ rel: 'component', href: component[FILE_EXPORT] }], body: `<${tag}${attrs.join('')}></${tag}>` }),
   );
   const body = showPage(await renderPage(page, { hasLoad: false, hasDi: true }, '/', url, props));
-  hydrate(body, chunkMap(graphOf(page).components.values()), providers);
+  const components = [...graphOf(page).components.values()];
+  knowComponents(components);
+  hydrate(body, chunkMap(components), providers);
   return body.querySelector<ComponentElement>(tag)!;
 }
 
@@ -144,6 +150,7 @@ async function viaClient(
   const body = blankPage();
   // No page printed a tree: the component resolves from a lone root, with the overrides in it.
   await standTree(resolverOf(new Map()), providers);
+  knowComponents([{ tag, path: component[FILE_EXPORT] }, ...graphOf(component[FILE_EXPORT]).components.values()]);
   const payload: unknown[] = Array.from({ length: order.length });
   for (const [at, value] of positions(tag, order, props)) payload[at] = value;
   const host = document.createElement(tag) as ComponentElement;
@@ -159,6 +166,8 @@ export async function mount<P extends object = Record<string, unknown>>(
 ): Promise<Mounted<P>> {
   const props: object = options.props ?? {};
   const providers = options.providers ?? [];
+  serveOverrides(providers);
+  answerWith(options.fetch);
   const order = propOrder(component[FILE_EXPORT], component.tag);
   // Checked before anything is painted: a prop the component does not declare is the test's
   // mistake, whichever road it takes.

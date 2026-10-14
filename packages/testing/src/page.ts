@@ -9,17 +9,33 @@
  * test reaches them.
  */
 
+import { extname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   drainStream,
   edgeContext,
   emitRenderChunk,
   type RenderChunkOptions,
   type RenderModule,
-} from '@fudic/vite';
+} from '@fudic/vite/harness';
 import { cached } from './cache.js';
 
 /** What the wrapper needs to know about the page, besides where it is. */
 export type PageFacts = Omit<RenderChunkOptions, 'pageModule' | 'withLoad'>;
+
+/** This harness's `providers.ts`, which the wrapper imports to put the overrides in its root. */
+const PROVIDERS = fileURLToPath(new URL(`./providers${extname(fileURLToPath(import.meta.url))}`, import.meta.url))
+  .replace(/\\/gu, '/');
+
+/**
+ * The plugin's wrapper, with the request's container handed through the test's overrides
+ * first (§4.6): the one thing of it the harness changes. Its root is otherwise the one
+ * `vite dev` opens.
+ */
+function wrapperOf(file: string, facts: PageFacts): string {
+  const source = emitRenderChunk({ ...facts, pageModule: file, withLoad: true });
+  return `import { overridden as $overridden } from ${JSON.stringify(PROVIDERS)};\n${source.replaceAll('iocRoot()', '$overridden(iocRoot())')}`;
+}
 
 /**
  * The HTML `vite dev` would answer for `url` with the page at `file`, matched by `pattern`.
@@ -32,7 +48,7 @@ export async function renderPage(
   url: string,
   data?: unknown,
 ): Promise<string> {
-  const wrapper = cached('wrapper', 'js', emitRenderChunk({ ...facts, pageModule: file, withLoad: true }));
+  const wrapper = cached('wrapper', 'js', wrapperOf(file, facts));
   const mod = (await import(/* @vite-ignore */ wrapper)) as RenderModule;
   // `data` undefined is what the wrapper reads as «call `load`»: no branch here.
   return drainStream(mod.render({ ...edgeContext(pattern, url, ''), data }));

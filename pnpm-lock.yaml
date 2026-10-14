@@ -488,6 +488,9 @@ importers:
       '@fudic/compiler':
         specifier: workspace:*
         version: link:../compiler
+      '@fudic/conventions':
+        specifier: workspace:*
+        version: link:../conventions
       '@fudic/core':
         specifier: workspace:*
         version: link:../core

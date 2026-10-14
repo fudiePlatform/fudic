@@ -1,6 +1,6 @@
 # SDD-57 — Tests unitarios de componentes, rutas, layouts y snippets: `@fudic/testing`
 
-> **Estado:** `Listo` — [tareas](./SDD-57-Task.md), 15 / 30.
+> **Estado:** `Listo` — [tareas](./SDD-57-Task.md), 20 / 30.
 > **Paquetes:** `@fudic/testing` (nuevo) · `@fudic/vite` · `@fudic/core` · `@fudic/http` ·
 > `@fudic/example-basic`
 > **Depende de:** 17 (hidratación), 19 (plugin, routing y dev server), 20 (Service Worker),
@@ -690,3 +690,29 @@ Tomadas con Pedro el 2026-10-14, antes de redactar:
     `fudicTest()` entrega esos dos paquetes a Node (`server.deps.external`): se cargan una vez
     por worker. Instalados ya viven en `node_modules`; la regla cubre también un workspace. El
     setup por fichero bajó de ~4,5 s a ~0,3 s. `user-event` se prepara en el primer gesto.
+19. **El paquete se prueba con dos proyectos de vitest** (2026-10-14). Uno, el propio paquete
+    con sus componentes de prueba junto a los tests, sin `src/http.ts` ni rutas. Otro, una app
+    pequeña en `test/app/` —su `src/http.ts`, sus rutas, sus componentes y sus datos— con los
+    tests de servidor, rutas y layouts dentro. Las dos con `fudicTest()`, como un proyecto real;
+    la app no podía vivir en la raíz del paquete, donde `src/` es el código del harness.
+20. **El entorno conserva el `Request`, `Response` y `Headers` de Node** (2026-10-14). El
+    servidor en memoria corre en el mismo ámbito que la página, y el `Response` de happy-dom
+    descarta `Set-Cookie` como hace un navegador con una respuesta que construye un script:
+    ninguna cookie que fijara una función de servidor llegaba al test. Con los de Node el
+    servidor responde como en producción; el cliente no lee esa cabecera.
+21. **Dos aberturas mínimas para el harness** (2026-10-14). `@fudic/vite/harness` expone el
+    wrapper, el contexto y el drenado de `vite dev`, la tabla de funciones (`devSource`, que ya
+    recibía su cargador), el routing y el io, sin cargar Vite: el harness corre en cada worker.
+    `@fudic/http` gana `container` en las opciones de `dispatch` (por defecto, una raíz nueva,
+    como hasta ahora): es por donde entran los `providers` del test en el servidor. En la página
+    que pinta, el harness pasa la raíz que abre el wrapper por esos mismos overrides.
+22. **El `fetch` del harness envía lo que envía un navegador** (2026-10-14): las cookies de la
+    página, `Origin` y `Sec-Fetch-Site: same-origin`, y guarda las cookies que fija la
+    respuesta. `csrf.server` ve lo mismo que en producción. Entre tests se vacía también el bote
+    de cookies (§4.8).
+23. **`clientGraphOf` poda como el bundler** (2026-10-14). La transformación de cliente borra el
+    cuerpo de un `serverValidator`, pero el `import` de lo que leía se queda en el módulo hasta
+    que el bundler lo elimina por no usarse. El recorrido sigue solo los imports cuyos nombres
+    se usan tras la transformación (más los imports desnudos y los `export … from`), que es lo
+    que llega al navegador. La transformación la hace un Vite propio del worker, creado en la
+    primera llamada y cerrado al acabar el fichero: unos 0,5 s la primera vez.

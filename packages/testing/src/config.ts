@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { fudic, type FudicOptions } from '@fudic/vite';
 import type { Plugin } from 'vite';
 import type {} from 'vitest/config';
-import { BASE_URL, FILE_EXPORT, ROOT_KEY } from './constants.js';
+import { BASE_URL, FILE_EXPORT, OPTIONS_KEY, ROOT_KEY } from './constants.js';
 
 /**
  * A module next to this one, by path: vitest loads a custom environment and a setup file
@@ -55,7 +55,10 @@ export function fudicTest(options: FudicOptions = {}): Plugin[] {
           environment: ENVIRONMENT,
           environmentOptions: { happyDOM: { url: BASE_URL } },
           setupFiles: [SETUP],
-          provide: { [ROOT_KEY]: resolve(user.root ?? process.cwd()) },
+          provide: {
+            [ROOT_KEY]: resolve(user.root ?? process.cwd()),
+            [OPTIONS_KEY]: { ...options, base: user.base ?? '/' },
+          },
           server: { deps: { inline: [INLINE], external: [EXTERNAL] } },
         },
       }),

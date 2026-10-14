@@ -4,7 +4,7 @@ import { describe, expect, test } from 'vitest';
 import type { Plugin, UserConfig } from 'vite';
 import type {} from 'vitest/config';
 import { ENVIRONMENT, EXTERNAL, INLINE, SETUP, fudicTest } from '../src/config.js';
-import { BASE_URL, FILE_EXPORT, ROOT_KEY } from '../src/constants.js';
+import { BASE_URL, FILE_EXPORT, OPTIONS_KEY, ROOT_KEY } from '../src/constants.js';
 import environment from '../src/environment.js';
 
 function testPlugin(): Plugin {
@@ -37,8 +37,15 @@ describe('fudicTest', () => {
   });
 
   test('provides the project root, the configured one or the working directory', () => {
-    expect(configOf({}).test?.provide).toEqual({ [ROOT_KEY]: resolve(process.cwd()) });
-    expect(configOf({ root: 'app' }).test?.provide).toEqual({ [ROOT_KEY]: resolve('app') });
+    expect(configOf({}).test?.provide).toMatchObject({ [ROOT_KEY]: resolve(process.cwd()) });
+    expect(configOf({ root: 'app' }).test?.provide).toMatchObject({ [ROOT_KEY]: resolve('app') });
+  });
+
+  test('provides the plugin options and the base, for the in-memory server', () => {
+    expect(configOf({}).test?.provide?.[OPTIONS_KEY]).toEqual({ base: '/' });
+    const plugin = fudicTest({ routesDir: 'src/pages' })[1]!;
+    const config = (plugin.config as (user: UserConfig) => UserConfig)({ base: '/app/' });
+    expect(config.test?.provide?.[OPTIONS_KEY]).toEqual({ routesDir: 'src/pages', base: '/app/' });
   });
 
   test('has vitest transform what the harness writes under node_modules', () => {
@@ -82,5 +89,13 @@ describe('the fudic environment', () => {
     expect(environment.name).toBe('fudic');
     expect(environment.viteEnvironment).toBe('ssr');
     expect(typeof environment.setup).toBe('function');
+  });
+
+  test('keeps Node’s Request, Response and Headers over happy-dom’s', async () => {
+    const global: Record<string, unknown> = { Request: 'node', Response: 'node', Headers: 'node' };
+    const env = await environment.setup(global, {});
+    expect([global['Request'], global['Response'], global['Headers']]).toEqual(['node', 'node', 'node']);
+    expect(global['document']).toBeDefined();
+    await env.teardown(global);
   });
 });

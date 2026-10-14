@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/testing` (nuevo) · `@fudic/vite` · `@fudic/core` · `@fudic/http` ·
 > `@fudic/example-basic`
 > **Rama:** `sdd-57-tests-unitarios` (nace de `main`)
-> **Progreso:** 15 / 30 — `Listo`.
+> **Progreso:** 20 / 30 — `Listo`.
 
 **El orden manda en cuatro puntos.**
 
@@ -84,18 +84,18 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 16 | 3 | **La tabla de funciones por el grafo de vitest.** `@fudic/vite` expone el armado de `devSource` con el cargador como parámetro, y el harness le pasa uno que importa `?server` por vitest | `vite` · `testing` | `packages/vite/src/functions.ts` · `src/server.ts` |
-| [ ] | 17 | 13, 16 | **El `fetch` del harness** (§4.6): `fetch` del test, `/_fudic/fn/` a `functionsHandler`, cualquier otra URL lanza nombrándola. Cada petición cuenta como pendiente | `testing` | `src/fetch.ts` |
-| [ ] | 18 | 10, 17 | **`providers` en el servidor:** encima del contenedor de la petición | `testing` | `src/providers.ts` |
-| [ ] | 19 | 3 | **`clientGraphOf` y `toReach`** (§3.10): la transformación de cliente del plugin, recorriendo imports sin ejecutar | `testing` · `vite` | `src/client-graph.ts` |
-| [ ] | 20 | 16–19 | **Tests.** Criterios 12 a 18 | `testing` | `test/server.test.ts` · `test/client-graph.test.ts` |
+| [x] | 16 | 3 | **La tabla de funciones por el grafo de vitest.** `devSource` ya recibía el cargador como parámetro; `@fudic/vite` lo expone, con lo demás que el harness necesita, en la entrada `@fudic/vite/harness`, que no carga Vite (decisión 8.1.21) | `vite` · `testing` | `packages/vite/src/harness.ts` · `src/server.ts` |
+| [x] | 17 | 13, 16 | **El `fetch` del harness** (§4.6): `fetch` del test, `/_fudic/fn/` a `functionsHandler`, cualquier otra URL lanza nombrándola. Cada petición cuenta como pendiente. Añade lo que añade un navegador (cookies, `Origin`, `Sec-Fetch-Site`), guarda las cookies que fija la respuesta y el entorno conserva el `Request`/`Response`/`Headers` de Node (decisiones 8.1.20 y 8.1.22) | `testing` | `src/fetch.ts` · `src/environment.ts` |
+| [x] | 18 | 10, 17 | **`providers` en el servidor:** encima del contenedor de la petición. `@fudic/http` gana la opción `container` de `dispatch`; la página que pinta el harness pasa su raíz por los mismos overrides (decisión 8.1.21) | `testing` · `http` | `src/providers.ts` · `src/page.ts` · `packages/http/src/server/dispatch.ts` |
+| [x] | 19 | 3 | **`clientGraphOf` y `toReach`** (§3.10): la transformación de cliente del plugin, recorriendo imports sin ejecutar, con un Vite propio del worker y la poda del bundler sobre los imports que ya nadie usa (decisión 8.1.23) | `testing` | `src/client-graph.ts` · `src/matchers.ts` |
+| [x] | 20 | 16–19 | **Tests.** Criterios 12 a 18, y la parte de `fetch` del criterio 27 | `testing` | `test/app/*.test.ts` · `test/app/src/` |
 
 ## Fase 5 — Service Worker (2)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [ ] | 21 | 17 | **Worker simulado** (§3.6): `navigator.serviceWorker.controller` que apunta los paths y contesta por el `MessageChannel`; `t.invalidated` | `testing` | `src/sw.ts` |
-| [ ] | 22 | 21 | **Tests.** Criterios 19 y 20 | `testing` | `test/sw.test.ts` |
+| [ ] | 22 | 21 | **Tests.** Criterios 19 y 20, y la parte del worker del criterio 27 | `testing` | `test/sw.test.ts` |
 
 ## Fase 6 — variantes del `<template>` (2)
 
@@ -108,7 +108,7 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 25 | 8, 17 | **`visit`** (§4.9): routing del plugin, `emitRenderChunk`, `load` por el grafo de vitest o `data` en su lugar, y el documento entero sustituido. `@fudic/vite` expone lo que haga falta sin cambiar `vite dev`. Criterios 21, 22 y 23. Reutiliza `renderPage` (`src/page.ts`) y `showPage` (`src/document.ts`) de la tarea 7 | `testing` · `vite` | `src/visit.ts` · `test/visit.test.ts` · `test/fixtures/app/` |
+| [ ] | 25 | 8, 17 | **`visit`** (§4.9): routing del plugin, `emitRenderChunk`, `load` por el grafo de vitest o `data` en su lugar, y el documento entero sustituido. `@fudic/vite` expone lo que haga falta sin cambiar `vite dev`. Criterios 21, 22 y 23. Reutiliza `renderPage` (`src/page.ts`) y `showPage` (`src/document.ts`) de la tarea 7 | `testing` · `vite` | `src/visit.ts` · `test/app/visit.test.ts` · `test/app/src/routes/` |
 | [ ] | 26 | 25 | **`renderLayout`:** `route` con closures que escriben `head`, `body` y las secciones. Criterio 24 | `testing` | `src/layout.ts` · `test/layout.test.ts` |
 | [ ] | 27 | 7 | **`renderSnippet`** (§4.10): el anfitrión virtual con `<link rel="snippet">`, el `scope` como literales y `@render <call>`. Criterios 25 y 26 | `testing` | `src/snippet.ts` · `test/snippet.test.ts` |
 
