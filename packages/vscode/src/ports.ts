@@ -62,10 +62,36 @@ export interface EditorPort {
 export interface WorkbenchProcess {
   /** The first line of its stdout; rejects when it cannot start (an `ENOENT` keeps its `code`). */
   readonly firstLine: Promise<string | undefined>;
+  /** Every later line of its stdout: the messages of its components and its answers. */
+  onLine(listener: (line: string) => void): void;
+  /** Writes one line to its stdin: a command. */
+  send(line: string): void;
   /** Closing its stdin is how it is told to clean up and exit. */
   closeStdin(): void;
   /** Called once when it exits, with the last of what it wrote to stderr. */
   onExit(listener: (stderr: string) => void): void;
+}
+
+/** What a criterion is, for the `.fudspec` it lives in. */
+export interface CriterionView {
+  readonly id: string;
+  /** 0-based, the line of its `criterion`. */
+  readonly line: number;
+  readonly state: 'waiting' | 'running' | 'pass' | 'fail' | 'error';
+  /** Why it did not pass: what goes to Problems. */
+  readonly problem?: string;
+}
+
+/** The results of a workbench, painted in the `.fudspec`: the margin and Problems. */
+export interface WorkbenchResultsPort {
+  show(spec: string, criteria: readonly CriterionView[]): void;
+  clear(spec: string): void;
+}
+
+/** The workbench's own item in the status bar, for the component of the active editor. */
+export interface WorkbenchStatusPort {
+  show(text: string, tooltip: string): void;
+  hide(): void;
 }
 
 /** Starting processes. The adapter binds it to `child_process.spawn`. */

@@ -11,10 +11,12 @@ import { join } from 'node:path';
 import type {
   CaretAt,
   CommentSelection,
+  CriterionView,
   LineReplacement,
   SnippetTarget,
   TypedText,
 } from './ports.js';
+import { samePath } from './workbench.js';
 
 /** The shape of `vscode.WorkspaceFolder`, reduced to what is read. */
 export interface FolderLike {
@@ -259,3 +261,36 @@ export const workbenchFileOf = (editor: FileEditorLike | undefined): string | un
   editor !== undefined && WORKBENCH_LANGUAGES.has(editor.document.languageId)
     ? editor.document.uri.fsPath.replaceAll('\\', '/')
     : undefined;
+
+/** The three marks of the margin: what the workbench said of each criterion. */
+export type MarginKind = 'pass' | 'fail' | 'running';
+
+/** A small circle for the margin, as a data URI the editor takes for an icon. */
+export const marginIcon = (color: string): string =>
+  `data:image/svg+xml;utf8,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><circle cx="8" cy="8" r="4" fill="${color}"/></svg>`,
+  )}`;
+
+/** The color of each margin mark: the shell's green, red and grey. */
+export const MARGIN_COLORS: Readonly<Record<MarginKind, string>> = { pass: '#2ea043', fail: '#e5534b', running: '#8e8e93' };
+
+/** The lines of each margin mark; a criterion still waiting has none. */
+export const marginLines = (views: readonly CriterionView[]): Record<MarginKind, number[]> => {
+  const lines: Record<MarginKind, number[]> = { pass: [], fail: [], running: [] };
+  for (const view of views) {
+    if (view.state === 'pass') lines.pass.push(view.line);
+    else if (view.state === 'fail' || view.state === 'error') lines.fail.push(view.line);
+    else if (view.state === 'running') lines.running.push(view.line);
+  }
+  return lines;
+};
+
+/** What goes to Problems: the criteria that did not pass, at their line. */
+export const problemLines = (views: readonly CriterionView[]): { readonly line: number; readonly message: string }[] =>
+  views.flatMap((view) => (view.problem === undefined ? [] : [{ line: view.line, message: view.problem }]));
+
+/** The views kept for an editor's document; none when the workbench said nothing of it. */
+export const viewsOf = (
+  kept: ReadonlyMap<string, readonly CriterionView[]>,
+  fsPath: string,
+): readonly CriterionView[] => kept.get(samePath(fsPath)) ?? [];

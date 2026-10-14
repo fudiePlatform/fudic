@@ -110,6 +110,10 @@
         "command": "fudic.openWorkbench",
         "title": "Fudic: Open Workbench",
         "icon": "$(open-preview)"
+      },
+      {
+        "command": "fudic.runCriterion",
+        "title": "Fudic: Run Criterion"
       }
     ],
     "keybindings": [
@@ -133,6 +137,12 @@
       }
     ],
     "menus": {
+      "commandPalette": [
+        {
+          "command": "fudic.runCriterion",
+          "when": "false"
+        }
+      ],
       "editor/title": [
         {
           "command": "fudic.openWorkbench",
@@ -184,6 +194,25 @@
           ],
           "default": null,
           "description": "The Node executable that runs the workbench. Empty uses the one on the PATH."
+        },
+        "fudic.workbench.browser": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "chrome",
+            "msedge",
+            "chromium",
+            "firefox",
+            "webkit"
+          ],
+          "default": "auto",
+          "description": "The browser the workbench runs the criteria in. Auto tries Chrome, then Edge, then the Chromium Playwright downloads."
+        },
+        "fudic.workbench.workers": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 4,
+          "description": "How many criteria the workbench runs at once."
         }
       }
     },

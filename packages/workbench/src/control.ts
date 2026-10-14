@@ -23,5 +23,5 @@ export async function obey(session: WorkbenchSession, command: Command): Promise
     const { code, message } = opened.diagnostic;
     return { v: 2, type: 'error', file: command.file, error: { code, message } };
   }
-  return { v: 2, type: 'opened', ...opened };
+  return { v: 2, type: 'opened', file: command.file, ...opened };
 }

@@ -170,6 +170,8 @@ export type Command =
 export interface OpenedMessage {
   readonly v: 2;
   readonly type: 'opened';
+  /** The file as `open` named it: what the parent matches the answer with. */
+  readonly file: string;
   readonly url: string;
   readonly tag: string;
   readonly component: string;
