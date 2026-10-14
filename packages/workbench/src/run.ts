@@ -106,7 +106,6 @@ export async function runSpecs(paths: readonly string[], options: RunOptions = {
         ...(options.browser !== undefined ? { browser: options.browser } : {}),
         ...(options.onMessage !== undefined ? { onMessage: options.onMessage } : {}),
       },
-      onProcessed: () => undefined,
     });
     if (isFailure(project)) return project;
     browser = project.browser.name;

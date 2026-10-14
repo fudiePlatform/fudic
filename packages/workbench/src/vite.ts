@@ -19,8 +19,11 @@ export interface ViteInput {
   readonly routesDir: string;
   /** The workbench's server: Vite's HMR listens on it. */
   readonly http: Server;
-  /** A file Vite has finished processing after a change: see `processedChanges`. */
-  onProcessed(file: string): void;
+  /**
+   * A file Vite has finished processing after a change: see `processedChanges`. Absent when
+   * nothing reruns on save (`fudic-workbench run`).
+   */
+  readonly onProcessed?: (file: string) => void;
 }
 
 export function startVite(input: ViteInput): Promise<ViteDevServer> {
@@ -31,7 +34,10 @@ export function startVite(input: ViteInput): Promise<ViteDevServer> {
     logLevel: 'warn',
     // `liveCheck: false`: the editor and the build already report type errors. Here nobody reads
     // them, and the checker cost most of a second to start and kept checking while Chrome measured.
-    plugins: [fudic({ routesDir: input.routesDir, liveCheck: false }), processedChanges(input.onProcessed)],
+    plugins: [
+      fudic({ routesDir: input.routesDir, liveCheck: false }),
+      ...(input.onProcessed !== undefined ? [processedChanges(input.onProcessed)] : []),
+    ],
     // The overlay painted one criterion's error over another's page and swallowed its clicks.
     server: { middlewareMode: true, hmr: { server: input.http, overlay: false } },
   });

@@ -100,19 +100,10 @@ export async function loadSession(input: SessionInput): Promise<LoadedSession> {
   for (const name of plan.files.keys()) invalidateFile(vite, `${input.dir}/${name}`);
 
   const criteria = executed.error === undefined ? plan.criteria : failProps(plan, executed.error.message);
-  const lines = criterionLines(spec, specText);
-  const described = await Promise.all(criteria.map((c) => describeCriterion(c, lines.get(c.id) ?? 1, loadTerm)));
+  // The 1-based line of each `criterion` keyword: the margin and Problems point at it.
+  const lineOf = (offset: number) => specText.slice(0, offset).split('\n').length;
+  const described = await Promise.all(criteria.map((c) => describeCriterion(c, lineOf(c.offset), loadTerm)));
   return { criteria, message: sessionMessage(target, diagnostics, described), loadTerm, reads };
-}
-
-/** Each criterion's slug → the 1-based line of its `criterion` keyword. */
-function criterionLines(spec: SpecFile, text: string): ReadonlyMap<string, number> {
-  const lines = new Map<string, number>();
-  for (const criterion of spec.criteria) {
-    if (criterion.slug === undefined) continue;
-    lines.set(criterion.slug.text, text.slice(0, criterion.keyword.start).split('\n').length);
-  }
-  return lines;
 }
 
 /** `fudic/terms/` of the project first, then the framework's: the editor's roots, in its order. */
