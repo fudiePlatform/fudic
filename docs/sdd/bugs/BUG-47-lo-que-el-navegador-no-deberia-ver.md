@@ -89,6 +89,12 @@ el autor pidió.
 Así `tokens.ts` ni siquiera entra en el grafo del cliente desde `auth.ts`. Si otro módulo de
 cliente lo importa, entra por ese camino, y eso es asunto de ese módulo.
 
+Solo se quita lo que el código borrado usaba: un especificador que ya estaba sin usar antes del
+borrado es del autor y se queda. Si lo que sobrevive son solo tipos en línea
+(`{ Tokens, type User }` sin `Tokens`), la declaración pasa a `import type`: con
+`verbatimModuleSyntax`, `import { type User } from 'x'` se conserva como `import 'x'` y el
+módulo se cargaría igual por sus efectos.
+
 ### 4.2. Un módulo con algo borrado no lleva su texto en el mapa
 
 El plugin anota cada módulo al que el borrado le quitó algo. En `generateBundle` del build de
@@ -105,6 +111,28 @@ Con la huella en el segmento de versión, un build con otro runtime publica en o
 caché. El barrido de cachés de SDD-45 (`sweepRuntimeCaches`) retira la antigua cuando caducan
 sus marcas, sin cambios. Dos aplicaciones con el mismo runtime siguen pidiendo los mismos bytes
 a la misma URL, que es lo que SDD-45 §3.1 protege.
+
+### 4.4. Los chunks del Service Worker borran igual
+
+*(Añadido al implementar, decisión de Pedro del 2026-10-14.)* El pase de enlace, que construye
+los chunks que el Service Worker enlaza a mano, es un build aparte con su propio plugin y no
+borraba nada: en `examples/basic` el chunk de `/formularios` llevaba `aliasTaken`, la consulta
+que solo corre con `{ server: true }`. Ese pase aplica ahora el mismo borrado (§4.1) a todo
+módulo JS/TS, y sus mapas se vacían como los del build principal (§4.2), con un único registro
+de módulos borrados compartido por los dos.
+
+### 4.5. Las piezas se importan por la URL con huella
+
+*(Añadido al implementar, decisión de Pedro del 2026-10-14.)* El build de runtime de cada paquete
+hornea en sus `.js` las URLs de sus hermanas con la versión sola
+(`/_fudic/0.0.1/dom/browser.js`). Copiadas al segmento con huella, la segunda pieza daría 404.
+Al copiar, cada pieza reescribe `/_fudic/<version>/<paquete>/` por el segmento con huella de ese
+paquete.
+
+La huella de un paquete se calcula sobre sus bytes originales **y** sobre las huellas de los
+paquetes a cuyas piezas apuntan, en cierre transitivo. Si cambia `@fudic/dom`, cambian los bytes
+reescritos de `@fudic/core`, y su URL tiene que cambiar con ellos: si no, la misma URL serviría
+bytes distintos.
 
 ## 5. Invariantes
 
@@ -142,6 +170,17 @@ Cada uno con un test que falle antes del cambio.
    activo.
 8. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde. Lo nuevo al 100 % en las cuatro
    métricas, y `@fudic/vite` sin bajar de su suelo de `main`.
+
+Añadidos al implementar (§4.1, §4.4, §4.5):
+
+9. **Solo tipos.** `import { Tokens, type User }` con `Tokens` solo en lo borrado queda como
+   `import type { User }`, y el JS de cliente no carga el módulo.
+10. **Chunks del Service Worker.** En un build con Service Worker, el chunk enlazado de una
+    página que importa un formulario con `serverValidator` no contiene lo que solo usaba el
+    validador, y su mapa lleva `null` en la entrada del formulario.
+11. **Segundo salto.** Toda URL `/_fudic/…` que nombra una pieza copiada existe en el `dist`
+    con huella, y cambiar un byte de `@fudic/dom` cambia también la URL de las piezas de
+    `@fudic/core`.
 
 ## 7. Fuera de alcance
 

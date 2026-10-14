@@ -80,6 +80,26 @@ describe('criterion 2: what the rest of the module uses stays', () => {
     expect(orphaned(code, 'BODY(a)')).toBe('import { b } from "./data.json" with { type: "json" };\nrun(BODY(a), b);');
   });
 
+  it('criterion 9: only inline types left becomes `import type`, so the module is not loaded', () => {
+    // Under `verbatimModuleSyntax`, `import { type User } from 'x'` is kept as `import 'x'`.
+    const code = ["import { Tokens, type User } from '../services/tokens';", 'run(BODY(Tokens));', 'let u: User;'].join('\n');
+    expect(orphaned(code, 'BODY(Tokens)')).toBe(
+      "import type { User } from '../services/tokens';\nrun(BODY(Tokens));\nlet u: User;",
+    );
+  });
+
+  it('a renamed inline type keeps its alias in the `import type`', () => {
+    const code = ["import { a, type B as C, type D } from './x' with { type: 'json' };", 'run(BODY(a));', 'let c: C, d: D;'].join('\n');
+    expect(orphaned(code, 'BODY(a)')).toBe(
+      "import type { B as C, D } from './x' with { type: 'json' };\nrun(BODY(a));\nlet c: C, d: D;",
+    );
+  });
+
+  it('a value left beside the inline type: a plain import, the `type` kept inline', () => {
+    const code = ["import { a, b, type T } from './x';", 'run(BODY(a), b);', 'let t: T;'].join('\n');
+    expect(orphaned(code, 'BODY(a)')).toBe("import { b, type T } from './x';\nrun(BODY(a), b);\nlet t: T;");
+  });
+
   it("import './x' stays: it is an effect the author asked for", () => {
     const code = ["import './polyfill';", "import { a } from './a';", 'run(BODY(a));'].join('\n');
     expect(orphaned(code, 'BODY(a)')).toBe("import './polyfill';\n\nrun(BODY(a));");

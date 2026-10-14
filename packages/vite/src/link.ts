@@ -27,6 +27,7 @@ import { LINK_DIR, LINK_PREFIX } from './constants.js';
 import { loadWithSourceMap } from './inputmaps.js';
 import { serializeMap, type NestedOutputOptions } from './nested.js';
 import { LinkedAssets } from './linked-assets.js';
+import { ErasedModules } from './erased-sources.js';
 
 export interface LinkChunk {
   readonly fileName: string;
@@ -89,6 +90,8 @@ function linkPlugin(
   runtimeFor: (pattern: string) => RuntimeEntries,
   /** The host's reporter: what this pass compiles again is not said twice (SDD-35 §4.4). */
   reporter: BuildReporter | undefined,
+  /** The host's record of erased modules: these chunks ship too (BUG-47 §4.1). */
+  erased: ErasedModules,
 ): Plugin {
   // The Service Worker renders the same pages the edge does, so it publishes the same route
   // names (SDD-39 §4.7): one map, resolved once for the pass.
@@ -120,10 +123,14 @@ function linkPlugin(
         runtime: runtimeFor(pattern),
       });
     },
-    async transform(_code, id) {
+    async transform(code, id) {
       const path = id.split('?')[0] ?? id;
       if (!path.endsWith('.fud')) {
-        return null;
+        // A link chunk is published and runs in the browser: a schema or a middleware it
+        // imports is erased exactly as the host bundle erases it.
+        if (!/\.[cm]?[jt]sx?$/u.test(path)) return null;
+        const erasedCode = erased.erase(code, path);
+        return erasedCode === null ? null : { code: erasedCode, map: null };
       }
       // The same module the host bundle compiled, from the build's memory (`compileFud`).
       const compiled = await compileFud(path, io, routeNameOf(path), styles, assets);
@@ -189,6 +196,8 @@ export async function runLinkPass(
   runtimeFor: (pattern: string) => RuntimeEntries = () => runtimeUrls(base, ''),
   /** Where this pass reports what it compiles; the host's, so nothing is said twice. */
   reporter?: BuildReporter,
+  /** Where this pass records what it erased; the host's, so the maps it emits drop it. */
+  erased: ErasedModules = new ErasedModules(),
 ): Promise<LinkResult> {
   const linkable = builds.filter((rb) => isLinkable(rb.decision));
   if (linkable.length === 0) {
@@ -205,7 +214,7 @@ export async function runLinkPass(
     root,
     base,
     logLevel: 'error',
-    plugins: [linkPlugin(linkable, io, base, styles, assets, runtimeFor, reporter)],
+    plugins: [linkPlugin(linkable, io, base, styles, assets, runtimeFor, reporter, erased)],
     build: {
       write: false,
       emptyOutDir: false,

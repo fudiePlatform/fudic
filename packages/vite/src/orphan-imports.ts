@@ -60,16 +60,28 @@ function inside(span: Span, erased: readonly Span[]): boolean {
   return erased.some((outer) => outer.start <= span.start && span.end <= outer.end);
 }
 
-/** The declaration rewritten with only `kept`, its source and attributes untouched. */
+/**
+ * The declaration rewritten with only `kept`, its source and attributes untouched.
+ *
+ * When only inline types are left (`{ Tokens, type User }` without `Tokens`) it becomes an
+ * `import type`: under `verbatimModuleSyntax`, `import { type User } from 'x'` is kept as
+ * `import 'x'`, and the module would load for its effects all the same.
+ */
 function rebuild(code: string, declaration: OxcNode, kept: readonly OxcNode[], map: MapOffset): string {
   const text = (s: OxcNode): string => code.slice(map(s.start), map(s.end));
+  const source = declaration['source'] as OxcNode;
+  const from = `from ${code.slice(map(source.start), map(declaration.end))}`;
+  if (kept.every((s) => s['importKind'] === 'type')) {
+    // Only an `ImportSpecifier` has a kind of its own: the text from its imported name on.
+    const names = kept.map((s) => code.slice(map((s['imported'] as OxcNode).start), map(s.end)));
+    return `import type { ${names.join(', ')} } ${from}`;
+  }
   const named = kept.filter((s) => s.type === 'ImportSpecifier').map(text);
   const parts = [
     ...kept.filter((s) => s.type !== 'ImportSpecifier').map(text),
     ...(named.length > 0 ? [`{ ${named.join(', ')} }`] : []),
   ];
-  const source = declaration['source'] as OxcNode;
-  return `import ${parts.join(', ')} from ${code.slice(map(source.start), map(declaration.end))}`;
+  return `import ${parts.join(', ')} ${from}`;
 }
 
 /**
