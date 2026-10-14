@@ -3,7 +3,8 @@ import { basename, resolve } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import type { Plugin, UserConfig } from 'vite';
 import type {} from 'vitest/config';
-import { BASE_URL, ENVIRONMENT, FILE_EXPORT, ROOT_KEY, SETUP, fudicTest } from '../src/config.js';
+import { ENVIRONMENT, EXTERNAL, INLINE, SETUP, fudicTest } from '../src/config.js';
+import { BASE_URL, FILE_EXPORT, ROOT_KEY } from '../src/constants.js';
 import environment from '../src/environment.js';
 
 function testPlugin(): Plugin {
@@ -41,9 +42,17 @@ describe('fudicTest', () => {
   });
 
   test('has vitest transform what the harness writes under node_modules', () => {
-    const [inline] = configOf({}).test?.server?.deps?.inline as RegExp[];
-    expect(inline!.test('/p/node_modules/.fudic-test/wrapper-1.js')).toBe(true);
-    expect(inline!.test('/p/node_modules/vite/index.js')).toBe(false);
+    expect(configOf({}).test?.server?.deps?.inline).toEqual([INLINE]);
+    expect(INLINE.test('/p/node_modules/.fudic-test/wrapper-1.js')).toBe(true);
+    expect(INLINE.test('/p/node_modules/vite/index.js')).toBe(false);
+  });
+
+  test('hands the plugin and the compiler to Node, installed or in a workspace', () => {
+    expect(configOf({}).test?.server?.deps?.external).toEqual([EXTERNAL]);
+    expect(EXTERNAL.test('/p/node_modules/@fudic/vite/dist/index.js')).toBe(true);
+    expect(EXTERNAL.test('C:\\repo\\packages\\compiler\\dist\\index.js')).toBe(true);
+    expect(EXTERNAL.test('/p/node_modules/@fudic/core/dist/index.js')).toBe(false);
+    expect(EXTERNAL.test('/p/node_modules/vite/dist/node/index.js')).toBe(false);
   });
 
   test('names its files next to it, with its own extension', () => {

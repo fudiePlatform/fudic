@@ -14,13 +14,15 @@ import { isDeepStrictEqual } from 'node:util';
 import { graphRegistry, resolveDocument, type ComponentGraph } from '@fudic/compiler';
 import { nodeIo } from '@fudic/vite';
 import { cached } from './cache.js';
-import { BASE_URL, FILE_EXPORT } from './config.js';
+import { BASE_URL, FILE_EXPORT } from './constants.js';
 import { blankPage, showPage } from './document.js';
 import { hostPage } from './host.js';
 import { chunkMap, hydrate, resolverOf } from './hydrate.js';
 import { renderPage } from './page.js';
 import { settled, track } from './pending.js';
 import { standTree, type ProviderOverride } from './providers.js';
+import { gesturesOf, type Gestures } from './gestures.js';
+import { queriesOf, type Queries } from './queries.js';
 
 /** What `import * as X from './x.fud'` gives in the `fudic` environment. */
 export interface FudModule {
@@ -41,15 +43,13 @@ export interface MountOptions<P> {
   readonly providers?: readonly ProviderOverride[];
 }
 
-export interface Mounted<P> {
+export interface Mounted<P> extends Queries, Gestures {
   /** The component's element. */
   readonly host: HTMLElement;
   /** Its shadow root. */
   readonly root: ShadowRoot;
   /** Change props as a parent would, and wait for the repaint. */
   props(next: Partial<P>): Promise<void>;
-  /** Wait until nothing is pending. */
-  settled(): Promise<void>;
   unmount(): void;
 }
 
@@ -170,16 +170,18 @@ export async function mount<P extends object = Record<string, unknown>>(
       ? await viaClient(component, props, order, providers)
       : await viaSsr(component, props, url, providers);
   await settled();
+  const root = host.shadowRoot!;
   return {
+    ...queriesOf(root),
+    ...gesturesOf(root),
     host,
-    root: host.shadowRoot!,
+    root,
     async props(next) {
       const payload: unknown[] = [];
       for (const [at, value] of positions(component.tag, order, next)) payload[PAYLOAD_OFFSET + at] = value;
       host.u(payload);
       await settled();
     },
-    settled,
     unmount() {
       host.remove();
     },

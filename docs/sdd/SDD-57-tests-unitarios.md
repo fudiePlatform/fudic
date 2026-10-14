@@ -1,6 +1,6 @@
 # SDD-57 — Tests unitarios de componentes, rutas, layouts y snippets: `@fudic/testing`
 
-> **Estado:** `Listo` — [tareas](./SDD-57-Task.md), 11 / 30.
+> **Estado:** `Listo` — [tareas](./SDD-57-Task.md), 15 / 30.
 > **Paquetes:** `@fudic/testing` (nuevo) · `@fudic/vite` · `@fudic/core` · `@fudic/http` ·
 > `@fudic/example-basic`
 > **Depende de:** 17 (hidratación), 19 (plugin, routing y dev server), 20 (Service Worker),
@@ -91,7 +91,7 @@ datos (`vi.mock` del módulo que lee la base de datos).
 | 20 | El Service Worker invalida cuando recibe `{ type: INVALIDATE_MESSAGE, paths }` por `postMessage` y contesta por el `MessageChannel` ([invalidate.ts](../../packages/http/src/client/invalidate.ts)). |
 | 14, 15 | Un componente compilado exporta `render($dom, $shadow, props, $ioc)`, `tag` y `css` ([module.ts:391](../../packages/compiler/src/emit/module.ts#L391)). Un layout exporta `layout(data, io, route, $ioc, PROPS)`, donde `route` lleva `head`, `body` y las secciones como closures ([layout.ts:195](../../packages/compiler/src/emit/layout.ts#L195)). `renderToString` serializa un `SsrDom` ([serialize.ts:42](../../packages/ssr/src/serialize.ts#L42)). |
 | — | El `<template>`: `shadowrootmode` tiene que ser `"open"` (`FUD0158`). `shadowrootdelegatesfocus` lo emite el compilador en un componente form-associated ([markup.ts:498](../../packages/compiler/src/emit/markup.ts#L498)). `shadowrootreferencetarget` lo escribe el autor y el cliente lo copia a `static referenceTarget` ([client.ts:421](../../packages/compiler/src/emit/client.ts#L421)). `shadowrootadoptedstylesheets` se proyecta al host como `data-fud-adopt`, y `adoptSheets` lo resuelve ([adopt-sheets.ts:39](../../packages/core/src/adopt-sheets.ts#L39)). En cliente, `FudicElement.c()` hace `attachShadow(this.shadowInit())` ([element.ts:73](../../packages/core/src/element.ts#L73)). |
-| 33, 34 | Un formulario es un objeto `.ts` (`form(…)`) con `$set`, `$validate({ server })` y `$errors`. El slot de error de un control lo deja el emit: `<span id data-fud-err>` y el `aria-describedby` que lo apunta. |
+| 33, 34 | Un formulario es un objeto `.ts` (`form(…)`) con `$set`, `$validate({ server })` y `$errors`. El slot de error de un control lo deja el emit: el elemento de `error=@…` recibe un `id` (`fud-e-<form>-<campo>`) y el control, el `aria-describedby` que lo apunta. |
 | 38 | `createRoot`, `createChild` y `provide` de `@fudic/di`. Un componente resuelve contra el contenedor de su ancestro. |
 | 52 | Las fixtures `<tag>.fixture.ts`: un `export default` con un objeto de props por nombre. |
 | 56 | `functionsHandler(source, options)` ([functions.ts:58](../../packages/http/src/server/functions.ts#L58)) recibe un `Request` y devuelve `Response \| null`. `devSource(modules)` ([vite/functions.ts:96](../../packages/vite/src/functions.ts#L96)) arma la tabla de funciones leyendo `<path>?server`. `$fn` llama a `fetch` global ([fn.ts:112](../../packages/http/src/client/fn.ts#L112)) y a `invalidate` al terminar. |
@@ -170,7 +170,7 @@ interface Mounted {
   getByText(text: string | RegExp): HTMLElement;
   queryByRole(role: string, options?: ByRoleOptions): HTMLElement | null;
   query(selector: string): Element | null;       // CSS, también bajando por shadow roots
-  /** El texto del slot `data-fud-err` del control con esa etiqueta, o `null` si está vacío. */
+  /** El texto del slot de error del control con esa etiqueta (el que nombra su `aria-describedby`), o `null` si está vacío. */
   errorOf(label: string | RegExp): string | null;
 
   // Gestos: cada uno espera a que todo lo que dispara termine (§4.6).
@@ -674,3 +674,19 @@ Tomadas con Pedro el 2026-10-14, antes de redactar:
     render, igual que el wrapper recibe el `data` ya resuelto: una página por componente y
     juego de nombres, compilada una vez. La regla de §3.2 (props JSON en `ssr`) no cambia: es
     lo que viaja en el estado de hidratación.
+15. **El slot de error es el que nombra el `aria-describedby`** (2026-10-14). El emit no marca
+    el slot con `data-fud-err`: le da un `id` y el control lo apunta con `aria-describedby`.
+    `errorOf` sigue ese enlace, que es el mismo que sigue un lector de pantalla, y lanza si el
+    control no tiene slot.
+16. **`submit()` pulsa el botón de envío** (2026-10-14). Un `submit` no cruza el shadow root,
+    así que la hidratación no oye un envío lanzado sobre un formulario que nadie ha tocado; el
+    clic sí, levanta el componente y lo repite. Sin botón, `requestSubmit()`, como Enter.
+17. **`clear()` selecciona y borra** (2026-10-14). `user.clear` comprueba el foco contra
+    `document.activeElement`, que es el host cuando el control vive en un shadow root, y se
+    rinde. `type` con toda la selección y un `{Backspace}` es el mismo gesto.
+18. **Arranque por fichero de test** (2026-10-14). El setup leía constantes de `config.ts`, que
+    carga el plugin entero, y cada fichero de test volvía a evaluar `@fudic/vite` y
+    `@fudic/compiler` por el grafo de vitest. Las constantes viven en un módulo sin imports, y
+    `fudicTest()` entrega esos dos paquetes a Node (`server.deps.external`): se cargan una vez
+    por worker. Instalados ya viven en `node_modules`; la regla cubre también un workspace. El
+    setup por fichero bajó de ~4,5 s a ~0,3 s. `user-event` se prepara en el primer gesto.

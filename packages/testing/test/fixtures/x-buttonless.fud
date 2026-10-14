@@ -1,0 +1,22 @@
+@code {
+  @client {
+    import { signal } from "@fudic/core";
+
+    const sent = signal(0);
+
+    function send(e: Event) {
+      e.preventDefault();
+      sent.set(sent() + 1);
+    }
+  }
+}
+
+<x-buttonless>
+  <template shadowrootmode="open">
+    <form @submit=@send>
+      <label for="q">Search</label>
+      <input id="q" type="search">
+      <output role="status">@sent()</output>
+    </form>
+  </template>
+</x-buttonless>

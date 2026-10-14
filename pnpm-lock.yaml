@@ -519,6 +519,9 @@ importers:
         specifier: 20.10.6
         version: 20.10.6
     devDependencies:
+      '@fudic/forms':
+        specifier: workspace:*
+        version: link:../forms
       '@fudic/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig

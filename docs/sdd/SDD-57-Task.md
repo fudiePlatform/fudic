@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/testing` (nuevo) · `@fudic/vite` · `@fudic/core` · `@fudic/http` ·
 > `@fudic/example-basic`
 > **Rama:** `sdd-57-tests-unitarios` (nace de `main`)
-> **Progreso:** 11 / 30 — `Listo`.
+> **Progreso:** 15 / 30 — `Listo`.
 
 **El orden manda en cuatro puntos.**
 
@@ -75,10 +75,10 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 12 | 7 | **Consultas que bajan por shadow roots**, sobre Testing Library, más `query` y `errorOf` (el slot al que apunta el `aria-describedby` del control con esa etiqueta) | `testing` | `src/queries.ts` |
-| [ ] | 13 | 12 | **Gestos y `settled`** (§4.7). Rastreo de lo pendiente: peticiones, chunks y microtareas. Ningún `setTimeout` de espera | `testing` | `src/gestures.ts` · `src/pending.ts` |
-| [ ] | 14 | 13 | **Aislamiento** (§4.8): el `afterEach` que registra el entorno | `testing` | `src/cleanup.ts` |
-| [ ] | 15 | 12–14 | **Tests.** Criterios 6, 27 y 28 | `testing` | `test/queries.test.ts` · `test/isolation.test.ts` |
+| [x] | 12 | 7 | **Consultas que bajan por shadow roots**, sobre Testing Library, más `query` y `errorOf` (el slot al que apunta el `aria-describedby` del control con esa etiqueta; decisión 8.1.15) | `testing` | `src/queries.ts` |
+| [x] | 13 | 12 | **Gestos y `settled`** (§4.7). Rastreo de lo pendiente: peticiones, chunks y microtareas. Ningún `setTimeout` de espera. `submit` pulsa el botón de envío y `clear` selecciona y borra (decisiones 8.1.16 y 8.1.17) | `testing` | `src/gestures.ts` · `src/pending.ts` |
+| [x] | 14 | 13 | **Aislamiento** (§4.8): el `afterEach` que registra el entorno, con un registro de deshacer al que cada pieza añade el suyo (`onCleanup`). Las constantes salen a `src/constants.ts` y los paquetes del harness van a Node (decisión 8.1.18) | `testing` | `src/cleanup.ts` · `src/setup.ts` · `src/constants.ts` |
+| [x] | 15 | 12–14 | **Tests.** Criterios 6, 27 y 28. Del 27 quedan el `fetch` y el worker, que llegan con las tareas 17 y 21 y se prueban en las 20 y 22 | `testing` | `test/queries.test.ts` · `test/isolation.test.ts` |
 
 ## Fase 4 — el servidor en memoria (5)
 

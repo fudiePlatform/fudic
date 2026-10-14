@@ -11,7 +11,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { inject } from 'vitest';
-import { CACHE_FOLDER, ROOT_KEY } from './config.js';
+import { CACHE_FOLDER, ROOT_KEY } from './constants.js';
 
 declare module 'vitest' {
   export interface ProvidedContext {
