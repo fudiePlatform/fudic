@@ -3,7 +3,7 @@
 > **BUG:** [BUG-48 — El banco que nadie usaría](./BUG-48-el-banco-que-nadie-usaria.md)
 > **Paquetes:** `@fudic/workbench` · `fudic-vscode` · `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `bug/48-banco-usable`, desde `main`.
-> **Progreso:** 13 / 31 — `En curso`.
+> **Progreso:** 17 / 31 — `En curso` (la tarea 5 está marcada en la rama de tests).
 
 Lo nuevo nace al 100 % en las cuatro métricas. `@fudic/workbench` y `fudic-vscode` no bajan de su
 suelo de `main`: antes de tocar nada se mide con `pnpm --filter <pkg> coverage` y se anota aquí.
@@ -59,9 +59,9 @@ tareas «Tests» y deja la cobertura en el suelo, en su propio worktree sobre es
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 19 | 7, 13 | **`runSpecs`.** Encuentra las `.fudspec` (o las de los `<path>`), abre sus sesiones en un proceso sin shell, ejecuta y devuelve `RunSummary` (BUG §4.7) | `src/run.ts` · `src/index.ts` |
-| [ ] | 20 | 19 | **El subcomando.** Salida legible con esperado frente a obtenido, `--json` con `summary` al final, código de salida, y `FUD0976` sin nada que ejecutar | `src/cli.ts` · `src/report.ts` · `packages/diagnostics/src/codes/FUD0976.*` · `packages/diagnostics/src/index.ts` |
-| [ ] | 21 | 20 | **El ejemplo.** `"test:spec": "fudic-workbench run"` en `examples/basic`; `then/text.js` devuelve `{ expected, actual }` | `examples/basic/package.json` · `examples/basic/fudic/terms/then/text.js` |
+| [x] | 19 | 7, 13 | **`runSpecs`.** Encuentra las `.fudspec` (o las de los `<path>`), abre sus sesiones en un proceso sin shell, ejecuta y devuelve `RunSummary` (BUG §4.7) | `src/run.ts` · `src/index.ts` |
+| [x] | 20 | 19 | **El subcomando.** Salida legible con esperado frente a obtenido, `--json` con `summary` al final, código de salida, y `FUD0976` sin nada que ejecutar | `src/cli.ts` · `src/report.ts` · `packages/diagnostics/src/codes/FUD0976.*` · `packages/diagnostics/src/index.ts` |
+| [x] | 21 | 20 | **El ejemplo.** `"test:spec": "fudic-workbench run"` en `examples/basic`; `then/text.js` devuelve `{ expected, actual }` | `examples/basic/package.json` · `examples/basic/fudic/terms/then/text.js` |
 | [ ] | 22 | 19–21 | **Tests.** Criterio 12 | `test/run.test.ts` |
 
 ## Fase 6 — El shell (3)

@@ -270,6 +270,10 @@ se dice en la línea JSON y en la cabecera del shell.
 
 - **En paralelo**, hasta `workers` criterios a la vez, cada uno en su contexto. Los resultados se
   publican según terminan.
+- **Cargar la página no es una llamada de un término** (añadido al implementar): tiene su propio
+  límite, 30 s, y no los 5 s de `ctx`. En frío, con varios criterios a la vez y la máquina
+  ocupada, la primera carga superaba los 5 s y el criterio salía en `error` sin decir nada del
+  componente.
 - **Primero los que fallaban.** Una ejecución por guardado empieza por los criterios cuyo último
   veredicto no fue `pass`.
 - **Capturas.** Al terminar un criterio, el navegador que mide fotografía el elemento montado

@@ -1,5 +1,6 @@
 /**
- * `fudic-workbench <file> [--port <n>] [--keep]`. Its protocol with whoever launched it is JSON
+ * `fudic-workbench <file> [options]`, and `fudic-workbench run …` (run-cli.ts), which runs and
+ * exits. The workbench's protocol with whoever launched it is JSON
  * lines. The first one on stdout says where the shell of `<file>` is, or why it could not open;
  * after it, every message the shells receive, one per line. On stdin it reads commands, one per
  * line (`open` another component, `close` one). It lives until stdin closes — which is what
@@ -12,6 +13,7 @@ import { BROWSER_CHOICES, firstLine, type BrowserChoice } from './browser.js';
 import { obey } from './control.js';
 import { openWorkbench } from './open.js';
 import { parseCommand, type BenchMessage } from './protocol.js';
+import { runMain } from './run-cli.js';
 import { isFailure, type WorkbenchOptions, type WorkbenchSession } from './types.js';
 
 /** The process, as the binary uses it; injected so `main` runs without spawning anything. */
@@ -22,6 +24,8 @@ export interface CliIo {
   /** Calls back once, when stdin ends or SIGINT arrives. */
   onExit(callback: () => void): void;
   exit(code: number): void;
+  /** The folder it was started in: where `run` looks without paths. */
+  readonly cwd: string;
 }
 
 export const USAGE = `usage: fudic-workbench <file> [--port <n>] [--keep] [--browser <${BROWSER_CHOICES.join('|')}>] [--workers <n>]`;
@@ -64,6 +68,10 @@ export function parseArgs(argv: readonly string[]): CliArgs | undefined {
 }
 
 export async function main(argv: readonly string[], io: CliIo): Promise<void> {
+  if (argv[0] === 'run') {
+    await runMain(argv.slice(1), { write: io.write, exit: io.exit, cwd: io.cwd });
+    return;
+  }
   const fail = (error: { readonly code?: string; readonly message: string }) => {
     io.write(JSON.stringify({ error }));
     io.exit(1);
@@ -141,5 +149,6 @@ export function processIo(): CliIo {
       process.stdin.resume();
     },
     exit: (code) => process.exit(code),
+    cwd: process.cwd(),
   };
 }
