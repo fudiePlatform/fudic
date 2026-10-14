@@ -9,7 +9,8 @@
 > el mismo componente», «el WebSocket de un sentido» y «ejecutar solo los afectados»).
 > **Paquetes:** `@fudic/workbench` · `fudic-vscode` (`packages/vscode`) · `@fudic/diagnostics` ·
 > `examples/basic`
-> **Rango:** el de SDD-32, `FUD0970`–`FUD0989`. Cambia el texto de `FUD0975`; nace `FUD0976`.
+> **Rango:** el de SDD-32, `FUD0970`–`FUD0989`. Cambia el texto de `FUD0975`; nacen `FUD0976`
+> y `FUD0977` (añadido al implementar: `open` de un componente de otro proyecto, §4.4).
 > **Rama sugerida:** `bug/48-banco-usable`, desde `main`.
 
 ---
@@ -156,6 +157,7 @@ sirve ya varios componentes (§4.4).
 interface SessionMessage {
   readonly v: 2; readonly type: 'session'; readonly tag: string;
   readonly spec: string | null;                     // ruta de la .fudspec
+  readonly browser?: BrowserName;                   // lo pone el banco al publicar (§4.5)
   readonly diagnostics: readonly WireDiagnostic[];
   readonly criteria: readonly {
     readonly id: string; readonly route: string;
@@ -177,7 +179,7 @@ interface ResultMessage {
   readonly was?: Verdict;                           // el veredicto anterior, si lo había
   readonly steps: readonly StepResult[];            // StepPassed gana `ignored?: true`
   readonly shots: { readonly before?: string; readonly after?: string };  // URLs
-  readonly marks: readonly { readonly step: number; readonly box: Box }[];
+  readonly marks: readonly { readonly step: number; readonly ref: string; readonly box: Box }[];
   readonly pageErrors: readonly string[];
   readonly error?: string;
 }
@@ -249,7 +251,9 @@ Dos procesos sobre el mismo componente no se tocan. `--keep` deja la suya como h
 Un proceso es un proyecto: un Vite, un navegador, un servidor. Cada componente abierto tiene su
 shell en `/__bench/<tag>/`, sus páginas en `/<tag>/<slug>` y su sesión. `open` añade un
 componente (si ya está, contesta lo mismo sin recargar nada); `close` lo quita, borra sus páginas
-y deja de vigilar sus ficheros. El modo banco del binario abre el `<file>` de la línea de órdenes
+y deja de vigilar sus ficheros. Un componente cuya raíz de proyecto no es la del proceso se
+rechaza con `FUD0977`. Las páginas anfitrionas de props `Signal` pasan a
+`components/<tag>/bench-host-<tag>-<slug>.fud`, porque un mismo Vite compila las de todos. El modo banco del binario abre el `<file>` de la línea de órdenes
 como primer componente. Con eso, abrir el segundo componente de un proyecto no arranca nada.
 
 Un guardado solo afecta a los componentes cuya sesión lo lee (su `.fud`, lo que enlaza, su
@@ -270,8 +274,10 @@ se dice en la línea JSON y en la cabecera del shell.
   veredicto no fue `pass`.
 - **Capturas.** Al terminar un criterio, el navegador que mide fotografía el elemento montado
   (`after`). Si el criterio tiene `when`, también justo antes del primero (`before`). Las sirve el
-  servidor en `/__bench/shot/<tag>/<id>/<n>.png`, con `n` el número de ejecución. Solo se guarda
-  en memoria la última de cada criterio. Un elemento sin caja no tiene captura.
+  servidor en `/__bench/<tag>/shot/<id>/<n>-<before|after>.png` (corregido al implementar: dentro
+  de la ruta del componente), con `n` un contador del proceso. Solo se guarda en memoria la última
+  de cada criterio y tipo. Un elemento sin caja, o una captura que falla, no da captura y no
+  cambia el veredicto.
 - **Marcas.** Cada `locate` que resuelve a un elemento deja su caja, relativa a la captura
   `after`, asociada al paso.
 - **`goto` ignorado** deja el paso con `ignored: true` y sin evidencia, en vez del texto de hoy.

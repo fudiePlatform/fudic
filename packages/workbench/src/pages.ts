@@ -25,6 +25,8 @@ export interface PlannedCriterion {
   readonly id: string;
   /** `/<tag>/<slug>`. */
   readonly route: string;
+  /** CSS of the element its page mounts (the component, or its `Signal` host): what is photographed. */
+  readonly mount: string;
   /** The name in `props <name>`. */
   readonly fixture: string | null;
   readonly steps: readonly PlannedStep[];
@@ -155,7 +157,7 @@ class Planner {
   ) {}
 
   plan(id: string, fixture: string | null, steps: readonly PlannedStep[]): PlannedCriterion {
-    const base = { id, route: `/${this.target.tag}/${id}`, fixture, steps };
+    const base = { id, route: `/${this.target.tag}/${id}`, mount: `body > ${this.target.tag}`, fixture, steps };
     const component = this.target.component;
     if (fixture === null) {
       this.page(id, bare(this.target));
@@ -191,8 +193,9 @@ class Planner {
       }
       literals.push({ prop, literal });
     }
-    const hostTag = `bench-host-${id}`;
-    const hostFile = `components/${hostTag}.fud`;
+    // The component's tag in the host's: one Vite compiles the hosts of every open component.
+    const hostTag = `bench-host-${this.target.tag}-${id}`;
+    const hostFile = `components/${this.target.tag}/${hostTag}.fud`;
     this.files.set(
       hostFile,
       hostComponent({
@@ -206,7 +209,7 @@ class Planner {
       }),
     );
     this.page(id, { href: `${this.dir}/${hostFile}`, tag: hostTag, code: '', attrs: '' });
-    return base;
+    return { ...base, mount: `body > ${hostTag}` };
   }
 
   private page(id: string, mount: Mount): void {

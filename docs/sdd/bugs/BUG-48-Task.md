@@ -3,7 +3,7 @@
 > **BUG:** [BUG-48 — El banco que nadie usaría](./BUG-48-el-banco-que-nadie-usaria.md)
 > **Paquetes:** `@fudic/workbench` · `fudic-vscode` · `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `bug/48-banco-usable`, desde `main`.
-> **Progreso:** 4 / 31 — `En curso`.
+> **Progreso:** 13 / 31 — `En curso`.
 
 Lo nuevo nace al 100 % en las cuatro métricas. `@fudic/workbench` y `fudic-vscode` no bajan de su
 suelo de `main`: antes de tocar nada se mide con `pnpm --filter <pkg> coverage` y se anota aquí.
@@ -32,27 +32,27 @@ tareas «Tests» y deja la cobertura en el suelo, en su propio worktree sobre es
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 7 | 3 | **Varios componentes.** Un registro de sesiones por `tag`; páginas en `routes/<tag>/<slug>.fud`, shell en `/__bench/<tag>/`; cada guardado solo a las sesiones que leen ese fichero (BUG §4.4) | `src/open.ts` · `src/session.ts` · `src/pages.ts` · `src/rerun.ts` · `src/bench-server.ts` |
-| [ ] | 8 | 7 | **Protocolo `v: 2`.** `tag` en todo mensaje, `spec`, `line` y `file` en `session`, `trigger` en `running`, y los tipos de §3.2 y §3.3 | `src/protocol.ts` |
-| [ ] | 9 | 7, 8 | **`stdin`/`stdout`.** El binario lee órdenes JSON por línea (`open`, `close`, y las de la fase 4) y escribe cada mensaje como una línea. Cerrar `stdin` sigue cerrándolo todo | `src/cli.ts` · `src/bin.ts` · `src/control.ts` |
+| [x] | 7 | 3 | **Varios componentes.** Un registro de sesiones por `tag`; páginas en `routes/<tag>/<slug>.fud`, shell en `/__bench/<tag>/`; cada guardado solo a las sesiones que leen ese fichero (BUG §4.4) | `src/open.ts` · `src/session.ts` · `src/pages.ts` · `src/rerun.ts` · `src/bench-server.ts` |
+| [x] | 8 | 7 | **Protocolo `v: 2`.** `tag` en todo mensaje, `spec`, `line` y `file` en `session`, `trigger` en `running`, y los tipos de §3.2 y §3.3 | `src/protocol.ts` |
+| [x] | 9 | 7, 8 | **`stdin`/`stdout`.** El binario lee órdenes JSON por línea (`open`, `close`, y las de la fase 4) y escribe cada mensaje como una línea. Cerrar `stdin` sigue cerrándolo todo | `src/cli.ts` · `src/bin.ts` · `src/control.ts` |
 | [ ] | 10 | 7–9 | **Tests.** Criterio 5 | `test/cli.test.ts` · `test/session.test.ts` |
 
 ## Fase 3 — El navegador se elige (2)
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 11 | — | **`--browser`.** `auto` = `chrome` → `msedge` → `chromium`; un nombre prueba solo ese. Texto nuevo de `FUD0975` con lo probado y la orden de instalación. El navegador va en la línea JSON (BUG §4.5) | `src/browser.ts` · `src/cli.ts` · `packages/diagnostics/src/codes/FUD0975.*` |
+| [x] | 11 | — | **`--browser`.** `auto` = `chrome` → `msedge` → `chromium`; un nombre prueba solo ese. Texto nuevo de `FUD0975` con lo probado y la orden de instalación. El navegador va en la línea JSON (BUG §4.5) | `src/browser.ts` · `src/cli.ts` · `packages/diagnostics/src/codes/FUD0975.*` |
 | [ ] | 12 | 11 | **Tests.** Criterio 6, con un `Launcher` inyectado | `test/browser/*` |
 
 ## Fase 4 — El motor (6)
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 13 | 7 | **Paralelo y orden.** Una cola con `workers` (4 por defecto) y los que no estaban en `pass` delante (BUG §4.6) | `src/runner.ts` · `src/open.ts` |
-| [ ] | 14 | 13 | **Capturas y marcas.** `before`/`after` del elemento montado; `ctx.locate` guarda la caja; el servidor sirve `/__bench/shot/<tag>/<id>/<n>.png` desde memoria | `src/engine.ts` · `src/context.ts` · `src/browser.ts` · `src/bench-server.ts` |
-| [ ] | 15 | 13 | **`ignored` y `was`.** `goto` deja `ignored: true` sin evidencia; el resultado lleva el veredicto anterior | `src/engine.ts` · `src/runner.ts` |
-| [ ] | 16 | 9, 13 | **Órdenes.** `run` (`ids`, `failing`), `pin`, `pause` (con `pending` y `state`), `cancel` (con `cancelled`), en un controlador que usan `stdin` y el WebSocket | `src/control.ts` · `src/runner.ts` |
-| [ ] | 17 | — | **WebSocket que lee.** Tramas de texto enmascaradas, `close` contestado, `ping`/`pong`, `1003` para lo demás; el servidor pasa las órdenes al controlador (BUG §4.10) | `src/ws.ts` · `src/bench-server.ts` |
+| [x] | 13 | 7 | **Paralelo y orden.** Una cola con `workers` (4 por defecto) y los que no estaban en `pass` delante (BUG §4.6) | `src/runner.ts` · `src/open.ts` |
+| [x] | 14 | 13 | **Capturas y marcas.** `before`/`after` del elemento montado; `ctx.locate` guarda la caja; el servidor sirve `/__bench/shot/<tag>/<id>/<n>.png` desde memoria | `src/engine.ts` · `src/context.ts` · `src/browser.ts` · `src/bench-server.ts` |
+| [x] | 15 | 13 | **`ignored` y `was`.** `goto` deja `ignored: true` sin evidencia; el resultado lleva el veredicto anterior | `src/engine.ts` · `src/runner.ts` |
+| [x] | 16 | 9, 13 | **Órdenes.** `run` (`ids`, `failing`), `pin`, `pause` (con `pending` y `state`), `cancel` (con `cancelled`), en un controlador que usan `stdin` y el WebSocket | `src/control.ts` · `src/runner.ts` |
+| [x] | 17 | — | **WebSocket que lee.** Tramas de texto enmascaradas, `close` contestado, `ping`/`pong`, `1003` para lo demás; el servidor pasa las órdenes al controlador (BUG §4.10) | `src/ws.ts` · `src/bench-server.ts` |
 | [ ] | 18 | 13–17 | **Tests.** Criterios 7, 8, 9, 10 y 11 | `test/runner.test.ts` · `test/engine.test.ts` · `test/ws.test.ts` · `test/control.test.ts` |
 
 ## Fase 5 — `fudic-workbench run` (4)

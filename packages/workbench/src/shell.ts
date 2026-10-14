@@ -118,12 +118,13 @@ function result(m) {
 }
 
 function connect() {
-  const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/__bench/ws');
+  // The shell lives at /__bench/<tag>/ and its socket next to it.
+  const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + location.pathname.replace(/\\/?$/, '/') + 'ws');
   ws.onopen = () => { state.textContent = 'connected'; };
   ws.onclose = () => { state.textContent = 'disconnected — the workbench stopped'; };
   ws.onmessage = (event) => {
     const m = JSON.parse(event.data);
-    if (m.v !== 1) return;
+    if (m.v !== 2) return;
     if (m.type === 'session') session(m);
     else if (m.type === 'running') running(m);
     else if (m.type === 'result') result(m);

@@ -25,9 +25,10 @@ import type { ViteDevServer } from 'vite';
 import { firstLine } from './browser.js';
 import { namedArgs, type LoadedTerm, type TermLoader } from './engine.js';
 import { planBench, type BenchPlan, type ExecutedFixtures, type PlannedCriterion } from './pages.js';
-import { toWire, type SessionMessage } from './protocol.js';
+import { toWire, type DescribedCriterion, type DescribedStep, type SessionMessage } from './protocol.js';
 import type { BenchTarget } from './target.js';
 import { writePlanFiles } from './bench-dir.js';
+import { componentFiles } from './links.js';
 import { invalidateFile } from './vite.js';
 
 export interface SessionInput {
@@ -43,6 +44,8 @@ export interface LoadedSession {
   readonly criteria: readonly PlannedCriterion[];
   readonly message: SessionMessage;
   readonly loadTerm: TermLoader;
+  /** The `.fud` files the component reads: a save of one of them reruns it. */
+  readonly reads: ReadonlySet<string>;
 }
 
 /** The disk, as the catalog and the validator read it. */
@@ -72,16 +75,19 @@ export async function loadSession(input: SessionInput): Promise<LoadedSession> {
   const catalog = createTermCatalog(termRoots(input), nodeSpecFs);
   const loadTerm = termLoader(catalog, vite);
   const diagnostics: { diagnostic: FudDiagnostic; file: string | null }[] = [];
+  const reads = componentFiles(target.component, readText);
 
   let spec = EMPTY_SPEC;
+  let specText = '';
   if (target.spec !== null) {
-    const parsed = parseSpec(readText(target.spec) ?? '');
+    specText = readText(target.spec) ?? '';
+    const parsed = parseSpec(specText);
     spec = parsed.value;
     const found = [...parsed.diagnostics, ...validateSpec(spec, specContext(target, catalog))];
     for (const diagnostic of found) diagnostics.push({ diagnostic, file: target.spec });
     // A file with errors is not run: half a file gives greens that mean nothing.
     if (found.some((d) => d.severity === 'error')) {
-      return { criteria: [], message: sessionMessage(target, diagnostics, []), loadTerm };
+      return { criteria: [], message: sessionMessage(target, diagnostics, []), loadTerm, reads };
     }
   }
 
@@ -90,12 +96,23 @@ export async function loadSession(input: SessionInput): Promise<LoadedSession> {
 
   const plan = planBench({ target, spec, fixtures: executed.fixtures, dir: input.dir });
   for (const diagnostic of plan.diagnostics) diagnostics.push({ diagnostic, file: null });
-  writePlanFiles(input.dir, plan.files);
+  writePlanFiles(input.dir, target.tag, plan.files);
   for (const name of plan.files.keys()) invalidateFile(vite, `${input.dir}/${name}`);
 
   const criteria = executed.error === undefined ? plan.criteria : failProps(plan, executed.error.message);
-  const described = await Promise.all(criteria.map((c) => describeCriterion(c, loadTerm)));
-  return { criteria, message: sessionMessage(target, diagnostics, described), loadTerm };
+  const lines = criterionLines(spec, specText);
+  const described = await Promise.all(criteria.map((c) => describeCriterion(c, lines.get(c.id) ?? 1, loadTerm)));
+  return { criteria, message: sessionMessage(target, diagnostics, described), loadTerm, reads };
+}
+
+/** Each criterion's slug → the 1-based line of its `criterion` keyword. */
+function criterionLines(spec: SpecFile, text: string): ReadonlyMap<string, number> {
+  const lines = new Map<string, number>();
+  for (const criterion of spec.criteria) {
+    if (criterion.slug === undefined) continue;
+    lines.set(criterion.slug.text, text.slice(0, criterion.keyword.start).split('\n').length);
+  }
+  return lines;
 }
 
 /** `fudic/terms/` of the project first, then the framework's: the editor's roots, in its order. */
@@ -145,6 +162,7 @@ function termLoader(catalog: TermCatalog, vite: ViteDevServer): TermLoader {
     const loaded = await vite.ssrLoadModule(module.path);
     const meta = loaded['meta'] as { describe?: LoadedTerm['describe'] } | undefined;
     return {
+      path: module.path,
       layer: module.layer,
       params: module.params,
       ...(typeof meta?.describe === 'function' ? { describe: meta.describe } : {}),
@@ -153,26 +171,35 @@ function termLoader(catalog: TermCatalog, vite: ViteDevServer): TermLoader {
   };
 }
 
-interface DescribedCriterion {
-  readonly id: string;
-  readonly route: string;
-  readonly steps: readonly { readonly block: BlockKind; readonly text: string }[];
-}
-
-/** Each step's line, from `meta.describe` run with its arguments; the line as written without one. */
-async function describeCriterion(criterion: PlannedCriterion, loadTerm: TermLoader): Promise<DescribedCriterion> {
+/**
+ * Each step's line, from `meta.describe` run with its arguments; the line as written when the term
+ * has no `describe`, or its `describe` throws, or the term does not load. The step names its
+ * module whenever the term loaded.
+ */
+async function describeCriterion(
+  criterion: PlannedCriterion,
+  line: number,
+  loadTerm: TermLoader,
+): Promise<DescribedCriterion> {
   const steps = await Promise.all(
-    criterion.steps.map(async (step) => {
+    criterion.steps.map(async (step): Promise<DescribedStep> => {
       const written = [step.term, ...step.args].join(' ');
+      let term: LoadedTerm;
       try {
-        const term = await loadTerm(step.block, step.term);
-        return { block: step.block, text: term.describe?.(namedArgs(term.params, step.args)) ?? written };
+        term = await loadTerm(step.block, step.term);
       } catch {
-        return { block: step.block, text: written };
+        return { block: step.block, text: written, file: null };
       }
+      let text = written;
+      try {
+        text = term.describe?.(namedArgs(term.params, step.args)) ?? written;
+      } catch {
+        // A describe that throws is the term's problem: the step still reads as written.
+      }
+      return { block: step.block, text, file: term.path };
     }),
   );
-  return { id: criterion.id, route: criterion.route, steps };
+  return { id: criterion.id, route: criterion.route, line, steps };
 }
 
 function sessionMessage(
@@ -181,9 +208,10 @@ function sessionMessage(
   criteria: readonly DescribedCriterion[],
 ): SessionMessage {
   return {
-    v: 1,
+    v: 2,
     type: 'session',
     tag: target.tag,
+    spec: target.spec,
     diagnostics: diagnostics.map((d) => toWire(d.diagnostic, d.file, readText)),
     criteria,
   };

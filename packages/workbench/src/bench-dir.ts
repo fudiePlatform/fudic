@@ -7,19 +7,25 @@
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname } from 'node:path';
 
-/** The two folders a plan writes into: the pages and the `Signal` hosts. */
-const GENERATED = ['routes', 'components'] as const;
-
 /** An empty folder, whatever was there before. */
 export function emptyBenchDir(dir: string): void {
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(`${dir}/routes`, { recursive: true });
 }
 
-/** Replaces the generated files with a plan's: a criterion that is gone loses its page. */
-export function writePlanFiles(dir: string, files: ReadonlyMap<string, string>): void {
-  for (const folder of GENERATED) rmSync(`${dir}/${folder}`, { recursive: true, force: true });
-  mkdirSync(`${dir}/routes`, { recursive: true });
+/**
+ * Deletes what one component's plan wrote: its bare page, its criteria's pages and its hosts.
+ * The folder serves every component the process has open, so it is cleared by tag.
+ */
+export function removeTagFiles(dir: string, tag: string): void {
+  for (const path of [`routes/${tag}.fud`, `routes/${tag}`, `components/${tag}`]) {
+    rmSync(`${dir}/${path}`, { recursive: true, force: true });
+  }
+}
+
+/** Replaces a component's generated files with its plan's: a criterion that is gone loses its page. */
+export function writePlanFiles(dir: string, tag: string, files: ReadonlyMap<string, string>): void {
+  removeTagFiles(dir, tag);
   for (const [name, content] of files) {
     const path = `${dir}/${name}`;
     mkdirSync(dirname(path), { recursive: true });

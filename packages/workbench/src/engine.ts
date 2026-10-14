@@ -1,14 +1,15 @@
 /**
- * Running one criterion: a fresh page, its steps in order, a verdict. No criterion inherits
- * another's state, and the measuring page never listens to Vite: a reload on save would land in
- * the middle of a criterion.
+ * Running one criterion: a fresh page, its steps in order, a verdict, and what the browser saw —
+ * the mounted element photographed before the first `when` and at the end, with the box of every
+ * reference a step located. No criterion inherits another's state, and the measuring page never
+ * listens to Vite: a reload on save would land in the middle of a criterion.
  */
 
 import type { BlockKind, Layer, TermParam } from '@fudic/spec';
-import { firstLine, type BrowserLike } from './browser.js';
+import { firstLine, type BrowserLike, type LocatorLike } from './browser.js';
 import { createTermContext, type TermContext } from './context.js';
 import type { PlannedCriterion } from './pages.js';
-import type { StepResult, Verdict } from './protocol.js';
+import type { Box, Mark, StepResult, Verdict } from './protocol.js';
 import { OBSERVER } from './settle.js';
 
 /** What a term's `run` answers. */
@@ -19,6 +20,8 @@ export interface TermOutcome {
 
 /** A term module, executed. */
 export interface LoadedTerm {
+  /** The module, absolute. */
+  readonly path: string;
   readonly layer: Layer;
   readonly params: readonly TermParam[];
   /** `meta.describe`, when the module has one. */
@@ -34,12 +37,13 @@ export interface CriterionResult {
   readonly ms: number;
   readonly steps: readonly StepResult[];
   readonly pageErrors: readonly string[];
+  /** What the measuring browser saw; none when the page did not load. */
+  readonly shots: Shots;
+  /** Where each located reference was, relative to the `after` shot. */
+  readonly marks: readonly Mark[];
   /** Why the criterion could not run at all. */
   readonly error?: string;
 }
-
-/** The evidence of a step whose term asked to navigate. */
-export const IGNORED_GOTO = 'ignored: the workbench mounts the component on its own page';
 
 /** The workbench's own paths: the only WebSockets the measuring page may open. */
 const BENCH_PATH = '/__bench';
@@ -51,26 +55,38 @@ export function namedArgs(params: readonly TermParam[], args: readonly string[])
   );
 }
 
+/** How a criterion ended, before its shots. */
+interface Ending {
+  readonly verdict: Verdict;
+  readonly error?: string;
+}
+
 export async function runCriterion(
   browser: BrowserLike,
   origin: string,
   criterion: PlannedCriterion,
   loadTerm: TermLoader,
+  signal?: AbortSignal,
 ): Promise<CriterionResult> {
   const started = Date.now();
-  const done = (verdict: Verdict, steps: readonly StepResult[], pageErrors: readonly string[], error?: string) => ({
+  const pageErrors: string[] = [];
+  const steps: StepResult[] = [];
+  const done = (ending: Ending, shots: Shots = {}, marks: readonly Mark[] = []): CriterionResult => ({
     id: criterion.id,
-    verdict,
+    verdict: ending.verdict,
     ms: Date.now() - started,
     steps,
     pageErrors,
-    ...(error !== undefined ? { error } : {}),
+    shots,
+    marks,
+    ...(ending.error !== undefined ? { error: ending.error } : {}),
   });
-  if (criterion.error !== undefined) return done('error', [], [], criterion.error);
+  if (criterion.error !== undefined) return done({ verdict: 'error', error: criterion.error });
 
   const page = await browser.newPage();
-  const pageErrors: string[] = [];
-  const steps: StepResult[] = [];
+  // A cancel closes the page under the run: whatever it was waiting on rejects, and it ends.
+  const cancel = () => void page.close();
+  signal?.addEventListener('abort', cancel, { once: true });
   try {
     await page.silenceWebSockets((url) => !url.pathname.startsWith(BENCH_PATH));
     await page.addInitScript(OBSERVER);
@@ -78,35 +94,94 @@ export async function runCriterion(
 
     const status = await page.goto(origin + criterion.route);
     if (status === null || status >= 400) {
-      return done('error', [], pageErrors, `the page ${criterion.route} answered ${status ?? 'nothing'}`);
+      return done({ verdict: 'error', error: `the page ${criterion.route} answered ${status ?? 'nothing'}` });
     }
 
+    const mount = page.locate({ css: criterion.mount });
+    const located: { step: number; ref: string; box: Box }[] = [];
+    let current = 0;
     let navigated = false;
-    const ctx = createTermContext(page, () => {
-      navigated = true;
-    });
-    let verdict: Verdict = 'pass';
-    for (const step of criterion.steps) {
-      const base = { block: step.block, term: step.term, args: step.args };
-      let term: LoadedTerm | undefined;
-      try {
-        term = await loadTerm(step.block, step.term);
-        navigated = false;
-        const outcome = await term.run(ctx, namedArgs(term.params, step.args));
-        const evidence = navigated ? IGNORED_GOTO : outcome.evidence;
-        steps.push({ ...base, layer: term.layer, pass: outcome.pass, evidence });
-        if (step.block === 'then' && !outcome.pass) verdict = 'fail';
-      } catch (error) {
-        steps.push({ ...base, layer: term?.layer ?? 'workspace', error: firstLine(error) });
-        return done('error', steps, pageErrors);
+    const ctx = createTermContext(
+      page,
+      () => {
+        navigated = true;
+      },
+      (ref, box) => located.push({ step: current, ref, box }),
+    );
+    /** Taken just before the first `when`: once, whatever it gave. */
+    let before: Promise<Shot | undefined> | undefined;
+    const ending = await runSteps();
+    const shots = { before: await before, after: await shot(mount) };
+    const kept: Shots = {
+      ...(shots.before !== undefined ? { before: shots.before } : {}),
+      ...(shots.after !== undefined ? { after: shots.after } : {}),
+    };
+    return done(ending, kept, shots.after === undefined ? [] : relative(located, shots.after.box));
+
+    async function runSteps(): Promise<Ending> {
+      let verdict: Verdict = 'pass';
+      for (const [index, step] of criterion.steps.entries()) {
+        current = index;
+        if (step.block === 'when' && before === undefined) {
+          before = shot(mount);
+          await before;
+        }
+        const base = { block: step.block, term: step.term, args: step.args };
+        let term: LoadedTerm | undefined;
+        try {
+          term = await loadTerm(step.block, step.term);
+          navigated = false;
+          const outcome = await term.run(ctx, namedArgs(term.params, step.args));
+          if (navigated) steps.push({ ...base, layer: term.layer, pass: outcome.pass, evidence: null, ignored: true });
+          else steps.push({ ...base, layer: term.layer, pass: outcome.pass, evidence: outcome.evidence });
+          if (step.block === 'then' && !outcome.pass) verdict = 'fail';
+        } catch (error) {
+          steps.push({ ...base, layer: term?.layer ?? 'workspace', error: firstLine(error) });
+          return { verdict: 'error' };
+        }
+        if (pageErrors.length > 0) return { verdict: 'error' };
       }
-      if (pageErrors.length > 0) return done('error', steps, pageErrors);
+      // A criterion without steps still fails on an error the page logged while loading.
+      return { verdict: pageErrors.length > 0 ? 'error' : verdict };
     }
-    // A criterion without steps still fails on an error the page logged while loading.
-    return done(pageErrors.length > 0 ? 'error' : verdict, steps, pageErrors);
   } catch (error) {
-    return done('error', steps, pageErrors, firstLine(error));
+    return done({ verdict: 'error', error: firstLine(error) });
   } finally {
+    signal?.removeEventListener('abort', cancel);
     await page.close();
   }
+}
+
+/** A shot: the PNG and where the element was in the page when it was taken. */
+export interface Shot {
+  readonly png: Buffer;
+  readonly box: Box;
+}
+
+export interface Shots {
+  readonly before?: Shot;
+  readonly after?: Shot;
+}
+
+/**
+ * The mounted element, photographed; nothing when it has no box to photograph, or when the
+ * photograph fails — a shot is evidence for the human, never a reason to change the verdict.
+ */
+async function shot(mount: LocatorLike): Promise<Shot | undefined> {
+  try {
+    const box = await mount.box();
+    if (box === null || box.width === 0 || box.height === 0) return undefined;
+    return { png: await mount.screenshot(), box };
+  } catch {
+    return undefined;
+  }
+}
+
+/** Each located box, in the coordinates of the `after` shot. */
+function relative(located: readonly Mark[], origin: Box): Mark[] {
+  return located.map((mark) => ({
+    step: mark.step,
+    ref: mark.ref,
+    box: { x: mark.box.x - origin.x, y: mark.box.y - origin.y, width: mark.box.width, height: mark.box.height },
+  }));
 }
