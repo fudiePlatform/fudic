@@ -25,8 +25,12 @@ type Stripped = Awaited<ReturnType<typeof transformWithOxc>>;
 export interface CompiledFud {
   /** The emit's own result: diagnostics, missing assets, watch files, inline runtime. */
   readonly result: TransformResult;
-  /** The JavaScript, with the `.fud` → JS map Oxc composed. */
-  readonly module: { readonly code: string; readonly map: NonNullable<Stripped['map']> };
+  /**
+   * The JavaScript, with the `.fud` → JS map Oxc composed. `null` when the emit's own errors
+   * left code Oxc cannot parse: what the author has to read is those errors, which the pass
+   * reports, and not Oxc's complaint about a generated file they never wrote.
+   */
+  readonly module: { readonly code: string; readonly map: NonNullable<Stripped['map']> } | null;
 }
 
 /**
@@ -46,7 +50,15 @@ export function compileFud(
     if (result === null) return null;
     // `inMap`: Oxc composes `.fud` → TS with its own TS → JS, so the map describes the code
     // it actually returns rather than the text before the strip.
-    const stripped = await transformWithOxc(result.code, `${path}.ts`, { lang: 'ts', sourcemap: true }, result.map);
+    let stripped: Stripped;
+    try {
+      stripped = await transformWithOxc(result.code, `${path}.ts`, { lang: 'ts', sourcemap: true }, result.map);
+    } catch (error) {
+      // A broken expression (`@(`) is a FUD error of the `.fud` AND a parse error of the
+      // module emitted around it. The first is the one that points at what the author wrote.
+      if (!result.diagnostics.some((d) => d.severity === 'error')) throw error;
+      return { result, module: null };
+    }
     // Asked for with `sourcemap: true` over a `.ts` name, Oxc always returns one: the type
     // says «maybe» for the calls that do not ask, and a branch here would be one no input
     // can take.

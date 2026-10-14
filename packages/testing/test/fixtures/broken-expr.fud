@@ -1,0 +1,5 @@
+<broken-expr>
+  <template shadowrootmode="open">
+    <p>@(</p>
+  </template>
+</broken-expr>

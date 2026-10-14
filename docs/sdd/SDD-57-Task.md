@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/testing` (nuevo) · `@fudic/vite` · `@fudic/core` · `@fudic/http` ·
 > `@fudic/example-basic`
 > **Rama:** `sdd-57-tests-unitarios` (nace de `main`)
-> **Progreso:** 0 / 30 — `Listo`.
+> **Progreso:** 4 / 30 — `Listo`.
 
 **El orden manda en cuatro puntos.**
 
@@ -54,10 +54,10 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **Paquete.** `@fudic/testing` con exports `.` y `./config`, versiones exactas: `happy-dom` 20.10.6 (la del repo), `@testing-library/dom`, `@testing-library/user-event` y `@testing-library/jest-dom`; `vitest` como `peerDependency`. `@fudic/vite`, `@fudic/core`, `@fudic/ssr`, `@fudic/http` y `@fudic/di` como dependencias. `vitest.config` con umbrales al 100 | `testing` | `package.json` · `tsconfig*.json` · `vitest.config.ts` |
-| [ ] | 2 | 1 | **Medir.** Un entorno de vitest con los globals de happy-dom y `viteEnvironment: 'ssr'`, con el plugin `fudic()`, importa un `.fud` a secas, su `?client` y su `?server`. Un `vi.mock` del test sustituye un módulo que importa el `?server`. Se anota el resultado en esta tarea. Si `vi.mock` no llega, se rediseña §4.1 antes de seguir | `testing` | `test/spike.test.ts` |
-| [ ] | 3 | 2 | **`fudicTest()` y el entorno `fudic`.** El plugin del proyecto con sus opciones, el entorno de §4.1 y la URL `http://localhost/`. Criterio 1 | `testing` | `src/config.ts` · `src/environment.ts` |
-| [ ] | 4 | 3 | **Errores de compilación.** Un `.fud` con diagnósticos de error hace que `mount` lance con ellos pintados como en el build. Criterio 2 | `testing` · `vite` | `src/compile-errors.ts` |
+| [x] | 1 | — | **Paquete.** `@fudic/testing` con exports `.` y `./config`, versiones exactas: `happy-dom` 20.10.6 (la del repo), `@testing-library/dom`, `@testing-library/user-event` y `@testing-library/jest-dom`; `vitest` como `peerDependency`. `@fudic/vite`, `@fudic/core`, `@fudic/ssr`, `@fudic/http` y `@fudic/di` como dependencias. `vitest.config` con umbrales al 100 | `testing` | `package.json` · `tsconfig*.json` · `vitest.config.ts` |
+| [x] | 2 | 1 | **Medir.** Un entorno de vitest con los globals de happy-dom y `viteEnvironment: 'ssr'`, con el plugin `fudic()`, importa un `.fud` a secas, su `?client` y su `?server`. Un `vi.mock` del test sustituye un módulo que importa el `?server`. Se anota el resultado en esta tarea. Si `vi.mock` no llega, se rediseña §4.1 antes de seguir. **Resultado (2026-10-14): pasa.** El entorno es el `happy-dom` de vitest con `viteEnvironment: 'ssr'` (importado de `vitest/runtime`; `vitest/environments` está deprecado desde 4.1). El `.fud` a secas exporta `render` y `tag`, `?client` define el tag y `?server` exporta la función; su `handle` devuelve lo del `vi.mock` del test sobre el módulo que el `?server` importa. §4.1 se queda como está | `testing` | `test/spike.test.ts` |
+| [x] | 3 | 2 | **`fudicTest()` y el entorno `fudic`.** El plugin del proyecto con sus opciones, el entorno de §4.1 y la URL `http://localhost/`. Criterio 1. El entorno sale de `vitest/runtime` (`vitest/environments` está deprecado desde 4.1) | `testing` | `src/config.ts` · `src/environment.ts` |
+| [x] | 4 | 3 | **Errores de compilación** (decisión 8.1.7). Importar un `.fud` con errores rechaza con ellos pintados como en el build. Una expresión rota (`@(`) daba el `PARSE_ERROR` de Oxc sobre el `.fud.ts` generado: `compileFud` devuelve el módulo a `null` cuando el emit ya tiene errores, y sale el diagnóstico FUD, también en `vite dev`. Criterio 2 | `vite` · `testing` | `packages/vite/src/compile.ts` · `test/compile-errors.test.ts` |
 
 ## Fase 2 — montar (7)
 

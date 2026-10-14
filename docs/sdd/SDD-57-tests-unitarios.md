@@ -1,6 +1,6 @@
 # SDD-57 — Tests unitarios de componentes, rutas, layouts y snippets: `@fudic/testing`
 
-> **Estado:** `Listo` — [tareas](./SDD-57-Task.md), 0 / 30.
+> **Estado:** `Listo` — [tareas](./SDD-57-Task.md), 4 / 30.
 > **Paquetes:** `@fudic/testing` (nuevo) · `@fudic/vite` · `@fudic/core` · `@fudic/http` ·
 > `@fudic/example-basic`
 > **Depende de:** 17 (hidratación), 19 (plugin, routing y dev server), 20 (Service Worker),
@@ -30,7 +30,7 @@ Esta spec añade esa capa. Es lo que el desarrollador escribe:
 ```ts
 // src/components/app-counter.test.ts
 import { mount } from '@fudic/testing';
-import AppCounter from './app-counter.fud';
+import * as AppCounter from './app-counter.fud';
 
 test('suma al pulsar', async () => {
   const t = await mount(AppCounter, { props: { start: 2 } });
@@ -44,7 +44,7 @@ test('suma al pulsar', async () => {
 ```ts
 // src/components/user-form.test.ts
 import { mount } from '@fudic/testing';
-import UserForm from './user-form.fud';
+import * as UserForm from './user-form.fud';
 
 vi.mock('../data/aliases', () => ({ aliasTaken: async (a: string) => a === 'admin' }));
 
@@ -134,16 +134,18 @@ interface MountOptions<P> {
 }
 ```
 
-`component` es el módulo que da `import X from './x.fud'`. Las props se pueden sacar de la
-fixture de la `.fudspec`:
+`component` es el namespace que da `import * as X from './x.fud'`: `FudModule` es `tag`, `css`
+y `render` (`layout` en un layout). Un `.fud` compilado no tiene `export default`. Las props se
+pueden sacar de la fixture de la `.fudspec`:
 
 ```ts
 import fixtures from './app-card.fixture';
 const t = await mount(AppCard, { props: fixtures.destacada });
 ```
 
-Un `.fud` con errores no se monta: `mount` lanza un `Error` con los diagnósticos pintados como
-los pinta el build (`ruta:línea:col - error FUDnnnn: mensaje`).
+Un `.fud` con errores no llega a `mount`: importarlo rechaza con los diagnósticos pintados como
+los pinta el build (`ruta:línea:col - error FUDnnnn: mensaje`). Una expresión rota (`@(`) también:
+sale su diagnóstico FUD, no el error de Oxc sobre el módulo generado, en el test y en `vite dev`.
 
 ### 3.3. `Mounted`: lo que devuelve
 
@@ -308,7 +310,7 @@ renderLayout(layout: FudModule, options?: {
 ```
 
 ```ts
-import Layout from '../layouts/_layout.fud';
+import * as Layout from '../layouts/_layout.fud';
 
 test('culture por defecto', async () => {
   const page = await renderLayout(Layout, { body: '<p>cuerpo</p>', sections: { nav: '<a href="/">Inicio</a>' } });
@@ -474,8 +476,9 @@ snippet instancia llegan con él, igual que en una página.
 
 1. Un proyecto con `fudicTest()` en su `vitest.config.ts` importa un `.fud` desde un
    `*.test.ts` y `pnpm test` lo ejecuta en el entorno `fudic`.
-2. Un `.fud` con un error de compilación hace que `mount` lance con el diagnóstico pintado
-   (`ruta:línea:col - error FUDnnnn`).
+2. Importar un `.fud` con errores rechaza con el diagnóstico pintado
+   (`ruta:línea:col - error FUDnnnn`), con un error semántico (`FUD0158`) y con una expresión
+   rota.
 
 **Componentes**
 
@@ -589,3 +592,11 @@ Tomadas con Pedro el 2026-10-14, antes de redactar:
    aparte. La matriz existe para encontrarlas.
 6. **`renderSnippet` recibe la llamada como texto `.fud`**, lo que el desarrollador escribe tras
    `@render`, en vez de un objeto de argumentos que no distingue posicionales y con nombre.
+7. **Un `.fud` con errores lo rechaza el import, no `mount`** (2026-10-14). `mount` recibe el
+   módulo ya importado, así que un import estático de un `.fud` roto tumba el fichero de test
+   antes de llegar a él. El import rechaza con los diagnósticos pintados como en el build. Una
+   expresión rota (`@(`) acababa en el `PARSE_ERROR` de Oxc sobre el `.fud.ts` generado: se
+   arregla en `@fudic/vite` para que salga el diagnóstico FUD, también en `vite dev` (tarea 4).
+8. **Un `.fud` se importa como namespace** (2026-10-14): `import * as X from './x.fud'`. Un
+   `.fud` compilado exporta `tag`, `css` y `render` (`layout` en un layout) y ningún `export
+   default`. `FudModule` es ese namespace. El compilador no cambia.

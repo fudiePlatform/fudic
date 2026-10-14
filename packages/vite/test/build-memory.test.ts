@@ -151,8 +151,8 @@ describe('compileFud', () => {
   it('strips the TypeScript and keeps a map back to the `.fud`', async () => {
     const compiled = (await compileFud(card, countingIo().io, undefined, NO_STYLES, undefined))!;
     expect(compiled.result.code).toBeTypeOf('string');
-    expect(compiled.module.code).not.toMatch(/\bprops<\{/u);
-    expect(compiled.module.map?.sources.some((s) => s.endsWith('app-card.fud'))).toBe(true);
+    expect(compiled.module!.code).not.toMatch(/\bprops<\{/u);
+    expect(compiled.module!.map?.sources.some((s) => s.endsWith('app-card.fud'))).toBe(true);
   });
 
   it('compiles once per (file, route name) in a build — the same answer, not a copy', async () => {
