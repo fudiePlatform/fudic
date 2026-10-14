@@ -10,9 +10,10 @@
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve as resolvePath } from 'node:path';
-import { type Logger, type Plugin, transformWithOxc } from 'vite';
+import { type Logger, type Plugin, type ViteDevServer, transformWithOxc } from 'vite';
 import {
   applyNonce,
   cspFor,
@@ -34,6 +35,17 @@ import {
   type ProjectStyles,
 } from './transform.js';
 import { eraseServerValidators } from './server-validators.js';
+import { eraseServerHalves } from './server-halves.js';
+import {
+  appFunctions,
+  devSource,
+  emitFunctionsModule,
+  httpFileOf,
+  isFnPath,
+  sendResponse,
+  toRequest,
+  type FunctionsHandler,
+} from './functions.js';
 import { loadWithSourceMap } from './inputmaps.js';
 import {
   CLIENT_QUERY,
@@ -49,7 +61,20 @@ import {
   routeUsesDi,
 } from './client.js';
 import { INLINE_QUERY, IOC_SUFFIX, RUNTIME_MARKER, type ResolveIo } from '@fudic/compiler';
-import { RUNTIME_CACHE_PREFIX, RUNTIME_DIR, runtimeMarkerUrl } from '@fudic/conventions';
+import {
+  ERROR_PREFIX,
+  HTTP_FILE,
+  RUNTIME_CACHE_PREFIX,
+  RUNTIME_DIR,
+  runtimeMarkerUrl,
+} from '@fudic/conventions';
+import {
+  classifyError,
+  ERROR_PATTERN,
+  problemOfStatus,
+  renderErrorPage,
+  type PageProblem,
+} from './page-errors.js';
 import { nodeIo, nodeLinkCheckIo, nodeRuntimeFs } from './io.js';
 import { buildIo } from './build-memory.js';
 import { compileFud } from './compile.js';
@@ -85,7 +110,7 @@ import { nodePackageFs } from '@fudic/resolve';
 import { CONFIG_FILE } from '@fudic/config';
 import { LinkedAssets } from './linked-assets.js';
 import { runLinkPass, safeName, type LinkResult } from './link.js';
-import { runEdgePass } from './edge.js';
+import { runEdgePass, type EdgeExtras } from './edge.js';
 import { buildServiceWorker } from './swbuild.js';
 import { emitPlan, type NestedArtifact, type NestedOutputOptions } from './nested.js';
 import {
@@ -131,6 +156,7 @@ import {
   BOOT_ID,
   DATA_PREFIX,
   EDGE_DIR,
+  FUNCTIONS_FILE,
   BUILD_TOKEN,
   BUILD_ID_LENGTH,
   DEV_MAIN_URL,
@@ -195,6 +221,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let publicDir = '';
   let isDev = false;
   let builds: readonly RouteBuild[] = [];
+  /** `_error.fud`, out of the route table (SDD-56 §4.8). */
+  let errorPage: RouteBuild | undefined;
   let swConfig: ResolvedSwConfig | null = null;
   /** Who this project is (SDD-41). Empty until `configResolved` has run. */
   let project: ProjectResult = { config: null, errors: [] };
@@ -594,7 +622,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     },
 
     async configureServer(server) {
-      builds = discoverRoutes(root, options).routes;
+      ({ routes: builds, errorPage } = discoverRoutes(root, options));
       // What the editor marks, live (SDD-35 §4.5): checked at start, re-checked on every save
       // of a file the program read, pushed to the overlay without a reload, and the page
       // comes back by itself once it is clean.
@@ -612,6 +640,39 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         [devUrl(base, DEV_BOOT_URL), BOOT_ID],
         [devUrl(base, DEV_SW_URL), SW_ID],
       ]);
+      // Server functions (SDD-56 §4.15), with any method, before anything else gets a turn.
+      // The handler is loaded through the SSR graph and not imported here: the user's
+      // modules reach `@fudic/http` and `@fudic/di` through that graph, and the request's
+      // container has to be kept by the same `AsyncLocalStorage` they read.
+      server.middlewares.use((req, res, next) => {
+        if (!isFnPath(pathnameOf(req.url ?? '/', '/'), base)) {
+          next();
+          return;
+        }
+        builds = discoverRoutes(root, options).routes;
+        const load = (id: string): Promise<Record<string, unknown>> =>
+          server.ssrLoadModule(id) as Promise<Record<string, unknown>>;
+        const source = devSource({
+          builds,
+          componentPath: (tag) => discoverComponents(builds, io).find((c) => c.tag === tag)?.path,
+          load,
+          httpFile: httpFileOf(root),
+        });
+        load('@fudic/http/server')
+          .then(async (http) => {
+            const handler = (http['functionsHandler'] as FunctionsHandler)(
+              source,
+              {
+                base,
+                dev: true,
+                // What is not an `HttpError` is a bug of the app: to the overlay, as a page's.
+                onError: (error) => toOverlay(server, error),
+              },
+            );
+            await sendResponse(res, await handler(toRequest(req, res)), next);
+          })
+          .catch(next);
+      });
       // The files a `.fud` links, at the SAME URL the build publishes them under (BUG-40).
       // Dev has no bundle to put them in, and a page that works built and 404s in dev — or
       // the other way round — is the kind of difference that is found last.
@@ -673,7 +734,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           const pathname = pathnameOf(url, base);
           // Route discovery is cheap and dev adds/removes files: re-read on each request
           // so a new `.fud` is routable without restarting the server.
-          builds = discoverRoutes(root, options).routes;
+          ({ routes: builds, errorPage } = discoverRoutes(root, options));
 
           // The generated `@server load` endpoint (§4.5).
           if (pathname.startsWith(DATA_PREFIX)) {
@@ -688,20 +749,47 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               WRAPPER_PREFIX + rb.route.pattern,
               rb.route.pattern,
               routePath,
+              toRequest(req, res),
             )
               .then((data) => {
                 res.setHeader('Content-Type', 'application/json');
                 res.end(JSON.stringify(data));
               })
-              .catch((err: Error) => {
-                server.ssrFixStacktrace(err);
-                next(err);
+              .catch((err: unknown) => {
+                // The status of what `load` threw, as a problem: the Service Worker leaves the
+                // navigation to the network on any error, and the network answers it (§4.8).
+                const failure = classifyError(err, true);
+                if (failure.kind === 'error' && failure.unexpected) toOverlay(server, err);
+                const problem =
+                  failure.kind === 'redirect'
+                    ? { status: failure.status, title: 'Redirect', location: failure.location }
+                    : failure.problem;
+                res.statusCode = problem.status;
+                res.setHeader('Content-Type', 'application/problem+json');
+                res.end(JSON.stringify(problem));
               });
             return;
           }
 
           if (!(req.headers.accept ?? '').includes('text/html')) {
             next();
+            return;
+          }
+          // `_error.fud`'s own URL, where `errorPages` sends a call that failed (SDD-56 §4.8).
+          if (pathname.startsWith(`${ERROR_PREFIX}/`)) {
+            const status = Number(pathname.slice(ERROR_PREFIX.length + 1));
+            if (!Number.isInteger(status) || status < 400 || status > 599) {
+              next();
+              return;
+            }
+            devErrorPage(server, errorPage, problemOfStatus(status))
+              .then((html) => server.transformIndexHtml(url, html))
+              .then((html) => {
+                res.statusCode = status;
+                res.setHeader('Content-Type', 'text/html; charset=utf-8');
+                res.end(html);
+              })
+              .catch(next);
             return;
           }
           const rb = matchRouteBuild(builds, pathname);
@@ -713,26 +801,45 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           // A page whose graph has an error is not served (SDD-35 §4.5): the overlay goes in
           // its place, with the same position and message the editor shows. A check in flight
           // is waited for, so a save followed by a reload never sees the previous verdict.
+          const request = toRequest(req, res);
           live
             .blocking(documentFiles(rb.absPath, io))
-            .then((blocked) => {
+            .then(async (blocked): Promise<{ status: number; html?: string; location?: string }> => {
               if (blocked !== undefined) throw asError(blocked);
-              return renderRouteHtml(
-                (id) => server.ssrLoadModule(id) as Promise<RenderModule>,
-                WRAPPER_PREFIX + rb.route.pattern,
-                rb.route.pattern,
-                pathname,
-                nonce,
-              );
+              try {
+                const html = await renderRouteHtml(
+                  (id) => server.ssrLoadModule(id) as Promise<RenderModule>,
+                  WRAPPER_PREFIX + rb.route.pattern,
+                  rb.route.pattern,
+                  pathname,
+                  nonce,
+                  request,
+                );
+                return { status: 200, html };
+              } catch (err) {
+                // What `load` or `layout` threw (SDD-56 §4.8): a redirect, or the error page
+                // with its status — and what is not an `HttpError`, in the overlay as well.
+                const failure = classifyError(err, true);
+                if (failure.kind === 'redirect') return { status: failure.status, location: failure.location };
+                if (failure.unexpected) toOverlay(server, err);
+                return {
+                  status: failure.problem.status,
+                  html: await devErrorPage(server, errorPage, failure.problem),
+                };
+              }
             })
-            .then((html) => server.transformIndexHtml(url, html)) // injects the dev client
-            .then((html) => {
-              res.statusCode = 200;
+            .then(async (page) => {
+              res.statusCode = page.status;
+              if (page.location !== undefined) {
+                res.setHeader('Location', page.location);
+                res.end();
+                return;
+              }
               res.setHeader('Content-Type', 'text/html; charset=utf-8');
               // In dev the HMR client is injected inline and evaluates at load; a strict
               // policy would kill it. The CSP is exercised in preview and production,
               // which is where the emitted output is what ships.
-              res.end(html);
+              res.end(await server.transformIndexHtml(url, page.html!)); // injects the dev client
             })
             .catch((err: Error) => {
               server.ssrFixStacktrace(err);
@@ -753,6 +860,20 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           return null;
         }
       };
+      // Server functions, from the module the build left beside the edge chunks (SDD-56
+      // §4.15): the same file an adapter mounts in production.
+      server.middlewares.use((req, res, next) => {
+        const file = join(root, EDGE_DIR, FUNCTIONS_FILE);
+        if (!isFnPath(pathnameOf(req.url ?? '/', '/'), base) || !existsSync(file)) {
+          next();
+          return;
+        }
+        (import(pathToFileURL(file).href) as Promise<{ handle: (r: Request) => Promise<Response | null> }>)
+          .then(async ({ handle }) => {
+            await sendResponse(res, await handle(toRequest(req, res)), next);
+          })
+          .catch(next);
+      });
       server.middlewares.use((req, res, next) => {
         if (req.method !== 'GET' && req.method !== 'HEAD') {
           next();
@@ -783,12 +904,35 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             next();
             return;
           }
-          previewData(root, dataRecord, routePath)
+          previewData(root, dataRecord, routePath, toRequest(req, res))
             .then((data) => {
               res.setHeader('Content-Type', 'application/json');
               res.end(JSON.stringify(data));
             })
-            .catch(() => next());
+            .catch((err: unknown) => {
+              // The status of what `load` threw, for the Service Worker to leave the
+              // navigation to the network, which answers it with the page (SDD-56 §4.8).
+              const failure = classifyError(err, false);
+              const problem =
+                failure.kind === 'redirect'
+                  ? { status: failure.status, title: 'Redirect', location: failure.location }
+                  : failure.problem;
+              res.statusCode = problem.status;
+              res.setHeader('Content-Type', 'application/problem+json');
+              res.end(JSON.stringify(problem));
+            });
+          return;
+        }
+
+        const nonce = newNonce();
+        // `_error.fud`'s own URL (SDD-56 §4.8).
+        if (pathname.startsWith(`${ERROR_PREFIX}/`)) {
+          const status = Number(pathname.slice(ERROR_PREFIX.length + 1));
+          if (!Number.isInteger(status) || status < 400 || status > 599) {
+            next();
+            return;
+          }
+          sendErrorPage(root, res, problemOfStatus(status), nonce, manifest.csp.document).catch(next);
           return;
         }
 
@@ -797,7 +941,6 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           next();
           return;
         }
-        const nonce = newNonce();
         const file = join(outDir, htmlPathFor(pathname));
         if (existsSync(file)) {
           res.statusCode = 200;
@@ -812,14 +955,25 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           next();
           return;
         }
-        previewRender(root, record, pathname, nonce)
+        previewRender(root, record, pathname, nonce, toRequest(req, res))
           .then((html) => {
             res.statusCode = 200;
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.setHeader('Content-Security-Policy', cspFor(manifest.csp.document, nonce));
             res.end(html);
           })
-          .catch(() => next());
+          .catch(async (err: unknown) => {
+            // What `load` or `layout` threw (SDD-56 §4.8): the redirect, or the error page.
+            const failure = classifyError(err, false);
+            if (failure.kind === 'redirect') {
+              res.statusCode = failure.status;
+              res.setHeader('Location', failure.location);
+              res.end();
+              return;
+            }
+            await sendErrorPage(root, res, failure.problem, nonce, manifest.csp.document);
+          })
+          .catch(next);
       });
     },
 
@@ -896,6 +1050,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
 
       const discovered = discoverRoutes(root, options);
       builds = discovered.routes;
+      errorPage = discovered.errorPage;
       // With the severity each one has in a build: an error said as a warning is a build that
       // lies (SDD-35 §1.2). And what parsing the routes said, which used to be dropped (§1.1):
       // the typecheck already said it, so the reporter stays quiet about it.
@@ -1171,16 +1326,23 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       }
       if (id.startsWith(WRAPPER_PREFIX)) {
         const pattern = id.slice(WRAPPER_PREFIX.length);
-        const rb = builds.find((b) => b.route.pattern === pattern);
+        // `_error.fud` too, rendered like a route but never named by the route table.
+        const rb = [...builds, ...(errorPage === undefined ? [] : [errorPage])].find(
+          (b) => b.route.pattern === pattern,
+        );
         if (rb === undefined) {
           return null;
         }
+        const httpFile = httpFileOf(root);
         return emitRenderChunk({
           pageModule: rb.absPath.replace(/\\/gu, '/'),
           hasLoad: rb.analysis.hasLoad,
           hasPaths: rb.analysis.hasPaths,
           hasLayout: rb.analysis.hasLayout,
           hasDi: routeUsesDi(rb.absPath, io),
+          hasHttp: rb.analysis.hasHttp === true,
+          fluentLoad: rb.analysis.fluentLoad === true,
+          ...(httpFile !== undefined ? { globalChain: httpFile } : {}),
           // In DEV this module IS the edge: the dev server renders through the module
           // graph and resolves data in process. In BUILD it is a chunk of the client
           // output, and the client never gets `load` (BUG-09 §4.1) — the edge pass builds
@@ -1213,7 +1375,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       return loadWithSourceMap(id);
     },
 
-    async transform(code, id) {
+    async transform(code, id, transformOptions) {
       // A runtime shim is this plugin's own generated module (SDD-45 §4.2), not a file: it has
       // no `.fud` to compile and no validator body to erase.
       if (id.startsWith(RUNTIME_SHIM)) return null;
@@ -1221,9 +1383,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       if (!path.endsWith('.fud')) {
         // The schema of a form is an ordinary `.ts` that BOTH ends import, so the body of a
         // `serverValidator` would ship with the client unless it is taken out here (SDD-34
-        // §4.7). This is the client build: the render graph lives in the edge pass, outside
-        // `outDir`, and there the validators stay whole.
-        const erased = /\.[cm]?[jt]sx?$/u.test(path) ? eraseServerValidators(code) : null;
+        // §4.7) — and a middleware's module is the same case, with its `.server(…)` half
+        // (SDD-56 §4.5), where it is a matter of security. Only on the way to a browser: the
+        // dev server's SSR graph runs both, and the edge pass is a build of its own.
+        if (transformOptions?.ssr === true || !/\.[cm]?[jt]sx?$/u.test(path)) return null;
+        const validators = eraseServerValidators(code);
+        const halves = eraseServerHalves(validators ?? code);
+        const erased = halves ?? validators;
         return erased === null ? null : { code: erased, map: null };
       }
       if (query === 'server') {
@@ -1243,7 +1409,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         return (await transformWithOxc(ioc.code, `${path}.ts`, { lang: 'ts' })).code;
       }
       if (query === CLIENT_QUERY) {
-        const chunk = transformFudClient(path, io, projectStyles, linked);
+        // Its server functions answer by its pattern, and inherit `src/http.ts` (SDD-56 §4.5).
+        const slash = (p: string): string => p.replace(/\\/gu, '/');
+        const pattern = builds.find((rb) => slash(rb.absPath) === slash(path))?.route.pattern;
+        const chunk = transformFudClient(path, io, projectStyles, linked, {
+          ...(pattern !== undefined ? { pattern } : {}),
+          ...(httpFileOf(root) !== undefined ? { httpFile: `/${HTTP_FILE}` } : {}),
+        });
         if (chunk === null) {
           return null;
         }
@@ -1367,6 +1539,19 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // Written to disk in 3b, not here: an edge chunk imports the shared chunks by name and
       // those are renamed there (BUG-31 §T5), so what lands beside `outDir` — and what the
       // prerender runs — has to be the rewritten code.
+      // What the edge pass builds besides the routes (SDD-56): `_error.fud`, the global chain
+      // every wrapper inherits, and `functions.mjs` when the app has a single server function.
+      const edgeExtras = (): EdgeExtras => {
+        const httpFile = httpFileOf(root);
+        const fns = appFunctions(builds, discoverComponents(builds, io));
+        const functions =
+          fns.table.length === 0 ? undefined : emitFunctionsModule({ ...fns, httpFile, base });
+        return {
+          ...(errorPage !== undefined ? { errorPage } : {}),
+          ...(httpFile !== undefined ? { globalChain: httpFile } : {}),
+          ...(functions !== undefined ? { functions } : {}),
+        };
+      };
       const [link, edge] = await Promise.all([
         linking,
         runEdgePass(
@@ -1380,6 +1565,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           linked,
           runtimeEntriesFor,
           reporter,
+          edgeExtras(),
         ),
       ]);
 
@@ -1911,16 +2097,45 @@ async function importEdgeChunk(root: string, pattern: string): Promise<RenderMod
   return (await import(pathToFileURL(edgeChunkPath(root, pattern)).href)) as RenderModule;
 }
 
+/**
+ * An error of the app's own code, in Vite's overlay — while the page still answers with its
+ * status (SDD-56 §4.8): the overlay is for the developer, the error page for the visitor.
+ */
+function toOverlay(server: ViteDevServer, error: unknown): void {
+  if (error instanceof Error) server.ssrFixStacktrace(error);
+  server.ws.send({
+    type: 'error',
+    err: {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? (error.stack ?? '') : '',
+    },
+  });
+}
+
+/** `_error.fud` with `problem`, through the dev server's graph, or the minimal page. */
+async function devErrorPage(
+  server: ViteDevServer,
+  errorPage: RouteBuild | undefined,
+  problem: PageProblem,
+): Promise<string> {
+  const mod =
+    errorPage === undefined
+      ? null
+      : ((await server.ssrLoadModule(WRAPPER_PREFIX + ERROR_PATTERN)) as RenderModule);
+  return renderErrorPage(mod, problem, newNonce());
+}
+
 /** Render a route in preview by importing its built ESM chunk. */
 async function previewRender(
   root: string,
   record: RouteRecord,
   pathname: string,
   nonce: string,
+  request: Request,
 ): Promise<string> {
   const mod = await importEdgeChunk(root, record.pattern);
-  const { drainStream, edgeContext } = await import('./serve.js');
-  return drainStream(mod.render(edgeContext(record.pattern, pathname, nonce)));
+  const { drainStream, edgeContext, withRequest } = await import('./serve.js');
+  return drainStream(mod.render(withRequest(edgeContext(record.pattern, pathname, nonce), request)));
 }
 
 /** Run a route's `@server load` in preview — the generated data endpoint. */
@@ -1928,12 +2143,29 @@ async function previewData(
   root: string,
   record: RouteRecord,
   pathname: string,
+  request: Request,
 ): Promise<unknown> {
   const mod = await importEdgeChunk(root, record.pattern);
   if (typeof mod.data !== 'function') {
     return {};
   }
-  const { edgeContext } = await import('./serve.js');
-  const { nonce: _nonce, ...ctx } = edgeContext(record.pattern, pathname, '');
+  const { edgeContext, withRequest } = await import('./serve.js');
+  const { nonce: _nonce, ...ctx } = withRequest(edgeContext(record.pattern, pathname, ''), request);
   return mod.data(ctx);
+}
+
+/** `_error.fud` from the edge pass — or the minimal page — written with its status. */
+async function sendErrorPage(
+  root: string,
+  res: import('node:http').ServerResponse,
+  problem: PageProblem,
+  nonce: string,
+  csp: Parameters<typeof cspFor>[0],
+): Promise<void> {
+  const mod = existsSync(edgeChunkPath(root, ERROR_PATTERN)) ? await importEdgeChunk(root, ERROR_PATTERN) : null;
+  const html = await renderErrorPage(mod, problem, nonce);
+  res.statusCode = problem.status;
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Content-Security-Policy', cspFor(csp, nonce));
+  res.end(html);
 }

@@ -318,6 +318,8 @@ interface FakeRes {
   body: string;
   setHeader(k: string, v: string): void;
   end(b?: string): void;
+  /** A real `ServerResponse` has it: the dev server listens for `close` to abort the request (SDD-56 §4.12). */
+  on(event: string, listener: () => void): FakeRes;
 }
 const fakeRes = (): FakeRes => ({
   headers: {},
@@ -327,6 +329,9 @@ const fakeRes = (): FakeRes => ({
   },
   end(b = '') {
     this.body = b;
+  },
+  on() {
+    return this;
   },
 });
 const flush = (): Promise<void> => new Promise((r) => setImmediate(r));

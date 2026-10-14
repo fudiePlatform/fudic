@@ -276,6 +276,12 @@ export function installHydration(options: HydrationOptions): Hydration {
     const closeTurn = openTurn(doc);
     try {
       await raiseInTurn(host, id, replay);
+    } catch (error) {
+      // The gesture is replayed anyway: it was cancelled by this runtime, and left pending it
+      // keeps every later gesture on the host waiting too — a page whose links stop working
+      // because a chunk threw. The error still reaches the console.
+      replay();
+      throw error;
     } finally {
       closeTurn();
     }

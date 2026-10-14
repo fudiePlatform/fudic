@@ -70,6 +70,20 @@ export interface RuntimeMessage {
   readonly urls: readonly string[];
 }
 
+/**
+ * page → SW: "forget the data of these paths", from the stub of a server function after a
+ * call that changed something (SDD-56 §4.9). The worker answers on the port it carries once
+ * it has, and the call waits for that. Re-exported here because the worker's code imports
+ * this package and nothing else.
+ */
+export { INVALIDATE_MESSAGE } from '@fudic/conventions';
+
+export interface InvalidateMessage {
+  readonly type: 'fudic:invalidate';
+  /** Concrete paths or route patterns, `base` included. */
+  readonly paths: readonly string[];
+}
+
 /** SW → main: these are in the cache, and not one of them was evaluated. */
 export const WARMED_MESSAGE = 'fudic:warmed';
 

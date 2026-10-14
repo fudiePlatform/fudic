@@ -104,6 +104,7 @@ customElements.define("app-actions", class extends FudicElement {
             let $c1 = $dom.firstElementChild($n3);
             $n5 = $c1; $c1 = $dom.nextElementSibling($c1);
             $n12 = $dom.lastChild($n5);
+            $n12 = $dom.textAt($n5, $n12, null);
             $n6 = $c1; $c1 = $dom.nextElementSibling($c1);
             $n7 = $c1; $c1 = $dom.nextElementSibling($c1);
             $n8 = $c1; $c1 = $dom.nextElementSibling($c1);

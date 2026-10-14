@@ -19,8 +19,15 @@
  */
 
 import type { StructuredDocument } from '@fudic/compiler';
-import { serverModuleSpecifier } from './paths.js';
+import { ERROR_FILE } from '@fudic/conventions';
+import { isFile, serverModuleSpecifier } from './paths.js';
 import type { VirtualWriter } from './writer.js';
+
+/**
+ * The `data` of `_error.fud`, which has no `load`: the server paints it with the problem of
+ * what failed (SDD-56 §3.6).
+ */
+const ERROR_DATA = '{ readonly status: number; readonly title: string; readonly detail?: string }';
 
 /**
  * Emit the `data` declaration for a file that has one.
@@ -36,6 +43,10 @@ export function emitDataDeclaration(
   fudPath: string,
 ): void {
   if (doc.type === 'component-document' || doc.type === 'layout-document') return;
+  if (isFile(fudPath, ERROR_FILE)) {
+    w.scaffold(`declare const data: ${ERROR_DATA};\n`);
+    return;
+  }
 
   const server = serverModuleSpecifier(fudPath);
   w.scaffold(

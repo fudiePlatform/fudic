@@ -1,5 +1,34 @@
 import { describe, expect, it, vi } from 'vitest';
-import { computed, effect, signal, subscribe, subscribeIf } from '../src/index.js';
+import { computed, effect, signal, subscribe, subscribeIf, written } from '../src/index.js';
+
+describe('written: a write that came before the hookup', () => {
+  it('is false for signals nobody wrote, and for none at all', () => {
+    expect(written(signal('a'), signal(0))).toBe(false);
+    expect(written()).toBe(false);
+  });
+
+  it('is true once any of them was written, even back to the value it had', () => {
+    const a = signal('a');
+    const b = signal(0);
+    b.set(1);
+    expect(written(a, b)).toBe(true);
+
+    // What the server painted is the INITIAL value; a round trip still asks for a pass, and
+    // that pass writes nothing the guard of each value does not already hold.
+    const c = signal('x');
+    c.set('y');
+    c.set('x');
+    expect(written(c)).toBe(true);
+  });
+
+  it('counts the write an effect makes as the factory runs', () => {
+    const s = signal('a');
+    effect(() => {
+      s.set('b');
+    });
+    expect(written(s)).toBe(true);
+  });
+});
 
 describe('subscribe over a signal (SDD-31 §6.18)', () => {
   it('delivers on movement and never on subscribe', () => {

@@ -33,6 +33,10 @@
       "types": "./dist/dom/index.d.ts",
       "import": "./dist/dom/index.js"
     },
+    "./wire": {
+      "types": "./dist/wire/index.d.ts",
+      "import": "./dist/wire/index.js"
+    },
     "./element": {
       "types": "./dist/element.d.ts",
       "import": "./dist/element.js"

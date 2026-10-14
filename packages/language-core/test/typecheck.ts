@@ -31,11 +31,19 @@ interface CorpusFile {
   readonly tag: string;
 }
 
-/** Load the corpus, applying `overrides` (a mutation of one file's source). */
+/**
+ * Load the corpus, applying `overrides`: a mutation of one file's source, or — for a `.fud`
+ * path the corpus does not have — a file added to it.
+ */
 export function loadCorpus(overrides: Readonly<Record<string, string>> = {}): readonly CorpusFile[] {
-  return fudFiles(FIXTURES).map((absolute) => {
+  const onDisk = fudFiles(FIXTURES).map((absolute) => {
     const path = posix.join(...relative(FIXTURES, absolute).split(/[\\/]/));
-    const source = overrides[path] ?? readFileSync(absolute, 'utf8');
+    return { path, source: overrides[path] ?? readFileSync(absolute, 'utf8') };
+  });
+  const added = Object.entries(overrides)
+    .filter(([path]) => path.endsWith('.fud') && !onDisk.some((f) => f.path === path))
+    .map(([path, source]) => ({ path, source }));
+  return [...onDisk, ...added].map(({ path, source }) => {
     const document = parseFud(source);
     return { path, source, document, tag: document.type === 'component-document' ? document.name : '' };
   });
@@ -186,9 +194,7 @@ export function languageServiceFor(overrides: Readonly<Record<string, string>> =
     getScriptFileNames: () => [...files.keys()],
     getScriptVersion: () => '1',
     getScriptSnapshot: (fileName) => {
-      const text =
-        files.get(fileName) ??
-        (fileName.includes('lib.') ? readFileSync(fileName, 'utf8') : undefined);
+      const text = files.get(fileName) ?? ts.sys.readFile(fileName);
       return text === undefined ? undefined : ts.ScriptSnapshot.fromString(text);
     },
     getCurrentDirectory: () => ROOT,
@@ -198,16 +204,7 @@ export function languageServiceFor(overrides: Readonly<Record<string, string>> =
     readFile: (fileName) => files.get(fileName) ?? ts.sys.readFile(fileName),
     useCaseSensitiveFileNames: () => true,
     resolveModuleNameLiterals: (literals, containingFile) =>
-      literals.map((literal) => {
-        const candidate = posix.normalize(posix.join(posix.dirname(containingFile), literal.text));
-        for (const suffix of ['.ts', '.d.ts', '']) {
-          const resolvedFileName = `${candidate}${suffix}`;
-          if (files.has(resolvedFileName)) {
-            return { resolvedModule: { resolvedFileName, extension: ts.Extension.Ts } };
-          }
-        }
-        return { resolvedModule: undefined };
-      }),
+      literals.map((literal) => resolveLiteral(files, literal.text, containingFile)),
   };
 
   return {
@@ -269,21 +266,50 @@ const COMPILER_OPTIONS: ts.CompilerOptions = {
 };
 
 /**
- * A compiler host over the in-memory map, with hand-written module resolution.
- *
- * Resolving by hand rather than through `ts.resolveModuleName` keeps the test independent
- * of node resolution on disk: `'./app-badge.fud'` must find `app-badge.fud.ts` in the map,
- * and nothing else may be reachable.
+ * Where a bare specifier is resolved from: inside `@fudic/http`, which reaches itself by its
+ * own name and `@fudic/di` and `@fudic/forms` as its dependencies — what an app that writes
+ * server functions has installed. Its types come from its `dist`, as a user's would.
  */
+const BARE_ANCHOR = resolve(fileURLToPath(new URL('../../http/src/index.ts', import.meta.url)));
+/** The only stretch of the disk a bare specifier may land in. */
+const PACKAGES = posix.join(...resolve(fileURLToPath(new URL('../..', import.meta.url))).split(/[\\/]/));
+
+/**
+ * One module specifier, resolved by hand: `'./app-badge.fud'` must find `app-badge.fud.ts` in
+ * the map, and a relative path reaches nothing else. A bare one is node resolution from
+ * `BARE_ANCHOR`, and a package on disk resolves its own imports as it would installed.
+ */
+function resolveLiteral(
+  files: ReadonlyMap<string, string>,
+  specifier: string,
+  containingFile: string,
+): ts.ResolvedModuleWithFailedLookupLocations {
+  if (!files.has(containingFile)) {
+    return ts.resolveModuleName(specifier, containingFile, COMPILER_OPTIONS, ts.sys);
+  }
+  if (!specifier.startsWith('.')) {
+    return ts.resolveModuleName(specifier, BARE_ANCHOR, COMPILER_OPTIONS, ts.sys);
+  }
+  const candidate = posix.normalize(posix.join(posix.dirname(containingFile), specifier));
+  for (const suffix of ['.ts', '.d.ts', '']) {
+    const resolvedFileName = `${candidate}${suffix}`;
+    if (files.has(resolvedFileName)) {
+      return { resolvedModule: { resolvedFileName, extension: ts.Extension.Ts } };
+    }
+  }
+  return { resolvedModule: undefined };
+}
+
+/** A compiler host over the in-memory map, with the module resolution of `resolveLiteral`. */
 function hostFor(files: ReadonlyMap<string, string>): ts.CompilerHost {
   const libDir = posix.join(...dirname(ts.getDefaultLibFilePath({})).split(/[\\/]/));
+  const onDisk = (fileName: string): boolean => fileName.includes('lib.') || fileName.startsWith(PACKAGES);
 
   const read = (fileName: string): string | undefined =>
-    files.get(fileName) ??
-    (fileName.includes('lib.') ? readFileSync(fileName, 'utf8') : undefined);
+    files.get(fileName) ?? (onDisk(fileName) ? ts.sys.readFile(fileName) : undefined);
 
   return {
-    fileExists: (fileName) => files.has(fileName) || fileName.includes('lib.'),
+    fileExists: (fileName) => files.has(fileName) || (onDisk(fileName) && ts.sys.fileExists(fileName)),
     readFile: read,
     getSourceFile: (fileName, languageVersion) => {
       const text = read(fileName);
@@ -298,18 +324,7 @@ function hostFor(files: ReadonlyMap<string, string>): ts.CompilerHost {
     useCaseSensitiveFileNames: () => true,
     getNewLine: () => '\n',
     resolveModuleNameLiterals: (literals, containingFile) =>
-      literals.map((literal) => {
-        const candidate = posix.normalize(
-          posix.join(posix.dirname(containingFile), literal.text),
-        );
-        for (const suffix of ['.ts', '.d.ts', '']) {
-          const resolvedFileName = `${candidate}${suffix}`;
-          if (files.has(resolvedFileName)) {
-            return { resolvedModule: { resolvedFileName, extension: ts.Extension.Ts } };
-          }
-        }
-        return { resolvedModule: undefined };
-      }),
+      literals.map((literal) => resolveLiteral(files, literal.text, containingFile)),
   };
 }
 

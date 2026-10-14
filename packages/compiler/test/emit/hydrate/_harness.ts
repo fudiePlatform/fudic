@@ -19,9 +19,11 @@ import { SsrDom, renderToString } from '@fudic/ssr';
 import {
   FudicElement,
   computed,
+  effect,
   live,
   signal,
   subscribe,
+  written,
   type Controller,
   type FudicElementCtor,
 } from '@fudic/core';
@@ -103,12 +105,14 @@ export function clientFactory(graph: ComponentGraph, tag: string): FudicElementC
       'FudicElement',
       'signal',
       'computed',
+      'effect',
       '$sub',
+      '$written',
       '$live',
       'emit',
       'customElements',
       body,
-    )(FudicElement, signal, computed, subscribe, live, emit, registry);
+    )(FudicElement, signal, computed, effect, subscribe, written, live, emit, registry);
     factory = captured!;
     factories.set(tag, factory);
   }

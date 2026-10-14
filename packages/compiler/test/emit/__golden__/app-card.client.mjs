@@ -1,4 +1,4 @@
-import { FudicElement, subscribe as $sub, live as $live } from '@fudic/core';
+import { FudicElement, subscribe as $sub, written as $written, live as $live } from '@fudic/core';
 import { signal } from '@fudic/core';
 
 customElements.define("app-card", class extends FudicElement {
@@ -155,6 +155,7 @@ customElements.define("app-card", class extends FudicElement {
     const $s = () => {
       $n3 && $d.push($dom.event($n3, "press", toggle));
       $d.push($sub(expanded, $u));
+      if ($written(expanded)) $u();
     };
     const $a = () => {
       let $v;
@@ -211,6 +212,7 @@ customElements.define("app-card", class extends FudicElement {
             let $c2 = $dom.firstElementChild($n1);
             $n4 = $c2; $c2 = $dom.nextElementSibling($c2);
             $n5 = $dom.lastChild($n4);
+            $n5 = $dom.textAt($n4, $n5, null);
           }
           {
             const $q = $q0();

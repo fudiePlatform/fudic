@@ -596,7 +596,7 @@ export function writeHeadElements(
  * A statement that REGISTERS is skipped, and here the reason is not the component's. A
  * component writes its `provide` in full on this side because it OWNS a container to register
  * into (`$own`, SDD-38 §4.5); a route owns none — it opens the root and hands it down, and
- * resolves through `ctx.inject(…)` (SDD-38 §6.24). Writing the line here would name a
+ * resolves through the request's ambient container (SDD-56 §3.8). Writing the line here would name a
  * container that does not exist. Providers in a route are not this SDD's, and dropping them
  * is exactly what happened before, when no part of a route's `@code` was emitted at all.
  */

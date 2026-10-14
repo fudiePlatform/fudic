@@ -163,7 +163,7 @@ export interface RuntimeEntries {
 export const DEV_CLIENT_PREFIX = '@fudic/h/';
 
 /** Where the generated `@server load` endpoints live (SDD-20 §4.5). */
-export const DATA_PREFIX = '/_fudic/data';
+export { DATA_PREFIX } from '@fudic/conventions';
 
 /** Output directory of the `link` pass: the linkable CJS chunks, inside the build output. */
 export const LINK_DIR = 'sw/c';
@@ -187,6 +187,12 @@ export const CLIENT_NAME_PREFIX = 'h';
  * `@server load` and drag its whole import graph, so they must not be in there.
  */
 export const EDGE_DIR = '.fudic/edge';
+
+/** The server functions of the app, inside `EDGE_DIR` (SDD-56 §4.15). */
+export const FUNCTIONS_FILE = 'functions.mjs';
+
+/** The id of the module the edge pass builds `FUNCTIONS_FILE` from. */
+export const FUNCTIONS_ID = '\0fudic:functions';
 
 /**
  * Replaced in the emitted Service Worker with the real build id (§4.10).

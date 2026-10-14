@@ -14,7 +14,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { browserDom, type DomClient } from '@fudic/dom';
-import { signal, computed, live, subscribe } from '@fudic/core';
+import { signal, computed, effect, live, subscribe, written } from '@fudic/core';
 import { resolveDocument } from '../../../src/emit/resolve.js';
 import {
   emitLayoutModule,
@@ -53,10 +53,12 @@ type RouteFactory = (props: readonly unknown[]) => {
 function routeFactory(code: string): RouteFactory {
   const body = code.replace(/^import[^\n]*\n/gmu, '').replace(/^export default /mu, 'return ');
   // eslint-disable-next-line @typescript-eslint/no-implied-eval
-  return new Function('signal', 'computed', '$sub', '$live', body)(
+  return new Function('signal', 'computed', 'effect', '$sub', '$written', '$live', body)(
     signal,
     computed,
+    effect,
     subscribe,
+    written,
     live,
   ) as RouteFactory;
 }
@@ -151,6 +153,34 @@ describe('a route adopts the composed page from the `<body>` (§6.4)', () => {
     controller.r();
     (document.querySelector('button.mas') as HTMLElement).click();
     expect(out.textContent).toBe('1');
+  });
+});
+
+describe('a signal written before the hookup', () => {
+  // An `effect` of `@client` runs as the factory does — before `h` hooks anything up — so its
+  // write notified nobody, and the page kept what the server painted: /usuarios said
+  // «ninguno» with the token in `localStorage`.
+  const route = (client: string): string =>
+    [
+      '<link rel="layout" href="./l.fud">',
+      '@code { @client {',
+      "  const s = signal('a');",
+      client,
+      '} }',
+      '<p class="s">@s()</p>',
+    ].join('\n');
+
+  it('is painted by h()', () => {
+    hydrate(route("  effect(() => { s.set('b'); });"));
+    expect(document.querySelector('p.s')!.textContent).toBe('b');
+  });
+
+  it('and an untouched one leaves the server’s text, and still moves afterwards', () => {
+    hydrate(route("  document.addEventListener('poke', () => s.set('c'));"));
+    const p = document.querySelector('p.s')!;
+    expect(p.textContent).toBe('a');
+    document.dispatchEvent(new Event('poke'));
+    expect(p.textContent).toBe('c');
   });
 });
 

@@ -20,6 +20,7 @@
 
 import { build, type Plugin } from 'vite';
 import { readFileSync } from 'node:fs';
+import { builtinModules } from 'node:module';
 import { transformWithOxc } from 'vite';
 import { type ResolveIo } from '@fudic/compiler';
 import { type RouteBuild } from './discover.js';
@@ -32,9 +33,13 @@ import { NO_STYLES, type ProjectStyles } from './transform.js';
 import { compileFud } from './compile.js';
 import type { BuildReporter } from './report.js';
 import { safeName } from './link.js';
-import { EDGE_PREFIX } from './constants.js';
+import { EDGE_PREFIX, FUNCTIONS_FILE, FUNCTIONS_ID } from './constants.js';
+import { ERROR_PATTERN } from './page-errors.js';
 import { serializeMap, type NestedArtifact, type NestedOutputOptions } from './nested.js';
 import { LinkedAssets } from './linked-assets.js';
+
+/** The input name of `functions.mjs`. */
+const FUNCTIONS_ENTRY = 'functions';
 
 export interface EdgeResult {
   /** Every emitted file, in no particular order. Written outside `outDir` by the caller. */
@@ -44,6 +49,23 @@ export interface EdgeResult {
 }
 
 const EMPTY: EdgeResult = { chunks: [], entries: new Map() };
+
+/** What the edge pass builds besides the routes (SDD-56). */
+export interface EdgeExtras {
+  /** `_error.fud`, rendered under `/_fudic/error/:status` and in no route table. */
+  readonly errorPage?: RouteBuild;
+  /** The text of the `functions.mjs` module, when the app has server functions. */
+  readonly functions?: string;
+  /** `src/http.ts`, the global level of every chain, when the project has one. */
+  readonly globalChain?: string;
+}
+
+const BUILTINS = new Set(builtinModules);
+
+/** `node:async_hooks`, and `fs` written without its prefix. */
+export function isNodeBuiltin(id: string): boolean {
+  return id.startsWith('node:') || BUILTINS.has(id);
+}
 
 /** Structural view of a bundler output; see the same note in the link pass. */
 interface OutputChunkLike {
@@ -72,21 +94,28 @@ export function edgePlugin(
   runtimeFor: (pattern: string) => RuntimeEntries = () => runtimeUrls(base, ''),
   /** The host's reporter: what this pass compiles again is not said twice (SDD-35 §4.4). */
   reporter?: BuildReporter,
+  extras: EdgeExtras = {},
 ): Plugin {
   // Resolved once for the pass: the render module of a route publishes its name (SDD-39
   // §4.7), and this pass renders the very pages the prerender writes.
   const routeNameOf = routeNameLookup(builds, io);
+  const renderable = extras.errorPage === undefined ? builds : [...builds, extras.errorPage];
+  // Modules whose text the pass already has: `functions.mjs`, only when there are functions.
+  const fixed = new Map<string, string>();
+  if (extras.functions !== undefined) fixed.set(FUNCTIONS_ID, extras.functions);
   return {
     name: 'fudic:edge',
     resolveId(id) {
-      return id.startsWith(EDGE_PREFIX) ? id : null;
+      return id.startsWith(EDGE_PREFIX) || fixed.has(id) ? id : null;
     },
     load(id) {
+      const text = fixed.get(id);
+      if (text !== undefined) return text;
       if (!id.startsWith(EDGE_PREFIX)) {
         return loadWithSourceMap(id);
       }
       const pattern = id.slice(EDGE_PREFIX.length);
-      const rb = builds.find((b) => b.route.pattern === pattern);
+      const rb = renderable.find((b) => b.route.pattern === pattern);
       if (rb === undefined) {
         return null;
       }
@@ -96,6 +125,9 @@ export function edgePlugin(
         hasPaths: rb.analysis.hasPaths,
         hasLayout: rb.analysis.hasLayout,
         hasDi: routeUsesDi(rb.absPath, io),
+        hasHttp: rb.analysis.hasHttp === true,
+        fluentLoad: rb.analysis.fluentLoad === true,
+        ...(extras.globalChain !== undefined ? { globalChain: extras.globalChain } : {}),
         withLoad: true, // the edge resolves data in process
         runtime: runtimeFor(pattern),
       });
@@ -150,9 +182,10 @@ export async function runEdgePass(
   runtimeFor: (pattern: string) => RuntimeEntries = () => runtimeUrls(base, ''),
   /** Where this pass reports what it compiles; the host's, so nothing is said twice. */
   reporter?: BuildReporter,
+  extras: EdgeExtras = {},
 ): Promise<EdgeResult> {
   const routes = builds.filter((rb) => rb.decision.mode !== 'excluded');
-  if (routes.length === 0) {
+  if (routes.length === 0 && extras.functions === undefined) {
     return EMPTY;
   }
 
@@ -160,13 +193,17 @@ export async function runEdgePass(
   for (const rb of routes) {
     input[safeName(rb.route.pattern)] = EDGE_PREFIX + rb.route.pattern;
   }
+  if (extras.errorPage !== undefined) {
+    input[safeName(ERROR_PATTERN)] = EDGE_PREFIX + ERROR_PATTERN;
+  }
+  if (extras.functions !== undefined) input[FUNCTIONS_ENTRY] = FUNCTIONS_ID;
 
   const output = (await build({
     configFile: false,
     root,
     base,
     logLevel: 'error',
-    plugins: [edgePlugin(routes, io, base, styles, assets, runtimeFor, reporter)],
+    plugins: [edgePlugin(routes, io, base, styles, assets, runtimeFor, reporter, extras)],
     // Forwarded verbatim, for the same reason as the Service Worker's build: this one runs
     // with `configFile: false`, so a project that resolves `@fudic/*` through aliases —
     // every project the CLI scaffolds — would not resolve them here.
@@ -183,14 +220,24 @@ export async function runEdgePass(
       // someone has to read.
       minify: false,
       sourcemap: nested.sourcemap !== false,
+      // Node runs this output, and Vite's preload helper wraps every dynamic `import()` in
+      // code that touches `document`: `functions.mjs` would answer 500 to every call.
+      modulePreload: false,
       rollupOptions: {
         input,
+        // Node reads this output, so its builtins stay imports: bundled, each one would be
+        // the browser stub Vite leaves in their place — `AsyncLocalStorage` behind every
+        // `inject()` of a request (SDD-56 §4.6), or a `node:crypto` of a `@server`.
+        external: isNodeBuiltin,
         // `render`, `data` and `paths` are reached through the manifest and by the
         // prerender, never through a static import the bundler can see.
         preserveEntrySignatures: 'strict',
         output: {
           format: 'es',
-          entryFileNames: '[name].js',
+          // `functions.mjs` by name: an adapter mounts it, and the extension says it is ESM to
+          // a Node that has no `package.json` to ask in `.fudic/edge`.
+          entryFileNames: (chunk: { readonly name: string }) =>
+            chunk.name === FUNCTIONS_ENTRY ? FUNCTIONS_FILE : '[name].js',
           chunkFileNames: 'c/[name]-[hash].js',
         },
       },

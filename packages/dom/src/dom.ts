@@ -135,4 +135,11 @@ export interface DomClient<N> extends Dom<N> {
    * is text, and text adjacent to text is the same node.
    */
   lastChild(node: N): N | null;
+  /**
+   * The text node an interpolated run adopts: `found` when it IS one, or a new empty one put
+   * before `before` (at the end when `null`). An interpolation the server painted as `''`
+   * leaves no node in the HTML — there is nothing to serialize — so the run is not there to be
+   * found, and what stands in its place is the next node, or nothing.
+   */
+  textAt(parent: N, found: N | null, before: N | null): N;
 }

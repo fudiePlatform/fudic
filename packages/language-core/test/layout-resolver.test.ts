@@ -112,7 +112,8 @@ describe('the return type is spliced into the author’s own function', () => {
         '    export function layout(ctx, data) { return {}; }',
     );
     expect(out).toContain(`export function layout(ctx${CTX}, data${WITH_LOAD})${ANNOTATION}`);
-    expect(out).toContain('export function load(ctx) { return {}; }');
+    // `load` takes its own type, its `ServerContext` (SDD-56 §4.16), and nothing of `layout`'s.
+    expect(out).toContain("export function load(ctx: $LoadContext<'slug'>) { return {}; }");
   });
 
   it('ignores a `layout` with no initialiser at all', () => {

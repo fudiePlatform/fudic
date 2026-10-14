@@ -89,6 +89,8 @@ const PIECES: Readonly<Record<string, string>> = {
   'bind-group': 'src/dom/bind-group.ts',
   'bind-by-type': 'src/dom/bind-by-type.ts',
   summary: 'bundle/summary.ts',
+  // SDD-56: the binary of a typed form, which only a page that sends one downloads.
+  wire: 'src/wire/index.ts',
 };
 
 /**
@@ -123,6 +125,7 @@ const FRONTIERS: Readonly<Record<string, string>> = {
   'src/control.ts': 'control',
   'src/form.ts': 'form',
   'src/group.ts': 'form',
+  'src/positional.ts': 'form',
   'src/internals.ts': 'internals',
   'src/validate-on.ts': 'internals',
   'src/validity.ts': 'internals',
@@ -170,6 +173,10 @@ const FRONTIERS: Readonly<Record<string, string>> = {
   'src/dom/bind-message.ts': 'wiring',
   'src/summary-markup.ts': 'summary',
   'src/dom/summary.ts': 'summary',
+  'src/wire/index.ts': 'wire',
+  'src/wire/binary.ts': 'wire',
+  'src/wire/io.ts': 'wire',
+  'src/wire/json.ts': 'wire',
 };
 
 /** Absolute path → the piece that owns it, resolved once so the hook below is a lookup. */

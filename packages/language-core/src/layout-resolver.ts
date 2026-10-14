@@ -69,6 +69,30 @@ export function findLayoutResolver(
   return fn === undefined ? undefined : annotationPoints(source, fn, mapSpan);
 }
 
+/**
+ * Just past the `ctx` of the exported `load(ctx)`, when its author left it untyped — where the
+ * projection gives it the `ServerContext` it receives (SDD-56 §4.16). A fluent `load` is not a
+ * function here: its `ctx` is typed by its own `.handle`.
+ */
+export function findLoadCtx(statements: readonly OxcNode[], mapSpan: MapSpan): number | undefined {
+  const fn = findExportedFunction(statements, LOAD_EXPORT);
+  if (fn === undefined) return undefined;
+  return untypedEnd(nodeList(fn, 'params')[0], (node) => mapSpan(node.end, node.end).start);
+}
+
+/** `export [async] function load(ctx` / `export const load = [async] (ctx`. Group 1 is the name. */
+const LOAD_CTX_TEXT =
+  /\bexport\s+(?:(?:async\s+)?function\s+load|const\s+load\s*=\s*(?:async\s*)?)\s*\(\s*([A-Za-z_$][\w$]*)\s*[,)]/u;
+
+/** The same point, read off the region's TEXT: `ctx.` is unfinished code, and the AST is gone. */
+export function findLoadCtxInText(source: string, region: Span): number | undefined {
+  const text = source.slice(region.start, region.end);
+  const match = LOAD_CTX_TEXT.exec(text);
+  if (match === null) return undefined;
+  const name = match[1] as string;
+  return region.start + match.index + match[0].lastIndexOf(name) + name.length;
+}
+
 /** Whether a `@server` region exports `load` — what decides the type `data` can be given. */
 export function exportsLoad(statements: readonly OxcNode[]): boolean {
   return findExportedFunction(statements, LOAD_EXPORT) !== undefined;

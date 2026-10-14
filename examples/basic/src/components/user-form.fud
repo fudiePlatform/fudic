@@ -1,0 +1,133 @@
+@code {
+  // El mismo `.ts` en los dos extremos: el navegador valida con él antes de enviar y el
+  // servidor valida una copia nueva con él al recibir, con la regla que solo corre allí.
+  import { personForm } from "../forms/person.form";
+
+  @server {
+    import { inject } from "@fudic/di";
+    import { put } from "@fudic/http";
+    import { auth } from "../middlewares/auth";
+    import { Users } from "../services/users";
+
+    // La función del componente: responde en /_fudic/fn/c/user-form/save, la use la página
+    // que la use. `ctx.user` existe porque la cadena lleva `auth`.
+    export const save = put()
+      .use(auth)
+      .form(personForm)
+      .handle((ctx) => {
+        const v = ctx.form.$value();
+        console.info(`[user-form] ${ctx.user.name} da de alta a ${v.name}`);
+        return inject(Users).add({ ...v, age: v.age ?? 0 });
+      });
+  }
+
+  @client {
+    import { signal } from "@fudic/core";
+
+    const aviso = signal("");
+
+    // `fudic:result` llega con lo que devolvió `handle`. Un 422 no llega aquí: sus errores ya
+    // están pintados en el formulario.
+    function hecho(e: Event) {
+      const persona = (e as CustomEvent<{ id: number; name: string }>).detail;
+      aviso.set(`Guardado: ${persona.name} (id ${String(persona.id)}). Recargando la lista…`);
+      setTimeout(() => location.reload(), 1000);
+    }
+  }
+}
+
+<head>
+  <style>
+    form {
+      display: grid;
+      gap: var(--gap);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-box);
+      padding: 1.1rem;
+      background: var(--surface);
+    }
+    label {
+      font-weight: 500;
+    }
+    input, textarea {
+      font: inherit;
+      padding: var(--pad-field);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+    }
+    .campo {
+      display: grid;
+      gap: 0.3rem;
+    }
+    .check {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .error {
+      color: #b3261e;
+      font-size: 0.85rem;
+    }
+    .error:empty {
+      display: none;
+    }
+    .resumen {
+      border-left: 3px solid #b3261e;
+      padding-left: 0.6rem;
+    }
+    .resumen:empty {
+      display: none;
+    }
+    .aviso:empty {
+      display: none;
+    }
+    button {
+      justify-self: start;
+      border-color: var(--brand);
+      background: var(--brand);
+      color: white;
+    }
+    [aria-invalid="true"] {
+      border-color: #b3261e;
+    }
+  </style>
+</head>
+
+<user-form>
+  <template shadowrootmode="open">
+    <form control=@personForm form:="@save" @fudic:result=@hecho>
+      <div class="error resumen" summary=@personForm fields></div>
+
+      <div class="campo">
+        <label for="nombre">Nombre</label>
+        <input id="nombre" control=@personForm.name type="text">
+        <small class="error" error=@personForm.name></small>
+      </div>
+
+      <div class="campo">
+        <label for="email">Email</label>
+        <input id="email" control=@personForm.email type="email">
+        <small class="error" error=@personForm.email></small>
+      </div>
+
+      <div class="campo">
+        <label for="edad">Edad</label>
+        <input id="edad" control=@personForm.age type="number">
+        <small class="error" error=@personForm.age></small>
+      </div>
+
+      <div class="check">
+        <input id="activo" control=@personForm.active type="checkbox">
+        <label for="activo">Activo</label>
+      </div>
+
+      <div class="campo">
+        <label for="notas">Notas</label>
+        <textarea id="notas" control=@personForm.notes rows="3"></textarea>
+      </div>
+
+      <button type="submit">Dar de alta</button>
+      <p class="aviso" role="status">@aviso()</p>
+    </form>
+  </template>
+</user-form>

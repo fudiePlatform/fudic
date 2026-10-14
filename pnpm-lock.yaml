@@ -44,6 +44,9 @@ importers:
       '@fudic/forms':
         specifier: workspace:*
         version: link:../../packages/forms
+      '@fudic/http':
+        specifier: workspace:*
+        version: link:../../packages/http
       '@fudic/ssr':
         specifier: workspace:*
         version: link:../../packages/ssr
@@ -321,11 +324,30 @@ importers:
         specifier: 1.2.1
         version: 1.2.1
 
+  packages/http:
+    dependencies:
+      '@fudic/conventions':
+        specifier: workspace:*
+        version: link:../conventions
+      '@fudic/di':
+        specifier: workspace:*
+        version: link:../di
+      '@fudic/forms':
+        specifier: workspace:*
+        version: link:../forms
+    devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+
   packages/language-core:
     dependencies:
       '@fudic/compiler':
         specifier: workspace:*
         version: link:../compiler
+      '@fudic/conventions':
+        specifier: workspace:*
+        version: link:../conventions
       '@fudic/diagnostics':
         specifier: workspace:*
         version: link:../diagnostics
@@ -462,6 +484,10 @@ importers:
         version: 1.2.1
 
   packages/transport:
+    dependencies:
+      '@fudic/conventions':
+        specifier: workspace:*
+        version: link:../conventions
     devDependencies:
       '@fudic/ssr':
         specifier: workspace:*

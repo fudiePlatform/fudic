@@ -1,10 +1,11 @@
 /**
- * The injection diagnostics that need more than one file (SDD-38 §6.21, §6.22, §6.24).
+ * The injection diagnostics that need more than one file (SDD-38 §6.21, §6.22).
  *
- * Three of the five, and what they have in common is the reason they are here rather than in
- * `extractCode`: none of them can be answered by the `@code` it is written in. One needs the
- * module next door, one needs to know whether this component hydrates at all, and one needs
- * to know that this file is a route. The other two — a provider registered twice, a provider
+ * Two of the four, and what they have in common is the reason they are here rather than in
+ * `extractCode`: neither can be answered by the `@code` it is written in. One needs the
+ * module next door, and one needs to know whether this component hydrates at all. (A third,
+ * `FUD0683` — `inject` in a route's `@server` — was retired by SDD-56: the request's
+ * container is now ambient, kept per request in an `AsyncLocalStorage`.) The other two — a provider registered twice, a provider
  * registered on the side the injection does not run on — are a single `@code` contradicting
  * itself, and they are reported where that region is read.
  *
@@ -38,8 +39,8 @@
 
 import { parseSync } from 'oxc-parser';
 import type { Diagnostic } from '../types/index.js';
-import { FUD0680, FUD0681, FUD0683 } from '@fudic/diagnostics';
-import { codeOf, codeOfDocument } from './oxc-code.js';
+import { FUD0680, FUD0681 } from '@fudic/diagnostics';
+import { codeOf } from './oxc-code.js';
 import { allComponents, type ComponentGraph, type ResolveIo } from './resolve.js';
 import { collectTemplateJs } from './constructs.js';
 import { hydratableTags, templateOf } from './level.js';
@@ -151,7 +152,6 @@ export function injectionDiagnostics(graph: ComponentGraph, io: ResolveIo): read
   const out: Diagnostic[] = [];
   unregisteredProviders(graph, io, out);
   serverNamesInTemplates(graph, out);
-  routeAmbientInjections(graph, out);
   return out;
 }
 
@@ -189,33 +189,6 @@ function serverNamesInTemplates(graph: ComponentGraph, out: Diagnostic[]): void 
       if (read === undefined) return;
       out.push(FUD0681({ span: at, name: read }));
     });
-  }
-}
-
-/**
- * `FUD0683` — `inject(…)` written in the `@server` of a route.
- *
- * There is no ambient container in a route and there cannot be one. `load(ctx)` is the only
- * `async` function of the system, and an ambient container across an `await` is not an error
- * anybody sees: it is silent contamination between concurrent requests, in dev and in the
- * prerender alike, with no `AsyncLocalStorage` in a Service Worker to paper over one end.
- * So a route resolves explicitly, through `ctx.inject(…)`, and this is where writing the
- * other thing gets said out loud.
- *
- * It reads the SAME extraction the route's two emitters read (SDD-39 §4.1). Until then a
- * route never went through `extractCode`, so this question had an Oxc invocation of its own;
- * now that its `@code` is split like a component's, asking twice would be a second parse of
- * one file — which is the golden rule, not an optimisation.
- */
-function routeAmbientInjections(graph: ComponentGraph, out: Diagnostic[]): void {
-  const entry = graph.entry;
-  if (entry.type !== 'page-document' && entry.type !== 'route-document') return;
-  // Nothing to read when the file has no server region: `inject` written anywhere else in a
-  // route is a different question, and not one this SDD owns.
-  if (!(entry.code?.parts ?? []).some((part) => part.type === 'server-region')) return;
-  for (const call of codeOfDocument(graph.entrySource, entry).di) {
-    if (call.kind !== 'inject' || call.zone !== 'server') continue;
-    out.push(FUD0683({ span: call.providerSpan }));
   }
 }
 

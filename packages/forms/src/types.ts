@@ -186,6 +186,13 @@ export type PatchOf<N> = N extends Control<infer T>
  */
 export type Patch<S extends Schema> = { [K in keyof S]?: PatchOf<S[K]> };
 
+/**
+ * The value of a schema without keys (SDD-56 §4.17). Its order is `Object.keys(schema)`, which
+ * TypeScript cannot turn into a tuple: the shape is the schema's, the type only says it is an
+ * array of that schema.
+ */
+export type Positional<S extends Schema> = readonly unknown[] & { readonly '~schema'?: S };
+
 /** Errors of a whole form, indexed by path: `{ title: {…}, 'seo.canonical': {…} }`. */
 export type ErrorMap = Readonly<Record<string, Errors>>;
 
@@ -224,8 +231,16 @@ export interface Issue {
 export interface FormApi<S extends Schema> {
   /** The whole value, keyed. TRACKED: reading it inside an effect subscribes it. */
   readonly $value: Readable<Value<S>>;
-  /** TOTAL assignment. A missing field is a `TypeError` naming it; nothing empties in silence. */
-  $set(v: Value<S>): void;
+  /**
+   * The value without keys: declaration order, a group as its own nested array, `undefined`
+   * as `null` at any depth (SDD-56 §4.17). Tracked.
+   */
+  readonly $positional: Readable<Positional<S>>;
+  /**
+   * TOTAL assignment. A missing field is a `TypeError` naming it; nothing empties in silence.
+   * An array assigns by position, and a length that is not the schema's is a `RangeError`.
+   */
+  $set(v: Value<S> | Positional<S>): void;
   /** PARTIAL assignment, at every level. What is not mentioned is not touched. */
   $patch(v: Patch<S>): void;
 
@@ -262,6 +277,14 @@ export interface FormApi<S extends Schema> {
 
   /** The field names, in declaration order. */
   $fields(): readonly (keyof S & string)[];
+  /**
+   * A new form with this one's schema, rules and options, in its initial state. What a server
+   * validates a request on: the exported form is one for every request at once.
+   *
+   * `this` and not `Form<S>`: called on a `Form<S>` it IS `Form<S>`, and a `Form<S>` returned
+   * by name would stop every form from being an `AnyForm` (see `AnyForm`).
+   */
+  $fresh(): this;
   /** The schema as declared. It is the template both ends import, and it is inert. */
   readonly $schema: S;
 }

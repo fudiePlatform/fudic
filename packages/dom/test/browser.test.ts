@@ -204,3 +204,59 @@ describe('browserDom traversal', () => {
     expect(dom.lastChild(a)).toBeNull();
   });
 });
+
+describe('browserDom textAt: the run the server painted as nothing', () => {
+  it('hands back the text node it was given, untouched', () => {
+    const parent = dom.element('span');
+    const run = dom.text('hola');
+    dom.append(parent, run);
+
+    expect(dom.textAt(parent, run, null)).toBe(run);
+    expect(parent.childNodes).toHaveLength(1);
+  });
+
+  it('with nothing found, appends an empty text node at the end', () => {
+    // `<span>@s()</span>` with `s() === ''`: the HTML carries `<span></span>`.
+    const parent = dom.element('span');
+
+    const run = dom.textAt(parent, null, null);
+    expect(run.nodeType).toBe(3);
+    expect(run.textContent).toBe('');
+    expect(parent.lastChild).toBe(run);
+  });
+
+  it('with an element found in its place, inserts the empty run before `before`', () => {
+    // `<p>@s()<b></b></p>`: walking back from the cursor meets the `<b>`, not the run.
+    const parent = dom.element('p');
+    const b = dom.element('b');
+    dom.append(parent, b);
+
+    const run = dom.textAt(parent, b, b);
+    expect(run).not.toBe(b);
+    expect(run.nodeType).toBe(3);
+    expect([...parent.childNodes]).toEqual([run, b]);
+  });
+
+  it('with an element found and no `before`, appends it after everything', () => {
+    const parent = dom.element('p');
+    const b = dom.element('b');
+    dom.append(parent, b);
+
+    const run = dom.textAt(parent, b, null);
+    expect([...parent.childNodes]).toEqual([b, run]);
+  });
+
+  it('builds the node in the global document when the parent has no owner', () => {
+    // `ownerDocument` is null only for a document itself, which takes no text child: a stand-in
+    // records the insertion instead.
+    const inserted: [Node, Node | null][] = [];
+    const parent = {
+      ownerDocument: null,
+      insertBefore: (node: Node, ref: Node | null) => inserted.push([node, ref]),
+    } as unknown as Node;
+
+    const run = dom.textAt(parent, null, null);
+    expect(run.ownerDocument).toBe(document);
+    expect(inserted).toEqual([[run, null]]);
+  });
+});

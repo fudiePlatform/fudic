@@ -26,6 +26,7 @@ import {
   type WriteMode,
 } from './internals.js';
 import { messagesOf } from './messages.js';
+import { toKeyed, toPositional } from './positional.js';
 import { allFailures, holds } from './run-rule.js';
 import { isServerOnly } from './server-flag.js';
 import type {
@@ -38,6 +39,7 @@ import type {
   FormOptions,
   Issue,
   Patch,
+  Positional,
   Schema,
   Value,
 } from './types.js';
@@ -321,11 +323,16 @@ export function build<S extends Schema>(
   const api = {
     $value: read,
 
-    $set: (v: Value<S>): void => {
+    $positional: (): Positional<S> => toPositional(schema, read()) as Positional<S>,
+
+    $set: (v: Value<S> | Positional<S>): void => {
+      // An array assigns by position, an object by key: a form's keyed value is never an
+      // array, so the shape alone tells them apart (SDD-56 §4.17).
+      const keyed = Array.isArray(v) ? toKeyed(schema, v) : v;
       // Checked whole before anything is written: a failed `$set` leaves the form
       // exactly as it was, instead of half assigned up to the offending field.
-      check(v, 'set', '');
-      write(v as Record<string, unknown>, 'set');
+      check(keyed, 'set', '');
+      write(keyed as Record<string, unknown>, 'set');
     },
 
     $patch: (v: Patch<S>): void => {
@@ -384,6 +391,8 @@ export function build<S extends Schema>(
     },
 
     $fields: (): readonly (keyof S & string)[] => fields,
+
+    $fresh: () => build(schema, options, validators),
 
     $schema: schema,
   };

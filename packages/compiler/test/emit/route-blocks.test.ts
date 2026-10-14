@@ -246,6 +246,23 @@ describe('`fud-data`: only what the client half reads (§6.15, §6.16)', () => {
     expect(JSON.parse(blockOf(html, 'fud-data')!)).toEqual({ user: 'pedro' });
   });
 
+  it('publishes what the TEMPLATE reads too: a reactive route repaints it in the browser', () => {
+    // Before, only the `@client` was read: `fud-data` went out without `items`, and every
+    // repaint of the `@foreach` threw «U.items is not iterable».
+    const route = [
+      '<link rel="layout" href="./l.fud">',
+      '@code {',
+      '  @server { export async function load() { return { user: "pedro" }; } }',
+      '  @client { const n = signal(1); }',
+      '}',
+      '<output>@n()</output>',
+      '<ul>@foreach (const i of data.items) { <li>@i</li> }</ul>',
+    ].join('\n');
+    const { html } = render(route, { routeName: 'ruta' });
+    // The roots read and only those: `user` and `token` stay on the server.
+    expect(JSON.parse(blockOf(html, 'fud-data')!)).toEqual({ items: [1] });
+  });
+
   it('publishes no block at all when the client half never names `data`', () => {
     const route = withLoad('const n = signal(1);');
     const { html } = render(route, { routeName: 'ruta' });

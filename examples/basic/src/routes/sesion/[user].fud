@@ -7,7 +7,7 @@
 
   @server {
     import { strategy } from "@fudic/core";
-    import type { DiContext } from "@fudic/ssr";
+    import { publish } from "@fudic/di";
     import { USER } from "../../services/session";
     import { findUser } from "../../data/users";
 
@@ -15,11 +15,11 @@
     // are ever in flight at the same time, which is the whole point of the page.
     strategy({ mode: "ssr" });
 
-    export async function load(ctx: DiContext & { params: { user: string } }): Promise<PageData> {
+    export async function load(ctx): Promise<PageData> {
       const name = await findUser(ctx.params.user);
-      // Published for the browser to rebuild the same session from. Through `ctx`, which is
-      // what names the request: it belongs to THIS response and to no other.
-      ctx.publish(USER, name);
+      // Published for the browser to rebuild the same session from. Into the container of the
+      // request being served, even after the `await`: it belongs to THIS response and to no other.
+      publish(USER, name);
       return { name };
     }
   }

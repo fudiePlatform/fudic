@@ -60,6 +60,7 @@ customElements.define("app-calendar", class extends FudicElement {
             let $c1 = $dom.firstElementChild($n3);
             $n5 = $c1; $c1 = $dom.nextElementSibling($c1);
             $n7 = $dom.lastChild($n5);
+            $n7 = $dom.textAt($n5, $n7, null);
             $n6 = $c1; $c1 = $dom.nextElementSibling($c1);
             $t0.set($n6, () => day);
           }

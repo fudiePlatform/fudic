@@ -7,20 +7,25 @@
  * from `@fudic/core` (and `@fudic/core` imports `@fudic/dom`). A project that does not
  * declare those two cannot build its own components — which is a real requirement of the
  * framework, not a test artefact, and the example declares them for the same reason.
+ *
+ * Since SDD-56 a route with `load` runs it through `@fudic/http/server` (its `ServerContext`,
+ * its chain), so a project with a `load` needs `@fudic/http` as it needs `@fudic/ssr`. Only the
+ * subpath the wrapper imports: its own dependencies resolve from where the `dist` lives.
  */
 
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const dist = (pkg: string): string =>
-  fileURLToPath(new URL(`../../../${pkg}/dist/index.js`, import.meta.url));
+const dist = (pkg: string, entry = 'index.js'): string =>
+  fileURLToPath(new URL(`../../../${pkg}/dist/${entry}`, import.meta.url));
 
 export const runtimeAlias: Readonly<Record<string, string>> = {
   '@fudic/ssr': dist('ssr'),
   '@fudic/transport': dist('transport'),
   '@fudic/core': dist('core'),
   '@fudic/dom': dist('dom'),
+  '@fudic/http/server': dist('http', 'server/index.js'),
 };
 
 /**

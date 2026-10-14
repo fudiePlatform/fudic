@@ -37,6 +37,7 @@ import { projectAdoptOf } from './project-styles.js';
 import type { DocumentGraph } from './resolve.js';
 import type { RouteDocument, PageDocument } from '../document/index.js';
 import type { Diagnostic } from '../types/index.js';
+import { fnStubs } from './client-fns.js';
 
 /**
  * The three leading slots of a route's array: `$dom`, `$root` and `$data`. One more than a
@@ -232,12 +233,15 @@ function buildRouteClientModule(
     for (const name of imported) bodies.hook.line(`$d.push($subIf(${name}, $u));`);
     // And what is read THROUGH an imported name — `userForm.$valid()` (BUG-42 §4.3).
     if (em.watchImports(imported, bodies.hook)) usage.subscribes = true;
+    // A write before these subscriptions reached nobody: one repaint (see the component's).
+    if (reactive.length > 0) bodies.hook.line(`if ($written(${reactive.join(', ')})) $u();`);
   }
 
   const w = new CodeWriter();
   const channels = [
     ...(usage.subscribes ? ['subscribe as $sub'] : []),
     ...(usage.guarded ? ['subscribeIf as $subIf'] : []),
+    ...(renews && reactive.length > 0 ? ['written as $written'] : []),
     ...(usage.fabricates ? ['live as $live'] : []),
   ];
   if (channels.length > 0) w.line(`import { ${channels.join(', ')} } from '@fudic/core';`);
@@ -246,6 +250,11 @@ function buildRouteClientModule(
   }
   writeImports(w, code);
   for (const line of linker.imports()) w.line(line);
+  // The server functions, at module scope: the `@client` body and the template's handlers
+  // below both reach them by name (SDD-56 §4.5).
+  const stubs = fnStubs(code.serverFns, options.serverFns);
+  for (const line of stubs?.imports ?? []) w.line(line);
+  for (const line of stubs?.lines ?? []) w.line(line);
   w.line('');
   // A default export and NOT a custom element: a route is not defined, not instantiated and
   // never fabricated hot. What the runtime holds is this function and the three entry points

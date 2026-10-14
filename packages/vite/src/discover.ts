@@ -9,6 +9,8 @@ import { dirname, join, resolve, sep } from 'node:path';
 import { routesFromFiles, type Route } from './routing.js';
 import { analyzePage, type PageAnalysis } from './analyze.js';
 import { resolveMode, type ModeDecision, type PageFacts } from './mode.js';
+import { ERROR_FILE } from '@fudic/conventions';
+import { ERROR_PATTERN } from './page-errors.js';
 import { type ResolvedOptions } from './options.js';
 import { FUD0364, FUD0434, type FileDiagnostic, type SourceDiagnostic } from '@fudic/diagnostics';
 
@@ -29,7 +31,14 @@ export interface DiscoverResult {
    * says them only if the check did not, and dev shows them in its live overlay.
    */
   readonly parse: readonly SourceDiagnostic[];
+  /**
+   * `_error.fud`, compiled like a route under `/_fudic/error/:status` and kept OUT of `routes`
+   * (SDD-56 §4.8): it has no URL in the app, and the route table never names it.
+   */
+  readonly errorPage?: RouteBuild;
 }
+
+const NEVER: ModeDecision = { mode: 'excluded', prerender: false, enumerate: false, prerenderedHtml: false };
 
 /** All `.fud` files under `dir`, as POSIX-style paths relative to `dir`. */
 function listFud(dir: string): string[] {
@@ -45,9 +54,23 @@ function listFud(dir: string): string[] {
 /** Discover the page routes under `root/routesDir` with their resolved SSG mode. */
 export function discoverRoutes(root: string, options: ResolvedOptions): DiscoverResult {
   const routesRoot = join(root, options.routesDir);
-  const { routes, diagnostics } = routesFromFiles(listFud(routesRoot));
+  const files = listFud(routesRoot);
+  const { routes, diagnostics } = routesFromFiles(files.filter((f) => f !== ERROR_FILE));
   const diags: FileDiagnostic[] = [...diagnostics];
   const parse: SourceDiagnostic[] = [];
+
+  let errorPage: RouteBuild | undefined;
+  if (files.includes(ERROR_FILE)) {
+    const absPath = join(routesRoot, ERROR_FILE);
+    const analysis = analyzePage(readFileSync(absPath, 'utf8'), absPath);
+    for (const d of analysis.diagnostics) parse.push({ ...d, file: absPath });
+    errorPage = {
+      route: { file: ERROR_FILE, pattern: ERROR_PATTERN, params: ['status'] },
+      absPath,
+      analysis,
+      decision: NEVER,
+    };
+  }
 
   const builds: RouteBuild[] = [];
   // A layout is never a route (SDD-21 §4.7), wherever it lives; these two sets turn the
@@ -100,5 +123,5 @@ export function discoverRoutes(root: string, options: ResolvedOptions): Discover
     }
   }
 
-  return { routes: builds, diagnostics: diags, parse };
+  return { routes: builds, diagnostics: diags, parse, ...(errorPage !== undefined ? { errorPage } : {}) };
 }

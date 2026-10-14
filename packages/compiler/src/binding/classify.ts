@@ -29,6 +29,7 @@ import {
   FUD0596,
   FUD0667,
   FUD0991,
+  FUD1005,
 } from '@fudic/diagnostics';
 import type { RazorExpression } from '../at/index.js';
 import type { Attribute, AttributeValuePart } from '../html/index.js';
@@ -44,6 +45,7 @@ import {
   SPREAD_PREFIX,
   REF_NAME,
   CONTROL_NAME,
+  FORM_SEND_NAME,
   ERROR_NAME,
   SUMMARY_NAME,
   type MarkerName,
@@ -112,6 +114,7 @@ export function classifyAttribute(attr: Attribute, source: string): ParseResult<
   }
   if (name === REF_NAME) return classifyRef(attr, source);
   if (name === CONTROL_NAME) return classifyControl(attr);
+  if (name === FORM_SEND_NAME) return classifyFormSend(attr, source);
   if (name === ERROR_NAME || name === SUMMARY_NAME) return classifyError(attr, name);
 
   return ok(plainAttribute(attr, name));
@@ -342,6 +345,20 @@ function classifyControl(attr: Attribute): ParseResult<Binding> {
   // A concatenation keeps the binding — a form node hidden from the editor over a mistake in
   // its value helps nobody, which is the reading BUG-16 already settled for `.prop`.
   return handler.reason === null ? ok(binding) : degrade(binding, controlDiag(valueSpan(attr)));
+}
+
+/**
+ * `form:="@save"` (SDD-56 §3.5): the same single-expression rule as `control`. Whether `save` is
+ * a server function of the file, and whether the element is a bound `<form>`, are questions for
+ * the emit, which has the `@server` and the element in hand (`FUD1005`, `FUD1006`).
+ */
+function classifyFormSend(attr: Attribute, source: string): ParseResult<Binding> {
+  const handler = requireSingleExpression(attr);
+  const at = valueSpan(attr);
+  const diag = FUD1005({ span: at, name: source.slice(at.start, at.end) });
+  if (handler.expr === null) return degrade(plainAttribute(attr, FORM_SEND_NAME), diag);
+  const binding: Binding = { type: 'form-send', span: attr.span, value: handler.expr };
+  return handler.reason === null ? ok(binding) : degrade(binding, diag);
 }
 
 /**

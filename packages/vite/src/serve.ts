@@ -121,9 +121,10 @@ export async function renderRouteHtml(
   pattern: string,
   url: string,
   nonce: string,
+  request?: Request,
 ): Promise<string> {
   const mod = await load(wrapperId);
-  return drainStream(mod.render(edgeContext(pattern, url, nonce)));
+  return drainStream(mod.render(withRequest(edgeContext(pattern, url, nonce), request)));
 }
 
 /** Run a route's `@server load(ctx)` for one concrete URL — the data endpoint (§4.5). */
@@ -132,11 +133,22 @@ export async function loadRouteData(
   wrapperId: string,
   pattern: string,
   url: string,
+  request?: Request,
 ): Promise<unknown> {
   const mod = await load(wrapperId);
   if (typeof mod.data !== 'function') {
     return {};
   }
-  const { nonce: _nonce, ...ctx } = edgeContext(pattern, url, '');
+  const { nonce: _nonce, ...ctx } = withRequest(edgeContext(pattern, url, ''), request);
   return mod.data(ctx);
+}
+
+/**
+ * The render context with the request being served, which `load` reads its headers and
+ * cookies from (SDD-56 §4.6). The prerender has none, and passes none (§4.14).
+ */
+export function withRequest(ctx: RenderContext, request: Request | undefined): RenderContext {
+  if (request === undefined) return ctx;
+  const out: RenderContext & { readonly request: Request } = { ...ctx, request };
+  return out;
 }

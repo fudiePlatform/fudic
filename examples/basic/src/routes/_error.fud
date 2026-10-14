@@ -1,0 +1,18 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+
+<head>
+  <title>Error @data.status — fudic</title>
+</head>
+
+@section nav {
+  <site-nav></site-nav>
+}
+
+@* La página de error: sin URL propia. El servidor la pinta en /_fudic/error/:status con lo
+   que falló, y `errorPages` lleva aquí al navegador. *@
+<h1>@data.status · @data.title</h1>
+@if (data.detail !== undefined) {
+  <p>@data.detail</p>
+}
+<p><a href="/usuarios">Volver a usuarios</a></p>

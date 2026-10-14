@@ -22,7 +22,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { SsrDom, renderToString } from '@fudic/ssr';
 import { browserDom } from '@fudic/dom';
-import { FudicElement, signal, computed, subscribe, type FudicElementCtor } from '@fudic/core';
+import { FudicElement, signal, computed, subscribe, written, type FudicElementCtor } from '@fudic/core';
 import { emit as busEmit } from '@fudic/dom';
 import { control, form, setMessages, summaryEntriesOf, type ErrorMap } from '@fudic/forms';
 import {
@@ -83,6 +83,7 @@ const BINDINGS = {
   signal,
   computed,
   $sub: subscribe,
+  $written: written,
   emit: busEmit,
   summaryEntriesOf,
   bindText,

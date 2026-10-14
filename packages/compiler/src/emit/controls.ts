@@ -26,11 +26,14 @@
  *   without a marker of its own is described by its entry of the summary.
  */
 
+import { FUD1005, FUD1006 } from '@fudic/diagnostics';
 import type { ElementNode, HtmlContent } from '../html/index.js';
+import type { Diagnostic } from '../types/index.js';
 import {
   bridgeOf,
   classifyAttribute,
   controlTarget,
+  FORM_SEND_NAME,
   isRadio,
   pairMarkers,
   staticId,
@@ -73,6 +76,11 @@ export interface ControlSite {
   readonly bind: string | null;
   /** The whole radio group, in document order, on the element that emits its call. */
   readonly group: readonly ElementNode[];
+  /**
+   * On a bound `<form>` with `form:="@save"`: the server function its valid submit calls, as
+   * written (SDD-56 §3.5). Absent everywhere else.
+   */
+  readonly send?: string;
 }
 
 /** What one marker turns into, on both branches. */
@@ -248,6 +256,7 @@ export function planControls(
     const last = group.length === 0 || group[group.length - 1] === one.el;
     const marker = pairing.describedBy.get(one.el) ?? null;
     const describedBy = marker === null ? (entries.get(one.el) ?? []) : [markers.get(marker)!.id];
+    const send = one.target.kind === 'form' ? sendOf(one.el, source) : undefined;
     sites.set(one.el, {
       target: one.target,
       node: one.node,
@@ -259,9 +268,47 @@ export function planControls(
       // and those variables only exist once the walk has been through them.
       bind: last ? bindOf(one.target) : null,
       group: group.length > 0 && last ? group : [],
+      ...(send !== undefined ? { send } : {}),
     });
   }
   return { sites, markers, ids, field: bridge?.id ?? null };
+}
+
+/** The function `form:="@save"` names on this element, as written; absent without one. */
+function sendOf(el: ElementNode, source: string): string | undefined {
+  for (const attr of el.attributes) {
+    const binding = classifyAttribute(attr, source).value;
+    if (binding.type === 'form-send') return source.slice(binding.value.expr.start, binding.value.expr.end).trim();
+  }
+  return undefined;
+}
+
+/**
+ * `form:=` that cannot send (SDD-56 §5): on an element that is not a `<form>` with `control=`
+ * (`FUD1006`), or naming something that is not one of this file's server functions (`FUD1005`).
+ * Neither stops the emit: the form still validates, it just sends nothing.
+ */
+export function formSendDiagnostics(
+  source: string,
+  roots: readonly HtmlContent[],
+  fns: ReadonlySet<string>,
+): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  walkElements(roots, (el) => {
+    const bound = el.attributes.some((attr) => classifyAttribute(attr, source).value.type === 'control');
+    for (const attr of el.attributes) {
+      if (attr.name !== FORM_SEND_NAME) continue;
+      // What the classification itself had to say: a value that is not one `@` expression.
+      const classified = classifyAttribute(attr, source);
+      out.push(...classified.diagnostics);
+      const binding = classified.value;
+      if (binding.type !== 'form-send') continue;
+      const name = source.slice(binding.value.expr.start, binding.value.expr.end).trim();
+      if (el.name.toLowerCase() !== 'form' || !bound) out.push(FUD1006({ span: attr.span }));
+      else if (!fns.has(name)) out.push(FUD1005({ span: binding.value.expr, name }));
+    }
+  });
+  return out;
 }
 
 function hasAttribute(el: ElementNode, name: string): boolean {

@@ -160,6 +160,22 @@ export interface EmitOptions {
    * chunk for it to name, so an id on the `<body>` would be an attribute nobody reads.
    */
   readonly routeName?: string;
+  /**
+   * Where this file's server functions answer, and what their stubs inherit (SDD-56 §4.1,
+   * §4.5). Injected for the reason `routeName` is: the URL of a function is the route's pattern
+   * or the component's tag, and `src/http.ts` is a file of the project, neither of which this
+   * file knows. Absent, no stub is written.
+   */
+  readonly serverFns?: ServerFnOptions;
+}
+
+export interface ServerFnOptions {
+  /** The URL every function of this file hangs from: `/_fudic/fn/r/blog/:slug`. */
+  readonly prefix: string;
+  /** A route's own pattern, whose params its functions inherit: `/blog/:slug`. */
+  readonly page?: string;
+  /** Import specifier of `src/http.ts`, the global level, when the project has one. */
+  readonly httpFile?: string;
 }
 
 export type { ComponentSpecifier, LayoutSpecifier, ProjectStyle };

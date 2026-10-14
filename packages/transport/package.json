@@ -50,6 +50,9 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage"
   },
+  "dependencies": {
+    "@fudic/conventions": "workspace:*"
+  },
   "devDependencies": {
     "@fudic/ssr": "workspace:*",
     "@fudic/tsconfig": "workspace:*",

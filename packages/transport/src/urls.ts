@@ -15,10 +15,11 @@
  * files would be there and nobody would find them.
  */
 
+import { DATA_PREFIX } from '@fudic/conventions';
 import { safeName, type RouteRecord } from './manifest.js';
 
-/** Where the generated `@server load` endpoints live (SDD-20 §4.5). */
-export const DATA_PREFIX = '_fudic/data';
+/** Where the generated `@server load` endpoints live (SDD-20 §4.5): `/_fudic/data`. */
+export { DATA_PREFIX };
 
 /** Output directory of the `link` pass: the chunks the Service Worker links by hand. */
 export const LINK_DIR = 'sw/c';

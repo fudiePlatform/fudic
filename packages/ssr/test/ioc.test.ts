@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { injectFrom, provideIn, publishIn, token } from '@fudic/di';
 
-import { iocIsEmpty, iocRoot, withDi } from '../src/ioc.js';
+import { iocIsEmpty, iocRoot } from '../src/ioc.js';
 import { publishedSeed, seedBlock } from '../src/seed.js';
 import { SsrDom } from '../src/ssr-dom.js';
 
@@ -139,32 +139,5 @@ describe('the seed', () => {
     expect(JSON.parse(block.slice(block.indexOf('>') + 1, block.lastIndexOf('<')))).toEqual({
       note: '</script><b>',
     });
-  });
-});
-
-describe('withDi', () => {
-  it('hangs the request container off ctx, and leaves ctx itself alone', () => {
-    const NOW = token<string>('now');
-    const MISSING = token<string>('missing');
-    const root = iocRoot({ now: 'today' });
-    const ctx = { params: { id: '7' } };
-
-    const withIt = withDi(ctx, root);
-    expect(withIt.params).toBe(ctx.params);
-    expect(withIt.inject(NOW)).toBe('today');
-    expect(withIt.inject(MISSING, { optional: true })).toBeUndefined();
-  });
-
-  it('publishes into the container it was built with, and into no other', () => {
-    const USER = token<string>('user');
-    const mine = iocRoot();
-    const other = iocRoot();
-
-    // What `load` calls. Two of them, one per request, each holding its own container.
-    withDi({}, mine).publish(USER, 'ana');
-    withDi({}, other).publish(USER, 'luis');
-
-    expect(publishedSeed(mine)).toEqual({ user: 'ana' });
-    expect(publishedSeed(other)).toEqual({ user: 'luis' });
   });
 });

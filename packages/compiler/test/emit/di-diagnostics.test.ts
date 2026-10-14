@@ -410,14 +410,12 @@ ${rest}}`;
 });
 
 /**
- * `FUD0683` — `inject(…)` inside the `@server` of a route (SDD-38 §6.24).
- *
- * A route has no ambient container and cannot have one. `load(ctx)` is the only `async`
- * function of the system, and an ambient container across an `await` is not a visible error:
- * it is silent contamination between concurrent requests, in dev and in the prerender alike.
- * So a route resolves explicitly, through `ctx.inject(…)`.
+ * SDD-56 §3.8, criterion 13: `inject(…)` and `publish(…)` without a `ctx` in the `@server` of a
+ * route are what a route writes now. The request's container travels in an
+ * `AsyncLocalStorage`, so the contamination `FUD0683` guarded against cannot happen, and the
+ * code is retired: nothing here diagnoses.
  */
-describe('FUD0683 — a route reaching for the ambient container', () => {
+describe('criterion 13 — a route injects without ctx, and says nothing', () => {
   function routePage(server: string): string {
     return `<!DOCTYPE html>
 <html>
@@ -441,24 +439,35 @@ ${server}
     return injectionDiagnostics(resolveComponents('/app/home.fud', io), io);
   }
 
-  it('reports the injection and points at what it asked for', () => {
+  it('says nothing about inject(Users) in load', () => {
     const home = routePage(
       "        import { inject } from '@fudic/di';\n" +
         "        import { Db } from './services/db';\n\n" +
-        '        export async function load(ctx) {\n' +
+        '        export async function load() {\n' +
         '          const db = inject(Db);\n' +
         '          return { items: await db.all() };\n' +
         '        }',
     );
-    const diagnostics = check(home);
-
-    expect(diagnostics.map((d) => d.code)).toEqual(['FUD0683']);
-    expect(diagnostics[0]?.message).toContain('ctx.inject');
-    const at = home.indexOf('inject(Db)') + 'inject('.length;
-    expect(diagnostics[0]!.span).toEqual({ start: at, end: at + 'Db'.length });
+    expect(check(home)).toEqual([]);
   });
 
-  it('says nothing about `ctx.inject(…)`, which is what a route is meant to write', () => {
+  it('says nothing about inject and publish in a helper load calls, nor in a fluent load', () => {
+    const home = routePage(
+      "        import { inject, publish, token } from '@fudic/di';\n" +
+        "        import { get } from '@fudic/http';\n" +
+        "        import { Db } from './services/db';\n" +
+        "        const LINES = token('lines');\n" +
+        '        const all = () => inject(Db).all();\n' +
+        '        export const load = get().handle(async () => {\n' +
+        '          const lines = await all();\n' +
+        '          publish(LINES, lines);\n' +
+        '          return { lines };\n' +
+        '        });',
+    );
+    expect(check(home)).toEqual([]);
+  });
+
+  it('says nothing about `ctx.inject(…)` either, while the examples still write it', () => {
     const home = routePage(
       "        import { inject } from '@fudic/di';\n" +
         '        export async function load(ctx) {\n' +

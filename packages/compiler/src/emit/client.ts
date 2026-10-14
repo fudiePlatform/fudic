@@ -41,6 +41,7 @@ import {
   type EmitOutput,
 } from './module.js';
 import type { Diagnostic } from '../types/index.js';
+import { fnStubs } from './client-fns.js';
 
 /**
  * The positional destructuring of `$props` (§4.2) — the exact mirror of the `Object.values`
@@ -356,6 +357,9 @@ function buildComponentClientModule(
     for (const name of imported) bodies.hook.line(`$d.push($subIf(${name}, $u));`);
     // And what is read THROUGH an imported name — `userForm.$valid()` (BUG-42 §4.3).
     if (em.watchImports(imported, bodies.hook)) usage.subscribes = true;
+    // A write that came before these subscriptions — an `effect` that ran with the factory —
+    // reached nobody, and the markup still says what the server painted: one repaint.
+    if (reactive.length > 0) bodies.hook.line(`if ($written(${reactive.join(', ')})) $u();`);
   }
 
   const w = new CodeWriter();
@@ -373,6 +377,7 @@ function buildComponentClientModule(
   const channels = [
     ...(usage.subscribes ? ['subscribe as $sub'] : []),
     ...(usage.guarded ? ['subscribeIf as $subIf'] : []),
+    ...(renews && reactive.length > 0 ? ['written as $written'] : []),
     // Only a file that fabricates a component host pays for it: a template with no child
     // component of its own never names `live`, and never downloads that branch.
     ...(usage.fabricates ? ['live as $live'] : []),
@@ -401,6 +406,11 @@ function buildComponentClientModule(
   }
   for (const line of client.imports) w.line(line); // hoisted: only legal at module scope
   for (const line of linker.imports()) w.line(line);
+  // The component's server functions, at module scope, where `c` and its handlers reach them
+  // (SDD-56 §4.5). The URL is the tag's: the same function from every page it lives in.
+  const stubs = fnStubs(codeOf(comp).serverFns, options.serverFns);
+  for (const line of stubs?.imports ?? []) w.line(line);
+  for (const line of stubs?.lines ?? []) w.line(line);
   w.line('');
   w.line(`customElements.define(${JSON.stringify(comp.tag)}, class extends ${base} {`);
   w.indent();

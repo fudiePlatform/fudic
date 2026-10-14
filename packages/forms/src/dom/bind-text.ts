@@ -20,9 +20,14 @@ export function bindText(
   return undo([
     // `input` for every keystroke and `change` for what does not raise one — a browser
     // autofill, a datalist pick — so the model never lags behind what the user can see.
-    ...follow([el], control, () => {
-      control.set(el.value);
-    }),
+    ...follow(
+      [el],
+      control,
+      () => {
+        control.set(el.value);
+      },
+      el.value !== el.defaultValue,
+    ),
     // Control → element, for the writes that did not come from the user: a `$patch`, a
     // `$reset`, a value loaded from the server.
     //
