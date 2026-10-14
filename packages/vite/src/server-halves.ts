@@ -15,17 +15,21 @@
  *
  * **The ARGUMENT is replaced, never the call**, exactly as `serverValidator`'s: `.server(fn)`
  * becomes `.server(undefined)`, the builder keeps its client half and has no server half, and
- * with `fn` left without references Rollup takes what only it imported.
+ * the imports that only `fn` used go with it (BUG-47 §4.1).
  */
 
 import { JsBatch, type OxcNode } from '@fudic/compiler';
+import { applyReplacements, orphanImports, type Span } from './orphan-imports.js';
 
 const HTTP = '@fudic/http';
 const NOTHING = 'undefined';
 
-interface Edit {
-  readonly start: number;
-  readonly end: number;
+type Edit = Span;
+
+/** A module after an erasure: its new code and the source spans that were erased. */
+export interface ErasedModule {
+  readonly code: string;
+  readonly erased: readonly Span[];
 }
 
 /** Whether the module imports anything from `@fudic/http`, in any form. */
@@ -58,15 +62,19 @@ function collect(node: unknown, out: Edit[]): void {
 /**
  * The module with the argument of every `.server(…)` replaced, or `null` when there is nothing
  * to do. The text check first, so a project without middlewares pays no parse.
+ *
+ * `insideHttp` is for a module OF `@fudic/http`: its own middlewares (`csrf`) import
+ * `middleware` by a relative path, so the import mark is not there, and their server halves
+ * would ship with every app that puts them in a chain (BUG-47 §4.6).
  */
-export function eraseServerHalves(code: string): string | null {
-  if (!code.includes('.server') || !code.includes(HTTP)) return null;
+export function eraseServerHalves(code: string, insideHttp = false): ErasedModule | null {
+  if (!code.includes('.server') || (!insideHttp && !code.includes(HTTP))) return null;
 
   const batch = new JsBatch(code);
   const id = batch.add('module-statements', { start: 0, end: code.length });
   const parsed = batch.parse();
   const statements = parsed.value.ast(id) as OxcNode[];
-  if (!Array.isArray(statements) || !importsHttp(statements)) return null;
+  if (!Array.isArray(statements) || (!insideHttp && !importsHttp(statements))) return null;
 
   const edits: Edit[] = [];
   collect(statements, edits);
@@ -77,7 +85,9 @@ export function eraseServerHalves(code: string): string | null {
     .map((e) => ({ start: map(e.start), end: map(e.end) }))
     .sort((a, b) => a.start - b.start)
     .filter((span, i, all) => !all.slice(0, i).some((outer) => outer.end >= span.end));
-  return spans
-    .reverse()
-    .reduce((out, span) => out.slice(0, span.start) + NOTHING + out.slice(span.end), code);
+  const replacements = [
+    ...spans.map((span) => ({ ...span, text: NOTHING })),
+    ...orphanImports(code, statements, spans, map),
+  ];
+  return { code: applyReplacements(code, replacements), erased: spans };
 }

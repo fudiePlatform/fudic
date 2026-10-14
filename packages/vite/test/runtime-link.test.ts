@@ -178,6 +178,30 @@ describe('runtimeLinkage', () => {
     expect(linkage.byUrl.get('/_fudic/0.0.1/core/hydrate.js')?.map).toBeUndefined();
   });
 
+  it('BUG-47 criterion 11: a piece reads with its sibling URLs on the fingerprinted segment', () => {
+    // Discovery wrote fingerprinted URLs; the publisher's build wrote its imports with the
+    // version alone. What the linkage hands on — and what gets copied — is the rewritten code.
+    const linkage = runtimeLinkage(
+      [piece('@fudic/core', 'hydrate', '0.0.1-12345678'), piece('@fudic/dom', 'browser', '0.0.1-abcdef12')],
+      io({
+        '/repo/node_modules/@fudic/core/runtime/hydrate.js': 'import"/_fudic/0.0.1/dom/browser.js";export{h as hydrate};',
+        '/repo/node_modules/@fudic/core/runtime/hydrate.js.map': '{"version":3,"mappings":"AAAA,qCAAC"}',
+        '/repo/node_modules/@fudic/dom/runtime/browser.js': 'export{b as browserDom};',
+      }),
+    );
+
+    const hydrate = linkage.byUrl.get('/_fudic/0.0.1-12345678/core/hydrate.js');
+    expect(hydrate?.code).toBe('import"/_fudic/0.0.1-abcdef12/dom/browser.js";export{h as hydrate};');
+    // The second segment sat after the cut (column 37): it moves by the 9 characters added.
+    expect(JSON.parse(hydrate!.map!).mappings).toBe('AAAA,8CAAC');
+    expect(linkage.byUrl.get('/_fudic/0.0.1-abcdef12/dom/browser.js')?.code).toBe('export{b as browserDom};');
+    // And what `loadedPieces` follows from it is a URL that exists.
+    expect(loadedPieces('import"/_fudic/0.0.1-12345678/core/hydrate.js";', linkage)).toEqual([
+      '/_fudic/0.0.1-12345678/core/hydrate.js',
+      '/_fudic/0.0.1-abcdef12/dom/browser.js',
+    ]);
+  });
+
   it('walks UP to the package root instead of counting segments back', () => {
     // What a publisher declares is a path relative to itself — `./runtime`, and tomorrow
     // `./dist/runtime` — so counting backwards would be counting somebody else's decision.
