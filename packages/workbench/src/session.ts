@@ -88,7 +88,7 @@ export async function loadSession(input: SessionInput): Promise<LoadedSession> {
   const executed = await executeFixture(target, vite);
   if (executed.error !== undefined) diagnostics.push({ diagnostic: executed.error, file: target.fixture });
 
-  const plan = planBench({ target, spec, fixtures: executed.fixtures });
+  const plan = planBench({ target, spec, fixtures: executed.fixtures, dir: input.dir });
   for (const diagnostic of plan.diagnostics) diagnostics.push({ diagnostic, file: null });
   writePlanFiles(input.dir, plan.files);
   for (const name of plan.files.keys()) invalidateFile(vite, `${input.dir}/${name}`);

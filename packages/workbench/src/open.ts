@@ -6,12 +6,12 @@
 
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { emptyBenchDir, removeBenchDir } from './bench-dir.js';
+import { emptyBenchDir, removeBenchDir, sweepBenchDirs, writePlanFiles } from './bench-dir.js';
 import { SHELL_PATH, startBenchServer } from './bench-server.js';
 import { firstLine, launchBrowser, type BrowserLike } from './browser.js';
 import { runCriterion } from './engine.js';
-import { benchDir } from './pages.js';
-import { classify, onFullReload, Rerunner, type HotChannel } from './rerun.js';
+import { benchDir, benchRoutesDir, mountFiles } from './pages.js';
+import { classify, Rerunner } from './rerun.js';
 import { loadSession, readText, type LoadedSession } from './session.js';
 import { resolveTarget, type BenchTarget } from './target.js';
 import { isFailure, type WorkbenchFailure, type WorkbenchOptions, type WorkbenchSession } from './types.js';
@@ -29,9 +29,19 @@ export async function openWorkbench(
   let target: BenchTarget = resolved;
 
   const server = await startBenchServer({ port: options.port ?? 0 });
-  const dir = benchDir(target);
+  const dir = benchDir(target.projectRoot);
+  sweepBenchDirs(dir);
   emptyBenchDir(dir);
-  const vite = await startVite(target, server.http);
+  // Before Vite starts: the plugin looks for components once, at start, in the pages it finds.
+  writePlanFiles(dir, mountFiles(target));
+  // Bound once the rerunner exists; a change Vite processes before that has nothing to rerun.
+  let onProcessed = (_file: string): void => undefined;
+  const vite = await startVite({
+    root: target.projectRoot,
+    routesDir: benchRoutesDir(),
+    http: server.http,
+    onProcessed: (file) => onProcessed(file),
+  });
   server.mount(vite.middlewares);
 
   const browser = await launchBrowser();
@@ -80,10 +90,7 @@ export async function openWorkbench(
     },
     run: runAll,
   });
-  onFullReload(vite.environments['client']!.hot as unknown as HotChannel, () => rerunner.fullReload());
-  for (const event of ['add', 'change'] as const) {
-    vite.watcher.on(event, (changed: string) => rerunner.changed(classify(changed, target)));
-  }
+  onProcessed = (file) => rerunner.changed(classify(file, target));
   rerunner.request(false);
 
   let closing: Promise<void> | undefined;

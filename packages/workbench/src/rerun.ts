@@ -1,9 +1,8 @@
 /**
- * Running again on save. Vite's watcher says WHAT changed; what to do depends on the file:
+ * Running again on save. Vite says when it has processed a changed file (`processedChanges`);
+ * what to do then depends on the file:
  *
- * - a `.fud` (the component or one it links): Vite recompiles, and the first `full-reload` it
- *   sends after the change says it is done — running on the watcher event is a race. When no
- *   reload comes (the change touched nothing the client loads), it runs anyway after a while;
+ * - a `.fud` (the component or one it links): Vite already recompiled, so it runs;
  * - the `.fudspec`, the fixture or a term: the session is loaded again, then it runs.
  *
  * One run at a time: a save during a run leaves ONE run pending, however many saves there were.
@@ -19,8 +18,6 @@ export interface RerunDeps {
   reload(): Promise<void>;
   /** Runs every criterion. Must not throw. */
   run(): Promise<void>;
-  /** How long a `.fud` change waits for Vite's reload; 10 s by default. */
-  readonly reloadTimeout?: number;
 }
 
 /** What a changed file asks for. The `.fudspec` counts even when the component had none yet. */
@@ -35,35 +32,22 @@ export function classify(file: string, target: BenchTarget): Change {
 
 export class Rerunner {
   readonly #deps: RerunDeps;
-  readonly #timeout: number;
   #busy = false;
+  #stopped = false;
   /** The run waiting for the current one; `reload` if any change that asked for it. */
   #pending: { reload: boolean } | undefined;
-  /** A `.fud` change waiting for Vite's `full-reload`. */
-  #awaiting: ReturnType<typeof setTimeout> | undefined;
 
   constructor(deps: RerunDeps) {
     this.#deps = deps;
-    this.#timeout = deps.reloadTimeout ?? 10_000;
   }
 
   changed(change: Change): void {
-    if (change === 'session') this.request(true);
-    else if (change === 'component' && this.#awaiting === undefined) {
-      this.#awaiting = setTimeout(() => this.fullReload(), this.#timeout);
-    }
-  }
-
-  /** Vite sent a `full-reload`: a `.fud` change waiting for it runs now. */
-  fullReload(): void {
-    if (this.#awaiting === undefined) return;
-    clearTimeout(this.#awaiting);
-    this.#awaiting = undefined;
-    this.request(false);
+    if (change !== 'none') this.request(change === 'session');
   }
 
   /** Runs now, or once the current run ends. */
   request(reload: boolean): void {
+    if (this.#stopped) return;
     if (this.#busy) {
       this.#pending = { reload: reload || this.#pending?.reload === true };
       return;
@@ -71,10 +55,9 @@ export class Rerunner {
     void this.#drain(reload);
   }
 
-  /** Forgets a waiting `.fud` change: the workbench is closing. */
+  /** Forgets a pending run and refuses new ones: the workbench is closing. */
   stop(): void {
-    clearTimeout(this.#awaiting);
-    this.#awaiting = undefined;
+    this.#stopped = true;
     this.#pending = undefined;
   }
 
@@ -87,19 +70,4 @@ export class Rerunner {
     this.#pending = undefined;
     if (next !== undefined) await this.#drain(next.reload);
   }
-}
-
-/** The part of Vite's client hot channel the workbench listens to. */
-export interface HotChannel {
-  send(...args: never[]): void;
-}
-
-/** Calls `onReload` on every `full-reload` the channel sends, then sends it. */
-export function onFullReload(hot: HotChannel, onReload: () => void): void {
-  const send = hot.send.bind(hot) as (...args: unknown[]) => void;
-  (hot as { send: (...args: unknown[]) => void }).send = (...args) => {
-    const payload = args[0] as { type?: unknown } | string;
-    if (typeof payload === 'object' && payload.type === 'full-reload') onReload();
-    send(...args);
-  };
 }

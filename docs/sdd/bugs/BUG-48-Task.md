@@ -3,10 +3,17 @@
 > **BUG:** [BUG-48 — El banco que nadie usaría](./BUG-48-el-banco-que-nadie-usaria.md)
 > **Paquetes:** `@fudic/workbench` · `fudic-vscode` · `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `bug/48-banco-usable`, desde `main`.
-> **Progreso:** 0 / 31 — `Listo`.
+> **Progreso:** 4 / 31 — `En curso`.
 
 Lo nuevo nace al 100 % en las cuatro métricas. `@fudic/workbench` y `fudic-vscode` no bajan de su
 suelo de `main`: antes de tocar nada se mide con `pnpm --filter <pkg> coverage` y se anota aquí.
+
+**Suelo medido (2026-10-14, `main` en `4ae7891`):** `@fudic/workbench` 100 / 100 / 100 / 100 y
+`fudic-vscode` 100 / 100 / 100 / 100 (statements / branches / functions / lines). Los dos se
+quedan al 100.
+
+**Reparto:** esta sesión implementa (tareas sin «Tests»); la sesión `fudic-39` escribe las
+tareas «Tests» y deja la cobertura en el suelo, en su propio worktree sobre esta rama.
 
 ---
 
@@ -14,10 +21,10 @@ suelo de `main`: antes de tocar nada se mide con `pnpm --filter <pkg> coverage` 
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 1 | — | **`hotUpdate`.** Un plugin del banco en la lista de Vite. Al cambiar un `.fud`, avisa cuando Vite llamó a `hotUpdate` para ese fichero en todos sus entornos. `Rerunner` pierde el temporizador y `onFullReload` desaparece (BUG §4.1) | `src/vite.ts` · `src/rerun.ts` · `src/open.ts` |
-| [ ] | 2 | — | **Sin typecheck.** `fudic({ routesDir, liveCheck: false })` (BUG §4.2) | `src/vite.ts` |
-| [ ] | 3 | — | **Carpeta por proceso.** `node_modules/.fudic-bench/<pid>/`; al arrancar se borran las hermanas de `pid` muerto (BUG §4.3) | `src/pages.ts` · `src/bench-dir.ts` |
-| [ ] | 4 | 3 | **Páginas antes que Vite.** La página que enlaza el componente (nombre con `_`, no choca con un slug) se escribe antes de `startVite` (BUG §4.2) | `src/pages.ts` · `src/open.ts` |
+| [x] | 1 | — | **`hotUpdate`.** Un plugin del banco en la lista de Vite. Al cambiar un `.fud`, avisa cuando Vite llamó a `hotUpdate` para ese fichero en todos sus entornos. `Rerunner` pierde el temporizador y `onFullReload` desaparece (BUG §4.1) | `src/vite.ts` · `src/rerun.ts` · `src/open.ts` |
+| [x] | 2 | — | **Sin typecheck.** `fudic({ routesDir, liveCheck: false })` (BUG §4.2) | `src/vite.ts` |
+| [x] | 3 | — | **Carpeta por proceso.** `node_modules/.fudic-bench/<pid>/`; al arrancar se borran las hermanas de `pid` muerto (BUG §4.3) | `src/pages.ts` · `src/bench-dir.ts` |
+| [x] | 4 | 3 | **Páginas antes que Vite.** La página desnuda `routes/<tag>.fud` se escribe antes de `startVite`; los criterios pasan ya a `routes/<tag>/<slug>.fud` (BUG §4.2, corregido: un slug puede empezar por `_`) | `src/pages.ts` · `src/open.ts` |
 | [ ] | 5 | 1–4 | **Tests.** Criterios 1, 2, 3 y 4. El 1 con un Vite real y un `.fud` sin JS de cliente; se ve en rojo con el código de `main` | `test/rerun.test.ts` · `test/launch.test.ts` · `test/bench-dir.test.ts` |
 | [ ] | 6 | 5 | **Prueba rápida de Pedro.** Guardar `app-card.fud` con el banco abierto se ve en menos de un segundo | — |
 

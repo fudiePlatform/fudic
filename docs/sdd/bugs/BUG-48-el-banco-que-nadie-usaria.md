@@ -229,14 +229,19 @@ typecheck) no ejecuta nada.
 
 - `fudic({ routesDir, liveCheck: false })`. Los errores de tipos los marcan el editor y
   `pnpm build`, como siempre; el banco no los repite.
-- La carpeta del proceso se crea y recibe, antes de arrancar Vite, una página que enlaza cada
-  componente abierto. Su nombre no puede chocar con un slug (un slug no empieza por `_`): con eso
-  el plugin ve el componente desde el primer momento y `FUD0742` solo sale cuando es verdad.
+- La carpeta del proceso se crea y recibe, antes de arrancar Vite, la página desnuda de cada
+  componente abierto: `routes/<tag>.fud`, servida en `/<tag>`. Los criterios viven en
+  `routes/<tag>/<slug>.fud` (`/<tag>/<slug>`), así que la desnuda no puede chocar con ningún slug
+  (un slug es una palabra cualquiera, `_` incluido; corregido al implementar). Con eso el plugin
+  ve el componente desde el primer momento y `FUD0742` solo sale cuando es verdad.
+- Vite avisa de cada fichero procesado por `hotUpdate` (§4.1), y es esa misma señal —no el
+  watcher— la que clasifica el cambio: `.fud`, `.fudspec`, fixture o término.
 
 ### 4.3. Una carpeta por proceso, y la basura de otros se barre
 
-La carpeta pasa a `node_modules/.fudic-bench/<pid>/`, con `routes/<tag>/<slug>.fud` y
-`components/` dentro. Al arrancar, el proceso borra las carpetas hermanas cuyo `pid` ya no vive.
+La carpeta pasa a `node_modules/.fudic-bench/<pid>/`, con `routes/<tag>.fud`,
+`routes/<tag>/<slug>.fud` y `components/` dentro. Al arrancar, el proceso borra las carpetas
+hermanas cuyo `pid` ya no vive, y las que no son un `pid` (la forma por tag de antes).
 Dos procesos sobre el mismo componente no se tocan. `--keep` deja la suya como hoy.
 
 ### 4.4. Un proceso por proyecto, varios componentes
