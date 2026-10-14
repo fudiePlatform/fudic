@@ -52,7 +52,9 @@ describe('eraseServerHalves (§4.5)', () => {
       "  .server((ctx, next) => { createHash('sha256'); return next(ctx); });",
     ].join('\n');
     const out = eraseServerHalves(code)!.code;
-    expect(out).toContain('.server(undefined);');
+    // Blanked, not cut (BUG-47 §4.2): what is left of the argument is spaces.
+    expect(out).toMatch(/\.server\(undefined +\);$/u);
+    expect(out.split('\n').map((l) => l.length)).toEqual(code.split('\n').map((l) => l.length));
     expect(out).toContain('.client((ctx, next) => next(ctx))');
     expect(out).not.toContain("createHash('sha256')");
     // Only the erased half used it, so it goes with it (BUG-47 §4.1).
@@ -83,9 +85,25 @@ describe('eraseServerHalves (§4.5)', () => {
       "import { middleware } from '@fudic/http';",
       'export const a = middleware().server((ctx, next) => inner.server(DEEP) && next(ctx));',
     ].join('\n');
+    const argument = '(ctx, next) => inner.server(DEEP) && next(ctx)';
+    expect(eraseServerHalves(code)?.code).toBe(code.replace(argument, `undefined${' '.repeat(argument.length - 9)}`));
+  });
+
+  it('a longer replacement than the argument keeps the lines: only that line’s columns move', () => {
+    const code = "import { middleware } from '@fudic/http';\nexport const a = middleware().server(\nA\n);\nnext;";
     expect(eraseServerHalves(code)?.code).toBe(
-      ["import { middleware } from '@fudic/http';", 'export const a = middleware().server(undefined);'].join('\n'),
+      "import { middleware } from '@fudic/http';\nexport const a = middleware().server(\nundefined\n);\nnext;",
     );
+  });
+
+  it('BUG-47 §4.6: a module of @fudic/http itself is erased without the import mark', () => {
+    // `csrf` imports `middleware` by a relative path, so it never carries `@fudic/http`.
+    const code = "import { middleware } from './middleware.js';\nexport const csrf = middleware().client(c).server(CHECK);";
+    expect(eraseServerHalves(code)).toBeNull();
+    expect(eraseServerHalves(code, true)?.code).toContain('.server(undefined)');
+    expect(eraseServerHalves(code, true)?.code).not.toContain('CHECK');
+    // Inside the package, still nothing to do without a `.server`.
+    expect(eraseServerHalves('export const a = 1;', true)).toBeNull();
   });
 
   it('several in one module, each erased', () => {

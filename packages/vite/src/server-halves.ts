@@ -62,15 +62,19 @@ function collect(node: unknown, out: Edit[]): void {
 /**
  * The module with the argument of every `.server(…)` replaced, or `null` when there is nothing
  * to do. The text check first, so a project without middlewares pays no parse.
+ *
+ * `insideHttp` is for a module OF `@fudic/http`: its own middlewares (`csrf`) import
+ * `middleware` by a relative path, so the import mark is not there, and their server halves
+ * would ship with every app that puts them in a chain (BUG-47 §4.6).
  */
-export function eraseServerHalves(code: string): ErasedModule | null {
-  if (!code.includes('.server') || !code.includes(HTTP)) return null;
+export function eraseServerHalves(code: string, insideHttp = false): ErasedModule | null {
+  if (!code.includes('.server') || (!insideHttp && !code.includes(HTTP))) return null;
 
   const batch = new JsBatch(code);
   const id = batch.add('module-statements', { start: 0, end: code.length });
   const parsed = batch.parse();
   const statements = parsed.value.ast(id) as OxcNode[];
-  if (!Array.isArray(statements) || !importsHttp(statements)) return null;
+  if (!Array.isArray(statements) || (!insideHttp && !importsHttp(statements))) return null;
 
   const edits: Edit[] = [];
   collect(statements, edits);

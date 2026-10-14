@@ -119,9 +119,24 @@ export function orphanImports(
   return out;
 }
 
-/** `code` with every replacement applied. They must not overlap. */
+/**
+ * `code` with every replacement applied. They must not overlap.
+ *
+ * A replacement shorter than what it replaces is padded with the blanks of the original — its
+ * line breaks kept, every other character a space — so nothing after it moves: not a line, not
+ * a column. That is what lets a source map point into the erased text exactly as it pointed
+ * into the original (BUG-47 §4.2), the way the compiler blanks the `@server` of a `.fud`.
+ */
 export function applyReplacements(code: string, replacements: readonly Replacement[]): string {
   return [...replacements]
     .sort((a, b) => b.start - a.start)
-    .reduce((out, r) => out.slice(0, r.start) + r.text + out.slice(r.end), code);
+    .reduce((out, r) => out.slice(0, r.start) + padded(r, code) + out.slice(r.end), code);
+}
+
+function padded(r: Replacement, code: string): string {
+  const cut = Math.min(r.start + r.text.length, r.end);
+  // The breaks under the text itself are kept too: the lines never move, only, in that rare
+  // case, a column or two on them.
+  const head = code.slice(r.start, cut).replace(/[^\r\n]/gu, '');
+  return r.text + head + code.slice(cut, r.end).replace(/[^\r\n]/gu, ' ');
 }

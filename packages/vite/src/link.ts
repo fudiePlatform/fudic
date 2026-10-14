@@ -27,7 +27,7 @@ import { LINK_DIR, LINK_PREFIX } from './constants.js';
 import { loadWithSourceMap } from './inputmaps.js';
 import { serializeMap, type NestedOutputOptions } from './nested.js';
 import { LinkedAssets } from './linked-assets.js';
-import { ErasedModules } from './erased-sources.js';
+import { ClientErasure } from './erased-sources.js';
 
 export interface LinkChunk {
   readonly fileName: string;
@@ -90,8 +90,8 @@ function linkPlugin(
   runtimeFor: (pattern: string) => RuntimeEntries,
   /** The host's reporter: what this pass compiles again is not said twice (SDD-35 §4.4). */
   reporter: BuildReporter | undefined,
-  /** The host's record of erased modules: these chunks ship too (BUG-47 §4.1). */
-  erased: ErasedModules,
+  /** The host's erasure: these chunks ship too (BUG-47 §4.4). */
+  erased: ClientErasure,
 ): Plugin {
   // The Service Worker renders the same pages the edge does, so it publishes the same route
   // names (SDD-39 §4.7): one map, resolved once for the pass.
@@ -196,8 +196,8 @@ export async function runLinkPass(
   runtimeFor: (pattern: string) => RuntimeEntries = () => runtimeUrls(base, ''),
   /** Where this pass reports what it compiles; the host's, so nothing is said twice. */
   reporter?: BuildReporter,
-  /** Where this pass records what it erased; the host's, so the maps it emits drop it. */
-  erased: ErasedModules = new ErasedModules(),
+  /** How this pass erases server code; the host's, so both erase the same way. */
+  erased: ClientErasure = new ClientErasure(),
 ): Promise<LinkResult> {
   const linkable = builds.filter((rb) => isLinkable(rb.decision));
   if (linkable.length === 0) {

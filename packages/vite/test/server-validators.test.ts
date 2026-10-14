@@ -22,9 +22,22 @@ const SCHEMA = [
   '});',
 ].join('\n');
 
+/**
+ * The erasure blanks what it replaces (BUG-47 §4.2): the blank before a `)` is what is left of
+ * the argument, and dropping it reads the call as it would be written.
+ */
+const tight = (code: string): string => code.replace(/\s+(?=\))/gu, '');
+
 describe('§6.14 — erasing the server validators', () => {
-  it('replaces the argument and keeps the call', () => {
+  it('BUG-47 criterion 13: blanked, not cut — same lines, and what follows keeps its column', () => {
     const out = eraseServerValidators(SCHEMA)!.code;
+    expect(out.split('\n')).toHaveLength(SCHEMA.split('\n').length);
+    expect(out.split('\n').at(-2)).toBe(SCHEMA.split('\n').at(-2)!.replace('}', ' '));
+    expect(out.split('\n').at(-1)).toBe('});');
+  });
+
+  it('replaces the argument and keeps the call', () => {
+    const out = tight(eraseServerValidators(SCHEMA)!.code);
     expect(out).toContain('serverValidator(() => null)');
     expect(out).not.toContain('db.slug');
     expect(out).not.toContain('taken');
@@ -43,7 +56,7 @@ describe('§6.14 — erasing the server validators', () => {
   });
 
   it('keeps the length and the order of the validator array', () => {
-    const out = eraseServerValidators(SCHEMA)!.code;
+    const out = tight(eraseServerValidators(SCHEMA)!.code);
     // The rule that is skipped on the client is skipped in the position it occupied: deleting
     // the call would renumber everything after it.
     expect(out).toContain("control('', [required, serverValidator(() => null)])");
@@ -56,7 +69,7 @@ describe('§6.14 — erasing the server validators', () => {
       'export const b = serverValidator(function (v) { return heavy(v); });',
       'export const keep = plain(() => 1);',
     ].join('\n');
-    const out = eraseServerValidators(source)!.code;
+    const out = tight(eraseServerValidators(source)!.code);
     expect(out).toContain('export const a = serverValidator(() => null);');
     expect(out).toContain('export const b = serverValidator(() => null);');
     expect(out).toContain('export const keep = plain(() => 1);');
@@ -68,7 +81,7 @@ describe('§6.14 — erasing the server validators', () => {
       "import { serverValidator as onlyOnTheServer } from '@fudic/forms';",
       'export const a = onlyOnTheServer(async (v) => check(v));',
     ].join('\n');
-    expect(eraseServerValidators(renamed)?.code).toContain('onlyOnTheServer(() => null)');
+    expect(tight(eraseServerValidators(renamed)!.code)).toContain('onlyOnTheServer(() => null)');
 
     // A homonym of the author's is left alone — a distinction no text match can make.
     const homonym = [

@@ -3,7 +3,7 @@
 > **BUG:** [BUG-47 — El navegador recibe código del servidor y un runtime que no se renueva](./BUG-47-lo-que-el-navegador-no-deberia-ver.md)
 > **Paquetes:** `@fudic/vite`
 > **Rama:** `bug/47-servidor-y-runtime`, desde `main` una vez fusionada `sdd/http`.
-> **Progreso:** 10 / 11 — `En curso`.
+> **Progreso:** 11 / 12 — `En curso`.
 
 Lo nuevo nace al 100 % en las cuatro métricas, y `@fudic/vite` no baja de su suelo de `main`.
 Antes de tocar nada, se mide ese suelo con `pnpm --filter @fudic/vite coverage`.
@@ -34,6 +34,12 @@ Antes de tocar nada, se mide ese suelo con `pnpm --filter @fudic/vite coverage`.
 | [x] | 7 | 6 | **La caché.** `runtime-link.ts` sigue leyendo el segmento de la URL de `@fudic/core`. Se comprueba que el nombre resultante es `fudic-runtime-<version>-<huella>` y que el barrido de cachés no cambia | `src/runtime-link.ts` |
 | [x] | 8 | 6, 7 | **Tests.** Criterios 5 y 6 | `test/runtime-pieces.test.ts` · `test/runtime-link.test.ts` |
 | [x] | 8b | 6 | **Segundo salto** (añadida, BUG §4.5). Al copiar, cada pieza reescribe `/_fudic/<version>/<paquete>/` por el segmento con huella de ese paquete; la huella cubre en cierre transitivo las de los paquetes a los que apuntan sus piezas. Tests del criterio 11 | `src/runtime-pieces.ts` · `src/runtime-link.ts` · `test/*` |
+
+## Fase 4 — Tras la prueba de Pedro (1)
+
+| ✓ | # | dep | tarea | fichero |
+|---|---|---|---|---|
+| [x] | 8c | 1–8b | **Depurable y csrf** (BUG §4.2 corregido, §4.6). El borrado deja en blanco en vez de recortar; cada entrada JS/TS de `sourcesContent` de un mapa de cliente pasa por el mismo borrado en vez de ir a `null`; un módulo de `@fudic/http` se borra sin la marca de import. Tests de los criterios 4, 10, 12 y 13 | `src/orphan-imports.ts` · `src/server-halves.ts` · `src/erased-sources.ts` · `test/*` |
 
 ## Cierre (1)
 

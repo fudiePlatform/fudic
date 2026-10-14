@@ -95,12 +95,18 @@ borrado es del autor y se queda. Si lo que sobrevive son solo tipos en línea
 `verbatimModuleSyntax`, `import { type User } from 'x'` se conserva como `import 'x'` y el
 módulo se cargaría igual por sus efectos.
 
-### 4.2. Un módulo con algo borrado no lleva su texto en el mapa
+### 4.2. Un módulo con algo borrado lleva en el mapa su texto borrado
 
-El plugin anota cada módulo al que el borrado le quitó algo. En `generateBundle` del build de
-cliente, cada mapa de chunk deja a `null` la entrada de `sourcesContent` de esos módulos. El
-mapa sigue apuntando a sus líneas, así que la depuración funciona igual, pero el texto original
-no viaja.
+*(Corregido tras la prueba de Pedro del 2026-10-14: con `null`, DevTools pide el fichero al
+servidor, que no lo sirve, y muestra «Could not load content».)* El borrado **no recorta, deja
+en blanco**: lo sustituido se rellena con espacios y conserva sus saltos de línea, así que nada
+de lo que viene detrás cambia de línea ni de columna. En cada mapa de cliente, la entrada de
+`sourcesContent` de toda fuente JS/TS pasa por el mismo borrado. El mapa sigue apuntando a sus
+líneas, y el depurador muestra el fichero con la parte de servidor como líneas en blanco, igual
+que el compilador muestra el `@server` de un `.fud`.
+
+Se borra por **fuente** y no por el módulo que vio el transform: un paquete del workspace llega
+como su `dist/*.js` con un mapa hacia su `.ts`, y el `.ts` es lo que nombra el mapa publicado.
 
 Los módulos que solo alcanzaba lo borrado ya no están en el bundle (§4.1), así que tampoco
 están en el mapa.
@@ -134,6 +140,14 @@ paquetes a cuyas piezas apuntan, en cierre transitivo. Si cambia `@fudic/dom`, c
 reescritos de `@fudic/core`, y su URL tiene que cambiar con ellos: si no, la misma URL serviría
 bytes distintos.
 
+### 4.6. Los middlewares de `@fudic/http` también se borran
+
+*(Añadido tras la prueba de Pedro del 2026-10-14.)* La marca del borrado de `.server(…)` es
+importar de `@fudic/http`. Los middlewares del propio paquete (`csrf`) importan `middleware` por
+ruta relativa, así que no la llevaban, y su mitad de servidor viajaba en el bundle de toda app
+que los pusiera en su cadena. Un módulo que pertenece a `@fudic/http` (por el `name` del
+`package.json` más cercano) se borra sin necesitar la marca.
+
 ## 5. Invariantes
 
 - Lo que solo usa la mitad de servidor de un módulo no aparece en el JS publicado ni en su mapa.
@@ -156,9 +170,9 @@ Cada uno con un test que falle antes del cambio.
 3. **Build real.** En un proyecto con `auth.ts` (de dos mitades) y `tokens.ts` (con
    `Service(Tokens)`), el JS de cliente no contiene ningún texto de `tokens.ts`.
 4. **Mapas.** En ese build, con `sourcemap: true`, ningún mapa de cliente lleva en
-   `sourcesContent` el texto de `auth.ts` ni el de un formulario con `serverValidator`: su
-   entrada es `null` y su `sources` sigue apuntando al fichero. Un módulo sin nada borrado
-   conserva su texto.
+   `sourcesContent` la mitad de servidor de `auth.ts` ni el cuerpo del `serverValidator` de un
+   formulario: su entrada es el texto borrado, con el mismo número de líneas que el original, y
+   su `sources` sigue apuntando al fichero. Un módulo sin nada borrado conserva su texto.
 5. **URL por contenido.** Dos runtimes del mismo paquete y la misma versión con un byte de
    diferencia dan URLs distintas. Con los mismos bytes dan la misma URL, también en dos
    proyectos.
@@ -171,16 +185,21 @@ Cada uno con un test que falle antes del cambio.
 8. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde. Lo nuevo al 100 % en las cuatro
    métricas, y `@fudic/vite` sin bajar de su suelo de `main`.
 
-Añadidos al implementar (§4.1, §4.4, §4.5):
+Añadidos al implementar (§4.1, §4.2, §4.4, §4.5, §4.6):
 
 9. **Solo tipos.** `import { Tokens, type User }` con `Tokens` solo en lo borrado queda como
    `import type { User }`, y el JS de cliente no carga el módulo.
 10. **Chunks del Service Worker.** En un build con Service Worker, el chunk enlazado de una
     página que importa un formulario con `serverValidator` no contiene lo que solo usaba el
-    validador, y su mapa lleva `null` en la entrada del formulario.
+    validador, y su mapa lleva el texto borrado en la entrada del formulario.
 11. **Segundo salto.** Toda URL `/_fudic/…` que nombra una pieza copiada existe en el `dist`
     con huella, y cambiar un byte de `@fudic/dom` cambia también la URL de las piezas de
     `@fudic/core`.
+12. **Middlewares del framework.** Con `csrf` en la cadena global, el JS de cliente no contiene
+    su mitad de servidor (`sec-fetch-site`, `cross-site request`), ni la contiene la entrada de
+    `csrf.ts` en el mapa.
+13. **Depurable.** Lo borrado se deja en blanco: el código borrado tiene las mismas líneas que
+    el original, y lo que va detrás de un borrado conserva su línea y su columna.
 
 ## 7. Fuera de alcance
 
