@@ -3,7 +3,7 @@
 > **BUG:** [BUG-48 — El banco que nadie usaría](./BUG-48-el-banco-que-nadie-usaria.md)
 > **Paquetes:** `@fudic/workbench` · `fudic-vscode` · `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `bug/48-banco-usable`, desde `main`.
-> **Progreso:** 21 / 31 — `En curso` (la tarea 5 está marcada en la rama de tests).
+> **Progreso:** 22 / 31 — `En curso` (la tarea 5 está marcada en la rama de tests).
 
 Lo nuevo nace al 100 % en las cuatro métricas. `@fudic/workbench` y `fudic-vscode` no bajan de su
 suelo de `main`: antes de tocar nada se mide con `pnpm --filter <pkg> coverage` y se anota aquí.
@@ -85,5 +85,5 @@ tareas «Tests» y deja la cobertura en el suelo, en su propio worktree sobre es
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 30 | 1–29 | **Documentación.** El README de `@fudic/workbench` (binario, `run`, `--browser`, órdenes, evidencia `{ expected, actual }`) | `packages/workbench/README.md` |
+| [x] | 30 | 1–29 | **Documentación.** El README de `@fudic/workbench` (binario, `run`, `--browser`, órdenes, evidencia `{ expected, actual }`) | `packages/workbench/README.md` |
 | [ ] | 31 | 30 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde, cobertura del criterio 16. Pedro hace el criterio 15 entero. `Hecho` aquí, en el BUG, en el `INDEX.md` de bugs (tabla y registro) y en el registro del `INDEX.md` maestro | `docs/sdd/bugs/*` · `docs/sdd/INDEX.md` |
