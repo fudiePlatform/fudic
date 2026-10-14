@@ -151,6 +151,11 @@ function parse(line: string | undefined): Message | undefined {
   }
 }
 
+/** A line that says where a component's shell is: what `attach` reads, all of it there. */
+function opensComponent(message: Message): boolean {
+  return ['url', 'tag', 'component'].every((key) => typeof message[key] === 'string');
+}
+
 /** A message's error, as the binary and the protocol write it. */
 function errorOf(message: Message | undefined): string | undefined {
   const error = message?.['error'] as { message?: unknown } | undefined;
@@ -290,7 +295,8 @@ export function createWorkbenches(deps: WorkbenchDeps): Workbenches {
     if (workers !== undefined) args.push('--workers', workers);
     const process = deps.processes.spawn(command, args, folder);
 
-    let up: (ok: boolean) => void = () => undefined;
+    // Assigned by the Promise constructor below, synchronously, before anything can call it.
+    let up!: (ok: boolean) => void;
     const project: Project = {
       process,
       ready: new Promise<boolean>((resolve) => (up = resolve)),
@@ -319,7 +325,7 @@ export function createWorkbenches(deps: WorkbenchDeps): Workbenches {
       (line) => {
         const answer = parse(line);
         const failure = errorOf(answer);
-        if (answer === undefined || failure !== undefined || typeof answer['url'] !== 'string') {
+        if (answer === undefined || failure !== undefined || !opensComponent(answer)) {
           projects.delete(folder);
           process.closeStdin();
           deps.notifications.warn(workbenchFailed(failure ?? workbenchStopped('')));
