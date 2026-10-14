@@ -3,7 +3,7 @@
 > **BUG:** [BUG-48 — El banco que nadie usaría](./BUG-48-el-banco-que-nadie-usaria.md)
 > **Paquetes:** `@fudic/workbench` · `fudic-vscode` · `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `bug/48-banco-usable`, desde `main`.
-> **Progreso:** 18 / 31 — `En curso` (la tarea 5 está marcada en la rama de tests).
+> **Progreso:** 22 / 31 — `En curso` (la tarea 5 está marcada en la rama de tests).
 
 Lo nuevo nace al 100 % en las cuatro métricas. `@fudic/workbench` y `fudic-vscode` no bajan de su
 suelo de `main`: antes de tocar nada se mide con `pnpm --filter <pkg> coverage` y se anota aquí.
@@ -76,14 +76,14 @@ tareas «Tests» y deja la cobertura en el suelo, en su propio worktree sobre es
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 26 | 9 | **Un proceso por proyecto.** `Map<carpeta, proceso>`; `open`/`close` por `stdin`; la última pestaña cierra `stdin`; los mensajes del proceso se leen línea a línea; `--browser` y `--workers` desde los ajustes (BUG §4.9) | `packages/vscode/src/workbench.ts` · `packages/vscode/src/spawn.ts` · `packages/vscode/src/ports.ts` · `packages/vscode/package.json` |
-| [ ] | 27 | 26 | **La pestaña.** `?theme=` y aviso de cambio de tema; reenvía al editor las peticiones de abrir fichero | `packages/vscode/src/workbench-panel.ts` · `packages/vscode/src/extension.ts` |
-| [ ] | 28 | 26 | **La `.fudspec`.** Icono en el margen por criterio, CodeLens «▶ Run» y «▶ Run failing» (`fudic.runCriterion`), *Problems* y barra de estado | `packages/vscode/src/workbench-results.ts` · `packages/vscode/src/extension.ts` · `packages/vscode/package.json` |
+| [x] | 26 | 9 | **Un proceso por proyecto.** `Map<carpeta, proceso>`; `open`/`close` por `stdin`; la última pestaña cierra `stdin`; los mensajes del proceso se leen línea a línea; `--browser` y `--workers` desde los ajustes (BUG §4.9) | `packages/vscode/src/workbench.ts` · `packages/vscode/src/spawn.ts` · `packages/vscode/src/ports.ts` · `packages/vscode/package.json` |
+| [x] | 27 | 26 | **La pestaña.** `?theme=` y aviso de cambio de tema; reenvía al editor las peticiones de abrir fichero | `packages/vscode/src/workbench-panel.ts` · `packages/vscode/src/extension.ts` |
+| [x] | 28 | 26 | **La `.fudspec`.** Icono en el margen por criterio, CodeLens «▶ Run» y «▶ Run failing» (`fudic.runCriterion`), *Problems* y barra de estado | `packages/vscode/src/workbench-results.ts` · `packages/vscode/src/extension.ts` · `packages/vscode/package.json` |
 | [ ] | 29 | 26–28 | **Tests.** Criterio 14, sobre los puertos | `packages/vscode/test/*` |
 
 ## Cierre (2)
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 30 | 1–29 | **Documentación.** El README de `@fudic/workbench` (binario, `run`, `--browser`, órdenes, evidencia `{ expected, actual }`) | `packages/workbench/README.md` |
+| [x] | 30 | 1–29 | **Documentación.** El README de `@fudic/workbench` (binario, `run`, `--browser`, órdenes, evidencia `{ expected, actual }`) | `packages/workbench/README.md` |
 | [ ] | 31 | 30 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde, cobertura del criterio 16. Pedro hace el criterio 15 entero. `Hecho` aquí, en el BUG, en el `INDEX.md` de bugs (tabla y registro) y en el registro del `INDEX.md` maestro | `docs/sdd/bugs/*` · `docs/sdd/INDEX.md` |

@@ -87,6 +87,8 @@ export async function runCriterion(
   // A cancel closes the page under the run: whatever it was waiting on rejects, and it ends.
   const cancel = () => void page.close();
   signal?.addEventListener('abort', cancel, { once: true });
+  // A cancel that came while the page was opening has already fired: no listener hears it.
+  if (signal?.aborted === true) cancel();
   try {
     await page.silenceWebSockets((url) => !url.pathname.startsWith(BENCH_PATH));
     await page.addInitScript(OBSERVER);

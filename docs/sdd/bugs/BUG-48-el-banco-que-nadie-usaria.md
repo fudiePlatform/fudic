@@ -205,8 +205,10 @@ type Command =
   | { readonly v: 2; readonly type: 'cancel'; readonly tag: string };
 ```
 
-`open` contesta por `stdout` con `{"v":2,"type":"opened","url","tag","component","criteria"}` o
-`{"v":2,"type":"error","file","error":{code,message}}`. Una orden que no se entiende se ignora.
+`open` contesta por `stdout` con `{"v":2,"type":"opened","file","url","tag","component","criteria"}`
+o `{"v":2,"type":"error","file","error":{code,message}}`; `file` repite el fichero pedido, para que
+el padre empareje la respuesta (añadido al implementar). Los mensajes de un componente recién
+abierto (su primera `session`) llegan antes que su `opened`: el padre los guarda hasta tenerlo. Una orden que no se entiende se ignora.
 
 ### 3.4. El contrato de los términos
 
