@@ -1,0 +1,14 @@
+<link rel="component" href="./x-injected.fud">
+
+@code {
+  import { provide } from "@fudic/di";
+  import { GREETING } from "./greeting";
+
+  provide(GREETING, () => "from the owner");
+}
+
+<x-owner>
+  <template shadowrootmode="open">
+    <x-injected></x-injected>
+  </template>
+</x-owner>

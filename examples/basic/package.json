@@ -10,6 +10,8 @@
     "preview": "vite preview",
     "build:nosw": "vite build --config nosw/vite.config.ts",
     "preview:nosw": "vite preview --config nosw/vite.config.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:e2e": "vite build && vite build --config nosw/vite.config.ts && playwright test",
     "test:e2e:trace": "playwright test -g trace"
   },
@@ -24,9 +26,11 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
+    "@fudic/testing": "workspace:*",
     "@fudic/vite": "workspace:*",
     "@fudic/workbench": "workspace:*",
     "@playwright/test": "1.62.0",
-    "vite": "8.0.16"
+    "vite": "8.0.16",
+    "vitest": "4.1.9"
   }
 }

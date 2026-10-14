@@ -135,6 +135,30 @@ describe('FudicElement — instance entry points', () => {
     expect(inits).toEqual([{ mode: 'open', referenceTarget: 'campo' }]);
   });
 
+  it('opens the shadow root its author declared: delegatesFocus, clonable, serializable (SDD-57 §6.9)', () => {
+    const tag = freshTag();
+    customElements.define(
+      tag,
+      class extends FudicElement {
+        static override readonly delegatesFocus: boolean = true;
+        static override readonly clonable: boolean = true;
+        static override readonly serializable: boolean = true;
+        static c(): Controller {
+          return { c: () => {}, h: () => {}, u: () => {}, r: () => {} };
+        }
+      },
+    );
+    const inits: ShadowRootInit[] = [];
+    const host = document.createElement(tag);
+    const open = host.attachShadow.bind(host);
+    host.attachShadow = (init: ShadowRootInit) => {
+      inits.push(init);
+      return open(init);
+    };
+    (host as FudicElement).c([]);
+    expect(inits).toEqual([{ mode: 'open', delegatesFocus: true, clonable: true, serializable: true }]);
+  });
+
   it('passes the payload slice through verbatim, nested values included', () => {
     const s = spy();
     const host = document.createElement(define(s));

@@ -1,0 +1,25 @@
+@code {
+  @server {
+    import { get } from "@fudic/http";
+    import { auth } from "../middlewares/auth";
+
+    export const whoami = get().use(auth).handle((ctx) => ctx.user);
+  }
+
+  @client {
+    import { signal } from "@fudic/core";
+
+    const who = signal("");
+
+    async function ask() {
+      who.set(await whoami());
+    }
+  }
+}
+
+<x-guarded>
+  <template shadowrootmode="open">
+    <button @click=@ask>Who</button>
+    <output role="status">@who()</output>
+  </template>
+</x-guarded>

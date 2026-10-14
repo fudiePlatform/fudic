@@ -1,0 +1,9 @@
+{
+  "extends": "@fudic/tsconfig/tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    // The harness drives a DOM: happy-dom's globals are what a test and the runtime see.
+    "lib": ["ES2024", "DOM", "DOM.Iterable"]
+  },
+  "include": ["src", "test"]
+}

@@ -1,0 +1,5 @@
+{
+  "id": "bare-app",
+  "kind": "app",
+  "prefix": "x"
+}

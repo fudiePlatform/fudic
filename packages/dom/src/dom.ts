@@ -69,8 +69,11 @@ export interface Dom<N> {
    * `referenceTarget` is the bridge of a control-component (decision 132): the id of the element
    * of its shadow root that what points at the host is forwarded to. On the server it becomes
    * `shadowrootreferencetarget` on the template.
+   *
+   * `clonable` and `serializable` are what a component's author wrote on its root template
+   * (SDD-57 §6.9); on the server they become `shadowrootclonable` and `shadowrootserializable`.
    */
-  attachShadow(host: N, delegatesFocus?: boolean, referenceTarget?: string): N;
+  attachShadow(host: N, delegatesFocus?: boolean, referenceTarget?: string, clonable?: boolean, serializable?: boolean): N;
   /**
    * The host a shadow root hangs from — the inverse of `attachShadow`.
    *

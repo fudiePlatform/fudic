@@ -205,6 +205,18 @@ describe('FudicControlElement relays', () => {
     expect(inits).toEqual([{ mode: 'open', delegatesFocus: true }]);
   });
 
+  it('built while disconnected, its description waits for the tree, and arrives on connecting', () => {
+    document.body.innerHTML = '<span id="err">Mal.</span>';
+    const el = document.createElement('relay-field') as Probe;
+    el.setAttribute('aria-describedby', 'err');
+    // As the runtime builds a host a parent creates: in no tree yet, so no id resolves.
+    expect(() => el.c([form({ a: control('') }).a])).not.toThrow();
+    const field = el.shadowRoot!.getElementById('campo')!;
+    expect(reflected(field).ariaDescribedByElements).toBeNull();
+    document.body.append(el);
+    expect(reflected(field).ariaDescribedByElements).toEqual([document.getElementById('err')]);
+  });
+
   it('connected before its shadow root exists, it waits', () => {
     expect(() => document.body.append(document.createElement('relay-field'))).not.toThrow();
   });

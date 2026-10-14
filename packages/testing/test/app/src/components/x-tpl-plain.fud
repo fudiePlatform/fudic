@@ -1,0 +1,12 @@
+<head>
+  <style>
+    p { margin: 0; }
+  </style>
+</head>
+
+<x-tpl-plain>
+  <template shadowrootmode="open">
+    <input id="campo">
+    <p>plain</p>
+  </template>
+</x-tpl-plain>

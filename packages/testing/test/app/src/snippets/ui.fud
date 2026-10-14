@@ -1,0 +1,12 @@
+<link rel="component" href="../components/x-badge.fud">
+
+@snippet ficha(titulo: string, tono: "neutral" | "info" = "neutral") {
+  <article>
+    <h3>@titulo</h3>
+    <x-badge .tone=@tono>@tono</x-badge>
+  </article>
+}
+
+@snippet fila(item: { id: number; name: string }) {
+  <p data-id=@item.id>@item.name</p>
+}

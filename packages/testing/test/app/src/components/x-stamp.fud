@@ -1,0 +1,30 @@
+@code {
+  import { inject } from "@fudic/di";
+  import { NOW } from "../services/now";
+
+  const painted = inject(NOW);
+
+  @server {
+    import { get } from "@fudic/http";
+
+    export const stamp = get().handle(() => inject(NOW));
+  }
+
+  @client {
+    import { signal } from "@fudic/core";
+
+    const asked = signal("");
+
+    async function ask() {
+      asked.set(await stamp());
+    }
+  }
+}
+
+<x-stamp>
+  <template shadowrootmode="open">
+    <p>@painted</p>
+    <button @click=@ask>Ask</button>
+    <output role="status">@asked()</output>
+  </template>
+</x-stamp>

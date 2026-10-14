@@ -6,7 +6,7 @@
  * response of §4.6 step 6, so nothing a function throws escapes as a crash of the server.
  */
 
-import { createRoot } from '@fudic/di';
+import { createRoot, type Container } from '@fudic/di';
 import type { ServerFn } from '../builder.js';
 import { levelOfChain, type ChainBuilder } from '../chain.js';
 import { compose, run } from '../compose.js';
@@ -36,6 +36,11 @@ export interface DispatchOptions {
   readonly dev?: boolean;
   /** Told about every error that is not an `HttpError`: in dev, the overlay. */
   readonly onError?: (error: unknown) => void;
+  /**
+   * The container this request resolves from, made fresh for each one. Default: a new root.
+   * `@fudic/testing` hands one with the test's services in it (SDD-57).
+   */
+  readonly container?: () => Container;
 }
 
 /** The levels a target inherits, from the outside in. */
@@ -62,7 +67,7 @@ export async function dispatch(
       request,
     });
     const { steps } = compose([...outerLevels(target), target.fn.level], 'server');
-    const value = await withRequest(createRoot(), () =>
+    const value = await withRequest((options.container ?? createRoot)(), () =>
       run(steps, ctx, async (inner) => target.fn.handle(await withForm(target.fn, inner))),
     );
     return valueResponse(value, ctx);

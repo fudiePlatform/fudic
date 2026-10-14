@@ -1,0 +1,12 @@
+<head>
+  <style>
+    p { margin: 0; }
+  </style>
+</head>
+
+<x-tpl-target>
+  <template shadowrootmode="open" shadowrootreferencetarget="campo">
+    <input id="campo">
+    <p>target</p>
+  </template>
+</x-tpl-target>

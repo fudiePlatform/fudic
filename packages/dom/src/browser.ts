@@ -53,13 +53,22 @@ export const browserDom: DomClient<Node> = {
   remove(node: Node): void {
     (node as ChildNode).remove();
   },
-  attachShadow(host: Node, delegatesFocus = false, referenceTarget?: string): Node {
+  attachShadow(
+    host: Node,
+    delegatesFocus = false,
+    referenceTarget?: string,
+    clonable = false,
+    serializable = false,
+  ): Node {
     const el = host as Element;
     // Idempotent: reuse an existing shadow root (e.g. one built by DSD).
     if (el.shadowRoot !== null) return el.shadowRoot;
     // `referenceTarget` is not in every `lib` yet; a browser without the bridge ignores it.
     const init: ShadowRootInit & { referenceTarget?: string } = { mode: 'open', delegatesFocus };
     if (referenceTarget !== undefined) init.referenceTarget = referenceTarget;
+    // Only when asked for: the init of every shadow root that did not ask stays what it was.
+    if (clonable) init.clonable = true;
+    if (serializable) init.serializable = true;
     return el.attachShadow(init);
   },
   host(shadow: Node): Node {

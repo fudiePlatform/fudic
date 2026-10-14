@@ -12,8 +12,9 @@
   --ink-soft: #555;
   --ink-faint: #666;
 
-  /* El único acento: el botón primario y el enlace de la sección actual. */
-  --brand: #1a73e8;
+  /* El único acento: el botón primario y los enlaces. El `--blue-600` de la guía: sobre su fondo
+     `--gray-50` da 5:1, y el `#1a73e8` de antes se quedaba en 4,3:1, por debajo del AA. */
+  --brand: #1765cc;
 
   /* Forma. Dos radios, porque un control y una caja no son la misma esquina. */
   --radius: 6px;

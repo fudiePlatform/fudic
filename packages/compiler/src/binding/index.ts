@@ -56,6 +56,8 @@ export { pairMarkers, hasFields, isSummaryFields, staticId, walkBlocks } from '.
 // for the emit that writes it and the analyzer that reports what cannot be bridged.
 export type { Bridge, BridgeProblem, BridgeResult } from './bridge.js';
 export { bridgeOf, REFERENCE_TARGET_ATTR } from './bridge.js';
+// The options of a shadow root its author writes on the root template, for both roads (SDD-57).
+export { shadowOptionsOf, type ShadowOptions } from './shadow-options.js';
 // The sheets a component chooses by name on its root template, for the host to check against
 // its `fudic.json` and to put in the adopted list.
 export type { AdoptedName, AdoptedStylesResult } from './adopt.js';

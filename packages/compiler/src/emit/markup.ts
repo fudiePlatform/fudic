@@ -17,6 +17,7 @@ import type { HtmlContent, ElementNode, InlineCodeNode } from '../html/index.js'
 import type { IfNode, SwitchNode } from '../control/index.js';
 import type { RenderSectionNode } from '../layout/index.js';
 import type { Span } from '../types/index.js';
+import type { ShadowOptions } from '../binding/index.js';
 import { CodeWriter } from './writer.js';
 import { type AssetLinker } from './assets.js';
 import {
@@ -233,6 +234,12 @@ export interface MarkupOptions {
    */
   readonly bridges?: ReadonlyMap<string, string>;
   /**
+   * The options each component's author wrote on its root template (SDD-57 §6.9), which the
+   * serializer writes back on the template it opens. Required, as the sets above are: a fact
+   * about the whole graph that a defaulted empty map would let a caller forget.
+   */
+  readonly shadowOptions: ReadonlyMap<string, ShadowOptions>;
+  /**
    * The tags that carry a shared stylesheet (BUG-31 §T4). A host outside this set gets no
    * `data-fud-adopt`, and the serializer reads that absence to leave
    * `shadowrootadoptedstylesheets` off its template too: one decision, both outputs.
@@ -273,6 +280,7 @@ export class MarkupEmitter {
   readonly #controls: ControlPlan;
   readonly #formAssociated: ReadonlySet<string>;
   readonly #bridges: ReadonlyMap<string, string>;
+  readonly #shadowOptions: ReadonlyMap<string, ShadowOptions>;
   #summaries = false;
   readonly #styled: ReadonlySet<string>;
   readonly #projectAdopt: ProjectAdopt;
@@ -309,6 +317,7 @@ export class MarkupEmitter {
     this.#controls = options.controls ?? EMPTY_CONTROLS;
     this.#formAssociated = options.formAssociated;
     this.#bridges = options.bridges ?? new Map();
+    this.#shadowOptions = options.shadowOptions;
     this.#styled = options.styled;
     this.#projectAdopt = options.projectAdopt;
   }
@@ -502,13 +511,17 @@ export class MarkupEmitter {
       // (decision 132). Each argument is only written when it says something: a page with
       // neither keeps the bytes it had.
       const bridge = this.#bridges.get(el.name);
-      const focus = this.#formAssociated.has(el.name);
-      const init =
-        bridge !== undefined
-          ? `, ${String(focus)}, ${JSON.stringify(bridge)}`
-          : focus
-            ? ', true'
-            : '';
+      const options = this.#shadowOptions.get(el.name);
+      // The options its author wrote on the template (SDD-57 §6.9) travel too, after the two
+      // above and only when one of them is set: trailing defaults are not written.
+      const args = [
+        String(this.#formAssociated.has(el.name) || options?.delegatesFocus === true),
+        bridge === undefined ? 'undefined' : JSON.stringify(bridge),
+        String(options?.clonable === true),
+        String(options?.serializable === true),
+      ];
+      while (args.at(-1) === 'false' || args.at(-1) === 'undefined') args.pop();
+      const init = args.length === 0 ? '' : `, ${args.join(', ')}`;
       this.#w.line(`const ${s} = $dom.attachShadow(${v}${init});`);
       this.#w.line(
         `${renderName(el.name)}($dom, ${s}, ${componentPropsExpr(this.#source, el, this.#signals, this.#declared(el.name))}, ${this.#ioc});`,

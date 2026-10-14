@@ -65,6 +65,7 @@ export {
   isIntrinsicallyHydratable,
   formAssociatedTags,
   bridgeIds,
+  shadowOptions,
   isReactiveRoute,
   routeHydration,
 } from './level.js';

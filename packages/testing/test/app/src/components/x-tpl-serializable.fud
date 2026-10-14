@@ -1,0 +1,12 @@
+<head>
+  <style>
+    p { margin: 0; }
+  </style>
+</head>
+
+<x-tpl-serializable>
+  <template shadowrootmode="open" shadowrootserializable>
+    <input id="campo">
+    <p>serializable</p>
+  </template>
+</x-tpl-serializable>

@@ -45,7 +45,7 @@ import { codeOf, codeOfDocument, diHelpers } from './oxc-code.js';
 import { restGroups } from './rest.js';
 import { hasDependencyInjection } from './di.js';
 import { cellSlots, childTargets, reactiveScope } from './state.js';
-import { bridgeIds, formAssociatedTags, hydratableTags } from './level.js';
+import { bridgeIds, formAssociatedTags, hydratableTags, shadowOptions } from './level.js';
 import { needsRuntime, routeBlocksOf, writeMapConstants, writeHydrationBlocks } from './maps.js';
 import { planControls } from './controls.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
@@ -351,6 +351,7 @@ function buildComponentModule(
     controls,
     formAssociated: associated,
     bridges: bridgeIds(graph),
+    shadowOptions: shadowOptions(graph),
     styled: styledTags(graph),
     projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
   });
@@ -583,6 +584,7 @@ function buildPageModule(
     ioc: hasDi ? '$root' : '$ioc',
     formAssociated: formAssociatedTags(graph),
     bridges: bridgeIds(graph),
+    shadowOptions: shadowOptions(graph),
     styled,
     projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
   });

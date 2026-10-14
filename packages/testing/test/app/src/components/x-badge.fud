@@ -1,0 +1,19 @@
+@code {
+  type Tone = "neutral" | "info";
+
+  const { tone = "neutral" } = props<{ tone?: Tone }>();
+
+  @client {
+    import { signal } from "@fudic/core";
+
+    const clicks = signal(0);
+  }
+}
+
+<x-badge>
+  <template shadowrootmode="open">
+    <span class="badge" class:info=@(tone === 'info')><slot></slot></span>
+    <button @click=@(() => clicks.set(clicks() + 1))>Tap</button>
+    <output role="status">@clicks()</output>
+  </template>
+</x-badge>

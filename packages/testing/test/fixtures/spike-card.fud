@@ -1,0 +1,29 @@
+@code {
+  const { label = "none" } = props<{ label?: string }>();
+
+  @server {
+    import { get } from "@fudic/http";
+    import { secret } from "./spike-data";
+
+    export const reveal = get().handle(() => secret());
+  }
+
+  @client {
+    import { signal } from "@fudic/core";
+
+    const n = signal(0);
+  }
+}
+
+<head>
+  <style>
+    p { color: red; }
+  </style>
+</head>
+
+<spike-card>
+  <template shadowrootmode="open">
+    <p>@label</p>
+    <button @click=@(() => n.set(n() + 1))>@n()</button>
+  </template>
+</spike-card>

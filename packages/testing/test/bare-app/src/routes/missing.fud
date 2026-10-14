@@ -1,0 +1,13 @@
+<link rel="layout" href="../layouts/_layout.fud">
+
+@code {
+  @server {
+    import { notFound } from "@fudic/http";
+
+    export async function load(): Promise<{ never: true }> {
+      throw notFound();
+    }
+  }
+}
+
+<h1>Never painted</h1>

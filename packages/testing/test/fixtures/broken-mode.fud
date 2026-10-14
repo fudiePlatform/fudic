@@ -1,0 +1,5 @@
+<broken-mode>
+  <template shadowrootmode="closed">
+    <p>x</p>
+  </template>
+</broken-mode>

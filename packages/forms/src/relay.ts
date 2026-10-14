@@ -52,7 +52,11 @@ function ownOf(field: HTMLElement): Own {
 
 /** The elements an IDREF list names, looked up in the tree `from` lives in. */
 function resolve(from: Element, ids: string | null): Element[] {
-  const root = from.getRootNode() as Document | ShadowRoot;
+  const root = from.getRootNode() as Node | Document | ShadowRoot;
+  // A host the runtime is still building is in no tree yet, and its root is an element with no
+  // ids to look up: there is nothing to name until it is connected, and `connectedCallback`
+  // relays again then. Asked by shape: a document of another realm is no `instanceof Document`.
+  if (!('getElementById' in root)) return [];
   return (ids ?? '')
     .split(/\s+/u)
     .filter((id) => id !== '')

@@ -1,0 +1,12 @@
+<head>
+  <style>
+    p { margin: 0; }
+  </style>
+</head>
+
+<x-tpl-clonable>
+  <template shadowrootmode="open" shadowrootclonable>
+    <input id="campo">
+    <p>clonable</p>
+  </template>
+</x-tpl-clonable>

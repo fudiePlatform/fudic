@@ -1,0 +1,12 @@
+<head>
+  <style>
+    p { margin: 0; }
+  </style>
+</head>
+
+<x-tpl-adopt>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="panel">
+    <input id="campo">
+    <p>adopt</p>
+  </template>
+</x-tpl-adopt>

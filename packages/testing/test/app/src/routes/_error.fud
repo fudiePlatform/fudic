@@ -1,0 +1,10 @@
+<link rel="layout" href="../layouts/_layout.fud">
+
+<head>
+  <title>Error @data.status</title>
+</head>
+
+<h1>@data.status · @data.title</h1>
+@if (data.detail !== undefined) {
+  <p>@data.detail</p>
+}

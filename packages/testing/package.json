@@ -1,0 +1,77 @@
+{
+  "name": "@fudic/testing",
+  "version": "0.0.1",
+  "description": "Unit tests for fudic in vitest — mount a component, visit a route, render a layout or expand a snippet in happy-dom, with the server's HTML and the browser's hydration.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Pedro Hurtado",
+  "homepage": "https://github.com/fudiePlatform/fudic/tree/main/packages/testing#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fudiePlatform/fudic.git",
+    "directory": "packages/testing"
+  },
+  "bugs": {
+    "url": "https://github.com/fudiePlatform/fudic/issues"
+  },
+  "keywords": [
+    "fudic",
+    "fudie",
+    "testing",
+    "vitest",
+    "happy-dom",
+    "web-components"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "import": "./dist/config.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@fudic/compiler": "workspace:*",
+    "@fudic/conventions": "workspace:*",
+    "@fudic/core": "workspace:*",
+    "@fudic/di": "workspace:*",
+    "@fudic/dom": "workspace:*",
+    "@fudic/http": "workspace:*",
+    "@fudic/ssr": "workspace:*",
+    "@fudic/vite": "workspace:*",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/user-event": "14.6.8",
+    "happy-dom": "20.10.6"
+  },
+  "peerDependencies": {
+    "vitest": "4.1.9"
+  },
+  "devDependencies": {
+    "@fudic/forms": "workspace:*",
+    "@fudic/tsconfig": "workspace:*",
+    "@types/node": "22.20.0",
+    "vite": "8.0.16",
+    "vitest": "4.1.9"
+  }
+}

@@ -1,0 +1,12 @@
+<head>
+  <style>
+    p { margin: 0; }
+  </style>
+</head>
+
+<x-tpl-all>
+  <template shadowrootmode="open" shadowrootdelegatesfocus shadowrootreferencetarget="campo" shadowrootadoptedstylesheets="panel">
+    <input id="campo">
+    <p>all</p>
+  </template>
+</x-tpl-all>

@@ -31,6 +31,12 @@ export interface FudicOptions {
   readonly paramFallback?: ParamFallback;
   /** Per-route defaults keyed by route pattern (e.g. `'/admin'`). The page wins. */
   readonly defaults?: Readonly<Record<string, RouteDefault>>;
+  /**
+   * Whether the dev server checks the project's types live (SDD-35 §4.5). Default: `true`.
+   * `@fudic/testing` turns it off: a vitest run has nobody watching an overlay, and checking
+   * the whole project there is time every run pays for nothing.
+   */
+  readonly liveCheck?: boolean;
 }
 
 export interface ResolvedOptions {

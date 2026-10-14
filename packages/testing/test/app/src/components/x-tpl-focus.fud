@@ -1,0 +1,12 @@
+<head>
+  <style>
+    p { margin: 0; }
+  </style>
+</head>
+
+<x-tpl-focus>
+  <template shadowrootmode="open" shadowrootdelegatesfocus>
+    <input id="campo">
+    <p>focus</p>
+  </template>
+</x-tpl-focus>

@@ -95,6 +95,21 @@ describe('browserDom shadow', () => {
     expect(seen).toEqual([{ mode: 'open', delegatesFocus: true, referenceTarget: 'campo' }]);
   });
 
+  it('attachShadow passes what the author wrote on the template, only when asked (SDD-57 §6.9)', () => {
+    const host = dom.element('app-x') as Element;
+    const seen: ShadowRootInit[] = [];
+    host.attachShadow = ((init: ShadowRootInit) => {
+      seen.push(init);
+      return { mode: init.mode } as ShadowRoot;
+    }) as Element['attachShadow'];
+    dom.attachShadow(host, false, undefined, true, true);
+    dom.attachShadow(host, false, undefined, false, false);
+    expect(seen).toEqual([
+      { mode: 'open', delegatesFocus: false, clonable: true, serializable: true },
+      { mode: 'open', delegatesFocus: false },
+    ]);
+  });
+
   it('host gives the shadow root back its host (SDD-15 §4.4)', () => {
     const host = dom.element('app-x');
     expect(dom.host(dom.attachShadow(host))).toBe(host);

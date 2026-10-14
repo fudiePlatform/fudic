@@ -1,0 +1,15 @@
+@code {
+  const { name = "nobody", tone = "plain" } = props<{ name?: string; tone?: string }>();
+}
+
+<head>
+  <style>
+    p { margin: 0; }
+  </style>
+</head>
+
+<x-greeting>
+  <template shadowrootmode="open">
+    <p class=@tone>Hello, @name</p>
+  </template>
+</x-greeting>

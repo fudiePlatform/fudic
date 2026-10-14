@@ -1,0 +1,6 @@
+{
+  "id": "test-app",
+  "kind": "app",
+  "prefix": "x",
+  "styles": { "panel": "src/styles/panel.css" }
+}
