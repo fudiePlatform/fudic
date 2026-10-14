@@ -16,6 +16,7 @@ import {
   type BenchMessage,
   type ResultMessage,
   type RunCommand,
+  type RunningMessage,
   type SessionMessage,
   type StateMessage,
 } from './protocol.js';
@@ -68,6 +69,8 @@ export interface BenchServer {
 interface Kept {
   session?: SessionMessage;
   state?: StateMessage;
+  /** The last run: what it ran and why. */
+  running?: RunningMessage;
   readonly results: Map<string, ResultMessage>;
   readonly clients: Set<Socket>;
   /** `<id>/<n>-<kind>.png` → its PNG: only the last of each criterion and kind. */
@@ -152,6 +155,8 @@ export async function startBenchServer(input: BenchServerInput): Promise<BenchSe
     });
     if (entry.session !== undefined) send(socket, entry.session);
     if (entry.state !== undefined) send(socket, entry.state);
+    // The last run before the results: the results of it that arrived settle their cards.
+    if (entry.running !== undefined) send(socket, entry.running);
     for (const result of entry.results.values()) send(socket, result);
   });
 
@@ -177,10 +182,13 @@ export async function startBenchServer(input: BenchServerInput): Promise<BenchSe
       if (message.type === 'session') {
         entry.session = message;
         entry.results.clear();
+        delete entry.running;
       } else if (message.type === 'result') {
         entry.results.set(message.id, message);
       } else if (message.type === 'state') {
         entry.state = message;
+      } else if (message.type === 'running') {
+        entry.running = message;
       }
       for (const socket of entry.clients) send(socket, message);
     },
