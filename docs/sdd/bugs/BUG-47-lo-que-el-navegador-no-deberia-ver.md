@@ -1,7 +1,8 @@
 # BUG-47 · El navegador recibe código del servidor y un runtime que no se renueva
 
-> **Estado:** `Listo` — causas confirmadas sobre el código el 2026-10-13, al cerrar SDD-56 con
-> la prueba de `/usuarios` (ver [BUG-47-Task.md](./BUG-47-Task.md)).
+> **Estado:** `Hecho` (2026-10-14) — causas confirmadas sobre el código el 2026-10-13, al cerrar
+> SDD-56 con la prueba de `/usuarios`; ampliado al implementar con §4.4–§4.6 (ver
+> [BUG-47-Task.md](./BUG-47-Task.md)).
 > **Corrige:** [SDD-56](../SDD-56-funciones-de-servidor.md) §3.4 y §4.5 («la mitad `.server`
 > nunca sale del servidor») · [SDD-34](../SDD-34-forms-compilador.md) §4.7 (el cuerpo de
 > `serverValidator`) · [SDD-45](../SDD-45-runtime-publicado.md) §3.1 y §3.3 (la URL de una pieza

@@ -3,7 +3,7 @@
 > **BUG:** [BUG-47 — El navegador recibe código del servidor y un runtime que no se renueva](./BUG-47-lo-que-el-navegador-no-deberia-ver.md)
 > **Paquetes:** `@fudic/vite`
 > **Rama:** `bug/47-servidor-y-runtime`, desde `main` una vez fusionada `sdd/http`.
-> **Progreso:** 12 / 13 — `En curso`.
+> **Progreso:** 13 / 13 — `Hecho`.
 
 Lo nuevo nace al 100 % en las cuatro métricas, y `@fudic/vite` no baja de su suelo de `main`.
 Antes de tocar nada, se mide ese suelo con `pnpm --filter @fudic/vite coverage`.
@@ -47,4 +47,4 @@ Antes de tocar nada, se mide ese suelo con `pnpm --filter @fudic/vite coverage`.
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 9 | 1–8 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde, con la cobertura de §6.8. Pedro hace el criterio 7 en el navegador. `Hecho` en este fichero, en el BUG, en el `INDEX.md` de bugs (tabla y registro) y en el registro del `INDEX.md` maestro | `docs/sdd/bugs/*` · `docs/sdd/INDEX.md` |
+| [x] | 9 | 1–8 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde, con la cobertura de §6.8. Pedro hace el criterio 7 en el navegador. `Hecho` en este fichero, en el BUG, en el `INDEX.md` de bugs (tabla y registro) y en el registro del `INDEX.md` maestro | `docs/sdd/bugs/*` · `docs/sdd/INDEX.md` |
