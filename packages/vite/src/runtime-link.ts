@@ -33,6 +33,7 @@ import { runtimeCacheName } from '@fudic/conventions';
 import { BUILD_TOKEN } from './constants.js';
 import { FUD0802, FUD0806, type FileDiagnostic } from '@fudic/diagnostics';
 import { type RuntimePiece } from './runtime-pieces.js';
+import { rewritePieceUrls } from './piece-rewrite.js';
 
 /** What linking needs of the world: the text of a file, if it is there. */
 export interface RuntimeLinkIo {
@@ -123,12 +124,18 @@ export function runtimeLinkage(
 ): RuntimeLinkage {
   const byUrl = new Map<string, LinkedPiece>();
   const collected = new Map<string, Map<string, string[]>>();
+  const segments = segmentsOf(pieces);
 
   for (const piece of pieces) {
-    const code = io.readFile(piece.file);
-    if (code === undefined) continue; // discovery already said so; saying it twice helps nobody
-    const exports = exportedNames(code);
-    const map = io.readFile(`${piece.file}.map`);
+    const original = io.readFile(piece.file);
+    if (original === undefined) continue; // discovery already said so; saying it twice helps nobody
+    const exports = exportedNames(original);
+    const originalMap = io.readFile(`${piece.file}.map`);
+    // Its siblings by the URLs they are copied to, not the ones its build wrote (BUG-47 §4.5).
+    const { code, map } = rewritePieceUrls(
+      originalMap === undefined ? { code: original } : { code: original, map: originalMap },
+      segments,
+    );
     byUrl.set(piece.url, { ...piece, exports, code, ...(map === undefined ? {} : { map }) });
 
     const names = collected.get(piece.pkg) ?? new Map<string, string[]>();
@@ -154,6 +161,26 @@ export function runtimeLinkage(
 
   return { urlOf, byUrl, packages: [...collected.keys()], roots: [...roots] };
 }
+
+/**
+ * `<version>/<short>` → the fingerprinted segment, out of the URLs discovery wrote:
+ * `/_fudic/0.0.1-3fa9c1d2/dom/browser.js` gives `0.0.1/dom` → `0.0.1-3fa9c1d2`.
+ */
+function segmentsOf(pieces: readonly RuntimePiece[]): ReadonlyMap<string, string> {
+  const segments = new Map<string, string>();
+  for (const piece of pieces) {
+    const parts = piece.url.split('/');
+    // Not `/<dir>/<segment>/<pkg>/<piece>.js`: nothing a sibling could name, and no throwing.
+    if (parts.length < 5) continue;
+    const segment = parts[2]!;
+    // The fingerprint is the last `-` and 8 hex: a version may carry a `-` of its own.
+    segments.set(`${segment.slice(0, -FINGERPRINT_SUFFIX)}/${parts[3]!}`, segment);
+  }
+  return segments;
+}
+
+/** `-` and 8 hex, at the end of every segment. */
+const FINGERPRINT_SUFFIX = 9;
 
 /**
  * The package directory a published file belongs to: up from it until a `package.json`.
@@ -309,7 +336,7 @@ export function runtimeShim(pkg: string, linkage: RuntimeLinkage, specifier: str
  * The cache this origin keeps its published runtime in, or `''` when nothing is published
  * (SDD-45 §4.9).
  *
- * Named by the FRAMEWORK's version, which is `@fudic/core`'s: it is the version the peer
+ * Named by the FRAMEWORK's version and fingerprint, which are `@fudic/core`'s: it is the version the peer
  * check is about (§4.8) and the one an application means when it says which fudic it is on.
  * A library that publishes its own pieces writes them into this same cache — the entries are
  * keyed by URL and every URL carries its own version, so two versions never read each other's
@@ -326,8 +353,9 @@ export function runtimeCacheOf(linkage: RuntimeLinkage): string {
   // One guard and not two: nothing published IS no first piece, so asking the length first
   // would leave «and if the first one is missing» with no input that reaches it.
   if (core === undefined) return '';
-  // `/_fudic/<version>/<pkg>/<piece>.js` — the version is the segment after the directory,
-  // read back out of the URL the discovery wrote rather than resolved a second time.
+  // `/_fudic/<version>-<fingerprint>/<pkg>/<piece>.js` — the segment after the directory, read
+  // back out of the URL the discovery wrote rather than resolved a second time. With the
+  // fingerprint in it, a runtime with other bytes gets another cache (BUG-47 §4.3).
   const version = core.url.split('/')[2] ?? '';
   return version === '' ? '' : runtimeCacheName(version);
 }
@@ -393,7 +421,7 @@ export function linkedPieces(
 
 /** One file to write under the output directory, and where its bytes came from. */
 export interface PieceFile {
-  /** Relative to `outDir`: `_fudic/0.0.1/core/signal.js`. */
+  /** Relative to `outDir`: `_fudic/0.0.1-3fa9c1d2/core/signal.js`. */
   readonly fileName: string;
   readonly code: string;
 }

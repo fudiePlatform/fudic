@@ -34,8 +34,7 @@ import {
   NO_STYLES,
   type ProjectStyles,
 } from './transform.js';
-import { eraseServerValidators } from './server-validators.js';
-import { eraseServerHalves } from './server-halves.js';
+import { ClientErasure } from './erased-sources.js';
 import {
   appFunctions,
   devSource,
@@ -221,6 +220,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let publicDir = '';
   let isDev = false;
   let builds: readonly RouteBuild[] = [];
+  /** Server code out of the client's code and maps, one for every client pass (BUG-47). */
+  const erasure = new ClientErasure();
   /** `_error.fud`, out of the route table (SDD-56 §4.8). */
   let errorPage: RouteBuild | undefined;
   let swConfig: ResolvedSwConfig | null = null;
@@ -1263,7 +1264,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       return null;
     },
 
-    load(id) {
+    load(id, loadOptions) {
       if (id.startsWith(RUNTIME_SHIM)) {
         const specifier = shimSpecifier(id);
         const pkg = publisherOf(specifier, runtime.packages);
@@ -1372,7 +1373,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // the map over with it so the chain reaches the `.ts`. `@fudic/core`'s `signal.js` is
       // the case that made this visible — the debugger showed the compiled JavaScript for a
       // file whose TypeScript was on disk, with its map, all along.
-      return loadWithSourceMap(id);
+      const loaded = loadWithSourceMap(id);
+      if (loaded === null || loadOptions?.ssr === true) return loaded;
+      // On its way to a browser, the map's `.ts` text is erased here, with the code: the dev
+      // server serves this map as it is, and only the build has a bundle step that would
+      // blank it later (BUG-47 §4.2). Blanking keeps every position, so the map still fits.
+      return {
+        code: erasure.erase(loaded.code, id) ?? loaded.code,
+        map: erasure.blank(loaded.map, `${id}.map`, ''),
+      };
     },
 
     async transform(code, id, transformOptions) {
@@ -1387,9 +1396,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         // (SDD-56 §4.5), where it is a matter of security. Only on the way to a browser: the
         // dev server's SSR graph runs both, and the edge pass is a build of its own.
         if (transformOptions?.ssr === true || !/\.[cm]?[jt]sx?$/u.test(path)) return null;
-        const validators = eraseServerValidators(code);
-        const halves = eraseServerHalves(validators ?? code);
-        const erased = halves ?? validators;
+        const erased = erasure.erase(code, path);
         return erased === null ? null : { code: erased, map: null };
       }
       if (query === 'server') {
@@ -1508,6 +1515,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // not something to swallow in the install's `catch` on the client.
       const emitted = new Set<string>(Object.keys(bundle));
 
+      // The client's own maps, before anything else is emitted: what the erasure took out of
+      // the code does not stay in their `sourcesContent` (BUG-47 §4.2).
+      for (const item of Object.values(bundle)) {
+        if (item.type !== 'asset' || !item.fileName.endsWith('.map')) continue;
+        item.source = erasure.blank(item.source as string, item.fileName, outDir);
+      }
+
       // 1 and 1b run AT THE SAME TIME: two independent nested builds over the same routes.
       // Neither reads the other's output, both compile through the build's memory, and the
       // reporter they share says each diagnostic once whoever finds it first. They used to
@@ -1517,7 +1531,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       const linking: Promise<LinkResult> =
         swConfig === null
           ? Promise.resolve({ chunks: [], entries: new Map(), deps: new Map() })
-          : runLinkPass(root, base, builds, io, nested, projectStyles, linked, runtimeEntriesFor, reporter);
+          : runLinkPass(root, base, builds, io, nested, projectStyles, linked, runtimeEntriesFor, reporter, erasure);
       // A nested build's output is emitted as an ASSET, so nothing writes its `.map` or
       // appends its `sourceMappingURL` unless we do (BUG-05 §4.3).
       const emitWithMap = (artifact: NestedArtifact): void => {
@@ -1525,7 +1539,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         this.emitFile({ type: 'asset', fileName: artifact.fileName, source: plan.code });
         emitted.add(artifact.fileName);
         if (plan.map !== undefined) {
-          this.emitFile({ type: 'asset', fileName: plan.map.fileName, source: plan.map.source });
+          const source = erasure.blank(plan.map.source, plan.map.fileName, outDir);
+          this.emitFile({ type: 'asset', fileName: plan.map.fileName, source });
           emitted.add(plan.map.fileName);
         }
       };

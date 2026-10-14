@@ -4,6 +4,7 @@
  * - Criteria 7 and 8: the client output carries no line of `handle`, nor what only `handle`
  *   imports, nor the argument of any `.server(…)` — a middleware module that imports
  *   `node:crypto` for its server half builds for the client without it.
+ * - BUG-47 criterion 3: nor a server module with an effect on load that only `.server` used.
  * - Criterion 36: a component's function, used from two pages, is one URL by tag.
  * - Criterion 38: `vite preview` serves the functions from `.fudic/edge/functions.mjs`, with
  *   criteria 21, 23 and 35 repeated against it; and the error pages of §4.8.
@@ -33,9 +34,28 @@ const HTTP = `import { chain, csrf } from '@fudic/http';
 export default chain().use(csrf);
 `;
 
-/** A middleware whose server half reads a node builtin: what must never reach the client. */
+/**
+ * A server service with an effect on load: `Service(Tokens)` keeps Rollup from dropping the
+ * module even when nothing reads `Tokens` (BUG-47 §2.1).
+ */
+const TOKENS = `import { Service } from '@fudic/di';
+
+const USERS_TABLE: Record<string, string> = { 'TOKENS_TABLE_MARK': 'ana' };
+
+export class Tokens {
+  verify(token: string): string {
+    const user = USERS_TABLE[token];
+    if (user === undefined) throw new Error('token desconocido');
+    return user;
+  }
+}
+Service(Tokens);
+`;
+
+/** A middleware whose server half reads a node builtin and a server service: what must never reach the client. */
 const AUTH = `import { middleware } from '@fudic/http';
 import { createHash } from 'node:crypto';
+import { Tokens } from '../services/tokens';
 
 export const auth = middleware()
   .client((ctx, next) => {
@@ -45,6 +65,7 @@ export const auth = middleware()
   .server((ctx, next) => {
     const digest = createHash('sha256').update('SERVER_HALF_MARK').digest('hex');
     ctx.response.headers.set('x-digest', digest.slice(0, 8));
+    ctx.response.headers.set('x-token-user', new Tokens().verify('TOKENS_TABLE_MARK'));
     return next(ctx);
   });
 `;
@@ -168,9 +189,14 @@ const ERROR_PAGE = `<!DOCTYPE html>
 </html>
 `;
 
+/**
+ * `verbatimModuleSyntax`, as `examples/basic` and any strict project: without it the TS strip
+ * that runs after the erasure elides an import left unused on its own, and BUG-47 §2.1 could
+ * never be seen here.
+ */
 function project(files: Readonly<Record<string, string>>): string {
   const root = mkdtempSync(join(tmpdir(), 'fudic-http-build-'));
-  writeHttpTypecheckConfig(root);
+  writeHttpTypecheckConfig(root, { module: 'esnext', moduleResolution: 'bundler', verbatimModuleSyntax: true });
   for (const [path, text] of Object.entries(files)) {
     mkdirSync(join(root, path, '..'), { recursive: true });
     writeFileSync(join(root, path), text);
@@ -204,6 +230,7 @@ beforeAll(async () => {
     'src/users.ts': USERS,
     'src/http.ts': HTTP,
     'src/middlewares/auth.ts': AUTH,
+    'src/services/tokens.ts': TOKENS,
     'src/routes/usuarios.fud': USUARIOS,
     'src/routes/otra.fud': OTRA,
     'src/routes/index.fud': INDEX,
@@ -253,12 +280,21 @@ describe('criteria 7 and 8: the client output', () => {
     }
   });
 
+  it('BUG-47 criterion 3: nothing of a server module with an effect on load, reached only from .server', () => {
+    for (const file of client()) {
+      for (const mark of ['TOKENS_TABLE_MARK', 'token desconocido', 'USERS_TABLE', 'class Tokens', 'Service(Tokens)']) {
+        expect(file.text, `${mark} in ${file.path}`).not.toContain(mark);
+      }
+    }
+  });
+
   it('the server side keeps all of it: .fudic/edge/functions.mjs and its chunks', () => {
     expect(existsSync(join(root, '.fudic', 'edge', 'functions.mjs'))).toBe(true);
     const edge = filesUnder(join(root, '.fudic', 'edge')).map((f) => f.text).join('\n');
     expect(edge).toContain('HANDLE_BODY_MARK');
     expect(edge).toContain('SERVER_HALF_MARK');
     expect(edge).toContain('node:crypto');
+    expect(edge).toContain('token desconocido');
   });
 });
 
@@ -291,6 +327,7 @@ describe('criterion 38: vite preview serves the functions from functions.mjs', (
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual(['ana']);
     expect(res.headers.get('x-digest')).toMatch(/^[0-9a-f]{8}$/u);
+    expect(res.headers.get('x-token-user')).toBe('ana');
   });
 
   it('criterion 23: a 404 thrown in handle is a problem', async () => {

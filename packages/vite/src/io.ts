@@ -53,6 +53,7 @@ export function nodeRuntimeFs(): RuntimeFs {
   return {
     ...nodePackageFs(),
     readDir: (dir) => (existsSync(dir) ? readdirSync(dir) : undefined),
+    readBytes: (file) => readFileSync(file),
   };
 }
 

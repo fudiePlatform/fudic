@@ -8,20 +8,48 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
 
 import { runtimePieces, type RuntimeFs } from '../src/runtime-pieces.js';
 
-/** A world of files and directories, read the one way this module reads them. */
+/**
+ * A world of files and directories, read the one way this module reads them. A piece's bytes
+ * come from `bytes`, and a piece not in it is empty.
+ */
 function fs(
   files: Readonly<Record<string, string>>,
   dirs: Readonly<Record<string, readonly string[]>> = {},
   links: Readonly<Record<string, string>> = {},
+  bytes: Readonly<Record<string, string>> = {},
 ): RuntimeFs {
   return {
     readFile: (path) => files[path],
     readDir: (dir) => dirs[dir],
     realPath: (path) => links[path] ?? path,
+    readBytes: (file) => new TextEncoder().encode(bytes[file] ?? ''),
   };
+}
+
+/**
+ * A package's own hash, as BUG-47 §3 describes it, written out independently: the SHA-256 of
+ * each `.js`'s name, length and bytes, in sorted order.
+ */
+function own(pieces: Readonly<Record<string, string>>): string {
+  const hash = createHash('sha256');
+  for (const name of Object.keys(pieces).toSorted()) {
+    const bytes = new TextEncoder().encode(pieces[name]);
+    hash.update(`${name}\0${bytes.length}\0`).update(bytes);
+  }
+  return hash.digest('hex');
+}
+
+/**
+ * The fingerprint of a package that reaches nothing else (§4.5): the own hashes of its
+ * transitive reach — here only itself — sorted, joined by NUL, hashed and cut to 8 hex.
+ */
+function fingerprint(pieces: Readonly<Record<string, string>>, ...reached: Readonly<Record<string, string>>[]): string {
+  const owns = [pieces, ...reached].map(own).toSorted();
+  return createHash('sha256').update(owns.join('\0')).digest('hex').slice(0, 8);
 }
 
 /** A `package.json` with the fields this walk reads. */
@@ -51,18 +79,20 @@ describe('runtimePieces — the happy path', () => {
 
     // The URL carries no application `base`: the runtime lives outside every app's, which is
     // what lets two applications of one origin ask for the same bytes (§3.1). And the package
-    // segment is not decoration — `element` exists in `core` and in `forms`.
+    // segment is not decoration — `element` exists in `core` and in `forms`. The version
+    // segment carries the fingerprint of the package's runtime (BUG-47 §3).
+    const segment = `0.0.1-${fingerprint({ 'hydrate.js': '', 'signal.js': '' })}`;
     expect(pieces).toEqual([
       {
         pkg: '@fudic/core',
         name: 'hydrate',
-        url: '/_fudic/0.0.1/core/hydrate.js',
+        url: `/_fudic/${segment}/core/hydrate.js`,
         file: `${PROJECT}/node_modules/@fudic/core/runtime/hydrate.js`,
       },
       {
         pkg: '@fudic/core',
         name: 'signal',
-        url: '/_fudic/0.0.1/core/signal.js',
+        url: `/_fudic/${segment}/core/signal.js`,
         file: `${PROJECT}/node_modules/@fudic/core/runtime/signal.js`,
       },
     ]);
@@ -145,7 +175,7 @@ describe('runtimePieces — the happy path', () => {
           { [`${PROJECT}/node_modules/@fudic/core/runtime`]: ['signal.js'] },
         ),
       );
-      expect(pieces.map((p) => p.url)).toEqual(['/_fudic/0.0.1/core/signal.js']);
+      expect(pieces.map((p) => p.url)).toEqual([`/_fudic/0.0.1-${fingerprint({ 'signal.js': '' })}/core/signal.js`]);
     }
   });
 
@@ -165,7 +195,125 @@ describe('runtimePieces — the happy path', () => {
       ),
     );
 
-    expect(pieces.map((p) => p.url)).toEqual(['/_fudic/1.0.0/widgets/grid.js']);
+    expect(pieces.map((p) => p.url)).toEqual([`/_fudic/1.0.0-${fingerprint({ 'grid.js': '' })}/widgets/grid.js`]);
+  });
+});
+
+describe('BUG-47 criterion 5 — the URL of a piece identifies its bytes', () => {
+  const CORE = 'node_modules/@fudic/core/runtime';
+
+  /** `@fudic/core` 0.0.1 in a project at `root`, with these pieces and bytes. */
+  const world = (pieces: Readonly<Record<string, string>>, root = PROJECT): RuntimeFs =>
+    fs(
+      {
+        [`${root}/package.json`]: manifest({ name: 'app', dependencies: { '@fudic/core': '*' } }),
+        [`${root}/node_modules/@fudic/core/package.json`]: manifest({
+          name: '@fudic/core',
+          version: '0.0.1',
+          fudic: { runtime: 'runtime' },
+        }),
+      },
+      { [`${root}/${CORE}`]: Object.keys(pieces) },
+      {},
+      Object.fromEntries(Object.entries(pieces).map(([name, text]) => [`${root}/${CORE}/${name}`, text])),
+    );
+
+  const urls = (io: RuntimeFs, root = PROJECT): string[] => runtimePieces(root, io).pieces.map((p) => p.url);
+
+  it('the segment is `<version>-<8 hex>`, the fingerprint of the package', () => {
+    const pieces = { 'signal.js': 'export const a = 1;', 'hydrate.js': 'export const b = 2;' };
+    expect(urls(world(pieces))).toEqual([
+      `/_fudic/0.0.1-${fingerprint(pieces)}/core/hydrate.js`,
+      `/_fudic/0.0.1-${fingerprint(pieces)}/core/signal.js`,
+    ]);
+    expect(urls(world(pieces))[0]).toMatch(/^\/_fudic\/0\.0\.1-[0-9a-f]{8}\/core\/hydrate\.js$/u);
+  });
+
+  it('one byte of difference, same package and version: another URL', () => {
+    const before = urls(world({ 'signal.js': 'export const a = 1;' }));
+    const after = urls(world({ 'signal.js': 'export const a = 2;' }));
+    expect(after).not.toEqual(before);
+  });
+
+  it('per PACKAGE: a byte changed in one piece moves the URL of its sibling too', () => {
+    // The pieces of a package import each other by URL, so they must change together.
+    const before = urls(world({ 'hydrate.js': 'h', 'signal.js': 'export const a = 1;' }));
+    const after = urls(world({ 'hydrate.js': 'h', 'signal.js': 'export const a = 2;' }));
+    expect(after[0]).not.toBe(before[0]);
+    expect(after[0]!.endsWith('/core/hydrate.js')).toBe(true);
+  });
+
+  it('the names count, not only the bytes: the same bytes moved to another piece is another URL', () => {
+    const one = urls(world({ 'a.js': 'x', 'b.js': '' }));
+    const other = urls(world({ 'a.js': '', 'b.js': 'x' }));
+    expect(other).not.toEqual(one);
+  });
+
+  it('the same bytes: the same URL, in any order of the listing', () => {
+    expect(urls(world({ 'b.js': 'B', 'a.js': 'A' }))).toEqual(urls(world({ 'a.js': 'A', 'b.js': 'B' })));
+  });
+
+  it('a URL in a piece that names no publisher of the graph reaches nothing', () => {
+    // `/_fudic/9.9.9/ghost/x.js` is not a package here: it adds nothing to the fingerprint.
+    const pieces = { 'signal.js': 'import"/_fudic/9.9.9/ghost/x.js";' };
+    expect(urls(world(pieces))).toEqual([`/_fudic/0.0.1-${fingerprint(pieces)}/core/signal.js`]);
+  });
+
+  it('the same bytes in two projects: the same URL', () => {
+    // What SDD-45 §3.1 protects: two applications of one origin ask for the same bytes.
+    const pieces = { 'signal.js': 'export const a = 1;' };
+    expect(urls(world(pieces, '/repo/other'), '/repo/other')).toEqual(urls(world(pieces)));
+  });
+});
+
+describe('BUG-47 criterion 11 — the fingerprint covers what a piece reaches', () => {
+  /** `@fudic/core` and `@fudic/dom` 0.0.1, both named by the app, with these pieces each. */
+  const world = (core: Readonly<Record<string, string>>, dom: Readonly<Record<string, string>>): RuntimeFs => {
+    const root = (pkg: string): string => `${PROJECT}/node_modules/@fudic/${pkg}`;
+    const bytes: Record<string, string> = {};
+    for (const [pkg, pieces] of [['core', core], ['dom', dom]] as const) {
+      for (const [name, text] of Object.entries(pieces)) bytes[`${root(pkg)}/runtime/${name}`] = text;
+    }
+    return fs(
+      {
+        [`${PROJECT}/package.json`]: manifest({ name: 'app', dependencies: { '@fudic/core': '*', '@fudic/dom': '*' } }),
+        [`${root('core')}/package.json`]: manifest({ name: '@fudic/core', version: '0.0.1', fudic: { runtime: 'runtime' } }),
+        [`${root('dom')}/package.json`]: manifest({ name: '@fudic/dom', version: '0.0.1', fudic: { runtime: 'runtime' } }),
+      },
+      { [`${root('core')}/runtime`]: Object.keys(core), [`${root('dom')}/runtime`]: Object.keys(dom) },
+      {},
+      bytes,
+    );
+  };
+
+  const urlOf = (io: RuntimeFs, pkg: string): string =>
+    runtimePieces(PROJECT, io).pieces.find((p) => p.pkg === pkg)!.url;
+
+  const CORE = { 'element.js': 'import"/_fudic/0.0.1/dom/browser.js";' };
+
+  it('a byte of @fudic/dom changes the URL of @fudic/core, whose pieces import it', () => {
+    const before = world(CORE, { 'browser.js': 'export const a = 1;' });
+    const after = world(CORE, { 'browser.js': 'export const a = 2;' });
+    expect(urlOf(after, '@fudic/core')).not.toBe(urlOf(before, '@fudic/core'));
+    expect(urlOf(before, '@fudic/core')).toBe(
+      `/_fudic/0.0.1-${fingerprint(CORE, { 'browser.js': 'export const a = 1;' })}/core/element.js`,
+    );
+  });
+
+  it('but not the other way round: @fudic/dom reaches nothing, so core’s bytes do not move it', () => {
+    const dom = { 'browser.js': 'export const a = 1;' };
+    const one = world(CORE, dom);
+    const other = world({ 'element.js': `${CORE['element.js']}//x` }, dom);
+    expect(urlOf(other, '@fudic/dom')).toBe(urlOf(one, '@fudic/dom'));
+    expect(urlOf(one, '@fudic/dom')).toBe(`/_fudic/0.0.1-${fingerprint(dom)}/dom/browser.js`);
+  });
+
+  it('a cycle between two packages ends, and both share one fingerprint', () => {
+    const dom = { 'browser.js': 'import"/_fudic/0.0.1/core/element.js";' };
+    const io = world(CORE, dom);
+    const core = urlOf(io, '@fudic/core').split('/')[2];
+    expect(core).toBe(`0.0.1-${fingerprint(CORE, dom)}`);
+    expect(urlOf(io, '@fudic/dom').split('/')[2]).toBe(core);
   });
 });
 
@@ -501,7 +649,8 @@ describe('FUD0805 — two packages claiming one URL', () => {
 
   it('nobody clashing is zero diagnostics', () => {
     // The URL carries the package segment for exactly this reason (§3.1), so a clash needs
-    // two packages with the same SHORT name AND the same version — a scope and a fork of it.
+    // two packages with the same SHORT name AND the same version — a scope and a fork of it —
+    // and, since BUG-47, the same bytes (both pieces here are empty).
     const { pieces, diagnostics } = runtimePieces(PROJECT, clashing('9.9.9'));
     expect(pieces).toHaveLength(2);
     expect(diagnostics).toEqual([]);
