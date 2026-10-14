@@ -29,6 +29,8 @@ export interface PlannedCriterion {
   readonly mount: string;
   /** The name in `props <name>`. */
   readonly fixture: string | null;
+  /** Offset of its `criterion` keyword in the `.fudspec`; 0 for the bare card without one. */
+  readonly offset: number;
   readonly steps: readonly PlannedStep[];
   /** Present when the criterion cannot run: it ends in error without opening its page. */
   readonly error?: string;
@@ -91,12 +93,12 @@ export function planBench(input: PlanInput): BenchPlan {
   const criteria: PlannedCriterion[] = [];
   if (target.spec === null) {
     diagnostics.push(FUD0972({ file: target.component }));
-    criteria.push(planner.plan(target.tag, null, []));
+    criteria.push(planner.plan(target.tag, null, [], 0));
   } else {
     for (const criterion of input.spec.criteria) {
       if (criterion.slug === undefined) continue;
       const { fixture, steps } = readCriterion(criterion);
-      criteria.push(planner.plan(criterion.slug.text, fixture, steps));
+      criteria.push(planner.plan(criterion.slug.text, fixture, steps, criterion.keyword.start));
     }
   }
   return { criteria, files, diagnostics };
@@ -156,8 +158,8 @@ class Planner {
     private readonly diagnostics: FudDiagnostic[],
   ) {}
 
-  plan(id: string, fixture: string | null, steps: readonly PlannedStep[]): PlannedCriterion {
-    const base = { id, route: `/${this.target.tag}/${id}`, mount: `body > ${this.target.tag}`, fixture, steps };
+  plan(id: string, fixture: string | null, steps: readonly PlannedStep[], offset: number): PlannedCriterion {
+    const base = { id, route: `/${this.target.tag}/${id}`, mount: `body > ${this.target.tag}`, fixture, offset, steps };
     const component = this.target.component;
     if (fixture === null) {
       this.page(id, bare(this.target));

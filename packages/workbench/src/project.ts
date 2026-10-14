@@ -36,8 +36,8 @@ export interface ProjectInput {
   /** Components whose bare page is written before Vite starts. */
   readonly targets: readonly BenchTarget[];
   readonly options: WorkbenchOptions;
-  /** A file Vite has finished processing after a change. */
-  onProcessed(file: string): void;
+  /** A file Vite has finished processing after a change; absent when nothing reruns on save. */
+  readonly onProcessed?: (file: string) => void;
 }
 
 export async function startProject(input: ProjectInput): Promise<Project | WorkbenchFailure> {
@@ -52,7 +52,12 @@ export async function startProject(input: ProjectInput): Promise<Project | Workb
   emptyBenchDir(dir);
   // Before Vite starts: the plugin looks for components once, at start, in the pages it finds.
   for (const target of input.targets) writePlanFiles(dir, target.tag, mountFiles(target));
-  const vite = await startVite({ root, routesDir: benchRoutesDir(), http: server.http, onProcessed: input.onProcessed });
+  const vite = await startVite({
+    root,
+    routesDir: benchRoutesDir(),
+    http: server.http,
+    ...(input.onProcessed !== undefined ? { onProcessed: input.onProcessed } : {}),
+  });
   server.mount(vite.middlewares);
 
   const browser = await launchBrowser(options.browser);
