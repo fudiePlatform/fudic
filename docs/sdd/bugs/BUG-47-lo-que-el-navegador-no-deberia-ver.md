@@ -200,11 +200,16 @@ Añadidos al implementar (§4.1, §4.2, §4.4, §4.5, §4.6):
     `csrf.ts` en el mapa.
 13. **Depurable.** Lo borrado se deja en blanco: el código borrado tiene las mismas líneas que
     el original, y lo que va detrás de un borrado conserva su línea y su columna.
+14. **En dev.** El servidor de dev sirve `@fudic/http/dist/csrf.js` con su mitad de servidor
+    borrada, y su mapa lleva en `sourcesContent` el `csrf.ts` borrado. En el grafo SSR del
+    mismo servidor, `csrf` conserva las dos mitades.
 
 ## 7. Fuera de alcance
 
-- **El servidor de dev.** Allí no hay borrado ni piezas publicadas: sirve las fuentes, y
-  `vite dev` no es lo que se publica.
+- **Las piezas publicadas en dev.** El servidor de dev no copia piezas a `/_fudic/`. *(El
+  borrado sí corre en dev desde la prueba de Pedro del 2026-10-14: el transform de cliente ya
+  borraba, y el `dist/*.js` de un paquete del workspace se borra al cargarse, código y texto
+  de su mapa a la vez, porque en dev nadie vacía el mapa después. Criterio 14.)*
 - **Los mapas del pase edge y del prerender.** No se publican (BUG-09), y deben conservar el
   texto: son los que se leen cuando falla un `load`.
 - **Avisar de un módulo de servidor importado desde código de cliente.** Si el autor importa

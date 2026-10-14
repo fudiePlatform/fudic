@@ -74,13 +74,17 @@ export interface LoadedWithMap {
  * bundler's own file read — handles the module exactly as before.
  */
 export function loadWithSourceMap(id: string): LoadedWithMap | null {
-  // A query or a hash means the id is not a plain file path; those belong to whoever coined
-  // them. `.mjs`/`.cjs` count: what matters is that it is JavaScript with a sibling map.
-  if (/[?#]/u.test(id) || !/\.[cm]?js$/u.test(id)) {
+  // Vite's own `?v=<hash>`, which the dev server puts on whatever it serves from
+  // `node_modules`, is the same file: an installed package would otherwise lose its map, and
+  // with it the erasure of its text (BUG-47 §4.6).
+  const path = id.replace(/\?v=[\w-]+$/u, '');
+  // Any other query or a hash means the id is not a plain file path; those belong to whoever
+  // coined them. `.mjs`/`.cjs` count: what matters is that it is JavaScript with a sibling map.
+  if (/[?#]/u.test(path) || !/\.[cm]?js$/u.test(path)) {
     return null;
   }
-  const mapPath = `${id}.map`;
-  if (!existsSync(id) || !existsSync(mapPath)) {
+  const mapPath = `${path}.map`;
+  if (!existsSync(path) || !existsSync(mapPath)) {
     return null;
   }
   try {
@@ -88,7 +92,7 @@ export function loadWithSourceMap(id: string): LoadedWithMap | null {
     // The `.ts` text goes IN before the map is handed over: what the debugger opens has to
     // be the source, and `tsc` did not put it there.
     withSourcesContent(map, mapPath);
-    return { code: readFileSync(id, 'utf8'), map: JSON.stringify(map) };
+    return { code: readFileSync(path, 'utf8'), map: JSON.stringify(map) };
   } catch {
     // A map that does not parse is not a reason to fail a build: the module still has to
     // load. Falling through loses the chain for that one file and nothing else.

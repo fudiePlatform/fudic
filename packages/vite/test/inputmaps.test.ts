@@ -55,6 +55,12 @@ describe('what it declines to touch', () => {
     expect(loadWithSourceMap(`${js}?client`)).toBeNull();
   });
 
+  it('Vite’s `?v=<hash>` alongside another query is still somebody else’s', () => {
+    const js = moduleWithMap('vq.js', { version: 3, sources: [] });
+    expect(loadWithSourceMap(`${js}?v=abc&x=1`)).toBeNull();
+    expect(loadWithSourceMap(`${js}?x=1&v=abc`)).toBeNull();
+  });
+
   it('an id carrying a hash, for the same reason', () => {
     const js = moduleWithMap('h.js', { version: 3, sources: [] });
     expect(loadWithSourceMap(`${js}#frag`)).toBeNull();
@@ -79,6 +85,19 @@ describe('what it declines to touch', () => {
     const js = file('dist/broken.js', 'export const z = 3;\n');
     file('dist/broken.js.map', '{ this is not json');
     expect(loadWithSourceMap(js)).toBeNull();
+  });
+});
+
+describe('BUG-47 §4.6: Vite’s `?v=<hash>` is the same file', () => {
+  it('a module from node_modules, as the dev server asks for it, still brings its map', () => {
+    // The dev server puts `?v=<hash>` on whatever it serves from `node_modules`; without
+    // this, an installed package lost its map, and with it the erasure of its text.
+    const js = moduleWithMap('v.js', { version: 3, sources: ['../src/v.ts'] }, { 'src/v.ts': 'export const v = 1;\n' });
+    const loaded = loadWithSourceMap(`${js}?v=abc123`);
+    expect(loaded?.code).toBe('export const x = 1;\n');
+    expect(JSON.parse(loaded!.map).sourcesContent).toEqual(['export const v = 1;\n']);
+    // Its hash may carry a `-`, as Vite's do.
+    expect(loadWithSourceMap(`${js}?v=ab-12_c`)).not.toBeNull();
   });
 });
 

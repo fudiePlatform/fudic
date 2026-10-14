@@ -1264,7 +1264,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       return null;
     },
 
-    load(id) {
+    load(id, loadOptions) {
       if (id.startsWith(RUNTIME_SHIM)) {
         const specifier = shimSpecifier(id);
         const pkg = publisherOf(specifier, runtime.packages);
@@ -1373,7 +1373,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // the map over with it so the chain reaches the `.ts`. `@fudic/core`'s `signal.js` is
       // the case that made this visible — the debugger showed the compiled JavaScript for a
       // file whose TypeScript was on disk, with its map, all along.
-      return loadWithSourceMap(id);
+      const loaded = loadWithSourceMap(id);
+      if (loaded === null || loadOptions?.ssr === true) return loaded;
+      // On its way to a browser, the map's `.ts` text is erased here, with the code: the dev
+      // server serves this map as it is, and only the build has a bundle step that would
+      // blank it later (BUG-47 §4.2). Blanking keeps every position, so the map still fits.
+      return {
+        code: erasure.erase(loaded.code, id) ?? loaded.code,
+        map: erasure.blank(loaded.map, `${id}.map`, ''),
+      };
     },
 
     async transform(code, id, transformOptions) {
