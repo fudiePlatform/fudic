@@ -5,7 +5,7 @@
  */
 
 import { existsSync } from 'node:fs';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { openWorkbench } from '../../src/open.js';
 import type { ResultMessage } from '../../src/protocol.js';
 import { isFailure, type WorkbenchSession } from '../../src/types.js';
@@ -43,7 +43,29 @@ describe('examples/basic in the workbench — criterion 30', () => {
     );
 
     await opened.close();
-    expect(existsSync(`${EXAMPLE}/node_modules/.fudic-bench/${tag}`)).toBe(false);
+    expect(existsSync(`${EXAMPLE}/node_modules/.fudic-bench/${process.pid}`)).toBe(false);
+  }, 120_000);
+
+  it('criterion 3 of BUG-48 — opening app-card writes no false FUD0742', async () => {
+    const written: string[] = [];
+    const spies = [
+      vi.spyOn(console, 'warn').mockImplementation((...args: unknown[]) => void written.push(args.join(' '))),
+      vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => void written.push(args.join(' '))),
+      vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => void written.push(args.join(' '))),
+    ];
+    try {
+      const opened = await openWorkbench(`${EXAMPLE}/src/components/app-card.fud`);
+      if (isFailure(opened)) throw new Error(opened.diagnostic.message);
+      session = opened;
+      shell = await connectShell(opened.url);
+      const message = await shell.next(isSession);
+      await Promise.all(
+        message.criteria.map((c) => shell!.next((m): m is ResultMessage => m.type === 'result' && m.id === c.id, 0, 60_000)),
+      );
+    } finally {
+      for (const spy of spies) spy.mockRestore();
+    }
+    expect(written.filter((line) => line.includes('FUD0742'))).toEqual([]);
   }, 120_000);
 
   it('the tab strip has the two criteria of the bug of the first click', async () => {
