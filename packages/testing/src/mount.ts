@@ -15,7 +15,7 @@ import { graphRegistry, resolveDocument, type ComponentGraph } from '@fudic/comp
 import { nodeIo } from '@fudic/vite/harness';
 import { cached } from './cache.js';
 import { BASE_URL, FILE_EXPORT } from './constants.js';
-import { blankPage, showPage } from './document.js';
+import { hostAttribute, pageShell, showPage } from './document.js';
 import { hostPage } from './host.js';
 import { chunkMap, hydrate, resolverOf } from './hydrate.js';
 import { renderPage } from './page.js';
@@ -120,6 +120,23 @@ function visitUrl(url: string): void {
   (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM.setURL(new URL(url, BASE_URL).href);
 }
 
+/**
+ * The host page of `component` with `props` named on it, painted to HTML: one page per
+ * component and set of prop names, compiled once, whatever values each test hands it — the page
+ * takes them from its `data`. Its components are noted, so their server functions answer.
+ */
+async function paintHost(component: FudModule, props: object, url: string): Promise<string> {
+  const { tag } = component;
+  const attrs = Object.keys(props).map((name) => ` .${name}=@(data[${JSON.stringify(name)}])`);
+  const page = cached(
+    'mount',
+    'fud',
+    hostPage({ links: [{ rel: 'component', href: component[FILE_EXPORT] }], body: `<${tag}${attrs.join('')}></${tag}>` }),
+  );
+  knowComponents(graphOf(page).components.values());
+  return renderPage(page, { hasLoad: false, hasDi: true }, '/', url, props);
+}
+
 async function viaSsr(
   component: FudModule,
   props: object,
@@ -128,37 +145,35 @@ async function viaSsr(
 ): Promise<ComponentElement> {
   const { tag } = component;
   for (const [name, value] of Object.entries(props)) assertJson(tag, name, value);
-  // The page names the props and takes their values from its `data`: one page per component
-  // and set of prop names, compiled once, whatever values each test hands it.
-  const attrs = Object.keys(props).map((name) => ` .${name}=@(data[${JSON.stringify(name)}])`);
-  const page = cached(
-    'mount',
-    'fud',
-    hostPage({ links: [{ rel: 'component', href: component[FILE_EXPORT] }], body: `<${tag}${attrs.join('')}></${tag}>` }),
-  );
-  const body = showPage(await renderPage(page, { hasLoad: false, hasDi: true }, '/', url, props));
-  const components = [...graphOf(page).components.values()];
-  knowComponents(components);
-  hydrate(body, chunkMap(components), providers);
+  const body = showPage(await paintHost(component, props, url));
+  const page = graphOf(component[FILE_EXPORT]).components.values();
+  hydrate(body, chunkMap([{ tag, path: component[FILE_EXPORT] }, ...page]), providers);
   return body.querySelector<ComponentElement>(tag)!;
 }
 
 async function viaClient(
   component: FudModule,
   props: object,
+  url: string,
   order: readonly string[],
   providers: readonly ProviderOverride[],
 ): Promise<ComponentElement> {
   const { tag } = component;
+  // The page around it, without its props: its `<head>` carries the stylesheets the component
+  // adopts by specifier, and the host the server painted says which ones (`data-fud-adopt`).
+  const html = await paintHost(component, {}, url);
+  const body = pageShell(html);
   // Every component has a `?client` chunk, and importing it defines the tag.
   await track(import(/* @vite-ignore */ `${component[FILE_EXPORT]}?client`));
-  const body = blankPage();
   // No page printed a tree: the component resolves from a lone root, with the overrides in it.
   await standTree(resolverOf(new Map()), providers);
-  knowComponents([{ tag, path: component[FILE_EXPORT] }, ...graphOf(component[FILE_EXPORT]).components.values()]);
   const payload: unknown[] = Array.from({ length: order.length });
   for (const [at, value] of positions(tag, order, props)) payload[at] = value;
+  // As a parent creates a child (SDD-17, entry point 2): the element, the sheets it adopts, and
+  // its props in the order it declares them.
   const host = document.createElement(tag) as ComponentElement;
+  const adopt = hostAttribute(html, tag, 'data-fud-adopt');
+  if (adopt !== null) host.setAttribute('data-fud-adopt', adopt);
   host.c(payload);
   body.append(host);
   return host;
@@ -182,7 +197,7 @@ export async function mount<P extends object = Record<string, unknown>>(
   visitUrl(url);
   const host =
     options.via === 'client'
-      ? await viaClient(component, props, order, providers)
+      ? await viaClient(component, props, url, order, providers)
       : await viaSsr(component, props, url, providers);
   await settled();
   const root = host.shadowRoot!;
@@ -204,4 +219,19 @@ export async function mount<P extends object = Record<string, unknown>>(
       host.remove();
     },
   };
+}
+
+/**
+ * The HTML the server answers for `component` with `props` — the whole host page — without a
+ * DOM (§3.4): the contract a test reads with `toContainTemplate`. Its props are JSON, as they
+ * are on the server road.
+ */
+export async function renderToHtml<P extends object = Record<string, unknown>>(
+  component: FudModule,
+  options: { readonly props?: P; readonly url?: string } = {},
+): Promise<string> {
+  const props: object = options.props ?? {};
+  positions(component.tag, propOrder(component[FILE_EXPORT], component.tag), props);
+  for (const [name, value] of Object.entries(props)) assertJson(component.tag, name, value);
+  return paintHost(component, props, options.url ?? '/');
 }

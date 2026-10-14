@@ -1,6 +1,6 @@
 # SDD-57 — Tests unitarios de componentes, rutas, layouts y snippets: `@fudic/testing`
 
-> **Estado:** `Listo` — [tareas](./SDD-57-Task.md), 22 / 30.
+> **Estado:** `Listo` — [tareas](./SDD-57-Task.md), 24 / 30.
 > **Paquetes:** `@fudic/testing` (nuevo) · `@fudic/vite` · `@fudic/core` · `@fudic/http` ·
 > `@fudic/example-basic`
 > **Depende de:** 17 (hidratación), 19 (plugin, routing y dev server), 20 (Service Worker),
@@ -263,12 +263,15 @@ test('guardar invalida la lista', async () => {
   const t = await mount(UserForm, { sw: true });
   await t.type(t.getByLabelText('Nombre'), 'Pedro');
   await t.submit();
-  expect(t.invalidated).toEqual(['/usuarios']);
+  // La página propia ('/', donde vive el test) por no ser un GET, y la de `.invalidates`.
+  expect(t.invalidated).toEqual(['/', '/usuarios']);
 });
 ```
 
 Con `sw: true`, `navigator.serviceWorker.controller` es un worker simulado que apunta cada
-`paths` recibido en `t.invalidated` y contesta por el `MessageChannel`. Sin `sw`, no hay
+`paths` recibido en `t.invalidated` y contesta por el `MessageChannel`. Guarda lo que la página
+envía: una llamada que no es `GET` deja también obsoleta su propia página, como hace `$fn`
+(decisión 8.1.24). Sin `sw`, no hay
 controller y `t.invalidated` queda vacío.
 
 ### 3.7. `visit`: una ruta
@@ -549,7 +552,8 @@ snippet instancia llegan con él, igual que en una página.
 
 **Service Worker**
 
-19. Con `sw: true`, una función con `.invalidates('/usuarios')` deja `['/usuarios']` en
+19. Con `sw: true`, una función `POST` con `.invalidates('/usuarios')` llamada desde `/` deja
+    `['/', '/usuarios']` en
     `t.invalidated`, y la llamada no resuelve antes de que el worker simulado conteste.
 20. Sin `sw`, la misma llamada resuelve y `t.invalidated` queda vacío.
 
@@ -730,3 +734,22 @@ Tomadas con Pedro el 2026-10-14, antes de redactar:
     hace `invalidate` al leerla. `t.invalidated` guarda lo que la página envía: una llamada que no
     es `GET` deja también su propia página obsoleta (`$fn`), así que el criterio 19 con un `POST`
     desde `/` lee `['/', '/usuarios']`.
+25. **Las opciones que el autor escribe en el `<template>` llegan a los dos caminos** (2026-10-14).
+    La matriz encontró que `shadowrootdelegatesfocus` (fuera de un componente form-associated),
+    `shadowrootclonable` y `shadowrootserializable` se perdían en `ssr` y en `client`. Se arregla
+    en el compilador y el runtime (decisión 8.5): el compilador las lee de la plantilla raíz de
+    cada componente (`shadowOptionsOf`); el padre las pasa a `$dom.attachShadow`, que gana dos
+    posiciones (`clonable`, `serializable`) y solo escribe hasta la última que dice algo, así que
+    una página sin ellas emite los mismos bytes; el serializador de `@fudic/ssr` escribe
+    `shadowrootclonable` y `shadowrootserializable`; y la clase de cliente las declara como
+    `static delegatesFocus/clonable/serializable`, que `FudicElement.shadowInit()` lee.
+26. **`via: 'client'` crea el componente dentro de su página** (2026-10-14). Un padre escribe
+    `data-fud-adopt` en el host que crea, y la página lleva en su `<head>` las hojas que se
+    adoptan por specifier; creado en un documento vacío, el componente no adoptaba ninguna. El
+    harness pinta la página anfitriona sin props, pone su `<html>` y su `<head>` con el cuerpo
+    vacío, y crea el componente como lo crea un padre, con el `data-fud-adopt` que el servidor
+    escribió en su host.
+27. **`renderToHtml` da la página anfitriona entera** (2026-10-14), el HTML que el servidor
+    contesta por el componente. `toContainTemplate` lee el primer `<template shadowrootmode>` del
+    `<body>`, que es el del host, y compara sus atributos `shadowroot*` exactamente: uno sin valor
+    se escribe `true`.

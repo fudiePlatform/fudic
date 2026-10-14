@@ -38,6 +38,10 @@ export class SsrNodeImpl implements SsrNode {
    * template — or `null`. The bridge of a control-component (decision 132).
    */
   referenceTarget: string | null = null;
+  /** Whether that shadow root is clonable — `shadowrootclonable` on the template (SDD-57). */
+  clonable = false;
+  /** Whether it is serializable — `shadowrootserializable` on the template (SDD-57). */
+  serializable = false;
 
   constructor(
     readonly kind: SsrKind,

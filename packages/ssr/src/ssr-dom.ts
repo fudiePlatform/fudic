@@ -263,7 +263,13 @@ export class SsrDom implements Dom<SsrNode> {
     detach(asImpl(node));
   }
 
-  attachShadow(host: SsrNode, delegatesFocus = false, referenceTarget?: string): SsrNode {
+  attachShadow(
+    host: SsrNode,
+    delegatesFocus = false,
+    referenceTarget?: string,
+    clonable = false,
+    serializable = false,
+  ): SsrNode {
     const h = asImpl(host);
     if (h.shadow === null) {
       const shadow = SsrNodeImpl.fragment();
@@ -276,6 +282,8 @@ export class SsrDom implements Dom<SsrNode> {
     if (delegatesFocus) h.delegatesFocus = true;
     // The bridge of a control-component (decision 132), on the same template.
     if (referenceTarget !== undefined) h.referenceTarget = referenceTarget;
+    if (clonable) h.clonable = true;
+    if (serializable) h.serializable = true;
     return h.shadow;
   }
 

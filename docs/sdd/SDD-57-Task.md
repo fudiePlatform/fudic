@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/testing` (nuevo) · `@fudic/vite` · `@fudic/core` · `@fudic/http` ·
 > `@fudic/example-basic`
 > **Rama:** `sdd-57-tests-unitarios` (nace de `main`)
-> **Progreso:** 22 / 30 — `Listo`.
+> **Progreso:** 24 / 30 — `Listo`.
 
 **El orden manda en cuatro puntos.**
 
@@ -101,8 +101,8 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 23 | 6, 9 | **La matriz.** Siete componentes de prueba (sin atributos, cada uno de los cinco `shadowroot*` y los cuatro de §6.9 juntos) montados por los dos caminos. Cada diferencia entre `ssr` y `client` se arregla en el compilador o en el runtime (decisión 8.1.5) y se anota aquí. Criterios 9 y 10. **Ya visto:** el serializador de `@fudic/ssr` no escribe `shadowrootclonable` ni `shadowrootserializable` en el `<template>`, así que por `ssr` esas dos opciones salen siempre a `false` | `testing` · `core` · `compiler` | `test/template.test.ts` · `test/fixtures/tpl-*.fud` |
-| [ ] | 24 | 7 | **El contrato del HTML:** `renderToHtml` y el matcher `toContainTemplate`. Criterio 11 | `testing` | `src/matchers.ts` · `test/template.test.ts` |
+| [x] | 23 | 6, 9 | **La matriz.** Siete componentes de prueba (sin atributos, cada uno de los cinco `shadowroot*` y los cuatro de §6.9 juntos) montados por los dos caminos. Cada diferencia entre `ssr` y `client` se arregla en el compilador o en el runtime (decisión 8.1.5) y se anota aquí. Criterios 9 y 10. **Ya visto:** el serializador de `@fudic/ssr` no escribe `shadowrootclonable` ni `shadowrootserializable` en el `<template>`, así que por `ssr` esas dos opciones salen siempre a `false`. **Arreglado** (decisiones 8.1.25 y 8.1.26): las tres opciones del autor llegan a los dos caminos y `client` adopta las hojas de su página | `testing` · `core` · `compiler` · `ssr` · `dom` | `test/app/template.test.ts` · `test/app/src/components/x-tpl-*.fud` |
+| [x] | 24 | 7 | **El contrato del HTML:** `renderToHtml` y el matcher `toContainTemplate`. Criterio 11 (decisión 8.1.27) | `testing` | `src/matchers.ts` · `src/mount.ts` · `test/app/template.test.ts` |
 
 ## Fase 7 — rutas, layouts y snippets (3)
 

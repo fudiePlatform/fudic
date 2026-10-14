@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { HYDRATED_EVENT } from '@fudic/core';
-import { mount } from '../src/index.js';
+import { mount, renderToHtml } from '../src/index.js';
 import * as XCounter from './fixtures/x-counter.fud';
 import * as XGreeting from './fixtures/x-greeting.fud';
 import * as XLabel from './fixtures/x-label.fud';
@@ -153,5 +153,14 @@ describe('a page with two instances of one tag', () => {
     await t.settled();
     expect(first!.querySelector('output')!.textContent).toBe('11');
     expect(second!.querySelector('output')!.textContent).toBe('21');
+  });
+});
+
+describe('renderToHtml', () => {
+  test('the page the server answers, with its props painted, and no DOM touched', async () => {
+    const html = await renderToHtml(XGreeting, { props: { name: 'Ana' } });
+    expect(html).toContain('Hello, Ana');
+    expect(document.body.childElementCount).toBe(0);
+    await expect(renderToHtml(XGreeting, { props: { name: () => 'x' } })).rejects.toThrow('prop "name" is not JSON');
   });
 });

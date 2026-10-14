@@ -88,10 +88,22 @@ export abstract class FudicElement extends Base {
    */
   protected shadowInit(): ShadowRootInit {
     const init: ShadowRootInit & { referenceTarget?: string } = { mode: 'open' };
-    const target = (this.constructor as typeof FudicElement).referenceTarget;
-    if (target !== null) init.referenceTarget = target;
+    const ctor = this.constructor as typeof FudicElement;
+    if (ctor.referenceTarget !== null) init.referenceTarget = ctor.referenceTarget;
+    // What its author wrote on the root template (SDD-57 §6.9), copied onto the subclass by the
+    // emit: only when asked for, so every other init stays what it was.
+    if (ctor.delegatesFocus) init.delegatesFocus = true;
+    if (ctor.clonable) init.clonable = true;
+    if (ctor.serializable) init.serializable = true;
     return init;
   }
+
+  /** `shadowrootdelegatesfocus` on the root template (SDD-57 §6.9). */
+  static readonly delegatesFocus: boolean = false;
+  /** `shadowrootclonable` on the root template (SDD-57 §6.9). */
+  static readonly clonable: boolean = false;
+  /** `shadowrootserializable` on the root template (SDD-57 §6.9). */
+  static readonly serializable: boolean = false;
 
   /**
    * The id its author wrote in `shadowrootreferencetarget` on the root template, or `null`

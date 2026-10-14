@@ -102,6 +102,15 @@ describe('renderToString — comments and shadow', () => {
     );
   });
 
+  it('carries `shadowrootclonable` and `shadowrootserializable` when its author wrote them (SDD-57 §6.9)', () => {
+    const d = new SsrDom();
+    const host = d.element('app-x');
+    d.attachShadow(host, false, undefined, true, true);
+    expect(renderToString(host)).toBe(
+      '<app-x><template shadowrootmode="open" shadowrootclonable shadowrootserializable></template></app-x>',
+    );
+  });
+
   it('the second `attachShadow` on the same host does not take the flag back', () => {
     const d = new SsrDom();
     const host = d.element('app-input');

@@ -25,7 +25,7 @@
 import { allComponents, componentOf, type ComponentGraph, type ResolvedComponent } from './resolve.js';
 import type { ElementNode, HtmlContent } from '../html/index.js';
 import type { ControlNode } from '../control/index.js';
-import { bridgeOf, classifyAttribute, isFormAssociated } from '../binding/index.js';
+import { bridgeOf, classifyAttribute, isFormAssociated, shadowOptionsOf, type ShadowOptions } from '../binding/index.js';
 import { branchesOf } from './constructs.js';
 import { codeOf, codeOfDocument, type ExtractedCode } from './oxc-code.js';
 import { readsMoving, spreadReadsMoving } from './attrs.js';
@@ -236,6 +236,22 @@ export function bridgeIds(graph: ComponentGraph): ReadonlyMap<string, string> {
     const template = comp.doc.template;
     const bridge = template === undefined ? null : bridgeOf(template).bridge;
     if (bridge !== null) out.set(comp.tag, bridge.id);
+  }
+  return out;
+}
+
+/**
+ * The options each component's author wrote on its root template (SDD-57 §6.9), for the PARENT
+ * that opens its shadow root on the server. Only the components that wrote one: a graph with
+ * none hands an empty map, and the markup of every page that had none is unchanged.
+ */
+export function shadowOptions(graph: ComponentGraph): ReadonlyMap<string, ShadowOptions> {
+  const out = new Map<string, ShadowOptions>();
+  for (const comp of allComponents(graph)) {
+    const template = comp.doc.template;
+    if (template === undefined) continue;
+    const options = shadowOptionsOf(template);
+    if (options.delegatesFocus || options.clonable || options.serializable) out.set(comp.tag, options);
   }
   return out;
 }

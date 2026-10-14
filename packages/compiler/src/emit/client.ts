@@ -27,7 +27,7 @@ import { localOf, restAssignments, restGroups } from './rest.js';
 import { hookupContext, templateDelegationJs } from './events.js';
 import { planDelegation } from '../semantic/delegation.js';
 import { planControls } from './controls.js';
-import { isFormAssociated } from '../binding/index.js';
+import { isFormAssociated, shadowOptionsOf } from '../binding/index.js';
 import { formAssociatedTags, movingNames } from './level.js';
 import { rootContext } from './display.js';
 import { cellSlots, childTargets, reactiveScope, type CellSlot } from './state.js';
@@ -419,6 +419,12 @@ function buildComponentClientModule(
   // `FudicControlElement` carries the name and the description.
   const target = hookup.controls.field;
   if (target !== null) w.line(`static referenceTarget = ${JSON.stringify(target)};`);
+  // The options its author wrote on the root template (SDD-57 §6.9): an instance created at
+  // runtime opens the shadow root the server declared.
+  const shadow = shadowOptionsOf(comp.doc.template!);
+  if (shadow.delegatesFocus) w.line('static delegatesFocus = true;');
+  if (shadow.clonable) w.line('static clonable = true;');
+  if (shadow.serializable) w.line('static serializable = true;');
   w.line('static c($props) {');
   w.indent();
   if (em.nodes.length > 0) w.line(`let ${em.nodes.join(', ')};`);

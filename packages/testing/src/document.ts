@@ -39,7 +39,24 @@ export function showPage(html: string): HTMLElement {
   return body;
 }
 
-/** An empty document: the base `mount` with `via: 'client'` starts from. Hands back its body. */
+/**
+ * The page `html` is, with an EMPTY body: its `<html>` and its `<head>` — the stylesheets a
+ * component adopts by specifier live there — and nothing the server painted. Where `mount`
+ * with `via: 'client'` creates its component, as a parent does in a page that is already up.
+ */
+export function pageShell(html: string): HTMLElement {
+  const [before] = html.split(/<body[\s>]/u);
+  return showPage(`${before!}<body></body></html>`);
+}
+
+/** An empty document: what the cleanup leaves between two tests. Hands back its body. */
 export function blankPage(): HTMLElement {
   return showPage('<html><head></head><body></body></html>');
+}
+
+/** The value of `attr` on the first `<tag>` of the body of `html`, or `null`. */
+export function hostAttribute(html: string, tag: string, attr: string): string | null {
+  const holder = document.createElement('template');
+  holder.innerHTML = innerOf(html, 'body');
+  return holder.content.querySelector(tag)!.getAttribute(attr);
 }
