@@ -12,6 +12,7 @@
     "preview:nosw": "vite preview --config nosw/vite.config.ts",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:spec": "fudic-workbench run",
     "test:e2e": "vite build && vite build --config nosw/vite.config.ts && playwright test",
     "test:e2e:trace": "playwright test -g trace"
   },

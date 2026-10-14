@@ -25,6 +25,13 @@ const AUTO: readonly BrowserName[] = ['chrome', 'msedge', 'chromium'];
 /** Every call of a term's `ctx` gives up after this long. */
 export const CALL_TIMEOUT = 5000;
 
+/**
+ * Loading a criterion's page gives up after this long. It is not a term's call: the first pages
+ * of a cold Vite compile in parallel, under whatever else the machine is doing, and a criterion
+ * that errors because the server was busy says nothing about the component.
+ */
+export const LOAD_TIMEOUT = 30_000;
+
 /** The source of a function, run in the page: `(arg) => …`, or `(element, arg) => …` on a locator. */
 export type PageScript = string;
 
@@ -118,6 +125,7 @@ function adaptBrowser(name: BrowserName, browser: Browser): BrowserLike {
     async newPage() {
       const page = await browser.newPage();
       page.setDefaultTimeout(CALL_TIMEOUT);
+      page.setDefaultNavigationTimeout(LOAD_TIMEOUT);
       return adaptPage(page);
     },
     close: () => browser.close(),
