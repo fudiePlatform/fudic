@@ -96,6 +96,9 @@ describe('runMain on a project — criterion 12', () => {
     expect(lines).toEqual([expect.stringMatching(/^error FUD0976 .*public/u)]);
     const none = await runSpecs([], { root: project.path('public') });
     expect(isFailure(none) && none.diagnostic.code).toBe('FUD0976');
+    // Without a root, the current folder: this package has no .fudspec outside its hidden ones.
+    const here = await runSpecs([]);
+    expect(isFailure(here) && here.diagnostic.message).toContain(process.cwd().replaceAll('\\', '/'));
   }, 60_000);
 
   it('a page is an error, a .fud without .fudspec is skipped with FUD0972, a .fudspec with errors is an error', async () => {

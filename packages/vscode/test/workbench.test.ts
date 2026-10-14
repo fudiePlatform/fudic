@@ -585,6 +585,8 @@ describe('when it cannot open — criterion 27', () => {
     ['JSON that is not an object', '42'],
     ['JSON that is not an answer', '{"hello":1}'],
     ['an error without a message', '{"error":{"code":"FUD0970"}}'],
+    ['a url without a tag', JSON.stringify({ url: URL_OF('app-card'), component: CARD })],
+    ['a url without a component', JSON.stringify({ url: URL_OF('app-card'), tag: 'app-card' })],
   ])('%s: closes the process, says it stopped, opens no tab', async (_name, line) => {
     const w = world();
     const opening = w.workbenches.open(CARD);
