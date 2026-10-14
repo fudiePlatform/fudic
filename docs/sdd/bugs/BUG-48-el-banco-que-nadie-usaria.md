@@ -9,7 +9,8 @@
 > el mismo componente», «el WebSocket de un sentido» y «ejecutar solo los afectados»).
 > **Paquetes:** `@fudic/workbench` · `fudic-vscode` (`packages/vscode`) · `@fudic/diagnostics` ·
 > `examples/basic`
-> **Rango:** el de SDD-32, `FUD0970`–`FUD0989`. Cambia el texto de `FUD0975`; nace `FUD0976`.
+> **Rango:** el de SDD-32, `FUD0970`–`FUD0989`. Cambia el texto de `FUD0975`; nacen `FUD0976`
+> y `FUD0977` (añadido al implementar: `open` de un componente de otro proyecto, §4.4).
 > **Rama sugerida:** `bug/48-banco-usable`, desde `main`.
 
 ---
@@ -249,7 +250,9 @@ Dos procesos sobre el mismo componente no se tocan. `--keep` deja la suya como h
 Un proceso es un proyecto: un Vite, un navegador, un servidor. Cada componente abierto tiene su
 shell en `/__bench/<tag>/`, sus páginas en `/<tag>/<slug>` y su sesión. `open` añade un
 componente (si ya está, contesta lo mismo sin recargar nada); `close` lo quita, borra sus páginas
-y deja de vigilar sus ficheros. El modo banco del binario abre el `<file>` de la línea de órdenes
+y deja de vigilar sus ficheros. Un componente cuya raíz de proyecto no es la del proceso se
+rechaza con `FUD0977`. Las páginas anfitrionas de props `Signal` pasan a
+`components/<tag>/bench-host-<tag>-<slug>.fud`, porque un mismo Vite compila las de todos. El modo banco del binario abre el `<file>` de la línea de órdenes
 como primer componente. Con eso, abrir el segundo componente de un proyecto no arranca nada.
 
 Un guardado solo afecta a los componentes cuya sesión lo lee (su `.fud`, lo que enlaza, su

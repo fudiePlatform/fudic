@@ -19,6 +19,8 @@ export interface TermOutcome {
 
 /** A term module, executed. */
 export interface LoadedTerm {
+  /** The module, absolute. */
+  readonly path: string;
   readonly layer: Layer;
   readonly params: readonly TermParam[];
   /** `meta.describe`, when the module has one. */

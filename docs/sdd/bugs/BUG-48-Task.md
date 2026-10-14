@@ -3,7 +3,7 @@
 > **BUG:** [BUG-48 — El banco que nadie usaría](./BUG-48-el-banco-que-nadie-usaria.md)
 > **Paquetes:** `@fudic/workbench` · `fudic-vscode` · `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `bug/48-banco-usable`, desde `main`.
-> **Progreso:** 4 / 31 — `En curso`.
+> **Progreso:** 7 / 31 — `En curso`.
 
 Lo nuevo nace al 100 % en las cuatro métricas. `@fudic/workbench` y `fudic-vscode` no bajan de su
 suelo de `main`: antes de tocar nada se mide con `pnpm --filter <pkg> coverage` y se anota aquí.
@@ -32,9 +32,9 @@ tareas «Tests» y deja la cobertura en el suelo, en su propio worktree sobre es
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 7 | 3 | **Varios componentes.** Un registro de sesiones por `tag`; páginas en `routes/<tag>/<slug>.fud`, shell en `/__bench/<tag>/`; cada guardado solo a las sesiones que leen ese fichero (BUG §4.4) | `src/open.ts` · `src/session.ts` · `src/pages.ts` · `src/rerun.ts` · `src/bench-server.ts` |
-| [ ] | 8 | 7 | **Protocolo `v: 2`.** `tag` en todo mensaje, `spec`, `line` y `file` en `session`, `trigger` en `running`, y los tipos de §3.2 y §3.3 | `src/protocol.ts` |
-| [ ] | 9 | 7, 8 | **`stdin`/`stdout`.** El binario lee órdenes JSON por línea (`open`, `close`, y las de la fase 4) y escribe cada mensaje como una línea. Cerrar `stdin` sigue cerrándolo todo | `src/cli.ts` · `src/bin.ts` · `src/control.ts` |
+| [x] | 7 | 3 | **Varios componentes.** Un registro de sesiones por `tag`; páginas en `routes/<tag>/<slug>.fud`, shell en `/__bench/<tag>/`; cada guardado solo a las sesiones que leen ese fichero (BUG §4.4) | `src/open.ts` · `src/session.ts` · `src/pages.ts` · `src/rerun.ts` · `src/bench-server.ts` |
+| [x] | 8 | 7 | **Protocolo `v: 2`.** `tag` en todo mensaje, `spec`, `line` y `file` en `session`, `trigger` en `running`, y los tipos de §3.2 y §3.3 | `src/protocol.ts` |
+| [x] | 9 | 7, 8 | **`stdin`/`stdout`.** El binario lee órdenes JSON por línea (`open`, `close`, y las de la fase 4) y escribe cada mensaje como una línea. Cerrar `stdin` sigue cerrándolo todo | `src/cli.ts` · `src/bin.ts` · `src/control.ts` |
 | [ ] | 10 | 7–9 | **Tests.** Criterio 5 | `test/cli.test.ts` · `test/session.test.ts` |
 
 ## Fase 3 — El navegador se elige (2)

@@ -191,8 +191,9 @@ class Planner {
       }
       literals.push({ prop, literal });
     }
-    const hostTag = `bench-host-${id}`;
-    const hostFile = `components/${hostTag}.fud`;
+    // The component's tag in the host's: one Vite compiles the hosts of every open component.
+    const hostTag = `bench-host-${this.target.tag}-${id}`;
+    const hostFile = `components/${this.target.tag}/${hostTag}.fud`;
     this.files.set(
       hostFile,
       hostComponent({
