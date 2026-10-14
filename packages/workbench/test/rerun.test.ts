@@ -17,39 +17,46 @@ const TARGET: BenchTarget = {
   projectRoot: 'C:/proj',
 };
 
+/** What app-tabs reads: itself, and a component it links. */
+const READS: ReadonlySet<string> = new Set(['C:/proj/src/components/app-tabs.fud', 'C:/proj/src/components/app-badge.fud']);
+
 describe('classify', () => {
   it('asks for a new session on the .fudspec and the fixture, even without one yet', () => {
-    expect(classify('C:/proj/src/components/app-tabs.fudspec', TARGET)).toBe('session');
-    expect(classify('C:\\proj\\src\\components\\app-tabs.fixture.ts', TARGET)).toBe('session');
+    expect(classify('C:/proj/src/components/app-tabs.fudspec', TARGET, READS)).toBe('session');
+    expect(classify('C:\\proj\\src\\components\\app-tabs.fixture.ts', TARGET, READS)).toBe('session');
   });
 
   it('asks for a new session on a term of the project', () => {
-    expect(classify('C:/proj/fudic/terms/then/text.js', TARGET)).toBe('session');
-    expect(classify('C:/proj/fudic/terms/then/README.md', TARGET)).toBe('none');
-    expect(classify('C:/other/fudic/terms/then/text.js', TARGET)).toBe('none');
+    expect(classify('C:/proj/fudic/terms/then/text.js', TARGET, READS)).toBe('session');
+    expect(classify('C:/proj/fudic/terms/then/README.md', TARGET, READS)).toBe('none');
+    expect(classify('C:/other/fudic/terms/then/text.js', TARGET, READS)).toBe('none');
   });
 
-  it('waits for Vite on any .fud, and ignores the rest', () => {
-    expect(classify('C:/proj/src/components/app-tabs.fud', TARGET)).toBe('component');
-    expect(classify('C:/proj/src/components/app-badge.fud', TARGET)).toBe('component');
-    expect(classify('C:/proj/src/components/app-badge.fudspec', TARGET)).toBe('none');
-    expect(classify('C:/proj/src/styles/theme.css', TARGET)).toBe('none');
+  it('criterion 5 — runs on a .fud it reads, and not on one it does not', () => {
+    expect(classify('C:/proj/src/components/app-tabs.fud', TARGET, READS)).toBe('component');
+    expect(classify('C:\\proj\\src\\components\\app-badge.fud', TARGET, READS)).toBe('component');
+    expect(classify('C:/proj/src/components/app-card.fud', TARGET, READS)).toBe('none');
+    expect(classify('C:/proj/src/components/app-badge.fudspec', TARGET, READS)).toBe('none');
+    expect(classify('C:/proj/src/styles/theme.css', TARGET, READS)).toBe('none');
   });
 });
 
-/** A run that ends when the test says so, recording every reload and run. */
+/** A run that ends when the test says so, recording every reload and run, with what it ran. */
 function deps() {
   const log: string[] = [];
+  const runs: { trigger: string | null; ids: readonly string[] | undefined }[] = [];
   let finish: (() => void) | undefined;
   const d = {
     log,
+    runs,
     reload: vi.fn(async () => {
       log.push('reload');
     }),
     run: vi.fn(
-      () =>
+      (trigger: string | null, ids: readonly string[] | undefined) =>
         new Promise<void>((done) => {
           log.push('run');
+          runs.push({ trigger, ids });
           finish = done;
         }),
     ),
@@ -72,38 +79,74 @@ describe('Rerunner', () => {
     vi.useRealTimers();
   });
 
-  it('a session change reloads and runs at once', async () => {
+  it('a session change reloads and runs at once, every criterion, saying what was saved', async () => {
     const d = deps();
-    new Rerunner(d).changed('session');
+    new Rerunner(d).changed('session', 'C:/p/a.fudspec');
     await vi.advanceTimersByTimeAsync(0);
     expect(d.log).toEqual(['reload', 'run']);
+    expect(d.runs).toEqual([{ trigger: 'C:/p/a.fudspec', ids: undefined }]);
   });
 
   it('criterion 1 — a .fud change runs at once, without reloading and without a timer', async () => {
     const d = deps();
-    new Rerunner(d).changed('component');
+    new Rerunner(d).changed('component', 'C:/p/a.fud');
     await vi.advanceTimersByTimeAsync(0);
     expect(d.log).toEqual(['run']);
   });
 
   it('a change to nothing it reads runs nothing', async () => {
     const d = deps();
-    new Rerunner(d).changed('none');
+    new Rerunner(d).changed('none', 'C:/p/b.fud');
     await vi.advanceTimersByTimeAsync(20_000);
     expect(d.log).toEqual([]);
   });
 
-  it('two .fud changes during a run are one run more', async () => {
+  it('a request with no trigger runs as asked by hand, with its ids', async () => {
+    const d = deps();
+    new Rerunner(d).request(false, null, ['a']);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(d.runs).toEqual([{ trigger: null, ids: ['a'] }]);
+  });
+
+  it('two .fud changes during a run are one run more, with the last trigger', async () => {
     const d = deps();
     const rerunner = new Rerunner(d);
-    rerunner.changed('component');
+    rerunner.changed('component', 'C:/p/a.fud');
     await vi.advanceTimersByTimeAsync(0);
-    rerunner.changed('component');
-    rerunner.changed('component');
+    rerunner.changed('component', 'C:/p/b.fud');
+    rerunner.changed('component', 'C:/p/c.fud');
     await d.end();
     await d.end();
     await vi.advanceTimersByTimeAsync(20_000);
     expect(d.log).toEqual(['run', 'run']);
+    expect(d.runs[1]!.trigger).toBe('C:/p/c.fud');
+  });
+
+  it('a pending trigger survives a request by hand after it', async () => {
+    const d = deps();
+    const rerunner = new Rerunner(d);
+    rerunner.request(false);
+    await vi.advanceTimersByTimeAsync(0);
+    rerunner.changed('component', 'C:/p/a.fud');
+    rerunner.request(false, null, ['x']);
+    await d.end();
+    expect(d.runs[1]).toEqual({ trigger: 'C:/p/a.fud', ids: undefined });
+  });
+
+  it('pending selections merge: two lists are their union, and every criterion wins', async () => {
+    const d = deps();
+    const rerunner = new Rerunner(d);
+    rerunner.request(false);
+    await vi.advanceTimersByTimeAsync(0);
+    rerunner.request(false, null, ['a', 'b']);
+    rerunner.request(false, null, ['b', 'c']);
+    await d.end();
+    expect(d.runs[1]!.ids).toEqual(['b', 'c', 'a']);
+    rerunner.request(false, null, ['a']);
+    rerunner.request(false);
+    rerunner.request(false, null, ['c']);
+    await d.end();
+    expect(d.runs[2]!.ids).toBeUndefined();
   });
 
   it('criterion 20 — five saves during a run are exactly one run more', async () => {
@@ -111,7 +154,7 @@ describe('Rerunner', () => {
     const rerunner = new Rerunner(d);
     rerunner.request(false);
     await vi.advanceTimersByTimeAsync(0);
-    for (let i = 0; i < 5; i += 1) rerunner.changed('session');
+    for (let i = 0; i < 5; i += 1) rerunner.changed('session', 'C:/p/a.fudspec');
     await d.end();
     expect(d.log).toEqual(['run', 'reload', 'run']);
     await d.end();
@@ -136,7 +179,7 @@ describe('Rerunner', () => {
     const rerunner = new Rerunner(d);
     rerunner.request(false);
     await vi.advanceTimersByTimeAsync(0);
-    rerunner.changed('component');
+    rerunner.changed('component', 'C:/p/a.fud');
     await d.end();
     expect(d.log).toEqual(['run', 'run']);
   });
@@ -149,8 +192,8 @@ describe('Rerunner', () => {
     rerunner.request(true);
     rerunner.stop();
     await d.end();
-    rerunner.changed('component');
-    rerunner.changed('session');
+    rerunner.changed('component', 'C:/p/a.fud');
+    rerunner.changed('session', 'C:/p/a.fudspec');
     await vi.advanceTimersByTimeAsync(20_000);
     expect(d.log).toEqual(['run']);
   });
@@ -181,7 +224,7 @@ describe('processedChanges — criterion 1, against a real Vite', () => {
     const target = { tag: 'app-still', component: p.path('src/components/app-still.fud'), spec: null, fixture: null, projectRoot: p.root };
     const dir = benchDir(p.root);
     emptyBenchDir(dir);
-    writePlanFiles(dir, mountFiles(target));
+    writePlanFiles(dir, target.tag, mountFiles(target));
     http = createServer();
     vite = await startVite({ root: p.root, routesDir: benchRoutesDir(), http, onProcessed });
     // A component reaches Vite's graphs when a page asks for it, as the engine's Chrome would.

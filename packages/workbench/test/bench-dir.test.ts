@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { emptyBenchDir, isAlive, removeBenchDir, sweepBenchDirs, writePlanFiles } from '../src/bench-dir.js';
+import { emptyBenchDir, isAlive, removeBenchDir, removeTagFiles, sweepBenchDirs, writePlanFiles } from '../src/bench-dir.js';
 
 let root: string;
 let benches: string;
@@ -26,22 +26,39 @@ describe('the workbench folder', () => {
     expect(readdirSync(join(dir, 'routes'))).toEqual([]);
   });
 
-  it('replaces the generated files with the plan, and a criterion that is gone loses its page', () => {
-    const dir = join(benches, 'app-card');
+  it('replaces one component\'s generated files with its plan, and leaves the other components\' alone', () => {
+    const dir = join(benches, '100');
     emptyBenchDir(dir);
-    writePlanFiles(dir, new Map([['routes/a.fud', 'A'], ['routes/b.fud', 'B'], ['components/bench-host-b.fud', 'H']]));
+    writePlanFiles(
+      dir,
+      'app-card',
+      new Map([
+        ['routes/app-card.fud', 'M'],
+        ['routes/app-card/a.fud', 'A'],
+        ['routes/app-card/b.fud', 'B'],
+        ['components/app-card/bench-host-app-card-b.fud', 'H'],
+      ]),
+    );
+    writePlanFiles(dir, 'app-tabs', new Map([['routes/app-tabs.fud', 'T'], ['routes/app-tabs/x.fud', 'X']]));
     writeFileSync(join(dir, 'keep.txt'), 'not generated');
-    writePlanFiles(dir, new Map([['routes/a.fud', 'A2']]));
-    expect(readdirSync(join(dir, 'routes'))).toEqual(['a.fud']);
-    expect(readFileSync(join(dir, 'routes', 'a.fud'), 'utf8')).toBe('A2');
-    expect(existsSync(join(dir, 'components'))).toBe(false);
+    writePlanFiles(dir, 'app-card', new Map([['routes/app-card.fud', 'M'], ['routes/app-card/a.fud', 'A2']]));
+    expect(readdirSync(join(dir, 'routes')).sort()).toEqual(['app-card', 'app-card.fud', 'app-tabs', 'app-tabs.fud']);
+    expect(readdirSync(join(dir, 'routes', 'app-card'))).toEqual(['a.fud']);
+    expect(readFileSync(join(dir, 'routes', 'app-card', 'a.fud'), 'utf8')).toBe('A2');
+    expect(readdirSync(join(dir, 'routes', 'app-tabs'))).toEqual(['x.fud']);
+    expect(existsSync(join(dir, 'components', 'app-card'))).toBe(false);
     expect(existsSync(join(dir, 'keep.txt'))).toBe(true);
   });
 
-  it('keeps the routes folder for a plan without files', () => {
-    const dir = join(benches, 'app-card');
-    writePlanFiles(dir, new Map());
-    expect(readdirSync(join(dir, 'routes'))).toEqual([]);
+  it('removes one component\'s files on close of that component, and nothing else', () => {
+    const dir = join(benches, '100');
+    emptyBenchDir(dir);
+    writePlanFiles(dir, 'app-card', new Map([['routes/app-card.fud', 'M'], ['components/app-card/h.fud', 'H']]));
+    writePlanFiles(dir, 'app-tabs', new Map([['routes/app-tabs.fud', 'T']]));
+    removeTagFiles(dir, 'app-card');
+    expect(readdirSync(join(dir, 'routes'))).toEqual(['app-tabs.fud']);
+    expect(readdirSync(join(dir, 'components'))).toEqual([]);
+    expect(() => removeTagFiles(dir, 'nobody')).not.toThrow();
   });
 
   it('is removed on close, with .fudic-bench when no other workbench is left', () => {

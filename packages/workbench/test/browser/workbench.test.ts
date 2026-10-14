@@ -66,7 +66,7 @@ describe('criterion 16 — the fixture executed', () => {
     );
     const { session: s, shell: sh } = await open(project, 'src/components/app-greet.fud');
     expect(s).toMatchObject({ tag: 'app-greet', criteria: 1, component: project.path('src/components/app-greet.fud') });
-    expect(s.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/__bench\/$/u);
+    expect(s.url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/__bench\/app-greet\/$/u);
     expect(await sh.next(resultOf('saluda'))).toMatchObject({ verdict: 'pass' });
   }, 60_000);
 
@@ -127,7 +127,7 @@ describe('criterion 18 — red, save the fix, green', () => {
     const { shell: sh } = await open(project, TABS);
     expect(await sh.next(resultOf('cambia-de-pestana'))).toMatchObject({
       verdict: 'fail',
-      steps: [{ term: 'click' }, { term: 'text', pass: false, evidence: 'panel A' }],
+      steps: [{ term: 'click' }, { term: 'text', pass: false, evidence: { expected: 'panel B', actual: 'panel A' } }],
     });
 
     const from = sh.messages.length;
@@ -137,7 +137,7 @@ describe('criterion 18 — red, save the fix, green', () => {
     expect(running.ids).toEqual(['cambia-de-pestana']);
     const after = sh.messages.indexOf(running);
     expect(await sh.next(resultOf('cambia-de-pestana'), after)).toMatchObject({ verdict: 'pass' });
-    expect(Date.now() - saved).toBeLessThan(9_000);
+    expect(Date.now() - saved).toBeLessThan(2_000);
   }, 90_000);
 });
 
@@ -178,10 +178,11 @@ describe('criterion 19 — saving the .fudspec or a term', () => {
     expect(next.criteria[1]).toEqual({
       id: 'empieza-en-a',
       route: '/app-tabs/empieza-en-a',
-      steps: [{ block: 'then', text: 'role:tabpanel says "panel A"' }],
+      line: 9,
+      steps: [{ block: 'then', text: 'role:tabpanel says "panel A"', file: project.path('fudic/terms/then/text.js') }],
     });
     expect(await sh.next(resultOf('empieza-en-a'), from)).toMatchObject({ verdict: 'pass' });
-    const origin = s.url.replace('/__bench/', '');
+    const origin = new URL(s.url).origin;
     const page = await fetch(`${origin}/app-tabs/empieza-en-a`, { headers: { accept: "text/html" } });
     expect(page.status).toBe(200);
   }, 90_000);
@@ -192,14 +193,14 @@ describe('criterion 19 — saving the .fudspec or a term', () => {
     const { shell: sh } = await open(project, TABS);
     expect(await sh.next(resultOf('cambia-de-pestana'))).toMatchObject({
       verdict: 'pass',
-      steps: [{}, { evidence: 'panel B' }],
+      steps: [{}, { evidence: { actual: 'panel B' } }],
     });
     const from = sh.messages.length;
     const term = project.read('fudic/terms/then/text.js');
-    project.write('fudic/terms/then/text.js', term.replace('evidence: text }', 'evidence: `v2: ${text}` }'));
+    project.write('fudic/terms/then/text.js', term.replace('actual: text }', 'actual: `v2: ${text}` }'));
     expect(await sh.next(resultOf('cambia-de-pestana'), from)).toMatchObject({
       verdict: 'pass',
-      steps: [{}, { evidence: 'v2: panel B' }],
+      steps: [{}, { evidence: { actual: 'v2: panel B' } }],
     });
   }, 90_000);
 
@@ -221,7 +222,7 @@ describe('criterion 21 — one port: shell, its socket and Vite\'s HMR', () => {
   it('Vite\'s HMR connects on the workbench\'s port', async () => {
     project = tempProject('hmr');
     const { session: s } = await open(project, TABS);
-    const hmr = new WebSocket(s.url.replace(/^http/u, 'ws').replace('/__bench/', '/'), 'vite-hmr');
+    const hmr = new WebSocket(`${new URL(s.url).origin.replace(/^http/u, 'ws')}/`, 'vite-hmr');
     const first = await new Promise<string>((done, fail) => {
       hmr.addEventListener('message', (event) => done(String(event.data)));
       hmr.addEventListener('error', fail);
@@ -244,14 +245,20 @@ describe('criterion 21 — one port: shell, its socket and Vite\'s HMR', () => {
       const page = await browser.newPage();
       expect(await page.goto(s.url)).toBe(200);
       await page.waitFor('() => document.querySelectorAll(".card[data-verdict=pass], .card[data-verdict=fail]").length === 2', null);
-      const cards = await page.evaluate<string[][]>(
-        '() => [...document.querySelectorAll(".card")].map((c) => [c.querySelector("h2").firstChild.textContent, c.dataset.verdict, new URL(c.querySelector("iframe").src).pathname])',
+      const cards = await page.evaluate<unknown[][]>(
+        '() => [...document.querySelectorAll(".card")].map((c) => [c.querySelector(".title").textContent, c.dataset.verdict, Number(c.style.order) < 1000])',
       );
       expect(cards).toEqual([
-        ['cambia-de-pestana', 'pass', '/app-tabs/cambia-de-pestana'],
-        ['falla', 'fail', '/app-tabs/falla'],
+        ['cambia-de-pestana', 'pass', false],
+        ['falla', 'fail', true],
       ]);
-      expect(await page.evaluate<string>('() => document.title')).toBe('Workbench · app-tabs');
+      // The cards are shots of the measuring browser, not pages: no iframe until Live asks for one.
+      expect(await page.evaluate<number>('() => document.querySelectorAll("iframe[src]").length')).toBe(0);
+      await page.waitFor('() => document.querySelector(".card[data-id=falla] .shots img") !== null', null);
+      const shot = await page.evaluate<string>('() => document.querySelector(".card[data-id=falla] .shots img").src');
+      const png = await fetch(shot);
+      expect([png.status, png.headers.get('content-type')]).toEqual([200, 'image/png']);
+      expect(await page.evaluate<string>('() => document.title')).toBe('app-tabs · workbench');
     } finally {
       await browser.close();
     }

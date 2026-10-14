@@ -67,7 +67,10 @@ describe('app-card of the example', () => {
     const [result] = await run('criterion titulo\n  given\n    props titulo-largo\n  then\n    text app-card "A title long enough"\n');
     expect(result).toMatchObject({ verdict: 'pass' });
     expect(result!.steps[0]).toMatchObject({
-      evidence: 'A title long enough that it has to wrap onto a second line inside the card',
+      evidence: {
+        expected: 'A title long enough',
+        actual: 'A title long enough that it has to wrap onto a second line inside the card',
+      },
     });
   }, 60_000);
 });

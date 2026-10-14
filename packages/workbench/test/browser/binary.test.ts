@@ -21,8 +21,8 @@ beforeAll(() => {
   execSync('pnpm build', { cwd: PACKAGE, stdio: 'ignore' });
 }, 120_000);
 
-afterEach(() => {
-  child?.kill();
+afterEach(async () => {
+  await closed(child);
   child = undefined;
   project?.remove();
   project = undefined;
@@ -122,10 +122,11 @@ describe('the binary — criterion 22', () => {
     project = tempProject('bin');
     const { line, exited } = await launch([project.path(TABS)]);
     expect(line).toEqual({
-      url: expect.stringMatching(/^http:\/\/127\.0\.0\.1:\d+\/__bench\/$/u) as unknown,
+      url: expect.stringMatching(/^http:\/\/127\.0\.0\.1:\d+\/__bench\/app-tabs\/$/u) as unknown,
       tag: 'app-tabs',
       component: project.path(TABS),
       criteria: 1,
+      browser: expect.stringMatching(/^(chrome|msedge|chromium)$/u) as unknown,
     });
     expect((await fetch(String(line['url']))).status).toBe(200);
     expect(existsSync(project.path(`node_modules/.fudic-bench/${child!.pid}`))).toBe(true);
@@ -162,7 +163,7 @@ describe('the binary — criterion 22', () => {
 
   it('without a file, the usage as an error line and exit code 1', async () => {
     const { line, exited } = await launch([]);
-    expect(line).toEqual({ error: { message: 'usage: fudic-workbench <file> [--port <n>] [--keep]' } });
+    expect(line).toEqual({ error: { message: expect.stringMatching(/^usage: fudic-workbench <file> /u) as unknown } });
     expect(await exited).toBe(1);
   }, 30_000);
 });

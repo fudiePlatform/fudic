@@ -129,7 +129,8 @@ interface TermFile {
 /** The terms of a `fudic/terms` folder, imported as they are and wrapped. */
 export function termsFrom(dir: string): (block: BlockKind, name: string) => Promise<LoadedTerm> {
   return async (block, name) => {
-    const mod = (await import(pathToFileURL(`${dir}/${block}/${name}.js`).href)) as TermFile;
-    return { layer: 'workspace', params: mod.meta.params, run: mod.run };
+    const path = `${dir}/${block}/${name}.js`;
+    const mod = (await import(pathToFileURL(path).href)) as TermFile;
+    return { path, layer: 'workspace', params: mod.meta.params, run: mod.run };
   };
 }

@@ -118,7 +118,7 @@ describe('planBench — criterion 4, a criterion without props', () => {
       dir: DIR,
     });
     expect(plan.criteria).toEqual([
-      { id: 'bare', route: '/app-card/bare', fixture: null, steps: [{ block: 'then', term: 'visible', args: ['app-card'] }] },
+      { id: 'bare', route: '/app-card/bare', mount: 'body > app-card', fixture: null, steps: [{ block: 'then', term: 'visible', args: ['app-card'] }] },
     ]);
     expect(plan.files.get('routes/app-card/bare.fud')).toBe(expected('bare').replace('app-card · app-card', 'app-card · bare'));
     expect(plan.files.get('routes/app-card/bare.fud')).not.toContain('@code');
@@ -131,7 +131,7 @@ describe('planBench — criterion 4, a criterion without props', () => {
       fixtures: { vacia: {} },
       dir: DIR,
     });
-    expect(plan.criteria[0]).toEqual({ id: 'empty', route: '/app-card/empty', fixture: 'vacia', steps: [] });
+    expect(plan.criteria[0]).toEqual({ id: 'empty', route: '/app-card/empty', mount: 'body > app-card', fixture: 'vacia', steps: [] });
     expect(plan.files.get('routes/app-card/empty.fud')).not.toContain('@code');
     expect(plan.files.get('routes/app-card/empty.fud')).toContain('    <app-card></app-card>\n');
   });
@@ -143,7 +143,7 @@ describe('planBench — criterion 4, a criterion without props', () => {
       fixtures: {},
       dir: DIR,
     });
-    expect(plan.criteria).toEqual([{ id: 'app-card', route: '/app-card/app-card', fixture: null, steps: [] }]);
+    expect(plan.criteria).toEqual([{ id: 'app-card', route: '/app-card/app-card', mount: 'body > app-card', fixture: null, steps: [] }]);
     expect([...plan.files]).toEqual([
       [MOUNT, expected('bare')],
       ['routes/app-card/app-card.fud', expected('bare')],
@@ -168,7 +168,7 @@ describe('planBench — criterion 4, a criterion without props', () => {
       fixtures: {},
       dir: DIR,
     });
-    expect(plan.criteria[0]).toEqual({ id: 'bare', route: '/app-card/bare', fixture: null, steps: [] });
+    expect(plan.criteria[0]).toEqual({ id: 'bare', route: '/app-card/bare', mount: 'body > app-card', fixture: null, steps: [] });
     expect(plan.files.get('routes/app-card/bare.fud')).not.toContain('@code');
   });
 });
@@ -179,7 +179,7 @@ describe('planBench — a fixture entry it cannot mount', () => {
   it('ends the criterion in error, without a page, when the entry is not in the fixture', () => {
     const plan = planBench({ target: TARGET, spec: source, fixtures: { other: { title: 'x' } }, dir: DIR });
     expect(plan.criteria).toEqual([
-      { id: 'c', route: '/app-card/c', fixture: 'missing', steps: [], error: 'the fixture has no entry "missing"' },
+      { id: 'c', route: '/app-card/c', mount: 'body > app-card', fixture: 'missing', steps: [], error: 'the fixture has no entry "missing"' },
     ]);
     expect([...plan.files.keys()]).toEqual([MOUNT]);
   });
@@ -218,7 +218,7 @@ describe('planBench — criterion 5, a Signal prop', () => {
 
   it('writes the host with the literal initial value, and the page mounts the host from the folder', () => {
     const plan = planBench({ target: TARGET_SIGNAL, spec: source, fixtures, dir: DIR });
-    expect(plan.files.get('components/bench-host-diez.fud')).toBe(
+    expect(plan.files.get('components/signal-display/bench-host-signal-display-diez.fud')).toBe(
       '<link rel="component" href="C:/proj/src/components/signal-display.fud">\n' +
         '\n' +
         '@code {\n' +
@@ -229,24 +229,25 @@ describe('planBench — criterion 5, a Signal prop', () => {
         '  }\n' +
         '}\n' +
         '\n' +
-        '<bench-host-diez>\n' +
+        '<bench-host-signal-display-diez>\n' +
         '  <template shadowrootmode="open">\n' +
         '    <signal-display .value=@value></signal-display>\n' +
         '  </template>\n' +
-        '</bench-host-diez>\n',
+        '</bench-host-signal-display-diez>\n',
     );
     expect(plan.files.get('routes/signal-display/diez.fud')).toBe(
       '<!DOCTYPE html>\n<html>\n  <head>\n' +
-        `    <link rel="component" href="${DIR}/components/bench-host-diez.fud">\n` +
+        `    <link rel="component" href="${DIR}/components/signal-display/bench-host-signal-display-diez.fud">\n` +
         '    <script type="module" src="fudic:runtime"></script>\n' +
         '    <title>signal-display · diez</title>\n' +
         '  </head>\n  <body>\n' +
-        '    <bench-host-diez></bench-host-diez>\n' +
+        '    <bench-host-signal-display-diez></bench-host-signal-display-diez>\n' +
         '  </body>\n</html>\n',
     );
     expect(plan.criteria[0]).toEqual({
       id: 'diez',
       route: '/signal-display/diez',
+      mount: 'body > bench-host-signal-display-diez',
       fixture: 'diez',
       steps: [{ block: 'then', term: 'text', args: ['signal-display', '10'] }],
     });
@@ -254,7 +255,7 @@ describe('planBench — criterion 5, a Signal prop', () => {
 
   it('forwards the other props through the host, in fixture order', () => {
     const plan = planBench({ target: TARGET_SIGNAL, spec: source, fixtures, dir: DIR });
-    expect(plan.files.get('components/bench-host-mixta.fud')).toBe(
+    expect(plan.files.get('components/signal-display/bench-host-signal-display-mixta.fud')).toBe(
       '<link rel="component" href="C:/proj/src/components/signal-display.fud">\n' +
         '\n' +
         '@code {\n' +
@@ -268,25 +269,25 @@ describe('planBench — criterion 5, a Signal prop', () => {
         '  }\n' +
         '}\n' +
         '\n' +
-        '<bench-host-mixta>\n' +
+        '<bench-host-signal-display-mixta>\n' +
         '  <template shadowrootmode="open">\n' +
         '    <signal-display .label=@label .value=@value .note=@note></signal-display>\n' +
         '  </template>\n' +
-        '</bench-host-mixta>\n',
+        '</bench-host-signal-display-mixta>\n',
     );
-    expect(plan.files.get('routes/signal-display/mixta.fud')).toContain('<bench-host-mixta></bench-host-mixta>');
+    expect(plan.files.get('routes/signal-display/mixta.fud')).toContain('<bench-host-signal-display-mixta></bench-host-signal-display-mixta>');
     expect(plan.files.get('routes/signal-display/mixta.fud')).not.toContain('@code');
   });
 
   it('gives no host to a criterion of the same component without a Signal', () => {
     const plan = planBench({ target: TARGET_SIGNAL, spec: source, fixtures, dir: DIR });
-    expect(plan.files.has('components/bench-host-plana.fud')).toBe(false);
+    expect(plan.files.has('components/signal-display/bench-host-signal-display-plana.fud')).toBe(false);
     expect(plan.files.get('routes/signal-display/plana.fud')).toContain('    <signal-display .label=@label></signal-display>\n');
     expect([...plan.files.keys()]).toEqual([
       'routes/signal-display.fud',
-      'components/bench-host-diez.fud',
+      'components/signal-display/bench-host-signal-display-diez.fud',
       'routes/signal-display/diez.fud',
-      'components/bench-host-mixta.fud',
+      'components/signal-display/bench-host-signal-display-mixta.fud',
       'routes/signal-display/mixta.fud',
       'routes/signal-display/plana.fud',
     ]);
@@ -320,11 +321,12 @@ describe('planBench — criterion 6, an initial value that is not a JSON literal
     expect(plan.criteria[0]).toEqual({
       id: 'fecha',
       route: '/app-card/fecha',
+      mount: 'body > app-card',
       fixture: 'fecha',
       steps: [],
       error: 'the initial value of signal prop "value" is not a JSON literal',
     });
-    expect([...plan.files.keys()]).toEqual([MOUNT, 'components/bench-host-sana.fud', 'routes/app-card/sana.fud']);
+    expect([...plan.files.keys()]).toEqual([MOUNT, 'components/app-card/bench-host-app-card-sana.fud', 'routes/app-card/sana.fud']);
   });
 });
 

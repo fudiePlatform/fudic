@@ -53,7 +53,7 @@ describe('app-slotted and app-frame', () => {
 
   it('criterion 10 — the fallback of an empty slot counts, a <style> does not', async () => {
     const result = await run('app-slotted', 'criterion vacio\n  then\n    text app-slotted "Hello card fallback text One Featured"\n');
-    expect(result).toMatchObject({ verdict: 'pass', steps: [{ evidence: 'Hello card fallback text One Featured' }] });
+    expect(result).toMatchObject({ verdict: 'pass', steps: [{ evidence: { actual: 'Hello card fallback text One Featured' } }] });
   }, 60_000);
 
   it('criterion 10 — the nodes assigned to a slot count, and replace its fallback', async () => {
@@ -64,8 +64,8 @@ describe('app-slotted and app-frame', () => {
     expect(result).toMatchObject({
       verdict: 'pass',
       steps: [
-        { evidence: 'Hello card assigned words One Featured' },
-        { evidence: 'Hello card assigned words One Featured' },
+        { evidence: { expected: 'assigned words', actual: 'Hello card assigned words One Featured' } },
+        { evidence: { expected: 'assigned words', actual: 'Hello card assigned words One Featured' } },
       ],
     });
   }, 60_000);
@@ -91,11 +91,14 @@ describe('criterion 15 — the signal the component writes is the host\'s, alive
         'criterion suma-uno\n  given\n    props diez\n  when\n    click role:button\n  then\n    text app-bump "11"\n',
       await bench.fixture(bump.fixture!),
     );
-    expect(plan.files.has('components/bench-host-suma-uno.fud')).toBe(true);
+    expect(plan.files.has('components/app-bump/bench-host-app-bump-suma-uno.fud')).toBe(true);
     const [before, after] = await Promise.all(plan.criteria.map((c) => runCriterion(browser, bench.origin, c, terms)));
-    expect(before).toMatchObject({ verdict: 'pass', steps: [{ evidence: 'more 10' }] });
+    expect(before).toMatchObject({ verdict: 'pass', steps: [{ evidence: { expected: '10', actual: 'more 10' } }] });
     expect(after).toMatchObject({ verdict: 'pass', pageErrors: [] });
-    expect(after!.steps.map((s) => ('evidence' in s ? s.evidence : s.error))).toEqual(['clicked role:button', 'more 11']);
+    expect(after!.steps.map((s) => ('evidence' in s ? s.evidence : s.error))).toEqual([
+      'clicked role:button',
+      { expected: '11', actual: 'more 11' },
+    ]);
   }, 60_000);
 });
 

@@ -60,7 +60,12 @@ describe('loadSession', () => {
     const loaded = await session(project, 'app-tabs', { frameworkTerms: EXAMPLE_TERMS });
     expect(loaded.message.diagnostics).toEqual([]);
     expect(loaded.message.criteria).toEqual([
-      { id: 'a', route: '/app-tabs/a', steps: [{ block: 'then', text: 'role:tab/"Tab A" is visible' }] },
+      {
+        id: 'a',
+        route: '/app-tabs/a',
+        line: 3,
+        steps: [{ block: 'then', text: 'role:tab/"Tab A" is visible', file: `${EXAMPLE_TERMS}/then/visible.js` }],
+      },
     ]);
     expect((await loaded.loadTerm('then', 'visible')).layer).toBe('framework');
     await expect(loaded.loadTerm('then', 'nope')).rejects.toThrow('there is no then term "nope"');
@@ -91,8 +96,8 @@ describe('loadSession', () => {
     const loaded = await session(project, 'app-tabs');
     expect(loaded.message.diagnostics).toEqual([]);
     expect(loaded.message.criteria[0]!.steps).toEqual([
-      { block: 'then', text: 'plain role:tab/"Tab A"' },
-      { block: 'then', text: 'broken app-tabs' },
+      { block: 'then', text: 'plain role:tab/"Tab A"', file: project.path('fudic/terms/then/plain.js') },
+      { block: 'then', text: 'broken app-tabs', file: null },
     ]);
     expect(loaded.criteria[0]).toMatchObject({ id: 'a', fixture: null });
   }, 60_000);
