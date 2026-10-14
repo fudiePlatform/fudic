@@ -1,6 +1,6 @@
 # SDD-57 — Tests unitarios de componentes, rutas, layouts y snippets: `@fudic/testing`
 
-> **Estado:** `Listo` — [tareas](./SDD-57-Task.md), 20 / 30.
+> **Estado:** `Listo` — [tareas](./SDD-57-Task.md), 22 / 30.
 > **Paquetes:** `@fudic/testing` (nuevo) · `@fudic/vite` · `@fudic/core` · `@fudic/http` ·
 > `@fudic/example-basic`
 > **Depende de:** 17 (hidratación), 19 (plugin, routing y dev server), 20 (Service Worker),
@@ -724,3 +724,9 @@ Tomadas con Pedro el 2026-10-14, antes de redactar:
     cambiar de sentido cuando BUG-47 quite los imports huérfanos. La transformación la hace un
     Vite propio del worker, creado en la primera llamada y cerrado al acabar el fichero: unos
     0,5 s la primera vez.
+24. **El worker simulado espera a que la página lea su respuesta** (2026-10-14). El
+    `MessageChannel` de Node entrega el mensaje un turno del bucle después, así que la respuesta
+    cuenta como pendiente (§4.7) hasta que la página cierra su extremo del canal, que es lo que
+    hace `invalidate` al leerla. `t.invalidated` guarda lo que la página envía: una llamada que no
+    es `GET` deja también su propia página obsoleta (`$fn`), así que el criterio 19 con un `POST`
+    desde `/` lee `['/', '/usuarios']`.

@@ -1,0 +1,24 @@
+@code {
+  @server {
+    import { post } from "@fudic/http";
+
+    export const save = post().invalidates("/usuarios").handle(() => "saved");
+  }
+
+  @client {
+    import { signal } from "@fudic/core";
+
+    const state = signal("");
+
+    async function go() {
+      state.set(await save());
+    }
+  }
+}
+
+<x-save>
+  <template shadowrootmode="open">
+    <button @click=@go>Save</button>
+    <output role="status">@state()</output>
+  </template>
+</x-save>

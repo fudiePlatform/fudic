@@ -23,6 +23,7 @@ import { settled, track } from './pending.js';
 import { serveOverrides, standTree, type ProviderOverride } from './providers.js';
 import { answerWith, type FetchOverride } from './fetch.js';
 import { knowComponents } from './server.js';
+import { controlWith, invalidated } from './sw.js';
 import { gesturesOf, type Gestures } from './gestures.js';
 import { queriesOf, type Queries } from './queries.js';
 
@@ -45,6 +46,8 @@ export interface MountOptions<P> {
   readonly providers?: readonly ProviderOverride[];
   /** Answers this test's requests in place of the in-memory server (§3.5). */
   readonly fetch?: FetchOverride;
+  /** A simulated Service Worker controls the page (§3.6). */
+  readonly sw?: boolean;
 }
 
 export interface Mounted<P> extends Queries, Gestures {
@@ -52,6 +55,8 @@ export interface Mounted<P> extends Queries, Gestures {
   readonly host: HTMLElement;
   /** Its shadow root. */
   readonly root: ShadowRoot;
+  /** The paths the simulated worker was told to invalidate (§3.6). Empty without `sw`. */
+  readonly invalidated: readonly string[];
   /** Change props as a parent would, and wait for the repaint. */
   props(next: Partial<P>): Promise<void>;
   unmount(): void;
@@ -168,6 +173,7 @@ export async function mount<P extends object = Record<string, unknown>>(
   const providers = options.providers ?? [];
   serveOverrides(providers);
   answerWith(options.fetch);
+  controlWith(options.sw === true);
   const order = propOrder(component[FILE_EXPORT], component.tag);
   // Checked before anything is painted: a prop the component does not declare is the test's
   // mistake, whichever road it takes.
@@ -184,6 +190,9 @@ export async function mount<P extends object = Record<string, unknown>>(
     ...queriesOf(root),
     ...gesturesOf(root),
     host,
+    get invalidated() {
+      return invalidated();
+    },
     root,
     async props(next) {
       const payload: unknown[] = [];

@@ -12,6 +12,7 @@ import { closeClientGraphs } from './client-graph.js';
 import { BASE_URL } from './constants.js';
 import { blankPage } from './document.js';
 import { answerWith, forgetCookies, installFetch } from './fetch.js';
+import { controlWith } from './sw.js';
 import { registerMatchers } from './matchers.js';
 import { serveOverrides } from './providers.js';
 import { forgetShadowInits, recordShadowInits } from './shadow.js';
@@ -28,6 +29,7 @@ onCleanup(() => {
   forgetShadowInits();
   answerWith(undefined);
   forgetCookies();
+  controlWith(false);
   serveOverrides([]);
 });
 afterEach(cleanup);

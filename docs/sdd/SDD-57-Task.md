@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/testing` (nuevo) · `@fudic/vite` · `@fudic/core` · `@fudic/http` ·
 > `@fudic/example-basic`
 > **Rama:** `sdd-57-tests-unitarios` (nace de `main`)
-> **Progreso:** 20 / 30 — `Listo`.
+> **Progreso:** 22 / 30 — `Listo`.
 
 **El orden manda en cuatro puntos.**
 
@@ -94,8 +94,8 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 21 | 17 | **Worker simulado** (§3.6): `navigator.serviceWorker.controller` que apunta los paths y contesta por el `MessageChannel`; `t.invalidated` | `testing` | `src/sw.ts` |
-| [ ] | 22 | 21 | **Tests.** Criterios 19 y 20, y la parte del worker del criterio 27 | `testing` | `test/sw.test.ts` |
+| [x] | 21 | 17 | **Worker simulado** (§3.6): `navigator.serviceWorker.controller` que apunta los paths y contesta por el `MessageChannel`; `t.invalidated`. La respuesta cuenta como pendiente hasta que la página cierra su puerto (decisión 8.1.24) | `testing` | `src/sw.ts` |
+| [x] | 22 | 21 | **Tests.** Criterios 19 y 20, y la parte del worker del criterio 27 | `testing` | `test/app/sw.test.ts` |
 
 ## Fase 6 — variantes del `<template>` (2)
 
