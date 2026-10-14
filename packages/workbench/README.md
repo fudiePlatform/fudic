@@ -10,15 +10,43 @@ app-tabs.fixture.ts       the props each criterion mounts with (`props <name>`)
 fudic/terms/{given,when,then}/<term>.js
 ```
 
-Add it as a devDependency of the app. It runs the criteria in the system Chrome, or Edge, or the
-Chromium Playwright downloads (`npx playwright-core install chromium`), in that order.
+## Setup
 
-## In the editor
+1. Add it to the app, next to the app's `package.json` (in a monorepo, the app's, not the
+   repository's):
 
-**Ctrl+K V** (`Cmd+K V`) on a `.fud` or its `.fudspec`. Each criterion is a card with its steps,
-its verdict and what the measuring browser saw: a shot at the end (and one before the first
-`when`), with a box on every element a step located. The ones that fail come first, with what was
-expected against what it got. **Live** opens the criterion's page, alive, to touch it.
+   ```sh
+   pnpm add -D @fudic/workbench
+   ```
+
+2. Have a browser. It runs the criteria in the system Chrome, or else the system Edge (every
+   Windows 10/11 has it), or else the Chromium Playwright downloads:
+
+   ```sh
+   npx playwright-core install chromium
+   ```
+
+3. For the editor, install the Fudic extension for VS Code. Working on fudic itself, build it from
+   the repository and install it in one step, then reload the window
+   (`Developer: Reload Window`):
+
+   ```sh
+   pnpm --filter fudic-vscode install:vsix
+   ```
+
+## In VS Code
+
+1. Open the app's folder, or a folder above it (File → Open Folder). The extension looks for
+   `node_modules/@fudic/workbench` from the open file up to the workspace folder.
+2. Open a component's `.fud` or its `.fudspec`.
+3. Press **Ctrl+K V** (`Cmd+K V` on a Mac), or click the preview icon in the editor's title bar,
+   or run **Fudic: Open Workbench** from the command palette.
+
+The workbench opens in a tab beside the editor and runs every criterion. Each criterion is a card
+with its steps, its verdict and what the measuring browser saw: a shot at the end (and one before
+the first `when`), with a box on every element a step located. The ones that fail come first,
+with what was expected against what it got. **Live** opens the criterion's page, alive, to touch
+it.
 
 Saving the `.fud`, a component it links, the `.fudspec`, the fixture or a term runs it again.
 
@@ -35,19 +63,46 @@ The `.fudspec` shows a mark in the margin of each criterion, the failing ones in
 «▶ Run» above each. The status bar says `app-tabs 2/3`. The tab's «Open in browser» shows the same
 page in your browser.
 
-One process serves every component of a project: opening the second one starts nothing.
+One process serves every component of a project: opening the second one starts nothing. Closing
+the last tab stops it, and the browser with it.
 
 Settings: `fudic.workbench.browser` (`auto`), `fudic.workbench.workers` (`4`),
 `fudic.workbench.node` (the Node that runs it).
 
+When it does not open:
+
+| The editor says | Do |
+|---|---|
+| `@fudic/workbench` is not installed in this workspace | step 1 of Setup, in the app the file belongs to |
+| could not run Node | set `fudic.workbench.node` to your Node executable |
+| FUD0975, could not launch a browser | step 2 of Setup, or choose one in `fudic.workbench.browser` |
+| FUD0970 | the file is not a component with a tag: pages, routes and layouts do not open |
+
 ## From the command line
+
+Add a script to the app's `package.json`:
+
+```json
+"scripts": { "test:spec": "fudic-workbench run" }
+```
+
+And run it from the app's folder:
+
+```sh
+pnpm test:spec                                   # every .fudspec of the app
+pnpm exec fudic-workbench run src/components     # the ones under a folder
+pnpm exec fudic-workbench run src/components/app-card.fudspec
+pnpm exec fudic-workbench run --browser msedge   # in another browser
+pnpm exec fudic-workbench run --json             # one JSON message per line
+```
 
 ```sh
 fudic-workbench run [<path>…] [--browser <b>] [--workers <n>] [--json]
 ```
 
-Runs every `.fudspec` under the current folder (or in the files and folders given) and exits with
-`0` only when every criterion passed. A good `test:spec` script, and a CI step:
+Without paths it runs every `.fudspec` under the current folder (`node_modules`, `dist` and hidden
+folders aside); a path can be a `.fudspec`, a `.fud` or a folder. It exits with `0` only when
+every criterion passed, so it is a CI step as it is:
 
 ```
 app-card
