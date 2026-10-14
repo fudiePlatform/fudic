@@ -63,18 +63,61 @@ function namesIn(node: unknown, out: Set<string>): Set<string> {
   return out;
 }
 
+/** Whether `node` runs a call where it stands. */
+function calls(node: unknown): boolean {
+  if (Array.isArray(node)) return node.some(calls);
+  if (node === null || typeof node !== 'object') return false;
+  const ast = node as AstNode;
+  // A function or a class is defined, not run: what its body calls happens later, if ever.
+  if (/^(?:ArrowFunctionExpression|FunctionExpression|FunctionDeclaration|ClassDeclaration|ClassExpression)$/u.test(ast.type)) return false;
+  if (ast.type === 'CallExpression' || ast.type === 'NewExpression' || ast.type === 'TaggedTemplateExpression') return true;
+  return Object.values(ast).some(calls);
+}
+
 /**
- * The sources a browser module still needs once it is bundled: an import whose bindings
- * nothing uses is dropped by the bundler, and that is exactly what an erased
- * `serverValidator` leaves behind — the import of the data it read. A bare import and an
- * `export … from` are always kept.
+ * Whether a top-level statement may do something when its module is evaluated — which is
+ * what keeps a module in a bundle even when nothing it exports is used. Conservative: only an
+ * import, an `export … from`, a function or class declaration, and a declaration (exported or
+ * not) whose initializers call nothing, are known to do nothing.
  */
-async function neededSources(code: string): Promise<Set<string>> {
+function hasEffect(statement: AstNode): boolean {
+  switch (statement.type) {
+    case 'ImportDeclaration':
+    case 'ExportAllDeclaration':
+    case 'FunctionDeclaration':
+    case 'ClassDeclaration':
+      return false;
+    case 'ExportNamedDeclaration':
+      return statement['declaration'] !== null && hasEffect(statement['declaration'] as AstNode);
+    case 'ExportDefaultDeclaration':
+      return calls(statement['declaration']);
+    case 'VariableDeclaration':
+      return calls(statement['declarations']);
+    default:
+      return true;
+  }
+}
+
+/** What the walk needs to know about one browser module, read in one pass of the parser. */
+interface ModuleFacts {
+  /**
+   * The sources it still needs once bundled: an import whose names nothing uses after the
+   * client transform is what an erased `serverValidator` or `.server` half leaves behind. A
+   * bare import and an `export … from` are always needed.
+   */
+  readonly needed: ReadonlySet<string>;
+  /** Whether evaluating it may do something (see `hasEffect`). */
+  readonly effects: boolean;
+}
+
+/** Exported for its tests: the rules are easier to read one statement at a time. */
+export async function factsOf(code: string): Promise<ModuleFacts> {
   const { parseAstAsync } = await import('vite');
   const program = await parseAstAsync(code);
-  const used = namesIn(program.body, new Set());
+  const body = program.body as unknown as AstNode[];
+  const used = namesIn(body, new Set());
   const needed = new Set<string>();
-  for (const statement of program.body as unknown as AstNode[]) {
+  for (const statement of body) {
     const source = (statement['source'] as { value?: string } | null | undefined)?.value;
     if (source === undefined) continue;
     const specifiers = (statement['specifiers'] as { local: { name: string } }[] | undefined) ?? [];
@@ -84,28 +127,39 @@ async function neededSources(code: string): Promise<Set<string>> {
       specifiers.some((s) => used.has(s.local.name));
     if (keeps) needed.add(source);
   }
-  return needed;
+  return { needed, effects: body.some(hasEffect) };
 }
 
 /**
  * The project files the client chunk of `file` reaches through its imports, transformed for
- * the browser and pruned as the bundler prunes. `ssr: true` walks the SSR transform instead,
- * where nothing is erased and nothing pruned: what the graph would be without the plugin.
+ * the browser and pruned as the bundler prunes (decision 8.1.23): an import whose names nothing
+ * uses any more is followed only when the module it names has top-level effects, because a
+ * bundler keeps that module whole. `ssr: true` walks the SSR transform instead, where nothing
+ * is erased and nothing pruned: what the graph would be without the plugin.
  */
 export async function walk(file: string, ssr: boolean): Promise<ClientGraph> {
   const vite = await server();
   const env = ssr ? vite.environments['ssr']! : vite.environments['client']!;
   const root = inject(ROOT_KEY);
+  const facts = new Map<string, Promise<ModuleFacts>>();
+  const factsAt = (url: string): Promise<ModuleFacts> => {
+    let found = facts.get(url);
+    if (found === undefined) {
+      found = env.transformRequest(url).then((result) => factsOf(result!.code));
+      facts.set(url, found);
+    }
+    return found;
+  };
   const seen = new Set<string>();
   const visit = async (url: string): Promise<void> => {
-    const result = (await env.transformRequest(url))!;
-    const needed = ssr ? undefined : await neededSources(result.code);
+    const needed = ssr ? undefined : (await factsAt(url)).needed;
+    if (ssr) await env.transformRequest(url);
     const node = (await env.moduleGraph.getModuleByUrl(url))!;
     for (const imported of node.importedModules) {
       const at = imported.file;
       // A package is not the project's: what it imports cannot be a file of the project.
       if (at === null || seen.has(at) || at.includes('/node_modules/') || relative(root, at).startsWith('..')) continue;
-      if (needed !== undefined && !needed.has(imported.url)) continue;
+      if (needed !== undefined && !needed.has(imported.url) && !(await factsAt(imported.url)).effects) continue;
       seen.add(at);
       await visit(imported.url);
     }

@@ -710,9 +710,17 @@ Tomadas con Pedro el 2026-10-14, antes de redactar:
     página, `Origin` y `Sec-Fetch-Site: same-origin`, y guarda las cookies que fija la
     respuesta. `csrf.server` ve lo mismo que en producción. Entre tests se vacía también el bote
     de cookies (§4.8).
-23. **`clientGraphOf` poda como el bundler** (2026-10-14). La transformación de cliente borra el
-    cuerpo de un `serverValidator`, pero el `import` de lo que leía se queda en el módulo hasta
-    que el bundler lo elimina por no usarse. El recorrido sigue solo los imports cuyos nombres
-    se usan tras la transformación (más los imports desnudos y los `export … from`), que es lo
-    que llega al navegador. La transformación la hace un Vite propio del worker, creado en la
-    primera llamada y cerrado al acabar el fichero: unos 0,5 s la primera vez.
+23. **`clientGraphOf` poda como el bundler, y no más** (2026-10-14, corregida). La transformación
+    de cliente borra el cuerpo de un `serverValidator` o la mitad `.server` de un middleware,
+    pero deja el `import` de lo que usaban; quien lo quita, o no, es el bundler. El recorrido sigue
+    un `import` cuyos nombres ya no se usan solo si el módulo importado tiene efectos de nivel
+    superior, porque entonces el bundler lo conserva entero: cuenta como efecto, de forma
+    conservadora, cualquier sentencia que no sea un `import`, un `export … from`, una
+    declaración de función o de clase, o una declaración de variables cuyos inicializadores no
+    llaman a nada (lo que hay dentro de una función o una clase no corre al definirla). Un
+    `import './x'` y un `export … from` se siguen siempre. Un análisis por módulo, con el mismo
+    parser. Así el criterio 18 no alcanza un `aliases.ts` sin efectos, y un `tokens.ts` que acaba
+    en `Service(Tokens)` **sí** se alcanza hoy: es BUG-47 §2.1, y su test lo documenta para
+    cambiar de sentido cuando BUG-47 quite los imports huérfanos. La transformación la hace un
+    Vite propio del worker, creado en la primera llamada y cerrado al acabar el fichero: unos
+    0,5 s la primera vez.
