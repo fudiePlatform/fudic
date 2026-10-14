@@ -34,6 +34,24 @@ describe('createTermContext, on a page without a browser', () => {
     await expect(ctx.locate('app-card').box()).rejects.toThrow('app-card is not rendered');
   });
 
+  it('criterion 8 — tells where each reference that resolves to one element was', async () => {
+    const located: [string, unknown][] = [];
+    const page = fakePage((target) =>
+      'css' in target && target.css === 'app-card'
+        ? { box: { x: 5, y: 7, width: 3, height: 4 } }
+        : 'role' in target
+          ? { count: 0 }
+          : { box: null },
+    );
+    const ctx = createTermContext(page, undefined, (ref, box) => located.push([ref, box]));
+    await ctx.locate('app-card').isVisible();
+    await ctx.locate('role:link').isVisible();
+    await ctx.locate('hidden-thing').isVisible();
+    expect(located).toEqual([['app-card', { x: 5, y: 7, width: 3, height: 4 }]]);
+    // Without a callback, a located box goes nowhere.
+    await expect(createTermContext(page).locate('app-card').isVisible()).resolves.toBe(true);
+  });
+
   it('goto calls back and does not navigate; without a callback it is quiet', async () => {
     const page = fakePage();
     const paths: string[] = [];

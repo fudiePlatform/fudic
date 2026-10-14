@@ -23,10 +23,14 @@ export interface PlannedStep {
 export interface PlannedCriterion {
   /** The criterion's slug. */
   readonly id: string;
-  /** `/<slug>`. */
+  /** `/<tag>/<slug>`. */
   readonly route: string;
+  /** CSS of the element its page mounts (the component, or its `Signal` host): what is photographed. */
+  readonly mount: string;
   /** The name in `props <name>`. */
   readonly fixture: string | null;
+  /** Offset of its `criterion` keyword in the `.fudspec`; 0 for the bare card without one. */
+  readonly offset: number;
   readonly steps: readonly PlannedStep[];
   /** Present when the criterion cannot run: it ends in error without opening its page. */
   readonly error?: string;
@@ -47,34 +51,54 @@ export interface PlanInput {
   readonly spec: SpecFile;
   /** The executed fixture; empty without one. */
   readonly fixtures: ExecutedFixtures;
+  /** The workbench folder, absolute: a `Signal` host page links its host from there. */
+  readonly dir: string;
 }
 
 /** The one line that is not a step: it names the fixture entry the page mounts with. */
 const PROPS = 'props';
 
-/** The folder, relative to the project root, that holds one workbench per tag. */
+/** The folder, relative to the project root, that holds one workbench per process. */
 export const BENCH_FOLDER = 'node_modules/.fudic-bench';
 
-/** Where a project's workbench for a tag lives: inside the project, out of git and the watcher. */
-export function benchDir(target: BenchTarget): string {
-  return `${target.projectRoot.replace(/\/+$/u, '')}/${BENCH_FOLDER}/${target.tag}`;
+/**
+ * Where a process keeps its pages: inside the project, out of git and the watcher, and its own.
+ * Keyed by process and not by tag: two workbenches on one component must not share a folder,
+ * since each empties it when it starts and deletes it when it closes.
+ */
+export function benchDir(projectRoot: string, pid: number = process.pid): string {
+  return `${projectRoot.replace(/\/+$/u, '')}/${BENCH_FOLDER}/${pid}`;
+}
+
+/** `routesDir` of the workbench's Vite, relative to the project root as the plugin reads it. */
+export function benchRoutesDir(pid: number = process.pid): string {
+  return `${BENCH_FOLDER}/${pid}/routes`;
+}
+
+/**
+ * The component's bare page, `/<tag>`: no props, no steps. It is written before Vite starts, so
+ * the plugin finds the component from its first look; and it cannot collide with a criterion,
+ * whose pages live one level down, at `/<tag>/<slug>`.
+ */
+export function mountFiles(target: BenchTarget): ReadonlyMap<string, string> {
+  return new Map([[`routes/${target.tag}.fud`, pageSource(target.tag, target.tag, bare(target))]]);
 }
 
 export function planBench(input: PlanInput): BenchPlan {
   const { target } = input;
-  const files = new Map<string, string>();
+  const files = new Map(mountFiles(target));
   const diagnostics: FudDiagnostic[] = [];
-  const planner = new Planner(target, input.fixtures, files, diagnostics);
+  const planner = new Planner(target, input.fixtures, input.dir, files, diagnostics);
 
   const criteria: PlannedCriterion[] = [];
   if (target.spec === null) {
     diagnostics.push(FUD0972({ file: target.component }));
-    criteria.push(planner.plan(target.tag, null, []));
+    criteria.push(planner.plan(target.tag, null, [], 0));
   } else {
     for (const criterion of input.spec.criteria) {
       if (criterion.slug === undefined) continue;
       const { fixture, steps } = readCriterion(criterion);
-      criteria.push(planner.plan(criterion.slug.text, fixture, steps));
+      criteria.push(planner.plan(criterion.slug.text, fixture, steps, criterion.keyword.start));
     }
   }
   return { criteria, files, diagnostics };
@@ -98,20 +122,47 @@ function written(arg: Arg): string {
   return `role:${arg.role.text}` + (arg.name === undefined ? '' : `/"${arg.name.text}"`);
 }
 
+/** What a page mounts: the component (or its host), with the code and attributes of its props. */
+interface Mount {
+  readonly href: string;
+  readonly tag: string;
+  readonly code: string;
+  readonly attrs: string;
+}
+
+/** The component alone, without props. */
+function bare(target: BenchTarget): Mount {
+  return { href: target.component, tag: target.tag, code: '', attrs: '' };
+}
+
+function pageSource(tag: string, title: string, mount: Mount): string {
+  return (
+    '<!DOCTYPE html>\n<html>\n  <head>\n' +
+    `    <link rel="component" href="${mount.href}">\n` +
+    mount.code +
+    '    <script type="module" src="fudic:runtime"></script>\n' +
+    `    <title>${tag} · ${title}</title>\n` +
+    '  </head>\n  <body>\n' +
+    `    <${mount.tag}${mount.attrs}></${mount.tag}>\n` +
+    '  </body>\n</html>\n'
+  );
+}
+
 /** Writes the page (and the host, when it needs one) of each criterion. */
 class Planner {
   constructor(
     private readonly target: BenchTarget,
     private readonly fixtures: ExecutedFixtures,
+    private readonly dir: string,
     private readonly files: Map<string, string>,
     private readonly diagnostics: FudDiagnostic[],
   ) {}
 
-  plan(id: string, fixture: string | null, steps: readonly PlannedStep[]): PlannedCriterion {
-    const base = { id, route: `/${id}`, fixture, steps };
+  plan(id: string, fixture: string | null, steps: readonly PlannedStep[], offset: number): PlannedCriterion {
+    const base = { id, route: `/${this.target.tag}/${id}`, mount: `body > ${this.target.tag}`, fixture, offset, steps };
     const component = this.target.component;
     if (fixture === null) {
-      this.page(id, { href: component, tag: this.target.tag, code: '', attrs: '' });
+      this.page(id, bare(this.target));
       return base;
     }
 
@@ -144,8 +195,9 @@ class Planner {
       }
       literals.push({ prop, literal });
     }
-    const hostTag = `bench-host-${id}`;
-    const hostFile = `components/${hostTag}.fud`;
+    // The component's tag in the host's: one Vite compiles the hosts of every open component.
+    const hostTag = `bench-host-${this.target.tag}-${id}`;
+    const hostFile = `components/${this.target.tag}/${hostTag}.fud`;
     this.files.set(
       hostFile,
       hostComponent({
@@ -158,21 +210,11 @@ class Planner {
         order,
       }),
     );
-    this.page(id, { href: `${benchDir(this.target)}/${hostFile}`, tag: hostTag, code: '', attrs: '' });
-    return base;
+    this.page(id, { href: `${this.dir}/${hostFile}`, tag: hostTag, code: '', attrs: '' });
+    return { ...base, mount: `body > ${hostTag}` };
   }
 
-  private page(id: string, mount: { href: string; tag: string; code: string; attrs: string }): void {
-    this.files.set(
-      `routes/${id}.fud`,
-      '<!DOCTYPE html>\n<html>\n  <head>\n' +
-        `    <link rel="component" href="${mount.href}">\n` +
-        mount.code +
-        '    <script type="module" src="fudic:runtime"></script>\n' +
-        `    <title>${this.target.tag} · ${id}</title>\n` +
-        '  </head>\n  <body>\n' +
-        `    <${mount.tag}${mount.attrs}></${mount.tag}>\n` +
-        '  </body>\n</html>\n',
-    );
+  private page(id: string, mount: Mount): void {
+    this.files.set(`routes/${this.target.tag}/${id}.fud`, pageSource(this.target.tag, id, mount));
   }
 }

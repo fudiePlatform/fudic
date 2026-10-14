@@ -130,9 +130,9 @@ describe('grammar contribution', () => {
 describe('settings', () => {
   const properties = at(manifest, 'contributes', 'configuration', 'properties');
 
-  it('contributes exactly the six settings of §3.2 and SDD-32', () => {
+  it('contributes exactly the eight settings of §3.2, SDD-32 and BUG-48', () => {
     // Deliberately short. Each setting is a branch of behaviour that has to be tested; the
-    // option zoo of other extensions is debt, and a sixth one must be a decision, not a
+    // option zoo of other extensions is debt, and a ninth one must be a decision, not a
     // drift.
     expect(Object.keys(properties as object)).toEqual([
       'fudic.server.path',
@@ -141,7 +141,17 @@ describe('settings', () => {
       'fudic.format.enable',
       'fudic.exposeVirtualFiles',
       'fudic.workbench.node',
+      'fudic.workbench.browser',
+      'fudic.workbench.workers',
     ]);
+  });
+
+  it('lets the workbench\'s browser and workers be chosen, auto and 4 by default (BUG-48 §3.5)', () => {
+    expect(at(properties, 'fudic.workbench.browser', 'default')).toBe('auto');
+    expect(at(properties, 'fudic.workbench.browser', 'enum')).toEqual(['auto', 'chrome', 'msedge', 'chromium', 'firefox', 'webkit']);
+    expect(at(properties, 'fudic.workbench.workers', 'default')).toBe(4);
+    expect(at(properties, 'fudic.workbench.workers', 'type')).toBe('integer');
+    expect(at(properties, 'fudic.workbench.workers', 'minimum')).toBe(1);
   });
 
   it('defaults to the safe end of every switch', () => {
@@ -157,7 +167,7 @@ describe('settings', () => {
 });
 
 describe('commands', () => {
-  it('contributes the six commands with their titles', () => {
+  it('contributes the seven commands with their titles', () => {
     expect(at(manifest, 'contributes', 'commands')).toEqual([
       { command: 'fudic.restartServer', title: 'Fudic: Restart Language Server' },
       { command: 'fudic.showVirtualFiles', title: 'Fudic: Show Virtual Files' },
@@ -165,6 +175,7 @@ describe('commands', () => {
       { command: 'fudic.formatDocument', title: 'Fudic: Format Document' },
       { command: 'fudic.toggleComment', title: 'Fudic: Toggle Comment' },
       { command: 'fudic.openWorkbench', title: 'Fudic: Open Workbench', icon: '$(open-preview)' },
+      { command: 'fudic.runCriterion', title: 'Fudic: Run Criterion' },
     ]);
   });
 
@@ -331,15 +342,16 @@ describe('the workbench contributions (SDD-32 criterion 23)', () => {
     ]);
   });
 
-  it('puts its icon in the editor title bar, for the same two languages', () => {
+  it('puts its icon in the editor title bar, for the same two languages, and keeps the CodeLens command out of the palette', () => {
     expect(at(manifest, 'contributes', 'menus')).toEqual({
+      commandPalette: [{ command: 'fudic.runCriterion', when: 'false' }],
       'editor/title': [{ command: 'fudic.openWorkbench', when: WHEN, group: 'navigation' }],
     });
   });
 
-  it('is contributed exactly as it is registered', async () => {
+  it('is contributed exactly as it is registered: the commands, and the CodeLens one the adapter registers', async () => {
     const { COMMAND_IDS } = await import('../src/commands/index.js');
     const contributed = (at(manifest, 'contributes', 'commands') as readonly { command: string }[]).map((c) => c.command);
-    expect(contributed).toEqual(Object.values(COMMAND_IDS));
+    expect(contributed).toEqual([...Object.values(COMMAND_IDS), 'fudic.runCriterion']);
   });
 });

@@ -8,11 +8,29 @@
  */
 
 import { FUD0975 } from '@fudic/diagnostics';
-import { chromium, type Browser, type Locator, type Page } from 'playwright-core';
+import { chromium, firefox, webkit, type Browser, type Locator, type Page } from 'playwright-core';
 import type { WorkbenchFailure } from './types.js';
+
+/** A browser the criteria can run in: the system's Chrome or Edge, or one Playwright downloads. */
+export type BrowserName = 'chrome' | 'msedge' | 'chromium' | 'firefox' | 'webkit';
+
+/** What `--browser` takes: a name, or `auto`. */
+export type BrowserChoice = BrowserName | 'auto';
+
+export const BROWSER_CHOICES: readonly BrowserChoice[] = ['auto', 'chrome', 'msedge', 'chromium', 'firefox', 'webkit'];
+
+/** `auto`, in order: the two a machine usually has, then the one Playwright can download. */
+const AUTO: readonly BrowserName[] = ['chrome', 'msedge', 'chromium'];
 
 /** Every call of a term's `ctx` gives up after this long. */
 export const CALL_TIMEOUT = 5000;
+
+/**
+ * Loading a criterion's page gives up after this long. It is not a term's call: the first pages
+ * of a cold Vite compile in parallel, under whatever else the machine is doing, and a criterion
+ * that errors because the server was busy says nothing about the component.
+ */
+export const LOAD_TIMEOUT = 30_000;
 
 /** The source of a function, run in the page: `(arg) => …`, or `(element, arg) => …` on a locator. */
 export type PageScript = string;
@@ -22,10 +40,13 @@ export type Target = { readonly css: string } | { readonly role: string; readonl
 
 export interface LocatorLike {
   count(): Promise<number>;
-  box(): Promise<{ readonly width: number; readonly height: number } | null>;
+  /** Its box in the page, in pixels; null when it is not rendered. */
+  box(): Promise<{ readonly x: number; readonly y: number; readonly width: number; readonly height: number } | null>;
   isVisible(): Promise<boolean>;
   click(): Promise<void>;
   evaluate<R>(script: PageScript, arg?: unknown): Promise<R>;
+  /** A PNG of the element as the page shows it. */
+  screenshot(): Promise<Buffer>;
 }
 
 export interface PageLike {
@@ -44,22 +65,53 @@ export interface PageLike {
 }
 
 export interface BrowserLike {
+  /** Which browser it is: the shell and the binary say it. */
+  readonly name: BrowserName;
   newPage(): Promise<PageLike>;
   close(): Promise<void>;
 }
 
-/** What `launchBrowser` needs of Playwright's `chromium`; injected for the failure path. */
+/** What `launchBrowser` needs of one of Playwright's browser types. */
 export interface Launcher {
-  launch(options: { readonly channel: string; readonly headless: boolean }): Promise<Browser>;
+  launch(options: { readonly channel?: string; readonly headless: boolean }): Promise<Browser>;
 }
 
-/** The system Chrome, without a window. */
-export async function launchBrowser(launcher: Launcher = chromium): Promise<BrowserLike | WorkbenchFailure> {
-  try {
-    return adaptBrowser(await launcher.launch({ channel: 'chrome', headless: true }));
-  } catch (error) {
-    return { diagnostic: FUD0975({ reason: firstLine(error) }) };
+/** Playwright's three browser types; injected for the failure paths. */
+export interface Launchers {
+  readonly chromium: Launcher;
+  readonly firefox: Launcher;
+  readonly webkit: Launcher;
+}
+
+const PLAYWRIGHT: Launchers = { chromium, firefox, webkit };
+
+/** How each name launches: a browser type, and a channel for the system's own. */
+function launchOf(name: BrowserName, launchers: Launchers): () => Promise<Browser> {
+  if (name === 'chrome' || name === 'msedge') return () => launchers.chromium.launch({ channel: name, headless: true });
+  return () => launchers[name].launch({ headless: true });
+}
+
+/** The command that downloads what Playwright can download: the asked one, or its Chromium. */
+export function installCommand(choice: BrowserChoice): string {
+  const name = choice === 'firefox' || choice === 'webkit' ? choice : 'chromium';
+  return `npx playwright-core install ${name}`;
+}
+
+/** A browser without a window: the first of `auto` that starts, or exactly the one asked for. */
+export async function launchBrowser(
+  choice: BrowserChoice = 'auto',
+  launchers: Launchers = PLAYWRIGHT,
+): Promise<BrowserLike | WorkbenchFailure> {
+  const tried = choice === 'auto' ? AUTO : [choice];
+  let reason = '';
+  for (const name of tried) {
+    try {
+      return adaptBrowser(name, await launchOf(name, launchers)());
+    } catch (error) {
+      reason = `${name}: ${firstLine(error)}`;
+    }
   }
+  return { diagnostic: FUD0975({ tried, reason, install: installCommand(choice) }) };
 }
 
 export function firstLine(error: unknown): string {
@@ -67,11 +119,13 @@ export function firstLine(error: unknown): string {
   return text.split('\n')[0]!;
 }
 
-function adaptBrowser(browser: Browser): BrowserLike {
+function adaptBrowser(name: BrowserName, browser: Browser): BrowserLike {
   return {
+    name,
     async newPage() {
       const page = await browser.newPage();
       page.setDefaultTimeout(CALL_TIMEOUT);
+      page.setDefaultNavigationTimeout(LOAD_TIMEOUT);
       return adaptPage(page);
     },
     close: () => browser.close(),
@@ -119,5 +173,6 @@ function adaptLocator(locator: Locator): LocatorLike {
     isVisible: () => locator.isVisible(),
     click: () => locator.click(),
     evaluate: (script, arg) => locator.evaluate(inPage(script, 'element, arg') as never, arg),
+    screenshot: () => locator.screenshot({ animations: 'disabled' }),
   };
 }

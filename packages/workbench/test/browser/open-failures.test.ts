@@ -74,7 +74,9 @@ describe('openWorkbench, failing', () => {
 
   it('without Chrome answers FUD0975, closes everything, and leaves no folder', async () => {
     project = tempProject('no-chrome');
-    control.browser = async () => ({ diagnostic: FUD0975({ reason: 'not found' }) });
+    control.browser = async () => ({
+      diagnostic: FUD0975({ tried: ['chrome'], reason: 'chrome: not found', install: 'npx playwright-core install chromium' }),
+    });
     const answer = await openWorkbench(project.path(TABS));
     expect(isFailure(answer) && answer.diagnostic.code).toBe('FUD0975');
     expect(existsSync(project.path('node_modules/.fudic-bench'))).toBe(false);
@@ -89,12 +91,12 @@ describe('openWorkbench, failing', () => {
       die = () => reject(new Error('Target page, context or browser has been closed\nmore'));
     });
     dying.catch(() => undefined);
-    const dead: BrowserLike = { newPage: () => dying, close: async () => undefined };
+    const dead: BrowserLike = { name: 'chrome', newPage: () => dying, close: async () => undefined };
     control.browser = async () => dead;
     await open(TABS);
     die();
     expect(await shell!.next((m) => m.type === 'problem')).toEqual({
-      v: 1,
+      v: 2,
       type: 'problem',
       message: 'Target page, context or browser has been closed',
     });
@@ -132,6 +134,6 @@ describe('openWorkbench, failing', () => {
     const s = await open(TABS, { keep: true });
     await shell!.next(resultOf('a'));
     await s.close();
-    expect(existsSync(project.path('node_modules/.fudic-bench/app-tabs/routes/a.fud'))).toBe(true);
+    expect(existsSync(project.path(`node_modules/.fudic-bench/${process.pid}/routes/app-tabs/a.fud`))).toBe(true);
   }, 60_000);
 });

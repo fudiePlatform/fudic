@@ -9,22 +9,64 @@
 
 import type { Server } from 'node:http';
 import { fudic } from '@fudic/vite';
-import { createServer, type ViteDevServer } from 'vite';
-import { BENCH_FOLDER } from './pages.js';
-import type { BenchTarget } from './target.js';
+import { createServer, type Plugin, type ViteDevServer } from 'vite';
+import { slashes } from './target.js';
 
-export function startVite(target: BenchTarget, http: Server): Promise<ViteDevServer> {
-  // Relative to the root, as the plugin reads it: the same folder as `benchDir`.
-  const routesDir = `${BENCH_FOLDER}/${target.tag}/routes`;
+export interface ViteInput {
+  /** The project root. */
+  readonly root: string;
+  /** Relative to the root, as the plugin reads it. */
+  readonly routesDir: string;
+  /** The workbench's server: Vite's HMR listens on it. */
+  readonly http: Server;
+  /**
+   * A file Vite has finished processing after a change: see `processedChanges`. Absent when
+   * nothing reruns on save (`fudic-workbench run`).
+   */
+  readonly onProcessed?: (file: string) => void;
+}
+
+export function startVite(input: ViteInput): Promise<ViteDevServer> {
   return createServer({
-    root: target.projectRoot,
+    root: input.root,
     configFile: false,
     appType: 'custom',
     logLevel: 'warn',
-    plugins: [fudic({ routesDir })],
+    // `liveCheck: false`: the editor and the build already report type errors. Here nobody reads
+    // them, and the checker cost most of a second to start and kept checking while Chrome measured.
+    plugins: [
+      fudic({ routesDir: input.routesDir, liveCheck: false }),
+      ...(input.onProcessed !== undefined ? [processedChanges(input.onProcessed)] : []),
+    ],
     // The overlay painted one criterion's error over another's page and swallowed its clicks.
-    server: { middlewareMode: true, hmr: { server: http, overlay: false } },
+    server: { middlewareMode: true, hmr: { server: input.http, overlay: false } },
   });
+}
+
+/**
+ * Tells when Vite has processed a changed file: once `hotUpdate` ran for it in EVERY
+ * environment, whatever Vite decided to send. Waiting for a `full-reload` instead waits forever
+ * on a component that ships no client JS — it is in no client graph, and nothing reloads.
+ */
+export function processedChanges(onProcessed: (file: string) => void): Plugin {
+  let environments: readonly string[] = [];
+  const seen = new Map<string, Set<string>>();
+  return {
+    name: 'fudic-workbench:processed',
+    configureServer(server) {
+      environments = Object.keys(server.environments);
+    },
+    hotUpdate({ file }) {
+      const done = seen.get(file) ?? new Set<string>();
+      done.add(this.environment.name);
+      if (environments.every((name) => done.has(name))) {
+        seen.delete(file);
+        onProcessed(slashes(file));
+      } else {
+        seen.set(file, done);
+      }
+    },
+  };
 }
 
 /**

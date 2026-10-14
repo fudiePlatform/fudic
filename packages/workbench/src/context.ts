@@ -5,6 +5,7 @@
 
 import type { LocatorLike, PageLike, Target } from './browser.js';
 import { FLAT_TEXT } from './flat-text.js';
+import type { Box } from './protocol.js';
 import { settled } from './settle.js';
 
 export interface TermLocator {
@@ -35,9 +36,14 @@ const SET_ATTRIBUTE = `(element, [name, value]) => element.setAttribute(name, va
 
 /**
  * `goto` never navigates — the workbench mounts the component alone, on its own page — and
- * tells `onGoto` instead, so the step can say it was ignored.
+ * tells `onGoto` instead, so the step can say it was ignored. Every reference a call resolves
+ * tells `onLocate` where it was, so the shot can mark it.
  */
-export function createTermContext(page: PageLike, onGoto: (path: string) => void = () => undefined): TermContext {
+export function createTermContext(
+  page: PageLike,
+  onGoto: (path: string) => void = () => undefined,
+  onLocate: (ref: string, box: Box) => void = () => undefined,
+): TermContext {
   return {
     goto(path) {
       onGoto(path);
@@ -49,6 +55,8 @@ export function createTermContext(page: PageLike, onGoto: (path: string) => void
       const one = async (): Promise<LocatorLike> => {
         const count = await element.count();
         if (count > 1) throw new Error(`${ref} matches ${count} elements; a reference must match one`);
+        const box = count === 1 ? await element.box() : null;
+        if (box !== null) onLocate(ref, box);
         return element;
       };
       return {

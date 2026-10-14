@@ -11,7 +11,8 @@ export const meta = {
 
 export async function run(ctx, { target, expected }) {
   const text = await ctx.locate(target).textContent();
-  return { pass: text.includes(expected), evidence: text };
+  // `{ expected, actual }`: the workbench and `run` show them one against the other.
+  return { pass: text.includes(expected), evidence: { expected, actual: text } };
 }
 
 export const selfTest = [{ args: { target: 'app-card', expected: '' }, expect: 'pass' }];

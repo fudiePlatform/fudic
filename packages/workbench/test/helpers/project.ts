@@ -49,6 +49,8 @@ export interface Shell {
   readonly messages: BenchMessage[];
   /** Resolves with the first message from `from` on that matches. */
   next<T extends BenchMessage>(match: (m: BenchMessage) => m is T, from?: number, timeout?: number): Promise<T>;
+  /** Sends a command as the shell's buttons do. */
+  send(command: object): void;
   close(): void;
 }
 
@@ -73,9 +75,43 @@ export async function connectShell(url: string): Promise<Shell> {
         await new Promise((done) => setTimeout(done, 25));
       }
     },
+    send: (command) => socket.send(JSON.stringify(command)),
     close: () => socket.close(),
   };
 }
+
+/** Every message an `onMessage` receives, and a way to wait for one: a workbench without a shell. */
+export interface Inbox {
+  readonly messages: BenchMessage[];
+  readonly onMessage: (message: BenchMessage) => void;
+  next<T extends BenchMessage>(match: (m: BenchMessage) => m is T, from?: number, timeout?: number): Promise<T>;
+}
+
+export function inbox(): Inbox {
+  const messages: BenchMessage[] = [];
+  return {
+    messages,
+    onMessage: (message) => messages.push(message),
+    async next(match, from = 0, timeout = 30_000) {
+      const started = Date.now();
+      for (;;) {
+        const found = messages.slice(from).find(match);
+        if (found !== undefined) return found;
+        if (Date.now() - started > timeout) {
+          throw new Error(`no matching message in ${timeout} ms; got ${JSON.stringify(messages.map((m) => m.type))}`);
+        }
+        await new Promise((done) => setTimeout(done, 25));
+      }
+    },
+  };
+}
+
+export const isState = (m: BenchMessage): m is Extract<BenchMessage, { type: 'state' }> => m.type === 'state';
+export const isCancelled = (m: BenchMessage): m is Extract<BenchMessage, { type: 'cancelled' }> => m.type === 'cancelled';
+export const runningOf =
+  (tag: string) =>
+  (m: BenchMessage): m is Extract<BenchMessage, { type: 'running' }> =>
+    m.type === 'running' && m.tag === tag;
 
 export const isSession = (m: BenchMessage): m is SessionMessage => m.type === 'session';
 export const isRunning = (m: BenchMessage): m is Extract<BenchMessage, { type: 'running' }> => m.type === 'running';

@@ -38,7 +38,7 @@ let browser: BrowserLike;
 let criteria: readonly PlannedCriterion[];
 
 beforeAll(async () => {
-  bench = await startBench(PROJECT, 'app-tabs');
+  bench = await startBench(PROJECT);
   browser = await chrome();
   criteria = bench.plan(target(PROJECT, 'app-tabs', false), SPEC).criteria;
 }, 60_000);
@@ -58,6 +58,7 @@ function loader(pauseMs: number): TermLoader {
   return async (block, name): Promise<LoadedTerm> => {
     if (name === 'pause') {
       return {
+        path: 'test/pause.js',
         layer: 'workspace',
         params: [],
         run: async () => {
@@ -68,6 +69,7 @@ function loader(pauseMs: number): TermLoader {
     }
     if (name === 'full-reload') {
       return {
+        path: 'test/full-reload.js',
         layer: 'workspace',
         params: [],
         run: async () => {
@@ -85,6 +87,7 @@ function loader(pauseMs: number): TermLoader {
 /** The same browser, with one page call replaced: to show what the engine's own call prevents. */
 function patched(override: (page: PageLike) => Partial<PageLike>): BrowserLike {
   return {
+    name: browser.name,
     async newPage() {
       const page = await browser.newPage();
       return { ...page, ...override(page) };
@@ -111,7 +114,7 @@ describe('criterion 11 — the first click is served (bug A)', () => {
     try {
       const result = await runCriterion(careless, bench.origin, byId('cambia-de-pestana'), loader(0));
       expect(result.verdict).toBe('fail');
-      expect(result.steps.at(-1)).toMatchObject({ term: 'text', pass: false, evidence: 'panel A' });
+      expect(result.steps.at(-1)).toMatchObject({ term: 'text', pass: false, evidence: { actual: 'panel A' } });
     } finally {
       bench.slow = null;
     }
@@ -148,6 +151,6 @@ describe('criterion 14 — the measuring page does not listen to Vite', () => {
     const listening = patched(() => ({ silenceWebSockets: async () => undefined }));
     const result = await runCriterion(listening, bench.origin, byId('recarga-a-mitad'), loader(0));
     expect(result.verdict).toBe('fail');
-    expect(result.steps.at(-1)).toMatchObject({ term: 'text', pass: false, evidence: 'panel A' });
+    expect(result.steps.at(-1)).toMatchObject({ term: 'text', pass: false, evidence: { actual: 'panel A' } });
   }, 60_000);
 });

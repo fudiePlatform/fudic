@@ -19,8 +19,8 @@ import { registerCommands } from './commands/index.js';
 import { watchEmptyValues } from './empty-value.js';
 import { nodeProcesses } from './spawn.js';
 import { createVirtualDocStore, VIRTUAL_SCHEME } from './virtual-doc-provider.js';
-import { createWorkbenches, type Workbenches } from './workbench.js';
-import { panelHtml } from './workbench-panel.js';
+import { createWorkbenches, criterionLenses, samePath, type Workbenches } from './workbench.js';
+import { handlePanelRequest, panelHtml, themeOf } from './workbench-panel.js';
 import {
   bundledServerPath,
   caretAtOf,
@@ -29,12 +29,18 @@ import {
   fudUriOf,
   insertClosingTag,
   languageOf,
+  MARGIN_COLORS,
+  marginIcon,
+  marginLines,
+  problemLines,
   replaceLines,
   typedTextOf,
+  viewsOf,
   vscodeTsdkPath,
   workbenchFileOf,
+  type MarginKind,
 } from './vscode-shape.js';
-import type { ClientLaunch, LanguageClientPort, WorkbenchPanel } from './ports.js';
+import type { ClientLaunch, CriterionView, LanguageClientPort, WorkbenchPanel, WorkbenchResultsPort } from './ports.js';
 
 let session: FudicSession | undefined;
 let workbenches: Workbenches | undefined;
@@ -48,9 +54,22 @@ export const openWorkbenchPanel = (view: { readonly title: string; readonly url:
     enableScripts: true,
     retainContextWhenHidden: true,
   });
-  panel.webview.html = panelHtml(view.url);
-  // The bar posts one message only: «Open in browser».
-  panel.webview.onDidReceiveMessage(() => void vscode.env.openExternal(vscode.Uri.parse(view.url)));
+  panel.webview.html = panelHtml(view.url, themeOf(vscode.window.activeColorTheme.kind));
+  // «Open in browser», and the shell's «open this file at this line».
+  panel.webview.onDidReceiveMessage((message: unknown) =>
+    handlePanelRequest(message, {
+      openExternal: () => void vscode.env.openExternal(vscode.Uri.parse(view.url)),
+      openFile: (file, line) =>
+        void vscode.window.showTextDocument(vscode.Uri.file(file), {
+          viewColumn: vscode.ViewColumn.One,
+          selection: new vscode.Range(line - 1, 0, line - 1, 0),
+        }),
+    }),
+  );
+  const themed = vscode.window.onDidChangeActiveColorTheme(
+    (theme) => void panel.webview.postMessage({ type: 'theme', theme: themeOf(theme.kind) }),
+  );
+  panel.onDidDispose(() => themed.dispose());
   return {
     reveal: () => panel.reveal(),
     showStopped: (message) => void panel.webview.postMessage({ type: 'stopped', message }),
@@ -60,8 +79,65 @@ export const openWorkbenchPanel = (view: { readonly title: string; readonly url:
   };
 };
 
+const MARGIN_KINDS: readonly MarginKind[] = ['pass', 'fail', 'running'];
+
+/**
+ * The workbench's results in the `.fudspec` (BUG-48 §4.9): a mark in the margin of each
+ * `criterion`, and the ones that did not pass in Problems. Kept by path, and painted again
+ * whenever the visible editors change.
+ */
+export const createWorkbenchResults = (): WorkbenchResultsPort & vscode.Disposable & { repaint(): void } => {
+  const decorations = new Map(
+    MARGIN_KINDS.map((kind) => [
+      kind,
+      vscode.window.createTextEditorDecorationType({
+        gutterIconPath: vscode.Uri.parse(marginIcon(MARGIN_COLORS[kind])),
+        gutterIconSize: 'contain',
+      }),
+    ]),
+  );
+  const problems = vscode.languages.createDiagnosticCollection('fudic-workbench');
+  const kept = new Map<string, readonly CriterionView[]>();
+  const repaint = (): void => {
+    for (const editor of vscode.window.visibleTextEditors) {
+      const lines = marginLines(viewsOf(kept, editor.document.uri.fsPath));
+      for (const [kind, decoration] of decorations) {
+        editor.setDecorations(decoration, lines[kind].map((line) => new vscode.Range(line, 0, line, 0)));
+      }
+    }
+  };
+  return {
+    show(spec, views) {
+      kept.set(samePath(spec), views);
+      problems.set(
+        vscode.Uri.file(spec),
+        problemLines(views).map((problem) => {
+          const range = new vscode.Range(problem.line, 0, problem.line, Number.MAX_SAFE_INTEGER);
+          const diagnostic = new vscode.Diagnostic(range, problem.message, vscode.DiagnosticSeverity.Error);
+          diagnostic.source = 'fudic workbench';
+          return diagnostic;
+        }),
+      );
+      repaint();
+    },
+    clear(spec) {
+      kept.delete(samePath(spec));
+      problems.delete(vscode.Uri.file(spec));
+      repaint();
+    },
+    repaint,
+    dispose() {
+      problems.dispose();
+      for (const decoration of decorations.values()) decoration.dispose();
+    },
+  };
+};
+
 /** The command behind the status bar item. Not contributed: it is not a user command. */
 const SHOW_OUTPUT = 'fudic.showOutput';
+
+/** The command behind a criterion's CodeLens: `(file, id)`, `id` null for the failing ones. */
+const RUN_CRITERION = 'fudic.runCriterion';
 
 /**
  * The command behind every "Explain FUDnnnn" bulb: the server sends the path of the code's
@@ -166,14 +242,50 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscodeTsdk: vscodeTsdkPath(vscode.env.appRoot),
   });
 
-  workbenches = createWorkbenches({
+  const results = createWorkbenchResults();
+  const benchBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
+  benchBar.command = 'fudic.openWorkbench';
+  const opened = createWorkbenches({
     fs: { exists: existsSync },
     workspace: { folders: folderPaths(vscode.workspace.workspaceFolders) },
     config: { get: (id) => vscode.workspace.getConfiguration().get(id) },
     processes: nodeProcesses,
     panels: { open: openWorkbenchPanel },
     notifications: { warn: (message) => void vscode.window.showWarningMessage(message) },
+    results,
+    status: {
+      show: (text, tooltip) => {
+        benchBar.text = text;
+        benchBar.tooltip = tooltip;
+        benchBar.show();
+      },
+      hide: () => benchBar.hide(),
+    },
   });
+  workbenches = opened;
+  context.subscriptions.push(
+    results,
+    benchBar,
+    vscode.window.onDidChangeActiveTextEditor((editor) => opened.focus(workbenchFileOf(editor))),
+    vscode.window.onDidChangeVisibleTextEditors(() => results.repaint()),
+    // «▶ Run» over each criterion of a `.fudspec`, and «▶ Run failing» over the first.
+    vscode.languages.registerCodeLensProvider(
+      { language: 'fudspec' },
+      {
+        provideCodeLenses: (document) =>
+          criterionLenses(document.getText()).map(
+            (lens) =>
+              new vscode.CodeLens(new vscode.Range(lens.line, 0, lens.line, 0), {
+                title: lens.title,
+                command: RUN_CRITERION,
+                arguments: [document.uri.fsPath.replaceAll('\\', '/'), lens.id],
+              }),
+          ),
+      },
+    ),
+    vscode.commands.registerCommand(RUN_CRITERION, (file: string, id: string | null) => opened.run(file, id)),
+  );
+  opened.focus(workbenchFileOf(vscode.window.activeTextEditor));
 
   registerCommands(
     {

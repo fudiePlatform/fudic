@@ -1,30 +1,51 @@
 /**
  * The public shapes of the workbench: what `openWorkbench` takes and what it answers. Nothing
- * here knows VS Code: the editor talks to the workbench through the binary's JSON line.
+ * here knows VS Code: the editor talks to the workbench through the binary's JSON lines.
  */
 
 import type { FudDiagnostic } from '@fudic/diagnostics';
+import type { BrowserChoice, BrowserName } from './browser.js';
+import type { BenchMessage, RunCommand } from './protocol.js';
 
 export interface WorkbenchOptions {
   /** Port of the server. 0 by default: ephemeral. */
   readonly port?: number;
   /** Keep the folder of generated pages on close. */
   readonly keep?: boolean;
+  /** The browser the criteria run in; `auto` by default. */
+  readonly browser?: BrowserChoice;
+  /** Criteria that run at once; 4 by default. */
+  readonly workers?: number;
+  /** Every message the shells receive, from the first one: what the binary writes on stdout. */
+  readonly onMessage?: (message: BenchMessage) => void;
 }
 
-export interface WorkbenchSession {
-  /** The shell: what the VS Code tab and the browser button open. */
+/** One component open in a workbench. */
+export interface OpenedComponent {
+  /** Its shell: what the VS Code tab and the browser button open. */
   readonly url: string;
   readonly tag: string;
   /** Absolute path of the component's `.fud`. */
   readonly component: string;
-  /** Number of criteria of the first session load. */
+  /** Number of criteria of its first session load. */
   readonly criteria: number;
+}
+
+/** A workbench: one project, the component it was opened with first, and any opened later. */
+export interface WorkbenchSession extends OpenedComponent {
+  /** The browser the criteria run in. */
+  readonly browser: BrowserName;
+  /** Opens another component of the same project; one already open answers as it is. */
+  open(file: string): Promise<OpenedComponent | WorkbenchFailure>;
+  /** Closes one component: its runs stop and its pages go. Unknown tags are ignored. */
+  closeComponent(tag: string): void;
+  /** Run, pin, pause or cancel, for the component the command names. Unknown tags are ignored. */
+  command(command: RunCommand): void;
   /** Closes browser, Vite and server, and deletes the folder unless `keep`. Idempotent. */
   close(): Promise<void>;
 }
 
-/** Why the workbench could not open. */
+/** Why the workbench, or a component, could not open. */
 export interface WorkbenchFailure {
   readonly diagnostic: FudDiagnostic;
 }

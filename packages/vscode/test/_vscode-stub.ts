@@ -54,7 +54,38 @@ export interface StubState {
   panels: PanelStub[];
   /** Every URI handed to `env.openExternal`, as text. */
   external: string[];
+  /** The workbench's own status bar item: the one created at priority 99 (BUG-48). */
+  benchBar: { text: string; tooltip: string; visible: boolean; command: string };
+  /** Every decoration type created, with its options and whether it was disposed. */
+  decorationTypes: { readonly options: unknown; disposed: boolean }[];
+  /** The editors in view: what the margin is painted on. */
+  visibleEditors: VisibleEditorStub[];
+  /** Handlers registered for `onDidChangeVisibleTextEditors`. */
+  visibleListeners: (() => void)[];
+  /** `activeColorTheme.kind`. */
+  themeKind: number;
+  /** Handlers registered for `onDidChangeActiveColorTheme`. */
+  themeListeners: ((theme: { kind: number }) => void)[];
+  /** Each diagnostic collection by name: what it holds by file path, and whether it was disposed. */
+  problems: Map<string, { readonly byPath: Map<string, DiagnosticStub[]>; disposed: boolean }>;
+  /** CodeLens providers registered, with their selector. */
+  codeLensProviders: { readonly selector: unknown; readonly provider: { provideCodeLenses(document: unknown): CodeLensStub[] } }[];
+  /** Every document `showTextDocument` was asked to show, with its options. */
+  shownDocuments: [unknown, unknown][];
 }
+
+/** An editor in view: its file and the decorations painted on it, by decoration type. */
+export interface VisibleEditorStub {
+  readonly document: { readonly uri: { readonly fsPath: string } };
+  readonly painted: Map<unknown, Range[]>;
+  setDecorations(type: unknown, ranges: Range[]): void;
+}
+
+/** Builds an editor in view over a file. */
+export const visibleEditor = (fsPath: string): VisibleEditorStub => {
+  const painted = new Map<unknown, Range[]>();
+  return { document: { uri: { fsPath } }, painted, setDecorations: (type, ranges) => void painted.set(type, ranges) };
+};
 
 /** A `vscode.WebviewPanel`, as the workbench tab uses it. */
 export interface PanelStub {
@@ -75,7 +106,7 @@ export interface EditorStub {
     readonly languageId: string;
     readonly version: number;
     readonly eol: number;
-    readonly uri: { toString(): string };
+    readonly uri: { readonly fsPath: string; toString(): string };
     positionAt(offset: number): number;
     getText(): string;
     offsetAt(position: { line: number; character: number }): number;
@@ -104,7 +135,7 @@ export const editorFor = (
     languageId,
     version,
     eol: 1,
-    uri: { toString: () => uri },
+    uri: { fsPath: URI.parse(uri).fsPath, toString: () => uri },
     positionAt: (offset: number) => offset,
     getText: () => text,
     // Line/character to offset over the same text, so an assertion about the offset is an
@@ -141,6 +172,30 @@ export class Range {
 }
 
 export type RangeStub = Range;
+
+export const DiagnosticSeverity = { Error: 0, Warning: 1 } as const;
+
+/** `vscode.Diagnostic`: a range, a message, a severity, and the source set afterwards. */
+export class Diagnostic {
+  source: string | undefined;
+  constructor(
+    readonly range: Range,
+    readonly message: string,
+    readonly severity: number,
+  ) {}
+}
+
+export type DiagnosticStub = Diagnostic;
+
+/** `vscode.CodeLens`: where, and the command it runs. */
+export class CodeLens {
+  constructor(
+    readonly range: Range,
+    readonly command: { title: string; command: string; arguments: unknown[] },
+  ) {}
+}
+
+export type CodeLensStub = CodeLens;
 
 /** A `vscode.TextDocumentChangeEvent`, as the tag closer reads it. */
 export interface ChangeEventStub {
@@ -210,9 +265,27 @@ export const state: StubState = {
   edits: [],
   panels: [],
   external: [],
+  benchBar: emptyBar(),
+  decorationTypes: [],
+  visibleEditors: [],
+  visibleListeners: [],
+  themeKind: 1,
+  themeListeners: [],
+  problems: new Map(),
+  codeLensProviders: [],
+  shownDocuments: [],
 };
 
 export const reset = (): void => {
+  state.benchBar = emptyBar();
+  state.decorationTypes = [];
+  state.visibleEditors = [];
+  state.visibleListeners = [];
+  state.themeKind = 1;
+  state.themeListeners = [];
+  state.problems = new Map();
+  state.codeLensProviders = [];
+  state.shownDocuments = [];
   state.settings = {};
   state.folders = undefined;
   state.appRoot = '/vscode';
@@ -253,11 +326,82 @@ export const focusEditor = (editor: EditorStub | undefined): void => {
   for (const listener of state.editorListeners) listener(editor);
 };
 
+/** Fires `onDidChangeVisibleTextEditors`, as opening or closing an editor would. */
+export const showEditors = (editors: VisibleEditorStub[]): void => {
+  state.visibleEditors = editors;
+  for (const listener of state.visibleListeners) listener();
+};
+
+/** Fires `onDidChangeActiveColorTheme`, as switching the theme would. */
+export const changeTheme = (kind: number): void => {
+  state.themeKind = kind;
+  for (const listener of state.themeListeners) listener({ kind });
+};
+
 export const StatusBarAlignment = { Left: 1, Right: 2 } as const;
 
-export const ViewColumn = { Beside: -2 } as const;
+export const ViewColumn = { One: 1, Beside: -2 } as const;
+
+/** A status bar item over one of the recorded bars. */
+const barItem = (bar: () => StubState['bar']) => ({
+  get text() {
+    return bar().text;
+  },
+  set text(value: string) {
+    bar().text = value;
+  },
+  get tooltip() {
+    return bar().tooltip;
+  },
+  set tooltip(value: string) {
+    bar().tooltip = value;
+  },
+  get command() {
+    return bar().command;
+  },
+  set command(value: string) {
+    bar().command = value;
+  },
+  show: () => {
+    bar().visible = true;
+  },
+  hide: () => {
+    bar().visible = false;
+  },
+  dispose: () => {
+    state.disposed += 1;
+  },
+});
 
 export const window = {
+  createTextEditorDecorationType: (options: unknown) => {
+    const type = { options, disposed: false };
+    state.decorationTypes.push(type);
+    return {
+      type,
+      dispose: () => {
+        type.disposed = true;
+      },
+    };
+  },
+  get visibleTextEditors() {
+    return state.visibleEditors;
+  },
+  onDidChangeVisibleTextEditors: (listener: () => void) => {
+    state.visibleListeners.push(listener);
+    return { dispose: () => undefined };
+  },
+  get activeColorTheme() {
+    return { kind: state.themeKind };
+  },
+  onDidChangeActiveColorTheme: (listener: (theme: { kind: number }) => void) => {
+    state.themeListeners.push(listener);
+    return {
+      dispose: () => {
+        state.themeListeners = state.themeListeners.filter((l) => l !== listener);
+      },
+    };
+  },
   createOutputChannel: (_name: string) => ({
     appendLine: (line: string) => state.output.push(line),
     show: () => {
@@ -267,35 +411,8 @@ export const window = {
       state.disposed += 1;
     },
   }),
-  createStatusBarItem: (_alignment: number, _priority: number) => ({
-    get text() {
-      return state.bar.text;
-    },
-    set text(value: string) {
-      state.bar.text = value;
-    },
-    get tooltip() {
-      return state.bar.tooltip;
-    },
-    set tooltip(value: string) {
-      state.bar.tooltip = value;
-    },
-    get command() {
-      return state.bar.command;
-    },
-    set command(value: string) {
-      state.bar.command = value;
-    },
-    show: () => {
-      state.bar.visible = true;
-    },
-    hide: () => {
-      state.bar.visible = false;
-    },
-    dispose: () => {
-      state.disposed += 1;
-    },
-  }),
+  createStatusBarItem: (_alignment: number, priority: number) =>
+    barItem(priority === 99 ? () => state.benchBar : () => state.bar),
   onDidChangeActiveTextEditor: (listener: (editor: EditorStub | undefined) => void) => {
     state.editorListeners.push(listener);
     return { dispose: () => undefined };
@@ -307,7 +424,10 @@ export const window = {
   get activeTextEditor() {
     return state.activeEditor;
   },
-  showTextDocument: (_document: unknown, _options: unknown) => Promise.resolve(undefined),
+  showTextDocument: (document: unknown, options: unknown) => {
+    state.shownDocuments.push([document, options]);
+    return Promise.resolve(undefined);
+  },
   showWarningMessage: (message: string) => {
     state.warnings.push(message);
     return Promise.resolve(undefined);
@@ -372,6 +492,23 @@ export const languages = {
   setTextDocumentLanguage: (document: { uri: URI }, languageId: string) => {
     state.openedDocuments.push([document.uri, languageId]);
     return Promise.resolve(document);
+  },
+  createDiagnosticCollection: (name: string) => {
+    const collection = { byPath: new Map<string, Diagnostic[]>(), disposed: false };
+    state.problems.set(name, collection);
+    // Keyed as a path is written: forward slashes, and the drive letter `fsPath` lowercases, upper.
+    const key = (uri: URI) => uri.fsPath.replaceAll('\\', '/').replace(/^[a-z]:/u, (drive) => drive.toUpperCase());
+    return {
+      set: (uri: URI, diagnostics: Diagnostic[]) => void collection.byPath.set(key(uri), diagnostics),
+      delete: (uri: URI) => void collection.byPath.delete(key(uri)),
+      dispose: () => {
+        collection.disposed = true;
+      },
+    };
+  },
+  registerCodeLensProvider: (selector: unknown, provider: { provideCodeLenses(document: unknown): CodeLens[] }) => {
+    state.codeLensProviders.push({ selector, provider });
+    return { dispose: () => undefined };
   },
 };
 

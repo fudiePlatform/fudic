@@ -1,101 +1,105 @@
 /**
- * Opening a workbench, in the order that makes it work: the target, the server (Vite's HMR needs
- * it), Vite, the browser, the session, and then the first run. Closing undoes all of it, and is
- * idempotent: a Chrome that outlives the editor is the worst defect this feature can have.
+ * Opening a workbench: the target, the project under it (`startProject`), and then the first
+ * component. A workbench is one project: other components of it open into the same server, Vite
+ * and browser. Closing is idempotent.
  */
 
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { emptyBenchDir, removeBenchDir } from './bench-dir.js';
-import { SHELL_PATH, startBenchServer } from './bench-server.js';
-import { firstLine, launchBrowser, type BrowserLike } from './browser.js';
-import { runCriterion } from './engine.js';
-import { benchDir } from './pages.js';
-import { classify, onFullReload, Rerunner, type HotChannel } from './rerun.js';
-import { loadSession, readText, type LoadedSession } from './session.js';
-import { resolveTarget, type BenchTarget } from './target.js';
-import { isFailure, type WorkbenchFailure, type WorkbenchOptions, type WorkbenchSession } from './types.js';
-import { startVite } from './vite.js';
+import { FUD0977 } from '@fudic/diagnostics';
+import { openBench, type Bench } from './bench.js';
+import { removeTagFiles, writePlanFiles } from './bench-dir.js';
+import { shellPath } from './bench-server.js';
+import { mountFiles } from './pages.js';
+import { startProject, type Project } from './project.js';
+import type { RunCommand } from './protocol.js';
+import { DEFAULT_WORKERS } from './runner.js';
+import { readText } from './session.js';
+import { resolveTarget, type BenchTarget, type TargetFs } from './target.js';
+import {
+  isFailure,
+  type OpenedComponent,
+  type WorkbenchFailure,
+  type WorkbenchOptions,
+  type WorkbenchSession,
+} from './types.js';
 
 /** The disk, as `resolveTarget` reads it. */
-const nodeTargetFs = { readFile: readText, exists: existsSync };
+export const nodeTargetFs: TargetFs = { readFile: readText, exists: existsSync };
 
 export async function openWorkbench(
   file: string,
   options: WorkbenchOptions = {},
 ): Promise<WorkbenchSession | WorkbenchFailure> {
-  const resolved = resolveTarget(resolve(file), nodeTargetFs);
-  if (isFailure(resolved)) return resolved;
-  let target: BenchTarget = resolved;
+  const first = resolveTarget(resolve(file), nodeTargetFs);
+  if (isFailure(first)) return first;
+  const root = first.projectRoot;
 
-  const server = await startBenchServer({ port: options.port ?? 0 });
-  const dir = benchDir(target);
-  emptyBenchDir(dir);
-  const vite = await startVite(target, server.http);
-  server.mount(vite.middlewares);
-
-  const browser = await launchBrowser();
-  const shutdown = async (opened?: BrowserLike) => {
-    await opened?.close();
-    await vite.close();
-    await server.close();
-    if (options.keep !== true) removeBenchDir(dir);
-  };
-  if (isFailure(browser)) {
-    await shutdown();
-    return browser;
-  }
-
-  let session: LoadedSession = await load();
-  async function load(): Promise<LoadedSession> {
-    // A `.fudspec` written after the workbench opened is picked up here.
-    const again = resolveTarget(target.component, nodeTargetFs);
-    if (!isFailure(again)) target = again;
-    const loaded = await loadSession({ target, vite, dir });
-    server.publish(loaded.message);
-    return loaded;
-  }
-
-  async function runAll(): Promise<void> {
-    const { criteria, loadTerm } = session;
-    server.publish({ v: 1, type: 'running', ids: criteria.map((c) => c.id) });
-    try {
-      for (const criterion of criteria) {
-        const result = await runCriterion(browser as BrowserLike, server.origin, criterion, loadTerm);
-        server.publish({ v: 1, type: 'result', ...result });
-      }
-    } catch (error) {
-      // The browser went away under the run: the workbench is closing, or Chrome died.
-      server.publish({ v: 1, type: 'problem', message: firstLine(error) });
-    }
-  }
-
-  const rerunner = new Rerunner({
-    async reload() {
-      try {
-        session = await load();
-      } catch (error) {
-        server.publish({ v: 1, type: 'problem', message: firstLine(error) });
-      }
+  const benches = new Map<string, Bench>();
+  const started = await startProject({
+    root,
+    targets: [first],
+    options,
+    onProcessed: (changed) => {
+      for (const bench of benches.values()) bench.changed(changed);
     },
-    run: runAll,
   });
-  onFullReload(vite.environments['client']!.hot as unknown as HotChannel, () => rerunner.fullReload());
-  for (const event of ['add', 'change'] as const) {
-    vite.watcher.on(event, (changed: string) => rerunner.changed(classify(changed, target)));
-  }
-  rerunner.request(false);
+  if (isFailure(started)) return started;
+  const project: Project = started;
 
+  const opened = (bench: Bench): OpenedComponent => ({
+    url: project.server.origin + shellPath(bench.target.tag),
+    tag: bench.target.tag,
+    component: bench.target.component,
+    criteria: bench.criteria,
+  });
+
+  async function add(target: BenchTarget): Promise<OpenedComponent> {
+    // Its bare page first: a component opened late is new to the plugin's next look too.
+    writePlanFiles(project.dir, target.tag, mountFiles(target));
+    const bench = await openBench({
+      target,
+      vite: project.vite,
+      dir: project.dir,
+      browser: project.browser,
+      origin: project.server.origin,
+      fs: nodeTargetFs,
+      workers: options.workers ?? DEFAULT_WORKERS,
+      shots: { put: (tag, id, kind, png) => project.server.putShot(tag, id, kind, png) },
+      publish: project.publish,
+    });
+    benches.set(target.tag, bench);
+    return opened(bench);
+  }
+
+  const command = (asked: RunCommand) => benches.get(asked.tag)?.command(asked);
+  project.server.onCommand(command);
+
+  const firstOpened = await add(first);
   let closing: Promise<void> | undefined;
   return {
-    url: server.origin + SHELL_PATH,
-    tag: target.tag,
-    component: target.component,
-    criteria: session.criteria.length,
+    ...firstOpened,
+    browser: project.browser.name,
+    command,
+    async open(another) {
+      const target = resolveTarget(resolve(another), nodeTargetFs);
+      if (isFailure(target)) return target;
+      if (target.projectRoot !== root) return { diagnostic: FUD0977({ file: target.component, project: root }) };
+      const known = benches.get(target.tag);
+      return known === undefined ? add(target) : opened(known);
+    },
+    closeComponent(tag) {
+      const bench = benches.get(tag);
+      if (bench === undefined) return;
+      bench.stop();
+      benches.delete(tag);
+      project.server.forget(tag);
+      removeTagFiles(project.dir, tag);
+    },
     close() {
       closing ??= (async () => {
-        rerunner.stop();
-        await shutdown(browser);
+        for (const bench of benches.values()) bench.stop();
+        await project.close();
       })();
       return closing;
     },

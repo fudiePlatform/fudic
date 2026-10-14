@@ -4,7 +4,7 @@
  */
 
 import { execFileSync, execSync, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { tempProject, type TempProject } from '../helpers/project.js';
@@ -21,8 +21,8 @@ beforeAll(() => {
   execSync('pnpm build', { cwd: PACKAGE, stdio: 'ignore' });
 }, 120_000);
 
-afterEach(() => {
-  child?.kill();
+afterEach(async () => {
+  await closed(child);
   child = undefined;
   project?.remove();
   project = undefined;
@@ -30,6 +30,8 @@ afterEach(() => {
 
 interface Launched {
   readonly line: Record<string, unknown>;
+  /** Every line on stdout, the first one included, parsed. */
+  readonly lines: Record<string, unknown>[];
   readonly exited: Promise<number | null>;
 }
 
@@ -37,14 +39,18 @@ function launch(args: readonly string[]): Promise<Launched> {
   const proc = spawn(process.execPath, [BIN, ...args], { cwd: project?.root ?? PACKAGE });
   child = proc;
   const exited = new Promise<number | null>((done) => proc.on('exit', done));
+  const lines: Record<string, unknown>[] = [];
   return new Promise((done, fail) => {
     let out = '';
     let err = '';
     proc.stderr.on('data', (chunk: Buffer) => (err += String(chunk)));
     proc.stdout.on('data', (chunk: Buffer) => {
       out += String(chunk);
-      const end = out.indexOf('\n');
-      if (end >= 0) done({ line: JSON.parse(out.slice(0, end)) as Record<string, unknown>, exited });
+      for (let end = out.indexOf('\n'); end >= 0; end = out.indexOf('\n')) {
+        lines.push(JSON.parse(out.slice(0, end)) as Record<string, unknown>);
+        out = out.slice(end + 1);
+      }
+      if (lines.length > 0) done({ line: lines[0]!, lines, exited });
     });
     void exited.then((code) => fail(new Error(`exited ${code} before a line; stderr: ${err}`)));
   });
@@ -76,18 +82,97 @@ function running(text: string): boolean {
   return out.includes(text);
 }
 
+/** Closes a binary as the editor does and waits for it: its folder is locked while it lives. */
+async function closed(proc: ChildProcessWithoutNullStreams | undefined): Promise<void> {
+  if (proc === undefined || proc.exitCode !== null) return;
+  const exited = new Promise((done) => proc.on('exit', done));
+  proc.stdin.end();
+  await exited;
+}
+
+describe('two binaries — criterion 4 of BUG-48', () => {
+  let other: ChildProcessWithoutNullStreams | undefined;
+
+  afterEach(async () => {
+    await closed(other);
+    await closed(child);
+    other = undefined;
+  });
+
+  it('on the same component, closing one leaves the pages of the other in 200', async () => {
+    project = tempProject('bin-two');
+    const first = await launch([project.path(TABS)]);
+    other = child;
+    const second = await launch([project.path(TABS)]);
+    const page = `${String(second.line['url']).replace(/\/__bench\/.*$/u, '')}/app-tabs/app-tabs`;
+    expect((await fetch(page, { headers: { accept: 'text/html' } })).status).toBe(200);
+
+    other!.stdin.end();
+    expect(await first.exited).toBe(0);
+    expect((await fetch(page, { headers: { accept: 'text/html' } })).status).toBe(200);
+    expect(existsSync(project.path(`node_modules/.fudic-bench/${child!.pid}`))).toBe(true);
+  }, 90_000);
+
+  it('sweeps the folder of a dead process when it starts', async () => {
+    project = tempProject('bin-sweep');
+    // Above Linux's pid_max and not a multiple of 4 (no Windows pid is); and the per-tag layout.
+    mkdirSync(project.path('node_modules/.fudic-bench/999999999/routes'), { recursive: true });
+    mkdirSync(project.path('node_modules/.fudic-bench/app-tabs/routes'), { recursive: true });
+    await launch([project.path(TABS)]);
+    expect(readdirSync(project.path('node_modules/.fudic-bench'))).toEqual([String(child!.pid)]);
+  }, 90_000);
+});
+
+describe('commands on stdin — criteria 5 and 10 of BUG-48', () => {
+  /** The first line from `from` on that matches. */
+  async function next(lines: Record<string, unknown>[], match: (l: Record<string, unknown>) => boolean, from = 0) {
+    await expect.poll(() => lines.slice(from).some(match), { timeout: 60_000 }).toBe(true);
+    return lines.slice(from).find(match)!;
+  }
+
+  it('open answers opened on stdout, every message is a line, and run with ids runs those', async () => {
+    project = tempProject('bin-stdin');
+    project.write('src/components/app-frame.fudspec', 'component app-frame\n\ncriterion asignado\n  then\n    visible app-frame\n');
+    const { lines } = await launch([project.path(TABS)]);
+    await next(lines, (l) => l['type'] === 'result' && l['tag'] === 'app-tabs');
+
+    child!.stdin.write(`${JSON.stringify({ v: 2, type: 'open', file: project.path('src/components/app-frame.fud') })}\n`);
+    expect(await next(lines, (l) => l['type'] === 'opened')).toMatchObject({
+      v: 2,
+      type: 'opened',
+      tag: 'app-frame',
+      url: expect.stringMatching(/\/__bench\/app-frame\/$/u) as unknown,
+      criteria: 1,
+    });
+    expect(await next(lines, (l) => l['type'] === 'result' && l['tag'] === 'app-frame')).toMatchObject({ v: 2, verdict: 'pass' });
+
+    const from = lines.length;
+    child!.stdin.write('not a command\n');
+    child!.stdin.write(`${JSON.stringify({ v: 2, type: 'run', tag: 'app-frame', ids: ['asignado'] })}\n`);
+    expect(await next(lines, (l) => l['type'] === 'running', from)).toMatchObject({ tag: 'app-frame', ids: ['asignado'] });
+
+    child!.stdin.write(`${JSON.stringify({ v: 2, type: 'open', file: project.path('src/nothing.txt') })}\n`);
+    expect(await next(lines, (l) => l['type'] === 'error')).toMatchObject({
+      v: 2,
+      type: 'error',
+      error: { code: expect.stringMatching(/^FUD09\d\d$/u) as unknown },
+    });
+  }, 120_000);
+});
+
 describe('the binary — criterion 22', () => {
   it('prints the JSON line and lives; closing stdin closes Chrome and deletes the folder', async () => {
     project = tempProject('bin');
     const { line, exited } = await launch([project.path(TABS)]);
     expect(line).toEqual({
-      url: expect.stringMatching(/^http:\/\/127\.0\.0\.1:\d+\/__bench\/$/u) as unknown,
+      url: expect.stringMatching(/^http:\/\/127\.0\.0\.1:\d+\/__bench\/app-tabs\/$/u) as unknown,
       tag: 'app-tabs',
       component: project.path(TABS),
       criteria: 1,
+      browser: expect.stringMatching(/^(chrome|msedge|chromium)$/u) as unknown,
     });
     expect((await fetch(String(line['url']))).status).toBe(200);
-    expect(existsSync(project.path('node_modules/.fudic-bench/app-tabs'))).toBe(true);
+    expect(existsSync(project.path(`node_modules/.fudic-bench/${child!.pid}`))).toBe(true);
 
     // Playwright's Chrome is a child of the binary, with a profile folder of its own.
     const chrome = children(child!.pid!).find((c) => /chrome/iu.test(c));
@@ -103,9 +188,10 @@ describe('the binary — criterion 22', () => {
   it('with --keep, leaves the folder of pages', async () => {
     project = tempProject('bin-keep');
     const { exited } = await launch([TABS, '--keep', '--port', '0']);
+    const pid = child!.pid!;
     child!.stdin.end();
     expect(await exited).toBe(0);
-    expect(existsSync(project.path('node_modules/.fudic-bench/app-tabs/routes/app-tabs.fud'))).toBe(true);
+    expect(existsSync(project.path(`node_modules/.fudic-bench/${pid}/routes/app-tabs/app-tabs.fud`))).toBe(true);
   }, 90_000);
 
   it('with a page, an error line with FUD0970 and exit code 1', async () => {
@@ -120,7 +206,7 @@ describe('the binary — criterion 22', () => {
 
   it('without a file, the usage as an error line and exit code 1', async () => {
     const { line, exited } = await launch([]);
-    expect(line).toEqual({ error: { message: 'usage: fudic-workbench <file> [--port <n>] [--keep]' } });
+    expect(line).toEqual({ error: { message: expect.stringMatching(/^usage: fudic-workbench <file> /u) as unknown } });
     expect(await exited).toBe(1);
   }, 30_000);
 });
