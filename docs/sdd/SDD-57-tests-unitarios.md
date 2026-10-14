@@ -1,6 +1,6 @@
 # SDD-57 — Tests unitarios de componentes, rutas, layouts y snippets: `@fudic/testing`
 
-> **Estado:** `Listo` — [tareas](./SDD-57-Task.md), 28 / 30.
+> **Estado:** `Hecho` — [tareas](./SDD-57-Task.md), 30 / 30. Pendiente la prueba manual de Pedro (tarea 29).
 > **Paquetes:** `@fudic/testing` (nuevo) · `@fudic/vite` · `@fudic/core` · `@fudic/http` ·
 > `@fudic/example-basic`
 > **Depende de:** 17 (hidratación), 19 (plugin, routing y dev server), 20 (Service Worker),

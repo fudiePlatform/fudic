@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/testing` (nuevo) · `@fudic/vite` · `@fudic/core` · `@fudic/http` ·
 > `@fudic/example-basic`
 > **Rama:** `sdd-57-tests-unitarios` (nace de `main`)
-> **Progreso:** 28 / 30 — `Listo`.
+> **Progreso:** 30 / 30 — `Hecho`.
 
 **El orden manda en cuatro puntos.**
 
@@ -117,5 +117,5 @@
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 28 | 1–27 | **Ejemplo.** `vitest.config.ts` con `fudicTest()`, script `test`, y los tests del criterio 29 junto a cada fichero | `example-basic` | `vitest.config.ts` · `src/**/*.test.ts` |
-| [ ] | 29 | 28 | **README y prueba.** README de `@fudic/testing` en inglés, corto y sin citas a SDD. Pedro ejecuta los tests del ejemplo, en terminal y en modo watch, rompe un componente, un middleware y un `serverValidator` a propósito, y lee cada fallo | `testing` · `example-basic` | `packages/testing/README.md` |
-| [ ] | 30 | 1–29 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde. `@fudic/testing` al 100 % en las cuatro métricas y ningún paquete por debajo de su suelo de `main`. Estado `Hecho` en la SDD, en este fichero y en el `INDEX.md`, con su entrada en el registro de progreso | — | `docs/sdd/SDD-57-*.md` · `docs/sdd/INDEX.md` |
+| [x] | 29 | 28 | **README y prueba.** README hecho. **La prueba manual de Pedro queda pendiente**: no pudo hacerla al cerrar, y la hará después. README de `@fudic/testing` en inglés, corto y sin citas a SDD. Pedro ejecuta los tests del ejemplo, en terminal y en modo watch, rompe un componente, un middleware y un `serverValidator` a propósito, y lee cada fallo | `testing` · `example-basic` | `packages/testing/README.md` |
+| [x] | 30 | 1–29 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde. `@fudic/testing` al 100 % en las cuatro métricas y ningún paquete por debajo de su suelo de `main`. Estado `Hecho` en la SDD, en este fichero y en el `INDEX.md`, con su entrada en el registro de progreso | — | `docs/sdd/SDD-57-*.md` · `docs/sdd/INDEX.md` |
