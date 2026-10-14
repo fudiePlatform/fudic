@@ -29,6 +29,7 @@
  * copying files and naming them in a coordinator happen elsewhere.
  */
 
+import { createHash } from 'node:crypto';
 import { RUNTIME_DIR } from '@fudic/conventions';
 import { dependencyChain, type PackageFs } from '@fudic/resolve';
 import { FUD0804, FUD0805, type FileDiagnostic } from '@fudic/diagnostics';
@@ -39,7 +40,7 @@ export interface RuntimePiece {
   readonly pkg: string;
   /** Its name within that package: `hydrate`. */
   readonly name: string;
-  /** The URL it resolves to: `/_fudic/0.0.1/core/hydrate.js`. */
+  /** The URL it resolves to: `/_fudic/0.0.1-3fa9c1d2/core/hydrate.js`. */
   readonly url: string;
   /** Absolute path of the file to copy into the output. */
   readonly file: string;
@@ -56,6 +57,8 @@ export interface RuntimePiece {
 export interface RuntimeFs extends PackageFs {
   /** The entries directly inside `dir`, or `undefined` when there is no such directory. */
   readDir(dir: string): readonly string[] | undefined;
+  /** The bytes of a file `readDir` just listed: what the URL's fingerprint is taken from. */
+  readBytes(file: string): Uint8Array;
 }
 
 /** Every piece this build links, and what was wrong with a declaration that has none. */
@@ -76,7 +79,7 @@ const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies'
  * so a package the application never names still ends up in the origin.
  */
 export function runtimePieces(projectRoot: string, io: RuntimeFs): RuntimePiecesResult {
-  const pieces: RuntimePiece[] = [];
+  const published: PublishedRuntime[] = [];
   const diagnostics: FileDiagnostic[] = [];
   const seen = new Set<string>();
 
@@ -88,7 +91,7 @@ export function runtimePieces(projectRoot: string, io: RuntimeFs): RuntimePieces
     if (manifest === undefined) return;
 
     const declared = runtimeDirOf(manifest);
-    if (declared !== undefined) collect(root, manifest, declared, io, pieces, diagnostics);
+    if (declared !== undefined) collect(root, manifest, declared, io, published, diagnostics);
     // A package that publishes nothing is not a link in this graph: reading its dependencies
     // would put the whole store back on the bill, which is the argument `@fudic/resolve`
     // already makes about walking through a library and not through everything.
@@ -106,7 +109,60 @@ export function runtimePieces(projectRoot: string, io: RuntimeFs): RuntimePieces
   visit(realRoot(projectRoot, io), true);
   for (const pkg of dependencyChain(projectRoot, io)) visit(pkg.root, true);
 
-  return { pieces: withoutClashes(pieces, diagnostics), diagnostics };
+  return { pieces: withoutClashes(piecesOf(published), diagnostics), diagnostics };
+}
+
+/** One publisher's runtime as discovery found it, before its URL segment is known. */
+interface PublishedRuntime {
+  readonly pkg: string;
+  readonly short: string;
+  readonly version: string;
+  readonly dir: string;
+  /** Its `.js` files, sorted. */
+  readonly files: readonly string[];
+  /** The hash of its own files alone: names and bytes. */
+  readonly own: string;
+  /** The `<version>/<short>` of every publisher its pieces import by URL. */
+  readonly reaches: readonly string[];
+}
+
+/**
+ * Every piece, under `/_fudic/<version>-<fingerprint>/<short>/<piece>.js` (BUG-47 §3, §4.5).
+ *
+ * A piece imports its siblings by a URL its build wrote with the version alone, and the linker
+ * rewrites that URL to the sibling's segment as it copies the piece. So the bytes that ship
+ * depend on the fingerprints of whatever the piece reaches: the fingerprint of a publisher
+ * covers its own files AND the own hashes of every publisher in its transitive reach. Own
+ * hashes and not fingerprints, so a cycle between two publishers has an answer.
+ */
+function piecesOf(published: readonly PublishedRuntime[]): RuntimePiece[] {
+  const byKey = new Map(published.map((p) => [`${p.version}/${p.short}`, p]));
+  const reach = (from: PublishedRuntime): ReadonlySet<PublishedRuntime> => {
+    const seen = new Set<PublishedRuntime>([from]);
+    for (const current of seen) {
+      for (const key of current.reaches) {
+        const next = byKey.get(key);
+        if (next !== undefined) seen.add(next);
+      }
+    }
+    return seen;
+  };
+
+  return published.flatMap((p) => {
+    const hashes = [...reach(p)].map((r) => r.own).toSorted();
+    const fingerprint = createHash('sha256').update(hashes.join('\0')).digest('hex').slice(0, 8);
+    return p.files.map((file) => {
+      const piece = file.slice(0, -'.js'.length);
+      return {
+        pkg: p.pkg,
+        name: piece,
+        // No application `base`: the runtime lives outside every app's, which is what lets two
+        // applications of one origin ask for the same bytes (§3.1).
+        url: `/${RUNTIME_DIR}/${p.version}-${fingerprint}/${p.short}/${piece}.js`,
+        file: `${p.dir}/${file}`,
+      };
+    });
+  });
 }
 
 /**
@@ -157,7 +213,7 @@ function collect(
   manifest: Readonly<Record<string, unknown>>,
   declared: string,
   io: RuntimeFs,
-  pieces: RuntimePiece[],
+  published: PublishedRuntime[],
   diagnostics: FileDiagnostic[],
 ): void {
   const name = stringField(manifest, 'name');
@@ -181,19 +237,36 @@ function collect(
   const version = stringField(manifest, 'version');
   if (name === undefined || version === undefined) return;
 
-  const short = shortName(name);
+  const hash = createHash('sha256');
+  const reaches = new Set<string>();
   for (const file of files) {
-    const piece = file.slice(0, -'.js'.length);
-    pieces.push({
-      pkg: name,
-      name: piece,
-      // No application `base`: the runtime lives outside every app's, which is what lets two
-      // applications of one origin ask for the same bytes (§3.1).
-      url: `/${RUNTIME_DIR}/${version}/${short}/${piece}.js`,
-      file: `${dir}/${file}`,
-    });
+    const bytes = io.readBytes(`${dir}/${file}`);
+    // Each name and length before its bytes, so two different sets of files never feed the
+    // hash the same stream.
+    hash.update(`${file}\0${bytes.length}\0`).update(bytes);
+    for (const key of publishersNamed(new TextDecoder().decode(bytes))) reaches.add(key);
   }
+  published.push({
+    pkg: name,
+    short: shortName(name),
+    version,
+    dir,
+    files,
+    own: hash.digest('hex'),
+    reaches: [...reaches],
+  });
 }
+
+/**
+ * The `<version>/<short>` of every piece URL a piece's code names: `/_fudic/0.0.1/dom/x.js`
+ * gives `0.0.1/dom`. What the linker rewrites, and so what the fingerprint has to cover.
+ */
+export function publishersNamed(code: string): readonly string[] {
+  return [...code.matchAll(PIECE_URL)].map((m) => `${m[1]}/${m[2]}`);
+}
+
+/** A piece URL as a publisher's build writes it, with the version alone (BUG-47 §4.5). */
+export const PIECE_URL = new RegExp(`/${RUNTIME_DIR}/([^/"'\`\\s]+)/([^/"'\`\\s]+)/[^/"'\`\\s]+\\.js`, 'gu');
 
 /**
  * What a package declares as its runtime directory, relative to its own root.

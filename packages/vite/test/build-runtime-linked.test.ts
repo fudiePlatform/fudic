@@ -96,12 +96,13 @@ beforeAll(async () => {
 const pieces = (): OutFile[] => output.filter((o) => o.fileName.startsWith('_fudic/'));
 
 describe('a build that links the published runtime', () => {
-  it('copies the pieces it reached under `_fudic/<version>/<pkg>/`', () => {
+  it('copies the pieces it reached under `_fudic/<version>-<fingerprint>/<pkg>/`', () => {
     // The path mirrors the URL exactly, which is what makes a `dist` deployable on its own.
+    // The fingerprint of the package's bytes rides with the version (BUG-47 §3).
     const js = pieces().filter((o) => o.fileName.endsWith('.js'));
     expect(js.length).toBeGreaterThan(0);
     for (const file of js) {
-      expect(file.fileName).toMatch(/^_fudic\/\d+\.\d+\.\d+\/[a-z-]+\/[a-z-]+\.js$/u);
+      expect(file.fileName).toMatch(/^_fudic\/\d+\.\d+\.\d+-[0-9a-f]{8}\/[a-z-]+\/[a-z-]+\.js$/u);
     }
   });
 

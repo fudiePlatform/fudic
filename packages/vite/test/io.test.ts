@@ -106,4 +106,11 @@ describe('nodeRuntimeFs', () => {
     // And the reader it extends still answers, because discovery needs both.
     expect(fs.readFile(join(root, 'runtime', 'signal.js'))).toBe('export{};\n');
   });
+
+  it('reads the bytes of a piece, untouched: what the URL fingerprint is taken from', () => {
+    const root = mkdtempSync(join(tmpdir(), 'fudic-vite-runtime-fs-'));
+    writeFileSync(join(root, 'signal.js'), new Uint8Array([0xef, 0xbb, 0xbf, 0x61, 0x0d, 0x0a]));
+    // A BOM and a CRLF that a text read could normalise: the fingerprint sees what is served.
+    expect([...nodeRuntimeFs().readBytes(join(root, 'signal.js'))]).toEqual([0xef, 0xbb, 0xbf, 0x61, 0x0d, 0x0a]);
+  });
 });
