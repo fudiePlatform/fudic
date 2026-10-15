@@ -3,7 +3,7 @@
 > **BUG:** [BUG-48 — El banco que nadie usaría](./BUG-48-el-banco-que-nadie-usaria.md)
 > **Paquetes:** `@fudic/workbench` · `fudic-vscode` · `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `bug/48-banco-usable`, desde `main`.
-> **Progreso:** 28 / 31 — `En curso`: quedan las pruebas de Pedro (6, 25) y el cierre (31) (la tarea 5 está marcada en la rama de tests).
+> **Progreso:** 31 / 31 — `Hecho` (2026-10-15). Las pruebas de Pedro y el cierre se hicieron junto con BUG-49.
 
 Lo nuevo nace al 100 % en las cuatro métricas. `@fudic/workbench` y `fudic-vscode` no bajan de su
 suelo de `main`: antes de tocar nada se mide con `pnpm --filter <pkg> coverage` y se anota aquí.
@@ -26,7 +26,7 @@ tareas «Tests» y deja la cobertura en el suelo, en su propio worktree sobre es
 | [x] | 3 | — | **Carpeta por proceso.** `node_modules/.fudic-bench/<pid>/`; al arrancar se borran las hermanas de `pid` muerto (BUG §4.3) | `src/pages.ts` · `src/bench-dir.ts` |
 | [x] | 4 | 3 | **Páginas antes que Vite.** La página desnuda `routes/<tag>.fud` se escribe antes de `startVite`; los criterios pasan ya a `routes/<tag>/<slug>.fud` (BUG §4.2, corregido: un slug puede empezar por `_`) | `src/pages.ts` · `src/open.ts` |
 | [x] | 5 | 1–4 | **Tests.** Criterios 1, 2, 3 y 4. El 1 con un Vite real y un `.fud` sin JS de cliente; se ve en rojo con el código de `main` | `test/rerun.test.ts` · `test/launch.test.ts` · `test/bench-dir.test.ts` |
-| [ ] | 6 | 5 | **Prueba rápida de Pedro.** Guardar `app-card.fud` con el banco abierto se ve en menos de un segundo | — |
+| [x] | 6 | 5 | **Prueba rápida de Pedro.** Guardar `app-card.fud` con el banco abierto se ve en menos de un segundo | — |
 
 ## Fase 2 — Un proceso por proyecto (4)
 
@@ -70,7 +70,7 @@ tareas «Tests» y deja la cobertura en el suelo, en su propio worktree sobre es
 |---|---|---|---|---|
 | [x] | 23 | 8, 14, 16 | **El shell nuevo.** Cabecera con resumen y botones, tarjetas rojas arriba y verdes plegadas, capturas con marcas, esperado frente a obtenido, paso `ignored` atenuado, *Run*/*Pin*/*Live* por tarjeta, un solo panel *Live*, actualización en su sitio, teclado, tema y enlaces a fichero (BUG §4.8) | `src/shell.ts` |
 | [x] | 24 | 23 | **Tests.** Criterio 13, con el script del shell sobre un DOM de test y mensajes simulados | `test/browser/shell.test.ts` (Chrome real, WebSocket simulado) |
-| [ ] | 25 | 24 | **Prueba de Pedro en el navegador.** La parte del shell del criterio 15 | — |
+| [x] | 25 | 24 | **Prueba de Pedro en el navegador.** La parte del shell del criterio 15, ya con el shell de BUG-49 | — |
 
 ## Fase 7 — VS Code (4)
 
@@ -86,4 +86,4 @@ tareas «Tests» y deja la cobertura en el suelo, en su propio worktree sobre es
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
 | [x] | 30 | 1–29 | **Documentación.** El README de `@fudic/workbench` (binario, `run`, `--browser`, órdenes, evidencia `{ expected, actual }`) | `packages/workbench/README.md` |
-| [ ] | 31 | 30 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde, cobertura del criterio 16. Pedro hace el criterio 15 entero. `Hecho` aquí, en el BUG, en el `INDEX.md` de bugs (tabla y registro) y en el registro del `INDEX.md` maestro | `docs/sdd/bugs/*` · `docs/sdd/INDEX.md` |
+| [x] | 31 | 30 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde, cobertura del criterio 16. Pedro hace el criterio 15 entero; `test:spec` en verde con Chrome y con `--browser msedge` (5/5). `Hecho` aquí, en el BUG, en el `INDEX.md` de bugs (tabla y registro) y en el registro del `INDEX.md` maestro | `docs/sdd/bugs/*` · `docs/sdd/INDEX.md` |

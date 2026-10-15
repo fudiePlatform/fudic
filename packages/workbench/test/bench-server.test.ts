@@ -19,7 +19,7 @@ const SESSION: SessionMessage = {
   tag: 'app-card',
   spec: 'C:/p/app-card.fudspec',
   diagnostics: [],
-  criteria: [{ id: 'a', route: '/app-card/a', line: 3, steps: [{ block: 'then', text: 'app-card is visible', file: null }] }],
+  criteria: [{ id: 'a', route: '/app-card/a', line: 3, props: null, steps: [{ block: 'then', text: 'app-card is visible', file: null, line: 5 }] }],
 };
 
 const RUNNING: RunningMessage = { v: 2, type: 'running', tag: 'app-card', ids: ['a', 'b'], trigger: { file: null, at: 1 } };

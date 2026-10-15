@@ -71,8 +71,13 @@ describe('the actions wait for the gesture to be served — criterion 11, the se
 
   it('waits only a frame when the tag was already defined', async () => {
     const page = fakePage(() => ({ host: { id: '3', defined: true } }));
-    await createTermContext(page).locate('app-card').setAttribute('variant', 'highlight');
+    expect(await createTermContext(page).locate('app-card').setAttribute('variant', 'highlight')).toBeNull();
     expect(page.calls).toEqual(['setAttribute {"css":"app-card"} ["variant","highlight"]', 'frame']);
+  });
+
+  it('setAttribute answers the value the attribute had', async () => {
+    const page = fakePage(() => ({ host: null, attribute: 'plain' }));
+    expect(await createTermContext(page).locate('app-card').setAttribute('variant', 'highlight')).toBe('plain');
   });
 
   it('waits only a frame when nothing hydratable holds the element', async () => {

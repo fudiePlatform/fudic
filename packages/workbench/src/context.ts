@@ -13,7 +13,8 @@ export interface TermLocator {
   textContent(): Promise<string>;
   isVisible(): Promise<boolean>;
   click(): Promise<void>;
-  setAttribute(name: string, value: string): Promise<void>;
+  /** Sets it and answers the value it had: null when it had none. */
+  setAttribute(name: string, value: string): Promise<string | null>;
 }
 
 export interface TermContext {
@@ -32,7 +33,11 @@ export function parseRef(ref: string): Target {
   return role[2] === undefined ? { role: role[1]! } : { role: role[1]!, name: role[2] };
 }
 
-const SET_ATTRIBUTE = `(element, [name, value]) => element.setAttribute(name, value)`;
+const SET_ATTRIBUTE = `(element, [name, value]) => {
+  const before = element.getAttribute(name);
+  element.setAttribute(name, value);
+  return before;
+}`;
 
 /**
  * `goto` never navigates — the workbench mounts the component alone, on its own page — and
@@ -73,7 +78,11 @@ export function createTermContext(
         },
         async setAttribute(name, value) {
           const target = await one();
-          await settled(page, target, () => target.evaluate<void>(SET_ATTRIBUTE, [name, value]));
+          let before: string | null = null;
+          await settled(page, target, async () => {
+            before = await target.evaluate<string | null>(SET_ATTRIBUTE, [name, value]);
+          });
+          return before;
         },
       };
     },

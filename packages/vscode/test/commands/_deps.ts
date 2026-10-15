@@ -10,6 +10,7 @@ import type { CommandDeps } from '../../src/commands/index.js';
 import type { FudicSession } from '../../src/activate.js';
 import type { FudicSettings } from '../../src/settings.js';
 import type { CommentSelection, LineReplacement } from '../../src/ports.js';
+import { IDLE } from '../../src/workbench.js';
 
 export interface CommandRecording {
   readonly warnings: string[];
@@ -105,7 +106,9 @@ export const commandFixture = (options: {
         open: async (file) => {
           workbenchOpens.push(file);
         },
-        run: async () => undefined,
+        act: async () => undefined,
+        lensState: () => IDLE,
+        onLensesChanged: () => undefined,
         focus: () => undefined,
         closeAll: () => undefined,
       },

@@ -180,7 +180,8 @@ describe('criterion 19 — saving the .fudspec or a term', () => {
       id: 'empieza-en-a',
       route: '/app-tabs/empieza-en-a',
       line: 9,
-      steps: [{ block: 'then', text: 'role:tabpanel says "panel A"', file: project.path('fudic/terms/then/text.js') }],
+      props: null,
+      steps: [{ block: 'then', text: 'role:tabpanel says "panel A"', file: project.path('fudic/terms/then/text.js'), line: 11 }],
     });
     expect(await sh.next(resultOf('empieza-en-a'), from)).toMatchObject({ verdict: 'pass' });
     const origin = new URL(s.url).origin;

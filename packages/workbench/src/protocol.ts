@@ -55,6 +55,8 @@ export interface DescribedStep {
   readonly text: string;
   /** The module of its term; null when it does not resolve. */
   readonly file: string | null;
+  /** 1-based: its line in the `.fudspec`. */
+  readonly line: number;
 }
 
 export interface DescribedCriterion {
@@ -62,6 +64,8 @@ export interface DescribedCriterion {
   readonly route: string;
   /** 1-based: the line of its `criterion` in the `.fudspec`; 1 without one. */
   readonly line: number;
+  /** Its `props <name>` line: the fixture entry it mounts with; null when it mounts bare. */
+  readonly props: { readonly name: string; readonly line: number } | null;
   readonly steps: readonly DescribedStep[];
 }
 
@@ -73,6 +77,8 @@ export interface SessionMessage {
   readonly spec: string | null;
   /** The browser the criteria run in; set by the workbench when it publishes. */
   readonly browser?: BrowserName;
+  /** The size of the pages the criteria run in, and their device pixel ratio; set with `browser`. */
+  readonly viewport?: Viewport;
   readonly diagnostics: readonly WireDiagnostic[];
   readonly criteria: readonly DescribedCriterion[];
 }
@@ -94,6 +100,20 @@ export interface Box {
   readonly height: number;
 }
 
+/** A shot as the shell shows it: its URL and the element's size in CSS pixels, to keep its room. */
+export interface ShotRef {
+  readonly url: string;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** The pages' size in CSS pixels, and how many device pixels each one is. */
+export interface Viewport {
+  readonly width: number;
+  readonly height: number;
+  readonly scale: number;
+}
+
 /** Where a step's reference was, in the `after` shot. */
 export interface Mark {
   /** Index of the step in the criterion. */
@@ -112,8 +132,8 @@ export interface ResultMessage {
   /** The criterion's previous verdict in this process, when it ran before. */
   readonly was?: Verdict;
   readonly steps: readonly StepResult[];
-  /** URLs of what the measuring browser saw: before the first `when`, and at the end. */
-  readonly shots: { readonly before?: string; readonly after?: string };
+  /** What the measuring browser saw: before the first `when`, and at the end. */
+  readonly shots: { readonly before?: ShotRef; readonly after?: ShotRef };
   readonly marks: readonly Mark[];
   readonly pageErrors: readonly string[];
   /** Why the criterion could not run at all: its page did not load, its fixture failed. */

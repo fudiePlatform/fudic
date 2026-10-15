@@ -12,6 +12,7 @@ import {
   connectShell,
   inbox,
   isCancelled,
+  isSession,
   isState,
   resultOf,
   runningOf,
@@ -75,16 +76,21 @@ describe('shots and marks — criterion 8', () => {
     const { s, box } = await open(
       'criterion cambia\n  when\n    click role:tab/"Tab B"\n  then\n    visible app-tabs\n    text role:tabpanel "panel B"\n',
     );
+    // The session says the size every page opens at: the room the shell keeps for a shot.
+    expect((await box.next(isSession)).viewport).toEqual({ width: 1280, height: 720, scale: 1 });
     const result = await box.next(resultOf('cambia'), 0, 60_000);
     expect(result.verdict).toBe('pass');
     const origin = new URL(s.url).origin;
     const shots: Record<string, { width: number; height: number }> = {};
     for (const kind of ['before', 'after'] as const) {
-      const url = result.shots[kind];
-      expect(url).toMatch(new RegExp(`^/__bench/app-tabs/shot/cambia/\\d+-${kind}\\.png$`, 'u'));
-      const res = await fetch(origin + url!);
+      const shot = result.shots[kind]!;
+      expect(shot.url).toMatch(new RegExp(`^/__bench/app-tabs/shot/cambia/\\d+-${kind}\\.png$`, 'u'));
+      const res = await fetch(origin + shot.url);
       expect(res.headers.get('content-type')).toBe('image/png');
       shots[kind] = size(Buffer.from(await res.arrayBuffer()));
+      // At scale 1 the PNG is the element's CSS box, give or take the rounding of a fraction.
+      expect(Math.abs(shot.width - shots[kind].width)).toBeLessThanOrEqual(1);
+      expect(Math.abs(shot.height - shots[kind].height)).toBeLessThanOrEqual(1);
     }
     const after = shots['after']!;
     expect(result.marks.map((m) => [m.step, m.ref])).toEqual([
@@ -170,6 +176,35 @@ describe('commands — criterion 10', () => {
     s.command({ v: 2, type: 'pin', tag: 'app-tabs', id: null });
     project!.write(TABS, `${project!.read(TABS)}\n`);
     expect((await box.next(runningOf('app-tabs'), from)).ids).toEqual(['rojo', 'verde']);
+  }, 120_000);
+
+  it('pinned, Run all and Run failing reach the pinned one alone; naming ids runs those', async () => {
+    const { s, box } = await open(TWO);
+    await all(box, ['verde', 'rojo']);
+    let from = box.messages.length;
+    s.command({ v: 2, type: 'pin', tag: 'app-tabs', id: 'verde' });
+    await box.next(isState, from);
+
+    from = box.messages.length;
+    s.command({ v: 2, type: 'run', tag: 'app-tabs' });
+    expect((await box.next(runningOf('app-tabs'), from)).ids).toEqual(['verde']);
+    await box.next(resultOf('verde'), from, 60_000);
+
+    // The pinned one passes: failing has nothing to run, though rojo fails.
+    from = box.messages.length;
+    s.command({ v: 2, type: 'run', tag: 'app-tabs', failing: true });
+    await new Promise((done) => setTimeout(done, 500));
+    expect(box.messages.slice(from)).toEqual([]);
+
+    s.command({ v: 2, type: 'run', tag: 'app-tabs', ids: ['rojo'] });
+    expect((await box.next(runningOf('app-tabs'), from)).ids).toEqual(['rojo']);
+    await box.next(resultOf('rojo'), from, 60_000);
+
+    from = box.messages.length;
+    s.command({ v: 2, type: 'pin', tag: 'app-tabs', id: 'rojo' });
+    await box.next(isState, from);
+    s.command({ v: 2, type: 'run', tag: 'app-tabs', failing: true });
+    expect((await box.next(runningOf('app-tabs'), from)).ids).toEqual(['rojo']);
   }, 120_000);
 
   it('pause counts the saves in pending and runs nothing; resume runs once, reloading if one asked for it', async () => {

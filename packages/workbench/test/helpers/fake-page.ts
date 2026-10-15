@@ -3,7 +3,7 @@
  * given per test. The real adapters are checked against Chrome in test/browser/.
  */
 
-import type { BrowserLike, LocatorLike, PageLike, Target } from '../../src/browser.js';
+import { VIEWPORT, type BrowserLike, type LocatorLike, type PageLike, type Target } from '../../src/browser.js';
 
 export interface FakeElement {
   count?: number;
@@ -15,6 +15,8 @@ export interface FakeElement {
   text?: string;
   /** What the nearest-host script answers. */
   host?: { id: string; defined: boolean } | null;
+  /** The value an attribute had before `setAttribute`; none when left out. */
+  attribute?: string | null;
 }
 
 export interface FakePage extends PageLike {
@@ -63,7 +65,7 @@ export function fakePage(
           if (script.includes('data-fud-id')) return (element.host === undefined ? null : element.host) as R;
           if (script.includes('setAttribute')) {
             calls.push(`setAttribute ${name} ${JSON.stringify(arg)}`);
-            return undefined as R;
+            return (element.attribute ?? null) as R;
           }
           return (element.text ?? '') as R;
         },
@@ -100,6 +102,7 @@ export function fakePage(
 export function fakeBrowser(page: FakePage): BrowserLike & { opened: number } {
   const browser = {
     name: 'chrome' as const,
+    viewport: VIEWPORT,
     opened: 0,
     async newPage() {
       browser.opened += 1;

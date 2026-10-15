@@ -99,19 +99,29 @@ export interface ProcessPort {
   spawn(command: string, args: readonly string[], cwd: string): WorkbenchProcess;
 }
 
-/** The workbench tab: a webview beside the editor that frames the shell. */
+/**
+ * The workbench tab: a webview beside the editor that frames the shell. It opens before its
+ * process answers, saying it is starting, and loads the shell once the URL is known.
+ */
 export interface WorkbenchPanel {
+  /** Frames the shell at `url`, under the component's own title. */
+  load(url: string, title: string): void;
   /** Brings the tab to the front. */
   reveal(): void;
-  /** Says in the tab that its process is gone, and why. */
+  /** Says in the tab that its process is gone, or never came up, and why. */
   showStopped(message: string): void;
-  /** Called once when the user closes the tab. */
+  /** Called once when the user closes the tab; every listener registered is called. */
   onClosed(listener: () => void): void;
 }
 
 /** Opening workbench tabs. The adapter binds it to `vscode.window.createWebviewPanel`. */
 export interface WorkbenchPanelPort {
-  open(view: { readonly title: string; readonly url: string }): WorkbenchPanel;
+  open(view: { readonly title: string }): WorkbenchPanel;
+}
+
+/** The editor's own «working on it» indicator. `begin` shows it; the function it answers ends it. */
+export interface ProgressPort {
+  begin(title: string): () => void;
 }
 
 /** Opening the read-only views the debugging commands produce (§4.3). */

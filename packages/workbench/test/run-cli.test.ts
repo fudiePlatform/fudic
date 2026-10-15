@@ -24,7 +24,7 @@ const SESSION: BenchMessage = {
   tag: 'app-card',
   spec: 'C:/p/app-card.fudspec',
   diagnostics: [],
-  criteria: [{ id: 'a', route: '/app-card/a', line: 3, steps: [] }],
+  criteria: [{ id: 'a', route: '/app-card/a', line: 3, props: null, steps: [] }],
 };
 const RESULT: BenchMessage = { v: 2, type: 'result', tag: 'app-card', id: 'a', verdict: 'pass', ms: 5, steps: [], shots: {}, marks: [], pageErrors: [] };
 

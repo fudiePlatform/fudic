@@ -8,7 +8,7 @@
 import type { ViteDevServer } from 'vite';
 import { firstLine, type BrowserLike } from './browser.js';
 import { runCriterion, type CriterionResult } from './engine.js';
-import type { BenchMessage, RunCommand, Verdict } from './protocol.js';
+import type { BenchMessage, RunCommand, ShotRef, Verdict } from './protocol.js';
 import { classify, Rerunner } from './rerun.js';
 import { runOrder, runPool } from './runner.js';
 import { loadSession, type LoadedSession } from './session.js';
@@ -70,7 +70,7 @@ export async function openBench(input: BenchInput): Promise<Bench> {
     const again = resolveTarget(target.component, input.fs);
     if (!isFailure(again)) target = again;
     const loaded = await loadSession({ target, vite: input.vite, dir: input.dir });
-    input.publish({ ...loaded.message, browser: input.browser.name });
+    input.publish({ ...loaded.message, browser: input.browser.name, viewport: input.browser.viewport });
     return loaded;
   }
 
@@ -82,10 +82,13 @@ export async function openBench(input: BenchInput): Promise<Bench> {
     const { id, shots, ...rest } = result;
     const was = verdicts.get(id);
     verdicts.set(id, result.verdict);
-    const urls: { before?: string; after?: string } = {};
-    if (shots.before !== undefined) urls.before = input.shots.put(target.tag, id, 'before', shots.before.png);
-    if (shots.after !== undefined) urls.after = input.shots.put(target.tag, id, 'after', shots.after.png);
-    input.publish({ v: 2, type: 'result', tag: target.tag, id, ...rest, ...(was !== undefined ? { was } : {}), shots: urls });
+    const refs: { before?: ShotRef; after?: ShotRef } = {};
+    for (const kind of ['before', 'after'] as const) {
+      const shot = shots[kind];
+      if (shot === undefined) continue;
+      refs[kind] = { url: input.shots.put(target.tag, id, kind, shot.png), width: shot.box.width, height: shot.box.height };
+    }
+    input.publish({ v: 2, type: 'result', tag: target.tag, id, ...rest, ...(was !== undefined ? { was } : {}), shots: refs });
   }
 
   async function run(trigger: string | null, ids: readonly string[] | undefined): Promise<void> {
@@ -149,9 +152,12 @@ export async function openBench(input: BenchInput): Promise<Bench> {
     command(command) {
       switch (command.type) {
         case 'run': {
-          const ids = command.failing === true
+          let ids = command.failing === true
             ? session.criteria.filter((c) => verdicts.get(c.id) !== 'pass').map((c) => c.id)
             : command.ids;
+          // A pinned criterion is the only one Run all and Run failing reach; naming ids still
+          // runs those.
+          if (command.ids === undefined && pinned !== null) ids = (ids ?? [pinned]).filter((id) => id === pinned);
           if (ids?.length !== 0) rerunner.request(false, null, ids);
           return;
         }

@@ -1,4 +1,4 @@
-// Sets an attribute on an element.
+// Sets an attribute on an element; the evidence says what it was before.
 export const meta = {
   name: 'set-attribute',
   block: 'when',
@@ -11,8 +11,8 @@ export const meta = {
 };
 
 export async function run(ctx, { target, attribute, value }) {
-  await ctx.locate(target).setAttribute(attribute, value);
-  return { pass: true, evidence: `${attribute}="${value}"` };
+  const before = await ctx.locate(target).setAttribute(attribute, value);
+  return { pass: true, evidence: before === null ? 'before: none' : `before: "${before}"` };
 }
 
 export const selfTest = [{ args: { target: 'app-card', attribute: 'variant', value: 'highlight' }, expect: 'pass' }];
