@@ -71,7 +71,7 @@ button.primary kbd { background: rgba(255, 255, 255, 0.18); color: #fff; }
 a { color: inherit; text-decoration: none; } a:hover { text-decoration: underline; }
 #layout { display: flex; gap: 12px; padding: 16px; align-items: flex-start; }
 #criteria { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
-.card { border: 1px solid var(--line); border-radius: 8px; background: var(--card); outline: none; }
+.card { border: 1px solid var(--line); border-radius: 8px; background: var(--card); outline: none; container-type: inline-size; }
 .card:focus-visible { box-shadow: 0 0 0 2px var(--mark); }
 .card.pinned { border-color: var(--mark); }
 .head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; min-width: 0; cursor: default; }
@@ -110,7 +110,7 @@ a { color: inherit; text-decoration: none; } a:hover { text-decoration: underlin
 .steps li { display: flex; gap: 10px; align-items: baseline; margin: 0 -8px; padding: 0 8px; border-radius: 4px; min-width: 0; }
 .steps li.hot { background: var(--hot); box-shadow: inset 2px 0 0 var(--mark); }
 .steps .block { width: 40px; flex: none; color: var(--faint); }
-.steps .says { min-width: 0; overflow-wrap: anywhere; }
+.steps .content { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .steps .props b { font-weight: 500; }
 .steps .ok { color: var(--pass); }
 .steps .ko { color: var(--fail); }
@@ -119,24 +119,25 @@ a { color: inherit; text-decoration: none; } a:hover { text-decoration: underlin
 .steps .bad .says, .steps .bad .evidence { color: var(--fail); }
 .steps .ignored { color: var(--soft); }
 .steps .badge { font-size: 11px; padding: 0 6px; border-radius: 4px; background: var(--warn-bg); color: var(--warn); white-space: nowrap; }
-.steps .at { margin-left: auto; font-size: 11px; color: var(--mark); visibility: hidden; }
+.steps .badge { margin-left: 4px; }
+.steps .at { flex: none; margin-left: auto; font-size: 11px; color: var(--mark); visibility: hidden; }
 .steps li.hot .at { visibility: visible; }
 .diff { flex-basis: 100%; margin: 2px 0 2px 50px; font: 12px ui-monospace, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 .steps li.has-diff { flex-wrap: wrap; }
 .diff mark { background: var(--hit); color: inherit; }
 .note { margin: 4px 0; color: var(--fail); white-space: pre-wrap; overflow-wrap: anywhere; }
 .shots { min-width: 0; display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); align-content: start; }
-.shots.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* Two shots side by side while each has room; one under the other when it does not. */
+.shots.two { grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
 .shot { margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.shot figcaption { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--soft); }
-.shot figcaption .kind { font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
-.shot figcaption .size { color: var(--faint); }
+.shot figcaption { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 11px; color: var(--soft); }
+.shot figcaption .kind { font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+.shot figcaption .size { color: var(--faint); white-space: nowrap; }
 .shot figcaption .zoom { margin-left: auto; color: var(--mark); background: none; border: 0; height: auto; padding: 0; font-size: 11px; }
 .well { padding: 10px; background: var(--well); border-radius: 6px; overflow-x: auto; }
 /* At its real size, as the measuring browser saw it; a wide component scrolls instead of shrinking. */
 .frame { position: relative; display: inline-block; vertical-align: top; outline: 1px dashed var(--mark); outline-offset: 2px; }
 .frame img { display: block; max-width: none; }
-.frame .before { position: absolute; top: 0; left: 0; }
 .box { position: absolute; border: 2px solid var(--mark); border-radius: 2px; pointer-events: none; opacity: 0.45; }
 .box.hot { opacity: 1; background: rgba(76, 141, 255, 0.22); }
 #live { position: sticky; top: 104px; width: min(45%, 520px); border: 1px solid var(--line); border-radius: 8px;
@@ -144,13 +145,18 @@ a { color: inherit; text-decoration: none; } a:hover { text-decoration: underlin
 #live[hidden] { display: none; }
 #live .bar { display: flex; gap: 8px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--line); }
 #live .bar button { height: 24px; padding: 0 8px; }
-#live iframe { display: block; width: 100%; height: 360px; border: 0; background: #fff; }
+/* The page loads behind the one shown and replaces it once loaded: opening or reloading never flashes. */
+#live .view { position: relative; height: 360px; background: var(--card); }
+#live iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #fff; }
+#live iframe.loading { visibility: hidden; }
 #zoom { max-width: 95vw; max-height: 95vh; padding: 12px; border: 1px solid var(--line); border-radius: 8px;
   background: var(--card); color: var(--ink); }
 #zoom::backdrop { background: rgba(0, 0, 0, 0.6); }
 #zoom .bar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 #zoom .bar button { height: 24px; padding: 0 8px; }
-@media (max-width: 760px) { .body { grid-template-columns: minmax(0, 1fr); } #layout { flex-direction: column; }
+/* A narrow card (a narrow window, or the live panel open) puts its shots under its steps. */
+@container (max-width: 640px) { .body { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) { #layout { flex-direction: column; align-items: stretch; }
   #live { width: 100%; position: static; } .row2 { height: auto; flex-wrap: wrap; padding: 8px 16px; } }
 `;
 
@@ -169,7 +175,20 @@ const $ = (tag, cls, text) => { const el = document.createElement(tag); if (cls)
 const byId = (id) => document.getElementById(id);
 const list = byId('criteria'), strip = byId('diagnostics'), problem = byId('problem'), state = byId('state');
 const title = byId('title'), countEl = byId('count'), summary = byId('summary');
-const live = byId('live'), liveFrame = byId('live-frame'), liveTitle = byId('live-title');
+const live = byId('live'), liveView = byId('live-view'), liveTitle = byId('live-title');
+
+/** Loads the live page behind the one shown, and swaps them once it has loaded: no flash. */
+function loadLive(src) {
+  const next = document.createElement('iframe');
+  next.title = "The criterion's page, alive";
+  next.className = 'loading';
+  next.addEventListener('load', () => {
+    for (const old of liveView.querySelectorAll('iframe')) if (old !== next) old.remove();
+    next.className = '';
+  }, { once: true });
+  next.src = src;
+  liveView.append(next);
+}
 const zoom = byId('zoom'), zoomTitle = byId('zoom-title'), zoomBody = byId('zoom-body');
 const pauseButton = byId('pause');
 const foldAllButton = byId('fold-all');
@@ -248,7 +267,7 @@ function session(m) {
   });
   for (const [id, card] of cards) if (!seen.has(id)) { card.el.remove(); cards.delete(id); results.delete(id); }
   if (liveId !== null && !cards.has(liveId)) closeLive();
-  if (liveId !== null) liveFrame.src = cards.get(liveId).criterion.route;
+  if (liveId !== null) loadLive(cards.get(liveId).criterion.route);
   reorder();
   count();
 }
@@ -307,7 +326,9 @@ function paintSteps(card) {
     const li = $('li', 'given');
     const says = $('span', 'says props');
     says.append('props ', $('b', '', c.props.name));
-    li.append($('span', 'block', 'given'), says, lineMark(c.props.line));
+    const content = $('span', 'content');
+    content.append(says);
+    li.append($('span', 'block', 'given'), content, lineMark(c.props.line));
     hover(li, card, -1, c.props.line);
     card.steps.append(li);
   }
@@ -315,7 +336,10 @@ function paintSteps(card) {
     const li = $('li', s.block);
     const text = $('a', 'says', s.text);
     fileLink(text, s.file, 1);
-    li.append($('span', 'block', s.block), text, $('span', 'mark'), $('span', 'evidence'), lineMark(s.line));
+    // What it says, its mark and its evidence flow as one text, wrapping together.
+    const content = $('span', 'content');
+    content.append(text, ' ', $('span', 'mark'), ' ', $('span', 'evidence'));
+    li.append($('span', 'block', s.block), content, lineMark(s.line));
     hover(li, card, i, s.line);
     card.steps.append(li);
     return li;
@@ -427,7 +451,7 @@ function paintEvidence(card, m) {
     }
     if (s.ignored) {
       li.classList.add('ignored');
-      li.insertBefore($('span', 'badge', 'skipped here'), li.querySelector('.at'));
+      li.querySelector('.content').append($('span', 'badge', 'skipped here'));
       return;
     }
     const e = s.evidence;
@@ -456,7 +480,7 @@ function result(m) {
   card.note.textContent = notes.join('\\n');
   void paintShots(card);
   paint(card);
-  if (liveId === m.id) liveFrame.src = card.criterion.route;
+  if (liveId === m.id) loadLive(card.criterion.route);
   if (run && !run.end && run.ids.every((id) => results.get(id) && !cards.get(id)?.running)) run.end = Date.now();
   reorder();
   count();
@@ -585,12 +609,12 @@ function openLive(id) {
   liveId = id;
   live.hidden = false;
   liveTitle.textContent = id;
-  liveFrame.src = card.criterion.route;
+  loadLive(card.criterion.route);
   for (const c of cards.values()) paint(c);
 }
 
 function closeLive() {
-  liveId = null; live.hidden = true; liveFrame.removeAttribute('src');
+  liveId = null; live.hidden = true; liveView.replaceChildren();
   for (const c of cards.values()) paint(c);
 }
 
@@ -686,7 +710,7 @@ export function shellPage(): string {
     '<div id="problem" class="error"></div>\n<div id="diagnostics"></div>\n' +
     '<div id="layout"><main id="criteria"></main>' +
     '<aside id="live" hidden><div class="bar"><b id="live-title"></b><span class="spacer"></span>' +
-    '<button id="live-close" title="Close">×</button></div><iframe id="live-frame" title="The criterion\'s page, alive"></iframe></aside></div>\n' +
+    '<button id="live-close" title="Close">×</button></div><div id="live-view" class="view"></div></aside></div>\n' +
     '<dialog id="zoom"><div class="bar"><b id="zoom-title"></b><span class="spacer"></span>' +
     '<button id="zoom-close" title="Close (Esc)">×</button></div><div id="zoom-body" class="well"></div></dialog>\n' +
     `<script type="module">${SCRIPT}</script>\n</body>\n</html>\n`

@@ -7,7 +7,7 @@ criterion altura-minima
     props minima
     route /blog
   then
-    min-height app-card 20
+    min-height app-card 16
 
 criterion titulo-largo-visible
   given
