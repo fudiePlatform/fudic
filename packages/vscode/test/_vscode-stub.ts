@@ -352,7 +352,12 @@ export const StatusBarAlignment = { Left: 1, Right: 2 } as const;
 
 export const ViewColumn = { One: 1, Beside: -2 } as const;
 
-export const ProgressLocation = { SourceControl: 1, Window: 10, Notification: 15 } as const;
+/** `vscode.ThemeColor`: the id of a color of the theme. */
+export class ThemeColor {
+  constructor(readonly id: string) {}
+}
+
+export const ProgressLocation ={ SourceControl: 1, Window: 10, Notification: 15 } as const;
 
 /** `vscode.EventEmitter`: listeners on `event`, called by `fire`, dropped by `dispose`. */
 export class EventEmitter<T> {

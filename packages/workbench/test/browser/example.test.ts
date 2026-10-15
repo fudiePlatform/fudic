@@ -52,6 +52,8 @@ describe('app-card of the example', () => {
       ['visible', true],
       ['text', true],
     ]);
+    // `variant` arrives as a property: the attribute set-attribute replaced was not there.
+    expect(measure!.steps[1]).toMatchObject({ evidence: 'before: none' });
     expect(act).toMatchObject({ verdict: 'pass', steps: [{ term: 'click', pass: true }] });
   }, 60_000);
 
