@@ -178,6 +178,35 @@ describe('commands — criterion 10', () => {
     expect((await box.next(runningOf('app-tabs'), from)).ids).toEqual(['rojo', 'verde']);
   }, 120_000);
 
+  it('pinned, Run all and Run failing reach the pinned one alone; naming ids runs those', async () => {
+    const { s, box } = await open(TWO);
+    await all(box, ['verde', 'rojo']);
+    let from = box.messages.length;
+    s.command({ v: 2, type: 'pin', tag: 'app-tabs', id: 'verde' });
+    await box.next(isState, from);
+
+    from = box.messages.length;
+    s.command({ v: 2, type: 'run', tag: 'app-tabs' });
+    expect((await box.next(runningOf('app-tabs'), from)).ids).toEqual(['verde']);
+    await box.next(resultOf('verde'), from, 60_000);
+
+    // The pinned one passes: failing has nothing to run, though rojo fails.
+    from = box.messages.length;
+    s.command({ v: 2, type: 'run', tag: 'app-tabs', failing: true });
+    await new Promise((done) => setTimeout(done, 500));
+    expect(box.messages.slice(from)).toEqual([]);
+
+    s.command({ v: 2, type: 'run', tag: 'app-tabs', ids: ['rojo'] });
+    expect((await box.next(runningOf('app-tabs'), from)).ids).toEqual(['rojo']);
+    await box.next(resultOf('rojo'), from, 60_000);
+
+    from = box.messages.length;
+    s.command({ v: 2, type: 'pin', tag: 'app-tabs', id: 'rojo' });
+    await box.next(isState, from);
+    s.command({ v: 2, type: 'run', tag: 'app-tabs', failing: true });
+    expect((await box.next(runningOf('app-tabs'), from)).ids).toEqual(['rojo']);
+  }, 120_000);
+
   it('pause counts the saves in pending and runs nothing; resume runs once, reloading if one asked for it', async () => {
     const { s, box } = await open(TWO);
     await all(box, ['verde', 'rojo']);

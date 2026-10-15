@@ -187,6 +187,7 @@ describe('the header — criterion 13', () => {
   it('the buttons and the keys send the commands of the tag; Pause turns Resume with what waits', async () => {
     const p = await shell();
     await deliver(p, session(['a', 'b']));
+    expect(await text(p, '#run-all-label')).toBe('Run all');
     await click(p, '#run-all');
     await click(p, '#run-failing');
     await click(p, '#pause');
@@ -216,12 +217,15 @@ describe('the header — criterion 13', () => {
       { v: 2, tag: 'app-card', type: 'cancel' },
     ]);
     expect([await text(p, '#pause'), await attr(p, '#pause', 'aria-pressed')]).toEqual(['Resume (2)', 'true']);
+    // Pinned, Run all runs that one alone: the button says so.
+    expect(await text(p, '#run-all-label')).toBe('Run pinned');
     expect(await p.evaluate<boolean>('() => document.querySelector(".card[data-id=a]").classList.contains("pinned")')).toBe(true);
     expect(await attr(p, '.card[data-id=a] .actions button:nth-child(2)', 'aria-pressed')).toBe('true');
     expect(await attr(p, '.card[data-id=b] .actions button:nth-child(2)', 'aria-pressed')).toBe('false');
     expect(await text(p, '#summary')).toBe('chrome · pinned: a · paused, 2 waiting');
     await deliver(p, { v: 2, type: 'state', tag: 'app-card', paused: true, pinned: null, pending: 0 });
     expect([await text(p, '#pause'), await text(p, '#summary')]).toEqual(['Resume', 'chrome · paused']);
+    expect(await text(p, '#run-all-label')).toBe('Run all');
     await deliver(p, { v: 2, type: 'state', tag: 'app-card', paused: false, pinned: null, pending: 0 });
     expect([await text(p, '#pause'), await attr(p, '#pause', 'aria-pressed')]).toEqual(['Pause', 'false']);
     // Disconnected, nothing is sent.
@@ -273,17 +277,21 @@ describe('the cards — criterion 13', () => {
   it('the arrow and the head fold the card, but not its links or other buttons; Enter folds the focused one', async () => {
     const p = await shell();
     await deliver(p, session(['a', 'b']));
-    const arrow = () => all(p, '.card .toggle', '(t) => [t.textContent, t.getAttribute("aria-expanded")]');
+    // A chevron with no text: what changes is aria-expanded, which turns it.
+    expect(await all(p, '.card .toggle', '(t) => [t.textContent, t.getAttribute("aria-label"), !!t.querySelector("svg path")]')).toEqual([
+      ['', 'Fold or unfold', true],
+      ['', 'Fold or unfold', true],
+    ]);
+    const arrow = () => all(p, '.card .toggle', '(t) => [t.getAttribute("aria-expanded"), getComputedStyle(t.querySelector("svg")).transform]');
     expect(await arrow()).toEqual([
-      ['▸', 'false'],
-      ['▸', 'false'],
+      ['false', 'none'],
+      ['false', 'none'],
     ]);
     await click(p, '.card[data-id=a] .toggle');
     expect(await opens(p)).toEqual(['true', 'false']);
-    expect(await arrow()).toEqual([
-      ['▾', 'true'],
-      ['▸', 'false'],
-    ]);
+    // Turned a quarter: the transition settles on the rotation.
+    await p.waitFor('() => getComputedStyle(document.querySelector(".card[data-id=a] .toggle svg")).transform !== "none" && new DOMMatrix(getComputedStyle(document.querySelector(".card[data-id=a] .toggle svg")).transform).b > 0.99', null);
+    expect((await arrow()).map((a) => (a as string[])[0])).toEqual(['true', 'false']);
     await click(p, '.card[data-id=a] .head');
     expect(await opens(p)).toEqual(['false', 'false']);
     // In a browser the title is a vscode:// link: kept from leaving the page, it still does not fold.

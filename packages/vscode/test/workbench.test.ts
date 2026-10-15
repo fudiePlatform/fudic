@@ -232,7 +232,7 @@ describe('specLenses — what the lenses of a .fudspec show', () => {
   ];
 
   it('closed: Run all and Run failing over the component line, Run over each criterion', () => {
-    expect(IDLE).toEqual({ starting: false, open: false, paused: false, pending: 0, running: new Set() });
+    expect(IDLE).toEqual({ starting: false, open: false, paused: false, pending: 0, pinned: null, running: new Set() });
     expect(specLenses(TEXT, IDLE)).toEqual([RUN_ALL, RUN_FAILING, ...CRITERIA]);
   });
 
@@ -264,6 +264,19 @@ describe('specLenses — what the lenses of a .fudspec show', () => {
     ]);
     expect(specLenses(TEXT, state({ open: true, paused: true }))[2]).toEqual({ line: 1, title: '▶ Resume', action: { type: 'pause', paused: false } });
     expect(specLenses(TEXT, state({ open: true, paused: true, pending: 3 }))[2]).toMatchObject({ title: '▶ Resume (3)' });
+  });
+
+  it('pinned, Run all says Run pinned, and spins as soon as the pinned one runs', () => {
+    const pinned = specLenses(TEXT, state({ open: true, pinned: 'titulo' }));
+    expect(pinned[0]).toEqual({ ...RUN_ALL, title: '▶ Run pinned' });
+    // The other criterion running is not what Run pinned runs.
+    expect(specLenses(TEXT, state({ open: true, pinned: 'titulo', running: new Set(['alto']) }))[0]!.title).toBe('▶ Run pinned');
+    expect(specLenses(TEXT, state({ open: true, pinned: 'titulo', running: new Set(['titulo']) }))[0]).toEqual({
+      ...RUN_ALL,
+      title: '$(sync~spin) Running pinned…',
+    });
+    // A pin the text no longer has: nothing it reaches is running.
+    expect(specLenses(TEXT, state({ open: true, pinned: 'gone', running: new Set(['alto', 'titulo']) }))[0]!.title).toBe('▶ Run pinned');
   });
 
   it('a criterion running spins and does nothing; all of them running, Run all spins too', () => {
@@ -610,13 +623,13 @@ describe('the .fudspec follows the results — criterion 14', () => {
 
   it('a state message says whether it is paused and how many saves wait, for the lenses', async () => {
     const { w, p } = await painted();
-    expect(w.workbenches.lensState(CARD_SPEC)).toEqual({ starting: false, open: true, paused: false, pending: 0, running: new Set() });
+    expect(w.workbenches.lensState(CARD_SPEC)).toEqual({ starting: false, open: true, paused: false, pending: 0, pinned: null, running: new Set() });
     const before = w.lensChanges();
-    await p.emit({ v: 2, type: 'state', tag: 'app-card', paused: true, pinned: null, pending: 2 });
-    expect(w.workbenches.lensState(CARD_SPEC)).toMatchObject({ paused: true, pending: 2 });
+    await p.emit({ v: 2, type: 'state', tag: 'app-card', paused: true, pinned: 'alto', pending: 2 });
+    expect(w.workbenches.lensState(CARD_SPEC)).toMatchObject({ paused: true, pending: 2, pinned: 'alto' });
     expect(w.lensChanges()).toBe(before + 1);
-    await p.emit({ v: 2, type: 'state', tag: 'app-card', paused: 'yes', pending: '2' });
-    expect(w.workbenches.lensState(CARD_SPEC)).toMatchObject({ paused: false, pending: 0 });
+    await p.emit({ v: 2, type: 'state', tag: 'app-card', paused: 'yes', pending: '2', pinned: 3 });
+    expect(w.workbenches.lensState(CARD_SPEC)).toMatchObject({ paused: false, pending: 0, pinned: null });
   });
 
   it('closing the tab, or the process dying, clears the .fudspec', async () => {
@@ -705,6 +718,24 @@ describe('the CodeLens actions — criterion 14', () => {
     await w.workbenches.act(CARD_SPEC, { type: 'run', failing: true });
     expect(states(w)).toEqual(['running', 'pass']);
     expect(p.sent).toEqual(Array.from({ length: 3 }, () => ({ v: 2, type: 'run', tag: 'app-card', failing: true })));
+  });
+
+  it('pinned, Run all and Run failing show running only the pinned one, failing only if it is red', async () => {
+    const { w, p } = await painted();
+    await p.emit({ v: 2, type: 'state', tag: 'app-card', paused: false, pinned: 'titulo', pending: 0 });
+    await w.workbenches.act(CARD_SPEC, { type: 'run', all: true });
+    expect(states(w)).toEqual(['waiting', 'running']);
+    await p.emit(result('app-card', 'titulo', 'pass'));
+    await p.emit(result('app-card', 'alto', 'fail'));
+    // Red, but not the pinned one: failing reaches nothing.
+    await w.workbenches.act(CARD_SPEC, { type: 'run', failing: true });
+    expect(states(w)).toEqual(['fail', 'pass']);
+    await p.emit(result('app-card', 'titulo', 'error'));
+    await w.workbenches.act(CARD_SPEC, { type: 'run', failing: true });
+    expect(states(w)).toEqual(['fail', 'running']);
+    // Naming an id runs it, pinned or not.
+    await w.workbenches.act(CARD_SPEC, { type: 'run', id: 'alto' });
+    expect(states(w)).toEqual(['running', 'running']);
   });
 
   it('Pause, Resume and Cancel go to the process as they are', async () => {

@@ -49,7 +49,8 @@ describe('parseArgs', () => {
   });
 });
 
-function io() {
+/** A terminal or a parent process: `interactive` says which. */
+function io(interactive = false) {
   const lines: string[] = [];
   const exits: number[] = [];
   let onExit: (() => void) | undefined;
@@ -61,6 +62,7 @@ function io() {
     send: (line: string) => onLine?.(line),
     io: {
       cwd: 'C:/p',
+      interactive,
       write: (line: string) => lines.push(line),
       onLine: (callback: (line: string) => void) => {
         onLine = callback;
@@ -227,6 +229,92 @@ describe('main — criteria 5 and 10, commands on stdin', () => {
   });
 });
 
+describe('main — at a terminal, for a person', () => {
+  const SESSION: BenchMessage = {
+    v: 2,
+    type: 'session',
+    tag: 'app-card',
+    spec: 'C:/p/app-card.fudspec',
+    diagnostics: [],
+    criteria: [
+      { id: 'a', route: '/app-card/a', line: 3, props: null, steps: [] },
+      { id: 'b', route: '/app-card/b', line: 8, props: null, steps: [] },
+    ],
+  };
+  const result = (id: string): BenchMessage => ({
+    v: 2,
+    type: 'result',
+    tag: 'app-card',
+    id,
+    verdict: 'pass',
+    ms: 5,
+    steps: [],
+    shots: {},
+    marks: [],
+    pageErrors: [],
+  });
+  const running = (ids: string[]): BenchMessage => ({ v: 2, type: 'running', tag: 'app-card', ids, trigger: { file: null, at: 0 } });
+
+  async function human() {
+    const steps: string[] = [];
+    let publish: (m: BenchMessage) => void = () => undefined;
+    open.mockImplementation(async (_file: string, options: { onMessage: (m: BenchMessage) => void }) => {
+      publish = options.onMessage;
+      // Before the first line: printed after where the shell is.
+      publish({ v: 2, type: 'problem', message: 'early' });
+      return session(steps, { onMessage: (m) => publish(m) });
+    });
+    const t = io(true);
+    await main(['app-card.fud'], t.io);
+    return { t, publish: (m: BenchMessage) => publish(m) };
+  }
+
+  it('says where the shell is and how to stop it, then the problems, as text', async () => {
+    const { t, publish } = await human();
+    publish({ v: 2, type: 'problem', message: 'Chrome went away' });
+    expect(t.lines).toEqual([
+      'app-card workbench (msedge): http://127.0.0.1:1/__bench/app-card/',
+      'Open it in a browser; saving a file runs the criteria again. Ctrl+C stops it.',
+      'problem: early',
+      'problem: Chrome went away',
+    ]);
+  });
+
+  it('prints a block when every criterion of a run has ended, and nothing for the rest', async () => {
+    const { t, publish } = await human();
+    t.lines.length = 0;
+    publish(SESSION);
+    // A result with no run before it, and a state: nothing to say.
+    publish(result('a'));
+    publish({ v: 2, type: 'state', tag: 'app-card', paused: false, pinned: null, pending: 0 });
+    expect(t.lines).toEqual([]);
+    publish(running(['a', 'b']));
+    publish(result('a'));
+    expect(t.lines).toEqual([]);
+    publish(result('b'));
+    expect(t.lines).toEqual(['', 'app-card', '  ✓ a  5 ms', '  ✓ b  5 ms']);
+    // A run that ends cancelled prints its block too, with what did run.
+    t.lines.length = 0;
+    publish(running(['a', 'b']));
+    publish({ v: 2, type: 'cancelled', tag: 'app-card', ids: ['a'] });
+    expect(t.lines).toEqual([]);
+    publish({ v: 2, type: 'cancelled', tag: 'app-card', ids: ['b'] });
+    expect(t.lines).toEqual(['', 'app-card', '  ✓ a  5 ms', '  ✓ b  5 ms']);
+    // Once ended, a late cancel prints nothing.
+    t.lines.length = 0;
+    publish({ v: 2, type: 'cancelled', tag: 'app-card', ids: ['b'] });
+    expect(t.lines).toEqual([]);
+  });
+
+  it('still answers the commands on stdin as JSON', async () => {
+    const { t } = await human();
+    t.lines.length = 0;
+    t.send('{"v":2,"type":"open","file":"C:/p/index.fud"}');
+    await vi.waitFor(() => expect(t.lines).toHaveLength(1));
+    expect(JSON.parse(t.lines[0]!)).toMatchObject({ v: 2, type: 'error', file: 'C:/p/index.fud' });
+  });
+});
+
 describe('main — run', () => {
   it('hands `run` and the rest of its arguments to runMain, with the folder it started in', async () => {
     const t = io();
@@ -258,6 +346,20 @@ describe('processIo', () => {
     expect(write).toHaveBeenCalledWith('{"a":1}\n');
     expect(exit).toHaveBeenCalledWith(1);
     expect(real.cwd).toBe(process.cwd());
+  });
+
+  it('is interactive only when stdout is a terminal', () => {
+    hooked();
+    const was = Object.getOwnPropertyDescriptor(process.stdout, 'isTTY');
+    try {
+      for (const [isTTY, interactive] of [[true, true], [false, false], [undefined, false]] as const) {
+        Object.defineProperty(process.stdout, 'isTTY', { value: isTTY, configurable: true });
+        expect(processIo().interactive).toBe(interactive);
+      }
+    } finally {
+      if (was === undefined) delete (process.stdout as { isTTY?: boolean }).isTTY;
+      else Object.defineProperty(process.stdout, 'isTTY', was);
+    }
   });
 
   it('reads stdin a line at a time, whatever the chunks, with or without \\r', () => {
