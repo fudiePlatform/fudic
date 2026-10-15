@@ -588,43 +588,38 @@ describe('the shots — criterion 13', () => {
     ]);
   }, 60_000);
 
-  it('final only: the after alone; slider: one frame, the before clipped by a handle', async () => {
+  it('two modes only, side by side and final; final shows the after alone', async () => {
     const p = await shell();
+    expect(await all(p, '.modes button', '(b) => b.dataset.mode')).toEqual(['side', 'final']);
     await deliver(p, session(['a']));
     await deliver(p, result('a', 'pass', { shots: SHOTS, marks }));
     await click(p, '.modes button[data-mode=final]');
     await p.waitFor('() => document.querySelectorAll(".card[data-id=a] .shots figure").length === 1', null);
     expect(await figures(p)).toEqual(['At the end']);
     expect(await has(p, '.card[data-id=a] .shots.two')).toBe(false);
-    expect(await all(p, '.modes button', '(b) => b.getAttribute("aria-pressed")')).toEqual(['false', 'false', 'true']);
-
-    await click(p, '.modes button[data-mode=slider]');
-    await p.waitFor('() => document.querySelector(".card[data-id=a] .shots input.slider") !== null', null);
-    expect(await figures(p)).toEqual(['Before ↔ at the end']);
-    expect(await all(p, '.card[data-id=a] .shots img', '(i) => [i.className, i.getAttribute("src")]')).toEqual([
-      ['', '/shot/after.png'],
-      ['before', '/shot/before.png'],
-    ]);
     expect(await has(p, '.card[data-id=a] .shots .box')).toBe(true);
-    expect(await p.evaluate<string>('() => document.querySelector(".card[data-id=a] img.before").style.clipPath')).toBe('inset(0px 50% 0px 0px)');
-    await p.evaluate<void>('() => { const r = document.querySelector(".card[data-id=a] input.slider"); r.value = "80"; r.dispatchEvent(new Event("input")); }');
-    expect(await p.evaluate<string>('() => document.querySelector(".card[data-id=a] img.before").style.clipPath')).toBe('inset(0px 20% 0px 0px)');
-
-    // Without a before, the slider has nothing to slide: the after alone.
+    expect(await all(p, '.modes button', '(b) => b.getAttribute("aria-pressed")')).toEqual(['false', 'true']);
+    await click(p, '.modes button[data-mode=side]');
+    await p.waitFor('() => document.querySelectorAll(".card[data-id=a] .shots figure").length === 2', null);
+    // Side by side with only an after: the after alone.
     await deliver(p, result('a', 'pass', { shots: { after: SHOTS.after }, marks }));
-    await p.waitFor('() => document.querySelector(".card[data-id=a] .shots input.slider") === null', null);
+    await p.waitFor('() => document.querySelectorAll(".card[data-id=a] .shots figure").length === 1', null);
     expect(await figures(p)).toEqual(['At the end']);
     // No shots at all, no figures.
     await deliver(p, result('a', 'pass'));
     await p.waitFor('() => document.querySelectorAll(".card[data-id=a] .shots figure").length === 0', null);
   }, 60_000);
 
-  it('the mode chosen is kept for the next time the shell opens', async () => {
+  it('the mode chosen is kept for the next time the shell opens; a mode it no longer has is side by side', async () => {
     const p = await shell();
-    await click(p, '.modes button[data-mode=slider]');
+    await click(p, '.modes button[data-mode=final]');
     await load(p, '');
-    expect(await all(p, '.modes button', '(b) => b.getAttribute("aria-pressed")')).toEqual(['false', 'true', 'false']);
-    await click(p, '.modes button[data-mode=side]');
+    expect(await all(p, '.modes button', '(b) => b.getAttribute("aria-pressed")')).toEqual(['false', 'true']);
+    // The slider of an earlier version, or anything else, left in storage.
+    await p.evaluate<void>('() => localStorage.setItem("fudic:shots", "slider")');
+    await load(p, '');
+    expect(await all(p, '.modes button', '(b) => b.getAttribute("aria-pressed")')).toEqual(['true', 'false']);
+    expect(await p.evaluate<string>('() => localStorage.getItem("fudic:shots")')).toBe('side');
   }, 60_000);
 
   it('a new shot replaces the old one in place, without the card going empty in between', async () => {
