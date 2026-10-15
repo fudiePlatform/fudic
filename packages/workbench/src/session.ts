@@ -100,9 +100,9 @@ export async function loadSession(input: SessionInput): Promise<LoadedSession> {
   for (const name of plan.files.keys()) invalidateFile(vite, `${input.dir}/${name}`);
 
   const criteria = executed.error === undefined ? plan.criteria : failProps(plan, executed.error.message);
-  // The 1-based line of each `criterion` keyword: the margin and Problems point at it.
+  // The 1-based line of an offset: the margin, Problems and the shell point at it.
   const lineOf = (offset: number) => specText.slice(0, offset).split('\n').length;
-  const described = await Promise.all(criteria.map((c) => describeCriterion(c, lineOf(c.offset), loadTerm)));
+  const described = await Promise.all(criteria.map((c) => describeCriterion(c, lineOf, loadTerm)));
   return { criteria, message: sessionMessage(target, diagnostics, described), loadTerm, reads };
 }
 
@@ -169,17 +169,18 @@ function termLoader(catalog: TermCatalog, vite: ViteDevServer): TermLoader {
  */
 async function describeCriterion(
   criterion: PlannedCriterion,
-  line: number,
+  lineOf: (offset: number) => number,
   loadTerm: TermLoader,
 ): Promise<DescribedCriterion> {
   const steps = await Promise.all(
     criterion.steps.map(async (step): Promise<DescribedStep> => {
       const written = [step.term, ...step.args].join(' ');
+      const line = lineOf(step.offset);
       let term: LoadedTerm;
       try {
         term = await loadTerm(step.block, step.term);
       } catch {
-        return { block: step.block, text: written, file: null };
+        return { block: step.block, text: written, file: null, line };
       }
       let text = written;
       try {
@@ -187,10 +188,14 @@ async function describeCriterion(
       } catch {
         // A describe that throws is the term's problem: the step still reads as written.
       }
-      return { block: step.block, text, file: term.path };
+      return { block: step.block, text, file: term.path, line };
     }),
   );
-  return { id: criterion.id, route: criterion.route, line, steps };
+  const props =
+    criterion.fixture === null || criterion.propsOffset === undefined
+      ? null
+      : { name: criterion.fixture, line: lineOf(criterion.propsOffset) };
+  return { id: criterion.id, route: criterion.route, line: lineOf(criterion.offset), props, steps };
 }
 
 function sessionMessage(

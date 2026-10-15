@@ -112,7 +112,7 @@ export async function runSpecs(paths: readonly string[], options: RunOptions = {
     try {
       for (const target of targets) {
         const session = await loadSession({ target, vite: project.vite, dir: project.dir });
-        project.publish({ ...session.message, browser: project.browser.name });
+        project.publish({ ...session.message, browser: project.browser.name, viewport: project.browser.viewport });
         // A `.fudspec` with errors runs nothing, and that is an error of the run.
         if (session.message.diagnostics.some((d) => d.severity === 'error')) tally.error++;
         if (session.criteria.length > 0) {

@@ -9,6 +9,7 @@
 
 import { FUD0975 } from '@fudic/diagnostics';
 import { chromium, firefox, webkit, type Browser, type Locator, type Page } from 'playwright-core';
+import type { Viewport } from './protocol.js';
 import type { WorkbenchFailure } from './types.js';
 
 /** A browser the criteria can run in: the system's Chrome or Edge, or one Playwright downloads. */
@@ -31,6 +32,9 @@ export const CALL_TIMEOUT = 5000;
  * that errors because the server was busy says nothing about the component.
  */
 export const LOAD_TIMEOUT = 30_000;
+
+/** Playwright's own default, written down: the shell says it, and a shot is measured in it. */
+export const VIEWPORT: Viewport = { width: 1280, height: 720, scale: 1 };
 
 /** The source of a function, run in the page: `(arg) => …`, or `(element, arg) => …` on a locator. */
 export type PageScript = string;
@@ -67,6 +71,8 @@ export interface PageLike {
 export interface BrowserLike {
   /** Which browser it is: the shell and the binary say it. */
   readonly name: BrowserName;
+  /** The size every page opens at: fixed, so a shot means the same on every machine. */
+  readonly viewport: Viewport;
   newPage(): Promise<PageLike>;
   close(): Promise<void>;
 }
@@ -122,8 +128,12 @@ export function firstLine(error: unknown): string {
 function adaptBrowser(name: BrowserName, browser: Browser): BrowserLike {
   return {
     name,
+    viewport: VIEWPORT,
     async newPage() {
-      const page = await browser.newPage();
+      const page = await browser.newPage({
+        viewport: { width: VIEWPORT.width, height: VIEWPORT.height },
+        deviceScaleFactor: VIEWPORT.scale,
+      });
       page.setDefaultTimeout(CALL_TIMEOUT);
       page.setDefaultNavigationTimeout(LOAD_TIMEOUT);
       return adaptPage(page);
