@@ -1,0 +1,30 @@
+<link rel="layout" href="../../layouts/_layout.fud">
+
+@code {
+  type PageData = { title: string; time: string };
+
+  @server {
+    import { findPost, notFound, readingTime, slugs } from "../../services/posts";
+
+    export function load({ params }: { params: { slug: string } }): PageData {
+      const post = findPost(params.slug);
+      return post === undefined
+        ? { title: notFound(params.slug), time: "" }
+        : { title: post.title, time: readingTime(post.minutes) };
+    }
+
+    export function paths(): string[] {
+      return slugs();
+    }
+  }
+}
+
+<head>
+  <title>@data.title</title>
+</head>
+
+<article>
+  <h1>@data.title</h1>
+  <p>@data.time</p>
+  <p><a href="/">Volver al inicio</a></p>
+</article>

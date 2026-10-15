@@ -36,6 +36,9 @@ export default defineConfig({
         // New code is born at 100 (CLAUDE.md), and it stays there. The project style guide
         // on its way into a document, and the reading that says a rule of it will match
         // nothing where it is going (SDD-42).
+        // Translations (SDD-58): born at 100.
+        'src/i18n/**': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/semantic/analyzers/translations.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/emit/project-styles.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         // The names a component chooses on its root template (SDD-46).
         'src/binding/adopt.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },

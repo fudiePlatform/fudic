@@ -30,6 +30,7 @@ export function apply(
   if (plan.errors.length > 0) return Promise.resolve({ changes: [] });
 
   for (const change of plan.changes) io.write(absolute(opts.cwd, change.path), change.contents);
+  for (const path of plan.deletions ?? []) io.remove(absolute(opts.cwd, path));
 
   for (const command of plan.commands) {
     const status = runner.run(command.command, command.args, absolute(opts.cwd, command.dir));

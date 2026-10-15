@@ -28,6 +28,7 @@ import { loadWithSourceMap } from './inputmaps.js';
 import { serializeMap, type NestedOutputOptions } from './nested.js';
 import { LinkedAssets } from './linked-assets.js';
 import { ClientErasure } from './erased-sources.js';
+import { alternatesOf, localeChunkFileNames, localePlugin, localeTarget, pageModuleOf, type LocaleContext } from './i18n.js';
 
 export interface LinkChunk {
   readonly fileName: string;
@@ -92,6 +93,8 @@ function linkPlugin(
   reporter: BuildReporter | undefined,
   /** The host's erasure: these chunks ship too (BUG-47 §4.4). */
   erased: ClientErasure,
+  /** The locales, when the app has them (SDD-58 §4.6): each route compiled for its own. */
+  locale: LocaleContext | undefined,
 ): Plugin {
   // The Service Worker renders the same pages the edge does, so it publishes the same route
   // names (SDD-39 §4.7): one map, resolved once for the pass.
@@ -113,7 +116,7 @@ function linkPlugin(
         return null;
       }
       return emitRenderChunk({
-        pageModule: rb.absPath.replace(/\\/gu, '/'),
+        pageModule: pageModuleOf(rb),
         hasLoad: rb.analysis.hasLoad,
         hasPaths: rb.analysis.hasPaths,
         // Not passed on purpose: with `withLoad: false` it would change nothing, and the
@@ -121,10 +124,12 @@ function linkPlugin(
         hasDi: routeUsesDi(rb.absPath, io),
         withLoad: false, // server code never ships to the client (§4.5)
         runtime: runtimeFor(pattern),
+        ...alternatesOf(rb, locale?.locales, base, locale?.site),
       });
     },
     async transform(code, id) {
-      const path = id.split('?')[0] ?? id;
+      const target = localeTarget(locale, io, id);
+      const path = target.path;
       if (!path.endsWith('.fud')) {
         // A link chunk is published and runs in the browser: a schema or a middleware it
         // imports is erased exactly as the host bundle erases it.
@@ -133,7 +138,7 @@ function linkPlugin(
         return erasedCode === null ? null : { code: erasedCode, map: null };
       }
       // The same module the host bundle compiled, from the build's memory (`compileFud`).
-      const compiled = await compileFud(path, io, routeNameOf(path), styles, assets);
+      const compiled = await compileFud(path, target.io, routeNameOf(path, target.locale), styles, assets, target.i18n);
       if (compiled === null) return null;
       // What the emit had to say about the file, which this pass used to drop (SDD-35 §1.1).
       reporter?.report(this, compiled.result.diagnostics, path);
@@ -198,6 +203,8 @@ export async function runLinkPass(
   reporter?: BuildReporter,
   /** How this pass erases server code; the host's, so both erase the same way. */
   erased: ClientErasure = new ClientErasure(),
+  /** The app's locales, when it has them (SDD-58 §4.6). */
+  locale?: LocaleContext,
 ): Promise<LinkResult> {
   const linkable = builds.filter((rb) => isLinkable(rb.decision));
   if (linkable.length === 0) {
@@ -214,7 +221,10 @@ export async function runLinkPass(
     root,
     base,
     logLevel: 'error',
-    plugins: [linkPlugin(linkable, io, base, styles, assets, runtimeFor, reporter, erased)],
+    plugins: [
+      ...(locale === undefined ? [] : [localePlugin(locale)]),
+      linkPlugin(linkable, io, base, styles, assets, runtimeFor, reporter, erased, locale),
+    ],
     build: {
       write: false,
       emptyOutDir: false,
@@ -236,7 +246,8 @@ export async function runLinkPass(
           format: 'cjs',
           exports: 'named',
           entryFileNames: `${LINK_DIR}/[name]-[hash].js`,
-          chunkFileNames: `${LINK_DIR}/[name]-[hash].js`,
+          // One build links every locale's routes: each locale's chunks carry its prefix.
+          chunkFileNames: localeChunkFileNames(LINK_DIR),
         },
       },
     },

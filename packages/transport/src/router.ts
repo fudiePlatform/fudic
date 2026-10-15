@@ -157,8 +157,12 @@ export interface Router {
    * Warm the hydration chunks of these component tags (SDD-17 §4.7): each tag's chunk AND
    * what that chunk imports. Returns the tags fully in cache — the page reports
    * `fud:warmed` for those and only those.
+   *
+   * `urls`, parallel to `tags`, are the chunk URLs the page resolved. A page of one locale
+   * among several asks for `assets/h/en/<tag>` (SDD-58 §4.6), and the name read off its URL —
+   * `en/<tag>` — is what the chunk and its imports are warmed by. Without one, the tag.
    */
-  warmHydration(tags: readonly string[]): Promise<readonly string[]>;
+  warmHydration(tags: readonly string[], urls?: readonly string[]): Promise<readonly string[]>;
   /**
    * Keep the pieces a page reports having used (SDD-45 §4.5.1). Idempotent, and a no-op for
    * an application that links no published runtime.
@@ -513,11 +517,22 @@ export function createRouter(config: RouterConfig): Router {
    * because the manifest does not know them; a piece that fails to land still counts against
    * the tag, for the same reason a chunk does.
    */
-  const warmHydration = async (tags: readonly string[]): Promise<readonly string[]> => {
+  /** `/assets/h/en/app-cart-<build>.js` → `en/app-cart`; `undefined` for any other URL. */
+  const hydrateNameOf = (url: string | undefined): string | undefined => {
+    if (url === undefined) return undefined;
+    const [head, tail] = abs(table.urls.hydrateUrl('*')).split('*') as [string, string];
+    const href = abs(url);
+    return href.length > head.length + tail.length && href.startsWith(head) && href.endsWith(tail)
+      ? href.slice(head.length, -tail.length)
+      : undefined;
+  };
+
+  const warmHydration = async (tags: readonly string[], urls: readonly string[] = []): Promise<readonly string[]> => {
     const warmedTags: string[] = [];
-    for (const tag of tags) {
+    for (const [i, tag] of tags.entries()) {
       let complete = true;
-      const pending = [table.urls.hydrateUrl(tag), ...table.hydrateDeps(tag)];
+      const name = hydrateNameOf(urls[i]) ?? tag;
+      const pending = [table.urls.hydrateUrl(name), ...table.hydrateDeps(name)];
       const seen = new Set<string>();
       while (pending.length > 0) {
         const url = abs(pending.shift()!);

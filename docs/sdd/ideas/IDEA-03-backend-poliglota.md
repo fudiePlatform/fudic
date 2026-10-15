@@ -175,6 +175,9 @@ state.Slice(id, p.Initial);                     // fud-state, wire format
 
 ## 4. Formateo: pipes como datos
 
+> **Especificado en [SDD-58](../SDD-58-traducciones-y-pipes.md) §4.4** (2026-10-15), junto con las
+> traducciones. El plural no es un pipe: va en el mensaje ICU del catálogo.
+
 - **En la vista no se llama a nada.** Formatear se hace con pipes: `@(fecha | fechaLarga)`.
 - **Un pipe no es código, es una declaración** sobre un catálogo cerrado que trae fudic y que
   cubre la superficie de `Intl`: fecha, número, moneda, porcentaje, tiempo relativo, plural,

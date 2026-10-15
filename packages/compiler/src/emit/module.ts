@@ -41,6 +41,7 @@ import {
 } from './assets.js';
 import { planPageSheets, type PageSheets, type SheetUse } from './page-sheets.js';
 import { compactStyleCss } from './css-compact.js';
+import { isRtl, type LocaleCompile } from '../i18n/localize.js';
 import { codeOf, codeOfDocument, diHelpers } from './oxc-code.js';
 import { restGroups } from './rest.js';
 import { hasDependencyInjection } from './di.js';
@@ -167,6 +168,13 @@ export interface EmitOptions {
    * file knows. Absent, no stub is written.
    */
   readonly serverFns?: ServerFnOptions;
+  /**
+   * The locale this module is compiled for (SDD-58 §3.3). The text of the graph arrives already
+   * translated — the host reads it through `localizedIo` — so what is left for the emit is what
+   * no file says: the `lang` of a page without a layout. Absent, the output is byte for byte
+   * what it was before translations existed.
+   */
+  readonly i18n?: LocaleCompile;
 }
 
 export interface ServerFnOptions {
@@ -525,6 +533,15 @@ export function emitComponentModuleMapped(
   };
 }
 
+/**
+ * The attributes of the `<html>` of a page with no layout: `lang="es"` as it always was, the
+ * locale of the graph when it is compiled for one, and `dir="rtl"` when that locale is (§4.7).
+ */
+function htmlLang(i18n: LocaleCompile | undefined): string {
+  if (i18n === undefined) return ' lang="es"';
+  return ` lang="${i18n.locale}"${isRtl(i18n.locale) ? ' dir="rtl"' : ''}`;
+}
+
 function buildPageModule(
   graph: ComponentGraph,
   options: EmitOptions,
@@ -617,7 +634,12 @@ function buildPageModule(
       // The form travels no further here: a standalone page writes the marker and the tags,
       // so what the author asked for is decided and emitted in one place (SDD-45 §3.6).
       onRuntime: (form) =>
-        writeRuntimeTags(headW, needsRuntime(hydratable, hasDi, blocks !== undefined), form),
+        writeRuntimeTags(
+          headW,
+          needsRuntime(hydratable, hasDi, blocks !== undefined),
+          form,
+          (options.i18n?.locales.length ?? 0) >= 2,
+        ),
       ...(sheets === null ? {} : { sheet: sheets.own }),
     },
     headW,
@@ -668,7 +690,7 @@ function buildPageModule(
   // No whitespace in the skeleton (BUG-07 §4.2). Between the doctype, `<html>`, `<head>`
   // and its elements there is no context where a newline or an indent renders: the HTML
   // parser drops it before the tree is built. It is the free half of this BUG.
-  w.line('yield \'<!DOCTYPE html><html lang="es"><head>\' + head + \'</head>\';');
+  w.line(`yield '<!DOCTYPE html><html${htmlLang(options.i18n)}><head>' + head + '</head>';`);
   w.line('const $dom = createDom();');
   w.line('const $body = $dom.element(\'body\');');
   w.appendWriter(bodyW);

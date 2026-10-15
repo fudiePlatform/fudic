@@ -256,6 +256,12 @@ describe('delegation — the event and the read (§6.8, §6.9)', () => {
     expect(codes('<b>@row[$day]</b>')).toEqual(['FUD0666']);
   });
 
+  it('leaves the runtime pieces a locale writes alone: `$format`, `$message`, `$href` (SDD-58)', () => {
+    expect(codes('<b>@($format(euros, precio, "en"))</b>')).toEqual([]);
+    expect(codes('<b>@($message(parts, {}, "en"))</b>')).toEqual([]);
+    expect(codes('<a href=@($href(url, "en", ["es", "en"]))>x</a>')).toEqual([]);
+  });
+
   it('leaves a bare `$` alone: it is a name, not a prefix', () => {
     expect(codes('<div @click="@fn($)"></div>')).toEqual([]);
   });
@@ -390,11 +396,16 @@ describe('delegation — the eight, out of the AST and out of the checker (§6.1
 
   it('and the compiler that produced them cannot reach TypeScript at all', async () => {
     // The strongest form the promise of §4.5 can take in a test: the package that decides
-    // these eight declares no dependency a checker could arrive through. Its only runtime
-    // dependency is the parser.
+    // these eight declares no dependency a checker could arrive through. Its runtime
+    // dependencies are the parser and two packages of plain data and functions (diagnostics,
+    // and the ICU subset and catalog of SDD-58), neither of which reaches a checker either.
     const manifest: { dependencies: Record<string, string> } = (
       await import('../../package.json', { with: { type: 'json' } })
     ).default;
-    expect(Object.keys(manifest.dependencies)).toEqual(['@fudic/diagnostics', 'oxc-parser']);
+    expect(Object.keys(manifest.dependencies)).toEqual(['@fudic/diagnostics', '@fudic/i18n', 'oxc-parser']);
+    const i18n: { dependencies: Record<string, string> } = (
+      await import('../../../i18n/package.json', { with: { type: 'json' } })
+    ).default;
+    expect(Object.keys(i18n.dependencies)).toEqual(['@fudic/conventions', '@fudic/diagnostics']);
   });
 });

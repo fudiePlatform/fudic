@@ -1,0 +1,11 @@
+{
+  "shell": [],
+  "resources": {
+    "assets": {
+      "pattern": "/assets/**",
+      "policy": "cache-first",
+      "ttl": null,
+      "maxEntries": 200
+    }
+  }
+}

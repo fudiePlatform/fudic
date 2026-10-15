@@ -39,6 +39,18 @@ export type FUD0725Problem =
       readonly value: string;
       /** The source of the pattern the value has to match. */
       readonly pattern: string;
+    }
+  /** `locales` that is not a non-empty array of distinct BCP 47 tags (SDD-58). */
+  | {
+      readonly problem: 'locales';
+      /** What is wrong with it: not an array, empty, a repeated tag or an invalid one. */
+      readonly reason: string;
+    }
+  /** `site` that is not the origin of an http(s) URL (SDD-58). */
+  | {
+      readonly problem: 'site';
+      /** What is wrong with it: not a string, not a URL, another protocol, or a path. */
+      readonly reason: string;
     };
 
 /** Parameters of `FUD0725`. */
@@ -70,6 +82,10 @@ function describe(p: FUD0725Problem): string {
       );
     case 'flag':
       return `--${p.field} "${p.value}" is not usable in fudic.json: it must match ${p.pattern}`;
+    case 'locales':
+      return `fudic.json "locales" must be a non-empty array of distinct BCP 47 tags: ${p.reason}`;
+    case 'site':
+      return `fudic.json "site" must be the origin of an http(s) URL, like "https://example.com": ${p.reason}`;
   }
 }
 

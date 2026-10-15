@@ -27,6 +27,16 @@ Code. A component that does not exist yet is created with its `.fudspec`, as `fu
 <name>:<type>` per parameter (`element`, `number`, `string` or `token`). `fudic fmt` formats
 `.fudspec` files as well as `.fud`.
 
+## Translations
+
+`fudic translate` (exposed by an app as `pnpm translate`) extracts every message of an app with
+`"locales"` in its `fudic.json` — the text its views paint, and each `t("…")` of its `.ts`/`.js` —
+plus those of the fudic libraries it depends on, and merges them into `src/locales/<locale>.json`.
+A changed text keeps its translation, marked to review. It prints a line per locale (messages,
+new, to review, untranslated) and exits non-zero only when a catalog cannot be read or a
+translation is invalid; a missing translation is a warning. `dev`, `build` and `preview` only
+read the catalogs.
+
 ## More than one project
 
 An app that shares components with another app needs a workspace, and `--workspace` creates

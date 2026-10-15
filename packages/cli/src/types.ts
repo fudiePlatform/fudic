@@ -63,6 +63,11 @@ export interface PlanDiagnostic {
 
 export interface Plan {
   readonly changes: readonly FileChange[];
+  /**
+   * Files the plan removes, relative to `cwd`, after writing `changes`. Only `fudic translate`
+   * removes one: the catalog of a component that no longer has a message (SDD-58 §4.10).
+   */
+  readonly deletions?: readonly string[];
   readonly commands: readonly PlanCommand[];
   /** From the compiler, with spans, over foreign files the CLI had to read. */
   readonly diagnostics: readonly PlanDiagnostic[];
@@ -187,6 +192,30 @@ export interface LayoutOptions extends TargetedOptions {
   readonly sections: readonly string[];
   /** Emit `@RenderHead()` inside the `<head>` (decision 86). */
   readonly head: boolean;
+}
+
+/**
+ * `fudic translate` (SDD-58 §3.5): the project to translate, and nothing else. Its languages are
+ * the project's own `locales`; there is no flag that could disagree with them.
+ */
+export type TranslateOptions = TargetedOptions;
+
+/** What `fudic translate` found for one locale, for the summary the binary prints. */
+export interface LocaleSummary {
+  readonly locale: string;
+  /** Messages in its catalog after the merge. */
+  readonly total: number;
+  /** Messages its catalog did not have. */
+  readonly added: number;
+  /** Messages whose text changed under a translation: `review` set. */
+  readonly review: number;
+  /** Messages with no translation, or an empty one. */
+  readonly missing: number;
+}
+
+/** The plan of `fudic translate`: a plan, plus the summary per locale. */
+export interface TranslatePlan extends Plan {
+  readonly summary: readonly LocaleSummary[];
 }
 
 /** The empty plan: the neutral element every builder starts from. */

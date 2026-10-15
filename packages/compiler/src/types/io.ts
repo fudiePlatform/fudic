@@ -9,6 +9,8 @@
  * It lives in `types/` rather than beside its first caller because it now has several, and
  * the one that came second cannot import the one that came first without a cycle.
  */
+import type { OffsetMap } from '../expand/offsets.js';
+
 export interface ResolveIo {
   /** Read a `.fud` file's text by absolute path. */
   read(path: string): string;
@@ -21,4 +23,10 @@ export interface ResolveIo {
    * with what the bundler, `node` and the editor each already believe (SDD-43 §3.1).
    */
   resolve(fromPath: string, href: string): string;
+  /**
+   * When `read` returns a REWRITTEN text — the file compiled for one locale (SDD-58 §4.6) — the
+   * text on disk and the map from the one to the other. Absent, or `undefined` for a file, and
+   * what `read` returned is what is on disk.
+   */
+  origin?(path: string): { readonly source: string; readonly map: OffsetMap } | undefined;
 }

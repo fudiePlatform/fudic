@@ -153,7 +153,7 @@ describe('emitSwBootstrap', () => {
   it('SDD-17 §4.7 warms the tags the page asks for, and confirms what landed', () => {
     expect(code).toContain('WARM_MESSAGE');
     // BY TAG: what a tag's chunk imports is in the manifest, which is this side's to read.
-    expect(code).toContain('await r.warmHydration(msg.tags)');
+    expect(code).toContain('await r.warmHydration(msg.tags, msg.urls)');
     // Only what is really in the cache is confirmed: `fud:warmed` for a chunk that then
     // pays network would be worse than no warm at all.
     expect(code).toContain('const landed = new Set(');

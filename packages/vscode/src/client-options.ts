@@ -26,6 +26,8 @@ export const FILE_EVENTS: readonly string[] = [
   // and the fixture files. A term deleted on disk turns its lines red without reopening.
   '**/fudic/terms/**/*.js',
   '**/*.fixture.ts',
+  // The catalogs of an app (SDD-58 §4.11): the hover over a message shows the new text.
+  '**/src/locales/**/*.json',
 ];
 
 export const buildClientLaunch = (

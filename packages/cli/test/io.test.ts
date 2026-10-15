@@ -10,14 +10,34 @@
 
 import { describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { needsShell, nodeCommandRunner, nodeReadIo, walkFud } from '../src/io.js';
+import { needsShell, nodeCommandRunner, nodeReadIo, nodeWriteIo, walkFud } from '../src/io.js';
+import { planToJson } from '../src/report.js';
 import { MemoryFs } from './helpers.js';
 
 /** The message `fudic new` commits with: the spaces are the whole point. */
 const MESSAGE = 'chore: scaffold fudic app';
+
+describe('nodeWriteIo.remove', () => {
+  it('removes a file, and a file that is not there is not an error', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'fudic-remove-'));
+    const file = join(dir, 'x.json');
+    writeFileSync(file, '{}');
+    nodeWriteIo().remove(file);
+    expect(existsSync(file)).toBe(false);
+    expect(() => nodeWriteIo().remove(file)).not.toThrow();
+  });
+});
+
+describe('planToJson', () => {
+  it('lists the files a plan removes, and says nothing of them when it removes none', () => {
+    const plan = { changes: [], commands: [], diagnostics: [], errors: [] };
+    expect(JSON.parse(planToJson({ ...plan, deletions: ['src/locales/en/x.json'] })).deletions).toEqual(['src/locales/en/x.json']);
+    expect(JSON.parse(planToJson(plan))).not.toHaveProperty('deletions');
+  });
+});
 
 describe('needsShell', () => {
   it('gives a shell to the package managers on Windows, and to nothing else', () => {

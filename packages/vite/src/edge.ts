@@ -34,9 +34,9 @@ import { compileFud } from './compile.js';
 import type { BuildReporter } from './report.js';
 import { safeName } from './link.js';
 import { EDGE_PREFIX, FUNCTIONS_FILE, FUNCTIONS_ID } from './constants.js';
-import { ERROR_PATTERN } from './page-errors.js';
 import { serializeMap, type NestedArtifact, type NestedOutputOptions } from './nested.js';
 import { LinkedAssets } from './linked-assets.js';
+import { alternatesOf, localePlugin, localeTarget, pageModuleOf, type LocaleContext } from './i18n.js';
 
 /** The input name of `functions.mjs`. */
 const FUNCTIONS_ENTRY = 'functions';
@@ -52,8 +52,13 @@ const EMPTY: EdgeResult = { chunks: [], entries: new Map() };
 
 /** What the edge pass builds besides the routes (SDD-56). */
 export interface EdgeExtras {
-  /** `_error.fud`, rendered under `/_fudic/error/:status` and in no route table. */
-  readonly errorPage?: RouteBuild;
+  /**
+   * `_error.fud`, rendered under `/_fudic/error/:status` and in no route table: once per
+   * locale, each under its own pattern, when the app has two or more (SDD-58 §4.5).
+   */
+  readonly errorPages?: readonly RouteBuild[];
+  /** The app's locales, when it has them (SDD-58 §4.6): each route compiled for its own. */
+  readonly locale?: LocaleContext;
   /** The text of the `functions.mjs` module, when the app has server functions. */
   readonly functions?: string;
   /** `src/http.ts`, the global level of every chain, when the project has one. */
@@ -99,7 +104,7 @@ export function edgePlugin(
   // Resolved once for the pass: the render module of a route publishes its name (SDD-39
   // §4.7), and this pass renders the very pages the prerender writes.
   const routeNameOf = routeNameLookup(builds, io);
-  const renderable = extras.errorPage === undefined ? builds : [...builds, extras.errorPage];
+  const renderable = [...builds, ...(extras.errorPages ?? [])];
   // Modules whose text the pass already has: `functions.mjs`, only when there are functions.
   const fixed = new Map<string, string>();
   if (extras.functions !== undefined) fixed.set(FUNCTIONS_ID, extras.functions);
@@ -120,7 +125,7 @@ export function edgePlugin(
         return null;
       }
       return emitRenderChunk({
-        pageModule: rb.absPath.replace(/\\/gu, '/'),
+        pageModule: pageModuleOf(rb),
         hasLoad: rb.analysis.hasLoad,
         hasPaths: rb.analysis.hasPaths,
         hasLayout: rb.analysis.hasLayout,
@@ -130,24 +135,26 @@ export function edgePlugin(
         ...(extras.globalChain !== undefined ? { globalChain: extras.globalChain } : {}),
         withLoad: true, // the edge resolves data in process
         runtime: runtimeFor(pattern),
+        ...alternatesOf(rb, extras.locale?.locales, base, extras.locale?.site),
       });
     },
     async transform(_code, id) {
-      const [path = id, query] = id.split('?');
+      const target = localeTarget(extras.locale, io, id);
+      const { path, query } = target;
       if (!path.endsWith('.fud')) {
         return null;
       }
       if (query === 'server') {
         // The `@server` region is TS: strip the types so the bundler parses it, exactly as
         // the host plugin does for the dev and prerender paths.
-        const stripped = await transformWithOxc(emitServerModule(readFileSync(path, 'utf8')), `${path}.ts`, {
+        const stripped = await transformWithOxc(emitServerModule(target.locale === undefined ? readFileSync(path, 'utf8') : target.io.read(path)), `${path}.ts`, {
           lang: 'ts',
         });
         /* v8 ignore next -- Oxc always returns a map for a `.ts` input; the guard is for the type, not for a case. */
         return stripped.map ? { code: stripped.code, map: stripped.map } : { code: stripped.code };
       }
       // The same module the host bundle compiled, from the build's memory (`compileFud`).
-      const compiled = await compileFud(path, io, routeNameOf(path), styles, assets);
+      const compiled = await compileFud(path, target.io, routeNameOf(path, target.locale), styles, assets, target.i18n);
       /* v8 ignore next -- `compileFud` returns null only for a non-`.fud` id, and that was checked above. */
       if (compiled === null) return null;
       // What the emit had to say about the file, which this pass used to drop (SDD-35 §1.1).
@@ -193,8 +200,8 @@ export async function runEdgePass(
   for (const rb of routes) {
     input[safeName(rb.route.pattern)] = EDGE_PREFIX + rb.route.pattern;
   }
-  if (extras.errorPage !== undefined) {
-    input[safeName(ERROR_PATTERN)] = EDGE_PREFIX + ERROR_PATTERN;
+  for (const page of extras.errorPages ?? []) {
+    input[safeName(page.route.pattern)] = EDGE_PREFIX + page.route.pattern;
   }
   if (extras.functions !== undefined) input[FUNCTIONS_ENTRY] = FUNCTIONS_ID;
 
@@ -203,7 +210,10 @@ export async function runEdgePass(
     root,
     base,
     logLevel: 'error',
-    plugins: [edgePlugin(routes, io, base, styles, assets, runtimeFor, reporter, extras)],
+    plugins: [
+      ...(extras.locale === undefined ? [] : [localePlugin(extras.locale)]),
+      edgePlugin(routes, io, base, styles, assets, runtimeFor, reporter, extras),
+    ],
     // Forwarded verbatim, for the same reason as the Service Worker's build: this one runs
     // with `configFile: false`, so a project that resolves `@fudic/*` through aliases —
     // every project the CLI scaffolds — would not resolve them here.

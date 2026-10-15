@@ -1,0 +1,18 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/app-banner.fud">
+<link rel="component" href="../components/app-greeting.fud">
+<link rel="component" href="../components/app-cart.fud">
+
+@code {
+  import { t } from '@fudic/i18n';
+}
+
+<head>
+  <title>Inicio</title>
+</head>
+
+<app-banner .title=@t("Bienvenida a la tienda")></app-banner>
+<app-greeting .name="Ana" .count=@(1)></app-greeting>
+<app-greeting .name="Luis" .count=@(4) .vip=@(true)></app-greeting>
+<app-cart></app-cart>
+<p>Lee <a href="/blog/pipes">cómo se formatean los precios</a>.</p>

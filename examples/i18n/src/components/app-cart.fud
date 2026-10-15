@@ -1,0 +1,25 @@
+@* Hydrated: its chunk is compiled once per locale, and the plural and the price are formatted
+   again in the browser with the runtime pieces of `@fudic/i18n`. *@
+@code {
+  import { currency, t } from '@fudic/i18n';
+
+  const euros = currency('EUR');
+
+  @client {
+    import { signal } from "@fudic/core";
+
+    const n = signal(0);
+
+    function mas(): void {
+      n.set(n() + 1);
+    }
+  }
+}
+
+<app-cart>
+  <template shadowrootmode="open">
+    <button @click=@mas>Añadir un café</button>
+    <p>@t("{count, plural, =0 {El carrito está vacío} one {# café en el carrito} other {# cafés en el carrito}}", { count: n() })</p>
+    <p>Total: @(n() * 1.2 | euros)</p>
+  </template>
+</app-cart>

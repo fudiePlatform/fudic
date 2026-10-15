@@ -147,6 +147,8 @@ export interface RouteChunk {
   readonly path: string;
   /** The URL pattern, for a diagnostic that has to name the route the author wrote. */
   readonly pattern: string;
+  /** The locale it is built for (SDD-58), when the app has `locales`. */
+  readonly locale?: string;
 }
 
 /**
@@ -169,7 +171,12 @@ export function discoverReactiveRoutes(
   for (const rb of builds) {
     if (rb.decision.mode === 'excluded') continue;
     if (!isReactiveRoute(graphOf(rb.absPath, io))) continue;
-    out.push({ name: safeName(rb.route.pattern), path: rb.absPath, pattern: rb.route.pattern });
+    out.push({
+      name: safeName(rb.route.pattern),
+      path: rb.absPath,
+      pattern: rb.route.pattern,
+      ...(rb.locale === undefined ? {} : { locale: rb.locale }),
+    });
   }
   return out;
 }
@@ -192,7 +199,9 @@ const posix = (path: string): string => path.replace(/\\/gu, '/');
 export function routeNameLookup(
   builds: readonly RouteBuild[],
   io: ResolveIo,
-): (path: string) => string | undefined {
-  const names = new Map(discoverReactiveRoutes(builds, io).map((r) => [posix(r.path), r.name]));
-  return (path) => names.get(posix(path));
+): (path: string, locale?: string) => string | undefined {
+  // By file AND locale (SDD-58): one `.fud` is one route per locale, each under its own name.
+  const key = (path: string, locale: string | undefined): string => `${posix(path)}#${locale ?? ''}`;
+  const names = new Map(discoverReactiveRoutes(builds, io).map((r) => [key(r.path, r.locale), r.name]));
+  return (path, locale) => names.get(key(path, locale));
 }

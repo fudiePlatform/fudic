@@ -76,6 +76,7 @@ const CASES: readonly (readonly [FudDiagnostic, string])[] = [
   [c.FUD0448({ problem: 'unknown-type', type: 'zz' }), 'unknown type "zz"'],
   [c.FUD0448({ problem: 'term-block', value: 'thn' }), 'unknown block "thn": expected given, when or then'],
   [c.FUD0448({ problem: 'route-segment', part: '[', route: '/a/[' }), 'invalid route segment "[" in "/a/["'],
+  [c.FUD0448({ problem: 'unexpected-argument', command: 'translate', value: 'x' }), 'fudic translate takes no argument: "x"'],
   [c.FUD0451({ line: 'pnpm i', status: null }), 'could not run `pnpm i`: is it installed and on your PATH?'],
   [c.FUD0451({ line: 'pnpm i', status: 1 }), '`pnpm i` exited with code 1'],
   [c.FUD0482({ span: S, error: new Error('boom') }), 'The formatter could not finish: boom'],
@@ -109,6 +110,8 @@ const CASES: readonly (readonly [FudDiagnostic, string])[] = [
   [c.FUD0725({ file: F, problem: 'style-not-object', field: 'styles' }), 'fudic.json "styles" must be an object of "name": "path"'],
   [c.FUD0725({ file: F, problem: 'style-entry', field: 'styles', name: 'a-b', pattern: '/x/' }), '"styles.a-b" must be a path'],
   [c.FUD0725({ file: F, problem: 'flag', field: 'prefix', value: 'A', pattern: '/x/' }), '--prefix "A" is not usable in fudic.json'],
+  [c.FUD0725({ file: F, problem: 'locales', reason: 'it is empty' }), 'fudic.json "locales" must be a non-empty array of distinct BCP 47 tags: it is empty'],
+  [c.FUD0725({ file: F, problem: 'site', reason: 'it has a path' }), 'fudic.json "site" must be the origin of an http(s) URL, like "https://example.com": it has a path'],
   [c.FUD0740({ file: F, name: 'theme', entry: 'x.css', problem: 'missing' }), '"x.css" does not exist.'],
   [c.FUD0740({ file: F, name: 'theme', entry: 'x.css', problem: 'unreadable', reason: 'EISDIR' }), 'could not be read: EISDIR'],
   [c.FUD0741({ file: F, where: 'project', name: 'theme' }), 'is both in "globalStyles" and in "styles"'],
@@ -146,6 +149,8 @@ const CASES: readonly (readonly [FudDiagnostic, string])[] = [
   [c.FUD0890({ span: S, names: ['cabecera', 'pie'] }), 'the sections `cabecera`, `pie`: declare them with'],
   [c.FUD0895({ span: S, form: 'group' }), 'an argument written `@( … )` is that group'],
   [c.FUD0895({ span: S, form: 'path' }), 'an argument after a bare `@` is a name or a path'],
+  [c.FUD1020({ span: S, problem: 'not-literal' }), '`t()` takes a string literal as its first argument'],
+  [c.FUD1020({ span: S, problem: 'holes', missing: ['name', 'count'] }), 'a key for every hole of its message: missing `name`, `count`'],
 ];
 
 describe('every variant says its own sentence', () => {

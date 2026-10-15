@@ -1,0 +1,36 @@
+{
+  "app-greeting": {
+    "a191b1f4": {
+      "source": "Hola <0>{name}</0>, tienes {count} mensajes",
+      "translation": "Hi <0>{name}</0>, you have {count, plural, one {# message} other {# messages}}",
+      "holes": {
+        "name": "name",
+        "count": "count"
+      },
+      "where": "src/components/app-greeting.fud",
+      "at": 0
+    },
+    "5f7d4a48": {
+      "source": "Tu suscripción cuesta {precio} al mes desde el {alta}.",
+      "translation": "Since {alta}, your subscription costs {precio} a month.",
+      "holes": {
+        "precio": "precio | euros",
+        "alta": "alta | larga"
+      },
+      "where": "src/components/app-greeting.fud",
+      "at": 1
+    },
+    "81c2a911": {
+      "source": "Eres cliente preferente.",
+      "translation": "You are a preferred customer.",
+      "where": "src/components/app-greeting.fud",
+      "at": 2
+    },
+    "fd0525b5": {
+      "source": "Todavía no eres cliente preferente.",
+      "translation": "You are not a preferred customer yet.",
+      "where": "src/components/app-greeting.fud",
+      "at": 3
+    }
+  }
+}

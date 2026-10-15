@@ -257,7 +257,7 @@ self.addEventListener('message', (e) => {
       // BY TAG: the page knows tags, and what a tag's chunk imports is in the manifest,
       // which is this side's to read. Only what really landed is confirmed — a page told a
       // chunk is warm and then paying network for it is worse than never having been told.
-      const landed = new Set(await r.warmHydration(msg.tags));
+      const landed = new Set(await r.warmHydration(msg.tags, msg.urls));
       if (!e.source) return;
       e.source.postMessage({
         type: WARMED_MESSAGE,

@@ -16,6 +16,7 @@ export function formatChange(change: FileChange): string {
 export function formatPlan(plan: Plan): readonly string[] {
   return [
     ...plan.changes.map(formatChange),
+    ...(plan.deletions ?? []).map((path) => `  delete  ${path}`),
     ...plan.commands.map((c) => `  run     ${[c.command, ...c.args].join(' ')} (in ${c.dir})`),
   ];
 }
@@ -68,6 +69,7 @@ export function planToJson(plan: Plan): string {
   return JSON.stringify(
     {
       changes: plan.changes.map((change) => ({ kind: change.kind, path: change.path, contents: change.contents })),
+      ...(plan.deletions === undefined ? {} : { deletions: plan.deletions }),
       commands: plan.commands,
       diagnostics: plan.diagnostics,
       errors: plan.errors,

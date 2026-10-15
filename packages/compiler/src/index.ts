@@ -28,3 +28,4 @@ export * from './oxc/index.js';
 export * from './semantic/index.js';
 export * from './sourcemap/index.js';
 export * from './emit/index.js';
+export * from './i18n/index.js';

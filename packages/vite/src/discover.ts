@@ -12,6 +12,7 @@ import { resolveMode, type ModeDecision, type PageFacts } from './mode.js';
 import { ERROR_FILE } from '@fudic/conventions';
 import { ERROR_PATTERN } from './page-errors.js';
 import { type ResolvedOptions } from './options.js';
+import { localizeRoutes } from './i18n.js';
 import { FUD0364, FUD0434, type FileDiagnostic, type SourceDiagnostic } from '@fudic/diagnostics';
 
 export interface RouteBuild {
@@ -20,6 +21,12 @@ export interface RouteBuild {
   readonly absPath: string;
   readonly analysis: PageAnalysis;
   readonly decision: ModeDecision;
+  /**
+   * The locale this route is built for (SDD-58 §4.5). Absent in an app without `locales`; with
+   * them, one `RouteBuild` per route and locale, the pattern already prefixed when there are
+   * two or more.
+   */
+  readonly locale?: string;
 }
 
 export interface DiscoverResult {
@@ -36,6 +43,12 @@ export interface DiscoverResult {
    * (SDD-56 §4.8): it has no URL in the app, and the route table never names it.
    */
   readonly errorPage?: RouteBuild;
+  /**
+   * `_error.fud` once per locale (SDD-58 §4.5), each under its locale's prefix
+   * (`/en/_fudic/error/:status`) when there are two or more. The first is `errorPage`. Empty
+   * without `_error.fud`; `[errorPage]` in an app without `locales`.
+   */
+  readonly errorPages: readonly RouteBuild[];
 }
 
 const NEVER: ModeDecision = { mode: 'excluded', prerender: false, enumerate: false, prerenderedHtml: false };
@@ -52,7 +65,11 @@ function listFud(dir: string): string[] {
 }
 
 /** Discover the page routes under `root/routesDir` with their resolved SSG mode. */
-export function discoverRoutes(root: string, options: ResolvedOptions): DiscoverResult {
+export function discoverRoutes(
+  root: string,
+  options: ResolvedOptions,
+  locales?: readonly string[],
+): DiscoverResult {
   const routesRoot = join(root, options.routesDir);
   const files = listFud(routesRoot);
   const { routes, diagnostics } = routesFromFiles(files.filter((f) => f !== ERROR_FILE));
@@ -123,5 +140,15 @@ export function discoverRoutes(root: string, options: ResolvedOptions): Discover
     }
   }
 
-  return { routes: builds, diagnostics: diags, parse, ...(errorPage !== undefined ? { errorPage } : {}) };
+  // One route per locale, AFTER everything above has spoken about the files: a diagnostic is
+  // about a `.fud`, and the `.fud` is one whatever the number of languages it is built in.
+  // `_error.fud` too: a page that fails in `/en/…` is told so in `en` (§4.5).
+  const errorPages = errorPage === undefined ? [] : localizeRoutes([errorPage], locales);
+  return {
+    routes: localizeRoutes(builds, locales),
+    diagnostics: diags,
+    parse,
+    errorPages,
+    ...(errorPages[0] !== undefined ? { errorPage: errorPages[0] } : {}),
+  };
 }

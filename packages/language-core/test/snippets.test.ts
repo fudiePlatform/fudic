@@ -52,6 +52,14 @@ describe('a file of snippets', () => {
     expect(text).toContain('export function card(t: string): void {');
   });
 
+  it('declares what a condition of its body reads, which only the snippets register', () => {
+    // A content `@expr` is registered by the walk (SDD-58 §4.11, for its pipes); the condition
+    // of an `@if` is not, so the snippets' own pass is still what parses it.
+    const text = emitClient('@snippet card() { @if (shown) { <i>@label</i> } }').text;
+    expect(text).toContain('declare const shown: any;');
+    expect(text).toContain('declare const label: any;');
+  });
+
   it('does not declare `data` twice: every virtual already has it', () => {
     const text = emitClient('@snippet card() { <i>@data.title</i> }').text;
     expect(text).not.toContain('declare const data: any;');

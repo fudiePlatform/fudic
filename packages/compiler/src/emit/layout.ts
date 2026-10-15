@@ -430,9 +430,10 @@ function buildRouteModule(
   // module and nothing at all in the page.
   const hydrates = needsRuntime(hydratable, hasDi, blocks !== undefined);
   const runtimeFileW = new CodeWriter();
-  writeRuntimeTags(runtimeFileW, hydrates, 'file');
+  const alternates = (options.i18n?.locales.length ?? 0) >= 2;
+  writeRuntimeTags(runtimeFileW, hydrates, 'file', alternates);
   const runtimeInlineW = new CodeWriter();
-  writeRuntimeTags(runtimeInlineW, hydrates, 'inline');
+  writeRuntimeTags(runtimeInlineW, hydrates, 'inline', alternates);
   w.line('');
   // Same public shape as a standalone page: the composition is invisible downstream.
   // The fourth parameter is what `export function layout(ctx, data)` resolved: the union of

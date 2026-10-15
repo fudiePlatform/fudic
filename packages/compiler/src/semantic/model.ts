@@ -24,6 +24,12 @@ export interface SemanticInput {
   fragmentId(node: Node): FragmentId | undefined;
   /** Declared component tags (from `<link rel="component">`). Injected; see §7 for its origin. */
   readonly components: ComponentRegistry;
+  /**
+   * Whether the app declares `locales` (SDD-58). `false` makes a pipe, `t()`, `format()` and
+   * `locale` an error (`FUD1021`); ABSENT means the caller cannot know, and the rule is silent.
+   * The analyzer is told — it never reads the configuration itself.
+   */
+  readonly locales?: boolean;
 }
 
 /**

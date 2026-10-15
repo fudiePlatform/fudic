@@ -29,6 +29,7 @@ import { emitClientFns, type ClientFn } from './server-fns.js';
 import { emitPropsProjection, type PropsCall } from './props.js';
 import { emitElementBindings, emitHostBindings, emitShadowBindings } from './template/attrs.js';
 import type { FragmentAst, TemplateContext } from './template/context.js';
+import type { PipeSpan } from './template/pipes.js';
 import { emitControl, emitInlineCode, type ControlLike } from './template/control.js';
 import {
   emitHoleSlot,
@@ -104,6 +105,7 @@ export function emitClientVirtual(
       snippets,
       reactives: template.reactives ?? new Set(),
       ast: template.ast,
+      pipes: template.pipes,
       delegation,
     },
     undefined,
@@ -260,6 +262,8 @@ export interface TemplateJs {
   readonly reactives?: ReadonlySet<string>;
   /** The AST registered at a source span — the attribute values included. */
   readonly ast?: (at: Span) => FragmentAst | undefined;
+  /** The pipes of the view expression at a source span (SDD-58 §4.11). */
+  readonly pipes?: (at: Span) => readonly PipeSpan[];
 }
 
 /**

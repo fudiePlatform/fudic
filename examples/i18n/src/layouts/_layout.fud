@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+@* No `lang` on `<html>`: the build writes the one of each locale. The links that start with
+   `/` get the prefix of the page's locale; the language selector already carries one, so it
+   is left as written. *@
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script type="module" src="fudic:runtime"></script>
+    @RenderHead()
+  </head>
+  <body>
+    <header>
+      <nav><a href="/">Inicio</a> <a href="/blog/hola">Blog</a></nav>
+      <p translate="no"><a href="/es/" lang="es">Español</a> · <a href="/en/" lang="en">English</a></p>
+    </header>
+    <main>@RenderBody()</main>
+    <footer>
+      <p>Ejemplo de traducciones de fudic</p>
+    </footer>
+  </body>
+</html>

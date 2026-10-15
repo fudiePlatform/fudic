@@ -30,7 +30,9 @@ export type FUD0448Params =
   /** `fudic g term` with a block that is not given, when or then. */
   | { readonly problem: 'term-block'; readonly value: string }
   /** A route with a segment that cannot be a file name. */
-  | { readonly problem: 'route-segment'; readonly part: string; readonly route: string };
+  | { readonly problem: 'route-segment'; readonly part: string; readonly route: string }
+  /** An argument a command that takes none was given (`fudic translate x`). */
+  | { readonly problem: 'unexpected-argument'; readonly command: string; readonly value: string };
 
 function describe(p: FUD0448Params): string {
   switch (p.problem) {
@@ -62,6 +64,8 @@ function describe(p: FUD0448Params): string {
       return `unknown block "${p.value}": expected given, when or then`;
     case 'route-segment':
       return `invalid route segment "${p.part}" in "${p.route}"`;
+    case 'unexpected-argument':
+      return `fudic ${p.command} takes no argument: "${p.value}"`;
   }
 }
 

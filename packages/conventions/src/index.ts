@@ -25,6 +25,11 @@ export const ROUTES_DIR = 'src/routes';
 export const COMPONENTS_DIR = 'src/components';
 export const LAYOUTS_DIR = 'src/layouts';
 /**
+ * The translation catalogs, `<locale>.json` each (SDD-58 §4.10). `fudic translate` writes them;
+ * the plugin and the language server read them.
+ */
+export const LOCALES_DIR = 'src/locales';
+/**
  * The global level of every server function's chain (SDD-56 §3.3): its default export is a
  * `chain()`. Optional; without it the global level is empty. Both halves import it: the plugin
  * on the server, the compiler's stubs in the browser.

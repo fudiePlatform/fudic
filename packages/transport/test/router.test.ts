@@ -682,6 +682,30 @@ describe('createRouter.warmHydration — the hydration chunks', () => {
     });
   }
 
+  it('warms a locale’s chunk by the name its URL carries (SDD-58 §4.6)', async () => {
+    const h = harness();
+    const enChunk = `${ORIGIN}assets/h/en/app-counter-b1.js`;
+    h.sources.set(enChunk, 'import "../../element-DUSE73WP.js";');
+    h.sources.set(SHARED, 'export const t = 1;');
+    const r = createRouter({
+      table: compileManifest({ ...FILE, hydrate: { 'en/app-counter': ['assets/element-DUSE73WP.js'] } }),
+      linker: linkerOver(h.stores.routes),
+      stores: h.stores,
+      origin: ORIGIN,
+      net: h.net,
+      resources: ASSETS,
+    });
+
+    expect(await r.warmHydration(['app-counter'], ['/assets/h/en/app-counter-b1.js'])).toEqual(['app-counter']);
+    expect(h.network).toEqual([enChunk, SHARED]);
+  });
+
+  it('a URL that is no hydration chunk warms by the tag', async () => {
+    const h = withChunks();
+    expect(await hydratingRouter(h).warmHydration(['app-counter'], ['/elsewhere.js'])).toEqual(['app-counter']);
+    expect(h.network).toEqual([CHUNK, SHARED]);
+  });
+
   it('deposits the chunk AND what it imports, where the fetch handler will read them', async () => {
     const h = withChunks();
     const r = hydratingRouter(h);

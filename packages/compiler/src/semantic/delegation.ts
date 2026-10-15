@@ -33,6 +33,13 @@ const EVENT_PREFIX = '@';
 /** `$event` belongs to SDD-15 (decisions 96–98): not a delegated read, and not ours to judge. */
 const EVENT_ARGUMENT = '$event';
 
+/**
+ * The runtime pieces of `@fudic/i18n` a locale's rewrite writes into the view (SDD-58 §4.4,
+ * §4.8): `@(precio | euros)` is analysed as `$format(euros, precio, "en")`. The compiler's own
+ * names, like `$event`, and never a delegated read.
+ */
+const I18N_PIECES: ReadonlySet<string> = new Set(['$format', '$message', '$href']);
+
 /** The prefix of the tables (§4.1). One per name a handler reads, in the ancestor's closure. */
 const TABLE_PREFIX = '$t';
 
@@ -313,7 +320,7 @@ function strayDollars(
 
 /** A `$`-prefixed identifier that is not `$event`, which belongs to SDD-15. */
 function isDollarName(name: string): boolean {
-  return name.length > 1 && name.startsWith('$') && name !== EVENT_ARGUMENT;
+  return name.length > 1 && name.startsWith('$') && name !== EVENT_ARGUMENT && !I18N_PIECES.has(name);
 }
 
 /** Every `$name` identifier in a subtree, member names and property keys excepted. */
