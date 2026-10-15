@@ -56,6 +56,7 @@ import { RequestStats } from './stats.js';
 import { hasTypeScript, loadTypeScript } from './tsdk.js';
 import type { FileSystemScanner, Logger } from './types.js';
 import { uriToPath } from './uri.js';
+import { Translations } from './translations.js';
 import { WorkspaceIndex } from './workspace-index.js';
 
 /** The slice of Volar's server this file drives. Narrow on purpose: a fake of it is three lines. */
@@ -97,6 +98,8 @@ export interface FudicServer {
   readonly configs: ProjectConfigs;
   /** What a `.fudspec` is validated against (SDD-52). */
   readonly specs: SpecHost;
+  /** The catalogs a hover over a message reads (SDD-58). */
+  readonly translations: Translations;
 }
 
 const DEFAULTS: FudicServerDeps = {
@@ -152,6 +155,7 @@ export function createFudicServer(
   const deps: FudicServerDeps = { ...DEFAULTS, ...overrides };
   const index = new WorkspaceIndex(deps.fileSystem);
   const configs = new ProjectConfigs(deps.fileSystem);
+  const translations = new Translations(deps.fileSystem);
   const cache = new DocumentCache(index);
   const stats = new RequestStats();
   const logger = loggerFor(connection);
@@ -197,7 +201,7 @@ export function createFudicServer(
     const plugins: LanguageServicePlugin[] = [
       // Ours goes first: where two services answer the same position — an `href`, a
       // `@section `, a `class:` — §4.1 gives this one the answer, and Volar asks them in order.
-      createFudicService({ index, stats, typescript: withTypeScript, configs }),
+      createFudicService({ index, stats, typescript: withTypeScript, configs, translations }),
       // The whole `.fud` is the HTML document: its markup is HTML with `@` in it, and the
       // native tags and attributes have to come from somewhere (§4.1, §6.4).
       //
@@ -295,6 +299,9 @@ export function createFudicServer(
       // The same channel that keeps the index current keeps the project current: editing
       // `fudic.json` and saving changes what the next file's snippet proposes, with no
       // restart. A new channel for one file would be a second thing that can fall behind.
+      // A catalog, or the `locales` of a `fudic.json`: the next hover over a message reads
+      // them again (SDD-58 §4.11).
+      translations.invalidate(path);
       if (path.endsWith(`/${CONFIG_FILE}`)) {
         configs.invalidate(path);
         continue;
@@ -343,5 +350,5 @@ export function createFudicServer(
     },
   );
 
-  return { index, cache, stats, configs, specs };
+  return { index, cache, stats, configs, specs, translations };
 }

@@ -50,6 +50,7 @@ import { fudicDiagnostics, ROOT_CODE_ID, type FudicVirtualCode } from '@fudic/ty
 import { isFudSourceUri } from '../uri.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
 import type { ProjectConfigs } from '../project-config.js';
+import { translationsMarkdown, type Translations } from '../translations.js';
 import type { RequestStats } from '../stats.js';
 import { reindentLine } from '@fudic/formatter';
 import { emmetCompletions } from './emmet.js';
@@ -139,6 +140,11 @@ export interface FudicServiceContext {
    * the `component` skeleton proposes. Absent means the literal this server always wrote.
    */
   readonly configs?: ProjectConfigs;
+  /**
+   * The catalogs of each app (SDD-58 §4.11), for the hover over a message. Absent means no
+   * translation hover.
+   */
+  readonly translations?: Translations;
 }
 
 const SEVERITY: Readonly<Record<Severity, DiagnosticSeverity>> = {
@@ -426,7 +432,7 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
 
 /** The service. */
 export function createFudicService(deps: FudicServiceContext): LanguageServicePlugin {
-  const { index, stats } = deps;
+  const { index, stats, translations } = deps;
   // Mounted unless the server says otherwise; see `FudicServiceContext.typescript`.
   const alone = deps.typescript === false;
 
@@ -648,6 +654,16 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
                 return {
                   contents: { kind: 'markdown' as const, value: template.hover },
                   range: rangeOf(document, template.span),
+                };
+              }
+
+              // A message's text in every locale (SDD-58 §4.11). Its spans are text, attribute
+              // values and literals, never a tag name, so it cannot hide the card below.
+              const message = translations?.at(cached.path, cached.source, offset);
+              if (message !== undefined) {
+                return {
+                  contents: { kind: 'markdown' as const, value: translationsMarkdown(message) },
+                  range: rangeOf(document, message.message.span),
                 };
               }
 

@@ -5,7 +5,7 @@
 > `@fudic/cli` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` ·
 > `examples/i18n` (nuevo)
 > **Rama:** `sdd-58-i18n`
-> **Progreso:** 43 / 48 — `En curso`.
+> **Progreso:** 44 / 48 — `En curso`.
 
 El orden va de dentro afuera:
 1. los diagnósticos y la config;
@@ -156,7 +156,7 @@ Cada fase se commitea al cerrarla, con sus tests.
 
 - [x] 43. Proyección de `a | b` → `$pipe(a, b)` en `copyRazor`/`copyExpression`, con operandos
   1:1 y `$pipe` en `GLOBALS_DTS` (criterio 32). Hecha en la fase 5.
-- [ ] 44. Language server: lee los catálogos, los relee al cambiar en disco y muestra el hover de
+- [x] 44. Language server: lee los catálogos, los relee al cambiar en disco y muestra el hover de
   traducciones sobre un mensaje. No publica `FUD1022`–`FUD1025` (criterio 33).
 
 ## Fase 8 — Evidencia y cierre

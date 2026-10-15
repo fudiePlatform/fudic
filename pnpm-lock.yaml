@@ -401,12 +401,18 @@ importers:
       '@fudic/config':
         specifier: workspace:*
         version: link:../config
+      '@fudic/conventions':
+        specifier: workspace:*
+        version: link:../conventions
       '@fudic/diagnostics':
         specifier: workspace:*
         version: link:../diagnostics
       '@fudic/formatter':
         specifier: workspace:*
         version: link:../formatter
+      '@fudic/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@fudic/language-core':
         specifier: workspace:*
         version: link:../language-core

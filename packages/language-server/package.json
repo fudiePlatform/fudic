@@ -51,8 +51,10 @@
   "dependencies": {
     "@fudic/compiler": "workspace:*",
     "@fudic/config": "workspace:*",
+    "@fudic/conventions": "workspace:*",
     "@fudic/diagnostics": "workspace:*",
     "@fudic/formatter": "workspace:*",
+    "@fudic/i18n": "workspace:*",
     "@fudic/language-core": "workspace:*",
     "@fudic/resolve": "workspace:*",
     "@fudic/spec": "workspace:*",
