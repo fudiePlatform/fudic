@@ -1,7 +1,7 @@
 # BUG-49 · El banco que no se ve trabajar: clic sin respuesta, página que salta y Run all al doble
 
-> **Estado:** `En curso` (2026-10-15) — implementado y medido; faltan los tests de las fases 2–4
-> y la prueba de Pedro. Se redacta al final, a partir de lo hecho, por decisión de Pedro.
+> **Estado:** `En curso` (2026-10-15) — implementado, medido y con tests al 100 %; falta la prueba
+> de Pedro. Se redacta al final, a partir de lo hecho, por decisión de Pedro.
 > **Corrige:** [BUG-48](./BUG-48-el-banco-que-nadie-usaria.md) §3.2 (protocolo), §3.4 (contrato
 > de los términos), §3.5 y §4.9 (VS Code), §4.6 (el motor) y §4.8 (el shell).
 > **Paquetes:** `@fudic/workbench` · `fudic-vscode` (`packages/vscode`) · `examples/basic`
