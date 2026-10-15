@@ -213,14 +213,20 @@ function load(path: string, io: ResolveIo): LoadedFud {
   const source = io.read(path);
   const parsed = parse(source);
   const expansion = expandDocument(path, source, parsed.value, io);
+  // A file compiled for a locale was rewritten before any of this (SDD-58 §4.6): its offsets
+  // are read back through the rewrite's own table, and its origin is the text on disk.
+  const rewritten = io.origin?.(path);
   return {
     source: expansion.source,
     doc: expansion.document,
-    map: expansion.map,
+    map: io.origin === undefined ? expansion.map : expansion.map.through((file) => io.origin?.(file)?.map, path),
     diagnostics: [...parsed.diagnostics, ...expansion.diagnostics],
     snippetFiles: expansion.files,
     dragged: expansion.dragged,
-    origin: { source, document: parsed.value },
+    origin:
+      rewritten === undefined
+        ? { source, document: parsed.value }
+        : { source: rewritten.source, document: parse(rewritten.source).value },
   };
 }
 

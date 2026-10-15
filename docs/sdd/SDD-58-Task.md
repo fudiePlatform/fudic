@@ -5,7 +5,7 @@
 > `@fudic/cli` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` ·
 > `examples/i18n` (nuevo)
 > **Rama:** `sdd-58-i18n`
-> **Progreso:** 20 / 48 — `En curso`.
+> **Progreso:** 31 / 48 — `En curso`.
 
 El orden va de dentro afuera:
 1. los diagnósticos y la config;
@@ -74,26 +74,26 @@ Cada fase se commitea al cerrarla, con sus tests.
 
 ## Fase 4 — Compilador: compilar por idioma
 
-- [ ] 21. `EmitOptions.i18n` y `LocaleCompile`. Sin ella, la suite de goldens sale igual
+- [x] 21. `EmitOptions.i18n` y `LocaleCompile`. Sin ella, la suite de goldens sale igual
   (criterio 19).
-- [ ] 22. Servidor: `textRun` y `#run` construyen cada tira en el orden de la traducción, con los
+- [x] 22. Servidor: `textRun` y `#run` construyen cada tira en el orden de la traducción, con los
   huecos y los elementos originales (criterios 14 y 15).
-- [ ] 23. Cliente: lo mismo en `markup-client.ts`, en creación y en el `#applyValue` de una tira
+- [x] 23. Cliente: lo mismo en `markup-client.ts`, en creación y en el `#applyValue` de una tira
   interpolada. La hidratación adopta los nodos en el orden traducido (criterio 15).
-- [ ] 24. Atributos traducibles estáticos y dinámicos en `writeElementAttrs`.
-- [ ] 25. Sustitución por span de los literales en posición de resultado, conservando el mapeo
+- [x] 24. Atributos traducibles estáticos y dinámicos en `writeElementAttrs`.
+- [x] 25. Sustitución por span de los literales en posición de resultado, conservando el mapeo
   (criterio 16).
-- [ ] 26. `t()`, `format()` y `locale` en un `.fud` y en `translateScript`: literal, template
+- [x] 26. `t()`, `format()` y `locale` en un `.fud` y en `translateScript`: literal, template
   literal o `$message`, e importación de la pieza solo cuando se usa (criterios 17 y 18).
-- [ ] 27. Pipes en la vista: `|` → `$format(preset, valor, "<locale>")` en servidor y cliente
+- [x] 27. Pipes en la vista: `|` → `$format(preset, valor, "<locale>")` en servidor y cliente
   (criterio 20).
-- [ ] 28. `<html>`: `lang` y `dir` cuando el autor no los escribe; la página sin layout deja el
+- [x] 28. `<html>`: `lang` y `dir` cuando el autor no los escribe; la página sin layout deja el
   `lang="es"` fijo (criterio 27).
-- [ ] 29. Enlaces: prefijo estático al compilar y `$href` en los dinámicos, antes de `setUrl`
+- [x] 29. Enlaces: prefijo estático al compilar y `$href` en los dinámicos, antes de `setUrl`
   (criterio 29).
-- [ ] 30. Traducción que falta o inválida: con `translate` devolviendo `undefined`, el emit usa el
+- [x] 30. Traducción que falta o inválida: con `translate` devolviendo `undefined`, el emit usa el
   texto original y no produce ningún diagnóstico (criterio 31).
-- [ ] 31. Decisiones 158–161 enlazadas desde el código que las implementa.
+- [x] 31. Decisiones 158–161 enlazadas desde el código que las implementa.
 
 ## Fase 5 — Plugin: leer y compilar
 

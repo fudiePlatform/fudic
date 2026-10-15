@@ -11,6 +11,7 @@ vi.mock('oxc-parser', async (original) => ({
 }));
 
 const { extractScriptMessages } = await import('../../src/i18n/extract.js');
+const { translateScript } = await import('../../src/i18n/script.js');
 
 describe('an Oxc error without labels', () => {
   it('is FUD0170 at the start of the module', () => {
@@ -20,5 +21,16 @@ describe('an Oxc error without labels', () => {
     expect(diagnostics.map((d) => [d.code, d.span, d.message])).toEqual([
       ['FUD0170', { start: 0, end: 0 }, expect.stringContaining('boom')],
     ]);
+  });
+
+  it('is FUD0170 at the start of the module for translateScript too', () => {
+    const { value, diagnostics } = translateScript('whatever', 'src/a.ts', {
+      locale: 'en',
+      locales: ['es', 'en'],
+      translate: () => undefined,
+    });
+
+    expect(value.code).toBe('whatever');
+    expect(diagnostics.map((d) => [d.code, d.span])).toEqual([['FUD0170', { start: 0, end: 0 }]]);
   });
 });

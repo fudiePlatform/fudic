@@ -108,6 +108,56 @@ export class OffsetMap {
     return segment.srcStart + Math.min(offset - segment.outStart, segment.srcEnd - segment.srcStart);
   }
 
+  /** Where each segment starts in the output: the points a source map needs a mapping at. */
+  starts(): readonly number[] {
+    return this.#segments.map((s) => s.outStart);
+  }
+
+  /**
+   * This table, with the files it points into read back through THEIR OWN tables (SDD-58).
+   *
+   * A file compiled for a locale is rewritten before it is expanded, so the expansion's offsets
+   * are offsets of the rewritten text. `inner(file)` is the table from that text back to the
+   * file on disk, `undefined` for a file read as it is. `entry` is the file being compiled,
+   * whose table the anchors — always offsets of the entry — are read through.
+   */
+  through(inner: (file: string) => OffsetMap | undefined, entry: string): OffsetMap {
+    const entryMap = inner(entry);
+    // No segments is the identity — nothing was expanded — and the identity read through the
+    // entry's table is that table.
+    if (this.#segments.length === 0) return entryMap ?? this;
+    const segments: Segment[] = [];
+    for (const s of this.#segments) {
+      const own = s.anchor === s.srcStart;
+      const anchor = entryMap === undefined ? s.anchor : entryMap.entryOffset(s.anchor);
+      const map = inner(s.file);
+      if (map === undefined) {
+        segments.push({ ...s, anchor });
+        continue;
+      }
+      if (!s.literal) {
+        const srcStart = map.entryOffset(s.srcStart);
+        segments.push({ ...s, srcStart, srcEnd: map.entryOffset(s.srcEnd), anchor: own ? srcStart : anchor });
+        continue;
+      }
+      // A copied stretch of the rewritten text: one piece per stretch of THAT table it crosses.
+      for (const t of map.#segments) {
+        const lo = Math.max(s.srcStart, t.outStart);
+        const hi = Math.min(s.srcEnd, t.outEnd);
+        if (hi <= lo) continue;
+        const outStart = s.outStart + (lo - s.srcStart);
+        const base = { outStart, outEnd: outStart + (hi - lo), file: s.file };
+        if (t.literal) {
+          const src = t.srcStart + (lo - t.outStart);
+          segments.push({ ...base, srcStart: src, srcEnd: src + (hi - lo), literal: true, anchor: own ? src : anchor });
+        } else {
+          segments.push({ ...base, srcStart: t.srcStart, srcEnd: t.srcEnd, literal: false, anchor: own ? t.anchor : anchor });
+        }
+      }
+    }
+    return new OffsetMap(segments);
+  }
+
   /**
    * Where a SPAN comes from, as one span of one file.
    *

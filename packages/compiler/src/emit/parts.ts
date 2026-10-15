@@ -406,9 +406,13 @@ function runtimeMarkerForm(el: ElementNode): RuntimeForm | null {
  * `io.runtime` is absent in a standalone render (a golden, `renderToString`), and then the
  * marker produces nothing at all: there is no build, so there are no URLs to write.
  */
-export function writeRuntimeTags(w: CodeWriter, hydrates: boolean, form: RuntimeForm): void {
+export function writeRuntimeTags(w: CodeWriter, hydrates: boolean, form: RuntimeForm, alternates = false): void {
   w.line('if (io.runtime !== undefined) {');
   w.indent();
+  // The `<link rel="alternate" hreflang>` of a page compiled for one of two or more locales
+  // (SDD-58 §4.7): the wrapper composes them from the request's URL, and they go where the
+  // runtime goes. Written only then, so every other page stays byte for byte what it was.
+  if (alternates) w.line("if (io.alternates !== undefined) head += io.alternates;");
   // Empty means this project has no Service Worker, and then there is no tag either
   // (SDD-45 §4.11). The condition is the one that already decided the module's CONTENT,
   // moved one step earlier: a page used to ask for a file whose whole body was `export {};`.
