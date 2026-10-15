@@ -3,7 +3,7 @@
 > **BUG:** [BUG-49 — El banco que no se ve trabajar](./BUG-49-el-banco-que-no-se-ve-trabajar.md)
 > **Paquetes:** `@fudic/workbench` · `fudic-vscode` · `examples/basic`
 > **Rama:** `worktree-workbench` (worktree `workbrench`), desde `main` en `4867866`.
-> **Progreso:** 12 / 15 — `En curso`: faltan las pruebas de Pedro (6, 13) y el cierre (15).
+> **Progreso:** 15 / 15 — `Hecho` (2026-10-15).
 
 Lo nuevo nace al 100 % en las cuatro métricas, y los paquetes tocados no bajan de su suelo.
 
@@ -29,7 +29,7 @@ worktree (`workbrench-tests`, rama `workbrench-tests`) sobre esta rama, y se mez
 |---|---|---|---|---|
 | [x] | 4 | — | **Datos nuevos.** Línea de cada paso, `props`, viewport fijo, `ShotRef` con tamaño, `setAttribute` que devuelve el valor anterior y el término del ejemplo que lo usa (BUG §3.1–§3.3) | `src/pages.ts` · `src/session.ts` · `src/protocol.ts` · `src/bench.ts` · `src/run.ts` · `src/browser.ts` · `src/context.ts` · `README.md` · `examples/basic/fudic/terms/when/set-attribute.js` |
 | [x] | 5 | 4 | **Tests.** Criterio 5 (`e81a232`) | `packages/workbench/test/*` |
-| [ ] | 6 | 5 | **Prueba de Pedro.** `destacada-al-cambiar-variante` dice `(before: "default")` | — |
+| [x] | 6 | 5 | **Prueba de Pedro.** `destacada-al-cambiar-variante` dice `(before: "default")` | — |
 
 ## Fase 3 — La página nueva, quieta (3)
 
@@ -51,6 +51,6 @@ worktree (`workbrench-tests`, rama `workbrench-tests`) sobre esta rama, y se mez
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 13 | 3, 5, 9, 12 | **Prueba de Pedro.** Criterio 10, en VS Code (extensión instalada desde esta rama) y en el navegador | — |
+| [x] | 13 | 3, 5, 9, 12 | **Prueba de Pedro.** Criterio 10, en VS Code (extensión instalada desde esta rama) y en el navegador. De ella salieron los cambios de BUG §4.4 bis (`141d4cc`, `e9356e9`, tests en `b1cf59a` y `df9b177`) | — |
 | [x] | 14 | 1–12 | **Documentación.** Este BUG, su Task y el README del banco (`setAttribute`) | `docs/sdd/bugs/BUG-49-*` · `packages/workbench/README.md` |
-| [ ] | 15 | 13, 14 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde con la cobertura del criterio 9. `Hecho` aquí, en el BUG, en el `INDEX.md` de bugs (tabla y registro) y en el registro del `INDEX.md` maestro | `docs/sdd/bugs/*` · `docs/sdd/INDEX.md` |
+| [x] | 15 | 13, 14 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde con la cobertura del criterio 9. `Hecho` aquí, en el BUG, en el `INDEX.md` de bugs (tabla y registro) y en el registro del `INDEX.md` maestro | `docs/sdd/bugs/*` · `docs/sdd/INDEX.md` |

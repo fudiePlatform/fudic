@@ -1,7 +1,7 @@
 # BUG-49 · El banco que no se ve trabajar: clic sin respuesta, página que salta y Run all al doble
 
-> **Estado:** `En curso` (2026-10-15) — implementado, medido y con tests al 100 %; falta la prueba
-> de Pedro. Se redacta al final, a partir de lo hecho, por decisión de Pedro.
+> **Estado:** `Hecho` (2026-10-15) — implementado, medido, con tests al 100 % y probado por Pedro
+> en VS Code y en el navegador. Se redactó al final, a partir de lo hecho, por decisión de Pedro.
 > **Corrige:** [BUG-48](./BUG-48-el-banco-que-nadie-usaria.md) §3.2 (protocolo), §3.4 (contrato
 > de los términos), §3.5 y §4.9 (VS Code), §4.6 (el motor) y §4.8 (el shell).
 > **Paquetes:** `@fudic/workbench` · `fudic-vscode` (`packages/vscode`) · `examples/basic`
@@ -137,6 +137,22 @@ Según la maqueta de Pedro, con los textos en inglés:
   ejecución en marcha. Lo que la persona plegó o desplegó manda.
 - Las cajas se colocan en el tamaño CSS de la captura (antes, en píxeles de la imagen: a una
   escala distinta de 1 salían desplazadas).
+
+### 4.4 bis. Lo que salió de la prueba de Pedro
+
+Hecho en esta misma rama durante la prueba (`141d4cc`, `e9356e9`):
+
+- **Pin manda también en Run all y Run failing**: con un criterio fijado, los dos ejecutan solo
+  ese, en el banco, en el shell (el botón dice *Run pinned*) y en las lentes de VS Code, que leen
+  el `pinned` del mensaje `state`.
+- **A mano en una terminal** el banco dice dónde está su shell, que Ctrl+C lo para, y un bloque de
+  resultados tras cada ejecución, en vez de las líneas JSON del protocolo, que son para un proceso
+  padre.
+- **Ventana estrecha:** las tarjetas ocupan todo el ancho, las capturas pasan debajo de los pasos,
+  dos capturas se apilan si no caben y el texto de un paso, su marca y su evidencia fluyen juntos.
+- **Live sin parpadeo:** la página viva nueva se carga detrás de la que se ve y la sustituye al
+  terminar.
+- La flecha de plegar es un chevron SVG que gira.
 
 ### 4.5. Run all ya no paga los contextos
 
