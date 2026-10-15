@@ -27,7 +27,7 @@ export const FILE_EVENTS: readonly string[] = [
   '**/fudic/terms/**/*.js',
   '**/*.fixture.ts',
   // The catalogs of an app (SDD-58 §4.11): the hover over a message shows the new text.
-  '**/src/locales/*.json',
+  '**/src/locales/**/*.json',
 ];
 
 export const buildClientLaunch = (

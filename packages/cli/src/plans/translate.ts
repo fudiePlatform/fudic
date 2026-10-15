@@ -3,8 +3,8 @@
  *
  * It reads every `.fud` and every `.ts`/`.js` of the app's `src`, and the `.fud` of the fudic
  * libraries it depends on — the same files the plugin compiles. It extracts their messages,
- * merges them into `src/locales/<locale>.json` and returns, as `FileChange`s, the catalogs whose
- * text changes. Two runs over the same code give the same bytes, and the second has no change.
+ * merges them into `src/locales/<locale>/`, one file per source file, and returns as
+ * `FileChange`s the catalogs whose text changes, and as deletions those left with no message. Two runs over the same code give the same bytes, and the second has no change.
  *
  * What it reports is about the messages, on the message — in the `.fud` or the `.ts`, never in
  * the JSON — except `FUD1023`, which is about a catalog that cannot be read. A catalog that
@@ -18,10 +18,12 @@ import { LOCALES_DIR, SRC_DIR } from '@fudic/conventions';
 import { FUD1022, FUD1024, FUD1025, FUD1026, LineMap, type FileDiagnostic } from '@fudic/diagnostics';
 import {
   compileMessage,
+  joinCatalogs,
   mergeCatalog,
   parseCatalog,
   printCatalog,
   shapeOf,
+  splitCatalog,
   type Catalog,
   type ExtractedMessage,
   type MessageShape,
@@ -57,29 +59,46 @@ export async function planTranslate(opts: TranslateOptions, io: ReadIo = nodeRea
   const diagnostics: PlanDiagnostic[] = [];
   const found = extract(opts.cwd, target, io, diagnostics);
   const changes: FileChange[] = [];
+  const deletions: string[] = [];
   const errors: FileDiagnostic[] = [];
   const summary: LocaleSummary[] = [];
 
   locales.forEach((locale, index) => {
-    const catalog = joinPosix(LOCALES_DIR, `${locale}.json`);
-    const path = joinPosix(target.path, catalog);
-    const file = joinPosix(target.dir, catalog);
-    const before = io.exists(path) ? io.read(path) : undefined;
-    const previous = before === undefined ? { value: {}, diagnostics: [] } : parseCatalog(before, file);
-    if (previous.diagnostics.length > 0) {
-      errors.push(...previous.diagnostics);
-      return;
+    // A folder per locale, one file per source file: what a team edits apart stays apart.
+    const folder = joinPosix(LOCALES_DIR, locale);
+    const absolute = joinPosix(target.path, folder);
+    const fileOf = (rel: string): string => joinPosix(target.dir, folder, rel);
+    const before = new Map<string, string>();
+    const parts: Catalog[] = [];
+    let unreadable = false;
+    for (const rel of walkFiles(absolute, io, '.json')) {
+      const text = io.read(joinPosix(absolute, rel));
+      const parsed = parseCatalog(text, fileOf(rel));
+      before.set(rel, text);
+      parts.push(parsed.value);
+      if (parsed.diagnostics.length > 0) {
+        errors.push(...parsed.diagnostics);
+        unreadable = true;
+      }
     }
+    if (unreadable) return;
+    const previous = joinCatalogs(parts);
     // The first locale is the one the code is written in: its new messages enter translated.
-    const merged = mergeCatalog(previous.value, found.map((f) => f.extracted), index === 0);
-    const text = printCatalog(merged);
-    if (before === undefined) changes.push({ kind: 'create', path: file, contents: text });
-    else if (text !== before) changes.push({ kind: 'modify', path: file, contents: text, before });
-    summary.push(summarize(locale, previous.value, merged));
+    const merged = mergeCatalog(previous, found.map((f) => f.extracted), index === 0);
+    const after = splitCatalog(merged);
+    for (const [rel, part] of after) {
+      const text = printCatalog(part);
+      const was = before.get(rel);
+      if (was === undefined) changes.push({ kind: 'create', path: fileOf(rel), contents: text });
+      else if (text !== was) changes.push({ kind: 'modify', path: fileOf(rel), contents: text, before: was });
+    }
+    // The catalog of a source that no longer has a message: its translations stay in git.
+    for (const rel of before.keys()) if (!after.has(rel)) deletions.push(fileOf(rel));
+    summary.push(summarize(locale, previous, merged));
     diagnostics.push(...report(locale, merged, found));
   });
 
-  return { changes, commands: [], diagnostics, errors, summary };
+  return { changes, ...(deletions.length === 0 ? {} : { deletions }), commands: [], diagnostics, errors, summary };
 }
 
 function failed(errors: TranslatePlan['errors']): TranslatePlan {

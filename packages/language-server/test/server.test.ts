@@ -287,7 +287,7 @@ describe('watched files', () => {
   it('takes a changed translation catalog without a restart (SDD-58 criterion 33)', () => {
     const { fake, server, files } = setup();
     files['/p/fudic.json'] = '{"locales":["es","en"]}';
-    files['/p/src/locales/en.json'] = '{}';
+    files['/p/src/locales/en/x.json'] = '{}';
     fake.onInitialize?.(params());
     const source = '<app-x>\n  <template shadowrootmode="open"><p>Cerrar</p></template>\n</app-x>\n';
     const at = source.indexOf('Cerrar') + 1;
@@ -295,9 +295,9 @@ describe('watched files', () => {
     expect(before?.lines[1]).toEqual({ locale: 'en', text: undefined });
 
     const key = before!.message.key;
-    files['/p/src/locales/en.json'] = JSON.stringify({ 'app-x': { [key]: { source: 'Cerrar', translation: 'Close', where: 'src/x.fud:2', at: 0 } } });
+    files['/p/src/locales/en/x.json'] = JSON.stringify({ 'app-x': { [key]: { source: 'Cerrar', translation: 'Close', where: 'src/x.fud:2', at: 0 } } });
     fake.onDidChangeWatchedFiles?.({
-      changes: [{ uri: URI.file('/p/src/locales/en.json').toString(), type: 2 }],
+      changes: [{ uri: URI.file('/p/src/locales/en/x.json').toString(), type: 2 }],
     });
 
     expect(server.translations.at('/p/src/x.fud', source, at)?.lines[1]?.text).toBe('Close');

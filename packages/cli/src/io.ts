@@ -10,6 +10,7 @@ import {
   readdirSync,
   readFileSync,
   realpathSync,
+  rmSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
@@ -37,6 +38,7 @@ export interface ReadIo {
 /** What `apply` may do. */
 export interface WriteIo {
   write(path: string, contents: string): void;
+  remove(path: string): void;
 }
 
 /**
@@ -72,6 +74,7 @@ export function nodeWriteIo(): WriteIo {
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, contents, 'utf8');
     },
+    remove: (path) => rmSync(path, { force: true }),
   };
 }
 

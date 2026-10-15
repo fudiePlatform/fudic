@@ -1,0 +1,22 @@
+{
+  "services/posts.ts": {
+    "fe28ba82": {
+      "source": "No hay ninguna entrada llamada {slug}",
+      "translation": "No hay ninguna entrada llamada {slug}",
+      "holes": {
+        "slug": "slug"
+      },
+      "where": "src/services/posts.ts:25",
+      "at": 0
+    },
+    "c57f259d": {
+      "source": "{minutes, plural, one {# minuto de lectura} other {# minutos de lectura}}",
+      "translation": "{minutes, plural, one {# minuto de lectura} other {# minutos de lectura}}",
+      "holes": {
+        "minutes": "minutes"
+      },
+      "where": "src/services/posts.ts:29",
+      "at": 1
+    }
+  }
+}

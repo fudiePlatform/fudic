@@ -4,7 +4,7 @@ Una app en dos idiomas, `es` y `en`, con todo lo que trae `@fudic/i18n`: rutas c
 texto traducido al compilar, pipes de moneda y de fecha, plurales y un selector de idioma.
 
 ```sh
-pnpm translate   # extrae los mensajes a src/locales/es.json y en.json
+pnpm translate   # extrae los mensajes a src/locales/es/ y en/, un fichero por componente
 pnpm build
 pnpm preview     # / redirige a /es/ o /en/ según el navegador
 ```

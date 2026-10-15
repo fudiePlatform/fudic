@@ -31,7 +31,7 @@ describe('buildClientLaunch', () => {
       '**/fudic/terms/**/*.js',
       '**/*.fixture.ts',
       // The catalogs a hover over a message reads (SDD-58 criterion 33).
-      '**/src/locales/*.json',
+      '**/src/locales/**/*.json',
     ]);
   });
 

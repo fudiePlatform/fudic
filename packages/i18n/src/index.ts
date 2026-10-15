@@ -25,6 +25,9 @@ export {
   parseCatalog,
   mergeCatalog,
   printCatalog,
+  catalogPathOf,
+  splitCatalog,
+  joinCatalogs,
 } from './catalog.js';
 export { compileMessage, shapeOf, type MessageShape } from './icu.js';
 export type { ParseResult } from './result.js';

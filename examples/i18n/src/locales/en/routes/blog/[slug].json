@@ -1,0 +1,10 @@
+{
+  "routes/blog/[slug].fud": {
+    "445877f1": {
+      "source": "Volver al inicio",
+      "translation": "Back to home",
+      "where": "src/routes/blog/[slug].fud:29",
+      "at": 0
+    }
+  }
+}

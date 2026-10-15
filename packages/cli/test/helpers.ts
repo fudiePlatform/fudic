@@ -43,6 +43,10 @@ export class MemoryFs implements ReadIo, WriteIo {
     return contents;
   }
 
+  remove(path: string): void {
+    this.files.delete(key(path));
+  }
+
   list(dir: string): readonly string[] {
     const prefix = `${key(dir)}/`;
     const names = new Set<string>();

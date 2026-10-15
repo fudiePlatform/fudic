@@ -72,7 +72,7 @@ import {
   Catalogs,
   LocaleIos,
   alternatesOf,
-  catalogFile,
+  catalogFileOf,
   chunkDir,
   errorLocaleOf,
   errorPageFor,
@@ -1580,8 +1580,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // of this hook dispatches on is the query without it.
       const locale = localeOf(id);
       const query = locale === undefined ? split.query : withoutLocale(split.query);
-      // The catalog is an input of every module of its locale: saving it recompiles them (§4.10).
-      if (locale !== undefined) this.addWatchFile(catalogFile(root, locale));
+      // A module's catalog file is one of its inputs: saving it recompiles the module (§4.10).
+      if (locale !== undefined) this.addWatchFile(catalogFileOf(root, locale, path));
       if (!path.endsWith('.fud')) {
         const script = /\.[cm]?[jt]sx?$/u.test(path);
         // A module of the app compiled for a locale: `t`, `format` and `locale` replaced.

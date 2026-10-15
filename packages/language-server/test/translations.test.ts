@@ -33,8 +33,8 @@ const entry = (source: string, translation?: string) => ({
 function workspace(files: Record<string, string> = {}): Record<string, string> {
   return {
     '/w/app/fudic.json': '{ "kind": "app", "locales": ["es", "en"] }',
-    '/w/app/src/locales/es.json': JSON.stringify({ 'app-card': entry('Cerrar', 'Cerrar') }),
-    '/w/app/src/locales/en.json': JSON.stringify({ 'app-card': entry('Cerrar', 'Close') }),
+    '/w/app/src/locales/es/components/app-card.json': JSON.stringify({ 'app-card': entry('Cerrar', 'Cerrar') }),
+    '/w/app/src/locales/en/components/app-card.json': JSON.stringify({ 'app-card': entry('Cerrar', 'Close') }),
     [CARD]: SOURCE,
     ...files,
   };
@@ -56,8 +56,8 @@ describe('Translations', () => {
 
   it('marks what is missing, empty or unreadable with a dash', () => {
     const files = workspace({
-      '/w/app/src/locales/es.json': JSON.stringify({ 'app-card': entry('Cerrar', '') }),
-      '/w/app/src/locales/en.json': '{ "app-card": ',
+      '/w/app/src/locales/es/components/app-card.json': JSON.stringify({ 'app-card': entry('Cerrar', '') }),
+      '/w/app/src/locales/en/components/app-card.json': '{ "app-card": ',
     });
     const found = new Translations(memoryFs(files)).at(CARD, SOURCE, offsetOf('Cerrar'));
 
@@ -66,7 +66,7 @@ describe('Translations', () => {
 
   it('reads a locale with no catalog file as missing', () => {
     const files = workspace();
-    delete files['/w/app/src/locales/en.json'];
+    delete files['/w/app/src/locales/en/components/app-card.json'];
     const found = new Translations(memoryFs(files)).at(CARD, SOURCE, offsetOf('Cerrar'));
 
     expect(found?.lines[1]).toEqual({ locale: 'en', text: undefined });
@@ -95,11 +95,11 @@ describe('Translations', () => {
     const translations = new Translations(memoryFs(files));
     expect(translations.at(CARD, SOURCE, offsetOf('Cerrar'))?.lines[1]?.text).toBe('Close');
 
-    files['/w/app/src/locales/en.json'] = JSON.stringify({ 'app-card': entry('Cerrar', 'Shut') });
+    files['/w/app/src/locales/en/components/app-card.json'] = JSON.stringify({ 'app-card': entry('Cerrar', 'Shut') });
     expect(translations.invalidate('/w/app/src/components/app-card.fud')).toBe(false);
     expect(translations.at(CARD, SOURCE, offsetOf('Cerrar'))?.lines[1]?.text).toBe('Close');
 
-    expect(translations.invalidate('/w/app/src/locales/en.json')).toBe(true);
+    expect(translations.invalidate('/w/app/src/locales/en/components/app-card.json')).toBe(true);
     expect(translations.at(CARD, SOURCE, offsetOf('Cerrar'))?.lines[1]?.text).toBe('Shut');
 
     files['/w/app/fudic.json'] = '{ "kind": "app", "locales": ["en"] }';

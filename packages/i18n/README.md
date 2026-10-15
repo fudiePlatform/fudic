@@ -46,7 +46,9 @@ Add the command to the app and run it:
 pnpm translate
 ```
 
-It writes `src/locales/<locale>.json`, one catalog per locale, and reports what is missing.
+It writes one folder per locale, with one file per component, route or module —
+`src/locales/en/components/app-card.json` — so a team touching different components never meets
+in a catalog. It reports what is missing.
 Fill in `translation`; when a source text changes, its old translation stays with a `review`
 field until you delete it. `pnpm dev`, `pnpm build` and `pnpm preview` only read the catalogs: a
 missing translation shows the original text.

@@ -63,6 +63,11 @@ export interface PlanDiagnostic {
 
 export interface Plan {
   readonly changes: readonly FileChange[];
+  /**
+   * Files the plan removes, relative to `cwd`, after writing `changes`. Only `fudic translate`
+   * removes one: the catalog of a component that no longer has a message (SDD-58 §4.10).
+   */
+  readonly deletions?: readonly string[];
   readonly commands: readonly PlanCommand[];
   /** From the compiler, with spans, over foreign files the CLI had to read. */
   readonly diagnostics: readonly PlanDiagnostic[];

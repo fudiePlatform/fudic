@@ -1,6 +1,9 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
+  catalogPathOf,
+  joinCatalogs,
+  splitCatalog,
   mergeCatalog,
   messageKey,
   parseCatalog,
@@ -22,6 +25,29 @@ function extracted(context: string, source: string, at: number, extra: Partial<E
     ...extra,
   };
 }
+
+describe('one file per source file (§4.10)', () => {
+  it('catalogPathOf: the source path under the locale folder, without src/ and the extension', () => {
+    expect(catalogPathOf('src/components/app-card.fud:44')).toBe('components/app-card.json');
+    expect(catalogPathOf('src/routes/blog/[slug].fud:3')).toBe('routes/blog/[slug].json');
+    expect(catalogPathOf('src/services/posts.ts:25')).toBe('services/posts.json');
+    expect(catalogPathOf('node_modules/@acme/ui/src/x-card.fud:1')).toBe('@acme/ui/src/x-card.json');
+    expect(catalogPathOf('../../libs/ui/src/x.fud')).toBe('libs/ui/src/x.json');
+  });
+
+  it('splitCatalog and joinCatalogs: one file per source, and back to the whole', () => {
+    const at = (where: string) => ({ source: 'x', where, at: 0 });
+    const whole: Catalog = {
+      'app-card': { a: at('src/components/app-card.fud:1'), b: { ...at('src/components/app-card.fud:2'), at: 1 } },
+      'lib/x.ts': { c: at('src/lib/x.ts:9') },
+    };
+    const files = splitCatalog(whole);
+    expect([...files.keys()]).toEqual(['components/app-card.json', 'lib/x.json']);
+    expect(files.get('components/app-card.json')).toEqual({ 'app-card': whole['app-card'] });
+    expect(joinCatalogs([...files.values()])).toEqual(whole);
+    expect(joinCatalogs([{ k: { a: at('a') } }, { k: { b: at('b') } }])).toEqual({ k: { a: at('a'), b: at('b') } });
+  });
+});
 
 describe('messageKey (§4.9)', () => {
   it('is the first 8 hex of SHA-1 over context + NUL + source', () => {

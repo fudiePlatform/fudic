@@ -1,6 +1,7 @@
 /**
  * `fudic translate` (SDD-58 §3.5, §4.10; criteria 10–13): the plan that extracts every message
- * of the app and of its libraries and merges it into `src/locales/<locale>.json`, and the binary
+ * of the app and of its libraries and merges it into `src/locales/<locale>/`, one file per source
+ * file, and the binary
  * that applies it, prints a line per locale and fails only on an error.
  */
 
@@ -58,7 +59,12 @@ async function translate(fs: MemoryFs): Promise<TranslatePlan> {
   return plan;
 }
 
-const catalog = (fs: MemoryFs, locale: string): Catalog => JSON.parse(fs.at(`src/locales/${locale}.json`)) as Catalog;
+/** The files of a locale's folder, by path. */
+const files = (fs: MemoryFs, locale: string): string[] => fs.paths().filter((p) => p.startsWith(`src/locales/${locale}/`));
+
+/** The whole catalog of a locale: every file of its folder, joined. */
+const catalog = (fs: MemoryFs, locale: string): Catalog =>
+  Object.assign({}, ...files(fs, locale).map((p) => JSON.parse(fs.at(p)) as Catalog)) as Catalog;
 
 /** The one entry of `context` whose source is `source`. */
 const entry = (fs: MemoryFs, locale: string, context: string, source: string) =>
@@ -66,7 +72,11 @@ const entry = (fs: MemoryFs, locale: string, context: string, source: string) =>
 
 /** Set the translation of `source` in `locale`'s catalog, as a translator would. */
 function translateTo(fs: MemoryFs, locale: string, translations: Readonly<Record<string, string>>): void {
-  const text = catalog(fs, locale);
+  for (const path of files(fs, locale)) translateFile(fs, path, translations);
+}
+
+function translateFile(fs: MemoryFs, path: string, translations: Readonly<Record<string, string>>): void {
+  const text = JSON.parse(fs.at(path)) as Catalog;
   const next = Object.fromEntries(
     Object.entries(text).map(([context, entries]) => [
       context,
@@ -78,7 +88,7 @@ function translateTo(fs: MemoryFs, locale: string, translations: Readonly<Record
       ),
     ]),
   );
-  fs.write(`${CWD}/src/locales/${locale}.json`, `${JSON.stringify(next, null, 2)}\n`);
+  fs.write(`${CWD}/${path}`, `${JSON.stringify(next, null, 2)}\n`);
 }
 
 function deps(fs: MemoryFs): RunDeps & { capture: ReturnType<typeof captureStreams> } {
@@ -135,19 +145,23 @@ describe('the catalogs it writes', () => {
     });
     await translate(fs);
     expect(entry(fs, 'en', 'ui-badge', 'Nuevo')).toBeDefined();
+    expect(files(fs, 'en')).toContain('src/locales/en/@acme/ui/src/ui-badge.json');
   });
 
   it('criterion 10: twice over the same code, the same bytes, and the second plan changes nothing', async () => {
     const fs = project({ 'src/lib/validation.ts': SERVICE });
     const first = await translate(fs);
     expect(first.changes.map((c) => [c.kind, c.path])).toEqual([
-      ['create', 'src/locales/es.json'],
-      ['create', 'src/locales/en.json'],
+      ['create', 'src/locales/es/components/app-card.json'],
+      ['create', 'src/locales/es/lib/validation.json'],
+      ['create', 'src/locales/en/components/app-card.json'],
+      ['create', 'src/locales/en/lib/validation.json'],
     ]);
-    const en = fs.at('src/locales/en.json');
+    const en = fs.at('src/locales/en/components/app-card.json');
     const second = await translate(fs);
     expect(second.changes).toEqual([]);
-    expect(fs.at('src/locales/en.json')).toBe(en);
+    expect(second.deletions).toBeUndefined();
+    expect(fs.at('src/locales/en/components/app-card.json')).toBe(en);
     expect(en.endsWith('}\n')).toBe(true);
   });
 
@@ -157,12 +171,32 @@ describe('the catalogs it writes', () => {
     translateTo(fs, 'en', { Cerrar: 'Close', Abrir: 'Open' });
     fs.write(`${CWD}/src/components/app-card.fud`, CARD.replace('Cerrar', 'Cerrar panel'));
     const plan = await translate(fs);
-    expect(plan.changes.map((c) => c.path)).toEqual(['src/locales/es.json', 'src/locales/en.json']);
+    expect(plan.changes.map((c) => c.path)).toEqual(['src/locales/es/components/app-card.json', 'src/locales/en/components/app-card.json']);
     expect(entry(fs, 'en', 'app-card', 'Cerrar panel')).toMatchObject({ translation: 'Close', review: 'Cerrar' });
     expect(entry(fs, 'en', 'app-card', 'Cerrar')).toBeUndefined();
     // In the first locale the text IS the translation: no review there.
     expect(entry(fs, 'es', 'app-card', 'Cerrar panel')).toMatchObject({ translation: 'Cerrar panel' });
     expect(entry(fs, 'es', 'app-card', 'Cerrar panel')?.review).toBeUndefined();
+  });
+
+  it('one file per source file: a change to one component touches only its catalog', async () => {
+    const fs = project({ 'src/components/app-hello.fud': GREETING });
+    await translate(fs);
+    expect(files(fs, 'en')).toEqual(['src/locales/en/components/app-card.json', 'src/locales/en/components/app-hello.json']);
+    fs.write(`${CWD}/src/components/app-hello.fud`, GREETING.replace('Hola', 'Buenas'));
+    expect((await translate(fs)).changes.map((c) => c.path)).toEqual([
+      'src/locales/es/components/app-hello.json',
+      'src/locales/en/components/app-hello.json',
+    ]);
+  });
+
+  it('the catalog of a source that no longer has a message is removed', async () => {
+    const fs = project({ 'src/components/app-hello.fud': GREETING });
+    await translate(fs);
+    fs.remove(`${CWD}/src/components/app-hello.fud`);
+    const plan = await translate(fs);
+    expect(plan.deletions).toEqual(['src/locales/es/components/app-hello.json', 'src/locales/en/components/app-hello.json']);
+    expect(files(fs, 'en')).toEqual(['src/locales/en/components/app-card.json']);
   });
 
   it('criterion 12: a plural written in the first locale’s catalog says 1 mensaje', () => {
@@ -227,14 +261,15 @@ describe('criterion 13: what it reports', () => {
     expect(lost?.diagnostic.message).toContain('it has {count}, {name} where the original has {count}, {name}, <0>');
   });
 
-  it('an en.json with a comma too many is FUD1023, and it is not rewritten', async () => {
+  it('a catalog with a comma too many is FUD1023, and its locale is not rewritten', async () => {
     const fs = project();
     await translate(fs);
-    const broken = fs.at('src/locales/en.json').replace(/\n\}\n$/u, ',\n}\n');
-    fs.write(`${CWD}/src/locales/en.json`, broken);
+    const path = 'src/locales/en/components/app-card.json';
+    fs.write(`${CWD}/${path}`, fs.at(path).replace(/\n\}\n$/u, ',\n}\n'));
+    fs.write(`${CWD}/src/components/app-card.fud`, CARD.replace('Abrir', 'Abrir ya'));
     const plan = await planTranslate(OPTS, fs);
-    expect(plan.errors.map((e) => [e.code, 'file' in e ? e.file : ''])).toEqual([['FUD1023', 'src/locales/en.json']]);
-    expect(plan.changes.some((c) => c.path === 'src/locales/en.json')).toBe(false);
+    expect(plan.errors.map((e) => [e.code, 'file' in e ? e.file : ''])).toEqual([['FUD1023', path]]);
+    expect(plan.changes.some((c) => c.path.startsWith('src/locales/en/'))).toBe(false);
   });
 
   it('two t() with the same text and a different number of holes is FUD1025', async () => {
@@ -277,7 +312,7 @@ describe('the binary', () => {
     const fs = project();
     const d = deps(fs);
     expect(await run(['translate', '--cwd', CWD], d)).toBe(0);
-    expect(fs.paths()).toContain('src/locales/en.json');
+    expect(fs.paths()).toContain('src/locales/en/components/app-card.json');
     expect(d.capture.stdout()).toContain('  en  2 messages · 2 new · 0 to review · 2 untranslated');
     expect(d.capture.stdout()).toContain('FUD1022');
   });
@@ -296,15 +331,29 @@ describe('the binary', () => {
     const fs = project();
     const d = deps(fs);
     expect(await run(['translate', '--cwd', CWD, '--dry-run'], d)).toBe(0);
-    expect(fs.paths()).not.toContain('src/locales/en.json');
+    expect(fs.paths()).not.toContain('src/locales/en/components/app-card.json');
     expect(d.capture.stdout()).toContain('  es  2 messages');
   });
 
   it('an unreadable catalog stops it: exit 1, nothing written', async () => {
-    const fs = project({ 'src/locales/en.json': '{ "x": ' });
+    const fs = project({ 'src/locales/en/x.json': '{ "x": ' });
     const d = deps(fs);
     expect(await run(['translate', '--cwd', CWD], d)).toBe(1);
-    expect(fs.paths()).not.toContain('src/locales/es.json');
+    expect(fs.paths()).not.toContain('src/locales/es/components/app-card.json');
+  });
+
+  it('says what it removes, and --dry-run lists it without removing', async () => {
+    const fs = project({ 'src/components/app-hello.fud': GREETING });
+    await translate(fs);
+    fs.remove(`${CWD}/src/components/app-hello.fud`);
+    const dry = deps(fs);
+    expect(await run(['translate', '--cwd', CWD, '--dry-run'], dry)).toBe(0);
+    expect(dry.capture.stdout()).toContain('  delete  src/locales/en/components/app-hello.json');
+    expect(fs.paths()).toContain('src/locales/en/components/app-hello.json');
+    const d = deps(fs);
+    expect(await run(['translate', '--cwd', CWD], d)).toBe(0);
+    expect(d.capture.stdout()).toContain('  delete  src/locales/en/components/app-hello.json');
+    expect(fs.paths()).not.toContain('src/locales/en/components/app-hello.json');
   });
 
   it('takes --project, and no argument nor any other flag', () => {

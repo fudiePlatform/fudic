@@ -338,7 +338,10 @@ describe('criterion 31: the pipeline reads catalogs, and nothing more', () => {
   let root: string;
   let output: OutFile[];
   const catalogs = (): string[] =>
-    readdirSync(join(root, 'src', 'locales')).map((f) => `${f}:${readFileSync(join(root, 'src', 'locales', f), 'utf8')}`);
+    readdirSync(join(root, 'src', 'locales'), { recursive: true, encoding: 'utf8' })
+      .filter((f) => f.endsWith('.json'))
+      .sort()
+      .map((f) => `${f}:${readFileSync(join(root, 'src', 'locales', f), 'utf8')}`);
   let before: string[];
   beforeAll(async () => {
     said.length = 0;

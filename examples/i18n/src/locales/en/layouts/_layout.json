@@ -1,0 +1,22 @@
+{
+  "layouts/_layout.fud": {
+    "8375f801": {
+      "source": "Inicio",
+      "translation": "Home",
+      "where": "src/layouts/_layout.fud:14",
+      "at": 0
+    },
+    "44dc7cdb": {
+      "source": "Blog",
+      "translation": "Blog",
+      "where": "src/layouts/_layout.fud:14",
+      "at": 1
+    },
+    "8f805603": {
+      "source": "Ejemplo de traducciones de fudic",
+      "translation": "fudic translations example",
+      "where": "src/layouts/_layout.fud:19",
+      "at": 2
+    }
+  }
+}

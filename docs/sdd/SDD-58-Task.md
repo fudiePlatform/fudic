@@ -5,7 +5,7 @@
 > `@fudic/cli` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` ·
 > `examples/i18n` (nuevo)
 > **Rama:** `sdd-58-i18n`
-> **Progreso:** 56 / 56 — `Hecho`.
+> **Progreso:** 60 / 60 — `Hecho`.
 
 El orden va de dentro afuera:
 1. los diagnósticos y la config;
@@ -208,3 +208,17 @@ Cada fase se commitea al cerrarla, con sus tests.
   la página lo pide, y el SW precalienta por el nombre que lleva la URL que la página envía.
 - [x] 56. `examples/i18n` cachea `/assets/**` en su `sw.json`, como `examples/basic`, y construye
   con sourcemaps.
+
+## Fase 11 — Un catálogo por fichero fuente, tras la prueba en el navegador
+
+> Pedro: un fichero por idioma acaba gigante y en conflicto en cuanto un equipo itera sobre él.
+> Decidido con él: una carpeta por idioma con un fichero por componente, ruta o módulo, en la
+> ruta del fuente. Enmienda §3.4, §4.10 y los criterios 10–13 y 31–34.
+
+- [x] 57. `catalogPathOf`, `splitCatalog` y `joinCatalogs` en `@fudic/i18n`, al 100 %.
+- [x] 58. `fudic translate` lee la carpeta de cada idioma, escribe un fichero por fuente y borra
+  el de un fuente que se queda sin mensajes (el plan gana `deletions`).
+- [x] 59. El plugin lee la carpeta y vigila en dev el catálogo propio de cada módulo; un fichero
+  ilegible no impide traducir los demás. El editor lee el del fichero abierto, y VS Code vigila
+  `**/src/locales/**/*.json`.
+- [x] 60. `examples/i18n` migrado sin perder traducciones; README y spec al día.

@@ -201,8 +201,8 @@ describe('dev', () => {
     expect(code).not.toContain('Sumar uno');
   });
 
-  it('criterion 34: saving en.json is seen by /en/… without a restart', async () => {
-    const file = join(root, 'src', 'locales', 'en.json');
+  it('criterion 34: saving a catalog is seen by /en/… without a restart', async () => {
+    const file = join(root, 'src', 'locales', 'en', 'routes', 'about.json');
     writeFileSync(file, readFileSync(file, 'utf8').replace('Hello world', 'Hello there'));
     await vi.waitFor(
       async () => {

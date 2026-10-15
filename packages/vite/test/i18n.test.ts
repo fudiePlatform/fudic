@@ -15,7 +15,8 @@ import {
   Catalogs,
   LocaleIos,
   alternatesOf,
-  catalogFile,
+  catalogDir,
+  catalogFileOf,
   chunkDir,
   compilesPerLocale,
   errorLocaleOf,
@@ -75,8 +76,11 @@ describe('ids and queries', () => {
     expect(hasQuery('/a.fud', 'client')).toBe(false);
   });
 
-  it('catalogFile is src/locales/<locale>.json', () => {
-    expect(catalogFile('/app', 'en').replace(/\\/gu, '/')).toBe('/app/src/locales/en.json');
+  it('the catalog of a locale is a folder, with one file per source file', () => {
+    expect(catalogDir('/app', 'en').replace(/\\/gu, '/')).toBe('/app/src/locales/en');
+    expect(catalogFileOf('/app', 'en', '/app/src/components/app-card.fud').replace(/\\/gu, '/')).toBe(
+      '/app/src/locales/en/components/app-card.json',
+    );
   });
 });
 
@@ -241,7 +245,7 @@ describe('negotiate (§4.5)', () => {
 
 describe('catalogs, read and never written (§4.10)', () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-catalogs-'));
-  mkdirSync(join(root, 'src', 'locales'), { recursive: true });
+  mkdirSync(join(root, 'src', 'locales', 'en', 'routes'), { recursive: true });
   const message = (source: string): Message =>
     ({ context: 'routes/about.fud', key: messageKey('routes/about.fud', source), source }) as unknown as Message;
   const write = (translations: Record<string, string>): void => {
@@ -251,7 +255,7 @@ describe('catalogs, read and never written (§4.10)', () => {
         { source, translation, where: 'src/routes/about.fud:1', at },
       ]),
     );
-    writeFileSync(join(root, 'src', 'locales', 'en.json'), JSON.stringify({ 'routes/about.fud': entries }));
+    writeFileSync(join(root, 'src', 'locales', 'en', 'routes', 'about.json'), JSON.stringify({ 'routes/about.fud': entries }));
   };
 
   it('a valid translation compiles; missing, empty and invalid ones are the original text', () => {
@@ -270,8 +274,14 @@ describe('catalogs, read and never written (§4.10)', () => {
   it('criterion 11: a translation to review counts as translated, and is used as it is', () => {
     const key = messageKey('routes/about.fud', 'Cerrar panel');
     const entry = { source: 'Cerrar panel', translation: 'Close', review: 'Cerrar', where: 'src/routes/about.fud:1', at: 0 };
-    writeFileSync(join(root, 'src', 'locales', 'en.json'), JSON.stringify({ 'routes/about.fud': { [key]: entry } }));
+    writeFileSync(join(root, 'src', 'locales', 'en', 'routes', 'about.json'), JSON.stringify({ 'routes/about.fud': { [key]: entry } }));
     expect(new Catalogs(root, ['es', 'en'], false).compileFor('en').translate(message('Cerrar panel'))).toEqual(['Close']);
+  });
+
+  it('a file that cannot be read is empty, and the rest of the folder still translates', () => {
+    write({ Hola: 'Hello' });
+    writeFileSync(join(root, 'src', 'locales', 'en', 'broken.json'), '{ "x": ');
+    expect(new Catalogs(root, ['es', 'en'], false).compileFor('en').translate(message('Hola'))).toEqual(['Hello']);
   });
 
   it('a catalog that is not there is an empty one', () => {

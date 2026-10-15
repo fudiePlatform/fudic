@@ -13,7 +13,7 @@
 import { extractMessages, type Message } from '@fudic/compiler';
 import { CONFIG_FILE, readProjectConfig } from '@fudic/config';
 import { LOCALES_DIR } from '@fudic/conventions';
-import { parseCatalog, type Catalog } from '@fudic/i18n';
+import { catalogPathOf, parseCatalog, type Catalog } from '@fudic/i18n';
 import { toPosix } from '@fudic/typecheck';
 import type { FileSystemScanner } from './types.js';
 
@@ -37,7 +37,7 @@ export class Translations {
   readonly #scanner: FileSystemScanner;
   /** Directory → the app of the nearest `fudic.json` at or above it, `null` for none. */
   readonly #appByDir = new Map<string, App | null>();
-  /** `<root>/<locale>` → its catalog. An unreadable one is empty, as in the pipeline. */
+  /** Catalog file → what it says. An unreadable one is empty, as in the pipeline. */
   readonly #catalogs = new Map<string, Catalog>();
   /** File → its messages, for the source they were extracted from. */
   readonly #messages = new Map<string, { readonly source: string; readonly messages: readonly Message[] }>();
@@ -71,7 +71,7 @@ export class Translations {
     return {
       message,
       lines: app.locales.map((locale) => {
-        const text = this.#catalogOf(app.root, locale)[message.context]?.[message.key]?.translation;
+        const text = this.#catalogOf(app.root, locale, file)[message.context]?.[message.key]?.translation;
         // An empty translation counts as missing, here as in the pipeline (§4.10).
         return { locale, text: text === '' ? undefined : text };
       }),
@@ -88,14 +88,14 @@ export class Translations {
     return messages;
   }
 
-  #catalogOf(root: string, locale: string): Catalog {
-    const id = `${root}/${locale}`;
-    const known = this.#catalogs.get(id);
+  /** The one file of `locale`'s folder the messages of `file` live in. */
+  #catalogOf(root: string, locale: string, file: string): Catalog {
+    const path = `${root}/${LOCALES_DIR}/${locale}/${catalogPathOf(file.slice(root.length + 1))}`;
+    const known = this.#catalogs.get(path);
     if (known !== undefined) return known;
-    const path = `${root}/${LOCALES_DIR}/${locale}.json`;
     const text = this.#scanner.readFile(path);
     const catalog = text === undefined ? {} : parseCatalog(text, path).value;
-    this.#catalogs.set(id, catalog);
+    this.#catalogs.set(path, catalog);
     return catalog;
   }
 

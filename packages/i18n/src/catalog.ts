@@ -1,5 +1,7 @@
 /**
- * The catalog: `src/locales/<locale>.json`, one per language (SDD-58 §4.9, §4.10).
+ * The catalog: a folder per language, `src/locales/<locale>/`, with one file per source file
+ * (SDD-58 §4.9, §4.10). A team iterating on an app meets in a catalog only when it touches the
+ * same component; one file per language grows without end and conflicts on every merge.
  *
  * Only `fudic translate` writes one — through `mergeCatalog` and `printCatalog` here. The
  * pipeline only reads it, through `parseCatalog`, and falls back to the original text for
@@ -152,6 +154,43 @@ function entry(
     where: m.where,
     at: m.at,
   };
+}
+
+/**
+ * Where the messages of a source file live inside a locale's folder (§4.10), from their
+ * `where`: `src/components/app-card.fud:44` → `components/app-card.json`. `src/` and the
+ * extension go; a library's file keeps its package path without `node_modules/`.
+ */
+export function catalogPathOf(where: string): string {
+  const segments = where
+    .replace(/:\d+$/u, '')
+    .split('/')
+    .filter((s) => s !== '' && s !== '.' && s !== '..' && s !== 'node_modules');
+  if (segments[0] === 'src') segments.shift();
+  return `${segments.join('/').replace(/\.[^./]*$/u, '')}.json`;
+}
+
+/** A locale's catalog cut into its files: catalog path → the messages that live there. */
+export function splitCatalog(catalog: Catalog): ReadonlyMap<string, Catalog> {
+  const files = new Map<string, Record<string, Record<string, CatalogEntry>>>();
+  for (const [context, entries] of Object.entries(catalog)) {
+    for (const [key, e] of Object.entries(entries)) {
+      const path = catalogPathOf(e.where);
+      const file = files.get(path) ?? {};
+      files.set(path, file);
+      file[context] = { ...file[context], [key]: e };
+    }
+  }
+  return files;
+}
+
+/** The files of a locale's folder, read, as the one catalog they make up. */
+export function joinCatalogs(parts: readonly Catalog[]): Catalog {
+  const whole: Record<string, Record<string, CatalogEntry>> = {};
+  for (const part of parts) {
+    for (const [context, entries] of Object.entries(part)) whole[context] = { ...whole[context], ...entries };
+  }
+  return whole;
 }
 
 /**

@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { extractMessages } from '@fudic/compiler';
+import { splitCatalog, type Catalog } from '@fudic/i18n';
 
 const pkgDir = (name: string): string => fileURLToPath(new URL(`../../../${name}`, import.meta.url));
 
@@ -29,8 +30,6 @@ export interface I18nProject {
   readonly files: Readonly<Record<string, string>>;
   /** Per locale: source text → translation. `null` writes an unreadable catalog. */
   readonly catalogs?: Readonly<Record<string, Readonly<Record<string, string>> | null>>;
-  /** Raw catalog text per locale, written as is (an invalid one, say). */
-  readonly rawCatalogs?: Readonly<Record<string, string>>;
 }
 
 function siteOf(project: I18nProject): { site?: string } {
@@ -58,9 +57,9 @@ export function writeI18nProject(project: I18nProject): string {
     }),
   );
   for (const [locale, table] of Object.entries(project.catalogs ?? {})) {
-    write(`src/locales/${locale}.json`, table === null ? '{ "broken": ' : catalogText(project.files, table));
+    if (table === null) write(`src/locales/${locale}/routes/about.json`, '{ "broken": ');
+    else for (const [path, part] of splitCatalog(catalogOf(project.files, table))) write(`src/locales/${locale}/${path}`, JSON.stringify(part, null, 2));
   }
-  for (const [locale, text] of Object.entries(project.rawCatalogs ?? {})) write(`src/locales/${locale}.json`, text);
 
   const scope = join(root, 'node_modules', '@fudic');
   mkdirSync(scope, { recursive: true });
@@ -76,9 +75,9 @@ export function writeI18nProject(project: I18nProject): string {
   return root;
 }
 
-/** A catalog whose entries are the `.fud` messages `table` translates. */
-function catalogText(files: Readonly<Record<string, string>>, table: Readonly<Record<string, string>>): string {
-  const catalog: Record<string, Record<string, object>> = {};
+/** A catalog whose entries are the `.fud` messages `table` translates, one file per source. */
+function catalogOf(files: Readonly<Record<string, string>>, table: Readonly<Record<string, string>>): Catalog {
+  const catalog: Record<string, Record<string, Catalog[string][string]>> = {};
   for (const [path, text] of Object.entries(files)) {
     if (!path.endsWith('.fud')) continue;
     for (const m of extractMessages(text, path).value) {
@@ -87,5 +86,5 @@ function catalogText(files: Readonly<Record<string, string>>, table: Readonly<Re
       (catalog[m.context] ??= {})[m.key] = { source: m.source, translation, where: path, at: m.at };
     }
   }
-  return JSON.stringify(catalog, null, 2);
+  return catalog;
 }

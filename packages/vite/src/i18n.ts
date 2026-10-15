@@ -7,11 +7,11 @@
  * with the original text, silently (§4.10). `fudic translate` is the one that speaks.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import type { Plugin } from 'vite';
 import { localizedIo, translateScript, type LocaleCompile, type ResolveIo } from '@fudic/compiler';
-import { compileMessage, parseCatalog, type Catalog } from '@fudic/i18n';
+import { catalogPathOf, compileMessage, joinCatalogs, parseCatalog, type Catalog } from '@fudic/i18n';
 import { buildIo } from './build-memory.js';
 import { ERROR_FILE, LOCALES_DIR } from '@fudic/conventions';
 import type { RouteBuild } from './discover.js';
@@ -19,9 +19,17 @@ import type { RouteBuild } from './discover.js';
 /** The query parameter that names the locale a module is compiled for: `x.fud?locale=en`. */
 export const LOCALE_PARAM = 'locale';
 
-/** The catalog of `locale`: `src/locales/<locale>.json`. */
-export function catalogFile(root: string, locale: string): string {
-  return join(root, LOCALES_DIR, `${locale}.json`);
+/** The folder of `locale`'s catalog: `src/locales/<locale>/`, one file per source file. */
+export function catalogDir(root: string, locale: string): string {
+  return join(root, LOCALES_DIR, locale);
+}
+
+/**
+ * The catalog file the messages of the source at `path` live in, in `locale`:
+ * `src/components/app-card.fud` → `src/locales/en/components/app-card.json`.
+ */
+export function catalogFileOf(root: string, locale: string, path: string): string {
+  return join(catalogDir(root, locale), catalogPathOf(relative(root, path).replace(/\\/gu, '/')));
 }
 
 /** The locale a module id is compiled for, or `undefined` for one compiled for none. */
@@ -190,8 +198,13 @@ export class Catalogs {
   of(locale: string): Catalog {
     const known = this.fresh ? undefined : this.#read.get(locale);
     if (known !== undefined) return known;
-    const file = catalogFile(this.root, locale);
-    const catalog = existsSync(file) ? parseCatalog(readFileSync(file, 'utf8'), file).value : {};
+    // Every file of the locale's folder, joined. One that cannot be read is empty: its
+    // messages go out in the original text, and the others still translate.
+    const dir = catalogDir(this.root, locale);
+    const files = existsSync(dir)
+      ? readdirSync(dir, { recursive: true, encoding: 'utf8' }).filter((f) => f.endsWith('.json')).sort()
+      : [];
+    const catalog = joinCatalogs(files.map((f) => parseCatalog(readFileSync(join(dir, f), 'utf8'), f).value));
     this.#read.set(locale, catalog);
     return catalog;
   }

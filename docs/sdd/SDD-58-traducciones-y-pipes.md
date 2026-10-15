@@ -1,6 +1,6 @@
 # SDD-58 — Traducciones y pipes
 
-> **Estado:** `Hecho` — [tareas](./SDD-58-Task.md), 56 / 56.
+> **Estado:** `Hecho` — [tareas](./SDD-58-Task.md), 60 / 60.
 > **Paquetes:** `@fudic/i18n` (nuevo) · `@fudic/compiler` · `@fudic/config` · `@fudic/vite` ·
 > `@fudic/cli` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` ·
 > `examples/i18n` (nuevo)
@@ -24,7 +24,9 @@
 > - **Formatos y locale, con los pipes de IDEA-03.** El locale nunca lo escribe el autor.
 > - **Clave = hash de texto + contexto.** Si el texto cambia, la traducción no se pierde: queda
 >   *a revisar*.
-> - **JSON con ICU**, un fichero por idioma.
+> - **JSON con ICU**, una carpeta por idioma con un fichero por componente, ruta o módulo (cambio
+>   tras la prueba de Pedro: un fichero por idioma acaba gigante y en conflicto en cuanto un equipo
+>   itera sobre él).
 > - **Extraer es un comando aparte, `fudic translate`** (`pnpm translate`), fuera del pipeline.
 >   `pnpm dev`, `pnpm build` y `pnpm preview` no extraen, no escriben catálogos y no avisan de
 >   nada: solo los leen. Lo que falta sale con el texto original. Si no se ejecuta el comando, es
@@ -43,7 +45,7 @@ vista: correcto hoy y roto el día que la página exista en otro idioma.
 Esta spec añade tres cosas que solo funcionan juntas:
 
 1. **Traducir.** `fudic translate` extrae el texto visible de cada `.fud` y los `t("…")` del
-   código, y escribe un catálogo JSON por idioma. El build lee esos catálogos y compila cada
+   código, y escribe un catálogo JSON por idioma, repartido en un fichero por fichero fuente. El build lee esos catálogos y compila cada
    módulo una vez **por idioma**, con el texto ya traducido dentro.
 2. **Formatear.** Pipes en la vista, `@(precio | euros)`, sobre un catálogo cerrado de `Intl`. El
    preset es un dato; el locale lo pone el compilador.
@@ -244,7 +246,7 @@ Sin opciones nuevas: lo decide `fudic.json`. Lo que cambia por fuera:
 
 - **Módulos por idioma.** Un id `x.fud?locale=en` o `x.ts?locale=en` es ese módulo compilado para
   `en`. El plugin propaga el sufijo a lo que importa (§4.6).
-- **Catálogos.** Lee `src/locales/<locale>.json` y nunca los escribe (§4.10).
+- **Catálogos.** Lee `src/locales/<locale>/` y nunca los escribe (§4.10).
 - **Rutas.** Cada ruta existe una vez por idioma con el patrón prefijado (`/en/about`). El
   manifiesto, el prerender, el endpoint de datos y el SW ven esos patrones y no otros.
 
@@ -253,7 +255,7 @@ Sin opciones nuevas: lo decide `fudic.json`. Lo que cambia por fuera:
 ```ts
 export interface TranslateOptions extends BaseOptions {}
 
-/** Extract every message of the app and merge it into src/locales/<locale>.json (§4.10). */
+/** Extract every message of the app and merge it into src/locales/<locale>/ (§4.10). */
 export function planTranslate(opts: TranslateOptions): Promise<Plan>;
 ```
 
@@ -544,7 +546,12 @@ del guardia de URL de SDD-51.
 
 ### 4.10 Catálogos
 
-`src/locales/<locale>.json`, uno por idioma, con la forma `Catalog` (§3.2):
+`src/locales/<locale>/`, una carpeta por idioma con **un fichero por fichero fuente**, en la
+ruta del fuente sin `src/` y con `.json`: los mensajes de `src/components/app-card.fud` en `en`
+viven en `src/locales/en/components/app-card.json`. Los de una librería conservan la ruta de su
+paquete sin `node_modules/`. Cada fichero tiene la forma `Catalog` (§3.2), y el catálogo de un
+idioma es la unión de los de su carpeta (`catalogPathOf`, `splitCatalog` y `joinCatalogs` en
+`@fudic/i18n`):
 
 ```json
 {
@@ -576,7 +583,8 @@ pagan esta pasada.
   mismo `at`: el nuevo hereda la `translation` del viejo, con `review` igual al `source` anterior.
   Un mensaje con `review` **cuenta como traducido** y se usa tal cual; el traductor lo confirma
   borrando `review`.
-- **Mensaje que ya no existe:** se borra. Su traducción queda en el historial de git.
+- **Mensaje que ya no existe:** se borra. Su traducción queda en el historial de git. El fichero
+  de un fuente que se queda sin mensajes también se borra.
 - **Formato estable.** Contextos y claves ordenados (contexto alfabético, luego `at`), dos espacios
   de sangría y salto de línea final. Dos extracciones del mismo código dan el mismo fichero byte a
   byte.
@@ -591,13 +599,13 @@ pagan esta pasada.
 
 **Lo que hace el pipeline con los catálogos: leerlos, nada más.**
 
-- `dev`, `build` y `preview` leen `src/locales/<locale>.json` para compilar cada idioma.
+- `dev`, `build` y `preview` leen `src/locales/<locale>/` para compilar cada idioma.
 - Un mensaje se compila con su `translation` cuando existe y es válida. Si falta, si está vacía,
-  si es inválida o si el catálogo entero no se puede leer, se compila con el texto original.
+  si es inválida o si su fichero de catálogo no se puede leer, se compila con el texto original.
 - En ningún caso hay diagnóstico ni penalización. Ejecutar `pnpm translate` es responsabilidad del
   desarrollador.
-- En dev, un cambio en un catálogo recompila los módulos de ese idioma: es una entrada más del
-  grafo, como un `.ts`.
+- En dev, el fichero de catálogo de un módulo es una entrada más de ese módulo, como un `.ts`:
+  guardarlo lo recompila.
 
 ### 4.11 Editor
 
@@ -655,12 +663,12 @@ pagan esta pasada.
 
 **Catálogos (`fudic translate`)**
 
-10. Ejecutar `fudic translate` dos veces sobre el mismo código da el mismo `en.json` byte a byte.
+10. Ejecutar `fudic translate` dos veces sobre el mismo código da los mismos catálogos byte a byte.
     La segunda vez el plan no tiene cambios.
-11. Cambiar `Cerrar` por `Cerrar panel` y ejecutar el comando deja en `en.json` la entrada nueva
+11. Cambiar `Cerrar` por `Cerrar panel` y ejecutar el comando deja en el catálogo `en` de `app-card` la entrada nueva
     con `translation: "Close"` y `review: "Cerrar"`. La vieja desaparece y la página en inglés dice
     `Close`.
-12. En `es.json` cada entrada nueva lleva `translation` igual a `source`. Si se reescribe con
+12. En el catálogo `es` cada entrada nueva lleva `translation` igual a `source`. Si se reescribe con
     `{count, plural, one {# mensaje} other {# mensajes}}`, con `count = 1` sale `1 mensaje`.
 13. Lo que informa el comando:
     - un mensaje sin traducir en `en` es `FUD1022` (aviso) sobre el mensaje en su `.fud`, y el
@@ -668,7 +676,9 @@ pagan esta pasada.
     - una `translation` sin el `{name}` del original es `FUD1024` sobre el mensaje, y el comando
       sale con distinto de 0;
     - una con `{name}` y `{count}` en otro orden es válida;
-    - un `en.json` con una coma de más es `FUD1023`.
+    - un fichero de catálogo con una coma de más es `FUD1023`.
+    - con dos componentes, cambiar el texto de uno solo modifica su fichero en cada idioma; borrar
+      un componente borra los suyos.
 
 **Compilación por idioma**
 
@@ -718,7 +728,7 @@ pagan esta pasada.
 30. Al cliente de `/en/about` solo le llegan chunks compilados para `en`. Un componente N1 con
     `@(precio | euros)` no descarga `@fudic/i18n/runtime`.
 31. El pipeline no extrae ni penaliza. Con un texto nuevo que no está en ningún catálogo, una
-    traducción vacía, una traducción inválida y un `en.json` ilegible:
+    traducción vacía, una traducción inválida y un fichero de catálogo ilegible:
     - `pnpm dev`, `pnpm build` y `pnpm preview` no escriben nada en `src/locales/`;
     - no publican ningún `FUD1022`–`FUD1025`;
     - el build pasa;
@@ -730,9 +740,9 @@ pagan esta pasada.
     - el hover sobre `precio` da su tipo;
     - el rename de `euros` renombra la declaración y el uso;
     - el error de tipos de un preset equivocado cae sobre el operando, no sobre el `|`.
-33. El hover sobre `Cerrar` muestra `es: Cerrar` y `en: Close`. Al cambiar `en.json` en disco,
+33. El hover sobre `Cerrar` muestra `es: Cerrar` y `en: Close`. Al cambiar su catálogo `en` en disco,
     el hover cambia sin reiniciar. El editor no publica `FUD1022`–`FUD1025`.
-34. En dev, guardar `en.json` recarga `/en/…` con la traducción nueva sin reiniciar el servidor.
+34. En dev, guardar un catálogo `en` recarga `/en/…` con la traducción nueva sin reiniciar el servidor.
 
 **Evidencia**
 

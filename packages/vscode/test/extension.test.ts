@@ -143,7 +143,7 @@ describe('activate', () => {
       '**/fudic.json',
       '**/fudic/terms/**/*.js',
       '**/*.fixture.ts',
-      '**/src/locales/*.json',
+      '**/src/locales/**/*.json',
     ]);
   });
 
