@@ -5,7 +5,7 @@
 > `@fudic/cli` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` ·
 > `examples/i18n` (nuevo)
 > **Rama:** `sdd-58-i18n`
-> **Progreso:** 60 / 60 — `Hecho`.
+> **Progreso:** 61 / 61 — `Hecho`.
 
 El orden va de dentro afuera:
 1. los diagnósticos y la config;
@@ -222,3 +222,7 @@ Cada fase se commitea al cerrarla, con sus tests.
   ilegible no impide traducir los demás. El editor lee el del fichero abierto, y VS Code vigila
   `**/src/locales/**/*.json`.
 - [x] 60. `examples/i18n` migrado sin perder traducciones; README y spec al día.
+- [x] 61. `where` guarda el fichero y nunca la línea: editar código por encima de un texto ya no
+  reescribe su catálogo.
+
+> Cierre: Pedro probó el navegador (SEO, offline), `pnpm translate` y la extensión, con OK.

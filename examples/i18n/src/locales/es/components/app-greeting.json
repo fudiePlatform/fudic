@@ -7,7 +7,7 @@
         "name": "name",
         "count": "count"
       },
-      "where": "src/components/app-greeting.fud:15",
+      "where": "src/components/app-greeting.fud",
       "at": 0
     },
     "5f7d4a48": {
@@ -17,19 +17,19 @@
         "precio": "precio | euros",
         "alta": "alta | larga"
       },
-      "where": "src/components/app-greeting.fud:16",
+      "where": "src/components/app-greeting.fud",
       "at": 1
     },
     "81c2a911": {
       "source": "Eres cliente preferente.",
       "translation": "Eres cliente preferente.",
-      "where": "src/components/app-greeting.fud:18",
+      "where": "src/components/app-greeting.fud",
       "at": 2
     },
     "fd0525b5": {
       "source": "Todavía no eres cliente preferente.",
       "translation": "Todavía no eres cliente preferente.",
-      "where": "src/components/app-greeting.fud:20",
+      "where": "src/components/app-greeting.fud",
       "at": 3
     }
   }

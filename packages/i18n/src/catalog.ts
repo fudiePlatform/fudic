@@ -21,7 +21,7 @@ export interface CatalogEntry {
   readonly review?: string;
   /** Hole name → expression source. */
   readonly holes?: Readonly<Record<string, string>>;
-  /** `src/components/app-card.fud:44`. */
+  /** The source file, relative to the app: `src/components/app-card.fud`. Never the line. */
   readonly where: string;
   /** Ordinal of the message inside its context. */
   readonly at: number;
@@ -158,7 +158,7 @@ function entry(
 
 /**
  * Where the messages of a source file live inside a locale's folder (§4.10), from their
- * `where`: `src/components/app-card.fud:44` → `components/app-card.json`. `src/` and the
+ * `where`: `src/components/app-card.fud` → `components/app-card.json`. `src/` and the
  * extension go; a library's file keeps its package path without `node_modules/`.
  */
 export function catalogPathOf(where: string): string {

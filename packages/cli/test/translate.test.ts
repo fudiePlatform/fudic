@@ -116,11 +116,14 @@ describe('the catalogs it writes', () => {
     expect(entry(fs, 'en', 'app-card', 'Cerrar')?.translation).toBeUndefined();
   });
 
-  it('where is the file and the line, and holes keep their expression', async () => {
+  it('where is the file, never the line, and holes keep their expression', async () => {
     const fs = project({ 'src/components/app-hello.fud': GREETING });
     await translate(fs);
     const hello = entry(fs, 'en', 'app-hello', 'Hola {name}');
-    expect(hello?.where).toBe('src/components/app-hello.fud:6');
+    expect(hello?.where).toBe('src/components/app-hello.fud');
+    // A line added above the message does not touch the catalog.
+    fs.write(`${CWD}/src/components/app-hello.fud`, `\n\n${GREETING}`);
+    expect((await translate(fs)).changes).toEqual([]);
     expect(hello?.holes).toEqual({ name: 'user.name' });
   });
 

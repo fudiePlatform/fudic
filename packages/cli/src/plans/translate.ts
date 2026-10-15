@@ -15,7 +15,7 @@
 
 import { extractMessages, extractScriptMessages, type Message } from '@fudic/compiler';
 import { LOCALES_DIR, SRC_DIR } from '@fudic/conventions';
-import { FUD1022, FUD1024, FUD1025, FUD1026, LineMap, type FileDiagnostic } from '@fudic/diagnostics';
+import { FUD1022, FUD1024, FUD1025, FUD1026, type FileDiagnostic } from '@fudic/diagnostics';
 import {
   compileMessage,
   joinCatalogs,
@@ -132,7 +132,6 @@ function extract(cwd: string, target: Target, io: ReadIo, diagnostics: PlanDiagn
     for (const diagnostic of result.diagnostics) {
       if (diagnostic.code === CONFLICT) diagnostics.push({ file, diagnostic });
     }
-    const lines = new LineMap(source);
     for (const message of result.value) {
       found.push({
         file,
@@ -142,7 +141,9 @@ function extract(cwd: string, target: Target, io: ReadIo, diagnostics: PlanDiagn
           key: message.key,
           source: message.source,
           holes: Object.fromEntries(message.holes.map((h) => [h.name, source.slice(h.expr.start, h.expr.end)])),
-          where: `${name}:${lines.positionAt(message.span.start).line + 1}`,
+          // The file and not the line: a line moves with every edit above it, and a catalog
+          // rewritten for that is a merge conflict nobody asked for.
+          where: name,
           at: message.at,
         },
       });

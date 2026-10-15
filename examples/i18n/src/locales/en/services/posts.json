@@ -6,7 +6,7 @@
       "holes": {
         "slug": "slug"
       },
-      "where": "src/services/posts.ts:25",
+      "where": "src/services/posts.ts",
       "at": 0
     },
     "c57f259d": {
@@ -15,7 +15,7 @@
       "holes": {
         "minutes": "minutes"
       },
-      "where": "src/services/posts.ts:29",
+      "where": "src/services/posts.ts",
       "at": 1
     }
   }

@@ -1,6 +1,6 @@
 # SDD-58 — Traducciones y pipes
 
-> **Estado:** `Hecho` — [tareas](./SDD-58-Task.md), 60 / 60.
+> **Estado:** `Hecho` — [tareas](./SDD-58-Task.md), 61 / 61.
 > **Paquetes:** `@fudic/i18n` (nuevo) · `@fudic/compiler` · `@fudic/config` · `@fudic/vite` ·
 > `@fudic/cli` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` ·
 > `examples/i18n` (nuevo)
@@ -182,7 +182,7 @@ export interface CatalogEntry {
   readonly translation?: string;    // absent ⇒ missing
   readonly review?: string;         // the previous `source`, when the text changed under a translation
   readonly holes?: Readonly<Record<string, string>>;  // hole name → expression source
-  readonly where: string;           // "src/components/app-card.fud:44"
+  readonly where: string;           // "src/components/app-card.fud": the file, never the line
   readonly at: number;              // ordinal of the message inside its context
 }
 export type Catalog = Readonly<Record<string /* context */, Readonly<Record<string /* key */, CatalogEntry>>>>;
@@ -556,8 +556,8 @@ idioma es la unión de los de su carpeta (`catalogPathOf`, `splitCatalog` y `joi
 ```json
 {
   "app-card": {
-    "a1f3c09e": { "source": "Cerrar", "translation": "Close", "where": "src/components/app-card.fud:44", "at": 0 },
-    "9c02b7d1": { "source": "Abrir", "translation": "Open", "where": "src/components/app-card.fud:44", "at": 1 }
+    "a1f3c09e": { "source": "Cerrar", "translation": "Close", "where": "src/components/app-card.fud", "at": 0 },
+    "9c02b7d1": { "source": "Abrir", "translation": "Open", "where": "src/components/app-card.fud", "at": 1 }
   }
 }
 ```
@@ -578,7 +578,9 @@ pagan esta pasada.
     editar: es donde el autor convierte `"{count} mensajes"` en
     `"{count, plural, one {# mensaje} other {# mensajes}}"` para su propio idioma.
   - En los demás, sin `translation`.
-- **Mensaje que sigue:** conserva su `translation`; se actualizan `where` y `holes`.
+- **Mensaje que sigue:** conserva su `translation`; se actualizan `where` y `holes`. `where` es el
+  fichero y nunca la línea: una línea se mueve con cada edición por encima, y un catálogo
+  reescrito por eso es un conflicto que nadie pidió.
 - **Texto cambiado.** Un mensaje que desaparece y otro que aparece en el mismo contexto con el
   mismo `at`: el nuevo hereda la `translation` del viejo, con `review` igual al `source` anterior.
   Un mensaje con `review` **cuenta como traducido** y se usa tal cual; el traductor lo confirma

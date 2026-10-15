@@ -3,19 +3,19 @@
     "ed4317e9": {
       "source": "Inicio",
       "translation": "Inicio",
-      "where": "src/routes/index.fud:11",
+      "where": "src/routes/index.fud",
       "at": 0
     },
     "c991d63d": {
       "source": "Bienvenida a la tienda",
       "translation": "Bienvenida a la tienda",
-      "where": "src/routes/index.fud:14",
+      "where": "src/routes/index.fud",
       "at": 1
     },
     "03ae7b0f": {
       "source": "Lee <0>cómo se formatean los precios</0>.",
       "translation": "Lee <0>cómo se formatean los precios</0>.",
-      "where": "src/routes/index.fud:18",
+      "where": "src/routes/index.fud",
       "at": 2
     }
   }

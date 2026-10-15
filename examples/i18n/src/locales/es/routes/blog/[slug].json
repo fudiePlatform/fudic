@@ -3,7 +3,7 @@
     "445877f1": {
       "source": "Volver al inicio",
       "translation": "Volver al inicio",
-      "where": "src/routes/blog/[slug].fud:29",
+      "where": "src/routes/blog/[slug].fud",
       "at": 0
     }
   }

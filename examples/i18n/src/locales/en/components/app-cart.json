@@ -3,7 +3,7 @@
     "6cf49a24": {
       "source": "Añadir un café",
       "translation": "Add a coffee",
-      "where": "src/components/app-cart.fud:21",
+      "where": "src/components/app-cart.fud",
       "at": 0
     },
     "d743e900": {
@@ -12,7 +12,7 @@
       "holes": {
         "count": "n()"
       },
-      "where": "src/components/app-cart.fud:22",
+      "where": "src/components/app-cart.fud",
       "at": 1
     },
     "532e9c8c": {
@@ -21,7 +21,7 @@
       "holes": {
         "arg1": "n() * 1.2 | euros"
       },
-      "where": "src/components/app-cart.fud:23",
+      "where": "src/components/app-cart.fud",
       "at": 2
     }
   }
