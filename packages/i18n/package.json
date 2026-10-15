@@ -1,0 +1,66 @@
+{
+  "name": "@fudic/i18n",
+  "version": "0.0.1",
+  "description": "Translations and pipes for fudic — formatter presets as data, the ICU subset messages are written in, the runtime pieces that format and choose a plural, and the catalog.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Pedro Hurtado",
+  "homepage": "https://github.com/fudiePlatform/fudic/tree/main/packages/i18n#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fudiePlatform/fudic.git",
+    "directory": "packages/i18n"
+  },
+  "bugs": {
+    "url": "https://github.com/fudiePlatform/fudic/issues"
+  },
+  "keywords": [
+    "fudic",
+    "fudie",
+    "i18n",
+    "translations",
+    "intl",
+    "icu"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./runtime": {
+      "types": "./dist/runtime/index.d.ts",
+      "import": "./dist/runtime/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "fudic": {
+    "runtime": "./runtime"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "runtime",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && pnpm run build:runtime",
+    "build:runtime": "node -e \"require('node:fs').rmSync('runtime',{recursive:true,force:true})\" && rolldown -c rolldown.config.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@fudic/conventions": "workspace:*",
+    "@fudic/diagnostics": "workspace:*"
+  },
+  "devDependencies": {
+    "@fudic/tsconfig": "workspace:*",
+    "rolldown": "1.2.1"
+  }
+}

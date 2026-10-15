@@ -5,7 +5,7 @@
 > `@fudic/cli` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` ·
 > `examples/i18n` (nuevo)
 > **Rama:** `sdd-58-i18n`
-> **Progreso:** 3 / 48 — `En curso`.
+> **Progreso:** 13 / 48 — `En curso`.
 
 El orden va de dentro afuera:
 1. los diagnósticos y la config;
@@ -30,28 +30,28 @@ Cada fase se commitea al cerrarla, con sus tests.
 
 ## Fase 2 — `@fudic/i18n`
 
-- [ ] 4. Paquete nuevo:
+- [x] 4. Paquete nuevo:
   - `package.json` con versiones exactas, `sideEffects: false` y
     `"fudic": { "runtime": "./runtime" }`, siguiendo la plantilla de `@fudic/forms`;
   - `tsconfig` que extiende la base;
   - vitest con `thresholds` al 100 en las cuatro métricas y `coverage.include: ['src/**/*.ts']`.
-- [ ] 5. Presets `date`, `number`, `currency`, `percent`, `relativeTime` y `list`, que devuelven
+- [x] 5. Presets `date`, `number`, `currency`, `percent`, `relativeTime` y `list`, que devuelven
   `Pipe<T>` como dato. Tipos de §3.2, con `timeZone` requerido en `date` (criterio 23, test de
   tipos).
-- [ ] 6. `$format`: un formatter por (locale, preset) en un `WeakMap` (criterio 24) y la salida de
+- [x] 6. `$format`: un formatter por (locale, preset) en un `WeakMap` (criterio 24) y la salida de
   cada `kind`.
-- [ ] 7. `compileMessage`, el subconjunto ICU de §4.3: texto, `{x}`, `plural` con `=N`, categorías
+- [x] 7. `compileMessage`, el subconjunto ICU de §4.3: texto, `{x}`, `plural` con `=N`, categorías
   y `#`, `select`, etiquetas `<n>…</n>` y `<n/>`, y escapado `'{'` / `''`. Un error es `FUD1024`
   con posición.
-- [ ] 8. `$message`: plural con `Intl.PluralRules` y select (criterio 12).
-- [ ] 9. `$href`: la regla de §4.8 en runtime, con sus cuatro excepciones.
-- [ ] 10. `messageKey`, `parseCatalog` (`FUD1023`) y `printCatalog`, estable byte a byte
+- [x] 8. `$message`: plural con `Intl.PluralRules` y select (criterio 12).
+- [x] 9. `$href`: la regla de §4.8 en runtime, con sus cuatro excepciones.
+- [x] 10. `messageKey`, `parseCatalog` (`FUD1023`) y `printCatalog`, estable byte a byte
   (criterio 10).
-- [ ] 11. `mergeCatalog`: mensaje nuevo (en el primer idioma con `translation = source`), mensaje
+- [x] 11. `mergeCatalog`: mensaje nuevo (en el primer idioma con `translation = source`), mensaje
   que sigue, texto cambiado con `review` por (contexto, `at`), y borrado (criterio 11).
-- [ ] 12. `t`, `format` y `locale` exportados para los tipos. En runtime lanzan
+- [x] 12. `t`, `format` y `locale` exportados para los tipos. En runtime lanzan
   `Error('compiled away')`, con su test: solo se alcanzan si un módulo escapa al compilador.
-- [ ] 13. Build de `runtime/` con rolldown, una pieza por fichero: `format`, `message` y `href`.
+- [x] 13. Build de `runtime/` con rolldown, una pieza por fichero: `format`, `message` y `href`.
 
 ## Fase 3 — Compilador: extraer
 

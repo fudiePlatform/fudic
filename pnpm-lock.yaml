@@ -346,6 +346,22 @@ importers:
         specifier: workspace:*
         version: link:../tsconfig
 
+  packages/i18n:
+    dependencies:
+      '@fudic/conventions':
+        specifier: workspace:*
+        version: link:../conventions
+      '@fudic/diagnostics':
+        specifier: workspace:*
+        version: link:../diagnostics
+    devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      rolldown:
+        specifier: 1.2.1
+        version: 1.2.1
+
   packages/language-core:
     dependencies:
       '@fudic/compiler':
