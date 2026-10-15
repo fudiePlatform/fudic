@@ -1,12 +1,14 @@
 # SDD-58 — Traducciones y pipes
 
-> **Estado:** `Listo` — [tareas](./SDD-58-Task.md), 0 / 46.
+> **Estado:** `Listo` — [tareas](./SDD-58-Task.md), 0 / 48.
 > **Paquetes:** `@fudic/i18n` (nuevo) · `@fudic/compiler` · `@fudic/config` · `@fudic/vite` ·
-> `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` · `examples/i18n` (nuevo)
+> `@fudic/cli` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` ·
+> `examples/i18n` (nuevo)
 > **Depende de:** 12 (semántica), 15 (emit), 17 (hidratación), 19 (plugin Vite), 20 (render en el
-> SW), 23 (proyección TS), 35 (compilo o no compilo), 40 (props de layout), 41 (configuración),
-> 43 (librerías), 45 (runtime publicado), 50 (diagnósticos), 51 (expresiones de la vista)
-> **Rango de diagnósticos:** `FUD1020`–`FUD1039` (usa `FUD1020`–`FUD1026`). `FUD0725` gana el
+> SW), 22 (CLI), 23 (proyección TS), 35 (compilo o no compilo), 40 (props de layout),
+> 41 (configuración), 43 (librerías), 45 (runtime publicado), 50 (diagnósticos), 51 (expresiones
+> de la vista)
+> **Rango de diagnósticos:** `FUD1020`–`FUD1039` (usa `FUD1020`–`FUD1025`). `FUD0725` gana el
 > problema `locales`.
 > **Decisiones:** 158–161 (nuevas). La 158 enmienda SDD-51 §3.2: en la vista `|` deja de ser el
 > OR de bits. Especifica la §4 de [IDEA-03](./ideas/IDEA-03-backend-poliglota.md) (pipes como datos).
@@ -23,8 +25,10 @@
 > - **Clave = hash de texto + contexto.** Si el texto cambia, la traducción no se pierde: queda
 >   *a revisar*.
 > - **JSON con ICU**, un fichero por idioma.
-> - **Traducción que falta:** aviso en `pnpm dev` y la página sale con el texto original; error en
->   `pnpm build`.
+> - **Extraer es un comando aparte, `fudic translate`** (`pnpm translate`), fuera del pipeline.
+>   `pnpm dev`, `pnpm build` y `pnpm preview` no extraen, no escriben catálogos y no avisan de
+>   nada: solo los leen. Lo que falta sale con el texto original. Si no se ejecuta el comando, es
+>   cosa del desarrollador.
 > - **Idiomas en la config** y prefijo automático en todas las rutas.
 
 ---
@@ -38,9 +42,9 @@ vista: correcto hoy y roto el día que la página exista en otro idioma.
 
 Esta spec añade tres cosas que solo funcionan juntas:
 
-1. **Traducir.** El compilador extrae el texto visible de cada `.fud` y los `t("…")` del código.
-   Escribe un catálogo JSON por idioma y compila cada módulo una vez **por idioma**, con el texto
-   ya traducido dentro.
+1. **Traducir.** `fudic translate` extrae el texto visible de cada `.fud` y los `t("…")` del
+   código, y escribe un catálogo JSON por idioma. El build lee esos catálogos y compila cada
+   módulo una vez **por idioma**, con el texto ya traducido dentro.
 2. **Formatear.** Pipes en la vista, `@(precio | euros)`, sobre un catálogo cerrado de `Intl`. El
    preset es un dato; el locale lo pone el compilador.
 3. **Servir.** `"locales": ["es", "en"]` en `fudic.json`. Cada ruta sale bajo `/es/…` y `/en/…`,
@@ -48,7 +52,7 @@ Esta spec añade tres cosas que solo funcionan juntas:
 
 | | Antes | Ahora |
 |---|---|---|
-| Texto de la vista | Literal, en un idioma | Extraído solo; compilado ya traducido por idioma |
+| Texto de la vista | Literal, en un idioma | Lo extrae `fudic translate`; el build lo compila ya traducido por idioma |
 | Texto en props y en TS | Literal | `t("…")`, extraído y compilado igual |
 | Formatear | `Intl` con el locale a mano | `@(x \| pipe)`; el locale lo pone el compilador |
 | URL | `/about` | `/es/about`, `/en/about`; `/` redirige |
@@ -83,6 +87,9 @@ los paga.
   (`vite/src/prerender.ts`), el middleware de dev (`plugin.ts:733`) y el de preview.
 - **SDD-20.** El router del SW (`transport/src/router.ts`), que encuentra la ruta por patrón y
   deriva de él la URL de datos (`transport/src/urls.ts:80`).
+- **SDD-22.** El CLI: cada comando es un plan (`plan* → apply`) que devuelve los ficheros que
+  cambia y sus diagnósticos (`packages/cli/src/index.ts`), y el binario es una capa encima.
+  `parseFud` (`cli/src/parse.ts:24`) es su única puerta a un `.fud`.
 - **SDD-23.** `copyRazor`/`copyExpression` (`language-core/src/template/expr.ts:21,28`), el
   escritor con `copy`/`scaffold` (`writer.ts`) y `GLOBALS_DTS` (`globals.ts:64`).
 - **SDD-35.** El chequeo de tipos en `buildStart` y en dev, que convierte un error de TS en un
@@ -168,11 +175,11 @@ export interface CatalogEntry {
 export type Catalog = Readonly<Record<string /* context */, Readonly<Record<string /* key */, CatalogEntry>>>>;
 
 export function messageKey(context: string, source: string): string;           // 8 hex of SHA-1
-export function parseCatalog(text: string, file: string): ParseResult<Catalog>;  // FUD1024
+export function parseCatalog(text: string, file: string): ParseResult<Catalog>;  // FUD1023
 export function mergeCatalog(previous: Catalog, extracted: readonly ExtractedMessage[],
                              isSource: boolean): Catalog;
 export function printCatalog(catalog: Catalog): string;                          // stable text
-export function compileMessage(text: string): ParseResult<CompiledMessage>;      // ICU subset, FUD1025
+export function compileMessage(text: string): ParseResult<CompiledMessage>;      // ICU subset, FUD1024
 ```
 
 `ExtractedMessage` y `CompiledMessage` son tipos del paquete. El primero lleva lo que §3.3 extrae;
@@ -222,31 +229,48 @@ Sin opciones nuevas: lo decide `fudic.json`. Lo que cambia por fuera:
 
 - **Módulos por idioma.** Un id `x.fud?locale=en` o `x.ts?locale=en` es ese módulo compilado para
   `en`. El plugin propaga el sufijo a lo que importa (§4.6).
-- **Catálogos.** `src/locales/<locale>.json`, uno por idioma, escritos por el plugin (§4.10).
+- **Catálogos.** Lee `src/locales/<locale>.json` y nunca los escribe (§4.10).
 - **Rutas.** Cada ruta existe una vez por idioma con el patrón prefijado (`/en/about`). El
   manifiesto, el prerender, el endpoint de datos y el SW ven esos patrones y no otros.
 
-### 3.5 Proyección TS (`@fudic/language-core`)
+### 3.5 `@fudic/cli`: `fudic translate`
+
+```ts
+export interface TranslateOptions extends BaseOptions {}
+
+/** Extract every message of the app and merge it into src/locales/<locale>.json (§4.10). */
+export function planTranslate(opts: TranslateOptions): Promise<Plan>;
+```
+
+- **Plan.** Es un plan más (`plan* → apply`). Sus `FileChange` son los catálogos que cambian, y sus
+  diagnósticos son `FUD1022`–`FUD1025`.
+- **Binario.** `fudic translate` aplica el plan e imprime un resumen por idioma: mensajes, nuevos,
+  *a revisar* y sin traducir. Sale con código distinto de 0 solo si hay un error (`FUD1023`,
+  `FUD1024`, `FUD1025`). Una traducción que falta es un aviso.
+- **En la app.** La app lo expone como script: `"translate": "fudic translate"`. Así es
+  `pnpm translate`.
+
+### 3.6 Proyección TS (`@fudic/language-core`)
 
 ```ts
 // GLOBALS_DTS gana:
 declare function $pipe<T>(value: T, pipe: import('@fudic/i18n').Pipe<T>): string;
 ```
 
-### 3.6 Diagnósticos
+### 3.7 Diagnósticos
 
-| Código | Severidad | Cuándo | Span |
-|---|---|---|---|
-| `FUD1020` | error | `t()` cuyo primer argumento no es un string literal; o cuyo mensaje tiene huecos y el segundo argumento no es un objeto literal con esas claves | el argumento |
-| `FUD1021` | error | Pipe, `t()`, `format()` o `locale` en una app sin `locales` | el uso |
-| `FUD1022` | warning | Falta la traducción de un mensaje a un idioma (dev y editor) | el mensaje en el `.fud`/`.ts` |
-| `FUD1023` | error | Lo mismo en `pnpm build` | ídem |
-| `FUD1024` | error | Catálogo ilegible: JSON roto o forma distinta de `Catalog` | el fichero de catálogo |
-| `FUD1025` | error | Traducción con ICU inválido, o con huecos o etiquetas que no son los del original | el mensaje en el `.fud`/`.ts` |
-| `FUD1026` | error | Hay dos `t()` en el mismo contexto con el mismo texto y distinto número de huecos | el segundo |
+| Código | Severidad | Quién | Cuándo | Span |
+|---|---|---|---|---|
+| `FUD1020` | error | compilador | `t()` cuyo primer argumento no es un string literal; o cuyo mensaje tiene huecos y el segundo argumento no es un objeto literal con esas claves | el argumento |
+| `FUD1021` | error | compilador | Pipe, `t()`, `format()` o `locale` en una app sin `locales` | el uso |
+| `FUD1022` | warning | `fudic translate` | Falta la traducción de un mensaje a un idioma | el mensaje en el `.fud`/`.ts` |
+| `FUD1023` | error | `fudic translate` | Catálogo ilegible: JSON roto o forma distinta de `Catalog` | el fichero de catálogo |
+| `FUD1024` | error | `fudic translate` | Traducción con ICU inválido, o con huecos o etiquetas que no son los del original | el mensaje en el `.fud`/`.ts` |
+| `FUD1025` | error | `fudic translate` | Dos `t()` en el mismo contexto con el mismo texto y distinto número de huecos | el segundo |
 
-`FUD1022` y `FUD1023` son el mismo hecho con dos severidades. La regla de SDD-50 lo exige así: *a
-code that needs two severities is two codes*.
+`FUD1020` y `FUD1021` son errores de código, como un error de tipos: sin literal no hay nada que
+compilar, y sin idiomas no hay locale que poner. Todo lo que trata de catálogos es del comando. El
+pipeline (`dev`, `build`, `preview`) no publica ninguno de esos cuatro.
 
 ## 4. Comportamiento
 
@@ -360,7 +384,7 @@ En una expresión de la vista, `|` es el **pipe**:
 ```
 
 - **Operandos.** El izquierdo es el valor y el derecho una expresión de tipo `Pipe<T>`. Si no lo
-  es, la proyección (`$pipe(valor, preset)`, §3.5) da el error de tipos, y SDD-35 lo convierte en
+  es, la proyección (`$pipe(valor, preset)`, §3.6) da el error de tipos, y SDD-35 lo convierte en
   build fallido.
 - **Precedencia: la de `|` en JS**, que es más débil que `+` y más fuerte que `&&` y `? :`. Así,
   `ok ? precio | euros : "—"` funciona sin paréntesis.
@@ -494,9 +518,14 @@ del guardia de URL de SDD-51.
 }
 ```
 
-**Quién los escribe.** El plugin, al arrancar `pnpm dev`, con cada cambio de un `.fud` o `.ts` en
-dev, y en `buildStart` de `pnpm build`, justo después de `discoverRoutes`. Se escriben con `fs` en
-`src/locales/` porque son fuente, nunca con `emitFile`.
+**Quién los escribe: solo `fudic translate`.** El comando recorre:
+- todos los `.fud` y los `.ts`/`.js` de `src`;
+- los `.fud` de las librerías fudic de las que depende la app, que son las mismas que compila el
+  plugin (SDD-43).
+
+Extrae los mensajes, los fusiona con los catálogos que hay y escribe los que cambian. El
+pipeline nunca escribe un catálogo ni extrae nada: `pnpm dev`, `pnpm build` y `pnpm preview` no
+pagan esta pasada.
 
 **Cómo se fusionan** (`mergeCatalog`):
 
@@ -515,17 +544,22 @@ dev, y en `buildStart` de `pnpm build`, justo después de `discoverRoutes`. Se e
   de sangría y salto de línea final. Dos extracciones del mismo código dan el mismo fichero byte a
   byte.
 
-**Validación** al leer:
+**Lo que informa `fudic translate`:**
 
-- Un catálogo que no es JSON o no tiene la forma es `FUD1024`.
+- Cada mensaje sin traducir en cada idioma es `FUD1022` (aviso).
+- Un catálogo que no es JSON o no tiene la forma es `FUD1023`.
 - Una `translation` con ICU inválido, o con huecos o etiquetas que no son exactamente los del
-  `source`, es `FUD1025`. El orden puede cambiar; el conjunto no.
+  `source`, es `FUD1024`. El orden puede cambiar; el conjunto no.
 
-**Traducción que falta:**
+**Lo que hace el pipeline con los catálogos: leerlos, nada más.**
 
-- **En dev** el módulo se compila con el texto original y cada mensaje sin traducir es `FUD1022`
-  (aviso) en el editor y en la consola de dev. La página no se bloquea.
-- **En build** es `FUD1023` (error), uno por mensaje y por idioma, y el build falla.
+- `dev`, `build` y `preview` leen `src/locales/<locale>.json` para compilar cada idioma.
+- Un mensaje se compila con su `translation` cuando existe y es válida. Si falta, si es inválida
+  o si el catálogo entero no se puede leer, se compila con el texto original.
+- En ningún caso hay diagnóstico ni penalización. Ejecutar `pnpm translate` es responsabilidad del
+  desarrollador.
+- En dev, un cambio en un catálogo recompila los módulos de ese idioma: es una entrada más del
+  grafo, como un `.ts`.
 
 ### 4.11 Editor
 
@@ -533,17 +567,16 @@ dev, y en `buildStart` de `pnpm build`, justo después de `discoverRoutes`. Se e
   `copyRazor`/`copyExpression`, así que vale igual en contenido, atributos y props.
   - Los dos operandos se copian 1:1 (hover, rename y definición siguen funcionando).
   - Solo `$pipe(`, la coma (anclada al span del `|`) y el `)` son andamiaje.
-- **Avisos.** El language server lee los catálogos del proyecto y publica `FUD1022` sobre cada
-  mensaje sin traducir. Relee un catálogo cuando cambia en disco.
-- **Hover.** Sobre un mensaje muestra sus traducciones, una línea por idioma, y `—` donde falta.
+- **Sin avisos de traducción.** El editor no publica `FUD1022`–`FUD1025`: son del comando.
+- **Hover.** El language server lee los catálogos y los relee cuando cambian en disco. Sobre un mensaje muestra sus traducciones, una línea por idioma, y `—` donde falta.
 - **Formateador.** No cambia. `a | b` es JS válido y se formatea como el OR de bits que parece.
 
 ## 5. Invariantes LSP
 
 - **Spans.** Todo `Message` lleva el span de su texto, de su atributo, de su literal o de su llamada
-  a `t()`, y cada hueco el span de su expresión. Los diagnósticos de catálogo (`FUD1022`,
-  `FUD1023`, `FUD1025`) se publican sobre ese span en el `.fud` o el `.ts`, no en el JSON. Solo
-  `FUD1024` cae en el catálogo.
+  a `t()`, y cada hueco el span de su expresión. Los diagnósticos de `fudic translate` sobre un
+  mensaje (`FUD1022`, `FUD1024`, `FUD1025`) caen sobre ese span en el `.fud` o el `.ts`, no en el
+  JSON. Solo `FUD1023` cae en el catálogo.
 - **No lanzar nunca.** `extractMessages`, `extractScriptMessages`, `parseCatalog` y
   `compileMessage` devuelven `ParseResult`. Un `.fud` roto da los mensajes de lo que se pudo parsear.
 - **Oxc una vez por fichero.** La extracción de literales en posición de resultado y de `t()` en un
@@ -582,18 +615,22 @@ dev, y en `buildStart` de `pnpm build`, justo después de `discoverRoutes`. Se e
    - `t("Hola {name}")` sin objeto también es `FUD1020`.
 9. Un `.fud` con un error de parseo devuelve los mensajes del resto y el diagnóstico, sin lanzar.
 
-**Catálogos**
+**Catálogos (`fudic translate`)**
 
-10. Extraer dos veces el mismo código da el mismo `en.json` byte a byte.
-11. Cambiar `Cerrar` por `Cerrar panel` deja en `en.json` la entrada nueva con
-    `translation: "Close"` y `review: "Cerrar"`. La vieja desaparece y la página en inglés dice
+10. Ejecutar `fudic translate` dos veces sobre el mismo código da el mismo `en.json` byte a byte.
+    La segunda vez el plan no tiene cambios.
+11. Cambiar `Cerrar` por `Cerrar panel` y ejecutar el comando deja en `en.json` la entrada nueva
+    con `translation: "Close"` y `review: "Cerrar"`. La vieja desaparece y la página en inglés dice
     `Close`.
 12. En `es.json` cada entrada nueva lleva `translation` igual a `source`. Si se reescribe con
     `{count, plural, one {# mensaje} other {# mensajes}}`, con `count = 1` sale `1 mensaje`.
-13. Validación de traducciones:
-    - una `translation` sin el `{name}` del original es `FUD1025` sobre el mensaje en el `.fud`;
+13. Lo que informa el comando:
+    - un mensaje sin traducir en `en` es `FUD1022` (aviso) sobre el mensaje en su `.fud`, y el
+      comando sale con 0;
+    - una `translation` sin el `{name}` del original es `FUD1024` sobre el mensaje, y el comando
+      sale con distinto de 0;
     - una con `{name}` y `{count}` en otro orden es válida;
-    - un `en.json` con una coma de más es `FUD1024`.
+    - un `en.json` con una coma de más es `FUD1023`.
 
 **Compilación por idioma**
 
@@ -639,10 +676,12 @@ dev, y en `buildStart` de `pnpm build`, justo después de `discoverRoutes`. Se e
     - un `href=@url()` dinámico con `/about` sale `/en/about` en SSR y en el cliente.
 30. Al cliente de `/en/about` solo le llegan chunks compilados para `en`. Un componente N1 con
     `@(precio | euros)` no descarga `@fudic/i18n/runtime`.
-31. Traducción que falta:
-    - con una traducción sin rellenar, `pnpm build` falla con `FUD1023` sobre el mensaje en su
-      `.fud`;
-    - `pnpm dev` sirve la página con el texto original y publica `FUD1022`.
+31. El pipeline no extrae ni penaliza. Con un texto nuevo que no está en ningún catálogo, una
+    traducción vacía, una traducción inválida y un `en.json` ilegible:
+    - `pnpm dev`, `pnpm build` y `pnpm preview` no escriben nada en `src/locales/`;
+    - no publican ningún `FUD1022`–`FUD1025`;
+    - el build pasa;
+    - esos mensajes salen en `/en/…` con el texto original.
 
 **Editor**
 
@@ -650,9 +689,9 @@ dev, y en `buildStart` de `pnpm build`, justo después de `discoverRoutes`. Se e
     - el hover sobre `precio` da su tipo;
     - el rename de `euros` renombra la declaración y el uso;
     - el error de tipos de un preset equivocado cae sobre el operando, no sobre el `|`.
-33. Un mensaje sin traducir en `en` lleva el aviso `FUD1022` en el editor. Al rellenar `en.json`,
-    el aviso desaparece sin reiniciar.
-34. El hover sobre `Cerrar` muestra `es: Cerrar` y `en: Close`.
+33. El hover sobre `Cerrar` muestra `es: Cerrar` y `en: Close`. Al cambiar `en.json` en disco,
+    el hover cambia sin reiniciar. El editor no publica `FUD1022`–`FUD1025`.
+34. En dev, guardar `en.json` recarga `/en/…` con la traducción nueva sin reiniciar el servidor.
 
 **Evidencia**
 
@@ -666,7 +705,8 @@ dev, y en `buildStart` de `pnpm build`, justo después de `discoverRoutes`. Se e
     - un plural en los dos idiomas;
     - un selector de idioma.
 
-    Con los catálogos completos, `pnpm build` pasa y la app se navega en los dos idiomas: sin
+    Tiene el script `"translate": "fudic translate"`. Tras `pnpm translate` y con los catálogos
+    rellenos, `pnpm build` pasa y la app se navega en los dos idiomas: sin
     texto en español dentro de `/en/…` y sin texto en inglés dentro de `/es/…`. Pedro lo
     comprueba en el navegador.
 36. `@fudic/i18n` nace con cobertura al 100 % en las cuatro métricas. `pnpm typecheck`,

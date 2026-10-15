@@ -2,22 +2,28 @@
 
 > **SDD:** [SDD-58 — Traducciones y pipes](./SDD-58-traducciones-y-pipes.md)
 > **Paquetes:** `@fudic/i18n` (nuevo) · `@fudic/compiler` · `@fudic/config` · `@fudic/vite` ·
-> `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` · `examples/i18n` (nuevo)
+> `@fudic/cli` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` ·
+> `examples/i18n` (nuevo)
 > **Rama:** `sdd-58-i18n`
-> **Progreso:** 0 / 46 — `Listo`.
+> **Progreso:** 0 / 48 — `Listo`.
 
-El orden va de dentro afuera. Primero los diagnósticos y la config. Luego el paquete
-`@fudic/i18n`, que no depende de nadie. Después el compilador, primero extraer y luego compilar
-por idioma. Detrás vienen el plugin, que une las piezas, y el editor. La evidencia va al final y la
-construye `examples/i18n` como lo haría un usuario. Cada fase se commitea al cerrarla, con sus
-tests.
+El orden va de dentro afuera:
+1. los diagnósticos y la config;
+2. el paquete `@fudic/i18n`, que no depende de nadie;
+3. el compilador: primero extraer y luego compilar por idioma;
+4. el plugin, que solo lee catálogos y compila;
+5. `fudic translate`, el único que los escribe;
+6. el editor;
+7. la evidencia, que construye `examples/i18n` como lo haría un usuario.
+
+Cada fase se commitea al cerrarla, con sus tests.
 
 ---
 
 ## Fase 1 — Diagnósticos y config
 
-- [ ] 1. `FUD1020`–`FUD1026` en `@fudic/diagnostics`: un `.ts` y un `.md` por código, con la
-  severidad de §3.6 y una línea por código en `index.ts`, en orden.
+- [ ] 1. `FUD1020`–`FUD1025` en `@fudic/diagnostics`: un `.ts` y un `.md` por código, con la
+  severidad de §3.7 y una línea por código en `index.ts`, en orden.
 - [ ] 2. `FUD0725` gana `problem: 'locales'`: el valor en la unión y una línea en su `.md`.
 - [ ] 3. `ProjectConfig.locales` en `@fudic/config`: `readLocales` con `Intl.getCanonicalLocales`
   rechaza el array vacío, las repetidas y las inválidas, y subraya la clave. Tests del criterio 1.
@@ -35,11 +41,11 @@ tests.
 - [ ] 6. `$format`: un formatter por (locale, preset) en un `WeakMap` (criterio 24) y la salida de
   cada `kind`.
 - [ ] 7. `compileMessage`, el subconjunto ICU de §4.3: texto, `{x}`, `plural` con `=N`, categorías
-  y `#`, `select`, etiquetas `<n>…</n>` y `<n/>`, y escapado `'{'` / `''`. Un error es `FUD1025`
+  y `#`, `select`, etiquetas `<n>…</n>` y `<n/>`, y escapado `'{'` / `''`. Un error es `FUD1024`
   con posición.
 - [ ] 8. `$message`: plural con `Intl.PluralRules` y select (criterio 12).
 - [ ] 9. `$href`: la regla de §4.8 en runtime, con sus cuatro excepciones.
-- [ ] 10. `messageKey`, `parseCatalog` (`FUD1024`) y `printCatalog`, estable byte a byte
+- [ ] 10. `messageKey`, `parseCatalog` (`FUD1023`) y `printCatalog`, estable byte a byte
   (criterio 10).
 - [ ] 11. `mergeCatalog`: mensaje nuevo (en el primer idioma con `translation = source`), mensaje
   que sigue, texto cambiado con `review` por (contexto, `at`), y borrado (criterio 11).
@@ -58,9 +64,12 @@ tests.
 - [ ] 17. Literales en posición de resultado sobre el `JsBatch` del fichero: entera, ramas de
   `? :`, derecha de `??`/`||`/`&&` y partes fijas de un template literal, en recursión (criterio 4).
 - [ ] 18. `t()` en un `.fud` (vista y las tres zonas de `@code`) y `extractScriptMessages` para
-  `.ts`/`.js`. `FUD1020` y `FUD1026` (criterio 8).
-- [ ] 19. `FUD1021` en el analizador cuando la app no tiene `locales`, sobre un pipe, un `t()`, un
-  `format()` o un `locale`. El analizador recibe si hay idiomas por su entrada; no lee la config.
+  `.ts`/`.js`. `FUD1025` sale de la extracción (criterio 8).
+- [ ] 19. Analizador del compilador:
+  - `FUD1020` sobre un `t()` sin literal o sin objeto de huecos;
+  - `FUD1021` sobre un pipe, `t()`, `format()` o `locale` en una app sin `locales`.
+
+  El analizador recibe por su entrada si hay idiomas; no lee la config.
 - [ ] 20. Nunca lanzar: un `.fud` roto da mensajes parciales y diagnósticos (criterio 9).
 
 ## Fase 4 — Compilador: compilar por idioma
@@ -82,14 +91,14 @@ tests.
   `lang="es"` fijo (criterio 27).
 - [ ] 29. Enlaces: prefijo estático al compilar y `$href` en los dinámicos, antes de `setUrl`
   (criterio 29).
-- [ ] 30. Traducción que falta: con `translate` devolviendo `undefined`, el emit usa el original y
-  devuelve el mensaje para que el llamador decida la severidad.
+- [ ] 30. Traducción que falta o inválida: con `translate` devolviendo `undefined`, el emit usa el
+  texto original y no produce ningún diagnóstico (criterio 31).
 - [ ] 31. Decisiones 158–161 enlazadas desde el código que las implementa.
 
-## Fase 5 — Plugin
+## Fase 5 — Plugin: leer y compilar
 
-- [ ] 32. `locales` llega del `fudic.json` a `configResolved`. Con un idioma no hay prefijos ni
-  catálogos; sin `locales`, el `dist` de `examples/basic` sale igual (criterio 1).
+- [ ] 32. `locales` llega del `fudic.json` a `configResolved`. Con un idioma no hay prefijos; sin
+  `locales`, el `dist` de `examples/basic` sale igual (criterio 1).
 - [ ] 33. Expansión de rutas en `discoverRoutes`, con un patrón literal por idioma. El manifiesto,
   el matcher de dev y de preview, las entradas de edge, el endpoint de datos y el SW lo ven
   (criterio 25).
@@ -101,26 +110,37 @@ tests.
 - [ ] 36. `/`: `302` por `Accept-Language` en dev, preview y edge, y `index.html` con `meta refresh`
   en SSG (criterio 26).
 - [ ] 37. Alternativas `hreflang` en la cabecera de cada ruta (criterio 28).
-- [ ] 38. Catálogos: extracción y fusión en `buildStart` tras `discoverRoutes`, y en dev al
-  arrancar y con cada cambio de `.fud` o `.ts`. Se escriben con `fs` en `src/locales/`. El
-  watcher de dev también relee los catálogos.
-- [ ] 39. `FUD1022` en dev, sin bloquear la página, y `FUD1023` en build. `FUD1024` y `FUD1025`
-  con sus spans (criterios 13 y 31).
+- [ ] 38. Lectura de catálogos para `LocaleCompile.translate`. Lo ilegible, lo que falta y lo
+  inválido caen al texto original sin diagnóstico, y el plugin nunca escribe en `src/locales/`
+  (criterio 31).
+- [ ] 39. En dev, el catálogo de un idioma es una entrada del grafo: guardarlo recompila y recarga
+  esos módulos (criterio 34).
 
-## Fase 6 — Editor
+## Fase 6 — `fudic translate`
 
-- [ ] 40. Proyección de `a | b` → `$pipe(a, b)` en `copyRazor`/`copyExpression`, con operandos
+- [ ] 40. `planTranslate` en `@fudic/cli`:
+  - recorre los `.fud` y los `.ts`/`.js` de `src` y los `.fud` de las librerías fudic de la app;
+  - extrae con `extractMessages` y `extractScriptMessages`;
+  - fusiona con `mergeCatalog` y devuelve como `FileChange` los catálogos que cambian (criterios 10
+    y 11).
+- [ ] 41. Diagnósticos del plan: `FUD1022` por mensaje e idioma sin traducir, `FUD1023`, `FUD1024`
+  y `FUD1025`, con los spans de §5 (criterio 13).
+- [ ] 42. Comando `translate` en el binario: aplica el plan, imprime el resumen por idioma (total,
+  nuevos, a revisar, sin traducir) y sale con distinto de 0 solo si hay un error.
+
+## Fase 7 — Editor
+
+- [ ] 43. Proyección de `a | b` → `$pipe(a, b)` en `copyRazor`/`copyExpression`, con operandos
   1:1 y `$pipe` en `GLOBALS_DTS` (criterio 32).
-- [ ] 41. Language server: lee los catálogos, publica `FUD1022` y relee al cambiar en disco
-  (criterio 33).
-- [ ] 42. Hover de traducciones sobre un mensaje (criterio 34).
+- [ ] 44. Language server: lee los catálogos, los relee al cambiar en disco y muestra el hover de
+  traducciones sobre un mensaje. No publica `FUD1022`–`FUD1025` (criterio 33).
 
-## Fase 7 — Evidencia y cierre
+## Fase 8 — Evidencia y cierre
 
-- [ ] 43. `examples/i18n` con todo lo que pide el criterio 35, construido como lo haría un usuario,
-  con catálogos completos en `es` y `en`.
-- [ ] 44. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; `@fudic/i18n` al 100 % en las
+- [ ] 45. `examples/i18n` con todo lo que pide el criterio 35, construido como lo haría un usuario:
+  script `translate`, `pnpm translate` y los catálogos `es` y `en` rellenos a mano.
+- [ ] 46. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; `@fudic/i18n` al 100 % en las
   cuatro métricas, y los paquetes tocados sin bajar de donde estaban (criterio 36).
-- [ ] 45. README de `@fudic/i18n` en inglés, corto y sin citas a SDD.
-- [ ] 46. INDEX: estado `Hecho` y fila en el registro de progreso. Después, OK de Pedro en el
+- [ ] 47. README de `@fudic/i18n` en inglés, corto y sin citas a SDD; incluye `pnpm translate`.
+- [ ] 48. INDEX: estado `Hecho` y fila en el registro de progreso. Después, OK de Pedro en el
   navegador.
