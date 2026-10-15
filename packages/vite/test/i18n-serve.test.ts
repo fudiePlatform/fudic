@@ -105,6 +105,26 @@ function servesLocales(name: string, origin: () => string): void {
       const res = await html(origin(), '/');
       expect(res.status).toBe(302);
       expect(res.headers.get('location')).toBe('/es/');
+      expect(res.headers.get('vary')).toContain('Accept-Language');
+    });
+  });
+
+  describe(`${name}: criterion 38, a page without its prefix`, () => {
+    it('302 to the same page in the language that fits, varying by Accept-Language', async () => {
+      const res = await html(origin(), '/blog/hola', { 'accept-language': 'en-GB,en;q=0.9' });
+      expect(res.status).toBe(302);
+      expect(res.headers.get('location')).toBe('/en/blog/hola');
+      expect(res.headers.get('vary')).toContain('Accept-Language');
+      expect((await html(origin(), '/about')).headers.get('location')).toBe('/es/about');
+    });
+
+    it('a prefixed URL answers 200 whatever Accept-Language says', async () => {
+      expect((await html(origin(), '/en/about', { 'accept-language': 'es' })).status).toBe(200);
+      expect((await html(origin(), '/es/about', { 'accept-language': 'en' })).status).toBe(200);
+    });
+
+    it('a URL that is no page is not sent anywhere', async () => {
+      expect((await html(origin(), '/nada/de/nada')).status).not.toBe(302);
     });
   });
 
@@ -154,6 +174,14 @@ describe('dev', () => {
 
   servesLocales('dev', () => origin);
 
+  it('criterion 28: the head is absolute on the origin of the request, with its own canonical', async () => {
+    const page = await (await html(origin, '/en/about')).text();
+    expect(page).toContain(`<link rel="canonical" href="${origin}/en/about">`);
+    expect(page).toContain(`<link rel="alternate" hreflang="es" href="${origin}/es/about">`);
+    expect(page).toContain(`<link rel="alternate" hreflang="en" href="${origin}/en/about">`);
+    expect(page).toContain(`<link rel="alternate" hreflang="x-default" href="${origin}/about">`);
+  });
+
   it('renders each locale with its catalog', async () => {
     const en = await (await html(origin, '/en/about')).text();
     expect(en).toContain('Hello world');
@@ -200,4 +228,10 @@ describe('preview', () => {
   });
 
   servesLocales('preview', () => origin);
+
+  it('criterion 28: a page the build wrote is absolute on site', async () => {
+    const page = await (await html(origin, '/es/about')).text();
+    expect(page).toContain('<link rel="canonical" href="https://example.com/es/about">');
+    expect(page).toContain('<link rel="alternate" hreflang="x-default" href="https://example.com/about">');
+  });
 });

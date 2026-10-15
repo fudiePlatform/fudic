@@ -201,4 +201,38 @@ describe('readProjectConfig', () => {
       expect(result.diagnostics).toHaveLength(2);
     });
   });
+
+  describe('site (SDD-58 criterion 37)', () => {
+    it('is absent when the file does not declare it', () => {
+      expect(readProjectConfig(ROOT, io('{"id":"shop"}')).config).not.toHaveProperty('site');
+    });
+
+    it.each([
+      ['https://example.com', 'https://example.com'],
+      ['https://Example.COM/', 'https://example.com'],
+      ['http://localhost:4173', 'http://localhost:4173'],
+      ['https://example.com:443', 'https://example.com'],
+    ])('reads %s as the origin %s', (value, origin) => {
+      expect(readProjectConfig(ROOT, io(`{"site":"${value}"}`)).config?.site).toBe(origin);
+    });
+
+    it.each([
+      ['a number', '42', '42 is not a URL'],
+      ['a relative path', '"/es"', '"/es" is not a URL'],
+      ['another protocol', '"ftp://example.com"', '"ftp:" is not http or https'],
+      ['a path', '"https://example.com/app"', 'it has a path'],
+      ['a query', '"https://example.com/?a=1"', 'it has a path'],
+      ['a fragment', '"https://example.com/#x"', 'it has a path'],
+    ])('%s is FUD0725 problem site and leaves no config', (_case, value, reason) => {
+      const text = `{"id":"shop","site":${value}}`;
+      const result = readProjectConfig(ROOT, io(text));
+
+      expect(result.config).toBeNull();
+      const d = result.diagnostics[0]!;
+      expect(d.code).toBe('FUD0725');
+      expect(d.message).toContain('"site" must be the origin of an http(s) URL');
+      expect(d.message).toContain(reason);
+      expect(text.slice(d.span!.start, d.span!.end)).toBe('"site"');
+    });
+  });
 });

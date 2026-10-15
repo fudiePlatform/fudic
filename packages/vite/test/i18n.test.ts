@@ -31,7 +31,9 @@ import {
   pageModuleOf,
   prefixPattern,
   resolveForLocale,
-  rootRedirectHtml,
+  localeRedirect,
+  redirectHtml,
+  unprefixedPages,
   withLocale,
   withoutLocale,
   withoutLocalePrefix,
@@ -143,13 +145,54 @@ describe('_error.fud and the alternates', () => {
     expect(alternatesOf(route('/en/about', 'about.fud', 'en'), undefined, '/')).toEqual({});
     expect(alternatesOf(route('/about', 'about.fud', 'es'), ['es'], '/')).toEqual({});
     expect(alternatesOf(pages[1]!, ['es', 'en'], '/')).toEqual({});
+    expect(alternatesOf(route('/en/about', 'about.fud', 'en'), ['es', 'en'], '/', 'https://example.com')).toEqual({
+      alternates: { locale: 'en', locales: ['es', 'en'], base: '/', site: 'https://example.com' },
+    });
+  });
+});
+
+describe('a URL without a locale prefix (§4.5)', () => {
+  const locales = ['es', 'en'];
+  const pages = new Set(['/es/blog/hola', '/es/about', '/es/x.y']);
+  const isPage = (path: string): boolean => pages.has(path);
+
+  it('/ and every page asked without its prefix go to the same page in the language that fits', () => {
+    expect(localeRedirect('/', 'en', locales, isPage)).toBe('en/');
+    expect(localeRedirect('/', undefined, locales, isPage)).toBe('es/');
+    expect(localeRedirect('/blog/hola', 'en-GB', locales, isPage)).toBe('en/blog/hola');
   });
 
-  it('rootRedirectHtml: off to the first locale, with every alternate', () => {
-    const html = rootRedirectHtml(['es', 'en'], '/app/');
-    expect(html).toContain('<meta http-equiv="refresh" content="0; url=/app/es/">');
-    expect(html).toContain('<link rel="alternate" hreflang="en" href="/app/en/">');
-    expect(html).toContain('<link rel="alternate" hreflang="x-default" href="/app/">');
+  it('a prefixed URL, a file, the framework’s own and a URL that is no page are left alone', () => {
+    expect(localeRedirect('/en/blog/hola', 'es', locales, isPage)).toBe(false);
+    expect(localeRedirect('/x.y', 'es', locales, isPage)).toBe(false);
+    expect(localeRedirect('/_fudic/data/blog/hola', 'es', locales, () => true)).toBe(false);
+    expect(localeRedirect('/@vite/client', 'es', locales, () => true)).toBe(false);
+    expect(localeRedirect('/nada', 'es', locales, isPage)).toBe(false);
+  });
+
+  it('with fewer than two locales there is no prefix to send anyone to', () => {
+    expect(localeRedirect('/', 'en', ['es'], isPage)).toBe(false);
+    expect(localeRedirect('/', 'en', undefined, isPage)).toBe(false);
+  });
+
+  it('unprefixedPages: one per path, with the locales it exists in, never _fudic', () => {
+    const files = ['es/index.html', 'en/index.html', 'en/blog/b/index.html', 'es/_fudic/error/404/index.html', 'fudic-routes.json', 'xx/index.html', 'es/a.html'];
+    expect(unprefixedPages(files, ['es', 'en'])).toEqual([
+      { fileName: 'index.html', rest: '', locales: ['es', 'en'] },
+      { fileName: 'blog/b/index.html', rest: 'blog/b', locales: ['en'] },
+    ]);
+    // An app with no page at `/` still has one there, off to the first locale.
+    expect(unprefixedPages(['en/blog/b/index.html'], ['es', 'en'])[0]).toEqual({ fileName: 'index.html', rest: '', locales: ['es', 'en'] });
+  });
+
+  it('redirectHtml: off to the first locale it exists in, absolute on site, itself the x-default', () => {
+    const html = redirectHtml({ fileName: 'blog/b/index.html', rest: 'blog/b', locales: ['es', 'en'] }, '/app/', 'https://example.com');
+    expect(html).toContain('<meta http-equiv="refresh" content="0; url=/app/es/blog/b">');
+    expect(html).toContain('<link rel="alternate" hreflang="en" href="https://example.com/app/en/blog/b">');
+    expect(html).toContain('<link rel="alternate" hreflang="x-default" href="https://example.com/app/blog/b">');
+    const root = redirectHtml({ fileName: 'index.html', rest: '', locales: ['en'] }, '/', undefined);
+    expect(root).toContain('url=/en/"');
+    expect(root).toContain('<link rel="alternate" hreflang="x-default" href="/">');
   });
 });
 

@@ -5,7 +5,7 @@
 > `@fudic/cli` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` ·
 > `examples/i18n` (nuevo)
 > **Rama:** `sdd-58-i18n`
-> **Progreso:** 48 / 48 — `Hecho`.
+> **Progreso:** 53 / 53 — `Hecho`.
 
 El orden va de dentro afuera:
 1. los diagnósticos y la config;
@@ -174,3 +174,20 @@ Cada fase se commitea al cerrarla, con sus tests.
 >   los `styles` de un template. El cliente de VS Code vigila además `**/src/locales/*.json`.
 > - En `examples/i18n` lo único en español dentro de `/en/` es el selector de idioma, bajo
 >   `translate="no"`: cada idioma se nombra en el suyo.
+
+## Fase 9 — SEO multiidioma, tras la prueba en el navegador
+
+> Pedro probó `examples/i18n` y las alternativas no cumplían lo que pide Google: URLs relativas,
+> `x-default` siempre a `/` y ningún `canonical`. Se decidió con él: `site` en `fudic.json`,
+> obligatorio solo en el build con dos idiomas o más; en dev, el origen de la petición. Enmienda
+> §3.1, §4.5, §4.7 y §7; criterios 26 y 28 ampliados, 37 y 38 nuevos.
+
+- [x] 49. `site` en `@fudic/config`: origen de una URL http(s), normalizado; lo demás es
+  `FUD0725` con `problem: 'site'` (criterio 37).
+- [x] 50. `FUD1027`: un build con dos idiomas o más sin `site` para (criterio 37).
+- [x] 51. Cabecera de cada ruta: `canonical` a sí misma, alternativas absolutas sobre `site` (o
+  sobre el origen de la petición en dev) y `x-default` a la página sin prefijo (criterio 28).
+- [x] 52. Las páginas sin prefijo redirigen con `302` y `Vary: Accept-Language` en dev y preview,
+  y existen en SSG con su `meta refresh` (criterios 26 y 38).
+- [x] 53. `examples/i18n` con `site`, README y spec al día; `pnpm typecheck`, `pnpm test` y
+  `pnpm build` en verde.

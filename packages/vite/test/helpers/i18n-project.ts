@@ -20,12 +20,23 @@ const INSTALLED = ['core', 'dom', 'ssr', 'transport', 'http', 'i18n'];
 export interface I18nProject {
   /** `fudic.json`'s `locales`; absent ⇒ an app without them. */
   readonly locales?: readonly string[];
+  /**
+   * `fudic.json`'s `site`. With two or more locales it defaults to `https://example.com`,
+   * which a build requires; `null` leaves it out.
+   */
+  readonly site?: string | null;
   /** Files under the root, by POSIX path (`src/routes/about.fud`). */
   readonly files: Readonly<Record<string, string>>;
   /** Per locale: source text → translation. `null` writes an unreadable catalog. */
   readonly catalogs?: Readonly<Record<string, Readonly<Record<string, string>> | null>>;
   /** Raw catalog text per locale, written as is (an invalid one, say). */
   readonly rawCatalogs?: Readonly<Record<string, string>>;
+}
+
+function siteOf(project: I18nProject): { site?: string } {
+  if (project.site === null) return {};
+  if (project.site !== undefined) return { site: project.site };
+  return (project.locales?.length ?? 0) >= 2 ? { site: 'https://example.com' } : {};
 }
 
 /** Write the project and return its root. */
@@ -38,7 +49,13 @@ export function writeI18nProject(project: I18nProject): string {
   for (const [path, text] of Object.entries(project.files)) write(path, text);
   write(
     'fudic.json',
-    JSON.stringify({ id: 'i18n-app', kind: 'app', prefix: 'app', ...(project.locales ? { locales: project.locales } : {}) }),
+    JSON.stringify({
+      id: 'i18n-app',
+      kind: 'app',
+      prefix: 'app',
+      ...(project.locales ? { locales: project.locales } : {}),
+      ...siteOf(project),
+    }),
   );
   for (const [locale, table] of Object.entries(project.catalogs ?? {})) {
     write(`src/locales/${locale}.json`, table === null ? '{ "broken": ' : catalogText(project.files, table));

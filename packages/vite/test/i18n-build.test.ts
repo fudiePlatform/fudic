@@ -182,7 +182,17 @@ describe('a build with "locales": ["es", "en"]', () => {
   it('criterion 26: dist/index.html sends the browser to /es/', () => {
     const index = text(output, 'index.html');
     expect(index).toContain('<meta http-equiv="refresh" content="0; url=/es/">');
-    expect(index).toContain('hreflang="x-default"');
+    expect(index).toContain('<link rel="alternate" hreflang="x-default" href="https://example.com/">');
+  });
+
+  it('criterion 38: every prerendered page also exists without its prefix, sending the browser on', () => {
+    const page = text(output, 'blog/a/index.html');
+    expect(page).toContain('<meta http-equiv="refresh" content="0; url=/es/blog/a">');
+    expect(page).toContain('<link rel="alternate" hreflang="en" href="https://example.com/en/blog/a">');
+    expect(page).toContain('<link rel="alternate" hreflang="x-default" href="https://example.com/blog/a">');
+    // `b` exists only in en: that is where its page without a prefix sends the browser.
+    expect(text(output, 'blog/b/index.html')).toContain('url=/en/blog/b');
+    expect(text(output, 'about/index.html')).toContain('url=/es/about');
   });
 
   it('criterion 27: <html lang> of each locale, written by the emit', () => {
@@ -190,11 +200,16 @@ describe('a build with "locales": ["es", "en"]', () => {
     expect(text(output, 'es/about/index.html')).toMatch(/<html[^>]* lang="es"/u);
   });
 
-  it('criterion 28: the alternates of each page', () => {
-    const html = text(output, 'en/blog/a/index.html');
-    expect(html).toContain('<link rel="alternate" hreflang="es" href="/es/blog/a">');
-    expect(html).toContain('<link rel="alternate" hreflang="en" href="/en/blog/a">');
-    expect(html).toContain('<link rel="alternate" hreflang="x-default" href="/">');
+  it('criterion 28: the same absolute block in every version, with its own canonical', () => {
+    const block = [
+      '<link rel="alternate" hreflang="es" href="https://example.com/es/blog/a">',
+      '<link rel="alternate" hreflang="en" href="https://example.com/en/blog/a">',
+      '<link rel="alternate" hreflang="x-default" href="https://example.com/blog/a">',
+    ].join('');
+    for (const locale of ['es', 'en']) {
+      const html = text(output, `${locale}/blog/a/index.html`);
+      expect(html).toContain(`<link rel="canonical" href="https://example.com/${locale}/blog/a">${block}`);
+    }
   });
 
   it('criterion 29: links of the page get its prefix, except the ones §4.8 leaves', () => {
@@ -302,6 +317,13 @@ describe('criterion 31: the pipeline reads catalogs, and nothing more', () => {
     expect(text(output, 'ar/about/index.html')).toMatch(/<html[^>]* dir="rtl"/u);
     expect(text(output, 'en/about/index.html')).not.toContain('dir=');
   });
+});
+
+describe('criterion 37: a build in two or more locales needs site', () => {
+  it('stops with FUD1027 when fudic.json has none', async () => {
+    const root = writeI18nProject({ locales: ['es', 'en'], files: { 'src/routes/live.fud': LIVE }, site: null });
+    await expect(buildOf(root)).rejects.toThrow(/FUD1027/u);
+  }, 240000);
 });
 
 describe('§4.5: a single locale', () => {

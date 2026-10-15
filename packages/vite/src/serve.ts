@@ -149,6 +149,9 @@ export async function loadRouteData(
  */
 export function withRequest(ctx: RenderContext, request: Request | undefined): RenderContext {
   if (request === undefined) return ctx;
-  const out: RenderContext & { readonly request: Request } = { ...ctx, request };
+  // The URL on the request's own origin: what a page writes as an absolute URL of itself
+  // (SDD-58 §4.7) is where it was asked, `http://localhost:5173` in dev.
+  const url = new URL(`${ctx.url.pathname}${ctx.url.search}`, new URL(request.url).origin);
+  const out: RenderContext & { readonly request: Request } = { ...ctx, url, request };
   return out;
 }

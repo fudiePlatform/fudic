@@ -124,7 +124,7 @@ function linkPlugin(
         hasDi: routeUsesDi(rb.absPath, io),
         withLoad: false, // server code never ships to the client (§4.5)
         runtime: runtimeFor(pattern),
-        ...alternatesOf(rb, locale?.locales, base),
+        ...alternatesOf(rb, locale?.locales, base, locale?.site),
       });
     },
     async transform(code, id) {

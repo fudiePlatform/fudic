@@ -8,12 +8,17 @@ stays without JavaScript, and the browser downloads only its own language.
 
 ```jsonc
 // fudic.json
-{ "kind": "app", "locales": ["es", "en"] }
+{ "kind": "app", "locales": ["es", "en"], "site": "https://example.com" }
 ```
 
 The first locale is the language the code is written in. With two or more, every route is
-served under its prefix (`/es/about`, `/en/about`) and `/` redirects to the best match of
-`Accept-Language`. Links that start with `/` get the prefix of the page they are on.
+served under its prefix (`/es/about`, `/en/about`), and `/` or a page asked without its prefix
+(`/about`) redirects to the best match of `Accept-Language`. Links that start with `/` get the
+prefix of the page they are on.
+
+Every page carries its `canonical` and one `hreflang` link per locale, plus `x-default` on the
+page without a prefix, all as absolute URLs. `site` is the origin they are written on; a build
+in two or more locales requires it. `pnpm dev` uses the origin of each request instead.
 
 ## Extract and translate
 

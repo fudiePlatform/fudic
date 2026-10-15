@@ -12,6 +12,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
+import type { ServerResponse } from 'node:http';
 import { dirname, join, relative, resolve as resolvePath } from 'node:path';
 import { type Logger, type Plugin, type ViteDevServer, transformWithOxc } from 'vite';
 import {
@@ -83,7 +84,9 @@ import {
   pageModuleOf,
   prefixPattern,
   resolveForLocale,
-  rootRedirectHtml,
+  localeRedirect,
+  redirectHtml,
+  unprefixedPages,
   withLocale,
   withoutLocale,
   withoutLocalePrefix,
@@ -159,6 +162,7 @@ import {
   FUD0391,
   FUD0399,
   FUD0620,
+  FUD1027,
   FUD0622,
   FUD0742,
   FUD0801,
@@ -268,6 +272,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    * and then nothing of this SDD runs: no catalogs, no prefixes, no module compiled per locale.
    */
   let locales: readonly string[] | undefined;
+  /** Where the app is published (§4.7): the origin of the head's absolute URLs in a build. */
+  let site: string | undefined;
   /** The catalogs, read and never written (§4.10), and the io each locale's graph reads by. */
   let catalogs: Catalogs | undefined;
   let localeIos: LocaleIos | undefined;
@@ -299,6 +305,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       : {
           root,
           locales,
+          ...(site === undefined ? {} : { site }),
           ioFor: (baseIo, locale) => localeIos!.for(baseIo, locale),
           compileFor: (locale) => catalogs!.compileFor(locale),
         };
@@ -318,11 +325,26 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    */
   const errorPatternOf = (locale: string | undefined): string =>
     locales === undefined ? ERROR_PATTERN : prefixPattern(ERROR_PATTERN, locale ?? locales[0]!, locales);
-  /** The redirect of `/` with two or more locales (§4.5), or false when `/` is a page. */
-  const rootRedirect = (pathname: string, acceptLanguage: string | undefined): string | false =>
-    pathname === '/' && locales !== undefined && locales.length >= 2
-      ? devUrl(base, `${negotiate(acceptLanguage, locales)}/`)
-      : false;
+  /**
+   * The redirect of a URL with no locale prefix (§4.5) — `/`, or a page of the app asked
+   * without its prefix — or false when there is none. `isPage` is the route table of whoever
+   * asks: the dev server's builds, or the manifest preview serves.
+   */
+  const localeRedirectOf = (
+    pathname: string,
+    acceptLanguage: string | undefined,
+    isPage: (pathname: string) => boolean,
+  ): string | false => {
+    const to = localeRedirect(pathname, acceptLanguage, locales, isPage);
+    return to === false ? false : devUrl(base, to);
+  };
+  /** Answer with that redirect. It varies by `Accept-Language`, and a cache has to know. */
+  const sendRedirect = (res: ServerResponse, location: string): void => {
+    res.statusCode = 302;
+    res.setHeader('Location', location);
+    res.setHeader('Vary', 'Accept-Language');
+    res.end();
+  };
   /** How a module is compiled for `locale`, for the emit's own use (`lang`, alternates). */
   const compileFor = (locale: string | undefined): LocaleCompile | undefined =>
     locale === undefined ? undefined : catalogs?.compileFor(locale);
@@ -703,6 +725,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       project = readProject(root, swConfig !== null, configIo);
       appId = project.config?.id ?? '';
       locales = project.config?.locales;
+      site = project.config?.site;
       // Dev re-reads the catalogs and the files on every compile: a save is seen without a
       // restart (§4.10, criterion 34). A build reads each once.
       catalogs = locales === undefined ? undefined : new Catalogs(root, locales, isDev);
@@ -845,13 +868,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           // so a new `.fud` is routable without restarting the server.
           ({ routes: builds, errorPages } = discover());
 
-          // `/` with two or more locales has no page: it sends the browser to its language
-          // (SDD-58 §4.5). Only here — a URL with a prefix always decides by itself.
-          const redirect = rootRedirect(pathname, req.headers['accept-language']);
+          // `/` and a page without its prefix, with two or more locales: off to the same page
+          // in the browser's language (SDD-58 §4.5). A URL with a prefix decides by itself.
+          const redirect = localeRedirectOf(pathname, req.headers['accept-language'], (path) =>
+            matchRouteBuild(builds, path) !== null,
+          );
           if (redirect !== false) {
-            res.statusCode = 302;
-            res.setHeader('Location', redirect);
-            res.end();
+            sendRedirect(res, redirect);
             return;
           }
 
@@ -1046,13 +1069,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           return;
         }
 
-        // `/` with two or more locales: to the language that fits (SDD-58 §4.5), as the edge
-        // does — the static `index.html` is the answer of a host that cannot.
-        const redirect = rootRedirect(pathname, req.headers['accept-language']);
+        // `/` and a page without its prefix: to the language that fits (SDD-58 §4.5), as the
+        // edge does — the static `index.html` of each is the answer of a host that cannot.
+        const redirect = localeRedirectOf(pathname, req.headers['accept-language'], (path) =>
+          matchRecord(manifest.routes, path) !== null,
+        );
         if (redirect !== false) {
-          res.statusCode = 302;
-          res.setHeader('Location', redirect);
-          res.end();
+          sendRedirect(res, redirect);
           return;
         }
 
@@ -1149,6 +1172,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       //
       // Every batch of `buildStart` goes through `report`, which lets the typecheck speak first.
       await report(this, project.errors);
+      // The head of every page of an app in two or more languages carries absolute URLs
+      // (SDD-58 §4.7), and a prerendered page has no request to take the origin from.
+      if (!isDev && locales !== undefined && locales.length >= 2 && site === undefined) {
+        await report(this, [FUD1027()]);
+      }
       // The style guide's own (SDD-42 §5). Errors, and for the same reason: a sheet that is
       // not there renders exactly like a sheet that did nothing.
       await report(this, styleErrors);
@@ -1499,7 +1527,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           hasHttp: rb.analysis.hasHttp === true,
           fluentLoad: rb.analysis.fluentLoad === true,
           ...(httpFile !== undefined ? { globalChain: httpFile } : {}),
-          ...alternatesOf(rb, locales, base),
+          // In dev the origin is the request's: a page served at localhost links to localhost.
+          ...alternatesOf(rb, locales, base, isDev ? undefined : site),
           // In DEV this module IS the edge: the dev server renders through the module
           // graph and resolves data in process. In BUILD it is a chunk of the client
           // output, and the client never gets `load` (BUG-09 §4.1) — the edge pass builds
@@ -2182,11 +2211,14 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         }
       }
       reporter.report(this, prerenderDiagnostics);
-      // `/` of a static build with two or more locales (SDD-58 §4.5): a page that sends the
-      // browser to the first locale, with the alternates for whoever reads it otherwise.
-      if (locales !== undefined && locales.length >= 2 && !emitted.has('index.html')) {
-        this.emitFile({ type: 'asset', fileName: 'index.html', source: rootRedirectHtml(locales, base) });
-        emitted.add('index.html');
+      // Every page of a static build with two or more locales, also without its prefix
+      // (SDD-58 §4.5): `/` and `/blog/hola` are the `x-default` of their pages, and a host
+      // that cannot negotiate serves this one, which sends the browser to the first locale.
+      if (locales !== undefined && locales.length >= 2) {
+        for (const page of unprefixedPages(emitted, locales)) {
+          this.emitFile({ type: 'asset', fileName: page.fileName, source: redirectHtml(page, base, site) });
+          emitted.add(page.fileName);
+        }
       }
 
       // 5a. A public file somebody reached by a relative path (FUD0366). Reported here

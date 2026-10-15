@@ -135,7 +135,7 @@ export function edgePlugin(
         ...(extras.globalChain !== undefined ? { globalChain: extras.globalChain } : {}),
         withLoad: true, // the edge resolves data in process
         runtime: runtimeFor(pattern),
-        ...alternatesOf(rb, extras.locale?.locales, base),
+        ...alternatesOf(rb, extras.locale?.locales, base, extras.locale?.site),
       });
     },
     async transform(_code, id) {

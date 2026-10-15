@@ -2,5 +2,6 @@
   "id": "i18n",
   "kind": "app",
   "prefix": "app",
-  "locales": ["es", "en"]
+  "locales": ["es", "en"],
+  "site": "https://example.com"
 }

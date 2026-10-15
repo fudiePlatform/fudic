@@ -122,6 +122,11 @@ export interface Alternates {
   readonly locale: string;
   readonly locales: readonly string[];
   readonly base: string;
+  /**
+   * The origin of every URL written, from `fudic.json`'s `site`. Absent in dev, where each
+   * request's own origin is the right one.
+   */
+  readonly site?: string;
 }
 
 /**
@@ -132,10 +137,11 @@ export function alternatesOf(
   rb: RouteBuild,
   locales: readonly string[] | undefined,
   base: string,
+  site?: string,
 ): { readonly alternates?: Alternates } {
   return rb.locale === undefined || locales === undefined || locales.length < 2 || rb.route.file === ERROR_FILE
     ? {}
-    : { alternates: { locale: rb.locale, locales, base } };
+    : { alternates: { locale: rb.locale, locales, base, ...(site === undefined ? {} : { site }) } };
 }
 
 /**
@@ -247,14 +253,74 @@ export function negotiate(header: string | undefined, locales: readonly string[]
   return locales[0]!;
 }
 
-/** The `index.html` of a static build with two or more locales: off to the first (§4.5). */
-export function rootRedirectHtml(locales: readonly string[], base: string): string {
-  const first = `${base}${locales[0]!}/`;
-  const alternates = locales.map((l) => `<link rel="alternate" hreflang="${l}" href="${base}${l}/">`).join('');
+/**
+ * Where a request with no locale prefix is sent (§4.5), relative to `base`: `/` and every page
+ * of the app asked without its prefix go to the same page in the language that fits
+ * `Accept-Language`. That URL is the page's `x-default`. `false` for everything else — a URL
+ * with a prefix decides by itself, and a file or the framework's own URLs are not pages.
+ */
+export function localeRedirect(
+  pathname: string,
+  acceptLanguage: string | undefined,
+  locales: readonly string[] | undefined,
+  isPage: (pathname: string) => boolean,
+): string | false {
+  if (locales === undefined || locales.length < 2 || localeOfPath(pathname, locales) !== undefined) return false;
+  if (pathname !== '/') {
+    if (pathname.startsWith('/_fudic/') || pathname.startsWith('/@') || /\.[^/]*$/u.test(pathname)) return false;
+    if (!isPage(`/${locales[0]!}${pathname}`)) return false;
+  }
+  return `${negotiate(acceptLanguage, locales)}${pathname}`;
+}
+
+/** A page of a static build, once per path without its prefix, and the locales it exists in. */
+export interface UnprefixedPage {
+  /** `blog/hola/index.html`; `index.html` for `/`. */
+  readonly fileName: string;
+  /** The path without the prefix and without slashes around it: `blog/hola`, `''` for `/`. */
+  readonly rest: string;
+  /** The locales it was prerendered in, in configured order. */
+  readonly locales: readonly string[];
+}
+
+/**
+ * The pages of a static build without their prefix (§4.5): the `x-default` of each one. `/` is
+ * always one, even in an app with no page of its own there: it is where a browser lands with no
+ * language in the URL.
+ */
+export function unprefixedPages(files: Iterable<string>, locales: readonly string[]): UnprefixedPage[] {
+  const byRest = new Map<string, Set<string>>();
+  const prefixed = [...files];
+  if (!prefixed.some((file) => locales.some((l) => file === `${l}/index.html`))) byRest.set('', new Set(locales));
+  for (const file of prefixed) {
+    const match = /^([^/]+)\/(.*)index\.html$/u.exec(file);
+    if (match === null || !locales.includes(match[1]!) || match[2]!.startsWith('_fudic/')) continue;
+    const rest = match[2]!.replace(/\/$/u, '');
+    byRest.set(rest, (byRest.get(rest) ?? new Set()).add(match[1]!));
+  }
+  return [...byRest].map(([rest, found]) => ({
+    fileName: rest === '' ? 'index.html' : `${rest}/index.html`,
+    rest,
+    locales: locales.filter((l) => found.has(l)),
+  }));
+}
+
+/**
+ * The page a static host serves at a path without a prefix (§4.5): it cannot negotiate, so it
+ * sends the browser to the first locale the page exists in, and tells a search engine about
+ * every version — with absolute URLs on `site`, itself as `x-default`.
+ */
+export function redirectHtml(page: UnprefixedPage, base: string, site: string | undefined): string {
+  const at = `${site ?? ''}${base}`;
+  const path = (l: string): string => (page.rest === '' ? `${l}/` : `${l}/${page.rest}`);
+  const first = `${base}${path(page.locales[0]!)}`;
+  const alternates = page.locales
+    .map((l) => `<link rel="alternate" hreflang="${l}" href="${at}${path(l)}">`)
+    .join('');
   return (
     `<!DOCTYPE html><html><head><meta charset="utf-8">` +
     `<meta http-equiv="refresh" content="0; url=${first}">` +
-    `${alternates}<link rel="alternate" hreflang="x-default" href="${base}">` +
+    `${alternates}<link rel="alternate" hreflang="x-default" href="${at}${page.rest}">` +
     `</head><body><a href="${first}">${first}</a></body></html>\n`
   );
 }
@@ -263,6 +329,8 @@ export function rootRedirectHtml(locales: readonly string[], base: string): stri
 export interface LocaleContext {
   readonly root: string;
   readonly locales: readonly string[];
+  /** `fudic.json`'s `site`: the origin of the absolute URLs of the head (§4.7). */
+  readonly site?: string;
   ioFor(base: ResolveIo, locale: string): ResolveIo;
   compileFor(locale: string): LocaleCompile;
 }

@@ -1,6 +1,6 @@
 # SDD-58 — Traducciones y pipes
 
-> **Estado:** `Hecho` — [tareas](./SDD-58-Task.md), 48 / 48.
+> **Estado:** `Hecho` — [tareas](./SDD-58-Task.md), 53 / 53.
 > **Paquetes:** `@fudic/i18n` (nuevo) · `@fudic/compiler` · `@fudic/config` · `@fudic/vite` ·
 > `@fudic/cli` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` ·
 > `examples/i18n` (nuevo)
@@ -8,8 +8,8 @@
 > SW), 22 (CLI), 23 (proyección TS), 35 (compilo o no compilo), 40 (props de layout),
 > 41 (configuración), 43 (librerías), 45 (runtime publicado), 50 (diagnósticos), 51 (expresiones
 > de la vista)
-> **Rango de diagnósticos:** `FUD1020`–`FUD1039` (usa `FUD1020`–`FUD1026`). `FUD0725` gana el
-> problema `locales`.
+> **Rango de diagnósticos:** `FUD1020`–`FUD1039` (usa `FUD1020`–`FUD1027`). `FUD0725` gana los
+> problemas `locales` y `site`.
 > **Decisiones:** 158–161 (nuevas). La 158 enmienda SDD-51 §3.2: en la vista `|` deja de ser el
 > OR de bits. Especifica la §4 de [IDEA-03](./ideas/IDEA-03-backend-poliglota.md) (pipes como datos).
 >
@@ -114,7 +114,8 @@ los paga.
   "id": "mi-app",
   "kind": "app",
   "prefix": "app",
-  "locales": ["es", "en"]   // nuevo. El primero es el idioma en que está escrito el código.
+  "locales": ["es", "en"],  // nuevo. El primero es el idioma en que está escrito el código.
+  "site": "https://example.com"   // nuevo. El origen en que se publica la app.
 }
 ```
 
@@ -124,6 +125,16 @@ los paga.
 - **Ausente.** La app no tiene idiomas: ni extracción, ni catálogos, ni prefijos.
   - Usar un pipe, `t()`, `format()` o `locale` en ella es `FUD1021`.
   - El resto del framework se comporta byte a byte como antes de esta spec.
+
+**`site`** (añadido tras la prueba de Pedro en el navegador, ver §4.7):
+
+- **Forma.** El origen de una URL `http` o `https`, sin ruta, query ni fragmento. Se guarda
+  como lo escribe `URL.origin`: `"https://Example.COM/"` es `https://example.com`. La ruta
+  base es el `base` de Vite.
+- **Error.** Cualquier fallo es `FUD0725` con `problem: 'site'`, subrayando la clave.
+- **Cuándo hace falta.** Solo en el build, y solo con dos idiomas o más: una página
+  prerenderizada no tiene petición de la que sacar el origen. Sin él, el build para con
+  `FUD1027`. `pnpm dev` no lo usa: escribe el origen de cada petición.
 
 ### 3.2 `@fudic/i18n`
 
@@ -278,6 +289,7 @@ declare function $pipe<T>(value: NoInfer<T>, pipe: $Pipe<T>): string;
 | `FUD1024` | error | `fudic translate` | Traducción con ICU inválido, o con huecos o etiquetas que no son los del original | el mensaje en el `.fud`/`.ts` |
 | `FUD1025` | error | `fudic translate` | Dos `t()` válidos en el mismo contexto con el mismo texto y distinto número de claves en su objeto de huecos | el segundo |
 | `FUD1026` | error | `fudic translate` | El comando en una app sin `locales` | el proyecto |
+| `FUD1027` | error | plugin (build) | Build de una app con dos idiomas o más sin `site` | el proyecto |
 
 `FUD1020` y `FUD1021` son errores de código, como un error de tipos: sin literal no hay nada que
 compilar, y sin idiomas no hay locale que poner. Todo lo que trata de catálogos es del comando. El
@@ -437,12 +449,16 @@ lenguaje (IDEA-03) lo formatea con su ICU sin ejecutar JS.
   - el prerender;
   - el endpoint de datos (`/_fudic/data/en/about`);
   - el router del SW.
-- **`/`.**
-  - En dev, preview y edge responde `302` al idioma del `Accept-Language` que mejor encaja.
-    Encajar es igualdad de etiqueta y, si no hay, igualdad de idioma base; si nada encaja, el
-    primero de la lista.
-  - En SSG se emite un `index.html` con `<meta http-equiv="refresh" content="0; url=/es/">` y los
-    `<link rel="alternate" hreflang>`.
+- **`/` y cada página sin prefijo** (`/blog/hola`). Son el `x-default` de su página (§4.7).
+  - En dev, preview y edge responden `302` a la misma página en el idioma del
+    `Accept-Language` que mejor encaja, con `Vary: Accept-Language`. Encajar es igualdad de
+    etiqueta y, si no hay, igualdad de idioma base; si nada encaja, el primero de la lista.
+  - Solo redirige una URL que es una página en algún idioma: un fichero (con extensión),
+    `/_fudic/…` o una ruta que no existe siguen su camino.
+  - Una URL con prefijo responde `200` sin mirar `Accept-Language`.
+  - En SSG, cada página prerenderizada tiene también su `index.html` sin prefijo, con
+    `<meta http-equiv="refresh">` al primer idioma en que existe y los
+    `<link rel="alternate" hreflang>`. `/` lo tiene siempre.
 - **`paths()`.** Se llama una vez por idioma, dentro del grafo de ese idioma, así que puede leer
   `locale` para enumerar slugs distintos. Las entradas no llevan el prefijo; lo pone el prerender.
 - **`_error.fud`.** También se compila una vez por idioma, bajo `/<idioma>/_fudic/error/:status`.
@@ -483,9 +499,14 @@ El plugin compila la app una vez por idioma **dentro de un solo build**:
 - **`dir`.** Igual que `lang`: si el locale es de derecha a izquierda
   (`new Intl.Locale(l).getTextInfo().direction === 'rtl'`, calculado en el build), el emit añade
   `dir="rtl"`, salvo que el autor lo escriba.
-- **Alternativas.** Con dos o más idiomas, la cabecera de cada ruta lleva un
-  `<link rel="alternate" hreflang="xx" href="/xx/…">` por idioma, más `hreflang="x-default"`
-  apuntando a `/`.
+- **Canonical y alternativas.** Con dos o más idiomas, la cabecera de cada ruta lleva el mismo
+  bloque en todas sus versiones, con la propia incluida:
+  - `<link rel="canonical">` a sí misma, nunca a otra versión;
+  - un `<link rel="alternate" hreflang="xx">` por idioma;
+  - `hreflang="x-default"` apuntando a la misma página sin prefijo (`/blog/hola`), que
+    redirige por idioma (§4.5).
+  - **URLs absolutas**, como pide Google: sobre `site` en el build y en lo que el build deja
+    (preview, edge, SW), y sobre el origen de la petición en dev.
   - El `href` es la URL de la petición con el prefijo cambiado, así que una ruta con parámetros
     apunta a la misma página.
   - Lo escribe el wrapper en la parte de cabecera que ya inyecta el runtime de la ruta, la misma
@@ -679,12 +700,15 @@ pagan esta pasada.
       `en/blog/a/index.html`.
 26. `/`:
     - en dev, con `Accept-Language: en-GB,en;q=0.9` responde `302` a `/en/`, y sin cabecera a
-      `/es/`;
+      `/es/`, con `Vary: Accept-Language`;
     - en SSG, `dist/index.html` tiene el `meta refresh` a `/es/`.
 27. El `<html>` de `/en/about` lleva `lang="en"` cuando el layout no escribe `lang`. Con
     `<html lang="@culture">` manda el layout. Con `"locales": ["es", "ar"]`, `/ar/…` lleva
     `dir="rtl"`.
-28. La cabecera de `/en/blog/x` tiene tres `<link rel="alternate">`: `es`, `en` y `x-default`.
+28. La cabecera de `/es/blog/hola` y la de `/en/blog/hola` llevan el mismo bloque, con URLs
+    absolutas sobre `site` en el build y sobre el origen de la petición en dev:
+    `hreflang="es"` a `…/es/blog/hola`, `"en"` a `…/en/blog/hola` y `"x-default"` a
+    `…/blog/hola`. Cada una lleva además su `canonical` a sí misma.
 29. Enlaces:
     - `<a href="/about">` sale `/en/about` en `en`;
     - `<a href="/es/about">`, `<a href="/doc.pdf">` y `<a href="/_fudic/x">` salen como están;
@@ -727,6 +751,16 @@ pagan esta pasada.
 36. `@fudic/i18n` nace con cobertura al 100 % en las cuatro métricas. `pnpm typecheck`,
     `pnpm test` y `pnpm build` en verde.
 
+**Tras la prueba en el navegador**
+
+37. `"site": "https://Example.COM/"` se lee como `https://example.com`; uno con ruta, query,
+    fragmento u otro protocolo es `FUD0725` con `problem: 'site'`. Un build con dos idiomas y
+    sin `site` para con `FUD1027`; con uno solo, o en dev, no hace falta.
+38. `/blog/hola` con `Accept-Language: en` responde `302` a `/en/blog/hola` con
+    `Vary: Accept-Language` en dev y en preview; `/en/about` con `Accept-Language: es` responde
+    `200`; una URL que no es página no redirige. En SSG existe `blog/hola/index.html` con el
+    `meta refresh` al primer idioma en que la página existe.
+
 ## 7. Fuera de alcance
 
 - **Contenido por idioma.** El título de un artículo o una fila de base de datos son datos y llegan
@@ -735,8 +769,8 @@ pagan esta pasada.
   las librerías `.fud` (SDD-43).
 - **Traducción automática** y cualquier servicio externo de traducción.
 - **XLIFF y `.po`.** Las herramientas profesionales importan JSON con ICU.
-- **Negociar el idioma fuera de `/`.** Una URL con prefijo manda siempre; no se lee
-  `Accept-Language` ni una cookie en otras rutas.
+- **Negociar el idioma en una URL con prefijo.** Una URL con prefijo manda siempre; solo se lee
+  `Accept-Language` en `/` y en las páginas sin prefijo (§4.5), y nunca una cookie.
 - **Un selector de idioma del framework.** Es un `<a href="/en/…">` del autor; §4.8 lo deja intacto.
 - **Portar `$format` y `$message` a otros lenguajes de servidor.** Es IDEA-03. Aquí se garantiza la
   condición que esa idea necesita: preset y catálogo son datos.

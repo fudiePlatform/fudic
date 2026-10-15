@@ -50,6 +50,12 @@ export interface ProjectConfig {
    * and the framework behaves byte for byte as it did before translations existed.
    */
   readonly locales?: readonly string[];
+  /**
+   * The origin the app is published at (SDD-58), like `https://example.com`, without a trailing
+   * slash. What the build writes into the absolute URLs of `canonical` and `hreflang`, which
+   * a page written without a request has no other way to know. Absent when the file declares none.
+   */
+  readonly site?: string;
 }
 
 /** One `"name": "path"` entry of `globalStyles` or `styles`. */
@@ -120,6 +126,7 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
   const globalStyles = readStyleMap(fields, 'globalStyles', ctx);
   const styles = readStyleMap(fields, 'styles', ctx);
   const locales = readLocales(fields, ctx);
+  const site = readSite(fields, ctx);
 
   // Fields are NOT rescued one by one (§4.2). Identity is a unit, and half an identity is
   // worse than none: an `id` that got through alone would namespace caches under a name
@@ -128,7 +135,15 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
     return { config: null, diagnostics: ctx.diagnostics };
   }
   return {
-    config: { id, kind, prefix, globalStyles, styles, ...(locales === undefined ? {} : { locales }) },
+    config: {
+      id,
+      kind,
+      prefix,
+      globalStyles,
+      styles,
+      ...(locales === undefined ? {} : { locales }),
+      ...(site === undefined ? {} : { site }),
+    },
     diagnostics: [],
   };
 }
@@ -166,6 +181,32 @@ function readLocales(fields: Record<string, unknown>, ctx: Ctx): readonly string
     locales.push(canonical);
   }
   return locales;
+}
+
+/**
+ * An absent `site` stays absent; a present one is the origin of an http(s) URL, kept as
+ * `URL.origin` writes it — lowercase host, no default port, no trailing slash.
+ */
+function readSite(fields: Record<string, unknown>, ctx: Ctx): string | undefined {
+  const value = fields['site'];
+  if (value === undefined) {
+    return undefined;
+  }
+  const refuse = (reason: string): undefined => {
+    ctx.diagnostics.push(malformed({ problem: 'site', reason }, fieldSpan(ctx.text, 'site')));
+    return undefined;
+  };
+  if (typeof value !== 'string' || !URL.canParse(value)) {
+    return refuse(`${JSON.stringify(value)} is not a URL`);
+  }
+  const url = new URL(value);
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    return refuse(`"${url.protocol}" is not http or https`);
+  }
+  if (url.pathname !== '/' || url.search !== '' || url.hash !== '') {
+    return refuse("it has a path, a query or a fragment — the base path is Vite's `base`");
+  }
+  return url.origin;
 }
 
 /** The canonical form of a BCP 47 tag, or `undefined` when `tag` is not one. */
