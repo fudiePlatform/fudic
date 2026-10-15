@@ -85,7 +85,9 @@ describe('analyze — runner', () => {
     // + view-expressions, view-statements, view-identifiers, native-event-attributes (SDD-51)
     // + view-attributes, snippet-recursion (SDD-51 §3.8)
     // + raw-only-child (decision 18: FUD0990), spread-target (props-spec §5: FUD0992)
-    expect(ANALYZERS).toHaveLength(28);
+    // + translations (SDD-58: FUD1020–FUD1021)
+    expect(ANALYZERS).toHaveLength(29);
+    expect(ANALYZERS.at(-1)?.name).toBe('translations');
     const { value } = analyze(buildInput(component('<p>hi</p>')));
     expect(value).toEqual({});
     expect('strategies' in value).toBe(false); // decisions 63–65 retired: no hydration strategy

@@ -5,7 +5,7 @@
 > `@fudic/cli` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` ·
 > `examples/i18n` (nuevo)
 > **Rama:** `sdd-58-i18n`
-> **Progreso:** 13 / 48 — `En curso`.
+> **Progreso:** 20 / 48 — `En curso`.
 
 El orden va de dentro afuera:
 1. los diagnósticos y la config;
@@ -55,22 +55,22 @@ Cada fase se commitea al cerrarla, con sus tests.
 
 ## Fase 3 — Compilador: extraer
 
-- [ ] 14. `extractMessages`, texto: tiras en línea de §4.2 (elementos de frase, cortes,
+- [x] 14. `extractMessages`, texto: tiras en línea de §4.2 (elementos de frase, cortes,
   etiquetas, lista de elementos, escapado ICU) y contexto de §4.9. Criterios 2, 3 y 7.
-- [ ] 15. Nombres de huecos: ruta, signal sin argumentos, pipe, `argN` y sufijo por colisión.
+- [x] 15. Nombres de huecos: ruta, signal sin argumentos, pipe, `argN` y sufijo por colisión.
   `holes` con la expresión de cada uno.
-- [ ] 16. Atributos traducibles de §4.1 con sus condiciones de elemento y de `type` (criterio 5).
+- [x] 16. Atributos traducibles de §4.1 con sus condiciones de elemento y de `type` (criterio 5).
   `translate="no"` y lo que nunca se traduce (criterio 6).
-- [ ] 17. Literales en posición de resultado sobre el `JsBatch` del fichero: entera, ramas de
+- [x] 17. Literales en posición de resultado sobre el `JsBatch` del fichero: entera, ramas de
   `? :`, derecha de `??`/`||`/`&&` y partes fijas de un template literal, en recursión (criterio 4).
-- [ ] 18. `t()` en un `.fud` (vista y las tres zonas de `@code`) y `extractScriptMessages` para
+- [x] 18. `t()` en un `.fud` (vista y las tres zonas de `@code`) y `extractScriptMessages` para
   `.ts`/`.js`. `FUD1025` sale de la extracción (criterio 8).
-- [ ] 19. Analizador del compilador:
+- [x] 19. Analizador del compilador:
   - `FUD1020` sobre un `t()` sin literal o sin objeto de huecos;
   - `FUD1021` sobre un pipe, `t()`, `format()` o `locale` en una app sin `locales`.
 
   El analizador recibe por su entrada si hay idiomas; no lee la config.
-- [ ] 20. Nunca lanzar: un `.fud` roto da mensajes parciales y diagnósticos (criterio 9).
+- [x] 20. Nunca lanzar: un `.fud` roto da mensajes parciales y diagnósticos (criterio 9).
 
 ## Fase 4 — Compilador: compilar por idioma
 
