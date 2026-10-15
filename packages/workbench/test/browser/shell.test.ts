@@ -6,7 +6,7 @@
 
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BrowserLike, PageLike } from '../../src/browser.js';
 import type { BenchMessage, ResultMessage, SessionMessage } from '../../src/protocol.js';
 import { shellPage } from '../../src/shell.js';
@@ -38,13 +38,17 @@ let browser: BrowserLike;
 let server: Server;
 let origin: string;
 let page: PageLike | undefined;
+/** While set, criterion pages wait here until the test answers them: a reload in flight. */
+let held: (() => void)[] | undefined;
 
 beforeAll(async () => {
   browser = await chrome();
   server = createServer((req, res) => {
+    const answer = () => res.writeHead(200, { 'content-type': 'text/html' }).end('<p>the page</p>');
     if (req.url?.startsWith('/shot')) res.writeHead(200, { 'content-type': 'image/png' }).end(PNG);
     else if (req.url?.startsWith('/__bench/app-card/')) res.writeHead(200, { 'content-type': 'text/html' }).end(shellPage());
-    else res.writeHead(200, { 'content-type': 'text/html' }).end('<p>the page</p>');
+    else if (held !== undefined) held.push(answer);
+    else answer();
   });
   await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
   origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -57,6 +61,7 @@ afterAll(async () => {
 
 beforeEach(() => {
   page = undefined;
+  held = undefined;
 });
 
 afterEach(async () => {
@@ -268,8 +273,8 @@ describe('the cards — criterion 13', () => {
     expect(await shown(p)).toEqual(['b', 'c', 'a']);
     expect(await opens(p)).toEqual(['false', 'true', 'true']);
     expect(await text(p, '.card[data-id=a] .verdict')).toBe('pass · 12 ms');
-    expect(await p.evaluate<number>('() => document.querySelectorAll("iframe[src]").length')).toBe(0);
-    expect(await p.evaluate<number>('() => document.querySelectorAll("iframe").length')).toBe(1);
+    // The cards are shots: no page is alive until Live asks for one.
+    expect(await p.evaluate<number>('() => document.querySelectorAll("iframe").length')).toBe(0);
     expect(await text(p, '.card[data-id=c] .note')).toBe('the page answered 500\nboom');
     expect(await p_hidden(p, '.card[data-id=a] .note')).toBe(true);
   }, 60_000);
@@ -409,20 +414,42 @@ describe('the cards — criterion 13', () => {
     await click(p, '.card[data-id=b] .actions button:nth-child(3)');
     expect(await p_hidden(p, '#live')).toBe(false);
     expect(await attr(p, '.card[data-id=b] .actions button:nth-child(3)', 'aria-pressed')).toBe('true');
-    expect(await p.evaluate<string>('() => new URL(document.getElementById("live-frame").src).pathname')).toBe('/app-card/b');
+    const frames = () => all(p, '#live-view iframe', '(f) => [new URL(f.src).pathname, f.className, f.title]');
+    await p.waitFor('() => document.querySelector("#live-view iframe").className === ""', null);
+    expect(await frames()).toEqual([['/app-card/b', '', "The criterion's page, alive"]]);
     expect(await text(p, '#live-title')).toBe('b');
+    // Its result reloads it behind the one shown, and swaps them once loaded: no blank in between.
+    held = [];
     await deliver(p, result('b', 'pass'));
+    await p.waitFor('() => document.querySelectorAll("#live-view iframe").length === 2', null);
+    expect(await frames()).toEqual([
+      ['/app-card/b', '', "The criterion's page, alive"],
+      ['/app-card/b', 'loading', "The criterion's page, alive"],
+    ]);
+    // A new session reloads it too, while the first reload is still in flight.
     await deliver(p, session(['a', 'b']));
-    expect(await p.evaluate<number>('() => document.querySelectorAll("iframe").length')).toBe(1);
+    expect(await frames()).toHaveLength(3);
+    // Chrome asks for the same URL one request at a time: answer them as they come.
+    const waiting = held;
+    held = undefined;
+    await vi.waitFor(async () => {
+      for (const answer of waiting.splice(0)) answer();
+      expect(await frames()).toHaveLength(1);
+    });
+    expect((await frames()).map((f) => (f as string[])[1])).toEqual(['']);
+    // A result of another criterion leaves it alone.
+    await deliver(p, result('a', 'pass'));
+    expect(await frames()).toHaveLength(1);
     // Live again on its own card closes it.
     await click(p, '.card[data-id=b] .actions button:nth-child(3)');
     expect(await p_hidden(p, '#live')).toBe(true);
     expect(await attr(p, '.card[data-id=b] .actions button:nth-child(3)', 'aria-pressed')).toBe('false');
+    expect(await p.evaluate<number>('() => document.querySelectorAll("iframe").length')).toBe(0);
     await click(p, '.card[data-id=b] .actions button:nth-child(3)');
     // Its card gone, Live closes.
     await deliver(p, session(['a']));
     expect(await p_hidden(p, '#live')).toBe(true);
-    expect(await p.evaluate<number>('() => document.querySelectorAll("iframe[src]").length')).toBe(0);
+    expect(await p.evaluate<number>('() => document.querySelectorAll("iframe").length')).toBe(0);
     await key(p, 'l');
     expect(await p_hidden(p, '#live')).toBe(true);
     await click(p, '.card[data-id=a] .actions button:nth-child(3)');
@@ -471,6 +498,17 @@ describe('the steps — criterion 13', () => {
       ['then', 'then', 'app-card says "a"', 'L7'],
     ]);
     expect(await text(p, '.card[data-id=a] .steps li.given .says b')).toBe('destacada');
+    // Three columns: the block, what it says (and what it got, wrapping under it), its line.
+    expect(await all(p, '.card[data-id=a] .steps li', '(li) => [...li.children].map((c) => c.className)')).toEqual([
+      ['block', 'content', 'at line'],
+      ['block', 'content', 'at line'],
+      ['block', 'content', 'at line'],
+    ]);
+    expect(await all(p, '.card[data-id=a] .steps li .content', '(c) => [...c.children].map((e) => e.className)')).toEqual([
+      ['says props'],
+      ['says', 'mark', 'evidence'],
+      ['says', 'mark', 'evidence'],
+    ]);
     expect(await attr(p, '.card[data-id=a] .steps li.then .at', 'href')).toBe(`vscode://file/${SPEC}:7`);
     expect(await attr(p, '.card[data-id=a] .steps li.then .says', 'href')).toBe('vscode://file/C:/p/fudic/terms/then/text.js:1');
   }, 60_000);
@@ -529,7 +567,7 @@ describe('the steps — criterion 13', () => {
       ['when ignored', '', ''],
       ['then', '', ''],
     ]);
-    expect(await text(p, '.card[data-id=a] .steps li.ignored .badge')).toBe('skipped here');
+    expect(await text(p, '.card[data-id=a] .steps li.ignored .content > .badge')).toBe('skipped here');
     await deliver(
       p,
       result('a', 'error', {
