@@ -69,9 +69,17 @@ export interface StubState {
   /** Each diagnostic collection by name: what it holds by file path, and whether it was disposed. */
   problems: Map<string, { readonly byPath: Map<string, DiagnosticStub[]>; disposed: boolean }>;
   /** CodeLens providers registered, with their selector. */
-  codeLensProviders: { readonly selector: unknown; readonly provider: { provideCodeLenses(document: unknown): CodeLensStub[] } }[];
+  codeLensProviders: { readonly selector: unknown; readonly provider: CodeLensProviderStub }[];
   /** Every document `showTextDocument` was asked to show, with its options. */
   shownDocuments: [unknown, unknown][];
+  /** Every `withProgress` shown, in order: its options, and whether its task has ended. */
+  progress: { readonly options: { readonly location: number; readonly title: string }; ended: boolean }[];
+}
+
+/** A CodeLens provider, as the adapter registers it. */
+export interface CodeLensProviderStub {
+  readonly onDidChangeCodeLenses?: (listener: () => void) => unknown;
+  provideCodeLenses(document: unknown): CodeLensStub[];
 }
 
 /** An editor in view: its file and the decorations painted on it, by decoration type. */
@@ -90,7 +98,7 @@ export const visibleEditor = (fsPath: string): VisibleEditorStub => {
 /** A `vscode.WebviewPanel`, as the workbench tab uses it. */
 export interface PanelStub {
   readonly viewType: string;
-  readonly title: string;
+  title: string;
   readonly column: number;
   readonly options: unknown;
   readonly webview: { html: string; readonly posted: unknown[] };
@@ -274,9 +282,11 @@ export const state: StubState = {
   problems: new Map(),
   codeLensProviders: [],
   shownDocuments: [],
+  progress: [],
 };
 
 export const reset = (): void => {
+  state.progress = [];
   state.benchBar = emptyBar();
   state.decorationTypes = [];
   state.visibleEditors = [];
@@ -341,6 +351,23 @@ export const changeTheme = (kind: number): void => {
 export const StatusBarAlignment = { Left: 1, Right: 2 } as const;
 
 export const ViewColumn = { One: 1, Beside: -2 } as const;
+
+export const ProgressLocation = { SourceControl: 1, Window: 10, Notification: 15 } as const;
+
+/** `vscode.EventEmitter`: listeners on `event`, called by `fire`, dropped by `dispose`. */
+export class EventEmitter<T> {
+  private listeners: ((value: T) => void)[] = [];
+  readonly event = (listener: (value: T) => void) => {
+    this.listeners.push(listener);
+    return { dispose: () => undefined };
+  };
+  fire(value: T): void {
+    for (const listener of this.listeners) listener(value);
+  }
+  dispose(): void {
+    this.listeners = [];
+  }
+}
 
 /** A status bar item over one of the recorded bars. */
 const barItem = (bar: () => StubState['bar']) => ({
@@ -428,6 +455,13 @@ export const window = {
     state.shownDocuments.push([document, options]);
     return Promise.resolve(undefined);
   },
+  withProgress: (options: { location: number; title: string }, task: () => Promise<void>) => {
+    const shown = { options, ended: false };
+    state.progress.push(shown);
+    return task().then(() => {
+      shown.ended = true;
+    });
+  },
   showWarningMessage: (message: string) => {
     state.warnings.push(message);
     return Promise.resolve(undefined);
@@ -452,6 +486,12 @@ export const window = {
     };
     state.panels.push(panel);
     return {
+      get title() {
+        return panel.title;
+      },
+      set title(value: string) {
+        panel.title = value;
+      },
       webview: {
         set html(value: string) {
           panel.webview.html = value;
@@ -506,7 +546,7 @@ export const languages = {
       },
     };
   },
-  registerCodeLensProvider: (selector: unknown, provider: { provideCodeLenses(document: unknown): CodeLens[] }) => {
+  registerCodeLensProvider: (selector: unknown, provider: CodeLensProviderStub) => {
     state.codeLensProviders.push({ selector, provider });
     return { dispose: () => undefined };
   },

@@ -12,6 +12,7 @@ import {
   panelOrigin,
   panelRequest,
   shellUrl,
+  startingHtml,
   themeOf,
 } from '../src/workbench-panel.js';
 
@@ -77,6 +78,38 @@ describe('panelHtml', () => {
     const html = panelHtml('http://127.0.0.1:1/__bench/?a="b"&c=<d>');
     expect(html).toContain('<code>http://127.0.0.1:1/__bench/?a=&quot;b&quot;&amp;c=&lt;d&gt;</code>');
     expect(html).not.toContain('<d>');
+  });
+});
+
+describe('startingHtml', () => {
+  /** Runs the page's script against a spinner and a status line, recorded. */
+  function starting() {
+    const html = startingHtml();
+    const script = /<script>([\s\S]*)<\/script>/u.exec(html)![1]!;
+    const spinner = { removed: false, remove: () => void (spinner.removed = true) };
+    const status = { className: '', textContent: 'Starting workbench…' };
+    const listeners: ((event: { data: unknown }) => void)[] = [];
+    const window = { addEventListener: (_type: string, listener: (typeof listeners)[number]) => listeners.push(listener) };
+    const document = { getElementById: (id: string) => ({ spinner, status })[id] };
+    new Function('window', 'document', script)(window, document);
+    return { html, spinner, status, message: (data: unknown) => listeners.forEach((l) => l({ data })) };
+  }
+
+  it('says it is starting, with a spinner, and loads nothing from outside', () => {
+    const { html } = starting();
+    expect(html).toContain('<span class="spinner" id="spinner"></span><span id="status">Starting workbench…</span>');
+    expect(csp(html)).toBe(`default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'`);
+  });
+
+  it('a stopped message replaces the spinner with why, as text; anything else changes nothing', () => {
+    const page = starting();
+    page.message(null);
+    page.message({ type: 'theme', theme: 'dark' });
+    expect(page.spinner.removed).toBe(false);
+    expect(page.status).toEqual({ className: '', textContent: 'Starting workbench…' });
+    page.message({ type: 'stopped', message: '<b>Fudic: no Node</b>' });
+    expect(page.spinner.removed).toBe(true);
+    expect(page.status).toEqual({ className: 'stopped', textContent: '<b>Fudic: no Node</b>' });
   });
 });
 
