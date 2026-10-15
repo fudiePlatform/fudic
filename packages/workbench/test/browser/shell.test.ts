@@ -245,19 +245,24 @@ describe('the header — criterion 13', () => {
 const p_hidden = (p: PageLike, selector: string) => p.evaluate<boolean>('(s) => document.querySelector(s).hidden', selector);
 
 describe('the cards — criterion 13', () => {
-  it('one per criterion, open whatever their verdict, with no iframe; the failing ones first', async () => {
+  it('one per criterion, with no iframe; the failing ones first and open, the passing ones folded', async () => {
     const p = await shell();
     await deliver(p, session(['a', 'b', 'c']));
     expect(await all(p, '.card', '(c) => c.dataset.id')).toEqual(['a', 'b', 'c']);
-    expect(await all(p, '.card[data-id=a] .head > *', '(e) => e.className')).toEqual(['status', 'title', 'verdict', 'was', 'line', 'actions']);
-    expect(await all(p, '.card[data-id=a] .actions button', '(b) => b.textContent')).toEqual(['▶ Run', '⊤ Pin', '◉ Live']);
+    expect(await all(p, '.card[data-id=a] .head > *', '(e) => e.className')).toEqual(['toggle', 'status', 'title', 'verdict', 'was', 'line', 'actions']);
+    expect(await all(p, '.card[data-id=a] .actions button', '(b) => b.textContent')).toEqual(['▶ Run', 'Pin', '◉ Live']);
+    expect(await attr(p, '.card[data-id=a] .actions button:nth-child(2)', 'title')).toBe(
+      'Pinned, saving a file runs only this criterion; click again to unpin',
+    );
+    // Before any run, nothing to look at: every card folded.
+    expect(await opens(p)).toEqual(['false', 'false', 'false']);
     expect(await text(p, '.card[data-id=b] .line')).toBe('L8');
     expect(await attr(p, '.card[data-id=b] .line', 'href')).toBe(`vscode://file/${SPEC}:8`);
     await deliver(p, result('a', 'pass'));
     await deliver(p, result('b', 'fail'));
     await deliver(p, result('c', 'error', { error: 'the page answered 500', pageErrors: ['boom'] }));
     expect(await shown(p)).toEqual(['b', 'c', 'a']);
-    expect(await opens(p)).toEqual(['true', 'true', 'true']);
+    expect(await opens(p)).toEqual(['false', 'true', 'true']);
     expect(await text(p, '.card[data-id=a] .verdict')).toBe('pass · 12 ms');
     expect(await p.evaluate<number>('() => document.querySelectorAll("iframe[src]").length')).toBe(0);
     expect(await p.evaluate<number>('() => document.querySelectorAll("iframe").length')).toBe(1);
@@ -265,25 +270,70 @@ describe('the cards — criterion 13', () => {
     expect(await p_hidden(p, '.card[data-id=a] .note')).toBe(true);
   }, 60_000);
 
-  it('the head folds the card, but not from its links or buttons; Enter folds the focused one', async () => {
+  it('the arrow and the head fold the card, but not its links or other buttons; Enter folds the focused one', async () => {
     const p = await shell();
     await deliver(p, session(['a', 'b']));
+    const arrow = () => all(p, '.card .toggle', '(t) => [t.textContent, t.getAttribute("aria-expanded")]');
+    expect(await arrow()).toEqual([
+      ['▸', 'false'],
+      ['▸', 'false'],
+    ]);
+    await click(p, '.card[data-id=a] .toggle');
+    expect(await opens(p)).toEqual(['true', 'false']);
+    expect(await arrow()).toEqual([
+      ['▾', 'true'],
+      ['▸', 'false'],
+    ]);
     await click(p, '.card[data-id=a] .head');
-    expect(await opens(p)).toEqual(['false', 'true']);
+    expect(await opens(p)).toEqual(['false', 'false']);
     // In a browser the title is a vscode:// link: kept from leaving the page, it still does not fold.
     await p.evaluate<void>('() => document.addEventListener("click", (e) => e.preventDefault())');
     await click(p, '.card[data-id=a] .head .title');
     await click(p, '.card[data-id=a] .actions button:nth-child(1)');
-    expect(await opens(p)).toEqual(['false', 'true']);
+    expect(await opens(p)).toEqual(['false', 'false']);
     await click(p, '.card[data-id=a] .status');
-    expect(await opens(p)).toEqual(['true', 'true']);
+    expect(await opens(p)).toEqual(['true', 'false']);
     // Enter or Space on a button is the button's, not a fold.
     await p.evaluate<void>('() => document.querySelector(".card[data-id=b]").focus()');
     await p.evaluate<void>('() => document.querySelector(".card[data-id=b] .actions button").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }))');
     await p.evaluate<void>('() => document.querySelector(".card[data-id=b] .actions button").dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }))');
-    expect(await opens(p)).toEqual(['true', 'true']);
-    await key(p, 'Enter');
     expect(await opens(p)).toEqual(['true', 'false']);
+    await key(p, 'Enter');
+    expect(await opens(p)).toEqual(['true', 'true']);
+  }, 60_000);
+
+  it('Expand all opens every card; once all are open it is Collapse all, and folds them', async () => {
+    const p = await shell();
+    await deliver(p, session(['a', 'b']));
+    expect(await text(p, '#fold-all')).toBe('Expand all');
+    await click(p, '.card[data-id=a] .toggle');
+    expect(await text(p, '#fold-all')).toBe('Expand all');
+    await click(p, '#fold-all');
+    expect(await opens(p)).toEqual(['true', 'true']);
+    expect(await text(p, '#fold-all')).toBe('Collapse all');
+    await click(p, '#fold-all');
+    expect(await opens(p)).toEqual(['false', 'false']);
+    expect(await text(p, '#fold-all')).toBe('Expand all');
+    // It is the person's choice: a run that ends red does not open them again.
+    await deliver(p, result('a', 'fail'));
+    expect(await opens(p)).toEqual(['false', 'false']);
+  }, 60_000);
+
+  it('a card opens or folds by its verdict only once the run is over, never while it comes in', async () => {
+    const p = await shell();
+    await deliver(p, session(['a', 'b', 'c']));
+    // Unfolded by hand: the person's choice wins over any verdict.
+    await click(p, '.card[data-id=c] .toggle');
+    await deliver(p, running(['a', 'b', 'c']));
+    await deliver(p, result('a', 'fail'));
+    await deliver(p, result('c', 'pass'));
+    expect(await opens(p)).toEqual(['false', 'false', 'true']);
+    await deliver(p, result('b', 'pass'));
+    expect(await opens(p)).toEqual(['true', 'false', 'true']);
+    // The next run that turns it green folds it, at its end.
+    await deliver(p, running(['a']));
+    await deliver(p, result('a', 'pass'));
+    expect(await opens(p)).toEqual(['false', 'false', 'true']);
   }, 60_000);
 
   it('a new session updates the cards in place, and what was folded by hand stays folded', async () => {
@@ -295,7 +345,8 @@ describe('the cards — criterion 13', () => {
     await deliver(p, session(['a', 'b', 'd']));
     expect(await all(p, '.card', '(c) => c.dataset.id')).toEqual(['a', 'b', 'd']);
     expect(await p.evaluate<boolean>('() => document.querySelector(".card[data-id=a]").__kept === true')).toBe(true);
-    expect(await opens(p)).toEqual(['false', 'true', 'true']);
+    // Green, it would fold: unfolded by hand, it stays open.
+    expect(await opens(p)).toEqual(['true', 'false', 'false']);
     // Its last result is painted again on the new steps.
     expect(await text(p, '.card[data-id=a] .verdict')).toBe('pass · 12 ms');
     expect(await text(p, '.card[data-id=a] .steps li.then .mark')).toBe('✓');
@@ -380,7 +431,7 @@ describe('the cards — criterion 13', () => {
     const active = () => p.evaluate<string | undefined>('() => document.activeElement.dataset.id');
     // Enter with no card focused does nothing.
     await key(p, 'Enter');
-    expect(await opens(p)).toEqual(['true', 'true', 'true']);
+    expect(await opens(p)).toEqual(['false', 'false', 'true']);
     await key(p, 'j');
     expect(await active()).toBe('c');
     await key(p, 'j');
