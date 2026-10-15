@@ -1,6 +1,6 @@
 # SDD-58 — Traducciones y pipes
 
-> **Estado:** `En curso` — [tareas](./SDD-58-Task.md), 47 / 48.
+> **Estado:** `Hecho` — [tareas](./SDD-58-Task.md), 48 / 48.
 > **Paquetes:** `@fudic/i18n` (nuevo) · `@fudic/compiler` · `@fudic/config` · `@fudic/vite` ·
 > `@fudic/cli` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` ·
 > `examples/i18n` (nuevo)

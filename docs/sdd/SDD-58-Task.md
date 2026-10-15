@@ -5,7 +5,7 @@
 > `@fudic/cli` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` ·
 > `examples/i18n` (nuevo)
 > **Rama:** `sdd-58-i18n`
-> **Progreso:** 47 / 48 — `En curso`.
+> **Progreso:** 48 / 48 — `Hecho`.
 
 El orden va de dentro afuera:
 1. los diagnósticos y la config;
@@ -166,7 +166,7 @@ Cada fase se commitea al cerrarla, con sus tests.
 - [x] 46. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; `@fudic/i18n` al 100 % en las
   cuatro métricas, y los paquetes tocados sin bajar de donde estaban (criterio 36).
 - [x] 47. README de `@fudic/i18n` en inglés, corto y sin citas a SDD; incluye `pnpm translate`.
-- [ ] 48. INDEX: estado `Hecho` y fila en el registro de progreso. Después, OK de Pedro en el
+- [x] 48. INDEX: estado `Hecho` y fila en el registro de progreso. Después, OK de Pedro en el
   navegador.
 
 > Notas de las fases 7 y 8:
