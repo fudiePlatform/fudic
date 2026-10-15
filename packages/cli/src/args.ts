@@ -19,6 +19,7 @@ import type {
   ProjectOptions,
   SpecOptions,
   TermOptions,
+  TranslateOptions,
   WorkspaceOptions,
 } from './types.js';
 
@@ -43,6 +44,7 @@ export type ParsedCommand =
   | { readonly kind: 'spec'; readonly name: string; readonly opts: SpecOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'term'; readonly name: string; readonly opts: TermOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'fmt'; readonly paths: readonly string[]; readonly opts: FmtOptions; readonly flags: GlobalFlags }
+  | { readonly kind: 'translate'; readonly opts: TranslateOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'help' }
   | { readonly kind: 'error'; readonly error: CliError };
 
@@ -51,6 +53,7 @@ export const USAGE = `fudic — scaffolding for Declarative Shadow DOM apps
   fudic fmt [path…]             format .fud and .fudspec files in place  (default: .)
   fudic new <name>              create a project
   fudic new <name> --workspace  create a workspace and its first app
+  fudic translate               extract the messages into src/locales/<locale>.json
   fudic generate <type> <name>  add a piece                     (alias: g)
     fudic g app <name>            another app in the workspace  (alias: a)
     fudic g lib <name>            a component library
@@ -60,7 +63,7 @@ export const USAGE = `fudic — scaffolding for Declarative Shadow DOM apps
     fudic g spec <component>      its .fudspec (and fixture)    (alias: s)
     fudic g term <block> <name>   a term module for .fudspec    (alias: t)
 
-Generators (component, page, layout, spec, term) take a destination
+Generators (component, page, layout, spec, term) and translate take a destination
   --project <name>   the project the piece goes to, by directory name
                      default: the nearest fudic.json at or above --cwd; there is no
                      default project, and without either the command fails
@@ -228,6 +231,7 @@ export function parseArgs(argv: readonly string[]): ParsedCommand {
   const [command, ...rest] = tokens.positionals;
 
   if (command === 'fmt') return parseFmt(tokens, rest, { cwd, force }, flags);
+  if (command === 'translate') return parseTranslate(tokens, rest, { cwd, force }, flags);
   if (command === 'new') return parseNew(tokens, rest, { cwd, force }, flags);
   if (command === 'generate' || command === 'g') return parseGenerate(tokens, rest, { cwd, force }, flags);
   return { kind: 'error', error: FUD0448({ problem: 'unknown-command', command: command ?? '' }) };
@@ -273,6 +277,18 @@ function parseFmt(tokens: Tokens, rest: readonly string[], base: Base, flags: Gl
   // No path is every `.fud` under the working directory: a formatter with no argument
   // formats the project, which is what every other one does and what CI will type.
   return { kind: 'fmt', paths: rest.length === 0 ? ['.'] : rest, opts, flags };
+}
+
+/**
+ * `fudic translate` (SDD-58 §3.5): no argument and no option of its own — the languages are the
+ * project's `locales`, and the files are the project's.
+ */
+function parseTranslate(tokens: Tokens, rest: readonly string[], base: Base, flags: GlobalFlags): ParsedCommand {
+  const unknown = unknownFlag(tokens, [...GLOBAL, 'project']);
+  if (unknown !== null) return { kind: 'error', error: unknown };
+  const extra = rest[0];
+  if (extra !== undefined) return { kind: 'error', error: FUD0448({ problem: 'unexpected-argument', command: 'translate', value: extra }) };
+  return { kind: 'translate', opts: { ...base, ...target(tokens) }, flags };
 }
 
 /** A numeric flag, or `undefined` when what was given is not one. */

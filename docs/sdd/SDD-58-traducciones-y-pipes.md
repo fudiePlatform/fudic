@@ -1,6 +1,6 @@
 # SDD-58 — Traducciones y pipes
 
-> **Estado:** `En curso` — [tareas](./SDD-58-Task.md), 40 / 48.
+> **Estado:** `En curso` — [tareas](./SDD-58-Task.md), 43 / 48.
 > **Paquetes:** `@fudic/i18n` (nuevo) · `@fudic/compiler` · `@fudic/config` · `@fudic/vite` ·
 > `@fudic/cli` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` ·
 > `examples/i18n` (nuevo)
@@ -8,7 +8,7 @@
 > SW), 22 (CLI), 23 (proyección TS), 35 (compilo o no compilo), 40 (props de layout),
 > 41 (configuración), 43 (librerías), 45 (runtime publicado), 50 (diagnósticos), 51 (expresiones
 > de la vista)
-> **Rango de diagnósticos:** `FUD1020`–`FUD1039` (usa `FUD1020`–`FUD1025`). `FUD0725` gana el
+> **Rango de diagnósticos:** `FUD1020`–`FUD1039` (usa `FUD1020`–`FUD1026`). `FUD0725` gana el
 > problema `locales`.
 > **Decisiones:** 158–161 (nuevas). La 158 enmienda SDD-51 §3.2: en la vista `|` deja de ser el
 > OR de bits. Especifica la §4 de [IDEA-03](./ideas/IDEA-03-backend-poliglota.md) (pipes como datos).
@@ -277,6 +277,7 @@ declare function $pipe<T>(value: NoInfer<T>, pipe: $Pipe<T>): string;
 | `FUD1023` | error | `fudic translate` | Catálogo ilegible: JSON roto o forma distinta de `Catalog` | el fichero de catálogo |
 | `FUD1024` | error | `fudic translate` | Traducción con ICU inválido, o con huecos o etiquetas que no son los del original | el mensaje en el `.fud`/`.ts` |
 | `FUD1025` | error | `fudic translate` | Dos `t()` válidos en el mismo contexto con el mismo texto y distinto número de claves en su objeto de huecos | el segundo |
+| `FUD1026` | error | `fudic translate` | El comando en una app sin `locales` | el proyecto |
 
 `FUD1020` y `FUD1021` son errores de código, como un error de tipos: sin literal no hay nada que
 compilar, y sin idiomas no hay locale que poner. Todo lo que trata de catálogos es del comando. El

@@ -26,9 +26,10 @@ import { planApp } from './plans/app.js';
 import { planLib } from './plans/lib.js';
 import { planSpec } from './plans/spec.js';
 import { planTerm } from './plans/term.js';
+import { planTranslate } from './plans/translate.js';
 import { formatDiff, formatError, formatDiagnostic, formatPlan, planToJson } from './report.js';
 import { nodeCommandRunner, nodeReadIo, nodeWriteIo, type CommandRunner, type ReadIo, type WriteIo } from './io.js';
-import type { Plan } from './types.js';
+import type { Plan, TranslatePlan } from './types.js';
 
 /**
  * The errors that mean "a source file could not be read", which is exit code 2: `--in` that
@@ -108,7 +109,7 @@ async function execute(argv: readonly string[], deps: RunDeps): Promise<number> 
     for (const change of plan.changes) {
       if (change.kind === 'modify') human(`${formatDiff(change).join('\n')}\n`);
     }
-    return 0;
+    return closing(plan, human);
   }
 
   const applied = await apply(plan, command.opts, deps.writeIo, deps.runner);
@@ -122,7 +123,20 @@ async function execute(argv: readonly string[], deps: RunDeps): Promise<number> 
     human(`${formatError(commandFailed(applied.failed))}\n`);
     return 1;
   }
-  return 0;
+  return closing(plan, human);
+}
+
+/**
+ * What `fudic translate` adds to the output of a plan (SDD-58 §3.5): a line per locale, and an
+ * exit code that is not 0 only when a message is wrong — an untranslated one is a warning, and
+ * the catalogs were written all the same. Every other command ends in 0 here.
+ */
+function closing(plan: Plan, human: (text: string) => void): number {
+  if (!('summary' in plan)) return 0;
+  for (const s of (plan as TranslatePlan).summary) {
+    human(`  ${s.locale}  ${s.total} messages · ${s.added} new · ${s.review} to review · ${s.missing} untranslated\n`);
+  }
+  return plan.diagnostics.some((entry) => entry.diagnostic.severity === 'error') ? 1 : 0;
 }
 
 /** The text a diagnostic's span refers to, when it can still be read. */
@@ -153,5 +167,7 @@ function build(command: Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } |
       return planTerm(command.name, command.opts, io);
     case 'fmt':
       return planFmt(command.paths, command.opts, io);
+    case 'translate':
+      return planTranslate(command.opts, io);
   }
 }

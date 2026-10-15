@@ -22,6 +22,9 @@ export type {
   ProjectOptions,
   SpecOptions,
   TermOptions,
+  TranslateOptions,
+  TranslatePlan,
+  LocaleSummary,
   WorkspaceOptions,
 } from './types.js';
 
@@ -41,6 +44,7 @@ export { placeProject, APPS_DIR, LIBS_DIR, type Placement } from './workspace/pl
 export { planComponent } from './plans/component.js';
 export { planSpec, typeScriptProps, type PropsReader } from './plans/spec.js';
 export { planTerm } from './plans/term.js';
+export { planTranslate } from './plans/translate.js';
 export { planPage } from './plans/page.js';
 export { planLayout } from './plans/layout.js';
 export { apply } from './apply.js';

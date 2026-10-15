@@ -208,6 +208,13 @@ describe('catalogs, read and never written (§4.10)', () => {
     expect(compile.relative?.(join(root, 'src', 'routes', 'about.fud'))).toBe('src/routes/about.fud');
   });
 
+  it('criterion 11: a translation to review counts as translated, and is used as it is', () => {
+    const key = messageKey('routes/about.fud', 'Cerrar panel');
+    const entry = { source: 'Cerrar panel', translation: 'Close', review: 'Cerrar', where: 'src/routes/about.fud:1', at: 0 };
+    writeFileSync(join(root, 'src', 'locales', 'en.json'), JSON.stringify({ 'routes/about.fud': { [key]: entry } }));
+    expect(new Catalogs(root, ['es', 'en'], false).compileFor('en').translate(message('Cerrar panel'))).toEqual(['Close']);
+  });
+
   it('a catalog that is not there is an empty one', () => {
     expect(new Catalogs(root, ['es', 'en'], false).of('fr')).toEqual({});
   });

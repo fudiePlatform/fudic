@@ -189,5 +189,29 @@ export interface LayoutOptions extends TargetedOptions {
   readonly head: boolean;
 }
 
+/**
+ * `fudic translate` (SDD-58 §3.5): the project to translate, and nothing else. Its languages are
+ * the project's own `locales`; there is no flag that could disagree with them.
+ */
+export type TranslateOptions = TargetedOptions;
+
+/** What `fudic translate` found for one locale, for the summary the binary prints. */
+export interface LocaleSummary {
+  readonly locale: string;
+  /** Messages in its catalog after the merge. */
+  readonly total: number;
+  /** Messages its catalog did not have. */
+  readonly added: number;
+  /** Messages whose text changed under a translation: `review` set. */
+  readonly review: number;
+  /** Messages with no translation, or an empty one. */
+  readonly missing: number;
+}
+
+/** The plan of `fudic translate`: a plan, plus the summary per locale. */
+export interface TranslatePlan extends Plan {
+  readonly summary: readonly LocaleSummary[];
+}
+
 /** The empty plan: the neutral element every builder starts from. */
 export const EMPTY_PLAN: Plan = { changes: [], commands: [], diagnostics: [], errors: [] };

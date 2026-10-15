@@ -326,3 +326,4 @@ export * from './codes/FUD1022.js';
 export * from './codes/FUD1023.js';
 export * from './codes/FUD1024.js';
 export * from './codes/FUD1025.js';
+export * from './codes/FUD1026.js';

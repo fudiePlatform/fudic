@@ -126,7 +126,7 @@ export function libraryTags(cwd: string, io: ReadIo): ReadonlyMap<string, Foreig
 }
 
 /** `@fudic/resolve`'s dependency-walk port, over the read seam the CLI already has. */
-function libraryFs(io: ReadIo): LibraryFs {
+export function libraryFs(io: ReadIo): LibraryFs {
   return {
     readFile: (path) => (io.exists(path) ? io.read(path) : undefined),
     realPath: (path) => io.realPath(path),

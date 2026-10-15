@@ -13,14 +13,11 @@ import type { Plugin } from 'vite';
 import { localizedIo, translateScript, type LocaleCompile, type ResolveIo } from '@fudic/compiler';
 import { compileMessage, parseCatalog, type Catalog } from '@fudic/i18n';
 import { buildIo } from './build-memory.js';
-import { ERROR_FILE } from '@fudic/conventions';
+import { ERROR_FILE, LOCALES_DIR } from '@fudic/conventions';
 import type { RouteBuild } from './discover.js';
 
 /** The query parameter that names the locale a module is compiled for: `x.fud?locale=en`. */
 export const LOCALE_PARAM = 'locale';
-
-/** Where the catalogs live, relative to the project root. */
-export const LOCALES_DIR = 'src/locales';
 
 /** The catalog of `locale`: `src/locales/<locale>.json`. */
 export function catalogFile(root: string, locale: string): string {

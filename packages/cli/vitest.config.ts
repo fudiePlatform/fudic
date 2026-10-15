@@ -18,6 +18,8 @@ export default defineConfig({
         // New code is born at 100 (CLAUDE.md): the .fudspec generators (SDD-53).
         'src/plans/spec.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/plans/term.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // New code is born at 100 (CLAUDE.md): `fudic translate` (SDD-58).
+        'src/plans/translate.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
       },
     },
   },

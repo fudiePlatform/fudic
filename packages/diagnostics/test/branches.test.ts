@@ -76,6 +76,7 @@ const CASES: readonly (readonly [FudDiagnostic, string])[] = [
   [c.FUD0448({ problem: 'unknown-type', type: 'zz' }), 'unknown type "zz"'],
   [c.FUD0448({ problem: 'term-block', value: 'thn' }), 'unknown block "thn": expected given, when or then'],
   [c.FUD0448({ problem: 'route-segment', part: '[', route: '/a/[' }), 'invalid route segment "[" in "/a/["'],
+  [c.FUD0448({ problem: 'unexpected-argument', command: 'translate', value: 'x' }), 'fudic translate takes no argument: "x"'],
   [c.FUD0451({ line: 'pnpm i', status: null }), 'could not run `pnpm i`: is it installed and on your PATH?'],
   [c.FUD0451({ line: 'pnpm i', status: 1 }), '`pnpm i` exited with code 1'],
   [c.FUD0482({ span: S, error: new Error('boom') }), 'The formatter could not finish: boom'],

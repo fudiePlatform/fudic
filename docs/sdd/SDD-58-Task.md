@@ -5,7 +5,7 @@
 > `@fudic/cli` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` ·
 > `examples/i18n` (nuevo)
 > **Rama:** `sdd-58-i18n`
-> **Progreso:** 40 / 48 — `En curso`.
+> **Progreso:** 43 / 48 — `En curso`.
 
 El orden va de dentro afuera:
 1. los diagnósticos y la config;
@@ -134,15 +134,23 @@ Cada fase se commitea al cerrarla, con sus tests.
 
 ## Fase 6 — `fudic translate`
 
-- [ ] 40. `planTranslate` en `@fudic/cli`:
+- [x] 40. `planTranslate` en `@fudic/cli`:
   - recorre los `.fud` y los `.ts`/`.js` de `src` y los `.fud` de las librerías fudic de la app;
   - extrae con `extractMessages` y `extractScriptMessages`;
   - fusiona con `mergeCatalog` y devuelve como `FileChange` los catálogos que cambian (criterios 10
     y 11).
-- [ ] 41. Diagnósticos del plan: `FUD1022` por mensaje e idioma sin traducir, `FUD1023`, `FUD1024`
+- [x] 41. Diagnósticos del plan: `FUD1022` por mensaje e idioma sin traducir, `FUD1023`, `FUD1024`
   y `FUD1025`, con los spans de §5 (criterio 13).
-- [ ] 42. Comando `translate` en el binario: aplica el plan, imprime el resumen por idioma (total,
+- [x] 42. Comando `translate` en el binario: aplica el plan, imprime el resumen por idioma (total,
   nuevos, a revisar, sin traducir) y sale con distinto de 0 solo si hay un error.
+
+> Notas de la fase 6:
+> - Un catálogo ilegible (`FUD1023`) para el plan entero: fusionarlo desde vacío borraría sus
+>   traducciones, así que no se reescribe ningún catálogo y el comando sale con 1.
+> - `fudic translate` en una app sin `locales` es `FUD1026` (nuevo, del rango de esta spec), y un
+>   argumento de más es `FUD0448` con el problema `unexpected-argument`.
+> - `src/locales` pasa a ser `LOCALES_DIR` de `@fudic/conventions`, el mismo nombre para el plugin,
+>   el comando y el editor.
 
 ## Fase 7 — Editor
 

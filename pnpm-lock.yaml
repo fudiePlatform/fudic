@@ -167,6 +167,9 @@ importers:
       '@fudic/formatter':
         specifier: workspace:*
         version: link:../formatter
+      '@fudic/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@fudic/language-core':
         specifier: workspace:*
         version: link:../language-core

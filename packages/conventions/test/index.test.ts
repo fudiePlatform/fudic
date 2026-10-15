@@ -3,11 +3,12 @@ import { describe, expect, it } from 'vitest';
 import * as conventions from '../src/index.js';
 
 describe('@fudic/conventions', () => {
-  it('names the four project directories', () => {
+  it('names the project directories', () => {
     expect(conventions.SRC_DIR).toBe('src');
     expect(conventions.ROUTES_DIR).toBe('src/routes');
     expect(conventions.COMPONENTS_DIR).toBe('src/components');
     expect(conventions.LAYOUTS_DIR).toBe('src/layouts');
+    expect(conventions.LOCALES_DIR).toBe('src/locales');
   });
 
   it('names the runtime directory, outside every app base', () => {
@@ -83,6 +84,7 @@ describe('@fudic/conventions', () => {
       'HTTP_FILE',
       'INVALIDATE_MESSAGE',
       'LAYOUTS_DIR',
+      'LOCALES_DIR',
       'ROUTES_DIR',
       'RUNTIME_CACHE_PREFIX',
       'RUNTIME_DIR',
