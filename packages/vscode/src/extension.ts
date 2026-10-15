@@ -45,6 +45,14 @@ import type { ClientLaunch, CriterionView, LanguageClientPort, WorkbenchPanel, W
 let session: FudicSession | undefined;
 let workbenches: Workbenches | undefined;
 
+let stepLineDecoration: vscode.TextEditorDecorationType | undefined;
+/** The line of the step under the pointer in the shell: one decoration, made the first time. */
+const stepLine = (): vscode.TextEditorDecorationType =>
+  (stepLineDecoration ??= vscode.window.createTextEditorDecorationType({
+    isWholeLine: true,
+    backgroundColor: new vscode.ThemeColor('editor.rangeHighlightBackground'),
+  }));
+
 /**
  * The workbench tab (SDD-32 §4.10): the shell framed beside the editor. Exported, like
  * `createClient`, so its wiring is assertable through the double.
@@ -69,6 +77,12 @@ export const openWorkbenchPanel = (view: { readonly title: string }): WorkbenchP
           viewColumn: vscode.ViewColumn.One,
           selection: new vscode.Range(line - 1, 0, line - 1, 0),
         }),
+      highlight: (file, line) => {
+        for (const editor of vscode.window.visibleTextEditors) {
+          const lit = line !== null && samePath(editor.document.uri.fsPath) === samePath(file);
+          editor.setDecorations(stepLine(), lit ? [new vscode.Range(line - 1, 0, line - 1, 0)] : []);
+        }
+      },
     }),
   );
   const themed = vscode.window.onDidChangeActiveColorTheme(
