@@ -44,6 +44,12 @@ export interface ProjectConfig {
    * after the global ones and before its own `<style>`.
    */
   readonly styles: readonly NamedStyle[];
+  /**
+   * The languages of the app (SDD-58), canonical BCP 47, the first one the language the code
+   * is written in. ABSENT when the file declares none: no extraction, no catalogs, no prefixes,
+   * and the framework behaves byte for byte as it did before translations existed.
+   */
+  readonly locales?: readonly string[];
 }
 
 /** One `"name": "path"` entry of `globalStyles` or `styles`. */
@@ -113,6 +119,7 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
 
   const globalStyles = readStyleMap(fields, 'globalStyles', ctx);
   const styles = readStyleMap(fields, 'styles', ctx);
+  const locales = readLocales(fields, ctx);
 
   // Fields are NOT rescued one by one (§4.2). Identity is a unit, and half an identity is
   // worse than none: an `id` that got through alone would namespace caches under a name
@@ -120,7 +127,57 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
   if (ctx.diagnostics.length > 0) {
     return { config: null, diagnostics: ctx.diagnostics };
   }
-  return { config: { id, kind, prefix, globalStyles, styles }, diagnostics: [] };
+  return {
+    config: { id, kind, prefix, globalStyles, styles, ...(locales === undefined ? {} : { locales }) },
+    diagnostics: [],
+  };
+}
+
+/**
+ * An absent `locales` stays absent; a present one is a non-empty array of distinct BCP 47
+ * tags, each canonicalized by `Intl.getCanonicalLocales` — so `"EN-us"` is read as `"en-US"`,
+ * and two spellings of one tag are a repetition. Empty is refused rather than read as "no
+ * languages": writing the key says the app has some, and the file should say which.
+ */
+function readLocales(fields: Record<string, unknown>, ctx: Ctx): readonly string[] | undefined {
+  const value = fields['locales'];
+  if (value === undefined) {
+    return undefined;
+  }
+  const refuse = (reason: string): undefined => {
+    ctx.diagnostics.push(malformed({ problem: 'locales', reason }, fieldSpan(ctx.text, 'locales')));
+    return undefined;
+  };
+  if (!Array.isArray(value)) {
+    return refuse('it is not an array');
+  }
+  if (value.length === 0) {
+    return refuse('it is empty');
+  }
+  const locales: string[] = [];
+  for (const tag of value as unknown[]) {
+    const canonical = canonicalLocale(tag);
+    if (canonical === undefined) {
+      return refuse(`${JSON.stringify(tag)} is not a BCP 47 tag`);
+    }
+    if (locales.includes(canonical)) {
+      return refuse(`"${canonical}" is repeated`);
+    }
+    locales.push(canonical);
+  }
+  return locales;
+}
+
+/** The canonical form of a BCP 47 tag, or `undefined` when `tag` is not one. */
+function canonicalLocale(tag: unknown): string | undefined {
+  if (typeof tag !== 'string') {
+    return undefined;
+  }
+  try {
+    return Intl.getCanonicalLocales(tag)[0];
+  } catch {
+    return undefined;
+  }
 }
 
 /**

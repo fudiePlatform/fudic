@@ -5,7 +5,7 @@
 > `@fudic/cli` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` ·
 > `examples/i18n` (nuevo)
 > **Rama:** `sdd-58-i18n`
-> **Progreso:** 0 / 48 — `Listo`.
+> **Progreso:** 3 / 48 — `En curso`.
 
 El orden va de dentro afuera:
 1. los diagnósticos y la config;
@@ -22,10 +22,10 @@ Cada fase se commitea al cerrarla, con sus tests.
 
 ## Fase 1 — Diagnósticos y config
 
-- [ ] 1. `FUD1020`–`FUD1025` en `@fudic/diagnostics`: un `.ts` y un `.md` por código, con la
+- [x] 1. `FUD1020`–`FUD1025` en `@fudic/diagnostics`: un `.ts` y un `.md` por código, con la
   severidad de §3.7 y una línea por código en `index.ts`, en orden.
-- [ ] 2. `FUD0725` gana `problem: 'locales'`: el valor en la unión y una línea en su `.md`.
-- [ ] 3. `ProjectConfig.locales` en `@fudic/config`: `readLocales` con `Intl.getCanonicalLocales`
+- [x] 2. `FUD0725` gana `problem: 'locales'`: el valor en la unión y una línea en su `.md`.
+- [x] 3. `ProjectConfig.locales` en `@fudic/config`: `readLocales` con `Intl.getCanonicalLocales`
   rechaza el array vacío, las repetidas y las inválidas, y subraya la clave. Tests del criterio 1.
 
 ## Fase 2 — `@fudic/i18n`

@@ -142,4 +142,63 @@ describe('readProjectConfig', () => {
       expect(result.diagnostics[0]?.message).toContain('boom');
     });
   });
+
+  describe('locales (SDD-58 criterion 1)', () => {
+    it('is absent when the file does not declare it', () => {
+      const result = readProjectConfig(ROOT, io('{"id":"shop"}'));
+
+      expect(result.config).not.toHaveProperty('locales');
+    });
+
+    it('reads ["es", "en"] in written order', () => {
+      const result = readProjectConfig(ROOT, io('{"id":"shop","locales":["es","en"]}'));
+
+      expect(result.config).toEqual({
+        id: 'shop',
+        kind: 'app',
+        prefix: '',
+        globalStyles: [],
+        styles: [],
+        locales: ['es', 'en'],
+      });
+      expect(result.diagnostics).toEqual([]);
+    });
+
+    it('canonicalizes every tag', () => {
+      const result = readProjectConfig(ROOT, io('{"locales":["EN-us","zh-hant-tw","ES"]}'));
+
+      expect(result.config?.locales).toEqual(['en-US', 'zh-Hant-TW', 'es']);
+    });
+
+    it.each([
+      ['an empty array', '[]', 'it is empty'],
+      ['a repeated tag', '["es","es"]', '"es" is repeated'],
+      ['a tag repeated only after canonicalization', '["es","ES"]', '"es" is repeated'],
+      ['an invalid tag', '["xx-?"]', '"xx-?" is not a BCP 47 tag'],
+      ['a non-string element', '["es",42]', '42 is not a BCP 47 tag'],
+      ['a string instead of an array', '"es"', 'it is not an array'],
+      ['an object instead of an array', '{"es":true}', 'it is not an array'],
+      ['null', 'null', 'it is not an array'],
+    ])('%s is FUD0725 problem locales and leaves no config', (_case, value, reason) => {
+      const text = `{"id":"shop","locales":${value}}`;
+      const result = readProjectConfig(ROOT, io(text));
+
+      expect(result.config).toBeNull();
+      expect(result.diagnostics).toHaveLength(1);
+      const d = result.diagnostics[0]!;
+      expect(d.code).toBe('FUD0725');
+      expect(d.severity).toBe('error');
+      expect(d.file).toBe(CONFIG_FILE);
+      expect(d.message).toContain('"locales" must be a non-empty array of distinct BCP 47 tags');
+      expect(d.message).toContain(reason);
+      expect(text.slice(d.span!.start, d.span!.end)).toBe('"locales"');
+    });
+
+    it('a bad locales does not rescue the other fields, and adds to their diagnostics', () => {
+      const result = readProjectConfig(ROOT, io('{"id":"Shop","locales":[]}'));
+
+      expect(result.config).toBeNull();
+      expect(result.diagnostics).toHaveLength(2);
+    });
+  });
 });
