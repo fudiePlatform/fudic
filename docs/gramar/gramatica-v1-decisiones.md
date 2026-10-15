@@ -1259,6 +1259,27 @@ que ejecutan, cargan o redirigen fuera del guardia (`FUD0915`), las props que es
 evalúa cada valor en su sitio, entre los `@{ }` que lo rodean, como el servidor. Precisa la 136
 (`style=` dinámico) y la 137.
 
+**158.** **En la vista, `|` es el pipe** (SDD-58 §4.4). `@(valor | preset)` formatea con un preset
+de `@fudic/i18n` (`date`, `number`, `currency`, `percent`, `relativeTime`, `list`), y el compilador
+pone el locale. Tiene la precedencia de `|` en JS. El OR de bits deja de existir en la vista; en
+`@code` sigue siendo el operador de JS. Enmienda SDD-51 §3.2. Especifica la §4 de IDEA-03.
+
+**159.** **Lo que la vista pinta como texto se traduce sin marcarlo** (SDD-58 §4.1). Se traducen:
+- los nodos de texto con alguna letra;
+- los atributos traducibles del estándar HTML y de ARIA;
+- los literales en posición de resultado de una expresión que se pinta.
+
+`translate="no"` lo excluye. *Por qué sin marca: «se ve claramente que es texto» (Pedro,
+2026-10-15).*
+
+**160.** **Un mensaje es una frase** (SDD-58 §4.2). La tira de contenido en línea forma un solo
+mensaje: texto, `@expr` como `{nombre}` y elementos de frase como `<n>…</n>`. La traducción puede
+reordenar huecos y etiquetas, y el emit construye la tira en su orden.
+
+**161.** **`t()` solo donde un string puede no ser texto** (SDD-58 §4.3): el valor de una prop y el
+código TS. El primer argumento es un string literal (`FUD1020`). *Por qué no `t()` en todas
+partes: una regla para el desarrollador, no una por caso (Pedro, 2026-10-15).*
+
 ### Gramática de referencia
 
 ```
@@ -1562,3 +1583,7 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 154 | Interpolación | `@raw` es el único contenido de su elemento (`FUD0990`) y solo pinta un valor `trustedHtml()`; lo demás se escapa. Precisa la 18 (SDD-54) |
 | 155 | Interpolación | La variable de un `ref` la declara el autor en `@client`; el compilador le asigna el nodo al crear o hidratar y la anula al desmontar. Precisa la 30 (SDD-54) |
 | 156–157 | Props | Viven en [props-spec.md](../sdd/props-spec.md): el resto `...resto` de `props<T>()` (156) y el spread de atributos sobre un elemento nativo (157) (SDD-55) |
+| 158 | Interpolación | En la vista `\|` es el pipe sobre un preset de `@fudic/i18n`; el locale lo pone el compilador. El OR de bits deja de existir en la vista. Enmienda SDD-51 §3.2 (SDD-58) |
+| 159 | Interpolación | Lo que la vista pinta como texto se traduce sin marca: texto, atributos traducibles y literales en posición de resultado; `translate="no"` excluye (SDD-58) |
+| 160 | Interpolación | Un mensaje es una frase: texto, `{hueco}` y `<n>…</n>`; la traducción reordena y el emit sigue su orden (SDD-58) |
+| 161 | Interpolación | `t()` solo en el valor de una prop y en código TS, con un literal como primer argumento (`FUD1020`) (SDD-58) |
