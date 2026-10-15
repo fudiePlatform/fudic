@@ -18,6 +18,8 @@ export interface PlannedStep {
   readonly term: string;
   /** As written; `role:x/"n"` included, a string without its quotes. */
   readonly args: readonly string[];
+  /** Offset of its term in the `.fudspec`: the line the shell points at. */
+  readonly offset: number;
 }
 
 export interface PlannedCriterion {
@@ -29,6 +31,8 @@ export interface PlannedCriterion {
   readonly mount: string;
   /** The name in `props <name>`. */
   readonly fixture: string | null;
+  /** Offset of its `props` line in the `.fudspec`, when it has one. */
+  readonly propsOffset?: number;
   /** Offset of its `criterion` keyword in the `.fudspec`; 0 for the bare card without one. */
   readonly offset: number;
   readonly steps: readonly PlannedStep[];
@@ -97,24 +101,30 @@ export function planBench(input: PlanInput): BenchPlan {
   } else {
     for (const criterion of input.spec.criteria) {
       if (criterion.slug === undefined) continue;
-      const { fixture, steps } = readCriterion(criterion);
-      criteria.push(planner.plan(criterion.slug.text, fixture, steps, criterion.keyword.start));
+      const { fixture, propsOffset, steps } = readCriterion(criterion);
+      const planned = planner.plan(criterion.slug.text, fixture, steps, criterion.keyword.start);
+      criteria.push(propsOffset === undefined ? planned : { ...planned, propsOffset });
     }
   }
   return { criteria, files, diagnostics };
 }
 
-function readCriterion(criterion: Criterion): { fixture: string | null; steps: PlannedStep[] } {
+function readCriterion(criterion: Criterion): { fixture: string | null; propsOffset?: number; steps: PlannedStep[] } {
   let fixture: string | null = null;
+  let propsOffset: number | undefined;
   const steps: PlannedStep[] = [];
   for (const block of criterion.blocks) {
     for (const line of block.terms) {
       const args = line.args.map(written);
-      if (line.name.text === PROPS) fixture = args[0] ?? null;
-      else steps.push({ block: block.block, term: normalizeTerm(line.name.text), args });
+      if (line.name.text === PROPS) {
+        fixture = args[0] ?? null;
+        propsOffset = line.span.start;
+      } else {
+        steps.push({ block: block.block, term: normalizeTerm(line.name.text), args, offset: line.span.start });
+      }
     }
   }
-  return { fixture, steps };
+  return { fixture, ...(propsOffset !== undefined ? { propsOffset } : {}), steps };
 }
 
 function written(arg: Arg): string {

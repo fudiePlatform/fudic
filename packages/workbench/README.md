@@ -168,7 +168,8 @@ shown one against the other.
 - `ctx.locate(ref)` takes a tag (`app-card`) or a role (`role:tab`, `role:tab/"Tab B"`, the name
   matched exactly). A reference that matches more than one element fails the step, saying how
   many. The locator has `box()`, `textContent()`, `isVisible()`, `click()` and
-  `setAttribute(name, value)`; every call gives up after 5 s.
+  `setAttribute(name, value)`, which answers the value the attribute had (null without one);
+  every call gives up after 5 s.
 - `textContent()` is the text a person sees: it goes into shadow roots, puts each slot's assigned
   content (or its fallback) in place, and leaves out `<style>`, `<script>` and `<template>`.
 - `ctx.goto(path)` does not navigate — the component is mounted on its own page — and the step

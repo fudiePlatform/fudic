@@ -7,7 +7,7 @@
 import { existsSync, rmSync } from 'node:fs';
 import { FUD0975 } from '@fudic/diagnostics';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { BrowserLike } from '../../src/browser.js';
+import { VIEWPORT, type BrowserLike } from '../../src/browser.js';
 import { isFailure, type WorkbenchSession } from '../../src/types.js';
 import { connectShell, isSession, resultOf, tempProject, type Shell, type TempProject } from '../helpers/project.js';
 
@@ -91,7 +91,7 @@ describe('openWorkbench, failing', () => {
       die = () => reject(new Error('Target page, context or browser has been closed\nmore'));
     });
     dying.catch(() => undefined);
-    const dead: BrowserLike = { name: 'chrome', newPage: () => dying, close: async () => undefined };
+    const dead: BrowserLike = { name: 'chrome', viewport: VIEWPORT, newPage: () => dying, close: async () => undefined };
     control.browser = async () => dead;
     await open(TABS);
     die();

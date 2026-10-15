@@ -1,8 +1,9 @@
 # BUG-48 · El banco que nadie usaría: lento al guardar, frágil, solo en Chrome y solo con ventana
 
-> **Estado:** `Listo` (2026-10-14) — causas confirmadas sobre el código el 2026-10-14, midiendo
+> **Estado:** `Hecho` (2026-10-15) — causas confirmadas sobre el código el 2026-10-14, midiendo
 > `app-card` de `examples/basic` con el binario, con Playwright sobre el shell y con un Vite
-> aislado.
+> aislado. Pedro lo probó de punta a punta el 2026-10-15, junto con
+> [BUG-49](./BUG-49-el-banco-que-no-se-ve-trabajar.md), que corrige su shell, sus lentes y su motor.
 > **Corrige:** [SDD-32](../SDD-32-banco-de-trabajo.md) §3.1 (el binario), §4.2 (el arranque),
 > §4.5 (Vite dentro del banco), §4.6 (el motor), §4.7 (volver a ejecutar), §4.8 (el shell), §4.9
 > (el protocolo), §4.10 (VS Code), §4.11 y su catálogo, §5 y §7 (reabre «varias ventanas sobre

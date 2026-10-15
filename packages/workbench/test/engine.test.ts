@@ -10,8 +10,9 @@ const ORIGIN = 'http://127.0.0.1:1';
 const MOUNT = 'body > app-card';
 const SHOT = `screenshot {"css":"${MOUNT}"}`;
 
-function criterion(steps: PlannedStep[], extra: { error?: string } = {}): PlannedCriterion {
-  return { id: 'c', route: '/c', mount: MOUNT, offset: 0, fixture: null, steps, ...extra };
+/** A criterion of these steps; where they are written does not matter to the engine. */
+function criterion(steps: Omit<PlannedStep, 'offset'>[], extra: { error?: string } = {}): PlannedCriterion {
+  return { id: 'c', route: '/c', mount: MOUNT, offset: 0, fixture: null, steps: steps.map((s) => ({ ...s, offset: 0 })), ...extra };
 }
 
 type Run = (ctx: TermContext, args: Readonly<Record<string, unknown>>) => Promise<{ pass: boolean; evidence: unknown }>;

@@ -88,6 +88,7 @@ function loader(pauseMs: number): TermLoader {
 function patched(override: (page: PageLike) => Partial<PageLike>): BrowserLike {
   return {
     name: browser.name,
+    viewport: browser.viewport,
     async newPage() {
       const page = await browser.newPage();
       return { ...page, ...override(page) };

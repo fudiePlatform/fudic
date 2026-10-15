@@ -12,6 +12,9 @@
  * stdin, and it cleans up after itself. A process that dies on its own says so in its tabs.
  * `closeAll` closes every one. A browser that outlives the editor is the worst defect this
  * feature can have.
+ *
+ * Nothing waits in silence: the tab opens at the click, saying it is starting, and the lenses
+ * and the margin show what was asked for as running before the process confirms it.
  */
 
 import { nodeNotFound, WORKBENCH_NOT_INSTALLED, workbenchFailed, workbenchStopped } from './commands/messages.js';
@@ -21,6 +24,7 @@ import type {
   FileSystemPort,
   NotificationPort,
   ProcessPort,
+  ProgressPort,
   WorkbenchPanel,
   WorkbenchPanelPort,
   WorkbenchProcess,
@@ -48,13 +52,45 @@ export interface WorkbenchDeps {
   readonly notifications: NotificationPort;
   readonly results: WorkbenchResultsPort;
   readonly status: WorkbenchStatusPort;
+  readonly progress: ProgressPort;
+}
+
+/** What a CodeLens of a `.fudspec` asks for. */
+export type LensAction =
+  | { readonly type: 'run'; readonly all: true }
+  | { readonly type: 'run'; readonly failing: true }
+  | { readonly type: 'run'; readonly id: string }
+  | { readonly type: 'pause'; readonly paused: boolean }
+  | { readonly type: 'cancel' };
+
+/** A CodeLens: its 0-based line, its title, and what it does; null when it only says something. */
+export interface SpecLens {
+  readonly line: number;
+  readonly title: string;
+  readonly action: LensAction | null;
+}
+
+/** What the lenses of a `.fudspec` show: whether its workbench is starting, open, and doing what. */
+export interface LensState {
+  readonly starting: boolean;
+  readonly open: boolean;
+  readonly paused: boolean;
+  /** Saves waiting while paused. */
+  readonly pending: number;
+  /** The criterion Run all, Run failing and a save are limited to; null when none is pinned. */
+  readonly pinned: string | null;
+  readonly running: ReadonlySet<string>;
 }
 
 export interface Workbenches {
   /** Opens the workbench of the `.fud` or `.fudspec` at `file`, or reveals the one already open. */
   open(file: string): Promise<void>;
-  /** Runs one criterion, or the failing ones (`id` null); opens the workbench when it is not. */
-  run(file: string, id: string | null): Promise<void>;
+  /** What a lens asks: runs, pauses or cancels; running opens the workbench when it is not. */
+  act(file: string, action: LensAction): Promise<void>;
+  /** What the lenses of `file` show now. */
+  lensState(file: string): LensState;
+  /** Called whenever what some lens shows changes. */
+  onLensesChanged(listener: () => void): void;
   /** The active editor changed: the status bar shows its component, if it is open. */
   focus(file: string | undefined): void;
   /** Closes every process: the extension is going away. */
@@ -65,11 +101,22 @@ export interface Workbenches {
 interface Component {
   readonly tag: string;
   readonly path: string;
-  panel?: WorkbenchPanel;
+  readonly panel: WorkbenchPanel;
   spec: string | null;
   criteria: readonly { readonly id: string; readonly line: number; readonly steps: readonly string[] }[];
   readonly results: Map<string, Result>;
   readonly running: Set<string>;
+  paused: boolean;
+  pending: number;
+  pinned: string | null;
+}
+
+/** A tab opened at the click, before its process answered: what its answer attaches to. */
+interface Opening {
+  readonly panel: WorkbenchPanel;
+  /** The user closed the tab before the answer came. */
+  closed: boolean;
+  readonly done: Promise<void>;
 }
 
 /** A process: one project, its components, and the `open`s waiting for an answer. */
@@ -111,16 +158,61 @@ function dirOf(path: string): string {
   return cut <= 0 ? path : path.slice(0, cut);
 }
 
-/** The CodeLenses of a `.fudspec`: «▶ Run» over each criterion, «▶ Run failing» over the first. */
-export function criterionLenses(text: string): { readonly line: number; readonly title: string; readonly id: string | null }[] {
-  const lenses: { line: number; title: string; id: string | null }[] = [];
-  text.split('\n').forEach((source, line) => {
+/** The spinning icon VS Code draws in a lens title. */
+const SPIN = '$(sync~spin)';
+
+/** A `.fudspec` before anything was opened: nothing starting, nothing running. */
+export const IDLE: LensState = { starting: false, open: false, paused: false, pending: 0, pinned: null, running: new Set() };
+
+/**
+ * The CodeLenses of a `.fudspec`. Over its `component` line (the first criterion's without one),
+ * what is about the whole spec: Run all · Run failing, and Pause · Cancel once it is open; over
+ * each criterion, «▶ Run». Whatever is under way says so at once, with a spinner: the click
+ * must show something before the process answers.
+ */
+export function specLenses(text: string, state: LensState): SpecLens[] {
+  const lines = text.split('\n');
+  const criteria: { line: number; id: string }[] = [];
+  lines.forEach((source, line) => {
     const id = /^criterion\s+(\S+)/u.exec(source)?.[1];
-    if (id === undefined) return;
-    if (lenses.length === 0) lenses.push({ line, title: '▶ Run failing', id: null });
-    lenses.push({ line, title: '▶ Run', id });
+    if (id !== undefined) criteria.push({ line, id });
   });
+  const component = lines.findIndex((source) => /^component\s+\S/u.test(source));
+  const top = component >= 0 ? component : criteria[0]?.line;
+  const lenses: SpecLens[] = [];
+  // Pinned, Run all reaches the pinned criterion alone: «all» running means that one.
+  const reached = state.pinned === null ? criteria : criteria.filter((c) => c.id === state.pinned);
+  if (top !== undefined) lenses.push(...globalLenses(top, state, reached.length > 0 && reached.every((c) => state.running.has(c.id))));
+  for (const { line, id } of criteria) {
+    lenses.push(
+      state.running.has(id)
+        ? { line, title: `${SPIN} Running…`, action: null }
+        : { line, title: '▶ Run', action: { type: 'run', id } },
+    );
+  }
   return lenses;
+}
+
+function globalLenses(line: number, state: LensState, allRunning: boolean): SpecLens[] {
+  if (state.starting) return [{ line, title: `${SPIN} Starting workbench…`, action: null }];
+  const which = state.pinned === null ? 'all' : 'pinned';
+  const lenses: SpecLens[] = [
+    { line, title: allRunning ? `${SPIN} Running ${which}…` : `▶ Run ${which}`, action: { type: 'run', all: true } },
+    { line, title: '▶ Run failing', action: { type: 'run', failing: true } },
+  ];
+  if (!state.open) return lenses;
+  const resume = `▶ Resume${state.pending > 0 ? ` (${state.pending})` : ''}`;
+  lenses.push(
+    { line, title: state.paused ? resume : '⏸ Pause', action: { type: 'pause', paused: !state.paused } },
+    { line, title: '■ Cancel', action: { type: 'cancel' } },
+  );
+  return lenses;
+}
+
+/** The tab's title before the process names the component: the file's name. */
+function provisionalTitle(file: string): string {
+  const name = componentOf(file).split('/').pop()!;
+  return `Workbench · ${name.replace(/\.fud$/u, '')}`;
 }
 
 /** Why a criterion did not pass, in one line: the step that failed and what it got. */
@@ -165,7 +257,14 @@ function errorOf(message: Message | undefined): string | undefined {
 export function createWorkbenches(deps: WorkbenchDeps): Workbenches {
   /** By the folder the binary was found in: one process per project. */
   const projects = new Map<string, Project>();
+  /** Tabs opened at the click whose process has not answered yet, by component. */
+  const openings = new Map<string, Opening>();
+  const lensListeners: (() => void)[] = [];
   let focused: string | undefined;
+
+  const lensesChanged = (): void => {
+    for (const listener of lensListeners) listener();
+  };
 
   /**
    * The nearest folder above the file with the workbench installed, without leaving its
@@ -213,6 +312,7 @@ export function createWorkbenches(deps: WorkbenchDeps): Workbenches {
   const paint = (component: Component): void => {
     if (component.spec !== null) deps.results.show(component.spec, views(component));
     showStatus();
+    lensesChanged();
   };
 
   const showStatus = (): void => {
@@ -223,7 +323,8 @@ export function createWorkbenches(deps: WorkbenchDeps): Workbenches {
     }
     const all = found.component.criteria.length;
     const pass = found.component.criteria.filter((c) => found.component.results.get(c.id)?.verdict === 'pass').length;
-    deps.status.show(`$(beaker) ${found.component.tag} ${pass}/${all}`, `Workbench · ${found.component.tag}: ${pass} of ${all} pass`);
+    const icon = found.component.running.size > 0 ? '$(sync~spin)' : '$(beaker)';
+    deps.status.show(`${icon} ${found.component.tag} ${pass}/${all}`, `Workbench · ${found.component.tag}: ${pass} of ${all} pass`);
   };
 
   /** A message of the process: about one of its components, or the answer to an `open`. */
@@ -254,21 +355,27 @@ export function createWorkbenches(deps: WorkbenchDeps): Workbenches {
       component.results.set(id, message as unknown as Result);
     } else if (message.type === 'cancelled') {
       for (const id of message['ids'] as readonly string[]) component.running.delete(id);
+    } else if (message.type === 'state') {
+      component.paused = message['paused'] === true;
+      component.pending = typeof message['pending'] === 'number' ? message['pending'] : 0;
+      component.pinned = typeof message['pinned'] === 'string' ? message['pinned'] : null;
     } else {
       return;
     }
     paint(component);
   };
 
-  /** A component the process answered with: its tab, and what closing it does. */
-  const attach = (folder: string, project: Project, answer: Message): void => {
+  /**
+   * A component the process answered with: its tab, already open, loads the shell, and closing
+   * it closes the component — at once, when the user closed it while it was starting.
+   */
+  const attach = (folder: string, project: Project, answer: Message, opening: Opening): void => {
     const tag = answer['tag'] as string;
     const path = samePath(answer['component'] as string);
-    const component: Component = { tag, path, spec: null, criteria: [], results: new Map(), running: new Set() };
+    const { panel } = opening;
+    const component: Component = { tag, path, panel, spec: null, criteria: [], results: new Map(), running: new Set(), paused: false, pending: 0, pinned: null };
     project.components.set(path, component);
-    const panel = deps.panels.open({ title: `Workbench · ${tag}`, url: answer['url'] as string });
-    component.panel = panel;
-    panel.onClosed(() => {
+    const close = (): void => {
       if (project.components.get(path) !== component) return;
       project.components.delete(path);
       if (component.spec !== null) deps.results.clear(component.spec);
@@ -279,14 +386,21 @@ export function createWorkbenches(deps: WorkbenchDeps): Workbenches {
         project.process.send(JSON.stringify({ v: 2, type: 'close', tag }));
       }
       showStatus();
-    });
+      lensesChanged();
+    };
+    if (opening.closed) {
+      close();
+      return;
+    }
+    panel.load(answer['url'] as string, `Workbench · ${tag}`);
+    panel.onClosed(close);
     const early = project.early.get(tag) ?? [];
     project.early.delete(tag);
     for (const message of early) receive(project, message);
     showStatus();
   };
 
-  const launch = (folder: string, file: string): Project => {
+  const launch = (folder: string, file: string, opening: Opening): Project => {
     const command = setting(NODE_SETTING) ?? 'node';
     const args = [`${folder}/${WORKBENCH_BIN}`, file];
     const browser = setting(BROWSER_SETTING);
@@ -313,48 +427,62 @@ export function createWorkbenches(deps: WorkbenchDeps): Workbenches {
     process.onExit((stderr) => {
       if (projects.get(folder) === project) projects.delete(folder);
       for (const component of project.components.values()) {
-        component.panel?.showStopped(workbenchStopped(stderr));
+        component.panel.showStopped(workbenchStopped(stderr));
         if (component.spec !== null) deps.results.clear(component.spec);
       }
       project.components.clear();
+      // The `open`s it will never answer.
+      for (const [waiting, answer] of [...project.waiting]) {
+        answer({ type: 'error', file: waiting, error: { message: workbenchStopped(stderr) } });
+      }
       up(false);
       showStatus();
+      lensesChanged();
     });
 
+    const failed = (message: string): void => {
+      projects.delete(folder);
+      deps.notifications.warn(message);
+      opening.panel.showStopped(message);
+      up(false);
+    };
     void process.firstLine.then(
       (line) => {
         const answer = parse(line);
         const failure = errorOf(answer);
         if (answer === undefined || failure !== undefined || !opensComponent(answer)) {
-          projects.delete(folder);
           process.closeStdin();
-          deps.notifications.warn(workbenchFailed(failure ?? workbenchStopped('')));
-          up(false);
+          failed(workbenchFailed(failure ?? workbenchStopped('')));
           return;
         }
         // The process died between its line and here: its exit already said why.
-        if (projects.get(folder) !== project) return;
-        attach(folder, project, answer);
+        if (projects.get(folder) !== project) {
+          opening.panel.showStopped(workbenchStopped(''));
+          return;
+        }
+        attach(folder, project, answer, opening);
         up(true);
       },
       (error: unknown) => {
-        projects.delete(folder);
         const missing = (error as { code?: unknown }).code === 'ENOENT';
-        deps.notifications.warn(missing ? nodeNotFound(command) : workbenchFailed(String(error)));
-        up(false);
+        failed(missing ? nodeNotFound(command) : workbenchFailed(String(error)));
       },
     );
     return project;
   };
 
   /** Another component into a process that is up: `open`, and wait for its answer. */
-  const openInto = (folder: string, project: Project, file: string): Promise<void> =>
+  const openInto = (folder: string, project: Project, file: string, opening: Opening): Promise<void> =>
     new Promise((resolve) => {
       project.waiting.set(file, (answer) => {
         project.waiting.delete(file);
         const failure = errorOf(answer);
-        if (failure !== undefined) deps.notifications.warn(workbenchFailed(failure));
-        else attach(folder, project, answer);
+        if (failure !== undefined) {
+          deps.notifications.warn(workbenchFailed(failure));
+          opening.panel.showStopped(workbenchFailed(failure));
+        } else {
+          attach(folder, project, answer, opening);
+        }
         resolve();
       });
       project.process.send(JSON.stringify({ v: 2, type: 'open', file }));
@@ -364,7 +492,14 @@ export function createWorkbenches(deps: WorkbenchDeps): Workbenches {
     const known = find(componentOf(file));
     if (known !== undefined) {
       // Saving already runs it again: there is nothing to relaunch.
-      known.component.panel?.reveal();
+      known.component.panel.reveal();
+      return;
+    }
+    const key = samePath(componentOf(file));
+    const starting = openings.get(key);
+    if (starting !== undefined) {
+      starting.panel.reveal();
+      await starting.done;
       return;
     }
     const folder = installedAt(file);
@@ -372,26 +507,83 @@ export function createWorkbenches(deps: WorkbenchDeps): Workbenches {
       deps.notifications.warn(WORKBENCH_NOT_INSTALLED);
       return;
     }
-    const running = projects.get(folder);
-    if (running === undefined) {
-      await launch(folder, file).ready;
-      return;
+    // The tab opens now, saying it is starting: launching Vite and a browser takes seconds.
+    const title = provisionalTitle(file);
+    let finish!: () => void;
+    const opening: Opening = {
+      panel: deps.panels.open({ title }),
+      closed: false,
+      done: new Promise<void>((resolve) => (finish = resolve)),
+    };
+    opening.panel.onClosed(() => {
+      opening.closed = true;
+    });
+    openings.set(key, opening);
+    const end = deps.progress.begin(`${title}: starting…`);
+    lensesChanged();
+    try {
+      const running = projects.get(folder);
+      if (running === undefined) await launch(folder, file, opening).ready;
+      else if (await running.ready) await openInto(folder, running, file, opening);
+      else opening.panel.showStopped(workbenchStopped(''));
+    } finally {
+      openings.delete(key);
+      end();
+      finish();
+      lensesChanged();
     }
-    if (await running.ready) await openInto(folder, running, file);
+  };
+
+  /** The ids a run asks for, as far as the extension knows them: what shows as running at once. */
+  const asked = (component: Component, action: Extract<LensAction, { type: 'run' }>): string[] => {
+    if ('id' in action) return component.criteria.some((c) => c.id === action.id) ? [action.id] : [];
+    // Pinned, Run all and Run failing reach the pinned criterion alone.
+    const reached = component.criteria.filter((c) => component.pinned === null || c.id === component.pinned);
+    if ('all' in action) return reached.map((c) => c.id);
+    // Only the ones known red: the process runs those for sure, so a spinner never stays up.
+    return reached.filter((c) => {
+      const verdict = component.results.get(c.id)?.verdict;
+      return verdict === 'fail' || verdict === 'error';
+    }).map((c) => c.id);
   };
 
   return {
     open,
 
-    async run(file, id) {
+    async act(file, action) {
       const known = find(componentOf(file));
       if (known === undefined) {
-        // Opening runs every criterion: the one asked for among them.
-        await open(file);
+        // Opening runs every criterion: the ones asked for among them. Pause and cancel have
+        // nothing to act on yet.
+        if (action.type === 'run') await open(file);
         return;
       }
-      const command = id === null ? { failing: true } : { ids: [id] };
-      known.project.process.send(JSON.stringify({ v: 2, type: 'run', tag: known.component.tag, ...command }));
+      const { project, component } = known;
+      const tag = component.tag;
+      if (action.type === 'pause') {
+        project.process.send(JSON.stringify({ v: 2, type: 'pause', tag, paused: action.paused }));
+        return;
+      }
+      if (action.type === 'cancel') {
+        project.process.send(JSON.stringify({ v: 2, type: 'cancel', tag }));
+        return;
+      }
+      for (const id of asked(component, action)) component.running.add(id);
+      paint(component);
+      const which = 'id' in action ? { ids: [action.id] } : 'failing' in action ? { failing: true } : {};
+      project.process.send(JSON.stringify({ v: 2, type: 'run', tag, ...which }));
+    },
+
+    lensState(file) {
+      if (openings.has(samePath(componentOf(file)))) return { ...IDLE, starting: true };
+      const known = find(componentOf(file));
+      if (known === undefined) return IDLE;
+      const { paused, pending, pinned, running } = known.component;
+      return { starting: false, open: true, paused, pending, pinned, running };
+    },
+
+    onLensesChanged(listener) {
+      lensListeners.push(listener);
     },
 
     focus(file) {
