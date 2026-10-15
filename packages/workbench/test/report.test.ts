@@ -10,14 +10,27 @@ const SESSION: SessionMessage = {
   spec: 'C:/p/app-card.fudspec',
   diagnostics: [],
   criteria: [
-    { id: 'altura-minima', route: '/app-card/altura-minima', line: 3, steps: [{ block: 'then', text: 'app-card is at least 44 px tall', file: null }] },
+    {
+      id: 'altura-minima',
+      route: '/app-card/altura-minima',
+      line: 3,
+      props: null,
+      steps: [{ block: 'then', text: 'app-card is at least 44 px tall', file: null, line: 5 }],
+    },
     {
       id: 'titulo-largo-visible',
       route: '/app-card/titulo-largo-visible',
       line: 8,
-      steps: [{ block: 'then', text: 'app-card says "A title"', file: null }],
+      props: { name: 'long', line: 9 },
+      steps: [{ block: 'then', text: 'app-card says "A title"', file: null, line: 11 }],
     },
-    { id: 'destacada', route: '/app-card/destacada', line: 13, steps: [{ block: 'when', text: 'click role:link/"Featured"', file: null }] },
+    {
+      id: 'destacada',
+      route: '/app-card/destacada',
+      line: 13,
+      props: null,
+      steps: [{ block: 'when', text: 'click role:link/"Featured"', file: null, line: 15 }],
+    },
   ],
 };
 

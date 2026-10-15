@@ -88,9 +88,10 @@ function session(ids: readonly string[]): SessionMessage {
       id,
       route: `/app-card/${id}`,
       line: 3 + i * 5,
+      props: null,
       steps: [
-        { block: 'when' as const, text: 'click role:link', file: 'C:/p/fudic/terms/when/click.js' },
-        { block: 'then' as const, text: `app-card says "${id}"`, file: 'C:/p/fudic/terms/then/text.js' },
+        { block: 'when' as const, text: 'click role:link', file: 'C:/p/fudic/terms/when/click.js', line: 5 + i * 5 },
+        { block: 'then' as const, text: `app-card says "${id}"`, file: 'C:/p/fudic/terms/then/text.js', line: 7 + i * 5 },
       ],
     })),
   };
@@ -272,7 +273,7 @@ describe('the shell — criterion 13', () => {
           { block: 'when', term: 'route', layer: 'workspace', args: [], pass: true, evidence: null, ignored: true },
           { block: 'then', term: 'text', layer: 'workspace', args: [], error: 'app-card matches 2 elements' },
         ],
-        shots: { before: '/shot/before.png', after: '/shot/after.png' },
+        shots: { before: { url: '/shot/before.png', width: 10, height: 20 }, after: { url: '/shot/after.png', width: 10, height: 20 } },
         marks: [{ step: 1, ref: 'app-card', box: { x: 1, y: 0, width: 1, height: 1 } }],
       }),
     );

@@ -12,6 +12,7 @@ import {
   connectShell,
   inbox,
   isCancelled,
+  isSession,
   isState,
   resultOf,
   runningOf,
@@ -75,16 +76,21 @@ describe('shots and marks — criterion 8', () => {
     const { s, box } = await open(
       'criterion cambia\n  when\n    click role:tab/"Tab B"\n  then\n    visible app-tabs\n    text role:tabpanel "panel B"\n',
     );
+    // The session says the size every page opens at: the room the shell keeps for a shot.
+    expect((await box.next(isSession)).viewport).toEqual({ width: 1280, height: 720, scale: 1 });
     const result = await box.next(resultOf('cambia'), 0, 60_000);
     expect(result.verdict).toBe('pass');
     const origin = new URL(s.url).origin;
     const shots: Record<string, { width: number; height: number }> = {};
     for (const kind of ['before', 'after'] as const) {
-      const url = result.shots[kind];
-      expect(url).toMatch(new RegExp(`^/__bench/app-tabs/shot/cambia/\\d+-${kind}\\.png$`, 'u'));
-      const res = await fetch(origin + url!);
+      const shot = result.shots[kind]!;
+      expect(shot.url).toMatch(new RegExp(`^/__bench/app-tabs/shot/cambia/\\d+-${kind}\\.png$`, 'u'));
+      const res = await fetch(origin + shot.url);
       expect(res.headers.get('content-type')).toBe('image/png');
       shots[kind] = size(Buffer.from(await res.arrayBuffer()));
+      // At scale 1 the PNG is the element's CSS box, give or take the rounding of a fraction.
+      expect(Math.abs(shot.width - shots[kind].width)).toBeLessThanOrEqual(1);
+      expect(Math.abs(shot.height - shots[kind].height)).toBeLessThanOrEqual(1);
     }
     const after = shots['after']!;
     expect(result.marks.map((m) => [m.step, m.ref])).toEqual([

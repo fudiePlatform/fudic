@@ -124,7 +124,8 @@ describe('planBench — criterion 4, a criterion without props', () => {
         mount: 'body > app-card',
         offset: 20,
         fixture: null,
-        steps: [{ block: 'then', term: 'visible', args: ['app-card'] }],
+        // The offset of its term: `    visible` on the line after `  then`.
+        steps: [{ block: 'then', term: 'visible', args: ['app-card'], offset: 46 }],
       },
     ]);
     expect(plan.files.get('routes/app-card/bare.fud')).toBe(expected('bare').replace('app-card · app-card', 'app-card · bare'));
@@ -138,7 +139,7 @@ describe('planBench — criterion 4, a criterion without props', () => {
       fixtures: { vacia: {} },
       dir: DIR,
     });
-    expect(plan.criteria[0]).toEqual({ id: 'empty', route: '/app-card/empty', mount: 'body > app-card', offset: 20, fixture: 'vacia', steps: [] });
+    expect(plan.criteria[0]).toEqual({ id: 'empty', route: '/app-card/empty', mount: 'body > app-card', offset: 20, fixture: 'vacia', propsOffset: 48, steps: [] });
     expect(plan.files.get('routes/app-card/empty.fud')).not.toContain('@code');
     expect(plan.files.get('routes/app-card/empty.fud')).toContain('    <app-card></app-card>\n');
   });
@@ -175,7 +176,7 @@ describe('planBench — criterion 4, a criterion without props', () => {
       fixtures: {},
       dir: DIR,
     });
-    expect(plan.criteria[0]).toEqual({ id: 'bare', route: '/app-card/bare', mount: 'body > app-card', offset: 20, fixture: null, steps: [] });
+    expect(plan.criteria[0]).toEqual({ id: 'bare', route: '/app-card/bare', mount: 'body > app-card', offset: 20, fixture: null, propsOffset: 47, steps: [] });
     expect(plan.files.get('routes/app-card/bare.fud')).not.toContain('@code');
   });
 });
@@ -186,7 +187,7 @@ describe('planBench — a fixture entry it cannot mount', () => {
   it('ends the criterion in error, without a page, when the entry is not in the fixture', () => {
     const plan = planBench({ target: TARGET, spec: source, fixtures: { other: { title: 'x' } }, dir: DIR });
     expect(plan.criteria).toEqual([
-      { id: 'c', route: '/app-card/c', mount: 'body > app-card', offset: 20, fixture: 'missing', steps: [], error: 'the fixture has no entry "missing"' },
+      { id: 'c', route: '/app-card/c', mount: 'body > app-card', offset: 20, fixture: 'missing', propsOffset: 44, steps: [], error: 'the fixture has no entry "missing"' },
     ]);
     expect([...plan.files.keys()]).toEqual([MOUNT]);
   });
@@ -257,7 +258,8 @@ describe('planBench — criterion 5, a Signal prop', () => {
       mount: 'body > bench-host-signal-display-diez',
       offset: 26,
       fixture: 'diez',
-      steps: [{ block: 'then', term: 'text', args: ['signal-display', '10'] }],
+      propsOffset: 53,
+      steps: [{ block: 'then', term: 'text', args: ['signal-display', '10'], offset: 75 }],
     });
   });
 
@@ -332,6 +334,7 @@ describe('planBench — criterion 6, an initial value that is not a JSON literal
       mount: 'body > app-card',
       offset: 20,
       fixture: 'fecha',
+      propsOffset: 48,
       steps: [],
       error: 'the initial value of signal prop "value" is not a JSON literal',
     });
@@ -341,27 +344,25 @@ describe('planBench — criterion 6, an initial value that is not a JSON literal
 
 describe('planBench — criterion 7, the steps', () => {
   it('keeps the arguments as written, and `props` is not a step', () => {
-    const plan = planBench({
-      target: TARGET,
-      spec: spec(
-        'component app-card\n\n' +
-          'criterion c\n' +
-          '  given\n    props minima\n    route /blog\n' +
-          '  when\n    set-attribute app-card variant "highlight"\n    click role:tab/"Tab B"\n    click role:tab\n' +
-          '  then\n    min-height app-card 44\n    text app-card "two words"\n',
-      ),
-      fixtures: { minima: { title: 'A' } },
-      dir: DIR,
-    });
+    const text =
+      'component app-card\n\n' +
+      'criterion c\n' +
+      '  given\n    props minima\n    route /blog\n' +
+      '  when\n    set-attribute app-card variant "highlight"\n    click role:tab/"Tab B"\n    click role:tab\n' +
+      '  then\n    min-height app-card 44\n    text app-card "two words"\n';
+    const plan = planBench({ target: TARGET, spec: spec(text), fixtures: { minima: { title: 'A' } }, dir: DIR });
     const criterion = plan.criteria[0] as PlannedCriterion;
+    // Each step at the offset of its term, as written: what the shell turns into its line.
+    const at = (written: string) => text.indexOf(`    ${written}\n`) + 4;
     expect(criterion.steps).toEqual([
-      { block: 'given', term: 'route', args: ['/blog'] },
-      { block: 'when', term: 'set-attribute', args: ['app-card', 'variant', 'highlight'] },
-      { block: 'when', term: 'click', args: ['role:tab/"Tab B"'] },
-      { block: 'when', term: 'click', args: ['role:tab'] },
-      { block: 'then', term: 'min-height', args: ['app-card', '44'] },
-      { block: 'then', term: 'text', args: ['app-card', 'two words'] },
+      { block: 'given', term: 'route', args: ['/blog'], offset: at('route /blog') },
+      { block: 'when', term: 'set-attribute', args: ['app-card', 'variant', 'highlight'], offset: at('set-attribute app-card variant "highlight"') },
+      { block: 'when', term: 'click', args: ['role:tab/"Tab B"'], offset: at('click role:tab/"Tab B"') },
+      { block: 'when', term: 'click', args: ['role:tab'], offset: at('click role:tab') },
+      { block: 'then', term: 'min-height', args: ['app-card', '44'], offset: at('min-height app-card 44') },
+      { block: 'then', term: 'text', args: ['app-card', 'two words'], offset: at('text app-card "two words"') },
     ]);
+    expect(criterion.propsOffset).toBe(at('props minima'));
   });
 
   it('normalizes a camelCase term to its file name', () => {
@@ -371,7 +372,7 @@ describe('planBench — criterion 7, the steps', () => {
       fixtures: {},
       dir: DIR,
     });
-    expect(plan.criteria[0]?.steps).toEqual([{ block: 'then', term: 'min-height', args: ['app-card', '44'] }]);
+    expect(plan.criteria[0]?.steps).toEqual([{ block: 'then', term: 'min-height', args: ['app-card', '44'], offset: 43 }]);
   });
 });
 
