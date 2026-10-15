@@ -3,9 +3,9 @@
  * It paints what the socket says and sends back what its buttons ask for:
  *
  * - a header: the count, what ran, when, in which browser and viewport, and whether the socket is
- *   up; under it Run all · Run failing · Pause · Cancel, and how the shots are shown — side by
- *   side, on a slider, or the final one only;
- * - one card per criterion, open, in two columns: its steps — the `props` it mounts with first,
+ *   up; under it Run all · Run failing · Pause · Cancel · Expand all, and how the shots are
+ *   shown — side by side, or the final one only;
+ * - one card per criterion, the failing ones open, in two columns: its steps — the `props` first,
  *   each with its line in the `.fudspec` — and the shots the measuring browser took, with the box
  *   of every reference a step located. A card has Run · Pin · Live;
  * - ONE live iframe, on demand, for the criterion chosen: the cards are shots, not pages.
@@ -136,7 +136,6 @@ a { color: inherit; text-decoration: none; } a:hover { text-decoration: underlin
 .frame .before { position: absolute; top: 0; left: 0; }
 .box { position: absolute; border: 2px solid var(--mark); border-radius: 2px; pointer-events: none; opacity: 0.45; }
 .box.hot { opacity: 1; background: rgba(76, 141, 255, 0.22); }
-.slider { width: 100%; margin: 4px 0 0; }
 #live { position: sticky; top: 104px; width: min(45%, 520px); border: 1px solid var(--line); border-radius: 8px;
   background: var(--card); overflow: hidden; }
 #live[hidden] { display: none; }
@@ -185,7 +184,7 @@ let run = null;
 let paused = false, pinned = null, pending = 0;
 let liveId = null;
 
-const MODES = ['side', 'slider', 'final'];
+const MODES = ['side', 'final'];
 let mode = 'side';
 try { const kept = localStorage.getItem('fudic:shots'); if (MODES.includes(kept)) mode = kept; } catch {}
 
@@ -499,30 +498,6 @@ function figure(card, kind, ref, marks) {
   return fig;
 }
 
-/** Before and after on one frame: the before covers the after up to the handle. */
-function sliderFigure(card, before, after, marks) {
-  const fig = $('figure', 'shot');
-  const well = $('div', 'well');
-  const frame = frameOf(after, marks, 1);
-  const top = $('img', 'before');
-  top.alt = 'Before the first when';
-  top.width = Math.round(before.width);
-  top.height = Math.round(before.height);
-  top.src = before.url;
-  frame.insertBefore(top, frame.children[1] || null);
-  const range = $('input', 'slider');
-  range.type = 'range'; range.min = '0'; range.max = '100'; range.value = '50';
-  range.setAttribute('aria-label', 'Before ↔ after');
-  const clip = () => { top.style.clipPath = 'inset(0 ' + (100 - Number(range.value)) + '% 0 0)'; };
-  range.addEventListener('input', clip);
-  clip();
-  well.append(frame, range);
-  const cap = caption('after', after, () => openZoom(card, 'after'));
-  cap.firstChild.textContent = 'Before ↔ at the end';
-  fig.append(cap, well);
-  return fig;
-}
-
 /**
  * The shots of a card, in the chosen mode. The new ones are built aside and swapped in only once
  * their images are decoded: the card never shrinks to nothing and grows back.
@@ -533,11 +508,8 @@ async function paintShots(card) {
   const shots = m ? m.shots : {};
   const marks = m ? m.marks : [];
   const parts = [];
-  if (shots.before && shots.after && mode === 'slider') parts.push(sliderFigure(card, shots.before, shots.after, marks));
-  else {
-    if (shots.before && mode === 'side') parts.push(figure(card, 'before', shots.before, []));
-    if (shots.after) parts.push(figure(card, 'after', shots.after, marks));
-  }
+  if (shots.before && mode === 'side') parts.push(figure(card, 'before', shots.before, []));
+  if (shots.after) parts.push(figure(card, 'after', shots.after, marks));
   await Promise.all(parts.flatMap((p) => [...p.querySelectorAll('img')]).map((img) => img.decode().catch(() => undefined)));
   if (token !== card.render) return;
   card.shots.classList.toggle('two', parts.length === 2);
@@ -701,7 +673,6 @@ export function shellPage(): string {
     '<span class="spacer"></span>' +
     '<span class="modes" role="group" aria-label="How the shots are shown">' +
     '<button data-mode="side" title="Before the when and at the end, side by side">Side by side</button>' +
-    '<button data-mode="slider" title="Before and after on one frame, with a handle">Slider</button>' +
     '<button data-mode="final" title="Only the shot at the end">Final only</button></span>' +
     '</div></header>\n' +
     '<div id="problem" class="error"></div>\n<div id="diagnostics"></div>\n' +
