@@ -1,6 +1,6 @@
 # SDD-58 — Traducciones y pipes
 
-> **Estado:** `Hecho` — [tareas](./SDD-58-Task.md), 53 / 53.
+> **Estado:** `Hecho` — [tareas](./SDD-58-Task.md), 56 / 56.
 > **Paquetes:** `@fudic/i18n` (nuevo) · `@fudic/compiler` · `@fudic/config` · `@fudic/vite` ·
 > `@fudic/cli` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` ·
 > `examples/i18n` (nuevo)
@@ -481,6 +481,8 @@ El plugin compila la app una vez por idioma **dentro de un solo build**:
   - Un `.ts` con sufijo pasa por `translateScript`.
   - Uno que no nombra `@fudic/i18n` ni tiene texto sale idéntico, y Rolldown lo deduplica por
     contenido.
+- **El Service Worker.** Un solo pase enlaza las rutas de todos los idiomas: un chunk del grafo
+  de un idioma lleva su prefijo (`en-_layout`), para que el layout de cada uno tenga su nombre.
 - **El cliente** sigue el mismo camino. El chunk de hidratación de `app-card` existe una vez por
   idioma, y el mapa de hidratación de `/en/about` nombra los de `en`.
 - **Consecuencia que conviene saber: el estado de módulo de la app existe una vez por idioma** en

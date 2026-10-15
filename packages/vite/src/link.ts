@@ -28,7 +28,7 @@ import { loadWithSourceMap } from './inputmaps.js';
 import { serializeMap, type NestedOutputOptions } from './nested.js';
 import { LinkedAssets } from './linked-assets.js';
 import { ClientErasure } from './erased-sources.js';
-import { alternatesOf, localePlugin, localeTarget, pageModuleOf, type LocaleContext } from './i18n.js';
+import { alternatesOf, localeChunkFileNames, localePlugin, localeTarget, pageModuleOf, type LocaleContext } from './i18n.js';
 
 export interface LinkChunk {
   readonly fileName: string;
@@ -246,7 +246,8 @@ export async function runLinkPass(
           format: 'cjs',
           exports: 'named',
           entryFileNames: `${LINK_DIR}/[name]-[hash].js`,
-          chunkFileNames: `${LINK_DIR}/[name]-[hash].js`,
+          // One build links every locale's routes: each locale's chunks carry its prefix.
+          chunkFileNames: localeChunkFileNames(LINK_DIR),
         },
       },
     },

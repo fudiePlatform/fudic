@@ -101,7 +101,42 @@ const LIVE = `<!DOCTYPE html>
 </html>
 `;
 
+/** A layout: one chunk per locale in the Service Worker's pass, each under its own name. */
+const LAYOUT = `<!DOCTYPE html>
+<html>
+<head><script src="fudic:runtime"></script>@RenderHead()</head>
+<body><header>Cabecera</header>@RenderBody()</body>
+</html>
+`;
+
+/** Hydrated and with a pipe: its chunk imports the preset, which the worker warms with it. */
+const TOTAL = `@code {
+  import { currency } from '@fudic/i18n';
+  const euros = currency('EUR');
+  @client {
+    import { signal } from '@fudic/core';
+    const n = signal(1);
+    function mas(): void { n.set(n() + 1); }
+  }
+}
+<app-total>
+  <template shadowrootmode="open">
+    <button @click="@mas">Más</button><p>@(n() | euros)</p>
+  </template>
+</app-total>
+`;
+
+const HOME = `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/app-total.fud">
+<head><title>Inicio</title></head>
+<app-total></app-total>
+`;
+
 const FILES = {
+  'src/layouts/_layout.fud': LAYOUT,
+  'src/components/app-total.fud': TOTAL,
+  'src/routes/home.fud': HOME,
+  'src/routes/contact.fud': '<link rel="layout" href="../layouts/_layout.fud">\n<head><title>Contacto</title></head>\n<p>Escríbenos</p>\n',
   'src/routes/live.fud': LIVE,
   'src/components/app-counter.fud': COUNTER,
   'src/routes/about.fud': ABOUT,
@@ -158,11 +193,33 @@ describe('a build with "locales": ["es", "en"]', () => {
     expect(manifest.routes.map((r) => r.pattern).sort()).toEqual([
       '/en/about',
       '/en/blog/:slug',
+      '/en/contact',
+      '/en/home',
       '/en/live',
       '/es/about',
       '/es/blog/:slug',
+      '/es/contact',
+      '/es/home',
       '/es/live',
     ]);
+  });
+
+  it('the layout of each locale is its own Service Worker chunk, under the name the manifest gives', () => {
+    const manifest = JSON.parse(text(output, 'fudic-routes.json')) as {
+      build: string;
+      routes: { pattern: string; deps?: string[] }[];
+    };
+    for (const locale of ['es', 'en']) {
+      const deps = manifest.routes.find((r) => r.pattern === `/${locale}/home`)!.deps!;
+      expect(deps).toContain(`${locale}-_layout`);
+      for (const dep of deps) expect(output.some((o) => o.fileName === `sw/c/${dep}-${manifest.build}.js`)).toBe(true);
+    }
+  });
+
+  it('the imports of a hydration chunk are filed under the name the page asks it by', () => {
+    const manifest = JSON.parse(text(output, 'fudic-routes.json')) as { hydrate?: Record<string, string[]> };
+    expect(Object.keys(manifest.hydrate ?? {})).toEqual(expect.arrayContaining(['es/app-total', 'en/app-total']));
+    expect(Object.keys(manifest.hydrate ?? {}).filter((k) => !k.includes('/'))).toEqual([]);
   });
 
   it('criterion 30: a route with a client half has its chunk per locale too', () => {
@@ -334,7 +391,7 @@ describe('§4.5: a single locale', () => {
 
   it('has no prefix and no redirect: the routes are the ones it had', () => {
     const manifest = JSON.parse(text(output, 'fudic-routes.json')) as { routes: { pattern: string }[] };
-    expect(manifest.routes.map((r) => r.pattern).sort()).toEqual(['/about', '/blog/:slug', '/live']);
+    expect(manifest.routes.map((r) => r.pattern).sort()).toEqual(['/about', '/blog/:slug', '/contact', '/home', '/live']);
     expect(output.some((o) => o.fileName === 'index.html')).toBe(false);
     expect(output.some((o) => o.fileName.startsWith('assets/h/es/'))).toBe(false);
   });

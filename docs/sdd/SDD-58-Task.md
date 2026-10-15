@@ -5,7 +5,7 @@
 > `@fudic/cli` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` ·
 > `examples/i18n` (nuevo)
 > **Rama:** `sdd-58-i18n`
-> **Progreso:** 53 / 53 — `Hecho`.
+> **Progreso:** 56 / 56 — `Hecho`.
 
 El orden va de dentro afuera:
 1. los diagnósticos y la config;
@@ -191,3 +191,20 @@ Cada fase se commitea al cerrarla, con sus tests.
   y existen en SSG con su `meta refresh` (criterios 26 y 38).
 - [x] 53. `examples/i18n` con `site`, README y spec al día; `pnpm typecheck`, `pnpm test` y
   `pnpm build` en verde.
+
+## Fase 10 — Offline, tras la prueba en el navegador
+
+> Pedro vio en `examples/i18n` un 404 de `/sw/c/_layout-<build>.js`, la página pedida dos veces
+> y después siempre al servidor, y el chunk del pipe siempre por la red. Un solo build enlaza
+> las rutas de todos los idiomas, y el layout de cada uno salía como chunk compartido con el
+> mismo nombre: el id del build no podía sustituir el hash de ninguno (FUD0501) y la URL que
+> deriva el manifiesto no existía. El SW no podía enlazar la ruta, la rescataba por la red y la
+> daba por muerta. El precalentado de la hidratación buscaba además `x.fud?client` y no
+> `x.fud?client&locale=en`, así que no listaba los imports de ningún chunk.
+
+- [x] 54. Los chunks del grafo de un idioma en el pase del SW llevan su prefijo
+  (`en-_layout-<build>.js`); el manifiesto los nombra así.
+- [x] 55. Los imports de un chunk de hidratación se archivan bajo `en/<tag>`, el nombre con que
+  la página lo pide, y el SW precalienta por el nombre que lleva la URL que la página envía.
+- [x] 56. `examples/i18n` cachea `/assets/**` en su `sw.json`, como `examples/basic`, y construye
+  con sourcemaps.

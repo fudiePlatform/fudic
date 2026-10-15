@@ -79,6 +79,7 @@ import {
   handedOn,
   hasQuery,
   localeOf,
+  idWithoutLocale,
   localeOfPath,
   negotiate,
   pageModuleOf,
@@ -2125,11 +2126,14 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       const items = bundleItems(bundle);
       const hydrateDeps: Record<string, readonly string[]> = {};
       for (const [key, item] of Object.entries(bundle)) {
-        const tag =
-          item.type === 'chunk' ? tagOfFacade.get(slashes(item.facadeModuleId ?? '')) : undefined;
-        if (tag === undefined) {
+        // A locale's chunk is `x.fud?client&locale=en`, and the runtime asks for it as
+        // `en/<tag>` (SDD-58 §4.6): filed under that name, or the worker warms another file.
+        const facade = item.type === 'chunk' ? slashes(item.facadeModuleId ?? '') : '';
+        const found = tagOfFacade.get(idWithoutLocale(facade));
+        if (found === undefined) {
           continue;
         }
+        const tag = `${chunkDir(localeOf(facade), locales)}${found}`;
         const deps = reachableChunks(items, (i) => i.fileName === key)
           .filter((fileName) => fileName !== key)
           .map((fileName) => bundle[fileName]?.fileName ?? fileName);

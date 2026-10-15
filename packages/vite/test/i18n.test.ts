@@ -32,6 +32,8 @@ import {
   prefixPattern,
   resolveForLocale,
   localeRedirect,
+  localeChunkFileNames,
+  idWithoutLocale,
   redirectHtml,
   unprefixedPages,
   withLocale,
@@ -148,6 +150,20 @@ describe('_error.fud and the alternates', () => {
     expect(alternatesOf(route('/en/about', 'about.fud', 'en'), ['es', 'en'], '/', 'https://example.com')).toEqual({
       alternates: { locale: 'en', locales: ['es', 'en'], base: '/', site: 'https://example.com' },
     });
+  });
+});
+
+describe('the chunks of one build over every locale (§4.6)', () => {
+  it('idWithoutLocale: the id the rest of the plugin knows', () => {
+    expect(idWithoutLocale('/a/x.fud?client&locale=en')).toBe('/a/x.fud?client');
+    expect(idWithoutLocale('/a/x.fud?locale=en')).toBe('/a/x.fud');
+    expect(idWithoutLocale('/a/x.fud')).toBe('/a/x.fud');
+  });
+
+  it('localeChunkFileNames: a chunk of a locale’s graph carries its prefix, a shared one none', () => {
+    const name = localeChunkFileNames('sw/c');
+    expect(name({ moduleIds: ['/a/b.ts', '/a/_layout.fud?locale=en'] })).toBe('sw/c/en-[name]-[hash].js');
+    expect(name({ moduleIds: ['/a/b.ts'] })).toBe('sw/c/[name]-[hash].js');
   });
 });
 

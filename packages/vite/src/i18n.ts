@@ -30,9 +30,30 @@ export function localeOf(id: string): string | undefined {
   return q === -1 ? undefined : (new URLSearchParams(id.slice(q + 1)).get(LOCALE_PARAM) ?? undefined);
 }
 
+/**
+ * The file names of the chunks of a pass that compiles every locale in ONE build (§4.6): a
+ * chunk of a locale's graph carries its prefix, `en-_layout-[hash].js`. Without it the layout
+ * of `es` and that of `en` are two chunks of one name, the build id cannot replace the hash
+ * of either (FUD0501), and the URL the manifest derives for them points at no file.
+ */
+export function localeChunkFileNames(dir: string): (chunk: { readonly moduleIds: readonly string[] }) => string {
+  return (chunk) => {
+    const locale = chunk.moduleIds.map(localeOf).find((l) => l !== undefined);
+    return `${dir}/${locale === undefined ? '' : `${locale}-`}[name]-[hash].js`;
+  };
+}
+
 /** `id` compiled for `locale`: the parameter added to whatever query it already has. */
 export function withLocale(id: string, locale: string): string {
   return `${id}${id.includes('?') ? '&' : '?'}${LOCALE_PARAM}=${locale}`;
+}
+
+/** `id` without its locale: `x.fud?client&locale=en` → `x.fud?client`. */
+export function idWithoutLocale(id: string): string {
+  const q = id.indexOf('?');
+  if (q === -1) return id;
+  const rest = withoutLocale(id.slice(q + 1));
+  return rest === '' ? id.slice(0, q) : `${id.slice(0, q)}?${rest}`;
 }
 
 /** A query without its locale: what the rest of the plugin dispatches on (`client`, `server`). */
