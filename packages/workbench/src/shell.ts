@@ -298,7 +298,7 @@ function result(m) {
 function paintShots(card, m) {
   card.shots.replaceChildren();
   for (const kind of ['before', 'after']) {
-    const url = m.shots[kind];
+    const url = m.shots[kind] && m.shots[kind].url;
     if (!url) continue;
     const figure = $('figure', 'shot');
     const frame = $('div', 'frame');
