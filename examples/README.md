@@ -8,6 +8,7 @@ paquetes ni usa alias.
 | Ejemplo | Qué demuestra |
 |---|---|
 | [`basic`](./basic) | Routing por FS, SSG estático + incremental, componentes con CSS con scope, assets, shell de tres hilos. Cero JS de framework en la página. |
+| [`i18n`](./i18n) | Una app en `es` y `en`: rutas con prefijo, texto traducido al compilar con los catálogos de `pnpm translate`, pipes de `Intl` y plurales. |
 | [`workspace`](./workspace) | **Dos aplicaciones en un mismo origen**, cada una su propio proyecto y su propio build: `/` y `/admin/`. Lo que el origen comparte sin querer es `CacheStorage`, y ahí es donde se ve que cada app necesita un `id`. |
 
 Son también el banco de pruebas del **scaffolding**: el que sirva de plantilla

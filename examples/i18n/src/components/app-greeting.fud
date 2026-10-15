@@ -1,0 +1,23 @@
+@* N1: no JavaScript reaches the browser. Its text, its formats and its plural are written by
+   the server, already in the page's language. *@
+@code {
+  import { currency, date } from '@fudic/i18n';
+
+  const { name = "", count = 0, vip = false } = props<{ name?: string; count?: number; vip?: boolean }>();
+  const euros = currency('EUR');
+  const larga = date({ dateStyle: 'long', timeZone: 'Europe/Madrid' });
+  const precio = 3.5;
+  const alta = Date.UTC(2026, 9, 15);
+}
+
+<app-greeting>
+  <template shadowrootmode="open">
+    <p>Hola <b>@name</b>, tienes @count mensajes</p>
+    <p>Tu suscripción cuesta @(precio | euros) al mes desde el @(alta | larga).</p>
+    @if (vip) {
+      <p>Eres cliente preferente.</p>
+    } else {
+      <p>Todavía no eres cliente preferente.</p>
+    }
+  </template>
+</app-greeting>

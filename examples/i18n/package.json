@@ -1,0 +1,26 @@
+{
+  "name": "@fudic/example-i18n",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "fudic translations example — two locales, prefixed routes, text translated at build time, pipes and plurals.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "translate": "fudic translate"
+  },
+  "dependencies": {
+    "@fudic/core": "workspace:*",
+    "@fudic/dom": "workspace:*",
+    "@fudic/http": "workspace:*",
+    "@fudic/i18n": "workspace:*",
+    "@fudic/ssr": "workspace:*",
+    "@fudic/transport": "workspace:*"
+  },
+  "devDependencies": {
+    "@fudic/cli": "workspace:*",
+    "@fudic/vite": "workspace:*",
+    "vite": "8.0.16"
+  }
+}

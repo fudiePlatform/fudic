@@ -5,7 +5,7 @@
 > `@fudic/cli` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` ·
 > `examples/i18n` (nuevo)
 > **Rama:** `sdd-58-i18n`
-> **Progreso:** 44 / 48 — `En curso`.
+> **Progreso:** 47 / 48 — `En curso`.
 
 El orden va de dentro afuera:
 1. los diagnósticos y la config;
@@ -161,10 +161,16 @@ Cada fase se commitea al cerrarla, con sus tests.
 
 ## Fase 8 — Evidencia y cierre
 
-- [ ] 45. `examples/i18n` con todo lo que pide el criterio 35, construido como lo haría un usuario:
+- [x] 45. `examples/i18n` con todo lo que pide el criterio 35, construido como lo haría un usuario:
   script `translate`, `pnpm translate` y los catálogos `es` y `en` rellenos a mano.
-- [ ] 46. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; `@fudic/i18n` al 100 % en las
+- [x] 46. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; `@fudic/i18n` al 100 % en las
   cuatro métricas, y los paquetes tocados sin bajar de donde estaban (criterio 36).
-- [ ] 47. README de `@fudic/i18n` en inglés, corto y sin citas a SDD; incluye `pnpm translate`.
+- [x] 47. README de `@fudic/i18n` en inglés, corto y sin citas a SDD; incluye `pnpm translate`.
 - [ ] 48. INDEX: estado `Hecho` y fila en el registro de progreso. Después, OK de Pedro en el
   navegador.
+
+> Notas de las fases 7 y 8:
+> - El hover lee los catálogos del `fudic.json` con `locales` más cercano al fichero, igual que
+>   los `styles` de un template. El cliente de VS Code vigila además `**/src/locales/*.json`.
+> - En `examples/i18n` lo único en español dentro de `/en/` es el selector de idioma, bajo
+>   `translate="no"`: cada idioma se nombra en el suyo.
