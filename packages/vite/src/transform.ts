@@ -48,6 +48,7 @@ import {
   type ProjectStyle,
   type ServerFnOptions,
   type SourceMapV3,
+  type LocaleCompile,
 } from '@fudic/compiler';
 import { FN_PREFIX } from '@fudic/conventions';
 import { FUD0744 } from '@fudic/diagnostics';
@@ -225,6 +226,7 @@ function emitOptionsFor(
   routeName: string | undefined,
   styles: ProjectStyles,
   assets: LinkedAssets | undefined,
+  i18n?: LocaleCompile,
 ): Parameters<typeof emitPageModuleMapped>[1] {
   // A linkable asset exists when it resolves to a real file next to the `.fud` (§6.13) —
   // or, for a root-absolute `/logo.svg`, when the project's public directory holds it.
@@ -276,6 +278,8 @@ function emitOptionsFor(
     ...(routeName === undefined ? {} : { routeName }),
     // The project sheets this document hoists, and which of them each component adopts.
     ...styleOptions(graph, styles),
+    // The locale this module is compiled for (SDD-58), when it is compiled for one.
+    ...(i18n === undefined ? {} : { i18n }),
   };
 }
 
@@ -342,6 +346,7 @@ export function transformFud(
   routeName?: string,
   styles: ProjectStyles = NO_STYLES,
   assets?: LinkedAssets,
+  i18n?: LocaleCompile,
 ): TransformResult | null {
   if (!id.endsWith('.fud')) {
     return null;
@@ -351,7 +356,7 @@ export function transformFud(
   const resolved = resolveDocument(id, io);
   const graph = resolved.value;
   const origin = graph.entryOrigin;
-  const options = emitOptionsFor(id, graph, routeName, styles, assets);
+  const options = emitOptionsFor(id, graph, routeName, styles, assets, i18n);
   const out = emitFor(id, graph, options);
   const sheetFiles = assets === undefined ? [] : recordSheets(id, out, assets);
   return {

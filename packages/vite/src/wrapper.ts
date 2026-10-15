@@ -59,12 +59,35 @@ export interface RenderChunkOptions {
    * the plugin substitutes it, in dev they are the dev server's two stable URLs.
    */
   readonly runtime?: RuntimeEntries;
+  /**
+   * The locales of a page compiled for one of two or more (SDD-58 §4.7): its head carries a
+   * `<link rel="alternate" hreflang>` per locale and `x-default`, each one the URL of THIS
+   * request with the prefix changed — so a route with parameters points at the same page.
+   */
+  readonly alternates?: { readonly locale: string; readonly locales: readonly string[]; readonly base: string };
+}
+
+/** The wrapper's `$alternates(url)`: the links of §4.7, composed per request. */
+function alternatesSource(a: NonNullable<RenderChunkOptions['alternates']>): string[] {
+  return [
+    `const $ALT = ${JSON.stringify(a)};`,
+    'function $alternates(url) {',
+    '  let path = url.pathname;',
+    '  if (path.startsWith($ALT.base)) path = path.slice($ALT.base.length - 1);',
+    "  const rest = path.slice($ALT.locale.length + 1);",
+    "  const href = (l) => $ALT.base + l + (rest === '' ? '/' : rest);",
+    "  return $ALT.locales.map((l) => '<link rel=\"alternate\" hreflang=\"' + l + '\" href=\"' + escapeAttr(href(l)) + '\">').join('')",
+    "    + '<link rel=\"alternate\" hreflang=\"x-default\" href=\"' + escapeAttr($ALT.base) + '\">';",
+    '}',
+    '',
+  ];
 }
 
 /** Generate the route chunk module text. */
 export function emitRenderChunk(options: RenderChunkOptions): string {
   const spec = JSON.stringify(options.pageModule);
-  const server = JSON.stringify(`${options.pageModule}?server`);
+  // A page compiled for a locale already has a query (`x.fud?locale=en`, SDD-58).
+  const server = JSON.stringify(`${options.pageModule}${options.pageModule.includes('?') ? '&' : '?'}server`);
   const edgeLoad = options.withLoad && options.hasLoad;
   // The layout resolver, on the same terms as `load`: in process on the edge, never in the
   // Service Worker. It is imported under another name because `layout` is what the PAGE
@@ -128,9 +151,10 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   const runtime = options.runtime ?? { boot: '', main: '', pieces: [], inline: '' };
   lines.push(`const RUNTIME = ${JSON.stringify(runtime)};`);
   lines.push('');
+  if (options.alternates !== undefined) lines.push(...alternatesSource(options.alternates));
   lines.push('function io(ctx) {');
   lines.push(
-    `  return { createDom: () => new SsrDom(), serialize: serializeChunks, escapeText, escapeAttr, guardUrl, jsonBlock${hasDi ? ', iocRoot, publishedSeed' : ''}, nonce: ctx.nonce, runtime: RUNTIME };`,
+    `  return { createDom: () => new SsrDom(), serialize: serializeChunks, escapeText, escapeAttr, guardUrl, jsonBlock${hasDi ? ', iocRoot, publishedSeed' : ''}, nonce: ctx.nonce, runtime: RUNTIME${options.alternates !== undefined ? ', alternates: $alternates(ctx.url)' : ''} };`,
   );
   lines.push('}');
   lines.push('');

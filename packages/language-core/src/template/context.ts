@@ -11,6 +11,7 @@ import type { DelegationPlan, HtmlContent, OxcNode, Span } from '@fudic/compiler
 import type { Aliases } from '../imports.js';
 import type { VirtualWriter } from '../writer.js';
 import type { SnippetAliases } from './snippets.js';
+import type { PipeSpan } from './pipes.js';
 
 /** The AST of one registered JS fragment: an expression, or a list of statements. */
 export type FragmentAst = OxcNode | readonly OxcNode[];
@@ -46,6 +47,11 @@ export interface TemplateContext {
    * handler is copied as written — which is what the projection did before BUG-23.
    */
   readonly ast: ((at: Span) => FragmentAst | undefined) | undefined;
+  /**
+   * The pipes of the view expression at a source span (SDD-58 §4.11), which the projection
+   * writes as `$pipe(a, b)`. Absent with no AST, and then an expression is copied as written.
+   */
+  readonly pipes: ((at: Span) => readonly PipeSpan[]) | undefined;
   /**
    * Who hands what to whom (SDD-37), for the one question the element tree cannot answer
    * locally: `$day` is written in an ancestor's handler and declared by a loop BELOW it, so

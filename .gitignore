@@ -10,8 +10,9 @@ node_modules/
 dist/
 # The published runtime pieces (SDD-45 §3.3): build output like `dist/`, and listed in each
 # publishing package's `files`, so what reaches npm is what the build produced — never what
-# somebody happened to have on disk when they committed.
-runtime/
+# somebody happened to have on disk when they committed. Anchored to the package root: a
+# `src/runtime/` is source, the code those pieces are built from.
+/packages/*/runtime/
 # Packaged VS Code extension: a build artefact of `pnpm --filter fudic-vscode package`.
 *.vsix
 out/

@@ -632,6 +632,9 @@ importers:
       '@fudic/diagnostics':
         specifier: workspace:*
         version: link:../diagnostics
+      '@fudic/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@fudic/resolve':
         specifier: workspace:*
         version: link:../resolve

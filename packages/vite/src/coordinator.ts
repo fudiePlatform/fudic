@@ -42,7 +42,15 @@ import { BUILD_TOKEN } from './constants.js';
  * The choice is made at emit time, so the runtime never carries a branch for it.
  */
 export type ChunkResolution =
-  | { readonly mode: 'build'; readonly base: string }
+  | {
+      readonly mode: 'build';
+      readonly base: string;
+      /**
+       * The directory of a locale's chunks under `assets/h/` (SDD-58 §4.6): `en/`. Absent with
+       * fewer than two locales, and then the coordinator is the one it always was.
+       */
+      readonly dir?: string;
+    }
   | { readonly mode: 'dev'; readonly urlPrefix: string };
 
 /**
@@ -174,7 +182,9 @@ function coordinatorSource(facts: RouteFacts, params: CoordinatorParams): string
       `// that is allowed to hold them (§1.5 rule 3). The id is substituted in generateBundle`,
       `// like every other token — same length, so the source map still describes this.`,
       `const $urls = $resolver(${JSON.stringify(chunks.base)}, ${JSON.stringify(BUILD_TOKEN)});`,
-      `const $chunk = (tag) => $urls.hydrateUrl(tag);`,
+      chunks.dir === undefined
+        ? `const $chunk = (tag) => $urls.hydrateUrl(tag);`
+        : `const $chunk = (tag) => $urls.hydrateUrl(${JSON.stringify(chunks.dir)} + tag);`,
     );
   } else {
     lines.push(

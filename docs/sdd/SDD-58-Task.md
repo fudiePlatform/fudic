@@ -5,7 +5,7 @@
 > `@fudic/cli` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` ·
 > `examples/i18n` (nuevo)
 > **Rama:** `sdd-58-i18n`
-> **Progreso:** 31 / 48 — `En curso`.
+> **Progreso:** 40 / 48 — `En curso`.
 
 El orden va de dentro afuera:
 1. los diagnósticos y la config;
@@ -74,6 +74,11 @@ Cada fase se commitea al cerrarla, con sus tests.
 
 ## Fase 4 — Compilador: compilar por idioma
 
+> Cómo quedó: la traducción reescribe el texto fuente del `.fud` para el idioma antes de
+> compilarlo (`localizeSource`, con un mapa de offsets al original), en vez de tocar cada emisor.
+> Servidor, cliente e hidratación ven así el mismo árbol traducido por construcción: las tareas
+> 22–24 se cumplen sin cambiar `textRun`, `markup-client.ts` ni `writeElementAttrs`.
+
 - [x] 21. `EmitOptions.i18n` y `LocaleCompile`. Sin ella, la suite de goldens sale igual
   (criterio 19).
 - [x] 22. Servidor: `textRun` y `#run` construyen cada tira en el orden de la traducción, con los
@@ -97,24 +102,35 @@ Cada fase se commitea al cerrarla, con sus tests.
 
 ## Fase 5 — Plugin: leer y compilar
 
-- [ ] 32. `locales` llega del `fudic.json` a `configResolved`. Con un idioma no hay prefijos; sin
+- [x] 32. `locales` llega del `fudic.json` a `configResolved`. Con un idioma no hay prefijos; sin
   `locales`, el `dist` de `examples/basic` sale igual (criterio 1).
-- [ ] 33. Expansión de rutas en `discoverRoutes`, con un patrón literal por idioma. El manifiesto,
+- [x] 33. Expansión de rutas en `discoverRoutes`, con un patrón literal por idioma. El manifiesto,
   el matcher de dev y de preview, las entradas de edge, el endpoint de datos y el SW lo ven
   (criterio 25).
-- [ ] 34. Grafo por idioma: `?locale=` en el chunk de cada ruta, propagación en `resolveId`
+- [x] 34. Grafo por idioma: `?locale=` en el chunk de cada ruta, propagación en `resolveId`
   (§4.6), `load` y `transform` para `.fud` y `.ts` con sufijo, y mapa de hidratación por ruta e
   idioma (criterio 30).
-- [ ] 35. Prerender por idioma: `paths()` en el grafo de su idioma y prefijo en la ruta del
+- [x] 35. Prerender por idioma: `paths()` en el grafo de su idioma y prefijo en la ruta del
   fichero (criterio 25).
-- [ ] 36. `/`: `302` por `Accept-Language` en dev, preview y edge, y `index.html` con `meta refresh`
+- [x] 36. `/`: `302` por `Accept-Language` en dev, preview y edge, y `index.html` con `meta refresh`
   en SSG (criterio 26).
-- [ ] 37. Alternativas `hreflang` en la cabecera de cada ruta (criterio 28).
-- [ ] 38. Lectura de catálogos para `LocaleCompile.translate`. Lo ilegible, lo que falta y lo
+- [x] 37. Alternativas `hreflang` en la cabecera de cada ruta (criterio 28).
+- [x] 38. Lectura de catálogos para `LocaleCompile.translate`. Lo ilegible, lo que falta y lo
   inválido caen al texto original sin diagnóstico, y el plugin nunca escribe en `src/locales/`
   (criterio 31).
-- [ ] 39. En dev, el catálogo de un idioma es una entrada del grafo: guardarlo recompila y recarga
+- [x] 39. En dev, el catálogo de un idioma es una entrada del grafo: guardarlo recompila y recarga
   esos módulos (criterio 34).
+
+> Notas de la fase 5:
+> - La tarea 43 se adelantó a esta fase: sin la proyección `$pipe`, el chequeo de tipos del build
+>   (SDD-35) rechaza todo pipe, y los criterios 20 y 30 no se pueden construir.
+> - `_error.fud` sale una vez por idioma (§4.5), bajo `/<idioma>/_fudic/error/:status`. Un fallo en
+>   una página pinta la de su idioma; `/_fudic/error/N`, sin prefijo, la del idioma de la página de
+>   la que viene (`Referer`), o la del primero.
+> - El edge de producción es hoy `vite preview`: no existe otro adaptador. La `302` de `/` está en
+>   dev y en preview.
+> - El `.gitignore` ignoraba `packages/i18n/src/runtime/` (la regla `runtime/` sin anclar) y el
+>   paquete no compilaba desde git. La regla queda anclada a `/packages/*/runtime/`.
 
 ## Fase 6 — `fudic translate`
 
@@ -130,8 +146,8 @@ Cada fase se commitea al cerrarla, con sus tests.
 
 ## Fase 7 — Editor
 
-- [ ] 43. Proyección de `a | b` → `$pipe(a, b)` en `copyRazor`/`copyExpression`, con operandos
-  1:1 y `$pipe` en `GLOBALS_DTS` (criterio 32).
+- [x] 43. Proyección de `a | b` → `$pipe(a, b)` en `copyRazor`/`copyExpression`, con operandos
+  1:1 y `$pipe` en `GLOBALS_DTS` (criterio 32). Hecha en la fase 5.
 - [ ] 44. Language server: lee los catálogos, los relee al cambiar en disco y muestra el hover de
   traducciones sobre un mensaje. No publica `FUD1022`–`FUD1025` (criterio 33).
 

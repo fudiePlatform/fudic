@@ -26,6 +26,7 @@ import { partitionCode } from './code.js';
 import { emitCssVirtuals } from './css.js';
 import { emitClientVirtual, type TemplateJs } from './emit-client.js';
 import type { FragmentAst } from './template/context.js';
+import { pipesOf } from './template/pipes.js';
 import { emitServerVirtual, type LayoutContract, type LoadContract } from './emit-server.js';
 import {
   exportsLoad,
@@ -103,7 +104,7 @@ export function emitVirtualFiles(input: EmitInput): readonly VirtualFile[] {
   const js = input.js ?? ownBatch(source, document);
 
   return [
-    emitClientVirtual(source, fileName, document, registry, findProps(js), templateJs(js), serverFns(js, document)),
+    emitClientVirtual(source, fileName, document, registry, findProps(js), templateJs(js, source), serverFns(js, document)),
     emitServerVirtual(
       source,
       fileName,
@@ -210,13 +211,15 @@ function statementsOf(result: JsBatchResult, id: FragmentId): readonly OxcNode[]
   return result.ast(id) as readonly OxcNode[];
 }
 
-/** What the template projection needs out of the batch: the reactives and the ASTs. */
-function templateJs(js: EmitJs): TemplateJs {
+/** What the template projection needs out of the batch: the reactives, the ASTs and the pipes. */
+function templateJs(js: EmitJs, source: string): TemplateJs {
   const reactives = new Set<string>();
   for (const id of js.client ?? []) {
     for (const name of reactiveNames(statementsOf(js.result, id))) reactives.add(name);
   }
-  return js.ast === undefined ? { reactives } : { reactives, ast: (at) => js.ast?.(at) };
+  if (js.ast === undefined) return { reactives };
+  const ast = (at: Span): FragmentAst | undefined => js.ast?.(at);
+  return { reactives, ast, pipes: (at) => pipesOf(ast(at), (a, b) => js.result.mapSpan(a, b), source) };
 }
 
 /**
@@ -236,6 +239,12 @@ function ownBatch(source: string, doc: StructuredDocument): EmitJs {
 
   const fragments = new Map<string, FragmentId>();
   walk(documentRoots(doc), {
+    // A content `@(…)`: where a pipe is written most (SDD-58 §4.11).
+    interpolation(expr) {
+      if (expr.expr.end > expr.expr.start) {
+        fragments.set(spanKey(expr.expr), batch.add('expression', expr.expr));
+      }
+    },
     binding(expr) {
       // An empty value (`@click="@()"`) registers nothing: there is no expression to parse,
       // and the wrapper alone would be a syntax error of the projection's own making.

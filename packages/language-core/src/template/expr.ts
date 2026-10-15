@@ -17,9 +17,11 @@
 import type { RazorExpression, Span } from '@fudic/compiler';
 import { COMPLETION_ONLY_CAPS } from '../caps.js';
 import type { TemplateContext } from './context.js';
+import { copyPiped } from './pipes.js';
 
 export function copyExpression(ctx: TemplateContext, expr: Span, dangling?: Span): void {
-  if (expr.end > expr.start) ctx.w.copy(expr);
+  // Its pipes as `$pipe(a, b)` (SDD-58 §4.11): the one rewrite of a user expression.
+  if (expr.end > expr.start) copyPiped(ctx.w, expr, ctx.pipes?.(expr) ?? []);
   else ctx.w.projected(' ', expr, COMPLETION_ONLY_CAPS);
   if (dangling !== undefined) copyDangling(ctx, dangling);
 }

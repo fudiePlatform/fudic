@@ -256,6 +256,12 @@ describe('delegation — the event and the read (§6.8, §6.9)', () => {
     expect(codes('<b>@row[$day]</b>')).toEqual(['FUD0666']);
   });
 
+  it('leaves the runtime pieces a locale writes alone: `$format`, `$message`, `$href` (SDD-58)', () => {
+    expect(codes('<b>@($format(euros, precio, "en"))</b>')).toEqual([]);
+    expect(codes('<b>@($message(parts, {}, "en"))</b>')).toEqual([]);
+    expect(codes('<a href=@($href(url, "en", ["es", "en"]))>x</a>')).toEqual([]);
+  });
+
   it('leaves a bare `$` alone: it is a name, not a prefix', () => {
     expect(codes('<div @click="@fn($)"></div>')).toEqual([]);
   });

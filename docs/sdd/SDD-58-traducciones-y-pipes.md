@@ -1,6 +1,6 @@
 # SDD-58 — Traducciones y pipes
 
-> **Estado:** `Listo` — [tareas](./SDD-58-Task.md), 0 / 48.
+> **Estado:** `En curso` — [tareas](./SDD-58-Task.md), 40 / 48.
 > **Paquetes:** `@fudic/i18n` (nuevo) · `@fudic/compiler` · `@fudic/config` · `@fudic/vite` ·
 > `@fudic/cli` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/diagnostics` ·
 > `examples/i18n` (nuevo)
@@ -149,7 +149,7 @@ export function relativeTime(unit: Intl.RelativeTimeFormatUnit, options?: Intl.R
 export function list(options?: Intl.ListFormatOptions): Pipe<readonly string[]>;
 
 // ── Sustituidos por el compilador en cada módulo de un grafo de idioma ───────
-/** The page's locale. Compiled to a string literal: `"en"`. */
+/** The page's locale. Compiled to a string literal: `"en"`. Outside the compiler, `"und"`. */
 export declare const locale: string;
 /** A translatable message in code or in a prop value. The first argument must be a string literal. */
 export function t(message: string, args?: Readonly<Record<string, MessageArg>>): string;
@@ -179,11 +179,15 @@ export function parseCatalog(text: string, file: string): ParseResult<Catalog>; 
 export function mergeCatalog(previous: Catalog, extracted: readonly ExtractedMessage[],
                              isSource: boolean): Catalog;
 export function printCatalog(catalog: Catalog): string;                          // stable text
-export function compileMessage(text: string): ParseResult<CompiledMessage>;      // ICU subset, FUD1024
+export function compileMessage(text: string, locale: string): ParseResult<CompiledMessage>;  // ICU subset, FUD1024
 ```
 
 `ExtractedMessage` y `CompiledMessage` son tipos del paquete. El primero lleva lo que §3.3 extrae;
 el segundo es la forma precompilada de un mensaje ICU: texto, huecos, `plural` y `select`.
+`compileMessage` recibe el idioma porque las categorías de un `plural` (`one`, `few`…) dependen de
+él: una categoría que el idioma no tiene es `FUD1024`. `t` y `format` lanzan
+`Error('compiled away')` si un módulo escapa al compilador; `locale` no puede lanzar al leerse, y
+vale `"und"`.
 
 ### 3.3 `@fudic/compiler`
 
@@ -254,8 +258,14 @@ export function planTranslate(opts: TranslateOptions): Promise<Plan>;
 
 ```ts
 // GLOBALS_DTS gana:
-declare function $pipe<T>(value: T, pipe: import('@fudic/i18n').Pipe<T>): string;
+interface $Pipe<in T> { readonly kind: string; readonly __in?: (value: T) => void }
+declare function $pipe<T>(value: NoInfer<T>, pipe: $Pipe<T>): string;
 ```
+
+- **Estructural**, como `$TrustedURL`: una app sin `@fudic/i18n` sigue tipando y `Pipe<T>`
+  encaja en `$Pipe<T>`.
+- **`NoInfer`**: `T` sale del preset, así que un valor que el preset no formatea es el error, y
+  cae sobre el valor (criterio 21).
 
 ### 3.7 Diagnósticos
 
@@ -266,7 +276,7 @@ declare function $pipe<T>(value: T, pipe: import('@fudic/i18n').Pipe<T>): string
 | `FUD1022` | warning | `fudic translate` | Falta la traducción de un mensaje a un idioma | el mensaje en el `.fud`/`.ts` |
 | `FUD1023` | error | `fudic translate` | Catálogo ilegible: JSON roto o forma distinta de `Catalog` | el fichero de catálogo |
 | `FUD1024` | error | `fudic translate` | Traducción con ICU inválido, o con huecos o etiquetas que no son los del original | el mensaje en el `.fud`/`.ts` |
-| `FUD1025` | error | `fudic translate` | Dos `t()` en el mismo contexto con el mismo texto y distinto número de huecos | el segundo |
+| `FUD1025` | error | `fudic translate` | Dos `t()` válidos en el mismo contexto con el mismo texto y distinto número de claves en su objeto de huecos | el segundo |
 
 `FUD1020` y `FUD1021` son errores de código, como un error de tipos: sin literal no hay nada que
 compilar, y sin idiomas no hay locale que poner. Todo lo que trata de catálogos es del comando. El
@@ -434,7 +444,10 @@ lenguaje (IDEA-03) lo formatea con su ICU sin ejecutar JS.
     `<link rel="alternate" hreflang>`.
 - **`paths()`.** Se llama una vez por idioma, dentro del grafo de ese idioma, así que puede leer
   `locale` para enumerar slugs distintos. Las entradas no llevan el prefijo; lo pone el prerender.
-- **`_error.fud`.** También se compila una vez por idioma.
+- **`_error.fud`.** También se compila una vez por idioma, bajo `/<idioma>/_fudic/error/:status`.
+  - Una página que falla pinta la de su idioma.
+  - `/_fudic/error/N`, adonde `errorPages` manda una llamada que falló, no lleva prefijo: pinta la
+    del idioma de la página de la que viene (`Referer`) y, si no se sabe, la del primero.
 
 ### 4.6 Un grafo de módulos por idioma
 
@@ -546,7 +559,8 @@ pagan esta pasada.
 
 **Lo que informa `fudic translate`:**
 
-- Cada mensaje sin traducir en cada idioma es `FUD1022` (aviso).
+- Cada mensaje sin traducir en cada idioma es `FUD1022` (aviso). Una `translation` vacía cuenta
+  como sin traducir, aquí y en el pipeline.
 - Un catálogo que no es JSON o no tiene la forma es `FUD1023`.
 - Una `translation` con ICU inválido, o con huecos o etiquetas que no son exactamente los del
   `source`, es `FUD1024`. El orden puede cambiar; el conjunto no.
@@ -554,8 +568,8 @@ pagan esta pasada.
 **Lo que hace el pipeline con los catálogos: leerlos, nada más.**
 
 - `dev`, `build` y `preview` leen `src/locales/<locale>.json` para compilar cada idioma.
-- Un mensaje se compila con su `translation` cuando existe y es válida. Si falta, si es inválida
-  o si el catálogo entero no se puede leer, se compila con el texto original.
+- Un mensaje se compila con su `translation` cuando existe y es válida. Si falta, si está vacía,
+  si es inválida o si el catálogo entero no se puede leer, se compila con el texto original.
 - En ningún caso hay diagnóstico ni penalización. Ejecutar `pnpm translate` es responsabilidad del
   desarrollador.
 - En dev, un cambio en un catálogo recompila los módulos de ese idioma: es una entrada más del

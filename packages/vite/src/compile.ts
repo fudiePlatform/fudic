@@ -14,7 +14,7 @@
  */
 
 import { transformWithOxc } from 'vite';
-import { type ResolveIo } from '@fudic/compiler';
+import { type LocaleCompile, type ResolveIo } from '@fudic/compiler';
 import { remembered } from './build-memory.js';
 import { transformFud, type ProjectStyles, type TransformResult } from './transform.js';
 import { type LinkedAssets } from './linked-assets.js';
@@ -44,9 +44,15 @@ export function compileFud(
   routeName: string | undefined,
   styles: ProjectStyles,
   assets: LinkedAssets | undefined,
+  /**
+   * The locale it is compiled for (SDD-58). Its text arrives already translated through `io`;
+   * this is what the emit adds on its own: the `lang` of a page without a layout and the
+   * alternates. Remembered apart because `io` is that locale's, with a memory of its own.
+   */
+  i18n?: LocaleCompile,
 ): Promise<CompiledFud | null> {
   return remembered(io, `fud:${path}#${routeName ?? ''}`, async () => {
-    const result = transformFud(path, io, routeName, styles, assets);
+    const result = transformFud(path, io, routeName, styles, assets, i18n);
     if (result === null) return null;
     // `inMap`: Oxc composes `.fud` → TS with its own TS → JS, so the map describes the code
     // it actually returns rather than the text before the strip.

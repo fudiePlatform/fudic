@@ -59,7 +59,36 @@ import {
   routeNameLookup,
   routeUsesDi,
 } from './client.js';
-import { INLINE_QUERY, IOC_SUFFIX, RUNTIME_MARKER, type ResolveIo } from '@fudic/compiler';
+import {
+  INLINE_QUERY,
+  IOC_SUFFIX,
+  RUNTIME_MARKER,
+  translateScript,
+  type LocaleCompile,
+  type ResolveIo,
+} from '@fudic/compiler';
+import {
+  Catalogs,
+  LocaleIos,
+  alternatesOf,
+  catalogFile,
+  chunkDir,
+  errorLocaleOf,
+  errorPageFor,
+  handedOn,
+  hasQuery,
+  localeOf,
+  localeOfPath,
+  negotiate,
+  pageModuleOf,
+  prefixPattern,
+  resolveForLocale,
+  rootRedirectHtml,
+  withLocale,
+  withoutLocale,
+  withoutLocalePrefix,
+  type LocaleContext,
+} from './i18n.js';
 import {
   ERROR_PREFIX,
   HTTP_FILE,
@@ -222,8 +251,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let builds: readonly RouteBuild[] = [];
   /** Server code out of the client's code and maps, one for every client pass (BUG-47). */
   const erasure = new ClientErasure();
-  /** `_error.fud`, out of the route table (SDD-56 §4.8). */
-  let errorPage: RouteBuild | undefined;
+  /** `_error.fud`, out of the route table (SDD-56 §4.8): one per locale (SDD-58 §4.5). */
+  let errorPages: readonly RouteBuild[] = [];
   let swConfig: ResolvedSwConfig | null = null;
   /** Who this project is (SDD-41). Empty until `configResolved` has run. */
   let project: ProjectResult = { config: null, errors: [] };
@@ -234,6 +263,69 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    * `id` is FUD0721 and the build already stopped (SDD-41 §4.3).
    */
   let appId = '';
+  /**
+   * The languages of the app, from `fudic.json` (SDD-58 §3.1). Undefined when it declares none,
+   * and then nothing of this SDD runs: no catalogs, no prefixes, no module compiled per locale.
+   */
+  let locales: readonly string[] | undefined;
+  /** The catalogs, read and never written (§4.10), and the io each locale's graph reads by. */
+  let catalogs: Catalogs | undefined;
+  let localeIos: LocaleIos | undefined;
+  /** The route table, one route per locale when there are locales (§4.5). */
+  const discover = (): ReturnType<typeof discoverRoutes> => discoverRoutes(root, options, locales);
+  /** The io a module compiled for `locale` reads `.fud` through; the plain one for none. */
+  const ioFor = (locale: string | undefined): ResolveIo =>
+    locale === undefined || localeIos === undefined ? io : localeIos.for(io, locale);
+  /**
+   * Dev's coordinator for a locale whose chunks have a directory: `fudic-main.en.js`, serving
+   * `fudic-main?locale=en`, which resolves chunks under `en/` (§4.6). Every other page keeps
+   * the one `fudic-main.js`.
+   */
+  const devMains = (): ReadonlyMap<string, string> =>
+    new Map(
+      (locales ?? [])
+        .filter((l) => chunkDir(l, locales) !== '')
+        .map((l) => [`/${MAIN_ID}.${l}.js`, withLocale(MAIN_ID, l)]),
+    );
+  const devMainUrl = (locale: string | undefined): string =>
+    devUrl(base, chunkDir(locale, locales) === '' ? DEV_MAIN_URL : `${MAIN_ID}.${locale}.js`);
+  /**
+   * What the nested passes compile each locale's graph with, as this plugin does (§4.6).
+   * Undefined in an app without `locales`: the passes are then the ones they always were.
+   */
+  const localeContext = (): LocaleContext | undefined =>
+    locales === undefined || localeIos === undefined || catalogs === undefined
+      ? undefined
+      : {
+          root,
+          locales,
+          ioFor: (baseIo, locale) => localeIos!.for(baseIo, locale),
+          compileFor: (locale) => catalogs!.compileFor(locale),
+        };
+  /**
+   * The locale `_error.fud` is asked in by `req` at `pathname` (§4.5): the URL's prefix, else
+   * the page it comes from.
+   */
+  const errorLocale = (pathname: string, referer: string | undefined): string | undefined =>
+    errorLocaleOf(
+      pathname,
+      referer !== undefined && URL.canParse(referer) ? pathnameOf(new URL(referer).pathname, base) : undefined,
+      locales,
+    );
+  /**
+   * The pattern the `_error.fud` of `locale` is built under: prefixed with two or more locales,
+   * and the first locale's for a request in none (§4.5).
+   */
+  const errorPatternOf = (locale: string | undefined): string =>
+    locales === undefined ? ERROR_PATTERN : prefixPattern(ERROR_PATTERN, locale ?? locales[0]!, locales);
+  /** The redirect of `/` with two or more locales (§4.5), or false when `/` is a page. */
+  const rootRedirect = (pathname: string, acceptLanguage: string | undefined): string | false =>
+    pathname === '/' && locales !== undefined && locales.length >= 2
+      ? devUrl(base, `${negotiate(acceptLanguage, locales)}/`)
+      : false;
+  /** How a module is compiled for `locale`, for the emit's own use (`lang`, alternates). */
+  const compileFor = (locale: string | undefined): LocaleCompile | undefined =>
+    locale === undefined ? undefined : catalogs?.compileFor(locale);
   /**
    * The project's stylesheets, already read (SDD-42), and those of the libraries it consumes
    * (SDD-43 §4.6). Every emit path of the build is handed this same reader; a project with no
@@ -429,17 +521,23 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     }
     // `<tag>.ioc` names the component's IoC module, not its chunk (SDD-38 §4.5). One
     // resolver for both, because the browser derives both URLs the same way.
-    const isIoc = tag.endsWith(IOC_SUFFIX);
-    const bare = isIoc ? tag.slice(0, -IOC_SUFFIX.length) : tag;
+    // `en/app-card`: a locale's chunks live under its own directory (SDD-58 §4.6).
+    const slash = tag.indexOf('/');
+    // One locale has no directory, and its modules are still compiled for it.
+    const locale = slash === -1 ? (locales?.length === 1 ? locales[0] : undefined) : tag.slice(0, slash);
+    const named = slash === -1 ? tag : tag.slice(slash + 1);
+    const localized = (id: string): string => (locale === undefined ? id : withLocale(id, locale));
+    const isIoc = named.endsWith(IOC_SUFFIX);
+    const bare = isIoc ? named.slice(0, -IOC_SUFFIX.length) : named;
     const comp = discoverComponents(builds, io).find((c) => c.tag === bare);
     if (comp !== undefined) {
-      return isIoc ? iocId(comp.path) : clientId(comp.path);
+      return localized(isIoc ? iocId(comp.path) : clientId(comp.path));
     }
     // A ROUTE's chunk lives at the same stable prefix under its own name (SDD-39 §4.12): dev
     // builds nothing, so the derivation is the one the bootstrap baked in and the server
     // publishes the `?client` module at that URL.
     const route = discoverReactiveRoutes(builds, io).find((r) => r.name === bare);
-    return route === undefined ? undefined : clientId(route.path);
+    return route === undefined ? undefined : localized(clientId(route.path));
   };
 
   /**
@@ -462,13 +560,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    */
   let routeNames: {
     readonly from: readonly RouteBuild[];
-    readonly of: (path: string) => string | undefined;
+    readonly of: (path: string, locale?: string) => string | undefined;
   } | null = null;
-  const routeNameOf = (path: string): string | undefined => {
+  const routeNameOf = (path: string, locale?: string): string | undefined => {
     if (routeNames === null || routeNames.from !== builds) {
       routeNames = { from: builds, of: routeNameLookup(builds, io) };
     }
-    return routeNames.of(path);
+    return routeNames.of(path, locale);
   };
 
   /**
@@ -604,6 +702,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // `buildStart`, which is the first hook with a context to report through.
       project = readProject(root, swConfig !== null, configIo);
       appId = project.config?.id ?? '';
+      locales = project.config?.locales;
+      // Dev re-reads the catalogs and the files on every compile: a save is seen without a
+      // restart (§4.10, criterion 34). A build reads each once.
+      catalogs = locales === undefined ? undefined : new Catalogs(root, locales, isDev);
+      localeIos = catalogs === undefined ? undefined : new LocaleIos(catalogs, isDev);
       // The project's style guide (SDD-42), read here for the same reason the id is: it is
       // a property of the project, it is needed before anything is emitted, and every emit
       // path of the build has to be handed the SAME list — `edge`, `sw` and `ssg` producing
@@ -623,7 +726,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     },
 
     async configureServer(server) {
-      ({ routes: builds, errorPage } = discoverRoutes(root, options));
+      ({ routes: builds, errorPages } = discover());
       // What the editor marks, live (SDD-35 §4.5): checked at start, re-checked on every save
       // of a file the program read, pushed to the overlay without a reload, and the page
       // comes back by itself once it is clean.
@@ -644,6 +747,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         [devUrl(base, DEV_MAIN_URL), MAIN_ID],
         [devUrl(base, DEV_BOOT_URL), BOOT_ID],
         [devUrl(base, DEV_SW_URL), SW_ID],
+        ...[...devMains()].map(([url, id]) => [devUrl(base, url), id] as const),
       ]);
       // Server functions (SDD-56 §4.15), with any method, before anything else gets a turn.
       // The handler is loaded through the SSR graph and not imported here: the user's
@@ -654,7 +758,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           next();
           return;
         }
-        builds = discoverRoutes(root, options).routes;
+        builds = discover().routes;
         const load = (id: string): Promise<Record<string, unknown>> =>
           server.ssrLoadModule(id) as Promise<Record<string, unknown>>;
         const source = devSource({
@@ -739,7 +843,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           const pathname = pathnameOf(url, base);
           // Route discovery is cheap and dev adds/removes files: re-read on each request
           // so a new `.fud` is routable without restarting the server.
-          ({ routes: builds, errorPage } = discoverRoutes(root, options));
+          ({ routes: builds, errorPages } = discover());
+
+          // `/` with two or more locales has no page: it sends the browser to its language
+          // (SDD-58 §4.5). Only here — a URL with a prefix always decides by itself.
+          const redirect = rootRedirect(pathname, req.headers['accept-language']);
+          if (redirect !== false) {
+            res.statusCode = 302;
+            res.setHeader('Location', redirect);
+            res.end();
+            return;
+          }
 
           // The generated `@server load` endpoint (§4.5).
           if (pathname.startsWith(DATA_PREFIX)) {
@@ -780,14 +894,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             next();
             return;
           }
-          // `_error.fud`'s own URL, where `errorPages` sends a call that failed (SDD-56 §4.8).
-          if (pathname.startsWith(`${ERROR_PREFIX}/`)) {
-            const status = Number(pathname.slice(ERROR_PREFIX.length + 1));
+          // `_error.fud`'s own URL, where `errorPages` sends a call that failed (SDD-56 §4.8),
+          // in the locale it is asked in (SDD-58 §4.5).
+          const errorPath = withoutLocalePrefix(pathname, locales);
+          if (errorPath.startsWith(`${ERROR_PREFIX}/`)) {
+            const status = Number(errorPath.slice(ERROR_PREFIX.length + 1));
             if (!Number.isInteger(status) || status < 400 || status > 599) {
               next();
               return;
             }
-            devErrorPage(server, errorPage, problemOfStatus(status))
+            const page = errorPageFor(errorPages, errorLocale(pathname, req.headers.referer));
+            devErrorPage(server, page, problemOfStatus(status))
               .then((html) => server.transformIndexHtml(url, html))
               .then((html) => {
                 res.statusCode = status;
@@ -829,7 +946,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
                 if (failure.unexpected) toOverlay(server, err);
                 return {
                   status: failure.problem.status,
-                  html: await devErrorPage(server, errorPage, failure.problem),
+                  html: await devErrorPage(server, errorPageFor(errorPages, rb.locale), failure.problem),
                 };
               }
             })
@@ -929,15 +1046,27 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           return;
         }
 
+        // `/` with two or more locales: to the language that fits (SDD-58 §4.5), as the edge
+        // does — the static `index.html` is the answer of a host that cannot.
+        const redirect = rootRedirect(pathname, req.headers['accept-language']);
+        if (redirect !== false) {
+          res.statusCode = 302;
+          res.setHeader('Location', redirect);
+          res.end();
+          return;
+        }
+
         const nonce = newNonce();
-        // `_error.fud`'s own URL (SDD-56 §4.8).
-        if (pathname.startsWith(`${ERROR_PREFIX}/`)) {
-          const status = Number(pathname.slice(ERROR_PREFIX.length + 1));
+        // `_error.fud`'s own URL (SDD-56 §4.8), in the locale it is asked in (SDD-58 §4.5).
+        const errorPath = withoutLocalePrefix(pathname, locales);
+        if (errorPath.startsWith(`${ERROR_PREFIX}/`)) {
+          const status = Number(errorPath.slice(ERROR_PREFIX.length + 1));
           if (!Number.isInteger(status) || status < 400 || status > 599) {
             next();
             return;
           }
-          sendErrorPage(root, res, problemOfStatus(status), nonce, manifest.csp.document).catch(next);
+          const pattern = errorPatternOf(errorLocale(pathname, req.headers.referer));
+          sendErrorPage(root, res, problemOfStatus(status), nonce, manifest.csp.document, pattern).catch(next);
           return;
         }
 
@@ -976,7 +1105,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               res.end();
               return;
             }
-            await sendErrorPage(root, res, failure.problem, nonce, manifest.csp.document);
+            const pattern = errorPatternOf(localeOfPath(pathname, locales));
+            await sendErrorPage(root, res, failure.problem, nonce, manifest.csp.document, pattern);
           })
           .catch(next);
       });
@@ -1053,9 +1183,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // shape, and there those rules are the correct ones.
       await report(this, styleWarnings);
 
-      const discovered = discoverRoutes(root, options);
+      const discovered = discover();
       builds = discovered.routes;
-      errorPage = discovered.errorPage;
+      errorPages = discovered.errorPages;
       // With the severity each one has in a build: an error said as a warning is a build that
       // lies (SDD-35 §1.2). And what parsing the routes said, which used to be dropped (§1.1):
       // the typecheck already said it, so the reporter stays quiet about it.
@@ -1091,10 +1221,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       coordinators = new Map();
       coordinatorIds.clear();
       if (!isDev) {
-        const { params, missing } = coordinatorParams({ mode: 'build', base });
+        const { missing } = coordinatorParams({ mode: 'build', base });
         await report(this, missing.map((name) => FUD0801({ name })));
         for (const rb of builds) {
           if (rb.decision.mode === 'excluded') continue;
+          // A locale's coordinator resolves its chunks under the locale's directory (SDD-58).
+          const dir = chunkDir(rb.locale, locales);
+          const { params } = coordinatorParams({ mode: 'build', base, ...(dir === '' ? {} : { dir }) });
           const coordinator = coordinatorFor(
             {
               hydrates: routeHydrates(rb.absPath, io),
@@ -1165,25 +1298,34 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // request time, the Service Worker at navigation time — and always with data in hand.
       // Nothing here can know it, so everything is emitted; a chunk nobody requests costs
       // nothing, and one that is missing cannot be invented at run time.
-      for (const comp of discoverComponents(builds, io)) {
-        this.emitFile({
-          type: 'chunk',
-          id: clientId(comp.path),
-          name: clientChunkName(comp.tag),
-          // Loaded by URL for its side effect (`customElements.define`), never imported by
-          // a module Rollup can see: nothing may be dropped for looking unused.
-          preserveSignature: 'strict',
-        });
-        // And its IoC module, when it declares a provider (SDD-38 §4.5). A separate file
-        // because its owner may be N1: a component that only provides never hydrates and
-        // never downloads its chunk, and its factory still has to reach the browser.
-        if (comp.owns) {
+      //
+      // Once per locale when the app has them (SDD-58 §4.6): a chunk compiled for `en`, under
+      // `en/` when there are two or more — so the client of `/en/…` gets only `en`'s.
+      const chunkLocales: readonly (string | undefined)[] = locales ?? [undefined];
+      const localized = (id: string, locale: string | undefined): string =>
+        locale === undefined ? id : withLocale(id, locale);
+      for (const locale of chunkLocales) {
+        const dir = chunkDir(locale, locales);
+        for (const comp of discoverComponents(builds, io)) {
           this.emitFile({
             type: 'chunk',
-            id: iocId(comp.path),
-            name: iocChunkName(comp.tag),
+            id: localized(clientId(comp.path), locale),
+            name: clientChunkName(dir + comp.tag),
+            // Loaded by URL for its side effect (`customElements.define`), never imported by
+            // a module Rollup can see: nothing may be dropped for looking unused.
             preserveSignature: 'strict',
           });
+          // And its IoC module, when it declares a provider (SDD-38 §4.5). A separate file
+          // because its owner may be N1: a component that only provides never hydrates and
+          // never downloads its chunk, and its factory still has to reach the browser.
+          if (comp.owns) {
+            this.emitFile({
+              type: 'chunk',
+              id: localized(iocId(comp.path), locale),
+              name: iocChunkName(dir + comp.tag),
+              preserveSignature: 'strict',
+            });
+          }
         }
       }
 
@@ -1208,8 +1350,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       for (const route of reactiveRoutes) {
         this.emitFile({
           type: 'chunk',
-          id: clientId(route.path),
-          name: clientChunkName(route.name),
+          id: route.locale === undefined ? clientId(route.path) : withLocale(clientId(route.path), route.locale),
+          name: clientChunkName(chunkDir(route.locale, locales) + route.name),
           preserveSignature: 'strict',
         });
       }
@@ -1218,6 +1360,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     resolveId(id, importer) {
       if (
         id === MAIN_ID ||
+        id.startsWith(`${MAIN_ID}?`) ||
         id === BOOT_ID ||
         id === SW_ID ||
         id.startsWith(WRAPPER_PREFIX) ||
@@ -1260,10 +1403,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         // Per importer, so it is never a shared chunk: see `shimIdFor`.
         return shimIdFor(id, importer);
       }
+      // A module compiled for a locale hands it on (SDD-58 §4.6): every `.fud`, and every
+      // `.ts`/`.js` of the project outside `node_modules`, is that locale's module too. A
+      // compiled npm dependency is not, and is shared by every locale.
+      const handed = handedOn(id, importer);
+      if (handed !== undefined) return resolveForLocale((i, from, o) => this.resolve(i, from, o), id, handed, root);
       // Only in dev: in build these names are real emitted files (see `DEV_SCRIPT_IDS`).
       if (isDev) {
         const path = pathnameOf(id, base);
-        return DEV_SCRIPT_IDS.get(path) ?? devClientModuleId(path) ?? null;
+        return DEV_SCRIPT_IDS.get(path) ?? devMains().get(path) ?? devClientModuleId(path) ?? null;
       }
       return null;
     },
@@ -1279,7 +1427,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         // Written in `buildStart`, before this id existed, so the lookup cannot miss.
         return coordinatorSources.get(id) ?? null;
       }
-      if (id === MAIN_ID) {
+      if (id === MAIN_ID || id.startsWith(`${MAIN_ID}?`)) {
+        const dir = chunkDir(localeOf(id), locales);
         // DEV's coordinator, and there is ONE for the whole application (SDD-45 §4.15): dev
         // builds nothing and optimises nothing, what it needs is a URL that does not move
         // between reloads. So the question is the app's — if no component anywhere writes a
@@ -1288,7 +1437,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         // The same generator as a build's, which is the point: the startup has one shape in
         // both places, and dev and build do not become two programs.
         const { params } = coordinatorParams(
-          isDev ? { mode: 'dev', urlPrefix: devClientPrefix(base) } : { mode: 'build', base },
+          isDev
+            ? { mode: 'dev', urlPrefix: devClientPrefix(base) + dir }
+            : { mode: 'build', base, ...(dir === '' ? {} : { dir }) },
         );
         const coordinator = coordinatorFor(
           { hydrates: true, injects: discoverComponents(builds, io).some((c) => c.usesDi) },
@@ -1332,7 +1483,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       if (id.startsWith(WRAPPER_PREFIX)) {
         const pattern = id.slice(WRAPPER_PREFIX.length);
         // `_error.fud` too, rendered like a route but never named by the route table.
-        const rb = [...builds, ...(errorPage === undefined ? [] : [errorPage])].find(
+        const rb = [...builds, ...errorPages].find(
           (b) => b.route.pattern === pattern,
         );
         if (rb === undefined) {
@@ -1340,7 +1491,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         }
         const httpFile = httpFileOf(root);
         return emitRenderChunk({
-          pageModule: rb.absPath.replace(/\\/gu, '/'),
+          pageModule: pageModuleOf(rb),
           hasLoad: rb.analysis.hasLoad,
           hasPaths: rb.analysis.hasPaths,
           hasLayout: rb.analysis.hasLayout,
@@ -1348,6 +1499,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           hasHttp: rb.analysis.hasHttp === true,
           fluentLoad: rb.analysis.fluentLoad === true,
           ...(httpFile !== undefined ? { globalChain: httpFile } : {}),
+          ...alternatesOf(rb, locales, base),
           // In DEV this module IS the edge: the dev server renders through the module
           // graph and resolves data in process. In BUILD it is a chunk of the client
           // output, and the client never gets `load` (BUG-09 §4.1) — the edge pass builds
@@ -1366,7 +1518,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
                   swConfig !== null && swConfig.dev === 'preview'
                     ? devUrl(base, DEV_BOOT_URL)
                     : '',
-                main: devUrl(base, DEV_MAIN_URL),
+                main: devMainUrl(rb.locale),
                 pieces: [],
                 inline: '',
               }
@@ -1392,26 +1544,40 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // A runtime shim is this plugin's own generated module (SDD-45 §4.2), not a file: it has
       // no `.fud` to compile and no validator body to erase.
       if (id.startsWith(RUNTIME_SHIM)) return null;
-      const { path, query } = splitId(id);
+      const split = splitId(id);
+      const path = split.path;
+      // The locale a module is compiled for travels in its query (SDD-58 §4.6); what the rest
+      // of this hook dispatches on is the query without it.
+      const locale = localeOf(id);
+      const query = locale === undefined ? split.query : withoutLocale(split.query);
+      // The catalog is an input of every module of its locale: saving it recompiles them (§4.10).
+      if (locale !== undefined) this.addWatchFile(catalogFile(root, locale));
       if (!path.endsWith('.fud')) {
+        const script = /\.[cm]?[jt]sx?$/u.test(path);
+        // A module of the app compiled for a locale: `t`, `format` and `locale` replaced.
+        const translated =
+          locale !== undefined && script ? translateScript(code, path, compileFor(locale)!).value : undefined;
+        const source = translated?.code ?? code;
         // The schema of a form is an ordinary `.ts` that BOTH ends import, so the body of a
         // `serverValidator` would ship with the client unless it is taken out here (SDD-34
         // §4.7) — and a middleware's module is the same case, with its `.server(…)` half
         // (SDD-56 §4.5), where it is a matter of security. Only on the way to a browser: the
         // dev server's SSR graph runs both, and the edge pass is a build of its own.
-        if (transformOptions?.ssr === true || !/\.[cm]?[jt]sx?$/u.test(path)) return null;
-        const erased = erasure.erase(code, path);
-        return erased === null ? null : { code: erased, map: null };
+        const erased = transformOptions?.ssr === true || !script ? null : erasure.erase(source, path);
+        if (erased !== null) return { code: erased, map: null };
+        return translated === undefined ? null : { code: translated.code, map: JSON.stringify(translated.map) };
       }
+      const fudIo = ioFor(locale);
       if (query === 'server') {
         // The `@server` region is TS (typed `load`/`paths`); strip types to plain JS so
         // the bundler parses it (Vite's own Oxc transform, as it does for any `.ts`).
-        const code = emitServerModule(readFileSync(path, 'utf8'));
+        // Compiled for its locale too: `paths()` may read `locale` (§4.5).
+        const code = emitServerModule(locale === undefined ? readFileSync(path, 'utf8') : fudIo.read(path));
         const stripped = await transformWithOxc(code, `${path}.ts`, { lang: 'ts' });
         return stripped.map ? { code: stripped.code, map: stripped.map } : { code: stripped.code };
       }
       if (query === IOC_QUERY) {
-        const ioc = transformFudIoc(path, io);
+        const ioc = transformFudIoc(path, fudIo);
         if (ioc === null) return null;
         // What resolving its graph had to say, which this path used to drop (SDD-35 §1.1).
         await report(this, ioc.diagnostics, path);
@@ -1422,8 +1588,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       if (query === CLIENT_QUERY) {
         // Its server functions answer by its pattern, and inherit `src/http.ts` (SDD-56 §4.5).
         const slash = (p: string): string => p.replace(/\\/gu, '/');
-        const pattern = builds.find((rb) => slash(rb.absPath) === slash(path))?.route.pattern;
-        const chunk = transformFudClient(path, io, projectStyles, linked, {
+        const pattern = builds.find((rb) => slash(rb.absPath) === slash(path) && rb.locale === locale)?.route.pattern;
+        const chunk = transformFudClient(path, fudIo, projectStyles, linked, {
           ...(pattern !== undefined ? { pattern } : {}),
           ...(httpFileOf(root) !== undefined ? { httpFile: `/${HTTP_FILE}` } : {}),
         });
@@ -1457,7 +1623,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       //
       // Compiled through the build's memory (`compileFud`): the link pass and the edge pass
       // ask for the same module later and get this one instead of compiling it again.
-      const compiled = await compileFud(path, io, routeNameOf(path), projectStyles, linked);
+      const compiled = await compileFud(path, fudIo, routeNameOf(path, locale), projectStyles, linked, compileFor(locale));
       if (compiled === null) {
         return null;
       }
@@ -1535,7 +1701,19 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       const linking: Promise<LinkResult> =
         swConfig === null
           ? Promise.resolve({ chunks: [], entries: new Map(), deps: new Map() })
-          : runLinkPass(root, base, builds, io, nested, projectStyles, linked, runtimeEntriesFor, reporter, erasure);
+          : runLinkPass(
+              root,
+              base,
+              builds,
+              io,
+              nested,
+              projectStyles,
+              linked,
+              runtimeEntriesFor,
+              reporter,
+              erasure,
+              localeContext(),
+            );
       // A nested build's output is emitted as an ASSET, so nothing writes its `.map` or
       // appends its `sourceMappingURL` unless we do (BUG-05 §4.3).
       const emitWithMap = (artifact: NestedArtifact): void => {
@@ -1560,13 +1738,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // prerender runs — has to be the rewritten code.
       // What the edge pass builds besides the routes (SDD-56): `_error.fud`, the global chain
       // every wrapper inherits, and `functions.mjs` when the app has a single server function.
+      const locale = localeContext();
       const edgeExtras = (): EdgeExtras => {
         const httpFile = httpFileOf(root);
         const fns = appFunctions(builds, discoverComponents(builds, io));
         const functions =
           fns.table.length === 0 ? undefined : emitFunctionsModule({ ...fns, httpFile, base });
         return {
-          ...(errorPage !== undefined ? { errorPage } : {}),
+          ...(errorPages.length > 0 ? { errorPages } : {}),
+          ...(locale !== undefined ? { locale } : {}),
           ...(httpFile !== undefined ? { globalChain: httpFile } : {}),
           ...(functions !== undefined ? { functions } : {}),
         };
@@ -1709,8 +1889,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         (item): item is typeof item & { code: string; fileName: string } =>
           item.type === 'chunk' &&
           typeof item.facadeModuleId === 'string' &&
-          (item.facadeModuleId.endsWith(`?${CLIENT_QUERY}`) ||
-            item.facadeModuleId.endsWith(`?${IOC_QUERY}`)),
+          (hasQuery(item.facadeModuleId, CLIENT_QUERY) || hasQuery(item.facadeModuleId, IOC_QUERY)),
       );
       //     The SHARED chunks travel with them (BUG-31 §T5). They used to keep their content
       //     hash on the argument that the browser's HTTP cache could then skip them across
@@ -1844,8 +2023,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           return (
             isCoordinatorChunk(facade) ||
             facade === BOOT_ID ||
-            (facade?.endsWith(`?${CLIENT_QUERY}`) ?? false) ||
-            (facade?.endsWith(`?${IOC_QUERY}`) ?? false)
+            (facade != null && (hasQuery(facade, CLIENT_QUERY) || hasQuery(facade, IOC_QUERY)))
           );
         },
       );
@@ -2004,6 +2182,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         }
       }
       reporter.report(this, prerenderDiagnostics);
+      // `/` of a static build with two or more locales (SDD-58 §4.5): a page that sends the
+      // browser to the first locale, with the alternates for whoever reads it otherwise.
+      if (locales !== undefined && locales.length >= 2 && !emitted.has('index.html')) {
+        this.emitFile({ type: 'asset', fileName: 'index.html', source: rootRedirectHtml(locales, base) });
+        emitted.add('index.html');
+      }
 
       // 5a. A public file somebody reached by a relative path (FUD0366). Reported here
       //     rather than at the transform because the passes repeat: the same `.fud` is
@@ -2140,7 +2324,7 @@ async function devErrorPage(
   const mod =
     errorPage === undefined
       ? null
-      : ((await server.ssrLoadModule(WRAPPER_PREFIX + ERROR_PATTERN)) as RenderModule);
+      : ((await server.ssrLoadModule(WRAPPER_PREFIX + errorPage.route.pattern)) as RenderModule);
   return renderErrorPage(mod, problem, newNonce());
 }
 
@@ -2180,8 +2364,10 @@ async function sendErrorPage(
   problem: PageProblem,
   nonce: string,
   csp: Parameters<typeof cspFor>[0],
+  /** The pattern of the locale's `_error.fud` (SDD-58 §4.5); the one pattern without locales. */
+  pattern: string,
 ): Promise<void> {
-  const mod = existsSync(edgeChunkPath(root, ERROR_PATTERN)) ? await importEdgeChunk(root, ERROR_PATTERN) : null;
+  const mod = existsSync(edgeChunkPath(root, pattern)) ? await importEdgeChunk(root, pattern) : null;
   const html = await renderErrorPage(mod, problem, nonce);
   res.statusCode = problem.status;
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
