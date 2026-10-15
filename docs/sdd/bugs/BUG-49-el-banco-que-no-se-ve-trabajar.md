@@ -127,7 +127,7 @@ Según la maqueta de Pedro, con los textos en inglés:
   «skipped here». Al pasar el ratón, el paso se ilumina, se iluminan sus cajas en la captura, sale
   su `L17` y en VS Code se ilumina esa línea de la `.fudspec`.
 - **Capturas a la derecha:** «Before the when» y «At the end» con su tamaño y escala, y
-  *Expand ⤢* para verlas al doble. *Slider* las superpone con un tirador.
+  *Expand ⤢* para verlas al doble. Barras de desplazamiento finas y de un solo color.
 
 ### 4.4. Nada se mueve mientras llegan resultados
 
