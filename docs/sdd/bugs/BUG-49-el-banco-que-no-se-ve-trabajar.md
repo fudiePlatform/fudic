@@ -117,10 +117,11 @@ Según la maqueta de Pedro, con los textos en inglés:
 - **Cabecera en dos filas:** tag, `n/m pass` en verde o rojo, `0.4 s · hora · navegador ·
   viewport 1280×720`, el estado del socket con su punto, y en VS Code el icono de abrir en el
   navegador (la barra con la URL desaparece). Debajo, Run all (primario), Run failing, Pause,
-  Cancel y el modo de las capturas: *Side by side* · *Slider* · *Final only* (se recuerda).
-- **Tarjeta:** punto (spinner mientras corre), nombre, `pass · ms`, `L5` a su línea, y
-  `▶ Run`, `⊤ Pin`, `◉ Live` (marcado si su página viva está abierta). Abierta siempre; se pliega
-  pulsando la cabecera o con Enter.
+  Cancel, *Expand all* / *Collapse all* y el modo de las capturas: *Side by side* · *Final only*
+  (se recuerda).
+- **Tarjeta:** flecha de plegar, punto (spinner mientras corre), nombre, `pass · ms`, `L5` a su
+  línea, y `▶ Run`, `Pin`, `◉ Live` (marcado si su página viva está abierta). Las rojas abiertas
+  y el resto plegadas; se pliega con la flecha, pulsando la cabecera o con Enter.
 - **Pasos a la izquierda:** primero `given props <nombre>`; cada paso con ✓ / ✗ y la evidencia
   solo si el texto no la dice ya (`→ 20px`, `(before: "default")`); un paso que no aplica lleva
   «skipped here». Al pasar el ratón, el paso se ilumina, se iluminan sus cajas en la captura, sale
@@ -132,8 +133,8 @@ Según la maqueta de Pedro, con los textos en inglés:
 
 - Las capturas se construyen aparte, con `width`/`height` del `ShotRef`, y se cambian cuando sus
   imágenes están decodificadas.
-- Una tarjeta no se pliega sola.
-- Los rojos van delante, pero el orden solo se recalcula cuando no hay ejecución en marcha.
+- Los rojos van delante y abiertos, pero el orden y el plegado solo se recalculan cuando no hay
+  ejecución en marcha. Lo que la persona plegó o desplegó manda.
 - Las cajas se colocan en el tamaño CSS de la captura (antes, en píxeles de la imagen: a una
   escala distinta de 1 salían desplazadas).
 
@@ -172,10 +173,10 @@ Medido sobre `app-card` (3 criterios, Chrome, tres rondas tras calentar):
    mensaje del proceso, y lo quita su resultado o un `cancelled`.
 5. La sesión lleva la línea de cada paso, el `props` y el viewport; un resultado lleva sus
    capturas con tamaño; `set-attribute` devuelve el valor anterior.
-6. La página pinta la cabecera, las tarjetas y los pasos de §4.3; los tres modos de captura y
-   *Expand* funcionan; el hover ilumina la línea en el editor.
-7. Durante una ejecución ninguna tarjeta cambia de altura por sus capturas, ni se pliega, ni se
-   mueve de sitio.
+6. La página pinta la cabecera, las tarjetas y los pasos de §4.3; los dos modos de captura,
+   *Expand* y *Expand all* funcionan; el hover ilumina la línea en el editor.
+7. Durante una ejecución ninguna tarjeta cambia de altura por sus capturas, ni se pliega o
+   despliega sola, ni se mueve de sitio.
 8. Run all sobre `app-card` no tarda por criterio más que uno solo de forma apreciable (tabla de
    §4.5).
 9. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; `@fudic/workbench` y `fudic-vscode` al
@@ -198,7 +199,9 @@ Medido sobre `app-card` (3 criterios, Chrome, tres rondas tras calentar):
    conocido por la extensión, nunca los «sin resultado»: el proceso podría no ejecutarlos.
 4. Una lente sin acción (spinner) lleva comando vacío: VS Code la pinta como texto.
 5. Los botones globales siguen también en la cabecera de la página, como en la maqueta.
-6. Las tarjetas salen abiertas siempre: plegar las verdes las hacía saltar al cambiar de veredicto.
+6. Primero salieron todas abiertas, para que no saltaran al cambiar de veredicto. Pedro prefirió
+   las de antes, plegadas: vuelven las rojas abiertas y el resto plegadas, con una flecha por
+   tarjeta y *Expand all* / *Collapse all*, pero decidido solo al acabar la ejecución.
 7. Los rojos siguen delante, pero solo se reordena al acabar la ejecución.
 8. La evidencia de un `when`/`given` va entre paréntesis y la de un `then` tras `→`, y en los dos
    casos solo si el texto del paso no la contiene ya.
@@ -206,6 +209,9 @@ Medido sobre `app-card` (3 criterios, Chrome, tres rondas tras calentar):
    (`app-card gets variant="highlight" (before: "default")`).
 10. Las páginas de repuesto se rellenan solo cuando no corre ningún criterio: abrirlas durante la
     ejecución volvía a ralentizarla. Cuatro, como `DEFAULT_WORKERS`.
-11. *Expand* abre un `<dialog>` con la captura al doble; *Slider* recorta la de antes con
-    `clip-path` sobre la del final.
-12. Se implementó con dos sesiones: esta el código y `workbrench-tests` los tests.
+11. *Expand* abre un `<dialog>` con la captura al doble. Hubo un modo *Slider* (la de antes
+    recortada sobre la del final con un tirador) y se quitó tras la prueba de Pedro: casi ningún
+    criterio tiene captura «antes», y cuando la tiene apenas se distingue.
+12. *Pin* pierde el «⊤» de la maqueta, que se leía como un atajo de teclado; su tooltip dice qué
+    hace (al guardar, solo se ejecuta ese criterio).
+13. Se implementó con dos sesiones: esta el código y `workbrench-tests` los tests.

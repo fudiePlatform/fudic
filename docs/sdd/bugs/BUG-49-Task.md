@@ -35,7 +35,7 @@ worktree (`workbrench-tests`, rama `workbrench-tests`) sobre esta rama, y se mez
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [x] | 7 | 4 | **Shell rediseñado.** Cabecera en dos filas, tarjetas en dos columnas, pasos con línea y ✓/✗, modos de captura, *Expand*, hover; capturas que guardan su hueco, sin plegado ni reordenación a mitad de ejecución (BUG §4.3, §4.4) | `src/shell.ts` |
+| [x] | 7 | 4 | **Shell rediseñado.** Cabecera en dos filas, tarjetas en dos columnas, pasos con línea y ✓/✗, modos de captura, *Expand*, hover; capturas que guardan su hueco, sin plegado ni reordenación a mitad de ejecución (BUG §4.3, §4.4). Tras la primera prueba de Pedro: rojas abiertas y verdes plegadas al acabar, flecha y *Expand all*, barras finas, *Pin* sin «⊤» y sin *Slider* | `src/shell.ts` |
 | [x] | 8 | 7 | **La pestaña.** Sin barra; reenvía `fudic:openInBrowser` y `fudic:hover`; `highlight` ilumina la línea en el editor | `packages/vscode/src/workbench-panel.ts` · `packages/vscode/src/extension.ts` |
 | [x] | 9 | 7, 8 | **Tests.** Criterios 6 y 7 (`3f6f73c`: 26 tests del shell sobre Chrome real) | `packages/workbench/test/browser/shell.test.ts` · `packages/vscode/test/*` |
 
