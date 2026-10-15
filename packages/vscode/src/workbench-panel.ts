@@ -61,6 +61,44 @@ export function handlePanelRequest(
 const escape = (text: string): string =>
   text.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 
+/**
+ * The tab before its process answers: a spinner and «Starting workbench…», so the click shows
+ * something at once. A `stopped` message replaces it with why it did not come up.
+ */
+export function startingHtml(): string {
+  const csp = `default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'`;
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="${csp}">
+<style>
+html, body { margin: 0; height: 100%; }
+body { display: flex; align-items: center; justify-content: center; gap: 10px; font: 13px system-ui, sans-serif;
+  color: var(--vscode-foreground); background: var(--vscode-editor-background); }
+.spinner { width: 14px; height: 14px; border: 2px solid var(--vscode-foreground); border-right-color: transparent;
+  border-radius: 50%; opacity: 0.7; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.stopped { color: var(--vscode-errorForeground); }
+</style>
+</head>
+<body>
+<span class="spinner" id="spinner"></span><span id="status">Starting workbench…</span>
+<script>
+window.addEventListener('message', (event) => {
+  const data = event.data;
+  if (!data || data.type !== 'stopped') return;
+  document.getElementById('spinner').remove();
+  const status = document.getElementById('status');
+  status.className = 'stopped';
+  status.textContent = data.message;
+});
+</script>
+</body>
+</html>
+`;
+}
+
 export function panelHtml(url: string, theme: Theme = 'light'): string {
   const origin = panelOrigin(url);
   const csp = `default-src 'none'; frame-src ${origin}; script-src 'unsafe-inline'; style-src 'unsafe-inline'`;

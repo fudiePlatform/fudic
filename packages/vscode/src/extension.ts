@@ -19,8 +19,8 @@ import { registerCommands } from './commands/index.js';
 import { watchEmptyValues } from './empty-value.js';
 import { nodeProcesses } from './spawn.js';
 import { createVirtualDocStore, VIRTUAL_SCHEME } from './virtual-doc-provider.js';
-import { createWorkbenches, criterionLenses, samePath, type Workbenches } from './workbench.js';
-import { handlePanelRequest, panelHtml, themeOf } from './workbench-panel.js';
+import { createWorkbenches, samePath, specLenses, type LensAction, type Workbenches } from './workbench.js';
+import { handlePanelRequest, panelHtml, startingHtml, themeOf } from './workbench-panel.js';
 import {
   bundledServerPath,
   caretAtOf,
@@ -49,16 +49,21 @@ let workbenches: Workbenches | undefined;
  * The workbench tab (SDD-32 §4.10): the shell framed beside the editor. Exported, like
  * `createClient`, so its wiring is assertable through the double.
  */
-export const openWorkbenchPanel = (view: { readonly title: string; readonly url: string }): WorkbenchPanel => {
+export const openWorkbenchPanel = (view: { readonly title: string }): WorkbenchPanel => {
   const panel = vscode.window.createWebviewPanel('fudic.workbench', view.title, vscode.ViewColumn.Beside, {
     enableScripts: true,
     retainContextWhenHidden: true,
   });
-  panel.webview.html = panelHtml(view.url, themeOf(vscode.window.activeColorTheme.kind));
+  panel.webview.html = startingHtml();
+  /** The shell's URL once loaded: what «Open in browser» opens. */
+  let url: string | undefined;
+  let disposed = false;
   // «Open in browser», and the shell's «open this file at this line».
   panel.webview.onDidReceiveMessage((message: unknown) =>
     handlePanelRequest(message, {
-      openExternal: () => void vscode.env.openExternal(vscode.Uri.parse(view.url)),
+      openExternal: () => {
+        if (url !== undefined) void vscode.env.openExternal(vscode.Uri.parse(url));
+      },
       openFile: (file, line) =>
         void vscode.window.showTextDocument(vscode.Uri.file(file), {
           viewColumn: vscode.ViewColumn.One,
@@ -69,10 +74,21 @@ export const openWorkbenchPanel = (view: { readonly title: string; readonly url:
   const themed = vscode.window.onDidChangeActiveColorTheme(
     (theme) => void panel.webview.postMessage({ type: 'theme', theme: themeOf(theme.kind) }),
   );
-  panel.onDidDispose(() => themed.dispose());
+  panel.onDidDispose(() => {
+    disposed = true;
+    themed.dispose();
+  });
   return {
+    load: (shell, title) => {
+      url = shell;
+      panel.title = title;
+      panel.webview.html = panelHtml(shell, themeOf(vscode.window.activeColorTheme.kind));
+    },
     reveal: () => panel.reveal(),
-    showStopped: (message) => void panel.webview.postMessage({ type: 'stopped', message }),
+    // A tab the user already closed has nobody to tell.
+    showStopped: (message) => {
+      if (!disposed) void panel.webview.postMessage({ type: 'stopped', message });
+    },
     onClosed: (listener) => {
       panel.onDidDispose(listener);
     },
@@ -136,7 +152,7 @@ export const createWorkbenchResults = (): WorkbenchResultsPort & vscode.Disposab
 /** The command behind the status bar item. Not contributed: it is not a user command. */
 const SHOW_OUTPUT = 'fudic.showOutput';
 
-/** The command behind a criterion's CodeLens: `(file, id)`, `id` null for the failing ones. */
+/** The command behind every CodeLens of a `.fudspec`: `(file, action)`. */
 const RUN_CRITERION = 'fudic.runCriterion';
 
 /**
@@ -261,29 +277,46 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       },
       hide: () => benchBar.hide(),
     },
+    progress: {
+      begin: (title) => {
+        let end!: () => void;
+        void vscode.window.withProgress(
+          { location: vscode.ProgressLocation.Window, title },
+          () => new Promise<void>((resolve) => (end = resolve)),
+        );
+        return () => end();
+      },
+    },
   });
   workbenches = opened;
+  const lensesChanged = new vscode.EventEmitter<void>();
+  opened.onLensesChanged(() => lensesChanged.fire());
   context.subscriptions.push(
     results,
     benchBar,
+    lensesChanged,
     vscode.window.onDidChangeActiveTextEditor((editor) => opened.focus(workbenchFileOf(editor))),
     vscode.window.onDidChangeVisibleTextEditors(() => results.repaint()),
-    // «▶ Run» over each criterion of a `.fudspec`, and «▶ Run failing» over the first.
+    // Over the `component` line, what is about the whole spec; «▶ Run» over each criterion.
+    // A lens with nothing to do (a spinner) has an empty command: VS Code draws it as text.
     vscode.languages.registerCodeLensProvider(
       { language: 'fudspec' },
       {
-        provideCodeLenses: (document) =>
-          criterionLenses(document.getText()).map(
+        onDidChangeCodeLenses: lensesChanged.event,
+        provideCodeLenses: (document) => {
+          const file = document.uri.fsPath.replaceAll('\\', '/');
+          return specLenses(document.getText(), opened.lensState(file)).map(
             (lens) =>
               new vscode.CodeLens(new vscode.Range(lens.line, 0, lens.line, 0), {
                 title: lens.title,
-                command: RUN_CRITERION,
-                arguments: [document.uri.fsPath.replaceAll('\\', '/'), lens.id],
+                command: lens.action === null ? '' : RUN_CRITERION,
+                arguments: lens.action === null ? [] : [file, lens.action],
               }),
-          ),
+          );
+        },
       },
     ),
-    vscode.commands.registerCommand(RUN_CRITERION, (file: string, id: string | null) => opened.run(file, id)),
+    vscode.commands.registerCommand(RUN_CRITERION, (file: string, action: LensAction) => opened.act(file, action)),
   );
   opened.focus(workbenchFileOf(vscode.window.activeTextEditor));
 
