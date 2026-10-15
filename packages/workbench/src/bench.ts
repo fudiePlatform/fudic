@@ -152,9 +152,12 @@ export async function openBench(input: BenchInput): Promise<Bench> {
     command(command) {
       switch (command.type) {
         case 'run': {
-          const ids = command.failing === true
+          let ids = command.failing === true
             ? session.criteria.filter((c) => verdicts.get(c.id) !== 'pass').map((c) => c.id)
             : command.ids;
+          // A pinned criterion is the only one Run all and Run failing reach; naming ids still
+          // runs those.
+          if (command.ids === undefined && pinned !== null) ids = (ids ?? [pinned]).filter((id) => id === pinned);
           if (ids?.length !== 0) rerunner.request(false, null, ids);
           return;
         }

@@ -94,8 +94,11 @@ a { color: inherit; text-decoration: none; } a:hover { text-decoration: underlin
 .actions button { height: 28px; padding: 0 10px; font-size: 12px; background: transparent; }
 .actions button[aria-pressed="true"] { background: var(--live-bg); border-color: var(--live); color: var(--live); }
 .card[data-open="false"] .body { display: none; }
-.toggle { width: 20px; height: 20px; padding: 0; justify-content: center; border: 0; background: transparent;
-  color: var(--soft); font-size: 12px; }
+.toggle { width: 22px; height: 22px; padding: 0; justify-content: center; border: 0; border-radius: 4px;
+  background: transparent; color: var(--soft); }
+.toggle:hover { background: var(--well); color: var(--ink); filter: none; }
+.toggle svg { transition: transform 0.15s ease; }
+.toggle[aria-expanded="true"] svg { transform: rotate(90deg); }
 /* Thin scrollbars in one colour, no arrows: the shots scroll, they should not be framed by it. */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-thumb { background: var(--faint); border-radius: 3px; }
@@ -156,6 +159,7 @@ const OPEN_ICON =
   '<path d="M14 3h7v7"></path><path d="M10 14L21 3"></path><path d="M21 14v7H3V3h7"></path></svg>';
 
 const SCRIPT = `
+const CHEVRON = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3l5 5-5 5"></path></svg>';
 const params = new URLSearchParams(location.search);
 const inEditor = params.get('host') === 'vscode';
 const theme = params.get('theme');
@@ -255,8 +259,11 @@ function makeCard(id) {
   el.dataset.id = id;
   el.dataset.verdict = 'waiting';
   const head = $('header', 'head');
-  const toggle = $('button', 'toggle', '▸');
+  const toggle = $('button', 'toggle');
   toggle.title = 'Fold or unfold (Enter)';
+  toggle.setAttribute('aria-label', 'Fold or unfold');
+  // The page's own markup, not evidence: the one place a string goes in as HTML.
+  toggle.innerHTML = CHEVRON;
   const status = $('span', 'status');
   status.setAttribute('aria-hidden', 'true');
   const titleLink = $('a', 'title', id);
@@ -349,7 +356,6 @@ function paint(card) {
   // What the person chose, or else what the last finished run decided: never mid-run.
   const open = folded.has(card.id) ? folded.get(card.id) : card.autoOpen;
   card.el.dataset.open = String(open);
-  card.toggle.textContent = open ? '▾' : '▸';
   card.toggle.setAttribute('aria-expanded', String(open));
   foldAllButton.textContent = [...cards.values()].every((c) => c.el.dataset.open === 'true') ? 'Collapse all' : 'Expand all';
 }
@@ -549,6 +555,8 @@ function setState(m) {
   paused = m.paused; pinned = m.pinned; pending = m.pending;
   pauseButton.textContent = paused ? 'Resume' + (pending > 0 ? ' (' + pending + ')' : '') : 'Pause';
   pauseButton.setAttribute('aria-pressed', String(paused));
+  // Pinned, Run all runs the pinned criterion alone: the button says so.
+  byId('run-all-label').textContent = pinned ? 'Run pinned' : 'Run all';
   for (const card of cards.values()) paint(card);
   count();
 }
@@ -665,7 +673,7 @@ export function shellPage(): string {
     '<span class="spacer"></span><span id="state"><span class="dot"></span><span>connecting…</span></span>' +
     `<button id="open-browser" class="icon" title="Open in browser" aria-label="Open in browser" hidden>${OPEN_ICON}</button></div>` +
     '<div class="row row2">' +
-    '<button id="run-all" class="primary" title="Run every criterion">▶ Run all <kbd>R</kbd></button>' +
+    '<button id="run-all" class="primary" title="Run every criterion, or only the pinned one">▶ <span id="run-all-label">Run all</span> <kbd>R</kbd></button>' +
     '<button id="run-failing" title="Run the ones that did not pass">Run failing <kbd>F</kbd></button>' +
     '<button id="pause" class="ghost" title="Saving does not run (p)">Pause</button>' +
     '<button id="cancel" class="ghost" title="Stop the running criteria (Esc)">Cancel</button>' +

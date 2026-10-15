@@ -63,6 +63,48 @@ export class HumanReport {
   }
 }
 
+/**
+ * What the workbench prints when a person launched it at a terminal instead of a parent process:
+ * where its shell is, that it keeps running, and a block per component each time a run ends. It
+ * never ends by itself — it serves the shell and runs again on save — so it says how to stop it.
+ */
+export class BenchConsole {
+  readonly #write: (line: string) => void;
+  readonly #report: HumanReport;
+  /** What each component is still running, by tag. */
+  readonly #running = new Map<string, Set<string>>();
+
+  constructor(write: (line: string) => void) {
+    this.#write = write;
+    this.#report = new HumanReport(write);
+  }
+
+  opened(tag: string, url: string, browser: string): void {
+    this.#write(`${tag} workbench (${browser}): ${url}`);
+    this.#write('Open it in a browser; saving a file runs the criteria again. Ctrl+C stops it.');
+  }
+
+  message(message: BenchMessage): void {
+    this.#report.message(message);
+    if (message.type === 'problem') {
+      this.#write(`problem: ${message.message}`);
+      return;
+    }
+    if (message.type === 'running') {
+      this.#running.set(message.tag, new Set(message.ids));
+      return;
+    }
+    if (message.type !== 'result' && message.type !== 'cancelled') return;
+    const running = this.#running.get(message.tag);
+    if (running === undefined) return;
+    for (const id of message.type === 'result' ? [message.id] : message.ids) running.delete(id);
+    if (running.size > 0) return;
+    this.#running.delete(message.tag);
+    this.#write('');
+    this.#report.done(message.tag);
+  }
+}
+
 /** A step that made the criterion fail or stop. */
 function isBad(step: StepResult): boolean {
   return 'error' in step || (step.block === 'then' && !step.pass);

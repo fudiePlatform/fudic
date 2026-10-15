@@ -6,6 +6,9 @@
  * line (`open` another component, `close` one). It lives until stdin closes — which is what
  * happens when its parent dies — or SIGINT arrives.
  *
+ * Launched by hand at a terminal, it prints for a person instead: where the shell is, that it
+ * keeps running until Ctrl+C, and a block of results each time a run ends.
+ *
  * Nothing reaches the user as a stack: a failure is a `{error}` line and exit code 1.
  */
 
@@ -13,6 +16,7 @@ import { BROWSER_CHOICES, firstLine, type BrowserChoice } from './browser.js';
 import { obey } from './control.js';
 import { openWorkbench } from './open.js';
 import { parseCommand, type BenchMessage } from './protocol.js';
+import { BenchConsole } from './report.js';
 import { runMain } from './run-cli.js';
 import { isFailure, type WorkbenchOptions, type WorkbenchSession } from './types.js';
 
@@ -26,6 +30,8 @@ export interface CliIo {
   exit(code: number): void;
   /** The folder it was started in: where `run` looks without paths. */
   readonly cwd: string;
+  /** A person at a terminal, not a parent process: the workbench prints text, not JSON lines. */
+  readonly interactive: boolean;
 }
 
 export const USAGE = `usage: fudic-workbench <file> [--port <n>] [--keep] [--browser <${BROWSER_CHOICES.join('|')}>] [--workers <n>]`;
@@ -82,10 +88,13 @@ export async function main(argv: readonly string[], io: CliIo): Promise<void> {
     return;
   }
 
+  // At a terminal a person reads it: text instead of the protocol's lines.
+  const human = io.interactive ? new BenchConsole(io.write) : undefined;
+  const print = (message: BenchMessage) => (human === undefined ? io.write(JSON.stringify(message)) : human.message(message));
   // Messages flow from the first session load, before the first line can be written: they wait.
   let waiting: BenchMessage[] | undefined = [];
   const onMessage = (message: BenchMessage) => {
-    if (waiting === undefined) io.write(JSON.stringify(message));
+    if (waiting === undefined) print(message);
     else waiting.push(message);
   };
 
@@ -103,8 +112,9 @@ export async function main(argv: readonly string[], io: CliIo): Promise<void> {
   }
 
   const { url, tag, component, criteria, browser } = session;
-  io.write(JSON.stringify({ url, tag, component, criteria, browser }));
-  for (const message of waiting) io.write(JSON.stringify(message));
+  if (human === undefined) io.write(JSON.stringify({ url, tag, component, criteria, browser }));
+  else human.opened(tag, url, browser);
+  for (const message of waiting) print(message);
   waiting = undefined;
 
   io.onLine((line) => {
@@ -150,5 +160,6 @@ export function processIo(): CliIo {
     },
     exit: (code) => process.exit(code),
     cwd: process.cwd(),
+    interactive: process.stdout.isTTY === true,
   };
 }

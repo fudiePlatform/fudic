@@ -77,6 +77,8 @@ export interface LensState {
   readonly paused: boolean;
   /** Saves waiting while paused. */
   readonly pending: number;
+  /** The criterion Run all, Run failing and a save are limited to; null when none is pinned. */
+  readonly pinned: string | null;
   readonly running: ReadonlySet<string>;
 }
 
@@ -106,6 +108,7 @@ interface Component {
   readonly running: Set<string>;
   paused: boolean;
   pending: number;
+  pinned: string | null;
 }
 
 /** A tab opened at the click, before its process answered: what its answer attaches to. */
@@ -159,7 +162,7 @@ function dirOf(path: string): string {
 const SPIN = '$(sync~spin)';
 
 /** A `.fudspec` before anything was opened: nothing starting, nothing running. */
-export const IDLE: LensState = { starting: false, open: false, paused: false, pending: 0, running: new Set() };
+export const IDLE: LensState = { starting: false, open: false, paused: false, pending: 0, pinned: null, running: new Set() };
 
 /**
  * The CodeLenses of a `.fudspec`. Over its `component` line (the first criterion's without one),
@@ -177,7 +180,9 @@ export function specLenses(text: string, state: LensState): SpecLens[] {
   const component = lines.findIndex((source) => /^component\s+\S/u.test(source));
   const top = component >= 0 ? component : criteria[0]?.line;
   const lenses: SpecLens[] = [];
-  if (top !== undefined) lenses.push(...globalLenses(top, state, criteria.length > 0 && criteria.every((c) => state.running.has(c.id))));
+  // Pinned, Run all reaches the pinned criterion alone: «all» running means that one.
+  const reached = state.pinned === null ? criteria : criteria.filter((c) => c.id === state.pinned);
+  if (top !== undefined) lenses.push(...globalLenses(top, state, reached.length > 0 && reached.every((c) => state.running.has(c.id))));
   for (const { line, id } of criteria) {
     lenses.push(
       state.running.has(id)
@@ -190,8 +195,9 @@ export function specLenses(text: string, state: LensState): SpecLens[] {
 
 function globalLenses(line: number, state: LensState, allRunning: boolean): SpecLens[] {
   if (state.starting) return [{ line, title: `${SPIN} Starting workbench…`, action: null }];
+  const which = state.pinned === null ? 'all' : 'pinned';
   const lenses: SpecLens[] = [
-    { line, title: allRunning ? `${SPIN} Running all…` : '▶ Run all', action: { type: 'run', all: true } },
+    { line, title: allRunning ? `${SPIN} Running ${which}…` : `▶ Run ${which}`, action: { type: 'run', all: true } },
     { line, title: '▶ Run failing', action: { type: 'run', failing: true } },
   ];
   if (!state.open) return lenses;
@@ -352,6 +358,7 @@ export function createWorkbenches(deps: WorkbenchDeps): Workbenches {
     } else if (message.type === 'state') {
       component.paused = message['paused'] === true;
       component.pending = typeof message['pending'] === 'number' ? message['pending'] : 0;
+      component.pinned = typeof message['pinned'] === 'string' ? message['pinned'] : null;
     } else {
       return;
     }
@@ -366,7 +373,7 @@ export function createWorkbenches(deps: WorkbenchDeps): Workbenches {
     const tag = answer['tag'] as string;
     const path = samePath(answer['component'] as string);
     const { panel } = opening;
-    const component: Component = { tag, path, panel, spec: null, criteria: [], results: new Map(), running: new Set(), paused: false, pending: 0 };
+    const component: Component = { tag, path, panel, spec: null, criteria: [], results: new Map(), running: new Set(), paused: false, pending: 0, pinned: null };
     project.components.set(path, component);
     const close = (): void => {
       if (project.components.get(path) !== component) return;
@@ -530,9 +537,11 @@ export function createWorkbenches(deps: WorkbenchDeps): Workbenches {
   /** The ids a run asks for, as far as the extension knows them: what shows as running at once. */
   const asked = (component: Component, action: Extract<LensAction, { type: 'run' }>): string[] => {
     if ('id' in action) return component.criteria.some((c) => c.id === action.id) ? [action.id] : [];
-    if ('all' in action) return component.criteria.map((c) => c.id);
+    // Pinned, Run all and Run failing reach the pinned criterion alone.
+    const reached = component.criteria.filter((c) => component.pinned === null || c.id === component.pinned);
+    if ('all' in action) return reached.map((c) => c.id);
     // Only the ones known red: the process runs those for sure, so a spinner never stays up.
-    return component.criteria.filter((c) => {
+    return reached.filter((c) => {
       const verdict = component.results.get(c.id)?.verdict;
       return verdict === 'fail' || verdict === 'error';
     }).map((c) => c.id);
@@ -569,8 +578,8 @@ export function createWorkbenches(deps: WorkbenchDeps): Workbenches {
       if (openings.has(samePath(componentOf(file)))) return { ...IDLE, starting: true };
       const known = find(componentOf(file));
       if (known === undefined) return IDLE;
-      const { paused, pending, running } = known.component;
-      return { starting: false, open: true, paused, pending, running };
+      const { paused, pending, pinned, running } = known.component;
+      return { starting: false, open: true, paused, pending, pinned, running };
     },
 
     onLensesChanged(listener) {
