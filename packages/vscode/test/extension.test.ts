@@ -26,6 +26,7 @@ import {
   reset,
   showEditors,
   state,
+  ThemeColor,
   typeInto,
   visibleEditor,
 } from './_vscode-stub.js';
@@ -403,6 +404,26 @@ describe('the workbench, through the adapter (SDD-32)', () => {
     panel.dispose();
     changeTheme(2);
     expect(panel.webview.posted).toHaveLength(2);
+  });
+
+  it('lights the whole line of the step under the pointer in the editors of its file, and puts it out', () => {
+    openWorkbenchPanel({ title: 'Workbench · app-card' });
+    const panel = state.panels[0]!;
+    const spec = visibleEditor('c:\\work\\app\\app-card.fudspec');
+    const other = visibleEditor('C:\\work\\app\\app-card.fud');
+    state.visibleEditors = [spec, other];
+    const lit = (editor: ReturnType<typeof visibleEditor>) => [...editor.painted.values()].map((ranges) => ranges.map((r) => r.startLine));
+
+    panel.receive({ type: 'hover', file: 'C:/work/app/app-card.fudspec', line: 5 });
+    expect([lit(spec), lit(other)]).toEqual([[[4]], [[]]]);
+    const [type] = [...spec.painted.keys()] as [{ type: { options: unknown } }];
+    expect(type.type.options).toEqual({ isWholeLine: true, backgroundColor: new ThemeColor('editor.rangeHighlightBackground') });
+
+    panel.receive({ type: 'hover', file: 'C:/work/app/app-card.fudspec', line: null });
+    expect([lit(spec), lit(other)]).toEqual([[[]], [[]]]);
+    // One decoration, whatever the times it lights.
+    panel.receive({ type: 'hover', file: 'C:/work/app/app-card.fudspec', line: 2 });
+    expect(spec.painted.size).toBe(1);
   });
 
   it('registers fudic.openWorkbench, and warns when the workspace has no @fudic/workbench', async () => {

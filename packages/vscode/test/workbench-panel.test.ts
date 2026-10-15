@@ -27,11 +27,9 @@ function relay(html: string) {
   const toEditor: unknown[] = [];
   const toShell: [unknown, string][] = [];
   const listeners: ((event: { origin: string; data: unknown }) => void)[] = [];
-  const clicks: (() => void)[] = [];
   const stopped = { textContent: '', hidden: true };
   const elements: Record<string, unknown> = {
     shell: { contentWindow: { postMessage: (data: unknown, origin: string) => toShell.push([data, origin]) } },
-    open: { addEventListener: (_type: string, listener: () => void) => clicks.push(listener) },
     stopped,
   };
   const window = { addEventListener: (_type: string, listener: (typeof listeners)[number]) => listeners.push(listener) };
@@ -42,7 +40,6 @@ function relay(html: string) {
     toEditor,
     toShell,
     stopped,
-    click: () => clicks.forEach((c) => c()),
     message: (origin: string, data: unknown) => listeners.forEach((l) => l({ origin, data })),
   };
 }
@@ -59,11 +56,11 @@ describe('the theme', () => {
 });
 
 describe('panelHtml', () => {
-  it('frames the shell in the editor\'s theme, and shows its URL in the bar', () => {
+  it('frames the shell in the editor\'s theme, with no bar of its own: the shell has the button', () => {
     const html = panelHtml(URL_LINE, 'dark');
     expect(html).toContain(`<iframe id="shell" src="${URL_LINE}?host=vscode&amp;theme=dark" title="Workbench"></iframe>`);
-    expect(html).toContain(`<code>${URL_LINE}</code>`);
-    expect(html).toContain('<button id="open">Open in browser</button>');
+    expect(html).not.toContain('<code>');
+    expect(html).not.toContain('<button');
     expect(panelHtml(URL_LINE)).toContain('theme=light');
   });
 
@@ -76,7 +73,9 @@ describe('panelHtml', () => {
 
   it('escapes what it writes into the page', () => {
     const html = panelHtml('http://127.0.0.1:1/__bench/?a="b"&c=<d>');
-    expect(html).toContain('<code>http://127.0.0.1:1/__bench/?a=&quot;b&quot;&amp;c=&lt;d&gt;</code>');
+    const src = /<iframe id="shell" src="([^"]*)"/u.exec(html)![1]!;
+    expect(src).toContain('&amp;');
+    expect(src).not.toContain('&c');
     expect(html).not.toContain('<d>');
   });
 });
@@ -114,10 +113,22 @@ describe('startingHtml', () => {
 });
 
 describe('the relay — criterion 14', () => {
-  it('the button asks the editor to open the shell in the browser', () => {
+  it('the shell\'s button asks the editor to open the shell in the browser, only from its origin', () => {
     const r = relay(panelHtml(URL_LINE));
-    r.click();
+    r.message(ORIGIN, { type: 'fudic:openInBrowser' });
+    r.message('http://evil.example', { type: 'fudic:openInBrowser' });
     expect(r.toEditor).toEqual([OPEN_IN_BROWSER]);
+  });
+
+  it('the step under the pointer goes to the editor to light its line, only from the shell\'s origin', () => {
+    const r = relay(panelHtml(URL_LINE));
+    r.message(ORIGIN, { type: 'fudic:hover', file: 'C:/p/app-card.fudspec', line: 5 });
+    r.message(ORIGIN, { type: 'fudic:hover', file: 'C:/p/app-card.fudspec', line: null });
+    r.message('http://evil.example', { type: 'fudic:hover', file: 'C:/secret', line: 1 });
+    expect(r.toEditor).toEqual([
+      { type: 'hover', file: 'C:/p/app-card.fudspec', line: 5 },
+      { type: 'hover', file: 'C:/p/app-card.fudspec', line: null },
+    ]);
   });
 
   it('a file the shell asks for goes to the editor, only from the shell\'s origin', () => {
@@ -144,21 +155,46 @@ describe('the relay — criterion 14', () => {
 });
 
 describe('panelRequest and handlePanelRequest', () => {
-  it('reads the two requests and nothing else', () => {
+  it('reads the three requests and nothing else', () => {
     expect(panelRequest(OPEN_IN_BROWSER)).toEqual({ type: 'openInBrowser' });
     expect(panelRequest({ type: 'open', file: 'C:/a.fud', line: 4 })).toEqual({ type: 'open', file: 'C:/a.fud', line: 4 });
-    for (const message of [null, 'other', { type: 'open', file: 1, line: 1 }, { type: 'open', file: 'a', line: '1' }, { type: 'x' }]) {
+    expect(panelRequest({ type: 'hover', file: 'C:/a.fud', line: 4 })).toEqual({ type: 'hover', file: 'C:/a.fud', line: 4 });
+    expect(panelRequest({ type: 'hover', file: 'C:/a.fud', line: null })).toEqual({ type: 'hover', file: 'C:/a.fud', line: null });
+    for (const message of [
+      null,
+      'other',
+      { type: 'open', file: 1, line: 1 },
+      { type: 'open', file: 'a', line: '1' },
+      { type: 'hover', file: 1, line: 1 },
+      { type: 'hover', file: 'a', line: '1' },
+      { type: 'hover', file: 'a' },
+      { type: 'x' },
+    ]) {
       expect(panelRequest(message)).toBeUndefined();
     }
   });
 
   it('answers each with the editor, a line below 1 at the first one', () => {
     const done: unknown[] = [];
-    const editor = { openExternal: () => void done.push('external'), openFile: (file: string, line: number) => void done.push([file, line]) };
+    const editor = {
+      openExternal: () => void done.push('external'),
+      openFile: (file: string, line: number) => void done.push(['open', file, line]),
+      highlight: (file: string, line: number | null) => void done.push(['light', file, line]),
+    };
     handlePanelRequest(OPEN_IN_BROWSER, editor);
     handlePanelRequest({ type: 'open', file: 'C:/a.fud', line: 0 }, editor);
     handlePanelRequest({ type: 'open', file: 'C:/a.fud', line: 7 }, editor);
+    handlePanelRequest({ type: 'hover', file: 'C:/a.fud', line: 0 }, editor);
+    handlePanelRequest({ type: 'hover', file: 'C:/a.fud', line: 7 }, editor);
+    handlePanelRequest({ type: 'hover', file: 'C:/a.fud', line: null }, editor);
     handlePanelRequest('noise', editor);
-    expect(done).toEqual(['external', ['C:/a.fud', 1], ['C:/a.fud', 7]]);
+    expect(done).toEqual([
+      'external',
+      ['open', 'C:/a.fud', 1],
+      ['open', 'C:/a.fud', 7],
+      ['light', 'C:/a.fud', 1],
+      ['light', 'C:/a.fud', 7],
+      ['light', 'C:/a.fud', null],
+    ]);
   });
 });
