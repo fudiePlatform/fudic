@@ -94,6 +94,14 @@ a { color: inherit; text-decoration: none; } a:hover { text-decoration: underlin
 .actions button { height: 28px; padding: 0 10px; font-size: 12px; background: transparent; }
 .actions button[aria-pressed="true"] { background: var(--live-bg); border-color: var(--live); color: var(--live); }
 .card[data-open="false"] .body { display: none; }
+.toggle { width: 20px; height: 20px; padding: 0; justify-content: center; border: 0; background: transparent;
+  color: var(--soft); font-size: 12px; }
+/* Thin scrollbars in one colour, no arrows: the shots scroll, they should not be framed by it. */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--faint); border-radius: 3px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-button { display: none; }
+@supports not selector(::-webkit-scrollbar) { * { scrollbar-width: thin; scrollbar-color: var(--faint) transparent; } }
 .body { display: grid; grid-template-columns: minmax(220px, 340px) minmax(0, 1fr); gap: 16px; padding: 12px 14px; }
 .steps { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; line-height: 20px; min-width: 0; }
 .steps li { display: flex; gap: 10px; align-items: baseline; margin: 0 -8px; padding: 0 8px; border-radius: 4px; min-width: 0; }
@@ -161,6 +169,7 @@ const title = byId('title'), countEl = byId('count'), summary = byId('summary');
 const live = byId('live'), liveFrame = byId('live-frame'), liveTitle = byId('live-title');
 const zoom = byId('zoom'), zoomTitle = byId('zoom-title'), zoomBody = byId('zoom-body');
 const pauseButton = byId('pause');
+const foldAllButton = byId('fold-all');
 
 let tag = decodeURIComponent(location.pathname.split('/').filter(Boolean)[1] || '');
 let browserName = '';
@@ -247,6 +256,8 @@ function makeCard(id) {
   el.dataset.id = id;
   el.dataset.verdict = 'waiting';
   const head = $('header', 'head');
+  const toggle = $('button', 'toggle', '▸');
+  toggle.title = 'Fold or unfold (Enter)';
   const status = $('span', 'status');
   status.setAttribute('aria-hidden', 'true');
   const titleLink = $('a', 'title', id);
@@ -257,12 +268,12 @@ function makeCard(id) {
   const actions = $('span', 'actions');
   const runButton = $('button', '', '▶ Run');
   runButton.title = 'Run this criterion';
-  const pinButton = $('button', '', '⊤ Pin');
-  pinButton.title = 'Saving runs only this criterion';
+  const pinButton = $('button', '', 'Pin');
+  pinButton.title = 'Pinned, saving a file runs only this criterion; click again to unpin';
   const liveButton = $('button', '', '◉ Live');
   liveButton.title = 'Open its page, alive (l)';
   actions.append(runButton, pinButton, liveButton);
-  head.append(status, titleLink, verdict, was, line, actions);
+  head.append(toggle, status, titleLink, verdict, was, line, actions);
   const body = $('div', 'body');
   const left = $('div');
   const steps = $('ol', 'steps');
@@ -272,8 +283,9 @@ function makeCard(id) {
   const shots = $('div', 'shots');
   body.append(left, shots);
   el.append(head, body);
-  const card = { id: id, el: el, title: titleLink, line: line, verdict: verdict, was: was, steps: steps, note: note, shots: shots, pin: pinButton, live: liveButton, lines: [], index: 0, criterion: null, running: false, render: 0 };
-  // The head folds the card; its links and buttons do their own thing.
+  const card = { id: id, el: el, toggle: toggle, title: titleLink, line: line, verdict: verdict, was: was, steps: steps, note: note, shots: shots, pin: pinButton, live: liveButton, lines: [], index: 0, criterion: null, running: false, render: 0, autoOpen: false };
+  // The head and its arrow fold the card; its links and other buttons do their own thing.
+  toggle.addEventListener('click', () => flip(card));
   head.addEventListener('click', (event) => { if (!event.target.closest('a, button')) flip(card); });
   runButton.addEventListener('click', () => send({ type: 'run', ids: [id] }));
   pinButton.addEventListener('click', () => send({ type: 'pin', id: pinned === id ? null : id }));
@@ -335,18 +347,33 @@ function paint(card) {
   card.el.classList.toggle('pinned', pinned === card.id);
   card.pin.setAttribute('aria-pressed', String(pinned === card.id));
   card.live.setAttribute('aria-pressed', String(liveId === card.id));
-  // Open unless the person folded it: a card never folds by itself while a run comes in.
-  const open = folded.has(card.id) ? folded.get(card.id) : true;
+  // What the person chose, or else what the last finished run decided: never mid-run.
+  const open = folded.has(card.id) ? folded.get(card.id) : card.autoOpen;
   card.el.dataset.open = String(open);
+  card.toggle.textContent = open ? '▾' : '▸';
+  card.toggle.setAttribute('aria-expanded', String(open));
+  foldAllButton.textContent = [...cards.values()].every((c) => c.el.dataset.open === 'true') ? 'Collapse all' : 'Expand all';
 }
 
-/** The failing ones first: only between runs, so no card jumps while results arrive. */
+/**
+ * The failing ones first and open, the rest folded: only between runs, so no card jumps or
+ * changes height while results arrive.
+ */
 function reorder() {
   if (run && !run.end) return;
   for (const card of cards.values()) {
     const r = results.get(card.id);
-    card.el.style.order = String((r && isRed(r.verdict) ? 0 : 1000) + card.index);
+    const red = !!r && isRed(r.verdict);
+    card.el.style.order = String((red ? 0 : 1000) + card.index);
+    card.autoOpen = red;
+    paint(card);
   }
+}
+
+/** Expand every card, or collapse every one when all are open. */
+function foldAll() {
+  const open = ![...cards.values()].every((c) => c.el.dataset.open === 'true');
+  for (const card of cards.values()) { folded.set(card.id, open); paint(card); }
 }
 
 function flip(card) {
@@ -621,6 +648,7 @@ byId('run-all').addEventListener('click', () => send({ type: 'run' }));
 byId('run-failing').addEventListener('click', () => send({ type: 'run', failing: true }));
 pauseButton.addEventListener('click', () => send({ type: 'pause', paused: !paused }));
 byId('cancel').addEventListener('click', () => send({ type: 'cancel' }));
+foldAllButton.addEventListener('click', foldAll);
 byId('live-close').addEventListener('click', closeLive);
 byId('zoom-close').addEventListener('click', () => zoom.close());
 for (const b of document.querySelectorAll('.modes button')) b.addEventListener('click', () => setMode(b.dataset.mode));
@@ -669,6 +697,7 @@ export function shellPage(): string {
     '<button id="run-failing" title="Run the ones that did not pass">Run failing <kbd>F</kbd></button>' +
     '<button id="pause" class="ghost" title="Saving does not run (p)">Pause</button>' +
     '<button id="cancel" class="ghost" title="Stop the running criteria (Esc)">Cancel</button>' +
+    '<button id="fold-all" class="ghost" title="Expand every card, or collapse them all">Expand all</button>' +
     '<span class="spacer"></span>' +
     '<span class="modes" role="group" aria-label="How the shots are shown">' +
     '<button data-mode="side" title="Before the when and at the end, side by side">Side by side</button>' +
