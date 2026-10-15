@@ -125,18 +125,49 @@ export function firstLine(error: unknown): string {
   return text.split('\n')[0]!;
 }
 
+/** Pages kept open in advance: as many as criteria run at once by default. */
+export const SPARE_PAGES = 4;
+
+/**
+ * Every criterion gets a page in a context of its own, so none inherits another's state. Opening
+ * one costs a few hundred milliseconds, and several at once cost more each: so they are opened in
+ * advance — at launch and whenever no criterion is running — and a run takes ones already open.
+ */
 function adaptBrowser(name: BrowserName, browser: Browser): BrowserLike {
+  const open = async (): Promise<Page> => {
+    const context = await browser.newContext({
+      viewport: { width: VIEWPORT.width, height: VIEWPORT.height },
+      deviceScaleFactor: VIEWPORT.scale,
+    });
+    const page = await context.newPage();
+    page.setDefaultTimeout(CALL_TIMEOUT);
+    page.setDefaultNavigationTimeout(LOAD_TIMEOUT);
+    return page;
+  };
+  // A spare that could not open (the browser is closing) is undefined: whoever takes it opens one.
+  const spare: Promise<Page | undefined>[] = [];
+  let inUse = 0;
+  const refill = (): void => {
+    while (spare.length < SPARE_PAGES) spare.push(open().catch(() => undefined));
+  };
+  refill();
   return {
     name,
     viewport: VIEWPORT,
     async newPage() {
-      const page = await browser.newPage({
-        viewport: { width: VIEWPORT.width, height: VIEWPORT.height },
-        deviceScaleFactor: VIEWPORT.scale,
-      });
-      page.setDefaultTimeout(CALL_TIMEOUT);
-      page.setDefaultNavigationTimeout(LOAD_TIMEOUT);
-      return adaptPage(page);
+      inUse++;
+      // Opening the next ones while criteria run would slow them: it waits for the run to end.
+      const done = (): void => {
+        if (--inUse === 0) refill();
+      };
+      let page: Page;
+      try {
+        page = (await spare.shift()) ?? (await open());
+      } catch (error) {
+        done();
+        throw error;
+      }
+      return adaptPage(page, done);
     },
     close: () => browser.close(),
   };
@@ -147,7 +178,8 @@ function inPage(script: PageScript, params: string): () => unknown {
   return new Function(params, `return (${script})(${params});`) as () => unknown;
 }
 
-function adaptPage(page: Page): PageLike {
+function adaptPage(page: Page, closed: () => void): PageLike {
+  let closing: Promise<void> | undefined;
   return {
     async goto(url) {
       const response = await page.goto(url, { waitUntil: 'load' });
@@ -167,7 +199,13 @@ function adaptPage(page: Page): PageLike {
     onPageError(listener) {
       page.on('pageerror', (error) => listener(firstLine(error)));
     },
-    close: () => page.close(),
+    // Closed once, whoever asks first (a cancel and the engine's `finally` both do): the context
+    // goes with the page.
+    close: () =>
+      (closing ??= page
+        .context()
+        .close()
+        .finally(closed)),
   };
 }
 
