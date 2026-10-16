@@ -420,11 +420,12 @@ criterion renders
 ```
 ```ts
 // ui-button.fixture.ts
+import type { Fixtures } from '@fudic/terms';
 import type { $Props } from './ui-button.fud';
 
 export default {
   base: {},
-} satisfies Record<string, $Props>;
+} satisfies Fixtures<$Props>;
 ```
 ```ts
 // ui-button.test.ts
