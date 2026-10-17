@@ -1,0 +1,7 @@
+import { expect, test } from 'vitest';
+import { visit } from '@fudic/testing';
+
+test('answers {{url}}', async () => {
+  const page = await visit('{{url}}');
+  expect(page.status).toBe(200);
+});

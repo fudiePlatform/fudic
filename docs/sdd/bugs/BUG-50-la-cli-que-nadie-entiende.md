@@ -4,7 +4,7 @@
 > **Corrige:** [SDD-22](../SDD-22-fudic-cli.md) (la CLI), [SDD-44](../SDD-44-cli-de-workspace.md)
 > (workspace, `g app`, `g lib`), [SDD-53](../SDD-53-fudspec-autoria.md) (`g spec`, fixture) y el
 > `GLOBALS_DTS` de `@fudic/language-core`.
-> **Paquetes:** `@fudic/cli` · `@fudic/language-core` · `@fudic/typecheck` · `examples/workspace`
+> **Paquetes:** `@fudic/cli` · `@fudic/language-core` · `@fudic/typecheck` · `examples/workspace` · `@fudic/workbench` · `@fudic/testing` (§4.2, decisión de Pedro)
 > **Depende de:** [SDD-57](../SDD-57-tests-unitarios.md) (`@fudic/testing`, `Hecho`) y
 > [SDD-59](../SDD-59-terminos-de-serie.md) (`@fudic/terms`): sin él, el `.fudspec` generado no
 > puede pasar en verde.
@@ -193,7 +193,15 @@ Toda app y toda lib nacen con:
 - `vitest.config.ts` con `fudicTest()`.
 - `src/fudic-env.d.ts` con la declaración de `*.fud` de `examples/basic/src/env.d.ts` (`$Props`,
   `tag`, `css`, `render`, `$file`) y una sola línea de comentario.
-- Scripts `"test": "vitest run"` y `"spec": "fudic-workbench run"`.
+- Scripts `"test": "vitest run"` y `"spec": "fudic-workbench run --pass-with-no-specs"`.
+
+> **Decisión de Pedro (2026-10-17), fuera de los paquetes de arriba.** `fudic-workbench run` sin
+> ningún `.fudspec` es FUD0976, a propósito (BUG-48): un CI que pierde sus specs no pasa. Pero un
+> proyecto recién creado no tiene ninguno, y §4.2 exige `pnpm spec` en verde. El banco gana
+> `--pass-with-no-specs` (sin specs, sale 0) y el script generado lo usa; sin la opción, nada
+> cambia. Y `@fudic/testing` da a TypeScript los tipos de los comprobadores de jest-dom
+> (`toBeInTheDocument`): el test de §6.5 pasaba en vitest y salía en rojo en el editor.
+> Paquetes tocados: `@fudic/workbench` · `@fudic/testing`.
 
 La raíz del workspace lleva `dev`, `preview`, `build`, `test` y `spec`, y un README que explica
 `apps/`, `libs/` y esos comandos. **Lo recién generado pasa en verde sin tocar nada:** justo

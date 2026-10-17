@@ -287,8 +287,8 @@ describe('a usage error (§6.8)', () => {
   it('lists the flags the command takes under an unknown one', () => {
     const cases: readonly (readonly [readonly string[], Topic, string])[] = [
       [['g', 'c', 'x', '--zz'], 'generate component', '--project, --dir, --in, --no-style, --slot, --spec, --dry-run, --force'],
-      [['g', 'p', 'x', '--zz'], 'generate page', '--project, --dir, --layout, --no-layout, --server, --sections, --dry-run, --force'],
-      [['g', 'l', 'x', '--zz'], 'generate layout', '--project, --dir, --sections, --no-head, --dry-run, --force'],
+      [['g', 'p', 'x', '--zz'], 'generate page', '--project, --dir, --layout, --no-layout, --server, --sections, --skip-test, --dry-run, --force'],
+      [['g', 'l', 'x', '--zz'], 'generate layout', '--project, --dir, --sections, --no-head, --skip-test, --dry-run, --force'],
       [['g', 'a', 'x', '--zz'], 'generate app', '--dir, --id, --prefix, --no-sw, --uses, --dry-run, --force'],
       [['g', 'lib', 'x', '--zz'], 'generate lib', '--dir, --prefix, --uses, --dry-run, --force'],
       [['g', 's', 'x', '--zz'], 'generate spec', '--project, --dry-run, --force'],

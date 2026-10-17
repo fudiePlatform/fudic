@@ -38,3 +38,13 @@ export function routeToFile(route: string): RouteFile {
   if (segments.length === 0 || trailingSlash) segments.push('index');
   return { file: `${segments.join('/')}.fud` };
 }
+
+/**
+ * A URL the route file answers, for its unit test to visit: `blog/[slug].fud` → `/blog/example`,
+ * `blog/index.fud` → `/blog/`, `index.fud` → `/`.
+ */
+export function routeToUrl(file: string): string {
+  const segments = file.replace(/\.fud$/u, '').split('/');
+  const path = segments.map((segment) => (segment === 'index' ? '' : segment.replace(/^\[.+\]$/u, 'example')));
+  return `/${path.join('/')}`;
+}

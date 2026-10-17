@@ -10,10 +10,21 @@
     "./fudic.json": "./fudic.json",
     "./*.fud": "./src/components/*.fud"
   },
+  "scripts": {
+    "test": "vitest run",
+    "spec": "fudic-workbench run --pass-with-no-specs"
+  },
   "peerDependencies": {
     "@fudic/core": "{{version}}"
   },
   "devDependencies": {
-    "@fudic/core": "{{version}}"
+    "@fudic/cli": "{{version}}",
+    "@fudic/core": "{{version}}",
+    "@fudic/terms": "{{version}}",
+    "@fudic/testing": "{{version}}",
+    "@fudic/vite": "{{version}}",
+    "@fudic/workbench": "{{version}}",
+    "vite": "{{viteVersion}}",
+    "vitest": "{{vitestVersion}}"
   }{{uses}}
 }

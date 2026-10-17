@@ -101,7 +101,7 @@ pnpm exec fudic-workbench run --json             # one JSON message per line
 ```
 
 ```sh
-fudic-workbench run [<path>…] [--browser <b>] [--workers <n>] [--json]
+fudic-workbench run [<path>…] [--browser <b>] [--workers <n>] [--json] [--pass-with-no-specs]
 ```
 
 Without paths it runs every `.fudspec` under the current folder (`node_modules`, `dist` and hidden
@@ -119,7 +119,8 @@ app-card
 ```
 
 `--json` prints one JSON message per line instead, and a last `summary` line. Nothing to run is
-an error, so a CI that lost its specs does not pass.
+an error, so a CI that lost its specs does not pass — unless `--pass-with-no-specs`, which is what
+the `spec` script of a project `fudic` creates uses until it has its first `.fudspec`.
 
 `<b>` is `auto`, `chrome`, `msedge`, `chromium`, `firefox` or `webkit`. Firefox and WebKit are
 Playwright's builds: `npx playwright-core install firefox`.

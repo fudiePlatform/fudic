@@ -48,11 +48,11 @@ function componentOptions(overrides: Partial<ComponentOptions> = {}): ComponentO
 }
 
 function pageOptions(overrides: Partial<PageOptions> = {}): PageOptions {
-  return { cwd: ROOT, force: false, dir: 'src/routes', server: false, sections: null, ...overrides };
+  return { cwd: ROOT, force: false, dir: 'src/routes', server: false, sections: null, test: true, ...overrides };
 }
 
 function layoutOptions(overrides: Partial<LayoutOptions> = {}): LayoutOptions {
-  return { cwd: ROOT, force: false, dir: 'src/layouts', sections: [], head: true, ...overrides };
+  return { cwd: ROOT, force: false, dir: 'src/layouts', sections: [], head: true, test: true, ...overrides };
 }
 
 describe('the prefix of the target project (criteria 7 and 8)', () => {

@@ -8,6 +8,7 @@ import { COMPONENTS_DIR, LAYOUTS_DIR, ROUTES_DIR } from '@fudic/conventions';
 import { FUD0448, type FUD0448Params } from '@fudic/diagnostics';
 import type { Topic } from './help/commands.js';
 import { COMMANDS, GENERATES, type UsageError } from './help/usage.js';
+import { prefixOf } from './tag.js';
 import { APPS_DIR, LIBS_DIR } from './workspace/place.js';
 import type {
   AppOptions,
@@ -281,7 +282,7 @@ function parseNew(tokens: Tokens, rest: readonly string[], base: Base, flags: Gl
     // The name the command was given, not the directory it lands in nor the npm name: the
     // two of those move, and an id that moves leaves caches nobody purges (§4.3).
     id: single(tokens, 'id', workspace ? app : name),
-    prefix: single(tokens, 'prefix', ''),
+    prefix: single(tokens, 'prefix', prefixOf(workspace ? app : name)),
     pm: pm as PackageManager,
     install: !bool(tokens, 'no-install'),
     git: !bool(tokens, 'no-git'),
@@ -326,7 +327,7 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
         // Written because it was given, not calculated from the directory nor from the npm
         // name: both of those move, and a moved id leaves caches nobody purges (§4.4).
         id: single(tokens, 'id', name),
-        prefix: single(tokens, 'prefix', ''),
+        prefix: single(tokens, 'prefix', prefixOf(name)),
         sw: !bool(tokens, 'no-sw'),
         uses: list(tokens, 'uses') ?? [],
       };
@@ -339,7 +340,7 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
       const opts: ProjectOptions = {
         ...base,
         dir: single(tokens, 'dir', LIBS_DIR),
-        prefix: single(tokens, 'prefix', ''),
+        prefix: single(tokens, 'prefix', prefixOf(name)),
         uses: list(tokens, 'uses') ?? [],
       };
       return { kind: 'lib', name, opts, flags };
@@ -361,7 +362,7 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
     }
 
     case 'page': {
-      const unknown = unknownFlag(tokens, [...GLOBAL, 'project', 'dir', 'layout', 'no-layout', 'server', 'sections'], topic);
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'project', 'dir', 'layout', 'no-layout', 'server', 'sections', 'skip-test'], topic);
       if (unknown !== null) return unknown;
       const forced = tokens.flags.get('layout')?.at(-1);
       const opts: PageOptions = {
@@ -371,12 +372,13 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
         ...(bool(tokens, 'no-layout') ? { layout: null } : forced !== undefined ? { layout: forced } : {}),
         server: bool(tokens, 'server'),
         sections: list(tokens, 'sections'),
+        test: !bool(tokens, 'skip-test'),
       };
       return { kind: 'page', route: name, opts, flags };
     }
 
     case 'layout': {
-      const unknown = unknownFlag(tokens, [...GLOBAL, 'project', 'dir', 'sections', 'no-head'], topic);
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'project', 'dir', 'sections', 'no-head', 'skip-test'], topic);
       if (unknown !== null) return unknown;
       const opts: LayoutOptions = {
         ...base,
@@ -384,6 +386,7 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
         dir: single(tokens, 'dir', LAYOUTS_DIR),
         sections: list(tokens, 'sections') ?? [],
         head: !bool(tokens, 'no-head'),
+        test: !bool(tokens, 'skip-test'),
       };
       return { kind: 'layout', name, opts, flags };
     }

@@ -161,6 +161,21 @@ export function renderSectionBlocks(names: readonly string[]): string {
   return names.map((name) => `    @RenderSection(${name})\n`).join('');
 }
 
+/** The unit test of a page: it visits `url` and expects the page to answer. */
+export function pageTest(url: string): string {
+  return renderTemplate('page.test.ts.tmpl', { url });
+}
+
+/**
+ * The unit test of the layout in `file` (its name, `_layout.fud`): it renders a body inside it.
+ * The module is named after the layout, `_layout` → `Layout`, `docs-shell` → `DocsShell`.
+ */
+export function layoutTest(file: string): string {
+  const words = file.replace(/\.fud$/u, '').split(/[^A-Za-z0-9]+/u).filter((word) => word !== '');
+  const name = words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join('');
+  return renderTemplate('layout.test.ts.tmpl', { module: /^[A-Z]/u.test(name) ? name : `Layout${name}`, file });
+}
+
 /** Indent every non-empty line of a block. */
 export function indent(block: string, prefix: string): string {
   return block

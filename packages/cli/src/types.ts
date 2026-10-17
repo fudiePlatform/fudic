@@ -184,6 +184,8 @@ export interface PageOptions extends TargetedOptions {
   readonly server: boolean;
   /** `null` ⇒ every `@RenderSection` of the layout chain. */
   readonly sections: readonly string[] | null;
+  /** Write its unit test beside it; `--skip-test` is `false` (BUG-50 §4.4). */
+  readonly test: boolean;
 }
 
 export interface LayoutOptions extends TargetedOptions {
@@ -192,6 +194,8 @@ export interface LayoutOptions extends TargetedOptions {
   readonly sections: readonly string[];
   /** Emit `@RenderHead()` inside the `<head>` (decision 86). */
   readonly head: boolean;
+  /** Write its unit test beside it; `--skip-test` is `false` (BUG-50 §4.4). */
+  readonly test: boolean;
 }
 
 /**

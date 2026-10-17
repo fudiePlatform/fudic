@@ -156,7 +156,7 @@ describe('fudic g lib (criterion 5)', () => {
     expect(pkg['exports']).toMatchObject({ './*.fud': './src/components/*.fud' });
     expect(pkg['files']).toContain('src');
     expect(JSON.stringify(pkg)).not.toContain('dist');
-    expect(pkg['scripts']).toBeUndefined();
+    expect(pkg['scripts']).toEqual({ test: 'vitest run', spec: 'fudic-workbench run --pass-with-no-specs' });
   });
 
   it('names @fudic/core as a PEER, because a runtime cannot be copied', async () => {

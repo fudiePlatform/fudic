@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "spec": "fudic-workbench run --pass-with-no-specs"
   },
   "dependencies": {
     "@fudic/core": "{{version}}",
@@ -14,8 +16,13 @@
     "@fudic/transport": "{{version}}"{{uses}}
   },
   "devDependencies": {
+    "@fudic/cli": "{{version}}",
+    "@fudic/terms": "{{version}}",
+    "@fudic/testing": "{{version}}",
     "@fudic/vite": "{{version}}",
+    "@fudic/workbench": "{{version}}",
     "typescript": "{{tsVersion}}",
-    "vite": "{{viteVersion}}"
+    "vite": "{{viteVersion}}",
+    "vitest": "{{vitestVersion}}"
   }
 }

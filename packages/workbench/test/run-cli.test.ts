@@ -1,4 +1,4 @@
-import { FUD0976 } from '@fudic/diagnostics';
+import { FUD0975, FUD0976 } from '@fudic/diagnostics';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { BenchMessage } from '../src/protocol.js';
 import type { RunOptions, RunSummary } from '../src/run.js';
@@ -41,10 +41,11 @@ function plays(summary: Partial<RunSummary>) {
 
 describe('parseRunArgs — criterion 12', () => {
   it('reads paths, a browser, the workers and --json, in any order', () => {
-    expect(parseRunArgs([])).toEqual({ paths: [], json: false });
-    expect(parseRunArgs(['src', '--json', '--browser', 'firefox', 'lib', '--workers', '2'])).toEqual({
+    expect(parseRunArgs([])).toEqual({ paths: [], json: false, passWithNoSpecs: false });
+    expect(parseRunArgs(['src', '--json', '--browser', 'firefox', 'lib', '--workers', '2', '--pass-with-no-specs'])).toEqual({
       paths: ['src', 'lib'],
       json: true,
+      passWithNoSpecs: true,
       browser: 'firefox',
       workers: 2,
     });
@@ -110,5 +111,41 @@ describe('runMain — criterion 12', () => {
     const t = io();
     await runMain([], t.io);
     expect([t.lines, t.exits]).toEqual([['error listen EADDRINUSE'], [1]]);
+  });
+});
+
+describe('runMain --pass-with-no-specs — BUG-50 §4.2', () => {
+  it('says it in RUN_USAGE', () => {
+    expect(RUN_USAGE).toContain('[--pass-with-no-specs]');
+  });
+
+  it('with nothing to run, says so and exits 0, for a person and in JSON', async () => {
+    runSpecs.mockResolvedValue({ diagnostic: FUD0976({ where: 'C:/p' }) });
+    const t = io();
+    await runMain(['--pass-with-no-specs'], t.io);
+    expect([t.lines, t.exits]).toEqual([['no .fudspec yet: nothing to run'], [0]]);
+
+    const j = io();
+    await runMain(['--json', '--pass-with-no-specs'], j.io);
+    expect(j.lines.map((l) => JSON.parse(l) as unknown)).toEqual([
+      { v: 2, type: 'summary', pass: 0, fail: 0, error: 0, ms: 0, browser: null },
+    ]);
+    expect(j.exits).toEqual([0]);
+  });
+
+  it('lets every other failure fail: a browser that does not launch is still exit 1', async () => {
+    runSpecs.mockResolvedValue({ diagnostic: FUD0975({ tried: ['chrome'], reason: 'none', install: 'npx playwright-core install chromium' }) });
+    const t = io();
+    await runMain(['--pass-with-no-specs'], t.io);
+    expect(t.lines[0]).toMatch(/^error FUD0975 /u);
+    expect(t.exits).toEqual([1]);
+  });
+
+  it('does not touch a run that found criteria', async () => {
+    plays({ fail: 1 });
+    const t = io();
+    await runMain(['--pass-with-no-specs'], t.io);
+    expect(t.lines.at(-1)).toBe('2 criteria · 1 pass · 1 fail · 0 error · 1.5 s · msedge');
+    expect(t.exits).toEqual([1]);
   });
 });

@@ -7,7 +7,7 @@
 import { joinPosix } from '../paths.js';
 import { targetChange } from '../project.js';
 import { resolveTarget } from '../workspace/target.js';
-import { renderSectionBlocks, renderTemplate } from '../templates.js';
+import { layoutTest, renderSectionBlocks, renderTemplate } from '../templates.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
 import type { CliError, FileChange, LayoutOptions, Plan } from '../types.js';
 
@@ -32,6 +32,13 @@ export function planLayout(name: string, opts: LayoutOptions, io: ReadIo = nodeR
   const target = targetChange(opts.cwd, file, contents, opts.force, io);
   if (target.error !== undefined) errors.push(target.error);
   if (target.change !== undefined) changes.push(target.change);
+
+  // Its unit test beside it, unless `--skip-test` (BUG-50 §4.4).
+  if (opts.test) {
+    const test = targetChange(opts.cwd, joinPosix(resolved.target.dir, opts.dir, `${name}.test.ts`), layoutTest(`${name}.fud`), opts.force, io);
+    if (test.error !== undefined) errors.push(test.error);
+    if (test.change !== undefined) changes.push(test.change);
+  }
 
   return Promise.resolve({ changes, commands: [], diagnostics: [], errors });
 }

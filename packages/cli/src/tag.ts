@@ -40,6 +40,15 @@ export function suggestTag(prefix: string, project: string, name: string): strin
   return `${kebab(prefix) || kebab(project) || 'app'}-${kebab(name) || 'card'}`;
 }
 
+/**
+ * The prefix a project gets when none is given: its name, as `prefix` may spell it — lowercase,
+ * no hyphen (`my-shop` → `myshop`). A name with nothing usable leaves `app`.
+ */
+export function prefixOf(name: string): string {
+  const last = name.slice(name.replace(/\\/gu, '/').lastIndexOf('/') + 1);
+  return last.toLowerCase().replace(/[^a-z0-9]/gu, '').replace(/^[0-9]+/u, '') || 'app';
+}
+
 /** A tag some LIBRARY of the dependency graph already defines (SDD-43 §4.5). */
 export interface ForeignTag {
   /** The package that defines it, as its `package.json` spells it. */

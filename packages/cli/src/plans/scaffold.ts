@@ -13,8 +13,9 @@ import { FUD0443, FUD0447, FUD0725 } from '@fudic/diagnostics';
 import { COMPONENTS_DIR, LAYOUTS_DIR, ROUTES_DIR } from '@fudic/conventions';
 import { GLOBALS_DTS, GLOBALS_FILE_NAME } from '@fudic/language-core';
 import { absolute, hrefBetween, joinPosix } from '../paths.js';
-import { FUDIC_VERSION, targetChange, TYPESCRIPT_VERSION, VITE_VERSION } from '../project.js';
-import { prefixField, renderSectionBlocks, renderTemplate } from '../templates.js';
+import { FUDIC_VERSION, targetChange, TYPESCRIPT_VERSION, VITE_VERSION, VITEST_VERSION } from '../project.js';
+import { layoutTest, pageTest, prefixField, renderSectionBlocks, renderTemplate } from '../templates.js';
+import { ENV_DECLARATION, ENV_FILE } from './spec.js';
 import type { ReadIo } from '../io.js';
 import type { BaseOptions, CliError, FileChange, NewOptions } from '../types.js';
 
@@ -108,6 +109,7 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
         name: site.pkgName,
         version: FUDIC_VERSION,
         viteVersion: VITE_VERSION,
+        vitestVersion: VITEST_VERSION,
         tsVersion: TYPESCRIPT_VERSION,
         uses: site.uses,
       }),
@@ -116,11 +118,13 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
       joinPosix(site.dir, 'vite.config.ts'),
       renderTemplate('vite.config.ts.tmpl', { routesDir: ROUTES_DIR }),
     ],
+    ...testingFiles(site.dir),
     [
       joinPosix(site.dir, 'README.md'),
       renderTemplate('README.md.tmpl', {
         name: site.pkgName,
-        pm: opts.pm,
+        run: runCommand(site, opts.pm),
+        prefix: opts.prefix,
         layout: opts.layout,
         layoutsDir: LAYOUTS_DIR,
         routesDir: ROUTES_DIR,
@@ -151,6 +155,7 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
         sections: renderSectionBlocks([]),
       }),
     ],
+    [joinPosix(site.dir, LAYOUTS_DIR, `${opts.layout}.test.ts`), layoutTest(`${opts.layout}.fud`)],
     [
       indexFile,
       renderTemplate('route.fud', {
@@ -160,7 +165,29 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
         sections: '',
       }),
     ],
+    [joinPosix(site.dir, ROUTES_DIR, 'index.test.ts'), pageTest('/')],
   ];
+}
+
+/**
+ * What lets a project — an app or a library — run its unit tests and its `.fudspec` criteria
+ * from the first minute (BUG-50 §4.2): the vitest config, and the declaration that lets a test
+ * or a fixture import a `.fud`.
+ */
+export function testingFiles(dir: string): readonly ScaffoldFile[] {
+  return [
+    [joinPosix(dir, 'vitest.config.ts'), renderTemplate('vitest.config.ts.tmpl', {})],
+    [joinPosix(dir, ENV_FILE), ENV_DECLARATION],
+  ];
+}
+
+/**
+ * How the README says to run a script of the app: on its own, with its package manager; in a
+ * workspace, from the root with a filter, because the install belongs to the workspace.
+ */
+function runCommand(site: ProjectSite, pm: string): string {
+  if (site.up === null) return `${pm} run`;
+  return `pnpm --filter ${site.dir.slice(site.dir.lastIndexOf('/') + 1)}`;
 }
 
 export interface ScaffoldChanges {

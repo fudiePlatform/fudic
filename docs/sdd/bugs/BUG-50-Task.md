@@ -1,10 +1,10 @@
 # BUG-50 — Tareas
 
 > **BUG:** [BUG-50 — La CLI que nadie entiende](./BUG-50-la-cli-que-nadie-entiende.md)
-> **Paquetes:** `@fudic/cli` · `@fudic/language-core` · `@fudic/typecheck` · `examples/workspace`
+> **Paquetes:** `@fudic/cli` · `@fudic/language-core` · `@fudic/typecheck` · `examples/workspace` · `@fudic/workbench` · `@fudic/testing`
 > **Rama:** `bug-50-cli-usable` (worktree `fudic-bug-50`), desde `main` en `e4f7a8a`.
 > **Depende de:** SDD-59 `Hecho` para las tareas que ejecutan un `.fudspec` (12, 24).
-> **Progreso:** 3 / 27 — en curso.
+> **Progreso:** 9 / 27 — en curso.
 
 Lo nuevo nace al 100 % en las cuatro métricas; `@fudic/cli` no baja de su suelo.
 
@@ -22,12 +22,12 @@ Lo nuevo nace al 100 % en las cuatro métricas; `@fudic/cli` no baja de su suelo
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 4 | — | **Prefijo por defecto** = nombre del proyecto en `new`, `g app`, `g lib` (BUG §3.2) | `src/args.ts` |
-| [ ] | 5 | — | **Dependencias y scripts de prueba** en app y lib; `vitest.config.ts`; `src/fudic-env.d.ts` siempre (BUG §4.2) | `templates/*` · `src/plans/scaffold.ts` · `src/plans/lib.ts` |
-| [ ] | 6 | 5 | **Tests de página y layout** en `new`, `g page`, `g layout` (BUG §4.4) | `src/plans/page.ts` · `src/plans/layout.ts` · `src/plans/scaffold.ts` · `templates/*` |
-| [ ] | 7 | — | **Sin comentarios de diseño** en lo generado: `GLOBALS_DTS`, `fudic-env.d.ts`, `layout.fud`, `vite.config.ts`, READMEs (BUG §4.8) | `packages/language-core/src/globals.ts` · `packages/typecheck/src/globals.ts` · `src/plans/spec.ts` · `templates/*` |
-| [ ] | 8 | 4–7 | **Tests.** Contenido de ficheros de §6.2–§6.5 y §6.14 | `packages/cli/test/*` |
-| [ ] | 9 | 8 | **Prueba en verde.** `new` + `pnpm test` en una app real, contra Verdaccio | — |
+| [x] | 4 | — | **Prefijo por defecto** = nombre del proyecto en `new`, `g app`, `g lib` (BUG §3.2) | `src/args.ts` |
+| [x] | 5 | — | **Dependencias y scripts de prueba** en app y lib; `vitest.config.ts`; `src/fudic-env.d.ts` siempre (BUG §4.2). **Añadido (Pedro, 2026-10-17):** `fudic-workbench run --pass-with-no-specs` y los tipos de jest-dom en `@fudic/testing` | `templates/*` · `src/plans/scaffold.ts` · `src/plans/lib.ts` · `packages/workbench/src/run-cli.ts` · `packages/testing/src/index.ts` |
+| [x] | 6 | 5 | **Tests de página y layout** en `new`, `g page`, `g layout` (BUG §4.4) | `src/plans/page.ts` · `src/plans/layout.ts` · `src/plans/scaffold.ts` · `templates/*` |
+| [x] | 7 | — | **Sin comentarios de diseño** en lo generado: `GLOBALS_DTS`, `fudic-env.d.ts`, `layout.fud`, `vite.config.ts`, READMEs (BUG §4.8) | `packages/language-core/src/globals.ts` · `packages/typecheck/src/globals.ts` · `src/plans/spec.ts` · `templates/*` |
+| [x] | 8 | 4–7 | **Tests.** Contenido de ficheros de §6.2–§6.5 y §6.14 | `packages/cli/test/*` |
+| [x] | 9 | 8 | **Prueba en verde.** `new` + `pnpm test` en una app real, contra Verdaccio (hecha con los paquetes del repo enlazados, `workspace:*`, por decisión de Pedro: app con `pnpm test` y `tsc` en verde, lib con `pnpm test` en verde) | — |
 
 ## Fase 3 — El componente completo (4)
 
