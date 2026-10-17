@@ -42,6 +42,10 @@ export {
 } from './workspace/discover.js';
 export { placeProject, APPS_DIR, LIBS_DIR, type Placement } from './workspace/place.js';
 export { planComponent } from './plans/component.js';
+export { planAdd } from './plans/add.js';
+export { planService, planForm } from './plans/piece.js';
+export { planStyle } from './plans/style.js';
+export { planCheck, type CheckKind } from './plans/check.js';
 export { planSpec, typeScriptProps, type PropsReader } from './plans/spec.js';
 export { planTerm } from './plans/term.js';
 export { planTranslate } from './plans/translate.js';

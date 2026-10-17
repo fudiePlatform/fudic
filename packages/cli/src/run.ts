@@ -31,6 +31,9 @@ import { planSpec } from './plans/spec.js';
 import { planTerm } from './plans/term.js';
 import { planTranslate } from './plans/translate.js';
 import { planCheck } from './plans/check.js';
+import { planAdd } from './plans/add.js';
+import { planForm, planService } from './plans/piece.js';
+import { planStyle } from './plans/style.js';
 import { appsToServe } from './serve/apps.js';
 import { nodeServeDeps, serveWorkspace, type ServeDeps } from './serve/workspace.js';
 import { formatDiff, formatError, formatDiagnostic, formatPlan, planToJson } from './report.js';
@@ -193,6 +196,14 @@ function build(command: Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } |
       return planFmt(command.paths, command.opts, io);
     case 'check':
       return planCheck(command.check, command.opts, io);
+    case 'add':
+      return planAdd(command.module, command.opts, io);
+    case 'service':
+      return planService(command.name, command.opts, io);
+    case 'form':
+      return planForm(command.name, command.opts, io);
+    case 'style':
+      return planStyle(command.name, command.opts, io);
     case 'translate':
       return planTranslate(command.opts, io);
   }

@@ -252,3 +252,31 @@ export const EMPTY_PLAN: Plan = { changes: [], commands: [], diagnostics: [], er
 export interface ServeOptions extends TargetedOptions {
   readonly port: number;
 }
+
+/** `fudic g lib` (SDD-44, BUG-50 §4.7). */
+export interface LibOptions extends ProjectOptions {
+  /** `--styles-only`: a global stylesheet and nothing else — no components, no tests, no spec. */
+  readonly stylesOnly?: true;
+}
+
+/** `fudic add <module>` (BUG-50 §4.6). */
+export interface AddOptions extends TargetedOptions {
+  /** `--locales es,en`, with `add i18n`: written as `"locales"` in `fudic.json`. */
+  readonly locales: readonly string[];
+}
+
+/** `fudic g service <name>` (BUG-50 §4.7). */
+export interface ServiceOptions extends TargetedOptions {
+  /** Not registered in the root: a component provides it (`--provided`). */
+  readonly provided: boolean;
+  /** Write its unit test; `--skip-test` is `false`. */
+  readonly test: boolean;
+}
+
+/** `fudic g form <name>` (BUG-50 §4.7). */
+export interface FormOptions extends TargetedOptions {
+  /** Typed controls (`--binary`): the upload travels in binary. */
+  readonly binary: boolean;
+  /** Write its unit test; `--skip-test` is `false`. */
+  readonly test: boolean;
+}

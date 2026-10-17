@@ -1,0 +1,8 @@
+import { expect, test } from 'vitest';
+import { {{form}} } from './{{name}}.form';
+
+test('asks for the name', () => {
+  expect({{form}}.$valid()).toBe(false);
+  {{form}}.name.set('Ada');
+  expect({{form}}.$valid()).toBe(true);
+});

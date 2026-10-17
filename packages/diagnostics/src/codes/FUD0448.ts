@@ -23,6 +23,8 @@ export type FUD0448Params =
   | { readonly problem: 'new-needs-name' }
   /** `--pm` with an unknown package manager. */
   | { readonly problem: 'package-manager'; readonly value: string }
+  /** `fudic add` with nothing to add. */
+  | { readonly problem: 'add-needs-module' }
   /** `fudic g` with no type. */
   | { readonly problem: 'generate-needs-type' }
   /** `fudic g <type>` with no name. */
@@ -60,6 +62,8 @@ function describe(p: FUD0448Params): string {
       return 'fudic new needs a project name';
     case 'package-manager':
       return `unknown package manager "${p.value}"`;
+    case 'add-needs-module':
+      return 'fudic add needs to know what to add';
     case 'generate-needs-type':
       return 'fudic generate needs to know what to generate';
     case 'generate-needs-name':

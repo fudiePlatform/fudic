@@ -48,7 +48,7 @@ export function componentLink(into: string, component: string, cwd: string, io: 
   const href = specifierOf({ name, root: library }, toPosix(componentPath), fs);
   if (href === undefined) return { error: FUD0787({ file: into, library: name }) };
 
-  const dependency = declare(joinPosix(consumer, 'package.json'), relativeTo(cwd, joinPosix(consumer, 'package.json')), name, io);
+  const dependency = declareDependency(joinPosix(consumer, 'package.json'), relativeTo(cwd, joinPosix(consumer, 'package.json')), name, 'workspace:*', io);
   return dependency === undefined ? { href } : { href, dependency };
 }
 
@@ -74,13 +74,13 @@ function packageName(root: string, io: ReadIo): string {
 const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies'] as const;
 
 /**
- * The edit that makes the `package.json` at `path` depend on `name`, or nothing when it
+ * The edit that makes the `package.json` at `path` depend on `name` at `version`, or nothing when it
  * already does.
  *
  * Written into the text rather than re-serialized, for the reason `wire.ts` gives for the
  * `.fud`: this is a file the user owns, and the command touches the one line it adds.
  */
-function declare(path: string, shown: string, name: string, io: ReadIo): FileChange | undefined {
+export function declareDependency(path: string, shown: string, name: string, version: string, io: ReadIo): FileChange | undefined {
   const before = io.read(path);
   const manifest = parse(before) as Record<string, unknown>;
   const declared = DEPENDENCY_FIELDS.some((field) => {
@@ -89,7 +89,7 @@ function declare(path: string, shown: string, name: string, io: ReadIo): FileCha
   });
   if (declared) return undefined;
 
-  const entry = `${JSON.stringify(name)}: "workspace:*"`;
+  const entry = `${JSON.stringify(name)}: ${JSON.stringify(version)}`;
   const open = /"dependencies"\s*:\s*\{/u.exec(before);
   let contents: string;
   if (open !== null) {

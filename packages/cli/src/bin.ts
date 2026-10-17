@@ -6,4 +6,11 @@
 
 import { run } from './run.js';
 
+// Whoever reads the output may stop reading — `fudic --help | head` —, and that is not an error
+// of the CLI: no stack trace for a closed pipe.
+process.stdout.on('error', (error: NodeJS.ErrnoException) => {
+  if (error.code === 'EPIPE') process.exit(0);
+  throw error;
+});
+
 process.exitCode = await run(process.argv.slice(2));

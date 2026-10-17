@@ -1,0 +1,11 @@
+# {{name}}
+
+A [fudic](https://github.com/fudiePlatform/fudic) style library: one global stylesheet,
+`tokens.css`, and no components.
+
+Every component of a project that uses it adopts `tokens.css` first, before its own sheets, so
+what it declares on `:host` — custom properties — reaches all of them.
+
+```sh
+fudic add {{project}} --project <app or library>
+```

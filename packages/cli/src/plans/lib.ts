@@ -34,9 +34,10 @@ import { joinPosix, relativeTo } from '../paths.js';
 import { FUDIC_VERSION, VITE_VERSION, VITEST_VERSION } from '../project.js';
 import { placeProject } from '../workspace/place.js';
 import { libUses, packageOf, usesErrors } from '../workspace/uses.js';
+import type { Project } from '../workspace/discover.js';
 import { prefixField, renderTemplate } from '../templates.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
-import { EMPTY_PLAN, type Plan, type ProjectOptions } from '../types.js';
+import { EMPTY_PLAN, type Plan, type LibOptions } from '../types.js';
 
 /**
  * `src/components/` has to exist, and a directory is not a file.
@@ -49,7 +50,7 @@ const KEEP = '.gitkeep';
 
 export function planLib(
   name: string,
-  opts: ProjectOptions,
+  opts: LibOptions,
   io: ReadIo = nodeReadIo(),
 ): Promise<Plan> {
   const placed = placeProject(name, opts, io);
@@ -60,6 +61,16 @@ export function planLib(
 
   const errors = usesErrors(opts.uses, projects);
   if (errors.length > 0) return Promise.resolve({ ...EMPTY_PLAN, errors });
+
+  if (opts.stylesOnly === true) {
+    const styles = scaffoldChanges(opts, stylesFiles(dir, packageOf(scope, name), name), io);
+    return Promise.resolve({
+      ...EMPTY_PLAN,
+      changes: styles.changes,
+      errors: styles.errors,
+      report: stylesReport(name, dir, projects),
+    });
+  }
 
   const files = libFiles({ dir, up, scope, name, prefix: opts.prefix, uses: opts.uses });
 
@@ -134,5 +145,39 @@ export function libFiles({ dir, up, scope, name, prefix, uses }: LibSite): reado
     [joinPosix(dir, 'tsconfig.json'), tsconfigFor({ dir, pkgName, up, uses: '' })],
     ...testingFiles(dir),
     [joinPosix(dir, COMPONENTS_DIR, KEEP), ''],
+  ];
+}
+
+/**
+ * A style library (`--styles-only`, BUG-50 §4.7): `tokens.css` as its one global stylesheet,
+ * published as itself, like `examples/workspace/libs/guia`. Nothing to test, so no test tooling.
+ */
+function stylesFiles(dir: string, pkgName: string, name: string): readonly ScaffoldFile[] {
+  return [
+    [joinPosix(dir, 'package.json'), renderTemplate('styles/package.json.tmpl', { name: pkgName })],
+    [joinPosix(dir, 'README.md'), renderTemplate('styles/README.md.tmpl', { name: pkgName, project: name })],
+    [joinPosix(dir, '.gitignore'), renderTemplate('gitignore.tmpl', {})],
+    [joinPosix(dir, CONFIG_FILE), renderTemplate('styles/fudic.json.tmpl', {})],
+    [joinPosix(dir, 'tokens.css'), renderTemplate('styles/tokens.css.tmpl', { project: name })],
+  ];
+}
+
+/** What `g lib --styles-only` tells the user (BUG-50 §6.13). */
+function stylesReport(name: string, dir: string, projects: readonly Project[]): readonly string[] {
+  const lib = projects.find((project) => project.config.kind === 'lib')?.name ?? 'ui';
+  const app = projects.find((project) => project.config.kind === 'app')?.name ?? 'web';
+  const toLib = `fudic add ${name} --project ${lib}`;
+  const toApp = `fudic add ${name} --project ${app}`;
+  const width = Math.max(toLib.length, toApp.length) + 5;
+  return [
+    '',
+    `Created style library ${name} in ${dir}`,
+    '',
+    `  tokens.css     global stylesheet, adopted by every component of whoever uses ${name}`,
+    '  no components, no tests, no spec',
+    '',
+    'Use it',
+    `  ${toLib.padEnd(width)}a library: its components read the tokens`,
+    `  ${toApp.padEnd(width)}an app`,
   ];
 }

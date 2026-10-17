@@ -21,6 +21,10 @@ import type {
   PackageManager,
   PageOptions,
   ProjectOptions,
+  LibOptions,
+  ServiceOptions,
+  FormOptions,
+  AddOptions,
   SpecOptions,
   TermOptions,
   ServeOptions,
@@ -43,7 +47,11 @@ export type ParsedCommand =
       readonly flags: GlobalFlags;
     }
   | { readonly kind: 'app'; readonly name: string; readonly opts: AppOptions; readonly flags: GlobalFlags }
-  | { readonly kind: 'lib'; readonly name: string; readonly opts: ProjectOptions; readonly flags: GlobalFlags }
+  | { readonly kind: 'lib'; readonly name: string; readonly opts: LibOptions; readonly flags: GlobalFlags }
+  | { readonly kind: 'service'; readonly name: string; readonly opts: ServiceOptions; readonly flags: GlobalFlags }
+  | { readonly kind: 'form'; readonly name: string; readonly opts: FormOptions; readonly flags: GlobalFlags }
+  | { readonly kind: 'style'; readonly name: string; readonly opts: TargetedOptions; readonly flags: GlobalFlags }
+  | { readonly kind: 'add'; readonly module: string; readonly opts: AddOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'component'; readonly tag: string; readonly opts: ComponentOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'page'; readonly route: string; readonly opts: PageOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'layout'; readonly name: string; readonly opts: LayoutOptions; readonly flags: GlobalFlags }
@@ -57,7 +65,7 @@ export type ParsedCommand =
   | { readonly kind: 'help'; readonly topic: Topic | null }
   | ({ readonly kind: 'error' } & UsageError);
 
-type GenerateType = 'component' | 'page' | 'layout' | 'app' | 'lib' | 'spec' | 'term';
+type GenerateType = 'component' | 'page' | 'layout' | 'app' | 'lib' | 'service' | 'form' | 'style' | 'spec' | 'term';
 
 /** Every spelling of a type `fudic generate` takes, aliases included. */
 const GENERATE_TYPES: Readonly<Record<string, GenerateType>> = {
@@ -72,6 +80,9 @@ const GENERATE_TYPES: Readonly<Record<string, GenerateType>> = {
   lib: 'lib',
   spec: 'spec',
   s: 'spec',
+  service: 'service',
+  form: 'form',
+  style: 'style',
   term: 'term',
   t: 'term',
 };
@@ -84,6 +95,9 @@ const EXAMPLE: Readonly<Record<GenerateType, string>> = {
   app: 'admin',
   lib: 'ui',
   spec: 'button',
+  service: 'cart',
+  form: 'person',
+  style: 'theme',
   term: 'then cart-has',
 };
 
@@ -91,7 +105,7 @@ const EXAMPLE: Readonly<Record<GenerateType, string>> = {
 function topicOf(positionals: readonly string[]): Topic | null {
   const [command, type] = positionals;
   if (command === 'new' || command === 'fmt' || command === 'translate') return command;
-  if (command === 'dev' || command === 'preview' || command === 'test' || command === 'spec') return command;
+  if (command === 'dev' || command === 'preview' || command === 'test' || command === 'spec' || command === 'add') return command;
   if (command !== 'generate' && command !== 'g') return null;
   const canonical = type === undefined ? undefined : GENERATE_TYPES[type];
   return canonical === undefined ? 'generate' : `generate ${canonical}`;
@@ -108,7 +122,7 @@ interface Tokens {
 function tokenize(argv: readonly string[]): Tokens {
   const positionals: string[] = [];
   const flags = new Map<string, string[]>();
-  const valued = new Set(['base', 'cwd', 'pm', 'layout', 'target', 'dir', 'in', 'sections', 'print-width', 'tab-width', 'quote', 'end-of-line', 'id', 'prefix', 'app', 'uses', 'project', 'param', 'port']);
+  const valued = new Set(['base', 'cwd', 'pm', 'layout', 'target', 'dir', 'in', 'sections', 'print-width', 'tab-width', 'quote', 'end-of-line', 'id', 'prefix', 'app', 'uses', 'project', 'param', 'port', 'locales']);
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i] ?? '';
@@ -203,6 +217,7 @@ export function parseArgs(argv: readonly string[]): ParsedCommand {
   if (command === 'test' || command === 'spec') return parseCheck(command, tokens, rest, { cwd, force }, flags);
   if (command === 'new') return parseNew(tokens, rest, { cwd, force }, flags);
   if (command === 'generate' || command === 'g') return parseGenerate(tokens, rest, { cwd, force }, flags);
+  if (command === 'add') return parseAdd(tokens, rest, { cwd, force }, flags);
   return fail({ problem: 'unknown-command', command }, null, `the commands are: ${COMMANDS}`);
 }
 
@@ -273,6 +288,21 @@ function parseServe(serve: ServeKind, tokens: Tokens, rest: readonly string[], b
   const port = number(tokens, 'port', FRONT_PORT[serve]);
   if (port === undefined) return fail({ problem: 'port' }, serve, `e.g. --port ${FRONT_PORT[serve]}`);
   return { kind: 'serve', serve, opts: { ...base, ...target(tokens), port }, flags };
+}
+
+/** `fudic add <module>` (BUG-50 §4.6): `--project`, and `--locales` with `i18n`. */
+function parseAdd(tokens: Tokens, rest: readonly string[], base: Base, flags: GlobalFlags): ParsedCommand {
+  const unknown = unknownFlag(tokens, [...GLOBAL, 'project', 'locales'], 'add');
+  if (unknown !== null) return unknown;
+  const [module] = rest;
+  if (module === undefined) {
+    return fail({ problem: 'add-needs-module' }, 'add', 'it adds di, forms, http, i18n or a library of the workspace: fudic add forms');
+  }
+  const locales = list(tokens, 'locales');
+  if (locales !== null && module !== 'i18n') {
+    return fail({ problem: 'unknown-flag', name: 'locales' }, 'add', 'the locales are those of fudic add i18n --locales es,en');
+  }
+  return { kind: 'add', module, opts: { ...base, ...target(tokens), locales: locales ?? [] }, flags };
 }
 
 /** `fudic test` and `fudic spec` (BUG-50 §3.1): no argument; `--project`. */
@@ -374,7 +404,7 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
     }
 
     case 'lib': {
-      const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'prefix', 'uses'], topic);
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'prefix', 'uses', 'styles-only'], topic);
       if (unknown !== null) return unknown;
       const opts: ProjectOptions = {
         ...base,
@@ -382,7 +412,25 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
         prefix: single(tokens, 'prefix', prefixOf(name)),
         uses: list(tokens, 'uses') ?? [],
       };
-      return { kind: 'lib', name, opts, flags };
+      return { kind: 'lib', name, opts: bool(tokens, 'styles-only') ? { ...opts, stylesOnly: true } : opts, flags };
+    }
+
+    case 'service': {
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'project', 'provided', 'skip-test'], topic);
+      if (unknown !== null) return unknown;
+      return { kind: 'service', name, opts: { ...base, ...target(tokens), provided: bool(tokens, 'provided'), test: !bool(tokens, 'skip-test') }, flags };
+    }
+
+    case 'form': {
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'project', 'binary', 'skip-test'], topic);
+      if (unknown !== null) return unknown;
+      return { kind: 'form', name, opts: { ...base, ...target(tokens), binary: bool(tokens, 'binary'), test: !bool(tokens, 'skip-test') }, flags };
+    }
+
+    case 'style': {
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'project'], topic);
+      if (unknown !== null) return unknown;
+      return { kind: 'style', name, opts: { ...base, ...target(tokens) }, flags };
     }
 
     case 'component': {

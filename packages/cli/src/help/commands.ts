@@ -13,8 +13,12 @@ export type Topic =
   | 'generate layout'
   | 'generate app'
   | 'generate lib'
+  | 'generate service'
+  | 'generate form'
+  | 'generate style'
   | 'generate spec'
   | 'generate term'
+  | 'add'
   | 'dev'
   | 'preview'
   | 'test'
@@ -179,6 +183,42 @@ with what it needs to test them. It is not served.`,
     ],
     examples: ['fudic g lib ui', 'fudic g lib guia --styles-only'],
   },
+  'generate service': {
+    usage: 'fudic generate service <name>',
+    about: `Creates a service in src/services, a class your components get with inject(), and
+its unit test. It adds @fudic/di to the project if it is not there.`,
+    args: [['<name>', '"cart" becomes class Cart in src/services/cart.service.ts']],
+    options: [
+      IN_PROJECT,
+      ['--provided', 'not one for the whole app: a component provides it with provide()'],
+      ['--skip-test', 'no unit test'],
+      DRY_RUN,
+      FORCE,
+    ],
+    examples: ['fudic g service cart --project web', 'fudic g service wizard --provided'],
+  },
+  'generate form': {
+    usage: 'fudic generate form <name>',
+    about: `Creates a form in src/forms, with a required name field, and its unit test. It adds
+@fudic/forms to the project if it is not there.`,
+    args: [['<name>', '"person" becomes personForm in src/forms/person.form.ts']],
+    options: [
+      IN_PROJECT,
+      ['--binary', 'typed controls (str, u8, bool…): the upload travels in binary'],
+      ['--skip-test', 'no unit test'],
+      DRY_RUN,
+      FORCE,
+    ],
+    examples: ['fudic g form person --project web', 'fudic g form person --binary'],
+  },
+  'generate style': {
+    usage: 'fudic generate style <name>',
+    about: `Creates <name>.css in the project and lists it in the globalStyles of fudic.json:
+every component of the project adopts it, after the sheets of its libraries.`,
+    args: [['<name>', 'letters, digits and _, no hyphen: "theme" becomes theme.css']],
+    options: [IN_PROJECT, DRY_RUN, FORCE],
+    examples: ['fudic g style ui --project ui', 'fudic g style theme'],
+  },
   'generate spec': {
     usage: 'fudic generate spec <component>',
     alias: 'fudic g s',
@@ -204,6 +244,24 @@ for what the stock steps do not say.`,
       FORCE,
     ],
     examples: ['fudic g term then cart-has --param count:number', 'fudic g t when log-in'],
+  },
+  add: {
+    usage: 'fudic add <module>',
+    about: `Adds to a project you already have an optional module of fudic, or a library of the
+workspace, and installs it.`,
+    args: [
+      [
+        '<module>',
+        `di (services), forms, http (a chain for the server functions, in src/http.ts),
+i18n (translations), or the name of a library of the workspace`,
+      ],
+    ],
+    options: [
+      IN_PROJECT,
+      ['--locales <a,b>', 'with i18n: the languages of the app, the first one that of the code'],
+      DRY_RUN,
+    ],
+    examples: ['fudic add ui --project web', 'fudic add i18n --locales es,en'],
   },
   dev: {
     usage: 'fudic dev',
