@@ -16,6 +16,7 @@ import { nodeReadIo, nodeWriteIo } from '../src/io.js';
 import { planComponent } from '../src/plans/component.js';
 import { ENV_DECLARATION, ENV_FILE, planSpec, type PropsReader } from '../src/plans/spec.js';
 import { run } from '../src/run.js';
+import { componentSpec } from '../src/templates.js';
 import { captureStreams, MemoryFs, projectFs, RecordingRunner } from './helpers.js';
 import type { ComponentOptions, SpecOptions } from '../src/types.js';
 
@@ -204,30 +205,34 @@ describe('g spec over what already exists (criterion 9)', () => {
 });
 
 describe('g spec of a component that does not exist (criterion 10)', () => {
-  it('creates a component that does not exist, exactly as g component --spec writes it', async () => {
+  it('creates a component that does not exist, exactly as g component writes it', async () => {
     const asked = reader(PROPS);
     const plan = await planSpec('nope', options(), project(), asked);
-    const same = await planComponent('nope', { ...options(), dir: COMPONENTS_DIR, wireInto: [], style: true, slot: false, spec: true }, project());
+    const same = await planComponent('nope', { ...options(), dir: COMPONENTS_DIR, wireInto: [], style: true, slot: false, test: true, spec: true }, project());
     expect(plan).toEqual(same);
-    expect(created(plan)).toEqual(['create src/components/app-nope.fud', 'create src/components/app-nope.fudspec']);
-    expect(plan.changes[1]?.contents).toBe(specSkeleton('app-nope', false));
-    // A new component has no props to read, and so no fixture.
+    expect(created(plan)).toEqual([
+      'create src/components/app-nope/app-nope.fud',
+      'create src/components/app-nope/app-nope.test.ts',
+      'create src/components/app-nope/app-nope.fudspec',
+      'create src/components/app-nope/app-nope.fixture.ts',
+    ]);
+    expect(plan.changes[2]?.contents).toBe(componentSpec('app-nope'));
+    // A new component has no props to read: its fixture is the empty `base`.
     expect(asked.calls).toEqual([]);
   });
 
   it('treats a page with the name as no component: it creates one', async () => {
     const plan = await planSpec('index', options(), project(), reader(PROPS));
     expect(plan.errors).toEqual([]);
-    expect(created(plan)).toEqual(['create src/components/app-index.fud', 'create src/components/app-index.fudspec']);
+    expect(created(plan)[0]).toBe('create src/components/app-index/app-index.fud');
   });
 
   it('keeps --force on the way to g component', async () => {
-    const taken = project({ 'src/components/app-nope.fudspec': 'component app-nope\n' });
+    const taken = project({ 'src/components/app-nope/app-nope.fudspec': 'component app-nope\n' });
     expect((await planSpec('nope', options(), taken, reader(PROPS))).errors.map((e) => e.code)).toEqual(['FUD0443']);
-    expect(created(await planSpec('nope', options({ force: true }), taken, reader(PROPS)))).toEqual([
-      'create src/components/app-nope.fud',
-      'modify src/components/app-nope.fudspec',
-    ]);
+    expect(created(await planSpec('nope', options({ force: true }), taken, reader(PROPS)))).toContain(
+      'modify src/components/app-nope/app-nope.fudspec',
+    );
   });
 
   it('the project errors of every generator: no project, an unknown --project', async () => {
@@ -238,7 +243,7 @@ describe('g spec of a component that does not exist (criterion 10)', () => {
   });
 });
 
-describe('g component --spec (criterion 12)', () => {
+describe('g component writes its criteria unless --skip-spec (BUG-50 §4.3)', () => {
   const component = (over: Partial<ComponentOptions> = {}): ComponentOptions => ({
     cwd: CWD,
     force: false,
@@ -246,27 +251,33 @@ describe('g component --spec (criterion 12)', () => {
     wireInto: [],
     style: true,
     slot: false,
+    test: false,
     spec: true,
     ...over,
   });
 
-  it('parses --spec', () => {
-    expect(parseArgs(['g', 'c', 'card', '--spec'])).toMatchObject({ kind: 'component', opts: { spec: true } });
-    expect(parseArgs(['g', 'c', 'card'])).toMatchObject({ kind: 'component', opts: { spec: false } });
+  it('parses --skip-spec, and refuses the --spec of before', () => {
+    expect(parseArgs(['g', 'c', 'card'])).toMatchObject({ kind: 'component', opts: { spec: true } });
+    expect(parseArgs(['g', 'c', 'card', '--skip-spec'])).toMatchObject({ kind: 'component', opts: { spec: false } });
+    expect(parseArgs(['g', 'c', 'card', '--spec'])).toMatchObject({ kind: 'error', error: { message: 'unknown flag --spec' } });
   });
 
-  it('writes the .fud and its .fudspec, without a fixture', async () => {
+  it('writes the .fud, its .fudspec and its fixture', async () => {
     const plan = await planComponent('card', component(), projectFs({}, CWD, CONFIG));
     expect(plan.errors).toEqual([]);
-    expect(created(plan)).toEqual(['create src/components/app-card.fud', 'create src/components/app-card.fudspec']);
-    expect(plan.changes[1]?.contents).toBe(specSkeleton('app-card', false));
+    expect(created(plan)).toEqual([
+      'create src/components/app-card/app-card.fud',
+      'create src/components/app-card/app-card.fudspec',
+      'create src/components/app-card/app-card.fixture.ts',
+    ]);
+    expect(plan.changes[1]?.contents).toBe(componentSpec('app-card'));
   });
 
   it('refuses an existing .fudspec with FUD0443, and replaces it with --force', async () => {
-    const fs = projectFs({ 'src/components/app-card.fudspec': 'component app-card\n' }, CWD, CONFIG);
+    const fs = projectFs({ 'src/components/app-card/app-card.fudspec': 'component app-card\n' }, CWD, CONFIG);
     expect((await planComponent('card', component(), fs)).errors.map((error) => error.code)).toEqual(['FUD0443']);
     const forced = await planComponent('card', component({ force: true }), fs);
-    expect(created(forced)).toEqual(['create src/components/app-card.fud', 'modify src/components/app-card.fudspec']);
+    expect(created(forced)).toContain('modify src/components/app-card/app-card.fudspec');
   });
 });
 
@@ -318,7 +329,7 @@ describe('g spec through the binary, over a real project (criteria 7 and 10)', (
     expect(readFileSync(join(root, 'src/fudic-env.d.ts'), 'utf8')).toBe(ENV_DECLARATION);
 
     expect(await run(['g', 'spec', 'nope', '--cwd', root], deps)).toBe(0);
-    expect(readFileSync(join(root, 'src/components/app-nope.fud'), 'utf8')).toContain('<app-nope>');
-    expect(readFileSync(join(root, 'src/components/app-nope.fudspec'), 'utf8')).toBe(specSkeleton('app-nope', false));
+    expect(readFileSync(join(root, 'src/components/app-nope/app-nope.fud'), 'utf8')).toContain('<app-nope>');
+    expect(readFileSync(join(root, 'src/components/app-nope/app-nope.fudspec'), 'utf8')).toBe(componentSpec('app-nope'));
   });
 });

@@ -26,6 +26,8 @@ const options = (overrides: Partial<ComponentOptions> = {}): ComponentOptions =>
   wireInto: [],
   style: true,
   slot: false,
+  test: false,
+  spec: false,
   ...overrides,
 });
 

@@ -44,7 +44,7 @@ function workspace(extra: Readonly<Record<string, string>> = {}): MemoryFs {
 }
 
 function componentOptions(overrides: Partial<ComponentOptions> = {}): ComponentOptions {
-  return { cwd: ROOT, force: false, dir: 'src/components', wireInto: [], style: true, slot: false, ...overrides };
+  return { cwd: ROOT, force: false, dir: 'src/components', wireInto: [], style: true, slot: false, test: false, spec: false, ...overrides };
 }
 
 function pageOptions(overrides: Partial<PageOptions> = {}): PageOptions {
@@ -60,7 +60,7 @@ describe('the prefix of the target project (criteria 7 and 8)', () => {
     const plan = await planComponent('card', componentOptions({ cwd: `${ROOT}/apps/admin` }), workspace());
 
     expect(plan.errors).toEqual([]);
-    expect(plan.changes[0]?.path).toBe('src/components/ad-card.fud');
+    expect(plan.changes[0]?.path).toBe('src/components/ad-card/ad-card.fud');
     expect(plan.changes[0]?.contents).toContain('<ad-card>');
   });
 
@@ -68,7 +68,7 @@ describe('the prefix of the target project (criteria 7 and 8)', () => {
     const plan = await planComponent('card', componentOptions({ project: 'ui' }), workspace());
 
     expect(plan.errors).toEqual([]);
-    expect(plan.changes[0]?.path).toBe('libs/ui/src/components/ui-card.fud');
+    expect(plan.changes[0]?.path).toBe('libs/ui/src/components/ui-card/ui-card.fud');
     expect(plan.changes[0]?.contents).toContain('<ui-card>');
   });
 
@@ -79,12 +79,12 @@ describe('the prefix of the target project (criteria 7 and 8)', () => {
       workspace(),
     );
 
-    expect(plan.changes[0]?.path).toBe('../../libs/ui/src/components/ui-card.fud');
+    expect(plan.changes[0]?.path).toBe('../../libs/ui/src/components/ui-card/ui-card.fud');
   });
 
   it('the tag already taken is looked for in the target project, not in the whole tree', async () => {
     const fs = workspace({
-      'apps/admin/src/components/ad-card.fud':
+      'apps/admin/src/components/ad-card/ad-card.fud':
         '<ad-card>\n  <template shadowrootmode="open"></template>\n</ad-card>\n',
     });
 
@@ -110,7 +110,7 @@ describe('when no project answers (criteria 9 and 10)', () => {
 
     const plan = await planComponent('card', componentOptions({ project: 'ui' }), fs);
 
-    expect(plan.changes[0]?.path).toBe('libs/ui/src/components/ui-card.fud');
+    expect(plan.changes[0]?.path).toBe('libs/ui/src/components/ui-card/ui-card.fud');
   });
 
   it('says there are none when there is nothing to list', async () => {

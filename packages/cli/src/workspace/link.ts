@@ -52,6 +52,19 @@ export function componentLink(into: string, component: string, cwd: string, io: 
   return dependency === undefined ? { href } : { href, dependency };
 }
 
+/**
+ * How an app links `component` (relative to `cwd`) of a library: the package specifier its
+ * `exports` gives it, `@shop/ui/ui-button.fud`. Undefined when the file is in no package, or
+ * the package does not export it.
+ */
+export function librarySpecifier(component: string, cwd: string, io: ReadIo): string | undefined {
+  const fs = packageFs(io);
+  const componentPath = toPosix(absolute(cwd, component));
+  const library = owningPackage(componentPath, fs);
+  if (library === undefined) return undefined;
+  return specifierOf({ name: packageName(library, io), root: library }, componentPath, fs);
+}
+
 /** The `name` of the `package.json` at `root`, or its folder name when it declares none. */
 function packageName(root: string, io: ReadIo): string {
   const declared = (parse(io.read(joinPosix(root, 'package.json'))) as { name?: unknown }).name;

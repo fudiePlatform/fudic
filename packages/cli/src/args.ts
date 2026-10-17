@@ -347,7 +347,7 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
     }
 
     case 'component': {
-      const unknown = unknownFlag(tokens, [...GLOBAL, 'project', 'dir', 'in', 'no-style', 'slot', 'spec'], topic);
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'project', 'dir', 'in', 'no-style', 'slot', 'skip-test', 'skip-spec'], topic);
       if (unknown !== null) return unknown;
       const opts: ComponentOptions = {
         ...base,
@@ -356,7 +356,8 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
         wireInto: list(tokens, 'in') ?? [],
         style: !bool(tokens, 'no-style'),
         slot: bool(tokens, 'slot'),
-        spec: bool(tokens, 'spec'),
+        test: !bool(tokens, 'skip-test'),
+        spec: !bool(tokens, 'skip-spec'),
       };
       return { kind: 'component', tag: name, opts, flags };
     }

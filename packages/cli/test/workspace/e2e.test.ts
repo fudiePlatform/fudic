@@ -104,7 +104,7 @@ describe('a generated workspace builds (criterion 13)', () => {
         'card',
         {
           cwd: ws, force: false, dir: 'src/components', project: 'ui',
-          wireInto: ['apps/web/src/routes/index.fud'], style: true, slot: true,
+          wireInto: ['apps/web/src/routes/index.fud'], style: true, slot: true, test: true, spec: true,
         },
         io,
       ),

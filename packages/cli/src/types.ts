@@ -73,6 +73,12 @@ export interface Plan {
   readonly diagnostics: readonly PlanDiagnostic[];
   /** From the CLI, span-less. A plan with a non-empty `errors` is never applied. */
   readonly errors: readonly CliError[];
+  /**
+   * What the command tells the user once it is applied, in their words (BUG-50 §6): what was
+   * created, how to run it, what to do next. Absent ⇒ one `create`/`modify` line per file.
+   * Never shown under `--dry-run`, which lists the plan, nor in `--json`.
+   */
+  readonly report?: readonly string[];
 }
 
 export interface BaseOptions {
@@ -163,8 +169,10 @@ export interface ComponentOptions extends TargetedOptions {
   readonly wireInto: readonly string[];
   readonly style: boolean;
   readonly slot: boolean;
-  /** Also write `<tag>.fudspec` next to it (SDD-53). Absent ⇒ no. */
-  readonly spec?: boolean;
+  /** Write its unit test in its folder; `--skip-test` is `false` (BUG-50 §4.3). */
+  readonly test: boolean;
+  /** Write its `.fudspec` and its fixture in its folder; `--skip-spec` is `false` (BUG-50 §4.3). */
+  readonly spec: boolean;
 }
 
 /** `fudic g spec <component>` (SDD-53 §4.1): only the project the component is in. */

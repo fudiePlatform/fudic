@@ -3,7 +3,7 @@
  * needs when the component has required props.
  *
  * The order is the author's. A component that does not exist yet is created with its criteria
- * file, exactly as `fudic g component <name> --spec` does; one that exists gets them next to it.
+ * file, exactly as `fudic g component <name>` does; one that exists gets them next to it.
  * Spec first or component first, the result is the same files.
  *
  * Nothing here writes a line of its own: the `.fudspec` and the fixture are what `@fudic/spec`
@@ -72,8 +72,8 @@ export async function planSpec(
   const tag = tagOf(project.config.prefix, name);
   const source = componentFile(project, tag, io);
   if (source === undefined) {
-    // Spec first: the component is born with it, empty, as `g component --spec` writes it.
-    return planComponent(name, { ...opts, dir: COMPONENTS_DIR, wireInto: [], style: true, slot: false, spec: true }, io);
+    // Spec first: the component is born with it, as `g component` writes it.
+    return planComponent(name, { ...opts, dir: COMPONENTS_DIR, wireInto: [], style: true, slot: false, test: true, spec: true }, io);
   }
 
   const changes: FileChange[] = [];

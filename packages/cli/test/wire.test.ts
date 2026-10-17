@@ -15,7 +15,7 @@ import type { ComponentOptions } from '../src/types.js';
 const CWD = '/project';
 
 function options(overrides: Partial<ComponentOptions> = {}): ComponentOptions {
-  return { cwd: CWD, force: false, dir: 'components', wireInto: [], style: true, slot: false, ...overrides };
+  return { cwd: CWD, force: false, dir: 'components', wireInto: [], style: true, slot: false, test: false, spec: false, ...overrides };
 }
 
 const ROUTE = `<link rel="layout" href="../layouts/_layout.fud">

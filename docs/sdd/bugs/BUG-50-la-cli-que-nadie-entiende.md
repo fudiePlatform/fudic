@@ -424,7 +424,7 @@ criterion renders
   given
     props base
   then
-    visible ui-button
+    present ui-button
 ```
 ```ts
 // ui-button.fixture.ts
@@ -448,6 +448,13 @@ test('renders', async () => {
 ```
 
 Y a continuación `pnpm --filter ui test` y `pnpm --filter ui spec` salen en verde.
+
+> **Decisión de Pedro (2026-10-17): `present`, no `visible`.** El criterio generado decía
+> `visible ui-button`, y un componente vacío mide 0×0: para el navegador no se ve, y `pnpm spec`
+> fallaba siempre. Darle contenido (un `<slot>`) haría creer al desarrollador que fudic lo necesita.
+> `@fudic/terms` gana el término de serie `then present <target>` —está en la página, ocupe o no
+> sitio— y el criterio generado es `present ui-button`. La lib lleva además `@fudic/ssr` en
+> `devDependencies`: sin él, `mount` no encuentra el renderizador.
 
 ### 6.6. `fudic g component --help`
 

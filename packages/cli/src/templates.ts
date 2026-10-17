@@ -52,7 +52,6 @@ export const TEMPLATES: readonly TemplateSpec[] = [
     file: 'component.fud',
     role: 'component-document',
     sample: {
-      code: codeBlock(),
       head: styleBlock(),
       tag: 'app-card',
       body: '    <slot></slot>\n',
@@ -95,31 +94,6 @@ export function styleBlock(): string {
   return `<head>
   <style></style>
 </head>
-
-`;
-}
-
-/**
- * The component's `@code`: a `Props` type, its destructuring, and an empty `@client`.
- *
- * Every component gets one. A component that is only markup and style is the rare case, not
- * the common one, and writing the type and the `props<T>()` call by hand is the part that
- * costs — while the shape of `@code { … @client { … } }` is exactly what a scaffold should
- * hand over already built.
- *
- * `@client {}` empty costs nothing: a component has no level of its own (SDD-15), the client
- * chunk is emitted for every component regardless, so this reclassifies nothing. And `props`
- * lives in the NEUTRAL zone, outside `@client`, which is where `props<T>()` is looked for.
- */
-export function codeBlock(): string {
-  return `@code {
-  type Props = {
-  };
-
-  const {} = props<Props>();
-
-  @client {}
-}
 
 `;
 }
@@ -171,9 +145,32 @@ export function pageTest(url: string): string {
  * The module is named after the layout, `_layout` → `Layout`, `docs-shell` → `DocsShell`.
  */
 export function layoutTest(file: string): string {
-  const words = file.replace(/\.fud$/u, '').split(/[^A-Za-z0-9]+/u).filter((word) => word !== '');
+  return renderTemplate('layout.test.ts.tmpl', { module: moduleName(file.replace(/\.fud$/u, ''), 'Layout'), file });
+}
+
+/**
+ * The name a `.fud` is imported under, `* as <Name>`: `ui-button` → `UiButton`. A name that would
+ * not start with a letter gets `fallback` in front, `2col` → `Layout2col`.
+ */
+function moduleName(base: string, fallback: string): string {
+  const words = base.split(/[^A-Za-z0-9]+/u).filter((word) => word !== '');
   const name = words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join('');
-  return renderTemplate('layout.test.ts.tmpl', { module: /^[A-Z]/u.test(name) ? name : `Layout${name}`, file });
+  return /^[A-Z]/u.test(name) ? name : `${fallback}${name}`;
+}
+
+/** The unit test of the component `tag`: it mounts it and expects its host in the document. */
+export function componentTest(tag: string): string {
+  return renderTemplate('component/test.ts.tmpl', { tag, module: moduleName(tag, 'Component') });
+}
+
+/** The `.fudspec` of a new component: one real criterion, `renders`, in stock terms. */
+export function componentSpec(tag: string): string {
+  return renderTemplate('component/fudspec.tmpl', { tag });
+}
+
+/** The fixture the criteria mount a new component with: `base`, empty, since it has no props yet. */
+export function componentFixture(tag: string): string {
+  return renderTemplate('component/fixture.ts.tmpl', { tag });
 }
 
 /** Indent every non-empty line of a block. */

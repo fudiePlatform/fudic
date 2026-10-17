@@ -13,7 +13,6 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  codeBlock,
   indent,
   renderTemplate,
   renderSectionBlocks,
@@ -36,7 +35,6 @@ describe('the skeletons are the CLI templates', () => {
   it('component', () => {
     expect(bodyOf('component')).toBe(
       renderTemplate('component.fud', {
-        code: codeBlock(),
         head: styleBlock(),
         tag: '${1:app-button}',
         body: '    $0\n',
@@ -85,7 +83,6 @@ describe('the skeletons are the CLI templates', () => {
   it('component, under a project that declares a prefix', () => {
     expect(componentSkeleton('shop-button')).toBe(
       renderTemplate('component.fud', {
-        code: codeBlock(),
         head: styleBlock(),
         tag: '${1:shop-button}',
         body: '    $0\n',
@@ -98,7 +95,6 @@ describe('the skeletons are the CLI templates', () => {
 
     expect(drifted).not.toBe(
       renderTemplate('component.fud', {
-        code: codeBlock(),
         head: styleBlock(),
         tag: '${1:app-button}',
         body: '    $0\n',

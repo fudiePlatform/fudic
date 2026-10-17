@@ -53,18 +53,25 @@ describe('run()', () => {
     const dryDeps = deps(dry);
     expect(await run([...argv, '--dry-run'], dryDeps)).toBe(0);
     expect(dry.paths()).toEqual(['fudic.json']); // nothing beyond what was already there
-    expect(dryDeps.capture.stdout()).toContain('src/components/app-card.fud');
+    expect(dryDeps.capture.stdout()).toContain('src/components/app-card/app-card.fud');
 
     const real = projectFs({}, CWD);
     const realDeps = deps(real);
     expect(await run(argv, realDeps)).toBe(0);
-    expect(real.paths()).toEqual(['fudic.json', 'src/components/app-card.fud']);
+    expect(real.paths()).toEqual([
+      'fudic.json',
+      'src/components/app-card/app-card.fixture.ts',
+      'src/components/app-card/app-card.fud',
+      'src/components/app-card/app-card.fudspec',
+      'src/components/app-card/app-card.test.ts',
+    ]);
 
     const listed = dryDeps.capture
       .stdout()
       .split('\n')
       .filter((line) => line.startsWith('  create') || line.startsWith('  modify'))
-      .map((line) => line.trim());
+      .map((line) => line.trim())
+      .sort();
     const written = real
       .paths()
       .filter((path) => path !== 'fudic.json')
@@ -83,7 +90,7 @@ describe('run()', () => {
       d,
     );
     expect(code).toBe(0);
-    expect(d.capture.stdout()).toContain('+<link rel="component" href="./app-icon.fud">');
+    expect(d.capture.stdout()).toContain('+<link rel="component" href="./app-icon/app-icon.fud">');
     expect(fs.at('src/components/app-card.fud')).not.toContain('app-icon');
   });
 
@@ -93,7 +100,12 @@ describe('run()', () => {
     expect(await run(['g', 'component', 'app-card', '--cwd', CWD, '--json', '--dry-run'], d)).toBe(0);
 
     const parsed = JSON.parse(d.capture.stdout()) as { changes: { path: string }[] };
-    expect(parsed.changes.map((change) => change.path)).toEqual(['src/components/app-card.fud']);
+    expect(parsed.changes.map((change) => change.path)).toEqual([
+      'src/components/app-card/app-card.fud',
+      'src/components/app-card/app-card.test.ts',
+      'src/components/app-card/app-card.fudspec',
+      'src/components/app-card/app-card.fixture.ts',
+    ]);
     expect(d.capture.stderr()).toContain('dry run');
   });
 

@@ -18,7 +18,8 @@ pnpm add -D @fudic/terms
 | `when` | `type <target> "<text>"` | — types into it |
 | `when` | `focus <target>` | — focuses it |
 | `when` | `set-attribute <target> <attribute> "<value>"` | — sets it |
-| `then` | `visible <target>` | it is visible |
+| `then` | `present <target>` | it is in the page, even empty and taking up no room |
+| `then` | `visible <target>` | it is visible: on screen, with a size |
 | `then` | `hidden <target>` | it is not |
 | `then` | `text <target> "<expected>"` | the text a person sees contains it |
 | `then` | `attribute <target> <attribute> "<expected>"` | the attribute has that value |

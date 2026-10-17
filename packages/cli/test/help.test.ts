@@ -286,7 +286,7 @@ describe('a usage error (§6.8)', () => {
 
   it('lists the flags the command takes under an unknown one', () => {
     const cases: readonly (readonly [readonly string[], Topic, string])[] = [
-      [['g', 'c', 'x', '--zz'], 'generate component', '--project, --dir, --in, --no-style, --slot, --spec, --dry-run, --force'],
+      [['g', 'c', 'x', '--zz'], 'generate component', '--project, --dir, --in, --no-style, --slot, --skip-test, --skip-spec, --dry-run, --force'],
       [['g', 'p', 'x', '--zz'], 'generate page', '--project, --dir, --layout, --no-layout, --server, --sections, --skip-test, --dry-run, --force'],
       [['g', 'l', 'x', '--zz'], 'generate layout', '--project, --dir, --sections, --no-head, --skip-test, --dry-run, --force'],
       [['g', 'a', 'x', '--zz'], 'generate app', '--dir, --id, --prefix, --no-sw, --uses, --dry-run, --force'],
@@ -312,7 +312,7 @@ describe('FUD0440 suggests a tag of the project (§6.6)', () => {
     expect(suggestTag('ui', 'ui', '__')).toBe('ui-card');
   });
 
-  const options: ComponentOptions = { cwd: CWD, force: false, dir: 'components', wireInto: [], style: true, slot: false };
+  const options: ComponentOptions = { cwd: CWD, force: false, dir: 'components', wireInto: [], style: true, slot: false, test: false, spec: false };
 
   it('says the project\'s prefix in the message', async () => {
     const fs = new MemoryFs({ 'fudic.json': JSON.stringify({ id: 'shop', prefix: 'ui' }) }, CWD);

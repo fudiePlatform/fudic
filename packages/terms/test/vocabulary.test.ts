@@ -17,7 +17,7 @@ import { fakeHost, launch, type FakeHost } from './browser.js';
 const VOCABULARY = {
   given: [],
   when: ['click', 'focus', 'press', 'set-attribute', 'type'],
-  then: ['attribute', 'focused', 'hidden', 'min-height', 'min-width', 'slotted', 'text', 'visible'],
+  then: ['attribute', 'focused', 'hidden', 'min-height', 'min-width', 'present', 'slotted', 'text', 'visible'],
 } as const;
 
 type Block = keyof typeof VOCABULARY;
@@ -67,6 +67,7 @@ describe('§3.5 — what each term says it does', () => {
     ['then', 'hidden', { target: 'ui-a' }, 'ui-a is hidden'],
     ['then', 'min-height', { target: 'ui-a', px: 44 }, 'ui-a is at least 44px tall'],
     ['then', 'min-width', { target: 'ui-a', px: 44 }, 'ui-a is at least 44px wide'],
+    ['then', 'present', { target: 'ui-a' }, 'ui-a is in the page'],
     ['then', 'slotted', { target: 'ui-a', slot: 'icon' }, 'ui-a is in the icon slot'],
     ['then', 'text', { target: 'ui-a', expected: 'Hi' }, 'ui-a says "Hi"'],
     ['then', 'visible', { target: 'ui-a' }, 'ui-a is visible'],
@@ -172,6 +173,14 @@ describe('§6.7.3 — then', () => {
     expect(await run('then', 'visible', { target: 'ui-a' })).toEqual({ pass: true, evidence: 'visible' });
     expect(await run('then', 'visible', { target: 'ui-b' })).toEqual({ pass: false, evidence: 'hidden' });
     expect(await run('then', 'visible', { target: 'ui-c' })).toEqual({ pass: false, evidence: 'hidden' });
+  });
+
+  it('present: pass when it is in the page, even empty and taking no room; fail when not there', async () => {
+    await page.setContent('<ui-a></ui-a>');
+    expect(await run('then', 'present', { target: 'ui-a' })).toEqual({ pass: true, evidence: 'in the page' });
+    // What `present` exists for: a new component, with nothing in it yet, is not visible.
+    expect(await run('then', 'visible', { target: 'ui-a' })).toEqual({ pass: false, evidence: 'hidden' });
+    expect(await run('then', 'present', { target: 'ui-b' })).toEqual({ pass: false, evidence: 'not there' });
   });
 
   it('hidden: pass when hidden or not there, fail when on screen', async () => {

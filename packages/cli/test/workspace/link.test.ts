@@ -19,7 +19,7 @@ const ROUTE = `<link rel="layout" href="../layouts/_layout.fud">
 <h1>hi</h1>
 `;
 
-const LIB_PACKAGE = JSON.stringify({ name: '@mi-tienda/ui', exports: { './*.fud': './src/components/*.fud' } });
+const LIB_PACKAGE = JSON.stringify({ name: '@mi-tienda/ui', exports: { './*.fud': './src/components/*/*.fud' } });
 
 function workspace(webPackage: string, extra: Readonly<Record<string, string>> = {}): MemoryFs {
   return new MemoryFs(
@@ -48,6 +48,8 @@ function options(overrides: Partial<ComponentOptions> = {}): ComponentOptions {
     wireInto: ['apps/web/src/routes/index.fud'],
     style: false,
     slot: false,
+    test: false,
+    spec: false,
     ...overrides,
   };
 }
@@ -86,7 +88,7 @@ describe('fudic g component --project <lib> --in <a file of an app>', () => {
 });
 
 describe('componentLink', () => {
-  const link = (fs: MemoryFs, into = 'apps/web/src/routes/index.fud', component = 'libs/ui/src/components/ui-card.fud') =>
+  const link = (fs: MemoryFs, into = 'apps/web/src/routes/index.fud', component = 'libs/ui/src/components/ui-card/ui-card.fud') =>
     componentLink(into, component, ROOT, fs);
   const manifestOf = (result: ReturnType<typeof link>): string | undefined =>
     'href' in result ? result.dependency?.contents : undefined;
@@ -122,8 +124,8 @@ describe('componentLink', () => {
   it("names a library that declares no name by its folder, and reads a broken manifest as empty", () => {
     const fs = workspace('not json {}', { 'libs/ui/package.json': '[]' });
     const result = link(fs);
-    expect(result).toMatchObject({ href: 'ui/src/components/ui-card.fud' });
+    expect(result).toMatchObject({ href: 'ui/src/components/ui-card/ui-card.fud' });
     expect(manifestOf(result)).toContain('"ui": "workspace:*"');
-    expect(link(workspace('42', { 'libs/ui/package.json': 'null' }))).toMatchObject({ href: 'ui/src/components/ui-card.fud' });
+    expect(link(workspace('42', { 'libs/ui/package.json': 'null' }))).toMatchObject({ href: 'ui/src/components/ui-card/ui-card.fud' });
   });
 });

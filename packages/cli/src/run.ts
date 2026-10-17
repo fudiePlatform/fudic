@@ -118,7 +118,10 @@ async function execute(argv: readonly string[], deps: RunDeps): Promise<number> 
   const applied = await apply(plan, command.opts, deps.writeIo, deps.runner);
   // A plan with errors is never applied: nothing was removed either.
   const removed = plan.errors.length > 0 ? [] : (plan.deletions ?? []).map((path) => `  delete  ${path}`);
-  if (!flags.json) human(`${[...applied.changes.map((change) => (change.kind === 'create' ? `  create  ${change.path}` : `  modify  ${change.path}`)), ...removed].join('\n')}\n`);
+  // A plan's own report only once everything it says happened did happen: a failed command
+  // falls back to the file list, which is still true.
+  if (!flags.json && plan.report !== undefined && applied.failed === undefined) human(`${plan.report.join('\n')}\n`);
+  else if (!flags.json) human(`${[...applied.changes.map((change) => (change.kind === 'create' ? `  create  ${change.path}` : `  modify  ${change.path}`)), ...removed].join('\n')}\n`);
 
   // Reported AFTER the changes, because those really did happen: the files are written
   // before the first command runs, and a failure here does not unwrite them. Exit 1, the

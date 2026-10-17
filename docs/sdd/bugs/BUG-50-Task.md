@@ -1,7 +1,7 @@
 # BUG-50 — Tareas
 
 > **BUG:** [BUG-50 — La CLI que nadie entiende](./BUG-50-la-cli-que-nadie-entiende.md)
-> **Paquetes:** `@fudic/cli` · `@fudic/language-core` · `@fudic/typecheck` · `examples/workspace` · `@fudic/workbench` · `@fudic/testing`
+> **Paquetes:** `@fudic/cli` · `@fudic/language-core` · `@fudic/typecheck` · `examples/workspace` · `@fudic/workbench` · `@fudic/testing` · `@fudic/terms` · `@fudic/resolve`
 > **Rama:** `bug-50-cli-usable` (worktree `fudic-bug-50`), desde `main` en `e4f7a8a`.
 > **Depende de:** SDD-59 `Hecho` para las tareas que ejecutan un `.fudspec` (12, 24).
 > **Progreso:** 9 / 27 — en curso.
@@ -33,10 +33,10 @@ Lo nuevo nace al 100 % en las cuatro métricas; `@fudic/cli` no baja de su suelo
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 10 | 4, 5 | **Carpeta con cuatro ficheros**; `.fud` sin `@code` vacío; fixture siempre; spec con `renders`; `--skip-test`, `--skip-spec`; retirar `--spec`; borrar `.gitkeep` (BUG §4.3) | `src/plans/component.ts` · `src/plans/spec.ts` · `templates/component.fud` |
-| [ ] | 11 | 10 | **`exports` de la lib** `./*.fud` → `./src/components/*/*.fud`; `--dir` relativo al proyecto y el aviso de §6.7 | `templates/lib/package.json.tmpl` · `src/workspace/link.ts` · `src/plans/component.ts` |
+| [ ] | 10 | 4, 5 | **Carpeta con cuatro ficheros**; `.fud` sin `@code` vacío; fixture siempre; spec con `renders`; `--skip-test`, `--skip-spec`; retirar `--spec`; borrar `.gitkeep` (BUG §4.3). **Añadido (Pedro, 2026-10-17):** término de serie `then present` en `@fudic/terms` y el spec generado lo usa; `@fudic/ssr` en las devDependencies de la lib | `src/plans/component.ts` · `src/plans/spec.ts` · `templates/component.fud` · `packages/terms/terms/then/present.js` |
+| [ ] | 11 | 10 | **`exports` de la lib** `./*.fud` → `./src/components/*/*.fud`; `--dir` relativo al proyecto y el aviso de §6.7 | `templates/lib/package.json.tmpl` · `src/workspace/link.ts` · `src/plans/component.ts` · `packages/resolve/src/libraries.ts` (`exports` con varios `*`) |
 | [ ] | 12 | 10, 11 | **Tests.** §6.5, §6.6, §6.7; `pnpm test` y `pnpm spec` en verde sobre la lib generada | `packages/cli/test/*` |
-| [ ] | 13 | 12 | **Prueba de Pedro.** Lib nueva + componente, test y spec en verde | — |
+| [ ] | 13 | 12 | **Prueba de Pedro.** Lib nueva + componente, test y spec en verde (al final, con la 26: decisión de Pedro, no detiene las fases) | — |
 
 ## Fase 4 — Workspace, bases y servidor único (5)
 
@@ -46,7 +46,7 @@ Lo nuevo nace al 100 % en las cuatro métricas; `@fudic/cli` no baja de su suelo
 | [ ] | 15 | — | **Bases.** Primera app `/`; `g app` escribe `base` (`--base`); dos apps con la misma base es error; `g app` instala (BUG §4.5, §4.6) | `src/plans/app.ts` · `templates/vite.config.ts.tmpl` |
 | [ ] | 16 | 15 | **`fudic dev` y `fudic preview`.** Todas las apps en un puerto, base más larga primero (BUG §4.5). **`fudic test` y `fudic spec`**: los del proyecto, o los de todo el workspace desde su raíz (BUG §3.1; añadido por decisión de Pedro, 2026-10-17: ninguna tarea los cubría) | `src/serve/*` · `src/args.ts` · `src/run.ts` |
 | [ ] | 17 | 14–16 | **Tests.** §6.2, §6.4, §6.9 | `packages/cli/test/*` |
-| [ ] | 18 | 17 | **Prueba de Pedro.** `pnpm dev` y `pnpm preview` con `/` y `/admin/` en el navegador; `pnpm --filter admin dev` | — |
+| [ ] | 18 | 17 | **Prueba de Pedro.** `pnpm dev` y `pnpm preview` con `/` y `/admin/` en el navegador; `pnpm --filter admin dev` (al final, con la 26: decisión de Pedro, no detiene las fases) | — |
 
 ## Fase 5 — Añadir: módulos, librerías, servicios, formularios y estilos (6)
 

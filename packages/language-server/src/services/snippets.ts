@@ -199,16 +199,7 @@ export function componentSkeleton(tag: string): string {
   return COMPONENT_SKELETON.replaceAll('app-button', tag);
 }
 
-const COMPONENT_SKELETON = `@code {
-  type Props = {
-  };
-
-  const {} = props<Props>();
-
-  @client {}
-}
-
-<head>
+const COMPONENT_SKELETON = `<head>
   <style></style>
 </head>
 
