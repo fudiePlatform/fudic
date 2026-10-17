@@ -5,7 +5,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { run, type RunDeps } from '../src/run.js';
-import { parseArgs, USAGE } from '../src/args.js';
+import { parseArgs } from '../src/args.js';
+import { commandHelp } from '../src/help/commands.js';
 import { captureStreams, MemoryFs, projectFs, RecordingRunner } from './helpers.js';
 
 const CWD = '/project';
@@ -96,12 +97,15 @@ describe('run()', () => {
     expect(d.capture.stderr()).toContain('dry run');
   });
 
-  it('a usage error exits 1 with the usage text, writing nothing (§6.13)', async () => {
+  it('a usage error exits 1 with its line and the way on, writing nothing (§6.13, BUG-50 §4.1)', async () => {
     const fs = new MemoryFs({}, CWD);
     const d = deps(fs);
     expect(await run(['g'], d)).toBe(1);
-    expect(d.capture.stderr()).toContain('fudic g needs a type');
-    expect(d.capture.stderr()).toContain('fudic new <name>');
+    expect(d.capture.stderr()).toContain('fudic generate needs to know what to generate');
+    expect(d.capture.stderr()).toContain('"fudic generate --help" for more.');
+    // Never the whole help after an error: it buries the one line that says what went wrong.
+    expect(d.capture.stderr()).not.toContain('Usage: fudic');
+    expect(d.capture.stdout()).toBe('');
     expect(fs.paths()).toEqual([]);
 
     expect(await run(['frobnicate'], deps(fs))).toBe(1);
@@ -144,9 +148,9 @@ describe('parseArgs', () => {
 
     // Help output is interface: a default that is right in the code and stale in the text is
     // still a wrong default for whoever reads it before running anything.
-    expect(USAGE).toContain('(default: src/components)');
-    expect(USAGE).toContain('(default: src/routes)');
-    expect(USAGE).toContain('(default: src/layouts)');
+    expect(commandHelp('generate component')).toContain('src/components');
+    expect(commandHelp('generate page')).toContain('(default: src/routes)');
+    expect(commandHelp('generate layout')).toContain('(default: src/layouts)');
   });
 
   it('maps the --no-* flags onto their positive options', () => {

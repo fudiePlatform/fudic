@@ -1,15 +1,16 @@
 /**
  * argv → a typed command (SDD-22 §4.1). NOTHING here prompts: no menus, no confirmations,
  * no "did you mean". A CLI that asks cannot go into a script, or CI, or a test, so a
- * missing argument is an exit code with the usage text, never a selector.
+ * missing argument is an exit code with a line that says how to go on, never a selector.
  */
 
 import { COMPONENTS_DIR, LAYOUTS_DIR, ROUTES_DIR } from '@fudic/conventions';
-import { FUD0448 } from '@fudic/diagnostics';
+import { FUD0448, type FUD0448Params } from '@fudic/diagnostics';
+import type { Topic } from './help/commands.js';
+import { COMMANDS, GENERATES, type UsageError } from './help/usage.js';
 import { APPS_DIR, LIBS_DIR } from './workspace/place.js';
 import type {
   AppOptions,
-  CliError,
   ComponentOptions,
   FmtOptions,
   LayoutOptions,
@@ -45,104 +46,54 @@ export type ParsedCommand =
   | { readonly kind: 'term'; readonly name: string; readonly opts: TermOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'fmt'; readonly paths: readonly string[]; readonly opts: FmtOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'translate'; readonly opts: TranslateOptions; readonly flags: GlobalFlags }
-  | { readonly kind: 'help' }
-  | { readonly kind: 'error'; readonly error: CliError };
+  /** `topic: null` is the general help. */
+  | { readonly kind: 'help'; readonly topic: Topic | null }
+  | ({ readonly kind: 'error' } & UsageError);
 
-export const USAGE = `fudic — scaffolding for Declarative Shadow DOM apps
+type GenerateType = 'component' | 'page' | 'layout' | 'app' | 'lib' | 'spec' | 'term';
 
-  fudic fmt [path…]             format .fud and .fudspec files in place  (default: .)
-  fudic new <name>              create a project
-  fudic new <name> --workspace  create a workspace and its first app
-  fudic translate               extract the messages into src/locales/<locale>.json
-  fudic generate <type> <name>  add a piece                     (alias: g)
-    fudic g app <name>            another app in the workspace  (alias: a)
-    fudic g lib <name>            a component library
-    fudic g page <route>                                        (alias: p)
-    fudic g component <name>                                    (alias: c)
-    fudic g layout <name>                                       (alias: l)
-    fudic g spec <component>      its .fudspec (and fixture)    (alias: s)
-    fudic g term <block> <name>   a term module for .fudspec    (alias: t)
+/** Every spelling of a type `fudic generate` takes, aliases included. */
+const GENERATE_TYPES: Readonly<Record<string, GenerateType>> = {
+  component: 'component',
+  c: 'component',
+  page: 'page',
+  p: 'page',
+  layout: 'layout',
+  l: 'layout',
+  app: 'app',
+  a: 'app',
+  lib: 'lib',
+  spec: 'spec',
+  s: 'spec',
+  term: 'term',
+  t: 'term',
+};
 
-Generators (component, page, layout, spec, term) and translate take a destination
-  --project <name>   the project the piece goes to, by directory name
-                     default: the nearest fudic.json at or above --cwd; there is no
-                     default project, and without either the command fails
+/** What a `fudic generate <type>` without a name could have been. */
+const EXAMPLE: Readonly<Record<GenerateType, string>> = {
+  component: 'button',
+  page: 'about',
+  layout: 'docs',
+  app: 'admin',
+  lib: 'ui',
+  spec: 'button',
+  term: 'then cart-has',
+};
 
-Global flags
-  --dry-run          print the plan and exit; writes nothing
-  --force, -f        overwrite existing targets
-  --cwd <path>       project root to operate on          (default: .)
-  --json             serialize the plan to stdout; human output goes to stderr
-
-fudic fmt
-  --check                report what would change and exit non-zero; writes nothing
-  --print-width <n>      target column                        (default: 100)
-  --tab-width <n>        indentation width                    (default: 2)
-  --use-tabs             indent with tabs
-  --quote <double|single>  attribute quote                    (default: double)
-  --end-of-line <lf|crlf|auto>  line terminator               (default: lf)
-
-fudic new
-  --workspace            create a workspace (apps/ + libs/) and its first app
-  --app <name>           the first app's name, with --workspace      (default: <name>)
-  --id <id>              the app's identity; NEVER change it later  (default: <name>)
-  --prefix <p>           what g component proposes here             (default: none)
-  --pm <pnpm|npm|yarn>   package manager                 (default: pnpm)
-  --no-install           do not install dependencies
-  --no-git               do not run git init and the initial commit
-  --no-sw                do not write sw.json (no Service Worker)
-  --layout <name>        initial layout name             (default: _layout)
-  --target <name>        deployment adapter              (default: static)
-
-fudic g app <name>            (inside a workspace)
-  --dir <path>       where it hangs, from the workspace root  (default: apps)
-  --id <id>          the app's identity; NEVER change it later    (default: <name>)
-  --prefix <p>       what g component proposes here               (default: none)
-  --no-sw            do not write sw.json (no Service Worker)
-  --uses <lib>       depend on a workspace library; repeatable
-
-fudic g lib <name>            (inside a workspace)
-  a library publishes its .fud sources: no vite config, no routes, no sw.json, no id
-  --dir <path>       where it hangs, from the workspace root  (default: libs)
-  --prefix <p>       what g component proposes here               (default: none)
-  --uses <lib>       depend on another workspace library; repeatable
-
-fudic g component <name>
-  the project's prefix turns a bare name into a tag; a name with a hyphen is used as is
-  --dir <path>       target directory                    (default: src/components)
-  --in <file>        wire <link rel="component"> into <file>; repeatable
-  --no-style         omit the <head> with the component's <style>
-  --slot             emit <slot></slot> in the markup
-  --spec             also write <tag>.fudspec next to it
-
-fudic g page <route>
-  --dir <path>       target directory                    (default: src/routes)
-  --layout <path>    force a layout
-  --no-layout        standalone page (full document)
-  --server           emit @code { @server { load() } }
-  --sections <a,b>   subset of the layout's sections     (default: all)
-
-fudic g layout <name>
-  --dir <path>       target directory                    (default: src/layouts)
-  --sections <a,b>   one @RenderSection(name) per name
-  --no-head          omit @RenderHead()
-
-fudic g spec <component>
-  the component's tag, or its name without the project's prefix
-  writes <tag>.fudspec next to its .fud and, when it has required props, <tag>.fixture.ts
-  filled by type (an existing fixture is kept) and src/fudic-env.d.ts if nothing declares *.fud;
-  a component that does not exist yet is created with it, as g component <name> --spec does
-
-fudic g term <block> <name>
-  <block> is given, when or then; <name> is kebab-case
-  writes fudic/terms/<block>/<name>.js in the project
-  --param <name>:<type>   a parameter, in order; repeatable. <type>: element|number|string|token
-`;
+/** The command a help or an error is about, from what was typed before it. */
+function topicOf(positionals: readonly string[]): Topic | null {
+  const [command, type] = positionals;
+  if (command === 'new' || command === 'fmt' || command === 'translate') return command;
+  if (command !== 'generate' && command !== 'g') return null;
+  const canonical = type === undefined ? undefined : GENERATE_TYPES[type];
+  return canonical === undefined ? 'generate' : `generate ${canonical}`;
+}
 
 interface Tokens {
   readonly positionals: readonly string[];
   readonly flags: ReadonlyMap<string, readonly string[]>;
-  readonly error?: CliError;
+  /** A flag that takes a value and was given none. */
+  readonly missing?: string;
 }
 
 /** `--flag value`, `--flag=value` and `--boolean`. Repeated flags accumulate. */
@@ -166,9 +117,7 @@ function tokenize(argv: readonly string[]): Tokens {
       continue;
     }
     const value = inlineValue ?? argv[i + 1];
-    if (value === undefined || value.startsWith('-')) {
-      return { positionals, flags, error: FUD0448({ problem: 'flag-needs-value', name }) };
-    }
+    if (value === undefined || value.startsWith('-')) return { positionals, flags, missing: name };
     if (inlineValue === undefined) i += 1;
     flags.set(name, [...previous, value]);
   }
@@ -210,10 +159,17 @@ function target(tokens: Tokens): { readonly project?: string } {
   return project === undefined ? {} : { project };
 }
 
+/** A usage error about `topic`, with the lines that say how to go on. */
+function fail(params: FUD0448Params, topic: Topic | null, ...hints: string[]): ParsedCommand {
+  return { kind: 'error', error: FUD0448(params), topic, hints };
+}
+
 /** Any flag outside the accepted set is an error, never a silent no-op. */
-function unknownFlag(tokens: Tokens, accepted: readonly string[]): CliError | null {
+function unknownFlag(tokens: Tokens, accepted: readonly string[], topic: Topic): ParsedCommand | null {
   for (const name of tokens.flags.keys()) {
-    if (!accepted.includes(name)) return FUD0448({ problem: 'unknown-flag', name });
+    if (accepted.includes(name)) continue;
+    const takes = accepted.filter((flag) => !GLOBAL.includes(flag)).map((flag) => `--${flag}`);
+    return fail({ problem: 'unknown-flag', name }, topic, `it takes: ${[...takes, '--dry-run', '--force'].join(', ')}`);
   }
   return null;
 }
@@ -222,19 +178,22 @@ const GLOBAL = ['dry-run', 'force', 'cwd', 'json', 'help'];
 
 export function parseArgs(argv: readonly string[]): ParsedCommand {
   const tokens = tokenize(argv);
-  if (tokens.error !== undefined) return { kind: 'error', error: tokens.error };
-  if (bool(tokens, 'help') || tokens.positionals.length === 0) return { kind: 'help' };
+  const topic = topicOf(tokens.positionals);
+  if (tokens.missing !== undefined) {
+    return fail({ problem: 'flag-needs-value', name: tokens.missing }, topic, `write it as --${tokens.missing} <value>`);
+  }
+  if (bool(tokens, 'help') || tokens.positionals.length === 0) return { kind: 'help', topic };
 
   const flags: GlobalFlags = { dryRun: bool(tokens, 'dry-run'), json: bool(tokens, 'json') };
   const cwd = single(tokens, 'cwd', '.');
   const force = bool(tokens, 'force');
-  const [command, ...rest] = tokens.positionals;
+  const [command = '', ...rest] = tokens.positionals;
 
   if (command === 'fmt') return parseFmt(tokens, rest, { cwd, force }, flags);
   if (command === 'translate') return parseTranslate(tokens, rest, { cwd, force }, flags);
   if (command === 'new') return parseNew(tokens, rest, { cwd, force }, flags);
   if (command === 'generate' || command === 'g') return parseGenerate(tokens, rest, { cwd, force }, flags);
-  return { kind: 'error', error: FUD0448({ problem: 'unknown-command', command: command ?? '' }) };
+  return fail({ problem: 'unknown-command', command }, null, `the commands are: ${COMMANDS}`);
 }
 
 interface Base {
@@ -245,25 +204,21 @@ interface Base {
 const FMT_FLAGS = ['check', 'print-width', 'tab-width', 'use-tabs', 'quote', 'end-of-line'];
 
 function parseFmt(tokens: Tokens, rest: readonly string[], base: Base, flags: GlobalFlags): ParsedCommand {
-  const unknown = unknownFlag(tokens, [...GLOBAL, ...FMT_FLAGS]);
-  if (unknown !== null) return { kind: 'error', error: unknown };
+  const unknown = unknownFlag(tokens, [...GLOBAL, ...FMT_FLAGS], 'fmt');
+  if (unknown !== null) return unknown;
 
   const quote = single(tokens, 'quote', 'double');
   if (quote !== 'double' && quote !== 'single') {
-    return { kind: 'error', error: FUD0448({ problem: 'quote-style', value: quote }) };
+    return fail({ problem: 'quote-style', value: quote }, 'fmt', 'use --quote double or --quote single');
   }
   const endOfLine = single(tokens, 'end-of-line', 'lf');
   if (endOfLine !== 'lf' && endOfLine !== 'crlf' && endOfLine !== 'auto') {
-    return { kind: 'error', error: FUD0448({ problem: 'line-terminator', value: endOfLine }) };
+    return fail({ problem: 'line-terminator', value: endOfLine }, 'fmt', 'use --end-of-line lf, crlf or auto');
   }
   const printWidth = number(tokens, 'print-width', 100);
-  if (printWidth === undefined) {
-    return { kind: 'error', error: FUD0448({ problem: 'print-width' }) };
-  }
+  if (printWidth === undefined) return fail({ problem: 'print-width' }, 'fmt', 'e.g. --print-width 100');
   const tabWidth = number(tokens, 'tab-width', 2);
-  if (tabWidth === undefined) {
-    return { kind: 'error', error: FUD0448({ problem: 'tab-width' }) };
-  }
+  if (tabWidth === undefined) return fail({ problem: 'tab-width' }, 'fmt', 'e.g. --tab-width 2');
 
   const opts: FmtOptions = {
     ...base,
@@ -284,10 +239,16 @@ function parseFmt(tokens: Tokens, rest: readonly string[], base: Base, flags: Gl
  * project's `locales`, and the files are the project's.
  */
 function parseTranslate(tokens: Tokens, rest: readonly string[], base: Base, flags: GlobalFlags): ParsedCommand {
-  const unknown = unknownFlag(tokens, [...GLOBAL, 'project']);
-  if (unknown !== null) return { kind: 'error', error: unknown };
+  const unknown = unknownFlag(tokens, [...GLOBAL, 'project'], 'translate');
+  if (unknown !== null) return unknown;
   const extra = rest[0];
-  if (extra !== undefined) return { kind: 'error', error: FUD0448({ problem: 'unexpected-argument', command: 'translate', value: extra }) };
+  if (extra !== undefined) {
+    return fail(
+      { problem: 'unexpected-argument', command: 'translate', value: extra },
+      'translate',
+      'it translates the app you are in, or the one --project names',
+    );
+  }
   return { kind: 'translate', opts: { ...base, ...target(tokens) }, flags };
 }
 
@@ -299,15 +260,15 @@ function number(tokens: Tokens, name: string, fallback: number): number | undefi
 }
 
 function parseNew(tokens: Tokens, rest: readonly string[], base: Base, flags: GlobalFlags): ParsedCommand {
-  const unknown = unknownFlag(tokens, [...GLOBAL, 'pm', 'no-install', 'no-git', 'no-sw', 'layout', 'target', 'id', 'prefix', 'workspace', 'app']);
-  if (unknown !== null) return { kind: 'error', error: unknown };
+  const unknown = unknownFlag(tokens, [...GLOBAL, 'pm', 'no-install', 'no-git', 'no-sw', 'layout', 'target', 'id', 'prefix', 'workspace', 'app'], 'new');
+  if (unknown !== null) return unknown;
 
   const name = rest[0];
-  if (name === undefined) return { kind: 'error', error: FUD0448({ problem: 'new-needs-name' }) };
+  if (name === undefined) return fail({ problem: 'new-needs-name' }, 'new', 'e.g. fudic new shop');
 
   const pm = single(tokens, 'pm', 'pnpm');
   if (pm !== 'pnpm' && pm !== 'npm' && pm !== 'yarn') {
-    return { kind: 'error', error: FUD0448({ problem: 'package-manager', value: pm }) };
+    return fail({ problem: 'package-manager', value: pm }, 'new', 'use --pm pnpm, npm or yarn');
   }
 
   // A workspace's first app is named after the workspace unless `--app` says otherwise, and
@@ -333,98 +294,114 @@ function parseNew(tokens: Tokens, rest: readonly string[], base: Base, flags: Gl
 }
 
 function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flags: GlobalFlags): ParsedCommand {
-  const [type, name] = rest;
+  const [written, name] = rest;
+  if (written === undefined) {
+    return fail({ problem: 'generate-needs-type' }, 'generate', `it generates: ${GENERATES}`);
+  }
+  // A unit test is not a piece of its own: it comes with the piece it tests (BUG-50 §6.8).
+  if (written === 'test') {
+    return fail(
+      { problem: 'generate-test' },
+      'generate',
+      `a component comes with its unit test:   fudic g component ${name ?? 'button'}`,
+      `it generates: ${GENERATES}`,
+    );
+  }
+  const type = GENERATE_TYPES[written];
   if (type === undefined) {
-    return { kind: 'error', error: FUD0448({ problem: 'generate-needs-type' }) };
+    return fail({ problem: 'unknown-type', type: written }, 'generate', `it generates: ${GENERATES}`);
   }
-  if (name === undefined) return { kind: 'error', error: FUD0448({ problem: 'generate-needs-name', type }) };
-
-  if (type === 'app' || type === 'a') {
-    const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'id', 'prefix', 'no-sw', 'uses']);
-    if (unknown !== null) return { kind: 'error', error: unknown };
-    const opts: AppOptions = {
-      ...base,
-      dir: single(tokens, 'dir', APPS_DIR),
-      // Written because it was given, not calculated from the directory nor from the npm
-      // name: both of those move, and a moved id leaves caches nobody purges (§4.4).
-      id: single(tokens, 'id', name),
-      prefix: single(tokens, 'prefix', ''),
-      sw: !bool(tokens, 'no-sw'),
-      uses: list(tokens, 'uses') ?? [],
-    };
-    return { kind: 'app', name, opts, flags };
+  const topic: Topic = `generate ${type}`;
+  if (name === undefined) {
+    return fail({ problem: 'generate-needs-name', type }, topic, `e.g. fudic g ${type} ${EXAMPLE[type]}`);
   }
 
-  if (type === 'lib') {
-    const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'prefix', 'uses']);
-    if (unknown !== null) return { kind: 'error', error: unknown };
-    const opts: ProjectOptions = {
-      ...base,
-      dir: single(tokens, 'dir', LIBS_DIR),
-      prefix: single(tokens, 'prefix', ''),
-      uses: list(tokens, 'uses') ?? [],
-    };
-    return { kind: 'lib', name, opts, flags };
-  }
+  switch (type) {
+    case 'app': {
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'id', 'prefix', 'no-sw', 'uses'], topic);
+      if (unknown !== null) return unknown;
+      const opts: AppOptions = {
+        ...base,
+        dir: single(tokens, 'dir', APPS_DIR),
+        // Written because it was given, not calculated from the directory nor from the npm
+        // name: both of those move, and a moved id leaves caches nobody purges (§4.4).
+        id: single(tokens, 'id', name),
+        prefix: single(tokens, 'prefix', ''),
+        sw: !bool(tokens, 'no-sw'),
+        uses: list(tokens, 'uses') ?? [],
+      };
+      return { kind: 'app', name, opts, flags };
+    }
 
-  if (type === 'component' || type === 'c') {
-    const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'in', 'no-style', 'slot', 'spec', 'project']);
-    if (unknown !== null) return { kind: 'error', error: unknown };
-    const opts: ComponentOptions = {
-      ...base,
-      ...target(tokens),
-      dir: single(tokens, 'dir', COMPONENTS_DIR),
-      wireInto: list(tokens, 'in') ?? [],
-      style: !bool(tokens, 'no-style'),
-      slot: bool(tokens, 'slot'),
-      spec: bool(tokens, 'spec'),
-    };
-    return { kind: 'component', tag: name, opts, flags };
-  }
+    case 'lib': {
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'prefix', 'uses'], topic);
+      if (unknown !== null) return unknown;
+      const opts: ProjectOptions = {
+        ...base,
+        dir: single(tokens, 'dir', LIBS_DIR),
+        prefix: single(tokens, 'prefix', ''),
+        uses: list(tokens, 'uses') ?? [],
+      };
+      return { kind: 'lib', name, opts, flags };
+    }
 
-  if (type === 'page' || type === 'p') {
-    const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'layout', 'no-layout', 'server', 'sections', 'project']);
-    if (unknown !== null) return { kind: 'error', error: unknown };
-    const forced = tokens.flags.get('layout')?.at(-1);
-    const opts: PageOptions = {
-      ...base,
-      ...target(tokens),
-      dir: single(tokens, 'dir', ROUTES_DIR),
-      ...(bool(tokens, 'no-layout') ? { layout: null } : forced !== undefined ? { layout: forced } : {}),
-      server: bool(tokens, 'server'),
-      sections: list(tokens, 'sections'),
-    };
-    return { kind: 'page', route: name, opts, flags };
-  }
+    case 'component': {
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'project', 'dir', 'in', 'no-style', 'slot', 'spec'], topic);
+      if (unknown !== null) return unknown;
+      const opts: ComponentOptions = {
+        ...base,
+        ...target(tokens),
+        dir: single(tokens, 'dir', COMPONENTS_DIR),
+        wireInto: list(tokens, 'in') ?? [],
+        style: !bool(tokens, 'no-style'),
+        slot: bool(tokens, 'slot'),
+        spec: bool(tokens, 'spec'),
+      };
+      return { kind: 'component', tag: name, opts, flags };
+    }
 
-  if (type === 'layout' || type === 'l') {
-    const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'sections', 'no-head', 'project']);
-    if (unknown !== null) return { kind: 'error', error: unknown };
-    const opts: LayoutOptions = {
-      ...base,
-      ...target(tokens),
-      dir: single(tokens, 'dir', LAYOUTS_DIR),
-      sections: list(tokens, 'sections') ?? [],
-      head: !bool(tokens, 'no-head'),
-    };
-    return { kind: 'layout', name, opts, flags };
-  }
+    case 'page': {
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'project', 'dir', 'layout', 'no-layout', 'server', 'sections'], topic);
+      if (unknown !== null) return unknown;
+      const forced = tokens.flags.get('layout')?.at(-1);
+      const opts: PageOptions = {
+        ...base,
+        ...target(tokens),
+        dir: single(tokens, 'dir', ROUTES_DIR),
+        ...(bool(tokens, 'no-layout') ? { layout: null } : forced !== undefined ? { layout: forced } : {}),
+        server: bool(tokens, 'server'),
+        sections: list(tokens, 'sections'),
+      };
+      return { kind: 'page', route: name, opts, flags };
+    }
 
-  if (type === 'spec' || type === 's') {
-    const unknown = unknownFlag(tokens, [...GLOBAL, 'project']);
-    if (unknown !== null) return { kind: 'error', error: unknown };
-    return { kind: 'spec', name, opts: { ...base, ...target(tokens) }, flags };
-  }
+    case 'layout': {
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'project', 'dir', 'sections', 'no-head'], topic);
+      if (unknown !== null) return unknown;
+      const opts: LayoutOptions = {
+        ...base,
+        ...target(tokens),
+        dir: single(tokens, 'dir', LAYOUTS_DIR),
+        sections: list(tokens, 'sections') ?? [],
+        head: !bool(tokens, 'no-head'),
+      };
+      return { kind: 'layout', name, opts, flags };
+    }
 
-  if (type === 'term' || type === 't') {
-    const unknown = unknownFlag(tokens, [...GLOBAL, 'param', 'project']);
-    if (unknown !== null) return { kind: 'error', error: unknown };
-    // `g term <block> <name>`: what the other generators call the name is the block here.
-    const term = rest[2];
-    if (term === undefined) return { kind: 'error', error: FUD0448({ problem: 'generate-needs-name', type }) };
-    const opts: TermOptions = { ...base, ...target(tokens), block: name, params: tokens.flags.get('param') ?? [] };
-    return { kind: 'term', name: term, opts, flags };
-  }
+    case 'spec': {
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'project'], topic);
+      if (unknown !== null) return unknown;
+      return { kind: 'spec', name, opts: { ...base, ...target(tokens) }, flags };
+    }
 
-  return { kind: 'error', error: FUD0448({ problem: 'unknown-type', type }) };
+    case 'term': {
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'project', 'param'], topic);
+      if (unknown !== null) return unknown;
+      // `g term <kind> <name>`: what the other generators call the name is the kind here.
+      const term = rest[2];
+      if (term === undefined) return fail({ problem: 'generate-needs-name', type }, topic, `e.g. fudic g term ${name} cart-has`);
+      const opts: TermOptions = { ...base, ...target(tokens), block: name, params: tokens.flags.get('param') ?? [] };
+      return { kind: 'term', name: term, opts, flags };
+    }
+  }
 }

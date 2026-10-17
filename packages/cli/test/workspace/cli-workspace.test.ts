@@ -104,10 +104,10 @@ describe('parseArgs, fudic g app and fudic g lib', () => {
     expect(parseArgs(['g', 'app', 'admin', '--layout', 'x']).kind).toBe('error');
   });
 
-  it('names both in the message for an unknown type', () => {
+  it('names both in the line under an unknown type', () => {
     const parsed = parseArgs(['g', 'widget', 'x']);
 
-    expect(parsed.kind === 'error' && parsed.error.message).toContain('app, lib');
+    expect(parsed.kind === 'error' && parsed.hints.join('\n')).toContain('app, lib');
   });
 });
 

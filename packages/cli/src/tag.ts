@@ -26,6 +26,20 @@ const RESERVED = new Set([
   'missing-glyph',
 ]);
 
+/**
+ * The tag to propose when `name` does not make a valid one: the project's prefix — or, in a
+ * project that declares none, its name — and the name in kebab-case. `project-button`, never
+ * an `app-` the project has nothing to do with.
+ */
+export function suggestTag(prefix: string, project: string, name: string): string {
+  const kebab = (text: string): string =>
+    text
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/gu, '-')
+      .replace(/^-+|-+$/gu, '');
+  return `${kebab(prefix) || kebab(project) || 'app'}-${kebab(name) || 'card'}`;
+}
+
 /** A tag some LIBRARY of the dependency graph already defines (SDD-43 §4.5). */
 export interface ForeignTag {
   /** The package that defines it, as its `package.json` spells it. */
@@ -44,10 +58,11 @@ export interface ForeignTag {
 export function validateTag(
   tag: string,
   taken: ReadonlySet<string>,
-  foreign: ReadonlyMap<string, ForeignTag> = new Map(),
+  foreign: ReadonlyMap<string, ForeignTag>,
+  suggestion: string,
 ): CliError | null {
   if (!CUSTOM_ELEMENT.test(tag)) {
-    return FUD0440({ tag });
+    return FUD0440({ tag, suggestion });
   }
   if (RESERVED.has(tag)) {
     return FUD0442({ tag });

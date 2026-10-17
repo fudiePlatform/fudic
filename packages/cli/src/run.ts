@@ -11,7 +11,10 @@
  * the terminal is a failure of the CLI (SDD-22 §5).
  */
 
-import { parseArgs, USAGE } from './args.js';
+import { parseArgs } from './args.js';
+import { commandHelp } from './help/commands.js';
+import { GENERAL_HELP } from './help/general.js';
+import { formatUsageError } from './help/usage.js';
 import { apply } from './apply.js';
 import type { FudCode } from '@fudic/diagnostics';
 import { commandFailed } from './diagnostics.js';
@@ -73,11 +76,11 @@ export async function run(argv: readonly string[], deps: RunDeps = defaultDeps()
 async function execute(argv: readonly string[], deps: RunDeps): Promise<number> {
   const command = parseArgs(argv);
   if (command.kind === 'help') {
-    deps.streams.out(USAGE);
+    deps.streams.out(command.topic === null ? GENERAL_HELP : commandHelp(command.topic));
     return 0;
   }
   if (command.kind === 'error') {
-    deps.streams.err(`${formatError(command.error)}\n\n${USAGE}`);
+    deps.streams.err(formatUsageError(command));
     return 1;
   }
 

@@ -3,7 +3,7 @@
  * command is `plan* → apply`, and the binary is a shell over it.
  */
 
-export const VERSION = '0.0.1';
+export { VERSION } from './version.js';
 
 export type {
   AppOptions,
@@ -50,8 +50,11 @@ export { planLayout } from './plans/layout.js';
 export { apply } from './apply.js';
 export { run, defaultDeps, type RunDeps, type Streams } from './run.js';
 
-export { parseArgs, USAGE, type ParsedCommand, type GlobalFlags } from './args.js';
-export { validateTag } from './tag.js';
+export { parseArgs, type ParsedCommand, type GlobalFlags } from './args.js';
+export { GENERAL_HELP } from './help/general.js';
+export { commandHelp, type Topic } from './help/commands.js';
+export { formatUsageError, type UsageError } from './help/usage.js';
+export { suggestTag, validateTag } from './tag.js';
 export { routeToFile } from './route.js';
 // `LAYOUTS_DIR` is no longer re-exported here: the directory convention has an owner of its
 // own now (`@fudic/conventions`), and a second way to reach the same name is the shape the

@@ -105,11 +105,9 @@ describe('a tag a library already defines', () => {
     expect(await planComponent('ui-card', options(), fs)).toMatchObject({ errors: [] });
   });
 
-  it('is still answerable without a graph: the two-argument form stays legal', () => {
-    // Which is what every caller that has no dependency graph to ask about passes — the
-    // shape SDD-22 left, and the one a project with no libraries never needs more than.
-    expect(validateTag('app-card', new Set())).toBeNull();
-    expect(validateTag('app-card', new Set(['app-card']))?.code).toBe('FUD0441');
+  it('is answerable with an empty graph: a project with no libraries passes an empty map', () => {
+    expect(validateTag('app-card', new Set(), new Map(), 'app-card')).toBeNull();
+    expect(validateTag('app-card', new Set(['app-card']), new Map(), 'app-card')?.code).toBe('FUD0441');
   });
 
   it('is empty for a project with no dependencies at all', () => {

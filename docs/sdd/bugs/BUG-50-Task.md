@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/cli` · `@fudic/language-core` · `@fudic/typecheck` · `examples/workspace`
 > **Rama:** `bug-50-cli-usable` (worktree `fudic-bug-50`), desde `main` en `e4f7a8a`.
 > **Depende de:** SDD-59 `Hecho` para las tareas que ejecutan un `.fudspec` (12, 24).
-> **Progreso:** 0 / 27 — `Listo`.
+> **Progreso:** 3 / 27 — en curso.
 
 Lo nuevo nace al 100 % en las cuatro métricas; `@fudic/cli` no baja de su suelo.
 
@@ -14,9 +14,9 @@ Lo nuevo nace al 100 % en las cuatro métricas; `@fudic/cli` no baja de su suelo
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 1 | — | **Ayuda general.** El texto de §6.1 (BUG §4.1) | `src/args.ts` · `src/help/*` |
-| [ ] | 2 | 1 | **Ayuda por comando y errores de una línea.** `fudic <command> --help`; `run.ts` deja de volcar `USAGE`; FUD0440 sugiere con el prefijo del proyecto (§6.6, §6.8) | `src/args.ts` · `src/run.ts` · `packages/diagnostics/src/codes/FUD0440.ts` |
-| [ ] | 3 | 1, 2 | **Tests.** §6.1, §6.6, §6.8 | `packages/cli/test/*` |
+| [x] | 1 | — | **Ayuda general.** El texto de §6.1 (BUG §4.1) | `src/args.ts` · `src/help/*` |
+| [x] | 2 | 1 | **Ayuda por comando y errores de una línea.** `fudic <command> --help`; `run.ts` deja de volcar `USAGE`; FUD0440 sugiere con el prefijo del proyecto (§6.6, §6.8) | `src/args.ts` · `src/run.ts` · `packages/diagnostics/src/codes/FUD0440.ts` |
+| [x] | 3 | 1, 2 | **Tests.** §6.1, §6.6, §6.8 | `packages/cli/test/*` |
 
 ## Fase 2 — Proyectos que se prueban (6)
 
@@ -44,7 +44,7 @@ Lo nuevo nace al 100 % en las cuatro métricas; `@fudic/cli` no baja de su suelo
 |---|---|---|---|---|
 | [ ] | 14 | — | **Raíz del workspace.** Scripts `dev`, `preview`, `build`, `test`, `spec`; README; `--uses` en `new --workspace`; commit `chore: create workspace <name>` (BUG §4.5, §4.9) | `src/plans/workspace.ts` · `src/plans/new.ts` · `src/args.ts` · `templates/workspace/*` |
 | [ ] | 15 | — | **Bases.** Primera app `/`; `g app` escribe `base` (`--base`); dos apps con la misma base es error; `g app` instala (BUG §4.5, §4.6) | `src/plans/app.ts` · `templates/vite.config.ts.tmpl` |
-| [ ] | 16 | 15 | **`fudic dev` y `fudic preview`.** Todas las apps en un puerto, base más larga primero (BUG §4.5) | `src/serve/*` · `src/args.ts` · `src/run.ts` |
+| [ ] | 16 | 15 | **`fudic dev` y `fudic preview`.** Todas las apps en un puerto, base más larga primero (BUG §4.5). **`fudic test` y `fudic spec`**: los del proyecto, o los de todo el workspace desde su raíz (BUG §3.1; añadido por decisión de Pedro, 2026-10-17: ninguna tarea los cubría) | `src/serve/*` · `src/args.ts` · `src/run.ts` |
 | [ ] | 17 | 14–16 | **Tests.** §6.2, §6.4, §6.9 | `packages/cli/test/*` |
 | [ ] | 18 | 17 | **Prueba de Pedro.** `pnpm dev` y `pnpm preview` con `/` y `/admin/` en el navegador; `pnpm --filter admin dev` | — |
 

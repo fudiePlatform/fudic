@@ -20,6 +20,9 @@ export default defineConfig({
         'src/plans/term.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         // New code is born at 100 (CLAUDE.md): `fudic translate` (SDD-58).
         'src/plans/translate.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // New code is born at 100 (CLAUDE.md): the help and the usage errors (BUG-50).
+        'src/help/*.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/version.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
       },
     },
   },

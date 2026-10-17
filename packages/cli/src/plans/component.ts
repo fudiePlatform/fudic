@@ -20,7 +20,7 @@ import { hasErrors, parseFud } from '../parse.js';
 import { existingTags, libraryTags, targetChange } from '../project.js';
 import { resolveTarget } from '../workspace/target.js';
 import { codeBlock, renderTemplate, styleBlock } from '../templates.js';
-import { validateTag } from '../tag.js';
+import { suggestTag, validateTag } from '../tag.js';
 import { wireComponentLink } from '../wire.js';
 import { componentLink } from '../workspace/link.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
@@ -48,7 +48,8 @@ export function planComponent(name: string, opts: ComponentOptions, io: ReadIo =
   // libraries already defines is taken, and the only place it shows is the library. Both
   // readers are keyed on the RESOLVED target, not on `cwd` (SDD-44 §4.3): the libraries that
   // matter are the ones the project being written into depends on.
-  const invalid = validateTag(tag, existingTags(project.path, io), libraryTags(project.path, io));
+  const suggestion = suggestTag(project.config.prefix, project.path.slice(project.path.lastIndexOf('/') + 1), name);
+  const invalid = validateTag(tag, existingTags(project.path, io), libraryTags(project.path, io), suggestion);
   if (invalid !== null) {
     return Promise.resolve({ changes: [], commands: [], diagnostics: [], errors: [invalid] });
   }
