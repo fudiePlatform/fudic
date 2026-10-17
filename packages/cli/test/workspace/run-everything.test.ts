@@ -388,3 +388,32 @@ describe('g app, among apps whose bases are as long', () => {
     expect(out).toContain('web is at /, admin is at /admin/, store is at /store/. Change it with --base');
   });
 });
+
+describe('the first library takes the place of libs/.gitkeep', () => {
+  for (const flags of [[], ['--styles-only']] as const) {
+    const kind = flags.length === 0 ? 'g lib' : 'g lib --styles-only';
+
+    it(`${kind} removes it when it is there, and only then`, async () => {
+      const fs = await shop();
+      expect(fs.paths()).toContain('shop/libs/.gitkeep');
+      expect((await cli(fs, 'g', 'lib', 'ui', ...flags, '--cwd', SHOP)).code).toBe(0);
+      expect(fs.paths()).not.toContain('shop/libs/.gitkeep');
+
+      // The second one finds nothing to remove, and says nothing of it.
+      const parsed = parseArgs(['g', 'lib', 'kit', ...flags, '--cwd', SHOP]);
+      if (parsed.kind !== 'lib') throw new Error(parsed.kind);
+      const { planLib } = await import('../../src/plans/lib.js');
+      const plan = await planLib('kit', parsed.opts, fs);
+      expect(plan.errors).toEqual([]);
+      expect('deletions' in plan).toBe(false);
+    });
+
+    it(`${kind} --dry-run lists it, and removes nothing`, async () => {
+      const fs = await shop();
+      const { code, out } = await cli(fs, 'g', 'lib', 'ui', ...flags, '--dry-run', '--cwd', SHOP);
+      expect(code).toBe(0);
+      expect(out).toMatch(/delete\s+libs\/\.gitkeep/u);
+      expect(fs.paths()).toContain('shop/libs/.gitkeep');
+    });
+  }
+});
