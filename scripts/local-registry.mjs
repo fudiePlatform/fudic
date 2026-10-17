@@ -92,13 +92,23 @@ function pnpmCacheDir() {
 function forgetCachedMetadata() {
   const cache = pnpmCacheDir();
   if (!existsSync(cache)) return;
-  for (const entry of readdirSync(cache, { withFileTypes: true })) {
-    // `metadata-v1.3` and `metadata-full-v1.3` today; the suffix moves with pnpm's format.
-    if (!entry.isDirectory() || !entry.name.startsWith('metadata')) continue;
-    const stale = join(cache, entry.name, CACHE_KEY);
-    if (!existsSync(stale)) continue;
-    console.log(`› forgetting pnpm's cached metadata in ${join(entry.name, CACHE_KEY)}`);
-    rmSync(stale, { recursive: true, force: true });
+  // `metadata-v1.3` and `metadata-full-v1.3` at the top up to pnpm 10; pnpm 11 moves them under
+  // `v11/` (`v11/metadata`, `v11/metadata-full`…). Missing that folder left yesterday's manifests
+  // in place, and `pnpm -r publish` skipped every package they listed as already published.
+  const roots = [
+    cache,
+    ...readdirSync(cache, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && /^v\d+$/.test(entry.name))
+      .map((entry) => join(cache, entry.name)),
+  ];
+  for (const root of roots) {
+    for (const entry of readdirSync(root, { withFileTypes: true })) {
+      if (!entry.isDirectory() || !entry.name.startsWith('metadata')) continue;
+      const stale = join(root, entry.name, CACHE_KEY);
+      if (!existsSync(stale)) continue;
+      console.log(`› forgetting pnpm's cached metadata in ${stale}`);
+      rmSync(stale, { recursive: true, force: true });
+    }
   }
 }
 

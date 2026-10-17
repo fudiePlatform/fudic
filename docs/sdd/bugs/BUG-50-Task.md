@@ -27,7 +27,7 @@ Lo nuevo nace al 100 % en las cuatro métricas; `@fudic/cli` no baja de su suelo
 | [x] | 6 | 5 | **Tests de página y layout** en `new`, `g page`, `g layout` (BUG §4.4) | `src/plans/page.ts` · `src/plans/layout.ts` · `src/plans/scaffold.ts` · `templates/*` |
 | [x] | 7 | — | **Sin comentarios de diseño** en lo generado: `GLOBALS_DTS`, `fudic-env.d.ts`, `layout.fud`, `vite.config.ts`, READMEs (BUG §4.8) | `packages/language-core/src/globals.ts` · `packages/typecheck/src/globals.ts` · `src/plans/spec.ts` · `templates/*` |
 | [x] | 8 | 4–7 | **Tests.** Contenido de ficheros de §6.2–§6.5 y §6.14 | `packages/cli/test/*` |
-| [x] | 9 | 8 | **Prueba en verde.** `new` + `pnpm test` en una app real, contra Verdaccio (hecha con los paquetes del repo enlazados, `workspace:*`, por decisión de Pedro: app con `pnpm test` y `tsc` en verde, lib con `pnpm test` en verde) | — |
+| [x] | 9 | 8 | **Prueba en verde.** `new` + `pnpm test` en una app real, contra Verdaccio (contra Verdaccio: app de `fudic new` con `pnpm test`, `pnpm spec` y `tsc` en verde. Destapó dos fallos que el enlace `workspace:*` ocultaba: `scripts/local-registry.mjs` no olvidaba la caché de pnpm 11 y publicaba 9 de 24 paquetes; `@fudic/testing` instalado no pasaba sus wrappers por vitest y `visit` daba 500) | — |
 
 ## Fase 3 — El componente completo (4)
 
