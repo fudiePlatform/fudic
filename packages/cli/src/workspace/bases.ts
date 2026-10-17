@@ -59,3 +59,9 @@ export function appFor<T extends { readonly base: string }>(apps: readonly T[], 
     .sort((a, b) => b.base.length - a.base.length)
     .find((app) => pathname === app.base.slice(0, -1) || pathname.startsWith(app.base));
 }
+
+/** The app a hint names as "your app": the one at `/`, else the first there is; none in a workspace with no app. */
+export function mainApp(projects: readonly Project[], io: ReadIo): string | undefined {
+  const apps = servedApps(projects, io);
+  return (apps.find((app) => app.base === '/') ?? apps[0])?.name;
+}

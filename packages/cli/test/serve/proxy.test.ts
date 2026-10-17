@@ -131,14 +131,25 @@ describe('createProxy', () => {
 
   it('ends the answer when the app dies after it started it', async () => {
     const dying = createServer((_req, res) => {
-      res.writeHead(200);
+      // A body of unknown length, so only the end of the connection could end it; the app
+      // dies once the headers and the first part are on their way.
+      res.writeHead(200, { 'transfer-encoding': 'chunked' });
       res.write('partial');
-      res.socket?.destroy();
+      setTimeout(() => res.socket?.destroy(), 50);
     });
     const front = await proxy([{ base: '/', port: await listening(dying) }]);
-    const answer = await ask(front, '/').catch((error: unknown) => error);
-    // Either the client sees what came before the app died, or the connection reset: never a hang.
-    expect(answer).toBeDefined();
+    // The browser sees an answer cut short, not one that waits forever for the rest.
+    const aborted = await new Promise<boolean>((resolve) => {
+      const req = request({ host: '127.0.0.1', port: front, path: '/' }, (res) => {
+        expect(res.statusCode).toBe(200);
+        res.on('data', () => undefined);
+        res.on('error', () => undefined);
+        res.on('close', () => resolve(!res.complete));
+      });
+      req.on('error', () => resolve(true));
+      req.end();
+    });
+    expect(aborted).toBe(true);
   });
 });
 

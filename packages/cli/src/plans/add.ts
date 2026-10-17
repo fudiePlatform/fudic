@@ -19,7 +19,7 @@ import { librarySpecifier } from '../workspace/link.js';
 import { MODULES, dependOn, dependOnModule, installFor, projectName } from '../workspace/modules.js';
 import { resolveTarget, type Target } from '../workspace/target.js';
 import { nodeReadIo, walkFud, type ReadIo } from '../io.js';
-import { EMPTY_PLAN, type AddOptions, type CliError, type FileChange, type Plan } from '../types.js';
+import { EMPTY_PLAN, type AddOptions, type FileChange, type Plan } from '../types.js';
 
 export function planAdd(module: string, opts: AddOptions, io: ReadIo = nodeReadIo()): Promise<Plan> {
   const resolved = resolveTarget(opts, io);
@@ -32,30 +32,27 @@ export function planAdd(module: string, opts: AddOptions, io: ReadIo = nodeReadI
 function addModule(module: string, pkg: string, target: Target, opts: AddOptions, io: ReadIo): Plan {
   const name = projectName(target);
   const changes: FileChange[] = [];
-  const errors: CliError[] = [];
   const lines: string[] = [];
 
   const dependency = dependOnModule(target, pkg, io);
   if (dependency !== undefined) changes.push(dependency);
 
-  if (module === 'http') {
-    const http = targetChange(opts.cwd, joinPosix(target.dir, 'src/http.ts'), renderTemplate('http.ts.tmpl', {}), opts.force, io);
-    if (http.error !== undefined) errors.push(http.error);
-    if (http.change !== undefined) {
-      changes.push(http.change);
-      lines.push('  src/http.ts: the chain every server function goes through');
-    }
+  // A `src/http.ts` that is already there — written by an earlier `add http`, or by hand — is the
+  // user's chain: kept, not a collision. `--force` writes it again.
+  if (module === 'http' && (opts.force || !io.exists(joinPosix(target.path, 'src/http.ts')))) {
+    // Absent, or `--force`: `targetChange` has a change for either.
+    changes.push(targetChange(opts.cwd, joinPosix(target.dir, 'src/http.ts'), renderTemplate('http.ts.tmpl', {}), true, io).change as FileChange);
+    lines.push('  src/http.ts: the chain every server function goes through');
   }
   if (module === 'i18n' && opts.locales.length > 0) {
     changes.push(configChange(target, { ...readConfigObject(target, io), locales: opts.locales }, io));
     lines.push(`  locales ${opts.locales.join(', ')} in fudic.json: fudic translate writes their catalogs`);
   }
 
-  if (changes.length === 0) return { ...EMPTY_PLAN, errors, report: ['', `${name} already has ${pkg}`] };
+  if (changes.length === 0) return { ...EMPTY_PLAN, report: ['', `${name} already has ${pkg}`] };
   return {
     ...EMPTY_PLAN,
     changes,
-    errors,
     commands: dependency === undefined ? [] : [installFor(target, opts.cwd, io)],
     report: [
       '',

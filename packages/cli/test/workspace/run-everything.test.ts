@@ -224,7 +224,7 @@ Next
     const fs = await withLib();
     await cli(fs, 'g', 'app', 'admin', '--cwd', SHOP);
     const { out } = await cli(fs, 'g', 'app', 'shopfront', '--base', 'store', '--cwd', SHOP);
-    expect(out).toContain('  base URL   /store/     admin is at /admin/, web is at /. Change it with --base\n');
+    expect(out).toContain('  base URL   /store/     web is at /, admin is at /admin/. Change it with --base\n');
     expect(out).toContain('every app:  http://localhost:5173/  ·  /admin/  ·  /store/\n');
     expect(out).toContain('only shopfront: http://localhost:5175/store/\n');
     expect(out).not.toContain('uses');
@@ -376,5 +376,15 @@ describe('fudic new shop --workspace --uses ui', () => {
 
   it('says it in the help of new', () => {
     expect(commandHelp('new')).toContain('--uses <lib>');
+  });
+});
+
+describe('g app, among apps whose bases are as long', () => {
+  it('lists them by name', async () => {
+    const fs = await shop();
+    await cli(fs, 'g', 'app', 'admin', '--cwd', SHOP);
+    await cli(fs, 'g', 'app', 'store', '--cwd', SHOP);
+    const { out } = await cli(fs, 'g', 'app', 'blog', '--cwd', SHOP);
+    expect(out).toContain('web is at /, admin is at /admin/, store is at /store/. Change it with --base');
   });
 });

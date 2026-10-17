@@ -34,6 +34,7 @@ import { joinPosix, relativeTo } from '../paths.js';
 import { FUDIC_VERSION, VITE_VERSION, VITEST_VERSION } from '../project.js';
 import { placeProject } from '../workspace/place.js';
 import { libUses, packageOf, usesErrors } from '../workspace/uses.js';
+import { mainApp } from '../workspace/bases.js';
 import type { Project } from '../workspace/discover.js';
 import { prefixField, renderTemplate } from '../templates.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
@@ -68,7 +69,7 @@ export function planLib(
       ...EMPTY_PLAN,
       changes: styles.changes,
       errors: styles.errors,
-      report: stylesReport(name, dir, projects),
+      report: stylesReport(name, dir, projects, mainApp(projects, io) ?? 'web'),
     });
   }
 
@@ -81,7 +82,7 @@ export function planLib(
     errors: built.errors,
     // The install is the workspace's, from its root, as for `g app` (BUG-50 §4.6).
     commands: [{ command: 'pnpm', args: ['install'], dir: relativeTo(opts.cwd, root) || '.', quiet: true }],
-    report: libReport(name, dir, opts.prefix, projects.find((project) => project.config.kind === 'app')?.name ?? 'web'),
+    report: libReport(name, dir, opts.prefix, mainApp(projects, io) ?? 'web'),
   });
 }
 
@@ -163,9 +164,8 @@ function stylesFiles(dir: string, pkgName: string, name: string): readonly Scaff
 }
 
 /** What `g lib --styles-only` tells the user (BUG-50 §6.13). */
-function stylesReport(name: string, dir: string, projects: readonly Project[]): readonly string[] {
+function stylesReport(name: string, dir: string, projects: readonly Project[], app: string): readonly string[] {
   const lib = projects.find((project) => project.config.kind === 'lib')?.name ?? 'ui';
-  const app = projects.find((project) => project.config.kind === 'app')?.name ?? 'web';
   const toLib = `fudic add ${name} --project ${lib}`;
   const toApp = `fudic add ${name} --project ${app}`;
   const width = Math.max(toLib.length, toApp.length) + 5;

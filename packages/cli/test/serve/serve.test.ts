@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { run } from '../../src/run.js';
 import { appsToServe } from '../../src/serve/apps.js';
 import { serveBanner, serveWorkspace, type AppProcess, type ServeDeps, type ServeKind } from '../../src/serve/workspace.js';
-import { appFor, DEV_PORT, normalizeBase, servedApps, type ServedApp } from '../../src/workspace/bases.js';
+import { appFor, DEV_PORT, mainApp, normalizeBase, servedApps, type ServedApp } from '../../src/workspace/bases.js';
 import { captureStreams, MemoryFs, RecordingRunner } from '../helpers.js';
 import type { Project } from '../../src/workspace/discover.js';
 
@@ -192,5 +192,33 @@ describe('fudic dev through the binary', () => {
     expect(capture.stderr()).toContain('app "web" has no build');
     expect(capture.stderr()).toContain('app "admin" has no build');
     expect(machine.log).toEqual([]);
+  });
+});
+
+describe('mainApp: the app a hint names', () => {
+  const project = (name: string): Project => ({ name, path: `${ROOT}/apps/${name}`, config: { kind: 'app' } }) as unknown as Project;
+  const lib: Project = { name: 'ui', path: `${ROOT}/libs/ui`, config: { kind: 'lib' } } as unknown as Project;
+
+  it('is the app at /, whatever its name', () => {
+    expect(mainApp([project('admin'), project('web')], shop())).toBe('web');
+  });
+
+  it('else the first one served, longest base first', () => {
+    const fs = new MemoryFs({ ...app('admin', ADMIN_VITE), ...app('blog', "export default { base: '/blog/' }") }, ROOT);
+    expect(mainApp([project('blog'), project('admin')], fs)).toBe('admin');
+  });
+
+  it('none when there is no app', () => {
+    expect(mainApp([lib], shop())).toBeUndefined();
+    expect(mainApp([], shop())).toBeUndefined();
+  });
+});
+
+describe('fudic dev with the machine of the system', () => {
+  it('finds nothing to serve and starts nothing: FUD0453', async () => {
+    const capture = captureStreams();
+    const libs = new MemoryFs({ ...WORKSPACE, ...LIB }, ROOT);
+    expect(await run(['dev', '--cwd', ROOT], { readIo: libs, writeIo: libs, runner: new RecordingRunner(), streams: capture.streams })).toBe(1);
+    expect(capture.stderr()).toContain('FUD0453');
   });
 });

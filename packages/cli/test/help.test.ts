@@ -290,7 +290,7 @@ describe('a usage error (§6.8)', () => {
       [['g', 'p', 'x', '--zz'], 'generate page', '--project, --dir, --layout, --no-layout, --server, --sections, --skip-test, --dry-run, --force'],
       [['g', 'l', 'x', '--zz'], 'generate layout', '--project, --dir, --sections, --no-head, --skip-test, --dry-run, --force'],
       [['g', 'a', 'x', '--zz'], 'generate app', '--dir, --id, --prefix, --no-sw, --uses, --base, --dry-run, --force'],
-      [['g', 'lib', 'x', '--zz'], 'generate lib', '--dir, --prefix, --uses, --dry-run, --force'],
+      [['g', 'lib', 'x', '--zz'], 'generate lib', '--dir, --prefix, --uses, --styles-only, --dry-run, --force'],
       [['g', 's', 'x', '--zz'], 'generate spec', '--project, --dry-run, --force'],
       [['g', 't', 'then', 'x', '--zz'], 'generate term', '--project, --param, --dry-run, --force'],
       [['fmt', '--zz'], 'fmt', '--check, --print-width, --tab-width, --use-tabs, --quote, --end-of-line, --dry-run, --force'],

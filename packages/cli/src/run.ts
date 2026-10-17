@@ -93,12 +93,14 @@ async function execute(argv: readonly string[], deps: RunDeps): Promise<number> 
   }
   // Not a plan: it runs until it is stopped (BUG-50 §4.5).
   if (command.kind === 'serve') {
+    // The machine first: what starts the apps is chosen before anything else is asked.
+    const machine = deps.serve ?? nodeServeDeps();
     const { apps, errors } = appsToServe(command.serve, command.opts, deps.readIo);
     if (errors.length > 0) {
       for (const error of errors) deps.streams.err(`${formatError(error)}\n`);
       return 1;
     }
-    return serveWorkspace(command.serve, apps, command.opts.port, deps.serve ?? nodeServeDeps());
+    return serveWorkspace(command.serve, apps, command.opts.port, machine);
   }
 
   const plan = await build(command, deps.readIo);

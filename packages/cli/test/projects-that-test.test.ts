@@ -274,6 +274,8 @@ describe('generated files carry no design comments (§4.8, §6.14)', () => {
       blocks('@*', '*@');
       blocks('<!--', '-->');
       blocks('/*', '*/');
+    } else if (path.endsWith('.css')) {
+      blocks('/*', '*/');
     } else if (path.endsWith('.yaml')) {
       runs(/^\s*#/u);
     } else if (path.endsWith('.md')) {
@@ -290,20 +292,57 @@ describe('generated files carry no design comments (§4.8, §6.14)', () => {
     expect(longComments('a.fud', '@* a\n b *@ <!-- c\n d -->')).toHaveLength(2);
     expect(longComments('a.yaml', '# a\n# b\n')).toHaveLength(1);
     expect(longComments('a.md', '<!-- a\n b -->')).toHaveLength(1);
+    expect(longComments('a.css', '/* a\n b */')).toHaveLength(1);
     expect(longComments('a.txt', '/* a\n b */')).toEqual([]);
   });
 
-  it('walks every file of §6.2–§6.4, pages, layouts and fudic-globals.d.ts included', () => {
-    const paths = fs.paths();
-    expect(paths).toContain('shop/fudic-globals.d.ts');
-    expect(paths).toContain('solo/fudic-globals.d.ts');
-    expect(paths).toContain('shop/apps/web/src/layouts/_layout.fud');
-    expect(paths).toContain('shop/apps/web/vite.config.ts');
-    expect(paths).toContain('shop/libs/ui/README.md');
+  it('walks every file of §6.2–§6.13, pages, layouts and fudic-globals.d.ts included', async () => {
+    // Everything else a generator writes, on top of §6.2–§6.4.
+    const all = await generated();
+    await cli(all, 'new', 'mono', '--workspace', '--app', 'site', '--uses', 'kit', '--cwd', ROOT);
+    await cli(all, 'g', 'component', 'button', '--project', 'ui', '--cwd', SHOP);
+    await cli(all, 'g', 'component', 'web-post-meta', '--project', 'web', '--dir', 'src/routes/blog/components', '--cwd', SHOP);
+    await cli(all, 'g', 'term', 'then', 'cart-has', '--param', 'count:number', '--project', 'web', '--cwd', SHOP);
+    await cli(all, 'add', 'ui', '--project', 'web', '--cwd', SHOP);
+    await cli(all, 'add', 'http', '--project', 'web', '--cwd', SHOP);
+    await cli(all, 'add', 'i18n', '--locales', 'es,en', '--project', 'web', '--cwd', SHOP);
+    await cli(all, 'g', 'service', 'cart', '--project', 'web', '--cwd', SHOP);
+    await cli(all, 'g', 'service', 'session', '--provided', '--project', 'web', '--cwd', SHOP);
+    await cli(all, 'g', 'form', 'person', '--project', 'web', '--cwd', SHOP);
+    await cli(all, 'g', 'form', 'upload', '--binary', '--project', 'web', '--cwd', SHOP);
+    await cli(all, 'g', 'lib', 'guia', '--styles-only', '--cwd', SHOP);
+    await cli(all, 'g', 'style', 'ui', '--project', 'ui', '--cwd', SHOP);
+    await cli(all, 'g', 'style', 'theme', '--project', 'web', '--cwd', SHOP);
+
+    const paths = all.paths();
+    for (const path of [
+      'shop/fudic-globals.d.ts',
+      'solo/fudic-globals.d.ts',
+      'shop/README.md',
+      'shop/apps/web/src/layouts/_layout.fud',
+      'shop/apps/web/vite.config.ts',
+      'shop/apps/admin/vite.config.ts',
+      'shop/libs/ui/README.md',
+      'shop/libs/ui/src/components/ui-button/ui-button.fudspec',
+      'shop/apps/web/src/routes/blog/components/web-post-meta/web-post-meta.fixture.ts',
+      'shop/apps/web/fudic/terms/then/cart-has.js',
+      'shop/apps/web/src/http.ts',
+      'shop/apps/web/src/services/cart.service.ts',
+      'shop/apps/web/src/services/session.service.ts',
+      'shop/apps/web/src/forms/person.form.ts',
+      'shop/apps/web/src/forms/upload.form.test.ts',
+      'shop/libs/guia/tokens.css',
+      'shop/libs/guia/README.md',
+      'shop/libs/ui/ui.css',
+      'shop/apps/web/theme.css',
+      'mono/libs/kit/package.json',
+    ]) {
+      expect(paths, path).toContain(path);
+    }
 
     const offenders: string[] = [];
     for (const path of paths) {
-      const text = fs.at(path);
+      const text = all.at(path);
       for (const word of ['SDD-', 'BUG-', 'emitter']) if (text.includes(word)) offenders.push(`${path}: "${word}"`);
       for (const comment of longComments(path, text)) offenders.push(`${path}:\n${comment}`);
     }
