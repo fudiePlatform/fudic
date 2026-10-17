@@ -48,6 +48,7 @@ apps/ and libs/, and its first app.`,
     options: [
       ['--workspace', 'a workspace, with its first app in apps/'],
       ['--app <name>', 'the first app of the workspace   (default: <name>)'],
+      ['--uses <lib>', 'with --workspace: also create that library, used by the first app; repeatable'],
       ['--id <id>', 'the identity of the app for its caches; never change it   (default: its name)'],
       ['--prefix <p>', 'what turns "button" into <p-button>   (default: the app\'s name)'],
       ['--layout <name>', 'the name of the first layout   (default: _layout)'],

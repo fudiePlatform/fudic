@@ -61,31 +61,7 @@ export function planLib(
   const errors = usesErrors(opts.uses, projects);
   if (errors.length > 0) return Promise.resolve({ ...EMPTY_PLAN, errors });
 
-  const pkgName = packageOf(scope, name);
-  const files: readonly ScaffoldFile[] = [
-    [
-      joinPosix(dir, 'package.json'),
-      renderTemplate('lib/package.json.tmpl', {
-        name: pkgName,
-        version: FUDIC_VERSION,
-        viteVersion: VITE_VERSION,
-        vitestVersion: VITEST_VERSION,
-        uses: libUses(scope, opts.uses),
-      }),
-    ],
-    [joinPosix(dir, 'README.md'), renderTemplate('lib/README.md.tmpl', { name: pkgName, project: name, prefix: opts.prefix })],
-    [joinPosix(dir, '.gitignore'), renderTemplate('gitignore.tmpl', {})],
-    // No `id`: a library has no Service Worker and therefore no caches to namespace. The
-    // prefix is the library's name unless `--prefix` says otherwise (BUG-50 §3.2): its tags
-    // live in the registry of apps it does not control.
-    [
-      joinPosix(dir, CONFIG_FILE),
-      renderTemplate('lib/fudic.json.tmpl', { prefix: prefixField(opts.prefix) }),
-    ],
-    [joinPosix(dir, 'tsconfig.json'), tsconfigFor({ dir, pkgName, up, uses: '' })],
-    ...testingFiles(dir),
-    [joinPosix(dir, COMPONENTS_DIR, KEEP), ''],
-  ];
+  const files = libFiles({ dir, up, scope, name, prefix: opts.prefix, uses: opts.uses });
 
   const built = scaffoldChanges(opts, files, io);
   return Promise.resolve({
@@ -116,5 +92,47 @@ function libReport(name: string, dir: string, prefix: string, app: string): read
     'Use it from an app',
     `  ${add.padEnd(width - 1)}an app you already have`,
     `  ${create.padEnd(width - 1)}a new app`,
+  ];
+}
+
+/** Where a library goes and what it is called: what its files need to know. */
+export interface LibSite {
+  /** Its directory, relative to `cwd`. */
+  readonly dir: string;
+  /** From it up to the workspace root. */
+  readonly up: string;
+  /** The npm scope of the workspace. */
+  readonly scope: string;
+  readonly name: string;
+  readonly prefix: string;
+  readonly uses: readonly string[];
+}
+
+/** The files of a library: what `g lib` writes, and `new --workspace --uses` too. */
+export function libFiles({ dir, up, scope, name, prefix, uses }: LibSite): readonly ScaffoldFile[] {
+  const pkgName = packageOf(scope, name);
+  return [
+    [
+      joinPosix(dir, 'package.json'),
+      renderTemplate('lib/package.json.tmpl', {
+        name: pkgName,
+        version: FUDIC_VERSION,
+        viteVersion: VITE_VERSION,
+        vitestVersion: VITEST_VERSION,
+        uses: libUses(scope, uses),
+      }),
+    ],
+    [joinPosix(dir, 'README.md'), renderTemplate('lib/README.md.tmpl', { name: pkgName, project: name, prefix: prefix })],
+    [joinPosix(dir, '.gitignore'), renderTemplate('gitignore.tmpl', {})],
+    // No `id`: a library has no Service Worker and therefore no caches to namespace. The
+    // prefix is the library's name unless `--prefix` says otherwise (BUG-50 §3.2): its tags
+    // live in the registry of apps it does not control.
+    [
+      joinPosix(dir, CONFIG_FILE),
+      renderTemplate('lib/fudic.json.tmpl', { prefix: prefixField(prefix) }),
+    ],
+    [joinPosix(dir, 'tsconfig.json'), tsconfigFor({ dir, pkgName, up, uses: '' })],
+    ...testingFiles(dir),
+    [joinPosix(dir, COMPONENTS_DIR, KEEP), ''],
   ];
 }

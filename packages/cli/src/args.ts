@@ -294,7 +294,7 @@ function number(tokens: Tokens, name: string, fallback: number): number | undefi
 }
 
 function parseNew(tokens: Tokens, rest: readonly string[], base: Base, flags: GlobalFlags): ParsedCommand {
-  const unknown = unknownFlag(tokens, [...GLOBAL, 'pm', 'no-install', 'no-git', 'no-sw', 'layout', 'target', 'id', 'prefix', 'workspace', 'app'], 'new');
+  const unknown = unknownFlag(tokens, [...GLOBAL, 'pm', 'no-install', 'no-git', 'no-sw', 'layout', 'target', 'id', 'prefix', 'workspace', 'app', 'uses'], 'new');
   if (unknown !== null) return unknown;
 
   const name = rest[0];
@@ -323,8 +323,13 @@ function parseNew(tokens: Tokens, rest: readonly string[], base: Base, flags: Gl
     layout: single(tokens, 'layout', '_layout'),
     target: single(tokens, 'target', 'static'),
   };
-  if (!workspace) return { kind: 'new', name, opts, flags };
-  return { kind: 'workspace', name, opts: { ...opts, app }, flags };
+  const uses = list(tokens, 'uses') ?? [];
+  if (!workspace) {
+    // A library lives in a workspace: an app on its own has none to use.
+    if (uses.length > 0) return fail({ problem: 'unknown-flag', name: 'uses' }, 'new', 'a library lives in a workspace: fudic new <name> --workspace --uses <lib>');
+    return { kind: 'new', name, opts, flags };
+  }
+  return { kind: 'workspace', name, opts: { ...opts, app, uses }, flags };
 }
 
 function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flags: GlobalFlags): ParsedCommand {

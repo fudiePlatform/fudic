@@ -156,7 +156,7 @@ también usa `@fudic/typecheck`.
 |---|---|---|
 | `--prefix` | `new`, `g app`, `g lib` | por defecto, el nombre del proyecto (`ui` → `ui-`) |
 | `--base <path>` | `g app` | por defecto `/<name>/`; la primera app del workspace es `/` |
-| `--uses <lib>` | `new --workspace` | como en `g app` |
+| `--uses <lib>` | `new --workspace` | como en `g app`, y crea esas librerías en `libs/` (un workspace nuevo no tiene ninguna; decisión de Pedro, 2026-10-18) |
 | `--skip-test` · `--skip-spec` | `g component` | no generan el test / el spec y la fixture |
 | `--skip-test` | `g page`, `g layout`, `g service`, `g form` | no genera el test |
 | `--provided` | `g service` | no registra en la raíz: lo provee un componente con `provide()` |
@@ -486,7 +486,7 @@ Examples
 ### 6.7. Un componente de una ruta
 
 ```
-$ fudic g component post-meta --project web --dir src/routes/blog/components
+$ fudic g component web-post-meta --project web --dir src/routes/blog/components
 
 Created <web-post-meta> in apps/web/src/routes/blog/components/web-post-meta/
   web-post-meta.fud · .test.ts · .fudspec · .fixture.ts

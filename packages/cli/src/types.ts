@@ -136,6 +136,11 @@ export interface NewOptions extends BaseOptions {
 export interface WorkspaceOptions extends NewOptions {
   /** The first app's name. A workspace with no app is not a useful state. */
   readonly app: string;
+  /**
+   * `--uses`: libraries created with the workspace, in `libs/`, that the first app depends on
+   * (BUG-50 §3.2; decision of Pedro, 2026-10-18: a new workspace has no library to name).
+   */
+  readonly uses: readonly string[];
 }
 
 /**

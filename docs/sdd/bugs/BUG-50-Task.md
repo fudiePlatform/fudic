@@ -42,7 +42,7 @@ Lo nuevo nace al 100 % en las cuatro métricas; `@fudic/cli` no baja de su suelo
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 14 | — | **Raíz del workspace.** Scripts `dev`, `preview`, `build`, `test`, `spec`; README; `--uses` en `new --workspace`; commit `chore: create workspace <name>` (BUG §4.5, §4.9) | `src/plans/workspace.ts` · `src/plans/new.ts` · `src/args.ts` · `templates/workspace/*` |
+| [ ] | 14 | — | **Raíz del workspace.** Scripts `dev`, `preview`, `build`, `test`, `spec`; README; `--uses` en `new --workspace` (decisión de Pedro, 2026-10-18: crea también esas librerías en `libs/`, porque un workspace nuevo no tiene ninguna); commit `chore: create workspace <name>` (BUG §4.5, §4.9) | `src/plans/workspace.ts` · `src/plans/new.ts` · `src/args.ts` · `templates/workspace/*` |
 | [ ] | 15 | — | **Bases.** Primera app `/`; `g app` escribe `base` (`--base`); dos apps con la misma base es error; `g app` instala (BUG §4.5, §4.6) | `src/plans/app.ts` · `templates/vite.config.ts.tmpl` |
 | [ ] | 16 | 15 | **`fudic dev` y `fudic preview`.** Todas las apps en un puerto, base más larga primero (BUG §4.5). **`fudic test` y `fudic spec`**: los del proyecto, o los de todo el workspace desde su raíz (BUG §3.1; añadido por decisión de Pedro, 2026-10-17: ninguna tarea los cubría) | `src/serve/*` · `src/args.ts` · `src/run.ts` |
 | [ ] | 17 | 14–16 | **Tests.** §6.2, §6.4, §6.9 | `packages/cli/test/*` |

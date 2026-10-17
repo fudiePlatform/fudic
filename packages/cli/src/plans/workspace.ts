@@ -13,11 +13,14 @@
 
 import { GLOBALS_DTS, GLOBALS_FILE_NAME } from '@fudic/language-core';
 import { appFiles, scaffoldChanges, scaffoldRefusal, type ScaffoldFile } from './scaffold.js';
+import { libFiles } from './lib.js';
 import { setupCommands, setupReport } from './new.js';
 import { joinPosix } from '../paths.js';
 import { FUDIC_VERSION, TYPESCRIPT_VERSION } from '../project.js';
 import { renderTemplate } from '../templates.js';
+import { prefixOf } from '../tag.js';
 import { DEV_PORT } from '../workspace/bases.js';
+import { appUses } from '../workspace/uses.js';
 import { WORKSPACE_FILE } from '../workspace/discover.js';
 import { APPS_DIR, LIBS_DIR } from '../workspace/place.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
@@ -35,8 +38,13 @@ function rootFiles(name: string, opts: WorkspaceOptions): readonly ScaffoldFile[
     [joinPosix(name, 'tsconfig.base.json'), renderTemplate('workspace/tsconfig.base.json.tmpl', {})],
     [joinPosix(name, GLOBALS_FILE_NAME), GLOBALS_DTS],
     [joinPosix(name, '.gitignore'), renderTemplate('gitignore.tmpl', {})],
-    // `libs/` exists from the start, empty, so the tree says where a library goes.
-    [joinPosix(name, LIBS_DIR, '.gitkeep'), ''],
+    // `libs/` exists from the start, so the tree says where a library goes: empty, or with the
+    // libraries `--uses` asked for.
+    ...(opts.uses.length === 0
+      ? ([[joinPosix(name, LIBS_DIR, '.gitkeep'), '']] as const)
+      : opts.uses.flatMap((lib) =>
+          libFiles({ dir: joinPosix(name, LIBS_DIR, lib), up: '../..', scope: `@${name}`, name: lib, prefix: prefixOf(lib), uses: [] }),
+        )),
   ];
 }
 
@@ -55,7 +63,7 @@ export function planWorkspace(
       ...rootFiles(name, opts),
       // The same app `fudic new` writes, from the same builder — minus the two files that
       // now live at the root. `up` is what says so. It is the first app, so it is at `/`.
-      ...appFiles({ dir: appDir, pkgName: `@${name}/${opts.app}`, up: '../..', uses: '' }, opts),
+      ...appFiles({ dir: appDir, pkgName: `@${name}/${opts.app}`, up: '../..', uses: appUses(`@${name}`, opts.uses) }, opts),
     ],
     io,
   );
@@ -76,7 +84,9 @@ export function planWorkspace(
       `  ${name}/`,
       '    README.md          what apps/ and libs/ are, and the commands below',
       `    ${`${APPS_DIR}/${opts.app}/`.padEnd(19)}app ${opts.app}, served at /`,
-      `    ${`${LIBS_DIR}/`.padEnd(19)}empty — fudic g lib <name>`,
+      ...(opts.uses.length === 0
+        ? [`    ${`${LIBS_DIR}/`.padEnd(19)}empty — fudic g lib <name>`]
+        : opts.uses.map((lib) => `    ${`${LIBS_DIR}/${lib}/`.padEnd(19)}library ${lib}, used by ${opts.app}`)),
       ...setupReport(opts, message),
       '',
       'Next',
