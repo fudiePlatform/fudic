@@ -6,14 +6,16 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { BrowserLike } from '../../src/browser.js';
 import { runCriterion } from '../../src/engine.js';
-import { FLAT_TEXT } from '../../src/flat-text.js';
-import { chrome, EXAMPLE_TERMS, PROJECT, startBench, target, termsFrom, type TestBench } from '../helpers/bench.js';
+import type { LoadedExtension } from '../../src/extension.js';
+import { chrome, exampleExtensions, exampleTerms, PROJECT, startBench, target, type TestBench } from '../helpers/bench.js';
 
-const terms = termsFrom(EXAMPLE_TERMS);
+const terms = exampleTerms();
 let browser: BrowserLike;
+let extensions: readonly LoadedExtension[];
 
 beforeAll(async () => {
   browser = await chrome();
+  extensions = await exampleExtensions();
 }, 60_000);
 
 afterAll(async () => {
@@ -33,7 +35,7 @@ describe('app-slotted and app-frame', () => {
 
   async function run(tag: string, spec: string) {
     const plan = bench.plan(target(PROJECT, tag, false), `component ${tag}\n\n${spec}`);
-    const result = await runCriterion(browser, bench.origin, plan.criteria[0]!, terms);
+    const result = await runCriterion(browser, bench.origin, plan.criteria[0]!, terms, extensions);
     return result;
   }
 
@@ -44,7 +46,7 @@ describe('app-slotted and app-frame', () => {
       {
         block: 'then',
         term: 'visible',
-        layer: 'workspace',
+        layer: 'framework',
         args: ['role:link'],
         error: expect.stringContaining('matches 2 elements') as unknown,
       },
@@ -92,7 +94,7 @@ describe('criterion 15 — the signal the component writes is the host\'s, alive
       await bench.fixture(bump.fixture!),
     );
     expect(plan.files.has('components/app-bump/bench-host-app-bump-suma-uno.fud')).toBe(true);
-    const [before, after] = await Promise.all(plan.criteria.map((c) => runCriterion(browser, bench.origin, c, terms)));
+    const [before, after] = await Promise.all(plan.criteria.map((c) => runCriterion(browser, bench.origin, c, terms, extensions)));
     expect(before).toMatchObject({ verdict: 'pass', steps: [{ evidence: { expected: '10', actual: 'more 10' } }] });
     expect(after).toMatchObject({ verdict: 'pass', pageErrors: [] });
     expect(after!.steps.map((s) => ('evidence' in s ? s.evidence : s.error))).toEqual([
@@ -127,14 +129,27 @@ describe('the Playwright adapter', () => {
     }
   }, 30_000);
 
-  it('runs init scripts before the page, and reads the flattened text of an element', async () => {
+  it('runs init scripts before the page, and runs scripts on an element with their argument', async () => {
     const page = await browser.newPage();
     try {
       await page.addInitScript('globalThis.early = "yes";');
-      await page.goto('data:text/html,<p id="x">a <b>b</b><style>p{}</style><script>var c;</script>  c</p>');
+      await page.goto('data:text/html,<p id="x">a</p>');
       expect(await page.evaluate<string>('() => globalThis.early')).toBe('yes');
-      expect(await page.locate({ css: '#x' }).evaluate<string>(FLAT_TEXT)).toBe('a b c');
-      expect(await page.locate({ css: '#x' }).count()).toBe(1);
+      expect(await page.locate('#x').evaluate<string>('(element, arg) => element.textContent + arg', '!')).toBe('a!');
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
+
+  it('SDD-59 §4.3 — hands the extensions the Playwright page underneath, and adopts their locators', async () => {
+    const page = await browser.newPage();
+    try {
+      await page.page.setContent('<p id="x" style="margin:0;width:30px;height:12px">a</p>');
+      // What an extension located on the real page, the workbench reads through its own adapter.
+      const adopted = page.adopt(page.page.locator('#x'));
+      expect(await adopted.box()).toMatchObject({ width: 30, height: 12 });
+      expect(await adopted.evaluate<string>('(element) => element.id')).toBe('x');
+      expect((await adopted.screenshot()).subarray(1, 4).toString()).toBe('PNG');
     } finally {
       await page.close();
     }

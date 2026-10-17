@@ -3,7 +3,7 @@
  *
  * Three things, and the `.fud` side lends only one of them: the workspace index, for which
  * components exist and which props they require. The terms come from the disk — the
- * workspace's `fudic/terms/` first, then the framework's — and the fixtures from the
+ * project's `fudic/terms/` first, then the `@fudic/terms` that project installed — and the fixtures from the
  * `<tag>.fixture.ts` next to the component.
  *
  * The required props are the index's, read from the component's contract: the same props its
@@ -33,8 +33,11 @@ export interface SpecHostDeps {
   readonly fs: SpecFs;
   /** The workspace folders, POSIX-shaped. */
   readonly roots: () => readonly string[];
-  /** The framework's `terms/` folder; absent when the host has none to offer. */
-  readonly frameworkTerms?: string;
+  /**
+   * The framework's `terms/` folder of a project, by its folder; undefined when it has none.
+   * By default, the `@fudic/terms` the project installed.
+   */
+  readonly frameworkTerms?: (folder: string) => string | undefined;
 }
 
 /** The folder a path is in. */
@@ -42,13 +45,33 @@ function dirname(path: string): string {
   return path.slice(0, path.lastIndexOf('/'));
 }
 
+/** The package whose `terms/` is the framework layer. */
+export const TERMS_PACKAGE = '@fudic/terms';
+
+/**
+ * The `terms/` of the `@fudic/terms` in the `node_modules` of a folder or of one above it: what
+ * that project installed. In a workspace each app and each library has its own, or none.
+ */
+export function installedTerms(fs: SpecFs): (folder: string) => string | undefined {
+  return (folder) => {
+    // Up to the root of the disk, included: `C:` on Windows, `` on POSIX.
+    for (let dir = folder; ; dir = dirname(dir)) {
+      const pkg = `${dir}/node_modules/${TERMS_PACKAGE}`;
+      if (fs.readDirectory(pkg).includes('terms')) return `${pkg}/terms`;
+      if (!dir.includes('/')) return undefined;
+    }
+  };
+}
+
 export class SpecHost {
   readonly #deps: SpecHostDeps;
+  readonly #frameworkTerms: (folder: string) => string | undefined;
   /** One catalog per project folder, until a term changes. */
   readonly #catalogs = new Map<string, TermCatalog>();
 
   constructor(deps: SpecHostDeps) {
     this.#deps = deps;
+    this.#frameworkTerms = deps.frameworkTerms ?? installedTerms(deps.fs);
   }
 
   /**
@@ -81,7 +104,7 @@ export class SpecHost {
     const roots: TermRoot[] = [];
     const own = this.workspaceTerms(path);
     if (own !== undefined) roots.push({ layer: 'workspace', path: own });
-    const framework = this.#deps.frameworkTerms;
+    const framework = folder === '' ? undefined : this.#frameworkTerms(folder);
     if (framework !== undefined) roots.push({ layer: 'framework', path: framework });
 
     const catalog = createTermCatalog(roots, this.#deps.fs);
@@ -136,14 +159,16 @@ export class SpecHost {
   }
 
   /**
-   * Whether a changed file can change what a `.fudspec` says: a term module, a fixture or a
-   * component. The component side is the index's, which the server keeps current already.
+   * Whether a changed file can change what a `.fudspec` says: a term module, a fixture, a
+   * component, or a `package.json` — where a project installs or drops `@fudic/terms`. The
+   * component side is the index's, which the server keeps current already.
    */
   static affects(path: string): boolean {
     return (
       (path.includes(`/${WORKSPACE_TERMS}/`) && path.endsWith('.js')) ||
       path.endsWith('.fixture.ts') ||
-      path.endsWith('.fud')
+      path.endsWith('.fud') ||
+      path.endsWith('/package.json')
     );
   }
 

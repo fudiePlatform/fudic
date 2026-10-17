@@ -1,6 +1,6 @@
 # SDD-59 · Los términos: un runtime abierto en `@fudic/terms`
 
-> **Estado:** `Listo` (2026-10-16)
+> **Estado:** `Hecho` (2026-10-17) · pendiente la prueba de producto de Pedro
 > **Paquetes:** `@fudic/terms` (nuevo) · `@fudic/workbench` · `@fudic/spec` · `@fudic/language-server` · `fudic-vscode` · `examples/basic`
 > **Rango:** `FUD1040`–`FUD1059`.
 > **Lo necesita:** [BUG-50](./bugs/BUG-50-la-cli-que-nadie-entiende.md): el `.fudspec` que genera
@@ -122,11 +122,15 @@ export interface TermMeta<P extends string = string> {
   readonly describe?: (args: Readonly<Record<P, string | number>>) => string;
 }
 
-// Un término .js lo usa con un comentario JSDoc: @type {import('@fudic/terms').Term}
-export interface Term<P extends string = string> {
+// Un término .js lo usa en su `run` con un comentario JSDoc: @type {import('@fudic/terms').Term['run']}
+// C es el ctx que ve: el de serie, o el que deja el `fudic/bench.js` del proyecto (§3.3).
+export interface Term<P extends string = string, C extends TermContext = TermContext> {
   readonly meta: TermMeta<P>;
-  run(ctx: TermContext, args: Readonly<Record<P, string | number>>): Promise<TermOutcome>;
+  run(ctx: C, args: Readonly<Record<P, string | number>>): Promise<TermOutcome>;
 }
+
+/** El ctx que deja una extensión; el de serie si no lo amplía. */
+export type ContextOf<E> = /* el `Out` de su `context` */;
 
 /** Lo que el banco le da al runtime: la página y sus avisos. */
 export interface TermHost {
@@ -186,8 +190,9 @@ export default defineExtension({
 });
 ```
 
-Sus términos usan `ctx.openMenu(...)`, con tipos. Sin ese fichero, el banco lleva solo la
-extensión de serie.
+Sus términos usan `ctx.openMenu(...)`, con tipos: su `run` lleva
+`@type {import('@fudic/terms').Term<string, import('@fudic/terms').ContextOf<typeof import('../../bench.js').default>>['run']}`
+(decisión de Pedro, 2026-10-17). Sin ese fichero, el banco lleva solo la extensión de serie.
 
 ### 3.4. La fixture admite contenido
 
@@ -251,7 +256,8 @@ no da, el que está mal es `ctx`.
 7. **El proyecto gana.** Un `fudic/terms/then/text.js` del proyecto sustituye entero al de serie
    (regla de [catalog.ts:2-5](../../packages/spec/src/catalog.ts#L2-L5), sin cambios).
 8. **`fudic/terms/` es para extender.** Un proyecto nuevo no lo tiene; aparece con el primer
-   `fudic g term`, que genera el término con su `@type {import('@fudic/terms').Term}`.
+   `fudic g term`, que genera el término con el `@type` de su `run`: `Term['run']`, o el de §3.3
+   si el proyecto tiene `fudic/bench.js`. La bombilla del editor genera el mismo.
 9. **Los términos de serie no exportan `selfTest`** (FUD0946 solo lo exige al proyecto,
    [term-module.ts:100](../../packages/spec/src/term-module.ts#L100)). Se prueban con los tests del
    paquete.

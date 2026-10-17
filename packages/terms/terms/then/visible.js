@@ -6,9 +6,8 @@ export const meta = {
   describe: ({ target }) => `${target} is visible`,
 };
 
+/** @type {import('@fudic/terms').Term['run']} */
 export async function run(ctx, { target }) {
-  const visible = await ctx.locate(target).isVisible();
+  const visible = await ctx.locate(String(target)).isVisible();
   return { pass: visible, evidence: visible ? 'visible' : 'hidden' };
 }
-
-export const selfTest = [{ args: { target: 'app-card' }, expect: 'pass' }];

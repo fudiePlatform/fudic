@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
+    "@fudic/terms": "workspace:*",
     "@fudic/testing": "workspace:*",
     "@fudic/vite": "workspace:*",
     "@fudic/workbench": "workspace:*",

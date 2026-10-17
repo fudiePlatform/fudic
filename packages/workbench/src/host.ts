@@ -36,6 +36,8 @@ export interface HostInput {
   readonly forwarded: readonly string[];
   /** Every prop in fixture order: the order of the attributes. */
   readonly order: readonly string[];
+  /** The fixture's `$content`: the component's children. */
+  readonly content: string;
 }
 
 export function hostComponent(input: HostInput): string {
@@ -51,7 +53,7 @@ export function hostComponent(input: HostInput): string {
     `@code {\n${imports}` +
     `  @client {\n    import { signal } from "@fudic/core";\n\n${signals}  }\n}\n\n` +
     `<${input.tag}>\n  <template shadowrootmode="open">\n` +
-    `    <${input.componentTag}${attrs}></${input.componentTag}>\n` +
+    `    <${input.componentTag}${attrs}>${input.content}</${input.componentTag}>\n` +
     `  </template>\n</${input.tag}>\n`
   );
 }

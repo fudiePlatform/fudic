@@ -5,11 +5,10 @@
  *
  * The DOM's own `textContent` on a host gives its light DOM, nearly always empty — and nobody
  * writing `text app-card "…"` means that.
+ *
+ * It is the page's code, not this process's: it travels as source text.
  */
-
-import type { PageScript } from './browser.js';
-
-export const FLAT_TEXT: PageScript = `(element) => {
+export const FLAT_TEXT = `(element) => {
   const skip = new Set(['style', 'script', 'template']);
   const all = (nodes) => Array.from(nodes, walk).join('');
   const walk = (node) => {

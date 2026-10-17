@@ -35,7 +35,7 @@ export { normalizeTerm, validateSpec } from './validate.js';
 export type { PropField, PropShape } from './scaffold/shape.js';
 export { sampleValue } from './scaffold/shape.js';
 export { fixtureEntry, fixtureModule } from './scaffold/fixture.js';
-export { termModule } from './scaffold/term.js';
+export { BENCH_FILE, termModule } from './scaffold/term.js';
 export { specSkeleton } from './scaffold/spec.js';
 export { closest } from './scaffold/closest.js';
 export type { FormatSpecResult } from './format.js';

@@ -1,22 +1,18 @@
 /**
- * A page without a browser: what the engine and the `ctx` call on it, recorded, and answers
- * given per test. The real adapters are checked against Chrome in test/browser/.
+ * A page without a browser: what the engine and the extensions' host call on it, recorded, and
+ * answers given per test. The real adapters are checked against Chrome in test/browser/.
  */
 
-import { VIEWPORT, type BrowserLike, type LocatorLike, type PageLike, type Target } from '../../src/browser.js';
+import type { Locator, Page } from 'playwright-core';
+import { VIEWPORT, type BrowserLike, type LocatorLike, type PageLike } from '../../src/browser.js';
 
 export interface FakeElement {
-  count?: number;
   /** Where it is in the page; x and y are 0 when left out. */
   box?: { x?: number; y?: number; width: number; height: number } | null;
   /** What a screenshot of it gives; a function to throw or to vary. */
   png?: Buffer | (() => Buffer);
-  visible?: boolean;
-  text?: string;
   /** What the nearest-host script answers. */
   host?: { id: string; defined: boolean } | null;
-  /** The value an attribute had before `setAttribute`; none when left out. */
-  attribute?: string | null;
 }
 
 export interface FakePage extends PageLike {
@@ -26,13 +22,27 @@ export interface FakePage extends PageLike {
   closed: boolean;
 }
 
+/**
+ * A Playwright locator as a term would hand it to `settle`: the fake page adopts it as the
+ * element at the selector `ref`.
+ */
+export function fakeLocator(ref: string): Locator {
+  return { toString: () => ref } as unknown as Locator;
+}
+
 export function fakePage(
-  elements: (target: Target) => FakeElement = () => ({}),
+  elements: (css: string) => FakeElement = () => ({}),
   options: { status?: number | null; goto?: () => Promise<never> } = {},
 ): FakePage {
   const calls: string[] = [];
   let listener: (message: string) => void = () => undefined;
   const page: FakePage = {
+    // What the extensions receive: only its identity matters without a browser.
+    page: { fake: 'playwright page' } as unknown as Page,
+    adopt(locator) {
+      calls.push(`adopt ${String(locator)}`);
+      return page.locate(String(locator));
+    },
     calls,
     closed: false,
     fail: (message) => listener(message),
@@ -43,11 +53,10 @@ export function fakePage(
       if (options.goto !== undefined) return options.goto();
       return options.status === undefined ? 200 : options.status;
     },
-    locate(target) {
-      const element = elements(target);
-      const name = JSON.stringify(target);
+    locate(css) {
+      const element = elements(css);
+      const name = css;
       const locator: LocatorLike = {
-        count: async () => element.count ?? 1,
         async box() {
           const box = element.box === undefined ? { width: 10, height: 20 } : element.box;
           return box === null ? null : { x: box.x ?? 0, y: box.y ?? 0, width: box.width, height: box.height };
@@ -57,17 +66,9 @@ export function fakePage(
           const png = element.png ?? Buffer.from(name);
           return typeof png === 'function' ? png() : png;
         },
-        isVisible: async () => element.visible ?? true,
-        async click() {
-          calls.push(`click ${name}`);
-        },
-        async evaluate<R>(script: string, arg?: unknown): Promise<R> {
+        async evaluate<R>(script: string): Promise<R> {
           if (script.includes('data-fud-id')) return (element.host === undefined ? null : element.host) as R;
-          if (script.includes('setAttribute')) {
-            calls.push(`setAttribute ${name} ${JSON.stringify(arg)}`);
-            return (element.attribute ?? null) as R;
-          }
-          return (element.text ?? '') as R;
+          throw new Error(`the fake page runs no script but the nearest host: ${script}`);
         },
       };
       return locator;

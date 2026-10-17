@@ -9,7 +9,7 @@
  */
 
 import { FUD0448, FUD0961, FUD0962, FUD0963 } from '@fudic/diagnostics';
-import { TERMS_DIR, termModule, type BlockKind, type ParamType, type TermParam } from '@fudic/spec';
+import { BENCH_FILE, TERMS_DIR, termModule, type BlockKind, type ParamType, type TermParam } from '@fudic/spec';
 import { joinPosix } from '../paths.js';
 import { targetChange } from '../project.js';
 import { resolveTarget } from '../workspace/target.js';
@@ -47,7 +47,8 @@ export function planTerm(name: string, opts: TermOptions, io: ReadIo = nodeReadI
   }
   const block = opts.block as BlockKind;
   const file = joinPosix(resolved.target.dir, TERMS_DIR, block, `${name}.js`);
-  const target = targetChange(opts.cwd, file, termModule(block, name, params), opts.force, io);
+  const bench = io.exists(joinPosix(resolved.target.path, BENCH_FILE));
+  const target = targetChange(opts.cwd, file, termModule(block, name, params, { bench }), opts.force, io);
   return Promise.resolve({
     changes: target.change === undefined ? [] : [target.change],
     commands: [],

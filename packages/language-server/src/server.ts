@@ -86,8 +86,11 @@ export interface FudicServerDeps {
   createSimpleProject: typeof createSimpleProject;
   /** The disk the `.fudspec` validator reads term modules and fixtures from (SDD-52). */
   specFs: SpecFs;
-  /** The framework's `terms/` folder, the second layer of a `.fudspec` vocabulary (SDD-52). */
-  frameworkTerms?: string;
+  /**
+   * The framework's `terms/` folder of a project, the second layer of a `.fudspec` vocabulary;
+   * by default the `@fudic/terms` the project installed.
+   */
+  frameworkTerms?: (folder: string) => string | undefined;
 }
 
 /** The state a running server holds. Exposed so the acceptance tests can look at it. */

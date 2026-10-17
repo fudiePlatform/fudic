@@ -117,9 +117,6 @@ a { color: inherit; text-decoration: none; } a:hover { text-decoration: underlin
 .steps .evidence { color: var(--soft); }
 .steps .then.passed .evidence { color: var(--pass); }
 .steps .bad .says, .steps .bad .evidence { color: var(--fail); }
-.steps .ignored { color: var(--soft); }
-.steps .badge { font-size: 11px; padding: 0 6px; border-radius: 4px; background: var(--warn-bg); color: var(--warn); white-space: nowrap; }
-.steps .badge { margin-left: 4px; }
 .steps .at { flex: none; margin-left: auto; font-size: 11px; color: var(--mark); visibility: hidden; }
 .steps li.hot .at { visibility: visible; }
 .diff { flex-basis: 100%; margin: 2px 0 2px 50px; font: 12px ui-monospace, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -437,8 +434,7 @@ function paintEvidence(card, m) {
   card.lines.forEach((li, i) => {
     const s = m.steps[i];
     li.querySelector('.diff')?.remove();
-    li.querySelector('.badge')?.remove();
-    li.classList.remove('bad', 'passed', 'ignored', 'has-diff');
+    li.classList.remove('bad', 'passed', 'has-diff');
     const mark = li.querySelector('.mark'), ev = li.querySelector('.evidence');
     mark.textContent = ''; mark.className = 'mark'; ev.textContent = '';
     if (!s) return;
@@ -447,11 +443,6 @@ function paintEvidence(card, m) {
       li.classList.add('bad');
       mark.textContent = '✗'; mark.className = 'mark ko';
       ev.textContent = '→ ' + s.error;
-      return;
-    }
-    if (s.ignored) {
-      li.classList.add('ignored');
-      li.querySelector('.content').append($('span', 'badge', 'skipped here'));
       return;
     }
     const e = s.evidence;

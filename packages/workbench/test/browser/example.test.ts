@@ -1,19 +1,22 @@
 /**
  * Criteria 8, 9, 10 and the first half of 15, against Chrome, on the components of
- * `examples/basic` and with its terms imported as they are.
+ * `examples/basic` and with the terms it runs with imported as they are: its own, then the stock ones.
  */
 
 import { signal } from '@fudic/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { BrowserLike } from '../../src/browser.js';
 import { runCriterion } from '../../src/engine.js';
-import { chrome, EXAMPLE, EXAMPLE_TERMS, startBench, target, termsFrom, type TestBench } from '../helpers/bench.js';
+import type { LoadedExtension } from '../../src/extension.js';
+import { chrome, EXAMPLE, exampleExtensions, exampleTerms, startBench, target, type TestBench } from '../helpers/bench.js';
 
-const terms = termsFrom(EXAMPLE_TERMS);
+const terms = exampleTerms();
 let browser: BrowserLike;
+let extensions: readonly LoadedExtension[];
 
 beforeAll(async () => {
   browser = await chrome();
+  extensions = await exampleExtensions();
 }, 60_000);
 
 afterAll(async () => {
@@ -34,10 +37,10 @@ describe('app-card of the example', () => {
   async function run(spec: string) {
     const card = target(EXAMPLE, 'app-card');
     const plan = bench.plan(card, `component app-card\n\n${spec}`, await bench.fixture(card.fixture!));
-    return Promise.all(plan.criteria.map((c) => runCriterion(browser, bench.origin, c, terms)));
+    return Promise.all(plan.criteria.map((c) => runCriterion(browser, bench.origin, c, terms, extensions)));
   }
 
-  it('criterion 8 — every term of examples/basic/fudic/terms runs unchanged', async () => {
+  it('criterion 8 — the example runs its own route and the stock terms (SDD-59 §6.7.8)', async () => {
     const [measure, act] = await run(
       'criterion medir\n  given\n    props destacada\n    route /blog\n' +
         '  when\n    set-attribute app-card variant "highlight"\n' +
@@ -45,12 +48,12 @@ describe('app-card of the example', () => {
         'criterion pulsar\n  given\n    props destacada\n  when\n    click role:link/"Featured"\n',
     );
     expect(measure).toMatchObject({ verdict: 'pass', pageErrors: [] });
-    expect(measure!.steps.map((s) => [s.term, 'pass' in s && s.pass])).toEqual([
-      ['route', true],
-      ['set-attribute', true],
-      ['min-height', true],
-      ['visible', true],
-      ['text', true],
+    expect(measure!.steps.map((s) => [s.term, s.layer, 'pass' in s && s.pass])).toEqual([
+      ['route', 'workspace', true],
+      ['set-attribute', 'framework', true],
+      ['min-height', 'framework', true],
+      ['visible', 'framework', true],
+      ['text', 'framework', true],
     ]);
     // `variant` arrives as a property: the attribute set-attribute replaced was not there.
     expect(measure!.steps[1]).toMatchObject({ evidence: 'before: none' });
@@ -96,7 +99,7 @@ describe('criterion 15 — a Signal prop from the fixture, alive', () => {
       'component signal-display\n\ncriterion diez\n  given\n    props diez\n  then\n    text signal-display "10 — y deriva de ella: 20"\n',
       { diez: { value: signal(10) } },
     );
-    const result = await runCriterion(browser, bench.origin, plan.criteria[0]!, terms);
+    const result = await runCriterion(browser, bench.origin, plan.criteria[0]!, terms, extensions);
     expect(result).toMatchObject({ verdict: 'pass', pageErrors: [] });
   }, 60_000);
 });

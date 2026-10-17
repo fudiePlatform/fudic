@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { launchBrowser } from '../../src/browser.js';
 import { openWorkbench } from '../../src/open.js';
 import { isFailure, type WorkbenchSession } from '../../src/types.js';
+import { TERMS_PACKAGE } from '../helpers/bench.js';
 import { connectShell, isRunning, isSession, resultOf, tempProject, type Shell, type TempProject } from '../helpers/project.js';
 
 const TABS = 'src/components/app-tabs.fud';
@@ -181,7 +182,8 @@ describe('criterion 19 — saving the .fudspec or a term', () => {
       route: '/app-tabs/empieza-en-a',
       line: 9,
       props: null,
-      steps: [{ block: 'then', text: 'role:tabpanel says "panel A"', file: project.path('fudic/terms/then/text.js'), line: 11 }],
+      // The stock `text`, from the @fudic/terms the project installed.
+      steps: [{ block: 'then', text: 'role:tabpanel says "panel A"', file: `${TERMS_PACKAGE}/terms/then/text.js`, line: 11 }],
     });
     expect(await sh.next(resultOf('empieza-en-a'), from)).toMatchObject({ verdict: 'pass' });
     const origin = new URL(s.url).origin;
@@ -191,6 +193,15 @@ describe('criterion 19 — saving the .fudspec or a term', () => {
 
   it('a term saved runs again with the new term', async () => {
     project = tempProject('term');
+    // The project's own `text`, which replaces the stock one.
+    const text = (version: string) =>
+      "export const meta = { name: 'text', block: 'then', params: [{ name: 'target', type: 'element' }, { name: 'expected', type: 'string' }] };\n" +
+      'export async function run(ctx, { target, expected }) {\n' +
+      '  const text = await ctx.text(ctx.locate(target));\n' +
+      `  return { pass: text.includes(expected), evidence: { expected, actual: \`${version}\${text}\` } };\n` +
+      '}\n' +
+      'export const selfTest = [];\n';
+    project.write('fudic/terms/then/text.js', text(''));
     project.write('src/components/app-tabs.fudspec', TABS_SPEC);
     const { shell: sh } = await open(project, TABS);
     expect(await sh.next(resultOf('cambia-de-pestana'))).toMatchObject({
@@ -198,8 +209,7 @@ describe('criterion 19 — saving the .fudspec or a term', () => {
       steps: [{}, { evidence: { actual: 'panel B' } }],
     });
     const from = sh.messages.length;
-    const term = project.read('fudic/terms/then/text.js');
-    project.write('fudic/terms/then/text.js', term.replace('actual: text }', 'actual: `v2: ${text}` }'));
+    project.write('fudic/terms/then/text.js', text('v2: '));
     expect(await sh.next(resultOf('cambia-de-pestana'), from)).toMatchObject({
       verdict: 'pass',
       steps: [{}, { evidence: { actual: 'v2: panel B' } }],

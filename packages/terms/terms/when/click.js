@@ -1,4 +1,4 @@
-// Clicks an element, by tag or by role and accessible name.
+// Clicks an element, and waits until the page has served the click.
 export const meta = {
   name: 'click',
   block: 'when',
@@ -6,9 +6,9 @@ export const meta = {
   describe: ({ target }) => `the user clicks ${target}`,
 };
 
+/** @type {import('@fudic/terms').Term['run']} */
 export async function run(ctx, { target }) {
-  await ctx.locate(target).click();
+  const element = ctx.locate(String(target));
+  await ctx.act(element, () => element.click());
   return { pass: true, evidence: `clicked ${target}` };
 }
-
-export const selfTest = [{ args: { target: 'role:link' }, expect: 'pass' }];
