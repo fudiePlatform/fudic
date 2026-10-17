@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-59 — Los términos: un runtime abierto en `@fudic/terms`](./SDD-59-terminos-de-serie.md)
 > **Paquetes:** `@fudic/terms` (nuevo) · `@fudic/workbench` · `@fudic/spec` · `@fudic/language-server` · `fudic-vscode` · `examples/basic`
-> **Progreso:** 12 / 14 — `En curso`.
+> **Progreso:** 13 / 14 — `Hecho`; queda la prueba de producto de Pedro (tarea 10).
 
 `@fudic/terms` nace al 100 % en las cuatro métricas; los paquetes tocados no bajan de su suelo.
 
@@ -44,4 +44,4 @@ nuevo (`given/route.js` sin `ctx.goto`). La tarea 13 sigue borrando los duplicad
 | [x] | 11 | 2 | **Editor.** Capa del framework por proyecto; `fudic g term` con su `@type` (§4.8, §4.10) | `packages/language-server/src/fudspec/host.ts` · `packages/vscode/src/*` · `packages/spec/src/scaffold/term.ts` |
 | [x] | 12 | 11 | **Tests.** §6.6, §6.7.7 | `packages/language-server/test/*` · `packages/spec/test/*` |
 | [x] | 13 | 8 | **`examples/basic`.** `@fudic/terms` como devDependency, términos duplicados fuera, `route` revisado; §6.7.8 | `examples/basic/*` |
-| [ ] | 14 | 1–13 | **Cierre.** Estado `Hecho`, registro de progreso, tabla maestra | `docs/sdd/INDEX.md` |
+| [x] | 14 | 1–13 | **Cierre.** Estado `Hecho`, registro de progreso, tabla maestra | `docs/sdd/INDEX.md` |
