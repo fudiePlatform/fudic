@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/cli` · `@fudic/language-core` · `@fudic/typecheck` · `examples/workspace` · `@fudic/workbench` · `@fudic/testing` · `@fudic/terms` · `@fudic/resolve`
 > **Rama:** `bug-50-cli-usable` (worktree `fudic-bug-50`), desde `main` en `e4f7a8a`.
 > **Depende de:** SDD-59 `Hecho` para las tareas que ejecutan un `.fudspec` (12, 24).
-> **Progreso:** 9 / 27 — en curso.
+> **Progreso:** 12 / 27 — en curso (13 y 18, pruebas de Pedro, al final).
 
 Lo nuevo nace al 100 % en las cuatro métricas; `@fudic/cli` no baja de su suelo.
 
@@ -33,9 +33,9 @@ Lo nuevo nace al 100 % en las cuatro métricas; `@fudic/cli` no baja de su suelo
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 10 | 4, 5 | **Carpeta con cuatro ficheros**; `.fud` sin `@code` vacío; fixture siempre; spec con `renders`; `--skip-test`, `--skip-spec`; retirar `--spec`; borrar `.gitkeep` (BUG §4.3). **Añadido (Pedro, 2026-10-17):** término de serie `then present` en `@fudic/terms` y el spec generado lo usa; `@fudic/ssr` en las devDependencies de la lib | `src/plans/component.ts` · `src/plans/spec.ts` · `templates/component.fud` · `packages/terms/terms/then/present.js` |
-| [ ] | 11 | 10 | **`exports` de la lib** `./*.fud` → `./src/components/*/*.fud`; `--dir` relativo al proyecto y el aviso de §6.7 | `templates/lib/package.json.tmpl` · `src/workspace/link.ts` · `src/plans/component.ts` · `packages/resolve/src/libraries.ts` (`exports` con varios `*`) |
-| [ ] | 12 | 10, 11 | **Tests.** §6.5, §6.6, §6.7; `pnpm test` y `pnpm spec` en verde sobre la lib generada | `packages/cli/test/*` |
+| [x] | 10 | 4, 5 | **Carpeta con cuatro ficheros**; `.fud` sin `@code` vacío; fixture siempre; spec con `renders`; `--skip-test`, `--skip-spec`; retirar `--spec`; borrar `.gitkeep` (BUG §4.3). **Añadido (Pedro, 2026-10-17):** término de serie `then present` en `@fudic/terms` y el spec generado lo usa; `@fudic/ssr` en las devDependencies de la lib | `src/plans/component.ts` · `src/plans/spec.ts` · `templates/component.fud` · `packages/terms/terms/then/present.js` |
+| [x] | 11 | 10 | **`exports` de la lib** `./*.fud` → `./src/components/*/*.fud`; `--dir` relativo al proyecto y el aviso de §6.7 | `templates/lib/package.json.tmpl` · `src/workspace/link.ts` · `src/plans/component.ts` · `packages/resolve/src/libraries.ts` (`exports` con varios `*`) |
+| [x] | 12 | 10, 11 | **Tests.** §6.5, §6.6, §6.7; `pnpm test` y `pnpm spec` en verde sobre la lib generada | `packages/cli/test/*` |
 | [ ] | 13 | 12 | **Prueba de Pedro.** Lib nueva + componente, test y spec en verde (al final, con la 26: decisión de Pedro, no detiene las fases) | — |
 
 ## Fase 4 — Workspace, bases y servidor único (5)

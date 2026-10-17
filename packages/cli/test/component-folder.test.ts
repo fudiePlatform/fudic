@@ -146,7 +146,7 @@ function options(overrides: Partial<ComponentOptions> = {}): ComponentOptions {
 describe('fudic g component --dir (§6.7)', () => {
   it('a component of a route: the short form, and the reminder that it is not a page — exactly', async () => {
     const fs = await shop();
-    const { code, out } = await cli(fs, 'g', 'component', 'post-meta', '--project', 'web', '--dir', 'src/routes/blog/components', '--cwd', SHOP);
+    const { code, out } = await cli(fs, 'g', 'component', 'web-post-meta', '--project', 'web', '--dir', 'src/routes/blog/components', '--cwd', SHOP);
     expect(code).toBe(0);
     expect(out).toBe(`
 Created <web-post-meta> in apps/web/src/routes/blog/components/web-post-meta/
@@ -208,7 +208,7 @@ Created <web-card> in apps/web/src/components/web-card/
 
   it('widens the first column for a long name, two spaces after it', async () => {
     const fs = await shop();
-    const { out } = await cli(fs, 'g', 'component', 'navigation-drawer', '--project', 'web', '--cwd', SHOP);
+    const { out } = await cli(fs, 'g', 'component', 'web-navigation-drawer', '--project', 'web', '--cwd', SHOP);
     expect(out).toContain('  web-navigation-drawer.fixture.ts  the props the criteria mount it with\n');
     expect(out).toContain('  web-navigation-drawer.fud         the component\n');
   });
