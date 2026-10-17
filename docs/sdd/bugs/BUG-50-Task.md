@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/cli` · `@fudic/language-core` · `@fudic/typecheck` · `examples/workspace` · `@fudic/workbench` · `@fudic/testing` · `@fudic/terms` · `@fudic/resolve`
 > **Rama:** `bug-50-cli-usable` (worktree `fudic-bug-50`), desde `main` en `e4f7a8a`.
 > **Depende de:** SDD-59 `Hecho` para las tareas que ejecutan un `.fudspec` (12, 24).
-> **Progreso:** 22 / 27 — en curso (13 y 18, pruebas de Pedro, al final).
+> **Progreso:** 23 / 27 — en curso (13 y 18, pruebas de Pedro, al final).
 
 Lo nuevo nace al 100 % en las cuatro métricas; `@fudic/cli` no baja de su suelo.
 
@@ -63,6 +63,6 @@ Lo nuevo nace al 100 % en las cuatro métricas; `@fudic/cli` no baja de su suelo
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 25 | 1–24 | **README de `@fudic/cli`** en inglés, corto, sin citas a SDD | `packages/cli/README.md` |
+| [x] | 25 | 1–24 | **README de `@fudic/cli`** en inglés, corto, sin citas a SDD | `packages/cli/README.md` |
 | [ ] | 26 | 25 | **Prueba de Pedro.** Repetir como desarrollador nuevo la sesión del §1 contra Verdaccio | — |
 | [ ] | 27 | 26 | **Cierre.** Estado `Hecho`, índices, registro de progreso | `docs/sdd/bugs/INDEX.md` · `docs/sdd/INDEX.md` |

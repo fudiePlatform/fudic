@@ -1,226 +1,72 @@
 # @fudic/cli
 
-Scaffolding for fudic apps: it creates projects and adds pieces (pages, components,
-layouts) to an existing one. **It is not a bundler, a dev server or a watcher** — that is
-Vite with `@fudic/vite`. The analogy is `ng generate`, not `vite`.
+The `fudic` command: it creates apps and workspaces, adds pieces to them, and runs them. Every
+project it creates can be tested from the first minute: `pnpm test` and `pnpm spec` are green
+right after `fudic new`.
 
 ```sh
-fudic new demo                                       # a project that builds
-fudic g component app-card --in src/routes/index.fud # a component, already wired
-fudic g page blog/:slug                              # a route under its layout
-fudic g layout admin --sections aside
-fudic g spec app-card                                # its .fudspec, and a fixture if it has props
-fudic g term then has-shadow --param target:element  # a term module for .fudspec criteria
+npm install -g @fudic/cli   # or pnpm dlx @fudic/cli …
+fudic --help                # where to start
+fudic <command> --help      # what a command takes
 ```
 
-## Acceptance criteria
+## Words
 
-`fudic g spec <component>` writes `<tag>.fudspec` next to the component. When the component has
-required props it also writes `<tag>.fixture.ts`, each prop filled by its type, which it reads
-with TypeScript over the project's own program; an existing fixture is kept. If no `.d.ts` in
-`src/` declares `*.fud`, it adds `src/fudic-env.d.ts`, so the fixture's import is not red in VS
-Code. A component that does not exist yet is created with its `.fudspec`, as `fudic g component <name>
---spec` does: write the criteria first or the component first, the files are the same. Without
-`--spec`, `fudic g component` writes no criteria at all.
+- **app**: what you serve. It has pages and a base URL (`/`, `/admin/`).
+- **library**: components your apps use. It is not served.
+- **workspace**: one repo with `apps/` and `libs/`.
+- **project**: an app or a library. `--project <name>` picks one inside a workspace; without
+  it, the project is the one you are in.
 
-`fudic g term <block> <name>` writes `fudic/terms/<block>/<name>.js` with one `--param
-<name>:<type>` per parameter (`element`, `number`, `string` or `token`). `fudic fmt` formats
-`.fudspec` files as well as `.fud`.
-
-## Translations
-
-`fudic translate` (exposed by an app as `pnpm translate`) extracts every message of an app with
-`"locales"` in its `fudic.json` — the text its views paint, and each `t("…")` of its `.ts`/`.js` —
-plus those of the fudic libraries it depends on, and merges them into `src/locales/<locale>.json`.
-A changed text keeps its translation, marked to review. It prints a line per locale (messages,
-new, to review, untranslated) and exits non-zero only when a catalog cannot be read or a
-translation is invalid; a missing translation is a warning. `dev`, `build` and `preview` only
-read the catalogs.
-
-## More than one project
-
-An app that shares components with another app needs a workspace, and `--workspace` creates
-one with its first app already in it:
+## Start
 
 ```sh
-fudic new mi-tienda --workspace --app web   # apps/web, plus the workspace root
-cd mi-tienda
-fudic g lib ui --prefix ui                  # libs/ui — publishes its .fud sources
-fudic g app back --uses ui                  # apps/back, depending on the library
-fudic g component card --project ui         # ui-card, in the library
+fudic new shop                                  # an app
+fudic new shop --workspace --app web            # a workspace with its first app, at /
+fudic new shop --workspace --app web --uses ui  # … and a library ui it already uses
 ```
 
-A library is not an app with fewer files. It has no routes, no `vite.config.ts`, no
-`sw.json` and no `id`, because none of those means anything to something that is consumed
-rather than served. What it does have is a `package.json` whose `exports` and `files` point
-at the `.fud` sources — there is no build step to publish.
-
-It also names `@fudic/core` as a **peer** dependency. Every component compiles to a client
-chunk that imports the runtime, and that import is resolved from the file making it, which
-lives in the library — so the library has to declare it or a consumer's build cannot resolve
-it. A peer and not a dependency, because the runtime is not copyable: two copies mean two
-registrations of the same tag and two sets of signals that never see each other. A library
-published to npm and installed across a dozen apps uses each app's one copy.
-
-That is also how one component suite serves apps that look different. A library's components
-adopt the library's own stylesheets, never the consuming app's — but CSS custom properties
-inherit through a shadow boundary, which is the one thing that does. So the library styles
-with `var(--acme-accent)` and each app defines its own values on `:root` in a document
-stylesheet. Same package, same bytes, different look, and the library never changes.
-
-**A directory is a project when it has a `fudic.json`.** There is no workspace file listing
-them: `pnpm-workspace.yaml` already owns which packages exist, and a second list is a second
-thing to keep in sync. So the generators find their destination like this:
-
-| | |
-|---|---|
-| `--project <name>` | a project by its directory name, from anywhere in the workspace |
-| nothing | the nearest `fudic.json` at or above `--cwd` |
-| neither answers | the command fails |
-
-There is deliberately no default project. Picking the only one works right up until there
-are two, and then it writes into the wrong package.
-
-`--uses` adds the dependency and nothing else. It writes no `<link rel="component">`: which
-file uses which component is yours to decide, and `fudic g component --in` is how you say
-it.
-
-Across packages, `--in` links the component by the library's name
-(`@mi-tienda/ui/ui-card.fud`), never by a path that climbs out of the app, and adds the
-library to the app's dependencies if it is not there yet. A component in a folder the
-library does not export has no name from outside it (`FUD0787`).
-
-## Why it exists
-
-The right scaffolding for a `.fud` is not obvious: the top-level order is strict
-(decision 53 for components, 83 for routes), a custom element needs a hyphen
-(decision 41), `<link rel="component">` goes in a different place depending on the
-document's role (decisions 59 / 83), and a page under a layout should declare the sections
-its layout renders. Those are all errors you discover by compiling. This CLI makes them
-impossible by construction.
-
-It is also the **first external consumer of the compiler's API** — parsing, querying by
-offset, editing by span. If that API cannot place a `<link rel="component">` at the right
-offset of someone else's file, it will not carry a language server either.
-
-## Manual testing without publishing to npm
-
-None of the `@fudic/*` packages is published yet, so a generated project cannot resolve
-them from the registry. This is the loop that lets anyone drive the real binary from
-anywhere on their machine, with no registry and no tarballs. It is the same code the tests
-exercise, resolved the way a user's install resolves it.
-
-**1. Build and link the CLI globally.** The link points at this working copy, so a later
-`pnpm build` is picked up with no re-link.
+## Add to a project
 
 ```sh
-cd <repo>
-pnpm build                      # dist/ is what the binary runs
-cd packages/cli
-pnpm link --global              # exposes `fudic` on PATH (pnpm's global bin dir)
-fudic --help                    # from any directory
+fudic g lib ui                           # a library; its tag prefix is ui-
+fudic g app admin --uses ui              # another app, at /admin/
+fudic g component button --project ui    # <ui-button>: .fud, unit test, .fudspec, fixture
+fudic g page blog/:slug                  # a page and its unit test
+fudic g layout docs --sections nav       # a layout and its unit test
+fudic g service cart                     # a service you inject(), and its test
+fudic g form person --binary             # a form with typed controls, and its test
+fudic g style theme                      # a global stylesheet of the project
+fudic g lib guia --styles-only           # a library of design tokens and nothing else
+fudic g term then cart-has --param n:number   # a step of your own for .fudspec criteria
+fudic add forms --project admin          # an optional module: di, forms, http, i18n
+fudic add ui --project web               # a library of the workspace
 ```
 
-`pnpm bin -g` prints the directory that must be on `PATH`; `pnpm setup` puts it there once
-and for all. To undo it: `pnpm uninstall --global @fudic/cli`.
+`g` is `generate`. Nothing asks: every choice is an argument or an option, so every command
+goes into a script as it is. `--dry-run` shows what a command would write and run, and `--json`
+prints it as data.
 
-**2. Create a project anywhere, skipping the install the CLI cannot satisfy.**
+## Run
 
 ```sh
-cd /some/scratch/dir
-fudic new demo --no-install --no-git
+fudic dev        # every app on one port, each under its base URL
+fudic preview    # the same, with each app's build
+fudic test       # the unit tests of the project, or of every project from the root
+fudic spec       # the .fudspec criteria, in a browser
 ```
 
-**3. Point its four `@fudic/*` dependencies at this repo, then install for real.** The
-generated `package.json` pins `0.0.1` from npm; rewriting them to `link:` makes pnpm
-resolve them from disk, dist and all.
+A workspace runs them as `pnpm dev`, `pnpm preview`, `pnpm test` and `pnpm spec`, and one app
+on its own as `pnpm --filter <app> dev`.
+
+## Maintain
 
 ```sh
-cd demo
-node -e "
-const fs = require('fs');
-const repo = '<absolute path to this repo>';
-const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-for (const field of ['dependencies', 'devDependencies'])
-  for (const name of Object.keys(pkg[field] ?? {}))
-    if (name.startsWith('@fudic/')) pkg[field][name] = 'link:' + repo + '/packages/' + name.slice(7);
-fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-"
-pnpm install --ignore-workspace   # --ignore-workspace: the scratch dir is not this monorepo
-pnpm build                        # or: pnpm dev
+fudic fmt [path…]   # format .fud and .fudspec files; --check for CI
+fudic translate     # extract the texts to translate into src/locales/
 ```
 
-**4. Drive the generators against it.**
+## Errors
 
-```sh
-fudic g component app-card --in src/routes/index.fud
-fudic g page blog
-fudic g layout admin --sections aside
-pnpm build
-```
-
-Two notes on what this proves and what it does not. It exercises the published entry
-points (`bin`, `exports`, `dist`, and the `templates/` directory the binary reads at
-runtime), which is where packaging bugs live. It does **not** exercise a registry install:
-step 3 replaces it. Once the packages ship to npm, steps 2–3 collapse into plain
-`fudic new demo`, and this section can go.
-
-## Project layout
-
-Sources live under `src/`; the root belongs to the tooling:
-
-```
-demo/
-├── src/
-│   ├── components/
-│   ├── layouts/
-│   └── routes/
-├── fudic-globals.d.ts
-├── package.json
-├── sw.json
-├── tsconfig.json
-├── vite.config.ts
-└── .gitignore
-```
-
-In a workspace the same tree hangs under `apps/<name>/`, with `tsconfig.base.json` and one
-`fudic-globals.d.ts` at the root instead of one per project. `apps/` and `libs/` are defaults
-of this package alone — nothing else reads them, and `--dir` moves a project elsewhere without
-anything breaking, because discovery goes by `fudic.json`.
-
-Those four names are not literals of this package: they come from `@fudic/conventions`, which
-`@fudic/vite` reads too — the directory the CLI writes to and the one the plugin discovers routes
-in are the same name, from the same place. `--dir` overrides the default per command if you want a
-different layout; `src/` itself is a convention, not an option.
-
-## Design
-
-Every command is `plan → apply`:
-
-```ts
-import { planComponent, apply } from '@fudic/cli';
-import { COMPONENTS_DIR } from '@fudic/conventions';
-
-const plan = await planComponent('app-card', { cwd: '.', force: false, dir: COMPONENTS_DIR, wireInto: [], style: true, slot: false });
-await apply(plan, { cwd: '.', force: false });
-```
-
-`plan*` reads the disk and never writes; `apply` is the only writer. That is what makes
-`--dry-run` exact — it is literally the plan without `apply` — and every command testable
-without a filesystem.
-
-Exit codes: `0` success · `1` usage error or collision · `2` a compiler diagnostic on a
-file the CLI was asked to modify.
-
-## Rules it never breaks
-
-- **No interactivity.** No prompts, no menus, no confirmations. A CLI that asks cannot go
-  into a script, or CI, or a test.
-- **No regular expressions over `.fud`.** Every read of a foreign file goes through
-  `@fudic/compiler`.
-- **No throwing.** Errors are diagnostics with spans and exit codes. A Node stack trace in
-  the terminal is a bug in this package.
-- **Spans are preserved.** Wiring inserts at an exact offset: it does not reformat, does
-  not reorder attributes, does not touch a line it did not add.
-
-See `docs/sdd/SDD-22-fudic-cli.md`.
+A command that cannot run says why in one line, how to go on in the next, and which help to
+read. Codes are `FUD0440`–`FUD0459`; each one is explained in `@fudic/diagnostics`.
