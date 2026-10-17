@@ -5,7 +5,7 @@
  * session that will own it exists.
  */
 
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer as createHttp, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { dirname, relative } from 'node:path';
@@ -128,12 +128,17 @@ interface TermFile {
   readonly run: LoadedTerm['run'];
 }
 
-/** The terms of a `fudic/terms` folder, imported as they are and wrapped. */
-export function termsFrom(dir: string): (block: BlockKind, name: string) => Promise<LoadedTerm> {
+/**
+ * The terms `examples/basic` runs with, imported as they are and wrapped: its own `fudic/terms`
+ * first, then the stock ones of the `@fudic/terms` it installed — the two layers, in their order.
+ */
+export function exampleTerms(): (block: BlockKind, name: string) => Promise<LoadedTerm> {
   return async (block, name) => {
-    const path = `${dir}/${block}/${name}.js`;
+    const own = `${EXAMPLE_TERMS}/${block}/${name}.js`;
+    const runtime = existsSync(own) ? null : await resolveRuntime(EXAMPLE);
+    const path = runtime === null ? own : `${runtime.termsDir}/${block}/${name}.js`;
     const mod = (await import(pathToFileURL(path).href)) as TermFile;
-    return { path, layer: 'workspace', params: mod.meta.params, run: mod.run };
+    return { path, layer: runtime === null ? 'workspace' : 'framework', params: mod.meta.params, run: mod.run };
   };
 }
 

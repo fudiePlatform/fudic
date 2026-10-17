@@ -108,10 +108,22 @@ describe('FUD0940 — the term does not exist', () => {
     expect(codes(text, { files: { ...FILES, [created.path]: created.text } })).toEqual([]);
   });
 
-  it('only creates when nothing is close, and only changes when there is no project folder', () => {
+  it('only creates when nothing is close, and offers nothing without a project folder', () => {
     expect(titles(actions({ text: text.replace('visibl', 'xyzzy') }))).toEqual(['Create then/xyzzy.js']);
-    const outside = actions({ text, path: '/elsewhere/fud-button.fudspec' });
-    expect(titles(outside)).toEqual(["Change to 'visible'"]);
+    // No project: no folder to create in, and no @fudic/terms installed to change to (SDD-59 §4.10).
+    expect(actions({ text, path: '/elsewhere/fud-button.fudspec' })).toEqual([]);
+  });
+
+  it('SDD-59 §4.8 — with a fudic/bench.js, the module it creates types its ctx with the project extension', () => {
+    const created = createdBy(actions({ text, world: { files: { ...FILES, [`${ROOT}/fudic/bench.js`]: 'export default {};\n' } } })[1]);
+    expect(created.text).toBe(termModule('then', 'visibl', [{ name: 'arg1', type: 'string' }], { bench: true }));
+    expect(created.text).toContain("ContextOf<typeof import('../../bench.js').default>");
+  });
+
+  it('SDD-59 §4.8 — without it, the stock ctx', () => {
+    const created = createdBy(actions({ text })[1]);
+    expect(created.text).toContain("/** @type {import('@fudic/terms').Term<string>['run']} */\nexport async function run(");
+    expect(created.text).not.toContain('bench.js');
   });
 });
 

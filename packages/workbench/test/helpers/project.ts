@@ -5,6 +5,7 @@
  */
 
 import { cpSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { BenchMessage, ResultMessage, SessionMessage } from '../../src/protocol.js';
 import { slashes } from '../../src/target.js';
@@ -43,6 +44,7 @@ export function tempProject(name: string, options: { readonly terms?: boolean } 
     root,
     path,
     write(relative, content) {
+      mkdirSync(dirname(path(relative)), { recursive: true });
       writeFileSync(path(relative), content);
     },
     read: (relative) => readFileSync(path(relative), 'utf8'),

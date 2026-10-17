@@ -7,9 +7,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { BrowserLike } from '../../src/browser.js';
 import { runCriterion } from '../../src/engine.js';
 import type { LoadedExtension } from '../../src/extension.js';
-import { chrome, EXAMPLE_TERMS, exampleExtensions, PROJECT, startBench, target, termsFrom, type TestBench } from '../helpers/bench.js';
+import { chrome, exampleExtensions, exampleTerms, PROJECT, startBench, target, type TestBench } from '../helpers/bench.js';
 
-const terms = termsFrom(EXAMPLE_TERMS);
+const terms = exampleTerms();
 let browser: BrowserLike;
 let extensions: readonly LoadedExtension[];
 
@@ -46,7 +46,7 @@ describe('app-slotted and app-frame', () => {
       {
         block: 'then',
         term: 'visible',
-        layer: 'workspace',
+        layer: 'framework',
         args: ['role:link'],
         error: expect.stringContaining('matches 2 elements') as unknown,
       },

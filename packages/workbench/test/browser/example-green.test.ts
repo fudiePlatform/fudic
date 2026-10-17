@@ -4,12 +4,12 @@
  * example: the workbench's own folder lives under its `node_modules` and goes on close.
  */
 
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { openWorkbench } from '../../src/open.js';
 import type { ResultMessage } from '../../src/protocol.js';
 import { isFailure, type WorkbenchSession } from '../../src/types.js';
-import { EXAMPLE } from '../helpers/bench.js';
+import { EXAMPLE, EXAMPLE_TERMS } from '../helpers/bench.js';
 import { connectShell, isSession, type Shell } from '../helpers/project.js';
 
 let session: WorkbenchSession | undefined;
@@ -23,6 +23,13 @@ afterEach(async () => {
 });
 
 describe('examples/basic in the workbench — criterion 30', () => {
+  it('SDD-59 §4.11 — keeps no term the stock vocabulary already has: only given/route', () => {
+    const own = ['given', 'when', 'then'].flatMap((block) =>
+      existsSync(`${EXAMPLE_TERMS}/${block}`) ? readdirSync(`${EXAMPLE_TERMS}/${block}`).map((file) => `${block}/${file}`) : [],
+    );
+    expect(own).toEqual(['given/route.js']);
+  });
+
   it.each(['app-card', 'app-tabs'])('every criterion of %s is green', async (tag) => {
     const opened = await openWorkbench(`${EXAMPLE}/src/components/${tag}.fud`);
     if (isFailure(opened)) throw new Error(opened.diagnostic.message);
@@ -41,6 +48,10 @@ describe('examples/basic in the workbench — criterion 30', () => {
     expect(results.map((r) => [r.id, r.verdict, r.error ?? r.steps.find((s) => 'error' in s || !s.pass)])).toEqual(
       ids.map((id) => [id, 'pass', undefined]),
     );
+    // SDD-59 §6.7.8: the stock terms of @fudic/terms; only `route` is the example's own.
+    for (const step of results.flatMap((r) => r.steps)) {
+      expect(`${step.term}:${step.layer}`).toMatch(/^route:workspace$|:framework$/u);
+    }
 
     await opened.close();
     expect(existsSync(`${EXAMPLE}/node_modules/.fudic-bench/${process.pid}`)).toBe(false);

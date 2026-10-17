@@ -15,7 +15,10 @@ import { BENCH_FILE, type TermsRuntime } from '../../src/runtime.js';
 import { loadSession, nodeSpecFs, readText } from '../../src/session.js';
 import type { BenchTarget } from '../../src/target.js';
 import { invalidateFile, startVite } from '../../src/vite.js';
-import { EXAMPLE_TERMS, TERMS_PACKAGE } from '../helpers/bench.js';
+import { TERMS_PACKAGE } from '../helpers/bench.js';
+
+/** The stock terms of @fudic/terms, as the repo has them. */
+const STOCK_TERMS = `${TERMS_PACKAGE}/terms`;
 import { tempProject, type TempProject } from '../helpers/project.js';
 
 let project: TempProject | undefined;
@@ -59,7 +62,7 @@ describe('loadSession', () => {
     rmSync(project.path('fudic'), { recursive: true });
     project.write('src/components/app-tabs.fudspec', 'component app-tabs\n\ncriterion a\n  then\n    visible role:tab/"Tab A"\n');
     project.write('src/components/app-tabs.fixture.ts', 'export default {};\n');
-    const loaded = await session(project, 'app-tabs', { runtime: { termsDir: EXAMPLE_TERMS, stock: { file: 'C:/stock.js', extension: {} } } });
+    const loaded = await session(project, 'app-tabs', { runtime: { termsDir: STOCK_TERMS, stock: { file: 'C:/stock.js', extension: {} } } });
     expect(loaded.message.diagnostics).toEqual([]);
     expect(loaded.message.criteria).toEqual([
       {
@@ -67,7 +70,7 @@ describe('loadSession', () => {
         route: '/app-tabs/a',
         line: 3,
         props: null,
-        steps: [{ block: 'then', text: 'role:tab/"Tab A" is visible', file: `${EXAMPLE_TERMS}/then/visible.js`, line: 5 }],
+        steps: [{ block: 'then', text: 'role:tab/"Tab A" is visible', file: `${STOCK_TERMS}/then/visible.js`, line: 5 }],
       },
     ]);
     expect((await loaded.loadTerm('then', 'visible')).layer).toBe('framework');
@@ -217,8 +220,12 @@ describe('loadSession — SDD-59 §4.2, who loads the extensions', () => {
     const ctx = contextOf(loaded);
     expect(() => ctx['locate']).toThrow(message);
     expect(() => ctx['anything']).toThrow(message);
-    // Only the project layer: `visible` is the project's own.
-    expect((await loaded.loadTerm('then', 'visible')).layer).toBe('workspace');
+    // Only the project layer, which has no `visible` (SDD-59 §6.7.5).
+    expect(loaded.message.diagnostics.map((d) => [d.code, d.line])).toEqual([
+      ['FUD0940', 5],
+      ['FUD0940', 9],
+    ]);
+    await expect(loaded.loadTerm('then', 'visible')).rejects.toThrow('there is no then term "visible"');
   }, 60_000);
 
   it('a runtime given as null is no runtime, whatever the project has installed', async () => {

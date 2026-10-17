@@ -352,7 +352,7 @@ describe('watched files', () => {
         Object.keys(files).filter((f) => f.startsWith(`${dir}/`)).map((f) => f.slice(dir.length + 1)),
       readFile: (path: string) => files[path],
     };
-    const withFramework = setup({ specFs, frameworkTerms: '/fw/terms' });
+    const withFramework = setup({ specFs, frameworkTerms: () => '/fw/terms' });
     withFramework.fake.onInitialize?.(params());
     expect(withFramework.server.specs.terms('/p/x.fudspec').list('then').map((m) => [m.name, m.layer])).toEqual([
       ['a', 'workspace'],

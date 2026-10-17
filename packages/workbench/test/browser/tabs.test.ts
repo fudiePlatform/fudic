@@ -8,7 +8,7 @@ import type { BrowserLike, PageLike } from '../../src/browser.js';
 import { runCriterion, type CriterionResult, type LoadedTerm, type TermLoader } from '../../src/engine.js';
 import type { LoadedExtension } from '../../src/extension.js';
 import type { PlannedCriterion } from '../../src/pages.js';
-import { chrome, EXAMPLE_TERMS, exampleExtensions, PROJECT, startBench, target, termsFrom, type TestBench } from '../helpers/bench.js';
+import { chrome, exampleExtensions, exampleTerms, PROJECT, startBench, target, type TestBench } from '../helpers/bench.js';
 
 const SPEC = `component app-tabs
 
@@ -57,7 +57,7 @@ function byId(id: string): PlannedCriterion {
 
 /** The example's terms, plus two of the test's own: a pause, and Vite reloading every page. */
 function loader(pauseMs: number): TermLoader {
-  const example = termsFrom(EXAMPLE_TERMS);
+  const example = exampleTerms();
   return async (block, name): Promise<LoadedTerm> => {
     if (name === 'pause') {
       return {

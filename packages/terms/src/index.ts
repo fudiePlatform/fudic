@@ -10,6 +10,7 @@ export { defineExtension, stock } from './stock.js';
 export type {
   BenchExtension,
   Box,
+  ContextOf,
   Fixtures,
   Term,
   TermContext,

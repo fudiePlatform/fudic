@@ -42,10 +42,13 @@ export interface TermMeta<P extends string = string> {
   readonly describe?: (args: Readonly<Record<P, string | number>>) => string;
 }
 
-/** A term module. In a `.js` term: `@type {import('@fudic/terms').Term}`. */
-export interface Term<P extends string = string> {
+/**
+ * A term module. In a `.js` term, on its `run`: `@type {import('@fudic/terms').Term['run']}`;
+ * with the ctx a project's `fudic/bench.js` extends, `Term<string, ContextOf<…>>['run']`.
+ */
+export interface Term<P extends string = string, C extends TermContext = TermContext> {
   readonly meta: TermMeta<P>;
-  run(ctx: TermContext, args: Readonly<Record<P, string | number>>): Promise<TermOutcome>;
+  run(ctx: C, args: Readonly<Record<P, string | number>>): Promise<TermOutcome>;
 }
 
 /** What the workbench gives the runtime: the page and where to report. */
@@ -67,6 +70,16 @@ export interface BenchExtension<In extends TermContext = TermContext, Out extend
   /** Extends the ctx: returns the one the terms will see. */
   context?(ctx: In, host: TermHost): Out;
 }
+
+/**
+ * The ctx an extension leaves for the terms: `ContextOf<typeof import('../../bench.js').default>`
+ * in a term of the project. The stock one when it does not extend it.
+ */
+export type ContextOf<E> = E extends { context?(ctx: never, host: TermHost): infer Out }
+  ? Out extends TermContext
+    ? Out
+    : TermContext
+  : TermContext;
 
 /** The props each criterion mounts with, by name; `$content` goes inside the host, as children. */
 export type Fixtures<P> = Record<string, P & { readonly $content?: string }>;

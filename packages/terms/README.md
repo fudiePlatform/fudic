@@ -82,6 +82,17 @@ export default defineExtension({
 });
 ```
 
+A term of the project sees those methods, typed, when its `run` says so —
+`fudic g term` writes this line for you when `fudic/bench.js` exists:
+
+```js
+/** @type {import('@fudic/terms').Term<string, import('@fudic/terms').ContextOf<typeof import('../../bench.js').default>>['run']} */
+export async function run(ctx, { target }) {
+  await ctx.openMenu(String(target));
+  return { pass: true, evidence: `opened ${target}` };
+}
+```
+
 ## Fixtures
 
 A fixture entry may carry `$content`: HTML that goes inside the host, as its children — how a
