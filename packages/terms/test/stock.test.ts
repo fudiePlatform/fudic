@@ -59,7 +59,7 @@ describe('stock', () => {
 });
 
 describe('ctx.act', () => {
-  it('runs the gesture through the host settle, with the same target, and returns its result', async () => {
+  it('runs the gesture through the host settle and returns its result', async () => {
     await page.setContent('<button onclick="this.textContent = \'done\'">go</button>');
     const button = ctx.locate('button');
     const result = await ctx.act(button, async () => {
@@ -68,15 +68,32 @@ describe('ctx.act', () => {
     });
     expect(result).toBe(42);
     expect(host.settled).toHaveLength(1);
-    expect(host.settled[0]).toBe(button);
     expect(await ctx.text(button)).toBe('done');
+  });
+
+  it('hands settle the raw locator of a ctx.locate: what the host reads while waiting neither counts nor marks', async () => {
+    await page.setContent('<button style="margin:0">go</button><button>other</button>');
+    const button = ctx.locate('role:button/"go"');
+    await ctx.act(button, async () => undefined);
+    const raw = host.settled[0]!;
+    expect(raw).not.toBe(button);
+    expect(raw.toString()).toBe(button.toString());
+    await raw.isVisible();
+    expect(host.located).toEqual([]);
+  });
+
+  it('hands settle any other locator as it is', async () => {
+    await page.setContent('<button>go</button>');
+    const plain = page.locator('button');
+    await ctx.act(plain, async () => undefined);
+    expect(host.settled[0]).toBe(plain);
   });
 
   it('a gesture that rejects rejects act', async () => {
     await page.setContent('<button>go</button>');
     const button = ctx.locate('button');
     await expect(ctx.act(button, () => Promise.reject(new Error('boom')))).rejects.toThrow('boom');
-    expect(host.settled).toEqual([button]);
+    expect(host.settled).toHaveLength(1);
   });
 });
 

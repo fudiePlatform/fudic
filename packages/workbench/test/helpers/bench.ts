@@ -15,7 +15,9 @@ import { parseSpec, type BlockKind, type TermParam } from '@fudic/spec';
 import { createServer as createVite, type ViteDevServer } from 'vite';
 import { launchBrowser, type BrowserLike } from '../../src/browser.js';
 import type { LoadedTerm } from '../../src/engine.js';
+import type { LoadedExtension } from '../../src/extension.js';
 import { benchDir, planBench, type BenchPlan, type ExecutedFixtures } from '../../src/pages.js';
+import { resolveRuntime } from '../../src/runtime.js';
 import { slashes, type BenchTarget } from '../../src/target.js';
 import { isFailure } from '../../src/types.js';
 import { vi } from 'vitest';
@@ -133,4 +135,17 @@ export function termsFrom(dir: string): (block: BlockKind, name: string) => Prom
     const mod = (await import(pathToFileURL(path).href)) as TermFile;
     return { path, layer: 'workspace', params: mod.meta.params, run: mod.run };
   };
+}
+
+/** Where `@fudic/terms` lives in the repo: what a project's `node_modules` links to. */
+export const TERMS_PACKAGE = `${REPO}/packages/terms`;
+
+/**
+ * The extensions a session gives a project with `@fudic/terms`: its stock one, as `examples/basic`
+ * resolves it. The workbench never imports the package; the tests do not either.
+ */
+export async function exampleExtensions(): Promise<readonly LoadedExtension[]> {
+  const runtime = await resolveRuntime(EXAMPLE);
+  if (runtime === null) throw new Error(`${EXAMPLE} does not resolve @fudic/terms`);
+  return [runtime.stock];
 }

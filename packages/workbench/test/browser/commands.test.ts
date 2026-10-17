@@ -1,6 +1,6 @@
 /**
  * Criteria 8, 9 and 10 of BUG-48, end to end on a throwaway project: what a result carries (shots,
- * marks, an ignored step, the verdict before), and what the commands do to the runs — the same
+ * marks, the verdict before), and what the commands do to the runs — the same
  * controller whether they come from a shell's socket or from stdin.
  */
 
@@ -113,11 +113,11 @@ describe('shots and marks — criterion 8', () => {
   }, 90_000);
 });
 
-describe('ignored and was — criterion 9', () => {
-  it('a given route is ignored, without evidence; the second run carries the first verdict', async () => {
+describe('was — criterion 9', () => {
+  it('a given route says the component was mounted alone; the second run carries the first verdict', async () => {
     const { s, box } = await open('criterion ruta\n  given\n    route /blog\n  then\n    visible app-tabs\n');
     const first = await box.next(resultOf('ruta'), 0, 60_000);
-    expect(first.steps[0]).toEqual({ block: 'given', term: 'route', layer: 'workspace', args: ['/blog'], pass: true, evidence: null, ignored: true });
+    expect(first.steps[0]).toEqual({ block: 'given', term: 'route', layer: 'workspace', args: ['/blog'], pass: true, evidence: 'mounted alone, not at /blog' });
     expect('was' in first).toBe(false);
     const from = box.messages.length;
     s.command({ v: 2, type: 'run', tag: 'app-tabs' });

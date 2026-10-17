@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-59 — Los términos: un runtime abierto en `@fudic/terms`](./SDD-59-terminos-de-serie.md)
 > **Paquetes:** `@fudic/terms` (nuevo) · `@fudic/workbench` · `@fudic/spec` · `@fudic/language-server` · `fudic-vscode` · `examples/basic`
-> **Progreso:** 3 / 14 — `En curso`.
+> **Progreso:** 7 / 14 — `En curso`.
 
 `@fudic/terms` nace al 100 % en las cuatro métricas; los paquetes tocados no bajan de su suelo.
 
@@ -18,12 +18,16 @@
 
 ## Fase 2 — El banco recibe el runtime (4)
 
+Adelantado de la tarea 13 (decisión de Pedro, 2026-10-17): los tests del banco corren los criterios
+de `examples/basic`, así que esta fase ya le instala `@fudic/terms` y adapta sus términos al `ctx`
+nuevo (`given/route.js` sin `ctx.goto`). La tarea 13 sigue borrando los duplicados.
+
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 4 | 2 | **El banco acepta extensiones.** `runCriterion` recibe `BenchExtension[]`: `setup` en orden antes de montar, `context` encadenado desde el `TermHost` (`Page` real, `settled`, `onLocate`); borrar `context.ts` (§4.1, §4.3, §4.4) | `packages/workbench/src/engine.ts` · `src/browser.ts` · `src/run.ts` |
-| [ ] | 5 | 4 | **Carga.** La sesión resuelve `stock` de `@fudic/terms` y `fudic/bench.js` del proyecto, en ese orden (§3.3, §4.2) | `packages/workbench/src/session.ts` |
-| [ ] | 6 | 4 | **`$content`.** La página del criterio escribe el contenido dentro del host; `Fixtures` en `@fudic/spec` (§3.4, §4.5) | `packages/workbench/src/pages.ts` · `packages/spec/src/fixtures.ts` |
-| [ ] | 7 | 4–6 | **Tests.** Criterios §6.3, §6.4, §6.5 con un runtime falso y con el real | `packages/workbench/test/*` |
+| [x] | 4 | 2 | **El banco acepta extensiones.** `runCriterion` recibe `BenchExtension[]`: `setup` en orden antes de montar, `context` encadenado desde el `TermHost` (`Page` real, `settled`, `onLocate`); borrar `context.ts` (§4.1, §4.3, §4.4) | `packages/workbench/src/engine.ts` · `src/browser.ts` · `src/run.ts` |
+| [x] | 5 | 4 | **Carga.** La sesión resuelve `stock` de `@fudic/terms` y `fudic/bench.js` del proyecto, en ese orden (§3.3, §4.2) | `packages/workbench/src/session.ts` |
+| [x] | 6 | 4 | **`$content`.** La página del criterio escribe el contenido dentro del host; `Fixtures` en `@fudic/spec` (§3.4, §4.5) | `packages/workbench/src/pages.ts` · `packages/spec/src/fixtures.ts` |
+| [x] | 7 | 4–6 | **Tests.** Criterios §6.3, §6.4, §6.5 con un runtime falso y con el real | `packages/workbench/test/*` |
 
 ## Fase 3 — Vocabulario de serie (3)
 

@@ -10,7 +10,9 @@ export const meta = {
 };
 
 export async function run(ctx, { target, px }) {
-  const { height } = await ctx.locate(target).box();
+  const box = await ctx.locate(target).boundingBox();
+  if (box === null) throw new Error(`${target} is not rendered`);
+  const { height } = box;
   return { pass: height >= px, evidence: `${height}px` };
 }
 

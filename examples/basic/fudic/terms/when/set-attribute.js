@@ -11,7 +11,17 @@ export const meta = {
 };
 
 export async function run(ctx, { target, attribute, value }) {
-  const before = await ctx.locate(target).setAttribute(attribute, value);
+  const element = ctx.locate(target);
+  const before = await ctx.act(element, () =>
+    element.evaluate(
+      (el, [name, next]) => {
+        const was = el.getAttribute(name);
+        el.setAttribute(name, next);
+        return was;
+      },
+      [attribute, value],
+    ),
+  );
   return { pass: true, evidence: before === null ? 'before: none' : `before: "${before}"` };
 }
 

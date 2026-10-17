@@ -7,7 +7,8 @@ export const meta = {
 };
 
 export async function run(ctx, { target }) {
-  await ctx.locate(target).click();
+  const element = ctx.locate(target);
+  await ctx.act(element, () => element.click());
   return { pass: true, evidence: `clicked ${target}` };
 }
 

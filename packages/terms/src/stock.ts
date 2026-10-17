@@ -5,7 +5,7 @@
 
 import type { Locator } from 'playwright-core';
 import { FLAT_TEXT } from './flat-text.js';
-import { guardedLocator } from './locate.js';
+import { guardedLocator, unguarded } from './locate.js';
 import type { BenchExtension, TermContext, TermHost } from './types.js';
 
 /** Writes an extension with its types: what goes in, what comes out. */
@@ -22,7 +22,7 @@ export function stockContext(host: TermHost): TermContext {
   return {
     page: host.page,
     locate: (ref) => guardedLocator(host.page, ref, (located, box) => host.onLocate(located, box)),
-    act: (target, gesture) => host.settle(target, gesture),
+    act: (target, gesture) => host.settle(unguarded(target), gesture),
     text: (target: Locator) => target.evaluate(flatText),
   };
 }

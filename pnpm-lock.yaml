@@ -57,6 +57,9 @@ importers:
       '@axe-core/playwright':
         specifier: 4.13.0
         version: 4.13.0(playwright-core@1.62.0)
+      '@fudic/terms':
+        specifier: workspace:*
+        version: link:../../packages/terms
       '@fudic/testing':
         specifier: workspace:*
         version: link:../../packages/testing

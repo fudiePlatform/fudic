@@ -554,20 +554,19 @@ describe('the steps — criterion 13', () => {
     expect(await has(p, '.card[data-id=a] .diff')).toBe(false);
   }, 60_000);
 
-  it('a step in error is ✗ with why; an ignored one is dimmed and badged; a step without result is blank', async () => {
+  it('a step in error is ✗ with why; a step without result is blank; no step is badged', async () => {
     const p = await shell();
     await deliver(p, session(['a']));
     await deliver(
       p,
       result('a', 'error', {
-        steps: [{ block: 'when', term: 'route', layer: 'workspace', args: [], pass: true, evidence: null, ignored: true }],
+        steps: [{ block: 'when', term: 'click', layer: 'workspace', args: [], error: 'role:link matches 2 elements' }],
       }),
     );
     expect(await all(p, '.card[data-id=a] .steps li', '(li) => [li.className, li.querySelector(".mark").textContent, li.querySelector(".evidence").textContent]')).toEqual([
-      ['when ignored', '', ''],
+      ['when bad', '✗', '→ role:link matches 2 elements'],
       ['then', '', ''],
     ]);
-    expect(await text(p, '.card[data-id=a] .steps li.ignored .content > .badge')).toBe('skipped here');
     await deliver(
       p,
       result('a', 'error', {

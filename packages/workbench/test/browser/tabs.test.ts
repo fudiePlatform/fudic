@@ -6,8 +6,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { BrowserLike, PageLike } from '../../src/browser.js';
 import { runCriterion, type CriterionResult, type LoadedTerm, type TermLoader } from '../../src/engine.js';
+import type { LoadedExtension } from '../../src/extension.js';
 import type { PlannedCriterion } from '../../src/pages.js';
-import { chrome, EXAMPLE_TERMS, PROJECT, startBench, target, termsFrom, type TestBench } from '../helpers/bench.js';
+import { chrome, EXAMPLE_TERMS, exampleExtensions, PROJECT, startBench, target, termsFrom, type TestBench } from '../helpers/bench.js';
 
 const SPEC = `component app-tabs
 
@@ -35,11 +36,13 @@ criterion recarga-a-mitad
 
 let bench: TestBench;
 let browser: BrowserLike;
+let extensions: readonly LoadedExtension[];
 let criteria: readonly PlannedCriterion[];
 
 beforeAll(async () => {
   bench = await startBench(PROJECT);
   browser = await chrome();
+  extensions = await exampleExtensions();
   criteria = bench.plan(target(PROJECT, 'app-tabs', false), SPEC).criteria;
 }, 60_000);
 
@@ -105,15 +108,16 @@ async function tenTimes(run: () => Promise<CriterionResult>): Promise<string[]> 
 
 describe('criterion 11 — the first click is served (bug A)', () => {
   // The component's hydration chunk, loaded by the first gesture. Holding it on the server makes
-  // the race of bug A certain instead of a matter of milliseconds under load.
-  const CHUNK = { match: /^\/@fudic\/h\/app-tabs\.js/u, ms: 800 };
+  // the race of bug A certain instead of a matter of milliseconds under load: long enough that a
+  // whole suite running in parallel, under coverage, cannot serve it before the `then` reads.
+  const CHUNK = { match: /^\/@fudic\/h\/app-tabs\.js/u, ms: 3000 };
 
   it('is red without the wait for the gesture', async () => {
     // The action returns as soon as the click does: no wait for `fud:hydrated`, no frame.
     const careless = patched(() => ({ waitFor: async () => undefined, evaluate: async <R>() => undefined as R }));
     bench.slow = CHUNK;
     try {
-      const result = await runCriterion(careless, bench.origin, byId('cambia-de-pestana'), loader(0));
+      const result = await runCriterion(careless, bench.origin, byId('cambia-de-pestana'), loader(0), extensions);
       expect(result.verdict).toBe('fail');
       expect(result.steps.at(-1)).toMatchObject({ term: 'text', pass: false, evidence: { actual: 'panel A' } });
     } finally {
@@ -124,7 +128,7 @@ describe('criterion 11 — the first click is served (bug A)', () => {
   it('is green with the wait, however long the chunk takes', async () => {
     bench.slow = CHUNK;
     try {
-      const result = await runCriterion(browser, bench.origin, byId('cambia-de-pestana'), loader(0));
+      const result = await runCriterion(browser, bench.origin, byId('cambia-de-pestana'), loader(0), extensions);
       expect(result.verdict).toBe('pass');
     } finally {
       bench.slow = null;
@@ -132,25 +136,25 @@ describe('criterion 11 — the first click is served (bug A)', () => {
   }, 60_000);
 
   it('is green at the first try, ten times in a row', async () => {
-    const verdicts = await tenTimes(() => runCriterion(browser, bench.origin, byId('cambia-de-pestana'), loader(0)));
+    const verdicts = await tenTimes(() => runCriterion(browser, bench.origin, byId('cambia-de-pestana'), loader(0), extensions));
     expect(verdicts).toEqual(Array(10).fill('pass'));
   }, 120_000);
 
   it.each([1000, 3000])('is green ten times with %i ms of wait before the click', async (ms) => {
-    const verdicts = await tenTimes(() => runCriterion(browser, bench.origin, byId('espera-y-cambia'), loader(ms)));
+    const verdicts = await tenTimes(() => runCriterion(browser, bench.origin, byId('espera-y-cambia'), loader(ms), extensions));
     expect(verdicts).toEqual(Array(10).fill('pass'));
   }, 120_000);
 });
 
 describe('criterion 14 — the measuring page does not listen to Vite', () => {
   it('a full-reload in the middle of a criterion does not reload it', async () => {
-    const result = await runCriterion(browser, bench.origin, byId('recarga-a-mitad'), loader(0));
+    const result = await runCriterion(browser, bench.origin, byId('recarga-a-mitad'), loader(0), extensions);
     expect(result.verdict).toBe('pass');
   }, 60_000);
 
   it('and it would, if its WebSockets were not silenced', async () => {
     const listening = patched(() => ({ silenceWebSockets: async () => undefined }));
-    const result = await runCriterion(listening, bench.origin, byId('recarga-a-mitad'), loader(0));
+    const result = await runCriterion(listening, bench.origin, byId('recarga-a-mitad'), loader(0), extensions);
     expect(result.verdict).toBe('fail');
     expect(result.steps.at(-1)).toMatchObject({ term: 'text', pass: false, evidence: { actual: 'panel A' } });
   }, 60_000);

@@ -389,3 +389,50 @@ describe('benchDir — criterion 4, one folder per process', () => {
     expect(benchRoutesDir()).toBe(`node_modules/.fudic-bench/${process.pid}/routes`);
   });
 });
+
+describe('planBench — SDD-59 §4.6, the fixture gives the component content', () => {
+  const plan = (fixtures: ExecutedFixtures) =>
+    planBench({
+      target: TARGET,
+      spec: spec('component app-card\n\ncriterion icono\n  given\n    props entrada\n'),
+      fixtures,
+      dir: DIR,
+    });
+
+  it('writes $content inside the host, as its children, and it is not a prop', () => {
+    const page = plan({ entrada: { $content: '<span slot="icon" role="img" aria-label="star">★</span>' } }).files.get('routes/app-card/icono.fud');
+    expect(page).toContain('    <app-card><span slot="icon" role="img" aria-label="star">★</span></app-card>\n');
+    // The only key is the content: nothing to import, nothing to bind.
+    expect(page).not.toContain('@code');
+    expect(page).not.toContain('$content');
+  });
+
+  it('keeps the props as attributes beside the content', () => {
+    const page = plan({ entrada: { title: 'Hi', $content: '<b>x</b>', variant: 'v' } }).files.get('routes/app-card/icono.fud')!;
+    expect(page).toContain('      const { title, variant } = fixtures["entrada"];\n');
+    expect(page).toContain('    <app-card .title=@title .variant=@variant><b>x</b></app-card>\n');
+  });
+
+  it('leaves the host empty without $content, as before', () => {
+    expect(plan({ entrada: { title: 'Hi' } }).files.get('routes/app-card/icono.fud')).toContain('    <app-card .title=@title></app-card>\n');
+  });
+
+  it('a $content that is not a string is no content, and no prop either', () => {
+    const page = plan({ entrada: { $content: 42 } }).files.get('routes/app-card/icono.fud')!;
+    expect(page).toContain('    <app-card></app-card>\n');
+    expect(page).not.toContain('$content');
+  });
+
+  it('with a Signal prop, the content goes inside the component in the host, and the page mounts the host empty', () => {
+    const files = planBench({
+      target: { ...TARGET, tag: 'signal-display', component: 'C:/proj/src/components/signal-display.fud', fixture: 'C:/proj/src/components/signal-display.fixture.ts' },
+      spec: spec('component signal-display\n\ncriterion diez\n  given\n    props diez\n'),
+      fixtures: { diez: { value: signal(10), $content: '<i slot="unit">kg</i>' } },
+      dir: DIR,
+    }).files;
+    expect(files.get('components/signal-display/bench-host-signal-display-diez.fud')).toContain(
+      '    <signal-display .value=@value><i slot="unit">kg</i></signal-display>\n',
+    );
+    expect(files.get('routes/signal-display/diez.fud')).toContain('    <bench-host-signal-display-diez></bench-host-signal-display-diez>\n');
+  });
+});

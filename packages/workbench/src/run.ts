@@ -121,7 +121,7 @@ export async function runSpecs(paths: readonly string[], options: RunOptions = {
             criteria: session.criteria,
             workers: options.workers ?? DEFAULT_WORKERS,
             signal: new AbortController().signal,
-            run: (criterion, signal) => runCriterion(project.browser, project.server.origin, criterion, session.loadTerm, signal),
+            run: (criterion, signal) => runCriterion(project.browser, project.server.origin, criterion, session.loadTerm, session.extensions, signal),
             done: (result) => {
               const { shots: _shots, ...rest } = result;
               const message: ResultMessage = { v: 2, type: 'result', tag: target.tag, ...rest, shots: {} };

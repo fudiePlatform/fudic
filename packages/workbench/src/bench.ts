@@ -92,7 +92,7 @@ export async function openBench(input: BenchInput): Promise<Bench> {
   }
 
   async function run(trigger: string | null, ids: readonly string[] | undefined): Promise<void> {
-    const { loadTerm } = session;
+    const { loadTerm, extensions } = session;
     const tag = target.tag;
     const chosen = ids === undefined ? session.criteria : session.criteria.filter((c) => ids.includes(c.id));
     const criteria = runOrder(chosen, verdicts);
@@ -105,7 +105,7 @@ export async function openBench(input: BenchInput): Promise<Bench> {
         criteria,
         workers: input.workers,
         signal: controller.signal,
-        run: (criterion, signal) => runCriterion(input.browser, input.origin, criterion, loadTerm, signal),
+        run: (criterion, signal) => runCriterion(input.browser, input.origin, criterion, loadTerm, extensions, signal),
         done: publishResult,
       });
       if (unfinished.length > 0) input.publish({ v: 2, type: 'cancelled', tag, ids: unfinished });

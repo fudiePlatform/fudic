@@ -4,11 +4,11 @@
  * project, and out of git) and carries the example's terms in its own `fudic/terms/`.
  */
 
-import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { BenchMessage, ResultMessage, SessionMessage } from '../../src/protocol.js';
 import { slashes } from '../../src/target.js';
-import { EXAMPLE_TERMS, PROJECT } from './bench.js';
+import { EXAMPLE_TERMS, PROJECT, TERMS_PACKAGE } from './bench.js';
 
 const TMP = slashes(fileURLToPath(new URL('../.tmp', import.meta.url)));
 
@@ -23,13 +23,21 @@ export interface TempProject {
 
 let count = 0;
 
-export function tempProject(name: string): TempProject {
+/**
+ * With `terms` (the default) the project has `@fudic/terms` installed, linked as pnpm links it;
+ * without, it lacks the package.
+ */
+export function tempProject(name: string, options: { readonly terms?: boolean } = {}): TempProject {
   count += 1;
   const root = `${TMP}/${name}-${process.pid}-${count}`;
   rmSync(root, { recursive: true, force: true });
   mkdirSync(root, { recursive: true });
   cpSync(PROJECT, root, { recursive: true, filter: (source) => !slashes(source).includes('/node_modules') });
   cpSync(EXAMPLE_TERMS, `${root}/fudic/terms`, { recursive: true });
+  if (options.terms !== false) {
+    mkdirSync(`${root}/node_modules/@fudic`, { recursive: true });
+    symlinkSync(TERMS_PACKAGE, `${root}/node_modules/@fudic/terms`, 'junction');
+  }
   const path = (relative: string) => `${root}/${relative}`;
   return {
     root,

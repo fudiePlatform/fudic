@@ -4,7 +4,7 @@
  * REPLAYS it a few milliseconds after the click returned. A `then` that reads right away reads
  * the state from before.
  *
- * So an action of the `ctx` notes, before acting, the nearest hydratable host and whether its tag
+ * So a gesture the runtime hands the host (`TermHost.settle`) notes, before acting, the nearest hydratable host and whether its tag
  * is defined; after acting it waits for that host's `fud:hydrated` when it was not, and then one
  * frame, because the replay fires effects that paint afterwards.
  *
@@ -38,9 +38,10 @@ const HYDRATED: PageScript = `(id) => globalThis.${SEEN}.has(id)`;
 const FRAME: PageScript = `() => new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)))`;
 
 /** Runs an action and returns once the page has served the gesture. */
-export async function settled(page: PageLike, element: LocatorLike, act: () => Promise<void>): Promise<void> {
+export async function settled<T>(page: PageLike, element: LocatorLike, act: () => Promise<T>): Promise<T> {
   const host = await element.evaluate<{ id: string; defined: boolean } | null>(NEAREST_HOST);
-  await act();
+  const result = await act();
   if (host !== null && !host.defined) await page.waitFor(HYDRATED, host.id);
   await page.evaluate(FRAME);
+  return result;
 }

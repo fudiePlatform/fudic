@@ -7,10 +7,10 @@
 
 import type { BlockKind, Layer, TermParam } from '@fudic/spec';
 import { firstLine, type BrowserLike, type LocatorLike } from './browser.js';
-import { createTermContext, type TermContext } from './context.js';
+import { chainContext, setUp, type LoadedExtension, type TermHost } from './extension.js';
 import type { PlannedCriterion } from './pages.js';
 import type { Box, Mark, StepResult, Verdict } from './protocol.js';
-import { OBSERVER } from './settle.js';
+import { OBSERVER, settled } from './settle.js';
 
 /** What a term's `run` answers. */
 export interface TermOutcome {
@@ -26,7 +26,8 @@ export interface LoadedTerm {
   readonly params: readonly TermParam[];
   /** `meta.describe`, when the module has one. */
   readonly describe?: (args: Readonly<Record<string, unknown>>) => string;
-  run(ctx: TermContext, args: Readonly<Record<string, unknown>>): Promise<TermOutcome>;
+  /** `ctx` is what the extensions built: the workbench does not know its shape. */
+  run(ctx: unknown, args: Readonly<Record<string, unknown>>): Promise<TermOutcome>;
 }
 
 export type TermLoader = (block: BlockKind, name: string) => Promise<LoadedTerm>;
@@ -66,6 +67,7 @@ export async function runCriterion(
   origin: string,
   criterion: PlannedCriterion,
   loadTerm: TermLoader,
+  extensions: readonly LoadedExtension[],
   signal?: AbortSignal,
 ): Promise<CriterionResult> {
   const started = Date.now();
@@ -93,23 +95,27 @@ export async function runCriterion(
     await page.silenceWebSockets((url) => !url.pathname.startsWith(BENCH_PATH));
     await page.addInitScript(OBSERVER);
     page.onPageError((message) => pageErrors.push(message));
+    await setUp(extensions, page.page);
 
     const status = await page.goto(origin + criterion.route);
     if (status === null || status >= 400) {
       return done({ verdict: 'error', error: `the page ${criterion.route} answered ${status ?? 'nothing'}` });
     }
 
-    const mount = page.locate({ css: criterion.mount });
+    const mount = page.locate(criterion.mount);
     const located: { step: number; ref: string; box: Box }[] = [];
     let current = 0;
-    let navigated = false;
-    const ctx = createTermContext(
-      page,
-      () => {
-        navigated = true;
+    const host: TermHost = {
+      page: page.page,
+      settle: (target, gesture) => settled(page, page.adopt(target), gesture),
+      // A term may read a reference and then act on it: one mark per step and reference, the last.
+      onLocate(ref, box) {
+        const same = located.findIndex((mark) => mark.step === current && mark.ref === ref);
+        if (same === -1) located.push({ step: current, ref, box });
+        else located[same] = { step: current, ref, box };
       },
-      (ref, box) => located.push({ step: current, ref, box }),
-    );
+    };
+    const ctx = chainContext(extensions, host);
     /** Taken just before the first `when`: once, whatever it gave. */
     let before: Promise<Shot | undefined> | undefined;
     const ending = await runSteps();
@@ -132,10 +138,8 @@ export async function runCriterion(
         let term: LoadedTerm | undefined;
         try {
           term = await loadTerm(step.block, step.term);
-          navigated = false;
           const outcome = await term.run(ctx, namedArgs(term.params, step.args));
-          if (navigated) steps.push({ ...base, layer: term.layer, pass: outcome.pass, evidence: null, ignored: true });
-          else steps.push({ ...base, layer: term.layer, pass: outcome.pass, evidence: outcome.evidence });
+          steps.push({ ...base, layer: term.layer, pass: outcome.pass, evidence: outcome.evidence });
           if (step.block === 'then' && !outcome.pass) verdict = 'fail';
         } catch (error) {
           steps.push({ ...base, layer: term?.layer ?? 'workspace', error: firstLine(error) });

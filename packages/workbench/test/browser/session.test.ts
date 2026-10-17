@@ -9,11 +9,13 @@ import { rmSync } from 'node:fs';
 import type { ViteDevServer } from 'vite';
 import { afterEach, describe, expect, it } from 'vitest';
 import { emptyBenchDir } from '../../src/bench-dir.js';
+import { chainContext, type TermHost } from '../../src/extension.js';
 import { benchDir, benchRoutesDir } from '../../src/pages.js';
+import { BENCH_FILE, type TermsRuntime } from '../../src/runtime.js';
 import { loadSession, nodeSpecFs, readText } from '../../src/session.js';
 import type { BenchTarget } from '../../src/target.js';
 import { invalidateFile, startVite } from '../../src/vite.js';
-import { EXAMPLE_TERMS } from '../helpers/bench.js';
+import { EXAMPLE_TERMS, TERMS_PACKAGE } from '../helpers/bench.js';
 import { tempProject, type TempProject } from '../helpers/project.js';
 
 let project: TempProject | undefined;
@@ -32,7 +34,7 @@ afterEach(async () => {
 async function session(
   p: TempProject,
   tag: string,
-  extra: { frameworkTerms?: string } = {},
+  extra: { runtime?: TermsRuntime | null } = {},
   override: Partial<BenchTarget> = {},
 ) {
   const component = p.path(`src/components/${tag}.fud`);
@@ -57,7 +59,7 @@ describe('loadSession', () => {
     rmSync(project.path('fudic'), { recursive: true });
     project.write('src/components/app-tabs.fudspec', 'component app-tabs\n\ncriterion a\n  then\n    visible role:tab/"Tab A"\n');
     project.write('src/components/app-tabs.fixture.ts', 'export default {};\n');
-    const loaded = await session(project, 'app-tabs', { frameworkTerms: EXAMPLE_TERMS });
+    const loaded = await session(project, 'app-tabs', { runtime: { termsDir: EXAMPLE_TERMS, stock: { file: 'C:/stock.js', extension: {} } } });
     expect(loaded.message.diagnostics).toEqual([]);
     expect(loaded.message.criteria).toEqual([
       {
@@ -169,5 +171,93 @@ describe('the disk of a session', () => {
     http = createServer();
     vite = await startVite({ root: project.root, routesDir: benchRoutesDir(), http, onProcessed: () => undefined });
     expect(() => invalidateFile(vite!, project!.path('src/nothing.ts'))).not.toThrow();
+  }, 60_000);
+});
+
+/** The ctx the session's extensions build, on a host nobody calls. */
+function contextOf(loaded: Awaited<ReturnType<typeof loadSession>>): Record<string, unknown> {
+  return chainContext(loaded.extensions, {} as TermHost) as Record<string, unknown>;
+}
+
+const SPEC = 'component app-tabs\n\ncriterion a\n  then\n    visible app-tabs\n\ncriterion b\n  then\n    visible app-tabs\n';
+
+/** The extension of §3.3, as a user writes it. */
+const BENCH_JS =
+  "import { defineExtension } from '@fudic/terms';\n\n" +
+  'export default defineExtension({\n' +
+  '  async setup(page) {\n' +
+  "    await page.emulateMedia({ colorScheme: 'dark' });\n" +
+  "    await page.route('**/api/**', (route) => route.fulfill({ json: [] }));\n" +
+  '  },\n' +
+  '  context: (ctx) => ({\n' +
+  '    ...ctx,\n' +
+  '    async openMenu(ref) {\n' +
+  '      const el = ctx.locate(ref);\n' +
+  "      await ctx.act(el, () => el.press('Enter'));\n" +
+  '    },\n' +
+  '  }),\n' +
+  '});\n';
+
+describe('loadSession — SDD-59 §4.2, who loads the extensions', () => {
+  it('resolves @fudic/terms from the project: its stock extension, and its terms/ as the framework layer', async () => {
+    project = tempProject('runtime');
+    project.write('src/components/app-tabs.fudspec', SPEC);
+    const loaded = await session(project, 'app-tabs', {}, { fixture: null });
+    expect(loaded.extensions.map((e) => e.file)).toEqual([`${TERMS_PACKAGE}/dist/index.js`]);
+    expect(Object.keys(contextOf(loaded)).sort()).toEqual(['act', 'locate', 'page', 'text']);
+    expect(loaded.criteria.map((c) => c.error)).toEqual([undefined, undefined]);
+  }, 60_000);
+
+  it('without @fudic/terms, the ctx says the package is missing on any use', async () => {
+    project = tempProject('no-runtime', { terms: false });
+    project.write('src/components/app-tabs.fudspec', SPEC);
+    const loaded = await session(project, 'app-tabs', {}, { fixture: null });
+    expect(loaded.extensions.map((e) => e.file)).toEqual(['@fudic/terms']);
+    const message = `@fudic/terms is not installed in ${project.root}: pnpm add -D @fudic/terms`;
+    const ctx = contextOf(loaded);
+    expect(() => ctx['locate']).toThrow(message);
+    expect(() => ctx['anything']).toThrow(message);
+    // Only the project layer: `visible` is the project's own.
+    expect((await loaded.loadTerm('then', 'visible')).layer).toBe('workspace');
+  }, 60_000);
+
+  it('a runtime given as null is no runtime, whatever the project has installed', async () => {
+    project = tempProject('null-runtime');
+    project.write('src/components/app-tabs.fudspec', SPEC);
+    const loaded = await session(project, 'app-tabs', { runtime: null }, { fixture: null });
+    expect(loaded.extensions.map((e) => e.file)).toEqual(['@fudic/terms']);
+  }, 60_000);
+
+  it('loads fudic/bench.js of the project after the stock extension, through Vite', async () => {
+    project = tempProject('bench-js');
+    project.write('src/components/app-tabs.fudspec', SPEC);
+    project.write(BENCH_FILE, BENCH_JS);
+    const loaded = await session(project, 'app-tabs', {}, { fixture: null });
+    expect(loaded.extensions.map((e) => e.file)).toEqual([`${TERMS_PACKAGE}/dist/index.js`, project.path(BENCH_FILE)]);
+    expect(typeof loaded.extensions[1]!.extension.setup).toBe('function');
+    expect(Object.keys(contextOf(loaded)).sort()).toEqual(['act', 'locate', 'openMenu', 'page', 'text']);
+    expect(loaded.criteria.map((c) => c.error)).toEqual([undefined, undefined]);
+  }, 60_000);
+
+  it('a fudic/bench.js without a default export extends nothing', async () => {
+    project = tempProject('bench-js-empty');
+    project.write('src/components/app-tabs.fudspec', SPEC);
+    project.write(BENCH_FILE, 'export const unused = 1;\n');
+    const loaded = await session(project, 'app-tabs', {}, { fixture: null });
+    expect(loaded.extensions[1]).toEqual({ file: project.path(BENCH_FILE), extension: {} });
+    expect(Object.keys(contextOf(loaded)).sort()).toEqual(['act', 'locate', 'page', 'text']);
+  }, 60_000);
+
+  it('a fudic/bench.js that throws while loading leaves every criterion in error, with the message and its path', async () => {
+    project = tempProject('bench-js-throws');
+    project.write('src/components/app-tabs.fudspec', SPEC);
+    project.write(BENCH_FILE, "throw new Error('no bench today\\nsecond line');\n");
+    const loaded = await session(project, 'app-tabs', {}, { fixture: null });
+    const error = `${project.path(BENCH_FILE)}: no bench today`;
+    expect(loaded.criteria.map((c) => [c.id, c.error])).toEqual([
+      ['a', error],
+      ['b', error],
+    ]);
+    expect(loaded.extensions.map((e) => e.file)).toEqual([`${TERMS_PACKAGE}/dist/index.js`]);
   }, 60_000);
 });

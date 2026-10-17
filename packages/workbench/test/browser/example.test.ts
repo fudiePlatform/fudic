@@ -7,13 +7,16 @@ import { signal } from '@fudic/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { BrowserLike } from '../../src/browser.js';
 import { runCriterion } from '../../src/engine.js';
-import { chrome, EXAMPLE, EXAMPLE_TERMS, startBench, target, termsFrom, type TestBench } from '../helpers/bench.js';
+import type { LoadedExtension } from '../../src/extension.js';
+import { chrome, EXAMPLE, EXAMPLE_TERMS, exampleExtensions, startBench, target, termsFrom, type TestBench } from '../helpers/bench.js';
 
 const terms = termsFrom(EXAMPLE_TERMS);
 let browser: BrowserLike;
+let extensions: readonly LoadedExtension[];
 
 beforeAll(async () => {
   browser = await chrome();
+  extensions = await exampleExtensions();
 }, 60_000);
 
 afterAll(async () => {
@@ -34,7 +37,7 @@ describe('app-card of the example', () => {
   async function run(spec: string) {
     const card = target(EXAMPLE, 'app-card');
     const plan = bench.plan(card, `component app-card\n\n${spec}`, await bench.fixture(card.fixture!));
-    return Promise.all(plan.criteria.map((c) => runCriterion(browser, bench.origin, c, terms)));
+    return Promise.all(plan.criteria.map((c) => runCriterion(browser, bench.origin, c, terms, extensions)));
   }
 
   it('criterion 8 — every term of examples/basic/fudic/terms runs unchanged', async () => {
@@ -96,7 +99,7 @@ describe('criterion 15 — a Signal prop from the fixture, alive', () => {
       'component signal-display\n\ncriterion diez\n  given\n    props diez\n  then\n    text signal-display "10 — y deriva de ella: 20"\n',
       { diez: { value: signal(10) } },
     );
-    const result = await runCriterion(browser, bench.origin, plan.criteria[0]!, terms);
+    const result = await runCriterion(browser, bench.origin, plan.criteria[0]!, terms, extensions);
     expect(result).toMatchObject({ verdict: 'pass', pageErrors: [] });
   }, 60_000);
 });

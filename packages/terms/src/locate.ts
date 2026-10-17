@@ -67,7 +67,7 @@ export function guardedLocator(page: Page, ref: string, onLocate: (ref: string, 
     const box = await locator.boundingBox();
     if (box !== null) onLocate(ref, box);
   };
-  return new Proxy(locator, {
+  const guarded = new Proxy(locator, {
     get(target, key) {
       const value: unknown = Reflect.get(target, key, target);
       if (typeof value !== 'function' || free(key)) return value;
@@ -77,4 +77,17 @@ export function guardedLocator(page: Page, ref: string, onLocate: (ref: string, 
       };
     },
   });
+  unguardedOf.set(guarded, locator);
+  return guarded;
+}
+
+/** Each guarded locator's own. */
+const unguardedOf = new WeakMap<Locator, Locator>();
+
+/**
+ * The locator without its guard: what the host reads when it waits for a gesture. Its reads are
+ * the workbench's, not the term's — they must neither count nor mark. Any other locator, as is.
+ */
+export function unguarded(locator: Locator): Locator {
+  return unguardedOf.get(locator) ?? locator;
 }
