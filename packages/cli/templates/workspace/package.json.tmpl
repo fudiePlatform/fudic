@@ -4,9 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm -r build"
+    "dev": "fudic dev",
+    "preview": "fudic preview",
+    "build": "pnpm -r build",
+    "test": "fudic test",
+    "spec": "fudic spec"
   },
   "devDependencies": {
+    "@fudic/cli": "{{version}}",
     "typescript": "{{tsVersion}}"
   }
 }

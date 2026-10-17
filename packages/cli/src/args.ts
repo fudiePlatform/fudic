@@ -9,6 +9,8 @@ import { FUD0448, type FUD0448Params } from '@fudic/diagnostics';
 import type { Topic } from './help/commands.js';
 import { COMMANDS, GENERATES, type UsageError } from './help/usage.js';
 import { prefixOf } from './tag.js';
+import type { CheckKind } from './plans/check.js';
+import { FRONT_PORT, type ServeKind } from './serve/workspace.js';
 import { APPS_DIR, LIBS_DIR } from './workspace/place.js';
 import type {
   AppOptions,
@@ -21,6 +23,8 @@ import type {
   ProjectOptions,
   SpecOptions,
   TermOptions,
+  ServeOptions,
+  TargetedOptions,
   TranslateOptions,
   WorkspaceOptions,
 } from './types.js';
@@ -47,6 +51,8 @@ export type ParsedCommand =
   | { readonly kind: 'term'; readonly name: string; readonly opts: TermOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'fmt'; readonly paths: readonly string[]; readonly opts: FmtOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'translate'; readonly opts: TranslateOptions; readonly flags: GlobalFlags }
+  | { readonly kind: 'serve'; readonly serve: ServeKind; readonly opts: ServeOptions; readonly flags: GlobalFlags }
+  | { readonly kind: 'check'; readonly check: CheckKind; readonly opts: TargetedOptions; readonly flags: GlobalFlags }
   /** `topic: null` is the general help. */
   | { readonly kind: 'help'; readonly topic: Topic | null }
   | ({ readonly kind: 'error' } & UsageError);
@@ -85,6 +91,7 @@ const EXAMPLE: Readonly<Record<GenerateType, string>> = {
 function topicOf(positionals: readonly string[]): Topic | null {
   const [command, type] = positionals;
   if (command === 'new' || command === 'fmt' || command === 'translate') return command;
+  if (command === 'dev' || command === 'preview' || command === 'test' || command === 'spec') return command;
   if (command !== 'generate' && command !== 'g') return null;
   const canonical = type === undefined ? undefined : GENERATE_TYPES[type];
   return canonical === undefined ? 'generate' : `generate ${canonical}`;
@@ -101,7 +108,7 @@ interface Tokens {
 function tokenize(argv: readonly string[]): Tokens {
   const positionals: string[] = [];
   const flags = new Map<string, string[]>();
-  const valued = new Set(['cwd', 'pm', 'layout', 'target', 'dir', 'in', 'sections', 'print-width', 'tab-width', 'quote', 'end-of-line', 'id', 'prefix', 'app', 'uses', 'project', 'param']);
+  const valued = new Set(['base', 'cwd', 'pm', 'layout', 'target', 'dir', 'in', 'sections', 'print-width', 'tab-width', 'quote', 'end-of-line', 'id', 'prefix', 'app', 'uses', 'project', 'param', 'port']);
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i] ?? '';
@@ -192,6 +199,8 @@ export function parseArgs(argv: readonly string[]): ParsedCommand {
 
   if (command === 'fmt') return parseFmt(tokens, rest, { cwd, force }, flags);
   if (command === 'translate') return parseTranslate(tokens, rest, { cwd, force }, flags);
+  if (command === 'dev' || command === 'preview') return parseServe(command, tokens, rest, { cwd, force }, flags);
+  if (command === 'test' || command === 'spec') return parseCheck(command, tokens, rest, { cwd, force }, flags);
   if (command === 'new') return parseNew(tokens, rest, { cwd, force }, flags);
   if (command === 'generate' || command === 'g') return parseGenerate(tokens, rest, { cwd, force }, flags);
   return fail({ problem: 'unknown-command', command }, null, `the commands are: ${COMMANDS}`);
@@ -251,6 +260,30 @@ function parseTranslate(tokens: Tokens, rest: readonly string[], base: Base, fla
     );
   }
   return { kind: 'translate', opts: { ...base, ...target(tokens) }, flags };
+}
+
+/** `fudic dev` and `fudic preview` (BUG-50 §4.5): no argument; `--project` and `--port`. */
+function parseServe(serve: ServeKind, tokens: Tokens, rest: readonly string[], base: Base, flags: GlobalFlags): ParsedCommand {
+  const unknown = unknownFlag(tokens, [...GLOBAL, 'project', 'port'], serve);
+  if (unknown !== null) return unknown;
+  const extra = rest[0];
+  if (extra !== undefined) {
+    return fail({ problem: 'unexpected-argument', command: serve, value: extra }, serve, 'it serves the apps of the workspace, or the one --project names');
+  }
+  const port = number(tokens, 'port', FRONT_PORT[serve]);
+  if (port === undefined) return fail({ problem: 'port' }, serve, `e.g. --port ${FRONT_PORT[serve]}`);
+  return { kind: 'serve', serve, opts: { ...base, ...target(tokens), port }, flags };
+}
+
+/** `fudic test` and `fudic spec` (BUG-50 §3.1): no argument; `--project`. */
+function parseCheck(check: CheckKind, tokens: Tokens, rest: readonly string[], base: Base, flags: GlobalFlags): ParsedCommand {
+  const unknown = unknownFlag(tokens, [...GLOBAL, 'project'], check);
+  if (unknown !== null) return unknown;
+  const extra = rest[0];
+  if (extra !== undefined) {
+    return fail({ problem: 'unexpected-argument', command: check, value: extra }, check, 'it runs the project you are in, every project from the workspace root, or the one --project names');
+  }
+  return { kind: 'check', check, opts: { ...base, ...target(tokens) }, flags };
 }
 
 /** A numeric flag, or `undefined` when what was given is not one. */
@@ -319,7 +352,7 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
 
   switch (type) {
     case 'app': {
-      const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'id', 'prefix', 'no-sw', 'uses'], topic);
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'id', 'prefix', 'no-sw', 'uses', 'base'], topic);
       if (unknown !== null) return unknown;
       const opts: AppOptions = {
         ...base,
@@ -330,6 +363,7 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
         prefix: single(tokens, 'prefix', prefixOf(name)),
         sw: !bool(tokens, 'no-sw'),
         uses: list(tokens, 'uses') ?? [],
+        ...(tokens.flags.has('base') ? { base: single(tokens, 'base', '/') } : {}),
       };
       return { kind: 'app', name, opts, flags };
     }

@@ -28,6 +28,11 @@ export interface PlanCommand {
   readonly args: readonly string[];
   /** Relative to `cwd`. */
   readonly dir: string;
+  /**
+   * Its output is kept and shown only if it fails (BUG-50 §6.2): an install or a commit is a
+   * line of the report, not a screen of it. Absent ⇒ the user sees it as it runs.
+   */
+  readonly quiet?: true;
 }
 
 /**
@@ -151,6 +156,11 @@ export interface AppOptions extends ProjectOptions {
   /** Written, never derived from the directory nor from the npm name (§4.4). */
   readonly id: string;
   readonly sw: boolean;
+  /**
+   * `--base`, as given. Absent ⇒ `/` for the first app of the workspace, `/<name>/` for the
+   * others (BUG-50 §3.2).
+   */
+  readonly base?: string;
 }
 
 /**
@@ -232,3 +242,8 @@ export interface TranslatePlan extends Plan {
 
 /** The empty plan: the neutral element every builder starts from. */
 export const EMPTY_PLAN: Plan = { changes: [], commands: [], diagnostics: [], errors: [] };
+
+/** `fudic dev` and `fudic preview` (BUG-50 §4.5): which apps, and the one port they share. */
+export interface ServeOptions extends TargetedOptions {
+  readonly port: number;
+}

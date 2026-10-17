@@ -15,6 +15,10 @@ export type Topic =
   | 'generate lib'
   | 'generate spec'
   | 'generate term'
+  | 'dev'
+  | 'preview'
+  | 'test'
+  | 'spec'
   | 'fmt'
   | 'translate';
 
@@ -199,6 +203,44 @@ for what the stock steps do not say.`,
       FORCE,
     ],
     examples: ['fudic g term then cart-has --param count:number', 'fudic g t when log-in'],
+  },
+  dev: {
+    usage: 'fudic dev',
+    about: `Serves every app of the workspace on one port, each under its base URL, while you
+work on them: "/" is one app, "/admin/" another. In an app, that app alone.`,
+    args: [],
+    options: [
+      ['--project <name>', 'only that app'],
+      ['--port <n>', 'the port   (default: 5173)'],
+    ],
+    examples: ['fudic dev', 'fudic dev --project admin'],
+  },
+  preview: {
+    usage: 'fudic preview',
+    about: `The same as fudic dev, with each app's build: what you would deploy. Build first
+with pnpm build.`,
+    args: [],
+    options: [
+      ['--project <name>', 'only that app'],
+      ['--port <n>', 'the port   (default: 4173)'],
+    ],
+    examples: ['fudic preview', 'pnpm build && fudic preview'],
+  },
+  test: {
+    usage: 'fudic test',
+    about: `Runs the unit tests (src/**/*.test.ts) of the project you are in, or of every
+project from the root of the workspace.`,
+    args: [],
+    options: [['--project <name>', 'only that app or library']],
+    examples: ['fudic test', 'fudic test --project ui'],
+  },
+  spec: {
+    usage: 'fudic spec',
+    about: `Runs the .fudspec criteria of the project you are in in a browser, or those of
+every project from the root of the workspace.`,
+    args: [],
+    options: [['--project <name>', 'only that app or library']],
+    examples: ['fudic spec', 'fudic spec --project ui'],
   },
   fmt: {
     usage: 'fudic fmt [path…]',

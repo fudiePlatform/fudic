@@ -135,6 +135,14 @@ export function renderSectionBlocks(names: readonly string[]): string {
   return names.map((name) => `    @RenderSection(${name})\n`).join('');
 }
 
+/**
+ * What an app of a workspace tells Vite besides its plugin: the base URL it is served at and the
+ * port `pnpm --filter <app> dev` takes (BUG-50 §4.5). An app at `/` writes no `base`.
+ */
+export function viteSettings(base: string, port: number): string {
+  return `${base === '/' ? '' : `  base: '${base}',\n`}  server: { port: ${port} },\n`;
+}
+
 /** The unit test of a page: it visits `url` and expects the page to answer. */
 export function pageTest(url: string): string {
   return renderTemplate('page.test.ts.tmpl', { url });

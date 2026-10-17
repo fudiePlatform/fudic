@@ -15,6 +15,8 @@ export type FUD0448Params =
   | { readonly problem: 'line-terminator'; readonly value: string }
   /** `--print-width` that is not a number. */
   | { readonly problem: 'print-width' }
+  /** `--port` that is not a number. */
+  | { readonly problem: 'port' }
   /** `--tab-width` that is not a number. */
   | { readonly problem: 'tab-width' }
   /** `fudic new` with no project name. */
@@ -50,6 +52,8 @@ function describe(p: FUD0448Params): string {
       return `unknown line terminator "${p.value}"`;
     case 'print-width':
       return '--print-width needs a number';
+    case 'port':
+      return '--port needs a number';
     case 'tab-width':
       return '--tab-width needs a number';
     case 'new-needs-name':

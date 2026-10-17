@@ -14,7 +14,7 @@ import { COMPONENTS_DIR, LAYOUTS_DIR, ROUTES_DIR } from '@fudic/conventions';
 import { GLOBALS_DTS, GLOBALS_FILE_NAME } from '@fudic/language-core';
 import { absolute, hrefBetween, joinPosix } from '../paths.js';
 import { FUDIC_VERSION, targetChange, TYPESCRIPT_VERSION, VITE_VERSION, VITEST_VERSION } from '../project.js';
-import { layoutTest, pageTest, prefixField, renderSectionBlocks, renderTemplate } from '../templates.js';
+import { layoutTest, pageTest, prefixField, renderSectionBlocks, renderTemplate, viteSettings } from '../templates.js';
 import { ENV_DECLARATION, ENV_FILE } from './spec.js';
 import type { ReadIo } from '../io.js';
 import type { BaseOptions, CliError, FileChange, NewOptions } from '../types.js';
@@ -46,6 +46,11 @@ export interface ProjectSite {
    * project that uses nothing, which leaves the `package.json` exactly as it was.
    */
   readonly uses: string;
+  /**
+   * Where a workspace app is served and the port it takes on its own (BUG-50 §4.5). Absent for
+   * a standalone app and for the first app of a workspace: `/` on Vite's port.
+   */
+  readonly serve?: { readonly base: string; readonly port: number };
 }
 
 /** `null` when the field is usable. An empty `prefix` is the field being absent, not a value. */
@@ -116,7 +121,10 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
     ],
     [
       joinPosix(site.dir, 'vite.config.ts'),
-      renderTemplate('vite.config.ts.tmpl', { routesDir: ROUTES_DIR }),
+      renderTemplate('vite.config.ts.tmpl', {
+        routesDir: ROUTES_DIR,
+        settings: site.serve === undefined ? '' : viteSettings(site.serve.base, site.serve.port),
+      }),
     ],
     ...testingFiles(site.dir),
     [

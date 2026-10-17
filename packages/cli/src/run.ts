@@ -30,6 +30,9 @@ import { planLib } from './plans/lib.js';
 import { planSpec } from './plans/spec.js';
 import { planTerm } from './plans/term.js';
 import { planTranslate } from './plans/translate.js';
+import { planCheck } from './plans/check.js';
+import { appsToServe } from './serve/apps.js';
+import { nodeServeDeps, serveWorkspace, type ServeDeps } from './serve/workspace.js';
 import { formatDiff, formatError, formatDiagnostic, formatPlan, planToJson } from './report.js';
 import { nodeCommandRunner, nodeReadIo, nodeWriteIo, type CommandRunner, type ReadIo, type WriteIo } from './io.js';
 import type { Plan, TranslatePlan } from './types.js';
@@ -51,6 +54,8 @@ export interface RunDeps {
   readonly writeIo: WriteIo;
   readonly runner: CommandRunner;
   readonly streams: Streams;
+  /** What `fudic dev` and `fudic preview` start: processes, ports, a server. */
+  readonly serve?: ServeDeps;
 }
 
 function nodeStreams(): Streams {
@@ -61,7 +66,7 @@ function nodeStreams(): Streams {
 }
 
 export function defaultDeps(): RunDeps {
-  return { readIo: nodeReadIo(), writeIo: nodeWriteIo(), runner: nodeCommandRunner(), streams: nodeStreams() };
+  return { readIo: nodeReadIo(), writeIo: nodeWriteIo(), runner: nodeCommandRunner(), streams: nodeStreams(), serve: nodeServeDeps() };
 }
 
 export async function run(argv: readonly string[], deps: RunDeps = defaultDeps()): Promise<number> {
@@ -82,6 +87,15 @@ async function execute(argv: readonly string[], deps: RunDeps): Promise<number> 
   if (command.kind === 'error') {
     deps.streams.err(formatUsageError(command));
     return 1;
+  }
+  // Not a plan: it runs until it is stopped (BUG-50 §4.5).
+  if (command.kind === 'serve') {
+    const { apps, errors } = appsToServe(command.serve, command.opts, deps.readIo);
+    if (errors.length > 0) {
+      for (const error of errors) deps.streams.err(`${formatError(error)}\n`);
+      return 1;
+    }
+    return serveWorkspace(command.serve, apps, command.opts.port, deps.serve ?? nodeServeDeps());
   }
 
   const plan = await build(command, deps.readIo);
@@ -120,7 +134,9 @@ async function execute(argv: readonly string[], deps: RunDeps): Promise<number> 
   const removed = plan.errors.length > 0 ? [] : (plan.deletions ?? []).map((path) => `  delete  ${path}`);
   // A plan's own report only once everything it says happened did happen: a failed command
   // falls back to the file list, which is still true.
-  if (!flags.json && plan.report !== undefined && applied.failed === undefined) human(`${plan.report.join('\n')}\n`);
+  if (!flags.json && plan.report !== undefined && applied.failed === undefined) {
+    if (plan.report.length > 0) human(`${plan.report.join('\n')}\n`);
+  }
   else if (!flags.json) human(`${[...applied.changes.map((change) => (change.kind === 'create' ? `  create  ${change.path}` : `  modify  ${change.path}`)), ...removed].join('\n')}\n`);
 
   // Reported AFTER the changes, because those really did happen: the files are written
@@ -153,7 +169,7 @@ function sourceOf(cwd: string, file: string, io: ReadIo): string | undefined {
   return io.exists(path) ? io.read(path) : undefined;
 }
 
-function build(command: Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } | { kind: 'error' }>, io: ReadIo): Promise<Plan> {
+function build(command: Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } | { kind: 'error' } | { kind: 'serve' }>, io: ReadIo): Promise<Plan> {
   switch (command.kind) {
     case 'new':
       return planNew(command.name, command.opts, io);
@@ -175,6 +191,8 @@ function build(command: Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } |
       return planTerm(command.name, command.opts, io);
     case 'fmt':
       return planFmt(command.paths, command.opts, io);
+    case 'check':
+      return planCheck(command.check, command.opts, io);
     case 'translate':
       return planTranslate(command.opts, io);
   }

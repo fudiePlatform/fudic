@@ -30,7 +30,7 @@
 import { CONFIG_FILE } from '@fudic/config';
 import { COMPONENTS_DIR } from '@fudic/conventions';
 import { scaffoldChanges, testingFiles, tsconfigFor, type ScaffoldFile } from './scaffold.js';
-import { joinPosix } from '../paths.js';
+import { joinPosix, relativeTo } from '../paths.js';
 import { FUDIC_VERSION, VITE_VERSION, VITEST_VERSION } from '../project.js';
 import { placeProject } from '../workspace/place.js';
 import { libUses, packageOf, usesErrors } from '../workspace/uses.js';
@@ -56,7 +56,7 @@ export function planLib(
   if (placed.placement === undefined) {
     return Promise.resolve({ ...EMPTY_PLAN, errors: placed.errors });
   }
-  const { dir, up, scope, projects } = placed.placement;
+  const { root, dir, up, scope, projects } = placed.placement;
 
   const errors = usesErrors(opts.uses, projects);
   if (errors.length > 0) return Promise.resolve({ ...EMPTY_PLAN, errors });
@@ -88,5 +88,33 @@ export function planLib(
   ];
 
   const built = scaffoldChanges(opts, files, io);
-  return Promise.resolve({ ...EMPTY_PLAN, changes: built.changes, errors: built.errors });
+  return Promise.resolve({
+    ...EMPTY_PLAN,
+    changes: built.changes,
+    errors: built.errors,
+    // The install is the workspace's, from its root, as for `g app` (BUG-50 §4.6).
+    commands: [{ command: 'pnpm', args: ['install'], dir: relativeTo(opts.cwd, root) || '.', quiet: true }],
+    report: libReport(name, dir, opts.prefix, projects.find((project) => project.config.kind === 'app')?.name ?? 'web'),
+  });
+}
+
+/** What `g lib` tells the user (BUG-50 §6.3). */
+function libReport(name: string, dir: string, prefix: string, app: string): readonly string[] {
+  const add = `fudic add ${name} --project ${app}`;
+  const create = `fudic g app admin --uses ${name}`;
+  const width = Math.max(add.length, create.length) + 10;
+  return [
+    '',
+    `Created library ${name} in ${dir}`,
+    '',
+    `  tag prefix   ${`${prefix}-`.padEnd(9)}fudic g component button --project ${name}  →  <${prefix}-button>`,
+    `  test         pnpm --filter ${name} test`,
+    `  spec         pnpm --filter ${name} spec`,
+    '',
+    '  Installed dependencies (pnpm)',
+    '',
+    'Use it from an app',
+    `  ${add.padEnd(width - 1)}an app you already have`,
+    `  ${create.padEnd(width - 1)}a new app`,
+  ];
 }
