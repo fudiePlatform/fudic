@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-59 — Los términos: un runtime abierto en `@fudic/terms`](./SDD-59-terminos-de-serie.md)
 > **Paquetes:** `@fudic/terms` (nuevo) · `@fudic/workbench` · `@fudic/spec` · `@fudic/language-server` · `fudic-vscode` · `examples/basic`
-> **Progreso:** 7 / 14 — `En curso`.
+> **Progreso:** 9 / 14 — `En curso`.
 
 `@fudic/terms` nace al 100 % en las cuatro métricas; los paquetes tocados no bajan de su suelo.
 
@@ -33,15 +33,15 @@ nuevo (`given/route.js` sin `ctx.goto`). La tarea 13 sigue borrando los duplicad
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 8 | 2 | **Los trece términos** de §3.5, solo con el `ctx` de §3.2 | `packages/terms/terms/**/*.js` |
-| [ ] | 9 | 8, 6 | **Tests.** §6.1 (teclado), §6.2 (slots), §6.7.1–§6.7.6 | `packages/terms/test/*` |
-| [ ] | 10 | 9 | **Prueba de Pedro.** Teclado y slot en el banco desde VS Code y `fudic-workbench run` | — |
+| [x] | 8 | 2 | **Los trece términos** de §3.5, solo con el `ctx` de §3.2 | `packages/terms/terms/**/*.js` |
+| [x] | 9 | 8, 6 | **Tests.** §6.1 (teclado), §6.2 (slots), §6.7.1–§6.7.6 | `packages/terms/test/*` |
+| [ ] | 10 | 9 | **Prueba de Pedro.** Teclado y slot en el banco desde VS Code y `fudic-workbench run` (al final, tras la fase 4: decisión de Pedro) | — |
 
 ## Fase 4 — Editor, ejemplo y cierre (4)
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 11 | 2 | **Editor.** Capa del framework por proyecto; `fudic g term` con su `@type` (§4.7, §4.9) | `packages/language-server/src/fudspec/host.ts` · `packages/vscode/src/*` · `packages/spec/src/scaffold/term.ts` |
+| [ ] | 11 | 2 | **Editor.** Capa del framework por proyecto; `fudic g term` con su `@type` (§4.8, §4.10) | `packages/language-server/src/fudspec/host.ts` · `packages/vscode/src/*` · `packages/spec/src/scaffold/term.ts` |
 | [ ] | 12 | 11 | **Tests.** §6.6, §6.7.7 | `packages/language-server/test/*` · `packages/spec/test/*` |
 | [ ] | 13 | 8 | **`examples/basic`.** `@fudic/terms` como devDependency, términos duplicados fuera, `route` revisado; §6.7.8 | `examples/basic/*` |
 | [ ] | 14 | 1–13 | **Cierre.** Estado `Hecho`, registro de progreso, tabla maestra | `docs/sdd/INDEX.md` |

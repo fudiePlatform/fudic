@@ -557,6 +557,9 @@ importers:
         specifier: 1.62.0
         version: 1.62.0
     devDependencies:
+      '@fudic/spec':
+        specifier: workspace:*
+        version: link:../spec
       '@fudic/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig

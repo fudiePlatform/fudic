@@ -51,6 +51,7 @@
     "playwright-core": "1.62.0"
   },
   "devDependencies": {
+    "@fudic/spec": "workspace:*",
     "@fudic/tsconfig": "workspace:*",
     "@fudic/workbench": "workspace:*",
     "@types/node": "22.20.0",
