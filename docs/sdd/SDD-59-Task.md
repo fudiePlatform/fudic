@@ -2,7 +2,7 @@
 
 > **SDD:** [SDD-59 — Los términos: un runtime abierto en `@fudic/terms`](./SDD-59-terminos-de-serie.md)
 > **Paquetes:** `@fudic/terms` (nuevo) · `@fudic/workbench` · `@fudic/spec` · `@fudic/language-server` · `fudic-vscode` · `examples/basic`
-> **Progreso:** 0 / 14 — `Listo`.
+> **Progreso:** 3 / 14 — `En curso`.
 
 `@fudic/terms` nace al 100 % en las cuatro métricas; los paquetes tocados no bajan de su suelo.
 
@@ -12,9 +12,9 @@
 
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
-| [ ] | 1 | — | **Paquete.** `package.json` (versiones exactas, `playwright-core`), `tsconfig`, `vitest.config.ts` con umbrales al 100, `README.md` en inglés | `packages/terms/*` |
-| [ ] | 2 | 1 | **Extensión de serie y tipos.** `stock`, `defineExtension`, `BenchExtension`, `TermContext`, `TermHost`, `Term`, `TermMeta`, `TermOutcome`, `Fixtures`, `termsDir` (§3.2–§3.4) | `packages/terms/src/*` |
-| [ ] | 3 | 2 | **Tests.** Runtime sobre Chrome real: `locate` (uno, varios, ninguno), `act`, `text`, marcas | `packages/terms/test/*` |
+| [x] | 1 | — | **Paquete.** `package.json` (versiones exactas, `playwright-core`), `tsconfig`, `vitest.config.ts` con umbrales al 100, `README.md` en inglés | `packages/terms/*` |
+| [x] | 2 | 1 | **Extensión de serie y tipos.** `stock`, `defineExtension`, `BenchExtension`, `TermContext`, `TermHost`, `Term`, `TermMeta`, `TermOutcome`, `Fixtures`, `termsDir` (§3.2–§3.4) | `packages/terms/src/*` |
+| [x] | 3 | 2 | **Tests.** Runtime sobre Chrome real: `locate` (uno, varios, ninguno), `act`, `text`, marcas | `packages/terms/test/*` |
 
 ## Fase 2 — El banco recibe el runtime (4)
 

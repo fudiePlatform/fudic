@@ -1,0 +1,59 @@
+{
+  "name": "@fudic/terms",
+  "version": "0.0.1",
+  "description": "The terms .fudspec criteria are written with: the ctx a term receives over a real Playwright page, its types, and the stock vocabulary.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Pedro Hurtado",
+  "homepage": "https://github.com/fudiePlatform/fudic/tree/main/packages/terms#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fudiePlatform/fudic.git",
+    "directory": "packages/terms"
+  },
+  "bugs": {
+    "url": "https://github.com/fudiePlatform/fudic/issues"
+  },
+  "keywords": [
+    "fudic",
+    "fudie",
+    "fudspec",
+    "workbench",
+    "playwright",
+    "acceptance-criteria"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "terms",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "playwright-core": "1.62.0"
+  },
+  "devDependencies": {
+    "@fudic/tsconfig": "workspace:*",
+    "@fudic/workbench": "workspace:*",
+    "@types/node": "22.20.0",
+    "vitest": "4.1.9"
+  }
+}

@@ -548,6 +548,25 @@ importers:
         specifier: 1.2.1
         version: 1.2.1
 
+  packages/terms:
+    dependencies:
+      playwright-core:
+        specifier: 1.62.0
+        version: 1.62.0
+    devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@fudic/workbench':
+        specifier: workspace:*
+        version: link:../workbench
+      '@types/node':
+        specifier: 22.20.0
+        version: 22.20.0
+      vitest:
+        specifier: 4.1.9
+        version: 4.1.9(@types/node@22.20.0)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.6)(vite@8.0.16(@types/node@22.20.0))
+
   packages/testing:
     dependencies:
       '@fudic/compiler':
