@@ -68,6 +68,20 @@ just the two, for when that is what you want.
 `/` is the storefront and `/admin/` is the back office. Each registers its own Service
 Worker, scoped to its own directory.
 
+## Made with the CLI
+
+The tree is the one `fudic` writes: `fudic new --workspace --app tienda`, `g lib guia
+--styles-only`, `g lib ui --uses guia`, `g app admin --uses ui`, `g style` and
+`g component` for each project. So every component sits in its own folder with its unit test,
+its `.fudspec` and its fixture, and every project runs them:
+
+```sh
+pnpm --filter @fudic/example-ui test      # or example-tienda, example-admin
+pnpm --filter @fudic/example-ui spec
+```
+
+What the CLI does not write is the content: the pages, the components and their styles.
+
 ## The end-to-end suite
 
 ```sh

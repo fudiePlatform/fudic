@@ -1,5 +1,5 @@
 <link rel="layout" href="../layouts/_layout.fud">
-<link rel="component" href="../components/admin-panel.fud">
+<link rel="component" href="../components/admin-panel/admin-panel.fud">
 <link rel="component" href="@fudic/example-ui/ui-card.fud">
 
 <head>

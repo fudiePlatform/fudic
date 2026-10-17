@@ -1,0 +1,7 @@
+component tienda-card
+
+criterion renders
+  given
+    props base
+  then
+    present tienda-card

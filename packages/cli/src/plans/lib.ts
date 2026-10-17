@@ -30,7 +30,7 @@
 import { CONFIG_FILE } from '@fudic/config';
 import { COMPONENTS_DIR } from '@fudic/conventions';
 import { scaffoldChanges, testingFiles, tsconfigFor, type ScaffoldFile } from './scaffold.js';
-import { joinPosix, relativeTo } from '../paths.js';
+import { absolute, dirname, joinPosix, relativeTo } from '../paths.js';
 import { FUDIC_VERSION, VITE_VERSION, VITEST_VERSION } from '../project.js';
 import { placeProject } from '../workspace/place.js';
 import { libUses, packageOf, usesErrors } from '../workspace/uses.js';
@@ -63,11 +63,16 @@ export function planLib(
   const errors = usesErrors(opts.uses, projects);
   if (errors.length > 0) return Promise.resolve({ ...EMPTY_PLAN, errors });
 
+  // The placeholder that kept `libs/` in git goes with the first library that fills it.
+  const keep = joinPosix(dirname(dir), KEEP);
+  const deletions = io.exists(absolute(opts.cwd, keep)) ? { deletions: [keep] } : {};
+
   if (opts.stylesOnly === true) {
     const styles = scaffoldChanges(opts, stylesFiles(dir, packageOf(scope, name), name), io);
     return Promise.resolve({
       ...EMPTY_PLAN,
       changes: styles.changes,
+      ...deletions,
       errors: styles.errors,
       report: stylesReport(name, dir, projects, mainApp(projects, io) ?? 'web'),
     });
@@ -79,6 +84,7 @@ export function planLib(
   return Promise.resolve({
     ...EMPTY_PLAN,
     changes: built.changes,
+    ...deletions,
     errors: built.errors,
     // The install is the workspace's, from its root, as for `g app` (BUG-50 §4.6).
     commands: [{ command: 'pnpm', args: ['install'], dir: relativeTo(opts.cwd, root) || '.', quiet: true }],

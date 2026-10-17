@@ -10,7 +10,8 @@
     "fudic.json"
   ],
   "exports": {
-    "./ui-card.fud": "./src/ui-card.fud",
+    "./fudic.json": "./fudic.json",
+    "./*.fud": "./src/components/*/*.fud",
     "./ui.css": "./ui.css"
   },
   "dependencies": {
@@ -24,6 +25,17 @@
   "devDependencies": {
     "@fudic/compiler": "workspace:*",
     "@fudic/core": "workspace:*",
-    "@fudic/dom": "workspace:*"
+    "@fudic/dom": "workspace:*",
+    "@fudic/ssr": "workspace:*",
+    "@fudic/terms": "workspace:*",
+    "@fudic/testing": "workspace:*",
+    "@fudic/vite": "workspace:*",
+    "@fudic/workbench": "workspace:*",
+    "vite": "8.0.16",
+    "vitest": "4.1.9"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "spec": "fudic-workbench run --pass-with-no-specs"
   }
 }

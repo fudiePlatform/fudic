@@ -1,5 +1,5 @@
 <link rel="layout" href="../layouts/_layout.fud">
-<link rel="component" href="../components/tienda-card.fud">
+<link rel="component" href="../components/tienda-card/tienda-card.fud">
 
 <head>
   <title>Catálogo — Tienda</title>

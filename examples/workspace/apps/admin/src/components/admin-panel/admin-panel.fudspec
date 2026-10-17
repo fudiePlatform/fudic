@@ -1,0 +1,7 @@
+component admin-panel
+
+criterion renders
+  given
+    props base
+  then
+    present admin-panel
