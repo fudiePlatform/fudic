@@ -10,7 +10,7 @@
 
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { createServer as createNetServer } from 'node:net';
+import { createServer as createNetServer, type AddressInfo } from 'node:net';
 import { dirname, join } from 'node:path';
 import type { Server } from 'node:http';
 import { createProxy } from './proxy.js';
@@ -83,8 +83,8 @@ export function nodeServeDeps(): ServeDeps {
         const probe = createNetServer();
         probe.once('error', reject);
         probe.listen(0, '127.0.0.1', () => {
-          const address = probe.address();
-          const port = typeof address === 'object' && address !== null ? address.port : 0;
+          // A TCP listen is always given an address with its port.
+          const { port } = probe.address() as AddressInfo;
           probe.close(() => resolve(port));
         });
       }),

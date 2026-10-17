@@ -148,7 +148,7 @@ describe('fudic new', () => {
       'pnpm install',
       'git init -b main',
       'git add -A',
-      'git commit -m chore: scaffold fudic app',
+      'git commit -m chore: create app demo',
     ]);
 
     // A dry run is the plan WITHOUT apply: nothing to undo, nothing spawned.

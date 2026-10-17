@@ -89,7 +89,7 @@ describe('the app of a workspace and a standalone app', () => {
     const standalone = new MemoryFs({}, CWD);
     await apply(await planNew('demo', options(), standalone), options(), standalone, new RecordingRunner());
 
-    const wsOpts: WorkspaceOptions = { ...options(), app: 'demo' };
+    const wsOpts: WorkspaceOptions = { ...options(), app: 'demo', uses: [] };
     const workspace = new MemoryFs({}, CWD);
     await apply(await planWorkspace('ws', wsOpts, workspace), wsOpts, workspace, new RecordingRunner());
 

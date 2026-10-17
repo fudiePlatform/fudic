@@ -19,9 +19,7 @@ One app on its own: `pnpm --filter <app> dev`.
 
 ## Add to it
 
-```sh
-fudic g lib ui                          # a component library
-fudic g app admin --uses ui             # another app, at /admin/
-fudic add ui --project {{app}}                # make an app you have use a library
-fudic g component button --project ui   # <ui-button>, with its test and spec
-```
+- `fudic g lib ui`: a component library.
+- `fudic g app admin --uses ui`: another app, at `/admin/`, that uses it.
+- `fudic add ui --project {{app}}`: make an app you have use a library.
+- `fudic g component button --project ui`: `<ui-button>`, with its test and spec.

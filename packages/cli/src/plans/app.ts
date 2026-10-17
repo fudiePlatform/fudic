@@ -109,7 +109,10 @@ interface AppReport {
 
 /** What `g app` tells the user (BUG-50 §6.4). */
 function appReport(r: AppReport): readonly string[] {
-  const elsewhere = r.others.map((app) => `${app.name} is at ${app.base}`).join(', ');
+  const elsewhere = [...r.others]
+    .sort((a, b) => a.base.length - b.base.length || a.name.localeCompare(b.name))
+    .map((app) => `${app.name} is at ${app.base}`)
+    .join(', ');
   const bases = [...r.others.map((app) => app.base), r.base].sort((a, b) => a.length - b.length || a.localeCompare(b));
   const [first = '/', ...rest] = bases;
   const every = [`http://localhost:${DEV_PORT}${first}`, ...rest].join('  ·  ');

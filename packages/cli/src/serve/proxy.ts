@@ -31,7 +31,7 @@ export function createProxy(backends: readonly Backend[]): Server {
     // `/admin` is the app at `/admin/`: sent there, as Vite does for its own base.
     const bare = ordered.find((backend) => backend.base !== '/' && path === backend.base.slice(0, -1));
     if (bare !== undefined) {
-      res.writeHead(301, { location: `${bare.base}${(req.url ?? '').slice(path.length)}` });
+      res.writeHead(301, { location: `${bare.base}${urlOf(req).slice(path.length)}` });
       res.end();
       return;
     }
@@ -49,8 +49,13 @@ export function createProxy(backends: readonly Backend[]): Server {
   return server;
 }
 
+/** A request of a server always has its url: `undefined` is only the client side's. */
+function urlOf(req: IncomingMessage): string {
+  return req.url as string;
+}
+
 function pathOf(req: IncomingMessage): string {
-  return new URL(req.url ?? '/', 'http://localhost').pathname;
+  return new URL(urlOf(req), 'http://localhost').pathname;
 }
 
 /**
@@ -61,7 +66,7 @@ function forward(req: IncomingMessage, res: ServerResponse, ports: readonly numb
   const [port, ...rest] = ports;
   if (port === undefined) {
     res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
-    res.end(`404 ${req.url ?? '/'}: no app is served here`);
+    res.end(`404 ${urlOf(req)}: no app is served here`);
     return;
   }
   const upstream = request({ host: HOST, port, path: req.url, method: req.method, headers: req.headers }, (answer) => {
@@ -70,11 +75,13 @@ function forward(req: IncomingMessage, res: ServerResponse, ports: readonly numb
       forward(req, res, rest);
       return;
     }
-    res.writeHead(answer.statusCode ?? 502, answer.headers);
+    res.writeHead(answer.statusCode as number, answer.headers);
+    // The app died halfway through the body: the browser gets a broken response, not a hang.
+    answer.on('error', () => res.destroy());
     answer.pipe(res);
   });
   upstream.on('error', () => {
-    if (!res.headersSent) res.writeHead(502, { 'content-type': 'text/plain; charset=utf-8' });
+    res.writeHead(502, { 'content-type': 'text/plain; charset=utf-8' });
     res.end('502 the app did not answer');
   });
   if (rest.length > 0) upstream.end();

@@ -20,6 +20,7 @@ function options(overrides: Partial<WorkspaceOptions> = {}): WorkspaceOptions {
     cwd: CWD,
     force: false,
     app: 'tienda',
+    uses: [],
     id: 'tienda',
     prefix: '',
     pm: 'pnpm',
@@ -39,10 +40,12 @@ describe('fudic new --workspace', () => {
     expect(plan.errors).toEqual([]);
     expect(plan.changes.map((change) => change.path)).toEqual([
       'tienda/package.json',
+      'tienda/README.md',
       'tienda/pnpm-workspace.yaml',
       'tienda/tsconfig.base.json',
       `tienda/${GLOBALS_FILE_NAME}`,
       'tienda/.gitignore',
+      'tienda/libs/.gitkeep',
       'tienda/apps/tienda/package.json',
       'tienda/apps/tienda/vite.config.ts',
       'tienda/apps/tienda/vitest.config.ts',

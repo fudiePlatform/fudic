@@ -289,13 +289,13 @@ describe('a usage error (§6.8)', () => {
       [['g', 'c', 'x', '--zz'], 'generate component', '--project, --dir, --in, --no-style, --slot, --skip-test, --skip-spec, --dry-run, --force'],
       [['g', 'p', 'x', '--zz'], 'generate page', '--project, --dir, --layout, --no-layout, --server, --sections, --skip-test, --dry-run, --force'],
       [['g', 'l', 'x', '--zz'], 'generate layout', '--project, --dir, --sections, --no-head, --skip-test, --dry-run, --force'],
-      [['g', 'a', 'x', '--zz'], 'generate app', '--dir, --id, --prefix, --no-sw, --uses, --dry-run, --force'],
+      [['g', 'a', 'x', '--zz'], 'generate app', '--dir, --id, --prefix, --no-sw, --uses, --base, --dry-run, --force'],
       [['g', 'lib', 'x', '--zz'], 'generate lib', '--dir, --prefix, --uses, --dry-run, --force'],
       [['g', 's', 'x', '--zz'], 'generate spec', '--project, --dry-run, --force'],
       [['g', 't', 'then', 'x', '--zz'], 'generate term', '--project, --param, --dry-run, --force'],
       [['fmt', '--zz'], 'fmt', '--check, --print-width, --tab-width, --use-tabs, --quote, --end-of-line, --dry-run, --force'],
       [['translate', '--zz'], 'translate', '--project, --dry-run, --force'],
-      [['new', 'x', '--zz'], 'new', '--pm, --no-install, --no-git, --no-sw, --layout, --target, --id, --prefix, --workspace, --app, --dry-run, --force'],
+      [['new', 'x', '--zz'], 'new', '--pm, --no-install, --no-git, --no-sw, --layout, --target, --id, --prefix, --workspace, --app, --uses, --dry-run, --force'],
     ];
     for (const [argv, topic, flags] of cases) {
       expect(usage(argv), argv.join(' ')).toEqual({ message: expect.stringContaining('unknown flag --zz'), hints: [`it takes: ${flags}`], topic });
