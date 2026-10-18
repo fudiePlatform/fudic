@@ -147,14 +147,12 @@ describe('§6.5 — href', () => {
       `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="component" href="|">\n<article>hi</article>\n`,
     );
 
-    // The server's own items are the ones that say what they are; the HTML service also
-    // contributes raw paths at the same position, and the editor shows both lists.
-    const ours = items.filter((item) => typeof item.detail === 'string' && item.detail.includes('·'));
-    expect(labels(ours)).toEqual([
+    // The server's list is the whole answer: the HTML service's raw paths are gone (BUG-51).
+    expect(labels(items)).toEqual([
       '../components/app-badge.fud',
       '../components/site-nav.fud',
     ]);
-    expect(labels(ours).some((label) => label.includes('[slug]'))).toBe(false);
+    expect(items.every((item) => typeof item.detail === 'string' && item.detail.includes('·'))).toBe(true);
   });
 
   it('lists the layouts for rel="layout"', async () => {
@@ -163,8 +161,31 @@ describe('§6.5 — href', () => {
       `<link rel="layout" href="|">\n<article>hi</article>\n`,
     );
 
-    const ours = items.filter((item) => item.detail === 'layout');
-    expect(labels(ours)).toEqual(['../layouts/_layout.fud']);
+    expect(labels(items)).toEqual(['../layouts/_layout.fud']);
+    expect(items[0]?.detail).toBe('layout');
+  });
+
+  it('offers nothing for rel="snippet" in a workspace with no snippets (BUG-51)', async () => {
+    // What the editor showed: alone, the HTML service filled the list with the folders and
+    // files around the route — none of them a file of snippets.
+    const items = await completeAt(
+      SLUG,
+      `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="snippet" href="|">\n<article>hi</article>\n`,
+    );
+
+    expect(labels(items)).toEqual([]);
+  });
+
+  it('and nothing of the HTML service while typing the path either (BUG-51)', async () => {
+    for (const rel of ['component', 'layout', 'snippet']) {
+      const items = await completeTyping(
+        SLUG,
+        `${rel === 'layout' ? '' : '<link rel="layout" href="../layouts/_layout.fud">\n'}<link rel="${rel}" href="../|">\n<article>hi</article>\n`,
+        '/',
+      );
+      expect(labels(items).every((label) => label.endsWith('.fud')), rel).toBe(true);
+      expect(items.length > 0, rel).toBe(rel !== 'snippet');
+    }
   });
 
   it('offers paths and no name of the template in the href of any other <link> (BUG-43)', async () => {
@@ -452,6 +473,27 @@ describe('BUG-16 §6.8–§6.13 — the dot and the at-sign, asked the way an ed
     expect(labels(items)).toEqual(expect.arrayContaining(['click', 'change', 'input']));
     expect(labels(items)).not.toContain('@if');
     expect(labels(items)).not.toContain('@foreach');
+  });
+
+  it('`@` on a native element offers the events of a sent form too (BUG-51)', async () => {
+    const items = await completeTyping(
+      SLUG,
+      `${ROUTE}<article>\n  <form @|></form>\n</article>\n`,
+      '@',
+    );
+
+    expect(labels(items)).toEqual(expect.arrayContaining(['click', 'fudic:result', 'fudic:error']));
+  });
+
+  it('and `@fudic:r` narrows to the one it names, written whole', async () => {
+    const source = `${ROUTE}<article>\n  <form @fudic:r></form>\n</article>\n`;
+    const items = await completeIn(SLUG, source, source.indexOf('@fudic:r') + '@fudic:r'.length);
+    const result = items.find((item) => item.label === 'fudic:result');
+
+    expect(result).toBeDefined();
+    // The edit replaces the whole partial name, `:` included, or the editor writes `fudic:fudic:result`.
+    const edit = result?.textEdit as { newText: string; range: { start: { character: number } } } | undefined;
+    expect(edit?.range.start.character).toBe(harness.positionAt(source, source.indexOf('fudic:r')).character);
   });
 
   it('§6.12 — outside the tag a `@` is the transition of always', async () => {

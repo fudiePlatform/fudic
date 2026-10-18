@@ -39,9 +39,21 @@ const page = (markup: string): string =>
 </article>
 `;
 
+/** The same page with `link` among its links, for the positions a `<link>` owns. */
+const linked = (link: string): string =>
+  `<link rel="layout" href="../layouts/_layout.fud">
+${link}
+
+<article>hi</article>
+`;
+
 /** The wrapped service, and the position of the `|` in the source. */
-function setup(markup: string, inner: LanguageServicePluginInstance['provideCompletionItems']) {
-  const marked = page(markup);
+function setup(
+  markup: string,
+  inner: LanguageServicePluginInstance['provideCompletionItems'],
+  build: (markup: string) => string = page,
+) {
+  const marked = build(markup);
   const offset = marked.indexOf('|');
   const source = marked.replace('|', '');
   const index = new WorkspaceIndex(
@@ -67,8 +79,11 @@ function setup(markup: string, inner: LanguageServicePluginInstance['provideComp
 }
 
 /** What the wrapped service answers at the `|`, with the HTML vocabulary underneath. */
-async function completeAt(markup: string): Promise<CompletionList | undefined> {
-  const { service, document, position } = setup(markup, () => HTML_LIST);
+async function completeAt(
+  markup: string,
+  build: (markup: string) => string = page,
+): Promise<CompletionList | undefined> {
+  const { service, document, position } = setup(markup, () => HTML_LIST, build);
   return (await service.provideCompletionItems?.(
     document,
     position,
@@ -90,6 +105,24 @@ describe('silenceOwnedPositions', () => {
     ['<app-badge cla|></app-badge>'],
   ])('declines %s, whatever the service underneath had to say', async (markup) => {
     expect(await completeAt(markup)).toBeUndefined();
+  });
+
+  it.each([
+    ['<link rel="component" href="|">'],
+    ['<link rel="component" href="../comp|">'],
+    ['<link rel="snippet" href="|">'],
+  ])('declines the href of %s, whose list is the server’s alone (BUG-51)', async (markup) => {
+    // The HTML service's paths there are routes and `.test.ts` files, none of which a fudic
+    // `<link>` can point at.
+    expect(await completeAt(markup, linked)).toBeUndefined();
+  });
+
+  it('lets the service answer the href of any other `<link>`, which is a plain path', async () => {
+    expect((await completeAt('<link rel="stylesheet" href="|">', linked))?.items.map((i) => i.label)).toEqual([
+      'class',
+      'id',
+      'role',
+    ]);
   });
 
   it.each([
