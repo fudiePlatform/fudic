@@ -9,7 +9,9 @@
  *     it is in a component the open page uses and not in the page.
  *   - Going from errors to clean sends a full reload, and the page comes back by itself.
  *
- * The page itself is blocked by the HTML middleware, which asks `blocking` before rendering.
+ * The page itself is blocked by the HTML middleware, which asks `blocking` before rendering —
+ * on the last verdict, never waiting for one in flight (BUG-51): the first page does not wait
+ * for the first check, which builds the whole program and takes seconds.
  */
 
 import { readFileSync } from 'node:fs';
@@ -139,8 +141,12 @@ export function startLiveCheck(server: ViteDevServer, root: string, checker: Che
 
   return {
     current: () => running ?? Promise.resolve(report),
+    // The LAST verdict, never one still running (BUG-51): a page does not wait for the check. The
+    // first one is served before the first check ends, and a page after an edit is served on
+    // what was known; a check that finds an error pushes the overlay itself, and the one that
+    // finds the project clean again reloads the page.
     async blocking(files) {
-      const latest = await (running ?? Promise.resolve(report));
+      const latest = report;
       const graph = new Set(files.map(keyOf));
       const project = latest.project.find((problem) => problem.severity === 'error');
       if (project !== undefined) return projectOverlay(project);
