@@ -20,8 +20,9 @@ import { libraryExport } from '../workspace/link.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
 import type { CliError, FileChange, Plan, SnippetOptions } from '../types.js';
 
-/** Where a project keeps its snippet files. */
-export const SNIPPETS_DIR = 'src/snippets';
+import { SNIPPETS_DIR } from '../dirs.js';
+
+export { SNIPPETS_DIR };
 
 /** A snippet's name: what the grammar takes in a `@snippet` header. */
 const SNIPPET_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/u;

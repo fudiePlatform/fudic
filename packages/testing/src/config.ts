@@ -56,6 +56,13 @@ export function fudicTest(options: FudicOptions = {}): Plugin[] {
       name: 'fudic:test',
       config: (user) => ({
         test: {
+          // One process per worker that runs many files, not one per file (BUG-51): loading the
+          // compiler, Oxc's addon and the plugin is most of what a test file cost, ~1 s each.
+          // The setup drops the app's modules between files, so no state crosses from one to
+          // the next. Processes and not threads: Oxc's native addon on a `worker_thread` is what
+          // crashed Node with an access violation. A project that chose its own keeps it.
+          pool: user.test?.pool ?? 'forks',
+          isolate: user.test?.isolate ?? false,
           environment: ENVIRONMENT,
           environmentOptions: {
             happyDOM: {

@@ -19,23 +19,10 @@ import { apply } from './apply.js';
 import type { FudCode } from '@fudic/diagnostics';
 import { commandFailed } from './diagnostics.js';
 import { absolute } from './paths.js';
-import { planComponent } from './plans/component.js';
-import { planLayout } from './plans/layout.js';
-import { planSnippet } from './plans/snippet.js';
-import { planFmt } from './plans/fmt.js';
-import { planNew } from './plans/new.js';
-import { planPage } from './plans/page.js';
-import { planWorkspace } from './plans/workspace.js';
-import { planApp } from './plans/app.js';
-import { planLib } from './plans/lib.js';
-import { planSpec } from './plans/spec.js';
-import { planCheck, type CheckKind, type CheckPlan } from './plans/check.js';
-import { planTerm } from './plans/term.js';
-import { planTranslate } from './plans/translate.js';
-import { planAdd } from './plans/add.js';
-import { planForm, planService } from './plans/piece.js';
-import { planStyle } from './plans/style.js';
-import { appsToServe } from './serve/apps.js';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import type { CheckKind, CheckPlan } from './plans/check.js';
 import { duration, nodeServeDeps, serveWorkspace, type ServeDeps } from './serve/workspace.js';
 import { formatDiff, formatError, formatDiagnostic, formatPlan, planToJson } from './report.js';
 import { nodeCommandRunner, nodeReadIo, nodeWriteIo, type CommandRunner, type ReadIo, type WriteIo } from './io.js';
@@ -62,6 +49,8 @@ export interface RunDeps {
   readonly serve?: ServeDeps;
   /** Milliseconds, for the times `fudic test` and `fudic spec` say. `Date.now` when absent. */
   readonly clock?: () => number;
+  /** Where the vitest a project installed is (its `dist/node.js`); the real lookup when absent. */
+  readonly vitestOf?: (dir: string) => string | undefined;
 }
 
 function nodeStreams(): Streams {
@@ -98,6 +87,7 @@ async function execute(argv: readonly string[], deps: RunDeps): Promise<number> 
   if (command.kind === 'serve') {
     // The machine first: what starts the apps is chosen before anything else is asked.
     const machine = deps.serve ?? nodeServeDeps();
+    const { appsToServe } = await import('./serve/apps.js');
     const { apps, errors } = appsToServe(command.serve, command.opts, deps.readIo);
     if (errors.length > 0) {
       for (const error of errors) deps.streams.err(`${formatError(error)}\n`);
@@ -162,6 +152,18 @@ async function execute(argv: readonly string[], deps: RunDeps): Promise<number> 
   return closing(plan, human);
 }
 
+/** The runner that puts every project in one vitest: `runner/`, beside `src/` and `dist/`. */
+const VITEST_PROJECTS = new URL('../runner/vitest-projects.mjs', import.meta.url);
+
+/** The `dist/node.js` of the vitest the project at `dir` installed, or `undefined` without one. */
+function vitestOf(dir: string): string | undefined {
+  try {
+    return join(dirname(createRequire(join(dir, 'package.json')).resolve('vitest/package.json')), 'dist', 'node.js');
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * `fudic test` / `fudic spec`: each project under a heading of its own, one after another, and a
  * last line with how many passed and which failed. Exit 1 when one did — or when none has the
@@ -175,6 +177,17 @@ function runChecks(kind: CheckKind, plan: CheckPlan, cwd: string, deps: RunDeps)
   }
   const clock = deps.clock ?? Date.now;
   const started = clock();
+  const labels = plan.commands.map((command) => command.label);
+  const projects = plan.commands.length === 1 ? '1 project' : `${plan.commands.length} projects`;
+  // Every project still on the scaffold's `vitest run`: one vitest for all of them, which starts
+  // once and shares its workers, instead of one pnpm and one vitest per project.
+  const vitest = plan.shared ? (deps.vitestOf ?? vitestOf)(absolute(cwd, plan.commands[0]!.dir)) : undefined;
+  if (vitest !== undefined) {
+    deps.streams.out(`\n▸ ${labels.join(', ')}  ${what} · one vitest\n`);
+    const status = deps.runner.run(process.execPath, [fileURLToPath(VITEST_PROJECTS), vitest, cwd, ...plan.commands.map((c) => absolute(cwd, c.dir))], cwd);
+    deps.streams.out(`\nfudic ${kind} · ${projects} · ${status === 0 ? 'passed' : 'FAILED'} · ${duration(clock() - started)}\n`);
+    return status === 0 ? 0 : 1;
+  }
   const failed: string[] = [];
   for (const command of plan.commands) {
     deps.streams.out(`\n▸ ${command.label}  ${what} · ${command.dir}\n`);
@@ -183,9 +196,7 @@ function runChecks(kind: CheckKind, plan: CheckPlan, cwd: string, deps: RunDeps)
     if (status !== 0) failed.push(command.label);
     deps.streams.out(`  ${command.label}  ${status === 0 ? 'passed' : 'FAILED'} in ${duration(clock() - at)}\n`);
   }
-  const total = plan.commands.length;
-  const passed = total - failed.length;
-  const projects = total === 1 ? '1 project' : `${total} projects`;
+  const passed = plan.commands.length - failed.length;
   const tail = failed.length === 0 ? '' : ` · ${failed.length} failed: ${failed.join(', ')}`;
   deps.streams.out(`\nfudic ${kind} · ${projects} · ${passed} passed${tail} · ${duration(clock() - started)}\n`);
   return failed.length === 0 ? 0 : 1;
@@ -210,41 +221,46 @@ function sourceOf(cwd: string, file: string, io: ReadIo): string | undefined {
   return io.exists(path) ? io.read(path) : undefined;
 }
 
-function build(command: Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } | { kind: 'error' } | { kind: 'serve' }>, io: ReadIo): Promise<Plan> {
+/**
+ * The plan of a command. Each plan is imported when its command runs and not before (BUG-51):
+ * between them they load the compiler, the formatter and the typecheck, and `fudic --help` or
+ * `fudic test` has no use for any of it.
+ */
+async function build(command: Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } | { kind: 'error' } | { kind: 'serve' }>, io: ReadIo): Promise<Plan> {
   switch (command.kind) {
     case 'new':
-      return planNew(command.name, command.opts, io);
+      return (await import('./plans/new.js')).planNew(command.name, command.opts, io);
     case 'workspace':
-      return planWorkspace(command.name, command.opts, io);
+      return (await import('./plans/workspace.js')).planWorkspace(command.name, command.opts, io);
     case 'app':
-      return planApp(command.name, command.opts, io);
+      return (await import('./plans/app.js')).planApp(command.name, command.opts, io);
     case 'lib':
-      return planLib(command.name, command.opts, io);
+      return (await import('./plans/lib.js')).planLib(command.name, command.opts, io);
     case 'component':
-      return planComponent(command.tag, command.opts, io);
+      return (await import('./plans/component.js')).planComponent(command.tag, command.opts, io);
     case 'page':
-      return planPage(command.route, command.opts, io);
+      return (await import('./plans/page.js')).planPage(command.route, command.opts, io);
     case 'layout':
-      return planLayout(command.name, command.opts, io);
+      return (await import('./plans/layout.js')).planLayout(command.name, command.opts, io);
     case 'snippet':
-      return planSnippet(command.name, command.opts, io);
+      return (await import('./plans/snippet.js')).planSnippet(command.name, command.opts, io);
     case 'spec':
-      return planSpec(command.name, command.opts, io);
+      return (await import('./plans/spec.js')).planSpec(command.name, command.opts, io);
     case 'term':
-      return planTerm(command.name, command.opts, io);
+      return (await import('./plans/term.js')).planTerm(command.name, command.opts, io);
     case 'fmt':
-      return planFmt(command.paths, command.opts, io);
+      return (await import('./plans/fmt.js')).planFmt(command.paths, command.opts, io);
     case 'check':
-      return planCheck(command.check, command.opts, io);
+      return (await import('./plans/check.js')).planCheck(command.check, command.opts, io);
     case 'add':
-      return planAdd(command.module, command.opts, io);
+      return (await import('./plans/add.js')).planAdd(command.module, command.opts, io);
     case 'service':
-      return planService(command.name, command.opts, io);
+      return (await import('./plans/piece.js')).planService(command.name, command.opts, io);
     case 'form':
-      return planForm(command.name, command.opts, io);
+      return (await import('./plans/piece.js')).planForm(command.name, command.opts, io);
     case 'style':
-      return planStyle(command.name, command.opts, io);
+      return (await import('./plans/style.js')).planStyle(command.name, command.opts, io);
     case 'translate':
-      return planTranslate(command.opts, io);
+      return (await import('./plans/translate.js')).planTranslate(command.opts, io);
   }
 }

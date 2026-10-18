@@ -10,6 +10,7 @@
  */
 
 import { CONFIG_FILE } from '@fudic/config';
+import { APPS_DIR, LIBS_DIR } from '../dirs.js';
 import { FUD0780, FUD0784 } from '@fudic/diagnostics';
 import { absolute, joinPosix, relativeTo, toPosix } from '../paths.js';
 import { findProjects, workspaceRoot, type Project } from './discover.js';
@@ -26,8 +27,7 @@ import type { CliError, ProjectOptions } from '../types.js';
  * for names *two* packages must agree on. It is also why `--dir` exists: the layout is a
  * default, not a rule.
  */
-export const APPS_DIR = 'apps';
-export const LIBS_DIR = 'libs';
+export { APPS_DIR, LIBS_DIR };
 
 /** A resolved spot for a new project, with everything its files need to name themselves. */
 export interface Placement {

@@ -6,7 +6,7 @@
  */
 
 import '@testing-library/jest-dom/vitest';
-import { afterAll, afterEach } from 'vitest';
+import { afterAll, afterEach, vi } from 'vitest';
 import { cleanup, onCleanup } from './cleanup.js';
 import { closeClientGraphs } from './client-graph.js';
 import { BASE_URL } from './constants.js';
@@ -36,3 +36,10 @@ onCleanup(() => {
 });
 afterEach(cleanup);
 afterAll(closeClientGraphs);
+// The next file starts from fresh modules (BUG-51). A worker runs many files — that is what
+// makes a run fast: the compiler and the plugin load once per worker, not once per file — so
+// the app's own modules are what would carry state from one file into the next. Dropped here,
+// at the END of a file, so this file's setup and its tests share one instance of each.
+afterAll(() => {
+  vi.resetModules();
+});

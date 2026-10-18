@@ -23,27 +23,42 @@ export type CheckKind = 'test' | 'spec';
 /** One project's run: the command, and the name its heading and the summary say. */
 export interface CheckCommand extends PlanCommand {
   readonly label: string;
+  /** The project's own `test` / `spec` script, as written: what tells a scaffolded one apart. */
+  readonly script: string;
 }
+
+/** The `test` script `fudic new` writes: projects that keep it can share one vitest. */
+export const SCAFFOLD_TEST_SCRIPT = 'vitest run';
 
 /** A plan of `fudic test` / `fudic spec`: its commands, each named. */
 export interface CheckPlan extends Plan {
   readonly commands: readonly CheckCommand[];
+  /**
+   * Every project is on the scaffold's `vitest run`, so one vitest can run them all. A project
+   * that wrote its own script runs it, and then each goes on its own.
+   */
+  readonly shared: boolean;
 }
 
-/** Whether the project at `path` declares the script. One without a `package.json` has none. */
-function hasScript(path: string, kind: CheckKind, io: ReadIo): boolean {
+function checkPlan(kind: CheckKind, commands: readonly CheckCommand[]): CheckPlan {
+  const shared = kind === 'test' && commands.length > 0 && commands.every((c) => c.script === SCAFFOLD_TEST_SCRIPT);
+  return { ...EMPTY_PLAN, commands, report: [], shared };
+}
+
+/** The script the project at `path` declares, if it declares one. No `package.json`, none. */
+function scriptOf(path: string, kind: CheckKind, io: ReadIo): string | undefined {
   const file = joinPosix(path, 'package.json');
-  if (!io.exists(file)) return false;
+  if (!io.exists(file)) return undefined;
   try {
-    const scripts = (JSON.parse(io.read(file)) as { readonly scripts?: Readonly<Record<string, unknown>> }).scripts;
-    return typeof scripts?.[kind] === 'string';
+    const script = (JSON.parse(io.read(file)) as { readonly scripts?: Readonly<Record<string, unknown>> }).scripts?.[kind];
+    return typeof script === 'string' ? script : undefined;
   } catch {
-    return false;
+    return undefined;
   }
 }
 
-function commandFor(kind: CheckKind, cwd: string, path: string, label: string): CheckCommand {
-  return { command: 'pnpm', args: ['--silent', 'run', kind], dir: relativeTo(cwd, path) || '.', label };
+function commandFor(kind: CheckKind, cwd: string, path: string, label: string, script: string): CheckCommand {
+  return { command: 'pnpm', args: ['--silent', 'run', kind], dir: relativeTo(cwd, path) || '.', label, script };
 }
 
 export function planCheck(kind: CheckKind, opts: TargetedOptions, io: ReadIo = nodeReadIo()): Promise<CheckPlan> {
@@ -51,17 +66,16 @@ export function planCheck(kind: CheckKind, opts: TargetedOptions, io: ReadIo = n
   // At the root itself: every project with the script. The root's own `test` script is this
   // command, so the root is never one of them.
   if (opts.project === undefined && root !== null && root === toPosix(absolute(opts.cwd, '.'))) {
-    const commands = findProjects(root, io)
-      .filter((project) => project.path !== root && hasScript(project.path, kind, io))
-      .map((project) => commandFor(kind, opts.cwd, project.path, project.name));
-    return Promise.resolve({ ...EMPTY_PLAN, commands, report: [] });
+    const commands = findProjects(root, io).flatMap((project) => {
+      const script = project.path === root ? undefined : scriptOf(project.path, kind, io);
+      return script === undefined ? [] : [commandFor(kind, opts.cwd, project.path, project.name, script)];
+    });
+    return Promise.resolve(checkPlan(kind, commands));
   }
   const resolved = resolveTarget(opts, io);
-  if (resolved.target === undefined) return Promise.resolve({ ...EMPTY_PLAN, commands: [], errors: resolved.errors });
+  if (resolved.target === undefined) return Promise.resolve({ ...EMPTY_PLAN, commands: [], errors: resolved.errors, shared: false });
   const { path } = resolved.target;
-  return Promise.resolve({
-    ...EMPTY_PLAN,
-    commands: [commandFor(kind, opts.cwd, path, path.slice(path.lastIndexOf('/') + 1))],
-    report: [],
-  });
+  const script = scriptOf(path, kind, io);
+  const label = path.slice(path.lastIndexOf('/') + 1);
+  return Promise.resolve(checkPlan(kind, script === undefined ? [] : [commandFor(kind, opts.cwd, path, label, script)]));
 }

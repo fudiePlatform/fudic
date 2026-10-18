@@ -37,7 +37,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && rolldown -c",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -55,6 +55,7 @@
     "@fudic/tsconfig": "workspace:*",
     "@types/node": "22.20.0",
     "happy-dom": "20.10.6",
-    "oxc-minify": "0.137.0"
+    "oxc-minify": "0.137.0",
+    "rolldown": "1.2.1"
   }
 }
