@@ -141,8 +141,10 @@ export function nodeServeDeps(): ServeDeps {
     start: (app, kind, port, line) => {
       const vite = join(dirname(createRequire(join(app.path, 'package.json')).resolve('vite/package.json')), 'bin', 'vite.js');
       const args = [vite, ...(kind === 'preview' ? ['preview'] : []), '--port', String(port), '--strictPort', '--host', '127.0.0.1'];
-      // Piped, so every line can say which app it is; in colour when the terminal has colour.
-      const env = process.stdout.isTTY ? { ...process.env, FORCE_COLOR: '1' } : process.env;
+      // Piped, so every line can say which app it is; in colour when the terminal has colour and
+      // the user did not turn it off — `NO_COLOR` is theirs, and Node warns when both are set.
+      const colour = process.stdout.isTTY && process.env['NO_COLOR'] === undefined;
+      const env = colour ? { ...process.env, FORCE_COLOR: '1' } : process.env;
       const child = spawn(process.execPath, args, { cwd: app.path, stdio: ['ignore', 'pipe', 'pipe'], env });
       createInterface({ input: child.stdout }).on('line', (text) => line(text, 'out'));
       createInterface({ input: child.stderr }).on('line', (text) => line(text, 'err'));

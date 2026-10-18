@@ -105,10 +105,6 @@ async function execute(argv: readonly string[], deps: RunDeps): Promise<number> 
     }
     return serveWorkspace(command.serve, apps, command.opts.port, machine);
   }
-  // Not applied like a plan either: every project runs even when one fails, and the end says
-  // how they went (BUG-51).
-  if (command.kind === 'check') return runChecks(command.check, await planCheck(command.check, command.opts, deps.readIo), command.opts.cwd, deps);
-
   const plan = await build(command, deps.readIo);
   const { flags } = command;
   const human = flags.json ? deps.streams.err : deps.streams.out;
@@ -140,6 +136,11 @@ async function execute(argv: readonly string[], deps: RunDeps): Promise<number> 
     return closing(plan, human);
   }
 
+  // `fudic test` / `fudic spec` are not applied like a plan: every project runs even when one
+  // fails, and the end says how they went (BUG-51). Errors, `--json` and `--dry-run` are the
+  // plan's, above.
+  if (command.kind === 'check') return runChecks(command.check, plan as CheckPlan, command.opts.cwd, deps);
+
   const applied = await apply(plan, command.opts, deps.writeIo, deps.runner);
   // A plan with errors is never applied: nothing was removed either.
   const removed = plan.errors.length > 0 ? [] : (plan.deletions ?? []).map((path) => `  delete  ${path}`);
@@ -167,10 +168,6 @@ async function execute(argv: readonly string[], deps: RunDeps): Promise<number> 
  * script, which is a command that checked nothing.
  */
 function runChecks(kind: CheckKind, plan: CheckPlan, cwd: string, deps: RunDeps): number {
-  if (plan.errors.length > 0) {
-    for (const error of plan.errors) deps.streams.err(`${formatError(error)}\n`);
-    return 1;
-  }
   const what = kind === 'test' ? 'unit tests' : 'specs';
   if (plan.commands.length === 0) {
     deps.streams.err(`fudic ${kind}: no project here has a "${kind}" script — nothing to run\n`);
@@ -213,7 +210,7 @@ function sourceOf(cwd: string, file: string, io: ReadIo): string | undefined {
   return io.exists(path) ? io.read(path) : undefined;
 }
 
-function build(command: Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } | { kind: 'error' } | { kind: 'serve' } | { kind: 'check' }>, io: ReadIo): Promise<Plan> {
+function build(command: Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } | { kind: 'error' } | { kind: 'serve' }>, io: ReadIo): Promise<Plan> {
   switch (command.kind) {
     case 'new':
       return planNew(command.name, command.opts, io);
@@ -237,6 +234,8 @@ function build(command: Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } |
       return planTerm(command.name, command.opts, io);
     case 'fmt':
       return planFmt(command.paths, command.opts, io);
+    case 'check':
+      return planCheck(command.check, command.opts, io);
     case 'add':
       return planAdd(command.module, command.opts, io);
     case 'service':
