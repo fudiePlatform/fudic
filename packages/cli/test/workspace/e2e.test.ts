@@ -69,8 +69,8 @@ describe('a generated workspace builds (criterion 13)', () => {
       await planWorkspace(
         'mi-tienda',
         {
-          cwd: tmp, force: false, app: 'web', id: 'web', prefix: 'web', uses: [],
-          pm: 'pnpm', install: false, git: false, sw: true, layout: '_layout', target: 'static',
+          cwd: tmp, force: false, app: 'web', id: 'web', prefix: 'web', uses: [], libs: [],
+          pm: 'pnpm', install: false, git: false, sw: true, layout: { own: '_layout' }, target: 'static',
         },
         io,
       ),
@@ -90,7 +90,7 @@ describe('a generated workspace builds (criterion 13)', () => {
       'fudic g app back --uses ui',
       await planApp(
         'back',
-        { cwd: ws, force: false, dir: 'apps', prefix: 'bk', uses: ['ui'], id: 'back', sw: false },
+        { cwd: ws, force: false, dir: 'apps', prefix: 'bk', uses: ['ui'], id: 'back', sw: false, layout: { own: '_layout' } },
         io,
       ),
       ws,

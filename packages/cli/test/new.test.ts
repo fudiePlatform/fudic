@@ -25,7 +25,7 @@ function options(overrides: Partial<NewOptions> = {}): NewOptions {
     install: true,
     git: true,
     sw: true,
-    layout: '_layout',
+    layout: { own: '_layout' },
     target: 'static',
     ...overrides
   };

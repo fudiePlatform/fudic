@@ -20,6 +20,7 @@ One app on its own: `pnpm --filter <app> dev`.
 ## Add to it
 
 - `fudic g lib ui`: a component library.
-- `fudic g app admin --uses ui`: another app, at `/admin/`, that uses it.
-- `fudic add ui --project {{app}}`: make an app you have use a library.
+- `fudic g app web --uses ui`: an app that uses it. The first is at `/`, the others at `/<name>/`.
+- `fudic g app admin --layout @{{name}}/ui/layouts/main.fud`: an app whose pages render inside a layout of `ui`.
+- `fudic add ui --project <app>`: make an app you have use a library.
 - `fudic g component button --project ui`: `<ui-button>`, with its test and spec.

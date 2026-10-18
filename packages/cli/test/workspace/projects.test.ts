@@ -30,7 +30,7 @@ function workspace(extra: Readonly<Record<string, string>> = {}): MemoryFs {
 }
 
 function appOptions(overrides: Partial<AppOptions> = {}): AppOptions {
-  return { cwd: ROOT, force: false, dir: 'apps', prefix: '', uses: [], id: 'admin', sw: true, ...overrides };
+  return { cwd: ROOT, force: false, dir: 'apps', prefix: '', uses: [], id: 'admin', sw: true, layout: { own: '_layout' }, ...overrides };
 }
 
 function libOptions(overrides: Partial<ProjectOptions> = {}): ProjectOptions {

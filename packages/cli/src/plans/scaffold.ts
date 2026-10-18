@@ -17,7 +17,7 @@ import { FUDIC_VERSION, targetChange, TYPESCRIPT_VERSION, VITE_VERSION, VITEST_V
 import { layoutTest, pageTest, prefixField, renderSectionBlocks, renderTemplate, viteSettings } from '../templates.js';
 import { ENV_DECLARATION, ENV_FILE } from './spec.js';
 import type { ReadIo } from '../io.js';
-import type { BaseOptions, CliError, FileChange, NewOptions } from '../types.js';
+import type { AppLayout, BaseOptions, CliError, FileChange, NewOptions } from '../types.js';
 
 /** The only adapter that exists: none. Anything else is rejected, never ignored (§4.6). */
 export const AVAILABLE_TARGETS = ['static'];
@@ -104,8 +104,8 @@ export function tsconfigFor(site: ProjectSite): string {
  * project only declares the policy (SDD-20 §4.7).
  */
 export function appFiles(site: ProjectSite, opts: NewOptions): readonly ScaffoldFile[] {
-  const layoutFile = joinPosix(site.dir, LAYOUTS_DIR, `${opts.layout}.fud`);
   const indexFile = joinPosix(site.dir, ROUTES_DIR, 'index.fud');
+  const frame = frameOf(site.dir, opts.layout, indexFile);
 
   return [
     [
@@ -133,8 +133,7 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
         name: site.pkgName,
         run: runCommand(site, opts.pm),
         prefix: opts.prefix,
-        layout: opts.layout,
-        layoutsDir: LAYOUTS_DIR,
+        frame: frameLine(frame),
         routesDir: ROUTES_DIR,
         componentsDir: COMPONENTS_DIR,
       }),
@@ -155,26 +154,48 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
     ...(opts.sw
       ? ([[joinPosix(site.dir, 'sw.json'), renderTemplate('sw.json.tmpl', {})]] as const)
       : []),
-    [
-      layoutFile,
-      renderTemplate('layout.fud', {
-        lang: 'en',
-        renderHead: '    @RenderHead()',
-        sections: renderSectionBlocks([]),
-      }),
-    ],
-    [joinPosix(site.dir, LAYOUTS_DIR, `${opts.layout}.test.ts`), layoutTest(`${opts.layout}.fud`)],
+    ...(frame.own === null
+      ? []
+      : ([
+          [
+            joinPosix(site.dir, LAYOUTS_DIR, `${frame.own}.fud`),
+            renderTemplate('layout.fud', {
+              lang: 'en',
+              renderHead: '    @RenderHead()',
+              sections: renderSectionBlocks([]),
+            }),
+          ],
+          [joinPosix(site.dir, LAYOUTS_DIR, `${frame.own}.test.ts`), layoutTest(`${frame.own}.fud`)],
+        ] as const)),
     [
       indexFile,
-      renderTemplate('route.fud', {
-        layoutHref: hrefBetween(indexFile, layoutFile),
-        code: '',
-        title: 'Home',
-        sections: '',
-      }),
+      frame.href === null
+        ? renderTemplate('page.fud', { lang: 'en', title: 'Home', code: '' })
+        : renderTemplate('route.fud', { layoutHref: frame.href, code: '', title: 'Home', sections: '' }),
     ],
     [joinPosix(site.dir, ROUTES_DIR, 'index.test.ts'), pageTest('/')],
   ];
+}
+
+/** What frames an app's pages: the name of its own layout, if any, and the href its home links. */
+interface Frame {
+  readonly own: string | null;
+  readonly href: string | null;
+}
+
+function frameOf(dir: string, layout: AppLayout, indexFile: string): Frame {
+  if (layout === null) return { own: null, href: null };
+  if ('href' in layout) return { own: null, href: layout.href };
+  return { own: layout.own, href: hrefBetween(indexFile, joinPosix(dir, LAYOUTS_DIR, `${layout.own}.fud`)) };
+}
+
+/** The README's line about the frame of the pages. */
+function frameLine(frame: Frame): string {
+  if (frame.own !== null) {
+    return `- \`${LAYOUTS_DIR}/${frame.own}.fud\`: the frame every page is written into, and \`${frame.own}.test.ts\` its unit test.`;
+  }
+  if (frame.href !== null) return `- \`${frame.href}\`: the layout every page is written into; it is not this app's.`;
+  return '- No layout: each page is a whole document. `fudic g layout <name>` adds one.';
 }
 
 /**

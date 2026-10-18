@@ -56,7 +56,7 @@ export function planPage(route: string, opts: PageOptions, io: ReadIo = nodeRead
           code: opts.server ? indent(serverCodeBlock(), '    ') : '',
         })
       : renderTemplate('route.fud', {
-          layoutHref: hrefBetween(file, layout.path),
+          layoutHref: layout.specifier ?? hrefBetween(file, layout.path),
           code: opts.server ? serverCodeBlock() : '',
           title: opts.server ? '@data.title' : titleOf(route),
           sections: sectionBlocks(sections),

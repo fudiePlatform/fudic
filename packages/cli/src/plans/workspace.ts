@@ -33,19 +33,25 @@ function rootFiles(name: string, opts: WorkspaceOptions): readonly ScaffoldFile[
       joinPosix(name, 'package.json'),
       renderTemplate('workspace/package.json.tmpl', { name, version: FUDIC_VERSION, tsVersion: TYPESCRIPT_VERSION }),
     ],
-    [joinPosix(name, 'README.md'), renderTemplate('workspace/README.md.tmpl', { name, app: opts.app })],
+    [joinPosix(name, 'README.md'), renderTemplate('workspace/README.md.tmpl', { name })],
     [joinPosix(name, WORKSPACE_FILE), renderTemplate('workspace/pnpm-workspace.yaml.tmpl', {})],
     [joinPosix(name, 'tsconfig.base.json'), renderTemplate('workspace/tsconfig.base.json.tmpl', {})],
     [joinPosix(name, GLOBALS_FILE_NAME), GLOBALS_DTS],
     [joinPosix(name, '.gitignore'), renderTemplate('gitignore.tmpl', {})],
-    // `libs/` exists from the start, so the tree says where a library goes: empty, or with the
-    // libraries `--uses` asked for.
-    ...(opts.uses.length === 0
+    // `libs/` and `apps/` exist from the start, so the tree says where each goes: empty, or
+    // with what `--lib`, `--uses` and `--app` asked for.
+    ...(libraries(opts).length === 0
       ? ([[joinPosix(name, LIBS_DIR, '.gitkeep'), '']] as const)
-      : opts.uses.flatMap((lib) =>
+      : libraries(opts).flatMap((lib) =>
           libFiles({ dir: joinPosix(name, LIBS_DIR, lib), up: '../..', scope: `@${name}`, name: lib, prefix: prefixOf(lib), uses: [] }),
         )),
+    ...(opts.app === undefined ? ([[joinPosix(name, APPS_DIR, '.gitkeep'), '']] as const) : []),
   ];
+}
+
+/** Every library the workspace starts with: those its app uses, then the others. */
+function libraries(opts: WorkspaceOptions): readonly string[] {
+  return [...new Set([...opts.uses, ...opts.libs])];
 }
 
 export function planWorkspace(
@@ -56,14 +62,16 @@ export function planWorkspace(
   const refused = scaffoldRefusal(name, opts, io);
   if (refused !== null) return Promise.resolve({ ...EMPTY_PLAN, errors: [refused] });
 
-  const appDir = joinPosix(name, APPS_DIR, opts.app);
+  const { app } = opts;
   const { changes, errors } = scaffoldChanges(
     opts,
     [
       ...rootFiles(name, opts),
       // The same app `fudic new` writes, from the same builder — minus the two files that
       // now live at the root. `up` is what says so. It is the first app, so it is at `/`.
-      ...appFiles({ dir: appDir, pkgName: `@${name}/${opts.app}`, up: '../..', uses: appUses(`@${name}`, opts.uses) }, opts),
+      ...(app === undefined
+        ? []
+        : appFiles({ dir: joinPosix(name, APPS_DIR, app), pkgName: `@${name}/${app}`, up: '../..', uses: appUses(`@${name}`, opts.uses) }, opts)),
     ],
     io,
   );
@@ -83,15 +91,22 @@ export function planWorkspace(
       '',
       `  ${name}/`,
       '    README.md          what apps/ and libs/ are, and the commands below',
-      `    ${`${APPS_DIR}/${opts.app}/`.padEnd(19)}app ${opts.app}, served at /`,
-      ...(opts.uses.length === 0
+      app === undefined
+        ? `    ${`${APPS_DIR}/`.padEnd(19)}empty — fudic g app <name>`
+        : `    ${`${APPS_DIR}/${app}/`.padEnd(19)}app ${app}, served at /`,
+      ...(libraries(opts).length === 0
         ? [`    ${`${LIBS_DIR}/`.padEnd(19)}empty — fudic g lib <name>`]
-        : opts.uses.map((lib) => `    ${`${LIBS_DIR}/${lib}/`.padEnd(19)}library ${lib}, used by ${opts.app}`)),
+        : libraries(opts).map((lib) => `    ${`${LIBS_DIR}/${lib}/`.padEnd(19)}library ${lib}${opts.uses.includes(lib) ? `, used by ${app}` : ''}`)),
       ...setupReport(opts, message),
       '',
       'Next',
       `  cd ${name}`,
-      `  pnpm dev           http://localhost:${DEV_PORT}/`,
+      ...(app === undefined
+        ? [
+            ...(libraries(opts).length === 0 ? ['  fudic g lib ui                         a component library'] : []),
+            `  fudic g app web${libraries(opts).length === 0 ? '' : ` --uses ${libraries(opts)[0]}`}`.padEnd(41) + 'the first app, served at /',
+          ]
+        : [`  pnpm dev           http://localhost:${DEV_PORT}/`]),
       '  pnpm test          unit tests of every project',
       '  pnpm spec          .fudspec criteria of every project',
     ],

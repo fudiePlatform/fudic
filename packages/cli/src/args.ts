@@ -13,6 +13,7 @@ import type { CheckKind } from './plans/check.js';
 import { FRONT_PORT, type ServeKind } from './serve/workspace.js';
 import { APPS_DIR, LIBS_DIR } from './workspace/place.js';
 import type {
+  AppLayout,
   AppOptions,
   ComponentOptions,
   FmtOptions,
@@ -122,7 +123,7 @@ interface Tokens {
 function tokenize(argv: readonly string[]): Tokens {
   const positionals: string[] = [];
   const flags = new Map<string, string[]>();
-  const valued = new Set(['base', 'cwd', 'pm', 'layout', 'target', 'dir', 'in', 'sections', 'print-width', 'tab-width', 'quote', 'end-of-line', 'id', 'prefix', 'app', 'uses', 'project', 'param', 'port', 'locales']);
+  const valued = new Set(['base', 'cwd', 'pm', 'layout', 'target', 'dir', 'in', 'sections', 'print-width', 'tab-width', 'quote', 'end-of-line', 'id', 'prefix', 'app', 'uses', 'lib', 'project', 'param', 'port', 'locales']);
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i] ?? '';
@@ -324,7 +325,7 @@ function number(tokens: Tokens, name: string, fallback: number): number | undefi
 }
 
 function parseNew(tokens: Tokens, rest: readonly string[], base: Base, flags: GlobalFlags): ParsedCommand {
-  const unknown = unknownFlag(tokens, [...GLOBAL, 'pm', 'no-install', 'no-git', 'no-sw', 'layout', 'target', 'id', 'prefix', 'workspace', 'app', 'uses'], 'new');
+  const unknown = unknownFlag(tokens, [...GLOBAL, 'pm', 'no-install', 'no-git', 'no-sw', 'layout', 'no-layout', 'target', 'id', 'prefix', 'workspace', 'app', 'uses', 'lib'], 'new');
   if (unknown !== null) return unknown;
 
   const name = rest[0];
@@ -335,10 +336,12 @@ function parseNew(tokens: Tokens, rest: readonly string[], base: Base, flags: Gl
     return fail({ problem: 'package-manager', value: pm }, 'new', 'use --pm pnpm, npm or yarn');
   }
 
-  // A workspace's first app is named after the workspace unless `--app` says otherwise, and
-  // the app's identity follows the APP — not the directory the monorepo happens to sit in.
+  // A workspace starts with what it is asked for — an app with `--app`, libraries with `--lib`,
+  // nothing otherwise —, and the app's identity follows the APP, not the directory the monorepo
+  // happens to sit in.
   const workspace = bool(tokens, 'workspace');
   const app = single(tokens, 'app', name);
+  const layout = layoutChoice(tokens);
 
   const opts: NewOptions = {
     ...base,
@@ -350,16 +353,35 @@ function parseNew(tokens: Tokens, rest: readonly string[], base: Base, flags: Gl
     install: !bool(tokens, 'no-install'),
     git: !bool(tokens, 'no-git'),
     sw: !bool(tokens, 'no-sw'),
-    layout: single(tokens, 'layout', '_layout'),
+    layout,
     target: single(tokens, 'target', 'static'),
   };
   const uses = list(tokens, 'uses') ?? [];
+  const libs = list(tokens, 'lib') ?? [];
   if (!workspace) {
-    // A library lives in a workspace: an app on its own has none to use.
+    // A library lives in a workspace: an app on its own has none to use, nor a library beside it.
     if (uses.length > 0) return fail({ problem: 'unknown-flag', name: 'uses' }, 'new', 'a library lives in a workspace: fudic new <name> --workspace --uses <lib>');
+    if (libs.length > 0) return fail({ problem: 'unknown-flag', name: 'lib' }, 'new', 'a library lives in a workspace: fudic new <name> --workspace --lib <lib>');
     return { kind: 'new', name, opts, flags };
   }
-  return { kind: 'workspace', name, opts: { ...opts, app, uses }, flags };
+  const named = tokens.flags.has('app');
+  // What only an app has, asked of a workspace with none.
+  for (const flag of ['uses', 'layout', 'no-layout'] as const) {
+    if (!named && tokens.flags.has(flag)) {
+      return fail({ problem: 'unknown-flag', name: flag }, 'new', `--${flag} is about the first app: add --app <name>`);
+    }
+  }
+  return { kind: 'workspace', name, opts: { ...opts, ...(named ? { app } : {}), uses, libs }, flags };
+}
+
+/**
+ * `--layout` and `--no-layout` of a new app. A name is a layout the app gets of its own; an
+ * href — anything with a `/` — is one it uses without owning, a library's.
+ */
+function layoutChoice(tokens: Tokens): AppLayout {
+  if (bool(tokens, 'no-layout')) return null;
+  const layout = single(tokens, 'layout', '_layout');
+  return layout.includes('/') ? { href: layout } : { own: layout };
 }
 
 function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flags: GlobalFlags): ParsedCommand {
@@ -387,7 +409,7 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
 
   switch (type) {
     case 'app': {
-      const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'id', 'prefix', 'no-sw', 'uses', 'base'], topic);
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'id', 'prefix', 'no-sw', 'uses', 'base', 'layout', 'no-layout'], topic);
       if (unknown !== null) return unknown;
       const opts: AppOptions = {
         ...base,
@@ -398,6 +420,7 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
         prefix: single(tokens, 'prefix', prefixOf(name)),
         sw: !bool(tokens, 'no-sw'),
         uses: list(tokens, 'uses') ?? [],
+        layout: layoutChoice(tokens),
         ...(tokens.flags.has('base') ? { base: single(tokens, 'base', '/') } : {}),
       };
       return { kind: 'app', name, opts, flags };

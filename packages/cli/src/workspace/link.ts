@@ -12,7 +12,8 @@
  * because a specifier of a package nobody depends on resolves to nothing either.
  */
 
-import { owningPackage, specifierOf, type PackageFs } from '@fudic/resolve';
+import { owningPackage, packageNameOf, specifierOf, subpathOf, type PackageFs } from '@fudic/resolve';
+import { findProjects, workspaceRoot } from './discover.js';
 import { FUD0787 } from '@fudic/diagnostics';
 import type { ReadIo } from '../io.js';
 import { absolute, hrefBetween, joinPosix, relativeTo, toPosix } from '../paths.js';
@@ -114,6 +115,54 @@ function exportRule(path: string, shown: string, io: ReadIo): FileChange | undef
   const entry = `${JSON.stringify(LAYOUTS_KEY)}: ${JSON.stringify(LAYOUTS_TARGET)}`;
   const contents = `${before.slice(0, start)}${inside}${inside.trim() === '' ? '' : ','}\n    ${entry}\n  ${before.slice(close)}`;
   return { kind: 'modify', path: shown, contents, before };
+}
+
+/** The file a package specifier names inside the workspace, and the project it is in. */
+export interface WorkspaceFile {
+  /** Relative to `cwd`. */
+  readonly file: string;
+  /** The project's directory name, as `--uses` and `--project` name it. */
+  readonly project: string;
+}
+
+/**
+ * The file of the workspace a package specifier names — `@shop/ui/layouts/main.fud` is
+ * `libs/ui/src/layouts/main.fud` —, read off that project's own `exports` as Node maps them,
+ * so it answers before anything is installed. Undefined when no project of the workspace is
+ * that package, or its `exports` do not map the subpath.
+ */
+export function workspaceFile(specifier: string, cwd: string, io: ReadIo): WorkspaceFile | undefined {
+  const root = workspaceRoot(cwd, io);
+  if (root === null) return undefined;
+  const name = packageNameOf(specifier);
+  const project = findProjects(root, io).find((candidate) => packageName(candidate.path, io) === name);
+  if (project === undefined) return undefined;
+  const inside = mapped(subpathOf(specifier), (parse(io.read(joinPosix(project.path, 'package.json'))) as { exports?: unknown }).exports);
+  return inside === undefined ? undefined : { file: relativeTo(cwd, joinPosix(project.path, inside)), project: project.name };
+}
+
+/**
+ * Where `exports` sends `subpath` (`./layouts/main.fud`): a path inside the package, or nothing.
+ * An exact key wins; among patterns, the one with the longest part before its `*`, as Node
+ * picks it — `./layouts/*.fud` over `./*.fud`, whatever order they are written in.
+ */
+function mapped(subpath: string, exports: unknown): string | undefined {
+  if (exports === undefined) return subpath;
+  if (exports === null || typeof exports !== 'object') return undefined;
+  let best: { readonly head: string; readonly path: string } | undefined;
+  for (const [key, target] of Object.entries(exports)) {
+    if (typeof target !== 'string') continue;
+    const [head = '', tail] = key.split('*');
+    if (tail === undefined) {
+      if (key === subpath) return target;
+      continue;
+    }
+    const fits = subpath.length > head.length + tail.length && subpath.startsWith(head) && subpath.endsWith(tail);
+    if (fits && (best === undefined || head.length > best.head.length)) {
+      best = { head, path: target.replaceAll('*', subpath.slice(head.length, subpath.length - tail.length)) };
+    }
+  }
+  return best?.path;
 }
 
 /** The `name` of the `package.json` at `root`, or its folder name when it declares none. */

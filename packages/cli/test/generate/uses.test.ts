@@ -30,7 +30,7 @@ function workspace(root = '{"name":"mi-tienda","private":true}'): MemoryFs {
 }
 
 function appOptions(overrides: Partial<AppOptions> = {}): AppOptions {
-  return { cwd: ROOT, force: false, dir: 'apps', prefix: '', uses: [], id: 'tienda2', sw: true, ...overrides };
+  return { cwd: ROOT, force: false, dir: 'apps', prefix: '', uses: [], id: 'tienda2', sw: true, layout: { own: '_layout' }, ...overrides };
 }
 
 function libOptions(overrides: Partial<ProjectOptions> = {}): ProjectOptions {

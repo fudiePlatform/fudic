@@ -44,7 +44,7 @@ describe('fudic new → vite build (§6.1)', () => {
       install: false,
       git: false,
       sw: true,
-      layout: '_layout',
+      layout: { own: '_layout' },
       target: 'static',
     };
 

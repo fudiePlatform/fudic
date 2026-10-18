@@ -17,11 +17,11 @@ function deps(fs: MemoryFs): RunDeps & { capture: ReturnType<typeof captureStrea
 }
 
 describe('parseArgs, fudic new --workspace', () => {
-  it('is its own command, not a flag on new', () => {
+  it('is its own command, not a flag on new, and starts empty without --app', () => {
     const parsed = parseArgs(['new', 'tienda', '--workspace']);
 
     expect(parsed.kind).toBe('workspace');
-    expect(parsed.kind === 'workspace' && parsed.opts.app).toBe('tienda');
+    expect(parsed.kind === 'workspace' && parsed.opts.app).toBeUndefined();
   });
 
   it('--app names the first app, and the id follows the app', () => {
@@ -51,7 +51,7 @@ describe('fudic new --workspace, run end to end', () => {
 
     expect(await run(['new', 'tienda', '--workspace', '--cwd', CWD, '--no-git'], d)).toBe(0);
     expect(fs.paths()).toContain('tienda/pnpm-workspace.yaml');
-    expect(fs.paths()).toContain('tienda/apps/tienda/fudic.json');
+    expect(fs.paths()).toContain('tienda/apps/.gitkeep');
   });
 });
 
@@ -101,7 +101,7 @@ describe('parseArgs, fudic g app and fudic g lib', () => {
   });
 
   it('rejects an unknown flag on g app', () => {
-    expect(parseArgs(['g', 'app', 'admin', '--layout', 'x']).kind).toBe('error');
+    expect(parseArgs(['g', 'app', 'admin', '--sections', 'x']).kind).toBe('error');
   });
 
   it('names both in the line under an unknown type', () => {

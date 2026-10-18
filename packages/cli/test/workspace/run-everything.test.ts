@@ -87,7 +87,7 @@ Next
     expect(readme).toContain('- `apps/`: what you serve.');
     expect(readme).toContain('- `libs/`: components your apps use.');
     for (const script of ['dev', 'preview', 'build', 'test', 'spec']) expect(readme).toContain(`pnpm ${script} `);
-    expect(readme).toContain('fudic add ui --project web');
+    expect(readme).toContain('fudic add ui --project <app>');
     expect(fs.at('shop/libs/.gitkeep')).toBe('');
   });
 
@@ -103,7 +103,7 @@ Next
     const { out, commands } = await cli(fs, 'new', 'shop', '--workspace', '--no-install', '--no-git', '--cwd', ROOT);
     expect(out).not.toContain('Installed');
     expect(out).not.toContain('Committed');
-    expect(out).toContain('    apps/shop/         app shop, served at /\n');
+    expect(out).toContain('    apps/              empty — fudic g app <name>\n');
     expect(commands).toEqual([]);
   });
 });

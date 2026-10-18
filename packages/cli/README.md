@@ -22,9 +22,15 @@ fudic <command> --help      # what a command takes
 
 ```sh
 fudic new shop                                  # an app
-fudic new shop --workspace --app web            # a workspace with its first app, at /
+fudic new shop --workspace                      # an empty workspace: apps/ and libs/
+fudic new shop --workspace --lib ui             # … with a library and no app yet
+fudic new shop --workspace --app web            # … with its first app, at /
 fudic new shop --workspace --app web --uses ui  # … and a library ui it already uses
 ```
+
+An app's pages render inside a layout of its own (`--layout <name>`, `_layout` by default), a
+library's (`--layout @shop/ui/layouts/main.fud`) or none (`--no-layout`). `fudic g page` puts a
+new page in the nearest layout of the app, or else in the one its home page uses.
 
 ## Add to a project
 

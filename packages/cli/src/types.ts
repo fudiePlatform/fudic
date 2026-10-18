@@ -125,22 +125,34 @@ export interface NewOptions extends BaseOptions {
   readonly install: boolean;
   readonly git: boolean;
   readonly sw: boolean;
-  readonly layout: string;
+  readonly layout: AppLayout;
   readonly target: string;
 }
 
 /**
+ * The frame of a new app's pages: one of its own (`--layout <name>`, `_layout` by default), one
+ * it does not own — a library's, by its specifier (`--layout @shop/ui/layouts/main.fud`) —,
+ * or none (`--no-layout`), its home page then a whole document.
+ */
+export type AppLayout = { readonly own: string } | { readonly href: string } | null;
+
+/**
  * `fudic new <nombre> --workspace` (SDD-44 §3.2). It inherits everything `fudic new` takes,
  * because the app it creates is the one `fudic new` creates.
+ *
+ * What it starts with is the user's choice (decision of Pedro, 2026-10-18): nothing, an app
+ * (`--app`), libraries (`--lib`), or both.
  */
 export interface WorkspaceOptions extends NewOptions {
-  /** The first app's name. A workspace with no app is not a useful state. */
-  readonly app: string;
+  /** `--app`: the first app's name. Absent ⇒ no app. */
+  readonly app?: string;
   /**
    * `--uses`: libraries created with the workspace, in `libs/`, that the first app depends on
    * (BUG-50 §3.2; decision of Pedro, 2026-10-18: a new workspace has no library to name).
    */
   readonly uses: readonly string[];
+  /** `--lib`: libraries created with the workspace that no app uses yet. */
+  readonly libs: readonly string[];
 }
 
 /**
@@ -161,6 +173,7 @@ export interface AppOptions extends ProjectOptions {
   /** Written, never derived from the directory nor from the npm name (§4.4). */
   readonly id: string;
   readonly sw: boolean;
+  readonly layout: AppLayout;
   /**
    * `--base`, as given. Absent ⇒ `/` for the first app of the workspace, `/<name>/` for the
    * others (BUG-50 §3.2).

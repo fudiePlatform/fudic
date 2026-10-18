@@ -11,7 +11,7 @@
  * an app nobody can run without a second command is the bug this replaces.
  */
 
-import { FUD0452 } from '@fudic/diagnostics';
+import { FUD0449, FUD0452 } from '@fudic/diagnostics';
 import { appFiles, scaffoldChanges, scaffoldRefusal } from './scaffold.js';
 import { duplicateIds } from '../project.js';
 import { relativeTo } from '../paths.js';
@@ -19,7 +19,9 @@ import { DEV_PORT, normalizeBase, servedApps, type ServedApp } from '../workspac
 import { placeProject } from '../workspace/place.js';
 import { appUses, packageOf, usesErrors } from '../workspace/uses.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
-import { EMPTY_PLAN, type AppOptions, type NewOptions, type Plan } from '../types.js';
+import { EMPTY_PLAN, type AppLayout, type AppOptions, type CliError, type NewOptions, type Plan } from '../types.js';
+import { isLayout } from '../layout.js';
+import { workspaceFile } from '../workspace/link.js';
 
 /**
  * What the app tree needs beyond what `fudic g app` is given.
@@ -39,9 +41,20 @@ function asNewOptions(opts: AppOptions): NewOptions {
     install: false,
     git: false,
     sw: opts.sw,
-    layout: '_layout',
+    layout: opts.layout,
     target: 'static',
   };
+}
+
+/**
+ * The library a `--layout <specifier>` is in, which the app then uses whether or not `--uses`
+ * named it: a page cannot render inside a layout of a package the app does not depend on.
+ */
+function layoutLibrary(layout: AppLayout, cwd: string, io: ReadIo): { readonly library?: string; readonly error?: CliError } {
+  if (layout === null || !('href' in layout)) return {};
+  const found = workspaceFile(layout.href, cwd, io);
+  if (found === undefined || !isLayout(cwd, found.file, io)) return { error: FUD0449({ file: layout.href }) };
+  return { library: found.project };
 }
 
 export function planApp(name: string, opts: AppOptions, io: ReadIo = nodeReadIo()): Promise<Plan> {
@@ -75,9 +88,12 @@ export function planApp(name: string, opts: AppOptions, io: ReadIo = nodeReadIo(
   const base = normalizeBase(opts.base ?? (others.length === 0 ? '/' : name));
   const port = Math.max(DEV_PORT - 1, ...others.map((app) => app.port)) + 1;
   const taken = others.find((app) => app.base === base);
+  const frame = layoutLibrary(opts.layout, opts.cwd, io);
+  const uses = frame.library === undefined || opts.uses.includes(frame.library) ? opts.uses : [...opts.uses, frame.library];
 
   const errors = [
-    ...usesErrors(opts.uses, projects),
+    ...(frame.error === undefined ? [] : [frame.error]),
+    ...usesErrors(uses, projects),
     ...clashing,
     ...(taken === undefined ? [] : [FUD0452({ base, app: taken.name })]),
   ];
@@ -85,7 +101,7 @@ export function planApp(name: string, opts: AppOptions, io: ReadIo = nodeReadIo(
 
   const built = scaffoldChanges(
     opts,
-    appFiles({ dir, pkgName: packageOf(scope, name), up, uses: appUses(scope, opts.uses), serve: { base, port } }, asNew),
+    appFiles({ dir, pkgName: packageOf(scope, name), up, uses: appUses(scope, uses), serve: { base, port } }, asNew),
     io,
   );
 
@@ -94,7 +110,7 @@ export function planApp(name: string, opts: AppOptions, io: ReadIo = nodeReadIo(
     changes: built.changes,
     errors: built.errors,
     commands: [{ command: 'pnpm', args: ['install'], dir: relativeTo(opts.cwd, root) || '.', quiet: true }],
-    report: appReport({ name, dir, base, port, uses: opts.uses, others }),
+    report: appReport({ name, dir, base, port, uses, layout: opts.layout, others }),
   });
 }
 
@@ -104,6 +120,7 @@ interface AppReport {
   readonly base: string;
   readonly port: number;
   readonly uses: readonly string[];
+  readonly layout: AppLayout;
   readonly others: readonly ServedApp[];
 }
 
@@ -123,6 +140,7 @@ function appReport(r: AppReport): readonly string[] {
     '',
     `  base URL   ${r.base.padEnd(12)}${elsewhere === '' ? '' : `${elsewhere}. `}Change it with --base`,
     ...(r.uses.length === 0 ? [] : [`  uses       ${r.uses.join(', ')}`]),
+    ...layoutLine(r.layout),
     '',
     '  Installed dependencies (pnpm)',
     '',
@@ -130,4 +148,10 @@ function appReport(r: AppReport): readonly string[] {
     `  ${'pnpm dev'.padEnd(Math.max(28, only.length + 2))}every app:  ${every}`,
     `  ${only.padEnd(Math.max(28, only.length + 2))}only ${r.name}: http://localhost:${r.port}${r.base}`,
   ];
+}
+
+/** The report's line about the frame of its pages, when it is not a layout of its own. */
+function layoutLine(layout: AppLayout): readonly string[] {
+  if (layout === null) return ['  layout     none: each page is a whole document'];
+  return 'href' in layout ? [`  layout     ${layout.href}`] : [];
 }
