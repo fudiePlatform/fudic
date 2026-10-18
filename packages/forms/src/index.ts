@@ -35,7 +35,7 @@ export { control } from './control.js';
 export { ValidateOn } from './validate-on.js';
 export { Validity } from './validity.js';
 export { form } from './form.js';
-export { DEFAULT_CATCHES } from './form.js';
+export { DEFAULT_CATCHES } from './catches.js';
 export { group } from './group.js';
 
 export { validator } from './validators/validator.js';

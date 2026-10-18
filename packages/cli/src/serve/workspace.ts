@@ -12,6 +12,7 @@ import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { createServer as createNetServer, type AddressInfo } from 'node:net';
 import { dirname, join } from 'node:path';
+import { createInterface } from 'node:readline';
 import type { Server } from 'node:http';
 import { createProxy } from './proxy.js';
 import type { ServedApp } from '../workspace/bases.js';
@@ -26,12 +27,18 @@ export interface AppProcess {
   stop(): void;
 }
 
+/** Which stream a line of an app's server came on. */
+export type AppStream = 'out' | 'err';
+
 /** What serving needs of the machine; the CLI gives the real one, a test a fake. */
 export interface ServeDeps {
   /** A port nothing listens on. */
   freePort(): Promise<number>;
-  /** Start `app`'s Vite (`dev`) or its `vite preview`, on `port`. */
-  start(app: ServedApp, kind: ServeKind, port: number): AppProcess;
+  /**
+   * Start `app`'s Vite (`dev`) or its `vite preview`, on `port`. Every line it writes is handed
+   * to `line`, whole and without its newline.
+   */
+  start(app: ServedApp, kind: ServeKind, port: number, line: (text: string, stream: AppStream) => void): AppProcess;
   /** Resolves once something answers on `port`; rejects when nothing does in time. */
   ready(port: number, base: string): Promise<void>;
   /** Listen on `port` with the proxy; resolves with the server once it listens. */
@@ -39,34 +46,77 @@ export interface ServeDeps {
   /** Resolves when the user stops it: Ctrl-C. */
   stopped(): Promise<void>;
   out(text: string): void;
+  err(text: string): void;
+  /** Milliseconds, for the times the output says. */
+  now(): number;
 }
 
-/** The lines §6.9 prints once every app answers. */
-export function serveBanner(kind: ServeKind, apps: readonly ServedApp[], port: number): string {
-  const width = Math.max(8, ...apps.map((app) => app.name.length + 3));
-  const ordered = [...apps].sort((a, b) => a.base.length - b.base.length || a.name.localeCompare(b.name));
+/** The width of the name column: every line of an app starts with its name, aligned. */
+function nameWidth(apps: readonly ServedApp[]): number {
+  return Math.max(8, ...apps.map((app) => app.name.length + 3));
+}
+
+/** A duration the way the terminal says it: `850 ms`, `2.1 s`. */
+export function duration(ms: number): string {
+  return ms < 1000 ? `${String(Math.round(ms))} ms` : `${(ms / 1000).toFixed(1)} s`;
+}
+
+/** The first line, said before anything starts: what is about to be served. */
+export function serveHeading(kind: ServeKind, apps: readonly ServedApp[]): string {
   const count = apps.length === 1 ? '1 app' : `${apps.length} apps`;
+  return `fudic ${kind} — ${count} on one port\n\n`;
+}
+
+/** The lines §6.9 prints once every app answers, with how long it took and how to change it. */
+export function serveBanner(kind: ServeKind, apps: readonly ServedApp[], port: number, ms: number): string {
+  const width = nameWidth(apps);
+  const ordered = [...apps].sort((a, b) => a.base.length - b.base.length || a.name.localeCompare(b.name));
   return [
-    `fudic ${kind} — ${count} on one port`,
     '',
     ...ordered.map((app) => `  ${app.name.padEnd(width)}http://localhost:${port}${app.base}`),
+    '',
+    `  ready in ${duration(ms)} · Ctrl+C stops it · fudic ${kind} --port <n> serves on another port`,
     '',
   ].join('\n');
 }
 
+/**
+ * What Vite writes that says nothing here: its banner, which names the INTERNAL port nobody
+ * should open, and its key hints, which no one can type into a server the CLI started.
+ */
+const VITE_NOISE = /^\s*$|VITE v\d|➜|press h|ready in \d|use --host to expose|Network: /u;
+
+/** Strip the colours of a line, to read it — never to print it. */
+const plain = (text: string): string => text.replace(/\u001b\[[0-9;]*m/gu, '');
+
 /** Serve every app until stopped; the exit code. */
 export async function serveWorkspace(kind: ServeKind, apps: readonly ServedApp[], port: number, deps: ServeDeps): Promise<number> {
   const running: AppProcess[] = [];
+  const width = nameWidth(apps);
+  const started = deps.now();
   try {
+    deps.out(serveHeading(kind, apps));
     const backends = [];
     for (const app of apps) {
       const internal = await deps.freePort();
-      running.push(deps.start(app, kind, internal));
-      backends.push({ base: app.base, port: internal });
+      const prefix = `  ${app.name.padEnd(width)}`;
+      running.push(
+        deps.start(app, kind, internal, (text, stream) => {
+          if (VITE_NOISE.test(plain(text))) return;
+          (stream === 'err' ? deps.err : deps.out)(`${prefix}${text}\n`);
+        }),
+      );
+      deps.out(`${prefix}starting\n`);
+      backends.push({ app, prefix, base: app.base, port: internal });
     }
-    await Promise.all(backends.map((backend) => deps.ready(backend.port, backend.base)));
+    await Promise.all(
+      backends.map(async (backend) => {
+        await deps.ready(backend.port, backend.base);
+        deps.out(`${backend.prefix}started in ${duration(deps.now() - started)}\n`);
+      }),
+    );
     const server = await deps.listen(createProxy(backends), port);
-    deps.out(serveBanner(kind, apps, port));
+    deps.out(serveBanner(kind, apps, port, deps.now() - started));
     await deps.stopped();
     server.close();
     return 0;
@@ -88,11 +138,14 @@ export function nodeServeDeps(): ServeDeps {
           probe.close(() => resolve(port));
         });
       }),
-    start: (app, kind, port) => {
+    start: (app, kind, port, line) => {
       const vite = join(dirname(createRequire(join(app.path, 'package.json')).resolve('vite/package.json')), 'bin', 'vite.js');
       const args = [vite, ...(kind === 'preview' ? ['preview'] : []), '--port', String(port), '--strictPort', '--host', '127.0.0.1'];
-      // Vite's own banner and its request log are noise next to ours; its errors are not.
-      const child = spawn(process.execPath, args, { cwd: app.path, stdio: ['ignore', 'ignore', 'inherit'] });
+      // Piped, so every line can say which app it is; in colour when the terminal has colour.
+      const env = process.stdout.isTTY ? { ...process.env, FORCE_COLOR: '1' } : process.env;
+      const child = spawn(process.execPath, args, { cwd: app.path, stdio: ['ignore', 'pipe', 'pipe'], env });
+      createInterface({ input: child.stdout }).on('line', (text) => line(text, 'out'));
+      createInterface({ input: child.stderr }).on('line', (text) => line(text, 'err'));
       return { stop: () => child.kill() };
     },
     ready: async (port, base) => {
@@ -119,5 +172,7 @@ export function nodeServeDeps(): ServeDeps {
         process.once('SIGTERM', () => resolve());
       }),
     out: (text) => process.stdout.write(text),
+    err: (text) => process.stderr.write(text),
+    now: () => Date.now(),
   };
 }

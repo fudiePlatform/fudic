@@ -1,0 +1,54 @@
+@code {
+  import type { Issue } from "@fudic/forms";
+
+  // El resumen de un formulario, pintado a mano: recibe `$issues()` y decide él el markup y el
+  // CSS. Cada entrada de un campo trae su `href` (`#id` del campo); dentro del `<form>`, pulsarla
+  // lleva el foco a ese campo.
+  const { issues = [] } = props<{ issues?: readonly Issue[] }>();
+}
+
+<head>
+  <style>
+    .caja {
+      border-radius: var(--radius-box);
+      background: #fdf3f2;
+      padding: 0.6rem 0.9rem;
+    }
+    .caja:empty {
+      display: none;
+    }
+    p {
+      margin: 0 0 0.3rem;
+      font-weight: 600;
+      color: #a50e0e;
+    }
+    ol {
+      margin: 0;
+      padding-left: 1.2rem;
+    }
+    a {
+      color: #a50e0e;
+    }
+  </style>
+</head>
+
+<form-errores>
+  <template shadowrootmode="open">
+    <div class="caja" role="status">
+      @if (issues.length > 0) {
+        <p>Revisa @issues.length @(issues.length === 1 ? "cosa" : "cosas"):</p>
+        <ol>
+          @foreach (const issue of issues) key (issue.path + issue.message) {
+            <li>
+              @if (issue.href !== undefined) {
+                <a href=@issue.href>@issue.message</a>
+              } else {
+                @issue.message
+              }
+            </li>
+          }
+        </ol>
+      }
+    </div>
+  </template>
+</form-errores>

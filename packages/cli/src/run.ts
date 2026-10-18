@@ -29,14 +29,14 @@ import { planWorkspace } from './plans/workspace.js';
 import { planApp } from './plans/app.js';
 import { planLib } from './plans/lib.js';
 import { planSpec } from './plans/spec.js';
+import { planCheck, type CheckKind, type CheckPlan } from './plans/check.js';
 import { planTerm } from './plans/term.js';
 import { planTranslate } from './plans/translate.js';
-import { planCheck } from './plans/check.js';
 import { planAdd } from './plans/add.js';
 import { planForm, planService } from './plans/piece.js';
 import { planStyle } from './plans/style.js';
 import { appsToServe } from './serve/apps.js';
-import { nodeServeDeps, serveWorkspace, type ServeDeps } from './serve/workspace.js';
+import { duration, nodeServeDeps, serveWorkspace, type ServeDeps } from './serve/workspace.js';
 import { formatDiff, formatError, formatDiagnostic, formatPlan, planToJson } from './report.js';
 import { nodeCommandRunner, nodeReadIo, nodeWriteIo, type CommandRunner, type ReadIo, type WriteIo } from './io.js';
 import type { Plan, TranslatePlan } from './types.js';
@@ -60,6 +60,8 @@ export interface RunDeps {
   readonly streams: Streams;
   /** What `fudic dev` and `fudic preview` start: processes, ports, a server. */
   readonly serve?: ServeDeps;
+  /** Milliseconds, for the times `fudic test` and `fudic spec` say. `Date.now` when absent. */
+  readonly clock?: () => number;
 }
 
 function nodeStreams(): Streams {
@@ -103,6 +105,9 @@ async function execute(argv: readonly string[], deps: RunDeps): Promise<number> 
     }
     return serveWorkspace(command.serve, apps, command.opts.port, machine);
   }
+  // Not applied like a plan either: every project runs even when one fails, and the end says
+  // how they went (BUG-51).
+  if (command.kind === 'check') return runChecks(command.check, await planCheck(command.check, command.opts, deps.readIo), command.opts.cwd, deps);
 
   const plan = await build(command, deps.readIo);
   const { flags } = command;
@@ -157,6 +162,39 @@ async function execute(argv: readonly string[], deps: RunDeps): Promise<number> 
 }
 
 /**
+ * `fudic test` / `fudic spec`: each project under a heading of its own, one after another, and a
+ * last line with how many passed and which failed. Exit 1 when one did — or when none has the
+ * script, which is a command that checked nothing.
+ */
+function runChecks(kind: CheckKind, plan: CheckPlan, cwd: string, deps: RunDeps): number {
+  if (plan.errors.length > 0) {
+    for (const error of plan.errors) deps.streams.err(`${formatError(error)}\n`);
+    return 1;
+  }
+  const what = kind === 'test' ? 'unit tests' : 'specs';
+  if (plan.commands.length === 0) {
+    deps.streams.err(`fudic ${kind}: no project here has a "${kind}" script — nothing to run\n`);
+    return 1;
+  }
+  const clock = deps.clock ?? Date.now;
+  const started = clock();
+  const failed: string[] = [];
+  for (const command of plan.commands) {
+    deps.streams.out(`\n▸ ${command.label}  ${what} · ${command.dir}\n`);
+    const at = clock();
+    const status = deps.runner.run(command.command, command.args, absolute(cwd, command.dir));
+    if (status !== 0) failed.push(command.label);
+    deps.streams.out(`  ${command.label}  ${status === 0 ? 'passed' : 'FAILED'} in ${duration(clock() - at)}\n`);
+  }
+  const total = plan.commands.length;
+  const passed = total - failed.length;
+  const projects = total === 1 ? '1 project' : `${total} projects`;
+  const tail = failed.length === 0 ? '' : ` · ${failed.length} failed: ${failed.join(', ')}`;
+  deps.streams.out(`\nfudic ${kind} · ${projects} · ${passed} passed${tail} · ${duration(clock() - started)}\n`);
+  return failed.length === 0 ? 0 : 1;
+}
+
+/**
  * What `fudic translate` adds to the output of a plan (SDD-58 §3.5): a line per locale, and an
  * exit code that is not 0 only when a message is wrong — an untranslated one is a warning, and
  * the catalogs were written all the same. Every other command ends in 0 here.
@@ -175,7 +213,7 @@ function sourceOf(cwd: string, file: string, io: ReadIo): string | undefined {
   return io.exists(path) ? io.read(path) : undefined;
 }
 
-function build(command: Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } | { kind: 'error' } | { kind: 'serve' }>, io: ReadIo): Promise<Plan> {
+function build(command: Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } | { kind: 'error' } | { kind: 'serve' } | { kind: 'check' }>, io: ReadIo): Promise<Plan> {
   switch (command.kind) {
     case 'new':
       return planNew(command.name, command.opts, io);
@@ -199,8 +237,6 @@ function build(command: Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } |
       return planTerm(command.name, command.opts, io);
     case 'fmt':
       return planFmt(command.paths, command.opts, io);
-    case 'check':
-      return planCheck(command.check, command.opts, io);
     case 'add':
       return planAdd(command.module, command.opts, io);
     case 'service':

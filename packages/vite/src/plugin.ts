@@ -181,6 +181,7 @@ import {
   type RenderModule,
 } from './serve.js';
 import { asError, NO_LIVE_CHECK, startLiveCheck } from './dev-typecheck.js';
+import { resilientChecker, startLiveChecker } from './live-checker.js';
 import {
   WRAPPER_PREFIX,
   SW_ID,
@@ -755,14 +756,21 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // of a file the program read, pushed to the overlay without a reload, and the page
       // comes back by itself once it is clean.
       //
-      // Imported HERE and not at the top of this module: the machine that checks loads
-      // TypeScript, most of a second, and `vite preview` loads this plugin without ever
-      // checking anything.
+      // In a child process (BUG-51): the first check builds the whole program, and in this
+      // process it held `listen` for all of it. The machine that checks is imported here only
+      // if the child dies — it loads TypeScript, most of a second, and `vite preview` loads this
+      // plugin without ever checking anything.
       let live = NO_LIVE_CHECK;
       if (userOptions.liveCheck !== false) {
-        const { createProjectChecker } = await import('@fudic/typecheck');
-        const started = startLiveCheck(server, root, createProjectChecker({ root }));
-        server.httpServer?.once('close', () => started.dispose());
+        const checker = resilientChecker(startLiveChecker(root), async () => {
+          const { createProjectChecker } = await import('@fudic/typecheck');
+          return createProjectChecker({ root });
+        });
+        const started = startLiveCheck(server, root, checker);
+        server.httpServer?.once('close', () => {
+          started.dispose();
+          checker.dispose();
+        });
         live = started;
       }
       // Dev serves the bootstraps at stable root URLs (so the SW would register at root
