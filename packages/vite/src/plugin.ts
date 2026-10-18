@@ -1034,7 +1034,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           return;
         }
         const manifest = readManifest();
-        const pathname = pathnameOf(req.url ?? '/', base);
+        const url = req.url ?? '/';
+        const pathname = pathnameOf(url, base);
         if (manifest === null) {
           next();
           return;
@@ -1098,7 +1099,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             return;
           }
           const pattern = errorPatternOf(errorLocale(pathname, req.headers.referer));
-          sendErrorPage(root, res, problemOfUrl(status, req.url ?? '/'), nonce, manifest.csp.document, pattern).catch(next);
+          sendErrorPage(root, res, problemOfUrl(status, url), nonce, manifest.csp.document, pattern).catch(next);
           return;
         }
 

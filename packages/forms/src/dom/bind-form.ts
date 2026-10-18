@@ -153,8 +153,9 @@ export function bindForm(
     offs.push(
       onSelf(el, 'click', (event) => {
         const link = event.composedPath().find((n): n is HTMLAnchorElement => n instanceof Element && n.localName === 'a');
-        const id = link?.getAttribute('href')?.slice(1) ?? '';
-        if (!ids.has(id)) return;
+        const href = link?.getAttribute('href') ?? '';
+        if (!href.startsWith('#') || !ids.has(href.slice(1))) return;
+        const id = href.slice(1);
         const field = (el.getRootNode() as Document | ShadowRoot).getElementById(id);
         if (field === null) return;
         event.preventDefault();
