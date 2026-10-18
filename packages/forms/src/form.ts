@@ -29,9 +29,7 @@ import { messagesOf } from './messages.js';
 import { toKeyed, toPositional } from './positional.js';
 import { allFailures, holds } from './run-rule.js';
 import { isServerOnly } from './server-flag.js';
-
-/** What a form keeps unless its `catches` says otherwise: the refusals of what it sent. */
-export const DEFAULT_CATCHES: readonly number[] = [400, 409, 422];
+import { DEFAULT_CATCHES } from './catches.js';
 import type {
   AnyForm,
   AnyNode,

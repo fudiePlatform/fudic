@@ -64,8 +64,11 @@ function statusOf(error: unknown): number | undefined {
  * nothing per field — the server's sentence as the form's own error, under `SERVER_RULE`.
  */
 function keep(form: AnyForm, refusal: Refusal): void {
-  if (refusal.errors !== undefined && refusal.errors !== null) {
-    form.$setErrors(refusal.errors, refusal.summary ?? null);
+  const errors = refusal.errors ?? null;
+  const summary = refusal.summary ?? null;
+  // What the server said itself, per field or about the whole form: painted as it said it.
+  if (errors !== null || summary !== null) {
+    form.$setErrors(errors ?? {}, summary);
     return;
   }
   const problem = refusal.problem ?? { status: refusal.status, title: String(refusal.status) };
