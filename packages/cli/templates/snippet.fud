@@ -1,0 +1,3 @@
+@snippet {{name}}() {
+  <div class="{{name}}"></div>
+}

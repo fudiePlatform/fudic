@@ -35,7 +35,7 @@ export function renderTemplate(file: string, vars: Readonly<Record<string, strin
 }
 
 /** The document role a `.fud` template must structure as, once materialized. */
-export type TemplateRole = 'component-document' | 'route-document' | 'page-document' | 'layout-document';
+export type TemplateRole = 'component-document' | 'route-document' | 'page-document' | 'layout-document' | 'snippet-document';
 
 export interface TemplateSpec {
   readonly file: string;
@@ -76,6 +76,11 @@ export const TEMPLATES: readonly TemplateSpec[] = [
     file: 'layout.fud',
     role: 'layout-document',
     sample: { lang: 'en', renderHead: '    @RenderHead()', sections: renderSectionBlocks(['nav']) },
+  },
+  {
+    file: 'snippet.fud',
+    role: 'snippet-document',
+    sample: { name: 'productCard' },
   },
 ];
 

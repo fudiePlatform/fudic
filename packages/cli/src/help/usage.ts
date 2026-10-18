@@ -15,7 +15,7 @@ export interface UsageError {
 }
 
 /** What `fudic generate` makes, in the order its help lists them. */
-export const GENERATES = 'component, page, layout, app, lib, service, form, style, term';
+export const GENERATES = 'component, page, layout, app, lib, service, form, style, snippet, term';
 
 /** The commands, for an unknown one. */
 export const COMMANDS = 'new, generate (g), add, dev, preview, test, spec, fmt, translate';

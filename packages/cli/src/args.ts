@@ -12,6 +12,7 @@ import { prefixOf } from './tag.js';
 import type { CheckKind } from './plans/check.js';
 import { FRONT_PORT, type ServeKind } from './serve/workspace.js';
 import { APPS_DIR, LIBS_DIR } from './workspace/place.js';
+import { SNIPPETS_DIR } from './plans/snippet.js';
 import type {
   AppLayout,
   AppOptions,
@@ -24,6 +25,7 @@ import type {
   ProjectOptions,
   LibOptions,
   ServiceOptions,
+  SnippetOptions,
   FormOptions,
   AddOptions,
   SpecOptions,
@@ -58,6 +60,7 @@ export type ParsedCommand =
   | { readonly kind: 'layout'; readonly name: string; readonly opts: LayoutOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'spec'; readonly name: string; readonly opts: SpecOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'term'; readonly name: string; readonly opts: TermOptions; readonly flags: GlobalFlags }
+  | { readonly kind: 'snippet'; readonly name: string; readonly opts: SnippetOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'fmt'; readonly paths: readonly string[]; readonly opts: FmtOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'translate'; readonly opts: TranslateOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'serve'; readonly serve: ServeKind; readonly opts: ServeOptions; readonly flags: GlobalFlags }
@@ -66,7 +69,7 @@ export type ParsedCommand =
   | { readonly kind: 'help'; readonly topic: Topic | null }
   | ({ readonly kind: 'error' } & UsageError);
 
-type GenerateType = 'component' | 'page' | 'layout' | 'app' | 'lib' | 'service' | 'form' | 'style' | 'spec' | 'term';
+type GenerateType = 'component' | 'page' | 'layout' | 'app' | 'lib' | 'service' | 'form' | 'style' | 'snippet' | 'spec' | 'term';
 
 /** Every spelling of a type `fudic generate` takes, aliases included. */
 const GENERATE_TYPES: Readonly<Record<string, GenerateType>> = {
@@ -84,6 +87,7 @@ const GENERATE_TYPES: Readonly<Record<string, GenerateType>> = {
   service: 'service',
   form: 'form',
   style: 'style',
+  snippet: 'snippet',
   term: 'term',
   t: 'term',
 };
@@ -99,6 +103,7 @@ const EXAMPLE: Readonly<Record<GenerateType, string>> = {
   service: 'cart',
   form: 'person',
   style: 'theme',
+  snippet: 'ui productCard',
   term: 'then cart-has',
 };
 
@@ -506,6 +511,16 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
       const unknown = unknownFlag(tokens, [...GLOBAL, 'project'], topic);
       if (unknown !== null) return unknown;
       return { kind: 'spec', name, opts: { ...base, ...target(tokens) }, flags };
+    }
+
+    case 'snippet': {
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'project', 'dir', 'skip-test'], topic);
+      if (unknown !== null) return unknown;
+      // `g snippet <file> <name>`: what the other generators call the name is the file here.
+      const snippet = rest[2];
+      if (snippet === undefined) return fail({ problem: 'generate-needs-name', type }, topic, `e.g. fudic g snippet ${name} productCard`);
+      const opts: SnippetOptions = { ...base, ...target(tokens), file: name, dir: single(tokens, 'dir', SNIPPETS_DIR), test: !bool(tokens, 'skip-test') };
+      return { kind: 'snippet', name: snippet, opts, flags };
     }
 
     case 'term': {

@@ -224,6 +224,15 @@ export interface PageOptions extends TargetedOptions {
   readonly test: boolean;
 }
 
+/** `fudic g snippet <file> <name>`: a snippet added to a file of snippets. */
+export interface SnippetOptions extends TargetedOptions {
+  /** The snippet file's name, without `.fud`: `ui` is `src/snippets/ui.fud`. */
+  readonly file: string;
+  readonly dir: string;
+  /** Add its unit test to the file's; `--skip-test` is `false`. */
+  readonly test: boolean;
+}
+
 export interface LayoutOptions extends TargetedOptions {
   readonly dir: string;
   /** One `@RenderSection(name)` per name. None is mandatory: SDD-21 §4.2. */

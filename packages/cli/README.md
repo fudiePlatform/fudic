@@ -41,6 +41,7 @@ fudic g component button --project ui    # <ui-button>: .fud, unit test, .fudspe
 fudic g page blog/:slug                  # a page and its unit test
 fudic g layout docs --sections nav       # a layout and its unit test
 fudic g layout main --project ui         # a layout apps share: href="@shop/ui/layouts/main.fud"
+fudic g snippet ui productCard --project ui   # a snippet in src/snippets/ui.fud, and its test
 fudic g service cart                     # a service you inject(), and its test
 fudic g form person --binary             # a form with typed controls, and its test
 fudic g style theme                      # a global stylesheet of the project

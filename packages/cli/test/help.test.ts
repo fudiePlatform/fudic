@@ -36,30 +36,31 @@ const GENERAL = `fudic ${VERSION} — web apps from .fud components on Declarati
 Usage: fudic <command> [options]
 
 Start
-  new <name>                    create an app
-  new <name> --workspace        create a workspace: several apps and libraries in one repo
+  new <name>                      create an app
+  new <name> --workspace          create a workspace: several apps and libraries in one repo
 
 Add to a project
-  generate component <name>     a component in its own folder, with its unit test, spec and fixture
-  generate page <route>         a page and its unit test
-  generate layout <name>        a layout and its unit test
-  generate app <name>           another app in the workspace
-  generate lib <name>           a component library in the workspace
-  generate service <name>       a service you can inject
-  generate form <name>          a form and its unit test
-  generate style <name>         a global stylesheet of the project
-  generate term <kind> <name>   a step you can use in .fudspec criteria
-  add <module>                  an optional module (di, forms, http, i18n) or a library of the workspace
+  generate component <name>       a component in its own folder, with its unit test, spec and fixture
+  generate page <route>           a page and its unit test
+  generate layout <name>          a layout and its unit test
+  generate app <name>             another app in the workspace
+  generate lib <name>             a component library in the workspace
+  generate service <name>         a service you can inject
+  generate form <name>            a form and its unit test
+  generate style <name>           a global stylesheet of the project
+  generate snippet <file> <name>  a snippet in a file of snippets, and its unit test
+  generate term <kind> <name>     a step you can use in .fudspec criteria
+  add <module>                    an optional module (di, forms, http, i18n) or a library of the workspace
 
 Run
-  dev                           serve every app on one port, each under its base URL
-  preview                       the same, with each app's build
-  test                          run the unit tests
-  spec                          run the .fudspec criteria in a browser
+  dev                             serve every app on one port, each under its base URL
+  preview                         the same, with each app's build
+  test                            run the unit tests
+  spec                            run the .fudspec criteria in a browser
 
 Maintain
-  fmt [path…]                   format .fud and .fudspec files
-  translate                     extract the texts to translate into src/locales/
+  fmt [path…]                     format .fud and .fudspec files
+  translate                       extract the texts to translate into src/locales/
 
 Words
   app         what you serve: it has pages and a base URL ("/", "/admin/")
@@ -104,7 +105,7 @@ Examples
 const GENERATE_TEST = `
 error  fudic does not generate "test" on its own
        a component comes with its unit test:   fudic g component button
-       it generates: component, page, layout, app, lib, service, form, style, term
+       it generates: component, page, layout, app, lib, service, form, style, snippet, term
 
 "fudic generate --help" for more.
 `;
@@ -264,8 +265,8 @@ describe('a usage error (§6.8)', () => {
       [['translate', 'es'], 'translate', 'fudic translate takes no argument: "es"', 'it translates the app you are in, or the one --project names'],
       [['new'], 'new', 'fudic new needs a project name', 'e.g. fudic new shop'],
       [['new', 'shop', '--pm', 'bun'], 'new', 'unknown package manager "bun"', 'use --pm pnpm, npm or yarn'],
-      [['g'], 'generate', 'fudic generate needs to know what to generate', 'it generates: component, page, layout, app, lib, service, form, style, term'],
-      [['g', 'widget', 'x'], 'generate', 'fudic does not generate "widget"', 'it generates: component, page, layout, app, lib, service, form, style, term'],
+      [['g'], 'generate', 'fudic generate needs to know what to generate', 'it generates: component, page, layout, app, lib, service, form, style, snippet, term'],
+      [['g', 'widget', 'x'], 'generate', 'fudic does not generate "widget"', 'it generates: component, page, layout, app, lib, service, form, style, snippet, term'],
       [['g', 'c'], 'generate component', 'fudic generate component needs a name', 'e.g. fudic g component button'],
       [['g', 'p'], 'generate page', 'fudic generate page needs a name', 'e.g. fudic g page about'],
       [['g', 'l'], 'generate layout', 'fudic generate layout needs a name', 'e.g. fudic g layout docs'],

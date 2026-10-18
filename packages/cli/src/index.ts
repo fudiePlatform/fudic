@@ -51,6 +51,7 @@ export { planTerm } from './plans/term.js';
 export { planTranslate } from './plans/translate.js';
 export { planPage } from './plans/page.js';
 export { planLayout } from './plans/layout.js';
+export { planSnippet } from './plans/snippet.js';
 export { apply } from './apply.js';
 export { run, defaultDeps, type RunDeps, type Streams } from './run.js';
 

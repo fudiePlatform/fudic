@@ -18,6 +18,7 @@ export type Topic =
   | 'generate style'
   | 'generate spec'
   | 'generate term'
+  | 'generate snippet'
   | 'add'
   | 'dev'
   | 'preview'
@@ -81,6 +82,7 @@ apps/ and libs/, empty or with the app and the libraries you name.`,
       ['service', 'a service you can inject'],
       ['form', 'a form and its unit test'],
       ['style', 'a global stylesheet of the project'],
+      ['snippet', 'a snippet in a file of snippets, and its unit test'],
       ['spec', 'the .fudspec criteria of a component   (s)'],
       ['term', 'a step you can use in .fudspec criteria   (t)'],
     ],
@@ -232,6 +234,23 @@ the props they mount it with. A component that does not exist is created too.`,
     args: [['<component>', 'its tag, or its name without the prefix: "button" or "ui-button"']],
     options: [IN_PROJECT, DRY_RUN, FORCE],
     examples: ['fudic g spec button --project ui', 'fudic g s ui-button'],
+  },
+  'generate snippet': {
+    usage: 'fudic generate snippet <file> <name>',
+    about: `Adds a snippet to src/snippets/<file>.fud — creating the file with the first one —
+and its unit test to <file>.test.ts. In a library, apps link the file by the package
+name: <link rel="snippet" href="@shop/ui/snippets/ui.fud">.`,
+    args: [
+      ['<file>', 'the file of snippets, in kebab-case: "ui" is src/snippets/ui.fud'],
+      ['<name>', 'what @render calls: letters, digits and _, e.g. "productCard"'],
+    ],
+    options: [
+      IN_PROJECT,
+      ['--dir <path>', 'another folder for the file   (default: src/snippets)'],
+      ['--skip-test', 'no unit test'],
+      DRY_RUN,
+    ],
+    examples: ['fudic g snippet ui productCard --project ui', 'fudic g snippet fields textField'],
   },
   'generate term': {
     usage: 'fudic generate term <kind> <name>',

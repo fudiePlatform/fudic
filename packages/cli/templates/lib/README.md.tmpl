@@ -42,3 +42,16 @@ A page of an app that uses this library renders inside it with:
 ```
 
 The library publishes its `.fud` sources, not a build: the app's build compiles them.
+
+## Share snippets
+
+```sh
+fudic g snippet ui productCard --project {{project}}
+```
+
+A page or a component of an app that uses this library writes:
+
+```html
+<link rel="snippet" href="{{name}}/snippets/ui.fud">
+@render productCard()
+```

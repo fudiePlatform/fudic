@@ -21,6 +21,7 @@ import { commandFailed } from './diagnostics.js';
 import { absolute } from './paths.js';
 import { planComponent } from './plans/component.js';
 import { planLayout } from './plans/layout.js';
+import { planSnippet } from './plans/snippet.js';
 import { planFmt } from './plans/fmt.js';
 import { planNew } from './plans/new.js';
 import { planPage } from './plans/page.js';
@@ -190,6 +191,8 @@ function build(command: Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } |
       return planPage(command.route, command.opts, io);
     case 'layout':
       return planLayout(command.name, command.opts, io);
+    case 'snippet':
+      return planSnippet(command.name, command.opts, io);
     case 'spec':
       return planSpec(command.name, command.opts, io);
     case 'term':

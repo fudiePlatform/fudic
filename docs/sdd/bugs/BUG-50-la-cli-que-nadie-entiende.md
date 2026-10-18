@@ -290,6 +290,13 @@ cambios, hechos en la misma rama, cada uno con sus tests:
   `"./layouts/*.fud": "./src/layouts/*.fud"` en `exports`; `g layout` en una librería la añade si
   falta y termina con el `<link>` que escribe una página. Un href de paquete que no resuelve es
   `FUD0760` también en el typecheck, que dice si falta instalar o falta la entrada en `exports`.
+- **`fudic g snippet <file> <name>`.** No había forma de crear un fichero de snippets. El primero
+  crea `src/snippets/<file>.fud` y su `.test.ts` con `renderSnippet`; los siguientes van al final de
+  los dos. Termina con el `<link rel="snippet">` y el `@render`. En una librería, `exports` gana
+  `"./snippets/*.fud": "./src/snippets/*.fud"`. `FUD0458` y `FUD0459` cierran el rango de SDD-22.
+  Destapó que el editor convertía `@shop/ui/snippets/ui.fud` en `./@shop/ui/…`, y TypeScript caía
+  al `*.fud` genérico: el snippet «no existía», y un layout o un componente de una librería
+  perdían sus props sin avisar.
 - **Un snippet llamado desde un componente** pintaba `@"Hola"` y pasaba `"@"` a las props: el
   compilador leía el argumento en el fichero del snippet y no en el de quien lo llama. Lo destapó
   el test de `examples/basic` que fallaba.

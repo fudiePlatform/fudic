@@ -66,39 +66,48 @@ export function librarySpecifier(component: string, cwd: string, io: ReadIo): st
   return specifierOf({ name: packageName(library, io), root: library }, componentPath, fs);
 }
 
-/** The `exports` rule that gives a library's layouts their public name: `@shop/ui/layouts/main.fud`. */
-const LAYOUTS_KEY = './layouts/*.fud';
-const LAYOUTS_TARGET = './src/layouts/*.fud';
+/**
+ * The folders of a library with a public name of their own: `src/layouts/main.fud` is
+ * `@shop/ui/layouts/main.fud`, `src/snippets/ui.fud` is `@shop/ui/snippets/ui.fud`. Each has its
+ * rule in the library's `exports`, written by `g lib`.
+ */
+export type SharedFolder = 'layouts' | 'snippets';
 
-/** How an app links a layout of a library, and the `package.json` edit that makes it linkable. */
-export interface LayoutExport {
+/** How an app links a file of a library, and the `package.json` edit that makes it linkable. */
+export interface LibraryExport {
   readonly specifier?: string;
   readonly change?: FileChange;
 }
 
 /**
- * How an app links `layout` (relative to `cwd`), a file of `src/layouts/` of the library at
- * `library` (absolute POSIX). A library generated before its `exports` had the layouts rule
- * gets it here, which is what makes the layout reachable at all: the components rule maps
- * `@shop/ui/layouts/main.fud` to a component folder that does not exist.
+ * How an app links `file` (relative to `cwd`) of the library at `library` (absolute POSIX). A
+ * library generated before its `exports` had the rule of `folder` gets it here when the file is
+ * in `src/<folder>/` (`inFolder`), which is what makes it reachable at all: the components rule
+ * maps `@shop/ui/layouts/main.fud` to a component folder that does not exist.
  */
-export function layoutExport(library: string, layout: string, cwd: string, io: ReadIo, inLayouts: boolean): LayoutExport {
+export function libraryExport(
+  library: string,
+  file: string,
+  cwd: string,
+  io: ReadIo,
+  shared: { readonly folder: SharedFolder; readonly inFolder: boolean },
+): LibraryExport {
   const name = packageName(library, io);
-  const specifier = specifierOf({ name, root: library }, toPosix(absolute(cwd, layout)), packageFs(io));
+  const specifier = specifierOf({ name, root: library }, toPosix(absolute(cwd, file)), packageFs(io));
   if (specifier !== undefined) return { specifier };
-  // The rule maps `src/layouts/` only: a layout anywhere else is the author's to export.
-  if (!inLayouts) return {};
+  // The rule maps `src/<folder>/` only: a file anywhere else is the author's to export.
+  if (!shared.inFolder) return {};
   const manifest = joinPosix(library, 'package.json');
-  const change = exportRule(manifest, relativeTo(cwd, manifest), io);
+  const change = exportRule(manifest, relativeTo(cwd, manifest), shared.folder, io);
   if (change === undefined) return {};
-  return { specifier: `${name}/layouts/${layout.slice(layout.lastIndexOf('/') + 1)}`, change };
+  return { specifier: `${name}/${shared.folder}/${file.slice(file.lastIndexOf('/') + 1)}`, change };
 }
 
 /**
- * The edit that adds the layouts rule to the `exports` object of the `package.json` at `path`,
- * written into the text like `declareDependency`. Nothing when `exports` is not an object.
+ * The edit that adds the rule of `folder` to the `exports` object of the `package.json` at
+ * `path`, written into the text like `declareDependency`. Nothing when `exports` is not an object.
  */
-function exportRule(path: string, shown: string, io: ReadIo): FileChange | undefined {
+function exportRule(path: string, shown: string, folder: SharedFolder, io: ReadIo): FileChange | undefined {
   const before = io.read(path);
   const exports = (parse(before) as { exports?: unknown }).exports;
   if (exports === null || typeof exports !== 'object' || Array.isArray(exports)) return undefined;
@@ -112,7 +121,7 @@ function exportRule(path: string, shown: string, io: ReadIo): FileChange | undef
   }
   close--;
   const inside = before.slice(start, close).trimEnd();
-  const entry = `${JSON.stringify(LAYOUTS_KEY)}: ${JSON.stringify(LAYOUTS_TARGET)}`;
+  const entry = `${JSON.stringify(`./${folder}/*.fud`)}: ${JSON.stringify(`./src/${folder}/*.fud`)}`;
   const contents = `${before.slice(0, start)}${inside}${inside.trim() === '' ? '' : ','}\n    ${entry}\n  ${before.slice(close)}`;
   return { kind: 'modify', path: shown, contents, before };
 }

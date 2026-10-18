@@ -9,7 +9,7 @@ import { hrefBetween, joinPosix, toPosix } from '../paths.js';
 import { targetChange } from '../project.js';
 import { resolveTarget } from '../workspace/target.js';
 import { workspaceRoot } from '../workspace/discover.js';
-import { layoutExport } from '../workspace/link.js';
+import { libraryExport } from '../workspace/link.js';
 import { layoutTest, renderSectionBlocks, renderTemplate } from '../templates.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
 import type { CliError, FileChange, LayoutOptions, Plan } from '../types.js';
@@ -49,7 +49,7 @@ export function planLayout(name: string, opts: LayoutOptions, io: ReadIo = nodeR
   // In a library, what an app writes to use it — and, in `src/layouts/` of a library made
   // before its `exports` published layouts, the rule that lets it.
   const lib = project.config.kind === 'lib';
-  const shared = lib ? layoutExport(project.path, file, opts.cwd, io, toPosix(opts.dir) === LAYOUTS_DIR) : {};
+  const shared = lib ? libraryExport(project.path, file, opts.cwd, io, { folder: 'layouts', inFolder: toPosix(opts.dir) === LAYOUTS_DIR }) : {};
   if (shared.change !== undefined) changes.push(shared.change);
   // In an app, the href a page directly under src/routes writes.
   const href = lib ? shared.specifier : hrefBetween(joinPosix(project.dir, ROUTES_DIR, 'index.fud'), file);

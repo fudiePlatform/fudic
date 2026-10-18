@@ -144,6 +144,8 @@ export * from './codes/FUD0454.js';
 export * from './codes/FUD0455.js';
 export * from './codes/FUD0456.js';
 export * from './codes/FUD0457.js';
+export * from './codes/FUD0458.js';
+export * from './codes/FUD0459.js';
 export * from './codes/FUD0460.js';
 export * from './codes/FUD0461.js';
 export * from './codes/FUD0480.js';

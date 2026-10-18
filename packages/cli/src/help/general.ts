@@ -11,30 +11,31 @@ export const GENERAL_HELP = `fudic ${VERSION} — web apps from .fud components 
 Usage: fudic <command> [options]
 
 Start
-  new <name>                    create an app
-  new <name> --workspace        create a workspace: several apps and libraries in one repo
+  new <name>                      create an app
+  new <name> --workspace          create a workspace: several apps and libraries in one repo
 
 Add to a project
-  generate component <name>     a component in its own folder, with its unit test, spec and fixture
-  generate page <route>         a page and its unit test
-  generate layout <name>        a layout and its unit test
-  generate app <name>           another app in the workspace
-  generate lib <name>           a component library in the workspace
-  generate service <name>       a service you can inject
-  generate form <name>          a form and its unit test
-  generate style <name>         a global stylesheet of the project
-  generate term <kind> <name>   a step you can use in .fudspec criteria
-  add <module>                  an optional module (di, forms, http, i18n) or a library of the workspace
+  generate component <name>       a component in its own folder, with its unit test, spec and fixture
+  generate page <route>           a page and its unit test
+  generate layout <name>          a layout and its unit test
+  generate app <name>             another app in the workspace
+  generate lib <name>             a component library in the workspace
+  generate service <name>         a service you can inject
+  generate form <name>            a form and its unit test
+  generate style <name>           a global stylesheet of the project
+  generate snippet <file> <name>  a snippet in a file of snippets, and its unit test
+  generate term <kind> <name>     a step you can use in .fudspec criteria
+  add <module>                    an optional module (di, forms, http, i18n) or a library of the workspace
 
 Run
-  dev                           serve every app on one port, each under its base URL
-  preview                       the same, with each app's build
-  test                          run the unit tests
-  spec                          run the .fudspec criteria in a browser
+  dev                             serve every app on one port, each under its base URL
+  preview                         the same, with each app's build
+  test                            run the unit tests
+  spec                            run the .fudspec criteria in a browser
 
 Maintain
-  fmt [path…]                   format .fud and .fudspec files
-  translate                     extract the texts to translate into src/locales/
+  fmt [path…]                     format .fud and .fudspec files
+  translate                       extract the texts to translate into src/locales/
 
 Words
   app         what you serve: it has pages and a base URL ("/", "/admin/")
