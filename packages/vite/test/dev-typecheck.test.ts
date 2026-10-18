@@ -107,14 +107,36 @@ afterEach(() => {
 const settle = (): Promise<void> => vi.advanceTimersByTimeAsync(30).then(() => undefined);
 
 describe('startLiveCheck — at start', () => {
-  it('checks the whole project once, after the settle delay, and prints nothing when clean', async () => {
+  it('checks the whole project once, after the settle delay, and says it is clean and how long it took', async () => {
     const { server, told } = fakeServer();
     const checker = scripted(CLEAN);
     const live = startLiveCheck(server, root, checker);
     expect(checker.check).not.toHaveBeenCalled();
     await settle();
     expect(checker.check).toHaveBeenCalledTimes(1);
-    expect(told).toEqual({ sent: [], errors: [], warnings: [], infos: [] });
+    // The clock is the fake one: a checker that answers at once took no time.
+    expect(told).toEqual({ sent: [], errors: [], warnings: [], infos: ['fudic: the typecheck is clean (0 ms)'] });
+    live.dispose();
+  });
+
+  it('a later clean check with no errors before it says nothing (BUG-51)', async () => {
+    const { server, watcher, told } = fakeServer();
+    const live = startLiveCheck(server, root, scripted(CLEAN, CLEAN));
+    await settle();
+    watcher.emit('all', 'change', badge);
+    await settle();
+    expect(told.infos).toEqual(['fudic: the typecheck is clean (0 ms)']);
+    expect(told.sent).toEqual([]);
+    live.dispose();
+  });
+
+  it('a first check with errors is no clean one: fixing them says «clean again»', async () => {
+    const { server, watcher, told } = fakeServer();
+    const live = startLiveCheck(server, root, scripted(report([problem(badge)]), CLEAN));
+    await settle();
+    watcher.emit('all', 'change', badge);
+    await settle();
+    expect(told.infos).toEqual(['fudic: the typecheck is clean again']);
     live.dispose();
   });
 
@@ -276,7 +298,7 @@ describe('startLiveCheck — from errors to clean and back', () => {
     watcher.emit('all', 'change', badge);
     await settle();
     expect(told.sent[1]).toEqual({ type: 'full-reload' });
-    expect(told.infos).toEqual(['fudic: the typecheck is clean again']);
+    expect(told.infos).toEqual(['fudic: the typecheck is clean (0 ms)', 'fudic: the typecheck is clean again']);
 
     watcher.emit('all', 'change', badge);
     await settle();
@@ -296,6 +318,84 @@ describe('startLiveCheck — from errors to clean and back', () => {
     await settle();
     watcher.emit('all', 'change', later);
     expect(checker.invalidate).toHaveBeenLastCalledWith(later);
+    live.dispose();
+  });
+});
+
+describe('startLiveCheck over a checker that answers later (BUG-51)', () => {
+  /** A checker whose every `check()` is a promise the test settles, in the order they were asked. */
+  function deferred() {
+    const asked: Array<(report: CheckReport) => void> = [];
+    return {
+      asked,
+      checker: {
+        check: vi.fn(() => new Promise<CheckReport>((resolve) => asked.push(resolve))),
+        invalidate: vi.fn<ProjectChecker['invalidate']>(),
+      },
+    };
+  }
+
+  it.each([
+    [850, '850 ms'],
+    [1500, '1.5 s'],
+  ])('a first clean check that took %i ms says «%s»', async (ms, said) => {
+    const { server, told } = fakeServer();
+    const checker = {
+      check: () => new Promise<CheckReport>((resolve) => setTimeout(() => resolve(CLEAN), ms)),
+      invalidate: () => undefined,
+    };
+    const live = startLiveCheck(server, root, checker);
+    await settle();
+    await vi.advanceTimersByTimeAsync(ms);
+    expect(told.infos).toEqual([`fudic: the typecheck is clean (${said})`]);
+    live.dispose();
+  });
+
+  it('a check overtaken by a newer one publishes nothing; the newer one does', async () => {
+    const { server, watcher, told } = fakeServer();
+    const { asked, checker } = deferred();
+    const live = startLiveCheck(server, root, checker);
+    const verdict = live.current();
+    await settle();
+    // A `.fud` that appears re-checks whatever the program read — and nothing is published yet.
+    watcher.emit('all', 'add', `${root}/src/other.fud`);
+    await settle();
+    expect(asked).toHaveLength(2);
+
+    asked[0]!(report([problem(badge)]));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(told.sent).toEqual([]);
+    expect(told.errors).toEqual([]);
+
+    asked[1]!(CLEAN);
+    expect(await verdict).toBe(CLEAN);
+    expect(told.infos).toEqual(['fudic: the typecheck is clean (0 ms)']);
+    live.dispose();
+  });
+
+  it('a check that ends with another already scheduled publishes nothing, and the pages wait for that one', async () => {
+    const { server, watcher, told } = fakeServer();
+    const { asked, checker } = deferred();
+    const live = startLiveCheck(server, root, checker);
+    await settle();
+    let answered: CheckReport | undefined;
+    void live.current().then((value) => {
+      answered = value;
+    });
+    // A save while the check runs: its timer is set, and the check in flight ends before it fires.
+    watcher.emit('all', 'add', `${root}/src/other.fud`);
+    asked[0]!(report([problem(badge)]));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(told.sent).toEqual([]);
+    expect(answered).toBeUndefined();
+
+    await settle();
+    const fixed = report([], [], [page]);
+    asked[1]!(fixed);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(answered).toBe(fixed);
+    expect(told.sent).toEqual([]);
     live.dispose();
   });
 });

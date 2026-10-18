@@ -260,43 +260,158 @@ Next
 });
 
 describe('fudic test · fudic spec', () => {
-  it('at the workspace root, runs every project\'s own, one at a time, without stopping', async () => {
+  /** A shop with a second app and a library that has unit tests and no specs. */
+  async function bigShop(): Promise<MemoryFs> {
     const fs = await shop();
-    for (const kind of ['test', 'spec'] as const) {
-      const { code, out, commands } = await cli(fs, kind, '--cwd', SHOP);
-      expect(code).toBe(0);
-      expect(commands).toEqual([`pnpm -r --no-bail --workspace-concurrency=1 run ${kind} @ /w/shop`]);
-      // What the projects print is the report: the CLI adds nothing of its own.
-      expect(out).toBe('');
+    expect((await cli(fs, 'g', 'app', 'admin', '--cwd', SHOP)).code).toBe(0);
+    fs.write(`${SHOP}/libs/ui/fudic.json`, '{"kind":"lib","prefix":"ui"}');
+    fs.write(`${SHOP}/libs/ui/package.json`, '{"name":"@shop/ui","scripts":{"test":"vitest run"}}');
+    return fs;
+  }
+
+  /** A clock that moves `steps` ms at every reading. */
+  const ticking = (...steps: number[]): (() => number) => {
+    let now = 0;
+    let at = 0;
+    return () => {
+      now += steps[at++ % steps.length]!;
+      return now;
+    };
+  };
+
+  /** A runner whose run in a dir ending with one of `failing` exits with that project's status. */
+  class FailingIn extends RecordingRunner {
+    constructor(private readonly failing: Readonly<Record<string, number | null>>) {
+      super();
     }
+    override run(command: string, args: readonly string[], dir: string): number | null {
+      super.run(command, args, dir);
+      const name = Object.keys(this.failing).find((one) => dir.replace(/\\/gu, '/').endsWith(`/${one}`));
+      return name === undefined ? 0 : this.failing[name]!;
+    }
+  }
+
+  async function checks(fs: MemoryFs, runner: RecordingRunner, ...argv: string[]): Promise<Ran> {
+    const capture = captureStreams();
+    const code = await run(argv, { readIo: fs, writeIo: fs, runner, streams: capture.streams, clock: ticking(0, 850, 1200) });
+    return { code, out: capture.stdout(), err: capture.stderr(), commands: runner.commands.map((line) => line.replace(/ @ [A-Za-z]:/u, ' @ ')) };
+  }
+
+  it('at the workspace root, runs each project that has the script, one after another, under a heading of its own', async () => {
+    const fs = await bigShop();
+    const { code, out, commands } = await checks(fs, new RecordingRunner(), 'test', '--cwd', SHOP);
+    expect(code).toBe(0);
+    // `--silent`: pnpm's own lines say nothing the heading does not say better.
+    expect(commands).toEqual([
+      'pnpm --silent run test @ /w/shop/apps/admin',
+      'pnpm --silent run test @ /w/shop/apps/web',
+      'pnpm --silent run test @ /w/shop/libs/ui',
+    ].sort());
+    expect(out).toContain('\n▸ web  unit tests · apps/web\n');
+    expect(out).toContain('  web  passed in ');
+    expect(out).toMatch(/\nfudic test · 3 projects · 3 passed · \d+(\.\d)? (ms|s)\n$/u);
   });
 
-  it('in a project, or for the one --project names, runs that one\'s', async () => {
+  it('a project without the script is left out: the library has no specs', async () => {
+    const fs = await bigShop();
+    const { commands, out } = await checks(fs, new RecordingRunner(), 'spec', '--cwd', SHOP);
+    expect(commands.some((line) => line.includes('libs/ui'))).toBe(false);
+    expect(out).toContain('▸ admin  specs · apps/admin\n');
+    expect(out).toContain('fudic spec · 2 projects · 2 passed · ');
+  });
+
+  it('the root is never one of them, though its own script is this command', async () => {
+    const fs = await bigShop();
+    const { commands } = await checks(fs, new RecordingRunner(), 'test', '--cwd', SHOP);
+    expect(commands.some((line) => line.endsWith('@ /w/shop'))).toBe(false);
+  });
+
+  it('a package.json that is not JSON, or none at all, has no script', async () => {
+    const fs = await bigShop();
+    fs.write(`${SHOP}/libs/ui/package.json`, '{ not json');
+    fs.write(`${SHOP}/libs/kit/fudic.json`, '{"kind":"lib","prefix":"kit"}');
+    const { commands } = await checks(fs, new RecordingRunner(), 'test', '--cwd', SHOP);
+    expect(commands.some((line) => line.includes('libs/'))).toBe(false);
+  });
+
+  it('does not stop at the first that fails, says which failed and exits 1', async () => {
+    const fs = await bigShop();
+    const { code, out, commands } = await checks(fs, new FailingIn({ admin: 1, ui: null }), 'test', '--cwd', SHOP);
+    expect(code).toBe(1);
+    expect(commands).toHaveLength(3);
+    expect(out).toContain('  admin  FAILED in ');
+    expect(out).toContain('  web  passed in ');
+    // A run that was killed (no status) failed too.
+    expect(out).toContain('  ui  FAILED in ');
+    expect(out).toContain('fudic test · 3 projects · 1 passed · 2 failed: admin, ui · ');
+  });
+
+  it('says the time of each run and of all of them, as the terminal says it', async () => {
     const fs = await shop();
-    expect((await cli(fs, 'test', '--cwd', `${SHOP}/apps/web/src`)).commands).toEqual(['pnpm run test @ /w/shop/apps/web']);
-    expect((await cli(fs, 'spec', '--project', 'web', '--cwd', SHOP)).commands).toEqual(['pnpm run spec @ /w/shop/apps/web']);
+    // Readings: start 0, web begins 850, web ends 2050 → 1.2 s; the end 2100 → total 2.1 s.
+    const capture = captureStreams();
+    await run(['test', '--cwd', SHOP], {
+      readIo: fs,
+      writeIo: fs,
+      runner: new RecordingRunner(),
+      streams: capture.streams,
+      clock: ticking(0, 850, 1200, 50),
+    });
+    expect(capture.stdout()).toBe('\n▸ web  unit tests · apps/web\n  web  passed in 1.2 s\n\nfudic test · 1 project · 1 passed · 2.1 s\n');
+  });
+
+  it('with no clock given, the one of the system', async () => {
+    const fs = await shop();
+    const { code, out } = await cli(fs, 'test', '--cwd', SHOP);
+    expect(code).toBe(0);
+    expect(out).toMatch(/fudic test · 1 project · 1 passed · \d+ ms\n$/u);
+  });
+
+  it('when no project has the script: says so on stderr, runs nothing and exits 1', async () => {
+    const fs = await shop();
+    fs.write(`${SHOP}/apps/web/package.json`, '{"name":"web","scripts":{}}');
+    const { code, err, commands } = await checks(fs, new RecordingRunner(), 'spec', '--cwd', SHOP);
+    expect(code).toBe(1);
+    expect(err).toBe('fudic spec: no project here has a "spec" script — nothing to run\n');
+    expect(commands).toEqual([]);
+  });
+
+  it('in a project, or for the one --project names, runs that one\'s, named after its folder', async () => {
+    const fs = await shop();
+    const inside = await checks(fs, new RecordingRunner(), 'test', '--cwd', `${SHOP}/apps/web/src`);
+    expect(inside.commands).toEqual(['pnpm --silent run test @ /w/shop/apps/web']);
+    expect(inside.out).toContain('▸ web  unit tests · ..\n');
+    expect((await checks(fs, new RecordingRunner(), 'spec', '--project', 'web', '--cwd', SHOP)).commands).toEqual([
+      'pnpm --silent run spec @ /w/shop/apps/web',
+    ]);
+  });
+
+  it('--dry-run runs nothing, as every command that takes it', async () => {
+    const fs = await bigShop();
+    const { commands } = await checks(fs, new RecordingRunner(), 'test', '--dry-run', '--cwd', SHOP);
+    expect(commands).toEqual([]);
+  });
+
+  it('--json says why it cannot run, as JSON', async () => {
+    const fs = new MemoryFs({ 'x/readme.md': '#' }, ROOT);
+    const { code, out } = await cli(fs, 'test', '--json', '--cwd', `${ROOT}/x`);
+    expect(code).toBe(1);
+    expect(out).toContain('"FUD0781"');
   });
 
   it('in a standalone app, runs its own from where it is', async () => {
     const fs = new MemoryFs({}, ROOT);
     await cli(fs, 'new', 'solo', '--cwd', ROOT);
     const plan = await planCheck('test', { cwd: `${ROOT}/solo`, force: false }, fs);
-    expect(plan.commands).toEqual([{ command: 'pnpm', args: ['run', 'test'], dir: '.' }]);
+    expect(plan.commands).toEqual([{ command: 'pnpm', args: ['--silent', 'run', 'test'], dir: '.', label: 'solo' }]);
   });
 
   it('says there is no project outside every project, and runs nothing', async () => {
     const fs = new MemoryFs({ 'x/readme.md': '#' }, ROOT);
-    const { code, out, commands } = await cli(fs, 'test', '--cwd', `${ROOT}/x`);
+    const { code, err, commands } = await cli(fs, 'test', '--cwd', `${ROOT}/x`);
     expect(code).toBe(1);
-    expect(out).toContain('FUD0781');
+    expect(err).toContain('FUD0781');
     expect(commands).toEqual([]);
-  });
-
-  it('exits 1 when the project\'s run fails', async () => {
-    const fs = await shop();
-    const capture = captureStreams();
-    const code = await run(['test', '--cwd', SHOP], { readIo: fs, writeIo: fs, runner: new RecordingRunner({ pnpm: 1 }), streams: capture.streams });
-    expect(code).toBe(1);
   });
 });
 
@@ -334,6 +449,11 @@ describe('parsing dev, preview, test and spec', () => {
       expect(parseArgs([topic, '--help'])).toEqual({ kind: 'help', topic });
       expect(commandHelp(topic).startsWith(`fudic ${topic}`)).toBe(true);
     }
+  });
+
+  it('shows --port in the examples of dev and preview (BUG-51)', () => {
+    expect(commandHelp('dev')).toContain('fudic dev --port 3000');
+    expect(commandHelp('preview')).toContain('fudic preview --port 8080');
   });
 });
 
