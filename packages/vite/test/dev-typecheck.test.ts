@@ -412,17 +412,28 @@ describe('startLiveCheck — current() and blocking()', () => {
     live.dispose();
   });
 
-  it('blocking() waits for the check in flight before it answers', async () => {
-    const { server } = fakeServer();
+  it('blocking() answers on the last verdict, never waiting for the check in flight (BUG-51)', async () => {
+    // The first page is served before the first check ends: that check builds the whole
+    // program, seconds. The error, once known, reaches the overlay by itself.
+    const { server, told } = fakeServer();
     const live = startLiveCheck(server, root, scripted(report([problem(page)])));
-    let answer: OverlayError | undefined | 'pending' = 'pending';
-    void live.blocking([page]).then((value) => {
-      answer = value;
-    });
-    await Promise.resolve();
-    expect(answer).toBe('pending');
+    expect(await live.blocking([page])).toBeUndefined();
     await settle();
-    expect(answer).toMatchObject({ id: page, loc: { line: 1, column: 7 } });
+    expect(told.sent).toEqual([{ type: 'error', err: expect.objectContaining({ id: page }) }]);
+    // From then on, the page is blocked by what is known.
+    expect(await live.blocking([page])).toMatchObject({ id: page, loc: { line: 1, column: 7 } });
+    live.dispose();
+  });
+
+  it('after an edit, a page is served on what was known while the new check runs', async () => {
+    const { server, watcher } = fakeServer();
+    const live = startLiveCheck(server, root, scripted(CLEAN, report([problem(page)])));
+    await settle();
+    watcher.emit('all', 'change', page);
+    // The re-check is scheduled, not done: the clean verdict still stands.
+    expect(await live.blocking([page])).toBeUndefined();
+    await settle();
+    expect(await live.blocking([page])).toMatchObject({ id: page });
     live.dispose();
   });
 

@@ -495,6 +495,8 @@ describe('configureServer — the page and the live typecheck (SDD-35 §4.5)', (
       inputs: [],
     };
     const { handle, parts, close } = await htmlMiddleware();
+    // A page never waits for the check (BUG-51): it is refused once the error is known.
+    await vi.waitFor(() => expect(parts.told.sent).toHaveLength(1));
     const { err, nexted, res } = await run(handle, page('/home'));
     expect(nexted).toBe(true);
     expect(res.statusCode).toBeUndefined();
@@ -541,7 +543,22 @@ describe('configureServer — the page and the live typecheck (SDD-35 §4.5)', (
     expect(child.disposed).toBe(1);
   });
 
-  it('a child that dies is answered by a checker in this process: the page still waits for its verdict', async () => {
+  it('a page is served before the first check ends, and refused once its error is known (BUG-51)', async () => {
+    const card = fileURLToPath(new URL('../../compiler/fixtures/app-card.fud', import.meta.url));
+    checked.report = {
+      problems: [{ file: toPosix(card), span: span(0, 5), severity: 'error', code: 'TS2322', message: 'late' }],
+      project: [],
+      inputs: [],
+    };
+    const { handle, parts, close } = await htmlMiddleware();
+    // Asked at once: the check is still settling, and the page does not wait for it.
+    expect((await run(handle, page('/home'))).res.statusCode).toBe(200);
+    await vi.waitFor(() => expect(parts.told.sent).toHaveLength(1));
+    expect((await run(handle, page('/home'))).err).toMatchObject({ message: 'TS2322: late' });
+    close();
+  });
+
+  it('a child that dies is answered by a checker in this process, whose verdict blocks the page', async () => {
     child.dies = true;
     const card = fileURLToPath(new URL('../../compiler/fixtures/app-card.fud', import.meta.url));
     checked.report = {
@@ -549,11 +566,34 @@ describe('configureServer — the page and the live typecheck (SDD-35 §4.5)', (
       project: [],
       inputs: [],
     };
-    const { handle, close } = await htmlMiddleware();
+    const { handle, parts, close } = await htmlMiddleware();
+    await vi.waitFor(() => expect(parts.told.sent).toHaveLength(1));
     const { err, nexted } = await run(handle, page('/home'));
     expect(nexted).toBe(true);
     expect(err).toMatchObject({ message: 'TS2322: local' });
     close();
+  });
+});
+
+describe('hotUpdate — an edit the server graph sees reloads the browser (BUG-51)', () => {
+  /** Run the hook in `environment` over `modules`, and what the client was sent. */
+  function hot(environment: string, modules: unknown[]): unknown[] {
+    const sent: unknown[] = [];
+    const server = { environments: { client: { hot: { send: (payload: unknown) => sent.push(payload) } } } };
+    setup('serve').hotUpdate.call({ environment: { name: environment } }, { modules, server });
+    return sent;
+  }
+
+  it('a module of the ssr graph that changed: a full reload of every page', () => {
+    expect(hot('ssr', [{ id: '/src/routes/index.fud' }])).toEqual([{ type: 'full-reload', path: '*' }]);
+  });
+
+  it('an ssr update that touches no module of its graph says nothing', () => {
+    expect(hot('ssr', [])).toEqual([]);
+  });
+
+  it('the client environment has its own HMR: nothing added', () => {
+    expect(hot('client', [{ id: '/src/routes/index.fud' }])).toEqual([]);
   });
 });
 

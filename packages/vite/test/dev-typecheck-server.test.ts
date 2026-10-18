@@ -8,7 +8,7 @@
  * the end of the line.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { createServer, createLogger, type ViteDevServer } from 'vite';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -96,9 +96,17 @@ function overlayError(body: string): { message: string; id?: string; frame: stri
 }
 
 describe('vite dev — a page whose graph has a type error (criterion 18)', () => {
-  it('is not served: the response is Vite’s overlay, with the error’s loc and frame', async () => {
-    const res = await fetch(`${origin}/broken`, { headers: { accept: 'text/html' } });
-    expect(res.status).toBe(500);
+  it('is not served once the check has found it: the response is Vite’s overlay, with the error’s loc and frame', async () => {
+    // A page never waits for the check (BUG-51): it is refused from the moment the error is
+    // known, so the test asks until the first check, in its child process, has ended.
+    const res = await vi.waitFor(
+      async () => {
+        const answer = await fetch(`${origin}/broken`, { headers: { accept: 'text/html' } });
+        expect(answer.status).toBe(500);
+        return answer;
+      },
+      { timeout: 60_000, interval: 250 },
+    );
     const body = await res.text();
     expect(body).not.toContain('<app-badge');
     const error = overlayError(body);

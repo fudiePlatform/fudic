@@ -27,7 +27,9 @@ interface Ran {
 async function cli(fs: MemoryFs, ...argv: string[]): Promise<Ran> {
   const capture = captureStreams();
   const runner = new RecordingRunner();
-  const code = await run(argv, { readIo: fs, writeIo: fs, runner, streams: capture.streams });
+  // No vitest to share: the lookup of the machine finds the workspace's own through NODE_PATH,
+  // and these paths are a memory's. The tests of sharing one give theirs.
+  const code = await run(argv, { readIo: fs, writeIo: fs, runner, streams: capture.streams, vitestOf: () => undefined });
   // The drive letter of Windows, out: the same line on every platform.
   return { code, out: capture.stdout(), err: capture.stderr(), commands: runner.commands.map((line) => line.replace(/ @ [A-Za-z]:/u, ' @ ')) };
 }
@@ -293,7 +295,14 @@ describe('fudic test · fudic spec', () => {
 
   async function checks(fs: MemoryFs, runner: RecordingRunner, ...argv: string[]): Promise<Ran> {
     const capture = captureStreams();
-    const code = await run(argv, { readIo: fs, writeIo: fs, runner, streams: capture.streams, clock: ticking(0, 850, 1200) });
+    const code = await run(argv, {
+      readIo: fs,
+      writeIo: fs,
+      runner,
+      streams: capture.streams,
+      clock: ticking(0, 850, 1200),
+      vitestOf: () => undefined,
+    });
     return { code, out: capture.stdout(), err: capture.stderr(), commands: runner.commands.map((line) => line.replace(/ @ [A-Za-z]:/u, ' @ ')) };
   }
 
@@ -326,6 +335,23 @@ describe('fudic test · fudic spec', () => {
     expect(commands.some((line) => line.endsWith('@ /w/shop'))).toBe(false);
   });
 
+  it('not even a root that is a project of its own, with the script', async () => {
+    const fs = await bigShop();
+    fs.write(`${SHOP}/fudic.json`, '{"kind":"app","prefix":"shop"}');
+    fs.write(`${SHOP}/package.json`, '{"name":"shop","private":true,"scripts":{"test":"fudic test"}}');
+    const { commands } = await checks(fs, new RecordingRunner(), 'test', '--cwd', SHOP);
+    expect(commands).toHaveLength(3);
+    expect(commands.some((line) => line.endsWith('@ /w/shop'))).toBe(false);
+  });
+
+  it('the one --project names, without the script: nothing to run', async () => {
+    const fs = await bigShop();
+    const { code, err, commands } = await checks(fs, new RecordingRunner(), 'spec', '--project', 'ui', '--cwd', SHOP);
+    expect(code).toBe(1);
+    expect(err).toBe('fudic spec: no project here has a "spec" script — nothing to run\n');
+    expect(commands).toEqual([]);
+  });
+
   it('a package.json that is not JSON, or none at all, has no script', async () => {
     const fs = await bigShop();
     fs.write(`${SHOP}/libs/ui/package.json`, '{ not json');
@@ -356,6 +382,7 @@ describe('fudic test · fudic spec', () => {
       runner: new RecordingRunner(),
       streams: capture.streams,
       clock: ticking(0, 850, 1200, 50),
+      vitestOf: () => undefined,
     });
     expect(capture.stdout()).toBe('\n▸ web  unit tests · apps/web\n  web  passed in 1.2 s\n\nfudic test · 1 project · 1 passed · 2.1 s\n');
   });
@@ -386,6 +413,58 @@ describe('fudic test · fudic spec', () => {
     ]);
   });
 
+  describe('one vitest for every project still on the scaffold’s script (BUG-51)', () => {
+    const VITEST = '/v/vitest/dist/node.js';
+
+    async function shared(fs: MemoryFs, runner: RecordingRunner, vitestOf: (dir: string) => string | undefined, ...argv: string[]): Promise<Ran> {
+      const capture = captureStreams();
+      const code = await run(argv, { readIo: fs, writeIo: fs, runner, streams: capture.streams, clock: ticking(0, 2100), vitestOf });
+      return { code, out: capture.stdout(), err: capture.stderr(), commands: runner.commands };
+    }
+
+    it('runs them all in one process, with the vitest of the first project, and says so', async () => {
+      const fs = await bigShop();
+      fs.write(`${SHOP}/libs/ui/package.json`, '{"name":"@shop/ui","scripts":{"test":"vitest run"}}');
+      const asked: string[] = [];
+      const { code, out, commands } = await shared(fs, new RecordingRunner(), (dir) => (asked.push(dir.replace(/\\/gu, '/')), VITEST), 'test', '--cwd', SHOP);
+      expect(code).toBe(0);
+      expect(asked.map((dir) => dir.replace(/^[A-Za-z]:/u, ''))).toEqual(['/w/shop/apps/admin']);
+      expect(commands).toHaveLength(1);
+      const [line] = commands.map((one) => one.replace(/\\/gu, '/').replace(/ [A-Za-z]:\//gu, ' /'));
+      expect(line).toContain('/runner/vitest-projects.mjs /v/vitest/dist/node.js /w/shop /w/shop/apps/admin /w/shop/apps/web /w/shop/libs/ui @ ');
+      expect(line!.startsWith(process.execPath.replace(/\\/gu, '/'))).toBe(true);
+      expect(out).toBe('\n▸ admin, web, ui  unit tests · one vitest\n\nfudic test · 3 projects · passed · 2.1 s\n');
+    });
+
+    it('a run that fails is FAILED, exit 1', async () => {
+      const fs = await shop();
+      const { code, out } = await shared(fs, new FailingIn({ shop: 1 }), () => VITEST, 'test', '--cwd', SHOP);
+      expect(code).toBe(1);
+      expect(out).toContain('fudic test · 1 project · FAILED · ');
+    });
+
+    it('a project with a script of its own makes each go on its own', async () => {
+      const fs = await bigShop();
+      // The library's `vitest run --coverage`, written by its author: not the scaffold's.
+      fs.write(`${SHOP}/libs/ui/package.json`, '{"name":"@shop/ui","scripts":{"test":"vitest run --coverage"}}');
+      const { commands } = await shared(fs, new RecordingRunner(), () => VITEST, 'test', '--cwd', SHOP);
+      expect(commands).toHaveLength(3);
+      expect(commands.every((line) => line.startsWith('pnpm --silent run test'))).toBe(true);
+    });
+
+    it('with no vitest installed where the first project is, each on its own', async () => {
+      const fs = await shop();
+      const { commands } = await shared(fs, new RecordingRunner(), () => undefined, 'test', '--cwd', SHOP);
+      expect(commands.map((line) => line.replace(/ @ [A-Za-z]:/u, ' @ '))).toEqual(['pnpm --silent run test @ /w/shop/apps/web']);
+    });
+
+    it('specs are never shared: each opens its own browser', async () => {
+      const fs = await shop();
+      const { commands } = await shared(fs, new RecordingRunner(), () => VITEST, 'spec', '--cwd', SHOP);
+      expect(commands.map((line) => line.replace(/ @ [A-Za-z]:/u, ' @ '))).toEqual(['pnpm --silent run spec @ /w/shop/apps/web']);
+    });
+  });
+
   it('--dry-run runs nothing, as every command that takes it', async () => {
     const fs = await bigShop();
     const { commands } = await checks(fs, new RecordingRunner(), 'test', '--dry-run', '--cwd', SHOP);
@@ -403,7 +482,8 @@ describe('fudic test · fudic spec', () => {
     const fs = new MemoryFs({}, ROOT);
     await cli(fs, 'new', 'solo', '--cwd', ROOT);
     const plan = await planCheck('test', { cwd: `${ROOT}/solo`, force: false }, fs);
-    expect(plan.commands).toEqual([{ command: 'pnpm', args: ['--silent', 'run', 'test'], dir: '.', label: 'solo' }]);
+    expect(plan.commands).toEqual([{ command: 'pnpm', args: ['--silent', 'run', 'test'], dir: '.', label: 'solo', script: 'vitest run' }]);
+    expect(plan.shared).toBe(true);
   });
 
   it('says there is no project outside every project, and runs nothing', async () => {

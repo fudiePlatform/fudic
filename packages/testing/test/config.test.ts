@@ -45,6 +45,12 @@ describe('fudicTest', () => {
     expect(BASE_URL).toBe('http://localhost/');
   });
 
+  test('runs many files per worker, in processes, unless the project chose otherwise (BUG-51)', () => {
+    expect(configOf({}).test).toMatchObject({ pool: 'forks', isolate: false });
+    const own = configOf({ test: { pool: 'threads', isolate: true } } as UserConfig);
+    expect(own.test).toMatchObject({ pool: 'threads', isolate: true });
+  });
+
   test('provides the project root, the configured one or the working directory', () => {
     expect(configOf({}).test?.provide).toMatchObject({ [ROOT_KEY]: resolve(process.cwd()) });
     expect(configOf({ root: 'app' }).test?.provide).toMatchObject({ [ROOT_KEY]: resolve('app') });
