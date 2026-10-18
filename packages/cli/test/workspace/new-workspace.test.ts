@@ -20,13 +20,15 @@ function options(overrides: Partial<WorkspaceOptions> = {}): WorkspaceOptions {
     cwd: CWD,
     force: false,
     app: 'tienda',
+    uses: [],
+    libs: [],
     id: 'tienda',
     prefix: '',
     pm: 'pnpm',
     install: true,
     git: true,
     sw: true,
-    layout: '_layout',
+    layout: { own: '_layout' },
     target: 'static',
     ...overrides,
   };
@@ -39,19 +41,25 @@ describe('fudic new --workspace', () => {
     expect(plan.errors).toEqual([]);
     expect(plan.changes.map((change) => change.path)).toEqual([
       'tienda/package.json',
+      'tienda/README.md',
       'tienda/pnpm-workspace.yaml',
       'tienda/tsconfig.base.json',
       `tienda/${GLOBALS_FILE_NAME}`,
       'tienda/.gitignore',
+      'tienda/libs/.gitkeep',
       'tienda/apps/tienda/package.json',
       'tienda/apps/tienda/vite.config.ts',
+      'tienda/apps/tienda/vitest.config.ts',
+      'tienda/apps/tienda/src/fudic-env.d.ts',
       'tienda/apps/tienda/README.md',
       'tienda/apps/tienda/.gitignore',
       'tienda/apps/tienda/fudic.json',
       'tienda/apps/tienda/tsconfig.json',
       'tienda/apps/tienda/sw.json',
       'tienda/apps/tienda/src/layouts/_layout.fud',
+      'tienda/apps/tienda/src/layouts/_layout.test.ts',
       'tienda/apps/tienda/src/routes/index.fud',
+      'tienda/apps/tienda/src/routes/index.test.ts',
     ]);
     expect(plan.changes.every((change) => change.kind === 'create')).toBe(true);
   });

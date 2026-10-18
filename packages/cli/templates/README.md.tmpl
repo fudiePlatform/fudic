@@ -1,36 +1,35 @@
 # {{name}}
 
-A [fudic](https://github.com/fudiePlatform/fudic) app: single-file `.fud` components compiled to
-Declarative Shadow DOM.
+A [fudic](https://github.com/fudiePlatform/fudic) app: pages and components written as `.fud`
+files, served as HTML with Declarative Shadow DOM.
 
 ```sh
-{{pm}} install
-{{pm}} run dev        # dev server
-{{pm}} run build      # static + incremental SSG build
-{{pm}} run preview    # serve the build
+{{run}} dev        # serve it while you work on it
+{{run}} build      # build it into dist/
+{{run}} preview    # serve the build
+{{run}} test       # unit tests, src/**/*.test.ts
+{{run}} spec       # .fudspec criteria, in a browser
 ```
 
-## Layout
+## What is here
 
-```
-{{layoutsDir}}/{{layout}}.fud   the shell every route shares (@RenderBody / @RenderHead)
-{{routesDir}}/index.fud      the `/` route
-{{componentsDir}}/           components, wired with <link rel="component">
-fudic.json                who this project is: its id, and the prefix it proposes
-sw.json                   Service Worker policy; delete it and no SW is emitted
-```
+- `{{routesDir}}/index.fud`: the page at `/`, and `index.test.ts` its unit test.
+{{frame}}
+- `fudic.json`: its id, and the tag prefix of its components (`{{prefix}}-`).
+- `sw.json`: what the Service Worker caches; delete it for no Service Worker.
+- `vite.config.ts`: the dev server and the build. `vitest.config.ts`: the unit tests.
 
-## The `id` in `fudic.json` is never changed
+Components go to `{{componentsDir}}/`, one folder each, when you generate them.
 
-It is what the Service Worker caches are named after. Change it and the caches written
-under the old one stop matching anybody's name — no worker ever purges them again, and
-they sit in the browser of everyone who visited the old build forever. It is not the
-directory name and not the npm name on purpose: those two move, and this one must not.
+## Never change the `id` in `fudic.json`
 
-Add pieces with the CLI — it writes the wiring for you:
+The Service Worker names its caches after it. Change it, and the caches of the old one stay in
+the browser of everyone who visited the app, and nothing ever deletes them.
+
+## Add to it
 
 ```sh
-fudic g component app-card --in {{routesDir}}/index.fud
+fudic g component card --in {{routesDir}}/index.fud   # <{{prefix}}-card>, linked from the home page
 fudic g page blog
 fudic g layout admin --sections aside
 ```

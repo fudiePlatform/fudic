@@ -10,9 +10,9 @@ import { FUD0446 } from '@fudic/diagnostics';
 import { hrefBetween, joinPosix } from '../paths.js';
 import { resolveLayout } from '../layout.js';
 import { targetChange } from '../project.js';
-import { routeToFile } from '../route.js';
+import { routeToFile, routeToUrl } from '../route.js';
 import { resolveTarget, routeRefusal } from '../workspace/target.js';
-import { indent, renderTemplate, sectionBlocks, serverCodeBlock } from '../templates.js';
+import { indent, pageTest, renderTemplate, sectionBlocks, serverCodeBlock } from '../templates.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
 import type { CliError, FileChange, PageOptions, Plan, PlanDiagnostic } from '../types.js';
 
@@ -56,7 +56,7 @@ export function planPage(route: string, opts: PageOptions, io: ReadIo = nodeRead
           code: opts.server ? indent(serverCodeBlock(), '    ') : '',
         })
       : renderTemplate('route.fud', {
-          layoutHref: hrefBetween(file, layout.path),
+          layoutHref: layout.specifier ?? hrefBetween(file, layout.path),
           code: opts.server ? serverCodeBlock() : '',
           title: opts.server ? '@data.title' : titleOf(route),
           sections: sectionBlocks(sections),
@@ -66,6 +66,13 @@ export function planPage(route: string, opts: PageOptions, io: ReadIo = nodeRead
   const target = targetChange(opts.cwd, file, contents, opts.force, io);
   if (target.error !== undefined) errors.push(target.error);
   if (target.change !== undefined) changes.push(target.change);
+
+  // Its unit test beside it, unless `--skip-test` (BUG-50 §4.4).
+  if (opts.test) {
+    const test = targetChange(opts.cwd, file.replace(/\.fud$/u, '.test.ts'), pageTest(routeToUrl(mapped.file)), opts.force, io);
+    if (test.error !== undefined) errors.push(test.error);
+    if (test.change !== undefined) changes.push(test.change);
+  }
 
   return Promise.resolve({ changes, commands: [], diagnostics, errors });
 }

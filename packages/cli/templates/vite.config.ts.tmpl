@@ -1,8 +1,7 @@
 import { defineConfig } from 'vite';
 import { fudic } from '@fudic/vite';
 
-// Nothing else to configure: the plugin discovers `{{routesDir}}/`, infers each route's
-// mode, emits the route→chunk manifest and the bootstraps, and prerenders what it can.
+// Pages are the .fud files under {{routesDir}}/; fudic() needs nothing else to serve and build them.
 export default defineConfig({
-  plugins: [fudic()],
+{{settings}}  plugins: [fudic()],
 });

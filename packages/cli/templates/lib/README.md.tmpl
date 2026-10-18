@@ -1,27 +1,57 @@
 # {{name}}
 
-A [fudic](https://github.com/fudiePlatform/fudic) component library. It is **not** an
-application: it has no routes, no `vite.config.ts` and no `sw.json`, because it is not
-served — it is consumed.
+A [fudic](https://github.com/fudiePlatform/fudic) component library: components your apps use.
+It is not served, so it has no pages, no `vite.config.ts` and no `sw.json`.
 
-## What it publishes
-
-The `.fud` sources themselves, not a build. `exports` maps every component to its file, so
-an app that depends on it links a component by package specifier:
-
-```html
-<link rel="component" href="{{name}}/card.fud">
+```sh
+pnpm --filter {{project}} test    # unit tests, src/**/*.test.ts
+pnpm --filter {{project}} spec    # .fudspec criteria, in a browser
 ```
 
-That is why there is no `build` script here and why `files` carries `src`: a library ships
-what the consumer's compiler reads.
-
-## Adding a component
+## Add a component
 
 ```sh
 fudic g component card --project {{project}}
 ```
 
-The `prefix` in `fudic.json` is what turns `card` into a tag. It proposes and does not
-constrain — but a library is where it earns its keep, because its tags go on to live in the
-global `customElements` registry of applications it does not control.
+The `prefix` in `fudic.json` turns `card` into `<{{prefix}}-card>`. The component gets its own
+folder under `src/components/`, with its unit test, its `.fudspec` criteria and their fixture.
+
+## Use it from an app
+
+```sh
+fudic add {{project}} --project web
+```
+
+An app links a component by the package name:
+
+```html
+<link rel="component" href="{{name}}/{{prefix}}-card.fud">
+```
+
+## Share a layout
+
+```sh
+fudic g layout main --project {{project}}
+```
+
+A page of an app that uses this library renders inside it with:
+
+```html
+<link rel="layout" href="{{name}}/layouts/main.fud">
+```
+
+The library publishes its `.fud` sources, not a build: the app's build compiles them.
+
+## Share snippets
+
+```sh
+fudic g snippet ui productCard --project {{project}}
+```
+
+A page or a component of an app that uses this library writes:
+
+```html
+<link rel="snippet" href="{{name}}/snippets/ui.fud">
+@render productCard()
+```

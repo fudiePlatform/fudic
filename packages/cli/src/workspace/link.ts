@@ -12,7 +12,8 @@
  * because a specifier of a package nobody depends on resolves to nothing either.
  */
 
-import { owningPackage, specifierOf, type PackageFs } from '@fudic/resolve';
+import { owningPackage, packageNameOf, specifierOf, subpathOf, type PackageFs } from '@fudic/resolve';
+import { findProjects, workspaceRoot } from './discover.js';
 import { FUD0787 } from '@fudic/diagnostics';
 import type { ReadIo } from '../io.js';
 import { absolute, hrefBetween, joinPosix, relativeTo, toPosix } from '../paths.js';
@@ -48,8 +49,129 @@ export function componentLink(into: string, component: string, cwd: string, io: 
   const href = specifierOf({ name, root: library }, toPosix(componentPath), fs);
   if (href === undefined) return { error: FUD0787({ file: into, library: name }) };
 
-  const dependency = declare(joinPosix(consumer, 'package.json'), relativeTo(cwd, joinPosix(consumer, 'package.json')), name, io);
+  const dependency = declareDependency(joinPosix(consumer, 'package.json'), relativeTo(cwd, joinPosix(consumer, 'package.json')), name, 'workspace:*', io);
   return dependency === undefined ? { href } : { href, dependency };
+}
+
+/**
+ * How an app links `component` (relative to `cwd`) of a library: the package specifier its
+ * `exports` gives it, `@shop/ui/ui-button.fud`. Undefined when the file is in no package, or
+ * the package does not export it.
+ */
+export function librarySpecifier(component: string, cwd: string, io: ReadIo): string | undefined {
+  const fs = packageFs(io);
+  const componentPath = toPosix(absolute(cwd, component));
+  const library = owningPackage(componentPath, fs);
+  if (library === undefined) return undefined;
+  return specifierOf({ name: packageName(library, io), root: library }, componentPath, fs);
+}
+
+/**
+ * The folders of a library with a public name of their own: `src/layouts/main.fud` is
+ * `@shop/ui/layouts/main.fud`, `src/snippets/ui.fud` is `@shop/ui/snippets/ui.fud`. Each has its
+ * rule in the library's `exports`, written by `g lib`.
+ */
+export type SharedFolder = 'layouts' | 'snippets';
+
+/** How an app links a file of a library, and the `package.json` edit that makes it linkable. */
+export interface LibraryExport {
+  readonly specifier?: string;
+  readonly change?: FileChange;
+}
+
+/**
+ * How an app links `file` (relative to `cwd`) of the library at `library` (absolute POSIX). A
+ * library generated before its `exports` had the rule of `folder` gets it here when the file is
+ * in `src/<folder>/` (`inFolder`), which is what makes it reachable at all: the components rule
+ * maps `@shop/ui/layouts/main.fud` to a component folder that does not exist.
+ */
+export function libraryExport(
+  library: string,
+  file: string,
+  cwd: string,
+  io: ReadIo,
+  shared: { readonly folder: SharedFolder; readonly inFolder: boolean },
+): LibraryExport {
+  const name = packageName(library, io);
+  const specifier = specifierOf({ name, root: library }, toPosix(absolute(cwd, file)), packageFs(io));
+  if (specifier !== undefined) return { specifier };
+  // The rule maps `src/<folder>/` only: a file anywhere else is the author's to export.
+  if (!shared.inFolder) return {};
+  const manifest = joinPosix(library, 'package.json');
+  const change = exportRule(manifest, relativeTo(cwd, manifest), shared.folder, io);
+  if (change === undefined) return {};
+  return { specifier: `${name}/${shared.folder}/${file.slice(file.lastIndexOf('/') + 1)}`, change };
+}
+
+/**
+ * The edit that adds the rule of `folder` to the `exports` object of the `package.json` at
+ * `path`, written into the text like `declareDependency`. Nothing when `exports` is not an object.
+ */
+function exportRule(path: string, shown: string, folder: SharedFolder, io: ReadIo): FileChange | undefined {
+  const before = io.read(path);
+  const exports = (parse(before) as { exports?: unknown }).exports;
+  if (exports === null || typeof exports !== 'object' || Array.isArray(exports)) return undefined;
+  // A valid manifest whose `exports` is an object writes it as `"exports": {`.
+  const open = /"exports"\s*:\s*\{/u.exec(before)!;
+  const start = open.index + open[0].length;
+  let close = start;
+  for (let depth = 1; depth > 0; close++) {
+    if (before[close] === '{') depth++;
+    if (before[close] === '}') depth--;
+  }
+  close--;
+  const inside = before.slice(start, close).trimEnd();
+  const entry = `${JSON.stringify(`./${folder}/*.fud`)}: ${JSON.stringify(`./src/${folder}/*.fud`)}`;
+  const contents = `${before.slice(0, start)}${inside}${inside.trim() === '' ? '' : ','}\n    ${entry}\n  ${before.slice(close)}`;
+  return { kind: 'modify', path: shown, contents, before };
+}
+
+/** The file a package specifier names inside the workspace, and the project it is in. */
+export interface WorkspaceFile {
+  /** Relative to `cwd`. */
+  readonly file: string;
+  /** The project's directory name, as `--uses` and `--project` name it. */
+  readonly project: string;
+}
+
+/**
+ * The file of the workspace a package specifier names — `@shop/ui/layouts/main.fud` is
+ * `libs/ui/src/layouts/main.fud` —, read off that project's own `exports` as Node maps them,
+ * so it answers before anything is installed. Undefined when no project of the workspace is
+ * that package, or its `exports` do not map the subpath.
+ */
+export function workspaceFile(specifier: string, cwd: string, io: ReadIo): WorkspaceFile | undefined {
+  const root = workspaceRoot(cwd, io);
+  if (root === null) return undefined;
+  const name = packageNameOf(specifier);
+  const project = findProjects(root, io).find((candidate) => packageName(candidate.path, io) === name);
+  if (project === undefined) return undefined;
+  const inside = mapped(subpathOf(specifier), (parse(io.read(joinPosix(project.path, 'package.json'))) as { exports?: unknown }).exports);
+  return inside === undefined ? undefined : { file: relativeTo(cwd, joinPosix(project.path, inside)), project: project.name };
+}
+
+/**
+ * Where `exports` sends `subpath` (`./layouts/main.fud`): a path inside the package, or nothing.
+ * An exact key wins; among patterns, the one with the longest part before its `*`, as Node
+ * picks it — `./layouts/*.fud` over `./*.fud`, whatever order they are written in.
+ */
+function mapped(subpath: string, exports: unknown): string | undefined {
+  if (exports === undefined) return subpath;
+  if (exports === null || typeof exports !== 'object') return undefined;
+  let best: { readonly head: string; readonly path: string } | undefined;
+  for (const [key, target] of Object.entries(exports)) {
+    if (typeof target !== 'string') continue;
+    const [head = '', tail] = key.split('*');
+    if (tail === undefined) {
+      if (key === subpath) return target;
+      continue;
+    }
+    const fits = subpath.length > head.length + tail.length && subpath.startsWith(head) && subpath.endsWith(tail);
+    if (fits && (best === undefined || head.length > best.head.length)) {
+      best = { head, path: target.replaceAll('*', subpath.slice(head.length, subpath.length - tail.length)) };
+    }
+  }
+  return best?.path;
 }
 
 /** The `name` of the `package.json` at `root`, or its folder name when it declares none. */
@@ -61,13 +183,13 @@ function packageName(root: string, io: ReadIo): string {
 const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies'] as const;
 
 /**
- * The edit that makes the `package.json` at `path` depend on `name`, or nothing when it
+ * The edit that makes the `package.json` at `path` depend on `name` at `version`, or nothing when it
  * already does.
  *
  * Written into the text rather than re-serialized, for the reason `wire.ts` gives for the
  * `.fud`: this is a file the user owns, and the command touches the one line it adds.
  */
-function declare(path: string, shown: string, name: string, io: ReadIo): FileChange | undefined {
+export function declareDependency(path: string, shown: string, name: string, version: string, io: ReadIo): FileChange | undefined {
   const before = io.read(path);
   const manifest = parse(before) as Record<string, unknown>;
   const declared = DEPENDENCY_FIELDS.some((field) => {
@@ -76,7 +198,7 @@ function declare(path: string, shown: string, name: string, io: ReadIo): FileCha
   });
   if (declared) return undefined;
 
-  const entry = `${JSON.stringify(name)}: "workspace:*"`;
+  const entry = `${JSON.stringify(name)}: ${JSON.stringify(version)}`;
   const open = /"dependencies"\s*:\s*\{/u.exec(before);
   let contents: string;
   if (open !== null) {

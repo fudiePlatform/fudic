@@ -12,24 +12,32 @@
  * arrives with its sections already declared.
  */
 
+import { linkHref } from '@fudic/compiler';
 import { FUD0449 } from '@fudic/diagnostics';
-import { absolute, dirname, joinPosix, resolveHref } from './paths.js';
+import { hrefKind } from '@fudic/resolve';
+import { absolute, dirname, joinPosix, relativeTo } from './paths.js';
 import { parseFud } from './parse.js';
+import { workspaceFile } from './workspace/link.js';
 import type { ReadIo } from './io.js';
 import type { CliError, PlanDiagnostic } from './types.js';
 
 const LAYOUT_FILE = '_layout.fud';
 
+/** The page at `/` of a project, relative to its routes. */
+const HOME_FILE = 'index.fud';
+
 export interface LayoutResolution {
   /** `cwd`-relative path of the layout, or `null` for a standalone page. */
   readonly path: string | null;
+  /** How a page links it when it is a library's: its package specifier. A path otherwise. */
+  readonly specifier?: string;
   /** Every `@RenderSection` of that layout, in source order, deduplicated. */
   readonly sections: readonly string[];
   readonly diagnostics: readonly PlanDiagnostic[];
   readonly errors: readonly CliError[];
 }
 
-function isLayout(cwd: string, file: string, io: ReadIo): boolean {
+export function isLayout(cwd: string, file: string, io: ReadIo): boolean {
   const path = absolute(cwd, file);
   if (!io.exists(path)) return false;
   return parseFud(io.read(path)).doc.type === 'layout-document';
@@ -80,6 +88,46 @@ function collectSections(
   return { sections, diagnostics };
 }
 
+/** A layout found: its file, and the specifier a page writes when it is a library's. */
+interface Located {
+  readonly path: string;
+  readonly specifier?: string;
+}
+
+/**
+ * The file an href names: a path relative to `cwd`, or a library's specifier
+ * (`@shop/ui/layouts/main.fud`) mapped to its file in the workspace. Undefined when it is a
+ * specifier no project of the workspace maps.
+ */
+export function locateLayout(href: string, cwd: string, io: ReadIo): Located | undefined {
+  // `src/layouts/x.fud` is how a person names a file of the project, and it reads like a
+  // package: a file that is there settles it.
+  if (hrefKind(href) !== 'package' || io.exists(absolute(cwd, href))) return { path: href };
+  const found = workspaceFile(href, cwd, io);
+  return found === undefined ? undefined : { path: found.file, specifier: href };
+}
+
+/** What a page links once its layout is chosen, with that layout's sections. */
+function chosen(cwd: string, layout: Located, io: ReadIo): LayoutResolution {
+  const collected = collectSections(cwd, layout.path, io);
+  return { ...layout, sections: collected.sections, diagnostics: collected.diagnostics, errors: [] };
+}
+
+/**
+ * The layout the home page of the project links, when it links one: what a project whose
+ * frame lives in a library — and so has no `_layout.fud` of its own — writes every page into.
+ */
+function homeLayout(cwd: string, routesDir: string, io: ReadIo): Located | undefined {
+  const home = joinPosix(routesDir, HOME_FILE);
+  if (!io.exists(absolute(cwd, home))) return undefined;
+  const doc = parseFud(io.read(absolute(cwd, home))).doc;
+  const href = doc.type === 'route-document' ? linkHref(doc.layoutLink) : undefined;
+  if (href === undefined || href === '') return undefined;
+  const located =
+    hrefKind(href) === 'package' ? locateLayout(href, cwd, io) : { path: relativeTo(cwd, absolute(cwd, joinPosix(dirname(home), href))) };
+  return located !== undefined && isLayout(cwd, located.path, io) ? located : undefined;
+}
+
 export function resolveLayout(
   pageFile: string,
   explicit: string | null | undefined,
@@ -89,7 +137,8 @@ export function resolveLayout(
   if (explicit === null) return { path: null, sections: [], diagnostics: [], errors: [] };
 
   if (explicit !== undefined) {
-    if (!isLayout(opts.cwd, explicit, io)) {
+    const located = locateLayout(explicit, opts.cwd, io);
+    if (located === undefined || !isLayout(opts.cwd, located.path, io)) {
       return {
         path: null,
         sections: [],
@@ -97,14 +146,12 @@ export function resolveLayout(
         errors: [FUD0449({ file: explicit })],
       };
     }
-    const collected = collectSections(opts.cwd, explicit, io);
-    return { path: explicit, sections: collected.sections, diagnostics: collected.diagnostics, errors: [] };
+    return chosen(opts.cwd, located, io);
   }
 
   for (const candidate of candidates(pageFile, opts.routesDir, opts.layoutsDir)) {
-    if (!isLayout(opts.cwd, candidate, io)) continue;
-    const collected = collectSections(opts.cwd, candidate, io);
-    return { path: candidate, sections: collected.sections, diagnostics: collected.diagnostics, errors: [] };
+    if (isLayout(opts.cwd, candidate, io)) return chosen(opts.cwd, { path: candidate }, io);
   }
-  return { path: null, sections: [], diagnostics: [], errors: [] };
+  const home = homeLayout(opts.cwd, opts.routesDir, io);
+  return home === undefined ? { path: null, sections: [], diagnostics: [], errors: [] } : chosen(opts.cwd, home, io);
 }

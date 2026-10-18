@@ -13,7 +13,7 @@ import type { ComponentOptions } from '../src/types.js';
 const CWD = '/project';
 
 function options(overrides: Partial<ComponentOptions> = {}): ComponentOptions {
-  return { cwd: CWD, force: false, dir: 'components', wireInto: [], style: true, slot: false, ...overrides };
+  return { cwd: CWD, force: false, dir: 'components', wireInto: [], style: true, slot: false, test: false, spec: false, ...overrides };
 }
 
 /** A project whose `fudic.json` declares `prefix`, or — for `''` — leaves the field out. */
@@ -27,7 +27,7 @@ describe('fudic g component, with a prefix declared', () => {
     const plan = await planComponent('card', options(), withPrefix('app'));
 
     expect(plan.errors).toEqual([]);
-    expect(plan.changes[0]?.path).toBe('components/app-card.fud');
+    expect(plan.changes[0]?.path).toBe('components/app-card/app-card.fud');
     expect(plan.changes[0]?.contents).toContain('<app-card>');
   });
 
@@ -35,7 +35,7 @@ describe('fudic g component, with a prefix declared', () => {
     const plan = await planComponent('signal-counter', options(), withPrefix('app'));
 
     expect(plan.errors).toEqual([]);
-    expect(plan.changes[0]?.path).toBe('components/signal-counter.fud');
+    expect(plan.changes[0]?.path).toBe('components/signal-counter/signal-counter.fud');
     expect(plan.changes[0]?.contents).toContain('<signal-counter>');
   });
 
@@ -63,7 +63,7 @@ describe('fudic g component, with no prefix declared', () => {
   it('writes the tag it was handed', async () => {
     const plan = await planComponent('app-card', options(), withPrefix(''));
 
-    expect(plan.changes[0]?.path).toBe('components/app-card.fud');
+    expect(plan.changes[0]?.path).toBe('components/app-card/app-card.fud');
   });
 });
 

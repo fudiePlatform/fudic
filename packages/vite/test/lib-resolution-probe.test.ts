@@ -210,12 +210,11 @@ describe('SDD-43 §4.2 — a bare specifier in an href', () => {
     // the build died with an ENOENT over a file that could never have existed. Now it is
     // told what is wrong and what to do about it.
     //
-    // Since SDD-35 the build stops earlier, in the typecheck, and what it prints there is the
-    // editor's word for the same href — FUD0460, «cannot resolve» — so the build fails before
-    // FUD0760's «not installed» is ever reached.
+    // Since SDD-35 the build stops earlier, in the typecheck, and the typecheck says the same
+    // FUD0760 over the href: a package specifier names its fix, never a bare «cannot resolve».
     expect(bareUnscoped.error ?? '').toMatch(/the typecheck failed/u);
-    expect(bareUnscoped.printed.join('\n')).toMatch(/index\.fud:4:33 - error FUD0460: Cannot resolve "acme-ui\/ui-card\.fud"/u);
-    expect(bareUnscoped.printed.join('\n')).not.toMatch(/FUD0760/u);
+    expect(bareUnscoped.printed.join('\n')).toMatch(/index\.fud:4:33 - error FUD0760: "acme-ui\/ui-card\.fud" names a package that is not installed/u);
+    expect(bareUnscoped.printed.join('\n')).not.toMatch(/FUD0460/u);
   });
 
   it('hoists the library stylesheet the same way a relative href does', () => {

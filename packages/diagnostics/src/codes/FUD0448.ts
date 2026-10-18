@@ -15,18 +15,24 @@ export type FUD0448Params =
   | { readonly problem: 'line-terminator'; readonly value: string }
   /** `--print-width` that is not a number. */
   | { readonly problem: 'print-width' }
+  /** `--port` that is not a number. */
+  | { readonly problem: 'port' }
   /** `--tab-width` that is not a number. */
   | { readonly problem: 'tab-width' }
   /** `fudic new` with no project name. */
   | { readonly problem: 'new-needs-name' }
   /** `--pm` with an unknown package manager. */
   | { readonly problem: 'package-manager'; readonly value: string }
+  /** `fudic add` with nothing to add. */
+  | { readonly problem: 'add-needs-module' }
   /** `fudic g` with no type. */
   | { readonly problem: 'generate-needs-type' }
   /** `fudic g <type>` with no name. */
   | { readonly problem: 'generate-needs-name'; readonly type: string }
   /** `fudic g` with a type it does not generate. */
   | { readonly problem: 'unknown-type'; readonly type: string }
+  /** `fudic g test`: a unit test comes with the piece it tests. */
+  | { readonly problem: 'generate-test' }
   /** `fudic g term` with a block that is not given, when or then. */
   | { readonly problem: 'term-block'; readonly value: string }
   /** A route with a segment that cannot be a file name. */
@@ -48,18 +54,24 @@ function describe(p: FUD0448Params): string {
       return `unknown line terminator "${p.value}"`;
     case 'print-width':
       return '--print-width needs a number';
+    case 'port':
+      return '--port needs a number';
     case 'tab-width':
       return '--tab-width needs a number';
     case 'new-needs-name':
       return 'fudic new needs a project name';
     case 'package-manager':
       return `unknown package manager "${p.value}"`;
+    case 'add-needs-module':
+      return 'fudic add needs to know what to add';
     case 'generate-needs-type':
-      return 'fudic g needs a type: page (p), component (c), layout (l), spec (s) or term (t)';
+      return 'fudic generate needs to know what to generate';
     case 'generate-needs-name':
-      return `fudic g ${p.type} needs a name`;
+      return `fudic generate ${p.type} needs a name`;
     case 'unknown-type':
-      return `unknown type "${p.type}": expected app, lib, page, component, layout, spec or term`;
+      return `fudic does not generate "${p.type}"`;
+    case 'generate-test':
+      return 'fudic does not generate "test" on its own';
     case 'term-block':
       return `unknown block "${p.value}": expected given, when or then`;
     case 'route-segment':

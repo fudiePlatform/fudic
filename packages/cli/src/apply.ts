@@ -33,7 +33,7 @@ export function apply(
   for (const path of plan.deletions ?? []) io.remove(absolute(opts.cwd, path));
 
   for (const command of plan.commands) {
-    const status = runner.run(command.command, command.args, absolute(opts.cwd, command.dir));
+    const status = runner.run(command.command, command.args, absolute(opts.cwd, command.dir), command.quiet === true);
     if (status === 0) continue;
     return Promise.resolve({ changes: plan.changes, failed: { command, status } });
   }

@@ -5,7 +5,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { run, type RunDeps } from '../src/run.js';
-import { parseArgs, USAGE } from '../src/args.js';
+import { parseArgs } from '../src/args.js';
+import { commandHelp } from '../src/help/commands.js';
 import { captureStreams, MemoryFs, projectFs, RecordingRunner } from './helpers.js';
 
 const CWD = '/project';
@@ -52,18 +53,25 @@ describe('run()', () => {
     const dryDeps = deps(dry);
     expect(await run([...argv, '--dry-run'], dryDeps)).toBe(0);
     expect(dry.paths()).toEqual(['fudic.json']); // nothing beyond what was already there
-    expect(dryDeps.capture.stdout()).toContain('src/components/app-card.fud');
+    expect(dryDeps.capture.stdout()).toContain('src/components/app-card/app-card.fud');
 
     const real = projectFs({}, CWD);
     const realDeps = deps(real);
     expect(await run(argv, realDeps)).toBe(0);
-    expect(real.paths()).toEqual(['fudic.json', 'src/components/app-card.fud']);
+    expect(real.paths()).toEqual([
+      'fudic.json',
+      'src/components/app-card/app-card.fixture.ts',
+      'src/components/app-card/app-card.fud',
+      'src/components/app-card/app-card.fudspec',
+      'src/components/app-card/app-card.test.ts',
+    ]);
 
     const listed = dryDeps.capture
       .stdout()
       .split('\n')
       .filter((line) => line.startsWith('  create') || line.startsWith('  modify'))
-      .map((line) => line.trim());
+      .map((line) => line.trim())
+      .sort();
     const written = real
       .paths()
       .filter((path) => path !== 'fudic.json')
@@ -82,7 +90,7 @@ describe('run()', () => {
       d,
     );
     expect(code).toBe(0);
-    expect(d.capture.stdout()).toContain('+<link rel="component" href="./app-icon.fud">');
+    expect(d.capture.stdout()).toContain('+<link rel="component" href="./app-icon/app-icon.fud">');
     expect(fs.at('src/components/app-card.fud')).not.toContain('app-icon');
   });
 
@@ -92,16 +100,24 @@ describe('run()', () => {
     expect(await run(['g', 'component', 'app-card', '--cwd', CWD, '--json', '--dry-run'], d)).toBe(0);
 
     const parsed = JSON.parse(d.capture.stdout()) as { changes: { path: string }[] };
-    expect(parsed.changes.map((change) => change.path)).toEqual(['src/components/app-card.fud']);
+    expect(parsed.changes.map((change) => change.path)).toEqual([
+      'src/components/app-card/app-card.fud',
+      'src/components/app-card/app-card.test.ts',
+      'src/components/app-card/app-card.fudspec',
+      'src/components/app-card/app-card.fixture.ts',
+    ]);
     expect(d.capture.stderr()).toContain('dry run');
   });
 
-  it('a usage error exits 1 with the usage text, writing nothing (§6.13)', async () => {
+  it('a usage error exits 1 with its line and the way on, writing nothing (§6.13, BUG-50 §4.1)', async () => {
     const fs = new MemoryFs({}, CWD);
     const d = deps(fs);
     expect(await run(['g'], d)).toBe(1);
-    expect(d.capture.stderr()).toContain('fudic g needs a type');
-    expect(d.capture.stderr()).toContain('fudic new <name>');
+    expect(d.capture.stderr()).toContain('fudic generate needs to know what to generate');
+    expect(d.capture.stderr()).toContain('"fudic generate --help" for more.');
+    // Never the whole help after an error: it buries the one line that says what went wrong.
+    expect(d.capture.stderr()).not.toContain('Usage: fudic');
+    expect(d.capture.stdout()).toBe('');
     expect(fs.paths()).toEqual([]);
 
     expect(await run(['frobnicate'], deps(fs))).toBe(1);
@@ -144,9 +160,9 @@ describe('parseArgs', () => {
 
     // Help output is interface: a default that is right in the code and stale in the text is
     // still a wrong default for whoever reads it before running anything.
-    expect(USAGE).toContain('(default: src/components)');
-    expect(USAGE).toContain('(default: src/routes)');
-    expect(USAGE).toContain('(default: src/layouts)');
+    expect(commandHelp('generate component')).toContain('src/components');
+    expect(commandHelp('generate page')).toContain('(default: src/routes)');
+    expect(commandHelp('generate layout')).toContain('(default: src/layouts)');
   });
 
   it('maps the --no-* flags onto their positive options', () => {

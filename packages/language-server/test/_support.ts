@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { GLOBALS_DTS } from '@fudic/language-core';
 import { resolveFrom, toPosix } from '@fudic/typecheck';
+import type { LookupFailure } from '@fudic/resolve';
 import type { FileSystemScanner } from '../src/types.js';
 
 /** Absolute POSIX path of the fixture workspace. */
@@ -26,12 +27,14 @@ export const FIXTURES = toPosix(fileURLToPath(new URL('../fixtures', import.meta
 export function memoryFs(
   files: Readonly<Record<string, string>>,
   packages: Readonly<Record<string, string>> = {},
+  failures: Readonly<Record<string, LookupFailure>> = {},
 ): FileSystemScanner {
   return {
     fudFiles: (root) =>
       Object.keys(files).filter((path) => path.startsWith(root) && path.endsWith('.fud')),
     readFile: (path) => files[path],
     resolveHref: (fromFile, href) => packages[href] ?? resolveFrom(toPosix(fromFile), href),
+    hrefFailure: (_fromFile, href) => failures[href],
     // No symlinks in a Record: a path is already its own real name.
     realPath: (path) => toPosix(path),
   };

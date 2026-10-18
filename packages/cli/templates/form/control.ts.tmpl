@@ -1,0 +1,5 @@
+import { control, form, required } from '@fudic/forms';
+
+export const {{form}} = form({
+  name: control('', [required], { messages: { required: () => 'Name is required.' } }),
+});

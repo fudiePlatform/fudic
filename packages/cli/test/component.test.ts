@@ -13,7 +13,7 @@ import type { ComponentOptions } from '../src/types.js';
 const CWD = '/project';
 
 function options(overrides: Partial<ComponentOptions> = {}): ComponentOptions {
-  return { cwd: CWD, force: false, dir: 'components', wireInto: [], style: true, slot: false, ...overrides };
+  return { cwd: CWD, force: false, dir: 'components', wireInto: [], style: true, slot: false, test: false, spec: false, ...overrides };
 }
 
 const CARD = `<link rel="component" href="./app-badge.fud">
@@ -44,7 +44,7 @@ describe('g component', () => {
 
     const change = plan.changes[0]!;
     expect(change.kind).toBe('create');
-    expect(change.path).toBe('components/app-card.fud');
+    expect(change.path).toBe('components/app-card/app-card.fud');
 
     const doc = parseFud(change.contents).doc;
     expect(doc.type).toBe('component-document');
@@ -53,13 +53,10 @@ describe('g component', () => {
     expect(doc.template).toBeDefined();
     expect(doc.head).toBeDefined();
 
-    // The `@code` is there for every component: writing the type and the `props<T>()` call
-    // by hand is the part that costs, and a component that is only markup and style is the
-    // rare case. `@client {}` empty reclassifies nothing — a component has no level of its
-    // own and gets its client chunk regardless (SDD-15).
-    expect(doc.code).toBeDefined();
-    expect(change.contents).toContain('const {} = props<Props>();');
-    expect(change.contents).toContain('@client {}');
+    // No `@code` until there is something to write in it (BUG-50 §4.3): an empty one is text
+    // the user has to read past, or delete.
+    expect(doc.code).toBeUndefined();
+    expect(change.contents).not.toContain('@code');
 
     // And nothing invented on top of it: no placeholder node, no made-up CSS rule, no
     // comment standing in for markup. The `host=` marker is serialization's, not ours.
@@ -71,16 +68,7 @@ describe('g component', () => {
 
   it('is written whole: exactly the file the user is shown', async () => {
     const plan = await planComponent('app-button', options(), projectFs());
-    expect(plan.changes[0]!.contents).toBe(`@code {
-  type Props = {
-  };
-
-  const {} = props<Props>();
-
-  @client {}
-}
-
-<head>
+    expect(plan.changes[0]!.contents).toBe(`<head>
   <style></style>
 </head>
 
@@ -127,7 +115,7 @@ describe('g component', () => {
     expect(wired?.kind).toBe('modify');
 
     const contents = wired!.contents;
-    expect(contents).toContain('<link rel="component" href="./app-icon.fud">');
+    expect(contents).toContain('<link rel="component" href="./app-icon/app-icon.fud">');
     expect(contents.indexOf('app-icon.fud')).toBeLessThan(contents.indexOf('@code'));
 
     const doc = parseFud(contents).doc;
@@ -145,13 +133,13 @@ describe('g component', () => {
   it('wiring a link that is already there is not a modification (§6.4, idempotency)', async () => {
     // The target already links the component the command is about to create: the plan
     // creates the file and leaves the target alone — no duplicate, no diagnostic.
-    const linked = `<link rel="component" href="./app-icon.fud">\n${CARD}`;
+    const linked = `<link rel="component" href="./app-icon/app-icon.fud">\n${CARD}`;
     const fs = projectFs({ 'components/app-card.fud': linked });
     const plan = await planComponent('app-icon', options({ wireInto: ['components/app-card.fud'] }), fs);
 
     expect(plan.errors).toEqual([]);
     expect(plan.diagnostics).toEqual([]);
-    expect(plan.changes.map((change) => change.path)).toEqual(['components/app-icon.fud']);
+    expect(plan.changes.map((change) => change.path)).toEqual(['components/app-icon/app-icon.fud']);
   });
 
   it('a component with no links takes the link at offset 0', async () => {
@@ -160,21 +148,21 @@ describe('g component', () => {
     });
     const plan = await planComponent('app-icon', options({ wireInto: ['components/bare.fud'] }), fs);
     const wired = plan.changes.find((change) => change.path === 'components/bare.fud')!;
-    expect(wired.contents.startsWith('<link rel="component" href="./app-icon.fud">\n<app-bare>')).toBe(true);
+    expect(wired.contents.startsWith('<link rel="component" href="./app-icon/app-icon.fud">\n<app-bare>')).toBe(true);
   });
 
   it('collides on an existing FILE even when the tag is free (§6.10)', async () => {
     // The file is named after another component, so the tag `app-box` is not taken but
     // the target path is: the collision is about the path, and it must not be silent.
     const fs = projectFs({
-      'components/app-box.fud': '<other-tag>\n  <template shadowrootmode="open"></template>\n</other-tag>\n',
+      'components/app-box/app-box.fud': '<other-tag>\n  <template shadowrootmode="open"></template>\n</other-tag>\n',
     });
     const plan = await planComponent('app-box', options(), fs);
     expect(plan.changes).toEqual([]);
     expect(plan.errors.map((e) => e.code)).toEqual(['FUD0443']);
 
     await apply(plan, options(), fs);
-    expect(fs.paths()).toEqual(['components/app-box.fud', 'fudic.json']);
+    expect(fs.paths()).toEqual(['components/app-box/app-box.fud', 'fudic.json']);
 
     const forced = await planComponent('app-box', options({ force: true }), fs);
     expect(forced.errors).toEqual([]);

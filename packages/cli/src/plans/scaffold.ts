@@ -13,10 +13,11 @@ import { FUD0443, FUD0447, FUD0725 } from '@fudic/diagnostics';
 import { COMPONENTS_DIR, LAYOUTS_DIR, ROUTES_DIR } from '@fudic/conventions';
 import { GLOBALS_DTS, GLOBALS_FILE_NAME } from '@fudic/language-core';
 import { absolute, hrefBetween, joinPosix } from '../paths.js';
-import { FUDIC_VERSION, targetChange, TYPESCRIPT_VERSION, VITE_VERSION } from '../project.js';
-import { prefixField, renderSectionBlocks, renderTemplate } from '../templates.js';
+import { FUDIC_VERSION, targetChange, TYPESCRIPT_VERSION, VITE_VERSION, VITEST_VERSION } from '../project.js';
+import { layoutTest, pageTest, prefixField, renderSectionBlocks, renderTemplate, viteSettings } from '../templates.js';
+import { ENV_DECLARATION, ENV_FILE } from './spec.js';
 import type { ReadIo } from '../io.js';
-import type { BaseOptions, CliError, FileChange, NewOptions } from '../types.js';
+import type { AppLayout, BaseOptions, CliError, FileChange, NewOptions } from '../types.js';
 
 /** The only adapter that exists: none. Anything else is rejected, never ignored (§4.6). */
 export const AVAILABLE_TARGETS = ['static'];
@@ -45,6 +46,11 @@ export interface ProjectSite {
    * project that uses nothing, which leaves the `package.json` exactly as it was.
    */
   readonly uses: string;
+  /**
+   * Where a workspace app is served and the port it takes on its own (BUG-50 §4.5). Absent for
+   * a standalone app and for the first app of a workspace: `/` on Vite's port.
+   */
+  readonly serve?: { readonly base: string; readonly port: number };
 }
 
 /** `null` when the field is usable. An empty `prefix` is the field being absent, not a value. */
@@ -98,8 +104,8 @@ export function tsconfigFor(site: ProjectSite): string {
  * project only declares the policy (SDD-20 §4.7).
  */
 export function appFiles(site: ProjectSite, opts: NewOptions): readonly ScaffoldFile[] {
-  const layoutFile = joinPosix(site.dir, LAYOUTS_DIR, `${opts.layout}.fud`);
   const indexFile = joinPosix(site.dir, ROUTES_DIR, 'index.fud');
+  const frame = frameOf(site.dir, opts.layout, indexFile);
 
   return [
     [
@@ -108,21 +114,26 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
         name: site.pkgName,
         version: FUDIC_VERSION,
         viteVersion: VITE_VERSION,
+        vitestVersion: VITEST_VERSION,
         tsVersion: TYPESCRIPT_VERSION,
         uses: site.uses,
       }),
     ],
     [
       joinPosix(site.dir, 'vite.config.ts'),
-      renderTemplate('vite.config.ts.tmpl', { routesDir: ROUTES_DIR }),
+      renderTemplate('vite.config.ts.tmpl', {
+        routesDir: ROUTES_DIR,
+        settings: site.serve === undefined ? '' : viteSettings(site.serve.base, site.serve.port),
+      }),
     ],
+    ...testingFiles(site.dir),
     [
       joinPosix(site.dir, 'README.md'),
       renderTemplate('README.md.tmpl', {
         name: site.pkgName,
-        pm: opts.pm,
-        layout: opts.layout,
-        layoutsDir: LAYOUTS_DIR,
+        run: runCommand(site, opts.pm),
+        prefix: opts.prefix,
+        frame: frameLine(frame),
         routesDir: ROUTES_DIR,
         componentsDir: COMPONENTS_DIR,
       }),
@@ -143,24 +154,69 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
     ...(opts.sw
       ? ([[joinPosix(site.dir, 'sw.json'), renderTemplate('sw.json.tmpl', {})]] as const)
       : []),
-    [
-      layoutFile,
-      renderTemplate('layout.fud', {
-        lang: 'en',
-        renderHead: '    @RenderHead()',
-        sections: renderSectionBlocks([]),
-      }),
-    ],
+    ...(frame.own === null
+      ? []
+      : ([
+          [
+            joinPosix(site.dir, LAYOUTS_DIR, `${frame.own}.fud`),
+            renderTemplate('layout.fud', {
+              lang: 'en',
+              renderHead: '    @RenderHead()',
+              sections: renderSectionBlocks([]),
+            }),
+          ],
+          [joinPosix(site.dir, LAYOUTS_DIR, `${frame.own}.test.ts`), layoutTest(`${frame.own}.fud`)],
+        ] as const)),
     [
       indexFile,
-      renderTemplate('route.fud', {
-        layoutHref: hrefBetween(indexFile, layoutFile),
-        code: '',
-        title: 'Home',
-        sections: '',
-      }),
+      frame.href === null
+        ? renderTemplate('page.fud', { lang: 'en', title: 'Home', code: '' })
+        : renderTemplate('route.fud', { layoutHref: frame.href, code: '', title: 'Home', sections: '' }),
     ],
+    [joinPosix(site.dir, ROUTES_DIR, 'index.test.ts'), pageTest('/')],
   ];
+}
+
+/** What frames an app's pages: the name of its own layout, if any, and the href its home links. */
+interface Frame {
+  readonly own: string | null;
+  readonly href: string | null;
+}
+
+function frameOf(dir: string, layout: AppLayout, indexFile: string): Frame {
+  if (layout === null) return { own: null, href: null };
+  if ('href' in layout) return { own: null, href: layout.href };
+  return { own: layout.own, href: hrefBetween(indexFile, joinPosix(dir, LAYOUTS_DIR, `${layout.own}.fud`)) };
+}
+
+/** The README's line about the frame of the pages. */
+function frameLine(frame: Frame): string {
+  if (frame.own !== null) {
+    return `- \`${LAYOUTS_DIR}/${frame.own}.fud\`: the frame every page is written into, and \`${frame.own}.test.ts\` its unit test.`;
+  }
+  if (frame.href !== null) return `- \`${frame.href}\`: the layout every page is written into; it is not this app's.`;
+  return '- No layout: each page is a whole document. `fudic g layout <name>` adds one.';
+}
+
+/**
+ * What lets a project — an app or a library — run its unit tests and its `.fudspec` criteria
+ * from the first minute (BUG-50 §4.2): the vitest config, and the declaration that lets a test
+ * or a fixture import a `.fud`.
+ */
+export function testingFiles(dir: string): readonly ScaffoldFile[] {
+  return [
+    [joinPosix(dir, 'vitest.config.ts'), renderTemplate('vitest.config.ts.tmpl', {})],
+    [joinPosix(dir, ENV_FILE), ENV_DECLARATION],
+  ];
+}
+
+/**
+ * How the README says to run a script of the app: on its own, with its package manager; in a
+ * workspace, from the root with a filter, because the install belongs to the workspace.
+ */
+function runCommand(site: ProjectSite, pm: string): string {
+  if (site.up === null) return `${pm} run`;
+  return `pnpm --filter ${site.dir.slice(site.dir.lastIndexOf('/') + 1)}`;
 }
 
 export interface ScaffoldChanges {

@@ -41,9 +41,14 @@ export function serverModuleSpecifier(fudPath: string): string {
  * same way, and rewriting it would break the mapping between what the user typed and what
  * the checker complains about. Only the leading `./` is ensured — a bare `x.fud` means a
  * package to TypeScript, but a sibling file to the user.
+ *
+ * A bare href with a `/` is a package's (`@shop/ui/snippets/ui.fud`, `ui-kit/card.fud`), and it
+ * goes as it is, so TypeScript resolves it through the package's `exports` as the build does.
+ * With a `./` in front it named a file that is not there, and the import silently fell to the
+ * `*.fud` wildcard: a library snippet was "not declared", and a library layout had no props.
  */
 export function componentModuleSpecifier(href: string): string {
-  return href.startsWith('.') || href.startsWith('/') ? href : `./${href}`;
+  return href.startsWith('.') || href.startsWith('/') || href.includes('/') ? href : `./${href}`;
 }
 
 /** A `[name]` segment of a route path: the one spelling the router reads as a param. */

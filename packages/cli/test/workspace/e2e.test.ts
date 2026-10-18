@@ -69,8 +69,8 @@ describe('a generated workspace builds (criterion 13)', () => {
       await planWorkspace(
         'mi-tienda',
         {
-          cwd: tmp, force: false, app: 'web', id: 'web', prefix: 'web',
-          pm: 'pnpm', install: false, git: false, sw: true, layout: '_layout', target: 'static',
+          cwd: tmp, force: false, app: 'web', id: 'web', prefix: 'web', uses: [], libs: [],
+          pm: 'pnpm', install: false, git: false, sw: true, layout: { own: '_layout' }, target: 'static',
         },
         io,
       ),
@@ -90,7 +90,7 @@ describe('a generated workspace builds (criterion 13)', () => {
       'fudic g app back --uses ui',
       await planApp(
         'back',
-        { cwd: ws, force: false, dir: 'apps', prefix: 'bk', uses: ['ui'], id: 'back', sw: false },
+        { cwd: ws, force: false, dir: 'apps', prefix: 'bk', uses: ['ui'], id: 'back', sw: false, layout: { own: '_layout' } },
         io,
       ),
       ws,
@@ -104,14 +104,16 @@ describe('a generated workspace builds (criterion 13)', () => {
         'card',
         {
           cwd: ws, force: false, dir: 'src/components', project: 'ui',
-          wireInto: ['apps/web/src/routes/index.fud'], style: true, slot: true,
+          wireInto: ['apps/web/src/routes/index.fud'], style: true, slot: true, test: true, spec: true,
         },
         io,
       ),
       ws,
     );
 
-    expect(runner.commands, 'no command was asked for, so none ran').toEqual([]);
+    // g lib and g app install from the workspace root (BUG-50 §4.6); recorded, not run: the
+    // install of this test is its own, below.
+    expect(runner.commands.map((line) => line.replace(/ @ .*/u, ''))).toEqual(['pnpm install', 'pnpm install']);
 
     // 5. The one line the AUTHOR writes. `--in` wires the `<link rel="component">`; which
     //    component a piece of markup uses is not the CLI's call (§4.7), so using the tag is

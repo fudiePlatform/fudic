@@ -115,4 +115,9 @@ describe('virtual file names', () => {
     expect(componentModuleSpecifier('/ui/x.fud')).toBe('/ui/x.fud');
     expect(componentModuleSpecifier('x.fud')).toBe('./x.fud');
   });
+
+  it("leaves a package's href as it is, for TypeScript to resolve through its exports", () => {
+    expect(componentModuleSpecifier('@shop/ui/snippets/ui.fud')).toBe('@shop/ui/snippets/ui.fud');
+    expect(componentModuleSpecifier('ui-kit/card.fud')).toBe('ui-kit/card.fud');
+  });
 });

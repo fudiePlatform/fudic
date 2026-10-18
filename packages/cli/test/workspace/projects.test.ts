@@ -30,7 +30,7 @@ function workspace(extra: Readonly<Record<string, string>> = {}): MemoryFs {
 }
 
 function appOptions(overrides: Partial<AppOptions> = {}): AppOptions {
-  return { cwd: ROOT, force: false, dir: 'apps', prefix: '', uses: [], id: 'admin', sw: true, ...overrides };
+  return { cwd: ROOT, force: false, dir: 'apps', prefix: '', uses: [], id: 'admin', sw: true, layout: { own: '_layout' }, ...overrides };
 }
 
 function libOptions(overrides: Partial<ProjectOptions> = {}): ProjectOptions {
@@ -153,10 +153,10 @@ describe('fudic g lib (criterion 5)', () => {
 
     expect(pkg['name']).toBe('@mi-tienda/ui');
     expect(pkg['type']).toBe('module');
-    expect(pkg['exports']).toMatchObject({ './*.fud': './src/components/*.fud' });
+    expect(pkg['exports']).toMatchObject({ './*.fud': './src/components/*/*.fud' });
     expect(pkg['files']).toContain('src');
     expect(JSON.stringify(pkg)).not.toContain('dist');
-    expect(pkg['scripts']).toBeUndefined();
+    expect(pkg['scripts']).toEqual({ test: 'vitest run', spec: 'fudic-workbench run --pass-with-no-specs' });
   });
 
   it('names @fudic/core as a PEER, because a runtime cannot be copied', async () => {

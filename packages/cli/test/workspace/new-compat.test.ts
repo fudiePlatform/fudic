@@ -31,7 +31,7 @@ function options(overrides: Partial<NewOptions> = {}): NewOptions {
     install: true,
     git: true,
     sw: true,
-    layout: '_layout',
+    layout: { own: '_layout' },
     target: 'static',
     ...overrides,
   };
@@ -89,7 +89,7 @@ describe('the app of a workspace and a standalone app', () => {
     const standalone = new MemoryFs({}, CWD);
     await apply(await planNew('demo', options(), standalone), options(), standalone, new RecordingRunner());
 
-    const wsOpts: WorkspaceOptions = { ...options(), app: 'demo' };
+    const wsOpts: WorkspaceOptions = { ...options(), app: 'demo', uses: [], libs: [] };
     const workspace = new MemoryFs({}, CWD);
     await apply(await planWorkspace('ws', wsOpts, workspace), wsOpts, workspace, new RecordingRunner());
 

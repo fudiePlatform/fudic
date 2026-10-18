@@ -375,6 +375,20 @@ describe('specifierOf', () => {
     expect(of({ './*': './src/*.css' })).toBeUndefined();
   });
 
+  it('reads every star of a target as the same text: a folder per component (BUG-50 §4.3)', () => {
+    const FOLDED = '/ws/libs/ui/src/components/ui-card/ui-card.fud';
+    const exports = { './*.fud': './src/components/*/*.fud' };
+    expect(of(exports, FOLDED)).toBe('@acme/ui/ui-card.fud');
+    // A folder and a file that disagree are not what the pattern exports.
+    expect(of(exports, '/ws/libs/ui/src/components/ui-card/ui-badge.fud')).toBeUndefined();
+    expect(of(exports, '/ws/libs/ui/src/components/ui-card.fud')).toBeUndefined();
+    // A star matches some text, never none.
+    expect(of({ './*.fud': './src/*.fud' }, '/ws/libs/ui/src/.fud')).toBeUndefined();
+    // What surrounds the stars is literal text, dots and brackets included.
+    expect(of({ './*.fud': './src/(x)/*.fud' }, '/ws/libs/ui/src/(x)/ui-card.fud')).toBe('@acme/ui/ui-card.fud');
+    expect(of({ './*.fud': './src/(x)/*.fud' }, '/ws/libs/ui/src/xx/ui-card.fud')).toBeUndefined();
+  });
+
   it('has no name for a file the package does not export, nor under a malformed field', () => {
     expect(of({ './other.fud': './src/other.fud' })).toBeUndefined();
     expect(of('./src/index.js')).toBeUndefined();

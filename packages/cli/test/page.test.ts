@@ -16,7 +16,7 @@ const CWD = '/project';
 // The default `--dir`, spelled out rather than imported from `@fudic/conventions`: a test
 // that reads the constant agrees with whatever the constant says, including a wrong value.
 function options(overrides: Partial<PageOptions> = {}): PageOptions {
-  return { cwd: CWD, force: false, dir: 'src/routes', server: false, sections: null, ...overrides };
+  return { cwd: CWD, force: false, dir: 'src/routes', server: false, sections: null, test: true, ...overrides };
 }
 
 const LAYOUT = `<!DOCTYPE html>
@@ -196,7 +196,7 @@ describe('g page', () => {
 describe('g layout', () => {
   it('emits one @RenderSection per name, a single @RenderBody and a @RenderHead', async () => {
     const fs = projectFs();
-    const plan = await planLayout('_layout', { cwd: CWD, force: false, dir: 'layouts', sections: ['nav', 'aside'], head: true }, fs);
+    const plan = await planLayout('_layout', { cwd: CWD, force: false, dir: 'layouts', sections: ['nav', 'aside'], head: true, test: true }, fs);
     const change = plan.changes[0]!;
     expect(change.path).toBe('layouts/_layout.fud');
 
@@ -211,7 +211,7 @@ describe('g layout', () => {
 
   it('--no-head omits @RenderHead()', async () => {
     const fs = projectFs();
-    const plan = await planLayout('_layout', { cwd: CWD, force: false, dir: 'layouts', sections: [], head: false }, fs);
+    const plan = await planLayout('_layout', { cwd: CWD, force: false, dir: 'layouts', sections: [], head: false, test: true }, fs);
     const parsed = parseFud(plan.changes[0]!.contents);
     expect(parsed.doc.type).toBe('layout-document');
     if (parsed.doc.type !== 'layout-document') return;

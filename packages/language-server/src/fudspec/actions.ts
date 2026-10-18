@@ -134,7 +134,9 @@ const unknownTerm: Repairer = (repair) => {
     // As many `string` parameters as the line has arguments: the line stays valid, and the
     // author narrows each type in the module.
     const params = term.args.map((_, i) => ({ name: `arg${i + 1}`, type: 'string' as const }));
-    actions.push(create(`Create ${block}/${name}.js`, `${root}/${block}/${name}.js`, termModule(block, name, params)));
+    // `fudic/terms` → `fudic/bench.js`: the project's extension types the new term's `ctx`.
+    const bench = repair.host.read(`${root.slice(0, root.lastIndexOf('/'))}/bench.js`) !== undefined;
+    actions.push(create(`Create ${block}/${name}.js`, `${root}/${block}/${name}.js`, termModule(block, name, params, { bench })));
   }
   return actions;
 };

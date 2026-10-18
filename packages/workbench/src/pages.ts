@@ -138,12 +138,17 @@ interface Mount {
   readonly tag: string;
   readonly code: string;
   readonly attrs: string;
+  /** What goes inside it, as children: the fixture's `$content`. */
+  readonly content: string;
 }
 
 /** The component alone, without props. */
 function bare(target: BenchTarget): Mount {
-  return { href: target.component, tag: target.tag, code: '', attrs: '' };
+  return { href: target.component, tag: target.tag, code: '', attrs: '', content: '' };
 }
+
+/** The key of a fixture entry that is not a prop: the host's children. */
+const CONTENT = '$content';
 
 function pageSource(tag: string, title: string, mount: Mount): string {
   return (
@@ -153,7 +158,7 @@ function pageSource(tag: string, title: string, mount: Mount): string {
     '    <script type="module" src="fudic:runtime"></script>\n' +
     `    <title>${tag} · ${title}</title>\n` +
     '  </head>\n  <body>\n' +
-    `    <${mount.tag}${mount.attrs}></${mount.tag}>\n` +
+    `    <${mount.tag}${mount.attrs}>${mount.content}</${mount.tag}>\n` +
     '  </body>\n</html>\n'
   );
 }
@@ -182,8 +187,10 @@ class Planner {
       return { ...base, error: `the fixture has no entry "${fixture}"` };
     }
     const specifier = file.replace(/\.ts$/u, '');
-    const order = Object.keys(values);
-    const signals = order.filter((prop) => isSignal(values[prop]));
+    const { [CONTENT]: children, ...props } = values;
+    const content = typeof children === 'string' ? children : '';
+    const order = Object.keys(props);
+    const signals = order.filter((prop) => isSignal(props[prop]));
 
     if (signals.length === 0) {
       const code =
@@ -192,13 +199,13 @@ class Planner {
           : `    @code {\n      import fixtures from "${specifier}";\n` +
             `      const { ${order.join(', ')} } = fixtures["${fixture}"];\n    }\n`;
       const attrs = order.map((prop) => ` .${prop}=@${prop}`).join('');
-      this.page(id, { href: component, tag: this.target.tag, code, attrs });
+      this.page(id, { href: component, tag: this.target.tag, code, attrs, content });
       return base;
     }
 
     const literals: { prop: string; literal: string }[] = [];
     for (const prop of signals) {
-      const literal = jsonLiteral((values[prop] as () => unknown)());
+      const literal = jsonLiteral((props[prop] as () => unknown)());
       if (literal === undefined) {
         this.diagnostics.push(FUD0974({ file, fixture, prop }));
         return { ...base, error: `the initial value of signal prop "${prop}" is not a JSON literal` };
@@ -218,9 +225,10 @@ class Planner {
         signals: literals,
         forwarded: order.filter((prop) => !signals.includes(prop)),
         order,
+        content,
       }),
     );
-    this.page(id, { href: `${this.dir}/${hostFile}`, tag: hostTag, code: '', attrs: '' });
+    this.page(id, { href: `${this.dir}/${hostFile}`, tag: hostTag, code: '', attrs: '', content: '' });
     return { ...base, mount: `body > ${hostTag}` };
   }
 

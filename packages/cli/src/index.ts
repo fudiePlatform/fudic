@@ -3,7 +3,7 @@
  * command is `plan* → apply`, and the binary is a shell over it.
  */
 
-export const VERSION = '0.0.1';
+export { VERSION } from './version.js';
 
 export type {
   AppOptions,
@@ -42,16 +42,24 @@ export {
 } from './workspace/discover.js';
 export { placeProject, APPS_DIR, LIBS_DIR, type Placement } from './workspace/place.js';
 export { planComponent } from './plans/component.js';
+export { planAdd } from './plans/add.js';
+export { planService, planForm } from './plans/piece.js';
+export { planStyle } from './plans/style.js';
+export { planCheck, type CheckKind } from './plans/check.js';
 export { planSpec, typeScriptProps, type PropsReader } from './plans/spec.js';
 export { planTerm } from './plans/term.js';
 export { planTranslate } from './plans/translate.js';
 export { planPage } from './plans/page.js';
 export { planLayout } from './plans/layout.js';
+export { planSnippet } from './plans/snippet.js';
 export { apply } from './apply.js';
 export { run, defaultDeps, type RunDeps, type Streams } from './run.js';
 
-export { parseArgs, USAGE, type ParsedCommand, type GlobalFlags } from './args.js';
-export { validateTag } from './tag.js';
+export { parseArgs, type ParsedCommand, type GlobalFlags } from './args.js';
+export { GENERAL_HELP } from './help/general.js';
+export { commandHelp, type Topic } from './help/commands.js';
+export { formatUsageError, type UsageError } from './help/usage.js';
+export { suggestTag, validateTag } from './tag.js';
 export { routeToFile } from './route.js';
 // `LAYOUTS_DIR` is no longer re-exported here: the directory convention has an owner of its
 // own now (`@fudic/conventions`), and a second way to reach the same name is the shape the
@@ -64,7 +72,6 @@ export { renderTemplate, templatePath, TEMPLATES, type TemplateSpec, type Templa
 // the editor's document skeletons (SDD-28 §3.2), which must come out byte for byte identical
 // to what `fudic g` writes.
 export {
-  codeBlock,
   indent,
   renderSectionBlocks,
   sectionBlocks,

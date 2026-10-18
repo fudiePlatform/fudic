@@ -44,7 +44,7 @@ describe('fudic new → vite build (§6.1)', () => {
       install: false,
       git: false,
       sw: true,
-      layout: '_layout',
+      layout: { own: '_layout' },
       target: 'static',
     };
 
@@ -70,6 +70,8 @@ describe('fudic new → vite build (§6.1)', () => {
       wireInto: ['src/routes/index.fud'],
       style: true,
       slot: true,
+      test: false,
+      spec: false,
     };
     const component = await planComponent('app-button', componentOpts, nodeReadIo());
     expect(component.errors).toEqual([]);

@@ -1,0 +1,7 @@
+component ui-card
+
+criterion renders
+  given
+    props base
+  then
+    present ui-card

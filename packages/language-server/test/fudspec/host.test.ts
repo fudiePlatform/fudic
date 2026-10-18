@@ -2,13 +2,13 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
-import { SpecHost } from '../../src/fudspec/host.js';
+import { installedTerms, SpecHost, TERMS_PACKAGE } from '../../src/fudspec/host.js';
 import { nodeSpecFs } from '../../src/fudspec/node-spec-fs.js';
 import { createFudspecLanguagePlugin, FUDSPEC_LANGUAGE_ID } from '../../src/fudspec/language-plugin.js';
 import { isFudspecUri } from '../../src/uri.js';
 import { URI } from 'vscode-uri';
 import { component } from '../_support.js';
-import { FILES, FUDS, FW_TERMS, ROOT, SPEC_PATH, WS_TERMS, termSource, world } from './_spec.js';
+import { FILES, FUDS, FW_TERMS, ROOT, SPEC_PATH, WS_TERMS, specFs, termSource, world } from './_spec.js';
 
 describe('SpecHost — term roots (SDD-52 §8.2)', () => {
   it('reads the workspace folder first, then the framework', () => {
@@ -58,15 +58,50 @@ describe('SpecHost — term roots (SDD-52 §8.2)', () => {
     expect(atRoot.resolve('then', 'shop')).toBeUndefined();
   });
 
-  it('has no workspace layer for a file outside every folder', () => {
-    const { host } = world();
+  it('has no layer at all for a file outside every folder: no project, so no @fudic/terms either', () => {
+    const asked: string[] = [];
+    const { host } = world({ framework: (folder) => (asked.push(folder), FW_TERMS) });
     const terms = host.terms('/elsewhere/x.fudspec');
-    expect(terms.list('then').map((m) => [m.name, m.layer])).toEqual([['visible', 'framework']]);
+    expect(terms.list('then')).toEqual([]);
+    expect(asked).toEqual([]);
   });
 
-  it('has no framework layer when the host is given none', () => {
+  it('asks for the framework layer of each project by its folder (SDD-59 §4.10)', () => {
+    const app = `${ROOT}/apps/shop`;
+    const lib = `${ROOT}/libs/ui`;
+    const asked: string[] = [];
+    const { host } = world({
+      files: {
+        ...FILES,
+        [`${app}/fudic.json`]: '{}',
+        [`${lib}/fudic.json`]: '{}',
+        '/shop-terms/then/hidden.js': termSource('hidden', 'then'),
+      },
+      framework: (folder) => {
+        asked.push(folder);
+        return folder === app ? '/shop-terms' : undefined;
+      },
+    });
+    expect(host.terms(`${app}/src/x.fudspec`).list('then').map((m) => [m.name, m.layer])).toEqual([['hidden', 'framework']]);
+    expect(host.terms(`${lib}/src/x.fudspec`).list('then')).toEqual([]);
+    expect(asked).toEqual([app, lib]);
+  });
+
+  it('has no framework layer when the project has not installed @fudic/terms', () => {
     const { host } = world({ frameworkTerms: null });
     expect(host.terms(SPEC_PATH).list('then').map((m) => m.name)).toEqual(['min-height']);
+  });
+
+  it('by default, the framework layer is the terms/ of the @fudic/terms the project installed', () => {
+    const installed = `${ROOT}/node_modules/@fudic/terms/terms`;
+    const { host } = world({
+      frameworkTerms: null,
+      files: { ...FILES, [`${installed}/then/focused.js`]: termSource('focused', 'then', [{ name: 'target', type: 'element' }]) },
+    });
+    expect(host.terms(SPEC_PATH).list('then').map((m) => [m.name, m.layer, m.path])).toEqual([
+      ['focused', 'framework', `${installed}/then/focused.js`],
+      ['min-height', 'workspace', `${WS_TERMS}/then/min-height.js`],
+    ]);
   });
 
   it('keeps one catalog per folder until invalidated', () => {
@@ -127,8 +162,41 @@ describe('SpecHost — components and fixtures (SDD-52 §8.2)', () => {
     [`${ROOT}/fudic/terms/then/notes.md`, false],
     [`${ROOT}/src/helper.js`, false],
     [`${ROOT}/tsconfig.json`, false],
+    // Where a project installs or drops @fudic/terms (SDD-59 §4.10).
+    [`${ROOT}/package.json`, true],
+    [`${ROOT}/apps/shop/package.json`, true],
+    [`${ROOT}/package.json.bak`, false],
+    [`${ROOT}/my-package.json`, false],
   ])('affects(%s) is %s', (path, expected) => {
     expect(SpecHost.affects(path)).toBe(expected);
+  });
+});
+
+describe('installedTerms — the @fudic/terms a project installed (SDD-59 §4.10)', () => {
+  const PKG = `node_modules/${TERMS_PACKAGE}`;
+  const lookup = (files: Record<string, string>) => installedTerms(specFs(files));
+
+  it('finds it in the project folder', () => {
+    expect(lookup({ [`/ws/app/${PKG}/terms/then/visible.js`]: '' })('/ws/app')).toBe(`/ws/app/${PKG}/terms`);
+  });
+
+  it('finds it in a folder above, as Node resolves a package', () => {
+    expect(lookup({ [`/ws/${PKG}/terms/then/visible.js`]: '' })('/ws/apps/shop')).toBe(`/ws/${PKG}/terms`);
+  });
+
+  it('takes the nearest one', () => {
+    const find = lookup({ [`/ws/${PKG}/terms/then/a.js`]: '', [`/ws/apps/shop/${PKG}/terms/then/b.js`]: '' });
+    expect(find('/ws/apps/shop')).toBe(`/ws/apps/shop/${PKG}/terms`);
+    expect(find('/ws/apps/blog')).toBe(`/ws/${PKG}/terms`);
+  });
+
+  it('finds nothing when no folder up to the root has it, nor a package without its terms/', () => {
+    expect(lookup({ [`/ws/${PKG}/dist/index.js`]: '' })('/ws/app')).toBeUndefined();
+    expect(lookup({})('/ws/app')).toBeUndefined();
+  });
+
+  it('reaches the root of a Windows drive', () => {
+    expect(lookup({ [`C:/${PKG}/terms/then/a.js`]: '' })('C:/ws/app')).toBe(`C:/${PKG}/terms`);
   });
 });
 

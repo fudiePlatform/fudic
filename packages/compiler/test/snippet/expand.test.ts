@@ -171,6 +171,24 @@ describe('the expansion writes the markup in place (§4.8)', () => {
     });
     expect(source).toContain('<li>@p.title</li>');
   });
+
+  // The argument's text is read in the caller's file. Read at the same offsets in the snippet's
+  // file, a plain word there passed for a chain and `"Hola"` lost its parentheses.
+  it('reads an argument in the file that wrote it, not in the snippet file', () => {
+    const { source } = expand({
+      [ENTRY]: component('@render card("Hola")', '<link rel="snippet" href="./ui.fud">'),
+      '/app/ui.fud': `<!-- ${'x'.repeat(150)}-->\n@snippet card(t: string) { <h2>@t</h2> }`,
+    });
+    expect(source).toContain('<h2>@("Hola")</h2>');
+  });
+
+  it('keeps the implicit form of a chain written in another file', () => {
+    const { source } = expand({
+      [ENTRY]: component('@render card(data.title)', '<link rel="snippet" href="./ui.fud">'),
+      '/app/ui.fud': `<!-- ${'(+) '.repeat(30)}-->\n@snippet card(t: string) { <h2>@t</h2> }`,
+    });
+    expect(source).toContain('<h2>@data.title</h2>');
+  });
 });
 
 describe('a snippet inside a snippet (§4.6)', () => {
@@ -202,6 +220,24 @@ describe('a snippet inside a snippet (§4.6)', () => {
       '/app/atoms.fud': '@snippet b(x: string) { <b>@x</b> }',
     });
     expect(source).toContain('<b>@((data.name).trim())</b>');
+  });
+
+  it('keeps the implicit form when a chain travels through the outer parameter', () => {
+    const { source } = expand({
+      [ENTRY]: component('@render a(data.name)', '<link rel="snippet" href="./ui.fud">'),
+      '/app/ui.fud': '<link rel="snippet" href="./atoms.fud">\n@snippet a(t: string) { <div>@render b(t)</div> }',
+      '/app/atoms.fud': '@snippet b(x: string) { <b>@x</b> }',
+    });
+    expect(source).toContain('<b>@data.name</b>');
+  });
+
+  it('parenthesizes a chain that only starts with the outer parameter', () => {
+    const { source } = expand({
+      [ENTRY]: component('@render a(data)', '<link rel="snippet" href="./ui.fud">'),
+      '/app/ui.fud': '<link rel="snippet" href="./atoms.fud">\n@snippet a(t: object) { <div>@render b(t.name)</div> }',
+      '/app/atoms.fud': '@snippet b(x: string) { <b>@x</b> }',
+    });
+    expect(source).toContain('<b>@((data).name)</b>');
   });
 
   it('leaves an unresolved call exactly as written, and reports it', () => {

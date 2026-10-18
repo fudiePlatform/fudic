@@ -80,6 +80,11 @@ describe('realPath', () => {
       `${ROOT}/components/app-badge.fud`,
     );
   });
+
+  it('says why a package specifier resolves to nothing, and nothing for a path', () => {
+    expect(fs.hrefFailure(`${ROOT}/blog/[slug].fud`, '@nobody/ui/card.fud')).toBe('not-installed');
+    expect(fs.hrefFailure(`${ROOT}/blog/[slug].fud`, '../components/ghost.fud')).toBeUndefined();
+  });
 });
 
 describe('an index over the real workspace', () => {

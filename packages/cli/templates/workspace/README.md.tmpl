@@ -1,0 +1,26 @@
+# {{name}}
+
+A [fudic](https://github.com/fudiePlatform/fudic) workspace: several apps and the libraries they
+share, in one repo.
+
+- `apps/`: what you serve. Each app has its pages and its own base URL: the first one is at `/`,
+  the others at `/<name>/`.
+- `libs/`: components your apps use. A library is not served.
+
+```sh
+pnpm dev        # every app on one port, each under its base URL
+pnpm preview    # the same, with each app's build
+pnpm build      # build every app into its own dist/
+pnpm test       # unit tests of every project
+pnpm spec       # .fudspec criteria of every project, in a browser
+```
+
+One app on its own: `pnpm --filter <app> dev`.
+
+## Add to it
+
+- `fudic g lib ui`: a component library.
+- `fudic g app web --uses ui`: an app that uses it. The first is at `/`, the others at `/<name>/`.
+- `fudic g app admin --layout @{{name}}/ui/layouts/main.fud`: an app whose pages render inside a layout of `ui`.
+- `fudic add ui --project <app>`: make an app you have use a library.
+- `fudic g component button --project ui`: `<ui-button>`, with its test and spec.

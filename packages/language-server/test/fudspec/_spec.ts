@@ -15,16 +15,20 @@ export const WS_TERMS = `${ROOT}/fudic/terms`;
 export const FW_TERMS = '/fw/terms';
 export const SPEC_PATH = `${ROOT}/components/fud-card.fudspec`;
 
-/** A `SpecFs` over a map; a path mapped to `undefined` is listed but cannot be read. */
+/**
+ * A `SpecFs` over a map; a path mapped to `undefined` is listed but cannot be read. A folder
+ * lists its files and its subfolders, as the disk does.
+ */
 export function specFs(files: Readonly<Record<string, string | undefined>>): SpecFs & { reads: string[] } {
   const reads: string[] = [];
   return {
     reads,
     readDirectory(path) {
       const prefix = `${path}/`;
-      return Object.keys(files)
-        .filter((f) => f.startsWith(prefix) && !f.slice(prefix.length).includes('/'))
-        .map((f) => f.slice(prefix.length));
+      const entries = Object.keys(files)
+        .filter((f) => f.startsWith(prefix))
+        .map((f) => f.slice(prefix.length).split('/')[0]!);
+      return [...new Set(entries)];
     },
     readFile(path) {
       reads.push(path);
@@ -77,21 +81,25 @@ export interface WorldOptions {
   readonly files?: Readonly<Record<string, string | undefined>>;
   readonly fuds?: Readonly<Record<string, string>>;
   readonly roots?: readonly string[];
+  /** The same framework folder for every project; null: the host's own lookup, on these files. */
   readonly frameworkTerms?: string | null;
+  /** The framework folder by project folder; it wins over `frameworkTerms`. */
+  readonly framework?: (folder: string) => string | undefined;
 }
 
-/** A spec host over an in-memory workspace. `frameworkTerms: null` leaves the layer out. */
+/** A spec host over an in-memory workspace. `frameworkTerms: null` leaves the layer to the host. */
 export function world(options: WorldOptions = {}) {
   const index = new WorkspaceIndex(memoryFs({ ...(options.fuds ?? FUDS) }));
   const roots = options.roots ?? [ROOT];
   for (const root of roots) index.scan(root);
   const fs = specFs({ ...(options.files ?? FILES) });
-  const framework = options.frameworkTerms === undefined ? FW_TERMS : options.frameworkTerms;
+  const fixed = options.frameworkTerms === undefined ? FW_TERMS : options.frameworkTerms;
+  const framework = options.framework ?? (fixed === null ? undefined : () => fixed);
   const host = new SpecHost({
     index,
     fs,
     roots: () => roots,
-    ...(framework !== null ? { frameworkTerms: framework } : {}),
+    ...(framework !== undefined ? { frameworkTerms: framework } : {}),
   });
   return { host, fs, index };
 }

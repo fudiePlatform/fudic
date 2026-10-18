@@ -1,7 +1,7 @@
 /**
- * The only file that imports Playwright. It adapts the real browser to the dozen calls the
+ * The only file that drives Playwright. It adapts the real browser to the dozen calls the
  * workbench makes (`BrowserLike`, `PageLike`, `LocatorLike`), so everything else is written —
- * and can be checked — against those.
+ * and can be checked — against those. The page underneath goes, untouched, to the extensions.
  *
  * Code that runs IN the page travels as source text (`PageScript`): it is the page's code, not
  * this process's, and a function literal here would be a Node function nobody calls.
@@ -39,24 +39,23 @@ export const VIEWPORT: Viewport = { width: 1280, height: 720, scale: 1 };
 /** The source of a function, run in the page: `(arg) => …`, or `(element, arg) => …` on a locator. */
 export type PageScript = string;
 
-/** An element by tag (a CSS selector) or by role and exact accessible name. */
-export type Target = { readonly css: string } | { readonly role: string; readonly name?: string };
-
 export interface LocatorLike {
-  count(): Promise<number>;
   /** Its box in the page, in pixels; null when it is not rendered. */
   box(): Promise<{ readonly x: number; readonly y: number; readonly width: number; readonly height: number } | null>;
-  isVisible(): Promise<boolean>;
-  click(): Promise<void>;
   evaluate<R>(script: PageScript, arg?: unknown): Promise<R>;
   /** A PNG of the element as the page shows it. */
   screenshot(): Promise<Buffer>;
 }
 
 export interface PageLike {
+  /** The Playwright page underneath: what the extensions and the terms receive. */
+  readonly page: Page;
+  /** One of the terms' locators, as the workbench reads it. */
+  adopt(locator: Locator): LocatorLike;
   /** Navigates and waits for `load`; the HTTP status, or null when there was no response. */
   goto(url: string): Promise<number | null>;
-  locate(target: Target): LocatorLike;
+  /** An element by CSS selector: the mounted component. */
+  locate(css: string): LocatorLike;
   evaluate<R>(script: PageScript, arg?: unknown): Promise<R>;
   /** Resolves when `script(arg)` is truthy in the page. */
   waitFor(script: PageScript, arg: unknown): Promise<void>;
@@ -181,12 +180,14 @@ function inPage(script: PageScript, params: string): () => unknown {
 function adaptPage(page: Page, closed: () => void): PageLike {
   let closing: Promise<void> | undefined;
   return {
+    page,
+    adopt: adaptLocator,
     async goto(url) {
       const response = await page.goto(url, { waitUntil: 'load' });
       return response?.status() ?? null;
     },
-    locate(target) {
-      return adaptLocator('css' in target ? page.locator(target.css) : byRole(page, target));
+    locate(css) {
+      return adaptLocator(page.locator(css));
     },
     evaluate: (script, arg) => page.evaluate(inPage(script, 'arg') as never, arg),
     async waitFor(script, arg) {
@@ -209,17 +210,9 @@ function adaptPage(page: Page, closed: () => void): PageLike {
   };
 }
 
-function byRole(page: Page, target: { readonly role: string; readonly name?: string }): Locator {
-  const role = target.role as Parameters<Page['getByRole']>[0];
-  return target.name === undefined ? page.getByRole(role) : page.getByRole(role, { name: target.name, exact: true });
-}
-
 function adaptLocator(locator: Locator): LocatorLike {
   return {
-    count: () => locator.count(),
     box: () => locator.boundingBox(),
-    isVisible: () => locator.isVisible(),
-    click: () => locator.click(),
     evaluate: (script, arg) => locator.evaluate(inPage(script, 'element, arg') as never, arg),
     screenshot: () => locator.screenshot({ animations: 'disabled' }),
   };

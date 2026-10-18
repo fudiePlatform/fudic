@@ -33,10 +33,8 @@ interface StepBase {
 
 export interface StepPassed extends StepBase {
   readonly pass: boolean;
-  /** Whatever the term returned; null when the step was ignored. */
+  /** Whatever the term returned. */
   readonly evidence: unknown;
-  /** The term asked for something the workbench does not do (`goto`): it did not apply. */
-  readonly ignored?: true;
 }
 
 export interface StepFailed extends StepBase {

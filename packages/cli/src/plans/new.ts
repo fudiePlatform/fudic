@@ -4,12 +4,13 @@
  * the Service Worker itself is NOT a user file: the plugin emits `fudic-sw.js`, and the
  * project only declares the policy (SDD-20 §4.7).
  *
- * **Without `--workspace` this command has not changed at all** (SDD-44 §4.2). It is still a
- * standalone project, with its own `tsconfig.json` and its own `fudic-globals.d.ts`, and that
- * is what keeps the one-command start for the case that is still the common one.
+ * Without `--workspace` it is a standalone project, with its own `tsconfig.json` and its own
+ * `fudic-globals.d.ts` (SDD-44 §4.2), and that is what keeps the one-command start for the
+ * case that is still the common one.
  */
 
 import { appFiles, scaffoldChanges, scaffoldRefusal } from './scaffold.js';
+import { DEV_PORT } from '../workspace/bases.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
 import { EMPTY_PLAN, type NewOptions, type Plan, type PlanCommand } from '../types.js';
 
@@ -23,7 +24,24 @@ export function planNew(name: string, opts: NewOptions, io: ReadIo = nodeReadIo(
     io,
   );
 
-  return Promise.resolve({ ...EMPTY_PLAN, changes, errors, commands: setupCommands(name, opts) });
+  const message = `chore: create app ${name}`;
+  return Promise.resolve({
+    ...EMPTY_PLAN,
+    changes,
+    errors,
+    commands: setupCommands(name, opts, message),
+    report: [
+      '',
+      `Created app ${name}`,
+      ...setupReport(opts, message),
+      '',
+      'Next',
+      `  cd ${name}`,
+      `  ${opts.pm} dev${' '.repeat(Math.max(1, 15 - opts.pm.length))}http://localhost:${DEV_PORT}/`,
+      `  ${opts.pm} test${' '.repeat(Math.max(1, 14 - opts.pm.length))}unit tests`,
+      `  ${opts.pm} spec${' '.repeat(Math.max(1, 14 - opts.pm.length))}.fudspec criteria, in a browser`,
+    ],
+  });
 }
 
 /**
@@ -33,13 +51,22 @@ export function planNew(name: string, opts: NewOptions, io: ReadIo = nodeReadIo(
  * `-b main`, not a bare `git init`: without it the branch is whatever `init.defaultBranch`
  * happens to be, which is `master` when nobody configured one. The scaffold has an opinion.
  */
-export function setupCommands(dir: string, opts: NewOptions): readonly PlanCommand[] {
+export function setupCommands(dir: string, opts: NewOptions, message: string): readonly PlanCommand[] {
   const commands: PlanCommand[] = [];
-  if (opts.install) commands.push({ command: opts.pm, args: ['install'], dir });
+  if (opts.install) commands.push({ command: opts.pm, args: ['install'], dir, quiet: true });
   if (opts.git) {
-    commands.push({ command: 'git', args: ['init', '-b', 'main'], dir });
-    commands.push({ command: 'git', args: ['add', '-A'], dir });
-    commands.push({ command: 'git', args: ['commit', '-m', 'chore: scaffold fudic app'], dir });
+    commands.push({ command: 'git', args: ['init', '-b', 'main'], dir, quiet: true });
+    commands.push({ command: 'git', args: ['add', '-A'], dir, quiet: true });
+    commands.push({ command: 'git', args: ['commit', '-m', message], dir, quiet: true });
   }
   return commands;
+}
+
+/** What the report says of those commands, once they ran (BUG-50 §6.2). */
+export function setupReport(opts: NewOptions, message: string): readonly string[] {
+  const lines = [
+    ...(opts.install ? [`  Installed dependencies (${opts.pm})`] : []),
+    ...(opts.git ? [`  Committed: "${message}"`] : []),
+  ];
+  return lines.length === 0 ? [] : ['', ...lines];
 }

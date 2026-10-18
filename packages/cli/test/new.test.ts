@@ -25,7 +25,7 @@ function options(overrides: Partial<NewOptions> = {}): NewOptions {
     install: true,
     git: true,
     sw: true,
-    layout: '_layout',
+    layout: { own: '_layout' },
     target: 'static',
     ...overrides
   };
@@ -40,6 +40,8 @@ describe('fudic new', () => {
     expect(plan.changes.map((change) => change.path)).toEqual([
       'demo/package.json',
       'demo/vite.config.ts',
+      'demo/vitest.config.ts',
+      'demo/src/fudic-env.d.ts',
       'demo/README.md',
       'demo/.gitignore',
       'demo/fudic.json',
@@ -47,7 +49,9 @@ describe('fudic new', () => {
       'demo/fudic-globals.d.ts',
       'demo/sw.json',
       'demo/src/layouts/_layout.fud',
+      'demo/src/layouts/_layout.test.ts',
       'demo/src/routes/index.fud',
+      'demo/src/routes/index.test.ts',
     ]);
     expect(plan.changes.every((change) => change.kind === 'create')).toBe(true);
 
@@ -57,6 +61,7 @@ describe('fudic new', () => {
     const ROOT_FILES = [
       'package.json',
       'vite.config.ts',
+      'vitest.config.ts',
       'README.md',
       '.gitignore',
       'fudic.json',
@@ -112,7 +117,7 @@ describe('fudic new', () => {
   });
 
   it('leaves the generated config empty and shows src/ in the README (§6.3, §6.4)', async () => {
-    const plan = await planNew('demo', options(), new MemoryFs({}, CWD));
+    const plan = await planNew('demo', options({ prefix: 'demo' }), new MemoryFs({}, CWD));
     const file = (path: string): string => plan.changes.find((change) => change.path === path)!.contents;
 
     // The scaffold configures nothing because it does not have to: the plugin's default and
@@ -125,7 +130,7 @@ describe('fudic new', () => {
     expect(readme).toContain('src/layouts/_layout.fud');
     expect(readme).toContain('src/routes/index.fud');
     expect(readme).toContain('src/components/');
-    expect(readme).toContain('fudic g component app-card --in src/routes/index.fud');
+    expect(readme).toContain('fudic g component card --in src/routes/index.fud   # <demo-card>');
   });
 
   it('--no-sw drops sw.json: the SW itself is never a user file (SDD-20)', async () => {
@@ -143,7 +148,7 @@ describe('fudic new', () => {
       'pnpm install',
       'git init -b main',
       'git add -A',
-      'git commit -m chore: scaffold fudic app',
+      'git commit -m chore: create app demo',
     ]);
 
     // A dry run is the plan WITHOUT apply: nothing to undo, nothing spawned.

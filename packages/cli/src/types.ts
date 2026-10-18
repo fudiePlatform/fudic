@@ -28,6 +28,11 @@ export interface PlanCommand {
   readonly args: readonly string[];
   /** Relative to `cwd`. */
   readonly dir: string;
+  /**
+   * Its output is kept and shown only if it fails (BUG-50 §6.2): an install or a commit is a
+   * line of the report, not a screen of it. Absent ⇒ the user sees it as it runs.
+   */
+  readonly quiet?: true;
 }
 
 /**
@@ -73,6 +78,12 @@ export interface Plan {
   readonly diagnostics: readonly PlanDiagnostic[];
   /** From the CLI, span-less. A plan with a non-empty `errors` is never applied. */
   readonly errors: readonly CliError[];
+  /**
+   * What the command tells the user once it is applied, in their words (BUG-50 §6): what was
+   * created, how to run it, what to do next. Absent ⇒ one `create`/`modify` line per file.
+   * Never shown under `--dry-run`, which lists the plan, nor in `--json`.
+   */
+  readonly report?: readonly string[];
 }
 
 export interface BaseOptions {
@@ -114,17 +125,34 @@ export interface NewOptions extends BaseOptions {
   readonly install: boolean;
   readonly git: boolean;
   readonly sw: boolean;
-  readonly layout: string;
+  readonly layout: AppLayout;
   readonly target: string;
 }
 
 /**
+ * The frame of a new app's pages: one of its own (`--layout <name>`, `_layout` by default), one
+ * it does not own — a library's, by its specifier (`--layout @shop/ui/layouts/main.fud`) —,
+ * or none (`--no-layout`), its home page then a whole document.
+ */
+export type AppLayout = { readonly own: string } | { readonly href: string } | null;
+
+/**
  * `fudic new <nombre> --workspace` (SDD-44 §3.2). It inherits everything `fudic new` takes,
  * because the app it creates is the one `fudic new` creates.
+ *
+ * What it starts with is the user's choice (decision of Pedro, 2026-10-18): nothing, an app
+ * (`--app`), libraries (`--lib`), or both.
  */
 export interface WorkspaceOptions extends NewOptions {
-  /** The first app's name. A workspace with no app is not a useful state. */
-  readonly app: string;
+  /** `--app`: the first app's name. Absent ⇒ no app. */
+  readonly app?: string;
+  /**
+   * `--uses`: libraries created with the workspace, in `libs/`, that the first app depends on
+   * (BUG-50 §3.2; decision of Pedro, 2026-10-18: a new workspace has no library to name).
+   */
+  readonly uses: readonly string[];
+  /** `--lib`: libraries created with the workspace that no app uses yet. */
+  readonly libs: readonly string[];
 }
 
 /**
@@ -145,6 +173,12 @@ export interface AppOptions extends ProjectOptions {
   /** Written, never derived from the directory nor from the npm name (§4.4). */
   readonly id: string;
   readonly sw: boolean;
+  readonly layout: AppLayout;
+  /**
+   * `--base`, as given. Absent ⇒ `/` for the first app of the workspace, `/<name>/` for the
+   * others (BUG-50 §3.2).
+   */
+  readonly base?: string;
 }
 
 /**
@@ -163,8 +197,10 @@ export interface ComponentOptions extends TargetedOptions {
   readonly wireInto: readonly string[];
   readonly style: boolean;
   readonly slot: boolean;
-  /** Also write `<tag>.fudspec` next to it (SDD-53). Absent ⇒ no. */
-  readonly spec?: boolean;
+  /** Write its unit test in its folder; `--skip-test` is `false` (BUG-50 §4.3). */
+  readonly test: boolean;
+  /** Write its `.fudspec` and its fixture in its folder; `--skip-spec` is `false` (BUG-50 §4.3). */
+  readonly spec: boolean;
 }
 
 /** `fudic g spec <component>` (SDD-53 §4.1): only the project the component is in. */
@@ -184,6 +220,17 @@ export interface PageOptions extends TargetedOptions {
   readonly server: boolean;
   /** `null` ⇒ every `@RenderSection` of the layout chain. */
   readonly sections: readonly string[] | null;
+  /** Write its unit test beside it; `--skip-test` is `false` (BUG-50 §4.4). */
+  readonly test: boolean;
+}
+
+/** `fudic g snippet <file> <name>`: a snippet added to a file of snippets. */
+export interface SnippetOptions extends TargetedOptions {
+  /** The snippet file's name, without `.fud`: `ui` is `src/snippets/ui.fud`. */
+  readonly file: string;
+  readonly dir: string;
+  /** Add its unit test to the file's; `--skip-test` is `false`. */
+  readonly test: boolean;
 }
 
 export interface LayoutOptions extends TargetedOptions {
@@ -192,6 +239,8 @@ export interface LayoutOptions extends TargetedOptions {
   readonly sections: readonly string[];
   /** Emit `@RenderHead()` inside the `<head>` (decision 86). */
   readonly head: boolean;
+  /** Write its unit test beside it; `--skip-test` is `false` (BUG-50 §4.4). */
+  readonly test: boolean;
 }
 
 /**
@@ -220,3 +269,36 @@ export interface TranslatePlan extends Plan {
 
 /** The empty plan: the neutral element every builder starts from. */
 export const EMPTY_PLAN: Plan = { changes: [], commands: [], diagnostics: [], errors: [] };
+
+/** `fudic dev` and `fudic preview` (BUG-50 §4.5): which apps, and the one port they share. */
+export interface ServeOptions extends TargetedOptions {
+  readonly port: number;
+}
+
+/** `fudic g lib` (SDD-44, BUG-50 §4.7). */
+export interface LibOptions extends ProjectOptions {
+  /** `--styles-only`: a global stylesheet and nothing else — no components, no tests, no spec. */
+  readonly stylesOnly?: true;
+}
+
+/** `fudic add <module>` (BUG-50 §4.6). */
+export interface AddOptions extends TargetedOptions {
+  /** `--locales es,en`, with `add i18n`: written as `"locales"` in `fudic.json`. */
+  readonly locales: readonly string[];
+}
+
+/** `fudic g service <name>` (BUG-50 §4.7). */
+export interface ServiceOptions extends TargetedOptions {
+  /** Not registered in the root: a component provides it (`--provided`). */
+  readonly provided: boolean;
+  /** Write its unit test; `--skip-test` is `false`. */
+  readonly test: boolean;
+}
+
+/** `fudic g form <name>` (BUG-50 §4.7). */
+export interface FormOptions extends TargetedOptions {
+  /** Typed controls (`--binary`): the upload travels in binary. */
+  readonly binary: boolean;
+  /** Write its unit test; `--skip-test` is `false`. */
+  readonly test: boolean;
+}

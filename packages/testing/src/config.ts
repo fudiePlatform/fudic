@@ -21,10 +21,14 @@ export const ENVIRONMENT = sibling('environment');
 export const SETUP = sibling('setup');
 
 /**
- * The generated wrappers, under `node_modules`, which vitest would otherwise hand to Node
- * untransformed — and a `.fud` they import means nothing to Node.
+ * What vitest would otherwise hand to Node untransformed because it sits under `node_modules`:
+ * the generated wrappers — a `.fud` they import means nothing to Node — and this package itself
+ * once installed. Its `visit` and `renderLayout` import those wrappers by path, "through vitest's
+ * graph"; handed to Node, that import is Node's, which refuses `C:/…` and never compiles a `.fud`
+ * (BUG-50: a project installed from a registry failed its first test; the workspace never saw
+ * it, because a linked package is not under `node_modules`).
  */
-export const INLINE = /node_modules[\\/]\.fudic-test[\\/]/u;
+export const INLINE = /node_modules[\\/](?:\.fudic-test|@fudic[\\/]testing)[\\/]/u;
 
 /**
  * What only the harness runs — the plugin and the compiler, which `mount` asks for a graph

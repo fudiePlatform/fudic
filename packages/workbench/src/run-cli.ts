@@ -3,6 +3,7 @@
  * only when every criterion passed. Without paths, every `.fudspec` of the current folder down.
  */
 
+import { FUD0976 } from '@fudic/diagnostics';
 import { BROWSER_CHOICES, firstLine, type BrowserChoice } from './browser.js';
 import { HumanReport } from './report.js';
 import { runSpecs, type RunOptions } from './run.js';
@@ -16,13 +17,22 @@ export interface RunIo {
   readonly cwd: string;
 }
 
-export const RUN_USAGE = `usage: fudic-workbench run [<path>…] [--browser <${BROWSER_CHOICES.join('|')}>] [--workers <n>] [--json]`;
+export const RUN_USAGE = `usage: fudic-workbench run [<path>…] [--browser <${BROWSER_CHOICES.join('|')}>] [--workers <n>] [--json] [--pass-with-no-specs]`;
+
+/** The code of "nothing to run", taken from the code itself: no package spells a code by hand. */
+const NOTHING_TO_RUN = FUD0976({ where: '' }).code;
 
 export interface RunArgs {
   readonly paths: readonly string[];
   readonly browser?: BrowserChoice;
   readonly workers?: number;
   readonly json: boolean;
+  /**
+   * Nothing to run exits 0 instead of FUD0976 (BUG-50 §4.2): what a project just created runs,
+   * before it has its first `.fudspec`. Without it, nothing to run stays an error, so a CI that
+   * lost its specs does not pass.
+   */
+  readonly passWithNoSpecs: boolean;
 }
 
 export function parseRunArgs(argv: readonly string[]): RunArgs | undefined {
@@ -30,9 +40,11 @@ export function parseRunArgs(argv: readonly string[]): RunArgs | undefined {
   let browser: BrowserChoice | undefined;
   let workers: number | undefined;
   let json = false;
+  let passWithNoSpecs = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
     if (arg === '--json') json = true;
+    else if (arg === '--pass-with-no-specs') passWithNoSpecs = true;
     else if (arg === '--workers') {
       workers = Number(argv[++i]);
       if (!Number.isInteger(workers) || workers < 1) return undefined;
@@ -43,7 +55,7 @@ export function parseRunArgs(argv: readonly string[]): RunArgs | undefined {
     } else if (arg.startsWith('--')) return undefined;
     else paths.push(arg);
   }
-  return { paths, json, ...(browser !== undefined ? { browser } : {}), ...(workers !== undefined ? { workers } : {}) };
+  return { paths, json, passWithNoSpecs, ...(browser !== undefined ? { browser } : {}), ...(workers !== undefined ? { workers } : {}) };
 }
 
 export async function runMain(argv: readonly string[], io: RunIo): Promise<void> {
@@ -75,6 +87,12 @@ export async function runMain(argv: readonly string[], io: RunIo): Promise<void>
     const summary = await runSpecs(args.paths, options);
     if (isFailure(summary)) {
       const { code, severity, message } = summary.diagnostic;
+      if (args.passWithNoSpecs && code === NOTHING_TO_RUN) {
+        if (args.json) json({ v: 2, type: 'summary', pass: 0, fail: 0, error: 0, ms: 0, browser: null });
+        else io.write('no .fudspec yet: nothing to run');
+        io.exit(0);
+        return;
+      }
       if (args.json) json({ v: 2, type: 'diagnostic', code, severity, message });
       else human.diagnostic(summary.diagnostic);
       io.exit(1);

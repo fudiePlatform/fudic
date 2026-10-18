@@ -15,7 +15,9 @@ import {
   semanticDiagnostics,
   unresolvedHrefs,
 } from '../src/index.js';
-import { component, LAYOUT, projected, route } from './_support.js';
+import { describeFud, FudIndex } from '../src/fud-index.js';
+import { projectFud } from '../src/project.js';
+import { component, LAYOUT, memoryFs, projected, route } from './_support.js';
 
 const SLUG = '/p/blog/[slug].fud';
 
@@ -165,6 +167,27 @@ describe('the links and holes the rules read', () => {
 
     expect(unresolvedHrefs(document, index)).toEqual([]);
     expect(hrefDiagnostics(document, index)).toEqual([]);
+  });
+
+  it('names the fix of a package specifier that resolves to nothing (FUD0760)', () => {
+    const source = route('@shop/ui/layouts/main.fud', ['@nobody/ui/card.fud']);
+    const index = new FudIndex(
+      memoryFs({ [SLUG]: source }, {}, { '@shop/ui/layouts/main.fud': 'not-exported', '@nobody/ui/card.fud': 'not-installed' }),
+      describeFud,
+    );
+    index.scan('/p');
+    const document = projectFud({ path: SLUG, source, index });
+
+    const diagnostics = hrefDiagnostics(document, index);
+    expect(diagnostics.map((d) => d.code)).toEqual(['FUD0760', 'FUD0760']);
+    expect(diagnostics.map((d) => source.slice(d.span.start, d.span.end)).sort()).toEqual([
+      '@nobody/ui/card.fud',
+      '@shop/ui/layouts/main.fud',
+    ]);
+    const messages = diagnostics.map((d) => d.message).join('\n');
+    expect(messages).toContain('the package "@shop/ui" is installed but does not publish "@shop/ui/layouts/main.fud"');
+    expect(messages).toContain('"@nobody/ui/card.fud" names a package that is not installed');
+    expect(diagnostics.every((d) => !('file' in d))).toBe(true);
   });
 
   it('says where the file of an unresolved href would have to be created', () => {

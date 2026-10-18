@@ -3,7 +3,7 @@
  * needs when the component has required props.
  *
  * The order is the author's. A component that does not exist yet is created with its criteria
- * file, exactly as `fudic g component <name> --spec` does; one that exists gets them next to it.
+ * file, exactly as `fudic g component <name>` does; one that exists gets them next to it.
  * Spec first or component first, the result is the same files.
  *
  * Nothing here writes a line of its own: the `.fudspec` and the fixture are what `@fudic/spec`
@@ -42,13 +42,19 @@ export const BASE_FIXTURE = 'base';
 /** Where the editor's fallback for `*.fud` imports goes when the project has none (SDD-52 §8.1). */
 export const ENV_FILE = 'src/fudic-env.d.ts';
 
-/** The declaration that keeps a fixture's `import type … from './x.fud'` out of the red in VS Code. */
+/**
+ * What a `.ts` sees of a `.fud` it imports — a test, a fixture — where the fudic toolchain is not
+ * the one answering: VS Code's own TypeScript server. The toolchain resolves the real `.fud` and
+ * wins over it. `$file` is what `mount` reads, under `fudicTest()`.
+ */
 export const ENV_DECLARATION =
-  "// VS Code's own TypeScript server does not know what a `.fud` is, so a fixture that imports a\n" +
-  "// component's props type would show the import in red. The fudic toolchain resolves the real\n" +
-  '// `.fud` and wins over this fallback.\n' +
+  '// Lets a .ts file import a .fud component: its tests and its fixtures.\n' +
   "declare module '*.fud' {\n" +
   '  export type $Props = any;\n' +
+  '  export const tag: string;\n' +
+  '  export const css: string;\n' +
+  '  export function render(...args: never[]): unknown;\n' +
+  '  export const $file: string;\n' +
   '}\n';
 
 const DECLARES_FUD = /declare\s+module\s+['"]\*\.fud['"]/u;
@@ -66,8 +72,8 @@ export async function planSpec(
   const tag = tagOf(project.config.prefix, name);
   const source = componentFile(project, tag, io);
   if (source === undefined) {
-    // Spec first: the component is born with it, empty, as `g component --spec` writes it.
-    return planComponent(name, { ...opts, dir: COMPONENTS_DIR, wireInto: [], style: true, slot: false, spec: true }, io);
+    // Spec first: the component is born with it, as `g component` writes it.
+    return planComponent(name, { ...opts, dir: COMPONENTS_DIR, wireInto: [], style: true, slot: false, test: true, spec: true }, io);
   }
 
   const changes: FileChange[] = [];

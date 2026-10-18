@@ -8,7 +8,7 @@
  * the workspace is touched.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -101,6 +101,30 @@ describe('nodeCommandRunner', () => {
 
     // Nothing by this name exists, so the process never started: `null`, not an exit code.
     expect(runner.run('fudic-no-such-binary', [], dir)).toBeNull();
+  });
+
+  it('keeps a quiet command to itself, and shows what it said only when it fails (BUG-50 §6.2)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'fudic-quiet-'));
+    const runner = nodeCommandRunner();
+    const written: string[] = [];
+    const write = vi.spyOn(process.stderr, 'write').mockImplementation((chunk) => {
+      written.push(String(chunk));
+      return true;
+    });
+    try {
+      expect(runner.run(process.execPath, ['-e', 'console.log("all good")'], dir, true)).toBe(0);
+      expect(written).toEqual([]);
+
+      expect(runner.run(process.execPath, ['-e', 'console.log("out"); console.error("broken"); process.exit(3)'], dir, true)).toBe(3);
+      expect(written.join('')).toMatch(/^out\r?\nbroken\r?\n$/u);
+
+      // One that never started has nothing to show, and still is not a zero.
+      written.length = 0;
+      expect(runner.run('fudic-no-such-binary', [], dir, true)).toBeNull();
+      expect(written.join('')).toBe('');
+    } finally {
+      write.mockRestore();
+    }
   });
 });
 

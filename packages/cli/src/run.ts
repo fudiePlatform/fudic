@@ -11,13 +11,17 @@
  * the terminal is a failure of the CLI (SDD-22 §5).
  */
 
-import { parseArgs, USAGE } from './args.js';
+import { parseArgs } from './args.js';
+import { commandHelp } from './help/commands.js';
+import { GENERAL_HELP } from './help/general.js';
+import { formatUsageError } from './help/usage.js';
 import { apply } from './apply.js';
 import type { FudCode } from '@fudic/diagnostics';
 import { commandFailed } from './diagnostics.js';
 import { absolute } from './paths.js';
 import { planComponent } from './plans/component.js';
 import { planLayout } from './plans/layout.js';
+import { planSnippet } from './plans/snippet.js';
 import { planFmt } from './plans/fmt.js';
 import { planNew } from './plans/new.js';
 import { planPage } from './plans/page.js';
@@ -27,6 +31,12 @@ import { planLib } from './plans/lib.js';
 import { planSpec } from './plans/spec.js';
 import { planTerm } from './plans/term.js';
 import { planTranslate } from './plans/translate.js';
+import { planCheck } from './plans/check.js';
+import { planAdd } from './plans/add.js';
+import { planForm, planService } from './plans/piece.js';
+import { planStyle } from './plans/style.js';
+import { appsToServe } from './serve/apps.js';
+import { nodeServeDeps, serveWorkspace, type ServeDeps } from './serve/workspace.js';
 import { formatDiff, formatError, formatDiagnostic, formatPlan, planToJson } from './report.js';
 import { nodeCommandRunner, nodeReadIo, nodeWriteIo, type CommandRunner, type ReadIo, type WriteIo } from './io.js';
 import type { Plan, TranslatePlan } from './types.js';
@@ -48,6 +58,8 @@ export interface RunDeps {
   readonly writeIo: WriteIo;
   readonly runner: CommandRunner;
   readonly streams: Streams;
+  /** What `fudic dev` and `fudic preview` start: processes, ports, a server. */
+  readonly serve?: ServeDeps;
 }
 
 function nodeStreams(): Streams {
@@ -58,7 +70,7 @@ function nodeStreams(): Streams {
 }
 
 export function defaultDeps(): RunDeps {
-  return { readIo: nodeReadIo(), writeIo: nodeWriteIo(), runner: nodeCommandRunner(), streams: nodeStreams() };
+  return { readIo: nodeReadIo(), writeIo: nodeWriteIo(), runner: nodeCommandRunner(), streams: nodeStreams(), serve: nodeServeDeps() };
 }
 
 export async function run(argv: readonly string[], deps: RunDeps = defaultDeps()): Promise<number> {
@@ -73,12 +85,23 @@ export async function run(argv: readonly string[], deps: RunDeps = defaultDeps()
 async function execute(argv: readonly string[], deps: RunDeps): Promise<number> {
   const command = parseArgs(argv);
   if (command.kind === 'help') {
-    deps.streams.out(USAGE);
+    deps.streams.out(command.topic === null ? GENERAL_HELP : commandHelp(command.topic));
     return 0;
   }
   if (command.kind === 'error') {
-    deps.streams.err(`${formatError(command.error)}\n\n${USAGE}`);
+    deps.streams.err(formatUsageError(command));
     return 1;
+  }
+  // Not a plan: it runs until it is stopped (BUG-50 §4.5).
+  if (command.kind === 'serve') {
+    // The machine first: what starts the apps is chosen before anything else is asked.
+    const machine = deps.serve ?? nodeServeDeps();
+    const { apps, errors } = appsToServe(command.serve, command.opts, deps.readIo);
+    if (errors.length > 0) {
+      for (const error of errors) deps.streams.err(`${formatError(error)}\n`);
+      return 1;
+    }
+    return serveWorkspace(command.serve, apps, command.opts.port, machine);
   }
 
   const plan = await build(command, deps.readIo);
@@ -115,7 +138,12 @@ async function execute(argv: readonly string[], deps: RunDeps): Promise<number> 
   const applied = await apply(plan, command.opts, deps.writeIo, deps.runner);
   // A plan with errors is never applied: nothing was removed either.
   const removed = plan.errors.length > 0 ? [] : (plan.deletions ?? []).map((path) => `  delete  ${path}`);
-  if (!flags.json) human(`${[...applied.changes.map((change) => (change.kind === 'create' ? `  create  ${change.path}` : `  modify  ${change.path}`)), ...removed].join('\n')}\n`);
+  // A plan's own report only once everything it says happened did happen: a failed command
+  // falls back to the file list, which is still true.
+  if (!flags.json && plan.report !== undefined && applied.failed === undefined) {
+    if (plan.report.length > 0) human(`${plan.report.join('\n')}\n`);
+  }
+  else if (!flags.json) human(`${[...applied.changes.map((change) => (change.kind === 'create' ? `  create  ${change.path}` : `  modify  ${change.path}`)), ...removed].join('\n')}\n`);
 
   // Reported AFTER the changes, because those really did happen: the files are written
   // before the first command runs, and a failure here does not unwrite them. Exit 1, the
@@ -147,7 +175,7 @@ function sourceOf(cwd: string, file: string, io: ReadIo): string | undefined {
   return io.exists(path) ? io.read(path) : undefined;
 }
 
-function build(command: Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } | { kind: 'error' }>, io: ReadIo): Promise<Plan> {
+function build(command: Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } | { kind: 'error' } | { kind: 'serve' }>, io: ReadIo): Promise<Plan> {
   switch (command.kind) {
     case 'new':
       return planNew(command.name, command.opts, io);
@@ -163,12 +191,24 @@ function build(command: Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } |
       return planPage(command.route, command.opts, io);
     case 'layout':
       return planLayout(command.name, command.opts, io);
+    case 'snippet':
+      return planSnippet(command.name, command.opts, io);
     case 'spec':
       return planSpec(command.name, command.opts, io);
     case 'term':
       return planTerm(command.name, command.opts, io);
     case 'fmt':
       return planFmt(command.paths, command.opts, io);
+    case 'check':
+      return planCheck(command.check, command.opts, io);
+    case 'add':
+      return planAdd(command.module, command.opts, io);
+    case 'service':
+      return planService(command.name, command.opts, io);
+    case 'form':
+      return planForm(command.name, command.opts, io);
+    case 'style':
+      return planStyle(command.name, command.opts, io);
     case 'translate':
       return planTranslate(command.opts, io);
   }

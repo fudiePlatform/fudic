@@ -225,6 +225,24 @@ function trimmed(source: string, at: Span): Span {
   return span(start, end);
 }
 
+/**
+ * Whether `arg`, once expanded, is a plain chain — what lets the implicit form survive.
+ *
+ * Only an argument the call wrote can be one, and its text is in the CALLER's file: the
+ * snippet's own source, at those offsets, says nothing about it. An argument that is itself
+ * a parameter of the caller's body becomes whatever filled that one, so the answer is asked
+ * again one frame out; a chain that merely starts with one (`t.name`) gets parenthesized.
+ */
+function expandsToChain(frame: Frame, arg: BoundArgument): boolean {
+  if (arg.empty || arg.fromDefault) return false;
+  // A reference only exists in a body frame, and a body frame always has a caller.
+  const caller = frame.outer!;
+  if (!CHAIN.test(caller.source.slice(arg.value.start, arg.value.end))) return false;
+  const ref = caller.plan.refs.find((r) => inside(arg.value, r.at));
+  if (ref === undefined) return true;
+  return ref.at.start === arg.value.start && ref.at.end === arg.value.end && expandsToChain(caller, caller.args[ref.index]!);
+}
+
 class Expander {
   readonly #out = new ExpandedText();
   readonly #diagnostics: Diagnostic[] = [];
@@ -311,8 +329,7 @@ class Expander {
     // The atom is `@` plus a chain that starts with the parameter. What follows it inside the
     // chain — `.length`, `(x)`, `[0]` — has to come along.
     const tail = span(ref.at.end, atom.expr.end);
-    const text = arg.empty ? '' : frame.source.slice(arg.value.start, arg.value.end);
-    if (tail.end === tail.start && !arg.empty && !arg.fromDefault && CHAIN.test(text)) {
+    if (tail.end === tail.start && expandsToChain(frame, arg)) {
       // Nothing after it and a plain chain in: the implicit form survives, and the output is
       // what the author would have written by hand.
       this.#out.synthetic('@', anchor);

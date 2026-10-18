@@ -9,6 +9,7 @@
     "fudic.json"
   ],
   "exports": {
+    "./fudic.json": "./fudic.json",
     "./tokens.css": "./tokens.css"
   }
 }

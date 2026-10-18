@@ -12,7 +12,7 @@
  */
 
 import { readFileSync, readdirSync, realpathSync } from 'node:fs';
-import { nodeResolveFs, resolveHrefPath } from '@fudic/resolve';
+import { nodeResolveFs, resolveHref, resolveHrefPath, type LookupFailure } from '@fudic/resolve';
 import type * as ts from 'typescript';
 import { toPosix } from './paths.js';
 
@@ -39,6 +39,12 @@ export interface CheckFs {
    * index, which is the state a broken link has always had (`FUD0460`).
    */
   resolveHref(fromFile: string, href: string): string;
+  /**
+   * Why a package specifier written in `fromFile` resolves to nothing — the package is not
+   * installed, or it does not export the file —, or `undefined` when it is not a specifier
+   * that failed. It is what lets a broken link name its fix instead of «cannot resolve».
+   */
+  hrefFailure(fromFile: string, href: string): LookupFailure | undefined;
   /**
    * The same file under its real name, with symlinks followed (SDD-43 §4.4).
    *
@@ -105,6 +111,11 @@ export function nodeFileSystem(): CheckFs {
      */
     resolveHref(fromFile: string, href: string): string {
       return toPosix(resolveHrefPath(fromFile, href, resolver));
+    },
+
+    hrefFailure(fromFile: string, href: string): LookupFailure | undefined {
+      const resolution = resolveHref(fromFile, href, resolver);
+      return resolution.outcome === 'unresolved' ? resolution.reason : undefined;
     },
 
     /**

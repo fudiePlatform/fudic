@@ -50,7 +50,7 @@ export interface WriteIo {
  * and gets a different message.
  */
 export interface CommandRunner {
-  run(command: string, args: readonly string[], dir: string): number | null;
+  run(command: string, args: readonly string[], dir: string, quiet?: boolean): number | null;
 }
 
 export function nodeReadIo(): ReadIo {
@@ -97,15 +97,17 @@ export function needsShell(command: string, platform: NodeJS.Platform): boolean 
 
 export function nodeCommandRunner(): CommandRunner {
   return {
-    run: (command, args, dir) => {
+    run: (command, args, dir, quiet = false) => {
       mkdirSync(dir, { recursive: true });
-      // stdio inherited so the user sees the install output — the CLI never asks anything
-      // itself (§4.1).
+      // Inherited, so the user sees what runs — tests, criteria; the CLI never asks anything
+      // itself (§4.1). A quiet one is kept, and shown only when it fails: that is when the user
+      // needs pnpm's or git's own words.
       const result = spawnSync(command, [...args], {
         cwd: dir,
-        stdio: 'inherit',
+        stdio: quiet ? 'pipe' : 'inherit',
         shell: needsShell(command, process.platform),
       });
+      if (quiet && result.status !== 0) process.stderr.write(`${result.stdout ?? ''}${result.stderr ?? ''}`);
       // A process killed by a signal has no exit code but did not succeed either, so it is
       // reported as "never ran" rather than as a zero that never happened.
       return result.error === undefined ? result.status : null;

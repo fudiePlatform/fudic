@@ -88,6 +88,42 @@ describe('g term (criterion 11)', () => {
   });
 });
 
+describe('g term — the type of run (SDD-59 §4.8)', () => {
+  const params = [{ name: 'target', type: 'element' }] as const;
+
+  it('without fudic/bench.js, run takes the stock ctx', async () => {
+    const plan = await planTerm('abre', options({ block: 'when', params: ['target:element'] }), projectFs({}, CWD));
+    expect(plan.changes[0]!.contents).toBe(termModule('when', 'abre', params));
+    expect(plan.changes[0]!.contents).not.toContain('bench.js');
+  });
+
+  it('with the project fudic/bench.js, run takes the ctx it leaves', async () => {
+    const plan = await planTerm(
+      'abre',
+      options({ block: 'when', params: ['target:element'] }),
+      projectFs({ 'fudic/bench.js': 'export default {};\n' }, CWD),
+    );
+    expect(plan.changes[0]!.contents).toBe(termModule('when', 'abre', params, { bench: true }));
+  });
+
+  it('looks for the bench.js of the project it writes into, not of the workspace', async () => {
+    const files = {
+      'pnpm-workspace.yaml': "packages:\n  - 'libs/*'\n",
+      'package.json': '{"name":"shop","private":true}',
+      'libs/ui/fudic.json': '{"kind":"lib","prefix":"ui"}',
+      'libs/ui/package.json': '{"name":"@shop/ui"}',
+      'libs/shop/fudic.json': '{"kind":"lib","prefix":"shop"}',
+      'libs/shop/package.json': '{"name":"@shop/shop"}',
+      'libs/shop/fudic/bench.js': 'export default {};\n',
+    };
+    const into = async (project: string) =>
+      (await planTerm('abre', options({ cwd: '/ws', project, block: 'when', params: ['target:element'] }), new MemoryFs(files, '/ws')))
+        .changes[0]!.contents;
+    expect(await into('shop')).toBe(termModule('when', 'abre', params, { bench: true }));
+    expect(await into('ui')).toBe(termModule('when', 'abre', params));
+  });
+});
+
 describe('g term errors (criterion 11)', () => {
   const fs = projectFs({ 'fudic/terms/then/taken.js': 'export const meta = {};\n' }, CWD);
 

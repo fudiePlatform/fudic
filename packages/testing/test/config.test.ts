@@ -61,6 +61,15 @@ describe('fudicTest', () => {
     expect(configOf({}).test?.server?.deps?.inline).toEqual([INLINE]);
     expect(INLINE.test('/p/node_modules/.fudic-test/wrapper-1.js')).toBe(true);
     expect(INLINE.test('/p/node_modules/vite/index.js')).toBe(false);
+    expect(INLINE.test('/p/node_modules/@fudic/vite/dist/index.js')).toBe(false);
+  });
+
+  test('transforms @fudic/testing itself when installed from a registry, so its import of a wrapper stays in vitest', () => {
+    // Externalized, Node imports the wrapper by a bare Windows path and `visit()` answers 500.
+    expect(INLINE.test('/p/node_modules/@fudic/testing/dist/visit.js')).toBe(true);
+    expect(INLINE.test('C:\\p\\node_modules\\@fudic\\testing\\dist\\page.js')).toBe(true);
+    expect(INLINE.test('C:\\p\\node_modules\\.fudic-test\\wrapper-1.js')).toBe(true);
+    expect(INLINE.test('/p/node_modules/@fudic/testing-extra/index.js')).toBe(false);
   });
 
   test('hands the plugin and the compiler to Node, installed or in a workspace', () => {

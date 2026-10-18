@@ -14,5 +14,6 @@ export default defineConfig({
   // Same as the storefront, and for the same reason: with maps on, the two boots can be
   // compared as source instead of as minified text.
   build: { sourcemap: true },
+  server: { port: 5174 },
   plugins: [fudic()],
 });

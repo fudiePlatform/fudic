@@ -182,13 +182,15 @@ function targetsOf(value: unknown): readonly string[] {
 
 /** The subpath `key` exports `file` under, when `target` is where it points. */
 function subpathFor(key: string, target: string, file: string): string | undefined {
-  const star = target.indexOf('*');
-  if (star === -1) return target === file ? key : undefined;
+  const parts = target.split('*');
+  if (parts.length === 1) return target === file ? key : undefined;
 
-  const prefix = target.slice(0, star);
-  const suffix = target.slice(star + 1);
-  if (!file.startsWith(prefix) || !file.endsWith(suffix)) return undefined;
-  return key.replace('*', file.slice(prefix.length, file.length - suffix.length));
+  // Every `*` of a target stands for the SAME text, as Node substitutes it: the library of a
+  // generated workspace exports `./*.fud` from `./src/components/*/*.fud`, a folder per
+  // component named after its file (BUG-50 §4.3).
+  const escaped = parts.map((part) => part.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'));
+  const match = new RegExp(`^${escaped[0]}(.+?)${escaped.slice(1).join('\\1')}$`, 'u').exec(file);
+  return match === null ? undefined : key.replace('*', match[1] as string);
 }
 
 /**

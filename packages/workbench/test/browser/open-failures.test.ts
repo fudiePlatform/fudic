@@ -69,7 +69,8 @@ describe('openWorkbench, failing', () => {
     project.write('src/index.fud', '<!DOCTYPE html>\n<html><body></body></html>\n');
     const answer = await openWorkbench(project.path('src/index.fud'));
     expect(isFailure(answer) && answer.diagnostic.code).toBe('FUD0970');
-    expect(existsSync(project.path('node_modules'))).toBe(false);
+    // The project has `@fudic/terms` in its node_modules; the workbench folder is what must not be there.
+    expect(existsSync(project.path('node_modules/.fudic-bench'))).toBe(false);
   });
 
   it('without Chrome answers FUD0975, closes everything, and leaves no folder', async () => {

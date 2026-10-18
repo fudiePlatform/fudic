@@ -1,0 +1,8 @@
+import { expect, test } from 'vitest';
+import { renderLayout } from '@fudic/testing';
+import * as {{module}} from './{{file}}';
+
+test('renders the page inside it', async () => {
+  const page = await renderLayout({{module}}, { body: '<p>Hello</p>' });
+  expect(page.document.querySelector('main')?.textContent).toContain('Hello');
+});

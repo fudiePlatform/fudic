@@ -56,7 +56,7 @@ beforeAll(async () => {
   mkdirSync(`${framework}/then`);
   writeFileSync(`${framework}/then/visible.js`, term('visible', 'then', ELEMENT));
 
-  harness = await startHarness({ root, overrides: { frameworkTerms: framework } });
+  harness = await startHarness({ root, overrides: { frameworkTerms: () => framework } });
 }, 60_000);
 
 afterAll(async () => {

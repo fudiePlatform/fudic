@@ -24,6 +24,8 @@ import {
 import type { ViteDevServer } from 'vite';
 import { firstLine } from './browser.js';
 import { namedArgs, type LoadedTerm, type TermLoader } from './engine.js';
+import type { LoadedExtension } from './extension.js';
+import { loadProjectExtension, missingRuntime, resolveRuntime, type TermsRuntime } from './runtime.js';
 import { planBench, type BenchPlan, type ExecutedFixtures, type PlannedCriterion } from './pages.js';
 import { toWire, type DescribedCriterion, type DescribedStep, type SessionMessage } from './protocol.js';
 import type { BenchTarget } from './target.js';
@@ -36,14 +38,19 @@ export interface SessionInput {
   readonly vite: ViteDevServer;
   /** The workbench folder the pages are written into. */
   readonly dir: string;
-  /** The framework's `terms/` folder; absent while no package offers one. */
-  readonly frameworkTerms?: string;
+  /**
+   * The stock runtime: absent, `@fudic/terms` as the project resolves it; null, none.
+   * Injected by the tests that need one project with and without it.
+   */
+  readonly runtime?: TermsRuntime | null;
 }
 
 export interface LoadedSession {
   readonly criteria: readonly PlannedCriterion[];
   readonly message: SessionMessage;
   readonly loadTerm: TermLoader;
+  /** The stock extension (or the one that says it is missing), then the project's. */
+  readonly extensions: readonly LoadedExtension[];
   /** The `.fud` files the component reads: a save of one of them reruns it. */
   readonly reads: ReadonlySet<string>;
 }
@@ -72,8 +79,12 @@ const EMPTY_SPEC: SpecFile = { kind: 'spec', criteria: [], comments: [], span: {
 
 export async function loadSession(input: SessionInput): Promise<LoadedSession> {
   const { target, vite } = input;
-  const catalog = createTermCatalog(termRoots(input), nodeSpecFs);
+  const runtime = input.runtime === undefined ? await resolveRuntime(target.projectRoot) : input.runtime;
+  const catalog = createTermCatalog(termRoots(target, runtime), nodeSpecFs);
   const loadTerm = termLoader(catalog, vite);
+  const project = await loadProjectExtension(target.projectRoot, vite);
+  const extensions: LoadedExtension[] = [runtime?.stock ?? missingRuntime(target.projectRoot)];
+  if (project !== null && !('error' in project)) extensions.push(project);
   const diagnostics: { diagnostic: FudDiagnostic; file: string | null }[] = [];
   const reads = componentFiles(target.component, readText);
 
@@ -87,7 +98,7 @@ export async function loadSession(input: SessionInput): Promise<LoadedSession> {
     for (const diagnostic of found) diagnostics.push({ diagnostic, file: target.spec });
     // A file with errors is not run: half a file gives greens that mean nothing.
     if (found.some((d) => d.severity === 'error')) {
-      return { criteria: [], message: sessionMessage(target, diagnostics, []), loadTerm, reads };
+      return { criteria: [], message: sessionMessage(target, diagnostics, []), loadTerm, extensions, reads };
     }
   }
 
@@ -99,17 +110,19 @@ export async function loadSession(input: SessionInput): Promise<LoadedSession> {
   writePlanFiles(input.dir, target.tag, plan.files);
   for (const name of plan.files.keys()) invalidateFile(vite, `${input.dir}/${name}`);
 
-  const criteria = executed.error === undefined ? plan.criteria : failProps(plan, executed.error.message);
+  const fixtureOk = executed.error === undefined ? plan.criteria : failProps(plan, executed.error.message);
+  // A `fudic/bench.js` that does not load leaves every criterion in error, saying why.
+  const criteria = project !== null && 'error' in project ? fixtureOk.map((c) => ({ ...c, error: project.error })) : fixtureOk;
   // The 1-based line of an offset: the margin, Problems and the shell point at it.
   const lineOf = (offset: number) => specText.slice(0, offset).split('\n').length;
   const described = await Promise.all(criteria.map((c) => describeCriterion(c, lineOf, loadTerm)));
-  return { criteria, message: sessionMessage(target, diagnostics, described), loadTerm, reads };
+  return { criteria, message: sessionMessage(target, diagnostics, described), loadTerm, extensions, reads };
 }
 
 /** `fudic/terms/` of the project first, then the framework's: the editor's roots, in its order. */
-function termRoots(input: SessionInput): TermRoot[] {
-  const roots: TermRoot[] = [{ layer: 'workspace', path: `${input.target.projectRoot}/${TERMS_DIR}` }];
-  if (input.frameworkTerms !== undefined) roots.push({ layer: 'framework', path: input.frameworkTerms });
+function termRoots(target: BenchTarget, runtime: TermsRuntime | null): TermRoot[] {
+  const roots: TermRoot[] = [{ layer: 'workspace', path: `${target.projectRoot}/${TERMS_DIR}` }];
+  if (runtime !== null) roots.push({ layer: 'framework', path: runtime.termsDir });
   return roots;
 }
 
