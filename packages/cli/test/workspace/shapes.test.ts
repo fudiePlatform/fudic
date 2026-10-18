@@ -104,6 +104,15 @@ describe('fudic g app: its frame', () => {
     expect(fs.at('shop/apps/web/README.md')).toContain(`- \`${MAIN}\`: the layout every page is written into; it is not this app's.`);
   });
 
+  it('takes away the placeholder of the empty apps/ with the first app, and only then', async () => {
+    const fs = await withLibraryLayout();
+    expect(fs.paths()).toContain('shop/apps/.gitkeep');
+    const first = await cli(fs, 'g', 'app', 'web', '--cwd', SHOP);
+    expect(first.code).toBe(0);
+    expect(fs.paths()).not.toContain('shop/apps/.gitkeep');
+    expect((await cli(fs, 'g', 'app', 'admin', '--cwd', SHOP)).code).toBe(0);
+  });
+
   it('does not name the library twice when --uses already does', async () => {
     const fs = await withLibraryLayout();
     const { out } = await cli(fs, 'g', 'app', 'web', '--uses', 'ui', '--layout', MAIN, '--cwd', SHOP);

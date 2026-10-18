@@ -14,7 +14,7 @@
 import { FUD0449, FUD0452 } from '@fudic/diagnostics';
 import { appFiles, scaffoldChanges, scaffoldRefusal } from './scaffold.js';
 import { duplicateIds } from '../project.js';
-import { relativeTo } from '../paths.js';
+import { absolute, dirname, joinPosix, relativeTo } from '../paths.js';
 import { DEV_PORT, normalizeBase, servedApps, type ServedApp } from '../workspace/bases.js';
 import { placeProject } from '../workspace/place.js';
 import { appUses, packageOf, usesErrors } from '../workspace/uses.js';
@@ -22,6 +22,9 @@ import { nodeReadIo, type ReadIo } from '../io.js';
 import { EMPTY_PLAN, type AppLayout, type AppOptions, type CliError, type NewOptions, type Plan } from '../types.js';
 import { isLayout } from '../layout.js';
 import { workspaceFile } from '../workspace/link.js';
+
+/** What keeps an empty `apps/` in git; the first app makes it pointless. */
+const KEEP = '.gitkeep';
 
 /**
  * What the app tree needs beyond what `fudic g app` is given.
@@ -105,9 +108,14 @@ export function planApp(name: string, opts: AppOptions, io: ReadIo = nodeReadIo(
     io,
   );
 
+  // The placeholder that kept `apps/` in git goes with the first app that fills it.
+  const keep = joinPosix(dirname(dir), KEEP);
+  const deletions = io.exists(absolute(opts.cwd, keep)) ? { deletions: [keep] } : {};
+
   return Promise.resolve({
     ...EMPTY_PLAN,
     changes: built.changes,
+    ...deletions,
     errors: built.errors,
     commands: [{ command: 'pnpm', args: ['install'], dir: relativeTo(opts.cwd, root) || '.', quiet: true }],
     report: appReport({ name, dir, base, port, uses, layout: opts.layout, others }),
