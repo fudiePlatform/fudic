@@ -1,6 +1,6 @@
 # BUG-50 · La CLI que nadie entiende: ayuda que confunde, librerías que no se pueden probar y apps sin dirección
 
-> **Estado:** `Listo` (2026-10-16)
+> **Estado:** `Hecho` (2026-10-18) — [tareas](./BUG-50-Task.md), 27 / 27, con la prueba de Pedro.
 > **Corrige:** [SDD-22](../SDD-22-fudic-cli.md) (la CLI), [SDD-44](../SDD-44-cli-de-workspace.md)
 > (workspace, `g app`, `g lib`), [SDD-53](../SDD-53-fudspec-autoria.md) (`g spec`, fixture) y el
 > `GLOBALS_DTS` de `@fudic/language-core`.
@@ -269,6 +269,30 @@ dice al usuario qué puede hacer con el fichero, en una línea. Aplica a `GLOBAL
 - Commit inicial: `chore: create app <name>` o `chore: create workspace <name>`.
 - El `.gitkeep` de `src/components/` se borra al crear el primer componente.
 - Los READMEs de app y lib describen lo que de verdad generan.
+
+### 4.10. Lo que cambió la prueba de Pedro (2026-10-18)
+
+Pedro usó la CLI publicada en Verdaccio y la extensión como un desarrollador nuevo, y pidió estos
+cambios, hechos en la misma rama, cada uno con sus tests:
+
+- **Un workspace nace vacío.** `new <name> --workspace` sin más crea `apps/` y `libs/` vacíos;
+  `--app <a>` añade la primera app y `--lib <l>` librerías que nadie usa todavía. `--uses`,
+  `--layout` y `--no-layout` piden `--app`. Sustituye a «la primera app se llama como el
+  workspace» de §3.1. La primera app que se crea borra el `.gitkeep` de `apps/`.
+- **Una app puede no tener layout propio.** `--layout` en `new` y `g app` acepta un nombre (su
+  propio layout, como antes) o el href de una librería (`@shop/ui/layouts/main.fud`): no se escribe
+  layout, la portada se pinta dentro de ese y `g app` añade la librería a sus `uses`. `--no-layout`
+  hace de la portada un documento completo.
+- **Una página elige su layout.** `g page --layout` acepta el href de una librería, que se traduce
+  por los `exports` de la librería (el patrón más largo primero, como Node). Sin layout propio
+  cerca, una página nueva se pinta dentro del que usa la portada.
+- **Los layouts de una librería tienen nombre público.** `g lib` escribe
+  `"./layouts/*.fud": "./src/layouts/*.fud"` en `exports`; `g layout` en una librería la añade si
+  falta y termina con el `<link>` que escribe una página. Un href de paquete que no resuelve es
+  `FUD0760` también en el typecheck, que dice si falta instalar o falta la entrada en `exports`.
+- **Un snippet llamado desde un componente** pintaba `@"Hola"` y pasaba `"@"` a las props: el
+  compilador leía el argumento en el fichero del snippet y no en el de quien lo llama. Lo destapó
+  el test de `examples/basic` que fallaba.
 
 ## 5. Invariantes
 

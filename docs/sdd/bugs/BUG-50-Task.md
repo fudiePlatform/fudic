@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/cli` · `@fudic/language-core` · `@fudic/typecheck` · `examples/workspace` · `@fudic/workbench` · `@fudic/testing` · `@fudic/terms` · `@fudic/resolve`
 > **Rama:** `bug-50-cli-usable` (worktree `fudic-bug-50`), desde `main` en `e4f7a8a`.
 > **Depende de:** SDD-59 `Hecho` para las tareas que ejecutan un `.fudspec` (12, 24).
-> **Progreso:** 23 / 27 — en curso (13 y 18, pruebas de Pedro, al final).
+> **Progreso:** 27 / 27 — `Hecho` (2026-10-18).
 
 Lo nuevo nace al 100 % en las cuatro métricas; `@fudic/cli` no baja de su suelo.
 
@@ -36,7 +36,7 @@ Lo nuevo nace al 100 % en las cuatro métricas; `@fudic/cli` no baja de su suelo
 | [x] | 10 | 4, 5 | **Carpeta con cuatro ficheros**; `.fud` sin `@code` vacío; fixture siempre; spec con `renders`; `--skip-test`, `--skip-spec`; retirar `--spec`; borrar `.gitkeep` (BUG §4.3). **Añadido (Pedro, 2026-10-17):** término de serie `then present` en `@fudic/terms` y el spec generado lo usa; `@fudic/ssr` en las devDependencies de la lib | `src/plans/component.ts` · `src/plans/spec.ts` · `templates/component.fud` · `packages/terms/terms/then/present.js` |
 | [x] | 11 | 10 | **`exports` de la lib** `./*.fud` → `./src/components/*/*.fud`; `--dir` relativo al proyecto y el aviso de §6.7 | `templates/lib/package.json.tmpl` · `src/workspace/link.ts` · `src/plans/component.ts` · `packages/resolve/src/libraries.ts` (`exports` con varios `*`) |
 | [x] | 12 | 10, 11 | **Tests.** §6.5, §6.6, §6.7; `pnpm test` y `pnpm spec` en verde sobre la lib generada | `packages/cli/test/*` |
-| [ ] | 13 | 12 | **Prueba de Pedro.** Lib nueva + componente, test y spec en verde (al final, con la 26: decisión de Pedro, no detiene las fases) | — |
+| [x] | 13 | 12 | **Prueba de Pedro.** Lib nueva + componente, test y spec en verde (al final, con la 26: decisión de Pedro, no detiene las fases). Hecha con la 26 | — |
 
 ## Fase 4 — Workspace, bases y servidor único (5)
 
@@ -46,7 +46,7 @@ Lo nuevo nace al 100 % en las cuatro métricas; `@fudic/cli` no baja de su suelo
 | [x] | 15 | — | **Bases.** Primera app `/`; `g app` escribe `base` (`--base`); dos apps con la misma base es error; `g app` instala (BUG §4.5, §4.6) | `src/plans/app.ts` · `templates/vite.config.ts.tmpl` |
 | [x] | 16 | 15 | **`fudic dev` y `fudic preview`.** Todas las apps en un puerto, base más larga primero (BUG §4.5). **`fudic test` y `fudic spec`**: los del proyecto, o los de todo el workspace desde su raíz (BUG §3.1; añadido por decisión de Pedro, 2026-10-17: ninguna tarea los cubría) | `src/serve/*` · `src/args.ts` · `src/run.ts` |
 | [x] | 17 | 14–16 | **Tests.** §6.2, §6.4, §6.9 | `packages/cli/test/*` |
-| [ ] | 18 | 17 | **Prueba de Pedro.** `pnpm dev` y `pnpm preview` con `/` y `/admin/` en el navegador; `pnpm --filter admin dev` (al final, con la 26: decisión de Pedro, no detiene las fases) | — |
+| [x] | 18 | 17 | **Prueba de Pedro.** `pnpm dev` y `pnpm preview` con `/` y `/admin/` en el navegador; `pnpm --filter admin dev` (al final, con la 26: decisión de Pedro, no detiene las fases). Hecha con la 26 | — |
 
 ## Fase 5 — Añadir: módulos, librerías, servicios, formularios y estilos (6)
 
@@ -64,5 +64,5 @@ Lo nuevo nace al 100 % en las cuatro métricas; `@fudic/cli` no baja de su suelo
 | ✓ | # | dep | tarea | fichero |
 |---|---|---|---|---|
 | [x] | 25 | 1–24 | **README de `@fudic/cli`** en inglés, corto, sin citas a SDD | `packages/cli/README.md` |
-| [ ] | 26 | 25 | **Prueba de Pedro.** Repetir como desarrollador nuevo la sesión del §1 contra Verdaccio | — |
-| [ ] | 27 | 26 | **Cierre.** Estado `Hecho`, índices, registro de progreso | `docs/sdd/bugs/INDEX.md` · `docs/sdd/INDEX.md` |
+| [x] | 26 | 25 | **Prueba de Pedro.** Repetir como desarrollador nuevo la sesión del §1 contra Verdaccio. **Hecha (2026-10-18)**, con la extensión. Pidió los cambios de BUG §4.10, hechos en la misma rama con sus tests: workspace vacío (`--app`, `--lib`), `--layout <href>` y `--no-layout` en apps, `g page` con el layout de la portada o el de una librería, los layouts de una librería en `exports` y `FUD0760` en el typecheck, el `.gitkeep` de `apps/`, y el snippet que pintaba `@"Hola"` desde un componente (compilador) | — |
+| [x] | 27 | 26 | **Cierre.** Estado `Hecho`, índices, registro de progreso. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde | `docs/sdd/bugs/INDEX.md` · `docs/sdd/INDEX.md` |
