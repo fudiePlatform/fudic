@@ -10,7 +10,8 @@
 import { describe, expect, it } from 'vitest';
 import { effect } from '@fudic/core';
 import { control } from '../src/control.js';
-import { DEFAULT_CATCHES, form } from '../src/form.js';
+import { DEFAULT_CATCHES } from '../src/catches.js';
+import { form } from '../src/form.js';
 import { group } from '../src/group.js';
 import type { AnyForm } from '../src/types.js';
 import { filled, postSchema } from './fixtures/post.js';

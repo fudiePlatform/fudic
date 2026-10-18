@@ -456,7 +456,8 @@ describe('BUG-42 — a summary with `fields` (criterion 18)', () => {
     const links =
       '{"name":"nom","alias":"fud-c-f-alias","email":"fud-c-f-email","acceso":"fud-c-f-acceso","acceso.clave":"fud-c-f-acceso-clave"}';
     expect(server).toContain(`summaryEntriesOf(f, "fud-s-f", ${links})`);
-    expect(client).toContain(`bindForm($n0, f, $n1, ${links})`);
+    // The same map is the ids of the form's fields, sixth (BUG-51): every field here has one.
+    expect(client).toContain(`bindForm($n0, f, $n1, ${links}, undefined, ${links})`);
     for (const out of [server, client]) {
       expect(out).toContain(`'id', "fud-c-f-alias"`);
       // A dynamic id cannot be linked to.

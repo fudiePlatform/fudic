@@ -166,6 +166,17 @@ describe('bindForm with a server function', () => {
     expect(f.$summary()).toEqual({ server: problem });
   });
 
+  it('a 422 with null errors but a summary keeps the server’s summary', async () => {
+    const { f, events, submit } = setup(async () => {
+      throw { status: 422, errors: null, summary: { mismatch: true }, problem: { status: 422, title: 'Unprocessable Content' } };
+    });
+    f.a.set('Pedro');
+    submit();
+    await flush();
+    expect(f.$summary()).toEqual({ mismatch: true });
+    expect(events).toEqual([]);
+  });
+
   it('a 409 the form does not keep (`catches: [422]`) is fudic:error (BUG-51)', async () => {
     const refusal = { status: 409, problem: { status: 409, title: 'Conflict' } };
     const { f, events, submit } = setup(
