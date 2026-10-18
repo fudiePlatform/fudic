@@ -750,6 +750,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       styleWarnings = resolvedStyles.warnings;
     },
 
+    // A page is rendered by the server, so an edit in its SERVER graph — a route with no
+    // `@client`, a layout, the `.ts` a `load` imports — has nobody to tell in the browser: Vite
+    // logged «(ssr) page reload» to the SSR environment and the page stayed as it was (BUG-51).
+    // The browser is told to reload, which is what that line always meant.
+    hotUpdate(options) {
+      if (this.environment.name !== 'ssr' || options.modules.length === 0) return;
+      options.server.environments.client.hot.send({ type: 'full-reload', path: '*' });
+    },
+
     async configureServer(server) {
       ({ routes: builds, errorPages } = discover());
       // What the editor marks, live (SDD-35 §4.5): checked at start, re-checked on every save

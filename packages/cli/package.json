@@ -34,6 +34,7 @@
   },
   "files": [
     "dist",
+    "runner",
     "templates",
     "README.md"
   ],
