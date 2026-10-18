@@ -5,7 +5,7 @@
 
   @server {
     import { inject } from "@fudic/di";
-    import { put } from "@fudic/http";
+    import { conflict, put } from "@fudic/http";
     import { auth } from "../middlewares/auth";
     import { Users } from "../services/users";
 
@@ -16,6 +16,8 @@
       .form(personForm)
       .handle((ctx) => {
         const v = ctx.form.$value();
+        // Un 409: lo guarda el formulario (su `catches`) y lo pinta en el resumen.
+        if (v.name.trim().toLowerCase() === "admin") throw conflict("Ese nombre está reservado.");
         console.info(`[user-form] ${ctx.user.name} da de alta a ${v.name}`);
         return inject(Users).add({ ...v, age: v.age ?? 0 });
       });
@@ -26,8 +28,8 @@
 
     const aviso = signal("");
 
-    // `fudic:result` llega con lo que devolvió `handle`. Un 422 no llega aquí: sus errores ya
-    // están pintados en el formulario.
+    // `fudic:result` llega con lo que devolvió `handle`. Un 400, 409 o 422 no llega aquí: el
+    // formulario se los queda (`catches` de person.form.ts) y ya están pintados en él.
     function hecho(e: Event) {
       const persona = (e as CustomEvent<{ id: number; name: string }>).detail;
       aviso.set(`Guardado: ${persona.name} (id ${String(persona.id)}). Recargando la lista…`);

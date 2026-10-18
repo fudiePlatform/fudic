@@ -31,6 +31,24 @@ export type { Messages };
  */
 let messages: Messages = {};
 
+/**
+ * The rule a status the form keeps is published under when the server sent no field errors
+ * with it (`form(…, { catches })`): its argument is the problem, `{ status, title, detail? }`.
+ */
+export const SERVER_RULE = 'server';
+
+/**
+ * The one sentence this package writes on its own: the server's. A 409 that said
+ * `conflict('that email is taken')` reads that, and a `messages: { server }` of the form or of
+ * `setMessages` words it otherwise.
+ */
+const BUILT_IN: Messages = {
+  [SERVER_RULE]: (problem) => {
+    const p = problem as { readonly title?: unknown; readonly detail?: unknown };
+    return typeof p.detail === 'string' && p.detail !== '' ? p.detail : String(p.title);
+  },
+};
+
 /** Install the message map. Replaces whatever was there: it is a configuration, not a merge. */
 export function setMessages(m: Messages): void {
   messages = m;
@@ -55,7 +73,7 @@ export function messageOf(errors: Errors, own: Messages = {}): string {
  */
 export function messagesOf(errors: Errors, own: Messages = {}): string[] {
   return Object.keys(errors).map((rule) => {
-    const message = own[rule] ?? messages[rule];
+    const message = own[rule] ?? messages[rule] ?? BUILT_IN[rule];
     return message === undefined ? rule : message(errors[rule]);
   });
 }
