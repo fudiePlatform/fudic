@@ -28,7 +28,8 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
+  // Retried: on Windows a Vite just killed holds its folder for a moment after it is gone.
+  rmSync(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
 });
 
 afterEach(() => {
@@ -93,7 +94,7 @@ describe('nodeServeDeps', () => {
     } finally {
       coloured.stop();
       failing.stop();
-      rmSync(bare, { recursive: true, force: true });
+      rmSync(bare, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
     }
   }, 60_000);
 

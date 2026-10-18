@@ -577,12 +577,16 @@ describe('configureServer — the page and the live typecheck (SDD-35 §4.5)', (
 
 describe('hotUpdate — an edit the server graph sees reloads the browser (BUG-51)', () => {
   /** Run the hook in `environment` over `modules`, and what the client was sent. */
-  function hot(environment: string, modules: unknown[]): unknown[] {
+  function hot(environment: string, modules: unknown[], options: Record<string, unknown> = {}): unknown[] {
     const sent: unknown[] = [];
     const server = { environments: { client: { hot: { send: (payload: unknown) => sent.push(payload) } } } };
-    setup('serve').hotUpdate.call({ environment: { name: environment } }, { modules, server });
+    setup('serve', options).hotUpdate.call({ environment: { name: environment } }, { modules, server });
     return sent;
   }
+
+  it('`serverReload: false` reloads nothing: the host reruns by itself, as the workbench does', () => {
+    expect(hot('ssr', [{ id: '/src/routes/index.fud' }], { serverReload: false })).toEqual([]);
+  });
 
   it('a module of the ssr graph that changed: a full reload of every page', () => {
     expect(hot('ssr', [{ id: '/src/routes/index.fud' }])).toEqual([{ type: 'full-reload', path: '*' }]);

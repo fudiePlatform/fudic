@@ -755,6 +755,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     // logged «(ssr) page reload» to the SSR environment and the page stayed as it was (BUG-51).
     // The browser is told to reload, which is what that line always meant.
     hotUpdate(options) {
+      if (userOptions.serverReload === false) return;
       if (this.environment.name !== 'ssr' || options.modules.length === 0) return;
       options.server.environments.client.hot.send({ type: 'full-reload', path: '*' });
     },
