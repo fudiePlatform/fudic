@@ -103,7 +103,7 @@ import {
 import {
   classifyError,
   ERROR_PATTERN,
-  problemOfStatus,
+  problemOfUrl,
   renderErrorPage,
   type PageProblem,
 } from './page-errors.js';
@@ -928,7 +928,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               return;
             }
             const page = errorPageFor(errorPages, errorLocale(pathname, req.headers.referer));
-            devErrorPage(server, page, problemOfStatus(status))
+            devErrorPage(server, page, problemOfUrl(status, url))
               .then((html) => server.transformIndexHtml(url, html))
               .then((html) => {
                 res.statusCode = status;
@@ -1090,7 +1090,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             return;
           }
           const pattern = errorPatternOf(errorLocale(pathname, req.headers.referer));
-          sendErrorPage(root, res, problemOfStatus(status), nonce, manifest.csp.document, pattern).catch(next);
+          sendErrorPage(root, res, problemOfUrl(status, req.url ?? '/'), nonce, manifest.csp.document, pattern).catch(next);
           return;
         }
 

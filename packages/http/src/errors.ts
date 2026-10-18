@@ -15,6 +15,19 @@ export interface Problem {
   readonly location?: string;
 }
 
+/**
+ * The `data` of `_error.fud`: the error the page paints, which the server hands it — a `load`
+ * that threw, or the call `errorPages()` navigated from.
+ */
+export interface ErrorPage {
+  /** The HTTP status: 404, 401, 500… */
+  readonly status: number;
+  /** The standard name of the status: `Not Found`. */
+  readonly title: string;
+  /** What the server said, when it said something: `notFound('no such user')`. */
+  readonly detail?: string;
+}
+
 export class HttpError extends Error {
   override readonly name: string = 'HttpError';
   readonly status: number;
