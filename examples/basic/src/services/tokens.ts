@@ -1,4 +1,4 @@
-import { unauthorized } from '@fudic/http';
+import { forbidden } from '@fudic/http';
 import { Service } from '@fudic/di';
 
 export interface User {
@@ -14,7 +14,7 @@ const KNOWN: Readonly<Record<string, User>> = {
 export class Tokens {
   verify(token: string): User {
     const user = KNOWN[token];
-    if (user === undefined) throw unauthorized('token desconocido');
+    if (user === undefined) throw forbidden('token desconocido');
     return user;
   }
 }

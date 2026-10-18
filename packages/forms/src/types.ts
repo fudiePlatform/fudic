@@ -206,6 +206,12 @@ export interface FormOptions<S extends Schema> {
   readonly validateOn?: ValidateOn;
   /** What counts for the validity of its controls, unless a control chose its own. */
   readonly validity?: Validity;
+  /**
+   * The statuses this form keeps when it is sent with `form:=@save` and the server refuses it:
+   * they are painted on the form, and never reach `errorPages`. `DEFAULT_CATCHES` — 400, 409
+   * and 422 — unless it says otherwise: `[...DEFAULT_CATCHES, 403]` adds one, `[422]` keeps one.
+   */
+  readonly catches?: readonly number[];
 }
 
 /**
@@ -269,6 +275,8 @@ export interface FormApi<S extends Schema> {
   readonly $valid: Readable<boolean>;
   /** Publishes errors that came from outside (a 422), indexed by path. */
   $setErrors(errors: ErrorMap | null, summary?: Errors | null): void;
+  /** Whether a refusal with this status is this form's to paint (its `catches`). */
+  $catches(status: number): boolean;
 
   /** `touch()` all the way down. What a submit needs for the errors to be visible. */
   $touch(): void;

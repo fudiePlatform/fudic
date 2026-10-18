@@ -1,7 +1,7 @@
 /**
  * `bindForm` — the `<form>` itself: STATE, never action (SDD-34 §4.4).
  *
- * It sends only when it is told where: `form:="@save"` hands it the server function (SDD-56
+ * It sends only when it is told where: `form:=@save` hands it the server function (SDD-56
  * §4.7), and then a valid submit calls it instead of navigating. Without it, who submits the
  * data and where is the author's (`@submit`, decision 96) or the native `<form>`'s. What this
  * binds besides is the three things that are about the FORM and not about any one field:
@@ -16,6 +16,7 @@
  */
 
 import { internalsOf } from '../internals.js';
+import { SERVER_RULE } from '../messages.js';
 import type { AnyForm, AnyNode, ErrorMap, Errors } from '../types.js';
 import { bindSummary } from './summary.js';
 import type { Cleanup } from './types.js';
@@ -41,18 +42,34 @@ function firstInvalid(el: HTMLFormElement): HTMLElement | undefined {
 }
 
 /**
- * The server's 422, recognised by its shape: `@fudic/http`'s `ValidationError` is a class of a
+ * A refusal of the server, recognised by its shape: `@fudic/http`'s `HttpError` is a class of a
  * package this one does not depend on, and the form only needs what it carries.
  */
-function isRejected(
-  error: unknown,
-): error is { readonly errors: ErrorMap | null; readonly summary: Errors | null } {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    (error as { readonly status?: unknown }).status === 422 &&
-    'errors' in error
-  );
+interface Refusal {
+  readonly status: number;
+  /** A 422's errors by path; absent on any other status. */
+  readonly errors?: ErrorMap | null;
+  readonly summary?: Errors | null;
+  /** The problem (RFC 9457) it came with: `{ status, title, detail? }`. */
+  readonly problem?: { readonly status: number; readonly title: string; readonly detail?: string };
+}
+
+function statusOf(error: unknown): number | undefined {
+  const status = (error as { readonly status?: unknown } | null | undefined)?.status;
+  return typeof status === 'number' ? status : undefined;
+}
+
+/**
+ * Paint a refusal the form keeps: a 422's errors where they belong, or — a 409, a 400 with
+ * nothing per field — the server's sentence as the form's own error, under `SERVER_RULE`.
+ */
+function keep(form: AnyForm, refusal: Refusal): void {
+  if (refusal.errors !== undefined && refusal.errors !== null) {
+    form.$setErrors(refusal.errors, refusal.summary ?? null);
+    return;
+  }
+  const problem = refusal.problem ?? { status: refusal.status, title: String(refusal.status) };
+  form.$setErrors({}, { [SERVER_RULE]: problem });
 }
 
 /**
@@ -101,16 +118,18 @@ export function bindForm(
         stop();
         return;
       }
-      // `form:="@save"` (SDD-56 §4.7): a valid form is SENT, never navigated with. A 422 is the
-      // form's own business and goes into it like a client error; anything else is announced
-      // on the `<form>`, where the view listens with `@fudic:result` / `@fudic:error`.
+      // `form:=@save` (SDD-56 §4.7): a valid form is SENT, never navigated with. A status the
+      // form keeps (`catches`: 400, 409 and 422 unless it says otherwise) goes into it like a
+      // client error; anything else is announced on the `<form>`, where the view listens with
+      // `@fudic:result` / `@fudic:error`.
       void send!(form).then(
         (value) => {
           el.dispatchEvent(new CustomEvent('fudic:result', { detail: value, bubbles: true }));
         },
         (error: unknown) => {
-          if (isRejected(error)) {
-            form.$setErrors(error.errors, error.summary);
+          const status = statusOf(error);
+          if (status !== undefined && form.$catches(status)) {
+            keep(form, error as Refusal);
             stop();
             return;
           }

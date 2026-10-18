@@ -67,7 +67,7 @@ Three levels, from the outside in:
 
 ```ts
 // src/http.ts — every function of the app, `load` included
-export default chain().use(log, csrf, errorPages);
+export default chain().use(log, csrf, errorPages({ 401: '/login' }));
 
 // a `@server` — every function of that file
 export const http = chain().skip('*').use(apiKey);
@@ -101,12 +101,23 @@ module that imports `@fudic/http`, and the bundler drops what only it imported.
 
 Throw them: `throw notFound()`. `badRequest`, `unauthorized`, `forbidden`, `notFound`,
 `conflict` and `redirect(location)` build an `HttpError`; the body is a problem (RFC 9457).
-The client receives the same `HttpError`, a `ValidationError` for a 422 — whose errors go
-straight to the form — or a `Redirect`.
+The client receives the same `HttpError`, a `ValidationError` for a 422, or a `Redirect`.
+A form sent with `form:=@save` keeps the statuses its `catches` option names — 400, 409 and
+422 unless it says otherwise — and paints them itself.
 
-`errorPages` handles what nobody caught: a redirect navigates, a validation error or an abort
-is rethrown, and anything else navigates to `_error.fud` with its status. `_error.fud` is a
-page in `src/routes/` with no URL of its own; its `data` is `{ status, title, detail? }`.
+`errorPages()` handles what nobody caught: a redirect navigates, an abort, a 422 or a status
+the form keeps is rethrown, and anything else navigates to `_error.fud` with its status and
+the server's `detail`. Give it routes to send a status somewhere else:
+
+```ts
+errorPages({
+  401: '/login',
+  403: (error) => `/login?why=${encodeURIComponent(error.problem.detail ?? '')}`,
+});
+```
+
+`_error.fud` is a page in `src/routes/` with no URL of its own. Its `data` is the `ErrorPage`
+of `@fudic/http`: `{ status, title, detail? }`.
 
 ## Requests
 

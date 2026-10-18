@@ -190,9 +190,10 @@
   <p>
     Estos botones no llaman al servidor: solo guardan el token en el navegador. Viaja después,
     en la cabecera <code>authorization</code> de <em>Borrar</em> y de <em>Activo</em>, que
-    llevan <code>auth</code>: míralo en Network, en las cabeceras de esa petición. Sin token, o
-    con uno que el servidor no conoce, responden 401 y <code>errorPages</code> lleva a la
-    página de error.
+    llevan <code>auth</code>: míralo en Network, en las cabeceras de esa petición. Sin token
+    responden 401 y <code>errorPages</code> lleva a la página de error, que dice «sin token».
+    Con uno que el servidor no conoce responden 403, y <code>errorPages({ 403: "/entrar" })</code>
+    lleva a <a href="/entrar">/entrar</a>.
   </p>
 </div>
 
