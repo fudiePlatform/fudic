@@ -7,7 +7,8 @@
  */
 
 import { attributeValueSpan, type Diagnostic, type Span } from '@fudic/compiler';
-import { FUD0460 } from '@fudic/diagnostics';
+import { FUD0460, FUD0760 } from '@fudic/diagnostics';
+import { packageNameOf } from '@fudic/resolve';
 import type { LinkIndex } from './link-index.js';
 import { attributeOf, linksOf } from './links.js';
 import { resolveFrom } from './paths.js';
@@ -43,9 +44,20 @@ export function unresolvedHrefs(document: ProjectedFud, index: LinkIndex): reado
   return unresolved;
 }
 
-/** `FUD0460` for each unresolved `href`. */
+/**
+ * A diagnostic for each unresolved `href`: `FUD0760` for a package specifier, which knows
+ * whether the fix is an install or the library's `exports`, and `FUD0460` for a path.
+ */
 export function hrefDiagnostics(document: ProjectedFud, index: LinkIndex): readonly Diagnostic[] {
-  return unresolvedHrefs(document, index).map((unresolved) =>
-    FUD0460({ span: unresolved.value, href: unresolved.href }),
-  );
+  return unresolvedHrefs(document, index).map(({ href, value }) => {
+    const reason = index.failure(document.path, href);
+    if (reason === undefined) return FUD0460({ span: value, href });
+    const params = { file: document.path, span: value, href };
+    // The file is the one being checked, which a source diagnostic leaves unsaid.
+    const { file: _file, ...diagnostic } =
+      reason === 'not-installed'
+        ? FUD0760({ ...params, reason })
+        : FUD0760({ ...params, reason, pkg: packageNameOf(href) });
+    return { ...diagnostic, span: value };
+  });
 }

@@ -139,10 +139,11 @@ The file is src/routes/about.fud, src/routes/blog/[slug].fud, src/routes/index.f
     usage: 'fudic generate layout <name>',
     alias: 'fudic g l',
     about: `Creates a layout under src/layouts, the frame the pages under it are written
-into, and its unit test.`,
+into, and its unit test. In a library, the apps that use it link it by the package
+name: <link rel="layout" href="@shop/ui/layouts/main.fud">.`,
     args: [['<name>', '"docs" becomes src/layouts/docs.fud']],
     options: [
-      IN_APP,
+      IN_PROJECT,
       ['--dir <path>', 'another folder for the layouts   (default: src/layouts)'],
       ['--sections <a,b>', 'the named sections its pages can fill'],
       ['--no-head', 'its pages cannot add to the <head>'],

@@ -5,6 +5,7 @@
  * The index takes a port precisely so that most of the suite never touches a disk.
  */
 
+import type { LookupFailure } from '@fudic/resolve';
 import type { CheckFs } from '../src/files.js';
 import { describeFud, FudIndex } from '../src/fud-index.js';
 import { resolveFrom, toPosix } from '../src/paths.js';
@@ -19,12 +20,14 @@ import { projectFud, type ProjectedFud } from '../src/project.js';
 export function memoryFs(
   files: Readonly<Record<string, string>>,
   packages: Readonly<Record<string, string>> = {},
+  failures: Readonly<Record<string, LookupFailure>> = {},
 ): CheckFs {
   return {
     fudFiles: (root) =>
       Object.keys(files).filter((path) => path.startsWith(root) && path.endsWith('.fud')),
     readFile: (path) => files[path],
     resolveHref: (fromFile, href) => packages[href] ?? resolveFrom(toPosix(fromFile), href),
+    hrefFailure: (_fromFile, href) => failures[href],
     realPath: (path) => toPosix(path),
   };
 }

@@ -65,6 +65,57 @@ export function librarySpecifier(component: string, cwd: string, io: ReadIo): st
   return specifierOf({ name: packageName(library, io), root: library }, componentPath, fs);
 }
 
+/** The `exports` rule that gives a library's layouts their public name: `@shop/ui/layouts/main.fud`. */
+const LAYOUTS_KEY = './layouts/*.fud';
+const LAYOUTS_TARGET = './src/layouts/*.fud';
+
+/** How an app links a layout of a library, and the `package.json` edit that makes it linkable. */
+export interface LayoutExport {
+  readonly specifier?: string;
+  readonly change?: FileChange;
+}
+
+/**
+ * How an app links `layout` (relative to `cwd`), a file of `src/layouts/` of the library at
+ * `library` (absolute POSIX). A library generated before its `exports` had the layouts rule
+ * gets it here, which is what makes the layout reachable at all: the components rule maps
+ * `@shop/ui/layouts/main.fud` to a component folder that does not exist.
+ */
+export function layoutExport(library: string, layout: string, cwd: string, io: ReadIo, inLayouts: boolean): LayoutExport {
+  const name = packageName(library, io);
+  const specifier = specifierOf({ name, root: library }, toPosix(absolute(cwd, layout)), packageFs(io));
+  if (specifier !== undefined) return { specifier };
+  // The rule maps `src/layouts/` only: a layout anywhere else is the author's to export.
+  if (!inLayouts) return {};
+  const manifest = joinPosix(library, 'package.json');
+  const change = exportRule(manifest, relativeTo(cwd, manifest), io);
+  if (change === undefined) return {};
+  return { specifier: `${name}/layouts/${layout.slice(layout.lastIndexOf('/') + 1)}`, change };
+}
+
+/**
+ * The edit that adds the layouts rule to the `exports` object of the `package.json` at `path`,
+ * written into the text like `declareDependency`. Nothing when `exports` is not an object.
+ */
+function exportRule(path: string, shown: string, io: ReadIo): FileChange | undefined {
+  const before = io.read(path);
+  const exports = (parse(before) as { exports?: unknown }).exports;
+  if (exports === null || typeof exports !== 'object' || Array.isArray(exports)) return undefined;
+  // A valid manifest whose `exports` is an object writes it as `"exports": {`.
+  const open = /"exports"\s*:\s*\{/u.exec(before)!;
+  const start = open.index + open[0].length;
+  let close = start;
+  for (let depth = 1; depth > 0; close++) {
+    if (before[close] === '{') depth++;
+    if (before[close] === '}') depth--;
+  }
+  close--;
+  const inside = before.slice(start, close).trimEnd();
+  const entry = `${JSON.stringify(LAYOUTS_KEY)}: ${JSON.stringify(LAYOUTS_TARGET)}`;
+  const contents = `${before.slice(0, start)}${inside}${inside.trim() === '' ? '' : ','}\n    ${entry}\n  ${before.slice(close)}`;
+  return { kind: 'modify', path: shown, contents, before };
+}
+
 /** The `name` of the `package.json` at `root`, or its folder name when it declares none. */
 function packageName(root: string, io: ReadIo): string {
   const declared = (parse(io.read(joinPosix(root, 'package.json'))) as { name?: unknown }).name;

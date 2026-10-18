@@ -16,7 +16,7 @@
  */
 
 import type { StructuredDocument } from '@fudic/compiler';
-import { findLibraries } from '@fudic/resolve';
+import { findLibraries, type LookupFailure } from '@fudic/resolve';
 import type { CheckFs, FudList } from './files.js';
 import type { LinkIndex, LinkTarget } from './link-index.js';
 import { holesOf, tagOf } from './mode.js';
@@ -141,5 +141,9 @@ export class FudIndex<E extends IndexedFud = IndexedFud> implements LinkIndex, F
    */
   resolve(fromFile: string, href: string): E | undefined {
     return this.#entries.get(toPosix(this.fs.resolveHref(toPosix(fromFile), href)));
+  }
+
+  failure(fromFile: string, href: string): LookupFailure | undefined {
+    return this.fs.hrefFailure(toPosix(fromFile), href);
   }
 }

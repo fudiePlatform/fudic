@@ -8,6 +8,7 @@
  */
 
 import type { LayoutHoles } from '@fudic/compiler';
+import type { LookupFailure } from '@fudic/resolve';
 
 /** What a resolved `href` points at, as far as the check cares. */
 export interface LinkTarget {
@@ -21,4 +22,6 @@ export interface LinkTarget {
 export interface LinkIndex {
   /** What an `href` written inside `fromFile` points at, if it is a known `.fud`. */
   resolve(fromFile: string, href: string): LinkTarget | undefined;
+  /** Why a package specifier written inside `fromFile` resolves to nothing, when it is one. */
+  failure(fromFile: string, href: string): LookupFailure | undefined;
 }

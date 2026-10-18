@@ -29,4 +29,16 @@ An app links a component by the package name:
 <link rel="component" href="{{name}}/{{prefix}}-card.fud">
 ```
 
+## Share a layout
+
+```sh
+fudic g layout main --project {{project}}
+```
+
+A page of an app that uses this library renders inside it with:
+
+```html
+<link rel="layout" href="{{name}}/layouts/main.fud">
+```
+
 The library publishes its `.fud` sources, not a build: the app's build compiles them.
