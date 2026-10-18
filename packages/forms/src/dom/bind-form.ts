@@ -75,6 +75,8 @@ function keep(form: AnyForm, refusal: Refusal): void {
 /**
  * `summary` is the element the author marked with `summary="@form"`, or `null`. `links` is the
  * map path → id the emit writes for a summary with `fields`, and `null` without it (BUG-42 §4.7).
+ * `fields` is the map path → id of every field of the form that has one: what `$issues()` links
+ * to, so a summary the author paints himself — a component, a snippet — can point at its field.
  */
 export function bindForm(
   el: HTMLFormElement,
@@ -82,7 +84,9 @@ export function bindForm(
   summary: HTMLElement | null,
   links: Readonly<Record<string, string>> | null = null,
   send?: (form: AnyForm) => Promise<unknown>,
+  fields: Readonly<Record<string, string>> | null = null,
 ): Cleanup {
+  if (fields !== null) internalsOf(form as unknown as AnyNode).linkFields?.(fields);
   // Make the errors visible and move the focus: to the summary that lists the fields, if there
   // is one (BUG-42 §4.7), or to the first field that failed.
   const stop = (): void => {
@@ -138,6 +142,24 @@ export function bindForm(
       );
     }),
   ];
+  // A link of `$issues()` painted by the author — in a component of his inside the form, or a
+  // snippet — moves the focus as a summary's does. `composedPath`, because a component's link
+  // reaches here retargeted to its host; the field is looked up in the FORM's tree, where it is.
+  if (fields !== null) {
+    const ids = new Set(Object.values(fields));
+    offs.push(
+      onSelf(el, 'click', (event) => {
+        const link = event.composedPath().find((n): n is HTMLAnchorElement => n instanceof Element && n.localName === 'a');
+        const id = link?.getAttribute('href')?.slice(1) ?? '';
+        if (!ids.has(id)) return;
+        const field = (el.getRootNode() as Document | ShadowRoot).getElementById(id);
+        if (field === null) return;
+        event.preventDefault();
+        field.focus();
+        field.scrollIntoView({ block: 'center' });
+      }),
+    );
+  }
   // Into the live region the author marked with `summary="@form"`. A text that changes INSIDE a
   // live region is announced; the same text changing outside one is not, which is why the
   // element exists in the markup before this runs, `aria-live` included.

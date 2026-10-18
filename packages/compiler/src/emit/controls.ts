@@ -81,6 +81,12 @@ export interface ControlSite {
    * written (SDD-56 §3.5). Absent everywhere else.
    */
   readonly send?: string;
+  /**
+   * On a bound `<form>`: the map path → id of every field under it that has an id — the
+   * author's static one, or the one the compiler writes for a summary with `fields`. What
+   * `bindForm` hands the form, so `$issues()` links to its fields. Absent when none has one.
+   */
+  readonly fields?: Readonly<Record<string, string>>;
 }
 
 /** What one marker turns into, on both branches. */
@@ -257,6 +263,7 @@ export function planControls(
     const marker = pairing.describedBy.get(one.el) ?? null;
     const describedBy = marker === null ? (entries.get(one.el) ?? []) : [markers.get(marker)!.id];
     const send = one.target.kind === 'form' ? sendOf(one.el, source) : undefined;
+    const fields = one.target.kind === 'form' ? fieldIdsOf(one.node, found, ids) : undefined;
     sites.set(one.el, {
       target: one.target,
       node: one.node,
@@ -269,9 +276,33 @@ export function planControls(
       bind: last ? bindOf(one.target) : null,
       group: group.length > 0 && last ? group : [],
       ...(send !== undefined ? { send } : {}),
+      ...(fields !== undefined ? { fields } : {}),
     });
   }
   return { sites, markers, ids, field: bridge?.id ?? null };
+}
+
+/**
+ * The ids of the fields under the form `node`, by path: an id the element already has, and
+ * nothing else — this map adds no attribute, it only reads the ones the markup will carry. The
+ * first radio of a group is the one its path points at. `undefined` when no field has one.
+ */
+function fieldIdsOf(
+  node: string,
+  found: readonly Found[],
+  ids: ReadonlyMap<ElementNode, string>,
+): Readonly<Record<string, string>> | undefined {
+  const prefix = `${node.trim()}.`;
+  const out: Record<string, string> = {};
+  for (const one of found) {
+    const path = one.node.trim();
+    if (!path.startsWith(prefix)) continue;
+    const key = path.slice(prefix.length);
+    if (key in out) continue;
+    const id = staticId(one.el) ?? ids.get(one.el);
+    if (typeof id === 'string') out[key] = id;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 /** The function `form:="@save"` names on this element, as written; absent without one. */

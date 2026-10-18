@@ -231,6 +231,11 @@ export interface GroupOptions {
 export interface Issue {
   readonly path: string;
   readonly message: string;
+  /**
+   * `#id` of the field it belongs to, when the field has an `id` and its `<form>` is bound in a
+   * template: what a summary the author paints links to. Absent for the form's own errors.
+   */
+  readonly href?: string;
 }
 
 /** The `$` namespace of a form. Its fields hang next to it, by name. */

@@ -83,6 +83,8 @@ export function build<S extends Schema>(
   const summary = signal<Errors | null>(null);
   /** A submit was attempted (BUG-42 §4.7). Only `bindForm` sets it, through `markSubmitted`. */
   const submitted = signal(false);
+  /** The ids of its fields by path, once a `<form>` binds it: what `$issues()` links to. */
+  const fieldIds = signal<Readonly<Record<string, string>>>({});
   /** Bumped by every validation pass over this form; an overtaken pass publishes nothing. */
   let epoch = 0;
   /** The value epoch (`valueEpoch()`) the summary on record belongs to. */
@@ -302,6 +304,9 @@ export function build<S extends Schema>(
         node.markSubmitted();
       });
     },
+    linkFields: (ids) => {
+      fieldIds.set(ids);
+    },
     touchAll: () => {
       each((_, node) => {
         node.touchAll();
@@ -363,7 +368,11 @@ export function build<S extends Schema>(
     $issues: (): readonly Issue[] => {
       const out: Issue[] = [];
       issues('', out);
-      return out;
+      const ids = fieldIds();
+      return out.map((issue) => {
+        const id = ids[issue.path];
+        return id === undefined ? issue : { ...issue, href: `#${id}` };
+      });
     },
 
     $submitted: (): boolean => submitted(),
