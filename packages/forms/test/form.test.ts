@@ -10,7 +10,7 @@
 import { describe, expect, it } from 'vitest';
 import { effect } from '@fudic/core';
 import { control } from '../src/control.js';
-import { form } from '../src/form.js';
+import { DEFAULT_CATCHES, form } from '../src/form.js';
 import { group } from '../src/group.js';
 import type { AnyForm } from '../src/types.js';
 import { filled, postSchema } from './fixtures/post.js';
@@ -39,6 +39,39 @@ describe('a group is a form (§6.4)', () => {
     f.seo.description.set('hola');
     expect(f.seo.description()).toBe('hola');
     expect(f.seo.$value()).toEqual({ description: 'hola', canonical: '' });
+  });
+});
+
+describe('$catches: the refusals a form keeps (BUG-51)', () => {
+  it('by default 400, 409 and 422, and nothing else', () => {
+    const f = form({ a: control('') });
+    expect(DEFAULT_CATCHES).toEqual([400, 409, 422]);
+    for (const status of [400, 409, 422]) expect(f.$catches(status)).toBe(true);
+    for (const status of [401, 403, 404, 500]) expect(f.$catches(status)).toBe(false);
+  });
+
+  it('`catches` replaces the default: `[422]` keeps a 422 and lets a 409 go', () => {
+    const f = form({ a: control('') }, { catches: [422] });
+    expect(f.$catches(422)).toBe(true);
+    expect(f.$catches(409)).toBe(false);
+    expect(f.$catches(400)).toBe(false);
+  });
+
+  it('`[...DEFAULT_CATCHES, 403]` adds one to it', () => {
+    const f = form({ a: control('') }, { catches: [...DEFAULT_CATCHES, 403] });
+    expect(f.$catches(403)).toBe(true);
+    expect(f.$catches(409)).toBe(true);
+    expect(f.$catches(401)).toBe(false);
+  });
+
+  it('`[]` keeps none', () => {
+    expect(form({ a: control('') }, { catches: [] }).$catches(422)).toBe(false);
+  });
+
+  it('a group answers the default', () => {
+    const f = form({ g: group({ a: control('') }) });
+    expect(f.g.$catches(409)).toBe(true);
+    expect(f.g.$catches(401)).toBe(false);
   });
 });
 

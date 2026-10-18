@@ -182,10 +182,10 @@ const ERROR_PAGE = `<!DOCTYPE html>
 <html>
 <head><title>Error</title>
 @code {
-  const problem = data as { status: number; title: string };
+  const problem = data as { status: number; title: string; detail?: string };
 }
 </head>
-<body><h1>status @problem.status</h1><p>@problem.title</p></body>
+<body><h1>status @problem.status</h1><p>@problem.title</p><p>detail: [@problem.detail]</p></body>
 </html>
 `;
 
@@ -392,6 +392,15 @@ describe('§4.8 in preview', () => {
     expect(res.status).toBe(500);
     expect(await res.text()).toContain('status 500');
     expect((await page('/_fudic/error/204')).status).toBe(404);
+  });
+
+  it('/_fudic/error/401?detail=… paints _error.fud with the detail errorPages put there (BUG-51)', async () => {
+    const res = await page('/_fudic/error/401?detail=sin%20token');
+    expect(res.status).toBe(401);
+    const html = await res.text();
+    expect(html).toContain('status 401');
+    expect(html).toContain('detail: [sin token]');
+    expect(await (await page('/_fudic/error/401')).text()).toContain('detail: []');
   });
 
   it('the data endpoint answers the status of what load threw', async () => {

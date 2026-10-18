@@ -8,7 +8,7 @@ import { control } from '../src/control.js';
 import { form } from '../src/form.js';
 import { group } from '../src/group.js';
 import { internalsOf } from '../src/internals.js';
-import { setMessages } from '../src/messages.js';
+import { SERVER_RULE, setMessages } from '../src/messages.js';
 import { allFailures } from '../src/run-rule.js';
 import { required } from '../src/validators/required.js';
 import type { AnyForm, AnyNode } from '../src/types.js';
@@ -65,6 +65,39 @@ describe('group() with options (criterion 9)', () => {
     expect(f.g.$message()).toBe('odd');
     setMessages({ odd: () => 'global' });
     expect(f.g.$message()).toBe('global');
+  });
+});
+
+describe('the server’s refusal as the summary (BUG-51)', () => {
+  const refused = (problem: unknown, options: Parameters<typeof form>[1] = {}) => {
+    const f = form({ a: control('') }, options);
+    f.$setErrors({}, { [SERVER_RULE]: problem });
+    return f;
+  };
+
+  it('is published under `server`', () => {
+    expect(SERVER_RULE).toBe('server');
+  });
+
+  it('says the server’s detail, with no message map at all', () => {
+    expect(refused({ status: 409, title: 'Conflict', detail: 'ese email ya existe' }).$message()).toBe(
+      'ese email ya existe',
+    );
+  });
+
+  it.each([
+    ['no detail', { status: 409, title: 'Conflict' }],
+    ['an empty detail', { status: 409, title: 'Conflict', detail: '' }],
+    ['a detail that is not a string', { status: 409, title: 'Conflict', detail: 7 }],
+  ])('with %s, its title', (_what, problem) => {
+    expect(refused(problem).$message()).toBe('Conflict');
+  });
+
+  it('setMessages words it otherwise, and the form’s own words it ahead of both', () => {
+    const problem = { status: 409, title: 'Conflict', detail: 'del servidor' };
+    setMessages({ server: () => 'global' });
+    expect(refused(problem).$message()).toBe('global');
+    expect(refused(problem, { messages: { server: () => 'propio' } }).$message()).toBe('propio');
   });
 });
 
