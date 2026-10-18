@@ -597,8 +597,8 @@ export function eventContextAt(
   offset: number,
   region: Region,
 ): PartialName | undefined {
-  // `@@` is the escape of decision 1, never an event.
-  return prefixedNameAt(source, offset, region, /(?:^|[^-\w@=])@([-\w]*)$/);
+  // `@@` is the escape of decision 1, never an event. A `:` belongs to the name: `@fudic:result`.
+  return prefixedNameAt(source, offset, region, /(?:^|[^-\w@=])@([-\w:]*)$/);
 }
 
 /**

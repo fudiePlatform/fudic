@@ -37,6 +37,7 @@ import {
   controlTarget,
   ERROR_NAME,
   FIELDS_NAME,
+  FORM_SEND_NAME,
   SUMMARY_NAME,
   documentRoots,
   isFormAssociated,
@@ -359,9 +360,14 @@ export interface ControlOffer {
 
 /** One form attribute a gap offers: its name, what it says, and what accepting it writes. */
 export interface FormAttributeOffer {
-  readonly name: typeof CONTROL_NAME | typeof ERROR_NAME | typeof SUMMARY_NAME | typeof FIELDS_NAME;
+  readonly name:
+    | typeof CONTROL_NAME
+    | typeof ERROR_NAME
+    | typeof SUMMARY_NAME
+    | typeof FIELDS_NAME
+    | typeof FORM_SEND_NAME;
   readonly detail: string;
-  /** `control=@`, `error=@`, `summary=@` — or `fields`, which takes no value. */
+  /** `control=@`, `error=@`, `summary=@`, `form:=@` — or `fields`, which takes no value. */
   readonly insertText: string;
   /** Whether accepting it asks for the next list: the node, for the three that name one. */
   readonly suggest: boolean;
@@ -378,6 +384,8 @@ export interface FormAttributeOffer {
  *   already carries that one. A marker is optional by design (decision 130), and outside a form
  *   there is nothing to mark.
  * - `fields`, only on an element that already carries a `summary=` and not `fields` yet.
+ * - `form:`, only on a `<form>` that already binds its form with `control=` and sends nowhere
+ *   yet: anywhere else it is `FUD1006`.
  *
  * A layout offers none: it has no `@code` (`FUD0437`), so there is no node to name.
  */
@@ -403,6 +411,9 @@ export function formAttributeOffers(
   }
   if (carries(el, SUMMARY_NAME) && !carries(el, FIELDS_NAME)) {
     offers.push({ name: FIELDS_NAME, detail: 'the summary lists the errors of the fields too', insertText: FIELDS_NAME, suggest: false });
+  }
+  if (el.name === 'form' && carries(el, CONTROL_NAME) && !carries(el, FORM_SEND_NAME)) {
+    offers.push({ name: FORM_SEND_NAME, detail: 'the server function a valid submit sends the form to', insertText: `${FORM_SEND_NAME}=@`, suggest: true });
   }
   return offers;
 }

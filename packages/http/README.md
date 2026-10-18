@@ -30,7 +30,7 @@ on their own.
 }
 
 <input @input=@find>
-<form control=@userForm form:="@save"> … </form>
+<form control=@userForm form:=@save> … </form>
 ```
 
 The code of `handle` never reaches the browser. There, `search` is a

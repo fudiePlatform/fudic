@@ -95,7 +95,7 @@
 
 <user-form>
   <template shadowrootmode="open">
-    <form control=@personForm form:="@save" @fudic:result=@hecho>
+    <form control=@personForm form:=@save @fudic:result=@hecho>
       <div class="error resumen" summary=@personForm fields></div>
 
       <div class="campo">

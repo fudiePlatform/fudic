@@ -179,8 +179,17 @@ declare function $spread<T>(o: T): void;
  * values become attributes, and that is the runtime's to filter, not a type to satisfy.
  */
 declare function $spreadAttrs(o: object | null | undefined): void;
-declare function $on<K extends keyof HTMLElementEventMap>(
-  type: K, h: (ev: HTMLElementEventMap[K]) => unknown): void;
+/**
+ * The events a bound \`<form>\` announces once it is sent with \`form:=@save\`: what the server
+ * function returned, or the error the form did not keep. They bubble, so any ancestor may listen.
+ */
+interface $FudicEvents {
+  'fudic:result': CustomEvent<unknown>;
+  'fudic:error': CustomEvent<unknown>;
+}
+type $Events = HTMLElementEventMap & $FudicEvents;
+declare function $on<K extends keyof $Events>(
+  type: K, h: (ev: $Events[K]) => unknown): void;
 declare function $section<T extends string>(name: T): void;
 declare function $cls(v: boolean): void;
 declare function $sty(v: string): void;
