@@ -126,7 +126,7 @@ beforeAll(async () => {
     root,
     logLevel: 'silent',
     resolve: { alias: httpAlias },
-    plugins: [fudic()],
+    plugins: [fudic({ liveCheck: false })],
     server: { port: 0 },
   });
   await server.listen();
@@ -302,7 +302,7 @@ describe('a project without _error.fud', () => {
       root,
       logLevel: 'silent',
       resolve: { alias: httpAlias },
-      plugins: [fudic()],
+      plugins: [fudic({ liveCheck: false })],
       server: { port: 0 },
     });
     await bare.listen();

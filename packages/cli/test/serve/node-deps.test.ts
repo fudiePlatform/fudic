@@ -97,6 +97,25 @@ describe('nodeServeDeps', () => {
     }
   }, 60_000);
 
+  it('keeps the NO_COLOR of the user on a TTY: no colour forced, and no warning of Node about both', async () => {
+    const port = await deps.freePort();
+    const lines: [string, string][] = [];
+    const tty = process.stdout.isTTY;
+    process.stdout.isTTY = true;
+    vi.stubEnv('NO_COLOR', '1');
+    const running = deps.start(app(), 'dev', port, (text, stream) => lines.push([text, stream]));
+    process.stdout.isTTY = tty;
+    vi.unstubAllEnvs();
+    try {
+      await deps.ready(port, '/');
+      await vi.waitFor(() => expect(lines.some(([text]) => text.includes(String(port)))).toBe(true), { timeout: 20_000 });
+      expect(lines.some(([text]) => text.includes('\u001b['))).toBe(false);
+      expect(lines.some(([text]) => text.includes('NO_COLOR'))).toBe(false);
+    } finally {
+      running.stop();
+    }
+  }, 60_000);
+
   it('gives up when nothing answers in time', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('ECONNREFUSED'));
     vi.spyOn(Date, 'now').mockReturnValueOnce(0).mockReturnValueOnce(0).mockReturnValue(120_000);

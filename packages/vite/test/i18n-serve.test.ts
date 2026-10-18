@@ -164,7 +164,8 @@ describe('dev', () => {
   let origin = '';
   beforeAll(async () => {
     root = writeI18nProject({ locales: ['es', 'en'], files: FILES, catalogs: { en: EN } });
-    server = await createServer({ root, logLevel: 'silent', plugins: [fudic()], server: { port: 0 } });
+    // Not about the live typecheck, whose child is a whole TypeScript per server (BUG-51).
+    server = await createServer({ root, logLevel: 'silent', plugins: [fudic({ liveCheck: false })], server: { port: 0 } });
     await server.listen();
     origin = `http://localhost:${(server.httpServer!.address() as AddressInfo).port}`;
   }, 120000);

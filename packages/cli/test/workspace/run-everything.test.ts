@@ -408,9 +408,9 @@ describe('fudic test · fudic spec', () => {
 
   it('says there is no project outside every project, and runs nothing', async () => {
     const fs = new MemoryFs({ 'x/readme.md': '#' }, ROOT);
-    const { code, err, commands } = await cli(fs, 'test', '--cwd', `${ROOT}/x`);
+    const { code, out, commands } = await cli(fs, 'test', '--cwd', `${ROOT}/x`);
     expect(code).toBe(1);
-    expect(err).toContain('FUD0781');
+    expect(out).toContain('FUD0781');
     expect(commands).toEqual([]);
   });
 });
