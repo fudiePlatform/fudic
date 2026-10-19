@@ -65,8 +65,8 @@ nace al 100 % en las cuatro métricas; `compiler`, `vite` y `cli` no bajan de su
 
 | ✓ | # | dep | tarea | commit |
 |---|---|---|---|---|
-| [x] | 26 | — | **Workers que ejecutan muchos ficheros**: `forks`, `isolate: false` y `vi.resetModules()` al final de cada fichero (§4.6) | `2f717ba` |
+| [x] | 26 | — | **Workers que ejecutan muchos ficheros**: `forks`, `isolate: false`, y módulos y window nuevos al final de cada fichero (§4.6); la raíz corre los paquetes de uno en uno | `2f717ba` · `a7a5c3a` |
 | [x] | 27 | — | **Un solo vitest** para los proyectos que conservan `vitest run` | `2f717ba` |
 | [x] | 28 | — | **`diagnostics` y `compiler` empaquetados**, planes de la CLI bajo demanda, `dirs.ts`; `inlineSources` en `testing` | `2f717ba` · `b096253` |
 | [x] | 29 | — | **La página nunca espera al typecheck** (decisión de Pedro) | `6950078` |
-| [x] | 30 | 26–29 | **Cierre.** Tests de la fase, `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; estado `Hecho`, índices y registro de progreso | `e656c56` · `c6cdd44` · este cierre |
+| [x] | 30 | 26–29 | **Cierre.** Tests de la fase, `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; estado `Hecho`, índices y registro de progreso | `e656c56` · `c6cdd44` · `a7a5c3a` · este cierre |

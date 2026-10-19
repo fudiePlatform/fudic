@@ -131,10 +131,14 @@ CLI publicada en un workspace propio (`shop`), contra Verdaccio.
 
 ### 4.6 `test`, `spec` y rendimiento (`@fudic/testing`, `@fudic/cli`, `@fudic/diagnostics`, `@fudic/compiler`)
 
-- `fudicTest()` usa por defecto `pool: 'forks'` e `isolate: false`, y el setup descarta los
-  módulos de la app al terminar cada fichero (`vi.resetModules()` en `afterAll`). Así no pasa
-  estado de un fichero al siguiente, y lo pesado se carga una vez por worker. Si el proyecto elige
-  su propio `pool` o `isolate`, se respeta.
+- `fudicTest()` usa por defecto `pool: 'forks'` e `isolate: false`, y el setup descarta, al
+  terminar cada fichero, los módulos de la app (`vi.resetModules()`) y el window: el entorno
+  `fudic` deja una función que abre uno nuevo. Así no pasa estado de un fichero al siguiente
+  —tampoco un tag ya definido con la clase de unos módulos que ya no existen—, y lo pesado se
+  carga una vez por worker. Si el proyecto elige su propio `pool` o `isolate`, se respeta.
+- `pnpm test` y `pnpm coverage` de la raíz corren los paquetes de uno en uno: cada vitest ya
+  ocupa todos los núcleos, y cuatro a la vez saturaban la máquina hasta que Chrome dejaba de
+  responder.
 - `fudic test` lanza un único vitest con todos los proyectos que conservan el `vitest run` de la
   CLI (`runner/vitest-projects.mjs`). Si alguno tiene un script propio, cada proyecto corre el
   suyo con `pnpm --silent`, bajo una cabecera, sin parar al primer fallo y con un resumen final.
@@ -165,6 +169,10 @@ CLI publicada en un workspace propio (`shop`), contra Verdaccio.
 - `dev` forzaba el color aunque el usuario tuviera `NO_COLOR`.
 - La recarga de `hotUpdate` también recargaba la página del banco de trabajo mientras corría un
   criterio, y Playwright perdía la página.
+- Con `isolate: false`, dos ficheros que hidrataban el mismo componente en un mismo worker
+  fallaban con `host.h is not a function`: el window guardaba el tag definido por el fichero
+  anterior. Dependía de la máquina; con un solo worker fallaba siempre.
+- La suite del repo, con cuatro paquetes a la vez, colgaba los Chrome de `terms`.
 
 ## 6. Criterios de aceptación
 
