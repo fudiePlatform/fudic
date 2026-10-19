@@ -22,8 +22,8 @@
     "build": "pnpm -r build",
     "registry": "node scripts/local-registry.mjs",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test",
-    "coverage": "pnpm -r coverage"
+    "test": "pnpm -r --workspace-concurrency=1 test",
+    "coverage": "pnpm -r --workspace-concurrency=1 coverage"
   },
   "devDependencies": {
     "@fudic/tsconfig": "workspace:*",

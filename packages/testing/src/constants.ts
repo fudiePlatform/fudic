@@ -21,3 +21,12 @@ export const FILE_EXPORT = '$file';
 
 /** The key the plugin options and Vite's `base` are provided under, for the in-memory server. */
 export const OPTIONS_KEY = 'fudicOptions';
+
+/**
+ * Where the `fudic` environment leaves the function that gives the scope a new window, which
+ * the setup calls at the end of every file (BUG-51). A worker runs many files and keeps one
+ * environment for all of them, and a window outlives its file: a tag the file defined stays
+ * defined, bound to a class of modules the next file no longer has. A new window per file is
+ * what a new environment per file gave, without starting the worker again.
+ */
+export const RENEW_WINDOW = Symbol.for('fudic.testing.renewWindow');

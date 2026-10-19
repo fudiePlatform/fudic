@@ -4,7 +4,7 @@ import { describe, expect, test } from 'vitest';
 import type { Plugin, UserConfig } from 'vite';
 import type {} from 'vitest/config';
 import { ENVIRONMENT, EXTERNAL, INLINE, SETUP, fudicTest } from '../src/config.js';
-import { BASE_URL, FILE_EXPORT, OPTIONS_KEY, ROOT_KEY } from '../src/constants.js';
+import { BASE_URL, FILE_EXPORT, OPTIONS_KEY, RENEW_WINDOW, ROOT_KEY } from '../src/constants.js';
 import environment from '../src/environment.js';
 
 function testPlugin(): Plugin {
@@ -113,6 +113,26 @@ describe('the fudic environment', () => {
     expect(environment.name).toBe('fudic');
     expect(environment.viteEnvironment).toBe('ssr');
     expect(typeof environment.setup).toBe('function');
+  });
+
+  test('gives the scope a new window when asked, and leaves the last one to the teardown (BUG-51)', async () => {
+    const global: Record<PropertyKey, unknown> = { Request: 'node', Response: 'node', Headers: 'node' };
+    const env = await environment.setup(global as Record<string, unknown>, {});
+    const first = global['document'] as Document;
+    const registry = global['customElements'] as CustomElementRegistry;
+    registry.define('x-renewed', class extends (global['HTMLElement'] as typeof HTMLElement) {});
+
+    await (global[RENEW_WINDOW] as () => Promise<void>)();
+
+    // A new document and a registry where the tag of the last file is no longer defined.
+    expect(global['document']).not.toBe(first);
+    expect((global['customElements'] as CustomElementRegistry).get('x-renewed')).toBeUndefined();
+    // Node's fetch primitives, put back over the new window's too.
+    expect([global['Request'], global['Response'], global['Headers']]).toEqual(['node', 'node', 'node']);
+
+    await env.teardown(global as Record<string, unknown>);
+    expect(RENEW_WINDOW in global).toBe(false);
+    expect(global['document']).toBeUndefined();
   });
 
   test('keeps Node’s Request, Response and Headers over happy-dom’s', async () => {
