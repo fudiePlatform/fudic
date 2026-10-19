@@ -2,15 +2,14 @@
   "extends": "../../packages/tsconfig/tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
-    "lib": ["ES2024", "DOM"],
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "allowImportingTsExtensions": true,
-    "erasableSyntaxOnly": true,
     "types": ["node"],
     "paths": {
       "@fudic/contract": ["./fudic/contract.ts"],
-      "@fudic/forms": ["./fudic/forms.ts"],
-      "@fudic/http": ["./fudic/http.ts"]
+      "@fudic/forms/wire": ["../../packages/forms/src/wire/index.ts"],
+      "@fudic/*": ["../../packages/*/src/index.ts"]
     }
   },
-  "include": ["src", "fudic", "sims"]
+  "include": ["src", "fudic", "sims", "sims/**/*.fud", "../../packages/dom/src/env.d.ts"]
 }

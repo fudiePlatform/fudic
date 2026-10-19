@@ -1,8 +1,214 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
 <link rel="component" href="../components/user-form.fud">
-<link rel="server" href="./usuarios.server.ts">
+@* IDEA-05: the server is a TS contract linked here, in place of the `@server` block. Today's
+   compiler does not know `rel="server"` and would read it as markup (FUD0421), so the link
+   stays commented. The extractor (`src/run.ts`) reads it all the same. Until the compiler
+   learns it, `data` is `unknown` and `search`, `save`, `remove`… are unknown names.
 
-<h1>Usuarios</h1>
-@foreach (const p of data.users) key (p.id) {
-  <p>@p.name — @p.email</p>
+   <link rel="server" href="./usuarios.server.ts">
+*@
+
+@code {
+  @client {
+    import { effect, signal } from "@fudic/core";
+    import type { Person } from "./usuarios.server";
+    import { TOKEN_KEY } from "../middlewares/auth";
+
+    const found = signal<readonly Person[]>([]);
+    const estado = signal("");
+    const texto = signal("");
+    // Vacío en los dos lados, para que el navegador parta de lo que pintó el servidor. El token
+    // vive en este navegador, no en el servidor: se lee al cargar la página.
+    const token = signal("");
+    effect(() => {
+      token.set(localStorage.getItem(TOKEN_KEY) ?? "");
+    });
+    let busqueda: AbortController | undefined;
+
+    // Cada búsqueda cancela la anterior: lo que llega es siempre la última.
+    async function lanzar(llamada: (signal: AbortSignal) => Promise<readonly Person[]>) {
+      busqueda?.abort();
+      const propia = new AbortController();
+      busqueda = propia;
+      estado.set("Buscando…");
+      try {
+        found.set(await llamada(propia.signal));
+        estado.set("");
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") estado.set("Búsqueda cancelada.");
+        else throw err;
+      }
+    }
+
+    function buscar(e: Event) {
+      texto.set((e.target as HTMLInputElement).value);
+      void lanzar((signal) => search({ q: texto() }, { signal }));
+    }
+
+    function buscarLento() {
+      void lanzar((signal) => slowSearch({ q: texto() }, { signal }));
+    }
+
+    function cancelar() {
+      busqueda?.abort();
+    }
+
+    async function activar(id: number, e: Event) {
+      await save({ id, active: (e.target as HTMLInputElement).checked });
+      location.reload();
+    }
+
+    async function borrar(id: number) {
+      await remove({ id });
+      location.reload();
+    }
+
+    function entrar(nombre: string) {
+      localStorage.setItem(TOKEN_KEY, nombre);
+      token.set(nombre);
+    }
+
+    function salir() {
+      localStorage.removeItem(TOKEN_KEY);
+      token.set("");
+    }
+
+    async function romper() {
+      await crash();
+    }
+
+    async function borrarNadie() {
+      await remove({ id: 999 });
+    }
+  }
 }
+
+<head>
+  <title>Usuarios — fudic</title>
+  <style>
+    .panel {
+      display: grid;
+      gap: 0.9rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-box);
+      padding: var(--pad-box);
+      background: var(--surface);
+      margin-bottom: 1rem;
+    }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      align-items: center;
+    }
+    .panel button {
+      font: inherit;
+      padding: 0.35rem 0.8rem;
+      border: 1px solid var(--brand);
+      border-radius: var(--radius);
+      background: var(--brand);
+      color: white;
+      cursor: pointer;
+    }
+    .panel input[type="search"] {
+      font: inherit;
+      padding: var(--pad-field);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.35rem 0.5rem;
+      border-bottom: 1px solid var(--line);
+    }
+  </style>
+</head>
+
+@section nav {
+  <site-nav .current="usuarios"></site-nav>
+}
+
+<h1>Funciones de servidor</h1>
+<p class="lede">
+  Cada botón de esta página llama a una función escrita en el <code>@@server</code> de la ruta
+  o del componente. El cliente no construye URLs, ni cabeceras, ni <code>fetch</code>: llama a
+  <code>search</code>, <code>save</code> o <code>remove</code> por su nombre, con sus tipos.
+</p>
+
+<h2>Sesión</h2>
+<div class="panel">
+  <div class="row">
+    <span>Token: <strong>@(token() === "" ? "ninguno" : token())</strong></span>
+    <button @click=@entrar("ana")>Entrar como Ana</button>
+    <button @click=@entrar("pepe")>Entrar con un token falso</button>
+    <button @click=@salir>Salir</button>
+  </div>
+  <p>
+    Estos botones no llaman al servidor: solo guardan el token en el navegador. Viaja después,
+    en la cabecera <code>authorization</code> de <em>Borrar</em> y de <em>Activo</em>, que
+    llevan <code>auth</code>: míralo en Network, en las cabeceras de esa petición. Sin token
+    responden 401 y <code>errorPages</code> lleva a la página de error, que dice «sin token».
+    Con uno que el servidor no conoce responden 403, y <code>errorPages({ 403: "/entrar" })</code>
+    lleva a <a href="/entrar">/entrar</a>.
+  </p>
+</div>
+
+<h2>Personas</h2>
+<div class="panel">
+  <table>
+    <thead>
+      <tr><th>Nombre</th><th>Email</th><th>Edad</th><th>Activo</th><th></th></tr>
+    </thead>
+    <tbody>
+      @foreach (const p of data.users) key (p.id) {
+        <tr>
+          <td>@p.name</td>
+          <td>@p.email</td>
+          <td>@p.age</td>
+          <td><input type="checkbox" checked=@p.active @change=@activar(p.id, $event) aria-label="Activo"></td>
+          <td><button @click=@borrar(p.id)>Borrar</button></td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+<h2>Buscar</h2>
+<div class="panel">
+  <div class="row">
+    <input type="search" placeholder="Nombre…" aria-label="Buscar por nombre" @input=@buscar>
+    <button @click=@buscarLento>Búsqueda lenta (3 s)</button>
+    <button @click=@cancelar>Cancelar</button>
+    <span role="status">@estado()</span>
+  </div>
+  <p>
+    Cada tecla cancela la búsqueda anterior, y en Network la vieja sale como
+    <em>canceled</em>. La lenta tarda tres segundos a propósito: pulsa <em>Cancelar</em> antes.
+  </p>
+  <ul>
+    @foreach (const p of found()) key (p.id) {
+      <li>@p.name — @p.email</li>
+    }
+  </ul>
+</div>
+
+<h2>Alta</h2>
+<p>
+  El formulario es <code>user-form</code>, un componente con su propia función
+  <code>save</code>. Sus controles son todos tipados, así que sube en binario; con unas notas
+  largas, además comprimido. Prueba un email que ya existe: el error lo pone el servidor.
+</p>
 <user-form></user-form>
+
+<h2>Errores</h2>
+<div class="panel">
+  <div class="row">
+    <button @click=@romper>Un 500</button>
+    <button @click=@borrarNadie>Borrar a alguien que no existe</button>
+  </div>
+</div>

@@ -48,8 +48,12 @@ Copy `sims/01-usuarios/` as the model. Rules:
    `name: Verb<(args) => Result, [typeof mw, …], { options }>` with `Get`, `Post`, `Put`,
    `Patch`, `Delete` from `@fudic/contract`, or `load: Load<() => Data, { strategy: … }>` (also
    the method `load(): Data`). A parameter `typeof someForm` passes a whole form.
-5. Widths (`u8`…`f64`) come from `@fudic/contract`; forms from `@fudic/forms`; middlewares from
-   `@fudic/http`. The stubs in `fudic/` only exist so `tsc` passes.
+5. Widths (`u8`…`f64`) and the verb markers come from `@fudic/contract`, the only stub
+   (`fudic/contract.ts`): it does not exist in fudic yet. Everything else is the real thing,
+   read from `packages/*/src` through `tsconfig.json` paths: `@fudic/forms`, `@fudic/http`,
+   `@fudic/core`… The `.fud` files are copies of real ones from `examples/basic` with their
+   `@server` replaced by the link: write views and forms the way `examples/basic` does, never
+   invented ones.
 6. **Every simulation passes `pnpm check`.** Breaking the subset on purpose is fine (generics,
    `Omit`, `number`…): it is still valid TS.
 7. **Each simulation has an `EXPECTED.md`**: what it exercises and the issues it should produce.

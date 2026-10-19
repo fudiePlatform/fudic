@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+@* `examples/basic/src/layouts/_layout.fud` without the stylesheets this simulation does not have. *@
+<html lang="@culture">
+  <head>
+    @code {
+      const { culture = "es" } = props<{ culture?: string }>();
+    }
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script type="module" src="fudic:runtime"></script>
+    @RenderHead()
+  </head>
+  <body>
+    @RenderSection(nav)
+
+    <main>@RenderBody()</main>
+  </body>
+</html>

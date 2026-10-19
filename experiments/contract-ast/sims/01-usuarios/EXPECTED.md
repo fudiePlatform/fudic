@@ -18,3 +18,11 @@ The real `/usuarios` of `examples/basic`, as contracts: a route and a component,
 - note `regex-dialect` on `pattern(…)`.
 
 Nothing else.
+
+## In the editor
+
+The `.fud` files are `examples/basic`'s with the `@server` swapped for `<link rel="server">`,
+kept inside a `@* … *@` comment because today's compiler does not know it (as markup it would
+be FUD0155/FUD0156 in the component and FUD0421 in the route). The extractor reads it anyway.
+What remains in the editor is what the link should bring: `data` is `unknown` and `search`,
+`save`, `remove`… are unknown names. That goes away only when the compiler learns the link.

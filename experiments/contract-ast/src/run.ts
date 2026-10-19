@@ -61,7 +61,11 @@ function simulate(sim: string): { model: SimModel; project: Project } {
   return { model, project };
 }
 
-/** `<link … rel="server" … href="…">`, attributes in any order. Good enough for an experiment. */
+/**
+ * `<link … rel="server" … href="…">`, attributes in any order. Read from the raw text on
+ * purpose: the simulations keep the link inside a `@* … *@` comment, because today's compiler
+ * does not know it, and this still finds it.
+ */
 function serverLinks(source: string): string[] {
   const out: string[] = [];
   for (const tag of source.match(/<link\b[^>]*>/giu) ?? []) {

@@ -233,3 +233,65 @@ sabe en qué pieza.
    separar rutas de componentes con el mismo nombre (hoy `r/` y `c/` en la URL).
 7. El `load` del preview tiene que leer de IndexedDB en el cliente: si no, tras un `remove` y
    una recarga el HTML estático vuelve a mostrar lo borrado.
+
+## 12. Experimento: hasta dónde llega Oxc
+
+Rama `exp-contract-ast`, carpeta `experiments/contract-ast/` (fuera del workspace, no toca
+fudic). Lee contratos con Oxc, resuelve nombres entre ficheros y escribe por simulación el AST,
+un `model.json` normalizado y un `report.md` con los avisos. Simulación 01: `/usuarios` de
+`examples/basic`, un fichero por `server.ts`.
+
+- **Oxc da toda la sintaxis necesaria**: tipos marcadores, tuplas de `typeof`, opciones como
+  tipos literales, `form({…})` con validadores.
+- **La resolución de nombres entre ficheros la pone fudic** (`src/scope.ts`, ~200 líneas):
+  imports, re-exports, `export *`. Con el subconjunto basta; sin type checker.
+- El contrato de `usuarios` sale entero; solo avisa `serverValidator` (error) y el dialecto del
+  regex (nota). Los errores del subconjunto (`Omit`, genéricos, `number`, uniones, `...rest`,
+  métodos sin verbo) se detectan.
+- **Un fichero por `server.ts`**: interfaz arriba, sus DTOs y forms debajo. Solo los
+  middlewares aparte, porque se comparten.
+- Los `.fud` de la simulación llevan el `<link rel="server">` comentado: el compilador de hoy no
+  lo conoce.
+
+## 13. Tareas, por orden
+
+Para retomarlo en frío. Cada bloque acabará siendo un SDD; ninguno está redactado.
+
+### 13.1. Recortar la vista (enmienda de SDD-51)
+
+Lo que más quita el código espagueti, y no depende del resto.
+
+- [ ] Medir antes de redactar: pasar el parser real por `examples/` y los fixtures y contar qué
+      expresiones usan la stdlib de JS, `Math`/`JSON`/`Date`/`Intl`, `new`, flechas, llamadas a
+      funciones del `@code` y bucles o asignaciones en `@{ }`.
+- [ ] Redactar la enmienda de SDD-51 con el subconjunto de §6, para todos los backends (Node
+      incluido).
+- [ ] Diagnósticos nuevos para lo que se corta.
+- [ ] Arreglar todo `examples/` y los fixtures: lo que la vista calculaba pasa al `load` o a un
+      pipe.
+
+### 13.2. `<link rel="server">` enlazado con la vista
+
+Soportar el link y enlazarlo son una sola entrega: el link sin tipar la vista no aporta nada.
+
+- [ ] **Decidir antes de empezar**: dónde vive la implementación cuando el backend es Node
+      (propuesta: un módulo aparte que implementa la interfaz, como en el resto de lenguajes) y
+      qué pasa con el builder de `@fudic/http` (`get().use().handle()`).
+- [ ] Decidir la forma de lo abierto en §11.1: funciones con `.form`, `invalidates` y
+      `compress` en los tipos marcadores.
+- [ ] `@fudic/contract`: marcadores (`Get`…`Delete`, `Load`) y anchos (`u8`…`f64`).
+- [ ] Compilador: el link en la fase de links de ruta y de componente.
+- [ ] Editor: `data`, las funciones y sus tipos en la vista, desde el contrato.
+- [ ] Cliente: los stubs `$fn` salen del contrato (verbo, middlewares, `invalidates`).
+- [ ] Servidor Node: despacho de `/_fudic/fn/...` a la implementación.
+- [ ] Quitar el `@server` inline y migrar `examples/` al link.
+- [ ] Partir del extractor del experimento (§12).
+
+### 13.3. `fudic.json`, CLI y el primer backend generado
+
+Solo tiene sentido con un generador que escriba en esa carpeta; con Node no hay nada que generar.
+
+- [ ] `fudic.json`: `backend.language`, `backend.contracts`, `backend.namespace`.
+- [ ] CLI: elegir el lenguaje al crear la app.
+- [ ] Generación al guardar: interfaz, DTOs, `ctx` tipados y despacho en la carpeta de salida.
+- [ ] Primer generador (C# o Java) y la prueba de §9: la ruta `usuarios` entera.

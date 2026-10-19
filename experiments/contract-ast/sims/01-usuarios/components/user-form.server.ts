@@ -39,8 +39,8 @@ export const personForm = form({
   age: u8(null, [required, min(18), max(120)], {
     messages: {
       required: () => "Escribe la edad.",
-      min: (n: number) => `Tiene que tener al menos ${String(n)} años.`,
-      max: (n: number) => `Como mucho ${String(n)} años.`,
+      min: (n) => `Tiene que tener al menos ${String(n)} años.`,
+      max: (n) => `Como mucho ${String(n)} años.`,
     },
   }),
   active: bool(true),
