@@ -8,6 +8,8 @@
 > runtime nuevo por lenguaje (fuera del monorepo TS) · posible relación con `@fudic/http`
 > (SDD en curso) por el endpoint de datos y el formato de cable.
 > **No bloquea nada.**
+> **Cerrada por [IDEA-05](./IDEA-05-contrato-ts-y-backend-generado.md)** (2026-10-19): el contrato
+> es TS y el backend se genera. IDEA-05 manda sobre este documento donde lo contradiga.
 
 ---
 
@@ -288,3 +290,12 @@ type Usuarios interface {
 5. El render: traducir la vista a código nativo exige un generador por lenguaje. Con «cualquier
    lenguaje» pesa más la vía vista compilada a formato neutro + intérprete mínimo + suite de
    conformidad común (descartada en §2; pendiente de reabrir).
+
+### Posible bug encontrado al revisar `@fudic/http` (2026-10-19)
+
+Sin comprobar en el navegador; se pasa a BUG cuando se confirme.
+
+- `decode` (`packages/http/src/client/codec.ts`) lee el resultado con `response.json()` y no lo
+  revive por tipo. Una función de servidor que devuelve un `Date` llega al cliente como string,
+  aunque TS lo tipe como `Date`. Los argumentos de un `.form` sí se reviven en el servidor
+  (`reviveJson`); los resultados, en ningún lado.
