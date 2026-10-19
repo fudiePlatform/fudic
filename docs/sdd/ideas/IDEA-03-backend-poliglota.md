@@ -28,6 +28,9 @@ y la sintaxis `.fud`.
 
 ## 2. Lo decidido (no se reabre)
 
+> **Revisado el 2026-10-19:** el `@server` inline y los bloques `@server <lenguaje>` se
+> retiran; ver §8, que manda sobre esta sección.
+
 **La vista es siempre TS y el `@server` se escribe en el lenguaje del backend.**
 
 ```
@@ -232,3 +235,56 @@ cada runtime).
 5. La forma del contrato `@server` por lenguaje: `load`, `strategy`, `provide`/`inject`,
    `publish` frente al DI de ASP.NET o Spring.
 6. Relación con `@fudic/http` (en curso): endpoint de datos y formato de cable pueden caer ahí.
+
+## 8. Revisión del 2026-10-19: el servidor es una interfaz en su lenguaje
+
+Dirección aceptada, a falta de perfeccionar. Manda sobre §2, §3.2 y §6.
+
+- **El `@server` inline desaparece**, también en Node: mezclar handlers con el markup es
+  código espagueti. El `.fud` queda como vista + `@client`.
+- **El lenguaje del backend se declara una vez, en `fudic.json`** (al crear la app con la CLI).
+  Nada de varios `@server`, uno por lenguaje.
+- **Se diseña para cualquier lenguaje, no para C#.** fudic no conoce ningún lenguaje de backend.
+- **Sin OpenAPI** (moda, y poco ágil) **y sin JSON escrito a mano.**
+- **El contrato es una interfaz en el lenguaje del backend**, que el desarrollador define e
+  implementa. El `.fud` no declara nada: `data`, `search`, `remove` quedan tipados desde ella.
+
+```csharp
+[Fudic.Route("usuarios")]
+public interface IUsuarios
+{
+    [Load]                         Task<UsuariosData> Load();
+    [Get]                          Task<Person[]> Search(string q);
+    [Put, Use("auth")]             Task Save(int id, bool active);
+    [Delete, Use("auth", "audit")] Task Remove(int id);
+}
+```
+
+```go
+//fudic:route usuarios
+type Usuarios interface {
+    Load(c fudic.Ctx) (UsuariosData, error)
+    Search(c fudic.Ctx, q string) ([]Person, error)   //fudic:get
+    Save(c fudic.Ctx, id int, active bool) error       //fudic:put use=auth
+}
+```
+
+- **Paquete de lenguaje.** Cada lenguaje trae un *extractor* hecho con sus propias herramientas
+  (source generator de Roslyn, `go/types`, annotation processor, compilador de TS) que deja una
+  descripción interna —el desarrollador no la ve— que el LSP de fudic lee para tipar el `.fud`.
+  Más el render.
+- **Middlewares por nombre** (`Use("auth")`): el backend los implementa en nativo; su mitad de
+  cliente (la cabecera `authorization`) sigue en TS.
+
+### Abierto tras la revisión
+
+1. Nombres: `Search` → `search`, `Person.Name` → `p.name` (camelCase siempre en TS).
+2. Ida y vuelta en el editor: el `.fud` se entera del cambio de interfaz sin build manual (C# al
+   guardar; Go necesita que el dev server vigile).
+3. Forms: `personForm` es TS; ¿se deriva del tipo nativo con sus atributos de validación o sigue
+   en TS y solo viaja su forma?
+4. Cómo enlaza el `.fud` con su interfaz: por el nombre de ruta/componente del atributo, por
+   convención o con `<link rel="server">`.
+5. El render: traducir la vista a código nativo exige un generador por lenguaje. Con «cualquier
+   lenguaje» pesa más la vía vista compilada a formato neutro + intérprete mínimo + suite de
+   conformidad común (descartada en §2; pendiente de reabrir).
