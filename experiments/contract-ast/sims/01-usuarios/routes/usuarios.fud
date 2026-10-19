@@ -1,0 +1,8 @@
+<link rel="component" href="../components/user-form.fud">
+<link rel="server" href="./usuarios.server.ts">
+
+<h1>Usuarios</h1>
+@foreach (const p of data.users) key (p.id) {
+  <p>@p.name — @p.email</p>
+}
+<user-form></user-form>

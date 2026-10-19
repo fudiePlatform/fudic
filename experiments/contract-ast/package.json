@@ -1,0 +1,23 @@
+{
+  "name": "contract-ast-experiment",
+  "private": true,
+  "type": "module",
+  "description": "How far the Oxc AST reaches when reading TS server contracts and forms (IDEA-05). Outside the pnpm workspace on purpose.",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "ast": "node src/run.ts",
+    "check": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "oxc-parser": "0.137.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.3",
+    "typescript": "5.9.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["oxc-parser"]
+  }
+}

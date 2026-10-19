@@ -1,0 +1,16 @@
+{
+  "extends": "../../packages/tsconfig/tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "lib": ["ES2024", "DOM"],
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "types": ["node"],
+    "paths": {
+      "@fudic/contract": ["./fudic/contract.ts"],
+      "@fudic/forms": ["./fudic/forms.ts"],
+      "@fudic/http": ["./fudic/http.ts"]
+    }
+  },
+  "include": ["src", "fudic", "sims"]
+}

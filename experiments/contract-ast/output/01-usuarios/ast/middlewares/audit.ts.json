@@ -1,0 +1,175 @@
+{
+ "errors": [],
+ "module": {
+  "hasModuleSyntax": true,
+  "staticImports": [
+   {
+    "start": 94,
+    "end": 135,
+    "moduleRequest": {
+     "value": "@fudic/http",
+     "start": 121,
+     "end": 134
+    },
+    "entries": [
+     {
+      "importName": {
+       "kind": "Name",
+       "name": "middleware",
+       "start": 103,
+       "end": 113
+      },
+      "localName": {
+       "value": "middleware",
+       "start": 103,
+       "end": 113
+      },
+      "isType": false
+     }
+    ]
+   }
+  ],
+  "staticExports": [
+   {
+    "start": 137,
+    "end": 171,
+    "entries": [
+     {
+      "start": 144,
+      "end": 171,
+      "moduleRequest": null,
+      "importName": {
+       "kind": "None",
+       "name": null,
+       "start": null,
+       "end": null
+      },
+      "exportName": {
+       "kind": "Name",
+       "name": "audit",
+       "start": 150,
+       "end": 155
+      },
+      "localName": {
+       "kind": "Name",
+       "name": "audit",
+       "start": 150,
+       "end": 155
+      },
+      "isType": false
+     }
+    ]
+   }
+  ],
+  "dynamicImports": [],
+  "importMetas": []
+ },
+ "comments": [
+  {
+   "type": "Block",
+   "value": "* Server only: no client half, and its server half is native. It adds nothing to `ctx`. ",
+   "start": 0,
+   "end": 92
+  }
+ ],
+ "program": {
+  "type": "Program",
+  "body": [
+   {
+    "type": "ImportDeclaration",
+    "specifiers": [
+     {
+      "type": "ImportSpecifier",
+      "imported": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "middleware",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 103,
+       "end": 113
+      },
+      "local": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "middleware",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 103,
+       "end": 113
+      },
+      "importKind": "value",
+      "start": 103,
+      "end": 113
+     }
+    ],
+    "source": {
+     "type": "Literal",
+     "value": "@fudic/http",
+     "raw": "\"@fudic/http\"",
+     "start": 121,
+     "end": 134
+    },
+    "phase": null,
+    "attributes": [],
+    "importKind": "value",
+    "start": 94,
+    "end": 135
+   },
+   {
+    "type": "ExportNamedDeclaration",
+    "declaration": {
+     "type": "VariableDeclaration",
+     "kind": "const",
+     "declarations": [
+      {
+       "type": "VariableDeclarator",
+       "id": {
+        "type": "Identifier",
+        "decorators": [],
+        "name": "audit",
+        "optional": false,
+        "typeAnnotation": null,
+        "start": 150,
+        "end": 155
+       },
+       "init": {
+        "type": "CallExpression",
+        "callee": {
+         "type": "Identifier",
+         "decorators": [],
+         "name": "middleware",
+         "optional": false,
+         "typeAnnotation": null,
+         "start": 158,
+         "end": 168
+        },
+        "typeArguments": null,
+        "arguments": [],
+        "optional": false,
+        "start": 158,
+        "end": 170
+       },
+       "definite": false,
+       "start": 150,
+       "end": 170
+      }
+     ],
+     "declare": false,
+     "start": 144,
+     "end": 171
+    },
+    "specifiers": [],
+    "source": null,
+    "exportKind": "value",
+    "attributes": [],
+    "start": 137,
+    "end": 171
+   }
+  ],
+  "sourceType": "module",
+  "hashbang": null,
+  "start": 94,
+  "end": 172
+ }
+}

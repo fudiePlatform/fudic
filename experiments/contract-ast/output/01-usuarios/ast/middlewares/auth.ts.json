@@ -1,0 +1,714 @@
+{
+ "errors": [],
+ "module": {
+  "hasModuleSyntax": true,
+  "staticImports": [
+   {
+    "start": 274,
+    "end": 317,
+    "moduleRequest": {
+     "value": "@fudic/contract",
+     "start": 299,
+     "end": 316
+    },
+    "entries": [
+     {
+      "importName": {
+       "kind": "Name",
+       "name": "i32",
+       "start": 288,
+       "end": 291
+      },
+      "localName": {
+       "value": "i32",
+       "start": 288,
+       "end": 291
+      },
+      "isType": true
+     }
+    ]
+   },
+   {
+    "start": 318,
+    "end": 359,
+    "moduleRequest": {
+     "value": "@fudic/http",
+     "start": 345,
+     "end": 358
+    },
+    "entries": [
+     {
+      "importName": {
+       "kind": "Name",
+       "name": "middleware",
+       "start": 327,
+       "end": 337
+      },
+      "localName": {
+       "value": "middleware",
+       "start": 327,
+       "end": 337
+      },
+      "isType": false
+     }
+    ]
+   }
+  ],
+  "staticExports": [
+   {
+    "start": 361,
+    "end": 400,
+    "entries": [
+     {
+      "start": 368,
+      "end": 400,
+      "moduleRequest": null,
+      "importName": {
+       "kind": "None",
+       "name": null,
+       "start": null,
+       "end": null
+      },
+      "exportName": {
+       "kind": "Name",
+       "name": "TOKEN_KEY",
+       "start": 374,
+       "end": 383
+      },
+      "localName": {
+       "kind": "Name",
+       "name": "TOKEN_KEY",
+       "start": 374,
+       "end": 383
+      },
+      "isType": false
+     }
+    ]
+   },
+   {
+    "start": 402,
+    "end": 643,
+    "entries": [
+     {
+      "start": 409,
+      "end": 643,
+      "moduleRequest": null,
+      "importName": {
+       "kind": "None",
+       "name": null,
+       "start": null,
+       "end": null
+      },
+      "exportName": {
+       "kind": "Name",
+       "name": "auth",
+       "start": 415,
+       "end": 419
+      },
+      "localName": {
+       "kind": "Name",
+       "name": "auth",
+       "start": 415,
+       "end": 419
+      },
+      "isType": false
+     }
+    ]
+   }
+  ],
+  "dynamicImports": [],
+  "importMetas": []
+ },
+ "comments": [
+  {
+   "type": "Block",
+   "value": "*\n * The client half of `auth` and what it leaves in `ctx`. Its server half (check the token,\n * find the user) is written in the backend's language, against the interface generated from\n * this file. It lives apart because every `server.ts` that needs it shares it.\n ",
+   "start": 0,
+   "end": 272
+  }
+ ],
+ "program": {
+  "type": "Program",
+  "body": [
+   {
+    "type": "ImportDeclaration",
+    "specifiers": [
+     {
+      "type": "ImportSpecifier",
+      "imported": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "i32",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 288,
+       "end": 291
+      },
+      "local": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "i32",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 288,
+       "end": 291
+      },
+      "importKind": "value",
+      "start": 288,
+      "end": 291
+     }
+    ],
+    "source": {
+     "type": "Literal",
+     "value": "@fudic/contract",
+     "raw": "\"@fudic/contract\"",
+     "start": 299,
+     "end": 316
+    },
+    "phase": null,
+    "attributes": [],
+    "importKind": "type",
+    "start": 274,
+    "end": 317
+   },
+   {
+    "type": "ImportDeclaration",
+    "specifiers": [
+     {
+      "type": "ImportSpecifier",
+      "imported": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "middleware",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 327,
+       "end": 337
+      },
+      "local": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "middleware",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 327,
+       "end": 337
+      },
+      "importKind": "value",
+      "start": 327,
+      "end": 337
+     }
+    ],
+    "source": {
+     "type": "Literal",
+     "value": "@fudic/http",
+     "raw": "\"@fudic/http\"",
+     "start": 345,
+     "end": 358
+    },
+    "phase": null,
+    "attributes": [],
+    "importKind": "value",
+    "start": 318,
+    "end": 359
+   },
+   {
+    "type": "ExportNamedDeclaration",
+    "declaration": {
+     "type": "VariableDeclaration",
+     "kind": "const",
+     "declarations": [
+      {
+       "type": "VariableDeclarator",
+       "id": {
+        "type": "Identifier",
+        "decorators": [],
+        "name": "TOKEN_KEY",
+        "optional": false,
+        "typeAnnotation": null,
+        "start": 374,
+        "end": 383
+       },
+       "init": {
+        "type": "Literal",
+        "value": "fudic-token",
+        "raw": "\"fudic-token\"",
+        "start": 386,
+        "end": 399
+       },
+       "definite": false,
+       "start": 374,
+       "end": 399
+      }
+     ],
+     "declare": false,
+     "start": 368,
+     "end": 400
+    },
+    "specifiers": [],
+    "source": null,
+    "exportKind": "value",
+    "attributes": [],
+    "start": 361,
+    "end": 400
+   },
+   {
+    "type": "ExportNamedDeclaration",
+    "declaration": {
+     "type": "VariableDeclaration",
+     "kind": "const",
+     "declarations": [
+      {
+       "type": "VariableDeclarator",
+       "id": {
+        "type": "Identifier",
+        "decorators": [],
+        "name": "auth",
+        "optional": false,
+        "typeAnnotation": null,
+        "start": 415,
+        "end": 419
+       },
+       "init": {
+        "type": "CallExpression",
+        "callee": {
+         "type": "MemberExpression",
+         "object": {
+          "type": "CallExpression",
+          "callee": {
+           "type": "Identifier",
+           "decorators": [],
+           "name": "middleware",
+           "optional": false,
+           "typeAnnotation": null,
+           "start": 422,
+           "end": 432
+          },
+          "typeArguments": {
+           "type": "TSTypeParameterInstantiation",
+           "params": [
+            {
+             "type": "TSTypeLiteral",
+             "members": [
+              {
+               "type": "TSPropertySignature",
+               "computed": false,
+               "optional": false,
+               "readonly": false,
+               "key": {
+                "type": "Identifier",
+                "decorators": [],
+                "name": "user",
+                "optional": false,
+                "typeAnnotation": null,
+                "start": 435,
+                "end": 439
+               },
+               "typeAnnotation": {
+                "type": "TSTypeAnnotation",
+                "typeAnnotation": {
+                 "type": "TSTypeLiteral",
+                 "members": [
+                  {
+                   "type": "TSPropertySignature",
+                   "computed": false,
+                   "optional": false,
+                   "readonly": false,
+                   "key": {
+                    "type": "Identifier",
+                    "decorators": [],
+                    "name": "id",
+                    "optional": false,
+                    "typeAnnotation": null,
+                    "start": 443,
+                    "end": 445
+                   },
+                   "typeAnnotation": {
+                    "type": "TSTypeAnnotation",
+                    "typeAnnotation": {
+                     "type": "TSTypeReference",
+                     "typeName": {
+                      "type": "Identifier",
+                      "decorators": [],
+                      "name": "i32",
+                      "optional": false,
+                      "typeAnnotation": null,
+                      "start": 447,
+                      "end": 450
+                     },
+                     "typeArguments": null,
+                     "start": 447,
+                     "end": 450
+                    },
+                    "start": 445,
+                    "end": 450
+                   },
+                   "accessibility": null,
+                   "static": false,
+                   "start": 443,
+                   "end": 451
+                  },
+                  {
+                   "type": "TSPropertySignature",
+                   "computed": false,
+                   "optional": false,
+                   "readonly": false,
+                   "key": {
+                    "type": "Identifier",
+                    "decorators": [],
+                    "name": "name",
+                    "optional": false,
+                    "typeAnnotation": null,
+                    "start": 452,
+                    "end": 456
+                   },
+                   "typeAnnotation": {
+                    "type": "TSTypeAnnotation",
+                    "typeAnnotation": {
+                     "type": "TSStringKeyword",
+                     "start": 458,
+                     "end": 464
+                    },
+                    "start": 456,
+                    "end": 464
+                   },
+                   "accessibility": null,
+                   "static": false,
+                   "start": 452,
+                   "end": 464
+                  }
+                 ],
+                 "start": 441,
+                 "end": 466
+                },
+                "start": 439,
+                "end": 466
+               },
+               "accessibility": null,
+               "static": false,
+               "start": 435,
+               "end": 466
+              }
+             ],
+             "start": 433,
+             "end": 468
+            }
+           ],
+           "start": 432,
+           "end": 469
+          },
+          "arguments": [],
+          "optional": false,
+          "start": 422,
+          "end": 471
+         },
+         "property": {
+          "type": "Identifier",
+          "decorators": [],
+          "name": "client",
+          "optional": false,
+          "typeAnnotation": null,
+          "start": 472,
+          "end": 478
+         },
+         "optional": false,
+         "computed": false,
+         "start": 422,
+         "end": 478
+        },
+        "typeArguments": null,
+        "arguments": [
+         {
+          "type": "ArrowFunctionExpression",
+          "expression": false,
+          "async": false,
+          "typeParameters": null,
+          "params": [
+           {
+            "type": "Identifier",
+            "decorators": [],
+            "name": "ctx",
+            "optional": false,
+            "typeAnnotation": null,
+            "start": 480,
+            "end": 483
+           },
+           {
+            "type": "Identifier",
+            "decorators": [],
+            "name": "next",
+            "optional": false,
+            "typeAnnotation": null,
+            "start": 485,
+            "end": 489
+           }
+          ],
+          "returnType": null,
+          "body": {
+           "type": "BlockStatement",
+           "body": [
+            {
+             "type": "VariableDeclaration",
+             "kind": "const",
+             "declarations": [
+              {
+               "type": "VariableDeclarator",
+               "id": {
+                "type": "Identifier",
+                "decorators": [],
+                "name": "token",
+                "optional": false,
+                "typeAnnotation": null,
+                "start": 504,
+                "end": 509
+               },
+               "init": {
+                "type": "CallExpression",
+                "callee": {
+                 "type": "MemberExpression",
+                 "object": {
+                  "type": "Identifier",
+                  "decorators": [],
+                  "name": "localStorage",
+                  "optional": false,
+                  "typeAnnotation": null,
+                  "start": 512,
+                  "end": 524
+                 },
+                 "property": {
+                  "type": "Identifier",
+                  "decorators": [],
+                  "name": "getItem",
+                  "optional": false,
+                  "typeAnnotation": null,
+                  "start": 525,
+                  "end": 532
+                 },
+                 "optional": false,
+                 "computed": false,
+                 "start": 512,
+                 "end": 532
+                },
+                "typeArguments": null,
+                "arguments": [
+                 {
+                  "type": "Identifier",
+                  "decorators": [],
+                  "name": "TOKEN_KEY",
+                  "optional": false,
+                  "typeAnnotation": null,
+                  "start": 533,
+                  "end": 542
+                 }
+                ],
+                "optional": false,
+                "start": 512,
+                "end": 543
+               },
+               "definite": false,
+               "start": 504,
+               "end": 543
+              }
+             ],
+             "declare": false,
+             "start": 498,
+             "end": 544
+            },
+            {
+             "type": "IfStatement",
+             "test": {
+              "type": "BinaryExpression",
+              "left": {
+               "type": "Identifier",
+               "decorators": [],
+               "name": "token",
+               "optional": false,
+               "typeAnnotation": null,
+               "start": 551,
+               "end": 556
+              },
+              "operator": "!==",
+              "right": {
+               "type": "Literal",
+               "value": null,
+               "raw": "null",
+               "start": 561,
+               "end": 565
+              },
+              "start": 551,
+              "end": 565
+             },
+             "consequent": {
+              "type": "ExpressionStatement",
+              "expression": {
+               "type": "CallExpression",
+               "callee": {
+                "type": "MemberExpression",
+                "object": {
+                 "type": "MemberExpression",
+                 "object": {
+                  "type": "Identifier",
+                  "decorators": [],
+                  "name": "ctx",
+                  "optional": false,
+                  "typeAnnotation": null,
+                  "start": 567,
+                  "end": 570
+                 },
+                 "property": {
+                  "type": "Identifier",
+                  "decorators": [],
+                  "name": "headers",
+                  "optional": false,
+                  "typeAnnotation": null,
+                  "start": 571,
+                  "end": 578
+                 },
+                 "optional": false,
+                 "computed": false,
+                 "start": 567,
+                 "end": 578
+                },
+                "property": {
+                 "type": "Identifier",
+                 "decorators": [],
+                 "name": "set",
+                 "optional": false,
+                 "typeAnnotation": null,
+                 "start": 579,
+                 "end": 582
+                },
+                "optional": false,
+                "computed": false,
+                "start": 567,
+                "end": 582
+               },
+               "typeArguments": null,
+               "arguments": [
+                {
+                 "type": "Literal",
+                 "value": "authorization",
+                 "raw": "\"authorization\"",
+                 "start": 583,
+                 "end": 598
+                },
+                {
+                 "type": "TemplateLiteral",
+                 "quasis": [
+                  {
+                   "type": "TemplateElement",
+                   "value": {
+                    "raw": "Bearer ",
+                    "cooked": "Bearer "
+                   },
+                   "tail": false,
+                   "start": 600,
+                   "end": 610
+                  },
+                  {
+                   "type": "TemplateElement",
+                   "value": {
+                    "raw": "",
+                    "cooked": ""
+                   },
+                   "tail": true,
+                   "start": 615,
+                   "end": 617
+                  }
+                 ],
+                 "expressions": [
+                  {
+                   "type": "Identifier",
+                   "decorators": [],
+                   "name": "token",
+                   "optional": false,
+                   "typeAnnotation": null,
+                   "start": 610,
+                   "end": 615
+                  }
+                 ],
+                 "start": 600,
+                 "end": 617
+                }
+               ],
+               "optional": false,
+               "start": 567,
+               "end": 618
+              },
+              "directive": null,
+              "start": 567,
+              "end": 619
+             },
+             "alternate": null,
+             "start": 547,
+             "end": 619
+            },
+            {
+             "type": "ReturnStatement",
+             "argument": {
+              "type": "CallExpression",
+              "callee": {
+               "type": "Identifier",
+               "decorators": [],
+               "name": "next",
+               "optional": false,
+               "typeAnnotation": null,
+               "start": 629,
+               "end": 633
+              },
+              "typeArguments": null,
+              "arguments": [
+               {
+                "type": "Identifier",
+                "decorators": [],
+                "name": "ctx",
+                "optional": false,
+                "typeAnnotation": null,
+                "start": 634,
+                "end": 637
+               }
+              ],
+              "optional": false,
+              "start": 629,
+              "end": 638
+             },
+             "start": 622,
+             "end": 639
+            }
+           ],
+           "start": 494,
+           "end": 641
+          },
+          "id": null,
+          "generator": false,
+          "start": 479,
+          "end": 641
+         }
+        ],
+        "optional": false,
+        "start": 422,
+        "end": 642
+       },
+       "definite": false,
+       "start": 415,
+       "end": 642
+      }
+     ],
+     "declare": false,
+     "start": 409,
+     "end": 643
+    },
+    "specifiers": [],
+    "source": null,
+    "exportKind": "value",
+    "attributes": [],
+    "start": 402,
+    "end": 643
+   }
+  ],
+  "sourceType": "module",
+  "hashbang": null,
+  "start": 274,
+  "end": 644
+ }
+}

@@ -1,0 +1,12 @@
+<link rel="server" href="./user-form.server.ts">
+
+<user-form>
+  <template shadowrootmode="open">
+    <form form:=@personForm>
+      <input name="name">
+      <input name="email" type="email">
+      <input name="age" type="number">
+      <button>Guardar</button>
+    </form>
+  </template>
+</user-form>
