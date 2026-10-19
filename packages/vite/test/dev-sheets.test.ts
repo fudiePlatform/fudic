@@ -58,7 +58,8 @@ beforeAll(async () => {
     root,
     logLevel: 'silent',
     resolve: { alias: { ...runtimeAlias } },
-    plugins: [fudic()],
+    // Not about the live typecheck, whose child is a whole TypeScript per server (BUG-51).
+    plugins: [fudic({ liveCheck: false })],
     server: { port: 0 },
   });
   await server.listen();

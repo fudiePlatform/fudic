@@ -12,8 +12,10 @@ import { eraseServerHalves } from '../src/server-halves.js';
 import {
   classifyError,
   ERROR_PATTERN,
+  MAX_DETAIL,
   minimalErrorPage,
   problemOfStatus,
+  problemOfUrl,
   renderErrorPage,
 } from '../src/page-errors.js';
 
@@ -185,6 +187,30 @@ describe('the error page', () => {
   it('problemOfStatus: the standard title, or Error', () => {
     expect(problemOfStatus(404)).toEqual({ status: 404, title: 'Not Found' });
     expect(problemOfStatus(599)).toEqual({ status: 599, title: 'Error' });
+  });
+
+  it('problemOfUrl: the status gives the title, the query its detail (BUG-51)', () => {
+    expect(problemOfUrl(401, '/_fudic/error/401?detail=sin%20token')).toEqual({
+      status: 401,
+      title: 'Unauthorized',
+      detail: 'sin token',
+    });
+    expect(problemOfUrl(404, 'http://app.test/_fudic/error/404?x=1&detail=no+such+user')).toEqual({
+      status: 404,
+      title: 'Not Found',
+      detail: 'no such user',
+    });
+  });
+
+  it('problemOfUrl: an absent or empty detail is no detail', () => {
+    expect(problemOfUrl(403, '/_fudic/error/403')).toEqual({ status: 403, title: 'Forbidden' });
+    expect(problemOfUrl(403, '/_fudic/error/403?detail=')).toEqual({ status: 403, title: 'Forbidden' });
+  });
+
+  it(`problemOfUrl: a detail is cut at MAX_DETAIL (${MAX_DETAIL}), never refused`, () => {
+    const long = 'x'.repeat(MAX_DETAIL + 50);
+    expect(MAX_DETAIL).toBe(300);
+    expect(problemOfUrl(500, `/_fudic/error/500?detail=${long}`).detail).toBe('x'.repeat(MAX_DETAIL));
   });
 
   it('the minimal page: the status and the title, escaped', () => {

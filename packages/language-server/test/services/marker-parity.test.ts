@@ -224,6 +224,26 @@ describe('the value of `error` (criterion 26)', () => {
   });
 });
 
+describe('the offer of `form:` (BUG-51)', () => {
+  it('on a `<form>` bound with `control=`, writing `form:=@` and asking for the next list', async () => {
+    const { tagService, document, position } = servicesAt('<form control=@userForm |></form>', loosePage);
+    const answer = (await tagService.provideCompletionItems?.(document, position, { triggerKind: 1 }, TOKEN)) as CompletionList;
+    const send = answer.items.find((i) => i.label === 'form:');
+
+    expect(send?.detail).toBe('the server function a valid submit sends the form to');
+    expect((send?.textEdit as { newText: string } | undefined)?.newText).toBe('form:=@');
+    expect(send?.command?.command).toBe('editor.action.triggerSuggest');
+  });
+
+  it.each([
+    ['a `<form>` with no `control=`', '<form |></form>'],
+    ['a `<form>` that already sends', '<form control=@userForm form:=@save |></form>'],
+    ['an element that is not a `<form>`', '<div control=@userForm |></div>'],
+  ])('never on %s, where it would be `FUD1006`', async (_what, markup) => {
+    expect(await nativeGap(markup, loosePage)).not.toContain('form:');
+  });
+});
+
 describe('the value of `summary` (criterion 27)', () => {
   const NESTED = '<fieldset class="g" control="@userForm.acceso"><div summary=|></div></fieldset>';
 

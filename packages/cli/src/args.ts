@@ -11,8 +11,7 @@ import { COMMANDS, GENERATES, type UsageError } from './help/usage.js';
 import { prefixOf } from './tag.js';
 import type { CheckKind } from './plans/check.js';
 import { FRONT_PORT, type ServeKind } from './serve/workspace.js';
-import { APPS_DIR, LIBS_DIR } from './workspace/place.js';
-import { SNIPPETS_DIR } from './plans/snippet.js';
+import { APPS_DIR, LIBS_DIR, SNIPPETS_DIR } from './dirs.js';
 import type {
   AppLayout,
   AppOptions,

@@ -81,7 +81,7 @@ Added @fudic/http 0.0.1 to web
     expect(fs.at('shop/apps/web/src/http.ts')).toBe(`import { chain, csrf, errorPages } from '@fudic/http';
 
 // Every server function of the app goes through this chain, load() included.
-export default chain().use(csrf, errorPages);
+export default chain().use(csrf, errorPages());
 `);
   });
 
@@ -107,7 +107,7 @@ export default chain().use(csrf, errorPages);
     const forced = await ok(fs, 'add', 'http', '--project', 'web', '--force', '--cwd', SHOP);
     expect(forced.out).toBe('\nUpdated web\n  src/http.ts: the chain every server function goes through\n');
     expect(forced.commands).toEqual([]);
-    expect(fs.at('shop/apps/web/src/http.ts')).toContain('chain().use(csrf, errorPages)');
+    expect(fs.at('shop/apps/web/src/http.ts')).toContain('chain().use(csrf, errorPages());');
   });
 
   it('add i18n --locales writes the app\'s languages to fudic.json; again, only updates them', async () => {

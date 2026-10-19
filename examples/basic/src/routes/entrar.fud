@@ -1,0 +1,15 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+
+<head>
+  <title>Entrar — fudic</title>
+</head>
+
+@section nav {
+  <site-nav></site-nav>
+}
+
+@* Adonde lleva `errorPages({ 403: "/entrar" })` de `src/http.ts`: un token que el servidor no
+   reconoce no pinta la página de error, trae aquí. *@
+<h1>Entrar</h1>
+<p>El servidor no reconoce tu token. Vuelve a <a href="/usuarios">usuarios</a> y entra como Ana.</p>

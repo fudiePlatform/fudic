@@ -243,4 +243,32 @@ ${body}
     expect(diags[0]!.code).toBe(2339);
     expect(diags[0]!.sourceText).toBe('stack');
   });
+
+  /** The hover TypeScript shows at `needle` in the `_error.fud`, and its documentation. */
+  function hoverAt(source: string, needle: string): { shown: string; docs: string } {
+    const virtual = projectCorpus({ [ERROR]: source }).find((p) => p.file.path === ERROR)!.virtuals[0]!;
+    const { service, pathOf } = languageServiceFor({ [ERROR]: source });
+    const at = mapToGenerated(virtual, source.indexOf(needle), 'navigation');
+    expect(at).toBeDefined();
+    const info = service.getQuickInfoAtPosition(pathOf(virtual.fileName), at!);
+    const text = (parts: readonly { text: string }[] | undefined) => (parts ?? []).map((p) => p.text).join('');
+    return { shown: text(info?.displayParts).replace(/\s+/gu, ' '), docs: text(info?.documentation) };
+  }
+
+  it('the hover over `data` names its type, `ErrorPage`, and says who paints it (BUG-51)', () => {
+    const { shown, docs } = hoverAt(error('<h1>@data.status</h1>'), 'data.status');
+
+    expect(shown).toBe('const data: ErrorPage');
+    expect(docs).toContain('`_error.fud` has no `load`');
+    expect(docs).toContain('`ErrorPage` of `@fudic/http`');
+  });
+
+  it('and over each field, what it holds', () => {
+    const source = error('<h1>@data.status @data.title</h1><p>@data.detail</p>');
+
+    expect(hoverAt(source, 'status').docs).toBe('The HTTP status: 404, 401, 500…');
+    expect(hoverAt(source, 'title').docs).toBe('The standard name of the status: `Not Found`.');
+    expect(hoverAt(source, 'detail').shown).toBe('(property) ErrorPage.detail?: string | undefined');
+    expect(hoverAt(source, 'detail').docs).toBe("What the server said, when it said something: `notFound('no such user')`.");
+  });
 });

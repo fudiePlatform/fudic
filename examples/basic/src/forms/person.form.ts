@@ -36,4 +36,8 @@ export const personForm = form({
   }),
   active: bool(true),
   notes: str(''),
+}, {
+  // What the form keeps when the server refuses it: painted in its summary, never sent to
+  // `errorPages`. These three are the default; take one out and it goes to the error page.
+  catches: [400, 409, 422],
 });

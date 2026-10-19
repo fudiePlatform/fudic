@@ -8,7 +8,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { control, form, required } from '../../src/index.js';
+import { DEFAULT_CATCHES, control, form, required } from '../../src/index.js';
 import { bindForm, bindText } from '../../src/dom/index.js';
 import type { AnyForm } from '../../src/types.js';
 import { mount } from './_dom.js';
@@ -17,7 +17,11 @@ beforeEach(() => {
   document.body.innerHTML = '';
 });
 
-function setup(send?: (f: AnyForm) => Promise<unknown>, links: Record<string, string> | null = null) {
+function setup(
+  send?: (f: AnyForm) => Promise<unknown>,
+  links: Record<string, string> | null = null,
+  catches?: readonly number[],
+) {
   const host = mount(
     '<form>' +
       '<input id="a" type="text" aria-describedby="ea"><span id="ea"></span>' +
@@ -26,7 +30,8 @@ function setup(send?: (f: AnyForm) => Promise<unknown>, links: Record<string, st
   );
   const el = host.querySelector('form') as HTMLFormElement;
   const summary = host.querySelector('#sum') as HTMLElement;
-  const f = form({ a: control('', [required]), b: control('') });
+  const schema = { a: control('', [required]), b: control('') };
+  const f = catches === undefined ? form(schema) : form(schema, { catches });
   const offs = [
     bindText(host.querySelector('#a') as HTMLInputElement, f.a, host.querySelector('#ea') as HTMLElement),
     bindText(host.querySelector('#b') as HTMLInputElement, f.b, host.querySelector('#eb') as HTMLElement),
@@ -111,11 +116,104 @@ describe('bindForm with a server function', () => {
     expect(events).toEqual([{ type: 'fudic:error', detail: boom }]);
   });
 
+  it('a 422 without errors stays in the form: its problem is the summary, under `server` (BUG-51)', async () => {
+    const problem = { status: 422, title: 'Unprocessable Content', detail: 'revisa los datos' };
+    const { f, events, submit, summary } = setup(async () => {
+      throw { status: 422, problem };
+    });
+    f.a.set('Pedro');
+    submit();
+    await flush();
+    expect(f.$summary()).toEqual({ server: problem });
+    expect(summary.textContent).toContain('revisa los datos');
+    expect(f.a.touched()).toBe(true);
+    expect(events).toEqual([]);
+  });
+
+  it('a 409 with a detail stays in the form, and the summary says the detail (BUG-51)', async () => {
+    const problem = { status: 409, title: 'Conflict', detail: 'ese email ya existe' };
+    const { f, events, submit, summary } = setup(async () => {
+      throw { status: 409, problem };
+    });
+    f.a.set('Pedro');
+    submit();
+    await flush();
+    expect(f.$summary()).toEqual({ server: problem });
+    expect(summary.textContent).toContain('ese email ya existe');
+    expect(events).toEqual([]);
+  });
+
+  it('a kept status with no problem gets one made of its status (BUG-51)', async () => {
+    const { f, events, submit, summary } = setup(async () => {
+      throw { status: 400 };
+    });
+    f.a.set('Pedro');
+    submit();
+    await flush();
+    expect(f.$summary()).toEqual({ server: { status: 400, title: '400' } });
+    expect(summary.textContent).toContain('400');
+    expect(events).toEqual([]);
+  });
+
+  it('a 422 with null errors is a summary of its problem too, not the errors of nothing', async () => {
+    const problem = { status: 422, title: 'Unprocessable Content' };
+    const { f, submit } = setup(async () => {
+      throw { status: 422, errors: null, summary: null, problem };
+    });
+    f.a.set('Pedro');
+    submit();
+    await flush();
+    expect(f.$summary()).toEqual({ server: problem });
+  });
+
+  it('a 422 with null errors but a summary keeps the server’s summary', async () => {
+    const { f, events, submit } = setup(async () => {
+      throw { status: 422, errors: null, summary: { mismatch: true }, problem: { status: 422, title: 'Unprocessable Content' } };
+    });
+    f.a.set('Pedro');
+    submit();
+    await flush();
+    expect(f.$summary()).toEqual({ mismatch: true });
+    expect(events).toEqual([]);
+  });
+
+  it('a 409 the form does not keep (`catches: [422]`) is fudic:error (BUG-51)', async () => {
+    const refusal = { status: 409, problem: { status: 409, title: 'Conflict' } };
+    const { f, events, submit } = setup(
+      async () => {
+        throw refusal;
+      },
+      null,
+      [422],
+    );
+    f.a.set('Pedro');
+    submit();
+    await flush();
+    expect(f.$summary()).toBeNull();
+    expect(events).toEqual([{ type: 'fudic:error', detail: refusal }]);
+  });
+
+  it('a status the form adds (`catches: [...DEFAULT_CATCHES, 403]`) stays in it', async () => {
+    const { f, events, submit } = setup(
+      async () => {
+        throw { status: 403, problem: { status: 403, title: 'Forbidden' } };
+      },
+      null,
+      [...DEFAULT_CATCHES, 403],
+    );
+    f.a.set('Pedro');
+    submit();
+    await flush();
+    expect(f.$summary()).toEqual({ server: { status: 403, title: 'Forbidden' } });
+    expect(events).toEqual([]);
+  });
+
   it.each([
-    ['a 422 without errors', { status: 422 }],
     ['null', null],
     ['a string', 'nope'],
     ['an Error', new Error('x')],
+    ['a TypeError, which has no status', new TypeError('failed to fetch')],
+    ['a status that is not a number', { status: '409' }],
   ])('%s is not a rejection of the form: fudic:error', async (_, error) => {
     const { f, events, submit } = setup(async () => {
       throw error;

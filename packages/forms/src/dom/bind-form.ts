@@ -1,7 +1,7 @@
 /**
  * `bindForm` — the `<form>` itself: STATE, never action (SDD-34 §4.4).
  *
- * It sends only when it is told where: `form:="@save"` hands it the server function (SDD-56
+ * It sends only when it is told where: `form:=@save` hands it the server function (SDD-56
  * §4.7), and then a valid submit calls it instead of navigating. Without it, who submits the
  * data and where is the author's (`@submit`, decision 96) or the native `<form>`'s. What this
  * binds besides is the three things that are about the FORM and not about any one field:
@@ -16,6 +16,7 @@
  */
 
 import { internalsOf } from '../internals.js';
+import { SERVER_RULE } from '../messages.js';
 import type { AnyForm, AnyNode, ErrorMap, Errors } from '../types.js';
 import { bindSummary } from './summary.js';
 import type { Cleanup } from './types.js';
@@ -41,23 +42,44 @@ function firstInvalid(el: HTMLFormElement): HTMLElement | undefined {
 }
 
 /**
- * The server's 422, recognised by its shape: `@fudic/http`'s `ValidationError` is a class of a
+ * A refusal of the server, recognised by its shape: `@fudic/http`'s `HttpError` is a class of a
  * package this one does not depend on, and the form only needs what it carries.
  */
-function isRejected(
-  error: unknown,
-): error is { readonly errors: ErrorMap | null; readonly summary: Errors | null } {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    (error as { readonly status?: unknown }).status === 422 &&
-    'errors' in error
-  );
+interface Refusal {
+  readonly status: number;
+  /** A 422's errors by path; absent on any other status. */
+  readonly errors?: ErrorMap | null;
+  readonly summary?: Errors | null;
+  /** The problem (RFC 9457) it came with: `{ status, title, detail? }`. */
+  readonly problem?: { readonly status: number; readonly title: string; readonly detail?: string };
+}
+
+function statusOf(error: unknown): number | undefined {
+  const status = (error as { readonly status?: unknown } | null | undefined)?.status;
+  return typeof status === 'number' ? status : undefined;
+}
+
+/**
+ * Paint a refusal the form keeps: a 422's errors where they belong, or — a 409, a 400 with
+ * nothing per field — the server's sentence as the form's own error, under `SERVER_RULE`.
+ */
+function keep(form: AnyForm, refusal: Refusal): void {
+  const errors = refusal.errors ?? null;
+  const summary = refusal.summary ?? null;
+  // What the server said itself, per field or about the whole form: painted as it said it.
+  if (errors !== null || summary !== null) {
+    form.$setErrors(errors ?? {}, summary);
+    return;
+  }
+  const problem = refusal.problem ?? { status: refusal.status, title: String(refusal.status) };
+  form.$setErrors({}, { [SERVER_RULE]: problem });
 }
 
 /**
  * `summary` is the element the author marked with `summary="@form"`, or `null`. `links` is the
  * map path → id the emit writes for a summary with `fields`, and `null` without it (BUG-42 §4.7).
+ * `fields` is the map path → id of every field of the form that has one: what `$issues()` links
+ * to, so a summary the author paints himself — a component, a snippet — can point at its field.
  */
 export function bindForm(
   el: HTMLFormElement,
@@ -65,7 +87,9 @@ export function bindForm(
   summary: HTMLElement | null,
   links: Readonly<Record<string, string>> | null = null,
   send?: (form: AnyForm) => Promise<unknown>,
+  fields: Readonly<Record<string, string>> | null = null,
 ): Cleanup {
+  if (fields !== null) internalsOf(form as unknown as AnyNode).linkFields?.(fields);
   // Make the errors visible and move the focus: to the summary that lists the fields, if there
   // is one (BUG-42 §4.7), or to the first field that failed.
   const stop = (): void => {
@@ -101,16 +125,18 @@ export function bindForm(
         stop();
         return;
       }
-      // `form:="@save"` (SDD-56 §4.7): a valid form is SENT, never navigated with. A 422 is the
-      // form's own business and goes into it like a client error; anything else is announced
-      // on the `<form>`, where the view listens with `@fudic:result` / `@fudic:error`.
+      // `form:=@save` (SDD-56 §4.7): a valid form is SENT, never navigated with. A status the
+      // form keeps (`catches`: 400, 409 and 422 unless it says otherwise) goes into it like a
+      // client error; anything else is announced on the `<form>`, where the view listens with
+      // `@fudic:result` / `@fudic:error`.
       void send!(form).then(
         (value) => {
           el.dispatchEvent(new CustomEvent('fudic:result', { detail: value, bubbles: true }));
         },
         (error: unknown) => {
-          if (isRejected(error)) {
-            form.$setErrors(error.errors, error.summary);
+          const status = statusOf(error);
+          if (status !== undefined && form.$catches(status)) {
+            keep(form, error as Refusal);
             stop();
             return;
           }
@@ -119,6 +145,25 @@ export function bindForm(
       );
     }),
   ];
+  // A link of `$issues()` painted by the author — in a component of his inside the form, or a
+  // snippet — moves the focus as a summary's does. `composedPath`, because a component's link
+  // reaches here retargeted to its host; the field is looked up in the FORM's tree, where it is.
+  if (fields !== null) {
+    const ids = new Set(Object.values(fields));
+    offs.push(
+      onSelf(el, 'click', (event) => {
+        const link = event.composedPath().find((n): n is HTMLAnchorElement => n instanceof Element && n.localName === 'a');
+        const href = link?.getAttribute('href') ?? '';
+        if (!href.startsWith('#') || !ids.has(href.slice(1))) return;
+        const id = href.slice(1);
+        const field = (el.getRootNode() as Document | ShadowRoot).getElementById(id);
+        if (field === null) return;
+        event.preventDefault();
+        field.focus();
+        field.scrollIntoView({ block: 'center' });
+      }),
+    );
+  }
   // Into the live region the author marked with `summary="@form"`. A text that changes INSIDE a
   // live region is announced; the same text changing outside one is not, which is why the
   // element exists in the markup before this runs, `aria-live` included.

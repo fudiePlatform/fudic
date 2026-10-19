@@ -1,6 +1,13 @@
 /**
- * `errorPages`: what a call does with an error nobody caught, for the general case (SDD-56
+ * `errorPages(…)`: what a call does with an error nobody caught, for the general case (SDD-56
  * §4.8). A client half only. The developer puts it in a chain, or does not.
+ *
+ *     chain().use(csrf, errorPages({ 401: '/login', 403: '/login' }))
+ *
+ * A status with a route goes there; any other goes to `_error.fud`, with the server's `detail`
+ * in the URL so the page can say what failed. What it never touches: a cancelled call, and an
+ * error the form being sent keeps for itself (`form(…, { catches })`) — that one is the form's
+ * to paint.
  *
  * A navigation leaves the call pending forever rather than resolving it: the page is going
  * away, and the code after the `await` would run on a value that never came.
@@ -11,19 +18,46 @@ import { HttpError, Redirect, ValidationError } from './errors.js';
 import { middleware } from './middleware.js';
 import type { Middleware } from './types.js';
 
+/** Where a status goes instead of `_error.fud`: a URL, or the URL a function makes of the error. */
+export type ErrorRoute = string | ((error: HttpError) => string);
+
+/** The routes of `errorPages`, by status: `{ 401: '/login' }`. */
+export type ErrorRoutes = Readonly<Record<number, ErrorRoute>>;
+
 const isAbort = (e: unknown): boolean => e instanceof DOMException && e.name === 'AbortError';
+
+/** Whether the call sent a form that keeps this status: `ctx.args` is the form `form:=` sends. */
+function keptByForm(args: unknown, status: number): boolean {
+  const form = args as { readonly $catches?: (status: number) => boolean } | null | undefined;
+  return typeof form?.$catches === 'function' && form.$catches(status);
+}
 
 function navigate(url: string): Promise<never> {
   globalThis.location.assign(url);
   return new Promise<never>(() => {});
 }
 
-export const errorPages: Middleware = /*#__PURE__*/ middleware().client(async (ctx, next) => {
-  try {
-    return await next(ctx);
-  } catch (e) {
-    if (e instanceof ValidationError || isAbort(e)) throw e;
-    if (e instanceof Redirect) return navigate(e.location);
-    return navigate(`${ERROR_PREFIX}/${e instanceof HttpError ? e.status : 500}`);
-  }
-});
+/** `_error.fud`'s URL for `error`: its status, and the server's sentence when it has one. */
+function errorUrl(error: unknown): string {
+  if (!(error instanceof HttpError)) return `${ERROR_PREFIX}/500`;
+  const detail = error.problem.detail;
+  const query = detail === undefined || detail === '' ? '' : `?${new URLSearchParams({ detail }).toString()}`;
+  return `${ERROR_PREFIX}/${error.status}${query}`;
+}
+
+export function errorPages(routes: ErrorRoutes = {}): Middleware {
+  return middleware().client(async (ctx, next) => {
+    try {
+      return await next(ctx);
+    } catch (e) {
+      if (isAbort(e)) throw e;
+      if (e instanceof HttpError && keptByForm(ctx.args, e.status)) throw e;
+      // A 422 belongs to whoever sent the value it rejects, form or not: there is no page to say it on.
+      if (e instanceof ValidationError) throw e;
+      if (e instanceof Redirect) return navigate(e.location);
+      const route = e instanceof HttpError ? routes[e.status] : undefined;
+      if (route !== undefined) return navigate(typeof route === 'string' ? route : route(e as HttpError));
+      return navigate(errorUrl(e));
+    }
+  });
+}

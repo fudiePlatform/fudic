@@ -95,7 +95,7 @@ const throwing = (body: string, imports = "import { notFound, redirect } from '@
 const ERROR_PAGE = `<!DOCTYPE html>
 <html>
 <head><title>Error</title></head>
-<body><h1>status @data.status</h1><p>@data.title</p></body>
+<body><h1>status @data.status</h1><p>@data.title</p><p>detail: [@data.detail]</p></body>
 </html>
 `;
 
@@ -126,7 +126,7 @@ beforeAll(async () => {
     root,
     logLevel: 'silent',
     resolve: { alias: httpAlias },
-    plugins: [fudic()],
+    plugins: [fudic({ liveCheck: false })],
     server: { port: 0 },
   });
   await server.listen();
@@ -267,6 +267,20 @@ describe('errors that reach a page (§4.8)', () => {
     expect(manifest.routes.map((r) => r.pattern).some((p) => p.includes('_error'))).toBe(false);
   });
 
+  it('/_fudic/error/401?detail=… paints _error.fud with the detail errorPages put there (BUG-51)', async () => {
+    const res = await page('/_fudic/error/401?detail=sin%20token');
+    expect(res.status).toBe(401);
+    const html = await res.text();
+    expect(html).toContain('status 401');
+    expect(html).toContain('Unauthorized');
+    expect(html).toContain('detail: [sin token]');
+  });
+
+  it('with no detail in the URL, or an empty one, the page has none', async () => {
+    expect(await (await page('/_fudic/error/401')).text()).toContain('detail: []');
+    expect(await (await page('/_fudic/error/401?detail=')).text()).toContain('detail: []');
+  });
+
   it('/_fudic/error/<not a 4xx or 5xx> is no error page', async () => {
     expect((await page('/_fudic/error/200')).status).toBe(404);
     expect((await page('/_fudic/error/abc')).status).toBe(404);
@@ -288,7 +302,7 @@ describe('a project without _error.fud', () => {
       root,
       logLevel: 'silent',
       resolve: { alias: httpAlias },
-      plugins: [fudic()],
+      plugins: [fudic({ liveCheck: false })],
       server: { port: 0 },
     });
     await bare.listen();

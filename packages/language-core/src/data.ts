@@ -27,7 +27,20 @@ import type { VirtualWriter } from './writer.js';
  * The `data` of `_error.fud`, which has no `load`: the server paints it with the problem of
  * what failed (SDD-56 §3.6).
  */
-const ERROR_DATA = '{ readonly status: number; readonly title: string; readonly detail?: string }';
+const ERROR_DATA =
+  'interface ErrorPage {\n' +
+  '  /** The HTTP status: 404, 401, 500… */\n' +
+  '  readonly status: number;\n' +
+  '  /** The standard name of the status: `Not Found`. */\n' +
+  '  readonly title: string;\n' +
+  "  /** What the server said, when it said something: `notFound('no such user')`. */\n" +
+  '  readonly detail?: string;\n' +
+  '}\n' +
+  '/**\n' +
+  ' * The error this page paints. Nobody declares it: `_error.fud` has no `load`, the server\n' +
+  ' * renders it with what failed — a `load` that threw, or the call `errorPages()` brought the\n' +
+  ' * browser here from. Its type is `ErrorPage` of `@fudic/http`.\n' +
+  ' */\n';
 
 /**
  * Emit the `data` declaration for a file that has one.
@@ -44,7 +57,7 @@ export function emitDataDeclaration(
 ): void {
   if (doc.type === 'component-document' || doc.type === 'layout-document') return;
   if (isFile(fudPath, ERROR_FILE)) {
-    w.scaffold(`declare const data: ${ERROR_DATA};\n`);
+    w.scaffold(`${ERROR_DATA}declare const data: ErrorPage;\n`);
     return;
   }
 

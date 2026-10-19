@@ -314,6 +314,9 @@ describe('propertyContextAt and eventContextAt (BUG-16 §3.4)', () => {
     // space does not belong to `@click=`: `@click` was left with no value at all — `FUD0056`
     // — and what is being typed here is the NAME of the next event.
     ['<app-badge @click= @on', 'on'],
+    // The `:` belongs to the name: the events a sent form announces (BUG-51).
+    ['<form @fudic:r', 'fudic:r'],
+    ['<form @fudic:', 'fudic:'],
   ])('reads the event being typed at %s as %s', (prefix, expected) => {
     const context = eventContextAt(prefix, prefix.length, regionOf(prefix, prefix.length));
 

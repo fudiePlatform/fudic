@@ -115,6 +115,24 @@ describe('ServerFunction: the name in the browser (§3.5)', () => {
   });
 });
 
+describe('errorPages and _error.fud in the type system (BUG-51)', () => {
+  it('a route is a URL or a function of the error; the routes go by status', () => {
+    expectTypeOf<'/login'>().toMatchTypeOf<http.ErrorRoute>();
+    expectTypeOf<(e: http.HttpError) => string>().toMatchTypeOf<http.ErrorRoute>();
+    expectTypeOf<{ 401: '/login'; 403: (e: http.HttpError) => string }>().toMatchTypeOf<http.ErrorRoutes>();
+    // @ts-expect-error — a route says where to go: a URL, not a number.
+    http.errorPages({ 401: 1 });
+  });
+
+  it('ErrorPage is what _error.fud paints: status, title and maybe a detail', () => {
+    expectTypeOf<http.ErrorPage>().toEqualTypeOf<{
+      readonly status: number;
+      readonly title: string;
+      readonly detail?: string;
+    }>();
+  });
+});
+
 describe('the package entry', () => {
   it('exports what a developer writes, and nothing internal', () => {
     expect(Object.keys(http).sort()).toEqual(

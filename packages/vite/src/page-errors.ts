@@ -68,6 +68,23 @@ export function problemOfStatus(status: number): PageProblem {
   return { status, title: STATUS_CODES[status] ?? 'Error' };
 }
 
+/**
+ * The longest `detail` the URL may carry. It is the server's own sentence for what failed, and
+ * a URL is no place for a document: past this it is cut, never refused.
+ */
+export const MAX_DETAIL = 300;
+
+/**
+ * The `data` of `/_fudic/error/<status>?detail=…`: what `errorPages` sends the browser to after
+ * a call failed. The status gives the title; the `detail` is the one the server threw with, so
+ * `unauthorized('no token')` says «no token» on the page and not only «Unauthorized».
+ */
+export function problemOfUrl(status: number, url: string): PageProblem {
+  const detail = new URL(url, 'http://localhost').searchParams.get('detail');
+  const problem = problemOfStatus(status);
+  return detail === null || detail === '' ? problem : { ...problem, detail: detail.slice(0, MAX_DETAIL) };
+}
+
 /** The page of a project without `_error.fud`: the status and its title, and nothing else. */
 export function minimalErrorPage(problem: PageProblem): string {
   const title = escapeText(`${problem.status} ${problem.title}`);

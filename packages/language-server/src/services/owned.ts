@@ -25,7 +25,7 @@
 import type { CompletionList, LanguageServicePlugin } from '@volar/language-service';
 import { isNativeEventAttribute, regionAt } from '@fudic/compiler';
 import { fudicDocumentOf } from './plugin.js';
-import { ownedByProjection } from './position.js';
+import { hrefContextAt, ownedByProjection } from './position.js';
 import { atRootTemplateGap } from './template-attrs.js';
 
 /**
@@ -110,6 +110,10 @@ export function silenceOwnedPositions(plugin: LanguageServicePlugin): LanguageSe
           const offset = document.offsetAt(position);
           const region = regionAt(cached.source, cached.html, offset);
           if (ownedByProjection(cached.source, offset, region)) return undefined;
+          // The `href` of a fudic `<link>` names a `.fud` of one role, and the server's list is
+          // the whole answer: the HTML service's paths would offer routes and `.test.ts` files,
+          // and fill the list by themselves when no file of that role exists.
+          if (hrefContextAt(cached.source, cached.document, offset) !== undefined) return undefined;
           // The root `<template>` becomes a shadow root, not an element: its six attributes are
           // the whole list, and HTML's globals would bury them (BUG-42 §4.11).
           if (atRootTemplateGap(cached, offset, region)) return undefined;

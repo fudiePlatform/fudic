@@ -103,7 +103,7 @@ import {
 import {
   classifyError,
   ERROR_PATTERN,
-  problemOfStatus,
+  problemOfUrl,
   renderErrorPage,
   type PageProblem,
 } from './page-errors.js';
@@ -181,6 +181,7 @@ import {
   type RenderModule,
 } from './serve.js';
 import { asError, NO_LIVE_CHECK, startLiveCheck } from './dev-typecheck.js';
+import { resilientChecker, startLiveChecker } from './live-checker.js';
 import {
   WRAPPER_PREFIX,
   SW_ID,
@@ -749,20 +750,37 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       styleWarnings = resolvedStyles.warnings;
     },
 
+    // A page is rendered by the server, so an edit in its SERVER graph — a route with no
+    // `@client`, a layout, the `.ts` a `load` imports — has nobody to tell in the browser: Vite
+    // logged «(ssr) page reload» to the SSR environment and the page stayed as it was (BUG-51).
+    // The browser is told to reload, which is what that line always meant.
+    hotUpdate(options) {
+      if (userOptions.serverReload === false) return;
+      if (this.environment.name !== 'ssr' || options.modules.length === 0) return;
+      options.server.environments.client.hot.send({ type: 'full-reload', path: '*' });
+    },
+
     async configureServer(server) {
       ({ routes: builds, errorPages } = discover());
       // What the editor marks, live (SDD-35 §4.5): checked at start, re-checked on every save
       // of a file the program read, pushed to the overlay without a reload, and the page
       // comes back by itself once it is clean.
       //
-      // Imported HERE and not at the top of this module: the machine that checks loads
-      // TypeScript, most of a second, and `vite preview` loads this plugin without ever
-      // checking anything.
+      // In a child process (BUG-51): the first check builds the whole program, and in this
+      // process it held `listen` for all of it. The machine that checks is imported here only
+      // if the child dies — it loads TypeScript, most of a second, and `vite preview` loads this
+      // plugin without ever checking anything.
       let live = NO_LIVE_CHECK;
       if (userOptions.liveCheck !== false) {
-        const { createProjectChecker } = await import('@fudic/typecheck');
-        const started = startLiveCheck(server, root, createProjectChecker({ root }));
-        server.httpServer?.once('close', () => started.dispose());
+        const checker = resilientChecker(startLiveChecker(root), async () => {
+          const { createProjectChecker } = await import('@fudic/typecheck');
+          return createProjectChecker({ root });
+        });
+        const started = startLiveCheck(server, root, checker);
+        server.httpServer?.once('close', () => {
+          started.dispose();
+          checker.dispose();
+        });
         live = started;
       }
       // Dev serves the bootstraps at stable root URLs (so the SW would register at root
@@ -928,7 +946,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               return;
             }
             const page = errorPageFor(errorPages, errorLocale(pathname, req.headers.referer));
-            devErrorPage(server, page, problemOfStatus(status))
+            devErrorPage(server, page, problemOfUrl(status, url))
               .then((html) => server.transformIndexHtml(url, html))
               .then((html) => {
                 res.statusCode = status;
@@ -1026,7 +1044,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           return;
         }
         const manifest = readManifest();
-        const pathname = pathnameOf(req.url ?? '/', base);
+        const url = req.url ?? '/';
+        const pathname = pathnameOf(url, base);
         if (manifest === null) {
           next();
           return;
@@ -1090,7 +1109,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             return;
           }
           const pattern = errorPatternOf(errorLocale(pathname, req.headers.referer));
-          sendErrorPage(root, res, problemOfStatus(status), nonce, manifest.csp.document, pattern).catch(next);
+          sendErrorPage(root, res, problemOfUrl(status, url), nonce, manifest.csp.document, pattern).catch(next);
           return;
         }
 

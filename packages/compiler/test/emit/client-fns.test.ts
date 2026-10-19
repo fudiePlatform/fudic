@@ -314,7 +314,55 @@ describe('form:= (criterion 26, its compile part)', () => {
         neutral,
       ),
     )!;
-    expect(code).toMatch(/bindForm\([^)]*, \{"name":"nom"\}, save\)/u);
+    // Then the ids of the form's fields, which `$issues()` links to (BUG-51).
+    expect(code).toContain('bindForm($n0, userForm, $n1, {"name":"nom"}, save, {"name":"nom"})');
+  });
+
+  /** The `bindForm(…)` call of the route with `markup`, as the client chunk writes it. */
+  const bindFormOf = (markup: string): string =>
+    /bindForm\(.*\)\);/u.exec(chunk(route(server, '', markup, neutral))!)?.[0] ?? '';
+
+  it('the ids of the fields go sixth, writing null and undefined for what is not there (BUG-51)', () => {
+    expect(bindFormOf('<form control=@userForm><input id="nom" control=@userForm.name></form>')).toBe(
+      'bindForm($n0, userForm, null, null, undefined, {"name":"nom"}));',
+    );
+  });
+
+  it('with form:=@save, the function goes before them', () => {
+    expect(bindFormOf('<form control=@userForm form:=@save><input id="nom" control=@userForm.name></form>')).toBe(
+      'bindForm($n0, userForm, null, null, save, {"name":"nom"}));',
+    );
+  });
+
+  it('with no field that has an id, no sixth argument, and the tail is cut', () => {
+    expect(bindFormOf('<form control=@userForm><input control=@userForm.name></form>')).toBe(
+      'bindForm($n0, userForm, null));',
+    );
+    expect(bindFormOf('<form control=@userForm form:=@save><input control=@userForm.name></form>')).toBe(
+      'bindForm($n0, userForm, null, null, save));',
+    );
+  });
+
+  it('a radio group is linked by its first radio, and a field with no id is left out', () => {
+    const call = bindFormOf(
+      '<form control=@userForm>' +
+        '<input type="radio" id="r1" value="a" control=@userForm.kind>' +
+        '<input type="radio" id="r2" value="b" control=@userForm.kind>' +
+        '<input control=@userForm.name>' +
+        '</form>',
+    );
+    expect(call).toContain('{"kind":"r1"}');
+  });
+
+  it('the map adds no attribute: a field with no id is written with none', () => {
+    const code = chunk(route(server, '', '<form control=@userForm><input control=@userForm.name></form>', neutral))!;
+    expect(code).not.toContain("'id'");
+  });
+
+  it('a dynamic id is no id to link to', () => {
+    expect(bindFormOf('<form control=@userForm><input id="@(x)" control=@userForm.name></form>')).toBe(
+      'bindForm($n0, userForm, null));',
+    );
   });
 
   it('FUD1006: on an element that is not a <form>', () => {

@@ -28,7 +28,8 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
+  // Retried: on Windows a Vite just killed holds its folder for a moment after it is gone.
+  rmSync(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
 });
 
 afterEach(() => {
@@ -48,11 +49,69 @@ describe('nodeServeDeps', () => {
 
   it.each(['dev', 'preview'] as const)('starts the app\'s own Vite for %s, waits for it, and stops it', async (kind) => {
     const port = await deps.freePort();
-    const running = deps.start(app(), kind, port);
+    const lines: [string, string][] = [];
+    const running = deps.start(app(), kind, port, (text, stream) => lines.push([text, stream]));
     try {
       await deps.ready(port, '/');
       const page = await (await fetch(`http://127.0.0.1:${port}/`)).text();
       expect(page).toContain(kind === 'dev' ? '<title>app</title>' : '<title>built</title>');
+      // Its lines come back one by one, whole, with no newline and the stream they came on —
+      // with no colour: this terminal is no TTY.
+      await vi.waitFor(() => expect(lines.some(([text]) => text.includes(String(port)))).toBe(true));
+      expect(lines.every(([text, stream]) => !text.includes('\n') && stream === 'out')).toBe(true);
+      expect(lines.some(([text]) => text.includes('\u001b['))).toBe(false);
+    } finally {
+      running.stop();
+    }
+  }, 60_000);
+
+  it('in colour when the terminal has colour, and what goes to stderr comes back as err', async () => {
+    const port = await deps.freePort();
+    const lines: [string, string][] = [];
+    const tty = process.stdout.isTTY;
+    process.stdout.isTTY = true;
+    // A `NO_COLOR` of the machine running the tests would win over the colour asked for.
+    vi.stubEnv('NO_COLOR', undefined);
+    // `preview` with no build: Vite says so on stderr.
+    const bare = mkdtempSync(join(tmpdir(), 'fudic-serve-bare-')).replace(/\\/gu, '/');
+    writeFileSync(join(bare, 'package.json'), '{ "name": "bare", "private": true, "type": "module" }');
+    mkdirSync(join(bare, 'node_modules'));
+    symlinkSync(dirname(createRequire(import.meta.url).resolve('vite/package.json')), join(bare, 'node_modules', 'vite'), 'junction');
+    const coloured = deps.start(app(), 'dev', port, (text, stream) => lines.push([text, stream]));
+    const failing = deps.start({ name: 'bare', path: bare, base: '/', port: 0 }, 'preview', await deps.freePort(), (text, stream) =>
+      lines.push([text, stream]),
+    );
+    process.stdout.isTTY = tty;
+    vi.unstubAllEnvs();
+    try {
+      await deps.ready(port, '/');
+      await vi.waitFor(() => expect(lines.some(([text]) => text.includes('\u001b[')), JSON.stringify(lines)).toBe(true), {
+        timeout: 20_000,
+      });
+      await vi.waitFor(() => expect(lines.some(([, stream]) => stream === 'err'), JSON.stringify(lines)).toBe(true), {
+        timeout: 20_000,
+      });
+    } finally {
+      coloured.stop();
+      failing.stop();
+      rmSync(bare, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
+    }
+  }, 60_000);
+
+  it('keeps the NO_COLOR of the user on a TTY: no colour forced, and no warning of Node about both', async () => {
+    const port = await deps.freePort();
+    const lines: [string, string][] = [];
+    const tty = process.stdout.isTTY;
+    process.stdout.isTTY = true;
+    vi.stubEnv('NO_COLOR', '1');
+    const running = deps.start(app(), 'dev', port, (text, stream) => lines.push([text, stream]));
+    process.stdout.isTTY = tty;
+    vi.unstubAllEnvs();
+    try {
+      await deps.ready(port, '/');
+      await vi.waitFor(() => expect(lines.some(([text]) => text.includes(String(port)))).toBe(true), { timeout: 20_000 });
+      expect(lines.some(([text]) => text.includes('\u001b['))).toBe(false);
+      expect(lines.some(([text]) => text.includes('NO_COLOR'))).toBe(false);
     } finally {
       running.stop();
     }
@@ -93,5 +152,13 @@ describe('nodeServeDeps', () => {
     const write = vi.spyOn(process.stdout, 'write').mockReturnValue(true);
     deps.out('fudic dev\n');
     expect(write).toHaveBeenCalledWith('fudic dev\n');
+  });
+
+  it('writes an app’s errors on stderr, and tells the time of the system', () => {
+    const write = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+    deps.err('  web     boom\n');
+    expect(write).toHaveBeenCalledWith('  web     boom\n');
+    vi.spyOn(Date, 'now').mockReturnValue(1234);
+    expect(deps.now()).toBe(1234);
   });
 });

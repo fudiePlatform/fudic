@@ -8,7 +8,16 @@ import type { Server } from 'node:http';
 import { describe, expect, it } from 'vitest';
 import { run } from '../../src/run.js';
 import { appsToServe } from '../../src/serve/apps.js';
-import { serveBanner, serveWorkspace, type AppProcess, type ServeDeps, type ServeKind } from '../../src/serve/workspace.js';
+import {
+  duration,
+  serveBanner,
+  serveHeading,
+  serveWorkspace,
+  type AppProcess,
+  type AppStream,
+  type ServeDeps,
+  type ServeKind,
+} from '../../src/serve/workspace.js';
 import { appFor, DEV_PORT, mainApp, normalizeBase, servedApps, type ServedApp } from '../../src/workspace/bases.js';
 import { captureStreams, MemoryFs, RecordingRunner } from '../helpers.js';
 import type { Project } from '../../src/workspace/discover.js';
@@ -100,35 +109,67 @@ describe('which apps fudic dev serves', () => {
 
 const served = (name: string, base: string): ServedApp => ({ name, path: `${ROOT}/apps/${name}`, base, port: 0 });
 
-describe('the banner (§6.9)', () => {
-  it('lists every app on the one port, shortest base first — exactly', () => {
-    expect(serveBanner('dev', [served('admin', '/admin/'), served('web', '/')], 5173)).toBe(`fudic dev — 2 apps on one port
+describe('the heading and the banner (§6.9, BUG-51)', () => {
+  it('the heading says what is about to be served, before anything starts', () => {
+    expect(serveHeading('dev', [served('admin', '/admin/'), served('web', '/')])).toBe('fudic dev — 2 apps on one port\n\n');
+    expect(serveHeading('preview', [served('web', '/')])).toBe('fudic preview — 1 app on one port\n\n');
+  });
 
+  it('lists every app on the one port, shortest base first, and how long it took — exactly', () => {
+    expect(serveBanner('dev', [served('admin', '/admin/'), served('web', '/')], 5173, 2100)).toBe(`
   web     http://localhost:5173/
   admin   http://localhost:5173/admin/
+
+  ready in 2.1 s · Ctrl+C stops it · fudic dev --port <n> serves on another port
 `);
   });
 
-  it('says one app, widens for a long name, and orders a tie by name', () => {
-    expect(serveBanner('preview', [served('web', '/')], 4173)).toBe('fudic preview — 1 app on one port\n\n  web     http://localhost:4173/\n');
-    expect(serveBanner('dev', [served('storefront', '/b/'), served('back', '/a/')], 1)).toContain(
+  it('widens for a long name, orders a tie by name, and names its own command', () => {
+    expect(serveBanner('preview', [served('web', '/')], 4173, 850)).toBe(
+      '\n  web     http://localhost:4173/\n\n  ready in 850 ms · Ctrl+C stops it · fudic preview --port <n> serves on another port\n',
+    );
+    expect(serveBanner('dev', [served('storefront', '/b/'), served('back', '/a/')], 1, 0)).toContain(
       '  back         http://localhost:1/a/\n  storefront   http://localhost:1/b/\n',
     );
   });
 });
 
+describe('duration', () => {
+  it.each([
+    [0, '0 ms'],
+    [850, '850 ms'],
+    [849.6, '850 ms'],
+    [999, '999 ms'],
+    [1000, '1.0 s'],
+    [2149, '2.1 s'],
+    [61_000, '61.0 s'],
+  ])('%d ms is «%s»', (ms, said) => {
+    expect(duration(ms)).toBe(said);
+  });
+});
+
 /** A machine that records what was asked of it. */
-function fakeDeps(options: { readonly failReady?: boolean } = {}) {
+function fakeDeps(
+  options: {
+    readonly failReady?: boolean;
+    /** What each app's Vite writes, by app name, the moment it starts. */
+    readonly lines?: Readonly<Record<string, readonly (readonly [string, AppStream])[]>>;
+    /** What `now()` answers, one after another; then the last. */
+    readonly times?: readonly number[];
+  } = {},
+) {
   const log: string[] = [];
   let next = 41000;
   let stop: () => void = () => undefined;
   const stoppedOnce = new Promise<void>((resolve) => {
     stop = resolve;
   });
+  const times = [...(options.times ?? [0])];
   const deps: ServeDeps = {
     freePort: () => Promise.resolve(next++),
-    start: (a: ServedApp, kind: ServeKind, port: number): AppProcess => {
+    start: (a: ServedApp, kind: ServeKind, port: number, line): AppProcess => {
       log.push(`start ${kind} ${a.name} ${port}`);
+      for (const [text, stream] of options.lines?.[a.name] ?? []) line(text, stream);
       return { stop: () => log.push(`stop ${a.name}`) };
     },
     ready: (port, base) => {
@@ -141,34 +182,88 @@ function fakeDeps(options: { readonly failReady?: boolean } = {}) {
     },
     stopped: () => stoppedOnce,
     out: (text) => log.push(`out ${text}`),
+    err: (text) => log.push(`err ${text}`),
+    now: () => (times.length > 1 ? times.shift()! : times[0]!),
   };
   return { deps, log, stop: () => stop() };
 }
 
 describe('serveWorkspace', () => {
-  it('starts every app on a port of its own, waits for all, listens, says so, and stops them with it', async () => {
-    const machine = fakeDeps();
-    const serving = serveWorkspace('dev', [served('admin', '/admin/'), served('web', '/')], 5173, machine.deps);
+  it('says what it serves, starts every app on a port of its own, says when each is up, listens, and stops them with it', async () => {
+    const apps = [served('admin', '/admin/'), served('web', '/')];
+    const machine = fakeDeps({ times: [0, 850, 1200, 2100] });
+    const serving = serveWorkspace('dev', apps, 5173, machine.deps);
     await new Promise((resolve) => setTimeout(resolve, 10));
     machine.stop();
     expect(await serving).toBe(0);
     expect(machine.log).toEqual([
+      'out fudic dev — 2 apps on one port\n\n',
       'start dev admin 41000',
+      'out   admin   starting\n',
       'start dev web 41001',
+      'out   web     starting\n',
       'ready 41000 /admin/',
       'ready 41001 /',
+      'out   admin   started in 850 ms\n',
+      'out   web     started in 1.2 s\n',
       'listen 5173',
-      `out ${serveBanner('dev', [served('admin', '/admin/'), served('web', '/')], 5173)}`,
+      `out ${serveBanner('dev', apps, 5173, 2100)}`,
       'close',
       'stop admin',
       'stop web',
     ]);
   });
 
+  it('hands on what each Vite writes, under its app’s name and on its own stream', async () => {
+    const machine = fakeDeps({
+      lines: {
+        web: [
+          ['[vite] page reload src/routes/index.fud', 'out'],
+          ['fudic: the typecheck is clean (850 ms)', 'out'],
+          ['Error: something broke', 'err'],
+        ],
+      },
+    });
+    const serving = serveWorkspace('dev', [served('web', '/')], 5173, machine.deps);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    machine.stop();
+    await serving;
+    expect(machine.log.filter((l) => l.includes('[vite]') || l.includes('typecheck') || l.includes('broke'))).toEqual([
+      'out   web     [vite] page reload src/routes/index.fud\n',
+      'out   web     fudic: the typecheck is clean (850 ms)\n',
+      'err   web     Error: something broke\n',
+    ]);
+  });
+
+  it('drops Vite’s banner and key hints — read without colours, printed with them', async () => {
+    const noise: (readonly [string, AppStream])[] = [
+      ['', 'out'],
+      ['   ', 'out'],
+      ['  \u001b[32m\u001b[1mVITE\u001b[22m v8.0.3\u001b[39m  \u001b[2mready in \u001b[0m\u001b[1m412\u001b[22m ms\u001b[0m', 'out'],
+      ['  \u001b[32m➜\u001b[39m  \u001b[1mLocal\u001b[22m:   http://127.0.0.1:41000/', 'out'],
+      ['  ➜  Network: use --host to expose', 'out'],
+      ['  ➜  press h + enter to show help', 'out'],
+      ['ready in 300 ms', 'err'],
+    ];
+    const machine = fakeDeps({ lines: { web: [...noise, ['\u001b[31mkept\u001b[39m', 'err']] } });
+    const serving = serveWorkspace('dev', [served('web', '/')], 5173, machine.deps);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    machine.stop();
+    await serving;
+    expect(machine.log.filter((l) => l.startsWith('err '))).toEqual(['err   web     \u001b[31mkept\u001b[39m\n']);
+    expect(machine.log.filter((l) => l.includes('VITE') || l.includes('➜') || l.includes('412'))).toEqual([]);
+  });
+
   it('stops what it started when an app never answers', async () => {
     const machine = fakeDeps({ failReady: true });
     await expect(serveWorkspace('preview', [served('web', '/')], 4173, machine.deps)).rejects.toThrow('nothing answered');
-    expect(machine.log).toEqual(['start preview web 41000', 'ready 41000 /', 'stop web']);
+    expect(machine.log).toEqual([
+      'out fudic preview — 1 app on one port\n\n',
+      'start preview web 41000',
+      'out   web     starting\n',
+      'ready 41000 /',
+      'stop web',
+    ]);
   });
 });
 

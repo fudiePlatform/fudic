@@ -1,4 +1,5 @@
 import { builtinEnvironments, type Environment } from 'vitest/runtime';
+import { RENEW_WINDOW } from './constants.js';
 
 /**
  * The `fudic` environment: happy-dom's globals, as vitest's own `happy-dom` environment sets
@@ -18,15 +19,34 @@ const happy = builtinEnvironments['happy-dom'];
  */
 const KEPT = ['Request', 'Response', 'Headers'] as const;
 
+type Opened = Awaited<ReturnType<typeof happy.setup>>;
+
+/** happy-dom's globals on `global`, with Node's fetch primitives put back over its own. */
+async function open(global: Record<string, unknown>, options: Parameters<typeof happy.setup>[1]): Promise<Opened> {
+  const kept = KEPT.map((name) => [name, global[name]] as const);
+  const env = await happy.setup(global, options);
+  for (const [name, value] of kept) global[name] = value;
+  return env;
+}
+
 const environment: Environment = {
   ...happy,
   name: 'fudic',
   viteEnvironment: 'ssr',
   async setup(global: Record<string, unknown>, options) {
-    const kept = KEPT.map((name) => [name, global[name]] as const);
-    const env = await happy.setup(global, options);
-    for (const [name, value] of kept) global[name] = value;
-    return env;
+    let current = await open(global, options);
+    const scope = global as Record<PropertyKey, unknown>;
+    scope[RENEW_WINDOW] = async (): Promise<void> => {
+      await current.teardown(global);
+      current = await open(global, options);
+    };
+    return {
+      // The window open when the worker ends, which is the last one `renew` opened.
+      async teardown(at: Record<string, unknown>) {
+        delete (at as Record<PropertyKey, unknown>)[RENEW_WINDOW];
+        await current.teardown(at);
+      },
+    };
   },
 };
 

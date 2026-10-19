@@ -19,7 +19,7 @@ export const VERSION = '0.0.1';
 // The text of an error, and the map that supplies it. In the model and not behind `./dom`
 // because the SERVER writes that text into the HTML it renders (SDD-34 §4.3): a form that
 // arrives with its errors already painted is accessible with zero JavaScript.
-export { setMessages, errorText, type Messages } from './messages.js';
+export { setMessages, errorText, SERVER_RULE, type Messages } from './messages.js';
 // The markup of a summary, for the same reason: the server writes it and the client repaints it,
 // and one function is what keeps the two byte for byte (BUG-42 §4.6).
 export {
@@ -35,6 +35,7 @@ export { control } from './control.js';
 export { ValidateOn } from './validate-on.js';
 export { Validity } from './validity.js';
 export { form } from './form.js';
+export { DEFAULT_CATCHES } from './catches.js';
 export { group } from './group.js';
 
 export { validator } from './validators/validator.js';

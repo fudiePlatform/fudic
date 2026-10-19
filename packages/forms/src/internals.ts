@@ -89,6 +89,11 @@ export interface NodeInternals {
   issues(path: string, out: Issue[]): void;
   /** Records a submit attempt here and below. What `bindForm` calls; there is no public writer. */
   markSubmitted(): void;
+  /**
+   * The ids of the fields of a bound `<form>`, by path: what `$issues()` links to. What
+   * `bindForm` calls with the map the compiler wrote; a form only.
+   */
+  linkFields?(ids: Readonly<Record<string, string>>): void;
   touchAll(): void;
   resetAll(): void;
   clearAll(): void;

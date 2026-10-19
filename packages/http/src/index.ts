@@ -32,7 +32,8 @@ export {
   notFound,
   conflict,
   redirect,
+  type ErrorPage,
   type Problem,
 } from './errors.js';
 export { csrf } from './csrf.js';
-export { errorPages } from './error-pages.js';
+export { errorPages, type ErrorRoute, type ErrorRoutes } from './error-pages.js';

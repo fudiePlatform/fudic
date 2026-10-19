@@ -37,6 +37,12 @@ export interface FudicOptions {
    * the whole project there is time every run pays for nothing.
    */
   readonly liveCheck?: boolean;
+  /**
+   * Whether an edit in a page's SERVER graph — a route with no `@client`, a layout, the `.ts` a
+   * `load` imports — reloads the browser (BUG-51). Default: `true`. `@fudic/workbench` turns it
+   * off: it reruns its criteria on save by itself, and a reload took its page from under them.
+   */
+  readonly serverReload?: boolean;
 }
 
 export interface ResolvedOptions {

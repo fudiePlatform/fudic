@@ -9,7 +9,9 @@
  *     it is in a component the open page uses and not in the page.
  *   - Going from errors to clean sends a full reload, and the page comes back by itself.
  *
- * The page itself is blocked by the HTML middleware, which asks `blocking` before rendering.
+ * The page itself is blocked by the HTML middleware, which asks `blocking` before rendering —
+ * on the last verdict, never waiting for one in flight (BUG-51): the first page does not wait
+ * for the first check, which builds the whole program and takes seconds.
  */
 
 import { readFileSync } from 'node:fs';
@@ -54,10 +56,18 @@ export const NO_LIVE_CHECK: LiveCheck = {
 const SETTLE_MS = 30;
 
 /**
+ * What the live check asks of a checker: `@fudic/typecheck`'s own, which answers at once, or the
+ * one in a child process (`live-checker.ts`), which answers later and blocks nothing meanwhile.
+ */
+export type Checker = Pick<ProjectChecker, 'invalidate'> & {
+  check(): CheckReport | Promise<CheckReport>;
+};
+
+/**
  * Start the live check of a dev server. The caller builds the checker, after importing the
  * machine that runs it: that import is what loads TypeScript, and only `dev` and `build` need it.
  */
-export function startLiveCheck(server: ViteDevServer, root: string, checker: ProjectChecker): LiveCheck {
+export function startLiveCheck(server: ViteDevServer, root: string, checker: Checker): LiveCheck {
   const logger = server.config.logger;
   let report: CheckReport = { problems: [], project: [], inputs: [] };
   let inputs = new Set<string>();
@@ -65,10 +75,18 @@ export function startLiveCheck(server: ViteDevServer, root: string, checker: Pro
   let timer: ReturnType<typeof setTimeout> | undefined;
   let release: ((value: CheckReport) => void) | undefined;
   let hadErrors = false;
+  /** Bumped by every check: one that a newer check overtook publishes nothing. */
+  let generation = 0;
+  let first = true;
 
-  const run = (): void => {
+  const run = async (): Promise<void> => {
     timer = undefined;
-    report = checker.check();
+    const mine = ++generation;
+    const started = Date.now();
+    const fresh = await checker.check();
+    // Overtaken, or another check is already scheduled: the verdict the pages wait for is that one.
+    if (mine !== generation || timer !== undefined) return;
+    report = fresh;
     inputs = new Set(report.inputs.map(keyOf));
 
     const summary = summarize(report, root);
@@ -78,14 +96,17 @@ export function startLiveCheck(server: ViteDevServer, root: string, checker: Pro
     }
     // A report with a first error is a report that fails, so the summary has its line.
     if (summary.failure !== undefined) logger.error(summary.failure);
-    const first = firstError(report);
-    if (first !== undefined) {
-      server.ws.send({ type: 'error', err: first });
+    const failed = firstError(report);
+    if (failed !== undefined) {
+      server.ws.send({ type: 'error', err: failed });
     } else if (hadErrors) {
       logger.info('fudic: the typecheck is clean again');
       server.ws.send({ type: 'full-reload' });
+    } else if (first) {
+      logger.info(`fudic: the typecheck is clean (${seconds(Date.now() - started)})`);
     }
-    hadErrors = first !== undefined;
+    first = false;
+    hadErrors = failed !== undefined;
 
     const done = release;
     release = undefined;
@@ -100,7 +121,7 @@ export function startLiveCheck(server: ViteDevServer, root: string, checker: Pro
       });
     }
     if (timer !== undefined) clearTimeout(timer);
-    timer = setTimeout(run, SETTLE_MS);
+    timer = setTimeout(() => void run(), SETTLE_MS);
   };
 
   const onFile = (event: string, path: string): void => {
@@ -120,8 +141,12 @@ export function startLiveCheck(server: ViteDevServer, root: string, checker: Pro
 
   return {
     current: () => running ?? Promise.resolve(report),
+    // The LAST verdict, never one still running (BUG-51): a page does not wait for the check. The
+    // first one is served before the first check ends, and a page after an edit is served on
+    // what was known; a check that finds an error pushes the overlay itself, and the one that
+    // finds the project clean again reloads the page.
     async blocking(files) {
-      const latest = await (running ?? Promise.resolve(report));
+      const latest = report;
       const graph = new Set(files.map(keyOf));
       const project = latest.project.find((problem) => problem.severity === 'error');
       if (project !== undefined) return projectOverlay(project);
@@ -171,6 +196,11 @@ function overlayOf(problem: CheckProblem): OverlayError {
 
 function projectOverlay(problem: ProjectProblem): OverlayError {
   return { message: `${problem.code}: ${problem.message}`, stack: '', plugin: 'fudic' };
+}
+
+/** A duration the way the terminal says it: `850 ms`, `2.1 s`. */
+function seconds(ms: number): string {
+  return ms < 1000 ? `${String(ms)} ms` : `${(ms / 1000).toFixed(1)} s`;
 }
 
 /** One spelling per file, case-folded where the filesystem folds case. */
