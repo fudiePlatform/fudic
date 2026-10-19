@@ -123,6 +123,8 @@ CLI publicada en un workspace propio (`shop`), contra Verdaccio.
   `worker_thread` tumbó Node. Si el hijo muere, se cae al checker en proceso.
 - `blocking()` usa el último veredicto: la página nunca espera a un check en curso.
 - El hook `hotUpdate` recarga el navegador cuando el entorno SSR tiene el módulo que ha cambiado.
+  La opción `serverReload: false` lo apaga: el banco de trabajo la usa, porque reejecuta solo al
+  guardar y la recarga le quitaba la página al criterio en marcha.
 - `fudic dev` y `fudic preview` dicen qué arrancan y cuánto tarda cada app, dan las URLs, el
   tiempo total y cómo cambiar el puerto. Las líneas útiles de cada Vite salen con el nombre de la
   app delante, sin su banner. Se respeta `NO_COLOR`.
@@ -161,6 +163,8 @@ CLI publicada en un workspace propio (`shop`), contra Verdaccio.
 - En preview, `problemOfUrl` leía `req.url` con una rama que nunca se podía dar.
 - `fudic test --dry-run` ejecutaba los tests, y `--json` dejó de escribir sus errores en JSON.
 - `dev` forzaba el color aunque el usuario tuviera `NO_COLOR`.
+- La recarga de `hotUpdate` también recargaba la página del banco de trabajo mientras corría un
+  criterio, y Playwright perdía la página.
 
 ## 6. Criterios de aceptación
 

@@ -48,7 +48,7 @@ nace al 100 % en las cuatro métricas; `compiler`, `vite` y `cli` no bajan de su
 | [x] | 16 | — | **El mapa ruta → id de cada `<form>`**, como sexto argumento de `bindForm` (§4.3) | `b096253` |
 | [x] | 17 | 16 | **`$issues()` con `href`** y un clic que mueve el foco, también desde un componente hijo; solo con `#id` | `b096253` · `8a30aa2` |
 | [x] | 18 | 17 | **Ejemplo:** `form-errores.fud` pinta el resumen de `user-form` | `b096253` |
-| [x] | 19 | 16–18 | **Tests** de la fase | rama `-tests` |
+| [x] | 19 | 16–18 | **Tests** de la fase | `70be550` |
 
 ## Fase 5 — `dev`, `preview`, `test` y `spec` (6)
 
@@ -58,8 +58,8 @@ nace al 100 % en las cuatro métricas; `compiler`, `vite` y `cli` no bajan de su
 | [x] | 21 | — | **La salida de `dev` y `preview`**: progreso, tiempos, líneas de Vite con prefijo, `NO_COLOR` | `097a67e` · `db4cf16` |
 | [x] | 22 | — | **`test` y `spec` por proyecto**, con cabecera, resumen y `--silent`; `--dry-run` y `--json` como cualquier plan | `097a67e` · `db4cf16` |
 | [x] | 23 | — | **`--port` en los ejemplos de la ayuda** (ya existía) | `097a67e` |
-| [x] | 24 | — | **Editar una ruta sin `@client` recarga el navegador** (`hotUpdate`) | `0e595f0` |
-| [x] | 25 | 20–24 | **Tests** de la fase | rama `-tests` |
+| [x] | 24 | — | **Editar una ruta sin `@client` recarga el navegador** (`hotUpdate`); el banco, que reejecuta solo, lo apaga con `serverReload: false` | `0e595f0` · `c6cdd44` |
+| [x] | 25 | 20–24 | **Tests** de la fase | `dd1a2b4` · `0e476ab` · `e656c56` |
 
 ## Fase 6 — Rendimiento (5)
 
@@ -69,4 +69,4 @@ nace al 100 % en las cuatro métricas; `compiler`, `vite` y `cli` no bajan de su
 | [x] | 27 | — | **Un solo vitest** para los proyectos que conservan `vitest run` | `2f717ba` |
 | [x] | 28 | — | **`diagnostics` y `compiler` empaquetados**, planes de la CLI bajo demanda, `dirs.ts`; `inlineSources` en `testing` | `2f717ba` · `b096253` |
 | [x] | 29 | — | **La página nunca espera al typecheck** (decisión de Pedro) | `6950078` |
-| [x] | 30 | 26–29 | **Cierre.** Tests de la fase, `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; estado `Hecho`, índices y registro de progreso | rama `-tests` |
+| [x] | 30 | 26–29 | **Cierre.** Tests de la fase, `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; estado `Hecho`, índices y registro de progreso | `e656c56` · `c6cdd44` · este cierre |
