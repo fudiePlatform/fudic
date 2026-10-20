@@ -239,7 +239,7 @@ Para `pattern` eso se traduce así:
   | `\d` | `[0-9]` | `[0-9]` en .NET (su `\d` es Unicode) |
   | `\w` | `[A-Za-z0-9_]` | Clase explícita en .NET / Python |
   | `\s` | Espacios de JS, Unicode incluidos | Clase completa donde `\s` es ASCII |
-  | `.` | Todo salvo `\n \r    ` | `[^\n\r  ]` |
+  | `.` | Todo salvo `\n \r \u2028 \u2029` | `[^\n\r\u2028\u2029]` |
   | `\b` | Frontera ASCII | Compuesta donde `\b` es Unicode |
   | `i` | Reglas de JS | `(?i)`, verificando equivalencia por motor |
 
