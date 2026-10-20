@@ -554,8 +554,7 @@ En `experiments/contract-ast/`: un parser mínimo de `.fudapi`; declarar `auth`,
 y `taken`; construir el índice y comprobar que resuelve todos los nombres de `usuarios` y
 `user-form`, y que el `model.json` coincide con el que hoy sale de Oxc.
 
-Para el backend políglota, lo primero es el render nativo (§10.8): la ruta `usuarios` entera en
-un segundo lenguaje, como ya proponía IDEA-05 §9.
+Para el backend políglota, el orden está en §11.
 
 ## 10. Decidido el 2026-10-20
 
@@ -640,9 +639,21 @@ trozo.
 
 - **Contrato y funciones: sí.** Contrato, tipos generados, form con validadores portados,
   despacho e implementación del usuario encajan igual en TS, C# y Java (§10.9).
-- **Render nativo: factible, y es la apuesta.** Generar la vista en el lenguaje del backend con
-  el payload de hidratación byte a byte (IDEA-05 §5) es donde un fallo no se ve. Lo primero a
-  probar.
+- **Render nativo: trabajo conocido, no una apuesta.** El compilador ya emite la vista como una
+  secuencia plana de llamadas sobre `$dom` con `if`/`for` normales (`examples/basic/.fudic/edge/`):
+  doce operaciones en todas las rutas (`append`, `text`, `element`, `setAttr`, `attachShadow`,
+  `claim`, `state`, `hydrationState`, `setUrl`, `stateOf`, `setHtml`, `setAttrs`). Eso ya es el
+  plan de render de IDEA-05 §5. Por lenguaje: un emisor delgado que escribe las mismas líneas
+  con otra sintaxis, y el runtime de `$dom` + stream portado una vez (~1000 líneas en
+  `stream-*.js`), como `forms` y `http`. Mismas instrucciones sobre el mismo `$dom` → mismos
+  bytes; la suite de conformidad lo comprueba.
+- **Las expresiones de la vista: estrechar SDD-51, no inventar.** SDD-51 (`Hecho`) ya da la lista
+  blanca sintáctica, la resolución de nombres libres y los diagnósticos `FUD09xx`, con un
+  criterio casi igual («lo mismo en servidor y cliente» ↔ «lo mismo en cualquier lenguaje»). Lo
+  que aún deja pasar y no se traduce es el delta de IDEA-05 §6: llamadas (también a funciones
+  del `@code`) y `new`, flechas, métodos de la stdlib (`filter`, `map`…), los globales `Math`,
+  `JSON`, `Date`, `Intl`, `Map`, `Set`, `Array`, `Object`, y `typeof`/`instanceof`/`in`. Son
+  reglas nuevas en el mismo analizador.
 - **El riesgo de fondo es de mantenimiento:** cada función de fudic se multiplica por runtime.
   Dos lenguajes al principio (TS y uno más) y una suite de conformidad común.
 
@@ -658,8 +669,8 @@ nombra las clases del usuario (C#, Java). Vale para ver qué escribe cada uno, n
 
 No es una decisión: es la recomendación pedida por Pedro, para discutirla.
 
-**Criterio.** Empezar por lo que vale aunque el políglota se abandone, y probar cuanto antes lo
-que puede tumbarlo. Lo que solo sirve si el políglota sale se hace al final.
+**Criterio.** Empezar por lo que vale aunque el políglota no llegue nunca; lo que solo sirve al
+políglota se hace al final.
 
 ### 11.1. Primero: `.fudapi` solo con TS (Node)
 
@@ -681,20 +692,23 @@ lee un agente, aunque nunca exista un segundo lenguaje.
 Dentro de esta fase, lo primero es el caso mínimo de §8.10 (reglas `runs both` y `runs server`
 en el mismo fichero): decide la forma de `implement` en el navegador y es barato de probar.
 
-### 11.2. En paralelo: la prueba del render nativo
+### 11.2. En paralelo: estrechar SDD-51
 
-Es lo que puede tumbar el políglota (§10.8), así que no espera a que acabe 11.1. Un spike en
-`experiments/`, fuera del workspace: la vista de `usuarios` recortada a mano al subconjunto de
-IDEA-05 §6, su plan de render y un emisor en **un** segundo lenguaje, comparando el HTML y el
-payload de hidratación byte a byte con los de Node.
+El render no hay que probarlo (§10.8); lo que queda es la enmienda de SDD-51 con el delta de
+IDEA-05 §6, y vale también para Node: menos lógica en las vistas.
 
-- **Sale** → se redacta la enmienda de SDD-51 (IDEA-05 §13.1) y se sigue con 11.3.
-- **No sale** → se sabe en qué pieza, y lo hecho en 11.1 no se pierde.
+1. **Medir antes de redactar** (IDEA-05 §13.1): pasar el analizador de SDD-51 por `examples/` y
+   los fixtures y contar cuánto usa cada pieza del delta. Cada uso cortado se mueve al `load` o a
+   un pipe; el número dice cuánto rompe la enmienda.
+2. Redactar la enmienda: las reglas nuevas en el mismo analizador, sus diagnósticos en la familia
+   `FUD09xx`, y arreglar `examples/` y los fixtures.
 
-### 11.3. Después, solo si 11.2 sale: el segundo runtime
+### 11.3. Después: el segundo runtime
 
 Un lenguaje (C# o Java), no cinco: los validadores de `@fudic/forms` portados, el binario del
-cable, `Problem`, la cadena de middlewares, el despacho y la raíz con *step builder* (§10.5). Con
+cable, `Problem`, la cadena de middlewares, el despacho y la raíz con *step builder* (§10.5); y
+para el render, el runtime de `$dom` + stream portado y el emisor de las doce operaciones con
+las expresiones ya estrechadas por 11.2 (§10.8). Con
 la **suite de conformidad común** desde el primer commit: mismos fixtures, mismo veredicto y
 mismo HTML que Node. Sin ella, el segundo runtime empieza a divergir el primer día.
 
