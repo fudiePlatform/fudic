@@ -437,7 +437,7 @@ backend y en el `.fud`.
 
 El catálogo de fudic (`required`, `min`, `email`, `csrf`…) sigue **este mismo camino**: un
 `.fudapi` más una implementación por lenguaje. No tiene ningún privilegio, así que lo de la
-aplicación o de un paquete de terceros tampoco tiene límite.
+aplicación o de una librería compartida (§7) tampoco tiene límite.
 
 ### 6.4. Abierto: que las dos implementaciones hagan lo mismo
 
@@ -511,8 +511,12 @@ middleware auth
 
 - **Los built-ins no son especiales:** `@fudic/forms` publica `rules.fudapi` (`required`, `min`…)
   y `@fudic/http` el de `csrf`. Mismo camino que lo del usuario (IDEA-05 §7).
-- **Paquetes de terceros:** declaran sus `.fudapi` en `package.json`
-  (`"fudic": { "api": [...] }`) y la app los activa en `fudic.json`, con sus implementaciones
+- **Librerías compartidas.** El caso normal no es la comunidad sino **el equipo de arquitectura**
+  de una empresa, que define una vez `auth`, `nif`, `iban`, `audit`… y lo publica como paquete
+  interno para los equipos de producto; o **una lib de fudic** (p. ej. un catálogo español:
+  `nif`, `cif`, `iban`, `postal-es`). Se diseña como lib de fudic: lo de terceros sale solo, por
+  el mismo camino. Una librería declara sus `.fudapi` en `package.json`
+  (`"fudic": { "api": [...] }`) y la app la activa en `fudic.json`, con sus implementaciones
   ya hechas: quien instala no implementa nada. Sin imports en los contratos: todo `.fudapi` del
   proyecto y de los paquetes activados es visible, esté en la carpeta que esté. `node_modules` no
   se recorre: solo se lee lo que un `package.json` activado declara.
@@ -649,3 +653,52 @@ lenguaje, `user/` (lo que escribe el desarrollador) y `generated/` (lo que escri
 Carpetas que simulan proyectos; no compila, los runtimes de C# y Java no existen. **Su
 cableado es anterior a §10.1, §10.4 y §10.5**: ahí lo generado todavía importa `user/` (TS) y
 nombra las clases del usuario (C#, Java). Vale para ver qué escribe cada uno, no cómo se unen.
+
+## 11. Por dónde empezar (opinión de Claude, 2026-10-20)
+
+No es una decisión: es la recomendación pedida por Pedro, para discutirla.
+
+**Criterio.** Empezar por lo que vale aunque el políglota se abandone, y probar cuanto antes lo
+que puede tumbarlo. Lo que solo sirve si el políglota sale se hace al final.
+
+### 11.1. Primero: `.fudapi` solo con TS (Node)
+
+Es lo que más vale por sí mismo: quita el `@server` inline de las vistas y da el contrato que
+lee un agente, aunque nunca exista un segundo lenguaje.
+
+1. Parser de `.fudapi` con diagnósticos y spans, como el de `.fudspec`. Lenguaje cerrado y
+   pequeño.
+2. `<link rel="server">` en el compilador y el `.d.ts` virtual: el editor tipa el `.fud` desde
+   el `.fudapi` (§10.6).
+3. Generador TS: tipos, form con `@fudic/forms`, `implement` (§10.4).
+4. El compilador encuentra las llamadas `implement` y escribe la raíz; 501 legible cuando falta.
+5. Leer los `.fudapi` de una librería activada (§7), empezando por el catálogo de
+   `@fudic/forms` (`required`, `min`…, §6.3): sin esto ni los built-ins funcionan. Hecho como lib
+   de fudic, sirve igual para la de un equipo de arquitectura o de terceros.
+6. Migrar `examples/basic` (`usuarios`, `user-form`): si el lenguaje no aguanta los ejemplos
+   reales, se ve aquí, sin haber portado nada.
+
+Dentro de esta fase, lo primero es el caso mínimo de §8.10 (reglas `runs both` y `runs server`
+en el mismo fichero): decide la forma de `implement` en el navegador y es barato de probar.
+
+### 11.2. En paralelo: la prueba del render nativo
+
+Es lo que puede tumbar el políglota (§10.8), así que no espera a que acabe 11.1. Un spike en
+`experiments/`, fuera del workspace: la vista de `usuarios` recortada a mano al subconjunto de
+IDEA-05 §6, su plan de render y un emisor en **un** segundo lenguaje, comparando el HTML y el
+payload de hidratación byte a byte con los de Node.
+
+- **Sale** → se redacta la enmienda de SDD-51 (IDEA-05 §13.1) y se sigue con 11.3.
+- **No sale** → se sabe en qué pieza, y lo hecho en 11.1 no se pierde.
+
+### 11.3. Después, solo si 11.2 sale: el segundo runtime
+
+Un lenguaje (C# o Java), no cinco: los validadores de `@fudic/forms` portados, el binario del
+cable, `Problem`, la cadena de middlewares, el despacho y la raíz con *step builder* (§10.5). Con
+la **suite de conformidad común** desde el primer commit: mismos fixtures, mismo veredicto y
+mismo HTML que Node. Sin ella, el segundo runtime empieza a divergir el primer día.
+
+### 11.4. Lo que esperaría
+
+Partial views (§10.7), el fake (IDEA-05 §8) y más lenguajes: tienen
+valor, pero ninguno decide si el políglota es viable.
