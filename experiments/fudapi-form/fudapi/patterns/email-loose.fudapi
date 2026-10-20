@@ -1,0 +1,2 @@
+# The email check of person.form.ts, as written there.
+pattern email-loose  [^@\s]+@[^@\s]+\.[^@\s]+
