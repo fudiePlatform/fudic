@@ -1,0 +1,122 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Fudic API",
+  "scopeName": "source.fudapi",
+  "patterns": [
+    { "include": "#pattern-declaration" },
+    { "include": "#comment" },
+    { "include": "#function" },
+    { "include": "#named-declaration" },
+    { "include": "#bare-declaration" },
+    { "include": "#clause" },
+    { "include": "#string" },
+    { "include": "#arrow" },
+    { "include": "#operator" },
+    { "include": "#primitive" },
+    { "include": "#project-type" },
+    { "include": "#number" }
+  ],
+  "repository": {
+    "pattern-declaration": {
+      "comment": "A `pattern` declaration: after its name, the rest of the line is the regex, `#` included.",
+      "match": "^[ ]?(pattern)[ ]+([^\\s]+)(?:[ ]+(.*?))?\\s*$",
+      "captures": {
+        "1": { "name": "keyword.control.declaration.fudapi" },
+        "2": { "name": "entity.name.constant.fudapi" },
+        "3": { "name": "string.regexp.fudapi" }
+      }
+    },
+
+    "comment": {
+      "comment": "`#` opens a comment only at the start of a token: inside a string the string rule has already taken it.",
+      "name": "comment.line.number-sign.fudapi",
+      "match": "(?:^|(?<=\\s))(#).*$",
+      "captures": {
+        "1": { "name": "punctuation.definition.comment.fudapi" }
+      }
+    },
+
+    "function": {
+      "match": "^(get|post|put|patch|delete)(?=\\s|$)(?:[ ]+([A-Za-z_][A-Za-z0-9_]*))?(?:[ ]+(/[^\\s#]*))?",
+      "captures": {
+        "1": { "name": "keyword.control.verb.fudapi" },
+        "2": { "name": "entity.name.function.fudapi" },
+        "3": { "name": "string.unquoted.route.fudapi" }
+      }
+    },
+
+    "named-declaration": {
+      "match": "^(type|enum|form|rule|middleware)(?=\\s|$)(?:[ ]+([^\\s#]+))?",
+      "captures": {
+        "1": { "name": "keyword.control.declaration.fudapi" },
+        "2": { "name": "entity.name.type.fudapi" }
+      }
+    },
+
+    "bare-declaration": {
+      "comment": "`load` with its strategy, and the declarations that take no name.",
+      "begin": "^(load|paths|layout|chain|messages)(?=\\s|$)",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.declaration.fudapi" }
+      },
+      "end": "$",
+      "patterns": [
+        { "include": "#comment" },
+        {
+          "name": "constant.language.strategy.fudapi",
+          "match": "(?<=\\s)(ssg|ssr|sw|ttl|page|never|persist|cache-first|network-first|stale-while-revalidate|network-only)(?=\\s|$)"
+        },
+        { "name": "constant.numeric.duration.fudapi", "match": "(?<=\\s)\\d+[smhd](?=\\s|$)" }
+      ]
+    },
+
+    "clause": {
+      "comment": "The first word of an indented line, when it is a keyword of some context.",
+      "match": "^[ ]+(use|skip|form|invalidates|compress|fails|query|validate-on|validity|catches|summary|range|require|when|on|runs|async|client|server|adds)(?=\\s|$)",
+      "captures": {
+        "1": { "name": "keyword.other.clause.fudapi" }
+      }
+    },
+
+    "arrow": {
+      "name": "keyword.operator.returns.fudapi",
+      "match": "(?<=\\s)->(?=\\s|$)"
+    },
+
+    "string": {
+      "comment": "A string never crosses a line: an unclosed one ends with it. `{x}` inside is a placeholder.",
+      "name": "string.quoted.double.fudapi",
+      "begin": "\"",
+      "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.fudapi" } },
+      "end": "\"|$",
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.fudapi" } },
+      "patterns": [
+        { "name": "constant.character.escape.fudapi", "match": "\\\\[\"\\\\]" },
+        { "name": "variable.other.placeholder.fudapi", "match": "\\{[A-Za-z_][A-Za-z0-9_]*\\}" }
+      ]
+    },
+
+    "operator": {
+      "patterns": [
+        { "name": "keyword.operator.comparison.fudapi", "match": "==|!=|<=|>=|(?<=\\s)[<>](?=\\s)" },
+        { "name": "keyword.operator.word.fudapi", "match": "(?<=\\s)(and|or|not|contains|valid|empty|length)(?=\\s|$)" },
+        { "name": "keyword.operator.assignment.fudapi", "match": "(?<=\\s)=(?=\\s)" }
+      ]
+    },
+
+    "primitive": {
+      "name": "support.type.primitive.fudapi",
+      "match": "(?<=\\s)(map|str|bool|date|uuid|u8|i8|u16|i16|u32|i32|f32|f64|group|\\*)((?:\\[\\])*\\??)(?=\\s|$)"
+    },
+
+    "project-type": {
+      "name": "entity.name.type.fudapi",
+      "match": "(?<=\\s)[A-Z][A-Za-z0-9]*((?:\\[\\])*\\??)(?=\\s|$)"
+    },
+
+    "number": {
+      "name": "constant.numeric.fudapi",
+      "match": "(?<=\\s)-?\\d+(?:\\.\\d+)?(?=\\s|$)"
+    }
+  }
+}

@@ -32,6 +32,10 @@ import { URI } from 'vscode-uri';
 import { SERVER_CAPABILITIES } from './capabilities.js';
 import { mountGlobals, mountWorkspaceFuds, nodeFileSystem, toPosix } from '@fudic/typecheck';
 import { DocumentCache, type CachedDocument } from './document-cache.js';
+import { nodeApiFs, type ApiFs } from './fudapi/fs.js';
+import { ApiHost } from './fudapi/host.js';
+import { createFudapiLanguagePlugin } from './fudapi/language-plugin.js';
+import { createFudapiService } from './fudapi/service.js';
 import { createFudspecLanguagePlugin } from './fudspec/language-plugin.js';
 import { SpecHost } from './fudspec/host.js';
 import { nodeSpecFs } from './fudspec/node-spec-fs.js';
@@ -55,7 +59,7 @@ import { filterTypeScriptCompletions } from './services/ts-completion.js';
 import { RequestStats } from './stats.js';
 import { hasTypeScript, loadTypeScript } from './tsdk.js';
 import type { FileSystemScanner, Logger } from './types.js';
-import { uriToPath } from './uri.js';
+import { pathToUri, uriToPath } from './uri.js';
 import { Translations } from './translations.js';
 import { WorkspaceIndex } from './workspace-index.js';
 
@@ -91,6 +95,8 @@ export interface FudicServerDeps {
    * by default the `@fudic/terms` the project installed.
    */
   frameworkTerms?: (folder: string) => string | undefined;
+  /** The disk the `.fudapi` host reads contracts and `package.json` from (SDD-60). */
+  apiFs: ApiFs;
 }
 
 /** The state a running server holds. Exposed so the acceptance tests can look at it. */
@@ -101,6 +107,8 @@ export interface FudicServer {
   readonly configs: ProjectConfigs;
   /** What a `.fudspec` is validated against (SDD-52). */
   readonly specs: SpecHost;
+  /** What a `.fudapi` is validated against (SDD-60). */
+  readonly apis: ApiHost;
   /** The catalogs a hover over a message reads (SDD-58). */
   readonly translations: Translations;
 }
@@ -112,6 +120,7 @@ const DEFAULTS: FudicServerDeps = {
   createTypeScriptProject,
   createSimpleProject,
   specFs: nodeSpecFs(),
+  apiFs: nodeApiFs(),
 };
 
 /**
@@ -170,6 +179,12 @@ export function createFudicServer(
     roots: () => workspaceRoots,
     ...(deps.frameworkTerms !== undefined ? { frameworkTerms: deps.frameworkTerms } : {}),
   });
+  const apis = new ApiHost({
+    fs: deps.apiFs,
+    roots: () => workspaceRoots,
+    // A `.fudapi` being edited speaks with its unsaved text to the ones that use it.
+    open: (path) => server.documents.get(pathToUri(path))?.getText(),
+  });
 
   /** The parse behind a URI: the open document if there is one, the disk otherwise. */
   const documentOf = (raw: string): CachedDocument | undefined => {
@@ -196,7 +211,8 @@ export function createFudicServer(
 
     const typescript = deps.loadTypeScript(options.tsdk, params.locale, logger);
     // The `.fudspec` plugin sits next to the `.fud` one and shares nothing with it (SDD-52).
-    const languagePlugins = [createFudicLanguagePlugin(cache), createFudspecLanguagePlugin()];
+    // So does the `.fudapi` one (SDD-60).
+    const languagePlugins = [createFudicLanguagePlugin(cache), createFudspecLanguagePlugin(), createFudapiLanguagePlugin()];
     // Whether the decorator below will be mounted. The service needs to know: at a binding
     // value and at a `@` in markup both of them can produce the template's scope, and with
     // both speaking the developer sees every name twice.
@@ -223,6 +239,8 @@ export function createFudicServer(
       createFudicTagService({ index, stats, configs }),
       // Criteria files: a service of their own, which answers only in a `.fudspec` (SDD-52).
       createFudspecService({ host: specs, stats }),
+      // Contract files: likewise, only in a `.fudapi` (SDD-60).
+      createFudapiService({ host: apis, stats }),
     ];
 
     // Nothing speaks over a library's file (SDD-43 §4.4): read-only means every service,
@@ -296,9 +314,12 @@ export function createFudicServer(
     // Whether an open `.fudspec` may now say something else: a term module, a fixture or a
     // component changed. Asked once for the whole batch.
     let criteria = false;
+    // And whether an open `.fudapi` may: another contract, or a dependency of its project.
+    let contracts = false;
     for (const change of changes) {
       const path = uriToPath(URI.parse(change.uri));
       if (SpecHost.affects(path)) criteria = true;
+      if (ApiHost.affects(path)) contracts = true;
       // The same channel that keeps the index current keeps the project current: editing
       // `fudic.json` and saving changes what the next file's snippet proposes, with no
       // restart. A new channel for one file would be a second thing that can fall behind.
@@ -317,10 +338,9 @@ export function createFudicServer(
       else index.upsert(path);
       cache.invalidate(path);
     }
-    if (criteria) {
-      specs.invalidate();
-      void server.languageFeatures?.requestRefresh(false);
-    }
+    if (criteria) specs.invalidate();
+    if (contracts) apis.invalidate();
+    if (criteria || contracts) void server.languageFeatures?.requestRefresh(false);
   });
 
   connection.onRequest(VIRTUAL_FILES_REQUEST, ({ uri }: { uri: string }) => {
@@ -353,5 +373,5 @@ export function createFudicServer(
     },
   );
 
-  return { index, cache, stats, configs, specs, translations };
+  return { index, cache, stats, configs, specs, apis, translations };
 }

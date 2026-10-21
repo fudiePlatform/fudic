@@ -35,6 +35,11 @@ export const LOCALES_DIR = 'src/locales';
  * on the server, the compiler's stubs in the browser.
  */
 export const HTTP_FILE = 'src/http.ts';
+/**
+ * Where a library publishes its `.fudapi`, at its root (SDD-60 §3.10). An app reads it from each
+ * of its direct dependencies; nothing is declared anywhere else.
+ */
+export const API_DIR = 'fudapi';
 
 /**
  * Where the published runtime lives on the origin, OUTSIDE every app's `base`

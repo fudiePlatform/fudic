@@ -28,6 +28,9 @@ export const FILE_EVENTS: readonly string[] = [
   '**/*.fixture.ts',
   // The catalogs of an app (SDD-58 §4.11): the hover over a message shows the new text.
   '**/src/locales/**/*.json',
+  // The contracts (SDD-60 §4.9): a rule changed in one `.fudapi` revalidates the one that uses
+  // it. A library's `fudapi/` changes with its `package.json`, already watched above.
+  '**/*.fudapi',
 ];
 
 export const buildClientLaunch = (
@@ -42,6 +45,8 @@ export const buildClientLaunch = (
   documentSelector: [
     { scheme: 'file', language: 'fudic' },
     { scheme: 'file', language: 'fudspec' },
+    // And a `.fudapi` (SDD-60): its project is the `.fudapi` files on disk.
+    { scheme: 'file', language: 'fudapi' },
   ],
   fileEvents: FILE_EVENTS,
   initializationOptions: {
