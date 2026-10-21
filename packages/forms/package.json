@@ -37,6 +37,10 @@
       "types": "./dist/wire/index.d.ts",
       "import": "./dist/wire/index.js"
     },
+    "./contract": {
+      "types": "./dist/contract/index.d.ts",
+      "import": "./dist/contract/index.js"
+    },
     "./element": {
       "types": "./dist/element.d.ts",
       "import": "./dist/element.js"

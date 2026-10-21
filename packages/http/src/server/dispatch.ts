@@ -7,6 +7,7 @@
  */
 
 import { createRoot, type Container } from '@fudic/di';
+import type { AnyForm } from '@fudic/forms';
 import type { ServerFn } from '../builder.js';
 import { levelOfChain, type ChainBuilder } from '../chain.js';
 import { compose, run } from '../compose.js';
@@ -68,7 +69,7 @@ export async function dispatch(
     });
     const { steps } = compose([...outerLevels(target), target.fn.level], 'server');
     const value = await withRequest((options.container ?? createRoot)(), () =>
-      run(steps, ctx, async (inner) => target.fn.handle(await withForm(target.fn, inner))),
+      run(steps, ctx, async (inner) => target.fn.handle(await withForm(target.fn.form, inner))),
     );
     return valueResponse(value, ctx);
   } catch (e) {
@@ -78,7 +79,7 @@ export async function dispatch(
 }
 
 /** The arguments of a GET: the JSON of `?a=`, or none. The rest carry a body (`body.ts`). */
-function queryArgs(url: URL): unknown {
+export function queryArgs(url: URL): unknown {
   const text = url.searchParams.get('a');
   if (text === null || text === '') return undefined;
   try {
@@ -93,9 +94,9 @@ function queryArgs(url: URL): unknown {
  * validated with the server's rules. What does not fit the schema is a 400; what does not
  * validate, a 422 with the form's errors.
  */
-async function withForm(fn: ServerFn<unknown, unknown>, ctx: ServerContext): Promise<ServerContext> {
-  if (fn.form === undefined) return ctx;
-  const copy = fn.form.$fresh();
+export async function withForm(form: AnyForm | undefined, ctx: ServerContext): Promise<ServerContext> {
+  if (form === undefined) return ctx;
+  const copy = form.$fresh();
   try {
     copy.$set(ctx.args as never);
   } catch (e) {
@@ -114,7 +115,7 @@ async function withForm(fn: ServerFn<unknown, unknown>, ctx: ServerContext): Pro
 }
 
 /** 200 with the JSON of the value, or 204 when there is none (§4.2). */
-function valueResponse(value: unknown, ctx: ServerContext): Response {
+export function valueResponse(value: unknown, ctx: ServerContext): Response {
   const { headers } = ctx.response;
   if (value === undefined) return new Response(null, { status: 204, headers });
   headers.set('content-type', 'application/json');
