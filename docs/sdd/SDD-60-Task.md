@@ -6,7 +6,7 @@
 > `@fudic/typecheck` · `@fudic/language-server` · `@fudic/formatter` · `@fudic/cli` · `fudic-vscode` ·
 > `examples/*` · `packages/testing`
 > **Rama:** `sdd-60-fudapi` (nace de `main`)
-> **Progreso:** 0 / 64 — `Listo`.
+> **Progreso:** 3 / 64 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina; la otra escribe los tests de cada fase (las tareas
 «Los tests de…»), contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -79,9 +79,9 @@ Cada meta cierra una fase. La fase no se da por terminada hasta que Pedro la pru
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **El paquete.** `@fudic/api` con `package.json` (versiones exactas, `@fudic/diagnostics` como única dependencia), `tsconfig.json`, `tsconfig.build.json`, `vitest.config.ts` con `coverage.include: ['src/**/*.ts']` y umbral 100 en las cuatro métricas, y `README.md`. Exporta `API_EXTENSION`. No depende de `@fudic/compiler` ni de Oxc | `api` | `packages/api/*` |
-| [ ] | 2 | 1 | **Los códigos del parser.** `FUD1060`–`FUD1079`: `.ts` con su función tipada, `.md` con la forma de SDD-50 §4.4 (citan `SDD-60`) y su línea en `index.ts` | `diagnostics` | `src/codes/FUD1060`–`1079.{ts,md}` · `src/index.ts` |
-| [ ] | 54 | — | **El rango.** `FUD1060`–`FUD1139` en la fila de SDD-60 del `INDEX.md` | — | `docs/sdd/INDEX.md` |
+| [x] | 1 | — | **El paquete.** `@fudic/api` con `package.json` (versiones exactas, `@fudic/diagnostics` como única dependencia), `tsconfig.json`, `tsconfig.build.json`, `vitest.config.ts` con `coverage.include: ['src/**/*.ts']` y umbral 100 en las cuatro métricas, y `README.md`. Exporta `API_EXTENSION`. No depende de `@fudic/compiler` ni de Oxc | `api` | `packages/api/*` |
+| [x] | 2 | 1 | **Los códigos del parser.** `FUD1060`–`FUD1079`: `.ts` con su función tipada, `.md` con la forma de SDD-50 §4.4 (citan `SDD-60`) y su línea en `index.ts` | `diagnostics` | `src/codes/FUD1060`–`1079.{ts,md}` · `src/index.ts` |
+| [x] | 54 | — | **El rango.** `FUD1060`–`FUD1139` en la fila de SDD-60 del `INDEX.md` | — | `docs/sdd/INDEX.md` |
 
 ## Fase 2 — el parser y el formato (7)
 
