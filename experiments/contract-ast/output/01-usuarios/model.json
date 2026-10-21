@@ -1,0 +1,448 @@
+{
+  "sim": "01-usuarios",
+  "files": [
+    "components/user-form.server.ts",
+    "middlewares/audit.ts",
+    "middlewares/auth.ts",
+    "routes/usuarios.server.ts"
+  ],
+  "contracts": [
+    {
+      "kind": "component",
+      "fud": "components/user-form.fud",
+      "file": "components/user-form.server.ts",
+      "interface": "UserForm",
+      "functions": [
+        {
+          "name": "save",
+          "verb": "PUT",
+          "params": [
+            {
+              "name": "person",
+              "optional": false,
+              "type": {
+                "kind": "form",
+                "ref": "components/user-form.server.ts#personForm"
+              }
+            }
+          ],
+          "result": {
+            "kind": "named",
+            "ref": "components/user-form.server.ts#Saved"
+          },
+          "middlewares": [
+            "middlewares/auth.ts#auth"
+          ],
+          "options": {
+            "invalidates": [
+              "/usuarios"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "route",
+      "fud": "routes/usuarios.fud",
+      "file": "routes/usuarios.server.ts",
+      "interface": "Usuarios",
+      "functions": [
+        {
+          "name": "load",
+          "verb": "LOAD",
+          "params": [],
+          "result": {
+            "kind": "named",
+            "ref": "routes/usuarios.server.ts#UsuariosData"
+          },
+          "middlewares": [],
+          "options": {
+            "strategy": "ssr"
+          }
+        },
+        {
+          "name": "search",
+          "verb": "GET",
+          "params": [
+            {
+              "name": "q",
+              "optional": false,
+              "type": {
+                "kind": "string"
+              }
+            }
+          ],
+          "result": {
+            "kind": "array",
+            "of": {
+              "kind": "named",
+              "ref": "routes/usuarios.server.ts#Person"
+            }
+          },
+          "middlewares": [],
+          "options": {}
+        },
+        {
+          "name": "slowSearch",
+          "verb": "GET",
+          "params": [
+            {
+              "name": "q",
+              "optional": false,
+              "type": {
+                "kind": "string"
+              }
+            }
+          ],
+          "result": {
+            "kind": "array",
+            "of": {
+              "kind": "named",
+              "ref": "routes/usuarios.server.ts#Person"
+            }
+          },
+          "middlewares": [],
+          "options": {}
+        },
+        {
+          "name": "save",
+          "verb": "PUT",
+          "params": [
+            {
+              "name": "id",
+              "optional": false,
+              "type": {
+                "kind": "number",
+                "width": "i32"
+              }
+            },
+            {
+              "name": "active",
+              "optional": false,
+              "type": {
+                "kind": "boolean"
+              }
+            }
+          ],
+          "result": {
+            "kind": "void"
+          },
+          "middlewares": [
+            "middlewares/auth.ts#auth"
+          ],
+          "options": {}
+        },
+        {
+          "name": "remove",
+          "verb": "DELETE",
+          "params": [
+            {
+              "name": "id",
+              "optional": false,
+              "type": {
+                "kind": "number",
+                "width": "i32"
+              }
+            }
+          ],
+          "result": {
+            "kind": "void"
+          },
+          "middlewares": [
+            "middlewares/auth.ts#auth",
+            "middlewares/audit.ts#audit"
+          ],
+          "options": {}
+        },
+        {
+          "name": "crash",
+          "verb": "GET",
+          "params": [],
+          "result": {
+            "kind": "string"
+          },
+          "middlewares": [],
+          "options": {}
+        }
+      ]
+    }
+  ],
+  "types": {
+    "components/user-form.server.ts#Saved": {
+      "name": "Saved",
+      "file": "components/user-form.server.ts",
+      "type": {
+        "kind": "object",
+        "fields": [
+          {
+            "name": "id",
+            "optional": false,
+            "type": {
+              "kind": "number",
+              "width": "i32"
+            }
+          },
+          {
+            "name": "name",
+            "optional": false,
+            "type": {
+              "kind": "string"
+            }
+          }
+        ]
+      }
+    },
+    "routes/usuarios.server.ts#UsuariosData": {
+      "name": "UsuariosData",
+      "file": "routes/usuarios.server.ts",
+      "type": {
+        "kind": "object",
+        "fields": [
+          {
+            "name": "users",
+            "optional": false,
+            "type": {
+              "kind": "array",
+              "of": {
+                "kind": "named",
+                "ref": "routes/usuarios.server.ts#Person"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "routes/usuarios.server.ts#Person": {
+      "name": "Person",
+      "file": "routes/usuarios.server.ts",
+      "type": {
+        "kind": "object",
+        "fields": [
+          {
+            "name": "id",
+            "optional": false,
+            "type": {
+              "kind": "number",
+              "width": "i32"
+            }
+          },
+          {
+            "name": "name",
+            "optional": false,
+            "type": {
+              "kind": "string"
+            }
+          },
+          {
+            "name": "email",
+            "optional": false,
+            "type": {
+              "kind": "string"
+            }
+          },
+          {
+            "name": "age",
+            "optional": false,
+            "type": {
+              "kind": "number",
+              "width": "u8"
+            }
+          },
+          {
+            "name": "active",
+            "optional": false,
+            "type": {
+              "kind": "boolean"
+            }
+          },
+          {
+            "name": "notes",
+            "optional": false,
+            "type": {
+              "kind": "string"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "middlewares": {
+    "middlewares/auth.ts#auth": {
+      "name": "auth",
+      "file": "middlewares/auth.ts",
+      "adds": {
+        "kind": "object",
+        "fields": [
+          {
+            "name": "user",
+            "optional": false,
+            "type": {
+              "kind": "object",
+              "fields": [
+                {
+                  "name": "id",
+                  "optional": false,
+                  "type": {
+                    "kind": "number",
+                    "width": "i32"
+                  }
+                },
+                {
+                  "name": "name",
+                  "optional": false,
+                  "type": {
+                    "kind": "string"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "client": true
+    },
+    "middlewares/audit.ts#audit": {
+      "name": "audit",
+      "file": "middlewares/audit.ts",
+      "adds": null,
+      "client": false
+    }
+  },
+  "forms": {
+    "components/user-form.server.ts#personForm": {
+      "name": "personForm",
+      "file": "components/user-form.server.ts",
+      "fields": [
+        {
+          "name": "name",
+          "control": "str",
+          "type": {
+            "kind": "string"
+          },
+          "initial": "",
+          "validators": [
+            {
+              "name": "required",
+              "args": []
+            }
+          ],
+          "messages": [
+            "required"
+          ]
+        },
+        {
+          "name": "email",
+          "control": "str",
+          "type": {
+            "kind": "string"
+          },
+          "initial": "",
+          "validators": [
+            {
+              "name": "required",
+              "args": []
+            },
+            {
+              "name": "pattern",
+              "args": [
+                {
+                  "regex": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+                  "flags": ""
+                }
+              ]
+            },
+            {
+              "name": "serverValidator",
+              "args": [
+                "<server code>"
+              ]
+            }
+          ],
+          "messages": [
+            "required",
+            "pattern",
+            "taken"
+          ]
+        },
+        {
+          "name": "age",
+          "control": "u8",
+          "type": {
+            "kind": "nullable",
+            "of": {
+              "kind": "number",
+              "width": "u8"
+            }
+          },
+          "initial": null,
+          "validators": [
+            {
+              "name": "required",
+              "args": []
+            },
+            {
+              "name": "min",
+              "args": [
+                18
+              ]
+            },
+            {
+              "name": "max",
+              "args": [
+                120
+              ]
+            }
+          ],
+          "messages": [
+            "required",
+            "min",
+            "max"
+          ]
+        },
+        {
+          "name": "active",
+          "control": "bool",
+          "type": {
+            "kind": "boolean"
+          },
+          "initial": true,
+          "validators": [],
+          "messages": []
+        },
+        {
+          "name": "notes",
+          "control": "str",
+          "type": {
+            "kind": "string"
+          },
+          "initial": "",
+          "validators": [],
+          "messages": []
+        }
+      ],
+      "catches": [
+        400,
+        409,
+        422
+      ]
+    }
+  },
+  "issues": [
+    {
+      "severity": "note",
+      "code": "regex-dialect",
+      "message": "pattern() also runs on the server: the regex has to mean the same in the backend's dialect",
+      "file": "components/user-form.server.ts",
+      "line": 27,
+      "col": 7
+    },
+    {
+      "severity": "error",
+      "code": "server-code-in-form",
+      "message": "serverValidator() holds server code inside the form: with another backend it has to be a named hole the backend implements",
+      "file": "components/user-form.server.ts",
+      "line": 29,
+      "col": 7
+    }
+  ]
+}

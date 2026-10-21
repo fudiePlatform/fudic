@@ -1,0 +1,9 @@
+# Who is calling: the client half puts the token, the server half checks it.
+middleware auth
+  adds
+    user  User
+  fails unauthorized 401
+  fails forbidden 403
+
+type User
+  name  str

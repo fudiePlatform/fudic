@@ -1,0 +1,2126 @@
+{
+ "errors": [],
+ "module": {
+  "hasModuleSyntax": true,
+  "staticImports": [
+   {
+    "start": 189,
+    "end": 237,
+    "moduleRequest": {
+     "value": "@fudic/contract",
+     "start": 219,
+     "end": 236
+    },
+    "entries": [
+     {
+      "importName": {
+       "kind": "Name",
+       "name": "Put",
+       "start": 203,
+       "end": 206
+      },
+      "localName": {
+       "value": "Put",
+       "start": 203,
+       "end": 206
+      },
+      "isType": true
+     },
+     {
+      "importName": {
+       "kind": "Name",
+       "name": "i32",
+       "start": 208,
+       "end": 211
+      },
+      "localName": {
+       "value": "i32",
+       "start": 208,
+       "end": 211
+      },
+      "isType": true
+     }
+    ]
+   },
+   {
+    "start": 238,
+    "end": 335,
+    "moduleRequest": {
+     "value": "@fudic/forms",
+     "start": 320,
+     "end": 334
+    },
+    "entries": [
+     {
+      "importName": {
+       "kind": "Name",
+       "name": "bool",
+       "start": 247,
+       "end": 251
+      },
+      "localName": {
+       "value": "bool",
+       "start": 247,
+       "end": 251
+      },
+      "isType": false
+     },
+     {
+      "importName": {
+       "kind": "Name",
+       "name": "form",
+       "start": 253,
+       "end": 257
+      },
+      "localName": {
+       "value": "form",
+       "start": 253,
+       "end": 257
+      },
+      "isType": false
+     },
+     {
+      "importName": {
+       "kind": "Name",
+       "name": "max",
+       "start": 259,
+       "end": 262
+      },
+      "localName": {
+       "value": "max",
+       "start": 259,
+       "end": 262
+      },
+      "isType": false
+     },
+     {
+      "importName": {
+       "kind": "Name",
+       "name": "min",
+       "start": 264,
+       "end": 267
+      },
+      "localName": {
+       "value": "min",
+       "start": 264,
+       "end": 267
+      },
+      "isType": false
+     },
+     {
+      "importName": {
+       "kind": "Name",
+       "name": "pattern",
+       "start": 269,
+       "end": 276
+      },
+      "localName": {
+       "value": "pattern",
+       "start": 269,
+       "end": 276
+      },
+      "isType": false
+     },
+     {
+      "importName": {
+       "kind": "Name",
+       "name": "required",
+       "start": 278,
+       "end": 286
+      },
+      "localName": {
+       "value": "required",
+       "start": 278,
+       "end": 286
+      },
+      "isType": false
+     },
+     {
+      "importName": {
+       "kind": "Name",
+       "name": "serverValidator",
+       "start": 288,
+       "end": 303
+      },
+      "localName": {
+       "value": "serverValidator",
+       "start": 288,
+       "end": 303
+      },
+      "isType": false
+     },
+     {
+      "importName": {
+       "kind": "Name",
+       "name": "str",
+       "start": 305,
+       "end": 308
+      },
+      "localName": {
+       "value": "str",
+       "start": 305,
+       "end": 308
+      },
+      "isType": false
+     },
+     {
+      "importName": {
+       "kind": "Name",
+       "name": "u8",
+       "start": 310,
+       "end": 312
+      },
+      "localName": {
+       "value": "u8",
+       "start": 310,
+       "end": 312
+      },
+      "isType": false
+     }
+    ]
+   },
+   {
+    "start": 336,
+    "end": 384,
+    "moduleRequest": {
+     "value": "../middlewares/auth",
+     "start": 362,
+     "end": 383
+    },
+    "entries": [
+     {
+      "importName": {
+       "kind": "Name",
+       "name": "auth",
+       "start": 350,
+       "end": 354
+      },
+      "localName": {
+       "value": "auth",
+       "start": 350,
+       "end": 354
+      },
+      "isType": true
+     }
+    ]
+   }
+  ],
+  "staticExports": [
+   {
+    "start": 386,
+    "end": 521,
+    "entries": [
+     {
+      "start": 401,
+      "end": 521,
+      "moduleRequest": null,
+      "importName": {
+       "kind": "None",
+       "name": null,
+       "start": null,
+       "end": null
+      },
+      "exportName": {
+       "kind": "Default",
+       "name": null,
+       "start": 393,
+       "end": 400
+      },
+      "localName": {
+       "kind": "Name",
+       "name": "UserForm",
+       "start": 411,
+       "end": 419
+      },
+      "isType": true
+     }
+    ]
+   },
+   {
+    "start": 595,
+    "end": 666,
+    "entries": [
+     {
+      "start": 602,
+      "end": 666,
+      "moduleRequest": null,
+      "importName": {
+       "kind": "None",
+       "name": null,
+       "start": null,
+       "end": null
+      },
+      "exportName": {
+       "kind": "Name",
+       "name": "Saved",
+       "start": 612,
+       "end": 617
+      },
+      "localName": {
+       "kind": "Name",
+       "name": "Saved",
+       "start": 612,
+       "end": 617
+      },
+      "isType": true
+     }
+    ]
+   },
+   {
+    "start": 761,
+    "end": 1647,
+    "entries": [
+     {
+      "start": 768,
+      "end": 1647,
+      "moduleRequest": null,
+      "importName": {
+       "kind": "None",
+       "name": null,
+       "start": null,
+       "end": null
+      },
+      "exportName": {
+       "kind": "Name",
+       "name": "personForm",
+       "start": 774,
+       "end": 784
+      },
+      "localName": {
+       "kind": "Name",
+       "name": "personForm",
+       "start": 774,
+       "end": 784
+      },
+      "isType": false
+     }
+    ]
+   }
+  ],
+  "dynamicImports": [],
+  "importMetas": []
+ },
+ "comments": [
+  {
+   "type": "Block",
+   "value": "*\n * The server of `<user-form>`, in one file: how it is called, what it receives, what it returns.\n * It answers at `/_fudic/fn/c/user-form/save`, whatever page uses the component.\n ",
+   "start": 0,
+   "end": 187
+  },
+  {
+   "type": "Block",
+   "value": "* What `save` returns: what the component's `fudic:result` paints. ",
+   "start": 523,
+   "end": 594
+  },
+  {
+   "type": "Block",
+   "value": "* What `save` receives. The browser validates with it before sending, the server again. ",
+   "start": 668,
+   "end": 760
+  },
+  {
+   "type": "Line",
+   "value": " As today: server code inside the form (IDEA-05 §11.2).",
+   "start": 974,
+   "end": 1031
+  },
+  {
+   "type": "Block",
+   "value": "* The server code the validator reaches into today. ",
+   "start": 1649,
+   "end": 1705
+  }
+ ],
+ "program": {
+  "type": "Program",
+  "body": [
+   {
+    "type": "ImportDeclaration",
+    "specifiers": [
+     {
+      "type": "ImportSpecifier",
+      "imported": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "Put",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 203,
+       "end": 206
+      },
+      "local": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "Put",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 203,
+       "end": 206
+      },
+      "importKind": "value",
+      "start": 203,
+      "end": 206
+     },
+     {
+      "type": "ImportSpecifier",
+      "imported": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "i32",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 208,
+       "end": 211
+      },
+      "local": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "i32",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 208,
+       "end": 211
+      },
+      "importKind": "value",
+      "start": 208,
+      "end": 211
+     }
+    ],
+    "source": {
+     "type": "Literal",
+     "value": "@fudic/contract",
+     "raw": "\"@fudic/contract\"",
+     "start": 219,
+     "end": 236
+    },
+    "phase": null,
+    "attributes": [],
+    "importKind": "type",
+    "start": 189,
+    "end": 237
+   },
+   {
+    "type": "ImportDeclaration",
+    "specifiers": [
+     {
+      "type": "ImportSpecifier",
+      "imported": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "bool",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 247,
+       "end": 251
+      },
+      "local": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "bool",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 247,
+       "end": 251
+      },
+      "importKind": "value",
+      "start": 247,
+      "end": 251
+     },
+     {
+      "type": "ImportSpecifier",
+      "imported": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "form",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 253,
+       "end": 257
+      },
+      "local": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "form",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 253,
+       "end": 257
+      },
+      "importKind": "value",
+      "start": 253,
+      "end": 257
+     },
+     {
+      "type": "ImportSpecifier",
+      "imported": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "max",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 259,
+       "end": 262
+      },
+      "local": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "max",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 259,
+       "end": 262
+      },
+      "importKind": "value",
+      "start": 259,
+      "end": 262
+     },
+     {
+      "type": "ImportSpecifier",
+      "imported": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "min",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 264,
+       "end": 267
+      },
+      "local": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "min",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 264,
+       "end": 267
+      },
+      "importKind": "value",
+      "start": 264,
+      "end": 267
+     },
+     {
+      "type": "ImportSpecifier",
+      "imported": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "pattern",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 269,
+       "end": 276
+      },
+      "local": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "pattern",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 269,
+       "end": 276
+      },
+      "importKind": "value",
+      "start": 269,
+      "end": 276
+     },
+     {
+      "type": "ImportSpecifier",
+      "imported": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "required",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 278,
+       "end": 286
+      },
+      "local": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "required",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 278,
+       "end": 286
+      },
+      "importKind": "value",
+      "start": 278,
+      "end": 286
+     },
+     {
+      "type": "ImportSpecifier",
+      "imported": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "serverValidator",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 288,
+       "end": 303
+      },
+      "local": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "serverValidator",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 288,
+       "end": 303
+      },
+      "importKind": "value",
+      "start": 288,
+      "end": 303
+     },
+     {
+      "type": "ImportSpecifier",
+      "imported": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "str",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 305,
+       "end": 308
+      },
+      "local": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "str",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 305,
+       "end": 308
+      },
+      "importKind": "value",
+      "start": 305,
+      "end": 308
+     },
+     {
+      "type": "ImportSpecifier",
+      "imported": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "u8",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 310,
+       "end": 312
+      },
+      "local": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "u8",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 310,
+       "end": 312
+      },
+      "importKind": "value",
+      "start": 310,
+      "end": 312
+     }
+    ],
+    "source": {
+     "type": "Literal",
+     "value": "@fudic/forms",
+     "raw": "\"@fudic/forms\"",
+     "start": 320,
+     "end": 334
+    },
+    "phase": null,
+    "attributes": [],
+    "importKind": "value",
+    "start": 238,
+    "end": 335
+   },
+   {
+    "type": "ImportDeclaration",
+    "specifiers": [
+     {
+      "type": "ImportSpecifier",
+      "imported": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "auth",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 350,
+       "end": 354
+      },
+      "local": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "auth",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 350,
+       "end": 354
+      },
+      "importKind": "value",
+      "start": 350,
+      "end": 354
+     }
+    ],
+    "source": {
+     "type": "Literal",
+     "value": "../middlewares/auth",
+     "raw": "\"../middlewares/auth\"",
+     "start": 362,
+     "end": 383
+    },
+    "phase": null,
+    "attributes": [],
+    "importKind": "type",
+    "start": 336,
+    "end": 384
+   },
+   {
+    "type": "ExportDefaultDeclaration",
+    "declaration": {
+     "type": "TSInterfaceDeclaration",
+     "id": {
+      "type": "Identifier",
+      "decorators": [],
+      "name": "UserForm",
+      "optional": false,
+      "typeAnnotation": null,
+      "start": 411,
+      "end": 419
+     },
+     "typeParameters": null,
+     "extends": [],
+     "body": {
+      "type": "TSInterfaceBody",
+      "body": [
+       {
+        "type": "TSPropertySignature",
+        "computed": false,
+        "optional": false,
+        "readonly": false,
+        "key": {
+         "type": "Identifier",
+         "decorators": [],
+         "name": "save",
+         "optional": false,
+         "typeAnnotation": null,
+         "start": 424,
+         "end": 428
+        },
+        "typeAnnotation": {
+         "type": "TSTypeAnnotation",
+         "typeAnnotation": {
+          "type": "TSTypeReference",
+          "typeName": {
+           "type": "Identifier",
+           "decorators": [],
+           "name": "Put",
+           "optional": false,
+           "typeAnnotation": null,
+           "start": 430,
+           "end": 433
+          },
+          "typeArguments": {
+           "type": "TSTypeParameterInstantiation",
+           "params": [
+            {
+             "type": "TSFunctionType",
+             "typeParameters": null,
+             "params": [
+              {
+               "type": "Identifier",
+               "decorators": [],
+               "name": "person",
+               "optional": false,
+               "typeAnnotation": {
+                "type": "TSTypeAnnotation",
+                "typeAnnotation": {
+                 "type": "TSTypeQuery",
+                 "exprName": {
+                  "type": "Identifier",
+                  "decorators": [],
+                  "name": "personForm",
+                  "optional": false,
+                  "typeAnnotation": null,
+                  "start": 450,
+                  "end": 460
+                 },
+                 "typeArguments": null,
+                 "start": 443,
+                 "end": 460
+                },
+                "start": 441,
+                "end": 460
+               },
+               "start": 435,
+               "end": 460
+              }
+             ],
+             "returnType": {
+              "type": "TSTypeAnnotation",
+              "typeAnnotation": {
+               "type": "TSTypeReference",
+               "typeName": {
+                "type": "Identifier",
+                "decorators": [],
+                "name": "Saved",
+                "optional": false,
+                "typeAnnotation": null,
+                "start": 465,
+                "end": 470
+               },
+               "typeArguments": null,
+               "start": 465,
+               "end": 470
+              },
+              "start": 462,
+              "end": 470
+             },
+             "start": 434,
+             "end": 470
+            },
+            {
+             "type": "TSTupleType",
+             "elementTypes": [
+              {
+               "type": "TSTypeQuery",
+               "exprName": {
+                "type": "Identifier",
+                "decorators": [],
+                "name": "auth",
+                "optional": false,
+                "typeAnnotation": null,
+                "start": 480,
+                "end": 484
+               },
+               "typeArguments": null,
+               "start": 473,
+               "end": 484
+              }
+             ],
+             "start": 472,
+             "end": 485
+            },
+            {
+             "type": "TSTypeLiteral",
+             "members": [
+              {
+               "type": "TSPropertySignature",
+               "computed": false,
+               "optional": false,
+               "readonly": false,
+               "key": {
+                "type": "Identifier",
+                "decorators": [],
+                "name": "invalidates",
+                "optional": false,
+                "typeAnnotation": null,
+                "start": 489,
+                "end": 500
+               },
+               "typeAnnotation": {
+                "type": "TSTypeAnnotation",
+                "typeAnnotation": {
+                 "type": "TSTupleType",
+                 "elementTypes": [
+                  {
+                   "type": "TSLiteralType",
+                   "literal": {
+                    "type": "Literal",
+                    "value": "/usuarios",
+                    "raw": "\"/usuarios\"",
+                    "start": 503,
+                    "end": 514
+                   },
+                   "start": 503,
+                   "end": 514
+                  }
+                 ],
+                 "start": 502,
+                 "end": 515
+                },
+                "start": 500,
+                "end": 515
+               },
+               "accessibility": null,
+               "static": false,
+               "start": 489,
+               "end": 515
+              }
+             ],
+             "start": 487,
+             "end": 517
+            }
+           ],
+           "start": 433,
+           "end": 518
+          },
+          "start": 430,
+          "end": 518
+         },
+         "start": 428,
+         "end": 518
+        },
+        "accessibility": null,
+        "static": false,
+        "start": 424,
+        "end": 519
+       }
+      ],
+      "start": 420,
+      "end": 521
+     },
+     "declare": false,
+     "start": 401,
+     "end": 521
+    },
+    "exportKind": "value",
+    "start": 386,
+    "end": 521
+   },
+   {
+    "type": "ExportNamedDeclaration",
+    "declaration": {
+     "type": "TSInterfaceDeclaration",
+     "id": {
+      "type": "Identifier",
+      "decorators": [],
+      "name": "Saved",
+      "optional": false,
+      "typeAnnotation": null,
+      "start": 612,
+      "end": 617
+     },
+     "typeParameters": null,
+     "extends": [],
+     "body": {
+      "type": "TSInterfaceBody",
+      "body": [
+       {
+        "type": "TSPropertySignature",
+        "computed": false,
+        "optional": false,
+        "readonly": true,
+        "key": {
+         "type": "Identifier",
+         "decorators": [],
+         "name": "id",
+         "optional": false,
+         "typeAnnotation": null,
+         "start": 631,
+         "end": 633
+        },
+        "typeAnnotation": {
+         "type": "TSTypeAnnotation",
+         "typeAnnotation": {
+          "type": "TSTypeReference",
+          "typeName": {
+           "type": "Identifier",
+           "decorators": [],
+           "name": "i32",
+           "optional": false,
+           "typeAnnotation": null,
+           "start": 635,
+           "end": 638
+          },
+          "typeArguments": null,
+          "start": 635,
+          "end": 638
+         },
+         "start": 633,
+         "end": 638
+        },
+        "accessibility": null,
+        "static": false,
+        "start": 622,
+        "end": 639
+       },
+       {
+        "type": "TSPropertySignature",
+        "computed": false,
+        "optional": false,
+        "readonly": true,
+        "key": {
+         "type": "Identifier",
+         "decorators": [],
+         "name": "name",
+         "optional": false,
+         "typeAnnotation": null,
+         "start": 651,
+         "end": 655
+        },
+        "typeAnnotation": {
+         "type": "TSTypeAnnotation",
+         "typeAnnotation": {
+          "type": "TSStringKeyword",
+          "start": 657,
+          "end": 663
+         },
+         "start": 655,
+         "end": 663
+        },
+        "accessibility": null,
+        "static": false,
+        "start": 642,
+        "end": 664
+       }
+      ],
+      "start": 618,
+      "end": 666
+     },
+     "declare": false,
+     "start": 602,
+     "end": 666
+    },
+    "specifiers": [],
+    "source": null,
+    "exportKind": "type",
+    "attributes": [],
+    "start": 595,
+    "end": 666
+   },
+   {
+    "type": "ExportNamedDeclaration",
+    "declaration": {
+     "type": "VariableDeclaration",
+     "kind": "const",
+     "declarations": [
+      {
+       "type": "VariableDeclarator",
+       "id": {
+        "type": "Identifier",
+        "decorators": [],
+        "name": "personForm",
+        "optional": false,
+        "typeAnnotation": null,
+        "start": 774,
+        "end": 784
+       },
+       "init": {
+        "type": "CallExpression",
+        "callee": {
+         "type": "Identifier",
+         "decorators": [],
+         "name": "form",
+         "optional": false,
+         "typeAnnotation": null,
+         "start": 787,
+         "end": 791
+        },
+        "typeArguments": null,
+        "arguments": [
+         {
+          "type": "ObjectExpression",
+          "properties": [
+           {
+            "type": "Property",
+            "kind": "init",
+            "key": {
+             "type": "Identifier",
+             "decorators": [],
+             "name": "name",
+             "optional": false,
+             "typeAnnotation": null,
+             "start": 796,
+             "end": 800
+            },
+            "value": {
+             "type": "CallExpression",
+             "callee": {
+              "type": "Identifier",
+              "decorators": [],
+              "name": "str",
+              "optional": false,
+              "typeAnnotation": null,
+              "start": 802,
+              "end": 805
+             },
+             "typeArguments": null,
+             "arguments": [
+              {
+               "type": "Literal",
+               "value": "",
+               "raw": "\"\"",
+               "start": 806,
+               "end": 808
+              },
+              {
+               "type": "ArrayExpression",
+               "elements": [
+                {
+                 "type": "Identifier",
+                 "decorators": [],
+                 "name": "required",
+                 "optional": false,
+                 "typeAnnotation": null,
+                 "start": 811,
+                 "end": 819
+                }
+               ],
+               "start": 810,
+               "end": 820
+              },
+              {
+               "type": "ObjectExpression",
+               "properties": [
+                {
+                 "type": "Property",
+                 "kind": "init",
+                 "key": {
+                  "type": "Identifier",
+                  "decorators": [],
+                  "name": "messages",
+                  "optional": false,
+                  "typeAnnotation": null,
+                  "start": 824,
+                  "end": 832
+                 },
+                 "value": {
+                  "type": "ObjectExpression",
+                  "properties": [
+                   {
+                    "type": "Property",
+                    "kind": "init",
+                    "key": {
+                     "type": "Identifier",
+                     "decorators": [],
+                     "name": "required",
+                     "optional": false,
+                     "typeAnnotation": null,
+                     "start": 836,
+                     "end": 844
+                    },
+                    "value": {
+                     "type": "ArrowFunctionExpression",
+                     "expression": true,
+                     "async": false,
+                     "typeParameters": null,
+                     "params": [],
+                     "returnType": null,
+                     "body": {
+                      "type": "Literal",
+                      "value": "Escribe el nombre.",
+                      "raw": "\"Escribe el nombre.\"",
+                      "start": 852,
+                      "end": 872
+                     },
+                     "id": null,
+                     "generator": false,
+                     "start": 846,
+                     "end": 872
+                    },
+                    "method": false,
+                    "shorthand": false,
+                    "computed": false,
+                    "optional": false,
+                    "start": 836,
+                    "end": 872
+                   }
+                  ],
+                  "start": 834,
+                  "end": 874
+                 },
+                 "method": false,
+                 "shorthand": false,
+                 "computed": false,
+                 "optional": false,
+                 "start": 824,
+                 "end": 874
+                }
+               ],
+               "start": 822,
+               "end": 876
+              }
+             ],
+             "optional": false,
+             "start": 802,
+             "end": 877
+            },
+            "method": false,
+            "shorthand": false,
+            "computed": false,
+            "optional": false,
+            "start": 796,
+            "end": 877
+           },
+           {
+            "type": "Property",
+            "kind": "init",
+            "key": {
+             "type": "Identifier",
+             "decorators": [],
+             "name": "email",
+             "optional": false,
+             "typeAnnotation": null,
+             "start": 881,
+             "end": 886
+            },
+            "value": {
+             "type": "CallExpression",
+             "callee": {
+              "type": "Identifier",
+              "decorators": [],
+              "name": "str",
+              "optional": false,
+              "typeAnnotation": null,
+              "start": 888,
+              "end": 891
+             },
+             "typeArguments": null,
+             "arguments": [
+              {
+               "type": "Literal",
+               "value": "",
+               "raw": "\"\"",
+               "start": 897,
+               "end": 899
+              },
+              {
+               "type": "ArrayExpression",
+               "elements": [
+                {
+                 "type": "Identifier",
+                 "decorators": [],
+                 "name": "required",
+                 "optional": false,
+                 "typeAnnotation": null,
+                 "start": 913,
+                 "end": 921
+                },
+                {
+                 "type": "CallExpression",
+                 "callee": {
+                  "type": "Identifier",
+                  "decorators": [],
+                  "name": "pattern",
+                  "optional": false,
+                  "typeAnnotation": null,
+                  "start": 929,
+                  "end": 936
+                 },
+                 "typeArguments": null,
+                 "arguments": [
+                  {
+                   "type": "Literal",
+                   "value": {},
+                   "raw": "/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/",
+                   "regex": {
+                    "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+                    "flags": ""
+                   },
+                   "start": 937,
+                   "end": 965
+                  }
+                 ],
+                 "optional": false,
+                 "start": 929,
+                 "end": 966
+                },
+                {
+                 "type": "CallExpression",
+                 "callee": {
+                  "type": "Identifier",
+                  "decorators": [],
+                  "name": "serverValidator",
+                  "optional": false,
+                  "typeAnnotation": null,
+                  "start": 1038,
+                  "end": 1053
+                 },
+                 "typeArguments": null,
+                 "arguments": [
+                  {
+                   "type": "ArrowFunctionExpression",
+                   "expression": true,
+                   "async": true,
+                   "typeParameters": null,
+                   "params": [
+                    {
+                     "type": "Identifier",
+                     "decorators": [],
+                     "name": "v",
+                     "optional": false,
+                     "typeAnnotation": {
+                      "type": "TSTypeAnnotation",
+                      "typeAnnotation": {
+                       "type": "TSStringKeyword",
+                       "start": 1064,
+                       "end": 1070
+                      },
+                      "start": 1062,
+                      "end": 1070
+                     },
+                     "start": 1061,
+                     "end": 1070
+                    }
+                   ],
+                   "returnType": null,
+                   "body": {
+                    "type": "ConditionalExpression",
+                    "test": {
+                     "type": "AwaitExpression",
+                     "argument": {
+                      "type": "CallExpression",
+                      "callee": {
+                       "type": "Identifier",
+                       "decorators": [],
+                       "name": "emailTaken",
+                       "optional": false,
+                       "typeAnnotation": null,
+                       "start": 1083,
+                       "end": 1093
+                      },
+                      "typeArguments": null,
+                      "arguments": [
+                       {
+                        "type": "Identifier",
+                        "decorators": [],
+                        "name": "v",
+                        "optional": false,
+                        "typeAnnotation": null,
+                        "start": 1094,
+                        "end": 1095
+                       }
+                      ],
+                      "optional": false,
+                      "start": 1083,
+                      "end": 1096
+                     },
+                     "start": 1077,
+                     "end": 1096
+                    },
+                    "consequent": {
+                     "type": "ObjectExpression",
+                     "properties": [
+                      {
+                       "type": "Property",
+                       "kind": "init",
+                       "key": {
+                        "type": "Identifier",
+                        "decorators": [],
+                        "name": "taken",
+                        "optional": false,
+                        "typeAnnotation": null,
+                        "start": 1102,
+                        "end": 1107
+                       },
+                       "value": {
+                        "type": "Literal",
+                        "value": true,
+                        "raw": "true",
+                        "start": 1109,
+                        "end": 1113
+                       },
+                       "method": false,
+                       "shorthand": false,
+                       "computed": false,
+                       "optional": false,
+                       "start": 1102,
+                       "end": 1113
+                      }
+                     ],
+                     "start": 1100,
+                     "end": 1115
+                    },
+                    "alternate": {
+                     "type": "Literal",
+                     "value": null,
+                     "raw": "null",
+                     "start": 1118,
+                     "end": 1122
+                    },
+                    "start": 1076,
+                    "end": 1122
+                   },
+                   "id": null,
+                   "generator": false,
+                   "start": 1054,
+                   "end": 1123
+                  }
+                 ],
+                 "optional": false,
+                 "start": 1038,
+                 "end": 1124
+                }
+               ],
+               "start": 905,
+               "end": 1131
+              },
+              {
+               "type": "ObjectExpression",
+               "properties": [
+                {
+                 "type": "Property",
+                 "kind": "init",
+                 "key": {
+                  "type": "Identifier",
+                  "decorators": [],
+                  "name": "messages",
+                  "optional": false,
+                  "typeAnnotation": null,
+                  "start": 1145,
+                  "end": 1153
+                 },
+                 "value": {
+                  "type": "ObjectExpression",
+                  "properties": [
+                   {
+                    "type": "Property",
+                    "kind": "init",
+                    "key": {
+                     "type": "Identifier",
+                     "decorators": [],
+                     "name": "required",
+                     "optional": false,
+                     "typeAnnotation": null,
+                     "start": 1165,
+                     "end": 1173
+                    },
+                    "value": {
+                     "type": "ArrowFunctionExpression",
+                     "expression": true,
+                     "async": false,
+                     "typeParameters": null,
+                     "params": [],
+                     "returnType": null,
+                     "body": {
+                      "type": "Literal",
+                      "value": "Escribe el email.",
+                      "raw": "\"Escribe el email.\"",
+                      "start": 1181,
+                      "end": 1200
+                     },
+                     "id": null,
+                     "generator": false,
+                     "start": 1175,
+                     "end": 1200
+                    },
+                    "method": false,
+                    "shorthand": false,
+                    "computed": false,
+                    "optional": false,
+                    "start": 1165,
+                    "end": 1200
+                   },
+                   {
+                    "type": "Property",
+                    "kind": "init",
+                    "key": {
+                     "type": "Identifier",
+                     "decorators": [],
+                     "name": "pattern",
+                     "optional": false,
+                     "typeAnnotation": null,
+                     "start": 1210,
+                     "end": 1217
+                    },
+                    "value": {
+                     "type": "ArrowFunctionExpression",
+                     "expression": true,
+                     "async": false,
+                     "typeParameters": null,
+                     "params": [],
+                     "returnType": null,
+                     "body": {
+                      "type": "Literal",
+                      "value": "Ese email no parece válido.",
+                      "raw": "\"Ese email no parece válido.\"",
+                      "start": 1225,
+                      "end": 1254
+                     },
+                     "id": null,
+                     "generator": false,
+                     "start": 1219,
+                     "end": 1254
+                    },
+                    "method": false,
+                    "shorthand": false,
+                    "computed": false,
+                    "optional": false,
+                    "start": 1210,
+                    "end": 1254
+                   },
+                   {
+                    "type": "Property",
+                    "kind": "init",
+                    "key": {
+                     "type": "Identifier",
+                     "decorators": [],
+                     "name": "taken",
+                     "optional": false,
+                     "typeAnnotation": null,
+                     "start": 1264,
+                     "end": 1269
+                    },
+                    "value": {
+                     "type": "ArrowFunctionExpression",
+                     "expression": true,
+                     "async": false,
+                     "typeParameters": null,
+                     "params": [],
+                     "returnType": null,
+                     "body": {
+                      "type": "Literal",
+                      "value": "Ese email ya lo usa otra persona.",
+                      "raw": "\"Ese email ya lo usa otra persona.\"",
+                      "start": 1277,
+                      "end": 1312
+                     },
+                     "id": null,
+                     "generator": false,
+                     "start": 1271,
+                     "end": 1312
+                    },
+                    "method": false,
+                    "shorthand": false,
+                    "computed": false,
+                    "optional": false,
+                    "start": 1264,
+                    "end": 1312
+                   }
+                  ],
+                  "start": 1155,
+                  "end": 1321
+                 },
+                 "method": false,
+                 "shorthand": false,
+                 "computed": false,
+                 "optional": false,
+                 "start": 1145,
+                 "end": 1321
+                }
+               ],
+               "start": 1137,
+               "end": 1328
+              }
+             ],
+             "optional": false,
+             "start": 888,
+             "end": 1333
+            },
+            "method": false,
+            "shorthand": false,
+            "computed": false,
+            "optional": false,
+            "start": 881,
+            "end": 1333
+           },
+           {
+            "type": "Property",
+            "kind": "init",
+            "key": {
+             "type": "Identifier",
+             "decorators": [],
+             "name": "age",
+             "optional": false,
+             "typeAnnotation": null,
+             "start": 1337,
+             "end": 1340
+            },
+            "value": {
+             "type": "CallExpression",
+             "callee": {
+              "type": "Identifier",
+              "decorators": [],
+              "name": "u8",
+              "optional": false,
+              "typeAnnotation": null,
+              "start": 1342,
+              "end": 1344
+             },
+             "typeArguments": null,
+             "arguments": [
+              {
+               "type": "Literal",
+               "value": null,
+               "raw": "null",
+               "start": 1345,
+               "end": 1349
+              },
+              {
+               "type": "ArrayExpression",
+               "elements": [
+                {
+                 "type": "Identifier",
+                 "decorators": [],
+                 "name": "required",
+                 "optional": false,
+                 "typeAnnotation": null,
+                 "start": 1352,
+                 "end": 1360
+                },
+                {
+                 "type": "CallExpression",
+                 "callee": {
+                  "type": "Identifier",
+                  "decorators": [],
+                  "name": "min",
+                  "optional": false,
+                  "typeAnnotation": null,
+                  "start": 1362,
+                  "end": 1365
+                 },
+                 "typeArguments": null,
+                 "arguments": [
+                  {
+                   "type": "Literal",
+                   "value": 18,
+                   "raw": "18",
+                   "start": 1366,
+                   "end": 1368
+                  }
+                 ],
+                 "optional": false,
+                 "start": 1362,
+                 "end": 1369
+                },
+                {
+                 "type": "CallExpression",
+                 "callee": {
+                  "type": "Identifier",
+                  "decorators": [],
+                  "name": "max",
+                  "optional": false,
+                  "typeAnnotation": null,
+                  "start": 1371,
+                  "end": 1374
+                 },
+                 "typeArguments": null,
+                 "arguments": [
+                  {
+                   "type": "Literal",
+                   "value": 120,
+                   "raw": "120",
+                   "start": 1375,
+                   "end": 1378
+                  }
+                 ],
+                 "optional": false,
+                 "start": 1371,
+                 "end": 1379
+                }
+               ],
+               "start": 1351,
+               "end": 1380
+              },
+              {
+               "type": "ObjectExpression",
+               "properties": [
+                {
+                 "type": "Property",
+                 "kind": "init",
+                 "key": {
+                  "type": "Identifier",
+                  "decorators": [],
+                  "name": "messages",
+                  "optional": false,
+                  "typeAnnotation": null,
+                  "start": 1388,
+                  "end": 1396
+                 },
+                 "value": {
+                  "type": "ObjectExpression",
+                  "properties": [
+                   {
+                    "type": "Property",
+                    "kind": "init",
+                    "key": {
+                     "type": "Identifier",
+                     "decorators": [],
+                     "name": "required",
+                     "optional": false,
+                     "typeAnnotation": null,
+                     "start": 1406,
+                     "end": 1414
+                    },
+                    "value": {
+                     "type": "ArrowFunctionExpression",
+                     "expression": true,
+                     "async": false,
+                     "typeParameters": null,
+                     "params": [],
+                     "returnType": null,
+                     "body": {
+                      "type": "Literal",
+                      "value": "Escribe la edad.",
+                      "raw": "\"Escribe la edad.\"",
+                      "start": 1422,
+                      "end": 1440
+                     },
+                     "id": null,
+                     "generator": false,
+                     "start": 1416,
+                     "end": 1440
+                    },
+                    "method": false,
+                    "shorthand": false,
+                    "computed": false,
+                    "optional": false,
+                    "start": 1406,
+                    "end": 1440
+                   },
+                   {
+                    "type": "Property",
+                    "kind": "init",
+                    "key": {
+                     "type": "Identifier",
+                     "decorators": [],
+                     "name": "min",
+                     "optional": false,
+                     "typeAnnotation": null,
+                     "start": 1448,
+                     "end": 1451
+                    },
+                    "value": {
+                     "type": "ArrowFunctionExpression",
+                     "expression": true,
+                     "async": false,
+                     "typeParameters": null,
+                     "params": [
+                      {
+                       "type": "Identifier",
+                       "decorators": [],
+                       "name": "n",
+                       "optional": false,
+                       "typeAnnotation": null,
+                       "start": 1454,
+                       "end": 1455
+                      }
+                     ],
+                     "returnType": null,
+                     "body": {
+                      "type": "TemplateLiteral",
+                      "quasis": [
+                       {
+                        "type": "TemplateElement",
+                        "value": {
+                         "raw": "Tiene que tener al menos ",
+                         "cooked": "Tiene que tener al menos "
+                        },
+                        "tail": false,
+                        "start": 1460,
+                        "end": 1488
+                       },
+                       {
+                        "type": "TemplateElement",
+                        "value": {
+                         "raw": " años.",
+                         "cooked": " años."
+                        },
+                        "tail": true,
+                        "start": 1497,
+                        "end": 1505
+                       }
+                      ],
+                      "expressions": [
+                       {
+                        "type": "CallExpression",
+                        "callee": {
+                         "type": "Identifier",
+                         "decorators": [],
+                         "name": "String",
+                         "optional": false,
+                         "typeAnnotation": null,
+                         "start": 1488,
+                         "end": 1494
+                        },
+                        "typeArguments": null,
+                        "arguments": [
+                         {
+                          "type": "Identifier",
+                          "decorators": [],
+                          "name": "n",
+                          "optional": false,
+                          "typeAnnotation": null,
+                          "start": 1495,
+                          "end": 1496
+                         }
+                        ],
+                        "optional": false,
+                        "start": 1488,
+                        "end": 1497
+                       }
+                      ],
+                      "start": 1460,
+                      "end": 1505
+                     },
+                     "id": null,
+                     "generator": false,
+                     "start": 1453,
+                     "end": 1505
+                    },
+                    "method": false,
+                    "shorthand": false,
+                    "computed": false,
+                    "optional": false,
+                    "start": 1448,
+                    "end": 1505
+                   },
+                   {
+                    "type": "Property",
+                    "kind": "init",
+                    "key": {
+                     "type": "Identifier",
+                     "decorators": [],
+                     "name": "max",
+                     "optional": false,
+                     "typeAnnotation": null,
+                     "start": 1513,
+                     "end": 1516
+                    },
+                    "value": {
+                     "type": "ArrowFunctionExpression",
+                     "expression": true,
+                     "async": false,
+                     "typeParameters": null,
+                     "params": [
+                      {
+                       "type": "Identifier",
+                       "decorators": [],
+                       "name": "n",
+                       "optional": false,
+                       "typeAnnotation": null,
+                       "start": 1519,
+                       "end": 1520
+                      }
+                     ],
+                     "returnType": null,
+                     "body": {
+                      "type": "TemplateLiteral",
+                      "quasis": [
+                       {
+                        "type": "TemplateElement",
+                        "value": {
+                         "raw": "Como mucho ",
+                         "cooked": "Como mucho "
+                        },
+                        "tail": false,
+                        "start": 1525,
+                        "end": 1539
+                       },
+                       {
+                        "type": "TemplateElement",
+                        "value": {
+                         "raw": " años.",
+                         "cooked": " años."
+                        },
+                        "tail": true,
+                        "start": 1548,
+                        "end": 1556
+                       }
+                      ],
+                      "expressions": [
+                       {
+                        "type": "CallExpression",
+                        "callee": {
+                         "type": "Identifier",
+                         "decorators": [],
+                         "name": "String",
+                         "optional": false,
+                         "typeAnnotation": null,
+                         "start": 1539,
+                         "end": 1545
+                        },
+                        "typeArguments": null,
+                        "arguments": [
+                         {
+                          "type": "Identifier",
+                          "decorators": [],
+                          "name": "n",
+                          "optional": false,
+                          "typeAnnotation": null,
+                          "start": 1546,
+                          "end": 1547
+                         }
+                        ],
+                        "optional": false,
+                        "start": 1539,
+                        "end": 1548
+                       }
+                      ],
+                      "start": 1525,
+                      "end": 1556
+                     },
+                     "id": null,
+                     "generator": false,
+                     "start": 1518,
+                     "end": 1556
+                    },
+                    "method": false,
+                    "shorthand": false,
+                    "computed": false,
+                    "optional": false,
+                    "start": 1513,
+                    "end": 1556
+                   }
+                  ],
+                  "start": 1398,
+                  "end": 1563
+                 },
+                 "method": false,
+                 "shorthand": false,
+                 "computed": false,
+                 "optional": false,
+                 "start": 1388,
+                 "end": 1563
+                }
+               ],
+               "start": 1382,
+               "end": 1568
+              }
+             ],
+             "optional": false,
+             "start": 1342,
+             "end": 1569
+            },
+            "method": false,
+            "shorthand": false,
+            "computed": false,
+            "optional": false,
+            "start": 1337,
+            "end": 1569
+           },
+           {
+            "type": "Property",
+            "kind": "init",
+            "key": {
+             "type": "Identifier",
+             "decorators": [],
+             "name": "active",
+             "optional": false,
+             "typeAnnotation": null,
+             "start": 1573,
+             "end": 1579
+            },
+            "value": {
+             "type": "CallExpression",
+             "callee": {
+              "type": "Identifier",
+              "decorators": [],
+              "name": "bool",
+              "optional": false,
+              "typeAnnotation": null,
+              "start": 1581,
+              "end": 1585
+             },
+             "typeArguments": null,
+             "arguments": [
+              {
+               "type": "Literal",
+               "value": true,
+               "raw": "true",
+               "start": 1586,
+               "end": 1590
+              }
+             ],
+             "optional": false,
+             "start": 1581,
+             "end": 1591
+            },
+            "method": false,
+            "shorthand": false,
+            "computed": false,
+            "optional": false,
+            "start": 1573,
+            "end": 1591
+           },
+           {
+            "type": "Property",
+            "kind": "init",
+            "key": {
+             "type": "Identifier",
+             "decorators": [],
+             "name": "notes",
+             "optional": false,
+             "typeAnnotation": null,
+             "start": 1595,
+             "end": 1600
+            },
+            "value": {
+             "type": "CallExpression",
+             "callee": {
+              "type": "Identifier",
+              "decorators": [],
+              "name": "str",
+              "optional": false,
+              "typeAnnotation": null,
+              "start": 1602,
+              "end": 1605
+             },
+             "typeArguments": null,
+             "arguments": [
+              {
+               "type": "Literal",
+               "value": "",
+               "raw": "\"\"",
+               "start": 1606,
+               "end": 1608
+              }
+             ],
+             "optional": false,
+             "start": 1602,
+             "end": 1609
+            },
+            "method": false,
+            "shorthand": false,
+            "computed": false,
+            "optional": false,
+            "start": 1595,
+            "end": 1609
+           }
+          ],
+          "start": 792,
+          "end": 1612
+         },
+         {
+          "type": "ObjectExpression",
+          "properties": [
+           {
+            "type": "Property",
+            "kind": "init",
+            "key": {
+             "type": "Identifier",
+             "decorators": [],
+             "name": "catches",
+             "optional": false,
+             "typeAnnotation": null,
+             "start": 1618,
+             "end": 1625
+            },
+            "value": {
+             "type": "ArrayExpression",
+             "elements": [
+              {
+               "type": "Literal",
+               "value": 400,
+               "raw": "400",
+               "start": 1628,
+               "end": 1631
+              },
+              {
+               "type": "Literal",
+               "value": 409,
+               "raw": "409",
+               "start": 1633,
+               "end": 1636
+              },
+              {
+               "type": "Literal",
+               "value": 422,
+               "raw": "422",
+               "start": 1638,
+               "end": 1641
+              }
+             ],
+             "start": 1627,
+             "end": 1642
+            },
+            "method": false,
+            "shorthand": false,
+            "computed": false,
+            "optional": false,
+            "start": 1618,
+            "end": 1642
+           }
+          ],
+          "start": 1614,
+          "end": 1645
+         }
+        ],
+        "optional": false,
+        "start": 787,
+        "end": 1646
+       },
+       "definite": false,
+       "start": 774,
+       "end": 1646
+      }
+     ],
+     "declare": false,
+     "start": 768,
+     "end": 1647
+    },
+    "specifiers": [],
+    "source": null,
+    "exportKind": "value",
+    "attributes": [],
+    "start": 761,
+    "end": 1647
+   },
+   {
+    "type": "TSDeclareFunction",
+    "id": {
+     "type": "Identifier",
+     "decorators": [],
+     "name": "emailTaken",
+     "optional": false,
+     "typeAnnotation": null,
+     "start": 1723,
+     "end": 1733
+    },
+    "generator": false,
+    "async": false,
+    "declare": true,
+    "typeParameters": null,
+    "params": [
+     {
+      "type": "Identifier",
+      "decorators": [],
+      "name": "email",
+      "optional": false,
+      "typeAnnotation": {
+       "type": "TSTypeAnnotation",
+       "typeAnnotation": {
+        "type": "TSStringKeyword",
+        "start": 1741,
+        "end": 1747
+       },
+       "start": 1739,
+       "end": 1747
+      },
+      "start": 1734,
+      "end": 1747
+     }
+    ],
+    "returnType": {
+     "type": "TSTypeAnnotation",
+     "typeAnnotation": {
+      "type": "TSTypeReference",
+      "typeName": {
+       "type": "Identifier",
+       "decorators": [],
+       "name": "Promise",
+       "optional": false,
+       "typeAnnotation": null,
+       "start": 1750,
+       "end": 1757
+      },
+      "typeArguments": {
+       "type": "TSTypeParameterInstantiation",
+       "params": [
+        {
+         "type": "TSBooleanKeyword",
+         "start": 1758,
+         "end": 1765
+        }
+       ],
+       "start": 1757,
+       "end": 1766
+      },
+      "start": 1750,
+      "end": 1766
+     },
+     "start": 1748,
+     "end": 1766
+    },
+    "body": null,
+    "expression": false,
+    "start": 1706,
+    "end": 1767
+   }
+  ],
+  "sourceType": "module",
+  "hashbang": null,
+  "start": 189,
+  "end": 1768
+ }
+}

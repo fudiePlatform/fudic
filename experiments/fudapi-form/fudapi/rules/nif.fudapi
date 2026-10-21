@@ -1,0 +1,5 @@
+# Check letter of a DNI or NIE. Browser and server: each language implements it.
+rule nif
+  on field str
+  runs both
+  fails nif

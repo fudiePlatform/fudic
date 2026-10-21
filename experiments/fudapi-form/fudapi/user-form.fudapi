@@ -1,0 +1,34 @@
+# The contract of <user-form>. `auth`, `nif`, `nif-unique` and `email-loose` are not declared
+# here: they live in middlewares/, rules/ and patterns/, and any contract of the app uses them.
+
+put save
+  use auth
+  form person
+  fails reserved 409  "Ese nombre está reservado."
+  -> Saved
+
+type Saved
+  id    i32
+  name  str
+
+form person
+  name  str = ""
+    required          "Escribe el nombre."
+
+  nif  str = ""
+    required          "Escribe el NIF."
+    nif               "Ese NIF no es válido: revisa la letra."
+    nif-unique        "Ese NIF ya está dado de alta."
+
+  email  str = ""
+    required          "Escribe el email."
+    pattern email-loose  "Ese email no parece válido."
+
+  age  u8
+    required          "Escribe la edad."
+    min 18            "Tiene que tener al menos {n} años."
+    max 120           "Como mucho {n} años."
+
+  active  bool = true
+
+  notes  str = ""

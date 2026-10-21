@@ -1,0 +1,5 @@
+# Nobody has it yet. Server only, on submit: it reads the database.
+rule nif-unique
+  on field str
+  runs server
+  fails taken

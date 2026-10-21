@@ -1,0 +1,721 @@
+# IDEA-06 — Un lenguaje propio para el contrato (`.fudapi`)
+
+> **Estado:** `Idea` — no es un SDD. Sin interfaz pública, sin criterios de aceptación, sin
+> rango de diagnósticos. Captura la conversación del **2026-10-20**: en lugar del contrato TS de
+> [IDEA-05](./IDEA-05-contrato-ts-y-backend-generado.md) §3, un lenguaje propio hermano de
+> `.fudspec`. Lo decidido en la sesión del 2026-10-20 está en **§10** y manda sobre el resto del
+> documento donde lo contradiga; lo demás sigue sin decidir.
+> **Especificada en [SDD-60](../SDD-60-fudapi.md)** (2026-10-21), que manda sobre este documento:
+> `.handle` sobre lo generado sustituye a `implement` (§10.4) y una función sin implementar es un
+> 404, no un 501 (§10.6).
+> **Punto de partida:** `experiments/contract-ast/sims/01-usuarios/` (`routes/usuarios.server.ts`,
+> `components/user-form.server.ts`), `packages/http` (`FnBuilder`) y `packages/forms`
+> (`FormOptions`, `GroupOptions`, `ControlOptions`, validadores).
+
+---
+
+> [!IMPORTANT]
+> **Tres notas pendientes de pensar (Pedro).** Quedan abiertas a propósito; no se han hablado
+> todavía y no se deben dar por resueltas en ninguna sección de este documento.
+>
+> 1. **Fricción fullstack / backend / frontend.** Cómo roza este modelo en cada perfil de
+>    equipo y entre ellos. *Hablada en parte (2026-10-20):* es el motivo del lenguaje propio
+>    (§2); el detalle por perfil sigue abierto.
+> 2. **Renderización en servidor de partial views.** *Hablada (2026-10-20):* es independiente
+>    del backend políglota (§10.7).
+> 3. **Integración con i18n.** Único dato fijado (Pedro, 2026-10-20): **i18n nunca viaja al
+>    cliente**. Los textos se generan en el servidor o en el service worker; el cliente no sabe
+>    nada de i18n. Cómo encajan con eso los mensajes de §4.2 sigue abierto.
+
+---
+
+## 1. La idea en una frase
+
+El contrato no es TS recortado sino **un lenguaje cuyo vocabulario es exactamente lo que se puede
+generar en todos los backends**. Solo declara (funciones, tipos, forms, reglas, middlewares); la
+implementación vive siempre en otro fichero, en el lenguaje que toque, **TS incluido**.
+
+## 2. Por qué un lenguaje propio
+
+Mismo patrón que `.fudspec` (`examples/basic/src/components/app-card.fudspec`): por líneas, sin
+puntuación, palabras clave del dominio, `#` como comentario y documentación.
+
+| | Contrato TS (IDEA-05) | `.fudapi` |
+|---|---|---|
+| Verbo | Tipo marcador `Get<(…) => …>` | Palabra clave `get` |
+| Middlewares | `[typeof auth, typeof audit]` + imports | `use auth audit`, por convención |
+| Fuera del subconjunto | Se escribe y se diagnostica | No se puede escribir: el lenguaje *es* el subconjunto |
+| `readonly`, `export`, `interface` | Obligatorios | No existen |
+| Lector | Oxc + `scope.ts` | Parser propio, pequeño, como el de `.fudspec` |
+| Para backend | Leer TS | Neutro para los dos perfiles |
+
+**Por qué se abandona el contrato TS (Pedro, 2026-10-20).** Por la fricción entre perfiles (nota
+1): un contrato que no es el lenguaje de nadie no da ventaja a ningún perfil. Y porque cada vez se
+documentará menos en favor de especificaciones claras y concisas: con un MCP que explica cómo
+escribir un `.fudspec` o un `.fudapi`, un agente escribe la spec y no una línea de código.
+
+Enlace con la vista: `<link rel="server" href="./usuarios.fudapi">` en el `.fud` (§10.6). El editor
+tipa el `.fud` con un `.d.ts` virtual generado del `.fudapi`.
+
+## 3. Funciones: `FnBuilder` línea a línea
+
+`FnBuilder` (`packages/http/src/builder.ts`) ya es un lenguaje por cláusulas en orden; pasa casi
+uno a uno.
+
+| `FnBuilder` | `.fudapi` |
+|---|---|
+| `get()` `post()` `put()` `patch()` `del()` | `get` `post` `put` `patch` `delete` |
+| `.use(a, b)` | `use a b` (las líneas se acumulan en orden) |
+| `.skip(x)` / `.skip('*')` | `skip x` / `skip *` |
+| `.args<T>()` | Una línea `nombre tipo` por argumento (posicional por orden) |
+| `.form(f)` | `form nombre` |
+| `.invalidates(...)` | `invalidates /usuarios /blog/[slug]` |
+| `.compress({ format, min })` / `false` | `compress gzip 200` / `compress off` |
+| `.handle(fn)` | No existe; `-> Tipo` declara lo que `handle` inferiría |
+| `C & AddsOf<M>` | Nada: el generador compone el `ctx` desde los `use` |
+
+Cadena global → fichero → función con dos niveles de sangrado:
+
+```
+# src/http.fudapi
+global
+  use log
+  compress gzip 200
+```
+
+```
+route usuarios
+  use auth                      # every function of this file
+
+# Per request: the list changes with every new person.
+load ssr
+  users  Person[]
+
+# Public: no auth.
+get search
+  skip auth
+  q  string
+  -> Person[]
+
+put save
+  invalidates /usuarios
+  id      i32
+  active  bool
+
+delete remove
+  use audit                     # after auth, which it inherits
+  invalidates /usuarios
+  id  i32
+
+type Person
+  id      i32
+  name    string
+  email   string
+  age     u8
+  active  bool
+  notes   string
+```
+
+Las opciones son literales: `compress gzip 200` no admite variables, así que el generador nunca
+evalúa código.
+
+## 4. Forms: todo lo que se declara
+
+Inventario de `packages/forms/src` para que no se escape nada.
+
+### 4.1. Inventario
+
+- **`FormOptions`:** `summary` (regla del form, puede ser asíncrona), `messages`, `validateOn`
+  (flags `Submit 0 · Blur 1 · Input 2`, defecto `Blur | Input`), `validity` (`Rules |
+  Interacted`, defecto `Interacted`), `catches` (defecto `400 409 422`).
+- **`GroupOptions`:** validators del grupo (su summary), `messages`, `validateOn`, `validity`.
+- **`ControlOptions`:** `messages`, `validateOn`, `validity`.
+- **Nodos:** `control()` sin tag; `str bool u8 i8 u16 i16 u32 i32 f32 f64 date arr(of)`; `group`.
+  El orden de claves es el contrato posicional del cable; ningún campo empieza por `$`.
+- **Reglas** `(value, root)`, se muestra la primera que falla, el rango del tag va primero:
+  `required`, `minLength n`, `maxLength n`, `min n`, `max n`, `pattern re`, `validator(fn)` (dos
+  lados), `asyncValidator(fn)` (dos lados, `$valid()` lee su veredicto), `serverValidator(fn)`
+  (solo servidor). Con `root` cualquier regla de control puede mirar otro campo.
+- **Textos:** control/grupo/form → `setMessages` → `BUILT_IN.server` → el código. Un mensaje es
+  función del argumento del error; `server` (`SERVER_RULE`) recibe el `Problem`.
+- **No se declara:** la API `$…` y la del control. Sale del form; un runtime de backend necesita
+  `$fresh`, `$set` posicional, `$validate({ server: true })` y `$errors` para el 422.
+
+### 4.2. En `.fudapi`
+
+```
+form usuario
+  validate-on blur input
+  validity interacted
+  catches 400 409 422 403
+
+  name  str = ""
+    required            "Escribe tu nombre."
+
+  alias  str = ""
+    validate-on submit
+    required            "Elige un alias."
+    min-length 3        "El alias necesita al menos {n} caracteres."
+    taken               "Ese alias ya está cogido."
+
+  email  str = ""
+    required            "Escribe tu email."
+    pattern email       "Ese email no parece válido."
+
+  edad  u8
+    validity rules
+    range               "Escribe un número entre 0 y 255."
+    required            "Escribe la edad."
+    min 18              "Tiene que tener al menos {n} años."
+
+  etiquetas  str[] = []
+    max-length 5        "Como mucho {n} etiquetas."
+
+  acceso  group
+    clave  str = ""
+      required          "Elige una contraseña."
+      min-length 8      "Mínimo {n} caracteres."
+    repetir  str = ""
+      required          "Repite la contraseña."
+    same clave repetir  "Las contraseñas no coinciden."
+
+  summary
+    server reserved     "Ese nombre está reservado."
+    server              "{detail}"
+```
+
+```
+# src/messages.fudapi — what setMessages is today
+messages
+  required              "Este campo es obligatorio."
+```
+
+- Cada campo tiene tipo: `control()` sin tag no existe en el contrato.
+- Mensajes como plantillas (`{n}`, `{at}`, `{detail}`), no funciones: nada que portar.
+- `pattern` por nombre: del catálogo de fudic o declarado por el usuario; el emit lo traduce a
+  cada lenguaje (§4.4).
+- `required` garantiza presencia: el DTO del servidor lleva `u8`, no `u8?` (huecos en §8.7).
+- `range` no añade una regla: el rango ya lo comprueba el tag (`u8`). La línea solo le da texto
+  a esa comprobación implícita, que sigue yendo primero.
+- `validate-on` y `validity` son de presentación: el generador de backend los ignora.
+- `taken` es una `rule` con `runs server` (§7): se escribe bajo el campo y su error se pinta en
+  el campo. `server reserved` en el `summary` no tiene campo. Ver §4.3.
+- Los textos no forman parte de la validación: el servidor devuelve códigos. Dónde se resuelven
+  a texto lo condiciona la nota 3 (nunca en el cliente).
+
+### 4.3. Dónde aterriza cada error
+
+| Se escribe | Lo comprueba | Se pinta |
+|---|---|---|
+| Regla bajo un campo | Según la regla | Slot del campo + summary con `href` |
+| Regla de `summary` | Según la regla | Summary, sin `href` (o el campo con `on campo`) |
+| `fails codigo` en la función | Servidor (`handle`) | Summary |
+
+Con todo declarado, `catches` puede derivarse: **lo declarado se pinta, lo no declarado va a
+`errorPages`**. Si se deriva, la línea `catches` del ejemplo de §4.2 sobra; abierto (§8.6).
+
+Hay tres formas de que el servidor rechace, y no son lo mismo:
+
+- **`rule` con `runs server` bajo un campo** (`taken`): comprobación declarada, ligada al campo.
+- **`server nombre` en el `summary`** (`reserved`): comprobación declarada, sin campo.
+- **`fails codigo` en la función**: el `handle` rechaza por su cuenta.
+
+Abierto (§8.6): si `server reserved` en el `summary` declara una comprobación o solo dice cómo se
+pinta un código que una función puede devolver con `fails reserved`. Ahora mismo las dos
+lecturas caben.
+
+### 4.4. Patrones
+
+> **Principio (Pedro, 2026-10-20).** Un form se valida en el frontend por usabilidad y en el
+> backend por seguridad. Si fudic es políglota, que los dos lados den **el mismo veredicto** es
+> responsabilidad de fudic, no del usuario.
+
+Para `pattern` eso se traduce así:
+
+- **Patrones del usuario, no solo el catálogo.** Se declaran en `.fudapi` como `rule` y
+  `middleware`; el catálogo (`email`, `url`…) es el `.fudapi` que publica `@fudic/forms` (§7).
+
+  ```
+  # patterns/postal-es.fudapi
+  pattern postal-es  \d{5}
+  pattern sku        [A-Z]{3}-\d{4}
+  ```
+
+- **Se admiten `\d \w \s \b .` y flags; el emit los traduce.** La semántica de referencia es la
+  del navegador (JS sin flag `u`), porque el cliente siempre es JS. Cada backend recibe la regex
+  reescrita para que signifique lo mismo:
+
+  | Se escribe | Significa (JS) | Ejemplo de emit |
+  |---|---|---|
+  | `\d` | `[0-9]` | `[0-9]` en .NET (su `\d` es Unicode) |
+  | `\w` | `[A-Za-z0-9_]` | Clase explícita en .NET / Python |
+  | `\s` | Espacios de JS, Unicode incluidos | Clase completa donde `\s` es ASCII |
+  | `.` | Todo salvo `\n \r \u2028 \u2029` | `[^\n\r\u2028\u2029]` |
+  | `\b` | Frontera ASCII | Compuesta donde `\b` es Unicode |
+  | `i` | Reglas de JS | `(?i)`, verificando equivalencia por motor |
+
+- **Match completo implícito; el vacío pasa** (lo rechaza `required`). Hoy `pattern.ts` usa
+  `test`, que busca en cualquier parte: el contrato lo fija y el emit ancla `^(?:…)$` en todos.
+- **fudic parsea la regex**: parser propio, sin dependencias, a un AST que se emite por destino.
+  Da diagnósticos con span en el `.fudapi` y hover/resaltado en el editor.
+- **Lo intraducible.** Lookaround y backreferences no existen en RE2 (Go, crate `regex`).
+  Propuesta, sin decidir: fuera del lenguaje siempre, para que el contrato no dependa de los
+  backends de `fudic.json`; lo que no quepa es una `rule` de servidor.
+- **Argumento del mensaje:** hoy el error lleva `{ pattern: source }`; con patrones con nombre
+  debería llevar el nombre (§8.3).
+- **`email` del catálogo** = la regex de `input type=email` de WHATWG, para que la validación
+  nativa del navegador y la de fudic no se contradigan.
+
+## 5. El summary tiene dos significados
+
+1. **Regla de negocio que el cliente adelanta por usabilidad** y que el servidor tiene que volver
+   a comprobar (el cliente no es de fiar).
+2. **Regla que solo puede comprobar el servidor** (necesita datos: `reserved`, `taken`).
+
+Para la primera, la propuesta es **declararla y que fudic la genere en los dos lados**, con un
+subconjunto de expresiones cerrado. Caso inventado: inscribirse en el censo exige nombre válido y
+edad > 18.
+
+```
+form persona
+  name  str = ""
+    required              "Escribe el nombre."
+  age  u8
+    required              "Escribe la edad."
+  censo  bool = false
+
+  summary
+    when censo
+      require censo-nombre  valid name          "Para el censo el nombre tiene que ser válido."
+      require censo-edad    age > 18  on age    "Para inscribirse en el censo hay que ser mayor de 18."
+```
+
+Subconjunto: campos por ruta, literales, `== != < <= > >=`, `and or not`, `valid campo`,
+`empty campo`, `length campo`, bloques `when`. Es la misma familia que la vista de IDEA-05 §6:
+**un traductor de expresiones por lenguaje** podría servir a los dos.
+
+| Declaración | Corre | La escribe |
+|---|---|---|
+| `require … expresión` | Cliente y servidor | **fudic**, generada en los dos |
+| `server nombre` | Servidor | El backend (hueco) |
+| `client nombre` | Solo cliente, sin respaldo | TS (hueco) |
+| `both nombre` | Cliente y servidor | TS **y** backend (hueco doble, escape) |
+
+> [!NOTE]
+> El principio de §4.4 (mismo veredicto en los dos lados) pone en cuestión `client`: deja una
+> regla sin respaldo en servidor. Pendiente: si sobrevive solo como aviso de UX que no bloquea.
+> `both` se queda: es como crece el catálogo con funciones propias (§6.1); que las dos
+> implementaciones coincidan es §6.4. Si ninguna regla corre en un solo lado, `valid campo`
+> significa lo mismo en los dos.
+
+## 6. Contrato generado, implementación intocable
+
+Regla para todos los lenguajes, TS incluido: el generador escribe el contrato (tipos, interfaces,
+traits), **nunca la implementación**. Si el contrato cambia, falla el compilador de la
+implementación; no se pisa código.
+
+### 6.1. Flujo: una regla propia en TS, Rust y Java
+
+Ejemplo: `min-age`, una función que no cabe en un patrón, con un argumento y reutilizable en
+cualquier form.
+
+**Paso 1. Declararla** (una vez). Al guardar el fichero ya sale en el autocompletado bajo
+cualquier campo `date`, aunque no haya implementación.
+
+```
+# rules/min-age.fudapi
+rule min-age
+  on field date
+  runs both
+  years  u8
+  fails too-young  years
+```
+
+**Paso 2. fudic genera el contrato** en cada lenguaje. Se regenera siempre y no se toca. La
+implementación solo responde sí o no: el error (`too-young` con `years`) lo monta el código
+generado a partir de la declaración.
+
+```ts
+// generated (TS)
+export type MinAge = (value: FudDate, args: { years: number }) => boolean;
+```
+
+```rust
+// generated (Rust)
+pub trait MinAge {
+    fn check(&self, value: Date, years: u8) -> bool;
+}
+```
+
+```java
+// generated (Java)
+public interface MinAge {
+    boolean check(LocalDate value, int years);   // u8 -> int: Java has no unsigned
+}
+```
+
+**Paso 3. El desarrollador la implementa.** Es su código y nunca se regenera.
+
+```ts
+// anywhere, any name: the developer decides (§10.1)
+import { minAge } from 'fudic:rules/min-age';
+
+export const edadMinima = minAge.implement((value, { years }) => yearsSince(value) >= years);
+```
+
+```rust
+// src/rules/min_age.rs
+pub struct MinAgeRule;
+
+impl MinAge for MinAgeRule {
+    fn check(&self, value: Date, years: u8) -> bool {
+        years_since(value) >= years as i32
+    }
+}
+```
+
+```java
+// app/rules/MinAgeRule.java
+public final class MinAgeRule implements MinAge {
+    public boolean check(LocalDate value, int years) {
+        return Period.between(value, LocalDate.now()).getYears() >= years;
+    }
+}
+```
+
+En Java no hace falta un método estático: es una clase que implementa una interfaz. Al ser una
+instancia puede recibir dependencias por constructor (una `taken` recibe el repositorio, como un
+bean de Spring).
+
+**Paso 4. El desarrollador dice dónde está; el código generado no la busca** (§10.1). Ni nombre
+ni carpeta salen del generador, y el código generado nunca importa código del usuario.
+
+| Lenguaje | Cómo se une | Si no cumple el contrato |
+|---|---|---|
+| TS / JS | `minAge.implement(fn)` en cualquier fichero; el compilador de fudic encuentra la llamada (§10.4) | Error de `tsc` en esa línea |
+| Rust | Su registro en la raíz de la app | Error de `cargo build` |
+| Java | `.minAge(MinAgeRule.class)` en la raíz de la app (§10.5) | Error de `javac` |
+
+`runs both` exige las dos implementaciones (TS y backend); `runs server`, solo la del backend.
+
+**Paso 5. Usarla** en cualquier form:
+
+```
+form registro
+  nacimiento  date
+    required          "Escribe tu fecha de nacimiento."
+    min-age 18        "Tienes que tener al menos {years} años."
+```
+
+### 6.2. Middlewares: el mismo flujo
+
+```
+# middlewares/auth.fudapi
+middleware auth
+  adds
+    user  User
+  fails unauthorized
+```
+
+```rust
+// generated (Rust)
+pub trait Auth {
+    fn run(&self, req: &Request) -> Result<AuthAdds, Unauthorized>;
+}
+pub struct AuthAdds { pub user: User }
+```
+
+```java
+// generated (Java)
+public interface Auth {
+    AuthAdds run(Request req) throws Unauthorized;
+}
+```
+
+El desarrollador implementa `Auth` donde quiera y lo une como cualquier otra implementación
+(§10.4, §10.5). Lo que declara `adds` llega tipado al `ctx` de toda función con `use auth`, en el
+backend y en el `.fud`.
+
+### 6.3. El catálogo no tiene techo
+
+El catálogo de fudic (`required`, `min`, `email`, `csrf`…) sigue **este mismo camino**: un
+`.fudapi` más una implementación por lenguaje. No tiene ningún privilegio, así que lo de la
+aplicación o de una librería compartida (§7) tampoco tiene límite.
+
+### 6.4. Abierto: que las dos implementaciones hagan lo mismo
+
+Con `runs both` el desarrollador escribe la regla dos veces (TS y backend) y fudic no puede
+garantizar que coincidan. Propuesta: ejemplos en la declaración que se emiten como el mismo test
+en cada lenguaje.
+
+```
+rule min-age
+  ...
+  ok  "2000-01-01"  18
+  ko  "2020-01-01"  18
+```
+
+## 7. Extensiones: el `.fudapi` es el registro
+
+**Lo que hoy tiene parado llevar estas ideas a SDD:** cómo descubre el editor los middlewares y
+los validadores propios para el autocomplete, en los dos mundos. Hoy algo existe porque hay un
+`export` de JS, y eso solo lo sabe quien ejecuta TS; en políglota no hay TS que leer.
+
+Propuesta: **toda extensión se declara en `.fudapi`**; el editor solo indexa `.fudapi`.
+
+```
+# rules/same.fudapi
+rule same
+  on group                     # field | group | summary
+  a  field
+  b  field
+  fails mismatch
+
+# rules/taken.fudapi
+rule taken
+  on field str
+  runs server                  # client | server | both
+  fails taken
+
+# rules/min-age.fudapi
+rule min-age
+  on field date
+  runs both
+  years  u8
+  fails too-young  years       # {years} reaches the message
+```
+
+```
+# middlewares/auth.fudapi
+middleware auth
+  client                       # TS half    → AuthClient
+  server                       # native half → AuthServer
+  adds
+    user  User
+  fails unauthorized
+```
+
+- `runs` decide qué contratos se generan (TS, backend o los dos). En el form basta `taken`: la
+  declaración sabe dónde corre.
+- `adds` tipa `ctx` en el backend y en el `.fud` (hoy `middleware<{ user: User }>()`).
+- **Índice del language server:** todos los `.fudapi` del proyecto y de los paquetes. Lenguaje
+  cerrado → resolver un nombre es mirar una tabla; sin type checker.
+
+| Cursor | Ofrece |
+|---|---|
+| `use ▌` | Middlewares, con su `adds` en el hover |
+| `skip ▌` | Solo los que esa función hereda |
+| Regla bajo un `str` | Las `rule` con `on field str` |
+| `same ▌` en un `group` | Los campos del grupo (parámetro `field`) |
+| `min-age ▌` | Un `u8` |
+| `pattern ▌` | El catálogo de patrones |
+| Texto de una regla | Sus argumentos (`{years}`); uno desconocido es error |
+| `form ▌` | Los `form` del índice |
+
+- **Los built-ins no son especiales:** `@fudic/forms` publica `rules.fudapi` (`required`, `min`…)
+  y `@fudic/http` el de `csrf`. Mismo camino que lo del usuario (IDEA-05 §7).
+- **Librerías compartidas.** El caso normal no es la comunidad sino **el equipo de arquitectura**
+  de una empresa, que define una vez `auth`, `nif`, `iban`, `audit`… y lo publica como paquete
+  interno para los equipos de producto; o **una lib de fudic** (p. ej. un catálogo español:
+  `nif`, `cif`, `iban`, `postal-es`). Se diseña como lib de fudic: lo de terceros sale solo, por
+  el mismo camino. Una librería declara sus `.fudapi` en `package.json`
+  (`"fudic": { "api": [...] }`) y la app la activa en `fudic.json`, con sus implementaciones
+  ya hechas: quien instala no implementa nada. Sin imports en los contratos: todo `.fudapi` del
+  proyecto y de los paquetes activados es visible, esté en la carpeta que esté. `node_modules` no
+  se recorre: solo se lee lo que un `package.json` activado declara.
+- La implementación nativa del paquete (NuGet, crate…) no la necesita el editor, solo el
+  compilador del backend.
+
+## 8. Abierto
+
+1. ~~`validator(fn)` de dos lados~~: resuelto en §6.1 (Pedro, 2026-10-20). Una función propia
+   se declara como `rule … runs both` y se implementa en cada lenguaje. Queda §6.4 y la nota de
+   §5 sobre `client`.
+2. `asyncValidator`: ¿su uso real es solo preguntar al servidor antes del submit (`server … early`
+   con stub generado)? Mirar `examples/`.
+3. Argumentos de los códigos propios: qué campos trae un `fails` para su plantilla. En §6.1 son
+   argumentos de la regla (`years`); falta ver si un `fails` puede llevar datos calculados.
+4. Vocabulario de tipos neutro: `bool`/`boolean`, `string?`, `map string T`, uniones → enum.
+   Incluye el mapeo a lenguajes sin unsigned (`u8` → `int` en Java).
+5. Una sola forma en bloque, o también la compacta de una línea para funciones cortas.
+6. Rechazos de servidor (§4.3): qué es `server reserved` en el `summary`, y si `catches` se
+   deriva siempre o se puede escribir. La simulación de §10.9 usa, sin decidirlo,
+   `fails reserved 409 "Ese nombre está reservado."` en la función.
+10. TS en el navegador: una regla `runs both` y una `runs server` en el mismo fichero de usuario
+    arrastran código de servidor al bundle de cliente. O el build lo separa (como hoy con
+    `serverValidator`) o un diagnóstico lo prohíbe. Probar con un caso mínimo antes de decidir.
+7. Presencia: un campo sin valor por defecto y sin `required` (`u8?` en el DTO), y un
+   `required` dentro de un `when`, que solo obliga a veces.
+8. Sintaxis bajo un campo: un campo hijo (`clave str`) y una regla con argumentos
+   (`same clave repetir`) solo se distinguen por el segundo token. Una palabra clave delante o
+   `campo: tipo` quitaría la ambigüedad.
+9. Patrones: lookaround y backreferences (§4.4), aparcado.
+
+## 9. Siguiente paso, si se sigue
+
+En `experiments/contract-ast/`: un parser mínimo de `.fudapi`; declarar `auth`, `audit`, `same`
+y `taken`; construir el índice y comprobar que resuelve todos los nombres de `usuarios` y
+`user-form`, y que el `model.json` coincide con el que hoy sale de Oxc.
+
+Para el backend políglota, el orden está en §11.
+
+## 10. Decidido el 2026-10-20
+
+Sesión de trabajo sobre un caso concreto: el form de `examples/basic/src/forms/person.form.ts`
+más un campo `nif` (letra comprobada en cliente y servidor, sin duplicados comprobado en el
+servidor al enviar), escrito en `.fudapi` y llevado a TS, C# y Java (§10.9).
+
+### 10.1. fudic genera tipos, nunca ubicaciones
+
+- **El generador no obliga a escribir el código donde él quiera.** Ni carpeta, ni nombre de
+  fichero, ni nombre de clase salen de lo generado.
+- **El código del usuario importa el generado; el generado nunca importa código del usuario.**
+- Lo generado es el contrato: interfaces, tipos, el form declarado y el despacho
+  (leer → validar → 422 → handler). Lo del usuario: handlers, reglas propias, middlewares.
+
+### 10.2. Las extensiones viven fuera del contrato que las usa
+
+`rule`, `middleware` y `pattern` se reutilizan en muchos puntos de la app: cada uno va en su
+propio `.fudapi`, nunca dentro del contrato de un form o de una ruta, que solo los nombra
+(`use auth`, `nif`, `pattern email-loose`). Lo generado para ellos sale **una vez por lenguaje**
+para toda la app, no dentro de cada form.
+
+### 10.3. Forms: los validadores de `@fudic/forms` portados, no reescritos
+
+- fudic da **ya escritos en cada lenguaje** los tipos de campo (`str`, `u8`, `bool`…), los
+  validadores estándar (`required`, `min`, `max`, `minLength`, `pattern`…), `Form` con
+  lectura posicional y validación, y la forma de enchufar una regla propia (`runs both`,
+  `runs server`).
+- El form generado es **la misma declaración en todos los lenguajes**, con sus mensajes, como
+  `person.form.ts` hoy. El generador nunca emite comprobaciones a mano (`if (age < 18)…`).
+- Lo único que se traduce por lenguaje son los patrones (§4.4).
+
+### 10.4. TS y JS: `implement`, y la raíz la escribe el compilador
+
+```js
+// any file, any name
+import { save } from 'fudic:user-form';
+
+export const altaDeUsuario = save.implement((ctx, person) => {
+  // the developer's code
+});
+```
+
+- **La marca es una llamada, no un tipo.** Funciona igual en JS puro y en TS. En un `.js`, el
+  `.d.ts` de `fudic:user-form` da los tipos de `ctx` y `person` en el editor sin escribir ninguno;
+  si la función no cumple, error en esa línea.
+- **El compilador de fudic encuentra las llamadas `implement` con Oxc y escribe él la raíz**, en
+  memoria: importa cada implementación y se la pasa a lo generado como parámetro. Es salida del
+  compilador, como el bundle; no es código generado del proyecto.
+- La llamada va en un export de nivel superior, directa sobre lo importado de `fudic:`; otra
+  forma no se encuentra.
+
+### 10.5. C# y Java: la raíz es del usuario
+
+En su `Program.cs` o en su clase `@SpringBootApplication`, el usuario nombra sus clases:
+`AddFudicApp(app => app.UserForm<AltaDeUsuarios>().Nif<ValidadorNif>()…)`. Lo generado es un
+*step builder*: no se puede cerrar sin todas las piezas y cada una se comprueba contra su
+interfaz. El DI del anfitrión las construye, con sus dependencias por constructor.
+
+### 10.6. Sin guardianes
+
+- **La vista solo depende del `.fudapi`.** El `<link rel="server">` da `data`, el form y las
+  funciones con sus tipos; se puede escribir la vista entera sin una línea de implementación.
+- **Si el desarrollador no implementa, no funciona.** fudic no vigila: implementar es su
+  responsabilidad, o la de un agente que sigue el MCP. El editor no recorre el proyecto
+  buscando lo que falta; cada lenguaje da su error al implementar mal, y lo que falte, en el
+  build.
+- En ejecución, una función sin implementación responde un **501 legible** («`save` de
+  `user-form` no tiene implementación»), no un error opaco.
+- Ese hueco es donde entra el **fake** de IDEA-05 §8: con el `.fudapi` y la vista, la pantalla
+  responde con datos generados desde los tipos antes de que exista el backend.
+
+### 10.7. Partial views: independientes del políglota
+
+Un elemento con el atributo `partial`: al renderizar se quita el atributo y el navegador sabe
+qué nodo sustituir; cada backend genera, para ese fragmento, una función cuyos parámetros son
+los nombres que el fragmento usa. El form devuelve HTML en vez de JSON y se inserta ahí.
+Funciona con cualquier backend, Node incluido; con uno nativo es el mismo render aplicado a un
+trozo.
+
+### 10.8. Viabilidad
+
+- **Contrato y funciones: sí.** Contrato, tipos generados, form con validadores portados,
+  despacho e implementación del usuario encajan igual en TS, C# y Java (§10.9).
+- **Render nativo: trabajo conocido, no una apuesta.** El compilador ya emite la vista como una
+  secuencia plana de llamadas sobre `$dom` con `if`/`for` normales (`examples/basic/.fudic/edge/`):
+  doce operaciones en todas las rutas (`append`, `text`, `element`, `setAttr`, `attachShadow`,
+  `claim`, `state`, `hydrationState`, `setUrl`, `stateOf`, `setHtml`, `setAttrs`). Eso ya es el
+  plan de render de IDEA-05 §5. Por lenguaje: un emisor delgado que escribe las mismas líneas
+  con otra sintaxis, y el runtime de `$dom` + stream portado una vez (~1000 líneas en
+  `stream-*.js`), como `forms` y `http`. Mismas instrucciones sobre el mismo `$dom` → mismos
+  bytes; la suite de conformidad lo comprueba.
+- **Las expresiones de la vista: estrechar SDD-51, no inventar.** SDD-51 (`Hecho`) ya da la lista
+  blanca sintáctica, la resolución de nombres libres y los diagnósticos `FUD09xx`, con un
+  criterio casi igual («lo mismo en servidor y cliente» ↔ «lo mismo en cualquier lenguaje»). Lo
+  que aún deja pasar y no se traduce es el delta de IDEA-05 §6: llamadas (también a funciones
+  del `@code`) y `new`, flechas, métodos de la stdlib (`filter`, `map`…), los globales `Math`,
+  `JSON`, `Date`, `Intl`, `Map`, `Set`, `Array`, `Object`, y `typeof`/`instanceof`/`in`. Son
+  reglas nuevas en el mismo analizador.
+- **El riesgo de fondo es de mantenimiento:** cada función de fudic se multiplica por runtime.
+  Dos lenguajes al principio (TS y uno más) y una suite de conformidad común.
+
+### 10.9. La simulación
+
+`experiments/fudapi-form/`: `fudapi/` (el contrato del form y sus extensiones aparte) y, por
+lenguaje, `user/` (lo que escribe el desarrollador) y `generated/` (lo que escribe fudic).
+Carpetas que simulan proyectos; no compila, los runtimes de C# y Java no existen. **Su
+cableado es anterior a §10.1, §10.4 y §10.5**: ahí lo generado todavía importa `user/` (TS) y
+nombra las clases del usuario (C#, Java). Vale para ver qué escribe cada uno, no cómo se unen.
+
+## 11. Por dónde empezar (opinión de Claude, 2026-10-20)
+
+No es una decisión: es la recomendación pedida por Pedro, para discutirla.
+
+**Criterio.** Empezar por lo que vale aunque el políglota no llegue nunca; lo que solo sirve al
+políglota se hace al final.
+
+### 11.1. Primero: `.fudapi` solo con TS (Node)
+
+Es lo que más vale por sí mismo: quita el `@server` inline de las vistas y da el contrato que
+lee un agente, aunque nunca exista un segundo lenguaje.
+
+1. Parser de `.fudapi` con diagnósticos y spans, como el de `.fudspec`. Lenguaje cerrado y
+   pequeño.
+2. `<link rel="server">` en el compilador y el `.d.ts` virtual: el editor tipa el `.fud` desde
+   el `.fudapi` (§10.6).
+3. Generador TS: tipos, form con `@fudic/forms`, `implement` (§10.4).
+4. El compilador encuentra las llamadas `implement` y escribe la raíz; 501 legible cuando falta.
+5. Leer los `.fudapi` de una librería activada (§7), empezando por el catálogo de
+   `@fudic/forms` (`required`, `min`…, §6.3): sin esto ni los built-ins funcionan. Hecho como lib
+   de fudic, sirve igual para la de un equipo de arquitectura o de terceros.
+6. Migrar `examples/basic` (`usuarios`, `user-form`): si el lenguaje no aguanta los ejemplos
+   reales, se ve aquí, sin haber portado nada.
+
+Dentro de esta fase, lo primero es el caso mínimo de §8.10 (reglas `runs both` y `runs server`
+en el mismo fichero): decide la forma de `implement` en el navegador y es barato de probar.
+
+### 11.2. En paralelo: estrechar SDD-51
+
+El render no hay que probarlo (§10.8); lo que queda es la enmienda de SDD-51 con el delta de
+IDEA-05 §6, y vale también para Node: menos lógica en las vistas.
+
+1. **Medir antes de redactar** (IDEA-05 §13.1): pasar el analizador de SDD-51 por `examples/` y
+   los fixtures y contar cuánto usa cada pieza del delta. Cada uso cortado se mueve al `load` o a
+   un pipe; el número dice cuánto rompe la enmienda.
+2. Redactar la enmienda: las reglas nuevas en el mismo analizador, sus diagnósticos en la familia
+   `FUD09xx`, y arreglar `examples/` y los fixtures.
+
+### 11.3. Después: el segundo runtime
+
+Un lenguaje (C# o Java), no cinco: los validadores de `@fudic/forms` portados, el binario del
+cable, `Problem`, la cadena de middlewares, el despacho y la raíz con *step builder* (§10.5); y
+para el render, el runtime de `$dom` + stream portado y el emisor de las doce operaciones con
+las expresiones ya estrechadas por 11.2 (§10.8). Con
+la **suite de conformidad común** desde el primer commit: mismos fixtures, mismo veredicto y
+mismo HTML que Node. Sin ella, el segundo runtime empieza a divergir el primer día.
+
+### 11.4. Lo que esperaría
+
+Partial views (§10.7), el fake (IDEA-05 §8) y más lenguajes: tienen
+valor, pero ninguno decide si el políglota es viable.

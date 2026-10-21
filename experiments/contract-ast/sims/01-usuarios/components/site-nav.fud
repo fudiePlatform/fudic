@@ -1,0 +1,66 @@
+@code {
+  const { current = "" } = props<{ current?: string }>();
+}
+
+<head>
+  <style>
+    nav {
+      display: flex;
+      gap: 1.25rem;
+      align-items: baseline;
+      padding: 0.9rem 0;
+      border-bottom: 1px solid #e6e6e6;
+      a {
+        color: var(--brand);
+        text-decoration: none;
+        font-weight: 500;
+      }
+      a[aria-current="page"] {
+        color: #202124;
+      }
+    }
+  </style>
+</head>
+
+<site-nav>
+  <template shadowrootmode="open">
+    <nav>
+      <a href="/" aria-current=@(current === 'home' ? 'page' : 'false')>fudic</a>
+      <a href="/blog" aria-current=@(current === 'blog' ? 'page' : 'false')>Blog</a>
+      <a href="/mapas" aria-current=@(current === 'mapas' ? 'page' : 'false')>Mapas</a>
+      <a
+        href="/hidratacion"
+        aria-current=@(current === 'hidratacion' ? 'page' : 'false')>Hidratación</a>
+      <a href="/di" aria-current=@(current === 'di' ? 'page' : 'false')>DI</a>
+      <a href="/sesion/ana" aria-current=@(current === 'sesion' ? 'page' : 'false')>Sesión</a>
+      <a href="/vivo" aria-current=@(current === 'vivo' ? 'page' : 'false')>Al vuelo</a>
+      <a
+        href="/formularios"
+        aria-current=@(current === 'formularios' ? 'page' : 'false')>Formularios</a>
+      <a href="/usuarios" aria-current=@(current === 'usuarios' ? 'page' : 'false')>Usuarios</a>
+      <a
+        href="/delegacion"
+        aria-current=@(current === 'delegacion' ? 'page' : 'false')>Delegación</a>
+      <a
+        href="/reactividad"
+        aria-current=@(current === 'reactividad' ? 'page' : 'false')>Reactividad</a>
+      <a
+        href="/ruta-evento"
+        aria-current=@(current === 'ruta-evento' ? 'page' : 'false')>Ruta · evento</a>
+      <a
+        href="/ruta-reactiva"
+        aria-current=@(current === 'ruta-reactiva' ? 'page' : 'false')>Ruta · reactiva</a>
+      <a
+        href="/ruta-reloj"
+        aria-current=@(current === 'ruta-reloj' ? 'page' : 'false')>Ruta · reloj</a>
+      <a href="/snippets" aria-current=@(current === 'snippets' ? 'page' : 'false')>Snippets</a>
+      <a href="/marco" aria-current=@(current === 'marco' ? 'page' : 'false')>Marco</a>
+      <a href="/vista" aria-current=@(current === 'vista' ? 'page' : 'false')>Vista</a>
+      <a href="/ref" aria-current=@(current === 'ref' ? 'page' : 'false')>Ref</a>
+      <a href="/raw" aria-current=@(current === 'raw' ? 'page' : 'false')>Raw</a>
+      <a href="/spread" aria-current=@(current === 'spread' ? 'page' : 'false')>Spread</a>
+      <a href="/resto" aria-current=@(current === 'resto' ? 'page' : 'false')>Resto</a>
+      <a href="/about" aria-current=@(current === 'about' ? 'page' : 'false')>Acerca de</a>
+    </nav>
+  </template>
+</site-nav>
