@@ -4,8 +4,8 @@
  *
  * A token is a run of non-blank characters in which a `"…"` section may hold blanks. A `#`
  * that starts a token starts a comment to the end of the line; anywhere else, and inside
- * quotes, it is an ordinary character. A `pattern` declaration is the exception: after its
- * name, the rest of the line is one token, `#` included. Inside quotes `\"` and `\\` are
+ * quotes, it is an ordinary character. A `pattern` declaration (a line read at level 0) is the
+ * exception: after its name, the rest of the line is one token, `#` and quotes included. Inside quotes `\"` and `\\` are
  * escapes and any other backslash is itself. A string never crosses a line.
  *
  * Nothing here fails: an unclosed quote ends at the end of the line and a bad indentation is
@@ -79,7 +79,8 @@ export function readLine(source: string, start: number, end: number, out: Source
       i++;
       continue;
     }
-    if (tokens.length === 2 && indentSpan.end === start && tokens[0]!.raw === 'pattern') {
+    // Any indentation under 2 is read at level 0, so a `pattern` there is a declaration.
+    if (tokens.length === 2 && indentSpan.end - start < 2 && tokens[0]!.raw === 'pattern') {
       let last = end;
       while (isBlank(source[last - 1])) last--;
       tokens.push({ span: span(i, last), raw: source.slice(i, last), quoted: [] });

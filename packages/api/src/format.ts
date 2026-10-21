@@ -135,9 +135,10 @@ function commentLevels(rows: Row[]): void {
 const typed = (row: Row): boolean =>
   row.tokens.length >= 2 && IDENTIFIER.test(row.tokens[0]!.raw) && !KEYWORDS.has(row.tokens[0]!.raw) && !isString(row.tokens[1]!);
 
-/** A line that ends in a text: a string that is not the initial value after `=`. */
+/** A line that ends in a text: a string that is not the initial value after `=` nor a regex. */
 const texted = (row: Row): boolean =>
   row.tokens.length >= 2 &&
+  !pattern(row) &&
   isString(row.tokens[row.tokens.length - 1]!) &&
   row.tokens[row.tokens.length - 2]!.raw !== '=';
 

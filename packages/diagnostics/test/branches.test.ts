@@ -166,6 +166,10 @@ const CASES: readonly (readonly [FudDiagnostic, string])[] = [
   [c.FUD0895({ span: S, form: 'path' }), 'an argument after a bare `@` is a name or a path'],
   [c.FUD1020({ span: S, problem: 'not-literal' }), '`t()` takes a string literal as its first argument'],
   [c.FUD1020({ span: S, problem: 'holes', missing: ['name', 'count'] }), 'a key for every hole of its message: missing `name`, `count`'],
+  [c.FUD1080({ span: S, name: 'requird', what: 'rule', candidates: [] }), 'unknown rule `requird`'],
+  [c.FUD1080({ span: S, name: 'requird', what: 'rule', candidates: ['required', 'require'] }), 'did you mean `required`, `require`?'],
+  [c.FUD1065({ span: S, word: 'x', parent: 'paths', expected: [] }), '`x` is not valid under `paths`: nothing goes below it'],
+  [c.FUD1065({ span: S, word: 'x', parent: 'chain', expected: ['use', 'skip'] }), 'expected one of `use`, `skip`'],
 ];
 
 describe('every variant says its own sentence', () => {

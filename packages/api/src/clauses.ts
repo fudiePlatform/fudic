@@ -223,9 +223,6 @@ export function typedField(node: LineNode, parent: LineNode, expected: readonly 
   };
 }
 
-/** The span from `a` to the end of `b`. */
-export const between = (a: Span, b: Span): Span => span(a.start, b.end);
-
 /** The span of a declaration: its line and every line below it. */
 export function blockSpan(node: LineNode): Span {
   let last = node;

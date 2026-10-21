@@ -588,8 +588,11 @@ el `include` de `.fudic/api/**/*.d.ts` en el tsconfig.
 - **Sangrado malo:** `FUD1061` y la línea se coloca al nivel válido más cercano por debajo.
 - **Contexto, no adivinanza:** qué palabras valen en una línea lo decide su padre (§3.3–§3.9). Una
   palabra que no vale ahí es `FUD1065`, con las que sí.
-- **Mientras se escribe** (`ge` en vez de `get`), lo de debajo sigue en el árbol del padre
-  anterior: el resto del fichero no se pone en rojo.
+- **Mientras se escribe** (`ge` en vez de `get`), esa línea da un solo diagnóstico y lo que cuelga
+  de ella se salta en silencio; el resto del fichero sigue en el árbol y no se pone en rojo. Dentro
+  de una declaración (`us` en vez de `use`), sus hermanas siguen en el árbol de la declaración.
+  *Precisado al implementar: colgar los hijos de `ge` del padre anterior los haría fallar allí,
+  que es justo la cascada que esta regla evita.*
 
 ### 4.2. El validador
 

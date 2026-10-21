@@ -6,7 +6,7 @@
 > `@fudic/typecheck` · `@fudic/language-server` · `@fudic/formatter` · `@fudic/cli` · `fudic-vscode` ·
 > `examples/*` · `packages/testing`
 > **Rama:** `sdd-60-fudapi` (nace de `main`)
-> **Progreso:** 3 / 64 — `En curso`.
+> **Progreso:** 10 / 64 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina; la otra escribe los tests de cada fase (las tareas
 «Los tests de…»), contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -87,13 +87,13 @@ Cada meta cierra una fase. La fase no se da por terminada hasta que Pedro la pru
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 3 | 1 | **El árbol.** Los nodos de SDD §3.13, de solo lectura, con `Span` en cada uno y `doc` en cada declaración; `ParseResult<T>` propio. `FnDecl` con su ruta (segmentos literales y `:arg`) y sus argumentos marcados ruta/query/cuerpo | `api` | `src/ast.ts` |
-| [ ] | 4 | 2 | **Las líneas.** Sangrado (múltiplo de 2, tabulador, salto de nivel: `FUD1061`), tokens, cadenas con escapes (`FUD1060`), comentario si `#` abre token salvo en `pattern`, documentación por líneas `#` pegadas | `api` | `src/line.ts` |
-| [ ] | 5 | 4 | **Tipos y expresiones.** `TypeExpr` (`T[]`, `T?`, `map K V`, nombre, `uuid`; `FUD1067`), literales (`FUD1068`) y la expresión de `require`/`when` con precedencia, de más floja a más fuerte, `or` < `and` < `not` < comparación y `contains` < `valid`/`empty`/`length` (`FUD1069`). *Corregido al implementar: el orden anterior (`not` por encima de la comparación) leía `not acceso.clave contains name` de §3.6 como `(not acceso.clave) contains name`* | `api` | `src/type.ts` · `src/expr.ts` |
-| [ ] | 6 | 3, 5 | **`parseApi`.** Las declaraciones de SDD §3.2–§3.9 por contexto del padre (con la ruta de función y `query <arg>` de §3.3), continuación de texto, recuperación sin cascada (SDD §4.1), `FUD1062`–`FUD1066`, `FUD1070`–`FUD1079`. Exportado | `api` | `src/parse.ts` · `src/index.ts` |
-| [ ] | 7 | 6 | **Los tests del parser.** Criterios 1–6, con `@fudic/api` al 100 % | `api` | `test/` |
-| [ ] | 8 | 6 | **`formatApi`.** SDD §4.9 (fila Formato): sangrado, espacios, columnas alineadas por bloque, línea en blanco entre declaraciones, nada si hay una comilla sin cerrar | `api` | `src/format.ts` |
-| [ ] | 9 | 8 | **Los tests del formato.** Criterio 7 | `api` | `test/` |
+| [x] | 3 | 1 | **El árbol.** Los nodos de SDD §3.13, de solo lectura, con `Span` en cada uno y `doc` en cada declaración; `ParseResult<T>` propio. `FnDecl` con su ruta (segmentos literales y `:arg`) y sus argumentos marcados ruta/query/cuerpo | `api` | `src/ast.ts` |
+| [x] | 4 | 2 | **Las líneas.** Sangrado (múltiplo de 2, tabulador, salto de nivel: `FUD1061`), tokens, cadenas con escapes (`FUD1060`), comentario si `#` abre token salvo en `pattern`, documentación por líneas `#` pegadas | `api` | `src/line.ts` |
+| [x] | 5 | 4 | **Tipos y expresiones.** `TypeExpr` (`T[]`, `T?`, `map K V`, nombre, `uuid`; `FUD1067`), literales (`FUD1068`) y la expresión de `require`/`when` con precedencia, de más floja a más fuerte, `or` < `and` < `not` < comparación y `contains` < `valid`/`empty`/`length` (`FUD1069`). *Corregido al implementar: el orden anterior (`not` por encima de la comparación) leía `not acceso.clave contains name` de §3.6 como `(not acceso.clave) contains name`* | `api` | `src/type.ts` · `src/expr.ts` |
+| [x] | 6 | 3, 5 | **`parseApi`.** Las declaraciones de SDD §3.2–§3.9 por contexto del padre (con la ruta de función y `query <arg>` de §3.3), continuación de texto, recuperación sin cascada (SDD §4.1), `FUD1062`–`FUD1066`, `FUD1070`–`FUD1079`. Exportado | `api` | `src/parse.ts` · `src/index.ts` |
+| [x] | 7 | 6 | **Los tests del parser.** Criterios 1–6, con `@fudic/api` al 100 % | `api` | `test/` |
+| [x] | 8 | 6 | **`formatApi`.** SDD §4.9 (fila Formato): sangrado, espacios, columnas alineadas por bloque, línea en blanco entre declaraciones, nada si hay una comilla sin cerrar | `api` | `src/format.ts` |
+| [x] | 9 | 8 | **Los tests del formato.** Criterio 7 | `api` | `test/` |
 
 ## Fase 3 — índice y validador (4)
 
