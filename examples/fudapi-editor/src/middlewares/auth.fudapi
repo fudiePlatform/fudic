@@ -1,0 +1,27 @@
+# Who is calling: reads the session and puts the user in ctx.
+middleware auth
+  client
+  server
+  adds
+    user  Session
+  fails denied 401  "Sign in first."
+
+# Logs every call, in the browser and on the server.
+middleware log
+  client
+  server
+
+# The token that proves a mutation comes from our own pages.
+middleware csrf
+  client
+  server
+
+# Sends the browser to a page when a call fails with one of these statuses.
+middleware error-pages
+  client
+  routes  map u16 str
+
+type Session
+  id     uuid
+  name   str
+  roles  str[]

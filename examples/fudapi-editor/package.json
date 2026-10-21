@@ -1,0 +1,7 @@
+{
+  "name": "@fudic/example-fudapi-editor",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A few .fudapi files to try the language in the editor: highlighting, errors, completion, hover, go-to-definition and formatting.",
+  "type": "module"
+}
