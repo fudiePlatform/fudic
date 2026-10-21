@@ -76,6 +76,8 @@ describe('@fudic/conventions', () => {
     // is the one the stub and the Service Worker share (§4.9). `ERROR_FILE` is `_error.fud`,
     // which the plugin routes around and the editor gives the problem's `data` (§3.6, §4.16).
     expect(Object.keys(conventions).sort()).toEqual([
+      'API_DIR',
+      'API_TYPES_DIR',
       'COMPONENTS_DIR',
       'DATA_PREFIX',
       'ERROR_FILE',

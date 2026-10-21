@@ -6,7 +6,7 @@
 > `@fudic/typecheck` · `@fudic/language-server` · `@fudic/formatter` · `@fudic/cli` · `fudic-vscode` ·
 > `examples/*` · `packages/testing`
 > **Rama:** `sdd-60-fudapi` (nace de `main`)
-> **Progreso:** 25 / 64 — `En curso`.
+> **Progreso:** 27 / 64 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina; la otra escribe los tests de cada fase (las tareas
 «Los tests de…»), contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -124,8 +124,8 @@ Cada meta cierra una fase. La fase no se da por terminada hasta que Pedro la pru
 | [x] | 16 | 12, 14, 15, 61 | **`emitDeclarations`.** El `.d.ts` de SDD §3.11 para cada clase de declaración, determinista | `api` | `src/emit/declarations.ts` |
 | [x] | 17 | 16 | **`emitModule`.** Variante de servidor (cadena y despacho) y de navegador (stub `$fn` con su ruta y su query, mitades de cliente del registro, lo de servidor fallando con el mensaje de carpeta). Forms como la declaración de hoy; patrón anclado | `api` | `src/emit/module.ts` |
 | [x] | 43 | 17, 40 | **Generación de `.d.ts`.** El language server escribe `.fudic/api/<id>.d.ts` al guardar (y el de quien dependa de lo que cambió) y al arrancar los que falten o estén viejos, solo si cambia. `examples/basic` incluye `.fudic/api/**/*.d.ts` en su tsconfig | `language-server` · `examples/basic` | `src/fudapi/host.ts` · `service.ts` · `tsconfig.json` |
-| [ ] | 18 | 17 | **Los tests del emisor.** Criterios 11–14 (el 12 con la batería contra `person.form.ts`, `user.form.ts` y `wide.form.ts` de hoy), la parte de forms del 37 y los de `contract` de `http` (ruta, query, tipos) y `forms` | `api` · `http` · `forms` | `test/` |
-| [ ] | 64 | 43 | **Los tests de generación.** Criterio 30 y el 27 en la parte «tocar el `.fudapi` de una regla revalida el que la usa» | `language-server` | `test/` |
+| [x] | 18 | 17 | **Los tests del emisor.** Criterios 11–14 (el 12 con la batería contra `person.form.ts`, `user.form.ts` y `wide.form.ts` de hoy), la parte de forms del 37 y los de `contract` de `http` (ruta, query, tipos) y `forms` | `api` · `http` · `forms` | `test/` |
+| [x] | 64 | 43 | **Los tests de generación.** Criterio 30 y el 27 en la parte «tocar el `.fudapi` de una regla revalida el que la usa» | `language-server` | `test/` |
 
 ## Fase 6 — configuración y built-ins (5)
 
