@@ -127,6 +127,7 @@ const CASES: readonly (readonly [FudDiagnostic, string])[] = [
   [c.FUD0725({ file: F, problem: 'flag', field: 'prefix', value: 'A', pattern: '/x/' }), '--prefix "A" is not usable in fudic.json'],
   [c.FUD0725({ file: F, problem: 'locales', reason: 'it is empty' }), 'fudic.json "locales" must be a non-empty array of distinct BCP 47 tags: it is empty'],
   [c.FUD0725({ file: F, problem: 'site', reason: 'it has a path' }), 'fudic.json "site" must be the origin of an http(s) URL, like "https://example.com": it has a path'],
+  [c.FUD0725({ file: F, problem: 'folder', field: 'server', reason: 'it is absolute' }), 'fudic.json "server" must be a folder inside the project, like "src/server": it is absolute'],
   [c.FUD0740({ file: F, name: 'theme', entry: 'x.css', problem: 'missing' }), '"x.css" does not exist.'],
   [c.FUD0740({ file: F, name: 'theme', entry: 'x.css', problem: 'unreadable', reason: 'EISDIR' }), 'could not be read: EISDIR'],
   [c.FUD0741({ file: F, where: 'project', name: 'theme' }), 'is both in "globalStyles" and in "styles"'],

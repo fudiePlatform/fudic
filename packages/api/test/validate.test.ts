@@ -1,7 +1,7 @@
 import type { SourceDiagnostic } from '@fudic/diagnostics';
 import { describe, expect, it } from 'vitest';
 import { createApiIndex, GLOBAL_ID, parseApi, validateApi } from '../src/index.js';
-import { HTTP, USER_FORM, USUARIOS, inputs, slice } from './helpers.js';
+import { HTTP, SWEEP, USER_FORM, USUARIOS, inputs, slice } from './helpers.js';
 import { BUILT_INS, app, check, codesOf, lib, route } from './project.js';
 
 const lines = (...l: string[]): string => l.join('\n');
@@ -364,7 +364,7 @@ describe('each validator code (criterion 8)', () => {
         }
       }
     }
-  });
+  }, SWEEP);
 
   it('diagnostics come sorted by position', () => {
     const { diagnostics } = check('type A\n  x  Ghost\n  y  map bool str\nget f\n  use nope');

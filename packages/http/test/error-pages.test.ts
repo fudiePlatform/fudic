@@ -22,6 +22,7 @@ import {
 } from '../src/errors.js';
 import { halfOf } from '../src/middleware.js';
 import { run } from '../src/compose.js';
+import { generated } from './built-ins.js';
 import { clientCtx } from './helpers.js';
 
 const assign = vi.fn();
@@ -31,9 +32,14 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
-const stepOf = (routes?: ErrorRoutes) => [halfOf(routes === undefined ? errorPages() : errorPages(routes), 'client')!];
-const failWith = (e: unknown, routes?: ErrorRoutes, args: unknown = undefined) =>
-  run(stepOf(routes), { ...clientCtx(), args }, () => { throw e; });
+/**
+ * Today's factory, and (SDD-60 criterion 23) the `error-pages` of `fudapi/middlewares.fudapi`
+ * with its half registered from `impl/browser`. A `.fudapi` routes a status to a text only.
+ */
+const IMPLEMENTATIONS = [
+  ['today', (routes?: ErrorRoutes) => [halfOf(routes === undefined ? errorPages() : errorPages(routes), 'client')!] as never],
+  ['generated from the .fudapi', (routes?: ErrorRoutes) => generated.errorPages(routes as Readonly<Record<number, string>> | undefined)],
+] as const;
 
 /** Whether a promise is still pending after the microtasks drained. */
 async function pending(p: Promise<unknown>): Promise<boolean> {
@@ -42,167 +48,172 @@ async function pending(p: Promise<unknown>): Promise<boolean> {
   return winner === marker;
 }
 
-describe('errorPages', () => {
-  it('has no server half', () => {
-    expect(halfOf(errorPages(), 'server')).toBeUndefined();
+describe.each(IMPLEMENTATIONS)('%s', (name, stepOf) => {
+  const failWith = (e: unknown, routes?: ErrorRoutes, args: unknown = undefined) =>
+    run(stepOf(routes), { ...clientCtx(), args }, () => { throw e; });
+
+  describe('errorPages', () => {
+    it('has no server half', () => {
+      expect(halfOf(errorPages(), 'server')).toBeUndefined();
+    });
+
+    it('lets a value through untouched', async () => {
+      await expect(run(stepOf(), clientCtx(), () => ({ a: 1 }))).resolves.toEqual({ a: 1 });
+      expect(assign).not.toHaveBeenCalled();
+    });
+
+    it('Redirect: location.assign(location), and the call never resolves', async () => {
+      const p = failWith(redirect('/login'));
+      expect(await pending(p)).toBe(true);
+      expect(assign).toHaveBeenCalledWith('/login');
+    });
+
+    it('ValidationError: rethrown, it belongs to the form', async () => {
+      const e = new ValidationError({ status: 422, title: 'Unprocessable Content' });
+      await expect(failWith(e)).rejects.toBe(e);
+      expect(assign).not.toHaveBeenCalled();
+    });
+
+    it('ValidationError: rethrown even with a route for 422, or a form that does not keep it', async () => {
+      const e = new ValidationError({ status: 422, title: 'Unprocessable Content' });
+      await expect(failWith(e, { 422: '/never' }, { $catches: () => false })).rejects.toBe(e);
+      expect(assign).not.toHaveBeenCalled();
+    });
+
+    it('AbortError: rethrown, the user asked for it', async () => {
+      const e = new DOMException('aborted', 'AbortError');
+      await expect(failWith(e, { 500: '/never' })).rejects.toBe(e);
+      expect(assign).not.toHaveBeenCalled();
+    });
+
+    it('another DOMException is not an abort: it navigates to 500', async () => {
+      const p = failWith(new DOMException('nope', 'NotAllowedError'));
+      expect(await pending(p)).toBe(true);
+      expect(assign).toHaveBeenCalledWith('/_fudic/error/500');
+    });
+
+    it.each([
+      [notFound(), 404],
+      [conflict(), 409],
+      [new HttpError({ status: 500, title: 'Internal Server Error' }), 500],
+    ])('HttpError %#: navigates to /_fudic/error/<status>', async (e, status) => {
+      const p = failWith(e);
+      expect(await pending(p)).toBe(true);
+      expect(assign).toHaveBeenCalledWith(`/_fudic/error/${status}`);
+    });
+
+    it('anything else navigates to /_fudic/error/500', async () => {
+      const p = failWith(new TypeError('boom'));
+      expect(await pending(p)).toBe(true);
+      expect(assign).toHaveBeenCalledWith('/_fudic/error/500');
+    });
   });
 
-  it('lets a value through untouched', async () => {
-    await expect(run(stepOf(), clientCtx(), () => ({ a: 1 }))).resolves.toEqual({ a: 1 });
-    expect(assign).not.toHaveBeenCalled();
+  describe('errorPages: the detail of _error.fud (BUG-51)', () => {
+    it('carries the server’s detail in the query, encoded', async () => {
+      const p = failWith(unauthorized('sin token & más'));
+      expect(await pending(p)).toBe(true);
+      expect(assign).toHaveBeenCalledWith('/_fudic/error/401?detail=sin+token+%26+m%C3%A1s');
+      const url = new URL(assign.mock.calls[0]![0] as string, 'http://x');
+      expect(url.searchParams.get('detail')).toBe('sin token & más');
+    });
+
+    it('no query when the detail is absent or empty', async () => {
+      const empty = failWith(new HttpError({ status: 403, title: 'Forbidden', detail: '' }));
+      expect(await pending(empty)).toBe(true);
+      expect(assign).toHaveBeenLastCalledWith('/_fudic/error/403');
+
+      const absent = failWith(forbidden());
+      expect(await pending(absent)).toBe(true);
+      expect(assign).toHaveBeenLastCalledWith('/_fudic/error/403');
+    });
+
+    it('an error that is not an HttpError is a 500 with no detail', async () => {
+      const p = failWith(new Error('a message, never a detail'));
+      expect(await pending(p)).toBe(true);
+      expect(assign).toHaveBeenCalledWith('/_fudic/error/500');
+    });
   });
 
-  it('Redirect: location.assign(location), and the call never resolves', async () => {
-    const p = failWith(redirect('/login'));
-    expect(await pending(p)).toBe(true);
-    expect(assign).toHaveBeenCalledWith('/login');
+  describe('errorPages: the routes by status (BUG-51)', () => {
+    it('a string route is where the status goes, and the call never resolves', async () => {
+      const p = failWith(unauthorized('sin token'), { 401: '/login' });
+      expect(await pending(p)).toBe(true);
+      expect(assign).toHaveBeenCalledWith('/login');
+    });
+
+    it.skipIf(name !== 'today')('a function route gets the error and goes where it says', async () => {
+      const route = vi.fn((e: HttpError) => `/login?why=${e.status}`);
+      const e = forbidden('no');
+      const p = failWith(e, { 403: route });
+      expect(await pending(p)).toBe(true);
+      expect(route).toHaveBeenCalledWith(e);
+      expect(assign).toHaveBeenCalledWith('/login?why=403');
+    });
+
+    it('a status with no route goes to _error.fud, routes or not', async () => {
+      const p = failWith(notFound('no such user'), { 401: '/login' });
+      expect(await pending(p)).toBe(true);
+      expect(assign).toHaveBeenCalledWith('/_fudic/error/404?detail=no+such+user');
+    });
+
+    it('a Redirect is never routed: it goes to its own location', async () => {
+      const p = failWith(redirect('/elsewhere'), { 303: '/never', 302: '/never' });
+      expect(await pending(p)).toBe(true);
+      expect(assign).toHaveBeenCalledWith('/elsewhere');
+    });
   });
 
-  it('ValidationError: rethrown, it belongs to the form', async () => {
-    const e = new ValidationError({ status: 422, title: 'Unprocessable Content' });
-    await expect(failWith(e)).rejects.toBe(e);
-    expect(assign).not.toHaveBeenCalled();
-  });
+  describe('errorPages: what the sent form keeps (BUG-51)', () => {
+    it('rethrows a status the form’s $catches keeps, route or not', async () => {
+      const e = conflict('taken');
+      const $catches = vi.fn((status: number) => status === 409);
+      await expect(failWith(e, { 409: '/never' }, { $catches })).rejects.toBe(e);
+      expect($catches).toHaveBeenCalledWith(409);
+      expect(assign).not.toHaveBeenCalled();
+    });
 
-  it('ValidationError: rethrown even with a route for 422, or a form that does not keep it', async () => {
-    const e = new ValidationError({ status: 422, title: 'Unprocessable Content' });
-    await expect(failWith(e, { 422: '/never' }, { $catches: () => false })).rejects.toBe(e);
-    expect(assign).not.toHaveBeenCalled();
-  });
+    it('follows the rule of always when $catches says no', async () => {
+      const p = failWith(conflict(), {}, { $catches: () => false });
+      expect(await pending(p)).toBe(true);
+      expect(assign).toHaveBeenCalledWith('/_fudic/error/409');
+    });
 
-  it('AbortError: rethrown, the user asked for it', async () => {
-    const e = new DOMException('aborted', 'AbortError');
-    await expect(failWith(e, { 500: '/never' })).rejects.toBe(e);
-    expect(assign).not.toHaveBeenCalled();
-  });
+    it.each([
+      ['no args', undefined],
+      ['null args', null],
+      ['args with no $catches', { name: 'Ana' }],
+      ['a $catches that is not a function', { $catches: true }],
+    ])('and when nothing keeps it: %s', async (_what, args) => {
+      const p = failWith(conflict(), {}, args);
+      expect(await pending(p)).toBe(true);
+      expect(assign).toHaveBeenCalledWith('/_fudic/error/409');
+    });
 
-  it('another DOMException is not an abort: it navigates to 500', async () => {
-    const p = failWith(new DOMException('nope', 'NotAllowedError'));
-    expect(await pending(p)).toBe(true);
-    expect(assign).toHaveBeenCalledWith('/_fudic/error/500');
-  });
+    it('an error that is not an HttpError never asks the form', async () => {
+      const $catches = vi.fn(() => true);
+      const p = failWith(new TypeError('boom'), {}, { $catches });
+      expect(await pending(p)).toBe(true);
+      expect($catches).not.toHaveBeenCalled();
+    });
 
-  it.each([
-    [notFound(), 404],
-    [conflict(), 409],
-    [new HttpError({ status: 500, title: 'Internal Server Error' }), 500],
-  ])('HttpError %#: navigates to /_fudic/error/<status>', async (e, status) => {
-    const p = failWith(e);
-    expect(await pending(p)).toBe(true);
-    expect(assign).toHaveBeenCalledWith(`/_fudic/error/${status}`);
-  });
+    it('with a real form: its default keeps 400/409/422, and a 401 goes to its route', async () => {
+      const f = form({ name: control('') });
+      const kept = badRequest();
+      await expect(failWith(kept, { 400: '/never' }, f)).rejects.toBe(kept);
+      await expect(failWith(conflict(), { 409: '/never' }, f)).rejects.toBeInstanceOf(HttpError);
+      expect(assign).not.toHaveBeenCalled();
 
-  it('anything else navigates to /_fudic/error/500', async () => {
-    const p = failWith(new TypeError('boom'));
-    expect(await pending(p)).toBe(true);
-    expect(assign).toHaveBeenCalledWith('/_fudic/error/500');
-  });
-});
+      const p = failWith(unauthorized(), { 401: '/login' }, f);
+      expect(await pending(p)).toBe(true);
+      expect(assign).toHaveBeenCalledWith('/login');
+    });
 
-describe('errorPages: the detail of _error.fud (BUG-51)', () => {
-  it('carries the server’s detail in the query, encoded', async () => {
-    const p = failWith(unauthorized('sin token & más'));
-    expect(await pending(p)).toBe(true);
-    expect(assign).toHaveBeenCalledWith('/_fudic/error/401?detail=sin+token+%26+m%C3%A1s');
-    const url = new URL(assign.mock.calls[0]![0] as string, 'http://x');
-    expect(url.searchParams.get('detail')).toBe('sin token & más');
-  });
-
-  it('no query when the detail is absent or empty', async () => {
-    const empty = failWith(new HttpError({ status: 403, title: 'Forbidden', detail: '' }));
-    expect(await pending(empty)).toBe(true);
-    expect(assign).toHaveBeenLastCalledWith('/_fudic/error/403');
-
-    const absent = failWith(forbidden());
-    expect(await pending(absent)).toBe(true);
-    expect(assign).toHaveBeenLastCalledWith('/_fudic/error/403');
-  });
-
-  it('an error that is not an HttpError is a 500 with no detail', async () => {
-    const p = failWith(new Error('a message, never a detail'));
-    expect(await pending(p)).toBe(true);
-    expect(assign).toHaveBeenCalledWith('/_fudic/error/500');
-  });
-});
-
-describe('errorPages: the routes by status (BUG-51)', () => {
-  it('a string route is where the status goes, and the call never resolves', async () => {
-    const p = failWith(unauthorized('sin token'), { 401: '/login' });
-    expect(await pending(p)).toBe(true);
-    expect(assign).toHaveBeenCalledWith('/login');
-  });
-
-  it('a function route gets the error and goes where it says', async () => {
-    const route = vi.fn((e: HttpError) => `/login?why=${e.status}`);
-    const e = forbidden('no');
-    const p = failWith(e, { 403: route });
-    expect(await pending(p)).toBe(true);
-    expect(route).toHaveBeenCalledWith(e);
-    expect(assign).toHaveBeenCalledWith('/login?why=403');
-  });
-
-  it('a status with no route goes to _error.fud, routes or not', async () => {
-    const p = failWith(notFound('no such user'), { 401: '/login' });
-    expect(await pending(p)).toBe(true);
-    expect(assign).toHaveBeenCalledWith('/_fudic/error/404?detail=no+such+user');
-  });
-
-  it('a Redirect is never routed: it goes to its own location', async () => {
-    const p = failWith(redirect('/elsewhere'), { 303: '/never', 302: '/never' });
-    expect(await pending(p)).toBe(true);
-    expect(assign).toHaveBeenCalledWith('/elsewhere');
-  });
-});
-
-describe('errorPages: what the sent form keeps (BUG-51)', () => {
-  it('rethrows a status the form’s $catches keeps, route or not', async () => {
-    const e = conflict('taken');
-    const $catches = vi.fn((status: number) => status === 409);
-    await expect(failWith(e, { 409: '/never' }, { $catches })).rejects.toBe(e);
-    expect($catches).toHaveBeenCalledWith(409);
-    expect(assign).not.toHaveBeenCalled();
-  });
-
-  it('follows the rule of always when $catches says no', async () => {
-    const p = failWith(conflict(), {}, { $catches: () => false });
-    expect(await pending(p)).toBe(true);
-    expect(assign).toHaveBeenCalledWith('/_fudic/error/409');
-  });
-
-  it.each([
-    ['no args', undefined],
-    ['null args', null],
-    ['args with no $catches', { name: 'Ana' }],
-    ['a $catches that is not a function', { $catches: true }],
-  ])('and when nothing keeps it: %s', async (_what, args) => {
-    const p = failWith(conflict(), {}, args);
-    expect(await pending(p)).toBe(true);
-    expect(assign).toHaveBeenCalledWith('/_fudic/error/409');
-  });
-
-  it('an error that is not an HttpError never asks the form', async () => {
-    const $catches = vi.fn(() => true);
-    const p = failWith(new TypeError('boom'), {}, { $catches });
-    expect(await pending(p)).toBe(true);
-    expect($catches).not.toHaveBeenCalled();
-  });
-
-  it('with a real form: its default keeps 400/409/422, and a 401 goes to its route', async () => {
-    const f = form({ name: control('') });
-    const kept = badRequest();
-    await expect(failWith(kept, { 400: '/never' }, f)).rejects.toBe(kept);
-    await expect(failWith(conflict(), { 409: '/never' }, f)).rejects.toBeInstanceOf(HttpError);
-    expect(assign).not.toHaveBeenCalled();
-
-    const p = failWith(unauthorized(), { 401: '/login' }, f);
-    expect(await pending(p)).toBe(true);
-    expect(assign).toHaveBeenCalledWith('/login');
-  });
-
-  it('with a real form that narrowed what it keeps, the rest is the page’s', async () => {
-    const f = form({ name: control('') }, { catches: [422] });
-    const p = failWith(conflict('taken'), {}, f);
-    expect(await pending(p)).toBe(true);
-    expect(assign).toHaveBeenCalledWith('/_fudic/error/409?detail=taken');
+    it('with a real form that narrowed what it keeps, the rest is the page’s', async () => {
+      const f = form({ name: control('') }, { catches: [422] });
+      const p = failWith(conflict('taken'), {}, f);
+      expect(await pending(p)).toBe(true);
+      expect(assign).toHaveBeenCalledWith('/_fudic/error/409?detail=taken');
+    });
   });
 });

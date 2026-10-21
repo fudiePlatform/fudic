@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formatApi, parseApi } from '../src/index.js';
-import { CANONICALS, HTTP, USER_FORM, inputs, shape } from './helpers.js';
+import { CANONICALS, HTTP, SWEEP, USER_FORM, inputs, shape } from './helpers.js';
 
 const lines = (...l: string[]): string => l.join('\n') + '\n';
 
@@ -136,5 +136,5 @@ describe('formatApi (criterion 7)', () => {
       expect(formatApi(once), JSON.stringify(source)).toBe(once);
       expect(ink(once), JSON.stringify(source)).toBe(ink(source));
     }
-  });
+  }, SWEEP);
 });

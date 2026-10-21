@@ -201,6 +201,12 @@ export function shape(value: unknown): unknown {
   return value;
 }
 
+/**
+ * The time a test over the whole of `inputs()` gets: tens of thousands of parses take seconds,
+ * and more under coverage beside the tests that run `tsc`.
+ */
+export const SWEEP = 60_000;
+
 /** Every canonical cut short at each offset, re-indented 0–8 line by line and with noise at each end. */
 export function* inputs(): Generator<string> {
   const noise = ['"', '\t', '\r', '\\', '#', '"x', ' ', '=', '->', '(', ':', '/'];

@@ -237,4 +237,63 @@ describe('readProjectConfig', () => {
       expect(text.slice(d.span!.start, d.span!.end)).toBe('"site"');
     });
   });
+
+  describe('server, browser and api (SDD-60 §3.15, criterion 22)', () => {
+    it('the conventions when the file declares none; api only in a library', () => {
+      expect(readProjectConfig(ROOT, io('{"id":"shop"}')).config).toMatchObject({ server: 'src/server', browser: 'src/browser' });
+      expect(readProjectConfig(ROOT, io('{"id":"shop"}')).config).not.toHaveProperty('api');
+      expect(readProjectConfig(ROOT, io('{"id":"ui","kind":"lib"}')).config).toMatchObject({
+        server: 'src/server',
+        browser: 'src/browser',
+        api: 'fudapi',
+      });
+    });
+
+    it('reads the folders the file names', () => {
+      const text = '{"id":"ui","kind":"lib","server":"src/backend","browser":"src/front-halves","api":"contracts"}';
+      expect(readProjectConfig(ROOT, io(text)).config).toMatchObject({ server: 'src/backend', browser: 'src/front-halves', api: 'contracts' });
+    });
+
+    it('an app ignores api', () => {
+      expect(readProjectConfig(ROOT, io('{"api":"/abs"}')).config).not.toHaveProperty('api');
+      expect(readProjectConfig(ROOT, io('{"api":"/abs"}')).diagnostics).toEqual([]);
+    });
+
+    it.each([
+      ['./src/backend', 'src/backend'],
+      ['src/backend/', 'src/backend'],
+      ['src\\\\backend', 'src/backend'],
+      ['src//./backend', 'src/backend'],
+      ['backend', 'backend'],
+    ])('%s is kept as %s', (value, folder) => {
+      expect(readProjectConfig(ROOT, io(`{"server":"${value}"}`)).config?.server).toBe(folder);
+    });
+
+    it.each([
+      ['a number', 'server', '42', '42 is not a path'],
+      ['an empty text', 'browser', '""', '"" is not a path'],
+      ['blanks', 'server', '"  "', '"  " is not a path'],
+      ['an absolute path', 'server', '"/srv/app"', 'it is absolute'],
+      ['a drive', 'browser', '"C:/app"', 'it is absolute'],
+      ['a way out', 'server', '"../shared"', 'it leaves the project'],
+      ['a way out inside', 'browser', '"src/../../x"', 'it leaves the project'],
+      ['nothing left', 'server', '"./"', 'it leaves the project'],
+    ])('%s is FUD0725 problem folder and leaves no config', (_case, field, value, reason) => {
+      const text = `{"id":"shop","${field}":${value}}`;
+      const result = readProjectConfig(ROOT, io(text));
+
+      expect(result.config).toBeNull();
+      const d = result.diagnostics[0]!;
+      expect(d.code).toBe('FUD0725');
+      expect(d.message).toContain(`"${field}" must be a folder inside the project`);
+      expect(d.message).toContain(reason);
+      expect(text.slice(d.span!.start, d.span!.end)).toBe(`"${field}"`);
+    });
+
+    it('a library\'s api is checked like the others', () => {
+      const result = readProjectConfig(ROOT, io('{"kind":"lib","api":"../x"}'));
+      expect(result.config).toBeNull();
+      expect(result.diagnostics[0]!.message).toContain('"api" must be a folder inside the project, like "src/api": it leaves the project');
+    });
+  });
 });

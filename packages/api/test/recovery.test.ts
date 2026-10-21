@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formatApi, parseApi, type Decl } from '../src/index.js';
-import { USUARIOS, codes, inputs, shape, slice, spansOf } from './helpers.js';
+import { SWEEP, USUARIOS, codes, inputs, shape, slice, spansOf } from './helpers.js';
 
 const kinds = (source: string): readonly string[] =>
   parseApi(source).value.declarations.map((d: Decl) => ('name' in d ? `${d.kind} ${d.name.text}` : d.kind));
@@ -72,7 +72,7 @@ describe('never throws (criterion 6)', () => {
       expect(() => formatApi(source)).not.toThrow();
     }
     expect(count).toBeGreaterThan(1000);
-  });
+  }, SWEEP);
 
   it('over inputs made of the characters that break things', () => {
     for (const source of ['', '\r', '\n', '\r\n\r', '\t', '"', '\\', '#', '  ', '"\\', 'type "', 'pattern', 'pattern p', '\t\ttype A']) {
