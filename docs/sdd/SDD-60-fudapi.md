@@ -10,7 +10,7 @@
 > de servidor, cable, cadena), 35 (typecheck de dev y build), 20 (estrategia de ruta), 40
 > (contrato de layout), 51 (resolución de nombres de la vista).
 > **Rango de diagnósticos:** `FUD1060`–`FUD1139` (nuevo). Parser `1060`–`1079`, validador
-> `1080`–`1109` (usa `1080`–`1091` y `1093`–`1098`), `.fud` `1110`–`1129` (usa `1110`–`1115`);
+> `1080`–`1109` (usa `1080`–`1091` y `1093`–`1101`), `.fud` `1110`–`1129` (usa `1110`–`1115`);
 > el resto, reservado sin usar.
 > **Origen:** [IDEA-06](./ideas/IDEA-06-lenguaje-de-contrato-fudapi.md) y la sesión del
 > 2026-10-21 con Pedro, que cerró todas las preguntas de esta spec. Manda sobre IDEA-05 §3 e
@@ -150,9 +150,10 @@ fichero.
 | `str` `bool` | texto, booleano | `string`, `boolean` |
 | `u8 i8 u16 i16 u32 i32 f32 f64` | número con ancho | `number` |
 | `date` | fecha | `Date` |
+| `uuid` | identificador UUID (forma textual de RFC 9562, `8-4-4-4-12` hex, sin distinguir mayúsculas) | `string` |
 | `T[]` | lista | `readonly T[]` |
 | `T?` | puede faltar | campo opcional (`x?: T`) |
-| `map K V` | mapa; `K` es `str` o un entero | `Readonly<Record<…, V>>` |
+| `map K V` | mapa; `K` es `str`, `uuid` o un entero | `Readonly<Record<…, V>>` |
 | `Nombre` | un `type` o `enum` del proyecto | su interfaz o unión |
 
 ```
@@ -172,26 +173,51 @@ enum Variant          # a union of literals
   (directa o indirectamente, salvo a través de `[]`, `?` o `map`) es `FUD1088`.
 - `number` no existe: es `FUD1080` con la lista de anchos.
 - `enum` genera `type Variant = 'default' | 'highlight'`.
+- **Los valores se comprueban al cruzar el cable**, en los dos lados, contra su tipo: un número
+  fuera de su ancho, un `uuid` mal formado, una fecha inválida. En el servidor, `400` con
+  `Problem` (el `detail` nombra el argumento); en el navegador, la llamada rechaza con ese mismo
+  `Problem` sin enviar nada. `str` admite cualquier texto.
 
 ### 3.3. Funciones
 
 ```
-<verbo> <nombre>          # get | post | put | patch | delete
+<verbo> <nombre> [<ruta>] # get | post | put | patch | delete; ruta: /:id, /:id/lineas/:linea
   use <mw>+               # acumulativas, en orden
   skip <mw>+ | skip *
-  form <form>             # excluye los argumentos
+  form <form>             # excluye los argumentos de cuerpo
   invalidates <ruta>+     # /usuarios /blog/:slug
   compress <gzip|deflate|deflate-raw> [<min>] | compress off
   fails <código> <status> "<detail>"
+  query <arg>  <tipo>     # argumento de query
   <arg>  <tipo>           # cero o más, en orden
   -> <tipo>               # sin él, la función no devuelve nada (204)
 ```
 
 Cada cláusula es lo que hoy es el builder de `@fudic/http`: `use`/`skip` = `.use`/`.skip`,
 `<arg> <tipo>` = `.args<T>()` con un objeto de esos campos, `form` = `.form(f)`, `invalidates`,
-`compress`. `form` y argumentos a la vez es `FUD1072`. `-> T` y `form` más de una vez, `FUD1071`.
-`fails` declara un rechazo con nombre que el handler lanza (§3.12). Un status fuera de `400`–`599`
-es `FUD1075`.
+`compress`. `form` y argumentos de cuerpo a la vez es `FUD1072`. `-> T`, `form` y la ruta más de
+una vez, `FUD1071`. `fails` declara un rechazo con nombre que el handler lanza (§3.12). Un status
+fuera de `400`–`599` es `FUD1075`.
+
+**Dónde viaja cada argumento.** Se decide por la declaración, nunca por el verbo del usuario:
+
+| Argumento | Viaja en | Llega en |
+|---|---|---|
+| nombrado en la ruta de la función (`/:id` ↔ `id  uuid`) | la URL | `ctx.params`, junto a los de la página |
+| `query <arg> <tipo>` | la query, una clave por argumento (`?notify=true`) | `ctx.query` |
+| el resto | el cuerpo; en un `get`, la query como hoy (`?a=…`) | `ctx.args` |
+| `form <f>` | el cuerpo | `ctx.form` |
+
+- La ruta empieza por `/`; cada segmento es literal (`[a-z0-9-]+`) o `:arg`. Mal escrita,
+  `FUD1068`. Un `:x` sin argumento `x`, `FUD1099`.
+- Un argumento de ruta o de query es escalar (`str`, `bool`, numéricos, `date`, `uuid`, `enum`);
+  de ruta, además, nunca `?`. Lo demás es `FUD1101`. La query admite `?`.
+- Un argumento de ruta con el nombre de un parámetro de la página (`[slug]`) es `FUD1100`. La
+  clave `a` de la query es del cable: un `query a` es `FUD1076`.
+- La llamada desde el navegador sigue siendo una: `save({ id, notify, active })`. Lo generado
+  reparte cada valor en su sitio y comprueba su tipo antes de enviar (§3.2).
+- `ctx` del handler: `params` (página + ruta de la función), `query`, y `args` o `form`, todos
+  tipados desde la declaración.
 
 Un middleware con parámetros (§3.8) los recibe en líneas debajo de su `use`:
 
@@ -266,9 +292,11 @@ form <nombre>
       require …
 ```
 
-- Cada campo tiene tipo (§3.2, sin `map`). `str`, `bool`, los numéricos, `date`, `T[]` (hoy
-  `arr`) y `group`. Sin `= valor`, el valor inicial es el de hoy (`''`, `false`, `null`, `[]`).
-  Un valor que no casa con el tipo es `FUD1094`.
+- Cada campo tiene tipo (§3.2, sin `map`). `str`, `bool`, los numéricos, `date`, `uuid`, `T[]`
+  (hoy `arr`) y `group`. Sin `= valor`, el valor inicial es el de hoy (`''`, `false`, `null`,
+  `[]`; `''` para `uuid`). Un valor que no casa con el tipo es `FUD1094`.
+- Un campo `uuid` lleva su comprobación de formato implícita, como el rango de un número: código
+  `uuid`, texto con `range "<texto>"`; el vacío pasa (lo rechaza `required`).
 - Bajo un campo van sus opciones y sus reglas; bajo un form o un grupo, sus campos, sus opciones y
   su `summary`. Una línea se reconoce por su posición, nunca por adivinar el segundo token.
 - `required` en un campo hace que el valor validado no sea nulo: el `ctx.form` de un handler lo
@@ -397,7 +425,9 @@ messages
 `<id>` es la ruta del `.fudapi` dentro de `src/`, sin extensión (`routes/blog/[slug]`,
 `components/user-form`, `rules/nif`). En una librería, `<paquete>/<ruta dentro de fudapi/>`
 (`@fudic/forms/rules`). El mismo `<id>` es la URL de sus funciones:
-`/_fudic/fn/<id>/<nombre>`.
+`/_fudic/fn/<id>/<nombre><ruta>`. En la URL, cada parámetro de la página del `<id>` va con su valor
+y la ruta de la función detrás, también con sus valores: `save /:id` de
+`routes/blog/[slug]` es `/_fudic/fn/routes/blog/mi-post/save/42`.
 
 Lo generado existe dos veces, con el mismo contenido de tipos:
 
@@ -435,8 +465,9 @@ declare module 'fudic:components/user-form' {
 | `middleware m` | `m`, `MClient`, `MServer`, `MFails` | `m.client(fn)` (`browser`) · `m.server(fn)` (`server`) |
 | `pattern p` | `p` (la regex anclada) | — |
 
-- `ctx` es el de SDD-56 (`ServerContext`): `params` tipados desde la ruta, `args` con los
-  argumentos declarados o `form` con el valor validado, más los `adds` de cada `use`.
+- `ctx` es el de SDD-56 (`ServerContext`): `params` tipados desde la página y la ruta de la
+  función, `query` con los argumentos de query, `args` con los de cuerpo o `form` con el valor
+  validado, más los `adds` de cada `use` (§3.3).
 - `RCheck = (value, params) => boolean | Promise<boolean>`; con varios `fails`, devuelve `true` o
   el código que falla. El error y sus argumentos los monta lo generado.
 - Lo generado importa `@fudic/*/contract` y otros `fudic:<id>`. **Nunca** importa `src/server`,
@@ -595,7 +626,9 @@ const server  = import.meta.glob('/src/server/**/*.{ts,js}');
   detecte duplicados y carpetas equivocadas (§3.12). El navegador solo carga `browser`.
 - En dev, la raíz de servidor se carga la primera vez que la necesita una petición (página,
   `load`, función) y el HMR de Vite la invalida al cambiar un fichero. Ningún recorrido propio.
-- **El despacho** (`/_fudic/fn/<id>/<nombre>`) busca en el registro. Sin implementación:
+- **El despacho** (`/_fudic/fn/<id>/<nombre><ruta>`) casa la URL contra los `<id>` del índice y
+  la ruta de cada función (los segmentos `[x]` y `:x` con su valor), comprueba los tipos de ruta
+  y query (§3.2) y busca la implementación en el registro. Sin implementación:
   `404` con `Problem`; en dev, `detail: "save of components/user-form has no implementation in
   src/server"`. Lo mismo para `load` (la página responde 404) y `paths`/`layout` (error de build
   en el prerender, como hoy cuando falta el export).
@@ -724,7 +757,7 @@ Todos son `error` salvo que se diga.
 | `FUD1069` | Expresión de `require`/`when` mal formada. |
 | `FUD1070` | Nombre con la forma equivocada para su clase (§3.1). |
 | `FUD1071` | Cláusula repetida donde solo cabe una (`->`, `form`, `compress`, opciones). |
-| `FUD1072` | Función con `form` y argumentos. |
+| `FUD1072` | Función con `form` y argumentos de cuerpo. |
 | `FUD1073` | Bloque que no puede estar vacío (`type`, `enum`, `form`, `group`, middleware sin mitades). |
 | `FUD1074` | Opción de `load` mal escrita (modo, duración, política, `page`). |
 | `FUD1075` | Status fuera de rango o `compress` mal escrito. |
@@ -741,7 +774,7 @@ Todos son `error` salvo que se diga.
 | `FUD1086` | `skip` de un middleware no heredado. |
 | `FUD1087` | Parámetros de middleware que faltan, sobran o no casan. |
 | `FUD1088` | `type` que se contiene a sí mismo. |
-| `FUD1089` | Clave de `map` que no es `str` ni entera. |
+| `FUD1089` | Clave de `map` que no es `str`, `uuid` ni entera. |
 | `FUD1090` | `load`, `paths` o `layout` fuera del hermano de una ruta. |
 | `FUD1091` | `paths` en una ruta sin parámetros o en `_error`. |
 | `FUD1093` | `fails` repetido en una declaración. |
@@ -750,6 +783,9 @@ Todos son `error` salvo que se diga.
 | `FUD1096` | Más de un `messages` en el proyecto. |
 | `FUD1097` | Regla sin `runs`, sin `on` o sin `fails`. |
 | `FUD1098` | Regla de grupo/form bajo un campo, o de campo en un `summary`. |
+| `FUD1099` | `:x` en la ruta de una función sin argumento `x`. |
+| `FUD1100` | Argumento de ruta con el nombre de un parámetro de la página. |
+| `FUD1101` | Argumento de ruta o de query que no es escalar, o de ruta con `?`. |
 | `FUD1110` | `@server` o `@client` en un `@code` (dice a dónde va cada cosa). |
 | `FUD1111` | `<link rel="server">` sin `.fudapi` en su `href`. |
 | `FUD1112` | `<link rel="server">` en un layout o un snippet. |
@@ -820,6 +856,14 @@ Reescritos (mismo código, texto nuevo): `FUD0201`, `FUD0290`, `FUD0430`, `FUD06
 23. **Built-ins.** `required`, `min`, `max`, `min-length`, `max-length`, `pattern`, `csrf` y
     `error-pages` se comportan como hoy (los tests de `@fudic/forms` y `@fudic/http` sobre esas
     piezas siguen en verde, reescritos sobre lo generado).
+36. **Ruta, query y cuerpo.** `put save /:id` con `query notify bool` y `active bool`, en la ruta
+    `blog/[slug]`: `save({ id, notify, active })` desde el navegador llega al handler con
+    `ctx.params` = `{ slug, id }`, `ctx.query.notify` y `ctx.args.active`, cada uno con su tipo; la
+    URL es la de §3.11. Lo mismo con `form` en lugar de `active`.
+37. **`uuid`.** Un `id uuid` acepta cualquier UUID (mayúsculas o minúsculas) y un `id str` acepta
+    `abc`; un `id uuid` o un `id i32` con `abc` dan `400` con `Problem` en el servidor, y en el
+    navegador rechazan sin enviar. Un campo `uuid` de un form da su error `uuid` y deja pasar el
+    vacío.
 
 **El `.fud`**
 
