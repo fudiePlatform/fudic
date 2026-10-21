@@ -6,7 +6,7 @@
 > `@fudic/typecheck` · `@fudic/language-server` · `@fudic/formatter` · `@fudic/cli` · `fudic-vscode` ·
 > `examples/*` · `packages/testing`
 > **Rama:** `sdd-60-fudapi` (nace de `main`)
-> **Progreso:** 31 / 64 — `En curso`.
+> **Progreso:** 32 / 64 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina; la otra escribe los tests de cada fase (las tareas
 «Los tests de…»), contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -135,7 +135,7 @@ Cada meta cierra una fase. La fase no se da por terminada hasta que Pedro la pru
 | [x] | 20 | 19 | **`fudic.json`.** `server`, `browser` (y `api` en `kind: lib`) en `ProjectConfig`, relativos y dentro del proyecto, con el valor de las convenciones si faltan; sus diagnósticos en el rango de `@fudic/config` | `config` | `src/read.ts` |
 | [x] | 21 | 15, 17 | **Built-ins de forms.** `fudapi/rules.fudapi` y `fudapi/patterns.fudapi` (SDD §3.10) y sus implementaciones en `browser/`, publicadas con el paquete | `forms` | `fudapi/` · `browser/` · `package.json` |
 | [x] | 22 | 14, 17 | **Built-ins de http.** `fudapi/middlewares.fudapi` (`csrf`, `error-pages`) y sus mitades en `browser/` y `server/` | `http` | `fudapi/` · `browser/` · `server/` · `package.json` |
-| [ ] | 23 | 20–22 | **Los tests de configuración y built-ins.** Criterio 22 (lectura) y 23 | `config` · `forms` · `http` | `test/` |
+| [x] | 23 | 20–22 | **Los tests de configuración y built-ins.** Criterio 22 (lectura) y 23 | `config` · `forms` · `http` | `test/` |
 
 ## Fase 7 — el `.fud` en el compilador (6)
 
