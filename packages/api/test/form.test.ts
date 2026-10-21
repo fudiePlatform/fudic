@@ -46,6 +46,23 @@ describe('forms (SDD §3.6)', () => {
     expect(f.fields.map((m) => (m as FieldDecl).initial?.kind)).toEqual(['string', 'number', 'bool', 'empty-list', undefined]);
   });
 
+  it('an initial value glued to its `=` reads as with blanks around it', () => {
+    for (const written of ['name  str=""', 'name  str= ""', 'name  str =""']) {
+      const source = `form f\n  ${written}\n  age  u8=18`;
+      expect(codes(source), written).toEqual([]);
+      const [name, age] = form(source).fields as [FieldDecl, FieldDecl];
+      expect([name.initial?.kind, slice(source, name.initial!.span)]).toEqual(['string', '""']);
+      expect(age.initial).toMatchObject({ kind: 'number', value: 18 });
+    }
+  });
+
+  it('`a==b` glued in a `require` is one comparison, not an `=`', () => {
+    const [rule] = requires('form f\n  a  str\n  b  str\n  summary\n    require x  a==b  "Text."');
+    expect(rule!.expr).toMatchObject({ kind: 'binary', op: '==' });
+    expect(rule!.text?.text).toBe('Text.');
+    expect(codes('form f\n  a  u8\n  summary\n    require x  a>=1 and a<=9 and a!=5')).toEqual([]);
+  });
+
   it('reads `range`, rules with arguments and rules without text', () => {
     const source = lines('form f', '  age  u8', '    range "Entre {min} y {max}."', '    min 18 "Mayor de edad."', '    required');
     expect(codes(source)).toEqual([]);

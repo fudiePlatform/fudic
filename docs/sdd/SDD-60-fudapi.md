@@ -123,6 +123,9 @@ URLs, mismos modos de ruta, mismo HTML, misma hidratación, mismas pruebas— si
   en una línea `pattern`, donde nunca (§3.9). Las líneas `#` pegadas encima de una declaración
   son su **documentación** (hover).
 - Cadenas entre comillas dobles, de una línea, con escapes `\"` y `\\`.
+- Un `=` suelto fuera de comillas (no parte de `==`, `!=`, `<=`, `>=`) es siempre un token propio:
+  `str=""` se lee como `str = ""`. Un valor que lleve `=` va entre comillas
+  (`routes  403 "/entrar?x=1"`). *Decidido al implementar, a petición de Pedro.*
 - Las líneas en blanco no cuentan. Valen `\n`, `\r\n` y `\r`.
 - Un fichero es **de contrato** (`load`, `paths`, `layout`, funciones, `chain`, `form`, `type`,
   `enum`, `messages`) o **de extensiones** (`rule`, `middleware`, `pattern`, y los `type`/`enum`

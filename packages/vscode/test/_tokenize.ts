@@ -1,6 +1,6 @@
 /**
- * The tokenisation harness for the TextMate grammars: `.fud` (SDD-25 §4.2) and `.fudspec`
- * (SDD-52 §4.3).
+ * The tokenisation harness for the TextMate grammars: `.fud` (SDD-25 §4.2), `.fudspec`
+ * (SDD-52 §4.3) and `.fudapi` (SDD-60 §4.10).
  *
  * The grammar is data, so it never appears in the coverage report — and it is still half of
  * what this package contributes. This runs it under the same engine VS Code uses,
@@ -29,6 +29,7 @@ const EMBEDDED = ['source.ts', 'source.css', 'source.js', 'text.html'] as const;
 const GRAMMARS: Readonly<Record<string, string>> = {
   'text.html.fudic': 'fudic.tmLanguage.json',
   'source.fudspec': 'fudspec.tmLanguage.json',
+  'source.fudapi': 'fudapi.tmLanguage.json',
 };
 
 const onigLib = loadWASM(readFileSync(require.resolve('vscode-oniguruma/release/onig.wasm')).buffer).then(
@@ -53,8 +54,8 @@ const registry = new Registry({
   },
 });
 
-/** A grammar the extension contributes: the `.fud` one, or the `.fudspec` one. */
-export type Scope = 'text.html.fudic' | 'source.fudspec';
+/** A grammar the extension contributes: the `.fud` one, the `.fudspec` one or the `.fudapi` one. */
+export type Scope = 'text.html.fudic' | 'source.fudspec' | 'source.fudapi';
 
 const cached = new Map<Scope, IGrammar>();
 

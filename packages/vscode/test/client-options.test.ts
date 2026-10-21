@@ -15,7 +15,7 @@ const settings: FudicSettings = {
 };
 
 describe('buildClientLaunch', () => {
-  it('watches the six things that invalidate the server', () => {
+  it('watches the things that invalidate the server', () => {
     // Missing any one of them is a silent failure with a slow diagnosis: `.fud` and a new
     // component never resolves, `tsconfig` and the program keeps stale options,
     // `package.json` and the server keeps typechecking with the previous TypeScript,
@@ -32,13 +32,17 @@ describe('buildClientLaunch', () => {
       '**/*.fixture.ts',
       // The catalogs a hover over a message reads (SDD-58 criterion 33).
       '**/src/locales/**/*.json',
+      // The contracts (SDD-60 criterion 27): a rule changed in one .fudapi revalidates the one
+      // that uses it, without reopening it.
+      '**/*.fudapi',
     ]);
   });
 
-  it('selects file-scheme fudic and fudspec documents only (SDD-52 criterion 26)', () => {
+  it('selects file-scheme fudic, fudspec and fudapi documents only (SDD-52 criterion 26, SDD-60 §4.10)', () => {
     expect(buildClientLaunch(settings, '/srv.js', '/lib').documentSelector).toEqual([
       { scheme: 'file', language: 'fudic' },
       { scheme: 'file', language: 'fudspec' },
+      { scheme: 'file', language: 'fudapi' },
     ]);
   });
 

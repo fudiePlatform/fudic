@@ -36,6 +36,20 @@ describe('formatApi (criterion 7)', () => {
     ]);
   });
 
+  it('spaces a glued `=`', () => {
+    expect(formatApi('form f\n  name str=""\n  alias str= "x"\n  age u8 =3\n')).toBe(
+      lines('form f', '  name   str = ""', '  alias  str = "x"', '  age    u8 = 3'),
+    );
+    expect(formatApi('form f\n  a str\n  summary\n    require x  a=="b"\n')).toBe(
+      lines('form f', '  a  str', '  summary', '    require x a=="b"'),
+    );
+  });
+
+  it('a `pattern` read as tokens and moved to level 0 gets its regex back as written', () => {
+    expect(formatApi('    pattern p  x /=? y\n')).toBe(lines('pattern p  x /=? y'));
+    expect(formatApi('    pattern p  x\n')).toBe(lines('pattern p  x'));
+  });
+
   it('a continuation line keeps its trailing comment', () => {
     expect(formatApi('form f\n  a str\n  summary\n    require x  a\n          "T."   # note\n')).toBe(
       lines('form f', '  a  str', '  summary', '    require x a', '               "T." # note'),

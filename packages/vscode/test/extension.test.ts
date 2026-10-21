@@ -131,7 +131,7 @@ describe('activate', () => {
     ]);
   });
 
-  it('points the server at the bundled bundle and watches the seven globs', async () => {
+  it('points the server at the bundled bundle and watches the eight globs', async () => {
     await activate(context());
 
     const options = LanguageClient.created[0]?.serverOptions as { run: { module: string } };
@@ -144,6 +144,7 @@ describe('activate', () => {
       '**/fudic/terms/**/*.js',
       '**/*.fixture.ts',
       '**/src/locales/**/*.json',
+      '**/*.fudapi',
     ]);
   });
 

@@ -334,6 +334,57 @@ describe('watched files', () => {
     expect(refreshes).toEqual([]);
   });
 
+  it('a .fudapi or a package.json changed on disk drops the .fudapi files and asks for a refresh (SDD-60 criterion 27)', () => {
+    let lists = 0;
+    const apiFs = { readFile: () => undefined, list: () => (lists++, []) };
+    const { fake, server, volar } = setup({ apiFs });
+    const refreshes: boolean[] = [];
+    volar.languageFeatures = { requestRefresh: async (clear) => void refreshes.push(clear) };
+    fake.onInitialize?.(params());
+    server.apis.load('/p/src/a.fudapi', '');
+    const listed = lists;
+    server.apis.load('/p/src/a.fudapi', '');
+    expect(lists).toBe(listed);
+
+    fake.onDidChangeWatchedFiles?.({
+      changes: [
+        { uri: URI.file('/p/src/rules/nif.fudapi').toString(), type: 2 },
+        { uri: URI.file('/p/package.json').toString(), type: 2 },
+      ],
+    });
+
+    server.apis.load('/p/src/a.fudapi', '');
+    expect(lists).toBeGreaterThan(listed);
+    expect(refreshes).toEqual([false]);
+  });
+
+  it('leaves the .fudapi files alone for a change that cannot affect them', () => {
+    let lists = 0;
+    const apiFs = { readFile: () => undefined, list: () => (lists++, []) };
+    const { fake, server } = setup({ apiFs });
+    fake.onInitialize?.(params());
+    server.apis.load('/p/src/a.fudapi', '');
+    const listed = lists;
+    fake.onDidChangeWatchedFiles?.({ changes: [{ uri: URI.file('/p/tsconfig.json').toString(), type: 2 }] });
+    server.apis.load('/p/src/a.fudapi', '');
+    expect(lists).toBe(listed);
+  });
+
+  it('an open .fudapi is read from the editor, a closed one from the disk', () => {
+    const disk: Record<string, string> = { '/p/src/b.fudapi': 'type FromDisk\n  x  str\n' };
+    const apiFs = {
+      readFile: (path: string) => disk[path],
+      list: (path: string) => (path === '/p/src' ? [{ name: 'b.fudapi', directory: false }] : []),
+    };
+    const { fake, server, documents } = setup({ apiFs });
+    fake.onInitialize?.(params());
+    expect(server.apis.load('/p/src/a.fudapi', '').index.lookup('type', 'FromDisk')).toBeDefined();
+    documents.set(URI.file('/p/src/b.fudapi').toString(), TextDocument.create(URI.file('/p/src/b.fudapi').toString(), 'fudapi', 2, 'type FromEditor\n  x  str\n'));
+    const index = server.apis.load('/p/src/a.fudapi', '').index;
+    expect(index.lookup('type', 'FromEditor')).toBeDefined();
+    expect(index.lookup('type', 'FromDisk')).toBeUndefined();
+  });
+
   it('copes with a Volar server that cannot refresh', () => {
     const { fake, server } = setup();
     fake.onInitialize?.(params());

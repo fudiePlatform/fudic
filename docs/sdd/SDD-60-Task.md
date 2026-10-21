@@ -6,7 +6,7 @@
 > `@fudic/typecheck` · `@fudic/language-server` · `@fudic/formatter` · `@fudic/cli` · `fudic-vscode` ·
 > `examples/*` · `packages/testing`
 > **Rama:** `sdd-60-fudapi` (nace de `main`)
-> **Progreso:** 14 / 64 — `En curso`.
+> **Progreso:** 19 / 64 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina; la otra escribe los tests de cada fase (las tareas
 «Los tests de…»), contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -108,11 +108,11 @@ Cada meta cierra una fase. La fase no se da por terminada hasta que Pedro la pru
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 40 | 12 | **El servicio `.fudapi`.** `LanguagePlugin` aislado (`fudapi`), host del índice (app + dependencias directas), diagnósticos y formato; un cambio en un `.fudapi` o en el `package.json` revalida los `.fudapi` abiertos | `language-server` | `src/fudapi/*` · `src/server.ts` · `src/uri.ts` |
-| [ ] | 41 | 40 | **Completado.** Cada fila de SDD §4.9 | `language-server` | `src/fudapi/completion.ts` |
-| [ ] | 42 | 40 | **Hover, definición y semantic tokens.** También hacia los `.fudapi` de una librería | `language-server` | `src/fudapi/navigation.ts` · `semantic-tokens.ts` |
-| [ ] | 59 | 42 | **VS Code para `.fudapi`.** SDD §4.10: lenguaje, gramática `source.fudapi`, configuración, icono, `configurationDefaults`, `workspaceContains`, `documentSelector`, `FILE_EVENTS` | `vscode` | `package.json` · `syntaxes/` · `src/client-options.ts` |
-| [ ] | 60 | 59 | **Los tests del editor `.fudapi`.** Criterios 27 (lado `.fudapi`), 28, 29 y 31; gramática (snapshot), manifiesto, `FILE_EVENTS`, `documentSelector` | `language-server` · `vscode` | `test/` |
+| [x] | 40 | 12 | **El servicio `.fudapi`.** `LanguagePlugin` aislado (`fudapi`), host del índice (app + dependencias directas), diagnósticos y formato; un cambio en un `.fudapi` o en el `package.json` revalida los `.fudapi` abiertos | `language-server` | `src/fudapi/*` · `src/server.ts` · `src/uri.ts` |
+| [x] | 41 | 40 | **Completado.** Cada fila de SDD §4.9 | `language-server` | `src/fudapi/completion.ts` |
+| [x] | 42 | 40 | **Hover, definición y semantic tokens.** También hacia los `.fudapi` de una librería | `language-server` | `src/fudapi/navigation.ts` · `semantic-tokens.ts` |
+| [x] | 59 | 42 | **VS Code para `.fudapi`.** SDD §4.10: lenguaje, gramática `source.fudapi`, configuración, icono, `configurationDefaults`, `workspaceContains`, `documentSelector`, `FILE_EVENTS` | `vscode` | `package.json` · `syntaxes/` · `src/client-options.ts` |
+| [x] | 60 | 59 | **Los tests del editor `.fudapi`.** Criterios 27 (lado `.fudapi`), 28, 29 y 31; gramática (snapshot), manifiesto, `FILE_EVENTS`, `documentSelector` | `language-server` · `vscode` | `test/` |
 
 ## Fase 5 — el emisor y los tipos generados · META 2 (8)
 

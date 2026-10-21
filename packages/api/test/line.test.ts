@@ -32,6 +32,32 @@ describe('the line reader', () => {
     expect(line.comment).toEqual({ start: 12, end: 18 });
   });
 
+  it('a lone `=` is a token of its own, glued or not', () => {
+    const raw = (s: string): readonly string[] => read(s).tokens.map((t) => t.raw);
+    for (const line of ['name str=""', 'name str= ""', 'name str =""', 'name str = ""']) {
+      expect(raw(line), line).toEqual(['name', 'str', '=', '""']);
+    }
+    expect(raw('a=3')).toEqual(['a', '=', '3']);
+    expect(raw('=')).toEqual(['=']);
+    expect(read('a=b').tokens.map((t) => t.span)).toEqual([
+      { start: 0, end: 1 },
+      { start: 1, end: 2 },
+      { start: 2, end: 3 },
+    ]);
+  });
+
+  it('an `=` of `==`, `!=`, `<=` or `>=`, or inside quotes, stays where it is', () => {
+    const raw = (s: string): readonly string[] => read(s).tokens.map((t) => t.raw);
+    for (const op of ['==', '!=', '<=', '>=']) expect(raw(`a${op}b`)).toEqual([`a${op}b`]);
+    expect(raw('x="a=b"')).toEqual(['x', '=', '"a=b"']);
+    expect(read('x="a=b"').tokens[2]!.quoted.map((q) => q.text)).toEqual(['a=b']);
+  });
+
+  it('the rest of a level-0 `pattern` keeps its `=`; an indented one is cut like any line', () => {
+    expect(read('pattern p  a=b /=?').tokens.map((t) => t.raw)).toEqual(['pattern', 'p', 'a=b /=?']);
+    expect(read('    pattern p  a=b').tokens.map((t) => t.raw)).toEqual(['pattern', 'p', 'a', '=', 'b']);
+  });
+
   it('a tab in the indentation is marked', () => {
     expect(read(' \tx').tabbed).toBe(true);
     expect(read('  x').tabbed).toBe(false);

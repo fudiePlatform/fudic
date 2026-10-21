@@ -1,0 +1,164 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the .fudapi grammar — snapshots > tokenises a contract file 1`] = `
+"0  "#"  comment.line.number-sign.fudapi punctuation.definition.comment.fudapi
+0  " Per request: the list changes with every new person."  comment.line.number-sign.fudapi
+1  "load"  keyword.control.declaration.fudapi
+1  " "  -
+1  "ssr"  constant.language.strategy.fudapi
+1  " "  -
+1  "ttl"  constant.language.strategy.fudapi
+1  " "  -
+1  "5m"  constant.numeric.duration.fudapi
+1  " "  -
+1  "cache-first"  constant.language.strategy.fudapi
+1  " "  -
+1  "page"  constant.language.strategy.fudapi
+1  " "  -
+1  "persist"  constant.language.strategy.fudapi
+1  " "  -
+1  "1h"  constant.numeric.duration.fudapi
+2  "  users  "  -
+2  "Person[]"  entity.name.type.fudapi
+3  ""  -
+4  "put"  keyword.control.verb.fudapi
+4  " "  -
+4  "save"  entity.name.function.fudapi
+4  " "  -
+4  "/:id/lines/:line"  string.unquoted.route.fudapi
+5  "  "  -
+5  "use"  keyword.other.clause.fudapi
+5  " auth"  -
+6  "  "  -
+6  "skip"  keyword.other.clause.fudapi
+6  " csrf"  -
+7  "  "  -
+7  "query"  keyword.other.clause.fudapi
+7  " notify  "  -
+7  "bool?"  support.type.primitive.fudapi
+8  "  id      "  -
+8  "uuid"  support.type.primitive.fudapi
+9  "  "  -
+9  "fails"  keyword.other.clause.fudapi
+9  " taken "  -
+9  "409"  constant.numeric.fudapi
+9  " "  -
+9  "\\""  string.quoted.double.fudapi punctuation.definition.string.begin.fudapi
+9  "Ya existe: "  string.quoted.double.fudapi
+9  "{detail}"  string.quoted.double.fudapi variable.other.placeholder.fudapi
+9  "\\""  string.quoted.double.fudapi punctuation.definition.string.end.fudapi
+10  "  "  -
+10  "->"  keyword.operator.returns.fudapi
+10  " "  -
+10  "map"  support.type.primitive.fudapi
+10  " "  -
+10  "str"  support.type.primitive.fudapi
+10  " "  -
+10  "Person"  entity.name.type.fudapi
+11  ""  -
+12  "paths"  keyword.control.declaration.fudapi
+13  "chain"  keyword.control.declaration.fudapi
+14  "  "  -
+14  "compress"  keyword.other.clause.fudapi
+14  " gzip "  -
+14  "200"  constant.numeric.fudapi
+15  ""  -
+16  "enum"  keyword.control.declaration.fudapi
+16  " "  -
+16  "Variant"  entity.name.type.fudapi
+16  "          "  -
+16  "#"  comment.line.number-sign.fudapi punctuation.definition.comment.fudapi
+16  " a union of literals"  comment.line.number-sign.fudapi
+17  "  default"  -
+18  ""  -
+19  "form"  keyword.control.declaration.fudapi
+19  " "  -
+19  "userForm"  entity.name.type.fudapi
+20  "  name  "  -
+20  "str"  support.type.primitive.fudapi
+20  " "  -
+20  "="  keyword.operator.assignment.fudapi
+20  " "  -
+20  "\\""  string.quoted.double.fudapi punctuation.definition.string.begin.fudapi
+20  "\\""  string.quoted.double.fudapi punctuation.definition.string.end.fudapi
+21  "    min-length "  -
+21  "3"  constant.numeric.fudapi
+21  "  "  -
+21  "\\""  string.quoted.double.fudapi punctuation.definition.string.begin.fudapi
+21  "Al menos "  string.quoted.double.fudapi
+21  "{n}"  string.quoted.double.fudapi variable.other.placeholder.fudapi
+21  " "  string.quoted.double.fudapi
+21  "\\\\\\""  string.quoted.double.fudapi constant.character.escape.fudapi
+21  "letras"  string.quoted.double.fudapi
+21  "\\\\\\""  string.quoted.double.fudapi constant.character.escape.fudapi
+21  "."  string.quoted.double.fudapi
+21  "\\""  string.quoted.double.fudapi punctuation.definition.string.end.fudapi
+22  "  acceso  "  -
+22  "group"  support.type.primitive.fudapi
+23  "    clave  "  -
+23  "str"  support.type.primitive.fudapi
+24  "    "  -
+24  "summary"  keyword.other.clause.fudapi
+25  "      "  -
+25  "require"  keyword.other.clause.fudapi
+25  " mismatch  clave "  -
+25  "=="  keyword.operator.comparison.fudapi
+25  " repetir "  -
+25  "and"  keyword.operator.word.fudapi
+25  " "  -
+25  "not"  keyword.operator.word.fudapi
+25  " "  -
+25  "empty"  keyword.operator.word.fudapi
+25  " clave"  -
+26  "                        "  -
+26  "\\""  string.quoted.double.fudapi punctuation.definition.string.begin.fudapi
+26  "Las contraseñas no coinciden."  string.quoted.double.fudapi
+26  "\\""  string.quoted.double.fudapi punctuation.definition.string.end.fudapi
+27  ""  -
+28  "messages"  keyword.control.declaration.fudapi
+29  "  required  "  -
+29  "\\""  string.quoted.double.fudapi punctuation.definition.string.begin.fudapi
+29  "Obligatorio."  string.quoted.double.fudapi"
+`;
+
+exports[`the .fudapi grammar — snapshots > tokenises an extensions file 1`] = `
+"0  "rule"  keyword.control.declaration.fudapi
+0  " "  -
+0  "nif-unique"  entity.name.type.fudapi
+1  "  "  -
+1  "on"  keyword.other.clause.fudapi
+1  " field "  -
+1  "str"  support.type.primitive.fudapi
+2  "  "  -
+2  "runs"  keyword.other.clause.fudapi
+2  " server"  -
+3  "  "  -
+3  "async"  keyword.other.clause.fudapi
+4  "  "  -
+4  "fails"  keyword.other.clause.fudapi
+4  " nif-taken"  -
+5  ""  -
+6  "middleware"  keyword.control.declaration.fudapi
+6  " "  -
+6  "auth"  entity.name.type.fudapi
+7  "  "  -
+7  "client"  keyword.other.clause.fudapi
+8  "  "  -
+8  "server"  keyword.other.clause.fudapi
+9  "  "  -
+9  "adds"  keyword.other.clause.fudapi
+10  "    user  "  -
+10  "User"  entity.name.type.fudapi
+11  ""  -
+12  "pattern"  keyword.control.declaration.fudapi
+12  " "  -
+12  "email-loose"  entity.name.constant.fudapi
+12  "  "  -
+12  "[^@\\\\s]+@[^@\\\\s]+\\\\.[^@\\\\s]+"  string.regexp.fudapi
+12  "   "  -
+13  "pattern"  keyword.control.declaration.fudapi
+13  " "  -
+13  "hex"  entity.name.constant.fudapi
+13  "  "  -
+13  "#[0-9a-f]{6} # not a comment"  string.regexp.fudapi"
+`;
