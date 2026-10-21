@@ -1,0 +1,17 @@
+{
+  // The implementations of this package's own `.fudapi` (SDD-60 §3.10): `impl/browser` and
+  // `impl/server` compile to `browser/` and `server/` at the package root, where an app's
+  // generated root loads them from. `impl/fudic.d.ts` types the `fudic:` modules they import.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./impl",
+    "outDir": ".",
+    "noEmit": false,
+    "declaration": false,
+    "sourceMap": true,
+    "paths": {}
+  },
+  "include": ["impl"],
+  // Explicit: left out, it would default to the output folder, which here is the package root.
+  "exclude": []
+}

@@ -26,7 +26,7 @@ describe('readProjectConfig', () => {
   it('reads the three fields and says nothing else (criterion 1)', () => {
     const result = readProjectConfig(ROOT, io('{"id":"shop","kind":"app","prefix":"shop"}'));
 
-    expect(result.config).toEqual({ id: 'shop', kind: 'app', prefix: 'shop', globalStyles: [], styles: [] });
+    expect(result.config).toEqual({ id: 'shop', kind: 'app', prefix: 'shop', globalStyles: [], styles: [], server: 'src/server', browser: 'src/browser' });
     expect(result.diagnostics).toEqual([]);
   });
 
@@ -45,7 +45,7 @@ describe('readProjectConfig', () => {
   it('fills the defaults of the fields that are not there (criterion 4)', () => {
     const result = readProjectConfig(ROOT, io('{}'));
 
-    expect(result.config).toEqual({ id: '', kind: 'app', prefix: '', globalStyles: [], styles: [] });
+    expect(result.config).toEqual({ id: '', kind: 'app', prefix: '', globalStyles: [], styles: [], server: 'src/server', browser: 'src/browser' });
     expect(result.diagnostics).toEqual([]);
   });
 
@@ -160,6 +160,8 @@ describe('readProjectConfig', () => {
         globalStyles: [],
         styles: [],
         locales: ['es', 'en'],
+        server: 'src/server',
+        browser: 'src/browser',
       });
       expect(result.diagnostics).toEqual([]);
     });

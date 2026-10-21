@@ -16,7 +16,7 @@
 import { ERROR_PREFIX } from '@fudic/conventions';
 import { HttpError, Redirect, ValidationError } from './errors.js';
 import { middleware } from './middleware.js';
-import type { Middleware } from './types.js';
+import type { ClientStep, Middleware } from './types.js';
 
 /** Where a status goes instead of `_error.fud`: a URL, or the URL a function makes of the error. */
 export type ErrorRoute = string | ((error: HttpError) => string);
@@ -45,8 +45,9 @@ function errorUrl(error: unknown): string {
   return `${ERROR_PREFIX}/${error.status}${query}`;
 }
 
-export function errorPages(routes: ErrorRoutes = {}): Middleware {
-  return middleware().client(async (ctx, next) => {
+/** The client half of `errorPages`, for its routes. */
+export function errorPagesStep(routes: ErrorRoutes = {}): ClientStep {
+  return async (ctx, next) => {
     try {
       return await next(ctx);
     } catch (e) {
@@ -59,5 +60,9 @@ export function errorPages(routes: ErrorRoutes = {}): Middleware {
       if (route !== undefined) return navigate(typeof route === 'string' ? route : route(e as HttpError));
       return navigate(errorUrl(e));
     }
-  });
+  };
+}
+
+export function errorPages(routes: ErrorRoutes = {}): Middleware {
+  return middleware().client(errorPagesStep(routes));
 }

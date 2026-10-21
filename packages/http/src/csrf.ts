@@ -5,28 +5,11 @@
  * are no tokens to keep or rotate.
  */
 
-import { forbidden } from './errors.js';
+import { csrfClient } from './csrf-client.js';
+import { csrfServer } from './csrf-server.js';
 import { middleware } from './middleware.js';
 import type { Middleware } from './types.js';
 
-export const CSRF_HEADER = 'x-fudic-csrf';
+export { CSRF_HEADER } from './csrf-client.js';
 
-export const csrf: Middleware = /*#__PURE__*/ middleware()
-  .client((ctx, next) => {
-    ctx.headers.set(CSRF_HEADER, '1');
-    return next(ctx);
-  })
-  .server((ctx, next) => {
-    if (ctx.method !== 'GET') {
-      const site = ctx.headers.get('sec-fetch-site');
-      const origin = ctx.headers.get('origin');
-      if (
-        ctx.headers.get(CSRF_HEADER) === null ||
-        (site !== null && site !== 'same-origin') ||
-        (origin !== null && origin !== ctx.url.origin)
-      ) {
-        throw forbidden('cross-site request');
-      }
-    }
-    return next(ctx);
-  });
+export const csrf: Middleware = /*#__PURE__*/ middleware().client(csrfClient).server(csrfServer);

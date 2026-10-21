@@ -1,0 +1,11 @@
+# A header on every call that a page of another site cannot set; an unsafe call without it is refused.
+middleware csrf
+  client
+  server
+  fails cross-site 403 "cross-site request"
+
+# What a call does with an error nobody caught: a status with a route goes there, any other to
+# the error page. A redirect is followed; a cancelled call and a 422 are left alone.
+middleware error-pages
+  client
+  routes  map u16 str

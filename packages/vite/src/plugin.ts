@@ -95,7 +95,7 @@ import {
 } from './i18n.js';
 import {
   ERROR_PREFIX,
-  HTTP_FILE,
+  LEGACY_HTTP_FILE,
   RUNTIME_CACHE_PREFIX,
   RUNTIME_DIR,
   runtimeMarkerUrl,
@@ -1640,7 +1640,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         const pattern = builds.find((rb) => slash(rb.absPath) === slash(path) && rb.locale === locale)?.route.pattern;
         const chunk = transformFudClient(path, fudIo, projectStyles, linked, {
           ...(pattern !== undefined ? { pattern } : {}),
-          ...(httpFileOf(root) !== undefined ? { httpFile: `/${HTTP_FILE}` } : {}),
+          ...(httpFileOf(root) !== undefined ? { httpFile: `/${LEGACY_HTTP_FILE}` } : {}),
         });
         if (chunk === null) {
           return null;

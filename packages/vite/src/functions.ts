@@ -11,7 +11,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { Readable } from 'node:stream';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { extractCode } from '@fudic/compiler';
-import { FN_PREFIX, HTTP_FILE } from '@fudic/conventions';
+import { FN_PREFIX, LEGACY_HTTP_FILE } from '@fudic/conventions';
 import type { RouteBuild } from './discover.js';
 import { parseFud } from './parse.js';
 
@@ -79,7 +79,7 @@ export type FunctionsHandler = (
 
 /** `src/http.ts` of the project, when it has one. */
 export function httpFileOf(root: string): string | undefined {
-  const file = `${root.replace(/\\/gu, '/')}/${HTTP_FILE}`;
+  const file = `${root.replace(/\\/gu, '/')}/${LEGACY_HTTP_FILE}`;
   return existsSync(file) ? file : undefined;
 }
 

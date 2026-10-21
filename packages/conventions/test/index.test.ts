@@ -49,7 +49,10 @@ describe('@fudic/conventions', () => {
 
   it('names the file of the global chain', () => {
     // SDD-56 §3.3: its default export is the outermost level of every function's chain.
-    expect(conventions.HTTP_FILE).toBe('src/http.ts');
+    expect(conventions.HTTP_FILE).toBe('src/http.fudapi');
+    expect(conventions.LEGACY_HTTP_FILE).toBe('src/http.ts');
+    expect(conventions.SERVER_DIR).toBe('src/server');
+    expect(conventions.BROWSER_DIR).toBe('src/browser');
   });
 
   it('names the error page', () => {
@@ -78,6 +81,7 @@ describe('@fudic/conventions', () => {
     expect(Object.keys(conventions).sort()).toEqual([
       'API_DIR',
       'API_TYPES_DIR',
+      'BROWSER_DIR',
       'COMPONENTS_DIR',
       'DATA_PREFIX',
       'ERROR_FILE',
@@ -86,10 +90,12 @@ describe('@fudic/conventions', () => {
       'HTTP_FILE',
       'INVALIDATE_MESSAGE',
       'LAYOUTS_DIR',
+      'LEGACY_HTTP_FILE',
       'LOCALES_DIR',
       'ROUTES_DIR',
       'RUNTIME_CACHE_PREFIX',
       'RUNTIME_DIR',
+      'SERVER_DIR',
       'SRC_DIR',
       'runtimeCacheName',
       'runtimeMarkerUrl',

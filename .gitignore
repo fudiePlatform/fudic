@@ -13,6 +13,9 @@ dist/
 # somebody happened to have on disk when they committed. Anchored to the package root: a
 # `src/runtime/` is source, the code those pieces are built from.
 /packages/*/runtime/
+# The compiled implementations of a library's `.fudapi` (SDD-60 §3.10), built from `impl/`.
+/packages/*/browser/
+/packages/*/server/
 # Packaged VS Code extension: a build artefact of `pnpm --filter fudic-vscode package`.
 *.vsix
 out/

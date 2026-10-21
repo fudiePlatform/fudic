@@ -20,7 +20,8 @@ export default defineConfig({
       // The denominator is the whole package, not what the tests chose to look
       // at: without this, a file no test imports simply does not count, and
       // coverage goes UP by deleting tests.
-      include: ['src/**/*.ts'],
+      include: ['src/**/*.ts', 'impl/**/*.ts'],
+      exclude: ['**/*.d.ts'],
       thresholds: {
         // New package, so it is born at 100 in the four metrics and not at the
         // 80/80/75 floor of SDD-00. Four, not three: leaving `branches` behind

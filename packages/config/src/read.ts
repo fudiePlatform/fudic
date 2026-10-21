@@ -15,6 +15,7 @@
  */
 
 import { CONFIG_FILE, ID_PATTERN, PREFIX_PATTERN, STYLE_NAME_PATTERN } from './constants.js';
+import { API_DIR, BROWSER_DIR, SERVER_DIR } from '@fudic/conventions';
 import { FUD0725, type FUD0725Problem, type FileDiagnostic, type Span } from '@fudic/diagnostics';
 
 /** What the file declares, with every default already filled. */
@@ -56,6 +57,15 @@ export interface ProjectConfig {
    * a page written without a request has no other way to know. Absent when the file declares none.
    */
   readonly site?: string;
+  /**
+   * Where the implementations that run only on the server live (SDD-60 §3.15), relative to the
+   * project and inside it. `src/server` when the file declares none.
+   */
+  readonly server: string;
+  /** Where the implementations that run in the browser live. `src/browser` when it declares none. */
+  readonly browser: string;
+  /** A library's `.fudapi` folder: present only for `kind: lib`, `fudapi` when it declares none. */
+  readonly api?: string;
 }
 
 /** One `"name": "path"` entry of `globalStyles` or `styles`. */
@@ -127,6 +137,9 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
   const styles = readStyleMap(fields, 'styles', ctx);
   const locales = readLocales(fields, ctx);
   const site = readSite(fields, ctx);
+  const server = readFolder(fields, 'server', SERVER_DIR, ctx);
+  const browser = readFolder(fields, 'browser', BROWSER_DIR, ctx);
+  const api = kind === 'lib' ? readFolder(fields, 'api', API_DIR, ctx) : undefined;
 
   // Fields are NOT rescued one by one (§4.2). Identity is a unit, and half an identity is
   // worse than none: an `id` that got through alone would namespace caches under a name
@@ -143,9 +156,39 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
       styles,
       ...(locales === undefined ? {} : { locales }),
       ...(site === undefined ? {} : { site }),
+      server,
+      browser,
+      ...(api === undefined ? {} : { api }),
     },
     diagnostics: [],
   };
+}
+
+/**
+ * A folder of the project (SDD-60 §3.15): absent is the convention; present, a relative path
+ * that stays inside the project, kept without `./` or a trailing slash.
+ */
+function readFolder(fields: Record<string, unknown>, field: string, fallback: string, ctx: Ctx): string {
+  const value = fields[field];
+  if (value === undefined) {
+    return fallback;
+  }
+  const refuse = (reason: string): string => {
+    ctx.diagnostics.push(malformed({ problem: 'folder', field, reason }, fieldSpan(ctx.text, field)));
+    return fallback;
+  };
+  if (typeof value !== 'string' || value.trim() === '') {
+    return refuse(`${JSON.stringify(value)} is not a path`);
+  }
+  const path = value.replace(/\\/gu, '/');
+  if (path.startsWith('/') || /^[A-Za-z]:/u.test(path)) {
+    return refuse('it is absolute');
+  }
+  const segments = path.split('/').filter((s) => s !== '' && s !== '.');
+  if (segments.length === 0 || segments.includes('..')) {
+    return refuse('it leaves the project');
+  }
+  return segments.join('/');
 }
 
 /**
