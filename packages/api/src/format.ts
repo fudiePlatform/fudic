@@ -66,7 +66,7 @@ export function formatApi(source: string): string {
       continue;
     }
     const level = Math.min(Math.floor(line.indent / 2), previous === undefined ? 0 : previous.level! + 1);
-    previous = { ...base, level };
+    previous = { ...base, tokens: level === 0 ? regexWhole(source, line.tokens) : line.tokens, level };
     rows.push(previous);
   }
   // The line reader reports one thing only, an unclosed quote: any report is a refusal.
@@ -103,6 +103,17 @@ function blankRows(rows: readonly Row[]): ReadonlySet<number> {
     lastPattern = isPattern;
   });
   return blanks;
+}
+
+/**
+ * A `pattern` the formatter moves to level 0 becomes a declaration, whose regex is the rest of
+ * the line as written: when it was read indented, as tokens, they are put back as that one text.
+ */
+function regexWhole(source: string, tokens: readonly Token[]): readonly Token[] {
+  if (tokens[0]!.raw !== 'pattern' || tokens.length <= 3) return tokens;
+  const from = tokens[2]!.span.start;
+  const to = tokens[tokens.length - 1]!.span.end;
+  return [tokens[0]!, tokens[1]!, { span: { start: from, end: to }, raw: source.slice(from, to), quoted: [] }];
 }
 
 /** The blanks a row is printed after. */

@@ -13,6 +13,9 @@ form userForm
     pattern email-loose  "Ese email no parece válido."
   web     str = ""
     pattern web-url  "La web empieza por http:// o https://."
+  nif     str = ""
+    required  "Escribe tu NIF."
+    nif       "Ese NIF no es válido."
   acceso  group
     clave    str = ""
       required      "Elige una contraseña."

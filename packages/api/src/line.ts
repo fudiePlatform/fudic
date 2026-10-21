@@ -4,8 +4,9 @@
  *
  * A token is a run of non-blank characters in which a `"…"` section may hold blanks. A `#`
  * that starts a token starts a comment to the end of the line; anywhere else, and inside
- * quotes, it is an ordinary character. A `pattern` declaration (a line read at level 0) is the
- * exception: after its name, the rest of the line is one token, `#` and quotes included. Inside quotes `\"` and `\\` are
+ * quotes, it is an ordinary character. A lone `=` outside quotes is always a token of its own, so
+ * `str=""` reads as `str = ""`. A `pattern` declaration (a line read at level 0) is the
+ * exception to both: after its name, the rest of the line is one token, `#` and `=` included. Inside quotes `\"` and `\\` are
  * escapes and any other backslash is itself. A string never crosses a line.
  *
  * Nothing here fails: an unclosed quote ends at the end of the line and a bad indentation is
@@ -90,19 +91,29 @@ export function readLine(source: string, start: number, end: number, out: Source
       comment = span(i, end);
       break;
     }
-    const tokenStart = i;
-    const quoted: Quoted[] = [];
+    let tokenStart = i;
+    let quoted: Quoted[] = [];
+    const cut = (to: number): void => {
+      if (to > tokenStart) tokens.push({ span: span(tokenStart, to), raw: source.slice(tokenStart, to), quoted });
+    };
     while (i < end && !isBlank(source[i])) {
       if (source[i] === '"') {
         const q = readQuoted(source, i, end);
         if (!q.closed) out.push(FUD1060({ span: q.span }));
         quoted.push(q);
         i = q.span.end;
+      } else if (loneEquals(source, i)) {
+        // `str=""` is `str = ""`: an `=` is a token of its own wherever it is written.
+        cut(i);
+        tokens.push({ span: span(i, i + 1), raw: '=', quoted: [] });
+        i++;
+        tokenStart = i;
+        quoted = [];
       } else {
         i++;
       }
     }
-    tokens.push({ span: span(tokenStart, i), raw: source.slice(tokenStart, i), quoted });
+    cut(i);
   }
 
   return {
@@ -112,6 +123,11 @@ export function readLine(source: string, start: number, end: number, out: Source
     tokens,
     ...(comment !== undefined ? { comment } : {}),
   };
+}
+
+/** An `=` that is not part of `==`, `!=`, `<=` or `>=`. */
+function loneEquals(source: string, i: number): boolean {
+  return source[i] === '=' && source[i + 1] !== '=' && !'=!<>'.includes(source[i - 1] ?? ' ');
 }
 
 /** A quoted section starting at the `"` at `open`. */

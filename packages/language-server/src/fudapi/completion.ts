@@ -264,19 +264,22 @@ function formAt(doc: ApiDocument, offset: number): FormDecl | undefined {
     .at(-1);
 }
 
+/** The member of a form, at any depth, whose line starts at `start`. */
+function memberAt(members: readonly FormMember[], start: number): FormMember | undefined {
+  for (const m of members) {
+    if (m.span.start === start) return m;
+    if (m.kind === 'form-group') {
+      const inner = memberAt(m.fields, start);
+      if (inner !== undefined) return inner;
+    }
+  }
+  return undefined;
+}
+
 /** The field of a form whose line starts at `start`. */
 function fieldAt(form: FormDecl | undefined, start: number): Extract<FormMember, { kind: 'form-field' }> | undefined {
-  const find = (members: readonly FormMember[]): Extract<FormMember, { kind: 'form-field' }> | undefined => {
-    for (const m of members) {
-      if (m.kind === 'form-field' && m.span.start === start) return m;
-      if (m.kind === 'form-group') {
-        const inner = find(m.fields);
-        if (inner !== undefined) return inner;
-      }
-    }
-    return undefined;
-  };
-  return form === undefined ? undefined : find(form.fields);
+  const found = form === undefined ? undefined : memberAt(form.fields, start);
+  return found?.kind === 'form-field' ? found : undefined;
 }
 
 /** The field paths a `require` or `when` can read: of the group whose `summary` it is in, or of the form. */
@@ -286,7 +289,7 @@ function paths(doc: ApiDocument, offset: number, chain: readonly Line[]): Comple
   const group = chain.find((l) => l.words[1] === 'group');
   let scope: readonly FormMember[] = form.fields;
   if (group !== undefined) {
-    const found = form.fields.find((m) => m.kind === 'form-group' && m.span.start === group.start);
+    const found = memberAt(form.fields, group.start);
     scope = found?.kind === 'form-group' ? found.fields : [];
   }
   const out: CompletionItem[] = [];
