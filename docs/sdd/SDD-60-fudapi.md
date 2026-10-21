@@ -360,6 +360,10 @@ rule <nombre>
 - `runs both`: la implementación va en `src/browser` y corre en los dos lados (hoy `validator`).
   `runs server`: va en `src/server` y solo corre al recibir (hoy `serverValidator`). No hay
   `runs client`: el veredicto tiene que ser el mismo en los dos lados.
+- En `on field`, `*` es cualquier tipo y `*[]` cualquier lista (`required` es `on field *`;
+  `min-length`, `on field str *[]`). Un parámetro de regla de tipo `pattern` recibe el nombre de
+  un `pattern` del proyecto (`pattern email-loose` bajo un campo). Ninguno de los dos vale fuera
+  de una regla (`FUD1080`). *Decidido al implementar: §3.10 los necesita y no tenían forma.*
 - Bajo un campo cuyo tipo no está en `on field`, `FUD1083`. Una regla de grupo bajo un campo o al
   revés, `FUD1098`. Número o tipo de argumentos mal, `FUD1084`.
 

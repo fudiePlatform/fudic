@@ -15,7 +15,8 @@ import type {
 } from './ast.js';
 import { isString, stringText, type Token } from './line.js';
 
-const NAMED = /^([A-Za-z_][A-Za-z0-9_]*)((?:\[\])*)(\?)?$/u;
+/** A name, its `[]`s and its `?`. `*` is any type: the validator only takes it in `on field`. */
+const NAMED = /^([A-Za-z_][A-Za-z0-9_]*|\*)((?:\[\])*)(\?)?$/u;
 
 /** A type that fits in one token: `str`, `Person[]`, `i32?`. */
 function singleType(t: Token): TypeExpr | undefined {
