@@ -11,11 +11,12 @@ export type FUD1065Params = SourceInput & {
   readonly expected: readonly string[];
 };
 
+function expected(words: readonly string[]): string {
+  return words.length === 0
+    ? 'nothing goes below it'
+    : `expected one of ${words.map((w) => `\`${w}\``).join(', ')}`;
+}
+
 /** A `.fudapi` line that its parent does not take (SDD-60). */
 export const FUD1065 = (p: FUD1065Params): SourceDiagnostic =>
-  source(
-    'FUD1065',
-    'error',
-    `\`${p.word}\` is not valid under \`${p.parent}\`: expected one of ${p.expected.map((w) => `\`${w}\``).join(', ')}`,
-    p,
-  );
+  source('FUD1065', 'error', `\`${p.word}\` is not valid under \`${p.parent}\`: ${expected(p.expected)}`, p);
