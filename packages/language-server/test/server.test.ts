@@ -358,6 +358,56 @@ describe('watched files', () => {
     expect(refreshes).toEqual([false]);
   });
 
+  /** A disk with one project under `/p`: a contract, and what the server writes. */
+  function contracts() {
+    const disk: Record<string, string> = { '/p/package.json': '{}', '/p/src/a.fudapi': 'type A\n  x  str\n' };
+    const writes: string[] = [];
+    const removed: string[] = [];
+    const apiFs = {
+      readFile: (path: string) => disk[path],
+      list: (path: string) => (path === '/p' ? [{ name: 'src', directory: true }] : path === '/p/src' ? [{ name: 'a.fudapi', directory: false }] : []),
+      writeFile: (path: string, text: string) => {
+        writes.push(path);
+        disk[path] = text;
+      },
+      removeFile: (path: string) => {
+        removed.push(path);
+        delete disk[path];
+      },
+    };
+    return { disk, writes, removed, apiFs };
+  }
+
+  it('writes the types of every contract when it starts (SDD-60 §4.9)', () => {
+    const { apiFs, writes, disk } = contracts();
+    const { fake } = setup({ apiFs });
+    fake.onInitialize?.(params());
+    fake.onInitialized?.();
+    expect(writes).toEqual(['/p/.fudic/api/a.d.ts']);
+    expect(disk['/p/.fudic/api/a.d.ts']).toContain('export interface A { readonly x: string }');
+  });
+
+  it('a .fudapi saved writes its types again; one deleted takes its types away (SDD-60 criterion 30)', () => {
+    const { apiFs, writes, removed, disk } = contracts();
+    const { fake } = setup({ apiFs });
+    fake.onInitialize?.(params());
+    fake.onInitialized?.();
+    writes.length = 0;
+
+    disk['/p/src/a.fudapi'] = 'type A\n  y  str\n';
+    fake.onDidChangeWatchedFiles?.({ changes: [{ uri: URI.file('/p/src/a.fudapi').toString(), type: 2 }] });
+    expect(writes).toEqual(['/p/.fudic/api/a.d.ts']);
+    expect(disk['/p/.fudic/api/a.d.ts']).toContain('readonly y: string');
+
+    fake.onDidChangeWatchedFiles?.({ changes: [{ uri: URI.file('/p/src/gone.fudapi').toString(), type: 3 }] });
+    expect(removed).toEqual(['/p/.fudic/api/gone.d.ts']);
+
+    // A package.json changes what a contract sees, but writes no types by itself.
+    writes.length = 0;
+    fake.onDidChangeWatchedFiles?.({ changes: [{ uri: URI.file('/p/package.json').toString(), type: 2 }] });
+    expect(writes).toEqual([]);
+  });
+
   it('leaves the .fudapi files alone for a change that cannot affect them', () => {
     let lists = 0;
     const apiFs = { readFile: () => undefined, list: () => (lists++, []), writeFile: () => {}, removeFile: () => {} };
