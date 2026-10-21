@@ -187,6 +187,9 @@ describe('each validator code (criterion 8)', () => {
 
   it('FUD1087: a map takes one line per pair; anything else given twice is extra', () => {
     expect(codesOf('get f\n  use error-pages\n    routes  403 /entrar\n    routes  404 /no')).toEqual([]);
+    // A value with an `=` goes in quotes (SDD §3.1); bare, the `=` is a token of its own.
+    expect(codesOf('get f\n  use error-pages\n    routes  403 "/entrar?x=1"')).toEqual([]);
+    expect(codesOf('get f\n  use error-pages\n    routes  403 /entrar?x=1')).toEqual(['FUD1087']);
     const mw = app('m', lines('middleware limit', '  server', '  max  u16', '  tags  str[]', '  note  str?', '  role  Role'));
     const use = (...params: string[]): string => lines('get f', '  use limit', ...params.map((p) => `    ${p}`));
     expect(codesOf(use('max  10', 'tags', 'role  admin'), { others: [mw, PEOPLE] })).toEqual([]);
