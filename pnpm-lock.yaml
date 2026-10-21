@@ -229,6 +229,16 @@ importers:
         specifier: 4.1.9
         version: 4.1.9(@types/node@22.20.0)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.6)(vite@8.0.16(@types/node@22.20.0))
 
+  packages/api:
+    dependencies:
+      '@fudic/diagnostics':
+        specifier: workspace:*
+        version: link:../diagnostics
+    devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+
   packages/cli:
     dependencies:
       '@fudic/compiler':
