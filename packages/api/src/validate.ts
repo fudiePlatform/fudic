@@ -279,14 +279,17 @@ function middlewareArgs(name: Name, args: readonly MiddlewareArg[], decl: Middle
   }
 }
 
-/** One parameter line against its type: a map takes a key and a value, a list any number, the rest one. */
+/**
+ * One parameter line against its type: a map takes a key and a value, a list any number of its
+ * elements (or `[]`, or nothing), the rest one value.
+ */
 function argFits(arg: MiddlewareArg, type: TypeExpr, c: Ctx): boolean {
   const values = arg.values;
   if (type.kind === 'map') {
     return values.length === 2 && literalFits(values[0]!, type.key, c.index) && literalFits(values[1]!, type.value, c.index);
   }
   const inner = type.kind === 'optional' ? type.inner : type;
-  if (inner.kind === 'list') return values.every((v) => literalFits(v, inner.element, c.index));
+  if (inner.kind === 'list') return values.every((v) => literalFits(v, inner, c.index));
   return values.length === 1 && literalFits(values[0]!, inner, c.index);
 }
 

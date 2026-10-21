@@ -191,11 +191,11 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
           "keyword": "fails",
           "params": [
             {
-              "span": "min",
-              "text": "min",
+              "span": "n",
+              "text": "n",
             },
           ],
-          "span": "fails min min",
+          "span": "fails min n",
         },
       ],
       "keyword": "rule",
@@ -282,10 +282,10 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
         {
           "kind": "field",
           "name": {
-            "span": "min",
-            "text": "min",
+            "span": "n",
+            "text": "n",
           },
-          "span": "min  f64",
+          "span": "n  f64",
           "type": {
             "kind": "named",
             "name": {
@@ -307,8 +307,8 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
       "span": "rule min
   on field u8 i8 u16 i16 u32 i32 f32 f64
   runs both
-  min  f64
-  fails min min",
+  n  f64
+  fails min n",
     },
     {
       "doc": "A number no bigger than \`max\`.",
@@ -321,11 +321,11 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
           "keyword": "fails",
           "params": [
             {
-              "span": "max",
-              "text": "max",
+              "span": "n",
+              "text": "n",
             },
           ],
-          "span": "fails max max",
+          "span": "fails max n",
         },
       ],
       "keyword": "rule",
@@ -412,10 +412,10 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
         {
           "kind": "field",
           "name": {
-            "span": "max",
-            "text": "max",
+            "span": "n",
+            "text": "n",
           },
-          "span": "max  f64",
+          "span": "n  f64",
           "type": {
             "kind": "named",
             "name": {
@@ -437,8 +437,8 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
       "span": "rule max
   on field u8 i8 u16 i16 u32 i32 f32 f64
   runs both
-  max  f64
-  fails max max",
+  n  f64
+  fails max n",
     },
     {
       "doc": "A text or a list with \`min\` items at least.",
@@ -451,11 +451,11 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
           "keyword": "fails",
           "params": [
             {
-              "span": "min",
-              "text": "min",
+              "span": "n",
+              "text": "n",
             },
           ],
-          "span": "fails min-length min",
+          "span": "fails min-length n",
         },
       ],
       "keyword": "rule",
@@ -498,10 +498,10 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
         {
           "kind": "field",
           "name": {
-            "span": "min",
-            "text": "min",
+            "span": "n",
+            "text": "n",
           },
-          "span": "min  u32",
+          "span": "n  u32",
           "type": {
             "kind": "named",
             "name": {
@@ -523,8 +523,8 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
       "span": "rule min-length
   on field str str[]
   runs both
-  min  u32
-  fails min-length min",
+  n  u32
+  fails min-length n",
     },
     {
       "doc": "A text or a list with \`max\` items at most.",
@@ -537,11 +537,11 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
           "keyword": "fails",
           "params": [
             {
-              "span": "max",
-              "text": "max",
+              "span": "n",
+              "text": "n",
             },
           ],
-          "span": "fails max-length max",
+          "span": "fails max-length n",
         },
       ],
       "keyword": "rule",
@@ -584,10 +584,10 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
         {
           "kind": "field",
           "name": {
-            "span": "max",
-            "text": "max",
+            "span": "n",
+            "text": "n",
           },
-          "span": "max  u32",
+          "span": "n  u32",
           "type": {
             "kind": "named",
             "name": {
@@ -609,8 +609,8 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
       "span": "rule max-length
   on field str str[]
   runs both
-  max  u32
-  fails max-length max",
+  n  u32
+  fails max-length n",
     },
     {
       "doc": "The whole text matches a pattern.",
@@ -656,14 +656,14 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
             "span": "regex",
             "text": "regex",
           },
-          "span": "regex  str",
+          "span": "regex  pattern",
           "type": {
             "kind": "named",
             "name": {
-              "span": "str",
-              "text": "str",
+              "span": "pattern",
+              "text": "pattern",
             },
-            "span": "str",
+            "span": "pattern",
           },
         },
       ],
@@ -678,7 +678,7 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
       "span": "rule pattern
   on field str
   runs both
-  regex  str
+  regex  pattern
   fails pattern",
     },
   ],
@@ -694,35 +694,35 @@ rule required
 rule min
   on field u8 i8 u16 i16 u32 i32 f32 f64
   runs both
-  min  f64
-  fails min min
+  n  f64
+  fails min n
 
 # A number no bigger than \`max\`.
 rule max
   on field u8 i8 u16 i16 u32 i32 f32 f64
   runs both
-  max  f64
-  fails max max
+  n  f64
+  fails max n
 
 # A text or a list with \`min\` items at least.
 rule min-length
   on field str str[]
   runs both
-  min  u32
-  fails min-length min
+  n  u32
+  fails min-length n
 
 # A text or a list with \`max\` items at most.
 rule max-length
   on field str str[]
   runs both
-  max  u32
-  fails max-length max
+  n  u32
+  fails max-length n
 
 # The whole text matches a pattern.
 rule pattern
   on field str
   runs both
-  regex  str
+  regex  pattern
   fails pattern
 ",
 }

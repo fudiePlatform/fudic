@@ -6,7 +6,7 @@
 > `@fudic/typecheck` · `@fudic/language-server` · `@fudic/formatter` · `@fudic/cli` · `fudic-vscode` ·
 > `examples/*` · `packages/testing`
 > **Rama:** `sdd-60-fudapi` (nace de `main`)
-> **Progreso:** 10 / 64 — `En curso`.
+> **Progreso:** 14 / 64 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina; la otra escribe los tests de cada fase (las tareas
 «Los tests de…»), contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -99,10 +99,10 @@ Cada meta cierra una fase. La fase no se da por terminada hasta que Pedro la pru
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 10 | 2 | **Los códigos del validador.** `FUD1080`–`FUD1091`, `FUD1093`–`FUD1101`, como la tarea 2. `FUD1080` lleva candidatos | `diagnostics` | `src/codes/FUD1080`–`1101.{ts,md}` · `src/index.ts` |
-| [ ] | 11 | 6, 10 | **`createApiIndex`.** Nombres de proyecto por clase, origen app/paquete, `FUD1081`, candidatos por distancia (como `closest` de `@fudic/spec`), reglas aplicables a un tipo, middlewares heredados por función | `api` | `src/index-api.ts` |
-| [ ] | 12 | 11 | **`validateApi`.** El orden de SDD §4.2: `FUD1080`, `1082`–`1091`, `1093`–`1101`, con `ApiContext` (hermano de ruta, params, props de layout) | `api` | `src/validate.ts` |
-| [ ] | 13 | 12 | **Los tests del validador.** Criterios 8–10 | `api` | `test/` |
+| [x] | 10 | 2 | **Los códigos del validador.** `FUD1080`–`FUD1091`, `FUD1093`–`FUD1101`, como la tarea 2. `FUD1080` lleva candidatos | `diagnostics` | `src/codes/FUD1080`–`1101.{ts,md}` · `src/index.ts` |
+| [x] | 11 | 6, 10 | **`createApiIndex`.** Nombres de proyecto por clase, origen app/paquete, `FUD1081`, candidatos por distancia (como `closest` de `@fudic/spec`), reglas aplicables a un tipo, middlewares heredados por función | `api` | `src/index-api.ts` |
+| [x] | 12 | 11 | **`validateApi`.** El orden de SDD §4.2: `FUD1080`, `1082`–`1091`, `1093`–`1101`, con `ApiContext` (hermano de ruta, params, props de layout) | `api` | `src/validate.ts` |
+| [x] | 13 | 12 | **Los tests del validador.** Criterios 8–10 (la parte del 9 que lee las carpetas `fudapi/` de las dependencias es del host: se prueba en las tareas 60 y 37) | `api` | `test/` |
 
 ## Fase 4 — el editor de `.fudapi` · META 1 (5)
 
