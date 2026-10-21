@@ -5,6 +5,9 @@
 > [IDEA-05](./IDEA-05-contrato-ts-y-backend-generado.md) §3, un lenguaje propio hermano de
 > `.fudspec`. Lo decidido en la sesión del 2026-10-20 está en **§10** y manda sobre el resto del
 > documento donde lo contradiga; lo demás sigue sin decidir.
+> **Especificada en [SDD-60](../SDD-60-fudapi.md)** (2026-10-21), que manda sobre este documento:
+> `.handle` sobre lo generado sustituye a `implement` (§10.4) y una función sin implementar es un
+> 404, no un 501 (§10.6).
 > **Punto de partida:** `experiments/contract-ast/sims/01-usuarios/` (`routes/usuarios.server.ts`,
 > `components/user-form.server.ts`), `packages/http` (`FnBuilder`) y `packages/forms`
 > (`FormOptions`, `GroupOptions`, `ControlOptions`, validadores).

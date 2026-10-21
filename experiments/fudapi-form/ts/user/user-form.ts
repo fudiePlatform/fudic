@@ -1,14 +1,18 @@
-// WRITTEN BY THE DEVELOPER. The handlers of fudapi/user-form.fudapi: one export per function, with
-// its name (`put save` → `save`). fudic finds this file by name: user-form.fudapi → user-form.ts.
-// When `save` runs, `person` already passed every rule: the NIF letter and that nobody has it.
+// WRITTEN BY THE DEVELOPER. The handler of `put save` in fudapi/user-form.fudapi. It lives in the
+// server folder (src/server), under any name: fudic loads the folder, it never looks for this file.
+// The handler is exported on its own so a unit test can call it without the chain; `save.handle`
+// joins it to the generated function. When it runs, the form already passed every rule.
 
 import { inject } from '@fudic/di';
-import { SaveFails, type SaveHandler } from '../generated/user-form';
+import { save, SaveFails, type SaveHandler } from '../generated/user-form';
 import { Users } from '../services/users';
 
-export const save = ((ctx, person) => {
+export const altaDeUsuario = ((ctx) => {
+  const person = ctx.form.$value();
   // A 409: the form keeps it (its `catches`) and paints it in the summary.
   if (person.name.trim().toLowerCase() === 'admin') throw SaveFails.reserved();
   console.info(`[user-form] ${ctx.user.name} da de alta a ${person.name}`);
-  return inject(Users).add(person);
+  return inject(Users).add({ ...person, age: person.age ?? 0 }); // `required` passed: never 0
 }) satisfies SaveHandler;
+
+save.handle(altaDeUsuario);
