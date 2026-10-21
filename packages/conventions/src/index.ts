@@ -42,6 +42,12 @@ export const HTTP_FILE = 'src/http.ts';
 export const API_DIR = 'fudapi';
 
 /**
+ * Where the types generated from each `.fudapi` live in a project, `<id>.d.ts` each (SDD-60
+ * §3.11): what the editor's TypeScript and fudic's typecheck read. Generated, never edited.
+ */
+export const API_TYPES_DIR = '.fudic/api';
+
+/**
  * Where the published runtime lives on the origin, OUTSIDE every app's `base`
  * (SDD-45 §3.1). It starts with `_` for the same reason SDD-42's specifier does: no
  * application route may collide with it.

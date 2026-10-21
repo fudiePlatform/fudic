@@ -336,7 +336,7 @@ describe('watched files', () => {
 
   it('a .fudapi or a package.json changed on disk drops the .fudapi files and asks for a refresh (SDD-60 criterion 27)', () => {
     let lists = 0;
-    const apiFs = { readFile: () => undefined, list: () => (lists++, []) };
+    const apiFs = { readFile: () => undefined, list: () => (lists++, []), writeFile: () => {}, removeFile: () => {} };
     const { fake, server, volar } = setup({ apiFs });
     const refreshes: boolean[] = [];
     volar.languageFeatures = { requestRefresh: async (clear) => void refreshes.push(clear) };
@@ -360,7 +360,7 @@ describe('watched files', () => {
 
   it('leaves the .fudapi files alone for a change that cannot affect them', () => {
     let lists = 0;
-    const apiFs = { readFile: () => undefined, list: () => (lists++, []) };
+    const apiFs = { readFile: () => undefined, list: () => (lists++, []), writeFile: () => {}, removeFile: () => {} };
     const { fake, server } = setup({ apiFs });
     fake.onInitialize?.(params());
     server.apis.load('/p/src/a.fudapi', '');
@@ -375,6 +375,8 @@ describe('watched files', () => {
     const apiFs = {
       readFile: (path: string) => disk[path],
       list: (path: string) => (path === '/p/src' ? [{ name: 'b.fudapi', directory: false }] : []),
+      writeFile: () => {},
+      removeFile: () => {},
     };
     const { fake, server, documents } = setup({ apiFs });
     fake.onInitialize?.(params());

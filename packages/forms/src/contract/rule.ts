@@ -46,8 +46,9 @@ export function rule<V, P = {}, C extends string = never>(spec: RuleSpec): Rule<
   const slot = new Slot<Check<V, P, string>>(`${spec.name} of ${spec.id}`, spec.server === true ? 'server' : 'browser', spec.never === true);
 
   /** The error of a code: `true`, its one parameter, or an object of several. */
-  const errorOf = (code: string, params: P): Errors => {
-    const [, names] = spec.fails.find(([c]) => c === code) ?? spec.fails[0]!;
+  const errorOf = (verdict: string, params: P): Errors => {
+    // A code the declaration does not have fails as the first one: the error is always declared.
+    const [code, names] = spec.fails.find(([c]) => c === verdict) ?? spec.fails[0]!;
     const values = params as Readonly<Record<string, unknown>>;
     const payload =
       names.length === 0 ? true : names.length === 1 ? values[names[0]!] : Object.fromEntries(names.map((n) => [n, values[n]]));

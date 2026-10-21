@@ -53,6 +53,8 @@ export interface ApiContext {
   readonly route?: {
     /** The names of the route's parameters: `slug` for `blog/[slug]`. */
     readonly params: readonly string[];
+    /** Its URL pattern, `/blog/:slug`: where the browser reads the page's params from. */
+    readonly pattern?: string;
     /** The `_error` page. */
     readonly error?: boolean;
     /** The TS type of the props of its layout, from its `<link rel="layout">`. */

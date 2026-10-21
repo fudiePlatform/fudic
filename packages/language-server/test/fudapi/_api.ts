@@ -90,10 +90,24 @@ export const FILES: Readonly<Record<string, string | undefined>> = {
 };
 
 /** An `ApiFs` over a map; a path mapped to `undefined` is listed but cannot be read. */
-export function apiFs(files: Readonly<Record<string, string | undefined>>): ApiFs & { reads: string[] } {
+export function apiFs(
+  files: Record<string, string | undefined>,
+): ApiFs & { reads: string[]; writes: string[]; removed: string[] } {
   const reads: string[] = [];
+  const writes: string[] = [];
+  const removed: string[] = [];
   return {
     reads,
+    writes,
+    removed,
+    writeFile(path, text) {
+      writes.push(path);
+      files[path] = text;
+    },
+    removeFile(path) {
+      removed.push(path);
+      delete files[path];
+    },
     readFile(path) {
       reads.push(path);
       return files[path];

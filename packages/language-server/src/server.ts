@@ -32,6 +32,7 @@ import { URI } from 'vscode-uri';
 import { SERVER_CAPABILITIES } from './capabilities.js';
 import { mountGlobals, mountWorkspaceFuds, nodeFileSystem, toPosix } from '@fudic/typecheck';
 import { DocumentCache, type CachedDocument } from './document-cache.js';
+import { API_EXTENSION } from '@fudic/api';
 import { nodeApiFs, type ApiFs } from './fudapi/fs.js';
 import { ApiHost } from './fudapi/host.js';
 import { createFudapiLanguagePlugin } from './fudapi/language-plugin.js';
@@ -301,6 +302,8 @@ export function createFudicServer(
 
   connection.onInitialized(() => {
     server.initialized();
+    // The types of every contract, written where they are missing or stale (SDD-60 §4.9).
+    for (const project of apis.projects()) apis.generate(project);
   });
 
   connection.onShutdown(() => {
@@ -316,10 +319,16 @@ export function createFudicServer(
     let criteria = false;
     // And whether an open `.fudapi` may: another contract, or a dependency of its project.
     let contracts = false;
+    // The projects whose `.fudapi` changed on disk: saved, created or deleted. Their types follow.
+    const generated = new Set<string>();
     for (const change of changes) {
       const path = uriToPath(URI.parse(change.uri));
       if (SpecHost.affects(path)) criteria = true;
       if (ApiHost.affects(path)) contracts = true;
+      if (path.endsWith(API_EXTENSION)) {
+        if (change.type === 3) apis.forget(path);
+        generated.add(apis.projectOf(path));
+      }
       // The same channel that keeps the index current keeps the project current: editing
       // `fudic.json` and saving changes what the next file's snippet proposes, with no
       // restart. A new channel for one file would be a second thing that can fall behind.
@@ -340,6 +349,7 @@ export function createFudicServer(
     }
     if (criteria) specs.invalidate();
     if (contracts) apis.invalidate();
+    for (const project of generated) apis.generate(project);
     if (criteria || contracts) void server.languageFeatures?.requestRefresh(false);
   });
 

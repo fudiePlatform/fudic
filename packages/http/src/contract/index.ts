@@ -10,6 +10,7 @@ export {
   compose,
   middleware,
   use,
+  type AnyPiece,
   type ClientHalf,
   type Composed,
   type Level,

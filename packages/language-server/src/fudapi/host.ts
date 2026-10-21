@@ -12,6 +12,7 @@
 import {
   API_EXTENSION,
   createApiIndex,
+  emitDeclarations,
   parseApi,
   type ApiContext,
   type ApiFile,
@@ -20,7 +21,7 @@ import {
   type ParseResult,
 } from '@fudic/api';
 import type { SourceDiagnostic } from '@fudic/diagnostics';
-import { API_DIR, ERROR_FILE, ROUTES_DIR, SRC_DIR } from '@fudic/conventions';
+import { API_DIR, API_TYPES_DIR, ERROR_FILE, ROUTES_DIR, SRC_DIR } from '@fudic/conventions';
 import type { ApiFs } from './fs.js';
 
 export interface ApiHostDeps {
@@ -157,7 +158,49 @@ export class ApiHost {
     const segments = page.slice(routes.length, -'.fud'.length).split('/');
     const params = segments.map((s) => PARAM.exec(s)?.[1]).filter((p): p is string => p !== undefined);
     const error = `${segments[segments.length - 1]}.fud` === ERROR_FILE;
-    return { route: { params, ...(error ? { error: true } : {}) } };
+    const pattern = `/${segments.filter((s, i) => !(s === 'index' && i === segments.length - 1)).map((s) => s.replace(PARAM, ':$1')).join('/')}`;
+    return { route: { params, pattern, ...(error ? { error: true } : {}) } };
+  }
+
+  /**
+   * Writes `.fudic/api/<id>.d.ts` for every `.fudapi` of a project, its dependencies' included,
+   * and only where the text changed (SDD-60 §3.11, §4.9). All of them and not the one saved: a
+   * type or a middleware changes the files that use it, and the pass is one parse each, cached.
+   * Answers the paths written.
+   */
+  generate(project: string): readonly string[] {
+    const found = this.#filesOf(project);
+    const sources = found.map((f) => this.#source(f, this.read(f.path) ?? '').source);
+    const index = createApiIndex(sources);
+    const written: string[] = [];
+    for (const source of sources) {
+      const target = typesPath(project, source.id);
+      const text = emitDeclarations(source, index, this.#context(project, source.path));
+      if (this.#deps.fs.readFile(target) === text) continue;
+      this.#deps.fs.writeFile(target, text);
+      written.push(target);
+    }
+    return written;
+  }
+
+  /** Removes the types of a `.fudapi` that is gone. */
+  forget(path: string): void {
+    const project = this.projectOf(path);
+    this.#deps.fs.removeFile(typesPath(project, idOf(project, path)));
+  }
+
+  /**
+   * The projects of the workspace that have a `.fudapi` of their own under `src/`: what the
+   * server generates the types of when it starts.
+   */
+  projects(): readonly string[] {
+    const out = new Set<string>();
+    for (const root of this.#deps.roots()) {
+      for (const path of this.#walk(root)) {
+        if (path.includes(`/${SRC_DIR}/`)) out.add(this.projectOf(path));
+      }
+    }
+    return [...out];
   }
 
   /** Whether a changed file can change what a `.fudapi` says: another one, or a `package.json`. */
@@ -170,6 +213,9 @@ export class ApiHost {
     this.#files.clear();
   }
 }
+
+/** Where the types of `<id>` are written in a project. */
+const typesPath = (project: string, id: string): string => `${project}/${API_TYPES_DIR}/${id}.d.ts`;
 
 /** The `<id>` of an app file: its path inside `src/`, without extension. */
 function idOf(project: string, path: string): string {

@@ -6,7 +6,7 @@
 > `@fudic/typecheck` · `@fudic/language-server` · `@fudic/formatter` · `@fudic/cli` · `fudic-vscode` ·
 > `examples/*` · `packages/testing`
 > **Rama:** `sdd-60-fudapi` (nace de `main`)
-> **Progreso:** 19 / 64 — `En curso`.
+> **Progreso:** 25 / 64 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina; la otra escribe los tests de cada fase (las tareas
 «Los tests de…»), contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -118,12 +118,12 @@ Cada meta cierra una fase. La fase no se da por terminada hasta que Pedro la pru
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 14 | — | **`@fudic/http/contract`.** Entrada interna para lo generado: verbos, cadena, `middleware` y un `Contract` cuyo `.handle` registra; `.client`/`.server` de un middleware y su registro; `<Fn>Fails`. El registro marca la carpeta de origen y da los errores de duplicado y de carpeta (SDD §3.12). La entrada pública no cambia todavía: lo que lista SDD §3.10 sale de ella en la tarea 63 | `http` | `src/contract/*` · `package.json` |
-| [ ] | 61 | 14 | **Ruta, query y tipos en el cable.** SDD §3.2 y §3.3: la URL con los params de la página y la ruta de la función rellenos, la query una clave por argumento, `ctx.params`/`ctx.query`/`ctx.args` repartidos; la comprobación de tipo de cada valor en los dos lados (400 con `Problem`, rechazo sin enviar), `uuid` incluido | `http` | `src/contract/*` · `src/client/*` · `src/server/*` |
-| [ ] | 15 | — | **`@fudic/forms/contract`.** Entrada interna: `form`, `group`, factories, validadores, `require` generado, reglas propias con `.check` registrado (`runs both`/`server`, `async`), `ctx.form` con el valor validado sin `null` donde hay `required`, campo `uuid` con su comprobación implícita. `messages` sustituye a `setMessages`. La entrada pública no cambia todavía (tarea 63) | `forms` | `src/contract/*` · `package.json` |
-| [ ] | 16 | 12, 14, 15, 61 | **`emitDeclarations`.** El `.d.ts` de SDD §3.11 para cada clase de declaración, determinista | `api` | `src/emit/declarations.ts` |
-| [ ] | 17 | 16 | **`emitModule`.** Variante de servidor (cadena y despacho) y de navegador (stub `$fn` con su ruta y su query, mitades de cliente del registro, lo de servidor fallando con el mensaje de carpeta). Forms como la declaración de hoy; patrón anclado | `api` | `src/emit/module.ts` |
-| [ ] | 43 | 17, 40 | **Generación de `.d.ts`.** El language server escribe `.fudic/api/<id>.d.ts` al guardar (y el de quien dependa de lo que cambió) y al arrancar los que falten o estén viejos, solo si cambia. `examples/basic` incluye `.fudic/api/**/*.d.ts` en su tsconfig | `language-server` · `examples/basic` | `src/fudapi/host.ts` · `service.ts` · `tsconfig.json` |
+| [x] | 14 | — | **`@fudic/http/contract`.** Entrada interna para lo generado: verbos, cadena, `middleware` y un `Contract` cuyo `.handle` registra; `.client`/`.server` de un middleware y su registro; `<Fn>Fails`. El registro marca la carpeta de origen y da los errores de duplicado y de carpeta (SDD §3.12). La entrada pública no cambia todavía: lo que lista SDD §3.10 sale de ella en la tarea 63 | `http` | `src/contract/*` · `package.json` |
+| [x] | 61 | 14 | **Ruta, query y tipos en el cable.** SDD §3.2 y §3.3: la URL con los params de la página y la ruta de la función rellenos, la query una clave por argumento, `ctx.params`/`ctx.query`/`ctx.args` repartidos; la comprobación de tipo de cada valor en los dos lados (400 con `Problem`, rechazo sin enviar), `uuid` incluido | `http` | `src/contract/*` · `src/client/*` · `src/server/*` |
+| [x] | 15 | — | **`@fudic/forms/contract`.** Entrada interna: `form`, `group`, factories, validadores, `require` generado, reglas propias con `.check` registrado (`runs both`/`server`, `async`), `ctx.form` con el valor validado sin `null` donde hay `required`, campo `uuid` con su comprobación implícita. `messages` sustituye a `setMessages`. La entrada pública no cambia todavía (tarea 63) | `forms` | `src/contract/*` · `package.json` |
+| [x] | 16 | 12, 14, 15, 61 | **`emitDeclarations`.** El `.d.ts` de SDD §3.11 para cada clase de declaración, determinista | `api` | `src/emit/declarations.ts` |
+| [x] | 17 | 16 | **`emitModule`.** Variante de servidor (cadena y despacho) y de navegador (stub `$fn` con su ruta y su query, mitades de cliente del registro, lo de servidor fallando con el mensaje de carpeta). Forms como la declaración de hoy; patrón anclado | `api` | `src/emit/module.ts` |
+| [x] | 43 | 17, 40 | **Generación de `.d.ts`.** El language server escribe `.fudic/api/<id>.d.ts` al guardar (y el de quien dependa de lo que cambió) y al arrancar los que falten o estén viejos, solo si cambia. `examples/basic` incluye `.fudic/api/**/*.d.ts` en su tsconfig | `language-server` · `examples/basic` | `src/fudapi/host.ts` · `service.ts` · `tsconfig.json` |
 | [ ] | 18 | 17 | **Los tests del emisor.** Criterios 11–14 (el 12 con la batería contra `person.form.ts`, `user.form.ts` y `wide.form.ts` de hoy), la parte de forms del 37 y los de `contract` de `http` (ruta, query, tipos) y `forms` | `api` · `http` · `forms` | `test/` |
 | [ ] | 64 | 43 | **Los tests de generación.** Criterio 30 y el 27 en la parte «tocar el `.fudapi` de una regla revalida el que la usa» | `language-server` | `test/` |
 

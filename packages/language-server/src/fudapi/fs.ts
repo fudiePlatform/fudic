@@ -3,7 +3,8 @@
  * server mounts; tests inject a map.
  */
 
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 
 export interface ApiEntry {
   readonly name: string;
@@ -15,6 +16,10 @@ export interface ApiFs {
   readFile(path: string): string | undefined;
   /** The entries of a folder; none when it is not there. Never throws. */
   list(path: string): readonly ApiEntry[];
+  /** Writes a file, creating its folders. Never throws: a type that cannot be written is stale, not fatal. */
+  writeFile(path: string, text: string): void;
+  /** Removes a file, if it is there. Never throws. */
+  removeFile(path: string): void;
 }
 
 export function nodeApiFs(): ApiFs {
@@ -35,6 +40,21 @@ export function nodeApiFs(): ApiFs {
         }));
       } catch {
         return []; // no folder is no files, not an error
+      }
+    },
+    writeFile(path, text) {
+      try {
+        mkdirSync(dirname(path), { recursive: true });
+        writeFileSync(path, text);
+      } catch {
+        // A read-only disk leaves the old types; the next save tries again.
+      }
+    },
+    removeFile(path) {
+      try {
+        rmSync(path, { force: true });
+      } catch {
+        // A file that cannot be removed stays; it types a module nobody imports any more.
       }
     },
   };

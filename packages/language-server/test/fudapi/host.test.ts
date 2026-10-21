@@ -127,7 +127,7 @@ describe('when the files are read again', () => {
     const { fs } = world();
     let lists = 0;
     const counting = new ApiHost({
-      fs: { readFile: (p) => fs.readFile(p), list: (p) => (lists++, fs.list(p)) },
+      fs: { readFile: (p) => fs.readFile(p), list: (p) => (lists++, fs.list(p)), writeFile: () => {}, removeFile: () => {} },
       roots: () => [ROOT],
       open: () => undefined,
     });
@@ -153,15 +153,15 @@ describe('where a file sits (SDD-60 §3.4)', () => {
   const contextOf = (path: string): unknown => world().host.load(path, '').context;
 
   it('the sibling of a route is a route, with no parameters', () => {
-    expect(contextOf(`${SRC}/routes/usuarios.fudapi`)).toEqual({ route: { params: [] } });
+    expect(contextOf(`${SRC}/routes/usuarios.fudapi`)).toEqual({ route: { params: [], pattern: '/usuarios' } });
   });
 
   it('the parameters come from the route path', () => {
-    expect(contextOf(`${SRC}/routes/blog/[slug].fudapi`)).toEqual({ route: { params: ['slug'] } });
+    expect(contextOf(`${SRC}/routes/blog/[slug].fudapi`)).toEqual({ route: { params: ['slug'], pattern: '/blog/:slug' } });
   });
 
   it('the sibling of _error.fud is the error page', () => {
-    expect(contextOf(`${SRC}/routes/_error.fudapi`)).toEqual({ route: { params: [], error: true } });
+    expect(contextOf(`${SRC}/routes/_error.fudapi`)).toEqual({ route: { params: [], pattern: '/_error', error: true } });
   });
 
   it('a file under routes/ with no .fud beside it, or outside routes/, is no route', () => {

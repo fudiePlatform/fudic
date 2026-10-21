@@ -218,7 +218,9 @@ fuera de `400`–`599` es `FUD1075`.
 - Un argumento de ruta con el nombre de un parámetro de la página (`[slug]`) es `FUD1100`. La
   clave `a` de la query es del cable: un `query a` es `FUD1076`.
 - La llamada desde el navegador sigue siendo una: `save({ id, notify, active })`. Lo generado
-  reparte cada valor en su sitio y comprueba su tipo antes de enviar (§3.2).
+  reparte cada valor en su sitio y comprueba su tipo antes de enviar (§3.2). Con `form`, la
+  llamada es `save(form)` si la función no tiene argumentos de ruta ni de query (como hoy, y así
+  `form:=` no cambia), y `save({ id, notify, form })` si los tiene. *Decidido al implementar.*
 - `ctx` del handler: `params` (página + ruta de la función), `query`, y `args` o `form`, todos
   tipados desde la declaración.
 
@@ -479,6 +481,11 @@ declare module 'fudic:components/user-form' {
   el código que falla. El error y sus argumentos los monta lo generado.
 - Lo generado importa `@fudic/*/contract` y otros `fudic:<id>`. **Nunca** importa `src/server`,
   `src/browser` ni nada del usuario.
+- *Decidido al implementar:* el despacho del servidor vive en `@fudic/http/contract/server`, aparte,
+  para que el navegador no lo cargue; el registro de implementaciones vive en
+  `@fudic/forms/contract` (las reglas también registran) y `@fudic/http/contract` lo reexporta.
+  `ApiContext.route` lleva además `pattern` (`/blog/:slug`), de donde el navegador lee los params
+  de la página. Los `.d.ts` van en `.fudic/api` (`API_TYPES_DIR` de `@fudic/conventions`).
 
 ### 3.12. Lo que escribe el usuario
 
@@ -839,7 +846,9 @@ Reescritos (mismo código, texto nuevo): `FUD0201`, `FUD0290`, `FUD0430`, `FUD06
 12. **Forms equivalentes.** `person`, `userForm` y `wideForm` generados dan los mismos veredictos,
     mensajes, `$issues()`, orden posicional y bytes binarios que los `.ts` de hoy, sobre la misma
     batería de valores (incluidos `required` en un grupo, el `summary` de `userForm` y un número
-    fuera de rango).
+    fuera de rango). *Precisado al implementar:* los bytes se comparan en `person`, que ya viaja en
+    binario; `userForm` y `wideForm` son hoy controles sin tipo (JSON) y los generados tienen tipo,
+    así que pasan a binario y se compara su valor, no sus bytes.
 13. **Patrón anclado.** `pattern web-url` rechaza `xhttp://a` y acepta `http://a`; el vacío pasa.
 14. **Sin imports del usuario.** Ningún módulo generado importa nada fuera de `@fudic/*` y
     `fudic:*`.

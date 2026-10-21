@@ -68,19 +68,24 @@ export function middleware<P = {}, Adds extends object = {}>(spec: MiddlewareSpe
   return piece;
 }
 
+/** A middleware as a chain names it, whatever its parameters and what it adds. */
+export interface AnyPiece {
+  readonly name: string;
+}
+
 /** One middleware of a `use`, with the parameters written under it. */
 export interface Use {
-  readonly mw: MiddlewarePiece<never, object>;
+  readonly mw: AnyPiece;
   readonly params: object;
 }
 
-export const use = <P>(mw: MiddlewarePiece<P, object>, params?: P): Use => ({
-  mw: mw as MiddlewarePiece<never, object>,
+export const use = <P, A extends object>(mw: MiddlewarePiece<P, A>, params?: P): Use => ({
+  mw,
   params: (params ?? {}) as object,
 });
 
 /** One clause of a level, in the order it was written. */
-export type Step = { readonly use: readonly Use[] } | { readonly skip: readonly MiddlewarePiece<never, object>[] } | { readonly skip: '*' };
+export type Step = { readonly use: readonly Use[] } | { readonly skip: readonly AnyPiece[] } | { readonly skip: '*' };
 
 /** A level of the chain: the global `chain`, a file's, a function's or `load`'s own clauses. */
 export interface Level {

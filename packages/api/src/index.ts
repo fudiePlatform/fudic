@@ -16,3 +16,5 @@ export {
   type ProjectKind,
 } from './index-api.js';
 export { validateApi, type ApiContext } from './validate.js';
+export { emitDeclarations } from './emit/declarations.js';
+export { emitModule, type Side } from './emit/module.js';
