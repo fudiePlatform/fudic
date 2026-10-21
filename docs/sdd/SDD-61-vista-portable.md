@@ -124,7 +124,7 @@ tipado (§4.2).
 
 | Vale | Operandos (pase tipado, §4.2) | Al bajar |
 |---|---|---|
-| `a + b` | dos `number` (suma), o `string` con `string`/`number` (concatena) | El número pasa a texto con la semántica de JS (anexo A.3) |
+| `a + b` | dos `number` (suma), o `string` con `string`/`number` (concatena) | El número pasa a texto con la semántica de JS (anexo A.4) |
 | `a - b`, `a * b`, `a / b`, `a % b`, `-a` | `number` | `f64`; `/` es división real; `%` lleva el signo del dividendo |
 | `a === b`, `a !== b` | dos primitivos del mismo tipo (`string`, `number`, `boolean`, unión de literales), o uno es `null`/`undefined` | Igualdad de valor, o presencia |
 | `a < b`, `<=`, `>`, `>=` | `number` | |
@@ -429,7 +429,7 @@ implementa una vez. Es la referencia de cualquier emisor futuro y de la suite de
 y su HTML de servidor esperado (`.html`), con datos fijos en sus props.
 
 - Un test los monta con `mount` (SDD-57) y compara el HTML byte a byte. Las filas de pipes
-  comparan todo salvo el texto que formatea el pipe (anexo A.3).
+  comparan todo salvo el texto que formatea el pipe (anexo A.4).
 - Incluye los seis casos de desestructuración y resto del anexo (A.3.4, D1–D6) y sus dos
   ejemplos guía (A.6 y A.7), con los datos que allí se dan.
 - Incluye los casos frontera del anexo A.4:

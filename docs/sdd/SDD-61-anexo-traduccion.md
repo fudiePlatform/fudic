@@ -85,7 +85,7 @@
 
 - En Go, el `??` y el ternario evalúan `b` antes que `a`. Solo vale si `b` es un literal o un
   nombre; si no, se escribe con `if … else` completo.
-- `Str(x)` es `x` si es texto y `Num(x)` si es número (A.5). El pase tipado garantiza que no le
+- `Str(x)` es `x` si es texto y `Num(x)` si es número (A.4). El pase tipado garantiza que no le
   llega otra cosa.
 
 ### Acceso
@@ -418,7 +418,7 @@ dom.append(n1, dom.text(t0.tag))
 - `fud.At` devuelve ausente si la lista está vacía. Entonces `t0.Slug` sería leer de un ausente,
   y por eso TS ya obliga a comprobarlo antes (no se puede desestructurar algo que puede faltar).
   El ejemplo supone `data.posts[0]` presente, por brevedad.
-- En Go, `slug_1` y `title_1` solo se declaran si algo los lee (A.6).
+- En Go, `slug_1` y `title_1` solo se declaran si algo los lee (A.5).
 
 #### D4 · El resto, reenviado a un componente
 
