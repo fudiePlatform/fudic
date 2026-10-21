@@ -244,6 +244,12 @@ importers:
         specifier: workspace:*
         version: link:../diagnostics
     devDependencies:
+      '@fudic/forms':
+        specifier: workspace:*
+        version: link:../forms
+      '@fudic/http':
+        specifier: workspace:*
+        version: link:../http
       '@fudic/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig

@@ -79,7 +79,7 @@ function options(entries: readonly (string | undefined)[]): string | undefined {
 }
 
 const validateOn = (o: ValidateOnOption | undefined): string | undefined =>
-  o === undefined ? undefined : `validateOn: ${o.events.reduce((n, e) => n | (FLAGS[e.text] ?? 0), 0)}`;
+  o === undefined ? undefined : `validateOn: ${o.events.reduce((n, e) => n | FLAGS[e.text]!, 0)}`;
 
 const validity = (o: ValidityOption | undefined): string | undefined =>
   o === undefined ? undefined : `validity: ${o.value.text === 'rules' ? 0 : 1}`;
@@ -195,7 +195,7 @@ function summary(block: SummaryBlock | undefined, path: readonly string[], f: Fo
     extra.texts.push(...own);
   };
   for (const item of block?.items ?? []) {
-    if (item.kind === 'rule-use') rules.push(...(ruleUse(item, f, texts) ?? []));
+    if (item.kind === 'rule-use') rules.push(...[ruleUse(item, f, texts)].filter((r): r is string => r !== undefined));
     else if (item.kind === 'require') requireOf(item, undefined);
     else for (const r of item.rules) requireOf(r, item.expr);
   }

@@ -46,6 +46,8 @@
     "@fudic/diagnostics": "workspace:*"
   },
   "devDependencies": {
+    "@fudic/forms": "workspace:*",
+    "@fudic/http": "workspace:*",
     "@fudic/tsconfig": "workspace:*"
   }
 }
