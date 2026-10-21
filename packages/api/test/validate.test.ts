@@ -202,7 +202,12 @@ describe('each validator code (criterion 8)', () => {
     const mw = app('m', lines('middleware p', '  server', '  b  bool', '  d  date', '  u  uuid', '  f  f64', '  t  str[]?'));
     const ok = lines('get f', '  use p', '    b  true', '    d  "2026-01-01"', '    u  x', '    f  1.5', '    t  a b');
     expect(codesOf(ok, { others: [mw] })).toEqual([]);
-    expect(codesOf(lines('get f', '  use p', '    b  1', '    d  x', '    u  x', '    f  1'), { others: [mw] })).toEqual(['FUD1087']);
+    // The empty list is written `[]` everywhere, a middleware parameter included.
+    expect(codesOf(lines('get f', '  use p', '    b  true', '    d  x', '    u  x', '    f  1', '    t  []'), { others: [mw] })).toEqual([]);
+    // `[]` is the whole list or nothing: never mixed with elements, never twice.
+    for (const t of ['[] a', 'a []', '[] []']) {
+      expect(codesOf(lines('get f', '  use p', '    b  true', '    d  x', '    u  x', '    f  1', `    t  ${t}`), { others: [mw] })).toEqual(['FUD1087']);
+    }    expect(codesOf(lines('get f', '  use p', '    b  1', '    d  x', '    u  x', '    f  1'), { others: [mw] })).toEqual(['FUD1087']);
     const unknownType = app('n', lines('middleware q', '  server', '  x  map str str', '  y  Ghost'));
     expect(codesOf(lines('get f', '  use q', '    x  a b', '    y  z'), { others: [unknownType] })).toEqual(['FUD1087']);
   });

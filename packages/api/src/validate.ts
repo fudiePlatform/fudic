@@ -289,7 +289,10 @@ function argFits(arg: MiddlewareArg, type: TypeExpr, c: Ctx): boolean {
     return values.length === 2 && literalFits(values[0]!, type.key, c.index) && literalFits(values[1]!, type.value, c.index);
   }
   const inner = type.kind === 'optional' ? type.inner : type;
-  if (inner.kind === 'list') return values.every((v) => literalFits(v, inner, c.index));
+  if (inner.kind === 'list') {
+    const empty = values.length === 1 && values[0]!.kind === 'empty-list';
+    return empty || values.every((v) => literalFits(v, inner.element, c.index));
+  }
   return values.length === 1 && literalFits(values[0]!, inner, c.index);
 }
 
