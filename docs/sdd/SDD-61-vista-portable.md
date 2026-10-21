@@ -3,7 +3,7 @@
 > **Estado:** `Listo` — [tareas](./SDD-61-Task.md) · [anexo: cómo se traduce a cada
 > lenguaje](./SDD-61-anexo-traduccion.md).
 > **Paquetes:** `@fudic/compiler` (analizadores, `@empty`, emit) · `@fudic/diagnostics` ·
-> `@fudic/core` (`now`) · `@fudic/ssr` (`now` en `fud-state`, `@empty`) · `@fudic/typecheck` (pase
+> `@fudic/core` (`now`) · `@fudic/dom` (orden del spread) · `@fudic/ssr` (`now` en `fud-state`, `@empty`) · `@fudic/typecheck` (pase
 > tipado) · `@fudic/language-core` (proyección de `@empty`, completado de la vista) ·
 > `@fudic/language-server` · `@fudic/formatter` · `fudic-vscode` (gramática) · `examples/*` ·
 > fixtures de `packages/*` · `packages/testing` (suite de conformidad).
@@ -165,13 +165,18 @@ tipado (§4.2).
 
 - **Patrones de objeto**, anidados, con renombre y con valor por defecto. El defecto sigue §3.2–§3.5
   y se aplica cuando el campo **falta** (`null` o `undefined`), en todos los lenguajes (§4.4).
-- **Sin patrones de array** (`FUD1146`): el contrato no tiene tuplas.
-- **`...resto`** vale en un patrón de objeto y solo se usa de dos formas:
+- **Sin patrones de array ni claves calculadas** (`{ [k]: v }`) (`FUD1146`): el contrato no tiene
+  tuplas y la clave tiene que conocerse al compilar.
+- **Solo sobre un objeto con tipo con nombre** (DTO del `.fudapi`, props). Desestructurar o
+  esparcir un `map` es `FUD1153`: sus claves son de runtime y su orden no es portable.
+- **`...resto`** vale en un patrón de objeto y solo se usa de tres formas:
   - `resto.campo`, que se baja a `articulo.campo`;
   - `<app-x ...resto>` o `<input ...resto>`, que se baja a una asignación por cada campo del tipo de
-    `articulo` que el patrón no ha nombrado.
+    `articulo` que el patrón no ha nombrado;
+  - desestructurarlo otra vez (`const { b, ...r2 } = resto`).
 
-  Cualquier otro uso (`.datos=@resto`, `@(resto)`, `resto === x`) es `FUD1147`.
+  Cualquier otro uso (`.datos=@resto`, `@(resto)`, `resto === x`) es `FUD1147`. El anexo (A.3)
+  compara esta propuesta con las otras dos y la baja caso a caso a los seis lenguajes.
 - Valen en la cabecera de `@foreach` y en `const`/`let` de `@{ }`. También en `props<T>()` del
   `@code`, como hoy (props-spec, 156).
 
@@ -205,10 +210,19 @@ tipado (§4.2).
 
 ### 3.8. Spread de atributos
 
-`<app-card ...post>` (SDD-54) y `<input ...resto>` (SDD-55) siguen valiendo. El operando es un
-nombre o un camino de miembros cuyo tipo es un objeto portable (§3.10). Fuera de un atributo no
-hay spread: los literales de array y de objeto no existen en la vista (`FUD1143`) y las llamadas
-con argumentos tampoco.
+`<app-card ...post>` (SDD-54) y `<input ...resto>` (SDD-55) siguen valiendo, con las reglas de
+props-spec 146–149 y 157. El operando es un nombre o un camino de miembros cuyo tipo es un objeto
+portable con nombre (§3.10). Fuera de un atributo no hay spread: los literales de array y de objeto
+no existen en la vista (`FUD1143`) y las llamadas con argumentos tampoco.
+
+**Orden de los atributos de un spread sobre un nativo (decisión 162):**
+
+- alfabético por nombre (orden de unidades UTF-16);
+- en el sitio del primer spread del elemento;
+- los atributos explícitos, en su sitio.
+
+Así el HTML sale igual en un lenguaje que conoce los campos por su tipo y en TS, que los conoce
+en runtime.
 
 ### 3.9. Lo que el servidor evalúa del `@code` (decisión 164)
 
@@ -309,14 +323,14 @@ export function now(): Date;
 | Literal de objeto o de array en la vista (salvo el objeto de huecos de `t()`), `bigint`, texto con un sustituto suelto | `FUD1143` |
 | `as`, `satisfies`, `!` no nulo, `<T>x`, argumentos de tipo | `FUD1144` |
 | `.length` | `FUD1145` |
-| Patrón de array | `FUD1146` |
+| Patrón de array o con clave calculada | `FUD1146` |
 | `...resto` usado entero | `FUD1147` |
 | `case` que no es un literal | `FUD1148` |
 | `@empty` mal colocado o repetido | `FUD1149` |
 | Declaración del corte que el servidor no puede evaluar | `FUD1150` |
 | Condición u operando lógico que no es `boolean` | `FUD1151` |
 | Operador sobre un tipo que no le corresponde (§3.4) | `FUD1152` |
-| Tipo no portable (§3.10), índice con texto sobre un objeto, objeto literal sin tipo con nombre | `FUD1153` |
+| Tipo no portable (§3.10), índice con texto sobre un objeto, objeto literal sin tipo con nombre, desestructurar o esparcir un `map` | `FUD1153` |
 | Flecha o función en la vista (también con cuerpo de expresión), plantilla etiquetada | `FUD0905` (ampliado) |
 | Global fuera de `undefined` | `FUD0907` (ampliado) |
 | `if`, `switch`, bucle, bloque o llamada como sentencia en `@{ }` | `FUD0908` (ampliado) |
@@ -383,7 +397,7 @@ sobre el `.fud` con las mappings de la proyección.
 
 ### 4.4. El emit de TS
 
-Cuatro cambios, para que Node y los demás lenguajes pinten lo mismo:
+Cinco cambios, para que Node y los demás lenguajes pinten lo mismo:
 
 1. **Presencia.** En la vista y en el corte, `x === null`, `x === undefined`, `x !== null` y
    `x !== undefined` se emiten como `x == null` / `x != null`.
@@ -397,6 +411,9 @@ Cuatro cambios, para que Node y los demás lenguajes pinten lo mismo:
 4. **`now()` en `fud-state`.** Una señal inicializada con `now()` lleva siempre su valor en el slot
    de la instancia, aunque nada más la obligue. Al hidratar, el `@code` del cliente toma el valor
    del slot (`$pN ?? signal(now())`).
+5. **Orden del spread.** `attrsOf` y `attrsDiff` de `@fudic/dom` devuelven los atributos ordenados
+   por nombre (§3.8), y el emit llama a `setAttrs` una vez por elemento, en el sitio del primer
+   spread, con todos sus objetos.
 
 El nivel de hidratación no cambia por esta spec: `@empty` se comporta como un `@if`.
 
@@ -413,7 +430,9 @@ y su HTML de servidor esperado (`.html`), con datos fijos en sus props.
 
 - Un test los monta con `mount` (SDD-57) y compara el HTML byte a byte. Las filas de pipes
   comparan todo salvo el texto que formatea el pipe (anexo A.3).
-- Incluye los casos frontera del anexo A.3:
+- Incluye los seis casos de desestructuración y resto del anexo (A.3.4, D1–D6) y sus dos
+  ejemplos guía (A.6 y A.7), con los datos que allí se dan.
+- Incluye los casos frontera del anexo A.4:
   - número como texto: `0.1 + 0.2`, `1e21`, `-0`, `1/0`, `0/0`, `123456789012345680000`;
   - `%` con negativos;
   - índice fuera de rango;
@@ -469,7 +488,7 @@ Todos son `error`. Cada `.md` sigue SDD-50 §4.4 y cita `SDD-61`.
 | `FUD1143` | A literal the view cannot hold | compilador | el literal |
 | `FUD1144` | TypeScript syntax in the view | compilador | el `as`/`satisfies`/`!`/argumento de tipo |
 | `FUD1145` | `.length` in the view | compilador | `length` |
-| `FUD1146` | An array pattern in the view | compilador | el patrón |
+| `FUD1146` | An array or computed-key pattern in the view | compilador | el patrón |
 | `FUD1147` | A rest binding used as a value | compilador | el uso |
 | `FUD1148` | A `case` that is not a literal | compilador | la expresión del `case` |
 | `FUD1149` | A misplaced `@empty` | compilador | `@empty` |
@@ -486,7 +505,7 @@ Todos son `error`. Cada `.md` sigue SDD-50 §4.4 y cita `SDD-61`.
 - `1143`: «declare the data in `@code` with a `.fudapi` type, or receive it from `load()`».
 - `1144`: «type the value where it is declared».
 - `1145`: «use `@empty`, or carry the count in the data».
-- `1146`: «destructure an object».
+- `1146`: «destructure an object by its field names».
 - `1147`: «read `rest.field` or spread it on a tag».
 - `1148`: «write the value as a literal».
 - `1149`: «put `@empty { }` right after the body of a loop».
@@ -537,10 +556,14 @@ sustituto.
 
 10. `@foreach (const { slug, author: { name: autor }, featured = false } of data.posts)` compila y
     pinta el defecto también cuando `featured` es `null`.
-11. `@foreach (const [a, b] of pares)` da `FUD1146`.
-12. `@{ const { titulo, ...resto } = articulo; }` con `@resto.autor` y `<app-ficha ...resto>`
-    compila. `.datos=@resto` y `@(resto)` dan `FUD1147`.
-13. `<app-card ...post>` y `<input ...resto>` siguen compilando y pintando como hoy.
+11. `@foreach (const [a, b] of pares)` y `@{ const { [k]: v } = x; }` dan `FUD1146`;
+    `@{ const { a, ...r } = mapa; }` y `<input ...mapa>` sobre un `map` dan `FUD1153`.
+12. `@{ const { titulo, ...resto } = articulo; }` con `@resto.autor`, `<app-ficha ...resto>` y
+    `@{ const { autor, ...r2 } = resto; }` compila. `.datos=@resto` y `@(resto)` dan `FUD1147`.
+13. **Spread.** `<app-card ...post>` y `<input ...resto>` siguen compilando y pintando como hoy,
+    salvo el orden de los atributos. `<a ...enlace ...extra class="boton">` (anexo A.3.4, D6)
+    escribe sus atributos ordenados por nombre en el sitio del primer spread, y `title` sale de
+    `extra` si lo tiene y de `enlace` si no. Igual en el servidor, al hidratar y al actualizar.
 
 **Control y `@empty`**
 

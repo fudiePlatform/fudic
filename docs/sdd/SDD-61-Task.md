@@ -2,12 +2,12 @@
 
 > **SDD:** [SDD-61 — La vista portable](./SDD-61-vista-portable.md) ·
 > [anexo de traducción](./SDD-61-anexo-traduccion.md)
-> **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/core` · `@fudic/ssr` ·
+> **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/core` · `@fudic/dom` · `@fudic/ssr` ·
 > `@fudic/typecheck` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/formatter` ·
 > `fudic-vscode` · `@fudic/vite` · `examples/*` · `packages/testing`
 > **Rama:** `sdd-61-vista-portable-impl`. Nace de `main` **con SDD-60 en `Hecho`**: esta spec parte
 > de un único `@code` y de su corte de servidor.
-> **Progreso:** 0 / 42 — `Listo`.
+> **Progreso:** 0 / 43 — `Listo`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -34,7 +34,8 @@ código, no el test.
 ─→ 8 view-rest ─→ 9 view-control ─→ 10 readModule ─→ 11 server-cut ─→ 12 tests
    │
    ▼
-13 now() ─→ 14 now en fud-state ─→ 15 presencia y defectos ─→ 16 @empty servidor ─→ 17 @empty cliente ─→ 18 tests
+13 now() ─→ 14 now en fud-state ─→ 15 presencia y defectos ─→ 16 @empty servidor ─→ 17 @empty cliente
+─→ 43 orden del spread ─→ 18 tests
    │
    ▼
 19 portableTypeDiagnostics ─→ 20 project checker ─→ 21 language server ─→ 22 tests
@@ -68,10 +69,10 @@ código, no el test.
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [ ] | 4 | 1 | **`@empty`.** La estructura reconoce `} @empty { … }` tras el cuerpo de `@foreach`, `@for` y `@while` como `EmptyBlock` hijo del bucle, con `Span`. `FUD1149` si sigue a otra cosa o se repite. El `walk` lo entrega | `compiler` | `src/control/*` · `src/document/*` · `src/types/*` · `src/semantic/walk.ts` |
-| [ ] | 5 | 1 | **`view-expressions`.** Lista blanca de SDD §3.2–§3.5: llamadas con argumentos, `?.()` y llamado que no es camino (`FUD1140`; exento `t()` en valor de prop), `new` (`FUD1141`), operadores (`FUD1142`), literales (`FUD1143`; exento el objeto de huecos de `t()`), sintaxis TS (`FUD1144`), `length` (`FUD1145`), patrón de array (`FUD1146`), toda flecha y función (`FUD0905`), regex (`FUD0919`). Deja de emitir `FUD0911` y la parte de `0910`/`0912`/`0913`/`0917` que cubren las llamadas y los globales. Los callbacks (SDD §3.1) quedan fuera | `compiler` | `src/semantic/analyzers/view-expressions.ts` |
+| [ ] | 5 | 1 | **`view-expressions`.** Lista blanca de SDD §3.2–§3.5: llamadas con argumentos, `?.()` y llamado que no es camino (`FUD1140`; exento `t()` en valor de prop), `new` (`FUD1141`), operadores (`FUD1142`), literales (`FUD1143`; exento el objeto de huecos de `t()`), sintaxis TS (`FUD1144`), `length` (`FUD1145`), patrón de array o con clave calculada (`FUD1146`), toda flecha y función (`FUD0905`), regex (`FUD0919`). Deja de emitir `FUD0911` y la parte de `0910`/`0912`/`0913`/`0917` que cubren las llamadas y los globales. Los callbacks (SDD §3.1) quedan fuera | `compiler` | `src/semantic/analyzers/view-expressions.ts` |
 | [ ] | 6 | 5 | **`view-statements`.** `@{ }` solo `const`/`let` (con patrones de objeto) y reasignación de variables; `if`, `switch`, bucles, bloques y llamadas como sentencia son `FUD0908`. `@for`/`@while` siguen con `FUD0900`/`0901`/`0913` | `compiler` | `src/semantic/analyzers/view-statements.ts` |
 | [ ] | 7 | 5 | **`view-identifiers`.** Globales: solo `undefined` (`FUD0907`). En manejadores y callbacks, sin comprobación de globales; se conserva la regla de los nombres de `@{ }` | `compiler` | `src/semantic/analyzers/view-identifiers.ts` · `src/semantic/view-globals.ts` |
-| [ ] | 8 | 5 | **`view-rest`** (nuevo). Un `...resto` de la vista solo como `resto.campo` o spread de atributo; otro uso es `FUD1147` sobre el uso | `compiler` | `src/semantic/analyzers/view-rest.ts` · `ANALYZERS` |
+| [ ] | 8 | 5 | **`view-rest`** (nuevo). Un `...resto` de la vista solo como `resto.campo`, spread de atributo o el origen de otro patrón (`const { b, ...r2 } = resto`); otro uso es `FUD1147` sobre el uso (SDD §3.6, anexo A.3.3) | `compiler` | `src/semantic/analyzers/view-rest.ts` · `ANALYZERS` |
 | [ ] | 9 | 5 | **`view-control`** (nuevo). `case` que no es un literal es `FUD1148` | `compiler` | `src/semantic/analyzers/view-control.ts` · `ANALYZERS` |
 | [ ] | 10 | — | **`readModule`.** Campo opcional de `SemanticInput`: `(specifier, importer) => { path, source } \| undefined` para módulos del proyecto. Lo dan el plugin de Vite, `@fudic/typecheck` y el language server, con caché por ruta y versión | `compiler` · `vite` · `typecheck` · `language-server` | `src/semantic/types.ts` · hosts |
 | [ ] | 11 | 5, 10 | **`server-cut`** (nuevo). Sobre el corte de SDD-60 §4.8: la forma de cada declaración (`FUD1150` con `related` al uso), la lista blanca de los inicializadores con los mismos códigos, las llamadas del catálogo, `now()` (`FUD0912`), stores (siguiendo `export … from`) y módulos de datos (SDD §3.9) | `compiler` | `src/semantic/analyzers/server-cut.ts` · `ANALYZERS` |
@@ -86,13 +87,14 @@ código, no el test.
 | [ ] | 15 | — | **Presencia y defectos.** En la vista y en el corte, `=== null`/`=== undefined` (y `!==`) se emiten como `== null`/`!= null`; el defecto de un patrón de la vista como `?? defecto` | `compiler` | `src/emit/*` |
 | [ ] | 16 | 4 | **`@empty` en el servidor.** Los tres bucles cuentan vueltas y, con cero, pintan el bloque | `compiler` · `ssr` | `src/emit/markup.ts` |
 | [ ] | 17 | 4 | **`@empty` en el cliente.** Rama del constructo con su marca de hidratación, como una rama de `@if`; la reconciliación del `@foreach` la monta con cero elementos y la desmonta con alguno; `@for` y `@while` igual al reevaluarse | `compiler` · `core` | `src/emit/markup-client.ts` · `src/hydrate/*` |
-| [ ] | 18 | 13–17 | **Los tests de la fase.** Criterios 10, 14, 15, 19 (pinta `20`), 25 y 28 | `compiler` · `core` · `testing` | `test/**` |
+| [ ] | 43 | — | **Orden del spread.** `attrsOf` y `attrsDiff` devuelven los atributos ordenados por nombre (unidades UTF-16); el emit llama a `setAttrs` una vez por elemento, en el sitio del primer spread, con todos sus objetos (SDD §3.8, §4.4.5) | `dom` · `compiler` | `dom/src/attrs.ts` · `compiler/src/emit/*` |
+| [ ] | 18 | 13–17, 43 | **Los tests de la fase.** Criterios 10, 13 (orden y D6 del anexo), 14, 15, 19 (pinta `20`), 25 y 28 | `compiler` · `core` · `testing` | `test/**` |
 
 ## Fase 4 — el pase tipado (4)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 19 | 1 | **`portableTypeDiagnostics(program, document)`.** Con el checker sobre la proyección, como `propShapes`: llamada sin argumentos no reactiva (`FUD1140`), condiciones y operandos lógicos (`FUD1151`), operandos de §3.4 (`FUD1152`), tipos de §3.10, iterable, índice, `key`, `@switch` y literal de objeto sin tipo con nombre (`FUD1153`). Símbolos por el nombre que imprime el checker; importación de `typescript` solo de tipos | `typecheck` | `src/portable-types.ts` · `src/index.ts` |
+| [ ] | 19 | 1 | **`portableTypeDiagnostics(program, document)`.** Con el checker sobre la proyección, como `propShapes`: llamada sin argumentos no reactiva (`FUD1140`), condiciones y operandos lógicos (`FUD1151`), operandos de §3.4 (`FUD1152`), tipos de §3.10, iterable, índice, `key`, `@switch`, literal de objeto sin tipo con nombre y desestructurar o esparcir un `map` (`FUD1153`). Símbolos por el nombre que imprime el checker; importación de `typescript` solo de tipos | `typecheck` | `src/portable-types.ts` · `src/index.ts` |
 | [ ] | 20 | 19 | **En dev y en build.** El project checker lo llama: en dev, terminal y overlay; en build, el build falla | `typecheck` · `vite` | `typecheck/src/checker.ts` · `vite/src/dev-typecheck.ts` · `vite/src/background-check.ts` |
 | [ ] | 21 | 19 | **En el editor.** El language server lo publica por el mismo canal que los demás `FUD`, con el mismo span | `language-server` | `src/services/*` |
 | [ ] | 22 | 19–21 | **Los tests de la fase.** Criterios 2 (`@hora()`), 6, 7, 9, 22, 23, y el mismo span en build y editor (30) | `typecheck` · `language-server` | `test/**` |
