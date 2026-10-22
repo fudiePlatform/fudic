@@ -153,7 +153,7 @@ En cada paso, `next` dice una sola cosa.
 
 | Grupo | Tool | Qué hace |
 |---|---|---|
-| Lenguaje | `fudic_guide { topic }` | Gramática de `overview`, `components`, `view`, `fudapi`, `fudspec`, `html-css`, `workflow` (§6) |
+| Lenguaje | `fudic_guide { topic }` | Gramática de `overview`, `components`, `view`, `fudapi`, `fudspec`, `testing`, `html-css`, `workflow` (§6) |
 | | `fudic_explain { code }` | El `.md` del código de diagnóstico |
 | Proyecto | `fudic_status` | Fase, lo pendiente, recuento de diagnósticos. Guía al LLM (§5.4) |
 | | `fudic_new` | Crea la app (plan `new` de la CLI) |
@@ -413,6 +413,52 @@ acme-button.fudlog
   quién, cuándo y el hash de la `.fudspec` y sus fixtures. Hay un único sitio donde mirar, y la
   caducidad (§10.2) es directa: si el hash de ahora es otro, la aprobación ya no vale.
 
+### 5.9. `fudic_test` (propuesta, 2026-10-22)
+
+Ejecuta los tests unitarios de SDD-57 (`@fudic/testing`, vitest sobre happy-dom). Entrada:
+`{ paths?, names?, failing? }`; sin `paths`, los de todas las unidades. Vitest se llama en proceso
+(su API de Node, con el `vitest.config` del proyecto), nunca el binario.
+
+Lo dispara `next` en la fase 3 («Write the unit tests of acme-button, then run fudic_test: they
+must fail») y en la 4, junto a `spec_run`.
+
+```json
+{
+  "fudicVersion": "0.0.1",
+  "commit": "…",
+  "summary": { "pass": 4, "fail": 2, "broken": 0 },
+  "tests": [
+    { "file": "libs/ui/src/components/acme-button/acme-button.test.ts",
+      "name": "disabled: a click does not emit press",
+      "verdict": "fail", "at": "acme-button.test.ts:18:5",
+      "quote": "expect(pressed).toBe(0);",
+      "expected": "0", "got": "1" }
+  ],
+  "next": "Make acme-button.fud pass these 2 tests. Do not change the tests."
+}
+```
+
+- **Dos clases de rojo.** `fail` es una aserción que no se cumple: el rojo que se busca. `broken`
+  es un test que ni llega a comprobar (el `.fud` no compila, `mount` lanza por una prop que no es
+  JSON, un import que no existe). En la fase 3 solo vale el primero: un test que falla porque el
+  componente no existe no prueba nada. `broken` sale como diagnóstico, en la forma de
+  `fudic_check`.
+- **El `.fud` que no compila** sale con sus FUD y su posición en el `.fud`, no como la excepción
+  del import (SDD-57 ya los pinta así).
+- **Al historial (§5.8)** va cada ejecución con su hash, como `spec_run`: `tests red 6/6` cierra
+  la fase 3 y `tests pass 6/6` es la mitad de la fase 4.
+- **«Do not change the tests»** en `next` de la fase 4: un LLM que no consigue el verde tiende a
+  tocar el test. Si el test cambia después de su línea `red`, el hash lo delata en `status`.
+
+Lo que destapa:
+
+- **Falta el tema `testing` en `fudic_guide`**: la API de `mount`, `visit`, los gestos y, sobre
+  todo, **la frontera con `.fudspec`** (SDD-57 §1.1): lo que va a vitest y lo que va al navegador.
+  Sin ella, el LLM escribe en happy-dom un test de foco o de layout que pasa sin probar nada.
+- **Criterios y tests pueden repetirse.** `app-tabs.fudspec` comprueba un clic y su panel; un
+  test unitario puede comprobar lo mismo. Hay que decidir si los tests salen de los criterios o
+  cubren solo lo que los criterios no cubren (funciones de servidor, forms, estados límite).
+
 ## 6. `fudic_guide`
 
 Envoltura: `{ fudicVersion, topic, related, body }`, con `body` en markdown en inglés.
@@ -473,7 +519,8 @@ remoto. Se mantienen como dos superficies; `fudic_spec_run` es el punto donde se
   `fudic check` aparte». En el MCP, `fudic_check` encaja; en el builder, debería fallar el build.
 - **El fake (§3, camino 2) enmienda la decisión 6 de SDD-60** (sin handler, 404). Hay que anotarlo
   en SDD-60 cuando esto sea SDD.
-- **`fudic_test` depende de SDD-57**, que no está en main.
+- ~~**`fudic_test` depende de SDD-57**, que no está en main.~~ SDD-57 está `Hecho` y en main
+  (`packages/testing`).
 - ~~**¿Dónde queda escrito que el usuario aprobó los criterios?**~~ Resuelto en §10.2: una línea
   `approved`, que vive en el historial de la pieza (§5.8).
 - **Accesibilidad comprobada** (caso §10). La `.fudspec` busca por rol y nombre accesible, pero no
