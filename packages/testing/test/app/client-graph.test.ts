@@ -1,6 +1,5 @@
 import { expect, test, vi } from 'vitest';
 import { clientGraphOf, mount } from '../../src/index.js';
-import { walk } from '../../src/client-graph.js';
 import * as XAlias from './src/components/x-alias.fud';
 import * as XEffects from './src/components/x-effects.fud';
 import * as XGuarded from './src/components/x-guarded.fud';
@@ -9,30 +8,25 @@ import * as XGuarded from './src/components/x-guarded.fud';
 // parallel run with coverage on.
 vi.setConfig({ testTimeout: 20_000 });
 
-test('criterion 18: what the browser gets does not reach the data a server validator reads', async () => {
+test('criterion 18: what the browser gets does not reach the data a server rule reads', async () => {
+  // The rule `alias-taken` runs on the server: its check lives in `src/server`, which no
+  // browser module imports (SDD-60 §3.12).
   const graph = await clientGraphOf(XAlias);
-  expect(graph).toReach('src/forms/alias.form.ts');
-  expect(graph).toReach('src/forms/messages.ts');
+  expect(graph).not.toReach('src/server/rules.ts');
   expect(graph).not.toReach('src/data/aliases.ts');
 });
 
-test('criterion 18: without the plugin erasing it, it does', async () => {
-  const unerased = await walk(XAlias.$file, true);
-  expect(unerased).toReach('src/data/aliases.ts');
-});
-
 test('a failing toReach lists what the graph does reach', async () => {
-  const graph = await clientGraphOf(XAlias);
+  const graph = await clientGraphOf(XEffects);
   expect(() => expect(graph).toReach('src/nowhere.ts')).toThrow('does not reach src/nowhere.ts');
-  expect(() => expect(graph).not.toReach('src/forms/alias.form.ts')).toThrow('reaches src/forms/alias.form.ts, and it should not');
+  expect(() => expect(graph).not.toReach('src/data/forward.js')).toThrow('reaches src/data/forward.js, and it should not');
 });
 
-test('BUG-47: a module only the erased half imported no longer ships, effects and all', async () => {
-  // The client transform erases `auth`'s `.server` half and, with it, the import of `Tokens`
-  // that only that half used. `tokens.ts` ends in `Service(Tokens)`, so a bundler would keep it
-  // whole if the import stayed: it does not stay.
+test('BUG-47: the server half of a middleware, and what only it imports, never ship', async () => {
+  // `tokens.ts` ends in `Service(Tokens)`, so a bundler would keep it whole if anything the
+  // browser loads imported it: the half that reads it is in `src/server`.
   const graph = await clientGraphOf(XGuarded);
-  expect(graph).toReach('src/middlewares/auth.ts');
+  expect(graph).not.toReach('src/server/auth.ts');
   expect(graph).not.toReach('src/data/tokens.ts');
 });
 

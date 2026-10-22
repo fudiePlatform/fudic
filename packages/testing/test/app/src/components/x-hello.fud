@@ -1,31 +1,17 @@
+<link rel="server" href="./x-hello.fudapi">
+
 @code {
-  @server {
-    import { post } from "@fudic/http";
-    import { halves, plain } from "../middlewares/trace";
-    import { greetingFor, handled } from "../data/greetings";
+  import { signal } from "@fudic/core";
 
-    export const greet = post()
-      .use(halves, plain)
-      .args<{ name: string }>()
-      .handle((ctx) => {
-        handled.count += 1;
-        return greetingFor(ctx.args.name);
-      });
-  }
+  const said = signal("");
+  const failed = signal("");
 
-  @client {
-    import { signal } from "@fudic/core";
-
-    const said = signal("");
-    const failed = signal("");
-
-    async function go() {
-      try {
-        said.set(await greet({ name: "Ana" }));
-      } catch (e) {
-        const status = (e as { status?: number }).status;
-        failed.set(status === undefined ? (e as Error).name : String(status));
-      }
+  async function go() {
+    try {
+      said.set(await greet({ name: "Ana" }));
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      failed.set(status === undefined ? (e as Error).name : String(status));
     }
   }
 }

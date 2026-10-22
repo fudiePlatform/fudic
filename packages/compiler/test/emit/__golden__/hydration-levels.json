@@ -885,23 +885,23 @@
     "hydration": "gesture",
     "hydrates": []
   },
-  "packages/language-server/fixtures/blog/[slug].fud": {
+  "packages/language-server/fixtures/src/blog/[slug].fud": {
     "kind": "route",
     "reactive": false,
     "hydration": "gesture",
     "hydrates": []
   },
-  "packages/language-server/fixtures/components/app-badge.fud": {
+  "packages/language-server/fixtures/src/components/app-badge.fud": {
     "kind": "component",
     "tag": "app-badge",
     "hydrates": false
   },
-  "packages/language-server/fixtures/components/site-nav.fud": {
+  "packages/language-server/fixtures/src/components/site-nav.fud": {
     "kind": "component",
     "tag": "site-nav",
     "hydrates": false
   },
-  "packages/language-server/fixtures/layouts/_layout.fud": {
+  "packages/language-server/fixtures/src/layouts/_layout.fud": {
     "kind": "route",
     "reactive": false,
     "hydration": "gesture",

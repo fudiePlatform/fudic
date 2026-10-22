@@ -28,7 +28,7 @@ const FRAME_LAYOUT = `<!DOCTYPE html>
 
 beforeAll(async () => {
   const root = copyWorkspace();
-  writeFileSync(`${root}/layouts/_marco.fud`, FRAME_LAYOUT, 'utf8');
+  writeFileSync(`${root}/src/layouts/_marco.fud`, FRAME_LAYOUT, 'utf8');
   harness = await startHarness({ root });
 }, 60_000);
 
@@ -50,7 +50,7 @@ interface WireAction {
 }
 
 async function report(body: string): Promise<{ uri: string; items: readonly WireDiagnostic[] }> {
-  const { uri } = await harness.open('blog/marco.fud', route(body));
+  const { uri } = await harness.open('src/blog/marco.fud', route(body));
   const got = await harness.client.sendRequest(DocumentDiagnosticRequest.type, { textDocument: { uri } });
   return { uri, items: ((got as { items?: WireDiagnostic[] }).items ?? []) };
 }

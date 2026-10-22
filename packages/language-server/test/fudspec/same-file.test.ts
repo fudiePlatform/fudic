@@ -28,7 +28,7 @@ let harness: Harness;
 beforeAll(async () => {
   root = copyWorkspace();
   writeFileSync(`${root}/fudic.json`, JSON.stringify({ id: 'probe', kind: 'app', prefix: 'app' }));
-  writeFileSync(`${root}/components/app-probe.fud`, PROBE);
+  writeFileSync(`${root}/src/components/app-probe.fud`, PROBE);
   harness = await startHarness({ root });
 }, 60_000);
 
@@ -41,14 +41,14 @@ describe('the CLI and the light bulb write the same file (criterion 13)', () => 
     const plan = await planSpec('probe', { cwd: root, force: false }, nodeReadIo());
     expect(plan.errors).toEqual([]);
     const [spec, fixture] = plan.changes;
-    expect(spec).toMatchObject({ path: 'components/app-probe.fudspec', contents: specSkeleton('app-probe', true) });
-    expect(fixture?.path).toBe('components/app-probe.fixture.ts');
+    expect(spec).toMatchObject({ path: 'src/components/app-probe.fudspec', contents: specSkeleton('app-probe', true) });
+    expect(fixture?.path).toBe('src/components/app-probe.fixture.ts');
     expect(fixture?.contents).toContain("  base: { label: '', tone: 'info', items: [] },\n");
 
     // The file the skeleton asks for, with its one criterion written: `props base`.
     const text = 'component app-probe\n\ncriterion a\n  given\n    props base\n  then\n    min-height app-probe 44\n';
-    await harness.open('components/app-probe.fudspec', text, 'fudspec');
-    const uri = harness.uriOf('components/app-probe.fudspec');
+    await harness.open('src/components/app-probe.fudspec', text, 'fudspec');
+    const uri = harness.uriOf('src/components/app-probe.fudspec');
     const report = (await harness.client.sendRequest(DocumentDiagnosticRequest.type, { textDocument: { uri } })) as FullDocumentDiagnosticReport;
     const actions = ((await harness.client.sendRequest(CodeActionRequest.type, {
       textDocument: { uri },

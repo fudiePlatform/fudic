@@ -1325,7 +1325,19 @@ function cutOf(
       return (stmt['declarations'] as readonly OxcNode[]).some((d) => calls(d['init'] as OxcNode | null, 'props'));
     },
     effects: (stmt) => effectCalls(stmt).length > 0,
+    reads: reactiveArguments,
   });
+}
+
+/**
+ * The arguments of a declaration whose every declarator is a `signal(…)` or a `computed(…)`:
+ * the server writes it inert from them, and the browser's `signal` is never its business.
+ */
+function reactiveArguments(stmt: OxcNode): readonly OxcNode[] | undefined {
+  if (stmt.type !== 'VariableDeclaration') return undefined;
+  const inits = (stmt['declarations'] as readonly OxcNode[]).map((d) => d['init'] as OxcNode | null);
+  if (!inits.every((init) => calls(init, 'signal') || calls(init, 'computed'))) return undefined;
+  return inits.flatMap((init) => init!['arguments'] as readonly OxcNode[]);
 }
 
 /** Whether `node` is a call to the bare name `fn`: `provide(…)`, `props<T>()`. */

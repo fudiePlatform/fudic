@@ -1,13 +1,4 @@
 <link rel="layout" href="../layouts/_layout.fud">
-
-@code {
-  @server {
-    import { redirect } from "@fudic/http";
-
-    export async function load(): Promise<{ never: true }> {
-      throw redirect("/blog/x", 302);
-    }
-  }
-}
+<link rel="server" href="./moved.fudapi">
 
 <h1>Never painted</h1>

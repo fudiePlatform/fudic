@@ -230,11 +230,9 @@ describe('planBench — criterion 5, a Signal prop', () => {
       '<link rel="component" href="C:/proj/src/components/signal-display.fud">\n' +
         '\n' +
         '@code {\n' +
-        '  @client {\n' +
-        '    import { signal } from "@fudic/core";\n' +
+        '  import { signal } from "@fudic/core";\n' +
         '\n' +
-        '    const value = signal(10);\n' +
-        '  }\n' +
+        '  const value = signal(10);\n' +
         '}\n' +
         '\n' +
         '<bench-host-signal-display-diez>\n' +
@@ -269,14 +267,12 @@ describe('planBench — criterion 5, a Signal prop', () => {
       '<link rel="component" href="C:/proj/src/components/signal-display.fud">\n' +
         '\n' +
         '@code {\n' +
+        '  import { signal } from "@fudic/core";\n' +
         '  import fixtures from "C:/proj/src/components/signal-display.fixture";\n' +
+        '\n' +
         '  const { label, note } = fixtures["mixta"];\n' +
         '\n' +
-        '  @client {\n' +
-        '    import { signal } from "@fudic/core";\n' +
-        '\n' +
-        '    const value = signal({"n":[1,2]});\n' +
-        '  }\n' +
+        '  const value = signal({"n":[1,2]});\n' +
         '}\n' +
         '\n' +
         '<bench-host-signal-display-mixta>\n' +

@@ -114,12 +114,12 @@ function makeWorkspace(): string {
   mkdirSync(join(app, 'src', 'layouts'), { recursive: true });
   writeFileSync(join(app, 'src', 'layouts', '_layout.fud'), LAYOUT);
 
-  // `startHarness` warms the TypeScript program up by opening `layouts/_layout.fud` at the
+  // `startHarness` warms the TypeScript program up by opening `src/layouts/_layout.fud` at the
   // root of whatever folder it was given, so each of the two roots needs one. They are the
   // harness's own cold start, not part of what is being measured.
   for (const root of [ws, app]) {
-    mkdirSync(join(root, 'layouts'), { recursive: true });
-    writeFileSync(join(root, 'layouts', '_layout.fud'), LAYOUT);
+    mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
+    writeFileSync(join(root, 'src', 'layouts', '_layout.fud'), LAYOUT);
   }
   writeFileSync(join(app, 'src', 'routes', 'index.fud'), PAGE);
   writeFileSync(join(app, 'fudic.json'), JSON.stringify({ kind: 'app', id: 'tienda' }, null, 2));

@@ -25,6 +25,11 @@ export interface CutInput {
   readonly always: (stmt: OxcNode) => boolean;
   /** Whether a statement calls `effect(…)` at its top level. */
   readonly effects: (stmt: OxcNode) => boolean;
+  /**
+   * What a statement reads, when it is less than all of it: a `signal(…)` the server writes
+   * inert reads its arguments, never the `signal` it is declared with.
+   */
+  readonly reads?: (stmt: OxcNode) => readonly OxcNode[] | undefined;
 }
 
 /** TypeScript declarations: erased, so always in the cut, and never a reason to pull anything. */
@@ -52,7 +57,7 @@ export function serverCut(input: CutInput): ReadonlySet<OxcNode> {
     if (cut.has(stmt) || input.effects(stmt)) return;
     cut.add(stmt);
     // An import brings a binding and reads nothing of the file.
-    if (stmt.type !== 'ImportDeclaration') pending.push(...freeReferences([stmt]));
+    if (stmt.type !== 'ImportDeclaration') pending.push(...freeReferences(input.reads?.(stmt) ?? [stmt]));
   };
 
   for (const stmt of input.statements) {

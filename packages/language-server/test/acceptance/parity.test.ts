@@ -26,11 +26,14 @@ import {
 import { createProjectChecker, toPosix, type ProjectChecker } from '@fudic/typecheck';
 import { copyWorkspace, startHarness, type Harness } from './_harness.js';
 
-const SLUG = 'blog/[slug].fud';
-const BADGE = 'components/app-badge.fud';
-const NAV = 'components/site-nav.fud';
-const LAYOUT = 'layouts/_layout.fud';
+const SLUG = 'src/blog/[slug].fud';
+const BADGE = 'src/components/app-badge.fud';
+const NAV = 'src/components/site-nav.fud';
+const LAYOUT = 'src/layouts/_layout.fud';
 const FILES = [SLUG, BADGE, NAV, LAYOUT] as const;
+/** The route's contract (SDD-60): saved, the server rewrites its `.d.ts`, which both roads read. */
+const API = 'src/blog/[slug].fudapi';
+const API_TYPES = '.fudic/api/blog/[slug].d.ts';
 
 let root: string;
 let harness: Harness;
@@ -40,7 +43,7 @@ const original = new Map<string, string>();
 
 beforeAll(async () => {
   root = copyWorkspace();
-  for (const file of FILES) original.set(file, readFileSync(`${root}/${file}`, 'utf8'));
+  for (const file of [...FILES, API]) original.set(file, readFileSync(`${root}/${file}`, 'utf8'));
   harness = await startHarness({ root });
   for (const file of FILES) await harness.open(file);
   checker = createProjectChecker({ root });
@@ -85,7 +88,7 @@ async function editorSet(texts: ReadonlyMap<string, string>): Promise<Set<Key>> 
 
 /** What the build reports. */
 function buildSet(changed: readonly string[]): Set<Key> {
-  for (const file of changed) checker.invalidate(`${root}/${file}`);
+  for (const file of changed) checker.invalidate(`${root}/${file === API ? API_TYPES : file}`);
   const report = checker.check();
   expect(report.project).toEqual([]);
   const base = toPosix(URI.file(root).fsPath).toLowerCase();
@@ -137,7 +140,7 @@ async function parity(edits: Readonly<Record<string, (text: string) => string>>)
       writeFileSync(`${root}/${file}`, original.get(file)!);
       await harness.change(harness.uriOf(file), original.get(file)!, ++version);
       await saved(file);
-      checker.invalidate(`${root}/${file}`);
+      checker.invalidate(`${root}/${file === API ? API_TYPES : file}`);
     }
   }
 }
@@ -159,8 +162,10 @@ describe('SDD-35 §6.3 — parity between the editor and the build', () => {
       ]);
     });
 
-    it('B — a @server symbol used in the template', async () => {
-      expect(codes(await parity({ [SLUG]: replace('<h1>@data.title</h1>', '<h1>@findPost</h1>') }))).toEqual(['TS2304']);
+    it('B — a name the file never declares, used in the template', async () => {
+      // What was a `@server` import is now just a name nobody declares: the view says so too.
+      const set = await parity({ [SLUG]: replace('<h1>@data.title</h1>', '<h1>@findPost</h1>') });
+      expect(codes(set)).toEqual(['FUD0907', 'TS2304']);
     });
 
     it('C — a section the layout does not declare', async () => {
@@ -194,7 +199,8 @@ describe('SDD-35 §6.3 — parity between the editor and the build', () => {
     });
 
     it("H — changing load()'s contract breaks the template", async () => {
-      expect(codes(await parity({ [SLUG]: replace('Promise<PageData> {', 'Promise<Omit<PageData, "body">> {') }))).toContain(
+      // The contract is the `.fudapi`'s (SDD-60 §4.7): `data` is its `LoadData`.
+      expect(codes(await parity({ [API]: replace('  body   str\n', '') }))).toContain(
         'TS2339',
       );
     });

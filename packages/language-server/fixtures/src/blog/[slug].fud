@@ -1,0 +1,22 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/app-badge.fud">
+<link rel="server" href="./[slug].fudapi">
+
+@code {
+  type PageData = { title: string; tag: string; body: string; found: boolean; note?: string };
+}
+
+<head>
+  <title>@data.title — fudic</title>
+</head>
+
+@section nav {
+  <site-nav .current="blog"></site-nav>
+}
+
+<article>
+  <app-badge .tone=@(data.found ? 'info' : 'neutral')>@data.tag</app-badge>
+  <h1>@data.title</h1>
+  <p>@data.body</p>
+</article>

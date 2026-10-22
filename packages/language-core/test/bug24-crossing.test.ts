@@ -24,16 +24,14 @@ const BADGE = 'components/app-badge.fud';
 
 const read = (path: string): string => readFileSync(resolve(FIXTURES, path), 'utf8');
 
-/** The route's own `@client`, declaring a reactive and the `signal` the corpus cannot import. */
-const CLIENT = `  }
-  @client {
-    type Signal<T> = { (): T; set(next: T): void };
-    declare function signal<T>(initial: T): Signal<T>;
-    type Tone = 'neutral' | 'success' | 'info';
+/** The route's own `@code`, declaring a reactive and the `signal` the corpus cannot import. */
+const CLIENT = `note?: string };
+  type Signal<T> = { (): T; set(next: T): void };
+  declare function signal<T>(initial: T): Signal<T>;
+  type Tone = 'neutral' | 'success' | 'info';
 
-    const titulo = signal<Tone>('info');
-    const numero = signal(1);
-  }
+  const titulo = signal<Tone>('info');
+  const numero = signal(1);
 }`;
 
 /** The badge, rewritten to ask for its prop BY REFERENCE (props-spec decision 153). */
@@ -53,9 +51,9 @@ const SIGNAL_BADGE = `@code {
 
 const TONE_PROP = `.tone="@(data.found ? 'info' : 'neutral')"`;
 
-/** The corpus with the route's `@client` in place and its `.tone` replaced by `to`. */
+/** The corpus with the route's reactives in place and its `.tone` replaced by `to`. */
 function corpus(to: string, badge?: string): Record<string, string> {
-  const source = read(SLUG).replace('  }\n}', CLIENT).replace(TONE_PROP, to);
+  const source = read(SLUG).replace('note?: string };\n}', CLIENT).replace(TONE_PROP, to);
   if (!source.includes(to)) throw new Error(`mutation anchor not found: ${to}`);
   return badge === undefined ? { [SLUG]: source } : { [SLUG]: source, [BADGE]: badge };
 }

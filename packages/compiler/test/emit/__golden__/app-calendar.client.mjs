@@ -9,9 +9,9 @@ customElements.define("app-calendar", class extends FudicElement {
     let [$dom, $shadow, days = []] = $props;
     let $host = $dom.host($shadow);
     function pick(ev, day) {
-      ev.preventDefault();
-      emit.call($host, 'picked', day.id);
-    }
+    ev.preventDefault();
+    emit.call($host, 'picked', day.id);
+  }
 
     const $t0 = new WeakMap();
     let $k0 = [];

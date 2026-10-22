@@ -13,7 +13,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { HoverRequest, type Hover, type Position } from 'vscode-languageserver-protocol/node';
 import { fixtureText, fixtureUri, startHarness, type Harness } from './_harness.js';
 
-const SLUG = 'blog/[slug].fud';
+const SLUG = 'src/blog/[slug].fud';
 
 let harness: Harness;
 

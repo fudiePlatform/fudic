@@ -1,0 +1,8 @@
+load
+  title  str
+  posts  Post[]
+
+type Post
+  id       str
+  title    str
+  summary  str

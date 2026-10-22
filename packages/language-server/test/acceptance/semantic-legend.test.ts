@@ -45,7 +45,7 @@ async function tokensOf(relative: string, text: string): Promise<string[]> {
 describe('the legend the editor decodes with is the one the tokens were numbered in', () => {
   it('paints a variable of the scope as a variable, TypeScript’s voice beside ours', async () => {
     const tokens = await tokensOf(
-      'blog/legend.fud',
+      'src/blog/legend.fud',
       '<link rel="layout" href="../layouts/_layout.fud">\n@code {\n  const cuenta = 1;\n}\n<p>@cuenta</p>\n',
     );
 

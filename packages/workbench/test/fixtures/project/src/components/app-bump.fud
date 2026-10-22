@@ -3,10 +3,8 @@
 
   const { value } = props<{ value: Signal<number> }>();
 
-  @client {
-    function bump() {
-      value.set(value() + 1);
-    }
+  function bump() {
+    value.set(value() + 1);
   }
 }
 

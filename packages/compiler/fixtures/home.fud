@@ -7,19 +7,13 @@
     <link rel="component" href="./app-list.fud">
     <link rel="component" href="./app-actions.fud">
     <link rel="component" href="./app-calendar.fud">
+    <link rel="server" href="./home.fudapi">
 
     @code {
+      // Its `data` is what the `load` of home.fudapi declares. A page's `@code` is browser
+      // code: the server evaluates only what the template reads.
       type Item = { id: string; title: string; description: string; featured: boolean };
       type PageData = { title: string; items: Item[] };
-
-      @server {
-        import { db } from './db';
-
-        export async function load(): Promise<PageData> {
-          const items = await db.query('SELECT id, title, description, featured FROM items ORDER BY created_at DESC');
-          return { title: 'Inicio', items };
-        }
-      }
     }
 
     <title>@data.title</title>

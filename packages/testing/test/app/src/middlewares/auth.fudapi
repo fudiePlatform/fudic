@@ -1,0 +1,6 @@
+# Two halves: the client half sends a token, the server half reads Tokens.
+middleware auth
+  client
+  server
+  adds
+    user  str

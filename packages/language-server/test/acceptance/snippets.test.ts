@@ -34,9 +34,9 @@ function applyEdits(text: string, edits: readonly TextEdit[]): string {
   return out;
 }
 
-const SLUG = 'blog/[slug].fud';
-const BADGE = 'components/app-badge.fud';
-const LAYOUT = 'layouts/_layout.fud';
+const SLUG = 'src/blog/[slug].fud';
+const BADGE = 'src/components/app-badge.fud';
+const LAYOUT = 'src/layouts/_layout.fud';
 
 let harness: Harness;
 let version = 1;
@@ -66,7 +66,7 @@ const ROUTE_HEAD = `<link rel="layout" href="../layouts/_layout.fud">\n`;
 beforeAll(async () => {
   harness = await startHarness();
   await harness.open(BADGE);
-  await harness.open('components/site-nav.fud');
+  await harness.open('src/components/site-nav.fud');
   await harness.open(LAYOUT);
 }, 60_000);
 

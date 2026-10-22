@@ -56,9 +56,9 @@ BODY
 
 beforeAll(async () => {
   const root = copyWorkspace();
-  writeFileSync(`${root}/components/app-frame.fud`, APP_FRAME, 'utf8');
-  mkdirSync(`${root}/snippets`, { recursive: true });
-  writeFileSync(`${root}/snippets/frame.fud`, SNIPPETS, 'utf8');
+  writeFileSync(`${root}/src/components/app-frame.fud`, APP_FRAME, 'utf8');
+  mkdirSync(`${root}/src/snippets`, { recursive: true });
+  writeFileSync(`${root}/src/snippets/frame.fud`, SNIPPETS, 'utf8');
   harness = await startHarness({ root });
 }, 60_000);
 
@@ -87,7 +87,7 @@ async function completeAt(relative: string, marked: string, trigger?: string): P
 }
 
 const inLayout = (body: string, trigger?: string): Promise<CompletionItem[]> =>
-  completeAt('layouts/_frame.fud', LAYOUT.replace('BODY', body), trigger);
+  completeAt('src/layouts/_frame.fud', LAYOUT.replace('BODY', body), trigger);
 const labels = (items: readonly CompletionItem[]): string[] => items.map((i) => i.label);
 
 describe('a `@` in the body of a layout', () => {
@@ -186,7 +186,7 @@ describe('the arguments of a `@render`', () => {
 
   it('a reference with no `@` is FUD0894, and the bulb writes it', async () => {
     const text = LAYOUT.replace('BODY', '      @RenderBody()\n      @render foot(title)');
-    const { uri } = await harness.open('layouts/_frame.fud', text);
+    const { uri } = await harness.open('src/layouts/_frame.fud', text);
     await harness.change(uri, text, ++version);
     const got = await harness.client.sendRequest(DocumentDiagnosticRequest.type, { textDocument: { uri } });
     const items = (got as { items?: { code?: unknown; range: unknown }[] }).items ?? [];

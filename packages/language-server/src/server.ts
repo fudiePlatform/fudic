@@ -37,6 +37,7 @@ import { nodeApiFs, type ApiFs } from './fudapi/fs.js';
 import { ApiHost } from './fudapi/host.js';
 import { createFudapiLanguagePlugin } from './fudapi/language-plugin.js';
 import { createFudapiService } from './fudapi/service.js';
+import { mountApiTypes } from './fudapi/types-mount.js';
 import { createFudspecLanguagePlugin } from './fudspec/language-plugin.js';
 import { SpecHost } from './fudspec/host.js';
 import { nodeSpecFs } from './fudspec/node-spec-fs.js';
@@ -277,6 +278,9 @@ export function createFudicServer(
             // `.` that answers with the global scope (BUG-23).
             const fuds = mountWorkspaceFuds(host, index);
             logger.info(`Added ${fuds} .fud file(s) of the workspace to the TypeScript program`);
+            // The types of a saved `.fudapi`, as this server wrote them: the disk Volar cached
+            // does not know (SDD-60 §4.9).
+            mountApiTypes(host, apis);
           },
         }),
       );

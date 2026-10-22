@@ -1,23 +1,16 @@
+<link rel="server" href="./x-stamp.fudapi">
+
 @code {
   import { inject } from "@fudic/di";
+  import { signal } from "@fudic/core";
   import { NOW } from "../services/now";
 
   const painted = inject(NOW);
 
-  @server {
-    import { get } from "@fudic/http";
+  const asked = signal("");
 
-    export const stamp = get().handle(() => inject(NOW));
-  }
-
-  @client {
-    import { signal } from "@fudic/core";
-
-    const asked = signal("");
-
-    async function ask() {
-      asked.set(await stamp());
-    }
+  async function ask() {
+    asked.set(await stamp());
   }
 }
 

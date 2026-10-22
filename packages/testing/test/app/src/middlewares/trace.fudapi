@@ -1,0 +1,9 @@
+# A middleware with its two halves.
+middleware halves
+  client
+  server
+
+# The same function on both sides.
+middleware plain
+  client
+  server

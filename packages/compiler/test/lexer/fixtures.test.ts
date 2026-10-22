@@ -92,7 +92,7 @@ describe('home.fud specifics', () => {
   it('emits an at-trigger for each control keyword, spanning only the @', () => {
     const triggers = tokens.filter((t) => t.type === 'at-trigger');
     for (const token of triggers) expect(slice(token)).toBe('@');
-    // @code, @server, @data (title), @data (h1), @if, @foreach, @if, @item
+    // @code, @data (title), @data (h1), @if, @foreach, @if, @item, and the rest of the page
     expect(triggers.length).toBeGreaterThanOrEqual(8);
   });
 });

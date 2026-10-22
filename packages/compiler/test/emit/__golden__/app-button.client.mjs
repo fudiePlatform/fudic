@@ -10,8 +10,8 @@ customElements.define("app-button", class extends FudicElement {
     let [$dom, $shadow, variant = 'primary', disabled = false] = $props;
     let $host = $dom.host($shadow);
     function onClick() {
-      emit.call($host, 'press');
-    }
+    emit.call($host, 'press');
+  }
 
     const $m = () => { for (const $n of $r) $dom.append($shadow, $n); };
     const $s = () => {

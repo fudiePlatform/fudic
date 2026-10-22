@@ -9,6 +9,9 @@ packages:
   # list — so its members are declared here.
   - 'examples/workspace/apps/*'
   - 'examples/workspace/libs/*'
+  # The app `@fudic/testing` tests itself against: a project of its own, whose `package.json`
+  # names the libraries whose `fudapi/` it reads (SDD-60 §3.10).
+  - 'packages/testing/test/app'
 
 # Both arrive through `@vscode/vsce` and both are native. Neither is built, on purpose:
 # `keytar` stores Marketplace credentials and `vsce-sign` signs a release — the two things

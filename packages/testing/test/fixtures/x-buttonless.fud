@@ -1,13 +1,11 @@
 @code {
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    const sent = signal(0);
+  const sent = signal(0);
 
-    function send(e: Event) {
-      e.preventDefault();
-      sent.set(sent() + 1);
-    }
+  function send(e: Event) {
+    e.preventDefault();
+    sent.set(sent() + 1);
   }
 }
 

@@ -214,7 +214,10 @@ function statementsOf(result: JsBatchResult, id: FragmentId): readonly OxcNode[]
 /** What the template projection needs out of the batch: the reactives, the ASTs and the pipes. */
 function templateJs(js: EmitJs, source: string): TemplateJs {
   const reactives = new Set<string>();
-  for (const id of js.client ?? []) {
+  // A `@code` with no `@client` is browser code, all of it (SDD-60 §4.8): its `signal(...)`
+  // are as reactive as those of a `@client` region, exactly as the compiler reads them.
+  const clientless = js.client?.length === 0;
+  for (const id of [...(clientless ? js.neutral : []), ...(js.client ?? [])]) {
     for (const name of reactiveNames(statementsOf(js.result, id))) reactives.add(name);
   }
   if (js.ast === undefined) return { reactives };

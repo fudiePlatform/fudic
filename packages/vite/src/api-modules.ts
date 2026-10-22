@@ -21,6 +21,7 @@ import {
   createApiIndex,
   emitDeclarations,
   emitModule,
+  layoutPropsType,
   parseApi,
   validateApi,
   type ApiContext,
@@ -169,7 +170,8 @@ export class ApiProject {
     const params = segments.map((s) => PARAM.exec(s)?.[1]).filter((p): p is string => p !== undefined);
     const error = `${segments[segments.length - 1]}.fud` === ERROR_FILE;
     const pattern = `/${segments.filter((s, i) => !(s === 'index' && i === segments.length - 1)).map((s) => s.replace(PARAM, ':$1')).join('/')}`;
-    return { route: { params, pattern, ...(error ? { error: true } : {}) } };
+    const layoutProps = layoutPropsType(page, readFileSync(page, 'utf8'), `${this.#root}/${API_TYPES_DIR}/${source.id}.d.ts`);
+    return { route: { params, pattern, ...(error ? { error: true } : {}), ...(layoutProps !== undefined ? { layoutProps } : {}) } };
   }
 
   /**

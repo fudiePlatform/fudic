@@ -17,8 +17,8 @@ import {
 } from 'vscode-languageserver-protocol/node';
 import { fixtureText, startHarness, type Harness } from './_harness.js';
 
-const SLUG = 'blog/[slug].fud';
-const BADGE = 'components/app-badge.fud';
+const SLUG = 'src/blog/[slug].fud';
+const BADGE = 'src/components/app-badge.fud';
 
 let harness: Harness;
 let version = 1;
@@ -85,8 +85,8 @@ const labels = (items: CompletionItem[]): string[] => items.map((item) => item.l
 beforeAll(async () => {
   harness = await startHarness();
   await harness.open(BADGE);
-  await harness.open('components/site-nav.fud');
-  await harness.open('layouts/_layout.fud');
+  await harness.open('src/components/site-nav.fud');
+  await harness.open('src/layouts/_layout.fud');
 }, 60_000);
 
 afterAll(async () => {

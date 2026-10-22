@@ -73,7 +73,7 @@ const HEAD = `<link rel="layout" href="../layouts/_layout.fud">
 
 `;
 
-const PAGE = 'blog/bug23.fud';
+const PAGE = 'src/blog/bug23.fud';
 
 /** The reproduction with `markup` as its body. */
 const page = (markup: string): string => `${HEAD}${markup}\n`;
@@ -83,11 +83,11 @@ let version = 1;
 
 beforeAll(async () => {
   const root = copyWorkspace();
-  writeFileSync(`${root}/components/app-circle.fud`, CIRCLE);
+  writeFileSync(`${root}/src/components/app-circle.fud`, CIRCLE);
   writeFileSync(`${root}/${PAGE}`, page('<h1>Home</h1>'));
 
   harness = await startHarness({ root });
-  await harness.open('components/app-circle.fud');
+  await harness.open('src/components/app-circle.fud');
   await harness.open(PAGE);
 }, 60_000);
 

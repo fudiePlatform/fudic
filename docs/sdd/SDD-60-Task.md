@@ -6,7 +6,7 @@
 > `@fudic/typecheck` · `@fudic/language-server` · `@fudic/formatter` · `@fudic/cli` · `fudic-vscode` ·
 > `examples/*` · `packages/testing`
 > **Rama:** `sdd-60-fudapi` (nace de `main`)
-> **Progreso:** 54 / 64 — `En curso`.
+> **Progreso:** 55 / 64 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina; la otra escribe los tests de cada fase (las tareas
 «Los tests de…»), contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -184,7 +184,7 @@ Cada meta cierra una fase. La fase no se da por terminada hasta que Pedro la pru
 |---|---|---|---|---|---|
 | [x] | 47 | 37, 45 | **`examples/basic`.** SDD §4.11, con `user-form` primero (meta 4): `.fudapi` por ruta y componente, forms, middlewares, reglas, `http.fudapi`, handlers en `src/server`, mitades en `src/browser`, `<link rel="server">`, un único `@code` | `examples/basic` | `src/**` |
 | [x] | 48 | 47 | **El resto de ejemplos.** `examples/i18n`, `examples/vista-errores` y cualquier otro con regiones. *Al implementar, con Pedro: en una app con idiomas la raíz, los `fudic:<id>` y los handlers se compilan por idioma (SDD §3.11)* | `examples/*` | `src/**` |
-| [ ] | 49 | 47 | **Fixtures.** `compiler`, `formatter`, `testing`, `language-core`, `language-server`, `vscode`, `workbench` | varios | `fixtures/` · `test/**/*.fud` |
+| [x] | 49 | 47 | **Fixtures.** `compiler`, `formatter`, `testing`, `language-core`, `language-server`, `vscode`, `workbench`. *Al implementar: el corpus de `language-server` pasa a `fixtures/src/` (el `<id>` de un `.fudapi` es su ruta dentro de `src/`) y el servidor escribe su `.d.ts` al arrancar; la app de `@fudic/testing` (`test/app`) entra en el workspace con su `package.json`, para leer el `fudapi/` de `@fudic/http` y `@fudic/forms` como un proyecto real; el generador de anfitriones de `workbench` ya no escribe `@client`. Destapó dos defectos, corregidos: el `.d.ts` no tipaba el retorno de `layout.handle` con las props del layout (`layoutPropsType` de `@fudic/api`, en los dos hosts) y el editor no veía el `.d.ts` regenerado al guardar un `.fudapi` (`mountApiTypes`). La cobertura de `@fudic/testing` baja en las ramas de `src/http.ts`, del despacho `r/`/`c/` y del grafo sin borrar, que se van en las tareas 63 y 35* | varios | `fixtures/` · `test/**/*.fud` |
 | [ ] | 50 | 49 | **Tests que escriben regiones.** Reescritos al modelo nuevo sin perder el caso que probaban | varios | `test/` |
 | [ ] | 63 | 48–50 | **Fuera lo viejo.** `<f>.fud?server`, `server-module.ts`, los prefijos `r/` y `c/`, `client-fns.ts` y la lectura de cadenas con Oxc, `FUD0393`/`FUD0394`, `emit-server.ts` y `partitionCode`, los snippets y acciones de regiones, la regla de regiones de la gramática del `.fud`, los diagnósticos retirados de SDD §4.8, y de la entrada pública de `@fudic/http` y `@fudic/forms` lo que lista SDD §3.10; `fudic add http` escribe `src/http.fudapi` | varios | — |
 | [ ] | 35 | 63 | **Fuera las borradoras.** `server-validators.ts`, `server-halves.ts`, `redact.ts` y su uso | `vite` · `compiler` | `src/erased-sources.ts` · … |

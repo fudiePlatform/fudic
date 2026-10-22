@@ -25,7 +25,7 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 const TIMEOUT_MS = 60_000;
 const SERVER = fileURLToPath(new URL('../dist/server.mjs', import.meta.url));
 const WORKSPACE = fileURLToPath(new URL('../../language-server/fixtures', import.meta.url));
-const DOCUMENT = join(WORKSPACE, 'blog', '[slug].fud');
+const DOCUMENT = join(WORKSPACE, 'src', 'blog', '[slug].fud');
 
 /**
  * The id VS Code sends, not the one the server uses internally.

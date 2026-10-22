@@ -16,7 +16,7 @@ import {
 } from 'vscode-languageserver-protocol/node';
 import { startHarness, type Harness } from './_harness.js';
 
-const SLUG = 'blog/[slug].fud';
+const SLUG = 'src/blog/[slug].fud';
 const LINE = '<h1>@data.title</h1>';
 
 let harness: Harness;

@@ -1,0 +1,10 @@
+load
+  title  str
+  tag    str
+  body   str
+  found  bool
+  note   str?
+
+paths
+
+layout

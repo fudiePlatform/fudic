@@ -165,6 +165,14 @@ describe('where a file sits (SDD-60 §3.4)', () => {
     expect(contextOf(`${SRC}/routes/blog/[slug].fudapi`)).toEqual({ route: { params: ['slug'], pattern: '/blog/:slug' } });
   });
 
+  it('with a <link rel="layout">, the props its layout.handle returns', () => {
+    const page = `${SRC}/routes/blog/[slug].fud`;
+    const { host } = world({ files: { ...FILES, [page]: '<link rel="layout" href="../_layout.fud">\n<p>x</p>\n' } });
+    expect(host.load(`${SRC}/routes/blog/[slug].fudapi`, '').context).toEqual({
+      route: { params: ['slug'], pattern: '/blog/:slug', layoutProps: "import('../../../../src/routes/_layout.fud').$Props" },
+    });
+  });
+
   it('the sibling of _error.fud is the error page', () => {
     expect(contextOf(`${SRC}/routes/_error.fudapi`)).toEqual({ route: { params: [], pattern: '/_error', error: true } });
   });

@@ -16,7 +16,7 @@ import {
 } from 'vscode-languageserver-protocol/node';
 import { startHarness, type Harness } from './_harness.js';
 
-const FILE = 'components/app-badge.fud';
+const FILE = 'src/components/app-badge.fud';
 
 let harness: Harness;
 let version = 1;

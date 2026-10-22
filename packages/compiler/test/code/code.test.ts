@@ -413,10 +413,7 @@ describe('parseCodeBlock — integration with parseDocument', () => {
 
     expect(blocks).toHaveLength(1);
     const block = blocks[0]!;
-    expect(types(block.parts)).toEqual(['neutral-js', 'server-region']);
+    expect(types(block.parts)).toEqual(['neutral-js']);
     expect(text(source, block.parts[0]!.js)).toContain('type PageData');
-    expect(text(source, block.parts[1]!.js)).toContain("import { db } from './db';");
-    // The SQL string holds no `@`, but the region must stay opaque all the same.
-    expect(text(source, block.parts[1]!.js)).toContain('SELECT id, title');
   });
 });

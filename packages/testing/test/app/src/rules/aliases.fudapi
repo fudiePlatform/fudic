@@ -1,0 +1,6 @@
+# The alias belongs to somebody already. Only on the server: it reads data the browser never gets.
+rule alias-taken
+  on field str
+  runs server
+  async
+  fails alias-taken

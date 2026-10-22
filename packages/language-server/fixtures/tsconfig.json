@@ -12,5 +12,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["**/*.ts", "**/*.fud"]
+  "include": ["src/**/*.ts", "src/**/*.fud", ".fudic/api/**/*.d.ts"]
 }

@@ -91,6 +91,41 @@ describe('the handlers in the program (criterion 18)', () => {
   });
 });
 
+/**
+ * SDD-40 §6.12 on the new side (SDD-60 §3.4): the route's `layout.handle` returns what its
+ * layout declares, the `.d.ts` naming `$Props` of the linked `.fud` (`layoutPropsType`).
+ */
+describe('the layout contract of a route resolver', () => {
+  const LAYOUT = `<!DOCTYPE html>\n<html lang="@culture">\n<head>\n@code {\n  const { culture } = props<{ culture: string; theme?: string }>();\n}\n<title>t</title>\n@RenderHead()\n</head>\n<body>@RenderBody()</body>\n</html>\n`;
+  const TYPES_WITH_LAYOUT = `declare module 'fudic:routes/l' {
+  export type LayoutHandler = (ctx: unknown, data: undefined) => import('../../../src/layouts/_layout.fud').$Props;
+  export const layout: { handle(fn: LayoutHandler): void };
+}
+`;
+  const routed = (handler: string): string =>
+    project({
+      '.fudic/api/routes/l.d.ts': TYPES_WITH_LAYOUT,
+      'src/layouts/_layout.fud': LAYOUT,
+      'src/routes/l.fud': '<link rel="layout" href="../layouts/_layout.fud">\n\n<h1>x</h1>\n',
+      'src/server/l.ts': `import { layout } from 'fudic:routes/l';\nlayout.handle(() => (${handler}));\n`,
+    });
+
+  it('J — a required prop the resolver drops is an error of its own .ts', () => {
+    const root = routed("{ theme: 'dark' }");
+    expect(shown(createProjectChecker({ root }).check(), root)).toEqual(['src/server/l.ts TS2741']);
+  });
+
+  it('J2 — a prop of the wrong type too', () => {
+    const root = routed('{ culture: 7 }');
+    expect(shown(createProjectChecker({ root }).check(), root)).toEqual(['src/server/l.ts TS2322']);
+  });
+
+  it('J3 — what the layout declares says nothing', () => {
+    const root = routed("{ culture: 'gl', theme: 'dark' }");
+    expect(createProjectChecker({ root }).check().problems).toEqual([]);
+  });
+});
+
 describe('a .fud with <link rel="server"> (SDD-60 §4.7)', () => {
   it('reads data and its functions from fudic:<id>, typed', () => {
     const root = project({

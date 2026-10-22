@@ -3,11 +3,9 @@
 
   const { variant = 'primary', disabled = false } = props<{ variant?: Variant; disabled?: boolean }>();
 
-  @client {
-    function onClick(e: MouseEvent) {
-      const host = (e.currentTarget as HTMLElement).closest('app-button');
-      host?.dispatchEvent(new CustomEvent('press', { bubbles: true }));
-    }
+  function onClick(e: MouseEvent) {
+    const host = (e.currentTarget as HTMLElement).closest('app-button');
+    host?.dispatchEvent(new CustomEvent('press', { bubbles: true }));
   }
 }
 

@@ -298,8 +298,7 @@ describe('the corpus', () => {
   it('colours [slug].fud: TypeScript in @code, markup outside, directives apart', async () => {
     const tokens = await tokenize(fixture('blog/[slug].fud'));
 
-    expect(has(find(tokens, 'export async function load'), 'source.ts')).toBe(true);
-    expect(has(findExact(tokens, 'server'), 'keyword.control.directive')).toBe(true);
+    expect(has(find(tokens, 'type PageData'), 'source.ts')).toBe(true);
     expect(has(findExact(tokens, 'nav'), 'entity.name.section')).toBe(true);
     expect(has(findExact(tokens, 'app-badge'), 'entity.name.tag.custom')).toBe(true);
     expect(has(findExact(tokens, 'data.tag'), 'meta.interpolation')).toBe(true);

@@ -1,12 +1,10 @@
 @code {
-  @client {
-    // `forward.js` imports `effectful.ts` and never uses what it imports. Nothing takes that
-    // import out, and the module it names has effects, so a bundler ships it.
-    import { label } from "../data/forward.js";
-    import { signal } from "@fudic/core";
+  // `forward.js` imports `effectful.ts` and never uses what it imports. Nothing takes that
+  // import out, and the module it names has effects, so a bundler ships it.
+  import { label } from "../data/forward.js";
+  import { signal } from "@fudic/core";
 
-    const said = signal("");
-  }
+  const said = signal("");
 }
 
 <x-effects>

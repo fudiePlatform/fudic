@@ -11,7 +11,7 @@ Between them they cover everything the grammar has to get right:
 
 | Construct | Where |
 |---|---|
-| `@code` with `@server` inside | `blog/[slug].fud` |
+| `@code` (one, browser code: SDD-60) | `blog/[slug].fud` |
 | `@section name { … }` | `blog/[slug].fud` |
 | `@(expr)` in an attribute value, `@ident.path` in text | both |
 | `<style>` with `:host` | `components/app-badge.fud` |

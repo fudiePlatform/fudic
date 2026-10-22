@@ -1,14 +1,12 @@
 @code {
+  import { signal } from "@fudic/core";
+
   const { label = "none" } = props<{ label?: string }>();
 
-  @client {
-    import { signal } from "@fudic/core";
+  const clicks = signal(0);
 
-    const clicks = signal(0);
-
-    function more() {
-      clicks.set(clicks() + 1);
-    }
+  function more() {
+    clicks.set(clicks() + 1);
   }
 }
 

@@ -5,14 +5,17 @@ criteria 1, 9 and 13 (start-up against a workspace, inter-file repaint, hot crea
 `.fud`) are about the filesystem and cannot be faked in memory.
 
 The four `.fud` are the corpus SDD-23 already typechecks, so a diagnostic that shows up
-here and not there is a server bug, not a projection bug.
+here and not there is a server bug, not a projection bug. They live under `src/`, as in an
+app: the `<id>` of a `.fudapi` is its path inside `src/` (SDD-60 §3.11), and the server
+writes its `.fudic/api/<id>.d.ts` on start-up, which the `tsconfig.json` includes.
 
 ```
-blog/[slug].fud          route: layout link, two component links, @server load/paths, @section nav
-layouts/_layout.fud      layout: @RenderHead / @RenderSection(nav) / @RenderBody
-components/site-nav.fud  component with props<{ current?: string }>()
-components/app-badge.fud component with props<{ tone?: Tone }>() and a <style>
-data/posts.ts            the module `load()` imports
+src/blog/[slug].fud          route: layout link, two component links, <link rel="server">, @section nav
+src/blog/[slug].fudapi       its contract: load, paths, layout
+src/layouts/_layout.fud      layout: @RenderHead / @RenderSection(nav) / @RenderBody
+src/components/site-nav.fud  component with props<{ current?: string }>()
+src/components/app-badge.fud component with props<{ tone?: Tone }>() and a <style>
+src/data/posts.ts            a plain module of the project
 ```
 
 `fudic-globals.d.ts` is deliberately **absent**. A project that never ran `fudic new` is the

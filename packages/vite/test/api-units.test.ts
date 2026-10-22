@@ -29,7 +29,7 @@ const PROJECT = {
   'src/routes/blog/[slug].fudapi': 'load ssg\n  title  str\n\npaths\n\nput save /:id\n  form person\n  id  i32\n',
   'src/routes/blog/[slug].fud': '<p>x</p>',
   'src/routes/index.fudapi': 'layout\n',
-  'src/routes/index.fud': '<p>x</p>',
+  'src/routes/index.fud': '<link rel="layout" href="./_layout.fud">\n<p>x</p>',
   'src/routes/_error.fudapi': 'get ping\n',
   'src/routes/_error.fud': '<p>x</p>',
   'src/routes/orphan.fudapi': 'get lonely /all\n',
@@ -71,7 +71,9 @@ describe('ApiProject', () => {
   it('where a file sits: a route sibling, the index, _error, or nowhere', () => {
     const at = (id: string) => api.context(api.source(id)!);
     expect(at('routes/blog/[slug]')).toEqual({ route: { params: ['slug'], pattern: '/blog/:slug' } });
-    expect(at('routes/index')).toEqual({ route: { params: [], pattern: '/' } });
+    // With a `<link rel="layout">`, the props its `layout.handle` returns (SDD-60 §3.4).
+    const layoutProps = "import('../../../src/routes/_layout.fud').$Props";
+    expect(at('routes/index')).toEqual({ route: { params: [], pattern: '/', layoutProps } });
     expect(at('routes/_error')).toEqual({ route: { params: [], pattern: '/_error', error: true } });
     expect(at('routes/orphan')).toEqual({});
     expect(at('lib-a/rules')).toEqual({});

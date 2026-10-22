@@ -77,7 +77,7 @@ describe('§6.15 — fudic/virtualFiles', () => {
   });
 
   it('returns the virtuals of [slug].fud with their text', async () => {
-    const { uri } = await harness.open('blog/[slug].fud');
+    const { uri } = await harness.open('src/blog/[slug].fud');
     const files = (await harness.client.sendRequest(VIRTUAL_FILES_REQUEST, {
       uri,
     })) as VirtualFilePayload[];
@@ -85,11 +85,12 @@ describe('§6.15 — fudic/virtualFiles', () => {
     expect(files.map((file) => file.languageId)).toEqual(['typescript', 'typescript']);
     expect(files[0]?.fileName.endsWith('[slug].fud.ts')).toBe(true);
     expect(files[0]?.text).toContain('$tpl');
-    expect(files[1]?.text).toContain('export async function load');
+    // `load` is the `.fudapi`'s now (SDD-60): no virtual of the `.fud` writes one.
+    expect(files.some((file) => file.text.includes('function load'))).toBe(false);
   });
 
   it('returns the CSS virtual of a component with a <style>', async () => {
-    const { uri } = await harness.open('components/app-badge.fud');
+    const { uri } = await harness.open('src/components/app-badge.fud');
     const files = (await harness.client.sendRequest(VIRTUAL_FILES_REQUEST, {
       uri,
     })) as VirtualFilePayload[];

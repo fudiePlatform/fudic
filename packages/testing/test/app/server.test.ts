@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { mount } from '../../src/index.js';
 import { handled } from './src/data/greetings';
-import { sides } from './src/middlewares/trace';
+import { sides } from './src/data/sides';
 import * as XAlias from './src/components/x-alias.fud';
 import * as XHello from './src/components/x-hello.fud';
 
@@ -23,7 +23,7 @@ describe('criterion 12: the in-memory server', () => {
 });
 
 describe('criterion 13: the chain, side by side', () => {
-  test('each half on its side, once; a plain middleware on both', async () => {
+  test('each half on its side, once; one written for both sides runs on both', async () => {
     const t = await mount(XHello);
     await t.click(t.getByRole('button'));
     expect(sides.filter((s) => s === 'halves:client')).toHaveLength(1);
@@ -91,11 +91,11 @@ describe('criterion 17: no network', () => {
 describe('criterion 27: one test does not see the fetch of the one before', () => {
   test('the first answers with its own fetch', async () => {
     await mount(XHello, { fetch: () => new Response('"mine"') });
-    await expect((await fetch('/_fudic/fn/c/x-hello/greet', { method: 'POST' })).text()).resolves.toBe('"mine"');
+    await expect((await fetch('/_fudic/fn/components/x-hello/greet', { method: 'POST' })).text()).resolves.toBe('"mine"');
   });
 
   test('the second is served by the in-memory server again', async () => {
-    const response = await fetch('/_fudic/fn/c/x-hello/nope', { method: 'POST' });
+    const response = await fetch('/_fudic/fn/components/x-hello/nope', { method: 'POST' });
     expect(response.status).toBe(404);
   });
 });

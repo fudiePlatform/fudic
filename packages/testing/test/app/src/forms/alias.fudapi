@@ -1,0 +1,4 @@
+form aliasForm
+  alias  str = ""
+    required     "Write an alias."
+    alias-taken  "That alias is taken."

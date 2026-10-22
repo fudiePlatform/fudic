@@ -161,7 +161,9 @@ describe('every name the `@code` declares (declared)', () => {
 describe('a reactive the markup reads', () => {
   it('is the browser\'s own declaration: the server renders it inert from what was read', () => {
     const out = extract(component('  import { signal } from "@fudic/core";\n  const n = signal(1);', '<p>@n()</p>'));
-    expect(out.neutral.map((s) => s.text)).toEqual(['import { signal } from "@fudic/core";']);
+    // Its `signal` is the browser's too: the server's inert value reads the arguments alone.
+    expect(out.neutral).toEqual([]);
+    expect(out.client.imports).toEqual(['import { signal } from "@fudic/core";']);
     expect(out.client.body.map((s) => s.text)).toEqual(['const n = signal(1);']);
     expect(out.clientNames).toContain('n');
     expect(out.signals.map((s) => s.name)).toEqual(['n']);
@@ -176,5 +178,19 @@ describe('a reactive the markup reads', () => {
   it('a prop is no reactive: it stays where the cut puts it', () => {
     const out = extract(component('  const { v } = props<{ v: number }>();', '<p>@v</p>'));
     expect(out.client.body).toEqual([]);
+  });
+});
+
+describe('what a reactive reads', () => {
+  it('a computed brings what its derive function reads, never `computed`', () => {
+    const out = extract(
+      component('  import { computed } from "@fudic/core";\n  import { fmt } from "./fmt.js";\n  const label = computed(() => fmt(1));', '<p>@label()</p>'),
+    );
+    expect(out.neutral.map((s) => s.text)).toEqual(['import { fmt } from "./fmt.js";']);
+  });
+
+  it('a declaration that is not all reactives reads all of it', () => {
+    const out = extract(component('  import { signal } from "@fudic/core";\n  const n = signal(1), k = 2;', '<p>@n() @k</p>'));
+    expect(out.neutral.map((s) => s.text)).toContain('import { signal } from "@fudic/core";');
   });
 });

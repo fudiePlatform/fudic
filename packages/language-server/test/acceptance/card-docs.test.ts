@@ -39,7 +39,7 @@ const APP_INPUT = `@code {
 
 beforeAll(async () => {
   const root = copyWorkspace();
-  writeFileSync(`${root}/components/app-input.fud`, APP_INPUT, 'utf8');
+  writeFileSync(`${root}/src/components/app-input.fud`, APP_INPUT, 'utf8');
   harness = await startHarness({ root });
 }, 60_000);
 
@@ -53,7 +53,7 @@ async function card(): Promise<string> {
     `<link rel="layout" href="../layouts/_layout.fud">\n` +
     `<link rel="component" href="../components/app-input.fud">\n` +
     `<app-input .id="1" .name="x" .hint="h"></app-input>\n`;
-  const { uri } = await harness.open('blog/[slug].fud', source);
+  const { uri } = await harness.open('src/blog/[slug].fud', source);
   const hover = await harness.client.sendRequest(HoverRequest.type, {
     textDocument: { uri },
     position: harness.positionAt(source, source.indexOf('app-input .id') + 2),

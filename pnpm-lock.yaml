@@ -716,6 +716,15 @@ importers:
         specifier: 4.1.9
         version: 4.1.9(@types/node@22.20.0)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.6)(vite@8.0.16(@types/node@22.20.0))
 
+  packages/testing/test/app:
+    dependencies:
+      '@fudic/forms':
+        specifier: workspace:*
+        version: link:../../../forms
+      '@fudic/http':
+        specifier: workspace:*
+        version: link:../../../http
+
   packages/transport:
     dependencies:
       '@fudic/conventions':

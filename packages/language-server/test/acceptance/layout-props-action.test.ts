@@ -63,9 +63,9 @@ beforeAll(async () => {
   // BEFORE the harness starts: the workspace index is built at startup, and a layout written
   // afterwards resolves to nothing — which would make every «no action offered» assertion
   // below pass for the wrong reason.
-  writeFileSync(`${root}/layouts/_layout.fud`, LAYOUT, 'utf8');
-  writeFileSync(`${root}/layouts/_optional.fud`, OPTIONAL, 'utf8');
-  writeFileSync(`${root}/layouts/_untyped.fud`, UNTYPED, 'utf8');
+  writeFileSync(`${root}/src/layouts/_layout.fud`, LAYOUT, 'utf8');
+  writeFileSync(`${root}/src/layouts/_optional.fud`, OPTIONAL, 'utf8');
+  writeFileSync(`${root}/src/layouts/_untyped.fud`, UNTYPED, 'utf8');
   harness = await startHarness({ root });
 }, 60_000);
 
@@ -83,7 +83,7 @@ const route = (code: string): string =>
 
 /** Every action the client would see with the caret on the `<link rel="layout">`. */
 async function actionsOn(source: string): Promise<readonly WireAction[]> {
-  const { uri, text } = await harness.open('blog/[slug].fud', source);
+  const { uri, text } = await harness.open('src/blog/[slug].fud', source);
   const at = harness.positionAt(text, source.indexOf('rel="layout"'));
   const got = await harness.client.sendRequest(CodeActionRequest.type, {
     textDocument: { uri },
@@ -122,7 +122,7 @@ function applied(source: string, action: WireAction | undefined): string {
  * code to satisfy a test.
  */
 async function codesOf(source: string): Promise<string[]> {
-  const { uri } = await harness.open('blog/[slug].fud', source);
+  const { uri } = await harness.open('src/blog/[slug].fud', source);
   const got = await harness.client.sendRequest(DocumentDiagnosticRequest.type, {
     textDocument: { uri },
   });
@@ -244,7 +244,7 @@ describe('SDD-60 §4.7 — a route with no `@server` gets `layout` in its `.fuda
   }
   const changesOf = (action: WireAction | undefined): readonly WireChange[] =>
     ((action?.edit as { documentChanges?: WireChange[] } | undefined)?.documentChanges ?? []);
-  const sibling = (): string => `${root}/blog/[slug].fudapi`;
+  const sibling = (): string => `${root}/src/blog/[slug].fudapi`;
   const isSibling = (uri: string | undefined): boolean => decodeURIComponent(uri ?? '').endsWith('/blog/[slug].fudapi');
 
   afterEach(() => {
@@ -252,6 +252,7 @@ describe('SDD-60 §4.7 — a route with no `@server` gets `layout` in its `.fuda
   });
 
   it('creates the `.fudapi` with `layout` and links it after the layout link', async () => {
+    rmSync(sibling(), { force: true }); // the copied workspace ships one
     const changes = changesOf(completing(await actionsOn(route(''))));
 
     expect(changes).toHaveLength(3);
@@ -297,7 +298,7 @@ describe('SDD-60 §4.7 — a route with no `@server` gets `layout` in its `.fuda
 /** The labels the editor is offered at the `|` of a route, typed with `trigger` if given. */
 async function labelsAt(marked: string, trigger?: string): Promise<string[]> {
   const text = marked.replace('|', '');
-  const { uri } = await harness.open('blog/[slug].fud', text);
+  const { uri } = await harness.open('src/blog/[slug].fud', text);
   const got = await harness.client.sendRequest(CompletionRequest.type, {
     textDocument: { uri },
     position: harness.positionAt(text, marked.indexOf('|')),

@@ -45,7 +45,7 @@ const HEAD = `<link rel="layout" href="../layouts/_layout.fud">
 
 `;
 
-const PAGE = 'blog/xxx.fud';
+const PAGE = 'src/blog/xxx.fud';
 const page = (markup: string): string => `${HEAD}${markup}\n`;
 
 let harness: Harness;

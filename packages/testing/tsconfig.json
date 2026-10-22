@@ -5,5 +5,8 @@
     // The harness drives a DOM: happy-dom's globals are what a test and the runtime see.
     "lib": ["ES2024", "DOM", "DOM.Iterable"]
   },
-  "include": ["src", "test"]
+  "include": ["src", "test"],
+  // The handlers of the test apps import `fudic:<id>`, typed by the `.fudic/api` the plugin writes
+  // when the tests start (SDD-60 §3.11): this `tsc`, which runs before them, has no such types.
+  "exclude": ["test/*/src/server", "test/*/src/browser"]
 }

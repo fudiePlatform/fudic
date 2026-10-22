@@ -8,7 +8,7 @@
  */
 
 import type { ElementNode, HtmlContent } from '../html/index.js';
-import { isComponentLink, isLayoutLink, isSnippetLink } from '../document/index.js';
+import { isComponentLink, isLayoutLink, isServerLink, isSnippetLink } from '../document/index.js';
 import type { Span } from '../types/index.js';
 import type { StyleNode } from '../css/index.js';
 import type { ComponentGraph, ResolvedComponent, ResolvedLayout } from './resolve.js';
@@ -275,14 +275,15 @@ export function asksInline(spec: string): boolean {
 export type RuntimeForm = 'file' | 'inline';
 
 /**
- * A `<link>` that names the component, layout or snippet graph: never output, in any role.
+ * A `<link>` that names the component, layout or snippet graph, or the `.fudapi` of the file:
+ * never output, in any role.
  *
- * All three are consumed at compile time and none of them is a stylesheet, a preload or
+ * All four are consumed at compile time and none of them is a stylesheet, a preload or
  * anything a browser would know what to do with. Left in the head they would also reach the
  * asset linker, which would publish the `.fud` they name — source and all — into the page.
  */
 const isFrameworkLink = (el: ElementNode): boolean =>
-  isComponentLink(el) || isLayoutLink(el) || isSnippetLink(el);
+  isComponentLink(el) || isLayoutLink(el) || isSnippetLink(el) || isServerLink(el);
 
 /**
  * Where a `<head>` asks for the runtime to be carried IN the document, or `null` (§3.6).

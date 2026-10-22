@@ -13,6 +13,7 @@ import {
   API_EXTENSION,
   createApiIndex,
   emitDeclarations,
+  layoutPropsType,
   parseApi,
   type ApiContext,
   type ApiFile,
@@ -57,6 +58,9 @@ export class ApiHost {
   readonly #files = new Map<string, readonly Found[]>();
   /** The last parse of each file, while its text does not change. */
   readonly #parsed = new Map<string, { readonly text: string; readonly result: ParseResult<ApiFile> }>();
+  /** The types this server wrote or removed while running, by path: `undefined` is removed. */
+  readonly #types = new Map<string, string | undefined>();
+  #revision = 0;
 
   constructor(deps: ApiHostDeps) {
     this.#deps = deps;
@@ -161,12 +165,14 @@ export class ApiHost {
   #context(project: string, path: string): ApiContext {
     const routes = `${project}/${ROUTES_DIR}/`;
     const page = `${path.slice(0, -API_EXTENSION.length)}.fud`;
-    if (!path.startsWith(routes) || this.#deps.fs.readFile(page) === undefined) return {};
+    const text = path.startsWith(routes) ? this.#deps.fs.readFile(page) : undefined;
+    if (text === undefined) return {};
     const segments = page.slice(routes.length, -'.fud'.length).split('/');
     const params = segments.map((s) => PARAM.exec(s)?.[1]).filter((p): p is string => p !== undefined);
     const error = `${segments[segments.length - 1]}.fud` === ERROR_FILE;
     const pattern = `/${segments.filter((s, i) => !(s === 'index' && i === segments.length - 1)).map((s) => s.replace(PARAM, ':$1')).join('/')}`;
-    return { route: { params, pattern, ...(error ? { error: true } : {}) } };
+    const layoutProps = layoutPropsType(page, text, `${project}/${API_TYPES_DIR}/${idOf(project, path)}.d.ts`);
+    return { route: { params, pattern, ...(error ? { error: true } : {}), ...(layoutProps !== undefined ? { layoutProps } : {}) } };
   }
 
   /**
@@ -185,6 +191,7 @@ export class ApiHost {
       const text = emitDeclarations(source, index, this.#context(project, source.path));
       if (this.#deps.fs.readFile(target) === text) continue;
       this.#deps.fs.writeFile(target, text);
+      this.#wrote(target, text);
       written.push(target);
     }
     return written;
@@ -193,7 +200,33 @@ export class ApiHost {
   /** Removes the types of a `.fudapi` that is gone. */
   forget(path: string): void {
     const project = this.projectOf(path);
-    this.#deps.fs.removeFile(typesPath(project, idOf(project, path)));
+    const target = typesPath(project, idOf(project, path));
+    this.#deps.fs.removeFile(target);
+    this.#wrote(target, undefined);
+  }
+
+  /**
+   * What this server wrote at `path` while running — the text, or `undefined` when it removed
+   * it — or `null` when it never touched it. What the TypeScript of the project reads in place of
+   * a disk it cached before the write (`mountApiTypes`).
+   */
+  written(path: string): string | undefined | null {
+    return this.#types.has(path) ? this.#types.get(path) : null;
+  }
+
+  /** Every path this server wrote or removed while running. */
+  writtenPaths(): readonly string[] {
+    return [...this.#types.keys()];
+  }
+
+  /** Goes up with every write or removal: the types the project reads changed. */
+  get revision(): number {
+    return this.#revision;
+  }
+
+  #wrote(path: string, text: string | undefined): void {
+    this.#types.set(path, text);
+    this.#revision++;
   }
 
   /**

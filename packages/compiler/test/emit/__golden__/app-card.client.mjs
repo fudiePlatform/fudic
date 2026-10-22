@@ -10,8 +10,8 @@ customElements.define("app-card", class extends FudicElement {
     let [$dom, $shadow, title, variant = 'default'] = $props;
     const expanded = signal(false);
     function toggle() {
-      expanded.set(!expanded());
-    }
+    expanded.set(!expanded());
+  }
 
     let $k0 = [];
     let $x0 = -1;

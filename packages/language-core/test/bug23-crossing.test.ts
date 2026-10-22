@@ -35,20 +35,18 @@ const read = (path: string): string => readFileSync(resolve(FIXTURES, path), 'ut
  * declarator was initialized with, never where that callee came from — which is exactly what
  * `reactiveNames` reads, and what lets a component declare its own.
  */
-const CLIENT = `  }
-  @client {
-    type Signal<T> = { (): T; set(next: T): void };
-    declare function signal<T>(initial: T): Signal<T>;
-    type Tone = 'neutral' | 'success' | 'info';
+const CLIENT = `note?: string };
+  type Signal<T> = { (): T; set(next: T): void };
+  declare function signal<T>(initial: T): Signal<T>;
+  type Tone = 'neutral' | 'success' | 'info';
 
-    const titulo = signal<Tone>('info');
-    const numero = signal(1);
-  }
+  const titulo = signal<Tone>('info');
+  const numero = signal(1);
 }`;
 
-/** The route with the `@client` above, and `markup` replacing its `<article>` body. */
+/** The route with the declarations above, and `markup` replacing its `<article>` body. */
 function corpusWith(from: string, to: string): Record<string, string> {
-  const source = read(SLUG).replace('  }\n}', CLIENT).replace(from, to);
+  const source = read(SLUG).replace('note?: string };\n}', CLIENT).replace(from, to);
   if (!source.includes(to)) throw new Error(`mutation anchor not found: ${from}`);
   return { [SLUG]: source };
 }

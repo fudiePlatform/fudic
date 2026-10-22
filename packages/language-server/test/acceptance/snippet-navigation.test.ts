@@ -52,12 +52,12 @@ let panelText = '';
 
 beforeAll(async () => {
   const root = copyWorkspace();
-  writeFileSync(`${root}/components/ui.fud`, UI_SOURCE, 'utf8');
-  writeFileSync(`${root}/components/app-panel.fud`, PANEL_SOURCE, 'utf8');
+  writeFileSync(`${root}/src/components/ui.fud`, UI_SOURCE, 'utf8');
+  writeFileSync(`${root}/src/components/app-panel.fud`, PANEL_SOURCE, 'utf8');
 
   harness = await startHarness({ root, tsdk: TSDK });
-  ({ text: uiText } = await harness.open('components/ui.fud'));
-  ({ text: panelText } = await harness.open('components/app-panel.fud'));
+  ({ text: uiText } = await harness.open('src/components/ui.fud'));
+  ({ text: panelText } = await harness.open('src/components/app-panel.fud'));
 }, 60_000);
 
 afterAll(async () => {
@@ -88,7 +88,7 @@ function textOf(text: string, location: Location): string {
 describe('criterion 33 — definition from a @render', () => {
   it('over the name of an imported snippet, opens the file that declares it', async () => {
     const answer = await harness.client.sendRequest(DefinitionRequest.type, {
-      textDocument: { uri: harness.uriOf('components/app-panel.fud') },
+      textDocument: { uri: harness.uriOf('src/components/app-panel.fud') },
       // Inside `ficha`, past the `@render `.
       position: positionIn(panelText, '@render ficha(', 10),
     });
@@ -105,7 +105,7 @@ describe('criterion 33 — definition from a @render', () => {
 describe('criterion 35 — hover over the name in a @render', () => {
   it('shows the full signature, defaults and all', async () => {
     const hover = (await harness.client.sendRequest(HoverRequest.type, {
-      textDocument: { uri: harness.uriOf('components/app-panel.fud') },
+      textDocument: { uri: harness.uriOf('src/components/app-panel.fud') },
       position: positionIn(panelText, '@render ficha(', 10),
     })) as Hover | null;
 

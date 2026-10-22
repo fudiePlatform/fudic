@@ -1,20 +1,12 @@
+<link rel="server" href="./x-alias.fudapi">
+
 @code {
-  import { aliasForm } from "../forms/alias.form";
+  import { signal } from "@fudic/core";
 
-  @server {
-    import { put } from "@fudic/http";
+  const result = signal("");
 
-    export const save = put().form(aliasForm).handle(() => "saved");
-  }
-
-  @client {
-    import { signal } from "@fudic/core";
-
-    const result = signal("");
-
-    function done(e: Event) {
-      result.set(String((e as CustomEvent<string>).detail));
-    }
+  function done(e: Event) {
+    result.set(String((e as CustomEvent<string>).detail));
   }
 }
 
