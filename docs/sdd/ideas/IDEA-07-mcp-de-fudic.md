@@ -922,8 +922,14 @@ Lo que asegura:
   workspace (`fudic_describe` → `usedIn`), y como nunca se avanza con errores (§5.4), los arregla
   en la misma rama: el PR llega en verde o no llega.
 
-Abierto:
+**El aspecto (decidido, Pedro, 2026-10-22).** Los criterios no miran cómo se ve, así que un
+cambio de implementación tiene **las dos cosas**:
 
-- **El aspecto no lo aprueba nadie.** Un cambio de implementación pasa con tests y criterios en
-  verde, pero los criterios no miran cómo se ve. ¿Hace falta una aprobación visual (capturas antes
-  y después, del banco) o basta con la preview?
+- **Capturas de antes y después**, del banco, por cada caso de la fixture: son la **evidencia**.
+  El usuario las aprueba y queda una línea `look` en el historial (quién, cuándo, hash de las
+  capturas).
+- **La preview** (§5.13) para verlo y tocarlo, que no deja rastro: mirar no es aprobar.
+
+Propuesta: las capturas son binarios y no entran en git (§5.7); van **adjuntas al PR** que abre
+`fudic_propose`, y el historial guarda su hash. El PR es donde el equipo revisa, y el hash dice si
+lo aprobado es lo que se está mergeando.
