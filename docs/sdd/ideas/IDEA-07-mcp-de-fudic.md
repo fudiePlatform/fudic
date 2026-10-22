@@ -370,3 +370,41 @@ Propuestas que salen:
 - **`fudic_generate { kind: "showcase" }`** escribe la página desde las fixtures, un bloque por
   caso, y se regenera. Las fixtures son un `Record` y la vista no puede recorrer un map
   (`FUD1153`): escrita a mano, el escaparate se queda atrás en cuanto se añade una fixture.
+
+### 10.2. El error a propósito: construir sin bases
+
+Pedro pidió los componentes **a propósito** sin haber dado props, criterios, tests ni
+documentación: la ansiedad humana de ver algo ya. El MCP obedeció. Preguntó la forma (nombre,
+prefijo, paleta) y no el fondo, escribió él los criterios desde su idea de un botón, y el
+resultado es un **wireframe que parece producto**. Vale para que un cliente acepte algo; llevarlo a
+producto sin bases cuesta meses.
+
+Propuesta:
+
+1. **Cada componente pasa por fases fijas; cada una necesita la aprobación del usuario antes de
+   la siguiente.**
+
+   | # | Fase | Quién | Queda en |
+   |---|---|---|---|
+   | 1 | Props: nombre, tipo, defecto, significado | El usuario las describe; el LLM propone; el usuario aprueba | El tipo de `props<T>()` y las fixtures |
+   | 2 | Criterios | El usuario aprueba | `.fudspec` |
+   | 3 | Tests unitarios, en rojo | El LLM | `.test.ts` |
+   | 4 | La vista, hasta tests y criterios en verde | El LLM | `.fud` |
+   | 5 | Documentación | El LLM, desde props y criterios | Por decidir |
+   | 6 | Su página en el escaparate | El LLM | `showcase` (§10.1) |
+
+   La guía de estilos es una unidad más: los tokens se aprueban antes de ningún componente.
+2. **`status` ante una petición ansiosa manda preguntar, no construir**: `next` = «Before any
+   view: for acme-button, ask the user for its props and its behaviour. Propose, wait for
+   approval, write them. Then the next component.»
+3. **El wireframe existe, pero solo si se pide.** fudic no quita la opción: si el usuario dice
+   «wireframe», el LLM se salta las fases, y la unidad queda marcada `wireframe` en `status` con lo
+   que le falta. La deuda se ve siempre y no se confunde con producto.
+4. **Las aprobaciones se escriben en el repo**: sin esa marca, `status` no sabe si una fase está
+   hecha (§9). Deja de ser un detalle y pasa a ser el centro.
+
+Abierto, para Pedro:
+
+- **Qué es un componente documentado en fudic.** `g component` no genera documentación hoy. ¿JSDoc
+  en las props (sale en el hover y en `fudic_describe`), un README por componente, o las dos?
+- **Dónde se marca la aprobación**: una línea en la `.fudspec`, un commit con prefijo fijo, otra.
