@@ -523,8 +523,9 @@ Lo que destapa:
 ### 5.12. `fudic_render` (propuesta, 2026-10-22)
 
 Pinta **una pieza** en el servidor y devuelve lo que sale, sin navegador ni app arrancada.
-Entrada: `{ route }` (una URL concreta, `/productos/42`) o `{ component, fixture?, props? }`, y
-`backend: "fake" | "connected"` para las funciones que la pieza llame.
+Entrada: `{ route }` (una URL concreta, `/productos/42`) o `{ component, fixture?, props? }`,
+`backend: "fake" | "connected"` para las funciones que la pieza llame, y `engine: "happy-dom" |
+"browser"` (por defecto `happy-dom`).
 
 Las piezas ya existen: una ruta se pinta con `renderRouteHtml`, como en `vite dev`; un componente
 suelto, con la **página anfitriona virtual** de `@fudic/testing` (SDD-57 §4.2), que lo instancia
@@ -560,8 +561,10 @@ la app entera corriendo en una URL.
 Lo que destapa:
 
 - **`outline` no existe.** happy-dom no calcula el árbol de accesibilidad; Testing Library
-  aproxima roles y nombres, y no baja por shadow roots sin la ayuda de `@fudic/testing`. O se
-  construye sobre esa ayuda, o el `outline` sale del navegador del banco (exacto, pero segundos).
+  aproxima roles y nombres, y no baja por shadow roots sin la ayuda de `@fudic/testing`.
+  **Decidido (Pedro, 2026-10-22): los dos, con un parámetro.** `engine: "happy-dom" | "browser"`,
+  por defecto `happy-dom` (sobre `@fudic/testing`, al instante); `browser` lo pinta en el
+  navegador del banco, exacto y en segundos, para cuando hay dudas.
 - **La página anfitriona vive en `node_modules/.fudic-test/`**: el MCP la comparte con los tests
   o tiene la suya. En remoto, en la copia de trabajo.
 - **Las props de un `via: 'ssr'` tienen que ser JSON** (SDD-57 §3.2): una prop función no se puede
