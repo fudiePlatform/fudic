@@ -158,7 +158,7 @@ En cada paso, `next` dice una sola cosa.
 | Proyecto | `fudic_status` | Fase, lo pendiente, recuento de diagnósticos. Guía al LLM (§5.4) |
 | | `fudic_new` | Crea la app (plan `new` de la CLI) |
 | | `fudic_generate { kind }` | `component`, `page`, `layout`, `app`, `lib`, y los que la CLI ya tiene y faltaban aquí: `style`, `spec`, el control de form (planes de la CLI) |
-| | `fudic_add { module }` | `di`, `forms`, `http`, `i18n` (plan `add`) |
+| | `fudic_add { module }` | `di`, `forms`, `http`, `i18n`, o una librería del workspace por su nombre (plan `add`, que ya existe) |
 | | `fudic_read { paths }` | Contenido con números de línea (solo remoto) |
 | | `fudic_write { edits[] }` | Aplica y **devuelve ya los diagnósticos** de lo tocado (solo remoto) |
 | Comprobar | `fudic_check` | Parser, validador y pase tipado; cada diagnóstico con su arreglo y `fixable` |
