@@ -153,8 +153,7 @@ En cada paso, `next` dice una sola cosa.
 
 | Grupo | Tool | Qué hace |
 |---|---|---|
-| Lenguaje | `fudic_guide { topic }` | Gramática de `overview`, `components`, `view`, `fudapi`, `fudspec`, `testing`, `html-css`, `workflow` (§6) |
-| | `fudic_explain { code }` | El `.md` del código de diagnóstico |
+| Lenguaje | `fudic_guide { topic }` | Gramática de `overview`, `components`, `view`, `fudapi`, `fudspec`, `testing`, `html-css`, `workflow` (§6); con un código (`FUD0540`) como tema, su explicación (§5.11) |
 | Proyecto | `fudic_status` | Fase, lo pendiente, recuento de diagnósticos. Guía al LLM (§5.4) |
 | | `fudic_new` | Crea la app (plan `new` de la CLI) |
 | | `fudic_generate { kind }` | `component`, `page`, `layout`, `app`, `lib`, y los que la CLI ya tiene y faltaban aquí: `style`, `spec`, el control de form (planes de la CLI) |
@@ -273,7 +272,7 @@ aparte que pueda decir otra cosa. Entrada: `{ paths?, limit = 20 }`; sin `paths`
 }
 ```
 
-- **Porqué y arreglo, una vez por código** en `codes`, del mismo `.md` que da `fudic_explain`: 30
+- **Porqué y arreglo, una vez por código** en `codes`, del mismo `.md` que da `fudic_guide { topic: "FUDnnnn" }`: 30
   errores del mismo código no repiten el texto 30 veces.
 - **Posición y texto citado** (`quote`): el LLM edita con su propio `Edit` sin releer el fichero.
 - **Orden fijo** (fichero, línea, columna). `summary` cuenta todo; `limit` corta la lista.
@@ -485,7 +484,7 @@ El flujo de un componente pedido en lenguaje natural:
 
 **Decidido (Pedro, 2026-10-22).** La fase 3 de §4.1 y §10.2 pasa a «tests y criterios en rojo».
 
-### 5.11. `fudic_explain` (propuesta, 2026-10-22)
+### 5.11. Explicar un código: un tema de `fudic_guide` (2026-10-22)
 
 Devuelve la explicación de un código: el `FUDnnnn.md` del catálogo (332 hoy, todos con la misma
 forma: título, severidad, porqué y arreglo), que ya localiza `explanationFile` de
@@ -505,7 +504,8 @@ forma: título, severidad, porqué y arreglo), que ya localiza `explanationFile`
 llega por otro camino: el log de un build que falla en `fudic_preview`, un test `broken`, un error
 que el usuario pega en el chat, un código que cita la guía.
 
-Propuesta: **no es una herramienta propia, es un tema de la guía**: `fudic_guide { topic:
+**Decidido (Pedro, 2026-10-22): no es una herramienta propia (`fudic_explain` desaparece), es un
+tema de la guía**: `fudic_guide { topic:
 "FUD0540" }`. Una herramienta menos (los clientes empeoran con muchas, §5.2), y el LLM ya sabe
 que las dudas se resuelven en `guide`. `related` enlaza con el tema donde se explica la
 construcción.
