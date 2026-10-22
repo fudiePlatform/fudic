@@ -114,11 +114,7 @@ Sin MCP, un LLM no sabe nada de fudic y escribe React disfrazado. Tres capas:
    ```json
    {
      "phase": "none",
-     "next": [
-       "Ask the user what the app is for: its pages, the data each shows, the actions on it.",
-       "Ask for the backend: an OpenAPI/proto/GraphQL contract, or 'none yet' (fake).",
-       "Then call fudic_new with a name and the server language."
-     ]
+     "next": "Ask the user what the app is for (its pages, the data each shows, the actions on it) and for its backend: an OpenAPI/proto/GraphQL contract, or 'none yet' (fake). Then call fudic_new."
    }
    ```
 
@@ -128,11 +124,16 @@ web de fudic publica un `llms.txt` que dice «conecta el MCP».
 
 ### 4.1. Las fases que guía `fudic_status`
 
-1. `.fudspec`: qué hace la app (el usuario confirma los criterios).
-2. `.fudapi`: el contrato.
-3. `.fud`: las vistas enlazadas.
-4. Conectar o falsear cada función.
-5. Criterios de la `.fudspec` en verde.
+Por unidad (ruta o componente), no por app (§5.4). Cada una necesita la aprobación del usuario o
+estar en verde antes de la siguiente (§10.2):
+
+1. Props y criterios en la `.fudspec`, con su línea `approved`.
+2. `.fudapi`: el contrato (solo rutas y componentes con servidor).
+3. Tests unitarios, en rojo.
+4. `.fud`: la vista, hasta tests y criterios en verde.
+5. Conectar o falsear cada función (solo con servidor).
+6. JSDoc del componente y de cada prop.
+7. Su página en el escaparate (librerías, §10.1).
 
 En cada paso, `next` dice una sola cosa.
 
@@ -335,8 +336,8 @@ dispara, la llamada y la respuesta. Este es el caso que la pone a prueba.
    ```
 3. `fudic_guide { topic: "html-css" }` y `tokens.css` como custom properties (color, tipografía,
    espaciado, radios, sombras, foco, movimiento). El usuario la ve antes de seguir.
-4. Por componente: `fudic_generate` → `.fudspec` → el usuario confirma → `.fud` → `fudic_check`
-   hasta cero → `fudic_spec_run`. Input es un control form-associated, no un componente plano.
+4. Por componente, las fases de §4.1 (corregidas en §10.2). Input es un control form-associated,
+   no un componente plano.
 5. `fudic_propose`.
 
 Lo que destapa: los dos últimos puntos de §9 (accesibilidad y normas del usuario), que `status`
@@ -390,7 +391,7 @@ Propuesta:
    | 2 | Criterios | El usuario aprueba | `.fudspec` |
    | 3 | Tests unitarios, en rojo | El LLM | `.test.ts` |
    | 4 | La vista, hasta tests y criterios en verde | El LLM | `.fud` |
-   | 5 | Documentación | El LLM, desde props y criterios | Por decidir |
+   | 5 | Documentación | El LLM, desde props y criterios | JSDoc del `@code` y de cada prop |
    | 6 | Su página en el escaparate | El LLM | `showcase` (§10.1) |
 
    La guía de estilos es una unidad más: los tokens se aprueban antes de ningún componente.
