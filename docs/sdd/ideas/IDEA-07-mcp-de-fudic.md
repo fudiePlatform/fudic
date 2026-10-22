@@ -1032,67 +1032,80 @@ Lo que destapa:
 
 ## 11. Impacto: cuántas SDD salen y qué se toca (2026-10-22)
 
-Para medir el coste antes de escribir ninguna. Sale de lo que cada sección destapó (§5–§10),
-contrastado con el código de hoy.
+Para medir el coste antes de escribir ninguna SDD. Sale de lo que destapó cada sección (§5–§10),
+contrastado con el código de hoy. El tamaño se compara siempre con una SDD ya hecha.
 
-### 11.1. Lo que tiene que estar antes
+### 11.1. Antes de empezar
 
-| Qué | Estado hoy | Por qué bloquea |
-|---|---|---|
-| **SDD-60** (`.fudapi`) | En su worktree, 54 de 64 tareas, sin merge | `status`, `check`, `call`, `g api`, las funciones `fake`/`connected` y la guía `fudapi` hablan de él |
-| **SDD-61** (vista portable) | `Listo`, sin implementar | Las secciones generadas de la guía `view` salen de su lista blanca (§6) |
+- **SDD-60 (`.fudapi`) tiene que estar terminada.** Va por 54 de 64 tareas en su worktree. Casi
+  todo el MCP habla de ella: `status`, `check`, las funciones conectadas o falsas, la guía.
+- **SDD-61 (vista portable) está escrita y sin implementar.** Solo bloquea la parte de la guía que
+  explica la vista; lo demás puede empezar sin ella.
 
-El MCP local puede empezar con SDD-60 en main; la guía `view` completa espera a SDD-61.
+### 11.2. Siete trabajos para tener el MCP en Claude Code
 
-### 11.2. Las SDD del MCP local (§7, paso 1)
+1. **Que los mensajes de error digan la verdad.** Hoy algunas explicaciones contradicen la guía
+   (`FUD0191`, `FUD0907`), otras citan SDD internas, y algunas bombillas arreglan mal (`FUD0540`)
+   o están en español. Además, cada ejemplo de arreglo tiene que compilar, y los reflejos de React
+   (`className`, `onClick`…) necesitan su código. *Tamaño: como SDD-31 (`computed`/`effect`).*
 
-Tamaño medido contra SDD ya hechas, por número de tareas y paquetes:
+2. **Que un componente cuente todo sobre sí mismo.** El hover ya enseña props, slots con nombre,
+   eventos y documentación. Le faltan el valor por defecto de cada prop, el slot sin nombre, qué
+   recibe cada evento y las CSS parts. Y los tokens de estilo como símbolos, con su
+   documentación, su autocompletado y su hover (§10.3, §10.4). *Tamaño: como el anterior.*
 
-| Talla | Como | Tareas | Alcance |
-|---|---|---|---|
-| **S** | SDD-40, SDD-55 | ~15 | Uno o dos paquetes, sin paquete nuevo |
-| **M** | SDD-31, SDD-38, SDD-30 | ~20 | Varios paquetes, una pieza nueva dentro de uno |
-| **L** | SDD-57 | ~30 | Un paquete nuevo o una pieza difícil que cruza varios |
-| **XL** | SDD-60, SDD-58 | ~60 | Lenguaje o paquete nuevo que toca casi todo |
+3. **Que ejecutar criterios y tests devuelva algo que una máquina entienda.** Qué falló, qué se
+   esperaba, qué salió, si el test falló de verdad o ni llegó a ejecutarse, y **en qué línea del
+   `.fud`** está el elemento que falló. Esto último es lo difícil: la única parte que toca de
+   verdad el compilador. También el esquema de roles de `render` (§5.7, §5.9, §5.12). *Tamaño:
+   como SDD-57 (tests unitarios).*
 
-| # | SDD | Qué hace | Paquetes | Tam. | Depende de |
-|---|---|---|---|---|---|
-| A | **El catálogo que no miente** | Forma de cada `.md` comprobada en test (`title`/`why`/`fix`), sin citas a SDD, cada ejemplo del `fix` compila como fixture; `FUD0191` y `FUD0907` alineados con la guía; títulos de bombillas en inglés; la bombilla de `FUD0540` solo cuando es correcta; diagnósticos para los reflejos de React que no tienen código (§6) | `diagnostics`, `language-server` (`actions.ts`), `compiler` (códigos nuevos) | M | — |
-| B | **El contrato completo y los tokens** | Al `Contract` de hoy (props con tipo, slots con nombre, eventos por nombre, doc) le faltan: el `default` de cada prop, el JSDoc de cada prop en el contrato, el slot por defecto, el tipo del `detail` de un evento, las CSS parts. Tokens como símbolos: custom properties con su `/** */`, índice, completado de `var(--` y hover (§10.3, §10.4) | `language-server` (`mode.ts`, índice), `language-core`, `compiler` (parts) | M | — |
-| C | **Ejecutar con evidencia para una máquina** | `runSpecs` (el banco) y vitest llamados en proceso con un resultado estructurado: `expected`/`got` común por término, `fail` frente a `broken`, problemas con código FUD; el `outline` (árbol de roles) en happy-dom y en el navegador del banco; **volver del DOM al span del `.fud`** (§5.7, §5.9, §5.12) | `workbench`, `spec`, `terms`, `testing`, `compiler` (identidad de nodo → span) | L | A |
-| D | **El historial de la pieza** | Formato del fichero, escritura solo por añadido, `merge=union`, hash de las entradas (`.fud`, `.fudspec`, fixtures, imports) y de las capturas; `approved`, `accepted`, `reopened`, `look`, ejecuciones; caducidad (§5.8, §10.5) | paquete nuevo o `spec`; `cli` (`.gitattributes`) | M | C |
-| E | **La CLI para agentes** | `g api` (el `.fudapi`), `g showcase` desde las fixtures, `fudic new` escribe `.mcp.json` y `AGENTS.md`/`CLAUDE.md`; los planes como API pública con su esquema de opciones (§5.3, §10.1) | `cli` | S | SDD-60 |
-| F1 | **`@fudic/mcp`: lenguaje y proyecto** | El servidor (stdio), `instructions`, el prompt `new-app`, y las herramientas: `guide` (temas generados + escritos, con cada ejemplo como fixture), `status`, `symbols`, `describe`, `check`, `fix`, `format`, `new`/`generate`/`add` | paquete nuevo; usa `language-server` (servicios en proceso), `cli` | L | A, B, E, SDD-60 |
-| F2 | **`@fudic/mcp`: ver y probar** | `spec_run`, `test`, `render`, `call` (sobre el servidor en memoria de SDD-57), `preview` local (Vite en proceso, errores del servidor como diagnósticos); `status` lee el historial | `mcp`; usa `workbench`, `testing`, `vite` | M | C, D, F1 |
+4. **El historial de cada pieza.** El fichero que solo crece, con aprobaciones, ejecuciones y lo
+   que aceptó el cliente, y los hashes que dicen si algo ha caducado (§5.8, §10.5). Va después del
+   3. *Tamaño: como el 1.*
 
-**Siete SDD** para el paso 1: A, B y D en M; C y F1 en L; F2 en M; E en S. El MCP entero en una
-sola SDD sería XL, del tamaño de SDD-60: se parte en F1 y F2, y F1 ya sirve sola en Claude Code.
-A, B y E pueden ir en paralelo; C antes que D; F1 en cuanto estén A, B y E.
+5. **Que la CLI genere lo que falta.** El `.fudapi`, la página del escaparate desde las fixtures,
+   y que `fudic new` deje configurado el MCP (§5.3, §10.1). *Tamaño: el más pequeño, como SDD-55
+   (resto de props).*
 
-### 11.3. Las que no bloquean el MCP local
+6. **El MCP, primera mitad: lenguaje y proyecto.** El servidor, la guía con sus temas, `status`,
+   comprobar errores, arreglarlos, describir componentes y crear cosas con la CLI. **Con esto ya se
+   trabaja en Claude Code.** Necesita el 1, el 2 y el 5. *Tamaño: como SDD-57.*
 
-| # | SDD | Qué hace | Tam. |
-|---|---|---|---|
-| G | **Accesibilidad y normas del usuario** | axe-core dentro de `spec_run`; la regla opcional `tokensOnly` en `fudic.json` que hace cumplir `check` (usa B) | M |
-| H | **Baseline de HTML/CSS** | Un analizador sobre `web-features` que diagnostica lo que no es baseline | M–L |
-| I | **Conectar con el backend** | Importar OpenAPI/`.proto`/GraphQL, generar el cliente tipado, `backend_describe`, `fudic_contract`; primero en TS, el resto con los runtimes políglotas (IDEA-05) | L |
-| J | **El fake** | Pendiente de Pedro (§10.7) | ? |
+7. **El MCP, segunda mitad: ver y probar.** Ejecutar criterios y tests, pintar una pieza, llamar a
+   una función y la preview local. Necesita el 3, el 4 y el 6. *Tamaño: como el 1.*
 
-### 11.4. Lo que no es framework (§7, pasos 2–4)
+El 1, el 2 y el 5 pueden ir a la vez. El MCP en una sola SDD sería del tamaño de SDD-60; partido
+en dos, la primera mitad ya sirve sola.
 
-Git y copias de trabajo en servidor, builder, imagen de Node, previews por rama, MCP remoto, y la
-plataforma (aislamiento, secretos, cuotas, OAuth). Es **otro producto**, con su propia tanda de
-SDD; ninguna toca el compilador. Las imágenes de otros lenguajes esperan a la suite de
-conformidad de SDD-61.
+**En conjunto: como hacer tres veces SDD-60.**
 
-### 11.5. Lo que toca el compilador
+### 11.3. Aparte, sin prisa
 
-Poco, y concreto:
+Ninguna bloquea el MCP en Claude Code:
 
-- **Identidad de nodo → span del `.fud`** (C): la pieza difícil. La hidratación ya identifica
-  nodos; falta que esa identidad lleve de vuelta al fuente.
-- **Diagnósticos nuevos** para los reflejos de React (A), si el parser no los rechaza ya con uno.
-- **CSS parts** en el contrato (B).
+- **Auditar la accesibilidad** (axe-core al ejecutar los criterios) y **las normas del usuario**
+  («solo tokens»). Como SDD-31.
+- **Comprobar que el HTML y el CSS funcionan en todos los navegadores** (baseline). Entre SDD-31 y
+  SDD-57.
+- **Conectar con un backend real**: importar su contrato y generar el cliente. Como SDD-57, primero
+  solo en TypeScript.
+- **El fake**: pendiente de Pedro (§10.7).
 
-El resto vive en `language-server`, `workbench`, `testing`, `cli`, `diagnostics` y el paquete
-nuevo.
+### 11.4. Lo que se hace desde el chat es otro producto
+
+Servidores con copias de trabajo, git remoto, el builder, las imágenes por lenguaje, las previews
+por rama y la plataforma (aislamiento, secretos, cuotas, OAuth). Lleva su propia tanda de SDD y
+no toca el framework.
+
+### 11.5. Lo que se toca del compilador
+
+Poco:
+
+- **Volver de un elemento del DOM a su línea en el `.fud`** (trabajo 3). La hidratación ya
+  identifica cada nodo; falta que esa identidad lleve de vuelta al fuente.
+- **Algunos diagnósticos nuevos** (trabajo 1).
+- **Las CSS parts** (trabajo 2).
+
+Lo demás vive en el language server, el banco, `@fudic/testing`, la CLI, el catálogo de
+diagnósticos y el paquete nuevo del MCP.
