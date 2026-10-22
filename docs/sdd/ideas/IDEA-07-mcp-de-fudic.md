@@ -457,3 +457,41 @@ Lo que el contrato aún no tiene:
   manejador.
 - **El slot por defecto**: el contrato solo lista los slots con nombre.
 - **El `default` de cada prop**: está en la desestructuración y no se extrae.
+
+### 10.4. Los tokens como símbolos (Pedro, 2026-10-22)
+
+Por el mismo motivo, los tokens de la guía de estilos se exportan como símbolos: al montar un
+componente o una ruta, el LLM sabe cuáles hay sin abrir hojas. Hoy nada los extrae: el índice
+conoce las `globalStyles` de cada `fudic.json` por nombre, no lo que declaran.
+
+Propuesta:
+
+- **Se documentan como las props**, con `/** … */` encima de cada declaración:
+  ```css
+  :host {
+    /** Main action background. Contrast with --acme-color-on-primary ≥ 4.5:1. */
+    --acme-color-primary: oklch(55% 0.2 260);
+    /** Base spacing step. Multiply, never invent: calc(var(--acme-space) * 2). */
+    --acme-space: 0.25rem;
+  }
+  ```
+- **`fudic_symbols { kind: "tokens" }`** devuelve los del proyecto y los de sus librerías, en el
+  orden en que se adoptan:
+  ```json
+  { "tokens": [
+    { "name": "--acme-color-primary", "value": "oklch(55% 0.2 260)", "group": "color",
+      "doc": "Main action background. …", "from": "@acme/tokens",
+      "file": "libs/tokens/tokens.css:4:3" }
+  ]}
+  ```
+  `group` sale del nombre (`--<prefijo>-<grupo>-…`), sin configurar nada.
+- **Un solo índice para el editor y para el LLM**: autocompletado de `var(--` y hover con la doc.
+- **Regla de la guía `components`:** «Before writing styles, call `fudic_symbols { kind:
+  "tokens" }`. Use only those names.»
+
+Lo que permite después:
+
+- La regla opcional «solo tokens» (§9) se puede **comprobar**: sabiendo qué tokens hay, un literal
+  con token equivalente sale en `fudic_check` si el usuario la activa.
+- El contrato del componente (§10.3) puede listar **los tokens que lee**: qué afecta a su aspecto,
+  igual que las CSS parts.
