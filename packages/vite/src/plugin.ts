@@ -419,7 +419,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   });
   /** The generated root of a side (§4.4). */
   const rootSource = (side: 'server' | 'browser'): string =>
-    emitRoot({ side, folders: apiFolders(), libraries: api.libraries, ids: api.ids(), reset: userOptions.harness !== true });
+    emitRoot({ side, folders: apiFolders(), libraries: api.libraries, ids: api.ids() });
   /**
    * The module `fudic:<id>` of a side. The browser variant brings the browser root with it: the
    * client halves and the `runs both` rules a call needs are registered by whoever imports a
@@ -430,8 +430,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     return text === undefined || side === 'server' ? text : `import ${JSON.stringify(BROWSER_ROOT_ID)};\n${text}`;
   };
   /**
-   * Every module of the implementation folders, and the server root, out of a dev graph: the
-   * next `ssrLoadModule` of the root evaluates them all again, in its order.
+   * Every module of the implementation folders, the server root and whatever holds a contract —
+   * the `fudic:<id>`, the wrappers, the `.fud` — out of a dev graph: the next request evaluates
+   * them all again, the root in its order, and its contracts are new ones nobody filled.
    */
   const invalidateImplementations = (graph: EnvironmentModuleGraph): void => {
     const folders = apiFolders();
@@ -442,27 +443,38 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     ];
     for (const mod of graph.idToModuleMap.values()) {
       const file = mod.file === null ? '' : slash(mod.file);
-      if (mod.id === rootFile('server') || dirs.some((dir) => file.startsWith(dir))) graph.invalidateModule(mod);
+      // What holds a contract goes too: a fresh root fills fresh slots, so nobody empties them.
+      const holder = mod.id !== null && (mod.id.startsWith(API_SCHEME) || mod.id.startsWith(WRAPPER_PREFIX) || file.endsWith('.fud'));
+      if (holder || (mod.id !== null && idWithoutLocale(mod.id) === rootFile('server')) || dirs.some((dir) => file.startsWith(dir))) graph.invalidateModule(mod);
     }
   };
+  /**
+   * What a generated module resolves to, without its locale: a root to its file, a `fudic:<id>`
+   * the project declares to itself; `undefined` for anything else.
+   */
+  const generatedId = (id: string): string | undefined =>
+    id === SERVER_ROOT_ID || id === BROWSER_ROOT_ID
+      ? rootFile(id === SERVER_ROOT_ID ? 'server' : 'browser')
+      : id === rootFile('server') || id === rootFile('browser') || (id.startsWith(API_SCHEME) && api.source(id.slice(API_SCHEME.length)) !== undefined)
+        ? id
+        : undefined;
   /** The id a root resolves to: a file of the project that is never on disk. */
   const rootFile = (side: 'server' | 'browser'): string => `${slash(root)}/${ROOT_FILE_PREFIX}${side}.js`;
   /** Whether the app declares a `.fudapi` of its own: only then is there a root to load. */
   const hasApi = (): boolean => api.sources.some((s) => s.origin === 'app');
   /** The server variant of a generated module, as a nested pass serves it, by id. */
-  const serverApi = (id: string): string | undefined =>
-    id === SERVER_ROOT_ID
-      ? rootSource('server')
-      : id.startsWith(API_SCHEME)
-        ? apiModule(id.slice(API_SCHEME.length), 'server')
-        : undefined;
+  /**
+   * A generated module of a side, as a nested pass serves it, by id: the same text for every
+   * locale, since what differs between locales is what its imports resolve to.
+   */
+  const generatedText = (tagged: string, side: 'server' | 'browser'): string | undefined => {
+    const id = idWithoutLocale(tagged);
+    if (id === (side === 'server' ? SERVER_ROOT_ID : BROWSER_ROOT_ID)) return rootSource(side);
+    return id.startsWith(API_SCHEME) ? apiModule(id.slice(API_SCHEME.length), side) : undefined;
+  };
+  const serverApi = (id: string): string | undefined => generatedText(id, 'server');
   /** The browser variant, as the link pass serves it to the pages the Service Worker renders. */
-  const browserApi = (id: string): string | undefined =>
-    id === BROWSER_ROOT_ID
-      ? rootSource('browser')
-      : id.startsWith(API_SCHEME)
-        ? apiModule(id.slice(API_SCHEME.length), 'browser')
-        : undefined;
+  const browserApi = (id: string): string | undefined => generatedText(id, 'browser');
   const linkCheckIo = nodeLinkCheckIo();
   const runtimeFs = nodeRuntimeFs();
   /**
@@ -825,7 +837,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     hotUpdate(options) {
       // The implementations are registered by evaluating their modules, all of them, in order
       // (SDD-60 §4.4). A change anywhere may re-evaluate one of them — or the root — and leave
-      // the others with an emptied registry, so the next request reloads every one.
+      // the others registered on contracts a fresh module no longer holds, so the next request
+      // reloads every one.
       if (this.environment.name === 'ssr') invalidateImplementations(this.environment.moduleGraph);
       if (userOptions.serverReload === false) return;
       if (this.environment.name !== 'ssr' || options.modules.length === 0) return;
@@ -1535,10 +1548,14 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // A root resolves to a FILE id inside the project, never written to disk: its
       // `import.meta.glob` is relative to where its importer lives, and a bare `fudic:` has no
       // folder for Vite's dev server to read the app's folders from.
-      if (id === SERVER_ROOT_ID || id === BROWSER_ROOT_ID) return rootFile(id === SERVER_ROOT_ID ? 'server' : 'browser');
-      if (id === rootFile('server') || id === rootFile('browser')) return id;
-      if ((id.startsWith(API_SCHEME) && api.source(id.slice(API_SCHEME.length)) !== undefined)) {
-        return id;
+      //
+      // Compiled for a locale like any module of the app (SDD-58 §4.6): a module of a locale's
+      // graph hands it on, so each locale has its root, its contracts and its handlers, where
+      // `t` and `locale` are that locale's (SDD-60 §4.4, *decided while implementing*).
+      const generated = generatedId(idWithoutLocale(id));
+      if (generated !== undefined) {
+        const locale = localeOf(id) ?? (importer === undefined ? undefined : localeOf(importer));
+        return locale === undefined ? generated : withLocale(generated, locale);
       }
       // A published piece, named by a shim or by a coordinator: it leaves as the URL it is.
       // `'absolute'` and not a plain `true`, or an id starting with `/` is read as a
@@ -1599,14 +1616,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // The side is the environment's: the dev server's SSR graph and the edge pass are the
       // server, everything a browser downloads is the browser (SDD-60 §3.11).
       const side = loadOptions?.ssr === true ? 'server' : 'browser';
-      if (id === rootFile('server') || id === rootFile('browser')) {
-        return rootSource(id === rootFile('server') ? 'server' : 'browser');
+      const bare = idWithoutLocale(id);
+      if (bare === rootFile('server') || bare === rootFile('browser')) {
+        return rootSource(bare === rootFile('server') ? 'server' : 'browser');
       }
-      if (id.startsWith(API_SCHEME) && api.source(id.slice(API_SCHEME.length)) !== undefined) {
+      if (bare.startsWith(API_SCHEME) && api.source(bare.slice(API_SCHEME.length)) !== undefined) {
         // Every `.fudapi` of the project is an input: a type or a middleware of another file
         // changes this one's text.
         for (const source of api.sources) this.addWatchFile(source.path);
-        return apiModule(id.slice(API_SCHEME.length), side) ?? null;
+        return apiModule(bare.slice(API_SCHEME.length), side) ?? null;
       }
       if (id === MAIN_ID || id.startsWith(`${MAIN_ID}?`)) {
         const dir = chunkDir(localeOf(id), locales);
@@ -1680,7 +1698,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           hasHttp: rb.analysis.hasHttp === true,
           fluentLoad: rb.analysis.fluentLoad === true,
           ...(httpFile !== undefined ? { globalChain: httpFile } : {}),
-          ...(rb.analysis.api !== undefined ? { api: { id: rb.analysis.api, root: SERVER_ROOT_ID, dev: isDev } } : {}),
+          ...(rb.analysis.api !== undefined ? { api: { id: rb.analysis.api, root: SERVER_ROOT_ID, dev: isDev, ...(rb.locale !== undefined ? { locale: rb.locale } : {}) } } : {}),
           // In dev the origin is the request's: a page served at localhost links to localhost.
           ...alternatesOf(rb, locales, base, isDev ? undefined : site),
           // In DEV this module IS the edge: the dev server renders through the module

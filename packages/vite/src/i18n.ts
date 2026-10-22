@@ -432,7 +432,8 @@ export async function resolveForLocale(
   if (resolved === null || resolved.external === true || resolved.external === 'absolute') return resolved;
   const q = resolved.id.indexOf('?');
   const path = q === -1 ? resolved.id : resolved.id.slice(0, q);
-  return compilesPerLocale(path, root) ? withLocale(resolved.id, locale) : resolved;
+  // A generated module of the project too: each locale has its own contracts (SDD-60 §4.4).
+  return compilesPerLocale(path, root) || path.startsWith('fudic:') ? withLocale(resolved.id, locale) : resolved;
 }
 
 /**

@@ -54,9 +54,8 @@ function isPlainFud(id: string): boolean {
  */
 export function fudicTest(options: FudicOptions = {}): Plugin[] {
   return [
-    // No live type check: nobody watches an overlay in a test run (decision 8.1.13). And one
-    // graph is the server and the page at once (SDD-60 §4.4).
-    fudic({ liveCheck: false, harness: true, ...options }),
+    // No live type check: nobody watches an overlay in a test run (decision 8.1.13).
+    fudic({ liveCheck: false, ...options }),
     {
       name: 'fudic:test',
       config: (user) => ({

@@ -20,7 +20,7 @@
 
       type Fila = { id: number; n: number; ok: boolean; next: Fila | null };
 
-      // Zona neutra: `let` reasignable desde `@{ }`; `const` no.
+      // Un `let` del `@code` es reasignable desde `@{ }`; un `const` no.
       // `n`, `a` y `x` son `let` para que TypeScript no hable encima: escribirlos desde una
       // expresión es FUD0900 igual, sea `let` o `const`.
       let total = 0;
@@ -50,18 +50,7 @@
         return String(v);
       }
 
-      @server {
-        export function load(ctx: { url: URL }) {
-          return { titulo: "errores", ruta: ctx.url.pathname };
-        }
-        let deServidor = 1;
-        const SECRETO = "clave-del-servidor";
-      }
-
-      @client {
-        let deCliente = 1;
-        function alGuardar(): void {}
-      }
+      function alGuardar(): void {}
     }
 
     <title>@data.titulo</title>
@@ -132,25 +121,21 @@
 
     @* ════════════════════════════════════════════════════════════════════════════════
        FUD0901 — `@{ }` escribe un nombre que no es suyo
-       Solo se reasigna lo que declara el template o un `let` de la zona neutra.
+       Solo se reasigna lo que declara el template o un `let` del `@code`.
        Subrayado: el nombre.
        ════════════════════════════════════════════════════════════════════════════════ *@
 
     @* FUD0901 sobre `importado`: un import. *@
     @{ importado = 2; }
-    @* FUD0901 sobre `constante`: es de la zona neutra, pero `const`, no `let`. *@
+    @* FUD0901 sobre `constante`: es del `@code`, pero `const`, no `let`. *@
     @{ constante = 2; }
-    @* FUD0901 sobre `deCliente`: un `let` de `@client` no es de la vista. *@
-    @{ deCliente = 2; }
-    @* FUD0901 sobre `deServidor`: ni uno de `@server`. *@
-    @{ deServidor = 2; }
     @* FUD0901 sobre `data`: lo que devuelve `load()` se lee, no se reasigna. *@
     @{ data = null; }
     @* FUD0901 sobre `noExiste`: un nombre que no declara nadie. *@
     @{ noExiste = 1; }
     @* FUD0901 sobre `ayuda`: una función importada, aunque sea con `++`. *@
     @{ ayuda++; }
-    @* Esto SÍ, sin diagnóstico: `total` es un `let` de la zona neutra. *@
+    @* Esto SÍ, sin diagnóstico: `total` es un `let` del `@code`. *@
     @{ total = a + b; }
 
     @* ════════════════════════════════════════════════════════════════════════════════
@@ -363,24 +348,14 @@
     @{ const redeclarada = 2; }
 
     @* ════════════════════════════════════════════════════════════════════════════════
-       R2 — la vista lee `@server` y `@client` (casos no cubiertos §C)
+       R2 — lo que el servidor no tiene (casos no cubiertos §C)
+       El servidor de una página está en su `.fudapi`: la vista no lo nombra nunca.
        ════════════════════════════════════════════════════════════════════════════════ *@
 
-    @* Sin diagnóstico FUD: lo dice TypeScript, TS2304 sobre el nombre, porque la proyección no
-       ve `@server`, y un hecho tiene una sola voz (BUG-23). Sin él, el SSR pintaba
-       «clave-del-servidor» en el HTML. *@
-    <p>@SECRETO</p>
-    @* Sin diagnóstico FUD: TS2304, como el anterior. *@
-    <p>@deServidor</p>
-    @* FUD0907 sobre `deCliente`: el servidor renderiza sin él. Una señal de `@client` sí se
-       lee: el servidor la deja inerte. *@
-    <p>@deCliente</p>
-    @* Sin diagnóstico FUD: `load` es de `@server`; TS2304. *@
-    <p>@(String(load))</p>
-    @* FUD0907 sobre `URL`, que no está en la lista blanca; `load` es TS2304. *@
-    <p>@(load({ url: new URL("http://x") }).titulo)</p>
-    @* Sin diagnóstico: un callback de `@client` que se pasa POR NOMBRE a un hijo; el servidor
-       lo deja inerte para registrar su identidad (BUG-24). *@
+    @* FUD0907 sobre `URL`, que no está en la lista blanca. *@
+    <p>@(new URL("http://x").host)</p>
+    @* Sin diagnóstico: una función del `@code` que se pasa POR NOMBRE a un hijo; el servidor
+       la deja inerte para registrar su identidad (BUG-24). *@
     <app-pieza .onSave=@alGuardar></app-pieza>
 
     @* ════════════════════════════════════════════════════════════════════════════════
@@ -390,7 +365,7 @@
     @* FUD0908 sobre `var` (×2): sube a la función de render, como un `@{ var }`. *@
     @for (var iVar = 0; iVar < 3; iVar++) key (iVar) { <span>@iVar</span> }
     @foreach (var vVar of s) key (vVar) { <span>@vVar</span> }
-    @* FUD0908 sobre `var`: y con `let choque` en la zona neutra sería un SyntaxError. *@
+    @* FUD0908 sobre `var`: y con `let choque` en el `@code` sería un SyntaxError. *@
     @for (var choque = 0; choque < 3; choque++) key (choque) { <span>@choque</span> }
 
     @* ════════════════════════════════════════════════════════════════════════════════
@@ -644,7 +619,7 @@
        ════════════════════════════════════════════════════════════════════════════════ *@
 
     @* FUD0907 sobre `navigator`, `window` y `addEventListener`: lo del navegador se nombra en
-       `@code { @client }`. *@
+       una función del `@code`. *@
     <button @click="@(() => navigator.sendBeacon('/x', data.titulo))">beacon</button>
     <button @click="@(() => window.fetch('/x'))">fetch</button>
     <button @click="@(() => addEventListener('click', ayuda))">listener</button>

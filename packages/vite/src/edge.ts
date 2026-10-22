@@ -148,7 +148,7 @@ export function edgePlugin(
         hasHttp: rb.analysis.hasHttp === true,
         fluentLoad: rb.analysis.fluentLoad === true,
         ...(extras.globalChain !== undefined ? { globalChain: extras.globalChain } : {}),
-        ...(rb.analysis.api !== undefined ? { api: { id: rb.analysis.api, root: SERVER_ROOT_ID, dev: false } } : {}),
+        ...(rb.analysis.api !== undefined ? { api: { id: rb.analysis.api, root: SERVER_ROOT_ID, dev: false, ...(rb.locale !== undefined ? { locale: rb.locale } : {}) } } : {}),
         withLoad: true, // the edge resolves data in process
         runtime: runtimeFor(pattern),
         ...alternatesOf(rb, extras.locale?.locales, base, extras.locale?.site),

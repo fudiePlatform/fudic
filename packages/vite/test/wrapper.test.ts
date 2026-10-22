@@ -172,3 +172,24 @@ describe('emitRenderChunk — the layout resolver (SDD-40)', () => {
     expect(none).toContain('const layout = ctx.layout;');
   });
 });
+
+describe('emitRenderChunk — a route of a .fudapi (SDD-60 §4.4)', () => {
+  const of = (locale?: string): string =>
+    emitRenderChunk({
+      pageModule: './blog/[slug].fud',
+      hasLoad: true,
+      hasPaths: true,
+      withLoad: true,
+      api: { id: 'routes/blog/[slug]', root: 'fudic:$root/server', dev: false, ...(locale !== undefined ? { locale } : {}) },
+    });
+
+  it('reads its pieces from fudic:<id> once the root is ready', () => {
+    expect(of()).toContain('import { ready as $ready } from "fudic:$root/server";');
+    expect(of()).toContain('import { load as $load, paths as $paths } from "fudic:routes/blog/[slug]";');
+  });
+
+  it('in an app with languages, from the root and the contract of its locale', () => {
+    expect(of('en')).toContain('import { ready as $ready } from "fudic:$root/server?locale=en";');
+    expect(of('en')).toContain('from "fudic:routes/blog/[slug]?locale=en";');
+  });
+});

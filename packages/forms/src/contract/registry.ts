@@ -60,6 +60,20 @@ export function takeRefusal(): Error | undefined {
   return error;
 }
 
+/** The load of the root before, so the next one waits for it. */
+let turn: Promise<unknown> = Promise.resolve();
+
+/**
+ * Runs `load` once every root asked before has finished loading. Two roots in one process —
+ * one per locale of an app with languages (SDD-60 §4.4) — would otherwise interleave their
+ * files, and the folder the registry was told about would be the other root's.
+ */
+export function inTurn(load: () => Promise<void>): Promise<void> {
+  const mine = turn.then(load);
+  turn = mine.catch(() => undefined);
+  return mine;
+}
+
 /** Empties every slot: what a dev reload does before loading the folders again. */
 export function resetRegistry(): void {
   for (const slot of slots) slot.clear();

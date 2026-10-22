@@ -4,7 +4,7 @@
  */
 
 import { afterEach, describe, expect, it } from 'vitest';
-import { Slot, folderOf, loadingFile, resetRegistry, setFolders, takeRefusal } from '../../src/contract/index.js';
+import { Slot, folderOf, inTurn, loadingFile, resetRegistry, setFolders, takeRefusal } from '../../src/contract/index.js';
 
 afterEach(() => {
   loadingFile(undefined);
@@ -100,5 +100,22 @@ describe('takeRefusal', () => {
     }
     expect(takeRefusal()).toBe(thrown);
     expect(takeRefusal()).toBeUndefined();
+  });
+});
+
+describe('roots in turn (SDD-60 §4.4: one root per locale)', () => {
+  it('a load starts once the one before has finished, even when it failed', async () => {
+    const order: string[] = [];
+    const step = (name: string, fail = false) => async (): Promise<void> => {
+      order.push(`${name}:start`);
+      await Promise.resolve();
+      order.push(`${name}:end`);
+      if (fail) throw new Error(name);
+    };
+    const a = inTurn(step('a', true));
+    const b = inTurn(step('b'));
+    await expect(a).rejects.toThrow('a');
+    await b;
+    expect(order).toEqual(['a:start', 'a:end', 'b:start', 'b:end']);
   });
 });

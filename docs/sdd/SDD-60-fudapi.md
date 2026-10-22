@@ -494,6 +494,14 @@ declare module 'fudic:components/user-form' {
   su último rechazo (`takeRefusal`) para que la raíz lo relance: el ayudante de precarga del
   bundler tapa el error de un `import()` con uno suyo en el servidor. El pase edge sale siempre
   con sourcemaps, se los pida o no el cliente.
+- *Decidido al implementar (Fase 11, con Pedro):* en una app con idiomas (SDD-58), la raíz, los
+  `fudic:<id>` y los handlers se compilan una vez por idioma, como un `.fud`: `t` y `locale` en un
+  handler son los del idioma de la página, y al navegador y al Service Worker no llega nada nuevo.
+  Las raíces cargan por turnos (`inTurn`) y ninguna vacía el registro: una recarga de dev invalida
+  también lo que guarda contratos (`fudic:`, wrappers, `.fud`) y la raíz nueva llena contratos
+  nuevos. Un `form` que una función usa y otro fichero declara lo reexporta el módulo de la
+  función. En vitest (`@fudic/testing`) un mismo grafo es servidor y página: una función generada
+  es a la vez la llamada y el contrato, y la raíz de servidor se carga antes de pintar.
 
 ### 3.12. Lo que escribe el usuario
 

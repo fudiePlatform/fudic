@@ -10,7 +10,7 @@
  * Four subjects, one page (`/reactividad`):
  *
  *  - `<signal-control>`  one local signal driving the four constructs at once.
- *  - `<signal-store>`    a signal imported from a module instead of declared in `@client`.
+ *  - `<signal-store>`    a signal imported from a module instead of declared in its `@code`.
  *  - `<signal-while>`    the fifth construct, whose header consumes state to terminate.
  *  - `<signal-code>`     `@{ … }`, the inline code block the grammar defines.
  *

@@ -346,6 +346,10 @@ describe('the propagation of the locale (§4.6)', () => {
     );
   });
 
+  it('and to a generated module: each locale has its own contracts (SDD-60 §4.4)', async () => {
+    expect(await resolveForLocale(resolver({ id: 'fudic:routes/a' }), 'fudic:routes/a', en, root)).toBe('fudic:routes/a?locale=en');
+  });
+
   it('and not to a compiled dependency, an external or nothing at all', async () => {
     const dep = { id: 'C:/app/node_modules/x/index.js' };
     expect(await resolveForLocale(resolver(dep), 'x', en, root)).toBe(dep);

@@ -5,14 +5,12 @@
 
   const euros = currency('EUR');
 
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    const n = signal(0);
+  const n = signal(0);
 
-    function mas(): void {
-      n.set(n() + 1);
-    }
+  function mas(): void {
+    n.set(n() + 1);
   }
 }
 

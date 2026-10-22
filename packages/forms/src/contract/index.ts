@@ -39,6 +39,7 @@ export { messages, text } from './text.js';
 export {
   Slot,
   folderOf,
+  inTurn,
   loadingFile,
   resetRegistry,
   setFolders,

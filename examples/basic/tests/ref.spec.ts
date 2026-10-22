@@ -3,7 +3,7 @@
  *
  * The compiler's suites check that the write lands in the hookup and runs on both paths of
  * a factory. This one checks what the author actually relies on: the `let` they declared in
- * `@client` holds the live node when their own code reads it, and goes back to `null` when
+ * its `@code` holds the live node when their own code reads it, and goes back to `null` when
  * the node leaves. `<ref-demo>` reports what it reads into `.informe`, so every assertion is
  * on text the component wrote with its own hands.
  *

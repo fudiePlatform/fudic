@@ -171,13 +171,13 @@ describe('emitRoot', () => {
     expect(text).not.toContain('fudic:routes/a');
     expect(text).not.toContain('/src/server/**');
     expect(text).not.toContain('handler');
-    expect(text).toContain('export const ready = load();');
-    expect(text).toContain('  resetRegistry();');
+    expect(text).toContain('export const ready = inTurn(load);');
   });
 
-  it('in a test run, a load does not empty the registry', () => {
-    const text = emitRoot({ side: 'server', folders: { server: 'src/server', browser: 'src/browser' }, libraries, ids: [], reset: false });
-    expect(text).not.toContain('  resetRegistry();');
+  it('a load never empties the registry, and waits for the root before it: one root per locale', () => {
+    const text = emitRoot({ side: 'server', folders: { server: 'src/server', browser: 'src/browser' }, libraries, ids: [] });
+    expect(text).not.toContain('resetRegistry');
+    expect(text).toContain('export const ready = inTurn(load);');
   });
 
   it('the ids of the two roots', () => {

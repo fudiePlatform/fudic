@@ -16,6 +16,7 @@
  */
 
 import type { RuntimeEntries } from './constants.js';
+import { withLocale } from './i18n.js';
 
 export interface RenderChunkOptions {
   /** Import specifier for the page module's `page(data, io)`. */
@@ -58,6 +59,8 @@ export interface RenderChunkOptions {
     readonly root: string;
     /** Dev: a `load` nobody implemented says so in its 404. */
     readonly dev: boolean;
+    /** The locale the route is compiled for: its root and its contract are that locale's. */
+    readonly locale?: string;
   };
   /**
    * The URLs of the two main-thread entries, which the page writes into its `<head>`
@@ -164,8 +167,9 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   ];
   if (api !== undefined && pieces.length > 0) {
     // The pieces of the route's contract, and the root that fills them (SDD-60 §4.4).
-    lines.push(`import { ready as $ready } from ${JSON.stringify(api.root)};`);
-    lines.push(`import { ${pieces.join(', ')} } from ${JSON.stringify(`fudic:${api.id}`)};`);
+    const tagged = (id: string): string => (api.locale === undefined ? id : withLocale(id, api.locale));
+    lines.push(`import { ready as $ready } from ${JSON.stringify(tagged(api.root))};`);
+    lines.push(`import { ${pieces.join(', ')} } from ${JSON.stringify(tagged(`fudic:${api.id}`))};`);
     lines.push('import { implementation as $impl, runLoad as $runLoad } from "@fudic/http/contract/server";');
   } else {
     if (edgeLoad) {
