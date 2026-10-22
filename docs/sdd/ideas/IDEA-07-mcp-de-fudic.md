@@ -127,7 +127,7 @@ web de fudic publica un `llms.txt` que dice «conecta el MCP».
 Por unidad (ruta o componente), no por app (§5.4). Cada una necesita la aprobación del usuario o
 estar en verde antes de la siguiente (§10.2):
 
-1. Props y criterios en la `.fudspec`, con su línea `approved`.
+1. Props y criterios en la `.fudspec`, aprobados en el historial de la pieza (§5.8).
 2. `.fudapi`: el contrato (solo rutas y componentes con servidor).
 3. Tests unitarios, en rojo.
 4. `.fud`: la vista, hasta tests y criterios en verde.
@@ -394,7 +394,7 @@ Propuesta (nombre y forma sin decidir):
 ```
 acme-button.fudlog
 2026-10-22T10:02 a1b2c3d started        by agent  "Button for the current page's actions"
-2026-10-22T10:20 d4e5f6a approved       by pedro  spec 4 criteria
+2026-10-22T10:20 d4e5f6a approved       by pedro  spec 4 criteria  hash 2b8f…
 2026-10-22T10:31 0a9b8c7 tests          red 6/6
 2026-10-22T10:48 7f6e5d4 spec_run       fail 3/4  disabled-no-press  hash 91c2…
 2026-10-22T10:52 3c2b1a0 spec_run       pass 4/4  hash 5e7a…
@@ -408,14 +408,10 @@ acme-button.fudlog
 - **Lo que entra:** el cambio de fase (§10.2), las aprobaciones, las ejecuciones (`spec_run`,
   `test`) con su resultado, el modo `wireframe` y su salida. Lo que no entra: cada `check` o `fix`,
   que son las vueltas del bucle y no historia.
-- **Quién:** el agente o la persona. Con el `approved` de la `.fudspec` y esta línea, se sabe quién
-  aprobó y cuándo.
-
-Por decidir:
-
-- ¿El `approved` sigue en la `.fudspec` o pasa a vivir solo aquí?
-- La caducidad de la aprobación (§10.2) se vuelve directa: hay una línea `approved` con su hash y
-  los criterios de ahora tienen otro.
+- **Quién:** el agente o la persona.
+- **Decidido (Pedro, 2026-10-22): la aprobación vive solo aquí**, como una línea `approved` con
+  quién, cuándo y el hash de la `.fudspec` y sus fixtures. Hay un único sitio donde mirar, y la
+  caducidad (§10.2) es directa: si el hash de ahora es otro, la aprobación ya no vale.
 
 ## 6. `fudic_guide`
 
@@ -479,7 +475,7 @@ remoto. Se mantienen como dos superficies; `fudic_spec_run` es el punto donde se
   en SDD-60 cuando esto sea SDD.
 - **`fudic_test` depende de SDD-57**, que no está en main.
 - ~~**¿Dónde queda escrito que el usuario aprobó los criterios?**~~ Resuelto en §10.2: una línea
-  `approved` en la `.fudspec`.
+  `approved`, que vive en el historial de la pieza (§5.8).
 - **Accesibilidad comprobada** (caso §10). La `.fudspec` busca por rol y nombre accesible, pero no
   audita. La puntuación de accesibilidad de Lighthouse es axe-core: hace falta un paso que lo pase,
   en `fudic_spec_run` o en una herramienta propia.
@@ -580,15 +576,17 @@ Decidido (Pedro, 2026-10-22):
 - **Documentar es JSDoc.** Los componentes ya lo soportan: el `/** … */` de cada prop del tipo de
   `props<T>()` sale en la tarjeta del hover del tag (`language-server`, `tag-card.ts`), y lo mismo
   devuelve `fudic_describe` al LLM. La fase 5 queda en «JSDoc en cada prop».
-- **La aprobación es una línea `approved` en la `.fudspec`.**
+- ~~**La aprobación es una línea `approved` en la `.fudspec`.**~~ Cambiado en §5.8: la aprobación
+  es una línea `approved` en el **historial de la pieza**, no en la `.fudspec`.
 
-Consecuencias (propuesta):
+Consecuencias:
 
 - Una sola marca cubre las fases 1 y 2: las fixtures de la spec ya fijan las props, así que props
   y criterios se aprueban juntos.
-- **La aprobación caduca si los criterios cambian después.** `status` lo ve con git, comparando con
-  el commit que añadió `approved`. Si no, un LLM tocaría criterios aprobados sin que nadie lo vea.
-- Es una enmienda a la gramática de `.fudspec` (SDD-52): va allí cuando esto sea SDD.
+- **La aprobación caduca si los criterios cambian después.** La línea `approved` lleva el hash de
+  la `.fudspec` y sus fixtures; si el de ahora es otro, `status` la da por caducada. Si no, un LLM
+  tocaría criterios aprobados sin que nadie lo vea.
+- La gramática de `.fudspec` (SDD-52) no cambia.
 
 ### 10.3. Usar un componente ya hecho: su contrato
 
