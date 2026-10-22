@@ -406,7 +406,8 @@ acme-button.fudlog
   `.gitattributes`, dos ramas que añaden a la vez no chocan.
 - **`status` lee de aquí** la fase de la unidad y si su última ejecución sigue valiendo (hash).
 - **Lo que entra:** el cambio de fase (§10.2), las aprobaciones, las ejecuciones (`spec_run`,
-  `test`) con su resultado, el modo `wireframe` y su salida. Lo que no entra: cada `check` o `fix`,
+  `test`) con su resultado, lo que aceptó el cliente (`accepted`) y cada función que pasa de
+  `fake` a `connected` (§10.6). Lo que no entra: cada `check` o `fix`,
   que son las vueltas del bucle y no historia.
 - **Quién:** el agente o la persona.
 - **Decidido (Pedro, 2026-10-22): la aprobación vive solo aquí**, como una línea `approved` con
@@ -776,7 +777,8 @@ Propuesta:
 2. **`status` ante una petición ansiosa manda preguntar, no construir**: `next` = «Before any
    view: for acme-button, ask the user for its props and its behaviour. Propose, wait for
    approval, write them. Then the next component.»
-3. **El wireframe existe, pero solo si se pide.** fudic no quita la opción: si el usuario dice
+3. ~~**El wireframe existe, pero solo si se pide.**~~ Retirado en §10.6: lo sustituye el producto
+   sobre el fake. Lo que sigue es la propuesta original. fudic no quita la opción: si el usuario dice
    «wireframe», el LLM se salta las fases, y la unidad queda marcada `wireframe` en `status` con lo
    que le falta. La deuda se ve siempre y no se confunde con producto.
 4. **Las aprobaciones se escriben en el repo**: sin esa marca, `status` no sabe si una fase está
@@ -934,56 +936,51 @@ Decidido también: las capturas son binarios y no entran en git (§5.7); van **a
 `fudic_propose`, y el historial guarda su hash. El PR es donde el equipo revisa, y el hash dice si
 lo aprobado es lo que se está mergeando.
 
-### 10.6. El wireframe: entrar y salir (propuesta, 2026-10-22)
+### 10.6. Sin wireframe: producto sobre el fake (Pedro, 2026-10-22)
 
-La base está en §10.2: el wireframe existe solo si se pide, y su deuda se ve siempre.
+**Decidido: el modo wireframe desaparece.** Se diseñó (entrar saltándose las fases, salir
+descartando la vista) y destapó el problema: si se descarta la vista, veinte días después nadie
+sabe qué aceptó el cliente. Pedro lo resuelve de raíz con lo que fudic ya es.
 
-**Entrar.**
+**El flujo normal** es una gateway que recibe la cookie y resuelve el JWT, y detrás fudic como BFF
+(§1.5), que conecta con un micro que es backend puro o sirve un fake. fudic no prohíbe que alguien
+lo use como backend, pero no es lo normal.
 
-> Hazme un wireframe de la tienda para enseñárselo al cliente el lunes.
+**Con el fake generado desde el `.fudapi`** (§3, camino 2) no hay wireframe: hay **producto sin
+conectar al backend real**. Lo que pedía el wireframe, ver algo ya sin esperar al backend, lo da el
+fake; y la pieza pasa por todas sus fases como cualquier otra.
 
-1. El LLM se salta las fases: sin `.fudspec`, sin `.fudapi`, sin tests. Datos escritos en la vista.
-2. Cada unidad lleva una línea `wireframe` en el historial, con lo que pidió el usuario.
-3. `status` la muestra como `"phase": "wireframe"` con lo que le falta (`spec`, `api`, `tests`,
-   `docs`), y `next` no empuja las fases mientras el usuario no salga del modo.
-4. **La preview lo dice**: una marca «Wireframe» sobre cada unidad, que pone el dev server o la
-   preview de rama y nunca el build. Quien la ve no la confunde con producto.
-5. `fudic_propose` lista en el PR las unidades en wireframe. fudic no impide el merge (lo decide una
-   persona), pero nadie mergea sin saberlo.
+> Quiero enseñarle la tienda al cliente el lunes.
 
-**Salir.**
+1. Cada unidad, sus fases (§4.1): props y criterios aprobados, `.fudapi`, tests y criterios en
+   rojo, la vista hasta el verde.
+2. La fase 5, «conectar o falsear», queda en **falsear**: cada función responde desde su `-> T` y
+   sus `fails` se pueden provocar. `status` cuenta la función como `fake` (§5.4).
+3. El cliente lo ve en la preview con `backend: "fake"` (§5.13). Lo que acepta **es el producto**:
+   no hay nada que descartar.
+4. Cuando el backend exista, cada función pasa de `fake` a `connected` sin tocar la vista ni el
+   contrato. Si el backend no encaja con el `.fudapi`, el handler traduce (§3).
 
-> El cliente lo ha aceptado. Vamos a hacerlo de verdad.
-
-**Antes de nada, lo aceptado se congela** (Pedro, 2026-10-22: si se descarta la vista, veinte días
-después nadie sabe qué aceptó el cliente):
-
-- Una línea `accepted` en el historial de cada unidad: quién, cuándo, lo que dijo el cliente y el
-  commit exacto que vio.
-- Una etiqueta de git sobre ese commit (`accepted/<unidad>/<fecha>`): no se pierde aunque la rama
-  se reescriba.
-- **`fudic_preview { at: "accepted" }`** sirve esa versión cuando se quiera, al lado de la actual:
-  el builder construye cualquier commit. Lo aceptado se puede **volver a ver**, no solo recordar.
-- Sus capturas, adjuntas al PR como en §10.5.
-
-Después cada unidad pasa por las fases, con estas diferencias:
-
-1. **El wireframe es la fuente de la fase 1.** El LLM lee la vista y propone las props y los
-   criterios a partir de lo que enseña; el usuario los aprueba como siempre.
-2. **La vista del wireframe no es la base.** Con la vista ya escrita, los tests saldrían en verde
-   desde el principio y no probarían nada. Al salir, el `.fud` vuelve al esqueleto de
-   `fudic generate` (el wireframe queda en git), tests y criterios quedan en rojo, y la vista se
-   reescribe.
-3. **Sus capturas son el «antes» del aspecto** (§10.5): el usuario aprueba que lo nuevo se parezca
-   a lo que aceptó el cliente.
+**Lo aceptado sigue quedando escrito**, aunque ya no haya vista que descartar: una línea `accepted`
+en el historial (quién, cuándo, lo que dijo el cliente, el commit) y una etiqueta de git sobre ese
+commit. `fudic_preview { at: "accepted" }` vuelve a servir esa versión.
 
 ```
-2026-10-23T10:00 1a2b3c4 wireframe   by agent  "Shop wireframe for Monday's demo"
-2026-10-27T09:00 2b3c4d5 accepted    by pedro  "Client accepted it at Monday's demo"  tag accepted/shop/2026-10-27
-2026-10-27T09:20 3c4d5e6 approved    by pedro  spec 5 criteria  hash 4e2a…
-2026-10-27T09:31 4d5e6f7 tests       red 7/7
+2026-10-23T10:00 1a2b3c4 started     by agent  "Shop for Monday's demo"
+2026-10-23T10:20 2b3c4d5 approved    by pedro  spec 5 criteria  hash 4e2a…
 …
+2026-10-24T17:00 6f7a8b9 done        fake 3/3
+2026-10-27T09:00 7a8b9c0 accepted    by pedro  "Client accepted it at Monday's demo"  tag accepted/shop/2026-10-27
+2026-11-12T11:00 8b9c0d1 connected   save search load
 ```
 
-Es la tesis de §10.2 aplicada: un wireframe se **sustituye**, no se **promociona**. Llevarlo a
-producto sin bases es lo que cuesta meses.
+Lo que destapa:
+
+- **El fake no está en SDD-60**: su §7 lo deja fuera de alcance (IDEA-05 §8). Sin él este flujo no
+  existe: necesita su propia SDD (o entrar en la de este MCP), y la enmienda de la decisión 6 de
+  SDD-60 (sin handler, 404) ya anotada en §9.
+- **El fake necesita identidad.** Detrás de la gateway, el BFF recibe el usuario ya resuelto del
+  JWT. Con el fake, alguien tiene que hacer de gateway: un usuario de fixture por entorno, para
+  que `use auth` y sus `adds` funcionen igual.
+- **Los datos del fake** (§9, «fake con estado o sin él») pasan a importar: lo que ve el cliente
+  sale de ahí. Con semilla fija o de las fixtures del usuario, siempre los mismos.
