@@ -306,8 +306,8 @@ remoto. Se mantienen como dos superficies; `fudic_spec_run` es el punto donde se
 - **El fake (§3, camino 2) enmienda la decisión 6 de SDD-60** (sin handler, 404). Hay que anotarlo
   en SDD-60 cuando esto sea SDD.
 - **`fudic_test` depende de SDD-57**, que no está en main.
-- **¿Dónde queda escrito que el usuario aprobó los criterios?** (fase 1). El «sí» se queda en la
-  conversación; sin una marca en el repo, `status` no sabe si la fase está hecha.
+- ~~**¿Dónde queda escrito que el usuario aprobó los criterios?**~~ Resuelto en §10.2: una línea
+  `approved` en la `.fudspec`.
 - **Accesibilidad comprobada** (caso §10). La `.fudspec` busca por rol y nombre accesible, pero no
   audita. La puntuación de accesibilidad de Lighthouse es axe-core: hace falta un paso que lo pase,
   en `fudic_spec_run` o en una herramienta propia.
