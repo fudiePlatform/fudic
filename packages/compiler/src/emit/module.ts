@@ -573,7 +573,7 @@ function buildPageModule(
   const styledComps = comps.filter((c) => styled.has(c.tag));
   // The page's sheets, pruned (SDD-49). A page owns its whole shell, so it does alone what a
   // route and its layout share: prune, and write the result into its own head.
-  const sheets = planPageSheets('layouts' in graph ? (graph as DocumentGraph) : { ...graph, layouts: [] }, options, linker);
+  const sheets = planPageSheets('layouts' in graph ? (graph as DocumentGraph) : { ...graph, layouts: [], serverApis: [] }, options, linker);
   // The project's guide (SDD-42), built here — before the body codegen and long before the
   // linker's imports are flushed — because compacting it can register an asset import.
   const projectStylesLine = renderProjectStyles(

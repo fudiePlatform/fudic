@@ -37,6 +37,8 @@ import {
   FUD0436,
   FUD0438,
   FUD0439,
+  FUD1111,
+  FUD1112,
   FUD0823,
   FUD0824,
   FUD0834,
@@ -163,6 +165,27 @@ export function isSnippetLink(el: ElementNode): boolean {
   if (el.name !== 'link') return false;
   const rel = findAttr(el, 'rel');
   return rel !== undefined && staticValue(rel) === 'snippet';
+}
+
+/** True if `el` is `<link>` with a static `rel="server"`: a `.fudapi` linked (SDD-60 §3.14). */
+export function isServerLink(el: ElementNode): boolean {
+  if (el.name !== 'link') return false;
+  const rel = findAttr(el, 'rel');
+  return rel !== undefined && staticValue(rel) === 'server';
+}
+
+/**
+ * `FUD1111` over a `<link rel="server">` whose `href` is missing or not a `.fudapi`. Whether the
+ * file exists is the resolver's question: structure has no filesystem.
+ */
+function checkServerHref(el: ElementNode, diagnostics: Diagnostic[]): void {
+  const attr = findAttr(el, 'href');
+  const href = attr === undefined ? undefined : staticValue(attr);
+  if (href === undefined || href === '') {
+    diagnostics.push(FUD1111({ span: el.span, href: '', problem: 'missing' }));
+  } else if (!href.endsWith('.fudapi')) {
+    diagnostics.push(FUD1111({ span: el.span, href, problem: 'extension' }));
+  }
 }
 
 /** True for a `@snippet` declaration node (SDD-05 stores it as a bare `RazorConstruct`). */
@@ -360,16 +383,31 @@ function byRole(source: string, doc: HtmlDocument): ParseResult<StructuredDocume
  * is writing what reads right.
  */
 function componentSlot(node: HtmlContent): 1 | 2 | 3 | 4 {
-  if (isElement(node) && (isComponentLink(node) || isSnippetLink(node))) return 1;
+  if (isElement(node) && (isComponentLink(node) || isSnippetLink(node) || isServerLink(node))) return 1;
   if (isCodeBlock(node)) return 2;
   if (isElementNamed(node, 'head')) return 3;
   return 4;
+}
+
+/** Sorts a link of phase 1 (or 2 in a route) into the list it belongs to. */
+function placeLink(
+  node: ElementNode,
+  lists: { links: ElementNode[]; snippetLinks: ElementNode[]; serverLinks: ElementNode[] },
+  diagnostics: Diagnostic[],
+): void {
+  if (isServerLink(node)) {
+    checkServerHref(node, diagnostics);
+    lists.serverLinks.push(node);
+  } else {
+    (isSnippetLink(node) ? lists.snippetLinks : lists.links).push(node);
+  }
 }
 
 function structureComponent(doc: HtmlDocument): ParseResult<StructuredDocument> {
   const diagnostics: Diagnostic[] = [];
   const links: ElementNode[] = [];
   const snippetLinks: ElementNode[] = [];
+  const serverLinks: ElementNode[] = [];
   const rootNodes: HtmlContent[] = [];
   let code: CodeBlockNode | undefined;
   let head: ElementNode | undefined;
@@ -388,7 +426,7 @@ function structureComponent(doc: HtmlDocument): ParseResult<StructuredDocument> 
     }
     switch (slot) {
       case 1:
-        (isSnippetLink(node as ElementNode) ? snippetLinks : links).push(node as ElementNode);
+        placeLink(node as ElementNode, { links, snippetLinks, serverLinks }, diagnostics);
         break;
       case 2:
         if (code !== undefined) {
@@ -422,6 +460,8 @@ function structureComponent(doc: HtmlDocument): ParseResult<StructuredDocument> 
   // not a component that forgot its host wrapper: it is a snippet file, and saying `FUD0156`
   // at it would be an error born with the file that its author cannot act on.
   if (snippets.length > 0 && rootNodes.filter(isElement).length === 0) {
+    // A snippet renders what its caller gives it: it has no server to link (FUD1112).
+    for (const link of serverLinks) diagnostics.push(FUD1112({ span: link.span, kind: 'snippet' }));
     return snippetDocument(doc, { links, snippets, snippetLinks, code }, diagnostics);
   }
 
@@ -439,6 +479,7 @@ function structureComponent(doc: HtmlDocument): ParseResult<StructuredDocument> 
     snippets,
     snippetLinks,
     name: host?.name ?? '',
+    ...(serverLinks.length > 0 ? { serverLinks } : {}),
     ...(code !== undefined ? { code } : {}),
     ...(head !== undefined ? { head } : {}),
     ...(host !== undefined ? { host } : {}),
@@ -566,7 +607,7 @@ function validateStyleImports(style: ElementNode, diagnostics: Diagnostic[]): vo
 /** The ordered phase a significant top-level node of a route belongs to (decision 83). */
 function routeSlot(node: HtmlContent): 1 | 2 | 3 | 4 | 5 {
   if (isElement(node) && isLayoutLink(node)) return 1;
-  if (isElement(node) && (isComponentLink(node) || isSnippetLink(node))) return 2;
+  if (isElement(node) && (isComponentLink(node) || isSnippetLink(node) || isServerLink(node))) return 2;
   if (isCodeBlock(node)) return 3;
   if (isElementNamed(node, 'head')) return 4;
   return 5;
@@ -581,6 +622,7 @@ function structureRoute(doc: HtmlDocument): ParseResult<StructuredDocument> {
   const diagnostics: Diagnostic[] = [];
   const links: ElementNode[] = [];
   const snippetLinks: ElementNode[] = [];
+  const serverLinks: ElementNode[] = [];
   const rootNodes: HtmlContent[] = [];
   let layoutLink: ElementNode | undefined;
   let code: CodeBlockNode | undefined;
@@ -605,7 +647,7 @@ function structureRoute(doc: HtmlDocument): ParseResult<StructuredDocument> {
         }
         break;
       case 2:
-        (isSnippetLink(node as ElementNode) ? snippetLinks : links).push(node as ElementNode);
+        placeLink(node as ElementNode, { links, snippetLinks, serverLinks }, diagnostics);
         break;
       case 3:
         if (code !== undefined) {
@@ -657,6 +699,7 @@ function structureRoute(doc: HtmlDocument): ParseResult<StructuredDocument> {
     snippetLinks,
     markup: rootNodes.filter((n) => !sections.has(n)),
     sections: found.sections,
+    ...(serverLinks.length > 0 ? { serverLinks } : {}),
     ...(code !== undefined ? { code } : {}),
     ...(head !== undefined ? { head } : {}),
   };
@@ -677,10 +720,14 @@ function structureShell(source: string, doc: HtmlDocument): ParseResult<Structur
   const links: ElementNode[] = [];
   const snippetLinks: ElementNode[] = [];
   const snippets: SnippetDeclNode[] = [];
+  const serverLinks: ElementNode[] = [];
   let code: CodeBlockNode | undefined;
   let layoutLink: ElementNode | undefined;
   for (const child of head.children) {
-    if (isSnippetDecl(child)) {
+    if (isElement(child) && isServerLink(child)) {
+      checkServerHref(child, diagnostics);
+      serverLinks.push(child);
+    } else if (isSnippetDecl(child)) {
       // A shell's top level is its `<head>`, the same place its links and its `@code` live
       // (decisions 59, 60): a page declares its snippets where it declares everything else.
       snippets.push(child);
@@ -724,10 +771,15 @@ function structureShell(source: string, doc: HtmlDocument): ParseResult<Structur
       links,
       snippets,
       snippetLinks,
+      ...(serverLinks.length > 0 ? { serverLinks } : {}),
       ...(code !== undefined ? { code } : {}),
     };
     return diagnostics.length === 0 ? ok(page) : withDiagnostics(page, diagnostics);
   }
+
+  // A layout receives its props from the route (`layout` in the route's `.fudapi`): it links
+  // no server of its own (FUD1112).
+  for (const link of serverLinks) diagnostics.push(FUD1112({ span: link.span, kind: 'layout' }));
 
   const layout = buildLayout(
     doc,
@@ -867,7 +919,7 @@ function collectNestedFrameworkLinks(
 ): void {
   for (const node of nodes) {
     if (!isElement(node)) continue;
-    if (isComponentLink(node) || isLayoutLink(node) || isSnippetLink(node)) {
+    if (isComponentLink(node) || isLayoutLink(node) || isSnippetLink(node) || isServerLink(node)) {
       diagnostics.push(FUD0438({ span: node.span }));
       continue;
     }

@@ -77,6 +77,7 @@ export type NameOrigin =
   | 'template-fixed'
   | 'neutral-let'
   | 'code'
+  | 'api'
   | 'server'
   | 'client'
   | 'role'
@@ -119,7 +120,13 @@ const EMPTY = NO_TEMPLATE;
 /** The scope of the whole view of `input`. Never throws: a fragment with no AST is skipped. */
 export function viewScope(input: SemanticInput): ViewScope {
   const code = codeNames(input);
-  const role: ReadonlySet<string> = DATA_ROLES.has(input.document.type) ? new Set(['data']) : new Set();
+  const apis = input.apis;
+  // A route that links its `.fudapi` has `data` when the file declares `load`; a layout always reads
+  // the route's, and a file whose links nobody told us about keeps the rule of its role.
+  const data =
+    DATA_ROLES.has(input.document.type) &&
+    (apis === undefined || apis.data || input.document.type === 'layout-document');
+  const role: ReadonlySet<string> = data ? new Set(['data']) : new Set();
   return {
     fragments: collectFragments(input),
     resolve(name, scope) {
@@ -130,6 +137,7 @@ export function viewScope(input: SemanticInput): ViewScope {
       if (name.startsWith('$') || name === CONTEXT) return undefined;
       if (code.neutralLets.has(name)) return 'neutral-let';
       if (code.neutral.has(name)) return 'code';
+      if (apis?.names.has(name) === true) return 'api';
       // `@server` never reaches the browser, and the plain names of `@client` never reach the
       // server (§3.8): read from the view, each is a `ReferenceError` on the other side. Which
       // layer says so is the caller's business.

@@ -28,6 +28,7 @@ import type { Anchor } from './writer.js';
 import { NO_SERVER_FNS, readServerFns, type ServerFns } from './server-fns.js';
 import { sendable } from './client-fns.js';
 import { formSendDiagnostics } from './controls.js';
+import { deferredSpans, serverCut } from './server-cut.js';
 import {
   changeableBindings,
   freeReferences,
@@ -430,6 +431,16 @@ export interface ExtractedCode {
    */
   readonly clientEffects: boolean;
   /**
+   * Whether the browser half does something on its own when it loads, which makes the file
+   * hydrate (SDD-60 §4.8). With regions it is today's rule: a `@client` with a body. Without
+   * them the client zone also holds every declaration the markup does not read, and a
+   * declaration does nothing until it is called: what counts is a top-level statement that
+   * runs, as `document.title = …` or `setInterval(…)`.
+   */
+  readonly clientRuns: boolean;
+  /** Every name the `@code` declares at its top level, whatever its zone: what a linked `.fudapi` may not give again (`FUD1113`). */
+  readonly declared: readonly string[];
+  /**
    * What the client half reads out of `data` — what `load()` returned (SDD-39 §4.8).
    *
    * `load` runs on the server and its result lives there; the moment a `@client` handler can
@@ -554,7 +565,7 @@ export type CodeDocument = ComponentDocument | RouteDocument | PageDocument | La
  * position of the same walk, not a second kind of tree (SDD-39 §4.4).
  */
 /** The markup a document's template is made of, sections included; a layout's is its body. */
-function templateRootsOf(doc: CodeDocument): readonly HtmlContent[] {
+export function templateRootsOf(doc: CodeDocument): readonly HtmlContent[] {
   if (doc.type === 'route-document') return [...doc.markup, ...doc.sections.flatMap((s) => s.children)];
   if (doc.type === 'layout-document' || doc.type === 'page-document') return doc.body.children;
   return doc.template?.children ?? [];
@@ -644,17 +655,22 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
   // its text is spliced (`inject(` → `injectFrom($ioc, `), so it cannot be sliced before the
   // pass that finds those calls has run.
   const neutralKept: { readonly stmt: OxcNode; readonly remaining?: readonly OxcNode[] }[] = [];
+  // A `@code` without regions is browser code, all of it (SDD-60 §4.8): what the markup reads
+  // goes to the neutral zone, which both sides evaluate; everything else to the client's.
+  const regionless = doc.type !== 'layout-document' && parts.length > 0 && parts.every((p) => p.type === 'neutral-js');
+  const cut = regionless ? cutOf(ids, fragments, doc, result.value.ast) : undefined;
   ids.forEach((id, i) => {
     const root = result.value.ast(id);
     const stmts = Array.isArray(root) ? (root as OxcNode[]) : [root as OxcNode];
-    const zone = zoneOf(parts[i]!.type);
     for (const stmt of stmts) {
+      const zone = cut === undefined ? zoneOf(parts[i]!.type) : cut.has(stmt) ? 'neutral' : 'client';
       allStatements.push(stmt);
       if (zone === 'client') clientStatements.push(stmt);
       else {
         if (zone === 'server') serverStatements.push(stmt);
         else neutralStatements.push(stmt);
-        checkNeutralEffect(stmt, map, own);
+        // Without regions `effect` goes anywhere: it is never in the cut (SDD-60 §4.8).
+        if (!regionless) checkNeutralEffect(stmt, map, own);
       }
       // The declarators are read on BOTH sides — a `signal(...)` is as reactive in the
       // neutral zone as in `@client` — and what comes back is what the emit does NOT write
@@ -676,7 +692,9 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     },
     offset: map,
   };
-  checkReservedPrefix(clientStatements, map, own);
+  // The whole `@code` once it has no regions: every name of it is the browser's (FUD0290). Its
+  // imports aside: the expansion of translations writes `$format` and `$message` into them.
+  checkReservedPrefix(regionless ? allStatements.filter((s) => s.type !== 'ImportDeclaration') : clientStatements, map, own);
 
   // The server functions, read before the DI calls: inside a component's machinery `inject`
   // is NOT rewritten (SDD-56 §4.13) — that code runs in a request, not in a render.
@@ -698,7 +716,11 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
   own.push(...fnsRead.diagnostics);
   // `form:=` that cannot send, said HERE and not by the client chunk: a route whose only
   // client-side thing is a broken `form:=` has no chunk at all, and the error would vanish.
-  own.push(...formSendDiagnostics(source, templateRootsOf(doc), sendable(fnsRead.fns)));
+  // A file that links a `.fudapi` sends to ITS functions, which only the graph knows: that
+  // check is `apiDiagnostics`'s (SDD-60 §3.14).
+  if (!('serverLinks' in doc && doc.serverLinks !== undefined)) {
+    own.push(...formSendDiagnostics(source, templateRootsOf(doc), sendable(fnsRead.fns)));
+  }
   const { machinery } = fnsRead.fns;
   const inRender = (stmt: OxcNode): boolean => !(component && machinery.has(stmt));
 
@@ -756,12 +778,16 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     template,
     mutable: changeableBindings(clientStatements),
     clientNames: topLevelBindings(clientStatements),
-    clientFunctions: topLevelFunctions(clientStatements),
+    clientFunctions: topLevelFunctions(regionless ? allStatements : clientStatements),
     setCalls: setCalls(clientStatements),
     // Never the `@server`'s: its imports do not exist in the browser chunk, and a `$subIf` on
     // one is a `ReferenceError` that stops the hydration halfway (`auth`, `Users`…).
     clientImports: importedBindings(allStatements.filter((stmt) => !serverStatements.includes(stmt))),
     clientEffects: clientStatements.some((stmt) => effectCalls(stmt).length > 0),
+    declared: topLevelBindings(allStatements),
+    clientRuns: regionless
+      ? clientStatements.some((stmt) => stmt.type === 'ExpressionStatement')
+      : client.body.length > 0,
     // The template's reads too: a reactive route repaints it in the browser, and a
     // `@foreach (const p of data.users)` there iterates what `fud-data` brought — or nothing.
     dataAccess: readDataAccess(
@@ -1259,6 +1285,51 @@ function readClientStatement(
 }
 
 /** The zone a `@code` part belongs to — the only place the node type becomes a zone. */
+/**
+ * The statements of a region-less `@code` the server evaluates (SDD-60 §4.8): seeded by the
+ * fragments the markup paints with — never a deferred one, and never a bare function name,
+ * which crosses as a cell — plus every top-level `provide` and the `props<T>()` the emit writes
+ * on both sides.
+ */
+function cutOf(
+  ids: readonly number[],
+  fragments: ReadonlyMap<string, number>,
+  doc: CodeDocument,
+  ast: (id: number) => OxcNode | readonly OxcNode[],
+): ReadonlySet<OxcNode> {
+  const statements = ids.flatMap((id) => {
+    const root = ast(id);
+    return Array.isArray(root) ? (root as OxcNode[]) : [root as OxcNode];
+  });
+  const functions = topLevelFunctions(statements);
+  const deferred = deferredSpans(templateRootsOf(doc));
+  const seeds: (OxcNode | readonly OxcNode[])[] = [];
+  for (const [key, id] of fragments) {
+    if (deferred.has(key)) continue;
+    const root = ast(id);
+    const bare = Array.isArray(root) ? undefined : unwrapParens(root as OxcNode);
+    if (bare?.type === 'Identifier' && functions.has(String(bare['name']))) continue;
+    seeds.push(root);
+  }
+  return serverCut({
+    statements,
+    seeds,
+    always: (stmt) => {
+      const call = stmt.type === 'ExpressionStatement' ? (stmt['expression'] as OxcNode) : undefined;
+      if (calls(call, 'provide')) return true;
+      if (stmt.type !== 'VariableDeclaration') return false;
+      return (stmt['declarations'] as readonly OxcNode[]).some((d) => calls(d['init'] as OxcNode | null, 'props'));
+    },
+    effects: (stmt) => effectCalls(stmt).length > 0,
+  });
+}
+
+/** Whether `node` is a call to the bare name `fn`: `provide(…)`, `props<T>()`. */
+function calls(node: OxcNode | null | undefined, fn: string): boolean {
+  const callee = node?.type === 'CallExpression' ? (node['callee'] as OxcNode) : undefined;
+  return callee?.type === 'Identifier' && callee['name'] === fn;
+}
+
 function zoneOf(type: string): CodeZone {
   if (type === 'client-region') return 'client';
   return type === 'server-region' ? 'server' : 'neutral';

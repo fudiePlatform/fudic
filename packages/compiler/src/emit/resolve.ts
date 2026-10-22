@@ -23,7 +23,7 @@ import {
   type Span,
   emptySpan,
 } from '../types/index.js';
-import { FUD0423, FUD0429, FUD0435, FUD0761 } from '@fudic/diagnostics';
+import { FUD0423, FUD0429, FUD0435, FUD0761, FUD1111, FUD1114, FUD1115 } from '@fudic/diagnostics';
 import { expandDocument, type DraggedLink, type OffsetMap } from '../expand/index.js';
 import { holeContractDiagnostics } from '../layout/index.js';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
@@ -48,6 +48,7 @@ import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
  * to be renamed, and which one is the author's call. It is `FUD0761`, raised in `resolveLink`.
  */
 export type { ResolveIo } from '../types/index.js';
+import type { LinkedApi, ResolveIo as Io } from '../types/io.js';
 
 /** A component reached through the link graph. */
 export interface ResolvedComponent {
@@ -425,6 +426,19 @@ export interface DocumentGraph extends ComponentGraph {
    * nothing while a second field would cost them a rewrite.
    */
   readonly layouts: readonly ResolvedLayout[];
+  /** The `.fudapi` the entry links, in order (SDD-60 §3.14). */
+  readonly serverApis: readonly ResolvedApi[];
+}
+
+
+/** A `<link rel="server">` of the entry, followed (SDD-60 §3.14). */
+export interface ResolvedApi {
+  readonly link: ElementNode;
+  readonly href: string;
+  /** Absolute path of the `.fudapi`. */
+  readonly path: string;
+  /** What the host said about it; absent when the host cannot know. */
+  readonly api?: LinkedApi;
 }
 
 /**
@@ -501,8 +515,41 @@ export function resolveDocument(entryPath: string, io: ResolveIo): ParseResult<D
     entryLinkTags,
     snippetFiles: [...new Set([...loaded.snippetFiles, ...walk.snippetFiles])],
     layouts,
+    serverApis: serverApis(entry, entryPath, io, diagnostics),
   };
   return diagnostics.length === 0 ? ok(graph) : withDiagnostics(graph, diagnostics);
+}
+
+/**
+ * The `.fudapi` the entry links (SDD-60 §3.14), with what the host knows of each: a file that
+ * does not exist (`FUD1111`), a component that links a page's contract (`FUD1114`), a route that
+ * links another route's `load` (`FUD1115`). The `href` shape was checked by structure.
+ */
+function serverApis(entry: StructuredDocument, entryPath: string, io: Io, diagnostics: Diagnostic[]): ResolvedApi[] {
+  if (entry.type !== 'component-document' && entry.type !== 'route-document' && entry.type !== 'page-document') return [];
+  const out: ResolvedApi[] = [];
+  for (const link of entry.serverLinks ?? []) {
+    const href = linkHref(link) ?? '';
+    if (!href.endsWith('.fudapi')) continue;
+    const path = io.resolve(entryPath, href);
+    if (io.api === undefined) {
+      out.push({ link, href, path });
+      continue;
+    }
+    const api = io.api(path);
+    if (api === undefined) {
+      diagnostics.push(FUD1111({ span: link.span, href, problem: 'not-found' }));
+      continue;
+    }
+    if (entry.type === 'component-document') {
+      const keyword = api.load ? 'load' : api.paths ? 'paths' : api.layout ? 'layout' : undefined;
+      if (keyword !== undefined) diagnostics.push(FUD1114({ span: link.span, keyword }));
+    } else if (api.load && api.route !== entryPath) {
+      diagnostics.push(FUD1115({ span: link.span, href }));
+    }
+    out.push({ link, href, path, api });
+  }
+  return out;
 }
 
 /**

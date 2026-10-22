@@ -6,6 +6,6 @@ export const FUD0621 = (p: SourceInput): SourceDiagnostic =>
   source(
     'FUD0621',
     'warning',
-    'The client half reads `data` and this route declares no `load`: what it finds there is `undefined`, always.',
+    'This route reads `data` and no `.fudapi` it links declares `load`: what it finds there is `undefined`, always.',
     p,
   );

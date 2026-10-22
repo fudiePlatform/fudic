@@ -30,6 +30,12 @@ export interface SemanticInput {
    * The analyzer is told — it never reads the configuration itself.
    */
   readonly locales?: boolean;
+  /**
+   * What the linked `.fudapi` bring into the view without an import (SDD-60 §3.14): whether one
+   * gives `data` (it declares `load`), and the names of their functions and forms. ABSENT when
+   * the caller cannot know: `data` then follows the role, as before.
+   */
+  readonly apis?: { readonly data: boolean; readonly names: ReadonlySet<string> };
 }
 
 /**

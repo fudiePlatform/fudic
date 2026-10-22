@@ -11,7 +11,7 @@
  */
 import type { OffsetMap } from '../expand/offsets.js';
 
-export interface ResolveIo {
+export interface ResolveIo extends ApiIo {
   /** Read a `.fud` file's text by absolute path. */
   read(path: string): string;
   /**
@@ -29,4 +29,34 @@ export interface ResolveIo {
    * what `read` returned is what is on disk.
    */
   origin?(path: string): { readonly source: string; readonly map: OffsetMap } | undefined;
+}
+
+/**
+ * What the compiler needs to know about a linked `.fudapi` (SDD-60 §3.14), answered by the host.
+ *
+ * The compiler does not read contracts: it stays free of `@fudic/api` as it is free of the
+ * filesystem. The host parses the file and hands over its facts. Structural, so a host may
+ * build it from anything.
+ */
+export interface LinkedApi {
+  /** `<id>` of the file: `routes/usuarios`. Its module is `fudic:<id>`. */
+  readonly id: string;
+  /** It declares `load` (and so gives the page its `data`). */
+  readonly load: boolean;
+  readonly paths: boolean;
+  readonly layout: boolean;
+  /** The names of its functions. */
+  readonly functions: readonly string[];
+  /** Its own forms, and the forms its functions take: the names the view gets. */
+  readonly forms: readonly string[];
+  /** The `.fud` it is the sibling of, when it sits next to a route; absolute. */
+  readonly route?: string;
+}
+
+export interface ApiIo {
+  /**
+   * The facts of the `.fudapi` at `path`, or `undefined` when there is none. A host without
+   * the method cannot know, and every rule that would need it stays silent.
+   */
+  api?(path: string): LinkedApi | undefined;
 }

@@ -15,9 +15,9 @@ export const FUD0700 = (p: FUD0700Params): SourceDiagnostic =>
 function message(p: FUD0700Params): string {
   switch (p.kind) {
     case 'server-region':
-      return 'a layout has no `@server` region: it would be a second `load` with no route to call it. Its data comes from the route, which resolves its props in `export function layout(ctx, data)`';
+      return "a layout has no server: its data comes from the route, whose `.fudapi` resolves the layout's props with `layout`";
     case 'client-region':
-      return 'a layout has no `@client` region: there is no layout chunk for it to travel in, and a layout prop is a render value that never repaints';
+      return 'a layout has no browser code: there is no layout chunk for it to travel in, and a layout prop is a render value that never repaints';
     case 'statement':
       return 'the `@code` of a layout declares its props and nothing else: this statement would run in both renderers with nobody able to say when';
     case 'reactive':

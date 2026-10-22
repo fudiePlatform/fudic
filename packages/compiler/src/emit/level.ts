@@ -164,7 +164,7 @@ export function isIntrinsicallyHydratable(comp: ResolvedComponent): boolean {
   const code = codeOf(comp);
   return (
     code.signals.length > 0 ||
-    code.client.body.length > 0 ||
+    code.clientRuns ||
     code.di.some((d) => d.kind === 'inject' && d.zone !== 'server') ||
     hasHookup(comp)
   );
@@ -397,7 +397,7 @@ export function isReactiveRoute(graph: ComponentGraph): boolean {
   if (entry === undefined) return false;
   return (
     entry.code.signals.length > 0 ||
-    entry.code.client.body.length > 0 ||
+    entry.code.clientRuns ||
     hasHookupIn(graph.entrySource, entry.roots)
   );
 }

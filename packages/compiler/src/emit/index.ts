@@ -29,8 +29,10 @@ export type {
   ResolvedComponent,
   ComponentGraph,
   ResolvedLayout,
+  ResolvedApi,
   DocumentGraph,
 } from './resolve.js';
+export { apiDiagnostics } from './api-links.js';
 export {
   emitComponentModule,
   emitComponentModuleMapped,

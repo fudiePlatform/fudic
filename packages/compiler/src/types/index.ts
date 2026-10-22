@@ -16,4 +16,4 @@ export { ModeStack } from './mode.js';
 
 export type { Node, HydratableNode } from './node.js';
 
-export type { ResolveIo } from './io.js';
+export type { ApiIo, LinkedApi, ResolveIo } from './io.js';

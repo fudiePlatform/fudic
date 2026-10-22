@@ -23,6 +23,7 @@ import {
   FUD1099,
   FUD1100,
   FUD1101,
+  FUD1010,
   type RelatedLocation,
   type SourceDiagnostic,
   type Span,
@@ -190,6 +191,8 @@ function failCodes(list: readonly { readonly code: Name }[], c: Ctx): void {
 
 function fn(decl: FnDecl, c: Ctx): void {
   const label = `${decl.verb} ${decl.name.text}`;
+  // `_error` is painted with the error as its `data` and has no URL of its own (FUD1010).
+  if (c.api.route?.error === true) c.out.push(FUD1010({ span: decl.name.span, name: decl.name.text }));
   for (const a of decl.args) checkType(a.type, c.index, {}, c.out);
   unique(decl.args.map((a) => a.name), label, c);
   if (decl.returns !== undefined) checkType(decl.returns.type, c.index, {}, c.out);
@@ -225,6 +228,7 @@ function scalar(type: TypeExpr, c: Ctx): boolean {
 
 function load(decl: LoadDecl, c: Ctx): void {
   routeOnly(decl.keyword, 'load', c);
+  if (c.api.route?.error === true) c.out.push(FUD1010({ span: decl.keyword, name: 'load' }));
   fields(decl.fields, 'load', c);
   middlewares(decl.uses, decl.skips, c.index.inherited(c.source, decl), c);
   failCodes(decl.fails, c);

@@ -9,4 +9,4 @@ export type FUD1005Params = SourceInput & {
 
 /** `form:=` naming something that is not a server function of the file (SDD-56). */
 export const FUD1005 = (p: FUD1005Params): SourceDiagnostic =>
-  source('FUD1005', 'error', `\`form:=\` sends the form to a server function of this file, and \`${p.name}\` is not one`, p);
+  source('FUD1005', 'error', `\`form:=\` sends the form to a function of a linked \`.fudapi\`, and \`${p.name}\` is not one`, p);

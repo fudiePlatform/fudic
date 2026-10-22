@@ -694,6 +694,12 @@ salen del `.fudapi` enlazado (parser de `@fudic/api`, sin Oxc). `FUD0393` y `FUD
   corte; nada más del `@code` corre fuera del navegador.
 - `effect` nunca está en el corte. Desaparece `FUD0570`: `effect` vale en cualquier sitio del
   `@code`.
+- *Precisado al implementar:* lo que lee un enlace diferido (`@evento`, `bus:`, `ref=`) no
+  siembra el corte, ni el nombre pelado de una función pasado a una prop (cruza como celda, con
+  su stub en el servidor, como hoy); `props<T>()` está siempre en el corte. Un layout no tiene
+  corte: su `@code` solo declara props. Sin regiones, hidrata lo que hoy hidrataba más un
+  `@code` con una sentencia de nivel superior que se ejecuta al cargar (`document.title = …`,
+  `setInterval(…)`); una declaración que el markup no lee no hace hidratar.
 - El cliente ejecuta el `@code` entero, como hoy ejecuta neutro + `@client`.
 - **El nivel de hidratación no cambia** para ningún componente ni ruta del repositorio: lo que hoy
   era neutro y no forzaba hidratar sigue sin forzarlo (§6, criterio 33).

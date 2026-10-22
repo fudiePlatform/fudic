@@ -16,7 +16,7 @@
  * would leave a page pointing at chunks of the previous build.
  */
 
-import { allComponents, componentOf, type ComponentGraph, type ResolvedComponent } from './resolve.js';
+import { allComponents, componentOf, type ComponentGraph, type DocumentGraph, type ResolvedComponent } from './resolve.js';
 import type { CodeWriter } from './writer.js';
 import { classifyAttribute } from '../binding/index.js';
 import type { Diagnostic } from '../types/index.js';
@@ -321,7 +321,7 @@ export function routeBlocksOf(
     cells: cells
       .map((c) => (c.kind === 'signal' ? `{ of: ${c.name}, value: ${c.name}() }` : `{ of: ${c.name} }`))
       .join(', '),
-    data: dataExpression(entry.code, out),
+    data: dataExpression(entry.code, loads(graph, entry.code), out),
   };
 }
 
@@ -340,10 +340,19 @@ export function routeBlocksOf(
  * `data` and declares no `load` finds `undefined` there forever (`FUD0621`), and the emit must
  * not turn that into a throw while it says so.
  */
-function dataExpression(code: ExtractedCode, out: Diagnostic[]): string | null {
+/**
+ * Whether the route has a `load`: its `@server` exports one, or a `.fudapi` it links declares
+ * one (SDD-60). A link the host could not read is given the benefit: nothing is said.
+ */
+function loads(graph: ComponentGraph, code: ExtractedCode): boolean {
+  const apis = 'serverApis' in graph ? (graph as DocumentGraph).serverApis : [];
+  return code.serverExports.includes('load') || apis.some((a) => a.api === undefined || a.api.load);
+}
+
+function dataExpression(code: ExtractedCode, hasLoad: boolean, out: Diagnostic[]): string | null {
   const access = code.dataAccess;
   if (access.kind === 'none') return null;
-  if (!code.serverExports.includes('load')) {
+  if (!hasLoad) {
     out.push(FUD0621({ span: access.at }));
   }
   if (access.kind === 'all') return 'data';

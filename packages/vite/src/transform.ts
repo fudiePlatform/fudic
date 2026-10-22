@@ -21,6 +21,7 @@ import { assetSheetFrom, assetUrlFrom, type LinkedAssets } from './linked-assets
 import {
   resolveDocument,
   allComponents,
+  apiDiagnostics,
   contractDiagnostics,
   injectionDiagnostics,
   entryComponent,
@@ -385,6 +386,8 @@ export function transformFud(
         ...resolved.diagnostics,
         ...out.diagnostics,
         ...contractDiagnostics(graph),
+        // What the linked `.fudapi` say about the file (SDD-60 §3.14): names given twice, `form:=`.
+        ...apiDiagnostics(graph),
         ...injectionDiagnostics(graph, io),
         ...adoptDiagnostics(graph, styles),
       ],

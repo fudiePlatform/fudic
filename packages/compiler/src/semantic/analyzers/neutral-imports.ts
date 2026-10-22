@@ -17,6 +17,9 @@ export const neutralImports: Analyzer = {
   run(input, report) {
     const code = documentCode(input.document);
     if (code === undefined) return;
+    // Without regions there is no neutral zone: the `@code` is browser code, and the server
+    // evaluates only what the markup reads, which a bare import never is (SDD-60 §4.8).
+    if (code.parts.every((part) => part.type === 'neutral-js')) return;
 
     for (const part of code.parts) {
       if (part.type !== 'neutral-js') continue;
