@@ -520,6 +520,53 @@ Lo que destapa:
 - **Un código de TypeScript** (`TS2322`) no tiene `.md`: la respuesta lo dice y no inventa nada.
 - **Un código que no existe** (el LLM se lo inventa) es un diagnóstico propio, no un texto vacío.
 
+### 5.12. `fudic_render` (propuesta, 2026-10-22)
+
+Pinta **una pieza** en el servidor y devuelve lo que sale, sin navegador ni app arrancada.
+Entrada: `{ route }` (una URL concreta, `/productos/42`) o `{ component, fixture?, props? }`, y
+`backend: "fake" | "connected"` para las funciones que la pieza llame.
+
+Las piezas ya existen: una ruta se pinta con `renderRouteHtml`, como en `vite dev`; un componente
+suelto, con la **página anfitriona virtual** de `@fudic/testing` (SDD-57 §4.2), que lo instancia
+con sus props como lo haría un padre. Nada nuevo que mantener.
+
+```json
+{
+  "fudicVersion": "0.0.1",
+  "commit": "…",
+  "component": "acme-button", "fixture": "disabled",
+  "as": "outline",
+  "outline": "button \"Save\" [disabled]",
+  "html": null,
+  "functions": [],
+  "diagnostics": [],
+  "next": null
+}
+```
+
+- **`fixture` antes que `props`.** Pintar con un caso de la `.fudspec` es pintar un estado que
+  alguien aprobó; las props a mano quedan para probar algo que aún no es caso.
+- **`as: "outline" | "html"`.** El HTML de una página con DSD, estilos y mapas de hidratación son
+  miles de tokens. `outline` (por defecto) es el árbol de roles, nombres y estados, el mismo
+  vocabulario con el que la `.fudspec` busca (`role:tab/"Tab B"`): el LLM ve lo que vería un
+  lector de pantalla. `html` cuando hay que mirar el markup, con `select` para un trozo.
+- **`functions`**: qué funciones llamó la pieza y si respondió el fake o el backend.
+- **En chat**, además, la vista previa con MCP Apps: el HTML con su DSD pintado en el cliente.
+  Es estático: el DSD se ve, la interacción no (para eso `spec_run` o `fudic_preview`).
+
+**`render` frente a `preview`**: `render` es una pieza, al instante y sin servidor; `preview` es
+la app entera corriendo en una URL.
+
+Lo que destapa:
+
+- **`outline` no existe.** happy-dom no calcula el árbol de accesibilidad; Testing Library
+  aproxima roles y nombres, y no baja por shadow roots sin la ayuda de `@fudic/testing`. O se
+  construye sobre esa ayuda, o el `outline` sale del navegador del banco (exacto, pero segundos).
+- **La página anfitriona vive en `node_modules/.fudic-test/`**: el MCP la comparte con los tests
+  o tiene la suya. En remoto, en la copia de trabajo.
+- **Las props de un `via: 'ssr'` tienen que ser JSON** (SDD-57 §3.2): una prop función no se puede
+  pintar así, y la respuesta tiene que decirlo como diagnóstico, no lanzar.
+
 ## 6. `fudic_guide`
 
 Envoltura: `{ fudicVersion, topic, related, body }`, con `body` en markdown en inglés.
