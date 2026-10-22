@@ -680,6 +680,9 @@ remoto. Se mantienen como dos superficies; `fudic_spec_run` es el punto donde se
 - **Coste del pase tipado en remoto:** un programa TS en memoria por llamada; hay que medirlo.
 - **Fake con estado o sin él:** si un `save` se ve después en un `search`.
 - **Generadores que faltan en la CLI:** `.fudapi` y contrato del backend.
+- **El fake, pendiente de su propia SDD** (§10.7): estáticos compartidos, backend en el navegador
+  sobre IndexedDB, dónde se engancha, volver a la semilla. Pedro lo abordará al afrontar el fake;
+  no bloquea el MCP.
 - ~~**`fudic check` en el builder (§2.2)**~~ Resuelto en §5.13: el builder ejecuta el build, que
   falla con los mismos diagnósticos.
 - **El fake (§3, camino 2) enmienda la decisión 6 de SDD-60** (sin handler, 404). Hay que anotarlo
@@ -1000,7 +1003,10 @@ ni usuario**: nadie inicia sesión en una demo.
 - Cierra la pregunta de §9: **el fake tiene estado**. Lo que se guarda se ve después en la
   búsqueda.
 
-Propuesta (decisiones técnicas, anotadas para revisar):
+**Pendiente (Pedro, 2026-10-22):** todo lo que sigue se decide al escribir la SDD del fake, no
+aquí. No afecta al MCP: para él el fake es `backend: "fake"` y el estado `fake` de cada función.
+
+Ideas apuntadas para entonces, sin decidir:
 
 - **Se engancha en el transporte de `$fn`, no en el Service Worker.** El SW de fudic podría
   atender `/_fudic/fn/` y ya pinta las rutas `sw`, pero en un host ajeno (el iframe de un artifact)
