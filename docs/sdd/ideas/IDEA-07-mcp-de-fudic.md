@@ -614,8 +614,8 @@ Lo que destapa:
 - **Lo que pasa en el navegador del usuario no llega al MCP**: un error de hidratación en la
   consola solo lo ve quien la abre. Para eso está `spec_run`; `preview` es para mirar, no para
   comprobar.
-- **Una preview remota es pública o no.** Va con la cuenta (OAuth, §2.4): privada por defecto y
-  compartible con un enlace, porque enseñársela a un cliente es para lo que existe.
+- **Decidido (Pedro, 2026-10-22): una preview remota es privada por defecto y compartible con un
+  enlace.** Va con la cuenta (OAuth, §2.4), y enseñársela a un cliente es para lo que existe.
 - **El builder no ejecuta un `fudic check` aparte (§9):** ejecuta el build, y el build falla con
   los mismos diagnósticos, de tipos incluidos. Un único origen (§5.5).
 
