@@ -191,6 +191,31 @@ Cada meta cierra una fase. La fase no se da por terminada hasta que Pedro la pru
 | [ ] | 51 | 35 | **Fuera las zonas.** `FUD1110` activo; el parser del `@code` ya no da nodos de región | `compiler` | `src/code/*` |
 | [ ] | 56 | 51 | **Los tests de la migración.** Criterios 21, 25 y 34 (búsqueda en el repo), la suite del ejemplo en verde y la gramática del `.fud` sin regiones (snapshot) | — | `test/` |
 
+**Relevo (tras la tarea 50).** Lo que una sesión nueva necesita para seguir por la 63:
+
+- **Tests que siguen escribiendo regiones a propósito**, porque prueban lo que se retira. Se borran o
+  reescriben con su código en la 63, la 35 o la 51 (`grep -rlE "@(server|client) \{"` los da):
+  - `compiler`: `code/code`, `region/region`, `redact`, `emit/{client-fns, server-fns, neutral,
+    server-cut, cells, di, di-diagnostics, layout-props, oxc-code, reserved, route-blocks,
+    route-client}`, `semantic/{analyze, layout-load, opaque-scan, view}`. En los de `emit/` solo
+    quedan zonificados los casos sobre zonas (FUD0570, FUD0681/0682, «zona neutra»…), no el fichero.
+  - `vite`: `analyze`, `build-sourcemaps-erased`, `http-functions`, `http-load`, `plugin` (el caso
+    `?server`), `server`, `strategy`.
+  - `language-core`: `code`, `emit`, `layout-resolver`, `server-fns`, `template` (dos casos).
+  - `language-server`: `acceptance/layout-props-action` (rama `@server` de la bombilla),
+    `services/{plugin, semantic-tokens, snippets, snippets-parse, template-scope}`.
+  - `typecheck`: `checker` (virtual `.fud.server`), `js-batch` (registro de regiones),
+    `reserved-dollar` (un caso).
+  - `formatter`: `print/razor`, `leaf/collect` (impresión de regiones; tarea 51).
+  - `vscode`: `grammar`, `manifest`, `acceptance/criteria` (regla y plegado de regiones).
+- **Producto que aún escribe regiones, para la 63:** `fudic g page --server` (`serverCodeBlock` de
+  `cli/src/templates.ts`), además de `fudic add http` y `fudic g form`, que escriben TS público.
+- **Cobertura:** `@fudic/testing` está bajo el 100 % solo en las ramas de `src/http.ts`, del despacho
+  `r/`/`c/` (`server.ts`, `page.ts`, `layout.ts`) y del grafo sin borrar (`client-graph.ts`);
+  vuelve sola al quitar eso en la 63 y la 35.
+- **Tests inestables:** `vite` `i18n-serve` y `api-dev` fallan a veces con la máquina cargada y
+  pasan solos; reejecútalos aislados antes de tomarlos por rotura.
+
 ## Fase 12 — entrega · META 6 (4)
 
 | ✓ | # | dep | tarea | package | fichero |
