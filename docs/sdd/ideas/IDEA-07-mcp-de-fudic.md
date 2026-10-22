@@ -129,7 +129,7 @@ estar en verde antes de la siguiente (§10.2):
 
 1. Props y criterios en la `.fudspec`, aprobados en el historial de la pieza (§5.8).
 2. `.fudapi`: el contrato (solo rutas y componentes con servidor).
-3. Tests unitarios, en rojo.
+3. Tests unitarios escritos; tests y criterios en rojo (§5.10).
 4. `.fud`: la vista, hasta tests y criterios en verde.
 5. Conectar o falsear cada función (solo con servidor).
 6. JSDoc del componente y de cada prop.
@@ -483,7 +483,7 @@ El flujo de un componente pedido en lenguaje natural:
    (`fail`, no `broken`): `spec_run` y `test`, los dos al historial.
 4. El `.fud`: el bucle corto es `fudic_test` (milisegundos); `spec_run` (segundos) confirma.
 
-Cambia la fase 3 de §4.1 y §10.2: de «tests unitarios en rojo» a **«tests y criterios en rojo»**.
+**Decidido (Pedro, 2026-10-22).** La fase 3 de §4.1 y §10.2 pasa a «tests y criterios en rojo».
 
 ## 6. `fudic_guide`
 
@@ -505,6 +505,10 @@ portable): el MCP llega detrás de las dos.
 - **`view`:** forma del fichero, valores, operadores, control, tipos portables, «los manejadores
   son libres», y una tabla **«Instead of… write…»** con los reflejos de JS que trae un LLM
   (`filter`, `toFixed`, `.length`, `new Date`, `||`).
+- **`testing`:** la API de `@fudic/testing` (`mount`, `visit`, consultas, gestos, `shadowOf`), la
+  tabla de §5.10 (qué va a la `.fudspec` y qué a vitest) con su regla «lo que ya es un criterio
+  no se repite como test», el rojo bueno (`fail`) frente al que no vale (`broken`), y «en la
+  fase 4 no se tocan los tests».
 
 Para que no mienta:
 
@@ -629,7 +633,7 @@ Propuesta:
    |---|---|---|---|
    | 1 | Props: nombre, tipo, defecto, significado | El usuario las describe; el LLM propone; el usuario aprueba | El tipo de `props<T>()` y las fixtures |
    | 2 | Criterios | El usuario aprueba | `.fudspec` |
-   | 3 | Tests unitarios, en rojo | El LLM | `.test.ts` |
+   | 3 | Tests unitarios; tests y criterios en rojo (§5.10) | El LLM | `.test.ts`, historial |
    | 4 | La vista, hasta tests y criterios en verde | El LLM | `.fud` |
    | 5 | Documentación | El LLM, desde props y criterios | JSDoc del `@code` y de cada prop |
    | 6 | Su página en el escaparate | El LLM | `showcase` (§10.1) |
