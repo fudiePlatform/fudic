@@ -1029,3 +1029,61 @@ Lo que destapa:
   comprobarlas contra el artifact real antes de dar el export por bueno.
 - **Es la SDD del fake**: generado desde el `.fudapi`, en el navegador, con estado en IndexedDB y
   export estático. Sustituye al fake de servidor que proponía §3 (camino 2).
+
+## 11. Impacto: cuántas SDD salen y qué se toca (2026-10-22)
+
+Para medir el coste antes de escribir ninguna. Sale de lo que cada sección destapó (§5–§10),
+contrastado con el código de hoy.
+
+### 11.1. Lo que tiene que estar antes
+
+| Qué | Estado hoy | Por qué bloquea |
+|---|---|---|
+| **SDD-60** (`.fudapi`) | En su worktree, 54 de 64 tareas, sin merge | `status`, `check`, `call`, `g api`, las funciones `fake`/`connected` y la guía `fudapi` hablan de él |
+| **SDD-61** (vista portable) | `Listo`, sin implementar | Las secciones generadas de la guía `view` salen de su lista blanca (§6) |
+
+El MCP local puede empezar con SDD-60 en main; la guía `view` completa espera a SDD-61.
+
+### 11.2. Las SDD del MCP local (§7, paso 1)
+
+Tamaño relativo entre ellas (S, M, L), no horas.
+
+| # | SDD | Qué hace | Paquetes | Tam. | Depende de |
+|---|---|---|---|---|---|
+| A | **El catálogo que no miente** | Forma de cada `.md` comprobada en test (`title`/`why`/`fix`), sin citas a SDD, cada ejemplo del `fix` compila como fixture; `FUD0191` y `FUD0907` alineados con la guía; títulos de bombillas en inglés; la bombilla de `FUD0540` solo cuando es correcta; diagnósticos para los reflejos de React que no tienen código (§6) | `diagnostics`, `language-server` (`actions.ts`), `compiler` (códigos nuevos) | M | — |
+| B | **El contrato completo y los tokens** | Al `Contract` de hoy (props con tipo, slots con nombre, eventos por nombre, doc) le faltan: el `default` de cada prop, el JSDoc de cada prop en el contrato, el slot por defecto, el tipo del `detail` de un evento, las CSS parts. Tokens como símbolos: custom properties con su `/** */`, índice, completado de `var(--` y hover (§10.3, §10.4) | `language-server` (`mode.ts`, índice), `language-core`, `compiler` (parts) | M | — |
+| C | **Ejecutar con evidencia para una máquina** | `runSpecs` (el banco) y vitest llamados en proceso con un resultado estructurado: `expected`/`got` común por término, `fail` frente a `broken`, problemas con código FUD; el `outline` (árbol de roles) en happy-dom y en el navegador del banco; **volver del DOM al span del `.fud`** (§5.7, §5.9, §5.12) | `workbench`, `spec`, `terms`, `testing`, `compiler` (identidad de nodo → span) | L | A |
+| D | **El historial de la pieza** | Formato del fichero, escritura solo por añadido, `merge=union`, hash de las entradas (`.fud`, `.fudspec`, fixtures, imports) y de las capturas; `approved`, `accepted`, `reopened`, `look`, ejecuciones; caducidad (§5.8, §10.5) | paquete nuevo o `spec`; `cli` (`.gitattributes`) | M | C |
+| E | **La CLI para agentes** | `g api` (el `.fudapi`), `g showcase` desde las fixtures, `fudic new` escribe `.mcp.json` y `AGENTS.md`/`CLAUDE.md`; los planes como API pública con su esquema de opciones (§5.3, §10.1) | `cli` | S–M | SDD-60 |
+| F | **`@fudic/mcp` local** | El servidor (stdio), `instructions`, el prompt `new-app`, y las herramientas: `guide` (temas generados + escritos, con cada ejemplo como fixture), `status`, `symbols`, `describe`, `check`, `fix`, `format`, `new`/`generate`/`add`, `spec_run`, `test`, `render`, `call` (sobre el servidor en memoria de SDD-57), `preview` local (Vite en proceso, errores del servidor como diagnósticos) | paquete nuevo; usa `language-server` (servicios en proceso), `cli`, `workbench`, `testing`, `vite` | L | A–E, SDD-60 |
+
+**Seis SDD** para el paso 1. A, B y E pueden ir en paralelo; C antes que D; F al final, pero
+puede arrancar con lo que ya exista y crecer.
+
+### 11.3. Las que no bloquean el MCP local
+
+| # | SDD | Qué hace | Tam. |
+|---|---|---|---|
+| G | **Accesibilidad y normas del usuario** | axe-core dentro de `spec_run`; la regla opcional `tokensOnly` en `fudic.json` que hace cumplir `check` (usa B) | M |
+| H | **Baseline de HTML/CSS** | Un analizador sobre `web-features` que diagnostica lo que no es baseline | M–L |
+| I | **Conectar con el backend** | Importar OpenAPI/`.proto`/GraphQL, generar el cliente tipado, `backend_describe`, `fudic_contract`; primero en TS, el resto con los runtimes políglotas (IDEA-05) | L |
+| J | **El fake** | Pendiente de Pedro (§10.7) | ? |
+
+### 11.4. Lo que no es framework (§7, pasos 2–4)
+
+Git y copias de trabajo en servidor, builder, imagen de Node, previews por rama, MCP remoto, y la
+plataforma (aislamiento, secretos, cuotas, OAuth). Es **otro producto**, con su propia tanda de
+SDD; ninguna toca el compilador. Las imágenes de otros lenguajes esperan a la suite de
+conformidad de SDD-61.
+
+### 11.5. Lo que toca el compilador
+
+Poco, y concreto:
+
+- **Identidad de nodo → span del `.fud`** (C): la pieza difícil. La hidratación ya identifica
+  nodos; falta que esa identidad lleve de vuelta al fuente.
+- **Diagnósticos nuevos** para los reflejos de React (A), si el parser no los rechaza ya con uno.
+- **CSS parts** en el contrato (B).
+
+El resto vive en `language-server`, `workbench`, `testing`, `cli`, `diagnostics` y el paquete
+nuevo.
