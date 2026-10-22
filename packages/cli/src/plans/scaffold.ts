@@ -10,7 +10,7 @@
 
 import { CONFIG_FILE, ID_PATTERN, PREFIX_PATTERN } from '@fudic/config';
 import { FUD0443, FUD0447, FUD0725 } from '@fudic/diagnostics';
-import { COMPONENTS_DIR, LAYOUTS_DIR, ROUTES_DIR } from '@fudic/conventions';
+import { API_TYPES_DIR, BROWSER_DIR, COMPONENTS_DIR, LAYOUTS_DIR, ROUTES_DIR, SERVER_DIR } from '@fudic/conventions';
 import { GLOBALS_DTS, GLOBALS_FILE_NAME } from '@fudic/language-core';
 import { absolute, hrefBetween, joinPosix } from '../paths.js';
 import { FUDIC_VERSION, targetChange, TYPESCRIPT_VERSION, VITE_VERSION, VITEST_VERSION } from '../project.js';
@@ -87,10 +87,21 @@ export function scaffoldRefusal(
   return null;
 }
 
+/**
+ * The `.d.ts` the plugin generates from each `.fudapi` (SDD-60 §3.11). Named in the `include`
+ * because `**` never walks into a dot folder: without it the handlers in `src/server` cannot
+ * see `fudic:<id>`.
+ */
+const API_TYPES_GLOB = `${API_TYPES_DIR}/**/*.d.ts`;
+
+/** What keeps an empty folder in git. */
+const KEEP = '.gitkeep';
+
 /** The `tsconfig.json` of a project: its own, or the workspace base plus an `include`. */
 export function tsconfigFor(site: ProjectSite): string {
-  if (site.up === null) return renderTemplate('tsconfig.json.tmpl', {});
+  if (site.up === null) return renderTemplate('tsconfig.json.tmpl', { apiTypes: API_TYPES_GLOB });
   return renderTemplate('workspace/tsconfig.project.json.tmpl', {
+    apiTypes: API_TYPES_GLOB,
     base: `${site.up}/tsconfig.base.json`,
     globals: `${site.up}/${GLOBALS_FILE_NAME}`,
   });
@@ -141,7 +152,12 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
     [joinPosix(site.dir, '.gitignore'), renderTemplate('gitignore.tmpl', {})],
     [
       joinPosix(site.dir, CONFIG_FILE),
-      renderTemplate('fudic.json.tmpl', { id: opts.id, prefix: prefixField(opts.prefix) }),
+      renderTemplate('fudic.json.tmpl', {
+        id: opts.id,
+        prefix: prefixField(opts.prefix),
+        server: SERVER_DIR,
+        browser: BROWSER_DIR,
+      }),
     ],
     [joinPosix(site.dir, 'tsconfig.json'), tsconfigFor(site)],
     // The ambient declarations the templates are typed against, written from the same
@@ -174,6 +190,10 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
         : renderTemplate('route.fud', { layoutHref: frame.href, code: '', title: 'Home', sections: '' }),
     ],
     [joinPosix(site.dir, ROUTES_DIR, 'index.test.ts'), pageTest('/')],
+    // Where the handlers of the `.fudapi` go, and the halves that run in the browser
+    // (SDD-60 §3.15): empty, and named in `fudic.json` so moving them is one line.
+    [joinPosix(site.dir, SERVER_DIR, KEEP), ''],
+    [joinPosix(site.dir, BROWSER_DIR, KEEP), ''],
   ];
 }
 

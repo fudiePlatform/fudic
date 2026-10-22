@@ -118,7 +118,7 @@ Added @fudic/i18n 0.0.1 to web
   Installed dependencies (pnpm)
   locales es, en in fudic.json: fudic translate writes their catalogs
 `);
-    expect(json(fs, 'shop/apps/web/fudic.json')).toEqual({ id: 'web', kind: 'app', prefix: 'web', locales: ['es', 'en'] });
+    expect(json(fs, 'shop/apps/web/fudic.json')).toEqual({ id: 'web', kind: 'app', prefix: 'web', server: 'src/server', browser: 'src/browser', locales: ['es', 'en'] });
 
     const second = await ok(fs, 'add', 'i18n', '--locales', 'fr', '--project', 'web', '--cwd', SHOP);
     expect(second.out).toBe('\nUpdated web\n  locales fr in fudic.json: fudic translate writes their catalogs\n');

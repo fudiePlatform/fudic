@@ -29,6 +29,7 @@ export default defineConfig({
   resolve: {
     // Dev-time source resolution of the workspace packages (same pattern as vite → compiler).
     alias: {
+      '@fudic/api': fileURLToPath(new URL('../api/src/index.ts', import.meta.url)),
       '@fudic/compiler': fileURLToPath(new URL('../compiler/src/index.ts', import.meta.url)),
       '@fudic/conventions': fileURLToPath(new URL('../conventions/src/index.ts', import.meta.url)),
       '@fudic/formatter': fileURLToPath(new URL('../formatter/src/index.ts', import.meta.url)),

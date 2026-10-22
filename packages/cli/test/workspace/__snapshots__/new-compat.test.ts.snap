@@ -213,7 +213,9 @@ interface $LoadContext<P extends string> {
 ",
   "demo/fudic.json": "{
   "id": "demo",
-  "kind": "app"
+  "kind": "app",
+  "server": "src/server",
+  "browser": "src/browser"
 }
 ",
   "demo/package.json": "{
@@ -245,6 +247,7 @@ interface $LoadContext<P extends string> {
   }
 }
 ",
+  "demo/src/browser/.gitkeep": "",
   "demo/src/fudic-env.d.ts": "// Lets a .ts file import a .fud component: its tests and its fixtures.
 declare module '*.fud' {
   export type $Props = any;
@@ -294,6 +297,7 @@ test('answers /', async () => {
   expect(page.status).toBe(200);
 });
 ",
+  "demo/src/server/.gitkeep": "",
   "demo/sw.json": "{
   "shell": [],
   "resources": {
@@ -321,7 +325,7 @@ test('answers /', async () => {
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["**/*.ts", "**/*.fud", "fudic-globals.d.ts"]
+  "include": ["**/*.ts", "**/*.fud", "fudic-globals.d.ts", ".fudic/api/**/*.d.ts"]
 }
 ",
   "demo/vite.config.ts": "import { defineConfig } from 'vite';

@@ -744,7 +744,9 @@ responde ahí, como el de `.fudspec`.
   `source.fudapi`, `configurationDefaults` `[fudapi]` con `tabSize: 2`,
   `workspaceContains:**/*.fudapi`, `documentSelector` y `FILE_EVENTS` con `**/*.fudapi`.
 - La gramática de `.fud` pierde la regla de `@server`/`@client`.
-- `fudic fmt` formatea `.fudapi`; `fudic check` incluye sus diagnósticos.
+- `fudic fmt` formatea `.fudapi`; `fudic check` incluye sus diagnósticos. *Decidido al implementar:
+  `fudic check` no existe; `fudic fmt` da los diagnósticos del parser y deja el fichero sin tocar
+  (como un `.fud` que no parsea), y los del validador los da el build.*
 
 ### 4.11. Migración
 

@@ -327,8 +327,8 @@ every project from the root of the workspace.`,
   },
   fmt: {
     usage: 'fudic fmt [path…]',
-    about: `Formats .fud and .fudspec files in place: the ones under each path, or under
-the folder you are in.`,
+    about: `Formats .fud, .fudspec and .fudapi files in place: the ones under each path, or
+under the folder you are in.`,
     args: [],
     options: [
       ['--check', 'write nothing; fail when a file is not formatted (for CI)'],

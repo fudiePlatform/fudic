@@ -67,11 +67,11 @@ describe('fudic new, without --workspace', () => {
     expect(fs.at(`demo/${GLOBALS_FILE_NAME}`)).toBe(GLOBALS_DTS);
   });
 
-  it('carries the fudic.json SDD-41 gave it, and nothing from this SDD', async () => {
+  it('carries the fudic.json SDD-41 gave it, its two SDD-60 folders, and nothing from this SDD', async () => {
     const fs = new MemoryFs({}, CWD);
     await apply(await planNew('demo', options(), fs), options(), fs, new RecordingRunner());
 
-    expect(JSON.parse(fs.at('demo/fudic.json'))).toEqual({ id: 'demo', kind: 'app' });
+    expect(JSON.parse(fs.at('demo/fudic.json'))).toEqual({ id: 'demo', kind: 'app', server: 'src/server', browser: 'src/browser' });
     expect(fs.paths()).not.toContain('demo/pnpm-workspace.yaml');
     expect(fs.paths()).not.toContain('demo/tsconfig.base.json');
   });

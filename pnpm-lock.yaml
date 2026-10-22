@@ -256,6 +256,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@fudic/api':
+        specifier: workspace:*
+        version: link:../api
       '@fudic/compiler':
         specifier: workspace:*
         version: link:../compiler

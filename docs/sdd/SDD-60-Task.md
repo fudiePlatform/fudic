@@ -6,7 +6,7 @@
 > `@fudic/typecheck` · `@fudic/language-server` · `@fudic/formatter` · `@fudic/cli` · `fudic-vscode` ·
 > `examples/*` · `packages/testing`
 > **Rama:** `sdd-60-fudapi` (nace de `main`)
-> **Progreso:** 50 / 64 — `En curso`.
+> **Progreso:** 52 / 64 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina; la otra escribe los tests de cada fase (las tareas
 «Los tests de…»), contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -175,8 +175,8 @@ Cada meta cierra una fase. La fase no se da por terminada hasta que Pedro la pru
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 46 | 43 | **CLI.** `fudic new` (carpetas, `fudic.json`, tsconfig), `fudic fmt` y `fudic check` con `.fudapi` | `cli` · `formatter` | `cli/src/plans/*` |
-| [ ] | 55 | 46 | **Los tests de CLI.** Plantillas de `fudic new`, `fmt` y `check` | `cli` | `test/` |
+| [x] | 46 | 43 | **CLI.** `fudic new` (carpetas, `fudic.json`, tsconfig), `fudic fmt` y `fudic check` con `.fudapi`. *Al implementar: `fudic check` no existe (`test` y `spec` son las comprobaciones del CLI); `fudic fmt` da los diagnósticos del parser de un `.fudapi` y lo deja sin tocar, como un `.fud` que no parsea, y los del validador los da el build. `fudic g app` hereda las carpetas de `fudic new`. `fudic add http` sigue escribiendo `src/http.ts` hasta la tarea 63, cuando `chain` deja de ser público; `/formatter` no cambia* | `cli` · `formatter` | `cli/src/plans/*` |
+| [x] | 55 | 46 | **Los tests de CLI.** Plantillas de `fudic new`, `fmt` y `check` | `cli` | `test/` |
 
 ## Fase 11 — migración y retirada · METAS 4 y 5 (8)
 
@@ -186,7 +186,7 @@ Cada meta cierra una fase. La fase no se da por terminada hasta que Pedro la pru
 | [ ] | 48 | 47 | **El resto de ejemplos.** `examples/i18n`, `examples/vista-errores` y cualquier otro con regiones | `examples/*` | `src/**` |
 | [ ] | 49 | 47 | **Fixtures.** `compiler`, `formatter`, `testing`, `language-core`, `language-server`, `vscode`, `workbench` | varios | `fixtures/` · `test/**/*.fud` |
 | [ ] | 50 | 49 | **Tests que escriben regiones.** Reescritos al modelo nuevo sin perder el caso que probaban | varios | `test/` |
-| [ ] | 63 | 48–50 | **Fuera lo viejo.** `<f>.fud?server`, `server-module.ts`, los prefijos `r/` y `c/`, `client-fns.ts` y la lectura de cadenas con Oxc, `FUD0393`/`FUD0394`, `emit-server.ts` y `partitionCode`, los snippets y acciones de regiones, la regla de regiones de la gramática del `.fud`, los diagnósticos retirados de SDD §4.8, y de la entrada pública de `@fudic/http` y `@fudic/forms` lo que lista SDD §3.10 | varios | — |
+| [ ] | 63 | 48–50 | **Fuera lo viejo.** `<f>.fud?server`, `server-module.ts`, los prefijos `r/` y `c/`, `client-fns.ts` y la lectura de cadenas con Oxc, `FUD0393`/`FUD0394`, `emit-server.ts` y `partitionCode`, los snippets y acciones de regiones, la regla de regiones de la gramática del `.fud`, los diagnósticos retirados de SDD §4.8, y de la entrada pública de `@fudic/http` y `@fudic/forms` lo que lista SDD §3.10; `fudic add http` escribe `src/http.fudapi` | varios | — |
 | [ ] | 35 | 63 | **Fuera las borradoras.** `server-validators.ts`, `server-halves.ts`, `redact.ts` y su uso | `vite` · `compiler` | `src/erased-sources.ts` · … |
 | [ ] | 51 | 35 | **Fuera las zonas.** `FUD1110` activo; el parser del `@code` ya no da nodos de región | `compiler` | `src/code/*` |
 | [ ] | 56 | 51 | **Los tests de la migración.** Criterios 21, 25 y 34 (búsqueda en el repo), la suite del ejemplo en verde y la gramática del `.fud` sin regiones (snapshot) | — | `test/` |

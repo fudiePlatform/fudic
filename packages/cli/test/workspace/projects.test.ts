@@ -56,6 +56,8 @@ describe('fudic g app (criterion 4)', () => {
       id: 'admin',
       kind: 'app',
       prefix: 'ad',
+      server: 'src/server',
+      browser: 'src/browser',
     });
   });
 

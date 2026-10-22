@@ -60,6 +60,8 @@ describe('fudic new --workspace', () => {
       'tienda/apps/tienda/src/layouts/_layout.test.ts',
       'tienda/apps/tienda/src/routes/index.fud',
       'tienda/apps/tienda/src/routes/index.test.ts',
+      'tienda/apps/tienda/src/server/.gitkeep',
+      'tienda/apps/tienda/src/browser/.gitkeep',
     ]);
     expect(plan.changes.every((change) => change.kind === 'create')).toBe(true);
   });
@@ -93,6 +95,7 @@ describe('fudic new --workspace', () => {
     const tsconfig = JSON.parse(fs.at('tienda/apps/tienda/tsconfig.json')) as Record<string, unknown>;
     expect(tsconfig['extends']).toBe('../../tsconfig.base.json');
     expect(tsconfig['include']).toContain(`../../${GLOBALS_FILE_NAME}`);
+    expect(tsconfig['include']).toContain('.fudic/api/**/*.d.ts');
   });
 
   it('gives the app its fudic.json, with the id it was given', async () => {
@@ -104,6 +107,8 @@ describe('fudic new --workspace', () => {
       id: 'tienda',
       kind: 'app',
       prefix: 'sh',
+      server: 'src/server',
+      browser: 'src/browser',
     });
   });
 
