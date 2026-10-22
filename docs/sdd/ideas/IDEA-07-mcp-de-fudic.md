@@ -246,6 +246,51 @@ La primera vez que el LLM va a escribir un tipo de fichero, `next` le añade la 
   `next` manda a `fudic_spec_run`.
 - **Una librería se salta las fases** `.fudapi` y «conectar o falsear»: no tiene servidor.
 
+### 5.5. `fudic_check` (propuesta, 2026-10-22)
+
+**Lo que diría el build, sin construir**: parser, validador, pase tipado y contratos de
+componente. Un solo origen para el editor, el build y el MCP, así que no hay un `fudic check`
+aparte que pueda decir otra cosa. Entrada: `{ paths?, limit = 20 }`; sin `paths`, el proyecto.
+
+```json
+{
+  "fudicVersion": "0.0.1",
+  "commit": "…",
+  "summary": { "errors": 3, "warnings": 0, "fixable": 2, "files": 1 },
+  "diagnostics": [
+    {
+      "code": "FUD0540", "severity": "error",
+      "message": "a loop must declare 'key (…)'",
+      "at": "libs/ui/src/components/acme-card/acme-card.fud:15:3",
+      "quote": "@foreach (const item of items) {",
+      "fixable": true
+    }
+  ],
+  "codes": {
+    "FUD0540": { "title": "Loop without `key (…)`", "why": "…", "fix": "add a key after the header: …" }
+  },
+  "next": "Run fudic_fix for the 2 fixable diagnostics, then fix FUD1145 by hand."
+}
+```
+
+- **Porqué y arreglo, una vez por código** en `codes`, del mismo `.md` que da `fudic_explain`: 30
+  errores del mismo código no repiten el texto 30 veces.
+- **Posición y texto citado** (`quote`): el LLM edita con su propio `Edit` sin releer el fichero.
+- **Orden fijo** (fichero, línea, columna). `summary` cuenta todo; `limit` corta la lista.
+- **Los errores de TypeScript** del pase tipado salen con su código (`TS2322`) y la posición
+  devuelta al `.fud`, sin entrada en `codes`: no hay `.md` propio.
+- `fixable` es que hay bombilla (code action). Hoy hay 6 (`FUD0056`, `FUD0191`, `FUD0540`,
+  `FUD0543`, `FUD0890`, `FUD0894`); cada arreglo mecánico que falta es una vuelta más del bucle.
+  Un arreglo que cambia la estructura (`FUD1145` → `@empty`) no debe ser `fixable`.
+
+Lo que destapa:
+
+- **Los `.md` del catálogo contradicen la guía.** `FUD0191` dice «declare it in the `<head>`» y las
+  fixtures ponen el `<link>` arriba del todo; `FUD0907` manda a `@code { @client }`, que SDD-60
+  quita. El LLM ve las dos fuentes: cada ejemplo de un `.md` tiene que ser una fixture que compila,
+  con la misma regla que la guía (§6).
+- Las normas del usuario (§9, «solo tokens») saldrían aquí, con su código, si se activan.
+
 ## 6. `fudic_guide`
 
 Envoltura: `{ fudicVersion, topic, related, body }`, con `body` en markdown en inglés.
