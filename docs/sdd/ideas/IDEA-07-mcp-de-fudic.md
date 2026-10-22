@@ -152,11 +152,11 @@ En cada paso, `next` dice una sola cosa.
 
 | Grupo | Tool | Qué hace |
 |---|---|---|
-| Lenguaje | `fudic_guide { topic }` | Gramática de `overview`, `view`, `fudapi`, `fudspec`, `html-css`, `workflow` (§6) |
+| Lenguaje | `fudic_guide { topic }` | Gramática de `overview`, `components`, `view`, `fudapi`, `fudspec`, `html-css`, `workflow` (§6) |
 | | `fudic_explain { code }` | El `.md` del código de diagnóstico |
-| Proyecto | `fudic_status` | Fase, lo pendiente, recuento de diagnósticos. Guía al LLM |
+| Proyecto | `fudic_status` | Fase, lo pendiente, recuento de diagnósticos. Guía al LLM (§5.4) |
 | | `fudic_new` | Crea la app (plan `new` de la CLI) |
-| | `fudic_generate { kind }` | `component`, `page`, `layout`, `app`, `lib` (planes de la CLI) |
+| | `fudic_generate { kind }` | `component`, `page`, `layout`, `app`, `lib`, y los que la CLI ya tiene y faltaban aquí: `style`, `spec`, el control de form (planes de la CLI) |
 | | `fudic_add { module }` | `di`, `forms`, `http`, `i18n` (plan `add`) |
 | | `fudic_read { paths }` | Contenido con números de línea (solo remoto) |
 | | `fudic_write { edits[] }` | Aplica y **devuelve ya los diagnósticos** de lo tocado (solo remoto) |
@@ -201,12 +201,67 @@ BUG-50 («lo recién generado pasa en verde sin tocar nada») se vuelve crítica
 bucle arreglando lo que no es suyo. **Hueco:** el `.fudapi` y el contrato del backend no tienen
 generador en la CLI (`g api`, `add backend`).
 
+### 5.4. `fudic_status` (propuesta, 2026-10-22)
+
+La brújula del LLM: **dónde estamos** y **el siguiente paso, uno solo**. Sin estado propio: todo
+sale de los ficheros, así que da lo mismo en local y en remoto, y dos llamadas sobre el mismo
+commit devuelven lo mismo.
+
+| Señal | De dónde sale |
+|---|---|
+| ¿Hay proyecto? ¿App o librería? | `fudic.json` |
+| Diagnósticos | El pase de `fudic_check`, solo el recuento |
+| Por unidad (ruta o componente): `.fudspec`, `.fudapi`, `<link rel="server">` | Los ficheros hermanos |
+| Cada función: `connected` / `fake` / `missing` | El `.fudapi`, los `.handle` de `src/server` y `src/browser`, la configuración del fake del entorno |
+
+```json
+{
+  "fudicVersion": "0.0.1",
+  "commit": "b59fa7d",
+  "phase": "view",
+  "app": { "name": "tienda", "server": "node", "prefix": "app" },
+  "diagnostics": { "errors": 0, "warnings": 0 },
+  "units": [
+    { "path": "src/routes/productos", "spec": "not run", "api": true, "view": true,
+      "functions": { "connected": 0, "fake": 0, "missing": 2 } },
+    { "path": "src/components/app-product-card", "spec": "not run", "api": false, "view": false }
+  ],
+  "next": "Write the view of src/components/app-product-card/app-product-card.fud. Call fudic_guide { topic: \"components\" } first."
+}
+```
+
+Regla de `next`, en este orden:
+
+1. Sin proyecto: preguntar al usuario solo lo que falta (§4, punto 3).
+2. Hay errores: `fudic_check` y arreglarlos. Nunca se avanza con errores.
+3. La primera unidad incompleta, en el orden de §4.1.
+4. Todo completo: `fudic_propose`.
+
+La primera vez que el LLM va a escribir un tipo de fichero, `next` le añade la guía que debe leer.
+
+- **Las fases son por unidad, no por app.** Una página puede tener su vista y el carrito ni su
+  `.fudspec`. `phase` es la de la unidad que marca `next`.
+- **`status` no ejecuta criterios** (abre un navegador, segundos por llamada): dice `"not run"` y
+  `next` manda a `fudic_spec_run`.
+- **Una librería se salta las fases** `.fudapi` y «conectar o falsear»: no tiene servidor.
+
 ## 6. `fudic_guide`
 
 Envoltura: `{ fudicVersion, topic, related, body }`, con `body` en markdown en inglés.
 
-- **`overview`:** los tipos de fichero, la estructura de carpetas y las reglas de trabajo (llamar a
-  `status` primero, no adivinar rutas ni nombres, cero diagnósticos antes de seguir).
+Los temas se organizan por **lo que el LLM va a escribir** (`components`, y después `pages`,
+`layouts`), con la gramática de expresiones aparte en `view`. Los nombres van en inglés. La guía
+describe el lenguaje de después de SDD-60 y SDD-61 (un único `@code`, `<link rel="server">`, vista
+portable): el MCP llega detrás de las dos.
+
+- **`overview`:** los tipos de fichero y la estructura de carpetas. Las reglas de trabajo no:
+  repetían las `instructions` del servidor y van en `workflow`.
+- **`components`:** cómo se crea (`fudic_generate`, nunca desde cero), la forma del fichero en
+  orden (`<link>`, `@code`, `<head><style>`, el tag con su `<template shadowrootmode>`,
+  `@snippet`), un ejemplo canónico entero, props, cómo se usa otro componente (`.prop`, atributo,
+  `class:`, `@evento`, slots, spread), eventos con `emit`, estilos con `:host`/`::slotted()`, una
+  tabla «Instead of…» con los reflejos de React (`className`, `onClick`, `{cond && …}`, `.map`,
+  `useState`, `children`, `props.x`) y cómo comprobarlo.
 - **`view`:** forma del fichero, valores, operadores, control, tipos portables, «los manejadores
   son libres», y una tabla **«Instead of… write…»** con los reflejos de JS que trae un LLM
   (`filter`, `toFixed`, `.length`, `new Date`, `||`).
@@ -218,6 +273,9 @@ Para que no mienta:
 - Las secciones **escritas** («Instead of…», «How to work») tienen **cada ejemplo como fixture**
   que pasa por `fudic_check` en los tests.
 - Cada prohibido lleva su código: el LLM ve el mismo `FUD1145` en la guía y en el diagnóstico.
+  Los reflejos de React (`className`, `onClick`, `{cond && …}`) no tienen código hoy: o el parser
+  ya los rechaza con uno que hay que localizar, o faltan diagnósticos.
+- El ejemplo canónico de cada tema es una fixture: si cambia la sintaxis, falla el test de la guía.
 
 ## 7. Orden propuesto
 
@@ -243,3 +301,43 @@ remoto. Se mantienen como dos superficies; `fudic_spec_run` es el punto donde se
 - **Coste del pase tipado en remoto:** un programa TS en memoria por llamada; hay que medirlo.
 - **Fake con estado o sin él:** si un `save` se ve después en un `search`.
 - **Generadores que faltan en la CLI:** `.fudapi` y contrato del backend.
+- **`fudic check` en el builder (§2.2)** choca con «errores de tipos en build/dev, nunca un
+  `fudic check` aparte». En el MCP, `fudic_check` encaja; en el builder, debería fallar el build.
+- **El fake (§3, camino 2) enmienda la decisión 6 de SDD-60** (sin handler, 404). Hay que anotarlo
+  en SDD-60 cuando esto sea SDD.
+- **`fudic_test` depende de SDD-57**, que no está en main.
+- **¿Dónde queda escrito que el usuario aprobó los criterios?** (fase 1). El «sí» se queda en la
+  conversación; sin una marca en el repo, `status` no sabe si la fase está hecha.
+- **Accesibilidad comprobada** (caso §10). La `.fudspec` busca por rol y nombre accesible, pero no
+  audita. La puntuación de accesibilidad de Lighthouse es axe-core: hace falta un paso que lo pase,
+  en `fudic_spec_run` o en una herramienta propia.
+- **Normas del usuario** (caso §10: «solo tokens, ningún literal»). fudic no diagnostica normas de
+  estilo por su cuenta. Opción: una regla opcional en `fudic.json` (`"styles": { "tokensOnly":
+  true }`) que `fudic_check` haga cumplir si el usuario la activa.
+
+## 10. Caso de estudio: una librería de componentes (2026-10-22)
+
+El método de la sesión: cada herramienta se evoluciona viendo su definición, el prompt que la
+dispara, la llamada y la respuesta. Este es el caso que la pone a prueba.
+
+> Quiero crear una librería de componentes: Button, Link Button, Card, Input (text, date…).
+> Accesibilidad 100 % en Lighthouse, diseño moderno con una guía de estilos basada en tokens que
+> se reutiliza en todos. Ningún valor literal: todo sale de los tokens.
+
+1. `fudic_status` → `none`. El LLM pregunta **solo lo que falta**: nombre y prefijo, si Input es
+   uno con `type` o uno por tipo, y si hay marca o paleta de partida.
+2. Estructura, con planes que la CLI ya tiene (es la forma de `examples/workspace/libs/guia` +
+   `ui`):
+   ```
+   fudic_new      { name: "acme", workspace: true }
+   fudic_generate { kind: "lib", name: "tokens", stylesOnly: true }
+   fudic_generate { kind: "lib", name: "ui", uses: ["tokens"] }
+   ```
+3. `fudic_guide { topic: "html-css" }` y `tokens.css` como custom properties (color, tipografía,
+   espaciado, radios, sombras, foco, movimiento). El usuario la ve antes de seguir.
+4. Por componente: `fudic_generate` → `.fudspec` → el usuario confirma → `.fud` → `fudic_check`
+   hasta cero → `fudic_spec_run`. Input es un control form-associated, no un componente plano.
+5. `fudic_propose`.
+
+Lo que destapa: los dos últimos puntos de §9 (accesibilidad y normas del usuario), que `status`
+tiene que distinguir librería de app (§5.4) y que `fudic_generate` se quedaba corto (§5.2).
