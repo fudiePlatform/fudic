@@ -329,6 +329,59 @@ Lo que destapa (en el código de hoy):
 - **Los títulos de las bombillas están en español** («Añadir key (…)»): rompe la regla de código en
   inglés, y el MCP se los pasaría al LLM tal cual.
 
+### 5.7. `fudic_spec_run` (propuesta, 2026-10-22)
+
+Ejecuta los criterios de la `.fudspec` en un navegador y dice **cuál falla, en qué paso y qué vio**.
+Entrada: `{ spec?, criteria?, failing? }`; `spec` es el tag o la ruta, sin él todas las unidades.
+
+Lo dispara `next` de `status` («Run fudic_spec_run for acme-button») o el usuario («¿ya pasa el
+botón?»). El motor es el del banco (`packages/workbench`, el mismo de `fudic-workbench run --json`),
+llamado en proceso, como los planes de la CLI (§5.3).
+
+```json
+{
+  "fudicVersion": "0.0.1",
+  "commit": "…",
+  "summary": { "pass": 3, "fail": 1, "error": 0 },
+  "criteria": [
+    { "spec": "libs/ui/src/components/acme-button/acme-button.fudspec", "id": "disabled-no-press",
+      "verdict": "fail", "at": "acme-button.fudspec:9:1",
+      "failed": {
+        "step": "then  emitted press 0", "at": "acme-button.fudspec:13:5",
+        "expected": "0 events 'press'", "got": "1 event 'press'"
+      },
+      "source": "libs/ui/src/components/acme-button/acme-button.fud:22:3",
+      "quote": "<button @click=@onClick>",
+      "shot": ".fudic/runs/acme-button/disabled-no-press.after.png",
+      "pageErrors": [] }
+  ],
+  "next": "Fix acme-button.fud:22:3 so a disabled button does not emit 'press', then run fudic_spec_run { spec: \"acme-button\", failing: true }."
+}
+```
+
+- **Solo se detallan los que no pasan**; los verdes van en `summary`. Un paso que falla lleva su
+  línea en la `.fudspec`, lo esperado y lo obtenido.
+- **`source` y `quote`**: el elemento donde falló, devuelto a su sitio en el `.fud`. Es lo que
+  convierte un rojo en una edición.
+- **`shot`** es la captura de después, como fichero: un agente la puede mirar; en chat, MCP Apps.
+- **`failing: true`** repite solo lo que estaba en rojo: la vuelta corta del bucle.
+- Lo que impide ejecutar (no hay navegador, la página no carga, la fixture falla) es un diagnóstico
+  con código, como todo (§5.1).
+
+Lo que destapa:
+
+- **`status` no puede saber si los criterios están en verde** sin ejecutarlos (§5.4), y sin eso no
+  sabe si la fase 4 está hecha. Propuesta: `spec_run` guarda cada ejecución con el hash de lo que
+  entró (`.fud`, `.fudspec`, fixtures, lo que importan); `status` lee la última si el hash coincide
+  y si no dice `"stale"`. Es la etapa 2 del banco (guardar ejecuciones). ¿Dentro de git o en una
+  caché ignorada? En remoto lo podría ejecutar el builder.
+- **Hoy el motor no devuelve `source`.** Las `marks` dan la caja del elemento en la captura, no su
+  span en el `.fud`. Hace falta la identidad de nodo del compilador (la de hidratación) para
+  volver del DOM al fuente.
+- **Lo esperado y lo obtenido no tienen forma común**: cada término devuelve su `evidence` a su
+  manera. Para el LLM hace falta que cada término dé `expected`/`got` en texto.
+- Los problemas del banco (`ProblemMessage`, `error` de un resultado) son texto suelto, sin código.
+
 ## 6. `fudic_guide`
 
 Envoltura: `{ fudicVersion, topic, related, body }`, con `body` en markdown en inglés.
