@@ -371,16 +371,51 @@ llamado en proceso, como los planes de la CLI (§5.3).
 Lo que destapa:
 
 - **`status` no puede saber si los criterios están en verde** sin ejecutarlos (§5.4), y sin eso no
-  sabe si la fase 4 está hecha. Propuesta: `spec_run` guarda cada ejecución con el hash de lo que
-  entró (`.fud`, `.fudspec`, fixtures, lo que importan); `status` lee la última si el hash coincide
-  y si no dice `"stale"`. Es la etapa 2 del banco (guardar ejecuciones). ¿Dentro de git o en una
-  caché ignorada? En remoto lo podría ejecutar el builder.
+  sabe si la fase 4 está hecha. `spec_run` guarda cada ejecución con el hash de lo que entró
+  (`.fud`, `.fudspec`, fixtures, lo que importan); `status` lee la última si el hash coincide y si
+  no dice `"stale"`. Es la etapa 2 del banco (guardar ejecuciones). **Decidido (Pedro,
+  2026-10-22): se guarda en git**, en el historial de la pieza (§5.8). Un equipo es grande y tiene
+  que ver qué pasó de verdad. Las capturas no entran (binarios): siguen en una carpeta ignorada.
 - **Hoy el motor no devuelve `source`.** Las `marks` dan la caja del elemento en la captura, no su
   span en el `.fud`. Hace falta la identidad de nodo del compilador (la de hidratación) para
   volver del DOM al fuente.
 - **Lo esperado y lo obtenido no tienen forma común**: cada término devuelve su `evidence` a su
   manera. Para el LLM hace falta que cada término dé `expected`/`got` en texto.
 - Los problemas del banco (`ProblemMessage`, `error` de un resultado) son texto suelto, sin código.
+
+### 5.8. El historial de cada pieza (idea de Pedro, 2026-10-22)
+
+El MCP escribe, junto a cada ruta o componente, un fichero con su historia: **cuándo empezó, cuándo
+terminó y qué pasó entre medias**. Sale de guardar las ejecuciones en git (§5.7) y va más allá:
+es el diario de desarrollo de esa pieza.
+
+Propuesta (nombre y forma sin decidir):
+
+```
+acme-button.fudlog
+2026-10-22T10:02 a1b2c3d started        by agent  "Button for the current page's actions"
+2026-10-22T10:20 d4e5f6a approved       by pedro  spec 4 criteria
+2026-10-22T10:31 0a9b8c7 tests          red 6/6
+2026-10-22T10:48 7f6e5d4 spec_run       fail 3/4  disabled-no-press  hash 91c2…
+2026-10-22T10:52 3c2b1a0 spec_run       pass 4/4  hash 5e7a…
+2026-10-22T11:05 9d8c7b6 documented     4/4 props
+2026-10-22T11:06 9d8c7b6 done
+```
+
+- **Una línea por suceso y solo se añade**, nunca se reescribe. Con `merge=union` en
+  `.gitattributes`, dos ramas que añaden a la vez no chocan.
+- **`status` lee de aquí** la fase de la unidad y si su última ejecución sigue valiendo (hash).
+- **Lo que entra:** el cambio de fase (§10.2), las aprobaciones, las ejecuciones (`spec_run`,
+  `test`) con su resultado, el modo `wireframe` y su salida. Lo que no entra: cada `check` o `fix`,
+  que son las vueltas del bucle y no historia.
+- **Quién:** el agente o la persona. Con el `approved` de la `.fudspec` y esta línea, se sabe quién
+  aprobó y cuándo.
+
+Por decidir:
+
+- ¿El `approved` sigue en la `.fudspec` o pasa a vivir solo aquí?
+- La caducidad de la aprobación (§10.2) se vuelve directa: hay una línea `approved` con su hash y
+  los criterios de ahora tienen otro.
 
 ## 6. `fudic_guide`
 
