@@ -1046,7 +1046,14 @@ El MCP local puede empezar con SDD-60 en main; la guía `view` completa espera a
 
 ### 11.2. Las SDD del MCP local (§7, paso 1)
 
-Tamaño relativo entre ellas (S, M, L), no horas.
+Tamaño medido contra SDD ya hechas, por número de tareas y paquetes:
+
+| Talla | Como | Tareas | Alcance |
+|---|---|---|---|
+| **S** | SDD-40, SDD-55 | ~15 | Uno o dos paquetes, sin paquete nuevo |
+| **M** | SDD-31, SDD-38, SDD-30 | ~20 | Varios paquetes, una pieza nueva dentro de uno |
+| **L** | SDD-57 | ~30 | Un paquete nuevo o una pieza difícil que cruza varios |
+| **XL** | SDD-60, SDD-58 | ~60 | Lenguaje o paquete nuevo que toca casi todo |
 
 | # | SDD | Qué hace | Paquetes | Tam. | Depende de |
 |---|---|---|---|---|---|
@@ -1054,11 +1061,13 @@ Tamaño relativo entre ellas (S, M, L), no horas.
 | B | **El contrato completo y los tokens** | Al `Contract` de hoy (props con tipo, slots con nombre, eventos por nombre, doc) le faltan: el `default` de cada prop, el JSDoc de cada prop en el contrato, el slot por defecto, el tipo del `detail` de un evento, las CSS parts. Tokens como símbolos: custom properties con su `/** */`, índice, completado de `var(--` y hover (§10.3, §10.4) | `language-server` (`mode.ts`, índice), `language-core`, `compiler` (parts) | M | — |
 | C | **Ejecutar con evidencia para una máquina** | `runSpecs` (el banco) y vitest llamados en proceso con un resultado estructurado: `expected`/`got` común por término, `fail` frente a `broken`, problemas con código FUD; el `outline` (árbol de roles) en happy-dom y en el navegador del banco; **volver del DOM al span del `.fud`** (§5.7, §5.9, §5.12) | `workbench`, `spec`, `terms`, `testing`, `compiler` (identidad de nodo → span) | L | A |
 | D | **El historial de la pieza** | Formato del fichero, escritura solo por añadido, `merge=union`, hash de las entradas (`.fud`, `.fudspec`, fixtures, imports) y de las capturas; `approved`, `accepted`, `reopened`, `look`, ejecuciones; caducidad (§5.8, §10.5) | paquete nuevo o `spec`; `cli` (`.gitattributes`) | M | C |
-| E | **La CLI para agentes** | `g api` (el `.fudapi`), `g showcase` desde las fixtures, `fudic new` escribe `.mcp.json` y `AGENTS.md`/`CLAUDE.md`; los planes como API pública con su esquema de opciones (§5.3, §10.1) | `cli` | S–M | SDD-60 |
-| F | **`@fudic/mcp` local** | El servidor (stdio), `instructions`, el prompt `new-app`, y las herramientas: `guide` (temas generados + escritos, con cada ejemplo como fixture), `status`, `symbols`, `describe`, `check`, `fix`, `format`, `new`/`generate`/`add`, `spec_run`, `test`, `render`, `call` (sobre el servidor en memoria de SDD-57), `preview` local (Vite en proceso, errores del servidor como diagnósticos) | paquete nuevo; usa `language-server` (servicios en proceso), `cli`, `workbench`, `testing`, `vite` | L | A–E, SDD-60 |
+| E | **La CLI para agentes** | `g api` (el `.fudapi`), `g showcase` desde las fixtures, `fudic new` escribe `.mcp.json` y `AGENTS.md`/`CLAUDE.md`; los planes como API pública con su esquema de opciones (§5.3, §10.1) | `cli` | S | SDD-60 |
+| F1 | **`@fudic/mcp`: lenguaje y proyecto** | El servidor (stdio), `instructions`, el prompt `new-app`, y las herramientas: `guide` (temas generados + escritos, con cada ejemplo como fixture), `status`, `symbols`, `describe`, `check`, `fix`, `format`, `new`/`generate`/`add` | paquete nuevo; usa `language-server` (servicios en proceso), `cli` | L | A, B, E, SDD-60 |
+| F2 | **`@fudic/mcp`: ver y probar** | `spec_run`, `test`, `render`, `call` (sobre el servidor en memoria de SDD-57), `preview` local (Vite en proceso, errores del servidor como diagnósticos); `status` lee el historial | `mcp`; usa `workbench`, `testing`, `vite` | M | C, D, F1 |
 
-**Seis SDD** para el paso 1. A, B y E pueden ir en paralelo; C antes que D; F al final, pero
-puede arrancar con lo que ya exista y crecer.
+**Siete SDD** para el paso 1: A, B y D en M; C y F1 en L; F2 en M; E en S. El MCP entero en una
+sola SDD sería XL, del tamaño de SDD-60: se parte en F1 y F2, y F1 ya sirve sola en Claude Code.
+A, B y E pueden ir en paralelo; C antes que D; F1 en cuanto estén A, B y E.
 
 ### 11.3. Las que no bloquean el MCP local
 
