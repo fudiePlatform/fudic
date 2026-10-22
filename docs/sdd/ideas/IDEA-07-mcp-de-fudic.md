@@ -955,7 +955,18 @@ La base está en §10.2: el wireframe existe solo si se pide, y su deuda se ve s
 
 > El cliente lo ha aceptado. Vamos a hacerlo de verdad.
 
-Cada unidad pasa por las fases, con dos diferencias:
+**Antes de nada, lo aceptado se congela** (Pedro, 2026-10-22: si se descarta la vista, veinte días
+después nadie sabe qué aceptó el cliente):
+
+- Una línea `accepted` en el historial de cada unidad: quién, cuándo, lo que dijo el cliente y el
+  commit exacto que vio.
+- Una etiqueta de git sobre ese commit (`accepted/<unidad>/<fecha>`): no se pierde aunque la rama
+  se reescriba.
+- **`fudic_preview { at: "accepted" }`** sirve esa versión cuando se quiera, al lado de la actual:
+  el builder construye cualquier commit. Lo aceptado se puede **volver a ver**, no solo recordar.
+- Sus capturas, adjuntas al PR como en §10.5.
+
+Después cada unidad pasa por las fases, con estas diferencias:
 
 1. **El wireframe es la fuente de la fase 1.** El LLM lee la vista y propone las props y los
    criterios a partir de lo que enseña; el usuario los aprueba como siempre.
@@ -968,7 +979,7 @@ Cada unidad pasa por las fases, con dos diferencias:
 
 ```
 2026-10-23T10:00 1a2b3c4 wireframe   by agent  "Shop wireframe for Monday's demo"
-2026-10-27T09:00 2b3c4d5 promoted    by pedro  "Client accepted it"
+2026-10-27T09:00 2b3c4d5 accepted    by pedro  "Client accepted it at Monday's demo"  tag accepted/shop/2026-10-27
 2026-10-27T09:20 3c4d5e6 approved    by pedro  spec 5 criteria  hash 4e2a…
 2026-10-27T09:31 4d5e6f7 tests       red 7/7
 …
