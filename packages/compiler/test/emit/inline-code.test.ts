@@ -72,8 +72,8 @@ describe('@{ … } — the author JS that runs in place', () => {
 
   it('and again in the update pass, because that pass is a render too', () => {
     const src = client(
-      '  let marca = 1;\n  @client {\n    import { signal } from "@fudic/core";\n' +
-        '    const n = signal(0);\n  }\n',
+      '  import { signal } from "@fudic/core";\n  let marca = 1;\n' +
+        '  const n = signal(0);\n',
       '<b>@(n())</b>@{ marca = 3; }<p>@marca</p>',
     );
     // In place (SDD-51 §3.8): each value is evaluated where the server evaluates it — `n()`

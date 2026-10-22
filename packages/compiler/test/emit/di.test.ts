@@ -124,10 +124,8 @@ describe('extraction', () => {
   import { Cart } from './services/cart.js';
 
   const cart = ask(Cart);
-  @client {
-  }
 }`,
-      '<p>ok</p>',
+      '<p>@(cart.total)</p>',
     );
     const code = codeOfSource(source);
     expect(code.di.map((d) => d.kind)).toEqual(['inject']);
@@ -177,19 +175,18 @@ describe('extraction', () => {
     expect(codeOfSource(source).di.map((d) => d.provider)).toEqual(['']);
   });
 
-  it('leaves the rest of the neutral zone exactly as it was written', () => {
+  it('leaves the rest of the server cut exactly as it was written', () => {
     // BUG-27 made the whole neutral zone travel, so a file with no DI is not a file with an
     // empty neutral list any more — it is a file whose neutral lines come out untouched, and
-    // none of them REGISTERS, so the browser gets every one of them.
+    // none of them REGISTERS, so the browser gets every one of them. Without regions that list
+    // is the server cut: what the markup reads (SDD-60 §4.8).
     const source = component(
       'x-quiet',
       `@code {
   import { Cart } from './services/cart.js';
   const total = Cart.zero;
-  @client {
-  }
 }`,
-      '<p>ok</p>',
+      '<p>@(total)</p>',
     );
     const code = codeOfSource(source);
     expect(code.di).toEqual([]);
@@ -216,13 +213,11 @@ describe('the rewrite is by offset, never by text', () => {
   import { inject } from '@fudic/di';
   import { Cart } from './services/cart.js';
 
-  @client {
-    const label = "inject(Cart)";
-    // inject(Cart) is written here on purpose
-    const cart = inject(Cart);
-  }
+  const label = "inject(Cart)";
+  // inject(Cart) is written here on purpose
+  const cart = inject(Cart);
 }`,
-      '<p>@(label)</p>',
+      '<p>ok</p>',
     );
     const body = codeOfSource(source).client.body.map((s) => s.text);
     expect(body).toEqual([
@@ -240,10 +235,8 @@ describe('the rewrite is by offset, never by text', () => {
 
   provide(Cart, () => new Cart(), { transient: true });
   const cart = inject(Cart, { optional: true });
-  @client {
-  }
 }`,
-      '<p>ok</p>',
+      '<p>@(cart)</p>',
     );
     expect(
       codeOfSource(source)
@@ -381,9 +374,7 @@ describe('the server module', () => {
   import { inject } from '@fudic/di';
   import { Cart } from './services/cart.js';
 
-  @client {
-    const cart = inject(Cart);
-  }
+  const cart = inject(Cart);
 }`,
         '<p>c</p>',
       ),
@@ -470,10 +461,8 @@ describe('the published blocks', () => {
       '/app/x-plain.fud': component(
         'x-plain',
         `@code {
-  @client {
-    import { signal } from '@fudic/core';
-    const n = signal(0);
-  }
+  import { signal } from '@fudic/core';
+  const n = signal(0);
 }`,
         '<p>@(n())</p>',
       ),
@@ -601,7 +590,7 @@ describe('the IoC module of a component', () => {
     expect(emitComponentClientModule(graph, comp)).not.toContain('provideIn');
   });
 
-  it('merges the two browser zones into one module, in source order', () => {
+  it('carries every registration into one module, in source order', () => {
     const graph = graphOf({
       '/app/home.fud': page(['x-both'], '<x-both></x-both>'),
       '/app/x-both.fud': component(
@@ -612,17 +601,14 @@ describe('the IoC module of a component', () => {
 
   provide(Cart, () => new Cart());
 
-  @client {
-    provide(Clock, () => new Clock());
-  }
+  provide(Clock, () => new Clock());
 }`,
         '<p>both</p>',
       ),
     });
 
-    // One `register`, both registrations, and the order they were WRITTEN in: the two zones
-    // are fragments of one module, and a registration that overrides another has to lose or
-    // win the same way it does in the source.
+    // One `register`, both registrations, and the order they were WRITTEN in: a registration
+    // that overrides another has to lose or win the same way it does in the source.
     expect(emitComponentIocModule(graph.components.get('x-both')!)?.split('\n')).toEqual([
       `import { provideIn } from '@fudic/di';`,
       `import { Cart, Clock } from './services/cart.js';`,

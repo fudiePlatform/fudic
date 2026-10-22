@@ -14,7 +14,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fudic } from '../src/index.js';
-import { runtimeAlias } from './helpers/alias.js';
+import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
 
 
 interface OutFile {
@@ -22,10 +22,12 @@ interface OutFile {
   readonly fileName: string;
 }
 
+/** `files` by their path inside `src/`. */
 async function buildRoutes(files: Record<string, string>): Promise<{ output: OutFile[]; warnings: string[] }> {
   const root = mkdtempSync(join(tmpdir(), 'fudic-prerr-'));
+  writeHttpTypecheckConfig(root);
   for (const [rel, content] of Object.entries(files)) {
-    const abs = join(root, 'src', 'routes', rel);
+    const abs = join(root, 'src', rel);
     mkdirSync(join(abs, '..'), { recursive: true });
     writeFileSync(abs, content);
   }
@@ -33,7 +35,7 @@ async function buildRoutes(files: Record<string, string>): Promise<{ output: Out
   const result = (await build({
     root,
     logLevel: 'silent',
-    resolve: { alias: { ...runtimeAlias } },
+    resolve: { alias: httpAlias },
     plugins: [fudic()],
     build: {
       write: false,
@@ -52,17 +54,24 @@ describe('what the prerender does with a route it cannot render', () => {
       const page = `<!DOCTYPE html>
 <html>
 <head>
-@code {
-@server {
-export function load(ctx) { return { id: ctx.params.id }; }
-export function paths() { return ['1', { wrong: 'x' }]; }
-}
-}
+<link rel="server" href="./[id].fudapi">
 </head>
 <body><h1>C @data.id</h1></body>
 </html>
 `;
-      ({ output, warnings } = await buildRoutes({ 'customer/[id].fud': page }));
+      const api = 'load\n  id  str\n\npaths\n';
+      // The entry that misses `id` is cast past the contract's `string`: what FUD0362 guards
+      // is the run-time value, whatever the handler's types claimed.
+      const server = `import { load, paths } from 'fudic:routes/customer/[id]';
+
+load.handle((ctx) => ({ id: ctx.params.id }));
+paths.handle(() => ['1', { wrong: 'x' } as unknown as string]);
+`;
+      ({ output, warnings } = await buildRoutes({
+        'routes/customer/[id].fud': page,
+        'routes/customer/[id].fudapi': api,
+        'server/customer.ts': server,
+      }));
     }, 120000);
 
     it('prerenders the covered id and warns FUD0362 for the incomplete one', () => {
@@ -84,7 +93,7 @@ export function paths() { return ['1', { wrong: 'x' }]; }
 <body><h1>@(JSON.parse('{').value)</h1></body>
 </html>
 `;
-      await expect(buildRoutes({ 'boom.fud': page })).rejects.toThrow(/FUD0620/u);
+      await expect(buildRoutes({ 'routes/boom.fud': page })).rejects.toThrow(/FUD0620/u);
     }, 120000);
   });
 });

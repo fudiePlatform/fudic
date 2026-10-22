@@ -112,7 +112,7 @@ describe('batchDocumentJs', () => {
   });
 
   it('reports a syntax error as a diagnostic over the .fud, not as a throw', () => {
-    const source = `@code {\n  @client {\n    const = ;\n  }\n}\n${component('app-badge')}`;
+    const source = `@code {\n  const = ;\n}\n${component('app-badge')}`;
     const { js } = parse(source);
 
     expect(js.diagnostics.length).toBeGreaterThan(0);

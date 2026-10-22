@@ -21,16 +21,14 @@ const transportDist = fileURLToPath(new URL('../../transport/dist/index.js', imp
 const coreDist = fileURLToPath(new URL('../../core/dist/index.js', import.meta.url));
 const domDist = fileURLToPath(new URL('../../dom/dist/index.js', import.meta.url));
 
-/** A component whose `@code { @client }` region is TypeScript, as the grammar allows. */
+/** A component whose `@code` is TypeScript, as the grammar allows. */
 const BUTTON = `@code {
   type Variant = 'primary' | 'ghost';
 
   const { variant = 'primary' } = props<{ variant?: Variant }>();
 
-  @client {
-    function onClick(e: MouseEvent): void {
-      (e.currentTarget as HTMLElement).dispatchEvent(new CustomEvent('press'));
-    }
+  function onClick(e: MouseEvent): void {
+    (e.currentTarget as HTMLElement).dispatchEvent(new CustomEvent('press'));
   }
 }
 
@@ -129,8 +127,8 @@ describe('the client chunks in the build output', () => {
     }
   });
 
-  it('parses as JavaScript, TypeScript region and all', () => {
-    // `app-button` writes its `@client` region in TS (`e: MouseEvent`), and the chunk went
+  it('parses as JavaScript, TypeScript and all', () => {
+    // `app-button` writes its `@code` in TS (`e: MouseEvent`), and the chunk went
     // through the bundler without a parse error. That is the whole reason these files are
     // emitted before anything links them: a chunk the bundler never saw is a chunk whose
     // types, imports and assets nobody checked.

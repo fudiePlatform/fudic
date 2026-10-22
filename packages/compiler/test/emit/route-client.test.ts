@@ -54,7 +54,7 @@ describe('who gets a chunk (§6.3, §4.5)', () => {
   it('a route whose markup holds no element declares no node variable', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
-      '@code { @client { const n = signal(1); function nada() {} } }',
+      '@code { const n = signal(1); function nada() {} }',
       'texto suelto',
     ].join('\n');
     const code = chunkOf(route)!;
@@ -65,7 +65,7 @@ describe('who gets a chunk (§6.3, §4.5)', () => {
   it('and with its hole straight in the `<body>`, no layout node either: nothing to declare', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
-      '@code { @client { const n = signal(1); function nada() {} } }',
+      '@code { const n = signal(1); function nada() {} }',
       'texto suelto',
     ].join('\n');
     const code = chunkOf(route, {
@@ -83,7 +83,7 @@ describe('who gets a chunk (§6.3, §4.5)', () => {
     ].join('\n');
     const c = [
       '<app-c><template shadowrootmode="open">',
-      '@code { @client { const n = signal(0); } }',
+      '@code { const n = signal(0); }',
       '<button @click=@nada>@n()</button>',
       '</template></app-c>',
     ].join('\n');
@@ -93,7 +93,7 @@ describe('who gets a chunk (§6.3, §4.5)', () => {
   it('an `@evento` alone is enough, with no signal anywhere', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
-      '@code { @client { function sube() {} } }',
+      '@code { function sube() {} }',
       '<button @click=@sube>+</button>',
     ].join('\n');
     expect(isReactiveRoute(graphOf(route))).toBe(true);
@@ -103,7 +103,7 @@ describe('who gets a chunk (§6.3, §4.5)', () => {
   it('a reactive declared in `@code` is enough on its own', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
-      '@code { @client { const n = signal(1); } }',
+      '@code { const n = signal(1); }',
       '<output>@n()</output>',
     ].join('\n');
     expect(isReactiveRoute(graphOf(route))).toBe(true);
@@ -113,11 +113,11 @@ describe('who gets a chunk (§6.3, §4.5)', () => {
 describe('the shape of the module (§3.4)', () => {
   const route = [
     '<link rel="layout" href="./l.fud">',
-    '@code { @client {',
+    '@code {',
     '  import { signal } from "@fudic/core";',
     '  const count = signal(1);',
     '  function mas() { count.set(count() + 1); }',
-    '} }',
+    '}',
     '<button @click=@mas>+1</button>',
     '<output>@count()</output>',
   ].join('\n');
@@ -138,7 +138,7 @@ describe('the shape of the module (§3.4)', () => {
     expect(code).not.toContain('const $m =');
   });
 
-  it('carries the `@client` body verbatim and binds `data`', () => {
+  it('carries the `@code` verbatim and binds `data`', () => {
     const code = chunkOf(route)!;
     expect(code).toContain('const count = signal(1);');
     expect(code).toContain('function mas() { count.set(count() + 1); }');
@@ -150,7 +150,7 @@ describe('the walk crosses the layout by cursor (§6.4)', () => {
   const route = [
     '<link rel="layout" href="./l.fud">',
     '<link rel="component" href="./nav.fud">',
-    '@code { @client { const n = signal(1); function mas() { n.set(n() + 1); } } }',
+    '@code { const n = signal(1); function mas() { n.set(n() + 1); } }',
     '@section nav { <button class="sube" @click=@mas>nav</button> }',
     '<output>@n()</output>',
   ].join('\n');
@@ -183,7 +183,7 @@ describe('a construct written straight in a hole (BUG-45 §2.3)', () => {
   // The `@if` has no element of the route around it: its parent is `<main>`, a LAYOUT node.
   const route = [
     '<link rel="layout" href="./l.fud">',
-    '@code { @client { const v = signal(true); function t() { v.set(!v()); } } }',
+    '@code { const v = signal(true); function t() { v.set(!v()); } }',
     '<button @click=@t>t</button>',
     '@if (v()) { <p>a</p> } else { <p>b</p> }',
   ].join('\n');
@@ -217,7 +217,7 @@ describe('the depth of the walk is the layout the author wrote, however deep (§
     ].join('\n');
     const route = [
       '<link rel="layout" href="./l.fud">',
-      '@code { @client { const n = signal(1); } }',
+      '@code { const n = signal(1); }',
       '<output>@n()</output>',
     ].join('\n');
     const io = memoryIo({ '/r.fud': route, '/l.fud': layout });
@@ -237,7 +237,7 @@ describe('the layout can put anything in front of the hole', () => {
     const io = memoryIo({
       '/r.fud': [
         '<link rel="layout" href="./x.fud">',
-        '@code { @client { const n = signal(1); } }',
+        '@code { const n = signal(1); }',
         '<output>@n()</output>',
       ].join('\n'),
       '/x.fud': layout,
@@ -259,7 +259,7 @@ describe('the layout can put anything in front of the hole', () => {
     const io = memoryIo({
       '/r.fud': [
         '<link rel="layout" href="./x.fud">',
-        '@code { @client { const n = signal(1); } }',
+        '@code { const n = signal(1); }',
         '<output>@n()</output>',
       ].join('\n'),
       '/x.fud': layout,
@@ -285,7 +285,7 @@ describe('the layout can put anything in front of the hole', () => {
     const io = memoryIo({
       '/r.fud': [
         '<link rel="layout" href="./x.fud">',
-        '@code { @client { const n = signal(1); } }',
+        '@code { const n = signal(1); }',
         '<output>@n()</output>',
       ].join('\n'),
       '/x.fud': layout,
@@ -298,20 +298,20 @@ describe('the layout can put anything in front of the hole', () => {
   });
 });
 
-describe('the neutral zone reaches the chunk too', () => {
-  it('hoists its imports and runs its body before `@client`', () => {
+describe('the server cut reaches the chunk too', () => {
+  it('hoists its imports and runs its body in source order with the rest (SDD-60 §4.8)', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
       '@code {',
       '  import { saluda } from "./util.js";',
-      '  const prefijo = "hola";',
-      '  @client { const n = signal(1); }',
+      '  const prefijo = saluda("hola");',
+      '  const n = signal(1);',
       '}',
-      '<output>@n()</output>',
+      '<output>@prefijo @n()</output>',
     ].join('\n');
     const code = chunkOf(route)!;
     expect(code).toContain('import { saluda } from "./util.js";');
-    expect(code).toContain('const prefijo = "hola";');
+    expect(code).toContain('const prefijo = saluda("hola");');
     expect(code.indexOf('const prefijo')).toBeLessThan(code.indexOf('const n = signal(1);'));
   });
 });
@@ -382,7 +382,7 @@ describe('a signal of the route crossing to a component', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
       '<link rel="component" href="./d.fud">',
-      '@code { @client { const count = signal(1); } }',
+      '@code { const count = signal(1); }',
       '<signal-display .count=@count></signal-display>',
     ].join('\n');
     const code = chunkOf(route, { '/d.fud': CHILD })!;
@@ -395,7 +395,7 @@ describe('a signal of the route crossing to a component', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
       '<link rel="component" href="./b.fud">',
-      '@code { @client { function guarda() {} } }',
+      '@code { function guarda() {} }',
       '<app-btn .onSave=@guarda></app-btn>',
     ].join('\n');
     const code = chunkOf(route, { '/b.fud': CB })!;
@@ -423,7 +423,7 @@ describe('a signal of the route crossing to a component', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
       '<link rel="component" href="./d.fud">',
-      '@code { @client { const count = signal(1); } }',
+      '@code { const count = signal(1); }',
       '<signal-display .count=@count></signal-display>',
     ].join('\n');
     expect([...hydratableTags(graphOf(route, { '/d.fud': CHILD }))]).toContain('signal-display');
@@ -448,7 +448,7 @@ describe('a `@RenderSection` with no name renders nothing and is walked as nothi
     const io = memoryIo({
       '/r.fud': [
         '<link rel="layout" href="./x.fud">',
-        '@code { @client { const n = signal(1); } }',
+        '@code { const n = signal(1); }',
         '<output>@n()</output>',
       ].join('\n'),
       '/x.fud': layout,
@@ -462,10 +462,10 @@ describe('what a route shares with a component, asked of a route', () => {
   it('delegates a loop with ONE table and one listener (SDD-37)', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
-      '@code { @client {',
+      '@code {',
       '  const dias = signal([{ id: 1, n: "L" }]);',
       '  function pick(ev, dia) { void ev; void dia; }',
-      '} }',
+      '}',
       '<div class="grid" @click=@pick($event, $dia)>',
       '  @foreach (const dia of dias()) key (dia.id) {',
       '    <div class="cell" delegate:dia><span>@dia.n</span></div>',
@@ -481,7 +481,7 @@ describe('what a route shares with a component, asked of a route', () => {
     const io = memoryIo({
       '/r.fud': [
         '<link rel="layout" href="./l.fud">',
-        '@code { @client { const n = signal(1); } }',
+        '@code { const n = signal(1); }',
         '<img src="./foto.png" alt="x">',
         '<output>@n()</output>',
       ].join('\n'),
@@ -499,7 +499,7 @@ describe('source maps: one source, and it is the route (§6.6)', () => {
   it('anchors nothing to the layout', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
-      '@code { @client { const n = signal(1); } }',
+      '@code { const n = signal(1); }',
       '<output>@n()</output>',
     ].join('\n');
     const io = memoryIo({ '/r.fud': route, '/l.fud': LAYOUT });
@@ -519,7 +519,7 @@ describe('source maps: one source, and it is the route (§6.6)', () => {
 describe('how a route comes up (§4.6)', () => {
   const gesture = [
     '<link rel="layout" href="./l.fud">',
-    '@code { @client { const n = signal(1); } }',
+    '@code { const n = signal(1); }',
     '<output>@n()</output>',
   ].join('\n');
 
@@ -527,13 +527,13 @@ describe('how a route comes up (§4.6)', () => {
     expect(routeHydration(graphOf(gesture))).toBe('gesture');
   });
 
-  it('at install when `@client` calls `effect(...)`', () => {
+  it('at install when the `@code` calls `effect(...)`', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
-      '@code { @client {',
+      '@code {',
       '  const ahora = signal(0);',
       '  effect(() => { const id = setInterval(() => ahora.set(1), 1000); return () => clearInterval(id); });',
-      '} }',
+      '}',
       '<time>@ahora()</time>',
     ].join('\n');
     expect(routeHydration(graphOf(route))).toBe('eager');
@@ -575,7 +575,7 @@ describe('a hole its layout slots, on the client (SDD-48 §4.5, criterion 5)', (
     chunkOf(route, { '/l.fud': SLOTTED, '/m.fud': MARCO })!;
   const head = [
     '<link rel="layout" href="./l.fud">',
-    '@code { @client { const on = signal(true); const xs = signal([1]); } }',
+    '@code { const on = signal(true); const xs = signal([1]); }',
   ];
 
   it('stamps every root an `@if` of the body builds, and nothing below it', () => {

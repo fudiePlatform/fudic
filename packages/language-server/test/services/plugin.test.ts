@@ -407,7 +407,7 @@ describe('the tag plugin (BUG-15 §4.6)', () => {
   it('offers the names in scope inside a plain attribute’s value, each writing its `@`', async () => {
     // Any attribute takes a binding — `role="@data.title"` — and nothing said so: the names
     // appeared only once the `@` was typed, so the author had to know the answer to ask.
-    const source = `<link rel="layout" href="../layouts/_layout.fud">\n@code {\n  @client {\n    const titulo = 1;\n  }\n}\n<article>\n  <div role="|"></div>\n</article>\n`;
+    const source = `<link rel="layout" href="../layouts/_layout.fud">\n@code {\n  const titulo = 1;\n}\n<article>\n  <div role="|"></div>\n</article>\n`;
     const { tagService, document, position } = setup(source);
     const list = await completionsOf(tagService, document, position);
 

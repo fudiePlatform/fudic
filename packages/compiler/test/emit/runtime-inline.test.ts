@@ -38,7 +38,7 @@ function layoutModule(marker: string, extra: Record<string, string> = {}): strin
 /** The route that goes with it: reactive, so it has something to hydrate. */
 const ROUTE = [
   '<link rel="layout" href="./l.fud">',
-  '@code { @client { const n = signal(1); } }',
+  '@code { const n = signal(1); }',
   '<output>@n()</output>',
 ].join('\n');
 

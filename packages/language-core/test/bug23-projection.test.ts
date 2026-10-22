@@ -30,16 +30,14 @@ function project(source: string, registry: FileRegistry = BADGE): string {
 const component = (markup: string, code = ''): string =>
   `${code}<app-host>\n  <template shadowrootmode="open">\n    ${markup}\n  </template>\n</app-host>\n`;
 
-/** A `@client` that declares two reactives and one handler, with no package to import from. */
+/** A `@code` that declares two reactives and one handler, with no package to import from. */
 const CLIENT = `@code {
-  @client {
-    type Signal<T> = { (): T };
-    declare function signal<T>(v: T): Signal<T>;
-    const titulo = signal('Hola');
-    const doble = computed(() => 2);
-    const plano = 'x';
-    function onClick(ev: MouseEvent): void { void ev; }
-  }
+  type Signal<T> = { (): T };
+  declare function signal<T>(v: T): Signal<T>;
+  const titulo = signal('Hola');
+  const doble = computed(() => 2);
+  const plano = 'x';
+  function onClick(ev: MouseEvent): void { void ev; }
 }
 
 `;

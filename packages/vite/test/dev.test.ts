@@ -23,13 +23,11 @@ const PAGE = `<!DOCTYPE html>
 </html>
 `;
 
-/** A hydratable component: it has a `@client` region, so it gets a client module. */
+/** A hydratable component: it has client code, so it gets a client module. */
 const WIDGET = `@code {
-  @client {
-    import { signal } from '@fudic/core';
-    const hits = signal(0);
-    function bump() { hits.set(hits() + 1); }
-  }
+  import { signal } from '@fudic/core';
+  const hits = signal(0);
+  function bump() { hits.set(hits() + 1); }
 }
 
 <dev-widget>

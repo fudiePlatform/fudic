@@ -42,10 +42,8 @@ const page = (markup: string): string =>
   `<link rel="layout" href="../layouts/_layout.fud">
 <link rel="component" href="../components/app-badge.fud">
 @code {
-  @client {
-    const counter = 1;
-    function onClick() {}
-  }
+  const counter = 1;
+  function onClick() {}
 }
 
 <head>

@@ -26,14 +26,12 @@ import { BUILD_TOKEN, isMainChunk } from '../src/constants.js';
 const COUNTER = `<link rel="component" href="./x-out.fud">
 
 @code {
-  @client {
-    import { signal } from '@fudic/core';
+  import { signal } from '@fudic/core';
 
-    const n = signal(0);
+  const n = signal(0);
 
-    function inc() {
-      n.set(n() + 1);
-    }
+  function inc() {
+    n.set(n() + 1);
   }
 }
 

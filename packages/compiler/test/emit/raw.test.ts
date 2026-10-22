@@ -26,16 +26,14 @@ import { clientFactory, controller, mountAsDsd, serverShadowHtml } from './hydra
  */
 const CODE =
   '@code {\n' +
+  "  import { signal } from '@fudic/core';\n" +
   "  const mark = (s) => ({ [Symbol.for('fudic.trustedHtml')]: s, fudicTrustedHtml: s });\n" +
   "  const uno = mark('<h3>Primer post</h3><p>Con <em>énfasis</em>.</p>');\n" +
   "  const dos = mark('<h3>Segundo post</h3><ul><li>uno</li><li>dos</li></ul>');\n" +
   "  const falsa = '<b>esto no está marcado</b>';\n" +
-  '  @client {\n' +
-  "    import { signal } from '@fudic/core';\n" +
-  '    const post = signal(uno);\n' +
-  '    const clics = signal(0);\n' +
-  '    globalThis.__raw = { post: (v) => post.set(v), uno, dos, sumar: () => clics.set(clics() + 1) };\n' +
-  '  }\n' +
+  '  const post = signal(uno);\n' +
+  '  const clics = signal(0);\n' +
+  '  globalThis.__raw = { post: (v) => post.set(v), uno, dos, sumar: () => clics.set(clics() + 1) };\n' +
   '}\n';
 
 const component = (tag: string, markup: string): string =>

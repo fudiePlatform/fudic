@@ -21,13 +21,11 @@ const PARENT = `<link rel="component" href="./cell-child.fud">
 <link rel="component" href="./cell-form.fud">
 
 @code {
+  import { signal } from "@fudic/core";
   const { start = 0 } = props<{ start?: number }>();
-  @client {
-    import { signal } from "@fudic/core";
-    const count = signal(start);
-    function save(what) { count.set(what); }
-    function inc() { count.set(count() + 1); }
-  }
+  const count = signal(start);
+  function save(what) { count.set(what); }
+  function inc() { count.set(count() + 1); }
 }
 
 <cell-parent>
@@ -43,11 +41,9 @@ const PARENT = `<link rel="component" href="./cell-child.fud">
 const CHILD = `<link rel="component" href="./cell-kid.fud">
 
 @code {
+  import { computed } from "@fudic/core";
   const { value } = props<{ value: Signal<number> }>();
-  @client {
-    import { computed } from "@fudic/core";
-    const doble = computed(() => value() * 2);
-  }
+  const doble = computed(() => value() * 2);
 }
 
 <cell-child>
@@ -73,10 +69,8 @@ const FORM = `<link rel="component" href="./cell-relay.fud">
 
 @code {
   const { onSave } = props<{ onSave: (what: number) => void }>();
-  @client {
-    const label = "go";
-    function submit() { onSave(1); }
-  }
+  const label = "go";
+  function submit() { onSave(1); }
 }
 
 <cell-form>
@@ -180,7 +174,7 @@ describe('Prop.channel — what the child asks to be handed (§6.2)', () => {
 
 describe('cellSlots — the casillas a component publishes (§6.3)', () => {
   it('puts them BEHIND the props, in declaration order', () => {
-    // `start` is prop 0; `count` and `save` follow in the order `@client` declares them.
+    // `start` is prop 0; `count` and `save` follow in the order the `@code` declares them.
     // `inc` is declared between them and does not cross, so it takes no slot.
     expect(cellSlots(comp('cell-parent'), graph)).toEqual([
       { name: 'count', slot: 1, kind: 'signal' },
@@ -212,10 +206,10 @@ describe('two cells in one component — the splices are applied back to front',
         '<html><head></head><body><two-owner></two-owner></body></html>\n',
       '/two-owner.fud':
         '<link rel="component" href="./two-sink.fud">\n\n' +
-        '@code {\n  @client {\n' +
-        '    import { signal } from "@fudic/core";\n' +
-        '    const a = signal(1), b = signal(2);\n' +
-        '  }\n}\n\n' +
+        '@code {\n' +
+        '  import { signal } from "@fudic/core";\n' +
+        '  const a = signal(1), b = signal(2);\n' +
+        '}\n\n' +
         '<two-owner><template shadowrootmode="open">\n' +
         '  <two-sink .a=@a .b=@b></two-sink>\n' +
         '</template></two-owner>\n',
@@ -246,11 +240,11 @@ describe('the payload of the acceptance page (§6.5, §6.6)', () => {
         '  <body><cc-owner></cc-owner></body>\n</html>\n',
       '/cc-owner.fud':
         '<link rel="component" href="./cc-view.fud">\n\n' +
-        '@code {\n  const { start = 0 } = props<{ start?: number }>();\n  @client {\n' +
-        '    import { signal } from "@fudic/core";\n' +
-        '    const count = signal(start);\n' +
-        '    function inc() { count.set(count() + 1); }\n' +
-        '  }\n}\n\n' +
+        '@code {\n  const { start = 0 } = props<{ start?: number }>();\n' +
+        '  import { signal } from "@fudic/core";\n' +
+        '  const count = signal(start);\n' +
+        '  function inc() { count.set(count() + 1); }\n' +
+        '}\n\n' +
         '<cc-owner><template shadowrootmode="open">' +
         '<button @click=@inc>+1</button>' +
         '<cc-view .value=@count></cc-view>' +

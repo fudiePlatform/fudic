@@ -33,11 +33,9 @@ const OWNER = `<link rel="component" href="./cx-view.fud">
 <link rel="component" href="./cx-form.fud">
 
 @code {
-  @client {
-    import { signal } from "@fudic/core";
-    const count = signal(0);
-    function sumar(n) { count.set(count() + n); }
-  }
+  import { signal } from "@fudic/core";
+  const count = signal(0);
+  function sumar(n) { count.set(count() + n); }
 }
 
 <cx-owner>
@@ -52,11 +50,9 @@ const OWNER = `<link rel="component" href="./cx-view.fud">
 const VIEW = `<link rel="component" href="./cx-kid.fud">
 
 @code {
+  import { computed } from "@fudic/core";
   const { value } = props<{ value: Signal<number> }>();
-  @client {
-    import { computed } from "@fudic/core";
-    const doble = computed(() => value() * 2);
-  }
+  const doble = computed(() => value() * 2);
 }
 
 <cx-view>

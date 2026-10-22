@@ -118,11 +118,9 @@ describe('a signal crosses its VALUE, never the object (decision 151)', () => {
     const parentWithSignal = `<link rel="component" href="./app-badge.fud">
 
 @code {
-  @client {
-    import { signal } from '@fudic/core';
+  import { signal } from '@fudic/core';
 
-    const count = signal(3);
-  }
+  const count = signal(3);
 }
 
 <app-card>

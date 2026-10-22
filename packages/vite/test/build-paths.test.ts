@@ -1,5 +1,5 @@
 /**
- * SDD-19 §6.6 end-to-end: a `/customer/[id]` page with `@server paths()` prerenders one
+ * SDD-19 §6.6 end-to-end: a `/customer/[id]` page whose `.fudapi` declares `paths` prerenders one
  * HTML per enumerated id. `paramFallback:'lazy'` (default) also renders
  * unknown ids in the Service Worker; `'notFound'` does not (the route stays `ssg`).
  */
@@ -10,7 +10,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fudic, type FudicOptions } from '../src/index.js';
-import { runtimeAlias } from './helpers/alias.js';
+import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
 import { renderUrlOf } from './helpers/manifest.js';
 
 
@@ -18,17 +18,25 @@ const PAGE = `<!DOCTYPE html>
 <html>
 <head>
 <title>Customer</title>
-@code {
-@server {
-export function load(ctx) { return { id: ctx.params.id }; }
-export function paths() { return ['1', '2']; }
-}
-}
+<link rel="server" href="./[id].fudapi">
 </head>
 <body>
 <h1>Customer @data.id</h1>
 </body>
 </html>
+`;
+
+/** No mode: the inference of today decides it from `load`, `paths` and `paramFallback`. */
+const PAGE_API = `load
+  id  str
+
+paths
+`;
+
+const PAGE_SERVER = `import { load, paths } from 'fudic:routes/customer/[id]';
+
+load.handle((ctx) => ({ id: ctx.params.id }));
+paths.handle(() => ['1', '2']);
 `;
 
 interface OutFile {
@@ -40,13 +48,17 @@ interface OutFile {
 async function buildWith(options: FudicOptions): Promise<OutFile[]> {
   const root = mkdtempSync(join(tmpdir(), 'fudic-paths-'));
   mkdirSync(join(root, 'src', 'routes', 'customer'), { recursive: true });
+  writeHttpTypecheckConfig(root);
   writeFileSync(join(root, 'src', 'routes', 'customer', '[id].fud'), PAGE);
+  writeFileSync(join(root, 'src', 'routes', 'customer', '[id].fudapi'), PAGE_API);
+  mkdirSync(join(root, 'src', 'server'), { recursive: true });
+  writeFileSync(join(root, 'src', 'server', 'customer.ts'), PAGE_SERVER);
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
   writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
   const result = (await build({
     root,
     logLevel: 'silent',
-    resolve: { alias: { ...runtimeAlias } },
+    resolve: { alias: httpAlias },
     plugins: [fudic(options)],
     build: { write: false, minify: false },
   })) as unknown as { output: OutFile[] };

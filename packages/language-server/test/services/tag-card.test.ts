@@ -21,13 +21,11 @@ const BUTTON = `@code {
    */
   const { label, tone = 'neutral' } = props<{ label: string; tone?: string }>();
 
-  @client {
-    import { emit } from "@fudic/dom";
+  import { emit } from "@fudic/dom";
 
-    function pick() {
-      emit('picked', 1);
-      emit('picked', 2);
-    }
+  function pick() {
+    emit('picked', 1);
+    emit('picked', 2);
   }
 }
 
@@ -57,12 +55,10 @@ const ODD = `@code {
   /** */
   const { a } = props<{ a?: string }>();
 
-  @client {
-    import { emit } from "@fudic/dom";
+  import { emit } from "@fudic/dom";
 
-    const which = 'x';
-    function go() { emit(which); }
-  }
+  const which = 'x';
+  function go() { emit(which); }
 }
 
 <app-odd>

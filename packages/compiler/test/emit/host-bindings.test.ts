@@ -39,14 +39,12 @@ function emit(attrs: string, code = ''): { server: string; client: string } {
   };
 }
 
-/** A `@code { @client }` block declaring a signal and a handler. */
+/** A `@code` block declaring a signal and a handler. */
 const CLIENT_CODE = `@code {
-  @client {
-    import { signal } from '@fudic/core';
+  import { signal } from '@fudic/core';
 
-    const open = signal(false);
-    const toggle = () => open.set(!open());
-  }
+  const open = signal(false);
+  const toggle = () => open.set(!open());
 }
 
 `;

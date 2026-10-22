@@ -19,10 +19,8 @@ function stateful(tag: string, links: readonly string[], markup: string): string
   const head = links.map((t) => `<link rel="component" href="./${t}.fud">`).join('\n');
   return `${head}
 @code {
-  @client {
-    import { signal } from '@fudic/core';
-    const n = signal(0);
-  }
+  import { signal } from '@fudic/core';
+  const n = signal(0);
 }
 <${tag}>
   <template shadowrootmode="open">

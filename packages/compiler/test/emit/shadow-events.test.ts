@@ -17,12 +17,10 @@ import {
 } from '../../src/emit/index.js';
 import { memoryIo } from './_support.js';
 
-/** A `@code { @client }` block declaring the handlers the cases below call. */
+/** A `@code` block declaring the handlers the cases below call. */
 const CLIENT_CODE = `@code {
-  @client {
-    function onShadow(e: Event) { void e; }
-    function note(where: string, e: Event, n: number) { void where; void e; void n; }
-  }
+  function onShadow(e: Event) { void e; }
+  function note(where: string, e: Event, n: number) { void where; void e; void n; }
 }
 
 `;

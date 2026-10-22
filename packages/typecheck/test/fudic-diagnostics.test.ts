@@ -76,7 +76,7 @@ describe('fudicDiagnostics', () => {
   });
 
   it('forwards an Oxc syntax error', () => {
-    const source = `@code {\n  @client {\n    const = ;\n  }\n}\n${component('app-x')}`;
+    const source = `@code {\n  const = ;\n}\n${component('app-x')}`;
 
     expect(codesOf('/p/components/app-x.fud', source)).toContain('FUD0170');
   });
@@ -87,8 +87,8 @@ describe('fudicDiagnostics', () => {
     );
   });
 
-  it('adds FUD0461 for a $ identifier in @client', () => {
-    const source = `@code {\n  @client {\n    const $x = 1;\n  }\n}\n${component('app-x')}`;
+  it('adds FUD0461 for a $ identifier in @code', () => {
+    const source = `@code {\n  const $x = 1;\n}\n${component('app-x')}`;
 
     expect(codesOf('/p/components/app-x.fud', source)).toContain('FUD0461');
   });

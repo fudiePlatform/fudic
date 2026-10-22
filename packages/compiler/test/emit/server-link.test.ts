@@ -226,7 +226,7 @@ describe('`data` and FUD0621 with a linked `load`', () => {
     // A reactive route whose client half reads `data`: the case that sends it in `fud-data`.
     const src = route(
       '<link rel="server" href="./r.fudapi">',
-      '  @client {\n    const n = signal(1);\n    function hi() { alert(data.user); }\n  }',
+      '  const n = signal(1);\n  function hi() { alert(data.user); }',
       '<output>@n()</output>',
     );
     const io = withApi ? ioOf({ '/r.fud': src }, facts) : memoryIo({ '/l.fud': LAYOUT, '/r.fud': src });
@@ -247,7 +247,7 @@ describe('`data` and FUD0621 with a linked `load`', () => {
 
   it('a page reached without the document graph has no links to look at', () => {
     const page =
-      '<!DOCTYPE html><html><head>@code { @client { const n = signal(1); function hi() { alert(data.user); } } }</head>' +
+      '<!DOCTYPE html><html><head>@code { const n = signal(1); function hi() { alert(data.user); } }</head>' +
       '<body><output>@n()</output></body></html>';
     const graph = resolveComponents('/p.fud', memoryIo({ '/p.fud': page }));
     expect(codes(emitPageModuleMapped(graph, { routeName: 'p' }).diagnostics)).toContain('FUD0621');

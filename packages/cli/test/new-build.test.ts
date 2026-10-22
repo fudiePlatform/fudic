@@ -57,9 +57,9 @@ describe('fudic new → vite build (§6.1)', () => {
     root = join(cwd, 'demo');
 
     // A generated COMPONENT goes through the same build, wired into the generated route.
-    // Its `@code` carries an empty `@client {}`, and this is what proves that costs nothing:
-    // the build emits a client chunk for every component regardless of level (SDD-15), so if
-    // an empty client region broke that emit, it would break here.
+    // It has no `@code` at all, and this is what proves that costs nothing: the build emits a
+    // client chunk for every component regardless of level (SDD-15), so if a component with
+    // nothing to run broke that emit, it would break here.
     // Written by hand, not imported from `@fudic/conventions`: this test is the end-to-end
     // check that the two sides agree, and a literal is what keeps it from agreeing with
     // itself.
@@ -118,10 +118,10 @@ describe('fudic new → vite build (§6.1)', () => {
     expect(output.some((file) => file.fileName === 'fudic-sw.js')).toBe(true);
   });
 
-  it('emits the client chunk of a generated component, empty @client and all', () => {
+  it('emits the client chunk of a generated component, with no @code and all', () => {
     // `assets/h/app-button-<hash>.js`: the chunk SDD-15 emits per component. Its presence is
-    // the answer to the one thing the new `@code` template left unverified — an empty
-    // `@client {}` is inert, not a syntax the emit chokes on.
+    // the answer to the one thing the template left unverified — a component with nothing to
+    // run is inert, not something the emit chokes on.
     expect(output.some((file) => /^assets\/h\/app-button-.*\.js$/u.test(file.fileName))).toBe(true);
   });
 });

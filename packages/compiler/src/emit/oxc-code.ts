@@ -697,9 +697,10 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     },
     offset: map,
   };
-  // The whole `@code` once it has no regions: every name of it is the browser's (FUD0290). Its
-  // imports aside: the expansion of translations writes `$format` and `$message` into them.
-  checkReservedPrefix(regionless ? allStatements.filter((s) => s.type !== 'ImportDeclaration') : clientStatements, map, own);
+  // The whole `@code` once it has no regions: every name of it is the browser's (FUD0290). The
+  // import of `@fudic/i18n` aside: the expansion of translations writes `$format` and
+  // `$message` into it, and any other import that brings a `$` name is the author's.
+  checkReservedPrefix(regionless ? allStatements.filter((s) => !isI18nImport(s)) : clientStatements, map, own);
 
   // The server functions, read before the DI calls: inside a component's machinery `inject`
   // is NOT rewritten (SDD-56 §4.13) — that code runs in a request, not in a render.
@@ -781,7 +782,9 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     client,
     neutral,
     template,
-    mutable: changeableBindings(clientStatements),
+    // Without regions a reassigned binding the markup reads sits in the cut, not in the
+    // client's statements, and it is the browser's all the same (SDD-60 §4.8).
+    mutable: changeableBindings(regionless ? allStatements : clientStatements),
     clientNames: topLevelBindings(clientStatements),
     clientFunctions: topLevelFunctions(regionless ? allStatements : clientStatements),
     setCalls: setCalls(clientStatements),
@@ -1119,6 +1122,11 @@ function checkReservedPrefix(
   for (const id of reservedIdentifiers(statements)) {
     out.push(FUD0290({ span: { start: map(id.start), end: map(id.end) }, name: name(id) }));
   }
+}
+
+/** Whether a statement is the `import … from '@fudic/i18n'` the expansion of translations writes. */
+function isI18nImport(statement: OxcNode): boolean {
+  return statement.type === 'ImportDeclaration' && (statement['source'] as OxcNode)['value'] === '@fudic/i18n';
 }
 
 /** The package `emit` comes from. Anything else of that name is the author's own. */

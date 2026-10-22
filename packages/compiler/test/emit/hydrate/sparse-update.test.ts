@@ -45,13 +45,11 @@ const PANEL =
   '<link rel="component" href="./x-display.fud">\n' +
   '\n' +
   '@code {\n' +
-  '  @client {\n' +
-  "    import { signal } from '@fudic/core';\n" +
+  "  import { signal } from '@fudic/core';\n" +
   '\n' +
-  '    const count = signal(5);\n' +
+  '  const count = signal(5);\n' +
   '\n' +
-  "    document.addEventListener('bump', () => count.set(count() + 1));\n" +
-  '  }\n' +
+  "  document.addEventListener('bump', () => count.set(count() + 1));\n" +
   '}\n' +
   '\n' +
   '<x-panel>\n' +

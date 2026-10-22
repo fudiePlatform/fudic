@@ -47,7 +47,7 @@ describe('extractCode', () => {
   });
 
   it('BUG-24 §4.4 — a reactive carries where its CALL starts, for the cell splice', () => {
-    const source = wrap('@code {\n  @client { const n = signal(7); }\n}\n');
+    const source = wrap('@code {\n  const n = signal(7);\n}\n');
     const [reactive] = extractCode(source, componentDoc(source)).signals;
     expect(source.slice(reactive!.at)).toMatch(/^signal\(7\)/u);
   });
@@ -164,15 +164,13 @@ describe('extractCode', () => {
     });
   });
 
-  it('splits @client into hoisted imports and closure body, verbatim', () => {
+  it('splits the browser code into hoisted imports and closure body, verbatim', () => {
     const source = wrap(
       '@code {\n' +
         '  const { a } = props<{ a: string }>();\n' +
-        '  @client {\n' +
-        "    import { signal } from '@fudic/core';\n" +
-        '    const open = signal(false);\n' +
-        '    function toggle() { open.set(!open()); }\n' +
-        '  }\n' +
+        "  import { signal } from '@fudic/core';\n" +
+        '  const open = signal(false);\n' +
+        '  function toggle() { open.set(!open()); }\n' +
         '}\n',
     );
     const { client } = extractCode(source, componentDoc(source));
@@ -223,14 +221,12 @@ describe('extractCode', () => {
     ]);
   });
 
-  it('finds every emit(...) of @client, whatever the binding is called (SDD-15 §4.4)', () => {
+  it('finds every emit(...) of the browser code, whatever the binding is called (SDD-15 §4.4)', () => {
     const source = wrap(
       '@code {\n' +
-        '  @client {\n' +
-        "    import { emit as fire } from '@fudic/dom';\n" +
-        '    function press() { console.log(1); helper(); fire(); }\n' +
-        "    const later = () => { const f = () => fire('press', 1); return f; };\n" +
-        '  }\n' +
+        "  import { emit as fire } from '@fudic/dom';\n" +
+        '  function press() { console.log(1); helper(); fire(); }\n' +
+        "  const later = () => { const f = () => fire('press', 1); return f; };\n" +
         '}\n',
     );
     const { emitCalls } = extractCode(source, componentDoc(source));
@@ -249,12 +245,10 @@ describe('extractCode', () => {
   it('finds nothing when emit is not the one imported from @fudic/dom', () => {
     const source = wrap(
       '@code {\n' +
-        '  @client {\n' +
-        "    import { browserDom } from '@fudic/dom';\n" +
-        "    import * as dom from '@fudic/dom';\n" +
-        "    import { emit } from './my-bus';\n" +
-        '    function press() { emit("press"); dom.emit("press"); }\n' +
-        '  }\n' +
+        "  import { browserDom } from '@fudic/dom';\n" +
+        "  import * as dom from '@fudic/dom';\n" +
+        "  import { emit } from './my-bus';\n" +
+        '  function press() { emit("press"); dom.emit("press"); }\n' +
         '}\n',
     );
     // A raw `dispatchEvent`, an `emit` of the author's own, and a namespace import: none of
@@ -362,7 +356,7 @@ describe('the injection diagnostics of one @code', () => {
   it('says nothing about injecting what this @code does not provide at all', () => {
     // An ancestor's or a `@Service`'s, and whether anybody registers it is FUD0680's
     // question — asked of the graph, with the module next door open.
-    expect(codesOf('  @client {\n    const cart = inject(Cart);\n  }\n')).toEqual([]);
+    expect(codesOf('  const cart = inject(Cart);\n')).toEqual([]);
   });
 
 });

@@ -30,12 +30,10 @@ const BADGE = `@code {
 const CARD = (host: string): string => `<link rel="component" href="./app-badge.fud">
 
 @code {
-  @client {
-    import { signal } from '@fudic/core';
-    const titulo = signal('Hola');
-    const activo = signal(true);
-    function onClick(ev) {}
-  }
+  import { signal } from '@fudic/core';
+  const titulo = signal('Hola');
+  const activo = signal(true);
+  function onClick(ev) {}
 }
 
 <app-card>

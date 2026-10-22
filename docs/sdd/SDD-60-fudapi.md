@@ -726,7 +726,8 @@ salen del `.fudapi` enlazado (parser de `@fudic/api`, sin Oxc). `FUD0393` y `FUD
 - Lo que dependía de zonas se redefine sin zonas: `FUD0201` (una función del `@code`), `FUD0290`
   (todo el `@code`), `FUD0907` (pierde el caso «nombre de `@client`»), `FUD0901` (texto), `FUD0430`
   y `FUD0700` (un layout no enlaza `.fudapi` y su `@code` solo lleva props), `FUD0621` (sin
-  `.fudapi` con `load`), `FUD1003`–`FUD1009` (ver catálogo). Se retiran `FUD0111`, `FUD0193`,
+  `.fudapi` con `load`), `FUD1003`–`FUD1009` (ver catálogo). *Decidido al implementar:* `FUD0461`
+  (el `$` reservado) cubre todo el `@code`, que antes solo miraba dentro de las regiones. Se retiran `FUD0111`, `FUD0193`,
   `FUD0194`, `FUD0196`, `FUD0570`, `FUD0681`, `FUD0682`, `FUD1000`–`FUD1004`, `FUD1007`–`FUD1009`
   (su `.ts` se borra y su `.md` queda como `retired` con su sustituto).
 

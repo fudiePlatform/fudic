@@ -32,15 +32,13 @@ const PAGE = `<!DOCTYPE html>
 </html>
 `;
 
-/** A component with a real `@client` zone: signals, a handler, and names worth resolving. */
+/** A component with real client code: signals, a handler, and names worth resolving. */
 const COUNTER = `@code {
-  @client {
-    import { signal } from '@fudic/core';
+  import { signal } from '@fudic/core';
 
-    const count = signal(0);
-    const start = 0;
-    const inc = () => count.set(count() + 1);
-  }
+  const count = signal(0);
+  const start = 0;
+  const inc = () => count.set(count() + 1);
 }
 
 <app-counter>

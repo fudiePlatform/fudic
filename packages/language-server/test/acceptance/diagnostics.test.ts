@@ -269,11 +269,11 @@ describe('§6.9 — inter-file', () => {
 });
 
 describe('§6.11 — the reserved $ namespace, while typing', () => {
-  it('reports const $x = 1 in @client with the exact span, and leaves foo$ alone', async () => {
+  it('reports const $x = 1 in @code with the exact span, and leaves foo$ alone', async () => {
     const badge = await harness.open(BADGE);
     const source = badge.text.replace(
       '@code {',
-      '@code {\n  @client {\n    const $x = 1;\n    const foo$ = 2;\n    const read = { $bar: 1 }.$bar;\n  }\n',
+      '@code {\n  const $x = 1;\n  const foo$ = 2;\n  const read = { $bar: 1 }.$bar;\n',
     );
 
     const diagnostics = await diagnosticsOf(badge.uri, source);

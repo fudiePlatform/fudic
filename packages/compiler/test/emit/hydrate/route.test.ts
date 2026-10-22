@@ -114,10 +114,10 @@ function hydrate(route: string, extra: Record<string, string> = {}): ReturnType<
 describe('a route adopts the composed page from the `<body>` (§6.4)', () => {
   const route = [
     '<link rel="layout" href="./l.fud">',
-    '@code { @client {',
+    '@code {',
     '  const count = signal(1);',
     '  function mas() { count.set(count() + 1); }',
-    '} }',
+    '}',
     '@section nav { <button class="nav" @click=@mas>nav +1</button> }',
     '<div class="panel">',
     '  <button class="mas" @click=@mas>+1</button>',
@@ -157,16 +157,16 @@ describe('a route adopts the composed page from the `<body>` (§6.4)', () => {
 });
 
 describe('a signal written before the hookup', () => {
-  // An `effect` of `@client` runs as the factory does — before `h` hooks anything up — so its
+  // An `effect` of the `@code` runs as the factory does — before `h` hooks anything up — so its
   // write notified nobody, and the page kept what the server painted: /usuarios said
   // «ninguno» with the token in `localStorage`.
   const route = (client: string): string =>
     [
       '<link rel="layout" href="./l.fud">',
-      '@code { @client {',
+      '@code {',
       "  const s = signal('a');",
       client,
-      '} }',
+      '}',
       '<p class="s">@s()</p>',
     ].join('\n');
 
@@ -187,11 +187,11 @@ describe('a signal written before the hookup', () => {
 describe('the constructs of a route reconcile like a component’s', () => {
   const route = [
     '<link rel="layout" href="./l.fud">',
-    '@code { @client {',
+    '@code {',
     '  const count = signal(1);',
     '  const filas = computed(() => Array.from({ length: count() }, (_, i) => ({ id: i })));',
     '  function mas() { count.set(count() + 1); }',
-    '} }',
+    '}',
     '<button class="mas" @click=@mas>+1</button>',
     '<div class="caso">',
     '  @if (count() > 1) { <p class="salida">más de uno</p> } else { <p class="salida">uno</p> }',
@@ -214,10 +214,10 @@ describe('a construct written straight in a hole of the layout (BUG-45 §2.3)', 
   // and its branch selector lives outside `h`. The `div.caso` above hid exactly this.
   const route = [
     '<link rel="layout" href="./l.fud">',
-    '@code { @client {',
+    '@code {',
     '  const v = signal(true);',
     '  function t() { v.set(!v()); }',
-    '} }',
+    '}',
     '<button class="t" @click=@t>t</button>',
     '@if (v()) { <p class="rama">verdadera</p> } else { <p class="rama">falsa</p> }',
   ].join('\n');
@@ -246,7 +246,7 @@ describe('a page that owns its own shell adopts the same way', () => {
     const io = memoryIo({
       '/p.fud': [
         '<!DOCTYPE html><html><head>',
-        '@code { @client { const n = signal(3); function mas() { n.set(n() + 1); } } }',
+        '@code { const n = signal(3); function mas() { n.set(n() + 1); } }',
         '</head><body>',
         '<button class="mas" @click=@mas>+1</button>',
         '<output>@n()</output>',
@@ -287,11 +287,11 @@ describe('a layout with constructs and slotted holes (SDD-48, criteria 5 and 8)'
   ].join('\n');
   const route = [
     '<link rel="layout" href="./l.fud">',
-    '@code { @client {',
+    '@code {',
     '  const v = signal(false);',
     '  const xs = signal([1]);',
     '  function t() { v.set(!v()); xs.set([...xs(), xs().length + 1]); }',
-    '} }',
+    '}',
     '@section lateral { <a class="l">l</a> @foreach (const x of xs()) key (x) { <i class="x">@x</i> } }',
     '<button class="t" @click=@t>t</button>',
     '@if (v()) { <p class="nuevo">nuevo</p> }',

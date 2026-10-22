@@ -1,7 +1,7 @@
 /**
- * `FUD0290` — the `$` prefix is the compiler's inside `@code { @client }` (SDD-15 §4.7).
+ * `FUD0290` — the `$` prefix is the compiler's inside `@code` (SDD-15 §4.7, SDD-60 §4.8).
  *
- * The body of `@client` is copied verbatim into the factory closure and shares one lexical
+ * The browser code of `@code` is copied verbatim into the factory closure and shares one lexical
  * scope with `$dom`, `$shadow`, `$props`, `$n1`, `$m`, `$s`, `$a` and `$host`. The rule is
  * about BINDINGS, so half of these tests are about what must NOT be reported: a property
  * name, a class member, a label and a type annotation all spell an identifier and none of
@@ -19,9 +19,9 @@ const componentDoc = (source: string): ComponentDocument => {
   return doc;
 };
 
-/** A component whose `@client` region is `body`, and nothing else of note. */
+/** A component whose `@code` is `body`, and nothing else of note: the markup reads none of it. */
 const withClient = (body: string): string =>
-  `@code {\n  @client {\n${body}\n  }\n}\n` +
+  `@code {\n${body}\n}\n` +
   `<m-el>\n  <template shadowrootmode="open"><span></span></template>\n</m-el>\n`;
 
 /** The text each diagnostic points at — the span is the assertion, not the message. */
@@ -122,6 +122,10 @@ describe('SDD-15 §4.7 — what it must leave alone', () => {
     expect(flagged("    import { emit as $fire } from '@fudic/dom';")).toEqual(['$fire']);
   });
 
+  it('spares the import of @fudic/i18n, the one the expansion of translations writes', () => {
+    expect(flagged("    import { $format, $message } from '@fudic/i18n';")).toEqual([]);
+  });
+
   it('says nothing about a type: `x as $T` names no value', () => {
     // The region is TypeScript and the emit copies it verbatim; a type annotation is erased
     // before anything shares a scope with it.
@@ -148,11 +152,6 @@ describe('SDD-15 §4.7 — what it must leave alone', () => {
     expect(extractCode(source, componentDoc(source)).diagnostics.map((d) => d.code)).toEqual(['FUD0290']);
   });
 
-  it('without regions an import is spared: the expansion of translations writes `$` names into it', () => {
-    const source =
-      "@code {\n  import { $format } from './i18n.js';\n}\n<m-el>\n  <template shadowrootmode=\"open\"><span></span></template>\n</m-el>\n";
-    expect(extractCode(source, componentDoc(source)).diagnostics).toEqual([]);
-  });
 });
 
 describe('SDD-15 §4.7 — the emit does not throw', () => {
@@ -161,14 +160,16 @@ describe('SDD-15 §4.7 — the emit does not throw', () => {
       '@code {\n' +
       '  const { title } = props<{ title: string }>();\n' +
       '  const n = signal(1);\n' +
-      '  @client {\n    const $bad = title;\n    const good = 2;\n  }\n' +
+      '  const $bad = title;\n' +
+      '  const good = 2;\n' +
       '}\n' +
       '<m-el>\n  <template shadowrootmode="open"><span></span></template>\n</m-el>\n';
     const { props, signals, client, diagnostics } = extractCode(source, componentDoc(source));
     expect(diagnostics.map((d) => d.code)).toEqual(['FUD0290']);
     expect(bareProps(props)).toEqual([{ name: 'title', optional: false, type: 'string' }]);
     expect(bareSignals(signals)).toEqual([{ name: 'n', init: '1', kind: 'signal' }]);
-    expect(client.body.map((s) => s.text)).toEqual(['const $bad = title;', 'const good = 2;']);
+    // The markup reads nothing, so the signal is the browser's declaration with the rest.
+    expect(client.body.map((s) => s.text)).toEqual(['const n = signal(1);', 'const $bad = title;', 'const good = 2;']);
   });
 
   it('points at the identifier, not at the statement around it', () => {

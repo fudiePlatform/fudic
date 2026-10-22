@@ -10,7 +10,16 @@ import { describe, expect, it } from 'vitest';
 import { resolveDocument } from '../../src/emit/resolve.js';
 import { emitLayoutModule, emitRouteModule, emitRouteModuleMapped } from '../../src/emit/index.js';
 import { memoryIo, ssrIo } from './_support.js';
+import type { LinkedApi, ResolveIo } from '../../src/types/io.js';
 import type { SsrDom } from '@fudic/ssr';
+
+/** The facts of the `.fudapi` files these routes link (SDD-60 §3.14), as a host hands them over. */
+const APIS: Record<string, LinkedApi> = {
+  '/r.fudapi': { id: 'routes/r', load: true, route: '/r.fud', paths: false, layout: false, functions: [], forms: [] },
+  '/p.fudapi': { id: 'routes/p', load: false, paths: true, layout: false, functions: [], forms: [] },
+};
+
+const routeIo = (files: Record<string, string>): ResolveIo => ({ ...memoryIo(files), api: (path) => APIS[path] });
 
 const LAYOUT = [
   '<!DOCTYPE html><html><head>@RenderHead()</head>',
@@ -58,7 +67,7 @@ function render(
   options: { routeName?: string } = {},
   extra: Record<string, string> = {},
 ): { html: string; dom: SsrDom } {
-  const io = memoryIo({ '/r.fud': route, '/l.fud': LAYOUT, ...extra });
+  const io = routeIo({ '/r.fud': route, '/l.fud': LAYOUT, ...extra });
   const graph = resolveDocument('/r.fud', io).value;
   const bindings: Record<string, unknown> = {
     renderSignalDisplay: childRender('signal-display'),
@@ -84,7 +93,7 @@ describe('the `<body>` claims its id, and it is the last (§6.7, §4.2)', () => 
     const route = [
       '<link rel="layout" href="./l.fud">',
       '<link rel="component" href="./d.fud">',
-      '@code { @client { const count = signal(7); } }',
+      '@code { const count = signal(7); }',
       '<signal-display .count=@count></signal-display>',
     ].join('\n');
     const { html } = render(route, { routeName: 'ruta' }, { '/d.fud': CHILD });
@@ -97,7 +106,7 @@ describe('the `<body>` claims its id, and it is the last (§6.7, §4.2)', () => 
     const route = [
       '<link rel="layout" href="./l.fud">',
       '<link rel="component" href="./d.fud">',
-      '@code { @client { const count = signal(7); } }',
+      '@code { const count = signal(7); }',
       '<signal-display .count=@count></signal-display>',
     ].join('\n');
     const { html } = render(route, { routeName: 'ruta' }, { '/d.fud': CHILD });
@@ -111,7 +120,7 @@ describe('the `<body>` claims its id, and it is the last (§6.7, §4.2)', () => 
   it('publishes the route name, and it is what the runtime derives the URL from', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
-      '@code { @client { const n = signal(1); } }',
+      '@code { const n = signal(1); }',
       '<output>@n()</output>',
     ].join('\n');
     const { html } = render(route, { routeName: 'blog-slug' });
@@ -129,7 +138,7 @@ describe('the `<body>` claims its id, and it is the last (§6.7, §4.2)', () => 
   it('and nothing either when the build does not know what the route is called', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
-      '@code { @client { const n = signal(1); } }',
+      '@code { const n = signal(1); }',
       '<output>@n()</output>',
     ].join('\n');
     const { html } = render(route);
@@ -140,7 +149,7 @@ describe('the `<body>` claims its id, and it is the last (§6.7, §4.2)', () => 
 
 describe('what the route contributes to the page maps (§6.8, §4.6)', () => {
   const ISLAND = [
-    '@code { @client { const n = signal(0); function nada() {} } }',
+    '@code { const n = signal(0); function nada() {} }',
     '<app-island><template shadowrootmode="open">',
     '<button @click=@nada>@n()</button>',
     '</template></app-island>',
@@ -160,12 +169,12 @@ describe('what the route contributes to the page maps (§6.8, §4.6)', () => {
       '<link rel="layout" href="./l.fud">',
       '<link rel="component" href="./d.fud">',
       '<link rel="component" href="./i.fud">',
-      '@code { @client { const count = signal(1); } }',
+      '@code { const count = signal(1); }',
       '<signal-display .count=@count></signal-display>',
       '<app-island></app-island>',
       '<app-island></app-island>',
     ].join('\n');
-    const io = memoryIo({ '/r.fud': route, '/l.fud': LAYOUT, '/d.fud': CHILD, '/i.fud': ISLAND });
+    const io = routeIo({ '/r.fud': route, '/l.fud': LAYOUT, '/d.fud': CHILD, '/i.fud': ISLAND });
     const code = emitRouteModule(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
     expect(treeOf(code)['ruta']).toEqual(['signal-display']);
   });
@@ -174,35 +183,35 @@ describe('what the route contributes to the page maps (§6.8, §4.6)', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
       '<link rel="component" href="./i.fud">',
-      '@code { @client { const n = signal(1); function mas() { n.set(n() + 1); } } }',
+      '@code { const n = signal(1); function mas() { n.set(n() + 1); } }',
       '<button @click=@mas>+1</button>',
       '<app-island></app-island>',
     ].join('\n');
-    const io = memoryIo({ '/r.fud': route, '/l.fud': LAYOUT, '/i.fud': ISLAND });
+    const io = routeIo({ '/r.fud': route, '/l.fud': LAYOUT, '/i.fud': ISLAND });
     const code = emitRouteModule(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
     expect(treeOf(code)['ruta']).toBeUndefined();
   });
 
-  it('names itself in `fud-eager` when its `@client` calls `effect(...)`', () => {
+  it('names itself in `fud-eager` when its `@code` calls `effect(...)`', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
-      '@code { @client {',
+      '@code {',
       '  const ahora = signal(0);',
       '  effect(() => { const id = setInterval(() => ahora.set(1), 1000); return () => clearInterval(id); });',
-      '} }',
+      '}',
       '<time>@ahora()</time>',
     ].join('\n');
-    const io = memoryIo({ '/r.fud': route, '/l.fud': LAYOUT });
+    const io = routeIo({ '/r.fud': route, '/l.fud': LAYOUT });
     const code = emitRouteModule(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
     expect(eagerOf(code)).toEqual(['ruta']);
   });
 
-  it('and a COMPONENT whose `@client` calls `effect(...)` joins the same list', () => {
+  it('and a COMPONENT whose `@code` calls `effect(...)` joins the same list', () => {
     const clock = [
-      '@code { @client {',
+      '@code {',
       '  const ahora = signal(0);',
       '  effect(() => { const id = setInterval(() => ahora.set(1), 1000); return () => clearInterval(id); });',
-      '} }',
+      '}',
       '<app-clock><template shadowrootmode="open">',
       '<time>@ahora()</time>',
       '</template></app-clock>',
@@ -212,7 +221,7 @@ describe('what the route contributes to the page maps (§6.8, §4.6)', () => {
       '<link rel="component" href="./c.fud">',
       '<app-clock></app-clock>',
     ].join('\n');
-    const io = memoryIo({ '/r.fud': route, '/l.fud': LAYOUT, '/c.fud': clock });
+    const io = routeIo({ '/r.fud': route, '/l.fud': LAYOUT, '/c.fud': clock });
     const code = emitRouteModule(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
     expect(eagerOf(code)).toEqual(['app-clock']);
   });
@@ -220,23 +229,22 @@ describe('what the route contributes to the page maps (§6.8, §4.6)', () => {
   it('stays out of the list when nothing has to come up without a gesture', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
-      '@code { @client { const n = signal(1); } }',
+      '@code { const n = signal(1); }',
       '<output>@n()</output>',
     ].join('\n');
-    const io = memoryIo({ '/r.fud': route, '/l.fud': LAYOUT });
+    const io = routeIo({ '/r.fud': route, '/l.fud': LAYOUT });
     const code = emitRouteModule(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
     expect(eagerOf(code)).toEqual([]);
   });
 });
 
 describe('`fud-data`: only what the client half reads (§6.15, §6.16)', () => {
+  // `load` lives in the linked `.fudapi` (SDD-60 §3.14); the host hands over its facts.
   const withLoad = (client: string): string =>
     [
       '<link rel="layout" href="./l.fud">',
-      '@code {',
-      '  @server { export async function load() { return { user: "pedro" }; } }',
-      `  @client { ${client} }`,
-      '}',
+      '<link rel="server" href="./r.fudapi">',
+      `@code { ${client} }`,
       '<output>@n()</output>',
     ].join('\n');
 
@@ -247,14 +255,12 @@ describe('`fud-data`: only what the client half reads (§6.15, §6.16)', () => {
   });
 
   it('publishes what the TEMPLATE reads too: a reactive route repaints it in the browser', () => {
-    // Before, only the `@client` was read: `fud-data` went out without `items`, and every
+    // Before, only the browser code was read: `fud-data` went out without `items`, and every
     // repaint of the `@foreach` threw «U.items is not iterable».
     const route = [
       '<link rel="layout" href="./l.fud">',
-      '@code {',
-      '  @server { export async function load() { return { user: "pedro" }; } }',
-      '  @client { const n = signal(1); }',
-      '}',
+      '<link rel="server" href="./r.fudapi">',
+      '@code { const n = signal(1); }',
       '<output>@n()</output>',
       '<ul>@foreach (const i of data.items) { <li>@i</li> }</ul>',
     ].join('\n');
@@ -271,7 +277,7 @@ describe('`fud-data`: only what the client half reads (§6.15, §6.16)', () => {
 
   it('sends `data` whole for a dynamic access, and says nothing about it (§6.16)', () => {
     const route = withLoad('const n = signal(1); function lee(k) { return data[k]; }');
-    const io = memoryIo({ '/r.fud': route, '/l.fud': LAYOUT });
+    const io = routeIo({ '/r.fud': route, '/l.fud': LAYOUT });
     const out = emitRouteModuleMapped(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
     expect(out.diagnostics).toEqual([]);
     const { html } = render(route, { routeName: 'ruta' });
@@ -287,10 +293,10 @@ describe('`fud-data`: only what the client half reads (§6.15, §6.16)', () => {
   it('warns FUD0621 when the client reads `data` and the route declares no `load`', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
-      '@code { @client { const n = signal(1); function saluda() { alert(data.user); } } }',
+      '@code { const n = signal(1); function saluda() { alert(data.user); } }',
       '<output>@n()</output>',
     ].join('\n');
-    const io = memoryIo({ '/r.fud': route, '/l.fud': LAYOUT });
+    const io = routeIo({ '/r.fud': route, '/l.fud': LAYOUT });
     const out = emitRouteModuleMapped(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
     const found = out.diagnostics.filter((d) => d.code === 'FUD0621');
     expect(found).toHaveLength(1);
@@ -310,7 +316,7 @@ describe('`fud-data`: only what the client half reads (§6.15, §6.16)', () => {
         `@code { ${server} @client { const n = signal(1); function s() { alert(data.user); } } }`,
         '<output>@n()</output>',
       ].join('\n');
-      const io = memoryIo({ '/r.fud': route, '/l.fud': LAYOUT });
+      const io = routeIo({ '/r.fud': route, '/l.fud': LAYOUT });
       const out = emitRouteModuleMapped(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
       expect(out.diagnostics).toEqual([]);
     }
@@ -325,7 +331,7 @@ describe('`fud-data`: only what the client half reads (§6.15, §6.16)', () => {
       '}',
       '<output>@n()</output>',
     ].join('\n');
-    const io = memoryIo({ '/r.fud': route, '/l.fud': LAYOUT });
+    const io = routeIo({ '/r.fud': route, '/l.fud': LAYOUT });
     const out = emitRouteModuleMapped(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
     expect(out.diagnostics.map((d) => d.code)).toEqual(['FUD0621']);
   });
@@ -339,7 +345,7 @@ describe('`fud-data`: only what the client half reads (§6.15, §6.16)', () => {
       '}',
       '<output>@n()</output>',
     ].join('\n');
-    const io = memoryIo({ '/r.fud': route, '/l.fud': LAYOUT });
+    const io = routeIo({ '/r.fud': route, '/l.fud': LAYOUT });
     const out = emitRouteModuleMapped(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
     expect(out.diagnostics.map((d) => d.code)).toEqual(['FUD0621']);
   });
@@ -352,10 +358,10 @@ describe('`fud-data`: only what the client half reads (§6.15, §6.16)', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
       '<link rel="component" href="./b.fud">',
-      '@code { @client { function guarda() {} } }',
+      '@code { function guarda() {} }',
       '<app-btn .onSave=@guarda></app-btn>',
     ].join('\n');
-    const io = memoryIo({ '/r.fud': route, '/l.fud': LAYOUT, '/b.fud': BTN });
+    const io = routeIo({ '/r.fud': route, '/l.fud': LAYOUT, '/b.fud': BTN });
     const code = emitRouteModule(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
     // A callback has no value to serialise, so its declaration carries `of` alone.
     expect(code).toContain('$dom.stateOf($parent, [], [{ of: guarda }]);');
@@ -364,13 +370,11 @@ describe('`fud-data`: only what the client half reads (§6.15, §6.16)', () => {
   it('stays silent when the route declares `paths` but the client reads nothing', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
-      '@code {',
-      '  @server { export function paths() { return ["uno"]; } }',
-      '  @client { const n = signal(1); }',
-      '}',
+      '<link rel="server" href="./p.fudapi">',
+      '@code { const n = signal(1); }',
       '<output>@n()</output>',
     ].join('\n');
-    const io = memoryIo({ '/r.fud': route, '/l.fud': LAYOUT });
+    const io = routeIo({ '/r.fud': route, '/l.fud': LAYOUT });
     const out = emitRouteModuleMapped(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
     expect(out.diagnostics).toEqual([]);
   });

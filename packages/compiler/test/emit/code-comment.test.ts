@@ -52,13 +52,13 @@ function emitBoth(source: string): { module: string; chunk: string } {
   };
 }
 
-const CLIENT = '  @client {\n    const count = signal(0);\n  }';
+const CLIENT = '  const count = signal(0);';
 
 describe('BUG-13 — a JS comment in @code costs nothing (§7.6)', () => {
   const positions: ReadonlyArray<readonly [string, string]> = [
-    ['in the neutral zone', `  // c\n  /* c */\n${CLIENT}`],
-    ['inside @client', '  @client {\n    // c\n    /* c */\n    const count = signal(0);\n  }'],
-    ['after @client', `${CLIENT}\n  // c`],
+    ['before the declaration', `  // c\n  /* c */\n${CLIENT}`],
+    ['between two declarations', `  const other = 1;\n  // c\n  /* c */\n${CLIENT}`],
+    ['after the declaration', `${CLIENT}\n  // c`],
   ];
 
   for (const [where, code] of positions) {

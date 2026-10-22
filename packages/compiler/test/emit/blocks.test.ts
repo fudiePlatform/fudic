@@ -94,12 +94,10 @@ describe('what is empty is not published', () => {
 </html>
 `,
         '/app/x-tick.fud': `@code {
+  import { signal } from '@fudic/core';
   const { label = '' } = props<{ label?: string }>();
 
-  @client {
-    import { signal } from '@fudic/core';
-    const n = signal(0);
-  }
+  const n = signal(0);
 }
 <x-tick>
   <template shadowrootmode="open"><p>@label @n()</p></template>
@@ -130,12 +128,10 @@ describe('a payload cannot break out of its script', () => {
 </html>
 `,
       '/app/x-note.fud': `@code {
+  import { signal } from '@fudic/core';
   const { text = '' } = props<{ text?: string }>();
 
-  @client {
-    import { signal } from '@fudic/core';
-    const seen = signal(false);
-  }
+  const seen = signal(false);
 }
 <x-note>
   <template shadowrootmode="open"><p>@text</p></template>

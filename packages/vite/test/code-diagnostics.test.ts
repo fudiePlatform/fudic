@@ -42,7 +42,7 @@ describe('a @code that does not parse stops the build in its own file', () => {
   });
 
   it('reports FUD0114 for a Razor comment, with the message that names the fix', () => {
-    const path = componentFile('  @* a razor comment *@\n  @client {\n    const count = signal(0);\n  }');
+    const path = componentFile('  @* a razor comment *@\n  const count = signal(0);');
     const codes = transformFud(path, io)!.diagnostics.map((d) => d.code);
     // Oxc's own `FUD0170` also fires — the comment stays in its chunk and is not JS — but
     // "unexpected token" does not tell anyone to write `//`. That is FUD0114's job, and it
@@ -51,7 +51,7 @@ describe('a @code that does not parse stops the build in its own file', () => {
   });
 
   it('says nothing when the JS is fine — JS comments included (§7.6)', () => {
-    const path = componentFile('  // c\n  /* c */\n  @client {\n    const count = signal(0);\n  }');
+    const path = componentFile('  // c\n  /* c */\n  const count = signal(0);');
     expect(transformFud(path, io)!.diagnostics).toEqual([]);
     expect(transformFudClient(path, io)!.diagnostics).toEqual([]);
   });

@@ -106,13 +106,11 @@ const CARD =
 const LIST =
   '<link rel="component" href="./x-card.fud">\n' +
   '@code {\n' +
+  "  import { signal } from '@fudic/core';\n" +
   '  const inicial = [{ id: "p1", nombre: "A", precio: 1, sku: "K-01" }, { id: "p3", nombre: "C", stock: 12 }];\n' +
   '  const fijo = { id: "f", nombre: "F", sku: "Z" };\n' +
-  '  @client {\n' +
-  "    import { signal } from '@fudic/core';\n" +
-  '    const productos = signal(inicial);\n' +
-  '    globalThis.__spread = { set: (v) => productos.set(v), get: () => productos() };\n' +
-  '  }\n' +
+  '  const productos = signal(inicial);\n' +
+  '  globalThis.__spread = { set: (v) => productos.set(v), get: () => productos() };\n' +
   '}\n' +
   '<x-list>\n  <template shadowrootmode="open">' +
   '<x-card ...fijo></x-card>' +
@@ -171,7 +169,8 @@ describe('the emitted text — a spread whose object moves', () => {
     '<link rel="component" href="./x-card.fud">\n' +
     '@code {\n' +
     '  const { item } = props<{ item: { id: string; nombre: string } }>();\n' +
-    "  @client { import { signal } from '@fudic/core'; const n = signal(0); }\n" +
+    "  import { signal } from '@fudic/core';\n" +
+    '  const n = signal(0);\n' +
     '}\n' +
     '<x-par>\n  <template shadowrootmode="open"><x-card ...item></x-card><i>@n()</i></template>\n</x-par>\n';
   const graph = graphOf({ '/x-par.fud': PARENT, '/x-card.fud': CARD }, 'x-par');
@@ -190,7 +189,7 @@ describe('the emitted text — a spread whose object moves', () => {
 describe('the level rule', () => {
   const parent = (code: string, host: string): string =>
     '<link rel="component" href="./x-card.fud">\n' +
-    `@code {\n${code}\n  @client { import { signal } from '@fudic/core'; const n = signal(0); }\n}\n` +
+    `@code {\n${code}\n  import { signal } from '@fudic/core';\n  const n = signal(0);\n}\n` +
     `<x-par>\n  <template shadowrootmode="open">${host}<i>@n()</i></template>\n</x-par>\n`;
 
   it('a spread of something that moves makes the child hydrate', () => {
@@ -221,7 +220,7 @@ describe('the route´s tree counts a spread as a prop', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
       '<link rel="component" href="./x-card.fud">',
-      '@code { @client { const item = signal({ id: "a", nombre: "b" }); let cur = { id: "a", nombre: "b" }; } }',
+      '@code { const item = signal({ id: "a", nombre: "b" }); let cur = { id: "a", nombre: "b" }; }',
       '<x-card ...cur></x-card>',
       '<output>@item().id</output>',
     ].join('\n');

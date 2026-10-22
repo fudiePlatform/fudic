@@ -524,8 +524,8 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
         '<html><head></head><body><x-host></x-host></body></html>\n',
       '/x-host.fud':
         '<link rel="component" href="./x-child.fud">\n' +
-        '@code {\n  @client {\n    import { signal } from \'@fudic/core\';\n' +
-        `    const count = signal(0);\n${code}  }\n}\n` +
+        '@code {\n  import { signal } from \'@fudic/core\';\n' +
+        `  const count = signal(0);\n${code}}\n` +
         '<x-host>\n  <template shadowrootmode="open">' +
         `<x-child ${attrs}></x-child>` +
         '</template>\n</x-host>\n',
@@ -669,8 +669,8 @@ describe('emitComponentClientModule — dense handover, sparse update (BUG-18)',
         '<html><head></head><body><y-host></y-host></body></html>\n',
       '/y-host.fud':
         '<link rel="component" href="./y-child.fud">\n' +
-        "@code {\n  @client {\n    import { signal } from '@fudic/core';\n" +
-        '    const count = signal(0);\n    const other = signal(1);\n  }\n}\n' +
+        "@code {\n  import { signal } from '@fudic/core';\n" +
+        '  const count = signal(0);\n  const other = signal(1);\n}\n' +
         '<y-host>\n  <template shadowrootmode="open">' +
         '<y-child .title="Total" .tone="dark" .n="@count" .m="@other"></y-child>' +
         '</template>\n</y-host>\n',
@@ -740,16 +740,16 @@ describe('emitComponentClientModule — dense handover, sparse update (BUG-18)',
 });
 
 /**
- * BUG-12 §2.5 — the factory closure is shared with the `@client` body, copied verbatim.
+ * BUG-12 §2.5 — the factory closure is shared with the browser code, copied verbatim.
  * Every name the emit takes there is a name the author cannot use, and `m`/`s` are two of
  * the most plausible one-letter names there are.
  */
 describe('emitComponentClientModule — the factory namespace (BUG-12 §6.10)', () => {
-  it('survives a @client that declares const s and const m', () => {
+  it('survives a @code that declares const s and const m', () => {
     const src = inlineChunk(
       'x-collide',
-      '@code {\n  @client {\n    import { signal } from \'@fudic/core\';\n' +
-        '    const s = signal(0);\n    const m = 2;\n  }\n}\n' +
+      '@code {\n  import { signal } from \'@fudic/core\';\n' +
+        '  const s = signal(0);\n  const m = 2;\n}\n' +
         '<x-collide>\n  <template shadowrootmode="open"><b>hi</b></template>\n</x-collide>\n',
     );
     expect(src).toContain('const s = signal(0);');
@@ -764,7 +764,7 @@ describe('emitComponentClientModule — the factory namespace (BUG-12 §6.10)', 
   it('runs it: the collided names belong to the author, and keep their values', () => {
     const src = inlineChunk(
       'x-collide2',
-      '@code {\n  @client {\n    const s = 41;\n    const m = 1;\n    globalThis.__fudSum = s + m;\n  }\n}\n' +
+      '@code {\n  const s = 41;\n  const m = 1;\n  globalThis.__fudSum = s + m;\n}\n' +
         '<x-collide2>\n  <template shadowrootmode="open"><b>hi</b></template>\n</x-collide2>\n',
     );
     const body = src.replace(/^import .*$/gmu, '');
@@ -787,7 +787,7 @@ describe('emitComponentClientModule — event bindings hook up in $s() (§4.5)',
     const src = inlineChunk(
       'x-rows',
       '@code {\n  const { rows } = props<{ rows: { id: string }[] }>();\n' +
-        '  @client {\n    function del(ev, id) { ev.preventDefault(); }\n  }\n}\n' +
+        '  function del(ev, id) { ev.preventDefault(); }\n}\n' +
         '<x-rows>\n  <template shadowrootmode="open"><ul>\n' +
         '    @foreach (const row of rows) key (row.id) {\n' +
         '      <li><button @click="@del($event, row.id)">x</button></li>\n' +
@@ -808,12 +808,12 @@ describe('emitComponentClientModule — bus subscriptions (§4.4, §6.23, §6.24
   const cart = (tag: string, name: string): string =>
     inlineChunk(
       tag,
-      '@code {\n  @client {\n' +
-        "    import { emit } from '@fudic/dom';\n" +
-        '    const EVENTOS = { carrito: \'carrito\' };\n' +
-        '    function onCarrito(ev) { this.dataset.seen = ev.type; }\n' +
-        "    function press() { emit('press', 1); }\n" +
-        '  }\n}\n' +
+      '@code {\n' +
+        "  import { emit } from '@fudic/dom';\n" +
+        '  const EVENTOS = { carrito: \'carrito\' };\n' +
+        '  function onCarrito(ev) { this.dataset.seen = ev.type; }\n' +
+        "  function press() { emit('press', 1); }\n" +
+        '}\n' +
         `<${tag}>\n  <template shadowrootmode="open">` +
         `<button ${name}="@onCarrito($event)" @click="@press()">x</button>` +
         `</template>\n</${tag}>\n`,
@@ -866,7 +866,7 @@ describe('emitComponentClientModule — `$event` outside a handler (§6.20.b)', 
 describe('emitComponentClientModule — a value that cannot be subscribed (FUD0291)', () => {
   it('reports it with its span, skips the binding, and emits the rest', () => {
     const source =
-      '@code {\n  @client {\n    const label = 1;\n  }\n}\n' +
+      '@code {\n  const label = 1;\n}\n' +
       '<x-bad>\n  <template shadowrootmode="open"><button @click="@(1 + 2)">x</button></template>\n</x-bad>\n';
     const io = memoryIo({
       '/page.fud': '<link rel="component" href="./x-bad.fud">\n<html><head></head><body><x-bad></x-bad></body></html>\n',
@@ -887,10 +887,10 @@ describe('emitComponentClientModule — $host, materialized only where it is rea
   const withEmit = (tag: string): string =>
     inlineChunk(
       tag,
-      '@code {\n  @client {\n' +
-        "    import { emit } from '@fudic/dom';\n" +
-        "    function press() { emit('press'); }\n" +
-        '  }\n}\n' +
+      '@code {\n' +
+        "  import { emit } from '@fudic/dom';\n" +
+        "  function press() { emit('press'); }\n" +
+        '}\n' +
         `<${tag}>\n  <template shadowrootmode="open"><b>hi</b></template>\n</${tag}>\n`,
     );
 
@@ -917,14 +917,14 @@ describe('emitComponentClientModule — $host, materialized only where it is rea
  * only ever reached from the parent's `u`, and the view stayed as the server painted it.
  */
 describe('emitComponentClientModule — a component subscribes its own signals', () => {
-  /** One component, alone in its graph, with the given `@client` body and template. */
+  /** One component, alone in its graph, with the given `@code` body and template. */
   const own = (code: string, template: string): string => {
     const io = memoryIo({
       '/page.fud':
         '<link rel="component" href="./x-own.fud">\n' +
         '<html><head></head><body><x-own></x-own></body></html>\n',
       '/x-own.fud':
-        `@code {\n  @client {\n    import { signal, computed } from '@fudic/core';\n${code}  }\n}\n` +
+        `@code {\n  import { signal, computed } from '@fudic/core';\n${code}}\n` +
         `<x-own>\n  <template shadowrootmode="open">${template}</template>\n</x-own>\n`,
     });
     const g = resolveComponents('/page.fud', io);
@@ -938,7 +938,7 @@ describe('emitComponentClientModule — a component subscribes its own signals',
     );
     expect(src).toContain('const $u = () => { $a(); };');
     expect(src).toContain('$d.push($sub(n, $u));');
-    // A write that came before the hookup (an `effect` of `@client` runs with the factory)
+    // A write that came before the hookup (an `effect` of the `@code` runs with the factory)
     // notified nobody: the pass is renewed once, if any of its own signals was written.
     expect(src).toContain('if ($written(n)) $u();');
     // `u` runs the same body, so a value that moves by prop and one that moves by signal
@@ -1004,7 +1004,7 @@ describe('emitComponentClientModule — a value that moves without a signal', ()
       '/x-mid.fud':
         '<link rel="component" href="./x-grand.fud">\n' +
         '@code {\n  const { value = 0 } = props<{ value?: number }>();\n' +
-        `  @client {\n    import { signal } from '@fudic/core';\n${code}  }\n}\n` +
+        `  import { signal } from '@fudic/core';\n${code}}\n` +
         '<x-mid>\n  <template shadowrootmode="open">' +
         `<span>@value</span><x-grand ${attrs}></x-grand>` +
         '</template>\n</x-mid>\n',

@@ -101,7 +101,7 @@ describe('get', () => {
 
   it('carries the parse diagnostics and the Oxc ones together', () => {
     const { cache } = setup();
-    const broken = cache.get('/p/broken.fud', 1, `@code {\n  @client {\n    const = ;\n  }\n}\n`);
+    const broken = cache.get('/p/broken.fud', 1, `@code {\n  const = ;\n}\n`);
 
     expect(broken.diagnostics.some((diagnostic) => diagnostic.code === 'FUD0170')).toBe(true);
   });

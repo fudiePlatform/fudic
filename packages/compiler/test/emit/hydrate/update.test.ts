@@ -42,15 +42,13 @@ const COUNTER =
   '<link rel="component" href="./app-display.fud">\n' +
   '\n' +
   '@code {\n' +
-  '  @client {\n' +
-  "    import { signal } from '@fudic/core';\n" +
+  "  import { signal } from '@fudic/core';\n" +
   '\n' +
   // Not 0: the child's own default is 0, so a signal that started there would make the
   // initial pass invisible — and an invisible pass is one the test cannot claim happened.
-  '    const count = signal(5);\n' +
+  '  const count = signal(5);\n' +
   '\n' +
-  "    document.addEventListener('click', () => count.set(count() + 1));\n" +
-  '  }\n' +
+  "  document.addEventListener('click', () => count.set(count() + 1));\n" +
   '}\n' +
   '\n' +
   '<app-counter>\n' +

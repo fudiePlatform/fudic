@@ -120,6 +120,23 @@ export function hasHookupIn(source: string, roots: readonly HtmlContent[]): bool
   return found;
 }
 
+/**
+ * Whether a run of markup hands one of `functions` to a child by its bare name
+ * (`.onSave=@guarda`): it crosses as a cell, and only the browser fills it (SDD-60 §4.8). Its
+ * owner runs there whatever else it declares, as a `@client` function made it run before.
+ */
+export function passesFunctionIn(source: string, roots: readonly HtmlContent[], functions: ReadonlySet<string>): boolean {
+  let found = false;
+  walkElements(roots, (el) => {
+    for (const attr of el.attributes) {
+      const b = classifyAttribute(attr, source).value;
+      const only = b.type === 'property' && b.value.length === 1 ? b.value[0] : undefined;
+      if (only?.type === 'razor-expression' && functions.has(source.slice(only.expr.start, only.expr.end))) found = true;
+    }
+  });
+  return found;
+}
+
 /** Whether a run of markup carries a `control` binding — what comes up at install (§4.6). */
 export function hasControlIn(source: string, roots: readonly HtmlContent[]): boolean {
   let found = false;
@@ -166,7 +183,8 @@ export function isIntrinsicallyHydratable(comp: ResolvedComponent): boolean {
     code.signals.length > 0 ||
     code.clientRuns ||
     code.di.some((d) => d.kind === 'inject' && d.zone !== 'server') ||
-    hasHookup(comp)
+    hasHookup(comp) ||
+    passesFunctionIn(comp.source, comp.doc.host === undefined ? templateOf(comp) : [comp.doc.host], code.clientFunctions)
   );
 }
 
@@ -398,7 +416,8 @@ export function isReactiveRoute(graph: ComponentGraph): boolean {
   return (
     entry.code.signals.length > 0 ||
     entry.code.clientRuns ||
-    hasHookupIn(graph.entrySource, entry.roots)
+    hasHookupIn(graph.entrySource, entry.roots) ||
+    passesFunctionIn(graph.entrySource, entry.roots, entry.code.clientFunctions)
   );
 }
 

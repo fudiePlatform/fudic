@@ -32,7 +32,7 @@ function project(
   writeFileSync(
     join(root, 'r.fud'),
     '<link rel="layout" href="./l.fud">\n' +
-      '@code { @client { const n = signal(1); } }\n' +
+      '@code { const n = signal(1); }\n' +
       '<output>@n()</output>\n',
   );
   for (const [name, text] of Object.entries(files)) {
@@ -59,7 +59,7 @@ function page(
   writeFileSync(
     id,
     `<!DOCTYPE html><html><head><title>t</title>\n${head}\n` +
-      '@code { @client { const n = signal(1); } }\n' +
+      '@code { const n = signal(1); }\n' +
       '</head><body><output>@n()</output></body></html>\n',
   );
   for (const [name, text] of Object.entries(files)) {

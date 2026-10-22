@@ -32,7 +32,7 @@ function build(marker: string): ComponentGraph {
         "@code {\n  import { f } from './user.form.js';\n}\n" +
         `<app-input>\n  <template shadowrootmode="open"${marker}><input control="@f.title"></template>\n</app-input>\n`,
       '/app-plain.fud':
-        '@code {\n  @client {\n    const n = 1;\n  }\n}\n' +
+        '@code {\n  const n = 1;\n}\n' +
         '<app-plain>\n  <template shadowrootmode="open"><button @click="@go()"></button></template>\n</app-plain>\n',
     }),
   );
@@ -72,7 +72,7 @@ describe('§6.9 — the marker decides the class', () => {
           '<!DOCTYPE html>\n<html><head><link rel="component" href="./app-live.fud"></head>' +
           '<body><app-live></app-live></body></html>',
         '/app-live.fud':
-          '@code {\n  @client {\n    import { signal } from \'@fudic/core\';\n    const n = signal(1);\n  }\n}\n' +
+          '@code {\n  import { signal } from \'@fudic/core\';\n  const n = signal(1);\n}\n' +
           '<app-live>\n  <template shadowrootmode="open" formassociated><p>@(n())</p></template>\n</app-live>\n',
       }),
     );

@@ -4,7 +4,7 @@
  * `data-fud-id`s and the same three JSON blocks.
  *
  * It is worth a test of its own because the two arrive by different roads. The prerender runs
- * the edge wrapper in process, with `@server load` resolved locally; the Service Worker links
+ * the edge wrapper in process, with its `load` handler resolved locally; the Service Worker links
  * a CJS chunk by hand with `new Function` and passes the data it fetched from the generated
  * endpoint. Two roads, one `page(data, io)` — and if the ids or the offsets diverge, then
  * there are two passes where §3.2 says there is exactly one, and every payload slice a client
@@ -22,18 +22,17 @@ import { join } from 'node:path';
 import { createLinker, NONCE_TOKEN, type ModuleExports } from '@fudic/transport';
 import * as ssr from '@fudic/ssr';
 import { fudic } from '../src/index.js';
-import { runtimeAlias, writeTypecheckConfig } from './helpers/alias.js';
+import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
 import { manifestFile, routeTable } from './helpers/manifest.js';
 
 /** The leaf: props of its own and a signal, so it is hydratable and its slice is not empty. */
 const ROW = `@code {
+  import { signal } from '@fudic/core';
+
   const { label = '', n = 0 } = props<{ label?: string; n?: number }>();
 
-  @client {
-    import { signal } from '@fudic/core';
-    const open = signal(false);
-    function toggle() { open.set(!open()); }
-  }
+  const open = signal(false);
+  function toggle() { open.set(!open()); }
 }
 
 <x-row>
@@ -48,14 +47,13 @@ const ROW = `@code {
 const LIST = `<link rel="component" href="./x-row.fud">
 
 @code {
+  import { emit } from '@fudic/dom';
+
   type Item = { label: string; n: number };
 
-  const { items = [] } = props<{ items?: Item[] }>();
+  const { items = [] } = props<{ items?: readonly Item[] }>();
 
-  @client {
-    import { emit } from '@fudic/dom';
-    function pick() { emit('picked', 1); }
-  }
+  function pick() { emit('picked', 1); }
 }
 
 <x-list>
@@ -70,11 +68,9 @@ const LIST = `<link rel="component" href="./x-row.fud">
 
 /** The other end of the bus: it listens for what the list emits. */
 const TOAST = `@code {
-  @client {
-    import { signal } from '@fudic/core';
-    const last = signal('');
-    function onPicked(ev) { last.set(String(ev.type)); }
-  }
+  import { signal } from '@fudic/core';
+  const last = signal('');
+  function onPicked(ev) { last.set(String(ev.type)); }
 }
 
 <x-toast>
@@ -100,29 +96,32 @@ const ITEMS = [
 ];
 
 /**
- * `strategy({ mode: 'ssg' })` on a page that HAS `load` is what puts one route on both roads
- * at once: the build prerenders it (running `load`) and the worker links it (receiving the
- * data). Without the declaration the inference would send a route with `load` to `sw` and
- * there would be no prerendered HTML to compare against.
+ * `load ssg` on a page that HAS `load` is what puts one route on both roads at once: the build
+ * prerenders it (running `load`) and the worker links it (receiving the data). Without the mode
+ * the inference would send a route with `load` to `sw` and there would be no prerendered HTML
+ * to compare against.
  */
+const PAGE_API = `load ssg
+  items  Item[]
+
+type Item
+  label  str
+  n      i32
+`;
+
+/** `load`, implemented in `src/server` (SDD-60 §3.12). */
+const PAGE_SERVER = `import { load } from 'fudic:routes/index';
+
+load.handle(() => ({ items: ${JSON.stringify(ITEMS)} }));
+`;
+
 const PAGE = `<!DOCTYPE html>
 <html>
 <head>
   <link rel="component" href="../components/x-list.fud">
   <link rel="component" href="../components/x-toast.fud">
   <link rel="component" href="../components/x-plain.fud">
-
-  @code {
-    @server {
-      import { strategy } from "@fudic/core";
-
-      strategy({ mode: "ssg" });
-
-      export function load() {
-        return { items: ${JSON.stringify(ITEMS)} };
-      }
-    }
-  }
+  <link rel="server" href="./index.fudapi">
 
   <title>Maps</title>
 </head>
@@ -186,7 +185,7 @@ async function renderThroughLinker(): Promise<string> {
 
 beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-page-maps-'));
-  writeTypecheckConfig(root);
+  writeHttpTypecheckConfig(root);
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
   mkdirSync(join(root, 'src', 'components'), { recursive: true });
   writeFileSync(join(root, 'src', 'components', 'x-row.fud'), ROW);
@@ -194,12 +193,15 @@ beforeAll(async () => {
   writeFileSync(join(root, 'src', 'components', 'x-toast.fud'), TOAST);
   writeFileSync(join(root, 'src', 'components', 'x-plain.fud'), PLAIN);
   writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
+  writeFileSync(join(root, 'src', 'routes', 'index.fudapi'), PAGE_API);
+  mkdirSync(join(root, 'src', 'server'), { recursive: true });
+  writeFileSync(join(root, 'src', 'server', 'index.ts'), PAGE_SERVER);
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: ['/fudic-main.js'] }));
   writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
   const result = (await build({
     root,
     logLevel: 'silent',
-    resolve: { alias: { ...runtimeAlias } },
+    resolve: { alias: httpAlias },
     plugins: [fudic()],
     build: { write: false, minify: false },
   })) as unknown as { output: OutFile[] };

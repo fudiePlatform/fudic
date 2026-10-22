@@ -34,12 +34,10 @@ const ROWS =
 const HOSTS =
   '<link rel="component" href="./x-kid.fud">\n' +
   '@code {\n' +
+  "  import { signal } from '@fudic/core';\n" +
   '  const { rows } = props<{ rows: string[] }>();\n' +
-  '  @client {\n' +
-  "    import { signal } from '@fudic/core';\n" +
-  '    const tick = signal(0);\n' +
-  "    document.addEventListener('tick', () => tick.set(tick() + 1));\n" +
-  '  }\n' +
+  '  const tick = signal(0);\n' +
+  "  document.addEventListener('tick', () => tick.set(tick() + 1));\n" +
   '}\n' +
   '<x-parent>\n' +
   '  <template shadowrootmode="open">' +

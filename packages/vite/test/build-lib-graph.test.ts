@@ -249,7 +249,7 @@ describe('the tag space, now that it is shared (§4.5)', () => {
       'apps/tienda/src/routes/ui/card.fud': [
         '<!DOCTYPE html><html><head>',
         '<link rel="component" href="@acme/ui/ui-card.fud">',
-        '@code { @client { import { signal } from "@fudic/core"; const n = signal(1); } }',
+        '@code { import { signal } from "@fudic/core"; const n = signal(1); }',
         '</head><body><ui-card></ui-card><output>@n()</output></body></html>',
       ].join('\n'),
       // The route imports `@fudic/core`, which the typecheck has to find first (SDD-35).

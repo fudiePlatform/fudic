@@ -14,22 +14,18 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fudic } from '../src/index.js';
 import { runtimeAlias, writeTypecheckConfig } from './helpers/alias.js';
+import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
 
 /** A parameterised route with a client half: one chunk, many URLs. */
 const BLOG = `<!DOCTYPE html>
 <html>
 <head>
+<link rel="server" href="./[slug].fudapi">
 @code {
-  @server {
-    export function load(ctx) { return { slug: ctx.params.slug }; }
-    export function paths() { return ['uno', 'dos']; }
-  }
-  @client {
-    import { signal } from '@fudic/core';
+  import { signal } from '@fudic/core';
 
-    const abierto = signal(false);
-    const alterna = () => abierto.set(!abierto());
-  }
+  const abierto = signal(false);
+  const alterna = () => abierto.set(!abierto());
 }
 <title>Blog</title>
 </head>
@@ -37,6 +33,19 @@ const BLOG = `<!DOCTYPE html>
   <button @click=@alterna()>@abierto()</button>
 </body>
 </html>
+`;
+
+/** Its server, declared beside it and implemented in `src/server` (SDD-60). */
+const BLOG_API = `load
+  slug  str
+
+paths
+`;
+
+const BLOG_SERVER = `import { load, paths } from 'fudic:routes/blog/[slug]';
+
+load.handle((ctx) => ({ slug: ctx.params.slug }));
+paths.handle(() => ['uno', 'dos']);
 `;
 
 /** A route with no client half at all: the base case, and it costs nothing. */
@@ -70,14 +79,17 @@ function blockOf(html: string, id: string): string | null {
 
 async function buildRoot(): Promise<OutFile[]> {
   const root = mkdtempSync(join(tmpdir(), 'fudic-routechunk-'));
-  writeTypecheckConfig(root);
+  writeHttpTypecheckConfig(root);
   mkdirSync(join(root, 'src', 'routes', 'blog'), { recursive: true });
+  mkdirSync(join(root, 'src', 'server'), { recursive: true });
   writeFileSync(join(root, 'src', 'routes', 'blog', '[slug].fud'), BLOG);
+  writeFileSync(join(root, 'src', 'routes', 'blog', '[slug].fudapi'), BLOG_API);
+  writeFileSync(join(root, 'src', 'server', 'blog.ts'), BLOG_SERVER);
   writeFileSync(join(root, 'src', 'routes', 'estatica.fud'), ESTATICA);
   const result = (await build({
     root,
     logLevel: 'silent',
-    resolve: { alias: { ...runtimeAlias } },
+    resolve: { alias: httpAlias },
     plugins: [fudic()],
     build: { write: false, minify: false },
   })) as unknown as { output: OutFile[] };
@@ -115,7 +127,7 @@ describe('the chunk of a route, named and discovered (§6.14)', () => {
   });
 
   it('`fud-data` carries only the root the client half reads', () => {
-    // `load` returns `{ slug }` and `@client` never names `data`, so there is no block: a
+    // `load` returns `{ slug }` and the `@code` never names `data`, so there is no block: a
     // `data` only the server paints does not cost a byte (§4.8).
     expect(blockOf(htmlOf(output, 'blog/uno/index.html'), 'fud-data')).toBeNull();
   });
@@ -139,7 +151,7 @@ describe('two files that would be written to one name (FUD0622, §3.5)', () => {
       [
         '<!DOCTYPE html><html><head>',
         '<link rel="component" href="../../components/app-card.fud">',
-        '@code { @client { import { signal } from "@fudic/core"; const n = signal(1); } }',
+        '@code { import { signal } from "@fudic/core"; const n = signal(1); }',
         '</head><body><app-card></app-card><output>@n()</output></body></html>',
       ].join('\n'),
     );

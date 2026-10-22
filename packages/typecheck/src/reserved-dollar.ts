@@ -62,16 +62,16 @@ function visit(node: OxcNode, report: (node: OxcNode) => void): void {
 }
 
 /**
- * `FUD0461` for every `$`-prefixed identifier in the `@server` and `@client` regions.
+ * `FUD0461` for every `$`-prefixed identifier of the `@code`.
  *
- * The neutral zone is deliberately not covered: §4.4 names the two regions, and widening the
- * rule is a decision for the spec, not for the implementation.
+ * The whole `@code`, its neutral chunks included: since SDD-60 it is one block of browser code
+ * with no regions, and a rule that read only the regions would never fire again.
  */
 export function reservedDollarDiagnostics(document: ProjectedFud): readonly Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
 
-  for (const region of document.js.regions) {
-    for (const statement of statementsOf(document.js.result, region.id)) {
+  for (const id of [...document.js.neutral, ...document.js.regions.map((region) => region.id)]) {
+    for (const statement of statementsOf(document.js.result, id)) {
       visit(statement, (node) => {
         const span = document.js.result.mapSpan(node.start, node.end);
         diagnostics.push(FUD0461({ span, name: String(node['name']) }));

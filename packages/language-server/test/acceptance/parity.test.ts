@@ -241,8 +241,8 @@ describe('SDD-35 §6.3 — parity between the editor and the build', () => {
     expect(set.some((entry) => entry.startsWith(`${SLUG}|`) && entry.includes('|TS2322|'))).toBe(true);
   });
 
-  it('FUD0461 (SDD-24 §6.11): a $ identifier in @client', async () => {
-    const set = await parity({ [BADGE]: replace('@code {', '@code {\n  @client {\n    const $x = 1;\n  }\n') });
+  it('FUD0461 (SDD-24 §6.11): a $ identifier in @code', async () => {
+    const set = await parity({ [BADGE]: replace('@code {', '@code {\n  const $x = 1;\n') });
     expect(codes(set)).toContain('FUD0461');
   });
 
@@ -252,7 +252,7 @@ describe('SDD-35 §6.3 — parity between the editor and the build', () => {
   });
 
   it('an Oxc syntax error inside @code', async () => {
-    const set = await parity({ [BADGE]: replace('@code {', '@code {\n  @client {\n    const = ;\n  }\n') });
+    const set = await parity({ [BADGE]: replace('@code {', '@code {\n  const = ;\n') });
     expect(codes(set)).toContain('FUD0170');
   });
 
