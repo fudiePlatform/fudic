@@ -24,19 +24,18 @@ export function apiDiagnostics(graph: DocumentGraph): readonly Diagnostic[] {
   }
   const out: Diagnostic[] = [];
   const declared = new Set(codeOfDocument(graph.entrySource, entry).declared);
-  const givenBy = new Map<string, string>();
-  const forms = new Set(apis.flatMap((a) => a.api?.forms ?? []));
+  const givenBy = new Map<string, { readonly href: string; readonly form: boolean }>();
   for (const { link, href, api } of apis) {
     if (api === undefined) continue;
     const names = new Set([...(api.load ? ['data'] : []), ...api.functions, ...api.forms]);
     for (const name of names) {
       const other = givenBy.get(name);
+      const form = api.forms.includes(name);
       // A form is a name of the project, one per project (`FUD1081`): two files that both bring
-      // `userForm` bring the same form.
-      if (other !== undefined && api.forms.includes(name) && forms.has(name)) continue;
-      if (other !== undefined) out.push(FUD1113({ span: link.span, name, other }));
-      else if (declared.has(name)) out.push(FUD1113({ span: link.span, name }));
-      else givenBy.set(name, href);
+      // `userForm` as a form bring the same form.
+      if (other !== undefined && !(other.form && form)) out.push(FUD1113({ span: link.span, name, other: other.href }));
+      else if (other === undefined && declared.has(name)) out.push(FUD1113({ span: link.span, name }));
+      else if (other === undefined) givenBy.set(name, { href, form });
     }
   }
   if (apis.every((a) => a.api !== undefined)) {

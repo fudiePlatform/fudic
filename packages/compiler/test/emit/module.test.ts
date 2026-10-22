@@ -137,7 +137,8 @@ describe('emitComponentModule — attrExpr shapes', () => {
     '/home.fud':
       '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
     '/m.fud':
-      '@code {\n  const helper = 1;\n}\n' + // a non-props declaration: exercised, ignored
+      // Non-props declarations: `y` is read by the markup, `helper` through it, `unused` by nobody.
+      '@code {\n  const helper = 1;\n  const y = helper;\n  const unused = 2;\n}\n' +
       '<m-el>\n  <template shadowrootmode="open">' +
       '<div id="z" title="x-@y"></div><!-- a comment is dropped -->' +
       '</template>\n</m-el>\n',
@@ -158,12 +159,13 @@ describe('emitComponentModule — attrExpr shapes', () => {
     expect(src).toContain('$dom.setAttr($n0, "id", "z");');
   });
 
-  it('drops an author comment and CARRIES a non-props const into render (SDD-34)', () => {
+  it('drops an author comment and carries into render only the server cut (SDD-60 §4.8)', () => {
     expect(src).not.toContain('a comment is dropped');
-    // The neutral zone runs on both sides, and until SDD-34 it reached neither module: a
-    // `const` there named a binding that existed nowhere. It is emitted now, which is what
-    // lets a form live in its own `.ts` and be reached by the server and the client alike.
+    // The `@code` is browser code; render gets what the markup reads, transitively: `y`, and
+    // `helper` because `y` reads it. `unused` stays in the browser.
     expect(src).toContain('const helper = 1;');
+    expect(src).toContain('const y = helper;');
+    expect(src).not.toContain('const unused = 2;');
   });
 
   it('emits a static attribute value as a JSON string (via the page fixtures)', () => {

@@ -124,6 +124,8 @@ describe('extraction', () => {
   import { Cart } from './services/cart.js';
 
   const cart = ask(Cart);
+  @client {
+  }
 }`,
       '<p>ok</p>',
     );
@@ -184,6 +186,8 @@ describe('extraction', () => {
       `@code {
   import { Cart } from './services/cart.js';
   const total = Cart.zero;
+  @client {
+  }
 }`,
       '<p>ok</p>',
     );
@@ -236,6 +240,8 @@ describe('the rewrite is by offset, never by text', () => {
 
   provide(Cart, () => new Cart(), { transient: true });
   const cart = inject(Cart, { optional: true });
+  @client {
+  }
 }`,
       '<p>ok</p>',
     );

@@ -6,7 +6,7 @@
 > `@fudic/typecheck` · `@fudic/language-server` · `@fudic/formatter` · `@fudic/cli` · `fudic-vscode` ·
 > `examples/*` · `packages/testing`
 > **Rama:** `sdd-60-fudapi` (nace de `main`)
-> **Progreso:** 32 / 64 — `En curso`.
+> **Progreso:** 38 / 64 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina; la otra escribe los tests de cada fase (las tareas
 «Los tests de…»), contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -141,12 +141,12 @@ Cada meta cierra una fase. La fase no se da por terminada hasta que Pedro la pru
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 24 | 2 | **`<link rel="server">`.** Reconocido en rutas y componentes; `FUD1111`, `FUD1112`; el `href` en el grafo de enlaces. Códigos `FUD1110`–`FUD1115` creados aquí | `compiler` · `diagnostics` | `src/document/structure.ts` · `src/emit/resolve.ts` · `codes/` |
-| [ ] | 25 | 24 | **Nombres en la vista.** `data`, funciones y forms de los `.fudapi` enlazados entran en la resolución de SDD-51 (`view-scope.ts`); `FUD1113`–`FUD1115`; `form:=` contra ellos (`FUD1005`/`FUD1006` reescritos) | `compiler` | `src/semantic/*` · `src/emit/controls.ts` |
-| [ ] | 26 | 25 | **Un `@code`, corte de servidor.** SDD §4.8: un `@code` sin zonas va entero al cliente; el render del SSR y del SW recibe solo el corte (lo que el markup lee, transitivo, más `provide`). `effect` nunca en el corte. Un `@code` con zonas sigue como hoy hasta la tarea 63 | `compiler` | `src/emit/oxc-code.ts` · `module.ts` · `parts.ts` · `client.ts` · `route-client.ts` |
-| [ ] | 27 | 26 | **El nivel de hidratación.** El predicado de `level.ts` sin `client.body`: misma salida para todo lo que hoy existe | `compiler` | `src/emit/level.ts` |
-| [ ] | 28 | 26 | **Diagnósticos de zonas.** Reescritos según SDD §4.8. Los retirados (`.ts` borrado, `.md` `retired` con su sustituto) se retiran en la tarea 63. `FUD1110` existe pero no se emite hasta la tarea 51 | `compiler` · `diagnostics` | `src/semantic/analyzers/*` · `src/emit/server-fns.ts` · `codes/` |
-| [ ] | 29 | 24–28 | **Los tests del compilador.** Criterios 24, 25 (con `FUD1110` activado en el test) y 33 sobre los fixtures | `compiler` | `test/` |
+| [x] | 24 | 2 | **`<link rel="server">`.** Reconocido en rutas y componentes; `FUD1111`, `FUD1112`; el `href` en el grafo de enlaces. Códigos `FUD1110`–`FUD1115` creados aquí | `compiler` · `diagnostics` | `src/document/structure.ts` · `src/emit/resolve.ts` · `codes/` |
+| [x] | 25 | 24 | **Nombres en la vista.** `data`, funciones y forms de los `.fudapi` enlazados entran en la resolución de SDD-51 (`view-scope.ts`); `FUD1113`–`FUD1115`; `form:=` contra ellos (`FUD1005`/`FUD1006` reescritos) | `compiler` | `src/semantic/*` · `src/emit/controls.ts` |
+| [x] | 26 | 25 | **Un `@code`, corte de servidor.** SDD §4.8: un `@code` sin zonas va entero al cliente; el render del SSR y del SW recibe solo el corte (lo que el markup lee, transitivo, más `provide`). `effect` nunca en el corte. Un `@code` con zonas sigue como hoy hasta la tarea 63 | `compiler` | `src/emit/oxc-code.ts` · `module.ts` · `parts.ts` · `client.ts` · `route-client.ts` |
+| [x] | 27 | 26 | **El nivel de hidratación.** El predicado de `level.ts` sin `client.body`: misma salida para todo lo que hoy existe | `compiler` | `src/emit/level.ts` |
+| [x] | 28 | 26 | **Diagnósticos de zonas.** Reescritos según SDD §4.8. Los retirados (`.ts` borrado, `.md` `retired` con su sustituto) se retiran en la tarea 63. `FUD1110` existe pero no se emite hasta la tarea 51 | `compiler` · `diagnostics` | `src/semantic/analyzers/*` · `src/emit/server-fns.ts` · `codes/` |
+| [x] | 29 | 24–28 | **Los tests del compilador.** Criterios 24 y 33 (la tabla de hidratación de todo `.fud` del repositorio, tomada con el compilador anterior a esta fase). *Decidido al implementar: el criterio 25 pasa a la tarea 56; hasta la tarea 51 no hay código que emita `FUD1110` y un test no puede «activarlo»* | `compiler` | `test/` |
 
 ## Fase 8 — dev, build y runtime · META 3 (8)
 
@@ -188,7 +188,7 @@ Cada meta cierra una fase. La fase no se da por terminada hasta que Pedro la pru
 | [ ] | 63 | 48–50 | **Fuera lo viejo.** `<f>.fud?server`, `server-module.ts`, los prefijos `r/` y `c/`, `client-fns.ts` y la lectura de cadenas con Oxc, `FUD0393`/`FUD0394`, `emit-server.ts` y `partitionCode`, los snippets y acciones de regiones, la regla de regiones de la gramática del `.fud`, los diagnósticos retirados de SDD §4.8, y de la entrada pública de `@fudic/http` y `@fudic/forms` lo que lista SDD §3.10 | varios | — |
 | [ ] | 35 | 63 | **Fuera las borradoras.** `server-validators.ts`, `server-halves.ts`, `redact.ts` y su uso | `vite` · `compiler` | `src/erased-sources.ts` · … |
 | [ ] | 51 | 35 | **Fuera las zonas.** `FUD1110` activo; el parser del `@code` ya no da nodos de región | `compiler` | `src/code/*` |
-| [ ] | 56 | 51 | **Los tests de la migración.** Criterios 21 y 34 (búsqueda en el repo), la suite del ejemplo en verde y la gramática del `.fud` sin regiones (snapshot) | — | `test/` |
+| [ ] | 56 | 51 | **Los tests de la migración.** Criterios 21, 25 y 34 (búsqueda en el repo), la suite del ejemplo en verde y la gramática del `.fud` sin regiones (snapshot) | — | `test/` |
 
 ## Fase 12 — entrega · META 6 (4)
 
@@ -212,7 +212,8 @@ Cada meta cierra una fase. La fase no se da por terminada hasta que Pedro la pru
 | 15–20, 22, 26 | 30–36 · 37 (tests) |
 | 21 | 35 · 56 (tests) |
 | 22 (lectura), 23 | 19–22 · 23 (tests) |
-| 24, 25, 33 | 24–28 · 29 (tests) |
+| 24, 33 | 24–28 · 29 (tests) |
+| 25 | 28, 51 · 56 (tests) |
 | 27 | 40, 43, 44 · 60, 64, 45 (tests) |
 | 28, 29, 31 | 40–42, 59 · 60 (tests) |
 | 30 | 43 · 64 (tests) |

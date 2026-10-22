@@ -1,0 +1,1131 @@
+{
+  "examples/basic/src/components/app-badge.fud": {
+    "kind": "component",
+    "tag": "app-badge",
+    "hydrates": false
+  },
+  "examples/basic/src/components/app-below.fud": {
+    "kind": "component",
+    "tag": "app-below",
+    "hydrates": true
+  },
+  "examples/basic/src/components/app-calendar-plain.fud": {
+    "kind": "component",
+    "tag": "app-calendar-plain",
+    "hydrates": true
+  },
+  "examples/basic/src/components/app-calendar.fud": {
+    "kind": "component",
+    "tag": "app-calendar",
+    "hydrates": true
+  },
+  "examples/basic/src/components/app-card.fud": {
+    "kind": "component",
+    "tag": "app-card",
+    "hydrates": false
+  },
+  "examples/basic/src/components/app-child.fud": {
+    "kind": "component",
+    "tag": "app-child",
+    "hydrates": true
+  },
+  "examples/basic/src/components/app-clock.fud": {
+    "kind": "component",
+    "tag": "app-clock",
+    "hydrates": true
+  },
+  "examples/basic/src/components/app-cold.fud": {
+    "kind": "component",
+    "tag": "app-cold",
+    "hydrates": true
+  },
+  "examples/basic/src/components/app-counter.fud": {
+    "kind": "component",
+    "tag": "app-counter",
+    "hydrates": true
+  },
+  "examples/basic/src/components/app-error.fud": {
+    "kind": "component",
+    "tag": "app-error",
+    "hydrates": false
+  },
+  "examples/basic/src/components/app-eventos.fud": {
+    "kind": "component",
+    "tag": "app-eventos",
+    "hydrates": true
+  },
+  "examples/basic/src/components/app-field.fud": {
+    "kind": "component",
+    "tag": "app-field",
+    "hydrates": true
+  },
+  "examples/basic/src/components/app-form.fud": {
+    "kind": "component",
+    "tag": "app-form",
+    "hydrates": true
+  },
+  "examples/basic/src/components/app-grandchild.fud": {
+    "kind": "component",
+    "tag": "app-grandchild",
+    "hydrates": true
+  },
+  "examples/basic/src/components/app-greatgrandchild.fud": {
+    "kind": "component",
+    "tag": "app-greatgrandchild",
+    "hydrates": true
+  },
+  "examples/basic/src/components/app-input.fud": {
+    "kind": "component",
+    "tag": "app-input",
+    "hydrates": true
+  },
+  "examples/basic/src/components/app-label.fud": {
+    "kind": "component",
+    "tag": "app-label",
+    "hydrates": false
+  },
+  "examples/basic/src/components/app-marco.fud": {
+    "kind": "component",
+    "tag": "app-marco",
+    "hydrates": false
+  },
+  "examples/basic/src/components/app-parent.fud": {
+    "kind": "component",
+    "tag": "app-parent",
+    "hydrates": true
+  },
+  "examples/basic/src/components/app-tabs.fud": {
+    "kind": "component",
+    "tag": "app-tabs",
+    "hydrates": true
+  },
+  "examples/basic/src/components/app-toggle.fud": {
+    "kind": "component",
+    "tag": "app-toggle",
+    "hydrates": true
+  },
+  "examples/basic/src/components/app-wide-form.fud": {
+    "kind": "component",
+    "tag": "app-wide-form",
+    "hydrates": true
+  },
+  "examples/basic/src/components/bus-log.fud": {
+    "kind": "component",
+    "tag": "bus-log",
+    "hydrates": true
+  },
+  "examples/basic/src/components/bus-option.fud": {
+    "kind": "component",
+    "tag": "bus-option",
+    "hydrates": true
+  },
+  "examples/basic/src/components/bus-picker.fud": {
+    "kind": "component",
+    "tag": "bus-picker",
+    "hydrates": true
+  },
+  "examples/basic/src/components/campo-texto.fud": {
+    "kind": "component",
+    "tag": "campo-texto",
+    "hydrates": false
+  },
+  "examples/basic/src/components/di-badge.fud": {
+    "kind": "component",
+    "tag": "di-badge",
+    "hydrates": true
+  },
+  "examples/basic/src/components/di-owner.fud": {
+    "kind": "component",
+    "tag": "di-owner",
+    "hydrates": false
+  },
+  "examples/basic/src/components/di-panel.fud": {
+    "kind": "component",
+    "tag": "di-panel",
+    "hydrates": true
+  },
+  "examples/basic/src/components/form-errores.fud": {
+    "kind": "component",
+    "tag": "form-errores",
+    "hydrates": false
+  },
+  "examples/basic/src/components/product-list.fud": {
+    "kind": "component",
+    "tag": "product-list",
+    "hydrates": true
+  },
+  "examples/basic/src/components/raw-demo.fud": {
+    "kind": "component",
+    "tag": "raw-demo",
+    "hydrates": true
+  },
+  "examples/basic/src/components/ref-demo.fud": {
+    "kind": "component",
+    "tag": "ref-demo",
+    "hydrates": true
+  },
+  "examples/basic/src/components/resto-demo.fud": {
+    "kind": "component",
+    "tag": "resto-demo",
+    "hydrates": true
+  },
+  "examples/basic/src/components/sesion-panel.fud": {
+    "kind": "component",
+    "tag": "sesion-panel",
+    "hydrates": true
+  },
+  "examples/basic/src/components/shopping-cart.fud": {
+    "kind": "component",
+    "tag": "shopping-cart",
+    "hydrates": true
+  },
+  "examples/basic/src/components/signal-code.fud": {
+    "kind": "component",
+    "tag": "signal-code",
+    "hydrates": true
+  },
+  "examples/basic/src/components/signal-control.fud": {
+    "kind": "component",
+    "tag": "signal-control",
+    "hydrates": true
+  },
+  "examples/basic/src/components/signal-counter.fud": {
+    "kind": "component",
+    "tag": "signal-counter",
+    "hydrates": true
+  },
+  "examples/basic/src/components/signal-display.fud": {
+    "kind": "component",
+    "tag": "signal-display",
+    "hydrates": true
+  },
+  "examples/basic/src/components/signal-form.fud": {
+    "kind": "component",
+    "tag": "signal-form",
+    "hydrates": true
+  },
+  "examples/basic/src/components/signal-grandchild.fud": {
+    "kind": "component",
+    "tag": "signal-grandchild",
+    "hydrates": false
+  },
+  "examples/basic/src/components/signal-store.fud": {
+    "kind": "component",
+    "tag": "signal-store",
+    "hydrates": true
+  },
+  "examples/basic/src/components/signal-while.fud": {
+    "kind": "component",
+    "tag": "signal-while",
+    "hydrates": true
+  },
+  "examples/basic/src/components/sin-css.fud": {
+    "kind": "component",
+    "tag": "sin-css",
+    "hydrates": false
+  },
+  "examples/basic/src/components/site-nav.fud": {
+    "kind": "component",
+    "tag": "site-nav",
+    "hydrates": false
+  },
+  "examples/basic/src/components/spread-card.fud": {
+    "kind": "component",
+    "tag": "spread-card",
+    "hydrates": false
+  },
+  "examples/basic/src/components/spread-list.fud": {
+    "kind": "component",
+    "tag": "spread-list",
+    "hydrates": true
+  },
+  "examples/basic/src/components/user-form.fud": {
+    "kind": "component",
+    "tag": "user-form",
+    "hydrates": true
+  },
+  "examples/basic/src/components/value-counter.fud": {
+    "kind": "component",
+    "tag": "value-counter",
+    "hydrates": true
+  },
+  "examples/basic/src/components/value-display.fud": {
+    "kind": "component",
+    "tag": "value-display",
+    "hydrates": false
+  },
+  "examples/basic/src/components/vista-url.fud": {
+    "kind": "component",
+    "tag": "vista-url",
+    "hydrates": true
+  },
+  "examples/basic/src/components/vivo-item.fud": {
+    "kind": "component",
+    "tag": "vivo-item",
+    "hydrates": true
+  },
+  "examples/basic/src/components/vivo-lista.fud": {
+    "kind": "component",
+    "tag": "vivo-lista",
+    "hydrates": true
+  },
+  "examples/basic/src/components/vivo-otro.fud": {
+    "kind": "component",
+    "tag": "vivo-otro",
+    "hydrates": true
+  },
+  "examples/basic/src/layouts/_layout-articulo.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "examples/basic/src/layouts/_layout-inline.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "examples/basic/src/layouts/_layout-marco.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "app-counter"
+    ]
+  },
+  "examples/basic/src/layouts/_layout.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "examples/basic/src/routes/_error.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "examples/basic/src/routes/about.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "examples/basic/src/routes/blog/[slug].fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "examples/basic/src/routes/blog/index.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "examples/basic/src/routes/delegacion.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "app-calendar",
+      "app-calendar-plain",
+      "app-wide-form"
+    ]
+  },
+  "examples/basic/src/routes/di.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "di-badge",
+      "di-panel"
+    ]
+  },
+  "examples/basic/src/routes/entrar.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "examples/basic/src/routes/formularios.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "app-counter",
+      "app-field",
+      "app-form",
+      "app-input"
+    ]
+  },
+  "examples/basic/src/routes/hidratacion.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "app-below",
+      "app-child",
+      "app-cold",
+      "app-counter",
+      "app-grandchild",
+      "app-greatgrandchild",
+      "app-parent",
+      "app-toggle",
+      "product-list",
+      "shopping-cart"
+    ]
+  },
+  "examples/basic/src/routes/index.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "examples/basic/src/routes/mapas.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "bus-log",
+      "bus-option",
+      "bus-picker"
+    ]
+  },
+  "examples/basic/src/routes/marco-sin-lateral.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "examples/basic/src/routes/marco.fud": {
+    "kind": "route",
+    "reactive": true,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "examples/basic/src/routes/raw.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "raw-demo"
+    ]
+  },
+  "examples/basic/src/routes/reactividad.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "signal-code",
+      "signal-control",
+      "signal-store",
+      "signal-while"
+    ]
+  },
+  "examples/basic/src/routes/ref.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "ref-demo"
+    ]
+  },
+  "examples/basic/src/routes/resto.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "campo-texto",
+      "resto-demo"
+    ]
+  },
+  "examples/basic/src/routes/ruta-evento.fud": {
+    "kind": "route",
+    "reactive": true,
+    "hydration": "gesture",
+    "hydrates": [
+      "app-eventos"
+    ]
+  },
+  "examples/basic/src/routes/ruta-reactiva.fud": {
+    "kind": "route",
+    "reactive": true,
+    "hydration": "gesture",
+    "hydrates": [
+      "signal-control"
+    ]
+  },
+  "examples/basic/src/routes/ruta-reloj.fud": {
+    "kind": "route",
+    "reactive": true,
+    "hydration": "eager",
+    "hydrates": [
+      "app-clock"
+    ]
+  },
+  "examples/basic/src/routes/sesion/[user].fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "sesion-panel"
+    ]
+  },
+  "examples/basic/src/routes/signal-prop.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "signal-counter",
+      "signal-display",
+      "signal-form",
+      "signal-grandchild"
+    ]
+  },
+  "examples/basic/src/routes/snippets.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "examples/basic/src/routes/spread.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "spread-card",
+      "spread-list"
+    ]
+  },
+  "examples/basic/src/routes/usuarios.fud": {
+    "kind": "route",
+    "reactive": true,
+    "hydration": "eager",
+    "hydrates": [
+      "user-form"
+    ]
+  },
+  "examples/basic/src/routes/value-prop.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "value-counter",
+      "value-display"
+    ]
+  },
+  "examples/basic/src/routes/vista.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "vista-url"
+    ]
+  },
+  "examples/basic/src/routes/vivo.fud": {
+    "kind": "route",
+    "reactive": true,
+    "hydration": "gesture",
+    "hydrates": [
+      "vivo-item",
+      "vivo-lista",
+      "vivo-otro"
+    ]
+  },
+  "examples/i18n/src/components/app-banner.fud": {
+    "kind": "component",
+    "tag": "app-banner",
+    "hydrates": false
+  },
+  "examples/i18n/src/components/app-cart.fud": {
+    "kind": "component",
+    "tag": "app-cart",
+    "hydrates": true
+  },
+  "examples/i18n/src/components/app-greeting.fud": {
+    "kind": "component",
+    "tag": "app-greeting",
+    "hydrates": false
+  },
+  "examples/i18n/src/layouts/_layout.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "examples/i18n/src/routes/blog/[slug].fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "examples/i18n/src/routes/index.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "app-cart"
+    ]
+  },
+  "examples/vista-errores/app-pieza.fud": {
+    "kind": "component",
+    "tag": "app-pieza",
+    "hydrates": true
+  },
+  "examples/vista-errores/vista-errores.fud": {
+    "kind": "route",
+    "reactive": true,
+    "hydration": "gesture",
+    "hydrates": [
+      "app-pieza"
+    ]
+  },
+  "examples/workspace/apps/admin/src/components/admin-panel/admin-panel.fud": {
+    "kind": "component",
+    "tag": "admin-panel",
+    "hydrates": false
+  },
+  "examples/workspace/apps/admin/src/layouts/_layout.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "examples/workspace/apps/admin/src/routes/index.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "examples/workspace/apps/admin/src/routes/pedidos.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "examples/workspace/apps/tienda/src/components/tienda-card/tienda-card.fud": {
+    "kind": "component",
+    "tag": "tienda-card",
+    "hydrates": false
+  },
+  "examples/workspace/apps/tienda/src/layouts/_layout.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "examples/workspace/apps/tienda/src/routes/catalogo.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "examples/workspace/apps/tienda/src/routes/index.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "examples/workspace/libs/ui/src/components/ui-card/ui-card.fud": {
+    "kind": "component",
+    "tag": "ui-card",
+    "hydrates": false
+  },
+  "packages/cli/templates/layout.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/cli/templates/page.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/cli/templates/route.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/compiler/fixtures/app-actions.fud": {
+    "kind": "component",
+    "tag": "app-actions",
+    "hydrates": true
+  },
+  "packages/compiler/fixtures/app-badge.fud": {
+    "kind": "component",
+    "tag": "app-badge",
+    "hydrates": false
+  },
+  "packages/compiler/fixtures/app-button.fud": {
+    "kind": "component",
+    "tag": "app-button",
+    "hydrates": true
+  },
+  "packages/compiler/fixtures/app-calendar.fud": {
+    "kind": "component",
+    "tag": "app-calendar",
+    "hydrates": true
+  },
+  "packages/compiler/fixtures/app-card.fud": {
+    "kind": "component",
+    "tag": "app-card",
+    "hydrates": true
+  },
+  "packages/compiler/fixtures/app-list.fud": {
+    "kind": "component",
+    "tag": "app-list",
+    "hydrates": false
+  },
+  "packages/compiler/fixtures/app-panel.fud": {
+    "kind": "component",
+    "tag": "app-panel",
+    "hydrates": false
+  },
+  "packages/compiler/fixtures/home.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "app-actions",
+      "app-button",
+      "app-calendar",
+      "app-card"
+    ]
+  },
+  "packages/compiler/test/fixtures/_layout-admin.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/compiler/test/fixtures/_layout.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/compiler/test/fixtures/blog-monolithic.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "app-button",
+      "app-card"
+    ]
+  },
+  "packages/compiler/test/fixtures/blog.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "app-button",
+      "app-card"
+    ]
+  },
+  "packages/formatter/fixtures/app/components/app-badge.fud": {
+    "kind": "component",
+    "tag": "app-badge",
+    "hydrates": false
+  },
+  "packages/formatter/fixtures/app/components/app-card.fud": {
+    "kind": "component",
+    "tag": "app-card",
+    "hydrates": false
+  },
+  "packages/formatter/fixtures/app/components/site-nav.fud": {
+    "kind": "component",
+    "tag": "site-nav",
+    "hydrates": false
+  },
+  "packages/formatter/fixtures/app/layouts/_layout.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/formatter/fixtures/app/routes/about.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/formatter/fixtures/app/routes/blog/[slug].fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/formatter/fixtures/app/routes/blog/index.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/formatter/fixtures/app/routes/index.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/formatter/fixtures/broken/stray-close-tag.fud": {
+    "kind": "component",
+    "tag": "app-x",
+    "hydrates": false
+  },
+  "packages/formatter/fixtures/broken/unclosed-element.fud": {
+    "kind": "component",
+    "tag": "app-x",
+    "hydrates": false
+  },
+  "packages/formatter/fixtures/broken/unterminated-attribute.fud": {
+    "kind": "component",
+    "tag": "app-x",
+    "hydrates": false
+  },
+  "packages/formatter/fixtures/canonical/app-badge.fud": {
+    "kind": "component",
+    "tag": "app-badge",
+    "hydrates": false
+  },
+  "packages/formatter/fixtures/canonical/app-button.fud": {
+    "kind": "component",
+    "tag": "app-button",
+    "hydrates": true
+  },
+  "packages/formatter/fixtures/canonical/app-card.fud": {
+    "kind": "component",
+    "tag": "app-card",
+    "hydrates": true
+  },
+  "packages/formatter/fixtures/canonical/home.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "app-button",
+      "app-card"
+    ]
+  },
+  "packages/formatter/fixtures/lsp/blog/[slug].fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/formatter/fixtures/lsp/components/app-badge.fud": {
+    "kind": "component",
+    "tag": "app-badge",
+    "hydrates": false
+  },
+  "packages/formatter/fixtures/lsp/components/site-nav.fud": {
+    "kind": "component",
+    "tag": "site-nav",
+    "hydrates": false
+  },
+  "packages/formatter/fixtures/lsp/layouts/_layout.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/formatter/fixtures/own/attributes.fud": {
+    "kind": "component",
+    "tag": "app-attrs",
+    "hydrates": true
+  },
+  "packages/formatter/fixtures/own/comments.fud": {
+    "kind": "component",
+    "tag": "app-comments",
+    "hydrates": false
+  },
+  "packages/formatter/fixtures/own/css.fud": {
+    "kind": "component",
+    "tag": "app-css",
+    "hydrates": false
+  },
+  "packages/formatter/fixtures/own/opaque.fud": {
+    "kind": "component",
+    "tag": "app-opaque",
+    "hydrates": false
+  },
+  "packages/formatter/fixtures/own/snippets.fud": {
+    "kind": "component",
+    "tag": "app-snippets",
+    "hydrates": false
+  },
+  "packages/language-core/fixtures/blog/[slug].fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/language-core/fixtures/components/app-badge.fud": {
+    "kind": "component",
+    "tag": "app-badge",
+    "hydrates": false
+  },
+  "packages/language-core/fixtures/components/app-list.fud": {
+    "kind": "component",
+    "tag": "app-list",
+    "hydrates": false
+  },
+  "packages/language-core/fixtures/components/site-nav.fud": {
+    "kind": "component",
+    "tag": "site-nav",
+    "hydrates": false
+  },
+  "packages/language-core/fixtures/layouts/_layout.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/language-server/fixtures/blog/[slug].fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/language-server/fixtures/components/app-badge.fud": {
+    "kind": "component",
+    "tag": "app-badge",
+    "hydrates": false
+  },
+  "packages/language-server/fixtures/components/site-nav.fud": {
+    "kind": "component",
+    "tag": "site-nav",
+    "hydrates": false
+  },
+  "packages/language-server/fixtures/layouts/_layout.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/testing/test/app/src/components/x-alias.fud": {
+    "kind": "component",
+    "tag": "x-alias",
+    "hydrates": true
+  },
+  "packages/testing/test/app/src/components/x-badge.fud": {
+    "kind": "component",
+    "tag": "x-badge",
+    "hydrates": true
+  },
+  "packages/testing/test/app/src/components/x-effects.fud": {
+    "kind": "component",
+    "tag": "x-effects",
+    "hydrates": true
+  },
+  "packages/testing/test/app/src/components/x-guarded.fud": {
+    "kind": "component",
+    "tag": "x-guarded",
+    "hydrates": true
+  },
+  "packages/testing/test/app/src/components/x-hello.fud": {
+    "kind": "component",
+    "tag": "x-hello",
+    "hydrates": true
+  },
+  "packages/testing/test/app/src/components/x-save.fud": {
+    "kind": "component",
+    "tag": "x-save",
+    "hydrates": true
+  },
+  "packages/testing/test/app/src/components/x-stamp.fud": {
+    "kind": "component",
+    "tag": "x-stamp",
+    "hydrates": true
+  },
+  "packages/testing/test/app/src/components/x-tpl-adopt.fud": {
+    "kind": "component",
+    "tag": "x-tpl-adopt",
+    "hydrates": false
+  },
+  "packages/testing/test/app/src/components/x-tpl-all.fud": {
+    "kind": "component",
+    "tag": "x-tpl-all",
+    "hydrates": false
+  },
+  "packages/testing/test/app/src/components/x-tpl-clonable.fud": {
+    "kind": "component",
+    "tag": "x-tpl-clonable",
+    "hydrates": false
+  },
+  "packages/testing/test/app/src/components/x-tpl-focus.fud": {
+    "kind": "component",
+    "tag": "x-tpl-focus",
+    "hydrates": false
+  },
+  "packages/testing/test/app/src/components/x-tpl-plain.fud": {
+    "kind": "component",
+    "tag": "x-tpl-plain",
+    "hydrates": false
+  },
+  "packages/testing/test/app/src/components/x-tpl-serializable.fud": {
+    "kind": "component",
+    "tag": "x-tpl-serializable",
+    "hydrates": false
+  },
+  "packages/testing/test/app/src/components/x-tpl-target.fud": {
+    "kind": "component",
+    "tag": "x-tpl-target",
+    "hydrates": false
+  },
+  "packages/testing/test/app/src/components/x-visits.fud": {
+    "kind": "component",
+    "tag": "x-visits",
+    "hydrates": true
+  },
+  "packages/testing/test/app/src/layouts/_layout.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/testing/test/app/src/routes/_error.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/testing/test/app/src/routes/blog/[slug].fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/testing/test/app/src/routes/moved.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/testing/test/bare-app/src/layouts/_layout.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/testing/test/bare-app/src/routes/missing.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/testing/test/fixtures/broken-expr.fud": {
+    "kind": "component",
+    "tag": "broken-expr",
+    "hydrates": false
+  },
+  "packages/testing/test/fixtures/broken-mode.fud": {
+    "kind": "component",
+    "tag": "broken-mode",
+    "hydrates": false
+  },
+  "packages/testing/test/fixtures/spike-card.fud": {
+    "kind": "component",
+    "tag": "spike-card",
+    "hydrates": true
+  },
+  "packages/testing/test/fixtures/x-buttonless.fud": {
+    "kind": "component",
+    "tag": "x-buttonless",
+    "hydrates": true
+  },
+  "packages/testing/test/fixtures/x-counter.fud": {
+    "kind": "component",
+    "tag": "x-counter",
+    "hydrates": true
+  },
+  "packages/testing/test/fixtures/x-greeting.fud": {
+    "kind": "component",
+    "tag": "x-greeting",
+    "hydrates": false
+  },
+  "packages/testing/test/fixtures/x-injected.fud": {
+    "kind": "component",
+    "tag": "x-injected",
+    "hydrates": true
+  },
+  "packages/testing/test/fixtures/x-label.fud": {
+    "kind": "component",
+    "tag": "x-label",
+    "hydrates": true
+  },
+  "packages/testing/test/fixtures/x-owner.fud": {
+    "kind": "component",
+    "tag": "x-owner",
+    "hydrates": false
+  },
+  "packages/testing/test/fixtures/x-pair.fud": {
+    "kind": "component",
+    "tag": "x-pair",
+    "hydrates": false
+  },
+  "packages/testing/test/fixtures/x-signup.fud": {
+    "kind": "component",
+    "tag": "x-signup",
+    "hydrates": true
+  },
+  "packages/vscode/fixtures/blog/[slug].fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/vscode/fixtures/components/app-badge.fud": {
+    "kind": "component",
+    "tag": "app-badge",
+    "hydrates": false
+  },
+  "packages/workbench/test/expected/app-card/altura-minima.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/workbench/test/expected/app-card/bare.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/workbench/test/expected/app-card/destacada-al-cambiar-variante.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/workbench/test/expected/app-card/titulo-largo-visible.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/workbench/test/fixtures/project/src/components/app-bump.fud": {
+    "kind": "component",
+    "tag": "app-bump",
+    "hydrates": true
+  },
+  "packages/workbench/test/fixtures/project/src/components/app-frame.fud": {
+    "kind": "component",
+    "tag": "app-frame",
+    "hydrates": false
+  },
+  "packages/workbench/test/fixtures/project/src/components/app-slotted.fud": {
+    "kind": "component",
+    "tag": "app-slotted",
+    "hydrates": false
+  },
+  "packages/workbench/test/fixtures/project/src/components/app-tabs.fud": {
+    "kind": "component",
+    "tag": "app-tabs",
+    "hydrates": true
+  }
+}

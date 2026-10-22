@@ -295,7 +295,8 @@ describe('a callback with no cell — the emit still writes something coherent',
         '<html><head></head><body><neutral-owner></neutral-owner></body></html>\n',
       '/neutral-owner.fud':
         '<link rel="component" href="./neutral-sink.fud">\n\n' +
-        '@code {\n  function save(n: number) { void n; }\n}\n\n' +
+        // An empty `@client` keeps the zones: without them there is no neutral zone (SDD-60 §4.8).
+        '@code {\n  function save(n: number) { void n; }\n  @client {\n  }\n}\n\n' +
         '<neutral-owner><template shadowrootmode="open">\n' +
         '  <neutral-sink .onSave=@save></neutral-sink>\n' +
         '</template></neutral-owner>\n',
@@ -316,6 +317,29 @@ describe('a callback with no cell — the emit still writes something coherent',
     expect(src).toContain('.u([, , (() => save)]);');
     expect(src).not.toContain('?.set(save);');
     expect(src).toContain('let [$dom, $shadow] = $props;');
+  });
+
+  it('without regions the same function is the browser’s, and crosses as a cell (SDD-60 §4.8)', () => {
+    const plain = resolveComponents(
+      '/page.fud',
+      memoryIo({
+        '/page.fud':
+          '<link rel="component" href="./owner.fud">\n' +
+          '<html><head></head><body><plain-owner></plain-owner></body></html>\n',
+        '/owner.fud':
+          '<link rel="component" href="./sink.fud">\n\n' +
+          '@code {\n  function save(n: number) { void n; }\n}\n\n' +
+          '<plain-owner><template shadowrootmode="open">\n' +
+          '  <plain-sink .onSave=@save></plain-sink>\n' +
+          '</template></plain-owner>\n',
+        '/sink.fud':
+          '@code {\n  const { onSave } = props<{ onSave: (n: number) => void }>();\n}\n' +
+          '<plain-sink><template shadowrootmode="open">' +
+          '<button @click=@onSave(1)>go</button></template></plain-sink>\n',
+      }),
+    );
+    const src = emitComponentClientModule(plain, plain.components.get('plain-owner')!);
+    expect(src).toContain('?.set(save);');
   });
 });
 

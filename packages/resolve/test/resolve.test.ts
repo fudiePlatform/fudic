@@ -106,7 +106,17 @@ describe('a package href', () => {
       target: {
         name: '@acme/ui',
         root: '/ws/libs/ui',
-        config: { id: '', kind: 'lib', prefix: 'ui', globalStyles: [], styles: [] },
+        config: {
+          id: '',
+          kind: 'lib',
+          prefix: 'ui',
+          globalStyles: [],
+          styles: [],
+          // The folders of SDD-60 §3.15, by convention, and a library's `fudapi/`.
+          server: 'src/server',
+          browser: 'src/browser',
+          api: 'fudapi',
+        },
       },
     });
   });

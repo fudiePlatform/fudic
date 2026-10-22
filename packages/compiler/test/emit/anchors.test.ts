@@ -168,7 +168,8 @@ describe('the splice offset — the map that lies without failing', () => {
 describe('what carries no anchors, and why', () => {
   it('a hoisted import has none: its text is rebuilt, not sliced', () => {
     const source = wrap(
-      '@code {\n  import { Cart } from \'./cart.js\';\n  const total = Cart.zero;\n}\n',
+      // Zoned by an empty `@client`, or the import would be the browser's (SDD-60 §4.8).
+      '@code {\n  import { Cart } from \'./cart.js\';\n  const total = Cart.zero;\n  @client {\n  }\n}\n',
     );
     const { neutral } = extractCode(source, componentDoc(source));
     expect(neutral.find((s) => s.hoisted)!.anchors).toEqual([]);

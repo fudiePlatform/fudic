@@ -151,10 +151,15 @@ describe('code-region-nesting (§7 crit. #5)', () => {
 
 describe('neutral-imports (§7 crit. #9)', () => {
   it('warns on a side-effect import, allows a named import', () => {
-    const d = diags(withCode("@code { import './reset.css'; }")).filter((x) => x.code === 'FUD0196');
+    // Zoned by an empty `@client`: the rule is about the neutral zone, which only regions make.
+    const d = diags(withCode("@code { import './reset.css'; @client { } }")).filter((x) => x.code === 'FUD0196');
     expect(d).toHaveLength(1);
     expect(d[0]!.severity).toBe('warning');
-    expect(codes(withCode("@code { import { x } from './m'; }"))).not.toContain('FUD0196');
+    expect(codes(withCode("@code { import { x } from './m'; @client { } }"))).not.toContain('FUD0196');
+  });
+
+  it('is silent without regions: the `@code` is browser code, there is no neutral zone (SDD-60 §4.8)', () => {
+    expect(codes(withCode("@code { import './reset.css'; }"))).not.toContain('FUD0196');
   });
 });
 

@@ -17,12 +17,18 @@ import {
 } from '../../src/emit/index.js';
 import { memoryIo } from './_support.js';
 
-/** Emit both modules of a one-component graph whose `@code` is the given source. */
+/**
+ * Emit both modules of a one-component graph whose `@code` is the given source.
+ *
+ * An empty `@client` keeps the `@code` zoned: without regions there is no neutral zone, only
+ * browser code and its server cut (SDD-60 §4.8, `server-cut.test.ts`). Until the regions are
+ * retired (SDD-60, task 63) the neutral zone still exists, and this is its contract.
+ */
 function both(code: string, template = '<p>x</p>'): { server: string; client: string } {
   const io = memoryIo({
     '/home.fud':
       '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
-    '/m.fud': `@code {\n${code}\n}\n<m-el>\n  <template shadowrootmode="open">${template}</template>\n</m-el>\n`,
+    '/m.fud': `@code {\n${code}\n  @client {\n  }\n}\n<m-el>\n  <template shadowrootmode="open">${template}</template>\n</m-el>\n`,
   });
   const graph = resolveComponents('/home.fud', io);
   const comp = graph.components.get('m-el')!;

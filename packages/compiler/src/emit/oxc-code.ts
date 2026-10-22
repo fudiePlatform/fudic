@@ -1284,7 +1284,6 @@ function readClientStatement(
   else client.body.push({ text, at: start, anchors: anchorsOf(source, start, end, splices), splices });
 }
 
-/** The zone a `@code` part belongs to — the only place the node type becomes a zone. */
 /**
  * The statements of a region-less `@code` the server evaluates (SDD-60 §4.8): seeded by the
  * fragments the markup paints with — never a deferred one, and never a bare function name,
@@ -1330,6 +1329,7 @@ function calls(node: OxcNode | null | undefined, fn: string): boolean {
   return callee?.type === 'Identifier' && callee['name'] === fn;
 }
 
+/** The zone a `@code` part belongs to — the only place the node type becomes a zone. */
 function zoneOf(type: string): CodeZone {
   if (type === 'client-region') return 'client';
   return type === 'server-region' ? 'server' : 'neutral';

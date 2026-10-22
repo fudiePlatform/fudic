@@ -33,7 +33,7 @@ const TYPES: ReadonlySet<string> = new Set(['TSTypeAliasDeclaration', 'TSInterfa
 /** The names a top-level statement binds, imports included. */
 function bound(stmt: OxcNode): readonly string[] {
   if (stmt.type === 'ImportDeclaration') {
-    return ((stmt['specifiers'] as readonly OxcNode[] | undefined) ?? []).map((s) => String((s['local'] as OxcNode)['name']));
+    return (stmt['specifiers'] as readonly OxcNode[]).map((s) => String((s['local'] as OxcNode)['name']));
   }
   const inner = stmt.type === 'ExportNamedDeclaration' ? (stmt['declaration'] as OxcNode | null) : stmt;
   if (inner === null) return [];

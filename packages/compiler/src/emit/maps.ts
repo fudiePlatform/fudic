@@ -326,6 +326,15 @@ export function routeBlocksOf(
 }
 
 /**
+ * Whether the route has a `load`: its `@server` exports one, or a `.fudapi` it links declares
+ * one (SDD-60). A link the host could not read is given the benefit: nothing is said.
+ */
+function loads(graph: ComponentGraph, code: ExtractedCode): boolean {
+  const apis = 'serverApis' in graph ? (graph as DocumentGraph).serverApis : [];
+  return code.serverExports.includes('load') || apis.some((a) => a.api === undefined || a.api.load);
+}
+
+/**
  * The expression `fud-data` carries — what `load()` returned, TRIMMED to what the client half
  * reads (SDD-39 §4.8).
  *
@@ -340,15 +349,6 @@ export function routeBlocksOf(
  * `data` and declares no `load` finds `undefined` there forever (`FUD0621`), and the emit must
  * not turn that into a throw while it says so.
  */
-/**
- * Whether the route has a `load`: its `@server` exports one, or a `.fudapi` it links declares
- * one (SDD-60). A link the host could not read is given the benefit: nothing is said.
- */
-function loads(graph: ComponentGraph, code: ExtractedCode): boolean {
-  const apis = 'serverApis' in graph ? (graph as DocumentGraph).serverApis : [];
-  return code.serverExports.includes('load') || apis.some((a) => a.api === undefined || a.api.load);
-}
-
 function dataExpression(code: ExtractedCode, hasLoad: boolean, out: Diagnostic[]): string | null {
   const access = code.dataAccess;
   if (access.kind === 'none') return null;

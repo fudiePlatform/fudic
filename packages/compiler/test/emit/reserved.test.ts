@@ -138,7 +138,19 @@ describe('SDD-15 §4.7 — what it must leave alone', () => {
   it('is a rule about @client, and the neutral zone is not it', () => {
     // The neutral zone is read by the SERVER branch, which shares no closure with it.
     const source =
+      '@code {\n  const $x = 1;\n  @client {\n  }\n}\n<m-el>\n  <template shadowrootmode="open"><span></span></template>\n</m-el>\n';
+    expect(extractCode(source, componentDoc(source)).diagnostics).toEqual([]);
+  });
+
+  it('without regions the whole `@code` is the browser’s, and the rule covers it (SDD-60 §4.8)', () => {
+    const source =
       '@code {\n  const $x = 1;\n}\n<m-el>\n  <template shadowrootmode="open"><span></span></template>\n</m-el>\n';
+    expect(extractCode(source, componentDoc(source)).diagnostics.map((d) => d.code)).toEqual(['FUD0290']);
+  });
+
+  it('without regions an import is spared: the expansion of translations writes `$` names into it', () => {
+    const source =
+      "@code {\n  import { $format } from './i18n.js';\n}\n<m-el>\n  <template shadowrootmode=\"open\"><span></span></template>\n</m-el>\n";
     expect(extractCode(source, componentDoc(source)).diagnostics).toEqual([]);
   });
 });

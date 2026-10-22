@@ -62,6 +62,9 @@ export default defineConfig({
         'src/semantic/analyzers/native-event-attributes.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/semantic/analyzers/view-attributes.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/semantic/analyzers/snippet-recursion.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // The `.fudapi` a file links, and the server cut of a `@code` without regions (SDD-60).
+        'src/emit/api-links.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/emit/server-cut.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
       },
     },
   },
