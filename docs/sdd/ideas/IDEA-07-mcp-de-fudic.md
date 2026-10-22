@@ -39,7 +39,7 @@ diagnósticos**, guiado paso a paso por el propio servidor.
             │                                                     │
   Chat ──► MCP remoto ──► commit en rama          Claude Code ──► MCP local ──► push
             │                                                     │
-            └──────────► builder: fudic check → emit → imagen ◄───┘
+            └──────────► builder: fudic build → emit → imagen ◄───┘
                                      │
                          preview por rama · producción por main
 ```
@@ -55,8 +55,9 @@ diagnósticos**, guiado paso a paso por el propio servidor.
 
 ### 2.2. El builder
 
-Por cada push: `fudic check` → emit al lenguaje del servidor → imagen → despliegue. Un check que
-falla no despliega, y su error es **el mismo diagnóstico** que el MCP ya dio al LLM.
+Por cada push: build → emit al lenguaje del servidor → imagen → despliegue. Un build que falla no
+despliega, y su error es **el mismo diagnóstico** que el MCP ya dio al LLM (sin un `fudic check`
+aparte, §5.13).
 
 ### 2.3. Una imagen por lenguaje
 
@@ -570,6 +571,54 @@ Lo que destapa:
 - **Las props de un `via: 'ssr'` tienen que ser JSON** (SDD-57 §3.2): una prop función no se puede
   pintar así, y la respuesta tiene que decirlo como diagnóstico, no lanzar.
 
+### 5.13. `fudic_preview` (propuesta, 2026-10-22)
+
+La **app entera corriendo en una URL**, para que la vea y la toque una persona. Entrada: `{ route?,
+backend? }`. Lo pide el usuario («quiero verlo») o `next` al cerrar una unidad.
+
+**En local** arranca el dev server la primera vez (el `createServer` de Vite con el plugin
+`fudic()`, en proceso, no el binario: `dev` no se expone porque no termina, §5.3) y lo reutiliza
+después; vive lo que vive el MCP. Con HMR, lo que el agente escribe se ve sin volver a llamar.
+
+**En remoto** es la preview de la rama (§2.1): dice en qué punto está el builder y para qué
+commit.
+
+```json
+{
+  "fudicVersion": "0.0.1",
+  "commit": "9d8c7b6",
+  "where": "remote",
+  "state": "ready",
+  "builtFrom": "9d8c7b6",
+  "url": "https://acme--idea-showcase.preview.fudic.dev/button",
+  "backend": "fake",
+  "routes": ["/", "/button", "/card", "/input"],
+  "diagnostics": [],
+  "next": null
+}
+```
+
+- **`state`:** `starting`, `building`, `ready` o `failed`. Con `failed`, `diagnostics` trae los
+  del build en la forma de `fudic_check`: el mismo FUD que el LLM ya conoce (§2.2).
+- **`builtFrom` distinto de `commit`**: la preview va por detrás de lo último que se escribió. El
+  LLM no le dice al usuario «ya está» con una preview vieja.
+- **`backend`**: si las funciones responden con el fake o con el backend real, para que nadie
+  confunda datos falsos con los de verdad.
+- **`routes`**: las URL concretas que se pueden abrir; una ruta con params necesita sus
+  `paths()` o un ejemplo.
+- **Errores del servidor** mientras corre (una excepción en un handler, en el SSR de una ruta):
+  la siguiente llamada los devuelve como diagnósticos con posición en el fuente.
+
+Lo que destapa:
+
+- **Lo que pasa en el navegador del usuario no llega al MCP**: un error de hidratación en la
+  consola solo lo ve quien la abre. Para eso está `spec_run`; `preview` es para mirar, no para
+  comprobar.
+- **Una preview remota es pública o no.** Va con la cuenta (OAuth, §2.4): privada por defecto y
+  compartible con un enlace, porque enseñársela a un cliente es para lo que existe.
+- **El builder no ejecuta un `fudic check` aparte (§9):** ejecuta el build, y el build falla con
+  los mismos diagnósticos, de tipos incluidos. Un único origen (§5.5).
+
 ## 6. `fudic_guide`
 
 Envoltura: `{ fudicVersion, topic, related, body }`, con `body` en markdown en inglés.
@@ -630,8 +679,8 @@ remoto. Se mantienen como dos superficies; `fudic_spec_run` es el punto donde se
 - **Coste del pase tipado en remoto:** un programa TS en memoria por llamada; hay que medirlo.
 - **Fake con estado o sin él:** si un `save` se ve después en un `search`.
 - **Generadores que faltan en la CLI:** `.fudapi` y contrato del backend.
-- **`fudic check` en el builder (§2.2)** choca con «errores de tipos en build/dev, nunca un
-  `fudic check` aparte». En el MCP, `fudic_check` encaja; en el builder, debería fallar el build.
+- ~~**`fudic check` en el builder (§2.2)**~~ Resuelto en §5.13: el builder ejecuta el build, que
+  falla con los mismos diagnósticos.
 - **El fake (§3, camino 2) enmienda la decisión 6 de SDD-60** (sin handler, 404). Hay que anotarlo
   en SDD-60 cuando esto sea SDD.
 - ~~**`fudic_test` depende de SDD-57**, que no está en main.~~ SDD-57 está `Hecho` y en main
