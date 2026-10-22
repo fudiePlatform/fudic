@@ -930,6 +930,6 @@ cambio de implementación tiene **las dos cosas**:
   capturas).
 - **La preview** (§5.13) para verlo y tocarlo, que no deja rastro: mirar no es aprobar.
 
-Propuesta: las capturas son binarios y no entran en git (§5.7); van **adjuntas al PR** que abre
+Decidido también: las capturas son binarios y no entran en git (§5.7); van **adjuntas al PR** que abre
 `fudic_propose`, y el historial guarda su hash. El PR es donde el equipo revisa, y el hash dice si
 lo aprobado es lo que se está mergeando.
