@@ -31,6 +31,11 @@ describe('the project of a file (criterion 9)', () => {
     ]);
   });
 
+  it('lists the app files a .fud may link, and none of a library (SDD-60 §4.7)', () => {
+    const { host } = world();
+    expect(host.appFiles(`${SRC}/routes/r.fud`)).toEqual([`${SRC}/middlewares/auth.fudapi`, `${SRC}/types/person.fudapi`]);
+  });
+
   it('a dependency without fudapi/ adds nothing; one not in package.json is never read', () => {
     const { host, fs } = world();
     host.load(PATH, '');

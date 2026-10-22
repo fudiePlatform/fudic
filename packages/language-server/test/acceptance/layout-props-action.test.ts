@@ -11,8 +11,8 @@
  * error it created itself is worse than no repair at all.
  */
 
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import {
   CodeActionRequest,
   CompletionRequest,
@@ -153,8 +153,12 @@ describe('§6.12 — the bulb is offered, and the server reports nothing of its 
 });
 
 describe('§6.13 — what it writes is of the type of each prop', () => {
+  // A route with a `@server`, so the repair writes its resolver there (the `.fudapi` one has
+  // no `return` to write values into: SDD-60 §4.7).
+  const withServer = route('@code {\n  @server {\n    export function load() { return {}; }\n  }\n}\n');
+
   it('a scalar gets its own literal and anything else a typed hole', async () => {
-    const source = route('');
+    const source = withServer;
     const written = applied(source, completing(await actionsOn(source)));
 
     expect(written).toContain("culture: ''");
@@ -165,7 +169,7 @@ describe('§6.13 — what it writes is of the type of each prop', () => {
   });
 
   it('the file it leaves behind has no type errors of its own making', async () => {
-    const source = route('');
+    const source = withServer;
     const written = applied(source, completing(await actionsOn(source)));
 
     expect(await codesOf(written)).toEqual([]);
@@ -216,26 +220,6 @@ describe('§6.14 — how much scaffolding it writes depends on what is already t
     expect(await codesOf(written)).toEqual([]);
   });
 
-  it('creates the `@server` region when the `@code` has none', async () => {
-    const source = route('@code {\n  const n = 1;\n}\n');
-    const written = applied(source, completing(await actionsOn(source)));
-
-    expect(written).toContain('@server {');
-    expect(written).toContain('export function layout(ctx, data) {');
-    expect(await codesOf(written)).toEqual([]);
-  });
-
-  it('creates the whole `@code` block when the route has none', async () => {
-    const source = route('');
-    const written = applied(source, completing(await actionsOn(source)));
-
-    expect(written).toContain('@code {');
-    expect(written).toContain('@server {');
-    expect(written).toContain('export function layout(ctx, data) {');
-    expect(written).not.toContain('unknown, data');
-    expect(await codesOf(written)).toEqual([]);
-  });
-
   it('keeps the parameters of a resolver that exists exactly as the author wrote them', async () => {
     const source = route(
       '@code {\n  @server {\n' +
@@ -247,6 +231,66 @@ describe('§6.14 — how much scaffolding it writes depends on what is already t
 
     expect(written).toContain('export function layout(ctx, data) {');
     expect(await codesOf(written)).toEqual([]);
+  });
+});
+
+describe('SDD-60 §4.7 — a route with no `@server` gets `layout` in its `.fudapi`', () => {
+  /** One change of a `documentChanges` edit, as it travels. */
+  interface WireChange {
+    readonly kind?: string;
+    readonly uri?: string;
+    readonly textDocument?: { readonly uri: string };
+    readonly edits?: readonly { readonly newText: string; readonly range: { readonly start: { line: number; character: number } } }[];
+  }
+  const changesOf = (action: WireAction | undefined): readonly WireChange[] =>
+    ((action?.edit as { documentChanges?: WireChange[] } | undefined)?.documentChanges ?? []);
+  const sibling = (): string => `${root}/blog/[slug].fudapi`;
+  const isSibling = (uri: string | undefined): boolean => decodeURIComponent(uri ?? '').endsWith('/blog/[slug].fudapi');
+
+  afterEach(() => {
+    rmSync(sibling(), { force: true });
+  });
+
+  it('creates the `.fudapi` with `layout` and links it after the layout link', async () => {
+    const changes = changesOf(completing(await actionsOn(route(''))));
+
+    expect(changes).toHaveLength(3);
+    expect(changes[0]).toMatchObject({ kind: 'create' });
+    expect(isSibling(changes[0]?.uri)).toBe(true);
+    expect(isSibling(changes[1]?.textDocument?.uri)).toBe(true);
+    expect(changes[1]?.edits?.[0]?.newText).toBe('layout\n');
+    expect(changes[2]?.edits?.[0]).toMatchObject({
+      newText: '\n<link rel="server" href="./[slug].fudapi">',
+      range: { start: { line: 0, character: '<link rel="layout" href="../layouts/_layout.fud">'.length } },
+    });
+  });
+
+  it('appends `layout` after a blank line to a `.fudapi` that exists', async () => {
+    writeFileSync(sibling(), 'paths', 'utf8');
+    const changes = changesOf(completing(await actionsOn(route(''))));
+
+    expect(changes[0]?.kind).toBeUndefined();
+    expect(changes[0]?.edits?.[0]).toMatchObject({ newText: '\n\nlayout\n', range: { start: { line: 0, character: 5 } } });
+    expect(changes).toHaveLength(2);
+  });
+
+  it('writes only what is missing: the declaration, or the link', async () => {
+    writeFileSync(sibling(), 'paths\n', 'utf8');
+    const linked = route('').replace('\n', '\n<link rel="server" href="./[slug].fudapi">\n');
+    const declaration = changesOf(completing(await actionsOn(linked)));
+    expect(declaration).toHaveLength(1);
+    expect(declaration[0]?.edits?.[0]?.newText).toBe('\nlayout\n');
+
+    writeFileSync(sibling(), 'layout\n', 'utf8');
+    const link = changesOf(completing(await actionsOn(route(''))));
+    expect(link).toHaveLength(1);
+    expect(link[0]?.edits?.[0]?.newText).toBe('\n<link rel="server" href="./[slug].fudapi">');
+  });
+
+  it('offers nothing once the `.fudapi` declares `layout` and the route links it', async () => {
+    writeFileSync(sibling(), 'layout\n', 'utf8');
+    const linked = route('').replace('\n', '\n<link rel="server" href="./[slug].fudapi">\n');
+    expect(completing(await actionsOn(linked))).toBeUndefined();
   });
 });
 
@@ -306,7 +350,9 @@ describe('the cases where a repair would be guessing', () => {
   it('falls back to an empty string for a prop whose type the layout never stated', async () => {
     // «Not provable» is not «no prop»: the key carries no `?`, so it is required, and the
     // repair writes what most props take rather than inventing a type to write against.
-    const source = '<link rel="layout" href="../layouts/_untyped.fud">\n<h1>hola</h1>\n';
+    const source =
+      '<link rel="layout" href="../layouts/_untyped.fud">\n' +
+      '@code {\n  @server {\n    export function load() { return {}; }\n  }\n}\n<h1>hola</h1>\n';
     const written = applied(source, completing(await actionsOn(source)));
 
     expect(written).toContain("culture: ''");

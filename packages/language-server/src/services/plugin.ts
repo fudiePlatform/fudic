@@ -55,7 +55,7 @@ import type { RequestStats } from '../stats.js';
 import { reindentLine } from '@fudic/formatter';
 import { emmetCompletions } from './emmet.js';
 import { formattedText } from './formatting.js';
-import { hrefCompletions, relCompletions } from './href.js';
+import { apiHrefCompletions, hrefCompletions, relCompletions, type ApiFiles } from './href.js';
 import { codeActions } from './actions.js';
 import {
   attributeValueBindingAt,
@@ -145,6 +145,11 @@ export interface FudicServiceContext {
    * translation hover.
    */
   readonly translations?: Translations;
+  /**
+   * The `.fudapi` of each app (SDD-60 §4.7): the `href` of a `<link rel="server">` and the
+   * route's contract the layout bulb writes into. Absent means neither.
+   */
+  readonly apis?: ApiFiles;
 }
 
 const SEVERITY: Readonly<Record<Severity, DiagnosticSeverity>> = {
@@ -474,6 +479,7 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
                 alone,
                 deps.configs,
                 completionContext.triggerCharacter,
+                deps.apis,
               ),
             undefined,
           );
@@ -723,6 +729,7 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
                       projectedOffset(cached, at),
                     ),
                 },
+                ...(deps.apis === undefined ? {} : { apis: deps.apis }),
               });
             },
             undefined,
@@ -755,6 +762,7 @@ function completions(
   alone: boolean,
   configs?: ProjectConfigs,
   trigger?: string,
+  apis?: ApiFiles,
 ): CompletionList | undefined {
   const cached = fudicDocumentOf(context, document);
   if (cached === undefined) return undefined;
@@ -798,6 +806,17 @@ function completions(
   const region = regionAt(cached.source, cached.html, offset);
 
   const href = hrefContextAt(cached.source, cached.document, offset);
+  if (href?.rel === 'server') {
+    // The contracts of the app (SDD-60 §4.7): a `.fudapi`, never a `.fud`.
+    return list(
+      (apis === undefined ? [] : apiHrefCompletions(cached, apis)).map((item) => ({
+        label: item.href,
+        kind: CompletionItemKind.File,
+        detail: 'server contract',
+        textEdit: { range: rangeOf(document, href.value), newText: item.href },
+      })),
+    );
+  }
   if (href !== undefined) {
     return list(
       hrefCompletions(cached, index, href).map((item) => ({

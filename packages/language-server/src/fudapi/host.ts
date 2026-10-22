@@ -77,6 +77,13 @@ export class ApiHost {
     return workspace === '' ? dirname(path) : workspace;
   }
 
+  /** Every `.fudapi` of the app a file belongs to, under its `src/`: what a `.fud` may link. */
+  appFiles(fromFile: string): readonly string[] {
+    return this.#filesOf(this.projectOf(fromFile))
+      .filter((f) => f.origin === 'app')
+      .map((f) => f.path);
+  }
+
   /** The `.fudapi` at `path` with `text`, its project index and its context. */
   load(path: string, text: string): ApiProject {
     const project = this.projectOf(path);

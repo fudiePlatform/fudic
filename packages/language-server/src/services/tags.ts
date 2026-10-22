@@ -189,11 +189,16 @@ export function documentLinks(
     const span = attributeValueSpan(document.source, attribute);
     if (span === undefined || span.start === span.end) continue;
 
-    const entry = index.resolve(document.path, document.source.slice(span.start, span.end));
+    const href = document.source.slice(span.start, span.end);
+    // A contract is no `.fud` of the index (SDD-60 §3.14): its own question finds it.
+    const target =
+      link.rel === 'server'
+        ? index.server(document.path, href) === undefined ? undefined : index.serverPath(document.path, href)
+        : index.resolve(document.path, href)?.path;
     // An unresolved href gets FUD0460 and a code action, not a link to nowhere.
-    if (entry === undefined) continue;
+    if (target === undefined) continue;
 
-    links.push({ span, target: entry.path });
+    links.push({ span, target });
   }
   return links;
 }

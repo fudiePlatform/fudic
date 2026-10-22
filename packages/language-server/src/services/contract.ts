@@ -17,10 +17,12 @@
  * the parse and the index — the same two readers the card uses — and reported by nobody.
  */
 
+import { API_EXTENSION, parseApi } from '@fudic/api';
 import {
   attributeValueSpan,
   documentRoots,
   extractCode,
+  linkHref,
   span,
   walk,
   type Attribute,
@@ -28,9 +30,11 @@ import {
   type ServerRegion,
   type Span,
 } from '@fudic/compiler';
+import { serverLinksOf } from '@fudic/typecheck';
 import type { CachedDocument } from '../document-cache.js';
 import type { Contract, ContractProp } from '../mode.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
+import type { ApiFiles } from './href.js';
 
 /** The `.` that makes an attribute a property binding (decision 23). */
 const PROPERTY_PREFIX = '.';
@@ -90,25 +94,55 @@ export interface UnknownSlot {
  * needs. The build has its own voice for it, `FUD0702`, and the two never speak at once: the
  * emit is not run in the editor.
  */
-export interface MissingLayoutProps {
+export type MissingLayoutProps = MissingInResolver | MissingInContract;
+
+/** The fact itself, whichever file the repair writes. */
+interface LayoutPropsFact {
   readonly kind: 'missing-layout-props';
   /** The `<link rel="layout">` — what the bulb underlines, as `FUD0702` anchors on it. */
   readonly at: Span;
   /** The unresolved props, in declaration order, with the type each one was declared as. */
   readonly props: readonly ContractProp[];
-  /**
-   * Where the repair writes.
-   *
-   * `'object'` — inside the `return { … }` of a resolver that already exists; the offset is
-   * just past the `{`. `'server'` — a whole `export function layout` at the start of a
-   * `@server` region that exists. `'region'` — the `@code` exists but has no `@server`, so
-   * the region is written too, before the block's closing `}`. `'code'` — neither exists and
-   * the repair writes the whole `@code { @server { … } }`.
-   */
-  readonly write: 'object' | 'server' | 'region' | 'code';
+}
+
+/**
+ * The route has a `@server` (until SDD-60 retires it): the repair writes its resolver.
+ *
+ * `'object'` — inside the `return { … }` of a resolver that already exists; the offset is
+ * just past the `{`. `'server'` — a whole `export function layout` at the start of the
+ * `@server` region.
+ */
+export interface MissingInResolver extends LayoutPropsFact {
+  readonly write: 'object' | 'server';
   readonly insertAt: number;
   /** Whether the object literal the repair writes into already holds something. */
   readonly hasFields: boolean;
+}
+
+/**
+ * The route has no `@server` (SDD-60 §4.7): `layout` goes into its sibling `.fudapi`, created
+ * when it is not there, and the route links it right after its `<link rel="layout">` — the
+ * offset — when it does not yet. What the layout needs is then the handler's return type, and
+ * TypeScript says so in `src/server`.
+ */
+export interface MissingInContract extends LayoutPropsFact {
+  readonly write: 'fudapi';
+  readonly insertAt: number;
+  readonly contract: LayoutContract;
+}
+
+/** The route's sibling `.fudapi`, as the layout repair finds it (SDD-60 §4.7). */
+export interface LayoutContract {
+  /** Absolute path. */
+  readonly path: string;
+  /** How the route writes it in a `<link rel="server">`. */
+  readonly href: string;
+  /** Its text; absent when there is no such file and the repair creates it. */
+  readonly text?: string;
+  /** It already declares `layout`. */
+  readonly declared: boolean;
+  /** The route already links it. */
+  readonly linked: boolean;
 }
 
 export type ContractIssue = MissingProps | UnknownProp | UnknownSlot | MissingLayoutProps;
@@ -251,6 +285,7 @@ function closest(written: string, declared: readonly string[]): string | undefin
 export function contractIssues(
   cached: CachedDocument,
   index: WorkspaceIndex,
+  apis?: ApiFiles,
 ): readonly ContractIssue[] {
   const issues: ContractIssue[] = [];
   const source = cached.source;
@@ -260,7 +295,7 @@ export function contractIssues(
   const ownHost =
     cached.document.type === 'component-document' ? cached.document.host : undefined;
 
-  const layoutIssue = missingLayoutProps(cached, index);
+  const layoutIssue = missingLayoutProps(cached, index, apis);
   if (layoutIssue !== undefined) issues.push(layoutIssue);
 
   walk(documentRoots(cached.document), {
@@ -356,6 +391,7 @@ export function contractIssues(
 function missingLayoutProps(
   cached: CachedDocument,
   index: WorkspaceIndex,
+  apis: ApiFiles | undefined,
 ): MissingLayoutProps | undefined {
   const document = cached.document;
   if (document.type !== 'route-document' || document.layoutHref === '') return undefined;
@@ -365,6 +401,18 @@ function missingLayoutProps(
   const required = entry.contract.props.filter((prop) => prop.required);
   if (required.length === 0) return undefined;
 
+  const at = document.layoutLink.openSpan;
+  const issue = { kind: 'missing-layout-props', at } as const;
+  const server = document.code?.parts.find((p): p is ServerRegion => p.type === 'server-region');
+  if (server === undefined) {
+    // No `@server`: the route's resolver is the `layout` of its `.fudapi` (SDD-60 §4.7), and
+    // once it is declared and linked, what it returns is TypeScript's to check in `src/server`.
+    const contract = apis === undefined ? undefined : siblingContract(cached, index, apis);
+    if (contract === undefined || (contract.declared && contract.linked)) return undefined;
+    // After the `<link rel="layout">`: the first thing a route holds, and links go together.
+    return { ...issue, props: required, write: 'fudapi', insertAt: at.end, contract };
+  }
+
   const resolver = extractCode(cached.source, document).layoutResolver;
   // Present but unreadable: nothing to say and nothing safe to write.
   if (resolver !== undefined && resolver.keys === undefined) return undefined;
@@ -372,24 +420,23 @@ function missingLayoutProps(
   const props = required.filter((prop) => !resolved.has(prop.name));
   if (props.length === 0) return undefined;
 
-  const at = document.layoutLink.openSpan;
-  const issue = { kind: 'missing-layout-props', at, props } as const;
   if (resolver?.fieldsAt !== undefined) {
-    return { ...issue, write: 'object', insertAt: resolver.fieldsAt, hasFields: resolver.hasFields };
+    return { ...issue, props, write: 'object', insertAt: resolver.fieldsAt, hasFields: resolver.hasFields };
   }
-  // No resolver: the repair writes the whole function, and whatever has to exist around it
-  // (§6.14). Three nestings, each one level further out than the last.
-  const code = document.code;
-  const server = code?.parts.find((p): p is ServerRegion => p.type === 'server-region');
-  if (server !== undefined) {
-    return { ...issue, write: 'server', insertAt: server.js.start, hasFields: false };
-  }
-  if (code !== undefined) {
-    // Before the block's own closing `}`: a `@server` may sit anywhere among the parts
-    // (decision 34), and last is where it reads as an addition rather than an interruption.
-    return { ...issue, write: 'region', insertAt: code.span.end - 1, hasFields: false };
-  }
-  // After the `<link rel="layout">`: a route's `@code` comes between its links and its head
-  // (decision 83), and the layout link is the first thing a route holds.
-  return { ...issue, write: 'code', insertAt: at.end, hasFields: false };
+  // No resolver: the repair writes the whole function at the start of the region.
+  return { ...issue, props, write: 'server', insertAt: server.js.start, hasFields: false };
+}
+
+/** The `.fudapi` beside a route — `usuarios.fud` → `usuarios.fudapi` — as it stands now. */
+function siblingContract(cached: CachedDocument, index: WorkspaceIndex, apis: ApiFiles): LayoutContract {
+  const path = `${cached.path.slice(0, -'.fud'.length)}${API_EXTENSION}`;
+  const href = `./${path.slice(path.lastIndexOf('/') + 1)}`;
+  const text = apis.read(path);
+  const declared =
+    text !== undefined && parseApi(text).value.declarations.some((declaration) => declaration.kind === 'layout');
+  const linked = serverLinksOf(cached.document).some((link) => {
+    const written = linkHref(link);
+    return written !== undefined && index.serverPath(cached.path, written) === path;
+  });
+  return { path, href, ...(text === undefined ? {} : { text }), declared, linked };
 }

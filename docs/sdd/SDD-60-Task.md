@@ -6,7 +6,7 @@
 > `@fudic/typecheck` · `@fudic/language-server` · `@fudic/formatter` · `@fudic/cli` · `fudic-vscode` ·
 > `examples/*` · `packages/testing`
 > **Rama:** `sdd-60-fudapi` (nace de `main`)
-> **Progreso:** 47 / 64 — `En curso`.
+> **Progreso:** 50 / 64 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina; la otra escribe los tests de cada fase (las tareas
 «Los tests de…»), contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -167,9 +167,9 @@ Cada meta cierra una fase. La fase no se da por terminada hasta que Pedro la pru
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | — | 38 | — | *Hecha en la Fase 8.* `emit-server.ts` y `partitionCode` se retiran en la tarea 63 | `language-core` | — |
-| [ ] | 39 | 38 | **typecheck.** `rel: 'server'` en el registro de enlaces; `.fudic/api` en el programa | `typecheck` | `src/language-plugin.ts` · `links.ts` · `project.ts` |
-| [ ] | 44 | 38 | **El `.fud` en el language server.** `rel="server"` en el completado de `href`; un cambio en un `.fudapi` revalida los `.fud` que lo enlazan; la bombilla de `FUD0702` escribe `layout` en el `.fudapi` hermano. Snippets, completados y acciones de `@server`/`@client` se retiran en la tarea 63 | `language-server` | `src/services/*` |
-| [ ] | 45 | 38–44 | **Los tests del editor del `.fud`.** Criterio 27 (lado `.fud`) y los de `language-core` y `typecheck` | `language-server` · `language-core` · `typecheck` | `test/` |
+| [x] | 39 | 38 | **typecheck.** `rel: 'server'` en el registro de enlaces; `.fudic/api` en el programa. *Al implementar: `.fudic/api` ya entró en el programa del checker en la Fase 8 (`implementations.ts`), y el editor lo toma del `include` del tsconfig de la app (§3.11). Un `.fudapi` enlazado que no existe es `FUD1111` también en el editor, sobre el enlace entero, como en el build* | `typecheck` | `src/language-plugin.ts` · `links.ts` · `project.ts` |
+| [x] | 44 | 38 | **El `.fud` en el language server.** `rel="server"` en el completado de `href`; un cambio en un `.fudapi` revalida los `.fud` que lo enlazan; la bombilla de `FUD0702` escribe `layout` en el `.fudapi` hermano. Snippets, completados y acciones de `@server`/`@client` se retiran en la tarea 63. *Al implementar: si la ruta no enlaza su `.fudapi` hermano, la bombilla añade también el `<link rel="server">`; con `@server` sigue escribiendo el resolver ahí hasta la tarea 63* | `language-server` | `src/services/*` |
+| [x] | 45 | 38–44 | **Los tests del editor del `.fud`.** Criterio 27 (lado `.fud`) y los de `language-core` y `typecheck` | `language-server` · `language-core` · `typecheck` | `test/` |
 
 ## Fase 10 — CLI (2)
 

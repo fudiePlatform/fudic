@@ -154,12 +154,20 @@ export class FudIndex<E extends IndexedFud = IndexedFud> implements LinkIndex, F
   }
 
   /**
+   * Where the `href` of a `<link rel="server">` written inside `fromFile` points, whether or
+   * not there is a file there: what tells the editor which `.fud` a changed `.fudapi` touches.
+   */
+  serverPath(fromFile: string, href: string): string {
+    return toPosix(this.fs.resolveHref(toPosix(fromFile), href));
+  }
+
+  /**
    * The `.fudapi` of a `<link rel="server">` (SDD-60 §4.7): its `<id>` — its path inside the
    * `src/` of a swept project —, whether it declares `load`, and the names it gives the file.
    * Read from the disk each time it is asked: it is not a `.fud`, and the index keeps none.
    */
   server(fromFile: string, href: string): ServerImport | undefined {
-    const path = toPosix(this.fs.resolveHref(toPosix(fromFile), href));
+    const path = this.serverPath(fromFile, href);
     const root = [...this.#roots].find((r) => path.startsWith(`${r}/${SRC_DIR}/`));
     const text = path.endsWith(API_EXTENSION) ? this.fs.readFile(path) : undefined;
     if (root === undefined || text === undefined) return undefined;

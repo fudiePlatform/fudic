@@ -7,7 +7,7 @@ import type { Attribute, ElementNode, StructuredDocument } from '@fudic/compiler
 /** A `<link>` of this file and what it links. */
 export interface LinkRef {
   readonly element: ElementNode;
-  readonly rel: 'component' | 'layout' | 'snippet';
+  readonly rel: 'component' | 'layout' | 'snippet' | 'server';
 }
 
 /** Every `<link>` this file declares: the components, plus the layout when it has one. */
@@ -18,12 +18,21 @@ export function linksOf(document: StructuredDocument): readonly LinkRef[] {
   // the paths completed as they are typed, and a diagnostic when the file is not there.
   for (const element of document.snippetLinks) links.push({ element, rel: 'snippet' });
 
+  // The contracts of its server (SDD-60 §3.14), for the same two reasons. Their `href` names a
+  // `.fudapi`, never a `.fud`: `serverLinksOf` keeps the two apart for the rules that care.
+  for (const element of serverLinksOf(document)) links.push({ element, rel: 'server' });
+
   if (document.type === 'route-document') {
     links.push({ element: document.layoutLink, rel: 'layout' });
   } else if (document.type === 'layout-document' && document.layoutLink !== undefined) {
     links.push({ element: document.layoutLink, rel: 'layout' });
   }
   return links;
+}
+
+/** The `<link rel="server">` of this file, in source order; none where the structure keeps none. */
+export function serverLinksOf(document: StructuredDocument): readonly ElementNode[] {
+  return ('serverLinks' in document ? document.serverLinks : undefined) ?? [];
 }
 
 /** The attribute of this name, if the element has one. */

@@ -692,6 +692,10 @@ salen del `.fudapi` enlazado (parser de `@fudic/api`, sin Oxc). `FUD0393` y `FUD
 - Se retiran los snippets, completados y acciones de `@server`/`@client` y el arreglo que escribía
   `layout()` en el `@server`: ahora la bombilla de `FUD0702` añade `layout` al `.fudapi` hermano
   (creándolo si no existe).
+- *Decidido al implementar:* la bombilla añade también el `<link rel="server">` al `.fudapi`
+  hermano cuando la ruta no lo enlaza, y no escribe lo que ya está. Un `<link rel="server">` cuyo
+  `.fudapi` no existe es `FUD1111` también en el editor (con la acción de crear el fichero), y el
+  `href` lleva al `.fudapi` con Ctrl+clic.
 
 ### 4.8. Un único `@code`: qué evalúa el servidor
 

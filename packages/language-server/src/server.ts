@@ -221,7 +221,7 @@ export function createFudicServer(
     const plugins: LanguageServicePlugin[] = [
       // Ours goes first: where two services answer the same position — an `href`, a
       // `@section `, a `class:` — §4.1 gives this one the answer, and Volar asks them in order.
-      createFudicService({ index, stats, typescript: withTypeScript, configs, translations }),
+      createFudicService({ index, stats, typescript: withTypeScript, configs, translations, apis }),
       // The whole `.fud` is the HTML document: its markup is HTML with `@` in it, and the
       // native tags and attributes have to come from somewhere (§4.1, §6.4).
       //
@@ -328,6 +328,8 @@ export function createFudicServer(
       if (path.endsWith(API_EXTENSION)) {
         if (change.type === 3) apis.forget(path);
         generated.add(apis.projectOf(path));
+        // And the `.fud` that link it: what they get from it is read when they are projected.
+        cache.reprojectLinking(path);
       }
       // The same channel that keeps the index current keeps the project current: editing
       // `fudic.json` and saving changes what the next file's snippet proposes, with no

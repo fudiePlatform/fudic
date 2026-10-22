@@ -226,3 +226,42 @@ describe('the links and holes the rules read', () => {
     expect(missingSections(unknownLayout.document, unknownLayout.index)).toEqual([]);
   });
 });
+
+describe('the <link rel="server"> (SDD-60 §3.14)', () => {
+  const ROUTE = '/p/src/routes/r.fud';
+  const source = [
+    '<link rel="server" href="./r.fudapi">',
+    '<link rel="server" href="./ghost.fudapi">',
+    '<link rel="server" href="./r.ts">',
+    component('p-r'),
+  ].join('\n');
+  const files = { '/p/src/routes/r.fudapi': 'get search\n' };
+
+  it('is a link of the file, with rel server', () => {
+    const { document } = projected(ROUTE, source, files);
+    expect(linksOf(document.document).map((link) => link.rel)).toEqual(['server', 'server', 'server']);
+  });
+
+  it('a .fudapi that is not there is FUD1111 over the whole link, as the build says it', () => {
+    const { index, document } = projected(ROUTE, source, files);
+    const unresolved = unresolvedHrefs(document, index);
+    // `./r.ts` is the structure's FUD1111 (not a `.fudapi`), never a missing file.
+    expect(unresolved.map((u) => [u.href, u.target, u.link.rel])).toEqual([
+      ['./ghost.fudapi', '/p/src/routes/ghost.fudapi', 'server'],
+    ]);
+    const [diagnostic] = hrefDiagnostics(document, index);
+    expect(diagnostic?.code).toBe('FUD1111');
+    expect(source.slice(diagnostic?.span.start, diagnostic?.span.end)).toBe('<link rel="server" href="./ghost.fudapi">');
+  });
+
+  it('an index that cannot read contracts leaves them be', () => {
+    const { index, document } = projected(ROUTE, source, files);
+    const blind = { resolve: index.resolve.bind(index), failure: index.failure.bind(index) };
+    expect(unresolvedHrefs(document, blind)).toEqual([]);
+  });
+
+  it('says where an href points, there or not', () => {
+    const { index } = projected(ROUTE, source, files);
+    expect(index.serverPath(ROUTE, './ghost.fudapi')).toBe('/p/src/routes/ghost.fudapi');
+  });
+});

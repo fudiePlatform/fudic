@@ -463,12 +463,12 @@ describe('the tag plugin (BUG-15 §4.6)', () => {
     }
   });
 
-  it('offers the three `rel` of fudic, replacing what is written, and nothing of the template', async () => {
+  it('offers the `rel` of fudic, replacing what is written, and nothing of the template', async () => {
     const source = `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="comp|">\n<article>hi</article>\n`;
     const { tagService, document, position, cached } = setup(source);
     const list = await completionsOf(tagService, document, position);
 
-    expect(list?.items.map((item) => item.label)).toEqual(['component', 'snippet']);
+    expect(list?.items.map((item) => item.label)).toEqual(['component', 'snippet', 'server']);
     const value = cached.source.indexOf('comp">');
     expect(list?.items[0]?.textEdit).toEqual({
       range: rangeOf(document, { start: value, end: value + 'comp'.length }),
@@ -1612,5 +1612,32 @@ describe('cancellation', () => {
     expect(await service.provideDiagnostics?.(document, CANCELLED)).toBeUndefined();
     expect(await service.provideDefinition?.(document, position, CANCELLED)).toBeUndefined();
     expect([stats.completed, stats.cancelled]).toEqual([0, 3]);
+  });
+});
+
+describe('the href of a <link rel="server"> (SDD-60 §4.7)', () => {
+  const PATH = '/p/src/routes/r.fud';
+  const marked = `<link rel="server" href="|">\n${component('p-r')}`;
+
+  /** The labels offered at the `|`, with the contracts `files` lists, or with no host at all. */
+  async function labels(files?: readonly string[]): Promise<readonly unknown[]> {
+    const text = marked.replace('|', '');
+    const index = new WorkspaceIndex(memoryFs({ [PATH]: text }));
+    index.scan('/p');
+    const cached = new DocumentCache(index).get(PATH, 1, text);
+    const document = TextDocument.create(URI.file(PATH).toString(), 'fud', 1, text);
+    const context = fakeServiceContext({ [URI.file(PATH).toString()]: cached }, () => undefined);
+    const apis = files === undefined ? {} : { apis: { appFiles: () => files, read: () => undefined } };
+    const service = createFudicService({ index, stats: new RequestStats(), ...apis }).create(context);
+    const list = await completionsOf(service, document, document.positionAt(marked.indexOf('|')));
+    return list?.items.map((item) => [item.label, item.detail]) ?? [];
+  }
+
+  it('offers the .fudapi of the app, and never a .fud', async () => {
+    expect(await labels(['/p/src/routes/r.fudapi'])).toEqual([['./r.fudapi', 'server contract']]);
+  });
+
+  it('offers nothing on a host that cannot list them', async () => {
+    expect(await labels()).toEqual([]);
   });
 });

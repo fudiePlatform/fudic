@@ -3,12 +3,13 @@
  *
  * No language service knows what a `<link rel="component">` means, so this is the server's
  * own: the `.fud` this file can link, filtered by ROLE — `rel="component"` offers components
- * and `rel="layout"` offers layouts (decision 51) — and the three `rel` that make a `<link>`
+ * and `rel="layout"` offers layouts (decision 51) — and the `rel` that make a `<link>`
  * one of fudic's, so the author never has to remember them. An `href` that resolves
  * to nothing is `FUD0460`, which lives in `@fudic/typecheck` because the build reports it too.
  */
 
 import type { ElementNode } from '@fudic/compiler';
+import { relativeHref } from '@fudic/typecheck';
 import { isUndecided, type FudRole } from '../mode.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
 import type { CachedDocument } from '../document-cache.js';
@@ -48,6 +49,7 @@ export function relCompletions(document: CachedDocument, link: ElementNode): rea
     values.push({ rel: 'layout', detail: 'the layout this route renders inside' });
   }
   values.push({ rel: 'snippet', detail: 'import the snippets of a file' });
+  if (linksServer(document)) values.push({ rel: 'server', detail: 'the contract of its server, a .fudapi' });
   return values;
 }
 
@@ -59,6 +61,41 @@ function namesLayout(document: CachedDocument, link: ElementNode): boolean {
   // An absent layout link is a placeholder with an empty span.
   const named = structured.layoutLink.span;
   return named.start === named.end || named.start === link.span.start;
+}
+
+/**
+ * Whether this file may link a `.fudapi` (SDD-60 §3.14): a route, a page or a component — the
+ * file being started among them. A layout or a snippet file has no server (`FUD1112`).
+ */
+function linksServer(document: CachedDocument): boolean {
+  const type = document.document.type;
+  return type === 'component-document' || type === 'route-document' || type === 'page-document';
+}
+
+/** The `.fudapi` of the app, as the `href` completion of a `<link rel="server">` asks for them. */
+export interface ApiFiles {
+  /** Every `.fudapi` of the app the file belongs to, by path. */
+  appFiles(fromFile: string): readonly string[];
+  /** The text of a `.fudapi`: the editor's when it is open, the disk's when not. */
+  read(path: string): string | undefined;
+}
+
+/** One `.fudapi` an `href` may name. */
+export interface ApiHrefCompletion {
+  readonly href: string;
+  readonly path: string;
+}
+
+/**
+ * The candidates for the `href` of a `<link rel="server">`: the contracts of the file's own app,
+ * written relative to it. A library's `fudapi/` holds extensions and the built-ins, never a
+ * server a file links, so none of them is offered.
+ */
+export function apiHrefCompletions(document: CachedDocument, apis: ApiFiles): readonly ApiHrefCompletion[] {
+  return apis
+    .appFiles(document.path)
+    .map((path) => ({ href: relativeHref(document.path, path), path }))
+    .sort((a, b) => a.href.localeCompare(b.href));
 }
 
 /** The role a `rel` may point at. */

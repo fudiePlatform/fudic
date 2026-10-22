@@ -19,6 +19,7 @@ import {
 } from '@fudic/compiler';
 import type { FileRegistry, ServerImport, SnippetImport } from '@fudic/language-core';
 import type { LinkIndex } from './link-index.js';
+import { serverLinksOf } from './links.js';
 import { layoutHrefOf } from './mode.js';
 
 /** The registry of one `.fud`: its own `<link>`s resolved against the index. */
@@ -52,7 +53,7 @@ export function createFileRegistry(
   }
 
   // The `.fudapi` it links (SDD-60 §4.7), read when the projection asks.
-  const serverLinks = ('serverLinks' in document ? document.serverLinks : undefined) ?? [];
+  const serverLinks = serverLinksOf(document);
   const servers = (): readonly ServerImport[] =>
     serverLinks.flatMap((link) => {
       const href = linkHref(link);

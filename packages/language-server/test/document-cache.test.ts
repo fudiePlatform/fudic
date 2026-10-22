@@ -155,3 +155,45 @@ describe('forgetting', () => {
     expect(cache.get(SLUG, 1, SLUG_SOURCE)).not.toBe(first);
   });
 });
+
+describe('a changed `.fudapi` (SDD-60 §4.9)', () => {
+  const ROUTE = '/p/src/routes/r.fud';
+  const OTHER = '/p/src/routes/o.fud';
+  const linking = (href: string): string => `<link rel="server" href="${href}">\n<p-r>\n  <template shadowrootmode="open"><p>@search</p></template>\n</p-r>\n`;
+
+  function linked() {
+    const files: Record<string, string> = {
+      [ROUTE]: linking('./r.fudapi'),
+      [OTHER]: `<link rel="server">\n${component('p-o')}`,
+      '/p/src/routes/r.fudapi': 'get search\n  -> str\n',
+    };
+    const index = new WorkspaceIndex(memoryFs(files));
+    index.scan('/p');
+    return { files, cache: new DocumentCache(index) };
+  }
+
+  it('re-projects the documents that link it, keeping their parse', () => {
+    const { files, cache } = linked();
+    const before = cache.get(ROUTE, 1, files[ROUTE]!);
+    expect(before.virtuals[0]?.text).toContain("typeof import('fudic:routes/r')['search']");
+
+    files['/p/src/routes/r.fudapi'] = 'get find\n  -> str\n';
+    cache.reprojectLinking('/p/src/routes/r.fudapi');
+    const after = cache.get(ROUTE, 1, files[ROUTE]!);
+
+    expect(after).not.toBe(before);
+    expect(after.document).toBe(before.document);
+    expect(after.virtuals[0]?.text).toContain("typeof import('fudic:routes/r')['find']");
+  });
+
+  it('leaves alone a document that links another one, or a link with no href', () => {
+    const { files, cache } = linked();
+    const other = cache.get(OTHER, 1, files[OTHER]!);
+    const route = cache.get(ROUTE, 1, files[ROUTE]!);
+
+    cache.reprojectLinking('/p/src/routes/elsewhere.fudapi');
+
+    expect(cache.get(OTHER, 1, files[OTHER]!)).toBe(other);
+    expect(cache.get(ROUTE, 1, files[ROUTE]!)).toBe(route);
+  });
+});

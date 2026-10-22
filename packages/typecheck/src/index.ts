@@ -64,7 +64,7 @@ export {
   type LanguageDeps,
   type FudDocuments,
 } from './language-plugin.js';
-export { linksOf, attributeOf, type LinkRef } from './links.js';
+export { linksOf, serverLinksOf, attributeOf, type LinkRef } from './links.js';
 export { unresolvedHrefs, hrefDiagnostics, type UnresolvedHref } from './href.js';
 export { holeDiagnostics, missingSections } from './holes.js';
 export { reservedDollarDiagnostics } from './reserved-dollar.js';

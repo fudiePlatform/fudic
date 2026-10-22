@@ -358,6 +358,22 @@ describe('watched files', () => {
     expect(refreshes).toEqual([false]);
   });
 
+  it('a .fudapi changed on disk re-projects the .fud that link it (SDD-60 criterion 27, the .fud side)', () => {
+    const apiFs = { readFile: () => undefined, list: () => [], writeFile: () => {}, removeFile: () => {} };
+    const { fake, server, files } = setup({ apiFs });
+    const route = '/p/src/routes/r.fud';
+    const source = `<link rel="server" href="./r.fudapi">\n${component('p-r')}`;
+    files['/p/src/routes/r.fudapi'] = 'get search\n';
+    fake.onInitialize?.(params());
+    const before = server.cache.get(route, 1, source);
+    expect(before.virtuals[0]?.text).toContain("['search']");
+
+    files['/p/src/routes/r.fudapi'] = 'get find\n';
+    fake.onDidChangeWatchedFiles?.({ changes: [{ uri: URI.file('/p/src/routes/r.fudapi').toString(), type: 2 }] });
+
+    expect(server.cache.get(route, 1, source).virtuals[0]?.text).toContain("['find']");
+  });
+
   /** A disk with one project under `/p`: a contract, and what the server writes. */
   function contracts() {
     const disk: Record<string, string> = { '/p/package.json': '{}', '/p/src/a.fudapi': 'type A\n  x  str\n' };
