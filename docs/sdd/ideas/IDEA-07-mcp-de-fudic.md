@@ -417,3 +417,43 @@ Consecuencias (propuesta):
 - **La aprobación caduca si los criterios cambian después.** `status` lo ve con git, comparando con
   el commit que añadió `approved`. Si no, un LLM tocaría criterios aprobados sin que nadie lo vea.
 - Es una enmienda a la gramática de `.fudspec` (SDD-52): va allí cuando esto sea SDD.
+
+### 10.3. Usar un componente ya hecho: su contrato
+
+Un componente documentado le dice al LLM cómo usarlo **sin abrir su fichero**. El índice del
+language server ya junta casi todo (`Contract`, `language-server/src/mode.ts`): la doc del
+componente (el primer JSDoc del `@code`, decisión 107), las props con tipo y JSDoc, los slots con
+nombre y los eventos de cada `emit('…')`. Es lo que pinta el hover del tag.
+
+1. **Qué hay:** `fudic_symbols { kind: "components" }` lista cada tag con su librería y la primera
+   línea de su doc.
+2. **Cómo se usa:** `fudic_describe { name }` devuelve el contrato y un `example` **generado desde
+   él**, que no se queda atrás:
+
+   ```json
+   {
+     "kind": "component",
+     "tag": "acme-button",
+     "link": "<link rel=\"component\" href=\"@acme/ui/components/acme-button/acme-button.fud\">",
+     "doc": "A button for an action on the current page. To navigate, use acme-link-button.",
+     "props": [
+       { "name": "variant", "type": "'primary' | 'secondary' | 'ghost'", "required": false,
+         "default": "'primary'", "doc": "Visual weight. One primary per view, for its main action." }
+     ],
+     "slots": [{ "name": null, "doc": null }],
+     "events": [{ "name": "press", "detail": null, "doc": null }],
+     "parts": [],
+     "example": "<acme-button .variant=\"primary\" @press=@onPress>Save</acme-button>",
+     "usedIn": ["apps/showcase/src/routes/button.fud:4:3"]
+   }
+   ```
+3. **Regla de la guía `components`:** «Before using a component, call `fudic_describe`. Never open
+   its file.»
+
+Lo que el contrato aún no tiene:
+
+- **CSS parts** (Pedro lo tenía pensado; hoy nadie las extrae).
+- **Tipo y doc del `detail` de un evento**: sale el nombre de `emit('press')`, no qué recibe el
+  manejador.
+- **El slot por defecto**: el contrato solo lista los slots con nombre.
+- **El `default` de cada prop**: está en la desestructuración y no se extrae.
