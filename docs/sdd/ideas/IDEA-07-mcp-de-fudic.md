@@ -403,8 +403,17 @@ Propuesta:
 4. **Las aprobaciones se escriben en el repo**: sin esa marca, `status` no sabe si una fase está
    hecha (§9). Deja de ser un detalle y pasa a ser el centro.
 
-Abierto, para Pedro:
+Decidido (Pedro, 2026-10-22):
 
-- **Qué es un componente documentado en fudic.** `g component` no genera documentación hoy. ¿JSDoc
-  en las props (sale en el hover y en `fudic_describe`), un README por componente, o las dos?
-- **Dónde se marca la aprobación**: una línea en la `.fudspec`, un commit con prefijo fijo, otra.
+- **Documentar es JSDoc.** Los componentes ya lo soportan: el `/** … */` de cada prop del tipo de
+  `props<T>()` sale en la tarjeta del hover del tag (`language-server`, `tag-card.ts`), y lo mismo
+  devuelve `fudic_describe` al LLM. La fase 5 queda en «JSDoc en cada prop».
+- **La aprobación es una línea `approved` en la `.fudspec`.**
+
+Consecuencias (propuesta):
+
+- Una sola marca cubre las fases 1 y 2: las fixtures de la spec ya fijan las props, así que props
+  y criterios se aprueban juntos.
+- **La aprobación caduca si los criterios cambian después.** `status` lo ve con git, comparando con
+  el commit que añadió `approved`. Si no, un LLM tocaría criterios aprobados sin que nadie lo vea.
+- Es una enmienda a la gramática de `.fudspec` (SDD-52): va allí cuando esto sea SDD.
