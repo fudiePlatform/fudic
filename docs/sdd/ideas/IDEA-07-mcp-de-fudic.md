@@ -1029,3 +1029,83 @@ Lo que destapa:
   comprobarlas contra el artifact real antes de dar el export por bueno.
 - **Es la SDD del fake**: generado desde el `.fudapi`, en el navegador, con estado en IndexedDB y
   export estático. Sustituye al fake de servidor que proponía §3 (camino 2).
+
+## 11. Impacto: cuántas SDD salen y qué se toca (2026-10-22)
+
+Para medir el coste antes de escribir ninguna SDD. Sale de lo que destapó cada sección (§5–§10),
+contrastado con el código de hoy. El tamaño se compara siempre con una SDD ya hecha.
+
+### 11.1. Antes de empezar
+
+- **SDD-60 (`.fudapi`) tiene que estar terminada.** Va por 54 de 64 tareas en su worktree. Casi
+  todo el MCP habla de ella: `status`, `check`, las funciones conectadas o falsas, la guía.
+- **SDD-61 (vista portable) está escrita y sin implementar.** Solo bloquea la parte de la guía que
+  explica la vista; lo demás puede empezar sin ella.
+
+### 11.2. Siete trabajos para tener el MCP en Claude Code
+
+1. **Que los mensajes de error digan la verdad.** Hoy algunas explicaciones contradicen la guía
+   (`FUD0191`, `FUD0907`), otras citan SDD internas, y algunas bombillas arreglan mal (`FUD0540`)
+   o están en español. Además, cada ejemplo de arreglo tiene que compilar, y los reflejos de React
+   (`className`, `onClick`…) necesitan su código. *Tamaño: como SDD-31 (`computed`/`effect`).*
+
+2. **Que un componente cuente todo sobre sí mismo.** El hover ya enseña props, slots con nombre,
+   eventos y documentación. Le faltan el valor por defecto de cada prop, el slot sin nombre, qué
+   recibe cada evento y las CSS parts. Y los tokens de estilo como símbolos, con su
+   documentación, su autocompletado y su hover (§10.3, §10.4). *Tamaño: como el anterior.*
+
+3. **Que ejecutar criterios y tests devuelva algo que una máquina entienda.** Qué falló, qué se
+   esperaba, qué salió, si el test falló de verdad o ni llegó a ejecutarse, y **en qué línea del
+   `.fud`** está el elemento que falló. Esto último es lo difícil: la única parte que toca de
+   verdad el compilador. También el esquema de roles de `render` (§5.7, §5.9, §5.12). *Tamaño:
+   como SDD-57 (tests unitarios).*
+
+4. **El historial de cada pieza.** El fichero que solo crece, con aprobaciones, ejecuciones y lo
+   que aceptó el cliente, y los hashes que dicen si algo ha caducado (§5.8, §10.5). Va después del
+   3. *Tamaño: como el 1.*
+
+5. **Que la CLI genere lo que falta.** El `.fudapi`, la página del escaparate desde las fixtures,
+   y que `fudic new` deje configurado el MCP (§5.3, §10.1). *Tamaño: el más pequeño, como SDD-55
+   (resto de props).*
+
+6. **El MCP, primera mitad: lenguaje y proyecto.** El servidor, la guía con sus temas, `status`,
+   comprobar errores, arreglarlos, describir componentes y crear cosas con la CLI. **Con esto ya se
+   trabaja en Claude Code.** Necesita el 1, el 2 y el 5. *Tamaño: como SDD-57.*
+
+7. **El MCP, segunda mitad: ver y probar.** Ejecutar criterios y tests, pintar una pieza, llamar a
+   una función y la preview local. Necesita el 3, el 4 y el 6. *Tamaño: como el 1.*
+
+El 1, el 2 y el 5 pueden ir a la vez. El MCP en una sola SDD sería del tamaño de SDD-60; partido
+en dos, la primera mitad ya sirve sola.
+
+**En conjunto: como hacer tres veces SDD-60.**
+
+### 11.3. Aparte, sin prisa
+
+Ninguna bloquea el MCP en Claude Code:
+
+- **Auditar la accesibilidad** (axe-core al ejecutar los criterios) y **las normas del usuario**
+  («solo tokens»). Como SDD-31.
+- **Comprobar que el HTML y el CSS funcionan en todos los navegadores** (baseline). Entre SDD-31 y
+  SDD-57.
+- **Conectar con un backend real**: importar su contrato y generar el cliente. Como SDD-57, primero
+  solo en TypeScript.
+- **El fake**: pendiente de Pedro (§10.7).
+
+### 11.4. Lo que se hace desde el chat es otro producto
+
+Servidores con copias de trabajo, git remoto, el builder, las imágenes por lenguaje, las previews
+por rama y la plataforma (aislamiento, secretos, cuotas, OAuth). Lleva su propia tanda de SDD y
+no toca el framework.
+
+### 11.5. Lo que se toca del compilador
+
+Poco:
+
+- **Volver de un elemento del DOM a su línea en el `.fud`** (trabajo 3). La hidratación ya
+  identifica cada nodo; falta que esa identidad lleve de vuelta al fuente.
+- **Algunos diagnósticos nuevos** (trabajo 1).
+- **Las CSS parts** (trabajo 2).
+
+Lo demás vive en el language server, el banco, `@fudic/testing`, la CLI, el catálogo de
+diagnósticos y el paquete nuevo del MCP.
