@@ -456,8 +456,34 @@ Lo que destapa:
   todo, **la frontera con `.fudspec`** (SDD-57 §1.1): lo que va a vitest y lo que va al navegador.
   Sin ella, el LLM escribe en happy-dom un test de foco o de layout que pasa sin probar nada.
 - **Criterios y tests pueden repetirse.** `app-tabs.fudspec` comprueba un clic y su panel; un
-  test unitario puede comprobar lo mismo. Hay que decidir si los tests salen de los criterios o
-  cubren solo lo que los criterios no cubren (funciones de servidor, forms, estados límite).
+  test unitario puede comprobar lo mismo. Repetir sirve de poco (Pedro): ver §5.10.
+
+### 5.10. Qué va a la `.fudspec` y qué a los tests (propuesta, 2026-10-22)
+
+TDD de doble bucle: **por fuera, la aceptación** (lo que aprueba el usuario); **por dentro, lo
+unitario** (lo que escribe el LLM). La frontera la marca **quién aprueba**:
+
+| `.fudspec` (navegador) | Tests unitarios (happy-dom) |
+|---|---|
+| Lo que una persona comprobaría mirando y tocando | Lo que el usuario no ve ni aprobaría |
+| Una frase del usuario = un criterio («deshabilitado no hace nada») | Cada variante de props, valores límite (vacío, largo, 0) |
+| Teclado, foco, accesibilidad, visible, layout | El `detail` de cada evento |
+| | Funciones de servidor y sus `fails`, cada regla de un form |
+| | Las opciones del shadow root |
+| La aprueba el usuario (`approved`) | La escribe el LLM, sin aprobación |
+
+**Regla: lo que ya es un criterio no se repite como test unitario.** Va en el tema `testing` de
+`fudic_guide`.
+
+El flujo de un componente pedido en lenguaje natural:
+
+1. El usuario describe el componente.
+2. El LLM propone props y criterios; el usuario aprueba (`approved` en el historial, §5.8).
+3. El LLM escribe los tests unitarios. **Criterios y tests quedan en rojo** por la razón buena
+   (`fail`, no `broken`): `spec_run` y `test`, los dos al historial.
+4. El `.fud`: el bucle corto es `fudic_test` (milisegundos); `spec_run` (segundos) confirma.
+
+Cambia la fase 3 de §4.1 y §10.2: de «tests unitarios en rojo» a **«tests y criterios en rojo»**.
 
 ## 6. `fudic_guide`
 
