@@ -933,3 +933,46 @@ cambio de implementación tiene **las dos cosas**:
 Decidido también: las capturas son binarios y no entran en git (§5.7); van **adjuntas al PR** que abre
 `fudic_propose`, y el historial guarda su hash. El PR es donde el equipo revisa, y el hash dice si
 lo aprobado es lo que se está mergeando.
+
+### 10.6. El wireframe: entrar y salir (propuesta, 2026-10-22)
+
+La base está en §10.2: el wireframe existe solo si se pide, y su deuda se ve siempre.
+
+**Entrar.**
+
+> Hazme un wireframe de la tienda para enseñárselo al cliente el lunes.
+
+1. El LLM se salta las fases: sin `.fudspec`, sin `.fudapi`, sin tests. Datos escritos en la vista.
+2. Cada unidad lleva una línea `wireframe` en el historial, con lo que pidió el usuario.
+3. `status` la muestra como `"phase": "wireframe"` con lo que le falta (`spec`, `api`, `tests`,
+   `docs`), y `next` no empuja las fases mientras el usuario no salga del modo.
+4. **La preview lo dice**: una marca «Wireframe» sobre cada unidad, que pone el dev server o la
+   preview de rama y nunca el build. Quien la ve no la confunde con producto.
+5. `fudic_propose` lista en el PR las unidades en wireframe. fudic no impide el merge (lo decide una
+   persona), pero nadie mergea sin saberlo.
+
+**Salir.**
+
+> El cliente lo ha aceptado. Vamos a hacerlo de verdad.
+
+Cada unidad pasa por las fases, con dos diferencias:
+
+1. **El wireframe es la fuente de la fase 1.** El LLM lee la vista y propone las props y los
+   criterios a partir de lo que enseña; el usuario los aprueba como siempre.
+2. **La vista del wireframe no es la base.** Con la vista ya escrita, los tests saldrían en verde
+   desde el principio y no probarían nada. Al salir, el `.fud` vuelve al esqueleto de
+   `fudic generate` (el wireframe queda en git), tests y criterios quedan en rojo, y la vista se
+   reescribe.
+3. **Sus capturas son el «antes» del aspecto** (§10.5): el usuario aprueba que lo nuevo se parezca
+   a lo que aceptó el cliente.
+
+```
+2026-10-23T10:00 1a2b3c4 wireframe   by agent  "Shop wireframe for Monday's demo"
+2026-10-27T09:00 2b3c4d5 promoted    by pedro  "Client accepted it"
+2026-10-27T09:20 3c4d5e6 approved    by pedro  spec 5 criteria  hash 4e2a…
+2026-10-27T09:31 4d5e6f7 tests       red 7/7
+…
+```
+
+Es la tesis de §10.2 aplicada: un wireframe se **sustituye**, no se **promociona**. Llevarlo a
+producto sin bases es lo que cuesta meses.
