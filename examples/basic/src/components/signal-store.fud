@@ -2,22 +2,19 @@
   // La signal NO se declara aquí: se importa de un módulo. Es el patrón de "store" de
   // cualquier framework de señales, y es lo que esta página comprueba.
   //
-  // Va en la zona NEUTRA porque el template lo lee, y el template se pinta en los dos
-  // lados. Metido en la region de cliente, el servidor no tiene `count` y la ruta no
-  // llega a prerenderizar.
+  // El template lo lee, y el template se pinta en los dos lados: el servidor evalúa de este
+  // `@code` lo que el template lee, y este import con ello.
   import { count, inc } from "../store/contador.js";
 
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    // Una signal LOCAL, que no tiene nada que ver con el store. Sirve para una sola cosa:
-    // forzar un repintado del componente sin tocar el store. Lo que aparezca entonces en
-    // el hueco de arriba es el valor que el store tenía todo el rato.
-    const repintados = signal(0);
+  // Una signal LOCAL, que no tiene nada que ver con el store. Sirve para una sola cosa:
+  // forzar un repintado del componente sin tocar el store. Lo que aparezca entonces en
+  // el hueco de arriba es el valor que el store tenía todo el rato.
+  const repintados = signal(0);
 
-    function repintar() {
-      repintados.set(repintados() + 1);
-    }
+  function repintar() {
+    repintados.set(repintados() + 1);
   }
 }
 

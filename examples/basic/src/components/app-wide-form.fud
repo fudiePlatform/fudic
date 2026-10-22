@@ -1,13 +1,11 @@
+<link rel="server" href="../forms/wide.fudapi">
+
 @code {
   // Doce campos enlazados, y nada más. Lo que se mide aquí no es el formulario: es cuántos
   // listeners pide al hidratar. Con la delegación de SDD-37 son tres —uno por tipo de
   // evento en la raíz— y no treinta y seis.
-  import { wideForm } from "../forms/wide.form.js";
-
-  @client {
-    function stop(e: Event) {
-      e.preventDefault();
-    }
+  function stop(e: Event) {
+    e.preventDefault();
   }
 }
 

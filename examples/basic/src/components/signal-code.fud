@@ -1,16 +1,14 @@
 @code {
   // El valor que el bloque de código en linea del template debería cambiar antes de que
-  // se pinte el párrafo. En la zona NEUTRA porque el template lo lee en los dos lados.
+  // se pinte el párrafo. El template lo lee, así que también lo evalúa el servidor.
   let marca = 1;
 
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    const toques = signal(0);
+  const toques = signal(0);
 
-    function tocar() {
-      toques.set(toques() + 1);
-    }
+  function tocar() {
+    toques.set(toques() + 1);
   }
 }
 

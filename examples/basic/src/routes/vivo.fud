@@ -8,16 +8,14 @@
 <link rel="component" href="../components/vivo-otro.fud">
 
 @code {
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    // Las dos ramas pintan un componente distinto, y cada vez que se cambia de rama el que
-    // entra nace en el navegador: ninguno de los dos vuelve a ser el que pintó el servidor.
-    const verdadera = signal(true);
+  // Las dos ramas pintan un componente distinto, y cada vez que se cambia de rama el que
+  // entra nace en el navegador: ninguno de los dos vuelve a ser el que pintó el servidor.
+  const verdadera = signal(true);
 
-    function alternar() {
-      verdadera.set(!verdadera());
-    }
+  function alternar() {
+    verdadera.set(!verdadera());
   }
 }
 

@@ -1,0 +1,3 @@
+# Static with data: the build runs load and prerenders the HTML.
+load ssg
+  lines  str[]

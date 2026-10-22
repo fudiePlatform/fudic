@@ -415,8 +415,12 @@ function buildRouteModule(
   // No resolver at all is «the route resolves nothing», which is the very case the diagnostic
   // is for; a resolver whose return this pass cannot read is «not provable», and that reports
   // nothing. The extraction already tells the two apart.
+  // A `layout` of a linked `.fudapi` is implemented in `src/server`, which this pass never
+  // reads: TypeScript checks its return against the layout's props (SDD-60 §4.6). A link the
+  // host could not read may be that one, and says nothing either.
   const resolver = code.layoutResolver;
-  const readable = resolver === undefined ? [] : resolver.keys;
+  const linked = graph.serverApis.some((a) => a.api === undefined || a.api.layout);
+  const readable = linked ? undefined : resolver === undefined ? [] : resolver.keys;
   if (readable !== undefined) {
     routeDiagnostics.push(
       ...unresolvedLayoutProps(requiredLayoutProps(graph.layouts), readable, route.layoutLink.openSpan),

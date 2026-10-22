@@ -2,20 +2,18 @@
 <link rel="component" href="./app-error.fud">
 <link rel="component" href="./app-label.fud">
 <link rel="component" href="./app-field.fud">
+<link rel="server" href="../forms/user.fudapi">
 
 @code {
-  // El formulario NO se define aquí: se importa. La zona neutra corre en los dos lados, así
-  // que este mismo objeto lo tiene el servidor, que pinta sus valores en el HTML, y el
-  // cliente, que hidrata sobre ese HTML. La vista solo lo enlaza.
-  import { userForm } from "../forms/user.form.js";
+  // El formulario NO se define aquí: lo declara forms/user.fudapi, que esta vista enlaza. El
+  // servidor pinta sus valores en el HTML y el cliente hidrata sobre ese HTML con la misma
+  // declaración. La vista solo lo enlaza.
 
-  @client {
-    // El envío es del autor, no del framework (SDD-34 §7): aquí no hay a dónde mandar nada,
-    // así que se corta. `bindForm` ya ha hecho lo suyo en este mismo gesto: validar, y parar
-    // con el foco en el resumen cuando hay errores.
-    function stop(e: Event) {
-      e.preventDefault();
-    }
+  // El envío es del autor, no del framework (SDD-34 §7): aquí no hay a dónde mandar nada,
+  // así que se corta. `bindForm` ya ha hecho lo suyo en este mismo gesto: validar, y parar
+  // con el foco en el resumen cuando hay errores.
+  function stop(e: Event) {
+    e.preventDefault();
   }
 }
 

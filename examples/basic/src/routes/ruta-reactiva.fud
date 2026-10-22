@@ -3,27 +3,25 @@
 <link rel="component" href="../components/signal-control.fud">
 
 @code {
-  @client {
-    // El mismo código que `signal-control.fud`, letra por letra. La única diferencia es
-    // DÓNDE está escrito: allí, dentro de un componente; aquí, en el `@code` de la RUTA,
-    // sin ningún componente de por medio. Eso es lo que esta página compara.
-    //
-    // Y va donde va el de un componente: dentro de `@client`. El servidor no ejecuta este
-    // cuerpo — declara los nombres reactivos inertes (SDD-31 §4.6), ahora también para una
-    // ruta, así que `@count()` se pinta con su valor inicial y la página prerenderiza.
-    import { signal, computed } from "@fudic/core";
+  // El mismo código que `signal-control.fud`, letra por letra. La única diferencia es
+  // DÓNDE está escrito: allí, dentro de un componente; aquí, en el `@code` de la RUTA,
+  // sin ningún componente de por medio. Eso es lo que esta página compara.
+  //
+  // Y se trata igual que el de un componente: el servidor no ejecuta este cuerpo — declara
+  // los nombres reactivos inertes (SDD-31 §4.6), ahora también para una ruta, así que
+  // `@count()` se pinta con su valor inicial y la página prerenderiza.
+  import { signal, computed } from "@fudic/core";
 
-    const count = signal(1);
+  const count = signal(1);
 
-    const filas = computed(() => Array.from({ length: count() }, (_, i) => ({ id: i })));
+  const filas = computed(() => Array.from({ length: count() }, (_, i) => ({ id: i })));
 
-    function mas() {
-      count.set(count() + 1);
-    }
+  function mas() {
+    count.set(count() + 1);
+  }
 
-    function menos() {
-      count.set(Math.max(0, count() - 1));
-    }
+  function menos() {
+    count.set(Math.max(0, count() - 1));
   }
 }
 

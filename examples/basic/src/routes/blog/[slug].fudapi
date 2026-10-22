@@ -1,0 +1,15 @@
+# Prerendered once per slug that paths gives; a slug it does not give is rendered on demand.
+load
+  title  str
+  tag    str
+  body   str
+  found  bool
+  lang   str
+
+# Every slug the build prerenders.
+paths
+
+# The props of the layout, resolved after load and with what load brought. Both are declared by
+# _layout-articulo.fud. The culture of the page is not in its URL: it is a column of the row, so
+# two slugs of the same build come out with two different <html lang>.
+layout

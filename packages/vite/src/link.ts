@@ -95,6 +95,8 @@ function linkPlugin(
   erased: ClientErasure,
   /** The locales, when the app has them (SDD-58 §4.6): each route compiled for its own. */
   locale: LocaleContext | undefined,
+  /** The browser variant of the generated modules, `fudic:<id>` and its root (SDD-60 §3.11). */
+  api: ((id: string) => string | undefined) | undefined,
 ): Plugin {
   // The Service Worker renders the same pages the edge does, so it publishes the same route
   // names (SDD-39 §4.7): one map, resolved once for the pass.
@@ -102,9 +104,11 @@ function linkPlugin(
   return {
     name: 'fudic:link',
     resolveId(id) {
-      return id.startsWith(LINK_PREFIX) ? id : null;
+      return id.startsWith(LINK_PREFIX) || api?.(id) !== undefined ? id : null;
     },
     load(id) {
+      const generated = api?.(id);
+      if (generated !== undefined) return generated;
       if (!id.startsWith(LINK_PREFIX)) {
         // A workspace package arrives as its built `dist/*.js`; its own map is the link back
         // to the `.ts`, and nothing else in this nested build goes looking for it.
@@ -205,6 +209,11 @@ export async function runLinkPass(
   erased: ClientErasure = new ClientErasure(),
   /** The app's locales, when it has them (SDD-58 §4.6). */
   locale?: LocaleContext,
+  /**
+   * The browser variant of `fudic:<id>` and the browser root, when the app declares `.fudapi`
+   * (SDD-60 §3.11): a page the Service Worker renders reads its forms from them.
+   */
+  api?: (id: string) => string | undefined,
 ): Promise<LinkResult> {
   const linkable = builds.filter((rb) => isLinkable(rb.decision));
   if (linkable.length === 0) {
@@ -223,7 +232,7 @@ export async function runLinkPass(
     logLevel: 'error',
     plugins: [
       ...(locale === undefined ? [] : [localePlugin(locale)]),
-      linkPlugin(linkable, io, base, styles, assets, runtimeFor, reporter, erased, locale),
+      linkPlugin(linkable, io, base, styles, assets, runtimeFor, reporter, erased, locale, api),
     ],
     build: {
       write: false,

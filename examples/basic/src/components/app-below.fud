@@ -2,14 +2,12 @@
   // El tag que vive por debajo del pliegue. Su chunk NO se precachea al cargar: la red se
   // gasta en proporción a lo que el usuario ve, así que este se precachea cuando el scroll
   // lo mete en el viewport, y ni un byte antes.
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    const seen = signal(0);
+  const seen = signal(0);
 
-    function look() {
-      seen.set(seen() + 1);
-    }
+  function look() {
+    seen.set(seen() + 1);
   }
 }
 

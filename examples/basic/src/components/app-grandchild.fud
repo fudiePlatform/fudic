@@ -4,14 +4,12 @@
   // Profundidad 2. Mismo papel que el hijo: recibe el valor y lo baja.
   const { count = 0 } = props<{ count?: number }>();
 
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    const eco = signal(0);
+  const eco = signal(0);
 
-    function ping() {
-      eco.set(eco() + 1);
-    }
+  function ping() {
+    eco.set(eco() + 1);
   }
 }
 

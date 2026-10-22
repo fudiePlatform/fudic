@@ -5,9 +5,9 @@
  * cell. That is the intent, and it matches how fudic works — there is no SPA here, only
  * an SPA simulated by the Service Worker, so "per document" is the whole lifetime.
  *
- * Imported ONLY from `@code { @client }`, never from a server region: a module is loaded
- * once per Node process, so a store read on the server would carry state from one request
- * into the next.
+ * Only the browser writes it: the server paints its initial value and nothing else, because a
+ * module is loaded once per Node process, so a store written on the server would carry state
+ * from one request into the next.
  */
 
 import { signal } from "@fudic/core";

@@ -3,14 +3,12 @@
   // que lo necesitaría. Eso es el post-orden, y se ve en la traza de `fud:hydrated`.
   const { count = 0 } = props<{ count?: number }>();
 
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    const eco = signal(0);
+  const eco = signal(0);
 
-    function ping() {
-      eco.set(eco() + 1);
-    }
+  function ping() {
+    eco.set(eco() + 1);
   }
 }
 

@@ -456,6 +456,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       : id.startsWith(API_SCHEME)
         ? apiModule(id.slice(API_SCHEME.length), 'server')
         : undefined;
+  /** The browser variant, as the link pass serves it to the pages the Service Worker renders. */
+  const browserApi = (id: string): string | undefined =>
+    id === BROWSER_ROOT_ID
+      ? rootSource('browser')
+      : id.startsWith(API_SCHEME)
+        ? apiModule(id.slice(API_SCHEME.length), 'browser')
+        : undefined;
   const linkCheckIo = nodeLinkCheckIo();
   const runtimeFs = nodeRuntimeFs();
   /**
@@ -1889,6 +1896,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               reporter,
               erasure,
               localeContext(),
+              hasApi() ? browserApi : undefined,
             );
       // A nested build's output is emitted as an ASSET, so nothing writes its `.map` or
       // appends its `sourceMappingURL` unless we do (BUG-05 §4.3).

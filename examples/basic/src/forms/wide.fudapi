@@ -1,0 +1,19 @@
+# A WIDE form, and only for that: twelve fields. It is there to measure: the root has one
+# listener per kind of event and every field one row in a table, the same three listeners two
+# fields would cost.
+form wideForm
+  # Its own texts: the message is the accessible description of the field.
+  a1  str = ""
+    required      "El campo 1 es obligatorio."
+  a2  str = ""
+    min-length 2  "El campo 2 necesita al menos {n} caracteres."
+  a3  str = ""
+  a4  str = ""
+  a5  str = ""
+  a6  str = ""
+  a7  str = ""
+  a8  str = ""
+  a9  str = ""
+  a10  str = ""
+  a11  str = ""
+  a12  str = ""

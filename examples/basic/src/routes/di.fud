@@ -1,28 +1,7 @@
 <link rel="layout" href="../layouts/_layout.fud">
 <link rel="component" href="../components/site-nav.fud">
 <link rel="component" href="../components/di-owner.fud">
-
-@code {
-  @server {
-    import { strategy } from "@fudic/core";
-    import { publish } from "@fudic/di";
-    import { LINES } from "../services/cart";
-
-    strategy({ mode: "ssg" });
-
-    export function load() {
-      const lines = ["manzanas", "peras"];
-      // The ONLY thing that crosses: a value, under a token. The `Cart` the server builds
-      // and the one the browser builds start from this same array, and neither of them
-      // travels — `fud-di` carries the lines, not the service.
-      //
-      // A bare `publish`: it writes into the container of the request being served, so the
-      // value belongs to this response and to no other.
-      publish(LINES, lines);
-      return { lines };
-    }
-  }
-}
+<link rel="server" href="./di.fudapi">
 
 <head>
   <title>Inyección de dependencias — fudic</title>

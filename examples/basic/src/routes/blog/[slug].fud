@@ -1,47 +1,7 @@
 <link rel="layout" href="../../layouts/_layout-articulo.fud">
 <link rel="component" href="../../components/site-nav.fud">
 <link rel="component" href="../../components/app-badge.fud">
-
-@code {
-  type PageData = { title: string; tag: string; body: string; found: boolean; lang: string };
-
-  @server {
-    import { findPost, listSlugs } from "../../data/posts";
-
-    export async function load({ params }: { params: { slug: string } }): Promise<PageData> {
-      const post = await findPost(params.slug);
-      if (post === undefined) {
-        return {
-          title: "Artículo no encontrado",
-          tag: "404",
-          body: `No hay ningún artículo con el slug "${params.slug}".`,
-          found: false,
-          lang: "es",
-        };
-      }
-      return { title: post.title, tag: post.tag, body: post.body, found: true, lang: post.lang };
-    }
-
-    export async function paths(): Promise<string[]> {
-      return [...(await listSlugs())];
-    }
-
-    // Las props del layout, resueltas DESPUÉS de `load` y con lo que `load` trajo. Las dos las
-    // declara `_layout-articulo.fud`, y el editor sabe de dónde: `ctx.` y `data.` ofrecen lo
-    // que traen, y dentro del `return { }` salen las props del layout con su tipo.
-    //
-    // La culture de esta página no está en su URL: es una columna de la fila. Dos slugs
-    // prerenderizados por el mismo build salen con dos `<html lang>` distintos porque sus
-    // artículos están en idiomas distintos.
-    //
-    // `seccion` es la requerida: bórrala de este `return` y el build para con `FUD0702`,
-    // mientras el editor ofrece «Completar las props requeridas del layout» sobre el
-    // `<link rel="layout">` de arriba.
-    export function layout(ctx, data) {
-      return { culture: data.lang, seccion: "Blog" };
-    }
-  }
-}
+<link rel="server" href="./[slug].fudapi">
 
 <head>
   <title>@data.title — fudic</title>

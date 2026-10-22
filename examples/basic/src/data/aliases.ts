@@ -1,9 +1,9 @@
 /**
- * La «capa de datos» del validador de servidor: existe para que se vea que **no llega al
+ * La «capa de datos» de la regla `alias-taken`: existe para que se vea que **no llega al
  * navegador**.
  *
  * El marcador `ALIAS_TABLE_MARKER` es lo que la prueba de presupuesto busca en el chunk de
- * cliente: si aparece, el cuerpo del `serverValidator` viajó, y con él este módulo.
+ * cliente: si aparece, la implementación de la regla, que vive en `src/server`, viajó con él.
  */
 
 export const ALIAS_TABLE_MARKER = 'alias-table-must-not-ship';

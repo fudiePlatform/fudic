@@ -1,8 +1,8 @@
 /**
  * The "people table" of `/usuarios`: in memory, so every restart starts over.
  *
- * A module and not a service on purpose: the form's `serverValidator` reads it too, and the
- * validator is a plain function, not something that runs where a container is.
+ * A module and not a service on purpose: the rule `email-taken` reads it too, and a rule is a
+ * plain function, not something that runs where a container is.
  */
 
 export interface Person {

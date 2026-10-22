@@ -3,6 +3,7 @@
  * `_error.fud`, discovered once per test file with the plugin's own routing (§4.9).
  */
 
+import { dirname, resolve } from 'node:path';
 import { ApiProject, discoverRoutes, httpFileOf, resolveOptions, type FudicOptions, type RouteBuild } from '@fudic/vite/harness';
 import { inject } from 'vitest';
 import { OPTIONS_KEY, ROOT_KEY } from './constants.js';
@@ -32,8 +33,12 @@ export function projectOf(): Project {
   if (project === undefined) {
     const root = inject(ROOT_KEY);
     const { base, ...options } = inject(OPTIONS_KEY);
-    const found = discoverRoutes(root, resolveOptions(options, base).options);
-    const api = new ApiProject(root).sources.some((source) => source.origin === 'app');
+    // What each route's `.fudapi` declares, as the plugin reads it: `load`, `paths`, `layout`.
+    const contracts = new ApiProject(root);
+    const found = discoverRoutes(root, resolveOptions(options, base).options, undefined, (fud) => (href) =>
+      contracts.page(resolve(dirname(fud), href)),
+    );
+    const api = contracts.sources.some((source) => source.origin === 'app');
     project = { root, base, routes: found.routes, errorPage: found.errorPage, httpFile: httpFileOf(root), api };
   }
   return project;

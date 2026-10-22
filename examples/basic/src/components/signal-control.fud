@@ -1,22 +1,20 @@
 @code {
-  @client {
-    import { signal, computed } from "@fudic/core";
+  import { signal, computed } from "@fudic/core";
 
-    // Una sola signal mueve los cuatro constructos. Ninguno la recibe por prop: los cuatro
-    // la LEEN en su cabecera, que es lo que esta página está aquí para comprobar.
-    const count = signal(1);
+  // Una sola signal mueve los cuatro constructos. Ninguno la recibe por prop: los cuatro
+  // la LEEN en su cabecera, que es lo que esta página está aquí para comprobar.
+  const count = signal(1);
 
-    // El `@foreach` necesita una lista, y la lista se deriva del contador. Un `computed`
-    // no se suscribe a nada: la hoja de debajo —`count`— es la que avisa.
-    const filas = computed(() => Array.from({ length: count() }, (_, i) => ({ id: i })));
+  // El `@foreach` necesita una lista, y la lista se deriva del contador. Un `computed`
+  // no se suscribe a nada: la hoja de debajo —`count`— es la que avisa.
+  const filas = computed(() => Array.from({ length: count() }, (_, i) => ({ id: i })));
 
-    function mas() {
-      count.set(count() + 1);
-    }
+  function mas() {
+    count.set(count() + 1);
+  }
 
-    function menos() {
-      count.set(Math.max(0, count() - 1));
-    }
+  function menos() {
+    count.set(Math.max(0, count() - 1));
   }
 }
 

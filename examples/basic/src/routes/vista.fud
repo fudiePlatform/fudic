@@ -25,7 +25,7 @@
   const valores = [1, 2, 3, 4];
   const articulo = { titulo: "Hola", autor: "Ana", fecha: "hoy" };
 
-  // La zona neutra se declara DENTRO de la función de render: sus `let` son estado de la
+  // Lo que el template lee se declara DENTRO de la función de render: sus `let` son estado de la
   // instancia y el template puede reasignarlos con `@{ }` (§3.5).
   let total = 0;
 
@@ -155,7 +155,7 @@
 }
 <p>Desestructurado: @titulo · resto: @(Object.keys(resto).length) campos · suma hasta 3: @suma</p>
 
-@* Reasignar un `let` de la zona neutra: es estado de la instancia (§3.5). *@
+@* Reasignar un `let` del `@code`: es estado de la instancia (§3.5). *@
 @{ total = prop1 + prop2; }
 <p>Total reasignado: @total</p>
 
@@ -203,7 +203,7 @@
     <li>@(bien ? "ok" : "no")</li>
   }
 </ul>
-@* El `@while` canónico: el cursor vive en la zona neutra y el template lo resiembra. *@
+@* El `@while` canónico: el cursor vive en el `@code` y el template lo resiembra. *@
 @{ cur = lista; }
 <ul>
   @while (cur !== null) key (cur.id) {

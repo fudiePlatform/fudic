@@ -4,14 +4,12 @@
   // lee SU tramo del payload y no el de la otra.
   const { start = 0 } = props<{ start?: number }>();
 
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    const n = signal(start);
+  const n = signal(start);
 
-    function inc() {
-      n.set(n() + 1);
-    }
+  function inc() {
+    n.set(n() + 1);
   }
 }
 

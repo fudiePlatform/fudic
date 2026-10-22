@@ -6,7 +6,7 @@
 > `@fudic/typecheck` · `@fudic/language-server` · `@fudic/formatter` · `@fudic/cli` · `fudic-vscode` ·
 > `examples/*` · `packages/testing`
 > **Rama:** `sdd-60-fudapi` (nace de `main`)
-> **Progreso:** 52 / 64 — `En curso`.
+> **Progreso:** 53 / 64 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina; la otra escribe los tests de cada fase (las tareas
 «Los tests de…»), contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -182,7 +182,7 @@ Cada meta cierra una fase. La fase no se da por terminada hasta que Pedro la pru
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 47 | 37, 45 | **`examples/basic`.** SDD §4.11, con `user-form` primero (meta 4): `.fudapi` por ruta y componente, forms, middlewares, reglas, `http.fudapi`, handlers en `src/server`, mitades en `src/browser`, `<link rel="server">`, un único `@code` | `examples/basic` | `src/**` |
+| [x] | 47 | 37, 45 | **`examples/basic`.** SDD §4.11, con `user-form` primero (meta 4): `.fudapi` por ruta y componente, forms, middlewares, reglas, `http.fudapi`, handlers en `src/server`, mitades en `src/browser`, `<link rel="server">`, un único `@code` | `examples/basic` | `src/**` |
 | [ ] | 48 | 47 | **El resto de ejemplos.** `examples/i18n`, `examples/vista-errores` y cualquier otro con regiones | `examples/*` | `src/**` |
 | [ ] | 49 | 47 | **Fixtures.** `compiler`, `formatter`, `testing`, `language-core`, `language-server`, `vscode`, `workbench` | varios | `fixtures/` · `test/**/*.fud` |
 | [ ] | 50 | 49 | **Tests que escriben regiones.** Reescritos al modelo nuevo sin perder el caso que probaban | varios | `test/` |

@@ -1,16 +1,14 @@
 <link rel="component" href="./vivo-item.fud">
 
 @code {
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    // One item is painted by the server; the rest are born in the browser, inside a
-    // `@foreach` that re-runs when the list moves. Those are the instances nothing painted.
-    const items = signal(["pintado por el servidor"]);
+  // One item is painted by the server; the rest are born in the browser, inside a
+  // `@foreach` that re-runs when the list moves. Those are the instances nothing painted.
+  const items = signal(["pintado por el servidor"]);
 
-    function add() {
-      items.set([...items(), `creado al vuelo ${items().length}`]);
-    }
+  function add() {
+    items.set([...items(), `creado al vuelo ${items().length}`]);
   }
 }
 

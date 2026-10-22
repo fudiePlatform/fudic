@@ -1,0 +1,31 @@
+# The form of /formularios: every field says its own texts, a group with a rule over its two
+# fields, and a summary of the errors that belong to no field. Several can show at once.
+form userForm
+  validate-on blur input
+  validity interacted
+
+  name  str = ""
+    required              "Escribe tu nombre."
+  alias  str = ""
+    required              "Elige un alias."
+    min-length 3          "El alias necesita al menos {n} caracteres."
+    alias-taken           "Ese alias ya está cogido."
+  email  str = ""
+    required              "Escribe tu email."
+    pattern email-loose   "Ese email no parece válido."
+  # Optional: empty is valid, and when written it has to be a URL.
+  web  str = ""
+    pattern web-url       "La web empieza por http:// o https://."
+  acceso  group
+    clave  str = ""
+      required            "Elige una contraseña."
+      min-length 8        "Mínimo {n} caracteres."
+    repetir  str = ""
+      required            "Repite la contraseña."
+    summary
+      require mismatch  clave == repetir                  "Las contraseñas no coinciden."
+
+  summary
+    require same-as-name  empty alias or alias != name    "El alias no puede ser tu nombre."
+    require key-has-name  empty name or not acceso.clave contains name
+                          "La contraseña no puede contener tu nombre."

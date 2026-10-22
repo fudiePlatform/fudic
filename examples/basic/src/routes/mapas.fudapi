@@ -1,0 +1,8 @@
+# Static with data: the build runs load and prerenders the HTML, so the three blocks read in the
+# source, with no server and no JavaScript.
+load ssg
+  options  Option[]
+
+type Option
+  label   str
+  picked  bool

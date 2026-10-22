@@ -1,0 +1,11 @@
+# The Service Worker paints it: five minutes from its cache before asking the network again.
+load sw ttl 5m cache-first
+  title  str
+  posts  Post[]
+
+type Post
+  slug      str
+  title     str
+  summary   str
+  tag       str
+  featured  bool

@@ -1,16 +1,14 @@
 @code {
   const { label = "" } = props<{ label?: string }>();
 
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    // Something of its own, so "it is alive" is not the same question as "it was painted":
-    // an instance that only echoed its prop could be a stretch of static HTML.
-    const clicks = signal(0);
+  // Something of its own, so "it is alive" is not the same question as "it was painted":
+  // an instance that only echoed its prop could be a stretch of static HTML.
+  const clicks = signal(0);
 
-    function count() {
-      clicks.set(clicks() + 1);
-    }
+  function count() {
+    clicks.set(clicks() + 1);
   }
 }
 
