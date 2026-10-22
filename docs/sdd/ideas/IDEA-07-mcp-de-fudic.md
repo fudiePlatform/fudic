@@ -341,3 +341,32 @@ dispara, la llamada y la respuesta. Este es el caso que la pone a prueba.
 
 Lo que destapa: los dos últimos puntos de §9 (accesibilidad y normas del usuario), que `status`
 tiene que distinguir librería de app (§5.4) y que `fudic_generate` se quedaba corto (§5.2).
+
+### 10.1. «Quiero una página para ver lo que has creado»
+
+La evidencia se construye como lo haría un usuario: una app del workspace que **consume** la
+librería, no algo pegado dentro de ella.
+
+1. `fudic_status` manda a `fudic_propose`; la petición del usuario tiene prioridad y se vuelve a
+   `status` al terminar.
+2. `fudic_generate { kind: "app", name: "showcase", uses: ["ui"] }` (`g app --uses` ya existe).
+3. Una página por componente, con sus casos sacados de las **fixtures**: enseña exactamente los
+   estados que comprueban los criterios, sin inventar ninguno.
+   ```html
+   @code {
+     import cases from '@acme/ui/components/acme-button/acme-button.fixture';
+   }
+   <h2>Primary</h2>   <acme-button ...cases.primary>Save</acme-button>
+   <h2>Disabled</h2>  <acme-button ...cases.disabled>Save</acme-button>
+   ```
+4. Verla: en chat, `fudic_render` (MCP Apps); en remoto, la URL de `fudic_preview`.
+5. Es también la evidencia de accesibilidad: Lighthouse audita páginas, y estas son las páginas.
+
+Propuestas que salen:
+
+- **`fudic_preview` en local** arranca `dev` en segundo plano la primera vez y devuelve la URL; el
+  servidor vive lo que vive el MCP. Sin esto, en local no hay forma de ver nada (`dev` no se expone
+  porque no termina).
+- **`fudic_generate { kind: "showcase" }`** escribe la página desde las fixtures, un bloque por
+  caso, y se regenera. Las fixtures son un `Record` y la vista no puede recorrer un map
+  (`FUD1153`): escrita a mano, el escaparate se queda atrás en cuanto se añade una fixture.
