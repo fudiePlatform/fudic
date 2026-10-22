@@ -3,7 +3,7 @@ import { basename, resolve } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import type { Plugin, UserConfig } from 'vite';
 import type {} from 'vitest/config';
-import { ENVIRONMENT, EXTERNAL, INLINE, SETUP, fudicTest } from '../src/config.js';
+import { CONTRACT, ENVIRONMENT, EXTERNAL, INLINE, SETUP, fudicTest } from '../src/config.js';
 import { BASE_URL, FILE_EXPORT, OPTIONS_KEY, RENEW_WINDOW, ROOT_KEY } from '../src/constants.js';
 import environment from '../src/environment.js';
 
@@ -21,11 +21,11 @@ function transformOf(code: string, id: string): unknown {
 
 describe('fudicTest', () => {
   test('is the project plugin plus the one that sets the environment', () => {
-    expect(fudicTest().map((p) => p.name)).toEqual(['fudic', 'fudic:test']);
+    expect(fudicTest().map((p) => p.name)).toEqual(['fudic', 'fudic:test', 'fudic:test-contract']);
   });
 
   test('takes the same options as fudic()', () => {
-    expect(fudicTest({ routesDir: 'src/pages' }).map((p) => p.name)).toEqual(['fudic', 'fudic:test']);
+    expect(fudicTest({ routesDir: 'src/pages' }).map((p) => p.name)).toEqual(['fudic', 'fudic:test', 'fudic:test-contract']);
   });
 
   test('puts vitest in the fudic environment at http://localhost/, off the network, with its setup file', () => {
@@ -141,5 +141,22 @@ describe('the fudic environment', () => {
     expect([global['Request'], global['Response'], global['Headers']]).toEqual(['node', 'node', 'node']);
     expect(global['document']).toBeDefined();
     await env.teardown(global);
+  });
+});
+
+describe('the contract of a .fudapi (SDD-60 §4.4)', () => {
+  const resolveOf = (id: string, importer?: string): unknown =>
+    (fudicTest()[2]!.resolveId as (id: string, importer?: string) => unknown)(id, importer);
+
+  test('a generated module takes the one that is both the call and the contract', () => {
+    expect(resolveOf('@fudic/http/contract', 'fudic:components/user-form')).toBe(CONTRACT);
+    expect(basename(CONTRACT)).toMatch(/^contract\.[jt]s$/u);
+    expect(existsSync(CONTRACT)).toBe(true);
+  });
+
+  test('anybody else keeps the real entry, and a generated module keeps its other imports', () => {
+    expect(resolveOf('@fudic/http/contract', '/app/fudic-root.server.js')).toBeNull();
+    expect(resolveOf('@fudic/http/contract')).toBeNull();
+    expect(resolveOf('@fudic/forms/contract', 'fudic:components/user-form')).toBeNull();
   });
 });

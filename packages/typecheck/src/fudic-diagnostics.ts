@@ -13,6 +13,7 @@
 
 import { analyze, type ComponentRegistry, type Diagnostic } from '@fudic/compiler';
 import { holeDiagnostics } from './holes.js';
+import { serverLinksOf } from './links.js';
 import { hrefDiagnostics } from './href.js';
 import type { LinkIndex } from './link-index.js';
 import type { ProjectedFud } from './project.js';
@@ -32,14 +33,28 @@ function registryOf(document: ProjectedFud): ComponentRegistry {
   return { has: (tag) => document.registry.component(tag) !== undefined };
 }
 
+/**
+ * What the `.fudapi` the document links bring into its view (SDD-60 §3.14): `undefined` when it
+ * links none, or when one of them could not be read — the caller cannot know, and the view then
+ * keeps the rule of its role.
+ */
+function apisOf(document: ProjectedFud): { readonly data: boolean; readonly names: ReadonlySet<string> } | undefined {
+  const links = serverLinksOf(document.document).length;
+  const servers = document.registry.servers();
+  if (links === 0 || servers.length < links) return undefined;
+  return { data: servers.some((s) => s.load), names: new Set(servers.flatMap((s) => s.names)) };
+}
+
 /** The semantic pass over the document already parsed. */
 export function semanticDiagnostics(document: ProjectedFud): readonly Diagnostic[] {
+  const apis = apisOf(document);
   return analyze({
     source: document.source,
     document: document.document,
     js: document.js.result,
     fragmentId: (node) => document.js.fragmentId(node),
     components: registryOf(document),
+    ...(apis === undefined ? {} : { apis }),
   }).diagnostics;
 }
 

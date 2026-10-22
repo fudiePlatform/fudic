@@ -1,0 +1,19 @@
+# The email belongs to somebody else already. Only on the server: it reads the people table,
+# which never reaches the browser.
+rule email-taken
+  on field str
+  runs server
+  async
+  fails email-taken
+
+# The alias is taken. Only on the server, for the same reason: the alias table stays there.
+rule alias-taken
+  on field str
+  runs server
+  async
+  fails alias-taken
+
+# Something, an at sign, something, a dot and something.
+pattern email-loose  [^@\s]+@[^@\s]+\.[^@\s]+
+
+pattern web-url      https?://.+

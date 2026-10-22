@@ -4,12 +4,14 @@
  *
  * Every `?server` module is imported by vitest, so a `vi.mock` of the test reaches what it
  * imports (§4.1). The table is the one `devSource` arms for `vite dev`; only the loader is the
- * harness's. A request resolves from a fresh container with the test's overrides in it.
+ * harness's. A request resolves from a fresh container with the test's overrides in it. The
+ * functions of a `.fudapi` are answered first, by the server root (SDD-60 §4.4).
  */
 
 import { createRoot } from '@fudic/di';
 import { functionsHandler, type FnSource } from '@fudic/http/server';
 import { devSource } from '@fudic/vite/harness';
+import { serverRoot } from './api.js';
 import { projectOf } from './project.js';
 import { overridden } from './providers.js';
 
@@ -29,11 +31,16 @@ let handler: ((request: Request) => Promise<Response | null>) | undefined;
 /** The handler of `/_fudic/fn/`, armed once per test file. */
 export function functions(): (request: Request) => Promise<Response | null> {
   if (handler === undefined) {
-    const { root, base, routes, httpFile } = projectOf();
+    const { base, routes, httpFile } = projectOf();
+    const container = (): ReturnType<typeof createRoot> => overridden(createRoot());
     // Typed loosely on the plugin's side, which loads `@fudic/http` from the project's graph and
     // does not depend on it: what it reads is a module's exports, which is what `FnSource` names.
     const source = devSource({ builds: routes, componentPath: (tag) => components.get(tag), load, httpFile }) as FnSource;
-    handler = functionsHandler(source, { base, dev: true, container: () => overridden(createRoot()) });
+    const legacy = functionsHandler(source, { base, dev: true, container });
+    handler = async (request) => {
+      const api = await serverRoot();
+      return (api === undefined ? null : await api.handler({ base, dev: true, container })(request)) ?? legacy(request);
+    };
   }
   return handler;
 }

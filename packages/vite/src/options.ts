@@ -43,6 +43,12 @@ export interface FudicOptions {
    * off: it reruns its criteria on save by itself, and a reload took its page from under them.
    */
   readonly serverReload?: boolean;
+  /**
+   * Whether one module graph is the server and the page at once, as in a vitest run
+   * (SDD-60 §4.4). Default: `false`. `@fudic/testing` turns it on: the server root then loads
+   * without emptying the registry first, since nothing reloads it.
+   */
+  readonly harness?: boolean;
 }
 
 export interface ResolvedOptions {

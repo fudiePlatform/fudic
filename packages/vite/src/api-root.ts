@@ -33,6 +33,13 @@ export interface RootInput {
   readonly libraries: readonly ApiLibrary[];
   /** The `<id>` the server root imports so every function has its contract. */
   readonly ids: readonly string[];
+  /**
+   * Whether a load starts by emptying the registry, which is what a dev reload needs. Default
+   * `true`. `@fudic/testing` turns it off: each test file starts from fresh modules, and a file
+   * of `src/browser` the test imported first registered already, with no second evaluation to
+   * do it again (SDD-60 §4.4, *decided while implementing*).
+   */
+  readonly reset?: boolean;
 }
 
 /** One folder's files as the root loads them: `[side, { label: () => import(…) }]`. */
@@ -64,7 +71,7 @@ export function emitRoot(input: RootInput): string {
     '',
     'async function load() {',
     `  setFolders(${JSON.stringify(input.folders)});`,
-    '  resetRegistry();',
+    ...(input.reset === false ? [] : ['  resetRegistry();']),
     '  try {',
     '    for (const [side, files] of folders) {',
     '      for (const [file, imported] of Object.entries(files)) {',

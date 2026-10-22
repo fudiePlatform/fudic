@@ -38,6 +38,7 @@ import { restGroups } from './rest.js';
 import { layoutCodeOf, requiredLayoutProps, unresolvedLayoutProps } from './layout-code.js';
 import { NO_SIGNALS, writeElementAttrs } from './attrs.js';
 import { holeSlot } from './compose.js';
+import { apiImports } from './client-fns.js';
 import { planPageSheets, type PageSheets } from './page-sheets.js';
 import type { Diagnostic } from '../types/index.js';
 import {
@@ -390,6 +391,7 @@ function buildRouteModule(
   // (decision 33.c). A route imports its form, its store or its data helper exactly as a
   // component does, and both ends of the file need the binding.
   writeEntryImports(w, code);
+  for (const line of apiImports(graph)) w.line(line); // what its `.fudapi` give the view (SDD-60 §3.14)
   w.line('');
   w.line(`const COMPONENTS = [${componentPairs(graph, styled).join(', ')}];`);
   if (projectStylesLine !== null) w.line(projectStylesLine);

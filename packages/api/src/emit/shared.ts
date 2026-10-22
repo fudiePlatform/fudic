@@ -150,3 +150,21 @@ export function jsdoc(doc: string | undefined, indent: string): string {
 /** The parameters of the page whose sibling this is: `{ readonly slug: string }`. */
 export const pageParams = (params: readonly string[]): string =>
   params.length === 0 ? '{}' : `{ ${params.map((p) => `readonly ${p}: string`).join('; ')} }`;
+
+/**
+ * The forms the functions of this file take that another file declares, by that file: the view
+ * of a `.fud` that links this file gets them by name (SDD-60 §3.14), so this module re-exports
+ * them. *Decided while implementing.*
+ */
+export function borrowedForms(c: EmitCtx): ReadonlyMap<ApiSource, readonly string[]> {
+  const out = new Map<ApiSource, string[]>();
+  for (const d of c.source.file.declarations) {
+    if (d.kind !== 'fn' || d.form === undefined) continue;
+    const found = c.index.lookup('form', d.form.name.text);
+    if (found === undefined || found.source === c.source) continue;
+    const names = out.get(found.source) ?? [];
+    if (!names.includes(d.form.name.text)) names.push(d.form.name.text);
+    out.set(found.source, names);
+  }
+  return out;
+}

@@ -419,7 +419,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   });
   /** The generated root of a side (§4.4). */
   const rootSource = (side: 'server' | 'browser'): string =>
-    emitRoot({ side, folders: apiFolders(), libraries: api.libraries, ids: api.ids() });
+    emitRoot({ side, folders: apiFolders(), libraries: api.libraries, ids: api.ids(), reset: userOptions.harness !== true });
   /**
    * The module `fudic:<id>` of a side. The browser variant brings the browser root with it: the
    * client halves and the `runs both` rules a call needs are registered by whoever imports a

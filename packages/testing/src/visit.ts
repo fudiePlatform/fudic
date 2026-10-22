@@ -9,6 +9,7 @@
  */
 
 import { classifyError, renderErrorPage, matchRouteBuild } from '@fudic/vite/harness';
+import { serverRoot } from './api.js';
 import { showPage } from './document.js';
 import { graphOf } from './graph.js';
 import { chunkMap, hydrate } from './hydrate.js';
@@ -80,6 +81,7 @@ export async function showDocument(
 /** Visit `url` and hand back the page a test reads and drives. */
 export async function visit(url: string, options: VisitOptions = {}): Promise<Visited> {
   const providers = enterWorld(options, url);
+  await serverRoot();
   const { html, status, file } = await answer(url, options.data);
   return showDocument(html, file, status, providers);
 }

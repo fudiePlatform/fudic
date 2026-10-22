@@ -17,6 +17,7 @@ import {
   emitRenderChunk,
   nodeIo,
   routeUsesDi,
+  SERVER_ROOT_ID,
   type RenderChunkOptions,
   type RenderModule,
   type RouteBuild,
@@ -55,6 +56,7 @@ export function routeFacts(rb: RouteBuild, httpFile: string | undefined): PageFa
     hasDi: routeUsesDi(rb.absPath, nodeIo()),
     hasHttp: rb.analysis.hasHttp === true,
     fluentLoad: rb.analysis.fluentLoad === true,
+    ...(rb.analysis.api === undefined ? {} : { api: { id: rb.analysis.api, root: SERVER_ROOT_ID, dev: true } }),
     ...(httpFile === undefined ? {} : { globalChain: httpFile }),
   };
 }

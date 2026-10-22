@@ -22,12 +22,15 @@ import type { LinkIndex } from './link-index.js';
 import { serverLinksOf } from './links.js';
 import { layoutHrefOf } from './mode.js';
 
+/** The registry of a file of a project: it always knows the `.fudapi` the file links. */
+export type ProjectRegistry = FileRegistry & { servers(): readonly ServerImport[] };
+
 /** The registry of one `.fud`: its own `<link>`s resolved against the index. */
 export function createFileRegistry(
   filePath: string,
   document: StructuredDocument,
   index: LinkIndex,
-): FileRegistry {
+): ProjectRegistry {
   const byTag = new Map<string, string>();
 
   for (const link of document.links) {

@@ -10,7 +10,7 @@
  */
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../../src/types/index.js';
@@ -62,6 +62,17 @@ describe('examples/vista-errores, case by case (criterion 22)', () => {
   }
 });
 
+/**
+ * What the `.fudapi` a file of the repo links bring into its view, read off their lines: the
+ * compiler does not read a `.fudapi` (the host tells it), and this net only needs the names.
+ */
+function linkedApis(path: string, source: string): { readonly data: boolean; readonly names: ReadonlySet<string> } | undefined {
+  const texts = [...source.matchAll(/<link rel="server" href="([^"]+)">/gu)].map((m) => readFileSync(join(dirname(path), m[1]!), 'utf8'));
+  if (texts.length === 0) return undefined;
+  const names = texts.flatMap((t) => [...t.matchAll(/^(?:(?:get|post|put|patch|delete|form) | {2}form )([A-Za-z_]\w*)/gmu)].map((m) => m[1]!));
+  return { data: texts.some((t) => /^load\b/mu.test(t)), names: new Set(names) };
+}
+
 describe('the repo compiles as it did (criterion 20)', () => {
   const files = (dir: string, out: string[] = []): string[] => {
     for (const name of readdirSync(dir)) {
@@ -80,7 +91,7 @@ describe('the repo compiles as it did (criterion 20)', () => {
   for (const path of all) {
     it(path.slice(ROOT.length).split('\\').join('/'), () => {
       const source = readFileSync(path, 'utf8');
-      expect(seen(source, viewDiagnostics(source))).toEqual([]);
+      expect(seen(source, viewDiagnostics(source, linkedApis(path, source)))).toEqual([]);
     });
   }
 });

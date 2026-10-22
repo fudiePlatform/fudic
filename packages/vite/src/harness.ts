@@ -15,3 +15,5 @@ export { devSource, httpFileOf, type DevModules } from './functions.js';
 export { discoverRoutes, type RouteBuild } from './discover.js';
 export { resolveOptions, type FudicOptions } from './options.js';
 export { nodeIo } from './io.js';
+export { ROOT_FILE_PREFIX, SERVER_ROOT_ID } from './api-root.js';
+export { API_SCHEME, ApiProject } from './api-modules.js';

@@ -49,6 +49,7 @@ import { cellSlots, childTargets, reactiveScope } from './state.js';
 import { bridgeIds, formAssociatedTags, hydratableTags, shadowOptions } from './level.js';
 import { needsRuntime, routeBlocksOf, writeMapConstants, writeHydrationBlocks } from './maps.js';
 import { planControls } from './controls.js';
+import { apiImports } from './client-fns.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import {
   type ComponentSpecifier,
@@ -379,6 +380,9 @@ function buildComponentModule(
   const helpers = diHelpers(di, (call) => call.zone !== 'client');
   if (helpers.length > 0) w.line(`import { ${helpers.join(', ')} } from '@fudic/di';`);
   for (const line of server.imports) w.line(line);
+  // What the `.fudapi` it links give the view, from their server variant (SDD-60 §3.14).
+  const linked = apiImports(graph);
+  for (const line of linked) w.line(line);
   // The one function that decides a summary's list on both ends (BUG-42 §4.6).
   if (em.summaries) w.line("import { summaryEntriesOf } from '@fudic/forms';");
   for (const tag of em.used) w.line(`import { render as ${renderName(tag)} } from ${specifier(tag)};`);
@@ -392,6 +396,7 @@ function buildComponentModule(
   const preamble =
     helpers.length > 0 ||
     server.imports.length > 0 ||
+    linked.length > 0 ||
     em.summaries ||
     em.used.size > 0 ||
     neutralImports.length > 0 ||
@@ -658,6 +663,7 @@ function buildPageModule(
   }
   for (const line of linker.imports()) w.line(line); // asset imports Vite resolves (SDD-19 §4.5)
   writeEntryImports(w, code); // the neutral zone's, hoisted (decision 33.c)
+  for (const line of apiImports(graph)) w.line(line); // what its `.fudapi` give the view (SDD-60 §3.14)
   w.line('');
   w.line(`const COMPONENTS = [${styledComps.map((c) => `{ tag: ${renderName(c.tag)}Tag, css: ${renderName(c.tag)}Css }`).join(', ')}];`);
   // The project's guide (SDD-42), hoisted once per document like a component's sheet.

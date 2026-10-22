@@ -265,3 +265,25 @@ describe('the <link rel="server"> (SDD-60 §3.14)', () => {
     expect(index.serverPath(ROUTE, './ghost.fudapi')).toBe('/p/src/routes/ghost.fudapi');
   });
 });
+
+describe('the names a linked .fudapi gives the view (SDD-60 §3.14)', () => {
+  const PATH = '/p/src/components/p-f.fud';
+  const files = {
+    '/p/src/components/p-f.fudapi': 'put save\n  form personForm\n',
+    '/p/src/forms/person.fudapi': 'form personForm\n  name  str = ""\n',
+  };
+  const view = (links: string): string =>
+    `${links}\n<p-f>\n  <template shadowrootmode="open"><form control=@personForm form:=@save></form>@data</template>\n</p-f>\n`;
+  const unknown = (source: string): readonly string[] =>
+    semanticDiagnostics(projected(PATH, source, files).document)
+      .filter((d) => d.code === 'FUD0907')
+      .map((d) => source.slice(d.span.start, d.span.end));
+
+  it('its functions and the forms they take are names of the view; `data` is not, without load', () => {
+    expect(unknown(view('<link rel="server" href="./p-f.fudapi">'))).toEqual(['data']);
+  });
+
+  it('a link that cannot be read tells nothing: the names stay unknown, and a component has no `data`', () => {
+    expect(unknown(view('<link rel="server" href="./ghost.fudapi">'))).toEqual(['personForm', 'save', 'data']);
+  });
+});

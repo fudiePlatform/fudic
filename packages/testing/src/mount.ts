@@ -21,6 +21,7 @@ import { chunkMap, hydrate, resolverOf } from './hydrate.js';
 import { renderPage } from './page.js';
 import { settled, track } from './pending.js';
 import { standTree, type ProviderOverride } from './providers.js';
+import { serverRoot } from './api.js';
 import { knowComponents } from './server.js';
 import { enterWorld, harnessOf, type Harness, type WorldOptions } from './session.js';
 
@@ -158,6 +159,7 @@ export async function mount<P extends object = Record<string, unknown>>(
   const props: object = options.props ?? {};
   const url = options.url ?? '/';
   const providers = enterWorld(options, url);
+  await serverRoot();
   const order = propOrder(component[FILE_EXPORT], component.tag);
   // Checked before anything is painted: a prop the component does not declare is the test's
   // mistake, whichever road it takes.

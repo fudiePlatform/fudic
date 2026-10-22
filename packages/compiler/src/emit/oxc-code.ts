@@ -663,7 +663,16 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     const root = result.value.ast(id);
     const stmts = Array.isArray(root) ? (root as OxcNode[]) : [root as OxcNode];
     for (const stmt of stmts) {
-      const zone = cut === undefined ? zoneOf(parts[i]!.type) : cut.has(stmt) ? 'neutral' : 'client';
+      // The declarators are read on BOTH sides — a `signal(...)` is as reactive in the
+      // neutral zone as in `@client` — and what comes back is what the emit does NOT write
+      // in a shape of its own, which is exactly what the neutral zone still has to carry.
+      const reactives = signals.length;
+      const remaining = readDeclarators(stmt, source, map, props, signals, named);
+      let zone = cut === undefined ? zoneOf(parts[i]!.type) : cut.has(stmt) ? 'neutral' : 'client';
+      // Without regions, a reactive the markup reads is still the browser's own declaration:
+      // the server renders it inert from what was just read, and the chunk declares it — and
+      // hands it to a child as a cell — exactly as it did from `@client` (SDD-60 §4.8).
+      if (regionless && zone === 'neutral' && signals.length > reactives && remaining?.length === 0) zone = 'client';
       allStatements.push(stmt);
       if (zone === 'client') clientStatements.push(stmt);
       else {
@@ -672,10 +681,6 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
         // Without regions `effect` goes anywhere: it is never in the cut (SDD-60 §4.8).
         if (!regionless) checkNeutralEffect(stmt, map, own);
       }
-      // The declarators are read on BOTH sides — a `signal(...)` is as reactive in the
-      // neutral zone as in `@client` — and what comes back is what the emit does NOT write
-      // in a shape of its own, which is exactly what the neutral zone still has to carry.
-      const remaining = readDeclarators(stmt, source, map, props, signals, named);
       // The NEUTRAL zone only, and that is the correction SDD-38 brings to this loop: what
       // is not `@client` is not therefore shared. A `@server` region runs on one side, and
       // sweeping it in here put it in the browser chunk — the region whose whole purpose is

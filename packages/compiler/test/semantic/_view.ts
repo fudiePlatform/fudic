@@ -58,6 +58,6 @@ export function viewInput(source: string): SemanticInput {
 }
 
 /** The diagnostics of the semantic pass over `source`, every fragment registered. */
-export function viewDiagnostics(source: string): readonly Diagnostic[] {
-  return analyze(viewInput(source)).diagnostics;
+export function viewDiagnostics(source: string, apis?: SemanticInput['apis']): readonly Diagnostic[] {
+  return analyze({ ...viewInput(source), ...(apis === undefined ? {} : { apis }) }).diagnostics;
 }

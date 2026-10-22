@@ -378,6 +378,7 @@ export const layout = page({ id: "routes/blog/[slug]", name: "layout", browser: 
 export const save = stub({ id: "routes/blog/[slug]", name: "save", method: "PUT", page: "/blog/:slug", route: [":id"], params: { id: "i32" }, query: { notify: "bool" }, args: { active: "bool" }, chain: [$global, $chain, { steps: [] }], invalidates: ["/blog", "/blog/:slug"] });
 export const move = stub({ id: "routes/blog/[slug]", name: "move", method: "PATCH", page: "/blog/:slug", route: [":id", "lines", ":line"], params: { id: "uuid", line: "u16" }, query: { at: { opt: "date" } }, form: person, chain: [$global, $chain, { steps: [{ skip: '*' }], compress: false }] });
 export const drop = stub({ id: "routes/blog/[slug]", name: "drop", method: "DELETE", page: "/blog/:slug", chain: [$global, $chain, { steps: [{ skip: [auth] }] }] });
+export { person };
 "
 `;
 
@@ -415,6 +416,8 @@ declare module "fudic:routes/blog/[slug]" {
   export interface Author { readonly name: string; readonly boss?: Author }
 
   export type Variant = 'default' | 'highlight';
+
+  export { person, PersonValue } from "fudic:forms/person";
 }
 "
 `;
@@ -436,6 +439,7 @@ export const layout = page({ id: "routes/blog/[slug]", name: "layout" });
 export const save = fn({ id: "routes/blog/[slug]", name: "save", method: "PUT", page: "/blog/:slug", route: [":id"], params: { id: "i32" }, query: { notify: "bool" }, args: { active: "bool" }, chain: [$global, $chain, { steps: [] }], invalidates: ["/blog", "/blog/:slug"] });
 export const move = fn({ id: "routes/blog/[slug]", name: "move", method: "PATCH", page: "/blog/:slug", route: [":id", "lines", ":line"], params: { id: "uuid", line: "u16" }, query: { at: { opt: "date" } }, form: person, chain: [$global, $chain, { steps: [{ skip: '*' }], compress: false }] });
 export const drop = fn({ id: "routes/blog/[slug]", name: "drop", method: "DELETE", page: "/blog/:slug", chain: [$global, $chain, { steps: [{ skip: [auth] }] }] });
+export { person };
 "
 `;
 

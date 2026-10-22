@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 import {
   apiDiagnostics,
   emitComponentClientModule,
+  emitComponentModule,
   emitPageModuleMapped,
   emitRouteClientModule,
   entryComponent,
@@ -309,6 +310,18 @@ describe('the names a link brings into the browser (SDD-60 §3.14, §4.3)', () =
     );
     const graph = resolveDocument('/c.fud', io).value;
     expect(emitComponentClientModule(graph, entryComponent(graph)!)).toContain('import { save } from "fudic:components/c";');
+  });
+
+  it('and the render module of the server imports them too: a route, a page and a component', () => {
+    const facts = { '/r.fudapi': api({ load: true, route: '/r.fud', functions: ['save'], forms: ['person'] }) };
+    const routeCode = emitRouteModuleMapped(resolveDocument('/r.fud', ioOf({ '/r.fud': route('<link rel="server" href="./r.fudapi">') }, facts)).value).code;
+    expect(routeCode).toContain('import { save, person } from "fudic:routes/r";');
+    const page = '<!DOCTYPE html><html><head><link rel="server" href="./r.fudapi"></head><body><p>x</p></body></html>';
+    const pageCode = emitPageModuleMapped(resolveDocument('/p.fud', ioOf({ '/p.fud': page }, facts)).value).code;
+    expect(pageCode).toContain('import { save, person } from "fudic:routes/r";');
+    const io = ioOf({ '/c.fud': component('<link rel="server" href="./c.fudapi">') }, { '/c.fudapi': api({ id: 'components/c', functions: ['save'] }) });
+    const graph = resolveDocument('/c.fud', io).value;
+    expect(emitComponentModule(graph, entryComponent(graph)!)).toContain('import { save } from "fudic:components/c";');
   });
 
   it('a route path spelled with the other slashes is still the route of its own `load`', () => {

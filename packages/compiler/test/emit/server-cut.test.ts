@@ -157,3 +157,24 @@ describe('every name the `@code` declares (declared)', () => {
     expect([...out.declared].sort()).toEqual(['a', 'b', 'f']);
   });
 });
+
+describe('a reactive the markup reads', () => {
+  it('is the browser\'s own declaration: the server renders it inert from what was read', () => {
+    const out = extract(component('  import { signal } from "@fudic/core";\n  const n = signal(1);', '<p>@n()</p>'));
+    expect(out.neutral.map((s) => s.text)).toEqual(['import { signal } from "@fudic/core";']);
+    expect(out.client.body.map((s) => s.text)).toEqual(['const n = signal(1);']);
+    expect(out.clientNames).toContain('n');
+    expect(out.signals.map((s) => s.name)).toEqual(['n']);
+  });
+
+  it('beside a plain declarator the markup reads too, the line stays in the cut', () => {
+    const out = extract(component('  import { signal } from "@fudic/core";\n  const n = signal(1), k = 2;', '<p>@n() @k</p>'));
+    expect(out.neutral.map((s) => s.text)).toContain('const k = 2;');
+    expect(out.client.body).toEqual([]);
+  });
+
+  it('a prop is no reactive: it stays where the cut puts it', () => {
+    const out = extract(component('  const { v } = props<{ v: number }>();', '<p>@v</p>'));
+    expect(out.client.body).toEqual([]);
+  });
+});

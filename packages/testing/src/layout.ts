@@ -7,6 +7,7 @@
  */
 
 import { nodeIo, routeUsesDi } from '@fudic/vite/harness';
+import { serverRoot } from './api.js';
 import { cached } from './cache.js';
 import { FILE_EXPORT } from './constants.js';
 import { layoutHost } from './host.js';
@@ -32,6 +33,7 @@ export interface LayoutOptions extends WorldOptions {
 /** Paint `layout` around what `options` hands it, and hand back the page. */
 export async function renderLayout(layout: Pick<FudModule, typeof FILE_EXPORT>, options: LayoutOptions = {}): Promise<Visited> {
   const providers = enterWorld(options, '/');
+  await serverRoot();
   const { props, body, sections, head } = options;
   const page = cached(
     'layout',

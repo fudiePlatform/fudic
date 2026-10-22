@@ -1,6 +1,7 @@
 import { extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fudic, type FudicOptions } from '@fudic/vite';
+import { API_SCHEME } from '@fudic/vite/harness';
 import type { Plugin } from 'vite';
 import type {} from 'vitest/config';
 import { BASE_URL, FILE_EXPORT, OPTIONS_KEY, ROOT_KEY } from './constants.js';
@@ -13,6 +14,9 @@ import { BASE_URL, FILE_EXPORT, OPTIONS_KEY, ROOT_KEY } from './constants.js';
 function sibling(name: string): string {
   return fileURLToPath(new URL(`./${name}${extname(fileURLToPath(import.meta.url))}`, import.meta.url));
 }
+
+/** What a generated module `fudic:<id>` imports in place of `@fudic/http/contract` (SDD-60 §4.4). */
+export const CONTRACT = sibling('contract');
 
 /** The `fudic` environment (§4.1). */
 export const ENVIRONMENT = sibling('environment');
@@ -46,12 +50,13 @@ function isPlainFud(id: string): boolean {
 /**
  * The plugins a project's `vitest.config.ts` needs: its `fudic()` — which reads `fudic.json`
  * and `src/http.ts` as `vite dev` does — and the one that puts vitest in the `fudic`
- * environment at `http://localhost/`.
+ * environment at `http://localhost/`, and the one that hands a `.fudapi` its contract (SDD-60 §4.4).
  */
 export function fudicTest(options: FudicOptions = {}): Plugin[] {
   return [
-    // No live type check: nobody watches an overlay in a test run (decision 8.1.13).
-    fudic({ liveCheck: false, ...options }),
+    // No live type check: nobody watches an overlay in a test run (decision 8.1.13). And one
+    // graph is the server and the page at once (SDD-60 §4.4).
+    fudic({ liveCheck: false, harness: true, ...options }),
     {
       name: 'fudic:test',
       config: (user) => ({
@@ -89,6 +94,12 @@ export function fudicTest(options: FudicOptions = {}): Plugin[] {
         if (!isPlainFud(id)) return null;
         return { code: `${code}\nexport const ${FILE_EXPORT} = ${JSON.stringify(id)};\n`, map: null };
       },
+    },
+    {
+      // A function of a `.fudapi` is the page's call and the server's contract in one graph.
+      name: 'fudic:test-contract',
+      enforce: 'pre',
+      resolveId: (id, importer) => (id === '@fudic/http/contract' && importer?.startsWith(API_SCHEME) === true ? CONTRACT : null),
     },
   ];
 }

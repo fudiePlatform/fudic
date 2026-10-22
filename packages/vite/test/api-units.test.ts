@@ -172,6 +172,12 @@ describe('emitRoot', () => {
     expect(text).not.toContain('/src/server/**');
     expect(text).not.toContain('handler');
     expect(text).toContain('export const ready = load();');
+    expect(text).toContain('  resetRegistry();');
+  });
+
+  it('in a test run, a load does not empty the registry', () => {
+    const text = emitRoot({ side: 'server', folders: { server: 'src/server', browser: 'src/browser' }, libraries, ids: [], reset: false });
+    expect(text).not.toContain('  resetRegistry();');
   });
 
   it('the ids of the two roots', () => {

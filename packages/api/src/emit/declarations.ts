@@ -11,7 +11,7 @@ import type { Decl, EnumDecl, FailsClause, FnDecl, FormDecl, LayoutDecl, LoadDec
 import type { ApiIndex, ApiSource } from '../index-api.js';
 import type { ApiContext } from '../validate.js';
 import { schemaType, valueType } from './form.js';
-import { effective, fieldsType, jsdoc, middlewaresOf, pageParams, pascal, camel, projectRef, str, tsType, type EmitCtx } from './shared.js';
+import { borrowedForms, effective, fieldsType, jsdoc, middlewaresOf, pageParams, pascal, camel, projectRef, str, tsType, type EmitCtx } from './shared.js';
 
 interface DeclCtx extends EmitCtx {
   readonly api: ApiContext;
@@ -33,6 +33,10 @@ export function emitDeclarations(source: ApiSource, index: ApiIndex, api: ApiCon
     forms: new Set(),
   };
   const body = source.file.declarations.map((d) => declaration(d, c)).filter((s) => s !== '');
+  for (const [other, names] of borrowedForms(c)) {
+    const all = names.flatMap((n) => [n, `${pascal(n)}Value`]);
+    body.push(`${I}export { ${all.join(', ')} } from ${str(`fudic:${other.id}`)};`);
+  }
   const imports = [
     ...(c.http.size > 0 ? [`${I}import type { ${[...c.http].sort().join(', ')} } from '@fudic/http/contract';`] : []),
     ...(c.forms.size > 0 ? [`${I}import type { ${[...c.forms].sort().join(', ')} } from '@fudic/forms/contract';`] : []),

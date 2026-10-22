@@ -12,7 +12,7 @@ import type { CompressClause, Decl, FailsClause, FnDecl, LoadDecl, MiddlewareArg
 import type { ApiIndex, ApiSource } from '../index-api.js';
 import type { ApiContext } from '../validate.js';
 import { formCode } from './form.js';
-import { camel, clauses, descriptors, globalChain, hasChain, literal, pascal, projectRef, str, type EmitCtx } from './shared.js';
+import { borrowedForms, camel, clauses, descriptors, globalChain, hasChain, literal, pascal, projectRef, str, type EmitCtx } from './shared.js';
 
 export type Side = 'server' | 'browser';
 
@@ -47,6 +47,8 @@ export function emitModule(source: ApiSource, index: ApiIndex, api: ApiContext, 
   };
   const decls = [...source.file.declarations].sort((a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind));
   const body = decls.map((d) => declaration(d, c)).filter((s) => s !== '');
+  const borrowed = [...borrowedForms(c).values()].flat().sort();
+  if (borrowed.length > 0) body.push(`export { ${borrowed.join(', ')} };`);
 
   const head: string[] = [];
   if (c.http.size > 0) head.push(`import { ${[...c.http].sort().join(', ')} } from '@fudic/http/contract';`);
