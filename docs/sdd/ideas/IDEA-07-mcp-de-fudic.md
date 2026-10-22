@@ -876,3 +876,54 @@ Lo que permite después:
   con token equivalente sale en `fudic_check` si el usuario la activa.
 - El contrato del componente (§10.3) puede listar **los tokens que lee**: qué afecta a su aspecto,
   igual que las CSS parts.
+
+### 10.5. Cambiar un componente aprobado (propuesta, 2026-10-22)
+
+`acme-button` está terminado: aprobado, en verde, documentado y en el escaparate. El usuario:
+
+> Quiero que el botón tenga un estado de carga.
+
+**Dos clases de cambio**, y `status` las trata distinto:
+
+| Cambio | Ejemplo | ¿Aprobación? |
+|---|---|---|
+| **De contrato**: props, eventos, slots o criterios | Añadir `loading`, quitar `ghost`, renombrar `press` | Sí: los criterios cambian y el hash caduca (§5.8) |
+| **De implementación**: la vista, los estilos, sin tocar el contrato | Otro radio, otra estructura interna | No: tests y criterios tienen que seguir en verde |
+
+El recorrido del cambio de contrato:
+
+1. `fudic_status` → la unidad está `done`. El LLM escribe una línea `reopened` en el historial,
+   con lo que pidió el usuario, y la unidad vuelve a la fase 1.
+2. Propone **solo lo que cambia**: la prop `loading: boolean` y dos criterios («mientras carga,
+   pulsar no emite `press`», «mientras carga, el botón se anuncia ocupado»). El usuario aprueba y
+   sale una línea `approved` nueva con su hash.
+3. Tests nuevos, y **solo los nuevos en rojo**: `tests red 2/8`. Si un test viejo sale en rojo
+   antes de tocar la vista, algo está mal desde el principio.
+4. La vista, hasta 8/8 y los criterios en verde. Los viejos que pasaban son la red contra la
+   regresión.
+5. JSDoc de `loading`, una fixture `loading` y su bloque en el escaparate (`showcase` se regenera,
+   §10.1).
+
+```
+2026-10-23T09:00 1a2b3c4 reopened    by agent  "Add a loading state"
+2026-10-23T09:12 2b3c4d5 approved    by pedro  spec 6 criteria  hash 7c1d…
+2026-10-23T09:20 3c4d5e6 tests       red 2/8
+2026-10-23T09:41 4d5e6f7 tests       pass 8/8
+2026-10-23T09:43 4d5e6f7 spec_run    pass 6/6
+2026-10-23T09:50 5e6f7a8 done
+```
+
+Lo que asegura:
+
+- **Un LLM que toca criterios aprobados sin preguntar se ve**: el hash no coincide, `status`
+  pone `"approval": "expired"` y `next` = «Show the user the diff of acme-button.fudspec since its
+  approval and ask them to approve it». El diff sale de git, desde el commit del `approved`.
+- **Quitar o renombrar rompe a quien lo usa.** El pase tipado lo ve en cada consumidor del
+  workspace (`fudic_describe` → `usedIn`), y como nunca se avanza con errores (§5.4), los arregla
+  en la misma rama: el PR llega en verde o no llega.
+
+Abierto:
+
+- **El aspecto no lo aprueba nadie.** Un cambio de implementación pasa con tests y criterios en
+  verde, pero los criterios no miran cómo se ve. ¿Hace falta una aprobación visual (capturas antes
+  y después, del banco) o basta con la preview?
