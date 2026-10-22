@@ -485,6 +485,41 @@ El flujo de un componente pedido en lenguaje natural:
 
 **Decidido (Pedro, 2026-10-22).** La fase 3 de §4.1 y §10.2 pasa a «tests y criterios en rojo».
 
+### 5.11. `fudic_explain` (propuesta, 2026-10-22)
+
+Devuelve la explicación de un código: el `FUDnnnn.md` del catálogo (332 hoy, todos con la misma
+forma: título, severidad, porqué y arreglo), que ya localiza `explanationFile` de
+`@fudic/diagnostics/explain`.
+
+```json
+{
+  "fudicVersion": "0.0.1",
+  "code": "FUD0540", "title": "Loop without `key (…)`", "severity": "error",
+  "why": "Every `@foreach`, `@for` and `@while` declares the identity of its rows, so an update can keep, move or drop each one instead of rebuilding the list.",
+  "fix": "Add a key after the header: `@foreach (const item of items) key (item.id) { … }`.",
+  "related": ["view"]
+}
+```
+
+**¿Cuándo se usa, si `check` ya trae el porqué y el arreglo en `codes` (§5.5)?** Cuando el código
+llega por otro camino: el log de un build que falla en `fudic_preview`, un test `broken`, un error
+que el usuario pega en el chat, un código que cita la guía.
+
+Propuesta: **no es una herramienta propia, es un tema de la guía**: `fudic_guide { topic:
+"FUD0540" }`. Una herramienta menos (los clientes empeoran con muchas, §5.2), y el LLM ya sabe
+que las dudas se resuelven en `guide`. `related` enlaza con el tema donde se explica la
+construcción.
+
+Lo que destapa:
+
+- **Los `.md` citan la SDD** (`**error** · SDD-30`): no le dice nada al LLM ni al usuario. Sale de la
+  respuesta o se quita del `.md`.
+- **La forma del `.md` es un contrato**: el MCP la parte en `title`, `why` y `fix`. Un test del
+  catálogo tiene que comprobar que los 332 la cumplen, y que cada ejemplo del `fix` compila
+  (§5.5).
+- **Un código de TypeScript** (`TS2322`) no tiene `.md`: la respuesta lo dice y no inventa nada.
+- **Un código que no existe** (el LLM se lo inventa) es un diagnóstico propio, no un texto vacío.
+
 ## 6. `fudic_guide`
 
 Envoltura: `{ fudicVersion, topic, related, body }`, con `body` en markdown en inglés.
