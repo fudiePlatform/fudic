@@ -979,8 +979,44 @@ Lo que destapa:
 - **El fake no está en SDD-60**: su §7 lo deja fuera de alcance (IDEA-05 §8). Sin él este flujo no
   existe: necesita su propia SDD (o entrar en la de este MCP), y la enmienda de la decisión 6 de
   SDD-60 (sin handler, 404) ya anotada en §9.
-- **El fake necesita identidad.** Detrás de la gateway, el BFF recibe el usuario ya resuelto del
-  JWT. Con el fake, alguien tiene que hacer de gateway: un usuario de fixture por entorno, para
-  que `use auth` y sus `adds` funcionen igual.
+- ~~**El fake necesita identidad.**~~ No en este caso (Pedro): no hay gateway ni usuario, ver
+  §10.7.
 - **Los datos del fake** (§9, «fake con estado o sin él») pasan a importar: lo que ve el cliente
-  sale de ahí. Con semilla fija o de las fixtures del usuario, siempre los mismos.
+  sale de ahí. Resuelto en §10.7.
+
+### 10.7. Compartir el producto como estáticos, con el backend en el navegador (Pedro, 2026-10-22)
+
+**Dónde se queda.** El producto sobre el fake se comparte como **estáticos**, en un sitio donde
+se queda de por vida; Pedro piensa en los artifacts de Claude, que publican una página con sus
+ficheros. Es SSR/SSG: el build ya da HTML con su DSD, y eso es lo que se publica. **Sin gateway
+ni usuario**: nadie inicia sesión en una demo.
+
+**El backend es un módulo en el navegador sobre IndexedDB.**
+
+- Arranca con los **JSON de semilla** (las fixtures o los datos fijos del fake) y los guarda en
+  IndexedDB.
+- Cada función del `.fudapi` responde desde ahí: un `get` lee, un `put` o un `post` actualiza el
+  objeto, un `delete` lo quita. El estado se mantiene entre visitas **sin backend**.
+- Cierra la pregunta de §9: **el fake tiene estado**. Lo que se guarda se ve después en la
+  búsqueda.
+
+Propuesta (decisiones técnicas, anotadas para revisar):
+
+- **Se engancha en el transporte de `$fn`, no en el Service Worker.** El SW de fudic podría
+  atender `/_fudic/fn/` y ya pinta las rutas `sw`, pero en un host ajeno (el iframe de un artifact)
+  puede que no haya SW. El transporte funciona en cualquier sitio.
+- **Un solo fake, sobre una interfaz de almacén**: IndexedDB en el navegador, memoria en Node
+  (para `fudic_call` y `fudic_render` con `backend: "fake"`). La misma lógica generada desde el
+  `.fudapi`, dos almacenes.
+- **Las rutas `ssr` no se pueden exportar tal cual**: no hay servidor. El export las exige `ssg`
+  o `sw`, o lo dice con un diagnóstico.
+
+Lo que destapa:
+
+- **El estado es de cada visitante.** IndexedDB vive en su navegador: lo que el cliente cambia no
+  lo ve nadie más, y en una ventana privada empieza vacío. Para una demo hace falta **volver a la
+  semilla** (un botón o una URL).
+- **Las capacidades del host** (SW, almacenamiento, rutas relativas, la base de la app) hay que
+  comprobarlas contra el artifact real antes de dar el export por bueno.
+- **Es la SDD del fake**: generado desde el `.fudapi`, en el navegador, con estado en IndexedDB y
+  export estático. Sustituye al fake de servidor que proponía §3 (camino 2).
