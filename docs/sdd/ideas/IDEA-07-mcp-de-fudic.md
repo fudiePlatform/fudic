@@ -674,7 +674,10 @@ remoto. Se mantienen como dos superficies; `fudic_spec_run` es el punto donde se
 
 ## 9. Abierto
 
-- **Contrato del backend en el repo** (§3, camino 1): propuesto, sin confirmar por Pedro.
+- ~~**Contrato del backend en el repo** (§3, camino 1)~~: claro para Pedro (2026-10-22), como las
+  herramientas que quedaban de §5.2 (`symbols`, `contract`, `backend_import`, `backend_describe`,
+  `call`, `workspace_open`, `commit`, `propose`, `new`, `generate`, `format`): no piden decisión,
+  se diseñan al escribir la SDD. Lo que sigue en esta lista es trabajo, no decisiones.
 - **Baseline de HTML/CSS:** el compilador no comprueba nada de baseline hoy. Sin un analizador
   (probablemente sobre `web-features`), el MCP solo puede contar la regla, no comprobarla.
 - **Coste del pase tipado en remoto:** un programa TS en memoria por llamada; hay que medirlo.
