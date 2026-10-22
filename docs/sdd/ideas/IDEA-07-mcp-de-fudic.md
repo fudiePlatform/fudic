@@ -279,9 +279,11 @@ aparte que pueda decir otra cosa. Entrada: `{ paths?, limit = 20 }`; sin `paths`
 - **Orden fijo** (fichero, línea, columna). `summary` cuenta todo; `limit` corta la lista.
 - **Los errores de TypeScript** del pase tipado salen con su código (`TS2322`) y la posición
   devuelta al `.fud`, sin entrada en `codes`: no hay `.md` propio.
-- `fixable` es que hay bombilla (code action). Hoy hay 6 (`FUD0056`, `FUD0191`, `FUD0540`,
-  `FUD0543`, `FUD0890`, `FUD0894`); cada arreglo mecánico que falta es una vuelta más del bucle.
-  Un arreglo que cambia la estructura (`FUD1145` → `@empty`) no debe ser `fixable`.
+- `fixable` es que hay bombilla (code action) **y es correcta** (§5.6). Hoy la tabla
+  (`language-server/src/services/actions.ts`) tiene 5: `FUD0056`, `FUD0191`, `FUD0540`, `FUD0890`,
+  `FUD0894`; aparte, crear el fichero de un `href` que no existe. Cada arreglo mecánico que falta
+  es una vuelta más del bucle. Un arreglo que cambia la estructura (`FUD1145` → `@empty`) no debe
+  ser `fixable`.
 
 Lo que destapa:
 
@@ -290,6 +292,42 @@ Lo que destapa:
   quita. El LLM ve las dos fuentes: cada ejemplo de un `.md` tiene que ser una fixture que compila,
   con la misma regla que la guía (§6).
 - Las normas del usuario (§9, «solo tokens») saldrían aquí, con su código, si se activan.
+
+### 5.6. `fudic_fix` (propuesta, 2026-10-22)
+
+Aplica las bombillas del editor. Entrada: `{ paths?, codes?, dryRun = false }`.
+
+1. Toma los diagnósticos `fixable` de `paths`.
+2. **Solo reparaciones de una única acción.** Con varias opciones no elige el MCP: van a
+   `remaining` con sus `options` y decide el LLM.
+3. Aplica las ediciones que no se solapan, vuelve a comprobar y repite hasta que no queda nada
+   `fixable` (un arreglo puede destapar otro), con un número máximo de vueltas.
+4. **Un arreglo es un plan de la CLI** (`FileChange`): en local lo escribe el `apply` de siempre,
+   en remoto la copia de trabajo; `dryRun` devuelve el plan. Sin mecanismo nuevo.
+
+```json
+{
+  "applied": [
+    { "code": "FUD0191", "at": "libs/ui/src/components/acme-card/acme-card.fud:16:5",
+      "title": "Add <link rel=\"component\"> for <acme-badge>" }
+  ],
+  "diff": "--- a/…/acme-card.fud\n+++ b/…/acme-card.fud\n@@ … @@\n+<link rel=\"component\" href=\"../acme-badge/acme-badge.fud\">\n",
+  "remaining": { "summary": { "errors": 2, "fixable": 0 }, "diagnostics": [], "codes": {} },
+  "next": "Fix FUD0540 and FUD1145 by hand: key the loop by a string or number field of Item."
+}
+```
+
+`remaining` tiene la forma de `fudic_check`.
+
+Lo que destapa (en el código de hoy):
+
+- **`fixable` exige que el arreglo sea correcto, no solo que exista.** La reparación de `FUD0540`
+  pone la primera variable del bucle como clave: `const item of items` → `key (item)`, el objeto
+  entero. Con SDD-61 la clave es `string` o `number`, así que cambia un error por otro (`FUD1153`),
+  justo lo que su propio comentario dice evitar. Propuesta: la bombilla solo cuando la variable es
+  primitiva o su tipo tiene un único campo `id`.
+- **Los títulos de las bombillas están en español** («Añadir key (…)»): rompe la regla de código en
+  inglés, y el MCP se los pasaría al LLM tal cual.
 
 ## 6. `fudic_guide`
 
