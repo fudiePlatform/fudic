@@ -9,7 +9,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   apiDiagnostics,
+  emitComponentClientModule,
   emitPageModuleMapped,
+  emitRouteClientModule,
+  entryComponent,
   emitRouteModuleMapped,
   resolveComponents,
   resolveDocument,
@@ -272,5 +275,47 @@ describe('the names a link brings into the view (SDD-51 scope)', () => {
 
   it('a caller that cannot know keeps the rule of the role', () => {
     expect(view(route('', '', '<p>@(data.n)</p>'))).toEqual([]);
+  });
+});
+
+describe('the names a link brings into the browser (SDD-60 §3.14, §4.3)', () => {
+  const reactive = (links: string): string =>
+    route(links, 'import { signal } from "@fudic/core";\nconst n = signal(0);', '<button @click=@(n.set(n() + 1))>@n()</button>');
+
+  it('a route imports its functions and forms from the browser variant of `fudic:<id>`, once each', () => {
+    const io = ioOf(
+      { '/r.fud': reactive('<link rel="server" href="./r.fudapi">\n<link rel="server" href="./o.fudapi">\n<link rel="server" href="./n.fudapi">') },
+      {
+        '/r.fudapi': api({ load: true, route: '/r.fud', functions: ['search', 'save'], forms: ['person'] }),
+        '/o.fudapi': api({ id: 'forms/person', forms: ['person'] }),
+        '/n.fudapi': api({ id: 'forms/none' }),
+      },
+    );
+    const code = emitRouteClientModule(resolveDocument('/r.fud', io).value)!;
+    expect(code).toContain('import { search, save, person } from "fudic:routes/r";');
+    expect(code).not.toContain('fudic:forms/person');
+    expect(code).not.toContain('fudic:forms/none');
+  });
+
+  it('a link nobody read gives the browser nothing', () => {
+    const io = memoryIo({ '/l.fud': LAYOUT, '/r.fud': reactive('<link rel="server" href="./r.fudapi">') });
+    expect(emitRouteClientModule(resolveDocument('/r.fud', io).value)!).not.toContain('fudic:');
+  });
+
+  it('a component imports them as well', () => {
+    const io = ioOf(
+      { '/c.fud': component('<link rel="server" href="./c.fudapi">', 'import { signal } from "@fudic/core";\nconst n = signal(0);') },
+      { '/c.fudapi': api({ id: 'components/c', functions: ['save'] }) },
+    );
+    const graph = resolveDocument('/c.fud', io).value;
+    expect(emitComponentClientModule(graph, entryComponent(graph)!)).toContain('import { save } from "fudic:components/c";');
+  });
+
+  it('a route path spelled with the other slashes is still the route of its own `load`', () => {
+    const graph = resolveDocument(
+      '/r.fud',
+      ioOf({ '/r.fud': route('<link rel="server" href="./r.fudapi">') }, { '/r.fudapi': api({ load: true, route: '\\r.fud' }) }),
+    );
+    expect(graph.diagnostics).toEqual([]);
   });
 });

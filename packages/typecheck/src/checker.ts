@@ -37,6 +37,7 @@ import { describeFud, FudIndex } from './fud-index.js';
 import { fudicDiagnostics } from './fudic-diagnostics.js';
 import { mountGlobals } from './globals.js';
 import { FUD_EXTRA_FILE_EXTENSIONS, fudLanguagePlugin } from './language-plugin.js';
+import { implementationsOf, type Implementations } from './implementations.js';
 import { readCommandLine, type CheckCommandLine } from './options.js';
 import { toPosix } from './paths.js';
 import { parseSource, projectParsed, type ParsedSource, type ProjectedFud } from './project.js';
@@ -77,6 +78,8 @@ interface Mounted {
   readonly snapshots: Map<string, IScriptSnapshot | undefined>;
   /** The parse of each `.fud`, keyed by its text: a re-projection does not re-parse. */
   readonly parses: Map<string, { readonly source: string; readonly parsed: ParsedSource }>;
+  /** The handlers beside the `.fudapi` and their generated types (SDD-60 §4.6). */
+  implementations: Implementations;
   bump(): void;
 }
 
@@ -135,13 +138,14 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
     );
 
     let projectVersion = 0;
+    let implementations = implementationsOf(typescript, root);
     const { languageServiceHost } = createLanguageServiceHost(typescript, typescript.sys, language, (name) => name, {
       getCurrentDirectory: () => root,
       getProjectVersion: () => String(projectVersion),
       // Every `.fud` of the index, and not only the ones the `tsconfig` lists: a component
       // nobody links yet is red in the editor too (§4.2). The index is the editor's list.
       getScriptFileNames: () => [
-        ...new Set([...commandLine.fileNames, ...index.all().map((entry) => entry.path)]),
+        ...new Set([...commandLine.fileNames, ...index.all().map((entry) => entry.path), ...implementations.roots]),
       ],
       getCompilationSettings: () => commandLine.options,
       getProjectReferences: () => commandLine.projectReferences,
@@ -155,6 +159,12 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
       commandLine,
       snapshots,
       parses,
+      get implementations() {
+        return implementations;
+      },
+      set implementations(next) {
+        implementations = next;
+      },
       bump: () => {
         projectVersion++;
       },
@@ -218,6 +228,23 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
       }
     }
 
+    // A handler of `src/server` or `src/browser`, in its own `.ts` (SDD-60 §4.6).
+    for (const file of state.implementations.sources) {
+      const sourceFile = program.getSourceFile(file);
+      if (sourceFile === undefined) continue;
+      for (const diagnostic of [...program.getSyntacticDiagnostics(sourceFile), ...program.getSemanticDiagnostics(sourceFile)]) {
+        const severity = severityOf(typescript, diagnostic.category);
+        if (severity === undefined || diagnostic.start === undefined || diagnostic.length === undefined) continue;
+        problems.push({
+          file,
+          span: { start: diagnostic.start, end: diagnostic.start + diagnostic.length },
+          severity,
+          code: `TS${diagnostic.code}`,
+          message: typescript.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
+        });
+      }
+    }
+
     const project: ProjectProblem[] = state.commandLine.configFile === undefined ? [FUD0870()] : [];
     return { problems: problems.sort(compareProblems), project, inputs: [...inputs.values()] };
   };
@@ -257,6 +284,8 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
       }
       const state = mounted;
       state.snapshots.delete(keyOf(posix));
+      // A handler or a generated type that appeared or went away changes the file list.
+      if (state.implementations.covers(posix)) state.implementations = implementationsOf(typescript, root);
       if (posix.endsWith('.fud')) {
         const before = state.index.revision;
         state.index.upsert(posix);

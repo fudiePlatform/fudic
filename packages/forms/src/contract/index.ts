@@ -42,6 +42,7 @@ export {
   loadingFile,
   resetRegistry,
   setFolders,
+  takeRefusal,
   type Side,
 } from './registry.js';
 export type { AnyForm, Form, Schema } from '../types.js';

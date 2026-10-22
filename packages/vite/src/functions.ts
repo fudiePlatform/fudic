@@ -77,6 +77,13 @@ export type FunctionsHandler = (
   },
 ) => (request: Request) => Promise<Response | null>;
 
+/** The server root's `handler` (SDD-60 §4.4), as the plugin calls it out of the dev graph. */
+export type ContractsHandler = (options: {
+  readonly base: string;
+  readonly dev: boolean;
+  readonly onError: (error: unknown) => void;
+}) => (request: Request) => Promise<Response | null>;
+
 /** `src/http.ts` of the project, when it has one. */
 export function httpFileOf(root: string): string | undefined {
   const file = `${root.replace(/\\/gu, '/')}/${LEGACY_HTTP_FILE}`;
@@ -149,9 +156,15 @@ export function emitFunctionsModule(input: {
   readonly base: string;
   /** Each function's URL and method, for the table an adapter mounts. */
   readonly table: readonly { readonly url: string; readonly method: string }[];
+  /**
+   * The functions of the `.fudapi` (SDD-60 §4.4): the id of the server root, whose `handler`
+   * answers them, tried before the `?server` modules. Absent in a project without `.fudapi`.
+   */
+  readonly api?: string;
 }): string {
   const server = (path: string): string => JSON.stringify(`${path.replace(/\\/gu, '/')}?server`);
   const lines = ["import { functionsHandler } from '@fudic/http/server';"];
+  if (input.api !== undefined) lines.push(`import { handler as $api } from ${JSON.stringify(input.api)};`);
   if (input.httpFile !== undefined) lines.push(`import $global from ${JSON.stringify(input.httpFile)};`);
   lines.push('const routes = {');
   for (const r of input.routes) lines.push(`  ${JSON.stringify(r.pattern)}: () => import(${server(r.path)}),`);
@@ -167,7 +180,13 @@ export function emitFunctionsModule(input: {
     `  global: async () => ${input.httpFile !== undefined ? '$global' : 'undefined'},`,
     '};',
     '/** Every server function of the app: a `Request` in, a `Response` out, `null` when not ours. */',
-    `export const handle = functionsHandler(source, { base: ${JSON.stringify(input.base)} });`,
+    ...(input.api === undefined
+      ? [`export const handle = functionsHandler(source, { base: ${JSON.stringify(input.base)} });`]
+      : [
+          `const $legacy = functionsHandler(source, { base: ${JSON.stringify(input.base)} });`,
+          `const $contracts = $api({ base: ${JSON.stringify(input.base)} });`,
+          'export const handle = async (request) => (await $contracts(request)) ?? $legacy(request);',
+        ]),
     '/** Each function by URL pattern and method, for an adapter to mount. */',
     `export const functions = ${JSON.stringify(input.table)}.map((entry) => ({ ...entry, handle }));`,
   );

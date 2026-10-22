@@ -74,6 +74,9 @@ const contracts = new Map<string, Map<string, ServerContract>>();
 /** The functions of one `<id>`, by name: what the dispatcher looks up. */
 export const contractsOf = (id: string): ReadonlyMap<string, ServerContract> => contracts.get(id) ?? new Map();
 
+/** Every `<id>` with a function loaded in this process: what the dispatcher matches a URL against. */
+export const contractIds = (): readonly string[] => [...contracts.keys()];
+
 const labelOf = (spec: FnSpec): string => `${spec.name} of ${spec.id}`;
 
 /** The server variant: the contract `src/server` completes with `.handle`. */

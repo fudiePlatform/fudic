@@ -21,6 +21,7 @@
 import type { StructuredDocument } from '@fudic/compiler';
 import { ERROR_FILE } from '@fudic/conventions';
 import { isFile, serverModuleSpecifier } from './paths.js';
+import type { ServerImport } from './types.js';
 import type { VirtualWriter } from './writer.js';
 
 /**
@@ -54,10 +55,17 @@ export function emitDataDeclaration(
   w: VirtualWriter,
   doc: StructuredDocument,
   fudPath: string,
+  servers: readonly ServerImport[] = [],
 ): void {
   if (doc.type === 'component-document' || doc.type === 'layout-document') return;
   if (isFile(fudPath, ERROR_FILE)) {
     w.scaffold(`${ERROR_DATA}declare const data: ErrorPage;\n`);
+    return;
+  }
+  // The `load` of the route's `.fudapi` (SDD-60 §4.7): `data` is what it declares.
+  const own = servers.find((s) => s.load);
+  if (own !== undefined) {
+    w.scaffold(`declare const data: import('fudic:${own.id}').LoadData;\n`);
     return;
   }
 

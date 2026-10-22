@@ -733,9 +733,18 @@ importers:
 
   packages/typecheck:
     dependencies:
+      '@fudic/api':
+        specifier: workspace:*
+        version: link:../api
       '@fudic/compiler':
         specifier: workspace:*
         version: link:../compiler
+      '@fudic/config':
+        specifier: workspace:*
+        version: link:../config
+      '@fudic/conventions':
+        specifier: workspace:*
+        version: link:../conventions
       '@fudic/diagnostics':
         specifier: workspace:*
         version: link:../diagnostics
@@ -770,6 +779,9 @@ importers:
 
   packages/vite:
     dependencies:
+      '@fudic/api':
+        specifier: workspace:*
+        version: link:../api
       '@fudic/compiler':
         specifier: workspace:*
         version: link:../compiler

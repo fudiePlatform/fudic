@@ -12,6 +12,7 @@
  */
 
 import type { ServerFnOptions } from './module.js';
+import type { ComponentGraph, DocumentGraph } from './resolve.js';
 import type { ChainStep, CompressLiteral, MiddlewareRef, ServerFns } from './server-fns.js';
 
 export interface FnStubs {
@@ -80,4 +81,23 @@ export function fnStubs(fns: ServerFns, options: ServerFnOptions | undefined): F
     return `const ${fn.name} = $fn({ ${fields.join(', ')} });`;
   });
   return { imports: [...head, ...imports], lines };
+}
+
+/**
+ * What the `.fudapi` a file links give its browser code (SDD-60 §3.14, §4.3): its functions and
+ * its forms, imported from the browser variant of `fudic:<id>` — the stub of each function is
+ * that module's, not one written here. A name two files give is imported once: `FUD1113` has
+ * already said whether that is a mistake. A link the host could not read gives nothing.
+ */
+export function apiImports(graph: ComponentGraph): readonly string[] {
+  const apis = 'serverApis' in graph ? (graph as DocumentGraph).serverApis : [];
+  const seen = new Set<string>();
+  const lines: string[] = [];
+  for (const { api } of apis) {
+    if (api === undefined) continue;
+    const names = [...api.functions, ...api.forms].filter((name) => !seen.has(name));
+    for (const name of names) seen.add(name);
+    if (names.length > 0) lines.push(`import { ${names.join(', ')} } from ${JSON.stringify(`fudic:${api.id}`)};`);
+  }
+  return lines;
 }

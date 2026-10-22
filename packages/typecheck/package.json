@@ -49,7 +49,10 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@fudic/api": "workspace:*",
     "@fudic/compiler": "workspace:*",
+    "@fudic/config": "workspace:*",
+    "@fudic/conventions": "workspace:*",
     "@fudic/diagnostics": "workspace:*",
     "@fudic/language-core": "workspace:*",
     "@fudic/resolve": "workspace:*",

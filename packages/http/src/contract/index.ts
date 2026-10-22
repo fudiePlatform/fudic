@@ -22,7 +22,7 @@ export {
 } from './middleware.js';
 export { fails, titleOf } from './fails.js';
 export { conform, conformAll, fromText, toText, type Primitive, type Ty } from './wire.js';
-export { folderOf, loadingFile, resetRegistry, setFolders, type Side } from '@fudic/forms/contract';
+export { folderOf, loadingFile, resetRegistry, setFolders, takeRefusal, type Side } from '@fudic/forms/contract';
 export { HttpError } from '../errors.js';
 // The halves of the built-in middlewares, for their implementations in `browser/` and `server/`.
 export { csrfClient } from '../csrf-client.js';

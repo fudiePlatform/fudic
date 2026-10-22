@@ -31,6 +31,9 @@ export default defineConfig({
         'src/build-memory.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/compile.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/background-check.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // SDD-60: the `.fudapi` of a project and the root that loads their implementations.
+        'src/api-modules.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/api-root.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
       },
     },
   },

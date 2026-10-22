@@ -29,6 +29,7 @@ export function buildIo(io: ResolveIo): BuildIo {
   return {
     read: (path) => io.read(path),
     resolve: (fromPath, href) => io.resolve(fromPath, href),
+    ...(io.api !== undefined ? { api: io.api } : {}),
     remember<T>(key: string, produce: () => T): T {
       if (memory.has(key)) return memory.get(key) as T;
       const value = produce();

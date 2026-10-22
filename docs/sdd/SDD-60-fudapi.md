@@ -486,6 +486,14 @@ declare module 'fudic:components/user-form' {
   `@fudic/forms/contract` (las reglas también registran) y `@fudic/http/contract` lo reexporta.
   `ApiContext.route` lleva además `pattern` (`/blog/:slug`), de donde el navegador lee los params
   de la página. Los `.d.ts` van en `.fudic/api` (`API_TYPES_DIR` de `@fudic/conventions`).
+- *Decidido al implementar (Fase 8):* la raíz de cada lado se resuelve a un id con forma de
+  fichero del proyecto (`<root>/fudic-root.<lado>.js`, nunca en disco), porque el
+  `import.meta.glob` de un módulo sin carpeta no lo resuelve el servidor de dev. La variante de
+  navegador de cada `fudic:<id>` importa la raíz de navegador. En una librería, `server/` y
+  `browser/` son las carpetas por defecto (lo que publica está compilado). El registro recuerda
+  su último rechazo (`takeRefusal`) para que la raíz lo relance: el ayudante de precarga del
+  bundler tapa el error de un `import()` con uno suyo en el servidor. El pase edge sale siempre
+  con sourcemaps, se los pida o no el cliente.
 
 ### 3.12. Lo que escribe el usuario
 

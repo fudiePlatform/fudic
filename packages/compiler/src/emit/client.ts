@@ -41,7 +41,7 @@ import {
   type EmitOutput,
 } from './module.js';
 import type { Diagnostic } from '../types/index.js';
-import { fnStubs } from './client-fns.js';
+import { apiImports, fnStubs } from './client-fns.js';
 
 /**
  * The positional destructuring of `$props` (§4.2) — the exact mirror of the `Object.values`
@@ -411,6 +411,8 @@ function buildComponentClientModule(
   const stubs = fnStubs(codeOf(comp).serverFns, options.serverFns);
   for (const line of stubs?.imports ?? []) w.line(line);
   for (const line of stubs?.lines ?? []) w.line(line);
+  // And those of the `.fudapi` it links, from their modules (SDD-60 §3.14).
+  for (const line of apiImports(graph)) w.line(line);
   w.line('');
   w.line(`customElements.define(${JSON.stringify(comp.tag)}, class extends ${base} {`);
   w.indent();

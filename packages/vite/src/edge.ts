@@ -34,18 +34,23 @@ import { compileFud } from './compile.js';
 import type { BuildReporter } from './report.js';
 import { safeName } from './link.js';
 import { EDGE_PREFIX, FUNCTIONS_FILE, FUNCTIONS_ID } from './constants.js';
+import { SERVER_ROOT_ID } from './api-root.js';
 import { serializeMap, type NestedArtifact, type NestedOutputOptions } from './nested.js';
 import { LinkedAssets } from './linked-assets.js';
 import { alternatesOf, localePlugin, localeTarget, pageModuleOf, type LocaleContext } from './i18n.js';
 
 /** The input name of `functions.mjs`. */
 const FUNCTIONS_ENTRY = 'functions';
+/** The input name of the server root (SDD-60 §4.6). */
+const ROOT_ENTRY = 'fudic-root';
 
 export interface EdgeResult {
   /** Every emitted file, in no particular order. Written outside `outDir` by the caller. */
   readonly chunks: readonly NestedArtifact[];
   /** Route pattern → its entry file name, relative to the edge directory. */
   readonly entries: ReadonlyMap<string, string>;
+  /** The file name of the server root, when the pass built one (SDD-60 §4.6). */
+  readonly root?: string;
 }
 
 const EMPTY: EdgeResult = { chunks: [], entries: new Map() };
@@ -63,6 +68,16 @@ export interface EdgeExtras {
   readonly functions?: string;
   /** `src/http.ts`, the global level of every chain, when the project has one. */
   readonly globalChain?: string;
+  /**
+   * The server variant of the generated modules (SDD-60 §3.11, §4.4): `fudic:<id>` and the
+   * server root, by id; `undefined` for an id that is not one of them.
+   */
+  readonly api?: (id: string) => string | undefined;
+  /**
+   * The id of the server root, built as an entry of its own (`fudic-root.js`): the build loads
+   * it once to find a duplicate or a wrong folder, prerender or not (SDD-60 §4.6).
+   */
+  readonly root?: string;
 }
 
 const BUILTINS = new Set(builtinModules);
@@ -111,10 +126,10 @@ export function edgePlugin(
   return {
     name: 'fudic:edge',
     resolveId(id) {
-      return id.startsWith(EDGE_PREFIX) || fixed.has(id) ? id : null;
+      return id.startsWith(EDGE_PREFIX) || fixed.has(id) || extras.api?.(id) !== undefined ? id : null;
     },
     load(id) {
-      const text = fixed.get(id);
+      const text = fixed.get(id) ?? extras.api?.(id);
       if (text !== undefined) return text;
       if (!id.startsWith(EDGE_PREFIX)) {
         return loadWithSourceMap(id);
@@ -133,6 +148,7 @@ export function edgePlugin(
         hasHttp: rb.analysis.hasHttp === true,
         fluentLoad: rb.analysis.fluentLoad === true,
         ...(extras.globalChain !== undefined ? { globalChain: extras.globalChain } : {}),
+        ...(rb.analysis.api !== undefined ? { api: { id: rb.analysis.api, root: SERVER_ROOT_ID, dev: false } } : {}),
         withLoad: true, // the edge resolves data in process
         runtime: runtimeFor(pattern),
         ...alternatesOf(rb, extras.locale?.locales, base, extras.locale?.site),
@@ -204,6 +220,7 @@ export async function runEdgePass(
     input[safeName(page.route.pattern)] = EDGE_PREFIX + page.route.pattern;
   }
   if (extras.functions !== undefined) input[FUNCTIONS_ENTRY] = FUNCTIONS_ID;
+  if (extras.root !== undefined) input[ROOT_ENTRY] = extras.root;
 
   const output = (await build({
     configFile: false,
@@ -229,7 +246,9 @@ export async function runEdgePass(
       // cost is real: a `@server load` that throws during the prerender is a stack trace
       // someone has to read.
       minify: false,
-      sourcemap: nested.sourcemap !== false,
+      // Always, whatever the host asked for its client (SDD-60 §4.6): this output never reaches a
+      // browser, and an error in a handler has to name the `.ts` of `src/server` and its line.
+      sourcemap: true,
       // Node runs this output, and Vite's preload helper wraps every dynamic `import()` in
       // code that touches `document`: `functions.mjs` would answer 500 to every call.
       modulePreload: false,
@@ -283,5 +302,6 @@ export async function runEdgePass(
     }
   }
 
-  return { chunks, entries };
+  const rootFile = extras.root === undefined ? undefined : byModuleId.get(extras.root);
+  return rootFile === undefined ? { chunks, entries } : { chunks, entries, root: rootFile };
 }

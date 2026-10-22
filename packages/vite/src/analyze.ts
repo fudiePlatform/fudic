@@ -10,8 +10,10 @@
  * typed helpers the emit uses, so the walk reads as plain code.
  */
 
+import type { LoadDecl } from '@fudic/api';
 import {
   JsBatch,
+  linkHref,
   readServerFns,
   type CodeBlockNode,
   type Diagnostic,
@@ -21,7 +23,22 @@ import {
 } from '@fudic/compiler';
 import { emptySpan, FUD1010 } from '@fudic/diagnostics';
 import { parseFudReporting } from './parse.js';
-import { NO_STRATEGY, strategyFrom, type StrategyAnalysis } from './strategy.js';
+import { NO_STRATEGY, strategyFrom, strategyOfLoad, type StrategyAnalysis } from './strategy.js';
+
+/**
+ * What a route's linked `.fudapi` declares about its page (SDD-60 §3.4, §4.5), as the host reads
+ * it: the parser of `@fudic/api`, never Oxc.
+ */
+export interface PageApi {
+  /** `<id>` of the file: its module is `fudic:<id>`. */
+  readonly id: string;
+  readonly load?: LoadDecl;
+  readonly paths: boolean;
+  readonly layout: boolean;
+}
+
+/** The `.fudapi` an `href` of the page names, or `undefined` when there is none. */
+export type PageApiOf = (href: string) => PageApi | undefined;
 
 /** The code of `_error.fud` declaring what it cannot, read off the catalogue. */
 const ERROR_PAGE_CODE = FUD1010({ span: emptySpan(0), name: '' }).code;
@@ -63,6 +80,11 @@ export interface PageAnalysis {
   readonly fluentLoad?: true;
   /** The `strategy()` call, read statically (SDD-20 §4.8). */
   readonly strategy: StrategyAnalysis;
+  /**
+   * The `<id>` of the linked `.fudapi` that declares the page's `load`, `paths` or `layout`
+   * (SDD-60 §3.4): the wrapper takes them from the registry, by it. Absent when none does.
+   */
+  readonly api?: string;
   /** The `href` of `<link rel="layout">`, when the file declares one (SDD-21). */
   readonly layoutHref?: string;
   /**
@@ -84,7 +106,7 @@ const nameOf = (node: OxcNode): string => String(node['name']);
  * strategy it declares. ONE parse and ONE Oxc batch answer all three questions —
  * "Oxc runs exactly once per file" is a repo invariant, not an optimization.
  */
-export function analyzePage(source: string, file = ''): PageAnalysis {
+export function analyzePage(source: string, file = '', apiOf?: PageApiOf): PageAnalysis {
   const parsed = parseFudReporting(source);
   const doc = parsed.document;
   const role = roleOf(doc);
@@ -104,6 +126,12 @@ export function analyzePage(source: string, file = ''): PageAnalysis {
       diagnostics: parsed.diagnostics,
     };
   }
+  // The page's own `.fudapi`, when it links one: `load`, `paths`, `layout` and the strategy come
+  // from it, and no longer from a `@server` (SDD-60 §4.5).
+  const own = (('serverLinks' in doc ? doc.serverLinks : undefined) ?? [])
+    .map((link) => linkHref(link))
+    .flatMap((href) => (href === undefined || apiOf === undefined ? [] : [apiOf(href)]))
+    .find((a): a is PageApi => a !== undefined && (a.load !== undefined || a.paths || a.layout));
   const server = serverStatements(source, doc.code);
   const names = new Set<string>();
   for (const statement of server.statements) {
@@ -125,12 +153,13 @@ export function analyzePage(source: string, file = ''): PageAnalysis {
   return {
     role,
     isPage: true,
-    hasLoad: names.has('load'),
-    hasPaths: names.has('paths'),
-    hasLayout: names.has('layout'),
+    hasLoad: own !== undefined ? own.load !== undefined : names.has('load'),
+    hasPaths: own !== undefined ? own.paths : names.has('paths'),
+    hasLayout: own !== undefined ? own.layout : names.has('layout'),
     ...(names.has('http') ? { hasHttp: true as const } : {}),
     ...(server.statements.some((s) => exportsConst(s, 'load')) ? { fluentLoad: true as const } : {}),
-    strategy: strategyFrom(server.statements, file),
+    strategy: own !== undefined ? strategyOfLoad(own.load) : strategyFrom(server.statements, file),
+    ...(own !== undefined ? { api: own.id } : {}),
     ...(layoutHref ? { layoutHref } : {}),
     diagnostics: [...parsed.diagnostics, ...server.diagnostics, ...errorPage],
   };

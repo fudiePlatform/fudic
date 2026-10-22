@@ -544,7 +544,7 @@ function serverApis(entry: StructuredDocument, entryPath: string, io: Io, diagno
     if (entry.type === 'component-document') {
       const keyword = api.load ? 'load' : api.paths ? 'paths' : api.layout ? 'layout' : undefined;
       if (keyword !== undefined) diagnostics.push(FUD1114({ span: link.span, keyword }));
-    } else if (api.load && api.route !== entryPath) {
+    } else if (api.load && api.route?.replace(/\\/gu, '/') !== entryPath.replace(/\\/gu, '/')) {
       diagnostics.push(FUD1115({ span: link.span, href }));
     }
     out.push({ link, href, path, api });

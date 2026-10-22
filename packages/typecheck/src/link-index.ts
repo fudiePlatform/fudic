@@ -8,6 +8,7 @@
  */
 
 import type { LayoutHoles } from '@fudic/compiler';
+import type { ServerImport } from '@fudic/language-core';
 import type { LookupFailure } from '@fudic/resolve';
 
 /** What a resolved `href` points at, as far as the check cares. */
@@ -24,4 +25,9 @@ export interface LinkIndex {
   resolve(fromFile: string, href: string): LinkTarget | undefined;
   /** Why a package specifier written inside `fromFile` resolves to nothing, when it is one. */
   failure(fromFile: string, href: string): LookupFailure | undefined;
+  /**
+   * The `.fudapi` an `href` of a `<link rel="server">` names, read (SDD-60 §4.7); `undefined`
+   * when there is none. Optional: an index that cannot read them gives a file nothing.
+   */
+  server?(fromFile: string, href: string): ServerImport | undefined;
 }

@@ -580,7 +580,9 @@ describe('hotUpdate — an edit the server graph sees reloads the browser (BUG-5
   function hot(environment: string, modules: unknown[], options: Record<string, unknown> = {}): unknown[] {
     const sent: unknown[] = [];
     const server = { environments: { client: { hot: { send: (payload: unknown) => sent.push(payload) } } } };
-    setup('serve', options).hotUpdate.call({ environment: { name: environment } }, { modules, server });
+    // An empty graph: the implementations of SDD-60 §4.4 are invalidated in it, and there are none.
+    const moduleGraph = { idToModuleMap: new Map(), invalidateModule: () => undefined };
+    setup('serve', options).hotUpdate.call({ environment: { name: environment, moduleGraph } }, { modules, server });
     return sent;
   }
 

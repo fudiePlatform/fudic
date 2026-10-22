@@ -4,7 +4,7 @@
  */
 
 import { afterEach, describe, expect, it } from 'vitest';
-import { Slot, folderOf, loadingFile, resetRegistry, setFolders } from '../../src/contract/index.js';
+import { Slot, folderOf, loadingFile, resetRegistry, setFolders, takeRefusal } from '../../src/contract/index.js';
 
 afterEach(() => {
   loadingFile(undefined);
@@ -83,5 +83,22 @@ describe('a reload', () => {
     expect(b.get()).toBeUndefined();
     a.set(() => 2);
     expect(a.get()!()).toBe(2);
+  });
+});
+
+describe('takeRefusal', () => {
+  it('answers the last refusal once, for the root to throw past a bundler of its own', () => {
+    takeRefusal(); // what the tests above left
+    expect(takeRefusal()).toBeUndefined();
+    const slot = save();
+    slot.set(() => 1);
+    let thrown: unknown;
+    try {
+      slot.set(() => 2);
+    } catch (error) {
+      thrown = error;
+    }
+    expect(takeRefusal()).toBe(thrown);
+    expect(takeRefusal()).toBeUndefined();
   });
 });

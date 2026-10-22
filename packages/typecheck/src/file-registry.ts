@@ -17,7 +17,7 @@ import {
   type Span,
   type StructuredDocument,
 } from '@fudic/compiler';
-import type { FileRegistry, SnippetImport } from '@fudic/language-core';
+import type { FileRegistry, ServerImport, SnippetImport } from '@fudic/language-core';
 import type { LinkIndex } from './link-index.js';
 import { layoutHrefOf } from './mode.js';
 
@@ -51,10 +51,20 @@ export function createFileRegistry(
     snippets.push({ href, ...(namespace === undefined ? {} : { namespace }) });
   }
 
+  // The `.fudapi` it links (SDD-60 §4.7), read when the projection asks.
+  const serverLinks = ('serverLinks' in document ? document.serverLinks : undefined) ?? [];
+  const servers = (): readonly ServerImport[] =>
+    serverLinks.flatMap((link) => {
+      const href = linkHref(link);
+      const read = href === undefined ? undefined : index.server?.(filePath, href);
+      return read === undefined ? [] : [read];
+    });
+
   return {
     component: (tag) => byTag.get(tag),
     layout: () => (layout === '' ? undefined : layout),
     snippets: () => snippets,
+    servers,
   };
 }
 

@@ -13,6 +13,7 @@ export type {
   Mapping,
   MappingCaps,
   FileRegistry,
+  ServerImport,
   SnippetImport,
 } from './types.js';
 export {

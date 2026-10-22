@@ -8,13 +8,13 @@
  * Vite is bundler and dev server only; the parser is always `@fudic/compiler`.
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
 import type { ServerResponse } from 'node:http';
 import { dirname, join, relative, resolve as resolvePath } from 'node:path';
-import { type Logger, type Plugin, type ViteDevServer, transformWithOxc } from 'vite';
+import { type EnvironmentModuleGraph, type Logger, type Plugin, type ViteDevServer, transformWithOxc } from 'vite';
 import {
   applyNonce,
   cspFor,
@@ -36,6 +36,9 @@ import {
   type ProjectStyles,
 } from './transform.js';
 import { ClientErasure } from './erased-sources.js';
+import { API_EXTENSION } from '@fudic/api';
+import { API_SCHEME, ApiProject } from './api-modules.js';
+import { BROWSER_ROOT_ID, ROOT_FILE_PREFIX, SERVER_ROOT_ID, emitRoot } from './api-root.js';
 import {
   appFunctions,
   devSource,
@@ -44,6 +47,7 @@ import {
   isFnPath,
   sendResponse,
   toRequest,
+  type ContractsHandler,
   type FunctionsHandler,
 } from './functions.js';
 import { loadWithSourceMap } from './inputmaps.js';
@@ -94,8 +98,10 @@ import {
   type LocaleContext,
 } from './i18n.js';
 import {
+  BROWSER_DIR,
   ERROR_PREFIX,
   LEGACY_HTTP_FILE,
+  SERVER_DIR,
   RUNTIME_CACHE_PREFIX,
   RUNTIME_DIR,
   runtimeMarkerUrl,
@@ -217,6 +223,9 @@ function bundleItems(bundle: Record<string, { type: string; imports?: readonly s
   }));
 }
 
+/** A path with forward slashes, as Vite's module graph spells it. */
+const slash = (path: string): string => path.replace(/\\/gu, '/');
+
 /** Split a module id into its path and query (without the `?`). */
 function splitId(id: string): { path: string; query: string } {
   const q = id.indexOf('?');
@@ -280,7 +289,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let catalogs: Catalogs | undefined;
   let localeIos: LocaleIos | undefined;
   /** The route table, one route per locale when there are locales (§4.5). */
-  const discover = (): ReturnType<typeof discoverRoutes> => discoverRoutes(root, options, locales);
+  const discover = (): ReturnType<typeof discoverRoutes> =>
+    discoverRoutes(root, options, locales, (fud) => (href) => api.page(resolvePath(dirname(fud), href)));
   /** The io a module compiled for `locale` reads `.fud` through; the plain one for none. */
   const ioFor = (locale: string | undefined): ResolveIo =>
     locale === undefined || localeIos === undefined ? io : localeIos.for(io, locale);
@@ -395,7 +405,57 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    * remembers each document graph and each compiled `.fud` (`buildIo`), fresh per build; dev
    * keeps this plain one, because there the files change between two requests.
    */
-  let io: ResolveIo = nodeIo();
+  let io: ResolveIo = nodeIo((path) => api.linked(path));
+  /**
+   * The `.fudapi` of the project and of its direct dependencies (SDD-60 §3.10): the modules
+   * `fudic:<id>`, their `.d.ts` and what the compiler is told about a linked file. Replaced in
+   * `configResolved`, once the root is known.
+   */
+  let api = new ApiProject(root);
+  /** The app's two folders of implementations, from `fudic.json` or the conventions (§3.15). */
+  const apiFolders = (): { readonly server: string; readonly browser: string } => ({
+    server: project.config?.server ?? SERVER_DIR,
+    browser: project.config?.browser ?? BROWSER_DIR,
+  });
+  /** The generated root of a side (§4.4). */
+  const rootSource = (side: 'server' | 'browser'): string =>
+    emitRoot({ side, folders: apiFolders(), libraries: api.libraries, ids: api.ids() });
+  /**
+   * The module `fudic:<id>` of a side. The browser variant brings the browser root with it: the
+   * client halves and the `runs both` rules a call needs are registered by whoever imports a
+   * contract, without anybody else having to remember.
+   */
+  const apiModule = (id: string, side: 'server' | 'browser'): string | undefined => {
+    const text = api.module(id, side);
+    return text === undefined || side === 'server' ? text : `import ${JSON.stringify(BROWSER_ROOT_ID)};\n${text}`;
+  };
+  /**
+   * Every module of the implementation folders, and the server root, out of a dev graph: the
+   * next `ssrLoadModule` of the root evaluates them all again, in its order.
+   */
+  const invalidateImplementations = (graph: EnvironmentModuleGraph): void => {
+    const folders = apiFolders();
+    const dirs = [
+      `${slash(root)}/${folders.server}/`,
+      `${slash(root)}/${folders.browser}/`,
+      ...api.libraries.flatMap((lib) => [`${slash(realpathSync(lib.dir))}/${lib.server}/`, `${slash(realpathSync(lib.dir))}/${lib.browser}/`]),
+    ];
+    for (const mod of graph.idToModuleMap.values()) {
+      const file = mod.file === null ? '' : slash(mod.file);
+      if (mod.id === rootFile('server') || dirs.some((dir) => file.startsWith(dir))) graph.invalidateModule(mod);
+    }
+  };
+  /** The id a root resolves to: a file of the project that is never on disk. */
+  const rootFile = (side: 'server' | 'browser'): string => `${slash(root)}/${ROOT_FILE_PREFIX}${side}.js`;
+  /** Whether the app declares a `.fudapi` of its own: only then is there a root to load. */
+  const hasApi = (): boolean => api.sources.some((s) => s.origin === 'app');
+  /** The server variant of a generated module, as a nested pass serves it, by id. */
+  const serverApi = (id: string): string | undefined =>
+    id === SERVER_ROOT_ID
+      ? rootSource('server')
+      : id.startsWith(API_SCHEME)
+        ? apiModule(id.slice(API_SCHEME.length), 'server')
+        : undefined;
   const linkCheckIo = nodeLinkCheckIo();
   const runtimeFs = nodeRuntimeFs();
   /**
@@ -725,6 +785,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // Who this project is (SDD-41). Read here, next to `sw.json`, and reported in
       // `buildStart`, which is the first hook with a context to report through.
       project = readProject(root, swConfig !== null, configIo);
+      api = new ApiProject(root);
       appId = project.config?.id ?? '';
       locales = project.config?.locales;
       site = project.config?.site;
@@ -755,6 +816,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     // logged «(ssr) page reload» to the SSR environment and the page stayed as it was (BUG-51).
     // The browser is told to reload, which is what that line always meant.
     hotUpdate(options) {
+      // The implementations are registered by evaluating their modules, all of them, in order
+      // (SDD-60 §4.4). A change anywhere may re-evaluate one of them — or the root — and leave
+      // the others with an emptied registry, so the next request reloads every one.
+      if (this.environment.name === 'ssr') invalidateImplementations(this.environment.moduleGraph);
       if (userOptions.serverReload === false) return;
       if (this.environment.name !== 'ssr' || options.modules.length === 0) return;
       options.server.environments.client.hot.send({ type: 'full-reload', path: '*' });
@@ -762,6 +827,28 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
 
     async configureServer(server) {
       ({ routes: builds, errorPages } = discover());
+      // The types of `fudic:<id>`, on disk before the editor or the live check asks (SDD-60
+      // §3.11), and again whenever a `.fudapi` — or the `package.json` that lists the libraries
+      // — changes. What was generated from the old text is stale in every graph: the modules,
+      // and the `.fud` that link a file, whose names may have changed.
+      api.writeDeclarations();
+      const onApiFile = (file: string): void => {
+        const path = slash(file);
+        if (!path.endsWith(API_EXTENSION) && path !== `${slash(root)}/package.json`) return;
+        api.invalidate();
+        api.writeDeclarations();
+        for (const environment of Object.values(server.environments)) {
+          const graph = environment.moduleGraph;
+          for (const mod of graph.idToModuleMap.values()) {
+            const generated = mod.id?.startsWith(API_SCHEME) === true || mod.id?.startsWith(WRAPPER_PREFIX) === true;
+            if (generated || mod.file?.endsWith('.fud') === true) graph.invalidateModule(mod);
+          }
+        }
+        server.environments.client.hot.send({ type: 'full-reload', path: '*' });
+      };
+      server.watcher.on('add', onApiFile);
+      server.watcher.on('change', onApiFile);
+      server.watcher.on('unlink', onApiFile);
       // What the editor marks, live (SDD-35 §4.5): checked at start, re-checked on every save
       // of a file the program read, pushed to the overlay without a reload, and the page
       // comes back by itself once it is clean.
@@ -809,18 +896,27 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           load,
           httpFile: httpFileOf(root),
         });
-        load('@fudic/http/server')
-          .then(async (http) => {
-            const handler = (http['functionsHandler'] as FunctionsHandler)(
-              source,
-              {
-                base,
-                dev: true,
-                // What is not an `HttpError` is a bug of the app: to the overlay, as a page's.
-                onError: (error) => toOverlay(server, error),
-              },
-            );
-            await sendResponse(res, await handler(toRequest(req, res)), next);
+        // What is not an `HttpError` is a bug of the app: to the overlay, as a page's.
+        const onError = (error: unknown): void => toOverlay(server, error);
+        const request = toRequest(req, res);
+        // The functions of the `.fudapi` first (SDD-60 §4.4): the root, loaded the first time a
+        // request needs it, answers its `<id>`; a URL that names none goes on to the `?server`
+        // modules, until the regions are gone. A root that cannot load — two implementations of
+        // one piece, one in the wrong folder — goes to the overlay with its message.
+        const contracts = hasApi()
+          ? load(SERVER_ROOT_ID).then((mod) =>
+              (mod['handler'] as ContractsHandler)({ base, dev: true, onError })(request),
+            )
+          : Promise.resolve(null);
+        contracts
+          .then(async (answered) => {
+            if (answered !== null) {
+              await sendResponse(res, answered, next);
+              return;
+            }
+            const http = await load('@fudic/http/server');
+            const handler = (http['functionsHandler'] as FunctionsHandler)(source, { base, dev: true, onError });
+            await sendResponse(res, await handler(request), next);
           })
           .catch(next);
       });
@@ -1160,7 +1256,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       verdict = undefined;
       runningCheck = undefined;
       // A new memory per build: a watch rebuild must not answer with the previous graphs.
-      if (!isDev) io = buildIo(nodeIo());
+      if (!isDev) io = buildIo(nodeIo((path) => api.linked(path)));
+      // The contracts as this build reads them, and their types on disk before the background
+      // typecheck reads `.fudic/api` (SDD-60 §3.11). What a `.fudapi` of the app says that is
+      // wrong stops the build, as a `.fud` that does not parse does.
+      api = new ApiProject(root);
+      api.writeDeclarations();
+      if (!isDev) {
+        await report(this, api.diagnostics().flatMap(({ file, diagnostics }) => diagnostics.map((d) => ({ ...d, file }))));
+      }
       // What the editor marks, before anything is compiled (SDD-35 §4.4). The whole project,
       // and not only what a route reaches: a component nobody links yet is red in the editor
       // too. Every problem is printed, and the build fails ONCE with the count — the author
@@ -1419,6 +1523,16 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       if (id.startsWith(RUNTIME_SHIM)) {
         return id;
       }
+      // A generated contract and the two roots (SDD-60 §3.11, §4.4): claimed only when the
+      // project has that `<id>`, so a `fudic:` nobody declared stays an unresolved import.
+      // A root resolves to a FILE id inside the project, never written to disk: its
+      // `import.meta.glob` is relative to where its importer lives, and a bare `fudic:` has no
+      // folder for Vite's dev server to read the app's folders from.
+      if (id === SERVER_ROOT_ID || id === BROWSER_ROOT_ID) return rootFile(id === SERVER_ROOT_ID ? 'server' : 'browser');
+      if (id === rootFile('server') || id === rootFile('browser')) return id;
+      if ((id.startsWith(API_SCHEME) && api.source(id.slice(API_SCHEME.length)) !== undefined)) {
+        return id;
+      }
       // A published piece, named by a shim or by a coordinator: it leaves as the URL it is.
       // `'absolute'` and not a plain `true`, or an id starting with `/` is read as a
       // filesystem path and renormalized against the output directory — which would turn an
@@ -1474,6 +1588,18 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       if (id.startsWith(COORD_PREFIX)) {
         // Written in `buildStart`, before this id existed, so the lookup cannot miss.
         return coordinatorSources.get(id) ?? null;
+      }
+      // The side is the environment's: the dev server's SSR graph and the edge pass are the
+      // server, everything a browser downloads is the browser (SDD-60 §3.11).
+      const side = loadOptions?.ssr === true ? 'server' : 'browser';
+      if (id === rootFile('server') || id === rootFile('browser')) {
+        return rootSource(id === rootFile('server') ? 'server' : 'browser');
+      }
+      if (id.startsWith(API_SCHEME) && api.source(id.slice(API_SCHEME.length)) !== undefined) {
+        // Every `.fudapi` of the project is an input: a type or a middleware of another file
+        // changes this one's text.
+        for (const source of api.sources) this.addWatchFile(source.path);
+        return apiModule(id.slice(API_SCHEME.length), side) ?? null;
       }
       if (id === MAIN_ID || id.startsWith(`${MAIN_ID}?`)) {
         const dir = chunkDir(localeOf(id), locales);
@@ -1547,6 +1673,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           hasHttp: rb.analysis.hasHttp === true,
           fluentLoad: rb.analysis.fluentLoad === true,
           ...(httpFile !== undefined ? { globalChain: httpFile } : {}),
+          ...(rb.analysis.api !== undefined ? { api: { id: rb.analysis.api, root: SERVER_ROOT_ID, dev: isDev } } : {}),
           // In dev the origin is the request's: a page served at localhost links to localhost.
           ...alternatesOf(rb, locales, base, isDev ? undefined : site),
           // In DEV this module IS the edge: the dev server renders through the module
@@ -1791,13 +1918,20 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       const edgeExtras = (): EdgeExtras => {
         const httpFile = httpFileOf(root);
         const fns = appFunctions(builds, discoverComponents(builds, io));
+        // The functions of the `.fudapi` beside those of a `@server` (SDD-60 §4.4): one handler,
+        // the contracts first, until the regions are gone.
+        const contracts = hasApi();
+        const table = [...fns.table, ...(contracts ? api.functionTable() : [])];
         const functions =
-          fns.table.length === 0 ? undefined : emitFunctionsModule({ ...fns, httpFile, base });
+          table.length === 0
+            ? undefined
+            : emitFunctionsModule({ ...fns, table, httpFile, base, ...(contracts ? { api: SERVER_ROOT_ID } : {}) });
         return {
           ...(errorPages.length > 0 ? { errorPages } : {}),
           ...(locale !== undefined ? { locale } : {}),
           ...(httpFile !== undefined ? { globalChain: httpFile } : {}),
           ...(functions !== undefined ? { functions } : {}),
+          ...(contracts ? { api: serverApi, root: SERVER_ROOT_ID } : {}),
         };
       };
       const [link, edge] = await Promise.all([
@@ -2051,6 +2185,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           const abs = join(edgeDir, chunk.fileName);
           mkdirSync(dirname(abs), { recursive: true });
           writeFileSync(abs, chunk.code);
+          // With its map, which the process reads (SDD-60 §4.6): a handler that throws in
+          // preview or behind an adapter names the `.ts` it was written in.
+          if (chunk.map !== undefined) writeFileSync(`${abs}.map`, chunk.map);
         }
       }
 
@@ -2184,7 +2321,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       const prerenders = builds.filter((b) => b.decision.prerender);
       // Every route that broke, and not only the first: one build tells all of them (SDD-35).
       const prerenderDiagnostics: FudDiagnostic[] = [];
-      if (prerenders.length > 0) {
+      if (prerenders.length > 0 || edge.root !== undefined) {
         const dir = mkdtempSync(join(tmpdir(), 'fudic-prerender-'));
         try {
           materializeBundle(bundle as unknown as Record<string, BundleItem>, dir);
@@ -2200,6 +2337,14 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
                 : { type: 'chunk' as const, code: c.code, map: c.map },
             ]),
           ), dir);
+          // The implementations, loaded once as the server will load them (SDD-60 §4.6): two of
+          // one piece, or one in the wrong folder, stop the build with the registry's own words.
+          if (edge.root !== undefined) {
+            const loaded = (await import(pathToFileURL(join(dir, edge.root)).href)) as { readonly ready: Promise<void> };
+            await loaded.ready.catch((err: unknown) => {
+              this.error({ message: err instanceof Error ? err.message : String(err) });
+            });
+          }
           for (const rb of prerenders) {
             const fileName = edge.entries.get(rb.route.pattern);
             if (fileName === undefined) {

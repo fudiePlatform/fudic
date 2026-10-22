@@ -19,6 +19,7 @@
 import { readServerFns, type JsBatchResult, type OxcNode, type Span } from '@fudic/compiler';
 import { USER_ECHO_CAPS } from './caps.js';
 import { serverModuleSpecifier } from './paths.js';
+import type { ServerImport } from './types.js';
 import type { VirtualWriter } from './writer.js';
 
 /** One server function: its exported name and where the author wrote it. */
@@ -52,6 +53,22 @@ export function clientFns(input: FnStatements): readonly ClientFn[] {
     errorPage: false,
   });
   return fns.fns.filter((fn) => fn.name !== 'load').map(({ name, span }) => ({ name, span }));
+}
+
+/**
+ * The functions and forms of the `.fudapi` the file links (SDD-60 §4.7), each as its module
+ * types it: the browser calls the same stub. A name two files give is declared once —
+ * `FUD1113` is the build's to say.
+ */
+export function emitServerImports(w: VirtualWriter, servers: readonly ServerImport[]): void {
+  const seen = new Set<string>();
+  for (const server of servers) {
+    for (const name of server.names) {
+      if (seen.has(name)) continue;
+      seen.add(name);
+      w.scaffold(`declare const ${name}: typeof import('fudic:${server.id}')['${name}'];\n`);
+    }
+  }
 }
 
 /** Declare every function as the `ServerFunction<A, R>` its stub is. Nothing without any. */

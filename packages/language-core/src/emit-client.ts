@@ -25,7 +25,7 @@ import { emitDataDeclaration } from './data.js';
 import { emitImports, emitSnippetImports, templateContent } from './imports.js';
 import { emitRenderCall, emitSnippets } from './template/snippets.js';
 import { clientFileName } from './paths.js';
-import { emitClientFns, type ClientFn } from './server-fns.js';
+import { emitClientFns, emitServerImports, type ClientFn } from './server-fns.js';
 import { emitPropsProjection, type PropsCall } from './props.js';
 import { emitElementBindings, emitHostBindings, emitShadowBindings } from './template/attrs.js';
 import type { FragmentAst, TemplateContext } from './template/context.js';
@@ -71,8 +71,10 @@ export function emitClientVirtual(
 
   const aliases = emitImports(w, content, registry);
   const snippets = emitSnippetImports(w, doc, registry);
-  emitDataDeclaration(w, doc, fudPath);
+  const servers = registry.servers?.() ?? [];
+  emitDataDeclaration(w, doc, fudPath, servers);
   emitClientFns(w, fudPath, fns);
+  emitServerImports(w, servers);
 
   emitNeutralZone(w, source, doc, props);
   emitSectionsContract(w, doc);

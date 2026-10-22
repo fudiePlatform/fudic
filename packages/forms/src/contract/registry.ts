@@ -40,6 +40,26 @@ export function loadingFile(side: Side | undefined, file?: string): void {
   current = side === undefined ? undefined : { side, file: file! };
 }
 
+/** The last implementation refused, until somebody asks for it. */
+let refused: Error | undefined;
+
+const refuse = (message: string): Error => {
+  refused = new Error(message);
+  return refused;
+};
+
+/**
+ * The implementation the registry refused last, once: what the root throws when loading a file
+ * failed. The error that reaches the root is not always this one — a bundler wraps a dynamic
+ * `import()` in a preload helper that, on a server, fails on a browser global of its own — and the
+ * registry's message is the one that names the two files.
+ */
+export function takeRefusal(): Error | undefined {
+  const error = refused;
+  refused = undefined;
+  return error;
+}
+
 /** Empties every slot: what a dev reload does before loading the folders again. */
 export function resetRegistry(): void {
   for (const slot of slots) slot.clear();
@@ -68,10 +88,10 @@ export class Slot<F> {
     const here = current;
     if (this.never || (here !== undefined && here.side !== this.side)) {
       const where = here === undefined ? '' : `: ${here.file}`;
-      throw new Error(`${this.label} must be implemented in ${folders[this.side]}${where}`);
+      throw refuse(`${this.label} must be implemented in ${folders[this.side]}${where}`);
     }
     const at = here?.file ?? 'outside the folders';
-    if (this.#fn !== undefined) throw new Error(`${this.label} is implemented twice: ${this.#at}, ${at}`);
+    if (this.#fn !== undefined) throw refuse(`${this.label} is implemented twice: ${this.#at}, ${at}`);
     this.#fn = fn;
     this.#at = at;
   }

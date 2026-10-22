@@ -106,6 +106,21 @@ export interface FileRegistry {
    * TypeScript program, not for this registry.
    */
   snippets(): readonly SnippetImport[];
+  /**
+   * The `.fudapi` this file links with `<link rel="server">`, read (SDD-60 §4.7). Absent on a
+   * host that cannot read them: the file then gets nothing from its links.
+   */
+  servers?(): readonly ServerImport[];
+}
+
+/** One linked `.fudapi`, as the projection needs it (SDD-60 §3.14). */
+export interface ServerImport {
+  /** `<id>` of the file: its module is `fudic:<id>`. */
+  readonly id: string;
+  /** It declares `load`, which gives the page its `data`. */
+  readonly load: boolean;
+  /** Its functions and its forms: the names the file gets without importing them. */
+  readonly names: readonly string[];
 }
 
 /** One `<link rel="snippet">`, as the projection needs it. */

@@ -48,6 +48,18 @@ export interface RenderChunkOptions {
   /** Import specifier of `src/http.ts`, the global level of the chain, when the project has one. */
   readonly globalChain?: string;
   /**
+   * The `<id>` of the route's `.fudapi` (SDD-60 §4.4): `load`, `paths` and `layout` are then
+   * the pieces of `fudic:<id>`, read from the registry once the generated root has loaded the
+   * implementations — and no longer the exports of `<f>.fud?server`.
+   */
+  readonly api?: {
+    readonly id: string;
+    /** The id of the server root, whose `ready` the wrapper awaits. */
+    readonly root: string;
+    /** Dev: a `load` nobody implemented says so in its 404. */
+    readonly dev: boolean;
+  };
+  /**
    * The URLs of the two main-thread entries, which the page writes into its `<head>`
    * (BUG-31 §T1): `boot` registers the Service Worker and rides every page, `main` is the
    * hydration runtime and rides only a page that hydrates.
@@ -111,9 +123,10 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   // of the chain. `load` always: its `ctx` is a `ServerContext` whether or not there is a chain
   // (§4.16). A `layout` alone, only when the route has a container to find or a chain to walk.
   const hasHttp = options.hasHttp === true;
+  const api = options.api;
   const http =
     edgeLoad ||
-    (edgeLayout && (hasDi || hasHttp || options.fluentLoad === true || options.globalChain !== undefined));
+    (edgeLayout && (api !== undefined || hasDi || hasHttp || options.fluentLoad === true || options.globalChain !== undefined));
   const outer = [
     ...(options.globalChain !== undefined ? ['global: $global'] : []),
     ...(hasHttp ? ['file: $http'] : []),
@@ -144,17 +157,44 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
       lines.push(`import { http as $http } from ${server};`);
     }
   }
-  if (edgeLoad) {
-    lines.push(`import { load } from ${server};`);
-  }
-  if (edgeLayout) {
-    lines.push(`import { layout as layoutProps } from ${server};`);
-  }
-  if (options.withLoad && options.hasPaths) {
-    // Re-exported so the build can enumerate the param space at prerender time.
-    lines.push(`export { paths } from ${server};`);
+  const pieces = [
+    ...(edgeLoad ? ['load as $load'] : []),
+    ...(edgeLayout ? ['layout as $layout'] : []),
+    ...(options.withLoad && options.hasPaths ? ['paths as $paths'] : []),
+  ];
+  if (api !== undefined && pieces.length > 0) {
+    // The pieces of the route's contract, and the root that fills them (SDD-60 §4.4).
+    lines.push(`import { ready as $ready } from ${JSON.stringify(api.root)};`);
+    lines.push(`import { ${pieces.join(', ')} } from ${JSON.stringify(`fudic:${api.id}`)};`);
+    lines.push('import { implementation as $impl, runLoad as $runLoad } from "@fudic/http/contract/server";');
+  } else {
+    if (edgeLoad) {
+      lines.push(`import { load } from ${server};`);
+    }
+    if (edgeLayout) {
+      lines.push(`import { layout as layoutProps } from ${server};`);
+    }
+    if (options.withLoad && options.hasPaths) {
+      // Re-exported so the build can enumerate the param space at prerender time.
+      lines.push(`export { paths } from ${server};`);
+    }
   }
   lines.push('');
+  if (api !== undefined && pieces.length > 0) {
+    // The same names the rest of this module reads, on the registry. Each one waits for the
+    // implementations: a duplicate or a wrong folder fails here, with its own message.
+    if (edgeLayout) {
+      lines.push('async function layoutProps(ctx, data) {', '  await $ready;', '  return $impl($layout)(ctx, data);', '}');
+    }
+    if (options.withLoad && options.hasPaths) {
+      lines.push('export async function paths() {', '  await $ready;', '  return $impl($paths)();', '}');
+    }
+    lines.push('');
+  }
+  const loadCall =
+    api !== undefined
+      ? `$ready.then(() => $runLoad($load, $ctx, ${String(api.dev)}))`
+      : `runLoad(load, { ${outer} }, $ctx)`;
   // `io.nonce` is the CSP nonce of THIS response: the emit puts it on the inline
   // style-adoption polyfill, which a strict `script-src 'self'` would otherwise kill.
   // The two main-thread entries, by URL (BUG-31 §T1).
@@ -177,7 +217,7 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
     lines.push('  const $root = iocRoot();');
     lines.push('  const $ctx = pageContext(ctx);');
     lines.push('  return withRequest($root, async () => {');
-    lines.push(`    const data = ${edgeLoad ? `await runLoad(load, { ${outer} }, $ctx)` : '{}'};`);
+    lines.push(`    const data = ${edgeLoad ? `await ${loadCall}` : '{}'};`);
     lines.push(`    return { data${edgeLayout ? ', layout: await layoutProps($ctx, data)' : ''} };`);
     lines.push('  });');
     lines.push('}');
@@ -204,7 +244,7 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   }
   if (edgeLoad) {
     lines.push(
-      `    const data = ctx.data !== undefined ? ctx.data : await withRequest($root, () => runLoad(load, { ${outer} }, $ctx));`,
+      `    const data = ctx.data !== undefined ? ctx.data : await withRequest($root, () => ${loadCall});`,
     );
   } else {
     lines.push('    const data = ctx.data !== undefined ? ctx.data : {};');

@@ -7,6 +7,7 @@
  * read without running code is FUD0393, and the route falls back to the default.
  */
 
+import type { LoadDecl } from '@fudic/api';
 import { type OxcNode } from '@fudic/compiler';
 import { type CachePolicy, type RouteMode } from '@fudic/transport';
 import { FUD0393, FUD0394, type FileDiagnostic } from '@fudic/diagnostics';
@@ -74,6 +75,29 @@ function strategyCall(statement: OxcNode): OxcNode | null {
     return null;
   }
   return call;
+}
+
+/**
+ * The strategy a route's `.fudapi` declares on its `load` line (SDD-60 §3.4, §4.5): the line is
+ * `strategy({ … })` entire, already checked by the parser (`FUD1074`), so it says nothing of
+ * its own. Without a `load`, or a `load` with no option, the route declares nothing.
+ */
+export function strategyOfLoad(load: LoadDecl | undefined): StrategyAnalysis {
+  if (load === undefined) return NO_STRATEGY;
+  const data = {
+    ...(load.ttl !== undefined ? { ttl: load.ttl.text } : {}),
+    ...(load.policy !== undefined ? { policy: load.policy.text as CachePolicy } : {}),
+  };
+  const page =
+    load.page === undefined
+      ? undefined
+      : { cache: load.page.value.text as 'never' | 'persist', ...(load.page.duration !== undefined ? { ttl: load.page.duration.text } : {}) };
+  const strategy: StrategyDecl = {
+    ...(load.mode !== undefined ? { mode: load.mode.text as RouteMode } : {}),
+    ...(Object.keys(data).length > 0 ? { data } : {}),
+    ...(page !== undefined ? { page } : {}),
+  };
+  return { declared: Object.keys(strategy).length > 0, strategy, diagnostics: [] };
 }
 
 /** Read the page's declared strategy from the top-level statements of its `@code`. */

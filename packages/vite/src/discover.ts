@@ -7,7 +7,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { routesFromFiles, type Route } from './routing.js';
-import { analyzePage, type PageAnalysis } from './analyze.js';
+import { analyzePage, type PageAnalysis, type PageApiOf } from './analyze.js';
 import { resolveMode, type ModeDecision, type PageFacts } from './mode.js';
 import { ERROR_FILE } from '@fudic/conventions';
 import { ERROR_PATTERN } from './page-errors.js';
@@ -69,7 +69,11 @@ export function discoverRoutes(
   root: string,
   options: ResolvedOptions,
   locales?: readonly string[],
+  /** What the `.fudapi` a route links declare (SDD-60 §4.5), by the route's absolute path. */
+  apiOf?: (absPath: string) => PageApiOf,
 ): DiscoverResult {
+  const analyze = (absPath: string): PageAnalysis =>
+    analyzePage(readFileSync(absPath, 'utf8'), absPath, apiOf?.(absPath));
   const routesRoot = join(root, options.routesDir);
   const files = listFud(routesRoot);
   const { routes, diagnostics } = routesFromFiles(files.filter((f) => f !== ERROR_FILE));
@@ -79,7 +83,7 @@ export function discoverRoutes(
   let errorPage: RouteBuild | undefined;
   if (files.includes(ERROR_FILE)) {
     const absPath = join(routesRoot, ERROR_FILE);
-    const analysis = analyzePage(readFileSync(absPath, 'utf8'), absPath);
+    const analysis = analyze(absPath);
     for (const d of analysis.diagnostics) parse.push({ ...d, file: absPath });
     errorPage = {
       route: { file: ERROR_FILE, pattern: ERROR_PATTERN, params: ['status'] },
@@ -96,7 +100,7 @@ export function discoverRoutes(
   const usedLayouts = new Set<string>();
   for (const route of routes) {
     const absPath = join(routesRoot, route.file);
-    const analysis = analyzePage(readFileSync(absPath, 'utf8'), absPath);
+    const analysis = analyze(absPath);
     for (const d of analysis.diagnostics) parse.push({ ...d, file: absPath });
     if (analysis.role === 'layout') {
       layouts.add(absPath);

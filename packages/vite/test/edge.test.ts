@@ -118,8 +118,8 @@ describe('runEdgePass', () => {
     }
   }, 300000);
 
-  it('carries a map when the host asked for one, and none when it did not', async () => {
-    expect(result.chunks.every((c) => c.map === undefined)).toBe(true);
+  it('carries a map whatever the host asked for its client (SDD-60 §4.6)', async () => {
+    expect(result.chunks.every((c) => c.map !== undefined)).toBe(true);
     const mapped = await runEdgePass(
       root,
       '/',

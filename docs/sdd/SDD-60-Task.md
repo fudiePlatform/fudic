@@ -6,7 +6,7 @@
 > `@fudic/typecheck` · `@fudic/language-server` · `@fudic/formatter` · `@fudic/cli` · `fudic-vscode` ·
 > `examples/*` · `packages/testing`
 > **Rama:** `sdd-60-fudapi` (nace de `main`)
-> **Progreso:** 38 / 64 — `En curso`.
+> **Progreso:** 47 / 64 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina; la otra escribe los tests de cada fase (las tareas
 «Los tests de…»), contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -148,24 +148,25 @@ Cada meta cierra una fase. La fase no se da por terminada hasta que Pedro la pru
 | [x] | 28 | 26 | **Diagnósticos de zonas.** Reescritos según SDD §4.8. Los retirados (`.ts` borrado, `.md` `retired` con su sustituto) se retiran en la tarea 63. `FUD1110` existe pero no se emite hasta la tarea 51 | `compiler` · `diagnostics` | `src/semantic/analyzers/*` · `src/emit/server-fns.ts` · `codes/` |
 | [x] | 29 | 24–28 | **Los tests del compilador.** Criterios 24 y 33 (la tabla de hidratación de todo `.fud` del repositorio, tomada con el compilador anterior a esta fase). *Decidido al implementar: el criterio 25 pasa a la tarea 56; hasta la tarea 51 no hay código que emita `FUD1110` y un test no puede «activarlo»* | `compiler` | `test/` |
 
-## Fase 8 — dev, build y runtime · META 3 (8)
+## Fase 8 — dev, build y runtime · META 3 (9)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 30 | 14, 20 | **La raíz y el registro.** Raíz de servidor y de navegador con `import.meta.glob` sobre las carpetas de la app y de cada librería con `fudapi/`; carga en secuencia marcando carpeta; perezosa en dev, invalidada por HMR | `vite` | `src/api-root.ts` · `src/plugin.ts` |
-| [ ] | 31 | 17, 30 | **Módulos `fudic:` y `.d.ts`.** Índice de `.fudapi` (`src/**` + `fudapi/` de dependencias directas), módulo virtual por lado, `.fudic/api/<id>.d.ts` escrito al arrancar, en build y al cambiar, solo si cambia | `vite` | `src/api-modules.ts` · `src/plugin.ts` |
-| [ ] | 32 | 30, 61 | **Despacho y 404.** `/_fudic/fn/<id>/<nombre><ruta>` contra el índice y el registro (SDD §4.4); 404 con `Problem` y `detail` solo en dev; `load` sin handler → 404 de página. El despacho de hoy (`r/`, `c/`) sigue sirviendo a lo no migrado | `http` · `vite` | `src/server/functions.ts` · `src/functions.ts` |
-| [ ] | 33 | 31 | **Wrapper y modo de ruta.** Una ruta con `<link rel="server">` toma `load`/`paths`/`layout` del registro, y `analyze.ts`/`mode.ts` leen su `.fudapi`. Una ruta con `@server` sigue como hoy hasta la tarea 63 | `vite` · `compiler` | `src/wrapper.ts` · `analyze.ts` · `strategy.ts` · `mode.ts` · `edge.ts` |
-| [ ] | 34 | 31 | **Stubs.** Las funciones de un `.fudapi` enlazado salen del módulo `fudic:<id>` de navegador | `compiler` · `vite` | `src/emit/client-fns.ts` · `server-fns.ts` · `transform.ts` |
-| [ ] | 36 | 31 | **Typecheck y sourcemaps.** El checker de dev y el de build incluyen las dos carpetas y `.fudic/api`; el build carga una vez la raíz de servidor; bundle de servidor con sourcemaps activados | `vite` · `typecheck` | `src/dev-typecheck.ts` · `background-check.ts` · `edge.ts` |
-| [ ] | 62 | 30–36 | **`usuarios` migrada.** `routes/usuarios.fudapi`, sus handlers en `src/server`, `<link rel="server">` y un único `@code`; el resto del ejemplo intacto | `examples/basic` | `src/routes/usuarios.*` · `src/server/` |
-| [ ] | 37 | 62 | **Los tests de dev, build y runtime.** Criterios 15–20, 22, 26, 36 y 37 | `vite` · `http` | `test/` |
+| [x] | 30 | 14, 20 | **La raíz y el registro.** Raíz de servidor y de navegador con `import.meta.glob` sobre las carpetas de la app y de cada librería con `fudapi/`; carga en secuencia marcando carpeta; perezosa en dev, invalidada por HMR | `vite` | `src/api-root.ts` · `src/plugin.ts` |
+| [x] | 31 | 17, 30 | **Módulos `fudic:` y `.d.ts`.** Índice de `.fudapi` (`src/**` + `fudapi/` de dependencias directas), módulo virtual por lado, `.fudic/api/<id>.d.ts` escrito al arrancar, en build y al cambiar, solo si cambia | `vite` | `src/api-modules.ts` · `src/plugin.ts` |
+| [x] | 32 | 30, 61 | **Despacho y 404.** `/_fudic/fn/<id>/<nombre><ruta>` contra el índice y el registro (SDD §4.4); 404 con `Problem` y `detail` solo en dev; `load` sin handler → 404 de página. El despacho de hoy (`r/`, `c/`) sigue sirviendo a lo no migrado | `http` · `vite` | `src/server/functions.ts` · `src/functions.ts` |
+| [x] | 33 | 31 | **Wrapper y modo de ruta.** Una ruta con `<link rel="server">` toma `load`/`paths`/`layout` del registro, y `analyze.ts`/`mode.ts` leen su `.fudapi`. Una ruta con `@server` sigue como hoy hasta la tarea 63 | `vite` · `compiler` | `src/wrapper.ts` · `analyze.ts` · `strategy.ts` · `mode.ts` · `edge.ts` |
+| [x] | 34 | 31 | **Stubs.** Las funciones de un `.fudapi` enlazado salen del módulo `fudic:<id>` de navegador | `compiler` · `vite` | `src/emit/client-fns.ts` · `server-fns.ts` · `transform.ts` |
+| [x] | 36 | 31 | **Typecheck y sourcemaps.** El checker de dev y el de build incluyen las dos carpetas y `.fudic/api`; el build carga una vez la raíz de servidor; bundle de servidor con sourcemaps activados | `vite` · `typecheck` | `src/dev-typecheck.ts` · `background-check.ts` · `edge.ts` |
+| [x] | 38 | 25 | **language-core (adelantada).** `data`, funciones y forms declarados desde `fudic:<id>` en el virtual de cliente para un `.fud` con `<link rel="server">`, y el índice de `typecheck` que lee el `.fudapi` enlazado. *Adelantada de la Fase 9 al implementar: sin ella, el typecheck del build de `usuarios` no conoce sus nombres y la meta 3 no se alcanza* | `language-core` · `typecheck` | `src/data.ts` · `server-fns.ts` · `emit-client.ts` · `fud-index.ts` · `file-registry.ts` |
+| [x] | 62 | 30–36 | **`usuarios` migrada.** `routes/usuarios.fudapi`, sus handlers en `src/server`, `<link rel="server">` y un único `@code`; el resto del ejemplo intacto | `examples/basic` | `src/routes/usuarios.*` · `src/server/` |
+| [x] | 37 | 62 | **Los tests de dev, build y runtime.** Criterios 15–20, 22, 26, 36 y 37 | `vite` · `http` | `test/` |
 
 ## Fase 9 — el editor del `.fud` (4)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 38 | 25 | **language-core.** `data`, funciones y forms declarados desde `fudic:<id>` en el virtual de cliente para un `.fud` con `<link rel="server">`. `emit-server.ts` y `partitionCode` se retiran en la tarea 63 | `language-core` | `src/emit*.ts` · `data.ts` · `server-fns.ts` · `code.ts` |
+| — | 38 | — | *Hecha en la Fase 8.* `emit-server.ts` y `partitionCode` se retiran en la tarea 63 | `language-core` | — |
 | [ ] | 39 | 38 | **typecheck.** `rel: 'server'` en el registro de enlaces; `.fudic/api` en el programa | `typecheck` | `src/language-plugin.ts` · `links.ts` · `project.ts` |
 | [ ] | 44 | 38 | **El `.fud` en el language server.** `rel="server"` en el completado de `href`; un cambio en un `.fudapi` revalida los `.fud` que lo enlazan; la bombilla de `FUD0702` escribe `layout` en el `.fudapi` hermano. Snippets, completados y acciones de `@server`/`@client` se retiran en la tarea 63 | `language-server` | `src/services/*` |
 | [ ] | 45 | 38–44 | **Los tests del editor del `.fud`.** Criterio 27 (lado `.fud`) y los de `language-core` y `typecheck` | `language-server` · `language-core` · `typecheck` | `test/` |
