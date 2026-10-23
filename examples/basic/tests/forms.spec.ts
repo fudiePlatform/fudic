@@ -639,15 +639,13 @@ test.describe('§6.15 — the budget, per route, over the chunk', () => {
     expect(codeOf(closure)).not.toContain('.checked');
   });
 
-  test('the body of a serverValidator, and its data layer, never reach the browser', async () => {
+  test('the check of a server rule, and its data layer, never reach the browser', async () => {
     const closure = closureOf('formularios');
     const code = codeOf(closure);
 
-    // `ALIAS_TABLE_MARKER` is in `src/data/aliases.js`, which only the erased validator body
-    // imported. If it is here, the erasure failed and Rollup kept the module alive.
+    // `ALIAS_TABLE_MARKER` is in `src/data/aliases.js`, which only the check of `alias-taken`
+    // in `src/server` imports (SDD-60 §3.12). If it is here, a browser module reached it.
     expect(code).not.toContain('alias-table-must-not-ship');
     expect(code).not.toContain('aliasTaken');
-    // The call survived, so the array of validators keeps its length and its order (§4.7).
-    expect(code).toContain('=>null');
   });
 });

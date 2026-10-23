@@ -34,7 +34,6 @@ import {
   emitRouteClientModuleMapped,
   SourceMapBuilder,
   LineMap,
-  redactServerRegions,
   remapDiagnostics,
   inlineRuntimeMarker,
   adoptedStylesOf,
@@ -96,10 +95,8 @@ export function relativeSpecifier(fromDir: string, target: string): string {
 /**
  * Build a Source Map v3 for one emitted module from the emit's output↔source anchors.
  *
- * The `source` it receives is already REDACTED of its `@server` regions (BUG-09 §4.3): a
- * map embeds the original file in `sourcesContent`, and the original file of a page holds
- * server-only code. The redaction is character for character, so every offset the emit
- * anchored still lands where it did — which is why the same text feeds `sourceLineMap`.
+ * The map embeds the `.fud` whole in `sourcesContent`: it holds no server code since the
+ * server lives in its `.fudapi` and `src/server` (SDD-60 §1), so there is nothing to blank.
  *
  * And the map is against the `.fud` AS IT IS ON DISK.
  *
@@ -361,7 +358,7 @@ export function transformFud(
   return {
     code: out.code,
     ...(inlineRuntimeOf(id, graph) ?? {}),
-    map: buildMap(id, redactServerRegions(origin.source, origin.document.code), out, graph.entryMap),
+    map: buildMap(id, origin.source, out, graph.entryMap),
     missingAssets: out.missingAssets,
     // The sheets this page was pruned against are inputs of this module too: an edit to one
     // has to prune the page again on the next navigation (SDD-49 §4.8).
@@ -429,7 +426,7 @@ export function transformFudClient(
   const out = emitComponentClientModuleMapped(graph, comp, emitOptionsFor(id, graph, undefined, styles, assets));
   return {
     code: out.code,
-    map: buildMap(id, redactServerRegions(graph.entryOrigin.source, graph.entryOrigin.document.code), out, graph.entryMap),
+    map: buildMap(id, graph.entryOrigin.source, out, graph.entryMap),
     missingAssets: out.missingAssets,
     // The emit's own: a `@code` whose JS does not parse (BUG-13 §5.3). Without them the
     // module still gets written — degraded — and the build only trips later, in the
@@ -453,7 +450,7 @@ function routeClientResult(
   }
   return {
     code: out.code,
-    map: buildMap(id, redactServerRegions(graph.entryOrigin.source, graph.entryOrigin.document.code), out, graph.entryMap),
+    map: buildMap(id, graph.entryOrigin.source, out, graph.entryMap),
     missingAssets: out.missingAssets,
     diagnostics: remapDiagnostics([...graphDiagnostics, ...out.diagnostics], graph.entryMap, id),
   };

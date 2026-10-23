@@ -4,4 +4,3 @@
 
 export type { CodeBlockNode, CodePart, NeutralJs, ServerRegion, ClientRegion } from './nodes.js';
 export { parseCodeBlock } from './code.js';
-export { redactServerRegions } from './redact.js';

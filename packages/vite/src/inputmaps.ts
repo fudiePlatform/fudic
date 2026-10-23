@@ -75,8 +75,7 @@ export interface LoadedWithMap {
  */
 export function loadWithSourceMap(id: string): LoadedWithMap | null {
   // Vite's own `?v=<hash>`, which the dev server puts on whatever it serves from
-  // `node_modules`, is the same file: an installed package would otherwise lose its map, and
-  // with it the erasure of its text (BUG-47 §4.6).
+  // `node_modules`, is the same file: an installed package would otherwise lose its map.
   const path = id.replace(/\?v=[\w-]+$/u, '');
   // Any other query or a hash means the id is not a plain file path; those belong to whoever
   // coined them. `.mjs`/`.cjs` count: what matters is that it is JavaScript with a sibling map.
