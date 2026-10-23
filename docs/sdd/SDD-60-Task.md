@@ -6,7 +6,7 @@
 > `@fudic/typecheck` · `@fudic/language-server` · `@fudic/formatter` · `@fudic/cli` · `fudic-vscode` ·
 > `examples/*` · `packages/testing`
 > **Rama:** `sdd-60-fudapi` (nace de `main`)
-> **Progreso:** 63 / 64 — `En curso`.
+> **Progreso:** 64 / 64 — `Hecho`.
 
 **Dos sesiones.** Una implementa y coordina; la otra escribe los tests de cada fase (las tareas
 «Los tests de…»), contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -225,7 +225,7 @@ Cada meta cierra una fase. La fase no se da por terminada hasta que Pedro la pru
 | [x] | 52 | 56 | **Producto.** Criterio 32: HTML prerenderizado contra el build de `main`, y prueba en el navegador de `usuarios` y `user-form`. *Al implementar: las 26 páginas de `dist/` y las 26 de `nosw/dist/` son las de `main` salvo hashes, la hora del build de `ruta-reloj` y una frase de esa página que nombraba `@client`. La prueba del navegador es un e2e nuevo (`usuarios.spec.ts`, en dev, preview y `nosw`): carga, búsqueda, cancelar, sesión, 401, 403 → `/entrar`, activar, 500, 404, email cogido, 409 de `admin` y alta + borrado; pasa igual contra el build de `main`. El ejemplo no tiene campo NIF (era de la muestra de §3.12), y el 409 de `admin` no pinta texto ni en `main`: se comprueba la respuesta y que no hay página de error. La suite del ejemplo, 268 en verde* | `examples/basic` | `tests/usuarios.spec.ts` · `playwright.config.ts` |
 | [x] | 57 | 52 | **Entrega.** `pnpm typecheck`, `pnpm test`, `pnpm build` en verde; `@fudic/api` al 100 % sin `v8 ignore`; ningún umbral baja. Criterio 35. *Al implementar: `pnpm test` da verde salvo los tres tests de color de `@fudic/cli`, que son [BUG-52](./bugs/BUG-52-tests-que-dependen-del-entorno.md) (pasan con `NO_COLOR=1`); `testing`, `workbench` y `vscode` caen por tiempo con todo en paralelo y pasan solos. `pnpm coverage` pasa todos los umbrales; esta fase no toca código de paquetes* | todos | — |
 | [x] | 53 | 57 | **Documentación.** README de `@fudic/api`, `@fudic/http` y `@fudic/forms` (lo que deja de ser público y la forma nueva); nota en IDEA-06 apuntando a SDD-60. *Al implementar: los fragmentos `.fudapi` de los README pasan por `parseApi` + `validateApi`* | — | `packages/*/README.md` · `docs/sdd/ideas/` |
-| [ ] | 58 | 53 | **Cierre.** SDD-60 a `Hecho`, su fila del `INDEX.md` y entrada en el registro de progreso | — | `docs/sdd/` |
+| [x] | 58 | 53 | **Cierre.** SDD-60 a `Hecho`, su fila del `INDEX.md` y entrada en el registro de progreso | — | `docs/sdd/` |
 
 ---
 

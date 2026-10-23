@@ -1,6 +1,6 @@
 # SDD-60 — `.fudapi`: el contrato del servidor fuera del `.fud`
 
-> **Estado:** `Listo` — [tareas](./SDD-60-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-60-Task.md).
 > **Paquetes:** `@fudic/api` (nuevo: parser, índice, validador, formateador y emisor TS) ·
 > `@fudic/diagnostics` · `@fudic/conventions` · `@fudic/config` · `@fudic/http` · `@fudic/forms` ·
 > `@fudic/compiler` · `@fudic/vite` · `@fudic/language-core` · `@fudic/typecheck` ·
