@@ -29,7 +29,10 @@ import { defineConfig } from '@playwright/test';
 // (§6.15–21) and criterion 24 asks for them against BOTH channels. `preview` measures the
 // Service Worker one, `dev` and `nosw` the `modulepreload` one, and every other criterion is
 // asserted three times over — hydration must not be able to tell the shapes apart.
-const THREE_WAY = /(hydration|routes|di)\.spec\.ts/u;
+//
+// `/usuarios` runs in all three because SDD-60 §6.32 asks for it in dev, build and preview: its
+// functions are dispatched by the dev server in one and by the edge bundle in the other two.
+const THREE_WAY = /(hydration|routes|di|usuarios)\.spec\.ts/u;
 
 // The concurrency suite runs in ONE shape, and it is the only one that can run it: two
 // responses of one page overlap only where a server answers two requests at the same time.
