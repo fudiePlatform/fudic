@@ -35,11 +35,6 @@ export const LOCALES_DIR = 'src/locales';
  */
 export const HTTP_FILE = 'src/http.fudapi';
 /**
- * The global chain as SDD-56 wrote it, a `.ts` whose default export is a `chain()`. Read until
- * the last `@server` is migrated (SDD-60, task 63); then it goes.
- */
-export const LEGACY_HTTP_FILE = 'src/http.ts';
-/**
  * The two folders of implementations (SDD-60 §1.1, point 4): `src/server` runs only on the
  * server; `src/browser` runs in the browser, and the server loads it too. A project may move
  * them in its `fudic.json` (`server`, `browser`).

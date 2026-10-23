@@ -23,12 +23,11 @@ describe('code regions', () => {
     expect(has(find(tokens, 'const a'), 'source.ts')).toBe(true);
   });
 
-  it('marks @server and @client inside @code', async () => {
-    const tokens = await tokenize('@code {\n  @server {\n    const a = 1;\n  }\n  @client {\n    const b = 2;\n  }\n}\n');
+  it('has no rule for @server or @client: the @code is TypeScript, all of it (SDD-60 §4.10)', async () => {
+    const tokens = await tokenize('@code {\n  @server {\n    const a = 1;\n  }\n}\n');
 
-    expect(has(find(tokens, 'server'), 'keyword.control.directive')).toBe(true);
-    expect(has(find(tokens, 'client'), 'keyword.control.directive')).toBe(true);
-    expect(has(find(tokens, 'const b'), 'source.ts')).toBe(true);
+    expect(has(find(tokens, 'server'), 'keyword.control.directive')).toBe(false);
+    expect(has(find(tokens, 'const a'), 'source.ts')).toBe(true);
   });
 
   it('closes @code on its own brace, not on the first brace of the code inside', async () => {

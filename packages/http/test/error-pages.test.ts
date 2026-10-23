@@ -8,8 +8,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { control, form } from '@fudic/forms';
-import { errorPages, type ErrorRoutes } from '../src/error-pages.js';
+import { form, str } from '@fudic/forms/contract';
+import { errorPagesStep, type ErrorRoutes } from '../src/error-pages.js';
 import {
   HttpError,
   ValidationError,
@@ -20,7 +20,6 @@ import {
   redirect,
   unauthorized,
 } from '../src/errors.js';
-import { halfOf } from '../src/middleware.js';
 import { run } from '../src/compose.js';
 import { generated } from './built-ins.js';
 import { clientCtx } from './helpers.js';
@@ -33,12 +32,12 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 /**
- * Today's factory, and (SDD-60 criterion 23) the `error-pages` of `fudapi/middlewares.fudapi`
- * with its half registered from `impl/browser`. A `.fudapi` routes a status to a text only.
+ * The client half itself, and (SDD-60 criterion 23) the `error-pages` of
+ * `fudapi/middlewares.fudapi` with its half registered from `impl/browser`.
  */
 const IMPLEMENTATIONS = [
-  ['today', (routes?: ErrorRoutes) => [halfOf(routes === undefined ? errorPages() : errorPages(routes), 'client')!] as never],
-  ['generated from the .fudapi', (routes?: ErrorRoutes) => generated.errorPages(routes as Readonly<Record<number, string>> | undefined)],
+  ['the step', (routes?: ErrorRoutes) => [errorPagesStep(routes)] as never],
+  ['generated from the .fudapi', (routes?: ErrorRoutes) => generated.errorPages(routes)],
 ] as const;
 
 /** Whether a promise is still pending after the microtasks drained. */
@@ -48,15 +47,11 @@ async function pending(p: Promise<unknown>): Promise<boolean> {
   return winner === marker;
 }
 
-describe.each(IMPLEMENTATIONS)('%s', (name, stepOf) => {
+describe.each(IMPLEMENTATIONS)('%s', (_name, stepOf) => {
   const failWith = (e: unknown, routes?: ErrorRoutes, args: unknown = undefined) =>
     run(stepOf(routes), { ...clientCtx(), args }, () => { throw e; });
 
   describe('errorPages', () => {
-    it('has no server half', () => {
-      expect(halfOf(errorPages(), 'server')).toBeUndefined();
-    });
-
     it('lets a value through untouched', async () => {
       await expect(run(stepOf(), clientCtx(), () => ({ a: 1 }))).resolves.toEqual({ a: 1 });
       expect(assign).not.toHaveBeenCalled();
@@ -142,15 +137,6 @@ describe.each(IMPLEMENTATIONS)('%s', (name, stepOf) => {
       expect(assign).toHaveBeenCalledWith('/login');
     });
 
-    it.skipIf(name !== 'today')('a function route gets the error and goes where it says', async () => {
-      const route = vi.fn((e: HttpError) => `/login?why=${e.status}`);
-      const e = forbidden('no');
-      const p = failWith(e, { 403: route });
-      expect(await pending(p)).toBe(true);
-      expect(route).toHaveBeenCalledWith(e);
-      expect(assign).toHaveBeenCalledWith('/login?why=403');
-    });
-
     it('a status with no route goes to _error.fud, routes or not', async () => {
       const p = failWith(notFound('no such user'), { 401: '/login' });
       expect(await pending(p)).toBe(true);
@@ -198,7 +184,7 @@ describe.each(IMPLEMENTATIONS)('%s', (name, stepOf) => {
     });
 
     it('with a real form: its default keeps 400/409/422, and a 401 goes to its route', async () => {
-      const f = form({ name: control('') });
+      const f = form({ name: str('') });
       const kept = badRequest();
       await expect(failWith(kept, { 400: '/never' }, f)).rejects.toBe(kept);
       await expect(failWith(conflict(), { 409: '/never' }, f)).rejects.toBeInstanceOf(HttpError);
@@ -210,7 +196,7 @@ describe.each(IMPLEMENTATIONS)('%s', (name, stepOf) => {
     });
 
     it('with a real form that narrowed what it keeps, the rest is the page’s', async () => {
-      const f = form({ name: control('') }, { catches: [422] });
+      const f = form({ name: str('') }, { catches: [422] });
       const p = failWith(conflict('taken'), {}, f);
       expect(await pending(p)).toBe(true);
       expect(assign).toHaveBeenCalledWith('/_fudic/error/409?detail=taken');

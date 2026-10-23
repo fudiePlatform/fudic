@@ -1,4 +1,0 @@
-import { chain, csrf, errorPages } from '@fudic/http';
-
-// Every server function of the app goes through this chain, load() included.
-export default chain().use(csrf, errorPages());

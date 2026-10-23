@@ -108,8 +108,6 @@ const CASES: readonly (readonly [FudDiagnostic, string])[] = [
   [c.FUD0665({ span: S, event: 'scroll' }), '`scroll` does not bubble, so it can never be delegated'],
   [c.FUD0667({ span: S, name: 'id' }), 'reads it as `$id`'],
   [c.FUD0667({ span: S, name: '' }), 'reads it as `$name`'],
-  [c.FUD0682({ span: S, provider: 'Api', zone: 'client' }), 'injected in @client but this @code only provides it in @server'],
-  [c.FUD0682({ span: S, provider: 'Api', zone: 'server' }), 'injected in @server but this @code only provides it in @client'],
   [c.FUD0700({ span: S, kind: 'server-region' }), 'a layout has no server'],
   [c.FUD0700({ span: S, kind: 'client-region' }), 'a layout has no browser code'],
   [c.FUD0700({ span: S, kind: 'statement' }), 'declares its props and nothing else'],
@@ -171,6 +169,13 @@ const CASES: readonly (readonly [FudDiagnostic, string])[] = [
   [c.FUD1080({ span: S, name: 'requird', what: 'rule', candidates: ['required', 'require'] }), 'did you mean `required`, `require`?'],
   [c.FUD1065({ span: S, word: 'x', parent: 'paths', expected: [] }), '`x` is not valid under `paths`: nothing goes below it'],
   [c.FUD1065({ span: S, word: 'x', parent: 'chain', expected: ['use', 'skip'] }), 'expected one of `use`, `skip`'],
+  [c.FUD1110({ span: S, region: 'server' }), '`@server` no longer exists: declare `load`'],
+  [c.FUD1110({ span: S, region: 'client' }), 'the whole `@code` is browser code'],
+  [c.FUD1111({ span: S, href: '', problem: 'missing' }), 'needs an `href` to the `.fudapi` it links'],
+  [c.FUD1111({ span: S, href: './r.ts', problem: 'extension' }), 'links a `.fudapi`, not "./r.ts"'],
+  [c.FUD1111({ span: S, href: './r.fudapi', problem: 'not-found' }), '"./r.fudapi" does not exist'],
+  [c.FUD1113({ span: S, name: 'save' }), 'is declared again in the `@code`'],
+  [c.FUD1113({ span: S, name: 'save', other: './b.fudapi' }), 'given by two linked `.fudapi`: this one and "./b.fudapi"'],
 ];
 
 describe('every variant says its own sentence', () => {

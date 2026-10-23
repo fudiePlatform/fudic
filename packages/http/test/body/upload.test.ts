@@ -1,19 +1,17 @@
 /**
  * SDD-56 §4.17–§4.19 and criteria 41–46 and 51–52: the body of an upload, end to end.
  *
- * The stub encodes, the wire is inspected, `dispatch` decodes, and `handle` says what it got.
- * What changes between the cases is how many bytes travel; what `handle` receives never does.
+ * The stub encodes, the wire is inspected, the dispatcher decodes, and the handler says what it
+ * got. What changes between the cases is how many bytes travel; what the handler receives never
+ * does. A function of a `.fudapi` since SDD-60: with a `form` its upload is the form's, without
+ * one its arguments travel as JSON with their keys.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { arr, bool, control, date, form, group, str, u16, u32, u8 } from '@fudic/forms';
+import { arr, bool, control, date, form, group, str, u16, u32, u8 } from '@fudic/forms/contract';
 import type { AnyForm } from '@fudic/forms';
-import { $fn } from '../../src/client/fn.js';
-import { FORM_STAGES, KEYED_STAGES } from '../../src/client/stages/index.js';
-import { put } from '../../src/builder.js';
-import { chain } from '../../src/chain.js';
-import { middleware } from '../../src/middleware.js';
-import { browser, raw, serve } from './harness.js';
+import { middleware, use, type Level } from '../../src/contract/index.js';
+import { browser, call, raw, serve } from './harness.js';
 
 beforeEach(browser);
 afterEach(() => vi.unstubAllGlobals());
@@ -56,20 +54,18 @@ const typedValue = {
   tax: { pct: 10, included: false },
 };
 
-const call = (stages = FORM_STAGES, chainLevels: Parameters<typeof $fn>[0]['chain'] = []) =>
-  $fn<AnyForm | unknown, unknown>({ name: 'save', method: 'PUT', url: '/_fudic/fn/c/x/save', chain: chainLevels, stages });
+const formOf = (schema: object): AnyForm => form(schema as never) as unknown as AnyForm;
 
-const filled = <S extends Record<string, never>>(schema: object, value: object): AnyForm => {
-  const f = form(schema as S);
+const filled = (schema: object, value: object): AnyForm => {
+  const f = formOf(schema);
   f.$set(value as never);
-  return f as unknown as AnyForm;
+  return f;
 };
 
 describe('criterion 41: positional', () => {
-  it('a form to a function with .form: application/fud, the array, and not one key', async () => {
-    const userForm = form(blogSchema);
-    const wire = serve(put().form(userForm).handle(() => undefined));
-    await call()(filled(blogSchema, post));
+  it('a form to a function with a form: application/fud, the array, and not one key', async () => {
+    const wire = serve(() => undefined, { form: formOf(blogSchema) });
+    await call({ form: formOf(blogSchema) })(filled(blogSchema, post) as never);
 
     expect(wire[0]!.headers.get('content-type')).toBe('application/fud');
     expect(wire[0]!.headers.get('content-encoding')).toBeNull();
@@ -85,53 +81,61 @@ describe('criterion 41: positional', () => {
     }
   });
 
-  it('the same form to a function without .form: application/json with its keys', async () => {
-    const wire = serve(put().handle(() => undefined));
-    await call(KEYED_STAGES)(filled(blogSchema, post));
+  it('arguments to a function without a form: application/json with their keys', async () => {
+    const wire = serve((ctx) => ctx.args, { args: { title: 'str', published: 'bool' } });
+    expect(await call({ args: { title: 'str', published: 'bool' } })({ title: post.title, published: true } as never)).toEqual({
+      title: post.title,
+      published: true,
+    });
     expect(wire[0]!.headers.get('content-type')).toBe('application/json');
-    expect(JSON.parse(wire[0]!.text)).toEqual(post);
+    expect(JSON.parse(wire[0]!.text)).toEqual({ title: post.title, published: true });
   });
 
-  it('plain arguments to a function with .form stay JSON with keys', async () => {
-    const userForm = form(blogSchema);
-    const wire = serve(put().form(userForm).handle((ctx) => ctx.form.title()));
-    expect(await call()(post)).toBe(post.title);
+  it('plain arguments to a function with a form stay JSON with keys', async () => {
+    const wire = serve((ctx) => ctx.form.title(), { form: formOf(blogSchema) });
+    expect(await call({ form: formOf(blogSchema) })(post as never)).toBe(post.title);
     expect(wire[0]!.headers.get('content-type')).toBe('application/json');
   });
 });
 
 describe('criterion 42: round trip, three ways', () => {
-  async function through(stages: typeof FORM_STAGES, schema: object, value: object) {
+  async function through(schema: object, value: object) {
     let got: unknown;
-    const target = form(schema as never) as unknown as AnyForm;
     const wire = serve(
-      put()
-        .form(target)
-        .handle((ctx) => {
-          got = ctx.form.$value();
-        }),
+      (ctx) => {
+        got = ctx.form.$value();
+      },
+      { form: formOf(schema) },
     );
     const sent = filled(schema, value);
-    await call(stages)(sent);
+    await call({ form: formOf(schema) })(sent as never);
     return { got, sent: sent.$value(), type: wire[0]!.headers.get('content-type') };
   }
 
-  it('with keys (no .form on the client side of the pipeline)', async () => {
-    const r = await through(KEYED_STAGES, typedSchema, typedValue);
-    expect(r.type).toBe('application/json');
-    // The date left as a string and came back a Date, revived against the schema of `.form`.
-    expect(r.got).toEqual(r.sent);
-    expect((r.got as { at: Date }).at).toBeInstanceOf(Date);
+  it('with keys (something that is not the stub sends the value as JSON)', async () => {
+    let got: unknown;
+    const res = await raw(
+      (ctx) => {
+        got = ctx.form.$value();
+      },
+      { form: formOf(typedSchema) },
+      JSON.stringify(typedValue),
+      { 'content-type': 'application/json' },
+    );
+    expect(res.status).toBe(204);
+    // The date left as a string and came back a Date, revived against the schema of the form.
+    expect(got).toEqual(typedValue);
+    expect((got as { at: Date }).at).toBeInstanceOf(Date);
   });
 
   it('positional', async () => {
-    const r = await through(FORM_STAGES, blogSchema, post);
+    const r = await through(blogSchema, post);
     expect(r.type).toBe('application/fud');
     expect(r.got).toEqual(r.sent);
   });
 
   it('binary', async () => {
-    const r = await through(FORM_STAGES, typedSchema, typedValue);
+    const r = await through(typedSchema, typedValue);
     expect(r.type).toBe('application/fud+bin');
     expect(r.got).toEqual(r.sent);
     expect((r.got as { at: Date }).at).toBeInstanceOf(Date);
@@ -139,9 +143,9 @@ describe('criterion 42: round trip, three ways', () => {
 });
 
 describe('criterion 43: arity and undefined', () => {
-  it('a positional array one position short is 400, and handle never runs', async () => {
+  it('a positional array one position short is 400, and the handler never runs', async () => {
     const handle = vi.fn();
-    const res = await raw(put().form(form(blogSchema)).handle(handle), JSON.stringify(['t', 'b', true, ['d', 'c']]), {
+    const res = await raw(handle, { form: formOf(blogSchema) }, JSON.stringify(['t', 'b', true, ['d', 'c']]), {
       'content-type': 'application/fud',
     });
     expect(res.status).toBe(400);
@@ -149,7 +153,7 @@ describe('criterion 43: arity and undefined', () => {
   });
 
   it('a group that is not an array is 400 too', async () => {
-    const res = await raw(put().form(form(blogSchema)).handle(() => 1), JSON.stringify(['t', 'b', true, 'nope', []]), {
+    const res = await raw(() => 1, { form: formOf(blogSchema) }, JSON.stringify(['t', 'b', true, 'nope', []]), {
       'content-type': 'application/fud',
     });
     expect(res.status).toBe(400);
@@ -161,8 +165,13 @@ describe('criterion 43: arity and undefined', () => {
     const f = form(schema);
     f.$set({ meta: mine, plain: undefined } as never);
     let got: unknown;
-    const wire = serve(put().form(form(schema)).handle((ctx) => { got = ctx.form.$value(); }));
-    await call()(f);
+    const wire = serve(
+      (ctx) => {
+        got = ctx.form.$value();
+      },
+      { form: formOf(schema) },
+    );
+    await call({ form: formOf(schema) })(f as never);
     expect(JSON.parse(wire[0]!.text)).toEqual([{ deep: { gone: null, list: [null, 1] } }, null]);
     expect(got).toEqual({ meta: { deep: { gone: null, list: [null, 1] } }, plain: null });
     expect(mine.deep.gone).toBeUndefined();
@@ -175,9 +184,10 @@ describe('criterion 43: arity and undefined', () => {
     vi.stubGlobal('fetch', fetch);
     const loop: Record<string, unknown> = {};
     loop['me'] = loop;
-    const f = form({ x: control<unknown>(null) });
+    const schema = { x: control<unknown>(null) };
+    const f = form(schema);
     f.$set({ x: loop } as never);
-    await expect(call()(f)).rejects.toThrow(TypeError);
+    await expect(call({ form: formOf(schema) })(f as never)).rejects.toThrow(TypeError);
     expect(fetch).not.toHaveBeenCalled();
   });
 });
@@ -185,9 +195,14 @@ describe('criterion 43: arity and undefined', () => {
 describe('criterion 46: the binary degrades to application/fud, and the call ends the same', () => {
   async function degrade(schema: object, value: object) {
     let got: unknown;
-    const wire = serve(put().form(form(schema as never) as unknown as AnyForm).handle((ctx) => { got = ctx.form.$value(); }));
+    const wire = serve(
+      (ctx) => {
+        got = ctx.form.$value();
+      },
+      { form: formOf(schema) },
+    );
     const sent = filled(schema, value);
-    await call()(sent);
+    await call({ form: formOf(schema) })(sent as never);
     return { type: wire[0]!.headers.get('content-type'), got, sent: sent.$value() };
   }
 
@@ -218,47 +233,47 @@ describe('criterion 46: the binary degrades to application/fud, and the call end
 });
 
 describe('criterion 51 and §4.19: what the server refuses', () => {
-  const withForm = () => put().form(form(blogSchema)).handle(() => 1);
+  const withForm = { form: formOf(blogSchema) };
 
   it('content-encoding: br is 415', async () => {
-    const res = await raw(withForm(), '[]', { 'content-type': 'application/json', 'content-encoding': 'br' });
+    const res = await raw(() => 1, withForm, '[]', { 'content-type': 'application/json', 'content-encoding': 'br' });
     expect(res.status).toBe(415);
     expect((await res.json()).detail).toContain('br');
   });
 
-  it('application/fud to a function without .form is 400', async () => {
-    const res = await raw(put().handle(() => 1), '["a"]', { 'content-type': 'application/fud' });
+  it('application/fud to a function without a form is 400', async () => {
+    const res = await raw(() => 1, {}, '["a"]', { 'content-type': 'application/fud' });
     expect(res.status).toBe(400);
   });
 
-  it('application/fud+bin to a function without .form is 400', async () => {
-    const res = await raw(put().handle(() => 1), new Uint8Array([0]), { 'content-type': 'application/fud+bin' });
+  it('application/fud+bin to a function without a form is 400', async () => {
+    const res = await raw(() => 1, {}, new Uint8Array([0]), { 'content-type': 'application/fud+bin' });
     expect(res.status).toBe(400);
   });
 
   it('a content-type that is none of the three is 415; none at all, too', async () => {
-    expect((await raw(withForm(), 'x', { 'content-type': 'text/plain' })).status).toBe(415);
-    const bare = await raw(withForm(), new Uint8Array([1]), {});
+    expect((await raw(() => 1, withForm, 'x', { 'content-type': 'text/plain' })).status).toBe(415);
+    const bare = await raw(() => 1, withForm, new Uint8Array([1]), {});
     expect(bare.status).toBe(415);
   });
 
   it('a content-type with parameters is read by its type', async () => {
-    const res = await raw(put().handle((ctx) => ctx.args), '{"a":1}', { 'content-type': 'application/json; charset=utf-8' });
+    const res = await raw((ctx) => ctx.args, {}, '{"a":1}', { 'content-type': 'application/json; charset=utf-8' });
     expect(await res.json()).toEqual({ a: 1 });
   });
 
   it('broken JSON as application/fud is 400', async () => {
-    expect((await raw(withForm(), '[nope', { 'content-type': 'application/fud' })).status).toBe(400);
+    expect((await raw(() => 1, withForm, '[nope', { 'content-type': 'application/fud' })).status).toBe(400);
   });
 
   it('a binary body that is not its schema is 400', async () => {
-    const typed = put().form(form({ a: u32() })).handle(() => 1);
-    expect((await raw(typed, new Uint8Array([0, 1]), { 'content-type': 'application/fud+bin' })).status).toBe(400);
-    expect((await raw(typed, new Uint8Array([0, 1, 2, 3, 4, 5]), { 'content-type': 'application/fud+bin' })).status).toBe(400);
+    const typed = { form: formOf({ a: u32() }) };
+    expect((await raw(() => 1, typed, new Uint8Array([0, 1]), { 'content-type': 'application/fud+bin' })).status).toBe(400);
+    expect((await raw(() => 1, typed, new Uint8Array([0, 1, 2, 3, 4, 5]), { 'content-type': 'application/fud+bin' })).status).toBe(400);
   });
 
   it('a body that does not decompress is 400', async () => {
-    const res = await raw(withForm(), new Uint8Array([1, 2, 3, 4]), {
+    const res = await raw(() => 1, withForm, new Uint8Array([1, 2, 3, 4]), {
       'content-type': 'application/json',
       'content-encoding': 'gzip',
     });
@@ -266,27 +281,34 @@ describe('criterion 51 and §4.19: what the server refuses', () => {
   });
 
   it('an empty body is undefined args, whatever its content-type', async () => {
-    const res = await raw(put().handle((ctx) => ctx.args === undefined), '', { 'content-type': 'text/plain' });
+    const res = await raw((ctx) => ctx.args === undefined, {}, '', { 'content-type': 'text/plain' });
     expect(await res.json()).toBe(true);
   });
 });
 
 describe('criterion 52: the middlewares never see the body', () => {
+  /** A level that uses a middleware with one half, `half`. */
+  const peeking = (side: 'client' | 'server', half: (ctx: { args: unknown }, next: (c: never) => Promise<unknown>) => unknown): Level => {
+    const piece = middleware({ id: 'middlewares/peek', name: 'peek', [side]: true });
+    piece[side](half as never);
+    return { steps: [{ use: [use(piece)] }] };
+  };
+
   it('a client middleware reads ctx.args as the form, positional, binary or compressed', async () => {
     const seen: unknown[] = [];
-    const peek = middleware().client((ctx, next) => {
+    const peek = peeking('client', (ctx, next) => {
       seen.push(ctx.args);
-      return next(ctx);
+      return next(ctx as never);
     });
     const big = { ...post, body: post.body.repeat(40) };
-    for (const [schema, value, levels] of [
-      [blogSchema, post, [chain().use(peek)]],
-      [typedSchema, typedValue, [chain().use(peek)]],
-      [blogSchema, big, [chain().use(peek).compress({ format: 'gzip' })]],
+    for (const [schema, value, chain] of [
+      [blogSchema, post, [peek]],
+      [typedSchema, typedValue, [peek]],
+      [blogSchema, big, [{ ...peek, compress: { format: 'gzip' } }]],
     ] as const) {
-      serve(put().form(form(schema as never) as unknown as AnyForm).handle(() => undefined));
+      serve(() => undefined, { form: formOf(schema) });
       const f = filled(schema, value);
-      await call(FORM_STAGES, [...levels])(f);
+      await call({ form: formOf(schema), chain: [...chain] as Level[] })(f as never);
       expect(seen.at(-1)).toBe(f);
     }
     expect(seen.every((a) => !(a instanceof Uint8Array) && typeof a !== 'string')).toBe(true);
@@ -294,12 +316,12 @@ describe('criterion 52: the middlewares never see the body', () => {
 
   it('a server middleware reads ctx.args as the decoded value, never bytes', async () => {
     let seen: unknown;
-    const peek = middleware().server((ctx, next) => {
+    const peek = peeking('server', (ctx, next) => {
       seen = ctx.args;
-      return next(ctx);
+      return next(ctx as never);
     });
-    serve(put().use(peek).form(form(typedSchema)).handle(() => undefined));
-    await call()(filled(typedSchema, typedValue));
+    serve(() => undefined, { form: formOf(typedSchema), chain: [peek] });
+    await call({ form: formOf(typedSchema) })(filled(typedSchema, typedValue) as never);
     expect(Array.isArray(seen)).toBe(true);
   });
 });

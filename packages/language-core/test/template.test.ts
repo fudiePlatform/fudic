@@ -455,11 +455,10 @@ describe('sections and data', () => {
     );
   });
 
-  it('derives data from the server virtual, degrading to unknown with no load()', () => {
+  it('degrades data to unknown when no linked .fudapi declares load', () => {
     const { text } = emitClient(route('<p>@data.title</p>'), 'blog/[slug].fud');
 
-    expect(text).toContain("typeof import('./[slug].fud.server') extends");
-    expect(text).toContain('declare const data: $Data;');
+    expect(text).toContain('declare const data: unknown;');
     expect(text).toContain('$text(data.title);');
   });
 
@@ -469,7 +468,7 @@ describe('sections and data', () => {
 });
 
 describe('client virtual assembly', () => {
-  it('projects props, keeps the neutral zone verbatim and scopes the template', () => {
+  it('projects props, keeps the @code verbatim and scopes the template', () => {
     const source = component(
       '    <span class:on="@(tone === 1)"><slot></slot></span>',
       "@code {\n  type Tone = 1 | 2;\n  const { tone = 1 } = props<{ tone?: Tone }>();\n  @client {\n    let hovered = false;\n  }\n  @server {\n    const secret = 1;\n  }\n}\n\n",
@@ -481,7 +480,8 @@ describe('client virtual assembly', () => {
     expect(text).toContain('const $p0 = props<{ tone?: Tone }>();');
     expect(text).toContain('const { tone = 1 } = $p0;');
     expect(text).toContain('let hovered = false;');
-    expect(text).not.toContain('secret');
+    // A region of an old file is read as if it had no wrapper (SDD-60 §4.8).
+    expect(text).toContain('const secret = 1;');
     expect(text).toContain('function $tpl(): void {');
     expect(text.trimEnd().endsWith('$tpl;')).toBe(true);
   });

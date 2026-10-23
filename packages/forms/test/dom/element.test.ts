@@ -16,7 +16,7 @@
  */
 
 import { beforeEach, describe, expect, it } from 'vitest';
-import { control, form } from '../../src/index.js';
+import { control, form } from '../../src/contract/index.js';
 import { FudicControlElement } from '../../src/element.js';
 import type { Controller } from '@fudic/core';
 

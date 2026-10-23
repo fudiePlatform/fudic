@@ -73,7 +73,7 @@ export function discoverRoutes(
   apiOf?: (absPath: string) => PageApiOf,
 ): DiscoverResult {
   const analyze = (absPath: string): PageAnalysis =>
-    analyzePage(readFileSync(absPath, 'utf8'), absPath, apiOf?.(absPath));
+    analyzePage(readFileSync(absPath, 'utf8'), apiOf?.(absPath));
   const routesRoot = join(root, options.routesDir);
   const files = listFud(routesRoot);
   const { routes, diagnostics } = routesFromFiles(files.filter((f) => f !== ERROR_FILE));
@@ -111,7 +111,6 @@ export function discoverRoutes(
     if (!analysis.isPage) {
       continue; // a component or a layout living under routesDir is not a route
     }
-    diags.push(...analysis.strategy.diagnostics);
     const fallback = options.defaults[route.pattern]?.mode;
     const facts: PageFacts = {
       hasLoad: analysis.hasLoad,

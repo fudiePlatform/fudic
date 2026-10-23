@@ -49,7 +49,7 @@ function isPlainFud(id: string): boolean {
 
 /**
  * The plugins a project's `vitest.config.ts` needs: its `fudic()` — which reads `fudic.json`
- * and `src/http.ts` as `vite dev` does — and the one that puts vitest in the `fudic`
+ * and the `.fudapi` of the app as `vite dev` does — and the one that puts vitest in the `fudic`
  * environment at `http://localhost/`, and the one that hands a `.fudapi` its contract (SDD-60 §4.4).
  */
 export function fudicTest(options: FudicOptions = {}): Plugin[] {

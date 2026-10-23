@@ -1,36 +1,13 @@
 /**
- * `dispatch`: from a `Request` to a `Response`, for one server function (SDD-56 §4.6).
- *
- * The container of the request, the `ctx`, the server halves of the chain, the validation of
- * `.form` on a fresh copy, `handle`, and the response of §4.2. Every error becomes the
- * response of §4.6 step 6, so nothing a function throws escapes as a crash of the server.
+ * What serving one server function is made of (SDD-56 §4.6), for the dispatcher of
+ * `contract/server.ts`: its options, the arguments of a GET, the validation of a form on a
+ * fresh copy, and the response of §4.2.
  */
 
-import { createRoot, type Container } from '@fudic/di';
+import type { Container } from '@fudic/di';
 import type { AnyForm } from '@fudic/forms';
-import type { ServerFn } from '../builder.js';
-import { levelOfChain, type ChainBuilder } from '../chain.js';
-import { compose, run } from '../compose.js';
-import { badRequest, HttpError, ValidationError } from '../errors.js';
-import type { Level } from '../step.js';
+import { badRequest, ValidationError } from '../errors.js';
 import type { ServerContext } from '../types.js';
-import { bodyArgs } from './body.js';
-import { serverContext } from './context.js';
-import { problemOf, problemResponse } from './problem.js';
-import { withRequest } from './request.js';
-
-/** One server function and what it inherits. */
-export interface FnTarget {
-  /** Its exported name: what `ctx.name` says. */
-  readonly name: string;
-  readonly fn: ServerFn<unknown, unknown>;
-  /** The default export of `src/http.ts`; absent when the project has none. */
-  readonly global?: ChainBuilder;
-  /** The file's `export const http`; absent when it writes none. */
-  readonly file?: ChainBuilder;
-  /** A route function's params, read from its URL. A component's function has none. */
-  readonly params: Readonly<Record<string, string>>;
-}
 
 export interface DispatchOptions {
   /** Dev: a 500 carries its message in `detail`. Never in a build. */
@@ -42,40 +19,6 @@ export interface DispatchOptions {
    * `@fudic/testing` hands one with the test's services in it (SDD-57).
    */
   readonly container?: () => Container;
-}
-
-/** The levels a target inherits, from the outside in. */
-export function outerLevels(target: Pick<FnTarget, 'global' | 'file'>): Level[] {
-  const levels: Level[] = [];
-  if (target.global !== undefined) levels.push(levelOfChain(target.global));
-  if (target.file !== undefined) levels.push(levelOfChain(target.file));
-  return levels;
-}
-
-export async function dispatch(
-  request: Request,
-  target: FnTarget,
-  options: DispatchOptions = {},
-): Promise<Response> {
-  try {
-    const url = new URL(request.url);
-    const ctx = serverContext({
-      method: target.fn.method,
-      name: target.name,
-      url,
-      params: target.params,
-      args: request.method === 'GET' ? queryArgs(url) : await bodyArgs(request, target.fn.form),
-      request,
-    });
-    const { steps } = compose([...outerLevels(target), target.fn.level], 'server');
-    const value = await withRequest((options.container ?? createRoot)(), () =>
-      run(steps, ctx, async (inner) => target.fn.handle(await withForm(target.fn.form, inner))),
-    );
-    return valueResponse(value, ctx);
-  } catch (e) {
-    if (!(e instanceof HttpError)) options.onError?.(e);
-    return problemResponse(problemOf(e, options.dev === true));
-  }
 }
 
 /** The arguments of a GET: the JSON of `?a=`, or none. The rest carry a body (`body.ts`). */

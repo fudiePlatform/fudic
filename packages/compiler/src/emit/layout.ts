@@ -38,7 +38,7 @@ import { restGroups } from './rest.js';
 import { layoutCodeOf, requiredLayoutProps, unresolvedLayoutProps } from './layout-code.js';
 import { NO_SIGNALS, writeElementAttrs } from './attrs.js';
 import { holeSlot } from './compose.js';
-import { apiImports } from './client-fns.js';
+import { apiImports } from './api-links.js';
 import { planPageSheets, type PageSheets } from './page-sheets.js';
 import type { Diagnostic } from '../types/index.js';
 import {
@@ -279,10 +279,9 @@ function buildRouteModule(
   const route = graph.entry as RouteDocument;
   const source = graph.entrySource;
   const comps = [...graph.components.values()];
-  // The route's own `@code`, which until SDD-39 reached nowhere: its `@server` region is
-  // still the `?server` module and nothing else, but the neutral zone runs on BOTH sides and
-  // the names `@client` declares have to EXIST here, or a `@count()` in the markup is a
-  // `ReferenceError` that takes the whole prerender with it (§1.1).
+  // The route's own `@code`, which until SDD-39 reached nowhere: what the markup reads of it
+  // runs on BOTH sides, and the names it declares have to EXIST here, or a `@count()` in the
+  // markup is a `ReferenceError` that takes the whole prerender with it (§1.1).
   const code = codeOfDocument(source, route);
   // Every sheet of the page, pruned (SDD-49 §4.6): the route's graph is the one that reaches
   // the whole page, so the route decides — for its own head, for its layout's and for the

@@ -11,7 +11,7 @@
  * into a `CompletionItem` is the plugin's job.
  */
 
-import { documentRoots, walk, type CodeBlockNode, type ElementNode } from '@fudic/compiler';
+import { documentRoots, walk, type ElementNode } from '@fudic/compiler';
 import type { CachedDocument } from '../document-cache.js';
 import { isUndecided, roleOf, type FudRole } from '../mode.js';
 import { isEmptyDocument } from './position.js';
@@ -45,23 +45,6 @@ export function scopeAt(document: CachedDocument, offset: number): SnippetScope 
     return 'code-block';
   }
   return isMarkupOffset(document, offset) ? 'markup' : undefined;
-}
-
-/** The three zones of a `@code` block. */
-export type CodeZone = 'neutral' | 'server' | 'client';
-
-/**
- * The zone of `@code` an offset is in: the region whose span holds it, or the neutral zone.
- *
- * Asked only once the scope is `code-block`, so the block is there.
- */
-function zoneAt(code: CodeBlockNode, offset: number): CodeZone {
-  for (const part of code.parts) {
-    if (offset <= part.span.start || offset >= part.span.end) continue;
-    if (part.type === 'server-region') return 'server';
-    if (part.type === 'client-region') return 'client';
-  }
-  return 'neutral';
 }
 
 /**
@@ -145,25 +128,8 @@ export interface FudSnippet {
   readonly roles?: readonly FudRole[];
   /** Only while the document has no `@code` yet — SDD-10 allows exactly one. */
   readonly requiresNoCodeBlock?: true;
-  /**
-   * Only while the `@code` has no region of this audience yet.
-   *
-   * One `@server` and one `@client` per file, so a `@` inside `@code` offers what is still
-   * missing and nothing else. Offering a second `@server` to a file that already has one is
-   * offering `FUD0194` — and it is what made the list read as if the block took any number.
-   */
-  readonly requiresNoZone?: 'server' | 'client';
   /** Where it is legal. Absent means anywhere the scope allows. */
   readonly placement?: SnippetPlacement;
-  /**
-   * Which zone of `@code` it belongs to, for a `code-block` snippet.
-   *
-   * The block is three languages' worth of audience, and a snippet belongs to one: a region is
-   * opened from the neutral zone — regions do not nest (`FUD0193`) — and `load`, `paths` and
-   * `layout` are exports of `@server` and nothing else. Offering `@client` inside `@server`
-   * offered an error, and offering `load` outside it offered code the wrapper never imports.
-   */
-  readonly zone?: CodeZone;
   /** Only in a file that may still become a route (`isUndecided`). */
   readonly requiresUndecided?: true;
   /** Only in a file that has a snippet to render: it declares one or links a file of them. */
@@ -212,21 +178,11 @@ const COMPONENT_SKELETON = `<head>
 
 const ROUTE_SKELETON = `<link rel="layout" href="\${1:../layouts/_layout.fud}">
 
-@code {
-  type PageData = { title: string };
-
-  @server {
-    export async function load(): Promise<PageData> {
-      return { title: 'Untitled' };
-    }
-  }
-}
-
 <head>
-  <title>\${2:@data.title}</title>
+  <title>\${2:Untitled}</title>
 </head>
 
-<h1>\${2:@data.title}</h1>
+<h1>\${2:Untitled}</h1>
 `;
 
 const PAGE_SKELETON = `<!DOCTYPE html>
@@ -236,16 +192,6 @@ const PAGE_SKELETON = `<!DOCTYPE html>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script type="module" src="fudic:runtime"></script>
     <title>\${2:Home}</title>
-
-    @code {
-      type PageData = { title: string };
-
-      @server {
-        export async function load(): Promise<PageData> {
-          return { title: 'Untitled' };
-        }
-      }
-    }
 
   </head>
   <body>
@@ -273,10 +219,10 @@ const LAYOUT_SKELETON = `<!DOCTYPE html>
 
 // ── The `@code` block, by role ────────────────────────────────────────────────
 //
-// Three bodies for one label, over disjoint roles. A component wants its props and its
-// `@client`; a route and a page want the `load` that feeds them; a LAYOUT wants its props and
-// nothing else — declaring them is all its `@code` may do (`FUD0700`), and the route is who
-// resolves them.
+// Three bodies for one label, over disjoint roles. A component wants its props; a route and a
+// page, an empty block — what feeds them is the `load` of their `.fudapi` (SDD-60 §3.4); a
+// LAYOUT wants its props and nothing else — declaring them is all its `@code` may do
+// (`FUD0700`), and the route is who resolves them.
 
 const COMPONENT_CODE = `@code {
   type \${1:Props} = {
@@ -284,27 +230,11 @@ const COMPONENT_CODE = `@code {
   };
 
   const {} = props<\${1:Props}>();
-
-  @client {$0}
-}`;
-
-const SERVER_CODE = `@code {
-  type \${1:PageData} = { title: string };
-
-  @server {
-    export async function load(): Promise<\${1:PageData}> {
-      return { title: '\${2:Untitled}' };
-    }
-  }
-}`;
-
-const LOAD = `export async function load(): Promise<\${1:PageData}> {
   $0
 }`;
 
-/** Every value of the route's params the build prerenders — one path per page. */
-const PATHS = `export async function paths(): Promise<string[]> {
-  return [$0];
+const CODE = `@code {
+  $0
 }`;
 
 const PROPS = `type \${1:Props} = {
@@ -319,18 +249,6 @@ const LAYOUT_CODE = `@code {
   };
 
   const {} = props<\${1:Props}>();
-}`;
-
-/**
- * The route's resolver of its layout's props (SDD-40 §3.2), ending INSIDE its `return { }`.
- *
- * The props are not written here, and they need not be: the projection gives the function the
- * layout's `$Props` as its return type, so the list that opens at the caret is the layout's own
- * props — the required and the optional, with their types — read from the file that declares
- * them. `ctx` and `data` go untyped for the same reason: the projection types them.
- */
-const LAYOUT_RESOLVER = `export function layout(ctx, data) {
-  return { $0 };
 }`;
 
 /** A `<link>` of this `rel`, with the caret inside its `href`. */
@@ -416,7 +334,7 @@ export const SNIPPETS: readonly FudSnippet[] = [
   // in a layout (59).
   {
     label: '@code',
-    detail: 'props and the client zone',
+    detail: 'props and the browser code',
     scope: 'markup',
     body: COMPONENT_CODE,
     roles: ['component'],
@@ -425,18 +343,18 @@ export const SNIPPETS: readonly FudSnippet[] = [
   },
   {
     label: '@code',
-    detail: 'the server load of this route',
+    detail: 'the browser code of this route',
     scope: 'markup',
-    body: SERVER_CODE,
+    body: CODE,
     roles: ['route'],
     requiresNoCodeBlock: true,
     placement: 'top-level',
   },
   {
     label: '@code',
-    detail: 'the server load of this page',
+    detail: 'the browser code of this page',
     scope: 'markup',
-    body: SERVER_CODE,
+    body: CODE,
     roles: ['page'],
     requiresNoCodeBlock: true,
     placement: 'in-head',
@@ -518,75 +436,21 @@ export const SNIPPETS: readonly FudSnippet[] = [
     placement: 'top-level',
   },
 
-  // The zones inside `@code`. Here the language is TypeScript, so nothing of markup applies.
-  //
-  // Both take the same roles and the same `requiresNoZone`: a `@` inside `@code` opens a
-  // region, there is exactly one of each per file (decision 33.b, `FUD0194`), and the one
-  // already written is not a candidate. `@client` used to be the component's alone, which was
-  // the same rule read backwards — a route that declares a handler needs it as much.
-  { label: 'props', detail: 'the props contract of this component', scope: 'code-block', roles: ['component'], body: PROPS, zone: 'neutral' },
-  { label: 'props', detail: 'the props this layout asks its routes for', scope: 'code-block', roles: ['layout'], body: PROPS, zone: 'neutral' },
-  {
-    label: '@client',
-    detail: 'code that runs in the browser',
-    scope: 'code-block',
-    roles: MARKUP_ROLES,
-    body: '@client {\n  $0\n}',
-    requiresNoZone: 'client',
-    zone: 'neutral',
-  },
-  {
-    label: '@server',
-    detail: 'code that never reaches the browser',
-    scope: 'code-block',
-    roles: MARKUP_ROLES,
-    body: '@server {\n  $0\n}',
-    requiresNoZone: 'server',
-    zone: 'neutral',
-  },
-
-  // The three reserved exports of `@server`, and only there: the wrapper imports them from
-  // that region and from nowhere else.
-  { label: 'load', detail: 'the data hook of this page (decision 60)', scope: 'code-block', roles: ['route', 'page'], body: LOAD, zone: 'server' },
-  {
-    label: 'paths',
-    detail: 'the params this route is prerendered with',
-    scope: 'code-block',
-    roles: ['route', 'page'],
-    body: PATHS,
-    zone: 'server',
-  },
-  {
-    label: 'layout',
-    detail: 'the props this route hands its layout',
-    scope: 'code-block',
-    roles: ['route'],
-    body: LAYOUT_RESOLVER,
-    suggest: true,
-    zone: 'server',
-  },
+  // Inside `@code` the language is TypeScript, so nothing of markup applies. The `@code` is
+  // browser code, all of it (SDD-60 §4.8): what the server runs — `load`, `paths`, `layout` —
+  // is declared in a `.fudapi`.
+  { label: 'props', detail: 'the props contract of this component', scope: 'code-block', roles: ['component'], body: PROPS },
+  { label: 'props', detail: 'the props this layout asks its routes for', scope: 'code-block', roles: ['layout'], body: PROPS },
 ];
-
-/**
- * Whether a `@code` already holds a region of that audience.
- *
- * The BLOCK is the parameter and not the document, because it is always there: `requiresNoZone`
- * lives on `code-block` snippets alone, and the scope is `code-block` exactly when the offset
- * is inside one. Reaching for it through the document again would add a branch that no file
- * can take.
- */
-function hasZone(code: CodeBlockNode, zone: 'server' | 'client'): boolean {
-  const type = zone === 'server' ? 'server-region' : 'client-region';
-  return code.parts.some((part) => part.type === type);
-}
 
 /**
  * The snippets that apply at this offset.
  *
  * Six filters and nothing else: the scope, the role of the document, whether a `@code` block
- * is already there, whether the region it would open is already written, where the construct
- * is allowed to sit, and whether the file may still become a route. In an empty file the role is `component` — that is what an empty
- * `.fud` structures as — but the skeletons declare no roles, so all four are offered.
+ * is already there, where the construct is allowed to sit, whether the file may still become a
+ * route, and whether it has a snippet to render. In an empty file the role is `component` —
+ * that is what an empty `.fud` structures as — but the skeletons declare no roles, so all four
+ * are offered.
  */
 export function snippetsAt(
   document: CachedDocument,
@@ -598,18 +462,13 @@ export function snippetsAt(
 
   const role = roleOf(document.document);
   const code = document.document.code;
-  // Read once, not per snippet: the two zones are a property of the file, and asking the same
-  // question again for `@client` and for `@server` is walking the block twice.
-  const written = code === undefined ? [] : (['server', 'client'] as const).filter((z) => hasZone(code, z));
 
   return SNIPPETS.filter(
     (snippet) =>
       snippet.scope === scope &&
       (snippet.roles === undefined || snippet.roles.includes(role)) &&
       (snippet.requiresNoCodeBlock === undefined || code === undefined) &&
-      (snippet.requiresNoZone === undefined || !written.includes(snippet.requiresNoZone)) &&
       (snippet.placement === undefined || placedAt(document, offset, snippet.placement)) &&
-      (snippet.zone === undefined || (code !== undefined && zoneAt(code, offset) === snippet.zone)) &&
       (snippet.requiresUndecided === undefined || isUndecided(document.document)) &&
       (snippet.requiresSnippets === undefined ||
         document.document.snippets.length + document.document.snippetLinks.length > 0),

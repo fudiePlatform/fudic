@@ -49,7 +49,7 @@ import { cellSlots, childTargets, reactiveScope } from './state.js';
 import { bridgeIds, formAssociatedTags, hydratableTags, shadowOptions } from './level.js';
 import { needsRuntime, routeBlocksOf, writeMapConstants, writeHydrationBlocks } from './maps.js';
 import { planControls } from './controls.js';
-import { apiImports } from './client-fns.js';
+import { apiImports } from './api-links.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import {
   type ComponentSpecifier,
@@ -163,28 +163,12 @@ export interface EmitOptions {
    */
   readonly routeName?: string;
   /**
-   * Where this file's server functions answer, and what their stubs inherit (SDD-56 §4.1,
-   * §4.5). Injected for the reason `routeName` is: the URL of a function is the route's pattern
-   * or the component's tag, and `src/http.ts` is a file of the project, neither of which this
-   * file knows. Absent, no stub is written.
-   */
-  readonly serverFns?: ServerFnOptions;
-  /**
    * The locale this module is compiled for (SDD-58 §3.3). The text of the graph arrives already
    * translated — the host reads it through `localizedIo` — so what is left for the emit is what
    * no file says: the `lang` of a page without a layout. Absent, the output is byte for byte
    * what it was before translations existed.
    */
   readonly i18n?: LocaleCompile;
-}
-
-export interface ServerFnOptions {
-  /** The URL every function of this file hangs from: `/_fudic/fn/r/blog/:slug`. */
-  readonly prefix: string;
-  /** A route's own pattern, whose params its functions inherit: `/blog/:slug`. */
-  readonly page?: string;
-  /** Import specifier of `src/http.ts`, the global level, when the project has one. */
-  readonly httpFile?: string;
 }
 
 export type { ComponentSpecifier, LayoutSpecifier, ProjectStyle };

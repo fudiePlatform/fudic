@@ -1,10 +1,7 @@
 /**
- * The client virtual file: imports, neutral zone, `@client` region and the projected
- * template, in that order (SDD-23 §4.1).
- *
- * This is the file the user is looking at when they edit markup, so it is the canonical
- * one: diagnostics from the neutral zone — which is duplicated into the server virtual —
- * are deduplicated against this one (§4.1).
+ * The client virtual file: imports, the `@code` and the projected template, in that order
+ * (SDD-23 §4.1). Since SDD-60 it is the only TypeScript virtual of a `.fud`: the `@code` is
+ * browser code, and what the server runs is declared in a `.fudapi`.
  *
  * The template is projected inside `function $tpl(): void { … }` rather than at top level,
  * because a function body is a scope: `const` declared in a `@foreach` header does not leak
@@ -20,12 +17,12 @@ import type {
   TextNode,
 } from '@fudic/compiler';
 import { collectTemplateJs, planDelegation, span, unwrapParens } from '@fudic/compiler';
-import { partitionCode } from './code.js';
+import { codeChunks } from './code.js';
 import { emitDataDeclaration } from './data.js';
 import { emitImports, emitSnippetImports, templateContent } from './imports.js';
 import { emitRenderCall, emitSnippets } from './template/snippets.js';
 import { clientFileName } from './paths.js';
-import { emitClientFns, emitServerImports, type ClientFn } from './server-fns.js';
+import { emitServerImports } from './server-fns.js';
 import { emitPropsProjection, type PropsCall } from './props.js';
 import { emitElementBindings, emitHostBindings, emitShadowBindings } from './template/attrs.js';
 import type { FragmentAst, TemplateContext } from './template/context.js';
@@ -63,8 +60,6 @@ export function emitClientVirtual(
   registry: FileRegistry,
   props: PropsCall | undefined,
   template: TemplateJs = {},
-  /** The server functions of the `@server`, which the browser side calls by name (SDD-56). */
-  fns: readonly ClientFn[] = [],
 ): VirtualFile {
   const w = new VirtualWriter(source);
   const content = templateContent(doc);
@@ -73,17 +68,11 @@ export function emitClientVirtual(
   const snippets = emitSnippetImports(w, doc, registry);
   const servers = registry.servers?.() ?? [];
   emitDataDeclaration(w, doc, fudPath, servers);
-  emitClientFns(w, fudPath, fns);
   emitServerImports(w, servers);
 
-  emitNeutralZone(w, source, doc, props);
+  emitCode(w, doc, props);
   emitSectionsContract(w, doc);
   emitSlotsContract(w, doc);
-
-  for (const region of partitionCode(doc.code).client) {
-    w.copy(region);
-    w.scaffold('\n');
-  }
 
   // A page, a route and a layout have no shadow root of their own, so nothing at their top
   // level is inside a component: the host starts as nothing, and a `slot=` written there is
@@ -144,21 +133,15 @@ export function emitClientVirtual(
 }
 
 /**
- * The neutral zone, with the `props<T>()` declaration rewritten in place.
+ * The `@code`, with the `props<T>()` declaration rewritten in place.
  *
  * Everything around that one statement is copied verbatim, so the rewrite costs the user
  * nothing: the chunk before it and the chunk after it keep their exact offsets.
  */
-function emitNeutralZone(
-  w: VirtualWriter,
-  source: string,
-  doc: StructuredDocument,
-  props: PropsCall | undefined,
-): void {
-  const { neutral } = partitionCode(doc.code);
+function emitCode(w: VirtualWriter, doc: StructuredDocument, props: PropsCall | undefined): void {
   let projected = false;
 
-  for (const chunk of neutral) {
+  for (const chunk of codeChunks(doc.code)) {
     const inChunk =
       props !== undefined &&
       props.declaration.start >= chunk.start &&

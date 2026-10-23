@@ -18,7 +18,6 @@ export type { Cleanup, ErrorSlot } from './types.js';
 // lives in the model. It is here because §3.2 declares it as part of this entry point, and a
 // re-export costs nothing a bundler cannot see through.
 export type { Messages } from '../messages.js';
-export { setMessages } from '../messages.js';
 
 export { bindText } from './bind-text.js';
 export { bindNumber } from './bind-number.js';

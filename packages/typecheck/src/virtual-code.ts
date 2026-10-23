@@ -2,15 +2,15 @@
  * The `VirtualCode` tree Volar routes requests through (SDD-24 §4.1).
  *
  * One root per `.fud` — the file as the editor sees it — with one embedded code per language
- * region: the client TypeScript, the server TypeScript, and one CSS per `<style>`. Volar owns
+ * region: the TypeScript of the file and one CSS per `<style>`. What the server runs is a
+ * `.fudapi` (SDD-60), typed by its own module, never a virtual of the `.fud`. Volar owns
  * the routing; what this module owns is the shape it routes over, which is the projection of
  * SDD-23 plus the mapping table translated in `mappings.ts`.
  *
- * The client and the server codes are FIELDS, not lookups. SDD-23 emits both for every
- * document — the server virtual is emitted even when empty, because `typeof import(…)` over a
- * global script is not the same type — so making them optional would spread a "what if it is
- * missing" branch into every consumer. If a future projection stops emitting one, this module
- * substitutes an empty code and the server keeps working instead of dying.
+ * The client code is a FIELD, not a lookup. SDD-23 emits it for every document, so making it
+ * optional would spread a "what if it is missing" branch into every consumer. If a future
+ * projection stops emitting it, this module substitutes an empty code and the server keeps
+ * working instead of dying.
  *
  * The parsed document travels attached to the root: the server's own services — `href`,
  * sections, semantic tokens, the `$` rule — work on the AST, not on the virtual text, and
@@ -28,7 +28,6 @@ export const FUD_LANGUAGE_ID = 'fud';
 /** Embedded code ids. Stable strings: Volar uses them as map keys across updates. */
 export const ROOT_CODE_ID = 'root';
 export const CLIENT_CODE_ID = 'client_ts';
-export const SERVER_CODE_ID = 'server_ts';
 export const styleCodeId = (index: number): string => `style_${index}`;
 
 /**
@@ -41,8 +40,6 @@ export interface FudicVirtualCode<D extends ProjectedFud = ProjectedFud> extends
   readonly document: D;
   /** The projection TypeScript treats as this file's script. */
   readonly client: VirtualCode;
-  /** The `@server` region as a file of its own. */
-  readonly server: VirtualCode;
   /** One per `<style>`, in source order. */
   readonly styles: readonly VirtualCode[];
 }
@@ -71,21 +68,17 @@ function emptyCode(id: string, languageId: string): VirtualCode {
   return { id, languageId, snapshot: snapshotOf(''), mappings: [] };
 }
 
-/** The three kinds of projection, sorted out by what SDD-23 named them. */
+/** The two kinds of projection, sorted out by language. */
 function sortVirtuals(document: ProjectedFud): {
   client: VirtualCode;
-  server: VirtualCode;
   styles: VirtualCode[];
 } {
   let client: VirtualCode | undefined;
-  let server: VirtualCode | undefined;
   const styles: VirtualCode[] = [];
 
   for (const virtual of document.virtuals) {
     if (virtual.languageId === 'css') {
       styles.push(embeddedCode(styleCodeId(styles.length), virtual));
-    } else if (virtual.fileName.endsWith('.server.ts')) {
-      server = embeddedCode(SERVER_CODE_ID, virtual);
     } else {
       client = embeddedCode(CLIENT_CODE_ID, virtual);
     }
@@ -93,24 +86,22 @@ function sortVirtuals(document: ProjectedFud): {
 
   return {
     client: client ?? emptyCode(CLIENT_CODE_ID, 'typescript'),
-    server: server ?? emptyCode(SERVER_CODE_ID, 'typescript'),
     styles,
   };
 }
 
 /** The root virtual code of a `.fud`. */
 export function createFudicVirtualCode<D extends ProjectedFud>(document: D): FudicVirtualCode<D> {
-  const { client, server, styles } = sortVirtuals(document);
+  const { client, styles } = sortVirtuals(document);
 
   return {
     id: ROOT_CODE_ID,
     languageId: FUD_LANGUAGE_ID,
     snapshot: snapshotOf(document.source),
     mappings: [identityMapping(document.source.length)],
-    embeddedCodes: [client, server, ...styles],
+    embeddedCodes: [client, ...styles],
     document,
     client,
-    server,
     styles,
   };
 }

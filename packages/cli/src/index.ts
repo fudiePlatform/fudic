@@ -75,7 +75,7 @@ export {
   indent,
   renderSectionBlocks,
   sectionBlocks,
-  serverCodeBlock,
+  serverLink,
   styleBlock,
 } from './templates.js';
 export { formatChange, formatDiagnostic, formatDiff, formatError, formatPlan, planToJson } from './report.js';

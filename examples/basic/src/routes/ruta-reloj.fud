@@ -91,7 +91,7 @@
 <h2>2 · El mismo reloj, escrito en la ruta</h2>
 
 <div class="caja">
-  <p class="etiqueta">@@code { @@client { … } } de esta misma página</p>
+  <p class="etiqueta">@@code { … } de esta misma página</p>
   <div class="propio">
     <time class="hora">@hora()</time>
     <p class="fecha">@fecha()</p>

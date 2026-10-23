@@ -28,8 +28,6 @@ export { mapToSource, mapToGenerated, type Capability } from './mapping.js';
 export { emitVirtualFiles, type EmitInput, type EmitJs } from './emit.js';
 export {
   clientFileName,
-  serverFileName,
   styleFileName,
-  serverModuleSpecifier,
   componentModuleSpecifier,
 } from './paths.js';

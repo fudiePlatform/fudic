@@ -139,8 +139,8 @@ describe('criteria 5 and 7 — control flow and directives, by place and by role
   });
 });
 
-describe('criteria 8 and 9 — the zones, and the @code that appears once', () => {
-  it('a component offers props inside its @code, and @client after a `@`', async () => {
+describe('criteria 8 and 9 — what goes in a @code, and the @code that appears once', () => {
+  it('a component offers props inside its @code, and no region after a `@` (SDD-60 §4.8)', async () => {
     // A prefix is required: with nothing typed there is no word and no `@`, and the catalogue
     // stays out of the way of TypeScript, whose completions those are.
     const props = await completeAt(
@@ -153,7 +153,8 @@ describe('criteria 8 and 9 — the zones, and the @code that appears once', () =
       BADGE,
       `@code {\n  @|\n}\n<app-badge>\n  <template shadowrootmode="open"></template>\n</app-badge>\n`,
     );
-    expect(labels(client)).toEqual(expect.arrayContaining(['@client', '@server']));
+    expect(labels(client)).not.toContain('@client');
+    expect(labels(client)).not.toContain('@server');
   });
 
   it('a route offers @code at top level, and stops once it has one', async () => {

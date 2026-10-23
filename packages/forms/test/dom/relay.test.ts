@@ -13,7 +13,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Controller } from '@fudic/core';
 import { FudicControlElement } from '../../src/element.js';
-import { control, form } from '../../src/index.js';
+import { control, form } from '../../src/contract/index.js';
 import { relay } from '../../src/relay.js';
 
 /** The labels the stand-in internals report, per host. */

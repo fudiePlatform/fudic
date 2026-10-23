@@ -121,10 +121,8 @@ function linkPlugin(
       }
       return emitRenderChunk({
         pageModule: pageModuleOf(rb),
-        hasLoad: rb.analysis.hasLoad,
-        hasPaths: rb.analysis.hasPaths,
-        // Not passed on purpose: with `withLoad: false` it would change nothing, and the
-        // omission is the statement — the SW imports neither `load` nor `layout` (§4.5).
+        // No `api`, on purpose: with `withLoad: false` it would change nothing, and the omission is
+        // the statement — the SW imports neither `load`, `paths` nor `layout` (§4.5).
         hasDi: routeUsesDi(rb.absPath, io),
         withLoad: false, // server code never ships to the client (§4.5)
         runtime: runtimeFor(pattern),

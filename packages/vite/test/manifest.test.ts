@@ -165,7 +165,6 @@ describe('buildManifest', () => {
     const strategy: StrategyAnalysis = {
       declared: true,
       strategy: { data: { ttl: '5m', policy: 'stale-while-revalidate' } },
-      diagnostics: [],
     };
     const { file } = buildManifest(
       [routeBuild('/blog/:slug', { mode: 'sw' }, { hasLoad: true, strategy })],
@@ -178,7 +177,6 @@ describe('buildManifest', () => {
     const strategy: StrategyAnalysis = {
       declared: true,
       strategy: { data: { ttl: 'a fortnight' } },
-      diagnostics: [],
     };
     const { file, diagnostics } = buildManifest(
       [routeBuild('/blog/:slug', { mode: 'sw' }, { hasLoad: true, strategy })],
@@ -193,7 +191,6 @@ describe('buildManifest', () => {
     const strategy: StrategyAnalysis = {
       declared: true,
       strategy: { data: { ttl: '5m' }, page: { cache: 'persist', ttl: '1h' } },
-      diagnostics: [],
     };
     const { file, diagnostics } = buildManifest(
       [routeBuild('/blog/:slug', { mode: 'sw' }, { hasLoad: true, strategy })],

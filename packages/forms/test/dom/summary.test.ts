@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { bindForm } from '../../src/dom/bind-form.js';
 import { bindGroup } from '../../src/dom/bind-group.js';
 import { bindText } from '../../src/dom/bind-text.js';
-import { control, form, group, required } from '../../src/index.js';
+import { control, form, group, required } from '../../src/contract/index.js';
 import { internalsOf } from '../../src/internals.js';
 import { issueId, summaryEntriesOf, summaryMarkup } from '../../src/summary-markup.js';
 import type { AnyNode } from '../../src/types.js';

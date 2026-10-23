@@ -7,7 +7,7 @@ import { RENEW_WINDOW } from './constants.js';
  *
  * That path is what keeps the test, the client and the server in ONE module graph: the plugin
  * erases nothing there, so a `.ts` arrives whole, and a `vi.mock` in the test reaches the
- * module a `?server` imports. What the browser would not receive is checked apart, without
+ * module a handler of `src/server` imports. What the browser would not receive is checked apart, without
  * running it.
  */
 const happy = builtinEnvironments['happy-dom'];

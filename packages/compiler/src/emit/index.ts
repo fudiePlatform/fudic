@@ -99,22 +99,6 @@ export { injectionDiagnostics } from './di-diagnostics.js';
 // The `@code` reading itself, for a caller that holds ONE document and no graph — the
 // workspace index, which needs a child's props to expand its tag (BUG-23 task 25).
 export { extractCode, type Prop } from './oxc-code.js';
-// Server functions (SDD-56 §3.11): what the compiler reads of each one, and the `?server`
-// module that carries them.
-export {
-  readServerFns,
-  serverFnTable,
-  type ChainStep,
-  type CompressLiteral,
-  type FnOwner,
-  type MiddlewareRef,
-  type ServerFnMeta,
-  type ServerFnRead,
-  type ServerFns,
-  type ServerFnTable,
-} from './server-fns.js';
-export { emitServerModule } from './server-module.js';
-export type { ServerFnOptions } from './module.js';
 /**
  * The scope analysis of SDD-30 §3.3, public since SDD-29 §4.11: the projection needs the same
  * reading of "a name this markup consumes and does not declare" the emit uses, and a second

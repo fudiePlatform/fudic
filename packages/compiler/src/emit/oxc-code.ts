@@ -20,13 +20,11 @@ import type { HtmlContent } from '../html/index.js';
 import type { ResolvedComponent } from './resolve.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import { isEmptySpan, span } from '../types/index.js';
-import { FUD0290, FUD0570, FUD0682, FUD0684 } from '@fudic/diagnostics';
+import { FUD0290, FUD0684 } from '@fudic/diagnostics';
 import { JsBatch, type JsFragmentKind, type OxcNode } from '../oxc/index.js';
 import { unwrapParens } from '../binding/index.js';
 import { collectAttributeJs, collectTemplateJs, type JsFragmentVisitor } from './constructs.js';
 import type { Anchor } from './writer.js';
-import { NO_SERVER_FNS, readServerFns, type ServerFns } from './server-fns.js';
-import { sendable } from './client-fns.js';
 import { formSendDiagnostics } from './controls.js';
 import { deferredSpans, serverCut } from './server-cut.js';
 import {
@@ -426,7 +424,7 @@ export interface ExtractedCode {
    * The clock of §6.21 is the case that makes it: unhydrated it paints the server's time and
    * freezes, which is not "works worse", it is does not work.
    *
-   * Top level, like the `FUD0570` search it shares: an `effect` inside a helper is flow
+   * Top level only: an `effect` inside a helper is flow
    * analysis, and flow analysis belongs to the language server (§7).
    */
   readonly clientEffects: boolean;
@@ -504,18 +502,6 @@ export interface ExtractedCode {
    * that names this tag.
    */
   readonly providers: ZoneCode;
-  /**
-   * The server functions of the `@server`, read off its AST (SDD-56 §3.11): each one's chain,
-   * the file's `http` level, and the statements that make them up.
-   */
-  readonly serverFns: ServerFns;
-  /**
-   * The `?server` module of this file (SDD-56 §4.13): the imports its statements read — of the
-   * neutral zone too, where a form both ends import usually sits — and, for a route, its whole
-   * `@server`; for a component, its machinery alone, the rest being its `render()`'s. No DI
-   * rewrite: that code runs in a request, and `inject()` there reads the request's container.
-   */
-  readonly serverModule: ZoneCode;
   /**
    * What Oxc had to say about this `@code`, already in source coordinates (BUG-13 §5.3).
    *
@@ -678,8 +664,6 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
       else {
         if (zone === 'server') serverStatements.push(stmt);
         else neutralStatements.push(stmt);
-        // Without regions `effect` goes anywhere: it is never in the cut (SDD-60 §4.8).
-        if (!regionless) checkNeutralEffect(stmt, map, own);
       }
       // The NEUTRAL zone only, and that is the correction SDD-38 brings to this loop: what
       // is not `@client` is not therefore shared. A `@server` region runs on one side, and
@@ -702,33 +686,13 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
   // `$message` into it, and any other import that brings a `$` name is the author's.
   checkReservedPrefix(regionless ? allStatements.filter((s) => !isI18nImport(s)) : clientStatements, map, own);
 
-  // The server functions, read before the DI calls: inside a component's machinery `inject`
-  // is NOT rewritten (SDD-56 §4.13) — that code runs in a request, not in a render.
-  const component = doc.type === 'component-document';
-  const fnsRead =
-    serverStatements.length === 0
-      ? { fns: NO_SERVER_FNS, diagnostics: [] }
-      : readServerFns({
-          server: serverStatements,
-          all: allStatements,
-          map,
-          browserNames: new Set([
-            ...topLevelBindings(clientStatements),
-            ...topLevelBindings(neutralStatements),
-          ]),
-          component,
-          errorPage: false,
-        });
-  own.push(...fnsRead.diagnostics);
   // `form:=` that cannot send, said HERE and not by the client chunk: a route whose only
   // client-side thing is a broken `form:=` has no chunk at all, and the error would vanish.
   // A file that links a `.fudapi` sends to ITS functions, which only the graph knows: that
-  // check is `apiDiagnostics`'s (SDD-60 §3.14).
+  // check is `apiDiagnostics`'s (SDD-60 §3.14). One that links none has none to send to.
   if (!('serverLinks' in doc && doc.serverLinks !== undefined)) {
-    own.push(...formSendDiagnostics(source, templateRootsOf(doc), sendable(fnsRead.fns)));
+    own.push(...formSendDiagnostics(source, templateRootsOf(doc), new Set()));
   }
-  const { machinery } = fnsRead.fns;
-  const inRender = (stmt: OxcNode): boolean => !(component && machinery.has(stmt));
 
   const binding = emitBinding(clientStatements);
   const emitCalls: EmitCall[] = [];
@@ -752,9 +716,9 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     const imports = importSources(allStatements);
     const scan = { bindings, imports, source, map, out: di };
     collectDiCalls(neutralStatements, { ...scan, zone: 'neutral' });
-    collectDiCalls(serverStatements.filter(inRender), { ...scan, zone: 'server' });
+    collectDiCalls(serverStatements, { ...scan, zone: 'server' });
     collectDiCalls(clientStatements, { ...scan, zone: 'client' });
-    checkDiZones(di, own);
+    checkDuplicateProviders(di, own);
   }
   const diEdits = di.map(rewriteOf);
 
@@ -804,15 +768,7 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     ),
     emitCalls,
     di,
-    server: zoneCode(serverStatements, source, map, diEdits, inRender, rewritten),
-    serverFns: fnsRead.fns,
-    serverModule: zoneCode(
-      [...neutralStatements, ...serverStatements],
-      source,
-      map,
-      [],
-      (stmt) => serverStatements.includes(stmt) && (!component || machinery.has(stmt)),
-    ),
+    server: zoneCode(serverStatements, source, map, diEdits, () => true, rewritten),
     serverExports: exportedNames(serverStatements),
     ...spread('layoutResolver', layoutResolverOf(serverStatements, map)),
     providers: mergeZones(
@@ -1062,20 +1018,8 @@ function readDataAccess(statements: readonly OxcNode[], map: MapOffset): DataAcc
 }
 
 /**
- * `effect(...)` at the top level of a zone, as the two rules that care about it read it.
- *
- * One search, two readings. Outside `@code { @client }` it is `FUD0570` — an effect runs
- * after the first render and the server has none. INSIDE it, the very same finding says
- * something else: this file cannot wait for a gesture (SDD-39 §4.6). Where one says «this is
- * in the wrong place», the other says «this cannot be deferred».
- */
-/**
- * `effect(...)` outside `@code { @client }` → `FUD0570` (SDD-31 §5).
- *
- * An effect is, by definition, what happens AFTER the first render, and the server has no
- * such moment. The statement is dropped — the neutral zone only ever contributed props and
- * reactive declarations to the emit anyway — and the rest of the file is emitted: the emit
- * does not throw. `computed` and `batch` are not flagged; both have a server meaning.
+ * `effect(...)` at the top level of the `@code`: this file cannot wait for a gesture (SDD-39
+ * §4.6). Without regions an effect goes anywhere, and it is never in the cut (SDD-60 §4.8).
  */
 function effectCalls(stmt: OxcNode): readonly OxcNode[] {
   // The two shapes an `effect(...)` takes: called for its side effect, or bound to keep its
@@ -1088,12 +1032,6 @@ function effectCalls(stmt: OxcNode): readonly OxcNode[] {
     const callee = field(call, 'callee');
     return is(callee, 'Identifier') && name(callee) === 'effect';
   });
-}
-
-function checkNeutralEffect(stmt: OxcNode, map: MapOffset, out: Diagnostic[]): void {
-  for (const call of effectCalls(stmt)) {
-    out.push(FUD0570({ span: { start: map(call.start), end: map(call.end) } }));
-  }
 }
 
 /**
@@ -1459,41 +1397,22 @@ function rootIdentifier(node: OxcNode): string | undefined {
 }
 
 /**
- * The two contradictions a single `@code` can hold on its own (SDD-38 §6.23, §6.25).
+ * The contradiction a single `@code` can hold on its own (SDD-38 §6.25).
  *
- * Both are asked HERE and not of the graph, because both are answered by one file: they are
- * about what this `@code` says against itself, and no ancestor can make either of them true
- * or false. Neither stops the emit — the module is written degraded and the browser gets the
+ * It is asked HERE and not of the graph, because it is answered by one file: it is about what
+ * this `@code` says against itself, and no ancestor can make it true or false. It does not stop
+ * the emit — the module is written degraded and the browser gets the
  * runtime error it would have got anyway, which is the whole point of reporting it first.
  *
  * `FUD0684` — the same provider registered twice. The second registration silently replaces
  * the first, so one of the two factories is dead code and the author cannot tell which.
- *
- * `FUD0682` — a provider registered on ONE side and injected on the other. The two lines
- * never run in the same process, so the registration this injection was written for is not
- * there when it asks. The neutral zone is never a mismatch, on either end: it runs on both
- * sides, which is exactly what makes it the answer to this diagnostic.
  */
-function checkDiZones(di: readonly DiCall[], out: Diagnostic[]): void {
-  const provideZones = new Map<string, Set<CodeZone>>();
+function checkDuplicateProviders(di: readonly DiCall[], out: Diagnostic[]): void {
+  const provided = new Set<string>();
   for (const call of di) {
     if (call.kind !== 'provide' || call.provider === '') continue;
-    const seen = provideZones.get(call.provider);
-    if (seen === undefined) {
-      provideZones.set(call.provider, new Set([call.zone]));
-      continue;
-    }
-    seen.add(call.zone);
-    out.push(FUD0684({ span: call.providerSpan, provider: call.provider }));
-  }
-  for (const call of di) {
-    if (call.kind !== 'inject' || call.zone === 'neutral') continue;
-    const zones = provideZones.get(call.provider);
-    // Only when the file provides it and provides it NOWHERE this injection runs. A provider
-    // this file does not write at all is an ancestor's or a `@Service`'s, and that is FUD0680's
-    // question — asked of the graph, with the module next door open.
-    if (zones === undefined || zones.has('neutral') || zones.has(call.zone)) continue;
-    out.push(FUD0682({ span: call.providerSpan, provider: call.provider, zone: call.zone }));
+    if (provided.has(call.provider)) out.push(FUD0684({ span: call.providerSpan, provider: call.provider }));
+    provided.add(call.provider);
   }
 }
 

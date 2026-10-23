@@ -14,7 +14,6 @@ import {
   CLIENT_CODE_ID,
   createFudicVirtualCode,
   FUD_LANGUAGE_ID,
-  SERVER_CODE_ID,
   snapshotOf,
   styleCodeId,
 } from '@fudic/typecheck';
@@ -60,18 +59,14 @@ describe('snapshotOf', () => {
 });
 
 describe('createFudicVirtualCode', () => {
-  it('roots the file and embeds client, server and one code per <style>', () => {
+  it('roots the file and embeds the client and one code per <style>: no server virtual (SDD-60 §4.7)', () => {
     const { cache } = setup();
     const root = createFudicVirtualCode(cache.get(BADGE_PATH, 1, BADGE));
 
     expect(root.id).toBe('root');
     expect(root.languageId).toBe(FUD_LANGUAGE_ID);
     expect(root.snapshot.getLength()).toBe(BADGE.length);
-    expect(root.embeddedCodes?.map((code) => code.id)).toEqual([
-      CLIENT_CODE_ID,
-      SERVER_CODE_ID,
-      styleCodeId(0),
-    ]);
+    expect(root.embeddedCodes?.map((code) => code.id)).toEqual([CLIENT_CODE_ID, styleCodeId(0)]);
     expect(root.styles.length).toBe(1);
     expect(root.styles[0]?.languageId).toBe('css');
   });
@@ -121,7 +116,6 @@ describe('createFudicVirtualCode', () => {
     const root = createFudicVirtualCode(bare);
 
     expect(root.client.snapshot.getLength()).toBe(0);
-    expect(root.server.mappings).toEqual([]);
     expect(root.styles).toEqual([]);
   });
 });
@@ -202,14 +196,8 @@ describe('the language plugin', () => {
     expect(script?.scriptKind).toBe(3);
   });
 
-  it('gives the server projection a file name to be imported by', () => {
-    const { plugin } = setup();
-    const ctx = { getAssociatedScript: () => undefined };
-    const root = plugin.createVirtualCode?.(uri, FUD_LANGUAGE_ID, snapshotOf(BADGE), ctx);
-
-    const [extra] = plugin.typescript?.getExtraServiceScripts?.(BADGE_PATH, root!) ?? [];
-    expect(extra?.fileName).toBe(`${BADGE_PATH}.server.ts`);
-    expect(extra?.code.id).toBe(SERVER_CODE_ID);
+  it('names no extra script: the .fud has one TypeScript projection', () => {
+    expect(setup().plugin.typescript?.getExtraServiceScripts).toBeUndefined();
   });
 });
 

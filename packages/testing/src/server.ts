@@ -1,45 +1,30 @@
 /**
- * The in-memory server (§4.6): the dev server's table of functions, read through vitest's
- * graph, behind `@fudic/http`'s own `functionsHandler`.
+ * The in-memory server (§4.6): the functions of the app's `.fudapi`, answered by the generated
+ * server root (SDD-60 §4.4) as `vite dev` answers them.
  *
- * Every `?server` module is imported by vitest, so a `vi.mock` of the test reaches what it
- * imports (§4.1). The table is the one `devSource` arms for `vite dev`; only the loader is the
- * harness's. A request resolves from a fresh container with the test's overrides in it. The
- * functions of a `.fudapi` are answered first, by the server root (SDD-60 §4.4).
+ * The root and the handlers it loads are imported through vitest's graph, so a `vi.mock` of the
+ * test reaches what they import (§4.1). A request resolves from a fresh container with the
+ * test's overrides in it.
  */
 
 import { createRoot } from '@fudic/di';
-import { functionsHandler, type FnSource } from '@fudic/http/server';
-import { devSource } from '@fudic/vite/harness';
+import { problemResponse } from '@fudic/http/server';
 import { serverRoot } from './api.js';
 import { projectOf } from './project.js';
 import { overridden } from './providers.js';
-
-/** The components a page of the test reached, by tag: their functions answer at `/c/<tag>/`. */
-const components = new Map<string, string>();
-
-/** Note the components of a page the harness painted, so their functions can be called. */
-export function knowComponents(found: Iterable<{ readonly tag: string; readonly path: string }>): void {
-  for (const { tag, path } of found) components.set(tag, path);
-}
-
-/** Import a module by id through vitest's graph. */
-const load = (id: string): Promise<Record<string, unknown>> => import(/* @vite-ignore */ id) as Promise<Record<string, unknown>>;
 
 let handler: ((request: Request) => Promise<Response | null>) | undefined;
 
 /** The handler of `/_fudic/fn/`, armed once per test file. */
 export function functions(): (request: Request) => Promise<Response | null> {
   if (handler === undefined) {
-    const { base, routes, httpFile } = projectOf();
+    const { base } = projectOf();
     const container = (): ReturnType<typeof createRoot> => overridden(createRoot());
-    // Typed loosely on the plugin's side, which loads `@fudic/http` from the project's graph and
-    // does not depend on it: what it reads is a module's exports, which is what `FnSource` names.
-    const source = devSource({ builds: routes, componentPath: (tag) => components.get(tag), load, httpFile }) as FnSource;
-    const legacy = functionsHandler(source, { base, dev: true, container });
     handler = async (request) => {
       const api = await serverRoot();
-      return (api === undefined ? null : await api.handler({ base, dev: true, container })(request)) ?? legacy(request);
+      // An app without a `.fudapi` has no function to call: the 404 its dispatcher would give.
+      if (api === undefined) return problemResponse({ status: 404, title: 'Not Found', detail: 'no such server function' });
+      return api.handler({ base, dev: true, container })(request);
     };
   }
   return handler;

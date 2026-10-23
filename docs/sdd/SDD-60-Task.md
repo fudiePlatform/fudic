@@ -6,7 +6,7 @@
 > `@fudic/typecheck` · `@fudic/language-server` · `@fudic/formatter` · `@fudic/cli` · `fudic-vscode` ·
 > `examples/*` · `packages/testing`
 > **Rama:** `sdd-60-fudapi` (nace de `main`)
-> **Progreso:** 56 / 64 — `En curso`.
+> **Progreso:** 57 / 64 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina; la otra escribe los tests de cada fase (las tareas
 «Los tests de…»), contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -186,35 +186,37 @@ Cada meta cierra una fase. La fase no se da por terminada hasta que Pedro la pru
 | [x] | 48 | 47 | **El resto de ejemplos.** `examples/i18n`, `examples/vista-errores` y cualquier otro con regiones. *Al implementar, con Pedro: en una app con idiomas la raíz, los `fudic:<id>` y los handlers se compilan por idioma (SDD §3.11)* | `examples/*` | `src/**` |
 | [x] | 49 | 47 | **Fixtures.** `compiler`, `formatter`, `testing`, `language-core`, `language-server`, `vscode`, `workbench`. *Al implementar: el corpus de `language-server` pasa a `fixtures/src/` (el `<id>` de un `.fudapi` es su ruta dentro de `src/`) y el servidor escribe su `.d.ts` al arrancar; la app de `@fudic/testing` (`test/app`) entra en el workspace con su `package.json`, para leer el `fudapi/` de `@fudic/http` y `@fudic/forms` como un proyecto real; el generador de anfitriones de `workbench` ya no escribe `@client`. Destapó dos defectos, corregidos: el `.d.ts` no tipaba el retorno de `layout.handle` con las props del layout (`layoutPropsType` de `@fudic/api`, en los dos hosts) y el editor no veía el `.d.ts` regenerado al guardar un `.fudapi` (`mountApiTypes`). La cobertura de `@fudic/testing` baja en las ramas de `src/http.ts`, del despacho `r/`/`c/` y del grafo sin borrar, que se van en las tareas 63 y 35* | varios | `fixtures/` · `test/**/*.fud` |
 | [x] | 50 | 49 | **Tests que escriben regiones.** Reescritos al modelo nuevo sin perder el caso que probaban. *Al implementar: los que prueban la maquinaria que se retira (el parser de regiones, `?server`, `client-fns`, `r/`/`c/`, `emit-server`/`partitionCode`, borradoras, snippets y gramática de regiones, diagnósticos retirados, la impresión de regiones del formatter) se quedan para las tareas 63, 35 y 51, que los borran o reescriben con su código. Destapó cuatro defectos, corregidos: un `let` que lee el markup se perdía de los parámetros de bloque y de la hidratación del hijo; una función del `@code` pasada por nombre a una prop no hacía hidratar a su dueño; `FUD0290` eximía todos los imports (ahora solo el de `@fudic/i18n`); `FUD0461` solo miraba las regiones (ahora todo el `@code`, SDD §4.8). Para la 63: `fudic g page --server` aún escribe `@server load`* | varios | `test/` |
-| [ ] | 63 | 48–50 | **Fuera lo viejo.** `<f>.fud?server`, `server-module.ts`, los prefijos `r/` y `c/`, `client-fns.ts` y la lectura de cadenas con Oxc, `FUD0393`/`FUD0394`, `emit-server.ts` y `partitionCode`, los snippets y acciones de regiones, la regla de regiones de la gramática del `.fud`, los diagnósticos retirados de SDD §4.8, y de la entrada pública de `@fudic/http` y `@fudic/forms` lo que lista SDD §3.10; `fudic add http` escribe `src/http.fudapi` | varios | — |
+| [x] | 63 | 48–50 | **Fuera lo viejo.** `<f>.fud?server`, `server-module.ts`, los prefijos `r/` y `c/`, `client-fns.ts` y la lectura de cadenas con Oxc, `FUD0393`/`FUD0394`, `emit-server.ts` y `partitionCode`, los snippets y acciones de regiones, la regla de regiones de la gramática del `.fud`, los diagnósticos retirados de SDD §4.8, y de la entrada pública de `@fudic/http` y `@fudic/forms` lo que lista SDD §3.10; `fudic add http` escribe `src/http.fudapi`. *Al implementar: lo que §3.10 saca de `@fudic/forms` pasa a `./contract` (también `control`, `setMessages`, `ValidateOn` y `Validity`, y `setMessages` sale de `./dom`); de `@fudic/http` se borran los builders, `chain`, `middleware`, `csrf`, `errorPages` y `$fn` (el contrato tiene los suyos), `./client` se queda con las dos etapas y `./server` con `pageContext`, `withRequest` y el `Problem`, y `contractsHandler` responde 404 a una URL de `/_fudic/fn/` que no nombra función (antes `null`, por convivir con el despacho viejo). `load`, `paths` y `layout` del wrapper viajan en su `api`. `language-core` y `typecheck` pierden el virtual `.fud.server` (y `dedupeDiagnostics`, que solo servía a su zona neutra duplicada); `codeChunks` sustituye a `partitionCode` y lee una región vieja como si no tuviera envoltorio. La bombilla de `FUD0702` solo escribe en el `.fudapi`. `fudic g page --server` escribe el `.fudapi` hermano con `load` y su handler en la carpeta de servidor; `fudic g form` escribe un `.fudapi` (sin `--binary`: todo campo tiene tipo). `@fudic/testing` pinta un layout con props pasándolas ya resueltas en `ctx.layout` (como el Service Worker), sin escribir un `@server`. Los analizadores de `FUD0111`, `FUD0193`, `FUD0194` y `FUD0196` se borran; el parser sigue dando nodos de región hasta la tarea 51. `build-sourcemaps-erased` (vite) se borra: escribía todo el modelo viejo y la maquinaria que probaba se va en la 35* | varios | — |
 | [ ] | 35 | 63 | **Fuera las borradoras.** `server-validators.ts`, `server-halves.ts`, `redact.ts` y su uso | `vite` · `compiler` | `src/erased-sources.ts` · … |
 | [ ] | 51 | 35 | **Fuera las zonas.** `FUD1110` activo; el parser del `@code` ya no da nodos de región | `compiler` | `src/code/*` |
 | [ ] | 56 | 51 | **Los tests de la migración.** Criterios 21, 25 y 34 (búsqueda en el repo), la suite del ejemplo en verde y la gramática del `.fud` sin regiones (snapshot) | — | `test/` |
 
-**Relevo (tras la tarea 50).** Lo que una sesión nueva necesita para seguir por la 63:
+**Relevo (tras la tarea 63).** Lo que una sesión nueva necesita para seguir por la 35 y la 51:
 
-- **Tests que siguen escribiendo regiones a propósito**, porque prueban lo que se retira. Se borran o
-  reescriben con su código en la 63, la 35 o la 51 (`grep -rlE "@(server|client) \{"` los da):
-  - `compiler`: `code/code`, `region/region`, `redact`, `emit/{client-fns, server-fns, neutral,
-    server-cut, cells, di, di-diagnostics, layout-props, oxc-code, reserved, route-blocks,
-    route-client}`, `semantic/{analyze, layout-load, opaque-scan, view}`. En los de `emit/` solo
-    quedan zonificados los casos sobre zonas (FUD0570, FUD0681/0682, «zona neutra»…), no el fichero.
-  - `vite`: `analyze`, `build-sourcemaps-erased`, `http-functions`, `http-load`, `plugin` (el caso
-    `?server`), `server`, `strategy`.
-  - `language-core`: `code`, `emit`, `layout-resolver`, `server-fns`, `template` (dos casos).
-  - `language-server`: `acceptance/layout-props-action` (rama `@server` de la bombilla),
-    `services/{plugin, semantic-tokens, snippets, snippets-parse, template-scope}`.
-  - `typecheck`: `checker` (virtual `.fud.server`), `js-batch` (registro de regiones),
-    `reserved-dollar` (un caso).
-  - `formatter`: `print/razor`, `leaf/collect` (impresión de regiones; tarea 51).
-  - `vscode`: `grammar`, `manifest`, `acceptance/criteria` (regla y plegado de regiones).
-- **Producto que aún escribe regiones, para la 63:** `fudic g page --server` (`serverCodeBlock` de
-  `cli/src/templates.ts`), además de `fudic add http` y `fudic g form`, que escriben TS público.
-- **Cobertura:** `@fudic/testing` está bajo el 100 % solo en las ramas de `src/http.ts`, del despacho
-  `r/`/`c/` (`server.ts`, `page.ts`, `layout.ts`) y del grafo sin borrar (`client-graph.ts`);
-  vuelve sola al quitar eso en la 63 y la 35.
-- **Tests inestables:** `vite` `i18n-serve` y `api-dev` fallan a veces con la máquina cargada y
-  pasan solos; reejecútalos aislados antes de tomarlos por rotura.
+- **Tests que siguen escribiendo regiones a propósito**, porque prueban lo que queda por retirar
+  (`grep -rlE "@(server|client) ?\{" packages/*/test` los da; `packages/workbench/test/.tmp` es
+  basura ignorada):
+  - **35, las borradoras:** `compiler` `redact`; `vite` `server-validators`, `erased-sources`
+    (escriben `serverValidator` y `.server(…)` en TS de usuario, que ya no tiene API pública).
+  - **51, las zonas:** `compiler` `code/code`, `region/region`, `emit/{cells, di, di-diagnostics,
+    layout-props, neutral, oxc-code, reserved, route-blocks, route-client, server-cut}`,
+    `semantic/{layout-load, opaque-scan, view}`; `formatter` `print/razor`, `leaf/collect`;
+    `language-core` `code`, `emit`, `template` (una región vieja se lee sin envoltorio);
+    `language-server` `services/{semantic-tokens, snippets, snippets-parse, template-scope}`;
+    `typecheck` `js-batch`, `reserved-dollar`; `vite` `analyze` (una región no declara nada);
+    `vscode` `grammar` (la regla ya no existe).
+- **Lo que la 51 hereda en el código:** el parser del `@code` aún da nodos `server-region` y
+  `client-region`, y `extractCode` aún reparte zonas (`server`, `serverExports`, `layoutResolver`,
+  `zoneOf`, `regionless`); `typecheck` `DocumentJs` conserva `neutral`, `client` y `regions` junto a
+  `code`; los semantic tokens del language server aún pintan `@server`/`@client`.
+- **Cobertura:** `@fudic/testing` está bajo el 100 % solo en `client-graph.ts` (el grafo sin borrar),
+  que vuelve con la 35. Suelos de los paquetes con deuda tras la 63: `compiler` 99,61 / 99,12 /
+  99,74 / 99,87 (con `view-scope.ts` por debajo de su umbral por fichero, como antes); `vite`
+  99,06 / 96,19 / 99,72 / 99,17.
+- **Tests inestables:** `vite` `i18n-serve`, `api-dev` y `dev-typecheck-server`, y `testing`,
+  `vscode` y `workbench` con todo `pnpm test` en paralelo, fallan por tiempo con la máquina cargada
+  y pasan solos. Los tres de `cli` que miran colores ANSI (`serve/node-deps`, `vitest-projects`)
+  fallan en este entorno con o sin cambios.
 
 ## Fase 12 — entrega · META 6 (4)
 

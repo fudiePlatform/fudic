@@ -48,9 +48,8 @@ describe('@fudic/conventions', () => {
   });
 
   it('names the file of the global chain', () => {
-    // SDD-56 §3.3: its default export is the outermost level of every function's chain.
+    // SDD-60 §3.5: its `chain` is the outermost level of every function's chain.
     expect(conventions.HTTP_FILE).toBe('src/http.fudapi');
-    expect(conventions.LEGACY_HTTP_FILE).toBe('src/http.ts');
     expect(conventions.SERVER_DIR).toBe('src/server');
     expect(conventions.BROWSER_DIR).toBe('src/browser');
   });
@@ -90,7 +89,6 @@ describe('@fudic/conventions', () => {
       'HTTP_FILE',
       'INVALIDATE_MESSAGE',
       'LAYOUTS_DIR',
-      'LEGACY_HTTP_FILE',
       'LOCALES_DIR',
       'ROUTES_DIR',
       'RUNTIME_CACHE_PREFIX',

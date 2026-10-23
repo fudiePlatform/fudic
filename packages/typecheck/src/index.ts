@@ -54,7 +54,6 @@ export {
   styleCodeId,
   ROOT_CODE_ID,
   CLIENT_CODE_ID,
-  SERVER_CODE_ID,
   FUD_LANGUAGE_ID,
   type FudicVirtualCode,
 } from './virtual-code.js';

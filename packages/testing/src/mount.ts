@@ -22,7 +22,6 @@ import { renderPage } from './page.js';
 import { settled, track } from './pending.js';
 import { standTree, type ProviderOverride } from './providers.js';
 import { serverRoot } from './api.js';
-import { knowComponents } from './server.js';
 import { enterWorld, harnessOf, type Harness, type WorldOptions } from './session.js';
 
 /** What `import * as X from './x.fud'` gives in the `fudic` environment. */
@@ -105,8 +104,7 @@ async function paintHost(component: MountTarget, props: object, url: string): Pr
     'fud',
     hostPage({ links: [{ rel: 'component', href: component[FILE_EXPORT] }], body: `<${tag}${attrs.join('')}></${tag}>` }),
   );
-  knowComponents(graphOf(page).components.values());
-  return renderPage(page, { hasLoad: false, hasDi: true }, '/', url, props);
+  return renderPage(page, { hasDi: true }, '/', url, props);
 }
 
 async function viaSsr(

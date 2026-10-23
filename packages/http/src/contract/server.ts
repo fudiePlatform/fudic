@@ -106,25 +106,23 @@ function fit(pattern: readonly string[], parts: readonly string[], param: (seg: 
 }
 
 /** `routes/blog/mi-post/save/42` → `save /:id` of `routes/blog/[slug]`, `slug: 'mi-post'`, `id: '42'`. */
-function targetOf(parts: readonly string[]): Target | 'unknown' | undefined {
-  let known = false;
+function targetOf(parts: readonly string[]): Target | undefined {
   for (const id of [...contractIds()].sort((a, b) => literals(b) - literals(a))) {
     const segments = id.split('/');
     const page = fit(segments, parts.slice(0, segments.length), (seg) => /^\[(.+)\]$/u.exec(seg)?.[1]);
     if (page === undefined) continue;
-    known = true;
     const contract = contractsOf(id).get(parts[segments.length] ?? '');
     if (contract === undefined) continue;
     const route = fit(contract.spec.route ?? [], parts.slice(segments.length + 1), (seg) => (seg.startsWith(':') ? seg.slice(1) : undefined));
     if (route !== undefined) return { contract, page, route };
   }
-  return known ? 'unknown' : undefined;
+  return undefined;
 }
 
 /**
  * The handler of every function of the `.fudapi` loaded in this process (SDD-60 §4.4): a
- * `Response`, or `null` for a URL that names none of their `<id>` and belongs to someone else.
- * An `<id>` that matches without a function of that name and route is a 404.
+ * `Response`, or `null` for a URL outside `/_fudic/fn/`, which belongs to someone else. One
+ * under it that names no function of theirs, by `<id>`, name and route, is a 404.
  */
 export function contractsHandler(options: ContractsOptions = {}): (request: Request) => Promise<Response | null> {
   const prefix = `${(options.base ?? '/').replace(/\/$/u, '')}${FN_PREFIX}/`;
@@ -132,8 +130,7 @@ export function contractsHandler(options: ContractsOptions = {}): (request: Requ
     const { pathname } = new URL(request.url);
     if (!pathname.startsWith(prefix)) return null;
     const target = targetOf(pathname.slice(prefix.length).split('/'));
-    if (target === undefined) return null;
-    if (target === 'unknown') return problemResponse({ status: 404, title: 'Not Found', detail: 'no such server function' });
+    if (target === undefined) return problemResponse({ status: 404, title: 'Not Found', detail: 'no such server function' });
     return serve({ request, ...target }, options);
   };
 }

@@ -32,9 +32,9 @@ describe('the client virtual of a file that links a .fudapi', () => {
     expect(virtual.text).not.toContain("import('fudic:forms/person')['person']");
   });
 
-  it('without a load, data is still read off the server module', () => {
+  it('without a load, data is unknown', () => {
     const virtual = emitClient(ROUTE, 'routes/usuarios.fud', withServers([{ id: 'routes/x', load: false, names: [] }]));
-    expect(virtual.text).toContain('type $Data');
+    expect(virtual.text).toContain('declare const data: unknown;');
   });
 
   it('a registry that cannot read them gives nothing', () => {

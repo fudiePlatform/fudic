@@ -192,8 +192,8 @@ describe('strategyOfLoad (§4.5)', () => {
     parseApi(`${line}\n  n  i32\n`).value.declarations[0] as LoadDecl;
 
   it('no load, or one with no option, declares nothing', () => {
-    expect(strategyOfLoad(undefined)).toEqual({ declared: false, strategy: {}, diagnostics: [] });
-    expect(strategyOfLoad(load('load'))).toEqual({ declared: false, strategy: {}, diagnostics: [] });
+    expect(strategyOfLoad(undefined)).toEqual({ declared: false, strategy: {} });
+    expect(strategyOfLoad(load('load'))).toEqual({ declared: false, strategy: {} });
   });
 
   it('the whole line, as strategy({ … }) would have said it', () => {
@@ -202,7 +202,7 @@ describe('strategyOfLoad (§4.5)', () => {
       data: { ttl: '5m', policy: 'cache-first' },
       page: { cache: 'persist', ttl: '1h' },
     });
-    expect(strategyOfLoad(load('load page never'))).toEqual({ declared: true, strategy: { page: { cache: 'never' } }, diagnostics: [] });
+    expect(strategyOfLoad(load('load page never'))).toEqual({ declared: true, strategy: { page: { cache: 'never' } } });
   });
 });
 
@@ -212,25 +212,25 @@ describe('analyzePage with a linked .fudapi (§4.5)', () => {
 
   it('load, paths, layout and the strategy come from the file of the route', () => {
     const apis: Record<string, PageApi> = { './other.fudapi': { id: 'routes/other', paths: false, layout: false }, './r.fudapi': own };
-    const analysis = analyzePage(ROUTE, '/src/routes/r.fud', (href) => apis[href]);
+    const analysis = analyzePage(ROUTE, (href) => apis[href]);
     expect(analysis).toMatchObject({ hasLoad: true, hasPaths: true, hasLayout: true, api: 'routes/r', strategy: { declared: true, strategy: { mode: 'ssr' } } });
   });
 
   it('a file without load is the page’s all the same when it has paths', () => {
-    const analysis = analyzePage(ROUTE, '/src/routes/r.fud', (href) => (href === './r.fudapi' ? { id: 'routes/r', paths: true, layout: false } : undefined));
+    const analysis = analyzePage(ROUTE, (href) => (href === './r.fudapi' ? { id: 'routes/r', paths: true, layout: false } : undefined));
     expect(analysis).toMatchObject({ hasLoad: false, hasPaths: true, hasLayout: false, api: 'routes/r', strategy: { declared: false } });
   });
 
   it('without anybody to read the links, the route has no contract', () => {
-    expect(analyzePage(ROUTE, '/src/routes/r.fud')).not.toHaveProperty('api');
+    expect(analyzePage(ROUTE)).not.toHaveProperty('api');
   });
 });
 
 describe('the wrapper of a route with a .fudapi (§4.4)', () => {
-  const api = { id: 'routes/blog/[slug]', root: SERVER_ROOT_ID, dev: true };
+  const api = { id: 'routes/blog/[slug]', root: SERVER_ROOT_ID, dev: true, load: true, paths: true, layout: true };
 
   it('load, layout and paths from the registry, once the root is ready', () => {
-    const text = emitRenderChunk({ pageModule: '/p.fud', hasLoad: true, hasPaths: true, hasLayout: true, withLoad: true, api });
+    const text = emitRenderChunk({ pageModule: '/p.fud', withLoad: true, api });
     expect(text).toContain(`import { ready as $ready } from "${SERVER_ROOT_ID}";`);
     expect(text).toContain('import { load as $load, layout as $layout, paths as $paths } from "fudic:routes/blog/[slug]";');
     expect(text).toContain('$ready.then(() => $runLoad($load, $ctx, true))');
@@ -240,21 +240,23 @@ describe('the wrapper of a route with a .fudapi (§4.4)', () => {
   });
 
   it('a layout alone still goes through the request', () => {
-    const text = emitRenderChunk({ pageModule: '/p.fud', hasLoad: false, hasLayout: true, withLoad: true, api });
+    const text = emitRenderChunk({ pageModule: '/p.fud', withLoad: true, api: { ...api, load: false, paths: false } });
     expect(text).toContain('import { layout as $layout } from');
     expect(text).toContain('const $ctx = pageContext(ctx);');
   });
 
   it('the Service Worker variant imports nothing of it', () => {
-    const text = emitRenderChunk({ pageModule: '/p.fud', hasLoad: true, hasPaths: true, withLoad: false, api });
+    const text = emitRenderChunk({ pageModule: '/p.fud', withLoad: false, api });
     expect(text).not.toContain('fudic:');
   });
 });
 
 describe('functions.mjs with the functions of the .fudapi', () => {
-  it('the contracts are asked first, the ?server modules after', () => {
-    const text = emitFunctionsModule({ routes: [], components: [], httpFile: undefined, base: '/', table: [], api: SERVER_ROOT_ID });
+  it("the root's handler answers them all, and the table names each one", () => {
+    const table = [{ url: '/_fudic/fn/routes/r/save', method: 'PUT' }];
+    const text = emitFunctionsModule({ api: SERVER_ROOT_ID, base: '/app/', table });
     expect(text).toContain(`import { handler as $api } from "${SERVER_ROOT_ID}";`);
-    expect(text).toContain('export const handle = async (request) => (await $contracts(request)) ?? $legacy(request);');
+    expect(text).toContain('export const handle = $api({ base: "/app/" });');
+    expect(text).toContain(JSON.stringify(table));
   });
 });

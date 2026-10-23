@@ -62,7 +62,7 @@ export const TEMPLATES: readonly TemplateSpec[] = [
     role: 'route-document',
     sample: {
       layoutHref: '../layouts/_layout.fud',
-      code: serverCodeBlock(),
+      code: serverLink('./about.fudapi'),
       title: '@data.title',
       sections: sectionBlocks(['nav']),
     },
@@ -70,7 +70,7 @@ export const TEMPLATES: readonly TemplateSpec[] = [
   {
     file: 'page.fud',
     role: 'page-document',
-    sample: { lang: 'en', title: 'Home', code: indent(serverCodeBlock(), '    ') },
+    sample: { lang: 'en', title: 'Home', code: indent(serverLink('./index.fudapi'), '    ') },
   },
   {
     file: 'layout.fud',
@@ -103,19 +103,12 @@ export function styleBlock(): string {
 `;
 }
 
-/** `@code { @server { load() } }` — the data hook of a route (decision 60 / SDD-21 §4.3). */
-export function serverCodeBlock(): string {
-  return `
-@code {
-  type PageData = { title: string };
-
-  @server {
-    export async function load(): Promise<PageData> {
-      return { title: 'Untitled' };
-    }
-  }
-}
-`;
+/**
+ * `<link rel="server">` to the `.fudapi` beside the route (SDD-60 §3.14): where its `load` is
+ * declared. The `.fud` itself carries no server code.
+ */
+export function serverLink(href: string): string {
+  return `<link rel="server" href="${href}">`;
 }
 
 /**

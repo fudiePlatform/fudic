@@ -231,8 +231,6 @@ describe('language configuration', () => {
     const end = new RegExp(String(at(languageConfig, 'folding', 'markers', 'end')));
 
     expect(start.test('@code {')).toBe(true);
-    expect(start.test('  @server {')).toBe(true);
-    expect(start.test('  @client {')).toBe(true);
     expect(start.test('@if (data.found) {')).toBe(true);
     expect(start.test('@foreach (const p of posts) {')).toBe(true);
     expect(start.test('@section nav {')).toBe(true);

@@ -19,16 +19,13 @@
  */
 
 import { build, type Plugin } from 'vite';
-import { readFileSync } from 'node:fs';
 import { builtinModules } from 'node:module';
-import { transformWithOxc } from 'vite';
 import { type ResolveIo } from '@fudic/compiler';
 import { type RouteBuild } from './discover.js';
-import { emitRenderChunk } from './wrapper.js';
+import { emitRenderChunk, routeApi } from './wrapper.js';
 import { runtimeUrls, type RuntimeEntries } from './constants.js';
 import { loadWithSourceMap } from './inputmaps.js';
 import { routeNameLookup, routeUsesDi } from './client.js';
-import { emitServerModule } from './server.js';
 import { NO_STYLES, type ProjectStyles } from './transform.js';
 import { compileFud } from './compile.js';
 import type { BuildReporter } from './report.js';
@@ -66,8 +63,6 @@ export interface EdgeExtras {
   readonly locale?: LocaleContext;
   /** The text of the `functions.mjs` module, when the app has server functions. */
   readonly functions?: string;
-  /** `src/http.ts`, the global level of every chain, when the project has one. */
-  readonly globalChain?: string;
   /**
    * The server variant of the generated modules (SDD-60 §3.11, §4.4): `fudic:<id>` and the
    * server root, by id; `undefined` for an id that is not one of them.
@@ -101,9 +96,8 @@ interface BundleOutputLike {
 }
 
 /**
- * The plugin of the nested build. It serves the wrappers, compiles `.fud`, and — unlike
- * the link pass's — has to handle the `?server` module too: the edge wrapper is the only
- * consumer that imports it, and it is TypeScript.
+ * The plugin of the nested build. It serves the wrappers, the generated modules of the
+ * `.fudapi` and `functions.mjs`, and compiles `.fud`.
  */
 export function edgePlugin(
   builds: readonly RouteBuild[],
@@ -141,14 +135,8 @@ export function edgePlugin(
       }
       return emitRenderChunk({
         pageModule: pageModuleOf(rb),
-        hasLoad: rb.analysis.hasLoad,
-        hasPaths: rb.analysis.hasPaths,
-        hasLayout: rb.analysis.hasLayout,
         hasDi: routeUsesDi(rb.absPath, io),
-        hasHttp: rb.analysis.hasHttp === true,
-        fluentLoad: rb.analysis.fluentLoad === true,
-        ...(extras.globalChain !== undefined ? { globalChain: extras.globalChain } : {}),
-        ...(rb.analysis.api !== undefined ? { api: { id: rb.analysis.api, root: SERVER_ROOT_ID, dev: false, ...(rb.locale !== undefined ? { locale: rb.locale } : {}) } } : {}),
+        ...routeApi(rb, SERVER_ROOT_ID, false),
         withLoad: true, // the edge resolves data in process
         runtime: runtimeFor(pattern),
         ...alternatesOf(rb, extras.locale?.locales, base, extras.locale?.site),
@@ -156,18 +144,9 @@ export function edgePlugin(
     },
     async transform(_code, id) {
       const target = localeTarget(extras.locale, io, id);
-      const { path, query } = target;
+      const { path } = target;
       if (!path.endsWith('.fud')) {
         return null;
-      }
-      if (query === 'server') {
-        // The `@server` region is TS: strip the types so the bundler parses it, exactly as
-        // the host plugin does for the dev and prerender paths.
-        const stripped = await transformWithOxc(emitServerModule(target.locale === undefined ? readFileSync(path, 'utf8') : target.io.read(path)), `${path}.ts`, {
-          lang: 'ts',
-        });
-        /* v8 ignore next -- Oxc always returns a map for a `.ts` input; the guard is for the type, not for a case. */
-        return stripped.map ? { code: stripped.code, map: stripped.map } : { code: stripped.code };
       }
       // The same module the host bundle compiled, from the build's memory (`compileFud`).
       const compiled = await compileFud(path, target.io, routeNameOf(path, target.locale), styles, assets, target.i18n);
@@ -175,7 +154,7 @@ export function edgePlugin(
       if (compiled === null) return null;
       // What the emit had to say about the file, which this pass used to drop (SDD-35 §1.1).
       reporter?.report(this, compiled.result.diagnostics, path);
-      // With its map: the edge chunks are the ones a `@server load` stack trace comes from.
+      // With its map: the edge chunks are what a stack trace of a render comes from.
       return compiled.module;
     },
   };

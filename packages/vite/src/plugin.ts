@@ -26,8 +26,7 @@ import {
 import { type FudicOptions, type ResolvedOptions, resolveOptions } from './options.js';
 import { discoverRoutes, type RouteBuild } from './discover.js';
 import { buildManifest } from './manifest.js';
-import { emitRenderChunk } from './wrapper.js';
-import { emitServerModule } from './server.js';
+import { emitRenderChunk, routeApi } from './wrapper.js';
 import { emitBootBootstrap, emitSwBootstrap } from './bootstrap.js';
 import {
   transformFudClient,
@@ -39,17 +38,7 @@ import { ClientErasure } from './erased-sources.js';
 import { API_EXTENSION } from '@fudic/api';
 import { API_SCHEME, ApiProject } from './api-modules.js';
 import { BROWSER_ROOT_ID, ROOT_FILE_PREFIX, SERVER_ROOT_ID, emitRoot } from './api-root.js';
-import {
-  appFunctions,
-  devSource,
-  emitFunctionsModule,
-  httpFileOf,
-  isFnPath,
-  sendResponse,
-  toRequest,
-  type ContractsHandler,
-  type FunctionsHandler,
-} from './functions.js';
+import { emitFunctionsModule, isFnPath, noFunction, sendResponse, toRequest, type ContractsHandler } from './functions.js';
 import { loadWithSourceMap } from './inputmaps.js';
 import {
   CLIENT_QUERY,
@@ -100,7 +89,6 @@ import {
 import {
   BROWSER_DIR,
   ERROR_PREFIX,
-  LEGACY_HTTP_FILE,
   SERVER_DIR,
   RUNTIME_CACHE_PREFIX,
   RUNTIME_DIR,
@@ -907,38 +895,19 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           next();
           return;
         }
-        builds = discover().routes;
-        const load = (id: string): Promise<Record<string, unknown>> =>
-          server.ssrLoadModule(id) as Promise<Record<string, unknown>>;
-        const source = devSource({
-          builds,
-          componentPath: (tag) => discoverComponents(builds, io).find((c) => c.tag === tag)?.path,
-          load,
-          httpFile: httpFileOf(root),
-        });
         // What is not an `HttpError` is a bug of the app: to the overlay, as a page's.
         const onError = (error: unknown): void => toOverlay(server, error);
         const request = toRequest(req, res);
-        // The functions of the `.fudapi` first (SDD-60 §4.4): the root, loaded the first time a
-        // request needs it, answers its `<id>`; a URL that names none goes on to the `?server`
-        // modules, until the regions are gone. A root that cannot load — two implementations of
-        // one piece, one in the wrong folder — goes to the overlay with its message.
-        const contracts = hasApi()
-          ? load(SERVER_ROOT_ID).then((mod) =>
+        // The functions of the `.fudapi` (SDD-60 §4.4): the root, loaded the first time a request
+        // needs it, answers them. A root that cannot load — two implementations of one piece, one
+        // in the wrong folder — goes to the overlay with its message. Without a `.fudapi` there is
+        // no function to answer.
+        const answered = hasApi()
+          ? (server.ssrLoadModule(SERVER_ROOT_ID) as Promise<Record<string, unknown>>).then((mod) =>
               (mod['handler'] as ContractsHandler)({ base, dev: true, onError })(request),
             )
-          : Promise.resolve(null);
-        contracts
-          .then(async (answered) => {
-            if (answered !== null) {
-              await sendResponse(res, answered, next);
-              return;
-            }
-            const http = await load('@fudic/http/server');
-            const handler = (http['functionsHandler'] as FunctionsHandler)(source, { base, dev: true, onError });
-            await sendResponse(res, await handler(request), next);
-          })
-          .catch(next);
+          : Promise.resolve(noFunction());
+        answered.then((response) => sendResponse(res, response, next)).catch(next);
       });
       // The files a `.fud` links, at the SAME URL the build publishes them under (BUG-40).
       // Dev has no bundle to put them in, and a page that works built and 404s in dev — or
@@ -1688,17 +1657,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         if (rb === undefined) {
           return null;
         }
-        const httpFile = httpFileOf(root);
         return emitRenderChunk({
           pageModule: pageModuleOf(rb),
-          hasLoad: rb.analysis.hasLoad,
-          hasPaths: rb.analysis.hasPaths,
-          hasLayout: rb.analysis.hasLayout,
           hasDi: routeUsesDi(rb.absPath, io),
-          hasHttp: rb.analysis.hasHttp === true,
-          fluentLoad: rb.analysis.fluentLoad === true,
-          ...(httpFile !== undefined ? { globalChain: httpFile } : {}),
-          ...(rb.analysis.api !== undefined ? { api: { id: rb.analysis.api, root: SERVER_ROOT_ID, dev: isDev, ...(rb.locale !== undefined ? { locale: rb.locale } : {}) } } : {}),
+          ...routeApi(rb, SERVER_ROOT_ID, isDev),
           // In dev the origin is the request's: a page served at localhost links to localhost.
           ...alternatesOf(rb, locales, base, isDev ? undefined : site),
           // In DEV this module IS the edge: the dev server renders through the module
@@ -1769,31 +1731,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         return translated === undefined ? null : { code: translated.code, map: JSON.stringify(translated.map) };
       }
       const fudIo = ioFor(locale);
-      if (query === 'server') {
-        // The `@server` region is TS (typed `load`/`paths`); strip types to plain JS so
-        // the bundler parses it (Vite's own Oxc transform, as it does for any `.ts`).
-        // Compiled for its locale too: `paths()` may read `locale` (§4.5).
-        const code = emitServerModule(locale === undefined ? readFileSync(path, 'utf8') : fudIo.read(path));
-        const stripped = await transformWithOxc(code, `${path}.ts`, { lang: 'ts' });
-        return stripped.map ? { code: stripped.code, map: stripped.map } : { code: stripped.code };
-      }
       if (query === IOC_QUERY) {
         const ioc = transformFudIoc(path, fudIo);
         if (ioc === null) return null;
         // What resolving its graph had to say, which this path used to drop (SDD-35 §1.1).
         await report(this, ioc.diagnostics, path);
         // The `@code` is copied verbatim, so this module is TypeScript whenever the author
-        // wrote TypeScript — the same strip `?client` and `?server` need.
+        // wrote TypeScript — the same strip `?client` needs.
         return (await transformWithOxc(ioc.code, `${path}.ts`, { lang: 'ts' })).code;
       }
       if (query === CLIENT_QUERY) {
-        // Its server functions answer by its pattern, and inherit `src/http.ts` (SDD-56 §4.5).
-        const slash = (p: string): string => p.replace(/\\/gu, '/');
-        const pattern = builds.find((rb) => slash(rb.absPath) === slash(path) && rb.locale === locale)?.route.pattern;
-        const chunk = transformFudClient(path, fudIo, projectStyles, linked, {
-          ...(pattern !== undefined ? { pattern } : {}),
-          ...(httpFileOf(root) !== undefined ? { httpFile: `/${LEGACY_HTTP_FILE}` } : {}),
-        });
+        const chunk = transformFudClient(path, fudIo, projectStyles, linked);
         if (chunk === null) {
           return null;
         }
@@ -1803,7 +1751,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           ...chunk.missingAssets.map((spec) => FUD0363({ file: path, spec })),
           ...chunk.diagnostics,
         ], path);
-        // Same reason as `?server`: the `@code { @client }` region is copied VERBATIM, so
+        // Same reason as `?ioc`: the `@code` is copied VERBATIM, so
         // the chunk is TypeScript whenever the author wrote TypeScript. The emit's map goes
         // IN as `inMap`, so what comes out is `.fud` → JS in one map instead of Oxc's
         // TS → JS. Without it the chunk mapped to a source it called `app-badge.fud?client`
@@ -1859,7 +1807,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // says so: a snippet's body is reported in the snippet's file. What the typecheck
       // already said is not said again.
       await report(this, [...diagnostics, ...result.diagnostics], path);
-      // Already stripped, for the same reason as `?server` and `?client`: since SDD-34 the
+      // Already stripped, for the same reason as `?ioc` and `?client`: since SDD-34 the
       // neutral zone of `@code` reaches this module verbatim, so a `const f: Form<Post> =
       // form(schema)` makes it TypeScript. The `.fud` map went IN as `inMap`, so the map
       // describes the code actually returned — it used to be handed over next to the
@@ -1931,32 +1879,24 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // The link chunks are NOT emitted yet: their names still carry a content hash, and
       // step 3b replaces it with the build id (§5.2) — which is not known until step 3.
 
-      // 1b. The edge pass: the wrappers that run `@server load` in process. They are NOT
+      // 1b. The edge pass: the wrappers that run `load` in process. They are NOT
       //     emitted into the bundle — `emitFile` means "this gets published", and this is
       //     precisely what must not (BUG-09 §4.1). They are written beside `outDir` for the
       //     preview, and materialized into the prerender's temp dir below.
       // Written to disk in 3b, not here: an edge chunk imports the shared chunks by name and
       // those are renamed there (BUG-31 §T5), so what lands beside `outDir` — and what the
       // prerender runs — has to be the rewritten code.
-      // What the edge pass builds besides the routes (SDD-56): `_error.fud`, the global chain
-      // every wrapper inherits, and `functions.mjs` when the app has a single server function.
+      // What the edge pass builds besides the routes (SDD-56): `_error.fud`, and `functions.mjs`
+      // when the `.fudapi` of the app declare a single function, behind the root's handler
+      // (SDD-60 §4.4).
       const locale = localeContext();
       const edgeExtras = (): EdgeExtras => {
-        const httpFile = httpFileOf(root);
-        const fns = appFunctions(builds, discoverComponents(builds, io));
-        // The functions of the `.fudapi` beside those of a `@server` (SDD-60 §4.4): one handler,
-        // the contracts first, until the regions are gone.
         const contracts = hasApi();
-        const table = [...fns.table, ...(contracts ? api.functionTable() : [])];
-        const functions =
-          table.length === 0
-            ? undefined
-            : emitFunctionsModule({ ...fns, table, httpFile, base, ...(contracts ? { api: SERVER_ROOT_ID } : {}) });
+        const table = contracts ? api.functionTable() : [];
         return {
           ...(errorPages.length > 0 ? { errorPages } : {}),
           ...(locale !== undefined ? { locale } : {}),
-          ...(httpFile !== undefined ? { globalChain: httpFile } : {}),
-          ...(functions !== undefined ? { functions } : {}),
+          ...(table.length > 0 ? { functions: emitFunctionsModule({ api: SERVER_ROOT_ID, base, table }) } : {}),
           ...(contracts ? { api: serverApi, root: SERVER_ROOT_ID } : {}),
         };
       };

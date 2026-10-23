@@ -70,44 +70,43 @@ Added @fudic/forms 0.0.1 to admin
     expect(fs.at('shop/apps/web/package.json')).toBe(before);
   });
 
-  it('add http writes src/http.ts, the chain every server function goes through', async () => {
+  it('add http writes src/http.fudapi, the chain every server function goes through', async () => {
     const fs = await shop();
     const { out } = await ok(fs, 'add', 'http', '--project', 'web', '--cwd', SHOP);
     expect(out).toBe(`
 Added @fudic/http 0.0.1 to web
   Installed dependencies (pnpm)
-  src/http.ts: the chain every server function goes through
+  src/http.fudapi: the chain every server function goes through
 `);
-    expect(fs.at('shop/apps/web/src/http.ts')).toBe(`import { chain, csrf, errorPages } from '@fudic/http';
-
-// Every server function of the app goes through this chain, load() included.
-export default chain().use(csrf, errorPages());
+    expect(fs.at('shop/apps/web/src/http.fudapi')).toBe(`# The global chain: csrf refuses a call another site's page makes with the user's cookies.
+chain
+  use csrf
 `);
   });
 
-  it('add http keeps an http.ts of the user: adds the module, says nothing of the file', async () => {
+  it('add http keeps an http.fudapi of the user: adds the module, says nothing of the file', async () => {
     const fs = await shop();
-    fs.write(`${SHOP}/apps/web/src/http.ts`, 'mine');
+    fs.write(`${SHOP}/apps/web/src/http.fudapi`, 'mine');
     const { out, commands } = await ok(fs, 'add', 'http', '--project', 'web', '--cwd', SHOP);
     expect(out).toBe('\nAdded @fudic/http 0.0.1 to web\n  Installed dependencies (pnpm)\n');
     expect(commands).toEqual(['pnpm install @ /w/shop']);
-    expect(fs.at('shop/apps/web/src/http.ts')).toBe('mine');
+    expect(fs.at('shop/apps/web/src/http.fudapi')).toBe('mine');
   });
 
   it('add http a second time has it already; --force writes the chain again, and installs nothing', async () => {
     const fs = await shop();
     await ok(fs, 'add', 'http', '--project', 'web', '--cwd', SHOP);
-    fs.write(`${SHOP}/apps/web/src/http.ts`, 'edited');
+    fs.write(`${SHOP}/apps/web/src/http.fudapi`, 'edited');
 
     const again = await ok(fs, 'add', 'http', '--project', 'web', '--cwd', SHOP);
     expect(again.out).toBe('\nweb already has @fudic/http\n');
     expect(again.commands).toEqual([]);
-    expect(fs.at('shop/apps/web/src/http.ts')).toBe('edited');
+    expect(fs.at('shop/apps/web/src/http.fudapi')).toBe('edited');
 
     const forced = await ok(fs, 'add', 'http', '--project', 'web', '--force', '--cwd', SHOP);
-    expect(forced.out).toBe('\nUpdated web\n  src/http.ts: the chain every server function goes through\n');
+    expect(forced.out).toBe('\nUpdated web\n  src/http.fudapi: the chain every server function goes through\n');
     expect(forced.commands).toEqual([]);
-    expect(fs.at('shop/apps/web/src/http.ts')).toContain('chain().use(csrf, errorPages());');
+    expect(fs.at('shop/apps/web/src/http.fudapi')).toContain('chain\n  use csrf\n');
   });
 
   it('add i18n --locales writes the app\'s languages to fudic.json; again, only updates them', async () => {
@@ -276,24 +275,23 @@ Created service ShoppingCart in apps/web/src/services/
 });
 
 describe('fudic g form (§6.12)', () => {
-  it('fudic g form person --project web --binary — exactly, and its file', async () => {
+  it('fudic g form person --project web — exactly, and its file', async () => {
     const fs = await shop();
-    const { out } = await ok(fs, 'g', 'form', 'person', '--project', 'web', '--binary', '--cwd', SHOP);
+    const { out } = await ok(fs, 'g', 'form', 'person', '--project', 'web', '--cwd', SHOP);
     expect(out).toBe(`
 Created form personForm in apps/web/src/forms/
-  person.form.ts         typed controls (str, u8, bool…): the upload travels in binary
-  person.form.test.ts    unit test
+  person.fudapi     its fields, their rules and their texts: import it from fudic:forms/person
+  person.test.ts    unit test
 
   Added @fudic/forms 0.0.1 to web (it was not there)
 `);
-    expect(fs.at('shop/apps/web/src/forms/person.form.ts')).toBe(`import { form, required, str } from '@fudic/forms';
-
-export const personForm = form({
-  name: str('', [required], { messages: { required: () => 'Name is required.' } }),
-});
+    expect(fs.at('shop/apps/web/src/forms/person.fudapi')).toBe(`# Every field says its type, its rules and their texts; both ends take it from here.
+form personForm
+  name  str = ""
+    required  "Name is required."
 `);
-    expect(fs.at('shop/apps/web/src/forms/person.form.test.ts')).toBe(`import { expect, test } from 'vitest';
-import { personForm } from './person.form';
+    expect(fs.at('shop/apps/web/src/forms/person.test.ts')).toBe(`import { expect, test } from 'vitest';
+import { personForm } from 'fudic:forms/person';
 
 test('asks for the name', () => {
   expect(personForm.$valid()).toBe(false);
@@ -303,19 +301,17 @@ test('asks for the name', () => {
 `);
   });
 
-  it('without --binary, control(); a hyphenated name, a camel-case form; admin already has forms', async () => {
+  it('a hyphenated name, a camel-case form; admin already has forms', async () => {
     const fs = await shop();
     await ok(fs, 'add', 'forms', '--project', 'admin', '--cwd', SHOP);
     const { out, commands } = await ok(fs, 'g', 'form', 'contact-us', '--project', 'admin', '--cwd', SHOP);
     expect(out).toBe(`
 Created form contactUsForm in apps/admin/src/forms/
-  contact-us.form.ts         its controls and their validators
-  contact-us.form.test.ts    unit test
+  contact-us.fudapi     its fields, their rules and their texts: import it from fudic:forms/contact-us
+  contact-us.test.ts    unit test
 `);
     expect(commands).toEqual([]);
-    expect(fs.at('shop/apps/admin/src/forms/contact-us.form.ts')).toContain(
-      "export const contactUsForm = form({\n  name: control('', [required],",
-    );
+    expect(fs.at('shop/apps/admin/src/forms/contact-us.fudapi')).toContain('form contactUsForm\n  name  str = ""\n');
   });
 
   it('FUD0457 for a name that is not kebab-case', async () => {
@@ -422,7 +418,7 @@ Created ui.css in libs/ui
 describe('parsing service, form and style', () => {
   it('reads their flags, says what each takes, and has a help for each', () => {
     expect(parseArgs(['g', 'service', 'cart', '--provided'])).toMatchObject({ kind: 'service', opts: { provided: true, test: true } });
-    expect(parseArgs(['g', 'form', 'person', '--binary', '--skip-test'])).toMatchObject({ kind: 'form', opts: { binary: true, test: false } });
+    expect(parseArgs(['g', 'form', 'person', '--skip-test'])).toMatchObject({ kind: 'form', opts: { test: false } });
     expect(parseArgs(['g', 'style', 'theme', '--project', 'web'])).toMatchObject({ kind: 'style', name: 'theme', opts: { project: 'web' } });
     expect(parseArgs(['g', 'lib', 'guia', '--styles-only'])).toMatchObject({ kind: 'lib', opts: { stylesOnly: true } });
     expect(parseArgs(['g', 'lib', 'ui'])).not.toMatchObject({ opts: { stylesOnly: true } });
@@ -431,7 +427,7 @@ describe('parsing service, form and style', () => {
       return parsed.kind === 'error' ? parsed.hints[0] : parsed.kind;
     };
     expect(hint(['g', 'service', 'x', '--zz'])).toBe('it takes: --project, --provided, --skip-test, --dry-run, --force');
-    expect(hint(['g', 'form', 'x', '--zz'])).toBe('it takes: --project, --binary, --skip-test, --dry-run, --force');
+    expect(hint(['g', 'form', 'x', '--zz'])).toBe('it takes: --project, --skip-test, --dry-run, --force');
     expect(hint(['g', 'style', 'x', '--zz'])).toBe('it takes: --project, --dry-run, --force');
     expect(hint(['g', 'service'])).toBe('e.g. fudic g service cart');
     expect(hint(['g', 'form'])).toBe('e.g. fudic g form person');

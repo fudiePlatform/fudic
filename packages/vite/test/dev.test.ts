@@ -95,6 +95,13 @@ describe('vite dev server (SDD-19 §4.10)', () => {
     ]);
   });
 
+  it('answers a function URL with a 404 problem: a project without a .fudapi has none (SDD-60 §4.4)', async () => {
+    const res = await fetch(`${origin}/_fudic/fn/routes/about/save`, { method: 'PUT' });
+    expect(res.status).toBe(404);
+    expect(res.headers.get('content-type')).toBe('application/problem+json');
+    expect(await res.json()).toEqual({ status: 404, title: 'Not Found', detail: 'no such server function' });
+  });
+
   it('serves the Service Worker at a root URL with Service-Worker-Allowed', async () => {
     const res = await fetch(`${origin}/fudic-sw.js`);
     expect(res.headers.get('service-worker-allowed')).toBe('/');

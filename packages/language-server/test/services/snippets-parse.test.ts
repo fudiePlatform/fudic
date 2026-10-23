@@ -179,31 +179,14 @@ describe('every $ belongs to a tabstop (criterion of §9)', () => {
   });
 });
 
-describe('the zones parse inside a @code', () => {
-  it('props and @client, in a component', () => {
+describe('the snippets of a @code parse inside it', () => {
+  it('props, in a component', () => {
     const source = `@code {
 ${materialize(of('props', 'code-block').body)}
-
-${materialize(of('@client', 'code-block').body)}
 }
 <app-x>
   <template shadowrootmode="open"></template>
 </app-x>
-`;
-    expect(codes(source)).toEqual([]);
-  });
-
-  it('@server with a load inside it, in a route', () => {
-    const load = materialize(of('load', 'code-block').body);
-    const source = `<link rel="layout" href="./_layout.fud">
-@code {
-  type PageData = { title: string };
-
-  @server {
-${load}
-  }
-}
-<h1>hi</h1>
 `;
     expect(codes(source)).toEqual([]);
   });

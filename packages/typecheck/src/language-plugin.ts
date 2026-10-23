@@ -19,7 +19,6 @@ import type { IScriptSnapshot, LanguagePlugin, VirtualCode } from '@volar/langua
 // The `typescript` field of a LanguagePlugin is a module augmentation shipped by
 // @volar/typescript; without this import it does not exist on the interface.
 import type {} from '@volar/typescript';
-import { serverFileName } from '@fudic/language-core';
 import type { ProjectedFud } from './project.js';
 import { createFudicVirtualCode, FUD_LANGUAGE_ID, type FudicVirtualCode } from './virtual-code.js';
 
@@ -112,7 +111,7 @@ export function fudLanguagePlugin<T, D extends ProjectedFud = ProjectedFud>(
     typescript: {
       extraFileExtensions: [...FUD_EXTRA_FILE_EXTENSIONS],
 
-      // Volar's augmentation is not generic over the root code, so these two hooks receive a
+      // Volar's augmentation is not generic over the root code, so this hook receives a
       // plain `VirtualCode`. The narrowing is safe by construction: the only roots that exist
       // are the ones `build` made.
       getServiceScript(root: VirtualCode) {
@@ -121,25 +120,6 @@ export function fudLanguagePlugin<T, D extends ProjectedFud = ProjectedFud>(
           extension: '.ts',
           scriptKind: SCRIPT_KIND_TS,
         };
-      },
-
-      /**
-       * The server virtual as a file of its own.
-       *
-       * It has to be one: the client virtual derives `$Data` from
-       * `typeof import('./x.fud.server')`, so TypeScript must be able to resolve that name to
-       * something. This is where the name it resolves to comes from — and it is why the build
-       * mounts a language service host and not `proxyCreateProgram`, which ignores this hook.
-       */
-      getExtraServiceScripts(fileName: string, root: VirtualCode) {
-        return [
-          {
-            fileName: serverFileName(fileName),
-            code: (root as FudicVirtualCode).server,
-            extension: '.ts',
-            scriptKind: SCRIPT_KIND_TS,
-          },
-        ];
       },
     },
   };

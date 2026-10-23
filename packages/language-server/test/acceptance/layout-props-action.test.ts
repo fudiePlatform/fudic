@@ -1,25 +1,17 @@
 /**
- * SDD-40 §6.12–§6.14 — the light bulb over a layout contract, on a real LSP round trip.
+ * SDD-40 §6.12 and SDD-60 §4.7 — the light bulb over a layout contract, on a real LSP round trip.
  *
  * Its own workspace, because the subject is the LAYOUT: giving the shared fixtures a required
  * prop would put this bulb over every route in every other suite.
  *
- * The division of labour is SDD-36's, unchanged. The fact is TypeScript's — the projection
- * gives the route's `layout(ctx, data)` the layout's `$Props` as its return type, so the error
- * lands on the author's own `return` — and the server contributes the hands. What the repair
- * writes has to be a value OF each prop's type, because a repair that leaves the file with an
- * error it created itself is worse than no repair at all.
+ * The division of labour is SDD-36's, unchanged: the fact is TypeScript's, and the server
+ * contributes the hands. Since SDD-60 the hands write `layout` in the route's `.fudapi` and link
+ * it; the props are then what its handler in `src/server` returns, and TypeScript asks for each.
  */
 
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
-import {
-  CodeActionRequest,
-  CompletionRequest,
-  DocumentDiagnosticRequest,
-  type CompletionItem,
-  type CompletionList,
-} from 'vscode-languageserver-protocol/node';
+import { rmSync, writeFileSync } from 'node:fs';
+import { CodeActionRequest, DocumentDiagnosticRequest } from 'vscode-languageserver-protocol/node';
 import { copyWorkspace, startHarness, type Harness } from './_harness.js';
 
 let harness: Harness;
@@ -49,15 +41,6 @@ const OPTIONAL = LAYOUT.replace(
   'type Props = { culture?: string; year?: number; dark?: boolean; user?: { id: string } };',
 ).replace('content="@year @user.id"', 'content="@year"');
 
-/** A layout whose one prop states no type at all — required, and not provable beyond that. */
-const UNTYPED = LAYOUT.replace(
-  'type Props = { culture: string; year: number; dark: boolean; user: { id: string } };\n' +
-    '      const { culture, year, dark, user } = props<Props>();',
-  'const { culture } = props<{ culture }>();',
-)
-  .replace(` data-theme="@(dark ? 'dark' : 'light')"`, '')
-  .replace('\n    <meta name="copyright" content="@year @user.id">', '');
-
 beforeAll(async () => {
   root = copyWorkspace();
   // BEFORE the harness starts: the workspace index is built at startup, and a layout written
@@ -65,7 +48,6 @@ beforeAll(async () => {
   // below pass for the wrong reason.
   writeFileSync(`${root}/src/layouts/_layout.fud`, LAYOUT, 'utf8');
   writeFileSync(`${root}/src/layouts/_optional.fud`, OPTIONAL, 'utf8');
-  writeFileSync(`${root}/src/layouts/_untyped.fud`, UNTYPED, 'utf8');
   harness = await startHarness({ root });
 }, 60_000);
 
@@ -96,22 +78,6 @@ async function actionsOn(source: string): Promise<readonly WireAction[]> {
 const completing = (actions: readonly WireAction[]): WireAction | undefined =>
   actions.find((action) => action.title === 'Completar las props requeridas del layout');
 
-/** The single insertion a repair carries, applied to the source it was computed from. */
-function applied(source: string, action: WireAction | undefined): string {
-  const changes = Object.values(action?.edit?.changes ?? {})[0] ?? [];
-  expect(changes).toHaveLength(1);
-  const edit = changes[0] as unknown as {
-    newText: string;
-    range: { start: { line: number; character: number }; end: { line: number; character: number } };
-  };
-  const lines = source.split('\n');
-  const offsetOf = (p: { line: number; character: number }): number =>
-    lines.slice(0, p.line).reduce((n, line) => n + line.length + 1, 0) + p.character;
-  return (
-    source.slice(0, offsetOf(edit.range.start)) + edit.newText + source.slice(offsetOf(edit.range.end))
-  );
-}
-
 /**
  * The ERRORS the server reports for a route source.
  *
@@ -140,101 +106,9 @@ describe('§6.12 — the bulb is offered, and the server reports nothing of its 
     // SDD-36 removed, so the server's own codes must not include it.
     expect(await codesOf(route(''))).not.toContain('FUD0702');
   });
-
-  it('says nothing once the route resolves every required prop', async () => {
-    const resolved = route(
-      '@code {\n  @server {\n' +
-        '    export function layout(ctx: unknown, data: unknown) {\n' +
-        "      return { culture: '', year: 0, dark: false, user: { id: '' } };\n" +
-        '    }\n  }\n}\n',
-    );
-    expect(completing(await actionsOn(resolved))).toBeUndefined();
-  });
 });
 
-describe('§6.13 — what it writes is of the type of each prop', () => {
-  // A route with a `@server`, so the repair writes its resolver there (the `.fudapi` one has
-  // no `return` to write values into: SDD-60 §4.7).
-  const withServer = route('@code {\n  @server {\n    export function load() { return {}; }\n  }\n}\n');
-
-  it('a scalar gets its own literal and anything else a typed hole', async () => {
-    const source = withServer;
-    const written = applied(source, completing(await actionsOn(source)));
-
-    expect(written).toContain("culture: ''");
-    expect(written).toContain('year: 0');
-    expect(written).toContain('dark: false');
-    // No obvious value to invent, so the hole carries the type instead of a guess.
-    expect(written).toContain('user: null as unknown as { id: string }');
-  });
-
-  it('the file it leaves behind has no type errors of its own making', async () => {
-    const source = withServer;
-    const written = applied(source, completing(await actionsOn(source)));
-
-    expect(await codesOf(written)).toEqual([]);
-    // And the repair is not offered a second time over its own work.
-    expect(completing(await actionsOn(written))).toBeUndefined();
-  });
-});
-
-describe('§6.14 — how much scaffolding it writes depends on what is already there', () => {
-  it('fills the `return` of a resolver that exists, keeping what it held', async () => {
-    const source = route(
-      '@code {\n  @server {\n' +
-        '    export function layout(ctx: unknown, data: unknown) {\n' +
-        "      return { culture: 'es' };\n" +
-        '    }\n  }\n}\n',
-    );
-    const written = applied(source, completing(await actionsOn(source)));
-
-    expect(written).toContain("culture: 'es'");
-    expect(written).toContain('year: 0');
-    expect(await codesOf(written)).toEqual([]);
-  });
-
-  it('fills an EMPTY `return {}` without leaving a stray comma', async () => {
-    const source = route(
-      '@code {\n  @server {\n' +
-        '    export function layout(ctx: unknown, data: unknown) {\n' +
-        '      return {};\n' +
-        '    }\n  }\n}\n',
-    );
-    const written = applied(source, completing(await actionsOn(source)));
-
-    expect(written).toContain("return { culture: '', year: 0, dark: false,");
-    expect(written).not.toContain('return {,');
-    expect(await codesOf(written)).toEqual([]);
-  });
-
-  it('writes the whole function into a `@server` that exists', async () => {
-    const source = route(
-      '@code {\n  @server {\n    export function load() { return {}; }\n  }\n}\n',
-    );
-    const written = applied(source, completing(await actionsOn(source)));
-
-    // Untyped on purpose (BUG-44 §3.3): the projection types them, and a `ctx: unknown`
-    // written here would be the author's, which the projection leaves alone.
-    expect(written).toContain('export function layout(ctx, data) {');
-    expect(written).toContain('export function load() { return {}; }');
-    expect(await codesOf(written)).toEqual([]);
-  });
-
-  it('keeps the parameters of a resolver that exists exactly as the author wrote them', async () => {
-    const source = route(
-      '@code {\n  @server {\n' +
-        '    export function layout(ctx, data) {\n' +
-        "      return { culture: 'es' };\n" +
-        '    }\n  }\n}\n',
-    );
-    const written = applied(source, completing(await actionsOn(source)));
-
-    expect(written).toContain('export function layout(ctx, data) {');
-    expect(await codesOf(written)).toEqual([]);
-  });
-});
-
-describe('SDD-60 §4.7 — a route with no `@server` gets `layout` in its `.fudapi`', () => {
+describe('SDD-60 §4.7 — the route gets `layout` in its `.fudapi`', () => {
   /** One change of a `documentChanges` edit, as it travels. */
   interface WireChange {
     readonly kind?: string;
@@ -295,70 +169,7 @@ describe('SDD-60 §4.7 — a route with no `@server` gets `layout` in its `.fuda
   });
 });
 
-/** The labels the editor is offered at the `|` of a route, typed with `trigger` if given. */
-async function labelsAt(marked: string, trigger?: string): Promise<string[]> {
-  const text = marked.replace('|', '');
-  const { uri } = await harness.open('src/blog/[slug].fud', text);
-  const got = await harness.client.sendRequest(CompletionRequest.type, {
-    textDocument: { uri },
-    position: harness.positionAt(text, marked.indexOf('|')),
-    ...(trigger === undefined ? {} : { context: { triggerKind: 2, triggerCharacter: trigger } }),
-  });
-  const list = got as CompletionList | CompletionItem[] | null;
-  return (list === null ? [] : Array.isArray(list) ? list : list.items).map((item) => item.label);
-}
-
-describe('BUG-44 — what the editor offers inside the route’s resolver', () => {
-  const resolver = (body: string): string =>
-    route(`@code {\n  @server {\n    export function layout(ctx, data) {\n      ${body}\n    }\n  }\n}\n`);
-
-  it('`return { | }` offers every prop of the layout, and no member of a promise (criterion 4)', async () => {
-    const labels = await labelsAt(resolver('return { | };'));
-
-    expect(labels).toEqual(expect.arrayContaining(['culture', 'year', 'dark', 'user']));
-    expect(labels).not.toContain('then');
-    expect(labels).not.toContain('layout');
-  });
-
-  it('`ctx.` offers the context while the region does not parse (criteria 2 and 3)', async () => {
-    const labels = await labelsAt(resolver("ctx.|\n      return { culture: '' };"), '.');
-
-    expect(labels).toEqual(expect.arrayContaining(['url', 'params', 'origin']));
-    for (const gone of ['inject', 'mode', 'nonce']) expect(labels).not.toContain(gone);
-    expect(labels).not.toContain('load');
-  });
-
-  it('`ctx.params.` offers the route’s own params', async () => {
-    const labels = await labelsAt(resolver("ctx.params.|\n      return { culture: '' };"), '.');
-
-    expect(labels).toEqual(['slug']);
-  });
-});
-
 describe('the cases where a repair would be guessing', () => {
-  it('offers nothing over a `return` it cannot read', async () => {
-    // A field inserted beside a spread could be the very prop the spread already carries.
-    const source = route(
-      '@code {\n  @server {\n' +
-        '    const defaults = { culture: "es", year: 0, dark: false, user: { id: "" } };\n' +
-        '    export function layout(ctx: unknown, data: unknown) {\n' +
-        '      return { ...defaults };\n' +
-        '    }\n  }\n}\n',
-    );
-    expect(completing(await actionsOn(source))).toBeUndefined();
-  });
-
-  it('falls back to an empty string for a prop whose type the layout never stated', async () => {
-    // «Not provable» is not «no prop»: the key carries no `?`, so it is required, and the
-    // repair writes what most props take rather than inventing a type to write against.
-    const source =
-      '<link rel="layout" href="../layouts/_untyped.fud">\n' +
-      '@code {\n  @server {\n    export function load() { return {}; }\n  }\n}\n<h1>hola</h1>\n';
-    const written = applied(source, completing(await actionsOn(source)));
-
-    expect(written).toContain("culture: ''");
-  });
-
   it('offers nothing over a layout href that resolves to no file', async () => {
     // `FUD0433` already speaks for a broken `href`, and a contract read from a file nobody
     // found would be a repair against a layout that does not exist.

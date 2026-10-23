@@ -10,7 +10,7 @@
  */
 
 import { beforeEach, describe, expect, it } from 'vitest';
-import { control, form, required } from '../../src/index.js';
+import { control, form, required } from '../../src/contract/index.js';
 import { bindForm, bindText } from '../../src/dom/index.js';
 import { fire, mount } from './_dom.js';
 

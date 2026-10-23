@@ -2,7 +2,7 @@
  * `renderLayout`: a layout without a route of the project (§3.8, §4.9).
  *
  * The harness writes the smallest route that uses it — its head contribution, its sections and
- * its body verbatim, and the props a route's `@server layout(ctx, data)` resolves — and paints
+ * its body verbatim, and the props a route's `layout` resolves, handed to the render — and paints
  * it as `visit` paints a route. The shell, the slots and the defaults are the layout's own.
  */
 
@@ -13,9 +13,6 @@ import { FILE_EXPORT } from './constants.js';
 import { layoutHost } from './host.js';
 import type { FudModule } from './mount.js';
 import { renderPage } from './page.js';
-import { projectOf } from './project.js';
-import { knowComponents } from './server.js';
-import { graphOf } from './graph.js';
 import { enterWorld, type WorldOptions } from './session.js';
 import { showDocument, type Visited } from './visit.js';
 
@@ -38,20 +35,9 @@ export async function renderLayout(layout: Pick<FudModule, typeof FILE_EXPORT>, 
   const page = cached(
     'layout',
     'fud',
-    layoutHost({ layout: layout[FILE_EXPORT], props, body, sections, head }),
+    layoutHost({ layout: layout[FILE_EXPORT], body, sections, head }),
   );
-  knowComponents(graphOf(page).components.values());
-  const { httpFile } = projectOf();
-  const html = await renderPage(
-    page,
-    {
-      hasLoad: false,
-      hasLayout: props !== undefined,
-      hasDi: routeUsesDi(page, nodeIo()),
-      ...(httpFile === undefined ? {} : { globalChain: httpFile }),
-    },
-    '/',
-    '/',
-  );
+  // The props as a route's `layout` would resolve them, handed to the render already resolved.
+  const html = await renderPage(page, { hasDi: routeUsesDi(page, nodeIo()) }, '/', '/', undefined, props);
   return showDocument(html, page, 200, providers);
 }

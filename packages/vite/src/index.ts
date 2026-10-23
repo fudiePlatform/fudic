@@ -28,7 +28,7 @@ export {
   type StrategyDecl,
   type StrategyAnalysis,
   NO_STRATEGY,
-  strategyFrom,
+  strategyOfLoad,
 } from './strategy.js';
 export {
   type SwConfigFile,
@@ -51,7 +51,6 @@ export {
 export { nodeIo } from './io.js';
 export { type TransformResult, transformFud } from './transform.js';
 export { parseFud } from './parse.js';
-export { emitServerModule } from './server.js';
 export { type RouteBuild, type DiscoverResult, discoverRoutes } from './discover.js';
 export { type ManifestInputs, type ManifestResult, buildManifest } from './manifest.js';
 export { type LinkChunk, type LinkResult, runLinkPass, safeName } from './link.js';

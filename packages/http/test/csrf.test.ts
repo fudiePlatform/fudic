@@ -7,16 +7,16 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { csrf } from '../src/csrf.js';
+import { csrfClient } from '../src/csrf-client.js';
+import { csrfServer } from '../src/csrf-server.js';
 import { HttpError } from '../src/errors.js';
-import { halfOf } from '../src/middleware.js';
 import { run } from '../src/compose.js';
 import type { Method } from '../src/types.js';
 import { generated } from './built-ins.js';
 import { clientCtx, serverCtx } from './helpers.js';
 
 const IMPLEMENTATIONS = [
-  ['today', { client: () => [halfOf(csrf, 'client')!] as never, server: () => [halfOf(csrf, 'server')!] as never }],
+  ['the halves', { client: () => [csrfClient] as never, server: () => [csrfServer] as never }],
   ['generated from the .fudapi', { client: generated.csrfClient, server: generated.csrfServer }],
 ] as const;
 

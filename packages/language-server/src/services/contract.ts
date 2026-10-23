@@ -21,13 +21,11 @@ import { API_EXTENSION, parseApi } from '@fudic/api';
 import {
   attributeValueSpan,
   documentRoots,
-  extractCode,
   linkHref,
   span,
   walk,
   type Attribute,
   type ElementNode,
-  type ServerRegion,
   type Span,
 } from '@fudic/compiler';
 import { serverLinksOf } from '@fudic/typecheck';
@@ -88,15 +86,14 @@ export interface UnknownSlot {
 /**
  * A required prop of the LAYOUT that this route does not resolve (SDD-40 §3.5).
  *
- * The same shape of fact as `MissingProps` and the same division of labour: TypeScript says it
- * — the projection gives the route's `layout(ctx, data)` the layout's `$Props` as its return
- * type, so the error lands on the author's own `return` — and this only carries what a repair
- * needs. The build has its own voice for it, `FUD0702`, and the two never speak at once: the
- * emit is not run in the editor.
+ * The same shape of fact as `MissingProps` and the same division of labour: once the `layout` of
+ * the route's `.fudapi` is declared and linked, TypeScript says it — the handler in `src/server`
+ * returns the layout's props — and this only carries what a repair needs. The build has its own
+ * voice for it, `FUD0702`, and the two never speak at once: the emit is not run in the editor.
  */
-export type MissingLayoutProps = MissingInResolver | MissingInContract;
+export type MissingLayoutProps = MissingInContract;
 
-/** The fact itself, whichever file the repair writes. */
+/** The fact itself. */
 interface LayoutPropsFact {
   readonly kind: 'missing-layout-props';
   /** The `<link rel="layout">` — what the bulb underlines, as `FUD0702` anchors on it. */
@@ -106,24 +103,10 @@ interface LayoutPropsFact {
 }
 
 /**
- * The route has a `@server` (until SDD-60 retires it): the repair writes its resolver.
- *
- * `'object'` — inside the `return { … }` of a resolver that already exists; the offset is
- * just past the `{`. `'server'` — a whole `export function layout` at the start of the
- * `@server` region.
- */
-export interface MissingInResolver extends LayoutPropsFact {
-  readonly write: 'object' | 'server';
-  readonly insertAt: number;
-  /** Whether the object literal the repair writes into already holds something. */
-  readonly hasFields: boolean;
-}
-
-/**
- * The route has no `@server` (SDD-60 §4.7): `layout` goes into its sibling `.fudapi`, created
- * when it is not there, and the route links it right after its `<link rel="layout">` — the
- * offset — when it does not yet. What the layout needs is then the handler's return type, and
- * TypeScript says so in `src/server`.
+ * `layout` goes into the route's sibling `.fudapi` (SDD-60 §4.7), created when it is not there,
+ * and the route links it right after its `<link rel="layout">` — the offset — when it does not
+ * yet. What the layout needs is then the handler's return type, and TypeScript says so in
+ * `src/server`.
  */
 export interface MissingInContract extends LayoutPropsFact {
   readonly write: 'fudapi';
@@ -403,28 +386,12 @@ function missingLayoutProps(
 
   const at = document.layoutLink.openSpan;
   const issue = { kind: 'missing-layout-props', at } as const;
-  const server = document.code?.parts.find((p): p is ServerRegion => p.type === 'server-region');
-  if (server === undefined) {
-    // No `@server`: the route's resolver is the `layout` of its `.fudapi` (SDD-60 §4.7), and
-    // once it is declared and linked, what it returns is TypeScript's to check in `src/server`.
-    const contract = apis === undefined ? undefined : siblingContract(cached, index, apis);
-    if (contract === undefined || (contract.declared && contract.linked)) return undefined;
-    // After the `<link rel="layout">`: the first thing a route holds, and links go together.
-    return { ...issue, props: required, write: 'fudapi', insertAt: at.end, contract };
-  }
-
-  const resolver = extractCode(cached.source, document).layoutResolver;
-  // Present but unreadable: nothing to say and nothing safe to write.
-  if (resolver !== undefined && resolver.keys === undefined) return undefined;
-  const resolved = new Set(resolver?.keys ?? []);
-  const props = required.filter((prop) => !resolved.has(prop.name));
-  if (props.length === 0) return undefined;
-
-  if (resolver?.fieldsAt !== undefined) {
-    return { ...issue, props, write: 'object', insertAt: resolver.fieldsAt, hasFields: resolver.hasFields };
-  }
-  // No resolver: the repair writes the whole function at the start of the region.
-  return { ...issue, props, write: 'server', insertAt: server.js.start, hasFields: false };
+  // The route's resolver is the `layout` of its `.fudapi` (SDD-60 §4.7), and once it is declared
+  // and linked, what it returns is TypeScript's to check in `src/server`.
+  const contract = apis === undefined ? undefined : siblingContract(cached, index, apis);
+  if (contract === undefined || (contract.declared && contract.linked)) return undefined;
+  // After the `<link rel="layout">`: the first thing a route holds, and links go together.
+  return { ...issue, props: required, write: 'fudapi', insertAt: at.end, contract };
 }
 
 /** The `.fudapi` beside a route — `usuarios.fud` → `usuarios.fudapi` — as it stands now. */

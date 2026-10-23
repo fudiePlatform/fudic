@@ -705,15 +705,4 @@ describe('transform', () => {
   it('ignores non-.fud ids', async () => {
     expect(await setup('build').transform.call(emitCtx(), '', '/x.ts')).toBeNull();
   });
-
-  it('serves the ?server module type-stripped to JS', async () => {
-    // A `.fud` of its own: the fixtures have no `@server` any more, and this module goes with
-    // the last one (SDD-60 task 63).
-    const dir = mkdtempSync(join(tmpdir(), 'fudic-server-module-'));
-    const page = join(dir, 'page.fud');
-    writeFileSync(page, '<link rel="layout" href="./_layout.fud">\n\n@code {\n  @server {\n    export async function load(): Promise<{ n: number }> {\n      return { n: 1 };\n    }\n  }\n}\n\n<p>@data.n</p>\n');
-    const result = await setup('build').transform.call(emitCtx(), '', `${page}?server`);
-    expect(result.code).toContain('function load'); // the @server load, types stripped
-    expect(result.code).not.toContain(': Promise<'); // TS annotation gone
-  });
 });

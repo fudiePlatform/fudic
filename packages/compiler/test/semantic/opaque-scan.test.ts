@@ -2,10 +2,10 @@
  * BUG-30 — a marker written inside a JS comment, string, template or regex is not a marker,
  * and a `load` named in one is not an export.
  *
- * The two rules that scan a `@code` region's TEXT — `code-region-nesting` (FUD0193) and
- * `layout-load` (FUD0430) — used to match on the raw substring, so prose about a region was
- * an error about a region. What they must keep catching is every REAL case, at the very same
- * offset: the fix masks, it does not move anything.
+ * The rule that scans a `@code` region's TEXT — `layout-load` (FUD0430) — used to match on the
+ * raw substring, so prose about a region was an error about a region. (`code-region-nesting`,
+ * FUD0193, scanned it too, until SDD-60 retired it with the regions.) What it must keep
+ * catching is every REAL case, at the very same offset: the fix masks, it does not move anything.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -43,58 +43,6 @@ const withCode = (code: string): string =>
 /** The same block inside a layout, where FUD0430 applies. */
 const layout = (code: string): string =>
   `<!DOCTYPE html><html><head>${code}@RenderHead()</head><body>@RenderBody()</body></html>`;
-
-describe('FUD0193 — a marker inside an opaque region is prose, not a region (§6.1–6.2)', () => {
-  it('ignores a line comment that names a region, in the neutral zone', () => {
-    // The comment the bug was reported with, verbatim in spirit: the natural place to say
-    // why a constant does NOT live in the client region is right above the constant.
-    const source = withCode(
-      '@code {\n  // Written inside @client, the route prerender fails.\n  const count = 1;\n}',
-    );
-    expect(codes(source)).not.toContain('FUD0193');
-    expect(codes(withCode('@code { // TODO: move this to @client\nconst a = 1; }'))).not.toContain(
-      'FUD0193',
-    );
-  });
-
-  it('ignores a block comment, a string, a template and a regex literal', () => {
-    expect(codes(withCode('@code { /* move to @server one day */ const a = 1; }'))).not.toContain(
-      'FUD0193',
-    );
-    expect(codes(withCode('@code { const s = "@server"; }'))).not.toContain('FUD0193');
-    expect(codes(withCode('@code { const t = `usa @client aquí`; }'))).not.toContain('FUD0193');
-    expect(codes(withCode('@code { const re = /@client/u; }'))).not.toContain('FUD0193');
-  });
-
-  it('ignores a comment written INSIDE a real region — the one explaining the region', () => {
-    expect(
-      codes(withCode('@code { @client {\n  // this @client block owns the counter\n  let n = 0;\n} }')),
-    ).not.toContain('FUD0193');
-    expect(
-      codes(withCode('@code { @server {\n  const doc = "runs in @server only";\n} }')),
-    ).not.toContain('FUD0193');
-  });
-
-  it('ignores a marker inside a template interpolation string (nested opaque regions)', () => {
-    expect(codes(withCode('@code { const t = `x ${"@server"} y`; }'))).not.toContain('FUD0193');
-  });
-
-  it('still flags a region nested in a region, with the span on the marker (§6.4)', () => {
-    const source = withCode('@code { @client { @server {} } }');
-    const found = diags(source).filter((d) => d.code === 'FUD0193');
-    expect(found).toHaveLength(1);
-    expect(source.slice(found[0]!.span.start, found[0]!.span.end)).toBe('@server');
-    // The offset is the one the raw text scan produced: masking never moves a span (§6.7).
-    expect(found[0]!.span.start).toBe(source.indexOf('@server'));
-  });
-
-  it('still flags a marker in the neutral zone at brace depth > 0 (§6.5)', () => {
-    const source = withCode('@code { function f() { @client { } } }');
-    const found = diags(source).filter((d) => d.code === 'FUD0193');
-    expect(found).toHaveLength(1);
-    expect(source.slice(found[0]!.span.start, found[0]!.span.end)).toBe('@client');
-  });
-});
 
 describe('FUD0430 — a `load` named in prose is not an export (§6.3, §6.6)', () => {
   it('ignores a comment and a string that mention exporting load', () => {

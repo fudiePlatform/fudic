@@ -18,6 +18,8 @@ export default defineConfig({
       // renders the values of, and the bindings the client hydrates with. The a11y invariant
       // is the other thing the emit cannot assert about itself — that a form has the same
       // markup whether it hydrated or not — and checking it takes both of them, running.
+      // And what fudic generates from a `.fudapi` builds a form with (SDD-60 §3.10).
+      '@fudic/forms/contract': fileURLToPath(new URL('../forms/src/contract/index.ts', import.meta.url)),
       '@fudic/forms/dom': fileURLToPath(new URL('../forms/src/dom/index.ts', import.meta.url)),
       '@fudic/forms': fileURLToPath(new URL('../forms/src/index.ts', import.meta.url)),
     },

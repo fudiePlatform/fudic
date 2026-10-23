@@ -5,7 +5,7 @@
  *
  * Shared by `mount`, which paints a host page, and `visit`, which paints a route. The wrapper
  * is written to the cache and imported like any module, so the page, its components and
- * whatever `@server` they import live in the same graph as the test — and a `vi.mock` of the
+ * whatever their handlers import live in the same graph as the test — and a `vi.mock` of the
  * test reaches them.
  */
 
@@ -16,6 +16,7 @@ import {
   edgeContext,
   emitRenderChunk,
   nodeIo,
+  routeApi,
   routeUsesDi,
   SERVER_ROOT_ID,
   type RenderChunkOptions,
@@ -48,22 +49,17 @@ export async function loadWrapper(file: string, facts: PageFacts): Promise<Rende
 }
 
 /** What the plugin tells the wrapper of a discovered route, as `vite dev` writes it. */
-export function routeFacts(rb: RouteBuild, httpFile: string | undefined): PageFacts {
+export function routeFacts(rb: RouteBuild): PageFacts {
   return {
-    hasLoad: rb.analysis.hasLoad,
-    hasPaths: rb.analysis.hasPaths,
-    hasLayout: rb.analysis.hasLayout,
     hasDi: routeUsesDi(rb.absPath, nodeIo()),
-    hasHttp: rb.analysis.hasHttp === true,
-    fluentLoad: rb.analysis.fluentLoad === true,
-    ...(rb.analysis.api === undefined ? {} : { api: { id: rb.analysis.api, root: SERVER_ROOT_ID, dev: true } }),
-    ...(httpFile === undefined ? {} : { globalChain: httpFile }),
+    ...routeApi(rb, SERVER_ROOT_ID, true),
   };
 }
 
 /**
  * The HTML `vite dev` would answer for `url` with the page at `file`, matched by `pattern`.
- * With `data`, the page is handed it in place of what `load` would resolve.
+ * With `data`, the page is handed it in place of what `load` would resolve; with `layout`, the
+ * props of its layout in place of what `layout` would resolve.
  */
 export async function renderPage(
   file: string,
@@ -71,8 +67,9 @@ export async function renderPage(
   pattern: string,
   url: string,
   data?: unknown,
+  layout?: unknown,
 ): Promise<string> {
   const mod = await loadWrapper(file, facts);
-  // `data` undefined is what the wrapper reads as «call `load`»: no branch here.
-  return drainStream(mod.render({ ...edgeContext(pattern, url, ''), data }));
+  // `undefined` is what the wrapper reads as «resolve it»: no branch here.
+  return drainStream(mod.render({ ...edgeContext(pattern, url, ''), data, layout }));
 }

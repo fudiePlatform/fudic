@@ -5,7 +5,8 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { required, setMessages, type AnyForm } from '@fudic/forms';
+import type { AnyForm } from '@fudic/forms';
+import { required, setMessages } from '@fudic/forms/contract';
 import type { Rule } from '@fudic/forms/contract';
 import { emitDeclarations, emitModule, type ApiContext } from '../../src/index.js';
 import { cases } from './_cases.js';

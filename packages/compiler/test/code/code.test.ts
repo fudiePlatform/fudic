@@ -204,30 +204,20 @@ describe('parseCodeBlock — degradations (§6.9)', () => {
     expect(types(node.parts)).toEqual(['neutral-js']);
   });
 
-  it('reports FUD0111 for `@server(x)` (§6.5, decision 66)', () => {
+  it('skips a parameter list, which says nothing since SDD-60 retired FUD0111', () => {
     const source = '@code { @server(x) { load(); } }';
     const { node, diagnostics, source: s } = run(source);
 
-    expect(codes(diagnostics)).toEqual(['FUD0111']);
-    expect(s.slice(diagnostics[0]!.span.start, diagnostics[0]!.span.end)).toBe('(x)');
+    expect(diagnostics).toEqual([]);
     // Recovery still delimits the region, so the editor keeps a usable node.
     expect(types(node.parts)).toEqual(['server-region']);
     expect(text(s, node.parts[0]!.js)).toBe('load();');
-  });
-
-  it('reports FUD0111 for `@client(viewport)` (§6.4, decision 66)', () => {
-    const source = '@code { @client(viewport) { hydrate(); } }';
-    const { node, diagnostics } = run(source);
-
-    expect(codes(diagnostics)).toEqual(['FUD0111']);
-    expect(types(node.parts)).toEqual(['client-region']);
   });
 
   it('surfaces the balancer diagnostic when the parameter list never closes', () => {
     const source = '@code { @server(x }';
     const { diagnostics } = run(source);
 
-    expect(codes(diagnostics)).toContain('FUD0111');
     expect(codes(diagnostics)).toContain('FUD0002');
   });
 

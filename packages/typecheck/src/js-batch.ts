@@ -69,7 +69,9 @@ export interface DocumentJs {
   readonly diagnostics: readonly Diagnostic[];
   /** The fragment a JS-bearing node was registered as, or `undefined` when it has none. */
   fragmentId(node: Node): FragmentId | undefined;
-  /** The neutral chunks of `@code`, in source order — where `props<T>()` is looked for. */
+  /** Every chunk of `@code`, in source order: what the projection reads (SDD-60 §4.8). */
+  readonly code: readonly FragmentId[];
+  /** The neutral chunks of `@code`, in source order. */
   readonly neutral: readonly FragmentId[];
   /** The `@client` regions, in source order — where the reactive names are read from. */
   readonly client: readonly FragmentId[];
@@ -92,6 +94,7 @@ export function batchDocumentJs(source: string, document: StructuredDocument): D
   const batch = new JsBatch(source);
   const ids = new Map<Node, FragmentId>();
   const bySpan = new Map<string, FragmentId>();
+  const code: FragmentId[] = [];
   const neutral: FragmentId[] = [];
   const client: FragmentId[] = [];
   const regions: CodeRegion[] = [];
@@ -176,6 +179,7 @@ export function batchDocumentJs(source: string, document: StructuredDocument): D
   for (const part of document.code?.parts ?? []) {
     const id = batch.add('module-statements', part.js);
     ids.set(part, id);
+    code.push(id);
     if (part.type === 'neutral-js') {
       neutral.push(id);
       continue;
@@ -189,6 +193,7 @@ export function batchDocumentJs(source: string, document: StructuredDocument): D
     result: parsed.value,
     diagnostics: parsed.diagnostics,
     fragmentId: (node) => ids.get(node),
+    code,
     neutral,
     client,
     regions,

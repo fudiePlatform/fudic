@@ -9,7 +9,8 @@
  */
 
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { max, maxLength, min, minLength, pattern, required, setMessages, type AnyForm } from '@fudic/forms';
+import type { AnyForm } from '@fudic/forms';
+import { max, maxLength, min, minLength, pattern, required, setMessages } from '@fudic/forms/contract';
 import { writeBinary } from '@fudic/forms/wire';
 import type { Rule } from '@fudic/forms/contract';
 import { project } from './_project.js';

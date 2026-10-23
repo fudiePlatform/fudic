@@ -72,13 +72,12 @@ describe('get', () => {
     expect(cache.get('\\p\\blog\\[slug].fud', 1, SLUG_SOURCE)).toBe(cache.get(SLUG, 1, SLUG_SOURCE));
   });
 
-  it('emits the three virtuals of SDD-23', () => {
+  it('emits the virtuals of SDD-23: the client and one per <style>, no server one (SDD-60 §4.7)', () => {
     const { cache } = setup();
     const badge = cache.get('/p/components/app-badge.fud', 1, BADGE);
 
     expect(badge.virtuals.map((virtual) => virtual.fileName)).toEqual([
       '/p/components/app-badge.fud.ts',
-      '/p/components/app-badge.fud.server.ts',
       '/p/components/app-badge.fud.0.css',
     ]);
   });

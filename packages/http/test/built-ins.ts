@@ -2,7 +2,7 @@
  * SDD-60 §3.10 and criterion 23: the built-in middlewares as an app gets them — the pieces of
  * the module generated from `fudapi/middlewares.fudapi`, with the halves `impl/browser` and
  * `impl/server` register on them — as the steps a chain runs. The tests of `csrf` and
- * `errorPages` run against these and against today's factories alike.
+ * `error-pages` run against these and against the bare halves alike.
  */
 
 import '../impl/browser/middlewares.js';

@@ -609,3 +609,15 @@ describe('a hole its layout slots, on the client (SDD-48 §4.5, criterion 5)', (
     expect(chunkOf([...head, '@if (on()) { <p>x</p> }'].join('\n'))).not.toContain(`'slot'`);
   });
 });
+
+describe('a route whose markup computes in place', () => {
+  it('keeps the values it evaluated inside the reconciliation, as a component does', () => {
+    const route = [
+      '<link rel="layout" href="./l.fud">',
+      '@code { const n = signal(1); }',
+      '@{ const twice = n() * 2; }',
+      '<p title="@twice">@twice</p>',
+    ].join('\n');
+    expect(chunkOf(route)).toContain('const $x = []; // values, evaluated in place');
+  });
+});

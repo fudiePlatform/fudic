@@ -4,16 +4,12 @@
  * It is mounted the way the language server mounts its TypeScript project, piece by piece:
  *
  *   - a Volar `Language` with `fudLanguagePlugin`, the same plugin the server registers;
- *   - `createLanguageServiceHost` of `@volar/typescript`, which names the virtuals, resolves
- *     `'./app-badge.fud'` and `typeof import('./x.fud.server')`, and serves the extra script;
+ *   - `createLanguageServiceHost` of `@volar/typescript`, which names the virtuals and resolves
+ *     `'./app-badge.fud'`;
  *   - `ts.createLanguageService` over it, alive between checks so a save in `dev` only redoes
  *     what changed;
  *   - and the diagnostics carried back to the `.fud` by Volar's own mapper, filtered with
  *     `shouldReportDiagnostics` — the call the editor makes, with the same arguments.
- *
- * `proxyCreateProgram` is not used, though it is what `vue-tsc` uses: it ignores
- * `getExtraServiceScripts`, so the `.fud.server` virtual would not exist and `$Data` would be
- * `any` here and typed in the editor (§1.3).
  *
  * Nothing in here throws out of `check()`. A check that could not run reports `FUD0871`: an
  * empty report would read as a clean project, and that is the one lie this SDD exists to stop.
@@ -27,10 +23,8 @@ import {
   shouldReportDiagnostics,
   type IScriptSnapshot,
   type Language,
-  type VirtualCode,
 } from '@volar/language-core';
 import { createLanguageServiceHost, resolveFileLanguageId } from '@volar/typescript';
-import { serverFileName } from '@fudic/language-core';
 import { FUD0870, FUD0871 } from '@fudic/diagnostics';
 import { nodeFileSystem, type CheckFs } from './files.js';
 import { describeFud, FudIndex } from './fud-index.js';
@@ -184,37 +178,34 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
       const root = script?.generated?.root as FudicVirtualCode | undefined;
       if (script === undefined || root === undefined) continue;
 
-      const typeErrors = (fileName: string, code: VirtualCode): void => {
-        const sourceFile = program.getSourceFile(fileName);
-        if (sourceFile === undefined) return;
-        const map = state.language.maps.get(code, script);
-        const found = [
-          ...program.getSyntacticDiagnostics(sourceFile),
-          ...program.getSemanticDiagnostics(sourceFile),
-          ...(declarations ? program.getDeclarationDiagnostics(sourceFile) : []),
-        ];
-        for (const diagnostic of found) {
-          const severity = severityOf(typescript, diagnostic.category);
-          if (severity === undefined || diagnostic.start === undefined || diagnostic.length === undefined) continue;
-          // The editor's mapping, call for call: the first source range whose mapping allows a
-          // diagnostic for this source and code. One that lands in scaffolding has none.
-          const generatedEnd = diagnostic.start + diagnostic.length;
-          for (const [start, end] of map.toSourceRange(diagnostic.start, generatedEnd, true, (data) =>
-            shouldReportDiagnostics(data, 'ts', diagnostic.code),
-          )) {
-            problems.push({
-              file: entry.path,
-              span: { start, end },
-              severity,
-              code: `TS${diagnostic.code}`,
-              message: typescript.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
-            });
-            break;
-          }
+      // Every `.fud` of the index is a root of the program (`getScriptFileNames` below), so the
+      // script of its client virtual is always there.
+      const sourceFile = program.getSourceFile(entry.path)!;
+      const map = state.language.maps.get(root.client, script);
+      const found = [
+        ...program.getSyntacticDiagnostics(sourceFile),
+        ...program.getSemanticDiagnostics(sourceFile),
+        ...(declarations ? program.getDeclarationDiagnostics(sourceFile) : []),
+      ];
+      for (const diagnostic of found) {
+        const severity = severityOf(typescript, diagnostic.category);
+        if (severity === undefined || diagnostic.start === undefined || diagnostic.length === undefined) continue;
+        // The editor's mapping, call for call: the first source range whose mapping allows a
+        // diagnostic for this source and code. One that lands in scaffolding has none.
+        const generatedEnd = diagnostic.start + diagnostic.length;
+        for (const [start, end] of map.toSourceRange(diagnostic.start, generatedEnd, true, (data) =>
+          shouldReportDiagnostics(data, 'ts', diagnostic.code),
+        )) {
+          problems.push({
+            file: entry.path,
+            span: { start, end },
+            severity,
+            code: `TS${diagnostic.code}`,
+            message: typescript.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
+          });
+          break;
         }
-      };
-      typeErrors(entry.path, root.client);
-      typeErrors(serverFileName(entry.path), root.server);
+      }
 
       for (const diagnostic of fudicDiagnostics(root.document, state.index)) {
         if (diagnostic.severity !== 'error' && diagnostic.severity !== 'warning') continue;

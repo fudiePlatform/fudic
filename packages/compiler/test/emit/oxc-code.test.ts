@@ -63,28 +63,6 @@ describe('extractCode', () => {
     ]);
   });
 
-  it('SDD-31 §6.17 — `effect(...)` in the neutral zone is FUD0570, and nothing else stops', () => {
-    const source = wrap(
-      '@code {\n' +
-        '  const { a } = props<{ a: string }>();\n' +
-        '  effect(() => console.log(a));\n' +
-        '  const off = effect(() => {});\n' +
-        '  const t = signal(1);\n' +
-        '  const plain = 7;\n' + // not a call at all
-        '  console.log(plain);\n' + // a call, but not through a bare identifier
-
-        '  @client {\n    const fine = effect(() => t());\n  }\n' +
-        '}\n',
-    );
-    const { props, signals, diagnostics } = extractCode(source, componentDoc(source));
-    expect(diagnostics.map((d) => d.code)).toEqual(['FUD0570', 'FUD0570']);
-    const at = source.indexOf('effect(() => console.log(a))');
-    expect(diagnostics[0]!.span).toEqual({ start: at, end: at + 'effect(() => console.log(a))'.length });
-    // The emit does not throw and does not give up on the file: props and signals are read.
-    expect(bareProps(props)).toEqual([{ name: 'a', optional: false, type: 'string' }]);
-    expect(bareSignals(signals)).toEqual([{ name: 't', init: '1', kind: 'signal' }]);
-  });
-
   it('SDD-31 §5 — `computed` and `batch` in the neutral zone say nothing', () => {
     const source = wrap('@code {\n  const t = computed(() => 1);\n  batch(() => {});\n}\n');
     expect(extractCode(source, componentDoc(source)).diagnostics).toEqual([]);
@@ -310,27 +288,6 @@ describe('the injection diagnostics of one @code', () => {
     expect(
       codesOf('  provide(Cart, () => new Cart());\n  provide(Clock, () => new Clock());\n  provide();\n  provide();\n'),
     ).toEqual([]);
-  });
-
-  it('FUD0682 — provided in @server, injected in @client', () => {
-    const body =
-      '  @server {\n    provide(Cart, () => new Cart());\n  }\n' +
-      '  @client {\n    const cart = inject(Cart);\n  }\n';
-    const source = wrap(`@code {\n${DI}${body}}\n`);
-    const { diagnostics } = extractCode(source, componentDoc(source));
-
-    expect(diagnostics.map((d) => d.code)).toEqual(['FUD0682']);
-    expect(diagnostics[0]!.message).toContain('@server');
-    const at = source.indexOf('inject(Cart)') + 'inject('.length;
-    expect(diagnostics[0]!.span).toEqual({ start: at, end: at + 'Cart'.length });
-  });
-
-  it('FUD0682 — and the symmetric one, provided in @client and injected in @server', () => {
-    const codes = codesOf(
-      '  @client {\n    provide(Cart, () => new Cart());\n  }\n' +
-        '  @server {\n    const cart = inject(Cart);\n  }\n',
-    );
-    expect(codes).toEqual(['FUD0682']);
   });
 
   it('says nothing when the provider is neutral: that zone runs on both sides', () => {

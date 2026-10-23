@@ -1,44 +1,16 @@
 /**
- * Partition of a `@code` block into the three audiences of its JS (SDD-23 §4.1).
- *
- * The neutral zone is shared, so it is emitted into BOTH virtual files: its declarations
- * must be visible on both sides. The `@server` and `@client` regions go to one file each,
- * and that is the whole enforcement of the server/client split — two separate programs.
- * Referencing a `@server` symbol from the template is then `TS2304 Cannot find name`,
- * reported by the type checker, with no rule of ours involved.
+ * The JS of a `@code` block (SDD-23 §4.1, SDD-60 §4.8): browser code, all of it, emitted into
+ * the client virtual. A `@server` or `@client` region still parsed out of an old file is read as
+ * if it had no wrapper — its body is one more chunk — so it does not cascade into diagnostics
+ * of its own (SDD-60 §3.14).
  */
 
 import type { CodeBlockNode, Span } from '@fudic/compiler';
 
-/** The JS spans of a `@code`, grouped by which program they belong to. */
-export interface CodePartition {
-  /** Neutral chunks, in source order. Emitted into both virtuals. */
-  readonly neutral: readonly Span[];
-  /** `@server` region bodies, in source order. */
-  readonly server: readonly Span[];
-  /** `@client` region bodies, in source order. */
-  readonly client: readonly Span[];
-}
-
 /**
- * Group the parts of a `@code` by audience. Free source order is preserved within each
- * group (decision 34).
- *
- * A missing `@code` yields three empty groups rather than a special case for callers, and
- * repeated regions are kept and concatenated instead of dropped: uniqueness (decisions
- * 33.a/b) is the semantic pass's diagnostic to report, and an emitter that silently
- * discarded the second region would blank out code the user can see on screen.
+ * The chunks of a `@code`, in source order (decision 34). A missing `@code` has none, rather
+ * than a special case for callers.
  */
-export function partitionCode(code: CodeBlockNode | undefined): CodePartition {
-  const neutral: Span[] = [];
-  const server: Span[] = [];
-  const client: Span[] = [];
-
-  for (const part of code?.parts ?? []) {
-    if (part.type === 'neutral-js') neutral.push(part.js);
-    else if (part.type === 'server-region') server.push(part.js);
-    else client.push(part.js);
-  }
-
-  return { neutral, server, client };
+export function codeChunks(code: CodeBlockNode | undefined): readonly Span[] {
+  return (code?.parts ?? []).map((part) => part.js);
 }

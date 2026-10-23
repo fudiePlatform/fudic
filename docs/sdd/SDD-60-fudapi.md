@@ -427,7 +427,9 @@ messages
   entrada interna, `@fudic/http/contract` y `@fudic/forms/contract`, que solo usa lo generado.
   Siguen públicos los errores (`HttpError`, `notFound`, `conflict`…), los tipos de `ctx` y
   `Problem`, el tipo `Form` y su API `$…`, y lo que el compilador enlaza (`./dom`, `./client`,
-  `./server`).
+  `./server`). *Decidido al implementar (tarea 63):* lo de `@fudic/forms` pasa a `./contract` tal
+  cual; lo de `@fudic/http` se borra, porque `./contract` ya tiene su `fn`, su `middleware` y su
+  cadena, y con ello `csrf`, `errorPages` y el `$fn` de `./client`.
 
 ### 3.11. Lo generado: el módulo `fudic:<id>`
 

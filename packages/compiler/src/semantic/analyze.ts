@@ -18,9 +18,6 @@ import { controlUniqueness } from './analyzers/control-uniqueness.js';
 import { controlInsideForm } from './analyzers/control-inside-form.js';
 import { errorMarker } from './analyzers/error-marker.js';
 import { formAssociatedPlacement } from './analyzers/form-associated-placement.js';
-import { codeRegionUniqueness } from './analyzers/code-region-uniqueness.js';
-import { codeRegionNesting } from './analyzers/code-region-nesting.js';
-import { neutralImports } from './analyzers/neutral-imports.js';
 import { primitiveInterpolation } from './analyzers/primitive-interpolation.js';
 import { componentDeclared } from './analyzers/component-declared.js';
 import { eventHandlerShape } from './analyzers/event-handler-shape.js';
@@ -50,9 +47,6 @@ export const ANALYZERS: readonly Analyzer[] = [
   controlInsideForm,
   errorMarker,
   formAssociatedPlacement,
-  codeRegionUniqueness,
-  codeRegionNesting,
-  neutralImports,
   primitiveInterpolation,
   componentDeclared,
   eventHandlerShape,

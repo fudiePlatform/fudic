@@ -7,7 +7,21 @@
 
 export { form, build } from '../form.js';
 export { group } from '../group.js';
+export { control } from '../control.js';
 export { DEFAULT_CATCHES } from '../catches.js';
+export { ValidateOn } from '../validate-on.js';
+export { Validity } from '../validity.js';
+export { setMessages } from '../messages.js';
+// The validators of before SDD-60 (§3.10): what a rule of a `.fudapi` replaced, internal now.
+export { validator } from '../validators/validator.js';
+export { serverValidator } from '../validators/server.js';
+export { asyncValidator } from '../validators/async.js';
+export { required } from '../validators/required.js';
+export { minLength } from '../validators/min-length.js';
+export { maxLength } from '../validators/max-length.js';
+export { min } from '../validators/min.js';
+export { max } from '../validators/max.js';
+export { pattern } from '../validators/pattern.js';
 export { u8 } from '../typed/u8.js';
 export { i8 } from '../typed/i8.js';
 export { u16 } from '../typed/u16.js';

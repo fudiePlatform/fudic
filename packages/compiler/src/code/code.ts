@@ -20,7 +20,7 @@
 
 import { type Span, span, emptySpan } from '../types/index.js';
 import type { Diagnostic } from '../types/index.js';
-import { FUD0110, FUD0111, FUD0114 } from '@fudic/diagnostics';
+import { FUD0110, FUD0114 } from '@fudic/diagnostics';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 import { type BalancedGroup, type LexRegion, scanBraces, scanParens } from '../balancer/index.js';
 import type { HtmlParseContext } from '../html/index.js';
@@ -198,17 +198,16 @@ class BodySplitter {
   }
 
   /**
-   * A confirmed `@server` / `@client`. Reports a parameter list (decision 66) but
-   * keeps going, so the region body is still delimited for the editor; a missing
-   * `{` reports FUD0110 and leaves the marker inside the neutral chunk — the body
-   * stays fully covered either way.
+   * A confirmed `@server` / `@client`. Skips a parameter list, so the region body is still
+   * delimited for the editor; a missing `{` reports FUD0110 and leaves the marker inside the
+   * neutral chunk — the body stays fully covered either way. (Nothing else is said of a
+   * region: SDD-60 retires them.)
    */
   #marker(atOffset: number, identEnd: number, name: MarkerName): number {
     let cursor = identEnd;
     if (this.#source[cursor] === '(') {
       const parameters = scanParens(this.#source, cursor);
       this.#diagnostics.push(...parameters.diagnostics);
-      this.#diagnostics.push(FUD0111({ span: parameters.value.span, name }));
       cursor = parameters.value.span.end;
     }
 

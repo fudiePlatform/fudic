@@ -13,7 +13,7 @@ import type { AnyForm } from '@fudic/forms';
 import { Slot } from '@fudic/forms/contract';
 import { FN_PREFIX } from '@fudic/conventions';
 import { decode } from '../client/codec.js';
-import { join, pageParams } from '../client/fn.js';
+import { join, pageParams } from '../client/url.js';
 import { isForm } from '../client/form.js';
 import { invalidate } from '../client/invalidate.js';
 import { runPipeline } from '../client/pipeline.js';

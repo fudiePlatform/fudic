@@ -10,8 +10,8 @@ import type { Span } from '@fudic/compiler';
 /**
  * A synthetic file handed to a language service, plus the mapping back to the `.fud`.
  *
- * Three per document at most: the client `.fud.ts`, the server `.fud.server.ts`, and one
- * `.fud.<n>.css` per `<style>` (§4.1).
+ * The client `.fud.ts` and one `.fud.<n>.css` per `<style>` (§4.1). What the server runs is a
+ * `.fudapi`, typed by its own module (SDD-60 §4.7).
  */
 export interface VirtualFile {
   /** Virtual path, derived from the `.fud` path (§4.1). */

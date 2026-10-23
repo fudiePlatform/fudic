@@ -168,7 +168,7 @@ export function linkHref(link: ElementNode): string | undefined {
 /**
  * Parse one `.fud` into its structured document, keeping what the two passes had to say.
  *
- * Both of them report — the HTML/`@` parser (`FUD0110`, `FUD0111`, `FUD0114`, …) and the
+ * Both of them report — the HTML/`@` parser (`FUD0110`, `FUD0114`, …) and the
  * structural pass (`FUD0150`–`FUD0160`) — and this function used to take `.value` twice and
  * drop both lists. That is what left a diagnostic visible in the editor and absent from the
  * build: the language server parses on its own, the build only ever came through here.

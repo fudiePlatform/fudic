@@ -189,40 +189,33 @@ describe('completion', () => {
   });
 
   describe('Ctrl+Space inside `@code` offers a declaration where one starts (BUG-44 §3.3, criterion 7)', () => {
-    const server = (body: string): string =>
-      `<link rel="layout" href="../layouts/_layout.fud">\n@code {\n  @server {\n${body}\n  }\n}\n<p>x</p>\n`;
+    const component = (body: string): string =>
+      `@code {\n${body}\n}\n<app-x>\n  <template shadowrootmode="open"><p>x</p></template>\n</app-x>\n`;
     const labelsAt = async (source: string): Promise<string[] | undefined> => {
       const { service, document, position } = setup(source);
       return (await completionsOf(service, document, position))?.items.map((item) => item.label);
     };
 
-    it('with nothing typed at the start of a line of `@server`: its three exports', async () => {
-      expect(await labelsAt(server('    |'))).toEqual(['load', 'paths', 'layout']);
+    it('with nothing typed at the start of a line of a component: its props', async () => {
+      expect(await labelsAt(component('  |'))).toEqual(['props']);
     });
 
-    it('with the start of a name typed: the export it begins', async () => {
-      expect(await labelsAt(server('    lay|'))).toEqual(
-        expect.arrayContaining(['layout']),
-      );
+    it('with the start of a name typed: the declaration it begins', async () => {
+      expect(await labelsAt(component('  pro|'))).toEqual(expect.arrayContaining(['props']));
     });
 
-    it('in the neutral zone: no export of `@server`, and a `@` opens the regions', async () => {
-      const neutral = (cursor: string): string =>
+    it('in a route: nothing, and a `@` opens no region (SDD-60 §4.8)', async () => {
+      const route = (cursor: string): string =>
         `<link rel="layout" href="../layouts/_layout.fud">\n@code {\n  ${cursor}\n}\n<p>x</p>\n`;
-      expect(await labelsAt(neutral('|'))).toBeUndefined();
-      expect(await labelsAt(neutral('@|'))).toEqual(['@client', '@server']);
-    });
-
-    it('a `@` inside `@server` opens no region: regions do not nest (`FUD0193`)', async () => {
-      expect(await labelsAt(server('    @|'))).toBeUndefined();
+      expect(await labelsAt(route('|'))).toBeUndefined();
+      expect(await labelsAt(route('@|'))).toBeUndefined();
     });
 
     it('nothing after `ctx.`, inside a `return { }`, or halfway along a line', async () => {
-      const resolver = (inside: string): string =>
-        server(`    export function layout(ctx, data) {\n      ${inside}\n    }`);
-      expect(await labelsAt(resolver('ctx.|'))).toBeUndefined();
-      expect(await labelsAt(resolver('return { | };'))).toBeUndefined();
-      expect(await labelsAt(server('    const a = 1; |'))).toBeUndefined();
+      const fn = (inside: string): string => component(`  function f(ctx) {\n    ${inside}\n  }`);
+      expect(await labelsAt(fn('ctx.|'))).toBeUndefined();
+      expect(await labelsAt(fn('return { | };'))).toBeUndefined();
+      expect(await labelsAt(component('  const a = 1; |'))).toBeUndefined();
     });
   });
 

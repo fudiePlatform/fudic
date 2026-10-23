@@ -6,7 +6,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { INVALIDATE_MESSAGE } from '@fudic/conventions';
-import { $fn } from '../../src/client/fn.js';
+import { stub } from '../../src/contract/fn.js';
 import { invalidate } from '../../src/client/invalidate.js';
 import type { Method } from '../../src/types.js';
 
@@ -47,10 +47,10 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 const call = (method: Method, invalidates?: string[], base?: string) =>
-  $fn<any, unknown>({
+  stub<never, unknown, any>({
+    id: 'routes/usuarios',
     name: 'x',
     method,
-    url: '/_fudic/fn/r/usuarios/x',
     chain: [],
     ...(invalidates !== undefined ? { invalidates } : {}),
     ...(base !== undefined ? { base } : {}),

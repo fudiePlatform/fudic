@@ -1,13 +1,11 @@
 /**
  * The injection diagnostics that need more than one file (SDD-38 §6.21, §6.22).
  *
- * Two of the four, and what they have in common is the reason they are here rather than in
- * `extractCode`: neither can be answered by the `@code` it is written in. One needs the
- * module next door, and one needs to know whether this component hydrates at all. (A third,
- * `FUD0683` — `inject` in a route's `@server` — was retired by SDD-56: the request's
- * container is now ambient, kept per request in an `AsyncLocalStorage`.) The other two — a provider registered twice, a provider
- * registered on the side the injection does not run on — are a single `@code` contradicting
- * itself, and they are reported where that region is read.
+ * One of them, and the reason it is here rather than in `extractCode`: it cannot be answered by
+ * the `@code` it is written in, it needs the module next door. (`FUD0683` — `inject` in a
+ * route's `@server` — was retired by SDD-56, and `FUD0681` — a name injected in `@server` read
+ * by a hydrating binding — by SDD-60, with the regions.) A provider registered twice is a single
+ * `@code` contradicting itself, and it is reported where that `@code` is read.
  *
  * ── `FUD0680` — injecting a service nobody registers ──
  *
@@ -39,12 +37,9 @@
 
 import { parseSync } from 'oxc-parser';
 import type { Diagnostic } from '../types/index.js';
-import { FUD0680, FUD0681 } from '@fudic/diagnostics';
+import { FUD0680 } from '@fudic/diagnostics';
 import { codeOf } from './oxc-code.js';
 import { allComponents, type ComponentGraph, type ResolveIo } from './resolve.js';
-import { collectTemplateJs } from './constructs.js';
-import { hydratableTags, templateOf } from './level.js';
-import { freeReferences } from './scope.js';
 
 /**
  * What a bare specifier may turn into on disk. The `.fud` writes what TypeScript writes —
@@ -139,57 +134,17 @@ function providedByGraph(graph: ComponentGraph): ReadonlySet<string> {
 }
 
 /**
- * The injection diagnostics a resolved graph can answer (SDD-38 §6.21–§6.24, minus the two
- * a single `@code` settles by itself — those are `extractCode`'s, next to the region it
- * reads).
+ * The injection diagnostic a resolved graph can answer (SDD-38 §6.21).
  *
- * They belong to whoever resolved the graph and holds the I/O — the build — for the same
- * reason the contract diagnostics do: no single file can answer them, and an editor that
+ * It belongs to whoever resolved the graph and holds the I/O — the build — for the same
+ * reason the contract diagnostics do: no single file can answer it, and an editor that
  * supplies no way to read the neighbouring module gets silence rather than a wrong answer.
- * None of them stops the emit: the module is written degraded, exactly as §6.26 asks.
+ * It does not stop the emit: the module is written degraded, exactly as §6.26 asks.
  */
 export function injectionDiagnostics(graph: ComponentGraph, io: ResolveIo): readonly Diagnostic[] {
   const out: Diagnostic[] = [];
   unregisteredProviders(graph, io, out);
-  serverNamesInTemplates(graph, out);
   return out;
-}
-
-/**
- * `FUD0681` — a name injected in `@server`, read by a binding of a template that hydrates.
- *
- * `@server` is emitted into the `.mjs` and nowhere else; the browser chunk of the same
- * component carries its template bindings and not one line of that region. So a binding that
- * reads such a name paints correctly on the server and then, on the first `set`, re-evaluates
- * against an identifier the chunk never declared. It is a `ReferenceError` in the browser
- * with nothing in the build to explain it, which is why the build says it here instead.
- *
- * Only a component that HYDRATES, because that is the whole condition: a level-1 component
- * has no chunk, the server painted its binding once, and the name it read was there.
- */
-function serverNamesInTemplates(graph: ComponentGraph, out: Diagnostic[]): void {
-  // Computed at most once, and only if some component of the graph injects in `@server` at
-  // all — the fixed point walks the whole graph, and almost no page has anything to ask it.
-  let hydratable: ReadonlySet<string> | undefined;
-  for (const comp of allComponents(graph)) {
-    const code = codeOf(comp);
-    const injected = new Set<string>();
-    for (const call of code.di) {
-      if (call.kind === 'inject' && call.zone === 'server' && call.binds !== undefined) {
-        injected.add(call.binds);
-      }
-    }
-    if (injected.size === 0) continue;
-    hydratable ??= hydratableTags(graph);
-    if (!hydratable.has(comp.tag)) continue;
-    collectTemplateJs(templateOf(comp), (_kind, at) => {
-      // A degraded header needs no guard of its own: the walk that fed Oxc skipped it, so
-      // there is no fragment under that span and an empty AST reads nothing.
-      const read = freeReferences([code.template.ast(at)]).find((name) => injected.has(name));
-      if (read === undefined) return;
-      out.push(FUD0681({ span: at, name: read }));
-    });
-  }
 }
 
 /** `FUD0680` for every component of a resolved graph. */

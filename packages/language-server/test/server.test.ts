@@ -506,10 +506,7 @@ describe('the own requests (§3.4)', () => {
     const handler = fake.requests.get(VIRTUAL_FILES_REQUEST);
     const files = (await handler?.({ uri } as never)) as { fileName: string }[];
 
-    expect(files.map((file) => file.fileName)).toEqual([
-      `${SLUG}.ts`,
-      `${SLUG}.server.ts`,
-    ]);
+    expect(files.map((file) => file.fileName)).toEqual([`${SLUG}.ts`]);
   });
 
   it('answers for a file that is only on disk', async () => {

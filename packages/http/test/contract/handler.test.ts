@@ -4,8 +4,7 @@
  */
 
 import { afterEach, describe, expect, it } from 'vitest';
-import { required } from '@fudic/forms';
-import { formOf, str, u8 } from '@fudic/forms/contract';
+import { formOf, required, str, u8 } from '@fudic/forms/contract';
 import { fn, loadingFile, middleware, page, resetRegistry, use, type FnSpec } from '../../src/contract/index.js';
 import { contractsHandler, implementation } from '../../src/contract/server.js';
 
@@ -94,12 +93,14 @@ describe('contractsHandler', () => {
     expect((await handle(new Request(`${ORIGIN}/_fudic/fn/routes/items/get/lines/7`)))!.status).toBe(200);
   });
 
-  it('a URL that names none of the <id>, or is not a function, is someone else’s: null', async () => {
+  it('a URL outside /_fudic/fn/ is someone else’s: null; one under it that names no function, 404', async () => {
     fn(spec({ id: 'routes/known', name: 'f' }));
     const handle = contractsHandler({ base: '/app/' });
-    expect(await handle(new Request(`${ORIGIN}/app/_fudic/fn/r/known/f`))).toBeNull();
     expect(await handle(new Request(`${ORIGIN}/app/about`))).toBeNull();
     expect(await handle(new Request(`${ORIGIN}/_fudic/fn/routes/known/f`))).toBeNull();
+    const unknown = await handle(new Request(`${ORIGIN}/app/_fudic/fn/r/known/f`));
+    expect(unknown!.status).toBe(404);
+    expect((await unknown!.json()).detail).toBe('no such server function');
   });
 });
 

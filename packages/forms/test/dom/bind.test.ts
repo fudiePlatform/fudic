@@ -10,7 +10,7 @@
  */
 
 import { beforeEach, describe, expect, it } from 'vitest';
-import { control } from '../../src/index.js';
+import { control } from '../../src/contract/index.js';
 import {
   bindCheckbox,
   bindNumber,

@@ -82,7 +82,7 @@ describe('§6.15 — fudic/virtualFiles', () => {
       uri,
     })) as VirtualFilePayload[];
 
-    expect(files.map((file) => file.languageId)).toEqual(['typescript', 'typescript']);
+    expect(files.map((file) => file.languageId)).toEqual(['typescript']);
     expect(files[0]?.fileName.endsWith('[slug].fud.ts')).toBe(true);
     expect(files[0]?.text).toContain('$tpl');
     // `load` is the `.fudapi`'s now (SDD-60): no virtual of the `.fud` writes one.
@@ -95,8 +95,8 @@ describe('§6.15 — fudic/virtualFiles', () => {
       uri,
     })) as VirtualFilePayload[];
 
-    expect(files.map((file) => file.languageId)).toEqual(['typescript', 'typescript', 'css']);
-    expect(files[2]?.text).toContain(':host');
+    expect(files.map((file) => file.languageId)).toEqual(['typescript', 'css']);
+    expect(files[1]?.text).toContain(':host');
   });
 });
 

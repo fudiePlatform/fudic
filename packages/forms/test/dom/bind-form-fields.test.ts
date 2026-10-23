@@ -9,7 +9,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest';
 import { effect } from '@fudic/core';
-import { control, form, required } from '../../src/index.js';
+import { control, form, required } from '../../src/contract/index.js';
 import { bindForm } from '../../src/dom/index.js';
 import { internalsOf } from '../../src/internals.js';
 import type { AnyForm, AnyNode } from '../../src/types.js';

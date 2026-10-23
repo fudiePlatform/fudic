@@ -1026,8 +1026,8 @@ function completions(
     // repeats another is not a second answer.
     //
     // Outside markup it is the root's alone: inside a `<style>` a `@` opens `@media`, inside
-    // `@code` it opens `@client`, and `ts-completion.ts` declines both — so offering `data` or
-    // `@()` there would be wrong, and offering the block snippets is the only right answer.
+    // `@code` nothing (SDD-60 retired its regions), and `ts-completion.ts` declines both — so
+    // offering `data` or `@()` there would be wrong, and the block snippets are the only answer.
     const scope = scopeAt(cached, directive.span.start);
     const inMarkup = scope === 'markup';
     const items = [
@@ -1070,12 +1070,12 @@ function completions(
       ? (word ?? { span: span(offset, offset), text: '' })
       : undefined;
   // Inside `@code` a plain Ctrl+Space with nothing typed is a question too: «what goes here?».
-  // In `@server` the answer is its three exports, and a developer who does not yet know their
-  // names cannot ask for them by typing the first letter of one.
+  // In a component or a layout the answer is `props`, and a developer who does not yet know its
+  // name cannot ask for it by typing its first letter.
   //
   // Only where a STATEMENT starts, though — first thing on its line. Every `@code` snippet is a
-  // whole declaration, and offering one after `ctx.` or inside a `return { }` put `layout`,
-  // `load` and `paths` on top of the members and the props that position is actually about.
+  // whole declaration, and offering one after `ctx.` or inside a `return { }` put it on top of
+  // the members and the props that position is actually about.
   const inCode = directive === undefined && scopeAt(cached, offset) === 'code-block';
   const empty = { span: span(offset, offset), text: '' };
   const named = inCode

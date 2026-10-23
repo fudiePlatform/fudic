@@ -86,7 +86,7 @@ describe('analyze — runner', () => {
     // + view-attributes, snippet-recursion (SDD-51 §3.8)
     // + raw-only-child (decision 18: FUD0990), spread-target (props-spec §5: FUD0992)
     // + translations (SDD-58: FUD1020–FUD1021)
-    expect(ANALYZERS).toHaveLength(29);
+    expect(ANALYZERS).toHaveLength(26);
     expect(ANALYZERS.at(-1)?.name).toBe('translations');
     const { value } = analyze(buildInput(component('<p>hi</p>')));
     expect(value).toEqual({});
@@ -128,38 +128,6 @@ describe('ref-in-loop (§7 crit. #3)', () => {
     expect(codes(component('@foreach (const x of xs) { <input type="text" name="q"> }'))).not.toContain('FUD0192');
     // …and an @if with no else still walks (its arm carries the ref).
     expect(codes(component('@foreach (const x of xs) { @if (x) { <input ref="@r"> } }'))).toContain('FUD0192');
-  });
-});
-
-describe('code-region-uniqueness (§7 crit. #4)', () => {
-  it('flags a repeated @server / @client, accepts one of each', () => {
-    expect(codes(withCode('@code { @server {} @server {} }'))).toContain('FUD0194');
-    expect(codes(withCode('@code { @client {} @client {} }'))).toContain('FUD0194');
-    expect(codes(withCode('@code { @server {} @client {} }'))).not.toContain('FUD0194');
-  });
-});
-
-describe('code-region-nesting (§7 crit. #5)', () => {
-  it('flags a @server nested inside a @client (text scan)', () => {
-    expect(codes(withCode('@code { @client { @server {} } }'))).toContain('FUD0193');
-  });
-
-  it('does not flag sibling regions', () => {
-    expect(codes(withCode('@code { @server {} @client {} }'))).not.toContain('FUD0193');
-  });
-});
-
-describe('neutral-imports (§7 crit. #9)', () => {
-  it('warns on a side-effect import, allows a named import', () => {
-    // Zoned by an empty `@client`: the rule is about the neutral zone, which only regions make.
-    const d = diags(withCode("@code { import './reset.css'; @client { } }")).filter((x) => x.code === 'FUD0196');
-    expect(d).toHaveLength(1);
-    expect(d[0]!.severity).toBe('warning');
-    expect(codes(withCode("@code { import { x } from './m'; @client { } }"))).not.toContain('FUD0196');
-  });
-
-  it('is silent without regions: the `@code` is browser code, there is no neutral zone (SDD-60 §4.8)', () => {
-    expect(codes(withCode("@code { import './reset.css'; }"))).not.toContain('FUD0196');
   });
 });
 
@@ -212,14 +180,6 @@ describe('LSP invariants (§6)', () => {
     };
     const c = analyze(input).diagnostics.map((d) => d.code);
     expect(c).not.toContain('FUD0195'); // interpolation skipped
-    expect(c).not.toContain('FUD0196'); // neutral import skipped
-  });
-
-  it('a document with no @code produces no region diagnostics', () => {
-    const c = codes(component('<p>plain</p>'));
-    expect(c).not.toContain('FUD0193');
-    expect(c).not.toContain('FUD0194');
-    expect(c).not.toContain('FUD0196');
   });
 
   it('walks a component head fragment and a hostless (degraded) component without throwing', () => {

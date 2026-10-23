@@ -449,9 +449,9 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
     }
 
     case 'form': {
-      const unknown = unknownFlag(tokens, [...GLOBAL, 'project', 'binary', 'skip-test'], topic);
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'project', 'skip-test'], topic);
       if (unknown !== null) return unknown;
-      return { kind: 'form', name, opts: { ...base, ...target(tokens), binary: bool(tokens, 'binary'), test: !bool(tokens, 'skip-test') }, flags };
+      return { kind: 'form', name, opts: { ...base, ...target(tokens), test: !bool(tokens, 'skip-test') }, flags };
     }
 
     case 'style': {

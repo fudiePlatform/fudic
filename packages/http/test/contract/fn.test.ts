@@ -8,8 +8,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRoot } from '@fudic/di';
-import { required } from '@fudic/forms';
-import { formOf, str, u8 } from '@fudic/forms/contract';
+import { formOf, required, str, u8 } from '@fudic/forms/contract';
 import {
   contractsOf,
   fn,

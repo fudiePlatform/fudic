@@ -4,7 +4,7 @@
  *
  * - `FUD1113`: a name two linked files give, or one the `@code` declares again.
  * - `FUD1005` / `FUD1006`: `form:=` sends to a function of a linked file — the same check
- *   `extractCode` runs against `@server` for a file that links none.
+ *   `extractCode` runs, against no function at all, for a file that links none.
  *
  * A link the host could not read leaves the names unknown, and both checks then stay silent:
  * saying «not a function» about a file nobody read would be a guess.
@@ -14,7 +14,7 @@ import { FUD1113 } from '@fudic/diagnostics';
 import type { Diagnostic } from '../types/index.js';
 import { formSendDiagnostics } from './controls.js';
 import { codeOfDocument, templateRootsOf } from './oxc-code.js';
-import type { DocumentGraph } from './resolve.js';
+import type { ComponentGraph, DocumentGraph } from './resolve.js';
 
 export function apiDiagnostics(graph: DocumentGraph): readonly Diagnostic[] {
   const entry = graph.entry;
@@ -43,4 +43,23 @@ export function apiDiagnostics(graph: DocumentGraph): readonly Diagnostic[] {
     out.push(...formSendDiagnostics(graph.entrySource, templateRootsOf(entry), functions));
   }
   return out;
+}
+
+/**
+ * What the `.fudapi` a file links give its browser code (SDD-60 §3.14, §4.3): its functions and
+ * its forms, imported from the browser variant of `fudic:<id>` — the stub of each function is
+ * that module's, not one written here. A name two files give is imported once: `FUD1113` has
+ * already said whether that is a mistake. A link the host could not read gives nothing.
+ */
+export function apiImports(graph: ComponentGraph): readonly string[] {
+  const apis = 'serverApis' in graph ? (graph as DocumentGraph).serverApis : [];
+  const seen = new Set<string>();
+  const lines: string[] = [];
+  for (const { api } of apis) {
+    if (api === undefined) continue;
+    const names = [...api.functions, ...api.forms].filter((name) => !seen.has(name));
+    for (const name of names) seen.add(name);
+    if (names.length > 0) lines.push(`import { ${names.join(', ')} } from ${JSON.stringify(`fudic:${api.id}`)};`);
+  }
+  return lines;
 }

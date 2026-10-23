@@ -59,18 +59,12 @@ export function projectParsed(path: string, parsed: ParsedSource, index: LinkInd
     fileName: key,
     document: parsed.document,
     registry,
-    // The whole batch, not just the neutral chunks: the projection needs the `@client`
-    // regions for the reactive names (decision 151) and the attribute values for the shape
-    // of a handler (decisions 96–98). Handing them over is what keeps Oxc at one
-    // invocation per file.
+    // The whole batch: the projection needs every chunk of the `@code` for `props<T>()` and
+    // the reactive names (decision 151), and the attribute values for the shape of a handler
+    // (decisions 96–98). Handing them over is what keeps Oxc at one invocation per file.
     js: {
       result: parsed.js.result,
-      neutral: parsed.js.neutral,
-      client: parsed.js.client,
-      // The `@server` regions too, since SDD-40: the route's `layout(ctx, data)` is looked
-      // for in them, and what the projection does with it is give it the return type that
-      // makes TypeScript the voice of the layout contract.
-      server: parsed.js.regions.flatMap((r) => (r.part.type === 'server-region' ? [r.id] : [])),
+      code: parsed.js.code,
       ast: (at) => parsed.js.ast(at),
     },
   });

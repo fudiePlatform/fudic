@@ -104,6 +104,19 @@ describe('extraction', () => {
     ]);
   });
 
+  it('reads only inject and provide of what @fudic/di brings: a token is no call', () => {
+    const source = component(
+      'x-token',
+      `@code {
+  import { inject, token } from '@fudic/di';
+  const LOCALE = token<string>('locale');
+  const locale = inject(LOCALE);
+}`,
+      '<p>@locale</p>',
+    );
+    expect(codeOfSource(source).di.map((d) => [d.kind, d.provider])).toEqual([['inject', 'LOCALE']]);
+  });
+
   it('reads nothing when the names did not come from @fudic/di', () => {
     const source = component(
       'x-own',

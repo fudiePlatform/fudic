@@ -3,15 +3,13 @@
  *
  * A form here can be built, filled, validated and read without a `<form>` existing
  * anywhere. That is not a feature of this package, it is the invariant that defines
- * it: it is what lets the same schema file be imported by the client, by the
+ * it: it is what lets the same declaration be imported by the client, by the
  * prerender and by the server.
  *
- * Everything is a loose named export in its own module, and that is a requirement
- * rather than a style: this package reaches the browser, so a route must be able to
- * prune what it does not use. Whoever never imports `pattern` does not download a
- * `RegExp`, and whoever never imports a typed factory does not download a single
- * range check. That is why there is no `control.u8()` and no `validator.server()`:
- * a namespace hung off a factory is exactly the shape a bundler cannot drop.
+ * A form is declared in a `.fudapi` (SDD-60 §3.6), and what fudic generates of it builds it
+ * through `./contract`: the factories, the validators and `form` itself are not written by the
+ * developer any more. What stays here is the type of a form and of its `$…` API, and what the
+ * server and the compiler need to paint its errors.
  */
 
 export const VERSION = '0.0.1';
@@ -19,7 +17,7 @@ export const VERSION = '0.0.1';
 // The text of an error, and the map that supplies it. In the model and not behind `./dom`
 // because the SERVER writes that text into the HTML it renders (SDD-34 §4.3): a form that
 // arrives with its errors already painted is accessible with zero JavaScript.
-export { setMessages, errorText, SERVER_RULE, type Messages } from './messages.js';
+export { errorText, SERVER_RULE, type Messages } from './messages.js';
 // The markup of a summary, for the same reason: the server writes it and the client repaints it,
 // and one function is what keeps the two byte for byte (BUG-42 §4.6).
 export {
@@ -31,35 +29,7 @@ export {
   type SummaryEntry,
 } from './summary-markup.js';
 
-export { control } from './control.js';
-export { ValidateOn } from './validate-on.js';
-export { Validity } from './validity.js';
-export { form } from './form.js';
 export { DEFAULT_CATCHES } from './catches.js';
-export { group } from './group.js';
-
-export { validator } from './validators/validator.js';
-export { serverValidator } from './validators/server.js';
-export { asyncValidator } from './validators/async.js';
-export { required } from './validators/required.js';
-export { minLength } from './validators/min-length.js';
-export { maxLength } from './validators/max-length.js';
-export { min } from './validators/min.js';
-export { max } from './validators/max.js';
-export { pattern } from './validators/pattern.js';
-
-export { u8 } from './typed/u8.js';
-export { i8 } from './typed/i8.js';
-export { u16 } from './typed/u16.js';
-export { i16 } from './typed/i16.js';
-export { u32 } from './typed/u32.js';
-export { i32 } from './typed/i32.js';
-export { f32 } from './typed/f32.js';
-export { f64 } from './typed/f64.js';
-export { bool } from './typed/bool.js';
-export { str } from './typed/str.js';
-export { date } from './typed/date.js';
-export { arr } from './typed/arr.js';
 
 export type {
   AnyForm,

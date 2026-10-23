@@ -276,7 +276,7 @@ describe('generated files carry no design comments (§4.8, §6.14)', () => {
       blocks('/*', '*/');
     } else if (path.endsWith('.css')) {
       blocks('/*', '*/');
-    } else if (path.endsWith('.yaml')) {
+    } else if (path.endsWith('.yaml') || path.endsWith('.fudapi')) {
       runs(/^\s*#/u);
     } else if (path.endsWith('.md')) {
       blocks('<!--', '-->');
@@ -291,6 +291,7 @@ describe('generated files carry no design comments (§4.8, §6.14)', () => {
     expect(longComments('a.ts', '/* open')).toEqual([]);
     expect(longComments('a.fud', '@* a\n b *@ <!-- c\n d -->')).toHaveLength(2);
     expect(longComments('a.yaml', '# a\n# b\n')).toHaveLength(1);
+    expect(longComments('a.fudapi', '# a\n# b\nchain\n')).toHaveLength(1);
     expect(longComments('a.md', '<!-- a\n b -->')).toHaveLength(1);
     expect(longComments('a.css', '/* a\n b */')).toHaveLength(1);
     expect(longComments('a.txt', '/* a\n b */')).toEqual([]);
@@ -309,7 +310,7 @@ describe('generated files carry no design comments (§4.8, §6.14)', () => {
     await cli(all, 'g', 'service', 'cart', '--project', 'web', '--cwd', SHOP);
     await cli(all, 'g', 'service', 'session', '--provided', '--project', 'web', '--cwd', SHOP);
     await cli(all, 'g', 'form', 'person', '--project', 'web', '--cwd', SHOP);
-    await cli(all, 'g', 'form', 'upload', '--binary', '--project', 'web', '--cwd', SHOP);
+    await cli(all, 'g', 'page', 'news/:id', '--server', '--project', 'web', '--cwd', SHOP);
     await cli(all, 'g', 'lib', 'guia', '--styles-only', '--cwd', SHOP);
     await cli(all, 'g', 'style', 'ui', '--project', 'ui', '--cwd', SHOP);
     await cli(all, 'g', 'style', 'theme', '--project', 'web', '--cwd', SHOP);
@@ -326,11 +327,13 @@ describe('generated files carry no design comments (§4.8, §6.14)', () => {
       'shop/libs/ui/src/components/ui-button/ui-button.fudspec',
       'shop/apps/web/src/routes/blog/components/web-post-meta/web-post-meta.fixture.ts',
       'shop/apps/web/fudic/terms/then/cart-has.js',
-      'shop/apps/web/src/http.ts',
+      'shop/apps/web/src/http.fudapi',
       'shop/apps/web/src/services/cart.service.ts',
       'shop/apps/web/src/services/session.service.ts',
-      'shop/apps/web/src/forms/person.form.ts',
-      'shop/apps/web/src/forms/upload.form.test.ts',
+      'shop/apps/web/src/forms/person.fudapi',
+      'shop/apps/web/src/forms/person.test.ts',
+      'shop/apps/web/src/routes/news/[id].fudapi',
+      'shop/apps/web/src/server/routes/news/[id].ts',
       'shop/libs/guia/tokens.css',
       'shop/libs/guia/README.md',
       'shop/libs/ui/ui.css',

@@ -90,7 +90,8 @@ describe('routeUsesDi', () => {
 });
 
 describe('the render wrapper', () => {
-  const options = { pageModule: '/app/r.fud', hasLoad: true, withLoad: true };
+  const api = { id: 'routes/r', load: true, paths: false, layout: false, root: 'fudic:root', dev: false };
+  const options = { pageModule: '/app/r.fud', withLoad: true, api };
 
   it('opens ONE container per request, before load, and hands it to the page', () => {
     const code = emitRenderChunk({ ...options, hasDi: true });
@@ -101,12 +102,12 @@ describe('the render wrapper', () => {
     // `load` and the components have to inject the same instances, or a root service would
     // be built twice for one response. `load` runs inside the request of that container
     // (SDD-56 §4.6), so a bare `inject()` finds it: its ctx carries none.
-    expect(code).toContain('withRequest($root, () => runLoad(load, {  }, $ctx))');
+    expect(code).toContain('withRequest($root, () => $ready.then(() => $runLoad($load, $ctx, false)))');
     expect(code).toContain('yield* page(data, io(ctx), $root, layout);');
   });
 
   it('names nothing of the injector on a route without a single DI call', () => {
-    const code = emitRenderChunk({ ...options, hasLoad: false });
+    const code = emitRenderChunk({ ...options, api: { ...api, load: false } });
 
     expect(code).not.toContain('iocRoot');
     expect(code).not.toContain('withDi');

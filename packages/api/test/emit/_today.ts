@@ -1,7 +1,8 @@
 /**
- * The three forms of `examples/basic` as they are written by hand today (`person.form.ts`,
+ * The three forms of `examples/basic` as they were written by hand before SDD-60 (`person.form.ts`,
  * `user.form.ts`, `wide.form.ts`), copied verbatim but for the data layer: the server-only rules
- * ask `taken`, a set the test fills. Criterion 12 compares the generated forms against these.
+ * ask `taken`, a set the test fills — with the factories that are `./contract` now. Criterion 12
+ * compares the generated forms against these.
  */
 
 import {
@@ -19,7 +20,7 @@ import {
   u8,
   ValidateOn,
   Validity,
-} from '@fudic/forms';
+} from '@fudic/forms/contract';
 
 /** What the data layer says is taken: emails and aliases. */
 export const taken = new Set<string>();
