@@ -282,7 +282,9 @@ test.describe('BUG-42 §0.6 — what the example does in the browser', () => {
       const at = url.slice(0, url.lastIndexOf('/') + 1);
       const { form } = (await import(`${at}form.js`)) as typeof import('@fudic/forms');
       const { control } = (await import(`${at}control.js`)) as typeof import('@fudic/forms');
-      const { required } = (await import(`${at}validators.js`)) as typeof import('@fudic/forms');
+      // The rule by hand: since SDD-60 the page takes `required` from the rules of the `.fudapi`,
+      // so the `validators` piece is not in this `dist` to import. The policy is what is measured.
+      const required = (v: unknown) => (v === '' ? { required: true } : null);
       const { Validity } = (await import(`${at}internals.js`)) as typeof import('@fudic/forms');
       const rules = form({ name: control('', [required]) }, { validity: Validity.Rules });
       const interacted = form({ name: control('', [required]) });
@@ -646,6 +648,8 @@ test.describe('§6.15 — the budget, per route, over the chunk', () => {
     // `ALIAS_TABLE_MARKER` is in `src/data/aliases.js`, which only the check of `alias-taken`
     // in `src/server` imports (SDD-60 §3.12). If it is here, a browser module reached it.
     expect(code).not.toContain('alias-table-must-not-ship');
-    expect(code).not.toContain('aliasTaken');
+    // `aliasTaken` is no probe any more: since SDD-60 it is the contract's own name for the rule
+    // and the key of its message, and those ship by design. That no file of `src/server` reached
+    // the browser at all is `server-free.spec.ts`, over every sourcemap of `dist/`.
   });
 });

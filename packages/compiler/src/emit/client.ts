@@ -41,7 +41,7 @@ import {
   type EmitOutput,
 } from './module.js';
 import type { Diagnostic } from '../types/index.js';
-import { apiImports } from './api-links.js';
+import { apiForms, apiImports } from './api-links.js';
 
 /**
  * The positional destructuring of `$props` (§4.2) — the exact mirror of the `Object.values`
@@ -332,7 +332,8 @@ function buildComponentClientModule(
   //
   // Framework imports are already out (`clientImports`), so what is left is the author's own
   // modules — where a store is the whole reason to have one.
-  const imported = clientImports;
+  // The forms of a linked `.fudapi` are such modules too (SDD-60 §3.14): before, the `@code` imported them.
+  const imported = [...new Set([...clientImports, ...apiForms(graph)])];
   // Nothing to renew: a component with signals but no value write and no construct has no
   // rendering that a `set` could change.
   // A `control` whose node crossed as a prop is bound from `$cb` and not from `$s`, because

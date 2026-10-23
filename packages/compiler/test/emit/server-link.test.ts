@@ -312,6 +312,27 @@ describe('the names a link brings into the browser (SDD-60 §3.14, §4.3)', () =
     expect(emitComponentClientModule(graph, entryComponent(graph)!)).toContain('import { save } from "fudic:components/c";');
   });
 
+  it('a linked form is watched like an imported one: what the markup reads through it repaints', () => {
+    // BUG-42 §4.3 subscribes to `userForm.$valid()` because `userForm` came from another module.
+    // Linked from a `.fudapi` it still does, though the `@code` no longer imports it: without
+    // this the submit of `user-form` never disabled.
+    const markup =
+      '<form control="@person"><input control="@person.name"><button disabled="@(!person.$valid())">x</button></form>';
+    const facts = { '/c.fudapi': api({ id: 'components/c', forms: ['person'], functions: ['save'] }) };
+    const source = `<link rel="server" href="./c.fudapi">\n<x-c>\n  <template shadowrootmode="open">${markup}</template>\n</x-c>\n`;
+    const graph = resolveDocument('/c.fud', ioOf({ '/c.fud': source }, facts)).value;
+    const client = emitComponentClientModule(graph, entryComponent(graph)!);
+    expect(client).toContain('$d.push($subIf(person, $u));');
+    expect(client).toContain('$d.push($sub(() => ((!person.$valid())), $u));');
+    expect(client).not.toContain('$subIf(save');
+
+    const routeFacts = { '/r.fudapi': api({ forms: ['person'] }) };
+    const routeGraph = resolveDocument('/r.fud', ioOf({ '/r.fud': route('<link rel="server" href="./r.fudapi">', '', markup) }, routeFacts));
+    const routeClient = emitRouteClientModule(routeGraph.value)!;
+    expect(routeClient).toContain('$d.push($subIf(person, $u));');
+    expect(routeClient).toContain('$d.push($sub(() => ((!person.$valid())), $u));');
+  });
+
   it('and the render module of the server imports them too: a route, a page and a component', () => {
     const facts = { '/r.fudapi': api({ load: true, route: '/r.fud', functions: ['save'], forms: ['person'] }) };
     const routeCode = emitRouteModuleMapped(resolveDocument('/r.fud', ioOf({ '/r.fud': route('<link rel="server" href="./r.fudapi">') }, facts)).value).code;

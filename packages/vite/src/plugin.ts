@@ -182,7 +182,6 @@ import {
   MAIN_ID,
   BOOT_ID,
   DATA_PREFIX,
-  EDGE_DIR,
   FUNCTIONS_FILE,
   BUILD_TOKEN,
   BUILD_ID_LENGTH,
@@ -202,11 +201,14 @@ import { keepSet, reachableChunks, type PruneItem } from './prune.js';
  * The bundle as reachability items, keyed by its ORIGINAL keys — which is what `imports`
  * speaks in, whatever `fileName` was later moved to (§5.2).
  */
-function bundleItems(bundle: Record<string, { type: string; imports?: readonly string[] }>): PruneItem[] {
+function bundleItems(
+  bundle: Record<string, { type: string; imports?: readonly string[]; dynamicImports?: readonly string[] }>,
+): PruneItem[] {
   return Object.entries(bundle).map(([fileName, item]) => ({
     type: item.type,
     fileName,
     ...(item.type === 'chunk' && item.imports !== undefined ? { imports: item.imports } : {}),
+    ...(item.type === 'chunk' && item.dynamicImports !== undefined ? { dynamicImports: item.dynamicImports } : {}),
   }));
 }
 
@@ -263,6 +265,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    * `id` is FUD0721 and the build already stopped (SDD-41 §4.3).
    */
   let appId = '';
+  /** Where the edge pass writes and the preview reads the server bundle (`edgeDir`). */
+  let edgeDir = '';
   /**
    * The languages of the app, from `fudic.json` (SDD-58 §3.1). Undefined when it declares none,
    * and then nothing of this SDD runs: no catalogs, no prefixes, no module compiled per locale.
@@ -785,7 +789,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       manifestFileName = manifestUrl.startsWith(base) ? manifestUrl.slice(base.length) : 'fudic-routes.json';
       // No `sw.json`, no Service Worker: everything is server/SSG (SDD-20 §4.7).
       const configIo = nodeConfigIo();
-      swConfig = readSwConfig(root, configIo).config;
+      swConfig = options.sw ? readSwConfig(root, configIo).config : null;
+      edgeDir = resolvePath(root, options.edgeDir);
       // Who this project is (SDD-41). Read here, next to `sw.json`, and reported in
       // `buildStart`, which is the first hook with a context to report through.
       project = readProject(root, swConfig !== null, configIo);
@@ -1109,7 +1114,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // Server functions, from the module the build left beside the edge chunks (SDD-56
       // §4.15): the same file an adapter mounts in production.
       server.middlewares.use((req, res, next) => {
-        const file = join(root, EDGE_DIR, FUNCTIONS_FILE);
+        const file = join(edgeDir, FUNCTIONS_FILE);
         if (!isFnPath(pathnameOf(req.url ?? '/', '/'), base) || !existsSync(file)) {
           next();
           return;
@@ -1147,11 +1152,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         if (pathname.startsWith(DATA_PREFIX)) {
           const routePath = pathname.slice(DATA_PREFIX.length) || '/';
           const dataRecord = matchRecord(manifest.routes, routePath);
-          if (dataRecord === null || !existsSync(edgeChunkPath(root, dataRecord.pattern))) {
+          if (dataRecord === null || !existsSync(edgeChunkPath(edgeDir, dataRecord.pattern))) {
             next();
             return;
           }
-          previewData(root, dataRecord, routePath, toRequest(req, res))
+          previewData(edgeDir, dataRecord, routePath, toRequest(req, res))
             .then((data) => {
               res.setHeader('Content-Type', 'application/json');
               res.end(JSON.stringify(data));
@@ -1191,7 +1196,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             return;
           }
           const pattern = errorPatternOf(errorLocale(pathname, req.headers.referer));
-          sendErrorPage(root, res, problemOfUrl(status, url), nonce, manifest.csp.document, pattern).catch(next);
+          sendErrorPage(edgeDir, res, problemOfUrl(status, url), nonce, manifest.csp.document, pattern).catch(next);
           return;
         }
 
@@ -1210,11 +1215,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         }
         // No prerendered file and no edge wrapper: this route produced nothing to serve.
         // Checked before importing so the fall-through stays synchronous.
-        if (!existsSync(edgeChunkPath(root, record.pattern))) {
+        if (!existsSync(edgeChunkPath(edgeDir, record.pattern))) {
           next();
           return;
         }
-        previewRender(root, record, pathname, nonce, toRequest(req, res))
+        previewRender(edgeDir, record, pathname, nonce, toRequest(req, res))
           .then((html) => {
             res.statusCode = 200;
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -1231,7 +1236,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               return;
             }
             const pattern = errorPatternOf(localeOfPath(pathname, locales));
-            await sendErrorPage(root, res, failure.problem, nonce, manifest.csp.document, pattern);
+            await sendErrorPage(edgeDir, res, failure.problem, nonce, manifest.csp.document, pattern);
           })
           .catch(next);
       });
@@ -2119,7 +2124,6 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         code: rewriteReferences(c.code.split(BUILD_TOKEN).join(buildId), renames),
       }));
       if (writeToDisk) {
-        const edgeDir = resolvePath(root, EDGE_DIR);
         rmSync(edgeDir, { recursive: true, force: true });
         for (const chunk of edgeChunks) {
           const abs = join(edgeDir, chunk.fileName);
@@ -2424,8 +2428,8 @@ function matchRecord(routes: readonly RouteRecord[], pathname: string): RouteRec
 }
 
 /** Where a route's edge wrapper lives: by convention, outside `outDir` (BUG-09 §3.2). */
-function edgeChunkPath(root: string, pattern: string): string {
-  return join(resolvePath(root, EDGE_DIR), `${safeName(pattern)}.js`);
+function edgeChunkPath(edgeDir: string, pattern: string): string {
+  return join(edgeDir, `${safeName(pattern)}.js`);
 }
 
 /**
@@ -2435,9 +2439,9 @@ function edgeChunkPath(root: string, pattern: string): string {
  * file inside the directory a static host serves. That is the shape BUG-09 removes. The
  * name is derived exactly as the edge pass derives it, so nothing has to be announced.
  */
-async function importEdgeChunk(root: string, pattern: string): Promise<RenderModule> {
+async function importEdgeChunk(edgeDir: string, pattern: string): Promise<RenderModule> {
   const { pathToFileURL } = await import('node:url');
-  return (await import(pathToFileURL(edgeChunkPath(root, pattern)).href)) as RenderModule;
+  return (await import(pathToFileURL(edgeChunkPath(edgeDir, pattern)).href)) as RenderModule;
 }
 
 /**
@@ -2470,25 +2474,25 @@ async function devErrorPage(
 
 /** Render a route in preview by importing its built ESM chunk. */
 async function previewRender(
-  root: string,
+  edgeDir: string,
   record: RouteRecord,
   pathname: string,
   nonce: string,
   request: Request,
 ): Promise<string> {
-  const mod = await importEdgeChunk(root, record.pattern);
+  const mod = await importEdgeChunk(edgeDir, record.pattern);
   const { drainStream, edgeContext, withRequest } = await import('./serve.js');
   return drainStream(mod.render(withRequest(edgeContext(record.pattern, pathname, nonce), request)));
 }
 
 /** Run a route's `@server load` in preview — the generated data endpoint. */
 async function previewData(
-  root: string,
+  edgeDir: string,
   record: RouteRecord,
   pathname: string,
   request: Request,
 ): Promise<unknown> {
-  const mod = await importEdgeChunk(root, record.pattern);
+  const mod = await importEdgeChunk(edgeDir, record.pattern);
   if (typeof mod.data !== 'function') {
     return {};
   }
@@ -2499,7 +2503,7 @@ async function previewData(
 
 /** `_error.fud` from the edge pass — or the minimal page — written with its status. */
 async function sendErrorPage(
-  root: string,
+  edgeDir: string,
   res: import('node:http').ServerResponse,
   problem: PageProblem,
   nonce: string,
@@ -2507,7 +2511,7 @@ async function sendErrorPage(
   /** The pattern of the locale's `_error.fud` (SDD-58 §4.5); the one pattern without locales. */
   pattern: string,
 ): Promise<void> {
-  const mod = existsSync(edgeChunkPath(root, pattern)) ? await importEdgeChunk(root, pattern) : null;
+  const mod = existsSync(edgeChunkPath(edgeDir, pattern)) ? await importEdgeChunk(edgeDir, pattern) : null;
   const html = await renderErrorPage(mod, problem, nonce);
   res.statusCode = problem.status;
   res.setHeader('Content-Type', 'text/html; charset=utf-8');

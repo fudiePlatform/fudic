@@ -9,6 +9,7 @@
 import { ROUTES_DIR } from '@fudic/conventions';
 
 import { FUD0365, type FileDiagnostic } from '@fudic/diagnostics';
+import { EDGE_DIR } from './constants.js';
 import { type ModeDefault, type ParamFallback } from './mode.js';
 
 /**
@@ -43,6 +44,18 @@ export interface FudicOptions {
    * off: it reruns its criteria on save by itself, and a reload took its page from under them.
    */
   readonly serverReload?: boolean;
+  /**
+   * Whether the build reads `sw.json` and emits a Service Worker. Default: `true`. `false` builds
+   * the same project without one, as if it had no `sw.json`: a second build of one app to compare
+   * the two shapes, without a second project root that cannot see the app's `.fudapi`.
+   */
+  readonly sw?: boolean;
+  /**
+   * Where the edge pass writes the server bundle and the preview reads it, relative to the
+   * project root. Default: `EDGE_DIR`. A second build of the same root names its own, or it
+   * overwrites the bundle the first one's preview serves.
+   */
+  readonly edgeDir?: string;
 }
 
 export interface ResolvedOptions {
@@ -52,6 +65,8 @@ export interface ResolvedOptions {
   readonly prerender: boolean;
   readonly paramFallback: ParamFallback;
   readonly defaults: Readonly<Record<string, RouteDefault>>;
+  readonly sw: boolean;
+  readonly edgeDir: string;
 }
 
 export interface ResolveOptionsResult {
@@ -84,6 +99,8 @@ export function resolveOptions(user: FudicOptions = {}, base = '/'): ResolveOpti
       prerender: user.prerender ?? true,
       paramFallback: user.paramFallback ?? 'lazy',
       defaults: user.defaults ?? {},
+      sw: user.sw ?? true,
+      edgeDir: user.edgeDir ?? EDGE_DIR,
     },
     diagnostics,
   };

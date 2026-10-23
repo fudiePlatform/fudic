@@ -37,7 +37,7 @@ import { projectAdoptOf } from './project-styles.js';
 import type { DocumentGraph } from './resolve.js';
 import type { RouteDocument, PageDocument } from '../document/index.js';
 import type { Diagnostic } from '../types/index.js';
-import { apiImports } from './api-links.js';
+import { apiForms, apiImports } from './api-links.js';
 
 /**
  * The three leading slots of a route's array: `$dom`, `$root` and `$data`. One more than a
@@ -223,7 +223,8 @@ function buildRouteClientModule(
   const nodes = [...walker.nodes, ...em.nodes];
 
   const reactive = code.signals.flatMap((s) => (s.kind === 'signal' ? [s.name] : []));
-  const imported = code.clientImports;
+  // With the forms of a linked `.fudapi`, which the `@code` used to import (SDD-60 §3.14).
+  const imported = [...new Set([...code.clientImports, ...apiForms(graph)])];
   const renews = (reactive.length > 0 || imported.length > 0) && (em.writes > 0 || !bodies.update.empty);
   const reconcile = bodies.update.empty ? '' : ` ${lines(bodies.update)}`;
   if (renews) {

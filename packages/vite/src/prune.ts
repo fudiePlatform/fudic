@@ -21,6 +21,13 @@ export interface PruneItem {
   readonly type: string;
   readonly fileName: string;
   readonly imports?: readonly string[];
+  /**
+   * What it loads with `import()`. Not a reason to boot it, so `reachableChunks` ignores it; but
+   * a file the browser will ask for, so `keepSet` keeps it. The browser root loads the
+   * implementations of `src/browser` and of each library this way (SDD-60 §4.4), and a chunk
+   * reached only so was pruned: a 404 and a rule with no implementation.
+   */
+  readonly dynamicImports?: readonly string[];
 }
 
 /**
@@ -95,7 +102,7 @@ export function keepSet(
     if (item === undefined) {
       return;
     }
-    for (const imported of item.imports ?? []) {
+    for (const imported of [...(item.imports ?? []), ...(item.dynamicImports ?? [])]) {
       visit(imported);
     }
   };

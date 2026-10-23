@@ -30,6 +30,38 @@ describe('code regions', () => {
     expect(has(find(tokens, 'const a'), 'source.ts')).toBe(true);
   });
 
+  it('tokenises a @code with the old region words as plain TypeScript (SDD-60, snapshot)', async () => {
+    // What used to be two directives and three zones is one TypeScript body now: the snapshot
+    // pins every token of it, so a rule for `@server`/`@client` coming back changes it.
+    const BASE = 'text.html.fudic';
+    const tokens = await tokenize(
+      [
+        '<link rel="server" href="./usuarios.fudapi">',
+        '',
+        '@code {',
+        '  import { signal } from "@fudic/core";',
+        '  @server {',
+        '    const a = 1;',
+        '  }',
+        '  @client {',
+        '    const b = signal(2);',
+        '  }',
+        '}',
+        '',
+        '<p>@b()</p>',
+      ].join('\n'),
+    );
+    const render = tokens
+      .map((t) => `${t.line}  ${JSON.stringify(t.text)}  ${t.scopes.filter((s) => s !== BASE).join(' ') || '-'}`)
+      .join('\n');
+
+    expect(render).toMatchSnapshot();
+    for (const marker of ['@server', '@client']) {
+      expect(has(find(tokens, marker), 'keyword.control.directive')).toBe(false);
+      expect(has(find(tokens, marker), 'source.ts')).toBe(true);
+    }
+  });
+
   it('closes @code on its own brace, not on the first brace of the code inside', async () => {
     // The whole difficulty of this grammar in one case. A regular expression cannot balance
     // braces, so nested blocks are consumed by a recursive rule before the closing pattern

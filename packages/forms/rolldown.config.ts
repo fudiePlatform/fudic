@@ -91,6 +91,8 @@ const PIECES: Readonly<Record<string, string>> = {
   summary: 'bundle/summary.ts',
   // SDD-56: the binary of a typed form, which only a page that sends one downloads.
   wire: 'src/wire/index.ts',
+  // SDD-60: what the code generated from a `.fudapi` builds with, and the registry it fills.
+  contract: 'bundle/contract.ts',
 };
 
 /**
@@ -177,6 +179,13 @@ const FRONTIERS: Readonly<Record<string, string>> = {
   'src/wire/binary.ts': 'wire',
   'src/wire/io.ts': 'wire',
   'src/wire/json.ts': 'wire',
+  'src/catches.ts': 'form',
+  'src/contract/uuid.ts': 'contract',
+  'src/contract/form.ts': 'contract',
+  'src/contract/rule.ts': 'contract',
+  'src/contract/require.ts': 'contract',
+  'src/contract/text.ts': 'contract',
+  'src/contract/registry.ts': 'contract',
 };
 
 /** Absolute path → the piece that owns it, resolved once so the hook below is a lookup. */

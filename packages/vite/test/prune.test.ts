@@ -86,6 +86,31 @@ describe('keepSet', () => {
     expect([...keepSet(items, () => true)]).toEqual(['lonely.js']);
   });
 
+  it('keeps what a kept chunk loads with import(), and what that one imports (SDD-60 §4.4)', () => {
+    // The browser root loads `src/browser` and each library's `browser/` through
+    // `import.meta.glob`: those chunks are reached by `import()` only, and the browser asks for
+    // them all the same. Dropped, a rule of `@fudic/forms` had no implementation.
+    const items: PruneItem[] = [
+      { type: 'chunk', fileName: 'assets/h/app-form.js', imports: ['assets/fudic-root.browser.js'] },
+      { type: 'chunk', fileName: 'assets/fudic-root.browser.js', dynamicImports: ['assets/rules-B3.js'] },
+      { type: 'chunk', fileName: 'assets/rules-B3.js', imports: ['assets/shared.js'] },
+      { type: 'chunk', fileName: 'assets/shared.js' },
+      { type: 'chunk', fileName: 'assets/c/page.js', dynamicImports: ['assets/page-only.js'] },
+      { type: 'chunk', fileName: 'assets/page-only.js' },
+    ];
+    expect([...keepSet(items, (item) => item.fileName === 'assets/h/app-form.js')].sort()).toEqual([
+      'assets/fudic-root.browser.js',
+      'assets/h/app-form.js',
+      'assets/rules-B3.js',
+      'assets/shared.js',
+    ]);
+    // And the shell still boots from static imports alone.
+    expect(reachableChunks(items, (item) => item.fileName === 'assets/h/app-form.js')).toEqual([
+      'assets/h/app-form.js',
+      'assets/fudic-root.browser.js',
+    ]);
+  });
+
   it('keeps nothing but assets when no chunk is a root', () => {
     expect([...keepSet(BUNDLE, () => false)].sort()).toEqual([
       'fudic-routes.json',

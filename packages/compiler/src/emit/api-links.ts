@@ -63,3 +63,14 @@ export function apiImports(graph: ComponentGraph): readonly string[] {
   }
   return lines;
 }
+
+/**
+ * The forms the `.fudapi` a file links give it, by name: stores from another module, which the
+ * client subscribes to through what the markup reads (`userForm.$valid()`, BUG-42 §4.3) exactly
+ * as it did when the form was an import of the `@code`. Functions are left out: a stub has
+ * nothing to subscribe to.
+ */
+export function apiForms(graph: ComponentGraph): readonly string[] {
+  const apis = 'serverApis' in graph ? (graph as DocumentGraph).serverApis : [];
+  return [...new Set(apis.flatMap(({ api }) => (api === undefined ? [] : api.forms)))];
+}
