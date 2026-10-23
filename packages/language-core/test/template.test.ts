@@ -471,7 +471,7 @@ describe('client virtual assembly', () => {
   it('projects props, keeps the @code verbatim and scopes the template', () => {
     const source = component(
       '    <span class:on="@(tone === 1)"><slot></slot></span>',
-      "@code {\n  type Tone = 1 | 2;\n  const { tone = 1 } = props<{ tone?: Tone }>();\n  @client {\n    let hovered = false;\n  }\n  @server {\n    const secret = 1;\n  }\n}\n\n",
+      "@code {\n  type Tone = 1 | 2;\n  const { tone = 1 } = props<{ tone?: Tone }>();\n  let hovered = false;\n  const secret = 1;\n}\n\n",
     );
     const { text, fileName } = emitClient(source, 'app-host.fud');
 
@@ -480,16 +480,15 @@ describe('client virtual assembly', () => {
     expect(text).toContain('const $p0 = props<{ tone?: Tone }>();');
     expect(text).toContain('const { tone = 1 } = $p0;');
     expect(text).toContain('let hovered = false;');
-    // A region of an old file is read as if it had no wrapper (SDD-60 §4.8).
     expect(text).toContain('const secret = 1;');
     expect(text).toContain('function $tpl(): void {');
     expect(text.trimEnd().endsWith('$tpl;')).toBe(true);
   });
 
-  it('keeps neutral chunks that do not hold the props declaration verbatim', () => {
+  it('keeps the statements that do not hold the props declaration verbatim', () => {
     const source = component(
       '    <i>@label</i>',
-      '@code {\n  const { label } = props<{ label: string }>();\n  @client {\n    let seen = false;\n  }\n  const extra = 1;\n}\n\n',
+      '@code {\n  const { label } = props<{ label: string }>();\n  let seen = false;\n  const extra = 1;\n}\n\n',
     );
     const { text } = emitClient(source, 'app-host.fud');
 

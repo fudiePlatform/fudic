@@ -305,49 +305,20 @@ describe('`fud-data`: only what the client half reads (§6.15, §6.16)', () => {
     expect(route.slice(found[0]!.span.start, found[0]!.span.end)).toBe('data');
   });
 
-  it('reads `load` however the region exports it', () => {
-    const forms = [
-      '@server { export const load = async () => ({ user: "pedro" }); }',
-      '@server { async function load() { return { user: "pedro" }; } export { load }; }',
-    ];
-    for (const server of forms) {
+  it('a `load` written in the `@code` is no `load`: it is the `.fudapi`’s to declare (SDD-60)', () => {
+    for (const load of [
+      'export const load = async () => ({ user: "pedro" });',
+      'async function load() { return { user: "pedro" }; } export { load };',
+    ]) {
       const route = [
         '<link rel="layout" href="./l.fud">',
-        `@code { ${server} @client { const n = signal(1); function s() { alert(data.user); } } }`,
+        `@code { ${load} const n = signal(1); function s() { alert(data.user); } }`,
         '<output>@n()</output>',
       ].join('\n');
       const io = routeIo({ '/r.fud': route, '/l.fud': LAYOUT });
       const out = emitRouteModuleMapped(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
-      expect(out.diagnostics).toEqual([]);
+      expect(out.diagnostics.map((d) => d.code)).toEqual(['FUD0621']);
     }
-  });
-
-  it('a destructured export names nothing it can read, and `load` stays undeclared', () => {
-    const route = [
-      '<link rel="layout" href="./l.fud">',
-      '@code {',
-      '  @server { export const { load } = hooks; }',
-      '  @client { const n = signal(1); function s() { alert(data.user); } }',
-      '}',
-      '<output>@n()</output>',
-    ].join('\n');
-    const io = routeIo({ '/r.fud': route, '/l.fud': LAYOUT });
-    const out = emitRouteModuleMapped(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
-    expect(out.diagnostics.map((d) => d.code)).toEqual(['FUD0621']);
-  });
-
-  it('an export renamed to a string literal names nothing importable either', () => {
-    const route = [
-      '<link rel="layout" href="./l.fud">',
-      '@code {',
-      '  @server { async function load() { return {}; } export { load as "mi-carga" }; }',
-      '  @client { const n = signal(1); function s() { alert(data.user); } }',
-      '}',
-      '<output>@n()</output>',
-    ].join('\n');
-    const io = routeIo({ '/r.fud': route, '/l.fud': LAYOUT });
-    const out = emitRouteModuleMapped(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
-    expect(out.diagnostics.map((d) => d.code)).toEqual(['FUD0621']);
   });
 
   it('gives a callback of the route its own cell slot', () => {

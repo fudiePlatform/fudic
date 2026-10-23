@@ -321,17 +321,17 @@ export function routeBlocksOf(
     cells: cells
       .map((c) => (c.kind === 'signal' ? `{ of: ${c.name}, value: ${c.name}() }` : `{ of: ${c.name} }`))
       .join(', '),
-    data: dataExpression(entry.code, loads(graph, entry.code), out),
+    data: dataExpression(entry.code, loads(graph), out),
   };
 }
 
 /**
- * Whether the route has a `load`: its `@server` exports one, or a `.fudapi` it links declares
- * one (SDD-60). A link the host could not read is given the benefit: nothing is said.
+ * Whether the route has a `load`: a `.fudapi` it links declares one (SDD-60). A link the host
+ * could not read is given the benefit: nothing is said.
  */
-function loads(graph: ComponentGraph, code: ExtractedCode): boolean {
+function loads(graph: ComponentGraph): boolean {
   const apis = 'serverApis' in graph ? (graph as DocumentGraph).serverApis : [];
-  return code.serverExports.includes('load') || apis.some((a) => a.api === undefined || a.api.load);
+  return apis.some((a) => a.api === undefined || a.api.load);
 }
 
 /**
@@ -431,7 +431,7 @@ export function writeHydrationBlocks(
  * cannot assume, so it is not written.
  *
  * `fud-di` is what this request PUBLISHED. Only that crosses: a value seeded on the server
- * and not published stays there, which is what makes a `@server` region safe to inject from.
+ * and not published stays there, which is what makes a server handler safe to inject from.
  */
 function writeIocBlocks(w: CodeWriter, dom: string, parent: string, ioc: string): void {
   w.line(`const $iocMap = ${ioc}.map();`);

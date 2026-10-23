@@ -2,7 +2,7 @@
  * BUG-30 — a marker written inside a JS comment, string, template or regex is not a marker,
  * and a `load` named in one is not an export.
  *
- * The rule that scans a `@code` region's TEXT — `layout-load` (FUD0430) — used to match on the
+ * The rule that scans a `@code`'s TEXT — `layout-load` (FUD0430) — used to match on the
  * raw substring, so prose about a region was an error about a region. (`code-region-nesting`,
  * FUD0193, scanned it too, until SDD-60 retired it with the regions.) What it must keep
  * catching is every REAL case, at the very same offset: the fix masks, it does not move anything.
@@ -49,33 +49,33 @@ describe('FUD0430 — a `load` named in prose is not an export (§6.3, §6.6)', 
     expect(
       codes(
         layout(
-          '@code { @server {\n  // A layout cannot export function load: it receives the route data.\n  const T = "Blog";\n} }',
+          '@code {\n  // A layout cannot export function load: it receives the route data.\n  const T = "Blog";\n}',
         ),
       ),
     ).not.toContain('FUD0430');
     expect(
-      codes(layout('@code { @server { const doc = "export function load"; } }')),
+      codes(layout('@code { const doc = "export function load"; }')),
     ).not.toContain('FUD0430');
     expect(
-      codes(layout('@code { @server { /* export const load = … */ const T = 1; } }')),
+      codes(layout('@code { /* export const load = … */ const T = 1; }')),
     ).not.toContain('FUD0430');
   });
 
-  it('still flags a real exported load, with the span of the region (§6.6, §6.7)', () => {
-    const fn = layout('@code { @server { export async function load() { return {}; } } }');
+  it('still flags a real exported load, with the span of the export (§6.6, §6.7)', () => {
+    const fn = layout('@code { export async function load() { return {}; } }');
     const onFn = diags(fn).filter((d) => d.code === 'FUD0430');
     expect(onFn).toHaveLength(1);
     expect(fn.slice(onFn[0]!.span.start, onFn[0]!.span.end)).toBe(
-      '@server { export async function load() { return {}; } }',
+      'export async function load',
     );
 
-    const konst = layout('@code { @server { export const load = () => ({}); } }');
+    const konst = layout('@code { export const load = () => ({}); }');
     expect(codes(konst)).toContain('FUD0430');
   });
 
   it('still flags a real load written after a comment that mentions it', () => {
     const source = layout(
-      '@code { @server {\n  // load lives here, and that is the bug\n  export const load = () => ({});\n} }',
+      '@code {\n  // load lives here, and that is the bug\n  export const load = () => ({});\n}',
     );
     expect(codes(source)).toContain('FUD0430');
   });

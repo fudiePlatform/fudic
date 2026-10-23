@@ -3,10 +3,7 @@ import type { SourceDiagnostic, SourceInput } from '../types.js';
 
 /** Parameters of `FUD0700`: what, in the layout's `@code`, is not its declaration of props. */
 export type FUD0700Params = SourceInput &
-  (
-    | { readonly kind: 'server-region' | 'client-region' | 'statement' }
-    | { readonly kind: 'reactive'; readonly name: string }
-  );
+  ({ readonly kind: 'statement' } | { readonly kind: 'reactive'; readonly name: string });
 
 /** A layout's `@code` contains something that is not its declaration of props (SDD-40). */
 export const FUD0700 = (p: FUD0700Params): SourceDiagnostic =>
@@ -14,10 +11,6 @@ export const FUD0700 = (p: FUD0700Params): SourceDiagnostic =>
 
 function message(p: FUD0700Params): string {
   switch (p.kind) {
-    case 'server-region':
-      return "a layout has no server: its data comes from the route, whose `.fudapi` resolves the layout's props with `layout`";
-    case 'client-region':
-      return 'a layout has no browser code: there is no layout chunk for it to travel in, and a layout prop is a render value that never repaints';
     case 'statement':
       return 'the `@code` of a layout declares its props and nothing else: this statement would run in both renderers with nobody able to say when';
     case 'reactive':

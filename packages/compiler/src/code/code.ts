@@ -3,28 +3,28 @@
  * `kind: 'code-block'` and delegates here through `AtConstructParser.parseCodeBlock`.
  *
  * The body is JS, not HTML, so this module never touches `ctx.parseContentUntil`:
- * it delimits the block with the SDD-02 balancer, splits the body into neutral JS
- * chunks and `@server` / `@client` regions, and repositions the lexer past the
- * closing `}` with `seekTo`.
+ * it delimits the block with the SDD-02 balancer, splits the body into JS chunks, and
+ * repositions the lexer past the closing `}` with `seekTo`.
  *
- * It does NOT parse or validate the JS (Oxc, SDD-11), does not count or deduplicate
- * regions (semantic, SDD-12), and does not police where the block may appear
- * (SDD-10). It never throws: broken input degrades the value and emits a located
+ * It does NOT parse or validate the JS (Oxc, SDD-11) and does not police where the block
+ * may appear (SDD-10). It never throws: broken input degrades the value and emits a located
  * diagnostic, and the cursor always moves forward.
  *
- * One thing it does police, because nobody downstream can: a Razor comment written in
- * here is FUD0114 (decision 35.a, BUG-13). The body is JavaScript, `@* … *@` is not, and
+ * Two things it does police, because nobody downstream can: a Razor comment written in
+ * here is FUD0114 (decision 35.a, BUG-13) — the body is JavaScript, `@* … *@` is not, and
  * the balancer is told to treat it as opaque so a comment can never decide where the
- * block ends.
+ * block ends — and a `@server` / `@client` region is FUD1110 (SDD-60 §3.14): the `@code` is
+ * browser code, all of it. The region's wrapper is left out of the chunks and its content
+ * read as if it had none, so nothing else is reported because of it.
  */
 
 import { type Span, span, emptySpan } from '../types/index.js';
 import type { Diagnostic } from '../types/index.js';
-import { FUD0110, FUD0114 } from '@fudic/diagnostics';
+import { FUD0110, FUD0114, FUD1110 } from '@fudic/diagnostics';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 import { type BalancedGroup, type LexRegion, scanBraces, scanParens } from '../balancer/index.js';
 import type { HtmlParseContext } from '../html/index.js';
-import type { CodeBlockNode, CodePart, ClientRegion, ServerRegion } from './nodes.js';
+import type { CodeBlockNode, NeutralJs } from './nodes.js';
 
 /**
  * The body of `@code` is JavaScript, and JavaScript has its own two comment forms.
@@ -39,14 +39,8 @@ const NON_WHITESPACE = /\S/u;
 const IDENT_START = /[\p{ID_Start}$_]/u;
 const IDENT_PART = /[\p{ID_Continue}$]/u;
 
-/** The two identifiers that cut the neutral JS. Any other `@…` is JS (a decorator). */
+/** The two retired region markers (SDD-60 §3.14). Any other `@…` is JS (a decorator). */
 type MarkerName = 'server' | 'client';
-
-const MARKER_NODE_TYPE: Readonly<Record<MarkerName, ServerRegion['type'] | ClientRegion['type']>> =
-  {
-    server: 'server-region',
-    client: 'client-region',
-  };
 
 /** First offset >= `from` (and <= `limit`) that is not whitespace. */
 function skipWhitespace(source: string, from: number, limit: number): number {
@@ -114,21 +108,25 @@ class RegionCursor {
 }
 
 /**
- * Splits one `@code` body into its parts. Walks the body at TOP LEVEL only: opaque
+ * Splits one `@code` body into its JS chunks. Walks the body at TOP LEVEL only: opaque
  * regions come pre-computed from the balancer, and nested `(`/`[`/`{` groups are
  * counted so a `@server` written inside them is not mistaken for a region marker.
  *
- * It deliberately does NOT descend into a region's `{ … }`: that text is opaque JS
- * for Oxc, so a nested `@server`/`@client` is invisible here by design (§4.2, note 2).
+ * A retired `@server { … }` / `@client { … }` is FUD1110 once, on its marker, and the
+ * splitter goes on INSIDE it as top level: its content is read as if it had no wrapper, so a
+ * region nested in another is reported on its own, and the marker, its `(…)` and its braces
+ * never reach a chunk — Oxc sees plain JS and has nothing to add (SDD-60 §3.14).
  */
 class BodySplitter {
   readonly #source: string;
   readonly #end: number;
   readonly #regions: RegionCursor;
-  readonly #parts: CodePart[] = [];
+  readonly #parts: NeutralJs[] = [];
   readonly #diagnostics: Diagnostic[] = [];
+  /** The `}` of every region still open, innermost last: each one cuts a chunk. */
+  readonly #closers: number[] = [];
 
-  /** Start of the neutral chunk currently being accumulated. */
+  /** Start of the chunk currently being accumulated. */
   #chunkStart: number;
   /** Nesting depth of plain JS groups. Markers are only recognized at depth 0. */
   #depth = 0;
@@ -146,8 +144,15 @@ class BodySplitter {
     return this.#diagnostics;
   }
 
-  split(): readonly CodePart[] {
+  split(): readonly NeutralJs[] {
     while (this.#offset < this.#end) {
+      if (this.#offset === this.#closers.at(-1)) {
+        this.#closers.pop();
+        this.#closeChunk(this.#offset);
+        this.#offset++;
+        this.#chunkStart = this.#offset;
+        continue;
+      }
       const skipped = this.#regions.skipFrom(this.#offset);
       if (skipped !== this.#offset) {
         this.#offset = skipped;
@@ -183,7 +188,7 @@ class BodySplitter {
 
   /**
    * An `@` at top level. Returns where scanning resumes. Only `@server` / `@client`
-   * cut the neutral JS; every other `@…` (a TS decorator, say) is left to Oxc.
+   * are markers; every other `@…` (a TS decorator, say) is left to Oxc.
    */
   #at(atOffset: number): number {
     const identStart = atOffset + 1;
@@ -198,12 +203,13 @@ class BodySplitter {
   }
 
   /**
-   * A confirmed `@server` / `@client`. Skips a parameter list, so the region body is still
-   * delimited for the editor; a missing `{` reports FUD0110 and leaves the marker inside the
-   * neutral chunk — the body stays fully covered either way. (Nothing else is said of a
-   * region: SDD-60 retires them.)
+   * A confirmed `@server` / `@client`: FUD1110 on the marker, which leaves the chunks along
+   * with its parameter list. With its `{`, scanning resumes inside it and its `}` is held
+   * as a closer; without one there is nothing to unwrap.
    */
   #marker(atOffset: number, identEnd: number, name: MarkerName): number {
+    this.#closeChunk(atOffset);
+    this.#diagnostics.push(FUD1110({ span: span(atOffset, identEnd), region: name }));
     let cursor = identEnd;
     if (this.#source[cursor] === '(') {
       const parameters = scanParens(this.#source, cursor);
@@ -215,23 +221,19 @@ class BodySplitter {
     // the `@code` block (or nothing at all), so neither can be mistaken for the brace.
     const brace = skipWhitespace(this.#source, cursor, this.#end);
     if (this.#source[brace] !== '{') {
-      this.#diagnostics.push(FUD0110({ span: emptySpan(brace), name }));
-      return brace;
+      this.#chunkStart = cursor;
+      return cursor;
     }
 
     const group = scanBraces(this.#source, brace, RAZOR_COMMENTS);
     this.#diagnostics.push(...group.diagnostics);
-    this.#closeChunk(atOffset);
-    this.#parts.push({
-      type: MARKER_NODE_TYPE[name],
-      span: span(atOffset, group.value.span.end),
-      js: group.value.inner,
-    });
-    this.#chunkStart = group.value.span.end;
-    return group.value.span.end;
+    const inner = group.value.inner;
+    if (this.#source[inner.end] === '}') this.#closers.push(inner.end);
+    this.#chunkStart = inner.start;
+    return inner.start;
   }
 
-  /** Emit the pending neutral chunk `[#chunkStart, upTo)`, unless it is blank. */
+  /** Emit the pending chunk `[#chunkStart, upTo)`, unless it is blank. */
   #closeChunk(upTo: number): void {
     if (upTo <= this.#chunkStart) return;
     const at = span(this.#chunkStart, upTo);
@@ -243,8 +245,8 @@ class BodySplitter {
 
 /**
  * Parse a `@code { … }` block. `ctx.lexer` sits right after `keywordSpan.end` (`code`).
- * Delimits the body with `scanBraces`, then splits it into neutral JS chunks and
- * `@server`/`@client` regions. Never throws; leaves the lexer past the closing `}`.
+ * Delimits the body with `scanBraces`, then splits it into JS chunks. Never throws; leaves
+ * the lexer past the closing `}`.
  * Signature-compatible with `AtConstructParser.parseCodeBlock`.
  */
 export function parseCodeBlock(
@@ -296,9 +298,9 @@ export function parseCodeBlock(
 /**
  * One `FUD0114` per Razor comment written anywhere in the block (decision 35.a).
  *
- * The balancer walked the WHOLE body — the inside of `@server` / `@client` included, since
- * it counts braces rather than recursing — so a single pass over its regions covers the
- * three positions the bug reported, and covers them identically. The text is not carved out
+ * The balancer walked the WHOLE body — the inside of a retired `@server` / `@client`
+ * included, since it counts braces rather than recursing — so a single pass over its regions
+ * covers every position, and covers them identically. The text is not carved out
  * of the chunk: SDD-08 recovers the same way from `FUD0110`, leaving the offending source
  * where the author wrote it and saying so with a span.
  */

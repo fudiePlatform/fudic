@@ -78,8 +78,6 @@ export type NameOrigin =
   | 'neutral-let'
   | 'code'
   | 'api'
-  | 'server'
-  | 'client'
   | 'role'
   | 'global';
 
@@ -138,11 +136,6 @@ export function viewScope(input: SemanticInput): ViewScope {
       if (code.neutralLets.has(name)) return 'neutral-let';
       if (code.neutral.has(name)) return 'code';
       if (apis?.names.has(name) === true) return 'api';
-      // `@server` never reaches the browser, and the plain names of `@client` never reach the
-      // server (§3.8): read from the view, each is a `ReferenceError` on the other side. Which
-      // layer says so is the caller's business.
-      if (code.server.has(name)) return 'server';
-      if (code.client.has(name)) return 'client';
       if (role.has(name)) return 'role';
       if (VIEW_GLOBALS.has(name)) return 'global';
       return undefined;
@@ -393,26 +386,18 @@ function statementNames(statement: OxcNode): { readonly names: readonly string[]
 
 /** The top-level names of `@code`, by the zone that declares them (§3.4, §3.8). */
 interface CodeNames {
-  /** The neutral zone and the reactives of `@client`: what both sides of the view can read. */
+  /** Every name the `@code` declares: what the view can read (SDD-60 §4.8). */
   readonly neutral: ReadonlySet<string>;
   readonly neutralLets: ReadonlySet<string>;
-  readonly server: ReadonlySet<string>;
-  /** The plain names of `@client`: the server renders without them. */
-  readonly client: ReadonlySet<string>;
   /** Every function `@code` declares, whatever its zone: printing one prints its source. */
   readonly functions: ReadonlySet<string>;
   /** Every regex `@code` declares: its `test` and `exec` carry `lastIndex` between passes. */
   readonly regexes: ReadonlySet<string>;
 }
 
-/** The callee names that make a `@client` binding a reactive the server renders inert. */
-const REACTIVE: ReadonlySet<string> = new Set(['signal', 'computed']);
-
 function codeNames(input: SemanticInput): CodeNames {
   const neutral = new Set<string>();
   const neutralLets = new Set<string>();
-  const server = new Set<string>();
-  const client = new Set<string>();
   const functions = new Set<string>();
   const regexes = new Set<string>();
   for (const part of input.document.code?.parts ?? []) {
@@ -421,20 +406,17 @@ function codeNames(input: SemanticInput): CodeNames {
     // A `module-statements` fragment is always a list (SDD-11 §3.2).
     for (const statement of input.js.ast(id) as readonly OxcNode[]) {
       const declared = statementNames(statement);
-      const reactive = reactiveNames(statement);
       for (const name of functionNames(statement)) functions.add(name);
       for (const name of regexNames(statement)) regexes.add(name);
       for (const name of declared.names) {
-        if (part.type === 'server-region') server.add(name);
-        else if (part.type === 'client-region' && !reactive.has(name)) client.add(name);
-        else neutral.add(name);
-        // The neutral zone is declared INSIDE the render function, so its `let`s are state of
-        // the instance and the template may reseed them (§3.5): the cursor of a `@while`.
-        if (declared.let && part.type === 'neutral-js') neutralLets.add(name);
+        neutral.add(name);
+        // The `@code` is declared INSIDE the render function, so its `let`s are state of the
+        // instance and the template may reseed them (§3.5): the cursor of a `@while`.
+        if (declared.let) neutralLets.add(name);
       }
     }
   }
-  return { neutral, neutralLets, server, client, functions, regexes };
+  return { neutral, neutralLets, functions, regexes };
 }
 
 /** The names a declaration binds to a regex: `/x/g`, or `new RegExp(…)`. */
@@ -469,18 +451,3 @@ function functionNames(statement: OxcNode): readonly string[] {
 }
 
 const FUNCTIONS: ReadonlySet<string> = new Set(['ArrowFunctionExpression', 'FunctionExpression']);
-
-/** The names of `const x = signal(…)` / `computed(…)`: the server stubs them inert. */
-function reactiveNames(statement: OxcNode): ReadonlySet<string> {
-  const out = new Set<string>();
-  if (statement.type !== 'VariableDeclaration') return out;
-  for (const declaration of statement['declarations'] as readonly OxcNode[]) {
-    const init = declaration['init'] as OxcNode | null;
-    const callee = init?.type === 'CallExpression' ? (init['callee'] as OxcNode) : undefined;
-    const id = declaration['id'] as OxcNode;
-    if (callee?.type === 'Identifier' && REACTIVE.has(String(callee['name'])) && id.type === 'Identifier') {
-      out.add(String(id['name']));
-    }
-  }
-  return out;
-}

@@ -309,18 +309,18 @@ function buildComponentModule(
     options.assetUrl,
     options.assetText,
   );
-  const { props, signals, neutral, diagnostics, di, server } = codeOf(comp);
+  const { props, signals, neutral, diagnostics, di } = codeOf(comp);
   const cells = cellSlots(comp, graph);
   const hydratable = hydratableTags(graph);
   const bodyW = new CodeWriter();
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
-  // A component OWNS a container as soon as it declares one provider, whatever zone it wrote
-  // it in — the map has to have a node for it either way, because the node is what the
-  // browser rebuilds the chain from and the browser cannot see a `@server` region.
+  // A component OWNS a container as soon as it declares one provider, whatever zone it went
+  // to — the map has to have a node for it either way, because the node is what the browser
+  // rebuilds the chain from.
   const owns = di.some((d) => d.kind === 'provide');
   // The same predicate the client chunk uses, so what the server writes down and what the
   // chunk destructures cannot disagree.
-  const injects = di.some((d) => d.kind === 'inject' && d.zone !== 'server');
+  const injects = di.some((d) => d.kind === 'inject');
   // Resolved once, for both branches: the client chunk builds the very same nodes from the
   // very same plan, or `h` adopts a tree it does not recognise (SDD-34 §4.3).
   const associated = formAssociatedTags(graph);
@@ -363,7 +363,6 @@ function buildComponentModule(
   // which travels below with the rest of the zone — no longer covers what this module calls.
   const helpers = diHelpers(di, (call) => call.zone !== 'client');
   if (helpers.length > 0) w.line(`import { ${helpers.join(', ')} } from '@fudic/di';`);
-  for (const line of server.imports) w.line(line);
   // What the `.fudapi` it links give the view, from their server variant (SDD-60 §3.14).
   const linked = apiImports(graph);
   for (const line of linked) w.line(line);
@@ -379,7 +378,6 @@ function buildComponentModule(
   for (const line of linker.imports()) w.line(line);
   const preamble =
     helpers.length > 0 ||
-    server.imports.length > 0 ||
     linked.length > 0 ||
     em.summaries ||
     em.used.size > 0 ||
@@ -486,12 +484,6 @@ function buildComponentModule(
     // what lets a breakpoint in the `.fud` find it. Renders byte-identically.
     if (!statement.hoisted)
       w.mappedLine({ text: statement.text, src: statement.at, anchors: statement.anchors });
-  }
-  // And then the `@server` region, which runs on this side ONLY, and which until SDD-38
-  // reached nowhere at all. Last of the three, because it is the one that may read what the
-  // other two declared and nothing may read it back.
-  for (const statement of server.body) {
-    w.mappedLine({ text: statement.text, src: statement.at, anchors: statement.anchors });
   }
   w.appendWriter(bodyW); // carries the markup's source anchors, unlike a toString()/split copy
   w.dedent();

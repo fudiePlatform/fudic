@@ -1,5 +1,5 @@
 /**
- * The server cut of a `@code` without regions (SDD-60 §4.8).
+ * The server cut of a `@code` (SDD-60 §4.8).
  *
  * The `@code` is browser code. The SSR and the Service Worker evaluate only what the markup
  * reads, transitively, plus every top-level `provide` and the `props<T>()`; `effect` never.
@@ -90,7 +90,7 @@ describe('what is always in the cut, and what never is', () => {
     expect(client).toContain('effect(');
   });
 
-  it('`effect` is not FUD0570 without regions: it goes anywhere in the `@code`', () => {
+  it('`effect` is not FUD0570: it goes anywhere in the `@code`', () => {
     const out = extract(component("  import { effect } from '@fudic/core';\n  effect(() => {});", '<p>x</p>'));
     expect(out.diagnostics.map((d) => d.code)).not.toContain('FUD0570');
   });
@@ -135,14 +135,10 @@ describe('what makes the file hydrate (clientRuns)', () => {
     expect(extract(component('  function later() {}\n  const n = 1;', '<p>x</p>')).clientRuns).toBe(false);
   });
 
-  it('with regions, the rule of today: a `@client` with a body', () => {
-    expect(extract(component('  @client {\n    const n = 1;\n  }', '<p>x</p>')).clientRuns).toBe(true);
-    expect(extract(component('  const n = 1;\n  @client {\n  }', '<p>x</p>')).clientRuns).toBe(false);
-  });
 });
 
 describe('a layout has no cut', () => {
-  it('its `@code` keeps the zones as written: a statement there does not make it hydrate', () => {
+  it('a statement in its `@code` does not make it hydrate: there is no browser half', () => {
     const layout =
       '<!DOCTYPE html>\n<html lang="es">\n<head>\n@code {\n  document.title = "x";\n}\n@RenderHead()\n</head>\n' +
       '<body>\n<main>@RenderBody()</main>\n</body>\n</html>\n';
@@ -152,8 +148,8 @@ describe('a layout has no cut', () => {
 });
 
 describe('every name the `@code` declares (declared)', () => {
-  it('whatever its zone', () => {
-    const out = extract(component('  const a = 1;\n  function f() {}\n  @client {\n    const b = 2;\n  }', '<p>x</p>'));
+  it('whatever half it went to', () => {
+    const out = extract(component('  const a = 1;\n  function f() {}\n  const b = 2;', '<p>@a</p>'));
     expect([...out.declared].sort()).toEqual(['a', 'b', 'f']);
   });
 });

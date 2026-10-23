@@ -64,13 +64,12 @@ function visit(node: OxcNode, report: (node: OxcNode) => void): void {
 /**
  * `FUD0461` for every `$`-prefixed identifier of the `@code`.
  *
- * The whole `@code`, its neutral chunks included: since SDD-60 it is one block of browser code
- * with no regions, and a rule that read only the regions would never fire again.
+ * The whole `@code`: since SDD-60 it is one block of browser code (SDD-60 §4.8).
  */
 export function reservedDollarDiagnostics(document: ProjectedFud): readonly Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
 
-  for (const id of [...document.js.neutral, ...document.js.regions.map((region) => region.id)]) {
+  for (const id of document.js.code) {
     for (const statement of statementsOf(document.js.result, id)) {
       visit(statement, (node) => {
         const span = document.js.result.mapSpan(node.start, node.end);

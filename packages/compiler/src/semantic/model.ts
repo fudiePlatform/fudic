@@ -17,8 +17,8 @@ export interface SemanticInput {
   readonly js: JsBatchResult;
   /**
    * The Oxc fragment a JS-bearing node was registered as. Keyed by the node that OWNS the
-   * JS span: the `RazorExpression` for interpolations/headers, the region node
-   * (`NeutralJs`/`ServerRegion`/`ClientRegion`) for `@code` parts. `undefined` when the node
+   * JS span: the `RazorExpression` for interpolations/headers, the chunk node
+   * (`NeutralJs`) for `@code` parts. `undefined` when the node
    * was never registered or its fragment failed to parse (FUD0170 already covered it).
    */
   fragmentId(node: Node): FragmentId | undefined;

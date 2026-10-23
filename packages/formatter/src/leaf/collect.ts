@@ -130,9 +130,8 @@ function collectSwitch(node: SwitchNode, depth: number, jobs: Job[]): void {
 
 function collectCode(node: CodeBlockNode, depth: number, jobs: Job[]): void {
   for (const part of node.parts) {
-    // A neutral chunk sits one level in; a region's body two, inside its own braces.
-    const inner = part.type === 'neutral-js' ? depth + 1 : depth + 2;
-    jobs.push(js('statements', part.js, inner));
+    // A chunk sits one level in.
+    jobs.push(js('statements', part.js, depth + 1));
   }
 }
 

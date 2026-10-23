@@ -1,6 +1,6 @@
 /**
  * SDD-21 §6.13 (decision 89) — a layout does not load data in v1: it receives the route's
- * `data` read-only. The rule is semantic (it is about what the `@server` region exports),
+ * `data` read-only. The rule is semantic (it is about what the `@code` exports),
  * so it lives in the SDD-12 pass as one more analyzer.
  */
 
@@ -34,19 +34,19 @@ const layout = (code: string): string =>
 
 describe('layout-load — FUD0430 (decision 89)', () => {
   it('rejects an exported load in a layout, in any binding form', () => {
-    expect(codes(layout('@code { @server { export async function load() { return {}; } } }'))).toContain('FUD0430');
-    expect(codes(layout('@code { @server { export const load = () => ({}); } }'))).toContain('FUD0430');
+    expect(codes(layout('@code { export async function load() { return {}; } }'))).toContain('FUD0430');
+    expect(codes(layout('@code { export const load = () => ({}); }'))).toContain('FUD0430');
   });
 
   it('allows a layout with @code that does not load', () => {
-    expect(codes(layout('@code { @server { const TITLE = "x"; } }'))).not.toContain('FUD0430');
-    expect(codes(layout('@code { @client { let open = false; } }'))).not.toContain('FUD0430');
+    expect(codes(layout('@code { const TITLE = "x"; }'))).not.toContain('FUD0430');
+    expect(codes(layout('@code { let open = false; }'))).not.toContain('FUD0430');
     expect(codes(layout(''))).not.toContain('FUD0430');
   });
 
-  it('leaves a route free to export load — that is where data belongs', () => {
+  it('is no rule of a route: its `load` is its `.fudapi`’s, never a `FUD0430`', () => {
     const route =
-      '<link rel="layout" href="./l.fud">@code { @server { export async function load() { return {}; } } }<p>x</p>';
+      '<link rel="layout" href="./l.fud">@code { export async function load() { return {}; } }<p>x</p>';
     expect(codes(route)).not.toContain('FUD0430');
   });
 });

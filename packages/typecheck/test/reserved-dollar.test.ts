@@ -37,10 +37,10 @@ describe('reservedDollarDiagnostics', () => {
     ]);
   });
 
-  it('reports inside a region as well, while one still parses (SDD-60 task 51)', () => {
+  it('reports inside a retired region too: its content is the `@code`’s (SDD-60)', () => {
     const source = `@code {\n  @server {\n    const $secret = 1;\n  }\n}\n\n${component('app-x')}`;
 
-    expect(diagnosticsOf(source).diagnostics.length).toBe(1);
+    expect(diagnosticsOf(source).diagnostics.map((d) => d.code)).toEqual(['FUD0461']);
   });
 
   it('leaves foo$ alone: only the prefix is reserved', () => {

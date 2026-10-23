@@ -168,21 +168,20 @@ function hasHookup(comp: ResolvedComponent): boolean {
  *
  * A reactive declaration (`signal` **or** `computed` — the same list on purpose, because
  * the question that list answers, «can this move?», has one answer for both), a hookup
- * binding in its template, an `inject` that runs in the browser, or a `@code { @client }`
- * with a body.
+ * binding in its template, an `inject`, or a top-level statement of `@code` that runs at load.
  *
  * **A `provide` is not in that list, and its absence is the whole of SDD-38 §4.9.** A
  * component may declare providers and stay N1: it hydrates never, downloads no chunk and
  * runs not a line in the browser, and its provider still reaches the page — through the
- * route's IoC module, which is not its chunk. Only `inject` promotes, and only in the zones
- * that run in a browser: an `inject` written in `@server` is a line the client never sees.
+ * route's IoC module, which is not its chunk. Only `inject` promotes: the whole `@code` runs
+ * in a browser (SDD-60 §4.8).
  */
 export function isIntrinsicallyHydratable(comp: ResolvedComponent): boolean {
   const code = codeOf(comp);
   return (
     code.signals.length > 0 ||
     code.clientRuns ||
-    code.di.some((d) => d.kind === 'inject' && d.zone !== 'server') ||
+    code.di.some((d) => d.kind === 'inject') ||
     hasHookup(comp) ||
     passesFunctionIn(comp.source, comp.doc.host === undefined ? templateOf(comp) : [comp.doc.host], code.clientFunctions)
   );

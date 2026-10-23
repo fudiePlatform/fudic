@@ -5,10 +5,10 @@
  * what lets SDD-19's SSG mode inference stay untouched: a layout cannot turn a static
  * route dynamic, and the cache key never has to account for two loaders.
  *
- * The check is deliberately shallow — a textual scan of the `@server` region for an
- * exported `load` binding. Reading it off the Oxc AST would be exact, but the region's
- * fragment is only registered when the pipeline batched it, and this rule must hold even
- * when the JS did not parse.
+ * The check is deliberately shallow — a textual scan of the `@code` for an exported `load`
+ * binding, the way a `@server` region wrote it before SDD-60. Reading it off the Oxc AST
+ * would be exact, but this rule must hold even when the JS did not parse. It is the one
+ * statement of a layout's `@code` that `FUD0700` leaves to it.
  *
  * Shallow is not blind, though. The comment that documents this very rule names `load`, and so
  * does `const doc = "export function load"` (BUG-30 §4.2). Comments and strings are blanked
@@ -17,12 +17,13 @@
  */
 
 import { FUD0430 } from '@fudic/diagnostics';
+import { span } from '../../types/index.js';
 import type { Diagnostic } from '../../types/index.js';
 import type { Analyzer, SemanticInput } from '../model.js';
 import { maskOpaque } from '../opaque.js';
 
 /** `export function load` / `export async function load` / `export const load` … */
-const EXPORTED_LOAD =
+export const EXPORTED_LOAD =
   /\bexport\s+(?:async\s+)?function\s+load\b|\bexport\s+(?:const|let|var)\s+load\b/u;
 
 export const layoutLoad: Analyzer = {
@@ -32,10 +33,11 @@ export const layoutLoad: Analyzer = {
     if (document.type !== 'layout-document' || document.code === undefined) return;
     const code = document.code;
     for (const part of code.parts) {
-      if (part.type !== 'server-region') continue;
       const js = maskOpaque(input.source, code.regions, part.js.start, part.js.end);
-      if (EXPORTED_LOAD.test(js)) {
-        report(FUD0430({ span: part.span }));
+      const found = EXPORTED_LOAD.exec(js);
+      if (found !== null) {
+        const at = part.js.start + found.index;
+        report(FUD0430({ span: span(at, at + found[0].length) }));
       }
     }
   },

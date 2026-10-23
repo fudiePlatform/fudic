@@ -5,12 +5,12 @@
  * vocabulary, three roles — and that is the ONLY thing its `@code` admits. The restriction
  * is not prudence: it is what keeps a layout from having a half of client.
  *
- *   `@server`   would be a second `load` with no route to call it.
- *   `@client`   would be code nobody downloads: there is no layout chunk, and there is not
- *               one because the route's chunk crosses the layout's markup without anchoring
- *               a single node (SDD-39 §4.3) — the invariant that keeps one entry in
- *               `sources` (SDD-13 §4.3).
- *   loose logic would run in both renderers with nobody able to say when.
+ *   a `load`    would be a second one with no route to call it (`FUD0430`).
+ *   loose logic would run in both renderers with nobody able to say when, and in the
+ *               browser it would be code nobody downloads: there is no layout chunk, and
+ *               there is not one because the route's chunk crosses the layout's markup
+ *               without anchoring a single node (SDD-39 §4.3) — the invariant that keeps
+ *               one entry in `sources` (SDD-13 §4.3).
  *
  * `FUD0700` over whatever is left over, `FUD0701` over a prop that asks to be reactive, and
  * the layout is emitted all the same: nothing here throws, and a degraded layout still
@@ -23,6 +23,7 @@ import { span } from '../types/index.js';
 import { FUD0700, FUD0701, FUD0702 } from '@fudic/diagnostics';
 import { codeOfDocument, type Prop } from './oxc-code.js';
 import { layoutBodyDiagnostics } from '../semantic/analyzers/layout-body.js';
+import { EXPORTED_LOAD } from '../semantic/analyzers/layout-load.js';
 
 /**
  * `FUD0703` — «two layouts of one chain declare the same prop with incompatible types» — is
@@ -57,6 +58,9 @@ export interface LayoutCode {
   readonly diagnostics: readonly Diagnostic[];
 }
 
+/** A statement that IS an exported `load`: `FUD0430` speaks for it, not `FUD0700`. */
+const LOAD_STATEMENT = new RegExp(`^(?:${EXPORTED_LOAD.source})`, 'u');
+
 /**
  * Read a layout's `@code`: its props, plus what is wrong with the rest of it.
  *
@@ -68,18 +72,12 @@ export function layoutCodeOf(source: string, doc: LayoutDocument): LayoutCode {
   const code = codeOfDocument(source, doc);
   const diagnostics: Diagnostic[] = [...code.diagnostics];
 
-  // A region of its own. The span covers the whole `@server { … }` marker, because what is
-  // wrong is the region and not one statement inside it.
-  for (const part of doc.code?.parts ?? []) {
-    if (part.type === 'server-region' || part.type === 'client-region') {
-      diagnostics.push(FUD0700({ span: part.span, kind: part.type }));
-    }
-  }
-
-  // Loose logic in the neutral zone: it would run in BOTH renderers with nobody able to say
-  // when. `neutral` is already the zone minus what the emit writes in its own shape, so the
-  // `props<T>()` destructuring is not in it — everything that IS, is left over.
+  // Loose logic in the `@code`: it would run in BOTH renderers with nobody able to say when.
+  // `neutral` is already the `@code` minus what the emit writes in its own shape, so the
+  // `props<T>()` destructuring is not in it — everything that IS, is left over. An exported
+  // `load` is `FUD0430`'s, which says more about it than «a statement».
   for (const statement of code.neutral) {
+    if (LOAD_STATEMENT.test(statement.text)) continue;
     diagnostics.push(
       FUD0700({ span: span(statement.at, statement.at + statement.text.length), kind: 'statement' }),
     );
@@ -123,29 +121,21 @@ export function requiredLayoutProps(
  * `<link rel="layout">`, which is where the route declares the relation and therefore the one
  * place in the file that is about the layout at all.
  *
- * `resolved` is what `layout(ctx, data)` returns, and `undefined` there means «no resolver, or
- * one this pass cannot read». The first case is exactly what the diagnostic is for; the second
- * would be inventing an error, and the caller separates them before calling.
- *
- * In the EDITOR this is not served: the fact is TypeScript's, which checks the `return` of
- * `layout` against the type of `props<{…}>()` over the projection. One voice per fact — what
- * the server adds there is the hands, not a second opinion (§4.7).
+ * It is asked only of a route with no `layout` to resolve them: the one of a linked `.fudapi`
+ * is TypeScript's, which checks the `return` of its handler against the type of
+ * `props<{…}>()`, and so is the editor's. One voice per fact (§4.7).
  */
 export function unresolvedLayoutProps(
   required: readonly Prop[],
-  resolved: readonly string[],
   anchor: Span,
 ): readonly Diagnostic[] {
-  const has = new Set(resolved);
-  return required
-    .filter((prop) => !has.has(prop.name))
-    .map((prop) =>
-      FUD0702(
-        prop.type === undefined
-          ? { span: anchor, name: prop.name }
-          : { span: anchor, name: prop.name, type: prop.type },
-      ),
-    );
+  return required.map((prop) =>
+    FUD0702(
+      prop.type === undefined
+        ? { span: anchor, name: prop.name }
+        : { span: anchor, name: prop.name, type: prop.type },
+    ),
+  );
 }
 
 /**

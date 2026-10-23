@@ -402,19 +402,20 @@ describe('a signal of the route crossing to a component', () => {
     expect(code).toContain('$p3?.set(guarda);');
   });
 
-  it('crosses a callback declared in the NEUTRAL zone with no cell at all', () => {
+  it('crosses a callback of the server’s cut with no cell at all', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
       '<link rel="component" href="./b.fud">',
       '@code {',
       '  function guarda() {}',
-      '  @client { const n = signal(1); }',
+      '  const n = signal(1);',
       '}',
+      '<p>@(guarda.length)</p>',
       '<app-btn .onSave=@guarda></app-btn>',
     ].join('\n');
     const code = chunkOf(route, { '/b.fud': CB })!;
-    // No slot is minted for it: a neutral name is not a `@client` binding, so what crosses is
-    // the reader over the closure and nothing else.
+    // The markup paints with it too, so it is in the cut (SDD-60 §4.8): no slot is minted
+    // for it, and what crosses is the reader over the closure and nothing else.
     expect(code).toContain('(() => guarda)');
     expect(code).not.toContain('?.set(guarda)');
   });

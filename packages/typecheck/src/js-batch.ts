@@ -1,8 +1,8 @@
 /**
  * The single Oxc invocation of a document (SDD-24 §4.5, and the golden rule of the repo).
  *
- * Every JS fragment of a `.fud` — the interpolations of the template and the three kinds of
- * `@code` region — is registered into ONE `JsBatch`, parsed once, and handed to everyone who
+ * Every JS fragment of a `.fud` — the interpolations of the template and the chunks of its
+ * `@code` — is registered into ONE `JsBatch`, parsed once, and handed to everyone who
  * needs a JS AST: the semantic pass of SDD-12, the `$` rule of §4.4, and the virtual emitter
  * of SDD-23, which takes the batch instead of opening its own.
  *
@@ -16,22 +16,14 @@ import {
   keyExpression,
   walk,
   type JsFragmentKind,
-  type ClientRegion,
   type Diagnostic,
   type FragmentId,
   type JsBatchResult,
   type Node,
   type OxcNode,
-  type ServerRegion,
   type Span,
   type StructuredDocument,
 } from '@fudic/compiler';
-
-/** A `@server` or `@client` region with the fragment it was registered as. */
-export interface CodeRegion {
-  readonly part: ServerRegion | ClientRegion;
-  readonly id: FragmentId;
-}
 
 /**
  * A loop and the JS of its header, parsed.
@@ -71,12 +63,6 @@ export interface DocumentJs {
   fragmentId(node: Node): FragmentId | undefined;
   /** Every chunk of `@code`, in source order: what the projection reads (SDD-60 §4.8). */
   readonly code: readonly FragmentId[];
-  /** The neutral chunks of `@code`, in source order. */
-  readonly neutral: readonly FragmentId[];
-  /** The `@client` regions, in source order — where the reactive names are read from. */
-  readonly client: readonly FragmentId[];
-  /** The `@server` / `@client` regions — where the `$` namespace is enforced (§4.4). */
-  readonly regions: readonly CodeRegion[];
   /** Every `@foreach` / `@for` of the template, with the header Oxc parsed for it. */
   readonly loops: readonly LoopHeader[];
   /**
@@ -95,9 +81,6 @@ export function batchDocumentJs(source: string, document: StructuredDocument): D
   const ids = new Map<Node, FragmentId>();
   const bySpan = new Map<string, FragmentId>();
   const code: FragmentId[] = [];
-  const neutral: FragmentId[] = [];
-  const client: FragmentId[] = [];
-  const regions: CodeRegion[] = [];
   const loops: { span: Span; headerEnd: number; headerClose: number; id: FragmentId }[] = [];
 
   const add = (node: Node, at: Span, kind: JsFragmentKind = 'expression'): void => {
@@ -180,12 +163,6 @@ export function batchDocumentJs(source: string, document: StructuredDocument): D
     const id = batch.add('module-statements', part.js);
     ids.set(part, id);
     code.push(id);
-    if (part.type === 'neutral-js') {
-      neutral.push(id);
-      continue;
-    }
-    if (part.type === 'client-region') client.push(id);
-    regions.push({ part, id });
   }
 
   const parsed = batch.parse();
@@ -194,9 +171,6 @@ export function batchDocumentJs(source: string, document: StructuredDocument): D
     diagnostics: parsed.diagnostics,
     fragmentId: (node) => ids.get(node),
     code,
-    neutral,
-    client,
-    regions,
     loops: loops.map((loop) => {
       // A header the parser read but Oxc could not — `@foreach (const of) {`, mid-keystroke —
       // comes back as the empty list rather than a statement. It declares nothing.

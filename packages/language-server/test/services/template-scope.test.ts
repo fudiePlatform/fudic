@@ -102,32 +102,6 @@ describe('templateScope', () => {
     expect(scope.get('outer')).toBe('function');
   });
 
-  it('leaves out what the template cannot reach: a nested name and `@server`', () => {
-    const source = component(
-      [
-        '  @server {',
-        '    export async function load(): Promise<{ n: number }> {',
-        '      const secret = 1;',
-        '      return { n: secret };',
-        '    }',
-        '  }',
-        '',
-        '  @client {',
-        '    function outer() {',
-        '      const inner = 1;',
-        '      return inner;',
-        '    }',
-        '  }',
-      ].join('\n'),
-    );
-    const scope = templateScope(cached(source));
-
-    expect(scope.has('load')).toBe(false);
-    expect(scope.has('secret')).toBe(false);
-    expect(scope.has('inner')).toBe(false);
-    expect(scope.get('outer')).toBe('function');
-  });
-
   it('declares `data` for a page, and never for a component', () => {
     // A component receives props and has no route data to read (SDD-23 §4.2).
     expect(templateScope(cached(page('  type PageData = { title: string };'))).get('data')).toBe(

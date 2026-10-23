@@ -21,6 +21,7 @@ import {
   emitRouteModuleMapped,
   type ResolvedLayout,
 } from '../../src/emit/index.js';
+import type { LinkedApi } from '../../src/types/io.js';
 import { memoryIo, minimalSsr, renderPageHtml } from './_support.js';
 
 const ROUTE = '<link rel="layout" href="./_layout.fud"><p>hola</p>';
@@ -233,12 +234,14 @@ describe('§6.3 — `FUD0702`: a required prop the route does not resolve', () =
     html: 'lang="@culture"',
   });
 
+  /** The facts of a `.fudapi` beside the route, as the host reads them (SDD-60 §3.13). */
+  const API: LinkedApi = { id: 'index', load: false, paths: false, layout: false, functions: [], forms: [] };
+
   /** The diagnostics the ROUTE's emit reports — the build's side of the contract. */
-  function routeDiagnostics(route: string): readonly Reported[] {
-    const graph = resolveDocument(
-      '/app/index.fud',
-      memoryIo({ '/app/index.fud': route, '/app/_layout.fud': LAYOUT }),
-    ).value;
+  function routeDiagnostics(route: string, api?: LinkedApi): readonly Reported[] {
+    const io = memoryIo({ '/app/index.fud': route, '/app/_layout.fud': LAYOUT });
+    const host = api === undefined ? io : { ...io, api: (path: string) => (path === '/app/index.fudapi' ? api : undefined) };
+    const graph = resolveDocument('/app/index.fud', host).value;
     return emitRouteModuleMapped(graph).diagnostics.map((d) => ({
       code: d.code,
       span: { start: d.span.start, end: d.span.end },
@@ -246,87 +249,34 @@ describe('§6.3 — `FUD0702`: a required prop the route does not resolve', () =
   }
 
   const LINK = '<link rel="layout" href="./_layout.fud">';
+  const SERVER = '<link rel="server" href="./index.fudapi">';
 
-  it('reports it over the `<link rel="layout">` when the route exports no resolver', () => {
+  it('reports it over the `<link rel="layout">` when the route resolves nothing', () => {
     const route = `${LINK}<p>hola</p>`;
+    // Only `culture`: `theme` has a default, and the default IS the answer.
     expect(routeDiagnostics(route)).toEqual([{ code: 'FUD0702', span: at(route, LINK) }]);
   });
 
-  it('reports it over a resolver that returns an empty object', () => {
+  it('reports it over a `layout` written in the `@code`: the resolver is the `.fudapi`’s (SDD-60)', () => {
     const route =
-      `${LINK}\n@code {\n@server {\n` +
-      'export function layout(ctx, data) { return {}; }\n}\n}\n<p>hola</p>';
-    expect(routeDiagnostics(route).map((d) => d.code)).toEqual(['FUD0702']);
+      `${LINK}\n@code {\n` +
+      'export function layout(ctx, data) { return { culture: "es" }; }\n}\n<p>hola</p>';
+    expect(routeDiagnostics(route).map((d) => d.code)).toContain('FUD0702');
   });
 
-  it('reads a resolver exported through a clause, and one exported through none', () => {
-    // `export { layout }` names its bindings on the other side of the statement, where this
-    // pass has no declaration to walk into — so it reads as a route that resolves nothing.
-    const clause =
-      `${LINK}\n@code {\n@server {\n` +
-      'function layout(ctx, data) { return { culture: "es" }; }\nexport { layout };\n}\n}\n<p>hola</p>';
-    expect(routeDiagnostics(clause).map((d) => d.code)).toEqual(['FUD0702']);
+  it('reports it when the linked `.fudapi` declares no `layout`', () => {
+    const route = `${LINK}${SERVER}<p>hola</p>`;
+    expect(routeDiagnostics(route, API)).toEqual([{ code: 'FUD0702', span: at(route, LINK) }]);
   });
 
-  it('reports it when the resolver returns everything but that prop', () => {
-    const route =
-      `${LINK}\n@code {\n@server {\n` +
-      'export function layout(ctx, data) { return { theme: "dark" }; }\n}\n}\n<p>hola</p>';
-    expect(routeDiagnostics(route).map((d) => d.code)).toEqual(['FUD0702']);
+  it('says nothing once the linked `.fudapi` declares `layout`: TypeScript checks its handler', () => {
+    const route = `${LINK}${SERVER}<p>hola</p>`;
+    expect(routeDiagnostics(route, { ...API, layout: true })).toEqual([]);
   });
 
-  it('says nothing once the route resolves it', () => {
-    const route =
-      `${LINK}\n@code {\n@server {\n` +
-      'export function layout(ctx, data) { return { culture: "es" }; }\n}\n}\n<p>hola</p>';
-    expect(routeDiagnostics(route)).toEqual([]);
-  });
-
-  it('reads an arrow resolver whose body IS its return', () => {
-    const resolves =
-      `${LINK}\n@code {\n@server {\n` +
-      'export const layout = (ctx, data) => ({ culture: "es" });\n}\n}\n<p>hola</p>';
-    expect(routeDiagnostics(resolves)).toEqual([]);
-    // And the other half, which is what makes the first one mean something: silence there has
-    // to be «it resolves it», not «this shape was never read». The parentheses around the
-    // object are the grammar's — without them the `{` would open a block — so a reader that
-    // did not unwrap them called every arrow unreadable and never said a word about any.
-    const drops =
-      `${LINK}\n@code {\n@server {\n` +
-      'export const layout = (ctx, data) => ({ theme: "dark" });\n}\n}\n<p>hola</p>';
-    expect(routeDiagnostics(drops).map((d) => d.code)).toEqual(['FUD0702']);
-  });
-
-  it('walks past an export that declares neither a function nor a binding', () => {
-    const route =
-      `${LINK}\n@code {\n@server {\n` +
-      'export type Shape = { a: 1 };\nexport class Helper {}\n' +
-      'export function layout(ctx, data) { return { culture: "es" }; }\n}\n}\n<p>hola</p>';
-    expect(routeDiagnostics(route)).toEqual([]);
-  });
-
-  it('never complains about a prop with a default: the default IS the answer', () => {
-    const route =
-      `${LINK}\n@code {\n@server {\n` +
-      'export function layout(ctx, data) { return { culture: "es" }; }\n}\n}\n<p>hola</p>';
+  it('says nothing over a link the host could not read: it may be the one that resolves it', () => {
+    const route = `${LINK}${SERVER}<p>hola</p>`;
     expect(routeDiagnostics(route).map((d) => d.code)).not.toContain('FUD0702');
-  });
-
-  it('invents nothing over a `return` it cannot read', () => {
-    // A build that reported a missing prop over a `return build(ctx)` it never looked inside
-    // would be inventing an error. Three shapes, one answer: silence.
-    for (const body of [
-      'export function layout(ctx, data) { return build(ctx); }',
-      'export function layout(ctx, data) { return { ...defaults, theme: "dark" }; }',
-      'export function layout(ctx, data) { return { [key]: 1 }; }',
-      'export function layout(ctx, data) { return { "culture": "es" }; }',
-      'export function layout(ctx, data) { console.log(data); }',
-      'export const layout = 1;',
-      'export const layout = (ctx, data) => build(ctx);',
-    ]) {
-      const route = `${LINK}\n@code {\n@server {\n${body}\n}\n}\n<p>hola</p>`;
-      expect(routeDiagnostics(route)).toEqual([]);
-    }
   });
 
   it('names the prop and its type, and names only the prop when there is no type', () => {
@@ -363,26 +313,26 @@ describe('§6.3 — `FUD0702`: a required prop the route does not resolve', () =
 });
 
 describe('§6.2 — `FUD0700`: a layout `@code` declares props and nothing else', () => {
-  it('reports a `@server` region over the whole marker, and still emits the layout', () => {
-    const region = '@server {\n    export async function load() { return {}; }\n  }';
-    const layout = layoutSource({ code: region });
-    expect(layoutDiagnostics(layout)).toEqual([{ code: 'FUD0700', span: at(layout, region) }]);
-    expect(chain(layout).layout).toContain('export function* layout(');
+  it('leaves an exported `load` to `FUD0430`, and still emits the layout', () => {
+    for (const statement of ['export async function load() { return {}; }', 'export const load = () => ({});']) {
+      const layout = layoutSource({ code: statement });
+      expect(layoutDiagnostics(layout)).toEqual([]);
+      expect(chain(layout).layout).toContain('export function* layout(');
+    }
   });
 
-  it('reports a `@client` region', () => {
-    const region = '@client {\n    const n = 1;\n  }';
-    const layout = layoutSource({ code: region });
-    expect(layoutDiagnostics(layout)).toEqual([{ code: 'FUD0700', span: at(layout, region) }]);
+  it('reads the content of a retired region as loose statements (SDD-60)', () => {
+    const layout = layoutSource({ code: '@client {\n    const n = 1;\n  }' });
+    expect(layoutDiagnostics(layout)).toEqual([{ code: 'FUD0700', span: at(layout, 'const n = 1;') }]);
   });
 
-  it('reports a loose statement of the neutral zone', () => {
+  it('reports a loose statement', () => {
     const statement = 'const helper = compute();';
     const layout = layoutSource({ code: statement });
     expect(layoutDiagnostics(layout)).toEqual([{ code: 'FUD0700', span: at(layout, statement) }]);
   });
 
-  it('reports a reactive declaration, which the neutral zone does not carry', () => {
+  it('reports a reactive declaration, which the loose statements do not carry', () => {
     const layout = layoutSource({ code: 'const n = signal(0);' });
     expect(layoutDiagnostics(layout)).toEqual([
       { code: 'FUD0700', span: at(layout, 'n = signal(0)') },

@@ -274,106 +274,34 @@ describe('FUD0680 — inject of something nobody registers', () => {
     expect(diagnostics[0]?.message).toContain('Db');
   });
 
-  it('reads every zone: a `@server` injection resolves through the same registry', () => {
+  it('reads both halves: an injection only the browser runs resolves through the same registry', () => {
     const io = memoryIo({
       '/app/home.fud': page(['x-panel'], '<x-panel></x-panel>'),
       '/app/x-panel.fud': component(
         'x-panel',
         `@code {
-  @server {
-    import { inject } from '@fudic/di';
-    import { Db } from './services/db';
+  import { inject } from '@fudic/di';
+  import { Db } from './services/db';
 
-    const db = inject(Db);
-  }
+  const db = inject(Db);
 }`,
         '<span>ok</span>',
       ),
       '/app/services/db.ts': 'export class Db {}\n',
     });
-    // A class is BUILT, never seeded, so where the line runs changes nothing: a class the
-    // registry has never heard of throws on the server exactly as it does in the browser.
+    // The markup does not read `db`, so the line is the browser's alone (SDD-60 §4.8). A class
+    // is BUILT, never seeded, so where the line runs changes nothing: a class the registry has
+    // never heard of throws in the browser exactly as it would on the server.
     const [first] = injectionDiagnostics(resolveComponents('/app/home.fud', io), io);
     expect(first?.code).toBe('FUD0680');
     expect(first?.message).toContain('Db');
   });
 });
 
-describe('criterion 13 — a route injects without ctx, and says nothing', () => {
-  function routePage(server: string): string {
-    return `<!DOCTYPE html>
-<html>
-  <head>
-    <link rel="component" href="./x-panel.fud">
-    @code {
-      @server {
-${server}
-      }
-    }
-  </head>
-  <body><x-panel></x-panel></body>
-</html>
-`;
-  }
-
+describe('an entry with nothing to inject says nothing', () => {
   const PLAIN = component('x-panel', '', '<span>ok</span>');
 
-  function check(home: string): ReturnType<typeof injectionDiagnostics> {
-    const io = memoryIo({ '/app/home.fud': home, '/app/x-panel.fud': PLAIN });
-    return injectionDiagnostics(resolveComponents('/app/home.fud', io), io);
-  }
-
-  it('says nothing about inject(Users) in load', () => {
-    const home = routePage(
-      "        import { inject } from '@fudic/di';\n" +
-        "        import { Db } from './services/db';\n\n" +
-        '        export async function load() {\n' +
-        '          const db = inject(Db);\n' +
-        '          return { items: await db.all() };\n' +
-        '        }',
-    );
-    expect(check(home)).toEqual([]);
-  });
-
-  it('says nothing about inject and publish in a helper load calls, nor in a fluent load', () => {
-    const home = routePage(
-      "        import { inject, publish, token } from '@fudic/di';\n" +
-        "        import { get } from '@fudic/http';\n" +
-        "        import { Db } from './services/db';\n" +
-        "        const LINES = token('lines');\n" +
-        '        const all = () => inject(Db).all();\n' +
-        '        export const load = get().handle(async () => {\n' +
-        '          const lines = await all();\n' +
-        '          publish(LINES, lines);\n' +
-        '          return { lines };\n' +
-        '        });',
-    );
-    expect(check(home)).toEqual([]);
-  });
-
-  it('says nothing about `ctx.inject(…)` either, while the examples still write it', () => {
-    const home = routePage(
-      "        import { inject } from '@fudic/di';\n" +
-        '        export async function load(ctx) {\n' +
-        '          return { db: ctx.inject(Db) };\n' +
-        '        }',
-    );
-    expect(check(home)).toEqual([]);
-  });
-
-  it('says nothing about a `provide` there: registering is not resolving', () => {
-    const home = routePage(
-      "        import { provide } from '@fudic/di';\n" +
-        '        provide(Db, () => new Db());',
-    );
-    expect(check(home)).toEqual([]);
-  });
-
-  it('says nothing about a @server that never imports the injector', () => {
-    expect(check(routePage('        export const paths = () => [];'))).toEqual([]);
-  });
-
-  it('says nothing about a route with no @server region at all', () => {
+  it('says nothing about a page whose components inject nothing', () => {
     const io = memoryIo({
       '/app/home.fud': page(['x-panel'], '<x-panel></x-panel>'),
       '/app/x-panel.fud': PLAIN,

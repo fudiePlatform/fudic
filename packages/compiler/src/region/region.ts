@@ -34,7 +34,7 @@ import type { SectionNode } from '../layout/index.js';
  * `tag` and `attr-value` are both "inside a start tag", split because the answer differs:
  * inside the tag a name is an attribute, inside the quotes it is somebody else's string.
  * `expression` is Razor's JS wherever it appears — markup, attribute value, control header
- * or `<style>` — while `ts` is a whole block of it (`@code`, `@server`, `@client`, `@{ }`).
+ * or `<style>` — while `ts` is a whole block of it (`@code`, `@{ }`).
  */
 export type RegionKind = 'markup' | 'tag' | 'attr-value' | 'expression' | 'ts' | 'css';
 
@@ -235,7 +235,7 @@ function elementRegion(source: string, element: ElementNode, offset: number): Re
   return { kind: 'markup', span: element.span, element };
 }
 
-/** `@code { … }`: every part of it is TypeScript, the regions included. */
+/** `@code { … }`: every part of it is TypeScript. */
 function codeRegion(node: CodeBlockNode, offset: number): Region {
   for (const part of node.parts as readonly CodePart[]) {
     if (contains(part.span, offset)) return { kind: 'ts', span: part.js };

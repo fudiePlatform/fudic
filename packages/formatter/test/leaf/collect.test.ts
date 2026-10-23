@@ -57,16 +57,12 @@ describe('the walk', () => {
     ]);
   });
 
-  it('finds every region of a @code block and an inline @{ }', async () => {
-    const source = '@code {\n  const a = 1;\n  @server { const b = 2; }\n}\n@{ const c = 3; }';
-    // The neutral chunk carries the whitespace around it in the SOURCE; what reaches the
-    // engine is dedented, so a fragment reads the same however deep its block sits. That is
-    // what keeps a block comment from drifting one level right on every save.
-    expect(await requestsFor(source)).toEqual([
-      'const a = 1;',
-      'const b = 2;',
-      'const c = 3;',
-    ]);
+  it('finds the JS of a @code block and of an inline @{ }', async () => {
+    const source = '@code {\n  const a = 1;\n  const b = 2;\n}\n@{ const c = 3; }';
+    // The chunk carries the whitespace around it in the SOURCE; what reaches the engine is
+    // dedented, so a fragment reads the same however deep its block sits. That is what keeps a
+    // block comment from drifting one level right on every save.
+    expect(await requestsFor(source)).toEqual(['const a = 1;\nconst b = 2;', 'const c = 3;']);
   });
 
   it('walks into a @section and hands the <style> body to CSS', async () => {

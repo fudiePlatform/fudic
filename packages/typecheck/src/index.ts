@@ -14,7 +14,6 @@ export { parseFud, type ParsedFud } from './parse.js';
 export {
   batchDocumentJs,
   type DocumentJs,
-  type CodeRegion,
   type LoopHeader,
 } from './js-batch.js';
 export {

@@ -108,8 +108,6 @@ const CASES: readonly (readonly [FudDiagnostic, string])[] = [
   [c.FUD0665({ span: S, event: 'scroll' }), '`scroll` does not bubble, so it can never be delegated'],
   [c.FUD0667({ span: S, name: 'id' }), 'reads it as `$id`'],
   [c.FUD0667({ span: S, name: '' }), 'reads it as `$name`'],
-  [c.FUD0700({ span: S, kind: 'server-region' }), 'a layout has no server'],
-  [c.FUD0700({ span: S, kind: 'client-region' }), 'a layout has no browser code'],
   [c.FUD0700({ span: S, kind: 'statement' }), 'declares its props and nothing else'],
   [c.FUD0700({ span: S, kind: 'reactive', name: 'n' }), '`n` has no half of client'],
   [c.FUD0702({ span: S, name: 'title', type: 'string' }), 'requires the prop `title`: string and'],

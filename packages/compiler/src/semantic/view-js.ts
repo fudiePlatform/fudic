@@ -292,9 +292,9 @@ class FragmentCheck {
       case 'while':
         this.#while(root as OxcNode);
         break;
+      // A prop value is an expression like any other: a function of `@code` handed by name is
+      // one more name of the `@code` (SDD-60 §4.8).
       case 'prop':
-        this.#prop(root as OxcNode);
-        break;
       case 'expression':
         this.#expression(root as OxcNode);
         break;
@@ -368,11 +368,7 @@ class FragmentCheck {
       this.#report('expression', FUD0919(this.#span(node)));
       return;
     }
-    // A `@server` name is TypeScript's to report (TS2304: the projection never sees that zone),
-    // and one fact has one voice (BUG-23). A plain `@client` name the projection DOES see, so
-    // that one is this rule's: the server renders without it.
-    const origin = this.#view.resolve(name, this.#template);
-    if (origin === undefined || origin === 'client') this.#report('identifier', FUD0907(this.#span(node)));
+    if (this.#view.resolve(name, this.#template) === undefined) this.#report('identifier', FUD0907(this.#span(node)));
   }
 
   /** Whether `node` names a function of `@code` — printing it prints its source (§3.8). */
@@ -668,17 +664,6 @@ class FragmentCheck {
         this.#report('identifier', FUD0907(this.#span(reference)));
       }
     }
-  }
-
-  /**
-   * The value of a `.prop`: a function of `@client` handed to a child BY NAME is the one plain
-   * `@client` name the server has — it stubs the callback inert to register its identity
-   * (BUG-24 §4.6). Anything else is an expression like any other.
-   */
-  #prop(node: OxcNode): void {
-    const value = unwrap(node);
-    if (value.type === 'Identifier' && this.#view.resolve(nameOf(value), this.#template) === 'client') return;
-    this.#expression(node);
   }
 
   // ── Headers of `@for` / `@foreach` (§3.2, the one exception to FUD0900) ──

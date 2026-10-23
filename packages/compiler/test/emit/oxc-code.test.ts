@@ -233,25 +233,14 @@ describe('extractCode', () => {
     // them is the bus primitive, and none is rewritten. We do not protect what we cannot see.
     expect(extractCode(source, componentDoc(source)).emitCalls).toEqual([]);
   });
-
-  it('leaves the @server region out of the client body', () => {
-    const source = wrap(
-      '@code {\n' +
-        '  @server { const secret = 1; }\n' +
-        '  @client { const visible = 2; }\n' +
-        '}\n',
-    );
-    const { client } = extractCode(source, componentDoc(source));
-    expect(client.body.map((s) => s.text)).toEqual(['const visible = 2;']);
-  });
 });
 
 /**
- * The two injection diagnostics ONE `@code` settles by itself (SDD-38 §6.23, §6.25).
+ * The injection diagnostic ONE `@code` settles by itself (SDD-38 §6.23).
  *
- * Neither needs a graph, a filesystem or an ancestor: they are about a region contradicting
- * itself, and the answer is in the same twenty lines the author is looking at. The other
- * three of the five need more than this file and live in `di-diagnostics.ts`.
+ * It needs no graph, no filesystem and no ancestor: it is about a `@code` contradicting
+ * itself, and the answer is in the same twenty lines the author is looking at. The others
+ * need more than this file and live in `di-diagnostics.ts`.
  */
 describe('the injection diagnostics of one @code', () => {
   const DI = "  import { inject, provide } from '@fudic/di';\n  import { Cart, Clock } from './services';\n";
@@ -275,10 +264,10 @@ describe('the injection diagnostics of one @code', () => {
   });
 
   it('FUD0684 — a second registration counts wherever it is written', () => {
-    // Neutral and `@client` are two zones of ONE module in the browser, so the second call
-    // overwrites the first there exactly as two neighbouring lines would.
+    // The cut and the browser's statements are two halves of ONE `@code`, so a call the cut
+    // does not take overwrites the first exactly as two neighbouring lines would.
     expect(
-      codesOf('  provide(Cart, () => new Cart());\n  @client {\n    provide(Cart, () => new Cart());\n  }\n'),
+      codesOf('  provide(Cart, () => new Cart());\n  if (ready) provide(Cart, () => new Cart());\n'),
     ).toEqual(['FUD0684']);
   });
 
@@ -290,23 +279,9 @@ describe('the injection diagnostics of one @code', () => {
     ).toEqual([]);
   });
 
-  it('says nothing when the provider is neutral: that zone runs on both sides', () => {
-    // Which is the whole answer the diagnostic proposes, so it had better not report it.
+  it('says nothing when the `@code` provides what it injects', () => {
     expect(
-      codesOf(
-        '  provide(Cart, () => new Cart());\n' +
-          '  @client {\n    const a = inject(Cart);\n  }\n' +
-          '  @server {\n    const b = inject(Cart);\n  }\n',
-      ),
-    ).toEqual([]);
-  });
-
-  it('says nothing when the two are in the same zone, or when the injection is neutral', () => {
-    expect(
-      codesOf(
-        '  @client {\n    provide(Cart, () => new Cart());\n    const a = inject(Cart);\n  }\n' +
-          '  const b = inject(Cart);\n',
-      ),
+      codesOf('  provide(Cart, () => new Cart());\n  const a = inject(Cart);\n  function f() { return inject(Cart); }\n'),
     ).toEqual([]);
   });
 

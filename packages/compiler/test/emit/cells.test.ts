@@ -289,9 +289,10 @@ describe('a callback with no cell — the emit still writes something coherent',
         '<html><head></head><body><neutral-owner></neutral-owner></body></html>\n',
       '/neutral-owner.fud':
         '<link rel="component" href="./neutral-sink.fud">\n\n' +
-        // An empty `@client` keeps the zones: without them there is no neutral zone (SDD-60 §4.8).
-        '@code {\n  function save(n: number) { void n; }\n  @client {\n  }\n}\n\n' +
+        // The markup paints with `save` too, so it is in the server’s cut (SDD-60 §4.8).
+        '@code {\n  function save(n: number) { void n; }\n}\n\n' +
         '<neutral-owner><template shadowrootmode="open">\n' +
+        '  <p>@(save.length)</p>\n' +
         '  <neutral-sink .onSave=@save></neutral-sink>\n' +
         '</template></neutral-owner>\n',
       '/neutral-sink.fud':
@@ -301,19 +302,17 @@ describe('a callback with no cell — the emit still writes something coherent',
     }),
   );
 
-  it('a function of the NEUTRAL zone gets no cell, and crosses as a reader', () => {
-    // `cellSlots` mints cells for `@client` names alone, so a callback declared in the neutral
-    // zone has none — which is also why `FUD0201` tells the author to move it. The emit does
-    // not stop for a diagnostic (the golden rule), so it still has to hand the child something
-    // its `onSave()` can read: the reader alone, with no `??` in front of a cell that does not
-    // exist.
+  it('a function of the server’s cut gets no cell, and crosses as a reader', () => {
+    // `cellSlots` mints cells for the browser’s names alone, so a callback the markup also
+    // paints with has none. The emit still has to hand the child something its `onSave()`
+    // can read: the reader alone, with no `??` in front of a cell that does not exist.
     const src = emitComponentClientModule(g, g.components.get('neutral-owner')!);
     expect(src).toContain('.u([, , (() => save)]);');
     expect(src).not.toContain('?.set(save);');
     expect(src).toContain('let [$dom, $shadow] = $props;');
   });
 
-  it('without regions the same function is the browser’s, and crosses as a cell (SDD-60 §4.8)', () => {
+  it('handed by name alone the same function is the browser’s, and crosses as a cell (SDD-60 §4.8)', () => {
     const plain = resolveComponents(
       '/page.fud',
       memoryIo({
@@ -404,7 +403,7 @@ describe('the child — a prop by reference is a reactive name more (§6.4)', ()
 describe('the child of a callback — a cell is READ at the moment it is called (§6.13)', () => {
   const src = chunk('cell-form');
 
-  it('a call inside `@client` reads the cell first', () => {
+  it('a call inside a function of the `@code` reads the cell first', () => {
     expect(src).toContain('function submit() { onSave()(1); }');
   });
 
@@ -439,7 +438,7 @@ describe('the server — the object in the render, and nothing on the host (§4.
     expect(src).toContain('{ "onSave": save }');
   });
 
-  it('stubs the callback: `@client` never runs here, and what SSR needs is its identity', () => {
+  it('stubs the callback: the browser’s code never runs here, and what SSR needs is its identity', () => {
     expect(src).toContain('const save = () => {}; // inert callback (SSR)');
   });
 });

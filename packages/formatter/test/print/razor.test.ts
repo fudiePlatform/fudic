@@ -121,18 +121,16 @@ describe('code', () => {
     expect(await print('@code {\n  const a = 1;\n}')).toBe('@code {\n  const a = 1;\n}\n');
   });
 
-  it('keeps the blank line between a chunk and a region, and adds one when there is none', async () => {
-    expect(await print('@code {\n  const a = 1;\n\n  @server {\n    const b = 2;\n  }\n}')).toBe(
-      '@code {\n  const a = 1;\n\n  @server {\n    const b = 2;\n  }\n}\n',
-    );
-    expect(await print('@code {\n  const a = 1;\n  @client {\n    const b = 2;\n  }\n}')).toBe(
-      '@code {\n  const a = 1;\n  @client {\n    const b = 2;\n  }\n}\n',
-    );
+  it('refuses a @code with a retired region: it is FUD1110, and the file stays as it is', async () => {
+    for (const source of ['@code {\n  const a = 1;\n\n  @server {\n    const b = 2;\n  }\n}', '@code {\n  @client { }\n}']) {
+      const result = await formatWith(new FakeEngine(), source, { printWidth: 100 });
+      expect(result.ok).toBe(false);
+      expect(result.ok ? [] : result.diagnostics.map((d) => d.code)).toContain('FUD1110');
+    }
   });
 
-  it('prints an empty @code and an empty region without inventing a body', async () => {
+  it('prints an empty @code without inventing a body', async () => {
     expect(await print('@code { }')).toBe('@code {}\n');
-    expect(await print('@code {\n  @server { }\n}')).toBe('@code {\n  @server {}\n}\n');
   });
 
   it('prints inline code on one line when it fits, and open when it does not', async () => {

@@ -192,11 +192,10 @@ function buildComponentClientModule(
   );
   const { props, signals, client, neutral, template, mutable, emitCalls, clientImports, diagnostics, di } =
     codeOf(comp);
-  // What runs in a browser: the neutral zone runs on both sides, `@client` only here, and an
-  // `inject` written in `@server` is a line this chunk never sees. A `provide` is not in the
+  // What runs in a browser: the whole `@code` (SDD-60 §4.8). A `provide` is not in the
   // list at all — the owning ancestor may be N1 and have no chunk, so its factory lives in
   // the route's IoC module rather than inside it (SDD-38 §4.5).
-  const injects = di.some((d) => d.kind === 'inject' && d.zone !== 'server');
+  const injects = di.some((d) => d.kind === 'inject');
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
   // The same three facts the server branch starts from, read from the same graph and the
   // same `<style>`: what the two branches drop has to be the same set, node for node (§4.5).

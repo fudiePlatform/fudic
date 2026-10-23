@@ -76,6 +76,8 @@ const CONSUMER = `@code {
 
 describe('extraction', () => {
   it('reads a call of each kind, with its zone and its provider verbatim', () => {
+    // What the markup reads is the server's cut (`neutral`); what nobody paints with is the
+    // browser's alone (SDD-60 §4.8).
     const source = component(
       'x-both',
       `@code {
@@ -84,14 +86,7 @@ describe('extraction', () => {
 
   provide(Cart, () => new Cart());
   const cart = inject(Cart);
-
-  @server {
-    import { Db } from './services/db.js';
-    const db = inject(Db);
-  }
-  @client {
-    const locale = inject(LOCALE, { optional: true });
-  }
+  const locale = inject(LOCALE, { optional: true });
 }`,
       '<p>@(cart.total)</p>',
     );
@@ -99,7 +94,6 @@ describe('extraction', () => {
     expect(code.di.map((d) => [d.kind, d.zone, d.provider])).toEqual([
       ['provide', 'neutral', 'Cart'],
       ['inject', 'neutral', 'Cart'],
-      ['inject', 'server', 'Db'],
       ['inject', 'client', 'LOCALE'],
     ]);
   });
@@ -143,22 +137,6 @@ describe('extraction', () => {
     const code = codeOfSource(source);
     expect(code.di.map((d) => d.kind)).toEqual(['inject']);
     expect(code.neutral.map((s) => s.text)).toContain('const cart = injectFrom($ioc, Cart);');
-  });
-
-  it('emits the @server region of a component, which used to reach nowhere', () => {
-    const source = component(
-      'x-server',
-      `@code {
-  @server {
-    import { Db } from './services/db.js';
-    const rows = Db.all();
-  }
-}`,
-      '<p>ok</p>',
-    );
-    const code = codeOfSource(source);
-    expect(code.server.imports).toEqual([`import { Db } from './services/db.js';`]);
-    expect(code.server.body.map((s) => s.text)).toEqual(['const rows = Db.all();']);
   });
 
   it('reads nothing from a default or namespace import: neither binds a NAME', () => {
@@ -282,25 +260,6 @@ describe('the level: inject promotes, provide does not', () => {
     expect(hydratableTags(graph).has('x-user')).toBe(true);
   });
 
-  it('an inject written in @server does not promote: it never runs in the browser', () => {
-    const graph = graphOf({
-      '/app/home.fud': page(['x-db'], '<x-db></x-db>'),
-      '/app/x-db.fud': component(
-        'x-db',
-        `@code {
-  import { inject } from '@fudic/di';
-  import { Db } from './services/db.js';
-
-  @server {
-    const db = inject(Db);
-  }
-}`,
-        '<p>db</p>',
-      ),
-    });
-    expect(isIntrinsicallyHydratable(graph.components.get('x-db')!)).toBe(false);
-  });
-
   it('the provider-only component gets no data-fud-id and no DI in its chunk', () => {
     const graph = graphOf(files);
     const owner = graph.components.get('x-owner')!;
@@ -350,18 +309,17 @@ describe('the server module', () => {
     );
   });
 
-  it('emits the @server region here and nowhere else', () => {
+  it('leaves out an inject the markup does not read: it runs in the browser alone', () => {
     const source = component(
       'x-db',
       `@code {
   import { inject } from '@fudic/di';
+  import { Db } from './services/db.js';
 
-  @server {
-    import { Db } from './services/db.js';
-    const rows = inject(Db).all();
-  }
+  const db = inject(Db);
+  function load() { return db.all(); }
 }`,
-      '<p>db</p>',
+      '<button @onclick="load">db</button>',
     );
     const graph = graphOf({
       '/app/home.fud': page(['x-db'], '<x-db></x-db>'),
@@ -369,13 +327,13 @@ describe('the server module', () => {
     });
     const comp = graph.components.get('x-db')!;
 
+    // A handler is a deferred binding: it seeds no cut, so neither `load` nor `db` is evaluated
+    // on the server (SDD-60 §4.8).
     const mjs = emitComponentModule(graph, comp);
-    expect(mjs).toContain(`import { Db } from './services/db.js';`);
-    expect(mjs).toContain('const rows = injectFrom($ioc, Db).all();');
+    expect(mjs).not.toContain('injectFrom($ioc, Db)');
 
     const chunk = emitComponentClientModule(graph, comp);
-    expect(chunk).not.toContain('Db');
-    expect(chunk).not.toContain('injectFrom');
+    expect(chunk).toContain('injectFrom($ioc, Db)');
   });
 
   it('imports no helper for a call the browser is the only one to make', () => {
@@ -580,18 +538,18 @@ describe('the IoC module of a component', () => {
     expect(emitComponentIocModule(graph.components.get('x-user')!)).toBeNull();
   });
 
-  it('takes a provider written in @client too: it is a registration like any other', () => {
+  it('takes a provider the cut did not catch too: it is a registration like any other', () => {
+    // Under another name the call is no top-level `provide` to the cut, so it stays the
+    // browser's — and a registration there belongs to the IoC module all the same.
     const graph = graphOf({
       '/app/home.fud': page(['x-late'], '<x-late></x-late>'),
       '/app/x-late.fud': component(
         'x-late',
         `@code {
-  import { provide } from '@fudic/di';
+  import { provide as give } from '@fudic/di';
   import { Cart } from './services/cart.js';
 
-  @client {
-    provide(Cart, () => new Cart());
-  }
+  give(Cart, () => new Cart());
 }`,
         '<p>late</p>',
       ),

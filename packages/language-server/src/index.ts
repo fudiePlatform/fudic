@@ -59,7 +59,6 @@ export {
   semanticDiagnostics,
   type ParsedFud,
   type DocumentJs,
-  type CodeRegion,
   type FudicVirtualCode,
   type UnresolvedHref,
 } from '@fudic/typecheck';
