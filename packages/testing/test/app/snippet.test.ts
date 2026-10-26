@@ -23,8 +23,9 @@ describe('criterion 25: a snippet, positional and named arguments', () => {
 });
 
 describe('criterion 26: scope', () => {
-  test('carries an object to the snippet', async () => {
-    const t = await renderSnippet('./src/snippets/ui.fud', 'fila(@item)', { scope: { item: { id: 1, name: 'A' } } });
+  test('carries an object of the scope to the snippet, field by field', async () => {
+    // A parameter has a type every backend has (SDD-61 §3.10): the snippet takes the fields.
+    const t = await renderSnippet('./src/snippets/ui.fud', 'fila(@item.id, @item.name)', { scope: { item: { id: 1, name: 'A' } } });
     expect(t.query('p[data-id="1"]')).toHaveTextContent('A');
   });
 

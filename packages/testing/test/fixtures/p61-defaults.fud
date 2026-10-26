@@ -1,5 +1,6 @@
 @code {
-  type Post = { slug: string; author: { name: string }; featured?: boolean | null };
+  type Author = { name: string };
+  type Post = { slug: string; author: Author; featured?: boolean | null };
   type Info = { title?: string | null };
 
   const { posts = [], info = {} } = props<{ posts?: Post[]; info?: Info }>();

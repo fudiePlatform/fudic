@@ -3,11 +3,10 @@
 @code {
   import { currency, date } from '@fudic/i18n';
 
-  const { name = "", count = 0, vip = false } = props<{ name?: string; count?: number; vip?: boolean }>();
+  const { name = "", count = 0, vip = false, alta } = props<{ name?: string; count?: number; vip?: boolean; alta: Date }>();
   const euros = currency('EUR');
   const larga = date({ dateStyle: 'long', timeZone: 'Europe/Madrid' });
   const precio = 3.5;
-  const alta = Date.UTC(2026, 9, 15);
 }
 
 <app-greeting>

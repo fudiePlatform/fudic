@@ -1,7 +1,7 @@
 @code {
   type Row = { id: string; label: string; tags: string[] };
 
-  const { rows, empty = 'Sin elementos' } = props<{ rows?: Row[]; empty?: string }>();
+  const { rows = [], empty = 'Sin elementos' } = props<{ rows?: Row[]; empty?: string }>();
 }
 
 <head>
@@ -16,19 +16,17 @@
 
 <app-list>
   <template shadowrootmode="open">
-    @if (rows === undefined || rows.length === 0) {
-      <p class="empty">@(empty)</p>
-    } else {
-      <ul class="list">
-        @foreach (const row of rows) key (row.id) {
-          <li class="row">
-            <span>@row.label</span>
-            @foreach (const mark of row.tags) key (mark) {
-              <span class="tag">@mark</span>
-            }
-          </li>
-        }
-      </ul>
-    }
+    <ul class="list">
+      @foreach (const row of rows) key (row.id) {
+        <li class="row">
+          <span>@row.label</span>
+          @foreach (const mark of row.tags) key (mark) {
+            <span class="tag">@mark</span>
+          }
+        </li>
+      } @empty {
+        <li class="empty">@(empty)</li>
+      }
+    </ul>
   </template>
 </app-list>

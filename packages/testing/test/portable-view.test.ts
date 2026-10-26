@@ -1,10 +1,11 @@
 /**
  * SDD-61 phase 3, end to end: what the runtime and the emit of the portable view paint on the
- * server, when they hydrate and when they update (criteria 10, 13, 14, 15, 19, 25, 28, 36, 40).
+ * server, when they hydrate and when they update (criteria 10, 13, 14, 15, 19, 28, 36, 40).
+ * Criterion 25 paints a date, and a date is painted with a pipe: it is in the conformance
+ * project, whose `"locales"` make one.
  */
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { mount, renderToHtml } from '../src/index.js';
-import * as PClock from './fixtures/p61-clock.fud';
 import * as PComputed from './fixtures/p61-computed.fud';
 import * as PDefaults from './fixtures/p61-defaults.fud';
 import * as PEmpty from './fixtures/p61-empty.fud';
@@ -109,30 +110,6 @@ describe('criterion 19: a computed of the cut is evaluated on the server', () =>
   test('computed(() => n() * 2) with n = signal(10) paints 20', async () => {
     const t = await mount(PComputed);
     expect(text(t.root, 'p')).toBe('20');
-  });
-});
-
-describe('criterion 25: now() travels in fud-state', () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  test('the client that hydrates reads T from fud-state, and does not call now()', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(new Date('2026-10-26T10:00:00.000Z'));
-    const t = await mount(PClock);
-    expect(text(t.root, 'time')).toBe('2026-10-26T10:00:00.000Z');
-    vi.setSystemTime(new Date('2030-01-01T00:00:00.000Z'));
-    t.root.querySelector('button')!.click();
-    await t.settled();
-    expect(text(t.root, 'time')).toBe('2026-10-26T10:00:01.000Z');
-  });
-
-  test('an instance created from scratch calls it', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(new Date('2027-05-05T05:05:05.000Z'));
-    const t = await mount(PClock, { via: 'client' });
-    expect(text(t.root, 'time')).toBe('2027-05-05T05:05:05.000Z');
   });
 });
 

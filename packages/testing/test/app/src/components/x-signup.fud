@@ -1,6 +1,7 @@
+<link rel="server" href="./x-signup.fudapi">
+
 @code {
   import { signal } from "@fudic/core";
-  import { signupForm } from "./signup.form";
 
   const sent = signal(0);
 

@@ -1,3 +1,7 @@
+@code {
+  const tags = ["a", "b"];
+}
+
 <app-snippets>
   <template shadowrootmode="open">
     <style>
@@ -9,9 +13,9 @@
     @render card("Hello", variant: "wide")
     @render card("Bare")
 
-    @foreach (const tag of ["a", "b"]) {
+    @foreach (const tag of tags) {
       key (tag)
-      @render tagged(@tag, upper: @tag.toUpperCase())
+      @render tagged(@tag, upper: @tag)
     }
   </template>
 </app-snippets>

@@ -1,0 +1,20 @@
+@* Criterion 25: `now()` as the initializer of a signal. A date is painted only with a pipe, so it
+   lives in this project, whose `"locales"` make `a | preset` one. *@
+@code {
+  import { now, signal } from "@fudic/core";
+  import { date } from "@fudic/i18n";
+
+  const ahora = signal(now());
+  const instante = date({ dateStyle: "short", timeStyle: "medium", timeZone: "UTC" });
+
+  function later() {
+    ahora.set(new Date(ahora().getTime() + 1000));
+  }
+}
+
+<c-reloj>
+  <template shadowrootmode="open">
+    <time>@(ahora() | instante)</time>
+    <button @click=@later>+1s</button>
+  </template>
+</c-reloj>

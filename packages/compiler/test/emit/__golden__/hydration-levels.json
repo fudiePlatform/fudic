@@ -943,6 +943,11 @@
     "tag": "x-save",
     "hydrates": true
   },
+  "packages/testing/test/app/src/components/x-signup.fud": {
+    "kind": "component",
+    "tag": "x-signup",
+    "hydrates": true
+  },
   "packages/testing/test/app/src/components/x-stamp.fud": {
     "kind": "component",
     "tag": "x-stamp",
@@ -1174,6 +1179,11 @@
     "tag": "c-card",
     "hydrates": false
   },
+  "packages/testing/test/conformance/parts/c-reloj.fud": {
+    "kind": "component",
+    "tag": "c-reloj",
+    "hydrates": true
+  },
   "packages/testing/test/fixtures/broken-expr.fud": {
     "kind": "component",
     "tag": "broken-expr",
@@ -1183,11 +1193,6 @@
     "kind": "component",
     "tag": "broken-mode",
     "hydrates": false
-  },
-  "packages/testing/test/fixtures/p61-clock.fud": {
-    "kind": "component",
-    "tag": "p61-clock",
-    "hydrates": true
   },
   "packages/testing/test/fixtures/p61-computed.fud": {
     "kind": "component",
@@ -1268,11 +1273,6 @@
     "kind": "component",
     "tag": "x-pair",
     "hydrates": false
-  },
-  "packages/testing/test/fixtures/x-signup.fud": {
-    "kind": "component",
-    "tag": "x-signup",
-    "hydrates": true
   },
   "packages/vscode/fixtures/blog/[slug].fud": {
     "kind": "route",

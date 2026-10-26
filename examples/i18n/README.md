@@ -13,8 +13,9 @@ Qué mirar:
 
 - `/es/` y `/en/`: el layout no escribe `lang`; cada página sale con el suyo.
 - `app-greeting`: N1, sin JavaScript. Texto con etiquetas y huecos, un plural reescrito en los
-  dos catálogos, un precio, una fecha y un `@if` con texto.
-- `app-cart`: hidratado. El plural de `t()` y el precio se vuelven a formatear en el navegador.
+  dos catálogos, un precio, una fecha que llega del `load` de la ruta y un `@if` con texto.
+- `app-cart`: hidratado. El plural que los catálogos escriben para su texto y el precio se
+  vuelven a formatear en el navegador.
 - La prop de `app-banner` lleva `t()`, y `services/posts.ts` también.
 - `/xx/blog/:slug`: parámetros y `paths()`; `/en/blog/nada` lo pinta el servidor.
 - El selector de idioma va bajo `translate="no"`: es lo único en español dentro de `/en/`.
