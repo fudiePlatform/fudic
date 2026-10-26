@@ -89,6 +89,19 @@ describe('attrsOf — the element and the order decide', () => {
   it('of two objects, the later wins a key it writes; one it leaves out keeps the earlier', () => {
     expect(of([{ a: '1', b: '1', c: '1' }, { a: '2', b: undefined, c: false }])).toEqual({ a: '2', b: '1', c: '1' });
   });
+
+  it('writes the names sorted, in UTF-16 code units, whichever object brought them (SDD-61 §3.8)', () => {
+    const names = [...attrsOf('a', [{ title: 't', href: '/x', Zeta: 'z' }, { rel: 'r', hidden: true, title: 'u' }], []).keys()];
+    expect(names).toEqual(['Zeta', 'hidden', 'href', 'rel', 'title']);
+  });
+
+  it('a diff sets in that same order', () => {
+    expect(attrsDiff('a', [{ title: 't', href: '/x' }, { rel: 'r' }], undefined, []).set.map(([n]) => n)).toEqual([
+      'href',
+      'rel',
+      'title',
+    ]);
+  });
 });
 
 describe('attrsDiff — from what was written to what is', () => {

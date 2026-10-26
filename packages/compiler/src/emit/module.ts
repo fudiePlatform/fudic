@@ -58,6 +58,7 @@ import {
   writeEntryCode,
   writeEntryImports,
   writeHeadElements,
+  writeInert,
   writeNonceBinding,
   writeRuntimeTags,
   writeSharedHead,
@@ -458,11 +459,7 @@ function buildComponentModule(
     // way to read, so a template that says `expanded()` has to mean the same thing on both
     // branches. The object with a `peek` this used to be was not callable, and the day the
     // author wrote the call form it compiled on the client and threw in the prerender.
-    //
-    // A derived value is its own function: `computed(fn)` renders inert as `fn` itself, so
-    // it is evaluated when READ and a derived value the server never paints costs nothing.
-    const init = s.kind === 'computed' ? `(${s.init})` : `() => (${s.init})`;
-    w.line(`const ${s.name} = ${init}; // inert ${s.kind} (SSR; hydration is client-side)`);
+    writeInert(w, s);
   }
   // A callback that crosses by reference is declared in `@code { @client }`, which the server
   // never evaluates — so the name the body is about to hand the child does not exist here. It

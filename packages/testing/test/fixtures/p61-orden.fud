@@ -1,0 +1,15 @@
+@code {
+  type Item = { n: string; p: number };
+
+  const { xs = [] } = props<{ xs?: Item[] }>();
+}
+
+<p61-orden>
+  <template shadowrootmode="open">
+    <p class="sorted">@(xs.toSorted((a, b) => a.p - b.p).map(x => x.n).reduce((s, x, i) => i === 0 ? x : `${s},${x}`, ""))</p>
+    <p class="original">@(xs.map(x => x.n).reduce((s, x, i) => i === 0 ? x : `${s},${x}`, ""))</p>
+    <p class="nan">@(xs.toSorted((a, b) => a.p * 0 / 0).map(x => x.n).reduce((s, x, i) => i === 0 ? x : `${s},${x}`, ""))</p>
+    <p class="utf16">@("😀" < "～")</p>
+    <p class="length">@("😀".length)</p>
+  </template>
+</p61-orden>

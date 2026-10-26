@@ -193,7 +193,8 @@ describe('@while and @for — the two loops the fixtures never write', () => {
         '<ul>@while (cur !== null) key (cur.id) { <li>x</li> }</ul>',
       ),
     );
-    expect(src).toContain('while (cur !== null) {');
+    // Presence is lowered to `!= null` (SDD-61 §4.4.1).
+    expect(src).toContain('while (cur != null) {');
     // `@while` binds no iteration variable (§3.5), so the only parameter is the mutable
     // binding of the `@code` its body walks — and its key comes from what that body mutates.
     expect(src).toContain('const $b0 = ($parent, $anchor, cur) => {');

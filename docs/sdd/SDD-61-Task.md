@@ -7,7 +7,7 @@
 > `fudic-vscode` · `@fudic/vite` · `examples/*` · `packages/testing`
 > **Rama:** `sdd-61-vista-portable-impl`. Nace de `main` **con SDD-60 en `Hecho`**: esta spec parte
 > de un único `@code` y de su corte de servidor.
-> **Progreso:** 13 / 44 — `En curso`.
+> **Progreso:** 20 / 44 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -91,13 +91,13 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 13 | — | **`now()`.** `export function now(): Date` en `@fudic/core`, podable por ruta | `core` | `src/now.ts` · `src/index.ts` |
-| [ ] | 14 | 13 | **`now()` en `fud-state`.** Una señal inicializada con `now()` lleva siempre su valor en el slot de su instancia; el cliente que hidrata lo toma de ahí (`$pN ?? signal(now())`) y no llama a `now()` | `compiler` · `ssr` · `core` | `src/emit/*` · `src/ssr-dom.ts` |
-| [ ] | 15 | — | **Presencia y defectos.** En la vista y en el corte, `=== null`/`=== undefined` (y `!==`) se emiten como `== null`/`!= null`; el defecto de un patrón de la vista como `?? defecto` | `compiler` | `src/emit/*` |
-| [ ] | 16 | 4 | **`@empty` en el servidor.** Los tres bucles cuentan vueltas y, con cero, pintan el bloque | `compiler` · `ssr` | `src/emit/markup.ts` |
-| [ ] | 17 | 4 | **`@empty` en el cliente.** Rama del constructo con su marca de hidratación, como una rama de `@if`; la reconciliación del `@foreach` la monta con cero elementos y la desmonta con alguno; `@for` y `@while` igual al reevaluarse | `compiler` · `core` | `src/emit/markup-client.ts` · `src/hydrate/*` |
-| [ ] | 43 | — | **Orden del spread.** `attrsOf` y `attrsDiff` devuelven los atributos ordenados por nombre (unidades UTF-16); el emit llama a `setAttrs` una vez por elemento, en el sitio del primer spread, con todos sus objetos (SDD §3.8, §4.4.5) | `dom` · `compiler` | `dom/src/attrs.ts` · `compiler/src/emit/*` |
-| [ ] | 18 | 13–17, 43 | **Los tests de la fase.** Criterios 10, 13 (orden y D6 del anexo), 14, 15, 19 (pinta `20`), 25, 28, 36 (servidor y cliente) y 40 | `compiler` · `core` · `testing` | `test/**` |
+| [x] | 13 | — | **`now()`.** `export function now(): Date` en `@fudic/core`, podable por ruta | `core` | `src/now.ts` · `src/index.ts` |
+| [x] | 14 | 13 | **`now()` en `fud-state`.** Una señal inicializada con `now()` lleva siempre su valor en el slot de su instancia; el cliente que hidrata lo toma de ahí (`$pN ?? signal(now())`) y no llama a `now()` | `compiler` · `ssr` · `core` | `src/emit/*` · `src/ssr-dom.ts` |
+| [x] | 15 | — | **Presencia y defectos.** En la vista y en el corte, `=== null`/`=== undefined` (y `!==`) se emiten como `== null`/`!= null`; el defecto de un patrón de la vista como `?? defecto` | `compiler` | `src/emit/*` |
+| [x] | 16 | 4 | **`@empty` en el servidor.** Los tres bucles cuentan vueltas y, con cero, pintan el bloque | `compiler` · `ssr` | `src/emit/markup.ts` |
+| [x] | 17 | 4 | **`@empty` en el cliente.** Rama del constructo con su marca de hidratación, como una rama de `@if`; la reconciliación del `@foreach` la monta con cero elementos y la desmonta con alguno; `@for` y `@while` igual al reevaluarse | `compiler` · `core` | `src/emit/markup-client.ts` · `src/hydrate/*` |
+| [x] | 43 | — | **Orden del spread.** `attrsOf` y `attrsDiff` devuelven los atributos ordenados por nombre (unidades UTF-16); el emit llama a `setAttrs` una vez por elemento, en el sitio del primer spread, con todos sus objetos (SDD §3.8, §4.4.5) | `dom` · `compiler` | `dom/src/attrs.ts` · `compiler/src/emit/*` |
+| [x] | 18 | 13–17, 43 | **Los tests de la fase.** Criterios 10, 13 (orden y D6 del anexo), 14, 15, 19 (pinta `20`), 25, 28, 36 (servidor y cliente) y 40 | `compiler` · `core` · `testing` | `test/**` |
 
 ## Fase 4 — el pase tipado (4)
 

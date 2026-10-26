@@ -163,7 +163,7 @@ function updateGuards(props: readonly Prop[]): string {
  */
 export function withCells(
   statement: ClientStatement,
-  signals: readonly { readonly name: string; readonly at: number }[],
+  signals: readonly { readonly name: string; readonly at: number; readonly now?: string }[],
   cells: readonly CellSlot[],
   base: number = COMPONENT_BASE,
 ): string {
@@ -174,7 +174,14 @@ export function withCells(
     if (cell === undefined) continue;
     const at = splicedOffset(statement, reactive.at);
     if (at < 0 || at > statement.text.length) continue; // declared in another statement
-    edits.push({ at, text: `${cellNameAt(cell, base)} ?? ` });
+    const slot = cellNameAt(cell, base);
+    // A `signal(now())` holds its slot whether or not a child asked for it (SDD-61 §4.4.4), so
+    // the slot arrives in one of THREE shapes, not two. The cell, when a child did ask: the
+    // runtime materialised it and it is used as is. The instant alone, when nobody did: no
+    // marker points at the slot, so the runtime hands the plain `Date` over, and it becomes
+    // this instance's own signal. Nothing, on the `c` path: the author's `now()` runs.
+    const prefix = reactive.now === undefined ? '' : `${slot} instanceof Date ? ${reactive.now}(${slot}) : `;
+    edits.push({ at, text: `${prefix}${slot} ?? ` });
   }
   edits.sort((a, b) => b.at - a.at);
   return edits.reduce((out, e) => out.slice(0, e.at) + e.text + out.slice(e.at), statement.text);

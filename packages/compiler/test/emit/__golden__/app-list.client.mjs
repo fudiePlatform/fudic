@@ -261,7 +261,7 @@ customElements.define("app-list", class extends FudicElement {
         r: () => { $d.forEach(($f) => $f()); $k1.forEach(($i) => $i.r()); for (const $n of $r) $dom.remove($n); },
       };
     };
-    const $q0 = () => (rows === undefined || rows.length === 0 ? 0 : 1);
+    const $q0 = () => (rows == null || rows.length === 0 ? 0 : 1);
     const $f0 = ($x, $an) => $x === 0 ? $b0($shadow, $an, empty) : $x === 1 ? $b1($shadow, $an, rows) : null;
     const $g0 = ($x, $i) => { if ($x === 0) $i.u(empty); else if ($x === 1) $i.u(rows); };
     const $u0 = () => {

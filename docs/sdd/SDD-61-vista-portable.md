@@ -554,7 +554,9 @@ Cinco cambios, para que Node y los demás lenguajes pinten lo mismo:
      `@empty`, y con alguno lo desmonta. Lo mismo en `@for` y `@while`, que se reevalúan enteros.
 4. **`now()` en `fud-state`.** Una señal inicializada con `now()` lleva siempre su valor en el slot
    de la instancia, aunque nada más la obligue. Al hidratar, el `@code` del cliente toma el valor
-   del slot (`$pN ?? signal(now())`).
+   del slot (`$pN ?? signal(now())`). JSON no tiene fechas: un `Date` en un slot viaja como
+   `{"$d": milisegundos}` (`null` si es inválido), que `@fudic/ssr` escribe y `@fudic/core` vuelve a
+   convertir en `Date` al leer el bloque. El servidor evalúa `now()` una sola vez por render.
 5. **Orden del spread.** `attrsOf` y `attrsDiff` de `@fudic/dom` devuelven los atributos ordenados
    por nombre (§3.8), y el emit llama a `setAttrs` una vez por elemento, en el sitio del primer
    spread, con todos sus objetos.

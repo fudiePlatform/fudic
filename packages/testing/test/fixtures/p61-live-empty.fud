@@ -1,0 +1,21 @@
+@code {
+  import { signal } from "@fudic/core";
+
+  const items = signal<readonly string[]>(["a", "b"]);
+
+  function clear() {
+    items.set([]);
+  }
+
+  function fill() {
+    items.set(["c"]);
+  }
+}
+
+<p61-live-empty>
+  <template shadowrootmode="open">
+    <button class="clear" @click=@clear>clear</button>
+    <button class="fill" @click=@fill>fill</button>
+    <ul>@foreach (const it of items()) key (it) {<li>@it</li>} @empty {<li class="none">none</li>}</ul>
+  </template>
+</p61-live-empty>

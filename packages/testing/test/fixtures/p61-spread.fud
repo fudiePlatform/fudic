@@ -1,0 +1,13 @@
+@code {
+  type Enlace = { href: string; title?: string | null; rel?: string | null };
+  type Extra = { title?: string | null; hidden?: boolean | null };
+
+  const { enlace, extra } = props<{ enlace: Enlace; extra: Extra }>();
+}
+
+<p61-spread>
+  <template shadowrootmode="open">
+    <a ...enlace ...extra class="boton">Leer</a>
+    <a id="first" ...extra>Otro</a>
+  </template>
+</p61-spread>

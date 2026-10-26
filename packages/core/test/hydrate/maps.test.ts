@@ -35,6 +35,15 @@ describe('the three blocks the page publishes', () => {
     expect(maps.slice(9)).toEqual([]); // beyond the table altogether
   });
 
+  it('an instant comes back a Date, an invalid one an invalid Date (SDD-61 §3.12)', () => {
+    publish({ state: [[0, 3], [{ $d: 1793008800000 }, { $d: null }, { a: 1 }]] });
+    const [at, invalid, plain] = readPageMaps(document).slice(0) as [Date, Date, object];
+    expect(at).toBeInstanceOf(Date);
+    expect(at.toISOString()).toBe('2026-10-26T10:00:00.000Z');
+    expect(Number.isNaN(invalid.getTime())).toBe(true);
+    expect(plain).toEqual({ a: 1 });
+  });
+
   it('escaped payloads survive the round trip: `JSON.parse` gives back the original', () => {
     publish({ state: [[0, 1], ['</script><b>']] });
     expect(readPageMaps(document).slice(0)).toEqual(['</script><b>']);

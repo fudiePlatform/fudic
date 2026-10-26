@@ -4,7 +4,7 @@ export const css = `:host{display:block;}.list{margin:0;padding:0;list-style:non
 export function render($dom, $shadow, props, $ioc) {
   const { rows, empty = 'Sin elementos' } = props ?? {};
   $dom.state($shadow, [rows, empty]);
-  if (rows === undefined || rows.length === 0) {
+  if (rows == null || rows.length === 0) {
     const $n0 = $dom.element("p");
     $dom.setAttr($n0, 'class', ["empty"].filter(Boolean).join(' '));
     const $n1 = $dom.text(String((empty) ?? '')); $dom.append($n0, $n1);

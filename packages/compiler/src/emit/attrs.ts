@@ -509,10 +509,18 @@ export function writeElementAttrs(
   const slice = (sp: Span): string => source.slice(sp.start, sp.end);
   let baseClass: string | undefined;
   const classExprs: string[] = [];
+  let spread = false;
   for (const attr of el.attributes) {
     // The `fields` of a summary is the compiler's, and it never reaches the HTML (decision 131).
     if (isSummaryFields(el, attr)) continue;
     const b = classifyAttribute(attr, source).value;
+    // The spreads of a native element are written together, where the FIRST of them sits
+    // (SDD-61 §3.8): the explicit attributes keep their places around them.
+    if (b.type === 'spread' && !host.isComponent) {
+      if (!spread) writeSpreadAttrs(source, el, v, fixed, values);
+      spread = true;
+      continue;
+    }
     if (b.type === 'class') {
       // Through `crossingExpr` like every other value, and that is BUG-32 T4: composing this
       // from the raw source text made a `class:red="@rojo"` test the signal OBJECT, which is
@@ -568,17 +576,17 @@ export function writeElementAttrs(
     if (classExprs.length === 0) fixed.line(`$dom.setAttr(${v}, 'class', ${expr});`);
     else values.once(expr, ($v) => `$dom.setAttr(${v}, 'class', ${$v});`);
   }
-  if (!host.isComponent) writeSpreadAttrs(source, el, v, values);
 }
 
 /**
  * `<input ...resto>`: the spreads of a NATIVE element, as one write of all their objects in
- * order (`$dom.setAttrs`). On a component the same `...` hands props over and never reaches
- * here as attributes. What the element writes explicitly — a plain attribute, or the `class`
+ * order (`$dom.setAttrs`), which writes the attributes sorted by name. On a component the same
+ * `...` hands props over and never reaches here as attributes. What the element writes
+ * explicitly — a plain attribute, or the `class`
  * a `class:` composes — is left out of the spread wherever it sits, as an explicit `.prop` wins
  * over a props spread.
  */
-function writeSpreadAttrs(source: string, el: ElementNode, v: string, values: ValueSink): void {
+function writeSpreadAttrs(source: string, el: ElementNode, v: string, fixed: CodeWriter, values: ValueSink): void {
   const objects: string[] = [];
   const except = new Set<string>();
   for (const attr of el.attributes) {
@@ -589,5 +597,12 @@ function writeSpreadAttrs(source: string, el: ElementNode, v: string, values: Va
   }
   if (objects.length === 0) return;
   const names = JSON.stringify([...except]);
-  values.diff(`[${objects.join(', ')}]`, ($v, prev) => `$dom.setAttrs(${v}, ${$v}, ${prev}, ${names});`);
+  const value = `[${objects.join(', ')}]`;
+  // Where the writes repeat — a client's `$a`, which runs after every static attribute is
+  // already on the node — the attributes are first written HERE, in the spread's place among
+  // the static ones, so an instance the client creates carries them in the order the server
+  // painted (SDD-61 §3.8). `$a` writes the same text again, and an attribute set twice keeps
+  // its place.
+  if (values.repeats) fixed.line(`$dom.setAttrs(${v}, ${value}, undefined, ${names});`);
+  values.diff(value, ($v, prev) => `$dom.setAttrs(${v}, ${$v}, ${prev}, ${names});`);
 }

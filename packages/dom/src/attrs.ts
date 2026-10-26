@@ -66,13 +66,16 @@ function read(tag: string, objects: readonly unknown[], except: readonly string[
       if (text !== undefined) out.set(name, text);
     }
   }
-  return out;
+  // Sorted by name, in UTF-16 code units (SDD-61 §3.8; the keys of a map never tie), so a
+  // backend that knows the keys from the type and this one, which knows them at run time,
+  // write the same HTML.
+  return new Map([...out].sort(([a], [b]) => (a < b ? -1 : 1)));
 }
 
 /**
- * The attributes `objects` write on a `<tag>`, in order: every key of each object, the later
- * object winning a key both write, minus the names in `except` — the attributes the element
- * writes explicitly, which win wherever the spread sits.
+ * The attributes `objects` write on a `<tag>`, sorted by name: every key of each object, the
+ * later object winning a key both write, minus the names in `except` — the attributes the
+ * element writes explicitly, which win wherever the spread sits.
  */
 export function attrsOf(tag: string, objects: readonly unknown[], except: readonly string[]): ReadonlyMap<string, string> {
   return read(tag, objects, except, guardUrl);

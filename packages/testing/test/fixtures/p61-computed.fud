@@ -1,0 +1,12 @@
+@code {
+  import { signal, computed } from "@fudic/core";
+
+  const n = signal(10);
+  const doble = computed(() => n() * 2);
+}
+
+<p61-computed>
+  <template shadowrootmode="open">
+    <p>@doble()</p>
+  </template>
+</p61-computed>
