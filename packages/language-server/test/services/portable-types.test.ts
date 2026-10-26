@@ -40,7 +40,7 @@ const SOURCE = `@code {
 const TYPED: ReadonlySet<string> = new Set(['FUD1140', 'FUD1151', 'FUD1152', 'FUD1153']);
 
 /** What the editor publishes of the typed pass, as `CODE text`. */
-async function editor(portableView: boolean): Promise<readonly string[]> {
+async function editor(): Promise<readonly string[]> {
   const index = new WorkspaceIndex(memoryFs({ [PATH]: SOURCE }));
   index.scan('/p');
   const cached = new DocumentCache(index).get(PATH, 1, SOURCE);
@@ -49,7 +49,7 @@ async function editor(portableView: boolean): Promise<readonly string[]> {
   const context = fakeServiceContext({ [URI.file(PATH).toString()]: cached }, () => undefined, {
     'typescript/languageService': projectionService(cached.path, client.text),
   });
-  const service = createFudicService({ index, stats: new RequestStats(), typescript: true, portableView }).create(context);
+  const service = createFudicService({ index, stats: new RequestStats(), typescript: true }).create(context);
   const published = ((await service.provideDiagnostics?.(document, TOKEN)) ?? []) as Diagnostic[];
   return published
     .filter((d) => TYPED.has(String(d.code)))
@@ -62,7 +62,7 @@ function build(): readonly string[] {
   mkdirSync(join(root, 'components'), { recursive: true });
   writeFileSync(join(root, 'tsconfig.json'), JSON.stringify({ compilerOptions: { strict: true, skipLibCheck: true }, include: ['**/*.fud'] }));
   writeFileSync(join(root, 'components/app-vista.fud'), SOURCE);
-  return createProjectChecker({ root, portableView: true })
+  return createProjectChecker({ root })
     .check()
     .problems.filter((p) => TYPED.has(p.code))
     .map((p) => `${p.code} ${SOURCE.slice(p.span.start, p.span.end)}`);
@@ -71,11 +71,7 @@ function build(): readonly string[] {
 describe('the typed pass in the editor (criterion 30)', () => {
   it('publishes each code on the span the build reports', { timeout: 60_000 }, async () => {
     const expected = ['FUD1151 nombre', 'FUD1140 hora', 'FUD1152 "a"', 'FUD1153 m.length'];
-    expect(await editor(true)).toEqual(expected);
+    expect(await editor()).toEqual(expected);
     expect(build()).toEqual(expected);
-  });
-
-  it('publishes nothing of it behind the switch while the repository migrates', async () => {
-    expect(await editor(false)).toEqual([]);
   });
 });

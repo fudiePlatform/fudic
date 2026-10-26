@@ -11,12 +11,12 @@
  * private copy, because it creates a component of its own and the other acceptance files
  * assert over a workspace of exactly four documents while running in parallel.
  *
- * `signal` is declared in the `@code` rather than imported from `@fudic/core`: what makes a
- * name reactive is the CALLEE (`signal(...)` / `computed(...)`), never where it came from, and
- * the fixture project has no node_modules to resolve a package from.
+ * `signal` comes from a `@fudic/core` of two declarations written into the copy: the fixture
+ * project has no node_modules, and the server cut only evaluates a `signal` of the catalog
+ * (SDD-61 §3.9).
  */
 
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   CompletionRequest,
@@ -50,12 +50,12 @@ const HEAD = `<link rel="layout" href="../layouts/_layout.fud">
 <link rel="server" href="./bug23.fudapi">
 
 @code {
-  type Signal<T> = { (): T; set(next: T): void };
-  declare function signal<T>(initial: T): Signal<T>;
+  import { signal } from '@fudic/core';
   type Tone = 'neutral' | 'info';
 
-  const items = [{ id: 1 }];
-  const counter = signal({ id: 1 });
+  type Item = { id: number };
+  const items: Item[] = [{ id: 1 }];
+  const counter = signal<Item>({ id: 1 });
   const titulo = signal<Tone>('info');
   function onClick(ev: MouseEvent): void { void ev; }
 }
@@ -81,6 +81,12 @@ beforeAll(async () => {
   writeFileSync(`${root}/src/components/app-circle.fud`, CIRCLE);
   writeFileSync(`${root}/${PAGE}`, page('<h1>Home</h1>'));
   writeFileSync(`${root}/${API}`, 'load\n  title  str\n');
+  mkdirSync(`${root}/node_modules/@fudic/core`, { recursive: true });
+  writeFileSync(`${root}/node_modules/@fudic/core/package.json`, '{ "name": "@fudic/core", "types": "index.d.ts" }');
+  writeFileSync(
+    `${root}/node_modules/@fudic/core/index.d.ts`,
+    'export type Signal<T> = { (): T; set(next: T): void };\nexport declare function signal<T>(initial: T): Signal<T>;\n',
+  );
 
   harness = await startHarness({ root });
   await harness.open('src/components/app-circle.fud');
@@ -178,7 +184,7 @@ describe('§2.3 / symptom 3 — an unquoted value can be one `@` expression (tas
   it('and a chain with a call needs no parentheses', async () => {
     const problems = await problemsFor('<div id=@counter().id></div>');
 
-    expect(problems).toEqual([]);
+    expect(problems.map((p) => `${String(p.code)} ${p.message}`)).toEqual([]);
   });
 });
 

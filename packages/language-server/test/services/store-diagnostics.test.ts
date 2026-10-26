@@ -23,7 +23,7 @@ function workspace(): { readonly index: WorkspaceIndex; readonly document: TextD
   const index = new WorkspaceIndex(memoryFs({ [PAGE]: SOURCE, [STORE]: STORE_SOURCE }));
   index.scan('/p');
   const cached = new DocumentCache(index).get(PAGE, 1, SOURCE);
-  const diagnostics = analyze({ ...semanticInput(cached, index), portableView: true }).diagnostics;
+  const diagnostics = analyze({ ...semanticInput(cached, index) }).diagnostics;
   return { index, document: TextDocument.create(URI.file(PAGE).toString(), 'fud', 1, SOURCE), diagnostics };
 }
 

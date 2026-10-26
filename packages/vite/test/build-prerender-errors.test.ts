@@ -84,13 +84,19 @@ paths.handle(() => ['1', { wrong: 'x' } as unknown as string]);
 
   describe('a page that throws while rendering (FUD0620, §6.17)', () => {
     it('fails the build instead of shipping a site with one page missing', async () => {
-      // Well typed — `JSON.parse` is `any` — and broken at run time: the render throws a
-      // SyntaxError while prerendering. A name that does not exist would no longer get this
-      // far: since SDD-35 the typecheck stops the build on it first (TS2304).
+      // Well typed and portable, and broken at run time: the first of an empty list is
+      // undefined, and reading a field of it throws a TypeError while prerendering. A name that
+      // does not exist would no longer get this far: since SDD-35 the typecheck stops the build
+      // on it first (TS2304).
       const page = `<!DOCTYPE html>
 <html>
-<head><title>Boom</title></head>
-<body><h1>@(JSON.parse('{').value)</h1></body>
+<head>
+@code {
+  type Item = { n: number };
+  const lista: readonly Item[] = [];
+}
+<title>Boom</title></head>
+<body><h1>@(lista[0].n)</h1></body>
 </html>
 `;
       await expect(buildRoutes({ 'routes/boom.fud': page })).rejects.toThrow(/FUD0620/u);

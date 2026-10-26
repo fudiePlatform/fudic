@@ -139,7 +139,7 @@ describe('§6.2 — the nine mutants of SDD-23, as LSP diagnostics on the .fud',
     const source = mutate(
       slug,
       '  <p>@data.body</p>',
-      '  <p>@data.body</p>\n  @if (data.note !== undefined) {\n    <p>@(data.note.toUpperCase())</p>\n  }',
+      '  <p>@data.body</p>\n  @if (data.note !== undefined) {\n    <p>@(data.note.length)</p>\n  }',
     );
 
     expect(await diagnosticsOf(slugUri, source)).toEqual([]);

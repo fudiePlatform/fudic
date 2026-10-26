@@ -15,9 +15,7 @@
  * one traversal, one answer to where a scope opens. A forbidden node is reported once and not
  * descended into, while its siblings still are (SDD-51 §4.3). Never throws: an AST of an
  * unexpected shape is a node not on the list.
- *
- * It replaces `view-js.ts` when the portable view is switched on for everyone (SDD-61 task 36);
- * until then it runs behind `SemanticInput.portableView`.
+
  */
 
 import {

@@ -7,7 +7,7 @@
 > `fudic-vscode` · `@fudic/vite` · `examples/*` · `packages/testing`
 > **Rama:** `sdd-61-vista-portable-impl`. Nace de `main` **con SDD-60 en `Hecho`**: esta spec parte
 > de un único `@code` y de su corte de servidor.
-> **Progreso:** 36 / 44 — `En curso`.
+> **Progreso:** 41 / 44 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -141,9 +141,9 @@ de opciones de un preset de pipe.
 | [x] | 32 | 31 | **`vista.fud`.** Reescrito como catálogo positivo: un caso por fila de SDD §3 y por fila del recetario de colecciones, cada uno con «sin diagnóstico» | `examples` | `basic/src/routes/vista.fud` |
 | [x] | 33 | 31 | **`vista-errores`.** Un caso por código nuevo y por ampliación, con «FUDnnnn sobre `texto`» | `examples` | `vista-errores/vista-errores.fud` |
 | [x] | 34 | 31 | **`examples/i18n` y fixtures.** `app-greeting` (`alta` como prop desde el `load`); fixtures de `compiler` (`app-list`), `formatter` (`snippets`), `testing`, `language-core`, `language-server`, `workbench` | `examples` · varios | `i18n/src/**` · `packages/*/fixtures/**` · `packages/*/test/**` |
-| [ ] | 35 | 34 | **Tests reescritos.** Los que escribían algo que sale (`find`, `some`, `join`, `@{ }` con bucles…) se reescriben sin perder el caso que probaban | varios | `packages/*/test/**` |
-| [ ] | 36 | 35 | **Activar.** Fuera el interruptor `portableView` —de `SemanticInput`, de `CheckOptions` del project checker y del contexto del servicio del language server—: los analizadores y el pase tipado corren siempre. Se borran la regla de SDD-51 (`view-js.ts`) y `VIEW_GLOBALS`, y se retira `FUD0911`: se borra su `.ts` y su línea de `index.ts`, y su `.md` queda `retired` con `FUD1140` | `compiler` · `diagnostics` | `src/semantic/*` · `src/codes/FUD0911.*` |
-| [ ] | 37 | 36 | **Los tests del corpus.** Criterios 1, 32 y 33: ningún `.fud` fuera de `experiments/` da un diagnóstico de esta spec; `vista-errores` da exactamente sus comentarios | `compiler` · `typecheck` | `test/corpus*.test.ts` |
+| [x] | 35 | 34 | **Tests reescritos.** Los que escribían algo que sale (`find`, `some`, `join`, `@{ }` con bucles…) se reescriben sin perder el caso que probaban | varios | `packages/*/test/**` |
+| [x] | 36 | 35 | **Activar.** Fuera el interruptor `portableView` —de `SemanticInput`, de `CheckOptions` del project checker y del contexto del servicio del language server—: los analizadores y el pase tipado corren siempre. Se borran la regla de SDD-51 (`view-js.ts`) y `VIEW_GLOBALS`, y se retira `FUD0911`: se borra su `.ts` y su línea de `index.ts`, y su `.md` queda `retired` con `FUD1140` | `compiler` · `diagnostics` | `src/semantic/*` · `src/codes/FUD0911.*` |
+| [x] | 37 | 36 | **Los tests del corpus.** Criterios 1, 32 y 33: ningún `.fud` fuera de `experiments/` da un diagnóstico de esta spec; `vista-errores` da exactamente sus comentarios | `compiler` · `typecheck` | `test/corpus*.test.ts` |
 
 *Decidido al implementar (fase 7, en curso).* Una pasada con los analizadores encendidos sobre todo
 el repositorio destapó tres huecos, cerrados para que todos los backends pinten lo mismo: el defecto
@@ -177,13 +177,21 @@ proyecto de conformidad, que tiene idioma; `x-signup` declara su form en un `.fu
 tests, a `test/app`, el proyecto con contratos; el snippet `fila` recibe los campos. Las páginas
 `expected/*.fud` del banco no cambian: importan `C:/proj/…`, que no existe en el disco, y el
 criterio 22 las comprueba en la tarea 37 dentro del proyecto que nombran, `examples/basic`.
+En las tareas 35 a 37: los tests que escribían algo que sale se reescriben con su equivalente portable
+(una fecha con pipe, una lista vacía para un fallo de render, un tipo con nombre para un literal); los
+que probaban la regla de SDD-51 se van con ella. La red del corpus es doble: el pase semántico sobre
+cada `.fud` versionado, y el project checker sobre cada proyecto del repositorio, con una lista de
+raíces que un test mantiene completa. Destapó dos huecos, cerrados: un import absoluto de Windows
+(`C:/…`) es un módulo del proyecto, no un paquete; y el banco lee un fixture como `fixtures.minima`, o
+como `fixtures["titulo-largo"]` cuando el nombre no cabe tras un punto, índice que el pase tipado acepta
+porque nombra un campo declarado (`post["title"]` sigue siendo `FUD1153`, criterio 9).
 
 ## Fase 8 — cierre (5)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 38 | 36 | **Decisiones.** 162 (lista blanca portable; enmienda 137, 138 y 141), 163 (`@empty`), 164 (el corte y los tipos portables), 165 (`now()`), 166 (las cinco operaciones de colección y `<` entre textos y fechas) en la gramática y su índice. Nota en la cabecera de SDD-51: «Enmendada por SDD-61» | — | `docs/gramar/gramatica-v1-decisiones.md` · `docs/sdd/SDD-51-expresiones-de-la-vista.md` |
-| [ ] | 39 | 36 | **Docs.** La guía de la vista de cada README que la explique (lo que vale, las colecciones con su recetario, `@empty`, `now()`), en inglés y sin citar SDD | varios | `packages/*/README.md` · `examples/*/README.md` |
+| [x] | 38 | 36 | **Decisiones.** 162 (lista blanca portable; enmienda 137, 138 y 141), 163 (`@empty`), 164 (el corte y los tipos portables), 165 (`now()`), 166 (las cinco operaciones de colección y `<` entre textos y fechas) en la gramática y su índice. Nota en la cabecera de SDD-51: «Enmendada por SDD-61» | — | `docs/gramar/gramatica-v1-decisiones.md` · `docs/sdd/SDD-51-expresiones-de-la-vista.md` |
+| [x] | 39 | 36 | **Docs.** La guía de la vista de cada README que la explique (lo que vale, las colecciones con su recetario, `@empty`, `now()`), en inglés y sin citar SDD | varios | `packages/*/README.md` · `examples/*/README.md` |
 | [ ] | 40 | 37 | **Producto.** `examples/basic` en el navegador: reloj, carrito, blog vacío y lleno (`@empty`), `signal-while`, `usuarios` y `user-form` como antes. Tabla de hidratación sin cambios (criterio 34) | `examples` | — |
 | [ ] | 41 | 40 | **Entrega.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; lo nuevo al 100 % en las cuatro métricas sin `v8 ignore`; ningún umbral baja (criterio 35) | — | — |
 | [ ] | 42 | 41 | **Cierre.** SDD-61 y este fichero en `Hecho`; fila y registro de progreso del `INDEX.md` | — | `docs/sdd/*` |

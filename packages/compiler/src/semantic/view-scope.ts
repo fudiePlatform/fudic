@@ -27,7 +27,6 @@ import { REF_NAME } from '../binding/index.js';
 import { loopHeaderNames, patternNames, type OxcNode } from '../oxc/index.js';
 import type { SemanticInput } from './model.js';
 import { documentRoots, walk } from './walk.js';
-import { VIEW_GLOBALS } from './view-globals.js';
 import { child, children, isNode, nameOf } from './view-ast.js';
 
 /**
@@ -127,10 +126,9 @@ const EMPTY = NO_TEMPLATE;
 
 /**
  * The scope of the whole view of `input`. Never throws: a fragment with no AST is skipped.
- * `globals` is the list a free name may fall back on: SDD-51's by default, `undefined` alone
- * for the portable view (SDD-61 §3.2).
+ * `globals` is the list a free name may fall back on: `undefined` alone (SDD-61 §3.2).
  */
-export function viewScope(input: SemanticInput, globals: ReadonlySet<string> = VIEW_GLOBALS): ViewScope {
+export function viewScope(input: SemanticInput, globals: ReadonlySet<string>): ViewScope {
   const apis = input.apis;
   // A route that links its `.fudapi` has `data` when the file declares `load`; a layout always reads
   // the route's, and a file whose links nobody told us about keeps the rule of its role.

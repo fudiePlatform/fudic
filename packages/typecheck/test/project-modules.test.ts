@@ -71,7 +71,7 @@ describe('semanticInput', () => {
     const input = semanticInput(projectFud({ path: PAGE, source: page, index }), index);
     expect(input.path).toBe(PAGE);
     expect(input.readModule?.('../store/contador.ts', PAGE)?.path).toBe(STORE);
-    const found = analyze({ ...input, portableView: true }).diagnostics.filter((d) => d.code === 'FUD0907');
+    const found = analyze({ ...input }).diagnostics.filter((d) => d.code === 'FUD0907');
     expect(found.map((d) => [d.file, store.slice(d.span.start, d.span.end), d.related?.[0]?.file])).toEqual([
       [STORE, 'Math', PAGE],
     ]);

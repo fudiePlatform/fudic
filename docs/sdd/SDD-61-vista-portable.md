@@ -166,7 +166,8 @@ tipado (§4.2).
 - **`.length`** vale sobre una lista y sobre un texto (§3.5 bis). Sobre un `map` es `FUD1153`: un
   `map` solo se lee con `m[k]`.
 - Un índice con texto sobre un objeto que no es un `map` (`post['title']`, `xs['length']`) es
-  `FUD1153`.
+  `FUD1153`, salvo el de un campo declarado cuyo nombre no se puede escribir tras un punto
+  (`fixtures['titulo-largo']`): es leer ese campo. *(Decidido al implementar.)*
 
 ### 3.5 bis. Colecciones: filtrar, transformar, agregar y ordenar (decisión 166)
 

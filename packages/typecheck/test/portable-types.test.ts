@@ -106,9 +106,10 @@ const CASES: Readonly<Record<string, string>> = {
     'members',
     `${TYPES}
   type Holder = { length: number; size: number };
-  const { xs, s, m, k, post, h, f } = props<{ xs: readonly Item[]; s: string; m: Readonly<Record<string, number>>; k: string; post: Item; h: Holder; f: Readable<number> }>();`,
+  type Raro = { "a-b": number };
+  const { xs, s, m, k, post, h, f, r } = props<{ xs: readonly Item[]; s: string; m: Readonly<Record<string, number>>; k: string; post: Item; h: Holder; f: Readable<number>; r: Raro }>();`,
     `<p>@(xs.length) @(s.length) @(m.length) @(xs["length"]) @(h.length) @(f.length)</p>
-<p>@(xs[0]?.n) @(m[k]) @(post["titulo"]) @(xs?.[0]?.n)</p>`,
+<p>@(xs[0]?.n) @(m[k]) @(post["titulo"]) @(xs?.[0]?.n) @(r["a-b"]) @(r["c-d"]) @(post[k])</p>`,
   ),
   // Criterion 39: the collection operations.
   collections: component(
@@ -283,7 +284,7 @@ function programOver(path: string, text: string): ts.Program {
 }
 
 const ROOT = project(files);
-const report = createProjectChecker({ root: ROOT, portableView: true }).check();
+const report = createProjectChecker({ root: ROOT }).check();
 
 /** The codes of this pass. */
 const TYPED: ReadonlySet<string> = new Set(['FUD1140', 'FUD1151', 'FUD1152', 'FUD1153']);
@@ -334,7 +335,8 @@ describe('operands (criterion 7)', () => {
 
 describe('members (criteria 8 and 9)', () => {
   it('`.length` of a list, a text or a declared field; an index into a list or a map', () => {
-    expect(found('members')).toEqual(['FUD1153 m.length', 'FUD1153 xs["length"]', 'FUD1153 f.length', 'FUD1153 post["titulo"]']);
+    expect(found('members')).toEqual(['FUD1153 m.length', 'FUD1153 xs["length"]', 'FUD1153 f.length', 'FUD1153 post["titulo"]', 'FUD1153 r["c-d"]', 'FUD1153 post[k]']);
+    // `r["a-b"]` reads a field no dot can name: the type declares it, so it ports.
   });
 });
 
@@ -427,11 +429,6 @@ describe('portableTypeDiagnostics, alone', () => {
       };
       expect(portableTypeDiagnostics(programOver(path, client.text), silent)).toEqual([]);
     }
-  });
-
-  it('runs only behind the switch while the repository migrates', () => {
-    const quiet = createProjectChecker({ root: ROOT }).check();
-    expect(quiet.problems.filter((p) => TYPED.has(p.code))).toEqual([]);
   });
 });
 

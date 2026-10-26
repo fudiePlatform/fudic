@@ -78,7 +78,7 @@ function cases(source: string): readonly Case[] {
 let report: CheckReport;
 
 beforeAll(() => {
-  report = createProjectChecker({ root: DIR, portableView: true }).check();
+  report = createProjectChecker({ root: DIR }).check();
 });
 
 function check(name: string): void {

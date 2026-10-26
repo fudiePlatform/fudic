@@ -318,7 +318,7 @@ describe('createProjectChecker — the live program (§4.5)', () => {
 
   it('re-reads a .ts the program read', () => {
     const root = project({
-      'src/data.ts': 'export const tone = "info" as const;\n',
+      'src/data.ts': 'export const tone = "info";\n',
       'src/components/app-badge.fud': BADGE,
       'src/routes/index.fud': page('tone').replace('<title>t</title>', '<title>t</title>\n@code {\n  import { tone } from "../data";\n}'),
     });
@@ -335,7 +335,7 @@ describe('createProjectChecker — the live program (§4.5)', () => {
       JSON.stringify({ compilerOptions: { strict, skipLibCheck: true }, include: ['**/*.ts', '**/*.fud'] });
     const root = project({
       'tsconfig.json': config(false),
-      'src/components/app-x.fud': `@code {\n  function twice(x) { return x + x; }\n}\n<app-x>\n  <template shadowrootmode="open"><p>@twice(1)</p></template>\n</app-x>\n`,
+      'src/components/app-x.fud': `@code {\n  function twice(x) { return x + x; }\n}\n<app-x>\n  <template shadowrootmode="open"><button @click=@(() => twice(1))>x</button></template>\n</app-x>\n`,
     });
     const checker = createProjectChecker({ root });
     expect(checker.check().problems).toEqual([]);

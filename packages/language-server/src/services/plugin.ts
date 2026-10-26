@@ -151,11 +151,6 @@ export interface FudicServiceContext {
    * route's contract the layout bulb writes into. Absent means neither.
    */
   readonly apis?: ApiFiles;
-  /**
-   * Internal, and temporary: `true` publishes the typed pass of SDD-61's portable view. Only the
-   * tests set it while the repository migrates; SDD-61 task 36 removes the switch.
-   */
-  readonly portableView?: boolean;
 }
 
 const SEVERITY: Readonly<Record<Severity, DiagnosticSeverity>> = {
@@ -636,7 +631,7 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
               const choosable = deps.configs?.choosableStylesFor(cached.path) ?? null;
               // The typed pass over the program the editor already holds: the same function the
               // build calls, so the same spans (SDD-61 §4.2).
-              const program = deps.portableView === true ? typeScriptService(context)?.getProgram() : undefined;
+              const program = typeScriptService(context)?.getProgram();
               return [
                 ...placedDiagnostics(cached.path, fudicDiagnostics(cached, index)),
                 ...(program === undefined ? [] : placedDiagnostics(cached.path, portableTypeDiagnostics(program, cached))),

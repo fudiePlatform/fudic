@@ -178,7 +178,8 @@ export class FudIndex<E extends IndexedFud = IndexedFud> implements LinkIndex, F
    * what keeps it parsed once per version without the index having to be told of a change.
    */
   module(fromFile: string, specifier: string): ProjectModule | undefined {
-    if (!specifier.startsWith('.') && !specifier.startsWith('/')) return undefined;
+    // Relative, or absolute: from the root of the disk, or from a drive on Windows.
+    if (!specifier.startsWith('.') && !specifier.startsWith('/') && !/^[A-Za-z]:\//u.test(specifier)) return undefined;
     const base = this.serverPath(fromFile, specifier);
     if (![...this.#roots].some((root) => base.startsWith(`${root}/`))) return undefined;
     for (const path of new Set([base, `${base}.ts`, base.replace(/\.js$/u, '.ts'), `${base}/index.ts`])) {

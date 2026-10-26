@@ -228,10 +228,7 @@ function withoutRefactors(
  * are also used to answer hovers, definitions and diagnostics, and only the two halves named
  * here are being changed. A plugin that provides neither travels through untouched.
  */
-export function filterTypeScriptCompletions(
-  plugins: readonly LanguageServicePlugin[],
-  options: CompletionOptions = {},
-): LanguageServicePlugin[] {
+export function filterTypeScriptCompletions(plugins: readonly LanguageServicePlugin[]): LanguageServicePlugin[] {
   // Shared by the wrappers of one call, which is what makes the collapse possible: the three
   // TypeScript plugins are created together and serve the same request, in order.
   const spoken = new Spoken();
@@ -247,7 +244,7 @@ export function filterTypeScriptCompletions(
         ...instance,
         async provideCompletionItems(document, position, completionContext, token) {
           const list = await inner(document, position, completionContext, token);
-          const narrowed = allowedItems(context, document, position, list?.items ?? [], options);
+          const narrowed = allowedItems(context, document, position, list?.items ?? []);
           const kept =
             narrowed.at === undefined ? narrowed.items : spoken.fresh(narrowed, token);
 
@@ -353,22 +350,12 @@ interface Narrowed {
   readonly at?: number;
 }
 
-/** How the decorator is configured. */
-export interface CompletionOptions {
-  /**
-   * Internal, and temporary: `true` narrows the list of SDD-61's portable view (§4.3). Only the
-   * tests set it while the repository migrates; SDD-61 task 36 removes the switch.
-   */
-  readonly portableView?: boolean;
-}
-
 /** Apply both rules to one reply. */
 function allowedItems(
   context: LanguageServiceContext,
   document: TextDocument,
   position: { line: number; character: number },
   reply: readonly CompletionItem[],
-  options: CompletionOptions,
 ): Narrowed {
   const source = fudSourceAt(context, document);
   // Not a `.fud` at all: a real `.ts` in the workspace is none of this package's business.
@@ -381,7 +368,7 @@ function allowedItems(
 
   // The portable view's own list, FIRST, so every branch below narrows what the view may write
   // and not what TypeScript would. `undefined` survives it, and the scope test below lets it.
-  const portable = options.portableView === true && inPortableView(source.cached.source, offset, region);
+  const portable = inPortableView(source.cached.source, offset, region);
   const items = portable
     ? portableItems(
         source.cached.source,

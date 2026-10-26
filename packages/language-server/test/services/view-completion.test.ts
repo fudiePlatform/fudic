@@ -101,8 +101,6 @@ function typeScriptItems(service: ts.LanguageService, at: number): CompletionIte
 }
 
 interface Options {
-  /** The SDD-61 switch; on by default here. */
-  readonly portableView?: boolean;
   /** Mount the program. Without it the decorator has only the kinds. */
   readonly typescript?: boolean;
   /** The reply, instead of TypeScript's own list. */
@@ -136,7 +134,7 @@ async function labelsAt(markup: string, options: Options = {}): Promise<readonly
     capabilities: { completionProvider: {} },
     create: () => ({ provideCompletionItems: () => ({ isIncomplete: false, items: [...answer] }) }),
   };
-  const [wrapped] = filterTypeScriptCompletions([plugin], { portableView: options.portableView ?? true });
+  const [wrapped] = filterTypeScriptCompletions([plugin]);
   const provided = options.typescript === false ? {} : { 'typescript/languageService': service };
   const instance = wrapped!.create(fakeServiceContext({ [FUD_URI.toString()]: cached }, () => [FUD_URI, CLIENT_CODE_ID], provided));
 
@@ -256,10 +254,6 @@ describe('where nothing is narrowed', () => {
 
   it('leaves the `@code` alone', async () => {
     expect(await labelsAt('x', { code: 'const k = xs.|' })).toContain('find');
-  });
-
-  it('leaves everything as it was without the switch', async () => {
-    expect(await labelsAt('@(xs.|)', { portableView: false })).toContain('find');
   });
 });
 

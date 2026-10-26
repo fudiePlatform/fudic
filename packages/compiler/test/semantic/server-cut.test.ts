@@ -46,7 +46,7 @@ function host(modules: Modules): Pick<SemanticInput, 'readModule' | 'path'> {
 }
 
 function diagnostics(template: string, code: string, extra: Partial<SemanticInput> = {}): readonly Diagnostic[] {
-  return analyze({ ...viewInput(source(template, code)), portableView: true, ...extra }).diagnostics.filter((d) =>
+  return analyze({ ...viewInput(source(template, code)), ...extra }).diagnostics.filter((d) =>
     OWN.test(d.code),
   );
 }

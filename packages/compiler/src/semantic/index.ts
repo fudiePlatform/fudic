@@ -15,7 +15,6 @@ export type {
 } from './model.js';
 export { ANALYZERS, analyze } from './analyze.js';
 export { walk, documentRoots, documentCode, type TreeVisitor } from './walk.js';
-export { VIEW_GLOBALS } from './view-globals.js';
 export {
   portableRegions,
   type PortablePlace,

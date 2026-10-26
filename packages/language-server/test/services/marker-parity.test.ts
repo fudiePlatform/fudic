@@ -33,7 +33,8 @@ const formPage = (markup: string): string =>
 <link rel="component" href="../components/app-badge.fud">
 @code {
   type Control<T> = { (): T; set(v: T): void; touch(): void };
-  type Group<S> = S & { $touch(): void; $validate(): Promise<boolean>; $valid(): boolean; $errors(): unknown };
+  type Readable<T> = () => T;
+  type Group<S> = S & { $touch(): void; $validate(): Promise<boolean>; $valid: Readable<boolean>; $errors(): unknown };
   const userForm = {} as Group<{
     name: Control<string>; alias: Control<string>; email: Control<string>; web: Control<string>;
     acceso: Group<{ clave: Control<string>; repetir: Control<string> }>;

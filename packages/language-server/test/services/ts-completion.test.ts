@@ -285,8 +285,10 @@ describe('a `@` in markup, when TypeScript says nothing at all', () => {
     // `@click=@fn`. A list that spells them bare teaches that `data` is written `data`, which
     // it never is — see `reading`.
     expect(answer?.items.map((i) => i.label)).toEqual(
-      expect.arrayContaining(['@counter', '@onClick', '@()', '@if']),
+      expect.arrayContaining(['@counter', '@()', '@if']),
     );
+    // A function is not a value the view reads (SDD-61 §4.3): a handler is offered it, text is not.
+    expect(answer?.items.map((i) => i.label)).not.toContain('@onClick');
     // An incomplete list, so the editor asks again once the program is up.
     expect(answer?.isIncomplete).toBe(true);
   });
@@ -313,7 +315,7 @@ describe('the two rules over a reply that does arrive', () => {
     );
 
     expect(answer?.items.map((i) => i.label)).toEqual(
-      expect.arrayContaining(['@counter', '@onClick', '@()']),
+      expect.arrayContaining(['@counter', '@()']),
     );
     expect(answer?.items.map((i) => i.label)).not.toContain('@atob');
     expect(answer?.items.map((i) => i.label)).not.toContain('@$tpl');
@@ -358,9 +360,6 @@ describe('the two rules over a reply that does arrive', () => {
     const counter = answer?.items.find((i) => i.label === '@counter');
     expect(counter?.detail).toBe('in scope');
     expect(counter?.labelDetails).toBeUndefined();
-    expect(answer?.items.find((i) => i.label === '@onClick')?.kind).toBe(
-      CompletionItemKind.Function,
-    );
   });
 
   it('anchors every item on what was typed after the `@`, never on the `@` itself', async () => {

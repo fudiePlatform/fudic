@@ -51,6 +51,9 @@ const PROPS_EXPORT = '$Props';
 /** The four collection operations (§3.5 bis). */
 const COLLECTION: ReadonlySet<string> = new Set(['filter', 'map', 'reduce', 'toSorted']);
 
+/** A name that can be written after a dot. */
+const IDENTIFIER = /^[A-Za-z_$][\w$]*$/u;
+
 /** What a call with no arguments may read (§3.3), by the name of its type or of its alias. */
 const REACTIVE: ReadonlySet<string> = new Set(['Signal', 'Computed', 'Readable', 'Control', 'TypedControl', '$ControlNode']);
 
@@ -534,7 +537,12 @@ class PortableTypes {
   /** Whether `object[property]` ports: a number into a list, or a key into a `map`. */
   #indexes(object: ts.Type, property: OxcNode): boolean {
     if (this.#isMap(object)) return true;
-    return this.#isList(object) && this.#kindOf(property) !== 'string';
+    if (this.#isList(object)) return this.#kindOf(property) !== 'string';
+    // A field whose name cannot be written after a dot (`f["titulo-largo"]`): still a field the
+    // type declares, read by its name. One that can is written `f.campo` (§3.5).
+    if (property.type !== 'Literal' || typeof property['value'] !== 'string') return false;
+    const name = property['value'];
+    return !IDENTIFIER.test(name) && this.#checker.getPropertyOfType(object, name) !== undefined;
   }
 
   /** `.length` of a list, of a text, or a field of that name a type of the author declares. */

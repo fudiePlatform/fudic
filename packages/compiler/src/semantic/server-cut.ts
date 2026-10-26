@@ -233,7 +233,9 @@ class ServerCut {
       if (imported === undefined || !CATALOGUE.has(imported)) this.#unportable(unit, specifier, read.use);
       return;
     }
-    if (!from.startsWith('.') && !from.startsWith('/')) {
+    // A path, relative or absolute (from the root of the disk, or from a drive on Windows), is
+    // a module of the project; anything else names a package.
+    if (!from.startsWith('.') && !from.startsWith('/') && !/^[A-Za-z]:\//u.test(from)) {
       this.#unportable(unit, specifier, read.use);
       return;
     }

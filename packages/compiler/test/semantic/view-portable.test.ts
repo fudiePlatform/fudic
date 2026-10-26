@@ -1,5 +1,5 @@
 /**
- * SDD-61 — what the portable view may write, over the whole semantic pass with the switch on.
+ * SDD-61 — what the portable view may write, over the whole semantic pass.
  *
  * Criteria 2–5, 11, 12, 16–18 and 38 (the part without types), each code on its exact span
  * and one per node. The typed half — a call with no arguments that reads nothing reactive, a
@@ -48,7 +48,7 @@ function source(template: string, code = ''): string {
 /** What the portable view says about `template`, `CODE text` each, sorted. */
 function portable(template: string, code = ''): readonly string[] {
   const text = source(template, code);
-  const ds = analyze({ ...viewInput(text), portableView: true, apis: FORMS }).diagnostics;
+  const ds = analyze({ ...viewInput(text), apis: FORMS }).diagnostics;
   return ds
     .filter((d) => OWN.test(d.code))
     .map((d) => `${d.code} ${text.slice(d.span.start, d.span.end)}`)
@@ -299,7 +299,7 @@ describe('@for, @while and @switch (criterion 18, §3.7)', () => {
   it('signal-while.fud of examples/basic compiles', () => {
     const path = fileURLToPath(new URL('../../../../examples/basic/src/components/signal-while.fud', import.meta.url));
     const text = readFileSync(path, 'utf8');
-    const ds = analyze({ ...viewInput(text), portableView: true }).diagnostics.filter((d) => OWN.test(d.code));
+    const ds = analyze({ ...viewInput(text) }).diagnostics.filter((d) => OWN.test(d.code));
     expect(ds).toEqual([]);
   });
 
@@ -332,13 +332,5 @@ describe('handlers and callbacks (§3.11)', () => {
   it('a prop that is no callback is a value of the view', () => {
     expect(portable('<x-b .n=@(a + b) .f=@esValida .g=@(-a) .h=@a></x-b>')).toEqual([]);
     expect(portable('@{ const formatea = 1; }<x-b .f=@formatea></x-b>')).toEqual(['FUD0918 formatea']);
-  });
-});
-
-describe('the switch', () => {
-  it('without it, the view keeps SDD-51 list', () => {
-    const text = source('<p>@(Math.max(a, b)) @([1, 2].length)</p>');
-    const ds = analyze(viewInput(text)).diagnostics.filter((d) => OWN.test(d.code));
-    expect(ds).toEqual([]);
   });
 });
