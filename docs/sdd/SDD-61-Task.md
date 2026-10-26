@@ -7,7 +7,7 @@
 > `fudic-vscode` · `@fudic/vite` · `examples/*` · `packages/testing`
 > **Rama:** `sdd-61-vista-portable-impl`. Nace de `main` **con SDD-60 en `Hecho`**: esta spec parte
 > de un único `@code` y de su corte de servidor.
-> **Progreso:** 3 / 43 — `En curso`.
+> **Progreso:** 3 / 44 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -31,7 +31,10 @@ código, no el test.
    │
    ▼
 4 @empty en la estructura ─→ 5 view-expressions ─→ 6 view-statements ─→ 7 view-identifiers
-─→ 8 view-rest ─→ 9 view-control ─→ 10 readModule ─→ 11 server-cut ─→ 12 tests
+─→ 8 view-rest ─→ 9 view-control ─→ 12 tests                                    (fase 2a)
+   │
+   ▼
+10 readModule ─→ 11 server-cut ─→ 44 tests                                      (fase 2b)
    │
    ▼
 13 now() ─→ 14 now en fud-state ─→ 15 presencia y defectos ─→ 16 @empty servidor ─→ 17 @empty cliente
@@ -64,7 +67,7 @@ código, no el test.
 | [x] | 2 | 1 | **Reescritos.** Texto nuevo de `FUD0905`, `0907`, `0908`, `0910`, `0912`, `0913`, `0917`, `0919` (SDD §5). La retirada de `FUD0911` pasa a la tarea 5: el compilador lo emite hasta entonces, y borrar su `.ts` aquí rompería el repositorio | `diagnostics` | `src/codes/FUD09xx.{ts,md}` · `src/index.ts` |
 | [x] | 3 | — | **El rango.** `FUD1140`–`FUD1159` en la fila de SDD-61 del `INDEX.md` | — | `docs/sdd/INDEX.md` |
 
-## Fase 2 — el compilador sin tipos (9)
+## Fase 2a — el compilador sin tipos: `@empty` y las reglas de la vista (7)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
@@ -74,9 +77,15 @@ código, no el test.
 | [ ] | 7 | 5 | **`view-identifiers`.** Globales: solo `undefined` (`FUD0907`). En manejadores y callbacks, sin comprobación de globales; se conserva la regla de los nombres de `@{ }` | `compiler` | `src/semantic/analyzers/view-identifiers.ts` · `src/semantic/view-globals.ts` |
 | [ ] | 8 | 5 | **`view-rest`** (nuevo). Un `...resto` de la vista solo como `resto.campo`, spread de atributo o el origen de otro patrón (`const { b, ...r2 } = resto`); otro uso es `FUD1147` sobre el uso (SDD §3.6, anexo A.3.3) | `compiler` | `src/semantic/analyzers/view-rest.ts` · `ANALYZERS` |
 | [ ] | 9 | 5 | **`view-control`** (nuevo). `case` que no es un literal es `FUD1148` | `compiler` | `src/semantic/analyzers/view-control.ts` · `ANALYZERS` |
+| [ ] | 12 | 4–9 | **Los tests de la fase.** Criterios 2–5, 11, 12, 16–18 y 38, cada código sobre su span exacto, uno por nodo | `compiler` | `test/semantic/*.test.ts` |
+
+## Fase 2b — el compilador sin tipos: lo que el servidor evalúa del `@code` (3)
+
+| ✓ | # | dep | tarea | package | fichero |
+|---|---|---|---|---|---|
 | [ ] | 10 | — | **`readModule`.** Campo opcional de `SemanticInput`: `(specifier, importer) => { path, source } \| undefined` para módulos del proyecto. Lo dan el plugin de Vite, `@fudic/typecheck` y el language server, con caché por ruta y versión | `compiler` · `vite` · `typecheck` · `language-server` | `src/semantic/types.ts` · hosts |
 | [ ] | 11 | 5, 10 | **`server-cut`** (nuevo). Sobre el corte de SDD-60 §4.8: la forma de cada declaración (`FUD1150` con `related` al uso), la lista blanca de los inicializadores con los mismos códigos, las llamadas del catálogo, `now()` (`FUD0912`), stores (siguiendo `export … from`) y módulos de datos (SDD §3.9) | `compiler` | `src/semantic/analyzers/server-cut.ts` · `ANALYZERS` |
-| [ ] | 12 | 4–11 | **Los tests de la fase.** Criterios 2–5, 11, 12, 16–18, 19 (la parte sin tipos), 20, 21, 24 y 38, cada código sobre su span exacto, uno por nodo | `compiler` | `test/semantic/*.test.ts` |
+| [ ] | 44 | 10, 11 | **Los tests de la fase.** Criterios 19 (la parte sin tipos), 20, 21 y 24, cada código sobre su span exacto, uno por nodo; `readModule` en cada host | `compiler` · `vite` · `typecheck` · `language-server` | `test/**` |
 
 ## Fase 3 — runtime y emit (6)
 
@@ -113,7 +122,7 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 28 | 12, 18, 22 | **La suite.** Un `.fud` por fila de SDD §3.2–§3.12 con datos fijos y su `.html` de servidor esperado, incluidos los casos frontera de SDD §4.6, cada fila del recetario de colecciones (§3.5 bis) y el ejemplo guía 3 del anexo (A.8) | `testing` | `test/conformance/*.fud` · `*.html` |
+| [ ] | 28 | 12, 44, 18, 22 | **La suite.** Un `.fud` por fila de SDD §3.2–§3.12 con datos fijos y su `.html` de servidor esperado, incluidos los casos frontera de SDD §4.6, cada fila del recetario de colecciones (§3.5 bis) y el ejemplo guía 3 del anexo (A.8) | `testing` | `test/conformance/*.fud` · `*.html` |
 | [ ] | 29 | 28 | **El test.** Monta cada fixture con `mount` y compara byte a byte; las filas de pipes, salvo el texto formateado (criterios 29 y 37) | `testing` | `test/conformance.test.ts` |
 
 ## Fase 7 — migración (8)
