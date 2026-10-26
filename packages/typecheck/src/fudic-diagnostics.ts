@@ -48,9 +48,10 @@ function apisOf(document: ProjectedFud): { readonly data: boolean; readonly name
 /**
  * What the semantic pass is handed for the document already parsed. With an `index` that reads
  * modules, the path of the file and its project's modules too: what the server cut follows into
- * a store (SDD-61 §4.1).
+ * a store (SDD-61 §4.1). `portable` is the internal switch of SDD-61 (`SemanticInput.portableView`):
+ * only a project checker built with it sets it, and task 36 removes it.
  */
-export function semanticInput(document: ProjectedFud, index?: LinkIndex): SemanticInput {
+export function semanticInput(document: ProjectedFud, index?: LinkIndex, portable = false): SemanticInput {
   const apis = apisOf(document);
   return {
     source: document.source,
@@ -61,12 +62,13 @@ export function semanticInput(document: ProjectedFud, index?: LinkIndex): Semant
     path: document.path,
     ...(apis === undefined ? {} : { apis }),
     ...(index?.module === undefined ? {} : { readModule: (specifier, importer) => index.module!(importer, specifier) }),
+    ...(portable ? { portableView: true } : {}),
   };
 }
 
 /** The semantic pass over the document already parsed. */
-export function semanticDiagnostics(document: ProjectedFud, index?: LinkIndex): readonly Diagnostic[] {
-  return analyze(semanticInput(document, index)).diagnostics;
+export function semanticDiagnostics(document: ProjectedFud, index?: LinkIndex, portable = false): readonly Diagnostic[] {
+  return analyze(semanticInput(document, index, portable)).diagnostics;
 }
 
 /**
@@ -77,10 +79,10 @@ export function semanticDiagnostics(document: ProjectedFud, index?: LinkIndex): 
  * The type errors are NOT here — they come from TypeScript over the projection, mapped back
  * by Volar.
  */
-export function fudicDiagnostics(document: ProjectedFud, index: LinkIndex): readonly Diagnostic[] {
+export function fudicDiagnostics(document: ProjectedFud, index: LinkIndex, portable = false): readonly Diagnostic[] {
   return [
     ...document.diagnostics,
-    ...semanticDiagnostics(document, index),
+    ...semanticDiagnostics(document, index, portable),
     ...hrefDiagnostics(document, index),
     ...holeDiagnostics(document, index),
     ...reservedDollarDiagnostics(document),

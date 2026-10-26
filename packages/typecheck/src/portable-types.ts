@@ -215,7 +215,9 @@ class PortableTypes {
       }
       return;
     }
-    if (statement.type === 'ExpressionStatement') this.#expression(child(statement, 'expression')!);
+    // Any other statement, and an expression that is not an assignment, is the compiler's `FUD0908`.
+    const expression = statement.type === 'ExpressionStatement' ? child(statement, 'expression')! : undefined;
+    if (expression?.type === 'AssignmentExpression') this.#expression(expression);
   }
 
   /** `@for (let i = 0; c; paso)`: what it declares, a `boolean` condition, and its step. */
@@ -292,7 +294,8 @@ class PortableTypes {
     const callee = child(node, 'callee')!;
     const args = children(node, 'arguments');
     if (args.length === 0) {
-      if (!isPath(callee)) return;
+      // `f?.()` and a callee that is not a path are the compiler's `FUD1140` already.
+      if (!isPath(callee) || field(node, 'optional') === true) return;
       const type = this.#typeOf(callee);
       if (type !== undefined && !this.#isAny(type) && !this.#isReactive(type)) {
         const at = this.#span(callee);
@@ -549,8 +552,13 @@ class PortableTypes {
 
   // ── Portable types (§3.10) ──
 
-  /** `FUD1153` on `node` when what it evaluates to does not port. */
+  /**
+   * `FUD1153` on `node` when what it evaluates to does not port. A literal of object or array is
+   * the compiler's `FUD1143` already (§3.5 bis: `map` gives a value, not an object).
+   */
   #portable(node: OxcNode): void {
+    const value = unwrap(node);
+    if (value.type === 'ObjectExpression' || value.type === 'ArrayExpression') return;
     this.#portableAt(this.#span(node));
   }
 

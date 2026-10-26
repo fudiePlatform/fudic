@@ -53,8 +53,9 @@ export interface CheckOptions {
   /** The TypeScript to check with. Defaults to the one this package ships (§7). */
   readonly typescript?: typeof ts;
   /**
-   * Internal, and temporary: `true` adds the typed pass of SDD-61's portable view. Only the tests
-   * set it while the repository migrates; SDD-61 task 36 removes the switch and runs it always.
+   * Internal, and temporary: `true` checks the view against SDD-61's portable list and adds its
+   * typed pass. Only the tests set it while the repository migrates; SDD-61 task 36 removes the
+   * switch and runs it always.
    */
   readonly portableView?: boolean;
 }
@@ -215,7 +216,7 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
         }
       }
 
-      problems.push(...fudicProblems(entry.path, fudicDiagnostics(root.document, state.index), elsewhere));
+      problems.push(...fudicProblems(entry.path, fudicDiagnostics(root.document, state.index, options.portableView === true), elsewhere));
       if (options.portableView === true) {
         problems.push(...fudicProblems(entry.path, portableTypeDiagnostics(program, root.document), elsewhere));
       }

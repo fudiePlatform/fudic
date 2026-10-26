@@ -1,22 +1,8 @@
-// Un módulo cualquiera para que `vista-errores.fud` tenga un import que intentar escribir.
+// Un módulo del proyecto, para que `vista-errores.fud` tenga un import que intentar escribir y
+// uno que la vista lee como valor. Es un store para el corte de servidor: lo que la vista lee de
+// aquí tiene que ser `signal`, `computed` o un `const` de la lista blanca (SDD-61 §3.9).
 export let importado = 1;
 
-export function ayuda(): number {
-  return importado;
-}
-
-// A stand-in for `@fudic/core`'s `signal`, which this example cannot resolve: the cases only
-// need something shaped like a signal to call `.set()` on from the view.
-export interface Senal<T> {
-  (): T;
-  set(value: T): void;
-}
-
-export function signal<T>(initial: T): Senal<T> {
-  let value = initial;
-  const read = (() => value) as Senal<T>;
-  read.set = (next) => {
-    value = next;
-  };
-  return read;
-}
+// FUD1150 sobre `function ayuda(): number { return importado; }`: la vista la lee como valor
+// (`ayuda.constructor`), y una función no es nada que el servidor de otro backend pueda evaluar.
+export function ayuda(): number { return importado; }

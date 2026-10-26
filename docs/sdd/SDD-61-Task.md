@@ -7,7 +7,7 @@
 > `fudic-vscode` · `@fudic/vite` · `examples/*` · `packages/testing`
 > **Rama:** `sdd-61-vista-portable-impl`. Nace de `main` **con SDD-60 en `Hecho`**: esta spec parte
 > de un único `@code` y de su corte de servidor.
-> **Progreso:** 34 / 44 — `En curso`.
+> **Progreso:** 35 / 44 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -139,7 +139,7 @@ de opciones de un preset de pipe.
 | [x] | 30 | 13, 16 | **`examples/basic`: reloj, locales y carrito.** `"locales": ["es"]` en `fudic.json`; `app-clock` y `ruta-reloj` con presets `date` (`timeZone: "Europe/Madrid"`) y `signal(now())`; `shopping-cart` con `currency('EUR')` | `examples` | `basic/fudic.json` · `app-clock.fud` · `ruta-reloj.fud` · `shopping-cart.fud` |
 | [x] | 31 | 30 | **`examples/basic`: el resto** de la tabla de SDD §4.7: `signal-control`, `ruta-reactiva`, `signal-while` (+ `signal-while.fudapi`), `snippets` (`type Paso`), `vista-url`, `campo-texto`, `blog/index`, `app-calendar` y cada `@if (xs.length === 0)` que pinta un vacío (→ `@empty`); cada `some`/`find`/`join`/`includes`/`sort` por su receta de SDD §3.5 bis | `examples` | `basic/src/**` |
 | [x] | 32 | 31 | **`vista.fud`.** Reescrito como catálogo positivo: un caso por fila de SDD §3 y por fila del recetario de colecciones, cada uno con «sin diagnóstico» | `examples` | `basic/src/routes/vista.fud` |
-| [ ] | 33 | 31 | **`vista-errores`.** Un caso por código nuevo y por ampliación, con «FUDnnnn sobre `texto`» | `examples` | `vista-errores/vista-errores.fud` |
+| [x] | 33 | 31 | **`vista-errores`.** Un caso por código nuevo y por ampliación, con «FUDnnnn sobre `texto`» | `examples` | `vista-errores/vista-errores.fud` |
 | [ ] | 34 | 31 | **`examples/i18n` y fixtures.** `app-greeting` (`alta` como prop desde el `load`); fixtures de `compiler` (`app-list`), `formatter` (`snippets`), `testing`, `language-core`, `language-server`, `workbench` | `examples` · varios | `i18n/src/**` · `packages/*/fixtures/**` · `packages/*/test/**` |
 | [ ] | 35 | 34 | **Tests reescritos.** Los que escribían algo que sale (`find`, `some`, `join`, `@{ }` con bucles…) se reescriben sin perder el caso que probaban | varios | `packages/*/test/**` |
 | [ ] | 36 | 35 | **Activar.** Fuera el interruptor `portableView` —de `SemanticInput`, de `CheckOptions` del project checker y del contexto del servicio del language server—: los analizadores y el pase tipado corren siempre. Se borran la regla de SDD-51 (`view-js.ts`) y `VIEW_GLOBALS`, y se retira `FUD0911`: se borra su `.ts` y su línea de `index.ts`, y su `.md` queda `retired` con `FUD1140` | `compiler` · `diagnostics` | `src/semantic/*` · `src/codes/FUD0911.*` |
@@ -163,6 +163,13 @@ hidratación gana las filas de la suite de fase 6; ninguna fila existente cambia
 con sus datos en un `load` (las fechas del recetario solo llegan así) y la parte reactiva —`signal`,
 `computed`, `now()`, `@empty` en vivo y manejadores— en un componente nuevo, `vista-tareas`: la ruta
 sigue sin ser reactiva y su fila del golden solo gana esa etiqueta entre las que hidratan.
+`vista-errores` se reescribe para la vista portable y su test lo lee por el canal del build: el
+project checker con el interruptor enciende también el pase semántico portable, y los casos del
+corte de servidor llevan su comentario en líneas `//` (en el `@code` y en `util.ts`). Los casos de
+SDD-51 se quedan como fixture del test del compilador hasta que la tarea 36 borre su regla. El
+ejemplo destapó tres voces dobles del pase tipado, cerradas: no entra en una sentencia de `@{ }` que
+no es una asignación, ni en `f?.()`, ni en un objeto o lista literal que devuelve `map` o que es el
+valor inicial de `reduce` (`FUD0908`, `FUD1140` y `FUD1143` del compilador ya lo dicen).
 
 ## Fase 8 — cierre (5)
 

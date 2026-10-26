@@ -80,8 +80,9 @@ const CASES: Readonly<Record<string, string>> = {
   const nombre = {} as Str;
   const leer = {} as Readable<number>;
   const quizas = {} as Control<string> | undefined;
+  const alguno = {} as Control<string> | null;
   function hora() { return 1; }`,
-    `<p>@hora() @count() @(form.$valid()) @campo.errors() @campo() @nombre() @leer() @(quizas?.()) @(xs.sort()) @((hora)())</p>`,
+    `<p>@hora() @count() @(form.$valid()) @campo.errors() @campo() @nombre() @leer() @(quizas?.()) @alguno() @(xs.sort()) @((hora)())</p>`,
   ),
   // Criterion 6: no truthiness.
   conditions: component(
@@ -298,7 +299,8 @@ function found(name: string): readonly string[] {
 
 describe('calls (criteria 2 and 38)', () => {
   it('a call with no arguments reads a signal, a computed, a Readable or a control; anything else is FUD1140', () => {
-    expect(found('calls')).toEqual(['FUD1140 hora', 'FUD1140 xs.sort']);
+    // `quizas?.()` and `(hora)()` are the compiler's FUD1140: the pass does not say them again.
+    expect(found('calls')).toEqual(['FUD1140 hora', 'FUD1140 quizas', 'FUD1140 xs.sort', 'FUD1140 (hora)']);
   });
 
   it('the message names the callee as written', () => {
@@ -444,6 +446,8 @@ describe('every branch of §3.4 and §3.7', () => {
       'FUD1140 n',
       'FUD1153 y.o',
       'FUD1153 post.o',
+      // The compiler's: the callee is not a path.
+      'FUD1140 xs["filter"]',
     ]);
   });
 

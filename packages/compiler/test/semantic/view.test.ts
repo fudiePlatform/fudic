@@ -1,9 +1,9 @@
 /**
  * SDD-51 — what the view may write, over the whole semantic pass.
  *
- * Three nets. `examples/vista-errores` holds every case with the code it gives written in the
- * comment above it, and the pass has to give exactly that (criterion 22; the same file is held
- * to the same comments through the editor's channel in `@fudic/typecheck`). The repo's own
+ * Three nets. SDD-51's cases, each with the code it gives written in the comment above it, and
+ * the pass has to give exactly that (criterion 22; `examples/vista-errores` now holds the
+ * portable view's, in `@fudic/typecheck`). The repo's own
  * `.fud` files have to give none of these codes (criterion 20). And the cases the example
  * cannot hold — a fragment Oxc could not parse, shapes no author writes on purpose — are
  * pinned one by one below.
@@ -17,7 +17,9 @@ import type { Diagnostic } from '../../src/types/index.js';
 import { viewDiagnostics } from './_view.js';
 
 const ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
-const EXAMPLE = join(ROOT, 'examples/vista-errores');
+// SDD-51's cases, as `examples/vista-errores` held them before SDD-61 rewrote it for the portable view.
+// The old rule runs until SDD-61 task 36 removes it, and these go with it.
+const EXAMPLE = fileURLToPath(new URL('./fixtures/', import.meta.url));
 
 /** The codes SDD-51 reports: its range, and the `$` of the template (FUD0461). */
 const OWN = /^FUD09[01]\d$|^FUD0461$/u;
@@ -44,8 +46,8 @@ function announced(comment: string): readonly string[] {
   return out;
 }
 
-describe('examples/vista-errores, case by case (criterion 22)', () => {
-  for (const name of ['vista-errores.fud', 'snippets.fud']) {
+describe('the cases of SDD-51, case by case (criterion 22)', () => {
+  for (const name of ['vista-errores-51.fud.txt', 'snippets-51.fud.txt']) {
     const source = readFileSync(join(EXAMPLE, name), 'utf8');
     const ds = viewDiagnostics(source);
     const comments = [...source.matchAll(/@\*([\s\S]*?)\*@/gu)];
@@ -129,6 +131,11 @@ describe('the shapes the example does not hold (§3.8)', () => {
     expect(view('<p>@(String(o[k])) @(String(o[k]()))</p>')).toEqual([]);
     expect(view('<p>@(s.map((Symbol) => Symbol()).length)</p>')).toEqual([]);
     expect(view('<p>@(s.toString())</p>')).toEqual([]);
+  });
+
+  it('what /vista wrote before SDD-61: a spread in an object literal, a bounded while and do', () => {
+    expect(view('<p>@(Object.keys({ ...o, extra: 1 }).length)</p>')).toEqual([]);
+    expect(view('@{ let v = 0; while (v < 3) v++; do { v += 10; } while (v < 20); }')).toEqual([]);
   });
 
   it('Array(n), Date and Intl by their arguments', () => {
