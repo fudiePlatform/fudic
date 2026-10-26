@@ -19,6 +19,8 @@ describe('resolveOptions — defaults', () => {
       prerender: true,
       paramFallback: 'lazy',
       defaults: {},
+      sw: true,
+      edgeDir: '.fudic/edge',
     });
   });
 
@@ -39,11 +41,15 @@ describe('resolveOptions — defaults', () => {
       prerender: false,
       paramFallback: 'notFound',
       defaults: { '/admin': { mode: 'exclude' } },
+      sw: false,
+      edgeDir: '.fudic/edge-b',
     });
     expect(options.routesDir).toBe('pages');
     expect(options.prerender).toBe(false);
     expect(options.paramFallback).toBe('notFound');
     expect(options.defaults).toEqual({ '/admin': { mode: 'exclude' } });
+    expect(options.sw).toBe(false);
+    expect(options.edgeDir).toBe('.fudic/edge-b');
   });
 });
 

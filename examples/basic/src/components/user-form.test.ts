@@ -1,10 +1,10 @@
 import { beforeEach, expect, test, vi } from 'vitest';
 import { mount } from '@fudic/testing';
-import { personForm } from '../forms/person.form';
-import { TOKEN_KEY } from '../middlewares/auth';
+import { personForm } from 'fudic:components/user-form';
+import { TOKEN_KEY } from '../browser/auth';
 import * as UserForm from './user-form.fud';
 
-// The data edge, mocked: the form's `serverValidator` reads it, on the in-memory server.
+// The data edge, mocked: the rule `email-taken` reads it, on the in-memory server.
 const emailTaken = vi.hoisted(() => vi.fn());
 vi.mock('../data/people', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../data/people')>()),
@@ -31,7 +31,7 @@ test('a taken email: the server says so, and its slot shows it', async () => {
   await fill(t, 'ana@fudic.dev');
   await t.submit();
   // validate → csrf.client → auth.client → codec → fetch → dispatch → csrf.server
-  // → auth.server → serverValidator(emailTaken mocked) → 422 → the error slot.
+  // → auth.server → email-taken (emailTaken mocked) → 422 → the error slot.
   expect(emailTaken).toHaveBeenCalledExactlyOnceWith('ana@fudic.dev');
   expect(t.errorOf('Email')).toBe('Ese email ya lo usa otra persona.');
   expect(t.errorOf('Nombre')).toBeNull();

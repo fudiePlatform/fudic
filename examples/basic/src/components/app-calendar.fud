@@ -3,41 +3,39 @@
   // No hay `data-*`, no hay `closest()`, no hay `Number(...)` — el objeto llega entero.
   import { makeDays, type Day } from "../data/days.js";
 
-  // La zona neutra corre en los DOS lados, así que estas siete filas las pinta el servidor y
-  // el cliente las adopta. No es un `load()` porque no son un dato de la página: son el
+  // El template las lee, así que el servidor también evalúa esta línea: estas siete filas las
+  // pinta el servidor y el cliente las adopta. No es un `load()` porque no son un dato de la página: son el
   // banco de pruebas del componente.
   const seed = makeDays("a");
 
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    const rows = signal(seed);
-    const last = signal("—");
-    let extra = 0;
+  const rows = signal(seed);
+  const last = signal("—");
+  let extra = 0;
 
-    // El handler recibe el OBJETO de la fila. Le suma una marca encima: si en el siguiente
-    // clic el número ha subido, es que llegó el mismo objeto y no una copia.
-    function pick(day: Day) {
-      day.picks += 1;
-      last.set(`día ${day.n} · pulsado ${day.picks} ${day.picks === 1 ? "vez" : "veces"}`);
+  // El handler recibe el OBJETO de la fila. Le suma una marca encima: si en el siguiente
+  // clic el número ha subido, es que llegó el mismo objeto y no una copia.
+  function pick(day: Day) {
+    day.picks += 1;
+    last.set(`día ${day.n} · pulsado ${day.picks} ${day.picks === 1 ? "vez" : "veces"}`);
+  }
+
+  function add() {
+    extra += 1;
+    const more = [];
+    for (let i = 1; i <= 7; i++) {
+      more.push({ id: `x${extra}-${i}`, n: 100 * extra + i, picks: 0 });
     }
+    rows.set([...rows(), ...more]);
+  }
 
-    function add() {
-      extra += 1;
-      const more = [];
-      for (let i = 1; i <= 7; i++) {
-        more.push({ id: `x${extra}-${i}`, n: 100 * extra + i, picks: 0 });
-      }
-      rows.set([...rows(), ...more]);
-    }
+  function drop() {
+    rows.set(rows().slice(0, Math.max(0, rows().length - 7)));
+  }
 
-    function drop() {
-      rows.set(rows().slice(0, Math.max(0, rows().length - 7)));
-    }
-
-    function shuffle() {
-      rows.set([...rows()].reverse());
-    }
+  function shuffle() {
+    rows.set([...rows()].reverse());
   }
 }
 

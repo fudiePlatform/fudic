@@ -45,20 +45,6 @@
       "end": "\\}",
       "endCaptures": { "0": { "name": "punctuation.section.block.end.fudic" } },
       "contentName": "source.ts",
-      "patterns": [{ "include": "#region-block" }, { "include": "#balanced-ts" }]
-    },
-
-    "region-block": {
-      "name": "meta.block.region.fudic",
-      "begin": "(@)(server|client)\\b\\s*(\\{)",
-      "beginCaptures": {
-        "1": { "name": "punctuation.definition.keyword.fudic" },
-        "2": { "name": "keyword.control.directive.region.fudic" },
-        "3": { "name": "punctuation.section.block.begin.fudic" }
-      },
-      "end": "\\}",
-      "endCaptures": { "0": { "name": "punctuation.section.block.end.fudic" } },
-      "contentName": "source.ts",
       "patterns": [{ "include": "#balanced-ts" }]
     },
 

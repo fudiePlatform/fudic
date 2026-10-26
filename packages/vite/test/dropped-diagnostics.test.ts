@@ -52,11 +52,9 @@ const BROKEN_PAGE = `<!DOCTYPE html>
 </html>
 `;
 
-/** A component whose `@client` does not parse, and whose template closes a stray tag. */
+/** A component whose `@code` does not parse, and whose template closes a stray tag. */
 const BROKEN_CLIENT = `@code {
-  @client {
-    const = ;
-  }
+  const = ;
 }
 <x-broken><template shadowrootmode="open"><p>hi</q></p></template></x-broken>
 `;
@@ -122,10 +120,10 @@ describe('the host plugin', () => {
     const ctx = context();
     await expect(plugin().transform.call(ctx, '', `${file}?client`)).rejects.toThrow(/FUD0051/u);
     expect(ctx.errors).toHaveLength(1);
-    // Positioned at the first, and the message carries both: the stray tag and the `@client`
-    // that does not parse, remapped to the `.fud` (line 3, not an offset of the chunk).
-    expectPositioned(ctx.errors[0], file, 6);
-    expect(ctx.errors[0]!.message).toMatch(/x-broken\.fud:3:\d+ - error FUD0170/u);
+    // Positioned at the first, and the message carries both: the stray tag and the `@code`
+    // that does not parse, remapped to the `.fud` (line 2, not an offset of the chunk).
+    expectPositioned(ctx.errors[0], file, 4);
+    expect(ctx.errors[0]!.message).toMatch(/x-broken\.fud:2:\d+ - error FUD0170/u);
   });
 
   it('?ioc — what resolving its graph said fails the build', async () => {

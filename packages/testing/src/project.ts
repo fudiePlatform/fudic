@@ -3,7 +3,8 @@
  * `_error.fud`, discovered once per test file with the plugin's own routing (§4.9).
  */
 
-import { discoverRoutes, httpFileOf, resolveOptions, type FudicOptions, type RouteBuild } from '@fudic/vite/harness';
+import { dirname, resolve } from 'node:path';
+import { ApiProject, discoverRoutes, resolveOptions, type FudicOptions, type RouteBuild } from '@fudic/vite/harness';
 import { inject } from 'vitest';
 import { OPTIONS_KEY, ROOT_KEY } from './constants.js';
 
@@ -19,8 +20,8 @@ export interface Project {
   readonly routes: readonly RouteBuild[];
   /** `_error.fud`, when the project has one. */
   readonly errorPage: RouteBuild | undefined;
-  /** `src/http.ts`, the global level of the chain, when the project has one. */
-  readonly httpFile: string | undefined;
+  /** Whether the app declares a `.fudapi` of its own: only then is there a server root (SDD-60 §4.4). */
+  readonly api: boolean;
 }
 
 let project: Project | undefined;
@@ -30,8 +31,13 @@ export function projectOf(): Project {
   if (project === undefined) {
     const root = inject(ROOT_KEY);
     const { base, ...options } = inject(OPTIONS_KEY);
-    const found = discoverRoutes(root, resolveOptions(options, base).options);
-    project = { root, base, routes: found.routes, errorPage: found.errorPage, httpFile: httpFileOf(root) };
+    // What each route's `.fudapi` declares, as the plugin reads it: `load`, `paths`, `layout`.
+    const contracts = new ApiProject(root);
+    const found = discoverRoutes(root, resolveOptions(options, base).options, undefined, (fud) => (href) =>
+      contracts.page(resolve(dirname(fud), href)),
+    );
+    const api = contracts.sources.some((source) => source.origin === 'app');
+    project = { root, base, routes: found.routes, errorPage: found.errorPage, api };
   }
   return project;
 }

@@ -21,7 +21,7 @@ import { chunkMap, hydrate, resolverOf } from './hydrate.js';
 import { renderPage } from './page.js';
 import { settled, track } from './pending.js';
 import { standTree, type ProviderOverride } from './providers.js';
-import { knowComponents } from './server.js';
+import { serverRoot } from './api.js';
 import { enterWorld, harnessOf, type Harness, type WorldOptions } from './session.js';
 
 /** What `import * as X from './x.fud'` gives in the `fudic` environment. */
@@ -104,8 +104,7 @@ async function paintHost(component: MountTarget, props: object, url: string): Pr
     'fud',
     hostPage({ links: [{ rel: 'component', href: component[FILE_EXPORT] }], body: `<${tag}${attrs.join('')}></${tag}>` }),
   );
-  knowComponents(graphOf(page).components.values());
-  return renderPage(page, { hasLoad: false, hasDi: true }, '/', url, props);
+  return renderPage(page, { hasDi: true }, '/', url, props);
 }
 
 async function viaSsr(
@@ -158,6 +157,7 @@ export async function mount<P extends object = Record<string, unknown>>(
   const props: object = options.props ?? {};
   const url = options.url ?? '/';
   const providers = enterWorld(options, url);
+  await serverRoot();
   const order = propOrder(component[FILE_EXPORT], component.tag);
   // Checked before anything is painted: a prop the component does not declare is the test's
   // mistake, whichever road it takes.

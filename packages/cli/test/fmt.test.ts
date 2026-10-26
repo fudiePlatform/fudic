@@ -222,3 +222,58 @@ describe('fmt over .fudspec files (SDD-53 criterion 23)', () => {
     expect(await run(['fmt', '--check', '--cwd', '/project'], deps(tidy).deps)).toBe(0);
   });
 });
+
+describe('fmt over .fudapi files (SDD-60 §4.10)', () => {
+  const API_MESSY = 'type Person\n  id i32\n  name    str\nenum Variant\n  a\n';
+  const API_TIDY = 'type Person\n  id    i32\n  name  str\n\nenum Variant\n  a\n';
+  const API_BROKEN = 'type Person\n  id  i32\nge search\n';
+
+  const deps = (fs: MemoryFs) => {
+    const capture = captureStreams();
+    return { capture, deps: { readIo: fs, writeIo: fs, runner: new RecordingRunner(), streams: capture.streams } };
+  };
+
+  it('walks .fudapi with the rest, takes a single one, and skips node_modules', () => {
+    const fs = new MemoryFs({
+      'a.fud': MESSY,
+      'src/routes/b.fudapi': API_MESSY,
+      'node_modules/pkg/fudapi/c.fudapi': API_MESSY,
+    });
+    expect(filesOf(['.'], options(), fs)).toEqual(['a.fud', 'src/routes/b.fudapi']);
+    expect(filesOf(['src/routes/b.fudapi', 'src/missing.fudapi'], options(), fs)).toEqual(['src/routes/b.fudapi']);
+  });
+
+  it('formats a .fudapi with formatApi, and plans nothing for one already formatted', async () => {
+    const fs = new MemoryFs({ 'a.fudapi': API_MESSY, 'b.fudapi': API_TIDY });
+    const plan = await planFmt(['.'], options(), fs);
+    expect(plan.errors).toEqual([]);
+    expect(plan.diagnostics).toEqual([]);
+    expect(plan.changes).toEqual([{ kind: 'modify', path: 'a.fudapi', contents: API_TIDY, before: API_MESSY }]);
+  });
+
+  it('reports what the parser says of a .fudapi, with FUD0450, and leaves it alone', async () => {
+    const fs = new MemoryFs({ 'broken.fudapi': API_BROKEN, 'a.fudapi': API_MESSY });
+    const plan = await planFmt(['.'], options(), fs);
+    expect(plan.errors.map((error) => error.code)).toEqual(['FUD0450']);
+    expect(plan.diagnostics.map((d) => [d.file, d.diagnostic.code])).toEqual([['broken.fudapi', 'FUD1062']]);
+    expect(plan.changes.map((change) => change.path)).toEqual(['a.fudapi']);
+
+    const { deps: d, capture } = deps(fs);
+    expect(await run(['fmt', '--cwd', '/project'], d)).toBe(2);
+    expect(fs.at('broken.fudapi')).toBe(API_BROKEN);
+    // A plan with errors is never applied: the tidy one waits for the broken one.
+    expect(fs.at('a.fudapi')).toBe(API_MESSY);
+    expect(capture.stdout()).toContain('FUD1062');
+  });
+
+  it('--check counts a .fudapi like the others', async () => {
+    const fs = new MemoryFs({ 'a.fud': TIDY, 'b.fudapi': API_MESSY });
+    const { deps: d, capture } = deps(fs);
+    expect(await run(['fmt', '--check', '--cwd', '/project'], d)).toBe(1);
+    expect(capture.stdout()).toContain('would format  b.fudapi');
+    expect(fs.at('b.fudapi')).toBe(API_MESSY);
+
+    const tidy = new MemoryFs({ 'a.fud': TIDY, 'b.fudapi': API_TIDY });
+    expect(await run(['fmt', '--check', '--cwd', '/project'], deps(tidy).deps)).toBe(0);
+  });
+});

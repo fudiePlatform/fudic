@@ -32,7 +32,7 @@ const nonceOf = (hits: readonly Hit[]): string | null => {
 };
 
 test.describe('the Service Worker renders', () => {
-  test('a route with `@server load` arrives complete, and its shadow roots materialize', async ({
+  test('a route with `load` arrives complete, and its shadow roots materialize', async ({
     page,
   }) => {
     await boot(page);

@@ -44,11 +44,12 @@ describe('package', () => {
 describe('fixture workspace', () => {
   const files = [
     'fixtures/tsconfig.json',
-    'fixtures/blog/[slug].fud',
-    'fixtures/layouts/_layout.fud',
-    'fixtures/components/site-nav.fud',
-    'fixtures/components/app-badge.fud',
-    'fixtures/data/posts.ts',
+    'fixtures/src/blog/[slug].fud',
+    'fixtures/src/blog/[slug].fudapi',
+    'fixtures/src/layouts/_layout.fud',
+    'fixtures/src/components/site-nav.fud',
+    'fixtures/src/components/app-badge.fud',
+    'fixtures/src/data/posts.ts',
   ];
 
   it.each(files)('ships %s', (relative) => {
@@ -59,6 +60,6 @@ describe('fixture workspace', () => {
     // A project that never ran `fudic new` is the interesting case: the server mounts
     // GLOBALS_DTS as a virtual lib (§2), so the file must be ABSENT here.
     expect(existsSync(at('fixtures/fudic-globals.d.ts'))).toBe(false);
-    expect(json('fixtures/tsconfig.json')['include']).toContain('**/*.fud');
+    expect(json('fixtures/tsconfig.json')['include']).toContain('src/**/*.fud');
   });
 });

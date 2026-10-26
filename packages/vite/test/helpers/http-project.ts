@@ -14,6 +14,10 @@ const at = (path: string): string => fileURLToPath(new URL(`../../../${path}`, i
 const ENTRIES: Readonly<Record<string, string>> = {
   ...runtimeAlias,
   '@fudic/http/server': at('http/dist/server/index.js'),
+  // What the modules generated from a `.fudapi` import (SDD-60 §3.11).
+  '@fudic/http/contract/server': at('http/dist/contract/server.js'),
+  '@fudic/http/contract': at('http/dist/contract/index.js'),
+  '@fudic/forms/contract': at('forms/dist/contract/index.js'),
   '@fudic/http/client': at('http/dist/client/index.js'),
   '@fudic/http': at('http/dist/index.js'),
   '@fudic/di/page': at('di/dist/page.js'),
@@ -35,6 +39,9 @@ export function writeHttpTypecheckConfig(root: string, extra: Readonly<Record<st
     '@fudic/http/server': [at('http/dist/server/index.d.ts')],
     '@fudic/http/client': [at('http/dist/client/index.d.ts')],
     '@fudic/forms/wire': [at('forms/dist/wire/index.d.ts')],
+    '@fudic/http/contract/server': [at('http/dist/contract/server.d.ts')],
+    '@fudic/http/contract': [at('http/dist/contract/index.d.ts')],
+    '@fudic/forms/contract': [at('forms/dist/contract/index.d.ts')],
     '@fudic/*': [at('*/dist/index.d.ts')],
   };
   writeFileSync(

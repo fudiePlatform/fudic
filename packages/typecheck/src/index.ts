@@ -14,7 +14,6 @@ export { parseFud, type ParsedFud } from './parse.js';
 export {
   batchDocumentJs,
   type DocumentJs,
-  type CodeRegion,
   type LoopHeader,
 } from './js-batch.js';
 export {
@@ -54,7 +53,6 @@ export {
   styleCodeId,
   ROOT_CODE_ID,
   CLIENT_CODE_ID,
-  SERVER_CODE_ID,
   FUD_LANGUAGE_ID,
   type FudicVirtualCode,
 } from './virtual-code.js';
@@ -64,7 +62,7 @@ export {
   type LanguageDeps,
   type FudDocuments,
 } from './language-plugin.js';
-export { linksOf, attributeOf, type LinkRef } from './links.js';
+export { linksOf, serverLinksOf, attributeOf, type LinkRef } from './links.js';
 export { unresolvedHrefs, hrefDiagnostics, type UnresolvedHref } from './href.js';
 export { holeDiagnostics, missingSections } from './holes.js';
 export { reservedDollarDiagnostics } from './reserved-dollar.js';

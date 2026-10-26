@@ -25,12 +25,12 @@ import { memoryIo, parse } from './_support.js';
 import { clientFactory, controller, mountAsDsd, serverShadowHtml } from './hydrate/_harness.js';
 
 /**
- * A component whose shadow root holds `markup`, with a `@client` block in front of it. The
+ * A component whose shadow root holds `markup`, with a `@code` block in front of it. The
  * prop `otro` is a name an update can bring again: what a block body reads of it becomes a
  * parameter of the block, which is the contrast a ref target is measured against.
  */
 const component = (tag: string, client: string, markup: string): string =>
-  `@code {\n  const { otro = 1 } = props<{ otro?: number }>();\n  @client {\n${client}  }\n}\n` +
+  `@code {\n  const { otro = 1 } = props<{ otro?: number }>();\n${client}}\n` +
   `<${tag}>\n  <template shadowrootmode="open">${markup}</template>\n</${tag}>\n`;
 
 function graphOf(tag: string, source: string): ComponentGraph {
@@ -97,11 +97,11 @@ describe('refTargets: every variable a tree writes', () => {
 });
 
 const CLIENT =
-  "    import { signal } from '@fudic/core';\n" +
-  '    let campo = null;\n' +
-  '    let aviso = null;\n' +
-  '    const abierto = signal(false);\n' +
-  '    globalThis.__ref = { campo: () => campo, aviso: () => aviso, abrir: (v) => abierto.set(v) };\n';
+  "  import { signal } from '@fudic/core';\n" +
+  '  let campo = null;\n' +
+  '  let aviso = null;\n' +
+  '  const abierto = signal(false);\n' +
+  '  globalThis.__ref = { campo: () => campo, aviso: () => aviso, abrir: (v) => abierto.set(v) };\n';
 
 const MARKUP =
   '<input ref="@campo" value="hola">' + '@if (abierto()) {<p class="aviso" ref="@aviso">@otro</p>}';
@@ -130,7 +130,7 @@ describe('the emitted text', () => {
   });
 
   it('writes nothing for a malformed ref, and leaves no ref attribute behind', () => {
-    const bad = graphOf('x-bad', component('x-bad', '    let a = null;\n', '<b ref="@a.b">x</b><i ref="@(a)">y</i>'));
+    const bad = graphOf('x-bad', component('x-bad', '  let a = null;\n', '<b ref="@a.b">x</b><i ref="@(a)">y</i>'));
     const text = chunk(bad, 'x-bad');
     expect(text).not.toMatch(/\ba = \$n/u);
     expect(text).not.toContain('"ref"');

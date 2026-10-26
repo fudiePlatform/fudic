@@ -1,0 +1,3 @@
+# Server only: it has no client half, so in the browser it does nothing.
+middleware audit
+  server

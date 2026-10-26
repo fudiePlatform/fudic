@@ -1,0 +1,37 @@
+# The value is there: not empty, not null.
+rule required
+  on field *
+  runs both
+  fails required
+
+# At least n characters, or n items.
+rule min-length
+  on field str *[]
+  runs both
+  n  u32
+  fails min-length n
+
+# The value matches a project pattern.
+rule pattern
+  on field str
+  runs both
+  regex  pattern
+  fails pattern
+
+# A Spanish NIF: eight digits and the letter they give. Runs in the browser and again on the
+# server; its check goes in src/browser (`nif.check(...)`), from phase 5 on.
+rule nif
+  on field str
+  runs both
+  fails nif-format
+  fails nif-letter
+
+# Nobody has that alias yet: asks the server.
+rule alias-taken
+  on field str
+  runs server
+  async
+  fails alias-taken
+
+pattern email-loose  [^@\s]+@[^@\s]+\.[^@\s]+
+pattern web-url      https?://.+

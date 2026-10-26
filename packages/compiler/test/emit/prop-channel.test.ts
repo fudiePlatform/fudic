@@ -16,11 +16,9 @@ import { memoryIo } from './_support.js';
 const SINK = `@code {
   const { value, onSave, plain = 0 } =
     props<{ value: Signal<number>; onSave: (n: number) => void; plain?: number }>();
-  @client {
-    import { computed } from "@fudic/core";
-    const doble = computed(() => value() * 2);
-    function go() { onSave(1); }
-  }
+  import { computed } from "@fudic/core";
+  const doble = computed(() => value() * 2);
+  function go() { onSave(1); }
 }
 
 <cell-sink>
@@ -33,9 +31,7 @@ const SINK = `@code {
 /** The same child, but one that WRITES the signal it was handed. */
 const WRITER = `@code {
   const { value } = props<{ value: Signal<number> }>();
-  @client {
-    function bump() { value.set(1); }
-  }
+  function bump() { value.set(1); }
 }
 
 <cell-writer>
@@ -46,7 +42,7 @@ const WRITER = `@code {
 `;
 
 /**
- * A component with nothing of its own: no signal, no handler, no `@client` — and a CALLBACK
+ * A component with nothing of its own: no signal, no handler, no browser code — and a CALLBACK
  * prop, which is the one channel the level rule cannot rescue.
  *
  * A signal that crosses makes the child hydratable on its own (`level.ts`: a reactive value
@@ -65,7 +61,7 @@ const INERT = `@code {
 </cell-inert>
 `;
 
-/** Compile a parent whose `@client` and template are given, and report what the build says. */
+/** Compile a parent whose `@code` and template are given, and report what the build says. */
 function codesOf(client: string, template: string, children = ['cell-sink']): readonly string[] {
   const links = children.map((tag) => `<link rel="component" href="./${tag}.fud">`).join('\n');
   const files: Record<string, string> = {
@@ -73,7 +69,7 @@ function codesOf(client: string, template: string, children = ['cell-sink']): re
       '<link rel="component" href="./cell-top.fud">\n' +
       '<html><head></head><body><cell-top></cell-top></body></html>\n',
     '/cell-top.fud':
-      `${links}\n\n@code {\n  @client {\n    import { signal, computed } from "@fudic/core";\n${client}\n  }\n}\n\n` +
+      `${links}\n\n@code {\n  import { signal, computed } from "@fudic/core";\n${client}\n}\n\n` +
       `<cell-top>\n  <template shadowrootmode="open">\n${template}\n  </template>\n</cell-top>\n`,
     '/cell-sink.fud': SINK,
     '/cell-writer.fud': WRITER,
@@ -85,7 +81,7 @@ function codesOf(client: string, template: string, children = ['cell-sink']): re
   return contractDiagnostics(graph).map((d) => d.code);
 }
 
-const OWN = '    const count = signal(0);\n    function save(n) { count.set(n); }';
+const OWN = '  const count = signal(0);\n  function save(n) { count.set(n); }';
 
 describe('a well-formed crossing says nothing', () => {
   it('a signal into Signal<T>, a function into a callback, a value into a plain prop', () => {
@@ -152,7 +148,7 @@ describe('FUD0202 — a cell towards a component that never hydrates', () => {
 });
 
 describe('FUD0203 — a computed towards a prop the child writes', () => {
-  const DERIVED = `${OWN}\n    const doble = computed(() => count() * 2);`;
+  const DERIVED = `${OWN}\n  const doble = computed(() => count() * 2);`;
 
   it('is reported when the child really writes it', () => {
     const codes = codesOf(DERIVED, '    <cell-writer .value=@doble></cell-writer>', ['cell-writer']);
@@ -215,8 +211,8 @@ describe('§6.19 — with no `T` to read there is no diagnostic', () => {
     const io = memoryIo({
       '/cell-top.fud':
         '<link rel="component" href="./cell-opaque.fud">\n\n' +
-        '@code {\n  @client {\n    import { signal } from "@fudic/core";\n' +
-        '    const count = signal(0);\n  }\n}\n\n' +
+        '@code {\n  import { signal } from "@fudic/core";\n' +
+        '  const count = signal(0);\n}\n\n' +
         '<cell-top><template shadowrootmode="open">' +
         '<cell-opaque .value=@42></cell-opaque>' +
         '</template></cell-top>\n',

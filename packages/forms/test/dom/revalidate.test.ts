@@ -9,7 +9,7 @@
  */
 
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ValidateOn, control, form, required } from '../../src/index.js';
+import { ValidateOn, control, form, required } from '../../src/contract/index.js';
 import type { Control, Validator } from '../../src/index.js';
 import {
   bindByType,

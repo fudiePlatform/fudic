@@ -42,10 +42,8 @@ describe('effective level — intrinsic', () => {
       '/app/x-sig.fud': component(
         'x-sig',
         `@code {
-  @client {
-    import { signal } from '@fudic/core';
-    const n = signal(0);
-  }
+  import { signal } from '@fudic/core';
+  const n = signal(0);
 }`,
         '<p>@(n())</p>',
       ),
@@ -103,22 +101,35 @@ describe('effective level — intrinsic', () => {
     expect(isIntrinsicallyHydratable(graph.components.get('x-deep')!)).toBe(true);
   });
 
-  it('a @code { @client } with a body hydrates, even one that moves nothing', () => {
+  it('a @code with a statement that runs on load hydrates, even one that moves nothing', () => {
     // The overapproximation, written down as a test: the compiler cannot know that a
     // `setInterval` in there moves something, so the burden of proof is on NOT hydrating.
+    // Without regions it is a top-level statement that does it, not a declaration (SDD-60 §4.8).
     const graph = graphOf({
       '/app/home.fud': page(['x-inert'], '<x-inert></x-inert>'),
       '/app/x-inert.fud': component(
         'x-inert',
         `@code {
-  @client {
-    const x = 5;
-  }
+  const x = 5;
+  setInterval(() => x, 1000);
 }`,
         '<p>nada</p>',
       ),
     });
     expect(isIntrinsicallyHydratable(graph.components.get('x-inert')!)).toBe(true);
+  });
+
+  it('a component handing a function of its @code to a child by name hydrates', () => {
+    // It crosses as a cell, and only the browser fills it (SDD-60 §4.8). Not by any other
+    // shape: `.onSave=@(guarda)` and a constant prop hand over no cell to fill.
+    const owner = (value: string): string =>
+      `<link rel="component" href="./app-btn.fud">\n${component('x-par', '@code {\n  function guarda() {}\n}', `<app-btn .onSave=${value}></app-btn>`)}`;
+    const btn = component('app-btn', '@code {\n  const { onSave } = props<{ onSave: () => void }>();\n}', '<p>b</p>');
+    const at = (value: string) =>
+      graphOf({ '/app/home.fud': page(['x-par'], '<x-par></x-par>'), '/app/x-par.fud': owner(value), '/app/app-btn.fud': btn });
+    expect(isIntrinsicallyHydratable(at('@guarda').components.get('x-par')!)).toBe(true);
+    expect(isIntrinsicallyHydratable(at('@(() => guarda())').components.get('x-par')!)).toBe(false);
+    expect(isIntrinsicallyHydratable(at('"x"').components.get('x-par')!)).toBe(false);
   });
 
   it('a degraded component with no <template> is read for its @code and nothing else', () => {
@@ -133,7 +144,7 @@ describe('effective level — intrinsic', () => {
     expect([...hydratableTags(graph)]).toEqual([]);
   });
 
-  it('app-badge as it stands — props and class:, no @client — does NOT hydrate', () => {
+  it('app-badge as it stands — props and class:, no browser code — does NOT hydrate', () => {
     const graph = resolveComponents(join(fixturesDir, 'home.fud'), fixtureIo);
     expect(isIntrinsicallyHydratable(graph.components.get('app-badge')!)).toBe(false);
     expect(isIntrinsicallyHydratable(graph.components.get('app-list')!)).toBe(false);
@@ -157,10 +168,8 @@ describe('effective level — induced', () => {
         component(
           'x-parent',
           `@code {
-  @client {
-    import { signal } from '@fudic/core';
-    const tone = signal('success');
-  }
+  import { signal } from '@fudic/core';
+  const tone = signal('success');
 }`,
           '<x-badge .tone="@tone"></x-badge>',
         ),
@@ -184,10 +193,8 @@ describe('effective level — induced', () => {
         component(
           'x-parent',
           `@code {
-  @client {
-    import { signal } from '@fudic/core';
-    const tone = signal('success');
-  }
+  import { signal } from '@fudic/core';
+  const tone = signal('success');
 }`,
           // `class` is HTML's own vocabulary and belongs to the host: the rule reads
           // `.prop` bindings and skips everything else, so a plain attribute induces
@@ -218,10 +225,8 @@ describe('effective level — induced', () => {
         component(
           'x-parent',
           `@code {
-  @client {
-    import { signal } from '@fudic/core';
-    const rows = signal(['a']);
-  }
+  import { signal } from '@fudic/core';
+  const rows = signal(['a']);
 }`,
           '<ul>@foreach (const row of rows()) key (row) {<li><x-badge .tone="success"></x-badge></li>}</ul>',
         ),
@@ -252,10 +257,8 @@ describe('effective level — induced', () => {
         component(
           'x-parent',
           `@code {
-  @client {
-    import { signal } from '@fudic/core';
-    const tone = signal('success');
-  }
+  import { signal } from '@fudic/core';
+  const tone = signal('success');
 }`,
           `<x-badge .tone="@(tone() + '!')"></x-badge>`,
         ),
@@ -281,10 +284,8 @@ describe('effective level — induced', () => {
         component(
           'x-parent',
           `@code {
-  @client {
-    import { signal } from '@fudic/core';
-    const tone = signal('success');
-  }
+  import { signal } from '@fudic/core';
+  const tone = signal('success');
 }`,
           `<x-badge .tone="@('a' + 'b')"></x-badge>`,
         ),
@@ -309,10 +310,8 @@ describe('effective level — induced', () => {
         component(
           'x-top',
           `@code {
-  @client {
-    import { signal } from '@fudic/core';
-    const n = signal(0);
-  }
+  import { signal } from '@fudic/core';
+  const n = signal(0);
 }`,
           '<x-mid .value="@n"></x-mid>',
         ),

@@ -25,12 +25,10 @@ import { fudic } from '../src/index.js';
 const pkgDir = (name: string): string =>
   fileURLToPath(new URL(`../../${name}`, import.meta.url));
 
-/** A component that hydrates: a `@client` half and a hookup, so it claims an id. */
+/** A component that hydrates: client code and a hookup, so it claims an id. */
 const COUNTER = `@code {
-  @client {
-    let n = 0;
-    function mas(): void { n += 1; }
-  }
+  let n = 0;
+  function mas(): void { n += 1; }
 }
 
 <app-counter>

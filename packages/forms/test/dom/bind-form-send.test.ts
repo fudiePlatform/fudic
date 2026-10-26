@@ -8,7 +8,8 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_CATCHES, control, form, required } from '../../src/index.js';
+import { DEFAULT_CATCHES } from '../../src/index.js';
+import { control, form, required } from '../../src/contract/index.js';
 import { bindForm, bindText } from '../../src/dom/index.js';
 import type { AnyForm } from '../../src/types.js';
 import { mount } from './_dom.js';

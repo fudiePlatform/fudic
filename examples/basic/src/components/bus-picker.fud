@@ -3,16 +3,14 @@
 @code {
   type Option = { label: string; picked: boolean };
 
-  const { options = [] } = props<{ options?: Option[] }>();
+  const { options = [] } = props<{ options?: readonly Option[] }>();
 
-  @client {
-    import { emit } from "@fudic/dom";
+  import { emit } from "@fudic/dom";
 
-    // The emitting end of the bus. The name is a string literal, which is the only form
-    // v1 resolves — and it is what puts this tag on the emitting side of `fud-bus`.
-    function pick(label: string) {
-      emit("picked", label);
-    }
+  // The emitting end of the bus. The name is a string literal, which is the only form
+  // v1 resolves — and it is what puts this tag on the emitting side of `fud-bus`.
+  function pick(label: string) {
+    emit("picked", label);
   }
 }
 

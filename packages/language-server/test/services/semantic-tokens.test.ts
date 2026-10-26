@@ -15,13 +15,7 @@ import { component, LAYOUT, memoryFs, route } from '../_support.js';
 const RICH = `@code {
   const { tone = 'neutral' } = props<{ tone?: string }>();
 
-  @server {
-    export const secret = 1;
-  }
-
-  @client {
-    const onClick = () => {};
-  }
+  const onClick = () => {};
 }
 
 <link rel="component" href="./app-badge.fud">
@@ -84,10 +78,16 @@ describe('semanticTokens', () => {
   const tokens = tokensOf('/p/components/app-x.fud', RICH);
   const of = (type: string) => tokens.filter(([kind]) => kind === type).map(([, text]) => text);
 
-  it('marks @code and its two regions as directives', () => {
+  it('marks @code as a directive', () => {
     expect(of('fudDirective')).toContain('code');
-    expect(of('fudDirective')).toContain('server');
-    expect(of('fudDirective')).toContain('client');
+  });
+
+  it('marks no retired region: it is FUD1110, no directive (SDD-60)', () => {
+    const retired = '@code {\n  @server {\n    const a = 1;\n  }\n  @client { }\n}\n<app-x><template shadowrootmode="open"></template></app-x>\n';
+    const directives = tokensOf('/p/components/app-x.fud', retired)
+      .filter(([type]) => type === 'fudDirective')
+      .map(([, text]) => text);
+    expect(directives).toEqual(['code']);
   });
 
   it('marks every control keyword, and only the keyword', () => {

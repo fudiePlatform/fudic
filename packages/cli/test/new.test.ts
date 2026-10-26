@@ -52,6 +52,8 @@ describe('fudic new', () => {
       'demo/src/layouts/_layout.test.ts',
       'demo/src/routes/index.fud',
       'demo/src/routes/index.test.ts',
+      'demo/src/server/.gitkeep',
+      'demo/src/browser/.gitkeep',
     ]);
     expect(plan.changes.every((change) => change.kind === 'create')).toBe(true);
 
@@ -114,6 +116,19 @@ describe('fudic new', () => {
     // The project pins its own TypeScript: the server typechecks with THAT one (SDD-24 §2).
     const pkg = JSON.parse(file('demo/package.json')) as { devDependencies: Record<string, string> };
     expect(pkg.devDependencies['typescript']).toBe(TYPESCRIPT_VERSION);
+  });
+
+  it('writes the two SDD-60 folders empty, names them in fudic.json and types fudic:<id> (§3.15)', async () => {
+    const plan = await planNew('demo', options(), new MemoryFs({}, CWD));
+    const file = (path: string): string =>
+      plan.changes.find((change) => change.path === path)!.contents;
+
+    expect(file('demo/src/server/.gitkeep')).toBe('');
+    expect(file('demo/src/browser/.gitkeep')).toBe('');
+    expect(JSON.parse(file('demo/fudic.json'))).toMatchObject({ server: 'src/server', browser: 'src/browser' });
+    // `**` never walks into `.fudic`: the generated `.d.ts` are named, or a handler cannot
+    // import `fudic:<id>`.
+    expect((JSON.parse(file('demo/tsconfig.json')) as { include: string[] }).include).toContain('.fudic/api/**/*.d.ts');
   });
 
   it('leaves the generated config empty and shows src/ in the README (§6.3, §6.4)', async () => {
@@ -235,13 +250,15 @@ describe('fudic new writes fudic.json', () => {
       id: 'tienda',
       kind: 'app',
       prefix: 'app',
+      server: 'src/server',
+      browser: 'src/browser',
     });
   });
 
   it('omits the prefix entirely when none was given — the field is optional', async () => {
     const contents = await written();
 
-    expect(JSON.parse(contents)).toEqual({ id: 'tienda', kind: 'app' });
+    expect(JSON.parse(contents)).toEqual({ id: 'tienda', kind: 'app', server: 'src/server', browser: 'src/browser' });
     expect(contents).not.toContain('prefix');
   });
 

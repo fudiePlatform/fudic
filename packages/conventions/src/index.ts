@@ -30,11 +30,28 @@ export const LAYOUTS_DIR = 'src/layouts';
  */
 export const LOCALES_DIR = 'src/locales';
 /**
- * The global level of every server function's chain (SDD-56 §3.3): its default export is a
- * `chain()`. Optional; without it the global level is empty. Both halves import it: the plugin
- * on the server, the compiler's stubs in the browser.
+ * The global level of every server function's chain (SDD-60 §3.5): its `chain` is the global
+ * level. Optional; without it the global level is empty.
  */
-export const HTTP_FILE = 'src/http.ts';
+export const HTTP_FILE = 'src/http.fudapi';
+/**
+ * The two folders of implementations (SDD-60 §1.1, point 4): `src/server` runs only on the
+ * server; `src/browser` runs in the browser, and the server loads it too. A project may move
+ * them in its `fudic.json` (`server`, `browser`).
+ */
+export const SERVER_DIR = 'src/server';
+export const BROWSER_DIR = 'src/browser';
+/**
+ * Where a library publishes its `.fudapi`, at its root (SDD-60 §3.10). An app reads it from each
+ * of its direct dependencies; nothing is declared anywhere else.
+ */
+export const API_DIR = 'fudapi';
+
+/**
+ * Where the types generated from each `.fudapi` live in a project, `<id>.d.ts` each (SDD-60
+ * §3.11): what the editor's TypeScript and fudic's typecheck read. Generated, never edited.
+ */
+export const API_TYPES_DIR = '.fudic/api';
 
 /**
  * Where the published runtime lives on the origin, OUTSIDE every app's `base`

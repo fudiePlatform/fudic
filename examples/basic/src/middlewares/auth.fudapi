@@ -1,0 +1,11 @@
+# Who is calling. The client half puts the token on the request; the server half checks it
+# and leaves the user in ctx for whoever comes after.
+middleware auth
+  client
+  server
+  adds
+    user  User
+
+# Who a token is.
+type User
+  name  str

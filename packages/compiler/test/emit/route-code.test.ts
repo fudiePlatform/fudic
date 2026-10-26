@@ -2,7 +2,7 @@
  * SDD-39 §6.1–§6.2 — the `@code` of a route reaches BOTH sides.
  *
  * The first test is the `count is not defined` of §1.1, inverted: a route that declares its
- * reactive inside `@client` and reads it from the markup has to PRERENDER, painting the
+ * reactive in its browser code and reads it from the markup has to PRERENDER, painting the
  * initial value. What makes that possible is the inert stub SDD-31 §4.6 already gives a
  * component, written now for the entry of a route.
  */
@@ -10,6 +10,7 @@
 import { describe, expect, it } from 'vitest';
 import { resolveDocument, emitLayoutModule, emitRouteModule, emitPageModule } from '../../src/emit/index.js';
 import { resolveComponents } from '../../src/emit/resolve.js';
+import type { LinkedApi, ResolveIo } from '../../src/types/io.js';
 import { memoryIo, minimalSsr } from './_support.js';
 
 type PageFn = (data: unknown, io: unknown) => Iterable<string>;
@@ -39,15 +40,13 @@ function renderRoute(
 }
 
 describe('the `@code` of a route (§6.1)', () => {
-  it('prerenders a reactive declared inside `@client`, painting its initial value', () => {
+  it('prerenders a reactive declared in the `@code`, painting its initial value', () => {
     const html = renderRoute(
       [
         '<link rel="layout" href="./l.fud">',
         '@code {',
-        '  @client {',
-        '    const count = signal(1);',
-        '    function mas() { count.set(count() + 1); }',
-        '  }',
+        '  const count = signal(1);',
+        '  function mas() { count.set(count() + 1); }',
         '}',
         '<output>@count()</output>',
       ].join('\n'),
@@ -55,14 +54,14 @@ describe('the `@code` of a route (§6.1)', () => {
     expect(html).toContain('<output>1</output>');
   });
 
-  it('paints a `computed` of `@client` too — it renders inert as the function itself', () => {
+  it('paints a `computed` too — it renders inert as the function itself', () => {
     const html = renderRoute(
       [
         '<link rel="layout" href="./l.fud">',
-        '@code { @client {',
+        '@code {',
         '  const count = signal(2);',
         '  const doble = computed(() => count() * 2);',
-        '} }',
+        '}',
         '<p>@doble()</p>',
       ].join('\n'),
     );
@@ -73,7 +72,7 @@ describe('the `@code` of a route (§6.1)', () => {
     const html = renderRoute(
       [
         '<link rel="layout" href="./l.fud">',
-        '@code { @client { const count = signal(4); } }',
+        '@code { const count = signal(4); }',
         '<output>@count()</output>',
       ].join('\n'),
       {},
@@ -83,7 +82,7 @@ describe('the `@code` of a route (§6.1)', () => {
     expect(html).toContain('<output>4</output>');
   });
 
-  it('reads the neutral zone on the server, in the order it was written', () => {
+  it('reads the server cut on the server, in the order it was written', () => {
     const html = renderRoute(
       [
         '<link rel="layout" href="./l.fud">',
@@ -99,23 +98,30 @@ describe('the `@code` of a route (§6.1)', () => {
 });
 
 describe('what the render module of a route carries (§6.2)', () => {
+  // `load` lives in the linked `.fudapi` (SDD-60 §3.14); `secreto` is browser code the markup
+  // never reads, so it is outside the server cut (§4.8).
   const source = [
     '<link rel="layout" href="./l.fud">',
+    '<link rel="server" href="./r.fudapi">',
     '@code {',
     '  import { titulo } from "./meta.js";',
     '  const saludo = "hola";',
-    '  @server { export async function load() { return { secreto: 1 }; } }',
-    '  @client { const count = signal(1); }',
+    '  const secreto = 1;',
+    '  const count = signal(1);',
+    '  function mas() { count.set(count() + secreto); }',
     '}',
-    '<p>@saludo</p>',
+    '<p>@saludo @titulo @count()</p>',
   ].join('\n');
 
-  const moduleOf = (): string => {
-    const io = memoryIo({ '/r.fud': source, '/l.fud': SHELL });
-    return emitRouteModule(resolveDocument('/r.fud', io).value);
-  };
+  const api: LinkedApi = { id: 'routes/r', load: true, route: '/r.fud', paths: false, layout: false, functions: [], forms: [] };
+  const ioOf = (): ResolveIo => ({
+    ...memoryIo({ '/r.fud': source, '/l.fud': SHELL }),
+    api: (path) => (path === '/r.fudapi' ? api : undefined),
+  });
 
-  it('writes the neutral zone whole — its import hoisted, its body inside `page`', () => {
+  const moduleOf = (): string => emitRouteModule(resolveDocument('/r.fud', ioOf()).value);
+
+  it('writes the server cut whole — its import hoisted, its body inside `page`', () => {
     const code = moduleOf();
     expect(code).toContain('import { titulo } from "./meta.js";');
     expect(code).toContain('const saludo = "hola";');
@@ -124,13 +130,13 @@ describe('what the render module of a route carries (§6.2)', () => {
     expect(code.indexOf('const saludo')).toBeGreaterThan(code.indexOf('export function* page'));
   });
 
-  it('writes `@client` as an inert reactive and never as its body', () => {
+  it('writes a reactive as an inert one and never the browser code around it', () => {
     const code = moduleOf();
     expect(code).toContain('const count = () => (1); // inert signal');
     expect(code).not.toContain('count.set');
   });
 
-  it('does not carry the `@server` region in any form', () => {
+  it('carries neither the linked `load` nor what the markup does not read', () => {
     const code = moduleOf();
     expect(code).not.toContain('load');
     expect(code).not.toContain('secreto');
@@ -157,8 +163,7 @@ describe('what the render module of a route carries (§6.2)', () => {
   });
 
   it('reads the `@code` of one document once, however many emitters ask', () => {
-    const io = memoryIo({ '/r.fud': source, '/l.fud': SHELL });
-    const graph = resolveDocument('/r.fud', io).value;
+    const graph = resolveDocument('/r.fud', ioOf()).value;
     // Twice over the SAME graph: the second call comes out of the memo, which is the golden
     // rule — one Oxc invocation per file, whoever is asking.
     expect(emitRouteModule(graph)).toBe(emitRouteModule(graph));
@@ -166,11 +171,11 @@ describe('what the render module of a route carries (§6.2)', () => {
 });
 
 describe('a standalone page splits its `@code` the same way', () => {
-  it('paints a reactive its `@client` declares', () => {
+  it('paints a reactive its `@code` declares', () => {
     const io = memoryIo({
       '/p.fud': [
         '<!DOCTYPE html><html><head>',
-        '@code { @client { const n = signal(7); } }',
+        '@code { const n = signal(7); }',
         '</head><body><p>@n()</p></body></html>',
       ].join('\n'),
     });

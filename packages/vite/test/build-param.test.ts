@@ -1,7 +1,7 @@
 /**
- * SDD-19 end-to-end for the canonical param route `/customer/[id]` with `@server
- * load`: a real `vite build` emits a `/customer/:id` incremental entry and a chunk
- * that extracts params from the baked pattern and bundles the `?server` `load`.
+ * SDD-19 end-to-end for the canonical param route `/customer/[id]` with a `load`: a real
+ * `vite build` emits a `/customer/:id` incremental entry and a chunk that extracts params
+ * from the baked pattern. The `load` is its `.fudapi`'s, implemented in `src/server`.
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
@@ -10,23 +10,29 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fudic } from '../src/index.js';
-import { runtimeAlias } from './helpers/alias.js';
+import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
 import { routeTable } from './helpers/manifest.js';
 
 
 const PAGE = `<!DOCTYPE html>
 <html>
 <head>
-@code {
-@server {
-export function load(ctx) { return { id: ctx.params.id }; }
-}
-}
+<link rel="server" href="./[id].fudapi">
 </head>
 <body>
 <h1>Customer</h1>
 </body>
 </html>
+`;
+
+/** No mode: the inference sends a param route with `load` and no `paths` to `sw`. */
+const PAGE_API = `load
+  id  str
+`;
+
+const PAGE_SERVER = `import { load } from 'fudic:routes/customer/[id]';
+
+load.handle((ctx) => ({ id: ctx.params.id }));
 `;
 
 interface OutFile {
@@ -41,20 +47,24 @@ let output: OutFile[];
 beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-param-'));
   mkdirSync(join(root, 'src', 'routes', 'customer'), { recursive: true });
+  writeHttpTypecheckConfig(root);
   writeFileSync(join(root, 'src', 'routes', 'customer', '[id].fud'), PAGE);
+  writeFileSync(join(root, 'src', 'routes', 'customer', '[id].fudapi'), PAGE_API);
+  mkdirSync(join(root, 'src', 'server'), { recursive: true });
+  writeFileSync(join(root, 'src', 'server', 'customer.ts'), PAGE_SERVER);
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
   writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
   const result = (await build({
     root,
     logLevel: 'silent',
-    resolve: { alias: { ...runtimeAlias } },
+    resolve: { alias: httpAlias },
     plugins: [fudic()],
     build: { write: false, minify: false },
   })) as unknown as { output: OutFile[] };
   output = result.output;
 }, 120000);
 
-describe('vite build — param route with @server load', () => {
+describe('vite build — param route with a load', () => {
   it('emits a sw /customer/:id entry with its chunk and generated data endpoint', () => {
     const asset = output.find((o) => o.type === 'asset' && o.fileName === 'fudic-routes.json');
     const manifest = JSON.parse(asset!.source as string) as {
@@ -67,7 +77,7 @@ describe('vite build — param route with @server load', () => {
     expect(routeTable(output).urls.dataUrl('/customer/:id')).toBe('/_fudic/data/customer/:id');
   });
 
-  it('BUG-09 keeps the @server load out of EVERY published file', () => {
+  it('BUG-09 keeps the load handler out of EVERY published file', () => {
     // This used to read «the edge chunk has it, the linked one does not». The edge chunk
     // was a chunk of the CLIENT build, so «has it» meant «publishes it». The edge wrapper
     // is built apart now and written outside `outDir`, and the answer is the same for the

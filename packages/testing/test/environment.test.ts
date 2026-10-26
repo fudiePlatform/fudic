@@ -9,3 +9,11 @@ test('a .fud imports from a test, which runs in the fudic environment', () => {
   expect(import.meta.env.SSR).toBe(true);
   expect(document.location.href).toBe('http://localhost/');
 });
+
+// SDD-60 §4.4: this package declares no `.fudapi`, so there is no server root and no function to
+// call — a function URL gets the 404 the dispatcher of an app would give.
+test('a function URL in a project without a .fudapi is a 404', async () => {
+  const response = await fetch('/_fudic/fn/routes/x/save', { method: 'PUT' });
+  expect(response.status).toBe(404);
+  expect(await response.json()).toEqual({ status: 404, title: 'Not Found', detail: 'no such server function' });
+});

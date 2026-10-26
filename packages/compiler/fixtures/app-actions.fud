@@ -3,36 +3,34 @@
 
   const { rows = [] } = props<{ rows?: Row[] }>();
 
-  @client {
-    import { emit } from '@fudic/dom';
+  import { emit } from '@fudic/dom';
 
-    // The four shapes of an event binding, and all four handlers are declared FLAT
-    // (decision 96): nobody curries, and the order of the arguments is the one written
-    // in the template rather than a convention to remember.
-    function del() {
-      emit('cleared');
-    }
+  // The four shapes of an event binding, and all four handlers are declared FLAT
+  // (decision 96): nobody curries, and the order of the arguments is the one written
+  // in the template rather than a convention to remember.
+  function del() {
+    emit('cleared');
+  }
 
-    function delEvent(ev) {
-      ev.preventDefault();
-    }
+  function delEvent(ev) {
+    ev.preventDefault();
+  }
 
-    function delRow(id) {
-      emit('removed', id);
-    }
+  function delRow(id) {
+    emit('removed', id);
+  }
 
-    function delRowEvent(ev, id) {
-      ev.preventDefault();
-      emit('removed', id);
-    }
+  function delRowEvent(ev, id) {
+    ev.preventDefault();
+    emit('removed', id);
+  }
 
-    function delRowReversed(id, ev) {
-      delRowEvent(ev, id);
-    }
+  function delRowReversed(id, ev) {
+    delRowEvent(ev, id);
+  }
 
-    function onCleared(ev) {
-      this.dataset.last = ev.type;
-    }
+  function onCleared(ev) {
+    this.dataset.last = ev.type;
   }
 }
 

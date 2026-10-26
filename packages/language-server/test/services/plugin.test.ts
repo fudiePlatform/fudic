@@ -189,40 +189,33 @@ describe('completion', () => {
   });
 
   describe('Ctrl+Space inside `@code` offers a declaration where one starts (BUG-44 §3.3, criterion 7)', () => {
-    const server = (body: string): string =>
-      `<link rel="layout" href="../layouts/_layout.fud">\n@code {\n  @server {\n${body}\n  }\n}\n<p>x</p>\n`;
+    const component = (body: string): string =>
+      `@code {\n${body}\n}\n<app-x>\n  <template shadowrootmode="open"><p>x</p></template>\n</app-x>\n`;
     const labelsAt = async (source: string): Promise<string[] | undefined> => {
       const { service, document, position } = setup(source);
       return (await completionsOf(service, document, position))?.items.map((item) => item.label);
     };
 
-    it('with nothing typed at the start of a line of `@server`: its three exports', async () => {
-      expect(await labelsAt(server('    |'))).toEqual(['load', 'paths', 'layout']);
+    it('with nothing typed at the start of a line of a component: its props', async () => {
+      expect(await labelsAt(component('  |'))).toEqual(['props']);
     });
 
-    it('with the start of a name typed: the export it begins', async () => {
-      expect(await labelsAt(server('    lay|'))).toEqual(
-        expect.arrayContaining(['layout']),
-      );
+    it('with the start of a name typed: the declaration it begins', async () => {
+      expect(await labelsAt(component('  pro|'))).toEqual(expect.arrayContaining(['props']));
     });
 
-    it('in the neutral zone: no export of `@server`, and a `@` opens the regions', async () => {
-      const neutral = (cursor: string): string =>
+    it('in a route: nothing, and a `@` opens no region (SDD-60 §4.8)', async () => {
+      const route = (cursor: string): string =>
         `<link rel="layout" href="../layouts/_layout.fud">\n@code {\n  ${cursor}\n}\n<p>x</p>\n`;
-      expect(await labelsAt(neutral('|'))).toBeUndefined();
-      expect(await labelsAt(neutral('@|'))).toEqual(['@client', '@server']);
-    });
-
-    it('a `@` inside `@server` opens no region: regions do not nest (`FUD0193`)', async () => {
-      expect(await labelsAt(server('    @|'))).toBeUndefined();
+      expect(await labelsAt(route('|'))).toBeUndefined();
+      expect(await labelsAt(route('@|'))).toBeUndefined();
     });
 
     it('nothing after `ctx.`, inside a `return { }`, or halfway along a line', async () => {
-      const resolver = (inside: string): string =>
-        server(`    export function layout(ctx, data) {\n      ${inside}\n    }`);
-      expect(await labelsAt(resolver('ctx.|'))).toBeUndefined();
-      expect(await labelsAt(resolver('return { | };'))).toBeUndefined();
-      expect(await labelsAt(server('    const a = 1; |'))).toBeUndefined();
+      const fn = (inside: string): string => component(`  function f(ctx) {\n    ${inside}\n  }`);
+      expect(await labelsAt(fn('ctx.|'))).toBeUndefined();
+      expect(await labelsAt(fn('return { | };'))).toBeUndefined();
+      expect(await labelsAt(component('  const a = 1; |'))).toBeUndefined();
     });
   });
 
@@ -407,7 +400,7 @@ describe('the tag plugin (BUG-15 §4.6)', () => {
   it('offers the names in scope inside a plain attribute’s value, each writing its `@`', async () => {
     // Any attribute takes a binding — `role="@data.title"` — and nothing said so: the names
     // appeared only once the `@` was typed, so the author had to know the answer to ask.
-    const source = `<link rel="layout" href="../layouts/_layout.fud">\n@code {\n  @client {\n    const titulo = 1;\n  }\n}\n<article>\n  <div role="|"></div>\n</article>\n`;
+    const source = `<link rel="layout" href="../layouts/_layout.fud">\n@code {\n  const titulo = 1;\n}\n<article>\n  <div role="|"></div>\n</article>\n`;
     const { tagService, document, position } = setup(source);
     const list = await completionsOf(tagService, document, position);
 
@@ -463,12 +456,12 @@ describe('the tag plugin (BUG-15 §4.6)', () => {
     }
   });
 
-  it('offers the three `rel` of fudic, replacing what is written, and nothing of the template', async () => {
+  it('offers the `rel` of fudic, replacing what is written, and nothing of the template', async () => {
     const source = `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="comp|">\n<article>hi</article>\n`;
     const { tagService, document, position, cached } = setup(source);
     const list = await completionsOf(tagService, document, position);
 
-    expect(list?.items.map((item) => item.label)).toEqual(['component', 'snippet']);
+    expect(list?.items.map((item) => item.label)).toEqual(['component', 'snippet', 'server']);
     const value = cached.source.indexOf('comp">');
     expect(list?.items[0]?.textEdit).toEqual({
       range: rangeOf(document, { start: value, end: value + 'comp'.length }),
@@ -1612,5 +1605,32 @@ describe('cancellation', () => {
     expect(await service.provideDiagnostics?.(document, CANCELLED)).toBeUndefined();
     expect(await service.provideDefinition?.(document, position, CANCELLED)).toBeUndefined();
     expect([stats.completed, stats.cancelled]).toEqual([0, 3]);
+  });
+});
+
+describe('the href of a <link rel="server"> (SDD-60 §4.7)', () => {
+  const PATH = '/p/src/routes/r.fud';
+  const marked = `<link rel="server" href="|">\n${component('p-r')}`;
+
+  /** The labels offered at the `|`, with the contracts `files` lists, or with no host at all. */
+  async function labels(files?: readonly string[]): Promise<readonly unknown[]> {
+    const text = marked.replace('|', '');
+    const index = new WorkspaceIndex(memoryFs({ [PATH]: text }));
+    index.scan('/p');
+    const cached = new DocumentCache(index).get(PATH, 1, text);
+    const document = TextDocument.create(URI.file(PATH).toString(), 'fud', 1, text);
+    const context = fakeServiceContext({ [URI.file(PATH).toString()]: cached }, () => undefined);
+    const apis = files === undefined ? {} : { apis: { appFiles: () => files, read: () => undefined } };
+    const service = createFudicService({ index, stats: new RequestStats(), ...apis }).create(context);
+    const list = await completionsOf(service, document, document.positionAt(marked.indexOf('|')));
+    return list?.items.map((item) => [item.label, item.detail]) ?? [];
+  }
+
+  it('offers the .fudapi of the app, and never a .fud', async () => {
+    expect(await labels(['/p/src/routes/r.fudapi'])).toEqual([['./r.fudapi', 'server contract']]);
+  });
+
+  it('offers nothing on a host that cannot list them', async () => {
+    expect(await labels()).toEqual([]);
   });
 });

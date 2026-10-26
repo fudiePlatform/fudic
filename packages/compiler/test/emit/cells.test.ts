@@ -21,13 +21,11 @@ const PARENT = `<link rel="component" href="./cell-child.fud">
 <link rel="component" href="./cell-form.fud">
 
 @code {
+  import { signal } from "@fudic/core";
   const { start = 0 } = props<{ start?: number }>();
-  @client {
-    import { signal } from "@fudic/core";
-    const count = signal(start);
-    function save(what) { count.set(what); }
-    function inc() { count.set(count() + 1); }
-  }
+  const count = signal(start);
+  function save(what) { count.set(what); }
+  function inc() { count.set(count() + 1); }
 }
 
 <cell-parent>
@@ -43,11 +41,9 @@ const PARENT = `<link rel="component" href="./cell-child.fud">
 const CHILD = `<link rel="component" href="./cell-kid.fud">
 
 @code {
+  import { computed } from "@fudic/core";
   const { value } = props<{ value: Signal<number> }>();
-  @client {
-    import { computed } from "@fudic/core";
-    const doble = computed(() => value() * 2);
-  }
+  const doble = computed(() => value() * 2);
 }
 
 <cell-child>
@@ -73,10 +69,8 @@ const FORM = `<link rel="component" href="./cell-relay.fud">
 
 @code {
   const { onSave } = props<{ onSave: (what: number) => void }>();
-  @client {
-    const label = "go";
-    function submit() { onSave(1); }
-  }
+  const label = "go";
+  function submit() { onSave(1); }
 }
 
 <cell-form>
@@ -180,7 +174,7 @@ describe('Prop.channel — what the child asks to be handed (§6.2)', () => {
 
 describe('cellSlots — the casillas a component publishes (§6.3)', () => {
   it('puts them BEHIND the props, in declaration order', () => {
-    // `start` is prop 0; `count` and `save` follow in the order `@client` declares them.
+    // `start` is prop 0; `count` and `save` follow in the order the `@code` declares them.
     // `inc` is declared between them and does not cross, so it takes no slot.
     expect(cellSlots(comp('cell-parent'), graph)).toEqual([
       { name: 'count', slot: 1, kind: 'signal' },
@@ -212,10 +206,10 @@ describe('two cells in one component — the splices are applied back to front',
         '<html><head></head><body><two-owner></two-owner></body></html>\n',
       '/two-owner.fud':
         '<link rel="component" href="./two-sink.fud">\n\n' +
-        '@code {\n  @client {\n' +
-        '    import { signal } from "@fudic/core";\n' +
-        '    const a = signal(1), b = signal(2);\n' +
-        '  }\n}\n\n' +
+        '@code {\n' +
+        '  import { signal } from "@fudic/core";\n' +
+        '  const a = signal(1), b = signal(2);\n' +
+        '}\n\n' +
         '<two-owner><template shadowrootmode="open">\n' +
         '  <two-sink .a=@a .b=@b></two-sink>\n' +
         '</template></two-owner>\n',
@@ -246,11 +240,11 @@ describe('the payload of the acceptance page (§6.5, §6.6)', () => {
         '  <body><cc-owner></cc-owner></body>\n</html>\n',
       '/cc-owner.fud':
         '<link rel="component" href="./cc-view.fud">\n\n' +
-        '@code {\n  const { start = 0 } = props<{ start?: number }>();\n  @client {\n' +
-        '    import { signal } from "@fudic/core";\n' +
-        '    const count = signal(start);\n' +
-        '    function inc() { count.set(count() + 1); }\n' +
-        '  }\n}\n\n' +
+        '@code {\n  const { start = 0 } = props<{ start?: number }>();\n' +
+        '  import { signal } from "@fudic/core";\n' +
+        '  const count = signal(start);\n' +
+        '  function inc() { count.set(count() + 1); }\n' +
+        '}\n\n' +
         '<cc-owner><template shadowrootmode="open">' +
         '<button @click=@inc>+1</button>' +
         '<cc-view .value=@count></cc-view>' +
@@ -295,8 +289,10 @@ describe('a callback with no cell — the emit still writes something coherent',
         '<html><head></head><body><neutral-owner></neutral-owner></body></html>\n',
       '/neutral-owner.fud':
         '<link rel="component" href="./neutral-sink.fud">\n\n' +
+        // The markup paints with `save` too, so it is in the server’s cut (SDD-60 §4.8).
         '@code {\n  function save(n: number) { void n; }\n}\n\n' +
         '<neutral-owner><template shadowrootmode="open">\n' +
+        '  <p>@(save.length)</p>\n' +
         '  <neutral-sink .onSave=@save></neutral-sink>\n' +
         '</template></neutral-owner>\n',
       '/neutral-sink.fud':
@@ -306,16 +302,37 @@ describe('a callback with no cell — the emit still writes something coherent',
     }),
   );
 
-  it('a function of the NEUTRAL zone gets no cell, and crosses as a reader', () => {
-    // `cellSlots` mints cells for `@client` names alone, so a callback declared in the neutral
-    // zone has none — which is also why `FUD0201` tells the author to move it. The emit does
-    // not stop for a diagnostic (the golden rule), so it still has to hand the child something
-    // its `onSave()` can read: the reader alone, with no `??` in front of a cell that does not
-    // exist.
+  it('a function of the server’s cut gets no cell, and crosses as a reader', () => {
+    // `cellSlots` mints cells for the browser’s names alone, so a callback the markup also
+    // paints with has none. The emit still has to hand the child something its `onSave()`
+    // can read: the reader alone, with no `??` in front of a cell that does not exist.
     const src = emitComponentClientModule(g, g.components.get('neutral-owner')!);
     expect(src).toContain('.u([, , (() => save)]);');
     expect(src).not.toContain('?.set(save);');
     expect(src).toContain('let [$dom, $shadow] = $props;');
+  });
+
+  it('handed by name alone the same function is the browser’s, and crosses as a cell (SDD-60 §4.8)', () => {
+    const plain = resolveComponents(
+      '/page.fud',
+      memoryIo({
+        '/page.fud':
+          '<link rel="component" href="./owner.fud">\n' +
+          '<html><head></head><body><plain-owner></plain-owner></body></html>\n',
+        '/owner.fud':
+          '<link rel="component" href="./sink.fud">\n\n' +
+          '@code {\n  function save(n: number) { void n; }\n}\n\n' +
+          '<plain-owner><template shadowrootmode="open">\n' +
+          '  <plain-sink .onSave=@save></plain-sink>\n' +
+          '</template></plain-owner>\n',
+        '/sink.fud':
+          '@code {\n  const { onSave } = props<{ onSave: (n: number) => void }>();\n}\n' +
+          '<plain-sink><template shadowrootmode="open">' +
+          '<button @click=@onSave(1)>go</button></template></plain-sink>\n',
+      }),
+    );
+    const src = emitComponentClientModule(plain, plain.components.get('plain-owner')!);
+    expect(src).toContain('?.set(save);');
   });
 });
 
@@ -386,7 +403,7 @@ describe('the child — a prop by reference is a reactive name more (§6.4)', ()
 describe('the child of a callback — a cell is READ at the moment it is called (§6.13)', () => {
   const src = chunk('cell-form');
 
-  it('a call inside `@client` reads the cell first', () => {
+  it('a call inside a function of the `@code` reads the cell first', () => {
     expect(src).toContain('function submit() { onSave()(1); }');
   });
 
@@ -421,7 +438,7 @@ describe('the server — the object in the render, and nothing on the host (§4.
     expect(src).toContain('{ "onSave": save }');
   });
 
-  it('stubs the callback: `@client` never runs here, and what SSR needs is its identity', () => {
+  it('stubs the callback: the browser’s code never runs here, and what SSR needs is its identity', () => {
     expect(src).toContain('const save = () => {}; // inert callback (SSR)');
   });
 });

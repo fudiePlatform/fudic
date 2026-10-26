@@ -1,42 +1,17 @@
 <link rel="component" href="./form-errores.fud">
+<link rel="server" href="./user-form.fudapi">
 
 @code {
-  // El mismo `.ts` en los dos extremos: el navegador valida con él antes de enviar y el
-  // servidor valida una copia nueva con él al recibir, con la regla que solo corre allí.
-  import { personForm } from "../forms/person.form";
+  import { signal } from "@fudic/core";
 
-  @server {
-    import { inject } from "@fudic/di";
-    import { conflict, put } from "@fudic/http";
-    import { auth } from "../middlewares/auth";
-    import { Users } from "../services/users";
+  const aviso = signal("");
 
-    // La función del componente: responde en /_fudic/fn/c/user-form/save, la use la página
-    // que la use. `ctx.user` existe porque la cadena lleva `auth`.
-    export const save = put()
-      .use(auth)
-      .form(personForm)
-      .handle((ctx) => {
-        const v = ctx.form.$value();
-        // Un 409: lo guarda el formulario (su `catches`) y lo pinta en el resumen.
-        if (v.name.trim().toLowerCase() === "admin") throw conflict("Ese nombre está reservado.");
-        console.info(`[user-form] ${ctx.user.name} da de alta a ${v.name}`);
-        return inject(Users).add({ ...v, age: v.age ?? 0 });
-      });
-  }
-
-  @client {
-    import { signal } from "@fudic/core";
-
-    const aviso = signal("");
-
-    // `fudic:result` llega con lo que devolvió `handle`. Un 400, 409 o 422 no llega aquí: el
-    // formulario se los queda (`catches` de person.form.ts) y ya están pintados en él.
-    function hecho(e: Event) {
-      const persona = (e as CustomEvent<{ id: number; name: string }>).detail;
-      aviso.set(`Guardado: ${persona.name} (id ${String(persona.id)}). Recargando la lista…`);
-      setTimeout(() => location.reload(), 1000);
-    }
+  // `fudic:result` llega con lo que devolvió el handler de `save`. Un 400, 409 o 422 no llega
+  // aquí: el formulario se los queda (`catches` de person.fudapi) y ya están pintados en él.
+  function hecho(e: Event) {
+    const persona = (e as CustomEvent<{ id: number; name: string }>).detail;
+    aviso.set(`Guardado: ${persona.name} (id ${String(persona.id)}). Recargando la lista…`);
+    setTimeout(() => location.reload(), 1000);
   }
 }
 

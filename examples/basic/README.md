@@ -34,7 +34,7 @@ src/                    # el fuente; la raíz es del tooling
     about.fud           # /about               estática   → dist/about/index.html
     logo.svg            #                      asset enlazado por Vite desde <link rel="icon">
     blog/
-      index.fud         # /blog                sw (tiene @server load + strategy())
+      index.fud         # /blog                sw (su .fudapi: load sw ttl 5m)
       [slug].fud        # /blog/:slug          enumerada con paths() + render local del resto
   components/           # componentes compartidos, FUERA de routes/
     site-nav.fud
@@ -53,7 +53,7 @@ vite.config.ts          # plugins: [fudic()] — y nada más
 |---|---|---|---|
 | `/` | estática | Sin params y sin `load`: el dato es build-known | Fichero `index.html` |
 | `/about` | estática | Igual | Fichero `about/index.html` |
-| `/blog` | `sw` | Tiene `@server load` y declara `strategy({mode:'sw', data:{ttl:'5m'}})` | Lo renderiza el Service Worker; el dato sale de `/_fudic/data/blog` |
+| `/blog` | `sw` | Su `.fudapi` declara `load sw ttl 5m cache-first` | Lo renderiza el Service Worker; el dato sale de `/_fudic/data/blog` |
 | `/blog/:slug` | `sw` enumerada | `paths()` enumera los slugs → un `.html` por artículo | El fichero prerenderizado cuando existe; un slug no enumerado lo renderiza el SW (`paramFallback: 'lazy'`) |
 
 Después de `vite build`, `dist/fudic-routes.json` es el manifest —build id, CSP y rutas—
@@ -97,6 +97,4 @@ por inspección del código no se veía.
 
 Hidratación. No se emite ningún `customElements.define` ni ningún runtime cliente: lo que
 ves está pintado por el navegador desde el HTML con Declarative Shadow DOM, con cero
-JavaScript de framework en la página. Los `@client` de un componente todavía no se
-compilan (SDD-15 rama cliente en pausa, SDD-17 pendiente), por eso los componentes de este
-ejemplo no los usan.
+JavaScript de framework en la página.

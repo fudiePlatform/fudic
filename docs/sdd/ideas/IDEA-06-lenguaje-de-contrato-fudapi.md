@@ -7,7 +7,8 @@
 > documento donde lo contradiga; lo demás sigue sin decidir.
 > **Especificada en [SDD-60](../SDD-60-fudapi.md)** (2026-10-21), que manda sobre este documento:
 > `.handle` sobre lo generado sustituye a `implement` (§10.4) y una función sin implementar es un
-> 404, no un 501 (§10.6).
+> 404, no un 501 (§10.6). **Implementada** (2026-10-23): `@fudic/api` y `examples/basic` sin
+> `@server` ni `@client`. Lo que se decidió al implementar está anotado en SDD-60, no aquí.
 > **Punto de partida:** `experiments/contract-ast/sims/01-usuarios/` (`routes/usuarios.server.ts`,
 > `components/user-form.server.ts`), `packages/http` (`FnBuilder`) y `packages/forms`
 > (`FormOptions`, `GroupOptions`, `ControlOptions`, validadores).

@@ -38,6 +38,7 @@ import { restGroups } from './rest.js';
 import { layoutCodeOf, requiredLayoutProps, unresolvedLayoutProps } from './layout-code.js';
 import { NO_SIGNALS, writeElementAttrs } from './attrs.js';
 import { holeSlot } from './compose.js';
+import { apiImports } from './api-links.js';
 import { planPageSheets, type PageSheets } from './page-sheets.js';
 import type { Diagnostic } from '../types/index.js';
 import {
@@ -278,10 +279,9 @@ function buildRouteModule(
   const route = graph.entry as RouteDocument;
   const source = graph.entrySource;
   const comps = [...graph.components.values()];
-  // The route's own `@code`, which until SDD-39 reached nowhere: its `@server` region is
-  // still the `?server` module and nothing else, but the neutral zone runs on BOTH sides and
-  // the names `@client` declares have to EXIST here, or a `@count()` in the markup is a
-  // `ReferenceError` that takes the whole prerender with it (§1.1).
+  // The route's own `@code`, which until SDD-39 reached nowhere: what the markup reads of it
+  // runs on BOTH sides, and the names it declares have to EXIST here, or a `@count()` in the
+  // markup is a `ReferenceError` that takes the whole prerender with it (§1.1).
   const code = codeOfDocument(source, route);
   // Every sheet of the page, pruned (SDD-49 §4.6): the route's graph is the one that reaches
   // the whole page, so the route decides — for its own head, for its layout's and for the
@@ -390,6 +390,7 @@ function buildRouteModule(
   // (decision 33.c). A route imports its form, its store or its data helper exactly as a
   // component does, and both ends of the file need the binding.
   writeEntryImports(w, code);
+  for (const line of apiImports(graph)) w.line(line); // what its `.fudapi` give the view (SDD-60 §3.14)
   w.line('');
   w.line(`const COMPONENTS = [${componentPairs(graph, styled).join(', ')}];`);
   if (projectStylesLine !== null) w.line(projectStylesLine);
@@ -410,14 +411,13 @@ function buildRouteModule(
   // only a caller that resolved the graph sees both files at once. The BUILD reports it; the
   // editor hears the same fact from TypeScript over the projection, and one fact has one voice.
   //
-  // No resolver at all is «the route resolves nothing», which is the very case the diagnostic
-  // is for; a resolver whose return this pass cannot read is «not provable», and that reports
-  // nothing. The extraction already tells the two apart.
-  const resolver = code.layoutResolver;
-  const readable = resolver === undefined ? [] : resolver.keys;
-  if (readable !== undefined) {
+  // A route with no `layout` resolves nothing, which is the very case the diagnostic is for. A
+  // `layout` of a linked `.fudapi` is implemented in `src/server`, which this pass never reads:
+  // TypeScript checks its return against the layout's props (SDD-60 §4.6). A link the host
+  // could not read may be that one, and says nothing either.
+  if (!graph.serverApis.some((a) => a.api === undefined || a.api.layout)) {
     routeDiagnostics.push(
-      ...unresolvedLayoutProps(requiredLayoutProps(graph.layouts), readable, route.layoutLink.openSpan),
+      ...unresolvedLayoutProps(requiredLayoutProps(graph.layouts), route.layoutLink.openSpan),
     );
   }
   const blocks = routeBlocksOf(graph, options.routeName, routeDiagnostics);

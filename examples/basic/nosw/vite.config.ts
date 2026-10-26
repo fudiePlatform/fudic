@@ -5,25 +5,19 @@ import { fudic } from '@fudic/vite';
 /**
  * The same app, built WITHOUT a Service Worker — the milestone of SDD-17 §4.7.1.
  *
- * No `sw.json` lives in this directory, and `sw.json` is looked up at the project root, so
- * this build emits no worker at all: no registration, no precache, no warm channel. What it
+ * This build emits no worker at all: no registration, no precache, no warm channel. What it
  * must still do is hydrate, and with the URLs a BUILD derives (`hydrateUrl(tag)` with the
  * build id baked into `fudic-main`), which is what makes it different from `pnpm dev`.
  *
- * It shares the routes rather than copying them: `routesDir` points back at the app's own
- * `src/routes`, so the pages under test are the same files, not a fixture that can drift.
- * The public directory is shared for the same reason — the favicon this app writes in its
- * layout is `/logo.svg`, and a root without it serves a page with a broken icon.
- *
- * What cannot be shared is `fudic.json`: it is read from the ROOT of the project being built,
- * and the root here is this directory. So there is one beside this file, and it points at the
- * app's own style guide rather than copying it — without it the documents come out with no
- * `theme` or `panel` to adopt, and the same app looks different depending on which of the two builds
- * you are looking at, which is the one thing a comparison like this must not do.
+ * It is the app's own project, not a copy: the root is the app, so its routes, its `.fudapi`,
+ * its `src/server` and `src/browser`, its `fudic.json` and its dependencies are the same files
+ * the other build reads (SDD-60 §3.10, §3.15 — none of them can be pointed outside the root).
+ * Only three things are its own: `sw: false` stands for the `sw.json` it ignores, the output
+ * goes to `nosw/dist`, and the server bundle to `.fudic/edge-nosw`, because the preview of the
+ * other build serves `.fudic/edge` and both previews run side by side.
  */
 export default defineConfig({
-  root: fileURLToPath(new URL('.', import.meta.url)),
-  publicDir: fileURLToPath(new URL('../public', import.meta.url)),
-  plugins: [fudic({ routesDir: '../src/routes' })],
-  build: { sourcemap: true },
+  root: fileURLToPath(new URL('..', import.meta.url)),
+  plugins: [fudic({ sw: false, edgeDir: '.fudic/edge-nosw' })],
+  build: { outDir: 'nosw/dist', sourcemap: true },
 });

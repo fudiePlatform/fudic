@@ -23,9 +23,9 @@ const LAYOUT = [
   '<body><main>@RenderBody()</main></body></html>',
 ].join('\n');
 
-/** A hydratable component: a `@client` half and a hookup, so it claims an id of its own. */
+/** A hydratable component: browser code and a hookup, so it claims an id of its own. */
 const COUNTER = [
-  '@code { @client { let n = 0; function mas() { n += 1; } } }',
+  '@code { let n = 0; function mas() { n += 1; } }',
   '<app-counter><template shadowrootmode="open">',
   '<button @click=@mas>+1</button>',
   '</template></app-counter>',
@@ -52,7 +52,7 @@ describe('a route with no components still carries the runtime (BUG-35)', () => 
   it('a signal in the route and not one hydratable tag on the page', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
-      '@code { @client { const n = signal(1); } }',
+      '@code { const n = signal(1); }',
       '<output>@n()</output>',
     ].join('\n');
     const module = routeModule(route, 'ruta-reactiva');
@@ -64,7 +64,7 @@ describe('a route with no components still carries the runtime (BUG-35)', () => 
   it('a handler and nothing else — the route that has JavaScript before it has reactivity', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
-      '@code { @client { function sube() { document.title = "x"; } } }',
+      '@code { function sube() { document.title = "x"; } }',
       '<button @click=@sube>Súmame</button>',
     ].join('\n');
     const module = routeModule(route, 'ruta-evento');
@@ -75,7 +75,7 @@ describe('a route with no components still carries the runtime (BUG-35)', () => 
     const page = [
       '<!DOCTYPE html><html><head><title>t</title>',
       '<script src="fudic:runtime"></script>',
-      '@code { @client { const n = signal(1); } }',
+      '@code { const n = signal(1); }',
       '</head><body><output>@n()</output></body></html>',
     ].join('\n');
     const module = pageModule(page, 'pagina');
@@ -105,10 +105,10 @@ describe('and a page with nothing to hydrate still carries none (BUG-31 §T1)', 
 
   it('a route that IS reactive but whose name the build does not know', () => {
     // No name, no `fud-route`, no claimed id — so there is nothing for a runtime to read,
-    // and the tag follows the claim rather than the `@client` region (§4.7).
+    // and the tag follows the claim rather than the browser code (§4.7).
     const route = [
       '<link rel="layout" href="./l.fud">',
-      '@code { @client { const n = signal(1); } }',
+      '@code { const n = signal(1); }',
       '<output>@n()</output>',
     ].join('\n');
     const module = routeModule(route);

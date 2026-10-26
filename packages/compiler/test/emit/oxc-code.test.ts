@@ -47,7 +47,7 @@ describe('extractCode', () => {
   });
 
   it('BUG-24 §4.4 — a reactive carries where its CALL starts, for the cell splice', () => {
-    const source = wrap('@code {\n  @client { const n = signal(7); }\n}\n');
+    const source = wrap('@code {\n  const n = signal(7);\n}\n');
     const [reactive] = extractCode(source, componentDoc(source)).signals;
     expect(source.slice(reactive!.at)).toMatch(/^signal\(7\)/u);
   });
@@ -61,28 +61,6 @@ describe('extractCode', () => {
       { name: 'total', init: '() => a() * 2', kind: 'computed' },
       { name: 't', init: 'undefined', kind: 'computed' },
     ]);
-  });
-
-  it('SDD-31 §6.17 — `effect(...)` in the neutral zone is FUD0570, and nothing else stops', () => {
-    const source = wrap(
-      '@code {\n' +
-        '  const { a } = props<{ a: string }>();\n' +
-        '  effect(() => console.log(a));\n' +
-        '  const off = effect(() => {});\n' +
-        '  const t = signal(1);\n' +
-        '  const plain = 7;\n' + // not a call at all
-        '  console.log(plain);\n' + // a call, but not through a bare identifier
-
-        '  @client {\n    const fine = effect(() => t());\n  }\n' +
-        '}\n',
-    );
-    const { props, signals, diagnostics } = extractCode(source, componentDoc(source));
-    expect(diagnostics.map((d) => d.code)).toEqual(['FUD0570', 'FUD0570']);
-    const at = source.indexOf('effect(() => console.log(a))');
-    expect(diagnostics[0]!.span).toEqual({ start: at, end: at + 'effect(() => console.log(a))'.length });
-    // The emit does not throw and does not give up on the file: props and signals are read.
-    expect(bareProps(props)).toEqual([{ name: 'a', optional: false, type: 'string' }]);
-    expect(bareSignals(signals)).toEqual([{ name: 't', init: '1', kind: 'signal' }]);
   });
 
   it('SDD-31 §5 — `computed` and `batch` in the neutral zone say nothing', () => {
@@ -164,15 +142,13 @@ describe('extractCode', () => {
     });
   });
 
-  it('splits @client into hoisted imports and closure body, verbatim', () => {
+  it('splits the browser code into hoisted imports and closure body, verbatim', () => {
     const source = wrap(
       '@code {\n' +
         '  const { a } = props<{ a: string }>();\n' +
-        '  @client {\n' +
-        "    import { signal } from '@fudic/core';\n" +
-        '    const open = signal(false);\n' +
-        '    function toggle() { open.set(!open()); }\n' +
-        '  }\n' +
+        "  import { signal } from '@fudic/core';\n" +
+        '  const open = signal(false);\n' +
+        '  function toggle() { open.set(!open()); }\n' +
         '}\n',
     );
     const { client } = extractCode(source, componentDoc(source));
@@ -223,14 +199,12 @@ describe('extractCode', () => {
     ]);
   });
 
-  it('finds every emit(...) of @client, whatever the binding is called (SDD-15 §4.4)', () => {
+  it('finds every emit(...) of the browser code, whatever the binding is called (SDD-15 §4.4)', () => {
     const source = wrap(
       '@code {\n' +
-        '  @client {\n' +
-        "    import { emit as fire } from '@fudic/dom';\n" +
-        '    function press() { console.log(1); helper(); fire(); }\n' +
-        "    const later = () => { const f = () => fire('press', 1); return f; };\n" +
-        '  }\n' +
+        "  import { emit as fire } from '@fudic/dom';\n" +
+        '  function press() { console.log(1); helper(); fire(); }\n' +
+        "  const later = () => { const f = () => fire('press', 1); return f; };\n" +
         '}\n',
     );
     const { emitCalls } = extractCode(source, componentDoc(source));
@@ -249,37 +223,24 @@ describe('extractCode', () => {
   it('finds nothing when emit is not the one imported from @fudic/dom', () => {
     const source = wrap(
       '@code {\n' +
-        '  @client {\n' +
-        "    import { browserDom } from '@fudic/dom';\n" +
-        "    import * as dom from '@fudic/dom';\n" +
-        "    import { emit } from './my-bus';\n" +
-        '    function press() { emit("press"); dom.emit("press"); }\n' +
-        '  }\n' +
+        "  import { browserDom } from '@fudic/dom';\n" +
+        "  import * as dom from '@fudic/dom';\n" +
+        "  import { emit } from './my-bus';\n" +
+        '  function press() { emit("press"); dom.emit("press"); }\n' +
         '}\n',
     );
     // A raw `dispatchEvent`, an `emit` of the author's own, and a namespace import: none of
     // them is the bus primitive, and none is rewritten. We do not protect what we cannot see.
     expect(extractCode(source, componentDoc(source)).emitCalls).toEqual([]);
   });
-
-  it('leaves the @server region out of the client body', () => {
-    const source = wrap(
-      '@code {\n' +
-        '  @server { const secret = 1; }\n' +
-        '  @client { const visible = 2; }\n' +
-        '}\n',
-    );
-    const { client } = extractCode(source, componentDoc(source));
-    expect(client.body.map((s) => s.text)).toEqual(['const visible = 2;']);
-  });
 });
 
 /**
- * The two injection diagnostics ONE `@code` settles by itself (SDD-38 §6.23, §6.25).
+ * The injection diagnostic ONE `@code` settles by itself (SDD-38 §6.23).
  *
- * Neither needs a graph, a filesystem or an ancestor: they are about a region contradicting
- * itself, and the answer is in the same twenty lines the author is looking at. The other
- * three of the five need more than this file and live in `di-diagnostics.ts`.
+ * It needs no graph, no filesystem and no ancestor: it is about a `@code` contradicting
+ * itself, and the answer is in the same twenty lines the author is looking at. The others
+ * need more than this file and live in `di-diagnostics.ts`.
  */
 describe('the injection diagnostics of one @code', () => {
   const DI = "  import { inject, provide } from '@fudic/di';\n  import { Cart, Clock } from './services';\n";
@@ -303,10 +264,10 @@ describe('the injection diagnostics of one @code', () => {
   });
 
   it('FUD0684 — a second registration counts wherever it is written', () => {
-    // Neutral and `@client` are two zones of ONE module in the browser, so the second call
-    // overwrites the first there exactly as two neighbouring lines would.
+    // The cut and the browser's statements are two halves of ONE `@code`, so a call the cut
+    // does not take overwrites the first exactly as two neighbouring lines would.
     expect(
-      codesOf('  provide(Cart, () => new Cart());\n  @client {\n    provide(Cart, () => new Cart());\n  }\n'),
+      codesOf('  provide(Cart, () => new Cart());\n  if (ready) provide(Cart, () => new Cart());\n'),
     ).toEqual(['FUD0684']);
   });
 
@@ -318,51 +279,16 @@ describe('the injection diagnostics of one @code', () => {
     ).toEqual([]);
   });
 
-  it('FUD0682 — provided in @server, injected in @client', () => {
-    const body =
-      '  @server {\n    provide(Cart, () => new Cart());\n  }\n' +
-      '  @client {\n    const cart = inject(Cart);\n  }\n';
-    const source = wrap(`@code {\n${DI}${body}}\n`);
-    const { diagnostics } = extractCode(source, componentDoc(source));
-
-    expect(diagnostics.map((d) => d.code)).toEqual(['FUD0682']);
-    expect(diagnostics[0]!.message).toContain('@server');
-    const at = source.indexOf('inject(Cart)') + 'inject('.length;
-    expect(diagnostics[0]!.span).toEqual({ start: at, end: at + 'Cart'.length });
-  });
-
-  it('FUD0682 — and the symmetric one, provided in @client and injected in @server', () => {
-    const codes = codesOf(
-      '  @client {\n    provide(Cart, () => new Cart());\n  }\n' +
-        '  @server {\n    const cart = inject(Cart);\n  }\n',
-    );
-    expect(codes).toEqual(['FUD0682']);
-  });
-
-  it('says nothing when the provider is neutral: that zone runs on both sides', () => {
-    // Which is the whole answer the diagnostic proposes, so it had better not report it.
+  it('says nothing when the `@code` provides what it injects', () => {
     expect(
-      codesOf(
-        '  provide(Cart, () => new Cart());\n' +
-          '  @client {\n    const a = inject(Cart);\n  }\n' +
-          '  @server {\n    const b = inject(Cart);\n  }\n',
-      ),
-    ).toEqual([]);
-  });
-
-  it('says nothing when the two are in the same zone, or when the injection is neutral', () => {
-    expect(
-      codesOf(
-        '  @client {\n    provide(Cart, () => new Cart());\n    const a = inject(Cart);\n  }\n' +
-          '  const b = inject(Cart);\n',
-      ),
+      codesOf('  provide(Cart, () => new Cart());\n  const a = inject(Cart);\n  function f() { return inject(Cart); }\n'),
     ).toEqual([]);
   });
 
   it('says nothing about injecting what this @code does not provide at all', () => {
     // An ancestor's or a `@Service`'s, and whether anybody registers it is FUD0680's
     // question — asked of the graph, with the module next door open.
-    expect(codesOf('  @client {\n    const cart = inject(Cart);\n  }\n')).toEqual([]);
+    expect(codesOf('  const cart = inject(Cart);\n')).toEqual([]);
   });
 
 });

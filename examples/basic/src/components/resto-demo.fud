@@ -1,16 +1,14 @@
 <link rel="component" href="./campo-texto.fud">
 
 @code {
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    const pista = signal("Escribe tu nombre");
-    const obligatorio = signal(true);
+  const pista = signal("Escribe tu nombre");
+  const obligatorio = signal(true);
 
-    function cambiar() {
-      pista.set(pista() === "Escribe tu nombre" ? "¿Cómo te llamas?" : "Escribe tu nombre");
-      obligatorio.set(!obligatorio());
-    }
+  function cambiar() {
+    pista.set(pista() === "Escribe tu nombre" ? "¿Cómo te llamas?" : "Escribe tu nombre");
+    obligatorio.set(!obligatorio());
   }
 }
 

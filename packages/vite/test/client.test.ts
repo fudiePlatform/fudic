@@ -48,11 +48,11 @@ function project(): string {
   writeFileSync(join(root, 'components', 'site-nav.fud'), component('site-nav'));
   writeFileSync(join(root, 'components', 'x-secret.fud'), component('x-secret'));
   // Nobody links this one: it is here for the transform, which works on any component.
-  // Its `@client` region is TypeScript and its `<img>` points nowhere — the two things the
+  // Its `@code` is TypeScript and its `<img>` points nowhere — the two things the
   // plugin has to do on top of the emit.
   writeFileSync(
     join(root, 'components', 'x-typed.fud'),
-    '@code {\n  @client {\n    function press(e: MouseEvent): void {\n      e.preventDefault();\n    }\n  }\n}\n' +
+    '@code {\n  function press(e: MouseEvent): void {\n    e.preventDefault();\n  }\n}\n' +
       component('x-typed', '<img src="./nope.png">'),
   );
 
@@ -80,7 +80,7 @@ function project(): string {
   writeFileSync(
     join(root, 'routes', 'viva.fud'),
     '<link rel="layout" href="../layouts/_layout.fud">\n' +
-      '@code { @client { import { signal } from "@fudic/core"; const n = signal(1); } }\n' +
+      '@code { import { signal } from "@fudic/core"; const n = signal(1); }\n' +
       '<head><title>V</title></head>\n\n<output>@n()</output>\n',
   );
   return root;
@@ -152,7 +152,7 @@ describe('transformFudClient', () => {
   it('returns null for a layout, for a static route, and for what is not a `.fud`', () => {
     // A LAYOUT's markup is static in this version (SDD-39 §7). A route with no client half
     // of its own is the base case, and the base case costs no chunk — `index.fud` declares
-    // no `@client` and no hookup binding, so there is nothing to run there.
+    // no `@code` and no hookup binding, so there is nothing to run there.
     expect(transformFudClient(join(root, 'layouts', '_layout.fud'), io)).toBeNull();
     expect(transformFudClient(join(root, 'routes', 'index.fud'), io)).toBeNull();
     expect(transformFudClient(join(root, 'sw.json'), io)).toBeNull();
@@ -167,7 +167,7 @@ describe('transformFudClient', () => {
     expect(out.map.mappings.length).toBeGreaterThan(0);
   });
 
-  it('copies the @client region verbatim, TypeScript included', () => {
+  it('copies the @code verbatim, TypeScript included', () => {
     // The chunk is bundler INPUT (§4.7). Stripping types is the bundler's job, and the
     // plugin's `?client` branch below is where that happens.
     expect(transformFudClient(join(root, 'components', 'x-typed.fud'), io)!.code).toContain(

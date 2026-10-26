@@ -1,0 +1,31 @@
+# Per request: the list changes with every new person.
+load ssr
+  users  Person[]
+
+# People whose name contains q.
+get search
+  q  str
+  -> Person[]
+
+# Turns a person on or off.
+put save /:id
+  use auth
+  query notify bool
+  id      uuid
+  active  bool
+  fails locked 409  "That person is locked."
+
+delete remove /:id
+  use auth
+  skip log
+  id  uuid
+
+type Person
+  id      uuid
+  name    str
+  active  bool
+  role    Role
+
+enum Role
+  admin
+  member

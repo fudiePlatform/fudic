@@ -1,0 +1,10 @@
+# The global chain: every function of a .fudapi walks it, load included.
+#
+# csrf closes the case of a foreign page calling with the user's cookies, error-pages sends an
+# error nobody caught to _error.fud (a 403 to /entrar instead), and compress gzips an upload once
+# it passes the threshold. fudic puts none of them anywhere on its own.
+chain
+  use log csrf
+  use error-pages
+    routes  403 /entrar
+  compress gzip 200

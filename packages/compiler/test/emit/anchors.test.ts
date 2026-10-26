@@ -27,14 +27,14 @@ const componentDoc = (source: string): ComponentDocument => {
 const wrap = (code: string): string =>
   `${code}<m-el>\n  <template shadowrootmode="open"><span></span></template>\n</m-el>\n`;
 
-/** The `@client` statements of a `@code` block, with the anchors they carry. */
+/** The browser statements of a `@code` block, with the anchors they carry. */
 function clientBody(code: string): ReturnType<typeof extractCode>['client']['body'] {
   const source = wrap(code);
   return extractCode(source, componentDoc(source)).client.body;
 }
 
-/** A `@code` block whose `@client` region holds `body`. */
-const clientCode = (body: string): string => `@code {\n  @client {\n${body}  }\n}\n`;
+/** A `@code` block holding `body`: the markup reads none of it, so all of it is the browser's. */
+const clientCode = (body: string): string => `@code {\n${body}}\n`;
 
 describe('one anchor per line, so every line is breakpointable', () => {
   it('anchors the start of each line of a multi-line statement', () => {
@@ -106,13 +106,11 @@ describe('the anchors come out sorted by generated offset', () => {
 
 describe('the splice offset — the map that lies without failing', () => {
   const DI = `@code {
-  @client {
-    import { inject } from '@fudic/di';
-    import { Cart } from './cart.js';
+  import { inject } from '@fudic/di';
+  import { Cart } from './cart.js';
 
-    const cart = inject(Cart);
-    const total = cart.total;
-  }
+  const cart = inject(Cart);
+  const total = cart.total;
 }
 `;
 
@@ -167,9 +165,10 @@ describe('the splice offset — the map that lies without failing', () => {
 
 describe('what carries no anchors, and why', () => {
   it('a hoisted import has none: its text is rebuilt, not sliced', () => {
-    const source = wrap(
-      '@code {\n  import { Cart } from \'./cart.js\';\n  const total = Cart.zero;\n}\n',
-    );
+    // The markup reads `total`, so it and its import are in the server cut (SDD-60 §4.8).
+    const source =
+      '@code {\n  import { Cart } from \'./cart.js\';\n  const total = Cart.zero;\n}\n' +
+      '<m-el>\n  <template shadowrootmode="open"><span>@total</span></template>\n</m-el>\n';
     const { neutral } = extractCode(source, componentDoc(source));
     expect(neutral.find((s) => s.hoisted)!.anchors).toEqual([]);
   });

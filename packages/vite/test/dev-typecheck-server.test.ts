@@ -27,11 +27,9 @@ const BADGE = `@code {
 </app-badge>
 `;
 
-/** A component whose `@client` does not compile: its chunk fails, not the page's check. */
+/** A component whose `@code` does not compile: its chunk fails, not the page's check. */
 const BAD_CLIENT = `@code {
-  @client {
-    const = ;
-  }
+  const = ;
 }
 
 <x-bad>
@@ -133,7 +131,7 @@ describe('vite dev — fudic’s scripts (criterion 20)', () => {
     const error = overlayError(body);
     expect(error.message).toContain('FUD0170');
     expect(error.loc?.file.replace(/\\/gu, '/')).toMatch(/src\/components\/x-bad\.fud$/u);
-    expect(error.loc?.line).toBe(3);
+    expect(error.loc?.line).toBe(2);
     expect(error.frame).toContain('const = ;');
   });
 });

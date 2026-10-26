@@ -1,19 +1,25 @@
 /**
  * SDD-56 in a real Vite dev server: the server functions answer under `/_fudic/fn`, with the
- * global chain of `src/http.ts`; `load` runs through it with the request's container; and a
+ * global chain of `src/http.fudapi`; `load` runs through it with the request's container; and a
  * `load` that throws answers as §4.8 says — a redirect, or `_error.fud` with its status.
  *
- * Criteria 9, 21, 23, 27, 28, 29, 35 and 36, as a browser and a script would see them.
+ * Criteria 9, 21, 23, 27, 28, 29, 35 and 36, as a browser and a script would see them. In the
+ * model of SDD-60: each route and component declares its server in a `.fudapi` beside it, and
+ * `src/server` implements it with `.handle`.
  */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createServer, type ViteDevServer } from 'vite';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { type AddressInfo } from 'node:net';
 import { fudic } from '../src/index.js';
 import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
+
+/** The package `@fudic/http`: its `fudapi/`, its compiled halves and its `dist`. */
+const HTTP_PACKAGE = fileURLToPath(new URL('../../http', import.meta.url));
 
 const USERS = `import { Service } from '@fudic/di';
 
@@ -25,72 +31,109 @@ export class Users {
 Service(Users);
 `;
 
-const HTTP = `import { chain, csrf } from '@fudic/http';
-export default chain().use(csrf);
+/**
+ * The global chain (SDD-60 §3.5). `csrf` is `@fudic/http`'s, read off the `fudapi/` of a direct
+ * dependency: the project lists it and carries it in `node_modules`, as an install leaves it.
+ */
+const HTTP = `chain
+  use csrf
+`;
+
+/**
+ * `@fudic/http` installed as a workspace links it (SDD-60 §3.10): the index reads its `fudapi/`
+ * and the root loads its halves.
+ */
+function installHttp(root: string): void {
+  writeFileSync(join(root, 'package.json'), JSON.stringify({ dependencies: { '@fudic/http': '0.0.0' } }));
+  mkdirSync(join(root, 'node_modules', '@fudic'), { recursive: true });
+  symlinkSync(HTTP_PACKAGE, join(root, 'node_modules', '@fudic', 'http'), 'junction');
+}
+
+const USUARIOS_API = `load
+  count  i32
+
+get search
+  q  str
+  -> str[]
+
+delete remove
+
+get crash
+  -> str
 `;
 
 const USUARIOS = `<!DOCTYPE html>
 <html>
 <head>
 <title>Usuarios</title>
+<link rel="server" href="./usuarios.fudapi">
 <link rel="component" href="../components/user-form.fud">
-@code {
-  @server {
-    import { get, del, notFound } from '@fudic/http';
-    import { inject } from '@fudic/di';
-    import { Users } from '../users';
-
-    export async function load() {
-      return { count: inject(Users).all().length };
-    }
-
-    export const search = get()
-      .args<{ q: string }>()
-      .handle((ctx) => inject(Users).find(ctx.args.q));
-
-    export const remove = del().handle(() => {
-      throw notFound('gone');
-    });
-
-    export const crash = get().handle((): string => {
-      throw new Error('mal');
-    });
-  }
-}
 </head>
 <body><p>usuarios: @data.count</p><user-form></user-form></body>
 </html>
 `;
 
-const USER_FORM = `@code {
-  @server {
-    import { put } from '@fudic/http';
-    import { inject } from '@fudic/di';
-    import { Users } from '../users';
-    export const save = put().handle(() => ({ from: 'user-form', count: inject(Users).all().length }));
-  }
-}
+const USUARIOS_SERVER = `import { inject } from '@fudic/di';
+import { notFound } from '@fudic/http';
+import { load, search, remove, crash } from 'fudic:routes/usuarios';
+import { Users } from '../users';
+
+load.handle(async () => ({ count: inject(Users).all().length }));
+search.handle((ctx) => inject(Users).find(ctx.args.q));
+remove.handle(() => {
+  throw notFound('gone');
+});
+crash.handle((): string => {
+  throw new Error('mal');
+});
+`;
+
+const USER_FORM_API = `put save
+  -> Saved
+
+type Saved
+  from   str
+  count  i32
+`;
+
+const USER_FORM = `<link rel="server" href="./user-form.fudapi">
+
 <user-form>
   <template shadowrootmode="open"><span>form</span></template>
 </user-form>
 `;
 
-const throwing = (body: string, imports = "import { notFound, redirect } from '@fudic/http';") => `<!DOCTYPE html>
+const USER_FORM_SERVER = `import { inject } from '@fudic/di';
+import { save } from 'fudic:components/user-form';
+import { Users } from '../users';
+
+save.handle(() => ({ from: 'user-form', count: inject(Users).all().length }));
+`;
+
+/** A route whose `load` throws: its page, its `.fudapi` and its handler. */
+const throwing = (
+  name: string,
+  body: string,
+  imports = "import { notFound, redirect } from '@fudic/http';",
+): Record<string, string> => ({
+  [`src/routes/${name}.fud`]: `<!DOCTYPE html>
 <html>
 <head>
 <title>x</title>
-@code {
-  @server {
-    ${imports}
-    export async function load(): Promise<{ n: number }> {
-      ${body}
-    }
-  }
-}
+<link rel="server" href="./${name}.fudapi">
 </head>
 <body><p>@data.n</p></body>
 </html>
-`;
+`,
+  [`src/routes/${name}.fudapi`]: 'load\n  n  i32\n',
+  [`src/server/${name}.ts`]: `${imports}
+import { load } from 'fudic:routes/${name}';
+
+load.handle(async (): Promise<{ n: number }> => {
+  ${body}
+});
+`,
+});
 
 const ERROR_PAGE = `<!DOCTYPE html>
 <html>
@@ -99,29 +142,39 @@ const ERROR_PAGE = `<!DOCTYPE html>
 </html>
 `;
 
+/** Each file under `root`, its folders made. */
+function writeAll(root: string, files: Readonly<Record<string, string>>): void {
+  for (const [path, text] of Object.entries(files)) {
+    mkdirSync(join(root, path, '..'), { recursive: true });
+    writeFileSync(join(root, path), text);
+  }
+}
+
 let server: ViteDevServer;
 let origin: string;
 
 beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-http-dev-'));
   writeHttpTypecheckConfig(root);
-  mkdirSync(join(root, 'src', 'routes'), { recursive: true });
-  mkdirSync(join(root, 'src', 'components'), { recursive: true });
-  const files: Record<string, string> = {
+  installHttp(root);
+  writeAll(root, {
     'src/users.ts': USERS,
-    'src/http.ts': HTTP,
+    'src/http.fudapi': HTTP,
     'src/routes/usuarios.fud': USUARIOS,
+    'src/routes/usuarios.fudapi': USUARIOS_API,
+    'src/server/usuarios.ts': USUARIOS_SERVER,
     'src/components/user-form.fud': USER_FORM,
-    'src/routes/missing.fud': throwing("throw notFound('no está');"),
-    'src/routes/go.fud': throwing("throw redirect('/login');"),
-    'src/routes/boom.fud': throwing("throw new Error('secreto');", ''),
-    'src/routes/plain.fud': throwing("throw 'una cadena';", ''),
-    'src/routes/nostack.fud': throwing("const e = new Error('sin pila');\n      e.stack = undefined;\n      throw e;", ''),
+    'src/components/user-form.fudapi': USER_FORM_API,
+    'src/server/user-form.ts': USER_FORM_SERVER,
+    ...throwing('missing', "throw notFound('no está');"),
+    ...throwing('go', "throw redirect('/login');"),
+    ...throwing('boom', "throw new Error('secreto');", ''),
+    ...throwing('plain', "throw 'una cadena';", ''),
+    ...throwing('nostack', "const e = new Error('sin pila');\n  e.stack = undefined;\n  throw e;", ''),
     'src/routes/_error.fud': ERROR_PAGE,
     'sw.json': JSON.stringify({ shell: [] }),
     'fudic.json': JSON.stringify({ id: 'test' }),
-  };
-  for (const [path, text] of Object.entries(files)) writeFileSync(join(root, path), text);
+  });
   server = await createServer({
     root,
     logLevel: 'silent',
@@ -131,6 +184,8 @@ beforeAll(async () => {
   });
   await server.listen();
   origin = `http://localhost:${(server.httpServer!.address() as AddressInfo).port}`;
+  // The first request loads the server root (SDD-60 §4.4): here, not inside a case's 5 s.
+  await fetch(`${origin}/_fudic/data/usuarios`);
 }, 120000);
 
 afterAll(async () => {
@@ -144,46 +199,46 @@ const call = (path: string, init: RequestInit = {}) =>
 describe('server functions in dev', () => {
   it('criterion 21: GET …/search?a=… returns what handle returned', async () => {
     const a = encodeURIComponent(JSON.stringify({ q: 'an' }));
-    const res = await call(`/r/usuarios/search?a=${a}`);
+    const res = await call(`/routes/usuarios/search?a=${a}`);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual(['ana']);
   });
 
   it('criterion 23: a 404 thrown in handle comes back as a problem', async () => {
-    const res = await call('/r/usuarios/remove', { method: 'DELETE' });
+    const res = await call('/routes/usuarios/remove', { method: 'DELETE' });
     expect(res.status).toBe(404);
     expect(res.headers.get('content-type')).toBe('application/problem+json');
     expect(await res.json()).toEqual({ status: 404, title: 'Not Found', detail: 'gone' });
   });
 
-  it('criterion 36: a component function, by tag, resolving inject from the request root', async () => {
-    const res = await call('/c/user-form/save', { method: 'PUT' });
+  it('criterion 36: a component function, by its <id>, resolving inject from the request root', async () => {
+    const res = await call('/components/user-form/save', { method: 'PUT' });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ from: 'user-form', count: 2 });
   });
 
-  it('criterion 35: src/http.ts puts csrf in every chain', async () => {
-    const bare = await fetch(`${origin}/_fudic/fn/c/user-form/save`, { method: 'PUT' });
+  it('criterion 35: src/http.fudapi puts csrf in every chain', async () => {
+    const bare = await fetch(`${origin}/_fudic/fn/components/user-form/save`, { method: 'PUT' });
     expect(bare.status).toBe(403);
-    const cross = await call('/c/user-form/save', { method: 'PUT', headers: { 'sec-fetch-site': 'cross-site' } });
+    const cross = await call('/components/user-form/save', { method: 'PUT', headers: { 'sec-fetch-site': 'cross-site' } });
     expect(cross.status).toBe(403);
-    const foreign = await call('/c/user-form/save', { method: 'PUT', headers: { origin: 'https://evil.test' } });
+    const foreign = await call('/components/user-form/save', { method: 'PUT', headers: { origin: 'https://evil.test' } });
     expect(foreign.status).toBe(403);
     // A GET without the header passes.
     const a = encodeURIComponent(JSON.stringify({ q: 'l' }));
-    expect((await fetch(`${origin}/_fudic/fn/r/usuarios/search?a=${a}`)).status).toBe(200);
+    expect((await fetch(`${origin}/_fudic/fn/routes/usuarios/search?a=${a}`)).status).toBe(200);
   });
 
   it('a function that throws an Error: 500 with its message in dev', async () => {
-    const res = await fetch(`${origin}/_fudic/fn/r/usuarios/crash`);
+    const res = await fetch(`${origin}/_fudic/fn/routes/usuarios/crash`);
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual({ status: 500, title: 'Internal Server Error', detail: 'mal' });
   });
 
   it('an unknown function, load, and the wrong verb', async () => {
-    expect((await call('/r/usuarios/nope')).status).toBe(404);
-    expect((await call('/r/usuarios/load')).status).toBe(404);
-    expect((await call('/r/usuarios/search', { method: 'POST', body: '{}' })).status).toBe(405);
+    expect((await call('/routes/usuarios/nope')).status).toBe(404);
+    expect((await call('/routes/usuarios/load')).status).toBe(404);
+    expect((await call('/routes/usuarios/search', { method: 'POST', body: '{}' })).status).toBe(405);
   });
 });
 
@@ -294,10 +349,11 @@ describe('a project without _error.fud', () => {
   beforeAll(async () => {
     const root = mkdtempSync(join(tmpdir(), 'fudic-http-dev-bare-'));
     writeHttpTypecheckConfig(root);
-    mkdirSync(join(root, 'src', 'routes'), { recursive: true });
-    writeFileSync(join(root, 'src', 'routes', 'missing.fud'), throwing("throw notFound('no está');"));
-    writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
-    writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'bare' }));
+    writeAll(root, {
+      ...throwing('missing', "throw notFound('no está');"),
+      'sw.json': JSON.stringify({ shell: [] }),
+      'fudic.json': JSON.stringify({ id: 'bare' }),
+    });
     bare = await createServer({
       root,
       logLevel: 'silent',
@@ -307,6 +363,7 @@ describe('a project without _error.fud', () => {
     });
     await bare.listen();
     bareOrigin = `http://localhost:${(bare.httpServer!.address() as AddressInfo).port}`;
+    await fetch(`${bareOrigin}/_fudic/data/missing`); // loads the server root, as above
   }, 120000);
 
   afterAll(async () => {

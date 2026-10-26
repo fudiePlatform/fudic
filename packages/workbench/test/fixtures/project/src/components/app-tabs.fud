@@ -1,16 +1,14 @@
 @code {
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    const active = signal(0);
+  const active = signal(0);
 
-    function pickA() {
-      active.set(0);
-    }
+  function pickA() {
+    active.set(0);
+  }
 
-    function pickB() {
-      active.set(1);
-    }
+  function pickB() {
+    active.set(1);
   }
 }
 

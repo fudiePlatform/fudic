@@ -164,7 +164,7 @@ describe('the names of the component´s code', () => {
   it('level: the rest object moves, so a child fed from it hydrates', () => {
     const PAR =
       '<link rel="component" href="./x-kid.fud">\n' +
-      '@code {\n  const { ...resto } = props<{ x?: string }>();\n  @client { function go() {} }\n}\n' +
+      '@code {\n  const { ...resto } = props<{ x?: string }>();\n  function go() {}\n}\n' +
       '<x-par>\n  <template shadowrootmode="open"><x-kid .a=@resto.x></x-kid><button @click=@go>go</button></template>\n</x-par>\n';
     const graph = graphOf({ '/x-par.fud': PAR, '/x-kid.fud': KID }, 'x-par');
     expect([...hydratableTags(graph)].sort()).toEqual(['x-kid', 'x-par']);

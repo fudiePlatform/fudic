@@ -5,8 +5,8 @@
  *
  * TWO variants of the same source, because the two callers are not the same:
  *
- *  - **edge** (`withLoad`): dev, preview and prerender. It calls `@server load(ctx)`
- *    in process, and exports `data(ctx)` so the generated endpoint can reuse it and
+ *  - **edge** (`withLoad`): dev, preview and prerender. It runs the `load` of the route's
+ *    `.fudapi` in process, and exports `data(ctx)` so the generated endpoint can reuse it and
  *    `paths()` so the build can enumerate.
  *  - **linked** (the Service Worker): NO `load`. Server code never ships to the
  *    client; the SW gets `ctx.data` already resolved from the data endpoint (§4.5).
@@ -15,22 +15,13 @@
  * compiler-free (DIP).
  */
 
+import type { PageAnalysis } from './analyze.js';
 import type { RuntimeEntries } from './constants.js';
+import { withLocale } from './i18n.js';
 
 export interface RenderChunkOptions {
   /** Import specifier for the page module's `page(data, io)`. */
   readonly pageModule: string;
-  /** Whether the page's `@server` region exports a `load(ctx)` data hook. */
-  readonly hasLoad: boolean;
-  /** Whether it exports `paths()`; the wrapper re-exports it so the build can enumerate. */
-  readonly hasPaths?: boolean;
-  /**
-   * Whether it exports `layout(ctx, data)` — the layout props of this render (SDD-40 §3.2).
-   *
-   * Edge variant only, like `load`: `@server` never ships to a client bundle, so the Service
-   * Worker receives the resolved props by the same cable it receives `data` (§4.5).
-   */
-  readonly hasLayout?: boolean;
   /** Edge variant: resolve data in process. Off for the linked (SW) variant. */
   readonly withLoad: boolean;
   /**
@@ -41,12 +32,30 @@ export interface RenderChunkOptions {
    * does not download a line of DI» is enforced here, where the import is written.
    */
   readonly hasDi?: boolean;
-  /** Whether the `@server` writes `export const http`, the file's level of the chain (SDD-56). */
-  readonly hasHttp?: boolean;
-  /** Whether `load` is written fluent and carries its own level of the chain (SDD-56). */
-  readonly fluentLoad?: boolean;
-  /** Import specifier of `src/http.ts`, the global level of the chain, when the project has one. */
-  readonly globalChain?: string;
+  /**
+   * The route's `.fudapi` (SDD-60 §4.4): `load`, `paths` and `layout` are the pieces of
+   * `fudic:<id>`, read from the registry once the generated root has loaded the
+   * implementations. Absent when the route links none, and then it has none of the three.
+   */
+  readonly api?: {
+    readonly id: string;
+    /** It declares `load`: the edge resolves the data in process. */
+    readonly load: boolean;
+    /** It declares `paths`: the wrapper re-exports it so the build can enumerate. */
+    readonly paths: boolean;
+    /**
+     * It declares `layout` — the layout props of this render (SDD-40 §3.2). Edge variant only,
+     * like `load`: the Service Worker receives the resolved props by the same cable it
+     * receives `data` (§4.5).
+     */
+    readonly layout: boolean;
+    /** The id of the server root, whose `ready` the wrapper awaits. */
+    readonly root: string;
+    /** Dev: a `load` nobody implemented says so in its 404. */
+    readonly dev: boolean;
+    /** The locale the route is compiled for: its root and its contract are that locale's. */
+    readonly locale?: string;
+  };
   /**
    * The URLs of the two main-thread entries, which the page writes into its `<head>`
    * (BUG-31 §T1): `boot` registers the Service Worker and rides every page, `main` is the
@@ -96,28 +105,20 @@ function alternatesSource(a: NonNullable<RenderChunkOptions['alternates']>): str
 /** Generate the route chunk module text. */
 export function emitRenderChunk(options: RenderChunkOptions): string {
   const spec = JSON.stringify(options.pageModule);
-  // A page compiled for a locale already has a query (`x.fud?locale=en`, SDD-58).
-  const server = JSON.stringify(`${options.pageModule}${options.pageModule.includes('?') ? '&' : '?'}server`);
-  const edgeLoad = options.withLoad && options.hasLoad;
+  const api = options.api;
+  const edgeLoad = options.withLoad && api?.load === true;
   // The layout resolver, on the same terms as `load`: in process on the edge, never in the
   // Service Worker. It is imported under another name because `layout` is what the PAGE
   // module calls its own composition function, and one file should not hold two.
-  const edgeLayout = options.withLoad && options.hasLayout === true;
+  const edgeLayout = options.withLoad && api?.layout === true;
+  const edgePaths = options.withLoad && api?.paths === true;
 
   const lines: string[] = [];
   const hasDi = options.hasDi === true;
   // `load` and `layout` run as part of the request (SDD-56 §4.6): inside `withRequest`, so
   // `inject()` and `publish()` find this request's container, and through the server halves
-  // of the chain. `load` always: its `ctx` is a `ServerContext` whether or not there is a chain
-  // (§4.16). A `layout` alone, only when the route has a container to find or a chain to walk.
-  const hasHttp = options.hasHttp === true;
-  const http =
-    edgeLoad ||
-    (edgeLayout && (hasDi || hasHttp || options.fluentLoad === true || options.globalChain !== undefined));
-  const outer = [
-    ...(options.globalChain !== undefined ? ['global: $global'] : []),
-    ...(hasHttp ? ['file: $http'] : []),
-  ].join(', ');
+  // of their chains. Their `ctx` is a `ServerContext` (§4.16).
+  const http = edgeLoad || edgeLayout;
   const ssr = [
     'SsrDom',
     'serializeChunks',
@@ -135,26 +136,31 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   ];
   lines.push(`import { page } from ${spec};`);
   lines.push(`import { ${ssr.join(', ')} } from "@fudic/ssr";`);
-  if (http) {
-    lines.push('import { pageContext, runLoad, withRequest } from "@fudic/http/server";');
-    if (options.globalChain !== undefined) {
-      lines.push(`import $global from ${JSON.stringify(options.globalChain)};`);
+  if (http) lines.push('import { pageContext, withRequest } from "@fudic/http/server";');
+  const pieces = [
+    ...(edgeLoad ? ['load as $load'] : []),
+    ...(edgeLayout ? ['layout as $layout'] : []),
+    ...(edgePaths ? ['paths as $paths'] : []),
+  ];
+  if (api !== undefined && pieces.length > 0) {
+    // The pieces of the route's contract, and the root that fills them (SDD-60 §4.4).
+    const tagged = (id: string): string => (api.locale === undefined ? id : withLocale(id, api.locale));
+    lines.push(`import { ready as $ready } from ${JSON.stringify(tagged(api.root))};`);
+    lines.push(`import { ${pieces.join(', ')} } from ${JSON.stringify(tagged(`fudic:${api.id}`))};`);
+    lines.push('import { implementation as $impl, runLoad as $runLoad } from "@fudic/http/contract/server";');
+    lines.push('');
+    // The same names the rest of this module reads, on the registry. Each one waits for the
+    // implementations: a duplicate or a wrong folder fails here, with its own message.
+    if (edgeLayout) {
+      lines.push('async function layoutProps(ctx, data) {', '  await $ready;', '  return $impl($layout)(ctx, data);', '}');
     }
-    if (hasHttp) {
-      lines.push(`import { http as $http } from ${server};`);
+    if (edgePaths) {
+      // Re-exported so the build can enumerate the param space at prerender time.
+      lines.push('export async function paths() {', '  await $ready;', '  return $impl($paths)();', '}');
     }
-  }
-  if (edgeLoad) {
-    lines.push(`import { load } from ${server};`);
-  }
-  if (edgeLayout) {
-    lines.push(`import { layout as layoutProps } from ${server};`);
-  }
-  if (options.withLoad && options.hasPaths) {
-    // Re-exported so the build can enumerate the param space at prerender time.
-    lines.push(`export { paths } from ${server};`);
   }
   lines.push('');
+  const loadCall = `$ready.then(() => $runLoad($load, $ctx, ${String(api?.dev === true)}))`;
   // `io.nonce` is the CSP nonce of THIS response: the emit puts it on the inline
   // style-adoption polyfill, which a strict `script-src 'self'` would otherwise kill.
   // The two main-thread entries, by URL (BUG-31 §T1).
@@ -177,16 +183,9 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
     lines.push('  const $root = iocRoot();');
     lines.push('  const $ctx = pageContext(ctx);');
     lines.push('  return withRequest($root, async () => {');
-    lines.push(`    const data = ${edgeLoad ? `await runLoad(load, { ${outer} }, $ctx)` : '{}'};`);
+    lines.push(`    const data = ${edgeLoad ? `await ${loadCall}` : '{}'};`);
     lines.push(`    return { data${edgeLayout ? ', layout: await layoutProps($ctx, data)' : ''} };`);
     lines.push('  });');
-    lines.push('}');
-    lines.push('');
-  } else if (edgeLayout) {
-    // No `load` here: a route with one always takes the branch above.
-    lines.push('export async function data(ctx) {');
-    lines.push('  const data = {};');
-    lines.push('  return { data, layout: await layoutProps(ctx, data) };');
     lines.push('}');
     lines.push('');
   }
@@ -204,25 +203,21 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   }
   if (edgeLoad) {
     lines.push(
-      `    const data = ctx.data !== undefined ? ctx.data : await withRequest($root, () => runLoad(load, { ${outer} }, $ctx));`,
+      `    const data = ctx.data !== undefined ? ctx.data : await withRequest($root, () => ${loadCall});`,
     );
   } else {
     lines.push('    const data = ctx.data !== undefined ? ctx.data : {};');
   }
   // AFTER `load`, and with what it resolved in hand (§4.2). `ctx.layout` first for the same
   // reason `ctx.data` comes first: the Service Worker was handed both already resolved, and
-  // running `@server` there is not a fallback, it is impossible.
+  // running the resolver there is not a fallback, it is impossible.
   //
   // The bare `ctx`, never the one with the container on it (BUG-44): a service the props need
   // is `load`'s to inject, and it reaches the resolver in `data`. The data endpoint above
   // already hands it the bare one, so the two paths cannot disagree.
-  if (http && edgeLayout) {
+  if (edgeLayout) {
     lines.push(
       '    const layout = ctx.layout !== undefined ? ctx.layout : await withRequest($root, () => layoutProps($ctx, data));',
-    );
-  } else if (edgeLayout) {
-    lines.push(
-      '    const layout = ctx.layout !== undefined ? ctx.layout : await layoutProps(ctx, data);',
     );
   } else {
     lines.push('    const layout = ctx.layout;');
@@ -232,4 +227,28 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   lines.push('}');
   lines.push('');
   return lines.join('\n');
+}
+
+/**
+ * The `api` of a route's wrapper (SDD-60 §4.4), from what discovery read of the `.fudapi` it
+ * links; `{}` when it links none.
+ */
+export function routeApi(
+  rb: { readonly analysis: PageAnalysis; readonly locale?: string },
+  root: string,
+  dev: boolean,
+): Pick<RenderChunkOptions, 'api'> {
+  const { analysis } = rb;
+  if (analysis.api === undefined) return {};
+  return {
+    api: {
+      id: analysis.api,
+      load: analysis.hasLoad,
+      paths: analysis.hasPaths,
+      layout: analysis.hasLayout,
+      root,
+      dev,
+      ...(rb.locale !== undefined ? { locale: rb.locale } : {}),
+    },
+  };
 }

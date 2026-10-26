@@ -1,18 +1,9 @@
 @code {
+  import { signal } from "@fudic/core";
+
   const { label = "none" } = props<{ label?: string }>();
 
-  @server {
-    import { get } from "@fudic/http";
-    import { secret } from "./spike-data";
-
-    export const reveal = get().handle(() => secret());
-  }
-
-  @client {
-    import { signal } from "@fudic/core";
-
-    const n = signal(0);
-  }
+  const n = signal(0);
 }
 
 <head>

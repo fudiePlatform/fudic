@@ -61,6 +61,8 @@ export interface ComponentDocument extends Node, SnippetHost {
   readonly type: 'component-document';
   /** All top-level `<link rel="component">`, in order. Any number (decision 55). */
   readonly links: readonly ElementNode[];
+  /** `<link rel="server">`, the `.fudapi` it links (SDD-60 §3.14). Absent when none. */
+  readonly serverLinks?: readonly ElementNode[];
   /** The single `@code`, if present (decision 54). */
   readonly code?: CodeBlockNode;
   /** The `<head>` fragment, if present (decision 62; holds the component's single `<style>`). */
@@ -82,6 +84,8 @@ export interface PageDocument extends Node, SnippetHost {
   readonly body: ElementNode;
   /** `<link rel="component">` found inside `<head>` (decision 59). */
   readonly links: readonly ElementNode[];
+  /** `<link rel="server">` found inside `<head>` (SDD-60 §3.14). Absent when none. */
+  readonly serverLinks?: readonly ElementNode[];
   /** `@code` found inside `<head>` (decision 60). */
   readonly code?: CodeBlockNode;
 }
@@ -100,6 +104,8 @@ export interface RouteDocument extends Node, SnippetHost {
   readonly layoutHref: string;
   /** `<link rel="component">`, any number (decision 55). */
   readonly links: readonly ElementNode[];
+  /** `<link rel="server">`, the `.fudapi` it links (SDD-60 §3.14). Absent when none. */
+  readonly serverLinks?: readonly ElementNode[];
   /** The single `@code`, if present (decision 54). */
   readonly code?: CodeBlockNode;
   /** The `<head>` fragment: this route's head contributions (decisions 62, 88). */

@@ -334,6 +334,125 @@ describe('watched files', () => {
     expect(refreshes).toEqual([]);
   });
 
+  it('a .fudapi or a package.json changed on disk drops the .fudapi files and asks for a refresh (SDD-60 criterion 27)', () => {
+    let lists = 0;
+    const apiFs = { readFile: () => undefined, list: () => (lists++, []), writeFile: () => {}, removeFile: () => {} };
+    const { fake, server, volar } = setup({ apiFs });
+    const refreshes: boolean[] = [];
+    volar.languageFeatures = { requestRefresh: async (clear) => void refreshes.push(clear) };
+    fake.onInitialize?.(params());
+    server.apis.load('/p/src/a.fudapi', '');
+    const listed = lists;
+    server.apis.load('/p/src/a.fudapi', '');
+    expect(lists).toBe(listed);
+
+    fake.onDidChangeWatchedFiles?.({
+      changes: [
+        { uri: URI.file('/p/src/rules/nif.fudapi').toString(), type: 2 },
+        { uri: URI.file('/p/package.json').toString(), type: 2 },
+      ],
+    });
+
+    server.apis.load('/p/src/a.fudapi', '');
+    expect(lists).toBeGreaterThan(listed);
+    expect(refreshes).toEqual([false]);
+  });
+
+  it('a .fudapi changed on disk re-projects the .fud that link it (SDD-60 criterion 27, the .fud side)', () => {
+    const apiFs = { readFile: () => undefined, list: () => [], writeFile: () => {}, removeFile: () => {} };
+    const { fake, server, files } = setup({ apiFs });
+    const route = '/p/src/routes/r.fud';
+    const source = `<link rel="server" href="./r.fudapi">\n${component('p-r')}`;
+    files['/p/src/routes/r.fudapi'] = 'get search\n';
+    fake.onInitialize?.(params());
+    const before = server.cache.get(route, 1, source);
+    expect(before.virtuals[0]?.text).toContain("['search']");
+
+    files['/p/src/routes/r.fudapi'] = 'get find\n';
+    fake.onDidChangeWatchedFiles?.({ changes: [{ uri: URI.file('/p/src/routes/r.fudapi').toString(), type: 2 }] });
+
+    expect(server.cache.get(route, 1, source).virtuals[0]?.text).toContain("['find']");
+  });
+
+  /** A disk with one project under `/p`: a contract, and what the server writes. */
+  function contracts() {
+    const disk: Record<string, string> = { '/p/package.json': '{}', '/p/src/a.fudapi': 'type A\n  x  str\n' };
+    const writes: string[] = [];
+    const removed: string[] = [];
+    const apiFs = {
+      readFile: (path: string) => disk[path],
+      list: (path: string) => (path === '/p' ? [{ name: 'src', directory: true }] : path === '/p/src' ? [{ name: 'a.fudapi', directory: false }] : []),
+      writeFile: (path: string, text: string) => {
+        writes.push(path);
+        disk[path] = text;
+      },
+      removeFile: (path: string) => {
+        removed.push(path);
+        delete disk[path];
+      },
+    };
+    return { disk, writes, removed, apiFs };
+  }
+
+  it('writes the types of every contract when it starts (SDD-60 §4.9)', () => {
+    const { apiFs, writes, disk } = contracts();
+    const { fake } = setup({ apiFs });
+    fake.onInitialize?.(params());
+    fake.onInitialized?.();
+    expect(writes).toEqual(['/p/.fudic/api/a.d.ts']);
+    expect(disk['/p/.fudic/api/a.d.ts']).toContain('export interface A { readonly x: string }');
+  });
+
+  it('a .fudapi saved writes its types again; one deleted takes its types away (SDD-60 criterion 30)', () => {
+    const { apiFs, writes, removed, disk } = contracts();
+    const { fake } = setup({ apiFs });
+    fake.onInitialize?.(params());
+    fake.onInitialized?.();
+    writes.length = 0;
+
+    disk['/p/src/a.fudapi'] = 'type A\n  y  str\n';
+    fake.onDidChangeWatchedFiles?.({ changes: [{ uri: URI.file('/p/src/a.fudapi').toString(), type: 2 }] });
+    expect(writes).toEqual(['/p/.fudic/api/a.d.ts']);
+    expect(disk['/p/.fudic/api/a.d.ts']).toContain('readonly y: string');
+
+    fake.onDidChangeWatchedFiles?.({ changes: [{ uri: URI.file('/p/src/gone.fudapi').toString(), type: 3 }] });
+    expect(removed).toEqual(['/p/.fudic/api/gone.d.ts']);
+
+    // A package.json changes what a contract sees, but writes no types by itself.
+    writes.length = 0;
+    fake.onDidChangeWatchedFiles?.({ changes: [{ uri: URI.file('/p/package.json').toString(), type: 2 }] });
+    expect(writes).toEqual([]);
+  });
+
+  it('leaves the .fudapi files alone for a change that cannot affect them', () => {
+    let lists = 0;
+    const apiFs = { readFile: () => undefined, list: () => (lists++, []), writeFile: () => {}, removeFile: () => {} };
+    const { fake, server } = setup({ apiFs });
+    fake.onInitialize?.(params());
+    server.apis.load('/p/src/a.fudapi', '');
+    const listed = lists;
+    fake.onDidChangeWatchedFiles?.({ changes: [{ uri: URI.file('/p/tsconfig.json').toString(), type: 2 }] });
+    server.apis.load('/p/src/a.fudapi', '');
+    expect(lists).toBe(listed);
+  });
+
+  it('an open .fudapi is read from the editor, a closed one from the disk', () => {
+    const disk: Record<string, string> = { '/p/src/b.fudapi': 'type FromDisk\n  x  str\n' };
+    const apiFs = {
+      readFile: (path: string) => disk[path],
+      list: (path: string) => (path === '/p/src' ? [{ name: 'b.fudapi', directory: false }] : []),
+      writeFile: () => {},
+      removeFile: () => {},
+    };
+    const { fake, server, documents } = setup({ apiFs });
+    fake.onInitialize?.(params());
+    expect(server.apis.load('/p/src/a.fudapi', '').index.lookup('type', 'FromDisk')).toBeDefined();
+    documents.set(URI.file('/p/src/b.fudapi').toString(), TextDocument.create(URI.file('/p/src/b.fudapi').toString(), 'fudapi', 2, 'type FromEditor\n  x  str\n'));
+    const index = server.apis.load('/p/src/a.fudapi', '').index;
+    expect(index.lookup('type', 'FromEditor')).toBeDefined();
+    expect(index.lookup('type', 'FromDisk')).toBeUndefined();
+  });
+
   it('copes with a Volar server that cannot refresh', () => {
     const { fake, server } = setup();
     fake.onInitialize?.(params());
@@ -387,10 +506,7 @@ describe('the own requests (§3.4)', () => {
     const handler = fake.requests.get(VIRTUAL_FILES_REQUEST);
     const files = (await handler?.({ uri } as never)) as { fileName: string }[];
 
-    expect(files.map((file) => file.fileName)).toEqual([
-      `${SLUG}.ts`,
-      `${SLUG}.server.ts`,
-    ]);
+    expect(files.map((file) => file.fileName)).toEqual([`${SLUG}.ts`]);
   });
 
   it('answers for a file that is only on disk', async () => {

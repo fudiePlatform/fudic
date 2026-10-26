@@ -1,0 +1,3 @@
+# Counts in a cookie: the page's jar carries it back on the next call.
+post visit
+  -> i32

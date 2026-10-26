@@ -288,15 +288,10 @@ export function unstarred(body: string): string | undefined {
 }
 
 /**
- * The doc of a component: the first top-level JSDoc of any NEUTRAL chunk of its `@code`.
- *
- * The neutral chunks and not the whole block, because `@server` and `@client` are the other
- * two and neither documents the component — what is written inside a `@client` documents the
- * function it precedes.
+ * The doc of a component: the first top-level JSDoc of a chunk of its `@code`.
  */
 function componentDoc(source: string, code: CodeBlockNode): string | undefined {
   for (const part of code.parts) {
-    if (part.type !== 'neutral-js') continue;
     const doc = topLevelDocComment(source.slice(part.js.start, part.js.end));
     if (doc !== undefined) return doc;
   }

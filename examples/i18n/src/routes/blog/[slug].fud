@@ -1,23 +1,5 @@
 <link rel="layout" href="../../layouts/_layout.fud">
-
-@code {
-  type PageData = { title: string; time: string };
-
-  @server {
-    import { findPost, notFound, readingTime, slugs } from "../../services/posts";
-
-    export function load({ params }: { params: { slug: string } }): PageData {
-      const post = findPost(params.slug);
-      return post === undefined
-        ? { title: notFound(params.slug), time: "" }
-        : { title: post.title, time: readingTime(post.minutes) };
-    }
-
-    export function paths(): string[] {
-      return slugs();
-    }
-  }
-}
+<link rel="server" href="./[slug].fudapi">
 
 <head>
   <title>@data.title</title>

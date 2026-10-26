@@ -1,10 +1,9 @@
 /**
- * The NEUTRAL zone of `@code` reaching both emitted modules (SDD-34 §4.4).
+ * The server's CUT of `@code` reaching both emitted modules (SDD-34 §4.4, SDD-60 §4.8).
  *
- * It is the half of `@code` that runs on both sides, and until now it reached NEITHER: the
- * emit read it for the `props<T>()` destructuring and the reactive declarations and dropped
- * everything else, so decision 33.c — *imports inside the regions, hoisted at emit* — was true
- * of `@client` alone. That is the shape a form needs: it is written in its own `.ts` and
+ * What the markup reads runs on both sides: the emit reads the `props<T>()` destructuring and
+ * the reactive declarations, and copies everything else the markup reaches — imports hoisted
+ * (decision 33.c). That is the shape a form needs: it is written in its own `.ts` and
  * IMPORTED by the view, so that the server renders its values and the client hydrates the very
  * same object.
  */
@@ -17,7 +16,11 @@ import {
 } from '../../src/emit/index.js';
 import { memoryIo } from './_support.js';
 
-/** Emit both modules of a one-component graph whose `@code` is the given source. */
+/**
+ * Emit both modules of a one-component graph whose `@code` is the given source.
+ *
+ * The template decides what is in the cut, so each case paints with the names it is about.
+ */
 function both(code: string, template = '<p>x</p>'): { server: string; client: string } {
   const io = memoryIo({
     '/home.fud':
@@ -32,9 +35,9 @@ function both(code: string, template = '<p>x</p>'): { server: string; client: st
   };
 }
 
-describe('the neutral zone reaches both modules (§4.4)', () => {
-  it('hoists a neutral import into the server module and the client chunk', () => {
-    const { server, client } = both("  import { userForm } from './user.form.js';");
+describe('the cut reaches both modules (§4.4)', () => {
+  it('hoists an import the markup reads into the server module and the client chunk', () => {
+    const { server, client } = both("  import { userForm } from './user.form.js';", '<p>@(userForm.title)</p>');
     const line = "import { userForm } from './user.form.js';";
     expect(server).toContain(line);
     expect(client).toContain(line);
@@ -43,8 +46,8 @@ describe('the neutral zone reaches both modules (§4.4)', () => {
     expect(client.indexOf(line)).toBeLessThan(client.indexOf('customElements.define'));
   });
 
-  it('carries a neutral statement into the body of both', () => {
-    const { server, client } = both('  const f = 1;');
+  it('carries a statement the markup reads into the body of both', () => {
+    const { server, client } = both('  const f = 1;', '<p>@f</p>');
     expect(server).toContain('const f = 1;');
     expect(client).toContain('const f = 1;');
     // INSIDE, because it is per render on one side and per instance on the other.
@@ -52,14 +55,14 @@ describe('the neutral zone reaches both modules (§4.4)', () => {
     expect(client.indexOf('const f = 1;')).toBeGreaterThan(client.indexOf('static c($props)'));
   });
 
-  it('keeps source order between neutral statements', () => {
-    const { server } = both('  const a = 1;\n  const b = a + 1;');
+  it('keeps source order between the statements of the cut', () => {
+    const { server } = both('  const a = 1;\n  const b = a + 1;', '<p>@b</p>');
     expect(server.indexOf('const a = 1;')).toBeLessThan(server.indexOf('const b = a + 1;'));
   });
 
-  it('a side-effect import still travels: it names nothing and does something', () => {
+  it('a side-effect import is the browser’s: it names nothing the markup reads', () => {
     const { server, client } = both("  import './register.js';");
-    expect(server).toContain("import './register.js';");
+    expect(server).not.toContain("import './register.js';");
     expect(client).toContain("import './register.js';");
   });
 });
@@ -99,7 +102,7 @@ describe('what the emit already writes is not written twice', () => {
   });
 });
 
-describe('types travel to neither module', () => {
+describe('types do not travel to the server', () => {
   it('drops a type alias and an interface', () => {
     const { server, client } = both('  type Tone = "a" | "b";\n  interface P { a: string }');
     for (const out of [server, client]) {
@@ -108,15 +111,15 @@ describe('types travel to neither module', () => {
     }
   });
 
-  it('drops an `import type` whole', () => {
-    const { server, client } = both("  import type { Post } from './post.js';");
-    for (const out of [server, client]) {
-      expect(out).not.toContain('./post.js');
-    }
+  it('drops an `import type` whole from the server module', () => {
+    // The chunk copies the browser’s code verbatim, TypeScript included: stripping types is
+    // the bundler’s job there (SDD-34).
+    const { server } = both("  import type { Post } from './post.js';");
+    expect(server).not.toContain('./post.js');
   });
 
   it('narrows an import that mixes a type specifier with a value one', () => {
-    const { server, client } = both("  import { type Post, userForm } from './user.form.js';");
+    const { server, client } = both("  import { type Post, userForm } from './user.form.js';", '<p>@(userForm.title)</p>');
     for (const out of [server, client]) {
       // Rebuilt from the specifiers rather than sliced: cutting the type out textually would
       // take the comma of its neighbour with it.
@@ -126,17 +129,17 @@ describe('types travel to neither module', () => {
   });
 
   it('keeps a renamed and a default specifier when it narrows', () => {
-    const { server } = both("  import base, { type T, a as b } from './x.js';");
+    const { server } = both("  import base, { type T, a as b } from './x.js';", '<p>@(base + b)</p>');
     expect(server).toContain("import base, { a as b } from './x.js';");
   });
 
   it('keeps a string-named import when it narrows (ES2022 arbitrary namespace names)', () => {
-    const { server } = both('  import { type T, "a-b" as ab } from \'./x.js\';');
+    const { server } = both('  import { type T, "a-b" as ab } from \'./x.js\';', '<p>@ab</p>');
     expect(server).toContain('import { "a-b" as ab } from \'./x.js\';');
   });
 
   it('narrows down to the default specifier alone', () => {
-    const { server } = both("  import base, { type T } from './x.js';");
+    const { server } = both("  import base, { type T } from './x.js';", '<p>@base</p>');
     expect(server).toContain("import base from './x.js';");
     expect(server).not.toContain('type T');
   });
@@ -144,7 +147,7 @@ describe('types travel to neither module', () => {
   it('leaves a namespace import alone: it has nothing to narrow', () => {
     // `import * as ns, { a } from '…'` is not grammatical, so a namespace import never
     // reaches the rebuild — it either travels whole or is a type import and does not travel.
-    const { server } = both("  import { type T } from './x.js';\n  import * as ns from './y.js';");
+    const { server } = both("  import { type T } from './x.js';\n  import * as ns from './y.js';", '<p>@(ns.a)</p>');
     expect(server).toContain("import * as ns from './y.js';");
     expect(server).not.toContain('./x.js');
   });

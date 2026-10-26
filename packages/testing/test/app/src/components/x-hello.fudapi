@@ -1,0 +1,4 @@
+post greet
+  use halves plain
+  name  str
+  -> str

@@ -17,16 +17,20 @@ import {
   type Span,
   type StructuredDocument,
 } from '@fudic/compiler';
-import type { FileRegistry, SnippetImport } from '@fudic/language-core';
+import type { FileRegistry, ServerImport, SnippetImport } from '@fudic/language-core';
 import type { LinkIndex } from './link-index.js';
+import { serverLinksOf } from './links.js';
 import { layoutHrefOf } from './mode.js';
+
+/** The registry of a file of a project: it always knows the `.fudapi` the file links. */
+export type ProjectRegistry = FileRegistry & { servers(): readonly ServerImport[] };
 
 /** The registry of one `.fud`: its own `<link>`s resolved against the index. */
 export function createFileRegistry(
   filePath: string,
   document: StructuredDocument,
   index: LinkIndex,
-): FileRegistry {
+): ProjectRegistry {
   const byTag = new Map<string, string>();
 
   for (const link of document.links) {
@@ -51,10 +55,20 @@ export function createFileRegistry(
     snippets.push({ href, ...(namespace === undefined ? {} : { namespace }) });
   }
 
+  // The `.fudapi` it links (SDD-60 §4.7), read when the projection asks.
+  const serverLinks = serverLinksOf(document);
+  const servers = (): readonly ServerImport[] =>
+    serverLinks.flatMap((link) => {
+      const href = linkHref(link);
+      const read = href === undefined ? undefined : index.server?.(filePath, href);
+      return read === undefined ? [] : [read];
+    });
+
   return {
     component: (tag) => byTag.get(tag),
     layout: () => (layout === '' ? undefined : layout),
     snippets: () => snippets,
+    servers,
   };
 }
 

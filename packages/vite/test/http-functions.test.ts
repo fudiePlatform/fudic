@@ -1,31 +1,18 @@
 /**
  * SDD-56 §4.12 and §4.15 in the plugin: a Node request carried into a `Request` and a
- * `Response` back out, through a real Node HTTP server; where the dev server finds each
- * `?server`; the table of an app's functions; and the text of `functions.mjs`.
+ * `Response` back out, through a real Node HTTP server, and the 404 of an app without a
+ * `.fudapi`. The text of `functions.mjs` is `api-units`'s.
  */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createServer, type Server } from 'node:http';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import {
-  appFunctions,
-  devSource,
-  emitFunctionsModule,
-  functionsOf,
-  httpFileOf,
-  isFnPath,
-  sendResponse,
-  toRequest,
-} from '../src/functions.js';
-import type { RouteBuild } from '../src/discover.js';
+import { isFnPath, noFunction, sendResponse, toRequest } from '../src/functions.js';
 
 describe('isFnPath', () => {
   it('under base + /_fudic/fn/ only', () => {
-    expect(isFnPath('/_fudic/fn/r/a/save', '/')).toBe(true);
-    expect(isFnPath('/app/_fudic/fn/c/x/save', '/app/')).toBe(true);
-    expect(isFnPath('/_fudic/fn/r/a/save', '/app/')).toBe(false);
+    expect(isFnPath('/_fudic/fn/routes/a/save', '/')).toBe(true);
+    expect(isFnPath('/app/_fudic/fn/components/x/save', '/app/')).toBe(true);
+    expect(isFnPath('/_fudic/fn/routes/a/save', '/app/')).toBe(false);
     expect(isFnPath('/_fudic/fnord', '/')).toBe(false);
     expect(isFnPath('/_fudic/data/a', '/')).toBe(false);
   });
@@ -58,12 +45,12 @@ describe('toRequest and sendResponse, over a real Node server', () => {
 
   it('a GET: method, URL with its query, headers, no body', async () => {
     answer = () => new Response('{"a":1}', { status: 200, headers: { 'content-type': 'application/json' } });
-    const res = await fetch(`${origin}/_fudic/fn/r/a/save?a=1`, { headers: { 'x-one': 'uno', cookie: 'a=1' } });
+    const res = await fetch(`${origin}/_fudic/fn/routes/a/save?a=1`, { headers: { 'x-one': 'uno', cookie: 'a=1' } });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ a: 1 });
     expect(res.headers.get('content-type')).toBe('application/json');
     expect(seen!.request.method).toBe('GET');
-    expect(new URL(seen!.request.url).pathname + new URL(seen!.request.url).search).toBe('/_fudic/fn/r/a/save?a=1');
+    expect(new URL(seen!.request.url).pathname + new URL(seen!.request.url).search).toBe('/_fudic/fn/routes/a/save?a=1');
     expect(seen!.request.headers.get('x-one')).toBe('uno');
     expect(seen!.request.headers.get('cookie')).toBe('a=1');
     expect(seen!.aborted()).toBe(false);
@@ -76,7 +63,7 @@ describe('toRequest and sendResponse, over a real Node server', () => {
       headers.append('set-cookie', 'b=2; HttpOnly');
       return new Response('done', { status: 201, headers });
     };
-    const res = await fetch(`${origin}/_fudic/fn/r/a/save`, { method: 'PUT', body: '{"x":1}' });
+    const res = await fetch(`${origin}/_fudic/fn/routes/a/save`, { method: 'PUT', body: '{"x":1}' });
     expect(res.status).toBe(201);
     expect(await res.text()).toBe('done');
     expect(res.headers.getSetCookie()).toEqual(['a=1', 'b=2; HttpOnly']);
@@ -152,145 +139,11 @@ describe('toRequest and sendResponse, over a real Node server', () => {
   });
 });
 
-describe('where the modules are', () => {
-  const root = mkdtempSync(join(tmpdir(), 'fudic-fn-'));
-  mkdirSync(join(root, 'src', 'routes'), { recursive: true });
-  mkdirSync(join(root, 'src', 'components'), { recursive: true });
-  mkdirSync(join(root, 'src', 'layouts'), { recursive: true });
-
-  const write = (rel: string, text: string): string => {
-    const path = join(root, rel);
-    writeFileSync(path, text);
-    return path;
-  };
-
-  const usuarios = write(
-    'src/routes/usuarios.fud',
-    `<!DOCTYPE html><html><head>
-@code {
-  @server {
-    import { get, put } from '@fudic/http';
-    export async function load() { return {}; }
-    export const search = get().handle(() => []);
-    export const save = put().handle(() => 1);
-  }
-}
-</head><body></body></html>`,
-  );
-  const home = write('src/routes/index.fud', '<!DOCTYPE html><html><head></head><body><p>x</p></body></html>');
-  const loadOnly = write(
-    'src/routes/about.fud',
-    '<!DOCTYPE html><html><head>@code {\n  @server {\n    export async function load() { return {}; }\n  }\n}\n</head><body></body></html>',
-  );
-  const userForm = write(
-    'src/components/user-form.fud',
-    `@code {
-  @server {
-    import { del } from '@fudic/http';
-    export const remove = del().handle(() => 1);
-  }
-}
-<user-form><template shadowrootmode="open"><span></span></template></user-form>`,
-  );
-  const plain = write('src/components/x-plain.fud', '<x-plain><template shadowrootmode="open"><span></span></template></x-plain>');
-  const fragment = write(
-    'src/layouts/main.fud',
-    '<!DOCTYPE html><html><head>@RenderHead()</head><body>@RenderBody()</body></html>',
-  );
-
-  const build = (pattern: string, absPath: string) => ({ route: { pattern }, absPath }) as unknown as RouteBuild;
-
-  it('httpFileOf: src/http.ts when the project has one', () => {
-    expect(httpFileOf(root)).toBeUndefined();
-    write('src/http.ts', 'export default 1;');
-    expect(httpFileOf(root)).toBe(`${root.replace(/\\/gu, '/')}/src/http.ts`);
-  });
-
-  it('functionsOf: by name and method, load aside; none for a file that has none or is no document', () => {
-    expect(functionsOf(usuarios)).toEqual([
-      { name: 'search', method: 'GET' },
-      { name: 'save', method: 'PUT' },
-    ]);
-    expect(functionsOf(userForm)).toEqual([{ name: 'remove', method: 'DELETE' }]);
-    expect(functionsOf(loadOnly)).toEqual([]);
-    expect(functionsOf(home)).toEqual([]);
-    expect(functionsOf(fragment)).toEqual([]);
-  });
-
-  it('appFunctions: only the files with functions, and the table by URL and method', () => {
-    const app = appFunctions(
-      [build('/usuarios', usuarios), build('/', home), build('/about', loadOnly)],
-      [
-        { tag: 'user-form', path: userForm },
-        { tag: 'x-plain', path: plain },
-      ],
-    );
-    expect(app.routes).toEqual([{ pattern: '/usuarios', path: usuarios }]);
-    expect(app.components).toEqual([{ tag: 'user-form', path: userForm }]);
-    expect(app.table).toEqual([
-      { url: '/_fudic/fn/r/usuarios/search', method: 'GET' },
-      { url: '/_fudic/fn/r/usuarios/save', method: 'PUT' },
-      { url: '/_fudic/fn/c/user-form/remove', method: 'DELETE' },
-    ]);
-  });
-
-  it('appFunctions: the root route has no segment of its own', () => {
-    const index = write(
-      'src/routes/root.fud',
-      "<!DOCTYPE html><html><head>@code {\n  @server {\n    import { get } from '@fudic/http';\n    export const hi = get().handle(() => 1);\n  }\n}\n</head><body></body></html>",
-    );
-    expect(appFunctions([build('/', index)], []).table).toEqual([{ url: '/_fudic/fn/r/hi', method: 'GET' }]);
-  });
-
-  it('devSource: each ?server loaded through the graph, on demand', async () => {
-    const loaded: string[] = [];
-    const source = devSource({
-      builds: [build('/usuarios', 'C:\\app\\src\\routes\\usuarios.fud'), build('/', '/app/index.fud')],
-      componentPath: (tag) => (tag === 'user-form' ? '/app/user-form.fud' : undefined),
-      load: async (id) => (loaded.push(id), { id, default: 'GLOBAL' }),
-      httpFile: '/app/src/http.ts',
-    });
-    expect(source.routes).toEqual(['/usuarios', '/']);
-    expect(await source.route('/usuarios')).toMatchObject({ id: 'C:/app/src/routes/usuarios.fud?server' });
-    expect(await source.route('/nada')).toBeUndefined();
-    expect(await source.component('user-form')).toMatchObject({ id: '/app/user-form.fud?server' });
-    expect(await source.component('nobody')).toBeUndefined();
-    expect(await source.global()).toBe('GLOBAL');
-    expect(loaded).toEqual(['C:/app/src/routes/usuarios.fud?server', '/app/user-form.fud?server', '/app/src/http.ts']);
-  });
-
-  it('devSource: without src/http.ts, no global level', async () => {
-    const source = devSource({ builds: [], componentPath: () => undefined, load: async () => ({}), httpFile: undefined });
-    expect(await source.global()).toBeUndefined();
-  });
-});
-
-describe('emitFunctionsModule (§4.15)', () => {
-  const table = [
-    { url: '/_fudic/fn/r/usuarios/save', method: 'PUT' },
-    { url: '/_fudic/fn/c/user-form/save', method: 'PUT' },
-  ];
-
-  it('every ?server behind one handle, with the global chain and the table', () => {
-    const text = emitFunctionsModule({
-      routes: [{ pattern: '/usuarios', path: 'C:\\app\\src\\routes\\usuarios.fud' }],
-      components: [{ tag: 'user-form', path: '/app/src/components/user-form.fud' }],
-      httpFile: '/app/src/http.ts',
-      base: '/app/',
-      table,
-    });
-    expect(text).toContain("import { functionsHandler } from '@fudic/http/server';");
-    expect(text).toContain('import $global from "/app/src/http.ts";');
-    expect(text).toContain('"/usuarios": () => import("C:/app/src/routes/usuarios.fud?server"),');
-    expect(text).toContain('"user-form": () => import("/app/src/components/user-form.fud?server"),');
-    expect(text).toContain('  global: async () => $global,');
-    expect(text).toContain('export const handle = functionsHandler(source, { base: "/app/" });');
-    expect(text).toContain(`export const functions = ${JSON.stringify(table)}.map((entry) => ({ ...entry, handle }));`);
-  });
-
-  it('without src/http.ts the global level is undefined, and nothing imports it', () => {
-    const text = emitFunctionsModule({ routes: [], components: [], httpFile: undefined, base: '/', table: [] });
-    expect(text).not.toContain('$global');
-    expect(text).toContain('  global: async () => undefined,');
+describe('noFunction', () => {
+  it('the 404 of a function URL in an app without a .fudapi', async () => {
+    const response = noFunction();
+    expect(response.status).toBe(404);
+    expect(response.headers.get('content-type')).toBe('application/problem+json');
+    expect(await response.json()).toEqual({ status: 404, title: 'Not Found', detail: 'no such server function' });
   });
 });

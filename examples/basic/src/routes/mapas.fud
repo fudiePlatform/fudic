@@ -2,26 +2,7 @@
 <link rel="component" href="../components/site-nav.fud">
 <link rel="component" href="../components/bus-picker.fud">
 <link rel="component" href="../components/bus-log.fud">
-
-@code {
-  @server {
-    import { strategy } from "@fudic/core";
-
-    // Estática con datos: el build corre `load` y prerenderiza el HTML, así que los tres
-    // bloques se leen abriendo el fuente, sin servidor y sin JavaScript.
-    strategy({ mode: "ssg" });
-
-    export function load() {
-      return {
-        options: [
-          { label: "Declarative Shadow DOM", picked: true },
-          { label: "Routing por fichero", picked: false },
-          { label: "SSG estático e incremental", picked: false },
-        ],
-      };
-    }
-  }
-}
+<link rel="server" href="./mapas.fudapi">
 
 <head>
   <title>Los mapas de la página — fudic</title>

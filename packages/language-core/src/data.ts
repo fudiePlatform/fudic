@@ -1,26 +1,20 @@
 /**
  * Derivation of `data` in page and route files (SDD-23 §4.2).
  *
- * The template never declares the type of `data`; it reads it off the `load()` of the
- * server virtual:
+ * The template never declares the type of `data`; it reads it off the `load` of the route's
+ * `.fudapi` (SDD-60 §4.7):
  *
- *     type $Data = typeof import('./[slug].fud.server') extends { load: (...a: never[]) => infer R }
- *       ? Awaited<R> : unknown;
- *     declare const data: $Data;
+ *     declare const data: import('fudic:routes/blog/[slug]').LoadData;
  *
- * Changing the contract of `load()` then breaks the template without the template being
- * touched — which is the entire reason the projection exists.
- *
- * The conditional type, rather than the direct `ReturnType<typeof import(…)['load']>` of
- * the SDD, is what makes the promised degradation real: with no `load`, indexing the module
- * type is itself an error, reported inside scaffolding where no span can carry it. The
- * conditional yields `unknown` instead, so every use of `data` fails **in the template**,
- * where the user can see it.
+ * Changing the contract of `load` then breaks the template without the template being
+ * touched — which is the entire reason the projection exists. Without a `load`, `data` is
+ * `unknown`, so every use of it fails **in the template**, where the user can see it.
  */
 
 import type { StructuredDocument } from '@fudic/compiler';
 import { ERROR_FILE } from '@fudic/conventions';
-import { isFile, serverModuleSpecifier } from './paths.js';
+import { isFile } from './paths.js';
+import type { ServerImport } from './types.js';
 import type { VirtualWriter } from './writer.js';
 
 /**
@@ -38,7 +32,7 @@ const ERROR_DATA =
   '}\n' +
   '/**\n' +
   ' * The error this page paints. Nobody declares it: `_error.fud` has no `load`, the server\n' +
-  ' * renders it with what failed — a `load` that threw, or the call `errorPages()` brought the\n' +
+  ' * renders it with what failed — a `load` that threw, or the call `error-pages` brought the\n' +
   ' * browser here from. Its type is `ErrorPage` of `@fudic/http`.\n' +
   ' */\n';
 
@@ -54,18 +48,19 @@ export function emitDataDeclaration(
   w: VirtualWriter,
   doc: StructuredDocument,
   fudPath: string,
+  servers: readonly ServerImport[] = [],
 ): void {
   if (doc.type === 'component-document' || doc.type === 'layout-document') return;
   if (isFile(fudPath, ERROR_FILE)) {
     w.scaffold(`${ERROR_DATA}declare const data: ErrorPage;\n`);
     return;
   }
+  // The `load` of the route's `.fudapi` (SDD-60 §4.7): `data` is what it declares.
+  const own = servers.find((s) => s.load);
+  if (own !== undefined) {
+    w.scaffold(`declare const data: import('fudic:${own.id}').LoadData;\n`);
+    return;
+  }
 
-  const server = serverModuleSpecifier(fudPath);
-  w.scaffold(
-    `type $Data = typeof import('${server}') extends { load: (...a: never[]) => infer $R }\n` +
-      `  ? Awaited<$R>\n` +
-      `  : unknown;\n` +
-      `declare const data: $Data;\n`,
-  );
+  w.scaffold('declare const data: unknown;\n');
 }

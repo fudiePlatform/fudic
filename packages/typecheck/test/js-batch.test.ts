@@ -1,9 +1,9 @@
 /**
  * The single Oxc invocation per document (SDD-24 §4.5).
  *
- * What is asserted is not "it parses" but WHO gets to see the result: the neutral chunks for
- * the emitter of SDD-23, the regions for the `$` rule, and a fragment id per node for the
- * semantic pass of SDD-12. One batch, three consumers.
+ * What is asserted is not "it parses" but WHO gets to see the result: the chunks of `@code` for
+ * the emitter of SDD-23 and the `$` rule, and a fragment id per node for the semantic pass of
+ * SDD-12. One batch, every consumer.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -17,15 +17,11 @@ const WITH_CODE = `@code {
 
   const { tone = 'neutral' } = props<{ tone?: Tone }>();
 
-  @server {
-    export async function load(): Promise<{ n: number }> {
-      return { n: 1 };
-    }
+  function load(): { n: number } {
+    return { n: 1 };
   }
 
-  @client {
-    const label = 'hi';
-  }
+  const label = 'hi';
 }
 
 <app-badge>
@@ -52,29 +48,13 @@ function firstInterpolation(document: ReturnType<typeof parse>['document']): Raz
 }
 
 describe('batchDocumentJs', () => {
-  it('registers the neutral chunks the emitter looks for props<T>() in', () => {
-    const { js } = parse(WITH_CODE);
+  it('registers every chunk of the `@code`, in source order: what the projection reads', () => {
+    const { document, js } = parse(WITH_CODE);
 
-    expect(js.neutral.length).toBeGreaterThan(0);
-    for (const id of js.neutral) {
+    expect(js.code).toHaveLength(document.code!.parts.length);
+    for (const id of js.code) {
       expect(js.result.ast(id)).toBeDefined();
     }
-  });
-
-  it('registers the @server and @client regions the $ rule needs', () => {
-    const { js } = parse(WITH_CODE);
-
-    expect(js.regions.map((region) => region.part.type).sort()).toEqual([
-      'client-region',
-      'server-region',
-    ]);
-  });
-
-  it('registers the @client regions the reactive names are read from (BUG-23 task 14)', () => {
-    const { js } = parse(WITH_CODE);
-
-    expect(js.client).toHaveLength(1);
-    expect(js.result.ast(js.client[0]!)).toBeDefined();
   });
 
   it('registers the ATTRIBUTE values too, and answers their AST by span', () => {
@@ -106,13 +86,12 @@ describe('batchDocumentJs', () => {
   it('has nothing to register in a document without @code', () => {
     const { js } = parse(component('app-badge'));
 
-    expect(js.neutral).toEqual([]);
-    expect(js.regions).toEqual([]);
+    expect(js.code).toEqual([]);
     expect(js.diagnostics).toEqual([]);
   });
 
   it('reports a syntax error as a diagnostic over the .fud, not as a throw', () => {
-    const source = `@code {\n  @client {\n    const = ;\n  }\n}\n${component('app-badge')}`;
+    const source = `@code {\n  const = ;\n}\n${component('app-badge')}`;
     const { js } = parse(source);
 
     expect(js.diagnostics.length).toBeGreaterThan(0);

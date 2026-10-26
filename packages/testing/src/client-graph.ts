@@ -1,11 +1,11 @@
 /**
  * What a component takes to the browser (§3.10): the imports of its `?client` chunk, walked
- * with the plugin's CLIENT transform — the one that erases a `serverValidator`'s argument and
- * a middleware's `.server` half — and without running any of it.
+ * with the plugin's CLIENT transform — the browser variant of every `fudic:<id>`, which loads
+ * `src/browser` and never `src/server` — and without running any of it.
  *
  * The test's own graph cannot answer this: it runs every module through the SSR path, where
- * nothing is erased (§4.1). So the walk has a Vite of its own, with the project's plugin, made
- * on the first call and kept for the rest of the file.
+ * the server variant loads both folders (§4.1). So the walk has a Vite of its own, with the
+ * project's plugin, made on the first call and kept for the rest of the file.
  */
 
 import { relative, resolve } from 'node:path';
@@ -102,8 +102,8 @@ function hasEffect(statement: AstNode): boolean {
 interface ModuleFacts {
   /**
    * The sources it still needs once bundled: an import whose names nothing uses after the
-   * client transform is what an erased `serverValidator` or `.server` half leaves behind. A
-   * bare import and an `export … from` are always needed.
+   * client transform is one the bundler drops. A bare import and an `export … from` are
+   * always needed.
    */
   readonly needed: ReadonlySet<string>;
   /** Whether evaluating it may do something (see `hasEffect`). */
@@ -134,12 +134,11 @@ export async function factsOf(code: string): Promise<ModuleFacts> {
  * The project files the client chunk of `file` reaches through its imports, transformed for
  * the browser and pruned as the bundler prunes (decision 8.1.23): an import whose names nothing
  * uses any more is followed only when the module it names has top-level effects, because a
- * bundler keeps that module whole. `ssr: true` walks the SSR transform instead, where nothing
- * is erased and nothing pruned: what the graph would be without the plugin.
+ * bundler keeps that module whole.
  */
-export async function walk(file: string, ssr: boolean): Promise<ClientGraph> {
+async function walk(file: string): Promise<ClientGraph> {
   const vite = await server();
-  const env = ssr ? vite.environments['ssr']! : vite.environments['client']!;
+  const env = vite.environments['client']!;
   const root = inject(ROOT_KEY);
   const facts = new Map<string, Promise<ModuleFacts>>();
   const factsAt = (url: string): Promise<ModuleFacts> => {
@@ -152,14 +151,13 @@ export async function walk(file: string, ssr: boolean): Promise<ClientGraph> {
   };
   const seen = new Set<string>();
   const visit = async (url: string): Promise<void> => {
-    const needed = ssr ? undefined : (await factsAt(url)).needed;
-    if (ssr) await env.transformRequest(url);
+    const { needed } = await factsAt(url);
     const node = (await env.moduleGraph.getModuleByUrl(url))!;
     for (const imported of node.importedModules) {
       const at = imported.file;
       // A package is not the project's: what it imports cannot be a file of the project.
       if (at === null || seen.has(at) || at.includes('/node_modules/') || relative(root, at).startsWith('..')) continue;
-      if (needed !== undefined && !needed.has(imported.url) && !(await factsAt(imported.url)).effects) continue;
+      if (!needed.has(imported.url) && !(await factsAt(imported.url)).effects) continue;
       seen.add(at);
       await visit(imported.url);
     }
@@ -170,7 +168,7 @@ export async function walk(file: string, ssr: boolean): Promise<ClientGraph> {
 
 /** What `component`'s client chunk takes to the browser. */
 export function clientGraphOf(component: FudModule): Promise<ClientGraph> {
-  return walk(component[FILE_EXPORT], false);
+  return walk(component[FILE_EXPORT]);
 }
 
 /** Whether `graph` reaches `path`, relative to the project root. */

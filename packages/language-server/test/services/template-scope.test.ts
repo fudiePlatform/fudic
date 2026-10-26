@@ -19,7 +19,7 @@ function cached(source: string): CachedDocument {
   return { source, document, html, js: batchDocumentJs(source, document) } as CachedDocument;
 }
 
-/** A component whose `@code` and `@client` hold `code`. */
+/** A component whose `@code` holds `code`. */
 const component = (code: string): string =>
   `@code {\n${code}\n}\n\n<app-badge>\n  <template shadowrootmode="open">\n    <span>x</span>\n  </template>\n</app-badge>\n`;
 
@@ -27,8 +27,8 @@ const component = (code: string): string =>
 const page = (code: string): string =>
   `<link rel="layout" href="./_layout.fud">\n@code {\n${code}\n}\n\n<article>\n  <p>x</p>\n</article>\n`;
 
-/** The scope of a component whose `@client` holds `code`. */
-const clientScope = (code: string) => templateScope(cached(component(`  @client {\n${code}\n  }`)));
+/** The scope of a component whose `@code` holds `code`. */
+const codeScope = (code: string) => templateScope(cached(component(code)));
 
 describe('templateScope', () => {
   it('reads the props a component destructured out of `props<T>()`', () => {
@@ -39,8 +39,8 @@ describe('templateScope', () => {
     expect([...scope.keys()]).toEqual(['tone', 'size']);
   });
 
-  it('reads the reactives and the handlers of `@client`', () => {
-    const scope = clientScope(
+  it('reads the reactives and the handlers of the `@code`', () => {
+    const scope = codeScope(
       [
         "    const titulo = 'Hola';",
         '    function onClick() {}',
@@ -59,7 +59,7 @@ describe('templateScope', () => {
   });
 
   it('walks the patterns a declaration binds through, so a destructured handler survives', () => {
-    const scope = clientScope(
+    const scope = codeScope(
       [
         '    declare const obj: { a: number; b: number; c: number };',
         '    declare const xs: number[];',
@@ -78,7 +78,7 @@ describe('templateScope', () => {
   it('only a lone identifier carries the kind: a destructured name is a value', () => {
     // `const { onPick } = handlers()` has no initializer per name to read a shape from, so
     // guessing that `onPick` is callable would be inventing an answer.
-    const scope = clientScope(
+    const scope = codeScope(
       ['    declare function handlers(): { onPick: () => void };', '    const { onPick } = handlers();'].join(
         '\n',
       ),
@@ -87,28 +87,17 @@ describe('templateScope', () => {
     expect(scope.get('onPick')).toBe('value');
   });
 
-  it('leaves out what the template cannot reach: a nested name and `@server`', () => {
+  it('leaves out a nested name: the template reaches the top level of the `@code` only', () => {
     const source = component(
       [
-        '  @server {',
-        '    export async function load(): Promise<{ n: number }> {',
-        '      const secret = 1;',
-        '      return { n: secret };',
-        '    }',
-        '  }',
-        '',
-        '  @client {',
-        '    function outer() {',
-        '      const inner = 1;',
-        '      return inner;',
-        '    }',
+        '  function outer() {',
+        '    const inner = 1;',
+        '    return inner;',
         '  }',
       ].join('\n'),
     );
     const scope = templateScope(cached(source));
 
-    expect(scope.has('load')).toBe(false);
-    expect(scope.has('secret')).toBe(false);
     expect(scope.has('inner')).toBe(false);
     expect(scope.get('outer')).toBe('function');
   });
@@ -121,10 +110,10 @@ describe('templateScope', () => {
     expect(templateScope(cached(component('  const x = 1;'))).has('data')).toBe(false);
   });
 
-  it('survives a `@client` Oxc could not parse: a broken file still has a template', () => {
+  it('survives a `@code` Oxc could not parse: a broken file still has a template', () => {
     // No AST for the fragment means no names from it, not an exception — the developer is
     // mid-keystroke, which is exactly when the list is asked for.
-    const scope = clientScope('    const = ;');
+    const scope = codeScope('    const = ;');
 
     expect(scope.size).toBe(0);
   });
@@ -147,8 +136,8 @@ describe('templateScope inside a loop', () => {
   const at = (markup: string) => {
     const body = markup.replace('|', '');
     const source =
-      '<link rel="layout" href="./_layout.fud">\n@code {\n  @client {\n' +
-      '    const rows = [[1, 2]];\n  }\n}\n\n<article>\n' +
+      '<link rel="layout" href="./_layout.fud">\n@code {\n' +
+      '  const rows = [[1, 2]];\n}\n\n<article>\n' +
       `${body}\n</article>\n`;
     const offset = source.indexOf(body) + markup.indexOf('|');
     return templateScope(cached(source), offset);
@@ -230,8 +219,8 @@ describe('templateScope inside a loop', () => {
   it('adds nothing when no offset is asked about', () => {
     // The file-level answer stays available for the callers that have no position to give.
     const source =
-      '<link rel="layout" href="./_layout.fud">\n@code {\n  @client {\n' +
-      '    const rows = [[1, 2]];\n  }\n}\n\n<article>\n@foreach (const item of rows) {\n  <b>x</b>\n}\n</article>\n';
+      '<link rel="layout" href="./_layout.fud">\n@code {\n' +
+      '  const rows = [[1, 2]];\n}\n\n<article>\n@foreach (const item of rows) {\n  <b>x</b>\n}\n</article>\n';
 
     expect([...templateScope(cached(source)).keys()]).toEqual(['rows', 'data']);
   });

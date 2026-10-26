@@ -1,12 +1,10 @@
 @code {
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    const last = signal("");
+  const last = signal("");
 
-    function onPicked(ev: CustomEvent) {
-      last.set(String(ev.detail));
-    }
+  function onPicked(ev: CustomEvent) {
+    last.set(String(ev.detail));
   }
 }
 

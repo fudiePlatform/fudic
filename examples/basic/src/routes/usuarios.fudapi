@@ -1,0 +1,35 @@
+# Per request: the list changes with every new person, and a prerendered page would not see it.
+load ssr
+  users  Person[]
+
+# Public: searching needs no token.
+get search
+  q  str
+  -> Person[]
+
+# The same search, three seconds late: time to cancel it.
+get slowSearch
+  q  str
+  -> Person[]
+
+# Turns a person on or off.
+put save
+  use auth
+  id      i32
+  active  bool
+
+delete remove
+  use auth audit
+  id  i32
+
+# A failure nobody catches: error-pages takes the page to _error.fud with a 500.
+get crash
+  -> str
+
+type Person
+  id      i32
+  name    str
+  email   str
+  age     u8
+  active  bool
+  notes   str

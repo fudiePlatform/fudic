@@ -1,29 +1,7 @@
 <link rel="layout" href="../../layouts/_layout.fud">
 <link rel="component" href="../../components/site-nav.fud">
 <link rel="component" href="../../components/sesion-panel.fud">
-
-@code {
-  type PageData = { name: string };
-
-  @server {
-    import { strategy } from "@fudic/core";
-    import { publish } from "@fudic/di";
-    import { USER } from "../../services/session";
-    import { findUser } from "../../data/users";
-
-    // Rendered per request, always: it is the only mode in which two responses of this page
-    // are ever in flight at the same time, which is the whole point of the page.
-    strategy({ mode: "ssr" });
-
-    export async function load(ctx): Promise<PageData> {
-      const name = await findUser(ctx.params.user);
-      // Published for the browser to rebuild the same session from. Into the container of the
-      // request being served, even after the `await`: it belongs to THIS response and to no other.
-      publish(USER, name);
-      return { name };
-    }
-  }
-}
+<link rel="server" href="./[user].fudapi">
 
 <head>
   <title>Sesión de @data.name — fudic</title>

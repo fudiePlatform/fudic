@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fudic } from '../src/index.js';
-import { runtimeAlias, writeTypecheckConfig } from './helpers/alias.js';
+import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
 import { allCode } from './helpers/output.js';
 import { BUILD_TOKEN } from '../src/constants.js';
 import { renderUrlOf, emitted, routeTable } from './helpers/manifest.js';
@@ -27,9 +27,18 @@ interface OutFile {
 
 let output: OutFile[];
 
+/** home's `load`, implemented over its data source. */
+const HOME_HANDLER = [
+  "import { load } from 'fudic:routes/home';",
+  "import { db } from './db';",
+  '',
+  "load.handle(async () => ({ title: 'Inicio', items: await db.query('SELECT id, title, description, featured FROM items') }));",
+  '',
+].join('\n');
+
 beforeAll(async () => {
   const root = mkdtempSync(join(tmpdir(), 'fudic-vite-'));
-  writeTypecheckConfig(root);
+  writeHttpTypecheckConfig(root);
   const routes = join(root, 'src', 'routes');
   mkdirSync(routes, { recursive: true });
   for (const f of [
@@ -43,16 +52,19 @@ beforeAll(async () => {
   ]) {
     writeFileSync(join(routes, f), readFileSync(join(fixtures, f), 'utf8'));
   }
-  // home's `@server load` imports its data source `./db`; stub it so the ?server module
-  // resolves (home stays incremental — hasLoad ⇒ dynamic:true — so it is not prerendered).
-  writeFileSync(join(routes, 'db.ts'), 'export const db = { query: async (_sql: string) => [] };\n');
+  // home's `load` is its `.fudapi`'s; the handler reads the data source `./db` (SDD-60 §3.12).
+  // Stubbed: home stays incremental — hasLoad ⇒ dynamic:true — so it is not prerendered.
+  writeFileSync(join(routes, 'home.fudapi'), readFileSync(join(fixtures, 'home.fudapi'), 'utf8'));
+  mkdirSync(join(root, 'src', 'server'), { recursive: true });
+  writeFileSync(join(root, 'src', 'server', 'home.ts'), HOME_HANDLER);
+  writeFileSync(join(root, 'src', 'server', 'db.ts'), 'export const db = { query: async (_sql: string) => [] };\n');
   // With a `sw.json` the build also emits the Service Worker and the linkable chunks.
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: ['/style.css'] }));
   writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
   const result = (await build({
     root,
     logLevel: 'silent',
-    resolve: { alias: { ...runtimeAlias } },
+    resolve: { alias: httpAlias },
     plugins: [fudic()],
     build: { write: false, minify: false },
   })) as unknown as { output: OutFile[] };

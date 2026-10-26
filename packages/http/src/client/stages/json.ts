@@ -1,9 +1,9 @@
 /**
  * `json`: whatever is not bytes yet becomes text. A positional form keeps the type
- * `positional` gave it; anything else is JSON with its keys, a form included, by its value.
+ * `positional` gave it; anything else is JSON with its keys. A form never gets here as itself:
+ * a function with a form sends it positional, and one without has plain arguments.
  */
 
-import { isForm } from '../form.js';
 import { isBytes, type Stage } from '../pipeline.js';
 
 export const JSON_TYPE = 'application/json';
@@ -14,7 +14,7 @@ export const json: Stage = {
   applies: (p) => !isBytes(p.value),
   apply: (p) => ({
     ...p,
-    value: JSON.stringify(isForm(p.value) ? p.value.$value() : p.value),
+    value: JSON.stringify(p.value),
     headers: { 'content-type': JSON_TYPE, ...p.headers },
   }),
 };

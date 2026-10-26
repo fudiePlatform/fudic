@@ -2,13 +2,11 @@
   import { inject } from "@fudic/di";
   import { GREETING } from "./greeting";
 
+  import { signal } from "@fudic/core";
+
   const text = inject(GREETING);
 
-  @client {
-    import { signal } from "@fudic/core";
-
-    const seen = signal(0);
-  }
+  const seen = signal(0);
 }
 
 <x-injected>

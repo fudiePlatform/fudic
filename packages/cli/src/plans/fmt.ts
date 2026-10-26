@@ -12,6 +12,7 @@
  * incomplete tree.
  */
 
+import { API_EXTENSION, formatApi, parseApi } from '@fudic/api';
 import { format, type FormatOptions } from '@fudic/formatter';
 import { FUD0450 } from '@fudic/diagnostics';
 import { SPEC_EXTENSION, formatSpec } from '@fudic/spec';
@@ -19,17 +20,20 @@ import { absolute, joinPosix, toPosix } from '../paths.js';
 import { nodeReadIo, walkFiles, walkFud, type ReadIo } from '../io.js';
 import type { CliError, FileChange, FmtOptions, Plan, PlanDiagnostic } from '../types.js';
 
-/** Every `.fud` and `.fudspec` a path argument stands for, relative to `cwd`, in a stable order. */
+/** What `fmt` formats: each extension has a formatter of its own. */
+const FORMATTED = ['.fud', SPEC_EXTENSION, API_EXTENSION];
+
+/** Every `.fud`, `.fudspec` and `.fudapi` a path argument stands for, relative to `cwd`, in a stable order. */
 export function filesOf(paths: readonly string[], opts: FmtOptions, io: ReadIo): readonly string[] {
   const found = new Set<string>();
   for (const path of paths) {
     const rel = toPosix(path);
     const full = absolute(opts.cwd, rel);
     if (io.isDirectory(full)) {
-      for (const file of [...walkFud(full, io), ...walkFiles(full, io, SPEC_EXTENSION)]) {
+      for (const file of [...walkFud(full, io), ...walkFiles(full, io, SPEC_EXTENSION), ...walkFiles(full, io, API_EXTENSION)]) {
         found.add(rel === '.' ? file : joinPosix(rel, file));
       }
-    } else if ((rel.endsWith('.fud') || rel.endsWith(SPEC_EXTENSION)) && io.exists(full)) {
+    } else if (FORMATTED.some((ext) => rel.endsWith(ext)) && io.exists(full)) {
       found.add(rel);
     }
   }
@@ -58,6 +62,21 @@ export async function planFmt(
 
   for (const file of filesOf(paths, opts, io)) {
     const before = io.read(absolute(opts.cwd, file));
+
+    // A `.fudapi` too, also with no options (SDD-60 §4.9). The editor formats a file the parser
+    // complains about, on save; here the complaints are the point: they are reported, and the
+    // file is left alone like a `.fud` that does not parse.
+    if (file.endsWith(API_EXTENSION)) {
+      const parsed = parseApi(before);
+      for (const diagnostic of parsed.diagnostics) diagnostics.push({ file, diagnostic });
+      if (parsed.diagnostics.length > 0) {
+        errors.push(FUD0450({ file }));
+        continue;
+      }
+      const text = formatApi(before);
+      if (text !== before) changes.push({ kind: 'modify', path: file, contents: text, before });
+      continue;
+    }
 
     // A `.fudspec` has its own formatter, with no options: its layout is fixed (SDD-53 §4.6).
     if (file.endsWith(SPEC_EXTENSION)) {

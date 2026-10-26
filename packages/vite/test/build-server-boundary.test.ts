@@ -5,8 +5,9 @@
  * `load` and every module `@server` imports landed under `/assets/`, announced by the
  * manifest and served by any static host.
  *
- * The identifier the tests hunt for, `SECRET_TOKEN`, only ever appears inside `@server`.
- * Anything in `outDir` that mentions it — code or map — is something that crossed.
+ * The identifier the tests hunt for, `SECRET_TOKEN`, only ever appears in what the page's
+ * `load` handler imports (`src/server`, SDD-60). Anything in `outDir` that mentions it — code
+ * or map — is something that crossed.
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
@@ -15,7 +16,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readdirSync, readFil
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fudic } from '../src/index.js';
-import { runtimeAlias } from './helpers/alias.js';
+import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
 
 
 /** The server-only module. Its name and its contents must not reach `outDir`. */
@@ -29,19 +30,7 @@ const PAGE = `<!DOCTYPE html>
 <html>
   <head>
     <link rel="component" href="../components/app-badge.fud">
-
-    @code {
-      type PageData = { title: string };
-
-      @server {
-        import { listPosts } from '../data/secrets';
-
-        export async function load(): Promise<PageData> {
-          const posts = await listPosts();
-          return { title: posts[0].title };
-        }
-      }
-    }
+    <link rel="server" href="./index.fudapi">
 
     <title>@data.title</title>
   </head>
@@ -51,6 +40,33 @@ const PAGE = `<!DOCTYPE html>
   </body>
 </html>
 `;
+
+const PAGE_API = `load
+  title  str
+`;
+
+/** The page's `load`, in `src/server` (SDD-60 §3.12): the only importer of the secrets. */
+const PAGE_SERVER = `import { load } from 'fudic:routes/index';
+import { listPosts } from '../data/secrets';
+
+load.handle(async () => {
+  const posts = await listPosts();
+  return { title: posts[0]!.title };
+});
+`;
+
+/** The project on disk, under a fresh temp `root`. */
+function writeProject(root: string): void {
+  writeHttpTypecheckConfig(root);
+  for (const dir of ['routes', 'components', 'data', 'server']) mkdirSync(join(root, 'src', dir), { recursive: true });
+  writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
+  writeFileSync(join(root, 'src', 'routes', 'index.fudapi'), PAGE_API);
+  writeFileSync(join(root, 'src', 'server', 'index.ts'), PAGE_SERVER);
+  writeFileSync(join(root, 'src', 'components', 'app-badge.fud'), BADGE);
+  writeFileSync(join(root, 'src', 'data', 'secrets.ts'), SECRETS);
+  writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
+  writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
+}
 
 const BADGE = `<head>
   <style>.badge { border: 1px solid #ccc; }</style>
@@ -73,23 +89,16 @@ interface OutFile {
 const textOf = (file: OutFile): string =>
   file.code ?? (typeof file.source === 'string' ? file.source : '');
 
-describe('vite build — nothing of `@server` reaches the published output', () => {
+describe('vite build — nothing of the server reaches the published output', () => {
   let output: OutFile[];
 
   beforeAll(async () => {
     const root = mkdtempSync(join(tmpdir(), 'fudic-boundary-'));
-    mkdirSync(join(root, 'src', 'routes'), { recursive: true });
-    mkdirSync(join(root, 'src', 'components'), { recursive: true });
-    mkdirSync(join(root, 'src', 'data'), { recursive: true });
-    writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
-    writeFileSync(join(root, 'src', 'components', 'app-badge.fud'), BADGE);
-    writeFileSync(join(root, 'src', 'data', 'secrets.ts'), SECRETS);
-    writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
-    writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
+    writeProject(root);
     const result = (await build({
       root,
       logLevel: 'silent',
-      resolve: { alias: { ...runtimeAlias } },
+      resolve: { alias: httpAlias },
       plugins: [fudic()],
       // Source maps ON: it is the configuration the example ships, and half of this BUG
       // only exists under it.
@@ -126,7 +135,7 @@ describe('vite build — nothing of `@server` reaches the published output', () 
     }
   });
 
-  it('§6.4 a linkable chunk’s map carries the markup but not the `@server` body', () => {
+  it('§6.4 a linkable chunk’s map carries the markup but not the server code', () => {
     const chunk = output.find((o) => o.fileName.startsWith('sw/c/') && o.fileName.endsWith('.js.map'));
     expect(chunk).toBeDefined();
     const map = JSON.parse(textOf(chunk!)) as { sourcesContent?: string[] };
@@ -144,18 +153,11 @@ describe('vite build — written to disk, the boundary is a directory', () => {
 
   beforeAll(async () => {
     root = mkdtempSync(join(tmpdir(), 'fudic-boundary-disk-'));
-    mkdirSync(join(root, 'src', 'routes'), { recursive: true });
-    mkdirSync(join(root, 'src', 'components'), { recursive: true });
-    mkdirSync(join(root, 'src', 'data'), { recursive: true });
-    writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
-    writeFileSync(join(root, 'src', 'components', 'app-badge.fud'), BADGE);
-    writeFileSync(join(root, 'src', 'data', 'secrets.ts'), SECRETS);
-    writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
-    writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
+    writeProject(root);
     await build({
       root,
       logLevel: 'silent',
-      resolve: { alias: { ...runtimeAlias } },
+      resolve: { alias: httpAlias },
       plugins: [fudic()],
       build: { minify: false, sourcemap: true },
     });
@@ -168,18 +170,20 @@ describe('vite build — written to disk, the boundary is a directory', () => {
     );
   }
 
-  it('§6.10 the published tree carries nothing of `@server`', () => {
+  it('§6.10 the published tree carries nothing of the server', () => {
     const leaking = walk(join(root, 'dist')).filter((f) =>
       readFileSync(f, 'utf8').includes('SECRET_TOKEN'),
     );
     expect(leaking).toEqual([]);
   });
 
-  it('§4.1 and the wrapper that does carry it lives outside `outDir`', () => {
+  it('§4.1 and the server output that does carry it lives outside `outDir`', () => {
     // The boundary is not a flag or a naming convention: it is which directory the file
-    // is written to. `dist/` is published; this one is not.
-    const edge = join(root, '.fudic', 'edge', 'index.js');
-    expect(existsSync(edge)).toBe(true);
-    expect(readFileSync(edge, 'utf8')).toContain('SECRET_TOKEN');
+    // is written to. `dist/` is published; this one is not. The wrapper is there, and the
+    // handler it reaches through the server root is a chunk beside it (SDD-60 §4.4).
+    const edge = join(root, '.fudic', 'edge');
+    expect(existsSync(join(edge, 'index.js'))).toBe(true);
+    const carrying = walk(edge).filter((f) => f.endsWith('.js') && readFileSync(f, 'utf8').includes('SECRET_TOKEN'));
+    expect(carrying.length).toBeGreaterThan(0);
   });
 });

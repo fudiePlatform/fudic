@@ -12,7 +12,7 @@ function facts(over: Partial<PageFacts> = {}): PageFacts {
 }
 
 function declared(strategy: StrategyDecl): PageFacts['strategy'] {
-  return { declared: true, strategy, diagnostics: [] };
+  return { declared: true, strategy };
 }
 
 describe('resolveMode — the defaults (§4.8.3)', () => {

@@ -85,12 +85,10 @@ const reactiveRoute = (title: string): string => `<!DOCTYPE html>
 <html>
 <head>
 @code {
-  @client {
-    import { signal } from '@fudic/core';
+  import { signal } from '@fudic/core';
 
-    const abierto = signal(false);
-    const alterna = () => abierto.set(!abierto());
-  }
+  const abierto = signal(false);
+  const alterna = () => abierto.set(!abierto());
 }
 <title>${title}</title>
 </head>

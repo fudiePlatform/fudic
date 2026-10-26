@@ -1,29 +1,60 @@
 # @fudic/forms
 
 The form model of fudic: controls, groups and validation. **No DOM in any branch** —
-the same schema runs in the browser, in the prerender and on the server.
+the same form runs in the browser, in the prerender and on the server.
+
+A form is declared in a `.fudapi` (SDD-60), never built in code:
+
+```
+# src/forms/post.fudapi
+form post
+  title  str = ""
+    required          "Write a title."
+    min-length 3      "At least {n} characters."
+  published  bool
+  seo  group
+    description  str = ""
+    canonical    str = ""
+```
+
+fudic generates the form from it, the same declaration on both ends. A `.fud` that links the
+file with `<link rel="server">` sees `post` by name; TypeScript imports it from
+`fudic:forms/post`:
 
 ```ts
-import { form, control, group, required, minLength } from '@fudic/forms';
+import { post } from 'fudic:forms/post';
 
-const schema = {
-  title: control('', [required, minLength(3)]),
-  published: control(false),
-  seo: group({
-    description: control(''),
-    canonical: control(''),
-  }),
-};
+post.title.set('Hello');
+post.title();             // 'Hello'  — read by calling, like a signal
+post.seo.description();   // ''       — a group is a nested form
 
-const f = form(schema);
-
-f.title.set('Hello');
-f.title();             // 'Hello'  — read by calling, like a signal
-f.seo.description();   // ''       — a group is a nested form
-
-await f.$validate();   // true
-f.$value();            // { title: 'Hello', published: false, seo: { … } }
+await post.$validate();   // true
+post.$value();            // { title: 'Hello', published: false, seo: { … } }
 ```
+
+## What is public
+
+`@fudic/forms` keeps the types (`Form`, `Control`, `GroupNode`, `Issue`…), the `$…` API of a
+form, the texts and summaries the server paints, and what the compiler links (`./dom`, `./wire`,
+`./element`). The builders — `form`, `group`, `control`, the typed factories (`str`, `u8`,
+`arr`…), the validators (`required`, `min`, `max`, `minLength`, `maxLength`, `pattern`,
+`validator`, `serverValidator`, `asyncValidator`), `setMessages`, `ValidateOn` and `Validity` —
+moved to `@fudic/forms/contract`, an internal entry that only generated code imports. Their
+place is the `.fudapi`:
+
+| Before | Now, in a `.fudapi` |
+|---|---|
+| `control('', [required, minLength(3)])` | `title  str = ""` with `required` and `min-length 3` below it |
+| `u8(0)`, `str('')`, `arr(str, [])` | the field's type: `u8`, `str`, `str[]` |
+| `group({ … }, [rule])` | `name  group`, its fields below, its rules in its `summary` |
+| `form(schema, { summary })` | the form's `summary`, with `require` rules |
+| `validator`, `serverValidator`, `asyncValidator` | a `rule` with `runs both` or `runs server`, and `async` |
+| `setMessages({ … })` | one `messages` block in the project |
+| `ValidateOn.Blur \| ValidateOn.Input`, `Validity.Rules` | `validate-on blur input`, `validity rules` |
+
+The built-in rules (`required`, `min`, `max`, `min-length`, `max-length`, `pattern`) and the
+`email` pattern are declared in this package's `fudapi/` and need no import: installing
+`@fudic/forms` makes them visible to every `.fudapi` of the app.
 
 ## Reading
 
@@ -33,7 +64,7 @@ tracked, so an `effect` that reads a control re-runs when it moves.
 ```ts
 import { effect } from '@fudic/core';
 
-effect(() => console.log(f.title(), f.title.errors()));
+effect(() => console.log(post.title(), post.title.errors()));
 ```
 
 ## Writing
@@ -41,8 +72,8 @@ effect(() => console.log(f.title(), f.title.errors()));
 Two operations, deliberately named apart:
 
 ```ts
-f.$set({ title: 'A', published: true, seo: { … } });  // total: a missing field throws
-f.$patch({ title: 'A' });                             // partial: nothing else is touched
+post.$set({ title: 'A', published: true, seo: { … } });  // total: a missing field throws
+post.$patch({ title: 'A' });                             // partial: nothing else is touched
 ```
 
 `$set` refuses an incomplete object instead of emptying the fields you left out — which
@@ -57,38 +88,37 @@ The **summary** is different: the errors that belong to no single field. A form'
 rule and a group's rules (its second argument) **all** run, and a summary says every failure
 at once — `$summary()` is the union of their errors, the first rule winning a repeated key.
 
-```ts
-const f = form(schema, {
-  summary: (root) => {
-    const found: Record<string, true> = {};
-    if (root.published() && !root.seo.description()) found.seo = true;
-    if (root.title() === root.seo.canonical()) found.sameUrl = true;
-    return Object.keys(found).length > 0 ? found : null;   // both can fail together
-  },
-});
-
-await f.$validate();              // client rules only
-await f.$validate({ server: true });  // plus the ones built with serverValidator
+```
+form post
+  …
+  summary
+    require seo       not published or not empty seo.description   "Describe it to publish it."
+    require same-url  title != seo.canonical                       "The title is not a URL."
 ```
 
-A group takes the same options a form does, minus `summary` — its rules already are its
-summary:
-
 ```ts
-acceso: group(
-  { clave: control('', [required]), repetir: control('', [required]) },
-  [(v) => (v.clave === v.repetir ? null : { mismatch: true })],
-  { messages: { mismatch: () => 'The passwords do not match.' } },   // GroupOptions
-),
+await post.$validate();                  // the rules that run in the browser
+await post.$validate({ server: true });  // plus the `runs server` ones
 ```
 
-`GroupOptions` is `messages`, `validateOn` and `validity`; the last two are inherited by its
-controls exactly as from a nested form.
+A `require` is generated as the same rule on both ends; its code is the error, and `on field`
+paints it on that field instead. A group has its own `summary`, and the same `validate-on` and
+`validity` a form has, inherited by its fields exactly as from a nested form:
+
+```
+  acceso  group
+    clave    str = ""
+      required   "Pick a password."
+    repetir  str = ""
+      required   "Repeat it."
+    summary
+      require mismatch  clave == repetir   "The passwords do not match."
+```
 
 Errors that arrive from outside — a 422 — go in by path:
 
 ```ts
-f.$setErrors({ 'seo.canonical': { protocol: true } });
+post.$setErrors({ 'seo.canonical': { protocol: true } });
 ```
 
 An overtaken async validation never publishes: each control carries an epoch, so a slow
@@ -97,27 +127,26 @@ rule cannot paint the error of a value the user already changed.
 A single control validates on its own, against the root of the form it belongs to:
 
 ```ts
-await f.title.validate();   // false — and only f.title's error changes
+await post.title.validate();   // false — and only post.title's error changes
 ```
 
-When a bound field validates itself is `validateOn`, flags you combine. The submit always
-validates; the flags add the moments before it:
+When a bound field validates itself is `validate-on`, moments you combine. The submit always
+validates; the moments add the ones before it:
 
-```ts
-import { ValidateOn } from '@fudic/forms';
-
-const f = form(
-  {
-    alias: control('', [required, minLength(3)]),                          // the form's: Blur
-    email: control('', [required], { validateOn: ValidateOn.Blur | ValidateOn.Input }),
-  },
-  { validateOn: ValidateOn.Blur },
-);
+```
+form signup
+  validate-on blur
+  alias  str = ""
+    required
+    min-length 3
+  email  str = ""
+    validate-on blur input
+    required
 ```
 
-`Blur` validates on leaving the field. `Input` validates on every edit once the field has been
-left once — never while it is typed for the first time. `Submit` (zero) waits for the submit.
-A control's own option wins over the nearest form's; with none, `Blur | Input`.
+`blur` validates on leaving the field. `input` validates on every edit once the field has been
+left once — never while it is typed for the first time. `submit` waits for the submit. A
+field's own option wins over the nearest form's; with none, `blur input`.
 
 ## Validity
 
@@ -126,75 +155,82 @@ is whether the current values satisfy the rules, and it is silent: reading it ne
 an error, never touches a field and never changes a marker.
 
 ```ts
-f.alias.valid();   // a control
-f.$valid();        // a form or a group: every child valid, and its own rules satisfied
+signup.alias.valid();   // a control
+signup.$valid();        // a form or a group: every child valid, and its own rules satisfied
 ```
 
-Both are tracked (`computed`), so `disabled=@(!f.$valid())` follows the values by itself —
+Both are tracked (`computed`), so `disabled=@(!signup.$valid())` follows the values by itself —
 including the field a cross-field rule reads. A 422 set with `$setErrors` keeps a control
 invalid until its value changes.
 
-What counts is a policy, set like `validateOn` (control → nearest form or group →
-`Interacted`):
+What counts is a policy, set like `validate-on` (field → nearest form or group →
+`interacted`):
 
-```ts
-import { Validity } from '@fudic/forms';
-
-form(schema, { validity: Validity.Rules });
+```
+form signup
+  validity rules
 ```
 
-- `Validity.Interacted` (the default): a control counts once the user has left it or changed
+- `validity interacted` (the default): a control counts once the user has left it or changed
   it. A fresh form is valid, and a disabled submit is enabled on arrival.
-- `Validity.Rules`: every rule counts from the start. A fresh form with an empty `required` is
+- `validity rules`: every rule counts from the start. A fresh form with an empty `required` is
   invalid, and the button is born disabled.
 
 `valid()` never *calls* an asynchronous rule — reading it in a view would put a request on the
-wire at every keystroke. Mark such a rule with `asyncValidator`, and the validity reads its
-verdict for the current value instead, or counts it as pending:
+wire at every keystroke. Declare such a rule `async`, and the validity reads its verdict for
+the current value instead, or counts it as pending:
 
-```ts
-import { asyncValidator } from '@fudic/forms';
-
-control('', [asyncValidator(async (v) => ((await taken(v)) ? { taken: true } : null))]);
+```
+rule taken
+  on field str
+  runs both
+  async
+  fails taken
 ```
 
-An unmarked rule that answers with a promise counts as pending too, and never settles: a button
-that never enables is the visible failure that leads to marking it. `serverValidator` rules do
-not run in the client at all; their verdict arrives with the 422.
+```ts
+// src/browser/taken.ts
+import { taken } from 'fudic:rules/taken';
+taken.check(async (value) => !(await isTaken(value)));
+```
+
+`runs server` rules do not run in the client at all: their implementation lives in
+`src/server`, and their verdict arrives with the 422.
 
 Two consequences to know before disabling a submit with `$valid()`:
 
 - **A disabled button means no submit**, so nothing touches the fields or moves the focus.
-  With the defaults (`Blur`, `Interacted`) this is harmless: a field only counts once left, and
-  leaving it already paints its message. With `Validity.Rules`, say *why* the button is
+  With the defaults (`blur`, `interacted`) this is harmless: a field only counts once left, and
+  leaving it already paints its message. With `validity rules`, say *why* the button is
   disabled somewhere the user can read it.
-- **`ValidateOn.Submit` + an `asyncValidator` rule + a button disabled by `$valid()`** is a
-  deadlock: the rule only runs on the submit, the submit never happens, and the control stays
-  pending forever.
+- **`validate-on submit` + an `async` rule + a button disabled by `$valid()`** is a deadlock:
+  the rule only runs on the submit, the submit never happens, and the control stays pending
+  forever.
 
 ## Messages
 
-A rule returns what failed — `{ minLength: 3 }` — never a sentence. The sentence comes from
-the control first, then from the application's defaults, then falls back to the rule code:
+A rule fails with a code and its arguments — `min-length` with `{ n: 3 }` — never a sentence.
+The sentence comes from the field first, then from the project's `messages`, then falls back to
+the rule code. A text is a template of what the rule gives:
 
-```ts
-import { setMessages } from '@fudic/forms';
+```
+messages
+  required  "Required."
 
-setMessages({ required: () => 'Required.' });
-
-const f = form({
-  alias: control('', [required, minLength(3)], {
-    messages: { minLength: (n) => `At least ${String(n)} characters.` },
-  }),
-});
-
-f.alias.message();   // '' until validated, then the text of its current error
-f.$messages();       // every text of the form's summary, in rule and key order, or []
-f.$message();        // the first of them, or ''
+form signup
+  alias  str = ""
+    required
+    min-length 3   "At least {n} characters."
 ```
 
-A summary's texts use the same chain: the form's or group's own `messages`, then
-`setMessages`, then the code.
+```ts
+signup.alias.message();   // '' until validated, then the text of its current error
+signup.$messages();       // every text of the form's summary, in rule and key order, or []
+signup.$message();        // the first of them, or ''
+```
+
+A summary's texts use the same chain: the text written beside the rule, then `messages`, then
+the code.
 
 What a summary with `fields` paints is `$issues()`: the node's own texts (path `''`) and,
 after a submit attempt, the visible error of every field below it, in declaration order, a
@@ -202,7 +238,7 @@ group's own texts ahead of its fields. `$submitted()` says whether there was an 
 DOM binding sets it on each submit, and `$reset` and `$set` clear it.
 
 ```ts
-f.$issues();   // [{ path: '', message: '…' }, { path: 'alias', message: 'Pick an alias.' }]
+signup.$issues();   // [{ path: '', message: '…' }, { path: 'alias', message: 'Pick an alias.' }]
 ```
 
 ## In a template
@@ -216,16 +252,16 @@ Three reserved attributes:
 | `summary=@form` | a **form or a group** | a list: `$messages()`, or `$issues()` with `fields` |
 
 ```html
-<form control=@f>
-  <div class="summary" summary=@f fields></div>
+<form control=@signup>
+  <div class="summary" summary=@signup fields></div>
   <label for="ali">Alias <span aria-hidden="true">*</span></label>
-  <input id="ali" control=@f.alias>
-  <small class="error" error=@f.alias></small>
-  <fieldset control=@f.acceso>
-    <div class="summary" summary=@f.acceso></div>   <!-- "The passwords do not match." -->
+  <input id="ali" control=@signup.alias>
+  <small class="error" error=@signup.alias></small>
+  <fieldset control=@signup.acceso>
+    <div class="summary" summary=@signup.acceso></div>   <!-- "The passwords do not match." -->
     …
   </fieldset>
-  <button type="submit" disabled=@(!f.$valid())>Save</button>
+  <button type="submit" disabled=@(!signup.$valid())>Save</button>
 </form>
 ```
 
@@ -277,8 +313,8 @@ The page writes its label and marker as it would for a native control:
 
 ```html
 <label for="ali">Alias</label>
-<app-input id="ali" .type="text" control=@f.alias></app-input>
-<app-error error=@f.alias></app-error>
+<app-input id="ali" .type="text" control=@signup.alias></app-input>
+<app-error error=@signup.alias></app-error>
 ```
 
 - **The bridge.** `shadowrootreferencetarget="campo"` forwards whatever points at the host — the
@@ -315,22 +351,23 @@ decides the base class (`FudicControlElement`), `delegatesFocus`, loading the co
 page, and the fallback of the bridge: the bridge itself is the standard attribute, and the
 component's author writes it. The day every browser has it, the fallback goes and no wrapper changes.
 
-## The schema is a template
+## One declaration, a copy per request
 
-`form(schema)` **clones** its nodes, so a schema declared at module scope can be shared
-by both ends and instantiated per request without sharing state.
+Both ends build the form from the same declaration. The browser keeps one; the server
+validates a fresh copy for every request that sends it, so two requests never share state.
 
-## Typed controls
+## Typed fields
 
-A declared type is a range, so it validates — with JSON as much as with a binary wire:
+A field's type is a range, so it validates — `u8` refuses 300, `uuid` a malformed id — and it
+fixes the wire: a form whose fields all have a type travels positionally and in binary.
 
-```ts
-import { u8, u32, str, arr } from '@fudic/forms';
-
-const line = { qty: u32(1), vatPct: u8(21), note: str(''), tags: arr(str, []) };
 ```
-
-Each type is its own export. Import none and none reaches your bundle.
+form line
+  qty     u32 = 1
+  vatPct  u8 = 21
+  note    str = ""
+  tags    str[]
+```
 
 ## Scripts
 

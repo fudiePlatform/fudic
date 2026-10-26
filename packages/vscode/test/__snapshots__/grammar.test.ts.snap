@@ -1,0 +1,54 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`code regions > tokenises a @code with the old region words as plain TypeScript (SDD-60, snapshot) 1`] = `
+"0  "<"  meta.tag.html punctuation.definition.tag.begin.html
+0  "link"  meta.tag.html entity.name.tag.html
+0  " "  meta.tag.html
+0  "rel"  meta.tag.html entity.other.attribute-name.html
+0  "="  meta.tag.html
+0  "\\""  meta.tag.html string.quoted.double.html punctuation.definition.string.begin.html
+0  "server"  meta.tag.html string.quoted.double.html
+0  "\\""  meta.tag.html string.quoted.double.html punctuation.definition.string.end.html
+0  " "  meta.tag.html
+0  "href"  meta.tag.html entity.other.attribute-name.html
+0  "="  meta.tag.html
+0  "\\""  meta.tag.html string.quoted.double.html punctuation.definition.string.begin.html
+0  "./usuarios.fudapi"  meta.tag.html string.quoted.double.html
+0  "\\""  meta.tag.html string.quoted.double.html punctuation.definition.string.end.html
+0  ">"  meta.tag.html punctuation.definition.tag.end.html
+1  ""  -
+2  "@"  meta.block.code.fudic punctuation.definition.keyword.fudic
+2  "code"  meta.block.code.fudic keyword.control.directive.code.fudic
+2  " "  meta.block.code.fudic
+2  "{"  meta.block.code.fudic punctuation.section.block.begin.fudic
+3  "  import "  meta.block.code.fudic source.ts
+3  "{"  meta.block.code.fudic source.ts
+3  " signal "  meta.block.code.fudic source.ts
+3  "}"  meta.block.code.fudic source.ts
+3  " from "  meta.block.code.fudic source.ts
+3  "\\""  meta.block.code.fudic source.ts string.quoted.double.ts
+3  "@fudic/core"  meta.block.code.fudic source.ts string.quoted.double.ts
+3  "\\""  meta.block.code.fudic source.ts string.quoted.double.ts
+3  ";"  meta.block.code.fudic source.ts
+4  "  @server "  meta.block.code.fudic source.ts
+4  "{"  meta.block.code.fudic source.ts
+5  "    const a = 1;"  meta.block.code.fudic source.ts
+6  "  "  meta.block.code.fudic source.ts
+6  "}"  meta.block.code.fudic source.ts
+7  "  @client "  meta.block.code.fudic source.ts
+7  "{"  meta.block.code.fudic source.ts
+8  "    const b = signal(2);"  meta.block.code.fudic source.ts
+9  "  "  meta.block.code.fudic source.ts
+9  "}"  meta.block.code.fudic source.ts
+10  "}"  meta.block.code.fudic punctuation.section.block.end.fudic
+11  ""  -
+12  "<"  meta.tag.html punctuation.definition.tag.begin.html
+12  "p"  meta.tag.html entity.name.tag.html
+12  ">"  meta.tag.html punctuation.definition.tag.end.html
+12  "@"  meta.interpolation.implicit.fudic punctuation.definition.template-expression.begin.fudic
+12  "b"  meta.interpolation.implicit.fudic variable.other.fudic
+12  "()"  -
+12  "</"  meta.tag.html punctuation.definition.tag.begin.html
+12  "p"  meta.tag.html entity.name.tag.html
+12  ">"  meta.tag.html punctuation.definition.tag.end.html"
+`;

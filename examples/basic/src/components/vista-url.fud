@@ -1,24 +1,22 @@
 @code {
-  @client {
-    // SDD-51 en el cliente: la URL vive en una signal, y cada botón la cambia. El atributo
-    // se reescribe en la pasada de actualizar con `browserDom.setUrl`, que aplica la misma
-    // función pura que el servidor. En desarrollo, cada sustitución avisa por la consola.
-    import { signal } from "@fudic/core";
-    import { trustedUrl, type TrustedURL } from "@fudic/dom";
+  // SDD-51 en el cliente: la URL vive en una signal, y cada botón la cambia. El atributo
+  // se reescribe en la pasada de actualizar con `browserDom.setUrl`, que aplica la misma
+  // función pura que el servidor. En desarrollo, cada sustitución avisa por la consola.
+  import { signal } from "@fudic/core";
+  import { trustedUrl, type TrustedURL } from "@fudic/dom";
 
-    const url = signal<string | TrustedURL>("/blog");
-    const clics = signal(0);
+  const url = signal<string | TrustedURL>("/blog");
+  const clics = signal(0);
 
-    // Un `let` que solo cambia un manejador: `@click` es invocación diferida (decisión 96),
-    // así que su valor puede escribir. Ninguna regla de esta spec mira ahí (criterio 12).
-    let silencioso = 0;
+  // Un `let` que solo cambia un manejador: `@click` es invocación diferida (decisión 96),
+  // así que su valor puede escribir. Ninguna regla de esta spec mira ahí (criterio 12).
+  let silencioso = 0;
 
-    function elegir(nueva: string | TrustedURL): void {
-      url.set(nueva);
-    }
-
-    const marcada = trustedUrl("miapp:abrir");
+  function elegir(nueva: string | TrustedURL): void {
+    url.set(nueva);
   }
+
+  const marcada = trustedUrl("miapp:abrir");
 }
 
 <head>

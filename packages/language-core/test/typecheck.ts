@@ -71,10 +71,21 @@ function registryFor(file: CorpusFile, corpus: readonly CorpusFile[]): FileRegis
       : { href: read.href, namespace: { name: read.namespace, span: link.span } };
   });
 
+  // The `.fudapi` a file links, as the host reads them: its `<id>` is its corpus path, and
+  // whether it declares `load` (SDD-60 §4.7).
+  const servers = ('serverLinks' in file.document ? (file.document.serverLinks ?? []) : []).flatMap((link) => {
+    const href = linkHref(link);
+    if (href === undefined) return [];
+    const path = posix.normalize(posix.join(posix.dirname(file.path), href));
+    const text = readFileSync(resolve(FIXTURES, path), 'utf8');
+    return [{ id: path.slice(0, -'.fudapi'.length), load: /^load\b/mu.test(text), names: [] }];
+  });
+
   return {
     component: (tag) => byTag.get(tag),
     layout: () => (layout === undefined || layout === '' ? undefined : layout),
     snippets: () => snippets,
+    servers: () => servers,
   };
 }
 
@@ -117,10 +128,7 @@ export function typecheckCorpus(overrides: Readonly<Record<string, string>> = {}
   const files = new Map<string, string>();
 
   files.set(posix.join(ROOT, GLOBALS_FILE_NAME), GLOBALS_DTS);
-  for (const tsFile of tsFixtures(FIXTURES)) {
-    const path = posix.join(ROOT, ...relative(FIXTURES, tsFile).split(/[\\/]/));
-    files.set(path, readFileSync(tsFile, 'utf8'));
-  }
+  for (const [path, text] of tsCorpus(overrides)) files.set(posix.join(ROOT, path), text);
   for (const { virtuals } of projected) {
     for (const v of virtuals) {
       if (v.languageId === 'typescript') files.set(posix.join(ROOT, v.fileName), v.text);
@@ -178,12 +186,7 @@ export function languageServiceFor(overrides: Readonly<Record<string, string>> =
   const files = new Map<string, string>();
 
   files.set(posix.join(ROOT, GLOBALS_FILE_NAME), GLOBALS_DTS);
-  for (const tsFile of tsFixtures(FIXTURES)) {
-    files.set(
-      posix.join(ROOT, ...relative(FIXTURES, tsFile).split(/[\\/]/)),
-      readFileSync(tsFile, 'utf8'),
-    );
-  }
+  for (const [path, text] of tsCorpus(overrides)) files.set(posix.join(ROOT, path), text);
   for (const { virtuals } of projected) {
     for (const v of virtuals) {
       if (v.languageId === 'typescript') files.set(posix.join(ROOT, v.fileName), v.text);
@@ -332,8 +335,16 @@ function fudFiles(dir: string): readonly string[] {
   return walkDir(dir).filter((f) => f.endsWith('.fud'));
 }
 
-function tsFixtures(dir: string): readonly string[] {
-  return walkDir(dir).filter((f) => f.endsWith('.ts'));
+/** The `.ts` of the corpus by corpus path, an override replacing the text on disk. */
+function tsCorpus(overrides: Readonly<Record<string, string>>): ReadonlyMap<string, string> {
+  return new Map(
+    walkDir(FIXTURES)
+      .filter((f) => f.endsWith('.ts'))
+      .map((absolute) => {
+        const path = posix.join(...relative(FIXTURES, absolute).split(/[\\/]/));
+        return [path, overrides[path] ?? readFileSync(absolute, 'utf8')] as const;
+      }),
+  );
 }
 
 function walkDir(dir: string): readonly string[] {

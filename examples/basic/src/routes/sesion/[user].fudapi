@@ -1,0 +1,4 @@
+# Rendered per request, always: the only mode in which two responses of this page are in flight
+# at the same time, which is the whole point of the page.
+load ssr
+  name  str

@@ -46,17 +46,16 @@ describe('emitComponentClientModule — a signal imported from a module', () => 
     expect(src).toContain('u: () => { $u(); },');
   });
 
-  it('reads the import from the NEUTRAL zone, where a store has to live', () => {
-    // The template is painted on both sides, so a store imported inside `@client` leaves the
-    // server with no such name and the route fails to prerender. The neutral zone is the only
-    // place it can go, and it was the only place this pass did not look.
-    const src = chunk('  import { count } from "../store.js";\n  @client {\n  }\n');
+  it('reads the import from the server cut, where a store the template reads has to live', () => {
+    // The template is painted on both sides, so a store the markup reads goes to the server
+    // cut (SDD-60 §4.8) — and this pass has to look there too, not only at the browser's half.
+    const src = chunk('  import { count } from "../store.js";\n');
     expect(hookup(src)).toContain('$d.push($subIf(count, $u));');
   });
 
-  it('and from `@client` too, for a store nothing but the browser reads', () => {
+  it('and from the browser code too, for a store nothing but the browser reads', () => {
     const src = chunk(
-      '  @client {\n    import { count } from "../store.js";\n  }\n',
+      '  import { count } from "../store.js";\n  function bump() { count.set(count() + 1); }\n',
       '<span>@(1)</span>',
     );
     expect(hookup(src)).toContain('$d.push($subIf(count, $u));');
@@ -80,12 +79,10 @@ describe('emitComponentClientModule — a signal imported from a module', () => 
 
   it('leaves the framework alone: `signal` and `emit` are not a component state', () => {
     const src = chunk(
-      '  @client {\n' +
-        '    import { signal } from "@fudic/core";\n' +
-        '    import { emit } from "@fudic/dom";\n' +
-        '    const count = signal(0);\n' +
-        '    function ping() { emit("p", 1); }\n' +
-        '  }\n',
+      '  import { signal } from "@fudic/core";\n' +
+        '  import { emit } from "@fudic/dom";\n' +
+        '  const count = signal(0);\n' +
+        '  function ping() { emit("p", 1); }\n',
     );
     expect(src).not.toContain('$subIf');
     expect(hookup(src)).toContain('$d.push($sub(count, $u));');
@@ -104,10 +101,8 @@ describe('emitComponentClientModule — a signal imported from a module', () => 
     // Each channel brings only its own name, and a component that uses both brings the two.
     const src = chunk(
       '  import { count } from "../store.js";\n' +
-        '  @client {\n' +
-        '    import { signal } from "@fudic/core";\n' +
-        '    const n = signal(0);\n' +
-        '  }\n',
+        '  import { signal } from "@fudic/core";\n' +
+        '  const n = signal(0);\n',
       '<span>@count() @(n())</span>',
     );
     expect(src).toContain(

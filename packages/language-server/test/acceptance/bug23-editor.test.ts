@@ -3,8 +3,9 @@
  *
  * The suite already measured both, on a COMPONENT tag and inside a `<div>`, and both were
  * green while VS Code answered with one item. So this file reproduces the page of the report
- * character for character — a native `<div>`, a `<head>` with a `<style>`, a `@server` and a
- * `@client` — and asserts the two lists a developer sees.
+ * — a native `<div>`, a `<head>` with a `<style>`, a `@code` and the `load` of its `.fudapi`
+ * (SDD-60: the page's `@server` and `@client` regions, regionless) — and asserts the two lists
+ * a developer sees.
  */
 
 import { writeFileSync } from 'node:fs';
@@ -17,19 +18,10 @@ import {
 import { copyWorkspace, startHarness, type Harness } from './_harness.js';
 
 const HEAD = `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./xxx.fudapi">
 @code {
-  type PageData = { title: string };
-
-  @server {
-    export async function load(): Promise<PageData> {
-      return { title: "Untitled" };
-    }
-  }
-
-  @client {
-    const { title } = data;
-    function handlerClick() {}
-  }
+  const { title } = data;
+  function handlerClick() {}
 }
 
 <head>
@@ -45,7 +37,10 @@ const HEAD = `<link rel="layout" href="../layouts/_layout.fud">
 
 `;
 
-const PAGE = 'blog/xxx.fud';
+const PAGE = 'src/blog/xxx.fud';
+/** The page's contract: its `load` is what declares `data` (SDD-60 §3.14). */
+const API = 'src/blog/xxx.fudapi';
+const API_SOURCE = 'load\n  title  str\n';
 const page = (markup: string): string => `${HEAD}${markup}\n`;
 
 let harness: Harness;
@@ -54,6 +49,7 @@ let version = 1;
 beforeAll(async () => {
   const root = copyWorkspace();
   writeFileSync(`${root}/${PAGE}`, page('<div></div>'));
+  writeFileSync(`${root}/${API}`, API_SOURCE);
   harness = await startHarness({ root });
   await harness.open(PAGE);
 }, 60_000);
@@ -182,7 +178,7 @@ describe('the list the editor actually renders', () => {
 });
 
 describe('the `@` after a `=` on a NATIVE element', () => {
-  it('offers the handlers of `@client`, and the escape hatch', async () => {
+  it('offers the handlers of the `@code`, and the escape hatch', async () => {
     const items = await completeAt('<div @click=@|></div>', '@');
 
     expect(names(items)).toContain('@()');
@@ -239,6 +235,7 @@ describe('with no TypeScript at all, which is what a broken project looks like',
   beforeAll(async () => {
     const root = copyWorkspace();
     writeFileSync(`${root}/${PAGE}`, page('<div></div>'));
+    writeFileSync(`${root}/${API}`, API_SOURCE);
     degraded = await startHarness({
       root,
       overrides: { loadTypeScript: () => ({ origin: 'none' }) },

@@ -96,12 +96,10 @@ describe('fud-state — the state is complete, not the projection', () => {
 </html>
 `,
       '/app/x-contact.fud': `@code {
+  import { signal } from '@fudic/core';
   const { name = '', phone = '', byPhone = false } = props<{ name?: string; phone?: string; byPhone?: boolean }>();
 
-  @client {
-    import { signal } from '@fudic/core';
-    const open = signal(false);
-  }
+  const open = signal(false);
 }
 <x-contact>
   <template shadowrootmode="open">

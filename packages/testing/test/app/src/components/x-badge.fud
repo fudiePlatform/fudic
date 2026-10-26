@@ -1,13 +1,11 @@
 @code {
+  import { signal } from "@fudic/core";
+
   type Tone = "neutral" | "info";
 
   const { tone = "neutral" } = props<{ tone?: Tone }>();
 
-  @client {
-    import { signal } from "@fudic/core";
-
-    const clicks = signal(0);
-  }
+  const clicks = signal(0);
 }
 
 <x-badge>

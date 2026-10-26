@@ -11,17 +11,15 @@
   const cart = inject(Cart);
   const logger = inject(Logger);
 
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    const count = signal(cart.lines.length);
-    const last = signal(cart.lines.at(-1) ?? '—');
+  const count = signal(cart.lines.length);
+  const last = signal(cart.lines.at(-1) ?? '—');
 
-    function add() {
-      cart.add(`línea ${cart.lines.length + 1}`);
-      count.set(cart.lines.length);
-      last.set(cart.lines.at(-1) ?? '—');
-    }
+  function add() {
+    cart.add(`línea ${cart.lines.length + 1}`);
+    count.set(cart.lines.length);
+    last.set(cart.lines.at(-1) ?? '—');
   }
 }
 

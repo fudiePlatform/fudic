@@ -18,6 +18,8 @@ export default defineConfig({
       // renders the values of, and the bindings the client hydrates with. The a11y invariant
       // is the other thing the emit cannot assert about itself — that a form has the same
       // markup whether it hydrated or not — and checking it takes both of them, running.
+      // And what fudic generates from a `.fudapi` builds a form with (SDD-60 §3.10).
+      '@fudic/forms/contract': fileURLToPath(new URL('../forms/src/contract/index.ts', import.meta.url)),
       '@fudic/forms/dom': fileURLToPath(new URL('../forms/src/dom/index.ts', import.meta.url)),
       '@fudic/forms': fileURLToPath(new URL('../forms/src/index.ts', import.meta.url)),
     },
@@ -62,6 +64,9 @@ export default defineConfig({
         'src/semantic/analyzers/native-event-attributes.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/semantic/analyzers/view-attributes.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/semantic/analyzers/snippet-recursion.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // The `.fudapi` a file links, and the server cut of a `@code` without regions (SDD-60).
+        'src/emit/api-links.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/emit/server-cut.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
       },
     },
   },

@@ -10,7 +10,7 @@
  */
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../../src/types/index.js';
@@ -62,6 +62,17 @@ describe('examples/vista-errores, case by case (criterion 22)', () => {
   }
 });
 
+/**
+ * What the `.fudapi` a file of the repo links bring into its view, read off their lines: the
+ * compiler does not read a `.fudapi` (the host tells it), and this net only needs the names.
+ */
+function linkedApis(path: string, source: string): { readonly data: boolean; readonly names: ReadonlySet<string> } | undefined {
+  const texts = [...source.matchAll(/<link rel="server" href="([^"]+)">/gu)].map((m) => readFileSync(join(dirname(path), m[1]!), 'utf8'));
+  if (texts.length === 0) return undefined;
+  const names = texts.flatMap((t) => [...t.matchAll(/^(?:(?:get|post|put|patch|delete|form) | {2}form )([A-Za-z_]\w*)/gmu)].map((m) => m[1]!));
+  return { data: texts.some((t) => /^load\b/mu.test(t)), names: new Set(names) };
+}
+
 describe('the repo compiles as it did (criterion 20)', () => {
   const files = (dir: string, out: string[] = []): string[] => {
     for (const name of readdirSync(dir)) {
@@ -80,7 +91,7 @@ describe('the repo compiles as it did (criterion 20)', () => {
   for (const path of all) {
     it(path.slice(ROOT.length).split('\\').join('/'), () => {
       const source = readFileSync(path, 'utf8');
-      expect(seen(source, viewDiagnostics(source))).toEqual([]);
+      expect(seen(source, viewDiagnostics(source, linkedApis(path, source)))).toEqual([]);
     });
   }
 });
@@ -90,7 +101,7 @@ function view(template: string, code = ''): readonly string[] {
   const source =
     '@code {\n  let total = 0;\n  let cur: { next: unknown } | null = null;\n  let i2 = 0;\n  const s = [1];\n' +
     '  const o = { k: 1, list: [1], stack: "" };\n  const k = "k";\n  const f = () => true;\n' +
-    `  @client { let deCliente2 = 1; }\n${code}}\n` +
+    `  let otro = 1;\n${code}}\n` +
     `<x-a><template shadowrootmode="open">${template}</template></x-a>`;
   return seen(source, viewDiagnostics(source));
 }
@@ -166,19 +177,18 @@ describe('the shapes the example does not hold (§3.8)', () => {
 
   it('a handler reads the names of the view, the $ ones aside', () => {
     expect(view('<b @click=@(() => noExiste)>x</b>')).toEqual(['FUD0907 noExiste']);
-    expect(view('<b @click=@(() => deCliente2 + total)>x</b>')).toEqual([]);
+    expect(view('<b @click=@(() => otro + total)>x</b>')).toEqual([]);
   });
 
-  it('a .prop takes a @client callback by name, and is a value otherwise', () => {
-    expect(view('<x-b .v=@deCliente2></x-b>')).toEqual([]);
-    expect(view('<x-b .v=@(deCliente2 + 1)></x-b>')).toEqual(['FUD0907 deCliente2']);
+  it('a .prop is a value like any other: every name of the `@code` is the view’s (SDD-60 §4.8)', () => {
+    expect(view('<x-b .v=@otro></x-b>')).toEqual([]);
+    expect(view('<x-b .v=@(otro + 1)></x-b>')).toEqual([]);
+    expect(view('<x-b .v=@(nadie + 1)></x-b>')).toEqual(['FUD0907 nadie']);
   });
 
-  it('a ref is no read of the view: it names a @client variable it WRITES (decision 30)', () => {
-    expect(view('<input ref=@deCliente2>')).toEqual([]);
-    expect(view('<x-b .v=@deCliente2 ref=@deCliente2></x-b><p>@(deCliente2 + 1)</p>')).toEqual([
-      'FUD0907 deCliente2',
-    ]);
+  it('a ref is no read of the view: it names a variable it WRITES (decision 30)', () => {
+    expect(view('<input ref=@otro>')).toEqual([]);
+    expect(view('<x-b .v=@otro ref=@otro></x-b><p>@(otro + 1)</p>')).toEqual([]);
   });
 
   it('a rest of props is a name of the view: reading a key off it is no FUD0907', () => {

@@ -14,7 +14,6 @@ import {
   FUD_LANGUAGE_ID,
   fudLanguagePlugin,
   projectFud,
-  SERVER_CODE_ID,
   snapshotOf,
   styleCodeId,
   type FudicVirtualCode,
@@ -72,14 +71,14 @@ describe('snapshotOf', () => {
 describe('createFudicVirtualCode', () => {
   const document = projectFud({ path: BADGE_PATH, source: BADGE, index: indexOf({}) });
 
-  it('roots the file and embeds client, server and one code per <style>', () => {
+  it('roots the file and embeds the client and one code per <style>: no server virtual (SDD-60 §4.7)', () => {
     const root = createFudicVirtualCode(document);
 
     expect(root.id).toBe('root');
     expect(root.languageId).toBe(FUD_LANGUAGE_ID);
     expect(root.snapshot.getLength()).toBe(BADGE.length);
     expect(root.mappings).toHaveLength(1);
-    expect(root.embeddedCodes?.map((code) => code.id)).toEqual([CLIENT_CODE_ID, SERVER_CODE_ID, styleCodeId(0)]);
+    expect(root.embeddedCodes?.map((code) => code.id)).toEqual([CLIENT_CODE_ID, styleCodeId(0)]);
     expect(root.client.languageId).toBe('typescript');
     expect(root.styles[0]?.languageId).toBe('css');
     expect(root.document).toBe(document);
@@ -89,7 +88,6 @@ describe('createFudicVirtualCode', () => {
     const root = createFudicVirtualCode({ ...document, virtuals: [] });
 
     expect(root.client).toMatchObject({ id: CLIENT_CODE_ID, languageId: 'typescript', mappings: [] });
-    expect(root.server).toMatchObject({ id: SERVER_CODE_ID, languageId: 'typescript', mappings: [] });
     expect(root.client.snapshot.getLength()).toBe(0);
     expect(root.styles).toEqual([]);
   });
@@ -138,7 +136,7 @@ describe('fudLanguagePlugin', () => {
     ]);
   });
 
-  it('tells TypeScript that .fud is mixed content, its script the client, the server an extra file', () => {
+  it('tells TypeScript that .fud is mixed content and its script the client, with no extra file', () => {
     const { plugin } = setup();
     const root = plugin.createVirtualCode?.(BADGE_PATH, FUD_LANGUAGE_ID, snapshotOf(BADGE), {} as never) as
       FudicVirtualCode;
@@ -150,8 +148,6 @@ describe('fudLanguagePlugin', () => {
       extension: '.ts',
       scriptKind: 3,
     });
-    expect(typescript.getExtraServiceScripts?.(BADGE_PATH, root as VirtualCode)).toEqual([
-      { fileName: `${BADGE_PATH}.server.ts`, code: root.server, extension: '.ts', scriptKind: 3 },
-    ]);
+    expect(typescript.getExtraServiceScripts).toBeUndefined();
   });
 });

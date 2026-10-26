@@ -4,7 +4,7 @@
    forma escribiría el mismo `<app-marco>` y ya está.
 
    Las props del layout llegan al body por la vía normal: `titulo` va al componente, y
-   `seccion` a un snippet. Las dos las resuelve la ruta en su `@server layout(ctx, data)`.
+   `seccion` a un snippet. Las dos las resuelve la ruta en el `layout` de su `.fudapi`.
 
    Cada hueco dice en qué slot del componente cae. La ruta escribe hermanos sueltos dentro de
    su `@section`, sin un `<div slot>` que los envuelva, y cada uno sale con su `slot=`

@@ -14,24 +14,9 @@ export function clientFileName(fudPath: string): string {
   return `${fudPath}.ts`;
 }
 
-/** The server virtual: `blog/[slug].fud` → `blog/[slug].fud.server.ts`. */
-export function serverFileName(fudPath: string): string {
-  return `${fudPath}.server.ts`;
-}
-
 /** The n-th `<style>` virtual: `app-badge.fud` → `app-badge.fud.0.css`. */
 export function styleFileName(fudPath: string, index: number): string {
   return `${fudPath}.${index}.css`;
-}
-
-/**
- * How the client virtual names its server sibling: `'./[slug].fud.server'`.
- *
- * Relative and extensionless, because the two virtuals always sit in the same directory
- * and TypeScript appends the extension itself.
- */
-export function serverModuleSpecifier(fudPath: string): string {
-  return `./${baseName(fudPath)}.server`;
 }
 
 /**
@@ -49,31 +34,6 @@ export function serverModuleSpecifier(fudPath: string): string {
  */
 export function componentModuleSpecifier(href: string): string {
   return href.startsWith('.') || href.startsWith('/') || href.includes('/') ? href : `./${href}`;
-}
-
-/** A `[name]` segment of a route path: the one spelling the router reads as a param. */
-const PARAM_SEGMENT = /^\[([A-Za-z_][A-Za-z0-9_]*)\]$/u;
-
-/** The routes directory, as it appears inside a `.fud` path. */
-const ROUTES_SEGMENT = '/routes/';
-
-/**
- * The params of a route, read off its path: `routes/blog/[slug].fud` → `['slug']`.
- *
- * Only what lies below `routes/` counts, because that is the part the router turns into a
- * pattern — a `[x]` directory above it names nothing the request will carry. A path with no
- * `routes/` in it is read whole, which is what a path relative to that directory looks like.
- */
-export function routeParams(fudPath: string): readonly string[] {
-  const normalized = fudPath.replace(/\\/gu, '/');
-  const cut = normalized.lastIndexOf(ROUTES_SEGMENT);
-  const relative = cut === -1 ? normalized : normalized.slice(cut + ROUTES_SEGMENT.length);
-  const params: string[] = [];
-  for (const segment of relative.replace(/\.fud$/u, '').split('/')) {
-    const name = PARAM_SEGMENT.exec(segment)?.[1];
-    if (name !== undefined) params.push(name);
-  }
-  return params;
 }
 
 /** Whether `fudPath` names the file `name`, in whatever directory. */

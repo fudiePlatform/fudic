@@ -1,0 +1,7 @@
+# The function of the component: it answers at /_fudic/fn/components/user-form/save, whichever
+# page uses it. ctx.user exists because it uses auth.
+put save
+  use auth
+  form personForm
+  fails reserved 409 "Ese nombre está reservado."
+  -> Person

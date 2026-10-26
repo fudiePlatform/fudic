@@ -76,6 +76,8 @@ const CONSUMER = `@code {
 
 describe('extraction', () => {
   it('reads a call of each kind, with its zone and its provider verbatim', () => {
+    // What the markup reads is the server's cut (`neutral`); what nobody paints with is the
+    // browser's alone (SDD-60 §4.8).
     const source = component(
       'x-both',
       `@code {
@@ -84,14 +86,7 @@ describe('extraction', () => {
 
   provide(Cart, () => new Cart());
   const cart = inject(Cart);
-
-  @server {
-    import { Db } from './services/db.js';
-    const db = inject(Db);
-  }
-  @client {
-    const locale = inject(LOCALE, { optional: true });
-  }
+  const locale = inject(LOCALE, { optional: true });
 }`,
       '<p>@(cart.total)</p>',
     );
@@ -99,9 +94,21 @@ describe('extraction', () => {
     expect(code.di.map((d) => [d.kind, d.zone, d.provider])).toEqual([
       ['provide', 'neutral', 'Cart'],
       ['inject', 'neutral', 'Cart'],
-      ['inject', 'server', 'Db'],
       ['inject', 'client', 'LOCALE'],
     ]);
+  });
+
+  it('reads only inject and provide of what @fudic/di brings: a token is no call', () => {
+    const source = component(
+      'x-token',
+      `@code {
+  import { inject, token } from '@fudic/di';
+  const LOCALE = token<string>('locale');
+  const locale = inject(LOCALE);
+}`,
+      '<p>@locale</p>',
+    );
+    expect(codeOfSource(source).di.map((d) => [d.kind, d.provider])).toEqual([['inject', 'LOCALE']]);
   });
 
   it('reads nothing when the names did not come from @fudic/di', () => {
@@ -125,27 +132,11 @@ describe('extraction', () => {
 
   const cart = ask(Cart);
 }`,
-      '<p>ok</p>',
+      '<p>@(cart.total)</p>',
     );
     const code = codeOfSource(source);
     expect(code.di.map((d) => d.kind)).toEqual(['inject']);
     expect(code.neutral.map((s) => s.text)).toContain('const cart = injectFrom($ioc, Cart);');
-  });
-
-  it('emits the @server region of a component, which used to reach nowhere', () => {
-    const source = component(
-      'x-server',
-      `@code {
-  @server {
-    import { Db } from './services/db.js';
-    const rows = Db.all();
-  }
-}`,
-      '<p>ok</p>',
-    );
-    const code = codeOfSource(source);
-    expect(code.server.imports).toEqual([`import { Db } from './services/db.js';`]);
-    expect(code.server.body.map((s) => s.text)).toEqual(['const rows = Db.all();']);
   });
 
   it('reads nothing from a default or namespace import: neither binds a NAME', () => {
@@ -175,17 +166,18 @@ describe('extraction', () => {
     expect(codeOfSource(source).di.map((d) => d.provider)).toEqual(['']);
   });
 
-  it('leaves the rest of the neutral zone exactly as it was written', () => {
+  it('leaves the rest of the server cut exactly as it was written', () => {
     // BUG-27 made the whole neutral zone travel, so a file with no DI is not a file with an
     // empty neutral list any more — it is a file whose neutral lines come out untouched, and
-    // none of them REGISTERS, so the browser gets every one of them.
+    // none of them REGISTERS, so the browser gets every one of them. Without regions that list
+    // is the server cut: what the markup reads (SDD-60 §4.8).
     const source = component(
       'x-quiet',
       `@code {
   import { Cart } from './services/cart.js';
   const total = Cart.zero;
 }`,
-      '<p>ok</p>',
+      '<p>@(total)</p>',
     );
     const code = codeOfSource(source);
     expect(code.di).toEqual([]);
@@ -212,13 +204,11 @@ describe('the rewrite is by offset, never by text', () => {
   import { inject } from '@fudic/di';
   import { Cart } from './services/cart.js';
 
-  @client {
-    const label = "inject(Cart)";
-    // inject(Cart) is written here on purpose
-    const cart = inject(Cart);
-  }
+  const label = "inject(Cart)";
+  // inject(Cart) is written here on purpose
+  const cart = inject(Cart);
 }`,
-      '<p>@(label)</p>',
+      '<p>ok</p>',
     );
     const body = codeOfSource(source).client.body.map((s) => s.text);
     expect(body).toEqual([
@@ -237,7 +227,7 @@ describe('the rewrite is by offset, never by text', () => {
   provide(Cart, () => new Cart(), { transient: true });
   const cart = inject(Cart, { optional: true });
 }`,
-      '<p>ok</p>',
+      '<p>@(cart)</p>',
     );
     expect(
       codeOfSource(source)
@@ -268,25 +258,6 @@ describe('the level: inject promotes, provide does not', () => {
     const graph = graphOf(files);
     expect(isIntrinsicallyHydratable(graph.components.get('x-user')!)).toBe(true);
     expect(hydratableTags(graph).has('x-user')).toBe(true);
-  });
-
-  it('an inject written in @server does not promote: it never runs in the browser', () => {
-    const graph = graphOf({
-      '/app/home.fud': page(['x-db'], '<x-db></x-db>'),
-      '/app/x-db.fud': component(
-        'x-db',
-        `@code {
-  import { inject } from '@fudic/di';
-  import { Db } from './services/db.js';
-
-  @server {
-    const db = inject(Db);
-  }
-}`,
-        '<p>db</p>',
-      ),
-    });
-    expect(isIntrinsicallyHydratable(graph.components.get('x-db')!)).toBe(false);
   });
 
   it('the provider-only component gets no data-fud-id and no DI in its chunk', () => {
@@ -338,18 +309,17 @@ describe('the server module', () => {
     );
   });
 
-  it('emits the @server region here and nowhere else', () => {
+  it('leaves out an inject the markup does not read: it runs in the browser alone', () => {
     const source = component(
       'x-db',
       `@code {
   import { inject } from '@fudic/di';
+  import { Db } from './services/db.js';
 
-  @server {
-    import { Db } from './services/db.js';
-    const rows = inject(Db).all();
-  }
+  const db = inject(Db);
+  function load() { return db.all(); }
 }`,
-      '<p>db</p>',
+      '<button @onclick="load">db</button>',
     );
     const graph = graphOf({
       '/app/home.fud': page(['x-db'], '<x-db></x-db>'),
@@ -357,13 +327,13 @@ describe('the server module', () => {
     });
     const comp = graph.components.get('x-db')!;
 
+    // A handler is a deferred binding: it seeds no cut, so neither `load` nor `db` is evaluated
+    // on the server (SDD-60 §4.8).
     const mjs = emitComponentModule(graph, comp);
-    expect(mjs).toContain(`import { Db } from './services/db.js';`);
-    expect(mjs).toContain('const rows = injectFrom($ioc, Db).all();');
+    expect(mjs).not.toContain('injectFrom($ioc, Db)');
 
     const chunk = emitComponentClientModule(graph, comp);
-    expect(chunk).not.toContain('Db');
-    expect(chunk).not.toContain('injectFrom');
+    expect(chunk).toContain('injectFrom($ioc, Db)');
   });
 
   it('imports no helper for a call the browser is the only one to make', () => {
@@ -375,9 +345,7 @@ describe('the server module', () => {
   import { inject } from '@fudic/di';
   import { Cart } from './services/cart.js';
 
-  @client {
-    const cart = inject(Cart);
-  }
+  const cart = inject(Cart);
 }`,
         '<p>c</p>',
       ),
@@ -464,10 +432,8 @@ describe('the published blocks', () => {
       '/app/x-plain.fud': component(
         'x-plain',
         `@code {
-  @client {
-    import { signal } from '@fudic/core';
-    const n = signal(0);
-  }
+  import { signal } from '@fudic/core';
+  const n = signal(0);
 }`,
         '<p>@(n())</p>',
       ),
@@ -572,18 +538,18 @@ describe('the IoC module of a component', () => {
     expect(emitComponentIocModule(graph.components.get('x-user')!)).toBeNull();
   });
 
-  it('takes a provider written in @client too: it is a registration like any other', () => {
+  it('takes a provider the cut did not catch too: it is a registration like any other', () => {
+    // Under another name the call is no top-level `provide` to the cut, so it stays the
+    // browser's — and a registration there belongs to the IoC module all the same.
     const graph = graphOf({
       '/app/home.fud': page(['x-late'], '<x-late></x-late>'),
       '/app/x-late.fud': component(
         'x-late',
         `@code {
-  import { provide } from '@fudic/di';
+  import { provide as give } from '@fudic/di';
   import { Cart } from './services/cart.js';
 
-  @client {
-    provide(Cart, () => new Cart());
-  }
+  give(Cart, () => new Cart());
 }`,
         '<p>late</p>',
       ),
@@ -595,7 +561,7 @@ describe('the IoC module of a component', () => {
     expect(emitComponentClientModule(graph, comp)).not.toContain('provideIn');
   });
 
-  it('merges the two browser zones into one module, in source order', () => {
+  it('carries every registration into one module, in source order', () => {
     const graph = graphOf({
       '/app/home.fud': page(['x-both'], '<x-both></x-both>'),
       '/app/x-both.fud': component(
@@ -606,17 +572,14 @@ describe('the IoC module of a component', () => {
 
   provide(Cart, () => new Cart());
 
-  @client {
-    provide(Clock, () => new Clock());
-  }
+  provide(Clock, () => new Clock());
 }`,
         '<p>both</p>',
       ),
     });
 
-    // One `register`, both registrations, and the order they were WRITTEN in: the two zones
-    // are fragments of one module, and a registration that overrides another has to lose or
-    // win the same way it does in the source.
+    // One `register`, both registrations, and the order they were WRITTEN in: a registration
+    // that overrides another has to lose or win the same way it does in the source.
     expect(emitComponentIocModule(graph.components.get('x-both')!)?.split('\n')).toEqual([
       `import { provideIn } from '@fudic/di';`,
       `import { Cart, Clock } from './services/cart.js';`,

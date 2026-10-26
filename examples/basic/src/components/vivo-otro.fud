@@ -1,15 +1,13 @@
 @code {
   const { label = "" } = props<{ label?: string }>();
 
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    // Its own state, like `vivo-item`: an instance that comes alive has to answer its button.
-    const clicks = signal(0);
+  // Its own state, like `vivo-item`: an instance that comes alive has to answer its button.
+  const clicks = signal(0);
 
-    function count() {
-      clicks.set(clicks() + 1);
-    }
+  function count() {
+    clicks.set(clicks() + 1);
   }
 }
 

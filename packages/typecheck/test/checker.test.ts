@@ -168,14 +168,8 @@ describe('createProjectChecker — what it reports', () => {
     expect(report.problems.every((problem) => problem.file.endsWith('app-badge.fud'))).toBe(true);
   });
 
-  it('types $Data from the .fud.server virtual, as the editor does', () => {
+  it('reads data as unknown in a route that links no .fudapi with load, as the editor does', () => {
     const route = `<link rel="layout" href="../layouts/_layout.fud">
-
-@code {
-  @server {
-    export function load(): { n: number } { return { n: 1 }; }
-  }
-}
 
 <p>@data.missing</p>
 `;
@@ -190,7 +184,7 @@ describe('createProjectChecker — what it reports', () => {
     const root = project({ 'src/routes/index.fud': route, 'src/layouts/_layout.fud': layout });
     const report = createProjectChecker({ root }).check();
 
-    expect(shown(report, root)).toEqual(['src/routes/index.fud TS2339 missing']);
+    expect(shown(report, root)).toEqual(['src/routes/index.fud TS18046 data']);
   });
 
   it('reports the declaration diagnostics when the tsconfig asks for declarations', () => {

@@ -23,13 +23,11 @@ const PAGE = `<!DOCTYPE html>
 </html>
 `;
 
-/** A hydratable component: it has a `@client` region, so it gets a client module. */
+/** A hydratable component: it has client code, so it gets a client module. */
 const WIDGET = `@code {
-  @client {
-    import { signal } from '@fudic/core';
-    const hits = signal(0);
-    function bump() { hits.set(hits() + 1); }
-  }
+  import { signal } from '@fudic/core';
+  const hits = signal(0);
+  function bump() { hits.set(hits() + 1); }
 }
 
 <dev-widget>
@@ -95,6 +93,13 @@ describe('vite dev server (SDD-19 §4.10)', () => {
       { pattern: '/about', mode: 'ssr' },
       { pattern: '/link', mode: 'ssr' },
     ]);
+  });
+
+  it('answers a function URL with a 404 problem: a project without a .fudapi has none (SDD-60 §4.4)', async () => {
+    const res = await fetch(`${origin}/_fudic/fn/routes/about/save`, { method: 'PUT' });
+    expect(res.status).toBe(404);
+    expect(res.headers.get('content-type')).toBe('application/problem+json');
+    expect(await res.json()).toEqual({ status: 404, title: 'Not Found', detail: 'no such server function' });
   });
 
   it('serves the Service Worker at a root URL with Service-Worker-Allowed', async () => {

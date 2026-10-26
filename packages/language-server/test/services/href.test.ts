@@ -10,7 +10,7 @@ import { DocumentCache } from '../../src/document-cache.js';
 import { WorkspaceIndex } from '../../src/workspace-index.js';
 import { regionAt } from '@fudic/compiler';
 import { hrefDiagnostics, unresolvedHrefs } from '@fudic/typecheck';
-import { hrefCompletions, relCompletions } from '../../src/services/href.js';
+import { apiHrefCompletions, hrefCompletions, relCompletions } from '../../src/services/href.js';
 import { hrefContextAt, linkValueAt } from '../../src/services/position.js';
 import { component, LAYOUT, memoryFs, MONOREPO, PAGE, route, TIENDA_ROUTE } from '../_support.js';
 
@@ -181,6 +181,7 @@ describe('relCompletions (BUG-43)', () => {
       'component',
       'layout',
       'snippet',
+      'server',
     ]);
   });
 
@@ -189,19 +190,22 @@ describe('relCompletions (BUG-43)', () => {
       'component',
       'layout',
       'snippet',
+      'server',
     ]);
     expect(
       relsAt(SLUG, `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="|">\n<article>hi</article>\n`),
-    ).toEqual(['component', 'snippet']);
+    ).toEqual(['component', 'snippet', 'server']);
   });
 
-  it('offers no layout to a component, a page or a layout', () => {
+  it('offers no layout to a component, a page or a layout, and no server to a layout', () => {
     expect(relsAt('/p/components/app-x.fud', `<link rel="|">\n${component('app-x')}`)).toEqual([
       'component',
       'snippet',
+      'server',
     ]);
     const page = PAGE.replace('<head>', '<head>\n    <link rel="|">');
-    expect(relsAt('/p/other.fud', page)).toEqual(['component', 'snippet']);
+    expect(relsAt('/p/other.fud', page)).toEqual(['component', 'snippet', 'server']);
+    // A layout has no server to link (FUD1112).
     const layout = LAYOUT.replace('<head>', '<head>\n    <link rel="|">');
     expect(relsAt('/p/layouts/_other.fud', layout)).toEqual(['component', 'snippet']);
   });
@@ -219,5 +223,21 @@ describe('linkValueAt (BUG-43)', () => {
     expect(regionAt(source, document.html, source.indexOf('b">x')).kind).toBe('attr-value');
     expect(at('b">x')).toBeUndefined();
     expect(at('x</a>')).toBeUndefined();
+  });
+});
+
+describe('apiHrefCompletions (SDD-60 §4.7)', () => {
+  it('offers the contracts of the app, relative to the file and sorted', () => {
+    const path = '/p/src/routes/blog/post.fud';
+    const { document } = setup(path, `<link rel="server" href="">\n${component('p-post')}`);
+    const apis = {
+      appFiles: () => ['/p/src/routes/blog/post.fudapi', '/p/src/components/user-form.fudapi'],
+      read: () => undefined,
+    };
+
+    expect(apiHrefCompletions(document, apis)).toEqual([
+      { href: '../../components/user-form.fudapi', path: '/p/src/components/user-form.fudapi' },
+      { href: './post.fudapi', path: '/p/src/routes/blog/post.fudapi' },
+    ]);
   });
 });

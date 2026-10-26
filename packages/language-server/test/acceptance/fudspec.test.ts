@@ -27,7 +27,7 @@ import { URI } from 'vscode-uri';
 import { toPosix } from '@fudic/typecheck';
 import { copyWorkspace, startHarness, type Harness } from './_harness.js';
 
-const SPEC = 'components/app-badge.fudspec';
+const SPEC = 'src/components/app-badge.fudspec';
 
 const term = (name: string, block: string, params: string, describe = ''): string =>
   [
@@ -50,7 +50,7 @@ beforeAll(async () => {
     `${root}/fudic/terms/then/min-height.js`,
     term('min-height', 'then', `${ELEMENT}, { name: 'px', type: 'number' }`, ", describe: ({ px }) => `${px}px`"),
   );
-  writeFileSync(`${root}/components/app-badge.fixture.ts`, "export default { 'tono-alto': { tone: 'info' } };\n");
+  writeFileSync(`${root}/src/components/app-badge.fixture.ts`, "export default { 'tono-alto': { tone: 'info' } };\n");
 
   framework = toPosix(mkdtempSync(join(tmpdir(), 'fudic-terms-')));
   mkdirSync(`${framework}/then`);

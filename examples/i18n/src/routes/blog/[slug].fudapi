@@ -1,0 +1,7 @@
+# Prerendered once per slug and per locale: its title and reading time are in the page's language.
+load
+  title  str
+  time   str
+
+# Every slug the build prerenders.
+paths

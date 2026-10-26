@@ -14,8 +14,8 @@ import {
 } from 'vscode-languageserver-protocol/node';
 import { fixtureText, startHarness, type Harness } from './_harness.js';
 
-const SLUG = 'blog/[slug].fud';
-const BADGE = 'components/app-badge.fud';
+const SLUG = 'src/blog/[slug].fud';
+const BADGE = 'src/components/app-badge.fud';
 
 let harness: Harness;
 let version = 1;
@@ -79,13 +79,13 @@ describe('§6.2 — the nine mutants of SDD-23, as LSP diagnostics on the .fud',
     expect(String(diagnostic?.message)).toContain('bogus');
   });
 
-  it('B — a @server symbol used in the template', async () => {
+  it('B — a name the file never declares, used in the template', async () => {
+    // What was a `@server` import is now a name nobody declares: the view says so as well.
     const source = mutate(slug, '<h1>@data.title</h1>', '<h1>@findPost</h1>');
-    const [diagnostic, ...rest] = await diagnosticsOf(slugUri, source);
+    const diagnostics = await diagnosticsOf(slugUri, source);
 
-    expect(rest).toEqual([]);
-    expect(diagnostic?.code).toBe(2304);
-    expect(textAt(source, diagnostic!)).toBe('findPost');
+    expect(diagnostics.map((d) => d.code).sort()).toEqual([2304, 'FUD0907']);
+    expect(diagnostics.map((d) => textAt(source, d))).toEqual(['findPost', 'findPost']);
   });
 
   it('C — a section the layout does not declare', async () => {
@@ -145,16 +145,8 @@ describe('§6.2 — the nine mutants of SDD-23, as LSP diagnostics on the .fud',
     expect(await diagnosticsOf(slugUri, source)).toEqual([]);
   });
 
-  it('H — changing the contract of load() breaks the template it never touched', async () => {
-    const source = mutate(slug, 'Promise<PageData> {', 'Promise<Omit<PageData, "body">> {');
-    const diagnostics = await diagnosticsOf(slugUri, source);
-
-    expect(
-      diagnostics.some(
-        (diagnostic) => diagnostic.code === 2339 && textAt(source, diagnostic) === 'body',
-      ),
-    ).toBe(true);
-  });
+  // H — changing the contract of `load` — is a `.fudapi` saved, which this shared workspace
+  // cannot write: `parity.test.ts` holds it, on a copy, for the editor and the build at once.
 
   it('I — the item of a @foreach carries its type', async () => {
     const source = slug
@@ -277,11 +269,11 @@ describe('§6.9 — inter-file', () => {
 });
 
 describe('§6.11 — the reserved $ namespace, while typing', () => {
-  it('reports const $x = 1 in @client with the exact span, and leaves foo$ alone', async () => {
+  it('reports const $x = 1 in @code with the exact span, and leaves foo$ alone', async () => {
     const badge = await harness.open(BADGE);
     const source = badge.text.replace(
       '@code {',
-      '@code {\n  @client {\n    const $x = 1;\n    const foo$ = 2;\n    const read = { $bar: 1 }.$bar;\n  }\n',
+      '@code {\n  const $x = 1;\n  const foo$ = 2;\n  const read = { $bar: 1 }.$bar;\n',
     );
 
     const diagnostics = await diagnosticsOf(badge.uri, source);

@@ -13,11 +13,9 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  indent,
   renderTemplate,
   renderSectionBlocks,
   sectionBlocks,
-  serverCodeBlock,
   styleBlock,
 } from '@fudic/cli';
 import { componentSkeleton, SNIPPETS } from '../../src/services/snippets.js';
@@ -46,8 +44,8 @@ describe('the skeletons are the CLI templates', () => {
     expect(bodyOf('route')).toBe(
       renderTemplate('route.fud', {
         layoutHref: '${1:../layouts/_layout.fud}',
-        code: serverCodeBlock(),
-        title: '${2:@data.title}',
+        code: '',
+        title: '${2:Untitled}',
         sections: sectionBlocks([]),
       }),
     );
@@ -58,7 +56,7 @@ describe('the skeletons are the CLI templates', () => {
       renderTemplate('page.fud', {
         lang: '${1:en}',
         title: '${2:Home}',
-        code: indent(serverCodeBlock(), '    '),
+        code: '',
       }),
     );
   });

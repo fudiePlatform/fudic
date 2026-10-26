@@ -7,6 +7,7 @@
  */
 
 import { URI } from 'vscode-uri';
+import { API_EXTENSION } from '@fudic/api';
 import { SPEC_EXTENSION } from '@fudic/spec';
 import { toPosix } from '@fudic/typecheck';
 
@@ -28,6 +29,11 @@ export function isFudUri(uri: URI): boolean {
 /** Whether a URI names a `.fudspec`: criteria, not a component (SDD-52). */
 export function isFudspecUri(uri: URI): boolean {
   return uri.path.endsWith(SPEC_EXTENSION);
+}
+
+/** Whether a URI names a `.fudapi`: the server contract of a route or a component (SDD-60). */
+export function isFudapiUri(uri: URI): boolean {
+  return uri.path.endsWith(API_EXTENSION);
 }
 
 /**

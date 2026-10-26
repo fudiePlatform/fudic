@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 /**
  * A signal written BEFORE the hydration hooks its subscriptions up notified nobody. An
- * `effect` of `@client` that reads `localStorage` runs as the factory does, and the page kept
+ * `effect` of the `@code` that reads `localStorage` runs as the factory does, and the page kept
  * saying what the server painted. The hookup now renews the pass once when one of the file's
  * own signals was written (`$written`), and only then: `h()` with nothing written still adopts
  * without writing a single text node.
@@ -15,7 +15,7 @@ import { clientFactory, controller, mountAsDsd, serverShadowHtml } from './_harn
 
 function graph(tag: string, client: string): ComponentGraph {
   const source =
-    `@code {\n  @client {\n    import { signal, effect } from '@fudic/core';\n    const s = signal('a');\n${client}\n  }\n}\n` +
+    `@code {\n  import { signal, effect } from '@fudic/core';\n  const s = signal('a');\n${client}\n}\n` +
     `<${tag}>\n  <template shadowrootmode="open"><p>@s()</p></template>\n</${tag}>\n`;
   return resolveComponents(
     '/page.fud',
@@ -53,7 +53,7 @@ function hydrate(tag: string, client: string): { shadow: ShadowRoot; painted: st
 
 describe('a component whose signal was written before the hookup', () => {
   it('h() paints the written value over the server’s', () => {
-    const { shadow, painted } = hydrate('x-written', "    effect(() => { s.set('b'); });");
+    const { shadow, painted } = hydrate('x-written', "  effect(() => { s.set('b'); });");
     expect(painted).toBe('<p>a</p>');
     expect(shadow.innerHTML).toBe('<p>b</p>');
   });

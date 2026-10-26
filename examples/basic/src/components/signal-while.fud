@@ -1,6 +1,6 @@
 @code {
-  // La lista enlazada del ejemplo canónico de la decisión 91. En la zona NEUTRA porque la
-  // cabecera del bucle se ejecuta en los dos lados.
+  // La lista enlazada del ejemplo canónico de la decisión 91. La cabecera del bucle
+  // se ejecuta en los dos lados, así que el servidor también la evalúa.
   type Nodo = { id: string; n: number; next: Nodo | null };
 
   const lista: Nodo = { id: "a", n: 1, next: { id: "b", n: 2, next: { id: "c", n: 3, next: null } } };
@@ -9,14 +9,12 @@
   // bloque — y por eso hay que resembrarla en el template antes de cada pasada.
   let cur: Nodo | null = lista;
 
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    const toques = signal(0);
+  const toques = signal(0);
 
-    function tocar() {
-      toques.set(toques() + 1);
-    }
+  function tocar() {
+    toques.set(toques() + 1);
   }
 }
 

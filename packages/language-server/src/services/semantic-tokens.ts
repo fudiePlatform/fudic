@@ -70,7 +70,7 @@ const BINDING_PREFIXES = [
 /**
  * The `@keyword` at `at`: the `@` plus the letters after it, and nothing else.
  *
- * `@code`, `@server`, `@client` and the control keywords carry no keyword span in the AST —
+ * `@code` and the control keywords carry no keyword span in the AST —
  * their node spans cover the whole construct, body included — so the one piece that IS a
  * directive is measured here. Exported because its two edges (a keyword ended by anything, and
  * a keyword that runs into the end of a half-typed file) are its whole contract.
@@ -260,8 +260,9 @@ class TokenCollector {
 /**
  * Every fudic token of a document.
  *
- * The `@code` block and its regions are included: they are directives too, and the TextMate
- * grammar has the same trouble with them as with the rest.
+ * The `@code` block is included: it is a directive too, and the TextMate grammar has the same
+ * trouble with it as with the rest. A retired `@server` / `@client` is FUD1110, and no
+ * directive (SDD-60).
  */
 export function semanticTokens(document: CachedDocument): readonly FudicToken[] {
   const collector = new TokenCollector(
@@ -272,11 +273,6 @@ export function semanticTokens(document: CachedDocument): readonly FudicToken[] 
   collector.walk(documentRoots(document.document));
 
   const code = document.document.code;
-  if (code !== undefined) {
-    collector.directiveAt(code.span.start);
-    for (const part of code.parts) {
-      if (part.type !== 'neutral-js') collector.directiveAt(part.span.start);
-    }
-  }
+  if (code !== undefined) collector.directiveAt(code.span.start);
   return collector.tokens;
 }

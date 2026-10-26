@@ -1,9 +1,9 @@
 /**
  * The entry point: every virtual file of one `.fud` (SDD-23 §3.1, §4.1).
  *
- * It owns the single Oxc invocation the golden rule allows per file — the neutral chunks of
- * `@code` go into one batch, and the result is handed down to the client emitter. Nobody
- * below this function parses JS again.
+ * It owns the single Oxc invocation the golden rule allows per file — the chunks of `@code`
+ * go into one batch, and the result is handed down to the client emitter. Nobody below this
+ * function parses JS again.
  *
  * Never throws. A `.fud` with parse diagnostics still yields the best virtual files its
  * partial AST allows (§4.6): a half-written file is the normal state of an editor, and
@@ -22,24 +22,12 @@ import {
   type Span,
   type StructuredDocument,
 } from '@fudic/compiler';
-import { partitionCode } from './code.js';
+import { codeChunks } from './code.js';
 import { emitCssVirtuals } from './css.js';
 import { emitClientVirtual, type TemplateJs } from './emit-client.js';
 import type { FragmentAst } from './template/context.js';
 import { pipesOf } from './template/pipes.js';
-import { emitServerVirtual, type LayoutContract, type LoadContract } from './emit-server.js';
-import {
-  exportsLoad,
-  exportsLoadInText,
-  findLayoutResolver,
-  findLayoutResolverInText,
-  findLoadCtx,
-  findLoadCtxInText,
-  type LayoutResolver,
-} from './layout-resolver.js';
-import { routeParams } from './paths.js';
 import { findPropsCall, type PropsCall } from './props.js';
-import { clientFns, type ClientFn } from './server-fns.js';
 import type { FileRegistry, VirtualFile } from './types.js';
 
 /**
@@ -48,27 +36,16 @@ import type { FileRegistry, VirtualFile } from './types.js';
  * The language server parses every fragment of the document once — the semantic pass and the
  * `$` rule need the same AST this emitter needs — so handing the result over is what keeps
  * "Oxc is invoked exactly once per file" true in the process that types the most. Absent, the
- * emitter opens its own batch for the neutral chunks, which is what the CLI and the tests do.
+ * emitter opens its own batch for the chunks of `@code`, which is what the CLI and the tests do.
  */
 export interface EmitJs {
   readonly result: JsBatchResult;
-  /** Fragment ids of the neutral chunks of `@code`, in source order. */
-  readonly neutral: readonly FragmentId[];
   /**
-   * Fragment ids of the `@client` regions, in source order — where the reactive names are
-   * read from (`reactiveNames`). Absent means the caller did not register them, and then a
-   * value crosses as written, which is what the projection did before BUG-23.
+   * Fragment ids of the chunks of `@code`, in source order: where `props<T>()` is looked for
+   * and the reactive names are read from (decision 151). The `@code` is browser code, all of
+   * it (SDD-60 §4.8).
    */
-  readonly client?: readonly FragmentId[];
-  /**
-   * Fragment ids of the `@server` regions, in source order — where `layout(ctx, data)` is
-   * looked for (SDD-40 §4.7).
-   *
-   * Absent means the caller did not register them, and then the route's resolver gets no
-   * return type and TypeScript checks nothing about it. Degrading rather than erroring is the
-   * rule here as everywhere: the build still reports `FUD0702`.
-   */
-  readonly server?: readonly FragmentId[];
+  readonly code: readonly FragmentId[];
   /**
    * The AST registered at a source span, the ATTRIBUTE VALUES included.
    *
@@ -94,7 +71,8 @@ export interface EmitInput {
 }
 
 /**
- * Emit the client virtual, the server virtual and one CSS virtual per `<style>`.
+ * Emit the client virtual and one CSS virtual per `<style>`. What the server runs is declared
+ * in a `.fudapi` and typed by its own module (SDD-60 §4.7): a `.fud` has no server virtual.
  *
  * Deterministic: the same input yields the same bytes and the same mappings, which is what
  * lets the server cache virtuals by document version.
@@ -104,90 +82,13 @@ export function emitVirtualFiles(input: EmitInput): readonly VirtualFile[] {
   const js = input.js ?? ownBatch(source, document);
 
   return [
-    emitClientVirtual(source, fileName, document, registry, findProps(js), templateJs(js, source), serverFns(js, document)),
-    emitServerVirtual(
-      source,
-      fileName,
-      document.code,
-      layoutContract(source, fileName, document, js),
-      loadContract(source, fileName, document, js),
-    ),
+    emitClientVirtual(source, fileName, document, registry, findProps(js), templateJs(js, source)),
     ...emitCssVirtuals(source, fileName, document),
   ];
 }
 
 /**
- * What this file's `<link rel="layout">` and its `layout(ctx, data)` amount to (SDD-40 §4.7).
- *
- * Only a ROUTE has one: a page owns its own shell, and a layout's own parent is a chain the
- * emit composes rather than a contract this file resolves.
- */
-function layoutContract(
-  source: string,
-  fileName: string,
-  document: StructuredDocument,
-  js: EmitJs,
-): LayoutContract | undefined {
-  if (document.type !== 'route-document' || document.layoutHref === '') return undefined;
-  const regions = (js.server ?? []).map((id) => statementsOf(js.result, id));
-  const contract = (resolver: LayoutResolver, hasLoad: boolean): LayoutContract => ({
-    href: document.layoutHref,
-    resolver,
-    params: routeParams(fileName),
-    hasLoad,
-  });
-  for (const statements of regions) {
-    const resolver = findLayoutResolver(source, statements, (s, e) => js.result.mapSpan(s, e));
-    if (resolver !== undefined) return contract(resolver, regions.some(exportsLoad));
-  }
-  // No AST answered — most often because the author is mid-keystroke (`ctx.`) and the region
-  // does not parse. The text still says where the resolver is.
-  const spans = partitionCode(document.code).server;
-  for (const region of spans) {
-    const resolver = findLayoutResolverInText(source, region);
-    if (resolver === undefined) continue;
-    return contract(resolver, spans.some((s) => exportsLoadInText(source, s)));
-  }
-  return undefined;
-}
-
-/**
- * Where an untyped `load(ctx)` takes its `ServerContext` (SDD-56 §4.16): a page or a route,
- * whose `load` the request runs. The AST first, the text when the region does not parse.
- */
-function loadContract(
-  source: string,
-  fileName: string,
-  document: StructuredDocument,
-  js: EmitJs,
-): LoadContract | undefined {
-  if (document.type !== 'route-document' && document.type !== 'page-document') return undefined;
-  const params = routeParams(fileName);
-  for (const id of js.server ?? []) {
-    const ctxAt = findLoadCtx(statementsOf(js.result, id), (s, e) => js.result.mapSpan(s, e));
-    if (ctxAt !== undefined) return { ctxAt, params };
-  }
-  for (const region of partitionCode(document.code).server) {
-    const ctxAt = findLoadCtxInText(source, region);
-    if (ctxAt !== undefined) return { ctxAt, params };
-  }
-  return undefined;
-}
-
-/** The server functions the client side calls, by the compiler's own reader (SDD-56 §4.16). */
-function serverFns(js: EmitJs, document: StructuredDocument): readonly ClientFn[] {
-  const server = (js.server ?? []).flatMap((id) => statementsOf(js.result, id));
-  if (server.length === 0) return [];
-  return clientFns({
-    result: js.result,
-    server,
-    rest: [...js.neutral, ...(js.client ?? [])].flatMap((id) => statementsOf(js.result, id)),
-    component: document.type === 'component-document',
-  });
-}
-
-/**
- * Locate `props<T>()` in the neutral zone, with one Oxc batch for the whole file.
+ * Locate `props<T>()` in the `@code`, with one Oxc batch for the whole file.
  *
  * A fragment that fails to parse yields no props rather than no virtual file: the syntax
  * error already has its own diagnostic (FUD0170), and the template around it must keep
@@ -195,7 +96,7 @@ function serverFns(js: EmitJs, document: StructuredDocument): readonly ClientFn[
  */
 function findProps(js: EmitJs): PropsCall | undefined {
   const { result } = js;
-  for (const id of js.neutral) {
+  for (const id of js.code) {
     const found = findPropsCall(statementsOf(result, id), (s, e) => result.mapSpan(s, e));
     if (found !== undefined) return found;
   }
@@ -214,7 +115,9 @@ function statementsOf(result: JsBatchResult, id: FragmentId): readonly OxcNode[]
 /** What the template projection needs out of the batch: the reactives, the ASTs and the pipes. */
 function templateJs(js: EmitJs, source: string): TemplateJs {
   const reactives = new Set<string>();
-  for (const id of js.client ?? []) {
+  // The `@code` is browser code, all of it (SDD-60 §4.8): its `signal(...)` are reactive
+  // wherever they sit, exactly as the compiler reads them.
+  for (const id of js.code) {
     for (const name of reactiveNames(statementsOf(js.result, id))) reactives.add(name);
   }
   if (js.ast === undefined) return { reactives };
@@ -225,17 +128,14 @@ function templateJs(js: EmitJs, source: string): TemplateJs {
 /**
  * The batch the emitter runs when nobody handed it one.
  *
- * Three kinds of fragment, and each answers a question the projection cannot answer without
- * it: the neutral chunks hold `props<T>()`, the `@client` regions hold the reactive
- * declarations (decision 151), and every Razor expression in an ATTRIBUTE holds the shape of a
- * handler (decisions 96–98). One batch for the lot, which is the golden rule.
+ * Two kinds of fragment, and each answers a question the projection cannot answer without it:
+ * the chunks of `@code` hold `props<T>()` and the reactive declarations (decision 151), and
+ * every Razor expression in an ATTRIBUTE holds the shape of a handler (decisions 96–98). One
+ * batch for the lot, which is the golden rule.
  */
 function ownBatch(source: string, doc: StructuredDocument): EmitJs {
-  const { neutral, client, server } = partitionCode(doc.code);
   const batch = new JsBatch(source);
-  const neutralIds = neutral.map((chunk) => batch.add('module-statements', chunk));
-  const clientIds = client.map((chunk) => batch.add('module-statements', chunk));
-  const serverIds = server.map((chunk) => batch.add('module-statements', chunk));
+  const codeIds = codeChunks(doc.code).map((chunk) => batch.add('module-statements', chunk));
 
   const fragments = new Map<string, FragmentId>();
   walk(documentRoots(doc), {
@@ -280,9 +180,7 @@ function ownBatch(source: string, doc: StructuredDocument): EmitJs {
   const result = batch.parse().value;
   return {
     result,
-    neutral: neutralIds,
-    client: clientIds,
-    server: serverIds,
+    code: codeIds,
     ast: (at) => {
       const id = fragments.get(spanKey(at));
       return id === undefined ? undefined : result.ast(id);

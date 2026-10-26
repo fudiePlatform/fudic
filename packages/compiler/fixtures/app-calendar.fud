@@ -3,15 +3,13 @@
 
   const { days = [] } = props<{ days?: Day[] }>();
 
-  @client {
-    import { emit } from '@fudic/dom';
+  import { emit } from '@fudic/dom';
 
-    // One handler for every row of the month, and the row hands over its OWN object: no
-    // `data-*`, no `closest()`, no `Number(...)` to put the type back together (SDD-37 §1).
-    function pick(ev, day) {
-      ev.preventDefault();
-      emit('picked', day.id);
-    }
+  // One handler for every row of the month, and the row hands over its OWN object: no
+  // `data-*`, no `closest()`, no `Number(...)` to put the type back together (SDD-37 §1).
+  function pick(ev, day) {
+    ev.preventDefault();
+    emit('picked', day.id);
   }
 }
 

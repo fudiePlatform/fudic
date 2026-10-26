@@ -10,8 +10,8 @@ import type { Span } from '@fudic/compiler';
 /**
  * A synthetic file handed to a language service, plus the mapping back to the `.fud`.
  *
- * Three per document at most: the client `.fud.ts`, the server `.fud.server.ts`, and one
- * `.fud.<n>.css` per `<style>` (§4.1).
+ * The client `.fud.ts` and one `.fud.<n>.css` per `<style>` (§4.1). What the server runs is a
+ * `.fudapi`, typed by its own module (SDD-60 §4.7).
  */
 export interface VirtualFile {
   /** Virtual path, derived from the `.fud` path (§4.1). */
@@ -106,6 +106,21 @@ export interface FileRegistry {
    * TypeScript program, not for this registry.
    */
   snippets(): readonly SnippetImport[];
+  /**
+   * The `.fudapi` this file links with `<link rel="server">`, read (SDD-60 §4.7). Absent on a
+   * host that cannot read them: the file then gets nothing from its links.
+   */
+  servers?(): readonly ServerImport[];
+}
+
+/** One linked `.fudapi`, as the projection needs it (SDD-60 §3.14). */
+export interface ServerImport {
+  /** `<id>` of the file: its module is `fudic:<id>`. */
+  readonly id: string;
+  /** It declares `load`, which gives the page its `data`. */
+  readonly load: boolean;
+  /** Its functions and its forms: the names the file gets without importing them. */
+  readonly names: readonly string[];
 }
 
 /** One `<link rel="snippet">`, as the projection needs it. */

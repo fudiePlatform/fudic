@@ -18,8 +18,8 @@ import type { LexRegion } from '../balancer/index.js';
  * `source[start, end)` with every character that falls inside an opaque region replaced by a
  * space, line terminators kept.
  *
- * Character for character, like `redactServerRegions` and for the same reason: the callers
- * match a regular expression over the result and report the offset it lands on. Shortening the
+ * Character for character, because the callers match a regular expression over the result
+ * and report the offset it lands on. Shortening the
  * text — or dropping the regions from it — would move every span after the first comment. What
  * comes back is the same length, the same lines and the same columns, with the prose blanked.
  *

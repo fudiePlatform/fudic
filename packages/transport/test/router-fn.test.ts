@@ -83,7 +83,7 @@ function worker(base = '/', extra: Record<string, unknown> = {}) {
 const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe('criterion 34: the worker does not touch a server function', () => {
-  const urls = ['_fudic/fn/r/blog/a/save', '_fudic/fn/c/user-form/save', '_fudic/fn/r/search'];
+  const urls = ['_fudic/fn/routes/blog/a/save', '_fudic/fn/components/user-form/save', '_fudic/fn/routes/search'];
 
   it.each(['GET', 'PUT', 'POST', 'DELETE'])('%s to /_fudic/fn/** gets no respondWith', (method) => {
     const { r } = worker('/', {
@@ -104,16 +104,16 @@ describe('criterion 34: the worker does not touch a server function', () => {
 
   it('even with a sw.json rule that captures exactly that prefix', () => {
     const { r } = worker('/', { resources: [{ pattern: '/_fudic/fn/**', policy: 'cache-first', ttl: null }] });
-    const event = fetchEvent(`${ORIGIN}_fudic/fn/r/search?a=1`, { mode: 'cors' });
+    const event = fetchEvent(`${ORIGIN}_fudic/fn/routes/search?a=1`, { mode: 'cors' });
     r.handle(event);
     expect(event.responded).toBeNull();
   });
 
   it('respond() hands it straight to the network, uncached', async () => {
     const { r, network, stores } = worker('/', { resources: [{ pattern: '/**', policy: 'cache-first', ttl: null }] });
-    const event = fetchEvent(`${ORIGIN}_fudic/fn/r/search`, { mode: 'cors' });
+    const event = fetchEvent(`${ORIGIN}_fudic/fn/routes/search`, { mode: 'cors' });
     expect(await (await r.respond(event as unknown as Parameters<typeof r.respond>[0])).text()).toBe('net');
-    expect(network).toEqual([`GET ${ORIGIN}_fudic/fn/r/search`]);
+    expect(network).toEqual([`GET ${ORIGIN}_fudic/fn/routes/search`]);
     expect(await stores.data.keys()).toEqual([]);
   });
 
@@ -129,7 +129,7 @@ describe('criterion 34: the worker does not touch a server function', () => {
 
   it('with a base, the prefix carries it', () => {
     const { r } = worker('/app/', { resources: [{ pattern: '/**', policy: 'cache-first', ttl: null }] });
-    const event = fetchEvent(`${ORIGIN}app/_fudic/fn/r/search`, { mode: 'cors' });
+    const event = fetchEvent(`${ORIGIN}app/_fudic/fn/routes/search`, { mode: 'cors' });
     r.handle(event);
     expect(event.responded).toBeNull();
   });

@@ -37,6 +37,10 @@
       "types": "./dist/wire/index.d.ts",
       "import": "./dist/wire/index.js"
     },
+    "./contract": {
+      "types": "./dist/contract/index.d.ts",
+      "import": "./dist/contract/index.js"
+    },
     "./element": {
       "types": "./dist/element.d.ts",
       "import": "./dist/element.js"
@@ -46,17 +50,19 @@
   "fudic": {
     "runtime": "./runtime"
   },
-  "sideEffects": false,
+  "sideEffects": ["./browser/**", "./server/**"],
   "files": [
     "dist",
     "runtime",
+    "fudapi",
+    "browser",
     "README.md"
   ],
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && pnpm run build:runtime",
+    "build": "tsc -p tsconfig.build.json && tsc -p tsconfig.impl.json && pnpm run build:runtime",
     "build:runtime": "node -e \"require('node:fs').rmSync('runtime',{recursive:true,force:true})\" && rolldown -c rolldown.config.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

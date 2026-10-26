@@ -41,7 +41,7 @@ import {
   type EmitOutput,
 } from './module.js';
 import type { Diagnostic } from '../types/index.js';
-import { fnStubs } from './client-fns.js';
+import { apiForms, apiImports } from './api-links.js';
 
 /**
  * The positional destructuring of `$props` (§4.2) — the exact mirror of the `Object.values`
@@ -192,11 +192,10 @@ function buildComponentClientModule(
   );
   const { props, signals, client, neutral, template, mutable, emitCalls, clientImports, diagnostics, di } =
     codeOf(comp);
-  // What runs in a browser: the neutral zone runs on both sides, `@client` only here, and an
-  // `inject` written in `@server` is a line this chunk never sees. A `provide` is not in the
+  // What runs in a browser: the whole `@code` (SDD-60 §4.8). A `provide` is not in the
   // list at all — the owning ancestor may be N1 and have no chunk, so its factory lives in
   // the route's IoC module rather than inside it (SDD-38 §4.5).
-  const injects = di.some((d) => d.kind === 'inject' && d.zone !== 'server');
+  const injects = di.some((d) => d.kind === 'inject');
   const space = spaceModeOf(comp.tag, componentStyleNode(comp.doc));
   // The same three facts the server branch starts from, read from the same graph and the
   // same `<style>`: what the two branches drop has to be the same set, node for node (§4.5).
@@ -333,7 +332,8 @@ function buildComponentClientModule(
   //
   // Framework imports are already out (`clientImports`), so what is left is the author's own
   // modules — where a store is the whole reason to have one.
-  const imported = clientImports;
+  // The forms of a linked `.fudapi` are such modules too (SDD-60 §3.14): before, the `@code` imported them.
+  const imported = [...new Set([...clientImports, ...apiForms(graph)])];
   // Nothing to renew: a component with signals but no value write and no construct has no
   // rendering that a `set` could change.
   // A `control` whose node crossed as a prop is bound from `$cb` and not from `$s`, because
@@ -406,11 +406,9 @@ function buildComponentClientModule(
   }
   for (const line of client.imports) w.line(line); // hoisted: only legal at module scope
   for (const line of linker.imports()) w.line(line);
-  // The component's server functions, at module scope, where `c` and its handlers reach them
-  // (SDD-56 §4.5). The URL is the tag's: the same function from every page it lives in.
-  const stubs = fnStubs(codeOf(comp).serverFns, options.serverFns);
-  for (const line of stubs?.imports ?? []) w.line(line);
-  for (const line of stubs?.lines ?? []) w.line(line);
+  // The functions and forms of the `.fudapi` it links, from their modules, at module scope where
+  // `c` and its handlers reach them (SDD-60 §3.14).
+  for (const line of apiImports(graph)) w.line(line);
   w.line('');
   w.line(`customElements.define(${JSON.stringify(comp.tag)}, class extends ${base} {`);
   w.indent();

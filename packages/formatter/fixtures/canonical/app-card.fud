@@ -5,14 +5,12 @@
 
   const { title, variant = 'default' } = props<{ title: string; variant?: Variant }>();
 
-  @client {
-    import { signal } from '@fudic/core';
+  import { signal } from '@fudic/core';
 
-    const expanded = signal(false);
+  const expanded = signal(false);
 
-    function toggle() {
-      expanded.set(!expanded.peek());
-    }
+  function toggle() {
+    expanded.set(!expanded.peek());
   }
 }
 

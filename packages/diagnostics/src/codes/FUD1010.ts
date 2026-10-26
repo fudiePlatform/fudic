@@ -12,6 +12,6 @@ export const FUD1010 = (p: FUD1010Params): SourceDiagnostic =>
   source(
     'FUD1010',
     'error',
-    `\`_error.fud\` is painted with the error as its \`data\` and has no URL of its own, so it cannot declare \`${p.name}\``,
+    `\`_error.fud\` is painted with the error as its \`data\` and has no URL of its own, so its \`.fudapi\` cannot declare \`${p.name}\``,
     p,
   );

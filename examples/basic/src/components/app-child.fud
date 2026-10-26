@@ -4,17 +4,15 @@
   // Profundidad 1: recibe el valor de la raíz y lo baja un nivel más.
   const { count = 0 } = props<{ count?: number }>();
 
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    // Estado propio, y no es decoración: con él este componente es hidratable POR SÍ MISMO.
-    // Un hijo que solo recibiera props también lo sería, pero solo al compilarse JUNTO a su
-    // padre, y el plugin compila cada `.fud` por separado.
-    const eco = signal(0);
+  // Estado propio, y no es decoración: con él este componente es hidratable POR SÍ MISMO.
+  // Un hijo que solo recibiera props también lo sería, pero solo al compilarse JUNTO a su
+  // padre, y el plugin compila cada `.fud` por separado.
+  const eco = signal(0);
 
-    function ping() {
-      eco.set(eco() + 1);
-    }
+  function ping() {
+    eco.set(eco() + 1);
   }
 }
 

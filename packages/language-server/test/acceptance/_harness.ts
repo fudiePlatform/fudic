@@ -207,14 +207,14 @@ export async function startHarness(
   // measuring a cold start — and it is also what a real editor does while the file opens.
   await client.sendNotification(DidOpenTextDocumentNotification.type, {
     textDocument: {
-      uri: uriOf('layouts/_layout.fud'),
+      uri: uriOf('src/layouts/_layout.fud'),
       languageId: EDITOR_LANGUAGE_ID,
       version: 1,
-      text: textOf('layouts/_layout.fud'),
+      text: textOf('src/layouts/_layout.fud'),
     },
   });
   await client.sendRequest(DocumentDiagnosticRequest.type, {
-    textDocument: { uri: uriOf('layouts/_layout.fud') },
+    textDocument: { uri: uriOf('src/layouts/_layout.fud') },
   });
 
   return {

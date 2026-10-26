@@ -26,7 +26,7 @@ import {
 import { URI } from 'vscode-uri';
 import { copyWorkspace, fixtureText, startHarness, type Harness } from './_harness.js';
 
-const SLUG = 'blog/[slug].fud';
+const SLUG = 'src/blog/[slug].fud';
 
 /** A component the workspace does not have yet: the file criterion §6.13 is about. */
 const CARD_SOURCE = `@code {
@@ -55,11 +55,11 @@ beforeAll(async () => {
   // A workspace of its own: this is the only acceptance file that writes `.fud` files, and the
   // others assert over a workspace of exactly four documents while running in parallel.
   harness = await startHarness({ root: copyWorkspace() });
-  cardPath = `${harness.root}/components/app-card.fud`;
+  cardPath = `${harness.root}/src/components/app-card.fud`;
   await harness.open(SLUG);
-  await harness.open('components/app-badge.fud');
-  await harness.open('components/site-nav.fud');
-  await harness.open('layouts/_layout.fud');
+  await harness.open('src/components/app-badge.fud');
+  await harness.open('src/components/site-nav.fud');
+  await harness.open('src/layouts/_layout.fud');
 }, 60_000);
 
 afterAll(async () => {

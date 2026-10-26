@@ -5,8 +5,8 @@
    parecido con `_layout.fud` se paga escribiéndolo (`FUD0439`).
 
    Y es donde vive la prop REQUERIDA del ejemplo. Un layout declara lo que necesita con el
-   mismo `props<T>()` que usan un componente y una ruta, y la ruta lo resuelve en su
-   `@server layout(ctx, data)`. Aquí conviven las dos formas: `culture` trae default —las
+   mismo `props<T>()` que usan un componente y una ruta, y la ruta lo resuelve en el `layout`
+   de su `.fudapi`. Aquí conviven las dos formas: `culture` trae default —las
    páginas en español no dicen nada—, y `seccion` no lo trae, porque cada página pertenece a
    una parte distinta del sitio y no hay valor obvio que inventar. Una ruta que se olvide de
    una prop requerida es un error en el build y una bombilla en el editor.

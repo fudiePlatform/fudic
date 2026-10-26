@@ -24,7 +24,7 @@ import { fixtureModule, formatSpec, termModule } from '@fudic/spec';
 import { toPosix } from '@fudic/typecheck';
 import { copyWorkspace, startHarness, type Harness } from './_harness.js';
 
-const SPEC = 'components/app-probe.fudspec';
+const SPEC = 'src/components/app-probe.fudspec';
 
 const PROBE = `@code {
   const { label, tone, items, extra } = props<{ label: string; tone: 'info' | 'warn'; items: { id: number }[]; extra?: string }>();
@@ -46,7 +46,7 @@ beforeAll(async () => {
   root = copyWorkspace();
   // The project the workspace terms belong to.
   writeFileSync(`${root}/fudic.json`, JSON.stringify({ id: 'probe', kind: 'app', prefix: 'app' }));
-  writeFileSync(`${root}/components/app-probe.fud`, PROBE);
+  writeFileSync(`${root}/src/components/app-probe.fud`, PROBE);
 
   framework = toPosix(mkdtempSync(join(tmpdir(), 'fudic-terms-')));
   mkdirSync(`${framework}/then`);
@@ -142,7 +142,7 @@ describe('criterion 17 — the light bulb through the live connection', () => {
 
     const fixture = actions.find((a) => a.title === 'Create app-probe.fixture.ts');
     const [create, write] = fixture?.edit?.documentChanges as unknown as [{ uri: string }, { edits: TextEdit[] }];
-    expect(toPosix(URI.parse(create.uri).fsPath)).toBe(`${root}/components/app-probe.fixture.ts`);
+    expect(toPosix(URI.parse(create.uri).fsPath)).toBe(`${root}/src/components/app-probe.fixture.ts`);
     expect(write.edits[0]?.newText).toBe(
       fixtureModule('app-probe', ['primera'], [
         { name: 'label', required: true, shape: { kind: 'string' } },
@@ -172,7 +172,7 @@ describe('criterion 17 — the light bulb through the live connection', () => {
   });
 
   it('offers nothing on a file without diagnostics', async () => {
-    writeFileSync(`${root}/components/app-probe.fixture.ts`, "export default { base: { label: '', tone: 'info', items: [] } };\n");
+    writeFileSync(`${root}/src/components/app-probe.fixture.ts`, "export default { base: { label: '', tone: 'info', items: [] } };\n");
     const sound = 'component app-probe\n\ncriterion a\n  given\n    props base\n  then\n    visible app-probe\n';
     expect(await show(sound)).toEqual([]);
     expect(await bulb(sound)).toEqual([]);

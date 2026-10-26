@@ -35,8 +35,6 @@ const hrefOf = (path: string): string => path.replace(/\\/gu, '/');
 export interface LayoutHostInput {
   /** Absolute path of the layout. */
   readonly layout: string;
-  /** The layout's props, as the route's `@server layout(ctx, data)` would resolve them. */
-  readonly props: Readonly<Record<string, unknown>> | undefined;
   readonly head: string | undefined;
   readonly body: string | undefined;
   readonly sections: Readonly<Record<string, string>> | undefined;
@@ -44,18 +42,15 @@ export interface LayoutHostInput {
 
 /**
  * The source of a route that does nothing but use `layout` (§3.8): what it contributes to the
- * head, its sections and its body, written verbatim, and the props a route resolves for it.
+ * head, its sections and its body, written verbatim. The props are not the route's to write: the
+ * harness hands them to the render already resolved, as the Service Worker is handed them.
  */
 export function layoutHost(input: LayoutHostInput): string {
-  const props =
-    input.props === undefined
-      ? ''
-      : `@code {\n@server {\nexport function layout() { return ${JSON.stringify(input.props)}; }\n}\n}\n`;
   const head = input.head === undefined ? '' : `<head>\n${verbatim(input.head)}\n</head>\n`;
   const sections = Object.entries(input.sections ?? {}).map(
     ([name, html]) => `@section ${name} {\n${verbatim(html)}\n}\n`,
   );
-  return `<link rel="layout" href="${hrefOf(input.layout)}">\n${props}${head}${sections.join('')}${verbatim(input.body ?? '')}\n`;
+  return `<link rel="layout" href="${hrefOf(input.layout)}">\n${head}${sections.join('')}${verbatim(input.body ?? '')}\n`;
 }
 
 export interface SnippetHostInput {

@@ -17,18 +17,22 @@ import {
   resolveHrefPath,
   type HrefResolution,
 } from '@fudic/resolve';
-import { type ResolveIo } from '@fudic/compiler';
+import { type LinkedApi, type ResolveIo } from '@fudic/compiler';
 import type { LinkCheckIo } from './link-check.js';
 import type { RuntimeFs } from './runtime-pieces.js';
 
 /** One filesystem for the whole build: `createRequire` caches, and the disk does not move. */
 const fs = nodeResolveFs();
 
-/** A node-backed `ResolveIo`: read by absolute path, resolve an href against its file. */
-export function nodeIo(): ResolveIo {
+/**
+ * A node-backed `ResolveIo`: read by absolute path, resolve an href against its file — and,
+ * when the plugin hands its index over, what a linked `.fudapi` says (SDD-60 §3.14).
+ */
+export function nodeIo(api?: (path: string) => LinkedApi | undefined): ResolveIo {
   return {
     read: (path) => readFileSync(path, 'utf8'),
     resolve: (from, href) => resolveHrefPath(from, href, fs),
+    ...(api !== undefined ? { api } : {}),
   };
 }
 

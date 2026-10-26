@@ -227,4 +227,15 @@ describe('documentLinks', () => {
 
     expect(documentLinks(document, index)).toEqual([]);
   });
+
+  it('follows a <link rel="server"> to its .fudapi, and not to one that is not there (SDD-60)', () => {
+    const path = '/p/src/routes/r.fud';
+    const source = `<link rel="server" href="./r.fudapi">\n<link rel="server" href="./ghost.fudapi">\n${component('p-r')}`;
+    const index = new WorkspaceIndex(memoryFs({ [path]: source, '/p/src/routes/r.fudapi': 'get search\n' }));
+    index.scan('/p');
+    const links = documentLinks(new DocumentCache(index).get(path, 1, source), index);
+
+    expect(links.map((link) => link.target)).toEqual(['/p/src/routes/r.fudapi']);
+    expect(source.slice(links[0]?.span.start, links[0]?.span.end)).toBe('./r.fudapi');
+  });
 });

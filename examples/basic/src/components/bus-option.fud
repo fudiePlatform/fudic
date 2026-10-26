@@ -3,14 +3,12 @@
   // not empty — and a signal, so it hydrates on its own account.
   const { label = "", picked = false } = props<{ label?: string; picked?: boolean }>();
 
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    const hot = signal(false);
+  const hot = signal(false);
 
-    function enter() {
-      hot.set(true);
-    }
+  function enter() {
+    hot.set(true);
   }
 }
 

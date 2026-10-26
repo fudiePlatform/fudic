@@ -1,7 +1,0 @@
-{
-  "id": "basic-nosw",
-  "kind": "app",
-  "prefix": "app",
-  "globalStyles": { "theme": "../src/styles/theme.css" },
-  "styles": { "panel": "../src/styles/panel.css" }
-}

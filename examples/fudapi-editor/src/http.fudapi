@@ -1,0 +1,7 @@
+# The global level of every function's chain.
+chain
+  use log csrf
+  use error-pages
+    routes  403 /entrar
+    routes  404 /no-existe
+  compress gzip 200

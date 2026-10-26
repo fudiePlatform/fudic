@@ -34,7 +34,7 @@ const read = (path: string): string => readFileSync(resolve(FIXTURES, path), 'ut
  * Declared inline rather than imported: the corpus cannot reach `@fudic/forms`, and what is
  * being measured is the projection of the binding, not the shape of the real `Control<T>`.
  */
-const MODEL = `  }
+const MODEL = `note?: string };
   type Control<T> = { (): T; set(v: T): void; touch(): void };
   type Group<T> = T & { $touch(): void; $validate(): Promise<boolean> };
   type SeoGroup = Group<{ canonical: Control<string> }>;
@@ -61,7 +61,7 @@ const BADGE_TAG = `<app-badge .tone="@(data.found ? 'info' : 'neutral')">@data.t
 
 /** The route with the model in the neutral zone and the badge line replaced by `to`. */
 function route(to: string): string {
-  const source = read(SLUG).replace('  }\n}', MODEL).replace(BADGE_TAG, to);
+  const source = read(SLUG).replace('note?: string };\n}', MODEL).replace(BADGE_TAG, to);
   if (!source.includes(to)) throw new Error(`mutation anchor not found: ${to}`);
   return source;
 }

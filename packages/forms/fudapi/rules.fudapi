@@ -1,0 +1,40 @@
+# The value is there: neither "" nor null. `false` is a value: a box that must be ticked is a rule of its own.
+rule required
+  on field *
+  runs both
+  fails required
+
+# A number no smaller than n. An empty field is required's business.
+rule min
+  on field u8 i8 u16 i16 u32 i32 f32 f64
+  runs both
+  n  f64
+  fails min n
+
+# A number no bigger than n. An empty field is required's business.
+rule max
+  on field u8 i8 u16 i16 u32 i32 f32 f64
+  runs both
+  n  f64
+  fails max n
+
+# A text or a list with n characters or items at least. An empty one is required's business.
+rule min-length
+  on field str *[]
+  runs both
+  n  u32
+  fails min-length n
+
+# A text or a list with n characters or items at most.
+rule max-length
+  on field str *[]
+  runs both
+  n  u32
+  fails max-length n
+
+# The whole text matches a pattern of the project. The empty text passes.
+rule pattern
+  on field str
+  runs both
+  regex  pattern
+  fails pattern

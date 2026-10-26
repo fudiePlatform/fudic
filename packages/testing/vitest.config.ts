@@ -4,12 +4,12 @@ import { fudicTest } from './src/config.js';
 export default defineConfig({
   test: {
     // The package tests itself the way a project would: through `fudicTest()`. Twice, because
-    // two kinds of project are under test: one with no `src/http.ts` and no routes — this
+    // two kinds of project are under test: one with no `src/http.fudapi` and no routes — this
     // package itself, its fixtures beside the tests — and a small app that has both.
     projects: [
       { plugins: [fudicTest()], test: { name: 'unit', include: ['test/*.test.ts'] } },
       { plugins: [fudicTest()], root: 'test/app', test: { name: 'app', include: ['*.test.ts'] } },
-      // And one with neither `_error.fud` nor `src/http.ts`, served under a `base`, for what the
+      // And one with neither `_error.fud` nor `src/http.fudapi`, served under a `base`, for what the
       // harness does without them and with it.
       {
         plugins: [fudicTest()],

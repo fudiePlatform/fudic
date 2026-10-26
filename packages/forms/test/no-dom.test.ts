@@ -78,10 +78,15 @@ async function sources(dir: string): Promise<readonly string[]> {
 
 /**
  * The model: the root entry point, and `./wire` (SDD-56 §3.10), the binary format a server
- * reads a typed form with. Both run on the server, so both are held to the same rule.
+ * reads a typed form with, and `./contract` (SDD-60 §3.10), what the generated modules import.
+ * All run on the server, so all are held to the same rule.
  */
 async function model(): Promise<ReadonlySet<string>> {
-  return new Set([...(await reachable(join(SRC, 'index.ts'))), ...(await reachable(join(SRC, 'wire', 'index.ts')))]);
+  return new Set([
+    ...(await reachable(join(SRC, 'index.ts'))),
+    ...(await reachable(join(SRC, 'wire', 'index.ts'))),
+    ...(await reachable(join(SRC, 'contract', 'index.ts'))),
+  ]);
 }
 
 describe('zero DOM', () => {

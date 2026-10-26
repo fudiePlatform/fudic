@@ -16,7 +16,7 @@
  * lands in the document.
  */
 
-import type { CodeAction, Range } from '@volar/language-service';
+import type { CodeAction, CreateFile, Position, Range, TextDocumentEdit } from '@volar/language-service';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { CONTROL_NAME, span, type Diagnostic, type RouteDocument, type Span } from '@fudic/compiler';
 import type { FudCode } from '@fudic/diagnostics';
@@ -24,8 +24,8 @@ import { explanationFile } from '@fudic/diagnostics/explain';
 import { URI } from 'vscode-uri';
 import type { CachedDocument } from '../document-cache.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
-import { contractIssues, type ContractIssue, type MissingLayoutProps } from './contract.js';
-import type { ContractProp } from '../mode.js';
+import { contractIssues, type ContractIssue, type MissingInContract } from './contract.js';
+import type { ApiFiles } from './href.js';
 import type { PropDetail, PropHolds } from './tag-card.js';
 import { missingSections, unresolvedHrefs } from '@fudic/typecheck';
 import { linkInsertionFor } from './tags.js';
@@ -224,7 +224,7 @@ function holeFor(details: ReadonlyMap<string, PropDetail>, name: string): string
  * The fact is recomputed from the parse and the index on every request, exactly as the other
  * repairs recompute the diagnostics they hang on, so nothing here can act on a stale span.
  */
-function contractFixes(issue: ContractIssue, propsOf: PropLookup): readonly Fix[] {
+function contractFixes(issue: Exclude<ContractIssue, MissingInContract>, propsOf: PropLookup): readonly Fix[] {
   if (issue.kind === 'missing-props') {
     // The tag's own text is not touched: a prop written with an empty value has that attribute
     // replaced, and every prop that is missing altogether arrives in ONE insertion before the
@@ -256,8 +256,6 @@ function contractFixes(issue: ContractIssue, propsOf: PropLookup): readonly Fix[
     ];
   }
 
-  if (issue.kind === 'missing-layout-props') return [layoutFix(issue)];
-
   if (issue.kind === 'unknown-prop') {
     // No suggestion, no action. A list of every prop the component declares would be a menu,
     // and a bulb that opens a menu is a bulb the author has to read before they can dismiss it.
@@ -288,73 +286,58 @@ function contractFixes(issue: ContractIssue, propsOf: PropLookup): readonly Fix[
 }
 
 /**
- * The value to write for a layout prop, in the shape its declared TYPE holds.
+ * *«Completar las props requeridas del layout»* (SDD-40 §3.5, SDD-60 §4.7): `layout` written at the
+ * end of the route's sibling `.fudapi` — created first when there is none — and the
+ * `<link rel="server">` that makes it the route's, when the route does not link it yet. Its handler and the props it
+ * returns are the author's, in `src/server`, where TypeScript asks for each one.
  *
- * The same rule as `HOLES` and for the same reason — a repair that leaves the file with a type
- * error it created itself is worse than no repair (SDD-40 §4.7) — but written in TypeScript
- * instead of in markup, because a resolver's `return` is code and not an attribute value. A
- * scalar gets its own literal; anything else gets a double assertion, which compiles against
- * every type there is and reads unmistakably as a hole the author has to fill.
- *
- * A prop whose type the file never stated takes `''`, which is what most props take.
+ * Two files, so a `documentChanges` edit and no `Fix`. Each part only when it is missing: a
+ * repair that wrote a second `layout` would trade this fact for `FUD1082`.
  */
-function layoutHole(prop: ContractProp): string {
-  const type = prop.type?.trim();
-  if (type === undefined) return "''";
-  if (type === 'string') return "''";
-  if (type === 'number') return '0';
-  if (type === 'boolean') return 'false';
-  return `null as unknown as ${type}`;
-}
-
-/**
- * The resolver the repair writes when the route has none — its whole text, indented once.
- *
- * Its parameters go untyped on purpose: the projection types them — `ctx` with the route's
- * context, `data` with what `load` returns (BUG-44) — and an annotation written here would be
- * the author's, which the projection leaves alone. `unknown` is what this used to write, and it
- * is why `ctx.` offered nothing.
- */
-function layoutResolverText(props: readonly ContractProp[], indent: string): string {
-  const fields = props.map((prop) => `${indent}    ${prop.name}: ${layoutHole(prop)},`).join('\n');
-  return (
-    `${indent}export function layout(ctx, data) {\n` +
-    `${indent}  return {\n${fields}\n${indent}  };\n` +
-    `${indent}}\n`
-  );
-}
-
-/**
- * *«Completar las props requeridas del layout»* (SDD-40 §3.5).
- *
- * The sister of the action above, and the same division of labour: TypeScript reports — the
- * projection gives the route's `layout(ctx, data)` the layout's `$Props` as its return type,
- * so the error is on the author's own `return` — and this repairs. Four nestings, because the
- * thing to write depends on how much of the scaffolding already exists: the fields alone, the
- * function, the function inside a `@server`, or the whole `@code` block.
- */
-function layoutFix(issue: MissingLayoutProps): Fix {
-  const title = 'Completar las props requeridas del layout';
-  if (issue.write === 'object') {
-    // Straight after the `{`, with a trailing comma when the literal already holds something —
-    // the object keeps parsing whatever was in it.
-    const fields = issue.props.map((prop) => ` ${prop.name}: ${layoutHole(prop)},`).join('');
-    const text = issue.hasFields ? fields : `${fields.slice(0, -1)} `;
-    return { title, edits: [{ span: span(issue.insertAt, issue.insertAt), newText: text }] };
+function layoutContractAction(
+  issue: MissingInContract,
+  document: TextDocument,
+  rangeOf: (document: TextDocument, at: Span) => Range,
+): CodeAction {
+  const { contract } = issue;
+  const uri = URI.file(contract.path).toString();
+  const changes: (CreateFile | TextDocumentEdit)[] = [];
+  if (!contract.declared) {
+    if (contract.text === undefined) changes.push({ kind: 'create', uri, options: { ignoreIfExists: true } });
+    const text = contract.text ?? '';
+    const end = endOf(text);
+    // One blank line between declarations, as `formatApi` leaves them.
+    const lead = text === '' ? '' : text.endsWith('\n') ? '\n' : '\n\n';
+    changes.push({ textDocument: { uri, version: null }, edits: [{ range: { start: end, end }, newText: `${lead}layout\n` }] });
   }
-  if (issue.write === 'server') {
-    return {
-      title,
+  if (!contract.linked) {
+    changes.push({
+      textDocument: { uri: document.uri, version: document.version },
       edits: [
-        { span: span(issue.insertAt, issue.insertAt), newText: `\n${layoutResolverText(issue.props, '    ')}` },
+        {
+          range: rangeOf(document, span(issue.insertAt, issue.insertAt)),
+          newText: `\n<link rel="server" href="${contract.href}">`,
+        },
       ],
-    };
+    });
   }
-  const body =
-    issue.write === 'region'
-      ? `  @server {\n${layoutResolverText(issue.props, '    ')}  }\n`
-      : `\n\n@code {\n  @server {\n${layoutResolverText(issue.props, '    ')}  }\n}\n`;
-  return { title, edits: [{ span: span(issue.insertAt, issue.insertAt), newText: body }] };
+  return {
+    title: 'Completar las props requeridas del layout',
+    kind: 'quickfix',
+    diagnostics: [],
+    edit: { documentChanges: changes },
+  };
+}
+
+/** The layout repair, which writes the route's `.fudapi` and is no edit of this file alone. */
+function writesContract(issue: ContractIssue): issue is MissingInContract {
+  return issue.kind === 'missing-layout-props';
+}
+
+/** The position just past the last character of a text, whatever its line breaks. */
+function endOf(text: string): Position {
+  const lines = text.split(/\r\n|\r|\n/u);
+  return { line: lines.length - 1, character: (lines[lines.length - 1] as string).length };
 }
 
 /**
@@ -545,6 +528,8 @@ export interface ActionDeps {
    * the checker can answer, and this module holds no TypeScript.
    */
   readonly formNodes: FormNodes;
+  /** The `.fudapi` of the app, which the layout repair writes. */
+  readonly apis?: ApiFiles;
 }
 
 /** The client command that opens an explanation in the markdown preview (`fudic-vscode`). */
@@ -610,8 +595,12 @@ export function codeActions(deps: ActionDeps): CodeAction[] {
     actions.push(explainAction(diagnostic.code));
   }
 
-  for (const issue of contractIssues(cached, index)) {
+  for (const issue of contractIssues(cached, index, deps.apis)) {
     if (!overlaps(rangeOf(document, issue.at), range)) continue;
+    if (writesContract(issue)) {
+      actions.push(layoutContractAction(issue, document, rangeOf));
+      continue;
+    }
     for (const fix of contractFixes(issue, propsOf)) emit(fix);
   }
 

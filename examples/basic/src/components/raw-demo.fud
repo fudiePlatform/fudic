@@ -9,19 +9,17 @@
   // No lleva la marca, así que `@raw` lo escribe como texto escapado.
   const falsa = "<b>esto no está marcado</b>" as unknown as TrustedHTML;
 
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    const post = signal(uno);
-    const clics = signal(0);
+  const post = signal(uno);
+  const clics = signal(0);
 
-    function cambiar() {
-      post.set(post() === uno ? dos : uno);
-    }
+  function cambiar() {
+    post.set(post() === uno ? dos : uno);
+  }
 
-    function sumar() {
-      clics.set(clics() + 1);
-    }
+  function sumar() {
+    clics.set(clics() + 1);
   }
 }
 

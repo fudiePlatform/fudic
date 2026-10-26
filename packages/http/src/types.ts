@@ -1,8 +1,7 @@
 /**
  * The contract both halves of a call share (SDD-56 §3.4).
  *
- * Types only. What runs lives next door: the builders in `builder.ts`, `chain.ts` and
- * `middleware.ts`, the composition in `compose.ts`.
+ * Types only. What runs lives next door: the pieces of `contract/`, the walk in `compose.ts`.
  */
 
 export type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -42,37 +41,6 @@ export type ServerStep<Adds extends object = {}> = (
   ctx: ServerContext,
   next: Next<ServerContext & Adds>,
 ) => unknown;
-
-/**
- * A middleware with its halves, built only by `middleware()`. Opaque: its halves are not
- * fields anyone reads. A missing half does not run on that side.
- */
-export interface Middleware<Adds extends object = {}> {
-  /** Phantom: what it leaves in `ctx`. Never present at runtime. */
-  readonly '~adds'?: Adds;
-}
-
-/** A plain function is a middleware that runs on BOTH sides. */
-export type SharedMiddleware = (
-  ctx: ClientContext | ServerContext,
-  next: Next<ClientContext | ServerContext>,
-) => unknown;
-
-export type AnyMiddleware = Middleware<object> | SharedMiddleware;
-
-/** What one middleware leaves in `ctx`: its `Adds`, or nothing for a plain function. */
-export type AddsOne<M> = M extends SharedMiddleware
-  ? {}
-  : M extends { readonly '~adds'?: infer X }
-    ? X extends object
-      ? X
-      : {}
-    : {};
-
-/** What a list of middlewares leaves in `ctx`, all of it. */
-export type AddsOf<M extends readonly unknown[]> = M extends readonly [infer H, ...infer T]
-  ? AddsOne<H> & AddsOf<T>
-  : {};
 
 export interface CompressOptions {
   readonly format: 'gzip' | 'deflate' | 'deflate-raw';

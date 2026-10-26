@@ -59,8 +59,8 @@ const APP_CHART = `@code {
 
 beforeAll(async () => {
   const root = copyWorkspace();
-  writeFileSync(`${root}/components/app-input.fud`, APP_INPUT, 'utf8');
-  writeFileSync(`${root}/components/app-chart.fud`, APP_CHART, 'utf8');
+  writeFileSync(`${root}/src/components/app-input.fud`, APP_INPUT, 'utf8');
+  writeFileSync(`${root}/src/components/app-chart.fud`, APP_CHART, 'utf8');
   harness = await startHarness({ root });
 }, 60_000);
 
@@ -82,7 +82,7 @@ interface WireAction {
 
 /** The document opened, and what the server reports about it. */
 async function report(body: string): Promise<{ uri: string; items: unknown[]; codes: string[] }> {
-  const { uri } = await harness.open('blog/[slug].fud', page(body));
+  const { uri } = await harness.open('src/blog/[slug].fud', page(body));
   const got = await harness.client.sendRequest(DocumentDiagnosticRequest.type, {
     textDocument: { uri },
   });

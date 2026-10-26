@@ -3,20 +3,18 @@
  *
  * With `{ format: 'deflate-raw', min: 1000 }` — the decision measured in docs/forms — a
  * typical form goes out in clear and a long one compressed, and the server reads both the
- * same. The innermost level that writes `.compress` wins. And a runtime without
+ * same. The innermost level that writes `compress` wins. And a runtime without
  * `CompressionStream` is the same branch as a body below the threshold: it goes in clear.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { arr, control, form, group, u8 } from '@fudic/forms';
+import { arr, control, form, group, u8 } from '@fudic/forms/contract';
 import type { AnyForm } from '@fudic/forms';
-import { $fn } from '../../src/client/fn.js';
-import { FORM_STAGES, KEYED_STAGES } from '../../src/client/stages/index.js';
 import { compress } from '../../src/client/stages/compress.js';
 import { runPipeline, type Stage } from '../../src/client/pipeline.js';
-import { put } from '../../src/builder.js';
-import { chain, levelOfChain } from '../../src/chain.js';
-import { browser, serve } from './harness.js';
+import type { Level } from '../../src/contract/index.js';
+import type { CompressOptions } from '../../src/types.js';
+import { browser, call, serve } from './harness.js';
 
 beforeEach(browser);
 afterEach(() => {
@@ -43,24 +41,29 @@ const long = { ...post, body: post.body.repeat(30) };
 
 const MEASURED = { format: 'deflate-raw', min: 1000 } as const;
 
+/** A level that writes only `compress`. */
+const level = (compression: CompressOptions | false): Level => ({ steps: [], compress: compression });
+
+const blog = (): AnyForm => form(blogSchema) as unknown as AnyForm;
+
 const make = (value: object): AnyForm => {
-  const f = form(blogSchema);
+  const f = blog();
   f.$set(value as never);
-  return f as unknown as AnyForm;
+  return f;
 };
 
-const save = (levels: Parameters<typeof $fn>[0]['chain'], stages = FORM_STAGES) =>
-  $fn<AnyForm, unknown>({ name: 'save', method: 'PUT', url: '/_fudic/fn/c/x/save', chain: levels, stages });
+/** `save` with the blog form and `chain`: what it sends, and what the server answers. */
+const save = (chain: readonly Level[]) => call({ form: blog(), chain: [...chain] });
 
-/** Serves a function that answers with what `handle` got, and returns what travelled. */
-function echo(fn = put().form(form(blogSchema))) {
-  return serve(fn.handle((ctx) => ctx.form.$value()));
+/** Serves a function that answers with what the handler got, and returns what travelled. */
+function echo(chain: readonly Level[] = []) {
+  return serve((ctx) => ctx.form.$value(), { form: blog(), chain: [...chain] });
 }
 
 describe('criterion 48: the threshold', () => {
   it('the typical form goes out in clear, with no content-encoding', async () => {
     const wire = echo();
-    expect(await save([chain().compress(MEASURED)])(make(post))).toEqual(post);
+    expect(await save([level(MEASURED)])(make(post) as never)).toEqual(post);
     console.log(`typical form: ${wire[0]!.bytes.length} B positional, in clear`);
     expect(wire[0]!.bytes.length).toBeLessThan(1000);
     expect(wire[0]!.headers.get('content-encoding')).toBeNull();
@@ -69,7 +72,7 @@ describe('criterion 48: the threshold', () => {
   it('the long form goes out compressed, and the server reads it the same', async () => {
     const plain = JSON.stringify(make(long).$positional()).length;
     const wire = echo();
-    expect(await save([chain().compress(MEASURED)])(make(long))).toEqual(long);
+    expect(await save([level(MEASURED)])(make(long) as never)).toEqual(long);
     console.log(`long form: ${plain} B positional → ${wire[0]!.bytes.length} B deflate-raw`);
     expect(plain).toBeGreaterThanOrEqual(1000);
     expect(wire[0]!.headers.get('content-encoding')).toBe('deflate-raw');
@@ -79,13 +82,13 @@ describe('criterion 48: the threshold', () => {
 
   it.each(['gzip', 'deflate'] as const)('%s round trips too', async (format) => {
     const wire = echo();
-    expect(await save([chain().compress({ format })])(make(long))).toEqual(long);
+    expect(await save([level({ format })])(make(long) as never)).toEqual(long);
     expect(wire[0]!.headers.get('content-encoding')).toBe(format);
   });
 
   it('min defaults to 1000', async () => {
     const wire = echo();
-    await save([chain().compress({ format: 'gzip' })])(make(post));
+    await save([level({ format: 'gzip' })])(make(post) as never);
     expect(wire[0]!.headers.get('content-encoding')).toBeNull();
   });
 
@@ -93,54 +96,49 @@ describe('criterion 48: the threshold', () => {
     // 2 000 random bytes, in binary: over min, and no compressor makes noise smaller.
     const schema = { noise: arr(u8, []) };
     const noise = [...crypto.getRandomValues(new Uint8Array(2000))];
-    const wire = serve(put().form(form(schema)).handle((ctx) => ctx.form.noise().length));
+    const wire = serve((ctx) => ctx.form.noise().length, { form: form(schema) as unknown as AnyForm });
     const f = form(schema);
     f.$set({ noise });
-    const call = $fn<AnyForm, unknown>({ name: 'save', method: 'PUT', url: '/_fudic/fn/c/x/save', chain: [chain().compress(MEASURED)], stages: FORM_STAGES });
-    expect(await call(f as unknown as AnyForm)).toBe(2000);
+    const upload = call({ form: form(schema) as unknown as AnyForm, chain: [level(MEASURED)] });
+    expect(await upload(f as never)).toBe(2000);
     expect(wire[0]!.headers.get('content-type')).toBe('application/fud+bin');
     expect(wire[0]!.bytes.length).toBeGreaterThanOrEqual(1000);
     expect(wire[0]!.headers.get('content-encoding')).toBeNull();
   });
 
   it('a keyed body is compressed by the same rule', async () => {
-    const wire = serve(put().handle((ctx) => ctx.args));
-    expect(await save([chain().compress(MEASURED)], KEYED_STAGES)(make(long))).toEqual(long);
+    const wire = serve((ctx) => ctx.args, { args: { body: 'str' } });
+    const upload = call({ args: { body: 'str' }, chain: [level(MEASURED)] });
+    expect(await upload({ body: long.body } as never)).toEqual({ body: long.body });
     expect(wire[0]!.headers.get('content-type')).toBe('application/json');
     expect(wire[0]!.headers.get('content-encoding')).toBe('deflate-raw');
   });
 });
 
 describe('criterion 49: the innermost level wins', () => {
-  it('global compress and a function with .compress(false): that one in clear, the rest compressed', async () => {
-    const global = chain().compress(MEASURED);
-    const off = put().form(form(blogSchema)).compress(false).handle(() => undefined);
-    const wire = serve(off);
-    await save([global, off.level])(make(long));
+  it('global compress and a function with compress off: that one in clear, the rest compressed', async () => {
+    const wire = echo();
+    await save([level(MEASURED), { steps: [] }, level(false)])(make(long) as never);
     expect(wire[0]!.headers.get('content-encoding')).toBeNull();
 
-    const on = put().form(form(blogSchema)).handle(() => undefined);
-    const wire2 = serve(on);
-    await save([global, on.level])(make(long));
+    const wire2 = echo();
+    await save([level(MEASURED), { steps: [] }, { steps: [] }])(make(long) as never);
     expect(wire2[0]!.headers.get('content-encoding')).toBe('deflate-raw');
   });
 
   it('only in the function: only it compresses', async () => {
-    const global = chain();
-    const own = put().form(form(blogSchema)).compress(MEASURED).handle(() => undefined);
-    const wire = serve(own);
-    await save([global, own.level])(make(long));
+    const wire = echo();
+    await save([{ steps: [] }, level(MEASURED)])(make(long) as never);
     expect(wire[0]!.headers.get('content-encoding')).toBe('deflate-raw');
 
-    const plain = put().form(form(blogSchema)).handle(() => undefined);
-    const wire2 = serve(plain);
-    await save([global, plain.level])(make(long));
+    const wire2 = echo();
+    await save([{ steps: [] }, { steps: [] }])(make(long) as never);
     expect(wire2[0]!.headers.get('content-encoding')).toBeNull();
   });
 
   it('the file level overrides the global one', async () => {
     const wire = echo();
-    await save([chain().compress(MEASURED), levelOfChain(chain().compress(false))])(make(long));
+    await save([level(MEASURED), level(false)])(make(long) as never);
     expect(wire[0]!.headers.get('content-encoding')).toBeNull();
   });
 });
@@ -150,17 +148,10 @@ describe('criterion 50: without CompressionStream', () => {
     vi.stubGlobal('CompressionStream', undefined);
     // The support of a stage is read once per process: a fresh module is a fresh process.
     vi.resetModules();
-    const fresh = await import('../../src/client/fn.js');
-    const stages = await import('../../src/client/stages/index.js');
+    const fresh = await import('../../src/contract/fn.js');
     const wire = echo();
-    const call = fresh.$fn<AnyForm, unknown>({
-      name: 'save',
-      method: 'PUT',
-      url: '/_fudic/fn/c/x/save',
-      chain: [chain().compress(MEASURED)],
-      stages: stages.FORM_STAGES,
-    });
-    expect(await call(make(long))).toEqual(long);
+    const upload = fresh.stub<never, unknown, unknown>({ id: 'components/x', name: 'save', method: 'PUT', form: blog(), chain: [level(MEASURED)] });
+    expect(await upload(make(long) as never)).toEqual(long);
     expect(wire[0]!.headers.get('content-encoding')).toBeNull();
     expect(wire[0]!.headers.get('content-type')).toBe('application/fud');
   });

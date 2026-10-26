@@ -580,7 +580,9 @@ describe('hotUpdate — an edit the server graph sees reloads the browser (BUG-5
   function hot(environment: string, modules: unknown[], options: Record<string, unknown> = {}): unknown[] {
     const sent: unknown[] = [];
     const server = { environments: { client: { hot: { send: (payload: unknown) => sent.push(payload) } } } };
-    setup('serve', options).hotUpdate.call({ environment: { name: environment } }, { modules, server });
+    // An empty graph: the implementations of SDD-60 §4.4 are invalidated in it, and there are none.
+    const moduleGraph = { idToModuleMap: new Map(), invalidateModule: () => undefined };
+    setup('serve', options).hotUpdate.call({ environment: { name: environment, moduleGraph } }, { modules, server });
     return sent;
   }
 
@@ -702,11 +704,5 @@ describe('configurePreviewServer middleware', () => {
 describe('transform', () => {
   it('ignores non-.fud ids', async () => {
     expect(await setup('build').transform.call(emitCtx(), '', '/x.ts')).toBeNull();
-  });
-
-  it('serves the ?server module type-stripped to JS', async () => {
-    const result = await setup('build').transform.call(emitCtx(), '', `${homeFud}?server`);
-    expect(result.code).toContain('function load'); // the @server load, types stripped
-    expect(result.code).not.toContain(': Promise<'); // TS annotation gone
   });
 });

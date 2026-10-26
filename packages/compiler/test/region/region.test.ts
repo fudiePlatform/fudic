@@ -184,11 +184,8 @@ describe('regionAt — TypeScript', () => {
     expect(kindAt('@code {\n  const a| = 1;\n}\n<app-x></app-x>')).toBe('ts');
   });
 
-  it('inside @server', () => {
+  it('inside a retired @server or @client: its content is still the `@code`’s (SDD-60)', () => {
     expect(kindAt('@code {\n  @server {\n    const a| = 1;\n  }\n}')).toBe('ts');
-  });
-
-  it('inside @client', () => {
     expect(kindAt('@code {\n  @client {\n    const a| = 1;\n  }\n}')).toBe('ts');
   });
 

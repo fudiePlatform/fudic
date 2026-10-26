@@ -170,26 +170,35 @@ describe('g page', () => {
     expect(plan.errors.map((e) => e.code)).toEqual(['FUD0449']);
   });
 
-  it('--server puts @code top-level in a route, and inside <head> in a standalone page', async () => {
+  it('--server links the .fudapi beside the route, declares its load there and implements it in src/server', async () => {
     const withLayout = projectFs({ 'src/layouts/_layout.fud': LAYOUT });
-    const route = await planPage('blog', options({ server: true }), withLayout);
+    const route = await planPage('blog/:slug', options({ server: true }), withLayout);
+    expect(route.errors).toEqual([]);
+    expect(route.changes.map((c) => c.path)).toEqual([
+      'src/routes/blog/[slug].fud',
+      'src/routes/blog/[slug].fudapi',
+      'src/server/routes/blog/[slug].ts',
+      'src/routes/blog/[slug].test.ts',
+    ]);
     const routeDoc = parseFud(route.changes[0]!.contents);
     expect(routeDoc.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     expect(routeDoc.doc.type).toBe('route-document');
-    if (routeDoc.doc.type === 'route-document') {
-      expect(routeDoc.doc.code).toBeDefined();
-      // Decision 83: @code is phase 3, before the <head> fragment — not inside it.
-      expect(routeDoc.doc.code!.span.start).toBeLessThan(routeDoc.doc.head!.span.start);
-    }
+    expect(route.changes[0]!.contents).toContain('<link rel="server" href="./[slug].fudapi">');
+    expect(route.changes[0]!.contents).not.toContain('@code');
+    expect(route.changes[1]!.contents).toBe(
+      '# The data of the page, read on the server: its handler is in src/server/routes/blog/[slug].ts.\nload\n  title  str\n',
+    );
+    expect(route.changes[2]!.contents).toBe(
+      "import { load } from 'fudic:routes/blog/[slug]';\n\nload.handle(() => ({ title: 'Untitled' }));\n",
+    );
 
     const bare = projectFs();
     const page = await planPage('blog', options({ server: true }), bare);
     const pageDoc = parseFud(page.changes[0]!.contents);
     expect(pageDoc.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     expect(pageDoc.doc.type).toBe('page-document');
-    if (pageDoc.doc.type === 'page-document') {
-      expect(pageDoc.doc.code).toBeDefined(); // decision 60: inside <head>
-    }
+    // Decision 60: inside <head>, with the other links.
+    expect(page.changes[0]!.contents).toContain('    <link rel="server" href="./blog.fudapi">\n  </head>');
   });
 });
 

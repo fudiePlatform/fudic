@@ -1,27 +1,21 @@
 /**
- * `@fudic/http`: server functions and the chain of middlewares both halves of a call walk
- * (SDD-56). What the developer writes in a `@server`, in `src/http.ts` and in a middleware's
- * module. The client stub lives in `./client`, the server dispatcher in `./server`.
+ * `@fudic/http`: what the developer's handlers throw and the types of the `ctx` they receive
+ * (SDD-56, SDD-60 §3.10). The functions, the chains and the middlewares are declared in a
+ * `.fudapi`, and what fudic generates of it builds them through `./contract`.
  */
 
 export type {
-  AnyMiddleware,
   BaseContext,
   CallOptions,
   ClientContext,
   ClientStep,
   CompressOptions,
   Method,
-  Middleware,
   Next,
   ServerContext,
   ServerFunction,
   ServerStep,
-  SharedMiddleware,
 } from './types.js';
-export { get, post, put, patch, del, type FnBuilder, type ServerFn } from './builder.js';
-export { chain, type ChainBuilder } from './chain.js';
-export { middleware, type MiddlewareBuilder } from './middleware.js';
 export {
   HttpError,
   ValidationError,
@@ -35,5 +29,4 @@ export {
   type ErrorPage,
   type Problem,
 } from './errors.js';
-export { csrf } from './csrf.js';
-export { errorPages, type ErrorRoute, type ErrorRoutes } from './error-pages.js';
+export type { ErrorRoutes } from './error-pages.js';

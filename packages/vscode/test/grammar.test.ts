@@ -23,12 +23,43 @@ describe('code regions', () => {
     expect(has(find(tokens, 'const a'), 'source.ts')).toBe(true);
   });
 
-  it('marks @server and @client inside @code', async () => {
-    const tokens = await tokenize('@code {\n  @server {\n    const a = 1;\n  }\n  @client {\n    const b = 2;\n  }\n}\n');
+  it('has no rule for @server or @client: the @code is TypeScript, all of it (SDD-60 §4.10)', async () => {
+    const tokens = await tokenize('@code {\n  @server {\n    const a = 1;\n  }\n}\n');
 
-    expect(has(find(tokens, 'server'), 'keyword.control.directive')).toBe(true);
-    expect(has(find(tokens, 'client'), 'keyword.control.directive')).toBe(true);
-    expect(has(find(tokens, 'const b'), 'source.ts')).toBe(true);
+    expect(has(find(tokens, 'server'), 'keyword.control.directive')).toBe(false);
+    expect(has(find(tokens, 'const a'), 'source.ts')).toBe(true);
+  });
+
+  it('tokenises a @code with the old region words as plain TypeScript (SDD-60, snapshot)', async () => {
+    // What used to be two directives and three zones is one TypeScript body now: the snapshot
+    // pins every token of it, so a rule for `@server`/`@client` coming back changes it.
+    const BASE = 'text.html.fudic';
+    const tokens = await tokenize(
+      [
+        '<link rel="server" href="./usuarios.fudapi">',
+        '',
+        '@code {',
+        '  import { signal } from "@fudic/core";',
+        '  @server {',
+        '    const a = 1;',
+        '  }',
+        '  @client {',
+        '    const b = signal(2);',
+        '  }',
+        '}',
+        '',
+        '<p>@b()</p>',
+      ].join('\n'),
+    );
+    const render = tokens
+      .map((t) => `${t.line}  ${JSON.stringify(t.text)}  ${t.scopes.filter((s) => s !== BASE).join(' ') || '-'}`)
+      .join('\n');
+
+    expect(render).toMatchSnapshot();
+    for (const marker of ['@server', '@client']) {
+      expect(has(find(tokens, marker), 'keyword.control.directive')).toBe(false);
+      expect(has(find(tokens, marker), 'source.ts')).toBe(true);
+    }
   });
 
   it('closes @code on its own brace, not on the first brace of the code inside', async () => {
@@ -298,8 +329,7 @@ describe('the corpus', () => {
   it('colours [slug].fud: TypeScript in @code, markup outside, directives apart', async () => {
     const tokens = await tokenize(fixture('blog/[slug].fud'));
 
-    expect(has(find(tokens, 'export async function load'), 'source.ts')).toBe(true);
-    expect(has(findExact(tokens, 'server'), 'keyword.control.directive')).toBe(true);
+    expect(has(find(tokens, 'type PageData'), 'source.ts')).toBe(true);
     expect(has(findExact(tokens, 'nav'), 'entity.name.section')).toBe(true);
     expect(has(findExact(tokens, 'app-badge'), 'entity.name.tag.custom')).toBe(true);
     expect(has(findExact(tokens, 'data.tag'), 'meta.interpolation')).toBe(true);

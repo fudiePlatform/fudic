@@ -89,7 +89,7 @@ describe('criteria 5 and 6 — comment and folding, as far as data goes', () => 
   it('marks the directive blocks as foldable', () => {
     const start = new RegExp(languageConfig.folding.markers['start'] ?? '');
 
-    for (const line of ['@code {', '  @server {', '@if (a) {', '@foreach (const p of ps) {']) {
+    for (const line of ['@code {', '@if (a) {', '@foreach (const p of ps) {']) {
       expect(start.test(line)).toBe(true);
     }
   });

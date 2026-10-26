@@ -51,6 +51,13 @@ export type FUD0725Problem =
       readonly problem: 'site';
       /** What is wrong with it: not a string, not a URL, another protocol, or a path. */
       readonly reason: string;
+    }
+  /** `server`, `browser` or `api` that is not a folder inside the project (SDD-60 §3.15). */
+  | {
+      readonly problem: 'folder';
+      readonly field: string;
+      /** What is wrong with it: not a string, absolute, or outside the project. */
+      readonly reason: string;
     };
 
 /** Parameters of `FUD0725`. */
@@ -86,6 +93,8 @@ function describe(p: FUD0725Problem): string {
       return `fudic.json "locales" must be a non-empty array of distinct BCP 47 tags: ${p.reason}`;
     case 'site':
       return `fudic.json "site" must be the origin of an http(s) URL, like "https://example.com": ${p.reason}`;
+    case 'folder':
+      return `fudic.json "${p.field}" must be a folder inside the project, like "src/${p.field}": ${p.reason}`;
   }
 }
 

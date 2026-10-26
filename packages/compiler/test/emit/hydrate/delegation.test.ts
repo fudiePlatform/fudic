@@ -32,10 +32,9 @@ function graphOf(tag: string, component: string): ComponentGraph {
 const CALENDAR = (tag: string): string =>
   '@code {\n' +
   '  const { days = [] } = props<{ days?: { id: string; n: number }[] }>();\n' +
-  '  @client {\n' +
-  '    globalThis.__fudLog = [];\n' +
-  '    function pick(ev, day) { globalThis.__fudLog.push(day); }\n' +
-  '  }\n}\n' +
+  '  globalThis.__fudLog = [];\n' +
+  '  function pick(ev, day) { globalThis.__fudLog.push(day); }\n' +
+  '}\n' +
   `<${tag}>\n  <template shadowrootmode="open">` +
   '<div class="grid" @click="@pick($event, $day)"><h2>Month</h2>\n' +
   '    @foreach (const day of days) key (day.id) {\n' +
@@ -140,10 +139,9 @@ describe('through the shadow of a child (§6.16)', () => {
     const source =
       '@code {\n' +
       '  const { days = [] } = props<{ days?: { id: string; n: number }[] }>();\n' +
-      '  @client {\n' +
-      '    globalThis.__fudLog = [];\n' +
-      '    function pick(ev, day) { globalThis.__fudLog.push(day); }\n' +
-      '  }\n}\n' +
+      '  globalThis.__fudLog = [];\n' +
+      '  function pick(ev, day) { globalThis.__fudLog.push(day); }\n' +
+      '}\n' +
       `<${tag}>\n  <template shadowrootmode="open">` +
       '<div class="grid" @click="@pick($event, $day)">\n' +
       '    @foreach (const day of days) key (day.id) {\n' +

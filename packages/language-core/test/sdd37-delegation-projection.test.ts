@@ -41,9 +41,8 @@ const CALENDAR = (header: string, marker: string, args: string): string =>
   '@code {\n' +
   '  type Day = { id: string; n: number };\n' +
   '  const { days } = props<{ days: Day[] }>();\n' +
-  '  @client {\n' +
-  '    function pick(ev, day) { void ev; void day; }\n' +
-  '  }\n}\n' +
+  '  function pick(ev, day) { void ev; void day; }\n' +
+  '}\n' +
   '<app-cal>\n  <template shadowrootmode="open">\n' +
   `    <div @click="@pick(${args})">\n` +
   `      @foreach (${header}) key (day.id) {\n` +
@@ -78,9 +77,8 @@ describe('the scope a `$name` is read in (§4.5)', () => {
       '  type Tag = { id: string };\n' +
       '  type Row = { id: string; tags: Tag[] };\n' +
       '  const { rows } = props<{ rows: Row[] }>();\n' +
-      '  @client {\n' +
-      '    function pick(row, tag) { void row; void tag; }\n' +
-      '  }\n}\n' +
+      '  function pick(row, tag) { void row; void tag; }\n' +
+      '}\n' +
       '<app-cal>\n  <template shadowrootmode="open">\n' +
       '    <div @click="@pick($row, $tag)">\n' +
       '      @foreach (const row of rows) key (row.id) {\n' +
@@ -103,7 +101,7 @@ describe('the scope a `$name` is read in (§4.5)', () => {
     const source =
       '@code {\n' +
       '  const { n } = props<{ n: number }>();\n' +
-      '  @client {\n    function pick(i) { void i; }\n  }\n}\n' +
+      '  function pick(i) { void i; }\n}\n' +
       '<app-cal>\n  <template shadowrootmode="open">\n' +
       '    <div @click="@pick($i)">\n' +
       '      @for (let i = 0; i < n; i++) key (i) {\n' +
@@ -162,9 +160,7 @@ describe('and TypeScript agrees (§6.18)', () => {
       '  type Row = { id: string; label: string };\n' +
       '  type Group = { id: string; rows: Row[] };\n\n' +
       '  const { groups } = props<{ groups: Group[] }>();\n\n' +
-      '  @client {\n' +
-      '    function pick(ev: Event, row: Row) { void ev; void row.label; }\n' +
-      '  }\n' +
+      '  function pick(ev: Event, row: Row) { void ev; void row.label; }\n' +
       '}\n\n' +
       '<app-list>\n  <template shadowrootmode="open">\n' +
       `    <ul @click="@pick(${call})">\n` +

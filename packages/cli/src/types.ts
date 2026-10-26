@@ -297,8 +297,6 @@ export interface ServiceOptions extends TargetedOptions {
 
 /** `fudic g form <name>` (BUG-50 §4.7). */
 export interface FormOptions extends TargetedOptions {
-  /** Typed controls (`--binary`): the upload travels in binary. */
-  readonly binary: boolean;
   /** Write its unit test; `--skip-test` is `false`. */
   readonly test: boolean;
 }

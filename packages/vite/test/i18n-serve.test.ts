@@ -28,11 +28,7 @@ const POST = `<!DOCTYPE html>
 <html>
 <head>
 <title>Blog</title>
-@code {
-@server {
-export function load(ctx: { params: { slug: string } }) { return { slug: ctx.params.slug }; }
-}
-}
+<link rel="server" href="./[slug].fudapi">
 </head>
 <body><h1>Entrada @data.slug</h1></body>
 </html>
@@ -42,17 +38,29 @@ const MISSING = `<!DOCTYPE html>
 <html>
 <head>
 <title>x</title>
-@code {
-  @server {
-    import { notFound } from '@fudic/http';
-    export async function load(): Promise<{ n: number }> {
-      throw notFound('no está');
-    }
-  }
-}
+<link rel="server" href="./missing.fudapi">
 </head>
 <body><p>@data.n</p></body>
 </html>
+`;
+
+/** The servers of both routes: a `load` each, rendered on request (SDD-60 §3.4). */
+const POST_API = `load
+  slug  str
+`;
+
+const MISSING_API = `load
+  n  i32
+`;
+
+const SERVER = `import { notFound } from '@fudic/http';
+import { load as post } from 'fudic:routes/blog/[slug]';
+import { load as missing } from 'fudic:routes/missing';
+
+post.handle((ctx) => ({ slug: ctx.params.slug }));
+missing.handle(() => {
+  throw notFound('no está');
+});
 `;
 
 const ERROR_PAGE = `<!DOCTYPE html>
@@ -67,10 +75,8 @@ const ERROR_PAGE = `<!DOCTYPE html>
 `;
 
 const COUNTER = `@code {
-  @client {
-    let n = 0;
-    function mas(): void { n += 1; }
-  }
+  let n = 0;
+  function mas(): void { n += 1; }
 }
 <app-counter>
   <template shadowrootmode="open">
@@ -83,7 +89,10 @@ const FILES = {
   'src/components/app-counter.fud': COUNTER,
   'src/routes/about.fud': ABOUT,
   'src/routes/blog/[slug].fud': POST,
+  'src/routes/blog/[slug].fudapi': POST_API,
   'src/routes/missing.fud': MISSING,
+  'src/routes/missing.fudapi': MISSING_API,
+  'src/server/routes.ts': SERVER,
   'src/routes/_error.fud': ERROR_PAGE,
 };
 

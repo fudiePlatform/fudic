@@ -21,10 +21,10 @@ import { fixtureText, startHarness, TSDK, type Harness } from './_harness.js';
 
 /** The four `.fud` of the fixture workspace, as the index sees them. */
 const FILES = [
-  'blog/[slug].fud',
-  'components/app-badge.fud',
-  'components/site-nav.fud',
-  'layouts/_layout.fud',
+  'src/blog/[slug].fud',
+  'src/components/app-badge.fud',
+  'src/components/site-nav.fud',
+  'src/layouts/_layout.fud',
 ] as const;
 
 /** Apply LSP edits to a text. One edit over the whole document is all this server sends. */
@@ -85,7 +85,7 @@ describe('criterion 11 — the editor and the CLI are the same formatter', () =>
   });
 
   it('sends one edit over the whole document, or none at all', async () => {
-    const { uri } = await harness.open('components/site-nav.fud');
+    const { uri } = await harness.open('src/components/site-nav.fud');
     const edits = await harness.client.sendRequest(DocumentFormattingRequest.type, {
       textDocument: { uri },
       options: { tabSize: 2, insertSpaces: true },
@@ -96,7 +96,7 @@ describe('criterion 11 — the editor and the CLI are the same formatter', () =>
   it('answers with no edit at all for a file that is already formatted', async () => {
     // No edit, rather than an edit that replaces the file with itself: formatting on save must
     // not dirty a buffer nor push an entry onto the undo stack when there is nothing to do.
-    const relative = 'layouts/_layout.fud';
+    const relative = 'src/layouts/_layout.fud';
     const { uri } = await harness.open(relative);
     const canonical = cli.get(relative) ?? fixtureText(relative);
     await harness.change(uri, canonical, 2);
@@ -110,14 +110,14 @@ describe('criterion 11 — the editor and the CLI are the same formatter', () =>
 
   it('answers nothing at all while the file does not parse', async () => {
     // "Format on save does nothing while the file is broken, silently" (§4.6).
-    const { uri } = await harness.open('components/app-badge.fud');
+    const { uri } = await harness.open('src/components/app-badge.fud');
     await harness.change(uri, '<app-badge>\n  <template shadowrootmode="open">\n    <p>x\n', 2);
     const edits = await harness.client.sendRequest(DocumentFormattingRequest.type, {
       textDocument: { uri },
       options: { tabSize: 2, insertSpaces: true },
     });
     expect(edits === null || edits.length === 0).toBe(true);
-    await harness.change(uri, fixtureText('components/app-badge.fud'), 3);
+    await harness.change(uri, fixtureText('src/components/app-badge.fud'), 3);
   });
 });
 
@@ -133,9 +133,9 @@ describe('range formatting and formatting while typing', () => {
   });
 
   it('formats the whole construct a half-selected header belongs to', async () => {
-    const source = readFileSync(`${FIXTURES}/blog/[slug].fud`, 'utf8');
+    const source = readFileSync(`${FIXTURES}/src/blog/[slug].fud`, 'utf8');
     const messy = source.replace('<article>', '<article   >');
-    const { uri } = await harness.open('blog/[slug].fud', messy);
+    const { uri } = await harness.open('src/blog/[slug].fud', messy);
 
     const at = messy.indexOf('data.found');
     const edits = await harness.client.sendRequest(DocumentRangeFormattingRequest.type, {
@@ -153,7 +153,7 @@ describe('range formatting and formatting while typing', () => {
 
   it('reindents the line a closing brace was just typed on, and nothing else', async () => {
     const source = '@if (a) {\n  <p>x</p>\n      }\n';
-    const { uri } = await harness.open('components/site-nav.fud', source);
+    const { uri } = await harness.open('src/components/site-nav.fud', source);
     const edits = await harness.client.sendRequest(DocumentOnTypeFormattingRequest.type, {
       textDocument: { uri },
       position: harness.positionAt(source, source.indexOf('      }') + 7),
@@ -165,7 +165,7 @@ describe('range formatting and formatting while typing', () => {
 
   it('reindents nothing when the line is not a lone closer', async () => {
     const source = '<p>text</p>\n';
-    const { uri } = await harness.open('components/site-nav.fud', source);
+    const { uri } = await harness.open('src/components/site-nav.fud', source);
     const edits = await harness.client.sendRequest(DocumentOnTypeFormattingRequest.type, {
       textDocument: { uri },
       position: harness.positionAt(source, 11),

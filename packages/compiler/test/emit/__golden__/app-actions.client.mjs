@@ -9,24 +9,24 @@ customElements.define("app-actions", class extends FudicElement {
     let [$dom, $shadow, rows = []] = $props;
     let $host = $dom.host($shadow);
     function del() {
-      emit.call($host, 'cleared');
-    }
+    emit.call($host, 'cleared');
+  }
     function delEvent(ev) {
-      ev.preventDefault();
-    }
+    ev.preventDefault();
+  }
     function delRow(id) {
-      emit.call($host, 'removed', id);
-    }
+    emit.call($host, 'removed', id);
+  }
     function delRowEvent(ev, id) {
-      ev.preventDefault();
-      emit.call($host, 'removed', id);
-    }
+    ev.preventDefault();
+    emit.call($host, 'removed', id);
+  }
     function delRowReversed(id, ev) {
-      delRowEvent(ev, id);
-    }
+    delRowEvent(ev, id);
+  }
     function onCleared(ev) {
-      this.dataset.last = ev.type;
-    }
+    this.dataset.last = ev.type;
+  }
 
     let $k0 = [];
     const $b0 = ($parent, $anchor, row) => {

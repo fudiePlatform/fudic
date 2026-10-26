@@ -7,7 +7,7 @@
  * it on demand would be testing the prototype's design instead of this one.
  */
 
-import { form } from '../../src/index.js';
+import { form } from '../../src/contract/index.js';
 import type { Control } from '../../src/index.js';
 
 /**

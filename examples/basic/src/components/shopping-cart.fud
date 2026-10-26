@@ -2,16 +2,14 @@
   // El suscriptor. Escucha en `document`, que es el ancestro común de la página: un
   // `@carrito` de host no recibiría nada. Tiene que estar VIVO antes de que el handler del
   // emisor corra, y eso es exactamente lo que la pre-hidratación de bus garantiza.
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    const items = signal(0);
-    const total = signal(0);
+  const items = signal(0);
+  const total = signal(0);
 
-    function onCarrito(ev: CustomEvent) {
-      items.set(items() + 1);
-      total.set(total() + Number(ev.detail));
-    }
+  function onCarrito(ev: CustomEvent) {
+    items.set(items() + 1);
+    total.set(total() + Number(ev.detail));
   }
 }
 

@@ -1,18 +1,12 @@
+<link rel="server" href="./x-save.fudapi">
+
 @code {
-  @server {
-    import { post } from "@fudic/http";
+  import { signal } from "@fudic/core";
 
-    export const save = post().invalidates("/usuarios").handle(() => "saved");
-  }
+  const state = signal("");
 
-  @client {
-    import { signal } from "@fudic/core";
-
-    const state = signal("");
-
-    async function go() {
-      state.set(await save());
-    }
+  async function go() {
+    state.set(await save());
   }
 }
 

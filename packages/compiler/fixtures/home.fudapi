@@ -1,0 +1,9 @@
+load
+  title  str
+  items  Item[]
+
+type Item
+  id           str
+  title        str
+  description  str
+  featured     bool

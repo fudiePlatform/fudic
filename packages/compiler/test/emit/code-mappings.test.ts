@@ -1,14 +1,15 @@
 /**
- * BUG-31 — the three zones of `@code` are MAPPED lines.
+ * BUG-31 — the code of `@code` is made of MAPPED lines.
  *
- * This is the bug underneath the other two. The neutral zone, `@server` and `@client` all
- * went out through `w.line(statement.text)`, which carries no anchor at all — so the emit
- * returned ZERO mappings for the author's own code, in every file, always, and nothing
- * detected it: the map was still a valid Source Map v3, still served with a 200, and still
- * described nothing but the markup.
+ * This is the bug underneath the other two. The author's statements all went out through
+ * `w.line(statement.text)`, which carries no anchor at all — so the emit returned ZERO
+ * mappings for the author's own code, in every file, always, and nothing detected it: the
+ * map was still a valid Source Map v3, still served with a 200, and still described nothing
+ * but the markup.
  *
  * What is asserted here is the pair a debugger needs: a mapping that lands inside the
- * statement, and a name it can resolve.
+ * statement, and a name it can resolve — in the server module for the server cut the markup
+ * reads (SDD-60 §4.8), in the client chunk for the whole `@code`.
  */
 import { describe, expect, it } from 'vitest';
 import {
@@ -21,24 +22,23 @@ import {
 import { memoryIo } from './_support.js';
 
 const SOURCE = `@code {
+  import { signal } from '@fudic/core';
+
   const { label = 'hi' } = props<{ label?: string }>();
 
   const shouted = label.trim();
 
-  @server {
-    const serverOnly = label.toUpperCase();
-  }
+  function serverCut() { return label.toUpperCase(); }
 
-  @client {
-    import { signal } from '@fudic/core';
+  const browserOnly = label.toLowerCase();
 
-    const count = signal(0);
-    const inc = () => count.set(count() + 1);
-  }
+  const count = signal(0);
+  const inc = () => count.set(count() + browserOnly.length);
 }
 
 <app-counter>
   <template shadowrootmode="open">
+    <p>@shouted @serverCut()</p>
     <button @click=@inc()>@count()</button>
   </template>
 </app-counter>
@@ -78,18 +78,22 @@ describe('the server module maps the code the author wrote', () => {
     expect(server.mappings.length).toBeGreaterThan(0);
   });
 
-  it('maps into the neutral zone', () => {
-    // The `props<…>()` line is consumed by the extraction, so the neutral statement that
+  it('maps into the server cut', () => {
+    // The `props<…>()` line is consumed by the extraction, so the statement of the cut that
     // actually reaches the output is the one below it.
     expect(mapsInto(server.mappings, 'const shouted = label.trim();')).toBe(true);
-  });
-
-  it('maps into `@server`, which is this branch’s own zone', () => {
-    expect(mapsInto(server.mappings, 'const serverOnly = label.toUpperCase();')).toBe(true);
+    expect(mapsInto(server.mappings, 'function serverCut() { return label.toUpperCase(); }')).toBe(true);
   });
 
   it('carries the names a console needs to resolve a binding', () => {
-    expect(namesOf(server.mappings)).toContain('serverOnly');
+    // A function of the cut is copied verbatim and keeps its identifiers; a `const` is rebuilt
+    // from its surviving declarators and anchors at the statement alone.
+    expect(namesOf(server.mappings)).toContain('serverCut');
+  });
+
+  it('does NOT map what the markup does not read: that code is not in this file', () => {
+    expect(mapsInto(server.mappings, 'const browserOnly = label.toLowerCase();')).toBe(false);
+    expect(server.code).not.toContain('browserOnly');
   });
 
   it('every source offset is inside the `.fud`, which is what makes the map resolvable', () => {
@@ -107,24 +111,22 @@ describe('the server module maps the code the author wrote', () => {
   });
 });
 
-describe('the client chunk maps its own zone', () => {
+describe('the client chunk maps the whole `@code`', () => {
   it('returns mappings at all', () => {
     expect(client.mappings.length).toBeGreaterThan(0);
   });
 
-  it('maps into `@client`', () => {
+  it('maps into the browser code', () => {
     expect(mapsInto(client.mappings, 'const count = signal(0);')).toBe(true);
+    expect(mapsInto(client.mappings, 'const browserOnly = label.toLowerCase();')).toBe(true);
   });
 
-  it('names the bindings of `@client`, which is where the debugger is used', () => {
+  it('names the bindings of the browser code, which is where the debugger is used', () => {
     const names = namesOf(client.mappings);
     expect(names).toContain('count');
     expect(names).toContain('inc');
     expect(names).toContain('signal');
-  });
-
-  it('does NOT map into `@server`: that code is not in this file', () => {
-    expect(mapsInto(client.mappings, 'const serverOnly = label.toUpperCase();')).toBe(false);
+    expect(names).toContain('browserOnly');
   });
 });
 

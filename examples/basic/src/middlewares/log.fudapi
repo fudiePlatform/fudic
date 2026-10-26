@@ -1,0 +1,5 @@
+# On both sides: in the browser's console it times the whole call, in the server's the work of
+# the function.
+middleware log
+  client
+  server

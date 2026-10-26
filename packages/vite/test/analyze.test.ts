@@ -1,7 +1,7 @@
 /**
- * SDD-19 §4.2 inputs: page fact extraction over the compiler. Detects page vs
- * component and which `@server` hooks (`load`/`paths`) a page exports — the facts
- * that feed `resolveMode`. Exercises the `@fudic/compiler` dependency end to end.
+ * SDD-19 §4.2 inputs: page fact extraction over the compiler. Detects page vs component; what
+ * a route's `.fudapi` declares (`load`, `paths`, `layout`) is `api-units`'s. Exercises the
+ * `@fudic/compiler` dependency end to end.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -64,52 +64,10 @@ describe('analyzePage — page vs component', () => {
   });
 });
 
-describe('analyzePage — @server hooks', () => {
-  it('detects an exported function load', () => {
-    const src = page(serverBlock('export function load(ctx) { return { id: ctx.params.id }; }'));
-    expect(analyzePage(src)).toMatchObject({ isPage: true, hasLoad: true, hasPaths: false });
-  });
-
-  it('detects both load and paths', () => {
-    const src = page(
-      serverBlock('export function load(ctx) { return {}; }\nexport function paths() { return []; }'),
-    );
-    expect(analyzePage(src)).toMatchObject({ hasLoad: true, hasPaths: true });
-  });
-
-  it('detects load declared as an exported const (arrow)', () => {
-    const src = page(serverBlock('export const load = (ctx) => ({ id: ctx.params.id });'));
-    expect(analyzePage(src)).toMatchObject({ hasLoad: true });
-  });
-
-  it('detects load exported via a specifier list', () => {
-    const src = page(serverBlock('function load(ctx) { return {}; }\nexport { load };'));
-    expect(analyzePage(src)).toMatchObject({ hasLoad: true });
-  });
-
-  it('a non-exported load does not count (must be an export)', () => {
-    const src = page(serverBlock('function load(ctx) { return {}; }'));
-    expect(analyzePage(src).hasLoad).toBe(false);
-  });
-
-  it('load only counts inside @server, not a neutral chunk', () => {
-    const src = page('@code {\nexport function load(ctx) { return {}; }\n}');
-    expect(analyzePage(src).hasLoad).toBe(false);
-  });
-
-  it('detects the third reserved name, `layout(ctx, data)` (SDD-40 §3.2)', () => {
-    const src = page(
-      serverBlock(
-        'export function load(ctx) { return { post: ctx.params.slug }; }\n' +
-          'export async function layout(ctx, data) { return { culture: data.post }; }',
-      ),
-    );
-    expect(analyzePage(src)).toMatchObject({ hasLoad: true, hasLayout: true });
-  });
-
-  it('a route with no layout resolver says so', () => {
-    const src = page(serverBlock('export function load(ctx) { return {}; }'));
-    expect(analyzePage(src).hasLayout).toBe(false);
+describe('analyzePage — nothing of the @code is read (SDD-60 §4.5)', () => {
+  it('a @server written in an old file declares no load, paths nor layout', () => {
+    const src = page(serverBlock('export function load(ctx) { return {}; }\nexport function paths() { return []; }'));
+    expect(analyzePage(src)).toMatchObject({ isPage: true, hasLoad: false, hasPaths: false, hasLayout: false });
   });
 });
 
@@ -121,14 +79,6 @@ describe('analyzePage — what the parse said (SDD-35 §1.1)', () => {
     expect(analysis.diagnostics).toEqual([expect.objectContaining({ code: 'FUD0051', severity: 'error' })]);
     const [d] = analysis.diagnostics;
     expect(src.slice(d!.span.start, d!.span.end)).toBe('</q>');
-  });
-
-  it('a `@server` that does not parse says so, over the file’s own offsets', () => {
-    const src = page(serverBlock('export function load( { return 1; }'));
-    const [d, ...rest] = analyzePage(src).diagnostics;
-    expect(rest).toEqual([]);
-    expect(d).toMatchObject({ code: 'FUD0170', severity: 'error' });
-    expect(src.slice(d!.span.start)).toMatch(/^1; \}/u);
   });
 
   it('a component that does not parse says so too', () => {

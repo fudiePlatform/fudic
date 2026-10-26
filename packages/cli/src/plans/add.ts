@@ -7,6 +7,7 @@
  * Adding what is already there changes nothing, and says so.
  */
 
+import { HTTP_FILE } from '@fudic/conventions';
 import { FUD0455 } from '@fudic/diagnostics';
 import { joinPosix } from '../paths.js';
 import { parseFud } from '../parse.js';
@@ -37,12 +38,12 @@ function addModule(module: string, pkg: string, target: Target, opts: AddOptions
   const dependency = dependOnModule(target, pkg, io);
   if (dependency !== undefined) changes.push(dependency);
 
-  // A `src/http.ts` that is already there — written by an earlier `add http`, or by hand — is the
-  // user's chain: kept, not a collision. `--force` writes it again.
-  if (module === 'http' && (opts.force || !io.exists(joinPosix(target.path, 'src/http.ts')))) {
+  // A `src/http.fudapi` that is already there — written by an earlier `add http`, or by hand — is
+  // the user's chain: kept, not a collision. `--force` writes it again.
+  if (module === 'http' && (opts.force || !io.exists(joinPosix(target.path, HTTP_FILE)))) {
     // Absent, or `--force`: `targetChange` has a change for either.
-    changes.push(targetChange(opts.cwd, joinPosix(target.dir, 'src/http.ts'), renderTemplate('http.ts.tmpl', {}), true, io).change as FileChange);
-    lines.push('  src/http.ts: the chain every server function goes through');
+    changes.push(targetChange(opts.cwd, joinPosix(target.dir, HTTP_FILE), renderTemplate('http.fudapi.tmpl', {}), true, io).change as FileChange);
+    lines.push(`  ${HTTP_FILE}: the chain every server function goes through`);
   }
   if (module === 'i18n' && opts.locales.length > 0) {
     changes.push(configChange(target, { ...readConfigObject(target, io), locales: opts.locales }, io));

@@ -1,13 +1,6 @@
 <link rel="layout" href="../layouts/_layout-marco.fud">
 <link rel="component" href="../components/site-nav.fud">
-
-@code {
-  @server {
-    export function layout(ctx, data) {
-      return { titulo: "El mismo marco, otra ruta" };
-    }
-  }
-}
+<link rel="server" href="./marco-sin-lateral.fudapi">
 
 <head>
   <title>Marco sin lateral — fudic</title>

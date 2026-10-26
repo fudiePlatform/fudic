@@ -19,33 +19,35 @@
  */
 
 import { build, type Plugin } from 'vite';
-import { readFileSync } from 'node:fs';
 import { builtinModules } from 'node:module';
-import { transformWithOxc } from 'vite';
 import { type ResolveIo } from '@fudic/compiler';
 import { type RouteBuild } from './discover.js';
-import { emitRenderChunk } from './wrapper.js';
+import { emitRenderChunk, routeApi } from './wrapper.js';
 import { runtimeUrls, type RuntimeEntries } from './constants.js';
 import { loadWithSourceMap } from './inputmaps.js';
 import { routeNameLookup, routeUsesDi } from './client.js';
-import { emitServerModule } from './server.js';
 import { NO_STYLES, type ProjectStyles } from './transform.js';
 import { compileFud } from './compile.js';
 import type { BuildReporter } from './report.js';
 import { safeName } from './link.js';
 import { EDGE_PREFIX, FUNCTIONS_FILE, FUNCTIONS_ID } from './constants.js';
+import { SERVER_ROOT_ID } from './api-root.js';
 import { serializeMap, type NestedArtifact, type NestedOutputOptions } from './nested.js';
 import { LinkedAssets } from './linked-assets.js';
 import { alternatesOf, localePlugin, localeTarget, pageModuleOf, type LocaleContext } from './i18n.js';
 
 /** The input name of `functions.mjs`. */
 const FUNCTIONS_ENTRY = 'functions';
+/** The input name of the server root (SDD-60 §4.6). */
+const ROOT_ENTRY = 'fudic-root';
 
 export interface EdgeResult {
   /** Every emitted file, in no particular order. Written outside `outDir` by the caller. */
   readonly chunks: readonly NestedArtifact[];
   /** Route pattern → its entry file name, relative to the edge directory. */
   readonly entries: ReadonlyMap<string, string>;
+  /** The file name of the server root, when the pass built one (SDD-60 §4.6). */
+  readonly root?: string;
 }
 
 const EMPTY: EdgeResult = { chunks: [], entries: new Map() };
@@ -61,8 +63,16 @@ export interface EdgeExtras {
   readonly locale?: LocaleContext;
   /** The text of the `functions.mjs` module, when the app has server functions. */
   readonly functions?: string;
-  /** `src/http.ts`, the global level of every chain, when the project has one. */
-  readonly globalChain?: string;
+  /**
+   * The server variant of the generated modules (SDD-60 §3.11, §4.4): `fudic:<id>` and the
+   * server root, by id; `undefined` for an id that is not one of them.
+   */
+  readonly api?: (id: string) => string | undefined;
+  /**
+   * The id of the server root, built as an entry of its own (`fudic-root.js`): the build loads
+   * it once to find a duplicate or a wrong folder, prerender or not (SDD-60 §4.6).
+   */
+  readonly root?: string;
 }
 
 const BUILTINS = new Set(builtinModules);
@@ -86,9 +96,8 @@ interface BundleOutputLike {
 }
 
 /**
- * The plugin of the nested build. It serves the wrappers, compiles `.fud`, and — unlike
- * the link pass's — has to handle the `?server` module too: the edge wrapper is the only
- * consumer that imports it, and it is TypeScript.
+ * The plugin of the nested build. It serves the wrappers, the generated modules of the
+ * `.fudapi` and `functions.mjs`, and compiles `.fud`.
  */
 export function edgePlugin(
   builds: readonly RouteBuild[],
@@ -111,10 +120,10 @@ export function edgePlugin(
   return {
     name: 'fudic:edge',
     resolveId(id) {
-      return id.startsWith(EDGE_PREFIX) || fixed.has(id) ? id : null;
+      return id.startsWith(EDGE_PREFIX) || fixed.has(id) || extras.api?.(id) !== undefined ? id : null;
     },
     load(id) {
-      const text = fixed.get(id);
+      const text = fixed.get(id) ?? extras.api?.(id);
       if (text !== undefined) return text;
       if (!id.startsWith(EDGE_PREFIX)) {
         return loadWithSourceMap(id);
@@ -126,13 +135,8 @@ export function edgePlugin(
       }
       return emitRenderChunk({
         pageModule: pageModuleOf(rb),
-        hasLoad: rb.analysis.hasLoad,
-        hasPaths: rb.analysis.hasPaths,
-        hasLayout: rb.analysis.hasLayout,
         hasDi: routeUsesDi(rb.absPath, io),
-        hasHttp: rb.analysis.hasHttp === true,
-        fluentLoad: rb.analysis.fluentLoad === true,
-        ...(extras.globalChain !== undefined ? { globalChain: extras.globalChain } : {}),
+        ...routeApi(rb, SERVER_ROOT_ID, false),
         withLoad: true, // the edge resolves data in process
         runtime: runtimeFor(pattern),
         ...alternatesOf(rb, extras.locale?.locales, base, extras.locale?.site),
@@ -140,18 +144,9 @@ export function edgePlugin(
     },
     async transform(_code, id) {
       const target = localeTarget(extras.locale, io, id);
-      const { path, query } = target;
+      const { path } = target;
       if (!path.endsWith('.fud')) {
         return null;
-      }
-      if (query === 'server') {
-        // The `@server` region is TS: strip the types so the bundler parses it, exactly as
-        // the host plugin does for the dev and prerender paths.
-        const stripped = await transformWithOxc(emitServerModule(target.locale === undefined ? readFileSync(path, 'utf8') : target.io.read(path)), `${path}.ts`, {
-          lang: 'ts',
-        });
-        /* v8 ignore next -- Oxc always returns a map for a `.ts` input; the guard is for the type, not for a case. */
-        return stripped.map ? { code: stripped.code, map: stripped.map } : { code: stripped.code };
       }
       // The same module the host bundle compiled, from the build's memory (`compileFud`).
       const compiled = await compileFud(path, target.io, routeNameOf(path, target.locale), styles, assets, target.i18n);
@@ -159,7 +154,7 @@ export function edgePlugin(
       if (compiled === null) return null;
       // What the emit had to say about the file, which this pass used to drop (SDD-35 §1.1).
       reporter?.report(this, compiled.result.diagnostics, path);
-      // With its map: the edge chunks are the ones a `@server load` stack trace comes from.
+      // With its map: the edge chunks are what a stack trace of a render comes from.
       return compiled.module;
     },
   };
@@ -204,6 +199,7 @@ export async function runEdgePass(
     input[safeName(page.route.pattern)] = EDGE_PREFIX + page.route.pattern;
   }
   if (extras.functions !== undefined) input[FUNCTIONS_ENTRY] = FUNCTIONS_ID;
+  if (extras.root !== undefined) input[ROOT_ENTRY] = extras.root;
 
   const output = (await build({
     configFile: false,
@@ -229,7 +225,9 @@ export async function runEdgePass(
       // cost is real: a `@server load` that throws during the prerender is a stack trace
       // someone has to read.
       minify: false,
-      sourcemap: nested.sourcemap !== false,
+      // Always, whatever the host asked for its client (SDD-60 §4.6): this output never reaches a
+      // browser, and an error in a handler has to name the `.ts` of `src/server` and its line.
+      sourcemap: true,
       // Node runs this output, and Vite's preload helper wraps every dynamic `import()` in
       // code that touches `document`: `functions.mjs` would answer 500 to every call.
       modulePreload: false,
@@ -283,5 +281,6 @@ export async function runEdgePass(
     }
   }
 
-  return { chunks, entries };
+  const rootFile = extras.root === undefined ? undefined : byModuleId.get(extras.root);
+  return rootFile === undefined ? { chunks, entries } : { chunks, entries, root: rootFile };
 }

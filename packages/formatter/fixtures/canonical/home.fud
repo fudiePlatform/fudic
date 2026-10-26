@@ -4,19 +4,11 @@
     <link rel="component" href="./app-card.fud">
     <link rel="component" href="./app-button.fud">
     <link rel="component" href="./app-badge.fud">
+    <link rel="server" href="./home.fudapi">
 
     @code {
       type Item = { id: string; title: string; description: string; featured: boolean };
       type PageData = { title: string; items: Item[] };
-
-      @server {
-        import { db } from './db';
-
-        export async function load(): Promise<PageData> {
-          const items = await db.query('SELECT id, title, description, featured FROM items ORDER BY created_at DESC');
-          return { title: 'Inicio', items };
-        }
-      }
     }
 
     <title>@data.title</title>

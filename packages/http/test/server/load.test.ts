@@ -1,15 +1,12 @@
 /**
- * SDD-56 §3.2, §4.4 and criteria 9 and 14 for `load`: the server halves of the global and
- * file levels, plus its own when it is fluent; never a client half. And `withRequest`, the
- * container of the request that `inject()` and `publish()` find without a `ctx`.
+ * SDD-56 §3.2, §4.4 and criterion 14: the `ctx` of `load` and `withRequest`, the container of
+ * the request that `inject()` and `publish()` find without a `ctx`. `load` through its chain is
+ * `contract/server.ts`'s since SDD-60.
  */
 
 import { describe, expect, it, vi } from 'vitest';
 import { createRoot, inject, publish, seedOf, Service, token } from '@fudic/di';
-import { chain } from '../../src/chain.js';
-import { get } from '../../src/builder.js';
-import { middleware } from '../../src/middleware.js';
-import { pageContext, runLoad } from '../../src/server/load.js';
+import { pageContext } from '../../src/server/load.js';
 import { withRequest } from '../../src/server/request.js';
 import { parseCookies, serverContext } from '../../src/server/context.js';
 import * as server from '../../src/server/index.js';
@@ -56,58 +53,6 @@ describe('pageContext', () => {
   });
 });
 
-describe('runLoad', () => {
-  const page = () => pageContext({ url: URL_PAGE, params: {} });
-
-  it('a plain function load runs through global and file, server halves only', async () => {
-    const trace: string[] = [];
-    const mw = (name: string) =>
-      middleware()
-        .client(() => { trace.push(`client:${name}`); })
-        .server((ctx, next) => (trace.push(name), next(ctx)));
-    const load = vi.fn(() => ({ ok: 1 }));
-    const value = await runLoad(load, { global: chain().use(mw('g')), file: chain().use(mw('f')) }, page());
-    expect(value).toEqual({ ok: 1 });
-    expect(trace).toEqual(['g', 'f']);
-    expect(load).toHaveBeenCalledOnce();
-  });
-
-  it('a fluent load adds its own level and runs its handle', async () => {
-    const trace: string[] = [];
-    const own = middleware().server((ctx, next) => (trace.push('own'), next(ctx)));
-    const global = chain().use(middleware().server((ctx, next) => (trace.push('g'), next(ctx))));
-    const load = get().use(own).handle((ctx) => ({ name: ctx.name }));
-    expect(await runLoad(load, { global }, page())).toEqual({ name: 'load' });
-    expect(trace).toEqual(['g', 'own']);
-  });
-
-  it('criterion 9: no client half runs for load, nor a fluent one', async () => {
-    const client = vi.fn();
-    const both = middleware().client(client).server((ctx, next) => next(ctx));
-    const load = get().use(both).handle(() => 1);
-    await runLoad(load, { global: chain().use(both), file: chain().use(both) }, page());
-    await runLoad(() => 2, { global: chain().use(both) }, page());
-    expect(client).not.toHaveBeenCalled();
-  });
-
-  it('skip and skip("*") in the file level apply to load', async () => {
-    const trace: string[] = [];
-    const a = middleware().server((ctx, next) => (trace.push('a'), next(ctx)));
-    await runLoad(() => 1, { global: chain().use(a), file: chain().skip('*') }, page());
-    expect(trace).toEqual([]);
-  });
-
-  it('with no level at all, load is called with the ctx', async () => {
-    const ctx = page();
-    const load = vi.fn((c: unknown) => c);
-    expect(await runLoad(load, {}, ctx)).toBe(ctx);
-  });
-
-  it('what load throws rejects', async () => {
-    await expect(runLoad(() => { throw new Error('x'); }, {}, page())).rejects.toThrow('x');
-  });
-});
-
 describe('withRequest', () => {
   it('returns what fn returns, and inject resolves from its container', () => {
     const root = createRoot();
@@ -134,8 +79,8 @@ describe('withRequest', () => {
     const ctxOf = (who: string, wait: string) => pageContext({ url: URL_PAGE, params: { who, wait } });
 
     const [a, b] = await Promise.all([
-      withRequest(rootA, () => runLoad(load as never, {}, ctxOf('a', '20'))),
-      withRequest(rootB, () => runLoad(load as never, {}, ctxOf('b', '1'))),
+      withRequest(rootA, () => load(ctxOf('a', '20'))),
+      withRequest(rootB, () => load(ctxOf('b', '1'))),
     ]);
 
     expect(a).toEqual({ first: (a as { first: number }).first, second: (a as { first: number }).first });
@@ -183,13 +128,10 @@ describe('the ./server entry', () => {
     expect(Object.keys(server).sort()).toEqual(
       [
         'PROBLEM_TYPE',
-        'dispatch',
-        'functionsHandler',
         'pageContext',
         'parseCookies',
         'problemOf',
         'problemResponse',
-        'runLoad',
         'withRequest',
       ].sort(),
     );

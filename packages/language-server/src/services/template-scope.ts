@@ -41,9 +41,8 @@ export type TemplateScope = ReadonlyMap<string, ScopeKind>;
 /**
  * Every name the template of this file may use.
  *
- * Three sources, and they are the three the projection puts in scope. The neutral chunks of
- * `@code` hold the `props<T>()` destructuring, so a component's own props come from there. The
- * `@client` regions hold the reactives and the handlers. And `data` is declared by the
+ * Two sources, and they are the two the projection puts in scope. The `@code` holds the
+ * `props<T>()` destructuring, the reactives and the handlers. And `data` is declared by the
  * projection itself — for a route or a page, never for a component, which receives props and
  * has no route data to read (SDD-23 §4.2).
  *
@@ -53,10 +52,7 @@ export type TemplateScope = ReadonlyMap<string, ScopeKind>;
  */
 export function templateScope(cached: CachedDocument, offset?: number): TemplateScope {
   const layout = cached.document.type === 'layout-document';
-  const names = declaredNames(
-    cached,
-    layout ? cached.js.neutral : [...cached.js.neutral, ...cached.js.client],
-  );
+  const names = declaredNames(cached, cached.js.code);
   if (!layout && cached.document.type !== 'component-document') names.set('data', 'value');
   if (offset !== undefined) addLoopBindings(cached, offset, names);
   return names;

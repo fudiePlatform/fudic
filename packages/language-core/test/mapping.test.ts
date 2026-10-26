@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { span } from '@fudic/compiler';
-import { dedupeDiagnostics, mapToGenerated, mapToSource } from '../src/mapping.js';
+import { mapToGenerated, mapToSource } from '../src/mapping.js';
 import { SCAFFOLD_CAPS, USER_CAPS } from '../src/caps.js';
 import { VirtualWriter } from '../src/writer.js';
 import { languageServiceFor, projectCorpus, typecheckCorpus } from './typecheck.js';
@@ -164,49 +164,17 @@ describe('criterion 11 — scaffolding is mute', () => {
   });
 });
 
-describe('dedupeDiagnostics', () => {
-  const at = (virtual: string, sourceOffset: number, code = 2322) => ({ virtual, sourceOffset, code });
-
-  it('keeps the client virtual when the same error is found in both', () => {
-    const deduped = dedupeDiagnostics([at('x.fud.server.ts', 10), at('x.fud.ts', 10)], 'x.fud.ts');
-
-    expect(deduped).toEqual([at('x.fud.ts', 10)]);
-  });
-
-  it('keeps the client virtual whichever order they arrive in', () => {
-    const deduped = dedupeDiagnostics([at('x.fud.ts', 10), at('x.fud.server.ts', 10)], 'x.fud.ts');
-
-    expect(deduped).toEqual([at('x.fud.ts', 10)]);
-  });
-
-  it('keeps errors that differ in place or in code', () => {
-    const input = [at('x.fud.ts', 10), at('x.fud.ts', 20), at('x.fud.ts', 10, 2304)];
-
-    expect(dedupeDiagnostics(input, 'x.fud.ts')).toHaveLength(3);
-  });
-
-  it('keeps a server-only error, with no client twin to prefer', () => {
-    const input = [at('x.fud.server.ts', 10), at('x.fud.server.ts', 10)];
-
-    expect(dedupeDiagnostics(input, 'x.fud.ts')).toEqual([at('x.fud.server.ts', 10)]);
-  });
-});
-
 describe('criterion 12 — one diagnostic, one place', () => {
-  it('an error in the neutral zone is reported once, against the client virtual', () => {
+  it('an error in the @code is reported once, against the client virtual', () => {
     const broken = read(BADGE).replace(
       '  const { tone',
       "  const oops: number = 'x';\n  const { tone",
     );
     const diagnostics = typecheckCorpus({ [BADGE]: broken });
 
-    // The neutral zone lives in both virtuals, so the checker finds it twice…
+    // The `@code` lives in the client virtual alone (SDD-60 §4.7): the checker finds it once.
     const found = diagnostics.filter((d) => d.code === 2322);
-    expect(found).toHaveLength(2);
-
-    // …and only one of them can reach the source. The server virtual's copy of the neutral zone
-    // does not carry `verification` (`USER_ECHO_CAPS`), so its twin maps nowhere and the user
-    // is never told twice.
+    expect(found).toHaveLength(1);
     const reported = found.filter((d) => d.sourceOffset !== undefined);
     expect(reported).toHaveLength(1);
     expect(reported[0]!.virtual).toBe('components/app-badge.fud.ts');

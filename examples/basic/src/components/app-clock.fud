@@ -1,27 +1,25 @@
 @code {
-  @client {
-    import { signal, computed, effect } from "@fudic/core";
+  import { signal, computed, effect } from "@fudic/core";
 
-    const ahora = signal(new Date());
+  const ahora = signal(new Date());
 
-    const hora = computed(() =>
-      ahora().toLocaleTimeString("es-ES", { hour12: false }),
-    );
+  const hora = computed(() =>
+    ahora().toLocaleTimeString("es-ES", { hour12: false }),
+  );
 
-    const fecha = computed(() =>
-      ahora().toLocaleDateString("es-ES", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      }),
-    );
+  const fecha = computed(() =>
+    ahora().toLocaleDateString("es-ES", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }),
+  );
 
-    effect(() => {
-      const id = setInterval(() => ahora.set(new Date()), 1000);
-      return () => clearInterval(id);
-    });
-  }
+  effect(() => {
+    const id = setInterval(() => ahora.set(new Date()), 1000);
+    return () => clearInterval(id);
+  });
 }
 
 <head>

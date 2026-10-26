@@ -17,13 +17,11 @@ import { describe, expect, it } from 'vitest';
 import { emitComponentModule, resolveComponents } from '../../src/emit/index.js';
 import { memoryIo } from '../emit/_support.js';
 
-/** The caller's own reactive state: one signal, declared in its `@client`. */
+/** The caller's own reactive state: one signal, declared in its `@code`. */
 const CODE = `@code {
-  @client {
-    import { signal } from '@fudic/core';
+  import { signal } from '@fudic/core';
 
-    const tick = signal(0);
-  }
+  const tick = signal(0);
 }
 `;
 

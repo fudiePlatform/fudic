@@ -6,6 +6,6 @@ export const FUD0901 = (p: SourceInput): SourceDiagnostic =>
   source(
     'FUD0901',
     'error',
-    'an `@{ }` block may reassign only a name the template declares or a `let` of the neutral `@code`',
+    'an `@{ }` block may reassign only a name the template declares or a `let` of the `@code` the markup reads',
     p,
   );

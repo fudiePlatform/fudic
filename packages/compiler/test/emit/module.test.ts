@@ -101,7 +101,7 @@ describe('the inert stubs of the server branch (SDD-31 §6.16)', () => {
         '<link rel="component" href="./x-stub.fud">\n' +
         '<html><head></head><body><x-stub></x-stub></body></html>\n',
       '/x-stub.fud':
-        `@code {\n  @client {\n${code}  }\n}\n` +
+        `@code {\n${code}}\n` +
         `<x-stub>\n  <template shadowrootmode="open">${markup}</template>\n</x-stub>\n`,
     });
     const g = resolveComponents('/page.fud', io);
@@ -109,7 +109,7 @@ describe('the inert stubs of the server branch (SDD-31 §6.16)', () => {
   };
 
   it('a signal read with the call form prerenders instead of throwing', () => {
-    const src = stubbed('    const expanded = signal(false);\n', '<p>@(expanded())</p>');
+    const src = stubbed('  const expanded = signal(false);\n', '<p>@(expanded())</p>');
     expect(src).toContain('const expanded = () => (false); // inert signal');
     const { render } = evalLeafModule(src);
     const { dom, calls } = recordingDom();
@@ -119,7 +119,7 @@ describe('the inert stubs of the server branch (SDD-31 §6.16)', () => {
 
   it('a derived value is its own function, evaluated when read', () => {
     const src = stubbed(
-      '    const count = signal(3);\n    const total = computed(() => count() * 2);\n',
+      '  const count = signal(3);\n  const total = computed(() => count() * 2);\n',
       '<p>@(total())</p>',
     );
     expect(src).toContain('const total = (() => count() * 2); // inert computed');
@@ -137,7 +137,8 @@ describe('emitComponentModule — attrExpr shapes', () => {
     '/home.fud':
       '<!DOCTYPE html>\n<html><head><link rel="component" href="./m.fud"></head><body></body></html>',
     '/m.fud':
-      '@code {\n  const helper = 1;\n}\n' + // a non-props declaration: exercised, ignored
+      // Non-props declarations: `y` is read by the markup, `helper` through it, `unused` by nobody.
+      '@code {\n  const helper = 1;\n  const y = helper;\n  const unused = 2;\n}\n' +
       '<m-el>\n  <template shadowrootmode="open">' +
       '<div id="z" title="x-@y"></div><!-- a comment is dropped -->' +
       '</template>\n</m-el>\n',
@@ -158,12 +159,13 @@ describe('emitComponentModule — attrExpr shapes', () => {
     expect(src).toContain('$dom.setAttr($n0, "id", "z");');
   });
 
-  it('drops an author comment and CARRIES a non-props const into render (SDD-34)', () => {
+  it('drops an author comment and carries into render only the server cut (SDD-60 §4.8)', () => {
     expect(src).not.toContain('a comment is dropped');
-    // The neutral zone runs on both sides, and until SDD-34 it reached neither module: a
-    // `const` there named a binding that existed nowhere. It is emitted now, which is what
-    // lets a form live in its own `.ts` and be reached by the server and the client alike.
+    // The `@code` is browser code; render gets what the markup reads, transitively: `y`, and
+    // `helper` because `y` reads it. `unused` stays in the browser.
     expect(src).toContain('const helper = 1;');
+    expect(src).toContain('const y = helper;');
+    expect(src).not.toContain('const unused = 2;');
   });
 
   it('emits a static attribute value as a JSON string (via the page fixtures)', () => {

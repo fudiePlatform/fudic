@@ -1,15 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { JsBatch } from '@fudic/compiler';
 import { emitVirtualFiles } from '../src/emit.js';
-import { partitionCode } from '../src/code.js';
+import { codeChunks } from '../src/code.js';
 import { parseFud, registryOf } from './_support.js';
 
 const BADGE = `@code {
   type Tone = 'neutral' | 'success';
   const { tone = 'neutral' } = props<{ tone?: Tone }>();
-  @server {
-    const secret = 1;
-  }
 }
 
 <head>
@@ -32,25 +29,18 @@ const emit = (source: string, fileName = 'app-badge.fud'): ReturnType<typeof emi
   });
 
 describe('emitVirtualFiles', () => {
-  it('emits the client, the server and one CSS virtual, in that order', () => {
+  it('emits the client and one CSS virtual, in that order: no server virtual (SDD-60 §4.7)', () => {
     const files = emit(BADGE);
 
-    expect(files.map((f) => f.fileName)).toEqual([
-      'app-badge.fud.ts',
-      'app-badge.fud.server.ts',
-      'app-badge.fud.0.css',
-    ]);
-    expect(files.map((f) => f.languageId)).toEqual(['typescript', 'typescript', 'css']);
+    expect(files.map((f) => f.fileName)).toEqual(['app-badge.fud.ts', 'app-badge.fud.0.css']);
+    expect(files.map((f) => f.languageId)).toEqual(['typescript', 'css']);
   });
 
-  it('keeps the two programs apart: @server code never reaches the client virtual', () => {
-    const [client, server] = emit(BADGE);
+  it('a region of an old file is read as if it had no wrapper: its body reaches the client virtual', () => {
+    const old = '@code {\n  @server {\n    const secret = 1;\n  }\n}\n\n<app-x>\n  <template shadowrootmode="open"><i>hi</i></template>\n</app-x>\n';
+    const [client] = emit(old, 'app-x.fud');
 
-    expect(client!.text).not.toContain('secret');
-    expect(server!.text).toContain('const secret = 1;');
-    // The neutral zone is deliberately in both (§4.1); dedup is the server's job.
-    expect(client!.text).toContain("type Tone = 'neutral' | 'success';");
-    expect(server!.text).toContain("type Tone = 'neutral' | 'success';");
+    expect(client!.text).toContain('const secret = 1;');
   });
 
   it('projects the props contract once, from a single Oxc batch', () => {
@@ -64,12 +54,9 @@ describe('emitVirtualFiles', () => {
     expect(emit(BADGE)).toEqual(emit(BADGE));
   });
 
-  it('emits the server virtual even for a file with no @code at all', () => {
+  it('emits the client virtual alone for a file with no @code and no <style>', () => {
     const plain = '<app-x>\n  <template shadowrootmode="open"><i>@a</i></template>\n</app-x>\n';
-    const files = emit(plain, 'app-x.fud');
-
-    expect(files).toHaveLength(2);
-    expect(files[1]!.text).toBe('export {};\n');
+    expect(emit(plain, 'app-x.fud').map((f) => f.fileName)).toEqual(['app-x.fud.ts']);
   });
 
   it('still emits from a partial AST: an unclosed element does not stop the projection', () => {
@@ -93,29 +80,27 @@ describe('emitVirtualFiles', () => {
     // rather than paying for a second Oxc invocation per keystroke (SDD-24 §4.5).
     const document = parseFud(BADGE);
     const batch = new JsBatch(BADGE);
-    const neutral = partitionCode(document.code).neutral.map((chunk) =>
-      batch.add('module-statements', chunk),
-    );
+    const code = codeChunks(document.code).map((chunk) => batch.add('module-statements', chunk));
     const shared = emitVirtualFiles({
       source: BADGE,
       fileName: 'app-badge.fud',
       document,
       registry: registryOf({}),
-      js: { result: batch.parse().value, neutral },
+      js: { result: batch.parse().value, code },
     });
 
     expect(shared.map((f) => f.text)).toEqual(emit(BADGE).map((f) => f.text));
     expect(shared[0]!.text).toContain('const $p0 = props<{ tone?: Tone }>();');
   });
 
-  it('finds no contract in a handed-over batch that registered no neutral chunk', () => {
+  it('finds no contract in a handed-over batch that registered no chunk of @code', () => {
     const source = `<app-x>\n  <template shadowrootmode="open"><i>hi</i></template>\n</app-x>\n`;
     const [client] = emitVirtualFiles({
       source,
       fileName: 'app-x.fud',
       document: parseFud(source),
       registry: registryOf({}),
-      js: { result: new JsBatch(source).parse().value, neutral: [] },
+      js: { result: new JsBatch(source).parse().value, code: [] },
     });
 
     expect(client!.text).not.toContain('$p0');

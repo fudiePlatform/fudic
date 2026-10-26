@@ -4,10 +4,11 @@
  *
  * A service is a class `Service(…)` registers in the root — a call, not a decorator, as
  * `examples/basic` writes it — or, with `--provided`, one a component provides. A form is a
- * `form()` with a required `name`: `control('')`, or `str('')` with `--binary`, whose typed
- * controls make the upload travel in binary.
+ * `form` of a `.fudapi` with a required `name` (SDD-60 §3.6): typed, so the upload travels in
+ * binary, and imported from what fudic generates of it.
  */
 
+import { API_EXTENSION } from '@fudic/api';
 import { FUD0457 } from '@fudic/diagnostics';
 import { joinPosix } from '../paths.js';
 import { targetChange } from '../project.js';
@@ -71,9 +72,9 @@ export function planForm(name: string, opts: FormOptions, io: ReadIo = nodeReadI
       kind: 'form',
       symbol,
       dir: 'src/forms',
-      file: `${name}.form.ts`,
-      contents: renderTemplate(opts.binary ? 'form/binary.ts.tmpl' : 'form/control.ts.tmpl', { form: symbol }),
-      what: opts.binary ? 'typed controls (str, u8, bool…): the upload travels in binary' : 'its controls and their validators',
+      file: `${name}${API_EXTENSION}`,
+      contents: renderTemplate('form/form.fudapi.tmpl', { form: symbol }),
+      what: `its fields, their rules and their texts: import it from fudic:forms/${name}`,
       test: opts.test ? renderTemplate('form/test.ts.tmpl', { form: symbol, name }) : null,
       pkg: '@fudic/forms',
     },
@@ -91,7 +92,7 @@ function planPiece(name: string, opts: ServiceOptions | FormOptions, spec: Piece
   const errors: CliError[] = [];
   const files = [
     { file: spec.file, contents: spec.contents, what: spec.what },
-    ...(spec.test === null ? [] : [{ file: spec.file.replace(/\.ts$/u, '.test.ts'), contents: spec.test, what: 'unit test' }]),
+    ...(spec.test === null ? [] : [{ file: spec.file.replace(/\.(?:ts|fudapi)$/u, '.test.ts'), contents: spec.test, what: 'unit test' }]),
   ];
   for (const piece of files) {
     const written = targetChange(opts.cwd, joinPosix(target.dir, spec.dir, piece.file), piece.contents, opts.force, io);

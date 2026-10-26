@@ -1,5 +1,5 @@
 /**
- * SDD-08 — `@code { … }` with its `@server` / `@client` regions. Covers every
+ * SDD-08 — `@code { … }`, and the regions SDD-60 retired (FUD1110). Covers every
  * acceptance criterion of §6 plus the marker-scanning edges (opaque regions,
  * nesting, degradations).
  */
@@ -51,41 +51,46 @@ function codes(diagnostics: readonly Diagnostic[]): readonly string[] {
 }
 
 describe('parseCodeBlock — well-formed blocks', () => {
-  it('splits neutral JS followed by a @server region (§6.2)', () => {
+  it('reads a @server region as FUD1110 on its marker and its content as JS (SDD-60, criterion 25)', () => {
     const source =
       "@code { type User = { id: string }; @server { import {db} from './db'; async function load(){ return db; } } }";
     const { node, diagnostics, source: s } = run(source);
 
-    expect(diagnostics).toEqual([]);
-    expect(node.type).toBe('code');
-    expect(types(node.parts)).toEqual(['neutral-js', 'server-region']);
-
-    const [neutral, server] = node.parts;
-    expect(neutral?.type).toBe('neutral-js');
-    expect(text(s, neutral!.js)).toBe('type User = { id: string };');
-    expect(server?.type).toBe('server-region');
-    expect(text(s, server!.js)).toContain("import {db} from './db';");
-    expect(text(s, server!.js)).toContain('async function load()');
-    // The region node owns the whole marker, `js` only the braces' inner.
-    expect(s.slice(server!.span.start).startsWith('@server')).toBe(true);
-    expect(s[server!.span.end - 1]).toBe('}');
+    // One diagnostic for the region, on the marker, and nothing else because of it.
+    expect(codes(diagnostics)).toEqual(['FUD1110']);
+    expect(s.slice(diagnostics[0]!.span.start, diagnostics[0]!.span.end)).toBe('@server');
+    expect(diagnostics[0]!.message).toContain('.fudapi');
+    expect(types(node.parts)).toEqual(['neutral-js', 'neutral-js']);
+    const [before, inside] = node.parts;
+    expect(text(s, before!.js)).toBe('type User = { id: string };');
+    // The wrapper is left out: the chunk is the region's content, without its braces.
+    expect(text(s, inside!.js)).toBe("import {db} from './db'; async function load(){ return db; }");
   });
 
-  it('accepts a lone @client region (§6.3)', () => {
+  it('reads a @client region the same way, with its own text', () => {
     const source = "@code { @client { import {signal} from '@f'; const s = signal(false); } }";
     const { node, diagnostics, source: s } = run(source);
 
-    expect(diagnostics).toEqual([]);
-    expect(types(node.parts)).toEqual(['client-region']);
-    expect(text(s, node.parts[0]!.js)).toContain('const s = signal(false);');
+    expect(codes(diagnostics)).toEqual(['FUD1110']);
+    expect(diagnostics[0]!.message).toContain('without the wrapper');
+    expect(types(node.parts)).toEqual(['neutral-js']);
+    expect(text(s, node.parts[0]!.js)).toBe("import {signal} from '@f'; const s = signal(false);");
   });
 
-  it('keeps regions in free source order (§6.6, decision 34)', () => {
+  it('cuts a chunk at each wrapper, in source order, one diagnostic per region', () => {
     const source = '@code { @client { a(); } const K = 1; @server { b(); } }';
-    const { node, diagnostics } = run(source);
+    const { node, diagnostics, source: s } = run(source);
 
-    expect(diagnostics).toEqual([]);
-    expect(types(node.parts)).toEqual(['client-region', 'neutral-js', 'server-region']);
+    expect(codes(diagnostics)).toEqual(['FUD1110', 'FUD1110']);
+    expect(node.parts.map((p) => text(s, p.js))).toEqual(['a();', 'const K = 1;', 'b();']);
+  });
+
+  it('reports a region nested in another on its own: the inside is top level again', () => {
+    const source = '@code { @server { a(); @client { b(); } c(); } }';
+    const { node, diagnostics, source: s } = run(source);
+
+    expect(codes(diagnostics)).toEqual(['FUD1110', 'FUD1110']);
+    expect(node.parts.map((p) => text(s, p.js))).toEqual(['a();', 'b();', 'c();']);
   });
 
   it('treats a TS decorator as neutral JS, not a marker (§6.7)', () => {
@@ -180,7 +185,8 @@ describe('parseCodeBlock — marker scanning', () => {
     const { node, diagnostics } = run(source);
 
     expect(codes(diagnostics)).toContain('FUD0002');
-    expect(types(node.parts)).toContain('server-region');
+    expect(codes(diagnostics)).toContain('FUD1110');
+    expect(node.parts.map((p) => text(source, p.js))).toEqual([')', 'x();']);
   });
 });
 
@@ -195,39 +201,27 @@ describe('parseCodeBlock — degradations (§6.9)', () => {
     expect(diagnostics[0]?.span.start).toBe(source.indexOf('type'));
   });
 
-  it('reports FUD0110 when `{` does not follow a region marker', () => {
+  it('reports a marker with no `{` as FUD1110 alone, and leaves it out of the JS', () => {
     const source = '@code { @server const a = 1; }';
-    const { node, diagnostics } = run(source);
+    const { node, diagnostics, source: s } = run(source);
 
-    expect(codes(diagnostics)).toEqual(['FUD0110']);
-    // The marker stays inside the neutral chunk: the body remains fully covered.
-    expect(types(node.parts)).toEqual(['neutral-js']);
+    expect(codes(diagnostics)).toEqual(['FUD1110']);
+    // Nothing to unwrap: the marker goes, so Oxc never reads an `@server` it would reject.
+    expect(node.parts.map((p) => text(s, p.js))).toEqual(['const a = 1;']);
   });
 
-  it('reports FUD0111 for `@server(x)` (§6.5, decision 66)', () => {
+  it('leaves a parameter list out with its marker, which says nothing since SDD-60 retired FUD0111', () => {
     const source = '@code { @server(x) { load(); } }';
     const { node, diagnostics, source: s } = run(source);
 
-    expect(codes(diagnostics)).toEqual(['FUD0111']);
-    expect(s.slice(diagnostics[0]!.span.start, diagnostics[0]!.span.end)).toBe('(x)');
-    // Recovery still delimits the region, so the editor keeps a usable node.
-    expect(types(node.parts)).toEqual(['server-region']);
-    expect(text(s, node.parts[0]!.js)).toBe('load();');
-  });
-
-  it('reports FUD0111 for `@client(viewport)` (§6.4, decision 66)', () => {
-    const source = '@code { @client(viewport) { hydrate(); } }';
-    const { node, diagnostics } = run(source);
-
-    expect(codes(diagnostics)).toEqual(['FUD0111']);
-    expect(types(node.parts)).toEqual(['client-region']);
+    expect(codes(diagnostics)).toEqual(['FUD1110']);
+    expect(node.parts.map((p) => text(s, p.js))).toEqual(['load();']);
   });
 
   it('surfaces the balancer diagnostic when the parameter list never closes', () => {
     const source = '@code { @server(x }';
     const { diagnostics } = run(source);
 
-    expect(codes(diagnostics)).toContain('FUD0111');
     expect(codes(diagnostics)).toContain('FUD0002');
   });
 
@@ -236,7 +230,8 @@ describe('parseCodeBlock — degradations (§6.9)', () => {
     const { node, diagnostics } = run(source);
 
     expect(codes(diagnostics)).toContain('FUD0002');
-    expect(types(node.parts)).toEqual(['server-region']);
+    // With no `}` there is no closer to cut at: the content runs to the end.
+    expect(node.parts.map((p) => text(source, p.js))).toEqual(['const a = 1;']);
     expect(node.span.end).toBe(source.length);
   });
 
@@ -303,12 +298,12 @@ describe('parseCodeBlock — the block carries its lexical regions (BUG-30)', ()
  * decide where the block ends.
  */
 describe('parseCodeBlock — Razor comments are not JavaScript (BUG-13)', () => {
-  const CLIENT = '@client { const count = signal(0); }';
+  const COUNT = 'const count = signal(0);';
 
   const positions: ReadonlyArray<readonly [string, string]> = [
-    ['before @client', `@code { @* c *@ ${CLIENT} }`],
-    ['inside @client', '@code { @client { @* c *@ const count = signal(0); } }'],
-    ['after @client', `@code { ${CLIENT} @* c *@ }`],
+    ['before the code', `@code { @* c *@ ${COUNT} }`],
+    ['inside a block', '@code { function f() { @* c *@ const count = signal(0); } }'],
+    ['after the code', `@code { ${COUNT} @* c *@ }`],
   ];
 
   for (const [where, source] of positions) {
@@ -321,7 +316,7 @@ describe('parseCodeBlock — Razor comments are not JavaScript (BUG-13)', () => 
   }
 
   it('is not fooled by braces or an @client written inside the comment (§7.4)', () => {
-    const source = `@code { @* deja una { abierta, un } suelto y un @client { *@ ${CLIENT} }<p>after</p>`;
+    const source = `@code { @* deja una { abierta, un } suelto y un @client { *@ ${COUNT} }<p>after</p>`;
     const { node, diagnostics, lexer } = run(source);
 
     expect(codes(diagnostics)).toEqual(['FUD0114']); // the comment, and nothing else
@@ -329,10 +324,10 @@ describe('parseCodeBlock — Razor comments are not JavaScript (BUG-13)', () => 
     expect(source[node.span.end - 1]).toBe('}');
     expect(source.slice(node.span.end)).toBe('<p>after</p>');
     expect(lexer.offset).toBe(node.span.end);
-    // One `@client`: the one in the comment is text, not a marker. The comment itself
-    // stays where the author wrote it, inside the neutral chunk (§4).
-    expect(types(node.parts)).toEqual(['neutral-js', 'client-region']);
-    expect(text(source, node.parts[0]!.js)).toBe('@* deja una { abierta, un } suelto y un @client { *@');
+    // The `@client` in the comment is text, not a marker: no FUD1110, and the comment stays
+    // where the author wrote it, inside the chunk (§4).
+    expect(types(node.parts)).toEqual(['neutral-js']);
+    expect(text(source, node.parts[0]!.js)).toBe(`@* deja una { abierta, un } suelto y un @client { *@ ${COUNT}`);
   });
 
   it('never hangs or throws on an unterminated Razor comment (§7.5)', () => {
@@ -351,13 +346,13 @@ describe('parseCodeBlock — Razor comments are not JavaScript (BUG-13)', () => 
 
   it('leaves JS comments alone, in the three positions (§7.6)', () => {
     const source =
-      '@code { // neutral\n  /* also neutral */\n  type T = 1;\n' +
-      '  @server { // in server\n    const s = 1; }\n' +
-      '  @client { /* in client */ const count = signal(0); } }';
+      '@code { // first\n  /* also first */\n  type T = 1;\n' +
+      '  function f() { // in a block\n    const s = 1; }\n' +
+      '  /* last */ const count = signal(0); }';
     const { node, diagnostics } = run(source);
 
     expect(diagnostics).toEqual([]);
-    expect(types(node.parts)).toEqual(['neutral-js', 'server-region', 'client-region']);
+    expect(types(node.parts)).toEqual(['neutral-js']);
   });
 
   it('does not invent the region for the callers that did not ask for it (§7.8)', () => {
@@ -413,10 +408,7 @@ describe('parseCodeBlock — integration with parseDocument', () => {
 
     expect(blocks).toHaveLength(1);
     const block = blocks[0]!;
-    expect(types(block.parts)).toEqual(['neutral-js', 'server-region']);
+    expect(types(block.parts)).toEqual(['neutral-js']);
     expect(text(source, block.parts[0]!.js)).toContain('type PageData');
-    expect(text(source, block.parts[1]!.js)).toContain("import { db } from './db';");
-    // The SQL string holds no `@`, but the region must stay opaque all the same.
-    expect(text(source, block.parts[1]!.js)).toContain('SELECT id, title');
   });
 });

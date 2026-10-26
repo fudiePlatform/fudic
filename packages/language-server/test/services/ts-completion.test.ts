@@ -22,7 +22,7 @@ import type ts from 'typescript';
 import { clientFileName, mapToGenerated } from '@fudic/language-core';
 import { DocumentCache } from '../../src/document-cache.js';
 import { filterTypeScriptCompletions } from '../../src/services/ts-completion.js';
-import { CLIENT_CODE_ID, SERVER_CODE_ID } from '@fudic/typecheck';
+import { CLIENT_CODE_ID } from '@fudic/typecheck';
 import { WorkspaceIndex } from '../../src/workspace-index.js';
 import type { CachedDocument } from '../../src/document-cache.js';
 import { fakeServiceContext, TOKEN } from '../_lsp.js';
@@ -42,10 +42,8 @@ const page = (markup: string): string =>
   `<link rel="layout" href="../layouts/_layout.fud">
 <link rel="component" href="../components/app-badge.fud">
 @code {
-  @client {
-    const counter = 1;
-    function onClick() {}
-  }
+  const counter = 1;
+  function onClick() {}
 }
 
 <head>
@@ -200,16 +198,6 @@ describe('the positions this package does not own', () => {
     );
 
     expect(answer?.items.map((i) => i.label)).toEqual(['$tpl']);
-  });
-
-  it('drops the scaffolding in the SERVER projection, and narrows nothing else', async () => {
-    // `@code` and nothing else: a position there is ordinary TypeScript, so the whole scope
-    // is the right answer — but `$props` and `$on` are still names nobody may write.
-    const answer = await completeAt('@|', list(item('$props'), item('atob')), {
-      codeId: SERVER_CODE_ID,
-    });
-
-    expect(answer?.items.map((i) => i.label)).toEqual(['atob']);
   });
 
   it('drops the scaffolding when the client projection is missing from the batch', async () => {

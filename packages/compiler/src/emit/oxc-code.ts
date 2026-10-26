@@ -20,14 +20,13 @@ import type { HtmlContent } from '../html/index.js';
 import type { ResolvedComponent } from './resolve.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import { isEmptySpan, span } from '../types/index.js';
-import { FUD0290, FUD0570, FUD0682, FUD0684 } from '@fudic/diagnostics';
+import { FUD0290, FUD0684 } from '@fudic/diagnostics';
 import { JsBatch, type JsFragmentKind, type OxcNode } from '../oxc/index.js';
 import { unwrapParens } from '../binding/index.js';
 import { collectAttributeJs, collectTemplateJs, type JsFragmentVisitor } from './constructs.js';
 import type { Anchor } from './writer.js';
-import { NO_SERVER_FNS, readServerFns, type ServerFns } from './server-fns.js';
-import { sendable } from './client-fns.js';
 import { formSendDiagnostics } from './controls.js';
+import { deferredSpans, serverCut } from './server-cut.js';
 import {
   changeableBindings,
   freeReferences,
@@ -299,24 +298,24 @@ export type DataAccess =
   | { readonly kind: 'roots'; readonly roots: readonly string[]; readonly at: Span }
   | { readonly kind: 'all'; readonly at: Span };
 
-/** Which of the three zones of `@code` a statement was written in (SDD-08 §4.2). */
-export type CodeZone = 'neutral' | 'server' | 'client';
+/**
+ * Which half of `@code` a statement went to (SDD-60 §4.8): the server's cut, which both sides
+ * evaluate, or the browser's alone.
+ */
+export type CodeZone = 'neutral' | 'client';
 
 /**
  * The top-level statements of one zone, split where the JS module grammar forces it: an
  * `import` is only legal at module scope, and everything else belongs inside the function
  * the zone is emitted into.
  *
- * The same shape as `ClientCode`, and deliberately so — three zones, one way of carrying
- * their text, so no emitter has to learn a second one.
+ * The same shape as `ClientCode`, and deliberately so — one way of carrying their text, so
+ * no emitter has to learn a second one.
  */
 export interface ZoneCode {
   readonly imports: string[];
   readonly body: ClientStatement[];
 }
-
-/** The `@server` region of a COMPONENT, which until SDD-38 reached nowhere at all. */
-export type ServerCode = ZoneCode;
 
 /** Where a source-relative offset ended up in a statement's text, after its own splices. */
 export function splicedOffset(statement: ClientStatement, sourceOffset: number): number {
@@ -342,23 +341,6 @@ export interface TemplateJs {
    * event binding, its argument list — needs the source positions to do it.
    */
   offset(bufferOffset: number): number;
-}
-
-/**
- * What a route's `layout(ctx, data)` resolves, and where a repair would write into it
- * (SDD-40 §4.7, §3.5).
- *
- * `keys` absent means the return is not a plain object literal this pass can read — a
- * `return build(ctx)`, a spread, a computed key. «Not provable» reports nothing and repairs
- * nothing, which is the same bargain an unreadable `T` already makes (BUG-23 §4.4).
- */
-export interface LayoutResolverCode {
-  /** The property names it returns, in source order. Absent when the return is unreadable. */
-  readonly keys?: readonly string[];
-  /** Just past the `{` of the returned object literal, where a new field goes. */
-  readonly fieldsAt?: number;
-  /** Whether that literal already holds a property — what decides if a comma is needed. */
-  readonly hasFields: boolean;
 }
 
 export interface ExtractedCode {
@@ -425,10 +407,19 @@ export interface ExtractedCode {
    * The clock of §6.21 is the case that makes it: unhydrated it paints the server's time and
    * freezes, which is not "works worse", it is does not work.
    *
-   * Top level, like the `FUD0570` search it shares: an `effect` inside a helper is flow
+   * Top level only: an `effect` inside a helper is flow
    * analysis, and flow analysis belongs to the language server (§7).
    */
   readonly clientEffects: boolean;
+  /**
+   * Whether the browser half does something on its own when it loads, which makes the file
+   * hydrate (SDD-60 §4.8). The client zone holds every declaration the markup does not read,
+   * and a declaration does nothing until it is called: what counts is a top-level statement that
+   * runs, as `document.title = …` or `setInterval(…)`.
+   */
+  readonly clientRuns: boolean;
+  /** Every name the `@code` declares at its top level, whatever its zone: what a linked `.fudapi` may not give again (`FUD1113`). */
+  readonly declared: readonly string[];
   /**
    * What the client half reads out of `data` — what `load()` returned (SDD-39 §4.8).
    *
@@ -461,31 +452,8 @@ export interface ExtractedCode {
    */
   readonly di: readonly DiCall[];
   /**
-   * The `@server` region's top-level statements, with the DI calls already rewritten
-   * (SDD-38 §4.1). Empty for the components — every one of them until now — that write none.
-   */
-  readonly server: ServerCode;
-  /**
-   * The names the `@server` region EXPORTS — `load`, `paths` (SDD-19 §4.3).
-   *
-   * Read off the AST rather than off the text, for the usual reason: an `export function load`
-   * inside a string or a comment exports nothing. One reader so far, and it is the one
-   * question §4.8 asks — a client half that reads `data` where no `load` ever ran is reading
-   * `undefined`, always, and that is knowable at compile time (`FUD0621`).
-   */
-  readonly serverExports: readonly string[];
-  /**
-   * The route's `export … layout(ctx, data)` — the third reserved name (SDD-40 §3.2).
-   *
-   * Absent when the file exports none, which is a different answer from «it exports one this
-   * pass cannot read»: the first is a route that resolves nothing, the second is a return
-   * nobody may draw conclusions from. Both the build's `FUD0702` and the editor's repair need
-   * to tell them apart, and both need the offsets, so they come out of the one Oxc pass here.
-   */
-  readonly layoutResolver?: LayoutResolverCode;
-  /**
-   * The statements that REGISTER and run in a browser — the neutral zone's and `@client`'s
-   * — with the imports they reference (SDD-38 §4.5).
+   * The statements that REGISTER and run in a browser — the cut's and the client's — with
+   * the imports they reference (SDD-38 §4.5).
    *
    * They are what the component's IoC module is built out of, and the reason there is one:
    * the owning ancestor may be N1, with no chunk at all, so its factory cannot live inside
@@ -493,18 +461,6 @@ export interface ExtractedCode {
    * that names this tag.
    */
   readonly providers: ZoneCode;
-  /**
-   * The server functions of the `@server`, read off its AST (SDD-56 §3.11): each one's chain,
-   * the file's `http` level, and the statements that make them up.
-   */
-  readonly serverFns: ServerFns;
-  /**
-   * The `?server` module of this file (SDD-56 §4.13): the imports its statements read — of the
-   * neutral zone too, where a form both ends import usually sits — and, for a route, its whole
-   * `@server`; for a component, its machinery alone, the rest being its `render()`'s. No DI
-   * rewrite: that code runs in a request, and `inject()` there reads the request's container.
-   */
-  readonly serverModule: ZoneCode;
   /**
    * What Oxc had to say about this `@code`, already in source coordinates (BUG-13 §5.3).
    *
@@ -554,7 +510,7 @@ export type CodeDocument = ComponentDocument | RouteDocument | PageDocument | La
  * position of the same walk, not a second kind of tree (SDD-39 §4.4).
  */
 /** The markup a document's template is made of, sections included; a layout's is its body. */
-function templateRootsOf(doc: CodeDocument): readonly HtmlContent[] {
+export function templateRootsOf(doc: CodeDocument): readonly HtmlContent[] {
   if (doc.type === 'route-document') return [...doc.markup, ...doc.sections.flatMap((s) => s.children)];
   if (doc.type === 'layout-document' || doc.type === 'page-document') return doc.body.children;
   return doc.template?.children ?? [];
@@ -632,42 +588,42 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
   });
 
   const clientStatements: OxcNode[] = [];
-  const serverStatements: OxcNode[] = [];
   const neutralStatements: OxcNode[] = [];
-  // Every top-level statement of `@code`, whichever region it came from. Imports are read
-  // off THIS and not off `clientStatements`, because a module the TEMPLATE reads usually
-  // sits in the neutral zone: the template is painted on both sides, so a store imported
-  // inside `@client` leaves the server with no such name and the route fails to prerender.
-  // The neutral zone is where it has to go, and it is just as reactive there.
+  // Every top-level statement of `@code`. Imports are read off THIS and not off
+  // `clientStatements`, because a module the TEMPLATE reads sits in the cut: the template is
+  // painted on both sides, and the cut is where its names have to be.
   const allStatements: OxcNode[] = [];
-  // The neutral zone as the two modules carry it, held as AST until the DI calls are known:
-  // its text is spliced (`inject(` → `injectFrom($ioc, `), so it cannot be sliced before the
-  // pass that finds those calls has run.
+  // The cut as the two modules carry it, held as AST until the DI calls are known: its text
+  // is spliced (`inject(` → `injectFrom($ioc, `), so it cannot be sliced before the pass that
+  // finds those calls has run.
   const neutralKept: { readonly stmt: OxcNode; readonly remaining?: readonly OxcNode[] }[] = [];
-  ids.forEach((id, i) => {
+  // The `@code` is browser code, all of it (SDD-60 §4.8): what the markup reads goes to the
+  // cut, which both sides evaluate; everything else to the client's. A layout has no cut: its
+  // `@code` only declares props, and whatever else it holds is `FUD0700`'s to say.
+  const sliced = doc.type !== 'layout-document' && parts.length > 0;
+  const cut = sliced ? cutOf(ids, fragments, doc, result.value.ast) : undefined;
+  for (const id of ids) {
     const root = result.value.ast(id);
     const stmts = Array.isArray(root) ? (root as OxcNode[]) : [root as OxcNode];
-    const zone = zoneOf(parts[i]!.type);
     for (const stmt of stmts) {
-      allStatements.push(stmt);
-      if (zone === 'client') clientStatements.push(stmt);
-      else {
-        if (zone === 'server') serverStatements.push(stmt);
-        else neutralStatements.push(stmt);
-        checkNeutralEffect(stmt, map, own);
-      }
-      // The declarators are read on BOTH sides — a `signal(...)` is as reactive in the
-      // neutral zone as in `@client` — and what comes back is what the emit does NOT write
-      // in a shape of its own, which is exactly what the neutral zone still has to carry.
+      // The declarators are read on BOTH sides, and what comes back is what the emit does NOT
+      // write in a shape of its own, which is exactly what the cut still has to carry.
+      const reactives = signals.length;
       const remaining = readDeclarators(stmt, source, map, props, signals, named);
-      // The NEUTRAL zone only, and that is the correction SDD-38 brings to this loop: what
-      // is not `@client` is not therefore shared. A `@server` region runs on one side, and
-      // sweeping it in here put it in the browser chunk — the region whose whole purpose is
-      // never to be there. It has its own field, and its own place in `render(…)`.
-      if (zone !== 'neutral') continue;
+      let zone: CodeZone = cut === undefined || cut.has(stmt) ? 'neutral' : 'client';
+      // A reactive the markup reads is still the browser's own declaration: the server renders
+      // it inert from what was just read, and the chunk declares it — and hands it to a child
+      // as a cell (SDD-60 §4.8).
+      if (sliced && zone === 'neutral' && signals.length > reactives && remaining?.length === 0) zone = 'client';
+      allStatements.push(stmt);
+      if (zone === 'client') {
+        clientStatements.push(stmt);
+        continue;
+      }
+      neutralStatements.push(stmt);
       neutralKept.push(remaining === undefined ? { stmt } : { stmt, remaining });
     }
-  });
+  }
 
   const template: TemplateJs = {
     ast: (at) => {
@@ -676,31 +632,18 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     },
     offset: map,
   };
-  checkReservedPrefix(clientStatements, map, own);
+  // The whole `@code`: every name of it is the browser's (FUD0290). The
+  // import of `@fudic/i18n` aside: the expansion of translations writes `$format` and
+  // `$message` into it, and any other import that brings a `$` name is the author's.
+  checkReservedPrefix(sliced ? allStatements.filter((s) => !isI18nImport(s)) : clientStatements, map, own);
 
-  // The server functions, read before the DI calls: inside a component's machinery `inject`
-  // is NOT rewritten (SDD-56 §4.13) — that code runs in a request, not in a render.
-  const component = doc.type === 'component-document';
-  const fnsRead =
-    serverStatements.length === 0
-      ? { fns: NO_SERVER_FNS, diagnostics: [] }
-      : readServerFns({
-          server: serverStatements,
-          all: allStatements,
-          map,
-          browserNames: new Set([
-            ...topLevelBindings(clientStatements),
-            ...topLevelBindings(neutralStatements),
-          ]),
-          component,
-          errorPage: false,
-        });
-  own.push(...fnsRead.diagnostics);
   // `form:=` that cannot send, said HERE and not by the client chunk: a route whose only
   // client-side thing is a broken `form:=` has no chunk at all, and the error would vanish.
-  own.push(...formSendDiagnostics(source, templateRootsOf(doc), sendable(fnsRead.fns)));
-  const { machinery } = fnsRead.fns;
-  const inRender = (stmt: OxcNode): boolean => !(component && machinery.has(stmt));
+  // A file that links a `.fudapi` sends to ITS functions, which only the graph knows: that
+  // check is `apiDiagnostics`'s (SDD-60 §3.14). One that links none has none to send to.
+  if (!('serverLinks' in doc && doc.serverLinks !== undefined)) {
+    own.push(...formSendDiagnostics(source, templateRootsOf(doc), new Set()));
+  }
 
   const binding = emitBinding(clientStatements);
   const emitCalls: EmitCall[] = [];
@@ -713,10 +656,9 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
   const cellReads: number[] = [];
   if (callbacks.size > 0) collectCellReads(clientStatements, callbacks, map, cellReads);
 
-  // The DI calls of the THREE zones, in one pass over the bindings `@fudic/di` was imported
-  // under. The names are gathered across the whole `@code` because the zones are fragments
-  // of one module: an `import { inject }` written in the neutral chunk is the binding a
-  // `@server` region three lines down is calling.
+  // The DI calls of both zones, in one pass over the bindings `@fudic/di` was imported under.
+  // The names are gathered across the whole `@code` because the zones are parts of one
+  // module: an `import { inject }` in the cut is the binding a client handler is calling.
   const di: DiCall[] = [];
   const bindings = diBindings(allStatements);
   const rewritten = new Set(bindings.keys());
@@ -724,9 +666,8 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     const imports = importSources(allStatements);
     const scan = { bindings, imports, source, map, out: di };
     collectDiCalls(neutralStatements, { ...scan, zone: 'neutral' });
-    collectDiCalls(serverStatements.filter(inRender), { ...scan, zone: 'server' });
     collectDiCalls(clientStatements, { ...scan, zone: 'client' });
-    checkDiZones(di, own);
+    checkDuplicateProviders(di, own);
   }
   const diEdits = di.map(rewriteOf);
 
@@ -741,8 +682,8 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
   });
 
   for (const stmt of clientStatements) {
-    // A `provide` written in `@client` is not part of the chunk: it belongs to the IoC
-    // module like every other registration, and `$own` — the container it registers into —
+    // A `provide` the cut did not take (under another name, inside an `if`) is not part of
+    // the chunk: it belongs to the IoC module like every other registration, and `$own` — the container it registers into —
     // does not exist on this side at all.
     if (holdsDi(stmt, map, di, 'client', 'provide')) continue;
     readClientStatement(stmt, source, map, client, emitCalls, cellReads, diEdits);
@@ -754,14 +695,16 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     client,
     neutral,
     template,
-    mutable: changeableBindings(clientStatements),
+    // A reassigned binding the markup reads sits in the cut, not in the client's
+    // statements, and it is the browser's all the same (SDD-60 §4.8).
+    mutable: changeableBindings(sliced ? allStatements : clientStatements),
     clientNames: topLevelBindings(clientStatements),
-    clientFunctions: topLevelFunctions(clientStatements),
+    clientFunctions: topLevelFunctions(sliced ? allStatements : clientStatements),
     setCalls: setCalls(clientStatements),
-    // Never the `@server`'s: its imports do not exist in the browser chunk, and a `$subIf` on
-    // one is a `ReferenceError` that stops the hydration halfway (`auth`, `Users`…).
-    clientImports: importedBindings(allStatements.filter((stmt) => !serverStatements.includes(stmt))),
+    clientImports: importedBindings(allStatements),
     clientEffects: clientStatements.some((stmt) => effectCalls(stmt).length > 0),
+    declared: topLevelBindings(allStatements),
+    clientRuns: clientStatements.some((stmt) => stmt.type === 'ExpressionStatement'),
     // The template's reads too: a reactive route repaints it in the browser, and a
     // `@foreach (const p of data.users)` there iterates what `fud-data` brought — or nothing.
     dataAccess: readDataAccess(
@@ -770,17 +713,6 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     ),
     emitCalls,
     di,
-    server: zoneCode(serverStatements, source, map, diEdits, inRender, rewritten),
-    serverFns: fnsRead.fns,
-    serverModule: zoneCode(
-      [...neutralStatements, ...serverStatements],
-      source,
-      map,
-      [],
-      (stmt) => serverStatements.includes(stmt) && (!component || machinery.has(stmt)),
-    ),
-    serverExports: exportedNames(serverStatements),
-    ...spread('layoutResolver', layoutResolverOf(serverStatements, map)),
     providers: mergeZones(
       zoneCode(
         neutralStatements,
@@ -846,135 +778,6 @@ export function codeOfDocument(source: string, doc: CodeDocument): ExtractedCode
 /** The name a route's `load()` result travels under, on both sides (SDD-39 §4.8). */
 const DATA_BINDING = 'data';
 
-/** `{ k: v }` for a present value, `{}` for an absent one — `exactOptionalPropertyTypes`. */
-const spread = <T,>(key: string, value: T | undefined): Record<string, T> =>
-  value === undefined ? {} : { [key]: value };
-
-/** The third reserved export of a route's `@server` (SDD-40 §3.2). */
-const LAYOUT_EXPORT = 'layout';
-
-/**
- * The route's exported `layout`, with what it returns and where a field would go.
- *
- * Read off the AST and off one shape only: a `return { … }` whose argument is a plain object
- * literal, written directly in the exported function. That is deliberately narrow, because
- * what the answer is used for is `FUD0702` and the repair beside it, and a build that reported
- * a missing prop over a `return buildProps(ctx)` it never looked inside would be inventing an
- * error. What it cannot read comes back with no `keys`, and no `keys` reports nothing.
- *
- * Both declaration shapes count, since both are how people write it: the function statement
- * and the `const layout = (ctx, data) => ({ … })` arrow, whose body IS its return.
- */
-function layoutResolverOf(
-  statements: readonly OxcNode[],
-  map: MapOffset,
-): LayoutResolverCode | undefined {
-  for (const stmt of statements) {
-    if (!is(stmt, 'ExportNamedDeclaration')) continue;
-    const declaration = field(stmt, 'declaration');
-    if (declaration === undefined) continue;
-    if (is(declaration, 'FunctionDeclaration')) {
-      const id = field(declaration, 'id');
-      if (!is(id, 'Identifier') || name(id) !== LAYOUT_EXPORT) continue;
-      return returnedObject(field(declaration, 'body'), map);
-    }
-    if (!is(declaration, 'VariableDeclaration')) continue;
-    for (const declarator of fieldArray(declaration, 'declarations')) {
-      const id = field(declarator, 'id');
-      if (!is(id, 'Identifier') || name(id) !== LAYOUT_EXPORT) continue;
-      const init = field(declarator, 'init');
-      if (!is(init, 'ArrowFunctionExpression') && !is(init, 'FunctionExpression')) {
-        return { hasFields: false };
-      }
-      // `(ctx, data) => ({ … })`: the expression body IS the return, and the parentheses
-      // around it are the grammar's — without them the `{` would open a block — so they are
-      // unwrapped rather than read as «not an object literal».
-      const body = unwrapParens(field(init!, 'body'));
-      return is(body, 'ObjectExpression') ? readObject(body!, map) : returnedObject(body, map);
-    }
-  }
-  return undefined;
-}
-
-/** The first `return { … }` of a function body, read; anything else is present but unreadable. */
-function returnedObject(body: OxcNode | undefined, map: MapOffset): LayoutResolverCode {
-  if (!is(body, 'BlockStatement')) return { hasFields: false };
-  for (const stmt of fieldArray(body!, 'body')) {
-    if (!is(stmt, 'ReturnStatement')) continue;
-    const argument = unwrapParens(field(stmt, 'argument'));
-    return is(argument, 'ObjectExpression') ? readObject(argument!, map) : { hasFields: false };
-  }
-  return { hasFields: false };
-}
-
-/** One object literal: its keys, and where a new field goes — just past its `{`. */
-function readObject(object: OxcNode, map: MapOffset): LayoutResolverCode {
-  const keys = objectKeys(object);
-  const properties = fieldArray(object, 'properties');
-  return {
-    ...spread('keys', keys),
-    fieldsAt: map(object.start) + 1,
-    hasFields: properties.length > 0,
-  };
-}
-
-/**
- * The property names of an object literal, when every one of them is a plain identifier.
- *
- * Anything else — a spread, a computed key, a quoted one — makes the WHOLE literal unreadable
- * rather than shortening it, and shortening is the dangerous answer: a `...defaults` can carry
- * the very prop the build was about to call missing. Unreadable reports nothing and repairs
- * nothing, which costs a `{ 'culture': 'es' }` its diagnostic and costs nobody a wrong one.
- */
-function objectKeys(object: OxcNode): readonly string[] | undefined {
-  const out: string[] = [];
-  for (const property of fieldArray(object, 'properties')) {
-    if (!is(property, 'Property') || property['computed'] === true) return undefined;
-    const key = field(property, 'key');
-    if (!is(key, 'Identifier')) return undefined;
-    out.push(name(key));
-  }
-  return out;
-}
-
-/**
- * The names an `export` binds: `export function load` → `load`.
- *
- * Three shapes and the third is the one a reader forgets. A declaration names itself; a
- * `const` names one binding per declarator, and a DESTRUCTURING declarator names none this
- * can read; and an export with no declaration at all is the clause form, `export { load }`,
- * which names its bindings on the other side of the statement.
- */
-function exportedNames(statements: readonly OxcNode[]): readonly string[] {
-  return statements.flatMap((stmt) =>
-    is(stmt, 'ExportNamedDeclaration') ? boundNames(stmt) : [],
-  );
-}
-
-function boundNames(stmt: OxcNode): readonly string[] {
-  const declaration = field(stmt, 'declaration');
-  if (declaration === undefined) {
-    // `export { load }` / `export { load as carga }`: what the module publishes is the
-    // EXPORTED side, which is the name an importer writes.
-    return fieldArray(stmt, 'specifiers').flatMap((spec) => {
-      const exported = field(spec, 'exported');
-      // `export { load as "mi-carga" }` publishes a string, not an identifier, and nothing
-      // can import it under a name — so it names nothing here.
-      return is(exported, 'Identifier') ? [name(exported)] : [];
-    });
-  }
-  if (is(declaration, 'VariableDeclaration')) {
-    return fieldArray(declaration, 'declarations').flatMap((declarator) => {
-      const bound = declaredName(declarator);
-      return bound === undefined ? [] : [bound];
-    });
-  }
-  // Everything else — `export function load()`, `export class`, `export type` — carries its
-  // name in `id`, always: a named export whose declaration has no name of its own is not a
-  // shape the grammar has (`export default` is a node type of its own).
-  return [name(field(declaration, 'id')!)];
-}
-
 /**
  * What a region reads out of `data`, by walking its AST (SDD-39 §4.8).
  *
@@ -1028,20 +831,8 @@ function readDataAccess(statements: readonly OxcNode[], map: MapOffset): DataAcc
 }
 
 /**
- * `effect(...)` at the top level of a zone, as the two rules that care about it read it.
- *
- * One search, two readings. Outside `@code { @client }` it is `FUD0570` — an effect runs
- * after the first render and the server has none. INSIDE it, the very same finding says
- * something else: this file cannot wait for a gesture (SDD-39 §4.6). Where one says «this is
- * in the wrong place», the other says «this cannot be deferred».
- */
-/**
- * `effect(...)` outside `@code { @client }` → `FUD0570` (SDD-31 §5).
- *
- * An effect is, by definition, what happens AFTER the first render, and the server has no
- * such moment. The statement is dropped — the neutral zone only ever contributed props and
- * reactive declarations to the emit anyway — and the rest of the file is emitted: the emit
- * does not throw. `computed` and `batch` are not flagged; both have a server meaning.
+ * `effect(...)` at the top level of the `@code`: this file cannot wait for a gesture (SDD-39
+ * §4.6). Without regions an effect goes anywhere, and it is never in the cut (SDD-60 §4.8).
  */
 function effectCalls(stmt: OxcNode): readonly OxcNode[] {
   // The two shapes an `effect(...)` takes: called for its side effect, or bound to keep its
@@ -1054,12 +845,6 @@ function effectCalls(stmt: OxcNode): readonly OxcNode[] {
     const callee = field(call, 'callee');
     return is(callee, 'Identifier') && name(callee) === 'effect';
   });
-}
-
-function checkNeutralEffect(stmt: OxcNode, map: MapOffset, out: Diagnostic[]): void {
-  for (const call of effectCalls(stmt)) {
-    out.push(FUD0570({ span: { start: map(call.start), end: map(call.end) } }));
-  }
 }
 
 /**
@@ -1088,6 +873,11 @@ function checkReservedPrefix(
   for (const id of reservedIdentifiers(statements)) {
     out.push(FUD0290({ span: { start: map(id.start), end: map(id.end) }, name: name(id) }));
   }
+}
+
+/** Whether a statement is the `import … from '@fudic/i18n'` the expansion of translations writes. */
+function isI18nImport(statement: OxcNode): boolean {
+  return statement.type === 'ImportDeclaration' && (statement['source'] as OxcNode)['value'] === '@fudic/i18n';
 }
 
 /** The package `emit` comes from. Anything else of that name is the author's own. */
@@ -1258,10 +1048,61 @@ function readClientStatement(
   else client.body.push({ text, at: start, anchors: anchorsOf(source, start, end, splices), splices });
 }
 
-/** The zone a `@code` part belongs to — the only place the node type becomes a zone. */
-function zoneOf(type: string): CodeZone {
-  if (type === 'client-region') return 'client';
-  return type === 'server-region' ? 'server' : 'neutral';
+/**
+ * The statements of a region-less `@code` the server evaluates (SDD-60 §4.8): seeded by the
+ * fragments the markup paints with — never a deferred one, and never a bare function name,
+ * which crosses as a cell — plus every top-level `provide` and the `props<T>()` the emit writes
+ * on both sides.
+ */
+function cutOf(
+  ids: readonly number[],
+  fragments: ReadonlyMap<string, number>,
+  doc: CodeDocument,
+  ast: (id: number) => OxcNode | readonly OxcNode[],
+): ReadonlySet<OxcNode> {
+  const statements = ids.flatMap((id) => {
+    const root = ast(id);
+    return Array.isArray(root) ? (root as OxcNode[]) : [root as OxcNode];
+  });
+  const functions = topLevelFunctions(statements);
+  const deferred = deferredSpans(templateRootsOf(doc));
+  const seeds: (OxcNode | readonly OxcNode[])[] = [];
+  for (const [key, id] of fragments) {
+    if (deferred.has(key)) continue;
+    const root = ast(id);
+    const bare = Array.isArray(root) ? undefined : unwrapParens(root as OxcNode);
+    if (bare?.type === 'Identifier' && functions.has(String(bare['name']))) continue;
+    seeds.push(root);
+  }
+  return serverCut({
+    statements,
+    seeds,
+    always: (stmt) => {
+      const call = stmt.type === 'ExpressionStatement' ? (stmt['expression'] as OxcNode) : undefined;
+      if (calls(call, 'provide')) return true;
+      if (stmt.type !== 'VariableDeclaration') return false;
+      return (stmt['declarations'] as readonly OxcNode[]).some((d) => calls(d['init'] as OxcNode | null, 'props'));
+    },
+    effects: (stmt) => effectCalls(stmt).length > 0,
+    reads: reactiveArguments,
+  });
+}
+
+/**
+ * The arguments of a declaration whose every declarator is a `signal(…)` or a `computed(…)`:
+ * the server writes it inert from them, and the browser's `signal` is never its business.
+ */
+function reactiveArguments(stmt: OxcNode): readonly OxcNode[] | undefined {
+  if (stmt.type !== 'VariableDeclaration') return undefined;
+  const inits = (stmt['declarations'] as readonly OxcNode[]).map((d) => d['init'] as OxcNode | null);
+  if (!inits.every((init) => calls(init, 'signal') || calls(init, 'computed'))) return undefined;
+  return inits.flatMap((init) => init!['arguments'] as readonly OxcNode[]);
+}
+
+/** Whether `node` is a call to the bare name `fn`: `provide(…)`, `props<T>()`. */
+function calls(node: OxcNode | null | undefined, fn: string): boolean {
+  const callee = node?.type === 'CallExpression' ? (node['callee'] as OxcNode) : undefined;
+  return callee?.type === 'Identifier' && callee['name'] === fn;
 }
 
 /** The package `inject` and `provide` come from. Anything else of that name is the author's. */
@@ -1363,41 +1204,22 @@ function rootIdentifier(node: OxcNode): string | undefined {
 }
 
 /**
- * The two contradictions a single `@code` can hold on its own (SDD-38 §6.23, §6.25).
+ * The contradiction a single `@code` can hold on its own (SDD-38 §6.25).
  *
- * Both are asked HERE and not of the graph, because both are answered by one file: they are
- * about what this `@code` says against itself, and no ancestor can make either of them true
- * or false. Neither stops the emit — the module is written degraded and the browser gets the
+ * It is asked HERE and not of the graph, because it is answered by one file: it is about what
+ * this `@code` says against itself, and no ancestor can make it true or false. It does not stop
+ * the emit — the module is written degraded and the browser gets the
  * runtime error it would have got anyway, which is the whole point of reporting it first.
  *
  * `FUD0684` — the same provider registered twice. The second registration silently replaces
  * the first, so one of the two factories is dead code and the author cannot tell which.
- *
- * `FUD0682` — a provider registered on ONE side and injected on the other. The two lines
- * never run in the same process, so the registration this injection was written for is not
- * there when it asks. The neutral zone is never a mismatch, on either end: it runs on both
- * sides, which is exactly what makes it the answer to this diagnostic.
  */
-function checkDiZones(di: readonly DiCall[], out: Diagnostic[]): void {
-  const provideZones = new Map<string, Set<CodeZone>>();
+function checkDuplicateProviders(di: readonly DiCall[], out: Diagnostic[]): void {
+  const provided = new Set<string>();
   for (const call of di) {
     if (call.kind !== 'provide' || call.provider === '') continue;
-    const seen = provideZones.get(call.provider);
-    if (seen === undefined) {
-      provideZones.set(call.provider, new Set([call.zone]));
-      continue;
-    }
-    seen.add(call.zone);
-    out.push(FUD0684({ span: call.providerSpan, provider: call.provider }));
-  }
-  for (const call of di) {
-    if (call.kind !== 'inject' || call.zone === 'neutral') continue;
-    const zones = provideZones.get(call.provider);
-    // Only when the file provides it and provides it NOWHERE this injection runs. A provider
-    // this file does not write at all is an ancestor's or a `@Service`'s, and that is FUD0680's
-    // question — asked of the graph, with the module next door open.
-    if (zones === undefined || zones.has('neutral') || zones.has(call.zone)) continue;
-    out.push(FUD0682({ span: call.providerSpan, provider: call.provider, zone: call.zone }));
+    if (provided.has(call.provider)) out.push(FUD0684({ span: call.providerSpan, provider: call.provider }));
+    provided.add(call.provider);
   }
 }
 
@@ -1491,9 +1313,8 @@ function importBindings(declaration: OxcNode): readonly string[] {
 /**
  * One zone's top-level statements as text, with the DI calls already rewritten.
  *
- * `keep` decides which non-import statements survive: everything, for `@server`, whose whole
- * region is emitted; only the ones that hold a DI call, for the neutral zone, which has never
- * been emitted and must not start emitting anything else now.
+ * `keep` decides which non-import statements survive: only the ones that hold a DI call, since
+ * this text is the IoC module's and must not start emitting anything else.
  *
  * An import survives when one of the kept statements references it — or when it binds nothing
  * at all, because a bare `import '../services/cart.js'` is imported precisely for the one

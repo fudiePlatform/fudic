@@ -48,7 +48,6 @@ export {
   snapshotOf,
   styleCodeId,
   CLIENT_CODE_ID,
-  SERVER_CODE_ID,
   FUD_LANGUAGE_ID,
   mountGlobals,
   GLOBALS_DTS,
@@ -60,7 +59,6 @@ export {
   semanticDiagnostics,
   type ParsedFud,
   type DocumentJs,
-  type CodeRegion,
   type FudicVirtualCode,
   type UnresolvedHref,
 } from '@fudic/typecheck';

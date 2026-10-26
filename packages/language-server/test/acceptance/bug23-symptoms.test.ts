@@ -11,7 +11,7 @@
  * private copy, because it creates a component of its own and the other acceptance files
  * assert over a workspace of exactly four documents while running in parallel.
  *
- * `signal` is declared inside `@client` rather than imported from `@fudic/core`: what makes a
+ * `signal` is declared in the `@code` rather than imported from `@fudic/core`: what makes a
  * name reactive is the CALLEE (`signal(...)` / `computed(...)`), never where it came from, and
  * the fixture project has no node_modules to resolve a package from.
  */
@@ -47,24 +47,17 @@ const CIRCLE = `@code {
 const HEAD = `<link rel="layout" href="../layouts/_layout.fud">
 <link rel="component" href="../components/app-circle.fud">
 
+<link rel="server" href="./bug23.fudapi">
+
 @code {
-  type PageData = { title: string };
+  type Signal<T> = { (): T; set(next: T): void };
+  declare function signal<T>(initial: T): Signal<T>;
+  type Tone = 'neutral' | 'info';
 
-  @server {
-    export async function load(): Promise<PageData> {
-      return { title: 'Untitled' };
-    }
-  }
-  @client {
-    type Signal<T> = { (): T; set(next: T): void };
-    declare function signal<T>(initial: T): Signal<T>;
-    type Tone = 'neutral' | 'info';
-
-    const items = [{ id: 1 }];
-    const counter = signal({ id: 1 });
-    const titulo = signal<Tone>('info');
-    function onClick(ev: MouseEvent): void { void ev; }
-  }
+  const items = [{ id: 1 }];
+  const counter = signal({ id: 1 });
+  const titulo = signal<Tone>('info');
+  function onClick(ev: MouseEvent): void { void ev; }
 }
 
 @section nav {
@@ -73,7 +66,9 @@ const HEAD = `<link rel="layout" href="../layouts/_layout.fud">
 
 `;
 
-const PAGE = 'blog/bug23.fud';
+const PAGE = 'src/blog/bug23.fud';
+/** The reproduction's contract: its `load` is what declares `data` (SDD-60 §3.14). */
+const API = 'src/blog/bug23.fudapi';
 
 /** The reproduction with `markup` as its body. */
 const page = (markup: string): string => `${HEAD}${markup}\n`;
@@ -83,11 +78,12 @@ let version = 1;
 
 beforeAll(async () => {
   const root = copyWorkspace();
-  writeFileSync(`${root}/components/app-circle.fud`, CIRCLE);
+  writeFileSync(`${root}/src/components/app-circle.fud`, CIRCLE);
   writeFileSync(`${root}/${PAGE}`, page('<h1>Home</h1>'));
+  writeFileSync(`${root}/${API}`, 'load\n  title  str\n');
 
   harness = await startHarness({ root });
-  await harness.open('components/app-circle.fud');
+  await harness.open('src/components/app-circle.fud');
   await harness.open(PAGE);
 }, 60_000);
 
@@ -244,7 +240,7 @@ describe('§2.3 — what may go after a `=@`', () => {
   // A bare `@` with nothing behind it is not a RazorExpression at all — the tokenizer degrades
   // it to a plain attribute — so it has no hole in the projection to ask from. That half is
   // measured below, and is the same defect `@click=@` had.
-  it('offers the route data, the props and the names of `@client`', async () => {
+  it('offers the route data, the props and the names of the `@code`', async () => {
     const items = await completeAt('<app-circle .name=@a|></app-circle>', '@');
 
     expect(names(items)).toContain('@data');

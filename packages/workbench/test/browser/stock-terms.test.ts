@@ -25,13 +25,13 @@ const STYLE = '<head>\n  <style>\n    :host { display: block; }\n  </style>\n</h
 
 /** A menu that opens with the key `x` and gives the focus to its first item. */
 const MENU_LISTENS =
-  '@code {\n  @client {\n    import { signal } from "@fudic/core";\n\n' +
-  '    const open = signal(false);\n    let first: HTMLElement | null = null;\n\n' +
-  '    function onKey(event: KeyboardEvent) {\n' +
-  '      if (event.key !== "x") return;\n' +
-  '      open.set(true);\n' +
-  '      requestAnimationFrame(() => first?.focus());\n' +
-  '    }\n  }\n}\n\n' +
+  '@code {\n  import { signal } from "@fudic/core";\n\n' +
+  '  const open = signal(false);\n  let first: HTMLElement | null = null;\n\n' +
+  '  function onKey(event: KeyboardEvent) {\n' +
+  '    if (event.key !== "x") return;\n' +
+  '    open.set(true);\n' +
+  '    requestAnimationFrame(() => first?.focus());\n' +
+  '  }\n}\n\n' +
   STYLE +
   '<ui-menu @keydown=@onKey>\n  <template shadowrootmode="open" shadowrootdelegatesfocus>\n' +
   '    <button>Menu</button>\n' +

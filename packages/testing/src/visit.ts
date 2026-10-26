@@ -9,6 +9,7 @@
  */
 
 import { classifyError, renderErrorPage, matchRouteBuild } from '@fudic/vite/harness';
+import { serverRoot } from './api.js';
 import { showPage } from './document.js';
 import { graphOf } from './graph.js';
 import { chunkMap, hydrate } from './hydrate.js';
@@ -16,7 +17,6 @@ import { loadWrapper, renderPage, routeFacts } from './page.js';
 import { settled } from './pending.js';
 import { projectOf } from './project.js';
 import type { ProviderOverride } from './providers.js';
-import { knowComponents } from './server.js';
 import { enterWorld, harnessOf, type Harness, type WorldOptions } from './session.js';
 
 export interface VisitOptions extends WorldOptions {
@@ -39,13 +39,12 @@ function pathnameOf(url: string, base: string): string {
 
 /** The page the dev server answers for `url`, with its status. */
 async function answer(url: string, data: unknown): Promise<{ html: string; status: number; file: string }> {
-  const { base, routes, errorPage, httpFile } = projectOf();
+  const { base, routes, errorPage } = projectOf();
   const pathname = pathnameOf(url, base);
   const rb = matchRouteBuild(routes, pathname);
   if (rb === null) throw new Error(`visit('${url}'): no route matches ${pathname}`);
-  knowComponents(graphOf(rb.absPath).components.values());
   try {
-    return { html: await renderPage(rb.absPath, routeFacts(rb, httpFile), rb.route.pattern, pathname, data), status: 200, file: rb.absPath };
+    return { html: await renderPage(rb.absPath, routeFacts(rb), rb.route.pattern, pathname, data), status: 200, file: rb.absPath };
   } catch (error) {
     const failure = classifyError(error, true);
     if (failure.kind === 'redirect') {
@@ -54,8 +53,7 @@ async function answer(url: string, data: unknown): Promise<{ html: string; statu
     if (errorPage === undefined) {
       return { html: await renderErrorPage(null, failure.problem, ''), status: failure.problem.status, file: rb.absPath };
     }
-    knowComponents(graphOf(errorPage.absPath).components.values());
-    const mod = await loadWrapper(errorPage.absPath, routeFacts(errorPage, httpFile));
+    const mod = await loadWrapper(errorPage.absPath, routeFacts(errorPage));
     return { html: await renderErrorPage(mod, failure.problem, ''), status: failure.problem.status, file: errorPage.absPath };
   }
 }
@@ -80,6 +78,7 @@ export async function showDocument(
 /** Visit `url` and hand back the page a test reads and drives. */
 export async function visit(url: string, options: VisitOptions = {}): Promise<Visited> {
   const providers = enterWorld(options, url);
+  await serverRoot();
   const { html, status, file } = await answer(url, options.data);
   return showDocument(html, file, status, providers);
 }

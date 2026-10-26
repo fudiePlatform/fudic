@@ -60,10 +60,9 @@ const click = (shadow: ShadowRoot, selector: string): Event => {
 const CASES = (tag: string): string =>
   '@code {\n' +
   '  const { rows = [] } = props<{ rows?: { id: string }[] }>();\n' +
-  '  @client {\n' +
-  '    globalThis.__fudLog = [];\n' +
-  '    function del(...args) { globalThis.__fudLog.push(args); }\n' +
-  '  }\n}\n' +
+  '  globalThis.__fudLog = [];\n' +
+  '  function del(...args) { globalThis.__fudLog.push(args); }\n' +
+  '}\n' +
   `<${tag}>\n  <template shadowrootmode="open"><ul>\n` +
   '    @foreach (const row of rows) key (row.id) {\n' +
   `      <li class="r-@row.id">\n` +
@@ -153,11 +152,11 @@ describe('create and hydrate converge on the same listener (§6.7)', () => {
 });
 
 const BUS = (tag: string): string =>
-  '@code {\n  @client {\n' +
-  '    globalThis.__fudLog = [];\n' +
-  '    function onCarrito(ev) { globalThis.__fudLog.push([this.tagName, ev.type]); }\n' +
-  '    function press(ev) { globalThis.__fudLog.push(["click"]); }\n' +
-  '  }\n}\n' +
+  '@code {\n' +
+  '  globalThis.__fudLog = [];\n' +
+  '  function onCarrito(ev) { globalThis.__fudLog.push([this.tagName, ev.type]); }\n' +
+  '  function press(ev) { globalThis.__fudLog.push(["click"]); }\n' +
+  '}\n' +
   `<${tag}>\n  <template shadowrootmode="open">` +
   `<button bus:carrito="@onCarrito($event)" @click="@press($event)">x</button>` +
   `</template>\n</${tag}>\n`;

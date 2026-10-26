@@ -2,7 +2,7 @@
  * SDD-39 §6.6 — the chunk of a ROUTE is described by its map, and by ONE source.
  *
  * The half of a page that had no chunk at all until this SDD has to be as debuggable as a
- * component's: a breakpoint on a line of `@client` lands, and the names resolve. And it has
+ * component's: a breakpoint on a line of its `@code` lands, and the names resolve. And it has
  * to stay at one `sources` entry — the route's own `.fud` — even though the walk crosses the
  * layout's markup, because crossing it is calls to the cursor and never a slice of its text
  * (SDD-13 §4.3).
@@ -35,12 +35,10 @@ const LAYOUT = `<!DOCTYPE html>
 const ROUTE = `<link rel="layout" href="../layouts/_layout.fud">
 
 @code {
-  @client {
-    import { signal } from '@fudic/core';
+  import { signal } from '@fudic/core';
 
-    const veces = signal(0);
-    const sube = () => veces.set(veces() + 1);
-  }
+  const veces = signal(0);
+  const sube = () => veces.set(veces() + 1);
 }
 
 <button class="sube" @click=@sube()>suma</button>
@@ -118,7 +116,7 @@ describe('the chunk of a route, and its map', () => {
     for (const name of ['veces', 'sube', 'signal']) expect(map.names).toContain(name);
   });
 
-  it('maps every statement of `@client` back to the line it was written on', () => {
+  it('maps every statement of the `@code` back to the line it was written on', () => {
     const i = map.sources.findIndex((s) => (s ?? '').endsWith('reactiva.fud?client'));
     const source = map.sourcesContent![i]!.split('\n');
     const mapped = new Set(

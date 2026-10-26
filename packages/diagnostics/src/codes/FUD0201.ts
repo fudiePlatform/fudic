@@ -12,6 +12,6 @@ export const FUD0201 = (p: FUD0201Params): SourceDiagnostic =>
   source(
     'FUD0201',
     'error',
-    `\`.${p.prop}\` takes a function by reference: name one of @code { @client }`,
+    `\`.${p.prop}\` takes a function by reference: name a function of the \`@code\``,
     p,
   );

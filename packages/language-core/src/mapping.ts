@@ -43,41 +43,6 @@ export function mapToSource(
   return undefined;
 }
 
-/** The minimum a diagnostic must carry to be deduplicated. */
-export interface MappedDiagnostic {
-  /** Name of the virtual file it was reported in. */
-  readonly virtual: string;
-  /** Offset in the `.fud`. */
-  readonly sourceOffset: number;
-  readonly code: number;
-}
-
-/**
- * Drop the duplicates the neutral zone creates (SDD-23 §4.1).
- *
- * The neutral zone is emitted into both the client and the server virtual, because its
- * declarations must be visible on both sides. An error inside it is therefore found twice,
- * and without this the user sees every such error duplicated in the editor.
- *
- * The client virtual wins: it is the file the user is looking at when editing markup, and
- * it is the one that holds the template.
- */
-export function dedupeDiagnostics<T extends MappedDiagnostic>(
-  diagnostics: readonly T[],
-  clientVirtual: string,
-): readonly T[] {
-  const seen = new Map<string, T>();
-
-  for (const d of diagnostics) {
-    const key = `${d.sourceOffset}:${d.code}`;
-    const previous = seen.get(key);
-    if (previous === undefined || (previous.virtual !== clientVirtual && d.virtual === clientVirtual)) {
-      seen.set(key, d);
-    }
-  }
-  return [...seen.values()];
-}
-
 /** The reverse: where a position of the `.fud` lives in this virtual file. */
 export function mapToGenerated(
   file: VirtualFile,

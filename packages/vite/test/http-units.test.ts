@@ -1,6 +1,6 @@
 /**
- * SDD-56 in the plugin, the pieces on their own: erasing the server halves from the client
- * bundle (§4.5, criteria 7 and 8), and what a navigation answers when `load` throws (§4.8).
+ * SDD-56 in the plugin, the pieces on their own: the functions middleware, and what a
+ * navigation answers when `load` throws (§4.8).
  */
 
 import { describe, expect, it, vi } from 'vitest';
@@ -8,7 +8,6 @@ import { fileURLToPath } from 'node:url';
 import { fudic } from '../src/index.js';
 import { fakeDevServerParts } from './helpers/dev-server.js';
 import { ERROR_FILE } from '@fudic/conventions';
-import { eraseServerHalves } from '../src/server-halves.js';
 import {
   classifyError,
   ERROR_PATTERN,
@@ -41,97 +40,6 @@ describe('the functions middleware, before anything else (§4.15)', () => {
     const next = vi.fn();
     first!({}, {}, next);
     expect(next).toHaveBeenCalledOnce();
-  });
-});
-
-describe('eraseServerHalves (§4.5)', () => {
-  it('replaces the argument of .server(…) in a module that imports @fudic/http', () => {
-    const code = [
-      "import { middleware } from '@fudic/http';",
-      "import { createHash } from 'node:crypto';",
-      'export const auth = middleware()',
-      '  .client((ctx, next) => next(ctx))',
-      "  .server((ctx, next) => { createHash('sha256'); return next(ctx); });",
-    ].join('\n');
-    const out = eraseServerHalves(code)!.code;
-    // Blanked, not cut (BUG-47 §4.2): what is left of the argument is spaces.
-    expect(out).toMatch(/\.server\(undefined +\);$/u);
-    expect(out.split('\n').map((l) => l.length)).toEqual(code.split('\n').map((l) => l.length));
-    expect(out).toContain('.client((ctx, next) => next(ctx))');
-    expect(out).not.toContain("createHash('sha256')");
-    // Only the erased half used it, so it goes with it (BUG-47 §4.1).
-    expect(out).not.toContain('node:crypto');
-  });
-
-  it('reports the erased spans, in source coordinates', () => {
-    const code = "import { middleware } from '@fudic/http';\nexport const a = middleware().server(SECRET);";
-    const { erased } = eraseServerHalves(code)!;
-    expect(erased.map((s) => code.slice(s.start, s.end))).toEqual(['SECRET']);
-  });
-
-  it('any receiver: a base kept in a const, a namespace import', () => {
-    const code = [
-      "import * as http from '@fudic/http';",
-      'const base = http.middleware();',
-      'export const a = base.server(SECRET_A);',
-      'export const b = http.middleware().server(SECRET_B).client(c);',
-    ].join('\n');
-    const out = eraseServerHalves(code)!.code;
-    expect(out).not.toContain('SECRET_A');
-    expect(out).not.toContain('SECRET_B');
-    expect(out).toContain('.client(c)');
-  });
-
-  it('a .server nested inside an erased argument goes with it', () => {
-    const code = [
-      "import { middleware } from '@fudic/http';",
-      'export const a = middleware().server((ctx, next) => inner.server(DEEP) && next(ctx));',
-    ].join('\n');
-    const argument = '(ctx, next) => inner.server(DEEP) && next(ctx)';
-    expect(eraseServerHalves(code)?.code).toBe(code.replace(argument, `undefined${' '.repeat(argument.length - 9)}`));
-  });
-
-  it('a longer replacement than the argument keeps the lines: only that line’s columns move', () => {
-    const code = "import { middleware } from '@fudic/http';\nexport const a = middleware().server(\nA\n);\nnext;";
-    expect(eraseServerHalves(code)?.code).toBe(
-      "import { middleware } from '@fudic/http';\nexport const a = middleware().server(\nundefined\n);\nnext;",
-    );
-  });
-
-  it('BUG-47 §4.6: a module of @fudic/http itself is erased without the import mark', () => {
-    // `csrf` imports `middleware` by a relative path, so it never carries `@fudic/http`.
-    const code = "import { middleware } from './middleware.js';\nexport const csrf = middleware().client(c).server(CHECK);";
-    expect(eraseServerHalves(code)).toBeNull();
-    expect(eraseServerHalves(code, true)?.code).toContain('.server(undefined)');
-    expect(eraseServerHalves(code, true)?.code).not.toContain('CHECK');
-    // Inside the package, still nothing to do without a `.server`.
-    expect(eraseServerHalves('export const a = 1;', true)).toBeNull();
-  });
-
-  it('several in one module, each erased', () => {
-    const code = "import { middleware } from '@fudic/http';\nexport const a = middleware().server(A);\nexport const b = middleware().server(B);";
-    expect(eraseServerHalves(code)?.code).toBe(
-      "import { middleware } from '@fudic/http';\nexport const a = middleware().server(undefined);\nexport const b = middleware().server(undefined);",
-    );
-  });
-
-  it('nothing to do: no .server, no @fudic/http, no import of it, no single-argument call', () => {
-    expect(eraseServerHalves("import { middleware } from '@fudic/http';\nexport const a = middleware();")).toBeNull();
-    expect(eraseServerHalves('const app = express();\napp.server(x);')).toBeNull();
-    // The text names the package but nothing imports it.
-    expect(eraseServerHalves("const s = '@fudic/http';\napp.server(x);")).toBeNull();
-    expect(eraseServerHalves("import { middleware } from '@fudic/http';\nobj.server();\nobj.server(a, b);")).toBeNull();
-    expect(eraseServerHalves("import { middleware } from '@fudic/http';\nobj['server'](a);\nserver(a);")).toBeNull();
-  });
-
-  it('a type-only import of @fudic/http still marks the module', () => {
-    const out = eraseServerHalves("import type { Middleware } from '@fudic/http';\nexport const a: Middleware = m.server(S);");
-    expect(out?.code).toContain('m.server(undefined)');
-  });
-
-  it('a .server of something else in the same module is the price of erring on the safe side', () => {
-    const out = eraseServerHalves("import { middleware } from '@fudic/http';\nconst x = app.server(port);");
-    expect(out?.code).toContain('app.server(undefined)');
   });
 });
 

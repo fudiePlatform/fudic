@@ -42,17 +42,20 @@ describe('@fudic/vite/harness', () => {
   it('exposes what the harness paints and serves with', () => {
     expect(Object.keys(harness).sort()).toEqual(
       [
+        'API_SCHEME',
+        'ApiProject',
+        'ROOT_FILE_PREFIX',
+        'SERVER_ROOT_ID',
         'classifyError',
-        'devSource',
         'discoverRoutes',
         'drainStream',
         'edgeContext',
         'emitRenderChunk',
-        'httpFileOf',
         'matchRouteBuild',
         'nodeIo',
         'renderErrorPage',
         'resolveOptions',
+        'routeApi',
         'routeUsesDi',
       ],
     );

@@ -10,8 +10,9 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { control, form, required } from '../../src/index.js';
-import { bindGroup, bindText, setMessages } from '../../src/dom/index.js';
+import { control, form, required } from '../../src/contract/index.js';
+import { bindGroup, bindText } from '../../src/dom/index.js';
+import { setMessages } from '../../src/contract/index.js';
 import { blur, field, fire, mount } from './_dom.js';
 
 beforeEach(() => {

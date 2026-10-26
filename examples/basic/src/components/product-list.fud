@@ -2,12 +2,10 @@
   // El emisor del bus. `emit` fuerza `bubbles` y `composed`, así que el evento sube hasta
   // `document`, donde vive el suscriptor. El nombre es un literal, que es la única forma
   // que v1 resuelve — y es lo que pone este tag en el lado emisor de `fud-bus`.
-  @client {
-    import { emit } from "@fudic/dom";
+  import { emit } from "@fudic/dom";
 
-    function add(precio: number) {
-      emit("carrito", precio);
-    }
+  function add(precio: number) {
+    emit("carrito", precio);
   }
 }
 

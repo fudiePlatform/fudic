@@ -15,7 +15,10 @@
  * would turn each scaffolding into a full repaint of the project.
  */
 
+import { API_EXTENSION, parseApi } from '@fudic/api';
 import type { StructuredDocument } from '@fudic/compiler';
+import { SRC_DIR } from '@fudic/conventions';
+import type { ServerImport } from '@fudic/language-core';
 import { findLibraries, type LookupFailure } from '@fudic/resolve';
 import type { CheckFs, FudList } from './files.js';
 import type { LinkIndex, LinkTarget } from './link-index.js';
@@ -59,6 +62,8 @@ export class FudIndex<E extends IndexedFud = IndexedFud> implements LinkIndex, F
   protected readonly fs: CheckFs;
   readonly #describe: (input: DescribeInput) => E;
   readonly #entries = new Map<string, E>();
+  /** The projects swept: where the `<id>` of a `.fudapi` is read from. */
+  readonly #roots = new Set<string>();
   #revision = 0;
 
   constructor(fs: CheckFs, describe: (input: DescribeInput) => E) {
@@ -86,6 +91,7 @@ export class FudIndex<E extends IndexedFud = IndexedFud> implements LinkIndex, F
    * rather than linked.
    */
   scan(root: string): void {
+    this.#roots.add(toPosix(root));
     for (const path of this.fs.fudFiles(root)) this.upsert(path);
     for (const library of findLibraries(root, this.fs)) {
       for (const path of library.files) this.upsert(path, true);
@@ -145,5 +151,34 @@ export class FudIndex<E extends IndexedFud = IndexedFud> implements LinkIndex, F
 
   failure(fromFile: string, href: string): LookupFailure | undefined {
     return this.fs.hrefFailure(toPosix(fromFile), href);
+  }
+
+  /**
+   * Where the `href` of a `<link rel="server">` written inside `fromFile` points, whether or
+   * not there is a file there: what tells the editor which `.fud` a changed `.fudapi` touches.
+   */
+  serverPath(fromFile: string, href: string): string {
+    return toPosix(this.fs.resolveHref(toPosix(fromFile), href));
+  }
+
+  /**
+   * The `.fudapi` of a `<link rel="server">` (SDD-60 §4.7): its `<id>` — its path inside the
+   * `src/` of a swept project —, whether it declares `load`, and the names it gives the file.
+   * Read from the disk each time it is asked: it is not a `.fud`, and the index keeps none.
+   */
+  server(fromFile: string, href: string): ServerImport | undefined {
+    const path = this.serverPath(fromFile, href);
+    const root = [...this.#roots].find((r) => path.startsWith(`${r}/${SRC_DIR}/`));
+    const text = path.endsWith(API_EXTENSION) ? this.fs.readFile(path) : undefined;
+    if (root === undefined || text === undefined) return undefined;
+    const declarations = parseApi(text).value.declarations;
+    const names = declarations.flatMap((d) =>
+      d.kind === 'fn' ? [d.name.text, ...(d.form === undefined ? [] : [d.form.name.text])] : d.kind === 'form' ? [d.name.text] : [],
+    );
+    return {
+      id: path.slice(root.length + SRC_DIR.length + 2, -API_EXTENSION.length),
+      load: declarations.some((d) => d.kind === 'load'),
+      names: [...new Set(names)],
+    };
   }
 }

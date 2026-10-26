@@ -1,19 +1,12 @@
+<link rel="server" href="./x-guarded.fudapi">
+
 @code {
-  @server {
-    import { get } from "@fudic/http";
-    import { auth } from "../middlewares/auth";
+  import { signal } from "@fudic/core";
 
-    export const whoami = get().use(auth).handle((ctx) => ctx.user);
-  }
+  const who = signal("");
 
-  @client {
-    import { signal } from "@fudic/core";
-
-    const who = signal("");
-
-    async function ask() {
-      who.set(await whoami());
-    }
+  async function ask() {
+    who.set(await whoami());
   }
 }
 

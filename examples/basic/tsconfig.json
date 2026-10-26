@@ -12,5 +12,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "src/**/*.fud", "fudic-globals.d.ts"]
+  "include": ["src/**/*.ts", "src/**/*.fud", "fudic-globals.d.ts", ".fudic/api/**/*.d.ts"]
 }

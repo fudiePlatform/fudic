@@ -1,0 +1,1776 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the canonical files (criterion 1) > formsPatterns has no diagnostics and the expected tree 1`] = `
+{
+  "declarations": [
+    {
+      "doc": "The address \`input type=email\` accepts (WHATWG).",
+      "keyword": "pattern",
+      "kind": "pattern",
+      "name": {
+        "span": "email",
+        "text": "email",
+      },
+      "source": {
+        "span": "[a-zA-Z0-9.!#$%&'*+/=?^_\`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*",
+        "text": "[a-zA-Z0-9.!#$%&'*+/=?^_\`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*",
+      },
+      "span": "pattern email  [a-zA-Z0-9.!#$%&'*+/=?^_\`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*",
+    },
+  ],
+  "kind": "file",
+  "role": "extensions",
+  "span": "# The address \`input type=email\` accepts (WHATWG).
+pattern email  [a-zA-Z0-9.!#$%&'*+/=?^_\`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*
+",
+}
+`;
+
+exports[`the canonical files (criterion 1) > formsRules has no diagnostics and the expected tree 1`] = `
+{
+  "declarations": [
+    {
+      "doc": "The value is not empty.",
+      "fails": [
+        {
+          "code": {
+            "span": "required",
+            "text": "required",
+          },
+          "keyword": "fails",
+          "params": [],
+          "span": "fails required",
+        },
+      ],
+      "keyword": "rule",
+      "kind": "rule",
+      "name": {
+        "span": "required",
+        "text": "required",
+      },
+      "on": {
+        "keyword": "on",
+        "span": "on field str bool u8 i8 u16 i16 u32 i32 f32 f64 date uuid str[]",
+        "target": {
+          "span": "field",
+          "text": "field",
+        },
+        "types": [
+          {
+            "kind": "named",
+            "name": {
+              "span": "str",
+              "text": "str",
+            },
+            "span": "str",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "bool",
+              "text": "bool",
+            },
+            "span": "bool",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "u8",
+              "text": "u8",
+            },
+            "span": "u8",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "i8",
+              "text": "i8",
+            },
+            "span": "i8",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "u16",
+              "text": "u16",
+            },
+            "span": "u16",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "i16",
+              "text": "i16",
+            },
+            "span": "i16",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "u32",
+              "text": "u32",
+            },
+            "span": "u32",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "i32",
+              "text": "i32",
+            },
+            "span": "i32",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "f32",
+              "text": "f32",
+            },
+            "span": "f32",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "f64",
+              "text": "f64",
+            },
+            "span": "f64",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "date",
+              "text": "date",
+            },
+            "span": "date",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "uuid",
+              "text": "uuid",
+            },
+            "span": "uuid",
+          },
+          {
+            "element": {
+              "kind": "named",
+              "name": {
+                "span": "str",
+                "text": "str",
+              },
+              "span": "str",
+            },
+            "kind": "list",
+            "span": "str[]",
+          },
+        ],
+      },
+      "params": [],
+      "runs": {
+        "keyword": "runs",
+        "span": "runs both",
+        "value": {
+          "span": "both",
+          "text": "both",
+        },
+      },
+      "span": "rule required
+  on field str bool u8 i8 u16 i16 u32 i32 f32 f64 date uuid str[]
+  runs both
+  fails required",
+    },
+    {
+      "doc": "A number no smaller than \`min\`.",
+      "fails": [
+        {
+          "code": {
+            "span": "min",
+            "text": "min",
+          },
+          "keyword": "fails",
+          "params": [
+            {
+              "span": "n",
+              "text": "n",
+            },
+          ],
+          "span": "fails min n",
+        },
+      ],
+      "keyword": "rule",
+      "kind": "rule",
+      "name": {
+        "span": "min",
+        "text": "min",
+      },
+      "on": {
+        "keyword": "on",
+        "span": "on field u8 i8 u16 i16 u32 i32 f32 f64",
+        "target": {
+          "span": "field",
+          "text": "field",
+        },
+        "types": [
+          {
+            "kind": "named",
+            "name": {
+              "span": "u8",
+              "text": "u8",
+            },
+            "span": "u8",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "i8",
+              "text": "i8",
+            },
+            "span": "i8",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "u16",
+              "text": "u16",
+            },
+            "span": "u16",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "i16",
+              "text": "i16",
+            },
+            "span": "i16",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "u32",
+              "text": "u32",
+            },
+            "span": "u32",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "i32",
+              "text": "i32",
+            },
+            "span": "i32",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "f32",
+              "text": "f32",
+            },
+            "span": "f32",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "f64",
+              "text": "f64",
+            },
+            "span": "f64",
+          },
+        ],
+      },
+      "params": [
+        {
+          "kind": "field",
+          "name": {
+            "span": "n",
+            "text": "n",
+          },
+          "span": "n  f64",
+          "type": {
+            "kind": "named",
+            "name": {
+              "span": "f64",
+              "text": "f64",
+            },
+            "span": "f64",
+          },
+        },
+      ],
+      "runs": {
+        "keyword": "runs",
+        "span": "runs both",
+        "value": {
+          "span": "both",
+          "text": "both",
+        },
+      },
+      "span": "rule min
+  on field u8 i8 u16 i16 u32 i32 f32 f64
+  runs both
+  n  f64
+  fails min n",
+    },
+    {
+      "doc": "A number no bigger than \`max\`.",
+      "fails": [
+        {
+          "code": {
+            "span": "max",
+            "text": "max",
+          },
+          "keyword": "fails",
+          "params": [
+            {
+              "span": "n",
+              "text": "n",
+            },
+          ],
+          "span": "fails max n",
+        },
+      ],
+      "keyword": "rule",
+      "kind": "rule",
+      "name": {
+        "span": "max",
+        "text": "max",
+      },
+      "on": {
+        "keyword": "on",
+        "span": "on field u8 i8 u16 i16 u32 i32 f32 f64",
+        "target": {
+          "span": "field",
+          "text": "field",
+        },
+        "types": [
+          {
+            "kind": "named",
+            "name": {
+              "span": "u8",
+              "text": "u8",
+            },
+            "span": "u8",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "i8",
+              "text": "i8",
+            },
+            "span": "i8",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "u16",
+              "text": "u16",
+            },
+            "span": "u16",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "i16",
+              "text": "i16",
+            },
+            "span": "i16",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "u32",
+              "text": "u32",
+            },
+            "span": "u32",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "i32",
+              "text": "i32",
+            },
+            "span": "i32",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "f32",
+              "text": "f32",
+            },
+            "span": "f32",
+          },
+          {
+            "kind": "named",
+            "name": {
+              "span": "f64",
+              "text": "f64",
+            },
+            "span": "f64",
+          },
+        ],
+      },
+      "params": [
+        {
+          "kind": "field",
+          "name": {
+            "span": "n",
+            "text": "n",
+          },
+          "span": "n  f64",
+          "type": {
+            "kind": "named",
+            "name": {
+              "span": "f64",
+              "text": "f64",
+            },
+            "span": "f64",
+          },
+        },
+      ],
+      "runs": {
+        "keyword": "runs",
+        "span": "runs both",
+        "value": {
+          "span": "both",
+          "text": "both",
+        },
+      },
+      "span": "rule max
+  on field u8 i8 u16 i16 u32 i32 f32 f64
+  runs both
+  n  f64
+  fails max n",
+    },
+    {
+      "doc": "A text or a list with \`min\` items at least.",
+      "fails": [
+        {
+          "code": {
+            "span": "min-length",
+            "text": "min-length",
+          },
+          "keyword": "fails",
+          "params": [
+            {
+              "span": "n",
+              "text": "n",
+            },
+          ],
+          "span": "fails min-length n",
+        },
+      ],
+      "keyword": "rule",
+      "kind": "rule",
+      "name": {
+        "span": "min-length",
+        "text": "min-length",
+      },
+      "on": {
+        "keyword": "on",
+        "span": "on field str str[]",
+        "target": {
+          "span": "field",
+          "text": "field",
+        },
+        "types": [
+          {
+            "kind": "named",
+            "name": {
+              "span": "str",
+              "text": "str",
+            },
+            "span": "str",
+          },
+          {
+            "element": {
+              "kind": "named",
+              "name": {
+                "span": "str",
+                "text": "str",
+              },
+              "span": "str",
+            },
+            "kind": "list",
+            "span": "str[]",
+          },
+        ],
+      },
+      "params": [
+        {
+          "kind": "field",
+          "name": {
+            "span": "n",
+            "text": "n",
+          },
+          "span": "n  u32",
+          "type": {
+            "kind": "named",
+            "name": {
+              "span": "u32",
+              "text": "u32",
+            },
+            "span": "u32",
+          },
+        },
+      ],
+      "runs": {
+        "keyword": "runs",
+        "span": "runs both",
+        "value": {
+          "span": "both",
+          "text": "both",
+        },
+      },
+      "span": "rule min-length
+  on field str str[]
+  runs both
+  n  u32
+  fails min-length n",
+    },
+    {
+      "doc": "A text or a list with \`max\` items at most.",
+      "fails": [
+        {
+          "code": {
+            "span": "max-length",
+            "text": "max-length",
+          },
+          "keyword": "fails",
+          "params": [
+            {
+              "span": "n",
+              "text": "n",
+            },
+          ],
+          "span": "fails max-length n",
+        },
+      ],
+      "keyword": "rule",
+      "kind": "rule",
+      "name": {
+        "span": "max-length",
+        "text": "max-length",
+      },
+      "on": {
+        "keyword": "on",
+        "span": "on field str str[]",
+        "target": {
+          "span": "field",
+          "text": "field",
+        },
+        "types": [
+          {
+            "kind": "named",
+            "name": {
+              "span": "str",
+              "text": "str",
+            },
+            "span": "str",
+          },
+          {
+            "element": {
+              "kind": "named",
+              "name": {
+                "span": "str",
+                "text": "str",
+              },
+              "span": "str",
+            },
+            "kind": "list",
+            "span": "str[]",
+          },
+        ],
+      },
+      "params": [
+        {
+          "kind": "field",
+          "name": {
+            "span": "n",
+            "text": "n",
+          },
+          "span": "n  u32",
+          "type": {
+            "kind": "named",
+            "name": {
+              "span": "u32",
+              "text": "u32",
+            },
+            "span": "u32",
+          },
+        },
+      ],
+      "runs": {
+        "keyword": "runs",
+        "span": "runs both",
+        "value": {
+          "span": "both",
+          "text": "both",
+        },
+      },
+      "span": "rule max-length
+  on field str str[]
+  runs both
+  n  u32
+  fails max-length n",
+    },
+    {
+      "doc": "The whole text matches a pattern.",
+      "fails": [
+        {
+          "code": {
+            "span": "pattern",
+            "text": "pattern",
+          },
+          "keyword": "fails",
+          "params": [],
+          "span": "fails pattern",
+        },
+      ],
+      "keyword": "rule",
+      "kind": "rule",
+      "name": {
+        "span": "pattern",
+        "text": "pattern",
+      },
+      "on": {
+        "keyword": "on",
+        "span": "on field str",
+        "target": {
+          "span": "field",
+          "text": "field",
+        },
+        "types": [
+          {
+            "kind": "named",
+            "name": {
+              "span": "str",
+              "text": "str",
+            },
+            "span": "str",
+          },
+        ],
+      },
+      "params": [
+        {
+          "kind": "field",
+          "name": {
+            "span": "regex",
+            "text": "regex",
+          },
+          "span": "regex  pattern",
+          "type": {
+            "kind": "named",
+            "name": {
+              "span": "pattern",
+              "text": "pattern",
+            },
+            "span": "pattern",
+          },
+        },
+      ],
+      "runs": {
+        "keyword": "runs",
+        "span": "runs both",
+        "value": {
+          "span": "both",
+          "text": "both",
+        },
+      },
+      "span": "rule pattern
+  on field str
+  runs both
+  regex  pattern
+  fails pattern",
+    },
+  ],
+  "kind": "file",
+  "role": "extensions",
+  "span": "# The value is not empty.
+rule required
+  on field str bool u8 i8 u16 i16 u32 i32 f32 f64 date uuid str[]
+  runs both
+  fails required
+
+# A number no smaller than \`min\`.
+rule min
+  on field u8 i8 u16 i16 u32 i32 f32 f64
+  runs both
+  n  f64
+  fails min n
+
+# A number no bigger than \`max\`.
+rule max
+  on field u8 i8 u16 i16 u32 i32 f32 f64
+  runs both
+  n  f64
+  fails max n
+
+# A text or a list with \`min\` items at least.
+rule min-length
+  on field str str[]
+  runs both
+  n  u32
+  fails min-length n
+
+# A text or a list with \`max\` items at most.
+rule max-length
+  on field str str[]
+  runs both
+  n  u32
+  fails max-length n
+
+# The whole text matches a pattern.
+rule pattern
+  on field str
+  runs both
+  regex  pattern
+  fails pattern
+",
+}
+`;
+
+exports[`the canonical files (criterion 1) > http has no diagnostics and the expected tree 1`] = `
+{
+  "declarations": [
+    {
+      "compress": {
+        "encoding": {
+          "span": "gzip",
+          "text": "gzip",
+        },
+        "keyword": "compress",
+        "kind": "compress",
+        "min": {
+          "kind": "number",
+          "span": "200",
+          "value": 200,
+        },
+        "span": "compress gzip 200",
+      },
+      "keyword": "chain",
+      "kind": "chain",
+      "skips": [],
+      "span": "chain
+  use log csrf
+  use error-pages
+    routes  403 /entrar
+  compress gzip 200",
+      "uses": [
+        {
+          "keyword": "use",
+          "kind": "use",
+          "middlewares": [
+            {
+              "args": [],
+              "name": {
+                "span": "log",
+                "text": "log",
+              },
+            },
+            {
+              "args": [],
+              "name": {
+                "span": "csrf",
+                "text": "csrf",
+              },
+            },
+          ],
+          "span": "use log csrf",
+        },
+        {
+          "keyword": "use",
+          "kind": "use",
+          "middlewares": [
+            {
+              "args": [
+                {
+                  "name": {
+                    "span": "routes",
+                    "text": "routes",
+                  },
+                  "span": "routes  403 /entrar",
+                  "values": [
+                    {
+                      "kind": "number",
+                      "span": "403",
+                      "value": 403,
+                    },
+                    {
+                      "kind": "word",
+                      "span": "/entrar",
+                      "text": "/entrar",
+                    },
+                  ],
+                },
+              ],
+              "name": {
+                "span": "error-pages",
+                "text": "error-pages",
+              },
+            },
+          ],
+          "span": "use error-pages
+    routes  403 /entrar",
+        },
+      ],
+    },
+  ],
+  "kind": "file",
+  "role": "contract",
+  "span": "chain
+  use log csrf
+  use error-pages
+    routes  403 /entrar
+  compress gzip 200
+",
+}
+`;
+
+exports[`the canonical files (criterion 1) > httpMiddlewares has no diagnostics and the expected tree 1`] = `
+{
+  "declarations": [
+    {
+      "client": "client",
+      "doc": "A token on every unsafe call, checked on arrival.",
+      "fails": [
+        {
+          "code": {
+            "span": "csrf",
+            "text": "csrf",
+          },
+          "detail": {
+            "kind": "string",
+            "span": ""Missing or invalid CSRF token."",
+            "text": "Missing or invalid CSRF token.",
+          },
+          "keyword": "fails",
+          "kind": "fails",
+          "span": "fails csrf 403 "Missing or invalid CSRF token."",
+          "status": {
+            "kind": "number",
+            "span": "403",
+            "value": 403,
+          },
+        },
+      ],
+      "keyword": "middleware",
+      "kind": "middleware",
+      "name": {
+        "span": "csrf",
+        "text": "csrf",
+      },
+      "params": [],
+      "server": "server",
+      "span": "middleware csrf
+  client
+  server
+  fails csrf 403 "Missing or invalid CSRF token."",
+    },
+    {
+      "client": "client",
+      "doc": "Sends the browser to a page by the status of a failed call.",
+      "fails": [],
+      "keyword": "middleware",
+      "kind": "middleware",
+      "name": {
+        "span": "error-pages",
+        "text": "error-pages",
+      },
+      "params": [
+        {
+          "kind": "field",
+          "name": {
+            "span": "routes",
+            "text": "routes",
+          },
+          "span": "routes  map u16 str",
+          "type": {
+            "key": {
+              "kind": "named",
+              "name": {
+                "span": "u16",
+                "text": "u16",
+              },
+              "span": "u16",
+            },
+            "keyword": "map",
+            "kind": "map",
+            "span": "map u16 str",
+            "value": {
+              "kind": "named",
+              "name": {
+                "span": "str",
+                "text": "str",
+              },
+              "span": "str",
+            },
+          },
+        },
+      ],
+      "span": "middleware error-pages
+  client
+  routes  map u16 str",
+    },
+  ],
+  "kind": "file",
+  "role": "extensions",
+  "span": "# A token on every unsafe call, checked on arrival.
+middleware csrf
+  client
+  server
+  fails csrf 403 "Missing or invalid CSRF token."
+
+# Sends the browser to a page by the status of a failed call.
+middleware error-pages
+  client
+  routes  map u16 str
+",
+}
+`;
+
+exports[`the canonical files (criterion 1) > userForm has no diagnostics and the expected tree 1`] = `
+{
+  "declarations": [
+    {
+      "fields": [
+        {
+          "initial": {
+            "kind": "string",
+            "span": """",
+            "text": "",
+          },
+          "kind": "form-field",
+          "name": {
+            "span": "name",
+            "text": "name",
+          },
+          "rules": [
+            {
+              "args": [],
+              "kind": "rule-use",
+              "name": {
+                "span": "required",
+                "text": "required",
+              },
+              "span": "required              "Escribe tu nombre."",
+              "text": {
+                "kind": "string",
+                "span": ""Escribe tu nombre."",
+                "text": "Escribe tu nombre.",
+              },
+            },
+          ],
+          "span": "name  str = ""
+    required              "Escribe tu nombre."",
+          "type": {
+            "kind": "named",
+            "name": {
+              "span": "str",
+              "text": "str",
+            },
+            "span": "str",
+          },
+        },
+        {
+          "initial": {
+            "kind": "string",
+            "span": """",
+            "text": "",
+          },
+          "kind": "form-field",
+          "name": {
+            "span": "alias",
+            "text": "alias",
+          },
+          "rules": [
+            {
+              "args": [],
+              "kind": "rule-use",
+              "name": {
+                "span": "required",
+                "text": "required",
+              },
+              "span": "required              "Elige un alias."",
+              "text": {
+                "kind": "string",
+                "span": ""Elige un alias."",
+                "text": "Elige un alias.",
+              },
+            },
+            {
+              "args": [
+                {
+                  "kind": "number",
+                  "span": "3",
+                  "value": 3,
+                },
+              ],
+              "kind": "rule-use",
+              "name": {
+                "span": "min-length",
+                "text": "min-length",
+              },
+              "span": "min-length 3          "El alias necesita al menos {n} caracteres."",
+              "text": {
+                "kind": "string",
+                "span": ""El alias necesita al menos {n} caracteres."",
+                "text": "El alias necesita al menos {n} caracteres.",
+              },
+            },
+            {
+              "args": [],
+              "kind": "rule-use",
+              "name": {
+                "span": "alias-taken",
+                "text": "alias-taken",
+              },
+              "span": "alias-taken           "Ese alias ya está cogido."",
+              "text": {
+                "kind": "string",
+                "span": ""Ese alias ya está cogido."",
+                "text": "Ese alias ya está cogido.",
+              },
+            },
+          ],
+          "span": "alias  str = ""
+    required              "Elige un alias."
+    min-length 3          "El alias necesita al menos {n} caracteres."
+    alias-taken           "Ese alias ya está cogido."",
+          "type": {
+            "kind": "named",
+            "name": {
+              "span": "str",
+              "text": "str",
+            },
+            "span": "str",
+          },
+        },
+        {
+          "initial": {
+            "kind": "string",
+            "span": """",
+            "text": "",
+          },
+          "kind": "form-field",
+          "name": {
+            "span": "email",
+            "text": "email",
+          },
+          "rules": [
+            {
+              "args": [],
+              "kind": "rule-use",
+              "name": {
+                "span": "required",
+                "text": "required",
+              },
+              "span": "required              "Escribe tu email."",
+              "text": {
+                "kind": "string",
+                "span": ""Escribe tu email."",
+                "text": "Escribe tu email.",
+              },
+            },
+            {
+              "args": [
+                {
+                  "kind": "word",
+                  "span": "email-loose",
+                  "text": "email-loose",
+                },
+              ],
+              "kind": "rule-use",
+              "name": {
+                "span": "pattern",
+                "text": "pattern",
+              },
+              "span": "pattern email-loose   "Ese email no parece válido."",
+              "text": {
+                "kind": "string",
+                "span": ""Ese email no parece válido."",
+                "text": "Ese email no parece válido.",
+              },
+            },
+          ],
+          "span": "email  str = ""
+    required              "Escribe tu email."
+    pattern email-loose   "Ese email no parece válido."",
+          "type": {
+            "kind": "named",
+            "name": {
+              "span": "str",
+              "text": "str",
+            },
+            "span": "str",
+          },
+        },
+        {
+          "initial": {
+            "kind": "string",
+            "span": """",
+            "text": "",
+          },
+          "kind": "form-field",
+          "name": {
+            "span": "web",
+            "text": "web",
+          },
+          "rules": [
+            {
+              "args": [
+                {
+                  "kind": "word",
+                  "span": "web-url",
+                  "text": "web-url",
+                },
+              ],
+              "kind": "rule-use",
+              "name": {
+                "span": "pattern",
+                "text": "pattern",
+              },
+              "span": "pattern web-url       "La web empieza por http:// o https://."",
+              "text": {
+                "kind": "string",
+                "span": ""La web empieza por http:// o https://."",
+                "text": "La web empieza por http:// o https://.",
+              },
+            },
+          ],
+          "span": "web  str = ""
+    pattern web-url       "La web empieza por http:// o https://."",
+          "type": {
+            "kind": "named",
+            "name": {
+              "span": "str",
+              "text": "str",
+            },
+            "span": "str",
+          },
+        },
+        {
+          "fields": [
+            {
+              "initial": {
+                "kind": "string",
+                "span": """",
+                "text": "",
+              },
+              "kind": "form-field",
+              "name": {
+                "span": "clave",
+                "text": "clave",
+              },
+              "rules": [
+                {
+                  "args": [],
+                  "kind": "rule-use",
+                  "name": {
+                    "span": "required",
+                    "text": "required",
+                  },
+                  "span": "required            "Elige una contraseña."",
+                  "text": {
+                    "kind": "string",
+                    "span": ""Elige una contraseña."",
+                    "text": "Elige una contraseña.",
+                  },
+                },
+                {
+                  "args": [
+                    {
+                      "kind": "number",
+                      "span": "8",
+                      "value": 8,
+                    },
+                  ],
+                  "kind": "rule-use",
+                  "name": {
+                    "span": "min-length",
+                    "text": "min-length",
+                  },
+                  "span": "min-length 8        "Mínimo {n} caracteres."",
+                  "text": {
+                    "kind": "string",
+                    "span": ""Mínimo {n} caracteres."",
+                    "text": "Mínimo {n} caracteres.",
+                  },
+                },
+              ],
+              "span": "clave  str = ""
+      required            "Elige una contraseña."
+      min-length 8        "Mínimo {n} caracteres."",
+              "type": {
+                "kind": "named",
+                "name": {
+                  "span": "str",
+                  "text": "str",
+                },
+                "span": "str",
+              },
+            },
+            {
+              "initial": {
+                "kind": "string",
+                "span": """",
+                "text": "",
+              },
+              "kind": "form-field",
+              "name": {
+                "span": "repetir",
+                "text": "repetir",
+              },
+              "rules": [
+                {
+                  "args": [],
+                  "kind": "rule-use",
+                  "name": {
+                    "span": "required",
+                    "text": "required",
+                  },
+                  "span": "required            "Repite la contraseña."",
+                  "text": {
+                    "kind": "string",
+                    "span": ""Repite la contraseña."",
+                    "text": "Repite la contraseña.",
+                  },
+                },
+              ],
+              "span": "repetir  str = ""
+      required            "Repite la contraseña."",
+              "type": {
+                "kind": "named",
+                "name": {
+                  "span": "str",
+                  "text": "str",
+                },
+                "span": "str",
+              },
+            },
+          ],
+          "keyword": "group",
+          "kind": "form-group",
+          "name": {
+            "span": "acceso",
+            "text": "acceso",
+          },
+          "span": "acceso  group
+    clave  str = ""
+      required            "Elige una contraseña."
+      min-length 8        "Mínimo {n} caracteres."
+    repetir  str = ""
+      required            "Repite la contraseña."
+    summary
+      require mismatch  clave == repetir                  "Las contraseñas no coinciden."",
+          "summary": {
+            "items": [
+              {
+                "code": {
+                  "span": "mismatch",
+                  "text": "mismatch",
+                },
+                "expr": {
+                  "kind": "binary",
+                  "left": {
+                    "kind": "path",
+                    "segments": [
+                      {
+                        "span": "clave",
+                        "text": "clave",
+                      },
+                    ],
+                    "span": "clave",
+                  },
+                  "op": "==",
+                  "opSpan": "==",
+                  "right": {
+                    "kind": "path",
+                    "segments": [
+                      {
+                        "span": "repetir",
+                        "text": "repetir",
+                      },
+                    ],
+                    "span": "repetir",
+                  },
+                  "span": "clave == repetir",
+                },
+                "keyword": "require",
+                "kind": "require",
+                "span": "require mismatch  clave == repetir                  "Las contraseñas no coinciden."",
+                "text": {
+                  "kind": "string",
+                  "span": ""Las contraseñas no coinciden."",
+                  "text": "Las contraseñas no coinciden.",
+                },
+              },
+            ],
+            "keyword": "summary",
+            "span": "summary
+      require mismatch  clave == repetir                  "Las contraseñas no coinciden."",
+          },
+        },
+      ],
+      "keyword": "form",
+      "kind": "form",
+      "name": {
+        "span": "userForm",
+        "text": "userForm",
+      },
+      "span": "form userForm
+  validate-on blur input
+  validity interacted
+
+  name  str = ""
+    required              "Escribe tu nombre."
+  alias  str = ""
+    required              "Elige un alias."
+    min-length 3          "El alias necesita al menos {n} caracteres."
+    alias-taken           "Ese alias ya está cogido."
+  email  str = ""
+    required              "Escribe tu email."
+    pattern email-loose   "Ese email no parece válido."
+  web  str = ""
+    pattern web-url       "La web empieza por http:// o https://."
+  acceso  group
+    clave  str = ""
+      required            "Elige una contraseña."
+      min-length 8        "Mínimo {n} caracteres."
+    repetir  str = ""
+      required            "Repite la contraseña."
+    summary
+      require mismatch  clave == repetir                  "Las contraseñas no coinciden."
+
+  summary
+    require same-as-name  empty alias or alias != name    "El alias no puede ser tu nombre."
+    require key-has-name  empty name or not acceso.clave contains name
+                          "La contraseña no puede contener tu nombre."",
+      "summary": {
+        "items": [
+          {
+            "code": {
+              "span": "same-as-name",
+              "text": "same-as-name",
+            },
+            "expr": {
+              "kind": "binary",
+              "left": {
+                "arg": {
+                  "kind": "path",
+                  "segments": [
+                    {
+                      "span": "alias",
+                      "text": "alias",
+                    },
+                  ],
+                  "span": "alias",
+                },
+                "fn": {
+                  "span": "empty",
+                  "text": "empty",
+                },
+                "kind": "call",
+                "span": "empty alias",
+              },
+              "op": "or",
+              "opSpan": "or",
+              "right": {
+                "kind": "binary",
+                "left": {
+                  "kind": "path",
+                  "segments": [
+                    {
+                      "span": "alias",
+                      "text": "alias",
+                    },
+                  ],
+                  "span": "alias",
+                },
+                "op": "!=",
+                "opSpan": "!=",
+                "right": {
+                  "kind": "path",
+                  "segments": [
+                    {
+                      "span": "name",
+                      "text": "name",
+                    },
+                  ],
+                  "span": "name",
+                },
+                "span": "alias != name",
+              },
+              "span": "empty alias or alias != name",
+            },
+            "keyword": "require",
+            "kind": "require",
+            "span": "require same-as-name  empty alias or alias != name    "El alias no puede ser tu nombre."",
+            "text": {
+              "kind": "string",
+              "span": ""El alias no puede ser tu nombre."",
+              "text": "El alias no puede ser tu nombre.",
+            },
+          },
+          {
+            "code": {
+              "span": "key-has-name",
+              "text": "key-has-name",
+            },
+            "expr": {
+              "kind": "binary",
+              "left": {
+                "arg": {
+                  "kind": "path",
+                  "segments": [
+                    {
+                      "span": "name",
+                      "text": "name",
+                    },
+                  ],
+                  "span": "name",
+                },
+                "fn": {
+                  "span": "empty",
+                  "text": "empty",
+                },
+                "kind": "call",
+                "span": "empty name",
+              },
+              "op": "or",
+              "opSpan": "or",
+              "right": {
+                "keyword": "not",
+                "kind": "not",
+                "operand": {
+                  "kind": "binary",
+                  "left": {
+                    "kind": "path",
+                    "segments": [
+                      {
+                        "span": "acceso",
+                        "text": "acceso",
+                      },
+                      {
+                        "span": "clave",
+                        "text": "clave",
+                      },
+                    ],
+                    "span": "acceso.clave",
+                  },
+                  "op": "contains",
+                  "opSpan": "contains",
+                  "right": {
+                    "kind": "path",
+                    "segments": [
+                      {
+                        "span": "name",
+                        "text": "name",
+                      },
+                    ],
+                    "span": "name",
+                  },
+                  "span": "acceso.clave contains name",
+                },
+                "span": "not acceso.clave contains name",
+              },
+              "span": "empty name or not acceso.clave contains name",
+            },
+            "keyword": "require",
+            "kind": "require",
+            "span": "require key-has-name  empty name or not acceso.clave contains name
+                          "La contraseña no puede contener tu nombre."",
+            "text": {
+              "kind": "string",
+              "span": ""La contraseña no puede contener tu nombre."",
+              "text": "La contraseña no puede contener tu nombre.",
+            },
+          },
+        ],
+        "keyword": "summary",
+        "span": "summary
+    require same-as-name  empty alias or alias != name    "El alias no puede ser tu nombre."
+    require key-has-name  empty name or not acceso.clave contains name
+                          "La contraseña no puede contener tu nombre."",
+      },
+      "validateOn": {
+        "events": [
+          {
+            "span": "blur",
+            "text": "blur",
+          },
+          {
+            "span": "input",
+            "text": "input",
+          },
+        ],
+        "keyword": "validate-on",
+        "span": "validate-on blur input",
+      },
+      "validity": {
+        "keyword": "validity",
+        "span": "validity interacted",
+        "value": {
+          "span": "interacted",
+          "text": "interacted",
+        },
+      },
+    },
+  ],
+  "kind": "file",
+  "role": "contract",
+  "span": "form userForm
+  validate-on blur input
+  validity interacted
+
+  name  str = ""
+    required              "Escribe tu nombre."
+  alias  str = ""
+    required              "Elige un alias."
+    min-length 3          "El alias necesita al menos {n} caracteres."
+    alias-taken           "Ese alias ya está cogido."
+  email  str = ""
+    required              "Escribe tu email."
+    pattern email-loose   "Ese email no parece válido."
+  web  str = ""
+    pattern web-url       "La web empieza por http:// o https://."
+  acceso  group
+    clave  str = ""
+      required            "Elige una contraseña."
+      min-length 8        "Mínimo {n} caracteres."
+    repetir  str = ""
+      required            "Repite la contraseña."
+    summary
+      require mismatch  clave == repetir                  "Las contraseñas no coinciden."
+
+  summary
+    require same-as-name  empty alias or alias != name    "El alias no puede ser tu nombre."
+    require key-has-name  empty name or not acceso.clave contains name
+                          "La contraseña no puede contener tu nombre."
+",
+}
+`;
+
+exports[`the canonical files (criterion 1) > usuarios has no diagnostics and the expected tree 1`] = `
+{
+  "declarations": [
+    {
+      "doc": "Per request: the list changes with every new person.",
+      "fails": [],
+      "fields": [
+        {
+          "kind": "field",
+          "name": {
+            "span": "users",
+            "text": "users",
+          },
+          "span": "users  Person[]",
+          "type": {
+            "element": {
+              "kind": "named",
+              "name": {
+                "span": "Person",
+                "text": "Person",
+              },
+              "span": "Person",
+            },
+            "kind": "list",
+            "span": "Person[]",
+          },
+        },
+      ],
+      "keyword": "load",
+      "kind": "load",
+      "mode": {
+        "span": "ssr",
+        "text": "ssr",
+      },
+      "skips": [],
+      "span": "load ssr
+  users  Person[]",
+      "uses": [],
+    },
+    {
+      "args": [
+        {
+          "kind": "arg",
+          "name": {
+            "span": "q",
+            "text": "q",
+          },
+          "place": "body",
+          "span": "q  str",
+          "type": {
+            "kind": "named",
+            "name": {
+              "span": "str",
+              "text": "str",
+            },
+            "span": "str",
+          },
+        },
+      ],
+      "fails": [],
+      "invalidates": [],
+      "kind": "fn",
+      "name": {
+        "span": "search",
+        "text": "search",
+      },
+      "returns": {
+        "arrow": "->",
+        "span": "-> Person[]",
+        "type": {
+          "element": {
+            "kind": "named",
+            "name": {
+              "span": "Person",
+              "text": "Person",
+            },
+            "span": "Person",
+          },
+          "kind": "list",
+          "span": "Person[]",
+        },
+      },
+      "skips": [],
+      "span": "get search
+  q  str
+  -> Person[]",
+      "uses": [],
+      "verb": "get",
+      "verbSpan": "get",
+    },
+    {
+      "args": [
+        {
+          "kind": "arg",
+          "name": {
+            "span": "id",
+            "text": "id",
+          },
+          "place": "body",
+          "span": "id      i32",
+          "type": {
+            "kind": "named",
+            "name": {
+              "span": "i32",
+              "text": "i32",
+            },
+            "span": "i32",
+          },
+        },
+        {
+          "kind": "arg",
+          "name": {
+            "span": "active",
+            "text": "active",
+          },
+          "place": "body",
+          "span": "active  bool",
+          "type": {
+            "kind": "named",
+            "name": {
+              "span": "bool",
+              "text": "bool",
+            },
+            "span": "bool",
+          },
+        },
+      ],
+      "fails": [],
+      "invalidates": [],
+      "kind": "fn",
+      "name": {
+        "span": "save",
+        "text": "save",
+      },
+      "skips": [],
+      "span": "put save
+  use auth
+  id      i32
+  active  bool",
+      "uses": [
+        {
+          "keyword": "use",
+          "kind": "use",
+          "middlewares": [
+            {
+              "args": [],
+              "name": {
+                "span": "auth",
+                "text": "auth",
+              },
+            },
+          ],
+          "span": "use auth",
+        },
+      ],
+      "verb": "put",
+      "verbSpan": "put",
+    },
+    {
+      "fields": [
+        {
+          "kind": "field",
+          "name": {
+            "span": "id",
+            "text": "id",
+          },
+          "span": "id      i32",
+          "type": {
+            "kind": "named",
+            "name": {
+              "span": "i32",
+              "text": "i32",
+            },
+            "span": "i32",
+          },
+        },
+        {
+          "kind": "field",
+          "name": {
+            "span": "name",
+            "text": "name",
+          },
+          "span": "name    str",
+          "type": {
+            "kind": "named",
+            "name": {
+              "span": "str",
+              "text": "str",
+            },
+            "span": "str",
+          },
+        },
+      ],
+      "keyword": "type",
+      "kind": "type",
+      "name": {
+        "span": "Person",
+        "text": "Person",
+      },
+      "span": "type Person
+  id      i32
+  name    str",
+    },
+  ],
+  "kind": "file",
+  "role": "contract",
+  "span": "# Per request: the list changes with every new person.
+load ssr
+  users  Person[]
+
+get search
+  q  str
+  -> Person[]
+
+put save
+  use auth
+  id      i32
+  active  bool
+
+type Person
+  id      i32
+  name    str
+",
+}
+`;

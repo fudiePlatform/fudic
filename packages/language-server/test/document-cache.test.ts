@@ -72,13 +72,12 @@ describe('get', () => {
     expect(cache.get('\\p\\blog\\[slug].fud', 1, SLUG_SOURCE)).toBe(cache.get(SLUG, 1, SLUG_SOURCE));
   });
 
-  it('emits the three virtuals of SDD-23', () => {
+  it('emits the virtuals of SDD-23: the client and one per <style>, no server one (SDD-60 §4.7)', () => {
     const { cache } = setup();
     const badge = cache.get('/p/components/app-badge.fud', 1, BADGE);
 
     expect(badge.virtuals.map((virtual) => virtual.fileName)).toEqual([
       '/p/components/app-badge.fud.ts',
-      '/p/components/app-badge.fud.server.ts',
       '/p/components/app-badge.fud.0.css',
     ]);
   });
@@ -101,7 +100,7 @@ describe('get', () => {
 
   it('carries the parse diagnostics and the Oxc ones together', () => {
     const { cache } = setup();
-    const broken = cache.get('/p/broken.fud', 1, `@code {\n  @client {\n    const = ;\n  }\n}\n`);
+    const broken = cache.get('/p/broken.fud', 1, `@code {\n  const = ;\n}\n`);
 
     expect(broken.diagnostics.some((diagnostic) => diagnostic.code === 'FUD0170')).toBe(true);
   });
@@ -153,5 +152,47 @@ describe('forgetting', () => {
     cache.clear();
 
     expect(cache.get(SLUG, 1, SLUG_SOURCE)).not.toBe(first);
+  });
+});
+
+describe('a changed `.fudapi` (SDD-60 §4.9)', () => {
+  const ROUTE = '/p/src/routes/r.fud';
+  const OTHER = '/p/src/routes/o.fud';
+  const linking = (href: string): string => `<link rel="server" href="${href}">\n<p-r>\n  <template shadowrootmode="open"><p>@search</p></template>\n</p-r>\n`;
+
+  function linked() {
+    const files: Record<string, string> = {
+      [ROUTE]: linking('./r.fudapi'),
+      [OTHER]: `<link rel="server">\n${component('p-o')}`,
+      '/p/src/routes/r.fudapi': 'get search\n  -> str\n',
+    };
+    const index = new WorkspaceIndex(memoryFs(files));
+    index.scan('/p');
+    return { files, cache: new DocumentCache(index) };
+  }
+
+  it('re-projects the documents that link it, keeping their parse', () => {
+    const { files, cache } = linked();
+    const before = cache.get(ROUTE, 1, files[ROUTE]!);
+    expect(before.virtuals[0]?.text).toContain("typeof import('fudic:routes/r')['search']");
+
+    files['/p/src/routes/r.fudapi'] = 'get find\n  -> str\n';
+    cache.reprojectLinking('/p/src/routes/r.fudapi');
+    const after = cache.get(ROUTE, 1, files[ROUTE]!);
+
+    expect(after).not.toBe(before);
+    expect(after.document).toBe(before.document);
+    expect(after.virtuals[0]?.text).toContain("typeof import('fudic:routes/r')['find']");
+  });
+
+  it('leaves alone a document that links another one, or a link with no href', () => {
+    const { files, cache } = linked();
+    const other = cache.get(OTHER, 1, files[OTHER]!);
+    const route = cache.get(ROUTE, 1, files[ROUTE]!);
+
+    cache.reprojectLinking('/p/src/routes/elsewhere.fudapi');
+
+    expect(cache.get(OTHER, 1, files[OTHER]!)).toBe(other);
+    expect(cache.get(ROUTE, 1, files[ROUTE]!)).toBe(route);
   });
 });

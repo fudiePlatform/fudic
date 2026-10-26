@@ -54,10 +54,8 @@ describe('the shape of a block (§6.1–§6.6)', () => {
     'x-ex',
     '@code {\n' +
       '  const { rows } = props<{ rows: { id: string; name: string }[] }>();\n' +
-      '  @client {\n' +
-      "    let a = 'Hello';\n" +
-      '    const pick = (id) => (e) => { console.log(id); };\n' +
-      '  }\n' +
+      "  let a = 'Hello';\n" +
+      '  const pick = (id) => (e) => { console.log(id); };\n' +
       '}\n',
     '<ul>@foreach (const { id, name } of rows) key (id) {' +
       '<li><span data-a="@a">@name</span><button @click="@pick(id)">elegir</button></li>' +
@@ -191,13 +189,13 @@ describe('@while and @for — the two loops the fixtures never write', () => {
       'x-while',
       component(
         'x-while',
-        '@code {\n  @client {\n    let cur = head;\n  }\n}\n',
+        '@code {\n  let cur = head;\n}\n',
         '<ul>@while (cur !== null) key (cur.id) { <li>x</li> }</ul>',
       ),
     );
     expect(src).toContain('while (cur !== null) {');
     // `@while` binds no iteration variable (§3.5), so the only parameter is the mutable
-    // `@client` binding its body walks — and its key comes from what that body mutates.
+    // binding of the `@code` its body walks — and its key comes from what that body mutates.
     expect(src).toContain('const $b0 = ($parent, $anchor, cur) => {');
     expect(src).toContain('key: cur.id,');
   });
@@ -242,7 +240,7 @@ describe('@while and @for — the two loops the fixtures never write', () => {
       'x-const',
       component(
         'x-const',
-        '@code {\n  @client {\n    const rows = [1, 2];\n  }\n}\n',
+        '@code {\n  const rows = [1, 2];\n}\n',
         '<ul>@while (rows.length > 9) key (rows) { <li>x</li> }</ul>',
       ),
     );
@@ -422,8 +420,8 @@ describe('a child component built inside a block (§4.6)', () => {
         '<html><head></head><body><x-host></x-host></body></html>\n',
       '/x-host.fud':
         '<link rel="component" href="./x-child.fud">\n' +
-        '@code {\n  const { rows } = props<{ rows: string[] }>();\n  @client {\n' +
-        "    import { signal } from '@fudic/core';\n    const count = signal(0);\n  }\n}\n" +
+        '@code {\n  const { rows } = props<{ rows: string[] }>();\n' +
+        "  import { signal } from '@fudic/core';\n  const count = signal(0);\n}\n" +
         '<x-host>\n  <template shadowrootmode="open">' +
         '<ul>@foreach (const r of rows) key (r) {<li><x-child .value="@count"></x-child></li>}</ul>' +
         '</template>\n</x-host>\n',
@@ -460,7 +458,7 @@ describe('FUD0543 — a loop header that names nothing', () => {
       'x-nodecl',
       component(
         'x-nodecl',
-        '@code {\n  const { rows } = props<{ rows: string[] }>();\n  @client {\n    let r = "";\n  }\n}\n',
+        '@code {\n  const { rows } = props<{ rows: string[] }>();\n  let r = "";\n}\n',
         '<ul>@foreach (r of rows) key (r) { <li>@r</li> }</ul>',
       ),
     );
@@ -487,7 +485,7 @@ describe('FUD0543 — a loop header that names nothing', () => {
       'x-whilekey',
       component(
         'x-whilekey',
-        '@code {\n  @client {\n    let cur = head;\n  }\n}\n',
+        '@code {\n  let cur = head;\n}\n',
         '<ul>@while (cur !== null) key (cur.id) { <li>x</li> }</ul>',
       ),
     );
@@ -501,7 +499,7 @@ describe('collectTemplateJs — every fragment the template evaluates, in source
     const src = component(
       tag,
       '@code {\n  const { html, rows } = props<{ html: string; rows: string[] }>();\n' +
-        '  @client {\n    const EV = { cart: "c" };\n    const onCart = () => {};\n  }\n}\n',
+        '  const EV = { cart: "c" };\n  const onCart = () => {};\n}\n',
       '<ul>@foreach (const r of rows) key (r) {' +
         '<li bus:(EV.cart)="@onCart">@{ const up = r; }@raw(html)</li>}</ul>',
     );

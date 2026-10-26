@@ -131,7 +131,7 @@ The file is src/routes/about.fud, src/routes/blog/[slug].fud, src/routes/index.f
       ['--dir <path>', 'another folder for the routes   (default: src/routes)'],
       ['--layout <path|href>', "this layout instead of the nearest one; a library's by its href, e.g. @shop/ui/layouts/main.fud"],
       ['--no-layout', 'a whole document of its own, with no layout'],
-      ['--server', 'with a load() that reads its data on the server'],
+      ['--server', 'with a load declared in its .fudapi and implemented in src/server'],
       ['--sections <a,b>', 'fill only these sections of the layout   (default: all)'],
       ['--skip-test', 'no unit test'],
       DRY_RUN,
@@ -208,15 +208,14 @@ its unit test. It adds @fudic/di to the project if it is not there.`,
     usage: 'fudic generate form <name>',
     about: `Creates a form in src/forms, with a required name field, and its unit test. It adds
 @fudic/forms to the project if it is not there.`,
-    args: [['<name>', '"person" becomes personForm in src/forms/person.form.ts']],
+    args: [['<name>', '"person" becomes personForm in src/forms/person.fudapi']],
     options: [
       IN_PROJECT,
-      ['--binary', 'typed controls (str, u8, bool…): the upload travels in binary'],
       ['--skip-test', 'no unit test'],
       DRY_RUN,
       FORCE,
     ],
-    examples: ['fudic g form person --project web', 'fudic g form person --binary'],
+    examples: ['fudic g form person --project web'],
   },
   'generate style': {
     usage: 'fudic generate style <name>',
@@ -276,7 +275,7 @@ workspace, and installs it.`,
     args: [
       [
         '<module>',
-        `di (services), forms, http (a chain for the server functions, in src/http.ts),
+        `di (services), forms, http (a chain for the server functions, in src/http.fudapi),
 i18n (translations), or the name of a library of the workspace`,
       ],
     ],
@@ -327,8 +326,8 @@ every project from the root of the workspace.`,
   },
   fmt: {
     usage: 'fudic fmt [path…]',
-    about: `Formats .fud and .fudspec files in place: the ones under each path, or under
-the folder you are in.`,
+    about: `Formats .fud, .fudspec and .fudapi files in place: the ones under each path, or
+under the folder you are in.`,
     args: [],
     options: [
       ['--check', 'write nothing; fail when a file is not formatted (for CI)'],

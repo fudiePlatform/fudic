@@ -1,6 +1,6 @@
 # SDD-60 — `.fudapi`: el contrato del servidor fuera del `.fud`
 
-> **Estado:** `Listo` — [tareas](./SDD-60-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-60-Task.md).
 > **Paquetes:** `@fudic/api` (nuevo: parser, índice, validador, formateador y emisor TS) ·
 > `@fudic/diagnostics` · `@fudic/conventions` · `@fudic/config` · `@fudic/http` · `@fudic/forms` ·
 > `@fudic/compiler` · `@fudic/vite` · `@fudic/language-core` · `@fudic/typecheck` ·
@@ -10,7 +10,7 @@
 > de servidor, cable, cadena), 35 (typecheck de dev y build), 20 (estrategia de ruta), 40
 > (contrato de layout), 51 (resolución de nombres de la vista).
 > **Rango de diagnósticos:** `FUD1060`–`FUD1139` (nuevo). Parser `1060`–`1079`, validador
-> `1080`–`1109` (usa `1080`–`1091` y `1093`–`1098`), `.fud` `1110`–`1129` (usa `1110`–`1115`);
+> `1080`–`1109` (usa `1080`–`1091` y `1093`–`1101`), `.fud` `1110`–`1129` (usa `1110`–`1115`);
 > el resto, reservado sin usar.
 > **Origen:** [IDEA-06](./ideas/IDEA-06-lenguaje-de-contrato-fudapi.md) y la sesión del
 > 2026-10-21 con Pedro, que cerró todas las preguntas de esta spec. Manda sobre IDEA-05 §3 e
@@ -123,6 +123,9 @@ URLs, mismos modos de ruta, mismo HTML, misma hidratación, mismas pruebas— si
   en una línea `pattern`, donde nunca (§3.9). Las líneas `#` pegadas encima de una declaración
   son su **documentación** (hover).
 - Cadenas entre comillas dobles, de una línea, con escapes `\"` y `\\`.
+- Un `=` suelto fuera de comillas (no parte de `==`, `!=`, `<=`, `>=`) es siempre un token propio:
+  `str=""` se lee como `str = ""`. Un valor que lleve `=` va entre comillas
+  (`routes  403 "/entrar?x=1"`). *Decidido al implementar, a petición de Pedro.*
 - Las líneas en blanco no cuentan. Valen `\n`, `\r\n` y `\r`.
 - Un fichero es **de contrato** (`load`, `paths`, `layout`, funciones, `chain`, `form`, `type`,
   `enum`, `messages`) o **de extensiones** (`rule`, `middleware`, `pattern`, y los `type`/`enum`
@@ -150,9 +153,10 @@ fichero.
 | `str` `bool` | texto, booleano | `string`, `boolean` |
 | `u8 i8 u16 i16 u32 i32 f32 f64` | número con ancho | `number` |
 | `date` | fecha | `Date` |
+| `uuid` | identificador UUID (forma textual de RFC 9562, `8-4-4-4-12` hex, sin distinguir mayúsculas) | `string` |
 | `T[]` | lista | `readonly T[]` |
 | `T?` | puede faltar | campo opcional (`x?: T`) |
-| `map K V` | mapa; `K` es `str` o un entero | `Readonly<Record<…, V>>` |
+| `map K V` | mapa; `K` es `str`, `uuid` o un entero | `Readonly<Record<…, V>>` |
 | `Nombre` | un `type` o `enum` del proyecto | su interfaz o unión |
 
 ```
@@ -172,26 +176,53 @@ enum Variant          # a union of literals
   (directa o indirectamente, salvo a través de `[]`, `?` o `map`) es `FUD1088`.
 - `number` no existe: es `FUD1080` con la lista de anchos.
 - `enum` genera `type Variant = 'default' | 'highlight'`.
+- **Los valores se comprueban al cruzar el cable**, en los dos lados, contra su tipo: un número
+  fuera de su ancho, un `uuid` mal formado, una fecha inválida. En el servidor, `400` con
+  `Problem` (el `detail` nombra el argumento); en el navegador, la llamada rechaza con ese mismo
+  `Problem` sin enviar nada. `str` admite cualquier texto.
 
 ### 3.3. Funciones
 
 ```
-<verbo> <nombre>          # get | post | put | patch | delete
+<verbo> <nombre> [<ruta>] # get | post | put | patch | delete; ruta: /:id, /:id/lineas/:linea
   use <mw>+               # acumulativas, en orden
   skip <mw>+ | skip *
-  form <form>             # excluye los argumentos
+  form <form>             # excluye los argumentos de cuerpo
   invalidates <ruta>+     # /usuarios /blog/:slug
   compress <gzip|deflate|deflate-raw> [<min>] | compress off
   fails <código> <status> "<detail>"
+  query <arg>  <tipo>     # argumento de query
   <arg>  <tipo>           # cero o más, en orden
   -> <tipo>               # sin él, la función no devuelve nada (204)
 ```
 
 Cada cláusula es lo que hoy es el builder de `@fudic/http`: `use`/`skip` = `.use`/`.skip`,
 `<arg> <tipo>` = `.args<T>()` con un objeto de esos campos, `form` = `.form(f)`, `invalidates`,
-`compress`. `form` y argumentos a la vez es `FUD1072`. `-> T` y `form` más de una vez, `FUD1071`.
-`fails` declara un rechazo con nombre que el handler lanza (§3.12). Un status fuera de `400`–`599`
-es `FUD1075`.
+`compress`. `form` y argumentos de cuerpo a la vez es `FUD1072`. `-> T`, `form` y la ruta más de
+una vez, `FUD1071`. `fails` declara un rechazo con nombre que el handler lanza (§3.12). Un status
+fuera de `400`–`599` es `FUD1075`.
+
+**Dónde viaja cada argumento.** Se decide por la declaración, nunca por el verbo del usuario:
+
+| Argumento | Viaja en | Llega en |
+|---|---|---|
+| nombrado en la ruta de la función (`/:id` ↔ `id  uuid`) | la URL | `ctx.params`, junto a los de la página |
+| `query <arg> <tipo>` | la query, una clave por argumento (`?notify=true`) | `ctx.query` |
+| el resto | el cuerpo; en un `get`, la query como hoy (`?a=…`) | `ctx.args` |
+| `form <f>` | el cuerpo | `ctx.form` |
+
+- La ruta empieza por `/`; cada segmento es literal (`[a-z0-9-]+`) o `:arg`. Mal escrita,
+  `FUD1068`. Un `:x` sin argumento `x`, `FUD1099`.
+- Un argumento de ruta o de query es escalar (`str`, `bool`, numéricos, `date`, `uuid`, `enum`);
+  de ruta, además, nunca `?`. Lo demás es `FUD1101`. La query admite `?`.
+- Un argumento de ruta con el nombre de un parámetro de la página (`[slug]`) es `FUD1100`. La
+  clave `a` de la query es del cable: un `query a` es `FUD1076`.
+- La llamada desde el navegador sigue siendo una: `save({ id, notify, active })`. Lo generado
+  reparte cada valor en su sitio y comprueba su tipo antes de enviar (§3.2). Con `form`, la
+  llamada es `save(form)` si la función no tiene argumentos de ruta ni de query (como hoy, y así
+  `form:=` no cambia), y `save({ id, notify, form })` si los tiene. *Decidido al implementar.*
+- `ctx` del handler: `params` (página + ruta de la función), `query`, y `args` o `form`, todos
+  tipados desde la declaración.
 
 Un middleware con parámetros (§3.8) los recibe en líneas debajo de su `use`:
 
@@ -266,9 +297,11 @@ form <nombre>
       require …
 ```
 
-- Cada campo tiene tipo (§3.2, sin `map`). `str`, `bool`, los numéricos, `date`, `T[]` (hoy
-  `arr`) y `group`. Sin `= valor`, el valor inicial es el de hoy (`''`, `false`, `null`, `[]`).
-  Un valor que no casa con el tipo es `FUD1094`.
+- Cada campo tiene tipo (§3.2, sin `map`). `str`, `bool`, los numéricos, `date`, `uuid`, `T[]`
+  (hoy `arr`) y `group`. Sin `= valor`, el valor inicial es el de hoy (`''`, `false`, `null`,
+  `[]`; `''` para `uuid`). Un valor que no casa con el tipo es `FUD1094`.
+- Un campo `uuid` lleva su comprobación de formato implícita, como el rango de un número: código
+  `uuid`, texto con `range "<texto>"`; el vacío pasa (lo rechaza `required`).
 - Bajo un campo van sus opciones y sus reglas; bajo un form o un grupo, sus campos, sus opciones y
   su `summary`. Una línea se reconoce por su posición, nunca por adivinar el segundo token.
 - `required` en un campo hace que el valor validado no sea nulo: el `ctx.form` de un handler lo
@@ -332,6 +365,10 @@ rule <nombre>
 - `runs both`: la implementación va en `src/browser` y corre en los dos lados (hoy `validator`).
   `runs server`: va en `src/server` y solo corre al recibir (hoy `serverValidator`). No hay
   `runs client`: el veredicto tiene que ser el mismo en los dos lados.
+- En `on field`, `*` es cualquier tipo y `*[]` cualquier lista (`required` es `on field *`;
+  `min-length`, `on field str *[]`). Un parámetro de regla de tipo `pattern` recibe el nombre de
+  un `pattern` del proyecto (`pattern email-loose` bajo un campo). Ninguno de los dos vale fuera
+  de una regla (`FUD1080`). *Decidido al implementar: §3.10 los necesita y no tenían forma.*
 - Bajo un campo cuyo tipo no está en `on field`, `FUD1083`. Una regla de grupo bajo un campo o al
   revés, `FUD1098`. Número o tipo de argumentos mal, `FUD1084`.
 
@@ -390,14 +427,18 @@ messages
   entrada interna, `@fudic/http/contract` y `@fudic/forms/contract`, que solo usa lo generado.
   Siguen públicos los errores (`HttpError`, `notFound`, `conflict`…), los tipos de `ctx` y
   `Problem`, el tipo `Form` y su API `$…`, y lo que el compilador enlaza (`./dom`, `./client`,
-  `./server`).
+  `./server`). *Decidido al implementar (tarea 63):* lo de `@fudic/forms` pasa a `./contract` tal
+  cual; lo de `@fudic/http` se borra, porque `./contract` ya tiene su `fn`, su `middleware` y su
+  cadena, y con ello `csrf`, `errorPages` y el `$fn` de `./client`.
 
 ### 3.11. Lo generado: el módulo `fudic:<id>`
 
 `<id>` es la ruta del `.fudapi` dentro de `src/`, sin extensión (`routes/blog/[slug]`,
 `components/user-form`, `rules/nif`). En una librería, `<paquete>/<ruta dentro de fudapi/>`
 (`@fudic/forms/rules`). El mismo `<id>` es la URL de sus funciones:
-`/_fudic/fn/<id>/<nombre>`.
+`/_fudic/fn/<id>/<nombre><ruta>`. En la URL, cada parámetro de la página del `<id>` va con su valor
+y la ruta de la función detrás, también con sus valores: `save /:id` de
+`routes/blog/[slug]` es `/_fudic/fn/routes/blog/mi-post/save/42`.
 
 Lo generado existe dos veces, con el mismo contenido de tipos:
 
@@ -435,12 +476,34 @@ declare module 'fudic:components/user-form' {
 | `middleware m` | `m`, `MClient`, `MServer`, `MFails` | `m.client(fn)` (`browser`) · `m.server(fn)` (`server`) |
 | `pattern p` | `p` (la regex anclada) | — |
 
-- `ctx` es el de SDD-56 (`ServerContext`): `params` tipados desde la ruta, `args` con los
-  argumentos declarados o `form` con el valor validado, más los `adds` de cada `use`.
+- `ctx` es el de SDD-56 (`ServerContext`): `params` tipados desde la página y la ruta de la
+  función, `query` con los argumentos de query, `args` con los de cuerpo o `form` con el valor
+  validado, más los `adds` de cada `use` (§3.3).
 - `RCheck = (value, params) => boolean | Promise<boolean>`; con varios `fails`, devuelve `true` o
   el código que falla. El error y sus argumentos los monta lo generado.
 - Lo generado importa `@fudic/*/contract` y otros `fudic:<id>`. **Nunca** importa `src/server`,
   `src/browser` ni nada del usuario.
+- *Decidido al implementar:* el despacho del servidor vive en `@fudic/http/contract/server`, aparte,
+  para que el navegador no lo cargue; el registro de implementaciones vive en
+  `@fudic/forms/contract` (las reglas también registran) y `@fudic/http/contract` lo reexporta.
+  `ApiContext.route` lleva además `pattern` (`/blog/:slug`), de donde el navegador lee los params
+  de la página. Los `.d.ts` van en `.fudic/api` (`API_TYPES_DIR` de `@fudic/conventions`).
+- *Decidido al implementar (Fase 8):* la raíz de cada lado se resuelve a un id con forma de
+  fichero del proyecto (`<root>/fudic-root.<lado>.js`, nunca en disco), porque el
+  `import.meta.glob` de un módulo sin carpeta no lo resuelve el servidor de dev. La variante de
+  navegador de cada `fudic:<id>` importa la raíz de navegador. En una librería, `server/` y
+  `browser/` son las carpetas por defecto (lo que publica está compilado). El registro recuerda
+  su último rechazo (`takeRefusal`) para que la raíz lo relance: el ayudante de precarga del
+  bundler tapa el error de un `import()` con uno suyo en el servidor. El pase edge sale siempre
+  con sourcemaps, se los pida o no el cliente.
+- *Decidido al implementar (Fase 11, con Pedro):* en una app con idiomas (SDD-58), la raíz, los
+  `fudic:<id>` y los handlers se compilan una vez por idioma, como un `.fud`: `t` y `locale` en un
+  handler son los del idioma de la página, y al navegador y al Service Worker no llega nada nuevo.
+  Las raíces cargan por turnos (`inTurn`) y ninguna vacía el registro: una recarga de dev invalida
+  también lo que guarda contratos (`fudic:`, wrappers, `.fud`) y la raíz nueva llena contratos
+  nuevos. Un `form` que una función usa y otro fichero declara lo reexporta el módulo de la
+  función. En vitest (`@fudic/testing`) un mismo grafo es servidor y página: una función generada
+  es a la vez la llamada y el contrato, y la raíz de servidor se carga antes de pintar.
 
 ### 3.12. Lo que escribe el usuario
 
@@ -553,8 +616,11 @@ el `include` de `.fudic/api/**/*.d.ts` en el tsconfig.
 - **Sangrado malo:** `FUD1061` y la línea se coloca al nivel válido más cercano por debajo.
 - **Contexto, no adivinanza:** qué palabras valen en una línea lo decide su padre (§3.3–§3.9). Una
   palabra que no vale ahí es `FUD1065`, con las que sí.
-- **Mientras se escribe** (`ge` en vez de `get`), lo de debajo sigue en el árbol del padre
-  anterior: el resto del fichero no se pone en rojo.
+- **Mientras se escribe** (`ge` en vez de `get`), esa línea da un solo diagnóstico y lo que cuelga
+  de ella se salta en silencio; el resto del fichero sigue en el árbol y no se pone en rojo. Dentro
+  de una declaración (`us` en vez de `use`), sus hermanas siguen en el árbol de la declaración.
+  *Precisado al implementar: colgar los hijos de `ge` del padre anterior los haría fallar allí,
+  que es justo la cascada que esta regla evita.*
 
 ### 4.2. El validador
 
@@ -595,7 +661,9 @@ const server  = import.meta.glob('/src/server/**/*.{ts,js}');
   detecte duplicados y carpetas equivocadas (§3.12). El navegador solo carga `browser`.
 - En dev, la raíz de servidor se carga la primera vez que la necesita una petición (página,
   `load`, función) y el HMR de Vite la invalida al cambiar un fichero. Ningún recorrido propio.
-- **El despacho** (`/_fudic/fn/<id>/<nombre>`) busca en el registro. Sin implementación:
+- **El despacho** (`/_fudic/fn/<id>/<nombre><ruta>`) casa la URL contra los `<id>` del índice y
+  la ruta de cada función (los segmentos `[x]` y `:x` con su valor), comprueba los tipos de ruta
+  y query (§3.2) y busca la implementación en el registro. Sin implementación:
   `404` con `Problem`; en dev, `detail: "save of components/user-form has no implementation in
   src/server"`. Lo mismo para `load` (la página responde 404) y `paths`/`layout` (error de build
   en el prerender, como hoy cuando falta el export).
@@ -634,6 +702,10 @@ salen del `.fudapi` enlazado (parser de `@fudic/api`, sin Oxc). `FUD0393` y `FUD
 - Se retiran los snippets, completados y acciones de `@server`/`@client` y el arreglo que escribía
   `layout()` en el `@server`: ahora la bombilla de `FUD0702` añade `layout` al `.fudapi` hermano
   (creándolo si no existe).
+- *Decidido al implementar:* la bombilla añade también el `<link rel="server">` al `.fudapi`
+  hermano cuando la ruta no lo enlaza, y no escribe lo que ya está. Un `<link rel="server">` cuyo
+  `.fudapi` no existe es `FUD1111` también en el editor (con la acción de crear el fichero), y el
+  `href` lleva al `.fudapi` con Ctrl+clic.
 
 ### 4.8. Un único `@code`: qué evalúa el servidor
 
@@ -644,13 +716,20 @@ salen del `.fudapi` enlazado (parser de `@fudic/api`, sin Oxc). `FUD0393` y `FUD
   corte; nada más del `@code` corre fuera del navegador.
 - `effect` nunca está en el corte. Desaparece `FUD0570`: `effect` vale en cualquier sitio del
   `@code`.
+- *Precisado al implementar:* lo que lee un enlace diferido (`@evento`, `bus:`, `ref=`) no
+  siembra el corte, ni el nombre pelado de una función pasado a una prop (cruza como celda, con
+  su stub en el servidor, como hoy); `props<T>()` está siempre en el corte. Un layout no tiene
+  corte: su `@code` solo declara props. Sin regiones, hidrata lo que hoy hidrataba más un
+  `@code` con una sentencia de nivel superior que se ejecuta al cargar (`document.title = …`,
+  `setInterval(…)`); una declaración que el markup no lee no hace hidratar.
 - El cliente ejecuta el `@code` entero, como hoy ejecuta neutro + `@client`.
 - **El nivel de hidratación no cambia** para ningún componente ni ruta del repositorio: lo que hoy
   era neutro y no forzaba hidratar sigue sin forzarlo (§6, criterio 33).
 - Lo que dependía de zonas se redefine sin zonas: `FUD0201` (una función del `@code`), `FUD0290`
   (todo el `@code`), `FUD0907` (pierde el caso «nombre de `@client`»), `FUD0901` (texto), `FUD0430`
   y `FUD0700` (un layout no enlaza `.fudapi` y su `@code` solo lleva props), `FUD0621` (sin
-  `.fudapi` con `load`), `FUD1003`–`FUD1009` (ver catálogo). Se retiran `FUD0111`, `FUD0193`,
+  `.fudapi` con `load`), `FUD1003`–`FUD1009` (ver catálogo). *Decidido al implementar:* `FUD0461`
+  (el `$` reservado) cubre todo el `@code`, que antes solo miraba dentro de las regiones. Se retiran `FUD0111`, `FUD0193`,
   `FUD0194`, `FUD0196`, `FUD0570`, `FUD0681`, `FUD0682`, `FUD1000`–`FUD1004`, `FUD1007`–`FUD1009`
   (su `.ts` se borra y su `.md` queda como `retired` con su sustituto).
 
@@ -676,7 +755,9 @@ responde ahí, como el de `.fudspec`.
   `source.fudapi`, `configurationDefaults` `[fudapi]` con `tabSize: 2`,
   `workspaceContains:**/*.fudapi`, `documentSelector` y `FILE_EVENTS` con `**/*.fudapi`.
 - La gramática de `.fud` pierde la regla de `@server`/`@client`.
-- `fudic fmt` formatea `.fudapi`; `fudic check` incluye sus diagnósticos.
+- `fudic fmt` formatea `.fudapi`; `fudic check` incluye sus diagnósticos. *Decidido al implementar:
+  `fudic check` no existe; `fudic fmt` da los diagnósticos del parser y deja el fichero sin tocar
+  (como un `.fud` que no parsea), y los del validador los da el build.*
 
 ### 4.11. Migración
 
@@ -724,7 +805,7 @@ Todos son `error` salvo que se diga.
 | `FUD1069` | Expresión de `require`/`when` mal formada. |
 | `FUD1070` | Nombre con la forma equivocada para su clase (§3.1). |
 | `FUD1071` | Cláusula repetida donde solo cabe una (`->`, `form`, `compress`, opciones). |
-| `FUD1072` | Función con `form` y argumentos. |
+| `FUD1072` | Función con `form` y argumentos de cuerpo. |
 | `FUD1073` | Bloque que no puede estar vacío (`type`, `enum`, `form`, `group`, middleware sin mitades). |
 | `FUD1074` | Opción de `load` mal escrita (modo, duración, política, `page`). |
 | `FUD1075` | Status fuera de rango o `compress` mal escrito. |
@@ -741,7 +822,7 @@ Todos son `error` salvo que se diga.
 | `FUD1086` | `skip` de un middleware no heredado. |
 | `FUD1087` | Parámetros de middleware que faltan, sobran o no casan. |
 | `FUD1088` | `type` que se contiene a sí mismo. |
-| `FUD1089` | Clave de `map` que no es `str` ni entera. |
+| `FUD1089` | Clave de `map` que no es `str`, `uuid` ni entera. |
 | `FUD1090` | `load`, `paths` o `layout` fuera del hermano de una ruta. |
 | `FUD1091` | `paths` en una ruta sin parámetros o en `_error`. |
 | `FUD1093` | `fails` repetido en una declaración. |
@@ -750,6 +831,9 @@ Todos son `error` salvo que se diga.
 | `FUD1096` | Más de un `messages` en el proyecto. |
 | `FUD1097` | Regla sin `runs`, sin `on` o sin `fails`. |
 | `FUD1098` | Regla de grupo/form bajo un campo, o de campo en un `summary`. |
+| `FUD1099` | `:x` en la ruta de una función sin argumento `x`. |
+| `FUD1100` | Argumento de ruta con el nombre de un parámetro de la página. |
+| `FUD1101` | Argumento de ruta o de query que no es escalar, o de ruta con `?`. |
 | `FUD1110` | `@server` o `@client` en un `@code` (dice a dónde va cada cosa). |
 | `FUD1111` | `<link rel="server">` sin `.fudapi` en su `href`. |
 | `FUD1112` | `<link rel="server">` en un layout o un snippet. |
@@ -793,7 +877,9 @@ Reescritos (mismo código, texto nuevo): `FUD0201`, `FUD0290`, `FUD0430`, `FUD06
 12. **Forms equivalentes.** `person`, `userForm` y `wideForm` generados dan los mismos veredictos,
     mensajes, `$issues()`, orden posicional y bytes binarios que los `.ts` de hoy, sobre la misma
     batería de valores (incluidos `required` en un grupo, el `summary` de `userForm` y un número
-    fuera de rango).
+    fuera de rango). *Precisado al implementar:* los bytes se comparan en `person`, que ya viaja en
+    binario; `userForm` y `wideForm` son hoy controles sin tipo (JSON) y los generados tienen tipo,
+    así que pasan a binario y se compara su valor, no sus bytes.
 13. **Patrón anclado.** `pattern web-url` rechaza `xhttp://a` y acepta `http://a`; el vacío pasa.
 14. **Sin imports del usuario.** Ningún módulo generado importa nada fuera de `@fudic/*` y
     `fudic:*`.
@@ -820,6 +906,14 @@ Reescritos (mismo código, texto nuevo): `FUD0201`, `FUD0290`, `FUD0430`, `FUD06
 23. **Built-ins.** `required`, `min`, `max`, `min-length`, `max-length`, `pattern`, `csrf` y
     `error-pages` se comportan como hoy (los tests de `@fudic/forms` y `@fudic/http` sobre esas
     piezas siguen en verde, reescritos sobre lo generado).
+36. **Ruta, query y cuerpo.** `put save /:id` con `query notify bool` y `active bool`, en la ruta
+    `blog/[slug]`: `save({ id, notify, active })` desde el navegador llega al handler con
+    `ctx.params` = `{ slug, id }`, `ctx.query.notify` y `ctx.args.active`, cada uno con su tipo; la
+    URL es la de §3.11. Lo mismo con `form` en lugar de `active`.
+37. **`uuid`.** Un `id uuid` acepta cualquier UUID (mayúsculas o minúsculas) y un `id str` acepta
+    `abc`; un `id uuid` o un `id i32` con `abc` dan `400` con `Problem` en el servidor, y en el
+    navegador rechazan sin enviar. Un campo `uuid` de un form da su error `uuid` y deja pasar el
+    vacío.
 
 **El `.fud`**
 

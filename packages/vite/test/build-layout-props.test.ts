@@ -9,7 +9,7 @@
  *   `edge`  the edge chunk's `render(ctx)`, run in process — `load` and `layout` here.
  *   `sw`    the LINKED chunk, the one the Service Worker downloads, handed `ctx.data` and
  *           `ctx.layout` out of the generated endpoint's single response. It imports neither
- *           `load` nor `layout`: `@server` cannot reach a client bundle (BUG-09).
+ *           `load` nor `layout`: `src/server` cannot reach a client bundle (BUG-09).
  *
  * If this is not green the rest does not matter.
  */
@@ -21,7 +21,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { fudic } from '../src/index.js';
-import { runtimeAlias } from './helpers/alias.js';
+import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
 import { manifestFile, routeTable } from './helpers/manifest.js';
 import { EDGE_DIR } from '../src/constants.js';
 import { safeName } from '../src/link.js';
@@ -45,21 +45,34 @@ const LAYOUT = `<!DOCTYPE html>
 /**
  * The route: `load` brings the post, `layout` turns it into the shell's props.
  *
- * `paths()` makes it `ssg`, so the build prerenders both slugs — and the culture of each one
+ * `paths` makes it `ssg`, so the build prerenders both slugs — and the culture of each one
  * comes out of the row, which is the case §6.16 is about.
  */
 const ROUTE = `<link rel="layout" href="../_layout.fud">
-
-@code {
-@server {
-const POSTS = { hola: { lang: 'es' }, hello: { lang: 'en' } };
-export function paths() { return [{ slug: 'hola' }, { slug: 'hello' }]; }
-export function load(ctx) { return { post: POSTS[ctx.params.slug] }; }
-export function layout(ctx, data) { return { culture: data.post.lang }; }
-}
-}
+<link rel="server" href="./[slug].fudapi">
 
 <h1>Post</h1>
+`;
+
+/** What the route declares of its server (SDD-60 §3.4): no mode, so the inference decides. */
+const ROUTE_API = `load
+  post  Post
+
+paths
+
+layout
+
+type Post
+  lang  str
+`;
+
+/** The three pieces, implemented in `src/server` (SDD-60 §3.12). */
+const ROUTE_SERVER = `import { load, paths, layout } from 'fudic:routes/blog/[slug]';
+
+const POSTS: Record<string, { lang: string }> = { hola: { lang: 'es' }, hello: { lang: 'en' } };
+paths.handle(() => ['hola', 'hello']);
+load.handle((ctx) => ({ post: POSTS[ctx.params.slug]! }));
+layout.handle((_ctx, data) => ({ culture: data.post.lang }));
 `;
 
 interface OutFile {
@@ -104,14 +117,18 @@ beforeAll(async () => {
   root = mkdtempSync(join(tmpdir(), 'fudic-layout-props-'));
   mkdirSync(join(root, 'src', 'routes', 'blog'), { recursive: true });
   writeFileSync(join(root, 'src', 'routes', '_layout.fud'), LAYOUT);
+  writeHttpTypecheckConfig(root);
   writeFileSync(join(root, 'src', 'routes', 'blog', '[slug].fud'), ROUTE);
+  writeFileSync(join(root, 'src', 'routes', 'blog', '[slug].fudapi'), ROUTE_API);
+  mkdirSync(join(root, 'src', 'server'), { recursive: true });
+  writeFileSync(join(root, 'src', 'server', 'blog.ts'), ROUTE_SERVER);
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
   // A project with a Service Worker has to say who it is: its caches are named after it.
   writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'test' }));
   const result = (await build({
     root,
     logLevel: 'silent',
-    resolve: { alias: { ...runtimeAlias } },
+    resolve: { alias: httpAlias },
     plugins: [fudic()],
     // WRITTEN to disk: the edge chunks live outside `outDir` and only exist when they do,
     // and this suite has to run one.
@@ -146,7 +163,7 @@ describe('SDD-40 §6.15–§6.16 — the layout gets its props, per route and pe
     expect(prerendered('hola')).toContain('<meta name="color-scheme" content="light">');
   });
 
-  it('keeps `@server` out of every published file, resolver included (BUG-09)', () => {
+  it('keeps the server out of every published file, resolver included (BUG-09)', () => {
     for (const file of output) {
       expect(textOf(file)).not.toContain('data.post.lang');
     }
@@ -184,7 +201,7 @@ describe('SDD-40 §6.11 — edge, sw and ssg produce the SAME <html lang>', () =
     // edge: `load` and `layout` in process.
     const edge = htmlTagOf(await drain(chunk.render(ctxFor('hello', 'edge'))));
 
-    // sw: the LINKED chunk, handed both halves by the endpoint. It never runs `@server`.
+    // sw: the LINKED chunk, handed both halves by the endpoint. It never runs `src/server`.
     const resolved = await chunk.data(ctxFor('hello', 'edge'));
     const linked = await linkedChunk();
     const sw = htmlTagOf(

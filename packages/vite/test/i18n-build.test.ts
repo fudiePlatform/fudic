@@ -44,18 +44,27 @@ const POST = `<!DOCTYPE html>
 <head>
 <script src="fudic:runtime"></script>
 <title>Blog</title>
-@code {
-@server {
-import { locale } from '@fudic/i18n';
-export function load(ctx) { return { slug: ctx.params.slug }; }
-export function paths() { return locale === 'en' ? ['a', 'b'] : ['a']; }
-}
-}
+<link rel="server" href="./[slug].fudapi">
 </head>
 <body>
 <h1>Entrada @data.slug</h1>
 </body>
 </html>
+`;
+
+/** The post's server: `load` and `paths`, ssg by inference (SDD-60 §3.4). */
+const POST_API = `load
+  slug  str
+
+paths
+`;
+
+/** Compiled once per locale: `locale` is the one of the page being prerendered (SDD-60 §3.11). */
+const POST_SERVER = `import { locale } from '@fudic/i18n';
+import { load, paths } from 'fudic:routes/blog/[slug]';
+
+load.handle((ctx) => ({ slug: ctx.params.slug }));
+paths.handle(() => (locale === 'en' ? ['a', 'b'] : ['a']));
 `;
 
 const PRICE = `@code {
@@ -72,10 +81,8 @@ const PRICE = `@code {
 
 /** Hydrated: its chunk is compiled once per locale, and the page of each loads its own. */
 const COUNTER = `@code {
-  @client {
-    let n = 0;
-    function mas(): void { n += 1; }
-  }
+  let n = 0;
+  function mas(): void { n += 1; }
 }
 <app-counter>
   <template shadowrootmode="open">
@@ -91,10 +98,8 @@ const LIVE = `<!DOCTYPE html>
 <script src="fudic:runtime"></script>
 <title>Vivo</title>
 @code {
-  @client {
-    let n = 0;
-    function mas(): void { n += 1; }
-  }
+  let n = 0;
+  function mas(): void { n += 1; }
 }
 </head>
 <body><button @click="@mas">Pulsar</button></body>
@@ -112,12 +117,10 @@ const LAYOUT = `<!DOCTYPE html>
 /** Hydrated and with a pipe: its chunk imports the preset, which the worker warms with it. */
 const TOTAL = `@code {
   import { currency } from '@fudic/i18n';
+  import { signal } from '@fudic/core';
   const euros = currency('EUR');
-  @client {
-    import { signal } from '@fudic/core';
-    const n = signal(1);
-    function mas(): void { n.set(n() + 1); }
-  }
+  const n = signal(1);
+  function mas(): void { n.set(n() + 1); }
 }
 <app-total>
   <template shadowrootmode="open">
@@ -141,6 +144,8 @@ const FILES = {
   'src/components/app-counter.fud': COUNTER,
   'src/routes/about.fud': ABOUT,
   'src/routes/blog/[slug].fud': POST,
+  'src/routes/blog/[slug].fudapi': POST_API,
+  'src/server/blog.ts': POST_SERVER,
   'src/components/app-price.fud': PRICE,
   'sw.json': JSON.stringify({ shell: [] }),
 };

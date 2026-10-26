@@ -19,13 +19,14 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, relative, resolve } from 'node:path';
 
 const SRC = fileURLToPath(new URL('../src', import.meta.url));
-const INDEX = join(SRC, 'index.ts');
+// What fudic generates from a `.fudapi` imports `./contract` (SDD-60 §3.10): the promise is its.
+const INDEX = join(SRC, 'contract', 'index.ts');
 
 /** `import`/`export … from './x.js'`, skipping the type-only ones TypeScript erases. */
 const FROM = /(?:^|\n)\s*(?:import|export)\s+(type\s+)?[^;]*?from\s*['"](\.[^'"]+)['"]/g;
 
-/** `export { name } from './path.js'` — what an app actually names. */
-const REEXPORT = /export\s*\{\s*([A-Za-z0-9_]+)\s*\}\s*from\s*['"](\.[^'"]+)['"]/g;
+/** `export { a, b } from './path.js'` — what generated code actually names. */
+const REEXPORT = /export\s*\{([^}]*)\}\s*from\s*['"](\.[^'"]+)['"]/g;
 
 const asTs = (from: string, spec: string): string =>
   resolve(dirname(from), spec.replace(/\.js$/, '.ts'));
@@ -60,9 +61,9 @@ async function reachable(entries: readonly string[]): Promise<ReadonlySet<string
 async function exportMap(): Promise<ReadonlyMap<string, string>> {
   const code = await readFile(INDEX, 'utf8');
   const map = new Map<string, string>();
-  for (const [, name, spec] of code.matchAll(REEXPORT)) {
-    if (name !== undefined && spec !== undefined) {
-      map.set(name, asTs(INDEX, spec));
+  for (const [, names, spec] of code.matchAll(REEXPORT)) {
+    for (const one of names!.split(',').map((n) => n.trim())) {
+      if (one !== '' && !one.startsWith('type ')) map.set(one, asTs(INDEX, spec!));
     }
   }
   return map;
@@ -74,7 +75,7 @@ async function routeUsing(names: readonly string[]): Promise<ReadonlySet<string>
   const entries = names.map((n) => {
     const file = map.get(n);
     if (file === undefined) {
-      throw new Error(`"${n}" is not exported from index.ts`);
+      throw new Error(`"${n}" is not exported from contract/index.ts`);
     }
     return file;
   });
@@ -97,12 +98,13 @@ const TYPED = [
 ] as const;
 
 describe('the package prunes by route (§6.16)', () => {
-  it('exports every public name from its own module', async () => {
+  it('exports every factory and validator from its own module', async () => {
     const map = await exportMap();
-    const modules = new Set(map.values());
+    const own = [...TYPED, 'control', 'group', 'required', 'pattern', 'min', 'max', 'minLength', 'maxLength', 'validator', 'serverValidator', 'asyncValidator'];
+    const modules = new Set(own.map((name) => map.get(name)));
     // One export per module is the whole mechanism: two names sharing a module
     // means importing one drags the other.
-    expect(modules.size).toBe(map.size);
+    expect(modules.size).toBe(own.length);
 
     const files = (await readdir(join(SRC, 'typed'))).filter((f) => f.endsWith('.ts'));
     // The twelve factories plus the two they share.

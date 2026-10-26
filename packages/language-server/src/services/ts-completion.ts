@@ -41,7 +41,7 @@ import {
 import { clientFileName, mapToSource, type VirtualFile } from '@fudic/language-core';
 import { URI } from 'vscode-uri';
 import type { CachedDocument } from '../document-cache.js';
-import { CLIENT_CODE_ID, type FudicVirtualCode } from '@fudic/typecheck';
+import type { FudicVirtualCode } from '@fudic/typecheck';
 import { isFudSourceUri } from '../uri.js';
 import {
   attributeGapContextAt,
@@ -360,7 +360,7 @@ function allowedItems(
   // Not a `.fud` at all: a real `.ts` in the workspace is none of this package's business.
   if (source === undefined) return { items: [...items] };
 
-  const offset = sourceOffsetOf(source.cached, source.isClient, document, position);
+  const offset = sourceOffsetOf(source.cached, document, position);
   if (offset === undefined) return { items: items.filter((item) => !isScaffolding(item)) };
 
   const region = regionAt(source.cached.source, source.cached.html, offset);
@@ -642,17 +642,16 @@ function allowedItems(
   // that answers, and the root is walked last, so the server's snippets and TypeScript's names
   // could never appear together. Whichever answered silenced the other. The snippets travel
   // with this reply for the same reason `@()` does.
-  // MARKUP only, and the gate belongs here as much as in the root: a `@` inside `@code` opens
-  // `@client`, not an interpolation, and there the whole TypeScript scope is the right answer
-  // rather than the template's slice of it.
+  // MARKUP only, and the gate belongs here as much as in the root: a `@` inside `@code` is no
+  // interpolation, and there the whole TypeScript scope is the right answer rather than the
+  // template's slice of it.
   const directive = directiveContextAt(source.cached.source, offset, region);
   const directiveScope =
     directive === undefined ? undefined : scopeAt(source.cached, directive.span.start);
 
-  // A `@` inside `@code` opens a REGION — `@server`, `@client` — and nothing else. The offset is
+  // A `@` inside `@code` opens nothing since SDD-60 retired its regions. The offset is
   // TypeScript's, so TypeScript answers it with the whole program: a thousand names, of which
-  // exactly zero can follow a `@`. Empty here, and the two snippets arrive from the root, which
-  // is the only voice left at a position no other service claims.
+  // exactly zero can follow a `@`. Empty here.
   if (directive !== undefined && directiveScope === 'code-block') {
     return { items: [], at: offset };
   }
@@ -1368,15 +1367,15 @@ function isAutoImport(item: CompletionItem): boolean {
   return typeof data === 'object' && data !== null && data.source !== undefined;
 }
 
-/** The `.fud` behind an embedded document, and whether this is the client projection. */
+/** The `.fud` behind an embedded document: its TypeScript projection is the client's alone. */
 function fudSourceAt(
   context: LanguageServiceContext,
   document: TextDocument,
-): { cached: CachedDocument; isClient: boolean } | undefined {
+): { cached: CachedDocument } | undefined {
   const decoded = context.decodeEmbeddedDocumentUri(URI.parse(document.uri));
   if (decoded === undefined) return undefined;
 
-  const [sourceUri, codeId] = decoded;
+  const [sourceUri] = decoded;
   if (!isFudSourceUri(sourceUri)) return undefined;
 
   const root = context.language.scripts.get(sourceUri)?.generated?.root as
@@ -1384,32 +1383,24 @@ function fudSourceAt(
     | undefined;
   if (root === undefined) return undefined;
 
-  return { cached: root.document, isClient: codeId === CLIENT_CODE_ID };
+  return { cached: root.document };
 }
 
 /**
- * Where a position of the CLIENT projection lives in the `.fud`.
- *
- * Only the client, because it is the only virtual that holds the template, and the template
- * is where every closed position of the grammar is. The server projection is `@code` and
- * nothing else, so a position in it is ordinary TypeScript and the second rule must not
- * touch it.
+ * Where a position of the client projection lives in the `.fud`: the virtual that holds the
+ * template, where every closed position of the grammar is.
  */
 function sourceOffsetOf(
   cached: CachedDocument,
-  isClient: boolean,
   document: TextDocument,
   position: { line: number; character: number },
-): number | undefined {
-  if (!isClient) return undefined;
-
-  const client = clientVirtualOf(cached);
+): number | undefined {  const client = clientVirtualOf(cached);
   if (client === undefined) return undefined;
 
   return mapToSource(client, document.offsetAt(position), 'completion');
 }
 
-/** The client virtual among the three, found by the name the emitter gave it. */
+/** The client virtual among the projections, found by the name the emitter gave it. */
 function clientVirtualOf(cached: CachedDocument): VirtualFile | undefined {
   const wanted = clientFileName(cached.path);
   return cached.virtuals.find((virtual) => virtual.fileName === wanted);

@@ -1,0 +1,21 @@
+# The form of /usuarios, and every field declares its type.
+#
+# Both ends take it from the same declaration, so the field names add nothing on the wire: the
+# upload is positional, and in binary. With a long enough note it passes the threshold of
+# src/http.fudapi and goes gzipped as well. What the server refuses with 400, 409 or 422 the
+# form keeps, painted in its summary, and never goes to error-pages.
+form personForm
+  catches 400 409 422
+
+  name  str = ""
+    required             "Escribe el nombre."
+  email  str = ""
+    required             "Escribe el email."
+    pattern email-loose  "Ese email no parece válido."
+    email-taken          "Ese email ya lo usa otra persona."
+  age  u8
+    required             "Escribe la edad."
+    min 18               "Tiene que tener al menos {n} años."
+    max 120              "Como mucho {n} años."
+  active  bool = true
+  notes  str = ""

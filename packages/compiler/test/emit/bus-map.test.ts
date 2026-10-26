@@ -31,13 +31,11 @@ function home(tags: readonly string[]): string {
 `;
 }
 
-/** A component that emits: `@client` with `emit` imported from `@fudic/dom`. */
+/** A component that emits: a `@code` with `emit` imported from `@fudic/dom`. */
 function emitter(tag: string, body: string): string {
   return `@code {
-  @client {
-    import { emit } from '@fudic/dom';
+  import { emit } from '@fudic/dom';
 ${body}
-  }
 }
 <${tag}>
   <template shadowrootmode="open">
@@ -166,12 +164,10 @@ describe('fud-bus — the edge with itself', () => {
       busOf({
         '/app/home.fud': home(['x-loop', 'x-other']),
         '/app/x-loop.fud': `@code {
-  @client {
-    import { emit } from '@fudic/dom';
+  import { emit } from '@fudic/dom';
 
-    function go() {
-      emit('ping');
-    }
+  function go() {
+    emit('ping');
   }
 }
 <x-loop>
@@ -240,10 +236,8 @@ describe('fud-bus — what does not resolve does not participate (§6.22)', () =
       busOf({
         '/app/home.fud': home(['x-raw', 'shopping-cart']),
         '/app/x-raw.fud': `@code {
-  @client {
-    function go() {
-      document.dispatchEvent(new CustomEvent('carrito'));
-    }
+  function go() {
+    document.dispatchEvent(new CustomEvent('carrito'));
   }
 }
 <x-raw>

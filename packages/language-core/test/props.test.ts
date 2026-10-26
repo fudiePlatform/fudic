@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { span, type OxcNode, type Span } from '@fudic/compiler';
 import { emitPropsProjection, findPropsCall } from '../src/props.js';
 import { VirtualWriter } from '../src/writer.js';
-import { partitionCode } from '../src/code.js';
+import { codeChunks } from '../src/code.js';
 import { codeOf, parseFud, statementsOf } from './_support.js';
 
-/** The first neutral chunk of a `.fud`'s `@code`, parsed as statements. */
+/** The first chunk of a `.fud`'s `@code`, parsed as statements. */
 function neutralOf(source: string): ReturnType<typeof statementsOf> {
-  const chunk = partitionCode(codeOf(parseFud(source))).neutral[0]!;
+  const chunk = codeChunks(codeOf(parseFud(source)))[0]!;
   return statementsOf(source, chunk);
 }
 

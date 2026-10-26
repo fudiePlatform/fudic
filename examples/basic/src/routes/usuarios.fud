@@ -1,125 +1,78 @@
 <link rel="layout" href="../layouts/_layout.fud">
 <link rel="component" href="../components/site-nav.fud">
 <link rel="component" href="../components/user-form.fud">
+<link rel="server" href="./usuarios.fudapi">
 
 @code {
-  @server {
-    import { strategy } from "@fudic/core";
-    import { inject } from "@fudic/di";
-    import { del, get, put } from "@fudic/http";
-    import { audit } from "../middlewares/audit";
-    import { auth } from "../middlewares/auth";
-    import { Users } from "../services/users";
+  import { effect, signal } from "@fudic/core";
+  import type { Person } from "fudic:routes/usuarios";
+  import { TOKEN_KEY } from "../browser/auth";
 
-    // Por petición: la lista cambia con cada alta, y una página prerenderizada no la vería.
-    strategy({ mode: "ssr" });
+  const found = signal<readonly Person[]>([]);
+  const estado = signal("");
+  const texto = signal("");
+  // Vacío en los dos lados, para que el navegador parta de lo que pintó el servidor. El token
+  // vive en este navegador, no en el servidor: se lee al cargar la página.
+  const token = signal("");
+  effect(() => {
+    token.set(localStorage.getItem(TOKEN_KEY) ?? "");
+  });
+  let busqueda: AbortController | undefined;
 
-    // `load` pasa por la cadena global de `src/http.ts`, como cualquier función.
-    export async function load() {
-      return { users: inject(Users).all() };
+  // Cada búsqueda cancela la anterior: lo que llega es siempre la última.
+  async function lanzar(llamada: (signal: AbortSignal) => Promise<readonly Person[]>) {
+    busqueda?.abort();
+    const propia = new AbortController();
+    busqueda = propia;
+    estado.set("Buscando…");
+    try {
+      found.set(await llamada(propia.signal));
+      estado.set("");
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") estado.set("Búsqueda cancelada.");
+      else throw err;
     }
-
-    // Sin `auth`: buscar es público.
-    export const search = get()
-      .args<{ q: string }>()
-      .handle((ctx) => inject(Users).find(ctx.args.q));
-
-    // La misma búsqueda, tres segundos tarde: da tiempo a cancelarla.
-    export const slowSearch = get()
-      .args<{ q: string }>()
-      .handle((ctx) => inject(Users).find(ctx.args.q, 3000));
-
-    export const save = put()
-      .use(auth)
-      .args<{ id: number; active: boolean }>()
-      .handle((ctx) => {
-        inject(Users).setActive(ctx.args.id, ctx.args.active);
-      });
-
-    export const remove = del()
-      .use(auth, audit)
-      .args<{ id: number }>()
-      .handle((ctx) => {
-        inject(Users).remove(ctx.args.id);
-      });
-
-    // Un fallo que nadie captura: `errorPages` lleva la página a `_error.fud` con un 500.
-    export const crash = get().handle((): string => {
-      throw new Error("fallo a propósito");
-    });
   }
 
-  @client {
-    import { effect, signal } from "@fudic/core";
-    import type { Person } from "../data/people";
-    import { TOKEN_KEY } from "../middlewares/auth";
+  function buscar(e: Event) {
+    texto.set((e.target as HTMLInputElement).value);
+    void lanzar((signal) => search({ q: texto() }, { signal }));
+  }
 
-    const found = signal<readonly Person[]>([]);
-    const estado = signal("");
-    const texto = signal("");
-    // Vacío en los dos lados, para que el navegador parta de lo que pintó el servidor. El token
-    // vive en este navegador, no en el servidor: se lee al cargar la página.
-    const token = signal("");
-    effect(() => {
-      token.set(localStorage.getItem(TOKEN_KEY) ?? "");
-    });
-    let busqueda: AbortController | undefined;
+  function buscarLento() {
+    void lanzar((signal) => slowSearch({ q: texto() }, { signal }));
+  }
 
-    // Cada búsqueda cancela la anterior: lo que llega es siempre la última.
-    async function lanzar(llamada: (signal: AbortSignal) => Promise<readonly Person[]>) {
-      busqueda?.abort();
-      const propia = new AbortController();
-      busqueda = propia;
-      estado.set("Buscando…");
-      try {
-        found.set(await llamada(propia.signal));
-        estado.set("");
-      } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") estado.set("Búsqueda cancelada.");
-        else throw err;
-      }
-    }
+  function cancelar() {
+    busqueda?.abort();
+  }
 
-    function buscar(e: Event) {
-      texto.set((e.target as HTMLInputElement).value);
-      void lanzar((signal) => search({ q: texto() }, { signal }));
-    }
+  async function activar(id: number, e: Event) {
+    await save({ id, active: (e.target as HTMLInputElement).checked });
+    location.reload();
+  }
 
-    function buscarLento() {
-      void lanzar((signal) => slowSearch({ q: texto() }, { signal }));
-    }
+  async function borrar(id: number) {
+    await remove({ id });
+    location.reload();
+  }
 
-    function cancelar() {
-      busqueda?.abort();
-    }
+  function entrar(nombre: string) {
+    localStorage.setItem(TOKEN_KEY, nombre);
+    token.set(nombre);
+  }
 
-    async function activar(id: number, e: Event) {
-      await save({ id, active: (e.target as HTMLInputElement).checked });
-      location.reload();
-    }
+  function salir() {
+    localStorage.removeItem(TOKEN_KEY);
+    token.set("");
+  }
 
-    async function borrar(id: number) {
-      await remove({ id });
-      location.reload();
-    }
+  async function romper() {
+    await crash();
+  }
 
-    function entrar(nombre: string) {
-      localStorage.setItem(TOKEN_KEY, nombre);
-      token.set(nombre);
-    }
-
-    function salir() {
-      localStorage.removeItem(TOKEN_KEY);
-      token.set("");
-    }
-
-    async function romper() {
-      await crash();
-    }
-
-    async function borrarNadie() {
-      await remove({ id: 999 });
-    }
+  async function borrarNadie() {
+    await remove({ id: 999 });
   }
 }
 
@@ -174,7 +127,7 @@
 
 <h1>Funciones de servidor</h1>
 <p class="lede">
-  Cada botón de esta página llama a una función escrita en el <code>@@server</code> de la ruta
+  Cada botón de esta página llama a una función declarada en el <code>.fudapi</code> de la ruta
   o del componente. El cliente no construye URLs, ni cabeceras, ni <code>fetch</code>: llama a
   <code>search</code>, <code>save</code> o <code>remove</code> por su nombre, con sus tipos.
 </p>

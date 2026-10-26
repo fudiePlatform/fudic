@@ -9,14 +9,12 @@
     { id: "p3", nombre: "Alfombrilla", stock: 12, sku: "P-22" },
   ];
 
-  @client {
-    import { signal } from "@fudic/core";
+  import { signal } from "@fudic/core";
 
-    const productos = signal(inicial);
+  const productos = signal(inicial);
 
-    function subir() {
-      productos.set(productos().map((p) => ({ ...p, precio: (p.precio ?? 0) + 10 })));
-    }
+  function subir() {
+    productos.set(productos().map((p) => ({ ...p, precio: (p.precio ?? 0) + 10 })));
   }
 }
 

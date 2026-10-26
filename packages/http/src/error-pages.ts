@@ -1,8 +1,9 @@
 /**
- * `errorPages(…)`: what a call does with an error nobody caught, for the general case (SDD-56
- * §4.8). A client half only. The developer puts it in a chain, or does not.
+ * The client half of `error-pages`: what a call does with an error nobody caught, for the
+ * general case (SDD-56 §4.8). The developer puts it in a chain, or does not:
  *
- *     chain().use(csrf, errorPages({ 401: '/login', 403: '/login' }))
+ *     use error-pages
+ *       routes  403 /login
  *
  * A status with a route goes there; any other goes to `_error.fud`, with the server's `detail`
  * in the URL so the page can say what failed. What it never touches: a cancelled call, and an
@@ -15,14 +16,10 @@
 
 import { ERROR_PREFIX } from '@fudic/conventions';
 import { HttpError, Redirect, ValidationError } from './errors.js';
-import { middleware } from './middleware.js';
-import type { Middleware } from './types.js';
+import type { ClientStep } from './types.js';
 
-/** Where a status goes instead of `_error.fud`: a URL, or the URL a function makes of the error. */
-export type ErrorRoute = string | ((error: HttpError) => string);
-
-/** The routes of `errorPages`, by status: `{ 401: '/login' }`. */
-export type ErrorRoutes = Readonly<Record<number, ErrorRoute>>;
+/** Where a status goes instead of `_error.fud`, by status: `{ 401: '/login' }`. */
+export type ErrorRoutes = Readonly<Record<number, string>>;
 
 const isAbort = (e: unknown): boolean => e instanceof DOMException && e.name === 'AbortError';
 
@@ -45,8 +42,9 @@ function errorUrl(error: unknown): string {
   return `${ERROR_PREFIX}/${error.status}${query}`;
 }
 
-export function errorPages(routes: ErrorRoutes = {}): Middleware {
-  return middleware().client(async (ctx, next) => {
+/** The client half of `error-pages`, for its routes. */
+export function errorPagesStep(routes: ErrorRoutes = {}): ClientStep {
+  return async (ctx, next) => {
     try {
       return await next(ctx);
     } catch (e) {
@@ -56,8 +54,8 @@ export function errorPages(routes: ErrorRoutes = {}): Middleware {
       if (e instanceof ValidationError) throw e;
       if (e instanceof Redirect) return navigate(e.location);
       const route = e instanceof HttpError ? routes[e.status] : undefined;
-      if (route !== undefined) return navigate(typeof route === 'string' ? route : route(e as HttpError));
+      if (route !== undefined) return navigate(route);
       return navigate(errorUrl(e));
     }
-  });
+  };
 }

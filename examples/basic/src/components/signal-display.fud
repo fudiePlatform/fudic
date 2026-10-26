@@ -10,12 +10,10 @@
   // Y con el objeto llega todo lo demás: derivar de él, reenviarlo al nieto y escribirlo.
   const { value } = props<{ value: Signal<number> }>();
 
-  @client {
-    import { computed } from "@fudic/core";
+  import { computed } from "@fudic/core";
 
-    // Imposible con un número: un derivado necesita una fuente que le avise.
-    const doble = computed(() => value() * 2);
-  }
+  // Imposible con un número: un derivado necesita una fuente que le avise.
+  const doble = computed(() => value() * 2);
 }
 
 <head>

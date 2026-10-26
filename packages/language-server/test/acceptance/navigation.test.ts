@@ -25,8 +25,10 @@ import {
 import { URI } from 'vscode-uri';
 import { fixtureText, fixtureUri, startHarness, type Harness } from './_harness.js';
 
-const SLUG = 'blog/[slug].fud';
-const BADGE = 'components/app-badge.fud';
+const SLUG = 'src/blog/[slug].fud';
+/** The types the server writes for its `.fudapi` on start-up (SDD-60 §3.11). */
+const TYPES = '.fudic/api/blog/[slug].d.ts';
+const BADGE = 'src/components/app-badge.fud';
 
 let harness: Harness;
 
@@ -34,8 +36,8 @@ beforeAll(async () => {
   harness = await startHarness();
   await harness.open(SLUG);
   await harness.open(BADGE);
-  await harness.open('components/site-nav.fud');
-  await harness.open('layouts/_layout.fud');
+  await harness.open('src/components/site-nav.fud');
+  await harness.open('src/layouts/_layout.fud');
 }, 60_000);
 
 afterAll(async () => {
@@ -82,7 +84,7 @@ describe('§6.7 — definition', () => {
       const [location, ...rest] = await definitionAt(SLUG, needle, delta);
 
       expect(rest).toEqual([]);
-      expect(fileOf(location!)).toBe('components/app-badge.fud');
+      expect(fileOf(location!)).toBe('src/components/app-badge.fud');
     }
   });
 
@@ -96,9 +98,9 @@ describe('§6.7 — definition', () => {
     const [location, ...rest] = await definitionAt(SLUG, '<h1>@data.title</h1>', 11);
 
     expect(rest).toEqual([]);
-    expect(fileOf(location!)).toBe('blog/[slug].fud');
-    // `PageData` is the return type of `load()`, and the property is where `title` is declared.
-    expect(textOf(SLUG, location!.range)).toBe('title: string;');
+    // `data` is the `LoadData` of the `.fudapi` (SDD-60 §4.7), as its `.d.ts` declares it.
+    expect(fileOf(location!)).toBe(TYPES);
+    expect(textOf(TYPES, location!.range)).toBe('readonly title: string;');
   });
 
   it('over data itself, the type definition is the whole shape', async () => {
@@ -109,9 +111,8 @@ describe('§6.7 — definition', () => {
     const [location, ...rest] = (answer ?? []) as Location[];
 
     expect(rest).toEqual([]);
-    expect(textOf(SLUG, location!.range)).toBe(
-      '{ title: string; tag: string; body: string; found: boolean; note?: string }',
-    );
+    expect(fileOf(location!)).toBe(TYPES);
+    expect(textOf(TYPES, location!.range)).toMatch(/^export interface LoadData \{ readonly title: string;/u);
   });
 
   it('over a prop in the template, opens its declaration in @code', async () => {
@@ -119,15 +120,15 @@ describe('§6.7 — definition', () => {
     // into the `@code` block.
     const [own] = await definitionAt(BADGE, `class:success="@(tone === 'success')"`, 18);
 
-    expect(fileOf(own!)).toBe('components/app-badge.fud');
+    expect(fileOf(own!)).toBe('src/components/app-badge.fud');
     expect(textOf(BADGE, own!.range)).toBe('tone');
 
     // And the same question asked from the file that USES the component: the attribute is a
     // property of the other file's contract, and F12 crosses the file boundary.
     const [other] = await definitionAt(SLUG, '<site-nav .current=', 11);
 
-    expect(fileOf(other!)).toBe('components/site-nav.fud');
-    expect(textOf('components/site-nav.fud', other!.range)).toBe('current?: string');
+    expect(fileOf(other!)).toBe('src/components/site-nav.fud');
+    expect(textOf('src/components/site-nav.fud', other!.range)).toBe('current?: string');
   });
 });
 

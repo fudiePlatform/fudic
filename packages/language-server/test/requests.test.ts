@@ -26,13 +26,12 @@ function setup(path: string, source: string) {
 }
 
 describe('virtualFilesPayload', () => {
-  it('returns the three virtuals of a document with their text', () => {
+  it('returns the virtuals of a document with their text', () => {
     const source = `@code {\n  const { a = 1 } = props<{ a?: number }>();\n}\n\n<head>\n  <style>:host { color: red; }</style>\n</head>\n\n<app-x>\n  <template shadowrootmode="open"><i>@a</i></template>\n</app-x>\n`;
     const { document } = setup('/p/components/app-x.fud', source);
 
     expect(virtualFilesPayload(document).map((file) => [file.fileName, file.languageId])).toEqual([
       ['/p/components/app-x.fud.ts', 'typescript'],
-      ['/p/components/app-x.fud.server.ts', 'typescript'],
       ['/p/components/app-x.fud.0.css', 'css'],
     ]);
     expect(virtualFilesPayload(document)[0]?.text).toContain('$tpl');

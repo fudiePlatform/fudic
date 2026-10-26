@@ -24,7 +24,8 @@ import { SsrDom, renderToString } from '@fudic/ssr';
 import { browserDom } from '@fudic/dom';
 import { FudicElement, signal, computed, subscribe, written, type FudicElementCtor } from '@fudic/core';
 import { emit as busEmit } from '@fudic/dom';
-import { control, form, setMessages, summaryEntriesOf, type ErrorMap } from '@fudic/forms';
+import { summaryEntriesOf, type ErrorMap } from '@fudic/forms';
+import { control, form, setMessages } from '@fudic/forms/contract';
 import {
   bindCheckbox,
   bindForm,

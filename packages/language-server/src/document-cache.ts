@@ -14,7 +14,15 @@
  * runs too (SDD-35 §4.1). What is the editor's own is only the caching around it.
  */
 
-import { parseSource, projectParsed, toPosix, type ParsedSource, type ProjectedFud } from '@fudic/typecheck';
+import { linkHref } from '@fudic/compiler';
+import {
+  parseSource,
+  projectParsed,
+  serverLinksOf,
+  toPosix,
+  type ParsedSource,
+  type ProjectedFud,
+} from '@fudic/typecheck';
 import type { WorkspaceIndex } from './workspace-index.js';
 
 /** Everything the server knows about one open document at one version. */
@@ -68,6 +76,21 @@ export class DocumentCache {
   /** Forget one document. The index is not touched: this is the editor closing a file. */
   invalidate(path: string): void {
     this.#entries.delete(toPosix(path));
+  }
+
+  /**
+   * Re-project, on their next request, the documents that link this `.fudapi` (SDD-60 §4.9):
+   * what they get from it — `data`, its functions, its forms — is read at projection time. The
+   * parse is theirs and survives.
+   */
+  reprojectLinking(apiPath: string): void {
+    const target = toPosix(apiPath);
+    for (const [path, entry] of this.#entries) {
+      const links = serverLinksOf(entry.parsed.parsed.document).map(linkHref);
+      if (links.some((href) => href !== undefined && this.#index.serverPath(path, href) === target)) {
+        delete entry.projected;
+      }
+    }
   }
 
   /** Forget everything. Used on shutdown; the server keeps no state on disk (§4.6). */

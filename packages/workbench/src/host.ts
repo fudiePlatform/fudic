@@ -43,15 +43,15 @@ export interface HostInput {
 export function hostComponent(input: HostInput): string {
   const imports =
     input.forwarded.length === 0
-      ? ''
-      : `  import fixtures from "${input.fixture.specifier}";\n` +
+      ? '\n'
+      : `  import fixtures from "${input.fixture.specifier}";\n\n` +
         `  const { ${input.forwarded.join(', ')} } = fixtures["${input.fixture.name}"];\n\n`;
-  const signals = input.signals.map((s) => `    const ${s.prop} = signal(${s.literal});\n`).join('');
+  const signals = input.signals.map((s) => `  const ${s.prop} = signal(${s.literal});\n`).join('');
   const attrs = input.order.map((prop) => ` .${prop}=@${prop}`).join('');
   return (
     `<link rel="component" href="${input.component}">\n\n` +
-    `@code {\n${imports}` +
-    `  @client {\n    import { signal } from "@fudic/core";\n\n${signals}  }\n}\n\n` +
+    // One `@code`, browser code (SDD-60 §4.8): the signals the markup reads are the browser's.
+    `@code {\n  import { signal } from "@fudic/core";\n${imports}${signals}}\n\n` +
     `<${input.tag}>\n  <template shadowrootmode="open">\n` +
     `    <${input.componentTag}${attrs}>${input.content}</${input.componentTag}>\n` +
     `  </template>\n</${input.tag}>\n`

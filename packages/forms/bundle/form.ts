@@ -16,3 +16,7 @@
 
 export { form } from '../src/form.js';
 export { group } from '../src/group.js';
+// SDD-60: what a generated form is built with, through `formOf` in the `contract` piece. Here and
+// not there, because a second copy of `form.ts` would be a second set of internals.
+export { build } from '../src/form.js';
+export { DEFAULT_CATCHES } from '../src/catches.js';

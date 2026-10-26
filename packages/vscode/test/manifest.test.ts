@@ -231,8 +231,6 @@ describe('language configuration', () => {
     const end = new RegExp(String(at(languageConfig, 'folding', 'markers', 'end')));
 
     expect(start.test('@code {')).toBe(true);
-    expect(start.test('  @server {')).toBe(true);
-    expect(start.test('  @client {')).toBe(true);
     expect(start.test('@if (data.found) {')).toBe(true);
     expect(start.test('@foreach (const p of posts) {')).toBe(true);
     expect(start.test('@section nav {')).toBe(true);
@@ -290,7 +288,11 @@ describe('the .fudspec language (SDD-52 criterion 26)', () => {
   });
 
   it('activates on a workspace that only has .fudspec files', () => {
-    expect(manifest['activationEvents']).toEqual(['workspaceContains:**/*.fud', 'workspaceContains:**/*.fudspec']);
+    expect(manifest['activationEvents']).toEqual([
+      'workspaceContains:**/*.fud',
+      'workspaceContains:**/*.fudspec',
+      'workspaceContains:**/*.fudapi',
+    ]);
   });
 
   it('indents with two spaces, always, suggests no loose words and formats on save with this extension (SDD-53 criterion 23)', () => {
@@ -326,6 +328,78 @@ describe('the .fudspec language (SDD-52 criterion 26)', () => {
     const word = new RegExp(String(at(specConfig, 'wordPattern')), 'g');
     expect('    min-height fud-button 44'.match(word)).toEqual(['min-height', 'fud-button', '44']);
     expect('    click role:button/"Detalles"'.match(word)?.[1]).toBe('role:button/');
+  });
+});
+
+describe('the .fudapi language (SDD-60 §4.10)', () => {
+  const languages = at(manifest, 'contributes', 'languages') as readonly unknown[];
+  const grammars = at(manifest, 'contributes', 'grammars') as readonly unknown[];
+  const language = languages.find((l) => at(l, 'id') === 'fudapi');
+  const grammar = grammars.find((g) => at(g, 'language') === 'fudapi');
+  const apiConfig = readJson('../language-configuration.fudapi.json');
+
+  it('claims .fudapi under the id the server registers it with', () => {
+    expect(at(language, 'extensions')).toEqual(['.fudapi']);
+    expect(at(language, 'aliases')).toEqual(['Fudic API', 'fudapi']);
+    expect(at(languages.find((l) => at(l, 'id') === 'fudic'), 'extensions')).toEqual(['.fud']);
+  });
+
+  it('points at a configuration and two icons that exist', () => {
+    expect(at(language, 'configuration')).toBe('./language-configuration.fudapi.json');
+    expect(at(language, 'icon')).toEqual({ light: './icons/fudapi-light.svg', dark: './icons/fudapi-dark.svg' });
+    expect(exists('../language-configuration.fudapi.json')).toBe(true);
+    expect(exists('../icons/fudapi-light.svg')).toBe(true);
+    expect(exists('../icons/fudapi-dark.svg')).toBe(true);
+  });
+
+  it('registers the scope the grammar file declares, with nothing embedded', () => {
+    expect(at(grammar, 'scopeName')).toBe('source.fudapi');
+    expect(at(grammar, 'path')).toBe('./syntaxes/fudapi.tmLanguage.json');
+    expect(at(grammar, 'embeddedLanguages')).toBeUndefined();
+    expect(at(readJson('../syntaxes/fudapi.tmLanguage.json'), 'scopeName')).toBe('source.fudapi');
+  });
+
+  it('activates on a workspace that only has .fudapi files', () => {
+    expect(manifest['activationEvents']).toContain('workspaceContains:**/*.fudapi');
+  });
+
+  it('indents with two spaces, always, and formats on save with this extension', () => {
+    // The indentation is the structure of the file, as in a .fudspec.
+    expect(at(manifest, 'contributes', 'configurationDefaults', '[fudapi]')).toEqual({
+      'editor.insertSpaces': true,
+      'editor.tabSize': 2,
+      'editor.detectIndentation': false,
+      'editor.defaultFormatter': 'fudic.fudic-vscode',
+      'editor.formatOnSave': true,
+      'editor.wordBasedSuggestions': 'off',
+    });
+  });
+
+  it('comments with #, closes quotes and braces, and indents after a block', () => {
+    expect(at(apiConfig, 'comments', 'lineComment')).toBe('#');
+    expect(at(apiConfig, 'comments', 'blockComment')).toBeUndefined();
+    expect(at(apiConfig, 'autoClosingPairs')).toEqual([
+      { open: '"', close: '"', notIn: ['string', 'comment'] },
+      { open: '{', close: '}', notIn: ['comment'] },
+    ]);
+    const indent = new RegExp(String(at(apiConfig, 'indentationRules', 'increaseIndentPattern')));
+    for (const line of ['put save /:id', 'load ssr', 'chain', 'type Person', 'form userForm', 'rule nif', 'middleware auth', 'messages', '  summary', '    adds', '  when a == b', '  acceso  group']) {
+      expect(indent.test(line), line).toBe(true);
+    }
+    for (const line of ['pattern p  x', 'paths', 'layout', '  name  str', '    required  "x"']) {
+      expect(indent.test(line), line).toBe(false);
+    }
+    const enter = new RegExp(String(at(apiConfig, 'onEnterRules', 0, 'beforeText')));
+    expect(enter.test('get search')).toBe(true);
+    expect(enter.test('  name  str')).toBe(false);
+    expect(at(apiConfig, 'onEnterRules', 0, 'action')).toEqual({ indent: 'indent' });
+  });
+
+  it('selects a name, a kebab name or a type whole on double click', () => {
+    const word = new RegExp(String(at(apiConfig, 'wordPattern')), 'g');
+    expect('  pattern email-loose  "x"'.match(word)?.slice(0, 2)).toEqual(['pattern', 'email-loose']);
+    expect('  users  Person[]?'.match(word)).toEqual(['users', 'Person[]?']);
+    expect('on field *[]'.match(word)?.[2]).toBe('*[]');
   });
 });
 
