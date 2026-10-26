@@ -11,7 +11,7 @@
  * for diagnostics costs no parse.
  */
 
-import { analyze, type ComponentRegistry, type Diagnostic } from '@fudic/compiler';
+import { analyze, type ComponentRegistry, type Diagnostic, type SemanticInput } from '@fudic/compiler';
 import { holeDiagnostics } from './holes.js';
 import { serverLinksOf } from './links.js';
 import { hrefDiagnostics } from './href.js';
@@ -45,17 +45,28 @@ function apisOf(document: ProjectedFud): { readonly data: boolean; readonly name
   return { data: servers.some((s) => s.load), names: new Set(servers.flatMap((s) => s.names)) };
 }
 
-/** The semantic pass over the document already parsed. */
-export function semanticDiagnostics(document: ProjectedFud): readonly Diagnostic[] {
+/**
+ * What the semantic pass is handed for the document already parsed. With an `index` that reads
+ * modules, the path of the file and its project's modules too: what the server cut follows into
+ * a store (SDD-61 §4.1).
+ */
+export function semanticInput(document: ProjectedFud, index?: LinkIndex): SemanticInput {
   const apis = apisOf(document);
-  return analyze({
+  return {
     source: document.source,
     document: document.document,
     js: document.js.result,
     fragmentId: (node) => document.js.fragmentId(node),
     components: registryOf(document),
+    path: document.path,
     ...(apis === undefined ? {} : { apis }),
-  }).diagnostics;
+    ...(index?.module === undefined ? {} : { readModule: (specifier, importer) => index.module!(importer, specifier) }),
+  };
+}
+
+/** The semantic pass over the document already parsed. */
+export function semanticDiagnostics(document: ProjectedFud, index?: LinkIndex): readonly Diagnostic[] {
+  return analyze(semanticInput(document, index)).diagnostics;
 }
 
 /**
@@ -69,7 +80,7 @@ export function semanticDiagnostics(document: ProjectedFud): readonly Diagnostic
 export function fudicDiagnostics(document: ProjectedFud, index: LinkIndex): readonly Diagnostic[] {
   return [
     ...document.diagnostics,
-    ...semanticDiagnostics(document),
+    ...semanticDiagnostics(document, index),
     ...hrefDiagnostics(document, index),
     ...holeDiagnostics(document, index),
     ...reservedDollarDiagnostics(document),

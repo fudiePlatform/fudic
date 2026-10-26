@@ -87,7 +87,8 @@ describe('analyze — runner', () => {
     // + raw-only-child (decision 18: FUD0990), spread-target (props-spec §5: FUD0992)
     // + translations (SDD-58: FUD1020–FUD1021)
     // + view-rest, view-control (SDD-61: FUD1147, FUD1148)
-    expect(ANALYZERS).toHaveLength(28);
+    // + server-cut (SDD-61: FUD1150, the server cut of `@code`)
+    expect(ANALYZERS).toHaveLength(29);
     expect(ANALYZERS.at(-1)?.name).toBe('translations');
     const { value } = analyze(buildInput(component('<p>hi</p>')));
     expect(value).toEqual({});

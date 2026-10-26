@@ -48,6 +48,7 @@ import { COMPLETION_TRIGGER_CHARACTERS, SEMANTIC_TOKENS_LEGEND } from '../capabi
 import type { CachedDocument } from '../document-cache.js';
 import { fudicDiagnostics, ROOT_CODE_ID, type FudicVirtualCode } from '@fudic/typecheck';
 import { isFudSourceUri } from '../uri.js';
+import { rangeOf as fileRangeOf } from '../fudapi/document.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
 import type { ProjectConfigs } from '../project-config.js';
 import { translationsMarkdown, type Translations } from '../translations.js';
@@ -167,8 +168,20 @@ export function rangeOf(document: TextDocument, span: Span): Range {
 /**
  * A compiler diagnostic as an LSP one. Same span, same code: nothing is translated. The code
  * carries its public explanation as `codeDescription`, so the editor shows it as a link.
+ *
+ * A related location in ANOTHER file travels as related information, its text read by `read`:
+ * the place in a store a diagnostic of the view comes from (SDD-61 §3.9).
  */
-export function toLspDiagnostic(document: TextDocument, diagnostic: Diagnostic): LspDiagnostic {
+export function toLspDiagnostic(
+  document: TextDocument,
+  diagnostic: Diagnostic,
+  read?: (path: string) => string | undefined,
+): LspDiagnostic {
+  const related = (diagnostic.related ?? []).flatMap((r) => {
+    const text = r.file === undefined ? undefined : read?.(r.file);
+    if (r.file === undefined || text === undefined) return [];
+    return [{ location: { uri: URI.file(r.file).toString(), range: fileRangeOf(r.file, text, r.span) }, message: r.message }];
+  });
   return {
     range: rangeOf(document, diagnostic.span),
     severity: SEVERITY[diagnostic.severity],
@@ -176,8 +189,30 @@ export function toLspDiagnostic(document: TextDocument, diagnostic: Diagnostic):
     codeDescription: { href: docsUrl(diagnostic.code) },
     source: 'fudic',
     message: diagnostic.message,
+    ...(related.length > 0 ? { relatedInformation: related } : {}),
   };
 }
+
+/**
+ * The diagnostics of the document at `path`, each placed IN it.
+ *
+ * One reported in another file — a store the server cut of the view reached (SDD-61 §3.9) — is
+ * shown at its use here, the related location in this file, and its own place becomes the
+ * related one: pull diagnostics answer for the document asked about, and the use is what links
+ * the two. One with no use here has nowhere to be shown in this document, and is left out.
+ */
+export function placedDiagnostics(path: string, diagnostics: readonly Diagnostic[]): readonly Diagnostic[] {
+  return diagnostics.flatMap((diagnostic): Diagnostic[] => {
+    if (diagnostic.file === undefined || diagnostic.file === path) return [diagnostic];
+    const use = diagnostic.related?.find((r) => r.file === path);
+    if (use === undefined) return [];
+    const { severity, code, message, file } = diagnostic;
+    return [{ severity, code, message, span: use.span, related: [{ span: diagnostic.span, file, message: REPORTED_HERE }] }];
+  });
+}
+
+/** The related message of a diagnostic shown at its use: where it is reported. */
+const REPORTED_HERE = 'reported here';
 
 /**
  * The parse behind a document, or `undefined` when this document is not ours.
@@ -595,9 +630,9 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
               // fudic.json governing the file there is nothing to check them against.
               const choosable = deps.configs?.choosableStylesFor(cached.path) ?? null;
               return [
-                ...fudicDiagnostics(cached, index),
+                ...placedDiagnostics(cached.path, fudicDiagnostics(cached, index)),
                 ...(choosable === null ? [] : adoptedStyleDiagnostics(cached, choosable)),
-              ].map((diagnostic) => toLspDiagnostic(document, diagnostic));
+              ].map((diagnostic) => toLspDiagnostic(document, diagnostic, index.read.bind(index)));
             },
             undefined,
           );
@@ -708,7 +743,7 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
                 index,
                 document,
                 range,
-                diagnostics: fudicDiagnostics(cached, index),
+                diagnostics: placedDiagnostics(cached.path, fudicDiagnostics(cached, index)),
                 rangeOf,
                 overlaps,
                 // The same reader the card uses, for the same reason: what a prop TAKES is not

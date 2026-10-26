@@ -7,7 +7,7 @@
 > `fudic-vscode` · `@fudic/vite` · `examples/*` · `packages/testing`
 > **Rama:** `sdd-61-vista-portable-impl`. Nace de `main` **con SDD-60 en `Hecho`**: esta spec parte
 > de un único `@code` y de su corte de servidor.
-> **Progreso:** 10 / 44 — `En curso`.
+> **Progreso:** 13 / 44 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -83,9 +83,9 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 10 | — | **`readModule`.** Campo opcional de `SemanticInput`: `(specifier, importer) => { path, source } \| undefined` para módulos del proyecto. Lo dan el plugin de Vite, `@fudic/typecheck` y el language server, con caché por ruta y versión | `compiler` · `vite` · `typecheck` · `language-server` | `src/semantic/types.ts` · hosts |
-| [ ] | 11 | 5, 10 | **`server-cut`** (nuevo). Sobre el corte de SDD-60 §4.8: la forma de cada declaración (`FUD1150` con `related` al uso), la lista blanca de los inicializadores con los mismos códigos, las llamadas del catálogo, `now()` (`FUD0912`), stores (siguiendo `export … from`) y módulos de datos (SDD §3.9) | `compiler` | `src/semantic/analyzers/server-cut.ts` · `ANALYZERS` |
-| [ ] | 44 | 10, 11 | **Los tests de la fase.** Criterios 19 (la parte sin tipos), 20, 21 y 24, cada código sobre su span exacto, uno por nodo; `readModule` en cada host | `compiler` · `vite` · `typecheck` · `language-server` | `test/**` |
+| [x] | 10 | — | **`readModule`.** Campo opcional de `SemanticInput`: `(specifier, importer) => { path, source } \| undefined` para módulos del proyecto. Lo dan el plugin de Vite, `@fudic/typecheck` y el language server, con caché por ruta y versión | `compiler` · `vite` · `typecheck` · `language-server` | `src/semantic/model.ts` · hosts |
+| [x] | 11 | 5, 10 | **`server-cut`** (nuevo). Sobre el corte de SDD-60 §4.8: la forma de cada declaración (`FUD1150` con `related` al uso), la lista blanca de los inicializadores con los mismos códigos, las llamadas del catálogo, `now()` (`FUD0912`), stores (siguiendo `export … from`) y módulos de datos (SDD §3.9) | `compiler` | `src/semantic/analyzers/server-cut.ts` · `ANALYZERS` |
+| [x] | 44 | 10, 11 | **Los tests de la fase.** Criterios 19 (la parte sin tipos), 20, 21 y 24, cada código sobre su span exacto, uno por nodo; `readModule` en cada host | `compiler` · `vite` · `typecheck` · `language-server` | `test/**` |
 
 ## Fase 3 — runtime y emit (6)
 

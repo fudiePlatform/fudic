@@ -131,7 +131,6 @@ const EMPTY = NO_TEMPLATE;
  * for the portable view (SDD-61 §3.2).
  */
 export function viewScope(input: SemanticInput, globals: ReadonlySet<string> = VIEW_GLOBALS): ViewScope {
-  const code = codeNames(input);
   const apis = input.apis;
   // A route that links its `.fudapi` has `data` when the file declares `load`; a layout always reads
   // the route's, and a file whose links nobody told us about keeps the rule of its role.
@@ -139,8 +138,39 @@ export function viewScope(input: SemanticInput, globals: ReadonlySet<string> = V
     DATA_ROLES.has(input.document.type) &&
     (apis === undefined || apis.data || input.document.type === 'layout-document');
   const role: ReadonlySet<string> = data ? new Set(['data']) : new Set();
+  const outer = (name: string): NameOrigin | undefined =>
+    apis?.names.has(name) === true ? 'api' : role.has(name) ? 'role' : undefined;
+  return namesScope(codeNames(codeStatements(input)), collectFragments(input), globals, outer);
+}
+
+/**
+ * The scope of a module of the project the server cut reaches (SDD-61 §3.9): its own top-level
+ * names, and the globals. No template, no role and no `.fudapi` around it.
+ */
+export function moduleScope(statements: readonly OxcNode[], globals: ReadonlySet<string>): ViewScope {
+  return namesScope(codeNames(statements), [], globals, () => undefined);
+}
+
+/** Every top-level statement of the file's `@code`, in source order. */
+export function codeStatements(input: SemanticInput): readonly OxcNode[] {
+  const out: OxcNode[] = [];
+  for (const part of input.document.code?.parts ?? []) {
+    const id = input.fragmentId(part);
+    // A `module-statements` fragment is always a list (SDD-11 §3.2).
+    if (id !== undefined) out.push(...(input.js.ast(id) as readonly OxcNode[]));
+  }
+  return out;
+}
+
+/** A scope over what the code declares, with `outer` asked before the globals. */
+function namesScope(
+  code: CodeNames,
+  fragments: readonly ViewFragment[],
+  globals: ReadonlySet<string>,
+  outer: (name: string) => NameOrigin | undefined,
+): ViewScope {
   return {
-    fragments: collectFragments(input),
+    fragments,
     resolve(name, scope) {
       const own = declaring(name, scope);
       if (own !== undefined) return own.writable.has(name) ? 'template' : 'template-fixed';
@@ -149,8 +179,8 @@ export function viewScope(input: SemanticInput, globals: ReadonlySet<string> = V
       if (name.startsWith('$') || name === CONTEXT) return undefined;
       if (code.neutralLets.has(name)) return 'neutral-let';
       if (code.neutral.has(name)) return 'code';
-      if (apis?.names.has(name) === true) return 'api';
-      if (role.has(name)) return 'role';
+      const around = outer(name);
+      if (around !== undefined) return around;
       if (globals.has(name)) return 'global';
       return undefined;
     },
@@ -456,29 +486,24 @@ interface CodeNames {
   readonly imports: ReadonlyMap<string, string>;
 }
 
-function codeNames(input: SemanticInput): CodeNames {
+function codeNames(statements: readonly OxcNode[]): CodeNames {
   const neutral = new Set<string>();
   const neutralLets = new Set<string>();
   const functions = new Set<string>();
   const regexes = new Set<string>();
   const rests = new Set<string>();
   const imports = new Map<string, string>();
-  for (const part of input.document.code?.parts ?? []) {
-    const id = input.fragmentId(part);
-    if (id === undefined) continue;
-    // A `module-statements` fragment is always a list (SDD-11 §3.2).
-    for (const statement of input.js.ast(id) as readonly OxcNode[]) {
-      const declared = statementNames(statement);
-      for (const name of functionNames(statement)) functions.add(name);
-      for (const name of regexNames(statement)) regexes.add(name);
-      for (const name of declaredRests([statement])) rests.add(name);
-      for (const [local, origin] of importedNames(statement)) imports.set(local, origin);
-      for (const name of declared.names) {
-        neutral.add(name);
-        // The `@code` is declared INSIDE the render function, so its `let`s are state of the
-        // instance and the template may reseed them (§3.5): the cursor of a `@while`.
-        if (declared.let) neutralLets.add(name);
-      }
+  for (const statement of statements) {
+    const declared = statementNames(statement);
+    for (const name of functionNames(statement)) functions.add(name);
+    for (const name of regexNames(statement)) regexes.add(name);
+    for (const name of declaredRests([statement])) rests.add(name);
+    for (const [local, origin] of importedNames(statement)) imports.set(local, origin);
+    for (const name of declared.names) {
+      neutral.add(name);
+      // The `@code` is declared INSIDE the render function, so its `let`s are state of the
+      // instance and the template may reseed them (§3.5): the cursor of a `@while`.
+      if (declared.let) neutralLets.add(name);
     }
   }
   return { neutral, neutralLets, functions, regexes, rests, imports };

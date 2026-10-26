@@ -15,6 +15,9 @@ import { viewInput } from './_view.js';
 /** The codes the view analyzers report: SDD-51's range, the `$` of the template, SDD-61's. */
 const OWN = /^FUD09[01]\d$|^FUD0461$|^FUD114\d$|^FUD115[0-3]$/u;
 
+/** The forms the cases read come from a linked `.fudapi`, as an app's do (SDD-60 §3.14). */
+const FORMS = { data: false, names: new Set(['form', 'campo']) };
+
 /** What every case can read: the catalogue, a few values, functions and reactive ones. */
 const CODE = `
   import { signal, computed, now } from '@fudic/core';
@@ -33,8 +36,6 @@ const CODE = `
   const pares = [{ a: 1 }];
   const articulo = { titulo: 'a', autor: 'b', resumen: 'c' };
   const count = signal(0);
-  const form = { $valid: computed(() => true) };
-  const campo = { errors: computed(() => []) };
   function formatea(v: number) { return String(v); }
   const esValida = (v: { ok: boolean }) => v.ok;
   const { label, ...props } = { label: 'l', title: 't' };
@@ -47,7 +48,7 @@ function source(template: string, code = ''): string {
 /** What the portable view says about `template`, `CODE text` each, sorted. */
 function portable(template: string, code = ''): readonly string[] {
   const text = source(template, code);
-  const ds = analyze({ ...viewInput(text), portableView: true }).diagnostics;
+  const ds = analyze({ ...viewInput(text), portableView: true, apis: FORMS }).diagnostics;
   return ds
     .filter((d) => OWN.test(d.code))
     .map((d) => `${d.code} ${text.slice(d.span.start, d.span.end)}`)

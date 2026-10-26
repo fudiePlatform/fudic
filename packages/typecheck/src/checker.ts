@@ -25,7 +25,7 @@ import {
   type Language,
 } from '@volar/language-core';
 import { createLanguageServiceHost, resolveFileLanguageId } from '@volar/typescript';
-import { FUD0870, FUD0871 } from '@fudic/diagnostics';
+import { FUD0870, FUD0871, type SourceDiagnostic as Diagnostic } from '@fudic/diagnostics';
 import { nodeFileSystem, type CheckFs } from './files.js';
 import { describeFud, FudIndex } from './fud-index.js';
 import { fudicDiagnostics } from './fudic-diagnostics.js';
@@ -171,6 +171,8 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
     const declarations = Boolean(program.getCompilerOptions().declaration || program.getCompilerOptions().composite);
 
     const problems: CheckProblem[] = [];
+    /** The problems already reported in a file that is not the `.fud` being collected. */
+    const elsewhere = new Map<string, string[]>();
     for (const entry of state.index.all()) {
       // A library's file is in the program for its types and is not the author's to fix (§4.2).
       if (entry.external) continue;
@@ -207,16 +209,7 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
         }
       }
 
-      for (const diagnostic of fudicDiagnostics(root.document, state.index)) {
-        if (diagnostic.severity !== 'error' && diagnostic.severity !== 'warning') continue;
-        problems.push({
-          file: entry.path,
-          span: diagnostic.span,
-          severity: diagnostic.severity,
-          code: diagnostic.code,
-          message: diagnostic.message,
-        });
-      }
+      problems.push(...fudicProblems(entry.path, fudicDiagnostics(root.document, state.index), elsewhere));
     }
 
     // A handler of `src/server` or `src/browser`, in its own `.ts` (SDD-60 §4.6).
@@ -289,6 +282,40 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
       state.bump();
     },
   };
+}
+
+/**
+ * The fudic diagnostics of the `.fud` at `path` as problems: errors and warnings only.
+ *
+ * One located in another file — a store the server cut of the view reached (SDD-61 §3.9) — is a
+ * problem of THAT file, reported once however many `.fud` read it, with each of them in its
+ * `readBy`: `elsewhere` holds, per place, the readers of the ones already reported in the run.
+ */
+export function fudicProblems(
+  path: string,
+  diagnostics: readonly Diagnostic[],
+  elsewhere: Map<string, string[]>,
+): CheckProblem[] {
+  const out: CheckProblem[] = [];
+  for (const diagnostic of diagnostics) {
+    if (diagnostic.severity !== 'error' && diagnostic.severity !== 'warning') continue;
+    const file = diagnostic.file ?? path;
+    const problem = { file, span: diagnostic.span, severity: diagnostic.severity, code: diagnostic.code, message: diagnostic.message };
+    if (file === path) {
+      out.push(problem);
+      continue;
+    }
+    const key = `${file}:${diagnostic.span.start}:${diagnostic.span.end}:${diagnostic.code}`;
+    const readers = elsewhere.get(key);
+    if (readers !== undefined) {
+      readers.push(path);
+      continue;
+    }
+    const readBy = [path];
+    elsewhere.set(key, readBy);
+    out.push({ ...problem, readBy });
+  }
+  return out;
 }
 
 /** `error` and `warning` break or warn; suggestions and messages are the editor's grey hints. */

@@ -70,21 +70,64 @@ export interface PortableFinding {
 }
 
 /** The one global the portable view reads (§3.2). */
-const GLOBALS: ReadonlySet<string> = new Set(['undefined']);
+export const PORTABLE_GLOBALS: ReadonlySet<string> = new Set(['undefined']);
 
-const memo = new WeakMap<SemanticInput, readonly PortableFinding[]>();
+/**
+ * Where the JS a walk checks lives: the text its spans index, and how an Oxc offset reaches it.
+ * The `.fud` through the batch's mapping for the view and `@code`; a store's own text, one to
+ * one, for a module of the project (§3.9).
+ */
+export interface Site {
+  readonly source: string;
+  range(start: number, end: number): Span;
+}
 
-/** Every finding of the portable view of `input`, computed once per input. */
-export function portableFindings(input: SemanticInput): readonly PortableFinding[] {
-  let findings = memo.get(input);
-  if (findings === undefined) {
-    const view = viewScope(input, GLOBALS);
-    const out: PortableFinding[] = [];
-    for (const fragment of view.fragments) new PortableCheck(input, view, fragment, out).run();
-    findings = out;
-    memo.set(input, findings);
+/** The site of the file's own JS: the `.fud`, through the batch. */
+export function fudSite(input: SemanticInput): Site {
+  return { source: input.source, range: (start, end) => input.js.mapSpan(start, end) };
+}
+
+/** The walk of the portable view of one input: what it found, and what it read. */
+export interface PortableView {
+  readonly scope: ViewScope;
+  readonly findings: readonly PortableFinding[];
+  /**
+   * Every identifier of the `@code` the view reads while painting: never one of
+   * a handler or a callback, which run later in the browser. Where the server cut starts (§3.9).
+   */
+  readonly reads: readonly OxcNode[];
+}
+
+const memo = new WeakMap<SemanticInput, PortableView>();
+
+/** The portable view of `input`, walked once per input. */
+export function portableView(input: SemanticInput): PortableView {
+  let walked = memo.get(input);
+  if (walked === undefined) {
+    const scope = viewScope(input, PORTABLE_GLOBALS);
+    const site = fudSite(input);
+    const findings: PortableFinding[] = [];
+    const reads: OxcNode[] = [];
+    for (const fragment of scope.fragments) new PortableCheck(site, scope, fragment.scope, findings, reads).run(fragment);
+    walked = { scope, findings, reads };
+    memo.set(input, walked);
   }
-  return findings;
+  return walked;
+}
+
+/** Every finding of the portable view of `input`. */
+export function portableFindings(input: SemanticInput): readonly PortableFinding[] {
+  return portableView(input).findings;
+}
+
+/** A callback: a `.prop` whose whole value is an arrow, or a function of `@code` handed by name. */
+function isCallback(node: OxcNode, view: ViewScope, scope: TemplateScope): boolean {
+  const value = inner(node);
+  return (
+    value.type === 'ArrowFunctionExpression' ||
+    value.type === 'FunctionExpression' ||
+    (value.type === 'Identifier' && view.resolve(nameOf(value), scope) === 'code' && view.isFunction(nameOf(value)))
+  );
 }
 
 // ── The closed lists of §3 ──
@@ -148,11 +191,13 @@ function inner(node: OxcNode): OxcNode {
 /** What a name the fragment declares itself is: a plain binding, or a `...rest` (§3.6). */
 type Local = 'plain' | 'rest';
 
-/** The checks over one fragment. Lives as long as the fragment's walk. */
-class PortableCheck {
-  readonly #input: SemanticInput;
+/**
+ * The checks over one fragment of the view, or over the initializers of one declaration of the
+ * server cut (§3.9), which follow the same list. Lives as long as that walk.
+ */
+export class PortableCheck {
+  readonly #site: Site;
   readonly #view: ViewScope;
-  readonly #fragment: ViewFragment;
   readonly #template: TemplateScope;
   readonly #out: PortableFinding[];
   /** What the fragment declares itself: arrow parameters, `@{ }` bindings, loop heads. */
@@ -161,17 +206,35 @@ class PortableCheck {
   readonly #seeded = new Set<string>();
   /** Whether the fragment is the value of a `.prop`: the one place `t()` goes (§3.3). */
   #prop = false;
+  /** For a `@while` header: every name an `@{ }` of its body writes. */
+  #bodyWrites: ReadonlySet<string> = new Set();
+  /**
+   * Every identifier the walk read and found declared by the code: what the server cut follows
+   * (§3.9). Only what the list ACCEPTED — a node it refused has said its one thing already.
+   */
+  readonly #reads: OxcNode[];
 
-  constructor(input: SemanticInput, view: ViewScope, fragment: ViewFragment, out: PortableFinding[]) {
-    this.#input = input;
+  constructor(site: Site, view: ViewScope, scope: TemplateScope, out: PortableFinding[], reads: OxcNode[] = []) {
+    this.#site = site;
     this.#view = view;
-    this.#fragment = fragment;
-    this.#template = fragment.scope;
+    this.#template = scope;
     this.#out = out;
+    this.#reads = reads;
   }
 
-  run(): void {
-    const { root, shape, owner } = this.#fragment;
+  /** An expression of the server cut, outside any template (§3.9). */
+  expression(node: OxcNode): void {
+    this.#scoped(() => this.#expression(node));
+  }
+
+  /** The arguments of `t()` in the server cut: its one object literal of holes (§3.9). */
+  holes(args: readonly OxcNode[]): void {
+    this.#scoped(() => this.#translate(args));
+  }
+
+  run(fragment: ViewFragment): void {
+    const { root, shape, owner } = fragment;
+    this.#bodyWrites = fragment.bodyWrites ?? this.#bodyWrites;
     this.#frames.push(new Map());
     switch (shape) {
       case 'statements':
@@ -202,7 +265,7 @@ class PortableCheck {
   // ── Reporting ──
 
   #range(start: number, end: number): Span {
-    return this.#input.js.mapSpan(start, end);
+    return this.#site.range(start, end);
   }
 
   #span(node: OxcNode): { readonly span: Span } {
@@ -215,12 +278,12 @@ class PortableCheck {
 
   #text(node: OxcNode): string {
     const at = this.#range(node.start, node.end);
-    return this.#input.source.slice(at.start, at.end);
+    return this.#site.source.slice(at.start, at.end);
   }
 
   /** `at` without the whitespace at either end, in the `.fud`. */
   #trim(at: Span): Span {
-    const text = this.#input.source.slice(at.start, at.end);
+    const text = this.#site.source.slice(at.start, at.end);
     const start = at.start + (text.length - text.trimStart().length);
     return span(start, Math.max(start, at.end - (text.length - text.trimEnd().length)));
   }
@@ -228,7 +291,7 @@ class PortableCheck {
   /** Where `operator` is written between two operands: what a `FUD1142` underlines (§4.2). */
   #between(left: OxcNode, right: OxcNode, operator: string): { readonly span: Span } {
     const gap = this.#range(left.end, right.start);
-    const at = gap.start + this.#input.source.slice(gap.start, gap.end).indexOf(operator);
+    const at = gap.start + this.#site.source.slice(gap.start, gap.end).indexOf(operator);
     return { span: span(at, at + operator.length) };
   }
 
@@ -284,7 +347,9 @@ class PortableCheck {
       this.#report('expression', FUD0904(this.#span(node)));
       return;
     }
-    if (this.#view.resolve(name, this.#template) === undefined) this.#report('identifier', FUD0907(this.#span(node)));
+    const origin = this.#view.resolve(name, this.#template);
+    if (origin === undefined) this.#report('identifier', FUD0907(this.#span(node)));
+    else if (origin === 'code' || origin === 'neutral-let') this.#reads.push(node);
   }
 
   /** The `@code` import a name of the view stands for, unless the fragment shadows it. */
@@ -546,14 +611,7 @@ class PortableCheck {
    * the view, and the one place `t()` may be written.
    */
   #propValue(node: OxcNode): void {
-    const value = inner(node);
-    const callback =
-      value.type === 'ArrowFunctionExpression' ||
-      value.type === 'FunctionExpression' ||
-      (value.type === 'Identifier' &&
-        this.#view.resolve(nameOf(value), this.#template) === 'code' &&
-        this.#view.isFunction(nameOf(value)));
-    if (callback) {
+    if (isCallback(node, this.#view, this.#template)) {
       this.#handler(node);
       return;
     }
@@ -590,7 +648,7 @@ class PortableCheck {
    */
   #while(node: OxcNode): void {
     this.#expression(node);
-    const writes = this.#fragment.bodyWrites!;
+    const writes = this.#bodyWrites;
     const ends = !alwaysTrue(node) && [...readNames(node)].some((name) => writes.has(name));
     if (!ends) this.#report('expression', FUD0913(this.#span(node)));
   }

@@ -10,6 +10,7 @@ export type {
   Analyzer,
   SemanticResult,
   MarkupInput,
+  ProjectModule,
   Report,
 } from './model.js';
 export { ANALYZERS, analyze } from './analyze.js';

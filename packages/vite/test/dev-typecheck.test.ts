@@ -447,6 +447,16 @@ describe('startLiveCheck — current() and blocking()', () => {
     live.dispose();
   });
 
+  it('an error in a store blocks the pages whose views read it (SDD-61 §3.9)', async () => {
+    const { server } = fakeServer();
+    const store = { ...problem(helper), code: 'FUD0907', readBy: [page] };
+    const live = startLiveCheck(server, root, scripted(report([store])));
+    await settle();
+    expect(await live.blocking([page])).toMatchObject({ id: helper, loc: { file: helper } });
+    expect(await live.blocking([badge])).toBeUndefined();
+    live.dispose();
+  });
+
   it('an error outside the graph, or a warning in it, does not block the page', async () => {
     const { server } = fakeServer();
     const live = startLiveCheck(server, root, scripted(report([problem(page, 'warning'), problem(badge)])));

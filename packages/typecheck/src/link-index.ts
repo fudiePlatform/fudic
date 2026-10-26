@@ -7,7 +7,7 @@
  * for a layout, its holes. Both indexes answer it; neither is named here.
  */
 
-import type { LayoutHoles } from '@fudic/compiler';
+import type { LayoutHoles, ProjectModule } from '@fudic/compiler';
 import type { ServerImport } from '@fudic/language-core';
 import type { LookupFailure } from '@fudic/resolve';
 
@@ -30,4 +30,10 @@ export interface LinkIndex {
    * when there is none. Optional: an index that cannot read them gives a file nothing.
    */
   server?(fromFile: string, href: string): ServerImport | undefined;
+  /**
+   * A module of the project that `fromFile` imports as `specifier` (SDD-61 §4.1): what lets the
+   * server cut follow a store. `undefined` when it is not one, or cannot be read. Optional: an
+   * index that cannot read modules leaves the project's imports unchecked.
+   */
+  module?(fromFile: string, specifier: string): ProjectModule | undefined;
 }

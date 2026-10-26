@@ -16,7 +16,7 @@
  */
 
 import { API_EXTENSION, parseApi } from '@fudic/api';
-import type { StructuredDocument } from '@fudic/compiler';
+import type { ProjectModule, StructuredDocument } from '@fudic/compiler';
 import { SRC_DIR } from '@fudic/conventions';
 import type { ServerImport } from '@fudic/language-core';
 import { findLibraries, type LookupFailure } from '@fudic/resolve';
@@ -64,6 +64,8 @@ export class FudIndex<E extends IndexedFud = IndexedFud> implements LinkIndex, F
   readonly #entries = new Map<string, E>();
   /** The projects swept: where the `<id>` of a `.fudapi` is read from. */
   readonly #roots = new Set<string>();
+  /** The modules of the project last read, by path: the same object back while the text is. */
+  readonly #modules = new Map<string, ProjectModule>();
   #revision = 0;
 
   constructor(fs: CheckFs, describe: (input: DescribeInput) => E) {
@@ -159,6 +161,36 @@ export class FudIndex<E extends IndexedFud = IndexedFud> implements LinkIndex, F
    */
   serverPath(fromFile: string, href: string): string {
     return toPosix(this.fs.resolveHref(toPosix(fromFile), href));
+  }
+
+  /** A file, read: the text a diagnostic located in it is shown over. Never throws. */
+  read(path: string): string | undefined {
+    return this.fs.readFile(toPosix(path));
+  }
+
+  /**
+   * A module of a swept project that `fromFile` imports as `specifier` (SDD-61 §4.1): a relative
+   * or absolute specifier, written as TypeScript resolves it — with its extension, with `.js` for
+   * a `.ts`, with none, or naming a folder's `index.ts`.
+   *
+   * Read from the disk each time it is asked, as a `.fudapi` is, and handed back as the SAME
+   * object while its text is the same: the compiler parses a module once per object, so this is
+   * what keeps it parsed once per version without the index having to be told of a change.
+   */
+  module(fromFile: string, specifier: string): ProjectModule | undefined {
+    if (!specifier.startsWith('.') && !specifier.startsWith('/')) return undefined;
+    const base = this.serverPath(fromFile, specifier);
+    if (![...this.#roots].some((root) => base.startsWith(`${root}/`))) return undefined;
+    for (const path of new Set([base, `${base}.ts`, base.replace(/\.js$/u, '.ts'), `${base}/index.ts`])) {
+      const source = this.fs.readFile(path);
+      if (source === undefined) continue;
+      const cached = this.#modules.get(path);
+      if (cached?.source === source) return cached;
+      const module: ProjectModule = { path, source };
+      this.#modules.set(path, module);
+      return module;
+    }
+    return undefined;
   }
 
   /**

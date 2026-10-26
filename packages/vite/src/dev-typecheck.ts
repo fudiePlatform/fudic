@@ -150,8 +150,11 @@ export function startLiveCheck(server: ViteDevServer, root: string, checker: Che
       const graph = new Set(files.map(keyOf));
       const project = latest.project.find((problem) => problem.severity === 'error');
       if (project !== undefined) return projectOverlay(project);
+      // A store's problem blocks the pages whose views read it (SDD-61 §3.9).
       const problem = latest.problems.find(
-        (candidate) => candidate.severity === 'error' && graph.has(keyOf(candidate.file)),
+        (candidate) =>
+          candidate.severity === 'error' &&
+          [candidate.file, ...(candidate.readBy ?? [])].some((file) => graph.has(keyOf(file))),
       );
       return problem === undefined ? undefined : overlayOf(problem);
     },

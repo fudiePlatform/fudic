@@ -389,11 +389,15 @@ una tiene que tener una de estas formas:
 - **Módulo de datos.** Un `export default` que es un literal de datos (como `*.fixture.ts`,
   SDD-53) es portable: el servidor lo carga como datos.
 - Lo que la vista lee y no tiene ninguna de estas formas es `FUD1150`: una función usada como
-  valor (fuera de un callback), una clase, `let x;` sin inicializador, una declaración con
-  `find` o `toLocaleTimeString`, un nombre importado de un paquete que no es del catálogo. El
-  diagnóstico va sobre la declaración, con `related` al primer uso en la vista.
-- Dentro de un inicializador del corte, cada nodo fuera de la lista da su propio código (`FUD1140`,
-  `FUD1141`…), igual que en el markup.
+  valor (fuera de un callback), una clase, `let x;` sin inicializador, una declaración cuyo
+  inicializador **es** una llamada fuera de la lista o un `new` (`const t = d.toLocaleTimeString("es")`,
+  `const p = xs.find(…)`), un nombre importado de un paquete que no es del catálogo. El diagnóstico
+  va sobre la declaración, con `related` al primer uso en la vista.
+- Dentro de un inicializador del corte que tiene su forma, cada nodo fuera de la lista da su propio
+  código (`FUD1140`, `FUD1141`…), igual que en el markup: `computed(() => xs().find(…))` es
+  `FUD1140` en el `find`. Lo que la lista rechaza no se sigue: el corte va por lo que la vista y
+  cada inicializador leen de verdad, y una función que la vista **llama** es asunto de la llamada
+  (`FUD1140`), no de su declaración.
 - **`effect`, las funciones y todo lo que la vista no lee** quedan fuera del corte, sin
   restricción: es código de navegador. `provide(…)` de nivel superior sigue en el corte como dice
   SDD-60; su factoría no se evalúa al pintar en un backend que no es Node (anexo A.2).
@@ -489,10 +493,14 @@ misma regla de spans (§4.2 de SDD-51: el nodo culpable) y la de «uno por nodo,
 | `server-cut` (nuevo) | §3.9 sobre el corte de SDD-60: forma de cada declaración (`FUD1150`), la lista blanca sobre cada inicializador (mismos códigos que el markup), `now()` (`FUD0912`), stores y módulos de datos |
 
 - **Stores y módulos de datos.** El analizador `server-cut` pide al host el fuente de un módulo
-  del proyecto con `readModule(specifier, importer)`, un campo nuevo y opcional de `SemanticInput`.
+  del proyecto con `readModule(specifier, importer)`, un campo nuevo y opcional de `SemanticInput`
+  (junto a `path`, la ruta del documento: el `importer` de sus propios imports y adonde apunta el
+  `related` de un diagnóstico del store).
   Lo parsea con Oxc una vez por módulo y versión (la caché es del host) y aplica §3.9 a la
   declaración exportada. Sin `readModule` (un host que no lo da), los imports del proyecto no se
-  comprueban. El plugin de Vite, `@fudic/typecheck` y el language server lo dan.
+  comprueban. El plugin de Vite, `@fudic/typecheck` y el language server lo dan: el build lo reporta
+  sobre el store, una vez, y bloquea en dev las páginas que lo leen; el editor lo muestra en el uso
+  del `.fud`, con el sitio del store como información relacionada.
 - **`@empty`** lo reconoce la estructura del documento: un nodo `EmptyBlock` hijo del nodo del
   bucle, con su `Span`. `FUD1149` sale ahí.
 
