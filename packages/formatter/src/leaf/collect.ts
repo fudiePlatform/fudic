@@ -170,6 +170,7 @@ function collectContent(nodes: readonly HtmlContent[], depth: number, jobs: Job[
         jobs.push(js('iteration', loop.header.inner, depth));
         collectKey(loop, depth, jobs);
         collectContent(loop.body, depth + 1, jobs);
+        if (loop.empty !== undefined) collectContent(loop.empty.body, depth + 1, jobs);
         break;
       }
       case 'while': {
@@ -177,6 +178,7 @@ function collectContent(nodes: readonly HtmlContent[], depth: number, jobs: Job[
         jobs.push(js('condition', loop.header.inner, depth));
         collectKey(loop, depth, jobs);
         collectContent(loop.body, depth + 1, jobs);
+        if (loop.empty !== undefined) collectContent(loop.empty.body, depth + 1, jobs);
         break;
       }
       case 'switch':

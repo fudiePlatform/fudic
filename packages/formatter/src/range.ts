@@ -39,8 +39,10 @@ export function childrenOf(node: HtmlContent): readonly HtmlContent[] {
     }
     case 'foreach':
     case 'for':
-    case 'while':
-      return asLoop(node).body;
+    case 'while': {
+      const loop = asLoop(node);
+      return loop.empty === undefined ? loop.body : [...loop.body, ...loop.empty.body];
+    }
     case 'switch':
       return asSwitch(node).cases.flatMap((c) => c.body);
     case 'section':

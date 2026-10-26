@@ -78,6 +78,22 @@ function keyClause(ctx: PrintContext, node: ForeachNode | WhileNode): Doc {
   return node.key === undefined ? '' : concat(['key (', leafOf(ctx, node.key.expr), ') ']);
 }
 
+/**
+ * `@empty { … }` after a loop's body (decision 163), carried by the `}` like an `else`.
+ *
+ * The hole before it runs from the end of the body's last child — or of the clause before the
+ * body, when it has none — to the `@`, so the `}` and any comment beside it are both inside.
+ */
+function emptyTail(ctx: PrintContext, node: ForeachNode | WhileNode): Doc {
+  if (node.empty === undefined) return '';
+  const from = node.body.at(-1)?.span.end ?? node.key?.span.end ?? node.header.span.end;
+  return concat([
+    printComments(ctx.source, from, node.empty.span.start),
+    '@empty ',
+    block(ctx, node.empty.body),
+  ]);
+}
+
 /** `@foreach` and `@for`: same shape, different header, both already delegated. */
 export function printLoop(ctx: PrintContext, keyword: string, node: ForeachNode): Doc {
   return group(
@@ -87,6 +103,7 @@ export function printLoop(ctx: PrintContext, keyword: string, node: ForeachNode)
       ') ',
       keyClause(ctx, node),
       block(ctx, node.body),
+      emptyTail(ctx, node),
     ]),
   );
 }
@@ -100,6 +117,7 @@ export function printWhile(ctx: PrintContext, node: WhileNode): Doc {
       ') ',
       keyClause(ctx, node),
       block(ctx, node.body),
+      emptyTail(ctx, node),
     ]),
   );
 }

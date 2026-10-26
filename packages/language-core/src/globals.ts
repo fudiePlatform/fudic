@@ -315,6 +315,14 @@ type $Prop<T, K extends PropertyKey> = K extends keyof T ? Exclude<T[K], undefin
  */
 declare function $key(k?: unknown): void;
 
+/**
+ * Whether the loop just above made no pass (decision 163): the guard of its \`@empty\`.
+ *
+ * Opaque on purpose. What it answers is a runtime fact, and a literal \`true\` or \`false\`
+ * would let the checker call the body unreachable and silence everything inside it.
+ */
+declare function $empty(): boolean;
+
 type $El<T extends string> = T extends keyof HTMLElementTagNameMap
   ? HTMLElementTagNameMap[T]
   : HTMLElement;

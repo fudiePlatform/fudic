@@ -7,7 +7,7 @@
 > `fudic-vscode` · `@fudic/vite` · `examples/*` · `packages/testing`
 > **Rama:** `sdd-61-vista-portable-impl`. Nace de `main` **con SDD-60 en `Hecho`**: esta spec parte
 > de un único `@code` y de su corte de servidor.
-> **Progreso:** 24 / 44 — `En curso`.
+> **Progreso:** 29 / 44 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -112,11 +112,11 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 23 | 4 | **Proyección de `@empty`.** `if ($empty()) { … }` tras el bucle, con `declare function $empty(): boolean` en `GLOBALS_DTS`; el cuerpo tipa con el scope de fuera | `language-core` | `src/template/control.ts` · `src/globals.ts` |
-| [ ] | 24 | — | **Completado de la vista.** En las posiciones de SDD §3.1 se filtran los métodos y funciones (salvo valores reactivos) y los globales salvo `undefined`; sobre una lista quedan `filter`, `map`, `reduce`, `toSorted` y `length`, y sobre un texto solo `length`; en manejadores y callbacks, sin filtro. Tras la `}` de un bucle se ofrece `@empty` | `language-server` | `src/services/*` |
-| [ ] | 25 | — | **Gramática.** `@empty` como palabra clave de control en la TextMate de `.fud` | `vscode` | `syntaxes/fudic.tmLanguage.json` |
-| [ ] | 26 | 4 | **Formateador.** `} @empty {` en la línea de la `}` del bucle, como `} else {` | `formatter` | `src/*` |
-| [ ] | 27 | 23–26 | **Los tests de la fase.** Criterio 30 (completado y `@empty`), formateo idempotente con `@empty`, coloreado | `language-core` · `language-server` · `formatter` · `vscode` | `test/**` |
+| [x] | 23 | 4 | **Proyección de `@empty`.** `if ($empty()) { … }` tras el bucle, con `declare function $empty(): boolean` en `GLOBALS_DTS`; el cuerpo tipa con el scope de fuera | `language-core` | `src/template/control.ts` · `src/globals.ts` |
+| [x] | 24 | — | **Completado de la vista.** En las posiciones de SDD §3.1 se filtran los métodos y funciones (salvo valores reactivos) y los globales salvo `undefined`; sobre una lista quedan `filter`, `map`, `reduce`, `toSorted` y `length`, y sobre un texto solo `length`; en manejadores y callbacks, sin filtro. Tras la `}` de un bucle se ofrece `@empty` | `language-server` | `src/services/*` |
+| [x] | 25 | — | **Gramática.** `@empty` como palabra clave de control en la TextMate de `.fud` | `vscode` | `syntaxes/fudic.tmLanguage.json` |
+| [x] | 26 | 4 | **Formateador.** `} @empty {` en la línea de la `}` del bucle, como `} else {` | `formatter` | `src/*` |
+| [x] | 27 | 23–26 | **Los tests de la fase.** Criterio 30 (completado y `@empty`), formateo idempotente con `@empty`, coloreado | `language-core` · `language-server` · `formatter` · `vscode` | `test/**` |
 
 ## Fase 6 — conformidad (2)
 

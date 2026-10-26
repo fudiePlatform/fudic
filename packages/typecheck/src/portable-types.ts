@@ -526,8 +526,7 @@ class PortableTypes {
 
   /** Whether a call with no arguments to a value of `type` reads something reactive (§3.3). */
   #isReactive(type: ts.Type): boolean {
-    const members = type.isUnion() ? type.types.filter((member) => !isAbsent(this.#checker, member)) : [type];
-    return members.every((member) => REACTIVE.has(member.aliasSymbol?.name ?? '') || REACTIVE.has(member.getSymbol()?.name ?? ''));
+    return isReactive(this.#checker, type);
   }
 
   // ── Portable types (§3.10) ──
@@ -698,6 +697,15 @@ class PortableTypes {
       }
     }
   }
+}
+
+/**
+ * Whether a call with no arguments to a value of `type` reads something reactive (§3.3). The
+ * editor's completion asks the same question, so it is answered here once.
+ */
+export function isReactive(checker: ts.TypeChecker, type: ts.Type): boolean {
+  const members = type.isUnion() ? type.types.filter((member) => !isAbsent(checker, member)) : [type];
+  return members.every((member) => REACTIVE.has(member.aliasSymbol?.name ?? '') || REACTIVE.has(member.getSymbol()?.name ?? ''));
 }
 
 /** The primitive names that port (§3.10); `never` is the element of an empty list. */
