@@ -1,0 +1,19 @@
+@* §3.5: a field, an optional field, an index of a list and a key of a map; out of range and a missing key are absent. *@
+@code {
+  type Autor = { nombre: string; web?: string | null };
+  type Post = { titulo: string; autor: Autor; coautor?: Autor | null };
+
+  const { post, xs = [], m = {}, vacia } =
+    props<{ post: Post; xs?: readonly string[]; m?: Readonly<Record<string, number>>; vacia?: readonly string[] }>();
+}
+
+<c-acceso>
+  <template shadowrootmode="open">
+    <p class="campo">@post.titulo @post.autor.nombre</p>
+    <p class="opcional">[@post.coautor?.nombre][@post.autor.web]</p>
+    <p class="indice">@xs[0] @(xs[2]) [@(xs[9])] [@(vacia?.[0])]</p>
+    <p class="mapa">@(m["uno"]) [@(m["tres"])]</p>
+    <p class="plantilla">@(`${post.titulo} de ${post.autor.nombre}, ${xs.length} etiquetas`)</p>
+    <p class="interpola">@post.titulo @(xs.length) @(xs.length > 0) [@post.autor.web]</p>
+  </template>
+</c-acceso>

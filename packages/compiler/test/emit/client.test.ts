@@ -79,7 +79,7 @@ describe('emitComponentClientModule — the module shape (§6.8)', () => {
   });
 
   it('bakes the positional destructuring of $props, defaults included (§4.2)', () => {
-    expect(src).toContain("let [$dom, $shadow, title, variant = 'default'] = $props;");
+    expect(src).toContain("let [$dom, $shadow, title, variant] = $props; variant ??= ('default');");
   });
 
   it('hoists the @client imports and inlines the rest of the region', () => {
@@ -169,7 +169,7 @@ describe('emitComponentClientModule — a component with no @code', () => {
 
   it('still gets a chunk, with no props and no client body', () => {
     expect(src).toContain('customElements.define("app-badge", class extends FudicElement {');
-    expect(src).toContain('let [$dom, $shadow, tone = \'neutral\'] = $props;');
+    expect(src).toContain("let [$dom, $shadow, tone] = $props; tone ??= ('neutral');");
   });
 
   it('gets one even with nothing to destructure at all', () => {
@@ -419,7 +419,7 @@ describe('emitComponentClientModule — u, the update channel (BUG-12)', () => {
     // what the constructs below make of them — which is the body `$u` holds (§4.5).
     expect(src).toContain('const $u = () => { $a(); $u0(); $u1(); };');
     expect(own).toContain(
-      "u: ($p) => { if (2 in $p) title = $p[2]; if (3 in $p) variant = $p[3] === undefined ? 'default' : $p[3]; $u(); },",
+      "u: ($p) => { if (2 in $p) title = $p[2]; if (3 in $p) variant = $p[3] ?? ('default'); $u(); },",
     );
   });
 
@@ -702,14 +702,14 @@ describe('emitComponentClientModule — dense handover, sparse update (BUG-18)',
 
   it('§6.1 — the child asks for presence, and no longer destructures', () => {
     expect(update).toContain('if (2 in $p) title = $p[2];');
-    expect(update).toContain('if (4 in $p) n = $p[4] === undefined ? 0 : $p[4];');
+    expect(update).toContain('if (4 in $p) n = $p[4] ?? (0);');
     // The pattern is gone: what made a hole and an `undefined` the same thing.
     expect(update).not.toContain('] = $p;');
     expect(update).not.toContain('[, ,');
   });
 
   it('§6.2 — the default lives in the present branch, and only a prop that has one gets it', () => {
-    expect(update).toContain("if (3 in $p) tone = $p[3] === undefined ? 'plain' : $p[3];");
+    expect(update).toContain("if (3 in $p) tone = $p[3] ?? ('plain');");
     // `title` has no default: the guard is bare, and an absent hole is its own answer.
     expect(update).toContain('if (2 in $p) title = $p[2];');
     expect(update).not.toContain('title = $p[2] === undefined');
@@ -1023,7 +1023,7 @@ describe('emitComponentClientModule — a value that moves without a signal', ()
     // …and once per pass, recomposed from the binding `u` has just reassigned. That is what
     // makes the chain advance one hop per level, however deep it goes.
     expect(src).toContain(
-      'u: ($p) => { if (2 in $p) value = $p[2] === undefined ? 0 : $p[2]; $a(); $n1.u([, , (value)]); },',
+      'u: ($p) => { if (2 in $p) value = $p[2] ?? (0); $a(); $n1.u([, , (value)]); },',
     );
   });
 

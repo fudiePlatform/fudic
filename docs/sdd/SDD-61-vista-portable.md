@@ -365,7 +365,7 @@ una tiene que tener una de estas formas:
 
 | Forma | Condición |
 |---|---|
-| `const { a, b = d, ...r } = props<T>()` | Como hoy. `T` es portable (§3.10); los defectos siguen §3.2–§3.5 |
+| `const { a, b = d, ...r } = props<T>()` | Como hoy, salvo el defecto, que se aplica también con `null` (§4.4). `T` es portable (§3.10); los defectos siguen §3.2–§3.5 |
 | `const x = signal(v)` · `signal<T>(v)` | `v` sigue §3.2–§3.5, o es un literal de datos (abajo), o es `now()` |
 | `const x = computed(() => e)` | Flecha con **cuerpo de expresión**. `e` sigue §3.2–§3.5 y puede leer otras señales |
 | `const x = e` · `let x = e` | `e` sigue §3.2–§3.5, o es un literal de datos, o una llamada del catálogo |
@@ -545,8 +545,10 @@ Cinco cambios, para que Node y los demás lenguajes pinten lo mismo:
 
 1. **Presencia.** En la vista y en el corte, `x === null`, `x === undefined`, `x !== null` y
    `x !== undefined` se emiten como `x == null` / `x != null`.
-2. **Defectos.** El defecto de un patrón de la vista se emite como `?? defecto`: se aplica también
-   con `null`.
+2. **Defectos.** El defecto de un patrón de la vista, y el de una prop de `props<T>()` (en el render
+   del servidor, en la toma del cliente, en su actualización y en un layout), se emite como
+   `?? defecto`: se aplica también con `null`, como en los otros cinco lenguajes (anexo A.2). El
+   pase tipado lo sabe: un nombre con defecto nunca está ausente, aunque su tipo admita `null`.
 3. **`@empty`.**
    - En el servidor: el bucle cuenta vueltas y, si no da ninguna, pinta el bloque.
    - En el cliente: el bloque es una rama más del constructo, con su propia marca de hidratación,
@@ -556,7 +558,9 @@ Cinco cambios, para que Node y los demás lenguajes pinten lo mismo:
    de la instancia, aunque nada más la obligue. Al hidratar, el `@code` del cliente toma el valor
    del slot (`$pN ?? signal(now())`). JSON no tiene fechas: un `Date` en un slot viaja como
    `{"$d": milisegundos}` (`null` si es inválido), que `@fudic/ssr` escribe y `@fudic/core` vuelve a
-   convertir en `Date` al leer el bloque. El servidor evalúa `now()` una sola vez por render.
+   convertir en `Date` al leer el bloque, a cualquier profundidad: un DTO con un campo `Date` en
+   una lista llega a un componente que hidrata como `Date`. El servidor evalúa `now()` una sola
+   vez por render.
 5. **Orden del spread.** `attrsOf` y `attrsDiff` de `@fudic/dom` devuelven los atributos ordenados
    por nombre (§3.8), y el emit llama a `setAttrs` una vez por elemento, en el sitio del primer
    spread, con todos sus objetos.
@@ -598,6 +602,18 @@ y su HTML de servidor esperado (`.html`), con datos fijos en sus props.
   - `"😀".length` pinta `2`;
   - el ejemplo de las tareas, con su HTML de servidor.
 - Es la semilla que cada runtime de otro lenguaje tendrá que pasar.
+
+*Decidido al implementar.*
+
+- **Un proyecto propio.** La suite es un proyecto de vitest con su `fudic.json` (`"locales": ["es"]`):
+  sin idioma, `a | preset` no es un pipe. Los datos de cada fila van en su `.fixture.ts` (caso
+  `conformance`), como los de SDD-53; los componentes hijos, en `parts/`.
+- **El arnés de SDD-57 gana dos cosas.** `mount`, `visit` y `renderLayout` compilan con el idioma
+  de la app cuando tiene `locales` (el primero, o el de la ruta), como `vite dev`. Y una prop
+  puede llevar un `Date` a cualquier profundidad, porque `fud-state` lo marca (§4.4.4).
+- **Qué se compara.** El contenido de la raíz declarativa del componente, tal como lo escribe el
+  servidor, byte a byte; en el `.html`, `{{pipe}}` está por el texto de un pipe. Y, montado e
+  hidratado, el árbol del shadow root es el de ese HTML.
 
 ### 4.7. Migración
 

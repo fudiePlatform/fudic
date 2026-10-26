@@ -1,0 +1,19 @@
+@* Annex A.7 (guide example 2): a field with the rest of its props. *@
+@code {
+  const { label, ...resto } = props<{
+    label: string;
+    placeholder?: string;
+    required?: boolean;
+    maxlength?: number;
+  }>();
+}
+
+<c-campo-texto>
+  <template shadowrootmode="open">
+    <label class="campo">
+      <span>@label</span>
+      <input ...resto>
+    </label>
+    <p class="eco">placeholder: @resto.placeholder · required: @resto.required · maxlength: @resto.maxlength</p>
+  </template>
+</c-campo-texto>

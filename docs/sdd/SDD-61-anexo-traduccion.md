@@ -177,9 +177,9 @@ La desestructuración tiene su propia sección (A.3).
 
 ### El `@code` que el servidor evalúa
 
-| `@code` | Todos los lenguajes salvo TS (TS: como hoy) |
+| `@code` | Todos los lenguajes salvo TS (TS: como hoy, salvo el defecto de una prop: `b ??= (d)`, SDD-61 §4.4) |
 |---|---|
-| `const { a, b = d } = props<T>()` | El parámetro `p` de la función de render (el `record` de props generado); `a` es `p.A`, y `b` es `p.B ?? d` |
+| `const { a, b = d } = props<T>()` | El parámetro `p` de la función de render (el `record` de props generado); `a` es `p.A`, y `b` es `p.B ?? d`, también en TS |
 | `signal(v)` | `var x = v` |
 | `computed(() => e)` | `var x = e`, en el orden del `@code` |
 | `effect(…)` | Nada |

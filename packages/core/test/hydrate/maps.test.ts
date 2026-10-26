@@ -44,6 +44,14 @@ describe('the three blocks the page publishes', () => {
     expect(plain).toEqual({ a: 1 });
   });
 
+  it('an instant a list or an object nests comes back a Date; a field named $d among others is data', () => {
+    publish({ state: [[0, 2], [[{ titulo: 'x', creada: { $d: 1793008800000 } }], { $d: 1, n: 2 }]] });
+    const [list, data] = readPageMaps(document).slice(0) as [[{ creada: Date }], object];
+    expect(list[0].creada).toBeInstanceOf(Date);
+    expect(list[0].creada.toISOString()).toBe('2026-10-26T10:00:00.000Z');
+    expect(data).toEqual({ $d: 1, n: 2 });
+  });
+
   it('escaped payloads survive the round trip: `JSON.parse` gives back the original', () => {
     publish({ state: [[0, 1], ['</script><b>']] });
     expect(readPageMaps(document).slice(0)).toEqual(['</script><b>']);

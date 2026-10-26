@@ -1,0 +1,18 @@
+@* §3.6 and annex A.3.4, D4–D5: the rest handed on to a component, and the rest of the props to a native. *@
+<link rel="component" href="./parts/c-card.fud">
+
+@code {
+  type Author = { name: string };
+  type Post = { slug: string; title: string; summary: string; tag: string; featured?: boolean | null; author: Author };
+
+  const { post, label, ...campo } =
+    props<{ post: Post; label: string; placeholder?: string; required?: boolean; maxlength?: number }>();
+}
+
+<c-resto>
+  <template shadowrootmode="open">
+    @{ const { slug, ...resto } = post; }
+    <c-card ...resto .href=@(`/blog/${slug}`)></c-card>
+    <label>@label <input ...campo></label>
+  </template>
+</c-resto>

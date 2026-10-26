@@ -1,0 +1,15 @@
+@* §3.5 bis: an empty list in the five pieces — `reduce` gives its initial value. *@
+@code {
+  const { xs = [] } = props<{ xs?: readonly number[] }>();
+}
+
+<c-colecciones-vacias>
+  <template shadowrootmode="open">
+    <p class="length">@(xs.length)</p>
+    <p class="filter">@(xs.filter(x => x > 0).length)</p>
+    <p class="map">@(xs.map(x => x * 2).length)</p>
+    <p class="reduce">@(xs.reduce((s, x) => s + x, 42))</p>
+    <p class="tosorted">@(xs.toSorted((a, b) => a - b).length)</p>
+    <p class="media">@(xs.length > 0 ? xs.reduce((s, n) => s + n, 0) / xs.length : 0) @(xs.reduce((s, n) => s + n, 0) / xs.length)</p>
+  </template>
+</c-colecciones-vacias>

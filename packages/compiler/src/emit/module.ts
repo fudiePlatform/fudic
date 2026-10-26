@@ -43,7 +43,7 @@ import { planPageSheets, type PageSheets, type SheetUse } from './page-sheets.js
 import { compactStyleCss } from './css-compact.js';
 import { isRtl, type LocaleCompile } from '../i18n/localize.js';
 import { codeOf, codeOfDocument, diHelpers } from './oxc-code.js';
-import { restGroups } from './rest.js';
+import { propDefaults, restGroups } from './rest.js';
 import { hasDependencyInjection } from './di.js';
 import { cellSlots, childTargets, reactiveScope } from './state.js';
 import { bridgeIds, formAssociatedTags, hydratableTags, shadowOptions } from './level.js';
@@ -398,10 +398,12 @@ function buildComponentModule(
     // exactly as the author wrote it.
     const named = props.filter((p) => p.rest === undefined);
     const pattern = [
-      ...named.map((p) => (p.def !== undefined ? `${p.name} = ${p.def}` : p.name)),
+      ...named.map((p) => p.name),
       ...[...restGroups(props).keys()].map((rest) => `...${rest}`),
     ].join(', ');
-    w.line(`const { ${pattern} } = props ?? {};`);
+    // `let` when a default is assigned after the pattern: absent is `null` too (SDD-61 §4.4).
+    const defaults = propDefaults(props);
+    w.line(`${defaults === '' ? 'const' : 'let'} { ${pattern} } = props ?? {};${defaults === '' ? '' : ` ${defaults}`}`);
   }
   if (owns) {
     // Numbered and recorded in the same step, because the map the browser rebuilds the chain

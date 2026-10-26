@@ -2,7 +2,7 @@ export const tag = "app-actions";
 export const css = `:host{display:block;}.list{margin:0;padding:0;list-style:none;}.row{display:flex;gap:0.5rem;align-items:baseline;}.row button{font:inherit;cursor:pointer;}`;
 
 export function render($dom, $shadow, props, $ioc) {
-  const { rows = [] } = props ?? {};
+  let { rows } = props ?? {}; rows ??= ([]);
   $dom.state($shadow, [rows]);
   const $n0 = $dom.element("ul");
   $dom.setAttr($n0, 'class', ["list"].filter(Boolean).join(' '));

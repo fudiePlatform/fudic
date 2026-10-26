@@ -185,6 +185,8 @@ type $Prop<T, K extends PropertyKey> = K extends keyof T ? Exclude<T[K], undefin
 
 declare function $key(k?: unknown): void;
 
+declare function $empty(): boolean;
+
 type $El<T extends string> = T extends keyof HTMLElementTagNameMap
   ? HTMLElementTagNameMap[T]
   : HTMLElement;

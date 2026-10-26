@@ -1,0 +1,23 @@
+@* §3.3: the one call of the view is reading a reactive value — a signal, a computed, a form and its controls — and `t()` as the value of a prop. *@
+<link rel="server" href="./src/c-llamadas.fudapi">
+<link rel="component" href="./parts/c-card.fud">
+
+@code {
+  import { computed, signal } from "@fudic/core";
+  import { t } from "@fudic/i18n";
+
+  const { inicial = 0 } = props<{ inicial?: number }>();
+
+  const count = signal(inicial);
+  const doble = computed(() => count() * 2);
+}
+
+<c-llamadas>
+  <template shadowrootmode="open">
+    <p class="senal">@count() @(count() + 1)</p>
+    <p class="computed">@doble()</p>
+    <p class="form">@(contactoForm.$valid()) @(contactoForm.$issues().length)</p>
+    <p class="control">@contactoForm.nombre() [@contactoForm.correo()] @(contactoForm.correo.errors() !== null) @(contactoForm.nombre.errors() === null)</p>
+    <c-card .title=@t("Hola") .href=@("/hola")></c-card>
+  </template>
+</c-llamadas>

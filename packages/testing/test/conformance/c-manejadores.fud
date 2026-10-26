@@ -1,0 +1,17 @@
+@* §3.11: a handler is full TS — calls, arrows, `new`, the stdlib — and never runs on the server: the HTML is the view's. *@
+@code {
+  import { signal } from "@fudic/core";
+
+  const n = signal(5);
+  const ahora = signal("");
+  const lista = signal<readonly string[]>([]);
+}
+
+<c-manejadores>
+  <template shadowrootmode="open">
+    <button class="menos" @click=@(() => n.set(Math.max(0, n() - 1)))>-</button>
+    <button class="hora" @click=@(() => ahora.set(new Date().toISOString()))>hora</button>
+    <button class="anade" @click=@(() => lista.set([...lista(), String(n())]))>+</button>
+    <p>@n() [@ahora()] @(lista().length)</p>
+  </template>
+</c-manejadores>

@@ -2,7 +2,7 @@ export const tag = "app-list";
 export const css = `:host{display:block;}.list{margin:0;padding:0;list-style:none;}.row{display:flex;gap:0.5rem;align-items:baseline;}.tag{font-size:0.7rem;color:#666;}.empty{color:#888;font-style:italic;}`;
 
 export function render($dom, $shadow, props, $ioc) {
-  const { rows, empty = 'Sin elementos' } = props ?? {};
+  let { rows, empty } = props ?? {}; empty ??= ('Sin elementos');
   $dom.state($shadow, [rows, empty]);
   if (rows == null || rows.length === 0) {
     const $n0 = $dom.element("p");

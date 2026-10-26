@@ -66,12 +66,29 @@ type CellMark = { readonly $: CellRef } | { readonly $f: CellRef };
  * would read a string where the server held a `Date` — and a `signal(now())` that hydrates would
  * hold text. A number and not the ISO text, because it is exact and an invalid date has one too:
  * `NaN`, which travels as `null`. Like the cell marker, a wire format `@fudic/core` declares at
- * the reading end. Only a slot's own value is marked; what an object nests is not read.
+ * the reading end. Marked at any depth of a list or a plain object: a DTO of the `.fudapi` with a
+ * `Date` field, handed to a component that hydrates, has to arrive a `Date` too.
  */
 type InstantMark = { readonly $d: number };
 
-const wire = (value: unknown): unknown =>
-  value instanceof Date ? ({ $d: value.getTime() } satisfies InstantMark) : value;
+/** Whether `value` is an object JSON writes field by field: no class, no `toJSON` of its own. */
+const isPlain = (value: object): boolean => {
+  const proto = Object.getPrototypeOf(value) as unknown;
+  return proto === Object.prototype || proto === null;
+};
+
+/**
+ * `value` with every instant in it marked. What holds none is handed back as it is — the same
+ * object, not a copy — so a slot with no date costs one walk and nothing more.
+ */
+function wire(value: unknown): unknown {
+  if (value instanceof Date) return { $d: value.getTime() } satisfies InstantMark;
+  if (typeof value !== 'object' || value === null || !(Array.isArray(value) || isPlain(value))) return value;
+  const entries = Object.entries(value);
+  const wired = entries.map(([key, field]) => [key, wire(field)] as const);
+  if (wired.every(([, field], i) => field === entries[i]![1])) return value;
+  return Array.isArray(value) ? wired.map(([, field]) => field) : Object.fromEntries(wired);
+}
 
 export class SsrDom implements Dom<SsrNode> {
   /**

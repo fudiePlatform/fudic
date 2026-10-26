@@ -34,7 +34,7 @@ import type { DocumentGraph, ResolvedLayout } from './resolve.js';
 import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
 import { projectAdoptOf, renderProjectStyles } from './project-styles.js';
 import { codeOfDocument, type Prop } from './oxc-code.js';
-import { restGroups } from './rest.js';
+import { propDefaults, restGroups } from './rest.js';
 import { layoutCodeOf, requiredLayoutProps, unresolvedLayoutProps } from './layout-code.js';
 import { NO_SIGNALS, writeElementAttrs } from './attrs.js';
 import { holeSlot } from './compose.js';
@@ -90,10 +90,12 @@ function componentPairs(graph: DocumentGraph, styled: ReadonlySet<string>): read
 function writeLayoutProps(w: CodeWriter, props: readonly Prop[]): void {
   if (props.length === 0) return;
   const pattern = [
-    ...props.flatMap((p) => (p.rest !== undefined ? [] : [p.def !== undefined ? `${p.name} = ${p.def}` : p.name])),
+    ...props.flatMap((p) => (p.rest !== undefined ? [] : [p.name])),
     ...[...restGroups(props).keys()].map((rest) => `...${rest}`),
   ].join(', ');
-  w.line(`const { ${pattern} } = ${PROPS} ?? {};`);
+  // `let` when a default is assigned after the pattern: absent is `null` too (SDD-61 §4.4).
+  const defaults = propDefaults(props);
+  w.line(`${defaults === '' ? 'const' : 'let'} { ${pattern} } = ${PROPS} ?? {};${defaults === '' ? '' : ` ${defaults}`}`);
 }
 
 /** `import` lines for the component renders a markup emitter used, plus the asset imports. */

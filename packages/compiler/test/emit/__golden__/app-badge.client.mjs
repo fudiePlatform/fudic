@@ -6,7 +6,7 @@ customElements.define("app-badge", class extends FudicElement {
     const $r = [];
     const $d = []; // teardowns
     const $w = []; // last applied, per value write
-    let [$dom, $shadow, tone = 'neutral'] = $props;
+    let [$dom, $shadow, tone] = $props; tone ??= ('neutral');
 
     const $m = () => { for (const $n of $r) $dom.append($shadow, $n); };
     const $s = () => {};
@@ -37,7 +37,7 @@ customElements.define("app-badge", class extends FudicElement {
         }
         $s();
       },
-      u: ($p) => { if (2 in $p) tone = $p[2] === undefined ? 'neutral' : $p[2]; $a(); },
+      u: ($p) => { if (2 in $p) tone = $p[2] ?? ('neutral'); $a(); },
       r: () => { $n0 = $n1 = $shadow = null; $d.forEach((d) => d()); },
     };
   }

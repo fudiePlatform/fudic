@@ -2,7 +2,7 @@ export const tag = "app-calendar";
 export const css = `:host{display:block;}.grid{display:grid;grid-template-columns:repeat(7, 1fr);gap:2px;}.cell{padding:0.25rem;text-align:center;}.cell button{font:inherit;cursor:pointer;}`;
 
 export function render($dom, $shadow, props, $ioc) {
-  const { days = [] } = props ?? {};
+  let { days } = props ?? {}; days ??= ([]);
   $dom.state($shadow, [days]);
   const $n0 = $dom.element("div");
   $dom.setAttr($n0, 'class', ["grid"].filter(Boolean).join(' '));

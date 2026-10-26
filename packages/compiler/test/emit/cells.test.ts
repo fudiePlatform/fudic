@@ -358,7 +358,7 @@ describe('the owner’s chunk — one expression, not two branches (§6.4)', () 
   const src = chunk('cell-parent');
 
   it('takes its cells positionally, behind the props', () => {
-    expect(src).toContain('let [$dom, $shadow, start = 0, $p3, $p4] = $props;');
+    expect(src).toContain('let [$dom, $shadow, start, $p3, $p4] = $props; start ??= (0);');
   });
 
   it('receives the cell where the author wrote the initialiser', () => {

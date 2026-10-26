@@ -52,11 +52,15 @@ describe('@fudic/vite/harness', () => {
         'edgeContext',
         'emitRenderChunk',
         'matchRouteBuild',
+        'nodeConfigIo',
         'nodeIo',
+        'pageModuleOf',
+        'readProject',
         'renderErrorPage',
         'resolveOptions',
         'routeApi',
         'routeUsesDi',
+        'withLocale',
       ],
     );
   });

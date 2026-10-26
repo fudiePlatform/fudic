@@ -43,3 +43,13 @@ export function restAssignments(props: readonly Prop[], declare: boolean): strin
     })
     .join(' ');
 }
+
+/**
+ * The defaults of the named props, applied as the portable view applies a default (SDD-61 §3.6,
+ * §4.4): when the prop is absent, `null` included, as in the other five languages. A default of
+ * JS fires on `undefined` only, so every writer binds the prop bare and assigns its default right
+ * after, in the order the author wrote them.
+ */
+export function propDefaults(props: readonly Prop[]): string {
+  return props.flatMap((p) => (p.def === undefined ? [] : [`${p.name} ??= (${p.def});`])).join(' ');
+}

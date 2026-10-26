@@ -23,7 +23,7 @@ import { ClientMarkupEmitter, coreUsage, nodeIds, renderPass } from './markup-cl
 import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js';
 import { AssetLinker } from './assets.js';
 import { codeOf, splicedOffset, type ClientStatement, type Prop } from './oxc-code.js';
-import { localOf, restAssignments, restGroups } from './rest.js';
+import { localOf, propDefaults, restAssignments, restGroups } from './rest.js';
 import { hookupContext, templateDelegationJs } from './events.js';
 import { planDelegation } from '../semantic/delegation.js';
 import { planControls } from './controls.js';
@@ -57,7 +57,7 @@ function declaration(
   cells: readonly CellSlot[],
   injects: boolean,
 ): string {
-  const names = props.map((p) => (p.def !== undefined ? `${p.name} = ${p.def}` : localOf(p)));
+  const names = props.map(localOf);
   // The cells come out under their POSITIONAL names and not under the author's, because the
   // author's is about to be declared by their own `const count = …` a few lines down. What
   // arrives here is the slot; `$pK ?? signal(init)` is where the two meet (BUG-24 §4.4).
@@ -68,8 +68,9 @@ function declaration(
   // exactly what `updateGuards` below must not have to know about.
   const ioc = injects ? [iocName(props, cells)] : [];
   // And the rest object, assembled from the locals its keys just arrived in.
-  const rest = restAssignments(props, true);
-  return `let [$dom, $shadow${[...names, ...slots, ...ioc].map((n) => `, ${n}`).join('')}] = $props;${rest === '' ? '' : ` ${rest}`}`;
+  // Its defaults first, absent being `null` too (SDD-61 §4.4): a key a rest gathers has none.
+  const after = [propDefaults(props), restAssignments(props, true)].filter((part) => part !== '');
+  return `let [$dom, $shadow${[...names, ...slots, ...ioc].map((n) => `, ${n}`).join('')}] = $props;${after.map((part) => ` ${part}`).join('')}`;
 }
 
 /**
@@ -134,7 +135,7 @@ function updateGuards(props: readonly Prop[]): string {
   const guards = props
     .map((p, i) => {
       const cell = `$p[${i + 2}]`;
-      const value = p.def !== undefined ? `${cell} === undefined ? ${p.def} : ${cell}` : cell;
+      const value = p.def !== undefined ? `${cell} ?? (${p.def})` : cell;
       return `if (${i + 2} in $p) ${localOf(p)} = ${value};`;
     })
     .join(' ');

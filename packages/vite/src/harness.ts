@@ -16,3 +16,5 @@ export { resolveOptions, type FudicOptions } from './options.js';
 export { nodeIo } from './io.js';
 export { ROOT_FILE_PREFIX, SERVER_ROOT_ID } from './api-root.js';
 export { API_SCHEME, ApiProject } from './api-modules.js';
+export { nodeConfigIo, readProject } from './config.js';
+export { pageModuleOf, withLocale } from './i18n.js';

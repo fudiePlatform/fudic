@@ -153,7 +153,22 @@ class PortableTypes {
   /** The type of what `node` evaluates to, or `undefined` when it does not cross. */
   #typeOf(node: OxcNode): ts.Type | undefined {
     const found = this.#nodeAt(this.#span(node));
-    return found === undefined ? undefined : this.#checker.getTypeAtLocation(found);
+    if (found === undefined) return undefined;
+    const type = this.#checker.getTypeAtLocation(found);
+    return this.#defaulted(found) ? this.#checker.getNonNullableType(type) : type;
+  }
+
+  /**
+   * A name a destructuring gives a default: the default applies when the value is absent, `null`
+   * included, in the six languages (§3.6, §4.4) — so the name is never absent, whatever
+   * TypeScript, whose default fires on `undefined` only, says of it.
+   */
+  #defaulted(node: ts.Node): boolean {
+    const declaration = this.#checker.getSymbolAtLocation(node)?.valueDeclaration as
+      | (ts.Node & { readonly initializer?: ts.Node; readonly parent: ts.Node & { readonly elements?: unknown } })
+      | undefined;
+    // A binding element is the one declaration with an initializer whose parent is a pattern.
+    return declaration?.initializer !== undefined && declaration.parent.elements !== undefined;
   }
 
   // ── The roots ──
@@ -791,10 +806,18 @@ function satisfied(init: OxcNode): boolean {
   return current.type === 'TSSatisfiesExpression';
 }
 
-/** The literal of data of an initializer: itself, or the value of a `signal(…)`. */
+/**
+ * The pipe presets of `@fudic/i18n` (§3.9): their argument is a literal of options — the shape
+ * of `Intl`, not a type of the `.fudapi` — that each runtime reads as a preset of data.
+ */
+const PRESETS: ReadonlySet<string> = new Set(['date', 'number', 'currency', 'percent', 'relativeTime', 'list']);
+
+/** The literal of data of an initializer: itself, or the value of a `signal(…)`; none for a preset. */
 function dataOf(init: OxcNode): OxcNode {
   const value = unwrap(init);
   if (value.type !== 'CallExpression') return value;
+  const callee = child(value, 'callee')!;
+  if (callee.type === 'Identifier' && PRESETS.has(nameOf(callee))) return value;
   const first = children(value, 'arguments')[0];
   return first === undefined ? value : unwrap(first);
 }

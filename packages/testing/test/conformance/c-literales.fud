@@ -1,0 +1,10 @@
+@* §3.2: literals and the one global. *@
+<c-literales>
+  <template shadowrootmode="open">
+    <p class="texto">@('activo') @("x")</p>
+    <p class="numeros">@(0) @(3.5) @(1e3) @(0x10) @(1_000)</p>
+    <p class="logicos">@(true) @(false)</p>
+    <p class="ausentes">[@(null)][@(undefined)]</p>
+    <p class="undefined">@(undefined === undefined)</p>
+  </template>
+</c-literales>

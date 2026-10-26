@@ -7,7 +7,7 @@ customElements.define("app-button", class extends FudicElement {
     const $r = [];
     const $d = []; // teardowns
     const $w = []; // last applied, per value write
-    let [$dom, $shadow, variant = 'primary', disabled = false] = $props;
+    let [$dom, $shadow, variant, disabled] = $props; variant ??= ('primary'); disabled ??= (false);
     let $host = $dom.host($shadow);
     function onClick() {
     emit.call($host, 'press');
@@ -44,7 +44,7 @@ customElements.define("app-button", class extends FudicElement {
         }
         $s();
       },
-      u: ($p) => { if (2 in $p) variant = $p[2] === undefined ? 'primary' : $p[2]; if (3 in $p) disabled = $p[3] === undefined ? false : $p[3]; $a(); },
+      u: ($p) => { if (2 in $p) variant = $p[2] ?? ('primary'); if (3 in $p) disabled = $p[3] ?? (false); $a(); },
       r: () => { $n0 = $n1 = $shadow = $host = null; $d.forEach((d) => d()); },
     };
   }

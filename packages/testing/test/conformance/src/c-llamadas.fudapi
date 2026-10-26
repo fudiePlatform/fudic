@@ -1,0 +1,6 @@
+# The form `c-llamadas` reads its state from (SDD-61 §3.3: a control of a form is a reactive value).
+form contactoForm
+  nombre  str = "Ana"
+    required  "Escribe un nombre."
+  correo  str = ""
+    required  "Escribe un correo."

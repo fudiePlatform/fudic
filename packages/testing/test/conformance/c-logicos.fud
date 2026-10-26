@@ -1,0 +1,16 @@
+@* §3.4: `&&`, `||` and `!` over booleans, `??` over what may be absent, the ternary and parentheses. *@
+@code {
+  const { si = true, no = false, falta, nombre = "Ana" } =
+    props<{ si?: boolean; no?: boolean; falta?: string; nombre?: string }>();
+}
+
+<c-logicos>
+  <template shadowrootmode="open">
+    <p class="y">@(si && no) @(si && si)</p>
+    <p class="o">@(si || no) @(no || no)</p>
+    <p class="no">@(!si) @(!no)</p>
+    <p class="defecto">@(falta ?? "—") @(nombre ?? "—")</p>
+    <p class="ternario">@(si ? "sí" : "no") @(no ? "sí" : "no")</p>
+    <p class="parentesis">@(!(si && no)) @((si || no) && no)</p>
+  </template>
+</c-logicos>

@@ -4,7 +4,7 @@ export const tag = "app-card";
 export const css = `:host{display:block;}.card{border:1px solid #ddd;border-radius:8px;padding:1rem;.body{margin-top:0.5rem;}}.card.highlight{border-color:gold;}`;
 
 export function render($dom, $shadow, props, $ioc) {
-  const { title, variant = 'default' } = props ?? {};
+  let { title, variant } = props ?? {}; variant ??= ('default');
   $dom.state($shadow, [title, variant]);
   const expanded = () => (false); // inert signal (SSR; hydration is client-side)
   const $n0 = $dom.element("article");

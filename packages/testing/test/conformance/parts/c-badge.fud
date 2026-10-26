@@ -1,0 +1,12 @@
+@* A child of the rows: what `app-badge` declares in annex A.6. *@
+@code {
+  type Tone = "neutral" | "success";
+
+  const { tone = "neutral" } = props<{ tone?: Tone }>();
+}
+
+<c-badge>
+  <template shadowrootmode="open">
+    <span class=@tone><slot></slot></span>
+  </template>
+</c-badge>

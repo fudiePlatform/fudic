@@ -7,7 +7,7 @@
 > `fudic-vscode` · `@fudic/vite` · `examples/*` · `packages/testing`
 > **Rama:** `sdd-61-vista-portable-impl`. Nace de `main` **con SDD-60 en `Hecho`**: esta spec parte
 > de un único `@code` y de su corte de servidor.
-> **Progreso:** 29 / 44 — `En curso`.
+> **Progreso:** 31 / 44 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -122,8 +122,15 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 28 | 12, 44, 18, 22 | **La suite.** Un `.fud` por fila de SDD §3.2–§3.12 con datos fijos y su `.html` de servidor esperado, incluidos los casos frontera de SDD §4.6, cada fila del recetario de colecciones (§3.5 bis) y el ejemplo guía 3 del anexo (A.8) | `testing` | `test/conformance/*.fud` · `*.html` |
-| [ ] | 29 | 28 | **El test.** Monta cada fixture con `mount` y compara byte a byte; las filas de pipes, salvo el texto formateado (criterios 29 y 37) | `testing` | `test/conformance.test.ts` |
+| [x] | 28 | 12, 44, 18, 22 | **La suite.** Un `.fud` por fila de SDD §3.2–§3.12 con datos fijos y su `.html` de servidor esperado, incluidos los casos frontera de SDD §4.6, cada fila del recetario de colecciones (§3.5 bis) y el ejemplo guía 3 del anexo (A.8) | `testing` | `test/conformance/*.fud` · `*.html` |
+| [x] | 29 | 28 | **El test.** Monta cada fixture con `mount` y compara byte a byte; las filas de pipes, salvo el texto formateado (criterios 29 y 37) | `testing` | `test/conformance/conformance.test.ts` |
+
+*Decidido al implementar (fase 6).* La suite destapó cuatro huecos, cerrados aquí para que todos
+los backends pinten lo mismo (SDD §4.4, §4.6): el arnés compila con el idioma de la app y acepta
+un `Date` en las props; `fud-state` marca un `Date` a cualquier profundidad; el defecto de una
+prop de `props<T>()` se aplica también con `null` en TS (servidor, cliente y layout), como en los
+otros cinco; y el pase tipado da por presente un nombre con defecto y no trata como dato el objeto
+de opciones de un preset de pipe.
 
 ## Fase 7 — migración (8)
 

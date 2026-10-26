@@ -99,12 +99,24 @@ interface InstantMark {
   readonly $d: number | null;
 }
 
-function isInstantMark(value: unknown): value is InstantMark {
-  return typeof value === 'object' && value !== null && '$d' in value;
+/** A mark is an object with `$d` and nothing else: a field of the author's named `$d` is data. */
+function isInstantMark(value: object): value is InstantMark {
+  const keys = Object.keys(value);
+  return keys.length === 1 && keys[0] === '$d';
 }
 
-const fromWire = (value: unknown): unknown =>
-  isInstantMark(value) ? new Date(value.$d ?? Number.NaN) : value;
+/**
+ * `value` with every mark in it turned back into a `Date`, at any depth: the server marks the
+ * instants a list or an object nests too. `value` is fresh from `JSON.parse`, nobody else holds
+ * it, so it is changed in place.
+ */
+function fromWire(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null) return value;
+  if (isInstantMark(value)) return new Date(value.$d ?? Number.NaN);
+  const fields = value as Record<string, unknown>;
+  for (const key of Object.keys(fields)) fields[key] = fromWire(fields[key]);
+  return value;
+}
 
 /** The parsed content of a block, or `null` when the page does not publish it. */
 function readBlock(doc: Document, id: string): unknown {

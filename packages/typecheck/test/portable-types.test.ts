@@ -43,7 +43,11 @@ export type Str = TypedControl<string>;
 export interface FormApi { readonly $valid: Readable<boolean>; $touch(): void }
 `;
 
-const IMPORTS = `import { signal, computed, trustedUrl, type Readable } from '@fudic/core';
+const I18N = `export interface Pipe<T> { readonly kind: string; readonly input?: T }
+export declare function date(options: Intl.DateTimeFormatOptions & { timeZone: string }): Pipe<Date | number>;
+`;
+
+const IMPORTS =`import { signal, computed, trustedUrl, type Readable } from '@fudic/core';
   import type { Control, FormApi, Str } from '@fudic/forms';`;
 
 /** A component `app-<name>` with `code` in its `@code` and `markup` in its shadow root. */
@@ -215,6 +219,19 @@ const CASES: Readonly<Record<string, string>> = {
   const leido = texto();`,
     `<p>@texto() @tono() @(sino() ?? 0) @cuenta() @color() @varios() @(grande() ?? 0) @(mapa() ?? 0) @(caja() ?? 0) @(par() ?? 0) @(ambos().n) @(fecha() ?? 0) @(arbol().valor) @(raro() ?? 0) @(url ?? 0) @doble() @(vacio().length) @(cualquiera()) @(fn() ?? 0) @(reg()["a"]?.n) @(malReg() ?? 0) @lectura() @leido</p>`,
   ),
+  // §3.6 and §3.9: a default makes a name present, `null` included; a preset's options are not data.
+  defaults: component(
+    'defaults',
+    `import { date } from '@fudic/i18n';
+  type Ficha = { activo?: boolean | null; n?: number | null };
+  const { titulo = 'x', fichas } = props<{ titulo?: string | null; fichas: readonly Ficha[] }>();
+  const hora = date({ timeStyle: 'short', timeZone: 'UTC' });
+  const suelto = signal({ a: 1 });
+  const pocas = fichas.filter(f => f.n === 1);`,
+    `@foreach (const { activo = false, n = 0 } of fichas) key (n) { <i>@(activo ? 'si' : 'no') @(titulo + '!')</i> }
+@foreach (const { activo } of fichas) key (activo) { <i>@(activo ? 'si' : 'no')</i> }
+<p>@suelto().a @(pocas.length) @hora.kind</p>`,
+  ),
   // §3.10: the parameters of a snippet, once each.
   snippets: component(
     'snippets',
@@ -233,6 +250,8 @@ function project(files: Readonly<Record<string, string>>): string {
     'node_modules/@fudic/core/index.d.ts': CORE,
     'node_modules/@fudic/forms/package.json': JSON.stringify({ name: '@fudic/forms', types: 'index.d.ts' }),
     'node_modules/@fudic/forms/index.d.ts': FORMS,
+    'node_modules/@fudic/i18n/package.json': JSON.stringify({ name: '@fudic/i18n', types: 'index.d.ts' }),
+    'node_modules/@fudic/i18n/index.d.ts': I18N,
     ...files,
   };
   for (const [relative, text] of Object.entries(all)) {
@@ -333,6 +352,12 @@ describe('literals of data (criterion 22)', () => {
       "FUD1153 { titulo: 'a', extra: 'b' }",
       'FUD1153 { k1 }',
     ]);
+  });
+});
+
+describe('defaults and presets (§3.6, §3.9)', () => {
+  it('a name with a default is present even over `T | null`; the options of a preset are not a literal of data', () => {
+    expect(found('defaults')).toEqual(['FUD1153 { a: 1 }', 'FUD1153 activo', 'FUD1151 activo']);
   });
 });
 

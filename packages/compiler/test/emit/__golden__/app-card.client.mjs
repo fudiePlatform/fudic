@@ -7,7 +7,7 @@ customElements.define("app-card", class extends FudicElement {
     const $r = [];
     const $d = []; // teardowns
     const $w = []; // last applied, per value write
-    let [$dom, $shadow, title, variant = 'default'] = $props;
+    let [$dom, $shadow, title, variant] = $props; variant ??= ('default');
     const expanded = signal(false);
     function toggle() {
     expanded.set(!expanded());
@@ -232,7 +232,7 @@ customElements.define("app-card", class extends FudicElement {
         }
         $s();
       },
-      u: ($p) => { if (2 in $p) title = $p[2]; if (3 in $p) variant = $p[3] === undefined ? 'default' : $p[3]; $u(); },
+      u: ($p) => { if (2 in $p) title = $p[2]; if (3 in $p) variant = $p[3] ?? ('default'); $u(); },
       r: () => { $k0.forEach(($i) => $i.r()); $k1.forEach(($i) => $i.r()); $n0 = $n1 = $n2 = $n3 = $n4 = $n5 = $n10 = $shadow = null; $d.forEach((d) => d()); },
     };
   }

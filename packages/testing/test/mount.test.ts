@@ -114,10 +114,18 @@ describe('via client', () => {
 
 describe('via ssr', () => {
   test('a prop that is not JSON is named in the error', async () => {
-    await expect(mount(XLabel, { props: { label: new Date(0) } })).rejects.toThrow(
+    await expect(mount(XLabel, { props: { label: new Map([[1, 2]]) } })).rejects.toThrow(
       `mount(<x-label>): prop "label" is not JSON, and via 'ssr' renders it on the server — mount it with via: 'client'`,
     );
     await expect(mount(XLabel, { props: { label: undefined } })).rejects.toThrow('prop "label" is not JSON');
+  });
+
+  test('a Date survives, at any depth: the hydration state marks it (SDD-61 §4.4)', async () => {
+    const at = new Date(0);
+    await expect(renderToHtml(XLabel, { props: { label: at } })).resolves.toContain('<x-label');
+    await expect(renderToHtml(XLabel, { props: { label: [{ at }] } })).resolves.toContain('<x-label');
+    // An object with a field named `$d` among others is data, and stays what it was.
+    await expect(renderToHtml(XLabel, { props: { label: { $d: 1, n: 2 } } })).resolves.toContain('<x-label');
   });
 
   test('the same page twice is written once', async () => {

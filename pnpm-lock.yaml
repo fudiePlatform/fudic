@@ -700,6 +700,9 @@ importers:
       '@fudic/forms':
         specifier: workspace:*
         version: link:../forms
+      '@fudic/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@fudic/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig

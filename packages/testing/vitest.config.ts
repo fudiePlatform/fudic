@@ -17,6 +17,13 @@ export default defineConfig({
         base: '/sub/',
         test: { name: 'bare-app', include: ['*.test.ts'] },
       },
+      // The conformance suite of the portable view: one `.fud` per row and the server's HTML it
+      // must give. A project of its own for its `"locales"`, which turn `a | preset` into a pipe.
+      {
+        plugins: [fudicTest()],
+        root: 'test/conformance',
+        test: { name: 'conformance', include: ['*.test.ts'] },
+      },
     ],
     coverage: {
       provider: 'v8',

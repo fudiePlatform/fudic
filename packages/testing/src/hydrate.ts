@@ -11,6 +11,7 @@
 import { installHydration, signal, type HydrationOptions } from '@fudic/core';
 import { browserDom } from '@fudic/dom';
 import { track } from './pending.js';
+import { localized } from './project.js';
 import { standTree, type ProviderOverride } from './providers.js';
 
 /** The tags of a page and the `?client` module of each. */
@@ -52,13 +53,14 @@ function pageRegistry(): NonNullable<HydrationOptions['registry']> {
 
 /**
  * The modules of a page's components, by the name the runtime asks for: `<tag>` is its
- * `?client` chunk and `<tag>.ioc` its `?ioc` module (SDD-38 §4.5).
+ * `?client` chunk and `<tag>.ioc` its `?ioc` module (SDD-38 §4.5), compiled for `locale` — the
+ * project's, unless the page names its own.
  */
-export function chunkMap(components: Iterable<{ readonly tag: string; readonly path: string }>): ChunkMap {
+export function chunkMap(components: Iterable<{ readonly tag: string; readonly path: string }>, locale?: string): ChunkMap {
   const map = new Map<string, string>();
   for (const { tag, path } of components) {
-    map.set(tag, `${path}?client`);
-    map.set(`${tag}.ioc`, `${path}?ioc`);
+    map.set(tag, localized(`${path}?client`, locale));
+    map.set(`${tag}.ioc`, localized(`${path}?ioc`, locale));
   }
   return map;
 }

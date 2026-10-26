@@ -1,0 +1,66 @@
+@* §3.5 bis: each row of the recipe book, written with the five pieces. *@
+@code {
+  import { computed, signal } from "@fudic/core";
+
+  type Tarea = { id: number; titulo: string; prioridad: number; hecha: boolean; estado: string; creada: Date };
+  type Linea = { nombre: string; precio: number; cantidad: number; pagada: boolean };
+  type Autor = { nombre: string };
+
+  const { t0 = [], e0 = [], l0 = [], n0 = [], a0 = [], sel = 0, fil = "todas", ord = "nombre", txt = "" } = props<{
+    t0?: readonly Tarea[];
+    e0?: readonly string[];
+    l0?: readonly Linea[];
+    n0?: readonly number[];
+    a0?: readonly Autor[];
+    sel?: number;
+    fil?: string;
+    ord?: string;
+    txt?: string;
+  }>();
+
+  const tareas = signal<readonly Tarea[]>(t0);
+  const etiquetas = signal<readonly string[]>(e0);
+  const lineas = signal<readonly Linea[]>(l0);
+  const notas = signal<readonly number[]>(n0);
+  const autores = signal<readonly Autor[]>(a0);
+  const seleccion = signal(sel);
+  const filtro = signal(fil);
+  const orden = signal(ord);
+  const texto = signal(txt);
+
+  const elegidas = computed(() => tareas().filter(t => filtro() === "todas" || t.estado === filtro()));
+  const porColumna = computed(() => orden() === "precio"
+    ? lineas().toSorted((a, b) => a.precio - b.precio)
+    : lineas().toSorted((a, b) => a.nombre < b.nombre ? -1 : a.nombre > b.nombre ? 1 : 0));
+}
+
+<c-recetario>
+  <template shadowrootmode="open">
+    <ul>
+      <li class="contar">@(tareas().length)</li>
+      <li class="contar-si">@(tareas().filter(t => t.prioridad === 1).length)</li>
+      <li class="some">@(tareas().filter(t => t.prioridad === 1).length > 0)</li>
+      <li class="every">@(tareas().filter(t => !t.hecha).length === 0)</li>
+      <li class="includes">@(etiquetas().filter(e => e === "urgente").length > 0)</li>
+      <li class="find">@(tareas().filter(t => t.id === seleccion())[0]?.titulo) [@(tareas().filter(t => t.id === 99)[0]?.titulo)]</li>
+      <li class="slice">@foreach (const t of tareas().filter((t, i) => i < 3)) key (t.id) {<i>@t.titulo</i>}</li>
+      <li class="filtrar">@foreach (const t of tareas().filter(t => !t.hecha)) key (t.id) {<i>@t.titulo</i>}</li>
+      <li class="filtro-usuario">@foreach (const t of elegidas()) key (t.id) {<i>@t.titulo</i>}</li>
+      <li class="campo">@foreach (const titulo of tareas().map(t => t.titulo)) key (titulo) {<i>@titulo</i>}</li>
+      <li class="por-elemento">@foreach (const importe of lineas().map(l => l.precio * l.cantidad)) key (importe) {<i>@importe</i>}</li>
+      <li class="suma">@(lineas().reduce((s, l) => s + l.precio * l.cantidad, 0))</li>
+      <li class="maximo">@(notas().reduce((m, n) => n > m ? n : m, 0))</li>
+      <li class="minimo">@(notas().reduce((m, n) => n < m ? n : m, 10))</li>
+      <li class="media">@(notas().length > 0 ? notas().reduce((s, n) => s + n, 0) / notas().length : 0)</li>
+      <li class="unir">@(autores().reduce((s, a, i) => i === 0 ? a.nombre : `${s}, ${a.nombre}`, ""))</li>
+      <li class="por-numero">@foreach (const t of tareas().toSorted((a, b) => a.prioridad - b.prioridad)) key (t.id) {<i>@t.titulo</i>}</li>
+      <li class="por-numero-reves">@foreach (const l of lineas().toSorted((a, b) => b.precio - a.precio)) key (l.nombre) {<i>@l.nombre</i>}</li>
+      <li class="por-fecha">@foreach (const t of tareas().toSorted((a, b) => a.creada < b.creada ? -1 : a.creada > b.creada ? 1 : 0)) key (t.id) {<i>@t.titulo</i>}</li>
+      <li class="por-texto">@foreach (const t of tareas().toSorted((a, b) => a.titulo < b.titulo ? -1 : a.titulo > b.titulo ? 1 : 0)) key (t.id) {<i>@t.titulo</i>}</li>
+      <li class="por-columna">@foreach (const l of porColumna()) key (l.nombre) {<i>@l.nombre</i>}</li>
+      <li class="encadenar">@(lineas().filter(l => !l.pagada).map(l => l.precio * l.cantidad).reduce((s, x) => s + x, 0))</li>
+      <li class="en-la-vista"><span>@(tareas().filter(t => t.hecha).length) de @(tareas().length)</span></li>
+      <li class="quedan">@(140 - texto().length)</li>
+    </ul>
+  </template>
+</c-recetario>

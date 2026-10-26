@@ -69,6 +69,7 @@
   },
   "devDependencies": {
     "@fudic/forms": "workspace:*",
+    "@fudic/i18n": "workspace:*",
     "@fudic/tsconfig": "workspace:*",
     "@types/node": "22.20.0",
     "typescript": "5.9.3",

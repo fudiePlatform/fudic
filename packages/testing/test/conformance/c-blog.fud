@@ -1,0 +1,25 @@
+@* Annex A.6 (guide example 1): the front page of the blog, with a default, two children and `@empty`. *@
+<link rel="component" href="./parts/c-card.fud">
+<link rel="component" href="./parts/c-badge.fud">
+
+@code {
+  type Post = { slug: string; title: string; summary: string; tag: string; featured?: boolean | null };
+
+  const { titular = "", posts = [] } = props<{ titular?: string; posts?: readonly Post[] }>();
+}
+
+<c-blog>
+  <template shadowrootmode="open">
+    <h1>@titular</h1>
+    <section class="grid">
+      @foreach (const { slug, title, summary, tag, featured = false } of posts) key (slug) {
+        <c-card .title=@title .href=@(`/blog/${slug}`) .variant=@(featured ? "highlight" : "default")>
+          <c-badge slot="meta" .tone=@(featured ? "success" : "neutral")>@tag</c-badge>
+          @summary
+        </c-card>
+      } @empty {
+        <p class="empty">Todavía no hay artículos.</p>
+      }
+    </section>
+  </template>
+</c-blog>

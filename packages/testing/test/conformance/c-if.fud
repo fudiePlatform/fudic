@@ -1,0 +1,22 @@
+@* §3.7: `@if … else if … else`, with a boolean condition. *@
+@code {
+  const { n = 0 } = props<{ n?: number }>();
+}
+
+<c-if>
+  <template shadowrootmode="open">
+    @if (n > 10) {
+      <p>mucho</p>
+    } else if (n > 0) {
+      <p>algo</p>
+    } else {
+      <p>nada</p>
+    }
+    @if (n === 5) {
+      <b>cinco</b>
+    }
+    @if (n === 6) {
+      <b>seis</b>
+    }
+  </template>
+</c-if>

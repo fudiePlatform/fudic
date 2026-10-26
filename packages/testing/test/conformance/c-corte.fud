@@ -1,0 +1,35 @@
+@* §3.9: what the server evaluates of the @code — props with defaults, signals, a literal of data with a named type, computed, const and let, a catalog call, a store and a module of data. *@
+@code {
+  import { computed, signal } from "@fudic/core";
+  import { trustedUrl } from "@fudic/dom";
+  import { count, triple } from "./parts/stores";
+  import pasos from "./parts/pasos.data";
+
+  type Nodo = { valor: number; nombre: string };
+
+  const { base = 10, nombre = "nadie" } = props<{ base?: number; nombre?: string }>();
+
+  const n = signal(base);
+  const lista = signal<readonly Nodo[]>([{ valor: 1, nombre: "uno" }, { valor: 2, nombre: "dos" }]);
+  const raiz: Nodo = { valor: 0, nombre: "raíz" };
+  const doble = computed(() => n() * 2);
+  const etiqueta = `${nombre}: ${base}`;
+  let veces = base + 1;
+  const inicio = trustedUrl("/inicio");
+}
+
+<c-corte>
+  <template shadowrootmode="open">
+    <p class="props">@nombre @base</p>
+    <p class="senal">@n() @doble()</p>
+    <p class="literal">@raiz.nombre @(lista().reduce((s, x) => s + x.valor, 0)) @(lista()[1]?.nombre)</p>
+    <p class="const">@etiqueta @veces</p>
+    <a class="catalogo" href=@inicio>inicio</a>
+    <p class="store">@count() @triple()</p>
+    <ol class="datos">
+      @foreach (const p of pasos) key (p.n) {
+        <li>@p.n. @p.texto</li>
+      }
+    </ol>
+  </template>
+</c-corte>

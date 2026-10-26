@@ -4,7 +4,7 @@ customElements.define("app-list", class extends FudicElement {
   static c($props) {
     const $r = [];
     const $d = []; // teardowns
-    let [$dom, $shadow, rows, empty = 'Sin elementos'] = $props;
+    let [$dom, $shadow, rows, empty] = $props; empty ??= ('Sin elementos');
 
     let $k0 = [];
     let $x0 = -1;
@@ -302,7 +302,7 @@ customElements.define("app-list", class extends FudicElement {
         }
         $s();
       },
-      u: ($p) => { if (2 in $p) rows = $p[2]; if (3 in $p) empty = $p[3] === undefined ? 'Sin elementos' : $p[3]; $a(); $u0(); },
+      u: ($p) => { if (2 in $p) rows = $p[2]; if (3 in $p) empty = $p[3] ?? ('Sin elementos'); $a(); $u0(); },
       r: () => { $k0.forEach(($i) => $i.r()); $shadow = null; $d.forEach((d) => d()); },
     };
   }

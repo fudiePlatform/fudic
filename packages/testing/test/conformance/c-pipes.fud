@@ -1,0 +1,26 @@
+@* §3.4: `a | preset`, the pipe of the catalog. What it formats is the platform's ICU: the .html writes it {{pipe}}. *@
+@code {
+  import { currency, date, list, number, percent, relativeTime } from "@fudic/i18n";
+
+  const { cuando, total = 3.5, parte = 0.25, n = 1234.5, dias = -2, nombres = [] } =
+    props<{ cuando: Date; total?: number; parte?: number; n?: number; dias?: number; nombres?: readonly string[] }>();
+
+  const hora = date({ timeStyle: "short", timeZone: "Europe/Madrid" });
+  const dia = date({ dateStyle: "long", timeZone: "Europe/Madrid" });
+  const euros = currency("EUR");
+  const tanto = percent();
+  const cifra = number({ maximumFractionDigits: 1 });
+  const hace = relativeTime("day");
+  const lista = list({ type: "conjunction" });
+}
+
+<c-pipes>
+  <template shadowrootmode="open">
+    <p class="fecha"><time>@(cuando | dia)</time>, <time>@(cuando | hora)</time></p>
+    <p class="moneda">Total: @(total | euros)</p>
+    <p class="porcentaje">@(parte | tanto) hecho</p>
+    <p class="numero">@(n | cifra) puntos</p>
+    <p class="relativo">Visto @(dias | hace)</p>
+    <p class="lista">Firman @(nombres | lista).</p>
+  </template>
+</c-pipes>
