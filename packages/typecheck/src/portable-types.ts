@@ -76,6 +76,9 @@ const CATALOGUE: ReadonlySet<string> = new Set([
   'LoadData',
 ]);
 
+/** The mark of a URL the author vouches for, which a value of URL may hold instead of a text. */
+const URL_MARKS: ReadonlySet<string> = new Set(['TrustedURL', '$TrustedURL']);
+
 /** The names an anonymous object type prints its symbol as. */
 const ANONYMOUS: ReadonlySet<string> = new Set(['__type', '__object']);
 
@@ -590,6 +593,8 @@ class PortableTypes {
     if (present.every((member) => member.isStringLiteral())) return true;
     if (present.every((member) => this.#single(member) === 'boolean')) return true;
     if (present.every((member) => member.isNumberLiteral() || (member.flags & ENUM_LIKE) !== 0)) return true;
+    // `string | TrustedURL`: a value of URL, which the guard writes whichever it holds.
+    if (present.length === 2 && present.some((member) => this.#single(member) === 'string') && present.some((member) => URL_MARKS.has(member.getSymbol()?.name ?? ''))) return true;
     return present.length === 1 && this.#ports(present[0]!, false, seen);
   }
 

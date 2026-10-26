@@ -7,7 +7,7 @@
 > `fudic-vscode` · `@fudic/vite` · `examples/*` · `packages/testing`
 > **Rama:** `sdd-61-vista-portable-impl`. Nace de `main` **con SDD-60 en `Hecho`**: esta spec parte
 > de un único `@code` y de su corte de servidor.
-> **Progreso:** 31 / 44 — `En curso`.
+> **Progreso:** 33 / 44 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -136,14 +136,30 @@ de opciones de un preset de pipe.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 30 | 13, 16 | **`examples/basic`: reloj, locales y carrito.** `"locales": ["es"]` en `fudic.json`; `app-clock` y `ruta-reloj` con presets `date` (`timeZone: "Europe/Madrid"`) y `signal(now())`; `shopping-cart` con `currency('EUR')` | `examples` | `basic/fudic.json` · `app-clock.fud` · `ruta-reloj.fud` · `shopping-cart.fud` |
-| [ ] | 31 | 30 | **`examples/basic`: el resto** de la tabla de SDD §4.7: `signal-control`, `ruta-reactiva`, `signal-while` (+ `signal-while.fudapi`), `snippets` (`type Paso`), `vista-url`, `campo-texto`, `blog/index`, `app-calendar` y cada `@if (xs.length === 0)` que pinta un vacío (→ `@empty`); cada `some`/`find`/`join`/`includes`/`sort` por su receta de SDD §3.5 bis | `examples` | `basic/src/**` |
+| [x] | 30 | 13, 16 | **`examples/basic`: reloj, locales y carrito.** `"locales": ["es"]` en `fudic.json`; `app-clock` y `ruta-reloj` con presets `date` (`timeZone: "Europe/Madrid"`) y `signal(now())`; `shopping-cart` con `currency('EUR')` | `examples` | `basic/fudic.json` · `app-clock.fud` · `ruta-reloj.fud` · `shopping-cart.fud` |
+| [x] | 31 | 30 | **`examples/basic`: el resto** de la tabla de SDD §4.7: `signal-control`, `ruta-reactiva`, `signal-while` (+ `signal-while.fudapi`), `snippets` (`type Paso`), `vista-url`, `campo-texto`, `blog/index`, `app-calendar` y cada `@if (xs.length === 0)` que pinta un vacío (→ `@empty`); cada `some`/`find`/`join`/`includes`/`sort` por su receta de SDD §3.5 bis | `examples` | `basic/src/**` |
 | [ ] | 32 | 31 | **`vista.fud`.** Reescrito como catálogo positivo: un caso por fila de SDD §3 y por fila del recetario de colecciones, cada uno con «sin diagnóstico» | `examples` | `basic/src/routes/vista.fud` |
 | [ ] | 33 | 31 | **`vista-errores`.** Un caso por código nuevo y por ampliación, con «FUDnnnn sobre `texto`» | `examples` | `vista-errores/vista-errores.fud` |
 | [ ] | 34 | 31 | **`examples/i18n` y fixtures.** `app-greeting` (`alta` como prop desde el `load`); fixtures de `compiler` (`app-list`), `formatter` (`snippets`), `testing`, `language-core`, `language-server`, `workbench` | `examples` · varios | `i18n/src/**` · `packages/*/fixtures/**` · `packages/*/test/**` |
 | [ ] | 35 | 34 | **Tests reescritos.** Los que escribían algo que sale (`find`, `some`, `join`, `@{ }` con bucles…) se reescriben sin perder el caso que probaban | varios | `packages/*/test/**` |
 | [ ] | 36 | 35 | **Activar.** Fuera el interruptor `portableView` —de `SemanticInput`, de `CheckOptions` del project checker y del contexto del servicio del language server—: los analizadores y el pase tipado corren siempre. Se borran la regla de SDD-51 (`view-js.ts`) y `VIEW_GLOBALS`, y se retira `FUD0911`: se borra su `.ts` y su línea de `index.ts`, y su `.md` queda `retired` con `FUD1140` | `compiler` · `diagnostics` | `src/semantic/*` · `src/codes/FUD0911.*` |
 | [ ] | 37 | 36 | **Los tests del corpus.** Criterios 1, 32 y 33: ningún `.fud` fuera de `experiments/` da un diagnóstico de esta spec; `vista-errores` da exactamente sus comentarios | `compiler` · `typecheck` | `test/corpus*.test.ts` |
+
+*Decidido al implementar (fase 7, en curso).* Una pasada con los analizadores encendidos sobre todo
+el repositorio destapó tres huecos, cerrados para que todos los backends pinten lo mismo: el defecto
+de una prop de `props<T>()` puede ser un literal de datos (`rows = []`, `m = {}`), como el valor de
+una señal; `string | TrustedURL` porta como valor de URL (SDD §3.10) también en el pase tipado; y en
+una app con idiomas los ficheros `server/` y `browser/` de una librería se compilan por idioma, porque
+rellenan los contratos de ese idioma (sin ello, `"locales"` en `examples/basic` dejaba `csrf` sin
+implementar). El arnés de `@fudic/testing` hace lo mismo con idiomas: un test es un módulo del primer
+idioma de la app, así que su `.fud`, su `fudic:<id>` y lo que mockea son los de ese idioma, y la raíz
+del servidor en memoria también; los tests de `examples/basic` no cambian. Y en dev un módulo vigila
+su catálogo solo si existe: Vite tomaba el fichero vigilado por un import y, sin catálogo (el idioma
+del código no tiene), la página del navegador no cargaba. En la migración:
+`signal-control` y `ruta-reactiva` conservan su `@foreach` filtrando una lista fija (el test de
+navegador mide su reconciliación); los calendarios leen dos listas literales de `data/days.ts` en
+lugar de una fábrica; `raw-demo` pierde el caso del `as` (SDD §4.7). El golden de la tabla de
+hidratación gana las filas de la suite de fase 6; ninguna fila existente cambia.
 
 ## Fase 8 — cierre (5)
 

@@ -307,6 +307,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           root,
           locales,
           ...(site === undefined ? {} : { site }),
+          implementations: implementationDirs(),
           ioFor: (baseIo, locale) => localeIos!.for(baseIo, locale),
           compileFor: (locale) => catalogs!.compileFor(locale),
         };
@@ -419,17 +420,19 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     return text === undefined || side === 'server' ? text : `import ${JSON.stringify(BROWSER_ROOT_ID)};\n${text}`;
   };
   /**
+   * The `server/` and `browser/` folders of the libraries, real and posix: a half there fills the
+   * contracts of the locale that loads it, so in an app with languages it compiles per locale.
+   */
+  const implementationDirs = (): readonly string[] =>
+    api.libraries.flatMap((lib) => [`${slash(realpathSync(lib.dir))}/${lib.server}/`, `${slash(realpathSync(lib.dir))}/${lib.browser}/`]);
+  /**
    * Every module of the implementation folders, the server root and whatever holds a contract —
    * the `fudic:<id>`, the wrappers, the `.fud` — out of a dev graph: the next request evaluates
    * them all again, the root in its order, and its contracts are new ones nobody filled.
    */
   const invalidateImplementations = (graph: EnvironmentModuleGraph): void => {
     const folders = apiFolders();
-    const dirs = [
-      `${slash(root)}/${folders.server}/`,
-      `${slash(root)}/${folders.browser}/`,
-      ...api.libraries.flatMap((lib) => [`${slash(realpathSync(lib.dir))}/${lib.server}/`, `${slash(realpathSync(lib.dir))}/${lib.browser}/`]),
-    ];
+    const dirs = [`${slash(root)}/${folders.server}/`, `${slash(root)}/${folders.browser}/`, ...implementationDirs()];
     for (const mod of graph.idToModuleMap.values()) {
       const file = mod.file === null ? '' : slash(mod.file);
       // What holds a contract goes too: a fresh root fills fresh slots, so nobody empties them.
@@ -1564,7 +1567,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // `.ts`/`.js` of the project outside `node_modules`, is that locale's module too. A
       // compiled npm dependency is not, and is shared by every locale.
       const handed = handedOn(id, importer);
-      if (handed !== undefined) return resolveForLocale((i, from, o) => this.resolve(i, from, o), id, handed, root);
+      if (handed !== undefined) return resolveForLocale((i, from, o) => this.resolve(i, from, o), id, handed, root, implementationDirs());
       // Only in dev: in build these names are real emitted files (see `DEV_SCRIPT_IDS`).
       if (isDev) {
         const path = pathnameOf(id, base);
@@ -1710,7 +1713,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       const locale = localeOf(id);
       const query = locale === undefined ? split.query : withoutLocale(split.query);
       // A module's catalog file is one of its inputs: saving it recompiles the module (§4.10).
-      if (locale !== undefined) this.addWatchFile(catalogFileOf(root, locale, path));
+      // Only one that exists: Vite's dev server takes a watched file for an import of the
+      // module, and one that is not there — the language of the code has none — broke the page.
+      const catalog = locale === undefined ? undefined : catalogFileOf(root, locale, path);
+      if (catalog !== undefined && existsSync(catalog)) this.addWatchFile(catalog);
       if (!path.endsWith('.fud')) {
         const script = /\.[cm]?[jt]sx?$/u.test(path);
         // A module of the app compiled for a locale: `t`, `format` and `locale` replaced.

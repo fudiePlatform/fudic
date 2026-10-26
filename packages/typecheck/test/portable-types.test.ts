@@ -47,7 +47,7 @@ const I18N = `export interface Pipe<T> { readonly kind: string; readonly input?:
 export declare function date(options: Intl.DateTimeFormatOptions & { timeZone: string }): Pipe<Date | number>;
 `;
 
-const IMPORTS =`import { signal, computed, trustedUrl, type Readable } from '@fudic/core';
+const IMPORTS =`import { signal, computed, trustedUrl, type Readable, type TrustedURL } from '@fudic/core';
   import type { Control, FormApi, Str } from '@fudic/forms';`;
 
 /** A component `app-<name>` with `code` in its `@code` and `markup` in its shadow root. */
@@ -215,9 +215,11 @@ const CASES: Readonly<Record<string, string>> = {
   const fn = signal(() => 1);
   const reg = signal<Readonly<Record<string, Item>>>({});
   const malReg = signal<Readonly<Record<string, Map<string, number>>>>({});
+  const enlace = signal<string | TrustedURL>('/a');
+  const malEnlace = signal<number | TrustedURL>(1);
   const lectura = computed(() => tono() === 'a');
   const leido = texto();`,
-    `<p>@texto() @tono() @(sino() ?? 0) @cuenta() @color() @varios() @(grande() ?? 0) @(mapa() ?? 0) @(caja() ?? 0) @(par() ?? 0) @(ambos().n) @(fecha() ?? 0) @(arbol().valor) @(raro() ?? 0) @(url ?? 0) @doble() @(vacio().length) @(cualquiera()) @(fn() ?? 0) @(reg()["a"]?.n) @(malReg() ?? 0) @lectura() @leido</p>`,
+    `<p>@texto() @tono() @(sino() ?? 0) @cuenta() @color() @varios() @(grande() ?? 0) @(mapa() ?? 0) @(caja() ?? 0) @(par() ?? 0) @(ambos().n) @(fecha() ?? 0) @(arbol().valor) @(raro() ?? 0) @(url ?? 0) @doble() @(vacio().length) @(cualquiera()) @(fn() ?? 0) @(reg()["a"]?.n) @(malReg() ?? 0) @lectura() @leido</p><a href=@enlace()></a><a href=@malEnlace()></a>`,
   ),
   // §3.6 and §3.9: a default makes a name present, `null` included; a preset's options are not data.
   defaults: component(
@@ -394,6 +396,7 @@ describe('portable types (§3.10)', () => {
       'FUD1153 cualquiera',
       'FUD1153 fn',
       'FUD1153 malReg',
+      'FUD1153 malEnlace',
     ]);
   });
 

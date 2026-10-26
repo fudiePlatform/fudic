@@ -29,6 +29,6 @@
       <span>@label</span>
       <input ...resto>
     </label>
-    <p class="eco">placeholder: @resto.placeholder · required: @(String(resto.required)) · maxlength: @(String(resto.maxlength))</p>
+    <p class="eco">placeholder: @resto.placeholder · required: @resto.required · maxlength: @resto.maxlength</p>
   </template>
 </campo-texto>

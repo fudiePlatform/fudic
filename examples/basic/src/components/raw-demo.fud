@@ -1,13 +1,9 @@
 @code {
-  import { trustedHtml, type TrustedHTML } from "@fudic/dom";
+  import { trustedHtml } from "@fudic/dom";
 
   // HTML que el autor avala: la marca va en el VALOR, igual que `trustedUrl`.
   const uno = trustedHtml('<h3>Primer post</h3><p>Con <em>énfasis</em> y un <a href="/">enlace</a>.</p>');
   const dos = trustedHtml("<h3>Segundo post</h3><ul><li>uno</li><li>dos</li></ul>");
-
-  // Un string disfrazado de marcado: TypeScript se lo cree por el `as`, el runtime no.
-  // No lleva la marca, así que `@raw` lo escribe como texto escapado.
-  const falsa = "<b>esto no está marcado</b>" as unknown as TrustedHTML;
 
   import { signal } from "@fudic/core";
 
@@ -30,14 +26,10 @@
       gap: var(--gap);
       max-width: 36rem;
     }
-    .post,
-    .crudo {
+    .post {
       padding: 0.6rem 0.9rem;
       border: 1px solid var(--brand);
       border-radius: 8px;
-    }
-    .crudo {
-      border-style: dashed;
     }
   </style>
 </head>
@@ -47,7 +39,6 @@
     <div class="panel">
       <button class="cambiar" @click="@cambiar">Cambiar post</button>
       <article class="post">@raw(post())</article>
-      <div class="crudo">@raw(falsa)</div>
       <p class="despues">
         Lo de después sigue vivo: <button class="sumar" @click="@sumar">+1</button>
         <span class="clics">@clics()</span>

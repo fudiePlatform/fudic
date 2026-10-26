@@ -1,7 +1,7 @@
 import { extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fudic, type FudicOptions } from '@fudic/vite';
-import { API_SCHEME } from '@fudic/vite/harness';
+import { API_SCHEME, idWithoutLocale, nodeConfigIo, readProject, resolveForLocale } from '@fudic/vite/harness';
 import type { Plugin } from 'vite';
 import type {} from 'vitest/config';
 import { BASE_URL, FILE_EXPORT, OPTIONS_KEY, ROOT_KEY } from './constants.js';
@@ -47,6 +47,31 @@ function isPlainFud(id: string): boolean {
   return id.endsWith('.fud') && !id.startsWith('\0');
 }
 
+/** A test file, whatever its extension: what imports the app as a page of its locale would. */
+const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/u;
+
+/**
+ * In an app with `locales`, a test is a module of its first locale (SDD-58 §4.6), as the pages
+ * it mounts are: what it imports — a `.fud`, a `fudic:<id>`, a module it mocks — is the module of
+ * that locale's graph, and not a second copy with contracts of its own that nobody fills.
+ */
+function testLocale(): Plugin {
+  let root = '';
+  let locale: string | undefined;
+  return {
+    name: 'fudic:test-locale',
+    enforce: 'pre',
+    configResolved(config) {
+      root = config.root;
+      locale = readProject(root, false, nodeConfigIo()).config?.locales?.[0];
+    },
+    resolveId(id, importer) {
+      if (locale === undefined || importer === undefined || !TEST_FILE.test(importer)) return null;
+      return resolveForLocale((i, from, o) => this.resolve(i, from, o), id, { importer, locale }, root);
+    },
+  };
+}
+
 /**
  * The plugins a project's `vitest.config.ts` needs: its `fudic()` — which reads `fudic.json`
  * and the `.fudapi` of the app as `vite dev` does — and the one that puts vitest in the `fudic`
@@ -54,6 +79,8 @@ function isPlainFud(id: string): boolean {
  */
 export function fudicTest(options: FudicOptions = {}): Plugin[] {
   return [
+    // First: what a test imports is resolved for the app's locale before the plugin claims it.
+    testLocale(),
     // No live type check: nobody watches an overlay in a test run (decision 8.1.13).
     fudic({ liveCheck: false, ...options }),
     {
@@ -90,8 +117,10 @@ export function fudicTest(options: FudicOptions = {}): Plugin[] {
         },
       }),
       transform(code, id) {
-        if (!isPlainFud(id)) return null;
-        return { code: `${code}\nexport const ${FILE_EXPORT} = ${JSON.stringify(id)};\n`, map: null };
+        // The file, without the locale a test imported it in: `mount` compiles it for its own.
+        const file = idWithoutLocale(id);
+        if (!isPlainFud(file)) return null;
+        return { code: `${code}\nexport const ${FILE_EXPORT} = ${JSON.stringify(file)};\n`, map: null };
       },
     },
     {

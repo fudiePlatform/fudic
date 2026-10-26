@@ -24,6 +24,5 @@
 <p>
   El recuadro sólido muestra el primer post como HTML: un título, cursiva y un enlace.
   «Cambiar post» lo sustituye por el segundo, que trae una lista, y al volver a pulsar regresa.
-  El recuadro discontinuo enseña las etiquetas como texto, porque ese valor no está marcado.
   El «+1» de debajo sigue funcionando: la hidratación no se ha perdido por el camino.
 </p>

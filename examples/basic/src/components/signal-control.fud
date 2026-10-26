@@ -5,9 +5,11 @@
   // la LEEN en su cabecera, que es lo que esta página está aquí para comprobar.
   const count = signal(1);
 
-  // El `@foreach` necesita una lista, y la lista se deriva del contador. Un `computed`
+  // El `@foreach` necesita una lista, y la lista se deriva del contador: los `count()`
+  // primeros de una lista fija, con `filter` (la vista no construye listas). Un `computed`
   // no se suscribe a nada: la hoja de debajo —`count`— es la que avisa.
-  const filas = computed(() => Array.from({ length: count() }, (_, i) => ({ id: i })));
+  const FILAS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+  const filas = computed(() => FILAS.filter((fila) => fila < count()));
 
   function mas() {
     count.set(count() + 1);
@@ -101,8 +103,8 @@
       <div class="caso" data-caso="foreach">
         <p class="que">@@foreach</p>
         <ul class="lista">
-          @foreach (const fila of filas()) key (fila.id) {
-            <li>fila @fila.id</li>
+          @foreach (const fila of filas()) key (fila) {
+            <li>fila @fila</li>
           }
         </ul>
       </div>

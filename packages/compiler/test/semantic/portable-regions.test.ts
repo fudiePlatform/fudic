@@ -62,7 +62,8 @@ describe('portableRegions', () => {
   const lista = [1, 2];`,
       `<p>@doble() @(lista.length) @(svc === svc)</p>`,
     );
-    expect(found.cut.map((node) => slice(text, found, node))).toEqual(['n() * 2', 'a', '1']);
+    // The default of `a` is a literal of data: the list has nothing to check in it.
+    expect(found.cut.map((node) => slice(text, found, node))).toEqual(['n() * 2', 'a']);
     expect(found.declarations.map((node) => slice(text, found, node))).toEqual([
       'doble = computed(() => n() * 2)',
       'n = signal(a)',

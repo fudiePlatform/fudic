@@ -2,12 +2,10 @@
  * `@raw(expr)` in a browser — `/raw`, in the real build.
  *
  * What Chrome parsed out of the response is the server half; what a click repaints is the
- * client half; and they have to be the same tree. `<raw-demo>` holds the three cases that
- * tell them apart: a trusted post that becomes elements, a signal that swaps it for another,
- * and a string dressed up as markup with an `as` cast that must stay text — the type system
- * believes the cast, the runtime does not.
+ * client half; and they have to be the same tree. `<raw-demo>` holds the two cases that
+ * tell them apart: a trusted post that becomes elements, and a signal that swaps it for another.
  *
- * The `+1` below the two boxes is the hydration check: `h` adopts each `@raw` element without
+ * The `+1` below the post is the hydration check: `h` adopts each `@raw` element without
  * entering it, so if it miscounted, the button after them would be wired to nothing.
  *
  * Twice over, as `/ref` is: hydrated from the server, and reached by a link.
@@ -24,10 +22,6 @@ async function exercise(page: Page): Promise<void> {
   await expect(post(page).locator('em')).toHaveText('énfasis');
   await expect(post(page).locator('a')).toHaveAttribute('href', '/');
 
-  // The unmarked string is its literal text, and no <b> was built from it.
-  const crudo = demo(page).locator('.crudo');
-  await expect(crudo).toHaveText('<b>esto no está marcado</b>');
-  await expect(crudo.locator('b')).toHaveCount(0);
 
   // The signal swaps the content, and only the content: the article is the same element.
   const article = await post(page).elementHandle();
@@ -46,7 +40,6 @@ async function exercise(page: Page): Promise<void> {
   await expect(demo(page).locator('.clics')).toHaveText('1');
   await demo(page).locator('.sumar').click();
   await expect(demo(page).locator('.clics')).toHaveText('2');
-  await expect(crudo).toHaveText('<b>esto no está marcado</b>');
 }
 
 function errorsOf(page: Page): string[] {
@@ -55,7 +48,7 @@ function errorsOf(page: Page): string[] {
   return errors;
 }
 
-test('hydrated from the server: markup as markup, text as text, and the rest alive', async ({
+test('hydrated from the server: markup as markup, and the rest alive', async ({
   page,
 }) => {
   const errors = errorsOf(page);

@@ -2,6 +2,7 @@
   "id": "basic",
   "kind": "app",
   "prefix": "app",
+  "locales": ["es"],
   "globalStyles": { "theme": "src/styles/theme.css" },
   "styles": { "panel": "src/styles/panel.css" }
 }

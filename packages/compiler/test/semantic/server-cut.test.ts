@@ -313,6 +313,11 @@ describe('the white list over the initializers (criterion 19)', () => {
     const code = `const { a = Math.PI, b = 1 } = props<{ a?: number; b?: number }>();`;
     expect(cut('<p>@a @b</p>', code)).toEqual(['FUD0907 Math']);
   });
+
+  it('a default of props may be a literal of data, typed by the contract', () => {
+    const code = `const { xs = [], m = {}, n = [Math.PI] } = props<{ xs?: string[]; m?: Record<string, number>; n?: number[] }>();`;
+    expect(cut('<p>@xs.length @m["k"] @n.length</p>', code)).toEqual(['FUD1143 [Math.PI]']);
+  });
 });
 
 describe('now() (criterion 24)', () => {

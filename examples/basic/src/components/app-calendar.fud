@@ -1,16 +1,13 @@
 @code {
   // La rejilla DELEGADA: un `@click` en el contenedor, y cada celda entrega su propia fila.
   // No hay `data-*`, no hay `closest()`, no hay `Number(...)` — el objeto llega entero.
-  import { makeDays, type Day } from "../data/days.js";
+  import { daysA, type Day } from "../data/days.js";
+  import { signal } from "@fudic/core";
 
   // El template las lee, así que el servidor también evalúa esta línea: estas siete filas las
   // pinta el servidor y el cliente las adopta. No es un `load()` porque no son un dato de la página: son el
   // banco de pruebas del componente.
-  const seed = makeDays("a");
-
-  import { signal } from "@fudic/core";
-
-  const rows = signal(seed);
+  const rows = signal(daysA);
   const last = signal("—");
   let extra = 0;
 
@@ -100,6 +97,8 @@
             <span>@day.n</span>
             <button delegate:day>✎</button>
           </div>
+        } @empty {
+          <div class="hueco">sin filas</div>
         }
       </div>
 

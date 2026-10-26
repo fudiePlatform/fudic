@@ -320,7 +320,8 @@ class ServerCut {
       case 'props': {
         const defaults: OxcNode[] = [];
         walkPattern(child(declarator, 'id'), { name() {}, expression: (node) => defaults.push(node as OxcNode) });
-        this.#expressions(unit, use, defaults);
+        // A default may be a literal of data, typed by the contract: `rows = []`, `m = {}`.
+        this.#expressions(unit, use, defaults.filter((node) => !isDataLiteral(node)));
         return;
       }
       case 'signal':

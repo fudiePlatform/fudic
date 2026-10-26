@@ -1,0 +1,8 @@
+# A product of the list: it carries more than the card asks for (`stock`, `sku`), and `precio` may
+# be missing, which the card then defaults.
+type Producto
+  id      str
+  nombre  str
+  precio  i32?
+  stock   i32
+  sku     str

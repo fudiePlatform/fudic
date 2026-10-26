@@ -332,6 +332,12 @@ describe('the propagation of the locale (§4.6)', () => {
     expect(compilesPerLocale('C:/app/src/data.json', root)).toBe(false);
   });
 
+  it('and the halves of a library, which fill the contracts of the locale that loads them', () => {
+    const lib = ['C:/repo/packages/http/server/'];
+    expect(compilesPerLocale('C:/repo/packages/http/server/middlewares.js', root, lib)).toBe(true);
+    expect(compilesPerLocale('C:/repo/packages/http/dist/index.js', root, lib)).toBe(false);
+  });
+
   const resolver =
     (answer: { id: string; external?: boolean | 'absolute' | 'relative' } | null) =>
     async () =>
@@ -343,6 +349,13 @@ describe('the propagation of the locale (§4.6)', () => {
     expect(await resolveForLocale(resolver({ id: 'C:/app/src/lib.ts' }), './lib', en, root)).toBe('C:/app/src/lib.ts?locale=en');
     expect(await resolveForLocale(resolver({ id: 'C:/app/b.fud?client' }), './b.fud', en, root)).toBe(
       'C:/app/b.fud?client&locale=en',
+    );
+  });
+
+  it('and to a half of a library: it fills the contracts of that locale', async () => {
+    const half = resolver({ id: 'C:/repo/packages/http/server/middlewares.js' });
+    expect(await resolveForLocale(half, 'x', en, root, ['C:/repo/packages/http/server/'])).toBe(
+      'C:/repo/packages/http/server/middlewares.js?locale=en',
     );
   });
 
@@ -375,6 +388,7 @@ describe('what a nested pass compiles with', () => {
   const ctx: LocaleContext = {
     root: 'C:/app',
     locales: ['es', 'en'],
+    implementations: [],
     ioFor: () => localized,
     compileFor: (locale) => ({ locale, locales: ['es', 'en'], translate: () => undefined }),
   };

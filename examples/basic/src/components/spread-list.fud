@@ -1,9 +1,12 @@
+<link rel="server" href="./spread-list.fudapi">
 <link rel="component" href="./spread-card.fud">
 
 @code {
   // Cada producto lleva más de lo que la tarjeta pide (`stock`, `sku`) y el último no lleva
   // `precio`, que en la tarjeta es opcional: ahí entra su valor por defecto.
-  const inicial = [
+  import type { Producto } from "fudic:components/spread-list";
+
+  const inicial: readonly Producto[] = [
     { id: "p1", nombre: "Teclado", precio: 49, stock: 3, sku: "K-01" },
     { id: "p2", nombre: "Ratón", precio: 19, stock: 0, sku: "M-07" },
     { id: "p3", nombre: "Alfombrilla", stock: 12, sku: "P-22" },

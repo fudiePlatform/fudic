@@ -3,13 +3,16 @@
 <link rel="component" href="../components/app-badge.fud">
 <link rel="snippet" href="../snippets/ui.fud">
 <link rel="snippet" href="../snippets/campos.fud" as="campos">
+<link rel="server" href="./snippets.fudapi">
 
 @code {
   // Valores del scope de esta vista, para pasarlos a un snippet. Un argumento que lee el
   // scope va con `@`, igual que una prop: `@nombre`, `@a.b`, o `@( … )` para una expresión.
   // Un literal va tal cual.
+  import type { Paso } from "fudic:routes/snippets";
+
   const destacada = "Cuarta";
-  const pasos = [
+  const pasos: readonly Paso[] = [
     { clave: "uno", texto: "un paso sacado de un array del scope" },
     { clave: "dos", texto: "y otro, en el mismo bucle" },
   ];

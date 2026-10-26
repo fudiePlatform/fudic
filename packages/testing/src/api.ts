@@ -8,7 +8,7 @@
  */
 
 import { ROOT_FILE_PREFIX } from '@fudic/vite/harness';
-import { projectOf } from './project.js';
+import { localized, projectOf } from './project.js';
 
 /** What the harness reads of the server root. */
 export interface ServerRoot {
@@ -22,7 +22,9 @@ export async function serverRoot(): Promise<ServerRoot | undefined> {
   if (!api) return undefined;
   // By the file the plugin resolves it to: a bare `fudic:` handed to `import()` would leave
   // vitest's graph for Node's, which knows no such package.
-  const root = (await import(/* @vite-ignore */ `${dir.replace(/\\/gu, '/')}/${ROOT_FILE_PREFIX}server.js`)) as ServerRoot;
+  // Compiled for the app's locale when it has one, as its pages are: the contracts a page calls
+  // are that locale's, and so are the halves this root fills them with.
+  const root = (await import(/* @vite-ignore */ localized(`${dir.replace(/\\/gu, '/')}/${ROOT_FILE_PREFIX}server.js`))) as ServerRoot;
   await root.ready;
   return root;
 }

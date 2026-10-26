@@ -1,0 +1,5 @@
+# The linked list the `@while` walks: a type of the contract, so every backend can paint it.
+type Nodo
+  id    str
+  n     i32
+  next  Nodo?
