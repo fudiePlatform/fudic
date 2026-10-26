@@ -269,7 +269,7 @@ aparte que pueda decir otra cosa. Entrada: `{ paths?, limit = 20 }`; sin `paths`
   "codes": {
     "FUD0540": { "title": "Loop without `key (…)`", "why": "…", "fix": "add a key after the header: …" }
   },
-  "next": "Run fudic_fix for the 2 fixable diagnostics, then fix FUD1145 by hand."
+  "next": "Run fudic_fix for the 2 fixable diagnostics, then fix FUD1140 by hand."
 }
 ```
 
@@ -282,15 +282,16 @@ aparte que pueda decir otra cosa. Entrada: `{ paths?, limit = 20 }`; sin `paths`
 - `fixable` es que hay bombilla (code action) **y es correcta** (§5.6). Hoy la tabla
   (`language-server/src/services/actions.ts`) tiene 5: `FUD0056`, `FUD0191`, `FUD0540`, `FUD0890`,
   `FUD0894`; aparte, crear el fichero de un `href` que no existe. Cada arreglo mecánico que falta
-  es una vuelta más del bucle. Un arreglo que cambia la estructura (`FUD1145` → `@empty`) no debe
-  ser `fixable`.
+  es una vuelta más del bucle. Un arreglo que obliga a elegir (la clave de un `FUD0540` sobre un
+  objeto sin `id`, una receta de colecciones para un `FUD1140`) no debe ser `fixable`.
 
 Lo que destapa:
 
 - **Los `.md` del catálogo contradicen la guía.** `FUD0191` dice «declare it in the `<head>`» y las
-  fixtures ponen el `<link>` arriba del todo; `FUD0907` manda a `@code { @client }`, que SDD-60
-  quita. El LLM ve las dos fuentes: cada ejemplo de un `.md` tiene que ser una fixture que compila,
-  con la misma regla que la guía (§6).
+  fixtures ponen el `<link>` arriba del todo; `FUD0907` mandaba a `@code { @client }`, que SDD-60
+  quita (lo corrige SDD-61). El LLM ve las dos fuentes: cada ejemplo de un `.md` tiene que ser una
+  fixture que compila, con la misma regla que la guía (§6). *Lo cierra [SDD-62](../SDD-62-diagnosticos-que-dicen-la-verdad.md)
+  con un par roto/arreglado por código.*
 - Las normas del usuario (§9, «solo tokens») saldrían aquí, con su código, si se activan.
 
 ### 5.6. `fudic_fix` (propuesta, 2026-10-22)
@@ -313,7 +314,7 @@ Aplica las bombillas del editor. Entrada: `{ paths?, codes?, dryRun = false }`.
   ],
   "diff": "--- a/…/acme-card.fud\n+++ b/…/acme-card.fud\n@@ … @@\n+<link rel=\"component\" href=\"../acme-badge/acme-badge.fud\">\n",
   "remaining": { "summary": { "errors": 2, "fixable": 0 }, "diagnostics": [], "codes": {} },
-  "next": "Fix FUD0540 and FUD1145 by hand: key the loop by a string or number field of Item."
+  "next": "Fix FUD0540 and FUD1140 by hand: key the loop by a string or number field of Item."
 }
 ```
 
@@ -638,8 +639,10 @@ portable): el MCP llega detrás de las dos.
   tabla «Instead of…» con los reflejos de React (`className`, `onClick`, `{cond && …}`, `.map`,
   `useState`, `children`, `props.x`) y cómo comprobarlo.
 - **`view`:** forma del fichero, valores, operadores, control, tipos portables, «los manejadores
-  son libres», y una tabla **«Instead of… write…»** con los reflejos de JS que trae un LLM
-  (`filter`, `toFixed`, `.length`, `new Date`, `||`).
+  son libres», las cinco operaciones de colección (`filter`, `map`, `reduce`, `toSorted`,
+  `.length`, SDD-61 §3.5 bis) con su recetario, y una tabla **«Instead of… write…»** con los
+  reflejos de JS que trae un LLM y su receta (`find`, `some`, `join`, `sort`, `toFixed`,
+  `new Date`, `||`).
 - **`testing`:** la API de `@fudic/testing` (`mount`, `visit`, consultas, gestos, `shadowOf`), la
   tabla de §5.10 (qué va a la `.fudspec` y qué a vitest) con su regla «lo que ya es un criterio
   no se repite como test», el rojo bueno (`fail`) frente al que no vale (`broken`), y «en la
@@ -651,9 +654,9 @@ Para que no mienta:
   el catálogo de diagnósticos: si una SDD cambia la lista, la guía cambia sola.
 - Las secciones **escritas** («Instead of…», «How to work») tienen **cada ejemplo como fixture**
   que pasa por `fudic_check` en los tests.
-- Cada prohibido lleva su código: el LLM ve el mismo `FUD1145` en la guía y en el diagnóstico.
-  Los reflejos de React (`className`, `onClick`, `{cond && …}`) no tienen código hoy: o el parser
-  ya los rechaza con uno que hay que localizar, o faltan diagnósticos.
+- Cada prohibido lleva su código: el LLM ve el mismo `FUD1140` en la guía y en el diagnóstico.
+  Los reflejos de React (`className`, `onClick`, `{cond && …}`) no tenían código: SDD-62 les da
+  `FUD1160`–`FUD1162`.
 - El ejemplo canónico de cada tema es una fixture: si cambia la sintaxis, falla el test de la guía.
 
 ## 7. Orden propuesto
@@ -1037,10 +1040,18 @@ contrastado con el código de hoy. El tamaño se compara siempre con una SDD ya 
 
 ### 11.1. Antes de empezar
 
-- **SDD-60 (`.fudapi`) tiene que estar terminada.** Va por 54 de 64 tareas en su worktree. Casi
-  todo el MCP habla de ella: `status`, `check`, las funciones conectadas o falsas, la guía.
-- **SDD-61 (vista portable) está escrita y sin implementar.** Solo bloquea la parte de la guía que
-  explica la vista; lo demás puede empezar sin ella.
+- **SDD-60 (`.fudapi`) tiene que estar terminada.** Casi todo el MCP habla de ella: `status`,
+  `check`, las funciones conectadas o falsas, la guía. *Está `Hecho` y en `main` desde el
+  2026-10-23.*
+- **SDD-61 (vista portable).** Solo bloquea la parte de la guía que explica la vista; lo demás
+  puede empezar sin ella. *En implementación desde el 2026-10-26; añadió las cinco operaciones de
+  colección (decisión 166).*
+
+**Los trabajos 1 a 5 ya son SDD** (2026-10-26, todas en `Listo`): [SDD-62](../SDD-62-diagnosticos-que-dicen-la-verdad.md),
+[SDD-63](../SDD-63-contrato-del-componente.md), [SDD-64](../SDD-64-resultados-legibles.md),
+[SDD-65](../SDD-65-historial-de-cada-pieza.md) y [SDD-66](../SDD-66-generadores-que-faltan.md).
+Que `fudic new` deje configurado el MCP salió del trabajo 5 y pasa al 6: escribir antes una
+configuración que apunta a un servidor que no existe rompería la regla de BUG-50.
 
 ### 11.2. Siete trabajos para tener el MCP en Claude Code
 
@@ -1048,25 +1059,28 @@ contrastado con el código de hoy. El tamaño se compara siempre con una SDD ya 
    (`FUD0191`, `FUD0907`), otras citan SDD internas, y algunas bombillas arreglan mal (`FUD0540`)
    o están en español. Además, cada ejemplo de arreglo tiene que compilar, y los reflejos de React
    (`className`, `onClick`…) necesitan su código. *Tamaño: como SDD-31 (`computed`/`effect`).*
+   → [SDD-62](../SDD-62-diagnosticos-que-dicen-la-verdad.md).
 
 2. **Que un componente cuente todo sobre sí mismo.** El hover ya enseña props, slots con nombre,
    eventos y documentación. Le faltan el valor por defecto de cada prop, el slot sin nombre, qué
    recibe cada evento y las CSS parts. Y los tokens de estilo como símbolos, con su
    documentación, su autocompletado y su hover (§10.3, §10.4). *Tamaño: como el anterior.*
+   → [SDD-63](../SDD-63-contrato-del-componente.md).
 
 3. **Que ejecutar criterios y tests devuelva algo que una máquina entienda.** Qué falló, qué se
    esperaba, qué salió, si el test falló de verdad o ni llegó a ejecutarse, y **en qué línea del
    `.fud`** está el elemento que falló. Esto último es lo difícil: la única parte que toca de
    verdad el compilador. También el esquema de roles de `render` (§5.7, §5.9, §5.12). *Tamaño:
-   como SDD-57 (tests unitarios).*
+   como SDD-57 (tests unitarios).* → [SDD-64](../SDD-64-resultados-legibles.md).
 
 4. **El historial de cada pieza.** El fichero que solo crece, con aprobaciones, ejecuciones y lo
    que aceptó el cliente, y los hashes que dicen si algo ha caducado (§5.8, §10.5). Va después del
-   3. *Tamaño: como el 1.*
+   3. *Tamaño: como el 1.* → [SDD-65](../SDD-65-historial-de-cada-pieza.md).
 
 5. **Que la CLI genere lo que falta.** El `.fudapi`, la página del escaparate desde las fixtures,
    y que `fudic new` deje configurado el MCP (§5.3, §10.1). *Tamaño: el más pequeño, como SDD-55
-   (resto de props).*
+   (resto de props).* → [SDD-66](../SDD-66-generadores-que-faltan.md), sin la configuración del
+   MCP (pasa al 6).
 
 6. **El MCP, primera mitad: lenguaje y proyecto.** El servidor, la guía con sus temas, `status`,
    comprobar errores, arreglarlos, describir componentes y crear cosas con la CLI. **Con esto ya se
