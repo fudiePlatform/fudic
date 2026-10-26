@@ -7,7 +7,7 @@
 > `fudic-vscode` · `@fudic/vite` · `examples/*` · `packages/testing`
 > **Rama:** `sdd-61-vista-portable-impl`. Nace de `main` **con SDD-60 en `Hecho`**: esta spec parte
 > de un único `@code` y de su corte de servidor.
-> **Progreso:** 3 / 44 — `En curso`.
+> **Progreso:** 10 / 44 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -64,20 +64,20 @@ código, no el test.
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 1 | — | **Los códigos nuevos.** `FUD1140`–`FUD1153`: `.ts` con su función tipada, `.md` con la forma de SDD-50 §4.4 (título y «Fix» de SDD §5, citan `SDD-61`) y su línea en `index.ts` | `diagnostics` | `src/codes/FUD1140`–`1153.{ts,md}` · `src/index.ts` |
-| [x] | 2 | 1 | **Reescritos.** Texto nuevo de `FUD0905`, `0907`, `0908`, `0910`, `0912`, `0913`, `0917`, `0919` (SDD §5). La retirada de `FUD0911` pasa a la tarea 5: el compilador lo emite hasta entonces, y borrar su `.ts` aquí rompería el repositorio | `diagnostics` | `src/codes/FUD09xx.{ts,md}` · `src/index.ts` |
+| [x] | 2 | 1 | **Reescritos.** Texto nuevo de `FUD0905`, `0907`, `0908`, `0910`, `0912`, `0913`, `0917`, `0919` (SDD §5). La retirada de `FUD0911` pasa a la tarea 36: la regla de SDD-51 lo emite hasta que se apaga, y borrar su `.ts` antes rompería el repositorio | `diagnostics` | `src/codes/FUD09xx.{ts,md}` · `src/index.ts` |
 | [x] | 3 | — | **El rango.** `FUD1140`–`FUD1159` en la fila de SDD-61 del `INDEX.md` | — | `docs/sdd/INDEX.md` |
 
 ## Fase 2a — el compilador sin tipos: `@empty` y las reglas de la vista (7)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 4 | 1 | **`@empty`.** La estructura reconoce `} @empty { … }` tras el cuerpo de `@foreach`, `@for` y `@while` como `EmptyBlock` hijo del bucle, con `Span`. `FUD1149` si sigue a otra cosa o se repite. El `walk` lo entrega | `compiler` | `src/control/*` · `src/document/*` · `src/types/*` · `src/semantic/walk.ts` |
-| [ ] | 5 | 1 | **`view-expressions`.** Lista blanca de SDD §3.2–§3.5 bis: llamadas con argumentos, `?.()`, llamado que no es camino y todo método que no sea `filter`/`map`/`reduce`/`toSorted` (`FUD1140`; exento `t()` en valor de prop), `new` (`FUD1141`), operadores (`FUD1142`), literales (`FUD1143`; exento el objeto de huecos de `t()`), sintaxis TS (`FUD1144`), forma de las operaciones de colección (`FUD1145`: `reduce` sin inicial, flecha de bloque, nombre de función, parámetro o argumento de más), patrón de array o con clave calculada (`FUD1146`), toda flecha y función salvo el argumento de una operación de colección (`FUD0905`), regex (`FUD0919`). El cuerpo de esas flechas pasa por la misma lista, con sus parámetros en scope. Deja de emitir `FUD0911` y la parte de `0910`/`0912`/`0913`/`0917` que cubren las llamadas y los globales. **Retira `FUD0911`** (viene de la tarea 2): se borra su `.ts` y su línea de `index.ts`, y su `.md` queda `retired` con `FUD1140`. Los callbacks (SDD §3.1) quedan fuera | `compiler` | `src/semantic/analyzers/view-expressions.ts` |
-| [ ] | 6 | 5 | **`view-statements`.** `@{ }` solo `const`/`let` (con patrones de objeto) y reasignación de variables; `if`, `switch`, bucles, bloques y llamadas como sentencia son `FUD0908`. `@for`/`@while` siguen con `FUD0900`/`0901`/`0913` | `compiler` | `src/semantic/analyzers/view-statements.ts` |
-| [ ] | 7 | 5 | **`view-identifiers`.** Globales: solo `undefined` (`FUD0907`). En manejadores y callbacks, sin comprobación de globales; se conserva la regla de los nombres de `@{ }` | `compiler` | `src/semantic/analyzers/view-identifiers.ts` · `src/semantic/view-globals.ts` |
-| [ ] | 8 | 5 | **`view-rest`** (nuevo). Un `...resto` de la vista solo como `resto.campo`, spread de atributo o el origen de otro patrón (`const { b, ...r2 } = resto`); otro uso es `FUD1147` sobre el uso (SDD §3.6, anexo A.3.3) | `compiler` | `src/semantic/analyzers/view-rest.ts` · `ANALYZERS` |
-| [ ] | 9 | 5 | **`view-control`** (nuevo). `case` que no es un literal es `FUD1148` | `compiler` | `src/semantic/analyzers/view-control.ts` · `ANALYZERS` |
-| [ ] | 12 | 4–9 | **Los tests de la fase.** Criterios 2–5, 11, 12, 16–18 y 38, cada código sobre su span exacto, uno por nodo | `compiler` | `test/semantic/*.test.ts` |
+| [x] | 4 | 1 | **`@empty`.** La estructura reconoce `} @empty { … }` tras el cuerpo de `@foreach`, `@for` y `@while` como `EmptyBlock` hijo del bucle, con `Span`. `FUD1149` si sigue a otra cosa o se repite. El `walk` lo entrega | `compiler` | `src/control/*` · `src/document/*` · `src/types/*` · `src/semantic/walk.ts` |
+| [x] | 5 | 1 | **`view-expressions`.** Lista blanca de SDD §3.2–§3.5 bis: llamadas con argumentos que no sean `filter`/`map`/`reduce`/`toSorted`, `?.()` y llamado que no es camino (`FUD1140`; exento `t()` en valor de prop; una llamada sin argumentos sobre un camino es del pase tipado), `new` (`FUD1141`), operadores (`FUD1142`), literales (`FUD1143`; exento el objeto de huecos de `t()`), sintaxis TS (`FUD1144`), forma de las operaciones de colección (`FUD1145`: `reduce` sin inicial, flecha de bloque, nombre de función, parámetro o argumento de más), patrón de array o con clave calculada (`FUD1146`), toda flecha y función salvo el argumento de una operación de colección (`FUD0905`), regex (`FUD0919`). El cuerpo de esas flechas pasa por la misma lista, con sus parámetros en scope. Deja de emitir `FUD0911` y la parte de `0910`/`0912`/`0913`/`0917` que cubren las llamadas y los globales. La regla nueva no emite `FUD0911`; la vieja sí, hasta que la tarea 36 la quite, y por eso su retirada va allí. Los callbacks (SDD §3.1) quedan fuera | `compiler` | `src/semantic/analyzers/view-expressions.ts` |
+| [x] | 6 | 5 | **`view-statements`.** `@{ }` solo `const`/`let` (con patrones de objeto) y reasignación de variables; `if`, `switch`, bucles, bloques y llamadas como sentencia son `FUD0908`. `@for`/`@while` siguen con `FUD0900`/`0901`/`0913` | `compiler` | `src/semantic/analyzers/view-statements.ts` |
+| [x] | 7 | 5 | **`view-identifiers`.** Globales: solo `undefined` (`FUD0907`). En manejadores y callbacks, sin comprobación de globales; se conserva la regla de los nombres de `@{ }` | `compiler` | `src/semantic/analyzers/view-identifiers.ts` · `src/semantic/view-globals.ts` |
+| [x] | 8 | 5 | **`view-rest`** (nuevo). Un `...resto` de la vista solo como `resto.campo`, spread de atributo o el origen de otro patrón (`const { b, ...r2 } = resto`); otro uso es `FUD1147` sobre el uso (SDD §3.6, anexo A.3.3) | `compiler` | `src/semantic/analyzers/view-rest.ts` · `ANALYZERS` |
+| [x] | 9 | 5 | **`view-control`** (nuevo). `case` que no es un literal es `FUD1148` | `compiler` | `src/semantic/analyzers/view-control.ts` · `ANALYZERS` |
+| [x] | 12 | 4–9 | **Los tests de la fase.** Criterios 2–5, 11, 12, 16–18 y 38 (salvo `xs.sort()`, que es de la tarea 22), cada código sobre su span exacto, uno por nodo | `compiler` | `test/semantic/*.test.ts` |
 
 ## Fase 2b — el compilador sin tipos: lo que el servidor evalúa del `@code` (3)
 
@@ -106,7 +106,7 @@ código, no el test.
 | [ ] | 19 | 1 | **`portableTypeDiagnostics(program, document)`.** Con el checker sobre la proyección, como `propShapes`: llamada sin argumentos no reactiva (`FUD1140`), condiciones, flecha de `filter` y operandos lógicos (`FUD1151`), operandos de §3.4 —`<` admite dos `number`, dos `string` o dos `Date`— y comparador de `toSorted` (`FUD1152`), tipos de §3.10 (también lo que da `map` y el acumulador de `reduce`), iterable, índice, `key`, `@switch`, literal de objeto sin tipo con nombre, desestructurar o esparcir un `map`, operación de colección sobre algo que no es lista y `.length` sobre algo que no es lista ni texto (`FUD1153`). Símbolos por el nombre que imprime el checker; importación de `typescript` solo de tipos | `typecheck` | `src/portable-types.ts` · `src/index.ts` |
 | [ ] | 20 | 19 | **En dev y en build.** El project checker lo llama: en dev, terminal y overlay; en build, el build falla | `typecheck` · `vite` | `typecheck/src/checker.ts` · `vite/src/dev-typecheck.ts` · `vite/src/background-check.ts` |
 | [ ] | 21 | 19 | **En el editor.** El language server lo publica por el mismo canal que los demás `FUD`, con el mismo span | `language-server` | `src/services/*` |
-| [ ] | 22 | 19–21 | **Los tests de la fase.** Criterios 2 (`@hora()`), 6, 7, 8, 9, 22, 23, 39, y el mismo span en build y editor (30) | `typecheck` · `language-server` | `test/**` |
+| [ ] | 22 | 19–21 | **Los tests de la fase.** Criterios 2 (`@hora()`), 6, 7, 8, 9, 22, 23, 38 (`xs.sort()`), 39, y el mismo span en build y editor (30) | `typecheck` · `language-server` | `test/**` |
 
 ## Fase 5 — editor (5)
 
@@ -135,7 +135,7 @@ código, no el test.
 | [ ] | 33 | 31 | **`vista-errores`.** Un caso por código nuevo y por ampliación, con «FUDnnnn sobre `texto`» | `examples` | `vista-errores/vista-errores.fud` |
 | [ ] | 34 | 31 | **`examples/i18n` y fixtures.** `app-greeting` (`alta` como prop desde el `load`); fixtures de `compiler` (`app-list`), `formatter` (`snippets`), `testing`, `language-core`, `language-server`, `workbench` | `examples` · varios | `i18n/src/**` · `packages/*/fixtures/**` · `packages/*/test/**` |
 | [ ] | 35 | 34 | **Tests reescritos.** Los que escribían algo que sale (`find`, `some`, `join`, `@{ }` con bucles…) se reescriben sin perder el caso que probaban | varios | `packages/*/test/**` |
-| [ ] | 36 | 35 | **Activar.** Fuera el interruptor `portableView`: los analizadores corren siempre | `compiler` | `src/semantic/*` |
+| [ ] | 36 | 35 | **Activar.** Fuera el interruptor `portableView`: los analizadores corren siempre. Se borran la regla de SDD-51 (`view-js.ts`) y `VIEW_GLOBALS`, y se retira `FUD0911`: se borra su `.ts` y su línea de `index.ts`, y su `.md` queda `retired` con `FUD1140` | `compiler` · `diagnostics` | `src/semantic/*` · `src/codes/FUD0911.*` |
 | [ ] | 37 | 36 | **Los tests del corpus.** Criterios 1, 32 y 33: ningún `.fud` fuera de `experiments/` da un diagnóstico de esta spec; `vista-errores` da exactamente sus comentarios | `compiler` · `typecheck` | `test/corpus*.test.ts` |
 
 ## Fase 8 — cierre (5)

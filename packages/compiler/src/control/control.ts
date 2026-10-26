@@ -25,6 +25,7 @@ import {
   FUD0540,
   FUD0541,
   FUD0542,
+  FUD1149,
 } from '@fudic/diagnostics';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 import { scanBrackets, scanBraces, scanParens } from '../balancer/index.js';
@@ -35,6 +36,7 @@ import type {
   ConditionalBranch,
   ControlHeader,
   ControlNode,
+  EmptyBlock,
   IfNode,
   SwitchCase,
   SwitchNode,
@@ -352,6 +354,8 @@ interface BlockParts {
   readonly body: readonly HtmlContent[];
   /** Offset just past the construct (its closing `}`, or where it degraded). */
   readonly end: number;
+  /** Whether the body was written: only then can an `@empty` follow it. */
+  readonly closed: boolean;
 }
 
 /** Spread helper: an absent key is an OMITTED field, never `undefined` (strict TS). */
@@ -393,14 +397,19 @@ class ControlParser {
       case 'switch':
         return this.#parseSwitch(keywordSpan, start);
 
+      case 'empty':
+        // Only an `@empty` no loop consumed reaches here: the loop reads its own (`#empty`).
+        return this.#orphanEmpty(keywordSpan, start);
+
       default: {
         const parts = this.#blockParts(keywordSpan);
-        const at = span(start, parts.end);
+        const empty = parts.closed ? this.#empty(parts.end) : null;
+        const at = span(start, empty === null ? parts.end : empty.span.end);
         const { header, body } = parts;
-        const key = withKey(parts.key);
-        if (keyword === 'for') return { type: 'for', span: at, header, body, ...key };
-        if (keyword === 'foreach') return { type: 'foreach', span: at, header, body, ...key };
-        return { type: 'while', span: at, header, body, ...key };
+        const tail = { ...withKey(parts.key), ...(empty === null ? {} : { empty }) };
+        if (keyword === 'for') return { type: 'for', span: at, header, body, ...tail };
+        if (keyword === 'foreach') return { type: 'foreach', span: at, header, body, ...tail };
+        return { type: 'while', span: at, header, body, ...tail };
       }
     }
   }
@@ -552,14 +561,47 @@ class ControlParser {
   #blockParts(keywordSpan: Span): BlockParts {
     const header = this.#header(keywordSpan.end);
     if (header === null) {
-      return { header: missingHeader(keywordSpan.end), key: null, body: [], end: keywordSpan.end };
+      return { header: missingHeader(keywordSpan.end), key: null, body: [], end: keywordSpan.end, closed: false };
     }
     const clause = this.#keyClause(header.span.end);
     const afterKey = clause === null ? header.span.end : clause.end;
     const block = this.#block(afterKey);
     const body = block === null ? [] : block.body;
     this.#checkLoopKey(header, clause);
-    return { header, key: clause?.key ?? null, body, end: block === null ? afterKey : block.end };
+    return {
+      header,
+      key: clause?.key ?? null,
+      body,
+      end: block === null ? afterKey : block.end,
+      closed: block !== null,
+    };
+  }
+
+  /**
+   * `@empty { … }` right after a loop's body (decision 163). Only with its `@`: a bare `empty`
+   * after a `}` is text an author may well write, which a bare `else` never is. Whitespace and
+   * Razor comments may sit between, as before an `else`. `null`: none was written.
+   */
+  #empty(from: number): EmptyBlock | null {
+    const at = skipTrivia(this.#source, from);
+    if (charAt(this.#source, at) !== '@') return null;
+    const keyword = matchKeyword(this.#source, at, 'empty');
+    if (keyword === null) return null;
+    this.#ctx.lexer.seekTo(keyword.end);
+    const block = this.#block(keyword.end);
+    if (block === null) return { type: 'empty-block', span: span(at, keyword.end), body: [] };
+    return { type: 'empty-block', span: span(at, block.end), body: block.body };
+  }
+
+  /**
+   * An `@empty` that follows no loop body, or a second one after the first (`FUD1149`). Like
+   * an orphan `@else`, it consumes only its keyword: the block behind it goes back to SDD-05
+   * as ordinary content, so its markup is still parsed and still reported on.
+   */
+  #orphanEmpty(keywordSpan: Span, start: number): IfNode {
+    const at = span(start, keywordSpan.end);
+    this.#diagnostics.push(FUD1149({ span: at }));
+    return { type: 'if', span: at, branches: [] };
   }
 
   // ------------------------------------------------------------------

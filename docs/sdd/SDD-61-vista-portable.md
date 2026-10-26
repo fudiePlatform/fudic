@@ -35,7 +35,7 @@ Esta spec cierra el lenguaje de la vista:
   Java y el `for` de C no existe en Python: los dos valen, porque se bajan. La stdlib de JS no vale
   entera: habría que portarla. De ella solo entran **cinco operaciones de colección** (`filter`,
   `map`, `reduce`, `toSorted` y `.length`, §3.5 bis), porque se combinan para cubrir cualquier
-  cálculo sobre una lista y las seis tienen su equivalente directo en cada lenguaje.
+  cálculo sobre una lista y las cinco tienen su equivalente directo en cada lenguaje.
 - **Lo que no existe igual en todos es del catálogo de fudic**, escrito una vez por runtime: los
   pipes, `now()`, el número como texto, la guarda de URL. El desarrollador nunca escribe nada dos
   veces.
@@ -481,7 +481,7 @@ misma regla de spans (§4.2 de SDD-51: el nodo culpable) y la de «uno por nodo,
 
 | Analizador | Cambia |
 |---|---|
-| `view-expressions` | Lista blanca de §3.2–§3.5 bis: `FUD1140` (sintáctico: todo método que no sea `filter`, `map`, `reduce` o `toSorted`), `FUD1141`–`FUD1144`, `FUD1145` (forma de las operaciones de colección), `FUD1146`, `FUD0905` para toda flecha que no sea el argumento de una operación de colección, `FUD0919` solo el literal. El cuerpo de esas flechas se analiza con la misma lista, y sus parámetros entran en el scope del cuerpo. Deja de emitir `FUD0911`, y la parte de `FUD0910`/`FUD0912`/`FUD0913`/`FUD0917` que ya cubren las llamadas y los globales |
+| `view-expressions` | Lista blanca de §3.2–§3.5 bis: `FUD1140` (sintáctico: una llamada con argumentos que no sea `filter`, `map`, `reduce` o `toSorted`, `?.()` y un llamado que no es un camino; una llamada sin argumentos sobre un camino tiene la forma de leer un valor reactivo y la decide el pase tipado, §4.2), `FUD1141`–`FUD1144`, `FUD1145` (forma de las operaciones de colección), `FUD1146`, `FUD0905` para toda flecha que no sea el argumento de una operación de colección, `FUD0919` solo el literal. El cuerpo de esas flechas se analiza con la misma lista, y sus parámetros entran en el scope del cuerpo. Deja de emitir `FUD0911`, y la parte de `FUD0910`/`FUD0912`/`FUD0913`/`FUD0917` que ya cubren las llamadas y los globales |
 | `view-statements` | `@{ }` de §3.7 (`FUD0908`); `@for` y `@while` siguen con `FUD0900`/`FUD0901`/`FUD0913` |
 | `view-identifiers` | Globales: solo `undefined`. Los manejadores dejan de comprobar globales (§3.11) |
 | `view-rest` (nuevo) | Usos de `...resto` (`FUD1147`) |
@@ -630,7 +630,7 @@ Todos son `error`. Cada `.md` sigue SDD-50 §4.4 y cita `SDD-61`.
 
 | Código | Título (`.md`) | Quién | Span |
 |---|---|---|---|
-| `FUD1140` | A call in the view | compilador (con argumentos, `?.()`, llamado que no es camino, método que no es de colección) · typecheck (sin argumentos, tipo no reactivo) | el llamado |
+| `FUD1140` | A call in the view | compilador (con argumentos y no es de colección, `?.()`, llamado que no es camino) · typecheck (sin argumentos, tipo no reactivo: `xs.sort()`, `@hora()`) | el llamado |
 | `FUD1141` | `new` in the view | compilador | `new` y su llamado |
 | `FUD1142` | An operator that does not port | compilador | el operador |
 | `FUD1143` | A literal the view cannot hold | compilador | el literal |
@@ -790,8 +790,8 @@ sustituto.
     sin recargar (test de `packages/testing`).
 37. **El recetario.** Cada fila del recetario de §3.5 bis compila sin diagnóstico y pinta en el
     servidor el valor esperado con los datos de su fixture de conformidad.
-38. **Formas que no valen.** `@(xs.find(x => x.ok))`, `@(xs.some(x => x.ok))`, `@(xs.sort())` y
-    `@(xs.join(", "))` dan `FUD1140`. `xs.reduce((s, x) => s + x)`, `xs.filter(x => { return x.ok; })`,
+38. **Formas que no valen.** `@(xs.find(x => x.ok))`, `@(xs.some(x => x.ok))` y `@(xs.join(", "))`
+    dan `FUD1140` del compilador; `@(xs.sort())`, sin argumentos, da `FUD1140` del pase tipado. `xs.reduce((s, x) => s + x)`, `xs.filter(x => { return x.ok; })`,
     `xs.filter(esValida)`, `xs.map((x, i, lista) => x)` y `xs.filter(x => x.ok, otro)` dan `FUD1145`.
     `@(() => 1)` da `FUD0905`. `xs.map(x => ({ a: x }))` da `FUD1143`.
 39. **Tipos.** `xs.filter(x => x.nombre)` con `nombre: string` da `FUD1151`;

@@ -95,22 +95,37 @@ export interface ConditionalBranch extends Node {
   readonly span: Span;
 }
 
+/**
+ * `@empty { … }` right after the body of a loop (decision 163): what the loop renders when it
+ * makes no pass. A child of the loop and not a sibling, so the loop's span covers it and a
+ * walk reaches it from the loop. Its body sees the scope AROUND the loop, never the header.
+ */
+export interface EmptyBlock extends Node {
+  readonly type: 'empty-block';
+  readonly body: readonly HtmlContent[];
+}
+
+/** What the three loops share: their `@empty`, when one was written. */
+export interface LoopNode {
+  readonly empty?: EmptyBlock;
+}
+
 /** `@foreach (const x of xs) key (…) { … }` — for-of iteration (decisions 11, 91). */
-export interface ForeachNode extends Node, KeyedNode {
+export interface ForeachNode extends Node, KeyedNode, LoopNode {
   readonly type: 'foreach';
   readonly header: ControlHeader;
   readonly body: readonly HtmlContent[];
 }
 
 /** `@for (let i = 0; i < n; i++) key (…) { … }` — indexed iteration (decisions 11, 91). */
-export interface ForNode extends Node, KeyedNode {
+export interface ForNode extends Node, KeyedNode, LoopNode {
   readonly type: 'for';
   readonly header: ControlHeader;
   readonly body: readonly HtmlContent[];
 }
 
 /** `@while (cond) key (…) { … }` — decision 91. */
-export interface WhileNode extends Node, KeyedNode {
+export interface WhileNode extends Node, KeyedNode, LoopNode {
   readonly type: 'while';
   readonly header: ControlHeader;
   readonly body: readonly HtmlContent[];

@@ -17,7 +17,7 @@
 <app-list>
   <template shadowrootmode="open">
     @if (rows === undefined || rows.length === 0) {
-      <p class="empty">@empty</p>
+      <p class="empty">@(empty)</p>
     } else {
       <ul class="list">
         @foreach (const row of rows) key (row.id) {

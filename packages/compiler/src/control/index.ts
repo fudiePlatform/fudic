@@ -11,6 +11,8 @@ export type {
   ForeachNode,
   ForNode,
   WhileNode,
+  EmptyBlock,
+  LoopNode,
   SwitchNode,
   SwitchCase,
 } from './nodes.js';

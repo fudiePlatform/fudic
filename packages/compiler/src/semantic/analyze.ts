@@ -28,6 +28,8 @@ import { hostBindings } from './analyzers/host-bindings.js';
 import { viewExpressions } from './analyzers/view-expressions.js';
 import { viewStatements } from './analyzers/view-statements.js';
 import { viewIdentifiers } from './analyzers/view-identifiers.js';
+import { viewRest } from './analyzers/view-rest.js';
+import { viewControl } from './analyzers/view-control.js';
 import { nativeEventAttributes } from './analyzers/native-event-attributes.js';
 import { viewAttributes } from './analyzers/view-attributes.js';
 import { snippetRecursion } from './analyzers/snippet-recursion.js';
@@ -57,6 +59,8 @@ export const ANALYZERS: readonly Analyzer[] = [
   viewExpressions,
   viewStatements,
   viewIdentifiers,
+  viewRest,
+  viewControl,
   nativeEventAttributes,
   viewAttributes,
   snippetRecursion,

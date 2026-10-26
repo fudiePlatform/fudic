@@ -86,7 +86,8 @@ describe('analyze — runner', () => {
     // + view-attributes, snippet-recursion (SDD-51 §3.8)
     // + raw-only-child (decision 18: FUD0990), spread-target (props-spec §5: FUD0992)
     // + translations (SDD-58: FUD1020–FUD1021)
-    expect(ANALYZERS).toHaveLength(26);
+    // + view-rest, view-control (SDD-61: FUD1147, FUD1148)
+    expect(ANALYZERS).toHaveLength(28);
     expect(ANALYZERS.at(-1)?.name).toBe('translations');
     const { value } = analyze(buildInput(component('<p>hi</p>')));
     expect(value).toEqual({});

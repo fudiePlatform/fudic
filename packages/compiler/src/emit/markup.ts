@@ -137,9 +137,11 @@ const SERVER_ROLE: Record<HtmlContent['type'], ServerRole> = {
   cdata: 'none',
   // `@RenderHead()` is resolved by the page assembler (SDD-21), not by the markup walk.
   'render-head': 'none',
-  // Degraded nodes: an orphan `@else` (FUD0073) and a construct with no handler (FUD0055).
-  // Both were already reported; inventing markup for them would paint over the diagnostic.
+  // Degraded nodes: an orphan `@else` (FUD0073), an orphan `@empty` (FUD1149) and a construct
+  // with no handler (FUD0055). All were already reported; inventing markup for them would
+  // paint over the diagnostic. A well-placed `@empty` is no content node: it hangs off its loop.
   else: 'none',
+  empty: 'none',
   'unhandled-construct': 'none',
 };
 

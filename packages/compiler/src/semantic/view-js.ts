@@ -39,6 +39,18 @@ import { walkPattern, type OxcNode } from '../oxc/index.js';
 import type { Diagnostic, Span } from '../types/index.js';
 import type { SemanticInput } from './model.js';
 import {
+  acts,
+  alwaysTrue,
+  child,
+  children,
+  field,
+  hasBreak,
+  isNode,
+  nameOf,
+  readNames,
+  unwrap,
+} from './view-ast.js';
+import {
   NO_TEMPLATE,
   readsName,
   viewScope,
@@ -68,42 +80,6 @@ export function viewFindings(input: SemanticInput): readonly ViewFinding[] {
     memo.set(input, findings);
   }
   return findings;
-}
-
-// ── Typed access over the untyped Oxc node ──
-function isNode(value: unknown): value is OxcNode {
-  return typeof value === 'object' && value !== null && typeof (value as OxcNode).type === 'string';
-}
-const field = (node: OxcNode, key: string): unknown => node[key];
-const child = (node: OxcNode, key: string): OxcNode | undefined => {
-  const value = node[key];
-  return isNode(value) ? value : undefined;
-};
-/** A list field of the node, holes dropped: `[, a]` has an element that is no node. */
-const children = (node: OxcNode, key: string): readonly OxcNode[] =>
-  (node[key] as readonly unknown[]).filter(isNode);
-const nameOf = (node: OxcNode): string => String(node['name']);
-
-/**
- * The wrappers TypeScript erases and the parentheses `preserveParens` keeps: none of them
- * changes what the expression inside does, so the walk sees through them.
- */
-const TRANSPARENT: ReadonlySet<string> = new Set([
-  'ParenthesizedExpression',
-  'TSAsExpression',
-  'TSSatisfiesExpression',
-  'TSNonNullExpression',
-  'TSTypeAssertion',
-  'TSInstantiationExpression',
-]);
-
-function unwrap(node: OxcNode): OxcNode {
-  let current = node;
-  for (let inner = child(current, 'expression'); TRANSPARENT.has(current.type) && inner; ) {
-    current = inner;
-    inner = child(current, 'expression');
-  }
-  return current;
 }
 
 // ── What §3.8 adds to the list, by name (a closed list each: no types, no guessing) ──
@@ -207,50 +183,9 @@ function rootName(node: OxcNode): OxcNode | undefined {
   return current.type === 'Identifier' ? current : undefined;
 }
 
-/** A value that is always truthy: `true`, `1`, `'x'`, `{}`, `[]`. */
-function alwaysTrue(node: OxcNode): boolean {
-  const value = unwrap(node);
-  if (value.type === 'ObjectExpression' || value.type === 'ArrayExpression') return true;
-  return value.type === 'Literal' && field(value, 'regex') == null && Boolean(field(value, 'value'));
-}
-
 /** A `for` condition that never ends the loop: none at all, or one always true. */
 function forever(test: OxcNode | undefined): boolean {
   return test === undefined || alwaysTrue(test);
-}
-
-/** Whether a statement holds a `break` anywhere: a loop with one has an exit. */
-function hasBreak(node: unknown): boolean {
-  if (Array.isArray(node)) return node.some(hasBreak);
-  if (!isNode(node)) return false;
-  if (node.type === 'BreakStatement') return true;
-  return Object.keys(node).some((key) => hasBreak(node[key]));
-}
-
-/** Whether an expression can change anything while it is evaluated: a call or a write. */
-function acts(node: unknown): boolean {
-  if (Array.isArray(node)) return node.some(acts);
-  if (!isNode(node)) return false;
-  if (/^(Call|New|Assignment|Update|TaggedTemplate)Expression$/u.test(node.type)) return true;
-  return Object.keys(node).some((key) => acts(node[key]));
-}
-
-/** The names an expression reads: identifiers, never a member's name or an object's key. */
-function readNames(node: unknown, out: Set<string> = new Set()): Set<string> {
-  if (Array.isArray(node)) {
-    for (const item of node) readNames(item, out);
-    return out;
-  }
-  if (!isNode(node)) return out;
-  if (node.type === 'Identifier') {
-    out.add(nameOf(node));
-    return out;
-  }
-  for (const key of Object.keys(node)) {
-    const named = (key === 'property' || key === 'key') && field(node, 'computed') !== true;
-    if (!named) readNames(node[key], out);
-  }
-  return out;
 }
 
 /** The checks over one fragment. Lives as long as the fragment's walk. */

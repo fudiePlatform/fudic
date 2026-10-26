@@ -36,6 +36,12 @@ export interface SemanticInput {
    * the caller cannot know: `data` then follows the role, as before.
    */
   readonly apis?: { readonly data: boolean; readonly names: ReadonlySet<string> };
+  /**
+   * Internal, and temporary: `true` checks the view against SDD-61's portable list instead of
+   * SDD-51's. Only the tests set it, while the repository migrates; SDD-61 task 36 removes the
+   * switch and the old list with it.
+   */
+  readonly portableView?: boolean;
 }
 
 /**
