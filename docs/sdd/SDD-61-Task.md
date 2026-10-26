@@ -7,7 +7,7 @@
 > `fudic-vscode` · `@fudic/vite` · `examples/*` · `packages/testing`
 > **Rama:** `sdd-61-vista-portable-impl`. Nace de `main` **con SDD-60 en `Hecho`**: esta spec parte
 > de un único `@code` y de su corte de servidor.
-> **Progreso:** 0 / 43 — `Listo`.
+> **Progreso:** 3 / 43 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -60,16 +60,16 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **Los códigos nuevos.** `FUD1140`–`FUD1153`: `.ts` con su función tipada, `.md` con la forma de SDD-50 §4.4 (título y «Fix» de SDD §5, citan `SDD-61`) y su línea en `index.ts` | `diagnostics` | `src/codes/FUD1140`–`1153.{ts,md}` · `src/index.ts` |
-| [ ] | 2 | 1 | **Reescritos y retirado.** Texto nuevo de `FUD0905`, `0907`, `0908`, `0910`, `0912`, `0913`, `0917`, `0919` (SDD §5). `FUD0911`: se borra su `.ts` y su línea de `index.ts`; su `.md` queda `retired` con `FUD1140` | `diagnostics` | `src/codes/FUD09xx.{ts,md}` · `src/index.ts` |
-| [ ] | 3 | — | **El rango.** `FUD1140`–`FUD1159` en la fila de SDD-61 del `INDEX.md` | — | `docs/sdd/INDEX.md` |
+| [x] | 1 | — | **Los códigos nuevos.** `FUD1140`–`FUD1153`: `.ts` con su función tipada, `.md` con la forma de SDD-50 §4.4 (título y «Fix» de SDD §5, citan `SDD-61`) y su línea en `index.ts` | `diagnostics` | `src/codes/FUD1140`–`1153.{ts,md}` · `src/index.ts` |
+| [x] | 2 | 1 | **Reescritos.** Texto nuevo de `FUD0905`, `0907`, `0908`, `0910`, `0912`, `0913`, `0917`, `0919` (SDD §5). La retirada de `FUD0911` pasa a la tarea 5: el compilador lo emite hasta entonces, y borrar su `.ts` aquí rompería el repositorio | `diagnostics` | `src/codes/FUD09xx.{ts,md}` · `src/index.ts` |
+| [x] | 3 | — | **El rango.** `FUD1140`–`FUD1159` en la fila de SDD-61 del `INDEX.md` | — | `docs/sdd/INDEX.md` |
 
 ## Fase 2 — el compilador sin tipos (9)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [ ] | 4 | 1 | **`@empty`.** La estructura reconoce `} @empty { … }` tras el cuerpo de `@foreach`, `@for` y `@while` como `EmptyBlock` hijo del bucle, con `Span`. `FUD1149` si sigue a otra cosa o se repite. El `walk` lo entrega | `compiler` | `src/control/*` · `src/document/*` · `src/types/*` · `src/semantic/walk.ts` |
-| [ ] | 5 | 1 | **`view-expressions`.** Lista blanca de SDD §3.2–§3.5 bis: llamadas con argumentos, `?.()`, llamado que no es camino y todo método que no sea `filter`/`map`/`reduce`/`toSorted` (`FUD1140`; exento `t()` en valor de prop), `new` (`FUD1141`), operadores (`FUD1142`), literales (`FUD1143`; exento el objeto de huecos de `t()`), sintaxis TS (`FUD1144`), forma de las operaciones de colección (`FUD1145`: `reduce` sin inicial, flecha de bloque, nombre de función, parámetro o argumento de más), patrón de array o con clave calculada (`FUD1146`), toda flecha y función salvo el argumento de una operación de colección (`FUD0905`), regex (`FUD0919`). El cuerpo de esas flechas pasa por la misma lista, con sus parámetros en scope. Deja de emitir `FUD0911` y la parte de `0910`/`0912`/`0913`/`0917` que cubren las llamadas y los globales. Los callbacks (SDD §3.1) quedan fuera | `compiler` | `src/semantic/analyzers/view-expressions.ts` |
+| [ ] | 5 | 1 | **`view-expressions`.** Lista blanca de SDD §3.2–§3.5 bis: llamadas con argumentos, `?.()`, llamado que no es camino y todo método que no sea `filter`/`map`/`reduce`/`toSorted` (`FUD1140`; exento `t()` en valor de prop), `new` (`FUD1141`), operadores (`FUD1142`), literales (`FUD1143`; exento el objeto de huecos de `t()`), sintaxis TS (`FUD1144`), forma de las operaciones de colección (`FUD1145`: `reduce` sin inicial, flecha de bloque, nombre de función, parámetro o argumento de más), patrón de array o con clave calculada (`FUD1146`), toda flecha y función salvo el argumento de una operación de colección (`FUD0905`), regex (`FUD0919`). El cuerpo de esas flechas pasa por la misma lista, con sus parámetros en scope. Deja de emitir `FUD0911` y la parte de `0910`/`0912`/`0913`/`0917` que cubren las llamadas y los globales. **Retira `FUD0911`** (viene de la tarea 2): se borra su `.ts` y su línea de `index.ts`, y su `.md` queda `retired` con `FUD1140`. Los callbacks (SDD §3.1) quedan fuera | `compiler` | `src/semantic/analyzers/view-expressions.ts` |
 | [ ] | 6 | 5 | **`view-statements`.** `@{ }` solo `const`/`let` (con patrones de objeto) y reasignación de variables; `if`, `switch`, bucles, bloques y llamadas como sentencia son `FUD0908`. `@for`/`@while` siguen con `FUD0900`/`0901`/`0913` | `compiler` | `src/semantic/analyzers/view-statements.ts` |
 | [ ] | 7 | 5 | **`view-identifiers`.** Globales: solo `undefined` (`FUD0907`). En manejadores y callbacks, sin comprobación de globales; se conserva la regla de los nombres de `@{ }` | `compiler` | `src/semantic/analyzers/view-identifiers.ts` · `src/semantic/view-globals.ts` |
 | [ ] | 8 | 5 | **`view-rest`** (nuevo). Un `...resto` de la vista solo como `resto.campo`, spread de atributo o el origen de otro patrón (`const { b, ...r2 } = resto`); otro uso es `FUD1147` sobre el uso (SDD §3.6, anexo A.3.3) | `compiler` | `src/semantic/analyzers/view-rest.ts` · `ANALYZERS` |
