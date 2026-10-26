@@ -69,6 +69,7 @@ export { reservedDollarDiagnostics } from './reserved-dollar.js';
 export { fudicDiagnostics, semanticDiagnostics, semanticInput } from './fudic-diagnostics.js';
 
 export { propShapes } from './prop-shapes.js';
+export { portableTypeDiagnostics } from './portable-types.js';
 
 // The project check (§3.1).
 export {

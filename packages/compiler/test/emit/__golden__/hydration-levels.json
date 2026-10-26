@@ -1028,6 +1028,51 @@
     "tag": "broken-mode",
     "hydrates": false
   },
+  "packages/testing/test/fixtures/p61-clock.fud": {
+    "kind": "component",
+    "tag": "p61-clock",
+    "hydrates": true
+  },
+  "packages/testing/test/fixtures/p61-computed.fud": {
+    "kind": "component",
+    "tag": "p61-computed",
+    "hydrates": true
+  },
+  "packages/testing/test/fixtures/p61-defaults.fud": {
+    "kind": "component",
+    "tag": "p61-defaults",
+    "hydrates": false
+  },
+  "packages/testing/test/fixtures/p61-empty.fud": {
+    "kind": "component",
+    "tag": "p61-empty",
+    "hydrates": false
+  },
+  "packages/testing/test/fixtures/p61-live-empty.fud": {
+    "kind": "component",
+    "tag": "p61-live-empty",
+    "hydrates": true
+  },
+  "packages/testing/test/fixtures/p61-orden.fud": {
+    "kind": "component",
+    "tag": "p61-orden",
+    "hydrates": false
+  },
+  "packages/testing/test/fixtures/p61-presence.fud": {
+    "kind": "component",
+    "tag": "p61-presence",
+    "hydrates": false
+  },
+  "packages/testing/test/fixtures/p61-spread.fud": {
+    "kind": "component",
+    "tag": "p61-spread",
+    "hydrates": false
+  },
+  "packages/testing/test/fixtures/p61-tareas.fud": {
+    "kind": "component",
+    "tag": "p61-tareas",
+    "hydrates": true
+  },
   "packages/testing/test/fixtures/spike-card.fud": {
     "kind": "component",
     "tag": "spike-card",

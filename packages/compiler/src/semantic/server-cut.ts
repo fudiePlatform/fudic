@@ -89,9 +89,30 @@ interface Read {
   readonly use: RelatedLocation;
 }
 
+/** The server cut of one input: what it reports, and where it lies in the `.fud`'s own `@code`. */
+export interface ServerCutResult {
+  readonly diagnostics: readonly Diagnostic[];
+  /** The expressions of the `@code` the white list checks: what the typed pass checks too (§4.2). */
+  readonly expressions: readonly OxcNode[];
+  /** Each `const`/`let` declarator of the `@code` in the cut: whose type has to port (§3.10). */
+  readonly declarations: readonly OxcNode[];
+}
+
+const cuts = new WeakMap<SemanticInput, ServerCutResult>();
+
+/** The server cut of `input`, walked once per input. */
+export function serverCut(input: SemanticInput): ServerCutResult {
+  let cut = cuts.get(input);
+  if (cut === undefined) {
+    cut = new ServerCut(input).run();
+    cuts.set(input, cut);
+  }
+  return cut;
+}
+
 /** Every diagnostic of the server cut of `input`. */
 export function serverCutDiagnostics(input: SemanticInput): readonly Diagnostic[] {
-  return new ServerCut(input).run();
+  return serverCut(input).diagnostics;
 }
 
 /** A module parsed once per object the host hands back (§4.1): its cache is the host's. */
@@ -108,6 +129,8 @@ function parseModule(module: ProjectModule): readonly OxcNode[] | undefined {
 class ServerCut {
   readonly #input: SemanticInput;
   readonly #out: Diagnostic[] = [];
+  readonly #cut: OxcNode[] = [];
+  readonly #declared: OxcNode[] = [];
   /** The declarations already judged: each once, whatever reads it. */
   readonly #judged = new Set<OxcNode>();
   /** The exports already followed, as `path#name`: a cycle of re-exports ends. */
@@ -117,7 +140,7 @@ class ServerCut {
     this.#input = input;
   }
 
-  run(): readonly Diagnostic[] {
+  run(): ServerCutResult {
     const input = this.#input;
     const view = portableView(input);
     const statements = codeStatements(input);
@@ -133,7 +156,7 @@ class ServerCut {
     // The first use of a name is the one its diagnostic points back to.
     reads.sort((a, b) => a.use.span.start - b.use.span.start);
     for (const read of reads) this.#read(unit, read);
-    return this.#out;
+    return { diagnostics: this.#out, expressions: this.#cut, declarations: this.#declared };
   }
 
   #readOf(unit: Unit, node: OxcNode, callees: ReadonlySet<OxcNode>, use?: RelatedLocation): Read {
@@ -169,6 +192,7 @@ class ServerCut {
     const reads: OxcNode[] = [];
     const check = new PortableCheck(unit.site, unit.view, NO_TEMPLATE, findings, reads);
     for (const node of nodes) each(check, node);
+    if (unit.file === undefined) this.#cut.push(...nodes);
     for (const finding of findings) this.#report(unit, finding.diagnostic, use);
     const callees = calleesOf(nodes);
     for (const node of reads) this.#read(unit, this.#readOf(unit, node, callees, use));
@@ -289,6 +313,9 @@ class ServerCut {
     const value = inner(init);
     const catalogue = value.type === 'CallExpression' ? catalogueCall(unit.view, value) : undefined;
     const args = value.type === 'CallExpression' ? children(value, 'arguments') : [];
+    // A value the server holds while painting, whose type has to port (§3.10). The props are
+    // typed by their contract, a service is no value, and `now()` here is already an error.
+    if (unit.file === undefined && !UNTYPED.has(catalogue ?? '')) this.#declared.push(declarator);
     switch (catalogue) {
       case 'props': {
         const defaults: OxcNode[] = [];
@@ -419,6 +446,9 @@ function isReadCall(call: OxcNode): boolean {
 }
 
 const COLLECTION: ReadonlySet<string> = new Set(['filter', 'map', 'reduce', 'toSorted']);
+
+/** The catalogue calls whose declaration the typed pass does not type (§3.10). */
+const UNTYPED: ReadonlySet<string> = new Set(['props', 'inject', 'now']);
 
 function isPath(node: OxcNode): boolean {
   if (node.type === 'Identifier') return true;

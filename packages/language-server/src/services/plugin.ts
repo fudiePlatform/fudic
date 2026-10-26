@@ -46,7 +46,7 @@ import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import { COMPLETION_TRIGGER_CHARACTERS, SEMANTIC_TOKENS_LEGEND } from '../capabilities.js';
 import type { CachedDocument } from '../document-cache.js';
-import { fudicDiagnostics, ROOT_CODE_ID, type FudicVirtualCode } from '@fudic/typecheck';
+import { fudicDiagnostics, portableTypeDiagnostics, ROOT_CODE_ID, type FudicVirtualCode } from '@fudic/typecheck';
 import { isFudSourceUri } from '../uri.js';
 import { rangeOf as fileRangeOf } from '../fudapi/document.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
@@ -151,6 +151,11 @@ export interface FudicServiceContext {
    * route's contract the layout bulb writes into. Absent means neither.
    */
   readonly apis?: ApiFiles;
+  /**
+   * Internal, and temporary: `true` publishes the typed pass of SDD-61's portable view. Only the
+   * tests set it while the repository migrates; SDD-61 task 36 removes the switch.
+   */
+  readonly portableView?: boolean;
 }
 
 const SEVERITY: Readonly<Record<Severity, DiagnosticSeverity>> = {
@@ -629,8 +634,12 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
               // The names the root template chooses, against the nearest fudic.json. With no
               // fudic.json governing the file there is nothing to check them against.
               const choosable = deps.configs?.choosableStylesFor(cached.path) ?? null;
+              // The typed pass over the program the editor already holds: the same function the
+              // build calls, so the same spans (SDD-61 §4.2).
+              const program = deps.portableView === true ? typeScriptService(context)?.getProgram() : undefined;
               return [
                 ...placedDiagnostics(cached.path, fudicDiagnostics(cached, index)),
+                ...(program === undefined ? [] : placedDiagnostics(cached.path, portableTypeDiagnostics(program, cached))),
                 ...(choosable === null ? [] : adoptedStyleDiagnostics(cached, choosable)),
               ].map((diagnostic) => toLspDiagnostic(document, diagnostic, index.read.bind(index)));
             },

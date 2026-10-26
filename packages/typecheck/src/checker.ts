@@ -44,6 +44,7 @@ import {
 import type { FudicVirtualCode } from './virtual-code.js';
 import type { PropField } from '@fudic/spec';
 import { propShapes } from './prop-shapes.js';
+import { portableTypeDiagnostics } from './portable-types.js';
 
 /** What a project check is made over. */
 export interface CheckOptions {
@@ -51,6 +52,11 @@ export interface CheckOptions {
   readonly root: string;
   /** The TypeScript to check with. Defaults to the one this package ships (§7). */
   readonly typescript?: typeof ts;
+  /**
+   * Internal, and temporary: `true` adds the typed pass of SDD-61's portable view. Only the tests
+   * set it while the repository migrates; SDD-61 task 36 removes the switch and runs it always.
+   */
+  readonly portableView?: boolean;
 }
 
 export interface ProjectChecker {
@@ -210,6 +216,9 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
       }
 
       problems.push(...fudicProblems(entry.path, fudicDiagnostics(root.document, state.index), elsewhere));
+      if (options.portableView === true) {
+        problems.push(...fudicProblems(entry.path, portableTypeDiagnostics(program, root.document), elsewhere));
+      }
     }
 
     // A handler of `src/server` or `src/browser`, in its own `.ts` (SDD-60 §4.6).

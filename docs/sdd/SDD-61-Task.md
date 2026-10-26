@@ -7,7 +7,7 @@
 > `fudic-vscode` · `@fudic/vite` · `examples/*` · `packages/testing`
 > **Rama:** `sdd-61-vista-portable-impl`. Nace de `main` **con SDD-60 en `Hecho`**: esta spec parte
 > de un único `@code` y de su corte de servidor.
-> **Progreso:** 20 / 44 — `En curso`.
+> **Progreso:** 24 / 44 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -103,10 +103,10 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 19 | 1 | **`portableTypeDiagnostics(program, document)`.** Con el checker sobre la proyección, como `propShapes`: llamada sin argumentos no reactiva (`FUD1140`), condiciones, flecha de `filter` y operandos lógicos (`FUD1151`), operandos de §3.4 —`<` admite dos `number`, dos `string` o dos `Date`— y comparador de `toSorted` (`FUD1152`), tipos de §3.10 (también lo que da `map` y el acumulador de `reduce`), iterable, índice, `key`, `@switch`, literal de objeto sin tipo con nombre, desestructurar o esparcir un `map`, operación de colección sobre algo que no es lista y `.length` sobre algo que no es lista ni texto (`FUD1153`). Símbolos por el nombre que imprime el checker; importación de `typescript` solo de tipos | `typecheck` | `src/portable-types.ts` · `src/index.ts` |
-| [ ] | 20 | 19 | **En dev y en build.** El project checker lo llama: en dev, terminal y overlay; en build, el build falla | `typecheck` · `vite` | `typecheck/src/checker.ts` · `vite/src/dev-typecheck.ts` · `vite/src/background-check.ts` |
-| [ ] | 21 | 19 | **En el editor.** El language server lo publica por el mismo canal que los demás `FUD`, con el mismo span | `language-server` | `src/services/*` |
-| [ ] | 22 | 19–21 | **Los tests de la fase.** Criterios 2 (`@hora()`), 6, 7, 8, 9, 22, 23, 38 (`xs.sort()`), 39, y el mismo span en build y editor (30) | `typecheck` · `language-server` | `test/**` |
+| [x] | 19 | 1 | **`portableTypeDiagnostics(program, document)`.** Con el checker sobre la proyección, como `propShapes`: llamada sin argumentos no reactiva (`FUD1140`), condiciones, flecha de `filter` y operandos lógicos (`FUD1151`), operandos de §3.4 —`<` admite dos `number`, dos `string` o dos `Date`— y comparador de `toSorted` (`FUD1152`), tipos de §3.10 (también lo que da `map` y el acumulador de `reduce`), iterable, índice, `key`, `@switch`, literal de objeto sin tipo con nombre, desestructurar o esparcir un `map`, operación de colección sobre algo que no es lista y `.length` sobre algo que no es lista ni texto (`FUD1153`). Símbolos por el nombre que imprime el checker; importación de `typescript` solo de tipos | `typecheck` | `src/portable-types.ts` · `src/index.ts` |
+| [x] | 20 | 19 | **En dev y en build.** El project checker lo llama: en dev, terminal y overlay; en build, el build falla | `typecheck` · `vite` | `typecheck/src/checker.ts` · `vite/src/dev-typecheck.ts` · `vite/src/background-check.ts` |
+| [x] | 21 | 19 | **En el editor.** El language server lo publica por el mismo canal que los demás `FUD`, con el mismo span | `language-server` | `src/services/*` |
+| [x] | 22 | 19–21 | **Los tests de la fase.** Criterios 2 (`@hora()`), 6, 7, 8, 9, 22, 23, 38 (`xs.sort()`), 39, y el mismo span en build y editor (30) | `typecheck` · `language-server` | `test/**` |
 
 ## Fase 5 — editor (5)
 
@@ -135,7 +135,7 @@ código, no el test.
 | [ ] | 33 | 31 | **`vista-errores`.** Un caso por código nuevo y por ampliación, con «FUDnnnn sobre `texto`» | `examples` | `vista-errores/vista-errores.fud` |
 | [ ] | 34 | 31 | **`examples/i18n` y fixtures.** `app-greeting` (`alta` como prop desde el `load`); fixtures de `compiler` (`app-list`), `formatter` (`snippets`), `testing`, `language-core`, `language-server`, `workbench` | `examples` · varios | `i18n/src/**` · `packages/*/fixtures/**` · `packages/*/test/**` |
 | [ ] | 35 | 34 | **Tests reescritos.** Los que escribían algo que sale (`find`, `some`, `join`, `@{ }` con bucles…) se reescriben sin perder el caso que probaban | varios | `packages/*/test/**` |
-| [ ] | 36 | 35 | **Activar.** Fuera el interruptor `portableView`: los analizadores corren siempre. Se borran la regla de SDD-51 (`view-js.ts`) y `VIEW_GLOBALS`, y se retira `FUD0911`: se borra su `.ts` y su línea de `index.ts`, y su `.md` queda `retired` con `FUD1140` | `compiler` · `diagnostics` | `src/semantic/*` · `src/codes/FUD0911.*` |
+| [ ] | 36 | 35 | **Activar.** Fuera el interruptor `portableView` —de `SemanticInput`, de `CheckOptions` del project checker y del contexto del servicio del language server—: los analizadores y el pase tipado corren siempre. Se borran la regla de SDD-51 (`view-js.ts`) y `VIEW_GLOBALS`, y se retira `FUD0911`: se borra su `.ts` y su línea de `index.ts`, y su `.md` queda `retired` con `FUD1140` | `compiler` · `diagnostics` | `src/semantic/*` · `src/codes/FUD0911.*` |
 | [ ] | 37 | 36 | **Los tests del corpus.** Criterios 1, 32 y 33: ningún `.fud` fuera de `experiments/` da un diagnóstico de esta spec; `vista-errores` da exactamente sus comentarios | `compiler` · `typecheck` | `test/corpus*.test.ts` |
 
 ## Fase 8 — cierre (5)

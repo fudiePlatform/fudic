@@ -121,7 +121,7 @@ export function portableFindings(input: SemanticInput): readonly PortableFinding
 }
 
 /** A callback: a `.prop` whose whole value is an arrow, or a function of `@code` handed by name. */
-function isCallback(node: OxcNode, view: ViewScope, scope: TemplateScope): boolean {
+export function isCallback(node: OxcNode, view: ViewScope, scope: TemplateScope): boolean {
   const value = inner(node);
   return (
     value.type === 'ArrowFunctionExpression' ||

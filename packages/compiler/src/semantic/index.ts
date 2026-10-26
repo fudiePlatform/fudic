@@ -16,6 +16,12 @@ export type {
 export { ANALYZERS, analyze } from './analyze.js';
 export { walk, documentRoots, documentCode, type TreeVisitor } from './walk.js';
 export { VIEW_GLOBALS } from './view-globals.js';
+export {
+  portableRegions,
+  type PortablePlace,
+  type PortableRegions,
+  type PortableRoot,
+} from './portable-regions.js';
 export { HTML_EVENT_ATTRIBUTES, isNativeEventAttribute } from './html-events.js';
 export {
   planDelegation,
