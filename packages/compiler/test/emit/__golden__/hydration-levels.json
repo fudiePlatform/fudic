@@ -254,6 +254,11 @@
     "tag": "value-display",
     "hydrates": false
   },
+  "examples/basic/src/components/vista-tareas.fud": {
+    "kind": "component",
+    "tag": "vista-tareas",
+    "hydrates": true
+  },
   "examples/basic/src/components/vista-url.fud": {
     "kind": "component",
     "tag": "vista-url",
@@ -521,6 +526,7 @@
     "reactive": false,
     "hydration": "gesture",
     "hydrates": [
+      "vista-tareas",
       "vista-url"
     ]
   },

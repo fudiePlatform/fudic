@@ -1,0 +1,75 @@
+@code {
+  // SDD-61 en el cliente: las tareas llegan del servidor, el usuario las marca y los contadores
+  // cambian solos. El servidor evalúa los dos `computed` una vez y pinta; el cliente los
+  // recalcula. Todo sin diagnóstico.
+  import { computed, now, signal } from "@fudic/core";
+  import { date } from "@fudic/i18n";
+  import type { Tarea } from "fudic:routes/vista";
+
+  const { inicial = [] } = props<{ inicial?: readonly Tarea[] }>();
+
+  // `signal` y `computed` se evalúan en el servidor; sus cuerpos siguen la misma lista blanca.
+  const tareas = signal<readonly Tarea[]>(inicial);
+  const hechas = computed(() => tareas().filter(t => t.hecha).length);
+  const pendientes = computed(() => tareas().filter(t => !t.hecha).length);
+
+  // `now()` solo como inicializador de una señal: el servidor lo evalúa una vez y el valor
+  // viaja en `fud-state`, así que el cliente que hidrata no lo vuelve a llamar.
+  const ahora = signal(now());
+  const cuando = date({ dateStyle: "short", timeStyle: "short", timeZone: "Europe/Madrid" });
+  const dia = date({ day: "numeric", month: "short", timeZone: "Europe/Madrid" });
+
+  const quitadas = signal(0);
+}
+
+<head>
+  <style>
+    .panel {
+      display: grid;
+      gap: var(--gap);
+    }
+    .botones {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+    ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+  </style>
+</head>
+
+<vista-tareas>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="panel">
+    <section class="panel">
+      @* Leer un valor reactivo: la única llamada de la vista. Sin diagnóstico. *@
+      <p class="recuento">Hechas: @hechas() · Pendientes: @pendientes()</p>
+
+      @* Un manejador es TS completo: `{ ...x }`, `Math`, `new Date()`. Sin diagnóstico. *@
+      <ul>
+        @foreach (const t of tareas()) key (t.id) {
+          <li>
+            <label>
+              <input type="checkbox" .checked=@t.hecha
+                     @change=@(() => tareas.set(tareas().map(x => x.id === t.id ? { ...x, hecha: !x.hecha } : x)))>
+              @t.titulo
+              @* Dos fechas se comparan con `<`, por instante. Sin diagnóstico. *@
+              <small>(@(t.creada | dia), @(t.creada < ahora() ? "pasada" : "futura"))</small>
+            </label>
+          </li>
+        } @empty {
+          <li class="vacio">No hay tareas.</li>
+        }
+      </ul>
+
+      <div class="botones">
+        <button class="vaciar" @click=@(() => { quitadas.set(Math.max(quitadas(), tareas().length)); tareas.set([]); })>Vaciar</button>
+        <button class="llenar" @click=@(() => tareas.set(inicial))>Llenar</button>
+        <button class="ahora" @click=@(() => ahora.set(new Date()))>Ahora</button>
+      </div>
+      <p class="pie">Pintada a las @(ahora() | cuando) · como mucho se quitaron @quitadas() de golpe</p>
+    </section>
+  </template>
+</vista-tareas>

@@ -1,0 +1,71 @@
+# The data of the view's catalog. Static with data: the build runs load and prerenders the HTML.
+# Every type is the contract's, so any backend can paint the page with the same bytes.
+load ssg
+  articulos   Articulo[]
+  tareas      Tarea[]
+  lineas      Linea[]
+  notas       f64[]
+  etiquetas   str[]
+  autores     Autor[]
+  vacia       str[]
+  stock       map str i32
+  tono        Tono
+  tarjeta     Tarjeta
+  campo       Campo
+  enlace      Enlace
+  extra       Extra
+  peligrosas  Caso[]
+  seguras     Caso[]
+
+type Articulo
+  titulo     str
+  resumen    str
+  autor      Autor
+  coautor    Autor?
+  destacado  bool?
+
+type Autor
+  nombre  str
+  web     str?
+
+type Tarea
+  id         i32
+  titulo     str
+  prioridad  i32
+  hecha      bool
+  estado     str
+  creada     date
+
+type Linea
+  nombre    str
+  precio    f64
+  cantidad  i32
+  pagada    bool
+
+enum Tono
+  info
+  aviso
+  error
+
+type Tarjeta
+  title     str
+  href      str
+  variante  str
+
+type Campo
+  etiqueta     str
+  placeholder  str
+  maxlength    i32
+  required     bool
+
+type Enlace
+  href   str
+  title  str?
+
+type Extra
+  title   str?
+  hidden  bool?
+
+type Caso
+  clave  str
+  url    str
