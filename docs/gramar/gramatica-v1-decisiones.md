@@ -1280,6 +1280,24 @@ reordenar huecos y etiquetas, y el emit construye la tira en su orden.
 código TS. El primer argumento es un string literal (`FUD1020`). *Por qué no `t()` en todas
 partes: una regla para el desarrollador, no una por caso (Pedro, 2026-10-15).*
 
+**167.** **`@await` y `@catch`** (SDD-70 §3.2). `@await data.<campo> { … }` pinta su cuerpo
+cuando se cumple un campo `later` de `load`; dentro, `data.<campo>` es el valor resuelto. Un
+`@catch (e) { … }` opcional va detrás de la llave de cierre, como `@else`, y `e` es un `Problem`.
+No hay rama de espera: lo que no ha llegado aún no está. Lo que sigue a `@await` tiene que ser un
+campo `later` (`FUD1320`); leerlo fuera de su `@await` es `FUD1321`; un `@catch` suelto o
+repetido, `FUD1323`. *Por qué sin «Cargando…»: quitarlo necesitaría JS (Pedro, 2026-10-27).*
+
+**168.** **Un `@await` espera al anterior, y solo en la vista de una ruta o una página** (SDD-70
+§3.2–§3.4). La página sale en el orden del documento; las promesas arrancan a la vez, pero se
+pintan en orden y nada se recoloca con JS. Vale en el body y en las `@section`; no en el
+`<head>`, en un componente, en un layout ni en un snippet (`FUD1322`). Lo que decide el status
+se resuelve en `load` antes del primer byte. *Por qué en orden: HTML puro, cero JS para colocar
+(Pedro, 2026-10-27).*
+
+**169.** **`later` en un campo de `load`** (SDD-70 §3.1). `users  Person[]  later` declara un
+campo que el handler devuelve como promesa y la vista espera con `@await`. Solo en los campos de
+`load` (`FUD1324`).
+
 ### Gramática de referencia
 
 ```
@@ -1587,3 +1605,6 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 159 | Interpolación | Lo que la vista pinta como texto se traduce sin marca: texto, atributos traducibles y literales en posición de resultado; `translate="no"` excluye (SDD-58) |
 | 160 | Interpolación | Un mensaje es una frase: texto, `{hueco}` y `<n>…</n>`; la traducción reordena y el emit sigue su orden (SDD-58) |
 | 161 | Interpolación | `t()` solo en el valor de una prop y en código TS, con un literal como primer argumento (`FUD1020`) (SDD-58) |
+| 167 | Control flujo | `@await data.<campo> { … } @catch (e) { … }` sobre un campo `later`; sin rama de espera (`FUD1320`, `FUD1321`, `FUD1323`) (SDD-70) |
+| 168 | Control flujo | Un `@await` espera al anterior; solo en la vista de una ruta o una página, fuera del `<head>` (`FUD1322`) (SDD-70) |
+| 169 | `.fudapi` | `later` detrás del tipo de un campo de `load`: el handler lo devuelve como promesa (`FUD1324`) (SDD-70) |
