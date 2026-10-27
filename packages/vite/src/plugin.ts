@@ -422,9 +422,18 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   /**
    * The `server/` and `browser/` folders of the libraries, real and posix: a half there fills the
    * contracts of the locale that loads it, so in an app with languages it compiles per locale.
+   * Asked on every `resolveId` of a locale's graph, and they only move when `api` is replaced:
+   * worked out once per `api`, not with two `realpathSync` per library and per import.
    */
-  const implementationDirs = (): readonly string[] =>
-    api.libraries.flatMap((lib) => [`${slash(realpathSync(lib.dir))}/${lib.server}/`, `${slash(realpathSync(lib.dir))}/${lib.browser}/`]);
+  const implementationDirsOf = new WeakMap<ApiProject, readonly string[]>();
+  const implementationDirs = (): readonly string[] => {
+    let dirs = implementationDirsOf.get(api);
+    if (dirs === undefined) {
+      dirs = api.libraries.flatMap((lib) => [`${slash(realpathSync(lib.dir))}/${lib.server}/`, `${slash(realpathSync(lib.dir))}/${lib.browser}/`]);
+      implementationDirsOf.set(api, dirs);
+    }
+    return dirs;
+  };
   /**
    * Every module of the implementation folders, the server root and whatever holds a contract —
    * the `fudic:<id>`, the wrappers, the `.fud` — out of a dev graph: the next request evaluates

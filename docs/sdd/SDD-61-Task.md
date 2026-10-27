@@ -226,11 +226,21 @@ que en `main` (salvo lo aceptado abajo), comprobado con build, preview y dev, en
    `compilesPerLocale` en `packages/vite/src/i18n.ts`. Arreglo decidido (opción a): un módulo de datos es
    UNA instancia en el servidor; lo mínimo, que con un solo locale y sin prefijo la pasada normal y la
    del locale sean la misma. Playwright: fallan `usuarios.spec` 104 y 162 en los tres proyectos.
-2. **Rendimiento: un 25–30 % más lento, y NO se acepta.** El build de `examples/basic` pasa de ~8,5 s a
-   ~10,8 s, y el primer test de cada fichero de `examples/basic` de ~3 s a ~4 s (por eso se pasan de
-   5 s en `pnpm test`). Sospecha sin medir: la doble compilación del punto 1 (78 chunks de servidor
-   frente a 46). Para medirlo, construir la rama sin `"locales"` y comparar con `main`. Lo que no
-   explique eso estará en el compilador (lowering y análisis portables). No se arregla subiendo timeouts.
+2. **Rendimiento: NO se acepta que sea más lento.** Medido con perfiles de CPU (`NODE_OPTIONS=
+   "--cpu-prof --cpu-prof-dir=…" npx vite build` en las dos ramas, comparando el tiempo inclusivo de cada
+   función) y con 5 builds alternados de cada rama (mediana):
+   - **Arreglado:** `implementationDirs()` (vite `plugin.ts`, añadido en esta rama) hacía dos
+     `realpathSync` por librería en CADA `resolveId` de un grafo con locale: ~0,76 s. Ahora va memorizado
+     por `api`. Con eso, la mediana pasa de +20 % (7,36 s → 8,83 s) a +13 % (7,66 s → 8,66 s).
+   - **Lo que queda (~1 s):** typecheck (`check`/`collect` de `@fudic/typecheck`, +0,4 s); lowering
+     portable (`lowering()` en `compiler/src/emit/resolve.ts`, +0,1 s propio; 239 llamadas para 177
+     ficheros, así que la caché funciona); `load`/`resolveDocument`/`parse` +0,3 s (el lowering parsea y
+     luego `load` vuelve a parsear); y la doble pasada del servidor por locale del punto 1. Parte de la
+     diferencia es contenido nuevo de `examples/basic` (`/vista`), que `main` no tiene.
+   - Siguiente paso: arreglar el punto 1 y volver a medir; después atacar el doble parseo (reutilizar
+     el documento que ya parseó `lowerPortable` cuando no hay nada que rebajar) y el typecheck.
+   - El primer test de cada fichero de `examples/basic` pasaba de ~3 s a ~4 s (por eso no llegaba en
+     5 s en `pnpm test`). Hay que volver a medirlo tras los arreglos. No se resuelve subiendo timeouts.
 3. **`/raw`: hay que recuperar el caso del string sin marcar.** El framework lo necesita. La rama lo
    quitó de `raw-demo.fud`, de `raw.fud`, de `raw.spec.ts` y de la §4.7 del SDD porque
    `"…" as unknown as TrustedHTML` no es portable. Hay que devolverlo con una forma que la vista acepte, y
