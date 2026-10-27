@@ -1,0 +1,20 @@
+@* Annex A.6 (guide example 1), with no posts: only `@empty` is painted. *@
+<link rel="component" href="./parts/c-card.fud">
+
+@code {
+  type Post = { slug: string; title: string };
+
+  const { posts = [] } = props<{ posts?: readonly Post[] }>();
+}
+
+<c-blog-vacio>
+  <template shadowrootmode="open">
+    <section class="grid">
+      @foreach (const { slug, title } of posts) key (slug) {
+        <c-card .title=@title .href=@(`/blog/${slug}`)></c-card>
+      } @empty {
+        <p class="empty">Todavía no hay artículos.</p>
+      }
+    </section>
+  </template>
+</c-blog-vacio>

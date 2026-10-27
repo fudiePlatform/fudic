@@ -27,7 +27,7 @@ import { REF_NAME } from '../binding/index.js';
 import { loopHeaderNames, patternNames, type OxcNode } from '../oxc/index.js';
 import type { SemanticInput } from './model.js';
 import { documentRoots, walk } from './walk.js';
-import { VIEW_GLOBALS } from './view-globals.js';
+import { child, children, isNode, nameOf } from './view-ast.js';
 
 /**
  * What the template declares around a fragment: an immutable chain, innermost first.
@@ -42,6 +42,8 @@ export interface TemplateScope {
   readonly writable: ReadonlySet<string>;
   readonly inline: ReadonlySet<string>;
   readonly seeded: ReadonlySet<string>;
+  /** The names bound by a `...rest` of an object pattern (SDD-61 §3.6). */
+  readonly rest: ReadonlySet<string>;
   readonly parent?: TemplateScope;
 }
 
@@ -92,8 +94,13 @@ export interface ViewScope {
   seeded(name: string, scope: TemplateScope): boolean;
   /** Whether `name` is a function the file's `@code` declares. */
   isFunction(name: string): boolean;
-  /** Whether `name` is a regex the file's `@code` declares: a literal or a `new RegExp`. */
-  isRegex(name: string): boolean;
+  /**
+   * Whether `name`, where `scope` reads it, is a `...rest` binding: of the nearest template
+   * declaration, or of `@code` when the template declares none (SDD-61 §3.6).
+   */
+  isRest(name: string, scope: TemplateScope): boolean;
+  /** What a name of `@code` imports, as `specifier#imported` (`@fudic/core#now`), if it is one. */
+  imported(name: string): string | undefined;
 }
 
 /** The documents `load()` feeds: a page, a route and a layout read its result as `data`. */
@@ -112,12 +119,14 @@ const CONTEXT = 'ctx';
 
 const NONE: ReadonlySet<string> = new Set();
 /** The scope with no template around it: what `@code`, the role and the globals alone name. */
-export const NO_TEMPLATE: TemplateScope = { names: NONE, writable: NONE, inline: NONE, seeded: NONE };
+export const NO_TEMPLATE: TemplateScope = { names: NONE, writable: NONE, inline: NONE, seeded: NONE, rest: NONE };
 const EMPTY = NO_TEMPLATE;
 
-/** The scope of the whole view of `input`. Never throws: a fragment with no AST is skipped. */
-export function viewScope(input: SemanticInput): ViewScope {
-  const code = codeNames(input);
+/**
+ * The scope of the whole view of `input`. Never throws: a fragment with no AST is skipped.
+ * `globals` is the list a free name may fall back on: `undefined` alone (SDD-61 §3.2).
+ */
+export function viewScope(input: SemanticInput, globals: ReadonlySet<string>): ViewScope {
   const apis = input.apis;
   // A route that links its `.fudapi` has `data` when the file declares `load`; a layout always reads
   // the route's, and a file whose links nobody told us about keeps the rule of its role.
@@ -125,8 +134,39 @@ export function viewScope(input: SemanticInput): ViewScope {
     DATA_ROLES.has(input.document.type) &&
     (apis === undefined || apis.data || input.document.type === 'layout-document');
   const role: ReadonlySet<string> = data ? new Set(['data']) : new Set();
+  const outer = (name: string): NameOrigin | undefined =>
+    apis?.names.has(name) === true ? 'api' : role.has(name) ? 'role' : undefined;
+  return namesScope(codeNames(codeStatements(input)), collectFragments(input), globals, outer);
+}
+
+/**
+ * The scope of a module of the project the server cut reaches (SDD-61 §3.9): its own top-level
+ * names, and the globals. No template, no role and no `.fudapi` around it.
+ */
+export function moduleScope(statements: readonly OxcNode[], globals: ReadonlySet<string>): ViewScope {
+  return namesScope(codeNames(statements), [], globals, () => undefined);
+}
+
+/** Every top-level statement of the file's `@code`, in source order. */
+export function codeStatements(input: SemanticInput): readonly OxcNode[] {
+  const out: OxcNode[] = [];
+  for (const part of input.document.code?.parts ?? []) {
+    const id = input.fragmentId(part);
+    // A `module-statements` fragment is always a list (SDD-11 §3.2).
+    if (id !== undefined) out.push(...(input.js.ast(id) as readonly OxcNode[]));
+  }
+  return out;
+}
+
+/** A scope over what the code declares, with `outer` asked before the globals. */
+function namesScope(
+  code: CodeNames,
+  fragments: readonly ViewFragment[],
+  globals: ReadonlySet<string>,
+  outer: (name: string) => NameOrigin | undefined,
+): ViewScope {
   return {
-    fragments: collectFragments(input),
+    fragments,
     resolve(name, scope) {
       const own = declaring(name, scope);
       if (own !== undefined) return own.writable.has(name) ? 'template' : 'template-fixed';
@@ -135,9 +175,9 @@ export function viewScope(input: SemanticInput): ViewScope {
       if (name.startsWith('$') || name === CONTEXT) return undefined;
       if (code.neutralLets.has(name)) return 'neutral-let';
       if (code.neutral.has(name)) return 'code';
-      if (apis?.names.has(name) === true) return 'api';
-      if (role.has(name)) return 'role';
-      if (VIEW_GLOBALS.has(name)) return 'global';
+      const around = outer(name);
+      if (around !== undefined) return around;
+      if (globals.has(name)) return 'global';
       return undefined;
     },
     inline: (name, scope) => declaring(name, scope)?.inline.has(name) === true,
@@ -148,7 +188,11 @@ export function viewScope(input: SemanticInput): ViewScope {
       return false;
     },
     isFunction: (name) => code.functions.has(name),
-    isRegex: (name) => code.regexes.has(name),
+    isRest(name, scope) {
+      const own = declaring(name, scope);
+      return own === undefined ? code.rests.has(name) : own.rest.has(name);
+    },
+    imported: (name) => code.imports.get(name),
   };
 }
 
@@ -166,6 +210,7 @@ interface Declared {
   readonly writable?: readonly string[];
   readonly inline?: boolean;
   readonly seeded?: readonly string[];
+  readonly rest?: readonly string[];
 }
 
 function extend(scope: TemplateScope, declared: Declared): TemplateScope {
@@ -176,8 +221,42 @@ function extend(scope: TemplateScope, declared: Declared): TemplateScope {
     writable: new Set(declared.writable ?? []),
     inline: declared.inline === true ? new Set(declared.names) : NONE,
     seeded: new Set(seeded),
+    rest: new Set(declared.rest ?? []),
     parent: scope,
   };
+}
+
+/**
+ * The names a pattern binds through a `...rest` of an object pattern, at any depth. An array
+ * pattern's rest is no object rest: it is an array, and the portable view refuses the pattern.
+ */
+function restNames(pattern: OxcNode): readonly string[] {
+  switch (pattern.type) {
+    case 'ObjectPattern':
+      return children(pattern, 'properties').flatMap((property) =>
+        property.type === 'RestElement' ? patternNames(property['argument']) : restNames(child(property, 'value')!),
+      );
+    case 'AssignmentPattern':
+      return restNames(child(pattern, 'left')!);
+    default:
+      return [];
+  }
+}
+
+/** The rest names every declaration of a statement list binds at its own level. */
+function declaredRests(statements: readonly OxcNode[]): readonly string[] {
+  return statements.flatMap((statement) =>
+    statement.type === 'VariableDeclaration'
+      ? children(statement, 'declarations').flatMap((declaration) => restNames(child(declaration, 'id')!))
+      : [],
+  );
+}
+
+/** The rest names of a `@foreach` / `@for` header: what its declaration binds by `...rest`. */
+function headerRests(root: OxcNode | readonly OxcNode[] | undefined): readonly string[] {
+  if (!isNode(root)) return [];
+  const declaration = child(root, root.type === 'ForStatement' ? 'init' : 'left');
+  return declaration?.type === 'VariableDeclaration' ? declaredRests([declaration]) : [];
 }
 
 /** Walk the template once, keeping the scope chain as the emit will build it. */
@@ -202,8 +281,10 @@ function collectFragments(input: SemanticInput): readonly ViewFragment[] {
     if (root === undefined || (shape !== 'statements' && Array.isArray(root))) return;
     out.push({ owner, shape, root, scope, ...(bodyWrites === undefined ? {} : { bodyWrites }) });
   };
-  const headerNames = (loop: ForeachNode | ForNode): readonly string[] =>
-    loopHeaderNames(ast(loop), loop.type);
+  const header = (loop: ForeachNode | ForNode): Declared => ({
+    names: loopHeaderNames(ast(loop), loop.type),
+    rest: headerRests(ast(loop)),
+  });
 
   walk(documentRoots(input.document), {
     interpolation(expr) {
@@ -227,6 +308,7 @@ function collectFragments(input: SemanticInput): readonly ViewFragment[] {
         writable: declaredNames(statements, 'let'),
         inline: true,
         seeded: seededNames(statements),
+        rest: declaredRests(statements),
       });
     },
     render(node) {
@@ -255,7 +337,7 @@ function collectFragments(input: SemanticInput): readonly ViewFragment[] {
         default: {
           add(node, node.type === 'foreach' ? 'for-of-header' : 'for-header', current);
           // The key is evaluated in the scope of the body (decision 91): it sees the header.
-          if (node.key !== undefined) add(node.key, 'key', extend(current, { names: headerNames(node) }));
+          if (node.key !== undefined) add(node.key, 'key', extend(current, header(node)));
         }
       }
     },
@@ -266,7 +348,7 @@ function collectFragments(input: SemanticInput): readonly ViewFragment[] {
       bodies.push(own);
       pending = undefined;
       if (owner.type === 'foreach' || owner.type === 'for') {
-        current = extend(current, { names: headerNames(owner as ForeachNode | ForNode) });
+        current = extend(current, header(owner as ForeachNode | ForNode));
       } else if (owner.type === 'snippet') {
         current = extend(EMPTY, { names: snippetParams(ast(owner as SnippetDeclNode)) });
       }
@@ -364,8 +446,8 @@ function statementNames(statement: OxcNode): { readonly names: readonly string[]
     case 'FunctionDeclaration':
     case 'ClassDeclaration':
     case 'TSEnumDeclaration': {
-      const id = statement['id'] as OxcNode | null | undefined;
-      return { names: id ? [String(id['name'])] : [], let: false };
+      // At the top of a module each of them has its name: an anonymous one is an `export default`.
+      return { names: [String((statement['id'] as OxcNode)['name'])], let: false };
     }
     case 'ImportDeclaration': {
       const specifiers = statement['specifiers'] as readonly OxcNode[];
@@ -391,47 +473,44 @@ interface CodeNames {
   readonly neutralLets: ReadonlySet<string>;
   /** Every function `@code` declares, whatever its zone: printing one prints its source. */
   readonly functions: ReadonlySet<string>;
-  /** Every regex `@code` declares: its `test` and `exec` carry `lastIndex` between passes. */
-  readonly regexes: ReadonlySet<string>;
+  /** Every `...rest` of a top-level object pattern: `const { label, ...rest } = props<T>()`. */
+  readonly rests: ReadonlySet<string>;
+  /** Local name → `specifier#imported`, for each named import of `@code`. */
+  readonly imports: ReadonlyMap<string, string>;
 }
 
-function codeNames(input: SemanticInput): CodeNames {
+function codeNames(statements: readonly OxcNode[]): CodeNames {
   const neutral = new Set<string>();
   const neutralLets = new Set<string>();
   const functions = new Set<string>();
-  const regexes = new Set<string>();
-  for (const part of input.document.code?.parts ?? []) {
-    const id = input.fragmentId(part);
-    if (id === undefined) continue;
-    // A `module-statements` fragment is always a list (SDD-11 §3.2).
-    for (const statement of input.js.ast(id) as readonly OxcNode[]) {
-      const declared = statementNames(statement);
-      for (const name of functionNames(statement)) functions.add(name);
-      for (const name of regexNames(statement)) regexes.add(name);
-      for (const name of declared.names) {
-        neutral.add(name);
-        // The `@code` is declared INSIDE the render function, so its `let`s are state of the
-        // instance and the template may reseed them (§3.5): the cursor of a `@while`.
-        if (declared.let) neutralLets.add(name);
-      }
+  const rests = new Set<string>();
+  const imports = new Map<string, string>();
+  for (const statement of statements) {
+    const declared = statementNames(statement);
+    for (const name of functionNames(statement)) functions.add(name);
+    for (const name of declaredRests([statement])) rests.add(name);
+    for (const [local, origin] of importedNames(statement)) imports.set(local, origin);
+    for (const name of declared.names) {
+      neutral.add(name);
+      // The `@code` is declared INSIDE the render function, so its `let`s are state of the
+      // instance and the template may reseed them (§3.5): the cursor of a `@while`.
+      if (declared.let) neutralLets.add(name);
     }
   }
-  return { neutral, neutralLets, functions, regexes };
+  return { neutral, neutralLets, functions, rests, imports };
 }
 
-/** The names a declaration binds to a regex: `/x/g`, or `new RegExp(…)`. */
-function regexNames(statement: OxcNode): readonly string[] {
-  if (statement.type !== 'VariableDeclaration') return [];
-  const out: string[] = [];
-  for (const declaration of statement['declarations'] as readonly OxcNode[]) {
-    const init = declaration['init'] as OxcNode | null;
-    const id = declaration['id'] as OxcNode;
-    if (!init || id.type !== 'Identifier') continue;
-    const callee = init.type === 'NewExpression' ? (init['callee'] as OxcNode) : undefined;
-    const literal = init.type === 'Literal' && init['regex'] != null;
-    if (literal || (callee?.type === 'Identifier' && callee['name'] === 'RegExp')) out.push(String(id['name']));
-  }
-  return out;
+/** The named imports of a statement: `import { now as ahora } from '@fudic/core'` → `ahora`. */
+function importedNames(statement: OxcNode): readonly (readonly [string, string])[] {
+  if (statement.type !== 'ImportDeclaration') return [];
+  const source = String(child(statement, 'source')!['value']);
+  return children(statement, 'specifiers')
+    .filter((specifier) => specifier.type === 'ImportSpecifier')
+    .map((specifier) => {
+      const imported = child(specifier, 'imported')!;
+      const name = imported.type === 'Identifier' ? nameOf(imported) : String(imported['value']);
+      return [nameOf(child(specifier, 'local')!), `${source}#${name}`] as const;
+    });
 }
 
 /** The names a statement binds to a function: a declaration or a `const f = () => …`. */

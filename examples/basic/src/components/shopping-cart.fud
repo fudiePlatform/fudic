@@ -3,9 +3,11 @@
   // `@carrito` de host no recibiría nada. Tiene que estar VIVO antes de que el handler del
   // emisor corra, y eso es exactamente lo que la pre-hidratación de bus garantiza.
   import { signal } from "@fudic/core";
+  import { currency } from "@fudic/i18n";
 
   const items = signal(0);
   const total = signal(0);
+  const euros = currency("EUR");
 
   function onCarrito(ev: CustomEvent) {
     items.set(items() + 1);
@@ -42,7 +44,7 @@
   <template shadowrootmode="open">
     <p class="cart" bus:carrito=@onCarrito($event)>
       <span class="badge">@items()</span>
-      <span class="total">@total().toFixed(2) €</span>
+      <span class="total">@(total() | euros)</span>
     </p>
   </template>
 </shopping-cart>

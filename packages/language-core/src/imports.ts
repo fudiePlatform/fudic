@@ -191,8 +191,11 @@ export function nestedContent(node: HtmlContent): readonly (readonly HtmlContent
     }
     case 'foreach':
     case 'for':
-    case 'while':
-      return [(node as ForeachNode | ForNode | WhileNode).body];
+    case 'while': {
+      // The `@empty` body is markup of the same file, and its tags resolve like the loop's.
+      const loop = node as ForeachNode | ForNode | WhileNode;
+      return loop.empty === undefined ? [loop.body] : [loop.body, loop.empty.body];
+    }
     case 'switch':
       return (node as SwitchNode).cases.map((c) => c.body);
     case 'section':

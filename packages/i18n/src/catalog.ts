@@ -8,7 +8,10 @@
  * whatever it cannot use.
  */
 
-import { FUD1023, type FileDiagnostic } from '@fudic/diagnostics';
+import { FUD1023 } from '@fudic/diagnostics';
+// The types from their own entry: the root re-exports every code, and an app that only formats
+// a price would load all of them into its typecheck.
+import type { FileDiagnostic } from '@fudic/diagnostics/types';
 import type { ParseResult } from './result.js';
 import { sha1 } from './sha1.js';
 

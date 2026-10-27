@@ -36,6 +36,28 @@ export interface SemanticInput {
    * the caller cannot know: `data` then follows the role, as before.
    */
   readonly apis?: { readonly data: boolean; readonly names: ReadonlySet<string> };
+  /**
+   * Absolute path of the document, when the host knows it: the importer of its `@code`'s own
+   * imports, and where a diagnostic reported in another file (a store, SDD-61 §3.9) points back.
+   */
+  readonly path?: string;
+  /**
+   * The source of a module of the PROJECT that `importer` imports as `specifier` (SDD-61 §4.1):
+   * what lets the server cut follow a store or a data module. `undefined` when the specifier is
+   * not a module of the project, or cannot be read. ABSENT: the host cannot read modules, and
+   * the project's imports are not checked.
+   *
+   * The cache is the host's: the same object back while the text is the same is what keeps the
+   * module parsed once per version.
+   */
+  readModule?(specifier: string, importer: string): ProjectModule | undefined;
+}
+
+/** A module of the project, read by the host (SDD-61 §4.1). */
+export interface ProjectModule {
+  /** Absolute path: the file a diagnostic inside it is reported on. */
+  readonly path: string;
+  readonly source: string;
 }
 
 /**

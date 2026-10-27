@@ -12,7 +12,8 @@
  * value is the text as a single literal — what the build shows when a translation is invalid.
  */
 
-import { FUD1024, span, type SourceDiagnostic } from '@fudic/diagnostics';
+import { FUD1024, span } from '@fudic/diagnostics';
+import type { SourceDiagnostic } from '@fudic/diagnostics/types';
 import type { CompiledMessage, MessagePart } from './compiled.js';
 import type { ParseResult } from './result.js';
 

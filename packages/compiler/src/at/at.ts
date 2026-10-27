@@ -71,7 +71,7 @@ export interface RazorCommentNode extends Node {
 }
 
 /** Control keywords recognized after `@`. Body grammar belongs to SDD-06. */
-export type ControlKeyword = 'if' | 'else' | 'for' | 'foreach' | 'while' | 'switch';
+export type ControlKeyword = 'if' | 'else' | 'for' | 'foreach' | 'while' | 'switch' | 'empty';
 
 /**
  * Layout directives (SDD-21, decision 84). Razor's own spelling: `@section` lowercase
@@ -126,6 +126,9 @@ const CONTROL_KEYWORDS: ReadonlySet<string> = new Set<ControlKeyword>([
   'foreach',
   'while',
   'switch',
+  // Decision 163. Reserved like `else`: it only means something right after a loop's `}`,
+  // and anywhere else it is an error (FUD1149) rather than a read of a name `empty`.
+  'empty',
 ]);
 
 /** The closed set of layout directives (decision 84). */

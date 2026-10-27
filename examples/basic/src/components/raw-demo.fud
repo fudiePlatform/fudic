@@ -1,13 +1,14 @@
 @code {
   import { trustedHtml, type TrustedHTML } from "@fudic/dom";
 
+  // HTML que llega del servidor (`html` en el `.fudapi` de la ruta): viaja como texto, sin la
+  // marca, así que `@raw` lo escribe como texto escapado.
+  const { falsa } = props<{ falsa?: TrustedHTML }>();
+
   // HTML que el autor avala: la marca va en el VALOR, igual que `trustedUrl`.
   const uno = trustedHtml('<h3>Primer post</h3><p>Con <em>énfasis</em> y un <a href="/">enlace</a>.</p>');
   const dos = trustedHtml("<h3>Segundo post</h3><ul><li>uno</li><li>dos</li></ul>");
 
-  // Un string disfrazado de marcado: TypeScript se lo cree por el `as`, el runtime no.
-  // No lleva la marca, así que `@raw` lo escribe como texto escapado.
-  const falsa = "<b>esto no está marcado</b>" as unknown as TrustedHTML;
 
   import { signal } from "@fudic/core";
 

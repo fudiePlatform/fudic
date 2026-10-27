@@ -254,10 +254,15 @@ export class LocaleIos {
   }
 }
 
-/** Whether an import resolved to a file this project compiles per locale (§4.6). */
-export function compilesPerLocale(path: string, root: string): boolean {
+/**
+ * Whether an import resolved to a file this project compiles per locale (§4.6). `implementations`
+ * are the `server/` and `browser/` folders of the libraries (posix, with their final `/`): a half
+ * there fills the contracts of the locale that loads it, which are that locale's own.
+ */
+export function compilesPerLocale(path: string, root: string, implementations: readonly string[] = []): boolean {
   const posix = path.replace(/\\/gu, '/');
   if (posix.endsWith('.fud')) return true;
+  if (implementations.some((dir) => posix.startsWith(dir))) return true;
   if (!/\.[cm]?[jt]sx?$/u.test(posix) || posix.includes('/node_modules/')) return false;
   return posix.startsWith(`${root.replace(/\\/gu, '/').replace(/\/$/u, '')}/`);
 }
@@ -365,6 +370,8 @@ export interface LocaleContext {
   readonly locales: readonly string[];
   /** `fudic.json`'s `site`: the origin of the absolute URLs of the head (§4.7). */
   readonly site?: string;
+  /** The folders of the libraries' implementations, compiled per locale (`compilesPerLocale`). */
+  readonly implementations: readonly string[];
   ioFor(base: ResolveIo, locale: string): ResolveIo;
   compileFor(locale: string): LocaleCompile;
 }
@@ -427,13 +434,14 @@ export async function resolveForLocale(
   id: string,
   { importer, locale }: HandedOn,
   root: string,
+  implementations: readonly string[] = [],
 ): Promise<string | { readonly id: string } | null> {
   const resolved = await resolve(id, importer, { skipSelf: true });
   if (resolved === null || resolved.external === true || resolved.external === 'absolute') return resolved;
   const q = resolved.id.indexOf('?');
   const path = q === -1 ? resolved.id : resolved.id.slice(0, q);
   // A generated module of the project too: each locale has its own contracts (SDD-60 §4.4).
-  return compilesPerLocale(path, root) || path.startsWith('fudic:') ? withLocale(resolved.id, locale) : resolved;
+  return compilesPerLocale(path, root, implementations) || path.startsWith('fudic:') ? withLocale(resolved.id, locale) : resolved;
 }
 
 /**
@@ -446,7 +454,7 @@ export function localePlugin(ctx: LocaleContext): Plugin {
     enforce: 'pre',
     resolveId(id, importer) {
       const handed = handedOn(id, importer);
-      return handed === undefined ? null : resolveForLocale((i, from, o) => this.resolve(i, from, o), id, handed, ctx.root);
+      return handed === undefined ? null : resolveForLocale((i, from, o) => this.resolve(i, from, o), id, handed, ctx.root, ctx.implementations);
     },
     transform(code, id) {
       const locale = localeOf(id);

@@ -1,0 +1,20 @@
+@* §3.6 and §4.4: a default applies when the value is absent, `null` included — in the props, in `@{ }` and in a loop. *@
+@code {
+  type Ficha = { nombre?: string | null; edad?: number | null };
+
+  const { titulo = "sin título", ficha, fichas = [] } =
+    props<{ titulo?: string | null; ficha: Ficha; fichas?: readonly Ficha[] }>();
+}
+
+<c-defectos>
+  <template shadowrootmode="open">
+    <h1>@titulo</h1>
+    @{ const { nombre = "anónimo", edad = 0 } = ficha; }
+    <p class="bloque">@nombre @edad</p>
+    <ul>
+      @foreach (const { nombre = "—", edad = -1 } of fichas) key (edad) {
+        <li>@nombre @edad</li>
+      }
+    </ul>
+  </template>
+</c-defectos>

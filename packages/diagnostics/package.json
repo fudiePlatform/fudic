@@ -30,6 +30,10 @@
       "types": "./dist/src/index.d.ts",
       "import": "./dist/src/index.js"
     },
+    "./types": {
+      "types": "./dist/src/types.d.ts",
+      "import": "./dist/src/types.js"
+    },
     "./explain": {
       "types": "./dist/src/explain.d.ts",
       "import": "./dist/src/explain.js"

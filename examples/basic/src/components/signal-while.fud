@@ -1,13 +1,15 @@
+<link rel="server" href="./signal-while.fudapi">
+
 @code {
   // La lista enlazada del ejemplo canónico de la decisión 91. La cabecera del bucle
   // se ejecuta en los dos lados, así que el servidor también la evalúa.
-  type Nodo = { id: string; n: number; next: Nodo | null };
+  import type { Nodo } from "fudic:components/signal-while";
 
-  const lista: Nodo = { id: "a", n: 1, next: { id: "b", n: 2, next: { id: "c", n: 3, next: null } } };
+  const lista: Nodo = { id: "a", n: 1, next: { id: "b", n: 2, next: { id: "c", n: 3 } } };
 
   // El cursor. Un `@while` no declara variable de iteración, así que la suya vive fuera del
   // bloque — y por eso hay que resembrarla en el template antes de cada pasada.
-  let cur: Nodo | null = lista;
+  let cur: Nodo | undefined = lista;
 
   import { signal } from "@fudic/core";
 
@@ -56,7 +58,7 @@
 
       @{ cur = lista; }
       <ul class="lista">
-        @while (cur !== null) key (cur.id) {
+        @while (cur !== undefined) key (cur.id) {
           <li>nodo @cur.n</li>
           @{ cur = cur.next; }
         }

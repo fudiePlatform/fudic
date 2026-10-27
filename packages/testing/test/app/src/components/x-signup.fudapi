@@ -1,0 +1,6 @@
+# The form `x-signup` binds: declared here, as every form is, so the server cut reads it from its
+# contract (SDD-61 §3.9) and not from a hand-written module.
+form signupForm
+  alias  str = ""
+    required  "Write an alias."
+  bio  str = ""

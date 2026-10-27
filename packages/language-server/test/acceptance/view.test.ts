@@ -1,5 +1,5 @@
 /**
- * SDD-51 criterion 19: what the view may not write is marked in the editor, over the live LSP
+ * SDD-51 criterion 19 and SDD-61 criterion 30: what the view may not write is marked in the editor, over the live LSP
  * connection, on the same span the build fails on (the channel of SDD-35).
  *
  * One mutant per code of the range, on the blog post of the fixture project: the line that
@@ -48,20 +48,22 @@ afterAll(async () => {
   await harness.stop();
 });
 
-describe('SDD-51 — every code of the view, in the editor', () => {
+describe('SDD-51 and SDD-61 — the codes of the view, in the editor', () => {
   it.each([
     ['FUD0900', "<h1>@(data.title = 'x')</h1>", "data.title = 'x'"],
     ['FUD0901', '@{ data = null; }', 'data'],
     ['FUD0902', '<h1>@(await data)</h1>', 'await data'],
     ['FUD0903', '<h1>@(import.meta.url)</h1>', 'import.meta'],
-    ['FUD0904', '<h1>@(String(this))</h1>', 'this'],
-    ['FUD0905', '<h1>@((() => { return 1; })())</h1>', '() => { return 1; }'],
+    ['FUD0904', '<h1>@(this.x)</h1>', 'this'],
+    ['FUD0905', '<h1>@(() => 1)</h1>', '() => 1'],
     ['FUD0906', '<h1>@((1, data.title))</h1>', '1, data.title'],
     ['FUD0907', '<h1>@(window.name)</h1>', 'window'],
     ['FUD0908', '@{ debugger; }', 'debugger'],
     ['FUD0909', '<h1 onclick="x">x</h1>', 'onclick'],
     ['FUD0910', '<h1>@(data.constructor.name)</h1>', 'constructor'],
-    ['FUD0912', '<h1>@(Math.random())</h1>', 'Math.random()'],
+    ['FUD1140', '<h1>@(data.title.toUpperCase())</h1>', 'data.title.toUpperCase'],
+    ['FUD1142', '<h1>@(typeof data)</h1>', 'typeof'],
+    ['FUD1143', '<h1>@([1, 2].length)</h1>', '[1, 2]'],
     ['FUD0919', '<h1>@(/x/.source)</h1>', '/x/'],
   ])('%s on %j', async (code, line, text) => {
     const source = slug.replace(LINE, line);

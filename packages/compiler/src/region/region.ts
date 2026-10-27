@@ -282,7 +282,7 @@ function controlRegion(source: string, node: ControlNode, offset: number): Regio
   }
 
   if (insideJs(node.header.inner, offset)) return { kind: 'expression', span: node.header.inner };
-  return childRegion(source, node.body, offset);
+  return childRegion(source, node.body, offset) ?? childRegion(source, node.empty?.body ?? [], offset);
 }
 
 /** Whether a construct node is one of the five control constructs. */

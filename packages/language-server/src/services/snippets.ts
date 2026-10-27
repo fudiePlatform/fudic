@@ -101,6 +101,24 @@ function insideHead(document: CachedDocument, offset: number): boolean {
   return found;
 }
 
+/**
+ * Whether only whitespace separates this offset from the closing `}` of a loop with no
+ * `@empty` yet. A loop's span ends just past that brace, and the `@` being typed is not part
+ * of it: a half-written `@em` parses as an expression of its own, after the loop.
+ */
+function followsLoop(document: CachedDocument, offset: number): boolean {
+  let found = false;
+  walk(documentRoots(document.document), {
+    control: (node) => {
+      if (node.type !== 'foreach' && node.type !== 'for' && node.type !== 'while') return;
+      if (node.empty !== undefined || node.span.end > offset) return;
+      const end = node.span.end;
+      if (document.source[end - 1] === '}' && document.source.slice(end, offset).trim() === '') found = true;
+    },
+  });
+  return found;
+}
+
 /** Whether this offset satisfies a placement. */
 function placedAt(document: CachedDocument, offset: number, placement: SnippetPlacement): boolean {
   if (placement === 'outside-head') return !insideHead(document, offset);
@@ -134,6 +152,8 @@ export interface FudSnippet {
   readonly requiresUndecided?: true;
   /** Only in a file that has a snippet to render: it declares one or links a file of them. */
   readonly requiresSnippets?: true;
+  /** Only right after the `}` of a loop that has no `@empty` yet (decision 163). */
+  readonly requiresLoopBefore?: true;
   /**
    * Whether accepting it opens the next list at once: its last tabstop is a position the
    * server completes, and the author should not have to ask twice.
@@ -320,6 +340,16 @@ export const SNIPPETS: readonly FudSnippet[] = [
     roles: CONTROL_ROLES,
     placement: 'outside-head',
   },
+  // What a loop renders when it makes no pass. Only where it can go: right after the body of
+  // a loop that has none yet — anywhere else it is `FUD1149`.
+  {
+    label: '@empty',
+    detail: 'what the loop renders when it makes no pass (decision 163)',
+    scope: 'markup',
+    body: '@empty {\n  $0\n}',
+    roles: CONTROL_ROLES,
+    requiresLoopBefore: true,
+  },
   {
     label: '@switch',
     detail: 'multi-way branch, no fall-through (decision 14)',
@@ -471,7 +501,8 @@ export function snippetsAt(
       (snippet.placement === undefined || placedAt(document, offset, snippet.placement)) &&
       (snippet.requiresUndecided === undefined || isUndecided(document.document)) &&
       (snippet.requiresSnippets === undefined ||
-        document.document.snippets.length + document.document.snippetLinks.length > 0),
+        document.document.snippets.length + document.document.snippetLinks.length > 0) &&
+      (snippet.requiresLoopBefore === undefined || followsLoop(document, offset)),
   ).map((snippet) =>
     snippet.label === 'component' ? { ...snippet, body: componentSkeleton(componentTag) } : snippet,
   );

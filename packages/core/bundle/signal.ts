@@ -12,7 +12,13 @@
  * It lives beside `src` and not inside it because it is an ARTEFACT of the build, not a
  * module of the package: `dist` must not grow a second name for the same value, and `src/**`
  * is the denominator of this package's coverage.
+ *
+ * `now` travels here for the same reason the rule gives `batch` no frontier: it is a
+ * one-line function whose only legal place in the view's world is `signal(now())`, so every
+ * route that imports it imports `signal` too, and a piece of its own would weigh far less
+ * than the frontier it pays.
  */
 
 export { signal, type Signal } from '../src/signal.js';
 export { batch } from '../src/batch.js';
+export { now } from '../src/now.js';

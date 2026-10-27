@@ -9,6 +9,7 @@
 
 import { FUD0972, FUD0974, type FudDiagnostic } from '@fudic/diagnostics';
 import { normalizeTerm, type Arg, type BlockKind, type Criterion, type SpecFile } from '@fudic/spec';
+import { fixtureOf } from './access.js';
 import { hostComponent, isSignal, jsonLiteral } from './host.js';
 import type { BenchTarget } from './target.js';
 
@@ -197,7 +198,7 @@ class Planner {
         order.length === 0
           ? ''
           : `    @code {\n      import fixtures from "${specifier}";\n` +
-            `      const { ${order.join(', ')} } = fixtures["${fixture}"];\n    }\n`;
+            `      const { ${order.join(', ')} } = ${fixtureOf(fixture)};\n    }\n`;
       const attrs = order.map((prop) => ` .${prop}=@${prop}`).join('');
       this.page(id, { href: component, tag: this.target.tag, code, attrs, content });
       return base;

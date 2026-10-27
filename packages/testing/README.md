@@ -31,7 +31,8 @@ test('adds on click', async () => {
 
 - `via: 'ssr'` is the default. The server's HTML goes in, its declarative shadow roots are
   applied, and hydration is installed. The first click on a host that has not hydrated yet
-  still counts. Props must be JSON.
+  still counts. Props must be JSON, plus `Date` at any depth, which the hydration state carries.
+  An app with `"locales"` is mounted in its first locale, so a pipe formats and `t()` translates.
 - `via: 'client'` creates the element the way a parent does, with any value as a prop.
 - The queries and gestures come from Testing Library. Queries reach into child shadow roots,
   and a gesture resolves once everything it started has finished: requests, chunks and

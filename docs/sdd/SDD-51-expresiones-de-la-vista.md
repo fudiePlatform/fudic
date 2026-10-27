@@ -1,6 +1,7 @@
 # SDD-51 — Lo que se puede escribir en la vista
 
-> **Estado:** `Hecho` — [tareas](./SDD-51-Task.md), 24 / 24.
+> **Estado:** `Hecho` — [tareas](./SDD-51-Task.md), 24 / 24. **Enmendada por [SDD-61](./SDD-61-vista-portable.md)**: la vista es
+> una lista blanca portable, y `FUD0911` queda retirado.
 > **Paquetes:** `@fudic/compiler` (analizadores semánticos, emit de `setUrl`) ·
 > `@fudic/diagnostics` (los códigos) · `@fudic/dom` (`setUrl` en el contrato `Dom<N>` y en `browserDom`) · `@fudic/ssr` (`setUrl` en sus adaptadores) ·
 > `@fudic/language-core` (la proyección deja de ofrecer `on*`)

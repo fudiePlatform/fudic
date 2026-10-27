@@ -1,0 +1,13 @@
+@* §3.4: `<`, `<=`, `>`, `>=` between two numbers, two texts (UTF-16 unit by unit) and two dates (by instant). *@
+@code {
+  const { a = 1, b = 2, antes, despues } = props<{ a?: number; b?: number; antes: Date; despues: Date }>();
+}
+
+<c-relacionales>
+  <template shadowrootmode="open">
+    <p class="numeros">@(a < b) @(a <= b) @(a > b) @(a >= b) @(a <= a) @(a >= a)</p>
+    <p class="textos">@("a" < "b") @("Z" < "a") @("á" > "z") @("ab" < "abc") @("b" <= "b") @("b" >= "c")</p>
+    <p class="utf16">@("😀" < "～")</p>
+    <p class="fechas">@(antes < despues) @(antes > despues) @(antes <= antes) @(despues >= antes)</p>
+  </template>
+</c-relacionales>

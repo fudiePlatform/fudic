@@ -26,6 +26,7 @@ import {
 import { FUD0423, FUD0429, FUD0435, FUD0761, FUD1111, FUD1114, FUD1115 } from '@fudic/diagnostics';
 import { expandDocument, type DraggedLink, type OffsetMap } from '../expand/index.js';
 import { holeContractDiagnostics } from '../layout/index.js';
+import { lowerPortable, type LoweredSource } from './lower.js';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 
 /**
@@ -210,7 +211,10 @@ interface LoadedFud {
  * expects: the synthetic source is an artifact of the expansion and never leaves as a
  * coordinate system.
  */
-function load(path: string, io: ResolveIo): LoadedFud {
+function load(path: string, given: ResolveIo): LoadedFud {
+  // Every file the emit compiles — this one and the snippets it expands — is read through the
+  // portable lowering (SDD-61 §4.4), which hands back its own text when there is nothing to do.
+  const io = lowering(given);
   const source = io.read(path);
   const parsed = parse(source);
   const expansion = expandDocument(path, source, parsed.value, io);
@@ -220,7 +224,8 @@ function load(path: string, io: ResolveIo): LoadedFud {
   return {
     source: expansion.source,
     doc: expansion.document,
-    map: io.origin === undefined ? expansion.map : expansion.map.through((file) => io.origin?.(file)?.map, path),
+    // The lowering always has an `origin`, so the map always reads back through it.
+    map: expansion.map.through((file) => io.origin?.(file)?.map, path),
     diagnostics: [...parsed.diagnostics, ...expansion.diagnostics],
     snippetFiles: expansion.files,
     dragged: expansion.dragged,
@@ -229,6 +234,46 @@ function load(path: string, io: ResolveIo): LoadedFud {
         ? { source, document: parsed.value }
         : { source: rewritten.source, document: parse(rewritten.source).value },
   };
+}
+
+const lowered = new WeakMap<ResolveIo, ResolveIo>();
+
+/**
+ * `io`, with each `.fud` it reads lowered for the portable view (`lower.ts`): `read` gives the
+ * text the emit compiles and `origin` the way back to the file on disk, through the host's own
+ * rewrite when it has one (a locale, SDD-58). One wrapper per host io, and one lowering per
+ * file and text, so a file read twice by one build is parsed for it once.
+ */
+function lowering(io: ResolveIo): ResolveIo {
+  let wrapped = lowered.get(io);
+  if (wrapped !== undefined) return wrapped;
+  const files = new Map<string, { readonly text: string; readonly lowered: LoweredSource | undefined }>();
+  const lower = (path: string): { readonly text: string; readonly lowered: LoweredSource | undefined } => {
+    const text = io.read(path);
+    let file = files.get(path);
+    if (file?.text !== text) {
+      file = { text, lowered: lowerPortable(path, text) };
+      files.set(path, file);
+    }
+    return file;
+  };
+  wrapped = {
+    read: (path) => {
+      const file = lower(path);
+      return file.lowered?.source ?? file.text;
+    },
+    resolve: (from, href) => io.resolve(from, href),
+    origin: (path) => {
+      const inner = io.origin?.(path);
+      const file = files.get(path);
+      if (file?.lowered === undefined) return inner;
+      return inner === undefined
+        ? { source: file.text, map: file.lowered.map }
+        : { source: inner.source, map: file.lowered.map.through(() => inner.map, path) };
+    },
+  };
+  lowered.set(io, wrapped);
+  return wrapped;
 }
 
 /**

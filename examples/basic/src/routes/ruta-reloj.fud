@@ -9,22 +9,13 @@
   // esto pinta la hora del servidor y se queda congelado para siempre. No es que
   // funcione peor — no funciona. Por eso el `effect` mete a quien lo escribe en
   // `fud-eager`, y quien lo escribe aquí es la ruta.
-  import { signal, computed, effect } from "@fudic/core";
+  import { signal, effect, now } from "@fudic/core";
+  import { date } from "@fudic/i18n";
 
-  const ahora = signal(new Date());
+  const ahora = signal(now());
 
-  const hora = computed(() =>
-    ahora().toLocaleTimeString("es-ES", { hour12: false }),
-  );
-
-  const fecha = computed(() =>
-    ahora().toLocaleDateString("es-ES", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }),
-  );
+  const hora = date({ timeStyle: "medium", timeZone: "Europe/Madrid" });
+  const fecha = date({ weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Madrid" });
 
   effect(() => {
     const id = setInterval(() => ahora.set(new Date()), 1000);
@@ -93,8 +84,8 @@
 <div class="caja">
   <p class="etiqueta">@@code { … } de esta misma página</p>
   <div class="propio">
-    <time class="hora">@hora()</time>
-    <p class="fecha">@fecha()</p>
+    <time class="hora">@(ahora() | hora)</time>
+    <p class="fecha">@(ahora() | fecha)</p>
   </div>
 </div>
 

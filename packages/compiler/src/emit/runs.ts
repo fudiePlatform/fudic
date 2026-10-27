@@ -86,6 +86,7 @@ const ROLE: Record<HtmlContent['type'], ContentRole> = {
   'unhandled-construct': 'node',
   if: 'node',
   else: 'node',
+  empty: 'node',
   for: 'node',
   foreach: 'node',
   while: 'node',

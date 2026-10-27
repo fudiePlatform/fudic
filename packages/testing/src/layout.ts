@@ -13,6 +13,7 @@ import { FILE_EXPORT } from './constants.js';
 import { layoutHost } from './host.js';
 import type { FudModule } from './mount.js';
 import { renderPage } from './page.js';
+import { localized } from './project.js';
 import { enterWorld, type WorldOptions } from './session.js';
 import { showDocument, type Visited } from './visit.js';
 
@@ -38,6 +39,6 @@ export async function renderLayout(layout: Pick<FudModule, typeof FILE_EXPORT>, 
     layoutHost({ layout: layout[FILE_EXPORT], body, sections, head }),
   );
   // The props as a route's `layout` would resolve them, handed to the render already resolved.
-  const html = await renderPage(page, { hasDi: routeUsesDi(page, nodeIo()) }, '/', '/', undefined, props);
+  const html = await renderPage(localized(page), { hasDi: routeUsesDi(page, nodeIo()) }, '/', '/', undefined, props);
   return showDocument(html, page, 200, providers);
 }

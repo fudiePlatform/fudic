@@ -131,7 +131,8 @@ export class BlockEmitter implements BlockSink {
     const registry = `$k${id}`;
     const own = this.#headerBindings(node);
     const branches = branchesOf(node);
-    const blocks = branches.map((branch) => this.#build(node, branch, own));
+    // An `@empty` renders outside the loop: it sees none of what the header declares.
+    const blocks = branches.map((branch) => this.#build(node, branch, branch.kind === 'empty' ? [] : own));
 
     at.bodies.registries.push(registry);
     at.bodies.decls.line(`let ${registry} = [];`);
@@ -139,7 +140,7 @@ export class BlockEmitter implements BlockSink {
     for (const [i, branch] of branches.entries()) this.#declare(blocks[i]!, branch, node, at);
 
     const parent = at.level.fab ?? at.level.dom;
-    if (isLoop(node)) this.#loop(node, blocks[0]!, id, registry, parent, at);
+    if (isLoop(node)) this.#loop(node, blocks[0]!, blocks[1], id, registry, parent, at);
     else this.#branching(node, branches, blocks, id, registry, parent, at);
     at.bodies.update.line(`$u${id}();`);
     return registry;
@@ -180,7 +181,7 @@ export class BlockEmitter implements BlockSink {
     const spans: Span[] = [];
     // The block's own key belongs to the block: it is read in the scope of the body, and
     // the instance computes it from the very parameters this list decides.
-    const key = isLoop(node) ? keyExpression(node) : undefined;
+    const key = isLoop(node) && branch.kind === 'loop' ? keyExpression(node) : undefined;
     if (key !== undefined) spans.push(key);
     collectTemplateJs(branch.body, (_kind, span) => spans.push(span));
 
@@ -247,7 +248,9 @@ export class BlockEmitter implements BlockSink {
     w.line('const $mv = ($ref, $n) => { if ($ref === null) $dom.append($parent, $n); else $dom.before($ref, $n); return $n; };');
     w.line('return {');
     w.indent();
-    w.line(`key: ${this.#keyOf(node)},`);
+    // The block of an `@empty` has no row to be: no key, and the mark the reconciliation finds it by.
+    if (branch.kind === 'empty') w.line('key: undefined,').line('z: true,');
+    else w.line(`key: ${this.#keyOf(node)},`);
     w.line('c: () => {');
     w.indent().appendWriter(bodies.fab).line('$a();').dedent();
     w.line('},');
@@ -312,6 +315,7 @@ export class BlockEmitter implements BlockSink {
   #loop(
     node: LoopNode,
     block: BuiltBlock,
+    empty: BuiltBlock | undefined,
     id: number,
     registry: string,
     parent: string,
@@ -323,6 +327,10 @@ export class BlockEmitter implements BlockSink {
     // create path the anchor is either irrelevant (the block mounts in its turn) or not yet
     // assigned — which is why the deferred mount hands it over instead.
     const call = `const $i = ${block.name}(${parent}, null${args === '' ? '' : `, ${args}`});`;
+    // The `@empty` block is one more instance in the SAME registry, alone when the loop did not
+    // turn (SDD-61 §4.4.3): whoever moves or releases the construct's instances moves and
+    // releases it too, as it does the live arm of an `@if`.
+    const none = empty === undefined ? undefined : `if (${registry}.length === 0) { ${callOf(empty, parent, 'null')}`;
 
     const fab = at.bodies.fab;
     fab.line(`${head} {`).indent();
@@ -332,6 +340,7 @@ export class BlockEmitter implements BlockSink {
     fab.line('$i.s();');
     fab.line(`${registry}.push($i);`);
     fab.dedent().line('}');
+    if (none !== undefined) fab.line(`${none} $i.c();${at.deferredMount ? '' : ' $i.m();'} $i.s(); ${registry}.push($i); }`);
     if (at.deferredMount) {
       at.bodies.mount.line(`for (const $i of ${registry}) $i.m(${anchorOf(at)});`);
     }
@@ -343,8 +352,9 @@ export class BlockEmitter implements BlockSink {
     adopt.line('$i.s();');
     adopt.line(`${registry}.push($i);`);
     adopt.dedent().line('}');
+    if (none !== undefined) adopt.line(`${none} ${this.#adoptStep(at)} $i.s(); ${registry}.push($i); }`);
 
-    this.#reconcile(node, block, id, registry, parent, at);
+    this.#reconcile(node, block, empty, id, registry, parent, at);
   }
 
   /**
@@ -367,6 +377,7 @@ export class BlockEmitter implements BlockSink {
   #reconcile(
     node: LoopNode,
     block: BuiltBlock,
+    empty: BuiltBlock | undefined,
     id: number,
     registry: string,
     parent: string,
@@ -379,8 +390,9 @@ export class BlockEmitter implements BlockSink {
     w.indent();
     w.line('const $prev = new Map();');
     w.line('const $gone = [];');
+    if (empty !== undefined) w.line('let $z = null;');
     w.line(
-      `for (const $i of ${registry}) { if ($prev.has($i.key)) $gone.push($i); else $prev.set($i.key, $i); }`,
+      `for (const $i of ${registry}) { ${empty === undefined ? '' : 'if ($i.z) $z = $i; else '}if ($prev.has($i.key)) $gone.push($i); else $prev.set($i.key, $i); }`,
     );
     w.line('const $next = [];');
     w.line(`${loopHead(node, this.#ctx.source)} {`);
@@ -394,6 +406,14 @@ export class BlockEmitter implements BlockSink {
     w.dedent();
     w.line('}');
     w.line('for (const $i of $prev.values()) $gone.push($i);');
+    if (empty !== undefined) {
+      // Zero rows keep the `@empty` that is alive, updated in place, or build it; any row
+      // retires it. Never both, and never a rebuild of the same block: no flicker.
+      const eargs = empty.params.join(', ');
+      w.line(
+        `if ($next.length === 0) { if ($z !== null) { $z.u(${eargs}); $next.push($z); } else { ${callOf(empty, parent, anchor)} $i.c(); $i.m(); $i.s(); $next.push($i); } } else if ($z !== null) $gone.push($z);`,
+      );
+    }
     w.line('for (const $i of $gone) $i.r();');
     w.line(
       `for (let $j = $next.length - 1, $ref = ${anchor}; $j >= 0; $j -= 1) $ref = $next[$j].move($ref);`,
@@ -504,6 +524,11 @@ export class BlockEmitter implements BlockSink {
   #slice(span: Span): string {
     return this.#ctx.source.slice(span.start, span.end);
   }
+}
+
+/** `const $i = $bN($parent, anchor, …params);` — one instance of `block`. */
+function callOf(block: BuiltBlock, parent: string, anchor: string): string {
+  return `const $i = ${block.name}(${[parent, anchor, ...block.params].join(', ')});`;
 }
 
 /** The anchor a block inserts before: the next node of its level, or the level's end (§3.4). */

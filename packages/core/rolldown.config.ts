@@ -105,6 +105,7 @@ const FRONTIERS: Readonly<Record<string, string>> = {
   'src/hydrate/live.ts': 'live',
   'src/signal.ts': 'signal',
   'src/batch.ts': 'signal',
+  'src/now.ts': 'signal',
   'src/tracking.ts': 'tracking',
   'src/computed.ts': 'computed',
   'src/effect.ts': 'effect',

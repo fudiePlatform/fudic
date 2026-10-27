@@ -4,6 +4,9 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   test: {
     include: ['test/**/*.test.ts'],
+    // The first request to a dev server compiles the page cold: 1-4s alone, and over the 5s
+    // default once `pnpm -r test` or coverage has the CPUs.
+    testTimeout: 30_000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

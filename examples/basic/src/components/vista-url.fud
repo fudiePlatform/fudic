@@ -6,6 +6,9 @@
   import { trustedUrl, type TrustedURL } from "@fudic/dom";
 
   const url = signal<string | TrustedURL>("/blog");
+  // Lo que se pinta de ella, como texto: la vista no convierte valores, así que cada manejador
+  // escribe las dos a la vez.
+  const texto = signal("/blog");
   const clics = signal(0);
 
   // Un `let` que solo cambia un manejador: `@click` es invocación diferida (decisión 96),
@@ -14,6 +17,7 @@
 
   function elegir(nueva: string | TrustedURL): void {
     url.set(nueva);
+    texto.set(String(nueva));
   }
 
   const marcada = trustedUrl("miapp:abrir");
@@ -57,7 +61,7 @@
 
       @* Un valor sin prefijo: `setUrl` en el servidor y en el navegador. *@
       <a class="destino" href=@url()>Enlace con la URL elegida</a>
-      <p>Elegida: <code>@(String(url()))</code></p>
+      <p>Elegida: <code>@texto()</code></p>
 
       @* Criterio 12: en un `@click` el efecto ES el objetivo, y la flecha puede escribir. *@
       <button @click="@(() => silencioso++)">Escribe un let sin pintar nada</button>

@@ -127,7 +127,8 @@ const WALK =
 describe('the canonical @while of decision 91', () => {
   it('the SERVER walk advances the cursor inside the loop', () => {
     const src = server(LISTA, WALK);
-    expect(src).toContain('while (cur !== null) {');
+    // Presence is lowered to `!= null` (SDD-61 §4.4.1).
+    expect(src).toContain('while (cur != null) {');
     expect(src).toContain('cur = cur.next;');
   });
 

@@ -1,0 +1,19 @@
+@* §3.8 and annex A.3.4, D6: two spreads and an explicit attribute on a native, sorted by name where the first spread sits; and a spread on a component. *@
+<link rel="component" href="./parts/c-card.fud">
+
+@code {
+  type Enlace = { href: string; title?: string | null; rel?: string | null };
+  type Extra = { title?: string | null; hidden?: boolean | null };
+  type Tarjeta = { title: string; href: string };
+
+  const { enlace, extra, sinTitulo, tarjeta } = props<{ enlace: Enlace; extra: Extra; sinTitulo: Extra; tarjeta: Tarjeta }>();
+}
+
+<c-spread>
+  <template shadowrootmode="open">
+    <a ...enlace ...extra class="boton">Leer</a>
+    <a ...enlace ...sinTitulo class="boton">Otro</a>
+    <a id="solo" ...extra>Extra</a>
+    <c-card ...tarjeta></c-card>
+  </template>
+</c-spread>

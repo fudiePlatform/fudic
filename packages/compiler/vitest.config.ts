@@ -56,6 +56,7 @@ export default defineConfig({
         // What the view may write (SDD-51): the walk, its scope, and the six analyzers.
         'src/semantic/view-js.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/semantic/view-scope.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/semantic/view-ast.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/semantic/view-globals.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/semantic/html-events.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/semantic/analyzers/view-expressions.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },

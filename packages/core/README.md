@@ -75,6 +75,20 @@ scrolls near it.
 Three events are published on `document` for instrumentation: `fud:ready`,
 `fud:hydrated` (`{ id, tag, ms, from }`) and `fud:warmed` (`{ tag }`).
 
+## `now()`
+
+```ts
+import { now, signal } from '@fudic/core';
+
+const at = signal(now());
+```
+
+The current instant, as part of fudic's portable catalog. It is only valid as the whole
+initializer of a signal in the `@code`: the server evaluates it once per render, the value
+travels in the page's state, and a client that hydrates reads it from there instead of
+calling `now()` again. Paint it with a date pipe, and move it on from a handler
+(`at.set(new Date())`), where any code is allowed.
+
 ## The signals and the element base
 
 (SDD-14, SDD-15 §3.7.)

@@ -135,9 +135,20 @@
         },
         "4": { "name": "punctuation.section.block.begin.fudic" }
       },
-      "end": "(\\})(?!\\s*else\\b)",
+      "end": "(\\})(?!\\s*(?:else\\b|@empty\\b))",
       "endCaptures": { "1": { "name": "punctuation.section.block.end.fudic" } },
-      "patterns": [{ "include": "#control-else" }, { "include": "$self" }]
+      "patterns": [{ "include": "#control-else" }, { "include": "#control-empty" }, { "include": "$self" }]
+    },
+
+    "control-empty": {
+      "comment": "`} @empty {` after a loop's body (decision 163): a continuation of the block, like `} else {`.",
+      "match": "(\\})\\s*(@)(empty)\\b\\s*(\\{)",
+      "captures": {
+        "1": { "name": "punctuation.section.block.end.fudic" },
+        "2": { "name": "punctuation.definition.keyword.fudic" },
+        "3": { "name": "keyword.control.directive.fudic" },
+        "4": { "name": "punctuation.section.block.begin.fudic" }
+      }
     },
 
     "control-else": {

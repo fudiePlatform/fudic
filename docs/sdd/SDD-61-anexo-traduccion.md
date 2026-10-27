@@ -77,7 +77,9 @@
 | `a - b`, `a * b`, `-a` | igual | igual | igual | igual | igual | igual |
 | `a / b` | igual | `a / b` | `a / b` | `a / b` (el emisor nunca pliega constantes) | `a / b` | `fud.div(a, b)` |
 | `a % b` | igual | `a % b` | `a % b` | `math.Mod(a, b)` | `a % b` | `fud.mod(a, b)` |
-| `a < b` … `>=` | igual | igual | igual | igual | igual | igual |
+| `a < b` … `>=` (números) | igual | igual | igual | igual | igual | igual |
+| `a < b` (textos) | igual | `string.CompareOrdinal(a, b) < 0` | `a.compareTo(b) < 0` | `fud.Compare16(a, b) < 0` | `fud::compare16(&a, &b) < 0` | `fud.compare16(a, b) < 0` |
+| `a < b` (fechas) | igual | `a < b` | `a.isBefore(b)` | `a.Before(b)` | `a < b` | `a < b` |
 | `a && b`, `a \|\| b`, `!a` | igual | igual | igual | igual | igual | `a and b`, `a or b`, `not a` |
 | `a ?? b` | igual | `a ?? b` | `(t0 = a) != null ? t0 : b` | `t0 := b; if a != nil { t0 = *a }` | `a.unwrap_or_else(\|\| b)` | `t0 if (t0 := a) is not None else b` |
 | `c ? a : b` | igual | `c ? a : b` | `c ? a : b` | `t0 := b; if c { t0 = a }` | `if c { a } else { b }` | `a if c else b` |
@@ -87,6 +89,12 @@
   nombre; si no, se escribe con `if … else` completo.
 - `Str(x)` es `x` si es texto y `Num(x)` si es número (A.4). El pase tipado garantiza que no le
   llega otra cosa.
+- **Texto con `<`, `<=`, `>`, `>=`.** C# (`CompareOrdinal`) y Java (`compareTo`) ya comparan por
+  unidades UTF-16, como JS. Go, Rust y Python comparan por bytes UTF-8 o por puntos de código, que
+  ordenan distinto un carácter fuera del plano básico frente a uno entre `U+E000` y `U+FFFF`
+  (`"😀" < "～"` es `true` en JS y `false` en Go). Por eso usan `Compare16` del runtime (A.4).
+  `<=` es `<= 0`, y así los demás.
+- **Fechas.** En Java, `a <= b` es `!a.isAfter(b)` y `a >= b` es `!a.isBefore(b)`.
 
 ### Acceso
 
@@ -96,6 +104,38 @@
 | `a?.b` | igual | `a?.B` | `a == null ? null : a.b()` | `if a != nil { t0 = &a.B }` | `a.as_ref().map(\|a\| &a.b)` | `a.b if a is not None else None` |
 | `xs[i]` | igual | `Fud.At(xs, i)` | `Fud.at(xs, i)` | `fud.At(xs, i)` | `fud::at(&xs, i)` | `fud.at(xs, i)` |
 | `m[k]` | igual | `Fud.Get(m, k)` | `m.get(k)` | `fud.Get(m, k)` | `m.get(&k)` | `m.get(k)` |
+
+### Colecciones (SDD-61 §3.5 bis)
+
+| Vista | TS | C# | Java | Go | Rust | Python |
+|---|---|---|---|---|---|---|
+| `xs.length` | igual | `(double) xs.Count` | `(double) xs.size()` | `float64(len(xs))` | `xs.len() as f64` | `float(len(xs))` |
+| `s.length` (texto) | igual | `(double) s.Length` | `(double) s.length()` | `fud.Len16(s)` | `fud::len16(&s)` | `fud.len16(s)` |
+| `xs.filter(x => c)` | igual | `xs.Where(x => c).ToList()` | `xs.stream().filter(x -> c).toList()` | `fud.Filter(xs, func(x T) bool { return c })` | `xs.iter().filter(\|x\| c).cloned().collect::<Vec<_>>()` | `[x for x in xs if c]` |
+| `xs.map(x => e)` | igual | `xs.Select(x => e).ToList()` | `xs.stream().map(x -> e).toList()` | `fud.Map(xs, func(x T) U { return e })` | `xs.iter().map(\|x\| e).collect::<Vec<_>>()` | `[e for x in xs]` |
+| `xs.reduce((acc, x) => e, v)` | igual | `xs.Aggregate(v, (acc, x) => e)` | `Fud.reduce(xs, v, (acc, x) -> e)` | `fud.Reduce(xs, v, func(acc U, x T) U { return e })` | `xs.iter().fold(v, \|acc, x\| e)` | `functools.reduce(lambda acc, x: e, xs, v)` |
+| `xs.toSorted((a, b) => e)` | igual | `xs.OrderBy(x => x, Comparer<T>.Create((a, b) => Fud.Cmp(e))).ToList()` | `xs.stream().sorted((a, b) -> Fud.cmp(e)).toList()` | `fud.Sorted(xs, func(a, b T) float64 { return e })` | `fud::sorted(&xs, \|a, b\| e)` | `sorted(xs, key=functools.cmp_to_key(lambda a, b: fud.cmp(e)))` |
+| Con índice: `xs.filter((x, i) => c)`, `map((x, i) => e)`, `reduce((acc, x, i) => e, v)` | igual | `Fud.FilterI`, `Fud.MapI`, `Fud.ReduceI` | `Fud.filterI`, `Fud.mapI`, `Fud.reduceI` | `fud.FilterI`, `fud.MapI`, `fud.ReduceI` | `fud::filter_i`, `fud::map_i`, `fud::reduce_i` | `fud.filter_i`, `fud.map_i`, `fud.reduce_i` |
+
+- **Mismo resultado, por construcción.**
+  - Las flechas de la vista no escriben nada (SDD-61 §3.5 bis), así que da igual que una bajada sea
+    perezosa (`Where` de C#, `stream` de Java) o inmediata: el resultado es el mismo.
+  - Todas devuelven una lista nueva y no tocan la original.
+  - `OrderBy` (C#), `sorted` de `stream` (Java), `slices.SortStableFunc` (Go, dentro de
+    `fud.Sorted`), `sort_by` (Rust, dentro de `fud::sorted`) y `sorted` (Python) son **estables**,
+    como `toSorted` de JS. `List.Sort` de C# no lo es: nunca se usa.
+  - El comparador de la vista da un `number`; `Cmp` lo convierte al signo que pide cada lenguaje
+    (`NaN` y `0` → `0`).
+- **El índice es `f64`**, como cualquier número de la vista. Las variantes con índice del runtime
+  lo pasan ya convertido; por eso no se usa el `Where((x, i) => …)` de C#, que lo da como `int`.
+- **El cuerpo de la flecha** se baja con las mismas filas de este anexo. Donde el lenguaje no tiene
+  ternario dentro de una lambda (Go), el cuerpo se escribe con `if` y `return`; en Rust, con `if`
+  como expresión.
+- **Java captura solo variables efectivamente finales.** Si la flecha lee una variable `let` de un
+  `@{ }` que se reasigna, el emisor la copia a un `final` temporal justo antes de la llamada.
+- **`filter(…).length`** se puede bajar a un recuento sin lista intermedia (`Count(c)` en C#,
+  `count()` en Java y Rust, `sum(1 for …)` en Python). Es una optimización del emisor, y da el mismo
+  número.
 
 ### Lo que se pinta
 
@@ -137,9 +177,9 @@ La desestructuración tiene su propia sección (A.3).
 
 ### El `@code` que el servidor evalúa
 
-| `@code` | Todos los lenguajes salvo TS (TS: como hoy) |
+| `@code` | Todos los lenguajes salvo TS (TS: como hoy, salvo el defecto de una prop: `b ??= (d)`, SDD-61 §4.4) |
 |---|---|
-| `const { a, b = d } = props<T>()` | El parámetro `p` de la función de render (el `record` de props generado); `a` es `p.A`, y `b` es `p.B ?? d` |
+| `const { a, b = d } = props<T>()` | El parámetro `p` de la función de render (el `record` de props generado); `a` es `p.A`, y `b` es `p.B ?? d`, también en TS |
 | `signal(v)` | `var x = v` |
 | `computed(() => e)` | `var x = e`, en el orden del `@code` |
 | `effect(…)` | Nada |
@@ -625,6 +665,11 @@ Lo que se escribe a mano, una vez por lenguaje. La suite de conformidad lo prueb
 | `At(xs, i)` | El elemento si `i` es entero y `0 <= i < len`; si no, ausente |
 | `Get(m, k)` | El valor si la clave está; si no, ausente |
 | `div(a, b)`, `mod(a, b)` | IEEE 754 sin excepciones; solo Python los necesita (`/` y `fmod` lanzan con `0`). `mod` lleva el signo del dividendo |
+| `Cmp(n)` | El signo de un comparador: `-1` si `n < 0`, `1` si `n > 0`, `0` si es `0`, `-0` o `NaN` |
+| `Compare16(a, b)` | `-1`, `0` o `1` comparando los dos textos **unidad a unidad UTF-16**, como `<` de JS. Lo necesitan Go, Rust y Python; C# usa `string.CompareOrdinal` y Java `compareTo` |
+| `Len16(s)` | Cuántas unidades UTF-16 tiene el texto, como `.length` de JS (`"😀"` → `2`). Lo necesitan Go, Rust y Python |
+| `Filter`, `Map`, `Reduce`, `Sorted` | Lo que el lenguaje no da en una expresión: en Go las cuatro; en Java `reduce` (el de `stream` exige combinador); en Rust `sorted`, que clona y ordena con `sort_by` y `Cmp`. `Sorted` es siempre **estable** y nunca toca la lista de entrada |
+| `FilterI`, `MapI`, `ReduceI` | Las variantes con índice, en todos los lenguajes, con el índice como `f64` |
 | `Now()` | El instante actual, en UTC |
 | `Format(preset, v, locale)` | El catálogo de pipes (SDD-58 §4.4) sobre el ICU de la plataforma |
 | `Message(partes, args, locale)` | El subconjunto ICU de SDD-58, con plural y select |
@@ -1122,3 +1167,131 @@ def render(dom: fud.Dom, parent: fud.Node, p: CampoTextoProps, ioc: fud.Ioc) -> 
 - `<p>` dice `placeholder:  · required: true · maxlength: 20`.
 
 Es una fila de la suite de conformidad.
+
+## A.8. Ejemplo guía 3: contar, ordenar y unir
+
+El ejemplo de las tareas de SDD-61 §3.5 bis, más una lista de autores ordenada y unida en un texto.
+Es lo que el desarrollador escribe:
+
+```
+@code {
+  import type { Tarea, Autor } from 'fudic:tareas';
+
+  const tareas     = signal<readonly Tarea[]>(data.tareas);
+  const autores    = signal<readonly Autor[]>(data.autores);
+  const hechas     = computed(() => tareas().filter(t => t.hecha).length);
+  const pendientes = computed(() => tareas().filter(t => !t.hecha).length);
+  const firmantes  = computed(() => autores()
+    .toSorted((a, b) => a.nombre < b.nombre ? -1 : a.nombre > b.nombre ? 1 : 0)
+    .reduce((s, a, i) => i === 0 ? a.nombre : `${s}, ${a.nombre}`, ''));
+}
+
+<p>Hechas: @hechas() · Pendientes: @pendientes()</p>
+<p>Firman: @firmantes()</p>
+```
+
+Con cinco tareas (dos hechas) y los autores `Marta`, `Ana` y `Luis`, los seis lenguajes pintan:
+
+```html
+<p>Hechas: 2 · Pendientes: 3</p>
+<p>Firman: Ana, Luis, Marta</p>
+```
+
+Lo que sigue es lo que el servidor evalúa del `@code` en cada lenguaje (A.2, «El `@code` que el
+servidor evalúa»: las señales son variables y los `computed` se calculan una vez, en su orden). El
+pintado de los dos `<p>` es el de A.2, «Lo que se pinta». En el navegador no se baja nada: el
+`@code` es el TS de arriba, y al marcar una tarea los `computed` se recalculan solos.
+
+**TS** (servidor Node: el `@code` tal cual)
+
+```js
+const tareas = signal(data.tareas);
+const autores = signal(data.autores);
+const hechas = computed(() => tareas().filter(t => t.hecha).length);
+const pendientes = computed(() => tareas().filter(t => !t.hecha).length);
+const firmantes = computed(() => autores()
+  .toSorted((a, b) => a.nombre < b.nombre ? -1 : a.nombre > b.nombre ? 1 : 0)
+  .reduce((s, a, i) => i === 0 ? a.nombre : `${s}, ${a.nombre}`, ''));
+```
+
+**C#**
+
+```csharp
+var tareas = data.Tareas;
+var autores = data.Autores;
+var hechas = (double) tareas.Where(t => t.Hecha).ToList().Count;
+var pendientes = (double) tareas.Where(t => !t.Hecha).ToList().Count;
+var firmantes = Fud.ReduceI(
+    autores.OrderBy(x => x, Comparer<Autor>.Create((a, b) => Fud.Cmp(
+        string.CompareOrdinal(a.Nombre, b.Nombre) < 0 ? -1
+        : string.CompareOrdinal(a.Nombre, b.Nombre) > 0 ? 1 : 0))).ToList(),
+    "", (s, a, i) => i == 0 ? a.Nombre : s + ", " + a.Nombre);
+```
+
+**Java**
+
+```java
+var tareas = data.tareas();
+var autores = data.autores();
+var hechas = (double) tareas.stream().filter(t -> t.hecha()).toList().size();
+var pendientes = (double) tareas.stream().filter(t -> !t.hecha()).toList().size();
+var firmantes = Fud.reduceI(
+    autores.stream().sorted((a, b) -> Fud.cmp(
+        a.nombre().compareTo(b.nombre()) < 0 ? -1
+        : a.nombre().compareTo(b.nombre()) > 0 ? 1 : 0)).toList(),
+    "", (s, a, i) -> i == 0 ? a.nombre() : s + ", " + a.nombre());
+```
+
+**Go**
+
+```go
+tareas := data.Tareas
+autores := data.Autores
+hechas := float64(len(fud.Filter(tareas, func(t Tarea) bool { return t.Hecha })))
+pendientes := float64(len(fud.Filter(tareas, func(t Tarea) bool { return !t.Hecha })))
+firmantes := fud.ReduceI(
+    fud.Sorted(autores, func(a, b Autor) float64 {
+        if fud.Compare16(a.Nombre, b.Nombre) < 0 { return -1 }
+        if fud.Compare16(a.Nombre, b.Nombre) > 0 { return 1 }
+        return 0
+    }),
+    "", func(s string, a Autor, i float64) string {
+        if i == 0 { return a.Nombre }
+        return s + ", " + a.Nombre
+    })
+```
+
+**Rust**
+
+```rust
+let tareas = &data.tareas;
+let autores = &data.autores;
+let hechas = tareas.iter().filter(|t| t.hecha).cloned().collect::<Vec<_>>().len() as f64;
+let pendientes = tareas.iter().filter(|t| !t.hecha).cloned().collect::<Vec<_>>().len() as f64;
+let firmantes = fud::reduce_i(
+    &fud::sorted(autores, |a, b|
+        if fud::compare16(&a.nombre, &b.nombre) < 0 { -1.0 }
+        else if fud::compare16(&a.nombre, &b.nombre) > 0 { 1.0 }
+        else { 0.0 }),
+    String::new(),
+    |s, a, i| if i == 0.0 { a.nombre.clone() } else { format!("{}, {}", s, a.nombre) });
+```
+
+**Python**
+
+```python
+tareas = data.tareas
+autores = data.autores
+hechas = float(len([t for t in tareas if t.hecha]))
+pendientes = float(len([t for t in tareas if not t.hecha]))
+firmantes = fud.reduce_i(
+    sorted(autores, key=functools.cmp_to_key(lambda a, b: fud.cmp(
+        -1 if fud.compare16(a.nombre, b.nombre) < 0
+        else 1 if fud.compare16(a.nombre, b.nombre) > 0 else 0))),
+    "", lambda s, a, i: a.nombre if i == 0 else s + ", " + a.nombre)
+```
+
+- Las bajadas son literales, fila a fila; la optimización de `filter(…).length` (A.2,
+  «Colecciones») no se aplica aquí para que se vea la correspondencia.
+- `hechas` es `2.0` en todos, y `Num` lo pinta `2`, como JS.
+- Es una fila de la suite de conformidad.

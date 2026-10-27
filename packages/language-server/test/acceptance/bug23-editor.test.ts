@@ -193,14 +193,15 @@ describe('the `@` after a `=` on a NATIVE element', () => {
 });
 
 describe('the `@` in a text region', () => {
-  it('offers the snippets, the escape hatch and everything in scope', async () => {
+  it('offers the snippets, the escape hatch and everything in scope the view may read', async () => {
     const items = await completeAt('@|', '@');
 
     expect(names(items)).toContain('@foreach');
     expect(names(items)).toContain('@()');
     expect(names(items)).toContain('@data');
     expect(names(items)).toContain('@title');
-    expect(names(items)).toContain('@handlerClick');
+    // A function is not a value the view reads (SDD-61 §4.3); a handler, below, is offered it.
+    expect(names(items)).not.toContain('@handlerClick');
   });
 
   it('offers the same list on a plain Ctrl+Space, with no `@` typed', async () => {

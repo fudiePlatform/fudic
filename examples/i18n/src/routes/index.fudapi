@@ -1,0 +1,4 @@
+# Prerendered once per locale. The date the greeting paints comes from here: the view reads dates,
+# it does not build them, so any backend can paint the page.
+load ssg
+  alta  date

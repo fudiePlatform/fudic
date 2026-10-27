@@ -1,0 +1,26 @@
+@* §3.7: `@{ }` declares and reassigns; and annex A.4: a name shadowed in nested blocks. *@
+@code {
+  type Par = { a: number; b: number };
+
+  const { par, xs = [] } = props<{ par: Par; xs?: readonly number[] }>();
+}
+
+<c-bloque>
+  <template shadowrootmode="open">
+    @{ const { a, b } = par; let n = 0; n += a; n = n * b; n++; }
+    <p class="declara">@a @b @n</p>
+    @{ let x = "fuera"; }
+    <p class="fuera">@x</p>
+    @if (a > 0) {
+      @{ const x = "dentro"; }
+      <p class="dentro">@x</p>
+      @foreach (const x of xs) key (x) {
+        <i>@x</i>
+      }
+      <p class="dentro-tras">@x</p>
+    }
+    <p class="fuera-tras">@x</p>
+    @{ x = "cambiado"; }
+    <p class="reasignado">@x</p>
+  </template>
+</c-bloque>

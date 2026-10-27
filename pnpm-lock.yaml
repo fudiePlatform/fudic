@@ -47,6 +47,9 @@ importers:
       '@fudic/http':
         specifier: workspace:*
         version: link:../../packages/http
+      '@fudic/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@fudic/ssr':
         specifier: workspace:*
         version: link:../../packages/ssr
@@ -700,6 +703,9 @@ importers:
       '@fudic/forms':
         specifier: workspace:*
         version: link:../forms
+      '@fudic/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@fudic/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig

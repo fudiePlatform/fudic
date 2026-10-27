@@ -1,0 +1,56 @@
+@* §3.7 and decision 163: `@empty` in the three loops, with zero turns and with some. *@
+@code {
+  const { vacia = [], llena = [], cero = 0, dos = 2 } =
+    props<{ vacia?: readonly string[]; llena?: readonly string[]; cero?: number; dos?: number }>();
+}
+
+<c-empty>
+  <template shadowrootmode="open">
+    <ul class="foreach-vacio">
+      @foreach (const x of vacia) key (x) {
+        <li>@x</li>
+      } @empty {
+        <li class="none">ninguno</li>
+      }
+    </ul>
+    <ul class="foreach-lleno">
+      @foreach (const x of llena) key (x) {
+        <li>@x</li>
+      } @empty {
+        <li class="none">ninguno</li>
+      }
+    </ul>
+    <ol class="for-vacio">
+      @for (let i = 0; i < cero; i++) key (i) {
+        <li>@i</li>
+      } @empty {
+        <li class="none">cero</li>
+      }
+    </ol>
+    <ol class="for-lleno">
+      @for (let i = 0; i < dos; i++) key (i) {
+        <li>@i</li>
+      } @empty {
+        <li class="none">cero</li>
+      }
+    </ol>
+    <p class="while-vacio">
+      @{ let a = cero; }
+      @while (a > 0) key (a) {
+        <b>@a</b>
+        @{ a = a - 1; }
+      } @empty {
+        <i>nada</i>
+      }
+    </p>
+    <p class="while-lleno">
+      @{ let b = dos; }
+      @while (b > 0) key (b) {
+        <b>@b</b>
+        @{ b = b - 1; }
+      } @empty {
+        <i>nada</i>
+      }
+    </p>
+  </template>
+</c-empty>

@@ -227,11 +227,8 @@ load.handle(async (): Promise<{ n: number }> => {
 const ERROR_PAGE = `<!DOCTYPE html>
 <html>
 <head><title>Error</title>
-@code {
-  const problem = data as { status: number; title: string; detail?: string };
-}
 </head>
-<body><h1>status @problem.status</h1><p>@problem.title</p><p>detail: [@problem.detail]</p></body>
+<body><h1>status @data.status</h1><p>@data.title</p><p>detail: [@data.detail]</p></body>
 </html>
 `;
 

@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 import type { Plugin, UserConfig } from 'vite';
 import type {} from 'vitest/config';
@@ -8,7 +9,7 @@ import { BASE_URL, FILE_EXPORT, OPTIONS_KEY, RENEW_WINDOW, ROOT_KEY } from '../s
 import environment from '../src/environment.js';
 
 function testPlugin(): Plugin {
-  return fudicTest()[1]!;
+  return fudicTest()[2]!;
 }
 
 function configOf(user: UserConfig): UserConfig {
@@ -21,11 +22,11 @@ function transformOf(code: string, id: string): unknown {
 
 describe('fudicTest', () => {
   test('is the project plugin plus the one that sets the environment', () => {
-    expect(fudicTest().map((p) => p.name)).toEqual(['fudic', 'fudic:test', 'fudic:test-contract']);
+    expect(fudicTest().map((p) => p.name)).toEqual(['fudic:test-locale', 'fudic', 'fudic:test', 'fudic:test-contract']);
   });
 
   test('takes the same options as fudic()', () => {
-    expect(fudicTest({ routesDir: 'src/pages' }).map((p) => p.name)).toEqual(['fudic', 'fudic:test', 'fudic:test-contract']);
+    expect(fudicTest({ routesDir: 'src/pages' }).map((p) => p.name)).toEqual(['fudic:test-locale', 'fudic', 'fudic:test', 'fudic:test-contract']);
   });
 
   test('puts vitest in the fudic environment at http://localhost/, off the network, with its setup file', () => {
@@ -58,7 +59,7 @@ describe('fudicTest', () => {
 
   test('provides the plugin options and the base, for the in-memory server', () => {
     expect(configOf({}).test?.provide?.[OPTIONS_KEY]).toEqual({ base: '/' });
-    const plugin = fudicTest({ routesDir: 'src/pages' })[1]!;
+    const plugin = fudicTest({ routesDir: 'src/pages' })[2]!;
     const config = (plugin.config as (user: UserConfig) => UserConfig)({ base: '/app/' });
     expect(config.test?.provide?.[OPTIONS_KEY]).toEqual({ routesDir: 'src/pages', base: '/app/' });
   });
@@ -99,6 +100,10 @@ describe('the $file export', () => {
       code: `export const tag = "x";\nexport const ${FILE_EXPORT} = "/p/x.fud";\n`,
       map: null,
     });
+  });
+
+  test('nor does the locale a test imported it in: mount compiles it for its own', () => {
+    expect(transformOf('', '/p/x.fud?locale=es')).toEqual({ code: `\nexport const ${FILE_EXPORT} = "/p/x.fud";\n`, map: null });
   });
 
   test('nothing else does: a query, a virtual id, another file', () => {
@@ -146,7 +151,7 @@ describe('the fudic environment', () => {
 
 describe('the contract of a .fudapi (SDD-60 §4.4)', () => {
   const resolveOf = (id: string, importer?: string): unknown =>
-    (fudicTest()[2]!.resolveId as (id: string, importer?: string) => unknown)(id, importer);
+    (fudicTest()[3]!.resolveId as (id: string, importer?: string) => unknown)(id, importer);
 
   test('a generated module takes the one that is both the call and the contract', () => {
     expect(resolveOf('@fudic/http/contract', 'fudic:components/user-form')).toBe(CONTRACT);
@@ -158,5 +163,34 @@ describe('the contract of a .fudapi (SDD-60 §4.4)', () => {
     expect(resolveOf('@fudic/http/contract', '/app/fudic-root.server.js')).toBeNull();
     expect(resolveOf('@fudic/http/contract')).toBeNull();
     expect(resolveOf('@fudic/forms/contract', 'fudic:components/user-form')).toBeNull();
+  });
+});
+
+describe('a test in an app with locales (SDD-58 §4.6)', () => {
+  type Resolved = { readonly id: string } | null;
+  const posix = (path: string): string => path.replace(/\\/gu, '/');
+  /** The plugin, its project read from `root`, and its `resolveId` over a resolver that answers `id`. */
+  function resolverIn(root: string): (id: string, importer?: string) => Promise<unknown> {
+    const plugin = fudicTest()[0]!;
+    (plugin.configResolved as (config: { root: string }) => void)({ root });
+    const context = { resolve: async (id: string): Promise<Resolved> => ({ id: posix(resolve(root, id)) }) };
+    return async (id, importer) => (plugin.resolveId as (this: typeof context, id: string, importer?: string) => unknown).call(context, id, importer);
+  }
+
+  const conformance = fileURLToPath(new URL('./conformance', import.meta.url));
+  const app = fileURLToPath(new URL('./app', import.meta.url));
+
+  test('imports what the test reads compiled for the first locale, as the pages it mounts are', async () => {
+    const resolveIn = resolverIn(conformance);
+    const at = posix(conformance);
+    expect(await resolveIn('./c-if.fud', `${at}/conformance.test.ts`)).toBe(`${at}/c-if.fud?locale=es`);
+    expect(await resolveIn('./c-blog.fixture.ts', `${at}/x.spec.mts`)).toBe(`${at}/c-blog.fixture.ts?locale=es`);
+  });
+
+  test('and leaves alone what is not a test, and every import of an app without locales', async () => {
+    const resolveIn = resolverIn(conformance);
+    expect(await resolveIn('./c-if.fud', `${conformance}/parts/c-card.fud`)).toBeNull();
+    expect(await resolveIn('./c-if.fud')).toBeNull();
+    expect(await resolverIn(app)('./x.fud', `${app}/a.test.ts`)).toBeNull();
   });
 });

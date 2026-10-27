@@ -1,0 +1,4 @@
+# What a step of the page is: the view reads the list in any backend, so its type is the contract's.
+type Paso
+  clave  str
+  texto  str

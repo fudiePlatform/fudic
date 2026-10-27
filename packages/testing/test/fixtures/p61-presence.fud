@@ -1,0 +1,10 @@
+@code {
+  const { x } = props<{ x?: string | null }>();
+}
+
+<p61-presence>
+  <template shadowrootmode="open">
+    @if (x === null) {<p>absent</p>} else {<p>present</p>}
+    @if (undefined !== x) {<i>there</i>}
+  </template>
+</p61-presence>

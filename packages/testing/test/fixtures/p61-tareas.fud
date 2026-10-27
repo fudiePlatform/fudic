@@ -1,0 +1,26 @@
+@code {
+  import { signal, computed } from "@fudic/core";
+
+  type Tarea = { id: number; titulo: string; hecha: boolean };
+
+  const { inicial = [] } = props<{ inicial?: Tarea[] }>();
+
+  const tareas = signal<readonly Tarea[]>(inicial);
+  const hechas = computed(() => tareas().filter(t => t.hecha).length);
+  const pendientes = computed(() => tareas().filter(t => !t.hecha).length);
+}
+
+<p61-tareas>
+  <template shadowrootmode="open">
+    <p>Hechas: @hechas() · Pendientes: @pendientes()</p>
+    @foreach (const t of tareas()) key (t.id) {
+      <label>
+        <input type="checkbox" .checked=@t.hecha
+               @change=@(() => tareas.set(tareas().map(x => x.id === t.id ? { ...x, hecha: !x.hecha } : x)))>
+        @t.titulo
+      </label>
+    } @empty {
+      <p>No hay tareas.</p>
+    }
+  </template>
+</p61-tareas>

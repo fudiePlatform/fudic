@@ -7,6 +7,6 @@
   </article>
 }
 
-@snippet fila(item: { id: number; name: string }) {
-  <p data-id=@item.id>@item.name</p>
+@snippet fila(id: number, name: string) {
+  <p data-id=@id>@name</p>
 }

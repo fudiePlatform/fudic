@@ -8,7 +8,7 @@
  * applied, and hydration is installed over it.
  */
 
-import { classifyError, renderErrorPage, matchRouteBuild } from '@fudic/vite/harness';
+import { classifyError, pageModuleOf, renderErrorPage, matchRouteBuild, type RouteBuild } from '@fudic/vite/harness';
 import { serverRoot } from './api.js';
 import { showPage } from './document.js';
 import { graphOf } from './graph.js';
@@ -37,39 +37,47 @@ function pathnameOf(url: string, base: string): string {
   return path.startsWith(base) ? path.slice(base.length - 1) : path;
 }
 
+/** What the dev server answers for `url`: the HTML, its status, and the page that painted it. */
+interface Answer {
+  readonly html: string;
+  readonly status: number;
+  readonly page: RouteBuild;
+}
+
 /** The page the dev server answers for `url`, with its status. */
-async function answer(url: string, data: unknown): Promise<{ html: string; status: number; file: string }> {
+async function answer(url: string, data: unknown): Promise<Answer> {
   const { base, routes, errorPage } = projectOf();
   const pathname = pathnameOf(url, base);
   const rb = matchRouteBuild(routes, pathname);
   if (rb === null) throw new Error(`visit('${url}'): no route matches ${pathname}`);
   try {
-    return { html: await renderPage(rb.absPath, routeFacts(rb), rb.route.pattern, pathname, data), status: 200, file: rb.absPath };
+    return { html: await renderPage(pageModuleOf(rb), routeFacts(rb), rb.route.pattern, pathname, data), status: 200, page: rb };
   } catch (error) {
     const failure = classifyError(error, true);
     if (failure.kind === 'redirect') {
       throw new Error(`visit('${url}'): redirected with ${failure.status} to ${failure.location} — visit that URL instead`);
     }
     if (errorPage === undefined) {
-      return { html: await renderErrorPage(null, failure.problem, ''), status: failure.problem.status, file: rb.absPath };
+      return { html: await renderErrorPage(null, failure.problem, ''), status: failure.problem.status, page: rb };
     }
-    const mod = await loadWrapper(errorPage.absPath, routeFacts(errorPage));
-    return { html: await renderErrorPage(mod, failure.problem, ''), status: failure.problem.status, file: errorPage.absPath };
+    const mod = await loadWrapper(pageModuleOf(errorPage), routeFacts(errorPage));
+    return { html: await renderErrorPage(mod, failure.problem, ''), status: failure.problem.status, page: errorPage };
   }
 }
 
 /**
  * Make `html` — a whole page — the document, hydration installed over the components of
- * `file`, and hand back the page with `status`.
+ * `file` compiled for `locale`, and hand back the page with `status`.
  */
 export async function showDocument(
   html: string,
   file: string,
   status: number,
   providers: readonly ProviderOverride[],
+  locale?: string,
 ): Promise<Visited> {
   const body = showPage(html);
-  hydrate(body, chunkMap(graphOf(file).components.values()), providers);
+  hydrate(body, chunkMap(graphOf(file).components.values(), locale), providers);
   await settled();
   // Onto the harness, not spread from it: `invalidated` is a getter, and a spread would freeze it.
   return Object.assign(harnessOf(document), { document, status });
@@ -79,6 +87,6 @@ export async function showDocument(
 export async function visit(url: string, options: VisitOptions = {}): Promise<Visited> {
   const providers = enterWorld(options, url);
   await serverRoot();
-  const { html, status, file } = await answer(url, options.data);
-  return showDocument(html, file, status, providers);
+  const { html, status, page } = await answer(url, options.data);
+  return showDocument(html, page.absPath, status, providers, page.locale);
 }

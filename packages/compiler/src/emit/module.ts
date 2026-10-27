@@ -43,7 +43,7 @@ import { planPageSheets, type PageSheets, type SheetUse } from './page-sheets.js
 import { compactStyleCss } from './css-compact.js';
 import { isRtl, type LocaleCompile } from '../i18n/localize.js';
 import { codeOf, codeOfDocument, diHelpers } from './oxc-code.js';
-import { restGroups } from './rest.js';
+import { propDefaults, restGroups } from './rest.js';
 import { hasDependencyInjection } from './di.js';
 import { cellSlots, childTargets, reactiveScope } from './state.js';
 import { bridgeIds, formAssociatedTags, hydratableTags, shadowOptions } from './level.js';
@@ -58,6 +58,7 @@ import {
   writeEntryCode,
   writeEntryImports,
   writeHeadElements,
+  writeInert,
   writeNonceBinding,
   writeRuntimeTags,
   writeSharedHead,
@@ -397,10 +398,12 @@ function buildComponentModule(
     // exactly as the author wrote it.
     const named = props.filter((p) => p.rest === undefined);
     const pattern = [
-      ...named.map((p) => (p.def !== undefined ? `${p.name} = ${p.def}` : p.name)),
+      ...named.map((p) => p.name),
       ...[...restGroups(props).keys()].map((rest) => `...${rest}`),
     ].join(', ');
-    w.line(`const { ${pattern} } = props ?? {};`);
+    // `let` when a default is assigned after the pattern: absent is `null` too (SDD-61 §4.4).
+    const defaults = propDefaults(props);
+    w.line(`${defaults === '' ? 'const' : 'let'} { ${pattern} } = props ?? {};${defaults === '' ? '' : ` ${defaults}`}`);
   }
   if (owns) {
     // Numbered and recorded in the same step, because the map the browser rebuilds the chain
@@ -458,11 +461,7 @@ function buildComponentModule(
     // way to read, so a template that says `expanded()` has to mean the same thing on both
     // branches. The object with a `peek` this used to be was not callable, and the day the
     // author wrote the call form it compiled on the client and threw in the prerender.
-    //
-    // A derived value is its own function: `computed(fn)` renders inert as `fn` itself, so
-    // it is evaluated when READ and a derived value the server never paints costs nothing.
-    const init = s.kind === 'computed' ? `(${s.init})` : `() => (${s.init})`;
-    w.line(`const ${s.name} = ${init}; // inert ${s.kind} (SSR; hydration is client-side)`);
+    writeInert(w, s);
   }
   // A callback that crosses by reference is declared in `@code { @client }`, which the server
   // never evaluates — so the name the body is about to hand the child does not exist here. It

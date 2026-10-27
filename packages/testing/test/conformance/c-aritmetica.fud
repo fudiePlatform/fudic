@@ -1,0 +1,18 @@
+@* §3.4: arithmetic is f64; `/` is real division; `%` takes the sign of the dividend. *@
+@code {
+  const { a = 7, b = 2, nombre = "Ana" } = props<{ a?: number; b?: number; nombre?: string }>();
+}
+
+<c-aritmetica>
+  <template shadowrootmode="open">
+    <p class="suma">@(a + b)</p>
+    <p class="resta">@(a - b)</p>
+    <p class="producto">@(a * b)</p>
+    <p class="division">@(a / b)</p>
+    <p class="resto">@(a % b)</p>
+    <p class="resto-negativo">@(-a % b) @(a % -b) @(-a % -b)</p>
+    <p class="negativo">@(-a)</p>
+    <p class="concatena">@("n=" + a) @(nombre + "!") @(a + "" + b)</p>
+    <p class="precedencia">@(a + b * 3) @((a + b) * 3)</p>
+  </template>
+</c-aritmetica>

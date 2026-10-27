@@ -1,0 +1,18 @@
+@* §3.4: equality of primitives of one type, and presence with null or undefined (§4.4). *@
+@code {
+  type Estado = "abierto" | "cerrado";
+
+  const { s = "x", n = 1, ok = true, estado = "abierto", falta, nulo } =
+    props<{ s?: string; n?: number; ok?: boolean; estado?: Estado; falta?: string; nulo?: string | null }>();
+}
+
+<c-igualdad>
+  <template shadowrootmode="open">
+    <p class="texto">@(s === "x") @(s !== "x")</p>
+    <p class="numero">@(n === 1) @(n !== 1)</p>
+    <p class="logico">@(ok === true) @(ok !== true)</p>
+    <p class="union">@(estado === "abierto") @(estado === "cerrado")</p>
+    <p class="presencia">@(falta === null) @(falta === undefined) @(nulo === null) @(nulo === undefined)</p>
+    <p class="presencia-no">@(falta !== null) @(nulo !== undefined) @(s !== null)</p>
+  </template>
+</c-igualdad>

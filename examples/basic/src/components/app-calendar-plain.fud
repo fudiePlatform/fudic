@@ -2,14 +2,11 @@
   // La MISMA rejilla, escrita como se escribe hoy en cualquier framework: un `@click` por
   // celda. Existe para una sola cosa — que el contador de listeners de la página se mueva
   // aquí y no se mueva en la de al lado, con los mismos botones y las mismas filas.
-  import { makeDays, type Day } from "../data/days.js";
-
-  // Su propia lista, no la del calendario de al lado: las marcas viven dentro de los objetos.
-  const seed = makeDays("b");
-
+  import { daysB, type Day } from "../data/days.js";
   import { signal } from "@fudic/core";
 
-  const rows = signal(seed);
+  // Su propia lista, no la del calendario de al lado: las marcas viven dentro de los objetos.
+  const rows = signal(daysB);
   const last = signal("—");
   let extra = 0;
 

@@ -6,7 +6,7 @@ customElements.define("app-calendar", class extends FudicElement {
     let $n0, $n1;
     const $r = [];
     const $d = []; // teardowns
-    let [$dom, $shadow, days = []] = $props;
+    let [$dom, $shadow, days] = $props; days ??= ([]);
     let $host = $dom.host($shadow);
     function pick(ev, day) {
     ev.preventDefault();
@@ -138,7 +138,7 @@ customElements.define("app-calendar", class extends FudicElement {
         }
         $s();
       },
-      u: ($p) => { if (2 in $p) days = $p[2] === undefined ? [] : $p[2]; $a(); $u0(); },
+      u: ($p) => { if (2 in $p) days = $p[2] ?? ([]); $a(); $u0(); },
       r: () => { $k0.forEach(($i) => $i.r()); $n0 = $n1 = $shadow = $host = null; $d.forEach((d) => d()); },
     };
   }

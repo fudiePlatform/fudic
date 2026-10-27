@@ -76,6 +76,7 @@ import { typeScriptService } from './ts-service.js';
 import { styleClassNames } from './classes.js';
 import { scopeAt, snippetsAt } from './snippets.js';
 import { interpolates, scopeNames, templateScope, type TemplateScope } from './template-scope.js';
+import { inPortableView, portableItems } from './view-completion.js';
 
 /**
  * The kinds an object-literal member comes back as.
@@ -147,8 +148,10 @@ const IMPLICIT_BINDINGS: ReadonlySet<string> = new Set(['arguments', 'this']);
  * reports no bands at all, and the file's own names still have to be offered then. It can only
  * ADD, so a name it does not know about is no longer a name the developer cannot see.
  */
-function inTemplateScope(item: CompletionItem, scope: TemplateScope): boolean {
+function inTemplateScope(item: CompletionItem, scope: TemplateScope, portable: boolean): boolean {
   if (IMPLICIT_BINDINGS.has(item.label) || isAutoImport(item)) return false;
+  // The one global the portable view reads (SDD-61 §3.2), already let through by its own list.
+  if (portable && item.label === 'undefined') return true;
 
   const band = item.sortText;
   if (band !== undefined && LOCAL_BANDS.has(band.startsWith('z') ? band.slice(1) : band)) {
@@ -225,9 +228,7 @@ function withoutRefactors(
  * are also used to answer hovers, definitions and diagnostics, and only the two halves named
  * here are being changed. A plugin that provides neither travels through untouched.
  */
-export function filterTypeScriptCompletions(
-  plugins: readonly LanguageServicePlugin[],
-): LanguageServicePlugin[] {
+export function filterTypeScriptCompletions(plugins: readonly LanguageServicePlugin[]): LanguageServicePlugin[] {
   // Shared by the wrappers of one call, which is what makes the collapse possible: the three
   // TypeScript plugins are created together and serve the same request, in order.
   const spoken = new Spoken();
@@ -354,16 +355,30 @@ function allowedItems(
   context: LanguageServiceContext,
   document: TextDocument,
   position: { line: number; character: number },
-  items: readonly CompletionItem[],
+  reply: readonly CompletionItem[],
 ): Narrowed {
   const source = fudSourceAt(context, document);
   // Not a `.fud` at all: a real `.ts` in the workspace is none of this package's business.
-  if (source === undefined) return { items: [...items] };
+  if (source === undefined) return { items: [...reply] };
 
   const offset = sourceOffsetOf(source.cached, document, position);
-  if (offset === undefined) return { items: items.filter((item) => !isScaffolding(item)) };
+  if (offset === undefined) return { items: reply.filter((item) => !isScaffolding(item)) };
 
   const region = regionAt(source.cached.source, source.cached.html, offset);
+
+  // The portable view's own list, FIRST, so every branch below narrows what the view may write
+  // and not what TypeScript would. `undefined` survives it, and the scope test below lets it.
+  const portable = inPortableView(source.cached.source, offset, region);
+  const items = portable
+    ? portableItems(
+        source.cached.source,
+        offset,
+        { service: typeScriptService(context), file: source.cached.path, projected: document.offsetAt(position) },
+        reply,
+      )
+    : reply;
+  // What the view's list took out: the template scope below must not put it back.
+  const withheld = reply.filter((item) => !items.includes(item));
 
   // The `$` rule is about SCOPE, and it was being applied to everything.
   //
@@ -620,14 +635,14 @@ function allowedItems(
 
     const kept = visible.filter(
       (item) =>
-        (open ? inTemplateScope(item, scope) : scope.has(item.label)) &&
+        (open ? inTemplateScope(item, scope, portable) : scope.has(item.label)) &&
         (!callableOnly || (item.kind !== undefined && CALLABLE_KINDS.has(item.kind))),
     );
     const range = anchor(document, position, value);
     return {
       items: anchored(
         [
-          ...reading([...kept, ...missingNames(scope, callableOnly, kept)]),
+          ...reading([...kept, ...missingNames(scope, callableOnly, [...kept, ...withheld], portable)]),
           ...(open ? [escapeHatch()] : []),
         ],
         range,
@@ -663,12 +678,12 @@ function allowedItems(
     // See `interpolates`.
     const open = interpolates(source.cached);
     const kept = visible.filter((item) =>
-      open ? inTemplateScope(item, scope) : scope.has(item.label),
+      open ? inTemplateScope(item, scope, portable) : scope.has(item.label),
     );
     const range = anchor(document, position, directive);
     return {
       items: anchored([
-      ...reading([...kept, ...missingNames(scope, false, kept)]),
+      ...reading([...kept, ...missingNames(scope, false, [...kept, ...withheld], portable)]),
       // `@()` belongs here too, and its absence was the one defect this position had that the
       // suite did catch: a `@` in text may open any expression at all, exactly as a `=@` may,
       // and the way out has to be offered in both or in neither.
@@ -1238,11 +1253,13 @@ function missingNames(
   scope: TemplateScope,
   callableOnly: boolean,
   already: readonly CompletionItem[],
+  portable: boolean,
 ): CompletionItem[] {
   const offered = new Set(already.map((item) => item.label));
 
   return scopeNames(scope, callableOnly)
-    .filter((name) => !offered.has(name))
+    // A function of the `@code` is not a value the portable view reads (SDD-61 §3.3).
+    .filter((name) => !offered.has(name) && !(portable && scope.get(name) === 'function'))
     .map((name) => ({
       label: name,
       kind: scope.get(name) === 'function' ? CompletionItemKind.Function : CompletionItemKind.Variable,

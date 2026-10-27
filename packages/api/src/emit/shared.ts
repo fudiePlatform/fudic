@@ -51,6 +51,9 @@ export function tsType(t: TypeExpr, c: EmitCtx): string {
     case 'named': {
       const name = t.name.text;
       if (name === 'str' || name === 'uuid') return 'string';
+      // HTML that crosses the contract: typed so a view may hand it to `@raw`, which escapes it,
+      // because what crosses is its text and never the mark of trust (SDD-61 §4.7).
+      if (name === 'html') return 'import("@fudic/dom").TrustedHTML';
       if (name === 'bool') return 'boolean';
       if (name === 'date') return 'Date';
       if (name in INTEGERS || FLOATS.has(name)) return 'number';
@@ -85,7 +88,7 @@ export function descriptor(t: TypeExpr, c: EmitCtx): string {
       return `{ map: [${descriptor(t.key, c)}, ${descriptor(t.value, c)}] }`;
     case 'named': {
       const name = t.name.text;
-      if (name === 'str' || name === 'uuid' || name === 'bool' || name === 'date' || name in INTEGERS || FLOATS.has(name)) return str(name);
+      if (name === 'str' || name === 'html' || name === 'uuid' || name === 'bool' || name === 'date' || name in INTEGERS || FLOATS.has(name)) return str(name);
       return projectRef(c, 'type', name, `$${name}`) ?? str('str');
     }
   }

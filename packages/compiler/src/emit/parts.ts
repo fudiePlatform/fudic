@@ -18,7 +18,7 @@ import { isAssetAttr } from './markup.js';
 import { compactProjectCss } from './project-styles.js';
 import { compactStyleCss } from './css-compact.js';
 import { isLiteralText, literalText } from './runs.js';
-import type { ExtractedCode } from './oxc-code.js';
+import type { ExtractedCode, Reactive } from './oxc-code.js';
 import { NO_SIGNALS, writeElementAttrs } from './attrs.js';
 
 export const slice = (source: string, sp: Span): string => source.slice(sp.start, sp.end);
@@ -606,14 +606,31 @@ export function writeHeadElements(
  * is exactly what happened before, when no part of a route's `@code` was emitted at all.
  */
 export function writeEntryCode(w: CodeWriter, code: ExtractedCode): void {
-  for (const s of code.signals) {
-    const init = s.kind === 'computed' ? `(${s.init})` : `() => (${s.init})`;
-    w.line(`const ${s.name} = ${init}; // inert ${s.kind} (SSR; hydration is client-side)`);
-  }
+  for (const s of code.signals) writeInert(w, s);
   for (const statement of code.neutral) {
     if (statement.hoisted || statement.provides) continue;
     w.mappedLine({ text: statement.text, src: statement.at, anchors: statement.anchors });
   }
+}
+
+/**
+ * One inert reactive of the server: a function whose call returns the state as it starts.
+ *
+ * A derived value is its own function: `computed(fn)` renders inert as `fn` itself, so it is
+ * evaluated when READ and a derived value the server never paints costs nothing.
+ *
+ * A `signal(now())` is evaluated ONCE, where it is declared (SDD-61 §3.12). Re-evaluating the
+ * initial value on every read is harmless for a constant and wrong for an instant: the text
+ * the server paints and the value `fud-state` carries would be two different moments.
+ */
+export function writeInert(w: CodeWriter, s: Reactive): void {
+  const init =
+    s.kind === 'computed'
+      ? `(${s.init})`
+      : s.now !== undefined
+        ? `((v) => () => v)(${s.init})`
+        : `() => (${s.init})`;
+  w.line(`const ${s.name} = ${init}; // inert ${s.kind} (SSR; hydration is client-side)`);
 }
 
 /** The `import` lines of a `@code`'s neutral zone, hoisted to module scope (decision 33.c). */

@@ -34,7 +34,7 @@ import { EDGE_PREFIX, FUNCTIONS_FILE, FUNCTIONS_ID } from './constants.js';
 import { SERVER_ROOT_ID } from './api-root.js';
 import { serializeMap, type NestedArtifact, type NestedOutputOptions } from './nested.js';
 import { LinkedAssets } from './linked-assets.js';
-import { alternatesOf, localePlugin, localeTarget, pageModuleOf, type LocaleContext } from './i18n.js';
+import { alternatesOf, idWithoutLocale, localePlugin, localeTarget, pageModuleOf, withLocale, type LocaleContext } from './i18n.js';
 
 /** The input name of `functions.mjs`. */
 const FUNCTIONS_ENTRY = 'functions';
@@ -120,10 +120,10 @@ export function edgePlugin(
   return {
     name: 'fudic:edge',
     resolveId(id) {
-      return id.startsWith(EDGE_PREFIX) || fixed.has(id) || extras.api?.(id) !== undefined ? id : null;
+      return id.startsWith(EDGE_PREFIX) || fixed.has(idWithoutLocale(id)) || extras.api?.(id) !== undefined ? id : null;
     },
     load(id) {
-      const text = fixed.get(id) ?? extras.api?.(id);
+      const text = fixed.get(idWithoutLocale(id)) ?? extras.api?.(id);
       if (text !== undefined) return text;
       if (!id.startsWith(EDGE_PREFIX)) {
         return loadWithSourceMap(id);
@@ -198,8 +198,13 @@ export async function runEdgePass(
   for (const page of extras.errorPages ?? []) {
     input[safeName(page.route.pattern)] = EDGE_PREFIX + page.route.pattern;
   }
-  if (extras.functions !== undefined) input[FUNCTIONS_ENTRY] = FUNCTIONS_ID;
-  if (extras.root !== undefined) input[ROOT_ENTRY] = extras.root;
+  // In an app with languages, what no route brings in — `functions.mjs` and the root — enters
+  // as the first locale's: the pages of that locale and the functions share ONE graph, so a
+  // module that keeps data is one instance for both, and the graph is compiled once.
+  const home = extras.locale?.locales[0];
+  const atHome = (id: string): string => (home === undefined ? id : withLocale(id, home));
+  if (extras.functions !== undefined) input[FUNCTIONS_ENTRY] = atHome(FUNCTIONS_ID);
+  if (extras.root !== undefined) input[ROOT_ENTRY] = atHome(extras.root);
 
   const output = (await build({
     configFile: false,

@@ -1226,7 +1226,7 @@ motivo es doble: no aporta nada que el markup no dé, y un nombre de token inter
 (`var(--x-@y)`) es invisible para la poda de tokens de SDD-49. Revoca la 42 y sus 42.a–c.
 *Precisada por la 141: un `style=` dinámico es `FUD0915`; lo dinámico va en `style:prop`.*
 
-**137.** **Lo que una expresión de la vista puede ser, y los nombres que puede leer**
+**137.** *(Enmendada por la 162.)* **Lo que una expresión de la vista puede ser, y los nombres que puede leer**
 ([SDD-51](../sdd/SDD-51-expresiones-de-la-vista.md) §3.2, §3.4). La vista es una función del
 estado: corre en el servidor y en las tres pasadas del cliente, y nada de lo que escribe puede
 salirse de la pasada. Por **lista blanca**: identificadores, literales, plantillas, miembros,
@@ -1236,7 +1236,7 @@ spread, flechas de cuerpo expresión y lo que TypeScript borra. Lo demás es err
 definir código (`FUD0905`), la coma (`FUD0906`). Un nombre libre resuelve al template, al
 `@code`, a `data` o a una lista corta de globales iguales en los dos lados (`FUD0907`).
 
-**138.** **Lo que cabe en un `@{ }`, y lo que puede reasignar** (SDD-51 §3.3, §3.5).
+**138.** *(Enmendada por la 162.)* **Lo que cabe en un `@{ }`, y lo que puede reasignar** (SDD-51 §3.3, §3.5).
 Declaraciones, asignaciones como sentencia, llamadas, condicionales y bucles; nada que salga del
 bloque (`FUD0908`). Se **reasigna una variable** —del template o un `let` de la zona neutra—, y
 nunca se **muta un objeto** (`FUD0900`, `FUD0901`).
@@ -1249,7 +1249,7 @@ resto de `on*` son scripts en línea que la CSP de fudic no ejecuta nunca; se es
 navegador: lista blanca de esquemas y valor inerte para lo demás. `trustedUrl(s)`, en `@code`,
 marca la excepción en el valor.
 
-**141.** **Lo que la revisión del 2026-10-02 añadió a la vista** (SDD-51 §3.8). El acceso
+**141.** *(Enmendada por la 162.)* **Lo que la revisión del 2026-10-02 añadió a la vista** (SDD-51 §3.8). El acceso
 reflexivo (`FUD0910`), los métodos que mutan lo que la pasada no ha construido (`FUD0911`), lo
 que da distinto en servidor y cliente y las `key` que no son primitivas (`FUD0912`), los bucles y
 reservas sin límite (`FUD0913`), el snippet que se invoca sin condición (`FUD0914`), los atributos
@@ -1279,6 +1279,41 @@ reordenar huecos y etiquetas, y el emit construye la tira en su orden.
 **161.** **`t()` solo donde un string puede no ser texto** (SDD-58 §4.3): el valor de una prop y el
 código TS. El primer argumento es un string literal (`FUD1020`). *Por qué no `t()` en todas
 partes: una regla para el desarrollador, no una por caso (Pedro, 2026-10-15).*
+
+**162.** **La vista es una lista blanca portable** (SDD-61 §3.2–§3.8). Solo vale lo que el
+compilador baja con la misma semántica a TS, C#, Java, Go, Rust y Python: literales, nombres de la
+vista, `undefined` como único global, los operadores de §3.4, campos e índices, plantillas sin
+etiqueta, desestructuración de objetos con resto, y una sola llamada: leer un valor reactivo (más
+`t()` en una prop). Fuera `new`, los métodos de cualquier prototipo, los globales, los literales
+de objeto y de lista y la sintaxis de TS (`FUD1140`–`FUD1148`). `@{ }` solo declara y reasigna. El
+spread de un nativo escribe sus atributos ordenados por nombre en el sitio del primer spread.
+Enmienda la 137, la 138 y la 141; `FUD0911` queda retirado.
+
+**163.** **`@empty`** (SDD-61 §3.7). Tras el cuerpo de `@foreach`, `@for` o `@while`, se pinta
+cuando el bucle no da ninguna vuelta; en el cliente es una rama más del constructo. Mal colocado o
+repetido, `FUD1149`.
+
+**164.** **El corte de servidor sigue la misma lista** (SDD-61 §3.9–§3.10). Lo que la vista lee del
+`@code`, y de los stores y módulos de datos del proyecto, tiene una forma que todo backend evalúa
+(`props`, `signal`, `computed`, `const`/`let` de la lista, literal de datos con tipo con nombre,
+llamada del catálogo) y tipos portables; si no, `FUD1150` y `FUD1153`. Los manejadores y los
+callbacks son TS completo.
+
+**165.** **`now()`** (SDD-61 §3.12). Del catálogo de `@fudic/core`, solo como inicializador entero
+de una señal; el servidor lo evalúa una vez por render y el valor viaja en `fud-state`. En otro
+sitio, `FUD0912`.
+
+**166.** **Colecciones: cinco piezas que se combinan** (SDD-61 §3.5 bis). `filter`, `map`, `reduce`
+(con valor inicial), `toSorted` y `.length`, con una flecha de una expresión que sigue la misma
+lista (`FUD1145` fuera de esa forma). Y `<`, `<=`, `>`, `>=` valen entre dos textos (unidad a unidad
+UTF-16) y entre dos fechas (por instante). *Por qué no un catálogo de agregados: no acabaría nunca
+(Pedro, 2026-10-21).*
+
+**167.** **`html` en el `.fudapi`: HTML que cruza el contrato, sin la marca** (SDD-61 §4.7). Un campo
+`html` es `TrustedHTML` para la vista, que puede darlo a `@raw`, y texto en el cable. La marca de
+confianza no cruza el contrato: lo que da un `load` llega como dato, al render del servidor y a cada
+navegador por igual, y `@raw` lo escapa en los dos lados. *Por qué: la vista portable cierra el `as`, y
+el HTML que llega de fuera es justo el que tiene que escaparse (Pedro, 2026-10-27).*
 
 ### Gramática de referencia
 
@@ -1574,11 +1609,11 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 134 | Layout | `@RenderBody(slot: "x")`, `@RenderSection(n, required: true, slot: "x")`: la ruta escribe hermanos y cada raíz sale con su `slot=`; una sección `required` sin declarar es `FUD0440`. Enmienda la 85 (SDD-48) |
 | 135 | Snippets | Los argumentos de `@render` como una prop: literal tal cual, lo que lee el scope con `@` / `@( … )` (`FUD0444`, `FUD0445`). Revoca la 13 de SDD-29 (`FUD0833` retirado) (SDD-48) |
 | 136 | HTML | El cuerpo de un `<style>` es CSS plano: Razor ahí —expresión, constructo, comentario, `@@`— es error (`FUD0132`); un `@` solo vale delante de una at-rule de la lista cerrada o de un prefijo de fabricante. Revoca la 42 y sus 42.a–c (SDD-49). **Precisada por la 141** |
-| 137 | Interpolación | La vista es una función del estado: lista blanca de expresiones (`FUD0900`, `FUD0902`–`FUD0906`) y de nombres libres —template, `@code`, `data`, globales iguales en los dos lados— (`FUD0907`). Enmienda la 104 (SDD-51) |
-| 138 | Interpolación | `@{ }` admite declaraciones, asignaciones, llamadas, condicionales y bucles (`FUD0908`); reasigna variables del template o `let` neutros, nunca muta objetos (`FUD0900`, `FUD0901`) (SDD-51) |
+| 137 | Interpolación | La vista es una función del estado: lista blanca de expresiones (`FUD0900`, `FUD0902`–`FUD0906`) y de nombres libres —template, `@code`, `data`, globales iguales en los dos lados— (`FUD0907`). Enmienda la 104 (SDD-51). **Enmendada por la 162** |
+| 138 | Interpolación | `@{ }` admite declaraciones, asignaciones, llamadas, condicionales y bucles (`FUD0908`); reasigna variables del template o `let` neutros, nunca muta objetos (`FUD0900`, `FUD0901`) (SDD-51). **Enmendada por la 162** |
 | 139 | HTML | Los atributos `on*` nativos son error, estáticos o dinámicos (`FUD0909`): la CSP no los ejecuta (SDD-51) |
 | 140 | Interpolación | Un atributo URL sin origen fijo se escribe con `setUrl`, el mismo guardia en servidor y navegador; `trustedUrl()` marca la excepción en el valor (SDD-51) |
-| 141 | Interpolación | Lo que la revisión añadió: `FUD0910`–`FUD0919`, los manejadores leen nombres de la vista, y el cliente evalúa cada valor en su sitio (SDD-51 §3.8) |
+| 141 | Interpolación | Lo que la revisión añadió: `FUD0910`–`FUD0919`, los manejadores leen nombres de la vista, y el cliente evalúa cada valor en su sitio (SDD-51 §3.8). **Enmendada por la 162** |
 | 142–153 | Props | Viven en [props-spec.md](../sdd/props-spec.md) (constantes, nivel, spread `...item`, callback, cruce). Eran 75–86 allí y chocaban con las 75–86 de aquí; renumeradas en SDD-54. La 152 y `bind:` están **derogados** |
 | 154 | Interpolación | `@raw` es el único contenido de su elemento (`FUD0990`) y solo pinta un valor `trustedHtml()`; lo demás se escapa. Precisa la 18 (SDD-54) |
 | 155 | Interpolación | La variable de un `ref` la declara el autor en `@client`; el compilador le asigna el nodo al crear o hidratar y la anula al desmontar. Precisa la 30 (SDD-54) |
@@ -1587,3 +1622,9 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 159 | Interpolación | Lo que la vista pinta como texto se traduce sin marca: texto, atributos traducibles y literales en posición de resultado; `translate="no"` excluye (SDD-58) |
 | 160 | Interpolación | Un mensaje es una frase: texto, `{hueco}` y `<n>…</n>`; la traducción reordena y el emit sigue su orden (SDD-58) |
 | 161 | Interpolación | `t()` solo en el valor de una prop y en código TS, con un literal como primer argumento (`FUD1020`) (SDD-58) |
+| 162 | Interpolación | La vista es una lista blanca portable: lo que se baja igual a seis lenguajes; una sola llamada, leer un valor reactivo (`FUD1140`–`FUD1148`). Enmienda la 137, la 138 y la 141 (SDD-61) |
+| 163 | Control flujo | `@empty` tras el cuerpo de un bucle, pintado con cero vueltas (`FUD1149`) (SDD-61) |
+| 164 | `@code` | Lo que el servidor evalúa del `@code` y sus stores sigue la misma lista, con tipos portables (`FUD1150`, `FUD1153`) (SDD-61) |
+| 165 | `@code` | `now()` solo como inicializador de una señal; viaja en `fud-state` (`FUD0912`) (SDD-61) |
+| 166 | Interpolación | Colecciones: `filter`, `map`, `reduce`, `toSorted` y `.length`; `<` entre textos y entre fechas (`FUD1145`) (SDD-61) |
+| 167 | `.fudapi` | `html`: `TrustedHTML` para la vista y texto en el cable; la marca no cruza el contrato y `@raw` lo escapa (SDD-61) |

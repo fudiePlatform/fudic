@@ -154,8 +154,8 @@ describe('§6.5 — the props reach the layout, destructured above the first yie
     const body = chain(layout).layout;
     const opens = body.indexOf('export function* layout(');
     expect(body).toContain('export function* layout(data, io, route, $ioc, $props) {');
-    expect(body.indexOf('const { culture, theme = "light" } = $props ?? {};')).toBeGreaterThan(opens);
-    expect(body.indexOf('const { culture, theme = "light" } = $props ?? {};')).toBeLessThan(
+    expect(body.indexOf('let { culture, theme } = $props ?? {}; theme ??= ("light");')).toBeGreaterThan(opens);
+    expect(body.indexOf('let { culture, theme } = $props ?? {}; theme ??= ("light");')).toBeLessThan(
       body.indexOf('yield'),
     );
   });

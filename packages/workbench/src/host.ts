@@ -5,6 +5,7 @@
  */
 
 import { isDeepStrictEqual } from 'node:util';
+import { fixtureOf } from './access.js';
 
 /** A signal as the fixture holds it: a function with a `set` method. */
 export interface SignalLike {
@@ -45,7 +46,7 @@ export function hostComponent(input: HostInput): string {
     input.forwarded.length === 0
       ? '\n'
       : `  import fixtures from "${input.fixture.specifier}";\n\n` +
-        `  const { ${input.forwarded.join(', ')} } = fixtures["${input.fixture.name}"];\n\n`;
+        `  const { ${input.forwarded.join(', ')} } = ${fixtureOf(input.fixture.name)};\n\n`;
   const signals = input.signals.map((s) => `  const ${s.prop} = signal(${s.literal});\n`).join('');
   const attrs = input.order.map((prop) => ` .${prop}=@${prop}`).join('');
   return (

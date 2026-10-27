@@ -14,7 +14,7 @@
   import { signal } from "@fudic/core";
 
   const count = signal(cart.lines.length);
-  const last = signal(cart.lines.at(-1) ?? '—');
+  const last = signal(cart.lines[cart.lines.length - 1] ?? '—');
 
   function add() {
     cart.add(`línea ${cart.lines.length + 1}`);

@@ -1,0 +1,6 @@
+{
+  "id": "conformance",
+  "kind": "app",
+  "prefix": "c",
+  "locales": ["es"]
+}

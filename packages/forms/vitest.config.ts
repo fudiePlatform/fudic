@@ -20,7 +20,9 @@ export default defineConfig({
       // The denominator is the whole package, not what the tests chose to look
       // at: without this, a file no test imports simply does not count, and
       // coverage goes UP by deleting tests.
-      include: ['src/**/*.ts', 'impl/**/*.ts'],
+      // Anchored to this package: vitest matches the glob anywhere in the absolute path,
+      // so a bare `src/**` would also count every file under a parent folder named `src`.
+      include: ['src/**/*.ts', 'impl/**/*.ts'].map((glob) => fileURLToPath(new URL(glob, import.meta.url)).replace(/\\/gu, '/')),
       exclude: ['**/*.d.ts'],
       thresholds: {
         // New package, so it is born at 100 in the four metrics and not at the

@@ -137,9 +137,11 @@ const SERVER_ROLE: Record<HtmlContent['type'], ServerRole> = {
   cdata: 'none',
   // `@RenderHead()` is resolved by the page assembler (SDD-21), not by the markup walk.
   'render-head': 'none',
-  // Degraded nodes: an orphan `@else` (FUD0073) and a construct with no handler (FUD0055).
-  // Both were already reported; inventing markup for them would paint over the diagnostic.
+  // Degraded nodes: an orphan `@else` (FUD0073), an orphan `@empty` (FUD1149) and a construct
+  // with no handler (FUD0055). All were already reported; inventing markup for them would
+  // paint over the diagnostic. A well-placed `@empty` is no content node: it hangs off its loop.
   else: 'none',
+  empty: 'none',
   'unhandled-construct': 'none',
 };
 
@@ -714,9 +716,20 @@ export class MarkupEmitter {
     const head = loopHead(loop, this.#source);
     // `while (` or `for (` — the keyword holds no parenthesis, so the first one is the head's.
     const open = head.slice(0, head.indexOf('(') + 1);
+    // A loop with an `@empty` remembers whether it turned at all (SDD-61 §4.4.3), and paints
+    // that block, in the loop's place, when it did not.
+    const turned = loop.empty === undefined ? undefined : this.#fresh();
+    if (turned !== undefined) this.#w.line(`let ${turned} = false;`);
     this.#w.mappedLine(open, { text: this.#slice(loop.header.inner), src: loop.header.inner.start }, ') {');
     this.#w.indent();
+    if (turned !== undefined) this.#w.line(`${turned} = true;`);
     this.#branch(loop.body, parent, body);
+    this.#w.dedent();
+    this.#w.line('}');
+    if (loop.empty === undefined) return;
+    this.#w.line(`if (!${turned}) {`);
+    this.#w.indent();
+    this.#branch(loop.empty.body, parent, body);
     this.#w.dedent();
     this.#w.line('}');
   }

@@ -4,6 +4,7 @@
  *     @if (c) { A } else { B }        →  if (c) { …A… } else { …B… }
  *     @foreach (const x of xs) { … }  →  for (const x of xs) { … }
  *     @switch (e) { case k: … }       →  switch (e) { case k: { … } break; }
+ *     … } @empty { E }                →  … } if ($empty()) { …E… }
  *
  * Emitted as real control flow, and that is non-negotiable: it is what gives narrowing
  * inside an `@if` and the item type inside a `@foreach`, plus lexical scoping of anything
@@ -95,6 +96,13 @@ function emitLoop(
   }
   ctx.emit(node.body);
   ctx.w.scaffold('}\n');
+  // `@empty` renders where the loop made no pass, so it is projected AFTER the loop and not
+  // inside it: its body types with the scope around the loop and never sees the item.
+  if (node.empty !== undefined) {
+    ctx.w.scaffold('if ($empty()) {\n', node.empty.span);
+    ctx.emit(node.empty.body);
+    ctx.w.scaffold('}\n');
+  }
 }
 
 function emitSwitch(ctx: TemplateContext, node: SwitchNode): void {

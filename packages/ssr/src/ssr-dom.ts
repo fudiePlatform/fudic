@@ -59,6 +59,37 @@ export interface CellDecl {
 type CellRef = readonly [owner: number, slot: number];
 type CellMark = { readonly $: CellRef } | { readonly $f: CellRef };
 
+/**
+ * The marker an INSTANT carries in a slot: its milliseconds since the epoch (SDD-61 §3.12).
+ *
+ * JSON has no date, and `JSON.stringify` would quietly write one as its ISO text, so the client
+ * would read a string where the server held a `Date` — and a `signal(now())` that hydrates would
+ * hold text. A number and not the ISO text, because it is exact and an invalid date has one too:
+ * `NaN`, which travels as `null`. Like the cell marker, a wire format `@fudic/core` declares at
+ * the reading end. Marked at any depth of a list or a plain object: a DTO of the `.fudapi` with a
+ * `Date` field, handed to a component that hydrates, has to arrive a `Date` too.
+ */
+type InstantMark = { readonly $d: number };
+
+/** Whether `value` is an object JSON writes field by field: no class, no `toJSON` of its own. */
+const isPlain = (value: object): boolean => {
+  const proto = Object.getPrototypeOf(value) as unknown;
+  return proto === Object.prototype || proto === null;
+};
+
+/**
+ * `value` with every instant in it marked. What holds none is handed back as it is — the same
+ * object, not a copy — so a slot with no date costs one walk and nothing more.
+ */
+function wire(value: unknown): unknown {
+  if (value instanceof Date) return { $d: value.getTime() } satisfies InstantMark;
+  if (typeof value !== 'object' || value === null || !(Array.isArray(value) || isPlain(value))) return value;
+  const entries = Object.entries(value);
+  const wired = entries.map(([key, field]) => [key, wire(field)] as const);
+  if (wired.every(([, field], i) => field === entries[i]![1])) return value;
+  return Array.isArray(value) ? wired.map(([, field]) => field) : Object.fromEntries(wired);
+}
+
 export class SsrDom implements Dom<SsrNode> {
   /**
    * The id given to each claimed host, and the slice reserved for it. Two structures, one
@@ -197,7 +228,7 @@ export class SsrDom implements Dom<SsrNode> {
       // ADDRESS, and the runtime resolves it back before handing the slice over. Doing it at
       // `state` time would depend on the order the tree happened to be walked in, and the
       // route's own cells are registered last by construction (SDD-39 §4.2).
-      data.push(...slice.map((value) => this.#cells.get(value) ?? value));
+      data.push(...slice.map((value) => this.#cells.get(value) ?? wire(value)));
       offsets.push(data.length);
     }
     return { offsets, data };

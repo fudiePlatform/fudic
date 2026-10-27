@@ -1,7 +1,7 @@
 import { source } from '../make.js';
 import type { SourceDiagnostic, SourceInput } from '../types.js';
 
-/** A regular expression in the view: a literal, `RegExp`, or `match`/`matchAll`/`search` (SDD-51). */
+/** A regular expression literal in the view (SDD-51, SDD-61). */
 export const FUD0919 = (p: SourceInput): SourceDiagnostic =>
   source(
     'FUD0919',

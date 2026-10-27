@@ -1,0 +1,26 @@
+<link rel="server" href="./x-signup.fudapi">
+
+@code {
+  import { signal } from "@fudic/core";
+
+  const sent = signal(0);
+
+  function send(e: Event) {
+    e.preventDefault();
+    sent.set(sent() + 1);
+  }
+}
+
+<x-signup>
+  <template shadowrootmode="open">
+    <form control=@signupForm @submit=@send>
+      <label for="alias">Alias</label>
+      <input id="alias" control=@signupForm.alias type="text">
+      <small error=@signupForm.alias></small>
+      <label for="bio">Bio</label>
+      <input id="bio" control=@signupForm.bio type="text">
+      <button type="submit">Send</button>
+      <output role="status">@sent()</output>
+    </form>
+  </template>
+</x-signup>

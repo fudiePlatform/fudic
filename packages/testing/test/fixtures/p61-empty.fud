@@ -1,0 +1,13 @@
+@code {
+  const { items = [], n = 0 } = props<{ items?: string[]; n?: number }>();
+
+  let k = 0;
+}
+
+<p61-empty>
+  <template shadowrootmode="open">
+    <ul>@foreach (const it of items) key (it) {<li>@it</li>} @empty {<li class="none">none</li>}</ul>
+    <ol>@for (let i = 0; i < n; i++) key (i) {<li>@i</li>} @empty {<li class="none">zero</li>}</ol>
+    <p>@{ k = n; }@while (k > 0) key (k) {<b>@k</b>@{ k = k - 1; }} @empty {<i>nothing</i>}</p>
+  </template>
+</p61-empty>

@@ -22,7 +22,7 @@ import type { ServerContext } from '../types.js';
 import { contractIds, contractsOf, type ServerContract } from './fn.js';
 import { compose } from './middleware.js';
 import type { PagePiece } from './page.js';
-import { conformAll, fromText, type Ty } from './wire.js';
+import { conformAll, fromText, unmarked, type Ty } from './wire.js';
 
 /** What the dispatcher read off the URL. */
 export interface ServeInput {
@@ -153,5 +153,5 @@ export function runLoad(load: PagePiece<(ctx: never) => unknown>, ctx: ServerCon
   const handler = load.slot.get();
   if (handler === undefined) return Promise.reject(missing(load.slot.missing(), dev));
   const { steps } = compose(load.spec.chain ?? [], 'server');
-  return run(steps as never, ctx, (inner: ServerContext) => (handler as (c: ServerContext) => unknown)(inner));
+  return run(steps as never, ctx, (inner: ServerContext) => (handler as (c: ServerContext) => unknown)(inner)).then(unmarked);
 }

@@ -1,0 +1,15 @@
+@code {
+  type Author = { name: string };
+  type Post = { slug: string; author: Author; featured?: boolean | null };
+  type Info = { title?: string | null };
+
+  const { posts = [], info = {} } = props<{ posts?: Post[]; info?: Info }>();
+}
+
+<p61-defaults>
+  <template shadowrootmode="open">
+    <ul>@foreach (const { slug, author: { name: autor }, featured = false } of posts) key (slug) {<li>@slug @autor @(featured ? "yes" : "no")</li>}</ul>
+    @{ const { title = "untitled" } = info; }
+    <h1>@title</h1>
+  </template>
+</p61-defaults>

@@ -1,0 +1,39 @@
+@* §3.7: `@switch` over a text, a number and a union of literals; each `case` a literal. *@
+@code {
+  type Tono = "info" | "aviso" | "error";
+
+  const { s = "b", n = 2, tono = "aviso" } = props<{ s?: string; n?: number; tono?: Tono }>();
+}
+
+<c-switch>
+  <template shadowrootmode="open">
+    @switch (s) {
+      case "a":
+        <p>A</p>
+      case "b":
+        <p>B</p>
+      default:
+        <p>otro</p>
+    }
+    @switch (n) {
+      case 1:
+        <p>uno</p>
+      case 2:
+        <p>dos</p>
+    }
+    @switch (tono) {
+      case "info":
+        <p>i</p>
+      case "aviso":
+        <p>!</p>
+      case "error":
+        <p>x</p>
+    }
+    @switch (s) {
+      case "z":
+        <p>Z</p>
+      default:
+        <p>por defecto</p>
+    }
+  </template>
+</c-switch>

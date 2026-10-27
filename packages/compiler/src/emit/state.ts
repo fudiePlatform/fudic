@@ -120,6 +120,10 @@ function cellSlotsOf(
       if (how?.kind === 'ref' && declared.has(how.name)) crossed.add(how.name);
     }
   });
+  // And a `signal(now())`, whoever reads it (SDD-61 §4.4.4): the instant the server painted
+  // has to reach the client that hydrates, or the two disagree about what time it is. The
+  // slot is how a value travels in `fud-state`, so it takes one even with no child asking.
+  for (const s of code.signals) if (s.now !== undefined) crossed.add(s.name);
   if (crossed.size === 0) return [];
 
   // A cell whose name is not a reactive declaration is a FUNCTION: that is the whole of the

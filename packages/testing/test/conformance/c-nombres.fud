@@ -1,0 +1,15 @@
+@* §3.2: a name of the view — of the template, of the @code and of the props. *@
+@code {
+  const { quien = "nadie", letras = [] } = props<{ quien?: string; letras?: readonly string[] }>();
+  const saludo = "Hola";
+}
+
+<c-nombres>
+  <template shadowrootmode="open">
+    @{ const signo = "!"; }
+    <p>@saludo, @quien @signo</p>
+    @foreach (const n of letras) key (n) {
+      <i>@n</i>
+    }
+  </template>
+</c-nombres>

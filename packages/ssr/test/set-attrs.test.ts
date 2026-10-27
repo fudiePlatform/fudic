@@ -8,11 +8,11 @@ import { SsrDom } from '../src/ssr-dom.js';
 import { renderToString } from '../src/serialize.js';
 
 describe('SsrDom.setAttrs', () => {
-  it('serializes what the spread writes, booleans empty and the rest escaped', () => {
+  it('serializes what the spread writes, booleans empty and the rest escaped, sorted by name', () => {
     const d = new SsrDom();
     const el = d.element('input');
     d.setAttrs(el, [{ placeholder: 'a "b" & c', required: true, maxlength: 20, hidden: false }], undefined, []);
-    expect(renderToString(el)).toBe('<input placeholder="a &quot;b&quot; &amp; c" required="" maxlength="20">');
+    expect(renderToString(el)).toBe('<input maxlength="20" placeholder="a &quot;b&quot; &amp; c" required="">');
   });
 
   it('leaves out what the element writes itself', () => {

@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 import { fudicTest } from './src/config.js';
 
@@ -17,15 +18,23 @@ export default defineConfig({
         base: '/sub/',
         test: { name: 'bare-app', include: ['*.test.ts'] },
       },
+      // The conformance suite of the portable view: one `.fud` per row and the server's HTML it
+      // must give. A project of its own for its `"locales"`, which turn `a | preset` into a pipe.
+      {
+        plugins: [fudicTest()],
+        root: 'test/conformance',
+        test: { name: 'conformance', include: ['*.test.ts'] },
+      },
     ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
       // The denominator is the whole package, not what the tests chose to look at: without
       // this, a file no test imports simply does not count.
-      include: ['src/**/*.ts'],
-      // The test app has a `src` of its own, which is a fixture and not this package.
-      exclude: ['test/**'],
+      // Anchored to this package: vitest matches the glob anywhere in the absolute path,
+      // so a bare `src/**` would also count every file under a parent folder named `src`, the
+      // test app's own `src` among them.
+      include: ['src/**/*.ts'].map((glob) => fileURLToPath(new URL(glob, import.meta.url)).replace(/\\/gu, '/')),
       thresholds: {
         // New package: born at 100 in the four metrics.
         lines: 100,

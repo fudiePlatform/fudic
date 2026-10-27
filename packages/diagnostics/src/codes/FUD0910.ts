@@ -1,7 +1,7 @@
 import { source } from '../make.js';
 import type { SourceDiagnostic, SourceInput } from '../types.js';
 
-/** A reflective member or call in the view: `.constructor`, `__proto__`, `prototype`, `Symbol.for` (SDD-51). */
+/** A reflective member in the view: `.constructor`, `__proto__` or `prototype` (SDD-51, SDD-61). */
 export const FUD0910 = (p: SourceInput): SourceDiagnostic =>
   source(
     'FUD0910',

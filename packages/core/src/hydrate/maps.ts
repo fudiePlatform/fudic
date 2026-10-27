@@ -88,6 +88,36 @@ export const DATA_BLOCK = 'fud-data';
 
 const EMPTY: readonly unknown[] = [];
 
+/**
+ * The marker an instant travels as in `fud-state`: its milliseconds since the epoch, `null` for
+ * an invalid date (SDD-61 §3.12). JSON has no date, so `@fudic/ssr` writes a slot holding one
+ * this way, and it is turned back into a `Date` here, once, before any slice is handed out — a
+ * `signal(now())` that hydrates holds the instant the server painted, not its text. A wire format
+ * like the cell marker: the two packages declare it at each end and depend on neither.
+ */
+interface InstantMark {
+  readonly $d: number | null;
+}
+
+/** A mark is an object with `$d` and nothing else: a field of the author's named `$d` is data. */
+function isInstantMark(value: object): value is InstantMark {
+  const keys = Object.keys(value);
+  return keys.length === 1 && keys[0] === '$d';
+}
+
+/**
+ * `value` with every mark in it turned back into a `Date`, at any depth: the server marks the
+ * instants a list or an object nests too. `value` is fresh from `JSON.parse`, nobody else holds
+ * it, so it is changed in place.
+ */
+function fromWire(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null) return value;
+  if (isInstantMark(value)) return new Date(value.$d ?? Number.NaN);
+  const fields = value as Record<string, unknown>;
+  for (const key of Object.keys(fields)) fields[key] = fromWire(fields[key]);
+  return value;
+}
+
 /** The parsed content of a block, or `null` when the page does not publish it. */
 function readBlock(doc: Document, id: string): unknown {
   const el = doc.getElementById(id);
@@ -101,10 +131,11 @@ function readTagMap(doc: Document, id: string): TagMap {
 export function readPageMaps(doc: Document): PageMaps {
   // `[[0], []]` is the empty payload with the same shape as a real one: one offset, no
   // data. Every slice of it is empty, so nothing downstream has to ask whether it is there.
-  const [offsets, data] = (readBlock(doc, STATE_BLOCK) as [number[], unknown[]] | null) ?? [
+  const [offsets, wired] = (readBlock(doc, STATE_BLOCK) as [number[], unknown[]] | null) ?? [
     [0],
     [],
   ];
+  const data = wired.map(fromWire);
   return {
     tree: readTagMap(doc, TREE_BLOCK),
     bus: readTagMap(doc, BUS_BLOCK),

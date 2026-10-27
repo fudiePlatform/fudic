@@ -66,11 +66,8 @@ missing.handle(() => {
 const ERROR_PAGE = `<!DOCTYPE html>
 <html>
 <head><title>Error</title>
-@code {
-  const problem = data as { status: number; title: string };
-}
 </head>
-<body><h1>Error @problem.status</h1></body>
+<body><h1>Error @data.status</h1></body>
 </html>
 `;
 

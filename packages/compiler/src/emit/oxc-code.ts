@@ -120,6 +120,16 @@ export interface Reactive {
    * not know the difference.
    */
   readonly at: number;
+  /**
+   * The callee as the author wrote it — `signal` — when the initial value is exactly `now()`
+   * (SDD-61 §3.12). Absent otherwise.
+   *
+   * Such a signal always occupies a slot of its instance: the server evaluates the instant
+   * once, it travels in `fud-state`, and the client that hydrates takes it from there instead
+   * of calling `now()` again. The callee is kept because the client wraps the slot's value in
+   * a signal of its own, under whatever name the author imported it as.
+   */
+  readonly now?: string;
 }
 
 /**
@@ -1654,10 +1664,18 @@ function readDeclarator(
       kind: called,
       span: span(map(decl.start), map(decl.end)),
       at: map(init.start),
+      ...(called === 'signal' && isNowCall(arg) ? { now: source.slice(map(callee!.start), map(callee!.end)) } : {}),
     });
     return true;
   }
   return false;
+}
+
+/** `now()`, with no argument: the one initial value SDD-61 §3.12 gives a slot of its own. */
+function isNowCall(arg: OxcNode | undefined): boolean {
+  if (!is(arg, 'CallExpression') || fieldArray(arg, 'arguments').length > 0) return false;
+  const callee = field(arg, 'callee');
+  return is(callee, 'Identifier') && name(callee) === 'now';
 }
 
 

@@ -192,7 +192,7 @@ describe('SDD-35 §6.3 — parity between the editor and the build', () => {
         await parity({
           [SLUG]: replace(
             '  <p>@data.body</p>',
-            '  <p>@data.body</p>\n  @if (data.note !== undefined) {\n    <p>@(data.note.toUpperCase())</p>\n  }',
+            '  <p>@data.body</p>\n  @if (data.note !== undefined) {\n    <p>@(data.note.length)</p>\n  }',
           ),
         }),
       ).toEqual([]);

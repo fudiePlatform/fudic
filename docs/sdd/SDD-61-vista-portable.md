@@ -1,6 +1,6 @@
 # SDD-61 — La vista portable: lo que se puede escribir en el markup
 
-> **Estado:** `Listo` — [tareas](./SDD-61-Task.md) · [anexo: cómo se traduce a cada
+> **Estado:** `Hecho` — [tareas](./SDD-61-Task.md) · [anexo: cómo se traduce a cada
 > lenguaje](./SDD-61-anexo-traduccion.md).
 > **Paquetes:** `@fudic/compiler` (analizadores, `@empty`, emit) · `@fudic/diagnostics` ·
 > `@fudic/core` (`now`) · `@fudic/dom` (orden del spread) · `@fudic/ssr` (`now` en `fud-state`, `@empty`) · `@fudic/typecheck` (pase
@@ -11,7 +11,7 @@
 > y `FUD09xx`), 58 (pipes y `t()`), 35 (typecheck en dev y build), 50 (catálogo).
 > **Rango de diagnósticos:** `FUD1140`–`FUD1159` (nuevo). Usa `FUD1140`–`FUD1153`; el resto queda
 > reservado sin uso.
-> **Decisiones de gramática:** 162–165 (nuevas). Enmienda la 137, la 138 y la 141 (SDD-51).
+> **Decisiones de gramática:** 162–166 (nuevas). Enmienda la 137, la 138 y la 141 (SDD-51).
 > **Origen:** IDEA-05 §6, IDEA-06 §10.8 y la sesión del 2026-10-21 con Pedro.
 >
 > **Qué añade en una frase.** La vista solo admite lo que el compilador puede bajar con la misma
@@ -32,8 +32,10 @@ Esta spec cierra el lenguaje de la vista:
 
 - **El criterio es la bajada, no la existencia nativa.** Una construcción vale si el compilador
   la puede bajar a los seis lenguajes con el mismo resultado. La desestructuración no existe en
-  Java y el `for` de C no existe en Python: los dos valen, porque se bajan. `Array.prototype.filter`
-  no vale: habría que portar la stdlib de JS.
+  Java y el `for` de C no existe en Python: los dos valen, porque se bajan. La stdlib de JS no vale
+  entera: habría que portarla. De ella solo entran **cinco operaciones de colección** (`filter`,
+  `map`, `reduce`, `toSorted` y `.length`, §3.5 bis), porque se combinan para cubrir cualquier
+  cálculo sobre una lista y las cinco tienen su equivalente directo en cada lenguaje.
 - **Lo que no existe igual en todos es del catálogo de fudic**, escrito una vez por runtime: los
   pipes, `now()`, el número como texto, la guarda de URL. El desarrollador nunca escribe nada dos
   veces.
@@ -48,9 +50,10 @@ fija el HTML esperado de cada fila, y cada runtime futuro tiene que dar los mism
 1. **Lista blanca, nunca negra.** Lo que no está en §3 es error.
 2. **La única llamada de la vista es leer un valor reactivo:** una señal, un `computed` o un
    `Readable` de forms, sin argumentos. Además, `t()` como valor de una prop (decisión 161).
-3. **Nada de `new` ni de métodos de ningún prototipo**, tampoco `new Date`. Ningún global salvo
-   `undefined`.
-4. **Sin `.length`.** Los tres bucles llevan `@empty`.
+3. **Nada de `new` ni de métodos de ningún prototipo**, tampoco `new Date`, salvo las cinco
+   operaciones de colección del punto 12. Ningún global salvo `undefined`.
+4. **`.length` vale en listas y en texto.** Para pintar «no hay ninguno», los tres bucles llevan
+   `@empty`.
 5. **`@while`, `@for` y `let` siguen vivos.** `@{ }` declara y reasigna, nada más.
 6. **Desestructuración y `...resto`**, que se bajan donde el lenguaje no los tiene.
 7. **Spread de atributos** para pasar datos a un componente o a un elemento nativo.
@@ -60,6 +63,13 @@ fija el HTML esperado de cada fila, y cada runtime futuro tiene que dar los mism
 10. **Los manejadores de evento son TS completo:** imports, código del desarrollador, cualquier
     global de navegador. Nunca corren en el servidor y no se traducen.
 11. **Las condiciones son booleanas.** Sin «truthiness»: `@if (nombre)` no vale.
+12. **Colecciones: cinco piezas que se combinan, nunca una función por caso de uso** (decisión
+    166). `filter`, `map`, `reduce`, `toSorted` y `.length`, con una flecha de una sola expresión
+    cuyo cuerpo sigue esta misma lista. Contar, filtrar, sumar, máximo, mínimo, media, ordenar y
+    unir texto salen de combinarlas (§3.5 bis). No se añaden funciones de catálogo para agregados.
+13. **`<`, `<=`, `>` y `>=` valen también entre dos textos y entre dos fechas.** El texto se
+    compara unidad a unidad UTF-16, como JS; la fecha, por instante. El orden alfabético por idioma
+    queda fuera.
 
 ## 2. Dependencias
 
@@ -109,13 +119,15 @@ fija el HTML esperado de cada fila, y cada runtime futuro tiene que dar los mism
 |---|---|
 | `x()`, `a.b.c()` | **Sin argumentos**, sobre un nombre o un camino de miembros, y el tipo del llamado es un valor reactivo: `Signal<T>` o `Computed<T>` de `@fudic/core`, `Readable<T>` de `@fudic/core` o de `@fudic/forms`, o un control de un form (`$ControlNode`). Incluye `form.$valid()`, `form.$issues()`, `campo.errors()`, `campo()` |
 | `t("literal", { … })` | Solo como valor de una prop (decisión 161, `FUD1020`). El objeto de argumentos sigue §3.2–§3.5 en cada valor |
+| `xs.filter(…)`, `xs.map(…)`, `xs.reduce(…)`, `xs.toSorted(…)` | Las operaciones de colección de §3.5 bis, con sus reglas |
 
 Todo lo demás es `FUD1140`:
 
-- llamadas con argumentos, `?.()` y las de un llamado que no es un camino (`(a || b)()`);
+- llamadas con argumentos, `?.()` y las de un llamado que no es un camino (`(a || b)()`), salvo
+  las cuatro operaciones de colección;
 - funciones del `@code`, importadas o de props;
-- métodos de cualquier prototipo: `filter`, `map`, `join`, `includes`, `toFixed`,
-  `toUpperCase`, `slice`, `toLocaleString`…
+- cualquier otro método de cualquier prototipo: `find`, `some`, `every`, `includes`, `join`,
+  `sort`, `slice`, `toFixed`, `toUpperCase`, `toLocaleString`…
 
 Los argumentos se comprueban sin tipos en el compilador. El tipo reactivo lo comprueba el pase
 tipado (§4.2).
@@ -127,7 +139,7 @@ tipado (§4.2).
 | `a + b` | dos `number` (suma), o `string` con `string`/`number` (concatena) | El número pasa a texto con la semántica de JS (anexo A.4) |
 | `a - b`, `a * b`, `a / b`, `a % b`, `-a` | `number` | `f64`; `/` es división real; `%` lleva el signo del dividendo |
 | `a === b`, `a !== b` | dos primitivos del mismo tipo (`string`, `number`, `boolean`, unión de literales), o uno es `null`/`undefined` | Igualdad de valor, o presencia |
-| `a < b`, `<=`, `>`, `>=` | `number` | |
+| `a < b`, `<=`, `>`, `>=` | dos `number`, dos `string` o dos `Date` | Texto: unidad a unidad UTF-16, como JS. Fecha: por instante (anexo A.2) |
 | `a && b`, `a \|\| b`, `!a` | `boolean` | Resultado `boolean` |
 | `a ?? b` | `a` puede faltar | |
 | `c ? a : b` | `c` es `boolean` | |
@@ -151,10 +163,133 @@ tipado (§4.2).
 | Plantilla `` `a ${x} b` `` | Sin etiqueta (`FUD0905`). Cada hueco, `string` o `number` |
 | Interpolar `@(x)` | `x` es `string`, `number`, `boolean` o ausente (`$Scalar` sin `bigint`). Una fecha solo se pinta con pipe |
 
-- **`.length` no existe en la vista** (`FUD1145`), ni sobre listas ni sobre texto, ni con
-  `['length']`. Para «no hay ninguno» está `@empty`. Un recuento se pinta desde el `load` o desde
-  una señal que lo lleve. Un campo de un DTO llamado `length` no se puede leer desde la vista.
-- Un índice con texto sobre un objeto que no es un `map` (`post['title']`) es `FUD1153`.
+- **`.length`** vale sobre una lista y sobre un texto (§3.5 bis). Sobre un `map` es `FUD1153`: un
+  `map` solo se lee con `m[k]`.
+- Un índice con texto sobre un objeto que no es un `map` (`post['title']`, `xs['length']`) es
+  `FUD1153`, salvo el de un campo declarado cuyo nombre no se puede escribir tras un punto
+  (`fixtures['titulo-largo']`): es leer ese campo. *(Decidido al implementar.)*
+
+### 3.5 bis. Colecciones: filtrar, transformar, agregar y ordenar (decisión 166)
+
+**El problema.** Casi todo dato derivado de una lista necesita recorrerla: cuántas tareas quedan,
+el total del carrito, la nota más alta, la media, los artículos de una etiqueta, la tabla ordenada
+por la columna que el usuario pulsa, los autores separados por comas. Y casi siempre es reactivo:
+el usuario marca una tarea en el cliente y el recuento cambia.
+
+**La solución no es un catálogo de funciones** (`count`, `sum`, `max`, `avg`…), que no acabaría
+nunca. Son **cinco piezas que se combinan**, como LINQ en C#. Con ellas se escribe cualquier
+cálculo sobre una lista:
+
+| Pieza | Qué devuelve | Forma |
+|---|---|---|
+| `xs.length` | Cuántos elementos tiene la lista (`number`) | Sin argumentos. Sobre un texto, cuántas unidades UTF-16 tiene, como JS |
+| `xs.filter(x => c)` | Una lista nueva con los elementos para los que `c` es `true` | `c` es `boolean` |
+| `xs.map(x => e)` | Una lista nueva con `e` calculado para cada elemento | `e` es de un tipo portable (§3.10) |
+| `xs.reduce((acc, x) => e, inicial)` | Un valor, acumulando de izquierda a derecha | El valor inicial es **obligatorio**; `acc`, `e` e `inicial` son del mismo tipo |
+| `xs.toSorted((a, b) => e)` | Una lista nueva ordenada | `e` es `number`: negativo, `a` va antes; positivo, `b` va antes; `0`, se quedan como estaban |
+
+**Así lo escribe el desarrollador.** Tareas que llegan del servidor; el usuario las marca en el
+navegador y los contadores cambian solos:
+
+```
+@code {
+  import type { Tarea } from 'fudic:tareas';
+
+  const tareas     = signal<readonly Tarea[]>(data.tareas);
+  const hechas     = computed(() => tareas().filter(t => t.hecha).length);
+  const pendientes = computed(() => tareas().filter(t => !t.hecha).length);
+}
+
+<p>Hechas: @hechas() · Pendientes: @pendientes()</p>
+
+@foreach (const t of tareas()) key (t.id) {
+  <label>
+    <input type="checkbox" .checked=@t.hecha
+           @change=@(() => tareas.set(tareas().map(x => x.id === t.id ? { ...x, hecha: !x.hecha } : x)))>
+    @t.titulo
+  </label>
+} @empty {
+  <p>No hay tareas.</p>
+}
+```
+
+- **El servidor**, en el lenguaje que sea, evalúa los dos `computed` una vez con la bajada del
+  anexo (A.2, «Colecciones») y pinta «Hechas: 2 · Pendientes: 3».
+- **El cliente** hidrata, y al marcar una tarea el manejador cambia la lista: los dos `computed`
+  se recalculan en TS y el texto cambia.
+- **Se escribe una sola vez.** El compilador baja la misma expresión a cada lenguaje, y la suite
+  de conformidad (§4.6) garantiza que dan lo mismo. El manejador es TS libre (§3.11) y no se
+  traduce: por eso puede usar `{ ...x }`, que en la vista no vale.
+
+**Recetario: cada necesidad, escrita con las cinco piezas.**
+
+| Necesidad | Se escribe |
+|---|---|
+| Contar todos | `tareas().length` |
+| Contar los que cumplen algo | `tareas().filter(t => t.prioridad === 'alta').length` |
+| ¿Hay alguno? (`some`) | `tareas().filter(t => t.prioridad === 'alta').length > 0` |
+| ¿Lo cumplen todos? (`every`) | `tareas().filter(t => !t.hecha).length === 0` |
+| ¿Está este valor? (`includes`) | `etiquetas().filter(e => e === 'urgente').length > 0` |
+| El primero que cumple algo (`find`) | `tareas().filter(t => t.id === seleccion())[0]` (ausente si no hay) |
+| Los tres primeros (`slice`) | `tareas().filter((t, i) => i < 3)` |
+| Filtrar lo que se pinta | `@foreach (const t of tareas().filter(t => !t.hecha)) key (t.id) { … }` |
+| Filtro que elige el usuario | `computed(() => tareas().filter(t => filtro() === 'todas' \|\| t.estado === filtro()))` |
+| Sacar un campo | `tareas().map(t => t.titulo)` |
+| Calcular por elemento | `lineas().map(l => l.precio * l.cantidad)` |
+| Suma | `lineas().reduce((s, l) => s + l.precio * l.cantidad, 0)` |
+| Máximo | `notas().reduce((m, n) => n > m ? n : m, 0)` |
+| Mínimo | `notas().reduce((m, n) => n < m ? n : m, 10)` |
+| Media | `notas().length > 0 ? notas().reduce((s, n) => s + n, 0) / notas().length : 0` |
+| Unir texto (`join`) | ``autores().reduce((s, a, i) => i === 0 ? a.nombre : `${s}, ${a.nombre}`, '')`` → `"Ana, Luis, Marta"` |
+| Ordenar por número | `tareas().toSorted((a, b) => a.prioridad - b.prioridad)` |
+| Ordenar por número, al revés | `lineas().toSorted((a, b) => b.precio - a.precio)` |
+| Ordenar por fecha | `tareas().toSorted((a, b) => a.creada < b.creada ? -1 : a.creada > b.creada ? 1 : 0)` |
+| Ordenar por texto | `tareas().toSorted((a, b) => a.titulo < b.titulo ? -1 : a.titulo > b.titulo ? 1 : 0)` |
+| Ordenar por la columna que pulsa el usuario | `computed(() => orden() === 'precio' ? lineas().toSorted((a, b) => a.precio - b.precio) : lineas().toSorted((a, b) => a.nombre < b.nombre ? -1 : a.nombre > b.nombre ? 1 : 0))` |
+| Encadenar | `lineas().filter(l => !l.pagada).map(l => l.precio * l.cantidad).reduce((s, x) => s + x, 0)` |
+| Directamente en la vista | `<span>@(tareas().filter(t => t.hecha).length) de @(tareas().length)</span>` |
+| Caracteres que quedan | `@(140 - texto().length)` |
+
+**Reglas de la flecha.**
+
+- **Solo como argumento de `filter`, `map`, `reduce` o `toSorted`.** Una flecha en cualquier otro
+  sitio de la vista sigue siendo `FUD0905`.
+- **Cuerpo de una sola expresión**, que sigue toda la lista blanca: puede leer nombres de fuera
+  (`filtro()`), valores reactivos y campos, y anidar otras operaciones de colección
+  (`grupos().map(g => g.items.filter(i => i.activo).length)`). No escribe nada.
+- **Parámetros: nombres simples**, sin patrones ni defectos:
+  - `filter` y `map`: `x` o `(x, i)`, con `i` el índice (`number`);
+  - `reduce`: `(acc, x)` o `(acc, x, i)`;
+  - `toSorted`: `(a, b)`.
+- **Nunca el nombre de una función** (`xs.filter(esValida)`): la función estaría fuera de la lista.
+- `map` no devuelve un objeto ni una lista literal (`x => ({ a: x })`, `FUD1143`): devuelve un
+  valor o un campo (`t => t.autor`).
+
+Lo que se sale de estas formas es `FUD1145`: `reduce` sin valor inicial, una flecha con cuerpo de
+bloque, un nombre de función como argumento, un parámetro de más (`(x, i, lista)`) o un argumento de
+más (el `thisArg` de `filter`).
+
+**Semántica, igual en los seis lenguajes.**
+
+- **Nada se modifica.** Las cuatro devuelven una lista o un valor nuevos; la lista original sigue
+  igual. Por eso es `toSorted` y no `sort`, que ordena en el sitio.
+- **`toSorted` es estable:** dos elementos que el comparador da por iguales (`0`) quedan en el
+  orden en que venían. Un `NaN` del comparador cuenta como `0`.
+- **El comparador tiene que ser coherente:** devolver `0` para dos iguales y signos opuestos al
+  cambiar `a` y `b`. `(a, b) => a.titulo < b.titulo ? -1 : 1` no lo es (nunca da `0`). Con un
+  comparador incoherente JS no fija el orden, y los lenguajes pueden salir distintos. El
+  compilador no puede comprobarlo: es responsabilidad de quien lo escribe.
+- **El texto se compara unidad a unidad UTF-16**, como JS: `"Z" < "a"` es `true` y `"á"` va detrás
+  de `"z"`. Ordenar «como en el diccionario» de un idioma depende de cada plataforma y queda fuera.
+- **Las fechas se comparan con `<` y `>`, nunca restándolas:** TS no deja restar dos `Date`.
+- **`.length` de un texto cuenta unidades UTF-16**, como JS: `"😀".length` es `2`.
+- **Una lista vacía** da `0` en `.length`, lista vacía en `filter`, `map` y `toSorted`, y el valor
+  inicial en `reduce`. La media de una lista vacía es `0/0`, que pinta `NaN`: se protege con el
+  ternario del recetario.
+
+**Lo que no hay, y por qué.** Agrupar (`groupBy`), quitar duplicados, aplanar listas (`flatMap`),
+invertir y concatenar construyen listas u objetos nuevos que la vista no puede escribir (no tiene
+literales de lista ni de objeto). Se hacen en el `load` del servidor o en un manejador.
 
 ### 3.6. Desestructuración y resto
 
@@ -231,7 +366,7 @@ una tiene que tener una de estas formas:
 
 | Forma | Condición |
 |---|---|
-| `const { a, b = d, ...r } = props<T>()` | Como hoy. `T` es portable (§3.10); los defectos siguen §3.2–§3.5 |
+| `const { a, b = d, ...r } = props<T>()` | Como hoy, salvo el defecto, que se aplica también con `null` (§4.4). `T` es portable (§3.10); los defectos siguen §3.2–§3.5 |
 | `const x = signal(v)` · `signal<T>(v)` | `v` sigue §3.2–§3.5, o es un literal de datos (abajo), o es `now()` |
 | `const x = computed(() => e)` | Flecha con **cuerpo de expresión**. `e` sigue §3.2–§3.5 y puede leer otras señales |
 | `const x = e` · `let x = e` | `e` sigue §3.2–§3.5, o es un literal de datos, o una llamada del catálogo |
@@ -255,11 +390,15 @@ una tiene que tener una de estas formas:
 - **Módulo de datos.** Un `export default` que es un literal de datos (como `*.fixture.ts`,
   SDD-53) es portable: el servidor lo carga como datos.
 - Lo que la vista lee y no tiene ninguna de estas formas es `FUD1150`: una función usada como
-  valor (fuera de un callback), una clase, `let x;` sin inicializador, una declaración con
-  `filter` o `toLocaleTimeString`, un nombre importado de un paquete que no es del catálogo. El
-  diagnóstico va sobre la declaración, con `related` al primer uso en la vista.
-- Dentro de un inicializador del corte, cada nodo fuera de la lista da su propio código (`FUD1140`,
-  `FUD1141`…), igual que en el markup.
+  valor (fuera de un callback), una clase, `let x;` sin inicializador, una declaración cuyo
+  inicializador **es** una llamada fuera de la lista o un `new` (`const t = d.toLocaleTimeString("es")`,
+  `const p = xs.find(…)`), un nombre importado de un paquete que no es del catálogo. El diagnóstico
+  va sobre la declaración, con `related` al primer uso en la vista.
+- Dentro de un inicializador del corte que tiene su forma, cada nodo fuera de la lista da su propio
+  código (`FUD1140`, `FUD1141`…), igual que en el markup: `computed(() => xs().find(…))` es
+  `FUD1140` en el `find`. Lo que la lista rechaza no se sigue: el corte va por lo que la vista y
+  cada inicializador leen de verdad, y una función que la vista **llama** es asunto de la llamada
+  (`FUD1140`), no de su declaración.
 - **`effect`, las funciones y todo lo que la vista no lee** quedan fuera del corte, sin
   restricción: es código de navegador. `provide(…)` de nivel superior sigue en el corte como dice
   SDD-60; su factoría no se evalúa al pintar en un backend que no es Node (anexo A.2).
@@ -317,21 +456,21 @@ export function now(): Date;
 
 | Construcción | Código |
 |---|---|
-| Llamada que no es leer un valor reactivo (§3.3) | `FUD1140` |
+| Llamada que no es leer un valor reactivo ni una operación de colección (§3.3); `find`, `some`, `join`, `sort`… | `FUD1140` |
 | `new` | `FUD1141` |
 | Operador fuera de §3.4 | `FUD1142` |
 | Literal de objeto o de array en la vista (salvo el objeto de huecos de `t()`), `bigint`, texto con un sustituto suelto | `FUD1143` |
 | `as`, `satisfies`, `!` no nulo, `<T>x`, argumentos de tipo | `FUD1144` |
-| `.length` | `FUD1145` |
+| Operación de colección fuera de su forma (§3.5 bis): `reduce` sin valor inicial, flecha con cuerpo de bloque, nombre de función como argumento, parámetro o argumento de más | `FUD1145` |
 | Patrón de array o con clave calculada | `FUD1146` |
 | `...resto` usado entero | `FUD1147` |
 | `case` que no es un literal | `FUD1148` |
 | `@empty` mal colocado o repetido | `FUD1149` |
 | Declaración del corte que el servidor no puede evaluar | `FUD1150` |
-| Condición u operando lógico que no es `boolean` | `FUD1151` |
-| Operador sobre un tipo que no le corresponde (§3.4) | `FUD1152` |
-| Tipo no portable (§3.10), índice con texto sobre un objeto, objeto literal sin tipo con nombre, desestructurar o esparcir un `map` | `FUD1153` |
-| Flecha o función en la vista (también con cuerpo de expresión), plantilla etiquetada | `FUD0905` (ampliado) |
+| Condición u operando lógico que no es `boolean`, también la de `filter` | `FUD1151` |
+| Operador sobre un tipo que no le corresponde (§3.4); comparador de `toSorted` que no da `number` | `FUD1152` |
+| Tipo no portable (§3.10), índice con texto sobre un objeto, objeto literal sin tipo con nombre, desestructurar o esparcir un `map`, `.length` de un `map`, operación de colección sobre algo que no es una lista | `FUD1153` |
+| Flecha o función en la vista fuera del argumento de una operación de colección, plantilla etiquetada | `FUD0905` (ampliado) |
 | Global fuera de `undefined` | `FUD0907` (ampliado) |
 | `if`, `switch`, bucle, bloque o llamada como sentencia en `@{ }` | `FUD0908` (ampliado) |
 | `now()` fuera del inicializador de una señal del `@code` | `FUD0912` (reescrito) |
@@ -347,7 +486,7 @@ misma regla de spans (§4.2 de SDD-51: el nodo culpable) y la de «uno por nodo,
 
 | Analizador | Cambia |
 |---|---|
-| `view-expressions` | Lista blanca de §3.2–§3.5: `FUD1140` (sintáctico), `FUD1141`–`FUD1146`, `FUD0905` para toda flecha, `FUD0919` solo el literal. Deja de emitir `FUD0911`, y la parte de `FUD0910`/`FUD0912`/`FUD0913`/`FUD0917` que ya cubren las llamadas y los globales |
+| `view-expressions` | Lista blanca de §3.2–§3.5 bis: `FUD1140` (sintáctico: una llamada con argumentos que no sea `filter`, `map`, `reduce` o `toSorted`, `?.()` y un llamado que no es un camino; una llamada sin argumentos sobre un camino tiene la forma de leer un valor reactivo y la decide el pase tipado, §4.2), `FUD1141`–`FUD1144`, `FUD1145` (forma de las operaciones de colección), `FUD1146`, `FUD0905` para toda flecha que no sea el argumento de una operación de colección, `FUD0919` solo el literal. El cuerpo de esas flechas se analiza con la misma lista, y sus parámetros entran en el scope del cuerpo. Deja de emitir `FUD0911`, y la parte de `FUD0910`/`FUD0912`/`FUD0913`/`FUD0917` que ya cubren las llamadas y los globales |
 | `view-statements` | `@{ }` de §3.7 (`FUD0908`); `@for` y `@while` siguen con `FUD0900`/`FUD0901`/`FUD0913` |
 | `view-identifiers` | Globales: solo `undefined`. Los manejadores dejan de comprobar globales (§3.11) |
 | `view-rest` (nuevo) | Usos de `...resto` (`FUD1147`) |
@@ -355,10 +494,14 @@ misma regla de spans (§4.2 de SDD-51: el nodo culpable) y la de «uno por nodo,
 | `server-cut` (nuevo) | §3.9 sobre el corte de SDD-60: forma de cada declaración (`FUD1150`), la lista blanca sobre cada inicializador (mismos códigos que el markup), `now()` (`FUD0912`), stores y módulos de datos |
 
 - **Stores y módulos de datos.** El analizador `server-cut` pide al host el fuente de un módulo
-  del proyecto con `readModule(specifier, importer)`, un campo nuevo y opcional de `SemanticInput`.
+  del proyecto con `readModule(specifier, importer)`, un campo nuevo y opcional de `SemanticInput`
+  (junto a `path`, la ruta del documento: el `importer` de sus propios imports y adonde apunta el
+  `related` de un diagnóstico del store).
   Lo parsea con Oxc una vez por módulo y versión (la caché es del host) y aplica §3.9 a la
   declaración exportada. Sin `readModule` (un host que no lo da), los imports del proyecto no se
-  comprueban. El plugin de Vite, `@fudic/typecheck` y el language server lo dan.
+  comprueban. El plugin de Vite, `@fudic/typecheck` y el language server lo dan: el build lo reporta
+  sobre el store, una vez, y bloquea en dev las páginas que lo leen; el editor lo muestra en el uso
+  del `.fud`, con el sitio del store como información relacionada.
 - **`@empty`** lo reconoce la estructura del documento: un nodo `EmptyBlock` hijo del nodo del
   bucle, con su `Span`. `FUD1149` sale ahí.
 
@@ -371,9 +514,9 @@ sobre el `.fud` con las mappings de la proyección.
 | Comprueba | Código |
 |---|---|
 | Llamada sin argumentos cuyo tipo no es reactivo (§3.3), por el nombre del símbolo o del alias que imprime el checker (`Signal`, `Computed`, `Readable`, `$ControlNode`) | `FUD1140` |
-| Condición de `@if`, `@while`, `@for`, del ternario, y operandos de `&&`, `\|\|`, `!` no `boolean` | `FUD1151` |
-| Operandos de §3.4: aritmética no `number`; `+` con `boolean`, ausente u objeto; relacionales no `number`; `===` entre no primitivos; hueco de plantilla no `string`/`number` | `FUD1152` |
-| Tipos de §3.10; iterable de `@foreach`; destino de índice; `key`; sujeto de `@switch`; objeto literal sin tipo con nombre | `FUD1153` |
+| Condición de `@if`, `@while`, `@for`, del ternario, de la flecha de `filter`, y operandos de `&&`, `\|\|`, `!` no `boolean` | `FUD1151` |
+| Operandos de §3.4: aritmética no `number`; `+` con `boolean`, ausente u objeto; relacionales que no son dos `number`, dos `string` o dos `Date`; `===` entre no primitivos; hueco de plantilla no `string`/`number`; comparador de `toSorted` que no da `number` | `FUD1152` |
+| Tipos de §3.10, también lo que devuelve `map` y el acumulador de `reduce`; iterable de `@foreach`; destino de índice; `key`; sujeto de `@switch`; objeto literal sin tipo con nombre; `filter`, `map`, `reduce` o `toSorted` sobre algo que no es una lista; `.length` sobre algo que no es una lista ni un texto | `FUD1153` |
 
 - **Un solo pase, dos llamadores.** Lo llaman el project checker de dev y de build (SDD-35: en
   dev, terminal y overlay; en build, el build falla) y el language server. El editor lo publica
@@ -389,7 +532,9 @@ sobre el `.fud` con las mappings de la proyección.
   `declare function $empty(): boolean` en `GLOBALS_DTS`. Su cuerpo tipa con el scope de fuera.
 - **Completado en la vista.** En una posición de §3.1, el completado de TS se filtra:
   - fuera los métodos y funciones, salvo los valores reactivos (§3.3);
-  - fuera los globales salvo `undefined`, y `length`;
+  - sobre una lista, solo `filter`, `map`, `reduce`, `toSorted` y `length`; sobre un texto, solo
+    `length`;
+  - fuera los globales salvo `undefined`;
   - en un manejador o un callback, sin filtro.
 - **Snippets y palabra clave.** Tras la `}` de un bucle, el completado ofrece `@empty`.
 - **Gramática.** La TextMate de `.fud` reconoce `@empty` como palabra clave de control.
@@ -401,8 +546,10 @@ Cinco cambios, para que Node y los demás lenguajes pinten lo mismo:
 
 1. **Presencia.** En la vista y en el corte, `x === null`, `x === undefined`, `x !== null` y
    `x !== undefined` se emiten como `x == null` / `x != null`.
-2. **Defectos.** El defecto de un patrón de la vista se emite como `?? defecto`: se aplica también
-   con `null`.
+2. **Defectos.** El defecto de un patrón de la vista, y el de una prop de `props<T>()` (en el render
+   del servidor, en la toma del cliente, en su actualización y en un layout), se emite como
+   `?? defecto`: se aplica también con `null`, como en los otros cinco lenguajes (anexo A.2). El
+   pase tipado lo sabe: un nombre con defecto nunca está ausente, aunque su tipo admita `null`.
 3. **`@empty`.**
    - En el servidor: el bucle cuenta vueltas y, si no da ninguna, pinta el bloque.
    - En el cliente: el bloque es una rama más del constructo, con su propia marca de hidratación,
@@ -410,12 +557,20 @@ Cinco cambios, para que Node y los demás lenguajes pinten lo mismo:
      `@empty`, y con alguno lo desmonta. Lo mismo en `@for` y `@while`, que se reevalúan enteros.
 4. **`now()` en `fud-state`.** Una señal inicializada con `now()` lleva siempre su valor en el slot
    de la instancia, aunque nada más la obligue. Al hidratar, el `@code` del cliente toma el valor
-   del slot (`$pN ?? signal(now())`).
+   del slot (`$pN ?? signal(now())`). JSON no tiene fechas: un `Date` en un slot viaja como
+   `{"$d": milisegundos}` (`null` si es inválido), que `@fudic/ssr` escribe y `@fudic/core` vuelve a
+   convertir en `Date` al leer el bloque, a cualquier profundidad: un DTO con un campo `Date` en
+   una lista llega a un componente que hidrata como `Date`. El servidor evalúa `now()` una sola
+   vez por render.
 5. **Orden del spread.** `attrsOf` y `attrsDiff` de `@fudic/dom` devuelven los atributos ordenados
    por nombre (§3.8), y el emit llama a `setAttrs` una vez por elemento, en el sitio del primer
    spread, con todos sus objetos.
 
 El nivel de hidratación no cambia por esta spec: `@empty` se comporta como un `@if`.
+
+Las operaciones de colección (§3.5 bis) y `<` entre textos o fechas **no cambian el emit de TS**:
+son JS tal cual, en el servidor Node y en el cliente. Lo que fijan es su bajada a los demás
+lenguajes (anexo A.2, «Colecciones»).
 
 ### 4.5. El anexo
 
@@ -439,7 +594,27 @@ y su HTML de servidor esperado (`.html`), con datos fijos en sus props.
   - defecto con `null`;
   - `@empty` en los tres bucles;
   - sombreado de nombres en bloques anidados.
+- Incluye las colecciones de §3.5 bis: cada fila del recetario, y además:
+  - lista vacía en las cinco piezas (`reduce` da su valor inicial);
+  - `toSorted` estable con empates, y la lista original sin cambiar después;
+  - comparador que da `NaN`;
+  - texto con `<` fuera del plano básico: `"😀" < "～"` es `true` en UTF-16 (y sería `false`
+    comparando puntos de código, como hacen Go, Rust y Python por defecto);
+  - `"😀".length` pinta `2`;
+  - el ejemplo de las tareas, con su HTML de servidor.
 - Es la semilla que cada runtime de otro lenguaje tendrá que pasar.
+
+*Decidido al implementar.*
+
+- **Un proyecto propio.** La suite es un proyecto de vitest con su `fudic.json` (`"locales": ["es"]`):
+  sin idioma, `a | preset` no es un pipe. Los datos de cada fila van en su `.fixture.ts` (caso
+  `conformance`), como los de SDD-53; los componentes hijos, en `parts/`.
+- **El arnés de SDD-57 gana dos cosas.** `mount`, `visit` y `renderLayout` compilan con el idioma
+  de la app cuando tiene `locales` (el primero, o el de la ruta), como `vite dev`. Y una prop
+  puede llevar un `Date` a cualquier profundidad, porque `fud-state` lo marca (§4.4.4).
+- **Qué se compara.** El contenido de la raíz declarativa del componente, tal como lo escribe el
+  servidor, byte a byte; en el `.html`, `{{pipe}}` está por el texto de un pipe. Y, montado e
+  hidratado, el árbol del shadow root es el de ese HTML.
 
 ### 4.7. Migración
 
@@ -447,7 +622,7 @@ Todo el repositorio compila sin diagnósticos nuevos. Lo que hoy usa algo de lo 
 
 | Fichero | Cambio |
 |---|---|
-| `examples/basic/src/routes/vista.fud` | Reescrito como **catálogo positivo** de la lista nueva: un caso por fila de §3, cada uno con su comentario «sin diagnóstico». Fuera `safeUrl(…)` (la guarda ya es automática), `filter`, `some`, `Math`, `JSON`, `Object`, `Number`, `Intl`, `as`, `!` y los `@{ }` con bucles o `switch` |
+| `examples/basic/src/routes/vista.fud` | Reescrito como **catálogo positivo** de la lista nueva: un caso por fila de §3, cada uno con su comentario «sin diagnóstico». Fuera `safeUrl(…)` (la guarda ya es automática), `some`, `Math`, `JSON`, `Object`, `Number`, `Intl`, `as`, `!` y los `@{ }` con bucles o `switch`. Gana un caso por fila del recetario de colecciones (§3.5 bis); un `filter` que ya cumple sus reglas se queda |
 | `examples/vista-errores/vista-errores.fud` | Gana un caso por código nuevo y por ampliación, con su comentario «FUDnnnn sobre `texto`», y da exactamente eso |
 | `examples/basic/src/components/app-clock.fud`, `routes/ruta-reloj.fud` | Pipes `date` con `timeZone: "Europe/Madrid"` en lugar de `toLocale*`; `signal(now())`; el `effect` no cambia |
 | `examples/basic/fudic.json` | `"locales": ["es"]`: un idioma, sin prefijo ni catálogos (SDD-58 §4.5), para los pipes |
@@ -457,8 +632,9 @@ Todo el repositorio compila sin diagnósticos nuevos. Lo que hoy usa algo de lo 
 | `examples/basic/src/routes/snippets.fud` | `pasos` se tipa con un `type Paso` en el `.fudapi` de la ruta |
 | `examples/basic/src/components/vista-url.fud` | `String(url())` → una señal de texto que los manejadores escriben a la vez que `url` |
 | `examples/basic/src/components/campo-texto.fud` | `@(String(resto.x))` → `@resto.x` |
-| `examples/basic/src/components/di-badge.fud`, `di-panel.fud` | `cart.lines.length` → un `Readable<number>` `count` del servicio |
-| `examples/basic/src/routes/blog/index.fud`, `components/app-calendar.fud` y los demás `.length` | `@empty` |
+| `examples/basic/src/components/raw-demo.fud` | El texto disfrazado de marcado ya no se escribe con un `as` (`FUD1144`): llega del servidor en un campo `html` de `routes/raw.fudapi` (decisión 167), sin la marca, y `@raw` lo escapa como antes |
+| `examples/basic/src/routes/blog/index.fud`, `components/app-calendar.fud` y los demás `@if (xs.length === 0)` que pintan un vacío | `@empty`. El `.length` sigue valiendo; se cambia porque «no hay ninguno» se dice con `@empty`. Los recuentos (`cart.lines.length`) se quedan |
+| Cualquier `some`, `find`, `join`, `includes` o `sort` de la vista | Su receta de §3.5 bis |
 | `examples/i18n/src/components/app-greeting.fud` | `alta = Date.UTC(…)` → una prop `alta: Date` que la ruta recibe de su `load` |
 | `packages/formatter/fixtures/own/snippets.fud` | `tag.toUpperCase()` → `tag`, con su salida esperada |
 | `packages/compiler/fixtures/app-list.fud` | `rows === undefined \|\| rows.length === 0` → `@empty` |
@@ -482,12 +658,12 @@ Todos son `error`. Cada `.md` sigue SDD-50 §4.4 y cita `SDD-61`.
 
 | Código | Título (`.md`) | Quién | Span |
 |---|---|---|---|
-| `FUD1140` | A call in the view | compilador (con argumentos, `?.()`, llamado que no es camino) · typecheck (sin argumentos, tipo no reactivo) | el llamado |
+| `FUD1140` | A call in the view | compilador (con argumentos y no es de colección, `?.()`, llamado que no es camino) · typecheck (sin argumentos, tipo no reactivo: `xs.sort()`, `@hora()`) | el llamado |
 | `FUD1141` | `new` in the view | compilador | `new` y su llamado |
 | `FUD1142` | An operator that does not port | compilador | el operador |
 | `FUD1143` | A literal the view cannot hold | compilador | el literal |
 | `FUD1144` | TypeScript syntax in the view | compilador | el `as`/`satisfies`/`!`/argumento de tipo |
-| `FUD1145` | `.length` in the view | compilador | `length` |
+| `FUD1145` | A collection operation in a form that does not port | compilador | el argumento culpable (la flecha, el nombre de función, el parámetro o el argumento de más); en `reduce` sin valor inicial, la llamada |
 | `FUD1146` | An array or computed-key pattern in the view | compilador | el patrón |
 | `FUD1147` | A rest binding used as a value | compilador | el uso |
 | `FUD1148` | A `case` that is not a literal | compilador | la expresión del `case` |
@@ -499,12 +675,12 @@ Todos son `error`. Cada `.md` sigue SDD-50 §4.4 y cita `SDD-61`.
 
 **Fix** de cada `.md`, en una línea:
 
-- `1140`: «compute it in `load()`, a `computed` or a pipe; the view only reads values».
+- `1140`: «write it with `filter`, `map`, `reduce`, `toSorted` and `.length`, or compute it in `load()` or a pipe».
 - `1141`: «build the value in `load()`; dates come from `now()` or the data».
 - `1142`: «use `===`, `!==`, `<`…; test presence with `=== null`».
 - `1143`: «declare the data in `@code` with a `.fudapi` type, or receive it from `load()`».
 - `1144`: «type the value where it is declared».
-- `1145`: «use `@empty`, or carry the count in the data».
+- `1145`: «pass a one-expression arrow with plain parameters; give `reduce` its initial value».
 - `1146`: «destructure an object by its field names».
 - `1147`: «read `rest.field` or spread it on a tag».
 - `1148`: «write the value as a literal».
@@ -516,7 +692,8 @@ Todos son `error`. Cada `.md` sigue SDD-50 §4.4 y cita `SDD-61`.
 
 **Reescritos** (mismo código, texto nuevo):
 
-- `FUD0905`: toda flecha y toda función, también con cuerpo de expresión.
+- `FUD0905`: toda flecha y toda función, también con cuerpo de expresión, salvo la flecha que es
+  argumento de `filter`, `map`, `reduce` o `toSorted` (esa la vigila `FUD1145`).
 - `FUD0907`: la lista de globales es `undefined`; el «Fix» deja de citar `@client`.
 - `FUD0908`: `@{ }` solo declara y reasigna.
 - `FUD0910`: solo los miembros `constructor`, `__proto__` y `prototype`.
@@ -534,7 +711,7 @@ sustituto.
 
 1. **El catálogo positivo.** `examples/basic/src/routes/vista.fud` tiene un caso por fila de §3.2–§3.12
    y compila sin un solo diagnóstico, en el pase semántico, en el pase tipado y en el editor.
-2. **Llamadas.** `@(xs.filter(x => x))`, `@(total().toFixed(2))`, `@(formatea(1))`,
+2. **Llamadas.** `@(xs.find(x => x.ok))`, `@(total().toFixed(2))`, `@(formatea(1))`,
    `@(String(n))`, `@(f?.())` y `@(t("x"))` en texto dan `FUD1140` sobre el llamado. `@count()`,
    `@(form.$valid())`, `@campo.errors()` y `.label=@(t("Hola"))` no dan nada. Un `@hora()` con
    `function hora()` del `@code` da `FUD1140` del pase tipado.
@@ -548,7 +725,8 @@ sustituto.
    `@if (nombre !== null)` no.
 7. **Tipos de operando.** `@(n < "a")`, `` @(`${flag}`) `` con `flag: boolean`, `@(post === otro)`
    con dos objetos y `@(n + null)` dan `FUD1152` sobre el operando.
-8. **`.length`.** `@(xs.length)`, `@(s.length)` y `@(xs["length"])` dan `FUD1145`.
+8. **`.length`.** `@(xs.length)` sobre una lista y `@(s.length)` sobre un texto compilan;
+   `@(m.length)` sobre un `map` y `@(xs["length"])` dan `FUD1153`.
 9. **Índices.** `@(xs[0])` sobre una lista y `@(m[k])` sobre un `map` compilan; `@(post["title"])`
    sobre un DTO da `FUD1153`. En el servidor, `xs[9]` fuera de rango pinta vacío.
 
@@ -580,7 +758,7 @@ sustituto.
 **El corte de servidor**
 
 19. **`computed`.** `computed(() => n() * 2)` con `n = signal(10)` pinta `20` en el servidor;
-    `computed(() => xs().filter(…))` leído por la vista da `FUD1140` en el `@code`.
+    `computed(() => xs().find(…))` leído por la vista da `FUD1140` en el `@code`.
 20. **Declaraciones.** Una `function` leída como valor en la vista (no callback) y un `const` que
     usa `toLocaleTimeString` dan `FUD1150` sobre la declaración con `related` al uso.
 21. **Store.** Un `count` importado de `../store/contador.ts` con `export const count = signal(0)`
@@ -614,7 +792,8 @@ sustituto.
 29. **Conformidad.** La suite de §4.6 pasa: cada fixture da su `.html` byte a byte, incluidos los
     casos frontera.
 30. **Editor.** Cada código nuevo sale en el editor con el mismo span que en el build. Tras `xs.`
-    en `@( )` el completado no ofrece `filter` ni `length`; en un `@click`, sí. Tras la `}` de un
+    en `@( )` el completado ofrece `filter`, `map`, `reduce`, `toSorted` y `length`, y no `find`
+    ni `join`; tras `s.` sobre un texto, solo `length`; en un `@click`, todo. Tras la `}` de un
     `@foreach`, ofrece `@empty`.
 31. **Catálogo.** Los catorce códigos nuevos tienen `.ts`, `.md` y línea en `index.ts`; los
     reescritos tienen su texto nuevo; `FUD0911` está como `retired`.
@@ -630,6 +809,25 @@ sustituto.
     cambia (la tabla de SDD-60, criterio 33).
 35. **Entrega.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde. Lo nuevo al 100 % en las
     cuatro métricas, sin `v8 ignore`, y ningún umbral baja.
+
+**Colecciones (decisión 166)**
+
+36. **Las tareas.** El ejemplo de §3.5 bis compila sin un solo diagnóstico, en el pase semántico,
+    en el pase tipado y en el editor. Con cinco tareas, dos hechas, el servidor pinta «Hechas: 2 ·
+    Pendientes: 3». En el cliente hidratado, marcar una pendiente pinta «Hechas: 3 · Pendientes: 2»
+    sin recargar (test de `packages/testing`).
+37. **El recetario.** Cada fila del recetario de §3.5 bis compila sin diagnóstico y pinta en el
+    servidor el valor esperado con los datos de su fixture de conformidad.
+38. **Formas que no valen.** `@(xs.find(x => x.ok))`, `@(xs.some(x => x.ok))` y `@(xs.join(", "))`
+    dan `FUD1140` del compilador; `@(xs.sort())`, sin argumentos, da `FUD1140` del pase tipado. `xs.reduce((s, x) => s + x)`, `xs.filter(x => { return x.ok; })`,
+    `xs.filter(esValida)`, `xs.map((x, i, lista) => x)` y `xs.filter(x => x.ok, otro)` dan `FUD1145`.
+    `@(() => 1)` da `FUD0905`. `xs.map(x => ({ a: x }))` da `FUD1143`.
+39. **Tipos.** `xs.filter(x => x.nombre)` con `nombre: string` da `FUD1151`;
+    `xs.toSorted((a, b) => a.titulo)` y `@(n < "a")` dan `FUD1152`; `post.filter(…)` sobre un DTO da
+    `FUD1153`. `@(a.titulo < b.titulo)` entre textos y `@(a.creada < b.creada)` entre fechas compilan.
+40. **Orden y texto.** `toSorted` con empates conserva el orden de llegada y deja la lista original
+    sin cambiar; `"😀" < "～"` pinta `true` y `"😀".length` pinta `2`. Igual en el servidor y en el
+    cliente.
 
 ## 7. Fuera de alcance
 

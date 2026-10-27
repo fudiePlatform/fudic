@@ -1,20 +1,14 @@
 @code {
-  import { signal, computed, effect } from "@fudic/core";
+  import { signal, effect, now } from "@fudic/core";
+  import { date } from "@fudic/i18n";
 
-  const ahora = signal(new Date());
+  // El instante lo pone el servidor y viaja en `fud-state`: el cliente que hidrata sigue
+  // desde él, sin llamar otra vez a `now()`.
+  const ahora = signal(now());
 
-  const hora = computed(() =>
-    ahora().toLocaleTimeString("es-ES", { hour12: false }),
-  );
-
-  const fecha = computed(() =>
-    ahora().toLocaleDateString("es-ES", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }),
-  );
+  // La hora y la fecha son pipes del catálogo: cada runtime las formatea con su ICU.
+  const hora = date({ timeStyle: "medium", timeZone: "Europe/Madrid" });
+  const fecha = date({ weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Madrid" });
 
   effect(() => {
     const id = setInterval(() => ahora.set(new Date()), 1000);
@@ -38,7 +32,7 @@
 
 <app-clock>
   <template shadowrootmode="open">
-    <time class="hora">@hora()</time>
-    <p class="fecha">@fecha()</p>
+    <time class="hora">@(ahora() | hora)</time>
+    <p class="fecha">@(ahora() | fecha)</p>
   </template>
 </app-clock>

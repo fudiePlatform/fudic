@@ -203,8 +203,14 @@ class TokenCollector {
       case 'foreach':
       case 'for':
       case 'while': {
+        const loop = node as unknown as ForeachNode | ForNode | WhileNode;
         this.control(node.span.start, node as unknown as KeyedNode);
-        this.walk((node as unknown as ForeachNode | ForNode | WhileNode).body);
+        this.walk(loop.body);
+        // `@empty` is the loop's own word, and its body is markup like the loop's.
+        if (loop.empty !== undefined) {
+          this.directiveAt(loop.empty.span.start);
+          this.walk(loop.empty.body);
+        }
         return;
       }
       case 'switch': {

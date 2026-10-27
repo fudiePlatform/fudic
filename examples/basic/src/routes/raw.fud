@@ -1,6 +1,7 @@
 <link rel="layout" href="../layouts/_layout.fud">
 <link rel="component" href="../components/site-nav.fud">
 <link rel="component" href="../components/raw-demo.fud">
+<link rel="server" href="./raw.fudapi">
 
 <head>
   <title>Raw — fudic</title>
@@ -18,7 +19,7 @@
   <code>@("@expr")</code>.
 </p>
 
-<raw-demo></raw-demo>
+<raw-demo .falsa=@data.falsa></raw-demo>
 
 <h2>Qué comprobar</h2>
 <p>

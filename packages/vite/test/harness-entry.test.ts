@@ -51,12 +51,18 @@ describe('@fudic/vite/harness', () => {
         'drainStream',
         'edgeContext',
         'emitRenderChunk',
+        'idWithoutLocale',
         'matchRouteBuild',
+        'nodeConfigIo',
         'nodeIo',
+        'pageModuleOf',
+        'readProject',
         'renderErrorPage',
+        'resolveForLocale',
         'resolveOptions',
         'routeApi',
         'routeUsesDi',
+        'withLocale',
       ],
     );
   });

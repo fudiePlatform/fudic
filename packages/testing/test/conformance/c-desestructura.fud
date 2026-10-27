@@ -1,0 +1,26 @@
+@* §3.6 and annex A.3.4, D1–D3: fields, renaming and defaults (also with null), nested, and a rest read by field and destructured again. *@
+@code {
+  type Author = { name: string; web?: string | null };
+  type Post = { slug: string; title: string; summary: string; tag: string; featured?: boolean | null; author: Author };
+
+  const { posts = [], post } = props<{ posts?: readonly Post[]; post: Post }>();
+}
+
+<c-desestructura>
+  <template shadowrootmode="open">
+    <ul class="d1">
+      @foreach (const { slug, title: titulo, featured = false } of posts) key (slug) {
+        <li>@slug @titulo @featured</li>
+      }
+    </ul>
+    <ul class="d2">
+      @foreach (const { author: { name, web = "" } } of posts) key (name) {
+        <li>@name [@web]</li>
+      }
+    </ul>
+    @{ const { slug, ...resto } = post; }
+    <h2 class="d3">@slug @resto.title</h2>
+    @{ const { title, ...sinTitulo } = resto; }
+    <p class="d3">@title @sinTitulo.tag @sinTitulo.author.name</p>
+  </template>
+</c-desestructura>

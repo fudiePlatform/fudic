@@ -254,6 +254,11 @@
     "tag": "value-display",
     "hydrates": false
   },
+  "examples/basic/src/components/vista-tareas.fud": {
+    "kind": "component",
+    "tag": "vista-tareas",
+    "hydrates": true
+  },
   "examples/basic/src/components/vista-url.fud": {
     "kind": "component",
     "tag": "vista-url",
@@ -521,6 +526,7 @@
     "reactive": false,
     "hydration": "gesture",
     "hydrates": [
+      "vista-tareas",
       "vista-url"
     ]
   },
@@ -937,6 +943,11 @@
     "tag": "x-save",
     "hydrates": true
   },
+  "packages/testing/test/app/src/components/x-signup.fud": {
+    "kind": "component",
+    "tag": "x-signup",
+    "hydrates": true
+  },
   "packages/testing/test/app/src/components/x-stamp.fud": {
     "kind": "component",
     "tag": "x-stamp",
@@ -1018,6 +1029,161 @@
     "hydration": "gesture",
     "hydrates": []
   },
+  "packages/testing/test/conformance/c-acceso.fud": {
+    "kind": "component",
+    "tag": "c-acceso",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/c-ahora.fud": {
+    "kind": "component",
+    "tag": "c-ahora",
+    "hydrates": true
+  },
+  "packages/testing/test/conformance/c-aritmetica.fud": {
+    "kind": "component",
+    "tag": "c-aritmetica",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/c-blog-vacio.fud": {
+    "kind": "component",
+    "tag": "c-blog-vacio",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/c-blog.fud": {
+    "kind": "component",
+    "tag": "c-blog",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/c-bloque.fud": {
+    "kind": "component",
+    "tag": "c-bloque",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/c-campo-texto.fud": {
+    "kind": "component",
+    "tag": "c-campo-texto",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/c-colecciones-vacias.fud": {
+    "kind": "component",
+    "tag": "c-colecciones-vacias",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/c-corte.fud": {
+    "kind": "component",
+    "tag": "c-corte",
+    "hydrates": true
+  },
+  "packages/testing/test/conformance/c-defectos.fud": {
+    "kind": "component",
+    "tag": "c-defectos",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/c-desestructura.fud": {
+    "kind": "component",
+    "tag": "c-desestructura",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/c-empty.fud": {
+    "kind": "component",
+    "tag": "c-empty",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/c-if.fud": {
+    "kind": "component",
+    "tag": "c-if",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/c-igualdad.fud": {
+    "kind": "component",
+    "tag": "c-igualdad",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/c-literales.fud": {
+    "kind": "component",
+    "tag": "c-literales",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/c-llamadas.fud": {
+    "kind": "component",
+    "tag": "c-llamadas",
+    "hydrates": true
+  },
+  "packages/testing/test/conformance/c-logicos.fud": {
+    "kind": "component",
+    "tag": "c-logicos",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/c-manejadores.fud": {
+    "kind": "component",
+    "tag": "c-manejadores",
+    "hydrates": true
+  },
+  "packages/testing/test/conformance/c-nombres.fud": {
+    "kind": "component",
+    "tag": "c-nombres",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/c-numeros.fud": {
+    "kind": "component",
+    "tag": "c-numeros",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/c-orden.fud": {
+    "kind": "component",
+    "tag": "c-orden",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/c-pipes.fud": {
+    "kind": "component",
+    "tag": "c-pipes",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/c-recetario.fud": {
+    "kind": "component",
+    "tag": "c-recetario",
+    "hydrates": true
+  },
+  "packages/testing/test/conformance/c-relacionales.fud": {
+    "kind": "component",
+    "tag": "c-relacionales",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/c-resto.fud": {
+    "kind": "component",
+    "tag": "c-resto",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/c-spread.fud": {
+    "kind": "component",
+    "tag": "c-spread",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/c-switch.fud": {
+    "kind": "component",
+    "tag": "c-switch",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/c-tareas.fud": {
+    "kind": "component",
+    "tag": "c-tareas",
+    "hydrates": true
+  },
+  "packages/testing/test/conformance/parts/c-badge.fud": {
+    "kind": "component",
+    "tag": "c-badge",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/parts/c-card.fud": {
+    "kind": "component",
+    "tag": "c-card",
+    "hydrates": false
+  },
+  "packages/testing/test/conformance/parts/c-reloj.fud": {
+    "kind": "component",
+    "tag": "c-reloj",
+    "hydrates": true
+  },
   "packages/testing/test/fixtures/broken-expr.fud": {
     "kind": "component",
     "tag": "broken-expr",
@@ -1027,6 +1193,46 @@
     "kind": "component",
     "tag": "broken-mode",
     "hydrates": false
+  },
+  "packages/testing/test/fixtures/p61-computed.fud": {
+    "kind": "component",
+    "tag": "p61-computed",
+    "hydrates": true
+  },
+  "packages/testing/test/fixtures/p61-defaults.fud": {
+    "kind": "component",
+    "tag": "p61-defaults",
+    "hydrates": false
+  },
+  "packages/testing/test/fixtures/p61-empty.fud": {
+    "kind": "component",
+    "tag": "p61-empty",
+    "hydrates": false
+  },
+  "packages/testing/test/fixtures/p61-live-empty.fud": {
+    "kind": "component",
+    "tag": "p61-live-empty",
+    "hydrates": true
+  },
+  "packages/testing/test/fixtures/p61-orden.fud": {
+    "kind": "component",
+    "tag": "p61-orden",
+    "hydrates": false
+  },
+  "packages/testing/test/fixtures/p61-presence.fud": {
+    "kind": "component",
+    "tag": "p61-presence",
+    "hydrates": false
+  },
+  "packages/testing/test/fixtures/p61-spread.fud": {
+    "kind": "component",
+    "tag": "p61-spread",
+    "hydrates": false
+  },
+  "packages/testing/test/fixtures/p61-tareas.fud": {
+    "kind": "component",
+    "tag": "p61-tareas",
+    "hydrates": true
   },
   "packages/testing/test/fixtures/spike-card.fud": {
     "kind": "component",
@@ -1067,11 +1273,6 @@
     "kind": "component",
     "tag": "x-pair",
     "hydrates": false
-  },
-  "packages/testing/test/fixtures/x-signup.fud": {
-    "kind": "component",
-    "tag": "x-signup",
-    "hydrates": true
   },
   "packages/vscode/fixtures/blog/[slug].fud": {
     "kind": "route",

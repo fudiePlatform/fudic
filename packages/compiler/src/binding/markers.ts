@@ -263,8 +263,10 @@ function walk(
       case 'foreach':
       case 'for':
       case 'while': {
-        const body = (node as unknown as ForeachNode | ForNode | WhileNode).body;
-        walk(body, body, true, ancestors, visit);
+        const loop = node as unknown as ForeachNode | ForNode | WhileNode;
+        walk(loop.body, loop.body, true, ancestors, visit);
+        // `@empty` is a block of its own, and outside the loop: it renders when there is no pass.
+        if (loop.empty !== undefined) walk(loop.empty.body, loop.empty.body, inLoop, ancestors, visit);
         break;
       }
       case 'section':

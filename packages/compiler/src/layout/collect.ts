@@ -108,8 +108,10 @@ function childrenOf(node: HtmlContent): readonly HtmlContent[] {
     }
     case 'foreach':
     case 'for':
-    case 'while':
-      return listOf<HtmlContent>((node as unknown as Partial<ForeachNode | ForNode | WhileNode>).body);
+    case 'while': {
+      const loop = node as unknown as Partial<ForeachNode | ForNode | WhileNode>;
+      return [...listOf<HtmlContent>(loop.body), ...listOf<HtmlContent>(loop.empty?.body)];
+    }
     case 'switch': {
       const out: HtmlContent[] = [];
       for (const c of listOf<SwitchCase>((node as unknown as Partial<SwitchNode>).cases)) {

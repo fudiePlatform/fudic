@@ -88,7 +88,7 @@ describe('planBench — criterion 3, the example app-card', () => {
       dir: DIR,
     });
     const page = plan.files.get('routes/app-card/altura-minima.fud');
-    expect(page).toContain('const { href, extra, title } = fixtures["minima"];');
+    expect(page).toContain('const { href, extra, title } = fixtures.minima;');
     expect(page).toContain('<app-card .href=@href .extra=@extra .title=@title>');
   });
 });
@@ -270,7 +270,7 @@ describe('planBench — criterion 5, a Signal prop', () => {
         '  import { signal } from "@fudic/core";\n' +
         '  import fixtures from "C:/proj/src/components/signal-display.fixture";\n' +
         '\n' +
-        '  const { label, note } = fixtures["mixta"];\n' +
+        '  const { label, note } = fixtures.mixta;\n' +
         '\n' +
         '  const value = signal({"n":[1,2]});\n' +
         '}\n' +
@@ -405,7 +405,7 @@ describe('planBench — SDD-59 §4.6, the fixture gives the component content', 
 
   it('keeps the props as attributes beside the content', () => {
     const page = plan({ entrada: { title: 'Hi', $content: '<b>x</b>', variant: 'v' } }).files.get('routes/app-card/icono.fud')!;
-    expect(page).toContain('      const { title, variant } = fixtures["entrada"];\n');
+    expect(page).toContain('      const { title, variant } = fixtures.entrada;\n');
     expect(page).toContain('    <app-card .title=@title .variant=@variant><b>x</b></app-card>\n');
   });
 
@@ -430,5 +430,13 @@ describe('planBench — SDD-59 §4.6, the fixture gives the component content', 
       '    <signal-display .value=@value><i slot="unit">kg</i></signal-display>\n',
     );
     expect(files.get('routes/signal-display/diez.fud')).toContain('    <bench-host-signal-display-diez></bench-host-signal-display-diez>\n');
+  });
+});
+
+describe('how a page reads its fixture (SDD-61 §3.5)', () => {
+  it('by a dot when the name can follow one, by its text when it cannot', async () => {
+    const { fixtureOf } = await import('../src/access.js');
+    expect(fixtureOf('minima')).toBe('fixtures.minima');
+    expect(fixtureOf('titulo-largo')).toBe('fixtures["titulo-largo"]');
   });
 });

@@ -1,0 +1,14 @@
+@* A child of the rows: what `app-card` declares in annex A.3.4 (D4) and A.6. *@
+@code {
+  type Variant = "default" | "highlight";
+
+  const { title = "", href = "", variant = "default" } = props<{ title?: string; href?: string; variant?: Variant }>();
+}
+
+<c-card>
+  <template shadowrootmode="open">
+    <a class=@variant href=@href>@title</a>
+    <slot name="meta"></slot>
+    <slot></slot>
+  </template>
+</c-card>

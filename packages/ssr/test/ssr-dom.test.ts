@@ -121,6 +121,36 @@ describe('SsrDom — the instance collector (SDD-15 §3.1, §3.3)', () => {
     expect(d.hydrationState()).toEqual({ offsets: [0, 1, 2], data: ['A', 'B'] });
   });
 
+  it('an instant in a slot travels as its milliseconds, an invalid one as null (SDD-61 §3.12)', () => {
+    const d = new SsrDom();
+    const a = instance(d, 'app-a');
+    const at = new Date('2026-10-26T10:00:00.000Z');
+    d.state(a.shadow, [at, new Date(Number.NaN), 'x']);
+    const { data } = d.hydrationState();
+    expect(data).toEqual([{ $d: at.getTime() }, { $d: Number.NaN }, 'x']);
+    expect(JSON.parse(JSON.stringify(data))).toEqual([{ $d: at.getTime() }, { $d: null }, 'x']);
+  });
+
+  it('an instant a list or a plain object nests is marked too; what holds none is the same object', () => {
+    const d = new SsrDom();
+    const a = instance(d, 'app-a');
+    const at = new Date('2026-10-26T10:00:00.000Z');
+    const plain = { n: 1, xs: ['a'] };
+    const bare = Object.create(null) as { creada?: Date };
+    bare.creada = at;
+    class Box {
+      constructor(readonly at: Date) {}
+    }
+    const box = new Box(at);
+    d.state(a.shadow, [[{ titulo: 'x', creada: at }], plain, bare, box]);
+    const { data } = d.hydrationState();
+    expect(data[0]).toEqual([{ titulo: 'x', creada: { $d: at.getTime() } }]);
+    expect(data[1]).toBe(plain);
+    expect(data[2]).toEqual({ creada: { $d: at.getTime() } });
+    // A class is not JSON's to walk field by field: it is left as it is.
+    expect(data[3]).toBe(box);
+  });
+
   it('state fills the slice of the host that owns the shadow, in id order', () => {
     const d = new SsrDom();
     const a = instance(d, 'app-a');

@@ -485,7 +485,7 @@ describe('the client chunk', () => {
 
   it('destructures the node in the LAST hole, behind every prop', () => {
     const chunk = emitComponentClientModule(graph(), graph().components.get('x-user')!);
-    expect(chunk).toContain('let [$dom, $shadow, label, variant = \'default\', $p4] = $props;');
+    expect(chunk).toContain("let [$dom, $shadow, label, variant, $p4] = $props; variant ??= ('default');");
     expect(chunk).toContain('const $ioc = $container($p4);');
     expect(chunk).toContain('const cart = injectFrom($ioc, Cart);');
   });
@@ -493,7 +493,7 @@ describe('the client chunk', () => {
   it('does not move an index of updateGuards: the node is behind them', () => {
     const chunk = emitComponentClientModule(graph(), graph().components.get('x-user')!);
     expect(chunk).toContain('if (2 in $p) label = $p[2];');
-    expect(chunk).toContain('if (3 in $p) variant = $p[3] === undefined');
+    expect(chunk).toContain("if (3 in $p) variant = $p[3] ?? ('default')");
     expect(chunk).not.toContain('4 in $p');
   });
 

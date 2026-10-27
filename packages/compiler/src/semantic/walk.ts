@@ -79,7 +79,7 @@ export interface TreeVisitor {
   render?(node: RenderCallNode): void;
   /**
    * Entering a body that opens a JS block of its own: an arm of `@if`, a `case`, the body of a
-   * loop, a `@section` and a `@snippet`. `owner` is the node the body belongs to — the arm, the
+   * loop, its `@empty`, a `@section` and a `@snippet`. `owner` is the node the body belongs to — the arm, the
    * case, the loop, the section, the declaration — so a reader can tell which header declares
    * into it. An element is not one: its children are emitted in the same block as its
    * siblings, which is what lets an `@{ }` declare a name an element further down reads.
@@ -197,6 +197,9 @@ function walkNode(node: HtmlContent, visitor: TreeVisitor, host: ElementNode | u
       visitor.enterLoop?.();
       walkBlock(loop, loop.body, visitor, host);
       visitor.exitLoop?.();
+      // `@empty` renders when the loop makes no pass: outside the loop, and with the scope
+      // around it — its owner is the block itself, which declares nothing (decision 163).
+      if (loop.empty !== undefined) walkBlock(loop.empty, loop.empty.body, visitor, host);
       return;
     }
     case 'switch': {

@@ -19,6 +19,7 @@ import { graphOf } from './graph.js';
 import { hostPage } from './host.js';
 import { chunkMap, hydrate, resolverOf } from './hydrate.js';
 import { renderPage } from './page.js';
+import { localized } from './project.js';
 import { settled, track } from './pending.js';
 import { standTree, type ProviderOverride } from './providers.js';
 import { serverRoot } from './api.js';
@@ -79,12 +80,28 @@ function positions(tag: string, order: readonly string[], props: object): [numbe
 }
 
 /**
+ * A `Date` as `fud-state` carries it, at any depth: its milliseconds (SDD-61 §4.4). `this[key]`
+ * and not `field`, which `Date.prototype.toJSON` has already turned into text.
+ */
+function marked(this: Record<string, unknown>, key: string, field: unknown): unknown {
+  const raw = this[key];
+  return raw instanceof Date ? { $d: raw.getTime() } : field;
+}
+
+/** The reverse, as `@fudic/core` reads the block: an object with `$d` and nothing else. */
+function revived(_key: string, field: unknown): unknown {
+  const keys = typeof field === 'object' && field !== null ? Object.keys(field) : [];
+  return keys.length === 1 && keys[0] === '$d' ? new Date((field as { $d: number }).$d) : field;
+}
+
+/**
  * Fail unless `value` is JSON: what the server renders for a prop travels to the browser in
  * the hydration state, and a value that does not survive `JSON` arrives as something else.
+ * A `Date` survives: the hydration state marks it.
  */
 function assertJson(tag: string, name: string, value: unknown): void {
-  const json = JSON.stringify(value) as string | undefined;
-  if (json === undefined || !isDeepStrictEqual(JSON.parse(json), value)) {
+  const json = JSON.stringify(value, marked) as string | undefined;
+  if (json === undefined || !isDeepStrictEqual(JSON.parse(json, revived), value)) {
     throw new Error(
       `mount(<${tag}>): prop "${name}" is not JSON, and via 'ssr' renders it on the server — mount it with via: 'client'`,
     );
@@ -104,7 +121,7 @@ async function paintHost(component: MountTarget, props: object, url: string): Pr
     'fud',
     hostPage({ links: [{ rel: 'component', href: component[FILE_EXPORT] }], body: `<${tag}${attrs.join('')}></${tag}>` }),
   );
-  return renderPage(page, { hasDi: true }, '/', url, props);
+  return renderPage(localized(page), { hasDi: true }, '/', url, props);
 }
 
 async function viaSsr(
@@ -134,7 +151,7 @@ async function viaClient(
   const html = await paintHost(component, {}, url);
   const body = pageShell(html);
   // Every component has a `?client` chunk, and importing it defines the tag.
-  await track(import(/* @vite-ignore */ `${component[FILE_EXPORT]}?client`));
+  await track(import(/* @vite-ignore */ localized(`${component[FILE_EXPORT]}?client`)));
   // No page printed a tree: the component resolves from a lone root, with the overrides in it.
   await standTree(resolverOf(new Map()), providers);
   const payload: unknown[] = Array.from({ length: order.length });

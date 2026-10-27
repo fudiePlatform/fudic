@@ -59,17 +59,21 @@ export interface Branch {
    */
   readonly test?: Span;
   /** How the branch is reached, for the shape the emit writes around it. */
-  readonly kind: 'if' | 'else-if' | 'else' | 'case' | 'default' | 'loop';
+  readonly kind: 'if' | 'else-if' | 'else' | 'case' | 'default' | 'loop' | 'empty';
 }
 
 /**
  * The branches of a construct, in source order.
  *
- * A loop has exactly one: it renders the same block N times, and the N is the data's, not
- * the template's.
+ * A loop has one: it renders the same block N times, and the N is the data's, not the
+ * template's. And a second when it has an `@empty` (SDD-61 §3.7): the block that renders
+ * instead when N is zero, outside the loop's scope.
  */
 export function branchesOf(node: ControlNode): readonly Branch[] {
-  if (isLoop(node)) return [{ body: node.body, kind: 'loop' }];
+  if (isLoop(node)) {
+    const loop: Branch = { body: node.body, kind: 'loop' };
+    return node.empty === undefined ? [loop] : [loop, { body: node.empty.body, kind: 'empty' }];
+  }
   if (node.type === 'switch') return switchBranches(node);
   return ifBranches(node);
 }

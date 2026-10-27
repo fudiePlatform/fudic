@@ -14,6 +14,11 @@ export interface CheckProblem {
   /** `FUD0123` for fudic, `TS2322` for TypeScript. */
   readonly code: string;
   readonly message: string;
+  /**
+   * For a problem of a file that is not a `.fud` — a store the server cut of a view reached
+   * (SDD-61 §3.9) —, the `.fud` whose views read it: what a dev server blocks their pages on.
+   */
+  readonly readBy?: readonly string[];
 }
 
 /** A problem of the project and not of a file: `FUD0870`, `FUD0871`. */

@@ -10,7 +10,7 @@
 
 import { badRequest } from '../errors.js';
 
-export type Primitive = 'str' | 'bool' | 'u8' | 'i8' | 'u16' | 'i16' | 'u32' | 'i32' | 'f32' | 'f64' | 'date' | 'uuid';
+export type Primitive = 'str' | 'html' | 'bool' | 'u8' | 'i8' | 'u16' | 'i16' | 'u32' | 'i32' | 'f32' | 'f64' | 'date' | 'uuid';
 
 export type Ty =
   | Primitive
@@ -31,6 +31,31 @@ const INTEGERS: Readonly<Record<string, readonly [number, number]>> = {
 const F32_MAX = 3.4028234663852886e38;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
+/**
+ * The text of an `html` value, or `undefined` when it is not one: text as it is, and a
+ * `TrustedHTML` of `@fudic/dom` (read by its shape) as its text. The mark of trust never crosses
+ * the contract: what arrives is text, and an `@raw` of it escapes it (SDD-61 §4.7).
+ */
+export function plainHtml(v: unknown): string | undefined {
+  if (typeof v === 'string') return v;
+  const text = typeof v === 'object' && v !== null ? (v as { readonly fudicTrustedHtml?: unknown }).fudicTrustedHtml : undefined;
+  return typeof text === 'string' ? text : undefined;
+}
+
+/**
+ * What a `load` gives, with every `TrustedHTML` in it turned into its text: its data reaches the
+ * server's render and every browser alike, as data, so they paint the same.
+ */
+export function unmarked(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(unmarked);
+  if (typeof value !== 'object' || value === null) return value;
+  const proto: unknown = Object.getPrototypeOf(value);
+  if (proto !== Object.prototype && proto !== null) return value;
+  const html = plainHtml(value);
+  if (html !== undefined) return html;
+  return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, unmarked(v)]));
+}
+
 /** What a type is called in a `detail`. */
 function nameOf(ty: Ty): string {
   if (typeof ty === 'string') return ty;
@@ -49,6 +74,8 @@ function primitive(ty: Primitive, v: unknown, path: string): unknown {
   switch (ty) {
     case 'str':
       return typeof v === 'string' ? v : refuse(path, ty);
+    case 'html':
+      return plainHtml(v) ?? refuse(path, ty);
     case 'bool':
       return typeof v === 'boolean' ? v : refuse(path, ty);
     case 'uuid':
@@ -111,7 +138,7 @@ export function conformAll(types: Readonly<Record<string, Ty>>, v: unknown, what
 export function fromText(ty: Ty, text: string, path: string): unknown {
   const inner = typeof ty !== 'string' && 'opt' in ty ? ty.opt : ty;
   if (inner === 'bool') return text === 'true' ? true : text === 'false' ? false : refuse(path, inner);
-  if (inner === 'str' || inner === 'uuid' || inner === 'date' || typeof inner !== 'string') return conform(inner, text, path);
+  if (inner === 'str' || inner === 'html' || inner === 'uuid' || inner === 'date' || typeof inner !== 'string') return conform(inner, text, path);
   return conform(inner, text.trim() === '' ? Number.NaN : Number(text), path);
 }
 

@@ -216,9 +216,12 @@ class Collector {
         return;
       case 'foreach':
       case 'for':
-      case 'while':
+      case 'while': {
         this.#list(n['body'] as readonly HtmlContent[]);
+        const empty = n['empty'] as { readonly body: readonly HtmlContent[] } | undefined;
+        if (empty !== undefined) this.#list(empty.body);
         return;
+      }
       case 'switch':
         for (const branch of n['cases'] as readonly { readonly body: readonly HtmlContent[] }[]) this.#list(branch.body);
         return;

@@ -8,7 +8,7 @@ import type { CompletionItem } from 'vscode-languageserver-protocol';
 import { apiCompletions } from '../../src/fudapi/completion.js';
 import { FILES, SRC, apiDocument, cursor, world } from './_api.js';
 
-const PRIMITIVES = ['str', 'bool', 'date', 'uuid', 'u8', 'i8', 'u16', 'i16', 'u32', 'i32', 'f32', 'f64'];
+const PRIMITIVES = ['str', 'html', 'bool', 'date', 'uuid', 'u8', 'i8', 'u16', 'i16', 'u32', 'i32', 'f32', 'f64'];
 /** The primitives, then the project's types: a library's first (`@fudic/dev`, a devDependency), then the app's. */
 const TYPES = [...PRIMITIVES, 'DevOnly', 'Person', 'Role'];
 

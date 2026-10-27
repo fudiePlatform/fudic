@@ -129,7 +129,7 @@ describe('the layout contract of a route resolver', () => {
 describe('a .fud with <link rel="server"> (SDD-60 §4.7)', () => {
   it('reads data and its functions from fudic:<id>, typed', () => {
     const root = project({
-      'src/routes/r.fud': PAGE('<p>@data.n.toFixed(1)</p>\n<p>@data.nope</p>\n<button @click=@go>go</button>').replace(
+      'src/routes/r.fud': PAGE('<p>@(data.n + 1)</p>\n<p>@data.nope</p>\n<button @click=@go>go</button>').replace(
         '<title>',
         '@code {\n  const go = (): Promise<number> => save({ id: 1 });\n}\n<title>',
       ),

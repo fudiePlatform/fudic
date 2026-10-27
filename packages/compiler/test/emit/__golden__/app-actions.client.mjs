@@ -6,7 +6,7 @@ customElements.define("app-actions", class extends FudicElement {
     let $n0, $n1;
     const $r = [];
     const $d = []; // teardowns
-    let [$dom, $shadow, rows = []] = $props;
+    let [$dom, $shadow, rows] = $props; rows ??= ([]);
     let $host = $dom.host($shadow);
     function del() {
     emit.call($host, 'cleared');
@@ -186,7 +186,7 @@ customElements.define("app-actions", class extends FudicElement {
         }
         $s();
       },
-      u: ($p) => { if (2 in $p) rows = $p[2] === undefined ? [] : $p[2]; $a(); $u0(); },
+      u: ($p) => { if (2 in $p) rows = $p[2] ?? ([]); $a(); $u0(); },
       r: () => { $k0.forEach(($i) => $i.r()); $n0 = $n1 = $shadow = $host = null; $d.forEach((d) => d()); },
     };
   }

@@ -1,0 +1,19 @@
+@* §3.4 and annex A.4: a number as text, with the semantics of JS. *@
+@code {
+  const { cero = 0, uno = 1 } = props<{ cero?: number; uno?: number }>();
+}
+
+<c-numeros>
+  <template shadowrootmode="open">
+    <p class="suma">@(0.1 + 0.2)</p>
+    <p class="grande">@(1e21)</p>
+    <p class="menos-cero">@(-0)</p>
+    <p class="infinito">@(uno / cero)</p>
+    <p class="menos-infinito">@(-uno / cero)</p>
+    <p class="nan">@(cero / cero)</p>
+    <p class="digitos">@(123456789012345680000)</p>
+    <p class="pequeno">@(0.0000001)</p>
+    <p class="decimal">@(0.000001)</p>
+    <p class="entero">@(2.0)</p>
+  </template>
+</c-numeros>

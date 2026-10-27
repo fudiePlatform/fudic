@@ -1,0 +1,33 @@
+@* §3.5 bis and annex A.8 (guide example 3): count, sort and join. *@
+@code {
+  import { computed, signal } from "@fudic/core";
+
+  type Tarea = { id: number; titulo: string; hecha: boolean };
+  type Autor = { nombre: string };
+
+  const { inicial = [], firmas = [] } = props<{ inicial?: readonly Tarea[]; firmas?: readonly Autor[] }>();
+
+  const tareas = signal<readonly Tarea[]>(inicial);
+  const autores = signal<readonly Autor[]>(firmas);
+  const hechas = computed(() => tareas().filter(t => t.hecha).length);
+  const pendientes = computed(() => tareas().filter(t => !t.hecha).length);
+  const firmantes = computed(() => autores()
+    .toSorted((a, b) => a.nombre < b.nombre ? -1 : a.nombre > b.nombre ? 1 : 0)
+    .reduce((s, a, i) => i === 0 ? a.nombre : `${s}, ${a.nombre}`, ""));
+}
+
+<c-tareas>
+  <template shadowrootmode="open">
+    <p>Hechas: @hechas() · Pendientes: @pendientes()</p>
+    <p>Firman: @firmantes()</p>
+    @foreach (const t of tareas()) key (t.id) {
+      <label>
+        <input type="checkbox" .checked=@t.hecha
+               @change=@(() => tareas.set(tareas().map(x => x.id === t.id ? { ...x, hecha: !x.hecha } : x)))>
+        @t.titulo
+      </label>
+    } @empty {
+      <p>No hay tareas.</p>
+    }
+  </template>
+</c-tareas>

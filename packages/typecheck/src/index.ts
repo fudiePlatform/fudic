@@ -66,9 +66,10 @@ export { linksOf, serverLinksOf, attributeOf, type LinkRef } from './links.js';
 export { unresolvedHrefs, hrefDiagnostics, type UnresolvedHref } from './href.js';
 export { holeDiagnostics, missingSections } from './holes.js';
 export { reservedDollarDiagnostics } from './reserved-dollar.js';
-export { fudicDiagnostics, semanticDiagnostics } from './fudic-diagnostics.js';
+export { fudicDiagnostics, semanticDiagnostics, semanticInput } from './fudic-diagnostics.js';
 
 export { propShapes } from './prop-shapes.js';
+export { portableTypeDiagnostics, isReactive } from './portable-types.js';
 
 // The project check (§3.1).
 export {

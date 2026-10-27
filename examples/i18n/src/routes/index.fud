@@ -2,6 +2,7 @@
 <link rel="component" href="../components/app-banner.fud">
 <link rel="component" href="../components/app-greeting.fud">
 <link rel="component" href="../components/app-cart.fud">
+<link rel="server" href="./index.fudapi">
 
 @code {
   import { t } from '@fudic/i18n';
@@ -12,7 +13,7 @@
 </head>
 
 <app-banner .title=@t("Bienvenida a la tienda")></app-banner>
-<app-greeting .name="Ana" .count=@(1)></app-greeting>
-<app-greeting .name="Luis" .count=@(4) .vip=@(true)></app-greeting>
+<app-greeting .name="Ana" .count=@(1) .alta=@data.alta></app-greeting>
+<app-greeting .name="Luis" .count=@(4) .vip=@(true) .alta=@data.alta></app-greeting>
 <app-cart></app-cart>
 <p>Lee <a href="/blog/pipes">cómo se formatean los precios</a>.</p>

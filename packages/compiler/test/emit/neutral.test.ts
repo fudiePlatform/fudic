@@ -73,7 +73,7 @@ describe('what the emit already writes is not written twice', () => {
       '  const { title, variant = "x" } = props<{ title: string; variant?: string }>();',
     );
     // The emit's shape on each side, and the author's line nowhere.
-    expect(server).toContain('const { title, variant = "x" } = props ?? {};');
+    expect(server).toContain('let { title, variant } = props ?? {}; variant ??= ("x");');
     expect(server).not.toContain('props<');
     expect(client).not.toContain('props<');
   });
