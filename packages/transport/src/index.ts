@@ -34,7 +34,9 @@ export {
   type ManifestFile,
   type RouteMatch,
   type RouteTable,
+  type HydrateGraph,
   compileManifest,
+  hydrateGraphOf,
   loadManifest,
   fillParams,
   segmentsOf,
@@ -46,6 +48,7 @@ export {
   LINK_DIR,
   CLIENT_DIR,
   createUrlResolver,
+  hydrateNameOf,
 } from './urls.js';
 export {
   type ModuleExports,

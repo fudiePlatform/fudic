@@ -227,6 +227,16 @@ describe('a build with "locales": ["es", "en"]', () => {
     expect(Object.keys(manifest.hydrate ?? {}).filter((k) => !k.includes('/'))).toEqual([]);
   });
 
+  it('BUG-53 criterion 4: each locale’s chunk carries its runtime pieces, every one copied', () => {
+    const manifest = JSON.parse(text(output, 'fudic-routes.json')) as { hydrate: Record<string, string[]> };
+    for (const locale of ['es', 'en']) {
+      const pieces = manifest.hydrate[`${locale}/app-total`]!.filter((d) => d.startsWith('/_fudic/'));
+      // `signal` is the component's own import; what it pulls in comes with it, transitively.
+      expect(pieces.some((p) => p.endsWith('/core/signal.js')), pieces.join(', ')).toBe(true);
+      for (const piece of pieces) expect(output.some((o) => `/${o.fileName}` === piece), piece).toBe(true);
+    }
+  });
+
   it('criterion 30: a route with a client half has its chunk per locale too', () => {
     const chunk = (locale: string): string =>
       output.find((o) => o.type === 'chunk' && o.fileName.startsWith(`assets/h/${locale}/${locale}-live`))!.code!;

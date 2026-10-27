@@ -2243,6 +2243,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       ]);
       const items = bundleItems(bundle);
       const hydrateDeps: Record<string, readonly string[]> = {};
+      // And the published runtime under them (BUG-53 §4.1), with the head's own closure: the
+      // pieces never reach the bundle graph, they are URLs inside the code.
+      const hydratePieces: Record<string, readonly string[]> = {};
+      const codeOf = new Map(
+        Object.entries(bundle).flatMap(([key, item]) => (item.type === 'chunk' ? [[key, item.code] as const] : [])),
+      );
       for (const [key, item] of Object.entries(bundle)) {
         // A locale's chunk is `x.fud?client&locale=en`, and the runtime asks for it as
         // `en/<tag>` (SDD-58 §4.6): filed under that name, or the worker warms another file.
@@ -2252,11 +2258,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           continue;
         }
         const tag = `${chunkDir(localeOf(facade), locales)}${found}`;
-        const deps = reachableChunks(items, (i) => i.fileName === key)
+        const graph = reachableChunks(items, (i) => i.fileName === key);
+        const deps = graph
           .filter((fileName) => fileName !== key)
           .map((fileName) => bundle[fileName]?.fileName ?? fileName);
         if (deps.length > 0) {
           hydrateDeps[tag] = deps;
+        }
+        // Every name in `graph` is a chunk: that is what `reachableChunks` walks.
+        const pieces = loadedPieces(graph.map((fileName) => codeOf.get(fileName)).join('\n'), runtime);
+        if (pieces.length > 0) {
+          hydratePieces[tag] = pieces;
         }
       }
 
@@ -2267,6 +2279,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         base,
         serviceWorker: swConfig !== null,
         hydrateDeps,
+        hydratePieces,
         depsOf: (rb) => {
           if (!link.entries.has(rb.route.pattern)) {
             unlinked.push(FUD0399({ pattern: rb.route.pattern }));

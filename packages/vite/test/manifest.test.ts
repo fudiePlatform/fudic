@@ -59,6 +59,23 @@ describe('buildManifest — what a hydration chunk imports (SDD-17 §4.7)', () =
     expect(file.hydrate).toEqual({ 'app-counter': ['element'] });
   });
 
+  it('BUG-53 §4.1 writes the runtime pieces after the shared chunks, by URL and unfolded', () => {
+    const { file } = buildManifest([routeBuild('/', { mode: 'ssg' })], {
+      ...INPUTS,
+      hydrateDeps: { 'app-counter': ['assets/element-b1.js'] },
+      hydratePieces: {
+        'app-counter': ['/_fudic/0.0.1-ab/core/live.js'],
+        // A chunk that shares no code with anybody may still import the runtime.
+        'en/app-clock': ['/_fudic/0.0.1-ab/core/element.js'],
+      },
+    });
+    expect(file.assets).toBe('assets/');
+    expect(file.hydrate).toEqual({
+      'app-counter': ['element', '/_fudic/0.0.1-ab/core/live.js'],
+      'en/app-clock': ['/_fudic/0.0.1-ab/core/element.js'],
+    });
+  });
+
   it('says nothing when there is nothing to say', () => {
     // An empty object in the file would read as "asked and answered nothing"; the key is
     // absent instead, which is what the Service Worker's `?? []` already means.

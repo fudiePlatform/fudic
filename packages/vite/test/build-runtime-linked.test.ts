@@ -184,3 +184,23 @@ describe('a build that links the published runtime', () => {
     expect(preloaded.some((u) => (u ?? '').includes('/core/signal.js'))).toBe(false);
   });
 });
+
+describe('BUG-53 §4.1: the manifest names the runtime under each hydration chunk', () => {
+  it('lists the pieces of `app-counter` with their static closure, every one copied', () => {
+    const manifest = output.find((o) => o.fileName === 'fudic-routes.json')!;
+    const file = JSON.parse(String(manifest.source)) as { hydrate: Record<string, string[]> };
+    const listed = file.hydrate['app-counter']!.filter((d) => d.startsWith('/_fudic/'));
+    expect(listed.length).toBeGreaterThan(0);
+    const byUrl = new Map(pieces().map((o) => [`/${o.fileName}`, o]));
+    for (const url of listed) {
+      const piece = byUrl.get(url);
+      expect(piece, `${url} is copied`).toBeDefined();
+      // Closed: what a listed piece imports statically is listed too.
+      for (const [, next] of String(piece!.source ?? piece!.code).matchAll(
+        /(?:^|[^.$\w])(?:from|import)\s*["'`](\/_fudic\/[^"'`]+\.js)["'`]/gu,
+      )) {
+        expect(listed, `${url} → ${next!}`).toContain(next);
+      }
+    }
+  });
+});

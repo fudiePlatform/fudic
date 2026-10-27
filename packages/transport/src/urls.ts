@@ -65,6 +65,27 @@ function join(base: string, path: string): string {
   return `${base}${path}`.replace(/\/{2,}/gu, '/');
 }
 
+/**
+ * The name of the hydration chunk a URL points at — `/assets/h/en/app-cart-<build>.js` →
+ * `en/app-cart` — or `undefined` for any other URL. `url` and the resolver's own URLs are read
+ * against `location`, so an absolute and a root-relative spelling of one file name the same.
+ *
+ * The inverse of `hydrateUrl`, and here for the reason that one is: the worker and a page with
+ * no worker both name a chunk by its URL and look its graph up by name (BUG-53 §4.3), and two
+ * copies of this arithmetic would drift.
+ */
+export function hydrateNameOf(
+  urls: UrlResolver,
+  url: string,
+  location: string,
+): string | undefined {
+  const [head, tail] = new URL(urls.hydrateUrl('*'), location).href.split('*') as [string, string];
+  const href = new URL(url, location).href;
+  return href.length > head.length + tail.length && href.startsWith(head) && href.endsWith(tail)
+    ? href.slice(head.length, -tail.length)
+    : undefined;
+}
+
 export function createUrlResolver(base: string, build: string): UrlResolver {
   const chunk = (dir: string, name: string): string => join(base, `${dir}/${name}-${build}.js`);
   return {
@@ -85,3 +106,7 @@ export function createUrlResolver(base: string, build: string): UrlResolver {
     },
   };
 }
+
+// The page with no worker reads the graph through this piece, the only one of this package a
+// document reaches (BUG-53 §4.3): the reader travels with the arithmetic it uses.
+export { hydrateGraphOf, type HydrateGraph } from './manifest.js';

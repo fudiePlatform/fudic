@@ -112,7 +112,9 @@ export interface ManifestFile {
   readonly routes: readonly RouteRecord[];
   /**
    * Component tag → the chunks its hydration chunk statically imports, transitively
-   * (SDD-17 §4.7). Paths as the build named them, `base` excluded like everywhere here.
+   * (SDD-17 §4.7), and after them the published runtime pieces under all of those, by their
+   * origin-absolute URL (BUG-53 §4.1). Paths as the build named them, `base` excluded like
+   * everywhere here; `hydrateGraphOf` is the one reader.
    *
    * WHICH chunks a tag needs is the one thing about it that is not derivable — where each
    * one lives has been arithmetic since BUG-31 §T5, so the names here are bare. Without this
@@ -157,11 +159,12 @@ export interface RouteTable {
   /** The `sw` template that owns `pathname` — the unit of warming is the TEMPLATE. */
   templateOf(pathname: string): RouteRecord | null;
   /**
-   * The URLs a tag's hydration chunk imports, `base` applied. Empty for a tag with no
-   * shared code, and empty for a tag this build does not know — a warm asks for what a
-   * page says it has, and an unknown tag is a stale page, not an error.
+   * The URLs a tag's hydration chunk imports — shared chunks with `base` applied, runtime
+   * pieces as published — the `HydrateGraph` of this file. Empty for a tag that imports
+   * nothing, and empty for a tag this build does not know — a warm asks for what a page says
+   * it has, and an unknown tag is a stale page, not an error.
    */
-  hydrateDeps(tag: string): readonly string[];
+  readonly hydrateDeps: HydrateGraph;
   /**
    * Every record of the manifest, in file order (BUG-31 §T7).
    *
@@ -265,16 +268,37 @@ export function compileManifest(file: ManifestFile): RouteTable {
     records(): readonly RouteRecord[] {
       return compiled.map((route) => route.record);
     },
-    hydrateDeps(tag: string): readonly string[] {
-      // The names are relative to `file.assets` and carry the build id implicitly, both
-      // stated once for all of them (BUG-31 §T5). A name that already ends in `.js` kept a
-      // content hash — a collision `planRename` declined to resolve — and is used as it is.
-      const dir = file.assets ?? '';
-      return (file.hydrate?.[tag] ?? []).map((name) =>
-        urls.assetUrl(dir + (name.endsWith('.js') ? name : `${name}-${file.build}.js`)),
-      );
-    },
+    hydrateDeps: hydrateGraphOf(file),
   };
+}
+
+/**
+ * Every file a hydration chunk needs, in no particular order: the shared chunks and the
+ * published runtime pieces it imports statically, transitively. The chunk itself is not in it.
+ * Read off the manifest; empty for a name the manifest does not know.
+ */
+export type HydrateGraph = (name: string) => readonly string[];
+
+/**
+ * The graph of every hydration chunk, read off `hydrate` (BUG-53 §3).
+ *
+ * The one reader of that field, for both sides of the wire: the worker warms with it and so
+ * does a page with no worker. Two readers would drift exactly like two `hydrateUrl`s.
+ */
+export function hydrateGraphOf(file: ManifestFile): HydrateGraph {
+  const urls = createUrlResolver(file.base, file.build);
+  // The names are relative to `file.assets` and carry the build id implicitly, both
+  // stated once for all of them (BUG-31 §T5). A name that already ends in `.js` kept a
+  // content hash — a collision `planRename` declined to resolve — and is used as it is.
+  // A leading `/` is a published runtime piece (BUG-53 §4.1): origin-absolute and outside
+  // `base`, so it is written as it will be asked for.
+  const dir = file.assets ?? '';
+  return (name) =>
+    (file.hydrate?.[name] ?? []).map((dep) =>
+      dep.startsWith('/')
+        ? dep
+        : urls.assetUrl(dir + (dep.endsWith('.js') ? dep : `${dep}-${file.build}.js`)),
+    );
 }
 
 /**

@@ -51,6 +51,12 @@ export interface ManifestInputs {
    * for the framework code the component imports.
    */
   readonly hydrateDeps?: Readonly<Record<string, readonly string[]>>;
+  /**
+   * Tag → the published runtime pieces its chunk and those shared chunks import statically,
+   * transitively (BUG-53 §4.1). By their published URL, origin-absolute: they do not live
+   * under `assets`, so they are written after the folded chunk names and never folded.
+   */
+  readonly hydratePieces?: Readonly<Record<string, readonly string[]>>;
 }
 
 export interface ManifestResult {
@@ -157,20 +163,26 @@ export function buildManifest(
   // The dependency names, factored (BUG-31 §T5): the directory they share is stated once at
   // the top of the file instead of on every one of them.
   const hydrate = inputs.hydrateDeps ?? {};
+  const pieces = inputs.hydratePieces ?? {};
   const assets = commonDir(Object.values(hydrate).flat());
   const suffix = `-${inputs.build}.js`;
+  const tags = [...new Set([...Object.keys(hydrate), ...Object.keys(pieces)])];
   const folded = Object.fromEntries(
-    Object.entries(hydrate).map(([tag, deps]) => [
+    tags.map((tag) => [
       tag,
-      // `element-<build>.js` → `element`. Now that a shared chunk carries the build id like
-      // every other derived name, the tail is arithmetic and the manifest stops writing it
-      // out per dependency (BUG-31 §T5). A chunk that kept its hash — a name collision, which
-      // `planRename` degrades rather than breaks — keeps its whole name, and the `.js` it
-      // ends in is what tells the reader which of the two it is holding.
-      deps.map((d) => {
-        const name = d.slice(assets.length);
-        return name.endsWith(suffix) ? name.slice(0, -suffix.length) : name;
-      }),
+      [
+        // `element-<build>.js` → `element`. Now that a shared chunk carries the build id like
+        // every other derived name, the tail is arithmetic and the manifest stops writing it
+        // out per dependency (BUG-31 §T5). A chunk that kept its hash — a name collision, which
+        // `planRename` degrades rather than breaks — keeps its whole name, and the `.js` it
+        // ends in is what tells the reader which of the two it is holding.
+        ...(hydrate[tag] ?? []).map((d) => {
+          const name = d.slice(assets.length);
+          return name.endsWith(suffix) ? name.slice(0, -suffix.length) : name;
+        }),
+        // The pieces as they are: a leading `/` is what tells the reader a URL from a name.
+        ...(pieces[tag] ?? []),
+      ],
     ]),
   );
   return {
@@ -181,7 +193,7 @@ export function buildManifest(
       routes: records,
       // Absent when nothing hydrates, or when every chunk is self-contained: an empty
       // object in the file would say "asked and answered nothing", which is not the case.
-      ...(Object.keys(hydrate).length === 0 ? {} : { hydrate: folded }),
+      ...(tags.length === 0 ? {} : { hydrate: folded }),
       ...(assets === '' ? {} : { assets }),
     },
     diagnostics,

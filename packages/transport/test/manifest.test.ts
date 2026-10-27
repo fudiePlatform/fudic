@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   compileManifest,
   fillParams,
+  hydrateGraphOf,
   loadManifest,
   type ManifestFile,
 } from '../src/manifest.js';
@@ -96,6 +97,22 @@ describe('compileManifest', () => {
     // A tag with no shared code, and a tag this build never heard of — a stale page asking
     // for a component that no longer exists — are the same answer: nothing to drag along.
     expect(table.hydrateDeps('app-toggle')).toEqual([]);
+  });
+
+  it('BUG-53 §3 the graph carries the runtime pieces as published, outside base', () => {
+    const file: ManifestFile = {
+      ...UNDER_BASE,
+      assets: 'assets/',
+      hydrate: { 'en/app-counter': ['element', '/_fudic/0.0.1-ab/core/live.js'] },
+    };
+    const graph = hydrateGraphOf(file);
+    expect(graph('en/app-counter')).toEqual([
+      '/admin/assets/element-a3f9c1.js',
+      '/_fudic/0.0.1-ab/core/live.js',
+    ]);
+    expect(graph('app-unknown')).toEqual([]);
+    // The table reads it with the same function, so the worker and the page cannot disagree.
+    expect(compileManifest(file).hydrateDeps('en/app-counter')).toEqual(graph('en/app-counter'));
   });
 
   it('a build where nothing shares code publishes no map at all', () => {

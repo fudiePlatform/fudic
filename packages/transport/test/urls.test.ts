@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { createUrlResolver, DATA_PREFIX, LINK_DIR, CLIENT_DIR } from '../src/urls.js';
+import { createUrlResolver, hydrateNameOf, DATA_PREFIX, LINK_DIR, CLIENT_DIR } from '../src/urls.js';
 import { safeName, type RouteRecord } from '../src/manifest.js';
 
 const BUILD = '605477d3';
@@ -84,5 +84,24 @@ describe('createUrlResolver', () => {
     const next = createUrlResolver('/', 'deadbeef');
     expect(next.depUrl('app-badge')).toBe(`/${LINK_DIR}/app-badge-deadbeef.js`);
     expect(next.hydrateUrl('app-badge')).toBe(`/${CLIENT_DIR}/app-badge-deadbeef.js`);
+  });
+});
+
+describe('hydrateNameOf (BUG-53 §4.3)', () => {
+  const urls = createUrlResolver('/admin/', BUILD);
+  const at = 'https://app.test/admin/usuarios';
+
+  it('reads the name back out of a hydration chunk URL, whatever its spelling', () => {
+    expect(hydrateNameOf(urls, `/admin/assets/h/en/app-cart-${BUILD}.js`, at)).toBe('en/app-cart');
+    expect(hydrateNameOf(urls, `https://app.test/admin/assets/h/app-cart-${BUILD}.js`, at)).toBe(
+      'app-cart',
+    );
+  });
+
+  it('names nothing for a URL that is not a hydration chunk of this build', () => {
+    expect(hydrateNameOf(urls, '/admin/assets/h/app-cart-other.js', at)).toBeUndefined();
+    expect(hydrateNameOf(urls, '/assets/h/app-cart-605477d3.js', at)).toBeUndefined();
+    // The two ends with nothing between them: no name at all.
+    expect(hydrateNameOf(urls, `/admin/assets/h/-${BUILD}.js`, at)).toBeUndefined();
   });
 });
