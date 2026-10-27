@@ -752,15 +752,20 @@ describe('createRouter.warmHydration — the hydration chunks', () => {
     expect(h.network).toEqual([]);
   });
 
-  describe('the published runtime the chunk imports (SDD-45 §4.3)', () => {
+  describe('the published runtime the chunk imports (SDD-45 §4.3, BUG-53 §4.2)', () => {
     const ELEMENT = `${ORIGIN}_fudic/0.0.1/core/element.js`;
     const EFFECT = `${ORIGIN}_fudic/0.0.1/core/effect.js`;
+    /** The build lists the pieces after the shared chunks, by their published URL. */
+    const WITH_PIECES: ManifestFile = {
+      ...FILE,
+      hydrate: { 'app-counter': ['/_fudic/0.0.1/core/element.js', '/_fudic/0.0.1/core/effect.js'] },
+    };
 
-    function withRuntime(h: ReturnType<typeof harness>) {
+    function withRuntime(h: ReturnType<typeof harness>, net = h.net) {
       const { cache, fake } = fakeCache();
-      const runtime = { prefix: '/_fudic/', store: createStore({ cache, net: h.net }) };
+      const runtime = { prefix: '/_fudic/', store: createStore({ cache, net }) };
       const r = createRouter({
-        table: compileManifest(FILE),
+        table: compileManifest(WITH_PIECES),
         linker: linkerOver(h.stores.routes),
         stores: h.stores,
         origin: ORIGIN,
@@ -771,21 +776,17 @@ describe('createRouter.warmHydration — the hydration chunks', () => {
       return { r, fake };
     }
 
-    it('reads the pieces off the deposited bytes, transitively, into the runtime cache', async () => {
+    it('deposits the pieces the manifest lists into the runtime cache, reading no bytes', async () => {
       const h = harness();
-      // The chunk names one piece statically and loads another on demand; the first piece
-      // names a second. The manifest knows none of them.
-      h.sources.set(
-        CHUNK,
-        'import{FudicElement as t}from"/_fudic/0.0.1/core/element.js";const l=()=>import("/_fudic/0.0.1/core/live.js");',
-      );
-      h.sources.set(ELEMENT, 'import{effect as e}from"./effect.js";export const E=1;');
+      // The chunk's bytes name a piece the manifest does not: it is NOT followed. The worker
+      // asks for what the build listed and reads the code of nothing it deposits.
+      h.sources.set(CHUNK, 'import{x}from"/_fudic/0.0.1/core/live.js";');
+      h.sources.set(ELEMENT, 'export const E=1;');
       h.sources.set(EFFECT, 'export const effect = 1;');
       const { r, fake } = withRuntime(h);
 
       expect(await r.warmHydration(['app-counter'])).toEqual(['app-counter']);
-      // Static imports only: what a piece loads on demand is its own decision.
-      expect([...fake.entries.keys()]).toEqual([ELEMENT, EFFECT]);
+      expect([...fake.entries.keys()].toSorted()).toEqual([EFFECT, ELEMENT]);
 
       // And the gesture then pays nothing for them.
       for (const url of [ELEMENT, EFFECT]) {
@@ -793,16 +794,49 @@ describe('createRouter.warmHydration — the hydration chunks', () => {
         r.handle(event);
         await event.responded;
       }
-      expect(h.network).toEqual([CHUNK, ELEMENT, EFFECT]);
+      expect(h.network.toSorted()).toEqual([CHUNK, EFFECT, ELEMENT].toSorted());
     });
 
-    it('a piece that did not land leaves the tag unwarmed, and a repeat reads each file once', async () => {
+    it('asks for every file of the graph before any of them has landed', async () => {
       const h = harness();
-      h.sources.set(CHUNK, 'import "/_fudic/0.0.1/core/element.js";import "/_fudic/0.0.1/core/element.js";');
+      h.sources.set(CHUNK, 'export {};');
+      h.sources.set(ELEMENT, 'export const E=1;');
+      h.sources.set(EFFECT, 'export const effect = 1;');
+      // Nothing answers until all three have been asked for: a warm that waited for one file
+      // before asking for the next would never finish.
+      const asked: string[] = [];
+      let release = (): void => {};
+      const all = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const gated = async (request: Request): Promise<Response> => {
+        asked.push(request.url);
+        if (asked.length === 3) release();
+        await all;
+        return h.net(request);
+      };
+      const { cache } = fakeCache();
+      const r = createRouter({
+        table: compileManifest(WITH_PIECES),
+        linker: linkerOver(h.stores.routes),
+        stores: { ...h.stores, data: createStore({ cache: fakeCache().cache, net: gated }) },
+        origin: ORIGIN,
+        net: h.net,
+        resources: ASSETS,
+        runtime: { prefix: '/_fudic/', store: createStore({ cache, net: gated }) },
+      });
+
+      expect(await r.warmHydration(['app-counter'])).toEqual(['app-counter']);
+      expect(asked.toSorted()).toEqual([CHUNK, EFFECT, ELEMENT].toSorted());
+    });
+
+    it('a piece that did not land leaves the tag unwarmed', async () => {
+      const h = harness();
+      h.sources.set(CHUNK, 'export {};');
+      h.sources.set(EFFECT, 'export const effect = 1;');
       const { r } = withRuntime(h);
       // `element.js` has no source: a 404, which the Store refuses to keep.
       expect(await r.warmHydration(['app-counter'])).toEqual([]);
-      expect(h.network).toEqual([CHUNK, ELEMENT]);
     });
   });
 

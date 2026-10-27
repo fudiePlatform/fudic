@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { notifyRuntimeUsed } from '../src/main.js';
-import { RUNTIME_MESSAGE } from '../src/messages.js';
+import { notifyLocation, notifyRuntimeUsed, registerRenderServiceWorker } from '../src/main.js';
+import { LOCATION_MESSAGE, RUNTIME_MESSAGE } from '../src/messages.js';
 
 /**
  * The one load a Service Worker cannot intercept — its own first one (SDD-45 §4.5.1).
@@ -111,5 +111,46 @@ describe('notifyRuntimeUsed', () => {
     await notifyRuntimeUsed('/_fudic/');
 
     expect(posted).toEqual([]);
+  });
+});
+
+describe('registerRenderServiceWorker', () => {
+  it('registers the worker as a module that never comes from the HTTP cache', async () => {
+    const calls: unknown[] = [];
+    vi.stubGlobal('navigator', {
+      serviceWorker: {
+        register: (url: string, options: RegistrationOptions) => {
+          calls.push([url, options]);
+          return Promise.resolve({});
+        },
+      },
+    });
+    await registerRenderServiceWorker('/fudic-sw.js');
+    await registerRenderServiceWorker('/fudic-sw.js', { scope: '/admin/' });
+    expect(calls).toEqual([
+      ['/fudic-sw.js', { type: 'module', updateViaCache: 'none' }],
+      ['/fudic-sw.js', { scope: '/admin/' }],
+    ]);
+  });
+});
+
+describe('notifyLocation', () => {
+  it('tells the controlling worker where the user is', async () => {
+    const { posted } = page({});
+    await notifyLocation();
+    await notifyLocation('https://shop.test/about');
+    expect(posted).toEqual([
+      { type: LOCATION_MESSAGE, url: ORIGIN },
+      { type: LOCATION_MESSAGE, url: 'https://shop.test/about' },
+    ]);
+  });
+
+  it('falls back to the active worker, and says nothing with none', async () => {
+    const active = page({ controller: null });
+    await notifyLocation();
+    expect(active.posted).toHaveLength(1);
+    const none = page({ controller: null, active: null });
+    await notifyLocation();
+    expect(none.posted).toEqual([]);
   });
 });

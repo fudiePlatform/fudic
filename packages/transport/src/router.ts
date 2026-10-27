@@ -27,6 +27,7 @@ import {
   type CachePolicy,
 } from './manifest.js';
 import { type Store } from './store.js';
+import { hydrateNameOf } from './urls.js';
 
 /**
  * Structural view of the ServiceWorker `FetchEvent` (lib.dom carries no SW types, and
@@ -480,76 +481,31 @@ export function createRouter(config: RouterConfig): Router {
   };
 
   /**
-   * The published runtime pieces a module imports STATICALLY, read off its own bytes.
-   *
-   * The manifest cannot name them: it lists what THIS build emitted, and the runtime is
-   * published apart, under a version and not a build (SDD-45). But the worker holds the bytes
-   * of every file it deposits, and a static import names its `/_fudic/…` specifier in them,
-   * so the graph is read where it is. (No literal import here: this comment ships inside the
-   * Service Worker, whose bundle must not contain one.) Dynamic `import()` is left alone on purpose: what a piece
-   * loads on demand is that piece's own decision, and warming it would be guessing.
-   */
-  const runtimeImportsOf = async (response: Response, base: string): Promise<string[]> => {
-    const text = await response.clone().text();
-    const found: string[] = [];
-    for (const match of text.matchAll(/(?:\bfrom|\bimport)\s*["']([^"']+)["']/gu)) {
-      const url = new URL(match[1]!, base);
-      if (isRuntimePiece(url.pathname)) found.push(url.href);
-    }
-    return found;
-  };
-
-  /**
    * Warm the hydration chunks of these tags (SDD-17 §4.7).
    *
-   * **The chunk AND what it imports.** The page orders by TAG and knows nothing else: the
-   * URL of a tag's chunk is arithmetic, but the shared code the client pass extracts keeps
-   * a content hash and is therefore a fact of the build — which is why the manifest carries
-   * it and this is the side that reads it. Warming the tag's chunk alone left its imports
-   * to the network INSIDE the gesture, measured at ~12 ms on localhost, and that is the one
-   * place warm exists to keep clear.
+   * **The chunk AND its whole graph, all at once.** The page orders by TAG and knows nothing
+   * else: the URL of a tag's chunk is arithmetic, and everything it imports statically — the
+   * shared chunks of the client pass and the published runtime under them — is listed in the
+   * manifest by the build, which is the one side that knows it (BUG-53 §4.1). So every file
+   * is asked for in the same breath: no file waits for another to land, and nothing is read
+   * to find out what to ask for next. Warming the tag's chunk alone left its imports to the
+   * network INSIDE the gesture, and that is the one place warm exists to keep clear.
    *
    * A tag counts as warmed only when every one of its files landed: half a graph in cache
    * still pays network on the first interaction.
-   *
-   * **And the published runtime those files import**, transitively (SDD-45 §4.3: the pieces
-   * a component needs come «with the warm, in the same batch»). Read off the deposited bytes,
-   * because the manifest does not know them; a piece that fails to land still counts against
-   * the tag, for the same reason a chunk does.
    */
-  /** `/assets/h/en/app-cart-<build>.js` → `en/app-cart`; `undefined` for any other URL. */
-  const hydrateNameOf = (url: string | undefined): string | undefined => {
-    if (url === undefined) return undefined;
-    const [head, tail] = abs(table.urls.hydrateUrl('*')).split('*') as [string, string];
-    const href = abs(url);
-    return href.length > head.length + tail.length && href.startsWith(head) && href.endsWith(tail)
-      ? href.slice(head.length, -tail.length)
-      : undefined;
-  };
-
   const warmHydration = async (tags: readonly string[], urls: readonly string[] = []): Promise<readonly string[]> => {
-    const warmedTags: string[] = [];
-    for (const [i, tag] of tags.entries()) {
-      let complete = true;
-      const name = hydrateNameOf(urls[i]) ?? tag;
-      const pending = [table.urls.hydrateUrl(name), ...table.hydrateDeps(name)];
-      const seen = new Set<string>();
-      while (pending.length > 0) {
-        const url = abs(pending.shift()!);
-        if (seen.has(url)) continue;
-        seen.add(url);
-        const response = await deposit(url);
-        if (response === null) {
-          complete = false;
-          continue;
-        }
-        pending.push(...(await runtimeImportsOf(response, url)));
-      }
-      if (complete) {
-        warmedTags.push(tag);
-      }
-    }
-    return warmedTags;
+    const warmed = await Promise.all(
+      tags.map(async (tag, i) => {
+        // `en/app-cart` when the page asked for a locale's chunk (SDD-58 §4.6).
+        const url = urls[i];
+        const name = (url === undefined ? undefined : hydrateNameOf(table.urls, url, base)) ?? tag;
+        const files = new Set([table.urls.hydrateUrl(name), ...table.hydrateDeps(name)].map(abs));
+        const landed = await Promise.all([...files].map(deposit));
+        return landed.every((response) => response !== null) ? [tag] : [];
+      }),
+    );
+    return warmed.flat();
   };
 
   /**
