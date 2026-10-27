@@ -13,6 +13,13 @@ import { describe, expect, it } from 'vitest';
 
 import { coordinatorFor, type CoordinatorParams } from '../src/coordinator.js';
 import { BUILD_TOKEN } from '../src/constants.js';
+import {
+  DEFAULT_CSP,
+  createUrlResolver,
+  hydrateGraphOf,
+  hydrateNameOf,
+  type ManifestFile,
+} from '@fudic/transport';
 
 /**
  * The pieces as DEV names them: package specifiers and the names the source exports, which is
@@ -150,5 +157,85 @@ describe('the coordinator', () => {
 
     expect(one?.name).toBe(same?.name);
     expect(one?.name).not.toBe(other?.name);
+  });
+});
+
+/**
+ * BUG-53 §4.3: with no worker the coordinator hands the preload channel the graph of each
+ * chunk, read off the manifest. Run, not read: the generated module is evaluated against the
+ * real resolver and graph reader, with `fetch` and the channel stood in for.
+ */
+describe('the graph of a build with no worker', () => {
+  const PAGE = 'https://app.test/usuarios';
+  const params = (manifest?: string): CoordinatorParams => ({
+    chunks: { mode: 'build', base: '/', ...(manifest === undefined ? {} : { manifest }) },
+    pieces: devPieces(false),
+  });
+
+  /** Evaluate a coordinator and return the `graph` it handed the channel, if any. */
+  function run(
+    source: string,
+    fetch: (url: string, init: RequestInit) => Promise<{ json(): Promise<unknown> }>,
+  ): ((url: string) => Promise<readonly string[]>) | undefined {
+    let handed: { graph?: (url: string) => Promise<readonly string[]> } | undefined;
+    const body = source.replace(/^import .*$/gmu, '');
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    new Function('$hydrate', '$warm', '$resolver', '$graphOf', '$nameOf', 'fetch', 'document', body)(
+      () => undefined,
+      (config?: typeof handed) => {
+        handed = config;
+        return {};
+      },
+      createUrlResolver,
+      hydrateGraphOf,
+      hydrateNameOf,
+      fetch,
+      { baseURI: PAGE },
+    );
+    return handed?.graph;
+  }
+
+  const FILE = (build: string): ManifestFile => ({
+    build,
+    base: '/',
+    csp: DEFAULT_CSP,
+    routes: [],
+    assets: 'assets/',
+    hydrate: { 'user-form': ['fudic_http', '/_fudic/0.0.1-ab/forms/wiring.js'] },
+  });
+  const chunk = (tag: string): string => `/assets/h/${tag}-${BUILD_TOKEN}.js`;
+
+  it('names the graph of each chunk, and asks for the manifest once per page, low', async () => {
+    const asked: Array<readonly [string, RequestInit]> = [];
+    const graph = run(coordinatorFor({ hydrates: true, injects: false }, params('fudic-routes.json'))!.source, (url, init) => {
+      asked.push([url, init]);
+      return Promise.resolve({ json: () => Promise.resolve(FILE(BUILD_TOKEN)) });
+    })!;
+
+    expect(await graph(chunk('user-form'))).toEqual([
+      `/assets/fudic_http-${BUILD_TOKEN}.js`,
+      '/_fudic/0.0.1-ab/forms/wiring.js',
+    ]);
+    // A chunk the manifest has no graph for, and a URL that is no chunk at all.
+    expect(await graph(chunk('app-solo'))).toEqual([]);
+    expect(await graph('/elsewhere.js')).toEqual([]);
+    // criterion 8: three warms, one request.
+    expect(asked).toEqual([['/fudic-routes.json', { priority: 'low' }]]);
+  });
+
+  it('criterion 7: a manifest of another build, or none, is an empty graph', async () => {
+    const source = coordinatorFor({ hydrates: true, injects: false }, params('fudic-routes.json'))!.source;
+    const other = run(source, () => Promise.resolve({ json: () => Promise.resolve(FILE('deadbeef')) }))!;
+    expect(await other(chunk('user-form'))).toEqual([]);
+    const missing = run(source, () => Promise.reject(new TypeError('offline')))!;
+    expect(await missing(chunk('user-form'))).toEqual([]);
+    const broken = run(source, () => Promise.resolve({ json: () => Promise.reject(new SyntaxError('html')) }))!;
+    expect(await broken(chunk('user-form'))).toEqual([]);
+  });
+
+  it('criterion 9: without a manifest to read — dev, or a worker — the channel gets no graph', () => {
+    const source = coordinatorFor({ hydrates: true, injects: false }, params())!.source;
+    expect(source).not.toContain('$graph');
+    expect(run(source, () => Promise.reject(new Error('never asked')))).toBeUndefined();
   });
 });

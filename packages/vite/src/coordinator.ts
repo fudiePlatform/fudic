@@ -50,6 +50,12 @@ export type ChunkResolution =
        * fewer than two locales, and then the coordinator is the one it always was.
        */
       readonly dir?: string;
+      /**
+       * The manifest, by its path under `base`, when this page warms with `<link>`s: it is what
+       * names the graph of each chunk (BUG-53 §4.3). Absent with a worker, which deposits the
+       * graph itself and must not be shadowed by a preload.
+       */
+      readonly manifest?: string;
     }
   | { readonly mode: 'dev'; readonly urlPrefix: string };
 
@@ -163,6 +169,14 @@ function coordinatorSource(facts: RouteFacts, params: CoordinatorParams): string
   // this route — not downloaded, not preloaded, not precached on its account.
   if (facts.injects) wanted.push([pieces.di, '$di']);
   if (chunks.mode === 'build') wanted.push([pieces.urls, '$resolver']);
+  // The graph's reader travels in the same piece as the arithmetic (BUG-53 §3).
+  const graph = chunks.mode === 'build' ? chunks.manifest : undefined;
+  if (graph !== undefined) {
+    wanted.push(
+      [{ from: pieces.urls.from, name: 'hydrateGraphOf' }, '$graphOf'],
+      [{ from: pieces.urls.from, name: 'hydrateNameOf' }, '$nameOf'],
+    );
+  }
 
   // ONE statement per source. In a build every piece is its own URL and this changes nothing;
   // in dev two of them come out of `@fudic/core`, and two imports of one module would be a
@@ -186,6 +200,26 @@ function coordinatorSource(facts: RouteFacts, params: CoordinatorParams): string
         ? `const $chunk = (tag) => $urls.hydrateUrl(tag);`
         : `const $chunk = (tag) => $urls.hydrateUrl(${JSON.stringify(chunks.dir)} + tag);`,
     );
+    if (graph !== undefined) {
+      lines.push(
+        `// The graph of each chunk, for a page with no worker to deposit it (BUG-53 §4.3): a`,
+        `// modulepreload fetches none of a module's imports, so the page names them. Read off the`,
+        `// manifest ONCE per page, at a low priority, the first time anything is warmed. A`,
+        `// manifest of another build — a deploy after this page was painted — or none at all is`,
+        `// an empty graph: the chunk alone is preloaded, never a file of another build.`,
+        `let $manifest;`,
+        `const $graph = (url) => {`,
+        `  $manifest ??= fetch($urls.assetUrl(${JSON.stringify(graph)}), { priority: "low" })`,
+        `    .then((response) => response.json())`,
+        `    .then((file) => (file.build === ${JSON.stringify(BUILD_TOKEN)} ? $graphOf(file) : undefined))`,
+        `    .catch(() => undefined);`,
+        `  return $manifest.then((of) => {`,
+        `    const name = of === undefined ? undefined : $nameOf($urls, url, document.baseURI);`,
+        `    return name === undefined ? [] : of(name);`,
+        `  });`,
+        `};`,
+      );
+    }
   } else {
     lines.push(
       `// In dev nothing is built: the dev server publishes each component's client module at`,
@@ -226,7 +260,7 @@ function coordinatorSource(facts: RouteFacts, params: CoordinatorParams): string
     `$hydrate({`,
     `  root: document,`,
     `  resolveChunk: $chunk,`,
-    `  warm: $warm(),`,
+    graph === undefined ? `  warm: $warm(),` : `  warm: $warm({ graph: $graph }),`,
     ...(facts.injects ? [`  ready: $tree,`] : []),
     `});`,
     '',

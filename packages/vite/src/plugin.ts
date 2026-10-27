@@ -592,7 +592,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     };
     return {
       params: {
-        chunks,
+        // With no worker the warm is `<link>`s, and they name each chunk's graph off the
+        // manifest (BUG-53 §4.3). With one, the worker deposits the graph and links are banned.
+        chunks: chunks.mode === 'build' && !hasWorker ? { ...chunks, manifest: manifestFileName } : chunks,
         pieces: {
           hydrate: piece('@fudic/core', 'hydrate', '@fudic/core', 'installHydration'),
           warm: hasWorker
