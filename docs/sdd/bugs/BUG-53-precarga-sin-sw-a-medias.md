@@ -1,6 +1,6 @@
 # BUG-53 · La precarga no conoce el grafo de cada chunk
 
-> **Estado:** `Listo` — [tareas](./BUG-53-Task.md).
+> **Estado:** `Hecho` — [tareas](./BUG-53-Task.md).
 > **Corrige:** [SDD-17](../SDD-17-hidratacion.md) §4.7 y §4.7.1 (los dos canales de warm) y lo
 > que [SDD-45](../SDD-45-runtime-publicado.md) §4.3 fijó sobre las piezas que llegan con el warm.
 > **Paquetes:** `@fudic/core` · `@fudic/transport` · `@fudic/vite` · `examples/basic`
