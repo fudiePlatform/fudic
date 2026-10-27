@@ -1,6 +1,6 @@
 # BUG-52 · Tests que dependen de quién los ejecuta
 
-> **Estado:** `Listo` — [tareas](./BUG-52-Task.md).
+> **Estado:** `Hecho` (2026-10-27) — [tareas](./BUG-52-Task.md).
 > **Corrige:** [BUG-50](./BUG-50-la-cli-que-nadie-entiende.md) (`fudic dev`/`preview` de
 > workspace), [BUG-51](./BUG-51-forms-http-invasivos-y-una-cli-lenta.md) (`runner/vitest-projects.mjs`)
 > y [SDD-59](../SDD-59-terminos-de-serie.md) (tests de `@fudic/terms`).
