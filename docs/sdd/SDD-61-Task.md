@@ -7,7 +7,7 @@
 > `fudic-vscode` · `@fudic/vite` · `examples/*` · `packages/testing`
 > **Rama:** `sdd-61-vista-portable-impl`. Nace de `main` **con SDD-60 en `Hecho`**: esta spec parte
 > de un único `@code` y de su corte de servidor.
-> **Progreso:** 41 / 44 — `En curso`.
+> **Progreso:** 44 / 44 — `Hecho`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -145,7 +145,7 @@ de opciones de un preset de pipe.
 | [x] | 36 | 35 | **Activar.** Fuera el interruptor `portableView` —de `SemanticInput`, de `CheckOptions` del project checker y del contexto del servicio del language server—: los analizadores y el pase tipado corren siempre. Se borran la regla de SDD-51 (`view-js.ts`) y `VIEW_GLOBALS`, y se retira `FUD0911`: se borra su `.ts` y su línea de `index.ts`, y su `.md` queda `retired` con `FUD1140` | `compiler` · `diagnostics` | `src/semantic/*` · `src/codes/FUD0911.*` |
 | [x] | 37 | 36 | **Los tests del corpus.** Criterios 1, 32 y 33: ningún `.fud` fuera de `experiments/` da un diagnóstico de esta spec; `vista-errores` da exactamente sus comentarios | `compiler` · `typecheck` | `test/corpus*.test.ts` |
 
-*Decidido al implementar (fase 7, en curso).* Una pasada con los analizadores encendidos sobre todo
+*Decidido al implementar (fase 7).* Una pasada con los analizadores encendidos sobre todo
 el repositorio destapó tres huecos, cerrados para que todos los backends pinten lo mismo: el defecto
 de una prop de `props<T>()` puede ser un literal de datos (`rows = []`, `m = {}`), como el valor de
 una señal; `string | TrustedURL` porta como valor de URL (SDD §3.10) también en el pase tipado; y en
