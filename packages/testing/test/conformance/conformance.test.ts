@@ -12,7 +12,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
-import { describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 import { fragmentOf } from '../../src/dsd.js';
 import { mount, renderToHtml, type FudModule } from '../../src/index.js';
 
@@ -39,6 +39,15 @@ function patternOf(expected: string): RegExp {
 }
 
 describe('the conformance suite: each row gives its .html, byte for byte', () => {
+  // A row paints `now()` twice, served and then mounted: the clock stands still between them, or
+  // a second that ticks in between tells the two apart. Only `Date`: the timers keep running.
+  beforeAll(() => {
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-10-27T10:00:00Z') });
+  });
+  afterAll(() => {
+    vi.useRealTimers();
+  });
+
   test('the suite has its rows', () => {
     expect(names.length).toBeGreaterThan(0);
   });

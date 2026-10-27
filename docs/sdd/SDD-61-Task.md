@@ -193,7 +193,7 @@ porque nombra un campo declarado (`post["title"]` sigue siendo `FUD1153`, criter
 | [x] | 38 | 36 | **Decisiones.** 162 (lista blanca portable; enmienda 137, 138 y 141), 163 (`@empty`), 164 (el corte y los tipos portables), 165 (`now()`), 166 (las cinco operaciones de colección y `<` entre textos y fechas) en la gramática y su índice. Nota en la cabecera de SDD-51: «Enmendada por SDD-61» | — | `docs/gramar/gramatica-v1-decisiones.md` · `docs/sdd/SDD-51-expresiones-de-la-vista.md` |
 | [x] | 39 | 36 | **Docs.** La guía de la vista de cada README que la explique (lo que vale, las colecciones con su recetario, `@empty`, `now()`), en inglés y sin citar SDD | varios | `packages/*/README.md` · `examples/*/README.md` |
 | [ ] | 40 | 37 | **Producto.** `examples/basic` en el navegador: reloj, carrito, blog vacío y lleno (`@empty`), `signal-while`, `usuarios` y `user-form` como antes. Tabla de hidratación sin cambios (criterio 34) | `examples` | — |
-| [ ] | 41 | 40 | **Entrega.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; lo nuevo al 100 % en las cuatro métricas sin `v8 ignore`; ningún umbral baja (criterio 35) | — | — |
+| [x] | 41 | 40 | **Entrega.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; lo nuevo al 100 % en las cuatro métricas sin `v8 ignore`; ningún umbral baja (criterio 35) | — | — |
 | [ ] | 42 | 41 | **Cierre.** SDD-61 y este fichero en `Hecho`; fila y registro de progreso del `INDEX.md` | — | `docs/sdd/*` |
 
 ## Traspaso (2026-10-27) — lo que queda para cerrar 40–42
@@ -217,6 +217,23 @@ que en `main` (salvo lo aceptado abajo), comprobado con build, preview y dev, en
 - `hookTimeout` en typecheck; `testTimeout: 30_000` en vite, medido: la rama NO es más lenta en esos
   tests, solo pasaban de 5 s con la máquina cargada.
 - `pnpm typecheck` y `pnpm build` en verde. `pnpm test`: todo en verde salvo `examples/basic` (punto 2).
+
+**Actualización (tarde del 2026-10-27):** los puntos 1, 2 y 4 están HECHOS.
+1. `edge.ts` y el middleware de funciones de dev cargan `functions.mjs` y la raíz con el primer locale:
+   un solo grafo, una sola copia de `people` (de 78 chunks de servidor a 50). Playwright
+   `usuarios.spec` pasa en los tres proyectos.
+2. Además de `realpathSync`: `@fudic/i18n` importaba los TIPOS de la raíz de `@fudic/diagnostics`, que
+   reexporta los 362 códigos, y el typecheck de toda app que use un pipe los cargaba (de 491 a 872
+   ficheros en el programa). Ahora diagnostics exporta `./types` y i18n importa sus tipos de ahí (512
+   ficheros). Resultado, 7 builds alternados: `main` 7,98 s mínimo / 8,47 s mediana, rama 8,31 / 8,70
+   (+3 %, dentro del ruido y con más contenido). El doble parseo del lowering mide 0,1 s en total: no
+   se ha tocado.
+4. Las expectativas del carrito están puestas a `3,50 €`, etc.
+Punto 5 hecho: `pnpm build`, `pnpm typecheck` y `pnpm test` en verde (29 suites); Playwright de
+`examples/basic` con 267 de 268 (el que falla, la primera búsqueda de `/usuarios` en `preview`, falla
+igual en `main`: 1 de cada 15 pasadas, inestable desde antes). El HTML contra `main` da las mismas
+diferencias explicadas. El worktree `main-cov` está borrado. Solo queda el punto 3 (`/raw`), que
+necesita una decisión de Pedro (abajo), y la tarea 42.
 
 **Pendiente, en este orden:**
 
@@ -244,7 +261,10 @@ que en `main` (salvo lo aceptado abajo), comprobado con build, preview y dev, en
 3. **`/raw`: hay que recuperar el caso del string sin marcar.** El framework lo necesita. La rama lo
    quitó de `raw-demo.fud`, de `raw.fud`, de `raw.spec.ts` y de la §4.7 del SDD porque
    `"…" as unknown as TrustedHTML` no es portable. Hay que devolverlo con una forma que la vista acepte, y
-   restaurar el test (`git diff main -- examples/basic`).
+   restaurar el test (`git diff main -- examples/basic`). Ya probado: moverlo a un `src/data/*.ts` no
+   sirve (un módulo de datos que importa un `.fud` también es portable: `FUD1144`), y `.fudapi` no tiene
+   ningún tipo de HTML. Opciones para Pedro: añadir a `.fudapi` un tipo `html` (llega del servidor sin
+   marca, el caso real), o dar el caso por cubierto con el test del compilador.
 4. **Carrito: aceptado.** `currency("EUR")` pinta `3,50 €` donde antes salía `3.50 €`. Hay que poner
    las tres expectativas de `tests/hydration.spec.ts` (tests 11–13: `3,50 €`, `7,50 €`, `5,50 €`).
 5. Después: `pnpm build`, `pnpm test` (con `NO_COLOR=1 FORCE_COLOR=0 TERM=dumb`) y `npx playwright test`

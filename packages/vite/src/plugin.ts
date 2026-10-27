@@ -916,8 +916,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         // needs it, answers them. A root that cannot load — two implementations of one piece, one
         // in the wrong folder — goes to the overlay with its message. Without a `.fudapi` there is
         // no function to answer.
+        // In an app with languages, the first locale's root: the one its pages load, so the
+        // functions and the pages read and write the same modules (as the edge pass does).
+        const rootId = locales === undefined ? SERVER_ROOT_ID : withLocale(SERVER_ROOT_ID, locales[0]!);
         const answered = hasApi()
-          ? (server.ssrLoadModule(SERVER_ROOT_ID) as Promise<Record<string, unknown>>).then((mod) =>
+          ? (server.ssrLoadModule(rootId) as Promise<Record<string, unknown>>).then((mod) =>
               (mod['handler'] as ContractsHandler)({ base, dev: true, onError })(request),
             )
           : Promise.resolve(noFunction());

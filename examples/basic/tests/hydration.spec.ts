@@ -255,7 +255,7 @@ test.describe('the bus: the receiver, before the emitter', () => {
     // The emit is born inside the replayed handler, and the receiver — already alive —
     // takes it in its own propagation. One replay, never two.
     await expect(cart(page).locator('.badge')).toHaveText('1');
-    await expect(cart(page).locator('.total')).toHaveText('3.50 €');
+    await expect(cart(page).locator('.total')).toHaveText('3,50 €');
   });
 
   test('12 · no double fire — three products, three increments', async ({ page }) => {
@@ -268,7 +268,7 @@ test.describe('the bus: the receiver, before the emitter', () => {
     await buttons.nth(2).click();
 
     await expect(cart(page).locator('.badge')).toHaveText('3');
-    await expect(cart(page).locator('.total')).toHaveText('7.50 €');
+    await expect(cart(page).locator('.total')).toHaveText('7,50 €');
   });
 
   test('13 · the subscriber listens on `document`, which is why it hears at all', async ({
@@ -284,7 +284,7 @@ test.describe('the bus: the receiver, before the emitter', () => {
       document.dispatchEvent(new CustomEvent('carrito', { detail: 2, bubbles: true })),
     );
     await expect(cart(page).locator('.badge')).toHaveText('2');
-    await expect(cart(page).locator('.total')).toHaveText('5.50 €');
+    await expect(cart(page).locator('.total')).toHaveText('5,50 €');
   });
 
   test('14 · a clean teardown: disconnecting removes the document listener', async ({ page }) => {
