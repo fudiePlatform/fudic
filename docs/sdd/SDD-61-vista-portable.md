@@ -632,7 +632,7 @@ Todo el repositorio compila sin diagnósticos nuevos. Lo que hoy usa algo de lo 
 | `examples/basic/src/routes/snippets.fud` | `pasos` se tipa con un `type Paso` en el `.fudapi` de la ruta |
 | `examples/basic/src/components/vista-url.fud` | `String(url())` → una señal de texto que los manejadores escriben a la vez que `url` |
 | `examples/basic/src/components/campo-texto.fud` | `@(String(resto.x))` → `@resto.x` |
-| `examples/basic/src/components/raw-demo.fud` | Sale el caso del texto disfrazado de marcado (`as unknown as TrustedHTML`): un valor que miente sobre su tipo no se baja a ningún lenguaje (`FUD1144`). Que `@raw` escapa un valor sin marca lo sigue probando el test del compilador |
+| `examples/basic/src/components/raw-demo.fud` | El texto disfrazado de marcado ya no se escribe con un `as` (`FUD1144`): llega del servidor en un campo `html` de `routes/raw.fudapi` (decisión 167), sin la marca, y `@raw` lo escapa como antes |
 | `examples/basic/src/routes/blog/index.fud`, `components/app-calendar.fud` y los demás `@if (xs.length === 0)` que pintan un vacío | `@empty`. El `.length` sigue valiendo; se cambia porque «no hay ninguno» se dice con `@empty`. Los recuentos (`cart.lines.length`) se quedan |
 | Cualquier `some`, `find`, `join`, `includes` o `sort` de la vista | Su receta de §3.5 bis |
 | `examples/i18n/src/components/app-greeting.fud` | `alta = Date.UTC(…)` → una prop `alta: Date` que la ruta recibe de su `load` |

@@ -154,6 +154,7 @@ fichero.
 | `u8 i8 u16 i16 u32 i32 f32 f64` | número con ancho | `number` |
 | `date` | fecha | `Date` |
 | `uuid` | identificador UUID (forma textual de RFC 9562, `8-4-4-4-12` hex, sin distinguir mayúsculas) | `string` |
+| `html` | HTML que viaja como texto, sin la marca de confianza; `@raw` lo escapa (decisión 167, añadido por SDD-61) | `TrustedHTML` |
 | `T[]` | lista | `readonly T[]` |
 | `T?` | puede faltar | campo opcional (`x?: T`) |
 | `map K V` | mapa; `K` es `str`, `uuid` o un entero | `Readonly<Record<…, V>>` |

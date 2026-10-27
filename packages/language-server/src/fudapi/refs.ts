@@ -18,7 +18,7 @@ import type {
   UseClause,
 } from '@fudic/api';
 
-const PRIMITIVES = new Set(['str', 'bool', 'date', 'uuid', 'u8', 'i8', 'u16', 'i16', 'u32', 'i32', 'f32', 'f64', '*', 'pattern']);
+const PRIMITIVES = new Set(['str', 'html', 'bool', 'date', 'uuid', 'u8', 'i8', 'u16', 'i16', 'u32', 'i32', 'f32', 'f64', '*', 'pattern']);
 
 export interface ApiRef {
   readonly name: Name;

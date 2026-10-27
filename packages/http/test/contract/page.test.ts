@@ -45,6 +45,15 @@ describe('runLoad', () => {
     expect(seen).toEqual(['ana']);
   });
 
+  it('what it gives is data: a TrustedHTML arrives as its text, at any depth (SDD-61 §4.7)', async () => {
+    const load = page<(ctx: never) => unknown>({ id: 'routes/x', name: 'load' });
+    const when = new Date(0);
+    const bare = Object.create(null) as Record<string, unknown>;
+    bare['h'] = { fudicTrustedHtml: '<b>a</b>' };
+    load.handle(() => ({ cuerpo: { fudicTrustedHtml: '<p>x</p>' }, lista: [{ fudicTrustedHtml: '<i>y</i>' }, 'z'], when, bare, n: null }));
+    expect(await runLoad(load, serverCtx('GET'))).toEqual({ cuerpo: '<p>x</p>', lista: ['<i>y</i>', 'z'], when, bare: { h: '<b>a</b>' }, n: null });
+  });
+
   it('without a chain it is just the handler', async () => {
     const load = page<(ctx: never) => unknown>({ id: 'routes/x', name: 'load' });
     load.handle(() => 7);

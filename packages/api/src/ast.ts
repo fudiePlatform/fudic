@@ -30,7 +30,7 @@ interface Documented {
 // Types and literals
 // ---------------------------------------------------------------------------------------------
 
-/** `str`, `i32`, `uuid`, `Person`: a primitive or a project type, resolved by the validator. */
+/** `str`, `html`, `i32`, `uuid`, `Person`: a primitive or a project type, resolved by the validator. */
 export interface NamedType {
   readonly kind: 'named';
   readonly name: Name;

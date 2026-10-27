@@ -1,6 +1,7 @@
 <link rel="layout" href="../layouts/_layout.fud">
 <link rel="component" href="../components/site-nav.fud">
 <link rel="component" href="../components/raw-demo.fud">
+<link rel="server" href="./raw.fudapi">
 
 <head>
   <title>Raw — fudic</title>
@@ -18,11 +19,12 @@
   <code>@("@expr")</code>.
 </p>
 
-<raw-demo></raw-demo>
+<raw-demo .falsa=@data.falsa></raw-demo>
 
 <h2>Qué comprobar</h2>
 <p>
   El recuadro sólido muestra el primer post como HTML: un título, cursiva y un enlace.
   «Cambiar post» lo sustituye por el segundo, que trae una lista, y al volver a pulsar regresa.
+  El recuadro discontinuo enseña las etiquetas como texto, porque ese valor no está marcado.
   El «+1» de debajo sigue funcionando: la hidratación no se ha perdido por el camino.
 </p>

@@ -17,7 +17,7 @@ export const INTEGERS: Readonly<Record<string, readonly [number, number]>> = {
 };
 export const FLOATS: ReadonlySet<string> = new Set(['f32', 'f64']);
 export const WIDTHS: readonly string[] = [...Object.keys(INTEGERS), ...FLOATS];
-export const PRIMITIVES: ReadonlySet<string> = new Set(['str', 'bool', 'date', 'uuid', ...WIDTHS]);
+export const PRIMITIVES: ReadonlySet<string> = new Set(['str', 'html', 'bool', 'date', 'uuid', ...WIDTHS]);
 const MAP_KEYS: ReadonlySet<string> = new Set(['str', 'uuid', ...Object.keys(INTEGERS)]);
 
 /** Whether `name` is a number type. */
@@ -71,7 +71,7 @@ export function literalFits(lit: Literal, type: TypeExpr, index: ApiIndex): bool
   if (type.kind === 'list') return lit.kind === 'empty-list' || literalFits(lit, type.element, index);
   if (type.kind === 'map') return false;
   const name = type.name.text;
-  if (name === 'str' || name === 'date' || name === 'uuid') return lit.kind === 'string' || lit.kind === 'word';
+  if (name === 'str' || name === 'html' || name === 'date' || name === 'uuid') return lit.kind === 'string' || lit.kind === 'word';
   if (name === 'bool') return lit.kind === 'bool';
   if (isNumeric(name)) return lit.kind === 'number' && fitsWidth(lit.value, name);
   if (name === 'pattern') return lit.kind === 'word' && index.lookup('pattern', lit.text) !== undefined;

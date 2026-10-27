@@ -22,7 +22,7 @@ import {
 import { CompletionItemKind, type CompletionItem, type CompletionList } from 'vscode-languageserver-protocol';
 import type { ApiDocument } from './document.js';
 
-const PRIMITIVES = ['str', 'bool', 'date', 'uuid', 'u8', 'i8', 'u16', 'i16', 'u32', 'i32', 'f32', 'f64'];
+const PRIMITIVES = ['str', 'html', 'bool', 'date', 'uuid', 'u8', 'i8', 'u16', 'i16', 'u32', 'i32', 'f32', 'f64'];
 const VERBS = new Set(['get', 'post', 'put', 'patch', 'delete']);
 const MODES = ['ssg', 'ssr', 'sw'];
 const POLICIES = ['cache-first', 'network-first', 'stale-while-revalidate', 'network-only'];

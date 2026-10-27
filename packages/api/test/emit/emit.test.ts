@@ -73,4 +73,11 @@ describe('a file that stands alone', () => {
     expect(emitModule(source, index, {}, 'server')).toContain('chain: [{ steps: [] }]');
     expect(emitDeclarations(source, index, {})).toContain('export const f: Contract<FCtx, void, void>;');
   });
+
+  it('html is a TrustedHTML for the view and text on the wire (SDD-61 §4.7)', () => {
+    const source = app('components/c', 'type Post\n  cuerpo  html\n');
+    const index = createApiIndex([source]);
+    expect(emitDeclarations(source, index, {})).toContain('readonly cuerpo: import("@fudic/dom").TrustedHTML');
+    expect(emitModule(source, index, {}, 'server')).toContain('cuerpo: "html"');
+  });
 });

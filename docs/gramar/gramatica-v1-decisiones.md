@@ -1309,6 +1309,12 @@ lista (`FUD1145` fuera de esa forma). Y `<`, `<=`, `>`, `>=` valen entre dos tex
 UTF-16) y entre dos fechas (por instante). *Por qué no un catálogo de agregados: no acabaría nunca
 (Pedro, 2026-10-21).*
 
+**167.** **`html` en el `.fudapi`: HTML que cruza el contrato, sin la marca** (SDD-61 §4.7). Un campo
+`html` es `TrustedHTML` para la vista, que puede darlo a `@raw`, y texto en el cable. La marca de
+confianza no cruza el contrato: lo que da un `load` llega como dato, al render del servidor y a cada
+navegador por igual, y `@raw` lo escapa en los dos lados. *Por qué: la vista portable cierra el `as`, y
+el HTML que llega de fuera es justo el que tiene que escaparse (Pedro, 2026-10-27).*
+
 ### Gramática de referencia
 
 ```
@@ -1621,3 +1627,4 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 164 | `@code` | Lo que el servidor evalúa del `@code` y sus stores sigue la misma lista, con tipos portables (`FUD1150`, `FUD1153`) (SDD-61) |
 | 165 | `@code` | `now()` solo como inicializador de una señal; viaja en `fud-state` (`FUD0912`) (SDD-61) |
 | 166 | Interpolación | Colecciones: `filter`, `map`, `reduce`, `toSorted` y `.length`; `<` entre textos y entre fechas (`FUD1145`) (SDD-61) |
+| 167 | `.fudapi` | `html`: `TrustedHTML` para la vista y texto en el cable; la marca no cruza el contrato y `@raw` lo escapa (SDD-61) |

@@ -22,6 +22,14 @@ function refused(fn: () => unknown): string | undefined {
 }
 
 describe('the primitives', () => {
+  it('html takes text, and a TrustedHTML as its text: the mark does not cross (SDD-61 §4.7)', () => {
+    expect(conform('html', '<b>x</b>', 'x')).toBe('<b>x</b>');
+    expect(conform('html', { fudicTrustedHtml: '<i>y</i>' }, 'x')).toBe('<i>y</i>');
+    expect(refused(() => conform('html', 1, 'argument h'))).toBe('argument h is not a valid html');
+    expect(refused(() => conform('html', null, 'argument h'))).toBe('argument h is not a valid html');
+    expect(fromText('html', '<p>', 'x')).toBe('<p>');
+  });
+
   it('str takes any text and nothing else', () => {
     expect(conform('str', '', 'x')).toBe('');
     expect(conform('str', 'abc', 'x')).toBe('abc');

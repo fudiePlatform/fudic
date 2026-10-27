@@ -1,0 +1,5 @@
+# HTML that comes from the server: `html` lets a view hand it to `@raw`, and what crosses the
+# contract is its text, never the mark of trust. So `@raw` escapes it, on the server and in
+# the browser alike.
+load ssg
+  falsa  html

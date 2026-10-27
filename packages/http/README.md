@@ -83,6 +83,10 @@ Each argument travels where its declaration says: a `:x` of the route in the URL
 of its width or a malformed `uuid` is refused with a `400` on the server, and refused without
 sending in the browser.
 
+An `html` value crosses as text, never as trusted markup: a `TrustedHTML` the server hands over
+arrives as its text, in the server's own render and in the browser alike, so `@raw` escapes it on
+both sides. What a `load` returns is data, and that holds at any depth of it.
+
 `load` is declared the same way, and is always a GET:
 
 ```
