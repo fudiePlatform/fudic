@@ -195,3 +195,59 @@ porque nombra un campo declarado (`post["title"]` sigue siendo `FUD1153`, criter
 | [ ] | 40 | 37 | **Producto.** `examples/basic` en el navegador: reloj, carrito, blog vacío y lleno (`@empty`), `signal-while`, `usuarios` y `user-form` como antes. Tabla de hidratación sin cambios (criterio 34) | `examples` | — |
 | [ ] | 41 | 40 | **Entrega.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; lo nuevo al 100 % en las cuatro métricas sin `v8 ignore`; ningún umbral baja (criterio 35) | — | — |
 | [ ] | 42 | 41 | **Cierre.** SDD-61 y este fichero en `Hecho`; fila y registro de progreso del `INDEX.md` | — | `docs/sdd/*` |
+
+## Traspaso (2026-10-27) — lo que queda para cerrar 40–42
+
+Lo pendiente lo decidió Pedro; no se reabre. La referencia es `main`: `examples/basic` debe dar lo mismo
+que en `main` (salvo lo aceptado abajo), comprobado con build, preview y dev, en `sw` y en `nosw`.
+
+**Hecho en esta sesión** (en el working tree, sin commitear todavía):
+
+- Globs de cobertura anclados al paquete en los 19 `vitest.config.ts` que usan `include`. Vitest compara
+  el glob con la ruta ABSOLUTA sin anclar (`contains: true`), y el `impl/` del nombre de este worktree
+  metía `test/` en la cobertura de forms y http. En `main` están al 100 % y siguen al 100 %. El
+  `exclude: ['test/**']` de `testing` sobraba y se ha quitado.
+- `view-ast.ts` (nuevo en la rama, sin umbral): fuera `hasBreak` y `acts`, que estaban muertos; tests
+  en `view-portable.test.ts` y umbral del 100 % en `compiler/vitest.config.ts`. `view-scope.ts` al 100 %.
+- Lo que la rama dejaba sin cubrir respecto a `main`: un test del spread mal formado en
+  `spread-attrs.test.ts` (`attrs.ts`) y una rama muerta menos en `emit/resolve.ts`. Comparado fichero a
+  fichero con `main`: ninguno empeora en compiler, cli, dom, ssr, transport ni vite.
+- Fixtures de vite que la vista portable rompía: `@enlace()` (i18n-build) y `data as {...}` en las
+  páginas de error (i18n-serve, http-build).
+- `hookTimeout` en typecheck; `testTimeout: 30_000` en vite, medido: la rama NO es más lenta en esos
+  tests, solo pasaban de 5 s con la máquina cargada.
+- `pnpm typecheck` y `pnpm build` en verde. `pnpm test`: todo en verde salvo `examples/basic` (punto 2).
+
+**Pendiente, en este orden:**
+
+1. **Estado duplicado por locale (rompe `/usuarios`).** Con `"locales": ["es"]` (lo pide el SDD), vite
+   compila cada módulo del proyecto dos veces, normal y `?locale=es`: en `.fudic/edge/c` hay dos
+   `people-*.js`. `functions.mjs` escribe en una copia y la página lee de la otra. Es
+   `compilesPerLocale` en `packages/vite/src/i18n.ts`. Arreglo decidido (opción a): un módulo de datos es
+   UNA instancia en el servidor; lo mínimo, que con un solo locale y sin prefijo la pasada normal y la
+   del locale sean la misma. Playwright: fallan `usuarios.spec` 104 y 162 en los tres proyectos.
+2. **Rendimiento: un 25–30 % más lento, y NO se acepta.** El build de `examples/basic` pasa de ~8,5 s a
+   ~10,8 s, y el primer test de cada fichero de `examples/basic` de ~3 s a ~4 s (por eso se pasan de
+   5 s en `pnpm test`). Sospecha sin medir: la doble compilación del punto 1 (78 chunks de servidor
+   frente a 46). Para medirlo, construir la rama sin `"locales"` y comparar con `main`. Lo que no
+   explique eso estará en el compilador (lowering y análisis portables). No se arregla subiendo timeouts.
+3. **`/raw`: hay que recuperar el caso del string sin marcar.** El framework lo necesita. La rama lo
+   quitó de `raw-demo.fud`, de `raw.fud`, de `raw.spec.ts` y de la §4.7 del SDD porque
+   `"…" as unknown as TrustedHTML` no es portable. Hay que devolverlo con una forma que la vista acepte, y
+   restaurar el test (`git diff main -- examples/basic`).
+4. **Carrito: aceptado.** `currency("EUR")` pinta `3,50 €` donde antes salía `3.50 €`. Hay que poner
+   las tres expectativas de `tests/hydration.spec.ts` (tests 11–13: `3,50 €`, `7,50 €`, `5,50 €`).
+5. Después: `pnpm build`, `pnpm test` (con `NO_COLOR=1 FORCE_COLOR=0 TERM=dumb`) y `npx playwright test`
+   en `examples/basic` (preview, dev y nosw; en `main`, 268 en verde), y repetir la comparación con `main`.
+   Por último, la tarea 42 y un commit sin push.
+
+**Diferencias con `main` que ya están explicadas** (HTML de build y de preview, sw y nosw, 28 rutas en
+200): `/resto` ordena por nombre los atributos del spread (§3.8); `/ruta-reloj` lleva las fechas en el
+estado (`now()`) y una zona horaria fija; `/blog` mete el vacío de `@empty` dentro de `<section>`;
+`/vista` está rehecha; en `nosw` cambia el orden de los `modulepreload` (son los mismos módulos). El
+resto es idéntico una vez enmascarados hashes, id de build y nonces.
+
+**Entorno:** hay un worktree temporal de `main` en `.claude/worktrees/main-cov` (ya instalado y
+construido), solo para comparar. Hay que BORRARLO al terminar: `git worktree remove --force` y, si
+queda la carpeta, `cmd /c rmdir /s /q`. Los puertos de Playwright (4173, 5273, 4273) tienen que estar
+libres antes de lanzarlo, porque usa `reuseExistingServer`.

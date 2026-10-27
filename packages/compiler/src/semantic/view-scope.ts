@@ -94,8 +94,6 @@ export interface ViewScope {
   seeded(name: string, scope: TemplateScope): boolean;
   /** Whether `name` is a function the file's `@code` declares. */
   isFunction(name: string): boolean;
-  /** Whether `name` is a regex the file's `@code` declares: a literal or a `new RegExp`. */
-  isRegex(name: string): boolean;
   /**
    * Whether `name`, where `scope` reads it, is a `...rest` binding: of the nearest template
    * declaration, or of `@code` when the template declares none (SDD-61 §3.6).
@@ -190,7 +188,6 @@ function namesScope(
       return false;
     },
     isFunction: (name) => code.functions.has(name),
-    isRegex: (name) => code.regexes.has(name),
     isRest(name, scope) {
       const own = declaring(name, scope);
       return own === undefined ? code.rests.has(name) : own.rest.has(name);
@@ -449,8 +446,8 @@ function statementNames(statement: OxcNode): { readonly names: readonly string[]
     case 'FunctionDeclaration':
     case 'ClassDeclaration':
     case 'TSEnumDeclaration': {
-      const id = statement['id'] as OxcNode | null | undefined;
-      return { names: id ? [String(id['name'])] : [], let: false };
+      // At the top of a module each of them has its name: an anonymous one is an `export default`.
+      return { names: [String((statement['id'] as OxcNode)['name'])], let: false };
     }
     case 'ImportDeclaration': {
       const specifiers = statement['specifiers'] as readonly OxcNode[];
@@ -476,8 +473,6 @@ interface CodeNames {
   readonly neutralLets: ReadonlySet<string>;
   /** Every function `@code` declares, whatever its zone: printing one prints its source. */
   readonly functions: ReadonlySet<string>;
-  /** Every regex `@code` declares: its `test` and `exec` carry `lastIndex` between passes. */
-  readonly regexes: ReadonlySet<string>;
   /** Every `...rest` of a top-level object pattern: `const { label, ...rest } = props<T>()`. */
   readonly rests: ReadonlySet<string>;
   /** Local name → `specifier#imported`, for each named import of `@code`. */
@@ -488,13 +483,11 @@ function codeNames(statements: readonly OxcNode[]): CodeNames {
   const neutral = new Set<string>();
   const neutralLets = new Set<string>();
   const functions = new Set<string>();
-  const regexes = new Set<string>();
   const rests = new Set<string>();
   const imports = new Map<string, string>();
   for (const statement of statements) {
     const declared = statementNames(statement);
     for (const name of functionNames(statement)) functions.add(name);
-    for (const name of regexNames(statement)) regexes.add(name);
     for (const name of declaredRests([statement])) rests.add(name);
     for (const [local, origin] of importedNames(statement)) imports.set(local, origin);
     for (const name of declared.names) {
@@ -504,7 +497,7 @@ function codeNames(statements: readonly OxcNode[]): CodeNames {
       if (declared.let) neutralLets.add(name);
     }
   }
-  return { neutral, neutralLets, functions, regexes, rests, imports };
+  return { neutral, neutralLets, functions, rests, imports };
 }
 
 /** The named imports of a statement: `import { now as ahora } from '@fudic/core'` → `ahora`. */
@@ -518,21 +511,6 @@ function importedNames(statement: OxcNode): readonly (readonly [string, string])
       const name = imported.type === 'Identifier' ? nameOf(imported) : String(imported['value']);
       return [nameOf(child(specifier, 'local')!), `${source}#${name}`] as const;
     });
-}
-
-/** The names a declaration binds to a regex: `/x/g`, or `new RegExp(…)`. */
-function regexNames(statement: OxcNode): readonly string[] {
-  if (statement.type !== 'VariableDeclaration') return [];
-  const out: string[] = [];
-  for (const declaration of statement['declarations'] as readonly OxcNode[]) {
-    const init = declaration['init'] as OxcNode | null;
-    const id = declaration['id'] as OxcNode;
-    if (!init || id.type !== 'Identifier') continue;
-    const callee = init.type === 'NewExpression' ? (init['callee'] as OxcNode) : undefined;
-    const literal = init.type === 'Literal' && init['regex'] != null;
-    if (literal || (callee?.type === 'Identifier' && callee['name'] === 'RegExp')) out.push(String(id['name']));
-  }
-  return out;
 }
 
 /** The names a statement binds to a function: a declaration or a `const f = () => …`. */

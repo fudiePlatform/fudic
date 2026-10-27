@@ -13,7 +13,9 @@ export default defineConfig({
       // The denominator is the whole package, not what the tests chose to look
       // at: without this, a file no test imports simply does not count, and
       // coverage goes UP by deleting tests.
-      include: ['src/**/*.ts'],
+      // Anchored to this package: vitest matches the glob anywhere in the absolute path,
+      // so a bare `src/**` would also count every file under a parent folder named `src`.
+      include: ['src/**/*.ts'].map((glob) => fileURLToPath(new URL(glob, import.meta.url)).replace(/\\/gu, '/')),
       thresholds: {
         // Everything left in the package is pure runtime, so the SDD-00 floor
         // (80/80/75) does not apply here: 100% is reachable and expected.

@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
@@ -14,7 +15,9 @@ export default defineConfig({
       // The denominator is the whole package, not what the tests chose to look
       // at: without this, a file no test imports simply does not count, and
       // coverage goes UP by deleting tests.
-      include: ['src/**/*.ts'],
+      // Anchored to this package: vitest matches the glob anywhere in the absolute path,
+      // so a bare `src/**` would also count every file under a parent folder named `src`.
+      include: ['src/**/*.ts'].map((glob) => fileURLToPath(new URL(glob, import.meta.url)).replace(/\\/gu, '/')),
       thresholds: {
         // New package, so it is born at 100 in the four metrics. Four, not three:
         // leaving `branches` behind leaves exactly the error paths unmeasured,

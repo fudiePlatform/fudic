@@ -73,6 +73,15 @@ describe('the emitted text', () => {
     expect(emitComponentModule(g, g.components.get('x-cls')!)).toContain('["class"]);');
   });
 
+  it('a malformed spread (FUD0991) is kept for the editor and writes nothing', () => {
+    const field = (attrs: string): string => {
+      const g = graphOf('x-bad', `@code {\n  const { ...r } = props<{ k?: string }>();\n}\n<x-bad>\n  <template shadowrootmode="open"><input ${attrs}></template>\n</x-bad>\n`);
+      return emitComponentModule(g, g.components.get('x-bad')!);
+    };
+    expect(field('...r="x"')).not.toContain('setAttrs');
+    expect(field('...r-x ...r')).toMatch(/\$dom\.setAttrs\(\$n\d+, \[\(r\)\], undefined, \[\]\);/u);
+  });
+
   it('a spread on a component host hands props over and writes no attribute', () => {
     const KID = '@code {\n  const { a = "" } = props<{ a?: string }>();\n}\n<x-kid>\n  <template shadowrootmode="open"><i>@a</i></template>\n</x-kid>\n';
     const PAR = '<link rel="component" href="./x-kid.fud">\n@code {\n  const o = { a: "1" };\n}\n<x-par>\n  <template shadowrootmode="open"><x-kid ...o></x-kid></template>\n</x-par>\n';

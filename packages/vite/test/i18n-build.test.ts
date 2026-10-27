@@ -26,7 +26,7 @@ const ABOUT = `<!DOCTYPE html>
 <script src="fudic:runtime"></script>
 <title>Acerca</title>
 @code {
-  const enlace = () => '/contact';
+  const enlace = '/contact';
 }
 </head>
 <body>
@@ -34,7 +34,7 @@ const ABOUT = `<!DOCTYPE html>
 <nav><a href="/contact">Contacto</a> <a href="/es/about">Español</a> <a href="/doc.pdf">Documento</a></nav>
 <app-price></app-price>
 <app-counter></app-counter>
-<p><a href=@enlace()>Otro</a></p>
+<p><a href=@enlace>Otro</a></p>
 </body>
 </html>
 `;

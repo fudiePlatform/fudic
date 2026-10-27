@@ -1,6 +1,6 @@
 /**
  * Typed reads over the untyped Oxc AST, and the few facts about an expression the view's rules
- * share: whether it is always true, whether it can act, which names it reads.
+ * share: whether it is always true and which names it reads.
  *
  * Shared by the two walks of the view — SDD-51's and the portable one of SDD-61 — so the second
  * does not copy the first's plumbing while both live.
@@ -52,22 +52,6 @@ export function alwaysTrue(node: OxcNode): boolean {
   const value = unwrap(node);
   if (value.type === 'ObjectExpression' || value.type === 'ArrayExpression') return true;
   return value.type === 'Literal' && field(value, 'regex') == null && Boolean(field(value, 'value'));
-}
-
-/** Whether a statement holds a `break` anywhere: a loop with one has an exit. */
-export function hasBreak(node: unknown): boolean {
-  if (Array.isArray(node)) return node.some(hasBreak);
-  if (!isNode(node)) return false;
-  if (node.type === 'BreakStatement') return true;
-  return Object.keys(node).some((key) => hasBreak(node[key]));
-}
-
-/** Whether an expression can change anything while it is evaluated: a call or a write. */
-export function acts(node: unknown): boolean {
-  if (Array.isArray(node)) return node.some(acts);
-  if (!isNode(node)) return false;
-  if (/^(Call|New|Assignment|Update|TaggedTemplate)Expression$/u.test(node.type)) return true;
-  return Object.keys(node).some((key) => acts(node[key]));
 }
 
 /** The names an expression reads: identifiers, never a member's name or an object's key. */

@@ -334,3 +334,44 @@ describe('handlers and callbacks (§3.11)', () => {
     expect(portable('@{ const formatea = 1; }<x-b .f=@formatea></x-b>')).toEqual(['FUD0918 formatea']);
   });
 });
+
+describe('the attributes that run, load or redirect (FUD0915), every branch', () => {
+  it('a literal scheme that runs, and what does not', () => {
+    expect(portable('<a href="data:image/png;base64,AA">x</a>')).toEqual(['FUD0915 href']);
+    expect(portable('<img src="data:image/png;base64,AA" alt="">')).toEqual([]);
+    expect(portable('<a href="  java&#9;script:x">x</a>')).toEqual(['FUD0915 href']);
+    expect(portable('<object codebase="vbscript:x"></object>')).toEqual(['FUD0915 codebase']);
+  });
+
+  it('a meta that does not refresh, and an animation aimed elsewhere or unknown', () => {
+    expect(portable('<meta http-equiv="content-type" content="x">')).toEqual([]);
+    expect(portable('<svg><animate attributeName="fill" values="x"></animate></svg>')).toEqual([]);
+    expect(portable('<svg><set attributeName=@k to="x"></set></svg>')).toEqual([]);
+  });
+});
+
+describe('a @while whose body advances what it reads', () => {
+  it('by an update, not only an assignment', () => {
+    expect(portable('@{ total = 0; } @while (total < 3) key (total) { @{ total++; } }')).toEqual([]);
+  });
+
+  it('sees an always-true header through its parentheses, and a list is always true', () => {
+    expect(portable('@while ((true)) key (1) { @{ total = 1; } }')).toEqual(['FUD0913 (true)']);
+    expect(portable('@while ([]) key (1) { @{ total = 1; } }')).toEqual(['FUD0913 []', 'FUD1143 []']);
+  });
+
+  it('reads a computed index and the parts of a template, never a member name', () => {
+    expect(portable('@{ total = 0; } @while (xs[total] !== null) key (1) { @{ total = 1; } }')).toEqual([]);
+    expect(portable("@{ total = 0; } @while (`${total}` !== '3') key (1) { @{ total = 1; } }")).toEqual([]);
+    expect(portable('@{ total = 0; } @while (o.total !== 1) key (1) { @{ total = 1; } }')).toEqual([
+      'FUD0913 o.total !== 1',
+    ]);
+  });
+});
+
+describe('a write that reads what it replaces', () => {
+  it('reads it inside a list, as a part of a template, and accumulates', () => {
+    expect(portable('@{ total = `${total}`; }')).toEqual(['FUD0900 total']);
+    expect(portable('@{ total = `${a}`; }')).toEqual([]);
+  });
+});

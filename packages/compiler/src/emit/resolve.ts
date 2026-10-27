@@ -224,7 +224,8 @@ function load(path: string, given: ResolveIo): LoadedFud {
   return {
     source: expansion.source,
     doc: expansion.document,
-    map: io.origin === undefined ? expansion.map : expansion.map.through((file) => io.origin?.(file)?.map, path),
+    // The lowering always has an `origin`, so the map always reads back through it.
+    map: expansion.map.through((file) => io.origin?.(file)?.map, path),
     diagnostics: [...parsed.diagnostics, ...expansion.diagnostics],
     snippetFiles: expansion.files,
     dragged: expansion.dragged,
