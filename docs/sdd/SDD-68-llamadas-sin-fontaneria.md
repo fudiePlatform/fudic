@@ -174,10 +174,15 @@ export interface DataStaleDetail {
 }
 ```
 
-### 3.4. La pieza `load` en el navegador
+### 3.4. Pedir al servidor el `data` de `load`
+
+`load` se ejecuta siempre en el servidor; no se traslada al navegador. Lo que el navegador gana es
+una forma de **pedirle al servidor** el resultado de `load` para una ruta: la misma dirección del
+endpoint de datos que ya usa el Service Worker al navegar.
 
 ```ts
-// @fudic/http/contract — the browser variant of `load`
+// @fudic/http/contract — what the browser module of a route exposes for its `load`: a request
+// to the server, never `load` itself
 export interface BrowserLoadPiece<D> {
   /** GET DATA_PREFIX + path: the JSON the endpoint serves today (SDD-70 moves it to binary frames). */
   fetch(path: string, signal?: AbortSignal): Promise<D>;
