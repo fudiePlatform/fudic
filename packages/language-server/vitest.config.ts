@@ -4,6 +4,11 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   test: {
     include: ['test/**/*.test.ts'],
+    // The servers under test run in process, and Volar writes to the console on its own — a
+    // `console.warn` per capability the test client does not declare, a batch of diagnostics
+    // 250 ms after an edit. Intercepted, a write that lands while Vitest closes the file fails
+    // the run with "Closing rpc while onUserConsoleLog was pending" (BUG-52). Straight to Node.
+    disableConsoleIntercept: true,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

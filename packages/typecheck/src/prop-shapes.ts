@@ -8,8 +8,8 @@
  * The checker, never the text: `$Props` is `typeof $p0` and `$p0` is a `props<T>()` call, so
  * the members are reachable only by resolving that chain. The primitives are recognised by the
  * name the checker prints, as `propDetails` does, because the program may come from another
- * copy of TypeScript than this package's. Only three `SymbolFlags` are read, whose values every
- * 5.x shares.
+ * copy of TypeScript than this package's. Only three `SymbolFlags` are read, whose values 5.x and
+ * 6.x share.
  *
  * Type-only import, and the flags as literals: the language server bundles this file and loads
  * TypeScript by path from the project. A value import of `typescript` survives into the bundle

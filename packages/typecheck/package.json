@@ -64,6 +64,7 @@
   "devDependencies": {
     "@fudic/tsconfig": "workspace:*",
     "@types/node": "22.20.0",
-    "@volar/language-server": "2.4.28"
+    "@volar/language-server": "2.4.28",
+    "typescript-6": "npm:typescript@6.0.3"
   }
 }

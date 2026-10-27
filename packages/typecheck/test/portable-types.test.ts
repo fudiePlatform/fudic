@@ -12,7 +12,8 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import ts from 'typescript';
-import { createProjectChecker, GLOBALS_DTS, parseSource, portableTypeDiagnostics, projectParsed, toPosix } from '../src/index.js';
+import ts6 from 'typescript-6';
+import { type CheckReport, createProjectChecker, GLOBALS_DTS, parseSource, portableTypeDiagnostics, projectParsed, toPosix } from '../src/index.js';
 import { indexOf } from './_support.js';
 
 const TSCONFIG = JSON.stringify({
@@ -107,8 +108,9 @@ const CASES: Readonly<Record<string, string>> = {
     `${TYPES}
   type Holder = { length: number; size: number };
   type Raro = { "a-b": number };
-  const { xs, s, m, k, post, h, f, r } = props<{ xs: readonly Item[]; s: string; m: Readonly<Record<string, number>>; k: string; post: Item; h: Holder; f: Readable<number>; r: Raro }>();`,
-    `<p>@(xs.length) @(s.length) @(m.length) @(xs["length"]) @(h.length) @(f.length)</p>
+  const { xs, s, m, k, post, h, f, r } = props<{ xs: readonly Item[]; s: string; m: Readonly<Record<string, number>>; k: string; post: Item; h: Holder; f: Readable<number>; r: Raro }>();
+  const texto = "hola, vista";`,
+    `<p>@(xs.length) @(s.length) @(m.length) @(xs["length"]) @(h.length) @(f.length) @(texto.length) @(140 - texto.length)</p>
 <p>@(xs[0]?.n) @(m[k]) @(post["titulo"]) @(xs?.[0]?.n) @(r["a-b"]) @(r["c-d"]) @(post[k])</p>`,
   ),
   // Criterion 39: the collection operations.
@@ -284,16 +286,17 @@ function programOver(path: string, text: string): ts.Program {
 }
 
 const ROOT = project(files);
-const report = createProjectChecker({ root: ROOT }).check();
 
 /** The codes of this pass. */
 const TYPED: ReadonlySet<string> = new Set(['FUD1140', 'FUD1151', 'FUD1152', 'FUD1153']);
 
+const report = createProjectChecker({ root: ROOT }).check();
+
 /** What the pass reports on case `name`, as `CODE text`, in source order. */
-function found(name: string): readonly string[] {
+function found(name: string, over: CheckReport = report): readonly string[] {
   const path = `${ROOT}/src/components/app-${name}.fud`;
   const source = CASES[name]!;
-  return report.problems
+  return over.problems
     .filter((p) => p.file === path && TYPED.has(p.code))
     .map((p) => `${p.code} ${source.slice(p.span.start, p.span.end)}`);
 }
@@ -451,5 +454,16 @@ describe('every branch of §3.4 and §3.7', () => {
   it('a prop declared in no copied text of the file is not underlined there', () => {
     expect(found('external')).toEqual([]);
     expect(found('mapped')).toEqual([]);
+  });
+});
+
+describe('another copy of TypeScript (BUG-52)', () => {
+  // The editor checks with the TypeScript it finds, the 6.x of VS Code when the project brings
+  // none, and 6.0 renumbered `TypeFlags`. The cast is one copy's declarations for the other's.
+  const six = createProjectChecker({ root: ROOT, typescript: ts6 as unknown as typeof ts }).check();
+
+  it('says over 6.x, case by case, what it says over the build’s', () => {
+    expect(ts6.version.startsWith('6.')).toBe(true);
+    for (const name of Object.keys(CASES)) expect(found(name, six), name).toEqual(found(name));
   });
 });

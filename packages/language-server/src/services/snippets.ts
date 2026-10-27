@@ -274,13 +274,20 @@ const LAYOUT_CODE = `@code {
 /** A `<link>` of this `rel`, with the caret inside its `href`. */
 const LINK = (rel: string): string => `<link rel="${rel}" href="$0">`;
 
-/** The link snippet of one `rel`, placed where each role keeps its links. */
-function linkSnippets(rel: 'component' | 'snippet', detail: string): readonly FudSnippet[] {
+/**
+ * The link snippet of one `rel`, placed where each role keeps its links: top-level in a component
+ * and a route, in the `<head>` of the roles in `inHead`.
+ */
+function linkSnippets(
+  rel: 'component' | 'snippet' | 'server',
+  detail: string,
+  inHead: readonly FudRole[] = ['page', 'layout'],
+): readonly FudSnippet[] {
   const label = `link-${rel}`;
   const body = LINK(rel);
   return [
     { label, detail, scope: 'markup', body, roles: ['component', 'route'], placement: 'top-level', suggest: true },
-    { label, detail, scope: 'markup', body, roles: ['page', 'layout'], placement: 'in-head', suggest: true },
+    { label, detail, scope: 'markup', body, roles: inHead, placement: 'in-head', suggest: true },
   ];
 }
 
@@ -399,12 +406,14 @@ export const SNIPPETS: readonly FudSnippet[] = [
     placement: 'in-head',
   },
 
-  // The three `<link>` fudic reads, each one ending inside its `href` with the list of what it
+  // The four `<link>` fudic reads, each one ending inside its `href` with the list of what it
   // can link already open. Top-level where a file's links live, in `<head>` in a page or a
-  // layout (decision 59). `link-layout` only where a layout can still be named: a route has
-  // its one already — it is how the file became a route — and nothing else takes one.
+  // layout (decision 59). `link-server` never in a layout: it has no server (`FUD1112`).
+  // `link-layout` only where a layout can still be named: a route has its one already — it is
+  // how the file became a route — and nothing else takes one.
   ...linkSnippets('component', 'import a component'),
   ...linkSnippets('snippet', 'import the snippets of a file'),
+  ...linkSnippets('server', 'the contract of its server, a .fudapi', ['page']),
   {
     label: 'link-layout',
     detail: 'the layout this route renders inside',

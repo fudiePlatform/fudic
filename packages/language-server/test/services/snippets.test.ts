@@ -265,21 +265,22 @@ describe('snippetsAt — inside @code', () => {
 });
 
 describe('snippetsAt — the <link> of fudic (BUG-43)', () => {
-  const LINKS = ['link-component', 'link-snippet', 'link-layout'];
+  const LINKS = ['link-component', 'link-snippet', 'link-server', 'link-layout'];
   const links = (marked: string) => labelsAt(marked).filter((label) => label.startsWith('link-'));
 
-  it('offers a file being started all three, a layout among them', () => {
+  it('offers a file being started all four, a layout among them', () => {
     expect(links('<link rel="component" href="./a.fud">\n|\n<main>hi</main>\n')).toEqual(LINKS);
   });
 
-  it('offers a route and a component the two imports at top level, and no second layout', () => {
-    expect(links(ROUTE_TOP)).toEqual(['link-component', 'link-snippet']);
-    expect(links(HOST_TOP)).toEqual(['link-component', 'link-snippet']);
+  it('offers a route and a component the two imports and its server at top level, and no second layout', () => {
+    expect(links(ROUTE_TOP)).toEqual(['link-component', 'link-snippet', 'link-server']);
+    expect(links(HOST_TOP)).toEqual(['link-component', 'link-snippet', 'link-server']);
     expect(links(HOST)).toEqual([]);
   });
 
-  it('offers a page and a layout the two imports in their <head>, and not in the body', () => {
-    expect(links(PAGE_HEAD)).toEqual(['link-component', 'link-snippet']);
+  it('offers a page the two imports and its server in its <head>, a layout no server, and none in the body', () => {
+    expect(links(PAGE_HEAD)).toEqual(['link-component', 'link-snippet', 'link-server']);
+    // A layout has no server (`FUD1112`, BUG-52).
     expect(links(LAYOUT_HEAD)).toEqual(['link-component', 'link-snippet']);
     expect(links(PAGE_BODY)).toEqual([]);
   });
@@ -287,6 +288,7 @@ describe('snippetsAt — the <link> of fudic (BUG-43)', () => {
   it('ends inside the href, and asks for the list of what it can link', () => {
     const snippet = SNIPPETS.find((s) => s.label === 'link-layout');
     expect(snippet?.body).toBe('<link rel="layout" href="$0">');
+    expect(SNIPPETS.find((s) => s.label === 'link-server')?.body).toBe('<link rel="server" href="$0">');
     expect(SNIPPETS.filter((s) => s.label.startsWith('link-')).every((s) => s.suggest)).toBe(true);
   });
 });

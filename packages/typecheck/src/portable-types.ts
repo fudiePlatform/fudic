@@ -16,7 +16,7 @@
  *
  * Symbols by the name the checker prints, as `propShapes` reads them: the program may come from
  * another copy of TypeScript. Type-only import of `typescript`, for the same reason, and a few
- * `TypeFlags` and `SymbolFlags` as literals, whose values every 5.x shares.
+ * `SymbolFlags` as literals, whose values 5.x and 6.x share. No `TypeFlags`: 6.0 renumbered them.
  *
  * One voice per fact: what the compiler reports (a call with arguments, `new`, an arrow outside
  * a collection operation, a literal) is not entered, and a type TypeScript could not resolve is
@@ -39,12 +39,14 @@ import type { Mapping, VirtualFile } from '@fudic/language-core';
 import { semanticInput } from './fudic-diagnostics.js';
 import type { ProjectedFud } from './project.js';
 
-/** `ts.TypeFlags`: `Enum | EnumLiteral`, `BigInt | BigIntLiteral`, `Intersection`. */
-const ENUM_LIKE = (1 << 5) | (1 << 10);
-const BIGINT_LIKE = (1 << 6) | (1 << 11);
-const INTERSECTION = 1 << 21;
-/** `ts.SymbolFlags.Class`. */
+/**
+ * `ts.SymbolFlags`: `EnumMember | ConstEnum | RegularEnum`, and `Class`. 5.x and 6.x give them
+ * the same values; `TypeFlags` they do not — 6.0 renumbered them (BUG-52) — so none is read.
+ */
+const ENUM = (1 << 3) | (1 << 7) | (1 << 8);
 const CLASS = 1 << 5;
+/** A `bigint`, or one of its literals, as the checker prints them. */
+const BIGINT = /^(?:bigint|-?\d+n)$/u;
 
 const PROPS_EXPORT = '$Props';
 
@@ -499,7 +501,7 @@ class PortableTypes {
 
   #single(type: ts.Type): Kind {
     const name = this.#checker.typeToString(type);
-    if (name === 'number' || type.isNumberLiteral() || (type.flags & ENUM_LIKE) !== 0) return 'number';
+    if (name === 'number' || type.isNumberLiteral() || isEnum(type)) return 'number';
     if (name === 'string' || type.isStringLiteral()) return 'string';
     if (name === 'boolean' || name === 'true' || name === 'false') return 'boolean';
     return this.#isDate(type) ? 'date' : 'other';
@@ -577,8 +579,8 @@ class PortableTypes {
   #ports(type: ts.Type, callable: boolean, seen: Set<ts.Type>): boolean {
     if (this.#isAny(type)) return this.#unresolved(type);
     const name = this.#checker.typeToString(type);
-    if (PRIMITIVES.has(name) || type.isStringLiteral() || type.isNumberLiteral() || (type.flags & ENUM_LIKE) !== 0) return true;
-    if ((type.flags & BIGINT_LIKE) !== 0) return false;
+    if (PRIMITIVES.has(name) || type.isStringLiteral() || type.isNumberLiteral() || isEnum(type)) return true;
+    if (BIGINT.test(name)) return false;
     if (type.isUnion()) return this.#union(type, seen);
     const named = type.aliasSymbol?.name ?? type.getSymbol()?.name ?? '';
     const alias = type.aliasSymbol?.name;
@@ -588,7 +590,7 @@ class PortableTypes {
     if (CATALOGUE.has(named) || CATALOGUE.has(type.getSymbol()?.name ?? '')) return true;
     if (this.#isDate(type)) return true;
     if (type.getCallSignatures().length > 0) return callable;
-    if ((type.flags & INTERSECTION) !== 0 || this.#checker.isTupleType(type)) return false;
+    if (type.isIntersection() || this.#checker.isTupleType(type)) return false;
     if (this.#isList(type)) return this.#holds(this.#checker.getTypeArguments(type as ts.TypeReference), seen);
     if (this.#isMap(type)) return this.#checker.getIndexInfosOfType(type).every((info) => this.#ports(info.type, false, seen));
     return this.#object(type, seen);
@@ -608,7 +610,7 @@ class PortableTypes {
     const present = type.types.filter((member) => !isAbsent(this.#checker, member));
     if (present.every((member) => member.isStringLiteral())) return true;
     if (present.every((member) => this.#single(member) === 'boolean')) return true;
-    if (present.every((member) => member.isNumberLiteral() || (member.flags & ENUM_LIKE) !== 0)) return true;
+    if (present.every((member) => member.isNumberLiteral() || isEnum(member))) return true;
     // `string | TrustedURL`: a value of URL, which the guard writes whichever it holds.
     if (present.length === 2 && present.some((member) => this.#single(member) === 'string') && present.some((member) => URL_MARKS.has(member.getSymbol()?.name ?? ''))) return true;
     return present.length === 1 && this.#ports(present[0]!, false, seen);
@@ -751,6 +753,11 @@ const PRIMITIVES: ReadonlySet<string> = new Set(['string', 'number', 'boolean', 
 function isAbsent(checker: ts.TypeChecker, type: ts.Type): boolean {
   const name = checker.typeToString(type);
   return name === 'null' || name === 'undefined' || name === 'void';
+}
+
+/** An `enum`, or one of its members: what the symbol of the type is, not its `TypeFlags`. */
+function isEnum(type: ts.Type): boolean {
+  return ((type.getSymbol()?.flags ?? 0) & ENUM) !== 0;
 }
 
 /** `type` without its `null` and `undefined`: what `?.` and `?.[]` read. */

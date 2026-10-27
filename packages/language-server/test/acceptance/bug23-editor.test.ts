@@ -98,7 +98,6 @@ const count = (items: CompletionItem[], label: string): number =>
 describe('the list the editor actually renders', () => {
   it('offers each name ONCE after a letter is typed in text', async () => {
     const items = await completeAt('@t|', '@');
-    console.log('=== @t ===', JSON.stringify(names(items)));
 
     // Labelled with the `@` that reaches the name, which is how it is written in a `.fud`.
     expect(count(items, '@title')).toBe(1);
@@ -106,7 +105,6 @@ describe('the list the editor actually renders', () => {
 
   it('offers each handler ONCE after a letter is typed in an event', async () => {
     const items = await completeAt('<app-circle .name=@data.title @click=@h|></app-circle>', '@');
-    console.log('=== @click=@h ===', JSON.stringify(names(items)));
 
     expect(count(items, '@handlerClick')).toBe(1);
   });
