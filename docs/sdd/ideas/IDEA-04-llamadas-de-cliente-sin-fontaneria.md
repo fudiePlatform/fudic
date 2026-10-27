@@ -1,5 +1,11 @@
 # IDEA-04 — Llamadas de cliente sin fontanería
 
+> **Cerrada el 2026-10-27.** §2 y §3 pasan a [SDD-68](../SDD-68-llamadas-sin-fontaneria.md);
+> §4 ya estaba resuelto (`auth.client`) y la sesión pasa a cookie en
+> [SDD-69](../SDD-69-sesion-por-cookie.md). Lo que salió al revisarla está en
+> [SDD-67](../SDD-67-binario-y-reglas-en-las-funciones.md) y
+> [SDD-70](../SDD-70-await-en-la-vista.md).
+
 > **Estado:** `Idea` — no es un SDD. Sin interfaz pública, sin criterios de aceptación, sin
 > rango de diagnósticos. Es la captura de una conversación del **2026-10-19**, surgida al
 > revisar `examples/basic/src/routes/usuarios.fud` mientras se hablaba de
