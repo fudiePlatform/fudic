@@ -3,7 +3,7 @@
 > **BUG:** [BUG-53 — La precarga no conoce el grafo de cada chunk](./BUG-53-precarga-sin-sw-a-medias.md)
 > **Paquetes:** `@fudic/core` · `@fudic/transport` · `@fudic/vite` · `examples/basic`
 > **Rama:** `bug-53-precarga-con-grafo` (nace de `main`)
-> **Progreso:** 6 / 9 — `Listo`.
+> **Progreso:** 8 / 9 — `Listo`.
 
 Primero los tests que fallan, después el arreglo. Las tareas 1 y 2 se ven fallar en los proyectos
 `nosw` y con SW antes de tocar el código.
@@ -18,8 +18,8 @@ Primero los tests que fallan, después el arreglo. Las tareas 1 y 2 se ven falla
 | [x] | 4 | 3 | **`hydrateGraphOf` y `hydrateNameOf` en `transport`**, exportados y publicados como pieza (SDD-45) para el coordinador sin SW (BUG §3) | `transport` | `src/manifest.ts` · `src/urls.ts` · `src/index.ts` |
 | [x] | 5 | 4 | **El SW sin leer bytes.** `warmHydration` pide en paralelo el chunk y su grafo; fuera `runtimeImportsOf` del warm; la regla de «todos o ninguno» igual (BUG §4.2) | `transport` | `src/router.ts` |
 | [x] | 6 | 4 | **El canal sin SW.** `graph` en `PreloadChannelConfig`; el coordinador sin SW lo construye: manifiesto una vez con `priority: 'low'`, lista vacía si el `build` no coincide o no llega; un `<link>` por URL sin repetir; `fud:warmed` cuando cargan todas; sin `graph`, lo de hoy; el comentario corregido (BUG §4.3, §4.4) | `core` · `vite` | `src/hydrate/warm/preload.ts` · `src/coordinator.ts` · `src/plugin.ts` |
-| [ ] | 7 | 3–6 | **Los tests unitarios.** Criterios 4–9 | `core` · `transport` · `vite` | `test/**` |
-| [ ] | 8 | 1–7 | **Los tests del ejemplo en verde** y la prueba de Pedro en el navegador, con `preview` y `preview:nosw`: pestaña de red al entrar en pantalla y al primer clic, y la consola sin avisos con SW | `examples/basic` | `tests/*` |
+| [x] | 7 | 3–6 | **Los tests unitarios.** Criterios 4–9 | `core` · `transport` · `vite` | `test/**` |
+| [x] | 8 | 1–7 | **Los tests del ejemplo en verde** y la prueba de Pedro en el navegador, con `preview` y `preview:nosw`: pestaña de red al entrar en pantalla y al primer clic, y la consola sin avisos con SW | `examples/basic` | `tests/*` |
 | [ ] | 9 | 8 | **Entrega y cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; `core` al 100 % y `transport` y `vite` sin bajar de su suelo (criterio 10); BUG-53 a `Hecho`, su fila en `bugs/INDEX.md` y entrada en el registro de progreso | todos | `docs/sdd/bugs/` |
 
 ---
@@ -33,3 +33,13 @@ Primero los tests que fallan, después el arreglo. Las tareas 1 y 2 se ven falla
 | 4 | 3, 7 |
 | 5–9 | 6, 7 |
 | 10 | 9 |
+
+## Notas de la implementación
+
+- **Tarea 8.** Playwright entero en verde: 270 de 270 en los tres proyectos. En dos pasadas
+  anteriores falló una vez cada uno de dos tests ajenos: el 23 de `hydration.spec.ts` en `dev`
+  (no espera a que `product-list` hidrate tras su clic; con el canal de antes falla igual, 2 de 4)
+  y la búsqueda de `usuarios.spec.ts` con SW (una vez en unas cien; 70 de 70 al repetirla). La
+  prueba en el navegador con `preview` y `preview:nosw` queda para Pedro.
+- **El test 21** de `hydration.spec.ts` se endurece en `nosw`: tras la precarga, el gesto no pide
+  nada. En `dev` sigue pagando el código compartido, que es lo que dice §6.

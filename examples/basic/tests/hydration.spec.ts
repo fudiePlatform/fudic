@@ -524,7 +524,7 @@ test.describe('warm: the network spent in proportion to what is seen', () => {
       expect(first).toEqual([]);
       const paths = await cached(page);
       // Shared code is the build's own `/assets/*.js` or, since SDD-45, the published
-      // runtime under `/_fudic/` — which the worker now warms off the chunk's own imports.
+      // runtime under `/_fudic/` — which the worker warms off the manifest (BUG-53 §4.2).
       const shared = paths.filter((p) => /^\/assets\/[^/]+\.js$|^\/_fudic\/.+\.js$/u.test(p));
       expect(
         shared.length,
@@ -533,11 +533,15 @@ test.describe('warm: the network spent in proportion to what is seen', () => {
       return;
     }
 
-    // The asymmetry the measurement found, and §4.7 states: a `modulepreload` deposits the
-    // module and NOT its descendants — Chromium fetches no static import of a preloaded
-    // module until something evaluates it — and the page cannot name them, because a shared
-    // chunk carries a content hash that only the manifest knows. So the first gesture of the
-    // page pays for the shared code, and no chunk of a warmed tag beyond it.
+    // A `modulepreload` deposits the module and NOT its descendants — Chromium fetches no
+    // static import of a preloaded module until something evaluates it. A build names them
+    // off the manifest (BUG-53 §4.3), so there the gesture pays nothing either.
+    if (test.info().project.name === 'nosw') {
+      expect(first, `the gesture fetched: ${first.join(', ')}`).toEqual([]);
+      return;
+    }
+    // Dev has no graph to name (BUG-53 §6): the first gesture of the page pays for the shared
+    // code, and no chunk of a warmed tag beyond it.
     expect(
       first.some((p) => /\/h\//u.test(p)),
       `a warmed chunk crossed the wire: ${first.join(', ')}`,
