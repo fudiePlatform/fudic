@@ -617,3 +617,48 @@ test('23 · after interacting with everything, nothing is left undefined', async
   // Inside the shadow roots too: the walk of §4.4 is the same one the runtime performs.
   expect(await undefinedTags(page)).toEqual([]);
 });
+
+/**
+ * BUG-53 criterion 1 — with no worker, the warm of a tag lays down its whole graph: the chunk,
+ * the shared chunks it imports and the published runtime pieces under them. A
+ * `modulepreload` fetches none of a module's imports until it is evaluated, so the page has to
+ * name them, and it reads them off the manifest.
+ *
+ * `/usuarios` and not `/hidratacion`: `user-form` drags shared chunks and pieces the route
+ * itself does not, so a warm of the bare chunk leaves them to the first click — which is what
+ * this measures. Only in `nosw`: dev has no graph to name (BUG-53 §6), and the worker's half
+ * is `sw-network.spec.ts`.
+ */
+test('BUG-53 · 1 · without a worker, the first click after the warm asks for no .js', async ({
+  page,
+  context,
+}) => {
+  test.skip(test.info().project.name !== 'nosw', 'the modulepreload channel of a build');
+  const recorder = record(context);
+  await page.addInitScript(() => {
+    window.__hydrated = [];
+    window.__warmed = [];
+    document.addEventListener('fud:hydrated', (e) => {
+      window.__hydrated.push((e as CustomEvent<Hydrated>).detail);
+    });
+    document.addEventListener('fud:warmed', (e) => {
+      window.__warmed.push((e as CustomEvent<{ tag: string }>).detail.tag);
+    });
+  });
+  await page.goto('/usuarios');
+  // Below the first viewport: the scroll is what orders its warm.
+  await page.locator('user-form').scrollIntoViewIfNeeded();
+  await expect.poll(() => page.evaluate(() => window.__warmed), { timeout: 10_000 }).toContain('user-form');
+  await page.waitForTimeout(500);
+
+  recorder.reset();
+  await page.locator('user-form').getByLabel('Nombre').click();
+  await expect
+    .poll(() => page.evaluate(() => window.__hydrated.map((h) => h.tag)), { timeout: 10_000 })
+    .toContain('user-form');
+  await page.waitForTimeout(500);
+  const scripts = fromNetwork(recorder.hits())
+    .map((h) => h.path)
+    .filter((p) => /\.js(\?|$)/u.test(p));
+  expect(scripts, `the first click fetched: ${scripts.join(', ')}`).toEqual([]);
+});

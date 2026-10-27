@@ -291,3 +291,57 @@ test.describe('the first three loads of /', () => {
     }
   });
 });
+
+/**
+ * BUG-53 criteria 2 and 3 — with a worker the warm deposits the whole graph of a tag, chunk,
+ * shared chunks and runtime pieces, so the first click after `fud:warmed` costs no network;
+ * and it does so without one `<link rel="modulepreload">`, which under a worker Chrome
+ * downloads twice and discards with a console warning.
+ */
+test('BUG-53 · 2–3 · with a worker, the first click after the warm asks for no .js, and nothing is preloaded', async ({
+  page,
+  context,
+}) => {
+  const warnings: string[] = [];
+  page.on('console', (message) => {
+    if (/preload/iu.test(message.text())) warnings.push(message.text());
+  });
+  const recorder = record(context);
+  await page.addInitScript(() => {
+    const w = window as unknown as { __warmed: string[]; __hydrated: string[] };
+    w.__warmed = [];
+    w.__hydrated = [];
+    document.addEventListener('fud:warmed', (e) => {
+      w.__warmed.push((e as CustomEvent<{ tag: string }>).detail.tag);
+    });
+    document.addEventListener('fud:hydrated', (e) => {
+      w.__hydrated.push((e as CustomEvent<{ tag: string }>).detail.tag);
+    });
+  });
+  await page.goto('/usuarios');
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  // Below the first viewport: the scroll is what orders its warm.
+  await page.locator('user-form').scrollIntoViewIfNeeded();
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { __warmed: string[] }).__warmed), {
+      timeout: 10_000,
+    })
+    .toContain('user-form');
+  await page.waitForTimeout(500);
+  expect(await page.locator('link[rel="modulepreload"]').count()).toBe(0);
+
+  recorder.reset();
+  await page.locator('user-form').getByLabel('Nombre').click();
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { __hydrated: string[] }).__hydrated), {
+      timeout: 10_000,
+    })
+    .toContain('user-form');
+  await page.waitForTimeout(500);
+  const scripts = fromNetwork(recorder.hits())
+    .map((h) => h.path)
+    .filter((p) => /\.js(\?|$)/u.test(p));
+  expect(scripts, `the first click fetched: ${scripts.join(', ')}`).toEqual([]);
+  expect(await page.locator('link[rel="modulepreload"]').count()).toBe(0);
+  expect(warnings, warnings.join('\n')).toEqual([]);
+});
