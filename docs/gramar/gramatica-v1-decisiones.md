@@ -1298,6 +1298,19 @@ se resuelve en `load` antes del primer byte. *Por qué en orden: HTML puro, cero
 campo que el handler devuelve como promesa y la vista espera con `@await`. Solo en los campos de
 `load` (`FUD1324`).
 
+**170.** **`pipe` en el `.fudapi`** (SDD-71 §3.2). `pipe <nombre>` con `on <tipo>+` y cero o más
+parámetros declara un pipe del proyecto. Es una extensión, como `rule`; siempre da texto. Sin `on`,
+`FUD1340`. Lo generado exporta `<nombre>.implement(fn)`, que devuelve el pipe y no registra nada. La
+implementación TS va una vez en la carpeta de pipes (`src/pipes`), fuera de las raíces de
+navegador y de servidor. *Por qué una vez: con frontend y backend en TS, el pipe hace lo mismo en
+los dos lados (Pedro, 2026-10-27).*
+
+**171.** **La vista importa pipes** (SDD-71 §3.5). Enmienda SDD-61 §3.9: el `export default` de
+un fichero de la carpeta de pipes, o del `pipes/*` de una librería, vale en el corte. Solo puede
+ir a la derecha de `|` o llamarse en una `const` con un literal de datos (`FUD1150`). Enmienda la
+158: un pipe, también un preset, lleva su `format`, y `a | p` se emite como `p.format(a, "<idioma>")`.
+Los presets viven en `@fudic/core`.
+
 ### Gramática de referencia
 
 ```
@@ -1608,3 +1621,5 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 167 | Control flujo | `@await data.<campo> { … } @catch (e) { … }` sobre un campo `later`; sin rama de espera (`FUD1320`, `FUD1321`, `FUD1323`) (SDD-70) |
 | 168 | Control flujo | Un `@await` espera al anterior; solo en la vista de una ruta o una página, fuera del `<head>` (`FUD1322`) (SDD-70) |
 | 169 | `.fudapi` | `later` detrás del tipo de un campo de `load`: el handler lo devuelve como promesa (`FUD1324`) (SDD-70) |
+| 170 | `.fudapi` | `pipe <nombre>` con `on <tipo>+` y parámetros; da texto; `implement` devuelve el pipe; implementación TS una vez en `src/pipes` (`FUD1340`) (SDD-71) |
+| 171 | Interpolación | La vista importa el `export default` de la carpeta de pipes; `a \| p` se emite `p.format(a, idioma)`; presets en `@fudic/core`. Enmienda 158 y SDD-61 §3.9 (SDD-71) |
