@@ -3,7 +3,7 @@
 > **BUG:** [BUG-42 — Los formularios de SDD-34 no se pueden terminar desde la vista](./BUG-42-error-resumen-y-validez-en-la-vista.md)
 > **Paquetes:** `@fudic/forms` · `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/example-basic`
 > **Rama:** `bug-42-formularios-desde-la-vista`, creada desde `bug-41-validacion-y-hueco-de-error` y trabajada en el mismo worktree (`.claude/worktrees/bug-41-validacion-y-hueco-de-error`), por indicación de Pedro: el BUG sale de la revisión de BUG-41, y dos ramas permiten seguir cada uno por separado
-> **Progreso:** 25 / 27
+> **Progreso:** 27 / 27 — `Hecho`.
 
 **Todo se cierra aquí.** Por decisión de Pedro no hay otro BUG ni otro SDD: el resumen con varios
 mensajes, el resumen con los errores de campo y la accesibilidad de los controles envueltos en
@@ -109,7 +109,7 @@ líneas que los hacen pasar.
 |---|---|---|---|---|---|
 | [x] | 18 | 2, 4–7, 10–12 | **El ejemplo de §0, tal cual.** `user.form.ts` con `email`, `web`, el grupo `acceso`, la regla `summary` de dos mensajes y `validity`. `app-input.fud` **recortado** a solo el input (sin `id` como prop, sin `id=@id`, con `id="campo"` fijo y sin marcador interno). Nuevos: `app-error.fud`, `app-label.fud` y `app-field.fud`. `app-form.fud` con el resumen `fields`, el del grupo, los cuatro patrones (*Nombre*, *Alias*, *Email*, *Web*), el `*` en `aria-hidden` y el botón `disabled=@(!userForm.$valid())`. El texto de `formularios.fud` explica el resumen, `fields`, la validez y los cuatro patrones. Revisar que ningún otro uso de `app-input` (p. ej. `app-wide-form`) dependa del marcador interno que desaparece. Criterio 32 | `example-basic` | `src/forms/user.form.ts` · `src/components/app-form.fud` · `src/components/app-input.fud` · `src/components/app-error.fud` (nuevo) · `src/components/app-label.fud` (nuevo) · `src/components/app-field.fud` (nuevo) · `src/routes/formularios.fud` |
 | [x] | 19 | 18 | **README de `@fudic/forms`.** Todo lo de §3: `summary=` y `fields`, `valid()` / `$valid()`, `Validity`, `GroupOptions`, `$messages()` / `$issues()` / `$submitted()`. Los cuatro patrones de un campo, por qué `app-label` proyecta el `<label>` (y la variante con `aria-labelledby`, que pierde el clic), el puente y su respaldo, y el `*` en `aria-hidden`. El ejemplo de §0 recortado y los avisos de §4.5 y §7. Deja de presentar `error=@f` como resumen. Anotar que `formassociated` es una propuesta de fudic. Criterio 33 | `forms` | `packages/forms/README.md` |
-| [ ] | 20 | 13–19 | **Probado donde se ve (Pedro).** Antes, **reconstruir y reinstalar la extensión** desde esta rama: la revisión que originó este BUG se hizo con una del 2026-09-19 y dos de sus avisos eran eso. Los catorce pasos de §0.6 en `/formularios`, en dev y en `vite preview`, en Chrome **y** en Safari o Firefox (sin puente nativo); la tabla de §0.5 escribiendo en el editor; y **Lighthouse** sin avisos de formulario. Criterio 41 | — | — |
+| [x] | 20 | 13–19 | **Probado donde se ve (Pedro).** Antes, **reconstruir y reinstalar la extensión** desde esta rama: la revisión que originó este BUG se hizo con una del 2026-09-19 y dos de sus avisos eran eso. Los catorce pasos de §0.6 en `/formularios`, en dev y en `vite preview`, en Chrome **y** en Safari o Firefox (sin puente nativo); la tabla de §0.5 escribiendo en el editor; y **Lighthouse** sin avisos de formulario. Criterio 41 | — | — |
 
 ---
 
@@ -130,7 +130,7 @@ líneas que los hacen pasar.
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 26 | 21–25 | **Cobertura.** `forms`, `language-core` y `language-server` en 100 / 100 / 100 / 100 sin `ignore`; los ficheros nuevos (`validity.ts`, `summary-markup.ts`, `relay.ts`, `dom/summary.ts`, `dom/bind-message.ts`, `template-attrs.ts`) nacen al 100 %. `compiler` no baja del suelo anotado en *Antes de empezar*. Criterio 42 | — | — |
-| [ ] | 27 | 26 | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build` y el e2e completo de `examples/basic` (los tres proyectos, sin un `vite preview` vivo en el 4173). BUG-42 a `Hecho` en [INDEX.md](./INDEX.md) (tabla y registro) y en el registro de [docs/sdd/INDEX.md](../INDEX.md). Anotar que BUG-42 corrige SDD-34 §3.3, §4.4, §4.5 y §4.9, SDD-33 §3 y §4.5, y BUG-41 §3.1, §3.3, §3.4, §4.3 y su criterio 19. | — | [INDEX.md](./INDEX.md) · [../INDEX.md](../INDEX.md) · `BUG-41-el-error-que-no-se-va.md` · `SDD-33-formularios-reactivos.md` · `SDD-34-forms-compilador.md` |
+| [x] | 27 | 26 | **Cierre.** `pnpm typecheck`, `pnpm test`, `pnpm build` y el e2e completo de `examples/basic` (los tres proyectos, sin un `vite preview` vivo en el 4173). BUG-42 a `Hecho` en [INDEX.md](./INDEX.md) (tabla y registro) y en el registro de [docs/sdd/INDEX.md](../INDEX.md). Anotar que BUG-42 corrige SDD-34 §3.3, §4.4, §4.5 y §4.9, SDD-33 §3 y §4.5, y BUG-41 §3.1, §3.3, §3.4, §4.3 y su criterio 19. | — | [INDEX.md](./INDEX.md) · [../INDEX.md](../INDEX.md) · `BUG-41-el-error-que-no-se-va.md` · `SDD-33-formularios-reactivos.md` · `SDD-34-forms-compilador.md` |
 
 ---
 

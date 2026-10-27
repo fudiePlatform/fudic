@@ -1,6 +1,6 @@
 # BUG-42 · Los formularios de SDD-34 no se pueden terminar desde la vista: `error` sin editor, un resumen que calla, ninguna validez que leer y controles envueltos sin accesibilidad
 
-> **Estado:** `Listo` — redactado tras la revisión de Pedro sobre `/formularios` y aprobado por él
+> **Estado:** `Hecho` (cerrado el 2026-10-27; probado por Pedro) — redactado tras la revisión de Pedro sobre `/formularios` y aprobado por él
 > el 2026-09-25.
 > **Corrige:** [SDD-34](../SDD-34-forms-compilador.md) §3.3, §4.4, §4.5, §4.9 ·
 > [SDD-33](../SDD-33-formularios-reactivos.md) §3, §4.5 · [BUG-41](./BUG-41-el-error-que-no-se-va.md)
