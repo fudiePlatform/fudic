@@ -192,11 +192,16 @@ porque nombra un campo declarado (`post["title"]` sigue siendo `FUD1153`, criter
 |---|---|---|---|---|---|
 | [x] | 38 | 36 | **Decisiones.** 162 (lista blanca portable; enmienda 137, 138 y 141), 163 (`@empty`), 164 (el corte y los tipos portables), 165 (`now()`), 166 (las cinco operaciones de colección y `<` entre textos y fechas) en la gramática y su índice. Nota en la cabecera de SDD-51: «Enmendada por SDD-61» | — | `docs/gramar/gramatica-v1-decisiones.md` · `docs/sdd/SDD-51-expresiones-de-la-vista.md` |
 | [x] | 39 | 36 | **Docs.** La guía de la vista de cada README que la explique (lo que vale, las colecciones con su recetario, `@empty`, `now()`), en inglés y sin citar SDD | varios | `packages/*/README.md` · `examples/*/README.md` |
-| [ ] | 40 | 37 | **Producto.** `examples/basic` en el navegador: reloj, carrito, blog vacío y lleno (`@empty`), `signal-while`, `usuarios` y `user-form` como antes. Tabla de hidratación sin cambios (criterio 34) | `examples` | — |
+| [x] | 40 | 37 | **Producto.** `examples/basic` en el navegador: reloj, carrito, blog vacío y lleno (`@empty`), `signal-while`, `usuarios` y `user-form` como antes. Tabla de hidratación sin cambios (criterio 34) | `examples` | — |
 | [x] | 41 | 40 | **Entrega.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; lo nuevo al 100 % en las cuatro métricas sin `v8 ignore`; ningún umbral baja (criterio 35) | — | — |
-| [ ] | 42 | 41 | **Cierre.** SDD-61 y este fichero en `Hecho`; fila y registro de progreso del `INDEX.md` | — | `docs/sdd/*` |
+| [x] | 42 | 41 | **Cierre.** SDD-61 y este fichero en `Hecho`; fila y registro de progreso del `INDEX.md` | — | `docs/sdd/*` |
 
-## Traspaso (2026-10-27) — lo que queda para cerrar 40–42
+## Traspaso (2026-10-27) — cerrado
+
+Todo lo de abajo está hecho; se conserva como registro. `/raw` se resolvió con el tipo `html` del
+`.fudapi` (decisión 167): el caso sin marca vuelve, llega del servidor y `@raw` lo escapa.
+
+### Lo que quedaba para cerrar 40–42
 
 Lo pendiente lo decidió Pedro; no se reabre. La referencia es `main`: `examples/basic` debe dar lo mismo
 que en `main` (salvo lo aceptado abajo), comprobado con build, preview y dev, en `sw` y en `nosw`.

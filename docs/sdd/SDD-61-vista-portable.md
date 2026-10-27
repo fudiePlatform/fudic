@@ -1,6 +1,6 @@
 # SDD-61 — La vista portable: lo que se puede escribir en el markup
 
-> **Estado:** `Listo` — [tareas](./SDD-61-Task.md) · [anexo: cómo se traduce a cada
+> **Estado:** `Hecho` — [tareas](./SDD-61-Task.md) · [anexo: cómo se traduce a cada
 > lenguaje](./SDD-61-anexo-traduccion.md).
 > **Paquetes:** `@fudic/compiler` (analizadores, `@empty`, emit) · `@fudic/diagnostics` ·
 > `@fudic/core` (`now`) · `@fudic/dom` (orden del spread) · `@fudic/ssr` (`now` en `fud-state`, `@empty`) · `@fudic/typecheck` (pase
