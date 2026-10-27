@@ -666,3 +666,59 @@ test('BUG-53 · 1 · without a worker, the first click after the warm asks for n
     .filter((p) => /\.js(\?|$)/u.test(p));
   expect(scripts, `the first click fetched: ${scripts.join(', ')}`).toEqual([]);
 });
+
+/**
+ * BUG-53 — Pedro's check, made a test: with no worker, every `.js` the page downloads has
+ * its `<link rel="modulepreload">` — the coordinator aside, which its own `<script>` loads —
+ * and none is downloaded twice. On load, with what the page hydrates at load preloaded by
+ * the head, and after scrolling to `user-form` and clicking it, with its graph preloaded by
+ * the warm.
+ */
+test('BUG-53 · every .js the page downloads was preloaded, and only once', async ({ page, context }) => {
+  test.skip(test.info().project.name !== 'nosw', 'the modulepreload channel of a build');
+  const recorder = record(context);
+  const unpreloaded = (): Promise<string[]> =>
+    page.evaluate(() => {
+      const preloaded = new Set(
+        [...document.querySelectorAll<HTMLLinkElement>('link[rel="modulepreload"]')].map((l) => l.href),
+      );
+      return performance
+        .getEntriesByType('resource')
+        .map((e) => e.name)
+        .filter((n) => new URL(n).pathname.endsWith('.js') && !preloaded.has(n))
+        .filter((n) => !/\/fudic-main-[^/]+\.js$/u.test(new URL(n).pathname));
+    });
+  const twice = (): string[] => {
+    const seen = fromNetwork(recorder.hits())
+      .map((h) => h.path)
+      .filter((p) => p.endsWith('.js'));
+    return seen.filter((p, i) => seen.indexOf(p) !== i);
+  };
+
+  await page.addInitScript(() => {
+    window.__warmed = [];
+    window.__hydrated = [];
+    document.addEventListener('fud:warmed', (e) => {
+      window.__warmed.push((e as CustomEvent<{ tag: string }>).detail.tag);
+    });
+    document.addEventListener('fud:hydrated', (e) => {
+      window.__hydrated.push((e as CustomEvent<Hydrated>).detail);
+    });
+  });
+  await page.goto('/usuarios');
+  await expect
+    .poll(() => page.evaluate(() => window.__hydrated.map((h) => h.tag)), { timeout: 10_000 })
+    .toContain('usuarios');
+  await page.waitForTimeout(500);
+  expect(await unpreloaded(), 'on load').toEqual([]);
+
+  await page.locator('user-form').scrollIntoViewIfNeeded();
+  await expect.poll(() => page.evaluate(() => window.__warmed), { timeout: 10_000 }).toContain('user-form');
+  await page.locator('user-form').getByLabel('Nombre').click();
+  await expect
+    .poll(() => page.evaluate(() => window.__hydrated.map((h) => h.tag)), { timeout: 10_000 })
+    .toContain('user-form');
+  await page.waitForTimeout(500);
+  expect(await unpreloaded(), 'after the form').toEqual([]);
+  expect(twice(), 'downloaded twice').toEqual([]);
+});

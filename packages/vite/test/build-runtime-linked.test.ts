@@ -38,6 +38,34 @@ const COUNTER = `@code {
 </app-counter>
 `;
 
+/** Hydrated at LOAD: an `effect` does not wait for a gesture (BUG-53 §4.3). */
+const TICKER = `@code {
+  import { signal, effect } from "@fudic/core";
+  const n = signal(0);
+  effect(() => {
+    const id = setInterval(() => n.set(n() + 1), 1000);
+    return () => clearInterval(id);
+  });
+}
+
+<app-ticker>
+  <template shadowrootmode="open">
+    <p>@(n())</p>
+  </template>
+</app-ticker>
+`;
+
+const LIVE = `<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="component" href="../components/app-ticker.fud">
+    <script src="fudic:runtime"></script>
+    <title>Live</title>
+  </head>
+  <body><app-ticker></app-ticker></body>
+</html>
+`;
+
 const PAGE = `<!DOCTYPE html>
 <html>
   <head>
@@ -64,6 +92,8 @@ beforeAll(async () => {
   mkdirSync(join(root, 'src', 'routes'), { recursive: true });
   writeFileSync(join(root, 'src', 'components', 'app-counter.fud'), COUNTER);
   writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
+  writeFileSync(join(root, 'src', 'components', 'app-ticker.fud'), TICKER);
+  writeFileSync(join(root, 'src', 'routes', 'live.fud'), LIVE);
 
   // Installed, not aliased: discovery walks `node_modules` from the project root, and a
   // publisher is found by its `package.json` — which is the whole of §3.3.
@@ -202,5 +232,30 @@ describe('BUG-53 §4.1: the manifest names the runtime under each hydration chun
         expect(listed, `${url} → ${next!}`).toContain(next);
       }
     }
+  });
+});
+
+describe('BUG-53 §4.3: with no worker, the head preloads what the page hydrates at load', () => {
+  const html = (name: string): string =>
+    String(output.find((o) => o.fileName === name)?.source ?? '');
+  const preloads = (name: string): string[] =>
+    [...html(name).matchAll(/<link rel="modulepreload" href="([^"]+)">/gu)].map((m) => m[1]!);
+
+  it('names the eager chunk and its whole graph, each once, and nothing for a lazy page', () => {
+    const file = JSON.parse(String(output.find((o) => o.fileName === 'fudic-routes.json')!.source)) as {
+      build: string;
+      hydrate: Record<string, string[]>;
+    };
+    const live = preloads('live/index.html');
+    expect(live).toContain(`/assets/h/app-ticker-${file.build}.js`);
+    // Its runtime too, the one the hydration runtime loads on demand included.
+    for (const piece of file.hydrate['app-ticker']!.filter((d) => d.startsWith('/_fudic/'))) {
+      expect(live).toContain(piece);
+    }
+    expect(live.some((u) => u.endsWith('/dom/browser.js'))).toBe(true);
+    expect(new Set(live).size).toBe(live.length);
+    // `app-counter` waits for a gesture: its page preloads the coordinator's closure alone.
+    expect(preloads('index.html').some((u) => u.includes('/assets/h/'))).toBe(false);
+    expect(html('live/index.html')).not.toContain('__fudic_eager_');
   });
 });

@@ -104,6 +104,14 @@ Se calcula después del renombrado y la poda, como hoy. Las piezas se escriben p
 publicada, porque no viven en el directorio de `assets`. El manifiesto sigue siendo el único sitio
 del grafo: ni el HTML ni el coordinador lo repiten (`compiler/src/emit/maps.ts:10-16`).
 
+**Ampliado tras la prueba de Pedro.** El grafo es todo lo que el chunk acaba **cargando**, no solo
+lo que importa estáticamente:
+
+- también lo que carga con `import()` — chunks y piezas —, transitivo: las implementaciones de
+  `src/browser` que la raíz del navegador carga así (`rules-<hash>`, `log-<hash>`…);
+- y las piezas que el runtime de hidratación carga bajo demanda la primera vez que hidrata algo
+  (el adaptador del DOM y la signal que SDD-45 §4.4.1 sacó de la carga).
+
 ### 4.2. Con SW: todo de una vez, sin leer bytes
 
 - `warmHydration` pide en paralelo el chunk y todo su `hydrateGraphOf(manifest)(name)`.
@@ -128,6 +136,15 @@ del grafo: ni el HTML ni el coordinador lo repiten (`compiler/src/emit/maps.ts:1
 - **`fud:warmed` sale cuando han cargado todas** las URL de ese tag, también las que ya estaban.
   Si una falla (`error`), ese tag no se anuncia, con la misma regla que el SW.
 - En dev no hay `graph`: el canal hace lo de hoy.
+
+### 4.3.1. Sin SW: lo que hidrata al cargar va en el `<head>`
+
+**Ampliado tras la prueba de Pedro.** Lo que una página hidrata sin gesto (`fud-eager`: la ruta
+reactiva, un componente con `effect`, un control de formulario) se pide al arrancar, y sin precarga
+cada nivel de sus imports llegaba en cascada. El `<head>` de un build sin SW precarga, además del
+cierre del coordinador, el chunk de cada uno de esos tags y su grafo completo (§4.1), sin repetir
+ninguna URL. La regla que queda: **sin SW, todo `.js` que la página descarga tiene su
+`modulepreload`, salvo el coordinador, y ninguno se descarga dos veces.**
 
 ### 4.4. El comentario
 
@@ -155,6 +172,13 @@ grafo, por qué no se precarga nada con `<link>` cuando hay SW y por qué en dev
 8. **Una petición.** Sin SW, el manifiesto se pide una vez por página, aunque se precarguen diez
    tags.
 9. **Dev, igual que hoy.** Sin `graph`, un `<link>` por URL.
+   **Ampliado:**
+9.1. **Todo precargado, una vez.** Sin SW, en `/usuarios`, al cargar y tras precargar y usar
+     `user-form`: todo `.js` descargado tiene su `<link rel="modulepreload">` salvo el coordinador,
+     y ninguno se pide dos veces.
+9.2. **El `<head>` de lo que hidrata al cargar.** Sin SW, una página con un tag de `fud-eager`
+     precarga su chunk y su grafo, el adaptador del DOM incluido; una página que espera al gesto,
+     no.
 10. **Entrega.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde. `@fudic/core` sigue al
     100 % en las cuatro métricas; `@fudic/transport` y `@fudic/vite` no bajan de su suelo.
 

@@ -208,6 +208,42 @@ export function needsRuntime(
 }
 
 /**
+ * `fud-eager` — the ONE list of tags that come up without a gesture (SDD-34 §4.5). It is a
+ * flat list and not a map because it answers no question about composition: these tags are
+ * defined and hydrated when the runtime installs, and nothing else is.
+ *
+ * Acted on only where it means something: a tag that never hydrates has no chunk to bring
+ * up early, so a `formassociated` component with no hookup at all is not listed. In
+ * practice that set is empty — a control-component carries a `control` — and the filter is
+ * what keeps the runtime from asking for a chunk that was never emitted.
+ * Two reasons to be in it now, and the second is new (SDD-39 §4.6). A `formassociated`
+ * component, as before. And anything whose `@code { @client }` calls `effect(...)`: an
+ * effect is by definition what happens without anybody touching anything, so one that waits
+ * for a gesture is not an effect. It vale for a component and for a route alike — the clock
+ * of §6.21 unhydrated paints the server's time and freezes, which is not «works worse».
+ *
+ * Exported because the build asks the same question of a route: what a page hydrates at
+ * load is what its head has to preload, graph and all (BUG-53 §4.3).
+ */
+export function eagerTags(
+  graph: ComponentGraph,
+  hydratable: ReadonlySet<string>,
+  routeName?: string,
+): readonly string[] {
+  return [
+    ...new Set([
+      ...[...formAssociatedTags(graph)].filter((tag) => hydratable.has(tag)),
+      ...allComponents(graph).flatMap((comp) =>
+        hydratable.has(comp.tag) && codeOf(comp).clientEffects ? [comp.tag] : [],
+      ),
+      // The route is in the list under its own NAME, which is how the runtime names it
+      // everywhere else: it has no tag to be listed by.
+      ...(routeName !== undefined && routeHydration(graph) === 'eager' ? [routeName] : []),
+    ]),
+  ];
+}
+
+/**
  * The compile-time map constants of a page module — the ones a page and a route both need,
  * written by the one function so the two shapes cannot drift.
  *
@@ -227,30 +263,7 @@ export function writeMapConstants(
   const bus = fudBus(graph);
   const hasBus = Object.keys(bus).length > 0;
   if (hasBus) w.line(`const FUD_BUS = ${JSON.stringify(bus)};`);
-  // `fud-eager` — the ONE list of tags that come up without a gesture (SDD-34 §4.5). It is a
-  // flat list and not a map because it answers no question about composition: these tags are
-  // defined and hydrated when the runtime installs, and nothing else is.
-  //
-  // Acted on only where it means something: a tag that never hydrates has no chunk to bring
-  // up early, so a `formassociated` component with no hookup at all is not listed. In
-  // practice that set is empty — a control-component carries a `control` — and the filter is
-  // what keeps the runtime from asking for a chunk that was never emitted.
-  // Two reasons to be in it now, and the second is new (SDD-39 §4.6). A `formassociated`
-  // component, as before. And anything whose `@code { @client }` calls `effect(...)`: an
-  // effect is by definition what happens without anybody touching anything, so one that waits
-  // for a gesture is not an effect. It vale for a component and for a route alike — the clock
-  // of §6.21 unhydrated paints the server's time and freezes, which is not «works worse».
-  const eager = [
-    ...new Set([
-      ...[...formAssociatedTags(graph)].filter((tag) => hydratable.has(tag)),
-      ...allComponents(graph).flatMap((comp) =>
-        hydratable.has(comp.tag) && codeOf(comp).clientEffects ? [comp.tag] : [],
-      ),
-      // The route is in the list under its own NAME, which is how the runtime names it
-      // everywhere else: it has no tag to be listed by.
-      ...(routeName !== undefined && routeHydration(graph) === 'eager' ? [routeName] : []),
-    ]),
-  ];
+  const eager = eagerTags(graph, hydratable, routeName);
   const hasEager = eager.length > 0;
   if (hasEager) w.line(`const FUD_EAGER = ${JSON.stringify(eager)};`);
   return { hasTree, hasBus, hasEager };

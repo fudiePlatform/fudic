@@ -46,6 +46,12 @@ export interface PruneItem {
 export function reachableChunks(
   items: readonly PruneItem[],
   isRoot: (item: PruneItem) => boolean,
+  /**
+   * Whether to walk `import()` too. A shell boots on static imports alone; what a hydration
+   * chunk ends up loading includes what it loads on demand, and the warm names all of it
+   * (BUG-53 §4.1).
+   */
+  dynamic = false,
 ): readonly string[] {
   const chunks = new Map<string, PruneItem>();
   for (const item of items) {
@@ -63,7 +69,7 @@ export function reachableChunks(
     }
     seen.add(fileName);
     found.push(fileName);
-    for (const imported of item.imports ?? []) {
+    for (const imported of [...(item.imports ?? []), ...(dynamic ? (item.dynamicImports ?? []) : [])]) {
       visit(imported);
     }
   };

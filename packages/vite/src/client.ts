@@ -18,6 +18,7 @@
  */
 
 import {
+  eagerTags,
   hasDependencyInjection,
   hydratableTags,
   iocName,
@@ -137,6 +138,16 @@ export function routeHydrates(absPath: string, io: ResolveIo): boolean {
     hasDependencyInjection(doc),
     isReactiveRoute(doc),
   );
+}
+
+/**
+ * What a route's page hydrates at LOAD, with no gesture: the compiler's own `fud-eager` list,
+ * asked of the same graph (BUG-53 §4.3). The route itself is in it under its chunk name,
+ * `safeName(pattern)`, when it has a client half that comes up on its own.
+ */
+export function routeEagerTags(absPath: string, io: ResolveIo, pattern: string): readonly string[] {
+  const doc = graphOf(absPath, io);
+  return eagerTags(doc, hydratableTags(doc), isReactiveRoute(doc) ? safeName(pattern) : undefined);
 }
 
 /** A ROUTE that has a client half, and therefore a chunk of its own (SDD-39 §4.5). */

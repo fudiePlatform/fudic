@@ -474,3 +474,23 @@ export function piecesToCopy(
   }
   return { files, diagnostics };
 }
+
+/**
+ * The pieces the hydration runtime loads ON DEMAND, the first time it hydrates anything: the
+ * DOM adapter and the signal SDD-45 §4.4.1 took out of the load, and what they import.
+ *
+ * Out of the load and into the graph of every hydration chunk (BUG-53 §4.1): a page that
+ * hydrates nothing does not pay for them, and one that hydrates a tag has them preloaded with
+ * it, instead of discovering them one `import()` deep inside the gesture. Empty when this
+ * build links no published `core/hydrate`.
+ */
+export function deferredPieces(linkage: RuntimeLinkage): readonly string[] {
+  const hydrate = [...linkage.byUrl.values()].find(
+    (piece) => piece.pkg === '@fudic/core' && piece.name === 'hydrate',
+  );
+  if (hydrate === undefined) return [];
+  const loaded = new Set(loadedPieces(hydrate.code, linkage));
+  return linkedPieces([hydrate.code], linkage)
+    .map((piece) => piece.url)
+    .filter((url) => !loaded.has(url));
+}

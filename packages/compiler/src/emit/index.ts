@@ -77,6 +77,8 @@ export {
 // that agree today is a page whose head and whose output stop agreeing the day one of them
 // learns something.
 export { needsRuntime } from './maps.js';
+// And what a page hydrates at load, for the same reason: its head preloads it (BUG-53 §4.3).
+export { eagerTags } from './maps.js';
 export {
   emitComponentIocModule,
   hasDependencyInjection,

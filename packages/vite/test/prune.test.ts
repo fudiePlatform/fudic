@@ -109,6 +109,13 @@ describe('keepSet', () => {
       'assets/h/app-form.js',
       'assets/fudic-root.browser.js',
     ]);
+    // What the chunk LOADS is the other question, and the warm asks it (BUG-53 §4.1).
+    expect(reachableChunks(items, (item) => item.fileName === 'assets/h/app-form.js', true)).toEqual([
+      'assets/h/app-form.js',
+      'assets/fudic-root.browser.js',
+      'assets/rules-B3.js',
+      'assets/shared.js',
+    ]);
   });
 
   it('keeps nothing but assets when no chunk is a root', () => {

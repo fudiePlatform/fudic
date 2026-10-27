@@ -17,6 +17,7 @@ import { dirname, join, relative, resolve as resolvePath } from 'node:path';
 import { type EnvironmentModuleGraph, type Logger, type Plugin, type ViteDevServer, transformWithOxc } from 'vite';
 import {
   applyNonce,
+  createUrlResolver,
   cspFor,
   newNonce,
   DEFAULT_CSP,
@@ -48,6 +49,7 @@ import {
   discoverReactiveRoutes,
   iocChunkName,
   iocId,
+  routeEagerTags,
   routeHydrates,
   routeNameLookup,
   routeUsesDi,
@@ -112,6 +114,7 @@ import {
   type PieceRef,
 } from './coordinator.js';
 import {
+  deferredPieces,
   insidePublisher,
   linkedPieces,
   runtimeCacheOf,
@@ -196,6 +199,18 @@ import { chunkNamesOf } from './names.js';
 import { runtimeUrls, type RuntimeEntries } from './constants.js';
 import { planRename, rewriteReferences, mapNameOf, isHashedChunk } from './rename.js';
 import { keepSet, reachableChunks, type PruneItem } from './prune.js';
+
+/**
+ * The placeholder a head carries where the preloads of what its page hydrates at load go, one
+ * per route (BUG-53 §4.3). The graph only exists in `generateBundle`, after the head that names
+ * it was compiled, so the head names this and the bundle fills it in.
+ */
+function eagerToken(pattern: string): string {
+  return `__fudic_eager_${createHash('sha256').update(pattern).digest('hex').slice(0, 8)}__`;
+}
+
+/** The token as the bundler wrote it, inside whichever quotes the minifier chose. */
+const EAGER_TOKEN_RE = /(["'`])(__fudic_eager_[0-9a-f]{8}__)\1/gu;
 
 /**
  * The bundle as reachability items, keyed by its ORIGINAL keys — which is what `imports`
@@ -496,6 +511,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    * to write the SAME URL into its head.
    */
   let coordinators = new Map<string, Coordinator | null>();
+  /**
+   * Route pattern → what its page hydrates at LOAD, by the name the runtime asks for it, the
+   * locale's directory included (BUG-53 §4.3). Filled with the coordinators, and only in a
+   * build with no worker: with one the head preloads nothing.
+   */
+  let eagerByPattern = new Map<string, readonly string[]>();
   /** Source → the id it is emitted under, so one combination produces one chunk. */
   const coordinatorIds = new Map<string, string>();
   /** Id → source, for `load`. The inverse of the map above, kept rather than searched. */
@@ -539,7 +560,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // second visit the pieces are a cache read, so what it would flatten is the chain of
       // ONE uncontrolled load — a round trip against a duplicated download of every piece,
       // every load, forever.
-      swConfig === null ? loadedPieces(coordinator.source, runtime) : [],
+      //
+      // Without one, the head also preloads what the page hydrates at LOAD, chunk and graph
+      // (BUG-53 §4.3), through a token the bundle fills once that graph exists.
+      swConfig === null
+        ? [
+            ...loadedPieces(coordinator.source, runtime),
+            ...(eagerByPattern.has(pattern) ? [eagerToken(pattern)] : []),
+          ]
+        : [],
       coordinator.source,
       swConfig !== null,
     );
@@ -1379,6 +1408,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // link pass and the edge pass — and a route whose head named a different module in each
       // would be a page that disagrees with itself depending on who rendered it.
       coordinators = new Map();
+      eagerByPattern = new Map();
       coordinatorIds.clear();
       if (!isDev) {
         const { missing } = coordinatorParams({ mode: 'build', base });
@@ -1396,6 +1426,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             params,
           );
           coordinators.set(rb.route.pattern, coordinator);
+          if (coordinator !== null && swConfig === null) {
+            const eager = routeEagerTags(rb.absPath, io, rb.route.pattern);
+            if (eager.length > 0) eagerByPattern.set(rb.route.pattern, eager.map((tag) => `${dir}${tag}`));
+          }
           if (coordinator === null || coordinatorIds.has(coordinator.source)) continue;
           // One emit per distinct SOURCE: that is what makes «same needs, same file» a
           // property of the build rather than something to check afterwards.
@@ -2123,6 +2157,94 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         chunk.fileName = to;
         emitted.add(to);
       }
+      // 3b-bis. What each hydration chunk LOADS (SDD-17 §4.7, BUG-53 §4.1): the chunks it
+      //     imports, statically or with `import()`, transitively, and the published runtime
+      //     under all of them — plus what the hydration runtime itself loads on demand the
+      //     first time it hydrates anything. Everything the first hydration of the tag will
+      //     ask for, so the warm can lay it all down at once instead of leaving each level of
+      //     the cascade to be discovered inside the gesture.
+      //
+      //     Computed right after the rename, so the names are the ones published, and before
+      //     the passes that render a head are emitted: a page with no worker preloads the
+      //     graph of what it hydrates at load (3b-ter). The prune below never drops a file of
+      //     this graph, because it keeps everything a hydration chunk reaches.
+      //     The walk goes by bundle KEY, which is what `imports` speaks in; only the answer
+      //     is translated to file names, because the rename moved `fileName` alone.
+      //     The tag comes from the facade module, normalized: `emitFile` was given the path
+      //     as the filesystem spells it and Vite hands it back with forward slashes.
+      const slashes = (path: string): string => path.replace(/\\/gu, '/');
+      const tagOfFacade = new Map([
+        ...discoverComponents(builds, io).map(
+          (comp) => [slashes(clientId(comp.path)), comp.tag] as const,
+        ),
+        // A route's chunk has imports to warm exactly as a component's does, and it is filed
+        // under its NAME because that is what the runtime asks by (SDD-39 §4.7).
+        ...discoverReactiveRoutes(builds, io).map(
+          (route) => [slashes(clientId(route.path)), route.name] as const,
+        ),
+      ]);
+      const items = bundleItems(bundle);
+      const hydrateDeps: Record<string, readonly string[]> = {};
+      // The pieces never reach the bundle graph: they are URLs inside the code.
+      const hydratePieces: Record<string, readonly string[]> = {};
+      const codeOf = new Map(
+        Object.entries(bundle).flatMap(([key, item]) => (item.type === 'chunk' ? [[key, item.code] as const] : [])),
+      );
+      const deferred = deferredPieces(runtime);
+      const resolver = createUrlResolver(base, buildId);
+      const filesOf = new Map<string, readonly string[]>();
+      for (const [key, item] of Object.entries(bundle)) {
+        // A locale's chunk is `x.fud?client&locale=en`, and the runtime asks for it as
+        // `en/<tag>` (SDD-58 §4.6): filed under that name, or the worker warms another file.
+        const facade = item.type === 'chunk' ? slashes(item.facadeModuleId ?? '') : '';
+        const found = tagOfFacade.get(idWithoutLocale(facade));
+        if (found === undefined) {
+          continue;
+        }
+        const tag = `${chunkDir(localeOf(facade), locales)}${found}`;
+        const graph = reachableChunks(items, (i) => i.fileName === key, true);
+        const deps = graph
+          .filter((fileName) => fileName !== key)
+          .map((fileName) => bundle[fileName]?.fileName ?? fileName);
+        if (deps.length > 0) {
+          hydrateDeps[tag] = deps;
+        }
+        // Every name in `graph` is a chunk: that is what `reachableChunks` walks.
+        const code = graph.map((fileName) => codeOf.get(fileName)).join('\n');
+        const pieces = [...new Set([...linkedPieces([code], runtime).map((p) => p.url), ...deferred])];
+        if (pieces.length > 0) {
+          hydratePieces[tag] = pieces.toSorted((a, b) => a.localeCompare(b));
+        }
+        // The whole graph as URLs, for the head of a page that hydrates this tag at load.
+        filesOf.set(tag, [
+          resolver.hydrateUrl(tag),
+          ...deps.map((fileName) => resolver.assetUrl(fileName)),
+          ...pieces,
+        ]);
+      }
+
+      // 3b-ter. The head of a page with no worker preloads what that page hydrates at LOAD,
+      //     chunk and graph (BUG-53 §4.3): those files are asked for before anybody touches
+      //     anything, and without a link each level of their imports is discovered one round
+      //     trip after the last. The head was written with one token per route where the list
+      //     goes (`runtimeEntriesFor`), because the graph only exists now; it is filled in
+      //     every pass that renders a head. Not what the head already preloads for the
+      //     coordinator, so no URL is named twice.
+      const eagerFiles = new Map(
+        [...eagerByPattern].map(([pattern, tags]) => {
+          // A route is in `eagerByPattern` only when it has a coordinator.
+          const head = new Set(loadedPieces(coordinators.get(pattern)!.source, runtime));
+          // And every eager tag hydrates, so it has a chunk and a graph (`fud-eager` §4.5).
+          const files = tags.flatMap((tag) => filesOf.get(tag)!);
+          return [eagerToken(pattern), [...new Set(files)].filter((url) => !head.has(url))] as const;
+        }),
+      );
+      // Never empty: the tag's own chunk is in it, and the head never names that one.
+      const fillEager = (code: string): string =>
+        code.replace(EAGER_TOKEN_RE, (_match, _quote: string, token: string) =>
+          eagerFiles.get(token)!.map((url) => JSON.stringify(url)).join(','),
+        );
+
       for (const chunk of link.chunks) {
         emitWithMap({
           ...chunk,
@@ -2138,10 +2260,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         emitWithMap({ ...sw, code: rewriteReferences(swCode, renames) });
       }
       // And the edge chunks, which the preview serves and the prerender runs from a temp dir
-      // below: they import the same shared chunks by name.
+      // below: they import the same shared chunks by name. They are what renders the head of
+      // a page with no worker, so the eager preloads are filled here (3b-ter). That one line
+      // changes length, and only the columns after it on that line move in its map.
       const edgeChunks = edge.chunks.map((c) => ({
         ...c,
-        code: rewriteReferences(c.code.split(BUILD_TOKEN).join(buildId), renames),
+        code: fillEager(rewriteReferences(c.code.split(BUILD_TOKEN).join(buildId), renames)),
       }));
       if (writeToDisk) {
         rmSync(edgeDir, { recursive: true, force: true });
@@ -2219,59 +2343,6 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       for (const file of copy.files) {
         this.emitFile({ type: 'asset', fileName: file.fileName, source: file.code });
         emitted.add(file.fileName);
-      }
-
-      // 3d. What each hydration chunk IMPORTS (SDD-17 §4.7). The URL of a tag's chunk is
-      //     arithmetic, but the code the client pass shares between components keeps a
-      //     content hash: nothing about it is derivable, and the only place that knows it
-      //     is right here. Warming the tag's chunk alone left those imports to the network
-      //     INSIDE the first gesture — measured, and the one place warm exists to keep clear.
-      //
-      //     Computed AFTER the rename and the prune, so the names are the ones published.
-      //     The walk goes by bundle KEY, which is what `imports` speaks in; only the answer
-      //     is translated to file names, because the rename moved `fileName` alone.
-      //     The tag comes from the facade module, normalized: `emitFile` was given the path
-      //     as the filesystem spells it and Vite hands it back with forward slashes.
-      const slashes = (path: string): string => path.replace(/\\/gu, '/');
-      const tagOfFacade = new Map([
-        ...discoverComponents(builds, io).map(
-          (comp) => [slashes(clientId(comp.path)), comp.tag] as const,
-        ),
-        // A route's chunk has imports to warm exactly as a component's does, and it is filed
-        // under its NAME because that is what the runtime asks by (SDD-39 §4.7).
-        ...discoverReactiveRoutes(builds, io).map(
-          (route) => [slashes(clientId(route.path)), route.name] as const,
-        ),
-      ]);
-      const items = bundleItems(bundle);
-      const hydrateDeps: Record<string, readonly string[]> = {};
-      // And the published runtime under them (BUG-53 §4.1), with the head's own closure: the
-      // pieces never reach the bundle graph, they are URLs inside the code.
-      const hydratePieces: Record<string, readonly string[]> = {};
-      const codeOf = new Map(
-        Object.entries(bundle).flatMap(([key, item]) => (item.type === 'chunk' ? [[key, item.code] as const] : [])),
-      );
-      for (const [key, item] of Object.entries(bundle)) {
-        // A locale's chunk is `x.fud?client&locale=en`, and the runtime asks for it as
-        // `en/<tag>` (SDD-58 §4.6): filed under that name, or the worker warms another file.
-        const facade = item.type === 'chunk' ? slashes(item.facadeModuleId ?? '') : '';
-        const found = tagOfFacade.get(idWithoutLocale(facade));
-        if (found === undefined) {
-          continue;
-        }
-        const tag = `${chunkDir(localeOf(facade), locales)}${found}`;
-        const graph = reachableChunks(items, (i) => i.fileName === key);
-        const deps = graph
-          .filter((fileName) => fileName !== key)
-          .map((fileName) => bundle[fileName]?.fileName ?? fileName);
-        if (deps.length > 0) {
-          hydrateDeps[tag] = deps;
-        }
-        // Every name in `graph` is a chunk: that is what `reachableChunks` walks.
-        const pieces = loadedPieces(graph.map((fileName) => codeOf.get(fileName)).join('\n'), runtime);
-        if (pieces.length > 0) {
-          hydratePieces[tag] = pieces;
-        }
       }
 
       // 4. The manifest: the one contract, emitted at a fixed URL.

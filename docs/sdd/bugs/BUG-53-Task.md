@@ -3,7 +3,7 @@
 > **BUG:** [BUG-53 — La precarga no conoce el grafo de cada chunk](./BUG-53-precarga-sin-sw-a-medias.md)
 > **Paquetes:** `@fudic/core` · `@fudic/transport` · `@fudic/vite` · `examples/basic`
 > **Rama:** `bug-53-precarga-con-grafo` (nace de `bug-52-tests-entorno`, a petición de Pedro)
-> **Progreso:** 9 / 9 — `Hecho`.
+> **Progreso:** 10 / 10 — `Hecho`.
 
 Primero los tests que fallan, después el arreglo. Las tareas 1 y 2 se ven fallar en los proyectos
 `nosw` y con SW antes de tocar el código.
@@ -21,6 +21,7 @@ Primero los tests que fallan, después el arreglo. Las tareas 1 y 2 se ven falla
 | [x] | 7 | 3–6 | **Los tests unitarios.** Criterios 4–9 | `core` · `transport` · `vite` | `test/**` |
 | [x] | 8 | 1–7 | **Los tests del ejemplo en verde** y la prueba de Pedro en el navegador, con `preview` y `preview:nosw`: pestaña de red al entrar en pantalla y al primer clic, y la consola sin avisos con SW | `examples/basic` | `tests/*` |
 | [x] | 9 | 8 | **Entrega y cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; `core` al 100 % y `transport` y `vite` sin bajar de su suelo (criterio 10); BUG-53 a `Hecho`, su fila en `bugs/INDEX.md` y entrada en el registro de progreso | todos | `docs/sdd/bugs/` |
+| [x] | 10 | 9 | **Ampliado tras la prueba de Pedro: todo `.js` descargado, precargado.** El grafo sigue los `import()` y lleva las piezas que el runtime carga bajo demanda; el `<head>` sin SW precarga el chunk y el grafo de lo que hidrata al cargar (`fud-eager`); e2e con la comprobación de Pedro (BUG §4.1, §4.3.1, criterios 9.1–9.2) | `compiler` · `vite` · `examples/basic` | `src/emit/maps.ts` · `src/plugin.ts` · `src/client.ts` · `src/prune.ts` · `src/runtime-link.ts` · `tests/hydration.spec.ts` |
 
 ---
 
@@ -43,3 +44,8 @@ Primero los tests que fallan, después el arreglo. Las tareas 1 y 2 se ven falla
   prueba en el navegador con `preview` y `preview:nosw` queda para Pedro.
 - **El test 21** de `hydration.spec.ts` se endurece en `nosw`: tras la precarga, el gesto no pide
   nada. En `dev` sigue pagando el código compartido, que es lo que dice §6.
+- **Tarea 10.** La prueba de Pedro en `/usuarios` sin SW encontró 29 `.js` sin precarga: el chunk de
+  la ruta, que hidrata al cargar, y lo que cuelga de él, más lo que se carga con `import()`. Ahora el
+  `<head>` los precarga todos (un marcador por ruta que el bundle rellena cuando el grafo existe) y
+  el grafo del manifiesto incluye lo dinámico. `vite` en 99,02 / 96,19 / 99,71 / 99,14; `compiler`
+  igual que su suelo. Playwright 271 de 271.
