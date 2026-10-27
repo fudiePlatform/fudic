@@ -9,6 +9,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stripVTControlCharacters } from 'node:util';
 import { afterAll, describe, expect, it } from 'vitest';
 import { nodeReadIo, nodeWriteIo } from '../../src/io.js';
 import { run } from '../../src/run.js';
@@ -72,15 +73,20 @@ describe('runner/vitest-projects.mjs', () => {
     return { root, dirs };
   }
 
-  const runIt = (root: string, dirs: readonly string[]) =>
-    spawnSync(process.execPath, [RUNNER, VITEST, root, ...dirs], { cwd: root, encoding: 'utf8', timeout: 60_000 });
+  const runIt = (root: string, dirs: readonly string[], env: NodeJS.ProcessEnv = process.env) =>
+    spawnSync(process.execPath, [RUNNER, VITEST, root, ...dirs], { cwd: root, encoding: 'utf8', timeout: 60_000, env });
 
-  it('runs every project and exits 0 when they all pass', () => {
+  // The runner leaves the colour to vitest, which paints on Windows with no TTY and anywhere
+  // with `FORCE_COLOR`: the summary is read with the colour taken out (BUG-52).
+  it.each([
+    ['the environment as it is', process.env],
+    ['FORCE_COLOR=1', { ...process.env, FORCE_COLOR: '1', NO_COLOR: undefined }],
+  ])('runs every project and exits 0 when they all pass, with %s', (_name, env) => {
     const { root, dirs } = projects([true, true]);
-    const result = runIt(root, dirs);
+    const result = runIt(root, dirs, env);
     expect(result.status, result.stdout + result.stderr).toBe(0);
     // One run, both projects: one test file each.
-    expect(result.stdout).toMatch(/Test Files\s+2 passed \(2\)/u);
+    expect(stripVTControlCharacters(result.stdout)).toMatch(/Test Files\s+2 passed \(2\)/u);
   }, 60_000);
 
   it('exits 1 when a test of any of them fails', () => {

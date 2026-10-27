@@ -73,6 +73,11 @@ pasa de 10 s.
 códigos ANSI, y otros `beforeAll` que lancen un navegador (`packages/workbench`, `packages/testing`)
 con el límite por defecto.
 
+*Resultado (2026-10-27).* Un caso más con el mismo defecto que el del runner:
+`packages/testing/test/one-worker.test.ts` lee el resumen de vitest sin quitar el color; se
+arregla igual. Los `beforeAll` que lanzan Chrome en `@fudic/workbench` ya fijan 60 s cada uno;
+`@fudic/testing` no lanza ninguno. La salida de `fudic-workbench run` no lleva color.
+
 ### 2.1 Las causas de §1.1
 
 - **TypeScript 6 renumeró `TypeFlags`.** El paso tipado (`packages/typecheck/src/portable-types.ts`)

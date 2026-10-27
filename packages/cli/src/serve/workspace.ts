@@ -143,8 +143,11 @@ export function nodeServeDeps(): ServeDeps {
       const args = [vite, ...(kind === 'preview' ? ['preview'] : []), '--port', String(port), '--strictPort', '--host', '127.0.0.1'];
       // Piped, so every line can say which app it is; in colour when the terminal has colour and
       // the user did not turn it off — `NO_COLOR` is theirs, and Node warns when both are set.
+      // Anything else is told no colour in so many words: Vite's `picocolors` paints on Windows
+      // with no TTY, and a `FORCE_COLOR` of the environment would paint anywhere (BUG-52).
       const colour = process.stdout.isTTY && process.env['NO_COLOR'] === undefined;
-      const env = colour ? { ...process.env, FORCE_COLOR: '1' } : process.env;
+      const { FORCE_COLOR: _forced, ...plain } = process.env;
+      const env = colour ? { ...process.env, FORCE_COLOR: '1' } : { ...plain, NO_COLOR: '1' };
       const child = spawn(process.execPath, args, { cwd: app.path, stdio: ['ignore', 'pipe', 'pipe'], env });
       createInterface({ input: child.stdout }).on('line', (text) => line(text, 'out'));
       createInterface({ input: child.stderr }).on('line', (text) => line(text, 'err'));

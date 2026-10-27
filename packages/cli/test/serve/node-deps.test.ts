@@ -50,7 +50,11 @@ describe('nodeServeDeps', () => {
   it.each(['dev', 'preview'] as const)('starts the app\'s own Vite for %s, waits for it, and stops it', async (kind) => {
     const port = await deps.freePort();
     const lines: [string, string][] = [];
+    // No TTY, whoever runs the tests: a terminal of their own would ask for colour.
+    const tty = process.stdout.isTTY;
+    process.stdout.isTTY = false;
     const running = deps.start(app(), kind, port, (text, stream) => lines.push([text, stream]));
+    process.stdout.isTTY = tty;
     try {
       await deps.ready(port, '/');
       const page = await (await fetch(`http://127.0.0.1:${port}/`)).text();
@@ -60,6 +64,28 @@ describe('nodeServeDeps', () => {
       await vi.waitFor(() => expect(lines.some(([text]) => text.includes(String(port)))).toBe(true));
       expect(lines.every(([text, stream]) => !text.includes('\n') && stream === 'out')).toBe(true);
       expect(lines.some(([text]) => text.includes('\u001b['))).toBe(false);
+    } finally {
+      running.stop();
+    }
+  }, 60_000);
+
+  it('turns colour off with no TTY, even where the child would paint anyway (BUG-52)', async () => {
+    // `picocolors` paints on Windows with no TTY, and anywhere with `FORCE_COLOR`: the second is
+    // the first on every system. The child gets `NO_COLOR=1` and no `FORCE_COLOR`.
+    const port = await deps.freePort();
+    const lines: [string, string][] = [];
+    const tty = process.stdout.isTTY;
+    process.stdout.isTTY = false;
+    vi.stubEnv('NO_COLOR', undefined);
+    vi.stubEnv('FORCE_COLOR', '1');
+    const running = deps.start(app(), 'dev', port, (text, stream) => lines.push([text, stream]));
+    process.stdout.isTTY = tty;
+    vi.unstubAllEnvs();
+    try {
+      await deps.ready(port, '/');
+      await vi.waitFor(() => expect(lines.some(([text]) => text.includes(String(port)))).toBe(true), { timeout: 20_000 });
+      expect(lines.some(([text]) => text.includes('\u001b[')), JSON.stringify(lines)).toBe(false);
+      expect(lines.some(([text]) => text.includes('NO_COLOR'))).toBe(false);
     } finally {
       running.stop();
     }

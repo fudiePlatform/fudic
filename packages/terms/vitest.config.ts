@@ -4,6 +4,9 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     include: ['test/**/*.test.ts'],
+    // A `beforeAll` launches Chrome, and under `pnpm test` every package has the CPUs: the 10 s
+    // of the default is not enough to start a browser there (BUG-52).
+    hookTimeout: 60_000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

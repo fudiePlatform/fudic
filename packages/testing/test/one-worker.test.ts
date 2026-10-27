@@ -10,6 +10,7 @@ import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stripVTControlCharacters } from 'node:util';
 import { expect, test } from 'vitest';
 
 const VITEST = join(dirname(createRequire(import.meta.url).resolve('vitest/package.json')), 'vitest.mjs');
@@ -22,5 +23,6 @@ test('two files that hydrate the same component pass in one worker', () => {
     timeout: 120_000,
   });
   expect(run.status, run.stdout + run.stderr).toBe(0);
-  expect(run.stdout).toMatch(/Test Files\s+2 passed \(2\)/u);
+  // Vitest paints on Windows with no TTY and anywhere with `FORCE_COLOR` (BUG-52).
+  expect(stripVTControlCharacters(run.stdout)).toMatch(/Test Files\s+2 passed \(2\)/u);
 }, 120_000);
