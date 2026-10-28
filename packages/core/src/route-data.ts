@@ -22,9 +22,18 @@ export interface DataSource<D> {
   fetch(path: string, signal?: AbortSignal): Promise<D>;
 }
 
-export function onStaleData<D>(load: DataSource<D>, apply: (data: D) => void): () => void {
+/**
+ * `root` is the route's `<body>`. A notice that finds it out of the document belongs to a page
+ * that is gone — its `<body>` was replaced in place, which is what a test harness does between
+ * two visits — and the listener leaves without asking for anything.
+ */
+export function onStaleData<D>(load: DataSource<D>, apply: (data: D) => void, root: Node): () => void {
   let latest: AbortController | null = null;
   const listener = (event: Event): void => {
+    if (!root.isConnected) {
+      stop();
+      return;
+    }
     latest?.abort();
     const mine = new AbortController();
     latest = mine;
@@ -38,10 +47,11 @@ export function onStaleData<D>(load: DataSource<D>, apply: (data: D) => void): (
     );
     (event as CustomEvent<DataStaleDetail>).detail.wait(refresh);
   };
-  globalThis.document.addEventListener(DATA_STALE_EVENT, listener);
-  return () => {
+  const stop = (): void => {
     latest?.abort();
     latest = null;
     globalThis.document.removeEventListener(DATA_STALE_EVENT, listener);
   };
+  globalThis.document.addEventListener(DATA_STALE_EVENT, listener);
+  return stop;
 }

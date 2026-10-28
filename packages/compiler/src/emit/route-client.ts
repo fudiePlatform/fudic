@@ -256,7 +256,7 @@ function buildRouteClientModule(
   // The new `data` replaces the old one and the pass re-applies every write that reads it, the
   // `@foreach` included, which reconciles by key. Torn down with the route.
   const pass = renews ? '$u();' : renderPass(em.inPlace, reconcile);
-  if (refreshes) bodies.hook.line(`$d.push($stale($load, ($next) => { data = $next; ${pass} }));`);
+  if (refreshes) bodies.hook.line(`$d.push($stale($load, ($next) => { data = $next; ${pass} }, $root));`);
 
   const owns = ownsCode(code.neutral, code.client.body);
   const w = new CodeWriter();
