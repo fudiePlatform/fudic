@@ -75,6 +75,8 @@ const PIECES: Readonly<Record<string, string>> = {
   tracking: 'src/tracking.ts',
   computed: 'src/computed.ts',
   effect: 'src/effect.ts',
+  owner: 'src/owner.ts',
+  task: 'src/task.ts',
   subscribe: 'src/subscribe.ts',
   element: 'src/element.ts',
 };

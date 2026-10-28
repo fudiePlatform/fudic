@@ -14,6 +14,7 @@
  * caller has to keep.
  */
 
+import { own } from './owner.js';
 import { type Consumer, type LeafSource, runTracked, untrack } from './tracking.js';
 
 /** What an effect may return to undo what it just did. */
@@ -98,9 +99,12 @@ export function effect(fn: () => void | Cleanup): () => void {
 
   run();
 
-  return () => {
+  const dispose = (): void => {
     disposed = true;
     unsubscribeAll();
     runCleanup();
   };
+  // Created while a component's `@code` runs: it is torn down with the component.
+  own(dispose);
+  return dispose;
 }

@@ -34,6 +34,15 @@ export { signal, type Signal } from './signal.js';
 export { computed, type Computed, type Readable } from './computed.js';
 export { effect, type Cleanup } from './effect.js';
 export { batch } from './batch.js';
+export { owned } from './owner.js';
+export {
+  task,
+  type Task,
+  type TaskState,
+  type TaskMode,
+  type TaskOptions,
+  type Callable,
+} from './task.js';
 export { untrack } from './tracking.js';
 export { now } from './now.js';
 export { subscribe, subscribeIf, written } from './subscribe.js';

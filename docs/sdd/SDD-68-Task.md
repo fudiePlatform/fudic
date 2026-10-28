@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/core` · `@fudic/http` · `@fudic/conventions` · `@fudic/compiler` · `examples/basic`
 > **Rama:** `sdd-68-llamadas-sin-fontaneria`. Nace de `main` **con SDD-67 en `Hecho`**: el endpoint
 > de datos y las llamadas ya viajan en binario.
-> **Progreso:** 0 / 20 — `Listo`.
+> **Progreso:** 5 / 20 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -44,11 +44,11 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **`owned`.** Una pila de dueños: mientras corre `fn`, lo que se registra en el dueño actual queda en la lista que devuelve (SDD §3.5) | `core` | `src/owner.ts` · `src/index.ts` |
-| [ ] | 2 | 1 | **`effect` con dueño.** Su desmontaje se registra en el dueño actual, si lo hay; sin dueño, igual que hoy | `core` | `src/effect.ts` |
-| [ ] | 3 | 1 | **`task`, modo `latest`.** `source` (sin llamar en la primera lectura), `run`, numeración de llamadas para no escribir una sustituida, `initial`, modo por `method` (SDD §4.1, §4.2) | `core` | `src/task.ts` · `src/index.ts` |
-| [ ] | 4 | 3 | **`task`, modo `queue`.** La cola en orden; ninguna se descarta; `mode` cambia el modo (SDD §4.3) | `core` | `src/task.ts` |
-| [ ] | 5 | 3, 4 | **Estado, error y `cancel`.** La tabla de SDD §4.4; `run` nunca rechaza; `cancel` aborta y vacía la cola; desmontar = `cancel` + dejar de escuchar + `run` inerte (SDD §4.5, §4.6) | `core` | `src/task.ts` |
+| [x] | 1 | — | **`owned`.** Una pila de dueños: mientras corre `fn`, lo que se registra en el dueño actual queda en la lista que devuelve (SDD §3.5) | `core` | `src/owner.ts` · `src/index.ts` |
+| [x] | 2 | 1 | **`effect` con dueño.** Su desmontaje se registra en el dueño actual, si lo hay; sin dueño, igual que hoy | `core` | `src/effect.ts` |
+| [x] | 3 | 1 | **`task`, modo `latest`.** `source` (sin llamar en la primera lectura), `run`, numeración de llamadas para no escribir una sustituida, `initial`, modo por `method` (SDD §4.1, §4.2) | `core` | `src/task.ts` · `src/index.ts` |
+| [x] | 4 | 3 | **`task`, modo `queue`.** La cola en orden; ninguna se descarta; `mode` cambia el modo (SDD §4.3) | `core` | `src/task.ts` |
+| [x] | 5 | 3, 4 | **Estado, error y `cancel`.** La tabla de SDD §4.4; `run` nunca rechaza; `cancel` aborta y vacía la cola; desmontar = `cancel` + dejar de escuchar + `run` inerte (SDD §4.5, §4.6) | `core` | `src/task.ts` |
 | [ ] | 6 | 2–5 | **Los tests de la fase.** Criterios 1–10 y 12 (la parte de `core`) con `fn` controladas | `core` | `test/task.test.ts` · `test/owner.test.ts` |
 
 ## Fase 2 — el desmontaje en el emit (2)
