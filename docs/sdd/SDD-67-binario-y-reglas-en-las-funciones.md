@@ -1,6 +1,6 @@
 # SDD-67 — Binario en todas las llamadas, y reglas en los argumentos de las funciones
 
-> **Estado:** `Listo` — [tareas](./SDD-67-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-67-Task.md).
 > **Paquetes:** `@fudic/http` · `@fudic/forms` · `@fudic/api` · `@fudic/diagnostics` ·
 > `@fudic/language-server` · `@fudic/testing` · `@fudic/vite` · `examples/*`
 > **Depende de:** 50 (catálogo), 56 (funciones de servidor y el binario de los forms), 57 (tests

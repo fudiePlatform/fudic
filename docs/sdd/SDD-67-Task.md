@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/http` · `@fudic/forms` · `@fudic/api` · `@fudic/diagnostics` ·
 > `@fudic/language-server` · `@fudic/testing` · `@fudic/vite` · `examples/*`
 > **Rama:** `sdd-67-binario-y-reglas`. Nace de `main`.
-> **Progreso:** 32 / 33 — `En curso`.
+> **Progreso:** 33 / 33 — `Hecho`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -100,4 +100,4 @@ código, no el test.
 | [x] | 30 | 22 | **Migrar `@fudic/vite` y la poda.** `http-dev`, `http-build`, `http-functions`, `dev`, `dev-unit` en binario; un test de build que comprueba el criterio 13 sobre el bundle | `vite` | `test/**` |
 | [x] | 31 | 22 | **`examples` y e2e.** `fudapi-editor` gana un argumento con reglas; `basic`, una función con `use json`; los e2e de `usuarios`, el alta y `sesion` pasan en binario, y uno nuevo por camino (criterios 11, 15) | `examples` | `examples/fudapi-editor/src/**` · `examples/basic/src/**` · `examples/basic/tests/*.spec.ts` |
 | [x] | 32 | 31 | **README de `@fudic/http`.** En inglés y sin citar SDD: binario por defecto, `use json`, las reglas en los argumentos, la firma y el 412, dónde están los vectores | `http` | `README.md` |
-| [ ] | 33 | 24, 27–32 | **Entrega y cierre.** Criterio 21; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde y al 100 % en lo nuevo; ningún umbral baja; SDD-67 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `docs/sdd/*` |
+| [x] | 33 | 24, 27–32 | **Entrega y cierre.** Criterio 21; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde y al 100 % en lo nuevo; ningún umbral baja; SDD-67 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `docs/sdd/*` |
