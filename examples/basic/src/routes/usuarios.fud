@@ -24,6 +24,18 @@
   const guardar = task(save);
   const quitar = task(remove);
 
+  // La tabla pinta esta señal, que arranca con lo que trajo `load` y vuelve a sembrarse cada
+  // vez que la página pide su `data` otra vez. Las altas de `user-form` llegan por el bus con
+  // la persona que devolvió el servidor: se suman a la señal y la tabla se repinta, sin
+  // recargar. Si el `data` nuevo ya la trajo —el `save` del formulario también lo pide—, no se
+  // suma dos veces.
+  const personas = signal(data.users);
+
+  function alta(e: CustomEvent) {
+    if (personas().some((p) => p.id === e.detail.id)) return;
+    personas.set([...personas(), e.detail]);
+  }
+
   function buscar(e: Event) {
     texto.set((e.target as HTMLInputElement).value);
   }
@@ -138,13 +150,13 @@
 </div>
 
 <h2>Personas</h2>
-<div class="panel">
+<div class="panel" bus:alta=@alta($event)>
   <table>
     <thead>
       <tr><th>Nombre</th><th>Email</th><th>Edad</th><th>Activo</th><th></th></tr>
     </thead>
     <tbody>
-      @foreach (const p of data.users) key (p.id) {
+      @foreach (const p of personas()) key (p.id) {
         <tr>
           <td>@p.name</td>
           <td>@p.email</td>
@@ -203,7 +215,9 @@
 <p>
   El formulario es <code>user-form</code>, un componente con su propia función
   <code>save</code>. Sus controles son todos tipados, así que sube en binario; con unas notas
-  largas, además comprimido. Prueba un email que ya existe: el error lo pone el servidor.
+  largas, además comprimido. Prueba un email que ya existe: el error lo pone el servidor. Al
+  guardar, el componente emite la persona por el bus y la tabla de arriba la recoge, sin
+  recargar la página.
 </p>
 <user-form></user-form>
 

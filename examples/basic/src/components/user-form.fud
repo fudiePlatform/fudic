@@ -3,15 +3,17 @@
 
 @code {
   import { signal } from "@fudic/core";
+  import { emit } from "@fudic/dom";
 
   const aviso = signal("");
 
   // `fudic:result` llega con lo que devolvió el handler de `save`. Un 400, 409 o 422 no llega
   // aquí: el formulario se los queda (`catches` de person.fudapi) y ya están pintados en él.
+  // La persona guardada sale por el bus: quien pinte la lista la recoge, sin recargar nada.
   function hecho(e: Event) {
     const persona = (e as CustomEvent<{ id: number; name: string }>).detail;
-    aviso.set(`Guardado: ${persona.name} (id ${String(persona.id)}). Recargando la lista…`);
-    setTimeout(() => location.reload(), 1000);
+    aviso.set(`Guardado: ${persona.name} (id ${String(persona.id)}).`);
+    emit("alta", persona);
   }
 }
 

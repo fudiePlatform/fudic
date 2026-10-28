@@ -69,10 +69,12 @@ test.describe('/usuarios', () => {
 
   test('the slow search can be cancelled', async ({ page }) => {
     await open(page);
+    // The slow search has a status of its own, in its own panel.
+    const slow = page.locator('.panel', { has: page.getByRole('button', { name: 'Cancelar' }) }).getByRole('status');
     await page.getByRole('button', { name: 'Búsqueda lenta (3 s)' }).click();
-    await expect(status(page)).toHaveText('Buscando…');
+    await expect(slow).toHaveText('Buscando…');
     await page.getByRole('button', { name: 'Cancelar' }).click();
-    await expect(status(page)).toHaveText('Búsqueda cancelada.');
+    await expect(slow).toHaveText('Búsqueda cancelada.');
   });
 
   test('the session token lives in the browser', async ({ page }) => {
@@ -105,12 +107,16 @@ test.describe('/usuarios', () => {
     await open(page, 'ana');
     const box = () => row(page, 'Luis').getByLabel('Activo');
     await expect(box()).not.toBeChecked();
-    // The page reloads itself once the server has answered.
-    await Promise.all([page.waitForEvent('load'), box().click()]);
+    // No reload: the page asks for its `data` again and repaints the row (SDD-68 §4.8).
+    await box().click();
+    await expect(box()).toBeChecked();
+    await page.reload();
     await ready(page);
     await expect(box()).toBeChecked();
     // Back as it was, for the tests that come after.
-    await Promise.all([page.waitForEvent('load'), box().click()]);
+    await box().click();
+    await expect(box()).not.toBeChecked();
+    await page.reload();
     await ready(page);
     await expect(box()).not.toBeChecked();
   });
@@ -239,14 +245,9 @@ test.describe('user-form', () => {
     await fill(page, 'Nuevo', 'nuevo@fudic.dev');
     await Promise.all([saved(page, 200), submit(page)]);
     await expect(form(page).getByText(/Guardado: Nuevo \(id \d+\)/u)).toBeVisible();
-    // The component reloads the page a second later, and the new row is there.
-    await page.waitForEvent('load');
-    await ready(page);
+    // The component emits the person on the bus and the route paints the row: no reload.
     await expect(row(page, 'Nuevo')).toContainText('nuevo@fudic.dev');
-    await Promise.all([
-      page.waitForEvent('load'),
-      row(page, 'Nuevo').getByRole('button', { name: 'Borrar' }).click(),
-    ]);
+    await row(page, 'Nuevo').getByRole('button', { name: 'Borrar' }).click();
     await expect(row(page, 'Nuevo')).toHaveCount(0);
   });
 });
