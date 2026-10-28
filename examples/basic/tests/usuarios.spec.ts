@@ -243,6 +243,10 @@ test.describe('user-form', () => {
   test('a valid sign-up adds the person, and delete takes it away', async ({ page }) => {
     await open(page, 'ana');
     await fill(page, 'Nuevo', 'nuevo@fudic.dev');
+    const askedData: string[] = [];
+    page.on('request', (r) => {
+      if (r.url().includes('/_fudic/data/')) askedData.push(r.url());
+    });
     await Promise.all([saved(page, 200), submit(page)]);
     await expect(form(page).getByText(/Guardado: Nuevo \(id \d+\)/u)).toBeVisible();
     // The component emits the person on the bus and the route paints the row: no reload.
@@ -250,6 +254,8 @@ test.describe('user-form', () => {
     // And the form is back as declared, ready for the next one.
     await expect(form(page).getByLabel('Nombre')).toHaveValue('');
     await expect(form(page).getByLabel('Email')).toHaveValue('');
+    // One request: the save. A component's function does not make the page ask for its data.
+    expect(askedData).toEqual([]);
     await row(page, 'Nuevo').getByRole('button', { name: 'Borrar' }).click();
     await expect(row(page, 'Nuevo')).toHaveCount(0);
   });

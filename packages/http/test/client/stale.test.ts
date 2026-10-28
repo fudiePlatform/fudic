@@ -57,16 +57,30 @@ afterEach(() => {
   resetRegistry();
 });
 
+/** A function of the route the page is: its `.fudapi` is the route's sibling, so it has `page`. */
 const call = (method: Method, invalidates?: string[], base?: string) =>
   stub<never, unknown, any>({
     id: 'routes/usuarios',
+    name: 'save',
+    method,
+    page: '/usuarios',
+    chain: [],
+    returns: OK,
+    wire: binWire,
+    ...(invalidates !== undefined ? { invalidates } : {}),
+    ...(base !== undefined ? { base } : {}),
+  });
+
+/** A function of a component: it knows nothing of the page that hosts it, so it has no `page`. */
+const componentCall = (method: Method, invalidates?: string[]) =>
+  stub<never, unknown, any>({
+    id: 'components/user-form',
     name: 'save',
     method,
     chain: [],
     returns: OK,
     wire: binWire,
     ...(invalidates !== undefined ? { invalidates } : {}),
-    ...(base !== undefined ? { base } : {}),
   });
 
 describe('the verb on a server function (§3.2)', () => {
@@ -145,6 +159,30 @@ describe('the stub tells the page its data is stale (§4.8, step 1)', () => {
     const { seen } = page();
     await call('GET', ['/blog', '/blog/:slug'])();
     expect(seen).toHaveLength(0);
+  });
+
+  it("a component's PUT does not make the page ask for its data again (BUG-55)", async () => {
+    const { seen } = page();
+    expect(await componentCall('PUT')({})).toEqual({ ok: true });
+    expect(seen).toHaveLength(0);
+  });
+
+  it("but the worker still forgets the page, and what the component's invalidates name is told", async () => {
+    const { seen } = page();
+    const posted: unknown[] = [];
+    vi.stubGlobal('navigator', {
+      serviceWorker: {
+        controller: {
+          postMessage: (message: unknown, [port]: MessagePort[]) => {
+            posted.push(message);
+            port!.postMessage(null);
+          },
+        },
+      },
+    });
+    await componentCall('PUT', ['/usuarios'])({});
+    expect(posted).toEqual([{ type: 'fudic:invalidate', paths: ['/usuarios', '/usuarios'] }]);
+    expect(seen.map((d) => d.paths)).toEqual([['/usuarios']]);
   });
 
   it('a failed call does not dispatch', async () => {

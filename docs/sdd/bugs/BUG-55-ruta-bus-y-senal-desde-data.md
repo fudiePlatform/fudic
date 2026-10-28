@@ -3,7 +3,7 @@
 > **Estado:** `Borrador` — se documenta mientras se arregla, a petición de Pedro. [tareas](./BUG-55-Task.md).
 > **Corrige:** [SDD-39](../SDD-39-rutas-reactivas.md) (la mitad cliente de una ruta) y
 > [SDD-68](../SDD-68-llamadas-sin-fontaneria.md) §4.8 (el refresco de `data`).
-> **Paquetes:** `@fudic/compiler` · `examples/basic`
+> **Paquetes:** `@fudic/compiler` · `@fudic/http` · `examples/basic`
 
 ---
 
@@ -30,6 +30,11 @@ Pero cuando una llamada hace que la ruta pida su `data` otra vez (SDD-68 §4.8),
 `data` y repinta, y la señal sigue con el valor del primer `data`. La tabla deja de reflejar al
 servidor: un «Borrar» no quita la fila y un «Activo» cambiado en otro sitio no se ve.
 
+**Tres** (la prueba de Pedro). El alta hacía dos peticiones: el `save` del formulario y, detrás,
+el `data` entero de la página. Toda llamada que no es GET hacía que la página pidiera su `data`
+otra vez, también la función de un componente, que no sabe nada de la página que lo aloja. Con el
+bus esa segunda petición sobra.
+
 ## 2. Corrección
 
 **Uno.** La mitad cliente de una ruta declara `$host` cuando un `bus:` o un `emit` lo lee, como
@@ -45,6 +50,15 @@ decir lo que hay en el servidor.
 
 Una señal que no lee `data` no se toca. Un `computed` tampoco: se deriva solo.
 
+**Tres.** Solo una función de la **propia ruta** —la que tiene `page` en su contrato, porque su
+`.fudapi` es hermano de la ruta— avisa a la página de que su `data` está viejo. La función de un
+componente sigue haciendo que el Service Worker olvide la página, pero no la hace pedir su
+`data`: lo que cambió lo cuenta por el bus. Lo que una función nombra en `invalidates` se avisa
+siempre, sea de quien sea.
+
+El Service Worker solo guarda el `data` de las rutas que él renderiza; una ruta SSR llega siempre
+al servidor y para ella olvidar no hace nada (y desde BUG-56 no hay nada que olvidar).
+
 ## 3. Criterios de aceptación
 
 1. Una ruta con `bus:x` oye un `x` emitido desde cualquier punto de la página y repinta; tras
@@ -57,3 +71,6 @@ Una señal que no lee `data` no se toca. Un `computed` tampoco: se deriva solo.
 5. Una señal que no lee `data` conserva su valor tras un refresco.
 6. `/usuarios`: el alta añade la fila sin recargar; «Borrar» y «Activo» siguen repintando con lo
    que dice el servidor (los criterios de SDD-68 sobre `/usuarios`, en verde).
+7. El `PUT` de la función de un componente no despacha el aviso de `data` viejo; sí lo despacha
+   para lo que nombra en `invalidates`, y el Service Worker recibe la invalidación igual.
+8. `/usuarios`: un alta es una sola petición, el `save`, y el formulario queda vacío.

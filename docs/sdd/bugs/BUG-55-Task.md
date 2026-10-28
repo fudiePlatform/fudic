@@ -3,7 +3,7 @@
 > **BUG:** [BUG-55 — Una ruta no puede escuchar el bus, y una señal sembrada desde `data` no se refresca](./BUG-55-ruta-bus-y-senal-desde-data.md)
 > **Paquetes:** `@fudic/compiler` · `examples/basic`
 > **Rama:** `sdd-68-llamadas-sin-fontaneria` (a petición de Pedro: se cierra el producto aquí)
-> **Progreso:** 3 / 4
+> **Progreso:** 4 / 5
 
 ---
 
@@ -24,6 +24,12 @@
 | ✓ | # | tarea | package | fichero |
 |---|---|---|---|---|
 | [x] | 3 | **El alta por el bus.** `user-form` emite la persona; la ruta la suma a `personas`, sembrada desde `data`; la tabla pinta `personas`. Los e2e de `/usuarios` sin esperar recargas. Criterio 6 | `examples/basic` | `src/components/user-form.fud` · `src/routes/usuarios.fud` · `tests/usuarios.spec.ts` |
+
+## Fase 4 — Un alta, una petición
+
+| ✓ | # | tarea | package | fichero |
+|---|---|---|---|---|
+| [x] | 5 | **Solo la función de la ruta avisa a su página.** `announceStale` con la página solo si el contrato tiene `page`; `invalidates`, siempre. La ruta ya no filtra duplicados del bus. El e2e del alta comprueba que no se pide el `data`. Criterios 7–8 | `http` · `examples/basic` | `src/contract/fn.ts` · `test/client/stale.test.ts` · `src/routes/usuarios.fud` · `tests/usuarios.spec.ts` |
 
 ## Cierre
 

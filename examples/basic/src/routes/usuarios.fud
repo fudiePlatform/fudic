@@ -27,12 +27,10 @@
   // La tabla pinta esta señal, que arranca con lo que trajo `load` y vuelve a sembrarse cada
   // vez que la página pide su `data` otra vez. Las altas de `user-form` llegan por el bus con
   // la persona que devolvió el servidor: se suman a la señal y la tabla se repinta, sin
-  // recargar. Si el `data` nuevo ya la trajo —el `save` del formulario también lo pide—, no se
-  // suma dos veces.
+  // recargar y sin pedir nada más que el `save`.
   const personas = signal(data.users);
 
   function alta(e: CustomEvent) {
-    if (personas().some((p) => p.id === e.detail.id)) return;
     personas.set([...personas(), e.detail]);
   }
 

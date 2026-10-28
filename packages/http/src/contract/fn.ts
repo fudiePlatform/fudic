@@ -179,7 +179,12 @@ export function stub<C, R, A>(spec: FnSpec): Contract<C, R, A> {
     const stale = spec.method === 'GET' ? own : [globalThis.location.pathname, ...own];
     await invalidate(stale);
     // After the worker forgot them, so the page that asks for its data again gets the new one.
-    await announceStale(stale);
+    //
+    // The page is told about ITSELF only by a function of its own route (BUG-55): a component's
+    // function knows nothing of the page that hosts it, and says what it changed through the
+    // bus. Making every page that hosts a form ask for its whole data again was a second
+    // request on every save. What a function names in `invalidates` is told either way.
+    await announceStale(spec.page === undefined ? own : stale);
     return value;
   };
   return Object.assign(call, { spec, method: spec.method, handle: (h: unknown) => slot.set(h) }) as unknown as Contract<C, R, A>;
