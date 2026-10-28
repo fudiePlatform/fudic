@@ -44,8 +44,11 @@ describe('load.fetch (§3.4)', () => {
     await expect(browserLoad().fetch('/usuarios')).rejects.toThrow('fudic: the data of /usuarios answered 500');
   });
 
-  it('only the browser variant of load asks', () => {
-    expect('fetch' in page({ id: 'routes/usuarios', name: 'load' })).toBe(false);
+  it('both variants of load ask; paths and layout do not', () => {
+    // The server variant too: under @fudic/testing one module graph serves both sides, and the
+    // route's chunk imports whichever `load` that graph holds.
+    expect('fetch' in page({ id: 'routes/usuarios', name: 'load' })).toBe(true);
     expect('fetch' in page({ id: 'routes/usuarios', name: 'layout', browser: true })).toBe(false);
+    expect('fetch' in page({ id: 'routes/usuarios', name: 'paths' })).toBe(false);
   });
 });
