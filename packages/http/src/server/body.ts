@@ -5,8 +5,10 @@
  */
 
 import type { AnyForm } from '@fudic/forms';
-import { readBinary, reviveJson } from '@fudic/forms/wire';
 import { badRequest, HttpError } from '../errors.js';
+import { binWire } from '../wire/bin.js';
+import { jsonWire } from '../wire/json.js';
+import { formTypes } from '../wire/schema.js';
 
 const ENCODINGS: ReadonlySet<string> = new Set(['gzip', 'deflate', 'deflate-raw']);
 
@@ -21,17 +23,13 @@ export async function bodyArgs(request: Request, form: AnyForm | undefined): Pro
 
   // With its keys, to a function with `.form`: its dates come back as `Date`, as they do on
   // the two positional roads, so the three reach `$set` alike (criterion 42).
-  if (type === 'application/json') return form === undefined ? parse(bytes) : reviveJson(form.$schema, parse(bytes));
+  if (type === 'application/json') return form === undefined ? parse(bytes) : jsonWire.decodeArgs(formTypes(form.$schema), bytes);
   if (type !== 'application/fud' && type !== 'application/fud+bin') {
     throw unsupported(`content-type "${type}"`);
   }
   if (form === undefined) throw badRequest('a positional body needs a function with .form');
-  if (type === 'application/fud') return reviveJson(form.$schema, parse(bytes));
-  try {
-    return readBinary(form.$schema, bytes);
-  } catch (e) {
-    throw badRequest((e as Error).message);
-  }
+  if (type === 'application/fud') return parse(bytes);
+  return binWire.decodeArgs(formTypes(form.$schema), bytes);
 }
 
 async function decoded(request: Request): Promise<Uint8Array> {

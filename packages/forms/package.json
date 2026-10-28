@@ -33,10 +33,6 @@
       "types": "./dist/dom/index.d.ts",
       "import": "./dist/dom/index.js"
     },
-    "./wire": {
-      "types": "./dist/wire/index.d.ts",
-      "import": "./dist/wire/index.js"
-    },
     "./contract": {
       "types": "./dist/contract/index.d.ts",
       "import": "./dist/contract/index.js"

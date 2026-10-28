@@ -89,8 +89,6 @@ const PIECES: Readonly<Record<string, string>> = {
   'bind-group': 'src/dom/bind-group.ts',
   'bind-by-type': 'src/dom/bind-by-type.ts',
   summary: 'bundle/summary.ts',
-  // SDD-56: the binary of a typed form, which only a page that sends one downloads.
-  wire: 'src/wire/index.ts',
   // SDD-60: what the code generated from a `.fudapi` builds with, and the registry it fills.
   contract: 'bundle/contract.ts',
 };
@@ -175,10 +173,6 @@ const FRONTIERS: Readonly<Record<string, string>> = {
   'src/dom/bind-message.ts': 'wiring',
   'src/summary-markup.ts': 'summary',
   'src/dom/summary.ts': 'summary',
-  'src/wire/index.ts': 'wire',
-  'src/wire/binary.ts': 'wire',
-  'src/wire/io.ts': 'wire',
-  'src/wire/json.ts': 'wire',
   'src/catches.ts': 'form',
   'src/contract/uuid.ts': 'contract',
   'src/contract/form.ts': 'contract',

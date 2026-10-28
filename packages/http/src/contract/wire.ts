@@ -2,23 +2,12 @@
  * The types of a `.fudapi` on the wire (SDD-60 §3.2): every value is checked against its type
  * when it crosses, on both sides. The server answers a 400 whose `detail` names the argument;
  * the browser rejects the call with that same `Problem` and sends nothing.
- *
- * A type travels as a small descriptor the generated module writes: a primitive by its name,
- * the rest as an object. A `type` is a function returning its fields, so a type may name itself
- * through `[]`, `?` or `map`.
  */
 
 import { badRequest } from '../errors.js';
+import type { Primitive, Ty } from '../wire/ty.js';
 
-export type Primitive = 'str' | 'html' | 'bool' | 'u8' | 'i8' | 'u16' | 'i16' | 'u32' | 'i32' | 'f32' | 'f64' | 'date' | 'uuid';
-
-export type Ty =
-  | Primitive
-  | { readonly list: Ty }
-  | { readonly opt: Ty }
-  | { readonly map: readonly [Ty, Ty] }
-  | { readonly oneOf: readonly string[] }
-  | { readonly fields: () => Readonly<Record<string, Ty>> };
+export type { Primitive, Ty } from '../wire/ty.js';
 
 const INTEGERS: Readonly<Record<string, readonly [number, number]>> = {
   u8: [0, 255],
@@ -29,6 +18,8 @@ const INTEGERS: Readonly<Record<string, readonly [number, number]>> = {
   i32: [-2_147_483_648, 2_147_483_647],
 };
 const F32_MAX = 3.4028234663852886e38;
+/** A date is 48 signed bits of milliseconds on the wire (SDD-67 §3.1), in either format. */
+const DATE_LIMIT = 2 ** 47;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
 /**
@@ -82,7 +73,7 @@ function primitive(ty: Primitive, v: unknown, path: string): unknown {
       return typeof v === 'string' && UUID.test(v) ? v : refuse(path, ty);
     case 'date': {
       const d = v instanceof Date ? v : typeof v === 'string' ? new Date(v) : undefined;
-      return d !== undefined && !Number.isNaN(d.getTime()) ? d : refuse(path, ty);
+      return d !== undefined && Math.abs(d.getTime()) < DATE_LIMIT ? d : refuse(path, ty);
     }
     case 'f32':
     case 'f64': {
@@ -101,6 +92,7 @@ function primitive(ty: Primitive, v: unknown, path: string): unknown {
  * a field an object does not declare is dropped; a missing optional is `undefined`.
  */
 export function conform(ty: Ty, v: unknown, path: string): unknown {
+  if (ty === 'any') return v;
   if (typeof ty === 'string') return primitive(ty, v, path);
   if ('opt' in ty) return v === undefined || v === null ? undefined : conform(ty.opt, v, path);
   if ('list' in ty) return Array.isArray(v) ? v.map((x, i) => conform(ty.list, x, `${path}[${i}]`)) : refuse(path, ty);

@@ -379,3 +379,4 @@ export * from './codes/FUD1150.js';
 export * from './codes/FUD1151.js';
 export * from './codes/FUD1152.js';
 export * from './codes/FUD1153.js';
+export * from './codes/FUD1260.js';

@@ -45,6 +45,19 @@
       "types": "./dist/contract/server.d.ts",
       "import": "./dist/contract/server.js"
     },
+    "./wire": {
+      "types": "./dist/wire/index.d.ts",
+      "import": "./dist/wire/index.js"
+    },
+    "./wire/bin": {
+      "types": "./dist/wire/bin.d.ts",
+      "import": "./dist/wire/bin.js"
+    },
+    "./wire/json": {
+      "types": "./dist/wire/json.d.ts",
+      "import": "./dist/wire/json.js"
+    },
+    "./wire/vectors.json": "./wire/vectors.json",
     "./package.json": "./package.json"
   },
   "sideEffects": ["./browser/**", "./server/**"],
@@ -53,6 +66,7 @@
     "fudapi",
     "browser",
     "server",
+    "wire",
     "README.md"
   ],
   "publishConfig": {

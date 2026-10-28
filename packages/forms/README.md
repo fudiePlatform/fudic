@@ -35,7 +35,7 @@ post.$value();            // { title: 'Hello', published: false, seo: { … } }
 ## What is public
 
 `@fudic/forms` keeps the types (`Form`, `Control`, `GroupNode`, `Issue`…), the `$…` API of a
-form, the texts and summaries the server paints, and what the compiler links (`./dom`, `./wire`,
+form, the texts and summaries the server paints, and what the compiler links (`./dom`,
 `./element`). The builders — `form`, `group`, `control`, the typed factories (`str`, `u8`,
 `arr`…), the validators (`required`, `min`, `max`, `minLength`, `maxLength`, `pattern`,
 `validator`, `serverValidator`, `asyncValidator`), `setMessages`, `ValidateOn` and `Validity` —
@@ -359,7 +359,7 @@ validates a fresh copy for every request that sends it, so two requests never sh
 ## Typed fields
 
 A field's type is a range, so it validates — `u8` refuses 300, `uuid` a malformed id — and it
-fixes the wire: a form whose fields all have a type travels positionally and in binary.
+fixes the wire: a form travels in binary, each field as its type (`@fudic/http` writes it).
 
 ```
 form line

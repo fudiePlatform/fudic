@@ -1,8 +1,12 @@
 /**
- * The two ends of the binary format (SDD-56 §4.18), behind one interface. Every operation
- * takes the value to write, or `undefined` to read one, and returns the value either way: the
- * walk in `binary.ts` calls them in the same order in both directions, and that is what keeps
- * the writer and the reader from drifting apart.
+ * The two ends of the binary format (SDD-56 §4.18, SDD-67 §3.1), behind one interface. Every
+ * operation takes the value to write, or `undefined` to read one, and returns the value either
+ * way: the walk in `bin.ts` calls them in the same order in both directions, and that is what
+ * keeps the writer and the reader from drifting apart.
+ *
+ * The reader never trusts what it reads (SDD-67 §4.2): every failure is a `RangeError` whose
+ * message starts with `binary body:`, and it never sets memory aside for a length before
+ * checking that the bytes behind it exist.
  */
 
 export type Width = 'u8' | 'i8' | 'u16' | 'i16' | 'u32' | 'i32' | 'f32' | 'f64';
@@ -18,6 +22,13 @@ export interface Io {
   date(v: Date | undefined): Date;
   /** UTF-8 bytes after their length as a varint. */
   str(v: string | undefined): string;
+  /** `count` bytes as they are. */
+  raw(count: number, v: Uint8Array | undefined): Uint8Array;
+  /**
+   * A count just read promises at least `bits` more bits of body: the reader refuses it when
+   * what is left is shorter, before anything is made for it. The writer has nothing to check.
+   */
+  claim(bits: number): void;
 }
 
 const BYTES: Readonly<Record<Width, number>> = {
@@ -25,8 +36,9 @@ const BYTES: Readonly<Record<Width, number>> = {
 };
 
 const TWO_32 = 2 ** 32;
+/** A varint past 2^53 is no length and no index anything could have: 8 bytes are 56 bits. */
+const VARINT_BYTES = 8;
 const utf8 = new TextEncoder();
-const text = new TextDecoder();
 
 export class Writer implements Io {
   private buffer = new Uint8Array(64);
@@ -95,15 +107,23 @@ export class Writer implements Io {
   str(v: string | undefined): string {
     const encoded = utf8.encode(v as string);
     this.varint(encoded.length);
-    const view = this.reserve(encoded.length);
-    new Uint8Array(view.buffer, view.byteOffset, encoded.length).set(encoded);
+    this.raw(encoded.length, encoded);
     return v as string;
   }
+
+  raw(count: number, v: Uint8Array | undefined): Uint8Array {
+    const view = this.reserve(count);
+    new Uint8Array(view.buffer, view.byteOffset, count).set(v as Uint8Array);
+    return v as Uint8Array;
+  }
+
+  claim(): void {}
 }
 
 export class Reader implements Io {
   private offset = 0;
   private readonly view: DataView;
+  private readonly text = new TextDecoder('utf-8', { fatal: true });
 
   constructor(private readonly input: Uint8Array) {
     this.view = new DataView(input.buffer, input.byteOffset, input.byteLength);
@@ -144,12 +164,13 @@ export class Reader implements Io {
   varint(): number {
     let n = 0;
     let scale = 1;
-    for (;;) {
+    for (let i = 0; i < VARINT_BYTES; i++) {
       const b = this.view.getUint8(this.take(1));
       n += (b & 127) * scale;
       if ((b & 128) === 0) return n;
       scale *= 128;
     }
+    throw new RangeError(`binary body: a varint longer than ${VARINT_BYTES} bytes`);
   }
 
   date(): Date {
@@ -158,8 +179,22 @@ export class Reader implements Io {
   }
 
   str(): string {
-    const n = this.varint();
-    const at = this.take(n);
-    return text.decode(this.input.subarray(at, at + n));
+    const bytes = this.raw(this.varint());
+    try {
+      return this.text.decode(bytes);
+    } catch {
+      throw new RangeError('binary body: a str that is not UTF-8');
+    }
+  }
+
+  raw(count: number): Uint8Array {
+    const at = this.take(count);
+    return this.input.subarray(at, at + count);
+  }
+
+  claim(bits: number): void {
+    if (bits > (this.input.length - this.offset) * 8) {
+      throw new RangeError('binary body: a count longer than what is left');
+    }
   }
 }

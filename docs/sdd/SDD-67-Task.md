@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/http` · `@fudic/forms` · `@fudic/api` · `@fudic/diagnostics` ·
 > `@fudic/language-server` · `@fudic/testing` · `@fudic/vite` · `examples/*`
 > **Rama:** `sdd-67-binario-y-reglas`. Nace de `main`.
-> **Progreso:** 0 / 33 — `Listo`.
+> **Progreso:** 9 / 33 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -48,15 +48,15 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **El código nuevo.** `FUD1260`: `.ts`, `.md` y su línea en `index.ts`; el rango en la fila de SDD-67 del `INDEX.md`. `FUD1083` gana el parámetro `argument`/`field` y su `.md` habla de «a field or an argument» | `diagnostics` | `src/codes/FUD1260.{ts,md}` · `src/codes/FUD1083.{ts,md}` · `src/index.ts` |
-| [ ] | 2 | — | **Mudar el `Io`.** `Reader`, `Writer` e `Io` pasan de `forms/src/wire/io.ts` a `http/src/wire/io.ts` sin cambiar un byte; `Ty` se muda de `contract/wire.ts` a `wire/ty.ts` y gana `'any'`; `@fudic/forms` pierde `./wire` (`package.json`, `src/wire/`) y su test de bytes se muda con el códec | `http` · `forms` | `src/wire/io.ts` · `src/wire/ty.ts` · `forms/package.json` · `forms/src/wire/*` (fuera) |
-| [ ] | 3 | 2 | **El recorrido por tipo.** El nivel de SDD §3.1 (nulos, bits, valores) para todos los tipos, `enum`, `type`, listas y mapas; un solo recorrido para los dos sentidos; lectura hostil (§4.2) | `http` | `src/wire/bin.ts` |
-| [ ] | 4 | 3 | **`tyOfSchema`.** El schema de un form como su tipo (SDD §3.1), en su propio módulo | `http` | `src/wire/schema.ts` |
-| [ ] | 5 | 3 | **El problema y `any`.** El nivel del problema y las siete etiquetas de `any`; `binWire` completo (`encodeArgs`…`decodeProblem`), con `application/fud+bin` y `application/problem+fud` | `http` | `src/wire/bin.ts` · `src/wire/problem.ts` |
-| [ ] | 6 | 2 | **`jsonWire`.** El JSON de hoy detrás de la interfaz `Wire`: claves, `conform` del valor de vuelta, `application/problem+json` | `http` | `src/wire/json.ts` |
-| [ ] | 7 | — | **`signature`.** FNV-1a de 32 bits en 8 dígitos hexadecimales | `http` | `src/wire/signature.ts` |
-| [ ] | 8 | 5, 6 | **Los vectores y las entradas.** `wire/vectors.json` (SDD §3.1: una fila por tipo y por etiqueta, un form con `group`, una respuesta, un 422), publicado en `files`; entradas `./wire`, `./wire/bin` y `./wire/json` | `http` | `wire/vectors.json` · `package.json` (`exports`, `files`) · `src/wire/index.ts` |
-| [ ] | 9 | 3–8 | **Los tests de la fase.** Criterios 1–3: los vectores en los dos sentidos, los bytes de forms sin tocar, la lectura hostil | `http` | `test/wire/**` |
+| [x] | 1 | — | **El código nuevo.** `FUD1260`: `.ts`, `.md` y su línea en `index.ts`; el rango en la fila de SDD-67 del `INDEX.md`. `FUD1083` gana el parámetro `argument`/`field` y su `.md` habla de «a field or an argument» | `diagnostics` | `src/codes/FUD1260.{ts,md}` · `src/codes/FUD1083.{ts,md}` · `src/index.ts` |
+| [x] | 2 | — | **Mudar el `Io`.** `Reader`, `Writer` e `Io` pasan de `forms/src/wire/io.ts` a `http/src/wire/io.ts` sin cambiar un byte; `Ty` se muda de `contract/wire.ts` a `wire/ty.ts` y gana `'any'`; `@fudic/forms` pierde `./wire` (`package.json`, `src/wire/`) y su test de bytes se muda con el códec | `http` · `forms` | `src/wire/io.ts` · `src/wire/ty.ts` · `forms/package.json` · `forms/src/wire/*` (fuera) |
+| [x] | 3 | 2 | **El recorrido por tipo.** El nivel de SDD §3.1 (nulos, bits, valores) para todos los tipos, `enum`, `type`, listas y mapas; un solo recorrido para los dos sentidos; lectura hostil (§4.2) | `http` | `src/wire/bin.ts` |
+| [x] | 4 | 3 | **`tyOfSchema`.** El schema de un form como su tipo (SDD §3.1), en su propio módulo | `http` | `src/wire/schema.ts` |
+| [x] | 5 | 3 | **El problema y `any`.** El nivel del problema y las siete etiquetas de `any`; `binWire` completo (`encodeArgs`…`decodeProblem`), con `application/fud+bin` y `application/problem+fud` | `http` | `src/wire/bin.ts` · `src/wire/problem.ts` |
+| [x] | 6 | 2 | **`jsonWire`.** El JSON de hoy detrás de la interfaz `Wire`: claves, `conform` del valor de vuelta, `application/problem+json` | `http` | `src/wire/json.ts` |
+| [x] | 7 | — | **`signature`.** FNV-1a de 32 bits en 8 dígitos hexadecimales | `http` | `src/wire/signature.ts` |
+| [x] | 8 | 5, 6 | **Los vectores y las entradas.** `wire/vectors.json` (SDD §3.1: una fila por tipo y por etiqueta, un form con `group`, una respuesta, un 422), publicado en `files`; entradas `./wire`, `./wire/bin` y `./wire/json` | `http` | `wire/vectors.json` · `package.json` (`exports`, `files`) · `src/wire/index.ts` |
+| [x] | 9 | 3–8 | **Los tests de la fase.** Criterios 1–3: los vectores en los dos sentidos, los bytes de forms sin tocar, la lectura hostil | `http` | `test/wire/**` |
 
 ## Fase 2 — la llamada (7)
 

@@ -1,32 +1,49 @@
 /**
- * SDD-56 §4.18 and criteria 44, 45 and 47 — the binary format of a typed form.
+ * SDD-56 §4.18 and criteria 44, 45 and 47 — the binary format of a typed form — moved with the
+ * codec (SDD-67 criterion 2): a form is one more level of `fud-bin`, and every expected byte
+ * below is the one SDD-56 measured, untouched.
  *
- * Every assertion that something survives is a round trip through `writeBinary` and
- * `readBinary`, the one walk in two directions. The sizes are asserted to the byte, because
- * the format IS its layout: null map, bit field of the bools, values, groups in line.
+ * Every assertion that something survives is a round trip through `binWire.encodeArgs` and
+ * `binWire.decodeArgs` over the form's controls, the one walk in two directions. The values
+ * are written positionally, as SDD-56 wrote them; `writeBinary` and `readBinary` turn them into
+ * the keyed arguments of a call and back. The sizes are asserted to the byte, because the format
+ * IS its layout: null map, bit field of the bools, values, groups in line.
  */
 
 import { describe, expect, it } from 'vitest';
-import { control } from '../../src/control.js';
-import { form } from '../../src/form.js';
-import { group } from '../../src/group.js';
-import { arr } from '../../src/typed/arr.js';
-import { bool } from '../../src/typed/bool.js';
-import { date } from '../../src/typed/date.js';
-import { f32 } from '../../src/typed/f32.js';
-import { f64 } from '../../src/typed/f64.js';
-import { i16 } from '../../src/typed/i16.js';
-import { i32 } from '../../src/typed/i32.js';
-import { i8 } from '../../src/typed/i8.js';
-import { str } from '../../src/typed/str.js';
-import { u16 } from '../../src/typed/u16.js';
-import { u32 } from '../../src/typed/u32.js';
-import { u8 } from '../../src/typed/u8.js';
-import { isTyped, readBinary, representable, reviveJson, writeBinary } from '../../src/wire/index.js';
-import type { Schema } from '../../src/types.js';
+import { arr, bool, date, f32, f64, group, i16, i32, i8, str, u16, u32, u8 } from '@fudic/forms/contract';
+import type { Schema } from '@fudic/forms';
+import { HttpError } from '../../src/errors.js';
+import { binWire } from '../../src/wire/bin.js';
+import { formTypes, tyOfSchema } from '../../src/wire/schema.js';
 
-const round = (schema: Schema, value: readonly unknown[]) => readBinary(schema, writeBinary(schema, value as never));
-const size = (schema: Schema, value: readonly unknown[]) => writeBinary(schema, value as never).length;
+const isGroup = (schema: Schema, k: string): Schema | undefined => {
+  const node = schema[k]!;
+  return '$schema' in node ? (node.$schema as Schema) : undefined;
+};
+
+/** Positional values as the keyed arguments of a call, groups included. */
+const keyed = (schema: Schema, values: readonly unknown[]): Record<string, unknown> =>
+  Object.fromEntries(
+    Object.keys(schema).map((k, i) => {
+      const inner = isGroup(schema, k);
+      return [k, inner === undefined ? values[i] : keyed(inner, values[i] as unknown[])];
+    }),
+  );
+
+const positional = (schema: Schema, record: Readonly<Record<string, unknown>>): unknown[] =>
+  Object.keys(schema).map((k) => {
+    const inner = isGroup(schema, k);
+    return inner === undefined ? record[k] : positional(inner, record[k] as Record<string, unknown>);
+  });
+
+const writeBinary = (schema: Schema, value: readonly unknown[]): Uint8Array =>
+  binWire.encodeArgs(formTypes(schema), keyed(schema, value)) as Uint8Array;
+const readBinary = (schema: Schema, body: Uint8Array): unknown[] =>
+  positional(schema, binWire.decodeArgs(formTypes(schema), body));
+
+const round = (schema: Schema, value: readonly unknown[]) => readBinary(schema, writeBinary(schema, value));
+const size = (schema: Schema, value: readonly unknown[]) => writeBinary(schema, value).length;
 
 describe('criterion 44: every type survives, at the ends of its range', () => {
   const cases: [string, () => Schema, readonly unknown[], number][] = [
@@ -211,112 +228,43 @@ describe('criterion 47: the measurement', () => {
   });
 });
 
-describe('isTyped', () => {
-  it('every control declares its type, groups included', () => {
-    expect(isTyped(measuredLine)).toBe(true);
-    expect(isTyped({ a: u8(), g: group({ b: str() }) })).toBe(true);
-    expect(isTyped({})).toBe(true);
-  });
 
-  it('one control without a type, at any depth, is enough to say no', () => {
-    expect(isTyped({ a: u8(), b: control('') })).toBe(false);
-    expect(isTyped({ g: group({ b: str(), c: control(0) }) })).toBe(false);
-  });
-
-  it('a form built from the schema keeps the tags, so its $schema is typed', () => {
-    expect(isTyped(form(measuredLine).$schema)).toBe(true);
+describe('a form is a type: tyOfSchema writes the same bytes as its controls', () => {
+  it('a form as a single value of its type is the level of its controls, byte for byte', () => {
+    const schema = { a: u8(), g: group({ x: u16(), y: bool(), z: str() }), b: bool() };
+    const value = [7, [300, true, 'hi'], false];
+    const asValue = binWire.encodeValue(tyOfSchema(schema), keyed(schema, value)) as Uint8Array;
+    expect([...asValue]).toEqual([...writeBinary(schema, value)]);
   });
 });
 
-describe('representable', () => {
-  it('a value the format holds', () => {
-    expect(representable(measuredLine, lineValue)).toBe(true);
-    expect(representable(measuredLine, [null, null, null, null, null, true, true, true, null, null])).toBe(true);
+describe('decodeArgs refuses a body that is not its schema: a 400', () => {
+  const refused = (fn: () => unknown, detail?: string): void => {
+    let caught: unknown;
+    try {
+      fn();
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(HttpError);
+    const problem = (caught as HttpError).problem;
+    expect(problem.status).toBe(400);
+    if (detail !== undefined) expect(problem.detail).toBe(detail);
+    else expect(problem.detail).toMatch(/^binary body: /u);
+  };
+
+  it('shorter', () => {
+    refused(() => readBinary({ a: u32() }, new Uint8Array([0, 1, 2])), 'binary body: shorter than its schema');
+    refused(() => readBinary({ s: str() }, new Uint8Array([5, 0x61])));
+    refused(() => readBinary({ s: str() }, new Uint8Array([0x80])));
   });
 
-  it('a null in a tag that does not admit one: str and bool', () => {
-    expect(representable({ s: str() }, [null])).toBe(false);
-    expect(representable({ b: bool() }, [null])).toBe(false);
-  });
-
-  it('a null inside an arr', () => {
-    expect(representable({ v: arr(u8, []) }, [[1, null]])).toBe(false);
-    expect(representable({ v: arr(u8, []) }, [[1, 2]])).toBe(true);
-  });
-
-  it('a date outside 48 bits, alone or inside an arr of dates', () => {
-    const far = new Date(8.64e15);
-    expect(representable({ d: date() }, [far])).toBe(false);
-    expect(representable({ d: arr(date, []) }, [[new Date(0), far]])).toBe(false);
-    expect(representable({ d: arr(date, []) }, [[new Date(0)]])).toBe(true);
-    expect(representable({ d: date() }, [new Date(2 ** 47)])).toBe(false);
-  });
-
-  it('inside a group too', () => {
-    expect(representable({ g: group({ s: str() }) }, [[null]])).toBe(false);
-    expect(representable({ g: group({ s: str() }) }, [['x']])).toBe(true);
-  });
-});
-
-describe('readBinary refuses a body that is not its schema', () => {
-  it('shorter: RangeError', () => {
-    expect(() => readBinary({ a: u32() }, new Uint8Array([0, 1, 2]))).toThrow(
-      new RangeError('binary body: shorter than its schema'),
-    );
-    expect(() => readBinary({ s: str() }, new Uint8Array([5, 0x61]))).toThrow(RangeError);
-    expect(() => readBinary({ s: str() }, new Uint8Array([0x80]))).toThrow(RangeError);
-  });
-
-  it('longer: RangeError', () => {
-    expect(() => readBinary({ a: u8() }, new Uint8Array([0, 1, 2]))).toThrow(
-      new RangeError('binary body: longer than its schema'),
-    );
+  it('longer', () => {
+    refused(() => readBinary({ a: u8() }, new Uint8Array([0, 1, 2])), 'binary body: longer than its schema');
   });
 
   it('reads from a view that does not start at offset 0', () => {
     const backing = new Uint8Array([9, 9, 0, 7, 9]);
     expect(readBinary({ a: u8() }, backing.subarray(2, 4))).toEqual([7]);
-  });
-});
-
-describe('reviveJson', () => {
-  it('a date that travelled as a string comes back a Date, in an arr of dates too', () => {
-    const schema = { d: date(), list: arr(date, []), s: str(), g: group({ when: date() }) };
-    const iso = '1969-07-20T20:17:00.000Z';
-    const back = reviveJson(schema, [iso, [iso], iso, [iso]]) as [Date, Date[], string, [Date]];
-    expect(back[0]).toEqual(new Date(iso));
-    expect(back[1][0]).toEqual(new Date(iso));
-    expect(back[2]).toBe(iso);
-    expect(back[3][0]).toEqual(new Date(iso));
-  });
-
-  it('null dates and untyped controls stay as they came', () => {
-    const schema = { d: date(), c: control(''), list: arr(date, []), n: arr(u8, []) };
-    expect(reviveJson(schema, [null, 'x', null, [1]])).toEqual([null, 'x', null, [1]]);
-  });
-
-  it('with keys: each key with a node in the schema is revived, groups recursively', () => {
-    const schema = { d: date(), list: arr(date, []), g: group({ when: date(), s: str() }) };
-    const iso = '2020-01-01T00:00:00.000Z';
-    expect(reviveJson(schema, { d: iso, list: [iso], g: { when: iso, s: iso } })).toEqual({
-      d: new Date(iso),
-      list: [new Date(iso)],
-      g: { when: new Date(iso), s: iso },
-    });
-  });
-
-  it('with keys: a key the schema does not know is left as it came', () => {
-    expect(reviveJson({ d: date() }, { d: null, extra: '2020-01-01' })).toEqual({ d: null, extra: '2020-01-01' });
-  });
-
-  it('what has no shape of the schema at all is returned untouched', () => {
-    const schema = { d: date() };
-    const short: unknown[] = [];
-    expect(reviveJson(schema, short)).toBe(short);
-    expect(reviveJson(schema, null)).toBeNull();
-    expect(reviveJson(schema, 'x')).toBe('x');
-    expect(reviveJson(schema, 3)).toBe(3);
-    // A group whose value is not a level is left for `$set` to refuse.
-    expect(reviveJson({ g: group({ d: date() }) }, { g: 'nope' })).toEqual({ g: 'nope' });
   });
 });

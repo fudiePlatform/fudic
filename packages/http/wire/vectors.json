@@ -1,0 +1,86 @@
+{
+  "format": "fud-bin",
+  "notes": [
+    "Each case is one value of its type, written as a level of a single slot: a response body.",
+    "A type is a primitive by its name, or an object: {\"list\": T}, {\"opt\": T}, {\"map\": [K, V]}, {\"oneOf\": [members]}, {\"fields\": {name: T, ...}} with its fields in order. \"problem\" is the problem level; \"any\" a validator's value.",
+    "A value is JSON. A date is its ISO 8601 text, a uuid its text, a key of a map its text. An absent optional is left out, or null.",
+    "hex is every byte of the body, two lowercase digits each. A backend speaks fud-bin when it writes each value as its hex and reads each hex back as its value."
+  ],
+  "cases": [
+    { "name": "u8", "type": "u8", "value": 255, "hex": "ff" },
+    { "name": "i8, two's complement", "type": "i8", "value": -2, "hex": "fe" },
+    { "name": "u16, little-endian", "type": "u16", "value": 258, "hex": "0201" },
+    { "name": "i16", "type": "i16", "value": -2, "hex": "feff" },
+    { "name": "u32", "type": "u32", "value": 305419896, "hex": "78563412" },
+    { "name": "i32", "type": "i32", "value": -2, "hex": "feffffff" },
+    { "name": "f32", "type": "f32", "value": 1.5, "hex": "0000c03f" },
+    { "name": "f64", "type": "f64", "value": -2.5, "hex": "00000000000004c0" },
+    { "name": "str", "type": "str", "value": "ab", "hex": "026162" },
+    { "name": "str, empty", "type": "str", "value": "", "hex": "00" },
+    { "name": "str, its length in UTF-8 bytes", "type": "str", "value": "ñ", "hex": "02c3b1" },
+    { "name": "html travels as a str", "type": "html", "value": "<b>", "hex": "033c623e" },
+    { "name": "bool, true", "type": "bool", "value": true, "hex": "01" },
+    { "name": "bool, false", "type": "bool", "value": false, "hex": "00" },
+    { "name": "date", "type": "date", "value": "1970-01-01T00:00:00.001Z", "hex": "010000000000" },
+    { "name": "date, the high 16 bits", "type": "date", "value": "1970-02-19T17:02:47.296Z", "hex": "000000000100" },
+    { "name": "date, before 1970", "type": "date", "value": "1969-12-31T23:59:59.999Z", "hex": "ffffffffffff" },
+    { "name": "uuid", "type": "uuid", "value": "7f3a0c2e-1b4d-4e5f-8a9b-0c1d2e3f4a5b", "hex": "7f3a0c2e1b4d4e5f8a9b0c1d2e3f4a5b" },
+    { "name": "enum, by index", "type": { "oneOf": ["red", "green", "blue"] }, "value": "blue", "hex": "02" },
+    { "name": "opt, absent", "type": { "opt": "u8" }, "value": null, "hex": "01" },
+    { "name": "opt, present", "type": { "opt": "u8" }, "value": 5, "hex": "0005" },
+    {
+      "name": "type, an optional absent",
+      "type": { "fields": { "id": "u8", "ok": "bool", "note": { "opt": "str" } } },
+      "value": { "id": 7, "ok": true },
+      "hex": "010107"
+    },
+    {
+      "name": "type, every field present",
+      "type": { "fields": { "id": "u8", "ok": "bool", "note": { "opt": "str" } } },
+      "value": { "id": 7, "ok": true, "note": "hi" },
+      "hex": "000107026869"
+    },
+    { "name": "list", "type": { "list": "u16" }, "value": [1, 2], "hex": "0201000200" },
+    { "name": "list of bool, packed", "type": { "list": "bool" }, "value": [true, false, true], "hex": "0305" },
+    { "name": "list of optionals", "type": { "list": { "opt": "u8" } }, "value": [1, null, 3], "hex": "03020103" },
+    { "name": "map", "type": { "map": ["str", "u8"] }, "value": { "a": 1 }, "hex": "01016101" },
+    { "name": "map, keys as their type", "type": { "map": ["u16", "str"] }, "value": { "1": "a", "300": "b" }, "hex": "0201002c0101610162" },
+    { "name": "any, null", "type": "any", "value": null, "hex": "00" },
+    { "name": "any, false", "type": "any", "value": false, "hex": "01" },
+    { "name": "any, true", "type": "any", "value": true, "hex": "02" },
+    { "name": "any, number", "type": "any", "value": 18, "hex": "030000000000003240" },
+    { "name": "any, text", "type": "any", "value": "x", "hex": "040178" },
+    { "name": "any, list", "type": "any", "value": [1, "a"], "hex": "050203000000000000f03f040161" },
+    { "name": "any, object", "type": "any", "value": { "min": 18 }, "hex": "0601036d696e030000000000003240" },
+    {
+      "name": "a form with a group",
+      "type": {
+        "fields": {
+          "qty": { "opt": "u32" },
+          "gift": "bool",
+          "name": "str",
+          "line": { "fields": { "price": { "opt": "u16" }, "at": { "opt": "date" } } }
+        }
+      },
+      "value": { "qty": 3, "gift": true, "name": "ana", "line": { "price": null, "at": null } },
+      "hex": "00010300000003616e6103"
+    },
+    {
+      "name": "a response: Person[]",
+      "type": { "list": { "fields": { "id": "uuid", "name": "str", "born": { "opt": "date" } } } },
+      "value": [{ "id": "7f3a0c2e-1b4d-4e5f-8a9b-0c1d2e3f4a5b", "name": "ana" }],
+      "hex": "01017f3a0c2e1b4d4e5f8a9b0c1d2e3f4a5b03616e61"
+    },
+    {
+      "name": "a problem: 422 with errors and summary",
+      "type": "problem",
+      "value": {
+        "status": 422,
+        "title": "Unprocessable Content",
+        "errors": { "age": { "min": 18 } },
+        "summary": { "required": true }
+      },
+      "hex": "03a60115556e70726f6365737361626c6520436f6e74656e74010361676501036d696e0300000000000032400108726571756972656402"
+    }
+  ]
+}
