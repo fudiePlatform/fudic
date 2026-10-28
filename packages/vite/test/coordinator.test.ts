@@ -11,15 +11,9 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { coordinatorFor, type CoordinatorParams } from '../src/coordinator.js';
+import { coordinatorFor, GRAPH_TOKEN, GRAPH_TOKEN_RE, graphToken, type CoordinatorParams } from '../src/coordinator.js';
 import { BUILD_TOKEN } from '../src/constants.js';
-import {
-  DEFAULT_CSP,
-  createUrlResolver,
-  hydrateGraphOf,
-  hydrateNameOf,
-  type ManifestFile,
-} from '@fudic/transport';
+import { createUrlResolver, hydrateNameOf } from '@fudic/transport';
 
 /**
  * The pieces as DEV names them: package specifiers and the names the source exports, which is
@@ -167,27 +161,23 @@ describe('the coordinator', () => {
  */
 describe('the graph of a build with no worker', () => {
   const PAGE = 'https://app.test/usuarios';
-  const params = (manifest?: string): CoordinatorParams => ({
-    chunks: { mode: 'build', base: '/', ...(manifest === undefined ? {} : { manifest }) },
+  const params = (embedsGraph?: boolean): CoordinatorParams => ({
+    chunks: { mode: 'build', base: '/', ...(embedsGraph === undefined ? {} : { embedsGraph }) },
     pieces: devPieces(false),
   });
 
   /** Evaluate a coordinator and return the `graph` it handed the channel, if any. */
-  function run(
-    source: string,
-    fetch: (url: string, init: RequestInit) => Promise<{ json(): Promise<unknown> }>,
-  ): ((url: string) => Promise<readonly string[]>) | undefined {
+  function run(source: string, fetch: () => never): ((url: string) => Promise<readonly string[]>) | undefined {
     let handed: { graph?: (url: string) => Promise<readonly string[]> } | undefined;
     const body = source.replace(/^import .*$/gmu, '');
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    new Function('$hydrate', '$warm', '$resolver', '$graphOf', '$nameOf', 'fetch', 'document', body)(
+    new Function('$hydrate', '$warm', '$resolver', '$nameOf', 'fetch', 'document', body)(
       () => undefined,
       (config?: typeof handed) => {
         handed = config;
         return {};
       },
       createUrlResolver,
-      hydrateGraphOf,
       hydrateNameOf,
       fetch,
       { baseURI: PAGE },
@@ -195,47 +185,41 @@ describe('the graph of a build with no worker', () => {
     return handed?.graph;
   }
 
-  const FILE = (build: string): ManifestFile => ({
-    build,
-    base: '/',
-    csp: DEFAULT_CSP,
-    routes: [],
-    assets: 'assets/',
-    hydrate: { 'user-form': ['fudic_http', '/_fudic/0.0.1-ab/forms/wiring.js'] },
-  });
   const chunk = (tag: string): string => `/assets/h/${tag}-${BUILD_TOKEN}.js`;
+  const neverFetched = (): never => {
+    throw new Error('the page never asks for the manifest');
+  };
 
-  it('names the graph of each chunk, and asks for the manifest once per page, low', async () => {
-    const asked: Array<readonly [string, RequestInit]> = [];
-    const graph = run(coordinatorFor({ hydrates: true, injects: false }, params('fudic-routes.json'))!.source, (url, init) => {
-      asked.push([url, init]);
-      return Promise.resolve({ json: () => Promise.resolve(FILE(BUILD_TOKEN)) });
-    })!;
+  it('carries the graph of the tags its route warms, and never asks for the manifest', async () => {
+    const source = coordinatorFor({ hydrates: true, injects: false, warms: ['app-solo', 'user-form'] }, params(true))!.source;
+    // The placeholder names the tags; the build replaces it with their graph.
+    expect(source).toContain(graphToken(['app-solo', 'user-form']));
+    expect(source).not.toContain('fudic-routes.json');
+    const filled = source.replace(GRAPH_TOKEN_RE, () =>
+      JSON.stringify(JSON.stringify({ 'user-form': ['/assets/fudic_http-x.js', '/_fudic/0.0.1-ab/forms/wiring.js'] })),
+    );
+    const graph = run(filled, neverFetched)!;
 
-    expect(await graph(chunk('user-form'))).toEqual([
-      `/assets/fudic_http-${BUILD_TOKEN}.js`,
-      '/_fudic/0.0.1-ab/forms/wiring.js',
-    ]);
-    // A chunk the manifest has no graph for, and a URL that is no chunk at all.
+    expect(await graph(chunk('user-form'))).toEqual(['/assets/fudic_http-x.js', '/_fudic/0.0.1-ab/forms/wiring.js']);
+    // A tag the graph has no entry for, and a URL that is no chunk at all.
     expect(await graph(chunk('app-solo'))).toEqual([]);
     expect(await graph('/elsewhere.js')).toEqual([]);
-    // criterion 8: three warms, one request.
-    expect(asked).toEqual([['/fudic-routes.json', { priority: 'low' }]]);
   });
 
-  it('criterion 7: a manifest of another build, or none, is an empty graph', async () => {
-    const source = coordinatorFor({ hydrates: true, injects: false }, params('fudic-routes.json'))!.source;
-    const other = run(source, () => Promise.resolve({ json: () => Promise.resolve(FILE('deadbeef')) }))!;
-    expect(await other(chunk('user-form'))).toEqual([]);
-    const missing = run(source, () => Promise.reject(new TypeError('offline')))!;
-    expect(await missing(chunk('user-form'))).toEqual([]);
-    const broken = run(source, () => Promise.resolve({ json: () => Promise.reject(new SyntaxError('html')) }))!;
-    expect(await broken(chunk('user-form'))).toEqual([]);
+  it('a different set of tags is a different coordinator, and no tags is an empty graph', async () => {
+    const one = coordinatorFor({ hydrates: true, injects: false, warms: ['a-x'] }, params(true))!;
+    const two = coordinatorFor({ hydrates: true, injects: false, warms: ['a-y'] }, params(true))!;
+    expect(one.name).not.toBe(two.name);
+    const none = coordinatorFor({ hydrates: true, injects: false }, params(true))!.source;
+    expect(none).toContain(graphToken([]));
+    const graph = run(none.replace(GRAPH_TOKEN_RE, () => JSON.stringify('{}')), neverFetched)!;
+    expect(await graph(chunk('a-x'))).toEqual([]);
   });
 
-  it('criterion 9: without a manifest to read — dev, or a worker — the channel gets no graph', () => {
-    const source = coordinatorFor({ hydrates: true, injects: false }, params())!.source;
+  it('criterion 9: without a graph to carry — dev, or a worker — the channel gets none', () => {
+    const source = coordinatorFor({ hydrates: true, injects: false, warms: ['a-x'] }, params())!.source;
     expect(source).not.toContain('$graph');
-    expect(run(source, () => Promise.reject(new Error('never asked')))).toBeUndefined();
+    expect(source).not.toContain(GRAPH_TOKEN);
+    expect(run(source, neverFetched)).toBeUndefined();
   });
 });

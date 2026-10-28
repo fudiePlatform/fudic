@@ -150,6 +150,17 @@ export function routeEagerTags(absPath: string, io: ResolveIo, pattern: string):
   return eagerTags(doc, hydratableTags(doc), isReactiveRoute(doc) ? safeName(pattern) : undefined);
 }
 
+/**
+ * Everything a route's page can warm, by the name the runtime asks for it: every tag of its
+ * graph that hydrates, and the route itself under its chunk name when it has a client half.
+ * What the coordinator of a page with no worker carries the graph of, so the page never asks
+ * for the manifest.
+ */
+export function routeWarmTags(absPath: string, io: ResolveIo, pattern: string): readonly string[] {
+  const doc = graphOf(absPath, io);
+  return [...hydratableTags(doc), ...(isReactiveRoute(doc) ? [safeName(pattern)] : [])].toSorted();
+}
+
 /** A ROUTE that has a client half, and therefore a chunk of its own (SDD-39 §4.5). */
 export interface RouteChunk {
   /** `safeName(pattern)` — the name the page publishes and the runtime derives the URL from. */

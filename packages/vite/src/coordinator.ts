@@ -51,11 +51,12 @@ export type ChunkResolution =
        */
       readonly dir?: string;
       /**
-       * The manifest, by its path under `base`, when this page warms with `<link>`s: it is what
-       * names the graph of each chunk (BUG-53 §4.3). Absent with a worker, which deposits the
-       * graph itself and must not be shadowed by a preload.
+       * Whether this page warms with `<link>`s and so has to name the graph of each chunk
+       * itself (BUG-53 §4.3). The coordinator carries the graph of the tags its route can warm
+       * (`RouteFacts.warms`) and the page never asks for the manifest. Absent with a worker,
+       * which deposits the graph itself and must not be shadowed by a preload.
        */
-      readonly manifest?: string;
+      readonly embedsGraph?: boolean;
     }
   | { readonly mode: 'dev'; readonly urlPrefix: string };
 
@@ -80,7 +81,26 @@ export interface RouteFacts {
   readonly hydrates: boolean;
   /** The route publishes an injection map, so its tree has to stand before any component. */
   readonly injects: boolean;
+  /**
+   * What the page can warm, by the name the runtime asks for it (`routeWarmTags`), when the
+   * coordinator embeds the graph. A different set is a different coordinator: the graph is
+   * part of what the route needs, and the name is the hash of the source.
+   */
+  readonly warms?: readonly string[];
 }
+
+/**
+ * The placeholder of the graph inside a coordinator's source: a string literal naming the tags,
+ * replaced once the bundle exists by the graph itself (`fillGraph` of the plugin). A literal and
+ * not a comment because a minifier keeps the one and drops the other.
+ */
+export const GRAPH_TOKEN = '__fudic_graph__:';
+
+/** The literal of `tags` as the coordinator's source writes it. */
+export const graphToken = (tags: readonly string[]): string => JSON.stringify(`${GRAPH_TOKEN}${tags.join(',')}`);
+
+/** The placeholder in any quoting a minifier may have chosen, with its tags. */
+export const GRAPH_TOKEN_RE = /(["'`])__fudic_graph__:([^"'`]*)\1/gu;
 
 /**
  * How this build names one piece: where to import it from, and under which name.
@@ -169,14 +189,9 @@ function coordinatorSource(facts: RouteFacts, params: CoordinatorParams): string
   // this route — not downloaded, not preloaded, not precached on its account.
   if (facts.injects) wanted.push([pieces.di, '$di']);
   if (chunks.mode === 'build') wanted.push([pieces.urls, '$resolver']);
-  // The graph's reader travels in the same piece as the arithmetic (BUG-53 §3).
-  const graph = chunks.mode === 'build' ? chunks.manifest : undefined;
-  if (graph !== undefined) {
-    wanted.push(
-      [{ from: pieces.urls.from, name: 'hydrateGraphOf' }, '$graphOf'],
-      [{ from: pieces.urls.from, name: 'hydrateNameOf' }, '$nameOf'],
-    );
-  }
+  // The name of a chunk off its URL travels in the same piece as the arithmetic (BUG-53 §3).
+  const graph = chunks.mode === 'build' && chunks.embedsGraph === true ? (facts.warms ?? []) : undefined;
+  if (graph !== undefined) wanted.push([{ from: pieces.urls.from, name: 'hydrateNameOf' }, '$nameOf']);
 
   // ONE statement per source. In a build every piece is its own URL and this changes nothing;
   // in dev two of them come out of `@fudic/core`, and two imports of one module would be a
@@ -202,21 +217,15 @@ function coordinatorSource(facts: RouteFacts, params: CoordinatorParams): string
     );
     if (graph !== undefined) {
       lines.push(
-        `// The graph of each chunk, for a page with no worker to deposit it (BUG-53 §4.3): a`,
-        `// modulepreload fetches none of a module's imports, so the page names them. Read off the`,
-        `// manifest ONCE per page, at a low priority, the first time anything is warmed. A`,
-        `// manifest of another build — a deploy after this page was painted — or none at all is`,
-        `// an empty graph: the chunk alone is preloaded, never a file of another build.`,
-        `let $manifest;`,
+        `// The graph of each chunk this page can warm, for a page with no worker to deposit it`,
+        `// (BUG-53 §4.3): a modulepreload fetches none of a module's imports, so the page names`,
+        `// them. Written into this module by the build, for this route's tags only — the page`,
+        `// never downloads the manifest, which holds the graph of every tag of the application.`,
+        `// Same build as this file by construction: both carry its id.`,
+        `const $graphs = JSON.parse(${graphToken(graph)});`,
         `const $graph = (url) => {`,
-        `  $manifest ??= fetch($urls.assetUrl(${JSON.stringify(graph)}), { priority: "low" })`,
-        `    .then((response) => response.json())`,
-        `    .then((file) => (file.build === ${JSON.stringify(BUILD_TOKEN)} ? $graphOf(file) : undefined))`,
-        `    .catch(() => undefined);`,
-        `  return $manifest.then((of) => {`,
-        `    const name = of === undefined ? undefined : $nameOf($urls, url, document.baseURI);`,
-        `    return name === undefined ? [] : of(name);`,
-        `  });`,
+        `  const name = $nameOf($urls, url, document.baseURI);`,
+        `  return Promise.resolve((name === undefined ? undefined : $graphs[name]) ?? []);`,
         `};`,
       );
     }
