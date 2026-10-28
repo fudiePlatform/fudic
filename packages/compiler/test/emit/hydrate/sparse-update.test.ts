@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, it, beforeAll } from 'vitest';
-import { FudicElement, signal, subscribe } from '@fudic/core';
+import { FudicElement, owned, signal, subscribe } from '@fudic/core';
 import {
   resolveComponents,
   emitComponentClientModule,
@@ -76,7 +76,7 @@ beforeAll(() => {
       '',
     );
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    new Function('FudicElement', 'signal', '$sub', body)(FudicElement, signal, subscribe);
+    new Function('FudicElement', 'signal', '$sub', '$owned', body)(FudicElement, signal, subscribe, owned);
   }
 });
 

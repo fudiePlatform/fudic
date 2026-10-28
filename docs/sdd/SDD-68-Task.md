@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/core` · `@fudic/http` · `@fudic/conventions` · `@fudic/compiler` · `examples/basic`
 > **Rama:** `sdd-68-llamadas-sin-fontaneria`. Nace de `main` **con SDD-67 en `Hecho`**: el endpoint
 > de datos y las llamadas ya viajan en binario.
-> **Progreso:** 5 / 20 — `En curso`.
+> **Progreso:** 7 / 20 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -49,13 +49,13 @@ código, no el test.
 | [x] | 3 | 1 | **`task`, modo `latest`.** `source` (sin llamar en la primera lectura), `run`, numeración de llamadas para no escribir una sustituida, `initial`, modo por `method` (SDD §4.1, §4.2) | `core` | `src/task.ts` · `src/index.ts` |
 | [x] | 4 | 3 | **`task`, modo `queue`.** La cola en orden; ninguna se descarta; `mode` cambia el modo (SDD §4.3) | `core` | `src/task.ts` |
 | [x] | 5 | 3, 4 | **Estado, error y `cancel`.** La tabla de SDD §4.4; `run` nunca rechaza; `cancel` aborta y vacía la cola; desmontar = `cancel` + dejar de escuchar + `run` inerte (SDD §4.5, §4.6) | `core` | `src/task.ts` |
-| [ ] | 6 | 2–5 | **Los tests de la fase.** Criterios 1–10 y 12 (la parte de `core`) con `fn` controladas | `core` | `test/task.test.ts` · `test/owner.test.ts` |
+| [x] | 6 | 2–5 | **Los tests de la fase.** Criterios 1–10 y 12 (la parte de `core`) con `fn` controladas | `core` | `test/task.test.ts` · `test/owner.test.ts` |
 
 ## Fase 2 — el desmontaje en el emit (2)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 7 | 1 | **`owned` alrededor del `@code`.** En el factory de un componente y de una ruta, el `@code` corre dentro de `owned` y su lista se vuelca en `$d` (SDD §4.6). En el servidor no cambia nada | `compiler` | `src/emit/client.ts` · `src/emit/route-client.ts` |
+| [x] | 7 | 1 | **`owned` alrededor del `@code`.** En el factory de un componente y de una ruta, el `@code` corre dentro de `owned` y su lista se vuelca en `$d` (SDD §4.6). En el servidor no cambia nada | `compiler` | `src/emit/client.ts` · `src/emit/route-client.ts` |
 | [ ] | 8 | 7 | **Los tests de la fase.** Criterios 12 y 13 en un navegador de test (happy-dom): quitar el componente aborta la llamada y para el intervalo; criterio 14 (SSR inerte e hidratación sin diferencias) | `compiler` | `test/**` |
 
 ## Fase 3 — el aviso desde `@fudic/http` (5)

@@ -15,6 +15,7 @@ import {
   computed,
   effect,
   live,
+  owned,
   signal,
   subscribe,
   written,
@@ -111,9 +112,10 @@ export function clientFactory(graph: ComponentGraph, tag: string): FudicElementC
     '$sub',
     '$written',
     '$live',
+    '$owned',
     'emit',
     'customElements',
     bindI18n(source),
-  )(i18nPackage, FudicElement, signal, computed, effect, subscribe, written, live, emit, registry);
+  )(i18nPackage, FudicElement, signal, computed, effect, subscribe, written, live, owned, emit, registry);
   return captured!;
 }

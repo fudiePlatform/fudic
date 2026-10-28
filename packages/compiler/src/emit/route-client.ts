@@ -29,7 +29,7 @@ import { planControls } from './controls.js';
 import { NO_BOXES, rootContext } from './display.js';
 import { childTargets, entryCellSlots, entryReactiveScope, type CellSlot } from './state.js';
 import { entryHalf, entryMoving, formAssociatedTags, isReactiveRoute } from './level.js';
-import { cellNameAt, lines, withCells, writeClosure } from './client.js';
+import { cellNameAt, closeOwned, lines, openOwned, ownsCode, withCells, writeClosure } from './client.js';
 import { composePage, holeContent, holeSlot, type ComposeItem } from './compose.js';
 import { LAYOUT_ANCHOR } from './markup.js';
 import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
@@ -238,12 +238,14 @@ function buildRouteClientModule(
     if (reactive.length > 0) bodies.hook.line(`if ($written(${reactive.join(', ')})) $u();`);
   }
 
+  const owns = ownsCode(code.neutral, code.client.body);
   const w = new CodeWriter();
   const channels = [
     ...(usage.subscribes ? ['subscribe as $sub'] : []),
     ...(usage.guarded ? ['subscribeIf as $subIf'] : []),
     ...(renews && reactive.length > 0 ? ['written as $written'] : []),
     ...(usage.fabricates ? ['live as $live'] : []),
+    ...(owns ? ['owned as $owned'] : []),
   ];
   if (channels.length > 0) w.line(`import { ${channels.join(', ')} } from '@fudic/core';`);
   if (hookup.binds.size > 0) {
@@ -260,8 +262,9 @@ function buildRouteClientModule(
   // it returns.
   w.line('export default ($props) => {');
   w.indent();
+  openOwned(w, owns);
   if (nodes.length > 0) w.line(`let ${nodes.join(', ')};`);
-  w.line('const $d = []; // teardowns');
+  if (!owns) w.line('const $d = []; // teardowns');
   if (em.writes > 0) w.line('const $w = []; // last applied, per value write');
   if (em.writes > 0 && em.inPlace) w.line('const $x = []; // values, evaluated in place');
   w.line(declaration(cells));
@@ -295,6 +298,7 @@ function buildRouteClientModule(
   );
   w.dedent();
   w.line('};');
+  closeOwned(w, owns);
   w.dedent();
   w.line('};');
   return { writer: w, linker, diagnostics: [...code.diagnostics, ...emitDiagnostics] };

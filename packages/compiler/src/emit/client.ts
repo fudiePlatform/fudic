@@ -370,6 +370,7 @@ function buildComponentClientModule(
     if (reactive.length > 0) bodies.hook.line(`if ($written(${reactive.join(', ')})) $u();`);
   }
 
+  const owns = ownsCode(neutral, client.body);
   const w = new CodeWriter();
   // Written after the walk on purpose: `$sub` is imported only if the walk found a value
   // to keep in sync, so a component with no reactive prop carries no dead import (§6.20).
@@ -389,6 +390,8 @@ function buildComponentClientModule(
     // Only a file that fabricates a component host pays for it: a template with no child
     // component of its own never names `live`, and never downloads that branch.
     ...(usage.fabricates ? ['live as $live'] : []),
+    // Only a factory that runs code of its author has anything of its own to tear down.
+    ...(owns ? ['owned as $owned'] : []),
   ];
   const core = [...(formAssociated ? [] : ['FudicElement']), ...channels].join(', ');
   if (!formAssociated || channels.length > 0) w.line(`import { ${core} } from '@fudic/core';`);
@@ -433,9 +436,10 @@ function buildComponentClientModule(
   if (shadow.serializable) w.line('static serializable = true;');
   w.line('static c($props) {');
   w.indent();
+  openOwned(w, owns);
   if (em.nodes.length > 0) w.line(`let ${em.nodes.join(', ')};`);
   w.line('const $r = [];'); // the roots, mounted by $m()
-  w.line('const $d = []; // teardowns');
+  if (!owns) w.line('const $d = []; // teardowns');
   // Its own list, because it is the only one that is emptied while the instance lives.
   if (rebinds) w.line('const $cd = []; // the control bindings, remade when the node moves');
   if (em.writes > 0) w.line('const $w = []; // last applied, per value write');
@@ -557,6 +561,7 @@ function buildComponentClientModule(
   );
   w.dedent();
   w.line('};');
+  closeOwned(w, owns);
   w.dedent();
   w.line('}');
   w.dedent();
@@ -585,6 +590,43 @@ function writeMount(w: CodeWriter, mount: CodeWriter): void {
   w.appendWriter(mount);
   w.dedent();
   w.line('};');
+}
+
+/**
+ * Whether the factory runs code its author wrote: a neutral line that runs here, or a
+ * `@client` statement. Only then can it have created an `effect` or a `task` that has to
+ * stop with the component (SDD-68 §4.6) — the rest of the factory creates neither.
+ */
+export function ownsCode(
+  neutral: readonly { readonly hoisted: boolean; readonly provides: boolean }[],
+  body: readonly unknown[],
+): boolean {
+  return body.length > 0 || neutral.some((s) => !s.hoisted && !s.provides);
+}
+
+/**
+ * Open the owner the factory body runs inside (SDD-68 §3.5).
+ *
+ * The WHOLE body and not just the `@code`: the author's bindings are read by the handlers and
+ * the blocks declared after them through lexical scope, so the code cannot be moved into a
+ * closure of its own. What runs inside `owned` is only construction — `h`, `u` and `r` run
+ * later, outside it — so what lands in the list is exactly what the `@code` created.
+ */
+export function openOwned(w: CodeWriter, owns: boolean): void {
+  if (!owns) return;
+  // Outside the owner, because the list it hands back is poured into it once it closes.
+  w.line('const $d = []; // teardowns');
+  w.line('const [$ctl, $owns] = $owned(() => {');
+  w.indent();
+}
+
+/** Close it: what the `@code` created is torn down by `r`, along with the rest of `$d`. */
+export function closeOwned(w: CodeWriter, owns: boolean): void {
+  if (!owns) return;
+  w.dedent();
+  w.line('});');
+  w.line('$d.push(...$owns);');
+  w.line('return $ctl;');
 }
 
 /** A writer's body as one line: `u` and `r` are single-line closures. */

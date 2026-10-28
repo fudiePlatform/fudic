@@ -14,7 +14,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { browserDom, type DomClient } from '@fudic/dom';
-import { signal, computed, effect, live, subscribe, written } from '@fudic/core';
+import { signal, computed, effect, live, owned, subscribe, written } from '@fudic/core';
 import { resolveDocument } from '../../../src/emit/resolve.js';
 import {
   emitLayoutModule,
@@ -53,13 +53,14 @@ type RouteFactory = (props: readonly unknown[]) => {
 function routeFactory(code: string): RouteFactory {
   const body = code.replace(/^import[^\n]*\n/gmu, '').replace(/^export default /mu, 'return ');
   // eslint-disable-next-line @typescript-eslint/no-implied-eval
-  return new Function('signal', 'computed', 'effect', '$sub', '$written', '$live', body)(
+  return new Function('signal', 'computed', 'effect', '$sub', '$written', '$live', '$owned', body)(
     signal,
     computed,
     effect,
     subscribe,
     written,
     live,
+    owned,
   ) as RouteFactory;
 }
 
