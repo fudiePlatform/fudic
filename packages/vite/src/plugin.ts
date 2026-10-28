@@ -2253,16 +2253,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // 3b-quater. The graph a coordinator of a page with no worker carries (BUG-53 §4.3): for
       //     the tags its route can warm, what each one loads besides its own chunk. Written
       //     here because the graph only exists now; the page never downloads the manifest,
-      //     which holds the graph of every tag of the application. The literal is JSON text,
-      //     so a tag the bundle has no chunk for is simply absent.
+      //     which holds the graph of every tag of the application. The literal is JSON text.
+      //     Every tag a route warms has a chunk: its components and its own client half are
+      //     emitted for every route that is not excluded, and only those get a coordinator.
       const graphLiteral = (tags: string): string =>
         JSON.stringify(
           JSON.stringify(
             Object.fromEntries(
-              tags.split(',').flatMap((tag) => {
-                const files = filesOf.get(tag);
-                return files === undefined ? [] : [[tag, files.slice(1)]];
-              }),
+              tags
+                .split(',')
+                .filter((tag) => tag !== '')
+                .map((tag) => [tag, filesOf.get(tag)!.slice(1)]),
             ),
           ),
         );

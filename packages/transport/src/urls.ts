@@ -106,7 +106,3 @@ export function createUrlResolver(base: string, build: string): UrlResolver {
     },
   };
 }
-
-// The page with no worker reads the graph through this piece, the only one of this package a
-// document reaches (BUG-53 §4.3): the reader travels with the arithmetic it uses.
-export { hydrateGraphOf, type HydrateGraph } from './manifest.js';

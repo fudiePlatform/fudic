@@ -535,7 +535,8 @@ test.describe('warm: the network spent in proportion to what is seen', () => {
 
     // A `modulepreload` deposits the module and NOT its descendants — Chromium fetches no
     // static import of a preloaded module until something evaluates it. A build names them
-    // off the manifest (BUG-53 §4.3), so there the gesture pays nothing either.
+    // off the graph its coordinator carries (BUG-53 §4.3), so there the gesture pays nothing
+    // either.
     if (test.info().project.name === 'nosw') {
       expect(first, `the gesture fetched: ${first.join(', ')}`).toEqual([]);
       return;
@@ -629,7 +630,8 @@ test('23 · after interacting with everything, nothing is left undefined', async
  * BUG-53 criterion 1 — with no worker, the warm of a tag lays down its whole graph: the chunk,
  * the shared chunks it imports and the published runtime pieces under them. A
  * `modulepreload` fetches none of a module's imports until it is evaluated, so the page has to
- * name them, and it reads them off the manifest.
+ * name them, and it reads them off the graph its coordinator carries — never off the manifest,
+ * which holds the graph of every tag of the application and which the page does not download.
  *
  * `/usuarios` and not `/hidratacion`: `user-form` drags shared chunks and pieces the route
  * itself does not, so a warm of the bare chunk leaves them to the first click — which is what
@@ -657,6 +659,9 @@ test('BUG-53 · 1 · without a worker, the first click after the warm asks for n
   await page.locator('user-form').scrollIntoViewIfNeeded();
   await expect.poll(() => page.evaluate(() => window.__warmed), { timeout: 10_000 }).toContain('user-form');
   await page.waitForTimeout(500);
+  // The warm named the whole graph without the manifest: the coordinator carries it.
+  const manifest = recorder.hits().filter((h) => h.path.startsWith('/fudic-routes.json'));
+  expect(manifest, 'the load and the warm asked for the manifest').toEqual([]);
 
   recorder.reset();
   await page.locator('user-form').getByLabel('Nombre').click();

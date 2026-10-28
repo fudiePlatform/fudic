@@ -282,8 +282,9 @@ export type HydrateGraph = (name: string) => readonly string[];
 /**
  * The graph of every hydration chunk, read off `hydrate` (BUG-53 §3).
  *
- * The one reader of that field, for both sides of the wire: the worker warms with it and so
- * does a page with no worker. Two readers would drift exactly like two `hydrateUrl`s.
+ * The one reader of that field: the worker warms with it. A page with no worker does not read
+ * the manifest at all; its coordinator carries the graph of its own route, written in by the
+ * build. Two readers would drift exactly like two `hydrateUrl`s.
  */
 export function hydrateGraphOf(file: ManifestFile): HydrateGraph {
   const urls = createUrlResolver(file.base, file.build);
