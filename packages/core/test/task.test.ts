@@ -8,7 +8,8 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { type Callable, effect, owned, signal, task } from '../src/index.js';
+import { type Callable, effect, owned, signal, subscribe, task } from '../src/index.js';
+import { isSource } from '../src/tracking.js';
 
 interface Call<A, R> {
   readonly args: A;
@@ -186,6 +187,25 @@ describe('task, latest (criteria 1–4)', () => {
     expect(seen).toContain('pending|undefined|true|undefined');
     expect(seen.at(-1)).toBe('done|A|false|undefined');
     stop();
+  });
+});
+
+describe('the accessors are sources (SDD-68 §4.7)', () => {
+  it('each one is a reactive source the emit can subscribe to', async () => {
+    const { fn, calls } = fake<string, string>();
+    const t = task(fn);
+    for (const read of [t.value, t.state, t.pending, t.error]) {
+      expect(isSource(read)).toBe(true);
+    }
+    const states: string[] = [];
+    const values: unknown[] = [];
+    const off = [subscribe(t.state, (s) => void states.push(s)), subscribe(t.value, (v) => void values.push(v))];
+    void t.run('a');
+    at(calls, 0).resolve('A');
+    await flush();
+    expect(states).toEqual(['pending', 'done']);
+    expect(values).toEqual(['A']);
+    for (const o of off) o();
   });
 });
 

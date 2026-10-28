@@ -1,13 +1,13 @@
-﻿// @vitest-environment happy-dom
+// @vitest-environment happy-dom
 /**
- * SDD-68 Â§6, criteria 12â€“14 â€” what the `@code` creates dies with its component, and a task
+ * SDD-68 §6, criteria 12–14 — what the `@code` creates dies with its component, and a task
  * on the server never calls.
  *
  * The emit wraps the `@code` in `$owned` and pours the list into `$d`; that much is text, and
  * the goldens lock it. Whether it WORKS is a question about running it: that the effect the
  * author wrote really is in the list `r` drains, and that a `task` created next to it is too.
  * So the chunks are evaluated here with every import answered by the real package behind it
- * â€” `@fudic/core`, `@fudic/i18n` â€” or by a module of the test's own (`./api.js`).
+ * — `@fudic/core`, `@fudic/i18n` — or by a module of the test's own (`./api.js`).
  */
 
 import { readFileSync } from 'node:fs';
@@ -93,7 +93,7 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-describe('criterion 12 â€” a component takes its task and its effect with it', () => {
+describe('criterion 12 — a component takes its task and its effect with it', () => {
   const SOURCE =
     '@code {\n' +
     '  import { task, effect } from "@fudic/core";\n' +
@@ -131,7 +131,7 @@ describe('criterion 12 â€” a component takes its task and its effect with i
 
   it('a teardown that writes what the view reads runs after the view stopped listening', () => {
     // The view's subscriptions go first, what the `@code` created goes last: otherwise this
-    // write would repaint a node `r` has already released, and `setText(null, …)` throws.
+    // write would repaint a node `r` has already released, and `setText(null, �)` throws.
     const controller = mountComponent(
       'x-late',
       '@code {\n' +
@@ -149,7 +149,7 @@ describe('criterion 12 â€” a component takes its task and its effect with i
   });
 });
 
-describe('criterion 13 â€” app-clock removed stops updating its signal', () => {
+describe('criterion 13 — app-clock removed stops updating its signal', () => {
   // The example's own file, not a copy: the clock this criterion names is that one.
   const CLOCK = readFileSync(resolve(fixturesDir, '../../..', 'examples/basic/src/components/app-clock.fud'), 'utf8');
 
@@ -172,7 +172,7 @@ describe('criterion 13 â€” app-clock removed stops updating its signal', ()
   });
 });
 
-describe('criterion 14 â€” a task on the server never calls, and the page hydrates as painted', () => {
+describe('criterion 14 — a task on the server never calls, and the page hydrates as painted', () => {
   const LAYOUT =
     '<!DOCTYPE html><html><head>@RenderHead()</head><body><main>@RenderBody()</main></body></html>';
   const ROUTE = [
