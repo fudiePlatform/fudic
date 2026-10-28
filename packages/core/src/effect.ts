@@ -104,7 +104,7 @@ export function effect(fn: () => void | Cleanup): () => void {
     unsubscribeAll();
     runCleanup();
   };
-  // Created while a component's `@code` runs: it is torn down with the component.
+  // Created while a component's code block runs: it is torn down with the component.
   own(dispose);
   return dispose;
 }

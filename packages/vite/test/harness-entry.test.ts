@@ -52,6 +52,7 @@ describe('@fudic/vite/harness', () => {
         'edgeContext',
         'emitRenderChunk',
         'idWithoutLocale',
+        'loadRouteData',
         'matchRouteBuild',
         'nodeConfigIo',
         'nodeIo',

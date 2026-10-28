@@ -8,7 +8,7 @@
  * Every import is tracked, so a gesture can wait for it (§4.7).
  */
 
-import { installHydration, signal, type HydrationOptions } from '@fudic/core';
+import { installHydration, ROUTE_BLOCK, signal, type HydrationOptions } from '@fudic/core';
 import { browserDom } from '@fudic/dom';
 import { track } from './pending.js';
 import { localized } from './project.js';
@@ -63,6 +63,18 @@ export function chunkMap(components: Iterable<{ readonly tag: string; readonly p
     map.set(`${tag}.ioc`, localized(`${path}?ioc`, locale));
   }
   return map;
+}
+
+/**
+ * `chunks` plus the page's own route, when the page publishes one: the name it writes in
+ * `fud-route` is the name the runtime asks for, and its module is the `?client` of `file`, the
+ * route itself. A page with no client half of its own publishes no name, and adds nothing.
+ */
+export function withRoute(chunks: ChunkMap, doc: Document, file: string, locale?: string): ChunkMap {
+  const block = doc.getElementById(ROUTE_BLOCK);
+  if (block === null) return chunks;
+  const name = JSON.parse(String(block.textContent)) as string;
+  return new Map([...chunks, [name, localized(`${file}?client`, locale)]]);
 }
 
 /**
