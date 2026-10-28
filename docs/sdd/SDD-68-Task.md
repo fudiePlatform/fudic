@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/core` · `@fudic/http` · `@fudic/conventions` · `@fudic/compiler` · `examples/basic`
 > **Rama:** `sdd-68-llamadas-sin-fontaneria`. Nace de `main` **con SDD-67 en `Hecho`**: el endpoint
 > de datos y las llamadas ya viajan en binario.
-> **Progreso:** 16 / 20 — `En curso`.
+> **Progreso:** 17 / 20 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -75,7 +75,7 @@ código, no el test.
 | [x] | 14 | 7 | **`data` refrescable.** En una ruta con `load` y chunk de cliente: `let data = $data` y un contador de versión del que dependen las lecturas de `data` en la vista (SDD §4.8, paso 3) | `compiler` | `src/emit/route-client.ts` · `src/emit/markup-client.ts` |
 | [x] | 15 | 12, 14 | **El oyente de la ruta.** El chunk importa `load.fetch`, escucha `DATA_STALE_EVENT`, pide el `data`, lo cambia y sube el contador; entrega su promesa con `wait` (SDD §4.8, paso 2) | `compiler` · `core` | `src/emit/route-client.ts` · `src/route-data.ts` |
 | [x] | 16 | 15 | **Si falla, recarga.** Un refresco que falla hace `location.reload()` (SDD §4.8, paso 4) | `core` | `src/route-data.ts` |
-| [ ] | 17 | 14–16 | **Los tests de la fase.** Criterios 15–17 con el ejemplo en el navegador de test: la fila cambia sin recargar, las filas que siguen son los mismos nodos, y un 500 del endpoint recarga | `compiler` · `examples/basic` | `test/**` |
+| [x] | 17 | 14–16 | **Los tests de la fase.** Criterios 15–17 con el ejemplo en el navegador de test: la fila cambia sin recargar, las filas que siguen son los mismos nodos, y un 500 del endpoint recarga | `compiler` · `examples/basic` | `test/**` |
 
 ## Fase 5 — el ejemplo y cierre (3)
 
