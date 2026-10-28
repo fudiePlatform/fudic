@@ -942,6 +942,22 @@ describe('createRouter — the published runtime (SDD-45)', () => {
     expect(await h.stores.data.keys()).toEqual([]);
   });
 
+  it('leaves alone what lives under the prefix and is not a piece: data, calls, the marker (BUG-56)', async () => {
+    const h = harness();
+    const { runtime, fake } = runtimeStore(h);
+    const r = router(h, { runtime });
+    // The same `/_fudic/` and nothing versioned after it: a page's data and a GET call answer
+    // something new each time, and the runtime cache never expires anything.
+    for (const url of [`${ORIGIN}_fudic/data/usuarios`, `${ORIGIN}_fudic/fn/routes/usuarios/search`, `${ORIGIN}_fudic/marker/app`]) {
+      const event = fetchEvent(url, { mode: 'cors' });
+      r.handle(event);
+      expect(event.responded).toBeNull();
+    }
+    await r.keepRuntime([`${ORIGIN}_fudic/data/usuarios`]);
+    expect([...fake.entries.keys()]).toEqual([]);
+    expect(h.network).toEqual([]);
+  });
+
   it('is the router of before for an application that links no published runtime', () => {
     const h = harness();
     // Dev, or a project without one. Nothing here changes: the piece URL is just a resource
@@ -985,6 +1001,19 @@ describe('createRouter.keepRuntime (SDD-45)', () => {
     // Said twice, kept once: the second notice reads the cache it just wrote.
     await r.keepRuntime([PIECE]);
     expect(h.network).toEqual([PIECE]);
+  });
+
+  it('with no origin and no `location`, resolves what it is told against a placeholder origin', async () => {
+    const h = harness();
+    const { runtime } = runtimeStore(h);
+    vi.stubGlobal('location', undefined);
+    try {
+      const r = createRouter({ table: compileManifest(FILE), linker: linkerOver(h.stores.routes), stores: h.stores, net: h.net, runtime });
+      await r.keepRuntime(['/_fudic/0.0.1/core/hydrate.js']);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(h.network).toEqual(['http://fudic.invalid/_fudic/0.0.1/core/hydrate.js']);
   });
 
   it('checks the page word against the prefix instead of taking it', async () => {
