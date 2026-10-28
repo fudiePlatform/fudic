@@ -53,7 +53,7 @@ describe('onStaleData', () => {
   it('asks load for the current path, applies the answer, and the wait settles after it', async () => {
     const { load, requests } = fakeLoad<{ n: number }>();
     const applied: { n: number }[] = [];
-    off = onStaleData(load, (data) => void applied.push(data));
+    off = onStaleData(load, (data) => void applied.push(data), document.body);
 
     const waits = announce();
     expect(waits).toHaveLength(1);
@@ -70,7 +70,7 @@ describe('onStaleData', () => {
   it('a newer notice aborts the older request, whose late answer is never applied', async () => {
     const { load, requests } = fakeLoad<string>();
     const applied: string[] = [];
-    off = onStaleData(load, (data) => void applied.push(data));
+    off = onStaleData(load, (data) => void applied.push(data), document.body);
 
     const [first] = announce();
     const [second] = announce();
@@ -87,7 +87,7 @@ describe('onStaleData', () => {
   it('a failed refresh reloads the document, and the wait still settles', async () => {
     const { load, requests } = fakeLoad<string>();
     const apply = vi.fn();
-    off = onStaleData(load, apply);
+    off = onStaleData(load, apply, document.body);
     const [wait] = announce();
     requests[0]!.reject(new Error('500'));
     await expect(wait).resolves.toBeUndefined();
@@ -97,7 +97,7 @@ describe('onStaleData', () => {
 
   it('a replaced request that fails (its abort) reloads nothing', async () => {
     const { load, requests } = fakeLoad<string>();
-    off = onStaleData(load, vi.fn());
+    off = onStaleData(load, vi.fn(), document.body);
     const [first] = announce();
     announce();
     requests[0]!.reject(new DOMException('aborted', 'AbortError'));
@@ -108,7 +108,7 @@ describe('onStaleData', () => {
   it('the teardown aborts the refresh in flight and stops listening', async () => {
     const { load, requests } = fakeLoad<string>();
     const apply = vi.fn();
-    const teardown = onStaleData(load, apply);
+    const teardown = onStaleData(load, apply, document.body);
     const [wait] = announce();
     teardown();
     expect(requests[0]!.signal!.aborted).toBe(true);
@@ -119,9 +119,27 @@ describe('onStaleData', () => {
     expect(requests).toHaveLength(1);
   });
 
+  it('a notice that finds its root out of the document asks nothing and stops listening', async () => {
+    // What a harness does between two visits: the `<body>` replaced in place, the old route
+    // never torn down. Its listener must not refresh, nor reload, for a page that is gone.
+    const { load, requests } = fakeLoad<string>();
+    const apply = vi.fn();
+    const root = document.createElement('div');
+    document.body.append(root);
+    off = onStaleData(load, apply, root);
+    root.remove();
+    expect(announce()).toEqual([]);
+    expect(requests).toHaveLength(0);
+    expect(reload).not.toHaveBeenCalled();
+    // And it is gone for good: put back, nothing listens any more.
+    document.body.append(root);
+    expect(announce()).toEqual([]);
+    expect(requests).toHaveLength(0);
+  });
+
   it('a teardown with nothing in flight just stops listening', () => {
     const { load, requests } = fakeLoad<string>();
-    const teardown = onStaleData(load, vi.fn());
+    const teardown = onStaleData(load, vi.fn(), document.body);
     teardown();
     expect(announce()).toEqual([]);
     expect(requests).toHaveLength(0);
