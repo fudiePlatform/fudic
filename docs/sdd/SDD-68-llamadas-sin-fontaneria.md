@@ -108,13 +108,13 @@ export interface TaskOptions<R> {
 
 export interface Task<A, R, V = R | undefined> {
   /** The last answer that arrived, or `initial`. Kept while a new call is in flight. Tracked. */
-  value(): V;
+  readonly value: Readable<V>;
   /** Tracked. */
-  state(): TaskState;
+  readonly state: Readable<TaskState>;
   /** `state() === 'pending'`. Tracked. */
-  pending(): boolean;
+  readonly pending: Readable<boolean>;
   /** What the last failed call rejected with; `undefined` unless state() is 'failed'. Tracked. */
-  error(): unknown;
+  readonly error: Readable<unknown>;
   /** Starts a call by hand. Resolves with its answer, or `undefined` if it was cancelled, replaced or failed. Never rejects. */
   run(...args: A extends void ? [args?: A] : [args: A]): Promise<R | undefined>;
   /** Aborts the call in flight and drops the ones waiting. */
@@ -475,5 +475,11 @@ Y la tabla de `@foreach (const p of data.users)` se repinta sola.
     `data`, un `data` nuevo no cambiaría nada: no hay oyente.
 20. **La comparación de rutas vive en `@fudic/conventions` (`coversPath`).** La usan el Service
     Worker, para olvidar, y el stub, para avisar: una sola copia.
-21. **Dos avisos seguidos: gana el último refresco.** El anterior se aborta y su respuesta no se
+21. **Una tarea es vista portable (Pedro, 2026-10-28).** En el servidor una tarea no hace nada,
+    así que cualquier backend la evalúa: `pending()` es `false`, `state()` es `'idle'`,
+    `error()` es `undefined` y `value()` es el `initial`. El corte del servidor admite
+    `task(…)` y solo juzga su `initial`, como el valor de un `signal`; `fn` y `source` son del
+    navegador. Por eso las cuatro lecturas son `Readable` (valores derivados, como un
+    `computed`) y no métodos: así las acepta la regla de las llamadas sin argumentos.
+22. **Dos avisos seguidos: gana el último refresco.** El anterior se aborta y su respuesta no se
     aplica, así que un refresco lento no pinta encima de uno nuevo.

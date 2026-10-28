@@ -112,6 +112,19 @@ load ssr ttl 5m cache-first
   users  User[]
 ```
 
+A function carries its verb as `method` (`save.method === 'PUT'`), which is what `task` of
+`@fudic/core` reads to pick its order: `task(save)` queues its calls, `task(search)` keeps the
+last one.
+
+**The page repaints after a call.** A call that changes something invalidates the page it was
+made from, and the paths of its `invalidates`. When the current page is among them, the browser
+asks the server for its `data` again — `load` runs on the server, never in the browser — and the
+page repaints with it, keyed rows kept, scroll and focus where they were. The call resolves
+after the repaint, so the code after the `await` sees the page up to date. There is no
+`location.reload()` to write. If the refresh fails (the network, a `load` under `use auth`
+answering 401), the document reloads and the server paints what its rule says. Only the route's
+`data` is refreshed; what the layout shows changes on the next navigation.
+
 ## The chain
 
 Three levels, from the outside in:

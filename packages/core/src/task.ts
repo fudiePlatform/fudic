@@ -22,6 +22,7 @@
  * `state()` is `'idle'` and `value()` is `initial`, which is where the browser hydrates from.
  */
 
+import { computed, type Readable } from './computed.js';
 import { effect } from './effect.js';
 import { own } from './owner.js';
 import { signal } from './signal.js';
@@ -43,15 +44,21 @@ export interface TaskOptions<R> {
   readonly initial?: R;
 }
 
+/**
+ * The four reads are `Readable`s, derived values like a `computed`, and not methods: that is
+ * what makes `@if (found.pending())` a portable view. On the server a task never calls, so
+ * each of them is a constant there — `initial`, `'idle'`, `false`, `undefined` — which any
+ * backend can paint with.
+ */
 export interface Task<A, R, V = R | undefined> {
   /** The last answer that arrived, or `initial`. Kept while a new call is in flight. Tracked. */
-  value(): V;
+  readonly value: Readable<V>;
   /** Tracked. */
-  state(): TaskState;
+  readonly state: Readable<TaskState>;
   /** `state() === 'pending'`. Tracked. */
-  pending(): boolean;
+  readonly pending: Readable<boolean>;
   /** What the last failed call rejected with; `undefined` unless state() is 'failed'. Tracked. */
-  error(): unknown;
+  readonly error: Readable<unknown>;
   /** Starts a call by hand. Resolves with its answer, or `undefined` if it was cancelled, replaced or failed. Never rejects. */
   run(...args: A extends void ? [args?: A] : [args: A]): Promise<R | undefined>;
   /** Aborts the call in flight and drops the ones waiting. */
@@ -195,10 +202,11 @@ export function task<A, R>(
   });
 
   return {
-    value: () => value(),
-    state: () => state(),
-    pending: () => state() === 'pending',
-    error: () => error(),
+    // Derived, so the writable signals stay the task's own and the reads are real sources.
+    value: computed(() => value()),
+    state: computed(() => state()),
+    pending: computed(() => state() === 'pending'),
+    error: computed(() => error()),
     run: (...args) => start(args[0] as A),
     cancel,
   };

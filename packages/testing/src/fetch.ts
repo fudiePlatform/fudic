@@ -6,11 +6,13 @@
  * 2. A same-origin request under `/_fudic/fn/` goes to the in-memory server, with what a
  *    browser would add to it: the page's cookies, `Origin` and `Sec-Fetch-Site: same-origin`.
  *    The cookies it sets are the page's from then on.
- * 3. Anything else is the test's mistake, and it says which URL it was — instead of letting it
+ * 3. One under `/_fudic/data/` — a page asking for its `data` again — runs the route's `load`,
+ *    the same way and with the same additions.
+ * 4. Anything else is the test's mistake, and it says which URL it was — instead of letting it
  *    out to the network.
  */
 
-import { FN_PREFIX } from '@fudic/conventions';
+import { DATA_PREFIX, FN_PREFIX } from '@fudic/conventions';
 import { inject } from 'vitest';
 import { OPTIONS_KEY } from './constants.js';
 import { track } from './pending.js';
@@ -56,6 +58,11 @@ async function answer(request: Request): Promise<Response> {
     const { functions } = await import('./server.js');
     // The prefix was just checked, which is the only case in which the handler answers `null`.
     return keepCookies((await functions()(asSent(request)))!);
+  }
+  // The page asking for its `data` again, after a call invalidated it (SDD-68 §4.8).
+  if (url.origin === location.origin && url.pathname.startsWith(`${base}${DATA_PREFIX}/`)) {
+    const { routeData } = await import('./data.js');
+    return keepCookies(await routeData(asSent(request), `${base}${DATA_PREFIX}`));
   }
   throw new TypeError(
     `fetch(${url.href}): a test has no network — answer it with mount's \`fetch\` option, or call a server function`,

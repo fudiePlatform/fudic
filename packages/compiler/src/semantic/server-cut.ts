@@ -40,6 +40,7 @@ import {
 const CATALOGUE: ReadonlySet<string> = new Set([
   'signal',
   'computed',
+  'task',
   'inject',
   'trustedUrl',
   'trustedHtml',
@@ -332,6 +333,9 @@ class ServerCut {
       case 'computed':
         this.#computed(unit, declarator, args, use);
         return;
+      case 'task':
+        this.#task(unit, args, use);
+        return;
       case 'inject':
         // A token names a service, it is no value the view paints with (§3.9).
         return;
@@ -358,6 +362,26 @@ class ServerCut {
       if (!isDataLiteral(arg)) values.push(arg);
     }
     this.#expressions(unit, use, values);
+  }
+
+  /**
+   * `task(fn, source?, options?)` (SDD-68 §4.7): on the server a task never calls, so what it
+   * paints with is its `initial` and nothing else — `state()` is `'idle'`, `pending()` is
+   * `false`, `error()` is `undefined`. `fn` and `source` are browser code and are not followed;
+   * `initial`, when written, is judged like the value of a `signal`.
+   */
+  #task(unit: Unit, args: readonly OxcNode[], use: RelatedLocation): void {
+    const options = args[2] === undefined ? undefined : inner(args[2]);
+    if (options === undefined) return;
+    if (options.type !== 'ObjectExpression') {
+      this.#expressions(unit, use, [options]);
+      return;
+    }
+    const initial = children(options, 'properties').find(
+      (p) => p.type === 'Property' && field(p, 'computed') !== true && nameOf(child(p, 'key')!) === 'initial',
+    );
+    const value = initial === undefined ? undefined : inner(child(initial, 'value')!);
+    if (value !== undefined && !isDataLiteral(value)) this.#expressions(unit, use, [value]);
   }
 
   /** `computed(() => e)`: an arrow with no parameters and an expression body, `e` of the list. */
@@ -451,7 +475,9 @@ function isReadCall(call: OxcNode): boolean {
 const COLLECTION: ReadonlySet<string> = new Set(['filter', 'map', 'reduce', 'toSorted']);
 
 /** The catalogue calls whose declaration the typed pass does not type (§3.10). */
-const UNTYPED: ReadonlySet<string> = new Set(['props', 'inject', 'now']);
+// A task is typed by what the view reads of it, `Readable`s whose value has to port: the
+// object itself holds a function and never reaches a backend.
+const UNTYPED: ReadonlySet<string> = new Set(['props', 'inject', 'now', 'task']);
 
 function isPath(node: OxcNode): boolean {
   if (node.type === 'Identifier') return true;
