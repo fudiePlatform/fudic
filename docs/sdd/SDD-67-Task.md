@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/http` · `@fudic/forms` · `@fudic/api` · `@fudic/diagnostics` ·
 > `@fudic/language-server` · `@fudic/testing` · `@fudic/vite` · `examples/*`
 > **Rama:** `sdd-67-binario-y-reglas`. Nace de `main`.
-> **Progreso:** 25 / 33 — `En curso`.
+> **Progreso:** 28 / 33 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -87,9 +87,9 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 25 | 17 | **Autocompletado.** Debajo de un argumento, las seis reglas y ninguna del proyecto | `language-server` | `src/fudapi/completion.ts` |
-| [ ] | 26 | 17 | **Tokens y hover.** Las reglas de un argumento se pintan y se explican como las de un campo | `language-server` | `src/fudapi/semantic-tokens.ts` · `src/fudapi/navigation.ts` |
-| [ ] | 27 | 25, 26 | **Los tests de la fase.** Criterio 19 (autocompletado y hover) | `language-server` | `test/fudapi/**` |
+| [x] | 25 | 17 | **Autocompletado.** Debajo de un argumento, las seis reglas y ninguna del proyecto | `language-server` | `src/fudapi/completion.ts` |
+| [x] | 26 | 17 | **Tokens y hover.** Las reglas de un argumento se pintan y se explican como las de un campo | `language-server` | `src/fudapi/semantic-tokens.ts` · `src/fudapi/navigation.ts` |
+| [x] | 27 | 25, 26 | **Los tests de la fase.** Criterio 19 (autocompletado y hover) | `language-server` | `test/fudapi/**` |
 
 ## Fase 5 — pruebas, migración y cierre (6)
 

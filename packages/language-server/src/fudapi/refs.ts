@@ -80,7 +80,10 @@ export function apiRefs(file: ApiFile, index: ApiIndex): readonly ApiRef[] {
       case 'fn':
         middlewares(d.uses, d.skips);
         if (d.form !== undefined) use(d.form.name, 'form');
-        d.args.forEach((a) => type(a.type));
+        d.args.forEach((a) => {
+          type(a.type);
+          a.rules.forEach(rule);
+        });
         if (d.returns !== undefined) type(d.returns.type);
         break;
       case 'load':

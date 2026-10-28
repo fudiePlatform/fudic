@@ -10,6 +10,7 @@
 
 import {
   DECLARATION_KEYWORDS,
+  isArgRule,
   typeText,
   type ApiIndex,
   type ChainDecl,
@@ -37,6 +38,7 @@ type Context =
   | 'form'
   | 'group'
   | 'field'
+  | 'arg'
   | 'summary'
   | 'when'
   | 'rule'
@@ -54,6 +56,7 @@ const CHILDREN: Readonly<Record<Context, readonly string[]>> = {
   form: ['validate-on', 'validity', 'catches', 'summary'],
   group: ['validate-on', 'validity', 'summary'],
   field: ['validate-on', 'validity', 'range'],
+  arg: [],
   summary: ['require', 'when'],
   when: ['require'],
   rule: ['on', 'runs', 'async', 'fails'],
@@ -140,6 +143,8 @@ function contextOf(chain: readonly Line[]): Context {
     }
     return 'none';
   }
+  // A line under an argument of a function: its rules (SDD-67 §3.5).
+  if (VERBS.has(head)) return chain.length === 2 ? 'arg' : 'none';
   if (head === 'middleware') return parent.words[0] === 'adds' ? 'adds' : 'none';
   if (head !== 'form') return 'none';
   if (parent.words[0] === 'summary') return 'summary';
@@ -153,6 +158,8 @@ function firstWord(doc: ApiDocument, offset: number, chain: readonly Line[], con
   if (context === 'field') {
     const field = fieldAt(formAt(doc, offset), chain[0]!.start);
     if (field !== undefined) items.push(...rules(doc.index.rulesFor(field.type).map((r) => r.decl)));
+  } else if (context === 'arg') {
+    items.push(...rules(doc.index.all('rule').filter(isArgRule).map((r) => r.decl)));
   } else if (context === 'summary') {
     const target = chain.some((l) => l.words[1] === 'group') ? 'group' : 'form';
     items.push(...rules(doc.index.all('rule').map((r) => r.decl).filter((r) => r.on?.target.text === target)));
@@ -216,7 +223,7 @@ function argument(
     case 'when':
       return typing >= (head === 'require' ? 2 : 1) ? list([...paths(doc, offset, chain), ...keywords(EXPRESSION)]) : undefined;
   }
-  if (context === 'field' || context === 'summary') return ruleArgument(index, head, typing);
+  if (context === 'field' || context === 'arg' || context === 'summary') return ruleArgument(index, head, typing);
   if (typing === 1 && TYPED.has(context) && !CHILDREN[context].includes(head)) {
     const extra = context === 'form' || context === 'group' ? [item('group', CompletionItemKind.Keyword)] : [];
     const pattern = context === 'rule' ? [item('pattern', CompletionItemKind.Keyword)] : [];
@@ -249,7 +256,7 @@ function placeholders(doc: ApiDocument, before: string, head: string, context: C
   if (!/\{[A-Za-z_]*$/u.test(before)) return undefined;
   let offered: string[] = [];
   if (head === 'range') offered = ['min', 'max'];
-  else if (context === 'field' || context === 'summary') {
+  else if (context === 'field' || context === 'arg' || context === 'summary') {
     const rule = doc.index.lookup('rule', head)?.decl;
     offered = rule === undefined ? [] : rule.fails.flatMap((f) => f.params.map((p) => p.text));
     if (rule?.runs?.value.text === 'server') offered.push('detail');
