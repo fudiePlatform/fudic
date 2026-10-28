@@ -3,7 +3,7 @@
 > **BUG:** [BUG-55 — Una ruta no puede escuchar el bus, y una señal sembrada desde `data` no se refresca](./BUG-55-ruta-bus-y-senal-desde-data.md)
 > **Paquetes:** `@fudic/compiler` · `examples/basic`
 > **Rama:** `sdd-68-llamadas-sin-fontaneria` (a petición de Pedro: se cierra el producto aquí)
-> **Progreso:** 1 / 4
+> **Progreso:** 2 / 4
 
 ---
 
@@ -17,7 +17,7 @@
 
 | ✓ | # | tarea | package | fichero |
 |---|---|---|---|---|
-| [ ] | 2 | **La señal sembrada se vuelve a sembrar** en cada refresco de `data`, antes del repintado. Tests: toma el valor nuevo y repinta; una señal que no lee `data` no cambia. Criterios 4–5 | `compiler` | `src/emit/oxc-code.ts` · `src/emit/route-client.ts` · `test/emit/hydrate/refresh.test.ts` |
+| [x] | 2 | **La señal sembrada se vuelve a sembrar** en cada refresco de `data`, antes del repintado. Tests: toma el valor nuevo y repinta; una señal que no lee `data` no cambia. Criterios 4–5 | `compiler` | `src/emit/oxc-code.ts` · `src/emit/route-client.ts` · `test/emit/hydrate/refresh.test.ts` |
 
 ## Fase 3 — `/usuarios` sin recargar
 

@@ -255,8 +255,12 @@ function buildRouteClientModule(
   }
   // The new `data` replaces the old one and the pass re-applies every write that reads it, the
   // `@foreach` included, which reconciles by key. Torn down with the route.
+  //
+  // A signal sown from `data` is sown again first, from its own initial value read against the
+  // new one (BUG-55 §2): the server wins over what the page added since the last `data`.
   const pass = renews ? '$u();' : renderPass(em.inPlace, reconcile);
-  if (refreshes) bodies.hook.line(`$d.push($stale($load, ($next) => { data = $next; ${pass} }, $root));`);
+  const resow = code.signals.flatMap((s) => (s.seeded === true ? [`${s.name}.set(${s.init}); `] : [])).join('');
+  if (refreshes) bodies.hook.line(`$d.push($stale($load, ($next) => { data = $next; ${resow}${pass} }, $root));`);
 
   const owns = ownsCode(code.neutral, code.client.body);
   const w = new CodeWriter();

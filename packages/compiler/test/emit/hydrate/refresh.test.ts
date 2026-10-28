@@ -107,10 +107,10 @@ const load = {
 
 const probe: { run?: Promise<unknown> } = {};
 
-function hydrated(): Controller {
+function hydrated(route = ROUTE): Controller {
   const graph = resolveDocument(
     '/usuarios.fud',
-    { ...memoryIo({ '/usuarios.fud': ROUTE, '/l.fud': LAYOUT }), api: (path) => (path === '/usuarios.fudapi' ? API : undefined) },
+    { ...memoryIo({ '/usuarios.fud': route, '/l.fud': LAYOUT }), api: (path) => (path === '/usuarios.fudapi' ? API : undefined) },
   ).value;
   const modules = {
     '@fudic/core': core,
@@ -251,6 +251,56 @@ describe('a mutation repaints the route (§4.8)', () => {
     );
     expect(waits).toEqual([]);
     expect(asked).toEqual([]);
+  });
+});
+
+/** The table painted from a signal sown from `data`, which the page can add to (BUG-55 §2). */
+const SEEDED = [
+  '<link rel="layout" href="./l.fud">',
+  '<link rel="server" href="./usuarios.fudapi">',
+  '@code {',
+  '  import { signal, task } from "@fudic/core";',
+  '  const personas = signal(data.users);',
+  '  const vistas = signal(0);',
+  '  const borrar = task(remove);',
+  '  function quitar(id) { probe.run = borrar.run({ id }); }',
+  '  function alta() { personas.set([...personas(), { id: 9, name: "Ivo", active: true }]); vistas.set(vistas() + 1); }',
+  '}',
+  '<button class="alta" @click=@alta>alta</button>',
+  '<output class="vistas">@vistas()</output>',
+  '<table><tbody>',
+  '@foreach (const p of personas()) key (p.id) {',
+  '<tr data-id=@p.id><td>@p.name</td><td><button @click=@quitar(p.id)>Borrar</button></td></tr>',
+  '}',
+  '</tbody></table>',
+].join('\n');
+
+const ids = (): string[] => rows().map((r) => r.dataset['id']!);
+
+describe('a signal sown from `data` is sown again by the new one (BUG-55 §2)', () => {
+  it('4. removing a row takes it out of the signal the table paints', async () => {
+    controller = hydrated(SEEDED);
+    (document.querySelector('tr[data-id="2"] button') as HTMLButtonElement).click();
+    await probe.run;
+    expect(asked).toEqual(['/usuarios']);
+    expect(ids()).toEqual(['1', '3']);
+  });
+
+  it('4. the server wins: what the page added and the server does not have is gone', async () => {
+    controller = hydrated(SEEDED);
+    (document.querySelector('button.alta') as HTMLButtonElement).click();
+    expect(ids()).toEqual(['1', '2', '3', '9']);
+    (document.querySelector('tr[data-id="1"] button') as HTMLButtonElement).click();
+    await probe.run;
+    expect(ids()).toEqual(['2', '3']);
+  });
+
+  it('5. a signal that does not read `data` keeps its value', async () => {
+    controller = hydrated(SEEDED);
+    (document.querySelector('button.alta') as HTMLButtonElement).click();
+    (document.querySelector('tr[data-id="1"] button') as HTMLButtonElement).click();
+    await probe.run;
+    expect(document.querySelector('output.vistas')!.textContent).toBe('1');
   });
 });
 
