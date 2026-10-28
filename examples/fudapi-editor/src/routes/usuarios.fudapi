@@ -5,6 +5,8 @@ load ssr
 # People whose name contains q.
 get search
   q  str
+    min-length 2
+    max-length 80  "Search with 80 characters at most."
   -> Person[]
 
 # Turns a person on or off.

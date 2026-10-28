@@ -21,6 +21,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type AddressInfo } from 'node:net';
 import { fudic } from '../src/index.js';
+import { binInit, binProblem, binQuery, binValue, type Ty } from './helpers/fud-bin.js';
 import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
 
 /** The package `@fudic/http`: its `fudapi/`, its compiled halves and its `dist`. */
@@ -373,6 +374,12 @@ describe('criteria 7 and 8: the client output', () => {
 describe('criterion 38: vite preview serves the functions from functions.mjs', () => {
   const call = (path: string, init: RequestInit = {}) =>
     fetch(`${origin}/_fudic/fn${path}`, { ...init, headers: { 'x-fudic-csrf': '1', ...(init.headers as Record<string, string>) } });
+  /** The canonical texts of SDD-67 §4.3 of these functions: the signatures their page sends. */
+  const SEARCH = 'route()|query()|body(q:str)|->str[]';
+  const REMOVE = 'route()|query()|body()|->';
+  const SAVE = 'route()|query()|body()|->{from:str,count:i32}';
+  const HOLA = 'route()|query()|body()|->str';
+  const SAVED: Ty = { fields: () => ({ from: 'str', count: 'i32' }) };
 
   it('functions.mjs exports the handler and the table', async () => {
     const mod = (await import(join(root, '.fudic', 'edge', 'functions.mjs').replace(/\\/gu, '/').replace(/^(?=[A-Za-z]:)/u, 'file:///'))) as {
@@ -381,7 +388,7 @@ describe('criterion 38: vite preview serves the functions from functions.mjs', (
     };
     // What an adapter does with it: a Request in, a Response out, in plain Node.
     const res = await mod.handle(
-      new Request('http://x/_fudic/fn/components/user-form/save', { method: 'PUT', headers: { 'x-fudic-csrf': '1' } }),
+      new Request('http://x/_fudic/fn/components/user-form/save', binInit(SAVE, {}, {}, { method: 'PUT', headers: { 'x-fudic-csrf': '1' } })),
     );
     expect(res!.status).toBe(200);
     expect(await mod.handle(new Request('http://x/usuarios'))).toBeNull();
@@ -394,35 +401,37 @@ describe('criterion 38: vite preview serves the functions from functions.mjs', (
   });
 
   it('criterion 21: GET search?a=… returns what handle returned, through the server half of auth', async () => {
-    const a = encodeURIComponent(JSON.stringify({ q: 'an' }));
-    const res = await call(`/routes/usuarios/search?a=${a}`);
+    const res = await call(`/routes/usuarios/search?a=${binQuery({ q: 'str' }, { q: 'an' })}`, binInit(SEARCH));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual(['ana']);
+    expect(res.headers.get('content-type')).toBe('application/fud+bin');
+    expect(await binValue(res, { list: 'str' })).toEqual(['ana']);
     expect(res.headers.get('x-digest')).toMatch(/^[0-9a-f]{8}$/u);
     expect(res.headers.get('x-token-user')).toBe('ana');
   });
 
   it('criterion 23: a 404 thrown in handle is a problem', async () => {
-    const res = await call('/routes/usuarios/remove', { method: 'DELETE' });
+    const res = await call('/routes/usuarios/remove', binInit(REMOVE, {}, {}, { method: 'DELETE' }));
     expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ status: 404, title: 'Not Found', detail: 'gone' });
+    expect(res.headers.get('content-type')).toBe('application/problem+fud');
+    expect(await binProblem(res)).toEqual({ status: 404, title: 'Not Found', detail: 'gone' });
   });
 
   it('criterion 35: csrf from src/http.fudapi', async () => {
-    expect((await fetch(`${origin}/_fudic/fn/components/user-form/save`, { method: 'PUT' })).status).toBe(403);
-    expect((await call('/components/user-form/save', { method: 'PUT', headers: { 'sec-fetch-site': 'cross-site' } })).status).toBe(403);
-    expect((await call('/components/user-form/save', { method: 'PUT', headers: { origin: 'https://evil.test' } })).status).toBe(403);
-    const a = encodeURIComponent(JSON.stringify({ q: 'l' }));
-    expect((await fetch(`${origin}/_fudic/fn/routes/usuarios/search?a=${a}`)).status).toBe(200);
+    const save = (headers: Record<string, string> = {}) => binInit(SAVE, {}, {}, { method: 'PUT', headers });
+    expect((await fetch(`${origin}/_fudic/fn/components/user-form/save`, save())).status).toBe(403);
+    expect((await call('/components/user-form/save', save({ 'sec-fetch-site': 'cross-site' }))).status).toBe(403);
+    expect((await call('/components/user-form/save', save({ origin: 'https://evil.test' }))).status).toBe(403);
+    const a = binQuery({ q: 'str' }, { q: 'l' });
+    expect((await fetch(`${origin}/_fudic/fn/routes/usuarios/search?a=${a}`, binInit(SEARCH))).status).toBe(200);
   });
 
   it('criterion 36: the component function, one URL by its <id>, inject from the request root', async () => {
-    const res = await call('/components/user-form/save', { method: 'PUT' });
-    expect(await res.json()).toEqual({ from: 'COMPONENT_HANDLE_MARK', count: 2 });
+    const res = await call('/components/user-form/save', binInit(SAVE, {}, {}, { method: 'PUT' }));
+    expect(await binValue(res, SAVED)).toEqual({ from: 'COMPONENT_HANDLE_MARK', count: 2 });
   });
 
   it('the root route function answers at /_fudic/fn/routes/index/hola', async () => {
-    expect(await (await call('/routes/index/hola')).json()).toBe('ROOT_HANDLE_MARK');
+    expect(await binValue(await call('/routes/index/hola', binInit(HOLA)), 'str')).toBe('ROOT_HANDLE_MARK');
   });
 
   it('a path that is no function is 404, and what is not under /_fudic/fn goes on', async () => {

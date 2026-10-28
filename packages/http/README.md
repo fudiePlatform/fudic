@@ -87,6 +87,23 @@ An `html` value crosses as text, never as trusted markup: a `TrustedHTML` the se
 arrives as its text, in the server's own render and in the browser alike, so `@raw` escapes it on
 both sides. What a `load` returns is data, and that holds at any depth of it.
 
+An argument takes rules below it, as a form field does: `required`, `min`, `max`,
+`min-length`, `max-length` and `pattern`, with the same meaning, since the code is the same. The
+browser checks them before anything leaves, and the server again before the chain: the first
+that fails is a `400` whose `detail` is the rule's text, or `argument name: max-length 80`.
+
+```
+put save /:id
+  name  str
+    required
+    max-length 80
+  age   u8
+    min 18  "Too young."
+```
+
+The rules of the project are written for a form and are not allowed here: check that in the
+handler.
+
 `load` is declared the same way, and is always a GET:
 
 ```
@@ -158,7 +175,7 @@ auth.server((ctx, next) => {
 
 `csrf` and `error-pages` are declared in this package's `fudapi/` and implemented in its
 `browser/` and `server/`: installing `@fudic/http` makes them visible to every `.fudapi` of the
-app.
+app. So is `json`, which has no halves: it is a mark the compiler reads (see below).
 
 ## Errors
 
@@ -185,11 +202,32 @@ request: `load`, `layout`, a handler, a middleware's server half, and whatever t
 cached data of the current page and of `invalidates`, and waits for the Service Worker to
 confirm it.
 
-## The upload
+## On the wire
 
-A form travels positionally — both ends build it from the same declaration, so the field names
-add nothing. When every field has a type it travels in binary, and past the threshold of
-`compress` it is compressed. None of this is written by hand.
+Every call travels in binary: its arguments, its value and its problem. Both ends hold the
+same contract, so names and types stay home and only the values travel — a `bool` is a bit, a
+`uuid` 16 bytes, a `date` 6 bytes that come back a `Date`. Route and `query` arguments stay in
+the URL as text; the body is `application/fud+bin`, a failure `application/problem+fud`, and
+the arguments of a `get` go in `?a=` as base64url. A value that does not fit its type is
+refused by the side that writes it, never sent in another format. Past the threshold of
+`compress` the body is compressed.
+
+For a client that is not a fudic page, `use json` switches a function to JSON with its keys
+(`application/json`, `application/problem+json`). It is a middleware like any other: put it in a
+`chain` and `skip json` where binary is wanted. Each function speaks exactly one format, decided
+by the compiler; a body in the other one is a `415`.
+
+Every binary function carries a signature of its types in the `fud-sig` header. A page that the
+Service Worker kept from before a deploy, calling a function whose types changed, gets a `412`
+("the page is older than the server") instead of bytes the server would misread; `error-pages`
+takes it to the error page like any other status. Rules and comments do not change it.
+
+The format is written down byte by byte with test vectors in `wire/vectors.json`: a backend in
+another language that writes and reads all of them speaks it. `signature` and the codecs live in
+`@fudic/http/wire`, `/wire/bin` and `/wire/json`.
+
+In a test whose `fetch` answers by hand, `respond(fn, value)` and `respondProblem(fn, problem)`
+of `@fudic/testing` write the response in the function's own format.
 
 ## Deploying
 

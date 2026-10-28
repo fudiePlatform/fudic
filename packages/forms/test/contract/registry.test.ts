@@ -4,7 +4,7 @@
  */
 
 import { afterEach, describe, expect, it } from 'vitest';
-import { Slot, folderOf, inTurn, loadingFile, resetRegistry, setFolders, takeRefusal } from '../../src/contract/index.js';
+import { Slot, folderOf, inTurn, loadingFile, settled, resetRegistry, setFolders, takeRefusal } from '../../src/contract/index.js';
 
 afterEach(() => {
   loadingFile(undefined);
@@ -117,5 +117,35 @@ describe('roots in turn (SDD-60 §4.4: one root per locale)', () => {
     await expect(a).rejects.toThrow('a');
     await b;
     expect(order).toEqual(['a:start', 'a:end', 'b:start', 'b:end']);
+  });
+});
+
+describe('settled (SDD-67: a call waits for the roots)', () => {
+  it('resolves once every root asked so far has loaded, and not before', async () => {
+    const order: string[] = [];
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    void inTurn(async () => {
+      await gate;
+      order.push('root');
+    });
+    const waited = settled().then(() => order.push('call'));
+    await Promise.resolve();
+    expect(order).toEqual([]);
+    release();
+    await waited;
+    expect(order).toEqual(['root', 'call']);
+  });
+
+  it('a root that failed does not hold a call back, nor fail it', async () => {
+    const failed = inTurn(async () => {
+      throw new Error('broken root');
+    });
+    await expect(failed).rejects.toThrow('broken root');
+    await expect(settled()).resolves.toBeUndefined();
+  });
+
+  it('with no root asked, it is already settled', async () => {
+    await expect(settled()).resolves.not.toThrow();
   });
 });

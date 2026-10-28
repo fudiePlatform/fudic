@@ -16,6 +16,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type AddressInfo } from 'node:net';
 import { fudic } from '../src/index.js';
+import { binInit, binProblem, binQuery, binValue, type Ty } from './helpers/fud-bin.js';
 import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
 
 /** The package `@fudic/http`: its `fudapi/`, its compiled halves and its `dist`. */
@@ -196,47 +197,65 @@ const page = (path: string) => fetch(`${origin}${path}`, { headers: { accept: 't
 const call = (path: string, init: RequestInit = {}) =>
   fetch(`${origin}/_fudic/fn${path}`, { ...init, headers: { 'x-fudic-csrf': '1', ...(init.headers as Record<string, string>) } });
 
-describe('server functions in dev', () => {
+/** The canonical texts of SDD-67 §4.3 of these functions: the signatures their page sends. */
+const SEARCH = 'route()|query()|body(q:str)|->str[]';
+const REMOVE = 'route()|query()|body()|->';
+const SAVE = 'route()|query()|body()|->{from:str,count:i32}';
+const CRASH = 'route()|query()|body()|->str';
+const SAVED: Ty = { fields: () => ({ from: 'str', count: 'i32' }) };
+
+describe('server functions in dev, in fud-bin', () => {
   it('criterion 21: GET …/search?a=… returns what handle returned', async () => {
-    const a = encodeURIComponent(JSON.stringify({ q: 'an' }));
-    const res = await call(`/routes/usuarios/search?a=${a}`);
+    const a = binQuery({ q: 'str' }, { q: 'an' });
+    const res = await call(`/routes/usuarios/search?a=${a}`, binInit(SEARCH));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual(['ana']);
+    expect(res.headers.get('content-type')).toBe('application/fud+bin');
+    expect(await binValue(res, { list: 'str' })).toEqual(['ana']);
   });
 
   it('criterion 23: a 404 thrown in handle comes back as a problem', async () => {
-    const res = await call('/routes/usuarios/remove', { method: 'DELETE' });
+    const res = await call('/routes/usuarios/remove', binInit(REMOVE, {}, {}, { method: 'DELETE' }));
     expect(res.status).toBe(404);
-    expect(res.headers.get('content-type')).toBe('application/problem+json');
-    expect(await res.json()).toEqual({ status: 404, title: 'Not Found', detail: 'gone' });
+    expect(res.headers.get('content-type')).toBe('application/problem+fud');
+    expect(await binProblem(res)).toEqual({ status: 404, title: 'Not Found', detail: 'gone' });
   });
 
   it('criterion 36: a component function, by its <id>, resolving inject from the request root', async () => {
-    const res = await call('/components/user-form/save', { method: 'PUT' });
+    const res = await call('/components/user-form/save', binInit(SAVE, {}, {}, { method: 'PUT' }));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ from: 'user-form', count: 2 });
+    expect(await binValue(res, SAVED)).toEqual({ from: 'user-form', count: 2 });
+  });
+
+  it('criterion 8: a page built against another contract is a 412', async () => {
+    const res = await call('/components/user-form/save', binInit(`${SAVE}?`, {}, {}, { method: 'PUT' }));
+    expect(res.status).toBe(412);
+    expect((await binProblem(res)).detail).toBe('the page is older than the server');
   });
 
   it('criterion 35: src/http.fudapi puts csrf in every chain', async () => {
-    const bare = await fetch(`${origin}/_fudic/fn/components/user-form/save`, { method: 'PUT' });
+    const bare = await fetch(`${origin}/_fudic/fn/components/user-form/save`, binInit(SAVE, {}, {}, { method: 'PUT' }));
     expect(bare.status).toBe(403);
-    const cross = await call('/components/user-form/save', { method: 'PUT', headers: { 'sec-fetch-site': 'cross-site' } });
+    const cross = await call('/components/user-form/save', binInit(SAVE, {}, {}, { method: 'PUT', headers: { 'sec-fetch-site': 'cross-site' } }));
     expect(cross.status).toBe(403);
-    const foreign = await call('/components/user-form/save', { method: 'PUT', headers: { origin: 'https://evil.test' } });
+    const foreign = await call('/components/user-form/save', binInit(SAVE, {}, {}, { method: 'PUT', headers: { origin: 'https://evil.test' } }));
     expect(foreign.status).toBe(403);
     // A GET without the header passes.
-    const a = encodeURIComponent(JSON.stringify({ q: 'l' }));
-    expect((await fetch(`${origin}/_fudic/fn/routes/usuarios/search?a=${a}`)).status).toBe(200);
+    const a = binQuery({ q: 'str' }, { q: 'l' });
+    expect((await fetch(`${origin}/_fudic/fn/routes/usuarios/search?a=${a}`, binInit(SEARCH))).status).toBe(200);
   });
 
   it('a function that throws an Error: 500 with its message in dev', async () => {
-    const res = await fetch(`${origin}/_fudic/fn/routes/usuarios/crash`);
+    const res = await fetch(`${origin}/_fudic/fn/routes/usuarios/crash`, binInit(CRASH));
     expect(res.status).toBe(500);
-    expect(await res.json()).toEqual({ status: 500, title: 'Internal Server Error', detail: 'mal' });
+    expect(await binProblem(res)).toEqual({ status: 500, title: 'Internal Server Error', detail: 'mal' });
   });
 
-  it('an unknown function, load, and the wrong verb', async () => {
+  it('criterion 14: an unknown function is a 404, in JSON to whoever accepts it; load, and the wrong verb', async () => {
     expect((await call('/routes/usuarios/nope')).status).toBe(404);
+    const json = await call('/routes/usuarios/nope', { headers: { accept: 'application/json' } });
+    expect(json.headers.get('content-type')).toBe('application/problem+json');
+    expect(((await json.json()) as { detail?: string }).detail).toBe('no such server function');
+    expect((await call('/routes/usuarios/nope')).headers.get('content-type')).toBe('application/problem+fud');
     expect((await call('/routes/usuarios/load')).status).toBe(404);
     expect((await call('/routes/usuarios/search', { method: 'POST', body: '{}' })).status).toBe(405);
   });

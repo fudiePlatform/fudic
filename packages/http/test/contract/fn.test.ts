@@ -8,7 +8,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRoot } from '@fudic/di';
-import { formOf, required, serverValidator, str, u8 } from '@fudic/forms/contract';
+import { formOf, inTurn, required, serverValidator, str, u8 } from '@fudic/forms/contract';
 import {
   contractsOf,
   fn,
@@ -558,5 +558,46 @@ describe('criterion 11: a GET with use json', () => {
     expect(await stub<never, string[], { q: string }>(spec)({ q: 'an' })).toEqual(['Ana']);
     expect(JSON.parse(sent[0]!.url.searchParams.get('a')!)).toEqual({ q: 'an' });
     expect(headersOf(sent[0]!.init).has('fud-sig')).toBe(false);
+  });
+});
+
+describe('a call waits for the browser root (SDD-67: the race after hydration)', () => {
+  it('a client half the root registers after the call starts still runs, before the request', async () => {
+    const trace: string[] = [];
+    const log = middleware({ id: 'middlewares/log', name: 'log', client: true });
+    const spec: FnSpec = {
+      id: 'routes/usuarios',
+      name: 'ping',
+      method: 'GET',
+      returns: 'str',
+      chain: [{ steps: [{ use: [use(log)] }] }],
+      wire: binWire,
+    };
+    const server = fn(spec);
+    server.handle(() => {
+      trace.push('server');
+      return 'pong';
+    });
+    served(server);
+    const ping = stub<never, string, void>(spec);
+
+    // The root is still importing src/browser: the half arrives a turn later.
+    let release!: () => void;
+    const loaded = new Promise<void>((r) => (release = r));
+    const root = inTurn(async () => {
+      await loaded;
+      log.client((ctx, next) => {
+        trace.push('client half');
+        return next(ctx);
+      });
+    });
+
+    const answer = ping();
+    await Promise.resolve();
+    expect(trace).toEqual([]);
+    release();
+    await root;
+    expect(await answer).toBe('pong');
+    expect(trace).toEqual(['client half', 'server']);
   });
 });

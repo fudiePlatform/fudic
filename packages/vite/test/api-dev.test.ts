@@ -16,6 +16,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { type AddressInfo } from 'node:net';
 import { fudic } from '../src/index.js';
+import { binInit, binProblem, binValue } from './helpers/fud-bin.js';
 import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
 
 const API = `load ssr
@@ -33,6 +34,10 @@ const PAGE = `<!DOCTYPE html>
 <body><p>n = @data.n</p></body>
 </html>
 `;
+
+/** The canonical texts of SDD-67 §4.3 of these functions: the signatures a page sends. */
+const STR = 'route()|query()|body()|->str';
+const NONE = 'route()|query()|body()|->';
 
 const DUP_API = `get twice
   -> str
@@ -100,7 +105,7 @@ describe('the functions of a .fudapi in dev', () => {
   });
 
   it('a function answers, and the page renders its load', async () => {
-    expect(await (await fetch(`${app.origin}/_fudic/fn/routes/home/hello`)).json()).toBe('hola');
+    expect(await binValue(await fetch(`${app.origin}/_fudic/fn/routes/home/hello`, binInit(STR)), 'str')).toBe('hola');
     const html = await (await fetch(`${app.origin}/home`, { headers: { accept: 'text/html' } })).text();
     expect(html).toContain('n = 3');
   });
@@ -114,23 +119,24 @@ describe('the functions of a .fudapi in dev', () => {
   });
 
   it('criterion 16: without .handle, a 404 that says what is missing', async () => {
-    const response = await fetch(`${app.origin}/_fudic/fn/routes/home/nobody`);
+    const response = await fetch(`${app.origin}/_fudic/fn/routes/home/nobody`, binInit(NONE));
     expect(response.status).toBe(404);
-    expect(((await response.json()) as { detail?: string }).detail).toBe('nobody of routes/home has no implementation in src/server');
+    expect((await binProblem(response)).detail).toBe('nobody of routes/home has no implementation in src/server');
   });
 
   it('an edit of a handler is seen by the next request', async () => {
     writeFileSync(join(app.root, 'src/server/home.ts'), handler('editado'));
-    await expect.poll(async () => (await fetch(`${app.origin}/_fudic/fn/routes/home/hello`)).json(), { timeout: 20000 }).toBe('editado');
+    await expect.poll(async () => binValue(await fetch(`${app.origin}/_fudic/fn/routes/home/hello`, binInit(STR)), 'str'), { timeout: 20000 }).toBe('editado');
   });
 
   it('criterion 17: two implementations of one piece fail the request and reach the overlay', async () => {
     writeFileSync(join(app.root, 'src/server/dup-b.ts'), "import { twice } from 'fudic:routes/dup';\ntwice.handle(() => 'b');\n");
     await app.server.watcher.emit('add', join(app.root, 'src/server/dup-b.ts'));
     await expect
-      .poll(async () => (await fetch(`${app.origin}/_fudic/fn/routes/dup/twice`)).status, { timeout: 20000 })
+      .poll(async () => (await fetch(`${app.origin}/_fudic/fn/routes/dup/twice`, binInit(STR))).status, { timeout: 20000 })
       .toBe(500);
-    const text = await (await fetch(`${app.origin}/_fudic/fn/routes/dup/twice`)).text();
+    // The root fails to load before any function is found: the dev server's own 500, in text.
+    const text = await (await fetch(`${app.origin}/_fudic/fn/routes/dup/twice`, binInit(STR))).text();
     expect(text).toContain('twice of routes/dup is implemented twice: src/server/dup-a.ts, src/server/dup-b.ts');
   });
 
@@ -144,8 +150,8 @@ describe('the functions of a .fudapi in dev', () => {
 
 describe('criterion 22: the folder fudic.json names', () => {
   it('src/backend answers, and src/server is never loaded', async () => {
-    expect(await (await fetch(`${moved.origin}/_fudic/fn/routes/home/hello`)).json()).toBe('from backend');
-    const response = await fetch(`${moved.origin}/_fudic/fn/routes/home/nobody`);
-    expect(((await response.json()) as { detail?: string }).detail).toBe('nobody of routes/home has no implementation in src/backend');
+    expect(await binValue(await fetch(`${moved.origin}/_fudic/fn/routes/home/hello`, binInit(STR)), 'str')).toBe('from backend');
+    const response = await fetch(`${moved.origin}/_fudic/fn/routes/home/nobody`, binInit(NONE));
+    expect((await binProblem(response)).detail).toBe('nobody of routes/home has no implementation in src/backend');
   });
 });

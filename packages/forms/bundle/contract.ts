@@ -31,6 +31,7 @@ export {
   Slot,
   folderOf,
   inTurn,
+  settled,
   loadingFile,
   resetRegistry,
   setFolders,

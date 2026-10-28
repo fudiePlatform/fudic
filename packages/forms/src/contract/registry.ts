@@ -74,6 +74,13 @@ export function inTurn(load: () => Promise<void>): Promise<void> {
   return mine;
 }
 
+/**
+ * Every root asked so far, loaded or failed. A call waits for it before it reads a slot: the
+ * browser root loads its folder with dynamic imports, and a click that lands first would find
+ * the client half of its chain still empty.
+ */
+export const settled = (): Promise<unknown> => turn;
+
 /** Empties every slot: what a dev reload does before loading the folders again. */
 export function resetRegistry(): void {
   for (const slot of slots) slot.clear();

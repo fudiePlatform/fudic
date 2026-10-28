@@ -130,6 +130,81 @@ test.describe('/usuarios', () => {
   });
 });
 
+/** The URL of `search` and its family. */
+const FN = '/_fudic/fn/routes/usuarios';
+
+/** `?a=` of a `{ q: str }` in fud-bin: the length of `q` as a varint, its bytes, in base64url. */
+function binQ(q: string): string {
+  const text = Buffer.from(q, 'utf8');
+  const length: number[] = [];
+  let n = text.length;
+  do {
+    length.push(n > 127 ? (n & 127) | 128 : n);
+    n >>= 7;
+  } while (n > 0);
+  return Buffer.concat([Buffer.from(length), text]).toString('base64url');
+}
+
+test.describe('SDD-67: every call in binary, and the rules of its arguments', () => {
+  test('criterion 5: the search leaves in fud-bin, signed, and its answer comes back in fud-bin', async ({ page }) => {
+    await open(page);
+    const request = page.waitForRequest((r) => r.url().includes(`${FN}/search?`));
+    const response = page.waitForResponse((r) => r.url().includes(`${FN}/search?`));
+    await page.getByLabel('Buscar por nombre').fill('mar');
+    const sent = await request;
+    expect(sent.headers()['fud-sig']).toMatch(/^[0-9a-f]{8}$/u);
+    expect(new URL(sent.url()).searchParams.get('a')).toBe(binQ('mar'));
+    expect((await response).headers()['content-type']).toBe('application/fud+bin');
+    await expect(page.locator('ul li')).toHaveText(['Marta — marta@fudic.dev']);
+  });
+
+  test('criterion 15: 81 characters never leave the browser; sent by hand, the server says the same', async ({ page }) => {
+    await open(page);
+    // A valid search first: the signature its page sends, to send by hand as the page would.
+    const first = page.waitForRequest((r) => r.url().includes(`${FN}/search?`));
+    await page.getByLabel('Buscar por nombre').fill('mar');
+    const sig = (await first).headers()['fud-sig']!;
+    await expect(page.locator('ul li')).toHaveText(['Marta — marta@fudic.dev']);
+
+    const searches: string[] = [];
+    page.on('request', (r) => {
+      if (r.url().includes(`${FN}/search?`)) searches.push(r.url());
+    });
+    await page.getByLabel('Buscar por nombre').fill('x'.repeat(81));
+    await page.waitForTimeout(500);
+    expect(searches).toEqual([]);
+    // The list is the one before: the call was refused, nothing came back.
+    await expect(page.locator('ul li')).toHaveText(['Marta — marta@fudic.dev']);
+
+    const byHand = await page.request.get(`${FN}/search?a=${binQ('x'.repeat(81))}`, { headers: { 'fud-sig': sig } });
+    expect(byHand.status()).toBe(400);
+    expect(byHand.headers()['content-type']).toBe('application/problem+fud');
+    expect((await byHand.body()).toString('utf8')).toContain('argument q: max-length 80');
+    const fits = await page.request.get(`${FN}/search?a=${binQ('x'.repeat(80))}`, { headers: { 'fud-sig': sig } });
+    expect(fits.status()).toBe(200);
+  });
+
+  test('criterion 8: a page older than the server is a 412', async ({ page }) => {
+    const stale = await page.request.get(`${FN}/search?a=${binQ('mar')}`, { headers: { 'fud-sig': '00000000' } });
+    expect(stale.status()).toBe(412);
+    expect((await stale.body()).toString('utf8')).toContain('the page is older than the server');
+  });
+
+  test('criterion 11: searchJson answers JSON with its keys, without a signature', async ({ page }) => {
+    const a = encodeURIComponent(JSON.stringify({ q: 'mar' }));
+    const res = await page.request.get(`${FN}/searchJson?a=${a}`);
+    expect(res.status()).toBe(200);
+    expect(res.headers()['content-type']).toBe('application/json');
+    expect(await res.json()).toEqual([expect.objectContaining({ name: 'Marta', email: 'marta@fudic.dev' })]);
+
+    const long = encodeURIComponent(JSON.stringify({ q: 'x'.repeat(81) }));
+    const refused = await page.request.get(`${FN}/searchJson?a=${long}`);
+    expect(refused.status()).toBe(400);
+    expect(refused.headers()['content-type']).toBe('application/problem+json');
+    expect(await refused.json()).toMatchObject({ status: 400, detail: 'argument q: max-length 80' });
+  });
+});
+
 test.describe('user-form', () => {
   /** `user-form` hydrates on its first gesture, not on load: a click brings it up. */
   async function fill(page: Page, name: string, email: string): Promise<void> {

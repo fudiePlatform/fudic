@@ -10,7 +10,7 @@
  */
 
 import type { AnyForm } from '@fudic/forms';
-import { Slot } from '@fudic/forms/contract';
+import { Slot, settled } from '@fudic/forms/contract';
 import { FN_PREFIX } from '@fudic/conventions';
 import { decode } from '../client/codec.js';
 import { join, pageParams } from '../client/url.js';
@@ -118,6 +118,9 @@ export function stub<C, R, A>(spec: FnSpec): Contract<C, R, A> {
   const { steps, compression } = compose(spec.chain, 'client');
 
   const call = async (input?: unknown, options: CallOptions = {}): Promise<unknown> => {
+    // The client halves of the chain and the browser rules are registered by the browser root,
+    // which loads its folder with dynamic imports: a call made before that would find them empty.
+    await settled();
     const record = (input ?? {}) as Readonly<Record<string, unknown>>;
     const form = spec.form === undefined ? undefined : places(spec) ? record['form'] : input;
     if (isForm(form)) {

@@ -2,9 +2,17 @@
 load ssr
   users  Person[]
 
-# Public: searching needs no token.
+# Public: searching needs no token. A longer text is refused in the browser, before it leaves.
 get search
   q  str
+    max-length 80
+  -> Person[]
+
+# The same search for a client that is not a fudic page: JSON in and out.
+get searchJson
+  use json
+  q  str
+    max-length 80
   -> Person[]
 
 # The same search, three seconds late: time to cancel it.

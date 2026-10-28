@@ -6,6 +6,7 @@
  * - Criteria 15, 36, 37: the function answers at `/_fudic/fn/<id>/<name><route>`, with the
  *   page's params, its route, its query and its body, each typed, and what `auth` adds.
  * - Criterion 16: without `.handle`, a 404 — with no `detail` in a build.
+ * - SDD-67: every call by hand in `fud-bin`, signed with the canonical text of its §4.3.
  * - Criterion 19: an error in a handler names the `.ts` of `src/server` and its line.
  * - Criterion 20: Oxc never reads `src/server` nor `src/browser` (a spy on the parser).
  * - Criterion 21: nothing of `src/server` reaches the client bundle.
@@ -19,6 +20,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { type AddressInfo } from 'node:net';
 import { fudic } from '../src/index.js';
+import { binInit, binProblem, binValue, type Ty } from './helpers/fud-bin.js';
 import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
 
 /** Every source the compiler handed Oxc, for criterion 20. */
@@ -182,36 +184,49 @@ describe('criterion 26: the mode of a route, from its .fudapi', () => {
   });
 });
 
-describe('the functions, served by preview from functions.mjs', () => {
+describe('the functions, served by preview from functions.mjs, in fud-bin', () => {
   const call = (path: string, init: RequestInit = {}) =>
     fetch(`${origin}/_fudic/fn/${path}`, init);
+  const SAVED: Ty = { fields: () => ({ slug: 'str', id: 'i32', notify: 'bool', active: 'bool', user: 'str' }) };
+  /** The canonical texts of SDD-67 §4.3, written by hand. */
+  const SAVE = 'route(id:i32)|query(notify:bool)|body(active:bool)|->{slug:str,id:i32,notify:bool,active:bool,user:str}';
+  const BOOM = 'route()|query()|body()|->str';
+  const NOBODY = 'route()|query()|body()|->';
 
   it('criteria 15 and 36: params of the page and the route, query, body and what auth adds', async () => {
-    const response = await call('routes/blog/hola/save/42?notify=true', {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json', 'x-user': 'ana' },
-      body: JSON.stringify({ active: true }),
-    });
+    const response = await call(
+      'routes/blog/hola/save/42?notify=true',
+      binInit(SAVE, { active: 'bool' }, { active: true }, { method: 'PUT', headers: { 'x-user': 'ana' } }),
+    );
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ slug: 'hola', id: 42, notify: true, active: true, user: 'ana' });
+    expect(response.headers.get('content-type')).toBe('application/fud+bin');
+    expect(await binValue(response, SAVED)).toEqual({ slug: 'hola', id: 42, notify: true, active: true, user: 'ana' });
+  });
+
+  it('criterion 8: the signature the build wrote is the one of the canonical text; another is a 412', async () => {
+    const stale = await call('routes/blog/hola/save/42?notify=true', binInit(`${SAVE}x`, { active: 'bool' }, { active: true }, { method: 'PUT' }));
+    expect(stale.status).toBe(412);
+    expect((await binProblem(stale)).detail).toBe('the page is older than the server');
   });
 
   it('criterion 37: a value that is not of its type is a 400 naming it', async () => {
-    const response = await call('routes/blog/hola/save/abc?notify=true', { method: 'PUT', body: '{"active":true}' });
+    const response = await call('routes/blog/hola/save/abc?notify=true', binInit(SAVE, { active: 'bool' }, { active: true }, { method: 'PUT' }));
     expect(response.status).toBe(400);
-    expect(((await response.json()) as { detail?: string }).detail).toBe('argument id is not a valid i32');
+    expect((await binProblem(response)).detail).toBe('argument id is not a valid i32');
   });
 
   it('criterion 16: a function nobody implemented is a 404 without detail', async () => {
-    const response = await call('routes/blog/hola/nobody');
+    const response = await call('routes/blog/hola/nobody', binInit(NOBODY));
     expect(response.status).toBe(404);
-    expect(((await response.json()) as { detail?: string }).detail).toBeUndefined();
+    expect((await binProblem(response)).detail).toBeUndefined();
   });
 
   it('a 500 says nothing of the error in a build', async () => {
-    const response = await call('routes/blog/hola/boom');
+    const response = await call('routes/blog/hola/boom', binInit(BOOM));
     expect(response.status).toBe(500);
-    expect(JSON.stringify(await response.json())).not.toContain('BOOM_MARK');
+    const bytes = new Uint8Array(await response.clone().arrayBuffer());
+    expect(new TextDecoder().decode(bytes)).not.toContain('BOOM_MARK');
+    expect(await binProblem(response)).toEqual({ status: 500, title: 'Internal Server Error' });
   });
 });
 
@@ -222,7 +237,9 @@ describe('criterion 19: sourcemaps of the server bundle', () => {
       handler: (o: object) => (r: Request) => Promise<Response | null>;
     };
     const errors: unknown[] = [];
-    const response = await mod.handler({ onError: (e: unknown) => errors.push(e) })(new Request('http://x/_fudic/fn/routes/blog/hola/boom'));
+    const response = await mod.handler({ onError: (e: unknown) => errors.push(e) })(
+      new Request('http://x/_fudic/fn/routes/blog/hola/boom', binInit('route()|query()|body()|->str')),
+    );
     expect(response!.status).toBe(500);
     expect((errors[0] as Error).stack).toMatch(/src[\\/]server[\\/]blog\.ts:8/u);
   });
