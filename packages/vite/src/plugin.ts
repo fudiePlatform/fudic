@@ -503,7 +503,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    * the BUILD and a dev server that did it would lose hot reload of the runtime for nothing.
    * Empty here also means «bundle it», which is exactly what dev should do.
    */
-  let runtime: RuntimeLinkage = { urlOf: new Map(), byUrl: new Map(), packages: [], roots: [] };
+  let runtime: RuntimeLinkage = { urlOf: new Map(), byUrl: new Map(), packages: [], roots: new Map() };
   /**
    * Route pattern → the coordinator that route loads, or `null` when it has nothing to
    * hydrate (SDD-45 §4.4).
@@ -1610,7 +1610,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         !forTheWorker &&
         !fromTheShim &&
         // And a publisher's own internal imports, which are not the application's boundary.
-        !insidePublisher(importer, runtime) &&
+        !insidePublisher(importer, runtime, id) &&
         publisherOf(id, runtime.packages) !== null
       ) {
         // Per importer, so it is never a shared chunk: see `shimIdFor`.

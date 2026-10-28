@@ -65,8 +65,8 @@ export interface RuntimeLinkage {
   readonly byUrl: ReadonlyMap<string, LinkedPiece>;
   /** The packages whose specifiers are rewritten. Never a list written by hand (§3.3). */
   readonly packages: readonly string[];
-  /** Where each publisher lives, for the question `insidePublisher` asks. */
-  readonly roots: readonly string[];
+  /** Where each publisher lives → its package name, for the question `insidePublisher` asks. */
+  readonly roots: ReadonlyMap<string, string>;
 }
 
 /** The id under which a package's shim is resolved, one per specifier AND per importer. */
@@ -153,13 +153,13 @@ export function runtimeLinkage(
     urlOf.set(pkg, one);
   }
 
-  const roots = new Set<string>();
+  const roots = new Map<string, string>();
   for (const piece of byUrl.values()) {
     const root = packageRootOf(piece.file, io);
-    if (root !== undefined) roots.add(root);
+    if (root !== undefined) roots.set(root, piece.pkg);
   }
 
-  return { urlOf, byUrl, packages: [...collected.keys()], roots: [...roots] };
+  return { urlOf, byUrl, packages: [...collected.keys()], roots };
 }
 
 /**
@@ -228,11 +228,23 @@ export function pieceUrl(
  * fetching; and the dependency is the PACKAGE's, not the application's, so it need not be
  * resolvable from the application at all — which is exactly how it failed, in a workspace app
  * that never declared `@fudic/di`.
+ *
+ * **Except a package naming ITSELF** (BUG-57). `@fudic/http/browser/middlewares.js` ships in
+ * the package and is loaded by the application, and it imports `@fudic/http/contract` by name:
+ * that is the package's public surface, whose pieces are its own publication, and bundling it
+ * instead put a second `HttpError` beside the published one, which `instanceof` tells apart.
  */
-export function insidePublisher(importer: string | undefined, linkage: RuntimeLinkage): boolean {
+export function insidePublisher(
+  importer: string | undefined,
+  linkage: RuntimeLinkage,
+  source: string,
+): boolean {
   if (importer === undefined) return false;
   const path = importer.replace(/\\/gu, '/');
-  return linkage.roots.some((root) => path.startsWith(`${root}/`));
+  for (const [root, pkg] of linkage.roots) {
+    if (path.startsWith(`${root}/`)) return source !== pkg && !source.startsWith(`${pkg}/`);
+  }
+  return false;
 }
 
 /**

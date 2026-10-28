@@ -60,9 +60,13 @@
     "./wire/vectors.json": "./wire/vectors.json",
     "./package.json": "./package.json"
   },
+  "fudic": {
+    "runtime": "./runtime"
+  },
   "sideEffects": ["./browser/**", "./server/**"],
   "files": [
     "dist",
+    "runtime",
     "fudapi",
     "browser",
     "server",
@@ -73,7 +77,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && tsc -p tsconfig.impl.json",
+    "build": "tsc -p tsconfig.build.json && tsc -p tsconfig.impl.json && pnpm run build:runtime",
+    "build:runtime": "node -e \"require('node:fs').rmSync('runtime',{recursive:true,force:true})\" && rolldown -c rolldown.config.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -85,6 +90,7 @@
     "@fudic/forms": "workspace:*"
   },
   "devDependencies": {
-    "@fudic/tsconfig": "workspace:*"
+    "@fudic/tsconfig": "workspace:*",
+    "rolldown": "1.2.1"
   }
 }
