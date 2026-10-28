@@ -1,6 +1,6 @@
 # BUG-55 · Una ruta no puede escuchar el bus, y una señal sembrada desde `data` no se refresca
 
-> **Estado:** `Borrador` — se documenta mientras se arregla, a petición de Pedro. [tareas](./BUG-55-Task.md).
+> **Estado:** `Hecho` — documentado mientras se arreglaba, a petición de Pedro. [tareas](./BUG-55-Task.md).
 > **Corrige:** [SDD-39](../SDD-39-rutas-reactivas.md) (la mitad cliente de una ruta) y
 > [SDD-68](../SDD-68-llamadas-sin-fontaneria.md) §4.8 (el refresco de `data`).
 > **Paquetes:** `@fudic/compiler` · `@fudic/http` · `examples/basic`

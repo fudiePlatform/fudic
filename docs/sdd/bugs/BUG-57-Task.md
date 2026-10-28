@@ -3,7 +3,7 @@
 > **BUG:** [BUG-57 — `@fudic/http` no se publica como pieza, y `conventions` llega suelto al navegador](./BUG-57-http-como-pieza-del-runtime.md)
 > **Paquetes:** `@fudic/http` · `@fudic/vite` · `examples/pieces-bench`
 > **Rama:** `sdd-68-llamadas-sin-fontaneria` (a petición de Pedro: se cierra el producto aquí)
-> **Progreso:** 1 / 2
+> **Progreso:** 2 / 2 — `Hecho`.
 
 ---
 
@@ -17,7 +17,7 @@
 
 | ✓ | # | tarea |
 |---|---|---|
-| [ ] | 2 | `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; BUG-57 a `Hecho` con su fila y su entrada en `bugs/INDEX.md` |
+| [x] | 2 | `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; BUG-57 a `Hecho` con su fila y su entrada en `bugs/INDEX.md` |
 
 ## Notas de la implementación
 

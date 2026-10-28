@@ -3,7 +3,7 @@
 > **BUG:** [BUG-55 — Una ruta no puede escuchar el bus, y una señal sembrada desde `data` no se refresca](./BUG-55-ruta-bus-y-senal-desde-data.md)
 > **Paquetes:** `@fudic/compiler` · `examples/basic`
 > **Rama:** `sdd-68-llamadas-sin-fontaneria` (a petición de Pedro: se cierra el producto aquí)
-> **Progreso:** 4 / 5
+> **Progreso:** 5 / 5 — `Hecho`.
 
 ---
 
@@ -35,7 +35,7 @@
 
 | ✓ | # | tarea |
 |---|---|---|
-| [ ] | 4 | `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; `compiler` sin bajar de su suelo; BUG-55 a `Hecho` con su fila y su entrada en `bugs/INDEX.md` |
+| [x] | 4 | `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; `compiler` sin bajar de su suelo; BUG-55 a `Hecho` con su fila y su entrada en `bugs/INDEX.md` |
 
 ## Notas de la implementación
 

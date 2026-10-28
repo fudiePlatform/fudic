@@ -1,6 +1,6 @@
 # BUG-56 · El Service Worker guarda para siempre el `data` y las llamadas GET
 
-> **Estado:** `Borrador` — se documenta mientras se arregla, a petición de Pedro. [tareas](./BUG-56-Task.md).
+> **Estado:** `Hecho` — documentado mientras se arreglaba, a petición de Pedro. [tareas](./BUG-56-Task.md).
 > **Corrige:** [SDD-45](../SDD-45-runtime-publicado.md) §4.5.1 (la caché del runtime publicado).
 > **Paquetes:** `@fudic/transport`
 

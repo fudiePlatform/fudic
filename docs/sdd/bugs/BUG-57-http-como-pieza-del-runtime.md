@@ -1,6 +1,6 @@
 # BUG-57 · `@fudic/http` no se publica como pieza, y `conventions` llega suelto al navegador
 
-> **Estado:** `Borrador` — se documenta mientras se arregla, a petición de Pedro. [tareas](./BUG-57-Task.md).
+> **Estado:** `Hecho` — documentado mientras se arreglaba, a petición de Pedro. [tareas](./BUG-57-Task.md).
 > **Corrige:** [SDD-45](../SDD-45-runtime-publicado.md) §3.3 (`@fudic/http` «es una fila más»,
 > y no lo era).
 > **Paquetes:** `@fudic/http` · `@fudic/vite` · `examples/pieces-bench`

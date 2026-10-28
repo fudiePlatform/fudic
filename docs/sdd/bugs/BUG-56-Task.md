@@ -3,7 +3,7 @@
 > **BUG:** [BUG-56 — El Service Worker guarda para siempre el `data` y las llamadas GET](./BUG-56-sw-cachea-data-y-llamadas-como-runtime.md)
 > **Paquetes:** `@fudic/transport`
 > **Rama:** `sdd-68-llamadas-sin-fontaneria` (a petición de Pedro: se cierra el producto aquí)
-> **Progreso:** 1 / 2
+> **Progreso:** 2 / 2 — `Hecho`.
 
 ---
 
@@ -17,7 +17,7 @@
 
 | ✓ | # | tarea |
 |---|---|---|
-| [ ] | 2 | El e2e de `/usuarios` con Service Worker en verde (criterio 3, junto con BUG-55); `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; BUG-56 a `Hecho` con su fila y su entrada en `bugs/INDEX.md` |
+| [x] | 2 | El e2e de `/usuarios` con Service Worker en verde (criterio 3, junto con BUG-55); `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; BUG-56 a `Hecho` con su fila y su entrada en `bugs/INDEX.md` |
 
 ## Notas de la implementación
 
