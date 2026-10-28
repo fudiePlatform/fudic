@@ -48,7 +48,7 @@ customElements.define("app-actions", class extends FudicElement {
           $n10 && $d.push($dom.event($n10, "click", ($event) => delRowReversed(row.id, $event)));
           $n11 && $d.push($dom.event($n11, "click", del));
         };
-        const $mv = ($ref, $n) => { if ($ref === null) $dom.append($parent, $n); else $dom.before($ref, $n); return $n; };
+        const $mv = ($ref, $n) => { if (!$r.includes($n)) return $ref; if ($ref === null ? $dom.lastChild($parent) === $n : $dom.nextSibling($n) === $ref) return $n; if ($ref === null) $dom.append($parent, $n); else $dom.before($ref, $n); return $n; };
         return {
           key: row.id,
           c: () => {
