@@ -127,3 +127,33 @@ export const ERROR_FILE = '_error.fud';
  * and neither package depends on the other.
  */
 export const INVALIDATE_MESSAGE = 'fudic:invalidate';
+
+/**
+ * Whether an invalidated path covers `pathname`: a concrete path by equality, a route pattern
+ * (`/blog/:slug`) segment by segment, a parameter matching any non-empty segment.
+ *
+ * Here because two sides must agree on it: the Service Worker, which forgets what it holds
+ * for those paths, and the stub, which tells the page its own data is stale (SDD-68 §4.8).
+ */
+export const coversPath = (path: string, pathname: string): boolean => {
+  if (!path.includes('/:')) return path === pathname;
+  const want = path.split('/');
+  const have = pathname.split('/');
+  return want.length === have.length && want.every((seg, i) => (seg.startsWith(':') ? have[i] !== '' : seg === have[i]));
+};
+
+/**
+ * page: "the data of these paths is stale" (SDD-68 §3.3). Dispatched on `document` by the stub
+ * of a server function after it invalidates the page it was called from; the route's chunk
+ * listens, asks the server for the new `data` and repaints. An event, so neither the stub
+ * imports the route nor the route imports `@fudic/http` just to listen.
+ */
+export const DATA_STALE_EVENT = 'fudic:data-stale';
+
+/** The detail of a `DATA_STALE_EVENT`. */
+export interface DataStaleDetail {
+  /** What the call invalidated, `base` included. */
+  readonly paths: readonly string[];
+  /** A listener hands the work the call must wait for: the call resolves after it. */
+  wait(done: Promise<void>): void;
+}

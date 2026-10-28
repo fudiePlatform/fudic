@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/core` · `@fudic/http` · `@fudic/conventions` · `@fudic/compiler` · `examples/basic`
 > **Rama:** `sdd-68-llamadas-sin-fontaneria`. Nace de `main` **con SDD-67 en `Hecho`**: el endpoint
 > de datos y las llamadas ya viajan en binario.
-> **Progreso:** 7 / 20 — `En curso`.
+> **Progreso:** 11 / 20 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -62,10 +62,10 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 9 | — | **`method` en el stub.** `ServerFunction.method`, copiado de `spec.method` (SDD §3.2) | `http` | `src/types.ts` · `src/contract/fn.ts` |
-| [ ] | 10 | — | **`DATA_STALE_EVENT`** y `DataStaleDetail` (SDD §3.3) | `conventions` | `src/index.ts` |
-| [ ] | 11 | 9, 10 | **El stub avisa y espera.** Tras `invalidate`, si la página actual está entre las rutas invalidadas (concreta o por patrón, con la comparación que usa el SW), despacha el evento, junta lo que le pasan con `wait` y resuelve la llamada después (SDD §4.8, paso 1) | `http` | `src/contract/fn.ts` · `src/client/invalidate.ts` |
-| [ ] | 12 | — | **`load.fetch`.** La variante de navegador de la pieza `load` pide `DATA_PREFIX + path` y lee el JSON que sirve hoy el endpoint (SDD-70 lo pasará a tramas binarias) (SDD §3.4) | `http` · `api` | `src/contract/page.ts` · emisor del módulo de la ruta |
+| [x] | 9 | — | **`method` en el stub.** `ServerFunction.method`, copiado de `spec.method` (SDD §3.2) | `http` | `src/types.ts` · `src/contract/fn.ts` |
+| [x] | 10 | — | **`DATA_STALE_EVENT`** y `DataStaleDetail` (SDD §3.3) | `conventions` | `src/index.ts` |
+| [x] | 11 | 9, 10 | **El stub avisa y espera.** Tras `invalidate`, si la página actual está entre las rutas invalidadas (concreta o por patrón, con la comparación que usa el SW), despacha el evento, junta lo que le pasan con `wait` y resuelve la llamada después (SDD §4.8, paso 1) | `http` | `src/contract/fn.ts` · `src/client/invalidate.ts` |
+| [x] | 12 | — | **`load.fetch`.** La variante de navegador de la pieza `load` pide `DATA_PREFIX + path` y lee el JSON que sirve hoy el endpoint (SDD-70 lo pasará a tramas binarias) (SDD §3.4) | `http` · `api` | `src/contract/page.ts` · emisor del módulo de la ruta |
 | [ ] | 13 | 11, 12 | **Los tests de la fase.** El evento sale y la llamada espera a su `wait`; un `get` sin `invalidates` no lo despacha (criterio 18); `load.fetch` decodifica lo que sirve el endpoint | `http` | `test/**` |
 
 ## Fase 4 — la ruta se repinta (4)
