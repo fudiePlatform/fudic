@@ -17,12 +17,20 @@ import { join, pageParams } from '../client/url.js';
 import { isForm } from '../client/form.js';
 import { invalidate } from '../client/invalidate.js';
 import { runPipeline } from '../client/pipeline.js';
-import { FORM_STAGES, KEYED_STAGES } from '../client/stages/index.js';
+import { STAGES } from '../client/stages/index.js';
 import { run } from '../compose.js';
 import { ValidationError } from '../errors.js';
 import type { CallOptions, ClientContext, Method, ServerContext, ServerFunction } from '../types.js';
+import { toBase64url } from '../wire/base64url.js';
+import type { Wire } from '../wire/wire.js';
 import { compose, type Level } from './middleware.js';
+import { checkRules, type ArgRule } from './rules.js';
 import { conformAll, toText, type Ty } from './wire.js';
+
+export type { ArgRule } from './rules.js';
+
+/** The header that carries a function's signature (SDD-67 §3.3). */
+export const SIG_HEADER = 'fud-sig';
 
 export interface FnSpec {
   /** `<id>` of its `.fudapi`: `routes/blog/[slug]`. */
@@ -37,10 +45,18 @@ export interface FnSpec {
   readonly params?: Readonly<Record<string, Ty>>;
   /** Its `query` arguments. */
   readonly query?: Readonly<Record<string, Ty>>;
-  /** The arguments of its body; absent when it has none or takes a form. */
+  /** The arguments of its body; with a form, its controls (`tyOfSchema`). Absent when it has none. */
   readonly args?: Readonly<Record<string, Ty>>;
   /** Its `form`: the server validates a fresh copy of it. */
   readonly form?: AnyForm;
+  /** Its format: `binWire`, or `jsonWire` with `use json` in its chain. */
+  readonly wire: Wire;
+  /** Its signature, present with `binWire`. */
+  readonly sig?: string;
+  /** The type of `->`; absent when it returns nothing (204). */
+  readonly returns?: Ty;
+  /** The rules under its arguments, by argument, in declaration order. */
+  readonly rules?: Readonly<Record<string, readonly ArgRule[]>>;
   /** Global, file and its own level, from the outside in. */
   readonly chain: readonly Level[];
   readonly invalidates?: readonly string[];
@@ -97,18 +113,27 @@ const places = (spec: FnSpec): boolean => Object.keys({ ...spec.params, ...spec.
 export function stub<C, R, A>(spec: FnSpec): Contract<C, R, A> {
   const slot = new Slot<unknown>(labelOf(spec), 'server', true);
   const base = spec.base ?? '/';
+  const { wire } = spec;
+  const types = spec.args ?? {};
   const { steps, compression } = compose(spec.chain, 'client');
-  const stages = spec.form !== undefined ? FORM_STAGES : KEYED_STAGES;
 
   const call = async (input?: unknown, options: CallOptions = {}): Promise<unknown> => {
     const record = (input ?? {}) as Readonly<Record<string, unknown>>;
     const form = spec.form === undefined ? undefined : places(spec) ? record['form'] : input;
-    if (isForm(form) && !(await form.$validate())) {
-      throw new ValidationError({ status: 422, title: 'Unprocessable Content', errors: form.$errors(), summary: form.$summary() });
+    if (isForm(form)) {
+      if (!(await form.$validate())) {
+        throw new ValidationError({ status: 422, title: 'Unprocessable Content', errors: form.$errors(), summary: form.$summary() });
+      }
+      // What the format cannot hold is refused here, as an argument is (SDD-67 §3.1): a null in
+      // a list, a `str` in null, a date past 48 bits. The value sent is the form's own, with its
+      // nulls: the server's `$set` wants every key.
+      conformAll(types, form.$value(), 'argument');
     }
     const route = conformAll(spec.params ?? {}, record, 'argument');
     const query = conformAll(spec.query ?? {}, record, 'argument');
-    const args = spec.form !== undefined ? form : spec.args !== undefined ? conformAll(spec.args, record, 'argument') : undefined;
+    const body = spec.form !== undefined ? undefined : spec.args !== undefined ? conformAll(spec.args, record, 'argument') : undefined;
+    await checkRules(spec.rules, { ...route, ...query, ...body });
+    const args = spec.form !== undefined ? form : body;
 
     const page = options.params ?? pageParams(spec.page, base, globalThis.location.pathname);
     const url = new URL(join(base, pathOf(spec, page, route)), globalThis.location.origin);
@@ -126,29 +151,32 @@ export function stub<C, R, A>(spec: FnSpec): Contract<C, R, A> {
     const value = await run(steps as never, ctx, async (c: ClientContext) => {
       const target = new URL(c.url);
       const headers = new Headers(c.headers);
-      let body: BodyInit | undefined;
-      if (c.method === 'GET') {
-        const sent = isForm(c.args) ? c.args.$value() : c.args;
-        if (sent !== undefined) target.searchParams.set('a', JSON.stringify(sent));
-      } else if (c.args !== undefined) {
-        const out = await runPipeline(stages, { value: c.args, headers: {} }, { method: c.method, compress: compression });
-        for (const [name, v] of Object.entries(out.headers)) headers.set(name, v);
-        body = out.value as string | Uint8Array<ArrayBuffer>;
+      if (spec.sig !== undefined) headers.set(SIG_HEADER, spec.sig);
+      let sent: BodyInit | undefined;
+      if (c.args !== undefined && Object.keys(types).length > 0) {
+        if (c.method === 'GET') {
+          const out = wire.encodeArgs(types, (isForm(c.args) ? c.args.$value() : c.args) as Readonly<Record<string, unknown>>)!;
+          target.searchParams.set('a', typeof out === 'string' ? out : toBase64url(out));
+        } else {
+          const out = await runPipeline(STAGES, { value: c.args, headers: {} }, { method: c.method, compress: compression, wire, types });
+          for (const [name, v] of Object.entries(out.headers)) headers.set(name, v);
+          sent = out.value as string | Uint8Array<ArrayBuffer>;
+        }
       }
       const response = await fetch(target, {
         method: c.method,
         headers,
         signal: c.signal,
         credentials: 'same-origin',
-        ...(body !== undefined ? { body } : {}),
+        ...(sent !== undefined ? { body: sent } : {}),
       });
-      return decode(response);
+      return decode(response, { wire, ...(spec.returns !== undefined ? { returns: spec.returns } : {}) });
     });
     const own = (spec.invalidates ?? []).map((path) => join(base, path));
     await invalidate(spec.method === 'GET' ? own : [globalThis.location.pathname, ...own]);
     return value;
   };
-  return Object.assign(call, { handle: (h: unknown) => slot.set(h) }) as unknown as Contract<C, R, A>;
+  return Object.assign(call, { spec, handle: (h: unknown) => slot.set(h) }) as unknown as Contract<C, R, A>;
 }
 
 /** `/_fudic/fn/<id with the page's values>/<name>/<route with its values>`. */

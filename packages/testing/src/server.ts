@@ -8,7 +8,7 @@
  */
 
 import { createRoot } from '@fudic/di';
-import { problemResponse } from '@fudic/http/server';
+import { noFunction } from '@fudic/http/server';
 import { serverRoot } from './api.js';
 import { projectOf } from './project.js';
 import { overridden } from './providers.js';
@@ -23,7 +23,7 @@ export function functions(): (request: Request) => Promise<Response | null> {
     handler = async (request) => {
       const api = await serverRoot();
       // An app without a `.fudapi` has no function to call: the 404 its dispatcher would give.
-      if (api === undefined) return problemResponse({ status: 404, title: 'Not Found', detail: 'no such server function' });
+      if (api === undefined) return noFunction(request);
       return api.handler({ base, dev: true, container })(request);
     };
   }

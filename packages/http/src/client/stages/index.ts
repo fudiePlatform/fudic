@@ -1,14 +1,10 @@
 /**
- * The two pipelines a stub can be given (SDD-56 §4.17). A function with `.form` gets the four
- * stages; one without gets `json` and `compress`, so it never downloads the binary format.
+ * The upload pipeline of every call (SDD-67 §3.6): the body in the function's format, then
+ * compressed when the chain asks for it.
  */
 
 import type { Stage } from '../pipeline.js';
-import { binary } from './binary.js';
 import { compress } from './compress.js';
-import { json } from './json.js';
-import { positional } from './positional.js';
+import { encode } from './encode.js';
 
-export const KEYED_STAGES: readonly Stage[] = [json, compress];
-
-export const FORM_STAGES: readonly Stage[] = [positional, binary, json, compress];
+export const STAGES: readonly Stage[] = [encode, compress];

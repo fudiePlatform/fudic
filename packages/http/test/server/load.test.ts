@@ -128,6 +128,7 @@ describe('the ./server entry', () => {
     expect(Object.keys(server).sort()).toEqual(
       [
         'PROBLEM_TYPE',
+        'noFunction',
         'pageContext',
         'parseCookies',
         'problemOf',

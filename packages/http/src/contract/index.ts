@@ -4,7 +4,20 @@
  * server half of serving lives in `./contract/server`, so the browser never loads it.
  */
 
-export { fn, stub, pathOf, contractsOf, type Contract, type FnContext, type FnSpec, type FormContext, type Handler, type ServerContract } from './fn.js';
+export {
+  fn,
+  stub,
+  pathOf,
+  contractsOf,
+  SIG_HEADER,
+  type ArgRule,
+  type Contract,
+  type FnContext,
+  type FnSpec,
+  type FormContext,
+  type Handler,
+  type ServerContract,
+} from './fn.js';
 export { page, type PageContext, type PagePiece, type PageSpec } from './page.js';
 export {
   compose,

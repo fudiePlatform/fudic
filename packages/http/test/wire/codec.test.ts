@@ -198,7 +198,7 @@ describe('signature (§3.3)', () => {
 });
 
 describe('@fudic/http/wire', () => {
-  it('shares tyOfSchema and signature, and neither codec', () => {
-    expect(Object.keys(wire).sort()).toEqual(['signature', 'tyOfSchema']);
+  it('shares tyOfSchema, formTypes and signature, and neither codec', () => {
+    expect(Object.keys(wire).sort()).toEqual(['formTypes', 'signature', 'tyOfSchema']);
   });
 });

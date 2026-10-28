@@ -16,12 +16,13 @@ import { HttpError, notFound } from '../errors.js';
 import { serverContext } from '../server/context.js';
 import { bodyArgs } from '../server/body.js';
 import { queryArgs, valueResponse, withForm, type DispatchOptions } from '../server/dispatch.js';
-import { problemOf, problemResponse } from '../server/problem.js';
+import { noFunction, problemOf, problemResponse } from '../server/problem.js';
 import { withRequest } from '../server/request.js';
 import type { ServerContext } from '../types.js';
-import { contractIds, contractsOf, type ServerContract } from './fn.js';
+import { contractIds, contractsOf, SIG_HEADER, type ServerContract } from './fn.js';
 import { compose } from './middleware.js';
 import type { PagePiece } from './page.js';
+import { checkRules } from './rules.js';
 import { conformAll, fromText, unmarked, type Ty } from './wire.js';
 
 /** What the dispatcher read off the URL. */
@@ -48,9 +49,14 @@ function typed(types: Readonly<Record<string, Ty>>, read: (name: string) => stri
   return out;
 }
 
+/** 412: the page was built against another contract (SDD-67 §3.3). */
+const stale = (): HttpError =>
+  new HttpError({ status: 412, title: 'Precondition Failed', detail: 'the page is older than the server' });
+
 export async function serve(input: ServeInput, options: DispatchOptions = {}): Promise<Response> {
   const { request, contract } = input;
   const { spec } = contract;
+  const { wire } = spec;
   try {
     if (request.method !== spec.method) throw new HttpError({ status: 405, title: 'Method Not Allowed' });
     const handler = contract.slot.get();
@@ -59,8 +65,11 @@ export async function serve(input: ServeInput, options: DispatchOptions = {}): P
     const url = new URL(request.url);
     const params = { ...input.page, ...typed(spec.params ?? {}, (name) => input.route[name] ?? null) };
     const query = typed(spec.query ?? {}, (name) => url.searchParams.get(name));
-    const raw = request.method === 'GET' ? queryArgs(url) : await bodyArgs(request, spec.form);
-    const args = spec.args !== undefined ? conformAll(spec.args, raw, 'argument') : raw;
+    if (request.headers.get(SIG_HEADER) !== (spec.sig ?? null)) throw stale();
+    const types = spec.args ?? {};
+    const raw = request.method === 'GET' ? queryArgs(url, wire, types) : await bodyArgs(request, wire, types);
+    const args = spec.form !== undefined ? raw : spec.args !== undefined ? conformAll(spec.args, raw, 'argument') : undefined;
+    await checkRules(spec.rules, { ...params, ...query, ...args });
 
     const base = serverContext({ method: spec.method, name: spec.name, url, params: {}, args, request });
     const ctx = Object.assign(base, { params, query }) as unknown as ServerContext;
@@ -71,10 +80,10 @@ export async function serve(input: ServeInput, options: DispatchOptions = {}): P
         return (handler as (c: ServerContext) => unknown)(done);
       }),
     );
-    return valueResponse(value, ctx);
+    return valueResponse(value, ctx, wire, spec.returns);
   } catch (e) {
     if (!(e instanceof HttpError)) options.onError?.(e);
-    return problemResponse(problemOf(e, options.dev === true));
+    return problemResponse(problemOf(e, options.dev === true), wire);
   }
 }
 
@@ -130,7 +139,7 @@ export function contractsHandler(options: ContractsOptions = {}): (request: Requ
     const { pathname } = new URL(request.url);
     if (!pathname.startsWith(prefix)) return null;
     const target = targetOf(pathname.slice(prefix.length).split('/'));
-    if (target === undefined) return problemResponse({ status: 404, title: 'Not Found', detail: 'no such server function' });
+    if (target === undefined) return noFunction(request);
     return serve({ request, ...target }, options);
   };
 }

@@ -5,5 +5,5 @@
 
 export type { Primitive, Ty } from './ty.js';
 export type { Wire } from './wire.js';
-export { tyOfSchema } from './schema.js';
+export { formTypes, tyOfSchema } from './schema.js';
 export { signature } from './signature.js';

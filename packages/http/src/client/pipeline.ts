@@ -1,25 +1,28 @@
 /**
- * The upload pipeline (SDD-56 §4.17): successive transformations of the body, after the
- * client chain and before the network. A stage that cannot apply is skipped and the payload
- * goes on untouched: no stage fails a request or changes what `handle` receives, it only
- * changes how many bytes travel.
+ * The upload pipeline (SDD-56 §4.17, SDD-67 §3.6): successive transformations of the body,
+ * after the client chain and before the network. `encode` writes it in the function's format;
+ * `compress` may shrink it. A stage that cannot apply is skipped and the payload goes on
+ * untouched: no stage fails a request or changes what `handle` receives.
  */
 
-import type { Schema } from '@fudic/forms';
 import type { CompressOptions, Method } from '../types.js';
+import type { Ty } from '../wire/ty.js';
+import type { Wire } from '../wire/wire.js';
 
 /** What crosses the pipeline: each stage takes one and returns another. */
 export interface Payload {
-  /** The form, then the array, then the string or the bytes. */
+  /** The arguments or the form, then the string or the bytes. */
   readonly value: unknown;
   readonly headers: Readonly<Record<string, string>>;
-  /** The schema of the form, once `positional` has taken its keys away. */
-  readonly schema?: Schema;
 }
 
 export interface CallInfo {
   readonly method: Method;
   readonly compress: CompressOptions | false;
+  /** The function's format. */
+  readonly wire: Wire;
+  /** The types of its body: its body arguments, or its form's controls. */
+  readonly types: Readonly<Record<string, Ty>>;
 }
 
 export interface Stage {

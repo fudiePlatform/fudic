@@ -9,6 +9,10 @@ import { INVALIDATE_MESSAGE } from '@fudic/conventions';
 import { stub } from '../../src/contract/fn.js';
 import { invalidate } from '../../src/client/invalidate.js';
 import type { Method } from '../../src/types.js';
+import { binWire } from '../../src/wire/bin.js';
+import type { Ty } from '../../src/wire/ty.js';
+
+const OK: Ty = { fields: () => ({ ok: 'bool' }) };
 
 interface Posted {
   readonly message: { type: string; paths: string[] };
@@ -42,7 +46,7 @@ async function pending(p: Promise<unknown>): Promise<boolean> {
 
 beforeEach(() => {
   vi.stubGlobal('location', { origin: 'https://app.test', pathname: '/usuarios' });
-  vi.stubGlobal('fetch', async () => new Response('{"ok":true}', { status: 200 }));
+  vi.stubGlobal('fetch', async () => new Response(binWire.encodeValue(OK, { ok: true }) as BodyInit, { status: 200, headers: { 'content-type': binWire.type } }));
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -52,6 +56,8 @@ const call = (method: Method, invalidates?: string[], base?: string) =>
     name: 'x',
     method,
     chain: [],
+    returns: OK,
+    wire: binWire,
     ...(invalidates !== undefined ? { invalidates } : {}),
     ...(base !== undefined ? { base } : {}),
   });

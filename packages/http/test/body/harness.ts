@@ -3,13 +3,14 @@
  * `Request` the stub built to the dispatcher, and keeps a copy of what crossed the wire — its
  * headers and its bytes — so a test can look at the cable as Network would.
  *
- * One function, `save` of `components/x`, both variants: the call (`stub`) and the contract the
+ * One function, `save` of `components/x`, in `fud-bin` unless `over` says otherwise, both variants: the call (`stub`) and the contract the
  * server completes (`fn`). Each `serve` declares it again, and the dispatcher finds the last.
  */
 
 import { vi } from 'vitest';
 import { fn, stub, type FnSpec } from '../../src/contract/index.js';
 import { contractsHandler } from '../../src/contract/server.js';
+import { binWire } from '../../src/wire/bin.js';
 
 export interface Wire {
   readonly headers: Headers;
@@ -26,7 +27,7 @@ export type Over = Partial<Omit<FnSpec, 'id' | 'name'>>;
 /** A `ctx` as a handler of these tests reads it, loosely. */
 export type Ctx = { readonly args: any; readonly form: any };
 
-const spec = (over: Over): FnSpec => ({ id: 'components/x', name: 'save', method: 'PUT', chain: [], ...over });
+const spec = (over: Over): FnSpec => ({ id: 'components/x', name: 'save', method: 'PUT', chain: [], wire: binWire, ...over });
 
 export function browser(): void {
   vi.stubGlobal('location', { origin: 'https://app.test', pathname: '/usuarios' });

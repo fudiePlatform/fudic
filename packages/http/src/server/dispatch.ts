@@ -6,8 +6,12 @@
 
 import type { Container } from '@fudic/di';
 import type { AnyForm } from '@fudic/forms';
+import { conform } from '../contract/wire.js';
 import { badRequest, ValidationError } from '../errors.js';
 import type { ServerContext } from '../types.js';
+import { fromBase64url } from '../wire/base64url.js';
+import type { Ty } from '../wire/ty.js';
+import type { Wire } from '../wire/wire.js';
 
 export interface DispatchOptions {
   /** Dev: a 500 carries its message in `detail`. Never in a build. */
@@ -21,15 +25,22 @@ export interface DispatchOptions {
   readonly container?: () => Container;
 }
 
-/** The arguments of a GET: the JSON of `?a=`, or none. The rest carry a body (`body.ts`). */
-export function queryArgs(url: URL): unknown {
+const utf8 = new TextEncoder();
+
+/**
+ * The arguments of a GET: `?a=` in the function's format — base64url bytes in `fud-bin`, JSON
+ * text with `use json` — or none. The rest carry a body (`body.ts`).
+ */
+export function queryArgs(url: URL, wire: Wire, types: Readonly<Record<string, Ty>>): Record<string, unknown> {
   const text = url.searchParams.get('a');
-  if (text === null || text === '') return undefined;
+  if (text === null || text === '') return {};
+  let bytes: Uint8Array;
   try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    throw badRequest('the arguments are not valid JSON');
+    bytes = wire.name === 'fud-bin' ? fromBase64url(text) : utf8.encode(text);
+  } catch (e) {
+    throw badRequest((e as Error).message);
   }
+  return wire.decodeArgs(types, bytes);
 }
 
 /**
@@ -57,10 +68,23 @@ export async function withForm(form: AnyForm | undefined, ctx: ServerContext): P
   return Object.assign(ctx, { form: copy });
 }
 
-/** 200 with the JSON of the value, or 204 when there is none (§4.2). */
-export function valueResponse(value: unknown, ctx: ServerContext): Response {
+/**
+ * The value in the function's format, or 204 when there is none (SDD-67 §4.1, step 6). It is
+ * checked against `->` first: a value of another type is the handler's fault, a 500 whose
+ * `detail` names the field in dev, and never bytes that lie about their type.
+ */
+export function valueResponse(value: unknown, ctx: ServerContext, wire: Wire, returns: Ty | undefined): Response {
   const { headers } = ctx.response;
-  if (value === undefined) return new Response(null, { status: 204, headers });
-  headers.set('content-type', 'application/json');
-  return new Response(JSON.stringify(value), { status: ctx.response.status, headers });
+  const checked = returns === undefined ? undefined : conformed(returns, value);
+  if (checked === undefined) return new Response(null, { status: 204, headers });
+  headers.set('content-type', wire.type);
+  return new Response(wire.encodeValue(returns!, checked) as BodyInit, { status: ctx.response.status, headers });
+}
+
+function conformed(returns: Ty, value: unknown): unknown {
+  try {
+    return conform(returns, value, 'value');
+  } catch (e) {
+    throw new Error(`the handler returned a value that is not its ->: ${(e as Error).message}`);
+  }
 }

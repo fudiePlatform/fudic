@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/http` · `@fudic/forms` · `@fudic/api` · `@fudic/diagnostics` ·
 > `@fudic/language-server` · `@fudic/testing` · `@fudic/vite` · `examples/*`
 > **Rama:** `sdd-67-binario-y-reglas`. Nace de `main`.
-> **Progreso:** 9 / 33 — `En curso`.
+> **Progreso:** 17 / 33 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -62,13 +62,13 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 10 | 8 | **`FnSpec`.** Gana `wire`, `sig`, `returns` y `rules` (`ArgRule`); el `stub` guarda su `spec`. Mientras el emisor no los da (fase 3), `wire` vale `binWire` | `http` | `src/contract/fn.ts` · `src/types.ts` |
-| [ ] | 11 | 10 | **El paso final del `stub`.** La etapa `encode` sustituye a `positional`, `binary` y `json`; un `get` lleva `?a=` en base64url (o JSON con `jsonWire`); `content-type` y `fud-sig` con `binWire`; `compress` igual | `http` | `src/contract/fn.ts` · `src/client/stages/*` · `src/client/pipeline.ts` |
-| [ ] | 12 | 11 | **La vuelta.** `decode` lee valor o problema según `content-type` con `spec.wire`; un cuerpo desconocido sigue siendo `{ status, title }`; con `jsonWire`, `conform(returns)` | `http` | `src/client/codec.ts` |
-| [ ] | 13 | 10 | **`serve`: firma, 415 y cuerpo.** `fud-sig` contra `spec.sig` (412); el `content-type` de su formato (415); `decodeArgs`, un form por `tyOfSchema`; `?a=` en base64url; fuera `application/fud` | `http` | `src/contract/server.ts` · `src/server/body.ts` · `src/server/dispatch.ts` |
-| [ ] | 14 | 13 | **`serve`: valor y problema.** `conform(returns)` antes de escribir (500 si no encaja); el problema con `encodeProblem` de su formato; el 404 sin función según `accept` | `http` | `src/contract/server.ts` · `src/server/problem.ts` · `src/server/dispatch.ts` |
-| [ ] | 15 | 10 | **Las reglas.** Un comprobador común: argumento a argumento, regla a regla, la primera que falla es un 400 con el `detail` de SDD §3.5; lo llaman el `stub` (sin petición) y `serve` (antes de la cadena) | `http` | `src/contract/rules.ts` · `src/contract/fn.ts` · `src/contract/server.ts` |
-| [ ] | 16 | 11–15 | **Los tests de la fase.** Criterios 4–10 y la parte de tiempo de ejecución de 15–17, con `FnSpec` escritos a mano | `http` | `test/contract/**` · `test/client/**` · `test/server/**` |
+| [x] | 10 | 8 | **`FnSpec`.** Gana `wire`, `sig`, `returns` y `rules` (`ArgRule`); el `stub` guarda su `spec`. Mientras el emisor no los da (fase 3), `wire` vale `binWire` | `http` | `src/contract/fn.ts` · `src/types.ts` |
+| [x] | 11 | 10 | **El paso final del `stub`.** La etapa `encode` sustituye a `positional`, `binary` y `json`; un `get` lleva `?a=` en base64url (o JSON con `jsonWire`); `content-type` y `fud-sig` con `binWire`; `compress` igual | `http` | `src/contract/fn.ts` · `src/client/stages/*` · `src/client/pipeline.ts` |
+| [x] | 12 | 11 | **La vuelta.** `decode` lee valor o problema según `content-type` con `spec.wire`; un cuerpo desconocido sigue siendo `{ status, title }`; con `jsonWire`, `conform(returns)` | `http` | `src/client/codec.ts` |
+| [x] | 13 | 10 | **`serve`: firma, 415 y cuerpo.** `fud-sig` contra `spec.sig` (412); el `content-type` de su formato (415); `decodeArgs`, un form por `tyOfSchema`; `?a=` en base64url; fuera `application/fud` | `http` | `src/contract/server.ts` · `src/server/body.ts` · `src/server/dispatch.ts` |
+| [x] | 14 | 13 | **`serve`: valor y problema.** `conform(returns)` antes de escribir (500 si no encaja); el problema con `encodeProblem` de su formato; el 404 sin función según `accept` | `http` | `src/contract/server.ts` · `src/server/problem.ts` · `src/server/dispatch.ts` |
+| [x] | 15 | 10 | **Las reglas.** Un comprobador común: argumento a argumento, regla a regla, la primera que falla es un 400 con el `detail` de SDD §3.5; lo llaman el `stub` (sin petición) y `serve` (antes de la cadena) | `http` | `src/contract/rules.ts` · `src/contract/fn.ts` · `src/contract/server.ts` |
+| [x] | 16 | 11–15 | **Los tests de la fase.** Criterios 4–10 y la parte de tiempo de ejecución de 15–17, con `FnSpec` escritos a mano | `http` | `test/contract/**` · `test/client/**` · `test/server/**` |
 
 ## Fase 3 — el `.fudapi` (8)
 
@@ -96,7 +96,7 @@ código, no el test.
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [ ] | 28 | 10 | **`respond` y `respondProblem`.** Leen `spec.wire` y `spec.returns`; con su test (criterio 20) | `testing` | `src/respond.ts` · `src/index.ts` · `test/**` |
-| [ ] | 29 | 16 | **Migrar los tests de `@fudic/http`.** Los que leen JSON del cable comprueban binario; los de JSON se quedan, con `jsonWire` | `http` | `test/body/*` · `test/client/codec.test.ts` · `test/contract/*` · `test/server/*` |
+| [x] | 29 | 16 | **Migrar los tests de `@fudic/http`.** Los que leen JSON del cable comprueban binario; los de JSON se quedan, con `jsonWire` | `http` | `test/body/*` · `test/client/codec.test.ts` · `test/contract/*` · `test/server/*` |
 | [ ] | 30 | 22 | **Migrar `@fudic/vite` y la poda.** `http-dev`, `http-build`, `http-functions`, `dev`, `dev-unit` en binario; un test de build que comprueba el criterio 13 sobre el bundle | `vite` | `test/**` |
 | [ ] | 31 | 22 | **`examples` y e2e.** `fudapi-editor` gana un argumento con reglas; `basic`, una función con `use json`; los e2e de `usuarios`, el alta y `sesion` pasan en binario, y uno nuevo por camino (criterios 11, 15) | `examples` | `examples/fudapi-editor/src/**` · `examples/basic/src/**` · `examples/basic/tests/*.spec.ts` |
 | [ ] | 32 | 31 | **README de `@fudic/http`.** En inglés y sin citar SDD: binario por defecto, `use json`, las reglas en los argumentos, la firma y el 412, dónde están los vectores | `http` | `README.md` |

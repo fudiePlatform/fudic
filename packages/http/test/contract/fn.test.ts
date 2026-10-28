@@ -8,7 +8,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRoot } from '@fudic/di';
-import { formOf, required, str, u8 } from '@fudic/forms/contract';
+import { formOf, required, serverValidator, str, u8 } from '@fudic/forms/contract';
 import {
   contractsOf,
   fn,
@@ -22,9 +22,15 @@ import {
   type ServerContract,
 } from '../../src/contract/index.js';
 import { serve } from '../../src/contract/server.js';
-import { HttpError, ValidationError } from '../../src/errors.js';
+import { HttpError, notFound, redirect, Redirect, ValidationError } from '../../src/errors.js';
 import type { DispatchOptions } from '../../src/server/dispatch.js';
 import type { ServerContext } from '../../src/types.js';
+import { fromBase64url } from '../../src/wire/base64url.js';
+import { binWire } from '../../src/wire/bin.js';
+import { jsonWire } from '../../src/wire/json.js';
+import { formTypes } from '../../src/wire/schema.js';
+import type { Ty } from '../../src/wire/ty.js';
+import { binProblem } from '../helpers.js';
 
 const ORIGIN = 'https://app.test';
 const ID = '0190a6b2-7c1e-7d3a-9f00-1a2b3c4d5e6f';
@@ -84,6 +90,7 @@ const blogSave = (over: Partial<FnSpec> = {}): FnSpec => ({
   query: { notify: 'bool' },
   args: { active: 'bool' },
   chain: [],
+  wire: binWire,
   ...over,
 });
 
@@ -102,12 +109,18 @@ afterEach(() => {
   delete seen.ctx;
 });
 
+const SAVED: Ty = { fields: () => ({ saved: 'bool' }) };
+const SIG = '1a2b3c4d';
+const headersOf = (init: RequestInit): Headers => new Headers(init.headers);
+const bodyBytes = (init: RequestInit): number[] => [...(init.body as Uint8Array)];
+
 describe('criterion 36: route, query and body', () => {
-  it('save({ id, notify, active }) reaches ctx.params, ctx.query and ctx.args, each typed', async () => {
-    const server = fn(blogSave());
+  it('criterion 5: save({ id, notify, active }) sends 1 byte with its signature, and each value reaches ctx typed', async () => {
+    const spec = blogSave({ returns: SAVED, sig: SIG });
+    const server = fn(spec);
     server.handle(record({ saved: true }));
     const sent = served(server);
-    const save = stub<never, unknown, { id: number; notify: boolean; active: boolean }>(blogSave());
+    const save = stub<never, unknown, { id: number; notify: boolean; active: boolean }>(spec);
 
     expect(await save({ id: 42, notify: true, active: false })).toEqual({ saved: true });
 
@@ -115,16 +128,40 @@ describe('criterion 36: route, query and body', () => {
     expect(url.pathname).toBe('/_fudic/fn/routes/blog/mi-post/save/42');
     expect([...url.searchParams]).toEqual([['notify', 'true']]);
     expect(init.method).toBe('PUT');
-    expect(JSON.parse(init.body as string)).toEqual({ active: false });
+    expect(headersOf(init).get('content-type')).toBe('application/fud+bin');
+    expect(headersOf(init).get('fud-sig')).toBe(SIG);
+    expect(bodyBytes(init)).toEqual([0x00]);
     expect(seen.ctx!.params).toEqual({ slug: 'mi-post', id: 42 });
     expect(seen.ctx!.query).toEqual({ notify: true });
     expect(seen.ctx!.args).toEqual({ active: false });
   });
 
+  it('criterion 11: with use json, the same call carries its keys, no fud-sig, and its problem in JSON', async () => {
+    const spec = blogSave({ returns: SAVED, wire: jsonWire });
+    const server = fn(spec);
+    let fail = false;
+    server.handle((() => {
+      if (fail) throw notFound('gone');
+      return { saved: true };
+    }) as never);
+    const sent = served(server);
+    const save = stub<never, unknown, { id: number; notify: boolean; active: boolean }>(spec);
+
+    expect(await save({ id: 42, notify: true, active: false })).toEqual({ saved: true });
+    const { init } = sent[0]!;
+    expect(headersOf(init).get('content-type')).toBe('application/json');
+    expect(headersOf(init).has('fud-sig')).toBe(false);
+    expect(JSON.parse(init.body as string)).toEqual({ active: false });
+
+    fail = true;
+    const e = (await save({ id: 42, notify: true, active: false }).catch((x: unknown) => x)) as HttpError;
+    expect(e).toBeInstanceOf(HttpError);
+    expect(e.problem).toEqual({ status: 404, title: 'Not Found', detail: 'gone' });
+  });
+
   it('the same with form: save({ id, notify, form }) reaches ctx.form validated', async () => {
     const f = person();
-    const spec = blogSave({ form: f });
-    delete (spec as { args?: unknown }).args;
+    const spec = blogSave({ form: f, args: formTypes(f.$schema), returns: 'str' });
     const server = fn(spec);
     server.handle(record());
     served(server);
@@ -139,8 +176,25 @@ describe('criterion 36: route, query and body', () => {
     expect(form.$value()).toEqual({ name: 'Ana', age: 30 });
   });
 
+  it('criterion 6: a GET sends its body arguments in ?a= as base64url, and its Person[] comes back as it left', async () => {
+    const PERSON: Ty = { fields: () => ({ id: 'uuid', name: 'str', born: { opt: 'date' } }) };
+    const ana = { id: ID, name: 'Ana', born: new Date('1990-05-01T00:00:00.000Z') };
+    const spec: FnSpec = { id: 'routes/usuarios', name: 'search', method: 'GET', args: { q: 'str' }, returns: { list: PERSON }, chain: [], wire: binWire };
+    const server = fn(spec);
+    server.handle(record([ana, { id: ID, name: 'Eva' }]));
+    const sent = served(server);
+    const search = stub<never, unknown, { q: string }>(spec);
+
+    expect(await search({ q: 'ana' })).toEqual([ana, { id: ID, name: 'Eva' }]);
+    const a = sent[0]!.url.searchParams.get('a')!;
+    expect(a).toMatch(/^[A-Za-z0-9_-]+$/u);
+    expect(binWire.decodeArgs({ q: 'str' }, fromBase64url(a))).toEqual({ q: 'ana' });
+    expect(sent[0]!.init.body).toBeUndefined();
+    expect(headersOf(sent[0]!.init).has('content-type')).toBe(false);
+  });
+
   it('a GET sends its body arguments in ?a=, beside its query keys', async () => {
-    const spec: FnSpec = { id: 'routes/usuarios', name: 'search', method: 'GET', query: { page: { opt: 'u16' } }, args: { q: 'str' }, chain: [] };
+    const spec: FnSpec = { id: 'routes/usuarios', name: 'search', method: 'GET', query: { page: { opt: 'u16' } }, args: { q: 'str' }, returns: { list: 'str' }, chain: [], wire: binWire };
     const server = fn(spec);
     server.handle(record(['Ana']));
     const sent = served(server);
@@ -148,7 +202,7 @@ describe('criterion 36: route, query and body', () => {
 
     expect(await search({ q: 'an', page: 2 })).toEqual(['Ana']);
     expect(sent[0]!.url.searchParams.get('page')).toBe('2');
-    expect(JSON.parse(sent[0]!.url.searchParams.get('a')!)).toEqual({ q: 'an' });
+    expect(binWire.decodeArgs({ q: 'str' }, fromBase64url(sent[0]!.url.searchParams.get('a')!))).toEqual({ q: 'an' });
     expect(seen.ctx!.args).toEqual({ q: 'an' });
     expect(seen.ctx!.query).toEqual({ page: 2 });
 
@@ -159,19 +213,20 @@ describe('criterion 36: route, query and body', () => {
 
   it('a GET with a form sends its value in ?a=', async () => {
     const f = person();
-    const spec: FnSpec = { id: 'routes/usuarios', name: 'find', method: 'GET', form: f, chain: [] };
+    const args = formTypes(f.$schema);
+    const spec: FnSpec = { id: 'routes/usuarios', name: 'find', method: 'GET', form: f, args, chain: [], wire: binWire };
     const server = fn(spec);
     server.handle(record());
     const sent = served(server);
     const find = stub<never, unknown, typeof f>(spec);
     f.$set({ name: 'Ana', age: 30 });
     await find(f);
-    expect(JSON.parse(sent[0]!.url.searchParams.get('a')!)).toEqual({ name: 'Ana', age: 30 });
+    expect(binWire.decodeArgs(args, fromBase64url(sent[0]!.url.searchParams.get('a')!))).toEqual({ name: 'Ana', age: 30 });
     expect((seen.ctx!['form'] as typeof f).$value()).toEqual({ name: 'Ana', age: 30 });
   });
 
   it('a function without arguments sends no body and its 204 is undefined', async () => {
-    const spec: FnSpec = { id: 'routes/usuarios', name: 'clear', method: 'DELETE', chain: [] };
+    const spec: FnSpec = { id: 'routes/usuarios', name: 'clear', method: 'DELETE', chain: [], wire: binWire };
     const server = fn(spec);
     server.handle(() => undefined);
     const sent = served(server);
@@ -182,7 +237,7 @@ describe('criterion 36: route, query and body', () => {
   });
 
   it('a date argument crosses as a Date', async () => {
-    const spec: FnSpec = { id: 'routes/agenda', name: 'move', method: 'POST', route: ['day', ':on'], params: { on: 'date' }, args: { at: 'date' }, chain: [] };
+    const spec: FnSpec = { id: 'routes/agenda', name: 'move', method: 'POST', route: ['day', ':on'], params: { on: 'date' }, args: { at: 'date' }, chain: [], wire: binWire };
     const server = fn(spec);
     server.handle(record());
     const sent = served(server);
@@ -210,7 +265,7 @@ describe('criterion 15: a form alone, with the adds of its chain', () => {
     const auth = middleware<{}, { user: string }>({ id: 'middlewares/auth', name: 'auth', server: true });
     auth.server((ctx, next) => next(Object.assign(ctx, { user: 'ana' })));
     const f = person();
-    const spec: FnSpec = { id: 'components/user-form', name: 'save', method: 'PUT', form: f, chain: [{ steps: [{ use: [use(auth)] }] }] };
+    const spec: FnSpec = { id: 'components/user-form', name: 'save', method: 'PUT', form: f, args: formTypes(f.$schema), returns: 'str', chain: [{ steps: [{ use: [use(auth)] }] }], wire: binWire };
     const server = fn(spec);
     server.handle(record());
     const sent = served(server);
@@ -226,7 +281,7 @@ describe('criterion 15: a form alone, with the adds of its chain', () => {
 
   it('an invalid form is refused in the browser with a 422 and nothing is sent', async () => {
     const f = person();
-    const spec: FnSpec = { id: 'components/user-form', name: 'save', method: 'PUT', form: f, chain: [] };
+    const spec: FnSpec = { id: 'components/user-form', name: 'save', method: 'PUT', form: f, chain: [], wire: binWire };
     const sent = served(fn(spec));
     const save = stub<never, unknown, typeof f>(spec);
     const error = await save(f).catch((e: unknown) => e);
@@ -237,7 +292,7 @@ describe('criterion 15: a form alone, with the adds of its chain', () => {
 });
 
 describe('criterion 37: the types on the wire, both sides', () => {
-  const uuidSpec = (): FnSpec => ({ id: 'routes/items', name: 'get', method: 'GET', route: [':id'], params: { id: 'uuid' }, chain: [] });
+  const uuidSpec = (): FnSpec => ({ id: 'routes/items', name: 'get', method: 'GET', route: [':id'], params: { id: 'uuid' }, chain: [], wire: binWire });
 
   it('a uuid in any case is accepted; a str accepts abc', async () => {
     const server = fn(uuidSpec());
@@ -275,7 +330,7 @@ describe('criterion 37: the types on the wire, both sides', () => {
   });
 
   it('on the server, the same values are a 400 with Problem naming the argument', async () => {
-    const server = fn(blogSave());
+    const server = fn(blogSave({ wire: jsonWire }));
     server.handle(record());
     const call = async (path: string, body: unknown = { active: true }) => {
       const request = new Request(`${ORIGIN}${path}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
@@ -296,7 +351,7 @@ describe('criterion 37: the types on the wire, both sides', () => {
     uuidServer.handle(record());
     const response = await serve({ request: new Request(`${ORIGIN}/_fudic/fn/routes/items/get/abc`), contract: uuidServer, page: {}, route: { id: 'abc' } });
     expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({ detail: 'argument id is not a valid uuid' });
+    expect(await binProblem(response)).toMatchObject({ detail: 'argument id is not a valid uuid' });
   });
 
   it('a route value the dispatcher could not read is missing', async () => {
@@ -309,25 +364,25 @@ describe('criterion 37: the types on the wire, both sides', () => {
       route: {},
     });
     expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({ detail: 'argument id is missing' });
+    expect(await binProblem(response)).toMatchObject({ detail: 'argument id is missing' });
   });
 });
 
 describe('criterion 16 and the other answers of serve', () => {
-  const plain = (): FnSpec => ({ id: 'components/user-form', name: 'save', method: 'PUT', chain: [] });
+  const plain = (): FnSpec => ({ id: 'components/user-form', name: 'save', method: 'PUT', returns: 'str', chain: [], wire: binWire });
   const put = () => new Request(`${ORIGIN}/_fudic/fn/components/user-form/save`, { method: 'PUT' });
 
   it('without .handle: 404 with Problem; the detail names it only in dev', async () => {
     const server = fn(plain());
     const dev = await serve({ request: put(), contract: server, page: {}, route: {} }, { dev: true });
     expect(dev.status).toBe(404);
-    expect(await dev.json()).toMatchObject({
+    expect(await binProblem(dev)).toMatchObject({
       status: 404,
       detail: 'save of components/user-form has no implementation in src/server',
     });
     const prod = await serve({ request: put(), contract: server, page: {}, route: {} });
     expect(prod.status).toBe(404);
-    expect(await prod.json()).not.toHaveProperty('detail');
+    expect(await binProblem(prod)).not.toHaveProperty('detail');
   });
 
   it('the wrong verb is a 405', async () => {
@@ -371,14 +426,14 @@ describe('criterion 16 and the other answers of serve', () => {
 
 describe('the two variants', () => {
   it('the server variant is registered by <id>; calling it is a mistake', async () => {
-    const server = fn({ id: 'components/registered', name: 'save', method: 'PUT', chain: [] });
+    const server = fn({ id: 'components/registered', name: 'save', method: 'PUT', chain: [], wire: binWire });
     expect(contractsOf('components/registered').get('save')).toBe(server);
     expect(contractsOf('components/none').size).toBe(0);
     await expect((server as unknown as () => Promise<unknown>)()).rejects.toThrow('save of components/registered is called from the browser');
   });
 
   it('.handle in the browser is always the wrong folder', () => {
-    const save = stub({ id: 'components/user-form', name: 'save', method: 'PUT', chain: [] });
+    const save = stub({ id: 'components/user-form', name: 'save', method: 'PUT', chain: [], wire: binWire });
     expect(() => save.handle(() => 1)).toThrow('save of components/user-form must be implemented in src/server');
   });
 });
@@ -406,8 +461,8 @@ describe('invalidates', () => {
         },
       },
     });
-    const write: FnSpec = { id: 'routes/usuarios', name: 'save', method: 'POST', invalidates: ['/blog/:slug'], chain: [] };
-    const read: FnSpec = { id: 'routes/usuarios', name: 'list', method: 'GET', invalidates: ['/x'], chain: [] };
+    const write: FnSpec = { id: 'routes/usuarios', name: 'save', method: 'POST', invalidates: ['/blog/:slug'], chain: [], wire: binWire };
+    const read: FnSpec = { id: 'routes/usuarios', name: 'list', method: 'GET', invalidates: ['/x'], chain: [], wire: binWire };
     for (const spec of [write, read]) {
       const server = fn(spec);
       server.handle(() => 1);
@@ -420,5 +475,88 @@ describe('invalidates', () => {
       expect.objectContaining({ paths: ['/usuarios', '/blog/:slug'] }),
       expect.objectContaining({ paths: ['/x'] }),
     ]);
+  });
+});
+
+describe('criterion 7: a problem in fud-bin is the class the server threw', () => {
+  const plain = (over: Partial<FnSpec> = {}): FnSpec => ({ id: 'routes/usuarios', name: 'save', method: 'PUT', chain: [], wire: binWire, ...over });
+
+  it('a 404 is an HttpError with its detail', async () => {
+    const server = fn(plain());
+    server.handle(() => {
+      throw notFound('no such user');
+    });
+    served(server);
+    const e = await stub<never, unknown, void>(plain())().catch((x: unknown) => x);
+    expect(e).toBeInstanceOf(HttpError);
+    expect((e as HttpError).status).toBe(404);
+    expect((e as HttpError).problem.detail).toBe('no such user');
+  });
+
+  it('a 422 of a form is a ValidationError with its errors', async () => {
+    const taken = serverValidator<string>((v) => (v === 'ana' ? { taken: true } : null));
+    const f = formOf({ name: str('', [taken]) });
+    const spec = plain({ form: f, args: formTypes(f.$schema) });
+    fn(spec).handle(() => undefined);
+    served(contractsOf('routes/usuarios').get('save')!);
+    f.$set({ name: 'ana' });
+    const e = await stub<never, unknown, typeof f>(spec)(f).catch((x: unknown) => x);
+    expect(e).toBeInstanceOf(ValidationError);
+    expect((e as ValidationError).errors).toEqual({ name: { taken: true } });
+    expect((e as ValidationError).summary).toBeNull();
+  });
+
+  it('a Redirect keeps its location', async () => {
+    const server = fn(plain());
+    server.handle(() => {
+      throw redirect('/login');
+    });
+    served(server);
+    const e = await stub<never, unknown, void>(plain())().catch((x: unknown) => x);
+    expect(e).toBeInstanceOf(Redirect);
+    expect((e as Redirect).location).toBe('/login');
+  });
+});
+
+describe('criterion 4: dates', () => {
+  const spec = (wire: FnSpec['wire']): FnSpec => ({ id: 'routes/agenda', name: 'when', method: 'PUT', args: { at: 'date' }, returns: 'date', chain: [], wire });
+
+  it.each([
+    ['fud-bin', binWire],
+    ['use json', jsonWire],
+  ] as const)('%s: a -> date comes back a Date', async (_, wire) => {
+    const server = fn(spec(wire));
+    server.handle((ctx: { args: { at: Date } }) => new Date(ctx.args.at.getTime() + 1));
+    served(server);
+    const at = new Date('2026-10-21T10:00:00.000Z');
+    const back = await stub<never, unknown, { at: Date }>(spec(wire))({ at });
+    expect(back).toBeInstanceOf(Date);
+    expect((back as Date).getTime()).toBe(at.getTime() + 1);
+  });
+
+  it.each([
+    ['fud-bin', binWire],
+    ['use json', jsonWire],
+  ] as const)('%s: a date past 48 bits never leaves the browser', async (_, wire) => {
+    const sent = served(fn(spec(wire)));
+    // 2^47 ms after 1970 is in the year 6429: the year 7000 does not fit.
+    for (const at of [new Date('7000-01-01T00:00:00.000Z'), new Date(-(2 ** 47))]) {
+      const e = await stub<never, unknown, { at: Date }>(spec(wire))({ at }).catch((x: unknown) => x);
+      expect(e).toBeInstanceOf(HttpError);
+      expect((e as HttpError).problem).toEqual({ status: 400, title: 'Bad Request', detail: 'argument at is not a valid date' });
+    }
+    expect(sent).toHaveLength(0);
+  });
+});
+
+describe('criterion 11: a GET with use json', () => {
+  it('sends its arguments in ?a= as JSON, and reads its value as JSON', async () => {
+    const spec: FnSpec = { id: 'routes/usuarios', name: 'search', method: 'GET', args: { q: 'str' }, returns: { list: 'str' }, chain: [], wire: jsonWire };
+    const server = fn(spec);
+    server.handle(record(['Ana']));
+    const sent = served(server);
+    expect(await stub<never, string[], { q: string }>(spec)({ q: 'an' })).toEqual(['Ana']);
+    expect(JSON.parse(sent[0]!.url.searchParams.get('a')!)).toEqual({ q: 'an' });
+    expect(headersOf(sent[0]!.init).has('fud-sig')).toBe(false);
   });
 });
