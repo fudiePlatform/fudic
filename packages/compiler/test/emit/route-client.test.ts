@@ -72,7 +72,8 @@ describe('who gets a chunk (§6.3, §4.5)', () => {
       '/l.fud': '<!DOCTYPE html><html><head>@RenderHead()</head><body>@RenderBody()</body></html>',
     })!;
     expect(code).not.toContain('$lp0');
-    expect(code).toMatch(/export default \(\$props\) => \{\n {2}const \$d = \[\];/u);
+    // The `@code` is author code, so the body runs inside `$owned` (SDD-68).
+    expect(code).toMatch(/export default \(\$props\) => \{\n {2}const \[\$ctl, \$owns\] = \$owned\(\(\) => \{\n {4}const \$d = \[\];/u);
   });
 
   it('a route that only composes reactive components stays at zero JavaScript of its own', () => {

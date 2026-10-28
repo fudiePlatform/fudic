@@ -3,10 +3,10 @@ import { emit } from '@fudic/dom';
 
 customElements.define("app-button", class extends FudicElement {
   static c($props) {
-    const $d = []; // teardowns
     const [$ctl, $owns] = $owned(() => {
       let $n0, $n1;
       const $r = [];
+      const $d = []; // teardowns
       const $w = []; // last applied, per value write
       let [$dom, $shadow, variant, disabled] = $props; variant ??= ('primary'); disabled ??= (false);
       let $host = $dom.host($shadow);
@@ -46,10 +46,9 @@ customElements.define("app-button", class extends FudicElement {
           $s();
         },
         u: ($p) => { if (2 in $p) variant = $p[2] ?? ('primary'); if (3 in $p) disabled = $p[3] ?? (false); $a(); },
-        r: () => { $n0 = $n1 = $shadow = $host = null; $d.forEach((d) => d()); },
+        r: () => { $n0 = $n1 = $shadow = $host = null; $d.forEach((d) => d()); $owns.forEach((d) => d()); },
       };
     });
-    $d.push(...$owns);
     return $ctl;
   }
 });

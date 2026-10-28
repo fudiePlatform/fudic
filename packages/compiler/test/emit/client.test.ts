@@ -143,7 +143,9 @@ describe('emitComponentClientModule — the module shape (§6.8)', () => {
     expect(controller(src)).toContain(
       'r: () => { $k0.forEach(($i) => $i.r()); $k1.forEach(($i) => $i.r()); ',
     );
-    expect(controller(src)).toContain('$shadow = null; $d.forEach((d) => d()); },');
+    // What the `@code` created goes LAST: by then the view no longer listens, so a task the
+    // teardown cancels cannot repaint nodes already released (SDD-68).
+    expect(controller(src)).toContain('$shadow = null; $d.forEach((d) => d()); $owns.forEach((d) => d()); },');
   });
 
   it('asks the condition ONCE, in the selector the three bodies share', () => {

@@ -1,13 +1,13 @@
-// @vitest-environment happy-dom
+﻿// @vitest-environment happy-dom
 /**
- * SDD-68 §6, criteria 12–14 — what the `@code` creates dies with its component, and a task
+ * SDD-68 Â§6, criteria 12â€“14 â€” what the `@code` creates dies with its component, and a task
  * on the server never calls.
  *
  * The emit wraps the `@code` in `$owned` and pours the list into `$d`; that much is text, and
  * the goldens lock it. Whether it WORKS is a question about running it: that the effect the
  * author wrote really is in the list `r` drains, and that a `task` created next to it is too.
  * So the chunks are evaluated here with every import answered by the real package behind it
- * — `@fudic/core`, `@fudic/i18n` — or by a module of the test's own (`./api.js`).
+ * â€” `@fudic/core`, `@fudic/i18n` â€” or by a module of the test's own (`./api.js`).
  */
 
 import { readFileSync } from 'node:fs';
@@ -52,15 +52,25 @@ function componentFactory(source: string, modules: Modules): FudicElementCtor {
   return captured!;
 }
 
-/** A fake server function: records each call and its signal, and never settles on its own. */
-function pendingFn<A>(): { fn: Callable<A, string[]>; calls: { args: A; signal: AbortSignal }[] } {
-  const calls: { args: A; signal: AbortSignal }[] = [];
-  const fn: Callable<A, string[]> = (args, { signal }) => {
-    calls.push({ args, signal });
-    return new Promise<string[]>(() => undefined);
-  };
+interface PendingCall<A> {
+  readonly args: A;
+  readonly signal: AbortSignal;
+  resolve(value: string[]): void;
+}
+
+/** A fake server function: records each call and its signal, and settles only when told. */
+function pendingFn<A>(): { fn: Callable<A, string[]>; calls: PendingCall<A>[] } {
+  const calls: PendingCall<A>[] = [];
+  const fn: Callable<A, string[]> = (args, { signal }) =>
+    new Promise<string[]>((resolve) => {
+      calls.push({ args, signal, resolve });
+    });
   return { fn, calls };
 }
+
+const flush = async (): Promise<void> => {
+  for (let i = 0; i < 10; i += 1) await Promise.resolve();
+};
 
 function mountComponent(tag: string, source: string, modules: Modules): Controller {
   const io = memoryIo({
@@ -83,7 +93,7 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-describe('criterion 12 — a component takes its task and its effect with it', () => {
+describe('criterion 12 â€” a component takes its task and its effect with it', () => {
   const SOURCE =
     '@code {\n' +
     '  import { task, effect } from "@fudic/core";\n' +
@@ -118,9 +128,28 @@ describe('criterion 12 — a component takes its task and its effect with it', (
     expect(await probe.found!.run('ana')).toBeUndefined();
     expect(calls).toHaveLength(1);
   });
+
+  it('a teardown that writes what the view reads runs after the view stopped listening', () => {
+    // The view's subscriptions go first, what the `@code` created goes last: otherwise this
+    // write would repaint a node `r` has already released, and `setText(null, …)` throws.
+    const controller = mountComponent(
+      'x-late',
+      '@code {\n' +
+        '  import { signal, effect } from "@fudic/core";\n' +
+        '  const n = signal(0);\n' +
+        '  effect(() => () => n.set(1));\n' +
+        '}\n' +
+        '<x-late>\n  <template shadowrootmode="open"><b>@n()</b></template>\n</x-late>\n',
+      { '@fudic/core': core },
+    );
+    const b = document.querySelector('x-late')!.shadowRoot!.querySelector('b')!;
+    expect(b.textContent).toBe('0');
+    expect(() => controller.r()).not.toThrow();
+    expect(b.textContent).toBe('0');
+  });
 });
 
-describe('criterion 13 — app-clock removed stops updating its signal', () => {
+describe('criterion 13 â€” app-clock removed stops updating its signal', () => {
   // The example's own file, not a copy: the clock this criterion names is that one.
   const CLOCK = readFileSync(resolve(fixturesDir, '../../..', 'examples/basic/src/components/app-clock.fud'), 'utf8');
 
@@ -143,7 +172,7 @@ describe('criterion 13 — app-clock removed stops updating its signal', () => {
   });
 });
 
-describe('criterion 14 — a task on the server never calls, and the page hydrates as painted', () => {
+describe('criterion 14 â€” a task on the server never calls, and the page hydrates as painted', () => {
   const LAYOUT =
     '<!DOCTYPE html><html><head>@RenderHead()</head><body><main>@RenderBody()</main></body></html>';
   const ROUTE = [
@@ -181,7 +210,7 @@ describe('criterion 14 — a task on the server never calls, and the page hydrat
     };
   }
 
-  it('paints initial without calling fn, hydrates without building, and is live afterwards', () => {
+  it('paints initial without calling fn, hydrates without building, and is live afterwards', async () => {
     const { fn, calls } = pendingFn<string>();
     const modules: Modules = { '@fudic/core': core, './api.js': { search: fn } };
     const graph = resolveDocument('/r.fud', memoryIo({ '/r.fud': ROUTE, '/l.fud': LAYOUT })).value;
@@ -219,10 +248,20 @@ describe('criterion 14 — a task on the server never calls, and the page hydrat
     expect(calls).toHaveLength(0);
     expect(document.body.innerHTML).toBe(painted);
 
-    // Hydrated, the task is the browser's: a click calls.
+    // Hydrated, the task is the browser's: a click calls, and the view follows its state.
     (document.querySelector('button') as HTMLElement).click();
     expect(calls.map((c) => c.args)).toEqual(['x']);
+    expect(document.querySelector('span.busy')).not.toBeNull();
+    const rows = [...document.querySelectorAll('li')].map((li) => li.textContent);
+    expect(rows).toEqual(['ana', 'eva']); // the old value, kept while the call is in flight
+
+    calls[0]!.resolve(['eva', 'zoe']);
+    await flush();
+    expect(document.querySelector('span.busy')).toBeNull();
+    expect([...document.querySelectorAll('li')].map((li) => li.textContent)).toEqual(['eva', 'zoe']);
+
+    (document.querySelector('button') as HTMLElement).click();
     controller.r();
-    expect(calls[0]!.signal.aborted).toBe(true);
+    expect(calls[1]!.signal.aborted).toBe(true);
   });
 });

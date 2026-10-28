@@ -3,10 +3,10 @@ import { emit } from '@fudic/dom';
 
 customElements.define("app-actions", class extends FudicElement {
   static c($props) {
-    const $d = []; // teardowns
     const [$ctl, $owns] = $owned(() => {
       let $n0, $n1;
       const $r = [];
+      const $d = []; // teardowns
       let [$dom, $shadow, rows] = $props; rows ??= ([]);
       let $host = $dom.host($shadow);
       function del() {
@@ -188,10 +188,9 @@ customElements.define("app-actions", class extends FudicElement {
           $s();
         },
         u: ($p) => { if (2 in $p) rows = $p[2] ?? ([]); $a(); $u0(); },
-        r: () => { $k0.forEach(($i) => $i.r()); $n0 = $n1 = $shadow = $host = null; $d.forEach((d) => d()); },
+        r: () => { $k0.forEach(($i) => $i.r()); $n0 = $n1 = $shadow = $host = null; $d.forEach((d) => d()); $owns.forEach((d) => d()); },
       };
     });
-    $d.push(...$owns);
     return $ctl;
   }
 });
