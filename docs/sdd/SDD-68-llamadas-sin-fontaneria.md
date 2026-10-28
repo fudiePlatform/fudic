@@ -1,6 +1,6 @@
 # SDD-68 — Llamadas sin fontanería: `task` y el repintado tras una mutación
 
-> **Estado:** `Listo` — [tareas](./SDD-68-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-68-Task.md).
 > **Paquetes:** `@fudic/core` · `@fudic/http` · `@fudic/conventions` · `@fudic/compiler` ·
 > `examples/basic`
 > **Depende de:** 31 (`signal`, `effect`), 15 (el controlador y sus `$d` de desmontaje), 39 (el
@@ -483,3 +483,13 @@ Y la tabla de `@foreach (const p of data.users)` se repinta sola.
     `computed`) y no métodos: así las acepta la regla de las llamadas sin argumentos.
 22. **Dos avisos seguidos: gana el último refresco.** El anterior se aborta y su respuesta no se
     aplica, así que un refresco lento no pinta encima de uno nuevo.
+23. **El oyente de la ruta va atado a su `<body>`.** Un aviso que encuentra ese `<body>` fuera del
+    documento retira el oyente sin pedir nada. En el navegador navegar cambia el documento; donde
+    se sustituye el `<body>` en el sitio (el arnés de tests entre dos visitas) quedarían oyentes
+    viejos.
+24. **`load.fetch` existe en las dos variantes de `load`.** Donde un solo grafo de módulos sirve
+    a los dos lados (el arnés de tests), el chunk de la ruta recibe la variante del servidor.
+25. **Un bloque solo mueve los nodos que son suyos, y no mueve los que ya están en su sitio.**
+    Al hidratar, el espacio en blanco que cierra una fila es una referencia al último nodo del
+    nivel, el mismo para todas, y moverlo reordenaba la lista; y reinsertar una fila que no se
+    mueve hace perder el foco a lo que tiene dentro.

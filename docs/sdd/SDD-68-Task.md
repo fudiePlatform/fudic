@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/core` · `@fudic/http` · `@fudic/conventions` · `@fudic/compiler` · `examples/basic`
 > **Rama:** `sdd-68-llamadas-sin-fontaneria`. Nace de `main` **con SDD-67 en `Hecho`**: el endpoint
 > de datos y las llamadas ya viajan en binario.
-> **Progreso:** 19 / 20 — `En curso`.
+> **Progreso:** 20 / 20 — `Hecho`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -83,4 +83,4 @@ código, no el test.
 |---|---|---|---|---|---|
 | [x] | 18 | 6, 17 | **`usuarios.fud`.** `task(search, …)` con `initial: []`, la búsqueda lenta como tarea propia con su «Cancelar», `task(save)` y `task(remove)`; fuera `lanzar`, `buscar`, `busqueda`, `AbortController` y `location.reload()`; los textos de la página dicen lo que se ve en Network (criterio 19) | `examples/basic` | `src/routes/usuarios.fud` |
 | [x] | 19 | 18 | **README y docs.** `task`, sus dos modos, la tabla de estados, qué pasa con `error-pages`, el desmontaje y que una tarea creada en un handler vive con la página; en `@fudic/http`, el campo `method` y el repintado | `core` · `http` | `packages/core/README.md` · `packages/http/README.md` |
-| [ ] | 20 | 18, 19 | **Tests, entrega y cierre.** Criterios 11 y 20; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; lo nuevo al 100 % en las cuatro métricas; SDD-68 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `test/**` · `docs/sdd/*` |
+| [x] | 20 | 18, 19 | **Tests, entrega y cierre.** Criterios 11 y 20; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; lo nuevo al 100 % en las cuatro métricas; SDD-68 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `test/**` · `docs/sdd/*` |
