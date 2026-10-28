@@ -247,6 +247,9 @@ test.describe('user-form', () => {
     await expect(form(page).getByText(/Guardado: Nuevo \(id \d+\)/u)).toBeVisible();
     // The component emits the person on the bus and the route paints the row: no reload.
     await expect(row(page, 'Nuevo')).toContainText('nuevo@fudic.dev');
+    // And the form is back as declared, ready for the next one.
+    await expect(form(page).getByLabel('Nombre')).toHaveValue('');
+    await expect(form(page).getByLabel('Email')).toHaveValue('');
     await row(page, 'Nuevo').getByRole('button', { name: 'Borrar' }).click();
     await expect(row(page, 'Nuevo')).toHaveCount(0);
   });

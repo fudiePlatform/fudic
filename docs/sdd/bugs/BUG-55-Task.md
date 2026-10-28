@@ -41,3 +41,5 @@
 - **Tarea 3.** Los e2e de `/usuarios` se habían quedado atrás con SDD-68: esperaban recargas en
   «Activo» y «Borrar» y leían el primer `status` de la página, que dejó de ser el de la búsqueda
   lenta. Corregidos. Playwright entero: 283 en verde, 4 saltados.
+- **Tarea 3, tras la prueba de Pedro.** El formulario se quedaba con lo enviado tras un alta
+  correcta: ahora vuelve a como está declarado (`$reset()`), y el e2e lo comprueba.
