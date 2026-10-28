@@ -150,11 +150,13 @@ const params = (c: DeclCtx): string => pageParams(c.api.route?.params ?? []);
 function loadDecl(d: LoadDecl, c: DeclCtx): string {
   c.http.add('PageContext');
   c.http.add('PagePiece');
+  c.http.add('BrowserLoadPiece');
   const lines = [
     `${I}export interface LoadData ${fieldsType(d.fields, c)}`,
     `${I}export type LoadCtx = PageContext<${params(c)}>${addsOf(d, c)};`,
     `${I}export type LoadHandler = (ctx: LoadCtx) => LoadData | Promise<LoadData>;`,
-    `${I}export const load: PagePiece<LoadHandler>;`,
+    // `fetch` is the browser module's: what the route's chunk asks the server with (SDD-68 §3.4).
+    `${I}export const load: PagePiece<LoadHandler> & BrowserLoadPiece<LoadData>;`,
   ];
   if (d.fails.length > 0) lines.push(`${I}export const LoadFails: ${failsType(d.fails, c)};`);
   return lines.join('\n');

@@ -15,7 +15,7 @@ import { FN_PREFIX } from '@fudic/conventions';
 import { decode } from '../client/codec.js';
 import { join, pageParams } from '../client/url.js';
 import { isForm } from '../client/form.js';
-import { invalidate } from '../client/invalidate.js';
+import { announceStale, invalidate } from '../client/invalidate.js';
 import { runPipeline } from '../client/pipeline.js';
 import { STAGES } from '../client/stages/index.js';
 import { run } from '../compose.js';
@@ -99,7 +99,7 @@ const labelOf = (spec: FnSpec): string => `${spec.name} of ${spec.id}`;
 export function fn(spec: FnSpec): ServerContract {
   const slot = new Slot<Handler<never, unknown>>(labelOf(spec), 'server');
   const call = (): Promise<never> => Promise.reject(new Error(`${labelOf(spec)} is called from the browser`));
-  const contract = Object.assign(call, { spec, slot, handle: (h: Handler<never, unknown>) => slot.set(h) });
+  const contract = Object.assign(call, { spec, slot, method: spec.method, handle: (h: Handler<never, unknown>) => slot.set(h) });
   const byName = contracts.get(spec.id) ?? new Map<string, ServerContract>();
   contracts.set(spec.id, byName);
   byName.set(spec.name, contract as unknown as ServerContract);
@@ -176,10 +176,13 @@ export function stub<C, R, A>(spec: FnSpec): Contract<C, R, A> {
       return decode(response, { wire, ...(spec.returns !== undefined ? { returns: spec.returns } : {}) });
     });
     const own = (spec.invalidates ?? []).map((path) => join(base, path));
-    await invalidate(spec.method === 'GET' ? own : [globalThis.location.pathname, ...own]);
+    const stale = spec.method === 'GET' ? own : [globalThis.location.pathname, ...own];
+    await invalidate(stale);
+    // After the worker forgot them, so the page that asks for its data again gets the new one.
+    await announceStale(stale);
     return value;
   };
-  return Object.assign(call, { spec, handle: (h: unknown) => slot.set(h) }) as unknown as Contract<C, R, A>;
+  return Object.assign(call, { spec, method: spec.method, handle: (h: unknown) => slot.set(h) }) as unknown as Contract<C, R, A>;
 }
 
 /** `/_fudic/fn/<id with the page's values>/<name>/<route with its values>`. */

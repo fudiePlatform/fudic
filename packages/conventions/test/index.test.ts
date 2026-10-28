@@ -77,12 +77,17 @@ describe('@fudic/conventions', () => {
     // server and the Service Worker all derive the same URLs from them. `INVALIDATE_MESSAGE`
     // is the one the stub and the Service Worker share (§4.9). `ERROR_FILE` is `_error.fud`,
     // which the plugin routes around and the editor gives the problem's `data` (§3.6, §4.16).
+    //
+    // `DATA_STALE_EVENT` and `coversPath` are SDD-68's (§3.3, §4.8): the stub tells the page
+    // its data is stale with the first, and decides that it is with the second — the same
+    // comparison the Service Worker forgets by.
     expect(Object.keys(conventions).sort()).toEqual([
       'API_DIR',
       'API_TYPES_DIR',
       'BROWSER_DIR',
       'COMPONENTS_DIR',
       'DATA_PREFIX',
+      'DATA_STALE_EVENT',
       'ERROR_FILE',
       'ERROR_PREFIX',
       'FN_PREFIX',
@@ -95,6 +100,7 @@ describe('@fudic/conventions', () => {
       'RUNTIME_DIR',
       'SERVER_DIR',
       'SRC_DIR',
+      'coversPath',
       'runtimeCacheName',
       'runtimeMarkerUrl',
     ]);

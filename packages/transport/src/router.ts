@@ -16,7 +16,7 @@
  * request — two rows in the Network panel for one URL. That was a real bug.
  */
 
-import { FN_PREFIX } from '@fudic/conventions';
+import { coversPath, FN_PREFIX } from '@fudic/conventions';
 import { applyNonce, applyNonceStream, cspFor, newNonce, NONCE_TOKEN } from './csp.js';
 import { type Linker } from './linker.js';
 import {
@@ -186,16 +186,6 @@ export interface Router {
 
 /** The data endpoint answered with an error: the network serves the navigation (SDD-56 §4.8). */
 class DataUnavailable extends Error {}
-
-/** Whether a concrete pathname is one of the URLs of `pattern`. */
-function matchesPattern(pattern: string, pathname: string): boolean {
-  const want = pattern.split('/');
-  const have = pathname.split('/');
-  return (
-    want.length === have.length &&
-    want.every((seg, i) => (seg.startsWith(':') ? have[i] !== '' : seg === have[i]))
-  );
-}
 
 const HTML_HEADERS = { 'content-type': 'text/html; charset=utf-8' };
 
@@ -641,7 +631,8 @@ export function createRouter(config: RouterConfig): Router {
         if (path.startsWith(dataRoot)) held.add(`${root}${path.slice(dataRoot.length)}`.replace(/\/{2,}/gu, '/'));
       }
       for (const path of held) {
-        if (matchesPattern(pattern, path)) await this.invalidate(path);
+        // The comparison the stub uses too, to tell the page its own data is stale.
+        if (coversPath(pattern, path)) await this.invalidate(path);
       }
     },
   };

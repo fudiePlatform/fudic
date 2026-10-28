@@ -58,4 +58,9 @@ export interface CallOptions {
 /** What the name of a server function is in the browser. */
 export interface ServerFunction<A, R> {
   (...call: A extends void ? [args?: A, options?: CallOptions] : [args: A, options?: CallOptions]): Promise<R>;
+  /**
+   * Its verb. With it a server function is a `Callable` of `@fudic/core`, and `task` reads it
+   * to pick its order, without either package importing the other.
+   */
+  readonly method: Method;
 }
