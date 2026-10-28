@@ -596,6 +596,21 @@ describe('createRouter — resources, ready and invalidate', () => {
     expect(event.responded).not.toBeNull();
   });
 
+  it('ready() also seeds the warmed templates, so a recycled SW renders a route it already holds', async () => {
+    const h = harness();
+    const first = router(h);
+    await first.warm('/about');
+    await first.warm('/blog/x'); // a template with a dep: the dep must be on disk too
+    // A new worker over the same caches: nothing warmed in THIS session, the chunks on disk.
+    const r = router(h);
+    await r.ready();
+    for (const path of ['about', 'blog/x']) {
+      const event = fetchEvent(`${ORIGIN}${path}`);
+      r.handle(event);
+      expect(event.responded).not.toBeNull();
+    }
+  });
+
   it("defaults its base to the Service Worker's own location", async () => {
     const h = harness();
     // Without `origin` the router resolves manifest paths against `location.href` — the
