@@ -1,10 +1,9 @@
 /**
- * Ownership — who tears down what a component's `@code` created (SDD-68 §3.5).
+ * Ownership — who tears down what a component's code block created (SDD-68 §3.5).
  *
- * The emit runs the `@code` of a component or a route inside `owned`, and pours the list it
- * hands back into the controller's `$d`. While `fn` runs, every `effect(…)` and every
- * `task(…)` created there leaves its teardown in that list, so removing the component stops
- * them. Anything created later — inside a handler, inside a rerun — finds no owner and lives
+ * The emit runs the code block of a component or a route inside `owned`, and `r` tears down the
+ * list it hands back. While `fn` runs, every `effect(…)` and every `task(…)` created there
+ * leaves its teardown in that list, so removing the component stops them. Anything created later — inside a handler, inside a rerun — finds no owner and lives
  * with the page, exactly as before.
  *
  * One module-level variable, like the tracking context: reentrant, restored in `finally`.

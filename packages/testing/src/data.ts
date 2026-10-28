@@ -14,7 +14,8 @@ import { projectOf } from './project.js';
 /** Answer a request whose path, past `base`, starts with the data prefix. */
 export async function routeData(request: Request, prefix: string): Promise<Response> {
   const { routes } = projectOf();
-  const routePath = new URL(request.url).pathname.slice(prefix.length) || '/';
+  // The caller routes only paths past `${prefix}/`, so what is left starts with `/`.
+  const routePath = new URL(request.url).pathname.slice(prefix.length);
   const rb = matchRouteBuild(routes, routePath);
   if (rb === null) return new Response(null, { status: 404 });
   try {
