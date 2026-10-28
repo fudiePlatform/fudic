@@ -43,7 +43,7 @@ describe('the corners, as text', () => {
     expect(d).toContain('export type BuyCtx = FnContext<{}, {}, undefined>;');
     const m = emitModule(c.shop, c.index, CTX, 'server');
     expect(m).toContain('{ use: [] }, { skip: [] }');
-    expect(m).toContain('export const buy = fn({ id: "routes/shop", name: "buy", method: "POST", chain: [{ steps: [] }] });');
+    expect(m).toContain('export const buy = fn({ id: "routes/shop", name: "buy", method: "POST", wire: binWire, sig: "99f6eca0", chain: [{ steps: [] }] });');
   });
 
   it('a layout without load and without the props of a layout', () => {

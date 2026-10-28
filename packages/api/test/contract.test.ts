@@ -13,6 +13,34 @@ function first<K extends Decl['kind']>(source: string, kind: K): Of<K> {
 const lines = (...l: string[]): string => l.join('\n');
 
 describe('functions', () => {
+  it('an argument of the route, of query or of the body takes rules below it, as a field (SDD-67 §3.5)', () => {
+    const source = lines(
+      'put save /:id',
+      '  id      uuid',
+      '  name    str',
+      '    required',
+      '    max-length 80',
+      '  age     u8',
+      '    min 18                "Too young."',
+      '  query search str',
+      '    min-length 2',
+    );
+    expect(codes(source)).toEqual([]);
+    const fn = first(source, 'fn');
+    const rules = fn.args.map((a) => [a.name.text, a.rules.map((r) => [r.name.text, r.args.map((x) => slice(source, x.span)), r.text?.text])]);
+    expect(rules).toEqual([
+      ['id', []],
+      ['name', [['required', [], undefined], ['max-length', ['80'], undefined]]],
+      ['age', [['min', ['18'], 'Too young.']]],
+      ['search', [['min-length', ['2'], undefined]]],
+    ]);
+    const age = fn.args[2]!;
+    expect(slice(source, age.rules[0]!.span)).toBe('min 18                "Too young."');
+    // An argument with rules spans its block; one without, its line.
+    expect(slice(source, age.span)).toBe('age     u8\n    min 18                "Too young."');
+    expect(slice(source, fn.args[0]!.span)).toBe('id      uuid');
+  });
+
   it('place each argument by the route and `query` (SDD §3.3)', () => {
     const source = lines(
       'put save /:id/lines/:line',
@@ -126,7 +154,6 @@ describe('functions', () => {
     ['an argument with a bare map', 'get f\n  m  map', ['FUD1067']],
     ['an argument whose map key is not a type', 'get f\n  m  map [ str', ['FUD1067']],
     ['an argument in the wrong shape', 'get f\n  1x  str', ['FUD1065']],
-    ['a line under an argument', 'get f\n  q  str\n    x', ['FUD1065']],
   ];
   for (const [what, source, expected] of broken) {
     it(`reports ${what}`, () => {

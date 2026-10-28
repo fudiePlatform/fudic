@@ -24,6 +24,33 @@ describe('formatApi (criterion 7)', () => {
     );
   });
 
+  it('criterion 19: the rules under an argument line up as those under a field, idempotent', () => {
+    const messy = 'put save /:id\n  id uuid\n    required\n  name    str\n    required "A."\n    max-length 80 "B."\n  query search str\n      min-length 2\n';
+    const formatted = lines(
+      'put save /:id',
+      '  id    uuid',
+      '    required',
+      '  name  str',
+      '    required       "A."',
+      '    max-length 80  "B."',
+      // A `query` line keeps its own spacing, as before rules.
+      '  query search str',
+      '    min-length 2',
+    );
+    const once = formatApi(messy);
+    expect(once).toBe(formatted);
+    expect(formatApi(once)).toBe(once);
+    expect(ink(once)).toBe(ink(messy));
+    expect(shape(parseApi(once).value.declarations)).toEqual(shape(parseApi(messy).value.declarations));
+  });
+
+  it('criterion 19: the same block under a field and under an argument comes out the same', () => {
+    const block = (head: string, name: string): string => `${head}\n  ${name} str\n    required "A."\n    min-length 3 "B."\n`;
+    const field = formatApi(block('form f', 'a')).split('\n').slice(1);
+    const arg = formatApi(block('put f', 'a')).split('\n').slice(1);
+    expect(arg).toEqual(field);
+  });
+
   it('the `= ""` of a field is no text column', () => {
     expect(formatApi('form f\n  name str = ""\n  alias  str = "x"\n')).toBe(lines('form f', '  name   str = ""', '  alias  str = "x"'));
   });

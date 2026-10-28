@@ -245,6 +245,8 @@ export interface ArgDecl extends Documented {
   readonly place: ArgPlace;
   /** The `query` keyword, for a query argument. */
   readonly query?: Span;
+  /** The rules below it, as under a form field (SDD-67 §3.5). */
+  readonly rules: readonly RuleUse[];
   readonly span: Span;
 }
 

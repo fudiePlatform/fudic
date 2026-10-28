@@ -40,7 +40,7 @@ describe('criterion 14: no imports of the developer', () => {
   it('a generated module imports only @fudic/* and fudic:*', () => {
     for (const id of IDS) {
       for (const text of [declarationsOf(p, id), moduleOf(p, id, 'server'), moduleOf(p, id, 'browser')]) {
-        for (const spec of specifiers(text)) expect(spec, `${id}: ${spec}`).toMatch(/^(?:@fudic\/(?:http|forms)\/contract|fudic:.+)$/u);
+        for (const spec of specifiers(text)) expect(spec, `${id}: ${spec}`).toMatch(/^(?:@fudic\/(?:http|forms)\/contract|@fudic\/http\/wire(?:\/bin|\/json)?|fudic:.+)$/u);
       }
     }
   });

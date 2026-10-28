@@ -8,11 +8,27 @@
  * in. It imports `@fudic/*\/contract` and other `fudic:<id>`, never anything of the developer's.
  */
 
-import type { CompressClause, Decl, FailsClause, FnDecl, LoadDecl, MiddlewareArg, MiddlewareDecl, SkipClause, UseClause } from '../ast.js';
+import type { CompressClause, Decl, FailsClause, FnDecl, LoadDecl, MiddlewareArg, MiddlewareDecl, RuleUse, SkipClause, UseClause } from '../ast.js';
 import type { ApiIndex, ApiSource } from '../index-api.js';
 import type { ApiContext } from '../validate.js';
+import { isArgRule } from '../validate-form.js';
 import { formCode } from './form.js';
-import { borrowedForms, camel, clauses, descriptors, globalChain, hasChain, literal, pascal, projectRef, str, type EmitCtx } from './shared.js';
+import { canonical, fnv1a } from './signature.js';
+import {
+  borrowedForms,
+  camel,
+  clauses,
+  descriptor,
+  descriptors,
+  effective,
+  globalChain,
+  hasChain,
+  literal,
+  pascal,
+  projectRef,
+  str,
+  type EmitCtx,
+} from './shared.js';
 
 export type Side = 'server' | 'browser';
 
@@ -21,6 +37,10 @@ interface ModuleCtx extends EmitCtx {
   readonly side: Side;
   readonly http: Set<string>;
   readonly forms: Set<string>;
+  /** The names `@fudic/http/wire` must give. */
+  readonly wire: Set<string>;
+  /** The formats of this module's functions. */
+  readonly wires: Set<'bin' | 'json'>;
   /** `fudic:<id>` → the names imported from it. */
   readonly imports: Map<string, Set<string>>;
 }
@@ -37,6 +57,8 @@ export function emitModule(source: ApiSource, index: ApiIndex, api: ApiContext, 
     side,
     http: new Set(),
     forms: new Set(),
+    wire: new Set(),
+    wires: new Set(),
     imports,
     ref: (other, name) => {
       const names = imports.get(other.id) ?? new Set<string>();
@@ -53,6 +75,10 @@ export function emitModule(source: ApiSource, index: ApiIndex, api: ApiContext, 
   const head: string[] = [];
   if (c.http.size > 0) head.push(`import { ${[...c.http].sort().join(', ')} } from '@fudic/http/contract';`);
   if (c.forms.size > 0) head.push(`import { ${[...c.forms].sort().join(', ')} } from '@fudic/forms/contract';`);
+  if (c.wire.size > 0) head.push(`import { ${[...c.wire].sort().join(', ')} } from '@fudic/http/wire';`);
+  // One format per module, as its functions need: a page bundles only the codecs it speaks.
+  if (c.wires.has('bin')) head.push(`import { binWire } from '@fudic/http/wire/bin';`);
+  if (c.wires.has('json')) head.push(`import { jsonWire } from '@fudic/http/wire/json';`);
   const messages = index.messages()[0];
   if (messages !== undefined && messages.source !== source && source.file.declarations.some((d) => d.kind === 'form')) {
     head.push(`import ${str(`fudic:${messages.source.id}`)};`);
@@ -174,6 +200,38 @@ function load(d: LoadDecl, c: ModuleCtx): string {
   return `export const load = page({ id: ${str(c.source.id)}, name: "load", chain: ${chain}${browser(c)} });${failsOf('Load', d.fails, c)}`;
 }
 
+/** The validators of `@fudic/forms/contract` by rule, imported under `$` so no rule shadows them. */
+const VALIDATORS: Readonly<Record<string, string>> = {
+  required: 'required',
+  min: 'min',
+  max: 'max',
+  'min-length': 'minLength',
+  'max-length': 'maxLength',
+  pattern: 'pattern',
+};
+
+/** One rule under an argument (SDD-67 §3.5): its validator built with its arguments, as written. */
+function argRule(use: RuleUse, c: ModuleCtx): string | undefined {
+  const found = c.index.lookup('rule', use.name.text);
+  if (found === undefined || !isArgRule(found)) return undefined;
+  const name = VALIDATORS[use.name.text]!;
+  c.forms.add(`${name} as $${name}`);
+  // `pattern` names a pattern of the project, as in a form: its RegExp is what the validator takes.
+  const values = use.args.map((a) => (a.kind === 'word' ? (projectRef(c, 'pattern', a.text) ?? 'undefined') : literal(a)));
+  const check = name === 'required' ? '$required' : `$${name}(${values.join(', ')})`;
+  const text = use.text === undefined ? '' : `, text: ${str(use.text.text)}`;
+  return `{ check: ${check}, name: ${str(use.name.text)}, args: [${use.args.map(literal).join(', ')}]${text} }`;
+}
+
+/** The rules of a function's arguments, by argument in declaration order; `undefined` with none. */
+function argRules(d: FnDecl, c: ModuleCtx): string | undefined {
+  const entries = d.args.flatMap((a) => {
+    const rules = a.rules.flatMap((r) => argRule(r, c) ?? []);
+    return rules.length === 0 ? [] : [`${a.name.text}: [${rules.join(', ')}]`];
+  });
+  return entries.length === 0 ? undefined : `{ ${entries.join(', ')} }`;
+}
+
 function fn(d: FnDecl, c: ModuleCtx): string {
   const kind = c.side === 'server' ? 'fn' : 'stub';
   c.http.add(kind);
@@ -182,7 +240,13 @@ function fn(d: FnDecl, c: ModuleCtx): string {
     return args.length === 0 ? undefined : descriptors(args, c);
   };
   const form = d.form === undefined ? undefined : projectRef(c, 'form', d.form.name.text, d.form.name.text);
-  const body = form === undefined ? typed('body') : undefined;
+  if (form !== undefined) c.wire.add('formTypes');
+  // A form's controls are its body (SDD-67 §3.1): the call writes them and the server reads them.
+  const body = form === undefined ? typed('body') : `formTypes(${form}.$schema)`;
+  // `json` left in the chain once its three levels are folded: the function speaks JSON (§3.4).
+  const json = effective(c, d).includes('json');
+  c.wires.add(json ? 'json' : 'bin');
+  const rules = argRules(d, c);
   const fields = [
     `id: ${str(c.source.id)}`,
     `name: ${str(d.name.text)}`,
@@ -193,6 +257,10 @@ function fn(d: FnDecl, c: ModuleCtx): string {
     ...(typed('query') !== undefined ? [`query: ${typed('query')}`] : []),
     ...(body !== undefined ? [`args: ${body}`] : []),
     ...(form !== undefined ? [`form: ${form}`] : []),
+    `wire: ${json ? 'jsonWire' : 'binWire'}`,
+    ...(json ? [] : [`sig: ${str(fnv1a(canonical(d, c.index)))}`]),
+    ...(d.returns !== undefined ? [`returns: ${descriptor(d.returns.type, c)}`] : []),
+    ...(rules !== undefined ? [`rules: ${rules}`] : []),
     `chain: ${chainOf(level(d.uses, d.skips, d.compress, c), c)}`,
     ...(d.invalidates.length > 0 ? [`invalidates: [${d.invalidates.flatMap((i) => i.routes).map((r) => str(r.text)).join(', ')}]`] : []),
   ];

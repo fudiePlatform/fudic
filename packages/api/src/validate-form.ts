@@ -13,9 +13,11 @@ import {
   FUD1094,
   FUD1095,
   FUD1098,
+  FUD1260,
   type SourceDiagnostic,
 } from '@fudic/diagnostics';
 import type {
+  ArgDecl,
   Expr,
   FieldDecl,
   FormDecl,
@@ -28,7 +30,7 @@ import type {
   SummaryBlock,
   TypeExpr,
 } from './ast.js';
-import { typeText, type ApiIndex } from './index-api.js';
+import { typeText, type ApiIndex, type Declared } from './index-api.js';
 import { checkType, fitsWidth, isNumeric, literalFits } from './types-check.js';
 
 interface Ctx {
@@ -67,6 +69,35 @@ function field(f: FieldDecl, c: Ctx): void {
       c.out.push(FUD1083({ span: use.name.span, rule: use.name.text, type: typeText(f.type), accepts: rule.on.types.map(typeText) }));
     }
     args(use, rule, c);
+  }
+}
+
+/** The rules an argument takes: the built-ins of `@fudic/forms` (SDD-67 §3.5). */
+const ARG_RULES: ReadonlySet<string> = new Set(['required', 'min', 'max', 'min-length', 'max-length', 'pattern']);
+
+/** Whether a declared rule is one of the six of `@fudic/forms`, the only ones an argument takes. */
+export const isArgRule = (found: Declared<RuleDecl>): boolean =>
+  typeof found.source.origin === 'object' && found.source.origin.package === '@fudic/forms' && ARG_RULES.has(found.decl.name.text);
+
+/**
+ * The rules under a function's argument, checked as those under a field (SDD-67 §3.5): they
+ * exist, apply to its type, take those arguments and fill their text; and a rule that is not one
+ * of the six of `@fudic/forms` is `FUD1260`.
+ */
+export function checkArgRules(arg: ArgDecl, index: ApiIndex, out: SourceDiagnostic[]): void {
+  const c: Ctx = { index, out };
+  for (const use of arg.rules) {
+    if (resolve(use, c) === undefined) continue;
+    const found = index.lookup('rule', use.name.text)!;
+    if (!isArgRule(found)) {
+      out.push(FUD1260({ span: use.name.span, rule: use.name.text }));
+      continue;
+    }
+    if (!index.rulesFor(arg.type).some((r) => r.decl === found.decl)) {
+      const accepts = found.decl.on!.types.map(typeText);
+      out.push(FUD1083({ span: use.name.span, rule: use.name.text, type: typeText(arg.type), accepts, under: 'argument' }));
+    }
+    args(use, found.decl, c);
   }
 }
 

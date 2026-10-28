@@ -523,3 +523,32 @@ test, o un backend, la recalcule.
     de otro lenguaje puede pasar sin leer el código TS.
 13. **`respond` y `respondProblem` en `@fudic/testing`.** La opción `fetch` contesta con un
     `Response`; sin una ayuda, cada test tendría que codificar binario a mano.
+14. **Un middleware sin mitades es válido** (decidido con Pedro al implementar). SDD-60 lo
+    rechazaba con `FUD1073`; `json` es justo eso, una marca que lee el compilador. `FUD1073` deja
+    de aplicarse a `middleware`, para cualquier middleware, no solo `json`.
+
+### 8.2. Tomadas al implementar
+
+1. **El límite de 48 bits lo comprueba `conform`**, en los dos formatos: una fecha fuera de
+   ±2⁴⁷ ms es un 400 antes de salir. Ojo, el criterio 4 dice «año 6000», pero 48 bits llegan
+   hasta el año 6429: el test usa un año posterior.
+2. **Con un form, `FnSpec.args` son sus controles** (`formTypes(form.$schema)`, de
+   `@fudic/http/wire`), que escribe el emisor. Así ni `fn.ts` ni el pipeline importan
+   `schema.ts` (§4.4), y los dos lados leen el cuerpo con los mismos tipos.
+3. **`decodeValue` pasa `conform`** también en binario: un opcional ausente vuelve como clave
+   ausente, no como `null`. `decodeArgs` deja `null`, porque `$set` de un form pide todas las
+   claves.
+4. **Lectura hostil sin reservar memoria:** una lista exige al menos un bit por elemento y un
+   mapa dos antes de crear nada; un varint de más de 8 bytes y un UTF-8 inválido son 400.
+5. **`html` viaja como `str`.** No está en la tabla de §3.1; su texto es lo que cruza
+   (SDD-61 §4.7).
+6. **Sin `->`, siempre 204**, aunque el handler devuelva algo; con `->`, un valor `undefined`
+   tras `conform` también es 204.
+7. **La firma la calcula el emisor con su propio FNV-1a** (`@fudic/api` no depende en tiempo de
+   ejecución de `@fudic/http`); un test comprueba que coincide con `signature`.
+8. **Los validadores de las reglas se importan con alias** (`min as $min`) para no chocar con
+   las reglas de `fudic:@fudic/forms/rules` que importa un form del mismo fichero.
+9. **El autocompletado debajo de un argumento ofrece las seis**, sin filtrar por tipo (criterio
+   19); al elegir una que no aplica, `FUD1083` lo dice.
+10. **El formateador no cambia:** trabaja por tokens y ya alinea las reglas de un argumento como
+    las de un campo.

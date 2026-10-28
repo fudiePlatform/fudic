@@ -47,6 +47,7 @@ import {
   useClause,
   type Ctx,
 } from './clauses.js';
+import { ruleUse } from './form.js';
 import type { LineNode, Token } from './line.js';
 import { duration, readType, route, text } from './type.js';
 
@@ -173,10 +174,13 @@ export function fnDecl(node: LineNode, c: Ctx): FnDecl | undefined {
   };
 }
 
-/** `<arg> <type>` from `tokens[at]`: the argument without its place, which the route decides. */
+/**
+ * `<arg> <type>` from `tokens[at]`, and the rules below it: the argument without its place,
+ * which the route decides.
+ */
 function argDecl(node: LineNode, at: number, c: Ctx): Omit<ArgDecl, 'place'> | undefined {
-  leaf(node, c);
   const argName = shaped(node.tokens[at]!, 'identifier', 'argument', c);
+  const rules = node.children.flatMap((child) => ruleUse(child, node, ARG_LINES, c) ?? []);
   const rest = node.tokens.slice(at + 1);
   if (rest.length === 0) {
     c.out.push(FUD1067({ span: argName.span, text: '' }));
@@ -185,8 +189,10 @@ function argDecl(node: LineNode, at: number, c: Ctx): Omit<ArgDecl, 'place'> | u
   const { type, used } = readType(rest, c.out);
   trailing(node, at + 1 + used, c);
   if (type === undefined) return undefined;
-  return { kind: 'arg', name: argName, type, ...doc(node), span: node.span };
+  return { kind: 'arg', name: argName, type, rules, ...doc(node), span: blockSpan(node) };
 }
+
+const ARG_LINES = ['<rule>'];
 
 const MODES = ['ssg', 'ssr', 'sw'];
 const POLICIES = ['cache-first', 'network-first', 'stale-while-revalidate', 'network-only'];

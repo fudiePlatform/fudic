@@ -2,7 +2,7 @@ import { source } from '../make.js';
 import type { SourceDiagnostic, SourceInput } from '../types.js';
 
 /** The block that cannot be empty. */
-export type FUD1073Block = 'type' | 'enum' | 'form' | 'group' | 'middleware';
+export type FUD1073Block = 'type' | 'enum' | 'form' | 'group';
 
 /** Parameters of `FUD1073`. */
 export type FUD1073Params = SourceInput & {
@@ -14,7 +14,6 @@ const NEEDS: Readonly<Record<FUD1073Block, string>> = {
   enum: 'an `enum` needs at least one member',
   form: 'a `form` needs at least one field',
   group: 'a `group` needs at least one field',
-  middleware: 'a `middleware` needs `client`, `server` or both',
 };
 
 /** A `.fudapi` block with nothing in it where something is required (SDD-60). */

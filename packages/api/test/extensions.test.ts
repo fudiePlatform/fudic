@@ -99,6 +99,13 @@ describe('middlewares (SDD §3.8)', () => {
     expect(mw.doc).toBe('Who is calling.');
   });
 
+  it('no half at all is a mark the compiler reads: `middleware json`', () => {
+    expect(codes('middleware json')).toEqual([]);
+    const mw = first('middleware json', 'middleware');
+    expect(mw).not.toHaveProperty('client');
+    expect(mw).not.toHaveProperty('server');
+  });
+
   it('one half is enough', () => {
     expect(first('middleware m\n  server', 'middleware')).not.toHaveProperty('client');
     expect(first('middleware m\n  client', 'middleware')).not.toHaveProperty('server');
@@ -106,7 +113,6 @@ describe('middlewares (SDD §3.8)', () => {
 
   const broken: readonly (readonly [string, string, readonly string[]])[] = [
     ['a middleware with no name', 'middleware', ['FUD1063']],
-    ['a middleware with no half', 'middleware m', ['FUD1073']],
     ['a word after the name', 'middleware m x\n  client', ['FUD1064']],
     ['a second `client`', 'middleware m\n  client\n  client', ['FUD1071']],
     ['a second `server`', 'middleware m\n  server\n  server', ['FUD1071']],

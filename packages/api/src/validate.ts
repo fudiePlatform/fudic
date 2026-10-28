@@ -46,7 +46,7 @@ import type {
 } from './ast.js';
 import { closest, type ApiIndex, type ApiSource, type Declared, type ProjectKind } from './index-api.js';
 import { checkType, literalFits, PRIMITIVES } from './types-check.js';
-import { checkForm } from './validate-form.js';
+import { checkArgRules, checkForm } from './validate-form.js';
 
 /** What the host knows of the file and the parser cannot: where it sits. */
 export interface ApiContext {
@@ -193,7 +193,10 @@ function fn(decl: FnDecl, c: Ctx): void {
   const label = `${decl.verb} ${decl.name.text}`;
   // `_error` is painted with the error as its `data` and has no URL of its own (FUD1010).
   if (c.api.route?.error === true) c.out.push(FUD1010({ span: decl.name.span, name: decl.name.text }));
-  for (const a of decl.args) checkType(a.type, c.index, {}, c.out);
+  for (const a of decl.args) {
+    checkType(a.type, c.index, {}, c.out);
+    checkArgRules(a, c.index, c.out);
+  }
   unique(decl.args.map((a) => a.name), label, c);
   if (decl.returns !== undefined) checkType(decl.returns.type, c.index, {}, c.out);
   if (decl.form !== undefined && c.index.lookup('form', decl.form.name.text) === undefined) {

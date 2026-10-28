@@ -16,4 +16,7 @@ declare module "fudic:@fudic/http/middlewares" {
    */
   export const errorPages: Omit<MiddlewarePiece<{ readonly routes: Readonly<Record<number, string>> }, {}>, 'server'>;
   export type ErrorPagesClient = ClientHalf<{ readonly routes: Readonly<Record<number, string>> }>;
+
+  /** Calls in JSON instead of binary: for clients that are not a fudic page. */
+  export const json: Omit<MiddlewarePiece<{}, {}>, 'client' | 'server'>;
 }

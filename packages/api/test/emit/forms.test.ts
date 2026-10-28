@@ -11,7 +11,8 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { AnyForm } from '@fudic/forms';
 import { max, maxLength, min, minLength, pattern, required, setMessages } from '@fudic/forms/contract';
-import { writeBinary } from '@fudic/forms/wire';
+import { binWire } from '@fudic/http/wire/bin';
+import { formTypes } from '@fudic/http/wire';
 import type { Rule } from '@fudic/forms/contract';
 import { project } from './_project.js';
 import { load, type Loaded } from './_load.js';
@@ -138,7 +139,8 @@ describe('criterion 12: the forms of examples/basic, generated', () => {
       const theirs = personForm();
       mine.$set(value as never);
       theirs.$set(value as never);
-      expect(writeBinary(mine.$schema, mine.$positional() as never)).toEqual(writeBinary(theirs.$schema, theirs.$positional() as never));
+      const bytes = (f: AnyForm) => binWire.encodeArgs(formTypes(f.$schema), f.$value() as never);
+      expect(bytes(mine)).toEqual(bytes(theirs));
     }
   });
 

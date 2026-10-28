@@ -9,3 +9,6 @@ middleware csrf
 middleware error-pages
   client
   routes  map u16 str
+
+# Calls in JSON instead of binary: for clients that are not a fudic page.
+middleware json

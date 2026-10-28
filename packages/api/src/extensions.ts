@@ -3,7 +3,7 @@
  * (SDD §3.7–§3.9).
  */
 
-import { FUD1063, FUD1073, FUD1076, FUD1077 } from '@fudic/diagnostics';
+import { FUD1063, FUD1076, FUD1077 } from '@fudic/diagnostics';
 import type {
   AddsBlock,
   FailsClause,
@@ -183,8 +183,7 @@ export function middlewareDecl(node: LineNode, c: Ctx): MiddlewareDecl | undefin
       if (param !== undefined) params.push(param);
     }
   }
-  if (client === undefined && server === undefined) c.out.push(FUD1073({ span: mwName.span, block: 'middleware' }));
-
+  // A middleware without halves is a mark the compiler reads, as `json` (SDD-67 §8.1, 14).
   return {
     kind: 'middleware',
     keyword: keyword.span,

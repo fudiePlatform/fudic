@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/http` · `@fudic/forms` · `@fudic/api` · `@fudic/diagnostics` ·
 > `@fudic/language-server` · `@fudic/testing` · `@fudic/vite` · `examples/*`
 > **Rama:** `sdd-67-binario-y-reglas`. Nace de `main`.
-> **Progreso:** 17 / 33 — `En curso`.
+> **Progreso:** 25 / 33 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -74,14 +74,14 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 17 | — | **La gramática.** Un argumento admite reglas debajo (`ArgDecl.rules: readonly RuleUse[]`); hoy es una hoja | `api` | `src/contract.ts` · `src/ast.ts` |
-| [ ] | 18 | 1, 17 | **La validación.** Las reglas de un argumento con las mismas comprobaciones que las de un campo (`FUD1080`, `FUD1083` con `argument`, `FUD1084`, `FUD1085`) y `FUD1260` para lo que no es una de las seis | `api` | `src/validate.ts` · `src/validate-form.ts` |
-| [ ] | 19 | — | **`middleware json`.** Su declaración, sin mitades, con su comentario | `http` | `fudapi/middlewares.fudapi` · `impl/fudic.d.ts` |
-| [ ] | 20 | 10, 19 | **Emisor: formato y vuelta.** Pliega las tres capas de la cadena como `compose`; si `json` queda, importa `jsonWire` de `@fudic/http/wire/json`, si no `binWire` de `/wire/bin`; emite `returns` | `api` | `src/emit/module.ts` |
-| [ ] | 21 | 7, 20 | **Emisor: la firma.** El texto canónico de SDD §4.3 y `sig`, solo con `binWire` | `api` | `src/emit/signature.ts` · `src/emit/module.ts` |
-| [ ] | 22 | 18, 20 | **Emisor: las reglas.** `rules` con cada validador importado por su nombre de `@fudic/forms/contract`, sus argumentos y su texto; `pattern` resuelto como en un form | `api` | `src/emit/module.ts` · `src/emit/form.ts` (lo compartido) |
-| [ ] | 23 | 17 | **El formateador.** Las reglas de un argumento, alineadas e idempotentes como las de un campo | `api` | `src/format.ts` |
-| [ ] | 24 | 18–23 | **Los tests de la fase.** Criterio 18; la firma del criterio 8 (qué la cambia y qué no); el plegado de `use json`/`skip json` del 11; el formateador del 19 | `api` | `test/**` |
+| [x] | 17 | — | **La gramática.** Un argumento admite reglas debajo (`ArgDecl.rules: readonly RuleUse[]`); hoy es una hoja | `api` | `src/contract.ts` · `src/ast.ts` |
+| [x] | 18 | 1, 17 | **La validación.** Las reglas de un argumento con las mismas comprobaciones que las de un campo (`FUD1080`, `FUD1083` con `argument`, `FUD1084`, `FUD1085`) y `FUD1260` para lo que no es una de las seis | `api` | `src/validate.ts` · `src/validate-form.ts` |
+| [x] | 19 | — | **`middleware json`.** Su declaración, sin mitades, con su comentario | `http` | `fudapi/middlewares.fudapi` · `impl/fudic.d.ts` |
+| [x] | 20 | 10, 19 | **Emisor: formato y vuelta.** Pliega las tres capas de la cadena como `compose`; si `json` queda, importa `jsonWire` de `@fudic/http/wire/json`, si no `binWire` de `/wire/bin`; emite `returns` | `api` | `src/emit/module.ts` |
+| [x] | 21 | 7, 20 | **Emisor: la firma.** El texto canónico de SDD §4.3 y `sig`, solo con `binWire` | `api` | `src/emit/signature.ts` · `src/emit/module.ts` |
+| [x] | 22 | 18, 20 | **Emisor: las reglas.** `rules` con cada validador importado por su nombre de `@fudic/forms/contract`, sus argumentos y su texto; `pattern` resuelto como en un form | `api` | `src/emit/module.ts` · `src/emit/form.ts` (lo compartido) |
+| [x] | 23 | 17 | **El formateador.** Las reglas de un argumento, alineadas e idempotentes como las de un campo | `api` | `src/format.ts` |
+| [x] | 24 | 18–23 | **Los tests de la fase.** Criterio 18; la firma del criterio 8 (qué la cambia y qué no); el plegado de `use json`/`skip json` del 11; el formateador del 19 | `api` | `test/**` |
 
 ## Fase 4 — el editor (3)
 

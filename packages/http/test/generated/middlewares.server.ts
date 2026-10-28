@@ -4,3 +4,4 @@ import { fails, middleware } from '@fudic/http/contract';
 export const csrf = middleware({ id: "@fudic/http/middlewares", name: "csrf", client: true, server: true });
 export const CsrfFails = fails({ crossSite: [403, "cross-site request"] });
 export const errorPages = middleware({ id: "@fudic/http/middlewares", name: "error-pages", client: true });
+export const json = middleware({ id: "@fudic/http/middlewares", name: "json" });

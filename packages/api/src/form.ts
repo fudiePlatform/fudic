@@ -253,7 +253,7 @@ const FIELD_LINES = ['validate-on', 'validity', 'range', '<rule>'];
 const SUMMARY_LINES = ['require', 'when', '<rule>'];
 
 /** `<rule> <arg>* ["<text>"]`: the last token is the text when it is a string. */
-function ruleUse(node: LineNode, parent: LineNode, expected: readonly string[], c: Ctx): RuleUse | undefined {
+export function ruleUse(node: LineNode, parent: LineNode, expected: readonly string[], c: Ctx): RuleUse | undefined {
   const [head] = node.tokens as [Token];
   if (!isShape(head, 'kebab')) {
     unexpected(node, parent, expected, c);
