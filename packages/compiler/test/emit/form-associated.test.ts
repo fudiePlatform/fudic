@@ -77,7 +77,9 @@ describe('§6.9 — the marker decides the class', () => {
       }),
     );
     const client = emitComponentClientModule(graph, graph.components.get('app-live')!);
-    expect(client).toContain("import { subscribe as $sub, written as $written } from '@fudic/core';");
+    expect(client).toContain(
+      "import { subscribe as $sub, written as $written, owned as $owned } from '@fudic/core';",
+    );
     expect(client).toContain("import { FudicControlElement } from '@fudic/forms/element';");
     expect(client).toContain('class extends FudicControlElement {');
     expect(client).not.toContain('FudicElement,');

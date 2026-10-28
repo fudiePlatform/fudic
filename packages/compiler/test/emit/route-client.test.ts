@@ -190,8 +190,9 @@ describe('a construct written straight in a hole (BUG-45 §2.3)', () => {
 
   it('declares the layout node at closure scope, where the branch selector can see it', () => {
     const code = chunkOf(route)!;
-    // In the closure's own `let`, ahead of every block; `h` only assigns it.
-    expect(code).toMatch(/^ {2}let \$lp0, /mu);
+    // In the closure's own `let`, ahead of every block; `h` only assigns it. The closure body
+    // sits inside `$owned(() => { … })` because the `@code` runs author code (SDD-68).
+    expect(code).toMatch(/^ {4}let \$lp0, /mu);
     expect(code).not.toContain('const $lp0');
     expect(code).toContain('$lp0 = $lc0;');
     // The selector that hands a branch its parent names it outside `h`.
