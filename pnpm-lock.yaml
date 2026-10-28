@@ -364,6 +364,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@fudic/conventions':
+        specifier: workspace:*
+        version: link:../conventions
       '@fudic/dom':
         specifier: workspace:*
         version: link:../dom

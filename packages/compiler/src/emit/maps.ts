@@ -16,7 +16,7 @@
  * would leave a page pointing at chunks of the previous build.
  */
 
-import { allComponents, componentOf, type ComponentGraph, type DocumentGraph, type ResolvedComponent } from './resolve.js';
+import { allComponents, componentOf, type ComponentGraph, type ResolvedComponent } from './resolve.js';
 import type { CodeWriter } from './writer.js';
 import { classifyAttribute } from '../binding/index.js';
 import type { Diagnostic } from '../types/index.js';
@@ -26,6 +26,7 @@ import {
   entryHalf,
   formAssociatedTags,
   isReactiveRoute,
+  loads,
   routeHydration,
   templateOf,
   walkElements,
@@ -336,15 +337,6 @@ export function routeBlocksOf(
       .join(', '),
     data: dataExpression(entry.code, loads(graph), out),
   };
-}
-
-/**
- * Whether the route has a `load`: a `.fudapi` it links declares one (SDD-60). A link the host
- * could not read is given the benefit: nothing is said.
- */
-function loads(graph: ComponentGraph): boolean {
-  const apis = 'serverApis' in graph ? (graph as DocumentGraph).serverApis : [];
-  return apis.some((a) => a.api === undefined || a.api.load);
 }
 
 /**

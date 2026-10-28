@@ -198,7 +198,7 @@ function buildComponentClientModule(
     options.assetExists,
     options.assetUrl,
   );
-  const { props, signals, client, neutral, template, mutable, emitCalls, clientImports, diagnostics, di } =
+  const { props, signals, client, neutral, template, mutable, emitCalls, clientImports, tasks, diagnostics, di } =
     codeOf(comp);
   // What runs in a browser: the whole `@code` (SDD-60 §4.8). A `provide` is not in the
   // list at all — the owning ancestor may be N1 and have no chunk, so its factory lives in
@@ -353,7 +353,7 @@ function buildComponentClientModule(
   const rebinds = !hookup.rebind.empty;
   if (rebinds) bodies.hook.line('$cb();');
   const renews =
-    (reactive.length > 0 || imported.length > 0) && (em.writes > 0 || !bodies.update.empty);
+    (reactive.length > 0 || imported.length > 0 || tasks.length > 0) && (em.writes > 0 || !bodies.update.empty);
   const reconcile = bodies.update.empty ? '' : ` ${lines(bodies.update)}`;
   if (renews) {
     usage.subscribes = reactive.length > 0;
@@ -365,6 +365,7 @@ function buildComponentClientModule(
     for (const name of imported) bodies.hook.line(`$d.push($subIf(${name}, $u));`);
     // And what is read THROUGH an imported name — `userForm.$valid()` (BUG-42 §4.3).
     if (em.watchImports(imported, bodies.hook)) usage.subscribes = true;
+    watchTasks(tasks, bodies.hook, usage);
     // A write that came before these subscriptions — an `effect` that ran with the factory —
     // reached nobody, and the markup still says what the server painted: one repaint.
     if (reactive.length > 0) bodies.hook.line(`if ($written(${reactive.join(', ')})) $u();`);
@@ -439,7 +440,7 @@ function buildComponentClientModule(
   openOwned(w, owns);
   if (em.nodes.length > 0) w.line(`let ${em.nodes.join(', ')};`);
   w.line('const $r = [];'); // the roots, mounted by $m()
-  if (!owns) w.line('const $d = []; // teardowns');
+  w.line('const $d = []; // teardowns');
   // Its own list, because it is the only one that is emptied while the instance lives.
   if (rebinds) w.line('const $cd = []; // the control bindings, remade when the node moves');
   if (em.writes > 0) w.line('const $w = []; // last applied, per value write');
@@ -557,7 +558,7 @@ function buildComponentClientModule(
       : `u: () => { ${pass} },`,
   );
   w.line(
-    `r: () => { ${releaseCalls(bodies.registries)}${[...em.nodes, '$shadow', ...(needsHost ? ['$host'] : [])].join(' = ')} = null;${rebinds ? ' $cd.forEach((d) => d());' : ''} $d.forEach((d) => d()); },`,
+    `r: () => { ${releaseCalls(bodies.registries)}${[...em.nodes, '$shadow', ...(needsHost ? ['$host'] : [])].join(' = ')} = null;${rebinds ? ' $cd.forEach((d) => d());' : ''} $d.forEach((d) => d());${ownedTeardown(owns)} },`,
   );
   w.dedent();
   w.line('};');
@@ -593,6 +594,16 @@ function writeMount(w: CodeWriter, mount: CodeWriter): void {
 }
 
 /**
+ * A `task` repaints the view (SDD-68 §3.1): the pass subscribes to what its accessors read —
+ * `value()` and `state()`, and `pending()`/`error()` move only when `state()` does. Into `$d`,
+ * so the subscription goes with the instance.
+ */
+export function watchTasks(tasks: readonly string[], hook: CodeWriter, usage: { subscribes: boolean }): void {
+  for (const name of tasks) hook.line(`$d.push($sub(() => (${name}.value(), ${name}.state()), $u));`);
+  if (tasks.length > 0) usage.subscribes = true;
+}
+
+/**
  * Whether the factory runs code its author wrote: a neutral line that runs here, or a
  * `@client` statement. Only then can it have created an `effect` or a `task` that has to
  * stop with the component (SDD-68 §4.6) — the rest of the factory creates neither.
@@ -614,19 +625,28 @@ export function ownsCode(
  */
 export function openOwned(w: CodeWriter, owns: boolean): void {
   if (!owns) return;
-  // Outside the owner, because the list it hands back is poured into it once it closes.
-  w.line('const $d = []; // teardowns');
   w.line('const [$ctl, $owns] = $owned(() => {');
   w.indent();
 }
 
-/** Close it: what the `@code` created is torn down by `r`, along with the rest of `$d`. */
+/** Close it. `r` reaches the list by name: see `ownedTeardown`. */
 export function closeOwned(w: CodeWriter, owns: boolean): void {
   if (!owns) return;
   w.dedent();
   w.line('});');
-  w.line('$d.push(...$owns);');
   w.line('return $ctl;');
+}
+
+/**
+ * What `r` runs AFTER `$d`: the teardown of what the `@code` created (SDD-68 §4.6).
+ *
+ * After, and that order is the point. `$d` holds the view's own subscriptions, and `r` has
+ * already released the nodes by then; a teardown that writes a signal — a `task` cancelling, an
+ * `effect` cleanup resetting a value — would otherwise run the pass over nodes that are gone.
+ * With the subscriptions torn down first, nobody is listening when it writes.
+ */
+export function ownedTeardown(owns: boolean): string {
+  return owns ? ' $owns.forEach((d) => d());' : '';
 }
 
 /** A writer's body as one line: `u` and `r` are single-line closures. */

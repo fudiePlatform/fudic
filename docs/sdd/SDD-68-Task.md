@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/core` · `@fudic/http` · `@fudic/conventions` · `@fudic/compiler` · `examples/basic`
 > **Rama:** `sdd-68-llamadas-sin-fontaneria`. Nace de `main` **con SDD-67 en `Hecho`**: el endpoint
 > de datos y las llamadas ya viajan en binario.
-> **Progreso:** 11 / 20 — `En curso`.
+> **Progreso:** 16 / 20 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -56,7 +56,7 @@ código, no el test.
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 7 | 1 | **`owned` alrededor del `@code`.** En el factory de un componente y de una ruta, el `@code` corre dentro de `owned` y su lista se vuelca en `$d` (SDD §4.6). En el servidor no cambia nada | `compiler` | `src/emit/client.ts` · `src/emit/route-client.ts` |
-| [ ] | 8 | 7 | **Los tests de la fase.** Criterios 12 y 13 en un navegador de test (happy-dom): quitar el componente aborta la llamada y para el intervalo; criterio 14 (SSR inerte e hidratación sin diferencias) | `compiler` | `test/**` |
+| [x] | 8 | 7 | **Los tests de la fase.** Criterios 12 y 13 en un navegador de test (happy-dom): quitar el componente aborta la llamada y para el intervalo; criterio 14 (SSR inerte e hidratación sin diferencias) | `compiler` | `test/**` |
 
 ## Fase 3 — el aviso desde `@fudic/http` (5)
 
@@ -66,15 +66,15 @@ código, no el test.
 | [x] | 10 | — | **`DATA_STALE_EVENT`** y `DataStaleDetail` (SDD §3.3) | `conventions` | `src/index.ts` |
 | [x] | 11 | 9, 10 | **El stub avisa y espera.** Tras `invalidate`, si la página actual está entre las rutas invalidadas (concreta o por patrón, con la comparación que usa el SW), despacha el evento, junta lo que le pasan con `wait` y resuelve la llamada después (SDD §4.8, paso 1) | `http` | `src/contract/fn.ts` · `src/client/invalidate.ts` |
 | [x] | 12 | — | **`load.fetch`.** La variante de navegador de la pieza `load` pide `DATA_PREFIX + path` y lee el JSON que sirve hoy el endpoint (SDD-70 lo pasará a tramas binarias) (SDD §3.4) | `http` · `api` | `src/contract/page.ts` · emisor del módulo de la ruta |
-| [ ] | 13 | 11, 12 | **Los tests de la fase.** El evento sale y la llamada espera a su `wait`; un `get` sin `invalidates` no lo despacha (criterio 18); `load.fetch` decodifica lo que sirve el endpoint | `http` | `test/**` |
+| [x] | 13 | 11, 12 | **Los tests de la fase.** El evento sale y la llamada espera a su `wait`; un `get` sin `invalidates` no lo despacha (criterio 18); `load.fetch` decodifica lo que sirve el endpoint | `http` | `test/**` |
 
 ## Fase 4 — la ruta se repinta (4)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 14 | 7 | **`data` refrescable.** En una ruta con `load` y chunk de cliente: `let data = $data` y un contador de versión del que dependen las lecturas de `data` en la vista (SDD §4.8, paso 3) | `compiler` | `src/emit/route-client.ts` · `src/emit/markup-client.ts` |
-| [ ] | 15 | 12, 14 | **El oyente de la ruta.** El chunk importa `load.fetch`, escucha `DATA_STALE_EVENT`, pide el `data`, lo cambia y sube el contador; entrega su promesa con `wait` (SDD §4.8, paso 2) | `compiler` · `core` | `src/emit/route-client.ts` · `src/route-data.ts` |
-| [ ] | 16 | 15 | **Si falla, recarga.** Un refresco que falla hace `location.reload()` (SDD §4.8, paso 4) | `core` | `src/route-data.ts` |
+| [x] | 14 | 7 | **`data` refrescable.** En una ruta con `load` y chunk de cliente: `let data = $data` y un contador de versión del que dependen las lecturas de `data` en la vista (SDD §4.8, paso 3) | `compiler` | `src/emit/route-client.ts` · `src/emit/markup-client.ts` |
+| [x] | 15 | 12, 14 | **El oyente de la ruta.** El chunk importa `load.fetch`, escucha `DATA_STALE_EVENT`, pide el `data`, lo cambia y sube el contador; entrega su promesa con `wait` (SDD §4.8, paso 2) | `compiler` · `core` | `src/emit/route-client.ts` · `src/route-data.ts` |
+| [x] | 16 | 15 | **Si falla, recarga.** Un refresco que falla hace `location.reload()` (SDD §4.8, paso 4) | `core` | `src/route-data.ts` |
 | [ ] | 17 | 14–16 | **Los tests de la fase.** Criterios 15–17 con el ejemplo en el navegador de test: la fila cambia sin recargar, las filas que siguen son los mismos nodos, y un 500 del endpoint recarga | `compiler` · `examples/basic` | `test/**` |
 
 ## Fase 5 — el ejemplo y cierre (3)

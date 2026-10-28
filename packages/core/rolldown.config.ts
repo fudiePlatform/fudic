@@ -77,6 +77,7 @@ const PIECES: Readonly<Record<string, string>> = {
   effect: 'src/effect.ts',
   owner: 'src/owner.ts',
   task: 'src/task.ts',
+  'route-data': 'src/route-data.ts',
   subscribe: 'src/subscribe.ts',
   element: 'src/element.ts',
 };

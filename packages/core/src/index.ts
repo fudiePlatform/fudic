@@ -35,6 +35,7 @@ export { computed, type Computed, type Readable } from './computed.js';
 export { effect, type Cleanup } from './effect.js';
 export { batch } from './batch.js';
 export { owned } from './owner.js';
+export { onStaleData, type DataSource } from './route-data.js';
 export {
   task,
   type Task,

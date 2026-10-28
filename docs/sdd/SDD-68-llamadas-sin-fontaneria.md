@@ -455,3 +455,25 @@ Y la tabla de `@foreach (const p of data.users)` se repinta sola.
     código que actualiza lo que lee `data`, y solo lo paga una ruta que ya se hidrata.
 14. **Sin códigos nuevos.** Crear una tarea fuera del `@code` es legítimo (vive con la página) y
     no rompe nada. Se documenta, no se diagnostica.
+
+### 8.2. Tomadas al implementar
+
+15. **`owned` envuelve el cuerpo entero de la factoría, no solo el `@code`.** Los nombres del
+    autor los leen por ámbito léxico los handlers y bloques que el emit declara detrás, así que
+    el `@code` no puede ir en un cierre propio. Dentro solo corre la construcción: `h`, `u` y `r`
+    corren después, fuera del dueño. Una factoría sin código del autor sale igual que antes.
+16. **Lo creado por el `@code` se desmonta después de `$d`.** `r` vacía primero las
+    suscripciones de la vista y luego la lista de `owned`. Al revés, una tarea que cancela (o la
+    limpieza de un `effect` que escribe una señal) repintaría sobre nodos ya liberados.
+17. **La vista se suscribe a una tarea.** Un `const x = task(…)` del nivel superior es un nombre
+    que se mueve, como una señal, y el paso de repintado se suscribe a `x.value()` y `x.state()`.
+    Se reconoce por el nombre de la llamada, igual que `effect`.
+18. **El «contador de versión» es el propio paso de repintado.** El refresco cambia `data` y
+    ejecuta una pasada: como `data` es un nombre que se mueve, cada lectura suya en la vista es
+    una escritura que la pasada vuelve a aplicar, y el `@foreach` reconcilia por clave.
+19. **Solo escucha la ruta cuyo lado de cliente lee `data`.** Si el cliente nunca nombra
+    `data`, un `data` nuevo no cambiaría nada: no hay oyente.
+20. **La comparación de rutas vive en `@fudic/conventions` (`coversPath`).** La usan el Service
+    Worker, para olvidar, y el stub, para avisar: una sola copia.
+21. **Dos avisos seguidos: gana el último refresco.** El anterior se aborta y su respuesta no se
+    aplica, así que un refresco lento no pinta encima de uno nuevo.

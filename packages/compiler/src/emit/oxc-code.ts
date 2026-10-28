@@ -34,6 +34,7 @@ import {
   setCalls,
   topLevelBindings,
   topLevelFunctions,
+  topLevelTasks,
   type FragmentAst,
 } from './scope.js';
 
@@ -410,6 +411,11 @@ export interface ExtractedCode {
    */
   readonly clientImports: readonly string[];
   /**
+   * The top-level names bound to a `task(…)` (SDD-68 §3.1): names that move, and that the
+   * pass subscribes to through what the view reads of them.
+   */
+  readonly tasks: readonly string[];
+  /**
    * Whether `@code { @client }` calls `effect(...)` at its top level (SDD-39 §4.6).
    *
    * It is what puts a tag — or a route — in `fud-eager`: an effect is by definition what
@@ -712,6 +718,7 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     clientFunctions: topLevelFunctions(sliced ? allStatements : clientStatements),
     setCalls: setCalls(clientStatements),
     clientImports: importedBindings(allStatements),
+    tasks: topLevelTasks(sliced ? allStatements : clientStatements),
     clientEffects: clientStatements.some((stmt) => effectCalls(stmt).length > 0),
     declared: topLevelBindings(allStatements),
     clientRuns: clientStatements.some((stmt) => stmt.type === 'ExpressionStatement'),

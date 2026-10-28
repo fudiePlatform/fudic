@@ -65,6 +65,17 @@ export function apiImports(graph: ComponentGraph): readonly string[] {
 }
 
 /**
+ * The `load` of the route's own `.fudapi`, imported as `$load` from its browser variant: what the
+ * chunk asks the server for its `data` again with (SDD-68 §4.8). Not under its own name — `load`
+ * is not a name the `.fudapi` gives the `@code`, and the author may well have one of their own.
+ */
+export function loadImport(graph: ComponentGraph): string | undefined {
+  const apis = 'serverApis' in graph ? (graph as DocumentGraph).serverApis : [];
+  const own = apis.find((a) => a.api?.load === true)?.api;
+  return own === undefined ? undefined : `import { load as $load } from ${JSON.stringify(`fudic:${own.id}`)};`;
+}
+
+/**
  * The forms the `.fudapi` a file links give it, by name: stores from another module, which the
  * client subscribes to through what the markup reads (`userForm.$valid()`, BUG-42 §4.3) exactly
  * as it did when the form was an import of the `@code`. Functions are left out: a stub has
