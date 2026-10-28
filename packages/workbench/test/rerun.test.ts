@@ -234,7 +234,9 @@ describe('processedChanges — criterion 1, against a real Vite', () => {
 
   /**
    * Resolves once Vite's watcher reports a write: on Windows it starts hearing the disk a while
-   * after `createServer` resolves, and a save before that is lost for every listener alike.
+   * after `createServer` resolves, and a save before that is lost for every listener alike. The
+   * probe goes in the component's own folder: the watcher listens folder by folder, and hearing
+   * `src` says nothing yet of `src/components` on a loaded machine.
    */
   async function watching(v: ViteDevServer, p: TempProject): Promise<void> {
     let heard = false;
@@ -243,7 +245,7 @@ describe('processedChanges — criterion 1, against a real Vite', () => {
     };
     v.watcher.on('all', hear);
     for (let i = 0; !heard; i += 1) {
-      p.write('src/probe.txt', String(i));
+      p.write('src/components/probe.txt', String(i));
       await new Promise((done) => setTimeout(done, 100));
     }
     v.watcher.off('all', hear);

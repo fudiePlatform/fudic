@@ -165,6 +165,8 @@ const CASES: readonly (readonly [FudDiagnostic, string])[] = [
   [c.FUD1020({ span: S, problem: 'holes', missing: ['name', 'count'] }), 'a key for every hole of its message: missing `name`, `count`'],
   [c.FUD1080({ span: S, name: 'requird', what: 'rule', candidates: [] }), 'unknown rule `requird`'],
   [c.FUD1080({ span: S, name: 'requird', what: 'rule', candidates: ['required', 'require'] }), 'did you mean `required`, `require`?'],
+  [c.FUD1083({ span: S, rule: 'min', type: 'str', accepts: ['f64'] }), 'does not apply to a `str` field'],
+  [c.FUD1083({ span: S, rule: 'min', type: 'str', accepts: ['f64'], under: 'argument' }), 'does not apply to a `str` argument'],
   [c.FUD1065({ span: S, word: 'x', parent: 'paths', expected: [] }), '`x` is not valid under `paths`: nothing goes below it'],
   [c.FUD1065({ span: S, word: 'x', parent: 'chain', expected: ['use', 'skip'] }), 'expected one of `use`, `skip`'],
   [c.FUD1110({ span: S, region: 'server' }), '`@server` no longer exists: declare `load`'],

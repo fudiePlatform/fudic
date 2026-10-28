@@ -618,8 +618,11 @@ test('23 · after interacting with everything, nothing is left undefined', async
   await page.locator('app-cold').locator('.hit').click();
   await expect(page.locator('app-cold').locator('.value')).toHaveText('1');
 
-  // Inside the shadow roots too: the walk of §4.4 is the same one the runtime performs.
-  expect(await undefinedTags(page)).toEqual([]);
+  // Inside the shadow roots too: the walk of §4.4 is the same one the runtime performs. Polled:
+  // a click starts a hydration, it does not wait for it. `product-list` waits for its
+  // subscriber `shopping-cart`, whose `currency` brings `@fudic/i18n` — in dev, a graph of its
+  // own that lands seconds after `app-cold`, clicked last, is already painted.
+  await expect.poll(() => undefinedTags(page), { timeout: 15_000 }).toEqual([]);
 });
 
 /**
