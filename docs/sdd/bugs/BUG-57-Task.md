@@ -33,3 +33,8 @@
 - **Suelos.** `http` 100 / 100 / 100 / 100 (la pieza nace de `bundle/`, fuera del denominador
   igual que en `forms`). `vite` 99,03 / 96,28 / 99,71 / 99,14, por encima de su suelo.
 - Playwright entero: 283 en verde, 4 saltados.
+- **Tras la prueba de Pedro.** DevTools seguía listando `conventions/dist/index.js` entero, con
+  sus comentarios: no es una descarga, es la fuente que el mapa de cada pieza declara para las
+  constantes que lleva copiadas. Las cuatro piezas que las copian (`core/route-data`,
+  `http/contract`, `transport/urls`, `i18n/href`) lo marcan ahora en su `ignoreList`, y Chrome
+  oculta del árbol lo que está en esa lista. La marca sobrevive a la copia al `dist`.

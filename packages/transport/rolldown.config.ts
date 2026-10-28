@@ -87,6 +87,9 @@ export default defineConfig(
        * `sourceMappingURL` line and nothing else.
        */
       sourcemap: true,
+      // `@fudic/conventions` is a few constants inlined here, not code anyone debugs: marked
+      // ignored, so devtools does not list the whole file as if the page had loaded it.
+      sourcemapIgnoreList: /conventions[\\/]dist[\\/]/u,
       comments: false,
     },
   })),
