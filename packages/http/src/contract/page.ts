@@ -58,6 +58,8 @@ async function fetchData<D>(path: string, signal?: AbortSignal): Promise<D> {
 export function page<F>(spec: PageSpec): PagePiece<F> {
   const slot = new Slot<F>(`${spec.name} of ${spec.id}`, 'server', spec.browser === true);
   const piece = { spec, slot, handle: (fn: F) => slot.set(fn) };
-  // Only the browser variant of `load` asks: the server's IS the implementation.
-  return spec.browser === true && spec.name === 'load' ? Object.assign(piece, { fetch: fetchData }) : piece;
+  // On both variants of `load`, as its declaration says. The browser's is the one a route asks
+  // with; the server's never runs there, and where one module graph serves both sides — the
+  // test harness — it is the one the route's chunk gets.
+  return spec.name === 'load' ? Object.assign(piece, { fetch: fetchData }) : piece;
 }
