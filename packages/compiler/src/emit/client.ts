@@ -18,11 +18,11 @@
 
 import type { ComponentGraph, ResolvedComponent } from './resolve.js';
 import { spaceModeOf } from './space.js';
-import { CodeWriter } from './writer.js';
+import { CodeWriter, type MappedPart } from './writer.js';
 import { ClientMarkupEmitter, coreUsage, nodeIds, renderPass } from './markup-client.js';
 import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js';
 import { AssetLinker } from './assets.js';
-import { codeOf, splicedOffset, type ClientStatement, type Prop } from './oxc-code.js';
+import { codeOf, splicedOffset, type ClientStatement, type NeutralStatement, type Prop } from './oxc-code.js';
 import { localOf, propDefaults, restAssignments, restGroups } from './rest.js';
 import { hookupContext, templateDelegationJs } from './events.js';
 import { planDelegation } from '../semantic/delegation.js';
@@ -466,20 +466,10 @@ function buildComponentClientModule(
   // side (SDD-38 §4.5).
   // `mappedLine` for both zones: this is the author's own code, verbatim, and the hydration
   // chunk is where a breakpoint in a `.fud` has to land. Renders byte-identically to `line`.
-  for (const statement of neutral) {
-    if (!statement.hoisted && !statement.provides)
-      w.mappedLine({ text: statement.text, src: statement.at, anchors: statement.anchors });
-  }
-  for (const statement of client.body) {
-    // Anchored to the statement's own offsets even though `withCells` may have rewritten it:
-    // what the author reads is the lines they wrote, not the cell plumbing spliced into them.
-    // `withCells` splices within a line and never adds one, so line k still means line k.
-    w.mappedLine({
-      text: withCells(statement, signals, cells),
-      src: statement.at,
-      anchors: statement.anchors,
-    });
-  }
+  // Anchored to the statement's own offsets even though `withCells` may have rewritten it:
+  // what the author reads is the lines they wrote, not the cell plumbing spliced into them.
+  // `withCells` splices within a line and never adds one, so line k still means line k.
+  for (const part of authorCode(neutral, client.body, (s) => withCells(s, signals, cells))) w.mappedLine(part);
   w.line('');
   // The blocks: one function per construct, plus the registry of what is alive (SDD-30
   // §3.1, §3.6). Declared HERE, so each one reads `$dom`, the props and the `@client` body
@@ -601,6 +591,31 @@ function writeMount(w: CodeWriter, mount: CodeWriter): void {
 export function watchTasks(tasks: readonly string[], hook: CodeWriter, usage: { subscribes: boolean }): void {
   for (const name of tasks) hook.line(`$d.push($sub(() => (${name}.value(), ${name}.state()), $u));`);
   if (tasks.length > 0) usage.subscribes = true;
+}
+
+/**
+ * The author's own statements as the factory runs them: the neutral zone's that run here and
+ * `@client`'s, in the ORDER THEY WERE WRITTEN.
+ *
+ * Merged by offset and not written one zone after the other, because without regions the two
+ * zones are one `@code` cut in two — what the markup reads, and the rest — and a cut statement
+ * can read a client one while it is being built: `const found = task(search, () => ({ q:
+ * texto() }))` is in the cut, `const texto = signal("")` is the browser's declaration, and the
+ * task reads its `source` on creation. With regions the neutral zone is written first anyway,
+ * so the order comes out as it always did.
+ */
+export function authorCode(
+  neutral: readonly NeutralStatement[],
+  body: readonly ClientStatement[],
+  clientText: (statement: ClientStatement) => string,
+): readonly MappedPart[] {
+  const parts = [
+    ...neutral
+      .filter((s) => !s.hoisted && !s.provides)
+      .map((s): MappedPart => ({ text: s.text, src: s.at, anchors: s.anchors })),
+    ...body.map((s): MappedPart => ({ text: clientText(s), src: s.at, anchors: s.anchors })),
+  ];
+  return parts.toSorted((a, b) => a.src - b.src);
 }
 
 /**

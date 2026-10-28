@@ -30,6 +30,7 @@ import { NO_BOXES, rootContext } from './display.js';
 import { childTargets, entryCellSlots, entryReactiveScope, type CellSlot } from './state.js';
 import { entryHalf, entryMoving, formAssociatedTags, isReactiveRoute, refreshesData } from './level.js';
 import {
+  authorCode,
   cellNameAt,
   closeOwned,
   lines,
@@ -347,7 +348,7 @@ function writeImports(w: CodeWriter, code: ExtractedCode): void {
 
 /**
  * The author's own code, in the order it was written: the neutral zone, which runs on both
- * sides, and then `@client`, which runs only here.
+ * sides, and `@client`, which runs only here — merged by offset (`authorCode`).
  *
  * `mappedLine` for both, because this is where a breakpoint set in the `.fud` has to land —
  * `withCells` splices within a line and never adds one, so line k still means line k.
@@ -357,17 +358,8 @@ function writeBody(w: CodeWriter, code: ExtractedCode, cells: readonly CellSlot[
   // `page(data, io)` binds, so a `@client` handler reads it by the name it was written with.
   // `let` when a call can refresh it: a handler reads the same variable, so it sees the new one.
   w.line(`${refreshes ? 'let' : 'const'} data = $data;`);
-  for (const statement of code.neutral) {
-    if (!statement.hoisted && !statement.provides) {
-      w.mappedLine({ text: statement.text, src: statement.at, anchors: statement.anchors });
-    }
-  }
-  for (const statement of code.client.body) {
-    w.mappedLine({
-      text: withCells(statement, code.signals, cells, ROUTE_BASE),
-      src: statement.at,
-      anchors: statement.anchors,
-    });
+  for (const part of authorCode(code.neutral, code.client.body, (s) => withCells(s, code.signals, cells, ROUTE_BASE))) {
+    w.mappedLine(part);
   }
 }
 
