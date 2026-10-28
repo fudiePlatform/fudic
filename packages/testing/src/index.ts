@@ -14,3 +14,4 @@ export type { Gestures } from './gestures.js';
 export type { Harness, WorldOptions } from './session.js';
 export { clientGraphOf, type ClientGraph } from './client-graph.js';
 export type { FetchOverride } from './fetch.js';
+export { respond, respondProblem } from './respond.js';

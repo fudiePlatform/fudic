@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/http` · `@fudic/forms` · `@fudic/api` · `@fudic/diagnostics` ·
 > `@fudic/language-server` · `@fudic/testing` · `@fudic/vite` · `examples/*`
 > **Rama:** `sdd-67-binario-y-reglas`. Nace de `main`.
-> **Progreso:** 28 / 33 — `En curso`.
+> **Progreso:** 29 / 33 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -95,7 +95,7 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 28 | 10 | **`respond` y `respondProblem`.** Leen `spec.wire` y `spec.returns`; con su test (criterio 20) | `testing` | `src/respond.ts` · `src/index.ts` · `test/**` |
+| [x] | 28 | 10 | **`respond` y `respondProblem`.** Leen `spec.wire` y `spec.returns`; con su test (criterio 20) | `testing` | `src/respond.ts` · `src/index.ts` · `test/**` |
 | [x] | 29 | 16 | **Migrar los tests de `@fudic/http`.** Los que leen JSON del cable comprueban binario; los de JSON se quedan, con `jsonWire` | `http` | `test/body/*` · `test/client/codec.test.ts` · `test/contract/*` · `test/server/*` |
 | [ ] | 30 | 22 | **Migrar `@fudic/vite` y la poda.** `http-dev`, `http-build`, `http-functions`, `dev`, `dev-unit` en binario; un test de build que comprueba el criterio 13 sobre el bundle | `vite` | `test/**` |
 | [ ] | 31 | 22 | **`examples` y e2e.** `fudapi-editor` gana un argumento con reglas; `basic`, una función con `use json`; los e2e de `usuarios`, el alta y `sesion` pasan en binario, y uno nuevo por camino (criterios 11, 15) | `examples` | `examples/fudapi-editor/src/**` · `examples/basic/src/**` · `examples/basic/tests/*.spec.ts` |

@@ -10,3 +10,12 @@ declare module '*.fud' {
 }
 declare module '*.fud?client';
 declare module '*.fud?server';
+
+// The generated modules a test of `test/app` imports by hand, as the plugin types them there:
+// this `tsc` runs before the plugin writes `.fudic/api`.
+declare module 'fudic:components/x-hello' {
+  export const greet: import('@fudic/http').ServerFunction<{ readonly name: string }, string>;
+}
+declare module 'fudic:components/x-save' {
+  export const save: import('@fudic/http').ServerFunction<void, string>;
+}
