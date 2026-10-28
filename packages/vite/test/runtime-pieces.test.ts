@@ -243,6 +243,18 @@ describe('BUG-47 criterion 5 — the URL of a piece identifies its bytes', () =>
     expect(after[0]!.endsWith('/core/hydrate.js')).toBe(true);
   });
 
+  it('its map counts too: a map changed under the same code is another URL (BUG-57)', () => {
+    // The map is served beside the piece and cached as long: under an unchanged URL every
+    // cache would keep handing out the old one.
+    const code = 'export const a = 1;';
+    const before = { 'signal.js': code, 'signal.js.map': '{"sources":["a.ts"]}' };
+    const after = { 'signal.js': code, 'signal.js.map': '{"sources":["a.ts"],"ignoreList":[0]}' };
+    expect(urls(world(before))).toEqual([`/_fudic/0.0.1-${fingerprint(before)}/core/signal.js`]);
+    expect(urls(world(after))).not.toEqual(urls(world(before)));
+    // And it is still one piece: a map is never a piece of its own.
+    expect(urls(world(after))).toHaveLength(1);
+  });
+
   it('the names count, not only the bytes: the same bytes moved to another piece is another URL', () => {
     const one = urls(world({ 'a.js': 'x', 'b.js': '' }));
     const other = urls(world({ 'a.js': '', 'b.js': 'x' }));

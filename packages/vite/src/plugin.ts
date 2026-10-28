@@ -2216,9 +2216,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         }
         // Every name in `graph` is a chunk: that is what `reachableChunks` walks.
         const code = graph.map((fileName) => codeOf.get(fileName)).join('\n');
-        const pieces = [...new Set([...linkedPieces([code], runtime).map((p) => p.url), ...deferred])];
+        // Sorted once, for the manifest and for the graph a coordinator carries alike: the two
+        // name the same files, and a page should not see them in another order (BUG-54).
+        const pieces = [...new Set([...linkedPieces([code], runtime).map((p) => p.url), ...deferred])].toSorted(
+          (a, b) => a.localeCompare(b),
+        );
         if (pieces.length > 0) {
-          hydratePieces[tag] = pieces.toSorted((a, b) => a.localeCompare(b));
+          hydratePieces[tag] = pieces;
         }
         // The whole graph as URLs, for the head of a page that hydrates this tag at load.
         filesOf.set(tag, [

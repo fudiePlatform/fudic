@@ -219,7 +219,8 @@ function collect(
   const name = stringField(manifest, 'name');
   const label = name ?? root; // a manifest with no name still has to be nameable in a message
   const dir = `${root}/${declared}`;
-  const files = (io.readDir(dir) ?? [])
+  const listed = io.readDir(dir) ?? [];
+  const files = listed
     .filter((entry) => entry.endsWith('.js'))
     // Sorted so the same project always produces the same order: a directory listing is the
     // platform's order, and a build artifact that depends on it is a build that differs by
@@ -245,6 +246,13 @@ function collect(
     // hash the same stream.
     hash.update(`${file}\0${bytes.length}\0`).update(bytes);
     for (const key of publishersNamed(new TextDecoder().decode(bytes))) reaches.add(key);
+    // And its map, which is served under the same URL segment and cached as long: a map that
+    // changed under an unchanged URL is one every cache keeps handing out stale (BUG-57).
+    const map = `${file}.map`;
+    if (listed.includes(map)) {
+      const mapBytes = io.readBytes(`${dir}/${map}`);
+      hash.update(`${map}\0${mapBytes.length}\0`).update(mapBytes);
+    }
   }
   published.push({
     pkg: name,

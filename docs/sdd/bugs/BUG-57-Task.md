@@ -38,3 +38,8 @@
   constantes que lleva copiadas. Las cuatro piezas que las copian (`core/route-data`,
   `http/contract`, `transport/urls`, `i18n/href`) lo marcan ahora en su `ignoreList`, y Chrome
   oculta del árbol lo que está en esa lista. La marca sobrevive a la copia al `dist`.
+- **Y no se veía, por un defecto de la huella.** El segmento `<versión>-<huella>` de una pieza
+  solo contaba sus `.js`: el mapa cambió bajo la misma URL y el navegador —y con SW, la caché
+  del runtime, que no caduca— seguía dando el viejo. La huella cuenta ahora también el mapa de
+  cada pieza. Con ella cambió el orden de las piezas en el grafo de un tag, y el coordinador sin
+  SW las ordena ya igual que el manifiesto (BUG-54).
