@@ -290,6 +290,11 @@ function buildRouteClientModule(
   if (em.writes > 0) w.line('const $w = []; // last applied, per value write');
   if (em.writes > 0 && em.inPlace) w.line('const $x = []; // values, evaluated in place');
   w.line(declaration(cells));
+  // The host a `bus:` subscribes through and an `emit` dispatches from, materialized where
+  // something reads it, as a component's is. A route has no host element: its `<body>` is the
+  // node it holds, and what both ask of a host — its document, and a node that bubbles to
+  // it — the `<body>` answers the same.
+  if (code.emitCalls.length > 0 || hookup.hostUsed) w.line('const $host = $root;');
   writeBody(w, code, cells, refreshes);
   w.line('');
   w.appendWriter(bodies.decls);
