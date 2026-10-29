@@ -57,6 +57,8 @@ export async function serve(input: ServeInput, options: DispatchOptions = {}): P
   const { request, contract } = input;
   const { spec } = contract;
   const { wire } = spec;
+  // What the handler wrote before it threw still goes out with the error (SDD-69 §4.2).
+  let response: ServerContext['response'] | undefined;
   try {
     if (request.method !== spec.method) throw new HttpError({ status: 405, title: 'Method Not Allowed' });
     const handler = contract.slot.get();
@@ -73,6 +75,7 @@ export async function serve(input: ServeInput, options: DispatchOptions = {}): P
 
     const base = serverContext({ method: spec.method, name: spec.name, url, params: {}, args, request });
     const ctx = Object.assign(base, { params, query }) as unknown as ServerContext;
+    response = ctx.response;
     const { steps } = compose(spec.chain, 'server');
     const value = await withRequest((options.container ?? createRoot)(), () =>
       run(steps as never, ctx, async (inner: ServerContext) => {
@@ -83,7 +86,7 @@ export async function serve(input: ServeInput, options: DispatchOptions = {}): P
     return valueResponse(value, ctx, wire, spec.returns);
   } catch (e) {
     if (!(e instanceof HttpError)) options.onError?.(e);
-    return problemResponse(problemOf(e, options.dev === true), wire);
+    return problemResponse(problemOf(e, options.dev === true), wire, response);
   }
 }
 

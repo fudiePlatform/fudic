@@ -51,6 +51,27 @@ describe('pageContext', () => {
     controller.abort();
     expect(ctx.signal.aborted).toBe(true);
   });
+
+  it('SDD-69 §3.3: with the response of whoever serves it, load writes there and the read is noted there', () => {
+    const response = { status: 200, headers: new Headers() };
+    const ctx = pageContext({ url: URL_PAGE, params: {}, response });
+    expect(ctx.response).toBe(response);
+    expect(server.readsSession(response)).toBe(false);
+    server.markPrivate(response);
+    expect(response.headers.has('cache-control')).toBe(false);
+    ctx.cookies.get('sid');
+    expect(server.readsSession(response)).toBe(true);
+    server.markPrivate(response);
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
+  });
+
+  it('SDD-69 §3.3: without one, each render has its own, and reading one is not reading the other', () => {
+    const a = pageContext({ url: URL_PAGE, params: {} });
+    const b = pageContext({ url: URL_PAGE, params: {} });
+    a.headers.get('authorization');
+    expect(server.readsSession(a.response)).toBe(true);
+    expect(server.readsSession(b.response)).toBe(false);
+  });
 });
 
 describe('withRequest', () => {
@@ -128,6 +149,8 @@ describe('the ./server entry', () => {
     expect(Object.keys(server).sort()).toEqual(
       [
         'PROBLEM_TYPE',
+        'markPrivate',
+        'readsSession',
         'noFunction',
         'pageContext',
         'parseCookies',

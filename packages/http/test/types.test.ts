@@ -48,9 +48,12 @@ describe('error-pages and _error.fud in the type system (BUG-51)', () => {
 });
 
 describe('the package entry', () => {
-  it('exports what a handler throws, and nothing that builds a function (SDD-60 §3.10)', () => {
+  it('exports what a handler throws and the cookies it sets (SDD-69 §3.1), and nothing that builds a function (SDD-60 §3.10)', () => {
     expect(Object.keys(http).sort()).toEqual(
       [
+        'deleteCookie',
+        'serializeCookie',
+        'setCookie',
         'HttpError',
         'Redirect',
         'ValidationError',

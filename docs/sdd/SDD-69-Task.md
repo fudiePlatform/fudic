@@ -5,7 +5,7 @@
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `sdd-69-sesion-por-cookie`. Nace de `main` **con SDD-67 y SDD-68 en `Hecho`**: el
 > ejemplo se repinta tras entrar y salir con lo de la 68.
-> **Progreso:** 0 / 18 — `Listo`.
+> **Progreso:** 5 / 18 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -44,11 +44,11 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **El código nuevo.** `FUD1300` (SDD §3.4): `.ts`, `.md` y su línea en `index.ts`. El rango en la fila de SDD-69 del `INDEX.md` | `diagnostics` | `src/codes/FUD1300.{ts,md}` · `src/index.ts` |
-| [ ] | 2 | — | **Poner y quitar la cookie.** `serializeCookie`, `setCookie`, `deleteCookie` y `CookieOptions` (SDD §3.1, §4.1); los `TypeError` de lo que el navegador rechazaría; exportados desde la entrada principal | `http` | `src/cookies.ts` · `src/index.ts` |
-| [ ] | 3 | — | **La anotación de lectura.** `serverContext` envuelve `cookies` y `headers` para anotar si se leyó la sesión (SDD §3.2); `valueResponse` y `problemResponse` ponen `Cache-Control: private, no-store` si se leyó y el handler no puso el suyo | `http` | `src/server/context.ts` · `src/server/dispatch.ts` · `src/server/problem.ts` |
-| [ ] | 4 | 3 | **`pageContext` con la respuesta de quien sirve.** `RenderContext.response` opcional; `pageContext` lo usa si viene. Una función que aplica la anotación a ese objeto, para que quien sirve la llame al final del render | `transport` · `http` | `src/router.ts` · `src/server/load.ts` |
-| [ ] | 5 | 2–4 | **Los tests de la fase.** Criterios 1–9 | `http` | `test/**` |
+| [x] | 1 | — | **El código nuevo.** `FUD1300` (SDD §3.4): `.ts`, `.md` y su línea en `index.ts`. El rango en la fila de SDD-69 del `INDEX.md` | `diagnostics` | `src/codes/FUD1300.{ts,md}` · `src/index.ts` |
+| [x] | 2 | — | **Poner y quitar la cookie.** `serializeCookie`, `setCookie`, `deleteCookie` y `CookieOptions` (SDD §3.1, §4.1); los `TypeError` de lo que el navegador rechazaría; exportados desde la entrada principal | `http` | `src/cookies.ts` · `src/index.ts` |
+| [x] | 3 | — | **La anotación de lectura.** `serverContext` envuelve `cookies` y `headers` para anotar si se leyó la sesión (SDD §3.2); `valueResponse` y `problemResponse` ponen `Cache-Control: private, no-store` si se leyó y el handler no puso el suyo | `http` | `src/server/context.ts` · `src/server/dispatch.ts` · `src/server/problem.ts` |
+| [x] | 4 | 3 | **`pageContext` con la respuesta de quien sirve.** `RenderContext.response` opcional; `pageContext` lo usa si viene. Una función que aplica la anotación a ese objeto, para que quien sirve la llame al final del render | `transport` · `http` | `src/router.ts` · `src/server/load.ts` |
+| [x] | 5 | 2–4 | **Los tests de la fase.** Criterios 1–9 | `http` | `test/**` |
 
 ## Fase 2 — lo que escribe `load` llega (4)
 

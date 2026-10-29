@@ -58,6 +58,11 @@ export interface RenderContext {
    * are one request and come out of one instant of it.
    */
   readonly layout?: unknown;
+  /**
+   * Where `load` and `layout` write their status and headers (SDD-69 §3.3). Whoever serves the
+   * page or its data makes it, renders, and answers with it. Absent in the Service Worker.
+   */
+  readonly response?: { status: number; readonly headers: Headers };
 }
 
 /**

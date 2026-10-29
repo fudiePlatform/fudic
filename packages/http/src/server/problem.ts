@@ -10,6 +10,7 @@ import { HttpError, type Problem } from '../errors.js';
 import { binWire } from '../wire/bin.js';
 import { jsonWire } from '../wire/json.js';
 import type { Wire } from '../wire/wire.js';
+import { markPrivate, type PendingResponse } from './context.js';
 
 export const PROBLEM_TYPE = jsonWire.problemType;
 
@@ -23,12 +24,19 @@ export function problemOf(e: unknown, dev: boolean): Problem {
  * The response of a failed call, in the function's format. A `Redirect` keeps its 3xx and its
  * `location` in the body, and carries no `Location` header on purpose: `fetch` would follow it,
  * and the caller would never see the `Redirect` it is owed.
+ *
+ * With the `response` the handler wrote before it threw, its headers go too (SDD-69 §4.2): a
+ * `deleteCookie` before `throw unauthorized()` has to reach the browser, and a session read
+ * before it is still a session read.
  */
-export function problemResponse(problem: Problem, wire: Wire = jsonWire): Response {
-  return new Response(wire.encodeProblem(problem) as BodyInit, {
-    status: problem.status,
-    headers: { 'content-type': wire.problemType },
-  });
+export function problemResponse(problem: Problem, wire: Wire = jsonWire, response?: PendingResponse): Response {
+  const headers = new Headers();
+  if (response !== undefined) {
+    markPrivate(response);
+    for (const [name, value] of response.headers) headers.append(name, value);
+  }
+  headers.set('content-type', wire.problemType);
+  return new Response(wire.encodeProblem(problem) as BodyInit, { status: problem.status, headers });
 }
 
 /**

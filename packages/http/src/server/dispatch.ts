@@ -9,6 +9,7 @@ import type { AnyForm } from '@fudic/forms';
 import { conform } from '../contract/wire.js';
 import { badRequest, ValidationError } from '../errors.js';
 import type { ServerContext } from '../types.js';
+import { markPrivate } from './context.js';
 import { fromBase64url } from '../wire/base64url.js';
 import type { Ty } from '../wire/ty.js';
 import type { Wire } from '../wire/wire.js';
@@ -74,6 +75,7 @@ export async function withForm(form: AnyForm | undefined, ctx: ServerContext): P
  * `detail` names the field in dev, and never bytes that lie about their type.
  */
 export function valueResponse(value: unknown, ctx: ServerContext, wire: Wire, returns: Ty | undefined): Response {
+  markPrivate(ctx.response);
   const { headers } = ctx.response;
   const checked = returns === undefined ? undefined : conformed(returns, value);
   if (checked === undefined) return new Response(null, { status: 204, headers });
