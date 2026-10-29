@@ -205,6 +205,23 @@ describe('a mutation repaints the route (§4.8)', () => {
     expect(search.value).toBe('a medio escribir');
   });
 
+  it('BUG-61: the first pass after hydrating, with blank runs between the rows, moves no row', async () => {
+    controller = hydrated();
+    const tbody = document.querySelector('tbody')!;
+    // The route keeps the blank runs the server wrote between the rows: the case of the bug.
+    expect([...tbody.childNodes].some((n) => n.nodeType === Node.TEXT_NODE)).toBe(true);
+    const records: MutationRecord[] = [];
+    const observer = new MutationObserver((r) => void records.push(...r));
+    observer.observe(tbody, { childList: true });
+    const ana = box(1);
+    ana.checked = false;
+    ana.dispatchEvent(new Event('change', { bubbles: true }));
+    await probe.run;
+    observer.disconnect();
+    expect(records.concat(observer.takeRecords())).toEqual([]);
+    expect(box(1).checked).toBe(false);
+  });
+
   it('15b. a server-side change shows in the attribute the view writes, not only in the checkbox state', async () => {
     controller = hydrated();
     // Leo is off; the server turns him on through a save from his own row.
