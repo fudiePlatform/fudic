@@ -1,0 +1,25 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="server" href="./cuenta.fudapi">
+
+<head>
+  <title>Cuenta — fudic</title>
+</head>
+
+@section nav {
+  <site-nav .current="cuenta"></site-nav>
+}
+
+<h1>Cuenta</h1>
+@if (data.name !== undefined) {
+  <p>Hola, @data.name.</p>
+} else {
+  <p>No has entrado.</p>
+}
+<p>
+  Esta página se pinta en el Service Worker, y su <code>data</code> lo pide al servidor, que lee
+  la cookie de sesión. Como lo leyó, la respuesta sale <code>Cache-Control: private,
+  no-store</code> y el Service Worker no la guarda: entra como Ana, sal, entra como Luis, y aquí
+  dice Luis. En <em>Application → Cache Storage</em> no hay ningún dato de <code>/cuenta</code>.
+  Entra y sal desde <a href="/usuarios">usuarios</a>.
+</p>

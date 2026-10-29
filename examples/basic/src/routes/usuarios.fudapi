@@ -1,8 +1,18 @@
 # Per request: the list changes with every new person, and a prerendered page would not see it.
+# The session too: the value of its cookie as it came, or none — a fake one included.
 load ssr
-  users  Person[]
+  users    Person[]
+  session  str?
 
-# Public: searching needs no token. A longer text is refused in the browser, before it leaves.
+# Signs in as `user`: sets the session cookie, whoever it names. The next protected call says
+# whether the server knows it.
+post login
+  user  str
+
+# Signs out: the session cookie goes.
+post logout
+
+# Public: searching needs no session. A longer text is refused in the browser, before it leaves.
 get search
   q  str
     max-length 80

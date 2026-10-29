@@ -436,3 +436,11 @@ tests.
     la lea por forma, desde otra copia del paquete.
 14. **El error de una función también lleva lo que el handler escribió antes de lanzar**, como el de
     `load` (§4.2): un `deleteCookie` antes de `throw` llega en los dos.
+15. **`/usuarios` lleva también *Entrar como Luis*.** El criterio 21 entra como Luis y §4.7 solo
+    tenía botón para Ana.
+16. **`/usuarios` se hidrata al primer gesto, no al cargar.** Sin el `effect` del token no lee nada
+    al cargar; el gesto se repite al levantarse, así que no se pierde ningún clic. Los e2e esperan
+    a `fud:ready` en vez de a la hidratación de la ruta.
+17. **Salió [BUG-61](./bugs/BUG-61-filas-movidas-al-repintar.md)**: el primer repintado tras hidratar
+    movía filas en su sitio. Lo tapaba el repintado que forzaba el `effect`. Arreglado en su rama y
+    mergeado aquí.

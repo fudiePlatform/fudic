@@ -4,16 +4,9 @@
 <link rel="server" href="./usuarios.fudapi">
 
 @code {
-  import { effect, signal, task } from "@fudic/core";
-  import { TOKEN_KEY } from "../browser/auth";
+  import { signal, task } from "@fudic/core";
 
   const texto = signal("");
-  // Vacío en los dos lados, para que el navegador parta de lo que pintó el servidor. El token
-  // vive en este navegador, no en el servidor: se lee al cargar la página.
-  const token = signal("");
-  effect(() => {
-    token.set(localStorage.getItem(TOKEN_KEY) ?? "");
-  });
 
   // Cada cambio del texto lanza una búsqueda y cancela la anterior: gana la última.
   const found = task(search, () => ({ q: texto() }), { initial: [] });
@@ -54,14 +47,14 @@
     void quitar.run({ id });
   }
 
-  function entrar(nombre: string) {
-    localStorage.setItem(TOKEN_KEY, nombre);
-    token.set(nombre);
+  // Entrar y salir son dos funciones del servidor: ponen y quitan la cookie, y la página se
+  // repinta con el `data` nuevo de `load`, que dice quién hay dentro.
+  async function entrar(nombre: string) {
+    await login({ user: nombre });
   }
 
-  function salir() {
-    localStorage.removeItem(TOKEN_KEY);
-    token.set("");
+  async function salir() {
+    await logout();
   }
 
   async function romper() {
@@ -106,6 +99,10 @@
       border: 1px solid var(--line);
       border-radius: var(--radius);
     }
+    /* La cookie lleva el nombre tal cual, «ana»: se pinta «Ana». */
+    .quien {
+      text-transform: capitalize;
+    }
     table {
       border-collapse: collapse;
       width: 100%;
@@ -132,18 +129,22 @@
 <h2>Sesión</h2>
 <div class="panel">
   <div class="row">
-    <span>Token: <strong>@(token() === "" ? "ninguno" : token())</strong></span>
+    <span>Sesión: <strong class="quien">@(data.session === undefined ? "ninguna" : data.session)</strong></span>
     <button @click=@entrar("ana")>Entrar como Ana</button>
-    <button @click=@entrar("pepe")>Entrar con un token falso</button>
+    <button @click=@entrar("luis")>Entrar como Luis</button>
+    <button @click=@entrar("pepe")>Entrar con una sesión falsa</button>
     <button @click=@salir>Salir</button>
   </div>
   <p>
-    Estos botones no llaman al servidor: solo guardan el token en el navegador. Viaja después,
-    en la cabecera <code>authorization</code> de <em>Borrar</em> y de <em>Activo</em>, que
-    llevan <code>auth</code>: míralo en Network, en las cabeceras de esa petición. Sin token
-    responden 401 y <code>errorPages</code> lleva a la página de error, que dice «sin token».
-    Con uno que el servidor no conoce responden 403, y <code>errorPages({ 403: "/entrar" })</code>
-    lleva a <a href="/entrar">/entrar</a>.
+    Entrar y salir llaman a <code>login</code> y <code>logout</code>, dos funciones del
+    servidor que ponen y quitan la cookie <code>fudic-session</code>. Es <code>HttpOnly</code>:
+    ningún script de la página la lee, así que no sale en <code>document.cookie</code>; se ve
+    en DevTools, en <em>Application → Cookies</em>. El navegador la manda solo en cada
+    petición: la de <em>Borrar</em> y la de <em>Activo</em>, que llevan <code>auth</code>, la
+    llevan en <code>cookie</code>, y ninguna lleva un token puesto a mano. Sin
+    sesión responden 401 y <code>error-pages</code> lleva a la página de error, que dice «sin
+    sesión». Con una que el servidor no conoce responden 403, y <code>error-pages</code> lleva a
+    <a href="/entrar">/entrar</a>.
   </p>
 </div>
 

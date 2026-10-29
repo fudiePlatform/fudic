@@ -5,7 +5,7 @@
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `sdd-69-sesion-por-cookie`. Nace de `main` **con SDD-67 y SDD-68 en `Hecho`**: el
 > ejemplo se repinta tras entrar y salir con lo de la 68.
-> **Progreso:** 12 / 18 — `En curso`.
+> **Progreso:** 16 / 18 — `En curso`: falta la prueba de Pedro en el navegador (17) y el cierre (18).
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -71,9 +71,9 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 13 | 2 | **`@fudic/testing` guarda la cookie.** `keepCookies` quita `HttpOnly` antes de escribirla en `document.cookie` (SDD §4.6). Criterio 18 | `testing` | `src/fetch.ts` · `test/**` |
-| [ ] | 14 | 2 | **`auth` por cookie.** `auth.fudapi` sin `client`; `server/auth.ts` lee `fudic-session`; `Tokens` → `Sessions`; fuera `src/browser/auth.ts` | `examples/basic` | `src/middlewares/auth.fudapi` · `src/server/auth.ts` · `src/services/` · `src/browser/auth.ts` |
-| [ ] | 15 | 14 | **`usuarios` y `/entrar`.** `load ssr` con `session str?`; `post login` y `post logout`; la vista sin `token`, `effect` ni `localStorage`, con los tres botones y el texto de la cookie; `/entrar` habla de sesión (SDD §4.7) | `examples/basic` | `src/routes/usuarios.{fud,fudapi}` · `src/server/usuarios.ts` · `src/routes/entrar.fud` |
-| [ ] | 16 | 14 | **`/cuenta`.** Ruta con `load` sin modo declarado que lee la sesión y saluda (SDD §4.7); enlace en `site-nav` | `examples/basic` | `src/routes/cuenta.{fud,fudapi}` · `src/server/cuenta.ts` · `src/components/site-nav.fud` |
+| [x] | 13 | 2 | **`@fudic/testing` guarda la cookie.** `keepCookies` quita `HttpOnly` antes de escribirla en `document.cookie` (SDD §4.6). Criterio 18 | `testing` | `src/fetch.ts` · `test/**` |
+| [x] | 14 | 2 | **`auth` por cookie.** `auth.fudapi` sin `client`; `server/auth.ts` lee `fudic-session`; `Tokens` → `Sessions`; fuera `src/browser/auth.ts` | `examples/basic` | `src/middlewares/auth.fudapi` · `src/server/auth.ts` · `src/services/` · `src/browser/auth.ts` |
+| [x] | 15 | 14 | **`usuarios` y `/entrar`.** `load ssr` con `session str?`; `post login` y `post logout`; la vista sin `token`, `effect` ni `localStorage`, con los tres botones y el texto de la cookie; `/entrar` habla de sesión (SDD §4.7) | `examples/basic` | `src/routes/usuarios.{fud,fudapi}` · `src/server/usuarios.ts` · `src/routes/entrar.fud` |
+| [x] | 16 | 14 | **`/cuenta`.** Ruta con `load` sin modo declarado que lee la sesión y saluda (SDD §4.7); enlace en `site-nav` | `examples/basic` | `src/routes/cuenta.{fud,fudapi}` · `src/server/cuenta.ts` · `src/components/site-nav.fud` |
 | [ ] | 17 | 13, 15, 16 | **Los tests del ejemplo y la prueba en el navegador.** `user-form.test.ts` entra por `login`; `tests/usuarios.spec.ts` sin `localStorage`, con `context.cookies()` y `/cuenta` con dos usuarios; la prueba del criterio 21 a mano, en dev y en preview. Criterios 19–22 | `examples/basic` | `src/components/user-form.test.ts` · `tests/usuarios.spec.ts` |
 | [ ] | 18 | 17 | **README, entrega y cierre.** El README de `@fudic/http` enseña la sesión por cookie en lugar del token; criterio 23; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde y al 100 %; SDD-69 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `packages/http/README.md` · `docs/sdd/*` |

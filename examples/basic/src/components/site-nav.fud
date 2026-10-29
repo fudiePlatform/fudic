@@ -38,6 +38,7 @@
         href="/formularios"
         aria-current=@(current === 'formularios' ? 'page' : 'false')>Formularios</a>
       <a href="/usuarios" aria-current=@(current === 'usuarios' ? 'page' : 'false')>Usuarios</a>
+      <a href="/cuenta" aria-current=@(current === 'cuenta' ? 'page' : 'false')>Cuenta</a>
       <a
         href="/delegacion"
         aria-current=@(current === 'delegacion' ? 'page' : 'false')>Delegación</a>

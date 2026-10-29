@@ -1,6 +1,7 @@
 /** The functions of the components of the test app. */
 
 import { inject } from '@fudic/di';
+import { setCookie } from '@fudic/http';
 import { save as saveAlias } from 'fudic:components/x-alias';
 import { whoami } from 'fudic:components/x-guarded';
 import { greet } from 'fudic:components/x-hello';
@@ -25,6 +26,7 @@ stamp.handle(() => inject(NOW));
 
 visit.handle((ctx) => {
   const visits = Number(ctx.cookies.get('visits') ?? '0') + 1;
-  ctx.response.headers.append('set-cookie', `visits=${String(visits)}; Path=/`);
+  // The defaults: `HttpOnly`, which the jar of the tests has to keep all the same (SDD-69 §4.6).
+  setCookie(ctx, 'visits', String(visits));
   return visits;
 });

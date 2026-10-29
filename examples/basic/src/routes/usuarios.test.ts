@@ -2,8 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { task } from '@fudic/core';
 import { ValidationError } from '@fudic/http';
 import { respondProblem, visit } from '@fudic/testing';
-import { crash, search } from 'fudic:routes/usuarios';
-import { TOKEN_KEY } from '../browser/auth';
+import { crash, login, search } from 'fudic:routes/usuarios';
 
 // SDD-68 §6, criteria 11, 15–17 and 19, on the page itself: its `load`, its functions and their
 // chain (`auth`, `error-pages`) run on the in-memory server, and the refresh after a call asks
@@ -54,17 +53,19 @@ let assign: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
   people.reset();
-  localStorage.setItem(TOKEN_KEY, 'ana');
   requests = [];
 });
 afterEach(() => {
   vi.restoreAllMocks();
-  localStorage.removeItem(TOKEN_KEY);
 });
 
-/** Visit the page and start recording what it asks, and whether it reloads or navigates. */
+/**
+ * Visit the page, sign in as Ana by the cookie `login` sets (the harness empties the jar between
+ * tests), and start recording what it asks, and whether it reloads or navigates.
+ */
 async function usuarios(options: Parameters<typeof visit>[1] = {}) {
   const page = await visit('/usuarios', options);
+  if (options.fetch === undefined) await login({ user: 'ana' });
   const original = globalThis.fetch;
   vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
     const request = input instanceof Request ? input : new Request(new URL(String(input), location.href), init);
