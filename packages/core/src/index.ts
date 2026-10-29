@@ -82,6 +82,8 @@ export {
   type PageMaps,
   type TagMap,
 } from './hydrate/maps.js';
+// What a route's chunk reads `fud-data` with, by the shape its `.fudapi` gave (BUG-60).
+export { unpackData, type DataShape, type DataTy } from './hydrate/data.js';
 export type { HydratedFrom } from './hydrate/registry.js';
 export {
   nullWarmChannel,
