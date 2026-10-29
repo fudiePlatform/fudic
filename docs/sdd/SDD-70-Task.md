@@ -7,7 +7,7 @@
 > **Rama:** `sdd-70-await-en-la-vista`. Nace de `main` **con SDD-61, SDD-67 y SDD-68 en
 > `Hecho`**: el constructo nuevo entra en la lista blanca de la 61, las tramas del endpoint de
 > datos usan el codec de la 67 y `load.fetch` de la 68 pasa a leerlas.
-> **Progreso:** 16 / 34 — `En curso`.
+> **Progreso:** 17 / 34 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -32,10 +32,8 @@ mergea en esta, se marca la tarea de tests y se cierra la fase. **Cada fase cerr
 origin**, y el agente empuja también la suya.
 
 **Estado.**
-- Fases 1 y 3 cerradas.
-- Fase 2: código en `a5dbd424`. El agente de sus tests (rama `sdd-70-tests-2`) estaba
-  trabajando. Hay que mergear esa rama si existe en origin, revisar los defectos que reporte y
-  marcar la tarea 12. Si no existe, se relanza con el mismo encargo.
+- Fases 1, 2 y 3 cerradas. Los tests de la fase 2 (rama `sdd-70-tests-2`) están mergeados y en
+  verde, sin defectos.
 - Fase 4, a medias. Está en el commit «wip(sdd-70)», con **73 tests del compilador en rojo**:
   - Están en `emit/layout`, `layout-props`, `route-blocks`, `route-code`, `hydrate/route`,
     `hydrate/refresh`, `hydrate/packed-data`, `hydrate/owned`, `di` y `rest-emit`.
@@ -136,7 +134,7 @@ origin**, y el agente empuja también la suya.
 | [x] | 11 | 6 | **La gramática de colores.** `@await` y `@catch` como palabras de control | `vscode` | `syntaxes/fudic.tmLanguage.json` |
 | [x] | 33 | 2, 7 | **Snippets `@await` y `@catch`.** `@await data.$1 { $0 }` con `suggest`, solo en el body de una ruta o página fuera del `<head>` y con algún campo `later` en su `.fudapi`; `@catch (e) { }` solo detrás de la `}` de un `@await` sin `@catch` (SDD §4.1) | `language-server` | `src/services/snippets.ts` |
 | [x] | 34 | 9, 33 | **Completado selectivo.** Detrás de `@await data.` solo los campos `later`, con su tipo resuelto como detalle; los demás campos no salen | `language-server` · `language-core` | `src/services/view-completion.ts` |
-| [ ] | 12 | 8–11, 33, 34 | **Los tests de la fase.** Criterios 3–8, 24 y 25; los del editor por el plugin del language server, no solo por el catálogo | `compiler` · `language-core` · `formatter` · `language-server` | `test/**` |
+| [x] | 12 | 8–11, 33, 34 | **Los tests de la fase.** Criterios 3–8, 24 y 25; los del editor por el plugin del language server, no solo por el catálogo | `compiler` · `language-core` · `formatter` · `language-server` | `test/**` |
 
 ## Fase 3 — `@fudic/ssr`: vaciar el búfer y serializar por partes (3)
 
