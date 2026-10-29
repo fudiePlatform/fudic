@@ -26,7 +26,7 @@ import {
   type RouteTable,
   type CachePolicy,
 } from './manifest.js';
-import { type Store } from './store.js';
+import { isPrivate, type Store } from './store.js';
 import { hydrateNameOf } from './urls.js';
 
 /**
@@ -272,7 +272,7 @@ export function createRouter(config: RouterConfig): Router {
   const fetchData = async (
     record: RouteRecord,
     params: Readonly<Record<string, string>>,
-  ): Promise<{ data: unknown; layout?: unknown }> => {
+  ): Promise<{ data: unknown; layout?: unknown; private?: true }> => {
     // `dataPolicy` IS the "this route resolves something" signal: it is emitted exactly when
     // the page declares `@server load` or `@server layout`. One question, one branch.
     const { dataPolicy } = record;
@@ -287,7 +287,9 @@ export function createRouter(config: RouterConfig): Router {
     // A `load` that threw: a 404, a redirect, a 500. Not this worker's to paint — the server
     // answers the navigation with its error page or its `Location` (SDD-56 §4.8).
     if (!response.ok) throw new DataUnavailable();
-    return (await response.json()) as { data: unknown; layout?: unknown };
+    const body = (await response.json()) as { data: unknown; layout?: unknown };
+    // Data that depended on who is asking: the page painted with it is not kept either (SDD-69 §4.3).
+    return isPrivate(response) ? { ...body, private: true } : body;
   };
 
   /** The render itself: link → data → `chunk.render(ctx)` → `Response`. */
@@ -305,7 +307,7 @@ export function createRouter(config: RouterConfig): Router {
         (record.deps ?? []).map((name) => abs(table.urls.depUrl(name))),
       );
       const chunk = exports as unknown as RouteChunk;
-      const { data, layout } = await fetchData(record, params);
+      const { data, layout, private: personal } = await fetchData(record, params);
       // The chunk renders with the TOKEN, not with this response's nonce: the same bytes
       // may be persisted and served again, and a nonce is per response (§4.5).
       const ctx: RenderContext = {
@@ -323,7 +325,7 @@ export function createRouter(config: RouterConfig): Router {
       const headers = new Headers(HTML_HEADERS);
       headers.set('content-security-policy', cspFor(table.csp.document, nonce));
       let stream = chunk.render(ctx);
-      if (record.page?.cache === 'persist') {
+      if (record.page?.cache === 'persist' && personal !== true) {
         // The surviving shape of SDD-19's incremental mode: render once per concrete
         // URL and keep the HTML. Opt-in, and its TTL is the data's — never a second one.
         const pageUrl = pageUrlOf(url.pathname);

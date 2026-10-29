@@ -414,3 +414,45 @@ describe('Store.prune', () => {
     expect(await store.match('https://app.test/1')).toBeUndefined();
   });
 });
+
+/** SDD-69 §4.3, criteria 14 and 15: what depended on who is asking is kept by no cache. */
+describe('a private response is served and never stored (SDD-69)', () => {
+  const URL_DATA = 'https://app.test/_fudic/data/cuenta';
+  const POLICIES = ['cache-first', 'network-first', 'stale-while-revalidate', 'network-only'] as const;
+  const answer = (body: string, cacheControl?: string) => () =>
+    new Response(body, cacheControl === undefined ? {} : { headers: { 'cache-control': cacheControl } });
+
+  it('criterion 14: no-store or private, with any policy, is served and not stored', async () => {
+    for (const cacheControl of ['private, no-store', 'no-store', 'private', 'max-age=0, PRIVATE', 'private="set-cookie"']) {
+      for (const policy of POLICIES) {
+        const { store } = makeStore(answer('ana', cacheControl));
+        expect(await (await store.get(URL_DATA, policy, null)).text()).toBe('ana');
+        expect(await store.match(URL_DATA)).toBeUndefined();
+      }
+    }
+  });
+
+  it('criterion 14: a copy stored from before goes when the private answer arrives', async () => {
+    const { store } = makeStore(answer('luis', 'private, no-store'));
+    await store.put(URL_DATA, new Response('nadie'));
+    expect(await (await store.get(URL_DATA, 'network-first', null)).text()).toBe('luis');
+    expect(await store.match(URL_DATA)).toBeUndefined();
+  });
+
+  it('criterion 14: a failing delete does not turn the answer into an error', async () => {
+    const { cache } = fakeCache();
+    const store = createStore({
+      cache: { match: cache.match.bind(cache), delete: () => Promise.reject(new Error('quota')) } as unknown as Cache,
+      net: async () => answer('ana', 'no-store')(),
+    });
+    expect(await (await store.get(URL_DATA, 'network-only', null)).text()).toBe('ana');
+  });
+
+  it('criterion 15: without Cache-Control, or with a public one, it is stored as today', async () => {
+    for (const cacheControl of [undefined, 'public, max-age=60', 'no-cache', 'max-age=60, x-private-ish']) {
+      const { store } = makeStore(answer('todos', cacheControl));
+      await store.get(URL_DATA, 'cache-first', null);
+      expect(await (await store.match(URL_DATA))!.text()).toBe('todos');
+    }
+  });
+});

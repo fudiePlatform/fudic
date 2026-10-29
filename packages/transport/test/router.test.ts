@@ -283,6 +283,22 @@ describe('createRouter.handle — the synchronous decision', () => {
     // §6.9: `/blog/x`, never `/blog/x/index.html`. The key is the URL the user visits.
     expect(await h.stores.pages.keys()).toEqual([`${ORIGIN}blog/x`]);
   });
+
+  it('SDD-69 criterion 16: a page painted with data that came private is served and not persisted', async () => {
+    const h = harness();
+    const net = async (request: Request): Promise<Response> =>
+      request.url.includes('/_fudic/data/')
+        ? new Response('{"data":{"n":7}}', { headers: { 'cache-control': 'private, no-store' } })
+        : h.net(request);
+    const r = persistRouter(h, { net, stores: { ...h.stores, data: createStore({ cache: fakeCache().cache, net }) } });
+    await r.warm('/blog/x');
+    const event = fetchEvent(`${ORIGIN}blog/x`);
+    r.handle(event);
+    expect(await readAll((await event.responded!).body!)).toContain('x:7');
+    await settle();
+    expect(await h.stores.pages.keys()).toEqual([]);
+    expect(await h.stores.data.keys()).toEqual([]);
+  });
 });
 
 /**

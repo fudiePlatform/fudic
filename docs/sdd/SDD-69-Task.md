@@ -5,7 +5,7 @@
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `sdd-69-sesion-por-cookie`. Nace de `main` **con SDD-67 y SDD-68 en `Hecho`**: el
 > ejemplo se repinta tras entrar y salir con lo de la 68.
-> **Progreso:** 9 / 18 — `En curso`.
+> **Progreso:** 12 / 18 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -63,9 +63,9 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 10 | 3 | **El `store` respeta `no-store` y `private`.** No guarda esa respuesta, con cualquier política; borra la copia que hubiera de esa URL (SDD §4.3) | `transport` | `src/store.ts` |
-| [ ] | 11 | 10 | **Una página con datos privados no se persiste.** `fetchData` dice si el `data` llegó `no-store`; el render no guarda esa página en `pages` | `transport` | `src/router.ts` |
-| [ ] | 12 | 10, 11 | **Los tests de la fase.** Criterios 14–16 | `transport` | `test/**` |
+| [x] | 10 | 3 | **El `store` respeta `no-store` y `private`.** No guarda esa respuesta, con cualquier política; borra la copia que hubiera de esa URL (SDD §4.3) | `transport` | `src/store.ts` |
+| [x] | 11 | 10 | **Una página con datos privados no se persiste.** `fetchData` dice si el `data` llegó `no-store`; el render no guarda esa página en `pages` | `transport` | `src/router.ts` |
+| [x] | 12 | 10, 11 | **Los tests de la fase.** Criterios 14–16 | `transport` | `test/**` |
 
 ## Fase 4 — el ejemplo y cierre (6)
 
