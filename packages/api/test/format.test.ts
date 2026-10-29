@@ -137,6 +137,25 @@ describe('formatApi (criterion 7)', () => {
     expect(formatApi('paths\rlayout')).toBe('paths\r\rlayout\r');
   });
 
+  it('SDD-70: `later` is a column of its own, two spaces past the widest type that carries it; idempotent', () => {
+    const messy = 'load ssr\n  title str\n  users Person[] later\n  stats    Stats   later\n';
+    const formatted = lines('load ssr', '  title  str', '  users  Person[]  later', '  stats  Stats     later');
+    const once = formatApi(messy);
+    expect(once).toBe(formatted);
+    expect(formatApi(once)).toBe(once);
+    expect(ink(once)).toBe(ink(messy));
+    expect(shape(parseApi(once).value.declarations)).toEqual(shape(parseApi(messy).value.declarations));
+  });
+
+  it('SDD-70: a wider row without `later` does not push the column; a map and a comment keep their place', () => {
+    expect(formatApi('load\n  users Person[] later\n  everything map str Person\n')).toBe(
+      lines('load', '  users       Person[]  later', '  everything  map str Person'),
+    );
+    expect(formatApi('load\n  a Person[]? later # soon\n  byName map str Person later\n')).toBe(
+      lines('load', '  a       Person[]?       later # soon', '  byName  map str Person  later'),
+    );
+  });
+
   it('leaves a file with an unclosed quote as it is', () => {
     const source = 'messages\n  required    "unclosed\n  min "x"';
     expect(formatApi(source)).toBe(source);
