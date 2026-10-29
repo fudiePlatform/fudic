@@ -16,7 +16,7 @@
  * would leave a page pointing at chunks of the previous build.
  */
 
-import { allComponents, componentOf, type ComponentGraph, type DocumentGraph, type ResolvedComponent } from './resolve.js';
+import { allComponents, componentOf, type ComponentGraph, type ResolvedComponent } from './resolve.js';
 import type { CodeWriter } from './writer.js';
 import { classifyAttribute } from '../binding/index.js';
 import type { Diagnostic } from '../types/index.js';
@@ -26,11 +26,13 @@ import {
   entryHalf,
   formAssociatedTags,
   isReactiveRoute,
+  loads,
   routeHydration,
   templateOf,
   walkElements,
 } from './level.js';
 import { entryCellSlots } from './state.js';
+import { dataShapeOf } from './api-links.js';
 
 /** `Record<parent tag, direct hydratable child tags>` — an empty record for a flat page. */
 export type TagMap = Record<string, readonly string[]>;
@@ -289,7 +291,15 @@ export interface RouteBlocks {
   readonly cells: string;
   /** The expression `fud-data` carries, or `null` when the client half never reads it. */
   readonly data: string | null;
+  /** Whether that expression is written by its shape, through `io.packData` (BUG-60 §3.2). */
+  readonly packs: boolean;
 }
+
+/**
+ * What a page module takes from `io` besides what it always takes: `packData` only when its
+ * `fud-data` is written by a shape, so a page with none takes nothing it does not call.
+ */
+export const packIo = (route: RouteBlocks | undefined): string => (route?.packs === true ? ', packData' : '');
 
 /**
  * The route's own three, written INSIDE the same guard as the rest (§4.7).
@@ -327,6 +337,11 @@ export function routeBlocksOf(
   const entry = entryHalf(graph);
   if (entry === undefined || routeName === undefined || !isReactiveRoute(graph)) return undefined;
   const cells = entryCellSlots(graph, entry);
+  const data = dataExpression(entry.code, loads(graph), out);
+  // With the shape of `load`, the block carries no key at any depth, and the chunk reads it back
+  // by the same shape (BUG-60 §3.2). Without one — a link the host could not read — it keeps them.
+  const shape = dataShapeOf(graph);
+  const packs = data !== null && shape !== undefined;
   return {
     name: routeName,
     // The same two shapes the component's `writeState` writes, and from the same list: a
@@ -334,17 +349,9 @@ export function routeBlocksOf(
     cells: cells
       .map((c) => (c.kind === 'signal' ? `{ of: ${c.name}, value: ${c.name}() }` : `{ of: ${c.name} }`))
       .join(', '),
-    data: dataExpression(entry.code, loads(graph), out),
+    data: packs ? `packData(${JSON.stringify(shape)}, ${data})` : data,
+    packs,
   };
-}
-
-/**
- * Whether the route has a `load`: a `.fudapi` it links declares one (SDD-60). A link the host
- * could not read is given the benefit: nothing is said.
- */
-function loads(graph: ComponentGraph): boolean {
-  const apis = 'serverApis' in graph ? (graph as DocumentGraph).serverApis : [];
-  return apis.some((a) => a.api === undefined || a.api.load);
 }
 
 /**

@@ -72,7 +72,8 @@ describe('who gets a chunk (§6.3, §4.5)', () => {
       '/l.fud': '<!DOCTYPE html><html><head>@RenderHead()</head><body>@RenderBody()</body></html>',
     })!;
     expect(code).not.toContain('$lp0');
-    expect(code).toMatch(/export default \(\$props\) => \{\n {2}const \$d = \[\];/u);
+    // The `@code` is author code, so the body runs inside `$owned` (SDD-68).
+    expect(code).toMatch(/export default \(\$props\) => \{\n {2}const \[\$ctl, \$owns\] = \$owned\(\(\) => \{\n {4}const \$d = \[\];/u);
   });
 
   it('a route that only composes reactive components stays at zero JavaScript of its own', () => {
@@ -190,8 +191,9 @@ describe('a construct written straight in a hole (BUG-45 §2.3)', () => {
 
   it('declares the layout node at closure scope, where the branch selector can see it', () => {
     const code = chunkOf(route)!;
-    // In the closure's own `let`, ahead of every block; `h` only assigns it.
-    expect(code).toMatch(/^ {2}let \$lp0, /mu);
+    // In the closure's own `let`, ahead of every block; `h` only assigns it. The closure body
+    // sits inside `$owned(() => { … })` because the `@code` runs author code (SDD-68).
+    expect(code).toMatch(/^ {4}let \$lp0, /mu);
     expect(code).not.toContain('const $lp0');
     expect(code).toContain('$lp0 = $lc0;');
     // The selector that hands a branch its parent names it outside `h`.

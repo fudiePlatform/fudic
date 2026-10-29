@@ -779,6 +779,14 @@ function emitBehaviour(
       ctx.w.scaffold(');\n');
       return;
 
+    case 'form-send':
+      // The function a valid submit calls (SDD-56 §3.5). Projected like the node beside it, so
+      // Ctrl+Click on it reaches its `.fudapi` and a name that does not exist is underlined.
+      ctx.w.scaffold('$formSend(', attr.span);
+      copyRazor(ctx, binding.value);
+      ctx.w.scaffold(');\n');
+      return;
+
     case 'error':
       // The marker names a node the same way `control` does (decision 130), so it is checked
       // the same way: the path is code the checker reads, and renaming a field in the form's

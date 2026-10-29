@@ -34,6 +34,16 @@ export { signal, type Signal } from './signal.js';
 export { computed, type Computed, type Readable } from './computed.js';
 export { effect, type Cleanup } from './effect.js';
 export { batch } from './batch.js';
+export { owned } from './owner.js';
+export { onStaleData, type DataSource } from './route-data.js';
+export {
+  task,
+  type Task,
+  type TaskState,
+  type TaskMode,
+  type TaskOptions,
+  type Callable,
+} from './task.js';
 export { untrack } from './tracking.js';
 export { now } from './now.js';
 export { subscribe, subscribeIf, written } from './subscribe.js';
@@ -72,6 +82,8 @@ export {
   type PageMaps,
   type TagMap,
 } from './hydrate/maps.js';
+// What a route's chunk reads `fud-data` with, by the shape its `.fudapi` gave (BUG-60).
+export { unpackData, type DataShape, type DataTy } from './hydrate/data.js';
 export type { HydratedFrom } from './hydrate/registry.js';
 export {
   nullWarmChannel,

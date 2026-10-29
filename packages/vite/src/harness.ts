@@ -8,7 +8,7 @@
  */
 
 export { emitRenderChunk, routeApi, type RenderChunkOptions } from './wrapper.js';
-export { drainStream, edgeContext, matchRouteBuild, type RenderModule } from './serve.js';
+export { drainStream, edgeContext, loadRouteData, matchRouteBuild, type RenderModule } from './serve.js';
 export { classifyError, renderErrorPage } from './page-errors.js';
 export { routeUsesDi } from './client.js';
 export { discoverRoutes, type RouteBuild } from './discover.js';

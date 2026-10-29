@@ -355,6 +355,32 @@ export function topLevelFunctions(statements: readonly OxcNode[]): ReadonlySet<s
 }
 
 /**
+ * The top-level names a region binds to a `task(…)` (SDD-68 §3.1): what the view reads through
+ * `found.pending()` and `found.value()`, and so what it has to repaint on.
+ *
+ * A task is not a signal — it is an object whose accessors read signals — so it is neither a
+ * cell nor a value a `.prop` crosses by reference. It only MOVES: the reads of it are writes
+ * the pass re-applies, and the pass subscribes to what its accessors read.
+ *
+ * By the callee's name, the way `effect` is recognised: a `task` imported under another name
+ * is the author's to keep reactive by hand.
+ */
+export function topLevelTasks(statements: readonly OxcNode[]): readonly string[] {
+  const out: string[] = [];
+  for (const statement of statements) {
+    if (statement.type !== 'VariableDeclaration') continue;
+    for (const declarator of asArray(field(statement, 'declarations'))) {
+      const init = field(declarator, 'init');
+      const id = field(declarator, 'id');
+      if (!isNode(init) || !isNode(id) || id.type !== 'Identifier' || init.type !== 'CallExpression') continue;
+      const callee = field(init, 'callee');
+      if (isNode(callee) && callee.type === 'Identifier' && nameOf(callee) === 'task') out.push(nameOf(id));
+    }
+  }
+  return out;
+}
+
+/**
  * The names a region calls `.set(…)` on, however deep — what tells a WRITTEN prop from a read
  * one (BUG-24 §4.9, `FUD0203`).
  *

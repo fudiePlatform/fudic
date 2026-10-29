@@ -50,6 +50,7 @@ import {
   iocChunkName,
   iocId,
   routeEagerTags,
+  routeWarmTags,
   routeHydrates,
   routeNameLookup,
   routeUsesDi,
@@ -108,6 +109,7 @@ import { compileFud } from './compile.js';
 import { runtimePieces } from './runtime-pieces.js';
 import {
   coordinatorFor,
+  GRAPH_TOKEN_RE,
   type ChunkResolution,
   type Coordinator,
   type CoordinatorParams,
@@ -501,7 +503,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    * the BUILD and a dev server that did it would lose hot reload of the runtime for nothing.
    * Empty here also means «bundle it», which is exactly what dev should do.
    */
-  let runtime: RuntimeLinkage = { urlOf: new Map(), byUrl: new Map(), packages: [], roots: [] };
+  let runtime: RuntimeLinkage = { urlOf: new Map(), byUrl: new Map(), packages: [], roots: new Map() };
   /**
    * Route pattern → the coordinator that route loads, or `null` when it has nothing to
    * hydrate (SDD-45 §4.4).
@@ -621,9 +623,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     };
     return {
       params: {
-        // With no worker the warm is `<link>`s, and they name each chunk's graph off the
-        // manifest (BUG-53 §4.3). With one, the worker deposits the graph and links are banned.
-        chunks: chunks.mode === 'build' && !hasWorker ? { ...chunks, manifest: manifestFileName } : chunks,
+        // With no worker the warm is `<link>`s, and they name each chunk's graph, which the
+        // coordinator carries for its route (BUG-53 §4.3). With one, the worker deposits the
+        // graph off the manifest and links are banned.
+        chunks: chunks.mode === 'build' && !hasWorker ? { ...chunks, embedsGraph: true } : chunks,
         pieces: {
           hydrate: piece('@fudic/core', 'hydrate', '@fudic/core', 'installHydration'),
           warm: hasWorker
@@ -1422,6 +1425,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             {
               hydrates: routeHydrates(rb.absPath, io),
               injects: routeUsesDi(rb.absPath, io),
+              // Only read with no worker: then the coordinator carries their graph.
+              warms: routeWarmTags(rb.absPath, io, rb.route.pattern).map((tag) => `${dir}${tag}`),
             },
             params,
           );
@@ -1605,7 +1610,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         !forTheWorker &&
         !fromTheShim &&
         // And a publisher's own internal imports, which are not the application's boundary.
-        !insidePublisher(importer, runtime) &&
+        !insidePublisher(importer, runtime, id) &&
         publisherOf(id, runtime.packages) !== null
       ) {
         // Per importer, so it is never a shared chunk: see `shimIdFor`.
@@ -2211,9 +2216,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         }
         // Every name in `graph` is a chunk: that is what `reachableChunks` walks.
         const code = graph.map((fileName) => codeOf.get(fileName)).join('\n');
-        const pieces = [...new Set([...linkedPieces([code], runtime).map((p) => p.url), ...deferred])];
+        // Sorted once, for the manifest and for the graph a coordinator carries alike: the two
+        // name the same files, and a page should not see them in another order (BUG-54).
+        const pieces = [...new Set([...linkedPieces([code], runtime).map((p) => p.url), ...deferred])].toSorted(
+          (a, b) => a.localeCompare(b),
+        );
         if (pieces.length > 0) {
-          hydratePieces[tag] = pieces.toSorted((a, b) => a.localeCompare(b));
+          hydratePieces[tag] = pieces;
         }
         // The whole graph as URLs, for the head of a page that hydrates this tag at load.
         filesOf.set(tag, [
@@ -2245,13 +2254,42 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           eagerFiles.get(token)!.map((url) => JSON.stringify(url)).join(','),
         );
 
+      // 3b-quater. The graph a coordinator of a page with no worker carries (BUG-53 §4.3): for
+      //     the tags its route can warm, what each one loads besides its own chunk. Written
+      //     here because the graph only exists now; the page never downloads the manifest,
+      //     which holds the graph of every tag of the application. The literal is JSON text.
+      //     Every tag a route warms has a chunk: its components and its own client half are
+      //     emitted for every route that is not excluded, and only those get a coordinator.
+      const graphLiteral = (tags: string): string =>
+        JSON.stringify(
+          JSON.stringify(
+            Object.fromEntries(
+              tags
+                .split(',')
+                .filter((tag) => tag !== '')
+                .map((tag) => [tag, filesOf.get(tag)!.slice(1)]),
+            ),
+          ),
+        );
+      // Inside a coordinator, and inside a head that inlines one, where the source is itself a
+      // string literal and the placeholder's quotes arrive escaped.
+      const fillGraph = (code: string): string =>
+        code
+          .replace(/\\(["'])__fudic_graph__:([^"'`\\]*)\\\1/gu, (_m, _q: string, tags: string) =>
+            JSON.stringify(graphLiteral(tags)).slice(1, -1),
+          )
+          .replace(GRAPH_TOKEN_RE, (_m, _q: string, tags: string) => graphLiteral(tags));
+      for (const item of Object.values(bundle)) {
+        if (item.type === 'chunk' && isCoordinatorChunk(item.facadeModuleId)) item.code = fillGraph(item.code);
+      }
+
       for (const chunk of link.chunks) {
         emitWithMap({
           ...chunk,
           fileName: renames.get(chunk.fileName) ?? chunk.fileName,
           // The token too: a link chunk writes the runtime entry URLs into the head it
           // renders (BUG-31 §T1), and those carry the id.
-          code: rewriteReferences(chunk.code.split(BUILD_TOKEN).join(buildId), renames),
+          code: fillGraph(rewriteReferences(chunk.code.split(BUILD_TOKEN).join(buildId), renames)),
         });
       }
       // The Service Worker, now that the names it precaches are the ones on disk. Its own
@@ -2265,7 +2303,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // changes length, and only the columns after it on that line move in its map.
       const edgeChunks = edge.chunks.map((c) => ({
         ...c,
-        code: fillEager(rewriteReferences(c.code.split(BUILD_TOKEN).join(buildId), renames)),
+        code: fillGraph(fillEager(rewriteReferences(c.code.split(BUILD_TOKEN).join(buildId), renames))),
       }));
       if (writeToDisk) {
         rmSync(edgeDir, { recursive: true, force: true });

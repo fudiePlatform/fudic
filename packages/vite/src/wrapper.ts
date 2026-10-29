@@ -132,6 +132,8 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
     // written as a string, and it must come out as the body's `setUrl` writes it (SDD-51 §3.7).
     'guardUrl',
     'jsonBlock',
+    // What a page writes `fud-data` with when its `.fudapi` gave the shape of `data` (BUG-60 §3.2).
+    'packData',
     ...(hasDi ? ['iocRoot', 'publishedSeed'] : http ? ['iocRoot'] : []),
   ];
   lines.push(`import { page } from ${spec};`);
@@ -170,7 +172,7 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   if (options.alternates !== undefined) lines.push(...alternatesSource(options.alternates));
   lines.push('function io(ctx) {');
   lines.push(
-    `  return { createDom: () => new SsrDom(), serialize: serializeChunks, escapeText, escapeAttr, guardUrl, jsonBlock${hasDi ? ', iocRoot, publishedSeed' : ''}, nonce: ctx.nonce, runtime: RUNTIME${options.alternates !== undefined ? ', alternates: $alternates(ctx.url)' : ''} };`,
+    `  return { createDom: () => new SsrDom(), serialize: serializeChunks, escapeText, escapeAttr, guardUrl, jsonBlock, packData${hasDi ? ', iocRoot, publishedSeed' : ''}, nonce: ctx.nonce, runtime: RUNTIME${options.alternates !== undefined ? ', alternates: $alternates(ctx.url)' : ''} };`,
   );
   lines.push('}');
   lines.push('');

@@ -94,13 +94,14 @@ describe('§6.7 — definition', () => {
     expect(await definitionAt(SLUG, '<article>', 2)).toEqual([]);
   });
 
-  it('over @data.title, opens the property of the type load() returns', async () => {
+  it('over @data.title, opens the field of the load that declares it', async () => {
     const [location, ...rest] = await definitionAt(SLUG, '<h1>@data.title</h1>', 11);
 
     expect(rest).toEqual([]);
-    // `data` is the `LoadData` of the `.fudapi` (SDD-60 §4.7), as its `.d.ts` declares it.
-    expect(fileOf(location!)).toBe(TYPES);
-    expect(textOf(TYPES, location!.range)).toBe('readonly title: string;');
+    // `data` is the `LoadData` of the `.fudapi` (SDD-60 §4.7): TypeScript finds the field in its
+    // `.d.ts`, and the editor opens it where it is written (BUG-59).
+    expect(fileOf(location!)).toBe('src/blog/[slug].fudapi');
+    expect(textOf('src/blog/[slug].fudapi', location!.range)).toBe('title  str');
   });
 
   it('over data itself, the type definition is the whole shape', async () => {

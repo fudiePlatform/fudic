@@ -18,7 +18,7 @@ export {
   type Handler,
   type ServerContract,
 } from './fn.js';
-export { page, type PageContext, type PagePiece, type PageSpec } from './page.js';
+export { page, type BrowserLoadPiece, type PageContext, type PagePiece, type PageSpec } from './page.js';
 export {
   compose,
   middleware,

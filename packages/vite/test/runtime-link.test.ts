@@ -217,7 +217,7 @@ describe('runtimeLinkage', () => {
       },
     );
 
-    expect(linkage.roots).toEqual([ROOT]);
+    expect([...linkage.roots]).toEqual([[ROOT, '@fudic/core']]);
   });
 
   it('has no root for a piece with no `package.json` above it', () => {
@@ -225,7 +225,7 @@ describe('runtimeLinkage', () => {
       readFile: (path) => (path === '/signal.js' ? 'export{r as signal};' : undefined),
     });
 
-    expect(linkage.roots).toEqual([]);
+    expect([...linkage.roots]).toEqual([]);
   });
 });
 
@@ -255,14 +255,24 @@ describe('insidePublisher', () => {
     // package's internal imports belong to whatever part of it stayed bundled, and the
     // dependency is the package's, not the app's — which is how it broke a workspace app
     // that never declared `@fudic/di`.
-    expect(insidePublisher(`${ROOT}/dist/index.js`, linkage)).toBe(true);
-    expect(insidePublisher('/repo/app/src/app-card.fud', linkage)).toBe(false);
+    expect(insidePublisher(`${ROOT}/dist/index.js`, linkage, '@fudic/di')).toBe(true);
+    expect(insidePublisher('/repo/app/src/app-card.fud', linkage, '@fudic/core')).toBe(false);
   });
 
   it('reads Windows separators, and an absent importer is not inside anything', () => {
     const linkage = coreLinkage();
-    expect(insidePublisher(ROOT.replace(/\//gu, '\\') + '\\dist\\index.js', linkage)).toBe(true);
-    expect(insidePublisher(undefined, linkage)).toBe(false);
+    expect(insidePublisher(ROOT.replace(/\//gu, '\\') + '\\dist\\index.js', linkage, '@fudic/di')).toBe(true);
+    expect(insidePublisher(undefined, linkage, '@fudic/core')).toBe(false);
+  });
+
+  it('a package naming ITSELF is crossing its own public surface, and is linked (BUG-57)', () => {
+    const linkage = coreLinkage();
+    // A file the package ships and the application loads, importing the package by name: that
+    // is the surface its pieces publish, and bundling it would be a second copy of them.
+    expect(insidePublisher(`${ROOT}/browser/glue.js`, linkage, '@fudic/core')).toBe(false);
+    expect(insidePublisher(`${ROOT}/browser/glue.js`, linkage, '@fudic/core/contract')).toBe(false);
+    // A package whose name merely starts like this one is somebody else.
+    expect(insidePublisher(`${ROOT}/browser/glue.js`, linkage, '@fudic/core-extra')).toBe(true);
   });
 });
 

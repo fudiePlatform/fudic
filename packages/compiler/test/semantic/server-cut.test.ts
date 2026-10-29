@@ -416,3 +416,40 @@ describe('stores and data modules (criterion 21)', () => {
     expect(cut('<p>@count @otra</p>', code, modules)).toEqual([`FUD1150 ${STORE}: count = new Date()`]);
   });
 });
+
+describe('a task in the view (SDD-68 §4.7)', () => {
+  // On the server a task never calls: it paints with its `initial`, `'idle'`, `false` and
+  // `undefined`. `fn` and `source` are browser code; only `initial` is judged.
+  const TASK = `import { signal, task } from '@fudic/core';\n      const texto = signal('');`;
+  const VIEW = '<p>@found.pending() @found.state()</p>@foreach (const p of found.value()) { <i>@p</i> }';
+
+  it('a task read in the view is portable, with or without a source', () => {
+    expect(cut(VIEW, `${TASK}\n      const found = task(search, () => ({ q: texto() }));`)).toEqual([]);
+    expect(cut(VIEW, `${TASK}\n      const found = task(search);`)).toEqual([]);
+  });
+
+  it('an initial written as data is portable, and so are options without one', () => {
+    expect(cut(VIEW, `${TASK}\n      const found = task(search, undefined, { initial: [] });`)).toEqual([]);
+    expect(cut(VIEW, `${TASK}\n      const found = task(search, undefined, { initial: [{ id: 1 }] });`)).toEqual([]);
+    expect(cut(VIEW, `${TASK}\n      const found = task(search, undefined, { mode: 'queue' });`)).toEqual([]);
+  });
+
+  it('an initial that reads the list is judged like the value of a signal', () => {
+    expect(cut(VIEW, `${TASK}\n      const found = task(search, undefined, { initial: texto() });`)).toEqual([]);
+  });
+
+  it('an unportable initial is still reported', () => {
+    const code = `${TASK}\n      const found = task(search, undefined, { initial: new Date() });`;
+    expect(cut(VIEW, code)).toEqual(['FUD1141 new Date']);
+  });
+
+  it('a computed key is not `initial`, and is not followed', () => {
+    const code = `${TASK}\n      const found = task(search, undefined, { ['initial']: new Date() });`;
+    expect(cut(VIEW, code)).toEqual([]);
+  });
+
+  it('options that are not an object literal are judged as an expression', () => {
+    const code = `${TASK}\n      const found = task(search, undefined, Math.random());`;
+    expect(cut(VIEW, code)).toEqual(['FUD0907 Math']);
+  });
+});

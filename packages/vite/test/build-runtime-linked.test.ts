@@ -77,6 +77,27 @@ const PAGE = `<!DOCTYPE html>
 </html>
 `;
 
+/** No code at all: a component the page can name and that has nothing to hydrate. */
+const STATIC = `<app-static>
+  <template shadowrootmode="open">
+    <p>still</p>
+  </template>
+</app-static>
+`;
+
+/** The coordinator travels in the document, so its source is a string inside a chunk. */
+const INLINE = `<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="component" href="../components/app-counter.fud">
+    <link rel="component" href="../components/app-static.fud">
+    <script src="fudic:runtime?inline"></script>
+    <title>Inline</title>
+  </head>
+  <body><app-counter></app-counter><app-static></app-static></body>
+</html>
+`;
+
 interface OutFile {
   readonly type: 'chunk' | 'asset';
   readonly fileName: string;
@@ -94,6 +115,8 @@ beforeAll(async () => {
   writeFileSync(join(root, 'src', 'routes', 'index.fud'), PAGE);
   writeFileSync(join(root, 'src', 'components', 'app-ticker.fud'), TICKER);
   writeFileSync(join(root, 'src', 'routes', 'live.fud'), LIVE);
+  writeFileSync(join(root, 'src', 'components', 'app-static.fud'), STATIC);
+  writeFileSync(join(root, 'src', 'routes', 'inline.fud'), INLINE);
 
   // Installed, not aliased: discovery walks `node_modules` from the project root, and a
   // publisher is found by its `package.json` — which is the whole of §3.3.
@@ -257,5 +280,20 @@ describe('BUG-53 §4.3: with no worker, the head preloads what the page hydrates
     // `app-counter` waits for a gesture: its page preloads the coordinator's closure alone.
     expect(preloads('index.html').some((u) => u.includes('/assets/h/'))).toBe(false);
     expect(html('live/index.html')).not.toContain('__fudic_eager_');
+  });
+
+  it('the coordinator carries its route’s graph, also inlined in the page, and the manifest goes unasked', () => {
+    const file = JSON.parse(String(output.find((o) => o.fileName === 'fudic-routes.json')!.source)) as {
+      hydrate: Record<string, string[]>;
+    };
+    const page = html('inline/index.html');
+    expect(page).not.toContain('__fudic_graph__');
+    expect(page).not.toContain('fudic-routes.json');
+    // The graph of `app-counter` is in the page, as the JSON text the coordinator parses.
+    const graph = /JSON\.parse\((".*?[^\\]")\)/u.exec(page)![1]!;
+    expect(JSON.parse(JSON.parse(graph) as string)).toEqual({ 'app-counter': file.hydrate['app-counter'] });
+    for (const chunk of output.filter((o) => o.type === 'chunk')) {
+      expect(chunk.code).not.toContain('__fudic_graph__');
+    }
   });
 });

@@ -244,8 +244,17 @@ export class BlockEmitter implements BlockSink {
     w.appendWriter(bodies.decls);
     writeClosure(w, '$a', bodies.apply, 'let $v;');
     writeClosure(w, '$s', bodies.hook);
-    // The one place a root of this block reaches the tree, whichever way it got there.
-    w.line('const $mv = ($ref, $n) => { if ($ref === null) $dom.append($parent, $n); else $dom.before($ref, $n); return $n; };');
+    // The one place a root of this block reaches the tree, whichever way it got there. A node
+    // already where it goes is left alone (SDD-68 §4.8): a reconciliation that keeps every row
+    // in its order moves nothing, and moving the ancestor of the focused element blurs it.
+    //
+    // And a node the block does not own is not moved at all: a blank run adopted after
+    // hydrating as a REFERENCE to what it merged with (`#shared` in the markup emitter) is the
+    // level's, the same node for every row — dragging it beside each row in turn shuffles the
+    // whole level on the first pass.
+    w.line(
+      'const $mv = ($ref, $n) => { if (!$r.includes($n)) return $ref; if ($ref === null ? $dom.lastChild($parent) === $n : $dom.nextSibling($n) === $ref) return $n; if ($ref === null) $dom.append($parent, $n); else $dom.before($ref, $n); return $n; };',
+    );
     w.line('return {');
     w.indent();
     // The block of an `@empty` has no row to be: no key, and the mark the reconciliation finds it by.

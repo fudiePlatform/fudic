@@ -21,6 +21,7 @@ export {
   neutralizeComment,
 } from './serialize.js';
 export { jsonBlock, escapeJson } from './json-block.js';
+export { packData, type DataShape, type DataTy } from './data-pack.js';
 /**
  * The URL guard of `@fudic/dom` (SDD-51 §3.7), handed on: the shell's opening tags are written
  * as strings before there is a DOM, and they need the very function `setUrl` applies.

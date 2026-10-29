@@ -12,7 +12,7 @@ import { classifyError, pageModuleOf, renderErrorPage, matchRouteBuild, type Rou
 import { serverRoot } from './api.js';
 import { showPage } from './document.js';
 import { graphOf } from './graph.js';
-import { chunkMap, hydrate } from './hydrate.js';
+import { chunkMap, hydrate, withRoute } from './hydrate.js';
 import { loadWrapper, renderPage, routeFacts } from './page.js';
 import { settled } from './pending.js';
 import { projectOf } from './project.js';
@@ -77,7 +77,7 @@ export async function showDocument(
   locale?: string,
 ): Promise<Visited> {
   const body = showPage(html);
-  hydrate(body, chunkMap(graphOf(file).components.values(), locale), providers);
+  hydrate(body, withRoute(chunkMap(graphOf(file).components.values(), locale), document, file, locale), providers);
   await settled();
   // Onto the harness, not spread from it: `invalidated` is a getter, and a spread would freeze it.
   return Object.assign(harnessOf(document), { document, status });

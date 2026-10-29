@@ -57,6 +57,7 @@ import {
 } from './requests.js';
 import { createFudicService, createFudicTagService } from './services/plugin.js';
 import { silenceOwnedPositions } from './services/owned.js';
+import { redirectServerDefinitions } from './services/server-definition.js';
 import { filterTypeScriptCompletions } from './services/ts-completion.js';
 import { RequestStats } from './stats.js';
 import { hasTypeScript, loadTypeScript } from './tsdk.js';
@@ -238,7 +239,7 @@ export function createFudicServer(
       // (BUG-15 §4.6).
       // It also answers inside attribute values, and there the `styles` of the project's
       // fudic.json are what the root template's `shadowrootadoptedstylesheets` chooses from.
-      createFudicTagService({ index, stats, configs }),
+      createFudicTagService({ index, stats, configs, apis }),
       // Criteria files: a service of their own, which answers only in a `.fudspec` (SDD-52).
       createFudspecService({ host: specs, stats }),
       // Contract files: likewise, only in a `.fudapi` (SDD-60).
@@ -256,7 +257,7 @@ export function createFudicServer(
       // TypeScript and wrong answers — the reserved `$` scaffolding, and the global scope
       // it falls back to when a component's contract has no members (BUG-23, TODOs 1, 4).
       plugins.unshift(
-        ...filterTypeScriptCompletions(createTypeScriptServices(typescript.typescript)),
+        ...redirectServerDefinitions(filterTypeScriptCompletions(createTypeScriptServices(typescript.typescript), apis), apis),
       );
       project = deps.createTypeScriptProject(
         typescript.typescript,

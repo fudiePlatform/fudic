@@ -22,7 +22,7 @@
  * the place for flow analysis is the language server (SDD-24), not the emit.
  */
 
-import { allComponents, componentOf, type ComponentGraph, type ResolvedComponent } from './resolve.js';
+import { allComponents, componentOf, type ComponentGraph, type DocumentGraph, type ResolvedComponent } from './resolve.js';
 import type { ElementNode, HtmlContent } from '../html/index.js';
 import type { ControlNode } from '../control/index.js';
 import { bridgeOf, classifyAttribute, isFormAssociated, shadowOptionsOf, type ShadowOptions } from '../binding/index.js';
@@ -378,7 +378,7 @@ export function hydratableTags(graph: ComponentGraph): ReadonlySet<string> {
     }
     if (
       entry !== undefined &&
-      induceFrom(graph, graph.entrySource, entry.roots, entry.code, entryMoving(entry.code), hydratable)
+      induceFrom(graph, graph.entrySource, entry.roots, entry.code, entryMoving(entry.code, refreshesData(graph)), hydratable)
     ) {
       changed = true;
     }
@@ -388,10 +388,43 @@ export function hydratableTags(graph: ComponentGraph): ReadonlySet<string> {
 
 /**
  * The names a ROUTE can see move. The same three sources as a component's, minus the one it
- * does not have: nobody hands a route props.
+ * does not have: nobody hands a route props. Plus `data`, when a call can refresh it.
  */
-export function entryMoving(code: ExtractedCode): ReadonlySet<string> {
-  return new Set<string>([...code.signals.map((s) => s.name), ...code.mutable]);
+export function entryMoving(code: ExtractedCode, refreshes = false): ReadonlySet<string> {
+  return new Set<string>([
+    ...code.signals.map((s) => s.name),
+    ...code.mutable,
+    ...code.tasks,
+    ...(refreshes ? ['data'] : []),
+  ]);
+}
+
+/**
+ * Whether the route has a `load`: a `.fudapi` it links declares one (SDD-60). A link the host
+ * could not read is given the benefit: nothing is said.
+ */
+export function loads(graph: ComponentGraph): boolean {
+  const apis = 'serverApis' in graph ? (graph as DocumentGraph).serverApis : [];
+  return apis.some((a) => a.api === undefined || a.api.load);
+}
+
+/**
+ * Whether a call can refresh the route's `data` without reloading the document (SDD-68 §4.8):
+ * a route with a client half, a `load`, and a client half that reads `data` at all. Then
+ * `data` is a name that moves — every read of it in the view is a write the pass re-applies —
+ * and the chunk listens for the stub's notice.
+ *
+ * A client half that never names `data` has nothing a new one could change, so it does not
+ * listen: that is the last clause, and it is what keeps a `load` only the server paints from
+ * costing the chunk a listener.
+ *
+ * Here a link the host could not read gives nothing — unlike `loads` — because the listener
+ * has to import the `load` it asks, and an unread link names none.
+ */
+export function refreshesData(graph: ComponentGraph): boolean {
+  const apis = 'serverApis' in graph ? (graph as DocumentGraph).serverApis : [];
+  if (!isReactiveRoute(graph) || !apis.some((a) => a.api?.load === true)) return false;
+  return entryHalf(graph)!.code.dataAccess.kind !== 'none';
 }
 
 /**
@@ -461,5 +494,7 @@ export function movingNames(comp: ResolvedComponent): ReadonlySet<string> {
     // A gathered key moves as its rest object: that is the name the template reads.
     ...code.props.map((p) => p.rest ?? p.name),
     ...code.mutable,
+    // A `task` is read through accessors that read signals: what it shows moves with it.
+    ...code.tasks,
   ]);
 }

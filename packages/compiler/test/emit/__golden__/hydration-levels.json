@@ -1011,6 +1011,12 @@
     "hydration": "gesture",
     "hydrates": []
   },
+  "packages/testing/test/app/src/routes/contador.fud": {
+    "kind": "route",
+    "reactive": true,
+    "hydration": "gesture",
+    "hydrates": []
+  },
   "packages/testing/test/app/src/routes/moved.fud": {
     "kind": "route",
     "reactive": false,

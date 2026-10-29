@@ -105,6 +105,10 @@ const EXCEPTIONS = {
       why: 'The six block ids and the cell-marker predicate: the exception §4.3 names, constants the emit consumes. They are inside `core/hydrate` already, but naming them as exports keeps their identifiers from the minifier and costs 167 bytes on the one piece every hydrating page downloads. If a component ever imports one, the linker has no URL and says so in the build.',
     },
     {
+      match: /^@fudic\/http:src\/(server\/|contract\/server\.ts|csrf-server\.ts|wire\/signature\.ts)/,
+      why: 'BUG-57: the server half of `@fudic/http` — serving the contracts, running `load`, the request of a handler, the server half of CSRF and the signature a backend computes. None of it reaches a browser; the browser half is `http/contract` and `http/json`.',
+    },
+    {
       match: /^@fudic\/ssr:/,
       why: '§4.10: the renderer is one piece, `ssr/index`, and only the Service Worker asks for it — it enters `builtins` under the names `src/index.ts` exports, resolved by the linker the worker already has and never by a URL a browser writes.',
     },

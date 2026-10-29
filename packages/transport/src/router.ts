@@ -16,7 +16,7 @@
  * request — two rows in the Network panel for one URL. That was a real bug.
  */
 
-import { FN_PREFIX } from '@fudic/conventions';
+import { coversPath, FN_PREFIX } from '@fudic/conventions';
 import { applyNonce, applyNonceStream, cspFor, newNonce, NONCE_TOKEN } from './csp.js';
 import { type Linker } from './linker.js';
 import {
@@ -186,16 +186,6 @@ export interface Router {
 
 /** The data endpoint answered with an error: the network serves the navigation (SDD-56 §4.8). */
 class DataUnavailable extends Error {}
-
-/** Whether a concrete pathname is one of the URLs of `pattern`. */
-function matchesPattern(pattern: string, pathname: string): boolean {
-  const want = pattern.split('/');
-  const have = pathname.split('/');
-  return (
-    want.length === have.length &&
-    want.every((seg, i) => (seg.startsWith(':') ? have[i] !== '' : seg === have[i]))
-  );
-}
 
 const HTML_HEADERS = { 'content-type': 'text/html; charset=utf-8' };
 
@@ -383,9 +373,8 @@ export function createRouter(config: RouterConfig): Router {
     // which is purged on every deploy — and the one property this cache has is that it is
     // not. Cache-first with no TTL: the version is in the URL, so the bytes behind it never
     // change, and the entry is written the first time a page asks for it and not before.
-    const runtime = config.runtime;
-    if (runtime !== undefined && url.pathname.startsWith(runtime.prefix)) {
-      event.respondWith(runtime.store.get(event.request, 'cache-first', null));
+    if (isRuntimePiece(url.pathname)) {
+      event.respondWith(config.runtime!.store.get(event.request, 'cache-first', null));
       return;
     }
     if (shellUrls.has(url.href)) {
@@ -444,8 +433,17 @@ export function createRouter(config: RouterConfig): Router {
    * keeps the download off the critical path, which is what makes warm free.
    */
   /** Whether a path belongs to the PUBLISHED runtime this worker serves by prefix. */
+  /**
+   * A piece of the published runtime: under the prefix, AND in a version's directory —
+   * `/_fudic/0.0.1-<fingerprint>/core/…` (BUG-56). The prefix alone is not the runtime's:
+   * a page's data (`/_fudic/data/…`), a call (`/_fudic/fn/…`) and the marker live under it
+   * too, and the runtime cache never expires what it holds. A version starts with a digit;
+   * none of those does.
+   */
   const isRuntimePiece = (pathname: string): boolean =>
-    config.runtime !== undefined && pathname.startsWith(config.runtime.prefix);
+    config.runtime !== undefined &&
+    pathname.startsWith(config.runtime.prefix) &&
+    /^\d/u.test(pathname.slice(config.runtime.prefix.length));
 
   /** The deposited body, when it landed with a 200; `null` otherwise. */
   const deposit = async (url: string): Promise<Response | null> => {
@@ -577,7 +575,7 @@ export function createRouter(config: RouterConfig): Router {
         // worker writes into the origin's shared cache must be a piece of the published
         // runtime and nothing else.
         const absolute = abs(url);
-        if (!new URL(absolute).pathname.startsWith(runtime.prefix)) continue;
+        if (!isRuntimePiece(new URL(absolute).pathname)) continue;
         try {
           await runtime.store.get(
             new Request(absolute, { priority: 'low' }),
@@ -641,7 +639,8 @@ export function createRouter(config: RouterConfig): Router {
         if (path.startsWith(dataRoot)) held.add(`${root}${path.slice(dataRoot.length)}`.replace(/\/{2,}/gu, '/'));
       }
       for (const path of held) {
-        if (matchesPattern(pattern, path)) await this.invalidate(path);
+        // The comparison the stub uses too, to tell the page its own data is stale.
+        if (coversPath(pattern, path)) await this.invalidate(path);
       }
     },
   };

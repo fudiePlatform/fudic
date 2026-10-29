@@ -1,6 +1,6 @@
 # SDD-68 — Llamadas sin fontanería: `task` y el repintado tras una mutación
 
-> **Estado:** `Listo` — [tareas](./SDD-68-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-68-Task.md).
 > **Paquetes:** `@fudic/core` · `@fudic/http` · `@fudic/conventions` · `@fudic/compiler` ·
 > `examples/basic`
 > **Depende de:** 31 (`signal`, `effect`), 15 (el controlador y sus `$d` de desmontaje), 39 (el
@@ -108,13 +108,13 @@ export interface TaskOptions<R> {
 
 export interface Task<A, R, V = R | undefined> {
   /** The last answer that arrived, or `initial`. Kept while a new call is in flight. Tracked. */
-  value(): V;
+  readonly value: Readable<V>;
   /** Tracked. */
-  state(): TaskState;
+  readonly state: Readable<TaskState>;
   /** `state() === 'pending'`. Tracked. */
-  pending(): boolean;
+  readonly pending: Readable<boolean>;
   /** What the last failed call rejected with; `undefined` unless state() is 'failed'. Tracked. */
-  error(): unknown;
+  readonly error: Readable<unknown>;
   /** Starts a call by hand. Resolves with its answer, or `undefined` if it was cancelled, replaced or failed. Never rejects. */
   run(...args: A extends void ? [args?: A] : [args: A]): Promise<R | undefined>;
   /** Aborts the call in flight and drops the ones waiting. */
@@ -455,3 +455,41 @@ Y la tabla de `@foreach (const p of data.users)` se repinta sola.
     código que actualiza lo que lee `data`, y solo lo paga una ruta que ya se hidrata.
 14. **Sin códigos nuevos.** Crear una tarea fuera del `@code` es legítimo (vive con la página) y
     no rompe nada. Se documenta, no se diagnostica.
+
+### 8.2. Tomadas al implementar
+
+15. **`owned` envuelve el cuerpo entero de la factoría, no solo el `@code`.** Los nombres del
+    autor los leen por ámbito léxico los handlers y bloques que el emit declara detrás, así que
+    el `@code` no puede ir en un cierre propio. Dentro solo corre la construcción: `h`, `u` y `r`
+    corren después, fuera del dueño. Una factoría sin código del autor sale igual que antes.
+16. **Lo creado por el `@code` se desmonta después de `$d`.** `r` vacía primero las
+    suscripciones de la vista y luego la lista de `owned`. Al revés, una tarea que cancela (o la
+    limpieza de un `effect` que escribe una señal) repintaría sobre nodos ya liberados.
+17. **La vista se suscribe a una tarea.** Un `const x = task(…)` del nivel superior es un nombre
+    que se mueve, como una señal, y el paso de repintado se suscribe a `x.value()` y `x.state()`.
+    Se reconoce por el nombre de la llamada, igual que `effect`.
+18. **El «contador de versión» es el propio paso de repintado.** El refresco cambia `data` y
+    ejecuta una pasada: como `data` es un nombre que se mueve, cada lectura suya en la vista es
+    una escritura que la pasada vuelve a aplicar, y el `@foreach` reconcilia por clave.
+19. **Solo escucha la ruta cuyo lado de cliente lee `data`.** Si el cliente nunca nombra
+    `data`, un `data` nuevo no cambiaría nada: no hay oyente.
+20. **La comparación de rutas vive en `@fudic/conventions` (`coversPath`).** La usan el Service
+    Worker, para olvidar, y el stub, para avisar: una sola copia.
+21. **Una tarea es vista portable (Pedro, 2026-10-28).** En el servidor una tarea no hace nada,
+    así que cualquier backend la evalúa: `pending()` es `false`, `state()` es `'idle'`,
+    `error()` es `undefined` y `value()` es el `initial`. El corte del servidor admite
+    `task(…)` y solo juzga su `initial`, como el valor de un `signal`; `fn` y `source` son del
+    navegador. Por eso las cuatro lecturas son `Readable` (valores derivados, como un
+    `computed`) y no métodos: así las acepta la regla de las llamadas sin argumentos.
+22. **Dos avisos seguidos: gana el último refresco.** El anterior se aborta y su respuesta no se
+    aplica, así que un refresco lento no pinta encima de uno nuevo.
+23. **El oyente de la ruta va atado a su `<body>`.** Un aviso que encuentra ese `<body>` fuera del
+    documento retira el oyente sin pedir nada. En el navegador navegar cambia el documento; donde
+    se sustituye el `<body>` en el sitio (el arnés de tests entre dos visitas) quedarían oyentes
+    viejos.
+24. **`load.fetch` existe en las dos variantes de `load`.** Donde un solo grafo de módulos sirve
+    a los dos lados (el arnés de tests), el chunk de la ruta recibe la variante del servidor.
+25. **Un bloque solo mueve los nodos que son suyos, y no mueve los que ya están en su sitio.**
+    Al hidratar, el espacio en blanco que cierra una fila es una referencia al último nodo del
+    nivel, el mismo para todas, y moverlo reordenaba la lista; y reinsertar una fila que no se
+    mueve hace perder el foco a lo que tiene dentro.

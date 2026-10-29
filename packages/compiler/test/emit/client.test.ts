@@ -6,6 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { join } from 'node:path';
+import { owned } from '@fudic/core';
 import {
   resolveComponents,
   emitComponentClientModule,
@@ -46,8 +47,9 @@ describe('emitComponentClientModule — the module shape (§6.8)', () => {
     // `$live` travels because its template holds a child component host, and an instance of
     // that host fabricated at runtime is one nobody painted: its parent has to raise it.
     // `$written` because that signal is its own: one written before the hookup still repaints.
+    // `$owned` because its `@code` runs author code, whose effects and tasks die with it (SDD-68).
     expect(src).toContain(
-      "import { FudicElement, subscribe as $sub, written as $written, live as $live } from '@fudic/core';",
+      "import { FudicElement, subscribe as $sub, written as $written, live as $live, owned as $owned } from '@fudic/core';",
     );
     expect(src).toContain('customElements.define("app-card", class extends FudicElement {');
     expect(src).toContain('static c($props) {');
@@ -141,7 +143,9 @@ describe('emitComponentClientModule — the module shape (§6.8)', () => {
     expect(controller(src)).toContain(
       'r: () => { $k0.forEach(($i) => $i.r()); $k1.forEach(($i) => $i.r()); ',
     );
-    expect(controller(src)).toContain('$shadow = null; $d.forEach((d) => d()); },');
+    // What the `@code` created goes LAST: by then the view no longer listens, so a task the
+    // teardown cancels cannot repaint nodes already released (SDD-68).
+    expect(controller(src)).toContain('$shadow = null; $d.forEach((d) => d()); $owns.forEach((d) => d()); },');
   });
 
   it('asks the condition ONCE, in the selector the three bodies share', () => {
@@ -634,11 +638,11 @@ describe('emitComponentClientModule — a child host that receives a value (BUG-
     // `$live` is in both: this template holds a child host either way, and raising one the
     // browser creates is not a question of whether anything reactive crosses to it.
     expect(hostChunk('.value="@count"')).toContain(
-      "import { FudicElement, subscribe as $sub, live as $live } from '@fudic/core';",
+      "import { FudicElement, subscribe as $sub, live as $live, owned as $owned } from '@fudic/core';",
     );
     // No reactive value crosses, so nothing subscribes and the import would be dead.
     expect(hostChunk('.value="@41"')).toContain(
-      "import { FudicElement, live as $live } from '@fudic/core';",
+      "import { FudicElement, live as $live, owned as $owned } from '@fudic/core';",
     );
     expect(hostChunk('.value="@41"')).not.toContain('$sub');
   });
@@ -771,7 +775,8 @@ describe('emitComponentClientModule — the factory namespace (BUG-12 §6.10)', 
     let captured: { c(props: readonly unknown[]): unknown } | undefined;
     const registry = { define: (_n: string, ctor: { c(p: readonly unknown[]): unknown }) => { captured = ctor; } };
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    new Function('FudicElement', 'customElements', body)(class {}, registry);
+    // `$owned` is imported from core, which this harness strips: hand it the real one.
+    new Function('FudicElement', 'customElements', '$owned', body)(class {}, registry, owned);
     captured!.c([{}, {}]);
     expect((globalThis as unknown as { __fudSum: number }).__fudSum).toBe(42);
   });
@@ -934,7 +939,7 @@ describe('emitComponentClientModule — a component subscribes its own signals',
   it('renews the rendering pass on every signal it declares', () => {
     const src = own('    const n = signal(0);\n', '<span>@(n())</span>');
     expect(src).toContain(
-      "import { FudicElement, subscribe as $sub, written as $written } from '@fudic/core';",
+      "import { FudicElement, subscribe as $sub, written as $written, owned as $owned } from '@fudic/core';",
     );
     expect(src).toContain('const $u = () => { $a(); };');
     expect(src).toContain('$d.push($sub(n, $u));');
@@ -972,7 +977,8 @@ describe('emitComponentClientModule — a component subscribes its own signals',
     // Nothing to renew: no value write and no construct means a `set` has nothing to change,
     // and a subscription for it would be a line every instance of the tag downloads.
     const src = own('    const n = signal(0);\n    function bump() { n.set(n() + 1); }\n', '<b>hi</b>');
-    expect(src).toContain("import { FudicElement } from '@fudic/core';");
+    // `$owned` stays: the `@code` declares a signal, which is author code (SDD-68).
+    expect(src).toContain("import { FudicElement, owned as $owned } from '@fudic/core';");
     expect(src).not.toContain('$sub');
     expect(src).not.toContain('const $u =');
   });

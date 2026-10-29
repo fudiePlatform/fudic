@@ -34,6 +34,7 @@ import {
   setCalls,
   topLevelBindings,
   topLevelFunctions,
+  topLevelTasks,
   type FragmentAst,
 } from './scope.js';
 
@@ -130,6 +131,14 @@ export interface Reactive {
    * a signal of its own, under whatever name the author imported it as.
    */
   readonly now?: string;
+  /**
+   * Present when a `signal`'s initial value reads `data`: it is sown from it (BUG-55 §2).
+   *
+   * A route that asks for its `data` again sows it again from the new one, so a list the page
+   * paints from a signal says what the server says. A `computed` is never marked: it derives
+   * on its own, and its `init` is a function, not a value to write.
+   */
+  readonly seeded?: true;
 }
 
 /**
@@ -409,6 +418,11 @@ export interface ExtractedCode {
    * every instance of the tag downloads.
    */
   readonly clientImports: readonly string[];
+  /**
+   * The top-level names bound to a `task(…)` (SDD-68 §3.1): names that move, and that the
+   * pass subscribes to through what the view reads of them.
+   */
+  readonly tasks: readonly string[];
   /**
    * Whether `@code { @client }` calls `effect(...)` at its top level (SDD-39 §4.6).
    *
@@ -712,6 +726,7 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     clientFunctions: topLevelFunctions(sliced ? allStatements : clientStatements),
     setCalls: setCalls(clientStatements),
     clientImports: importedBindings(allStatements),
+    tasks: topLevelTasks(sliced ? allStatements : clientStatements),
     clientEffects: clientStatements.some((stmt) => effectCalls(stmt).length > 0),
     declared: topLevelBindings(allStatements),
     clientRuns: clientStatements.some((stmt) => stmt.type === 'ExpressionStatement'),
@@ -1665,6 +1680,7 @@ function readDeclarator(
       span: span(map(decl.start), map(decl.end)),
       at: map(init.start),
       ...(called === 'signal' && isNowCall(arg) ? { now: source.slice(map(callee!.start), map(callee!.end)) } : {}),
+      ...(called === 'signal' && readDataAccess(fieldArray(init, 'arguments'), map).kind !== 'none' ? { seeded: true as const } : {}),
     });
     return true;
   }

@@ -106,7 +106,7 @@ describe('emitComponentClientModule — a signal imported from a module', () => 
       '<span>@count() @(n())</span>',
     );
     expect(src).toContain(
-      "import { FudicElement, subscribe as $sub, subscribeIf as $subIf, written as $written } from '@fudic/core';",
+      "import { FudicElement, subscribe as $sub, subscribeIf as $subIf, written as $written, owned as $owned } from '@fudic/core';",
     );
     expect(hookup(src)).toContain('$d.push($sub(n, $u));');
     expect(hookup(src)).toContain('$d.push($subIf(count, $u));');

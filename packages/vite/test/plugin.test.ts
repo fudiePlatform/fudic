@@ -148,9 +148,10 @@ describe('load — with and without sw.json', () => {
     await p.buildStart.call(ctx);
     const main = p.load(MAIN_ID);
     // It used to be `export {};` here, which made "no Service Worker" mean "no hydration".
-    // With no worker, the links name each chunk's graph off the manifest (BUG-53 §4.3).
+    // With no worker, the links name each chunk's graph, which the coordinator carries: the
+    // page never asks for the manifest (BUG-53 §4.3).
     expect(main).toContain('warm: $warm({ graph: $graph }),');
-    expect(main).toContain('$urls.assetUrl("fudic-routes.json")');
+    expect(main).not.toContain('fudic-routes.json');
     expect(main).not.toContain('registerRenderServiceWorker');
     // The home wrapper, and no Service Worker chunk. (The client chunks of the three
     // components are also emitted here; `buildStart` below is where they are asserted.)

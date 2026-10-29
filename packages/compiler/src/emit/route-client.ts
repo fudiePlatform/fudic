@@ -28,16 +28,27 @@ import { planDelegation } from '../semantic/delegation.js';
 import { planControls } from './controls.js';
 import { NO_BOXES, rootContext } from './display.js';
 import { childTargets, entryCellSlots, entryReactiveScope, type CellSlot } from './state.js';
-import { entryHalf, entryMoving, formAssociatedTags, isReactiveRoute } from './level.js';
-import { cellNameAt, lines, withCells, writeClosure } from './client.js';
+import { entryHalf, entryMoving, formAssociatedTags, isReactiveRoute, refreshesData } from './level.js';
+import {
+  authorCode,
+  cellNameAt,
+  closeOwned,
+  lines,
+  openOwned,
+  ownedTeardown,
+  ownsCode,
+  watchTasks,
+  withCells,
+  writeClosure,
+} from './client.js';
 import { composePage, holeContent, holeSlot, type ComposeItem } from './compose.js';
 import { LAYOUT_ANCHOR } from './markup.js';
 import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
 import { projectAdoptOf } from './project-styles.js';
 import type { DocumentGraph } from './resolve.js';
 import type { RouteDocument, PageDocument } from '../document/index.js';
-import type { Diagnostic } from '../types/index.js';
-import { apiForms, apiImports } from './api-links.js';
+import type { DataShape, Diagnostic } from '../types/index.js';
+import { apiForms, apiImports, dataShapeOf, loadImport } from './api-links.js';
 
 /**
  * The three leading slots of a route's array: `$dom`, `$root` and `$data`. One more than a
@@ -162,6 +173,12 @@ function buildRouteClientModule(
     options.assetUrl,
   );
   const cells = entryCellSlots(graph, half);
+  // A call can refresh this route's `data` (SDD-68 §4.8): it is a name that moves, and the
+  // chunk listens for the notice.
+  const refreshes = refreshesData(graph);
+  // The shape the page wrote `fud-data` with, when it wrote one: a chunk that never names `data`
+  // was handed no block, and has nothing to read back (BUG-60 §3.2).
+  const shape = code.dataAccess.kind === 'none' ? undefined : dataShapeOf(graph);
 
   const bodies = newBodies();
   const emitDiagnostics: Diagnostic[] = [];
@@ -179,7 +196,7 @@ function buildRouteClientModule(
       return cell === undefined ? undefined : cellName(cell);
     },
     signals: entryReactiveScope(half),
-    moving: entryMoving(code),
+    moving: entryMoving(code, refreshes),
     styled: styledTags(graph),
     projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
   };
@@ -225,7 +242,8 @@ function buildRouteClientModule(
   const reactive = code.signals.flatMap((s) => (s.kind === 'signal' ? [s.name] : []));
   // With the forms of a linked `.fudapi`, which the `@code` used to import (SDD-60 §3.14).
   const imported = [...new Set([...code.clientImports, ...apiForms(graph)])];
-  const renews = (reactive.length > 0 || imported.length > 0) && (em.writes > 0 || !bodies.update.empty);
+  const renews =
+    (reactive.length > 0 || imported.length > 0 || code.tasks.length > 0) && (em.writes > 0 || !bodies.update.empty);
   const reconcile = bodies.update.empty ? '' : ` ${lines(bodies.update)}`;
   if (renews) {
     usage.subscribes = reactive.length > 0;
@@ -234,16 +252,29 @@ function buildRouteClientModule(
     for (const name of imported) bodies.hook.line(`$d.push($subIf(${name}, $u));`);
     // And what is read THROUGH an imported name — `userForm.$valid()` (BUG-42 §4.3).
     if (em.watchImports(imported, bodies.hook)) usage.subscribes = true;
+    watchTasks(code.tasks, bodies.hook, usage);
     // A write before these subscriptions reached nobody: one repaint (see the component's).
     if (reactive.length > 0) bodies.hook.line(`if ($written(${reactive.join(', ')})) $u();`);
   }
+  // The new `data` replaces the old one and the pass re-applies every write that reads it, the
+  // `@foreach` included, which reconciles by key. Torn down with the route.
+  //
+  // A signal sown from `data` is sown again first, from its own initial value read against the
+  // new one (BUG-55 §2): the server wins over what the page added since the last `data`.
+  const pass = renews ? '$u();' : renderPass(em.inPlace, reconcile);
+  const resow = code.signals.flatMap((s) => (s.seeded === true ? [`${s.name}.set(${s.init}); `] : [])).join('');
+  if (refreshes) bodies.hook.line(`$d.push($stale($load, ($next) => { data = $next; ${resow}${pass} }, $root));`);
 
+  const owns = ownsCode(code.neutral, code.client.body);
   const w = new CodeWriter();
   const channels = [
     ...(usage.subscribes ? ['subscribe as $sub'] : []),
     ...(usage.guarded ? ['subscribeIf as $subIf'] : []),
     ...(renews && reactive.length > 0 ? ['written as $written'] : []),
     ...(usage.fabricates ? ['live as $live'] : []),
+    ...(owns ? ['owned as $owned'] : []),
+    ...(refreshes ? ['onStaleData as $stale'] : []),
+    ...(shape !== undefined ? ['unpackData as $unpackData'] : []),
   ];
   if (channels.length > 0) w.line(`import { ${channels.join(', ')} } from '@fudic/core';`);
   if (hookup.binds.size > 0) {
@@ -254,18 +285,25 @@ function buildRouteClientModule(
   // The functions and forms of the `.fudapi` it links, from their modules, at module scope: the
   // `@code` and the template's handlers below both reach them by name (SDD-60 §3.14).
   for (const line of apiImports(graph)) w.line(line);
+  if (refreshes) w.line(loadImport(graph)!);
   w.line('');
   // A default export and NOT a custom element: a route is not defined, not instantiated and
   // never fabricated hot. What the runtime holds is this function and the three entry points
   // it returns.
   w.line('export default ($props) => {');
   w.indent();
+  openOwned(w, owns);
   if (nodes.length > 0) w.line(`let ${nodes.join(', ')};`);
   w.line('const $d = []; // teardowns');
   if (em.writes > 0) w.line('const $w = []; // last applied, per value write');
   if (em.writes > 0 && em.inPlace) w.line('const $x = []; // values, evaluated in place');
   w.line(declaration(cells));
-  writeBody(w, code, cells);
+  // The host a `bus:` subscribes through and an `emit` dispatches from, materialized where
+  // something reads it, as a component's is. A route has no host element: its `<body>` is the
+  // node it holds, and what both ask of a host — its document, and a node that bubbles to
+  // it — the `<body>` answers the same.
+  if (code.emitCalls.length > 0 || hookup.hostUsed) w.line('const $host = $root;');
+  writeBody(w, code, cells, refreshes, shape);
   w.line('');
   w.appendWriter(bodies.decls);
   writeClosure(w, '$s', bodies.hook);
@@ -288,13 +326,13 @@ function buildRouteClientModule(
   // And there is no `$cb` either, for a reason that is structural rather than an omission: a
   // rebind exists for a `control` whose NODE arrived as a prop (SDD-34 §4.6), and nobody
   // hands a route props. Every `control` a route writes is one it already holds.
-  const pass = renews ? '$u();' : renderPass(em.inPlace, reconcile);
   w.line(`u: () => { ${pass} },`);
   w.line(
-    `r: () => { ${releaseCalls(bodies.registries)}${[...nodes, '$root'].join(' = ')} = null; $d.forEach((d) => d()); },`,
+    `r: () => { ${releaseCalls(bodies.registries)}${[...nodes, '$root'].join(' = ')} = null; $d.forEach((d) => d());${ownedTeardown(owns)} },`,
   );
   w.dedent();
   w.line('};');
+  closeOwned(w, owns);
   w.dedent();
   w.line('};');
   return { writer: w, linker, diagnostics: [...code.diagnostics, ...emitDiagnostics] };
@@ -323,26 +361,26 @@ function writeImports(w: CodeWriter, code: ExtractedCode): void {
 
 /**
  * The author's own code, in the order it was written: the neutral zone, which runs on both
- * sides, and then `@client`, which runs only here.
+ * sides, and `@client`, which runs only here — merged by offset (`authorCode`).
  *
  * `mappedLine` for both, because this is where a breakpoint set in the `.fud` has to land —
  * `withCells` splices within a line and never adds one, so line k still means line k.
  */
-function writeBody(w: CodeWriter, code: ExtractedCode, cells: readonly CellSlot[]): void {
+function writeBody(
+  w: CodeWriter,
+  code: ExtractedCode,
+  cells: readonly CellSlot[],
+  refreshes: boolean,
+  shape: DataShape | undefined,
+): void {
   // `data`, under the name the author writes it by — the same one the render module's
   // `page(data, io)` binds, so a `@client` handler reads it by the name it was written with.
-  w.line('const data = $data;');
-  for (const statement of code.neutral) {
-    if (!statement.hoisted && !statement.provides) {
-      w.mappedLine({ text: statement.text, src: statement.at, anchors: statement.anchors });
-    }
-  }
-  for (const statement of code.client.body) {
-    w.mappedLine({
-      text: withCells(statement, code.signals, cells, ROUTE_BASE),
-      src: statement.at,
-      anchors: statement.anchors,
-    });
+  // `let` when a call can refresh it: a handler reads the same variable, so it sees the new one.
+  // Read back by its shape when the page wrote it by one (BUG-60 §3.2).
+  const intake = shape === undefined ? '$data' : `$unpackData(${JSON.stringify(shape)}, $data)`;
+  w.line(`${refreshes ? 'let' : 'const'} data = ${intake};`);
+  for (const part of authorCode(code.neutral, code.client.body, (s) => withCells(s, code.signals, cells, ROUTE_BASE))) {
+    w.mappedLine(part);
   }
 }
 

@@ -73,6 +73,8 @@ import {
   type NodeKind,
 } from './forms.js';
 import { typeScriptService } from './ts-service.js';
+import type { ApiFiles } from './href.js';
+import { contractFunctionsAt } from './contract-functions.js';
 import { styleClassNames } from './classes.js';
 import { scopeAt, snippetsAt } from './snippets.js';
 import { interpolates, scopeNames, templateScope, type TemplateScope } from './template-scope.js';
@@ -228,7 +230,7 @@ function withoutRefactors(
  * are also used to answer hovers, definitions and diagnostics, and only the two halves named
  * here are being changed. A plugin that provides neither travels through untouched.
  */
-export function filterTypeScriptCompletions(plugins: readonly LanguageServicePlugin[]): LanguageServicePlugin[] {
+export function filterTypeScriptCompletions(plugins: readonly LanguageServicePlugin[], apis?: ApiFiles): LanguageServicePlugin[] {
   // Shared by the wrappers of one call, which is what makes the collapse possible: the three
   // TypeScript plugins are created together and serve the same request, in order.
   const spoken = new Spoken();
@@ -244,7 +246,7 @@ export function filterTypeScriptCompletions(plugins: readonly LanguageServicePlu
         ...instance,
         async provideCompletionItems(document, position, completionContext, token) {
           const list = await inner(document, position, completionContext, token);
-          const narrowed = allowedItems(context, document, position, list?.items ?? []);
+          const narrowed = allowedItems(context, document, position, list?.items ?? [], apis);
           const kept =
             narrowed.at === undefined ? narrowed.items : spoken.fresh(narrowed, token);
 
@@ -356,6 +358,7 @@ function allowedItems(
   document: TextDocument,
   position: { line: number; character: number },
   reply: readonly CompletionItem[],
+  apis?: ApiFiles,
 ): Narrowed {
   const source = fudSourceAt(context, document);
   // Not a `.fud` at all: a real `.ts` in the workspace is none of this package's business.
@@ -363,6 +366,10 @@ function allowedItems(
 
   const offset = sourceOffsetOf(source.cached, document, position);
   if (offset === undefined) return { items: reply.filter((item) => !isScaffolding(item)) };
+
+  // A `task(` or a `form:=`: the root service lists the contract's functions (BUG-59), and
+  // TypeScript's whole scope beside them would bury the list it is.
+  if (apis !== undefined && contractFunctionsAt(source.cached, offset, apis) !== undefined) return { items: [], at: offset };
 
   const region = regionAt(source.cached.source, source.cached.html, offset);
 

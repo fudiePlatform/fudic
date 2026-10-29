@@ -13,8 +13,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { browserDom, type DomClient } from '@fudic/dom';
-import { signal, computed, effect, live, subscribe, written } from '@fudic/core';
+import { browserDom, emit, type DomClient } from '@fudic/dom';
+import { signal, computed, effect, live, owned, subscribe, written } from '@fudic/core';
 import { resolveDocument } from '../../../src/emit/resolve.js';
 import {
   emitLayoutModule,
@@ -53,13 +53,15 @@ type RouteFactory = (props: readonly unknown[]) => {
 function routeFactory(code: string): RouteFactory {
   const body = code.replace(/^import[^\n]*\n/gmu, '').replace(/^export default /mu, 'return ');
   // eslint-disable-next-line @typescript-eslint/no-implied-eval
-  return new Function('signal', 'computed', 'effect', '$sub', '$written', '$live', body)(
+  return new Function('signal', 'computed', 'effect', '$sub', '$written', '$live', '$owned', 'emit', body)(
     signal,
     computed,
     effect,
     subscribe,
     written,
     live,
+    owned,
+    emit,
   ) as RouteFactory;
 }
 
@@ -153,6 +155,54 @@ describe('a route adopts the composed page from the `<body>` (§6.4)', () => {
     controller.r();
     (document.querySelector('button.mas') as HTMLElement).click();
     expect(out.textContent).toBe('1');
+  });
+});
+
+describe('a route subscribes to the bus, with the `<body>` as its host', () => {
+  const route = [
+    '<link rel="layout" href="./l.fud">',
+    '@code {',
+    '  const names = signal(["Ana"]);',
+    '  function alta(e) { document.title = e.detail; names.set([...names(), e.detail]); }',
+    '}',
+    '<ul bus:alta=@alta($event)>',
+    '  @foreach (const n of names()) key (n) { <li>@n</li> }',
+    '</ul>',
+  ].join('\n');
+  const items = (): string[] => [...document.querySelectorAll('li')].map((li) => li.textContent);
+
+  it('hears an event emitted anywhere in the page and repaints', () => {
+    const controller = hydrate(route);
+    document.body.querySelector('footer')!.dispatchEvent(new CustomEvent('alta', { detail: 'Luis', bubbles: true }));
+    expect(items()).toEqual(['Ana', 'Luis']);
+    // Its listener is on the document, which outlives this test.
+    controller.r();
+  });
+
+  it('stops hearing it once released', () => {
+    hydrate(route).r();
+    document.title = '';
+    document.dispatchEvent(new CustomEvent('alta', { detail: 'Luis' }));
+    expect(document.title).toBe('');
+  });
+
+  it('emits from its `<body>`, and the event reaches the document', () => {
+    hydrate(
+      [
+        '<link rel="layout" href="./l.fud">',
+        '@code {',
+        '  import { emit } from "@fudic/dom";',
+        '  function avisar() { emit("aviso", 7); }',
+        '}',
+        '<button class="avisar" @click=@avisar>avisar</button>',
+      ].join('\n'),
+    );
+    const heard: unknown[] = [];
+    const listen = (e: Event): void => void heard.push([(e as CustomEvent).detail, e.target]);
+    document.addEventListener('aviso', listen);
+    (document.querySelector('button.avisar') as HTMLElement).click();
+    document.removeEventListener('aviso', listen);
+    expect(heard).toEqual([[7, document.body]]);
   });
 });
 

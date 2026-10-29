@@ -18,11 +18,11 @@
 
 import type { ComponentGraph, ResolvedComponent } from './resolve.js';
 import { spaceModeOf } from './space.js';
-import { CodeWriter } from './writer.js';
+import { CodeWriter, type MappedPart } from './writer.js';
 import { ClientMarkupEmitter, coreUsage, nodeIds, renderPass } from './markup-client.js';
 import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js';
 import { AssetLinker } from './assets.js';
-import { codeOf, splicedOffset, type ClientStatement, type Prop } from './oxc-code.js';
+import { codeOf, splicedOffset, type ClientStatement, type NeutralStatement, type Prop } from './oxc-code.js';
 import { localOf, propDefaults, restAssignments, restGroups } from './rest.js';
 import { hookupContext, templateDelegationJs } from './events.js';
 import { planDelegation } from '../semantic/delegation.js';
@@ -198,7 +198,7 @@ function buildComponentClientModule(
     options.assetExists,
     options.assetUrl,
   );
-  const { props, signals, client, neutral, template, mutable, emitCalls, clientImports, diagnostics, di } =
+  const { props, signals, client, neutral, template, mutable, emitCalls, clientImports, tasks, diagnostics, di } =
     codeOf(comp);
   // What runs in a browser: the whole `@code` (SDD-60 §4.8). A `provide` is not in the
   // list at all — the owning ancestor may be N1 and have no chunk, so its factory lives in
@@ -353,7 +353,7 @@ function buildComponentClientModule(
   const rebinds = !hookup.rebind.empty;
   if (rebinds) bodies.hook.line('$cb();');
   const renews =
-    (reactive.length > 0 || imported.length > 0) && (em.writes > 0 || !bodies.update.empty);
+    (reactive.length > 0 || imported.length > 0 || tasks.length > 0) && (em.writes > 0 || !bodies.update.empty);
   const reconcile = bodies.update.empty ? '' : ` ${lines(bodies.update)}`;
   if (renews) {
     usage.subscribes = reactive.length > 0;
@@ -365,11 +365,13 @@ function buildComponentClientModule(
     for (const name of imported) bodies.hook.line(`$d.push($subIf(${name}, $u));`);
     // And what is read THROUGH an imported name — `userForm.$valid()` (BUG-42 §4.3).
     if (em.watchImports(imported, bodies.hook)) usage.subscribes = true;
+    watchTasks(tasks, bodies.hook, usage);
     // A write that came before these subscriptions — an `effect` that ran with the factory —
     // reached nobody, and the markup still says what the server painted: one repaint.
     if (reactive.length > 0) bodies.hook.line(`if ($written(${reactive.join(', ')})) $u();`);
   }
 
+  const owns = ownsCode(neutral, client.body);
   const w = new CodeWriter();
   // Written after the walk on purpose: `$sub` is imported only if the walk found a value
   // to keep in sync, so a component with no reactive prop carries no dead import (§6.20).
@@ -389,6 +391,8 @@ function buildComponentClientModule(
     // Only a file that fabricates a component host pays for it: a template with no child
     // component of its own never names `live`, and never downloads that branch.
     ...(usage.fabricates ? ['live as $live'] : []),
+    // Only a factory that runs code of its author has anything of its own to tear down.
+    ...(owns ? ['owned as $owned'] : []),
   ];
   const core = [...(formAssociated ? [] : ['FudicElement']), ...channels].join(', ');
   if (!formAssociated || channels.length > 0) w.line(`import { ${core} } from '@fudic/core';`);
@@ -433,6 +437,7 @@ function buildComponentClientModule(
   if (shadow.serializable) w.line('static serializable = true;');
   w.line('static c($props) {');
   w.indent();
+  openOwned(w, owns);
   if (em.nodes.length > 0) w.line(`let ${em.nodes.join(', ')};`);
   w.line('const $r = [];'); // the roots, mounted by $m()
   w.line('const $d = []; // teardowns');
@@ -461,20 +466,10 @@ function buildComponentClientModule(
   // side (SDD-38 §4.5).
   // `mappedLine` for both zones: this is the author's own code, verbatim, and the hydration
   // chunk is where a breakpoint in a `.fud` has to land. Renders byte-identically to `line`.
-  for (const statement of neutral) {
-    if (!statement.hoisted && !statement.provides)
-      w.mappedLine({ text: statement.text, src: statement.at, anchors: statement.anchors });
-  }
-  for (const statement of client.body) {
-    // Anchored to the statement's own offsets even though `withCells` may have rewritten it:
-    // what the author reads is the lines they wrote, not the cell plumbing spliced into them.
-    // `withCells` splices within a line and never adds one, so line k still means line k.
-    w.mappedLine({
-      text: withCells(statement, signals, cells),
-      src: statement.at,
-      anchors: statement.anchors,
-    });
-  }
+  // Anchored to the statement's own offsets even though `withCells` may have rewritten it:
+  // what the author reads is the lines they wrote, not the cell plumbing spliced into them.
+  // `withCells` splices within a line and never adds one, so line k still means line k.
+  for (const part of authorCode(neutral, client.body, (s) => withCells(s, signals, cells))) w.mappedLine(part);
   w.line('');
   // The blocks: one function per construct, plus the registry of what is alive (SDD-30
   // §3.1, §3.6). Declared HERE, so each one reads `$dom`, the props and the `@client` body
@@ -553,10 +548,11 @@ function buildComponentClientModule(
       : `u: () => { ${pass} },`,
   );
   w.line(
-    `r: () => { ${releaseCalls(bodies.registries)}${[...em.nodes, '$shadow', ...(needsHost ? ['$host'] : [])].join(' = ')} = null;${rebinds ? ' $cd.forEach((d) => d());' : ''} $d.forEach((d) => d()); },`,
+    `r: () => { ${releaseCalls(bodies.registries)}${[...em.nodes, '$shadow', ...(needsHost ? ['$host'] : [])].join(' = ')} = null;${rebinds ? ' $cd.forEach((d) => d());' : ''} $d.forEach((d) => d());${ownedTeardown(owns)} },`,
   );
   w.dedent();
   w.line('};');
+  closeOwned(w, owns);
   w.dedent();
   w.line('}');
   w.dedent();
@@ -585,6 +581,87 @@ function writeMount(w: CodeWriter, mount: CodeWriter): void {
   w.appendWriter(mount);
   w.dedent();
   w.line('};');
+}
+
+/**
+ * A `task` repaints the view (SDD-68 §3.1): the pass subscribes to what its accessors read —
+ * `value()` and `state()`, and `pending()`/`error()` move only when `state()` does. Into `$d`,
+ * so the subscription goes with the instance.
+ */
+export function watchTasks(tasks: readonly string[], hook: CodeWriter, usage: { subscribes: boolean }): void {
+  for (const name of tasks) hook.line(`$d.push($sub(() => (${name}.value(), ${name}.state()), $u));`);
+  if (tasks.length > 0) usage.subscribes = true;
+}
+
+/**
+ * The author's own statements as the factory runs them: the neutral zone's that run here and
+ * `@client`'s, in the ORDER THEY WERE WRITTEN.
+ *
+ * Merged by offset and not written one zone after the other, because without regions the two
+ * zones are one `@code` cut in two — what the markup reads, and the rest — and a cut statement
+ * can read a client one while it is being built: `const found = task(search, () => ({ q:
+ * texto() }))` is in the cut, `const texto = signal("")` is the browser's declaration, and the
+ * task reads its `source` on creation. With regions the neutral zone is written first anyway,
+ * so the order comes out as it always did.
+ */
+export function authorCode(
+  neutral: readonly NeutralStatement[],
+  body: readonly ClientStatement[],
+  clientText: (statement: ClientStatement) => string,
+): readonly MappedPart[] {
+  const parts = [
+    ...neutral
+      .filter((s) => !s.hoisted && !s.provides)
+      .map((s): MappedPart => ({ text: s.text, src: s.at, anchors: s.anchors })),
+    ...body.map((s): MappedPart => ({ text: clientText(s), src: s.at, anchors: s.anchors })),
+  ];
+  return parts.toSorted((a, b) => a.src - b.src);
+}
+
+/**
+ * Whether the factory runs code its author wrote: a neutral line that runs here, or a
+ * `@client` statement. Only then can it have created an `effect` or a `task` that has to
+ * stop with the component (SDD-68 §4.6) — the rest of the factory creates neither.
+ */
+export function ownsCode(
+  neutral: readonly { readonly hoisted: boolean; readonly provides: boolean }[],
+  body: readonly unknown[],
+): boolean {
+  return body.length > 0 || neutral.some((s) => !s.hoisted && !s.provides);
+}
+
+/**
+ * Open the owner the factory body runs inside (SDD-68 §3.5).
+ *
+ * The WHOLE body and not just the `@code`: the author's bindings are read by the handlers and
+ * the blocks declared after them through lexical scope, so the code cannot be moved into a
+ * closure of its own. What runs inside `owned` is only construction — `h`, `u` and `r` run
+ * later, outside it — so what lands in the list is exactly what the `@code` created.
+ */
+export function openOwned(w: CodeWriter, owns: boolean): void {
+  if (!owns) return;
+  w.line('const [$ctl, $owns] = $owned(() => {');
+  w.indent();
+}
+
+/** Close it. `r` reaches the list by name: see `ownedTeardown`. */
+export function closeOwned(w: CodeWriter, owns: boolean): void {
+  if (!owns) return;
+  w.dedent();
+  w.line('});');
+  w.line('return $ctl;');
+}
+
+/**
+ * What `r` runs AFTER `$d`: the teardown of what the `@code` created (SDD-68 §4.6).
+ *
+ * After, and that order is the point. `$d` holds the view's own subscriptions, and `r` has
+ * already released the nodes by then; a teardown that writes a signal — a `task` cancelling, an
+ * `effect` cleanup resetting a value — would otherwise run the pass over nodes that are gone.
+ * With the subscriptions torn down first, nobody is listening when it writes.
+ */
+export function ownedTeardown(owns: boolean): string {
+  return owns ? ' $owns.forEach((d) => d());' : '';
 }
 
 /** A writer's body as one line: `u` and `r` are single-line closures. */

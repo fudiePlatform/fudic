@@ -19,6 +19,7 @@ import { dirname, join } from 'node:path';
 import {
   API_EXTENSION,
   createApiIndex,
+  dataShape,
   emitDeclarations,
   emitModule,
   layoutPropsType,
@@ -121,6 +122,7 @@ export class ApiProject {
       ...fns.flatMap((f) => (f.form === undefined ? [] : [f.form.name.text])),
     ];
     const route = this.context(source).route === undefined ? undefined : `${path.slice(0, -API_EXTENSION.length)}.fud`;
+    const data = dataShape(source, this.#read().index);
     return {
       id: source.id,
       load: has('load'),
@@ -129,6 +131,7 @@ export class ApiProject {
       functions: fns.map((f) => f.name.text),
       forms: [...new Set(forms)],
       ...(route !== undefined ? { route } : {}),
+      ...(data !== undefined ? { data } : {}),
     };
   }
 

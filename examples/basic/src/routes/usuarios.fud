@@ -4,12 +4,9 @@
 <link rel="server" href="./usuarios.fudapi">
 
 @code {
-  import { effect, signal } from "@fudic/core";
-  import type { Person } from "fudic:routes/usuarios";
+  import { effect, signal, task } from "@fudic/core";
   import { TOKEN_KEY } from "../browser/auth";
 
-  const found = signal<readonly Person[]>([]);
-  const estado = signal("");
   const texto = signal("");
   // Vacío en los dos lados, para que el navegador parta de lo que pintó el servidor. El token
   // vive en este navegador, no en el servidor: se lee al cargar la página.
@@ -17,44 +14,44 @@
   effect(() => {
     token.set(localStorage.getItem(TOKEN_KEY) ?? "");
   });
-  let busqueda: AbortController | undefined;
 
-  // Cada búsqueda cancela la anterior: lo que llega es siempre la última.
-  async function lanzar(llamada: (signal: AbortSignal) => Promise<readonly Person[]>) {
-    busqueda?.abort();
-    const propia = new AbortController();
-    busqueda = propia;
-    estado.set("Buscando…");
-    try {
-      found.set(await llamada(propia.signal));
-      estado.set("");
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") estado.set("Búsqueda cancelada.");
-      else throw err;
-    }
+  // Cada cambio del texto lanza una búsqueda y cancela la anterior: gana la última.
+  const found = task(search, () => ({ q: texto() }), { initial: [] });
+  // La lenta solo sale con su botón, y tiene su propio «Cancelar».
+  const lenta = task(slowSearch, undefined, { initial: [] });
+  // Un PUT y un DELETE: van en fila, en el orden en que se pulsaron, y al acabar la tabla se
+  // repinta con el `data` nuevo de `load`, sin recargar la página.
+  const guardar = task(save);
+  const quitar = task(remove);
+
+  // La tabla pinta esta señal, que arranca con lo que trajo `load` y vuelve a sembrarse cada
+  // vez que la página pide su `data` otra vez. Las altas de `user-form` llegan por el bus con
+  // la persona que devolvió el servidor: se suman a la señal y la tabla se repinta, sin
+  // recargar y sin pedir nada más que el `save`.
+  const personas = signal(data.users);
+
+  function alta(e: CustomEvent) {
+    personas.set([...personas(), e.detail]);
   }
 
   function buscar(e: Event) {
     texto.set((e.target as HTMLInputElement).value);
-    void lanzar((signal) => search({ q: texto() }, { signal }));
   }
 
   function buscarLento() {
-    void lanzar((signal) => slowSearch({ q: texto() }, { signal }));
+    void lenta.run({ q: texto() });
   }
 
-  function cancelar() {
-    busqueda?.abort();
+  function cancelarLento() {
+    lenta.cancel();
   }
 
-  async function activar(id: number, e: Event) {
-    await save({ id, active: (e.target as HTMLInputElement).checked });
-    location.reload();
+  function activar(id: number, e: Event) {
+    void guardar.run({ id, active: (e.target as HTMLInputElement).checked });
   }
 
-  async function borrar(id: number) {
-    await remove({ id });
-    location.reload();
+  function borrar(id: number) {
+    void quitar.run({ id });
   }
 
   function entrar(nombre: string) {
@@ -151,13 +148,13 @@
 </div>
 
 <h2>Personas</h2>
-<div class="panel">
+<div class="panel" bus:alta=@alta($event)>
   <table>
     <thead>
       <tr><th>Nombre</th><th>Email</th><th>Edad</th><th>Activo</th><th></th></tr>
     </thead>
     <tbody>
-      @foreach (const p of data.users) key (p.id) {
+      @foreach (const p of personas()) key (p.id) {
         <tr>
           <td>@p.name</td>
           <td>@p.email</td>
@@ -168,22 +165,45 @@
       }
     </tbody>
   </table>
+  <p>
+    Marcar o desmarcar <em>Activo</em> y <em>Borrar</em> no recargan la página. En Network sale
+    el <code>save</code> o el <code>remove</code> y, justo después, una sola petición a
+    <code>/_fudic/data/usuarios</code>: la página pide su <code>data</code> nuevo y la tabla se
+    repinta sin perder el scroll ni el foco. Si marcas deprisa varias veces, los
+    <code>save</code> salen en fila, uno detrás de otro, en el orden en que pulsaste.
+  </p>
 </div>
 
 <h2>Buscar</h2>
 <div class="panel">
   <div class="row">
     <input type="search" placeholder="Nombre…" aria-label="Buscar por nombre" @input=@buscar>
-    <button @click=@buscarLento>Búsqueda lenta (3 s)</button>
-    <button @click=@cancelar>Cancelar</button>
-    <span role="status">@estado()</span>
+    <span role="status">@(found.pending() ? "Buscando…" : "")</span>
   </div>
   <p>
-    Cada tecla cancela la búsqueda anterior, y en Network la vieja sale como
-    <em>canceled</em>. La lenta tarda tres segundos a propósito: pulsa <em>Cancelar</em> antes.
+    Cada tecla lanza una búsqueda y cancela la anterior: en Network la vieja sale como
+    <em>canceled</em>, y lo que se pinta es siempre la respuesta de la última.
   </p>
   <ul>
-    @foreach (const p of found()) key (p.id) {
+    @foreach (const p of found.value()) key (p.id) {
+      <li>@p.name — @p.email</li>
+    }
+  </ul>
+</div>
+
+<h2>Búsqueda lenta</h2>
+<div class="panel">
+  <div class="row">
+    <button @click=@buscarLento>Búsqueda lenta (3 s)</button>
+    <button @click=@cancelarLento>Cancelar</button>
+    <span role="status">@(lenta.pending() ? "Buscando…" : lenta.state() === "cancelled" ? "Búsqueda cancelada." : "")</span>
+  </div>
+  <p>
+    Busca el texto de arriba y tarda tres segundos a propósito: pulsa <em>Cancelar</em> antes y
+    en Network sale como <em>canceled</em>.
+  </p>
+  <ul>
+    @foreach (const p of lenta.value()) key (p.id) {
       <li>@p.name — @p.email</li>
     }
   </ul>
@@ -193,7 +213,9 @@
 <p>
   El formulario es <code>user-form</code>, un componente con su propia función
   <code>save</code>. Sus controles son todos tipados, así que sube en binario; con unas notas
-  largas, además comprimido. Prueba un email que ya existe: el error lo pone el servidor.
+  largas, además comprimido. Prueba un email que ya existe: el error lo pone el servidor. Al
+  guardar, el componente emite la persona por el bus y la tabla de arriba la recoge, sin
+  recargar la página.
 </p>
 <user-form></user-form>
 

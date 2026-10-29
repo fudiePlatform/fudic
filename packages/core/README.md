@@ -89,6 +89,62 @@ travels in the page's state, and a client that hydrates reads it from there inst
 calling `now()` again. Paint it with a date pipe, and move it on from a handler
 (`at.set(new Date())`), where any code is allowed.
 
+## `task()`
+
+```ts
+import { signal, task } from '@fudic/core';
+
+const text = signal('');
+const found = task(search, () => ({ q: text() }), { initial: [] }); // on every change of text
+const slow = task(slowSearch);                                      // only with slow.run(…)
+const saving = task(save);                                          // a PUT: queued
+```
+
+```html
+@if (found.pending()) { <span>Searching…</span> }
+@if (found.state() === "cancelled") { <span>Cancelled.</span> }
+@foreach (const p of found.value()) key (p.id) { <li>@p.name</li> }
+```
+
+A call with its cancellation, its state and its order. Pass the function, not a call: the task
+hands over the `AbortSignal` and reads the verb. `source` is the arguments, built from signals:
+creating the task only learns what it reads, and each change after that makes a call. Without
+`source` the task calls only on `run(args)`. What `fn` reads does not count. A task never calls
+on start: the first data of a page comes from `load`, through `initial`.
+
+Two orders, picked by the verb and changed with `mode`:
+
+- **`latest`** — a GET, or any function without a verb. A new call aborts the one in flight, and
+  the answer of a replaced call is never written, even when `fn` ignores its signal.
+- **`queue`** — POST, PUT, PATCH, DELETE. A new call waits until the previous one settles, then
+  leaves. Nothing is dropped and nothing overtakes: marking and unmarking a checkbox fast sends
+  both `save`s in that order, and the server ends with the last one.
+
+| What happens | `state()` | `value()` | `error()` |
+|---|---|---|---|
+| Created | `'idle'` | `initial` or `undefined` | `undefined` |
+| A call leaves | `'pending'` | the previous one | `undefined` |
+| The answer arrives (none left) | `'done'` | the answer | `undefined` |
+| It fails (none left) | `'failed'` | the previous one | the error |
+| `cancel()` with a call in flight | `'cancelled'` | the previous one | `undefined` |
+| `cancel()` with nothing in flight | unchanged | unchanged | unchanged |
+
+`run` never rejects: it resolves with the answer, or with `undefined` if the call was replaced,
+cancelled or failed. An abort is never an error. `cancel()` aborts the call in flight and drops
+the ones waiting; it does not undo what already reached the server.
+
+`errorPages` acts first, inside the call: a 401, 403 or 500 it handles navigates away and the
+task stays `'pending'` while the page goes. Only what it lets through — a 422, a status a form
+keeps — reaches `error()`.
+
+**Removal.** A task or an `effect` created while a component's `@code` runs is torn down with
+the component: the call in flight is aborted, the task stops listening to `source`, and a later
+`run` resolves with `undefined` without calling. One created inside a handler has no owner and
+lives as long as the page.
+
+On the server a task never calls: `state()` is `'idle'` and `value()` is `initial`, which is
+where the browser hydrates from — and why the view can read a task and stay portable.
+
 ## The signals and the element base
 
 (SDD-14, SDD-15 §3.7.)

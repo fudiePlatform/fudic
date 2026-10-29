@@ -273,6 +273,8 @@ sustituye.
 `toggle` tal cual, y el DOM lo invoca con el evento nativo. Es la única forma de un solo frame y
 no cuesta nada al que la escribe: es el caso «no necesito datos del punto de uso». Con paréntesis
 (`@toggle()`) es una invocación y entra en la 96, que es lo mismo que hace Angular.
+*Enmendada por la 173: en `@fudic:result`, `@fudic:error` y `bus:`, la referencia recibe el
+`detail` del evento.*
 
 **99.** ~~**La expresión implícita admite una llamada, y solo en el valor de un `@evento` o de
 un `bus:`.**~~ — **derogada por la 100**, que la absorbe: la cadena admite la llamada en
@@ -1346,6 +1348,15 @@ ir a la derecha de `|` o llamarse en una `const` con un literal de datos (`FUD11
 158: un pipe, también un preset, lleva su `format`, y `a | p` se emite como `p.format(a, "<idioma>")`.
 Los presets viven en `@fudic/core`.
 
+**173.** **En `@fudic:result`, `@fudic:error` y `bus:`, el handler recibe el dato** (SDD-72 §3.1).
+Enmienda la 98 para esos tres eventos: la referencia desnuda y la lambda reciben `event.detail`,
+no el evento. `@fudic:result=@hecho` llama a `hecho` con lo que devolvió la función del formulario,
+`@fudic:error=@fallo` con un `Error`, y `bus:alta=@alta` con lo que se pasó a `emit`. La llamada no
+cambia: `$event` sigue siendo el evento y es la vía de escape (`@f($event.detail, x)`). El resto de
+eventos, igual. El editor tipa el dato: el resultado, por el `form:=` del mismo elemento; el error,
+`Error`; el bus, por la intersección de lo que declaran sus receptores. *Por qué: el desarrollador
+declara el tipo del parámetro y se acabó, sin `CustomEvent` ni `detail` (Pedro, 2026-10-29).*
+
 ### Gramática de referencia
 
 ```
@@ -1601,7 +1612,7 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 95 | Control flujo | Key duplicada no es error de compilación; gana la primera aparición |
 | 96 | Interpolación | Un event binding es una **invocación**: `$event` + datos, handler plano (revisa la 26; retira la forma curried) |
 | 97 | Interpolación | `$event` lo inyecta el compilador y vive en la reserva `$`; solo en la lista de argumentos de un event binding |
-| 98 | Interpolación | La referencia desnuda (`@click="@toggle"`) sigue valiendo: el DOM la invoca con el evento |
+| 98 | Interpolación | La referencia desnuda (`@click="@toggle"`) sigue valiendo: el DOM la invoca con el evento (enmendada por la 173) |
 | 99 | Interpolación | ~~La expresión implícita admite un sufijo de llamada balanceado, solo en valor de `@evento` / `bus:`~~ — **derogada por la 100**, que la absorbe |
 | 100 | Interpolación | La expresión implícita es una **cadena**: `.n`, `?.n`, `( … )` y `[ … ]` repetidos y en cualquier orden |
 | 101 | Interpolación | La adyacencia manda: la cadena nunca cruza un blanco (`@del (x)` es el camino `del` más texto) |
@@ -1664,3 +1675,4 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 170 | `.fudapi` | `later` detrás del tipo de un campo de `load`: el handler lo devuelve como promesa (`FUD1324`) (SDD-70) |
 | 171 | `.fudapi` | `pipe <nombre>` con `on <tipo>+` y parámetros; da texto; `implement` devuelve el pipe; implementación TS una vez en `src/pipes` (`FUD1340`) (SDD-71) |
 | 172 | Interpolación | La vista importa el `export default` de la carpeta de pipes; `a \| p` se emite `p.format(a, idioma)`; presets en `@fudic/core`. Enmienda 158 y SDD-61 §3.9 (SDD-71) |
+| 173 | Interpolación | En `@fudic:result`, `@fudic:error` y `bus:`, referencia y lambda reciben el `detail`; la llamada, igual. Tipado por el `form:=` y por los receptores del bus. Enmienda la 98 (SDD-72) |

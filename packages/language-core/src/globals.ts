@@ -222,6 +222,13 @@ declare function $control(node: $ControlNode): void;
 declare function $controlGroup(node: $FormNode): void;
 
 /**
+ * \`form:="@save"\` on a bound \`<form>\` (SDD-56 §3.5): the server function its valid submit
+ * calls. Projected so that the name is TypeScript's — its definition is the \`.fudapi\`, and
+ * renaming it reaches here (BUG-59). Which function fits the form is the build's to say.
+ */
+declare function $formSend(fn: (...args: never[]) => unknown): void;
+
+/**
  * \`error="@f.title"\` and \`summary="@f"\` — the element that speaks for a node (decisions 130 and
  * 131): a control's message, or a form's or a group's summary. What is checked is the PATH,
  * exactly as for \`control\`: a misspelt field is a member access that does not resolve.

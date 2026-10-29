@@ -171,6 +171,8 @@ declare function $control(node: $ControlNode): void;
 
 declare function $controlGroup(node: $FormNode): void;
 
+declare function $formSend(fn: (...args: never[]) => unknown): void;
+
 declare function $errorOf(node: $ControlNode | $FormNode): void;
 
 type $ControlNode = { (): unknown; set(v: never): void; touch(): void };

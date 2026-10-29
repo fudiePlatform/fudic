@@ -42,3 +42,11 @@ describe('the client virtual of a file that links a .fudapi', () => {
     expect(virtual.text).not.toContain('fudic:');
   });
 });
+
+describe('form:= on a bound form (BUG-59)', () => {
+  it('is projected, so the function it names is TypeScript\'s', () => {
+    const source = ROUTE.replace('<p>@data.users</p>', '<form control=@person form:=@save></form>');
+    const virtual = emitClient(source, 'routes/usuarios.fud', withServers([{ id: 'routes/usuarios', load: false, names: ['save', 'person'] }]));
+    expect(virtual.text).toContain('$formSend(save);');
+  });
+});
