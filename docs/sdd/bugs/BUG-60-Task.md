@@ -3,7 +3,7 @@
 > **BUG:** [BUG-60 — `fud-data` repite los nombres de los campos en cada fila](./BUG-60-fud-data-sin-claves.md)
 > **Paquetes:** `@fudic/ssr` · `@fudic/core` · `@fudic/api` · `@fudic/vite` · `@fudic/compiler`
 > **Rama:** `sdd-68-llamadas-sin-fontaneria` (a petición de Pedro: se cierra el producto aquí)
-> **Progreso:** 2 / 6 — `Borrador`.
+> **Progreso:** 3 / 6 — `Borrador`.
 
 ---
 
@@ -18,7 +18,7 @@
 
 | ✓ | # | tarea | package | fichero |
 |---|---|---|---|---|
-| [ ] | 3 | **`dataShape`** del `load` y de los tipos que nombra; `LinkedApi.data` desde `linked()`. Criterio 2 | `api` · `vite` · `compiler` | `src/data-shape.ts` · `src/api-modules.ts` · `src/types/io.ts` |
+| [x] | 3 | **`dataShape`** del `load` y de los tipos que nombra; `LinkedApi.data` desde `linked()`. Criterio 2 | `api` · `vite` · `compiler` | `src/data-shape.ts` · `test/data-shape.test.ts` · `src/api-modules.ts` · `test/api-units.test.ts` · `src/types/io.ts` |
 
 ## Fase 3 — el emit
 

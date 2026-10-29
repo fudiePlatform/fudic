@@ -94,6 +94,8 @@ describe('ApiProject', () => {
       functions: ['save'],
       forms: ['person'],
       route: `${root}/src/routes/blog/[slug].fud`,
+      // The shape of `data`, which the page writes `fud-data` with (BUG-60 §3.1).
+      data: { fields: { title: 'str' }, types: {} },
     });
     expect(api.linked(`${root}/src/components/c.fudapi`)).toEqual({
       id: 'components/c',

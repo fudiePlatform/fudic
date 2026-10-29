@@ -51,6 +51,26 @@ export interface LinkedApi {
   readonly forms: readonly string[];
   /** The `.fud` it is the sibling of, when it sits next to a route; absolute. */
   readonly route?: string;
+  /**
+   * The shape of `data`, when it declares `load` and the host can say it: what the page writes
+   * `fud-data` with, and its chunk reads it back with, without one key on the wire (BUG-60 §3).
+   */
+  readonly data?: DataShape;
+}
+
+/** A type of `data`: a primitive by its name, or one of the shapes around it (BUG-60 §3). */
+export type DataTy =
+  | string
+  | { readonly list: DataTy }
+  | { readonly opt: DataTy }
+  | { readonly map: readonly [DataTy, DataTy] }
+  | { readonly oneOf: readonly string[] }
+  | { readonly ref: string };
+
+/** The fields of `load`, and every `type` they reach by its name. Plain JSON. */
+export interface DataShape {
+  readonly fields: Readonly<Record<string, DataTy>>;
+  readonly types: Readonly<Record<string, Readonly<Record<string, DataTy>>>>;
 }
 
 export interface ApiIo {
