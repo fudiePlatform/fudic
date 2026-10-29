@@ -177,7 +177,8 @@ import { devUrl, devManifest, devClientTag, devClientPrefix, withInlineSourceMap
 import {
   documentFiles,
   matchRouteBuild,
-  renderRouteHtml,
+  renderRouteStream,
+  type OpenedPage,
   loadRouteData,
   pendingResponse,
   type PendingResponse,
@@ -1102,10 +1103,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           const pending = pendingResponse();
           live
             .blocking(documentFiles(rb.absPath, io))
-            .then(async (blocked): Promise<{ status: number; html?: string; location?: string }> => {
+            .then(async (blocked): Promise<{ status: number; html?: string; location?: string; opened?: OpenedPage }> => {
               if (blocked !== undefined) throw asError(blocked);
               try {
-                const html = await renderRouteHtml(
+                // Opened, not drained (SDD-70 §4.3): what decides the status has run once the
+                // head is in, and the rest goes out as it is rendered.
+                const opened = await renderRouteStream(
                   (id) => server.ssrLoadModule(id) as Promise<RenderModule>,
                   WRAPPER_PREFIX + rb.route.pattern,
                   rb.route.pattern,
@@ -1116,7 +1119,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
                   // A rejected `later` field with no `@catch` (SDD-70 §3.4).
                   (error) => toOverlay(server, error),
                 );
-                return { status: pending.status, html };
+                return { status: pending.status, opened };
               } catch (err) {
                 // What `load` or `layout` threw (SDD-56 §4.8): a redirect, or the error page
                 // with its status — and what is not an `HttpError`, in the overlay as well.
@@ -1144,7 +1147,25 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               // In dev the HMR client is injected inline and evaluates at load; a strict
               // policy would kill it. The CSP is exercised in preview and production,
               // which is where the emitted output is what ships.
-              res.end(await server.transformIndexHtml(url, page.html!)); // injects the dev client
+              const opened = page.opened;
+              if (opened === undefined || opened.whole) {
+                res.end(await server.transformIndexHtml(url, page.html ?? opened!.head)); // injects the dev client
+                return;
+              }
+              // The dev client goes in the head, which is all of the page Vite gets to see; the
+              // body streams behind it untouched (SDD-70 §4.3).
+              const head = await server.transformIndexHtml(url, `${opened.head}</html>`);
+              res.write(head.slice(0, head.lastIndexOf('</html>')));
+              res.on('close', () => {
+                if (!res.writableEnded) opened.cancel();
+              });
+              try {
+                for await (const chunk of opened.rest) res.write(chunk);
+              } catch (err) {
+                // After the first byte the status is out: an error can only be reported (§3.4).
+                toOverlay(server, err);
+              }
+              res.end();
             })
             .catch((err: Error) => {
               server.ssrFixStacktrace(err);
@@ -1262,13 +1283,23 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         }
         const pending = pendingResponse();
         previewRender(edgeDir, record, pathname, nonce, toRequest(req, res), pending)
-          .then((html) => {
+          .then(async (opened) => {
             // What `load` wrote first (SDD-69 §4.2): fudic's Content-Type and CSP win over it.
             writeHeaders(res, pending.headers);
             res.statusCode = pending.status;
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.setHeader('Content-Security-Policy', cspFor(manifest.csp.document, nonce));
-            res.end(html);
+            // The page as it is rendered (SDD-70 §4.3): the head now, each part when it is in.
+            res.write(opened.head);
+            res.on('close', () => {
+              if (!res.writableEnded) opened.cancel();
+            });
+            try {
+              for await (const chunk of opened.rest) res.write(chunk);
+            } catch {
+              // After the first byte the status is out: what fails now can only be cut short.
+            }
+            res.end();
           })
           .catch(async (err: unknown) => {
             // What `load` or `layout` threw (SDD-56 §4.8): the redirect, or the error page —
@@ -2632,10 +2663,10 @@ async function previewRender(
   nonce: string,
   request: Request,
   response: PendingResponse,
-): Promise<string> {
+): Promise<OpenedPage> {
   const mod = await importEdgeChunk(edgeDir, record.pattern);
-  const { drainStream, edgeContext, withRequest } = await import('./serve.js');
-  return drainStream(mod.render(withRequest(edgeContext(record.pattern, pathname, nonce), request, response)));
+  const { openStream, edgeContext, withRequest } = await import('./serve.js');
+  return openStream(mod.render(withRequest(edgeContext(record.pattern, pathname, nonce), request, response)));
 }
 
 /** Run a route's `@server load` in preview — the generated data endpoint. */

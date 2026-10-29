@@ -114,6 +114,81 @@ export async function drainStream(stream: ReadableStream<Uint8Array>): Promise<s
   return out + decoder.decode();
 }
 
+/**
+ * A page whose first bytes have arrived (SDD-70 §4.3): what decides its status — `load`,
+ * `layout` — has run, and the rest is still on its way.
+ */
+export interface OpenedPage {
+  /** The page up to the end of its `</head>`; the whole page when it showed none. */
+  readonly head: string;
+  /** Whether `head` is the whole page. */
+  readonly whole: boolean;
+  /** The rest of the page, as it comes. */
+  readonly rest: AsyncIterable<Uint8Array>;
+  /** Stop rendering: the browser went away, and `ctx.signal` tells `load` (§7). */
+  cancel(): void;
+}
+
+const HEAD_END = new TextEncoder().encode('</head>');
+
+/** Where `</head>` ends in `bytes`, or -1. A byte search: the cut never splits a character. */
+function headEnd(bytes: Uint8Array): number {
+  outer: for (let i = 0; i + HEAD_END.length <= bytes.length; i++) {
+    for (let j = 0; j < HEAD_END.length; j++) if (bytes[i + j] !== HEAD_END[j]) continue outer;
+    return i + HEAD_END.length;
+  }
+  return -1;
+}
+
+/**
+ * Read a page's stream up to the end of its `<head>` and hand the rest over as it comes. An
+ * error before that — `load` threw — rejects, and the response can still be its error page.
+ */
+export async function openStream(stream: ReadableStream<Uint8Array>): Promise<OpenedPage> {
+  const reader = stream.getReader();
+  let read = new Uint8Array(0);
+  const cancel = (): void => {
+    void reader.cancel();
+  };
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) return { head: new TextDecoder().decode(read), whole: true, rest: (async function* () {})(), cancel };
+    const grown = new Uint8Array(read.length + value.length);
+    grown.set(read);
+    grown.set(value, read.length);
+    read = grown;
+    const end = headEnd(read);
+    if (end < 0) continue;
+    const tail = read.subarray(end);
+    return {
+      head: new TextDecoder().decode(read.subarray(0, end)),
+      whole: false,
+      rest: (async function* () {
+        if (tail.length > 0) yield tail;
+        for (;;) {
+          const next = await reader.read();
+          if (next.done) return;
+          yield next.value;
+        }
+      })(),
+      cancel,
+    };
+  }
+}
+
+/** The context of one concrete URL's render, with its request and, in dev, the overlay. */
+function renderContext(
+  pattern: string,
+  url: string,
+  nonce: string,
+  request?: Request,
+  response?: PendingResponse,
+  onError?: (error: unknown) => void,
+): RenderContext {
+  const ctx = withRequest(edgeContext(pattern, url, nonce), request, response);
+  return onError === undefined ? ctx : { ...ctx, onError };
+}
+
 /** Load a route's wrapper module and render one concrete URL to an HTML string. */
 export async function renderRouteHtml(
   load: ModuleLoader,
@@ -126,8 +201,22 @@ export async function renderRouteHtml(
   onError?: (error: unknown) => void,
 ): Promise<string> {
   const mod = await load(wrapperId);
-  const ctx = withRequest(edgeContext(pattern, url, nonce), request, response);
-  return drainStream(mod.render(onError === undefined ? ctx : { ...ctx, onError }));
+  return drainStream(mod.render(renderContext(pattern, url, nonce, request, response, onError)));
+}
+
+/** As `renderRouteHtml`, but the page goes out as it is rendered (SDD-70 §4.3). */
+export async function renderRouteStream(
+  load: ModuleLoader,
+  wrapperId: string,
+  pattern: string,
+  url: string,
+  nonce: string,
+  request?: Request,
+  response?: PendingResponse,
+  onError?: (error: unknown) => void,
+): Promise<OpenedPage> {
+  const mod = await load(wrapperId);
+  return openStream(mod.render(renderContext(pattern, url, nonce, request, response, onError)));
 }
 
 /** Run a route's `@server load(ctx)` for one concrete URL — the data endpoint (§4.5). */
