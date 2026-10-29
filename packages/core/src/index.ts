@@ -79,9 +79,15 @@ export {
   EAGER_BLOCK,
   ROUTE_BLOCK,
   DATA_BLOCK,
+  IOC_BLOCK,
+  DI_BLOCK,
   type PageMaps,
+  type PartBlock,
+  type Settled,
   type TagMap,
 } from './hydrate/maps.js';
+// The reader of a page in parts (SDD-70 §4.4): the dev coordinator imports it from here.
+export { readParts, PART_ATTR, PART_END, type PartsOptions } from './hydrate/parts.js';
 // What a route's chunk reads `fud-data` with, by the shape its `.fudapi` gave (BUG-60).
 export { unpackData, type DataShape, type DataTy } from './hydrate/data.js';
 export type { HydratedFrom } from './hydrate/registry.js';

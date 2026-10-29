@@ -67,6 +67,8 @@ export interface CellMark {
 export interface Cells {
   /** The cell at that address, materialised the first time anyone asks for it. */
   get(ref: CellRef): Signal<unknown>;
+  /** Sweep the slices the maps gained since the last sweep: a part arrived (SDD-70 §4.4). */
+  sweep(): void;
   /**
    * The addresses instance `id` depends on that carry NO value — the ones whose owner has to
    * be alive before this slice can be handed over.
@@ -100,15 +102,20 @@ const keyOf = (ref: CellRef): string => `${ref[0]}:${ref[1]}`;
 export function createCells(maps: PageMaps, make: MakeCell): Cells {
   const cells = new Map<string, Signal<unknown>>();
 
-  // The sweep of §4.3: every address any marker in the page points at. It is done once, when
-  // the registry is built, because whether a slot of MY slice is a cell is a fact written
-  // down in SOMEBODY ELSE's — and the two may hydrate in either order.
+  // The sweep of §4.3: every address any marker in the page points at. It is done when the
+  // registry is built, because whether a slot of MY slice is a cell is a fact written down in
+  // SOMEBODY ELSE's — and the two may hydrate in either order. A page in parts sweeps again
+  // as each part arrives, over the slices that part added (SDD-70 §4.4).
   const addresses = new Set<string>();
-  for (let id = 0; id < maps.count; id += 1) {
-    for (const value of maps.slice(id)) {
-      if (isCellMark(value)) addresses.add(keyOf(refOf(value)!));
+  let swept = 0;
+  const sweep = (): void => {
+    for (; swept < maps.count; swept += 1) {
+      for (const value of maps.slice(swept)) {
+        if (isCellMark(value)) addresses.add(keyOf(refOf(value)!));
+      }
     }
-  }
+  };
+  sweep();
 
   const get = (ref: CellRef): Signal<unknown> => {
     const key = keyOf(ref);
@@ -125,6 +132,7 @@ export function createCells(maps: PageMaps, make: MakeCell): Cells {
 
   return {
     get,
+    sweep,
     eager(id) {
       const out: CellRef[] = [];
       for (const value of maps.slice(id)) {

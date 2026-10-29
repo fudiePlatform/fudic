@@ -54,6 +54,7 @@ import {
   routeHydrates,
   routeNameLookup,
   routeUsesDi,
+  routeInParts,
 } from './client.js';
 import {
   INLINE_QUERY,
@@ -637,6 +638,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             ? piece('@fudic/core', 'warm-sw', '@fudic/core', 'createServiceWorkerWarmChannel')
             : piece('@fudic/core', 'warm-preload', '@fudic/core', 'createPreloadWarmChannel'),
           di: piece('@fudic/di', 'page', '@fudic/di/page', 'installPage'),
+          parts: piece('@fudic/core', 'parts', '@fudic/core', 'readParts'),
           urls: {
             ...piece('@fudic/transport', 'urls', '@fudic/transport', 'createUrlResolver'),
             // Not a startup piece: the coordinator CALLS it to derive URLs, so it keeps the
@@ -1420,6 +1422,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             {
               hydrates: routeHydrates(rb.absPath, io),
               injects: routeUsesDi(rb.absPath, io),
+              parted: routeInParts(rb.absPath, io),
               // Only read with no worker: then the coordinator carries their graph.
               warms: routeWarmTags(rb.absPath, io, rb.route.pattern).map((tag) => `${dir}${tag}`),
             },
@@ -1663,7 +1666,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             : { mode: 'build', base, ...(dir === '' ? {} : { dir }) },
         );
         const coordinator = coordinatorFor(
-          { hydrates: true, injects: discoverComponents(builds, io).some((c) => c.usesDi) },
+          {
+            hydrates: true,
+            injects: discoverComponents(builds, io).some((c) => c.usesDi),
+            // One coordinator for every page in dev: it reads parts when any route has them. On
+            // a page without, the reader finds no marker and the end blocks are read as ever.
+            parted: builds.some((rb) => routeInParts(rb.absPath, io)),
+          },
           params,
         );
         // `hydrates: true` above, so there is always one: in dev the tag is served at a fixed

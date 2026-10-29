@@ -31,7 +31,7 @@ import type { Diagnostic } from '../types/index.js';
 import { spaceModeOf } from './space.js';
 import { hasForeignDisplay, hostDisplay, tagDisplay, type Boxes, type Display } from './display.js';
 import { CodeWriter, type EmitMapping } from './writer.js';
-import { hasAwait, MarkupEmitter, renderName, tpl } from './markup.js';
+import { inParts, MarkupEmitter, renderName, tpl } from './markup.js';
 import {
   AssetLinker,
   type AssetExists,
@@ -568,7 +568,7 @@ function buildPageModule(
   // and no import of `@fudic/di` (SDD-38 §5).
   const hasDi = hasDependencyInjection(graph);
   // A page with `@await` goes out in parts (SDD-70 §4.2); the `<head>` cannot hold one.
-  const parted = hasAwait(page.body.children);
+  const parted = inParts(page);
   const bodyW = new CodeWriter();
   const em = new MarkupEmitter({
     source,

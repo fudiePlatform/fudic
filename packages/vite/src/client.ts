@@ -21,6 +21,7 @@ import {
   eagerTags,
   hasDependencyInjection,
   hydratableTags,
+  inParts,
   iocName,
   isReactiveRoute,
   needsRuntime,
@@ -138,6 +139,11 @@ export function routeHydrates(absPath: string, io: ResolveIo): boolean {
     hasDependencyInjection(doc),
     isReactiveRoute(doc),
   );
+}
+
+/** Whether the route at `absPath` goes out in parts (SDD-70): the emit's own predicate. */
+export function routeInParts(absPath: string, io: ResolveIo): boolean {
+  return inParts(graphOf(absPath, io).entry);
 }
 
 /**

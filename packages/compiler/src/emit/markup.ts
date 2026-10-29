@@ -16,6 +16,7 @@ import { dataScriptType } from '../html/index.js';
 import type { HtmlContent, ElementNode, InlineCodeNode } from '../html/index.js';
 import type { AwaitNode, IfNode, SwitchNode } from '../control/index.js';
 import type { RenderSectionNode } from '../layout/index.js';
+import type { StructuredDocument } from '../document/index.js';
 import type { Span } from '../types/index.js';
 import type { ShadowOptions } from '../binding/index.js';
 import { CodeWriter } from './writer.js';
@@ -300,6 +301,17 @@ const AWAITS: ReadonlySet<string> = new Set(['await']);
 /** Whether a page's markup holds an `@await` at any depth: it goes out in parts (SDD-70). */
 export function hasAwait(children: readonly HtmlContent[]): boolean {
   return holdsCut(children, AWAITS);
+}
+
+/**
+ * Whether a route or a page goes out in parts (SDD-70 §4.2): an `@await` in its body or in one
+ * of its sections. The one predicate the emit and the build ask — the build to give the page
+ * the reader of its parts.
+ */
+export function inParts(entry: StructuredDocument): boolean {
+  if (entry.type === 'page-document') return hasAwait(entry.body.children);
+  if (entry.type !== 'route-document') return false;
+  return hasAwait([...entry.markup, ...entry.sections.flatMap((s) => s.children)]);
 }
 const HOLES: ReadonlySet<string> = new Set(['render-body', 'render-section']);
 

@@ -79,6 +79,8 @@ export {
 export { needsRuntime } from './maps.js';
 // And what a page hydrates at load, for the same reason: its head preloads it (BUG-53 §4.3).
 export { eagerTags } from './maps.js';
+// And whether it goes out in parts: its coordinator then names the reader of parts (SDD-70 §4.5).
+export { inParts } from './markup.js';
 export {
   emitComponentIocModule,
   hasDependencyInjection,

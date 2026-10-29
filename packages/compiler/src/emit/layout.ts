@@ -24,7 +24,7 @@ import type { ElementNode, HtmlContent } from '../html/index.js';
 import type { LayoutDocument, RouteDocument } from '../document/index.js';
 import type { SectionNode } from '../layout/index.js';
 import { CodeWriter } from './writer.js';
-import { hasAwait, MarkupEmitter, renderName, tpl } from './markup.js';
+import { inParts, MarkupEmitter, renderName, tpl } from './markup.js';
 import { AssetLinker } from './assets.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import { bridgeIds, formAssociatedTags, hydratableTags, shadowOptions } from './level.js';
@@ -318,7 +318,7 @@ function buildRouteModule(
   const hasDi = hasDependencyInjection(graph);
   const ioc = hasDi ? '$root' : '$ioc';
   // A route with `@await` goes out in parts (SDD-70 §4.2): its body and its sections cut there.
-  const parted = hasAwait([...route.markup, ...route.sections.flatMap((s) => (s as SectionNode).children)]);
+  const parted = inParts(route);
   const parts = parted ? { parts: PARTS } : {};
   const bodyW = new CodeWriter();
   const em = new MarkupEmitter({
