@@ -7,7 +7,7 @@
 > **Rama:** `sdd-70-await-en-la-vista`. Nace de `main` **con SDD-61, SDD-67 y SDD-68 en
 > `Hecho`**: el constructo nuevo entra en la lista blanca de la 61, las tramas del endpoint de
 > datos usan el codec de la 67 y `load.fetch` de la 68 pasa a leerlas.
-> **Progreso:** 0 / 32 — `Listo`.
+> **Progreso:** 4 / 34 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -33,7 +33,8 @@ código, no el test.
 2 later en el .fudapi ─→ 3 LoadData con Promise ─→ 4 formatter y gramática del .fudapi ─→ 5 tests
    │
    ▼
-6 at.ts y control.ts ─→ 7 nodo await ─→ 8 analizador 1320–1322 ─→ 9 proyección ─→ 10 formatter ─→ 11 gramática ─→ 12 tests
+6 at.ts y control.ts ─→ 7 nodo await ─→ 8 analizador 1320–1322 ─→ 9 proyección ─→ 10 formatter ─→ 11 gramática
+   ─→ 33 snippets @await/@catch ─→ 34 completado solo de campos later ─→ 12 tests
    │
    ▼
 13 FLUSH ─→ 14 partSerializer ─→ 15 tests
@@ -57,13 +58,13 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **Los códigos nuevos.** `FUD1320`–`FUD1324`: `.ts`, `.md` (título y arreglo de SDD §3.8) y su línea en `index.ts`. El rango en la fila de SDD-70 del `INDEX.md` | `diagnostics` | `src/codes/FUD1320`–`1324.{ts,md}` · `src/index.ts` |
-| [ ] | 2 | 1 | **`later`.** `typedField` acepta la palabra detrás del tipo y la guarda en el campo (`later?: Span`); fuera de los campos de `load`, `FUD1324` | `api` | `src/clauses.ts` · `src/ast.ts` · `src/contract.ts` |
-| [ ] | 3 | 2 | **`LoadData` con promesas.** Un campo `later` se declara `Promise<T>`; el conform del servidor comprueba el valor cuando se cumple, no la promesa | `api` · `http` | `src/emit/declarations.ts` · `src/contract/page.ts` |
-| [ ] | 4 | 2 | **El `.fudapi` en el editor.** El formatter alinea `later` como una columna más; `fudapi.tmLanguage.json` la resalta; el completado la ofrece detrás del tipo de un campo de `load` | `api` · `vscode` · `language-server` | `src/format.ts` · `syntaxes/fudapi.tmLanguage.json` · `src/fudapi/completion.ts` |
+| [x] | 1 | — | **Los códigos nuevos.** `FUD1320`–`FUD1324`: `.ts`, `.md` (título y arreglo de SDD §3.8) y su línea en `index.ts`. El rango en la fila de SDD-70 del `INDEX.md` | `diagnostics` | `src/codes/FUD1320`–`1324.{ts,md}` · `src/index.ts` |
+| [x] | 2 | 1 | **`later`.** `typedField` acepta la palabra detrás del tipo y la guarda en el campo (`later?: Span`); fuera de los campos de `load`, `FUD1324` | `api` | `src/clauses.ts` · `src/ast.ts` · `src/contract.ts` |
+| [x] | 3 | 2 | **`LoadData` con promesas.** Un campo `later` se declara `Promise<T>`; el conform del servidor comprueba el valor cuando se cumple, no la promesa | `api` · `http` | `src/emit/declarations.ts` · `src/contract/page.ts` |
+| [x] | 4 | 2 | **El `.fudapi` en el editor.** El formatter alinea `later` como una columna más; `fudapi.tmLanguage.json` la resalta; el completado la ofrece detrás del tipo de un campo de `load` | `api` · `vscode` · `language-server` | `src/format.ts` · `syntaxes/fudapi.tmLanguage.json` · `src/fudapi/completion.ts` |
 | [ ] | 5 | 3, 4 | **Los tests de la fase.** Criterios 1–2 | `api` | `test/**` |
 
-## Fase 2 — `@await` y `@catch` en la vista (7)
+## Fase 2 — `@await` y `@catch` en la vista (9)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
@@ -73,7 +74,9 @@ código, no el test.
 | [ ] | 9 | 7 | **La proyección.** Dentro del cuerpo, `data.<campo>` es `Awaited<…>`; `e` es `Problem` de `@fudic/http`. El pase tipado, el hover y el completado lo ven | `language-core` · `typecheck` | `src/template/*` · `src/data.ts` |
 | [ ] | 10 | 7 | **El formatter.** `@await … { } @catch (e) { }` como `@if … { } @else { }`; idempotente | `formatter` | `src/print/*` |
 | [ ] | 11 | 6 | **La gramática de colores.** `@await` y `@catch` como palabras de control | `vscode` | `syntaxes/fudic.tmLanguage.json` |
-| [ ] | 12 | 8–11 | **Los tests de la fase.** Criterios 3–8 | `compiler` · `language-core` · `formatter` | `test/**` |
+| [ ] | 33 | 2, 7 | **Snippets `@await` y `@catch`.** `@await data.$1 { $0 }` con `suggest`, solo en el body de una ruta o página fuera del `<head>` y con algún campo `later` en su `.fudapi`; `@catch (e) { }` solo detrás de la `}` de un `@await` sin `@catch` (SDD §4.1) | `language-server` | `src/services/snippets.ts` |
+| [ ] | 34 | 9, 33 | **Completado selectivo.** Detrás de `@await data.` solo los campos `later`, con su tipo resuelto como detalle; los demás campos no salen | `language-server` · `language-core` | `src/services/view-completion.ts` |
+| [ ] | 12 | 8–11, 33, 34 | **Los tests de la fase.** Criterios 3–8, 24 y 25; los del editor por el plugin del language server, no solo por el catálogo | `compiler` · `language-core` · `formatter` · `language-server` | `test/**` |
 
 ## Fase 3 — `@fudic/ssr`: vaciar el búfer y serializar por partes (3)
 
@@ -118,4 +121,4 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 32 | 31 | **Ejemplo, docs, entrega y cierre.** `examples/basic/src/routes/espera.{fud,fudapi,ts}` del criterio 22 y su enlace en `site-nav`; Pedro lo prueba en el navegador. Criterio 23: la guía de `@await` en el README del compilador (dónde va, lo lento abajo, el status no es una promesa) y `later` en el del `.fudapi`; decisiones 168–170 ya en `gramatica-v1-decisiones.md`; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde y al 100 % en lo nuevo; SDD-70 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `examples/basic/**` · `packages/*/README.md` · `docs/sdd/*` |
+| [ ] | 32 | 31 | **Ejemplo, docs, entrega y cierre.** `examples/basic/src/routes/espera.{fud,fudapi,ts}` del criterio 22 y su enlace en `site-nav`; Pedro lo prueba en el navegador y en el editor (criterio 26). Criterio 23: la guía de `@await` en el README del compilador (dónde va, lo lento abajo, el status no es una promesa) y `later` en el del `.fudapi`; decisiones 168–170 ya en `gramatica-v1-decisiones.md`; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde y al 100 % en lo nuevo; SDD-70 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `examples/basic/**` · `packages/*/README.md` · `docs/sdd/*` |

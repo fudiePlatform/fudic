@@ -27,6 +27,7 @@ import {
   declName,
   failureStatus,
   isShape,
+  laterWord,
   leaf,
   name,
   repeated,
@@ -206,6 +207,7 @@ function memberOf(node: LineNode, c: Ctx): FormMember | undefined {
 
   const { type, used } = readType(node.tokens.slice(1), c.out);
   let at = 1 + used;
+  at += laterWord(node, at, false, c).used;
   let initial;
   if (node.tokens[at]?.raw === '=') {
     const value = node.tokens[at + 1];

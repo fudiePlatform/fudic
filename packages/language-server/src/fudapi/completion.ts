@@ -224,6 +224,8 @@ function argument(
       return typing >= (head === 'require' ? 2 : 1) ? list([...paths(doc, offset, chain), ...keywords(EXPRESSION)]) : undefined;
   }
   if (context === 'field' || context === 'arg' || context === 'summary') return ruleArgument(index, head, typing);
+  // After the type of a field of `load`: the one word that may follow it (SDD-70).
+  if (typing === 2 && context === 'load' && !CHILDREN.load.includes(head)) return list(keywords(['later']));
   if (typing === 1 && TYPED.has(context) && !CHILDREN[context].includes(head)) {
     const extra = context === 'form' || context === 'group' ? [item('group', CompletionItemKind.Keyword)] : [];
     const pattern = context === 'rule' ? [item('pattern', CompletionItemKind.Keyword)] : [];

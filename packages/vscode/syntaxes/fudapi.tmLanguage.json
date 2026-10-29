@@ -12,6 +12,7 @@
     { "include": "#string" },
     { "include": "#arrow" },
     { "include": "#operator" },
+    { "include": "#later" },
     { "include": "#primitive" },
     { "include": "#project-type" },
     { "include": "#number" }
@@ -102,6 +103,12 @@
         { "name": "keyword.operator.word.fudapi", "match": "(?<=\\s)(and|or|not|contains|valid|empty|length)(?=\\s|$)" },
         { "name": "keyword.operator.assignment.fudapi", "match": "(?<=\\s)=(?=\\s)" }
       ]
+    },
+
+    "later": {
+      "comment": "`later` ends a field of `load`: the word after its type, last on the line.",
+      "name": "storage.modifier.later.fudapi",
+      "match": "(?<=\\s)later(?=\\s*(?:#.*)?$)"
     },
 
     "primitive": {

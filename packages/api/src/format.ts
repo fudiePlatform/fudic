@@ -153,6 +153,9 @@ const texted = (row: Row): boolean =>
   isString(row.tokens[row.tokens.length - 1]!) &&
   row.tokens[row.tokens.length - 2]!.raw !== '=';
 
+/** A `<name>  <type>  later` line: a field of `load` that arrives after the first byte. */
+const lated = (row: Row): boolean => typed(row) && row.tokens.length >= 3 && row.tokens[row.tokens.length - 1]!.raw === 'later';
+
 /** A level-0 `pattern` line with its regex. */
 const pattern = (row: Row): boolean => row.level === 0 && row.tokens.length === 3 && row.tokens[0]!.raw === 'pattern';
 
@@ -192,13 +195,17 @@ function align(block: readonly Row[]): void {
 
   const heads = new Map<Row, string>();
   for (const row of block) {
-    const body = texted(row) ? row.tokens.slice(0, -1) : row.tokens;
+    const body = texted(row) || lated(row) ? row.tokens.slice(0, -1) : row.tokens;
     let head: string;
     if (typed(row)) head = row.tokens[0]!.raw.padEnd(nameWidth) + words(body.slice(1));
     else if (pattern(row)) head = `pattern ${row.tokens[1]!.raw.padEnd(patternWidth)}${row.tokens[2]!.raw}`;
     else head = words(body);
     heads.set(row, head);
   }
+
+  // `later` is a column of its own, two spaces past the widest type that carries it.
+  const laterColumn = Math.max(0, ...block.filter(lated).map((r) => heads.get(r)!.length + 2));
+  for (const row of block.filter(lated)) heads.set(row, `${heads.get(row)!.padEnd(laterColumn)}later`);
 
   const textColumn = Math.max(0, ...block.filter(texted).map((r) => heads.get(r)!.length + 2));
   for (const row of block) {

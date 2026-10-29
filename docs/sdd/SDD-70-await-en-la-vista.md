@@ -301,6 +301,18 @@ inserción actual después de un corte.
   completado ven el valor resuelto. `FUD1321` lo da el analizador, no un error de TypeScript.
 - **Formatter y gramáticas.** `@await … { } @catch (e) { }` se formatea como `@if … { } @else { }`.
   `fudic.tmLanguage.json` resalta las dos palabras y `fudapi.tmLanguage.json` resalta `later`.
+- **Snippet y completado (lo que el autor ve al escribir).** El objetivo de `@await` es que el
+  primer byte salga cuanto antes, y el editor lo empuja hacia ahí:
+  - Snippet `@await`: `@await data.$1 {\n  $0\n}` con la lista abierta al aceptarlo (`suggest`).
+    Solo en el markup del body de una ruta o una página, fuera del `<head>`, y solo si su
+    `.fudapi` tiene **algún** campo `later`; en un componente, un layout o un snippet no sale.
+  - Completado **selectivo**: detrás de `@await data.` la lista ofrece **solo** los campos
+    marcados `later`, con su tipo resuelto como detalle. Un campo sin `later` no aparece.
+  - Snippet `@catch`: `@catch (${1:e}) {\n  $0\n}`, solo justo detrás de la `}` de un `@await`
+    que aún no tiene `@catch`, como `@empty` detrás de un bucle.
+  - Lo prueba un test que pasa por el **plugin del language server** (la misma entrada que usa
+    VS Code), no solo por el filtro del catálogo: un snippet que el filtro ofrece pero el plugin
+    no entrega es justo el fallo que se repite.
 
 ### 4.2. El render por partes en el servidor
 
@@ -467,6 +479,18 @@ inserción actual después de un corte.
     `examples/` sigue sin diagnósticos. Guía de `@await` en el README del compilador: dónde va,
     que lo lento va abajo y que lo que decide el status no es una promesa.
 
+**El editor** (§4.1, snippet y completado)
+
+24. Por el plugin del language server, en el body de una ruta cuyo `.fudapi` tiene `users` y
+    `stats` marcados `later` y `title` sin marcar: escribir `@` ofrece `@await`; aceptarlo deja
+    `@await data.` y la lista trae `users` y `stats`, **no** `title`. En el `<head>`, en un
+    componente, en un layout o en una ruta sin campos `later`, `@await` no se ofrece.
+25. Por el plugin, justo detrás de la `}` de un `@await` sin `@catch` se ofrece `@catch`;
+    detrás de uno que ya lo tiene, o de un `@if`, no.
+26. **Prueba en el editor (la hace Pedro).** Con la extensión construida desde esta rama,
+    abriendo `examples/basic/src/routes/espera.fud`: `@` → `@await` → la lista con solo los
+    campos `later`; `}` → `@catch`.
+
 ## 7. Fuera de alcance
 
 - **Pintar fuera de orden** (que el segundo trozo salga antes que el primero y se coloque con
@@ -517,3 +541,13 @@ inserción actual después de un corte.
     pintado lo pone el render, así que el endpoint no tiene que retener nada.
 12. **Los bloques de hidratación siguen en JSON.** Van dentro del HTML y se leen con
     `JSON.parse`, como hoy. El binario de SDD-67 es para lo que viaja por `fetch`.
+
+### 8.2. Tomadas al implementar
+
+1. **El servidor no comprueba el `data` de `load`, así que no hay conform que cambiar.** La
+   pieza `load` de `@fudic/http` no lleva descriptor de campos: lo que devuelve el handler lo
+   comprueba el build con `LoadData`. La tarea 3 queda en el tipo `Promise<T>`.
+2. **`later` en un campo opcional.** `users  Person[]?  later` es
+   `Promise<readonly Person[] | undefined>`: el campo siempre está, lo opcional es el valor.
+3. **`later` mal puesto se consume.** Detrás del tipo de un argumento, del `->`, de un campo de
+   `form` o de `type`, `FUD1324` y nada más: no se informa otra vez como palabra sobrante.

@@ -212,6 +212,8 @@ export interface TypedField extends Documented {
   readonly kind: 'field';
   readonly name: Name;
   readonly type: TypeExpr;
+  /** `later` after the type: `load` returns this field as a promise. Only a field of `load`. */
+  readonly later?: Span;
   readonly span: Span;
 }
 

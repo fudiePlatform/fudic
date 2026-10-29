@@ -42,6 +42,7 @@ import {
   shaped,
   skipClause,
   trailing,
+  laterWord,
   typedField,
   unexpected,
   useClause,
@@ -133,7 +134,7 @@ export function fnDecl(node: LineNode, c: Ctx): FnDecl | undefined {
         leaf(child, c);
         const { type, used } = readType(child.tokens.slice(1), c.out);
         if (child.tokens.length === 1) c.out.push(FUD1067({ span: head.span, text: '' }));
-        trailing(child, 1 + used, c);
+        trailing(child, 1 + used + laterWord(child, 1 + used, false, c).used, c);
         if (type !== undefined) returns = { arrow: head.span, type, span: child.span };
         break;
       }
@@ -187,7 +188,7 @@ function argDecl(node: LineNode, at: number, c: Ctx): Omit<ArgDecl, 'place'> | u
     return undefined;
   }
   const { type, used } = readType(rest, c.out);
-  trailing(node, at + 1 + used, c);
+  trailing(node, at + 1 + used + laterWord(node, at + 1 + used, false, c).used, c);
   if (type === undefined) return undefined;
   return { kind: 'arg', name: argName, type, rules, ...doc(node), span: blockSpan(node) };
 }
@@ -263,7 +264,7 @@ export function loadDecl(node: LineNode, c: Ctx): LoadDecl {
       const f = failsClause(child, c);
       if (f !== undefined) fails.push(f);
     } else {
-      const field = typedField(child, node, ['use', 'skip', 'fails', '<field> <type>'], c);
+      const field = typedField(child, node, ['use', 'skip', 'fails', '<field> <type> [later]'], c, true);
       if (field !== undefined) fields.push(field);
     }
   }
