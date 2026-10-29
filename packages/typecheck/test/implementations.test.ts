@@ -158,6 +158,17 @@ describe('FudIndex.server', () => {
     expect(index.server('/p/src/routes/r.fud', './none.fudapi')).toBeUndefined();
   });
 
+  it('opened on a monorepo, the <id> is read from the project the file belongs to', () => {
+    const index = indexOf({
+      '/p/examples/basic/package.json': '{}',
+      '/p/examples/basic/src/components/c.fudapi': API,
+      '/p/other/src/c.fudapi': API,
+    });
+    expect(index.server('/p/examples/basic/src/components/c.fud', './c.fudapi')?.id).toBe('components/c');
+    // No package.json between the file and the root: not a project's src/.
+    expect(index.server('/p/other/src/c.fud', './c.fudapi')).toBeUndefined();
+  });
+
   it('a form, and the form a function takes, are names too', () => {
     const index = indexOf({ '/p/src/c.fudapi': 'put save\n  form person\n\nform person\n  name  str\n' });
     expect(index.server('/p/src/x.fud', './c.fudapi')!.names).toEqual(['save', 'person']);

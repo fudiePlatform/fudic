@@ -201,7 +201,7 @@ export class FudIndex<E extends IndexedFud = IndexedFud> implements LinkIndex, F
    */
   server(fromFile: string, href: string): ServerImport | undefined {
     const path = this.serverPath(fromFile, href);
-    const root = [...this.#roots].find((r) => path.startsWith(`${r}/${SRC_DIR}/`));
+    const root = this.#projectOf(path);
     const text = path.endsWith(API_EXTENSION) ? this.fs.readFile(path) : undefined;
     if (root === undefined || text === undefined) return undefined;
     const declarations = parseApi(text).value.declarations;
@@ -213,5 +213,22 @@ export class FudIndex<E extends IndexedFud = IndexedFud> implements LinkIndex, F
       load: declarations.some((d) => d.kind === 'load'),
       names: [...new Set(names)],
     };
+  }
+
+  /**
+   * The project whose `src/` holds `path`: the nearest folder with a `package.json`, inside a
+   * swept root, or the root itself. The editor sweeps the folder it was opened on, which is
+   * the project only when it was opened there: opened on a monorepo, `examples/basic/src/…`
+   * is not under `<root>/src/`, and every contract of the example would be missing.
+   */
+  #projectOf(path: string): string | undefined {
+    for (const root of this.#roots) {
+      if (!path.startsWith(`${root}/`)) continue;
+      for (let dir = path.slice(0, path.lastIndexOf('/')); dir.length > root.length; dir = dir.slice(0, dir.lastIndexOf('/'))) {
+        if (path.startsWith(`${dir}/${SRC_DIR}/`) && this.fs.readFile(`${dir}/package.json`) !== undefined) return dir;
+      }
+      if (path.startsWith(`${root}/${SRC_DIR}/`)) return root;
+    }
+    return undefined;
   }
 }
