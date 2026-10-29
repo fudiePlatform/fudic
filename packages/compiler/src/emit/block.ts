@@ -251,9 +251,12 @@ export class BlockEmitter implements BlockSink {
     // And a node the block does not own is not moved at all: a blank run adopted after
     // hydrating as a REFERENCE to what it merged with (`#shared` in the markup emitter) is the
     // level's, the same node for every row — dragging it beside each row in turn shuffles the
-    // whole level on the first pass.
+    // whole level on the first pass. But one already in place is where the next root has to
+    // end: it becomes the reference, or the root before it — physically beside it — would
+    // look out of place and be moved, every row but the last on the first pass after
+    // hydrating a level that keeps its blank runs.
     w.line(
-      'const $mv = ($ref, $n) => { if (!$r.includes($n)) return $ref; if ($ref === null ? $dom.lastChild($parent) === $n : $dom.nextSibling($n) === $ref) return $n; if ($ref === null) $dom.append($parent, $n); else $dom.before($ref, $n); return $n; };',
+      'const $mv = ($ref, $n) => { const $at = $ref === null ? $dom.lastChild($parent) === $n : $dom.nextSibling($n) === $ref; if (!$r.includes($n)) return $at ? $n : $ref; if ($at) return $n; if ($ref === null) $dom.append($parent, $n); else $dom.before($ref, $n); return $n; };',
     );
     w.line('return {');
     w.indent();
