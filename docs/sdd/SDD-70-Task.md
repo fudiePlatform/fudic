@@ -7,7 +7,7 @@
 > **Rama:** `sdd-70-await-en-la-vista`. Nace de `main` **con SDD-61, SDD-67 y SDD-68 en
 > `Hecho`**: el constructo nuevo entra en la lista blanca de la 61, las tramas del endpoint de
 > datos usan el codec de la 67 y `load.fetch` de la 68 pasa a leerlas.
-> **Progreso:** 4 / 34 — `En curso`.
+> **Progreso:** 5 / 34 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -62,7 +62,7 @@ código, no el test.
 | [x] | 2 | 1 | **`later`.** `typedField` acepta la palabra detrás del tipo y la guarda en el campo (`later?: Span`); fuera de los campos de `load`, `FUD1324` | `api` | `src/clauses.ts` · `src/ast.ts` · `src/contract.ts` |
 | [x] | 3 | 2 | **`LoadData` con promesas.** Un campo `later` se declara `Promise<T>`; el conform del servidor comprueba el valor cuando se cumple, no la promesa | `api` · `http` | `src/emit/declarations.ts` · `src/contract/page.ts` |
 | [x] | 4 | 2 | **El `.fudapi` en el editor.** El formatter alinea `later` como una columna más; `fudapi.tmLanguage.json` la resalta; el completado la ofrece detrás del tipo de un campo de `load` | `api` · `vscode` · `language-server` | `src/format.ts` · `syntaxes/fudapi.tmLanguage.json` · `src/fudapi/completion.ts` |
-| [ ] | 5 | 3, 4 | **Los tests de la fase.** Criterios 1–2 | `api` | `test/**` |
+| [x] | 5 | 3, 4 | **Los tests de la fase.** Criterios 1–2 | `api` | `test/**` |
 
 ## Fase 2 — `@await` y `@catch` en la vista (9)
 
