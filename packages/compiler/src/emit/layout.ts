@@ -24,12 +24,12 @@ import type { ElementNode, HtmlContent } from '../html/index.js';
 import type { LayoutDocument, RouteDocument } from '../document/index.js';
 import type { SectionNode } from '../layout/index.js';
 import { CodeWriter } from './writer.js';
-import { MarkupEmitter, renderName, tpl } from './markup.js';
+import { hasAwait, MarkupEmitter, renderName, tpl } from './markup.js';
 import { AssetLinker } from './assets.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import { bridgeIds, formAssociatedTags, hydratableTags, shadowOptions } from './level.js';
 import { hasDependencyInjection } from './di.js';
-import { needsRuntime, packIo, routeBlocksOf, writeMapConstants, writeHydrationBlocks } from './maps.js';
+import { needsRuntime, packIo, routeBlocksOf, writeMapConstants, writeHydrationBlocks, writePartsOpen } from './maps.js';
 import type { DocumentGraph, ResolvedLayout } from './resolve.js';
 import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
 import { projectAdoptOf, renderProjectStyles } from './project-styles.js';
@@ -60,6 +60,8 @@ import {
 const SLOTS = 'route';
 const DOM = '$dom';
 const PARENT = '$parent';
+/** The `PageParts` of a route that goes out in parts (SDD-70). */
+const PARTS = '$parts';
 /** The layout props of this render, as the module's parameter and as the open tag's sink. */
 const PROPS = '$props';
 const OPEN = '$open';
@@ -196,7 +198,9 @@ function buildLayoutModule(
   // The fifth parameter is the layout's own props (SDD-40 §3.4), and it comes AFTER `$ioc`
   // for the only reason that matters downstream: the container already held the fourth
   // place, and a parameter that changes position changes every caller.
-  w.line(`export function* layout(data, io, route, $ioc, ${PROPS}) {`);
+  // `async`, always (SDD-70 §4.2): a layout does not know whether the route it wraps sends its
+  // body in parts, and a route without `@await` writes the same bytes through it.
+  w.line(`export async function* layout(data, io, route, $ioc, ${PROPS}) {`);
   w.indent();
   w.line('const { createDom, serialize, escapeText, escapeAttr } = io;');
   writeLayoutProps(w, code.props);
@@ -219,11 +223,14 @@ function buildLayoutModule(
   // built from its tag name and nothing else. The same omission as the `<html>` above and
   // the same fix, and §3.1's own example needs it: `<body data-theme="@theme">`.
   writeElementAttrs(source, doc.body, '$body', w, linker, NO_SIGNALS);
+  // The route opens the body (SDD-70 §4.2): a route that goes out in parts claims it and
+  // starts its parts here, before a node of the layout is built. Any other opens nothing.
+  w.line(`yield* ${SLOTS}.open(${DOM}, $body);`);
   w.appendWriter(bodyW);
-  // The last thing in the body: the route hangs its three JSON blocks here (SDD-15
-  // §3.3–§3.5), and the layout is the one file that can say «the body is finished».
-  w.line(`${SLOTS}.blocks(${DOM}, $body);`);
-  w.line('yield* serialize($body);');
+  // And closes it: its JSON blocks hung at the end and the body serialized (SDD-15
+  // §3.3–§3.5), or its last part. The layout is the one file that can say «the body is
+  // finished»; the route is the one that knows how it goes out.
+  w.line(`yield* ${SLOTS}.close(${DOM}, $body);`);
   w.line("yield '</html>';");
   w.dedent();
   w.line('}');
@@ -310,6 +317,9 @@ function buildRouteModule(
   // DI call opens no container tree, imports nothing and publishes no map (SDD-38 §5).
   const hasDi = hasDependencyInjection(graph);
   const ioc = hasDi ? '$root' : '$ioc';
+  // A route with `@await` goes out in parts (SDD-70 §4.2): its body and its sections cut there.
+  const parted = hasAwait([...route.markup, ...route.sections.flatMap((s) => (s as SectionNode).children)]);
+  const parts = parted ? { parts: PARTS } : {};
   const bodyW = new CodeWriter();
   const em = new MarkupEmitter({
     source,
@@ -324,6 +334,7 @@ function buildRouteModule(
     shadowOptions: shadow,
     styled,
     projectAdopt,
+    ...parts,
   });
   // The slots the layout puts each hole in (SDD-48). Known here and not only in the layout:
   // the route builds the nodes, so the route is the one that stamps them — and a route has
@@ -349,6 +360,7 @@ function buildRouteModule(
     shadowOptions: shadow,
     styled,
     projectAdopt,
+    ...parts,
   });
   for (const section of route.sections as readonly SectionNode[]) {
     if (section.name === '') continue;
@@ -433,18 +445,20 @@ function buildRouteModule(
   const hydrates = needsRuntime(hydratable, hasDi, blocks !== undefined);
   const runtimeFileW = new CodeWriter();
   const alternates = (options.i18n?.locales.length ?? 0) >= 2;
-  writeRuntimeTags(runtimeFileW, hydrates, 'file', alternates);
+  writeRuntimeTags(runtimeFileW, hydrates, 'file', alternates, parted);
   const runtimeInlineW = new CodeWriter();
-  writeRuntimeTags(runtimeInlineW, hydrates, 'inline', alternates);
+  writeRuntimeTags(runtimeInlineW, hydrates, 'inline', alternates, parted);
   w.line('');
   // Same public shape as a standalone page: the composition is invisible downstream.
   // The fourth parameter is what `export function layout(ctx, data)` resolved: the union of
   // what the whole chain declares (§4.8). The route only carries it — it never reads it, and
   // it never goes inside `data`, because what a route paints and what its layout needs are
   // two shapes and mixing them makes the second an accident of the first (§3.3).
-  w.line(`export function* page(data, io, $ioc, ${PROPS}) {`);
+  // `async` because its layout is (SDD-70 §4.2); the bytes of a route without `@await` are
+  // the ones it always wrote.
+  w.line(`export async function* page(data, io, $ioc, ${PROPS}) {`);
   w.indent();
-  w.line(`const { escapeText, jsonBlock${hasDi ? ', iocRoot, publishedSeed' : ''}${packIo(blocks)} } = io;`);
+  w.line(`const { serialize, escapeText, jsonBlock${hasDi ? ', iocRoot, publishedSeed' : ''}${packIo(blocks)} } = io;`);
   if (hasDi) w.line('const $root = $ioc ?? iocRoot();');
   // The nonce belongs to the RESPONSE, so it is read here, where `io` is, and closed over
   // by the head slot the layout calls (SDD-20 §4.9).
@@ -453,6 +467,7 @@ function buildRouteModule(
   // head, the body, each section — is a closure over this scope, and the layout calls them
   // from inside `layout(...)`, so a name declared here is in scope for all of them.
   writeEntryCode(w, code);
+  if (parted) w.line(`let ${PARTS};`);
   w.line('yield* layout(data, io, {');
   w.indent();
   w.line('head() {');
@@ -495,22 +510,37 @@ function buildRouteModule(
     w.dedent();
     w.line('},');
   }
-  w.line(`body(${DOM}, ${PARENT}) {`);
+  // The four slots the layout delegates to with `yield*` (SDD-70 §4.2). Generators, so a route
+  // with `@await` can send its parts from inside them; `async` only then.
+  const gen = parted ? 'async *' : '*';
+  // The body opens: a route in parts claims it and starts its parts before the layout builds a
+  // node. Any other route opens nothing — and claims at the close, as it always did.
+  w.line(`*open(${DOM}, ${PARENT}) {`);
+  w.indent();
+  if (parted) writePartsOpen(w, maps, PARTS, DOM, PARENT, hasDi ? '$root' : undefined, blocks);
+  w.dedent();
+  w.line('},');
+  w.line(`${gen}body(${DOM}, ${PARENT}) {`);
   w.indent();
   w.appendWriter(bodyW);
   w.dedent();
   w.line('},');
-  w.line(`section(name, ${DOM}, ${PARENT}) {`);
+  w.line(`${gen}section(name, ${DOM}, ${PARENT}) {`);
   w.indent();
   w.appendWriter(sectionW);
   w.dedent();
   w.line('},');
-  // The blocks are the route's because its graph is the one that reaches the whole chain —
-  // the layout's own components included — and they are emitted from a slot because only the
-  // outermost layout knows where the body ends.
-  w.line(`blocks(${DOM}, ${PARENT}) {`);
+  // The close is the route's because its graph is the one that reaches the whole chain — the
+  // layout's own components included — and it is a slot because only the outermost layout
+  // knows where the body ends. Its blocks and the body whole; or, in parts, the last one.
+  w.line(`*close(${DOM}, ${PARENT}) {`);
   w.indent();
-  writeHydrationBlocks(w, maps, DOM, PARENT, hasDi ? '$root' : undefined, blocks);
+  if (parted) {
+    w.line(`yield* ${PARTS}.end();`);
+  } else {
+    writeHydrationBlocks(w, maps, DOM, PARENT, hasDi ? '$root' : undefined, blocks);
+    w.line(`yield* serialize(${PARENT});`);
+  }
   w.dedent();
   w.line('},');
   w.dedent();

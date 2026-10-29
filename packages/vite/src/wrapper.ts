@@ -134,6 +134,8 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
     'jsonBlock',
     // What a page writes `fud-data` with when its `.fudapi` gave the shape of `data` (BUG-60 §3.2).
     'packData',
+    // What a page with `@await` sends its parts through (SDD-70 §4.2).
+    'PageParts',
     ...(hasDi ? ['iocRoot', 'publishedSeed'] : http ? ['iocRoot'] : []),
   ];
   lines.push(`import { page } from ${spec};`);
@@ -172,7 +174,7 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   if (options.alternates !== undefined) lines.push(...alternatesSource(options.alternates));
   lines.push('function io(ctx) {');
   lines.push(
-    `  return { createDom: () => new SsrDom(), serialize: serializeChunks, escapeText, escapeAttr, guardUrl, jsonBlock, packData${hasDi ? ', iocRoot, publishedSeed' : ''}, nonce: ctx.nonce, runtime: RUNTIME${options.alternates !== undefined ? ', alternates: $alternates(ctx.url)' : ''} };`,
+    `  return { createDom: () => new SsrDom(), serialize: serializeChunks, escapeText, escapeAttr, guardUrl, jsonBlock, packData${hasDi ? ', iocRoot, publishedSeed' : ''}, parts: (dom, body, o) => new PageParts(dom, body, o), onError: ctx.onError, nonce: ctx.nonce, runtime: RUNTIME${options.alternates !== undefined ? ', alternates: $alternates(ctx.url)' : ''} };`,
   );
   lines.push('}');
   lines.push('');

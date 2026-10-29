@@ -197,7 +197,10 @@ function chainOf(own: string, c: ModuleCtx): string {
 function load(d: LoadDecl, c: ModuleCtx): string {
   c.http.add('page');
   const chain = chainOf(level(d.uses, d.skips, undefined, c), c);
-  return `export const load = page({ id: ${str(c.source.id)}, name: "load", chain: ${chain}${browser(c)} });${failsOf('Load', d.fails, c)}`;
+  // The fields that arrive later (SDD-70): `runLoad` settles each one as soon as `load` returns.
+  const later = d.fields.filter((f) => f.later !== undefined).map((f) => str(f.name.text));
+  const settles = later.length === 0 ? '' : `, later: [${later.join(', ')}]`;
+  return `export const load = page({ id: ${str(c.source.id)}, name: "load", chain: ${chain}${settles}${browser(c)} });${failsOf('Load', d.fails, c)}`;
 }
 
 /** The validators of `@fudic/forms/contract` by rule, imported under `$` so no rule shadows them. */

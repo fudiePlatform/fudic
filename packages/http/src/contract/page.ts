@@ -16,6 +16,8 @@ export interface PageSpec {
   readonly chain?: readonly Level[];
   /** The browser variant: no implementation is possible here. */
   readonly browser?: boolean;
+  /** `load`: its fields marked `later`, which the handler returns as promises (SDD-70). */
+  readonly later?: readonly string[];
 }
 
 /** The `ctx` of `load` and `layout`: the page's params, typed. */

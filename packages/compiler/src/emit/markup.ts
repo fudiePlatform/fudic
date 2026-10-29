@@ -14,7 +14,7 @@
 
 import { dataScriptType } from '../html/index.js';
 import type { HtmlContent, ElementNode, InlineCodeNode } from '../html/index.js';
-import type { IfNode, SwitchNode } from '../control/index.js';
+import type { AwaitNode, IfNode, SwitchNode } from '../control/index.js';
 import type { RenderSectionNode } from '../layout/index.js';
 import type { Span } from '../types/index.js';
 import type { ShadowOptions } from '../binding/index.js';
@@ -40,7 +40,7 @@ import {
 import { emitItems, type TextRun } from './runs.js';
 import { markerSite } from './marker.js';
 import { adoptListOf, type ProjectAdopt } from './project-styles.js';
-import { loopHead, rawChild, type LoopNode } from './constructs.js';
+import { blocksOf, loopHead, rawChild, type LoopNode } from './constructs.js';
 import { EMPTY_CONTROLS, type ControlPlan, type MarkerSite } from './controls.js';
 
 /** `render` + PascalCase of a `prefix-name` tag: `app-button` → `renderAppButton`. */
@@ -73,6 +73,7 @@ type ServerRole =
   | 'render-body'
   | 'render-section'
   | 'inline-code'
+  | 'await'
   | 'none';
 
 /**
@@ -143,10 +144,10 @@ const SERVER_ROLE: Record<HtmlContent['type'], ServerRole> = {
   else: 'none',
   empty: 'none',
   'unhandled-construct': 'none',
-  // `@await` (SDD-70) is not painted by this walk: the part emit cuts the page there, awaits
-  // the field and paints the body or the `@catch` at the insertion point. A `@catch` is never
-  // a content node — the `@await` holds its own, and an orphan one is degraded like `@empty`.
-  await: 'none',
+  // `@await` (SDD-70) cuts the page there, awaits the field and paints its body or its
+  // `@catch` at the insertion point. A `@catch` is never a content node — the `@await` holds
+  // its own, and an orphan one is degraded like `@empty`.
+  await: 'await',
   catch: 'none',
 };
 
@@ -272,7 +273,38 @@ export interface MarkupOptions {
    * each adopts the guides of its own chain.
    */
   readonly projectAdopt: ProjectAdopt;
+  /**
+   * The `PageParts` of a page that goes out in parts (SDD-70), by the name of its variable.
+   * Absent everywhere an `@await` cannot be — a component, a layout — where one is `FUD1322`
+   * already and paints nothing.
+   */
+  readonly parts?: string;
 }
+
+/**
+ * Whether a list holds, at any depth, a point where the page is cut or the route writes in: an
+ * `@await` of this file, or a hole of a layout (SDD-70 §4.2). An element above one is appended
+ * to its parent BEFORE its content is built, so a part sent from inside it finds it in the tree.
+ */
+function holdsCut(children: readonly HtmlContent[], kinds: ReadonlySet<string>): boolean {
+  return children.some(
+    (node) =>
+      kinds.has(node.type) ||
+      (node.type === 'element' && holdsCut((node as ElementNode).children, kinds)) ||
+      blocksOf(node).some((branch) => holdsCut(branch.body, kinds)),
+  );
+}
+
+const AWAITS: ReadonlySet<string> = new Set(['await']);
+
+/** Whether a page's markup holds an `@await` at any depth: it goes out in parts (SDD-70). */
+export function hasAwait(children: readonly HtmlContent[]): boolean {
+  return holdsCut(children, AWAITS);
+}
+const HOLES: ReadonlySet<string> = new Set(['render-body', 'render-section']);
+
+/** `data.<field>` after `@await`: the field it waits for. */
+const AWAITED = /^data\.([A-Za-z_$][\w$]*)$/u;
 
 export class MarkupEmitter {
   readonly #source: string;
@@ -296,6 +328,7 @@ export class MarkupEmitter {
   #rootSlot: { readonly parent: string; readonly name: string } | undefined;
   /** Whether each outermost construct leaves an anchor behind it — a layout (SDD-48). */
   readonly #anchors: boolean;
+  readonly #parts: string | undefined;
   #constructDepth = 0;
   #id = 0;
   /**
@@ -312,6 +345,7 @@ export class MarkupEmitter {
     this.#linker = options.linker;
     this.#slots = options.slots;
     this.#anchors = options.anchors ?? false;
+    this.#parts = options.parts;
     this.#at = rootContext(
       options.space ?? 'collapse',
       options.container ?? 'unknown',
@@ -409,16 +443,20 @@ export class MarkupEmitter {
         return;
       case 'render-body':
         // `@RenderBody()`: the route appends its nodes under the SAME parent, with the
-        // layout's own `$dom` — one tree, one serialization (SDD-21 §4.5).
-        if (this.#slots) this.#w.line(`${this.#slots}.body($dom, ${parent});`);
+        // layout's own `$dom` — one tree, one serialization (SDD-21 §4.5). Delegated with
+        // `yield*`: a route with `@await` sends its parts from inside it (SDD-70 §4.2).
+        if (this.#slots) this.#w.line(`yield* ${this.#slots}.body($dom, ${parent});`);
         return;
       case 'render-section': {
         if (this.#slots) {
           const name = asRenderSection(node).name;
-          this.#w.line(`${this.#slots}.section(${JSON.stringify(name)}, $dom, ${parent});`);
+          this.#w.line(`yield* ${this.#slots}.section(${JSON.stringify(name)}, $dom, ${parent});`);
         }
         return;
       }
+      case 'await':
+        this.#await(node as unknown as AwaitNode, parent, body);
+        return;
       case 'inline-code':
         // Verbatim, in place: the author's statements are the author's, and this walk is
         // already inside the render function, so the scope they see is the one decision 17
@@ -477,6 +515,20 @@ export class MarkupEmitter {
     const outer = this.#at;
     const isComponent = this.#isComponent(el.name);
     this.#at = childrenContext(outer, el, isComponent);
+    // In the tree BEFORE its content when a part may be sent from inside it (SDD-70 §4.2): an
+    // `@await` of a page, or a layout's hole a route may cut in. Same tree, same bytes.
+    const early =
+      (this.#parts !== undefined && holdsCut(el.children, AWAITS)) ||
+      (this.#slots !== undefined && holdsCut(el.children, HOLES));
+    const attach = (): void => {
+      // A root of a hole the layout slots (SDD-48): the layout named the slot, the route wrote
+      // siblings, and each of them carries the name. A construct keeps the same `parent`, so
+      // what a branch or a loop writes at the root is stamped too.
+      if (this.#rootSlot !== undefined && this.#rootSlot.parent === parent) {
+        this.#w.line(`$dom.setAttr(${v}, 'slot', ${JSON.stringify(this.#rootSlot.name)});`);
+      }
+      this.#w.line(`$dom.append(${parent}, ${v});`);
+    };
     if (isComponent) {
       this.#used.add(el.name);
       const s = this.#fresh();
@@ -533,6 +585,7 @@ export class MarkupEmitter {
       this.#w.line(
         `${renderName(el.name)}($dom, ${s}, ${componentPropsExpr(this.#source, el, this.#signals, this.#declared(el.name))}, ${this.#ioc});`,
       );
+      if (early) attach();
       this.#content(el, v); // light DOM (projected by <slot>)
       // A marker host's text goes into its light DOM, where the component's `<slot>` paints it.
       this.#markerText(el, v);
@@ -541,6 +594,7 @@ export class MarkupEmitter {
       this.#elementAttrs(el, v, false);
       this.#controlAttrs(el, v);
       this.#markerAttrs(el, v);
+      if (early) attach();
       // A data `<script>` — JSON-LD or an import map (decision 129) — carries its body
       // VERBATIM, and it is the one place a `raw-text` becomes a node. The generic walk cannot
       // do this: `raw-text` knows the element it belongs to and not its `type`, and the `type`
@@ -551,13 +605,7 @@ export class MarkupEmitter {
       this.#markerText(el, v);
     }
     this.#at = outer;
-    // A root of a hole the layout slots (SDD-48): the layout named the slot, the route wrote
-    // siblings, and each of them carries the name. A construct keeps the same `parent`, so
-    // what a branch or a loop writes at the root is stamped too.
-    if (this.#rootSlot !== undefined && this.#rootSlot.parent === parent) {
-      this.#w.line(`$dom.setAttr(${v}, 'slot', ${JSON.stringify(this.#rootSlot.name)});`);
-    }
-    this.#w.line(`$dom.append(${parent}, ${v});`);
+    if (!early) attach();
   }
 
   /**
@@ -735,6 +783,47 @@ export class MarkupEmitter {
     this.#w.line(`if (!${turned}) {`);
     this.#w.indent();
     this.#branch(loop.empty.body, parent, body);
+    this.#w.dedent();
+    this.#w.line('}');
+  }
+
+  /**
+   * `@await data.users { … } @catch (e) { … }` (SDD-70 §4.2).
+   *
+   * The page is cut here: the part built so far goes out with its block and its marker, and
+   * the buffer is flushed. Then the field is awaited — already settled by `runLoad`, so it
+   * never throws — and its body is painted at the SAME insertion point, with `data` holding
+   * the value under the field's own name; or its `@catch`, with the `Problem`. With no
+   * `@catch` the part stays empty and the error goes where the server's errors go.
+   *
+   * Where there are no parts (a component, a layout) it paints nothing: it is `FUD1322`.
+   */
+  #await(node: AwaitNode, parent: string, body: RunContext): void {
+    const field = AWAITED.exec(this.#slice(node.expression))?.[1];
+    if (this.#parts === undefined || field === undefined) return;
+    const settled = this.#fresh();
+    const outer = this.#fresh();
+    this.#w.line(`yield* ${this.#parts}.cut();`);
+    this.#w.line(`const ${settled} = await data.${field};`);
+    this.#w.line(`${this.#parts}.field(${JSON.stringify(field)}, ${settled});`);
+    this.#w.line(`if ('ok' in ${settled}) {`);
+    this.#w.indent();
+    this.#w.line(`const ${outer} = data;`);
+    this.#w.line('{');
+    this.#w.indent();
+    this.#w.line(`const data = { ...${outer}, ${field}: ${settled}.ok };`);
+    this.#branch(node.body, parent, body);
+    this.#w.dedent();
+    this.#w.line('}');
+    this.#w.dedent();
+    if (node.catch === undefined) {
+      this.#w.line(`} else io.onError?.(${settled}.cause);`);
+      return;
+    }
+    this.#w.line('} else {');
+    this.#w.indent();
+    this.#w.mappedLine('const ', { text: this.#slice(node.catch.header.inner), src: node.catch.header.inner.start }, ` = ${settled}.error;`);
+    this.#branch(node.catch.body, parent, body);
     this.#w.dedent();
     this.#w.line('}');
   }

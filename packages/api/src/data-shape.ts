@@ -60,5 +60,7 @@ export function dataShape(source: ApiSource, index: ApiIndex): DataShape | undef
     }
   }
 
-  return { fields: fieldsOf(load.fields), types };
+  // A `later` field is not in `fud-data`: it arrives in the block of the part that awaited it
+  // (SDD-70 §3.5), and at the moment `fud-data` is written it is still a promise.
+  return { fields: fieldsOf(load.fields.filter((f) => f.later === undefined)), types };
 }

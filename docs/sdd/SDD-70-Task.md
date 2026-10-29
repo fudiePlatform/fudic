@@ -24,6 +24,66 @@ código, no el test.
 
 ---
 
+## Traspaso (2026-10-29, cambio de sesión a mitad de la fase 4)
+
+**Cómo se trabajó.** Una sesión implementa y lanza por fase un agente en segundo plano (worktree
+aislado) que solo escribe tests, empuja su rama `sdd-70-tests-N` y reporta. La rama de tests se
+mergea en esta, se marca la tarea de tests y se cierra la fase. **Cada fase cerrada se empuja a
+origin**, y el agente empuja también la suya.
+
+**Estado.**
+- Fases 1 y 3 cerradas.
+- Fase 2: código en `a5dbd424`. El agente de sus tests (rama `sdd-70-tests-2`) estaba
+  trabajando. Hay que mergear esa rama si existe en origin, revisar los defectos que reporte y
+  marcar la tarea 12. Si no existe, se relanza con el mismo encargo.
+- Fase 4, a medias. Está en el commit «wip(sdd-70)», con **73 tests del compilador en rojo**:
+  - Están en `emit/layout`, `layout-props`, `route-blocks`, `route-code`, `hydrate/route`,
+    `hydrate/refresh`, `hydrate/packed-data`, `hydrate/owned`, `di` y `rest-emit`.
+  - Son los que recorren `page` o `layout` en síncrono. Pasan a `for await` (tarea 16).
+  - Si cambia algún golden, es un defecto.
+
+**Fase 4, hecho:**
+- `@fudic/ssr`: `PageParts` (`page-parts.ts`) escribe cada parte con su bloque delante y su
+  marca detrás, y en la última también `end()`. `SsrDom.hydrationPart()` da el estado por
+  tramos.
+- `@fudic/http`: `runLoad` resuelve los campos `later` en cuanto `load` devuelve
+  (`settleLater`). Cada uno pasa a `{ ok }` o `{ error: Problem, cause }`, y una redirección
+  avisa en dev.
+- `@fudic/api`: `load` lleva `later: [...]` en su spec, y `dataShape` deja fuera los campos
+  `later`.
+- Compilador:
+  - Layouts `async function*`. Las ranuras de la ruta son generadores `open`, `body`, `section`
+    y `close`, delegados con `yield*`. `blocks` ya no existe; ahora es `close`.
+  - Las rutas con layout pasan a `async function* page`.
+  - Un elemento que contiene un `@await` o un hueco del layout se cuelga de su padre **antes**
+    de construir su contenido (`holdsCut` en `markup.ts`): `partSerializer` exige crecer solo
+    por la derecha.
+  - `#await` en `markup.ts` emite: `yield* $parts.cut()`, el `await` del campo,
+    `$parts.field`, el cuerpo con `data` reatado, o el `@catch`, o `io.onError`.
+  - `writePartsOpen` en `maps.ts`.
+  - El runtime va con `async` en las páginas por partes.
+- `@fudic/vite`: `io.parts` y `io.onError` en el wrapper.
+
+**Fase 4, falta:**
+- Pasar a `for await` los 73 tests de arriba.
+- `module.ts`: una página **sin layout** con `@await` (`async function* page`, `$parts`, sin
+  bloques al final). Hoy solo funcionan las rutas con layout.
+- Tarea 19, la parte de `onError`: que dev le dé a `render` un `ctx.onError` que lleve al
+  overlay.
+- La pieza del lector de partes en `runtime-pieces`. Es de la fase 5: el lector aún no existe.
+- La tarea 21 (tests, por agente).
+
+**Decisiones de esta fase, para pasar a §8.2:**
+- El bloque es texto cedido, no un nodo del árbol. El de la parte 0 va justo después de la
+  etiqueta de apertura `<body>`.
+- En la última parte, la marca va antes de los cierres:
+  `<p>…</p><!--fud-end--></main></body>`.
+- `ioc` sale entero cada vez que crece, y el navegador lo sustituye. `di` sale con solo las
+  claves nuevas.
+- Los mapas estáticos van en la parte 0 siempre que la página los tenga.
+- Con un `@await`, la ruta reclama el `<body>` al abrir y no al cerrar, así que su id pasa a
+  ser el 0.
+
 ## Mapa de dependencias
 
 ```

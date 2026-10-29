@@ -442,6 +442,39 @@ export function writeHydrationBlocks(
 }
 
 /**
+ * The opening of a page that goes out in parts (SDD-70 §3.5): the route claims the `<body>`
+ * first, as it does before its blocks, and `parts` starts. What `fud-tree`, `fud-bus`,
+ * `fud-eager`, `fud-route` and `fud-data` carried at the end of the body travels once, in the
+ * block of part 0; the state, the fields and the container travel part by part.
+ *
+ * The static maps go whenever the page has them, not only when an instance was claimed: part 0
+ * is written before the page knows what its later parts will claim.
+ */
+export function writePartsOpen(
+  w: CodeWriter,
+  maps: PageMaps,
+  parts: string,
+  dom: string,
+  parent: string,
+  ioc?: string,
+  route?: RouteBlocks,
+): void {
+  if (route !== undefined) writeRouteClaim(w, route, dom, parent);
+  // The `later` fields travel when `fud-data` would: only a route whose client half reads it.
+  const data = route?.data ?? null;
+  const first = [
+    ...(maps.hasTree ? ['tree: FUD_TREE'] : []),
+    ...(maps.hasBus ? ['bus: FUD_BUS'] : []),
+    ...(maps.hasEager ? ['eager: FUD_EAGER'] : []),
+    ...(route === undefined ? [] : [`route: ${JSON.stringify(route.name)}`]),
+    ...(data === null ? [] : [`data: ${data}`]),
+  ];
+  w.line(
+    `${parts} = io.parts(${dom}, ${parent}, { first: { ${first.join(', ')} }, fields: ${String(data !== null)}${ioc === undefined ? '' : `, ioc: ${ioc}`} });`,
+  );
+}
+
+/**
  * The two blocks of SDD-38, and neither is a compile-time constant.
  *
  * `fud-ioc` is the container tree AS RENDERED: two instances of one owning tag are two
