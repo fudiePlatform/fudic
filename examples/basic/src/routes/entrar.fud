@@ -9,7 +9,7 @@
   <site-nav></site-nav>
 }
 
-@* Adonde lleva `error-pages` con `routes 403 /entrar` en `src/http.fudapi`: un token que el servidor no
+@* Adonde lleva `error-pages` con `routes 403 /entrar` en `src/http.fudapi`: una sesión que el servidor no
    reconoce no pinta la página de error, trae aquí. *@
 <h1>Entrar</h1>
-<p>El servidor no reconoce tu token. Vuelve a <a href="/usuarios">usuarios</a> y entra como Ana.</p>
+<p>El servidor no reconoce tu sesión. Vuelve a <a href="/usuarios">usuarios</a> y entra como Ana.</p>

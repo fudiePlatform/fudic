@@ -122,9 +122,10 @@ export async function renderRouteHtml(
   url: string,
   nonce: string,
   request?: Request,
+  response?: PendingResponse,
 ): Promise<string> {
   const mod = await load(wrapperId);
-  return drainStream(mod.render(withRequest(edgeContext(pattern, url, nonce), request)));
+  return drainStream(mod.render(withRequest(edgeContext(pattern, url, nonce), request, response)));
 }
 
 /** Run a route's `@server load(ctx)` for one concrete URL — the data endpoint (§4.5). */
@@ -134,24 +135,41 @@ export async function loadRouteData(
   pattern: string,
   url: string,
   request?: Request,
+  response?: PendingResponse,
 ): Promise<unknown> {
   const mod = await load(wrapperId);
   if (typeof mod.data !== 'function') {
     return {};
   }
-  const { nonce: _nonce, ...ctx } = withRequest(edgeContext(pattern, url, ''), request);
+  const { nonce: _nonce, ...ctx } = withRequest(edgeContext(pattern, url, ''), request, response);
   return mod.data(ctx);
+}
+
+/** Where `load` and `layout` write their status and headers (SDD-69 §3.3). */
+export type PendingResponse = NonNullable<RenderContext['response']>;
+
+/** A fresh one, for one render or one data request. */
+export const pendingResponse = (): PendingResponse => ({ status: 200, headers: new Headers() });
+
+/**
+ * Whether `load` or `layout` read the session on `response` (SDD-69 §4.4). By shape: the note
+ * is `@fudic/http`'s, written by the copy inside the route chunk under a registered symbol.
+ */
+export function readsSession(response: PendingResponse): boolean {
+  return (response as { readonly [key: symbol]: unknown })[Symbol.for('fudic.sessionRead')] === true;
 }
 
 /**
  * The render context with the request being served, which `load` reads its headers and
- * cookies from (SDD-56 §4.6). The prerender has none, and passes none (§4.14).
+ * cookies from (SDD-56 §4.6), and the response it writes its status and headers to (SDD-69
+ * §3.3). The prerender has no request, and passes none (§4.14).
  */
-export function withRequest(ctx: RenderContext, request: Request | undefined): RenderContext {
-  if (request === undefined) return ctx;
+export function withRequest(ctx: RenderContext, request: Request | undefined, response?: PendingResponse): RenderContext {
+  const served = response === undefined ? ctx : { ...ctx, response };
+  if (request === undefined) return served;
   // The URL on the request's own origin: what a page writes as an absolute URL of itself
   // (SDD-58 §4.7) is where it was asked, `http://localhost:5173` in dev.
   const url = new URL(`${ctx.url.pathname}${ctx.url.search}`, new URL(request.url).origin);
-  const out: RenderContext & { readonly request: Request } = { ...ctx, url, request };
+  const out: RenderContext & { readonly request: Request } = { ...served, url, request };
   return out;
 }

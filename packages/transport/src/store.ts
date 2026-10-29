@@ -161,6 +161,15 @@ function seal(response: Response, at: number): Response {
   });
 }
 
+/**
+ * A response whose `Cache-Control` says `no-store` or `private` (SDD-69 §4.3): the server marks
+ * so what read the session, and HTTP says no shared cache keeps it — the SW is one for every
+ * user of the browser.
+ */
+export function isPrivate(response: Response): boolean {
+  return /(?:^|[\s,])(?:no-store|private)(?:$|[\s,=])/iu.test(response.headers.get('cache-control') ?? '');
+}
+
 /** A cached response is fresh when it has no TTL, or its stamp is within it. */
 function isFresh(response: Response, ttl: number | null, now: number): boolean {
   if (ttl === null) {
@@ -189,6 +198,12 @@ export function createStore(config: StoreConfig): Store {
       inFlight.set(key, pending);
     }
     const master = await pending;
+    // What depended on who is asking is kept by no cache, whatever the policy (SDD-69 §4.3),
+    // and a copy from when it did not depend on it goes too.
+    if (isPrivate(master)) {
+      await config.cache.delete(key, QUERY).catch(() => undefined);
+      return master.clone();
+    }
     // Caching is best-effort; serving is not. `status === 200` and not `ok`, because
     // `cache.put` THROWS on a 206 and a `<video>` with a `Range` is enough to hit it; and
     // the `catch` so that an exhausted quota cannot turn a good response into a network

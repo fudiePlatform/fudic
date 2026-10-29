@@ -5,6 +5,6 @@
 
 export type { DispatchOptions } from './dispatch.js';
 export { pageContext, type PageInput } from './load.js';
-export { parseCookies } from './context.js';
+export { markPrivate, parseCookies, readsSession, type PendingResponse } from './context.js';
 export { noFunction, problemOf, problemResponse, PROBLEM_TYPE } from './problem.js';
 export { withRequest } from './request.js';

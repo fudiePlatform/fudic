@@ -15,34 +15,46 @@ import { test, expect, type Page } from '@playwright/test';
 
 declare global {
   interface Window {
+    __ready: boolean;
     __hydrated: string[];
   }
 }
 
 /**
- * Wait until the route — and the form, when asked — has hydrated. `fud:ready` is not enough:
- * it says the runtime is installed, and the route comes up a few milliseconds later. A click in
- * between lands on HTML with no handler.
+ * Wait until the runtime is installed — and the form has hydrated, when asked. The route itself
+ * reads nothing at load (the session is a cookie, SDD-69), so it comes up on the first gesture,
+ * which it replays: a click is never lost, and there is no hydration of it to wait for.
  */
 async function ready(page: Page, ...tags: readonly string[]): Promise<void> {
-  await page.waitForFunction(
-    (wanted) => wanted.every((t) => window.__hydrated.includes(t)),
-    ['usuarios', ...tags],
-    { timeout: 10_000 },
-  );
+  await page.waitForFunction(() => window.__ready, undefined, { timeout: 10_000 });
+  await page.waitForFunction((wanted) => wanted.every((t) => window.__hydrated.includes(t)), tags, { timeout: 10_000 });
 }
 
-/** Load `/usuarios`, with `token` in `localStorage` from the first byte of every load. */
-async function open(page: Page, token?: string, ...tags: readonly string[]): Promise<void> {
-  await page.addInitScript((t) => {
+/** The buttons of the session panel: each one calls `login` or `logout` (SDD-69 §4.7). */
+const SIGN_IN: Readonly<Record<string, string>> = {
+  ana: 'Entrar como Ana',
+  luis: 'Entrar como Luis',
+  pepe: 'Entrar con una sesión falsa',
+};
+
+/** Load `/usuarios` and, with `user`, sign in as a person would: its button, then the repaint. */
+async function open(page: Page, user?: 'ana' | 'luis' | 'pepe', ...tags: readonly string[]): Promise<void> {
+  await page.addInitScript(() => {
+    window.__ready = false;
     window.__hydrated = [];
+    document.addEventListener('fud:ready', () => {
+      window.__ready = true;
+    });
     document.addEventListener('fud:hydrated', (e) => {
       window.__hydrated.push((e as CustomEvent<{ tag: string }>).detail.tag);
     });
-    if (t !== null) localStorage.setItem('fudic-token', t);
-  }, token ?? null);
+  });
   await page.goto('/usuarios');
   await ready(page, ...tags);
+  if (user !== undefined) {
+    await page.getByRole('button', { name: SIGN_IN[user]! }).click();
+    await expect(page.locator('.quien')).toHaveText(user);
+  }
 }
 
 /** The error page `error-pages` takes the browser to, with what the server said. */
@@ -77,38 +89,49 @@ test.describe('/usuarios', () => {
     await expect(slow).toHaveText('Búsqueda cancelada.');
   });
 
-  test('the session token lives in the browser', async ({ page }) => {
+  test('SDD-69: the session is an HttpOnly cookie the server sets, and no script reads it', async ({ page, context }) => {
     await open(page);
-    await expect(page.getByText('Token: ninguno')).toBeVisible();
+    await expect(page.getByText('Sesión: ninguna')).toBeVisible();
     await page.getByRole('button', { name: 'Entrar como Ana' }).click();
-    await expect(page.getByText('Token: ana')).toBeVisible();
+    // Without a reload: `login` set the cookie, and the page repainted with its new `data`.
+    await expect(page.getByText('Sesión: Ana')).toBeVisible();
+    const [cookie] = (await context.cookies()).filter((c) => c.name === 'fudic-session');
+    expect(cookie).toMatchObject({ value: 'ana', httpOnly: true, sameSite: 'Lax', secure: false, path: '/' });
+    expect(await page.evaluate(() => document.cookie)).not.toContain('fudic-session');
     await page.reload();
     await ready(page);
-    await expect(page.getByText('Token: ana')).toBeVisible();
+    await expect(page.getByText('Sesión: Ana')).toBeVisible();
     await page.getByRole('button', { name: 'Salir' }).click();
-    await expect(page.getByText('Token: ninguno')).toBeVisible();
+    await expect(page.getByText('Sesión: ninguna')).toBeVisible();
+    expect((await context.cookies()).filter((c) => c.name === 'fudic-session')).toEqual([]);
   });
 
-  test('a toggle without a token is a 401 page', async ({ page }) => {
+  test('a toggle without a session is a 401 page', async ({ page }) => {
     await open(page);
     await row(page, 'Marta').getByLabel('Activo').click();
     await expect(page).toHaveURL(errorPage(401));
     await expect(page.locator('h1')).toContainText('401');
-    await expect(page.getByText('sin token')).toBeVisible();
+    await expect(page.getByText('sin sesión')).toBeVisible();
   });
 
-  test('a toggle with an unknown token goes to /entrar', async ({ page }) => {
+  test('a toggle with a fake session goes to /entrar, which speaks of the session', async ({ page }) => {
     await open(page, 'pepe');
     await row(page, 'Marta').getByLabel('Activo').click();
     await expect(page).toHaveURL(/\/entrar$/u);
+    await expect(page.getByText('El servidor no reconoce tu sesión.')).toBeVisible();
   });
 
-  test('a toggle with a token reaches the server and survives a reload', async ({ page }) => {
+  test('a toggle with a session reaches the server and survives a reload', async ({ page }) => {
     await open(page, 'ana');
     const box = () => row(page, 'Luis').getByLabel('Activo');
     await expect(box()).not.toBeChecked();
+    // The cookie travels on its own, and nothing puts an `authorization` on the call.
+    const sent = page.waitForRequest((r) => r.url().endsWith(`${FN}/save`));
     // No reload: the page asks for its `data` again and repaints the row (SDD-68 §4.8).
     await box().click();
+    const headers = await (await sent).allHeaders();
+    expect(headers['cookie']).toContain('fudic-session=ana');
+    expect(headers['authorization']).toBeUndefined();
     await expect(box()).toBeChecked();
     await page.reload();
     await ready(page);
@@ -133,6 +156,47 @@ test.describe('/usuarios', () => {
     await page.getByRole('button', { name: 'Borrar a alguien que no existe' }).click();
     await expect(page).toHaveURL(errorPage(404));
     await expect(page.getByText('no hay nadie con id 999')).toBeVisible();
+  });
+});
+
+test.describe('SDD-69: /cuenta renders in the Service Worker and keeps nobody’s data', () => {
+  /**
+   * `/cuenta`, and in `preview` once the worker controls the page: its render is the worker's,
+   * and its data the endpoint's. `dev` and `nosw` have no worker, and the server renders it.
+   */
+  async function cuenta(page: Page): Promise<string> {
+    await page.goto('/cuenta');
+    if (test.info().project.name === 'preview') {
+      await page.waitForFunction(() => navigator.serviceWorker.controller !== null, undefined, { timeout: 10_000 });
+      await page.reload();
+    }
+    return (await page.locator('h1 + p').textContent()) ?? '';
+  }
+
+  test('as Ana it greets Ana; out and in as Luis, it greets Luis and never Ana', async ({ page }) => {
+    await open(page, 'ana');
+    expect(await cuenta(page)).toContain('Hola, Ana.');
+    await page.goto('/usuarios');
+    await ready(page);
+    await page.getByRole('button', { name: 'Salir' }).click();
+    await expect(page.getByText('Sesión: ninguna')).toBeVisible();
+    expect(await cuenta(page)).toContain('No has entrado.');
+    await page.goto('/usuarios');
+    await ready(page);
+    await page.getByRole('button', { name: 'Entrar como Luis' }).click();
+    await expect(page.getByText('Sesión: Luis')).toBeVisible();
+    const greeting = await cuenta(page);
+    expect(greeting).toContain('Hola, Luis.');
+    expect(greeting).not.toContain('Ana');
+    // No data of `/cuenta` in any cache of the worker.
+    const cached = await page.evaluate(async () => {
+      const urls: string[] = [];
+      for (const name of await caches.keys()) {
+        for (const request of await (await caches.open(name)).keys()) urls.push(request.url);
+      }
+      return urls.filter((url) => url.includes('/_fudic/data/cuenta') || url.endsWith('/cuenta'));
+    });
+    expect(cached).toEqual([]);
   });
 });
 

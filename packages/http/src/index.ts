@@ -30,3 +30,4 @@ export {
   type Problem,
 } from './errors.js';
 export type { ErrorRoutes } from './error-pages.js';
+export { deleteCookie, serializeCookie, setCookie, type CookieOptions } from './cookies.js';

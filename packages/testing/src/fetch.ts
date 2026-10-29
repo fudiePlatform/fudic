@@ -43,9 +43,14 @@ export function forgetCookies(): void {
   }
 }
 
-/** Keep what the response sets, as the page's cookie jar does. */
+/**
+ * Keep what the response sets, as the page's cookie jar does. Without `HttpOnly` (SDD-69 §4.6):
+ * the jar is `document.cookie`, which ignores an `HttpOnly` cookie a script writes, as a
+ * browser does — and in a test there is no script to keep the session from, only the next call
+ * that has to carry it.
+ */
 function keepCookies(response: Response): Response {
-  for (const cookie of response.headers.getSetCookie()) document.cookie = cookie;
+  for (const cookie of response.headers.getSetCookie()) document.cookie = cookie.replace(/;\s*HttpOnly\s*(?=;|$)/giu, '');
   return response;
 }
 

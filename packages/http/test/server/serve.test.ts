@@ -318,6 +318,96 @@ describe('criterion 15: cookies in, set-cookie out', () => {
   });
 });
 
+describe('SDD-69 criteria 7–9: what read the session goes out private', () => {
+  const NO_STORE = 'private, no-store';
+  const withCookie = () => new Request(URL_SAVE, { headers: { cookie: 'x=1', authorization: 'Bearer t', accept: '*/*' } });
+
+  it('criterion 7: a read of ctx.cookies, of a cookie there or not, of its size or by walking it', async () => {
+    const reads: Array<(ctx: Ctx) => unknown> = [
+      (ctx) => ctx.cookies.get('x'),
+      (ctx) => ctx.cookies.get('nope'),
+      (ctx) => ctx.cookies.has('x'),
+      (ctx) => ctx.cookies.size,
+      (ctx) => [...ctx.cookies].length,
+    ];
+    for (const read of reads) {
+      const res = await dispatch(withCookie(), get((ctx) => void read(ctx)));
+      expect(res.headers.get('cache-control')).toBe(NO_STORE);
+    }
+  });
+
+  it('criterion 7: the cookie or authorization header, by get or by has, in any case', async () => {
+    const reads: Array<(ctx: Ctx) => unknown> = [
+      (ctx) => ctx.headers.get('authorization'),
+      (ctx) => ctx.headers.has('Authorization'),
+      (ctx) => ctx.headers.get('Cookie'),
+      (ctx) => ctx.headers.has('cookie'),
+    ];
+    for (const read of reads) {
+      const res = await dispatch(withCookie(), get((ctx) => void read(ctx)));
+      expect(res.headers.get('cache-control')).toBe(NO_STORE);
+    }
+  });
+
+  it('criterion 7: a function that reads neither has no Cache-Control', async () => {
+    const res = await dispatch(withCookie(), get(() => 1, { returns: 'u8' }));
+    expect(res.headers.has('cache-control')).toBe(false);
+  });
+
+  it('criterion 8: the handler’s own Cache-Control is kept', async () => {
+    const res = await dispatch(
+      withCookie(),
+      get((ctx) => {
+        ctx.cookies.get('x');
+        ctx.response.headers.set('cache-control', 'max-age=60');
+      }),
+    );
+    expect(res.headers.get('cache-control')).toBe('max-age=60');
+  });
+
+  it('criterion 9: another header marks nothing, and walking the headers neither', async () => {
+    const res = await dispatch(
+      withCookie(),
+      get((ctx) => {
+        ctx.headers.get('accept');
+        ctx.headers.has('accept');
+        ctx.headers.forEach(() => undefined);
+        expect(Object.prototype.toString.call(ctx.headers)).toBe('[object Headers]');
+        return [...ctx.headers.keys()].length;
+      }, { returns: 'u8' }),
+    );
+    expect(res.headers.has('cache-control')).toBe(false);
+  });
+
+  it('a read by a middleware counts, and so does one before an error, with what was written', async () => {
+    const auth = serverHalf('auth', (ctx, next) => {
+      if (ctx.cookies.get('x') === undefined) throw badRequest('no session');
+      return next(ctx as never);
+    });
+    const fail = get(
+      (ctx) => {
+        ctx.response.headers.append('set-cookie', 'sid=; Path=/; Max-Age=0');
+        throw notFound();
+      },
+      { chain: [level(auth)] },
+    );
+    const res = await dispatch(withCookie(), fail);
+    expect(res.status).toBe(404);
+    expect(res.headers.get('cache-control')).toBe(NO_STORE);
+    expect(res.headers.getSetCookie()).toEqual(['sid=; Path=/; Max-Age=0']);
+    expect(res.headers.get('content-type')).toBe(PROBLEM_FUD);
+    const early = await dispatch(new Request(URL_SAVE), fail);
+    expect(early.status).toBe(400);
+    expect(early.headers.get('cache-control')).toBe(NO_STORE);
+  });
+
+  it('an error before the context exists has no Cache-Control', async () => {
+    const res = await dispatch(put(), get(() => 1));
+    expect(res.status).toBe(405);
+    expect(res.headers.has('cache-control')).toBe(false);
+  });
+});
+
 describe('criterion 20: the value is the response', () => {
   it('a function without -> is a 204 with no body, whatever handle returns', async () => {
     for (const value of [undefined, { a: 1 }]) {

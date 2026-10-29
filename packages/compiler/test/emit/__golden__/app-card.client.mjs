@@ -22,7 +22,7 @@ customElements.define("app-card", class extends FudicElement {
         const $d = []; // teardowns
         const $a = () => {};
         const $s = () => {};
-        const $mv = ($ref, $n) => { if (!$r.includes($n)) return $ref; if ($ref === null ? $dom.lastChild($parent) === $n : $dom.nextSibling($n) === $ref) return $n; if ($ref === null) $dom.append($parent, $n); else $dom.before($ref, $n); return $n; };
+        const $mv = ($ref, $n) => { const $at = $ref === null ? $dom.lastChild($parent) === $n : $dom.nextSibling($n) === $ref; if (!$r.includes($n)) return $at ? $n : $ref; if ($at) return $n; if ($ref === null) $dom.append($parent, $n); else $dom.before($ref, $n); return $n; };
         return {
           key: undefined,
           c: () => {
@@ -84,7 +84,7 @@ customElements.define("app-card", class extends FudicElement {
         const $d = []; // teardowns
         const $a = () => {};
         const $s = () => {};
-        const $mv = ($ref, $n) => { if (!$r.includes($n)) return $ref; if ($ref === null ? $dom.lastChild($parent) === $n : $dom.nextSibling($n) === $ref) return $n; if ($ref === null) $dom.append($parent, $n); else $dom.before($ref, $n); return $n; };
+        const $mv = ($ref, $n) => { const $at = $ref === null ? $dom.lastChild($parent) === $n : $dom.nextSibling($n) === $ref; if (!$r.includes($n)) return $at ? $n : $ref; if ($at) return $n; if ($ref === null) $dom.append($parent, $n); else $dom.before($ref, $n); return $n; };
         return {
           key: undefined,
           c: () => {
@@ -115,7 +115,7 @@ customElements.define("app-card", class extends FudicElement {
         const $d = []; // teardowns
         const $a = () => {};
         const $s = () => {};
-        const $mv = ($ref, $n) => { if (!$r.includes($n)) return $ref; if ($ref === null ? $dom.lastChild($parent) === $n : $dom.nextSibling($n) === $ref) return $n; if ($ref === null) $dom.append($parent, $n); else $dom.before($ref, $n); return $n; };
+        const $mv = ($ref, $n) => { const $at = $ref === null ? $dom.lastChild($parent) === $n : $dom.nextSibling($n) === $ref; if (!$r.includes($n)) return $at ? $n : $ref; if ($at) return $n; if ($ref === null) $dom.append($parent, $n); else $dom.before($ref, $n); return $n; };
         return {
           key: undefined,
           c: () => {

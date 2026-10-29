@@ -152,24 +152,14 @@ A middleware is declared with its halves, its parameters and what it adds to `ct
 
 ```
 middleware auth
-  client
   server
   adds
     user  User
-  fails no-token 401
 ```
 
-Each half is implemented in its folder, and `adds` types the `ctx` of every handler that uses
-it:
-
-```ts
-// src/browser/auth.ts
-import { auth } from 'fudic:middlewares/auth';
-auth.client((ctx, next) => {
-  ctx.headers.set('authorization', `Bearer ${localStorage.getItem('token') ?? ''}`);
-  return next(ctx);
-});
-```
+Each half is implemented in its folder — `client` in `src/browser`, `server` in `src/server` —
+and `adds` types the `ctx` of every handler that uses it. A middleware with only a server half,
+like this one, asks nothing of the browser:
 
 ```ts
 // src/server/auth.ts
@@ -177,9 +167,9 @@ import { inject } from '@fudic/di';
 import { unauthorized } from '@fudic/http';
 import { auth } from 'fudic:middlewares/auth';
 auth.server((ctx, next) => {
-  const token = ctx.headers.get('authorization')?.slice(7);
-  if (!token) throw unauthorized();
-  return next(Object.assign(ctx, { user: inject(Tokens).verify(token) }));
+  const session = ctx.cookies.get('sid');
+  if (session === undefined) throw unauthorized();
+  return next(Object.assign(ctx, { user: inject(Sessions).verify(session) }));
 });
 ```
 
@@ -189,6 +179,45 @@ auth.server((ctx, next) => {
 `csrf` and `error-pages` are declared in this package's `fudapi/` and implemented in its
 `browser/` and `server/`: installing `@fudic/http` makes them visible to every `.fudapi` of the
 app. So is `json`, which has no halves: it is a mark the compiler reads (see below).
+
+## Session
+
+The browser only talks to the app's own server, so the session lives in an `HttpOnly` cookie:
+the browser sends it on every call, and no script of the page can read it. A server function
+sets it and removes it; the browser writes nothing.
+
+```ts
+// src/server/usuarios.ts
+import { deleteCookie, setCookie } from '@fudic/http';
+import { login, logout } from 'fudic:routes/usuarios';
+
+login.handle((ctx) => {
+  setCookie(ctx, 'sid', ctx.args.user);
+});
+
+logout.handle((ctx) => {
+  deleteCookie(ctx, 'sid');
+});
+```
+
+`setCookie` writes `Path=/; HttpOnly; Secure; SameSite=Lax` unless told otherwise, and leaves
+`Secure` out on `localhost`, `127.0.0.1` and `[::1]`, where the dev server speaks `http`. It
+throws a `TypeError` on what a browser would drop without a word: a name that is not an HTTP
+token, and `sameSite: 'none'` or `partitioned` without `secure`. `serializeCookie` gives the same
+text without a `ctx`. Reading is `ctx.cookies.get(name)`.
+
+A `load` writes its cookies, status and headers the same way, and they reach the browser with
+the page and with its data, also when it throws: a `deleteCookie` before `throw unauthorized()`
+arrives. fudic keeps its own `Content-Type` and CSP.
+
+What reads the session — `ctx.cookies`, or the `cookie` or `authorization` header — goes out
+`Cache-Control: private, no-store` unless the handler set its own. The Service Worker never keeps
+a `no-store` or `private` answer, so what Ana saw is never what Luis gets, and signing in or out
+needs no invalidation. A prerendered page that reads the session is `FUD1300`: a page for nobody,
+served to everyone — write `load ssr`.
+
+A client half that puts a token in `authorization` still works; the cookie is the way that needs
+no code in the browser.
 
 ## Errors
 

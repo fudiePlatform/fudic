@@ -1,12 +1,12 @@
-/** The server half of `auth`: checks the token and leaves the user in `ctx`. */
+/** The server half of `auth`: reads the session cookie and leaves the user in `ctx`. */
 
 import { inject } from '@fudic/di';
 import { unauthorized } from '@fudic/http';
 import { auth } from 'fudic:middlewares/auth';
-import { Tokens } from '../services/tokens';
+import { SESSION_COOKIE, Sessions } from '../services/sessions';
 
 auth.server((ctx, next) => {
-  const token = ctx.headers.get('authorization')?.slice('Bearer '.length);
-  if (token === undefined || token === '') throw unauthorized('sin token');
-  return next(Object.assign(ctx, { user: inject(Tokens).verify(token) }));
+  const session = ctx.cookies.get(SESSION_COOKIE);
+  if (session === undefined || session === '') throw unauthorized('sin sesión');
+  return next(Object.assign(ctx, { user: inject(Sessions).verify(session) }));
 });

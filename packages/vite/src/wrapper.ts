@@ -138,7 +138,7 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   ];
   lines.push(`import { page } from ${spec};`);
   lines.push(`import { ${ssr.join(', ')} } from "@fudic/ssr";`);
-  if (http) lines.push('import { pageContext, withRequest } from "@fudic/http/server";');
+  if (http) lines.push('import { markPrivate, pageContext, withRequest } from "@fudic/http/server";');
   const pieces = [
     ...(edgeLoad ? ['load as $load'] : []),
     ...(edgeLayout ? ['layout as $layout'] : []),
@@ -187,7 +187,8 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
     lines.push('  return withRequest($root, async () => {');
     lines.push(`    const data = ${edgeLoad ? `await ${loadCall}` : '{}'};`);
     lines.push(`    return { data${edgeLayout ? ', layout: await layoutProps($ctx, data)' : ''} };`);
-    lines.push('  });');
+    // What read the session goes out private, also when it threw (SDD-69 §3.2).
+    lines.push('  }).finally(() => markPrivate($ctx.response));');
     lines.push('}');
     lines.push('');
   }
@@ -202,6 +203,9 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   }
   if (http) {
     lines.push('    const $ctx = pageContext(ctx);');
+    // `load` and `layout` in one block, so that what read the session goes out private, also
+    // when it threw (SDD-69 §3.2): the server that answers holds another copy of `@fudic/http`.
+    lines.push('    const [data, layout] = await (async () => {');
   }
   if (edgeLoad) {
     lines.push(
@@ -223,6 +227,10 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
     );
   } else {
     lines.push('    const layout = ctx.layout;');
+  }
+  if (http) {
+    lines.push('    return [data, layout];');
+    lines.push('    })().finally(() => markPrivate($ctx.response));');
   }
   lines.push(`    yield* page(data, io(ctx), ${hasDi ? '$root' : 'undefined'}, layout);`);
   lines.push('  })());');

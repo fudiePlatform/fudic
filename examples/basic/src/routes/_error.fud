@@ -11,7 +11,7 @@
 
 @* La página de error: sin URL propia ni `load`. Su `data` (`ErrorPage` de `@fudic/http`) es el
    error que la trae aquí: `status`, `title` y, si el servidor dijo algo — `unauthorized("sin
-   token")` —, `detail`. Llega de dos sitios: un `load` que lanza, o una llamada que falla y
+   sesión")` —, `detail`. Llega de dos sitios: un `load` que lanza, o una llamada que falla y
    `error-pages` de `src/http.fudapi` trae al navegador a /_fudic/error/:status. *@
 <h1>@data.status · @data.title</h1>
 @if (data.detail !== undefined) {

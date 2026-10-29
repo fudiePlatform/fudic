@@ -329,6 +329,12 @@
     "hydration": "gesture",
     "hydrates": []
   },
+  "examples/basic/src/routes/cuenta.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
   "examples/basic/src/routes/delegacion.fud": {
     "kind": "route",
     "reactive": false,
@@ -507,7 +513,7 @@
   "examples/basic/src/routes/usuarios.fud": {
     "kind": "route",
     "reactive": true,
-    "hydration": "eager",
+    "hydration": "gesture",
     "hydrates": [
       "user-form"
     ]

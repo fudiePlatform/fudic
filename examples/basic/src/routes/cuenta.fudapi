@@ -1,0 +1,5 @@
+# Who is signed in, read from the session cookie. No mode: without params the page renders in the
+# Service Worker, with its data from the endpoint — which goes out private, so no cache keeps it
+# and Luis never sees what was Ana's.
+load
+  name  str?

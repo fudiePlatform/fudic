@@ -713,10 +713,10 @@ test('BUG-53 · every .js the page downloads was preloaded, and only once', asyn
       window.__hydrated.push((e as CustomEvent<Hydrated>).detail);
     });
   });
+  // The route reads nothing at load since SDD-69 (the session is a cookie): it comes up on the
+  // first gesture, and on load the page downloads only what its head preloads.
   await page.goto('/usuarios');
-  await expect
-    .poll(() => page.evaluate(() => window.__hydrated.map((h) => h.tag)), { timeout: 10_000 })
-    .toContain('usuarios');
+  await page.waitForLoadState('load');
   await page.waitForTimeout(500);
   expect(await unpreloaded(), 'on load').toEqual([]);
 

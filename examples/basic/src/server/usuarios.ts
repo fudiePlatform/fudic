@@ -1,10 +1,23 @@
 /** What `routes/usuarios.fudapi` declares, implemented: every function reads `Users`. */
 
 import { inject } from '@fudic/di';
-import { crash, load, remove, save, search, searchJson, slowSearch } from 'fudic:routes/usuarios';
+import { deleteCookie, setCookie } from '@fudic/http';
+import { crash, load, login, logout, remove, save, search, searchJson, slowSearch } from 'fudic:routes/usuarios';
+import { SESSION_COOKIE } from '../services/sessions';
 import { Users } from '../services/users';
 
-load.handle(() => ({ users: inject(Users).all() }));
+load.handle((ctx) => {
+  const session = ctx.cookies.get(SESSION_COOKIE);
+  return { users: inject(Users).all(), ...(session !== undefined ? { session } : {}) };
+});
+
+login.handle((ctx) => {
+  setCookie(ctx, SESSION_COOKIE, ctx.args.user);
+});
+
+logout.handle((ctx) => {
+  deleteCookie(ctx, SESSION_COOKIE);
+});
 
 search.handle((ctx) => inject(Users).find(ctx.args.q));
 
