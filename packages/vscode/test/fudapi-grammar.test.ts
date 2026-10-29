@@ -160,4 +160,17 @@ describe('the .fudapi grammar — scopes', () => {
     }
     expect(scopeAt(t, 10, 'User')).toBe('entity.name.type.fudapi');
   });
+
+  it('SDD-70: paints `later` as the last word of a line, a comment after it allowed', async () => {
+    const t = await api('load ssr\n  title  str\n  users  Person[]  later\n  stats  Stats     later   # slow\n  byName  map str Person  later');
+    expect(scopeAt(t, 2, 'later')).toBe('storage.modifier.later.fudapi');
+    expect(scopeAt(t, 3, 'later')).toBe('storage.modifier.later.fudapi');
+    expect(scopeAt(t, 4, 'later')).toBe('storage.modifier.later.fudapi');
+    expect(scopeAt(t, 2, 'Person[]')).toBe('entity.name.type.fudapi');
+  });
+
+  it('SDD-70: `later` anywhere but last on its line is no modifier', async () => {
+    const t = await api('type later\n  later  str\n  x  str  later more\n  y  str  laterx');
+    expect(t.filter((x) => x.scopes.includes('storage.modifier.later.fudapi'))).toEqual([]);
+  });
 });

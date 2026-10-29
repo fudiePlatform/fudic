@@ -173,6 +173,27 @@ describe('completion (criterion 28)', () => {
     });
   });
 
+  describe('after the type of a field (SDD-70 §3.1)', () => {
+    it('`later` in a field of `load`, plain or optional', () => {
+      expect(labels('load\n  users Person[] |')).toEqual(['later']);
+      expect(labels('load ssr\n  title  str\n  users  Person[]?  |')).toEqual(['later']);
+    });
+
+    it('nothing once `later` is there', () => {
+      expect(labels('load\n  users Person[] later |')).toBeUndefined();
+    });
+
+    it('not in a type, a form, a function, a middleware, nor after a clause of `load`', () => {
+      expect(labels('type A\n  x str |')).toBeUndefined();
+      expect(labels('form f\n  a str |')).toBeUndefined();
+      expect(labels('get f\n  q str |')).toBeUndefined();
+      expect(labels('middleware m\n  adds\n    user str |')).toBeUndefined();
+      expect(labels('load\n  use auth |')).not.toContain('later');
+      expect(labels('load\n  skip auth |')).not.toContain('later');
+      expect(labels('load\n  fails gone |')).toBeUndefined();
+    });
+  });
+
   describe('in `require` and `when`: the field paths of the scope and the operators', () => {
     const FORM = 'form f\n  name  str\n  acceso  group\n    clave  str\n    repetir  str\n';
 
