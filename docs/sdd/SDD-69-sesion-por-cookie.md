@@ -1,6 +1,6 @@
 # SDD-69 — Sesión por cookie: fudic es un BFF y la sesión no la escribe el cliente
 
-> **Estado:** `Listo` — [tareas](./SDD-69-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-69-Task.md).
 > **Paquetes:** `@fudic/http` · `@fudic/transport` · `@fudic/vite` · `@fudic/testing` ·
 > `@fudic/diagnostics` · `examples/basic`
 > **Depende de:** 56 (`@fudic/http`: `ctx`, cadena, `csrf`, caché de datos del SW), 60 (el
