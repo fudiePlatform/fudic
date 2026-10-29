@@ -13,6 +13,7 @@
 import type { ElementNode, HtmlContent, RawExpressionNode } from '../html/index.js';
 import type {
   AwaitNode,
+  ControlConstruct,
   ControlNode,
   ForNode,
   ForeachNode,
@@ -33,7 +34,7 @@ export type LoopNode = ForeachNode | ForNode | WhileNode;
 
 const LOOP_TYPES: ReadonlySet<string> = new Set(['foreach', 'for', 'while']);
 
-export function isLoop(node: ControlNode): node is LoopNode {
+export function isLoop(node: ControlConstruct): node is LoopNode {
   return LOOP_TYPES.has(node.type);
 }
 
@@ -70,6 +71,46 @@ export interface Branch {
 export function awaitBranches(node: AwaitNode): readonly Branch[] {
   const body: Branch = { body: node.body, kind: 'await' };
   return node.catch === undefined ? [body] : [body, { body: node.catch.body, kind: 'catch' }];
+}
+
+/** `data.<field>` after `@await`: the field it waits for. */
+const AWAITED = /^data\.([A-Za-z_$][\w$]*)$/u;
+
+/**
+ * The `later` field an `@await` waits for, or `undefined` when what follows it is not the read
+ * of one (`FUD1320`). Both emit branches ask THIS function: a field one of them read and the
+ * other did not is a block painted on one side only.
+ */
+export function awaitedField(node: AwaitNode, source: string): string | undefined {
+  return AWAITED.exec(source.slice(node.expression.start, node.expression.end))?.[1];
+}
+
+/** One `@await` of a markup tree, by the field it waits for and where that field is written. */
+export interface AwaitedRead {
+  readonly field: string;
+  readonly at: Span;
+}
+
+/**
+ * Every `later` field a markup tree awaits, nested constructs and elements included, in source
+ * order. What follows `@await` never reaches Oxc (§8.2.5), so a reader of `data` that walks
+ * the template's JS does not see it: this is that read.
+ */
+export function awaitedReads(nodes: readonly HtmlContent[], source: string): readonly AwaitedRead[] {
+  const out: AwaitedRead[] = [];
+  const walk = (list: readonly HtmlContent[]): void => {
+    for (const node of list) {
+      if (node.type === 'await') {
+        const awaited = node as unknown as AwaitNode;
+        const field = awaitedField(awaited, source);
+        if (field !== undefined) out.push({ field, at: awaited.expression });
+      }
+      if (node.type === 'element') walk((node as ElementNode).children);
+      for (const branch of blocksOf(node)) walk(branch.body);
+    }
+  };
+  walk(nodes);
+  return out;
 }
 
 /**

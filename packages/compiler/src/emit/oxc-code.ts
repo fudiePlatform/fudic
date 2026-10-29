@@ -23,7 +23,13 @@ import { isEmptySpan, span } from '../types/index.js';
 import { FUD0290, FUD0684 } from '@fudic/diagnostics';
 import { JsBatch, type JsFragmentKind, type OxcNode } from '../oxc/index.js';
 import { unwrapParens } from '../binding/index.js';
-import { collectAttributeJs, collectTemplateJs, type JsFragmentVisitor } from './constructs.js';
+import {
+  awaitedReads,
+  collectAttributeJs,
+  collectTemplateJs,
+  type AwaitedRead,
+  type JsFragmentVisitor,
+} from './constructs.js';
 import type { Anchor } from './writer.js';
 import { formSendDiagnostics } from './controls.js';
 import { deferredSpans, serverCut } from './server-cut.js';
@@ -732,9 +738,12 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     clientRuns: clientStatements.some((stmt) => stmt.type === 'ExpressionStatement'),
     // The template's reads too: a reactive route repaints it in the browser, and a
     // `@foreach (const p of data.users)` there iterates what `fud-data` brought — or nothing.
-    dataAccess: readDataAccess(
-      [...clientStatements, ...[...fragments.values()].flatMap((id) => result.value.ast(id))],
-      map,
+    dataAccess: withAwaited(
+      readDataAccess(
+        [...clientStatements, ...[...fragments.values()].flatMap((id) => result.value.ast(id))],
+        map,
+      ),
+      awaitedReads(templateRootsOf(doc), source),
     ),
     emitCalls,
     di,
@@ -853,6 +862,23 @@ function readDataAccess(statements: readonly OxcNode[], map: MapOffset): DataAcc
   walk(statements);
   if (at === undefined) return { kind: 'none' };
   return all ? { kind: 'all', at } : { kind: 'roots', roots: [...roots], at };
+}
+
+/**
+ * What the template reads out of `data`, its `@await`s included (SDD-70 §4.4).
+ *
+ * In the browser an `@await` picks its block by the settled field, so it reads `data` as surely
+ * as an interpolation does: a route whose client half reads nothing else still needs its fields
+ * to travel, or its chunk could not tell which block the server painted. The field itself is
+ * never in `fud-data` — the block leaves `later` fields out — so what this adds is the read,
+ * and with it the `fields` of every part.
+ */
+function withAwaited(access: DataAccess, awaited: readonly AwaitedRead[]): DataAccess {
+  const first = awaited[0];
+  if (first === undefined || access.kind === 'all') return access;
+  const fields = awaited.map((a) => a.field);
+  if (access.kind === 'none') return { kind: 'roots', roots: [...new Set(fields)], at: first.at };
+  return { ...access, roots: [...new Set([...access.roots, ...fields])] };
 }
 
 /**

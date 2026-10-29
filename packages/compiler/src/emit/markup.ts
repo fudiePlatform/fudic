@@ -41,7 +41,7 @@ import {
 import { emitItems, type TextRun } from './runs.js';
 import { markerSite } from './marker.js';
 import { adoptListOf, type ProjectAdopt } from './project-styles.js';
-import { blocksOf, loopHead, rawChild, type LoopNode } from './constructs.js';
+import { awaitedField, blocksOf, loopHead, rawChild, type LoopNode } from './constructs.js';
 import { EMPTY_CONTROLS, type ControlPlan, type MarkerSite } from './controls.js';
 
 /** `render` + PascalCase of a `prefix-name` tag: `app-button` → `renderAppButton`. */
@@ -315,8 +315,6 @@ export function inParts(entry: StructuredDocument): boolean {
 }
 const HOLES: ReadonlySet<string> = new Set(['render-body', 'render-section']);
 
-/** `data.<field>` after `@await`: the field it waits for. */
-const AWAITED = /^data\.([A-Za-z_$][\w$]*)$/u;
 
 export class MarkupEmitter {
   readonly #source: string;
@@ -811,7 +809,7 @@ export class MarkupEmitter {
    * Where there are no parts (a component, a layout) it paints nothing: it is `FUD1322`.
    */
   #await(node: AwaitNode, parent: string, body: RunContext): void {
-    const field = AWAITED.exec(this.#slice(node.expression))?.[1];
+    const field = awaitedField(node, this.#source);
     if (this.#parts === undefined || field === undefined) return;
     const settled = this.#fresh();
     const outer = this.#fresh();

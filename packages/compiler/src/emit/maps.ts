@@ -33,6 +33,7 @@ import {
 } from './level.js';
 import { entryCellSlots } from './state.js';
 import { dataShapeOf, laterFieldsOf } from './api-links.js';
+import { awaitedReads } from './constructs.js';
 
 /** `Record<parent tag, direct hydratable child tags>` — an empty record for a flat page. */
 export type TagMap = Record<string, readonly string[]>;
@@ -337,7 +338,10 @@ export function routeBlocksOf(
   const entry = entryHalf(graph);
   if (entry === undefined || routeName === undefined || !isReactiveRoute(graph)) return undefined;
   const cells = entryCellSlots(graph, entry);
-  const data = dataExpression(entry.code, loads(graph), out, laterFieldsOf(graph));
+  // What an `@await` waits for is a promise here whatever the link says — one the host could not
+  // read included — so it is left out of `fud-data` with the `later` fields (SDD-70 §3.5).
+  const awaited = awaitedReads(entry.roots, graph.entrySource).map((a) => a.field);
+  const data = dataExpression(entry.code, loads(graph), out, [...laterFieldsOf(graph), ...awaited]);
   // With the shape of `load`, the block carries no key at any depth, and the chunk reads it back
   // by the same shape (BUG-60 §3.2). Without one — a link the host could not read — it keeps them.
   const shape = dataShapeOf(graph);

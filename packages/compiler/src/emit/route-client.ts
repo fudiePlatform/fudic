@@ -42,7 +42,7 @@ import {
   writeClosure,
 } from './client.js';
 import { composePage, holeContent, holeSlot, type ComposeItem } from './compose.js';
-import { LAYOUT_ANCHOR } from './markup.js';
+import { inParts, LAYOUT_ANCHOR } from './markup.js';
 import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
 import { projectAdoptOf } from './project-styles.js';
 import type { DocumentGraph } from './resolve.js';
@@ -179,6 +179,8 @@ function buildRouteClientModule(
   // The shape the page wrote `fud-data` with, when it wrote one: a chunk that never names `data`
   // was handed no block, and has nothing to read back (BUG-60 §3.2).
   const shape = code.dataAccess.kind === 'none' ? undefined : dataShapeOf(graph);
+  // A route with `@await` is also handed the `later` fields its parts carried (SDD-70 §4.4).
+  const awaits = inParts(graph.entry);
 
   const bodies = newBodies();
   const emitDiagnostics: Diagnostic[] = [];
@@ -290,7 +292,10 @@ function buildRouteClientModule(
   // A default export and NOT a custom element: a route is not defined, not instantiated and
   // never fabricated hot. What the runtime holds is this function and the three entry points
   // it returns.
-  w.line('export default ($props) => {');
+  //
+  // A route with `@await` takes a second argument: the `later` fields, settled, as the blocks of
+  // its parts carried them. Every other route is called the same way and never looks.
+  w.line(`export default (${awaits ? '$props, $fields = {}' : '$props'}) => {`);
   w.indent();
   openOwned(w, owns);
   if (nodes.length > 0) w.line(`let ${nodes.join(', ')};`);
@@ -303,7 +308,7 @@ function buildRouteClientModule(
   // node it holds, and what both ask of a host — its document, and a node that bubbles to
   // it — the `<body>` answers the same.
   if (code.emitCalls.length > 0 || hookup.hostUsed) w.line('const $host = $root;');
-  writeBody(w, code, cells, refreshes, shape);
+  writeBody(w, code, cells, refreshes, shape, awaits);
   w.line('');
   w.appendWriter(bodies.decls);
   writeClosure(w, '$s', bodies.hook);
@@ -372,12 +377,16 @@ function writeBody(
   cells: readonly CellSlot[],
   refreshes: boolean,
   shape: DataShape | undefined,
+  awaits: boolean,
 ): void {
   // `data`, under the name the author writes it by — the same one the render module's
   // `page(data, io)` binds, so a `@client` handler reads it by the name it was written with.
   // `let` when a call can refresh it: a handler reads the same variable, so it sees the new one.
   // Read back by its shape when the page wrote it by one (BUG-60 §3.2).
-  const intake = shape === undefined ? '$data' : `$unpackData(${JSON.stringify(shape)}, $data)`;
+  const read = shape === undefined ? '$data' : `$unpackData(${JSON.stringify(shape)}, $data)`;
+  // With `@await`, the `later` fields join it as they settled — `{ ok }` or `{ error }` — which is
+  // what the server's `data` holds them as once awaited, and what each `@await` picks its block by.
+  const intake = awaits ? `{ ...${read}, ...$fields }` : read;
   w.line(`${refreshes ? 'let' : 'const'} data = ${intake};`);
   for (const part of authorCode(code.neutral, code.client.body, (s) => withCells(s, code.signals, cells, ROUTE_BASE))) {
     w.mappedLine(part);

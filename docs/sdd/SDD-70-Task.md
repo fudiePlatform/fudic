@@ -24,6 +24,41 @@ código, no el test.
 
 ---
 
+## Traspaso 2 (2026-10-29, fin de la jornada a mitad de la fase 5)
+
+**Dónde se queda.** Fases 1–4 cerradas. El último commit es un «wip(sdd-70)» con la tarea 26 a
+medias. Lo que sigue, en orden:
+
+1. **Tarea 26, terminar.** El `@await` del cliente lo escribía un agente, parado a medias. Ya
+   hecho: el constructo entra en el recorrido de bloques del cliente (`block.ts`,
+   `markup-client.ts`, `route-client.ts`, `constructs.ts`, `marker.ts`), y la fábrica de la ruta
+   recibe `maps.fields` como segundo argumento (`core/hydrate/chunks.ts`, `install.ts`). Tests
+   nuevos en `compiler/test/emit/hydrate/await.test.ts`. **Un test en rojo:** «releases what it
+   hooked up inside the body». También quedaban dos expectativas de `await-parts.test.ts` por
+   ajustar: ahora la mitad de cliente lee el campo dentro de su `@await`, así que `fields`
+   viaja. Revisar el diff entero del wip antes de seguir: lo escribió el agente y nadie lo ha
+   repasado. Los goldens siguen en verde.
+2. **Tarea 27**, los tests de la fase 5: criterios 18–20, con un DOM que recibe nodos poco a
+   poco. El lector (`core/src/hydrate/parts.ts`) y lo nuevo de `maps.ts` e `install.ts` están
+   sin cubrir: `@fudic/core` hoy no llega al 100 %. Marcar después las tareas 22–27.
+3. **Fase 6.** La tarea 28 (streaming en dev y preview) está hecha y con commit
+   (`renderRouteStream`, `openStream` en `serve.ts`), sin marcar hasta sus tests. **La 29 tiene
+   un hueco de diseño por decidir con Pedro:** §3.7 pide las tramas con el codec binario de
+   SDD-67, que necesita el tipo de cada campo, y la pieza `load` no lleva descriptor de tipos
+   (decisión 8.2.1). Dos caminos: el `.fudapi` emite los tipos de `load` y `layout` en su spec
+   (lo que pide la spec), o tramas en JSON y el binario para otra spec. Luego la 30 (el SW) y
+   la 31.
+4. **Fase 7.** Las guías de `@await` y `later` ya están en los README. Falta el ejemplo
+   `espera.fud`, la prueba de Pedro y el cierre.
+
+**Hecho en esta sesión, además:**
+- `RenderContext.onError`; en dev, el error de un `@await` sin `@catch` va al overlay.
+- El coordinador ya no lee `fud-ioc` ni `fud-di` del DOM: `installHydration` recibe `inject` y
+  levanta el árbol desde memoria. Una ruta con `@await` pide la pieza `core/parts`.
+- `readPageMaps` borra los bloques del final en todas las páginas, y los tests de
+  `@fudic/testing` lo esperan así.
+- Ocho commits sin subir a origin cuando se escribe esto: hay que hacer push.
+
 ## Traspaso (2026-10-29, cambio de sesión a mitad de la fase 4)
 
 **Cómo se trabajó.** Una sesión implementa y lanza por fase un agente en segundo plano (worktree
@@ -38,7 +73,7 @@ origin**, y el agente empuja también la suya.
   marca de fin caía dentro del último elemento construido, y `data` llevaba los campos `later`
   como `{}` cuando la ruta no tenía forma de datos.
 - Fase 5: lector de partes, mapas en memoria, celdas por parte y ruta al final hechos (tareas
-  22–25). La 26, el `@await` del cliente, la hace un agente en el compilador.
+  22–25). La 26 queda a medias (ver «Traspaso 2»).
 
 **Fase 4, hecho:**
 - `@fudic/ssr`: `PageParts` (`page-parts.ts`) escribe cada parte con su bloque delante y su

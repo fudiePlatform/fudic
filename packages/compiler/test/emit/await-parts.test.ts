@@ -510,12 +510,14 @@ describe('the opening of a page in parts (§3.5)', () => {
   const AWAIT = '@await data.users { <p>ok</p> }';
 
   const openingOf = (module: string): string => /\$parts = io\.parts\((.*)\);/u.exec(module)?.[1] ?? '';
+  // The client half reads `data` through its `@await` alone (SDD-70 §4.4): the field travels in
+  // the `fields` of its part, and `fud-data` carries nothing of it.
 
   it('a route: the static maps, its name and the container, all in part 0', () => {
     const route = ['<link rel="layout" href="./l.fud">', LINKS, CODE, '<signal-display .count=@count></signal-display>', TAGS, AWAIT].join('\n');
     const graph = resolveDocument('/r.fud', memoryIo({ '/r.fud': route, ...FILES })).value;
     const opening = openingOf(emitRouteModule(graph, { routeName: 'ruta' }));
-    expect(opening).toBe('$dom, $parent, { first: { tree: FUD_TREE, bus: FUD_BUS, eager: FUD_EAGER, route: "ruta" }, fields: false, ioc: $root }');
+    expect(opening).toBe('$dom, $parent, { first: { tree: FUD_TREE, bus: FUD_BUS, eager: FUD_EAGER, route: "ruta", data: {  } }, fields: true, ioc: $root }');
   });
 
   it('a standalone page: the same, from its own body', () => {
@@ -531,7 +533,7 @@ describe('the opening of a page in parts (§3.5)', () => {
     ].join('\n');
     const graph = resolveDocument('/p.fud', memoryIo({ '/p.fud': page, ...FILES })).value;
     const opening = openingOf(emitPageModule(graph, { routeName: 'pagina' }));
-    expect(opening).toBe('$dom, $body, { first: { tree: FUD_TREE, bus: FUD_BUS, eager: FUD_EAGER, route: "pagina" }, fields: false, ioc: $root }');
+    expect(opening).toBe('$dom, $body, { first: { tree: FUD_TREE, bus: FUD_BUS, eager: FUD_EAGER, route: "pagina", data: {  } }, fields: true, ioc: $root }');
   });
 
   it('an `@await` in the light DOM of a component: the host is in the tree before the cut', async () => {

@@ -30,9 +30,9 @@
  * element is left). Runs are coalesced into one node each (`runs.ts`), which is exactly what
  * makes that anchor land: one emitted run, one DOM node.
  *
- * **Control flow is not written here.** The five constructs are blocks with a life of their
- * own (SDD-30) and go to the `BlockSink`: this module hands one the level it sits in, what
- * follows it and its anchor, and writes nothing about it itself.
+ * **Control flow is not written here.** The five constructs, and `@await`, are blocks with a
+ * life of their own (SDD-30) and go to the `BlockSink`: this module hands one the level it sits
+ * in, what follows it and its anchor, and writes nothing about it itself.
  */
 
 import { dataScriptType } from '../html/index.js';
@@ -42,7 +42,7 @@ import type {
   AttributeValuePart,
   InlineCodeNode,
 } from '../html/index.js';
-import type { ControlNode } from '../control/index.js';
+import type { ControlConstruct } from '../control/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { Span } from '../types/index.js';
 import { classifyAttribute, crossing, CONTROL_PROP } from '../binding/index.js';
@@ -60,8 +60,8 @@ import {
   type PropTarget,
   type ValueSink,
 } from './attrs.js';
-import { branchesOf, rawChild, refTarget } from './constructs.js';
-import { isControlNode, markerSite } from './marker.js';
+import { blocksOf, rawChild, refTarget } from './constructs.js';
+import { isConstructNode, markerSite } from './marker.js';
 import { adoptListOf, type ProjectAdopt } from './project-styles.js';
 import { bodyContext, childrenContext, type RunContext } from './display.js';
 import { emitItems, type EmitItem, type TextRun } from './runs.js';
@@ -74,8 +74,8 @@ import {
 } from './events.js';
 import { FUD0291 } from '@fudic/diagnostics';
 
-const isControl = isControlNode;
-const asControl = (node: HtmlContent): ControlNode => node as unknown as ControlNode;
+const isControl = isConstructNode;
+const asControl = (node: HtmlContent): ControlConstruct => node as unknown as ControlConstruct;
 
 /** Where one DOM level is being written: its parent on each path, and its element cursor. */
 export interface Level {
@@ -148,7 +148,7 @@ export interface BlockSite {
 /** What the walk hands a control construct to. Implemented by `block.ts`. */
 export interface BlockSink {
   /** Emit the construct, and give back the name of its live-instance registry (§3.6). */
-  construct(node: ControlNode, at: BlockSite): string;
+  construct(node: ControlConstruct, at: BlockSite): string;
 }
 
 /**
@@ -186,8 +186,7 @@ export function nodeIds(): NodeIds {
 function levelHas(children: readonly HtmlContent[], pred: (node: HtmlContent) => boolean): boolean {
   return children.some((child) => {
     if (pred(child)) return true;
-    if (!isControl(child)) return false;
-    return branchesOf(asControl(child)).some((branch) => levelHas(branch.body, pred));
+    return blocksOf(child).some((branch) => levelHas(branch.body, pred));
   });
 }
 
@@ -1558,9 +1557,9 @@ export class ClientMarkupEmitter {
     this.#depth -= 1;
   }
 
-  /** One control construct: a block with a life of its own, handed over whole (SDD-30). */
+  /** One construct, `@await` included: a block with a life of its own, handed over whole (SDD-30). */
   #construct(
-    node: ControlNode,
+    node: ControlConstruct,
     level: Level,
     tail: Tail,
     anchor: string | null,

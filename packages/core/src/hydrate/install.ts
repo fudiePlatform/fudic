@@ -303,7 +303,8 @@ export function installHydration(options: HydrationOptions): Hydration {
     // stays as the server painted it — which is a page that works — and the gesture is
     // replayed anyway, because cancelling it was this runtime's doing.
     if (factory !== null) {
-      factory([landed.dom, host, maps.data, ...cells.resolve(id)]).h();
+      // And the `later` fields, settled: what each `@await` of the route paints with.
+      factory([landed.dom, host, maps.data, ...cells.resolve(id)], maps.fields).h();
       report(id, name, elapsed(), 'downloaded');
     }
     replay();

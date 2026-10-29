@@ -39,8 +39,14 @@ export const importChunk: ImportModule = (url) => import(/* @vite-ignore */ url)
  * A route is not defined, not instantiated and never fabricated hot, so there is nothing for
  * `customElements` to hold. What the runtime holds is the function and the three entry points
  * it hands back — and `c` is not among them, because a route always comes from the server.
+ *
+ * `fields` are the `later` fields the page's parts carried, settled (SDD-70 §4.4). Only the
+ * chunk of a route with `@await` reads them.
  */
-export type RouteFactory = (props: readonly unknown[]) => RouteController;
+export type RouteFactory = (
+  props: readonly unknown[],
+  fields?: Readonly<Record<string, unknown>>,
+) => RouteController;
 
 export interface RouteController {
   /** Adopt the composed page and hook up. The counterpart of a component's `h`. */
