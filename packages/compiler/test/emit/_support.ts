@@ -7,7 +7,7 @@ import { readFileSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
-import { SsrDom, serializeChunks, escapeText, escapeAttr, jsonBlock } from '@fudic/ssr';
+import { SsrDom, serializeChunks, escapeText, escapeAttr, jsonBlock, packData } from '@fudic/ssr';
 import {
   emitComponentModule,
   emitPageModule,
@@ -161,6 +161,7 @@ export function minimalSsr(): {
   escapeText: (s: string) => string;
   escapeAttr: (s: string) => string;
   jsonBlock: typeof jsonBlock;
+  packData: typeof packData;
 } {
   const createDom = () => {
     // The instance collector, in the same shape `SsrDom` implements it: one counter for the
@@ -220,6 +221,7 @@ export function minimalSsr(): {
     // rule it has to agree with is the serializer's (SDD-40 §4.4), not this fake's.
     escapeAttr,
     jsonBlock,
+    packData,
   };
 }
 
@@ -280,6 +282,7 @@ export function ssrIo(): { io: unknown; dom: () => SsrDom } {
       escapeText,
       escapeAttr,
       jsonBlock,
+      packData,
     },
     dom: () => built!,
   };

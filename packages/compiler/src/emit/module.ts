@@ -47,7 +47,7 @@ import { propDefaults, restGroups } from './rest.js';
 import { hasDependencyInjection } from './di.js';
 import { cellSlots, childTargets, reactiveScope } from './state.js';
 import { bridgeIds, formAssociatedTags, hydratableTags, shadowOptions } from './level.js';
-import { needsRuntime, routeBlocksOf, writeMapConstants, writeHydrationBlocks } from './maps.js';
+import { needsRuntime, packIo, routeBlocksOf, writeMapConstants, writeHydrationBlocks } from './maps.js';
 import { planControls } from './controls.js';
 import { apiImports } from './api-links.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
@@ -658,7 +658,7 @@ function buildPageModule(
   w.line('export function* page(data, io, $ioc) {');
   w.indent();
   w.line(
-    `const { createDom, serialize, escapeText, jsonBlock${hasDi ? ', iocRoot, publishedSeed' : ''} } = io;`,
+    `const { createDom, serialize, escapeText, jsonBlock${hasDi ? ', iocRoot, publishedSeed' : ''}${packIo(blocks)} } = io;`,
   );
   if (hasDi) w.line('const $root = $ioc ?? iocRoot();');
   writeNonceBinding(w);

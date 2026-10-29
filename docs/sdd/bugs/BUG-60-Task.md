@@ -3,7 +3,7 @@
 > **BUG:** [BUG-60 — `fud-data` repite los nombres de los campos en cada fila](./BUG-60-fud-data-sin-claves.md)
 > **Paquetes:** `@fudic/ssr` · `@fudic/core` · `@fudic/api` · `@fudic/vite` · `@fudic/compiler`
 > **Rama:** `sdd-68-llamadas-sin-fontaneria` (a petición de Pedro: se cierra el producto aquí)
-> **Progreso:** 3 / 6 — `Borrador`.
+> **Progreso:** 5 / 6 — `Borrador`.
 
 ---
 
@@ -24,11 +24,11 @@
 
 | ✓ | # | tarea | package | fichero |
 |---|---|---|---|---|
-| [ ] | 4 | **El bloque empaquetado** y el chunk que lo desempaqueta; `packData` en el `io` del wrapper. Criterios 1, 4, 5 y 6 | `compiler` · `vite` | `src/emit/maps.ts` · `src/emit/route-client.ts` · `src/wrapper.ts` |
+| [x] | 4 | **El bloque empaquetado** y el chunk que lo desempaqueta; `packData` en el `io` del wrapper. Criterios 1, 4, 5 y 6 | `compiler` · `vite` | `src/emit/maps.ts` · `src/emit/route-client.ts` · `src/emit/api-links.ts` · `test/emit/hydrate/packed-data.test.ts` · `src/wrapper.ts` |
 
 ## Cierre
 
 | ✓ | # | tarea |
 |---|---|---|
-| [ ] | 5 | `pnpm typecheck`, `pnpm test` y `pnpm build` en verde |
+| [x] | 5 | `pnpm typecheck`, `pnpm test` y `pnpm build` en verde |
 | [ ] | 6 | Prueba de Pedro en el navegador sobre `/usuarios`; BUG-60 a `Hecho` con su fila y su entrada en `bugs/INDEX.md` |

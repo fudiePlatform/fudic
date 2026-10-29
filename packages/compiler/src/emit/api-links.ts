@@ -11,7 +11,7 @@
  */
 
 import { FUD1113 } from '@fudic/diagnostics';
-import type { Diagnostic } from '../types/index.js';
+import type { DataShape, Diagnostic } from '../types/index.js';
 import { formSendDiagnostics } from './controls.js';
 import { codeOfDocument, templateRootsOf } from './oxc-code.js';
 import type { ComponentGraph, DocumentGraph } from './resolve.js';
@@ -73,6 +73,16 @@ export function loadImport(graph: ComponentGraph): string | undefined {
   const apis = 'serverApis' in graph ? (graph as DocumentGraph).serverApis : [];
   const own = apis.find((a) => a.api?.load === true)?.api;
   return own === undefined ? undefined : `import { load as $load } from ${JSON.stringify(`fudic:${own.id}`)};`;
+}
+
+/**
+ * The shape of the route's `data`, as the host read it off its `load` (BUG-60 §3.1): what the
+ * page writes `fud-data` with and the chunk reads it back with. Both ends ask this one function,
+ * so a link the host could not read — no shape — leaves the block with its keys on both.
+ */
+export function dataShapeOf(graph: ComponentGraph): DataShape | undefined {
+  const apis = 'serverApis' in graph ? (graph as DocumentGraph).serverApis : [];
+  return apis.find((a) => a.api?.load === true)?.api?.data;
 }
 
 /**

@@ -47,8 +47,8 @@ import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
 import { projectAdoptOf } from './project-styles.js';
 import type { DocumentGraph } from './resolve.js';
 import type { RouteDocument, PageDocument } from '../document/index.js';
-import type { Diagnostic } from '../types/index.js';
-import { apiForms, apiImports, loadImport } from './api-links.js';
+import type { DataShape, Diagnostic } from '../types/index.js';
+import { apiForms, apiImports, dataShapeOf, loadImport } from './api-links.js';
 
 /**
  * The three leading slots of a route's array: `$dom`, `$root` and `$data`. One more than a
@@ -176,6 +176,9 @@ function buildRouteClientModule(
   // A call can refresh this route's `data` (SDD-68 §4.8): it is a name that moves, and the
   // chunk listens for the notice.
   const refreshes = refreshesData(graph);
+  // The shape the page wrote `fud-data` with, when it wrote one: a chunk that never names `data`
+  // was handed no block, and has nothing to read back (BUG-60 §3.2).
+  const shape = code.dataAccess.kind === 'none' ? undefined : dataShapeOf(graph);
 
   const bodies = newBodies();
   const emitDiagnostics: Diagnostic[] = [];
@@ -271,6 +274,7 @@ function buildRouteClientModule(
     ...(usage.fabricates ? ['live as $live'] : []),
     ...(owns ? ['owned as $owned'] : []),
     ...(refreshes ? ['onStaleData as $stale'] : []),
+    ...(shape !== undefined ? ['unpackData as $unpackData'] : []),
   ];
   if (channels.length > 0) w.line(`import { ${channels.join(', ')} } from '@fudic/core';`);
   if (hookup.binds.size > 0) {
@@ -299,7 +303,7 @@ function buildRouteClientModule(
   // node it holds, and what both ask of a host — its document, and a node that bubbles to
   // it — the `<body>` answers the same.
   if (code.emitCalls.length > 0 || hookup.hostUsed) w.line('const $host = $root;');
-  writeBody(w, code, cells, refreshes);
+  writeBody(w, code, cells, refreshes, shape);
   w.line('');
   w.appendWriter(bodies.decls);
   writeClosure(w, '$s', bodies.hook);
@@ -362,11 +366,19 @@ function writeImports(w: CodeWriter, code: ExtractedCode): void {
  * `mappedLine` for both, because this is where a breakpoint set in the `.fud` has to land —
  * `withCells` splices within a line and never adds one, so line k still means line k.
  */
-function writeBody(w: CodeWriter, code: ExtractedCode, cells: readonly CellSlot[], refreshes: boolean): void {
+function writeBody(
+  w: CodeWriter,
+  code: ExtractedCode,
+  cells: readonly CellSlot[],
+  refreshes: boolean,
+  shape: DataShape | undefined,
+): void {
   // `data`, under the name the author writes it by — the same one the render module's
   // `page(data, io)` binds, so a `@client` handler reads it by the name it was written with.
   // `let` when a call can refresh it: a handler reads the same variable, so it sees the new one.
-  w.line(`${refreshes ? 'let' : 'const'} data = $data;`);
+  // Read back by its shape when the page wrote it by one (BUG-60 §3.2).
+  const intake = shape === undefined ? '$data' : `$unpackData(${JSON.stringify(shape)}, $data)`;
+  w.line(`${refreshes ? 'let' : 'const'} data = ${intake};`);
   for (const part of authorCode(code.neutral, code.client.body, (s) => withCells(s, code.signals, cells, ROUTE_BASE))) {
     w.mappedLine(part);
   }

@@ -29,7 +29,7 @@ import { AssetLinker } from './assets.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import { bridgeIds, formAssociatedTags, hydratableTags, shadowOptions } from './level.js';
 import { hasDependencyInjection } from './di.js';
-import { needsRuntime, routeBlocksOf, writeMapConstants, writeHydrationBlocks } from './maps.js';
+import { needsRuntime, packIo, routeBlocksOf, writeMapConstants, writeHydrationBlocks } from './maps.js';
 import type { DocumentGraph, ResolvedLayout } from './resolve.js';
 import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
 import { projectAdoptOf, renderProjectStyles } from './project-styles.js';
@@ -444,7 +444,7 @@ function buildRouteModule(
   // two shapes and mixing them makes the second an accident of the first (§3.3).
   w.line(`export function* page(data, io, $ioc, ${PROPS}) {`);
   w.indent();
-  w.line(`const { escapeText, jsonBlock${hasDi ? ', iocRoot, publishedSeed' : ''} } = io;`);
+  w.line(`const { escapeText, jsonBlock${hasDi ? ', iocRoot, publishedSeed' : ''}${packIo(blocks)} } = io;`);
   if (hasDi) w.line('const $root = $ioc ?? iocRoot();');
   // The nonce belongs to the RESPONSE, so it is read here, where `io` is, and closed over
   // by the head slot the layout calls (SDD-20 §4.9).
