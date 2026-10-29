@@ -40,7 +40,7 @@ describe('emitRenderChunk — the edge variant', () => {
       'import { SsrDom, serializeChunks, htmlToByteStream, escapeText, escapeAttr, guardUrl, jsonBlock, packData, iocRoot } from "@fudic/ssr";',
     );
     // `load` receives a `ServerContext` always, chain or not (SDD-56 §4.16).
-    expect(code).toContain('import { pageContext, withRequest } from "@fudic/http/server";');
+    expect(code).toContain('import { markPrivate, pageContext, withRequest } from "@fudic/http/server";');
     expect(code).toContain('import { ready as $ready } from "fudic:$root/server";');
     expect(code).toContain('import { load as $load, paths as $paths } from "fudic:routes/customer/[id]";');
     expect(code).toContain('import { implementation as $impl, runLoad as $runLoad } from "@fudic/http/contract/server";');
@@ -55,6 +55,13 @@ describe('emitRenderChunk — the edge variant', () => {
     expect(code).toContain('const data = await $ready.then(() => $runLoad($load, $ctx, false));');
     // One response, two halves (SDD-40 §3.3) — `layout` absent when the route resolves none.
     expect(code).toContain('return { data };');
+    // What read the session goes out private, also when it threw (SDD-69 §3.2).
+    expect(code).toContain('}).finally(() => markPrivate($ctx.response));');
+  });
+
+  it('marks the response once load and layout are done, in render too (SDD-69 §3.2)', () => {
+    expect(code).toContain('const [data, layout] = await (async () => {');
+    expect(code).toContain('})().finally(() => markPrivate($ctx.response));');
   });
 
   it('prefers data already resolved by the caller', () => {

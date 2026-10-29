@@ -7,6 +7,7 @@
  * It notes whether the session was read (SDD-69 §3.2): any read of `cookies`, or `get`/`has`
  * of the `cookie` or `authorization` header. The note lives on `response`, the one object a
  * `ctx` hands on intact through a chain that spreads it, and whoever answers asks it there.
+ * The route wrapper calls `markPrivate` on it when `load` and `layout` are done.
  */
 
 import type { Method, ServerContext } from '../types.js';
@@ -26,8 +27,11 @@ export interface ContextInput {
   readonly response?: PendingResponse;
 }
 
-/** The responses whose context read the session. */
-const readers = new WeakSet<PendingResponse>();
+/**
+ * The note, as a property under a registered symbol: whoever asks may hold another copy of this
+ * package — a built route chunk carries its own, and the plugin's prerender reads it by shape.
+ */
+const READ = Symbol.for('fudic.sessionRead');
 
 /** The headers that carry the session. */
 const SESSION_HEADERS = new Set(['cookie', 'authorization']);
@@ -35,7 +39,7 @@ const SESSION_HEADERS = new Set(['cookie', 'authorization']);
 export function serverContext(input: ContextInput): ServerContext {
   const headers = input.request?.headers ?? new Headers();
   const response = input.response ?? { status: 200, headers: new Headers() };
-  const read = (): void => void readers.add(response);
+  const read = (): void => void Object.defineProperty(response, READ, { value: true, configurable: true });
   return {
     side: 'server',
     method: input.method,
@@ -78,7 +82,7 @@ function watchedHeaders(headers: Headers, read: () => void): Headers {
 
 /** Whether the context that wrote `response` read the session. */
 export function readsSession(response: PendingResponse): boolean {
-  return readers.has(response);
+  return (response as { readonly [READ]?: boolean })[READ] === true;
 }
 
 /**

@@ -17,7 +17,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { NONCE_TOKEN, type RenderContext } from '@fudic/transport';
-import { edgeContext } from './serve.js';
+import { edgeContext, pendingResponse, readsSession } from './serve.js';
 import { classifyError } from './page-errors.js';
 import { serializeMap } from './nested.js';
 
@@ -113,8 +113,11 @@ export async function renderChunkToHtml(
  * URL the build was asked to write is a build that fails, not a page that pretends.
  */
 async function renderUrl(mod: RenderModule, pattern: string, url: string): Promise<string> {
+  // Nobody to answer: what `load` writes is dropped, and only asked whether it read the session.
+  const response = pendingResponse();
+  let html: string;
   try {
-    return await drain(mod.render(prerenderContext(pattern, url)));
+    html = await drain(mod.render({ ...prerenderContext(pattern, url), response }));
   } catch (err) {
     const failure = classifyError(err, true);
     throw new Error(
@@ -125,6 +128,18 @@ async function renderUrl(mod: RenderModule, pattern: string, url: string): Promi
           : `${url} answered ${failure.problem.status} ${failure.problem.title}`,
       { cause: err },
     );
+  }
+  if (readsSession(response)) throw new SessionRead(url);
+  return html;
+}
+
+/**
+ * A prerender whose `load` or `layout` read the session (SDD-69 §4.4): its HTML would be the
+ * page of «nobody is signed in», served to everyone. The plugin reports it as `FUD1300`.
+ */
+export class SessionRead extends Error {
+  constructor(readonly url: string) {
+    super(`${url} reads the session`);
   }
 }
 

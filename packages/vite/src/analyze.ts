@@ -9,6 +9,7 @@
  */
 
 import type { LoadDecl } from '@fudic/api';
+import type { Span } from '@fudic/diagnostics';
 import { linkHref, type Diagnostic, type StructuredDocument } from '@fudic/compiler';
 import { parseFudReporting } from './parse.js';
 import { NO_STRATEGY, strategyOfLoad, type StrategyAnalysis } from './strategy.js';
@@ -20,6 +21,8 @@ import { NO_STRATEGY, strategyOfLoad, type StrategyAnalysis } from './strategy.j
 export interface PageApi {
   /** `<id>` of the file: its module is `fudic:<id>`. */
   readonly id: string;
+  /** Its absolute path, where a diagnostic of its `load` points (SDD-69 §3.4). */
+  readonly file: string;
   readonly load?: LoadDecl;
   readonly paths: boolean;
   readonly layout: boolean;
@@ -52,6 +55,8 @@ export interface PageAnalysis {
    * (SDD-60 §3.4): the wrapper takes them from the registry, by it. Absent when none does.
    */
   readonly api?: string;
+  /** Where that `.fudapi` is, and its `load` keyword when it has one: where `FUD1300` points. */
+  readonly apiAt?: { readonly file: string; readonly span?: Span };
   /** The `href` of `<link rel="layout">`, when the file declares one (SDD-21). */
   readonly layoutHref?: string;
   /**
@@ -86,7 +91,9 @@ export function analyzePage(source: string, apiOf?: PageApiOf): PageAnalysis {
     hasPaths: own?.paths === true,
     hasLayout: own?.layout === true,
     strategy: own === undefined ? NO_STRATEGY : strategyOfLoad(own.load),
-    ...(own !== undefined ? { api: own.id } : {}),
+    ...(own !== undefined
+      ? { api: own.id, apiAt: { file: own.file, ...(own.load !== undefined ? { span: own.load.keyword } : {}) } }
+      : {}),
     ...(layoutHref ? { layoutHref } : {}),
     diagnostics: parsed.diagnostics,
   };

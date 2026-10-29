@@ -38,7 +38,7 @@ import {
 import { API_EXTENSION } from '@fudic/api';
 import { API_SCHEME, ApiProject } from './api-modules.js';
 import { BROWSER_ROOT_ID, ROOT_FILE_PREFIX, SERVER_ROOT_ID, emitRoot } from './api-root.js';
-import { emitFunctionsModule, isFnPath, noFunction, sendResponse, toRequest, type ContractsHandler } from './functions.js';
+import { emitFunctionsModule, isFnPath, noFunction, sendResponse, toRequest, writeHeaders, type ContractsHandler } from './functions.js';
 import { loadWithSourceMap } from './inputmaps.js';
 import {
   CLIENT_QUERY,
@@ -148,6 +148,7 @@ import {
   materializeBundle,
   renderChunkToHtml,
   prerenderEnumerated,
+  SessionRead,
   type BundleItem,
 } from './prerender.js';
 import { policyDeclaresNonce } from './diagnostics.js';
@@ -156,6 +157,7 @@ import { startBackgroundCheck, type BackgroundCheck } from './background-check.j
 import { summarize } from './typecheck.js';
 import {
   FUD0362,
+  FUD1300,
   FUD0363,
   FUD0366,
   FUD0391,
@@ -176,6 +178,8 @@ import {
   matchRouteBuild,
   renderRouteHtml,
   loadRouteData,
+  pendingResponse,
+  type PendingResponse,
   type RenderModule,
 } from './serve.js';
 import { asError, NO_LIVE_CHECK, startLiveCheck } from './dev-typecheck.js';
@@ -1041,29 +1045,20 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               next();
               return;
             }
+            const pending = pendingResponse();
             loadRouteData(
               (id) => server.ssrLoadModule(id) as Promise<RenderModule>,
               WRAPPER_PREFIX + rb.route.pattern,
               rb.route.pattern,
               routePath,
               toRequest(req, res),
+              pending,
             )
-              .then((data) => {
-                res.setHeader('Content-Type', 'application/json');
-                res.end(JSON.stringify(data));
-              })
+              .then((data) => sendData(res, pending, data))
               .catch((err: unknown) => {
-                // The status of what `load` threw, as a problem: the Service Worker leaves the
-                // navigation to the network on any error, and the network answers it (§4.8).
                 const failure = classifyError(err, true);
                 if (failure.kind === 'error' && failure.unexpected) toOverlay(server, err);
-                const problem =
-                  failure.kind === 'redirect'
-                    ? { status: failure.status, title: 'Redirect', location: failure.location }
-                    : failure.problem;
-                res.statusCode = problem.status;
-                res.setHeader('Content-Type', 'application/problem+json');
-                res.end(JSON.stringify(problem));
+                sendDataProblem(res, pending, failure);
               });
             return;
           }
@@ -1102,6 +1097,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           // its place, with the same position and message the editor shows. A check in flight
           // is waited for, so a save followed by a reload never sees the previous verdict.
           const request = toRequest(req, res);
+          const pending = pendingResponse();
           live
             .blocking(documentFiles(rb.absPath, io))
             .then(async (blocked): Promise<{ status: number; html?: string; location?: string }> => {
@@ -1114,8 +1110,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
                   pathname,
                   nonce,
                   request,
+                  pending,
                 );
-                return { status: 200, html };
+                return { status: pending.status, html };
               } catch (err) {
                 // What `load` or `layout` threw (SDD-56 §4.8): a redirect, or the error page
                 // with its status — and what is not an `HttpError`, in the overlay as well.
@@ -1129,6 +1126,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               }
             })
             .then(async (page) => {
+              // What `load` wrote, also before it threw (SDD-69 §4.2); fudic's own go after it.
+              writeHeaders(res, pending.headers);
+              // fudic wins in the CSP, and in dev its CSP is none (below).
+              res.removeHeader('Content-Security-Policy');
               res.statusCode = page.status;
               if (page.location !== undefined) {
                 res.setHeader('Location', page.location);
@@ -1205,23 +1206,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             next();
             return;
           }
-          previewData(edgeDir, dataRecord, routePath, toRequest(req, res))
-            .then((data) => {
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify(data));
-            })
-            .catch((err: unknown) => {
-              // The status of what `load` threw, for the Service Worker to leave the
-              // navigation to the network, which answers it with the page (SDD-56 §4.8).
-              const failure = classifyError(err, false);
-              const problem =
-                failure.kind === 'redirect'
-                  ? { status: failure.status, title: 'Redirect', location: failure.location }
-                  : failure.problem;
-              res.statusCode = problem.status;
-              res.setHeader('Content-Type', 'application/problem+json');
-              res.end(JSON.stringify(problem));
-            });
+          const pending = pendingResponse();
+          previewData(edgeDir, dataRecord, routePath, toRequest(req, res), pending)
+            .then((data) => sendData(res, pending, data))
+            .catch((err: unknown) => sendDataProblem(res, pending, classifyError(err, false)));
           return;
         }
 
@@ -1268,15 +1256,20 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           next();
           return;
         }
-        previewRender(edgeDir, record, pathname, nonce, toRequest(req, res))
+        const pending = pendingResponse();
+        previewRender(edgeDir, record, pathname, nonce, toRequest(req, res), pending)
           .then((html) => {
-            res.statusCode = 200;
+            // What `load` wrote first (SDD-69 §4.2): fudic's Content-Type and CSP win over it.
+            writeHeaders(res, pending.headers);
+            res.statusCode = pending.status;
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.setHeader('Content-Security-Policy', cspFor(manifest.csp.document, nonce));
             res.end(html);
           })
           .catch(async (err: unknown) => {
-            // What `load` or `layout` threw (SDD-56 §4.8): the redirect, or the error page.
+            // What `load` or `layout` threw (SDD-56 §4.8): the redirect, or the error page —
+            // with what `load` wrote before it threw (SDD-69 §4.2).
+            writeHeaders(res, pending.headers);
             const failure = classifyError(err, false);
             if (failure.kind === 'redirect') {
               res.statusCode = failure.status;
@@ -2453,6 +2446,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
                 emitted.add(htmlPathFor(rb.route.pattern));
               }
             } catch (err) {
+              // A page for nobody, served to everyone (SDD-69 §4.4): on the route's `load`. A
+              // render reads the session only in a `load` or a `layout`, which its `.fudapi` declares.
+              if (err instanceof SessionRead) {
+                prerenderDiagnostics.push(FUD1300({ pattern: rb.route.pattern, ...rb.analysis.apiAt! }));
+                continue;
+              }
               // A broken page BREAKS THE BUILD (SDD-39 §4.11). It used to warn and skip the
               // file, which shipped a site with one page missing and CI in green — a route
               // that throws while rendering is not a degradation, it is a page that does not
@@ -2621,10 +2620,11 @@ async function previewRender(
   pathname: string,
   nonce: string,
   request: Request,
+  response: PendingResponse,
 ): Promise<string> {
   const mod = await importEdgeChunk(edgeDir, record.pattern);
   const { drainStream, edgeContext, withRequest } = await import('./serve.js');
-  return drainStream(mod.render(withRequest(edgeContext(record.pattern, pathname, nonce), request)));
+  return drainStream(mod.render(withRequest(edgeContext(record.pattern, pathname, nonce), request, response)));
 }
 
 /** Run a route's `@server load` in preview — the generated data endpoint. */
@@ -2633,14 +2633,43 @@ async function previewData(
   record: RouteRecord,
   pathname: string,
   request: Request,
+  response: PendingResponse,
 ): Promise<unknown> {
   const mod = await importEdgeChunk(edgeDir, record.pattern);
   if (typeof mod.data !== 'function') {
     return {};
   }
   const { edgeContext, withRequest } = await import('./serve.js');
-  const { nonce: _nonce, ...ctx } = withRequest(edgeContext(record.pattern, pathname, ''), request);
+  const { nonce: _nonce, ...ctx } = withRequest(edgeContext(record.pattern, pathname, ''), request, response);
   return mod.data(ctx);
+}
+
+/** The data endpoint's answer (§4.5): what `load` wrote, then the JSON (SDD-69 §4.2). */
+function sendData(res: import('node:http').ServerResponse, pending: PendingResponse, data: unknown): void {
+  writeHeaders(res, pending.headers);
+  res.statusCode = pending.status;
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify(data));
+}
+
+/**
+ * The status of what `load` threw, as a problem, with what it wrote before: the Service
+ * Worker leaves the navigation to the network on any error, and the network answers it with
+ * the page (SDD-56 §4.8).
+ */
+function sendDataProblem(
+  res: import('node:http').ServerResponse,
+  pending: PendingResponse,
+  failure: ReturnType<typeof classifyError>,
+): void {
+  const problem =
+    failure.kind === 'redirect'
+      ? { status: failure.status, title: 'Redirect', location: failure.location }
+      : failure.problem;
+  writeHeaders(res, pending.headers);
+  res.statusCode = problem.status;
+  res.setHeader('Content-Type', 'application/problem+json');
+  res.end(JSON.stringify(problem));
 }
 
 /** `_error.fud` from the edge pass — or the minimal page — written with its status. */

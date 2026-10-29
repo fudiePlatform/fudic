@@ -158,6 +158,7 @@ export class ApiProject {
     const load = decls.find((d): d is LoadDecl => d.kind === 'load');
     return {
       id: source.id,
+      file: source.path,
       ...(load !== undefined ? { load } : {}),
       paths: decls.some((d) => d.kind === 'paths'),
       layout: decls.some((d) => d.kind === 'layout'),

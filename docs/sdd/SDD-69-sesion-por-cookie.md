@@ -422,4 +422,17 @@ tests.
 10. **`/cuenta` como ruta nueva del ejemplo.** `/usuarios` es `load ssr` y nunca pasa por la caché
     del SW; la fuga de §1.3 solo se ve en una ruta que se renderiza en el SW.
 11. **En la respuesta de una página, fudic gana solo en `Content-Type` y en la CSP.** Son las dos que
-    rompen el render si `load` las cambia; el resto es del usuario.
+    rompen el render si `load` las cambia; el resto es del usuario. En dev, donde fudic no manda CSP
+    para que viva el cliente de HMR, la que hubiera puesto `load` se quita.
+
+### 8.2. Tomadas al implementar
+
+12. **El `Cache-Control` de una página lo pone el wrapper de la ruta, no quien sirve.** El chunk de
+    una ruta lleva su propia copia de `@fudic/http` y el plugin no depende de él: el wrapper llama a
+    `markPrivate` al terminar `load` y `layout` (también si lanzan), y el servidor solo copia las
+    cabeceras.
+13. **La anotación vive en `ctx.response`, bajo `Symbol.for('fudic.sessionRead')`.** Es el único objeto
+    que llega intacto por una cadena que copia el `ctx`, y el símbolo registrado deja que el prerender
+    la lea por forma, desde otra copia del paquete.
+14. **El error de una función también lleva lo que el handler escribió antes de lanzar**, como el de
+    `load` (§4.2): un `deleteCookie` antes de `throw` llega en los dos.

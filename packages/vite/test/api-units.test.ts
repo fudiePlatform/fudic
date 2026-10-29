@@ -112,7 +112,7 @@ describe('ApiProject', () => {
     const page = api.page(`${root}/src/routes/blog/[slug].fudapi`)!;
     expect(page).toMatchObject({ id: 'routes/blog/[slug]', paths: true, layout: false });
     expect(page.load?.mode?.text).toBe('ssg');
-    expect(api.page(`${root}/src/routes/index.fudapi`)).toEqual({ id: 'routes/index', paths: false, layout: true });
+    expect(api.page(`${root}/src/routes/index.fudapi`)).toEqual({ id: 'routes/index', file: `${root}/src/routes/index.fudapi`, paths: false, layout: true });
     expect(api.page(`${root}/src/none.fudapi`)).toBeUndefined();
   });
 
@@ -210,17 +210,20 @@ describe('strategyOfLoad (§4.5)', () => {
 
 describe('analyzePage with a linked .fudapi (§4.5)', () => {
   const ROUTE = '<link rel="layout" href="./l.fud">\n<link rel="server">\n<link rel="server" href="./other.fudapi">\n<link rel="server" href="./r.fudapi">\n<p>x</p>\n';
-  const own: PageApi = { id: 'routes/r', paths: true, layout: true, load: parseApi('load ssr\n  n  i32\n').value.declarations[0] as LoadDecl };
+  const own: PageApi = { id: 'routes/r', file: '/app/src/routes/r.fudapi', paths: true, layout: true, load: parseApi('load ssr\n  n  i32\n').value.declarations[0] as LoadDecl };
 
   it('load, paths, layout and the strategy come from the file of the route', () => {
-    const apis: Record<string, PageApi> = { './other.fudapi': { id: 'routes/other', paths: false, layout: false }, './r.fudapi': own };
+    const apis: Record<string, PageApi> = { './other.fudapi': { id: 'routes/other', file: '/app/src/routes/other.fudapi', paths: false, layout: false }, './r.fudapi': own };
     const analysis = analyzePage(ROUTE, (href) => apis[href]);
     expect(analysis).toMatchObject({ hasLoad: true, hasPaths: true, hasLayout: true, api: 'routes/r', strategy: { declared: true, strategy: { mode: 'ssr' } } });
+    // Where FUD1300 points (SDD-69 §3.4): the file and its `load` keyword.
+    expect(analysis.apiAt).toEqual({ file: '/app/src/routes/r.fudapi', span: { start: 0, end: 4 } });
   });
 
   it('a file without load is the page’s all the same when it has paths', () => {
-    const analysis = analyzePage(ROUTE, (href) => (href === './r.fudapi' ? { id: 'routes/r', paths: true, layout: false } : undefined));
+    const analysis = analyzePage(ROUTE, (href) => (href === './r.fudapi' ? { id: 'routes/r', file: '/app/src/routes/r.fudapi', paths: true, layout: false } : undefined));
     expect(analysis).toMatchObject({ hasLoad: false, hasPaths: true, hasLayout: false, api: 'routes/r', strategy: { declared: false } });
+    expect(analysis.apiAt).toEqual({ file: '/app/src/routes/r.fudapi' });
   });
 
   it('without anybody to read the links, the route has no contract', () => {

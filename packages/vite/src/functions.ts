@@ -51,12 +51,20 @@ export async function sendResponse(res: ServerResponse, response: Response | nul
     return;
   }
   res.statusCode = response.status;
-  response.headers.forEach((value, name) => {
+  writeHeaders(res, response.headers);
+  res.end(Buffer.from(await response.arrayBuffer()));
+}
+
+/**
+ * Headers, written to a Node response, `set-cookie` with its several values. A page and its
+ * data endpoint write what `load` wrote with it (SDD-69 §4.2), before fudic's own headers.
+ */
+export function writeHeaders(res: ServerResponse, headers: Headers): void {
+  headers.forEach((value, name) => {
     if (name !== 'set-cookie') res.setHeader(name, value);
   });
-  const cookies = response.headers.getSetCookie();
+  const cookies = headers.getSetCookie();
   if (cookies.length > 0) res.setHeader('set-cookie', cookies);
-  res.end(Buffer.from(await response.arrayBuffer()));
 }
 
 /** The server root's `handler` (SDD-60 §4.4), as the plugin calls it out of the dev graph. */

@@ -5,7 +5,7 @@
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `sdd-69-sesion-por-cookie`. Nace de `main` **con SDD-67 y SDD-68 en `Hecho`**: el
 > ejemplo se repinta tras entrar y salir con lo de la 68.
-> **Progreso:** 5 / 18 — `En curso`.
+> **Progreso:** 9 / 18 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -54,10 +54,10 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 6 | 4 | **Dev.** El render de página y el endpoint de datos crean el `response`, se lo pasan al wrapper y lo aplican al responder (status, cabeceras, `Set-Cookie` uno a uno), también en la página de error (SDD §4.2); `Content-Type` y CSP los pone fudic | `vite` | `src/serve.ts` · `src/plugin.ts` |
-| [ ] | 7 | 6 | **Preview.** Lo mismo en `previewRender`, `previewData` y su página de error | `vite` | `src/plugin.ts` |
-| [ ] | 8 | 1, 4 | **`FUD1300` en el prerender.** Tras cada render, si se leyó la sesión, el diagnóstico sobre el `load` de la ruta y el build falla (SDD §4.4) | `vite` | `src/prerender.ts` |
-| [ ] | 9 | 6–8 | **Los tests de la fase.** Criterios 10–13 y 17 | `vite` | `test/**` |
+| [x] | 6 | 4 | **Dev.** El render de página y el endpoint de datos crean el `response`, se lo pasan al wrapper y lo aplican al responder (status, cabeceras, `Set-Cookie` uno a uno), también en la página de error (SDD §4.2); `Content-Type` y CSP los pone fudic | `vite` | `src/serve.ts` · `src/plugin.ts` |
+| [x] | 7 | 6 | **Preview.** Lo mismo en `previewRender`, `previewData` y su página de error | `vite` | `src/plugin.ts` |
+| [x] | 8 | 1, 4 | **`FUD1300` en el prerender.** Tras cada render, si se leyó la sesión, el diagnóstico sobre el `load` de la ruta y el build falla (SDD §4.4) | `vite` | `src/prerender.ts` |
+| [x] | 9 | 6–8 | **Los tests de la fase.** Criterios 10–13 y 17 | `vite` | `test/**` |
 
 ## Fase 3 — el Service Worker no guarda la sesión (3)
 
