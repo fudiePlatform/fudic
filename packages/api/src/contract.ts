@@ -288,7 +288,8 @@ export function loadDecl(node: LineNode, c: Ctx): LoadDecl {
 /** `paths` or `layout`: a word alone, with nothing below it. */
 export function bareDecl(node: LineNode, c: Ctx): PathsDecl | LayoutDecl {
   const [keyword] = node.tokens as [Token];
-  trailing(node, 1, c);
+  // `layout later`: what a layout returns is resolved before the first byte (SDD-70, FUD1324).
+  trailing(node, 1 + laterWord(node, 1, false, c).used, c);
   leaf(node, c);
   return { kind: keyword.raw as 'paths' | 'layout', keyword: keyword.span, ...doc(node), span: node.span };
 }
