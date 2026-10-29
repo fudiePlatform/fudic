@@ -104,6 +104,7 @@ import { interpolates, scopeNames, templateScope } from './template-scope.js';
 import { styleClassNames } from './classes.js';
 import { delegateNames } from './delegate.js';
 import { sectionCompletions } from './sections.js';
+import { contractFunctionsAt } from './contract-functions.js';
 import { HOLE_TRIGGER_CHARACTERS, holeArgumentContextAt, slotsAround } from './hole-args.js';
 import { parameterNames, renderArgContextAt, renderContextAt, renderOffers, signatureOf } from './render.js';
 import { scopeAt, snippetsAt } from './snippets.js';
@@ -458,6 +459,9 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
                 );
               }
 
+              // `form:=|`: the contract's functions, which the root service lists (BUG-59).
+              if (deps.apis !== undefined && contractFunctionsAt(cached, offset, deps.apis) !== undefined) return undefined;
+
               const items = scopeItems(cached, document, binding, false, false);
               // Incomplete: the next character decides between these names and silence.
               return items.length === 0 ? undefined : list(items, true);
@@ -807,6 +811,20 @@ function completions(
   if (cached === undefined) return undefined;
 
   const offset = document.offsetAt(position);
+  // A `task(` or a `form:=`: the functions of the contract, typed `(` included (BUG-59).
+  const functions = apis === undefined ? undefined : contractFunctionsAt(cached, offset, apis);
+  if (functions !== undefined) {
+    const range = rangeOf(document, functions.span);
+    return list(
+      [...functions.names].map((name) => ({
+        label: `${functions.prefix}${name}`,
+        kind: CompletionItemKind.Function,
+        detail: 'server function',
+        textEdit: { range, newText: `${functions.prefix}${name}` },
+      })),
+    );
+  }
+
   const hole = cached.document.type === 'layout-document' ? holeArgumentContextAt(cached.source, offset) : undefined;
   const renderArg = hole === undefined ? renderArgContextAt(cached.source, offset) : undefined;
   // `(` and `,` are triggers for the arguments of a hole or a `@render` and for nothing else
