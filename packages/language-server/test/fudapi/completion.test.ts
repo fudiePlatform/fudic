@@ -179,6 +179,15 @@ describe('completion (criterion 28)', () => {
       expect(labels('load ssr\n  title  str\n  users  Person[]?  |')).toEqual(['later']);
     });
 
+    it('`later` after a map type too, once the whole type is there', () => {
+      expect(labels('load\n  byName map str Person |')).toEqual(['later']);
+    });
+
+    it('not inside a map type: before its key or its value type', () => {
+      expect(labels('load\n  byName map |') ?? []).not.toContain('later');
+      expect(labels('load\n  byName map str |') ?? []).not.toContain('later');
+    });
+
     it('nothing once `later` is there', () => {
       expect(labels('load\n  users Person[] later |')).toBeUndefined();
     });

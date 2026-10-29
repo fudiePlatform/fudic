@@ -73,4 +73,11 @@ describe('`later` anywhere else (criterion 2)', () => {
     const source = 'type Person\n  name  str  later extra';
     expect(codes(source)).toEqual(['FUD1324', 'FUD1064']);
   });
+
+  it('a layout: FUD1324 on the word, not reported again as left over', () => {
+    const source = 'layout later';
+    const d = only(source);
+    expect(d.code).toBe('FUD1324');
+    expect(slice(source, d.span)).toBe('later');
+  });
 });
