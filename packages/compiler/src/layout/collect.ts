@@ -11,6 +11,7 @@
 
 import type { HtmlContent, ElementNode } from '../html/index.js';
 import type {
+  AwaitNode,
   IfNode,
   ConditionalBranch,
   ForeachNode,
@@ -118,6 +119,10 @@ function childrenOf(node: HtmlContent): readonly HtmlContent[] {
         out.push(...listOf<HtmlContent>(c.body));
       }
       return out;
+    }
+    case 'await': {
+      const awaitNode = node as unknown as Partial<AwaitNode>;
+      return [...listOf<HtmlContent>(awaitNode.body), ...listOf<HtmlContent>(awaitNode.catch?.body)];
     }
     default:
       return [];

@@ -14,6 +14,7 @@ export type {
   MappingCaps,
   FileRegistry,
   ServerImport,
+  LaterField,
   SnippetImport,
 } from './types.js';
 export {

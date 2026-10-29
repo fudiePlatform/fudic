@@ -143,6 +143,11 @@ const SERVER_ROLE: Record<HtmlContent['type'], ServerRole> = {
   else: 'none',
   empty: 'none',
   'unhandled-construct': 'none',
+  // `@await` (SDD-70) is not painted by this walk: the part emit cuts the page there, awaits
+  // the field and paints the body or the `@catch` at the insertion point. A `@catch` is never
+  // a content node — the `@await` holds its own, and an orphan one is degraded like `@empty`.
+  await: 'none',
+  catch: 'none',
 };
 
 /**

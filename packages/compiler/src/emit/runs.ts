@@ -91,6 +91,8 @@ const ROLE: Record<HtmlContent['type'], ContentRole> = {
   foreach: 'node',
   while: 'node',
   switch: 'node',
+  await: 'node',
+  catch: 'node',
   code: 'node',
   'render-body': 'node',
   'render-head': 'node',

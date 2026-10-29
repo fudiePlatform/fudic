@@ -225,6 +225,12 @@ class Collector {
       case 'switch':
         for (const branch of n['cases'] as readonly { readonly body: readonly HtmlContent[] }[]) this.#list(branch.body);
         return;
+      case 'await': {
+        this.#list(n['body'] as readonly HtmlContent[]);
+        const caught = n['catch'] as { readonly body: readonly HtmlContent[] } | undefined;
+        if (caught !== undefined) this.#list(caught.body);
+        return;
+      }
       case 'section':
       case 'snippet':
         this.#list(n['children'] as readonly HtmlContent[]);

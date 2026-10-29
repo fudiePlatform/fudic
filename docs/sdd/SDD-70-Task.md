@@ -7,7 +7,7 @@
 > **Rama:** `sdd-70-await-en-la-vista`. Nace de `main` **con SDD-61, SDD-67 y SDD-68 en
 > `Hecho`**: el constructo nuevo entra en la lista blanca de la 61, las tramas del endpoint de
 > datos usan el codec de la 67 y `load.fetch` de la 68 pasa a leerlas.
-> **Progreso:** 5 / 34 — `En curso`.
+> **Progreso:** 13 / 34 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -68,14 +68,14 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 6 | 1 | **El parser.** `await` y `catch` en `CONTROL_KEYWORDS`; `control.ts` lee `@await <expr> { … }` y el `@catch (<ident>) { … }` opcional detrás de la llave, como `@else`; `FUD1323` para el suelto y el repetido, y sigue | `compiler` | `src/at/at.ts` · `src/control/control.ts` |
-| [ ] | 7 | 6 | **El nodo.** `{ type: 'await', span, expression, body, catch? }` en `control/nodes.ts`, con su visita en el balancer, en `expand` y en todo lo que hoy recorre los constructos | `compiler` | `src/control/nodes.ts` · `src/balancer/*` · `src/expand/expand.ts` |
-| [ ] | 8 | 7, 2 | **El analizador.** `FUD1320` (no es un campo `later` de `data`), `FUD1321` (lectura fuera de su `@await`), `FUD1322` (head, componente, layout o snippet), con el `.fudapi` de la ruta | `compiler` | `src/semantic/analyzers/await.ts` · `ANALYZERS` |
-| [ ] | 9 | 7 | **La proyección.** Dentro del cuerpo, `data.<campo>` es `Awaited<…>`; `e` es `Problem` de `@fudic/http`. El pase tipado, el hover y el completado lo ven | `language-core` · `typecheck` | `src/template/*` · `src/data.ts` |
-| [ ] | 10 | 7 | **El formatter.** `@await … { } @catch (e) { }` como `@if … { } @else { }`; idempotente | `formatter` | `src/print/*` |
-| [ ] | 11 | 6 | **La gramática de colores.** `@await` y `@catch` como palabras de control | `vscode` | `syntaxes/fudic.tmLanguage.json` |
-| [ ] | 33 | 2, 7 | **Snippets `@await` y `@catch`.** `@await data.$1 { $0 }` con `suggest`, solo en el body de una ruta o página fuera del `<head>` y con algún campo `later` en su `.fudapi`; `@catch (e) { }` solo detrás de la `}` de un `@await` sin `@catch` (SDD §4.1) | `language-server` | `src/services/snippets.ts` |
-| [ ] | 34 | 9, 33 | **Completado selectivo.** Detrás de `@await data.` solo los campos `later`, con su tipo resuelto como detalle; los demás campos no salen | `language-server` · `language-core` | `src/services/view-completion.ts` |
+| [x] | 6 | 1 | **El parser.** `await` y `catch` en `CONTROL_KEYWORDS`; `control.ts` lee `@await <expr> { … }` y el `@catch (<ident>) { … }` opcional detrás de la llave, como `@else`; `FUD1323` para el suelto y el repetido, y sigue | `compiler` | `src/at/at.ts` · `src/control/control.ts` |
+| [x] | 7 | 6 | **El nodo.** `{ type: 'await', span, expression, body, catch? }` en `control/nodes.ts`, con su visita en el balancer, en `expand` y en todo lo que hoy recorre los constructos | `compiler` | `src/control/nodes.ts` · `src/balancer/*` · `src/expand/expand.ts` |
+| [x] | 8 | 7, 2 | **El analizador.** `FUD1320` (no es un campo `later` de `data`), `FUD1321` (lectura fuera de su `@await`), `FUD1322` (head, componente, layout o snippet), con el `.fudapi` de la ruta | `compiler` | `src/semantic/analyzers/await.ts` · `ANALYZERS` |
+| [x] | 9 | 7 | **La proyección.** Dentro del cuerpo, `data.<campo>` es `Awaited<…>`; `e` es `Problem` de `@fudic/http`. El pase tipado, el hover y el completado lo ven | `language-core` · `typecheck` | `src/template/*` · `src/data.ts` |
+| [x] | 10 | 7 | **El formatter.** `@await … { } @catch (e) { }` como `@if … { } @else { }`; idempotente | `formatter` | `src/print/*` |
+| [x] | 11 | 6 | **La gramática de colores.** `@await` y `@catch` como palabras de control | `vscode` | `syntaxes/fudic.tmLanguage.json` |
+| [x] | 33 | 2, 7 | **Snippets `@await` y `@catch`.** `@await data.$1 { $0 }` con `suggest`, solo en el body de una ruta o página fuera del `<head>` y con algún campo `later` en su `.fudapi`; `@catch (e) { }` solo detrás de la `}` de un `@await` sin `@catch` (SDD §4.1) | `language-server` | `src/services/snippets.ts` |
+| [x] | 34 | 9, 33 | **Completado selectivo.** Detrás de `@await data.` solo los campos `later`, con su tipo resuelto como detalle; los demás campos no salen | `language-server` · `language-core` | `src/services/view-completion.ts` |
 | [ ] | 12 | 8–11, 33, 34 | **Los tests de la fase.** Criterios 3–8, 24 y 25; los del editor por el plugin del language server, no solo por el catálogo | `compiler` · `language-core` · `formatter` · `language-server` | `test/**` |
 
 ## Fase 3 — `@fudic/ssr`: vaciar el búfer y serializar por partes (3)

@@ -551,3 +551,13 @@ inserción actual después de un corte.
    `Promise<readonly Person[] | undefined>`: el campo siempre está, lo opcional es el valor.
 3. **`later` mal puesto se consume.** Detrás del tipo de un argumento, del `->`, de un campo de
    `form` o de `type`, `FUD1324` y nada más: no se informa otra vez como palabra sobrante.
+4. **`@await` no entra en `ControlNode`.** Va en una unión aparte (`ControlConstruct`) y el
+   recorrido común le da su propio aviso (`awaitBlock`). No tiene cabecera entre paréntesis ni
+   `key`, y todo lo que hoy lee una cabecera o una `key` tendría que descartarlo a mano.
+5. **Lo que sigue a `@await` no se manda a Oxc.** Es el nombre de un campo: el analizador lo
+   comprueba como texto (`data.<campo>`) y la proyección lo copia mapeado para hover y
+   completado.
+6. **El completado tras `@await data.` es nuestro, no el de TypeScript.** Sale del `.fudapi`
+   (nombre y tipo del campo `later`), así que está aunque el programa aún no haya cargado.
+7. **Los snippets que reabren la lista lo hacen por las dos puertas.** El que llega con la
+   respuesta de TypeScript no llevaba el comando de reabrir; ahora sí, igual que el del plugin.

@@ -36,7 +36,8 @@ function exprToken(source: string): JsRegionToken {
 
 describe('classifyKeyword (§4.2)', () => {
   it('recognizes the closed control set', () => {
-    for (const kw of ['if', 'else', 'for', 'foreach', 'while', 'switch']) {
+    // `await` and `catch` since SDD-70 (decisions 168, 169).
+    for (const kw of ['if', 'else', 'for', 'foreach', 'while', 'switch', 'empty', 'await', 'catch']) {
       expect(classifyKeyword(kw)).toBe(kw);
     }
   });
@@ -46,7 +47,7 @@ describe('classifyKeyword (§4.2)', () => {
   });
 
   it('returns null for anything else, including JS keywords', () => {
-    for (const id of ['raw', 'title', 'data', 'return', 'await', 'iffy', 'If']) {
+    for (const id of ['raw', 'title', 'data', 'return', 'async', 'try', 'iffy', 'If']) {
       expect(classifyKeyword(id)).toBeNull();
     }
   });

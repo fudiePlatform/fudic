@@ -24,9 +24,8 @@
 
 import { allComponents, componentOf, type ComponentGraph, type DocumentGraph, type ResolvedComponent } from './resolve.js';
 import type { ElementNode, HtmlContent } from '../html/index.js';
-import type { ControlNode } from '../control/index.js';
 import { bridgeOf, classifyAttribute, isFormAssociated, shadowOptionsOf, type ShadowOptions } from '../binding/index.js';
-import { branchesOf } from './constructs.js';
+import { blocksOf } from './constructs.js';
 import { codeOf, codeOfDocument, type ExtractedCode } from './oxc-code.js';
 import { readsMoving, spreadReadsMoving } from './attrs.js';
 
@@ -53,7 +52,8 @@ export function walkElements(nodes: readonly HtmlContent[], visit: (el: ElementN
       case 'foreach':
       case 'for':
       case 'while':
-        for (const branch of branchesOf(node as unknown as ControlNode)) {
+      case 'await':
+        for (const branch of blocksOf(node)) {
           walkElements(branch.body, visit);
         }
         break;
@@ -212,7 +212,8 @@ function walkElementsInBlocks(
       case 'foreach':
       case 'for':
       case 'while':
-        for (const branch of branchesOf(node as unknown as ControlNode)) {
+      case 'await':
+        for (const branch of blocksOf(node)) {
           walkElementsInBlocks(branch.body, true, visit);
         }
         break;

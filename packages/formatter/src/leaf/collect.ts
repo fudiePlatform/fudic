@@ -13,6 +13,7 @@
 
 import type {
   Attribute,
+  AwaitNode,
   CodeBlockNode,
   Diagnostic,
   ElementNode,
@@ -184,6 +185,14 @@ function collectContent(nodes: readonly HtmlContent[], depth: number, jobs: Job[
       case 'switch':
         collectSwitch(asSwitch(node), depth, jobs);
         break;
+      case 'await': {
+        // `@await data.users` (SDD-70): a field read, formatted as the expression it is.
+        const awaitNode = node as unknown as AwaitNode;
+        jobs.push(js('expression', awaitNode.expression, depth));
+        collectContent(awaitNode.body, depth + 1, jobs);
+        if (awaitNode.catch !== undefined) collectContent(awaitNode.catch.body, depth + 1, jobs);
+        break;
+      }
       case 'code':
         collectCode(asCode(node), depth, jobs);
         break;

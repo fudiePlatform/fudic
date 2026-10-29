@@ -35,8 +35,7 @@ import { atConstructs } from '../constructs.js';
 import { structureDocument, type StructuredDocument } from '../document/index.js';
 import { documentRoots } from '../semantic/index.js';
 import { JsBatch, type JsFragmentKind, type OxcNode } from '../oxc/index.js';
-import { branchesOf, collectTemplateJs } from '../emit/constructs.js';
-import type { ControlNode } from '../control/index.js';
+import { blocksOf, collectTemplateJs } from '../emit/constructs.js';
 import { freeReferenceNodes } from '../emit/scope.js';
 import type { RazorExpression } from '../at/index.js';
 import type { RenderCallNode, SnippetDeclNode } from '../snippet/index.js';
@@ -105,8 +104,11 @@ const PLANS = new WeakMap<SnippetDeclNode, BodyPlan>();
 /** The empty plan: what the file being compiled has, since it binds no parameters. */
 const NO_PLAN: BodyPlan = { refs: [], renders: [] };
 
-/** The five control constructs, whose bodies hang off their branches and not off `children`. */
-const CONTROLS: ReadonlySet<string> = new Set(['if', 'switch', 'foreach', 'for', 'while']);
+/**
+ * The five control constructs and `@await` (SDD-70), whose bodies hang off their branches and
+ * not off `children`.
+ */
+const CONTROLS: ReadonlySet<string> = new Set(['if', 'switch', 'foreach', 'for', 'while', 'await']);
 
 /**
  * Every node of a tree, depth-first, without descending into a nested declaration.
@@ -119,7 +121,7 @@ function walkContent(nodes: readonly HtmlContent[], visit: (node: HtmlContent) =
   for (const node of nodes) {
     if (!visit(node)) continue;
     if (CONTROLS.has(node.type)) {
-      for (const branch of branchesOf(node as unknown as ControlNode)) walkContent(branch.body, visit);
+      for (const branch of blocksOf(node)) walkContent(branch.body, visit);
       continue;
     }
     const children = (node as { readonly children?: readonly HtmlContent[] }).children;

@@ -56,6 +56,8 @@ export interface LinkedApi {
    * `fud-data` with, and its chunk reads it back with, without one key on the wire (BUG-60 §3).
    */
   readonly data?: DataShape;
+  /** The fields of its `load` marked `later` (SDD-70), in declaration order. Absent: none. */
+  readonly later?: readonly string[];
 }
 
 /** A type of `data`: a primitive by its name, or one of the shapes around it (BUG-60 §3). */

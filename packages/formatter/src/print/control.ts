@@ -12,6 +12,7 @@
 
 import { concat, group, indent, type Doc } from '../doc/index.js';
 import type {
+  AwaitNode,
   ForeachNode,
   HtmlContent,
   IfNode,
@@ -120,6 +121,28 @@ export function printWhile(ctx: PrintContext, node: WhileNode): Doc {
       emptyTail(ctx, node),
     ]),
   );
+}
+
+/**
+ * `@await data.users { … } @catch (e) { … }` (SDD-70): the shape of `@if … { } else { }`, the
+ * `@catch` carried by the `}` like an `else`. What is awaited is a field read, printed as the
+ * expression it is; the name of the `@catch`, as written.
+ */
+export function printAwait(ctx: PrintContext, node: AwaitNode): Doc {
+  return group(concat(['@await ', leafOf(ctx, node.expression), ' ', block(ctx, node.body), catchTail(ctx, node)]));
+}
+
+/** `@catch (e) { … }`; the hole before it runs from the body's last child, or the expression. */
+function catchTail(ctx: PrintContext, node: AwaitNode): Doc {
+  if (node.catch === undefined) return '';
+  const from = node.body.at(-1)?.span.end ?? node.expression.end;
+  return concat([
+    printComments(ctx.source, from, node.catch.span.start),
+    '@catch (',
+    leafOf(ctx, node.catch.header.inner),
+    ') ',
+    block(ctx, node.catch.body),
+  ]);
 }
 
 /**

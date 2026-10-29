@@ -4,6 +4,7 @@
 
 export type {
   ControlNode,
+  ControlConstruct,
   ControlHeader,
   KeyedNode,
   IfNode,
@@ -15,6 +16,8 @@ export type {
   LoopNode,
   SwitchNode,
   SwitchCase,
+  AwaitNode,
+  CatchBlock,
 } from './nodes.js';
 export { keyExpression } from './nodes.js';
 export { parseControl } from './control.js';

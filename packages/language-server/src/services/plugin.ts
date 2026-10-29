@@ -108,6 +108,7 @@ import { contractFunctionsAt } from './contract-functions.js';
 import { HOLE_TRIGGER_CHARACTERS, holeArgumentContextAt, slotsAround } from './hole-args.js';
 import { parameterNames, renderArgContextAt, renderContextAt, renderOffers, signatureOf } from './render.js';
 import { scopeAt, snippetsAt } from './snippets.js';
+import { laterFields } from './await.js';
 import {
   componentTags,
   documentLinks,
@@ -1592,7 +1593,7 @@ function snippetItems(
   wanted: (label: string) => boolean,
   componentTag?: string,
 ): readonly CompletionItem[] {
-  return snippetsAt(cached, context.span.start, componentTag)
+  return snippetsAt(cached, context.span.start, componentTag, laterFields(cached).length > 0)
     .filter((snippet) => wanted(snippet.label))
     .map((snippet) => ({
       label: snippet.label,

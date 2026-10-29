@@ -13,6 +13,7 @@
  */
 
 import type {
+  AwaitNode,
   ForNode,
   ForeachNode,
   IfNode,
@@ -124,6 +125,47 @@ function emitSwitch(ctx: TemplateContext, node: SwitchNode): void {
     ctx.w.scaffold('break;\n}\n');
   }
 
+  ctx.w.scaffold('}\n');
+}
+
+/** `data.<field>` after `@await`: the field the body reads resolved (SDD-70). */
+const AWAITED = /^data\.([A-Za-z_$][\w$]*)$/u;
+
+/**
+ * `@await data.users { B } @catch (e) { C }` (SDD-70):
+ *
+ *     {
+ *       void (data.users);                      // what is awaited, mapped: hover, completion
+ *       const $data12 = data;
+ *       { const data = $await($data12, 'users'); …B… }
+ *       { const e = $problem(); …C… }
+ *     }
+ *
+ * The body sees the same `data` with the field resolved, by its own name, as TypeScript narrows
+ * inside an `if`. What is not `data.<field>` is `FUD1320` already: its body projects with the
+ * `data` around it, and nothing is said twice.
+ */
+export function emitAwait(ctx: TemplateContext, node: AwaitNode): void {
+  ctx.w.scaffold('{\nvoid (', node.span);
+  emitHeader(ctx, node.expression, 'undefined');
+  ctx.w.scaffold(');\n');
+  const field = AWAITED.exec(ctx.source.slice(node.expression.start, node.expression.end))?.[1];
+  if (field === undefined) {
+    ctx.w.scaffold('{\n');
+  } else {
+    const outer = `$data${node.span.start}`;
+    ctx.w.scaffold(`const ${outer} = data;\n{\nconst data = $await(${outer}, '${field}');\n`);
+  }
+  ctx.emit(node.body);
+  ctx.w.scaffold('}\n');
+  if (node.catch !== undefined) {
+    // The name is copied, mapped: hovering `e` says `$Problem`, and `@e.st|` completes.
+    ctx.w.scaffold('{\nconst ', node.catch.span);
+    emitHeader(ctx, node.catch.header.inner, '$e');
+    ctx.w.scaffold(' = $problem();\n');
+    ctx.emit(node.catch.body);
+    ctx.w.scaffold('}\n');
+  }
   ctx.w.scaffold('}\n');
 }
 

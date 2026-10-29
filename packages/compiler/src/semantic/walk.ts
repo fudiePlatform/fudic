@@ -22,6 +22,7 @@ import type {
   ForNode,
   WhileNode,
   SwitchNode,
+  AwaitNode,
 } from '../control/index.js';
 import type { RenderDirectiveNode, RenderSectionNode, SectionNode } from '../layout/index.js';
 import type { RenderCallNode, SnippetDeclNode } from '../snippet/index.js';
@@ -65,6 +66,11 @@ export interface TreeVisitor {
    * only the node knows where those parentheses are (BUG-17 §4.3).
    */
   control?(node: ControlNode): void;
+  /**
+   * Every `@await` (SDD-70), before its body and its `@catch` are descended. Apart from
+   * `control` because it has no header in parentheses and no key (`ControlConstruct`).
+   */
+  awaitBlock?(node: AwaitNode): void;
   /** Every `@{ … }` statement block — the layout's body refuses them (SDD-48). */
   inlineCode?(node: InlineCodeNode): void;
   /**
@@ -206,6 +212,15 @@ function walkNode(node: HtmlContent, visitor: TreeVisitor, host: ElementNode | u
       const switchNode = node as unknown as SwitchNode;
       visitor.control?.(switchNode);
       for (const branch of switchNode.cases) walkBlock(branch, branch.body, visitor, host);
+      return;
+    }
+    case 'await': {
+      // `@await` (SDD-70): its body and its `@catch` are blocks of their own, side by side —
+      // only one of the two ever paints.
+      const awaitNode = node as unknown as AwaitNode;
+      visitor.awaitBlock?.(awaitNode);
+      walkBlock(awaitNode, awaitNode.body, visitor, host);
+      if (awaitNode.catch !== undefined) walkBlock(awaitNode.catch, awaitNode.catch.body, visitor, host);
       return;
     }
     case 'render':

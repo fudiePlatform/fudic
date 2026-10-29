@@ -23,7 +23,7 @@
 import type { Diagnostic } from '../types/index.js';
 import { FUD0597, FUD0598, FUD0599, FUD0600, FUD0601, FUD0602 } from '@fudic/diagnostics';
 import type { Attribute, ElementNode, HtmlContent } from '../html/index.js';
-import type { ForeachNode, ForNode, IfNode, SwitchNode, WhileNode } from '../control/index.js';
+import type { AwaitNode, ForeachNode, ForNode, IfNode, SwitchNode, WhileNode } from '../control/index.js';
 import type { SectionNode } from '../layout/index.js';
 import type { SnippetDeclNode } from '../snippet/index.js';
 import { classifyAttribute } from './classify.js';
@@ -267,6 +267,13 @@ function walk(
         walk(loop.body, loop.body, true, ancestors, visit);
         // `@empty` is a block of its own, and outside the loop: it renders when there is no pass.
         if (loop.empty !== undefined) walk(loop.empty.body, loop.empty.body, inLoop, ancestors, visit);
+        break;
+      }
+      case 'await': {
+        // `@await` (SDD-70): its body and its `@catch` are two blocks, like two arms of an `@if`.
+        const awaitNode = node as unknown as AwaitNode;
+        walk(awaitNode.body, awaitNode.body, inLoop, ancestors, visit);
+        if (awaitNode.catch !== undefined) walk(awaitNode.catch.body, awaitNode.catch.body, inLoop, ancestors, visit);
         break;
       }
       case 'section':

@@ -12,7 +12,7 @@
 
 import { FUD0990 } from '@fudic/diagnostics';
 import type { ElementNode, HtmlContent } from '../../html/index.js';
-import type { IfNode, SwitchNode, ForeachNode, ForNode, WhileNode } from '../../control/index.js';
+import type { AwaitNode, IfNode, SwitchNode, ForeachNode, ForNode, WhileNode } from '../../control/index.js';
 import type { SectionNode } from '../../layout/index.js';
 import type { SnippetDeclNode } from '../../snippet/index.js';
 import { rawChild } from '../../emit/constructs.js';
@@ -35,6 +35,10 @@ function lists(node: HtmlContent): readonly (readonly [readonly HtmlContent[], E
     case 'for':
     case 'while':
       return [[(node as unknown as ForeachNode | ForNode | WhileNode).body, null]];
+    case 'await': {
+      const n = node as unknown as AwaitNode;
+      return [[n.body, null], ...(n.catch === undefined ? [] : [[n.catch.body, null] as const])];
+    }
     case 'section':
       return [[(node as unknown as SectionNode).children, null]];
     case 'snippet':

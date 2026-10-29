@@ -26,6 +26,7 @@ import {
   FUD0541,
   FUD0542,
   FUD1149,
+  FUD1323,
 } from '@fudic/diagnostics';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 import { scanBrackets, scanBraces, scanParens } from '../balancer/index.js';
@@ -33,9 +34,11 @@ import type { ControlKeyword, RazorExpression } from '../at/index.js';
 import type { HtmlContent, HtmlParseContext } from '../html/index.js';
 import type { Token } from '../lexer/index.js';
 import type {
+  AwaitNode,
+  CatchBlock,
   ConditionalBranch,
+  ControlConstruct,
   ControlHeader,
-  ControlNode,
   EmptyBlock,
   IfNode,
   SwitchCase,
@@ -379,12 +382,12 @@ class ControlParser {
     this.#source = ctx.source;
   }
 
-  parse(keyword: ControlKeyword, keywordSpan: Span): ParseResult<ControlNode> {
+  parse(keyword: ControlKeyword, keywordSpan: Span): ParseResult<ControlConstruct> {
     const node = this.#dispatch(keyword, keywordSpan, this.#constructStart(keywordSpan));
     return this.#diagnostics.length === 0 ? ok(node) : withDiagnostics(node, this.#diagnostics);
   }
 
-  #dispatch(keyword: ControlKeyword, keywordSpan: Span, start: number): ControlNode {
+  #dispatch(keyword: ControlKeyword, keywordSpan: Span, start: number): ControlConstruct {
     switch (keyword) {
       case 'if':
         return this.#parseIf(keywordSpan, start);
@@ -400,6 +403,13 @@ class ControlParser {
       case 'empty':
         // Only an `@empty` no loop consumed reaches here: the loop reads its own (`#empty`).
         return this.#orphanEmpty(keywordSpan, start);
+
+      case 'await':
+        return this.#parseAwait(keywordSpan, start);
+
+      case 'catch':
+        // Only a `@catch` no `@await` consumed reaches here: the `@await` reads its own.
+        return this.#orphanCatch(keywordSpan, start);
 
       default: {
         const parts = this.#blockParts(keywordSpan);
@@ -605,6 +615,80 @@ class ControlParser {
   }
 
   // ------------------------------------------------------------------
+  // `@await` / `@catch` (decisions 168, 169 — SDD-70)
+  // ------------------------------------------------------------------
+
+  /**
+   * `@await <expr> { … }` and the `@catch (e) { … }` that may follow its `}`. A missing `{`
+   * keeps the expression (FUD0071) and gives the rest back to SDD-05 as content.
+   */
+  #parseAwait(keywordSpan: Span, start: number): AwaitNode {
+    const expression = this.#awaited(keywordSpan.end);
+    this.#ctx.lexer.seekTo(expression.end);
+    const block = this.#block(expression.end);
+    if (block === null) return { type: 'await', span: span(start, expression.end), expression, body: [] };
+    const caught = this.#catch(block.end);
+    return {
+      type: 'await',
+      span: span(start, caught === null ? block.end : caught.span.end),
+      expression,
+      body: block.body,
+      ...(caught === null ? {} : { catch: caught }),
+    };
+  }
+
+  /**
+   * What follows `@await`, up to the `{` of its body: no parentheses, the read of a field as
+   * written. Nested `( … )` and `[ … ]` go to the balancer and quotes are skipped, so a `{`
+   * inside a call or a string does not end it. It also stops at what cannot be part of an
+   * expression in markup — `}`, `<`, `@` — where the `{` was forgotten.
+   */
+  #awaited(from: number): Span {
+    const source = this.#source;
+    let i = from;
+    while (i < source.length) {
+      const c = charAt(source, i);
+      if (c === '{' || c === '}' || c === '<' || c === '@') break;
+      if (c === '(' || c === '[') {
+        i = (c === '(' ? scanParens : scanBrackets)(source, i).value.span.end;
+      } else if (c === "'" || c === '"') {
+        i = skipString(source, i, c);
+      } else if (c === '`') {
+        i = skipTemplate(source, i);
+      } else {
+        i++;
+      }
+    }
+    return trimmedSpan(source, from, i);
+  }
+
+  /**
+   * `@catch (e) { … }` right after an `@await`'s body. Only with its `@`, like `@empty`; Razor
+   * comments and whitespace may sit between. `null`: none was written.
+   */
+  #catch(from: number): CatchBlock | null {
+    const at = skipTrivia(this.#source, from);
+    if (charAt(this.#source, at) !== '@') return null;
+    const keyword = matchKeyword(this.#source, at, 'catch');
+    if (keyword === null) return null;
+    this.#ctx.lexer.seekTo(keyword.end);
+    const header = this.#header(keyword.end) ?? missingHeader(keyword.end);
+    const block = this.#block(header.span.end);
+    if (block === null) return { type: 'catch-block', span: span(at, header.span.end), header, body: [] };
+    return { type: 'catch-block', span: span(at, block.end), header, body: block.body };
+  }
+
+  /**
+   * A `@catch` that follows no `@await` body, or a second one (`FUD1323`). Like an orphan
+   * `@empty`, it consumes only its keyword: what is behind it is still parsed as content.
+   */
+  #orphanCatch(keywordSpan: Span, start: number): IfNode {
+    const at = span(start, keywordSpan.end);
+    this.#diagnostics.push(FUD1323({ span: at }));
+    return { type: 'if', span: at, branches: [] };
+  }
+
+  // ------------------------------------------------------------------
   // `@if` / `else` / `else if` (§4.2)
   // ------------------------------------------------------------------
 
@@ -800,6 +884,6 @@ export function parseControl(
   ctx: HtmlParseContext,
   keyword: ControlKeyword,
   keywordSpan: Span,
-): ParseResult<ControlNode> {
+): ParseResult<ControlConstruct> {
   return new ControlParser(ctx).parse(keyword, keywordSpan);
 }
