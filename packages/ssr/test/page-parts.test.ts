@@ -37,7 +37,7 @@ describe('PageParts — the format of a part (criterion 12)', () => {
     dom.append(body, main);
     dom.append(main, dom.text('a'));
     const parts = new PageParts(dom, body, { first: { route: 'r' }, fields: false });
-    const cut = [...parts.cut()];
+    const cut = [...parts.cut(main)];
     expect(cut.at(-1)).toBe(FLUSH);
     expect(cut.filter((p) => p === FLUSH)).toHaveLength(1);
     expect(text(cut)).toBe(`<body><script type="application/json" data-fud-part="0">{"route":"r"}</script><main>a${PART_END}`);
@@ -50,14 +50,35 @@ describe('PageParts — the format of a part (criterion 12)', () => {
     dom.append(body, main);
     dom.append(main, dom.text('a'));
     const parts = new PageParts(dom, body, { first: {}, fields: false });
-    const first = text(parts.cut());
+    const first = text(parts.cut(main));
     const p = dom.element('p');
     dom.append(main, p);
     dom.append(p, dom.text('b'));
     const last = text(parts.end());
     expect(first).toBe(`<body><main>a${PART_END}`);
     expect(last.match(/<!--fud-end-->/gu)).toHaveLength(1);
-    expect(last.endsWith('</main></body>')).toBe(true);
+    // The last part keeps only the `<body>` open: its marker goes before the body's close.
+    expect(last.endsWith(`</main>${PART_END}</body>`)).toBe(true);
+    expect((first + last).replaceAll(PART_END, '')).toBe(renderToString(body));
+  });
+
+  it('the marker goes right after the part: an element finished before the cut is closed', () => {
+    const dom = new SsrDom();
+    const body = dom.element('body');
+    const main = dom.element('main');
+    dom.append(body, main);
+    const area = dom.element('textarea');
+    dom.append(main, area);
+    dom.append(area, dom.text('x'));
+    const style = dom.element('style');
+    dom.append(main, style);
+    dom.append(style, dom.text('p{}'));
+    const parts = new PageParts(dom, body, { first: {}, fields: false });
+    // The page goes on appending in `<main>`: the `<style>` before it is finished.
+    const first = text(parts.cut(main));
+    expect(first).toBe(`<body><main><textarea>x</textarea><style>p{}</style>${PART_END}`);
+    dom.append(main, dom.text('y'));
+    const last = text(parts.end());
     expect((first + last).replaceAll(PART_END, '')).toBe(renderToString(body));
   });
 
@@ -65,9 +86,9 @@ describe('PageParts — the format of a part (criterion 12)', () => {
     const dom = new SsrDom();
     const body = dom.element('body');
     const parts = new PageParts(dom, body, { first: { tree: [1], route: 'r' }, fields: true });
-    expect([...blocks(text(parts.cut())).keys()]).toEqual([0]);
+    expect([...blocks(text(parts.cut(body))).keys()]).toEqual([0]);
     dom.append(body, dom.element('i'));
-    const html = text(parts.cut()) + text(parts.end());
+    const html = text(parts.cut(body)) + text(parts.end());
     expect(html).not.toContain('data-fud-part');
     expect(html.match(/<!--fud-end-->/gu)).toHaveLength(2);
   });
@@ -77,10 +98,10 @@ describe('PageParts — the format of a part (criterion 12)', () => {
     const body = dom.element('body');
     host(dom, body, 'x-a', [1, 2]);
     const parts = new PageParts(dom, body, { first: {}, fields: false });
-    const p0 = text(parts.cut());
+    const p0 = text(parts.cut(body));
     host(dom, body, 'x-b', ['b']);
     host(dom, body, 'x-c', []);
-    const p1 = text(parts.cut());
+    const p1 = text(parts.cut(body));
     const p2 = text(parts.end());
 
     expect(blocks(p0).get(0)).toEqual({ state: [0, [0, 2], [1, 2]] });
@@ -94,10 +115,10 @@ describe('PageParts — the format of a part (criterion 12)', () => {
     const dom = new SsrDom();
     const body = dom.element('body');
     const parts = new PageParts(dom, body, { first: {}, fields: true });
-    text(parts.cut());
+    text(parts.cut(body));
     parts.field('users', { ok: ['Ana'] });
     parts.field('stats', { error: { status: 404, title: 'Not Found' }, cause: new Error('gone') });
-    const p1 = text(parts.cut());
+    const p1 = text(parts.cut(body));
     const p2 = text(parts.end());
     // The cause stays on the server: only the `Problem` travels.
     expect(blocks(p1).get(1)).toEqual({
@@ -110,7 +131,7 @@ describe('PageParts — the format of a part (criterion 12)', () => {
     const dom = new SsrDom();
     const body = dom.element('body');
     const parts = new PageParts(dom, body, { first: {}, fields: false });
-    text(parts.cut());
+    text(parts.cut(body));
     parts.field('users', { ok: ['Ana'] });
     expect(text(parts.end())).not.toContain('data-fud-part');
   });
@@ -119,7 +140,7 @@ describe('PageParts — the format of a part (criterion 12)', () => {
     const dom = new SsrDom();
     const body = dom.element('body');
     const parts = new PageParts(dom, body, { first: { data: '</script>' }, fields: false });
-    expect(text(parts.cut())).not.toContain('"</script>"');
+    expect(text(parts.cut(body))).not.toContain('"</script>"');
   });
 });
 
@@ -130,14 +151,14 @@ describe('PageParts — the container, part by part (§3.5)', () => {
     const root = iocRoot();
     const parts = new PageParts(dom, body, { first: {}, fields: false, ioc: root });
     // Nothing below the root and nothing published: no `ioc`, no `di`, no block at all.
-    expect(text(parts.cut())).not.toContain('data-fud-part');
+    expect(text(parts.cut(body))).not.toContain('data-fud-part');
 
     root.child('x-a');
     publishIn(root, token<string>('locale'), 'es');
-    expect(blocks(text(parts.cut())).get(1)).toEqual({ ioc: [[-1, 0], ['', 'x-a']], di: { locale: 'es' } });
+    expect(blocks(text(parts.cut(body))).get(1)).toEqual({ ioc: [[-1, 0], ['', 'x-a']], di: { locale: 'es' } });
 
     // The same map and the same seed: nothing again.
-    expect(text(parts.cut())).not.toContain('data-fud-part');
+    expect(text(parts.cut(body))).not.toContain('data-fud-part');
 
     root.child('x-b');
     publishIn(root, token<number>('n'), 3);
@@ -159,7 +180,7 @@ describe('PageParts through htmlToByteStream (criterion 9)', () => {
     const stream = htmlToByteStream(
       (async function* () {
         yield '<!DOCTYPE html><html><head></head>';
-        yield* parts.cut();
+        yield* parts.cut(body);
         await later;
         waited = true;
         dom.append(body, dom.text('second'));

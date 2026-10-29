@@ -7,7 +7,7 @@
 > **Rama:** `sdd-70-await-en-la-vista`. Nace de `main` **con SDD-61, SDD-67 y SDD-68 en
 > `Hecho`**: el constructo nuevo entra en la lista blanca de la 61, las tramas del endpoint de
 > datos usan el codec de la 67 y `load.fetch` de la 68 pasa a leerlas.
-> **Progreso:** 22 / 34 — `En curso`.
+> **Progreso:** 23 / 34 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -34,8 +34,11 @@ origin**, y el agente empuja también la suya.
 **Estado.**
 - Fases 1, 2 y 3 cerradas. Los tests de la fase 2 (rama `sdd-70-tests-2`) están mergeados y en
   verde, sin defectos.
-- Fase 4: tareas 16–20 hechas y todo en verde (los tests recorren `page` con `drain`, en
-  `test/emit/_support.ts`; ningún golden cambió). Falta la 21, los tests de la fase, por agente.
+- Fase 4 cerrada. Sus tests (rama `sdd-70-tests-4`) destaparon dos defectos, ya corregidos: la
+  marca de fin caía dentro del último elemento construido, y `data` llevaba los campos `later`
+  como `{}` cuando la ruta no tenía forma de datos.
+- Fase 5: lector de partes, mapas en memoria, celdas por parte y ruta al final hechos (tareas
+  22–25). La 26, el `@await` del cliente, la hace un agente en el compilador.
 
 **Fase 4, hecho:**
 - `@fudic/ssr`: `PageParts` (`page-parts.ts`) escribe cada parte con su bloque delante y su
@@ -62,16 +65,16 @@ origin**, y el agente empuja también la suya.
 - `module.ts`: una página sin layout con `@await` sale por partes igual (`async function* page`).
 - `RenderContext.onError`; en dev, `renderRouteHtml` lo lleva al overlay.
 
-**Fase 4, falta:**
-- La tarea 21 (tests, por agente).
-- La pieza del lector de partes en `runtime-pieces` (tarea 20) pasa a la 22: el lector aún no
-  existe.
+**Fase 5, decisión de diseño a revisar:** en una página por partes que inyecta, el árbol de
+contenedores se levanta tras la última parte (el mapa `ioc` crece hasta entonces), así que los
+componentes de esa página esperan al final para hidratarse.
 
 **Decisiones de esta fase, para pasar a §8.2:**
 - El bloque es texto cedido, no un nodo del árbol. El de la parte 0 va justo después de la
   etiqueta de apertura `<body>`.
-- En la última parte, la marca va antes de los cierres:
-  `<p>…</p><!--fud-end--></main></body>`.
+- Cada corte deja abiertos solo el punto de inserción y sus antecesores: lo terminado se
+  cierra antes de la marca. En la última parte solo queda abierto el `<body>`:
+  `<p>…</p></main><!--fud-end--></body>`.
 - `ioc` sale entero cada vez que crece, y el navegador lo sustituye. `di` sale con solo las
   claves nuevas.
 - Los mapas estáticos van en la parte 0 siempre que la página los tenga.
@@ -149,7 +152,7 @@ origin**, y el agente empuja también la suya.
 | [x] | 18 | 17 | **El bloque por parte.** `data-fud-part` con `state` (`[firstId, offsets, data]` de lo reclamado en la parte), `fields`, `di`, y en la 0 los estáticos, `data` e `ioc`; nada vacío. `writeRouteClaim` en la parte 0. `ssr-dom` entrega el estado por tramos | `compiler` · `ssr` | `src/emit/maps.ts` · `src/ssr-dom.ts` · `src/seed.ts` |
 | [x] | 19 | 17 | **Ninguna promesa suelta.** El wrapper engancha un manejador a cada campo `later` antes de pintar; un rechazo pasa a `Problem` (`problemOf`, `detail` solo en dev) y va al `@catch` o a `onError`; el aviso de redirección tras el primer byte en dev | `vite` · `compiler` | `src/wrapper.ts` · `src/emit/module.ts` |
 | [x] | 20 | 17 | **El runtime con `async`.** `writeRuntimeTags` pone `async` en la etiqueta del runtime solo en las páginas con `@await`, y pide la pieza del lector de partes | `compiler` · `vite` | `src/emit/parts.ts` · `src/runtime-pieces.ts` |
-| [ ] | 21 | 18–20 | **Los tests de la fase.** Criterios 9–16, con promesas controladas y leyendo el `ReadableStream` trozo a trozo | `compiler` · `vite` | `test/**` |
+| [x] | 21 | 18–20 | **Los tests de la fase.** Criterios 9–16, con promesas controladas y leyendo el `ReadableStream` trozo a trozo | `compiler` · `vite` | `test/**` |
 
 ## Fase 5 — la hidratación por partes en el navegador (6)
 

@@ -32,7 +32,7 @@ import {
   walkElements,
 } from './level.js';
 import { entryCellSlots } from './state.js';
-import { dataShapeOf } from './api-links.js';
+import { dataShapeOf, laterFieldsOf } from './api-links.js';
 
 /** `Record<parent tag, direct hydratable child tags>` — an empty record for a flat page. */
 export type TagMap = Record<string, readonly string[]>;
@@ -337,7 +337,7 @@ export function routeBlocksOf(
   const entry = entryHalf(graph);
   if (entry === undefined || routeName === undefined || !isReactiveRoute(graph)) return undefined;
   const cells = entryCellSlots(graph, entry);
-  const data = dataExpression(entry.code, loads(graph), out);
+  const data = dataExpression(entry.code, loads(graph), out, laterFieldsOf(graph));
   // With the shape of `load`, the block carries no key at any depth, and the chunk reads it back
   // by the same shape (BUG-60 §3.2). Without one — a link the host could not read — it keeps them.
   const shape = dataShapeOf(graph);
@@ -369,14 +369,26 @@ export function routeBlocksOf(
  * `data` and declares no `load` finds `undefined` there forever (`FUD0621`), and the emit must
  * not turn that into a throw while it says so.
  */
-function dataExpression(code: ExtractedCode, hasLoad: boolean, out: Diagnostic[]): string | null {
+function dataExpression(
+  code: ExtractedCode,
+  hasLoad: boolean,
+  out: Diagnostic[],
+  later: readonly string[],
+): string | null {
   const access = code.dataAccess;
   if (access.kind === 'none') return null;
   if (!hasLoad) {
     out.push(FUD0621({ span: access.at }));
   }
-  if (access.kind === 'all') return 'data';
-  return `{ ${access.roots.map((r) => `${JSON.stringify(r)}: data?.${r}`).join(', ')} }`;
+  // A `later` field is a promise when the page is painted: it never travels here, but in the
+  // `fields` of the part that awaited it (SDD-70 §3.5).
+  if (access.kind === 'all') {
+    if (later.length === 0) return 'data';
+    const omitted = later.map((f, i) => `${JSON.stringify(f)}: $l${i}`).join(', ');
+    return `(({ ${omitted}, ...$rest }) => $rest)(data ?? {})`;
+  }
+  const roots = access.roots.filter((r) => !later.includes(r));
+  return `{ ${roots.map((r) => `${JSON.stringify(r)}: data?.${r}`).join(', ')} }`;
 }
 
 /**

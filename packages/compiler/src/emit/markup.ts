@@ -815,7 +815,8 @@ export class MarkupEmitter {
     if (this.#parts === undefined || field === undefined) return;
     const settled = this.#fresh();
     const outer = this.#fresh();
-    this.#w.line(`yield* ${this.#parts}.cut();`);
+    // Cut at the insertion point: it and its ancestors stay open, the rest is finished.
+    this.#w.line(`yield* ${this.#parts}.cut(${parent});`);
     this.#w.line(`const ${settled} = await data.${field};`);
     this.#w.line(`${this.#parts}.field(${JSON.stringify(field)}, ${settled});`);
     this.#w.line(`if ('ok' in ${settled}) {`);

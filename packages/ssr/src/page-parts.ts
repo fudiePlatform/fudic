@@ -44,6 +44,7 @@ export interface PagePartsOptions {
 
 export class PageParts {
   readonly #dom: SsrDom;
+  readonly #body: SsrNode;
   readonly #parts: PartSerializer;
   readonly #options: PagePartsOptions;
   #index = 0;
@@ -55,6 +56,7 @@ export class PageParts {
 
   constructor(dom: SsrDom, body: SsrNode, options: PagePartsOptions) {
     this.#dom = dom;
+    this.#body = body;
     this.#parts = partSerializer(body);
     this.#options = options;
   }
@@ -65,20 +67,24 @@ export class PageParts {
     this.#fields[name] = 'ok' in settled ? { ok: settled.ok } : { error: settled.error };
   }
 
-  /** The part built so far, and `FLUSH`: it leaves before the page waits. */
-  *cut(): Generator<HtmlPiece> {
-    yield* this.#write();
+  /**
+   * The part built so far, and `FLUSH`: it leaves before the page waits. `at` is where the
+   * page goes on appending: it and its ancestors stay open, and everything else is closed
+   * before the marker, so the marker lands right where the part ends.
+   */
+  *cut(at: SsrNode): Generator<HtmlPiece> {
+    yield* this.#write(at);
     yield FLUSH;
   }
 
-  /** The last part, and the rest of the body: every element still open is closed. */
+  /** The last part, and the rest of the body: the marker goes before the closing tags. */
   *end(): Generator<HtmlPiece> {
-    yield* this.#write();
+    yield* this.#write(this.#body);
     yield* this.#parts.end();
   }
 
-  *#write(): Generator<string> {
-    const pieces = this.#parts.part();
+  *#write(at: SsrNode): Generator<string> {
+    const pieces = this.#parts.part(at);
     // Part 0 opens the `<body>`, and its block goes inside it.
     if (this.#index === 0) yield pieces.next().value as string;
     const block = this.#block();

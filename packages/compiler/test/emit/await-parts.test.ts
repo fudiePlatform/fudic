@@ -325,6 +325,21 @@ describe('criterion 12 — a hydratable route publishes its route and data in pa
     expect(all.get(1)).toEqual({ fields: { users: { ok: 'u' } } });
   });
 
+  it('without a data shape, `data` still leaves the `later` fields out, by root or whole', async () => {
+    const byRoot = await pageOf('layout', routed(view, code), 'r', LAYOUT, API);
+    const html = await rest(
+      chunks(streamOf(byRoot.page({ title: 'T', users: Promise.resolve({ ok: 'u' }) }, partsIo()))),
+    );
+    expect(blocks(html).get(0)).toEqual({ route: 'r', data: { title: 'T' }, state: [0, [0, 0], []] });
+
+    const whole = '@code { const n = signal(1); function saluda() { console.log(data); } }\n<output>@n()</output>';
+    const all = await pageOf('layout', routed(view, whole), 'r', LAYOUT, API);
+    const html2 = await rest(
+      chunks(streamOf(all.page({ title: 'T', users: Promise.resolve({ ok: 'u' }) }, partsIo()))),
+    );
+    expect(blocks(html2).get(0)).toMatchObject({ data: { title: 'T' } });
+  });
+
   it('a field that failed travels as its Problem, never as its cause', async () => {
     const { page } = await pageOf('layout', routed(view, code), 'r', LAYOUT, shaped);
     const failed = { error: { status: 404, title: 'Not Found' }, cause: new Error('secret') };
@@ -543,14 +558,14 @@ describe('the opening of a page in parts (§3.5)', () => {
   it('an `@await` that names no field cuts nothing; a component never cuts', () => {
     const page = standalone('@await data.users { <p>a</p> }\n@await signal() { <p>b</p> }');
     const graph = resolveDocument('/p.fud', memoryIo({ '/p.fud': page, '/c.fud': COUNTER })).value;
-    expect(emitPageModule(graph).match(/\.cut\(\)/gu)).toHaveLength(1);
+    expect(emitPageModule(graph).match(/\.cut\(/gu)).toHaveLength(1);
 
     const comp = '<x-a><template shadowrootmode="open">@await data.users { <p>a</p> }</template></x-a>';
     const host = standalone('<x-a></x-a>').replace('./c.fud', './x.fud');
     const withComp = resolveDocument('/p.fud', memoryIo({ '/p.fud': host, '/x.fud': comp })).value;
     const xa = [...withComp.components.values()].find((c) => c.tag === 'x-a')!;
     const module = emitComponentModule(withComp, xa);
-    expect(module).not.toContain('.cut()');
+    expect(module).not.toContain('.cut(');
     expect(module).not.toContain('<p>a</p>');
     expect(module).not.toContain('"a"');
   });

@@ -19,17 +19,40 @@ import { isRawText, isVoid, openElement, rawChild, serialize } from './serialize
 
 /** Serializes a body that is still being built, one part at a time. */
 export interface PartSerializer {
-  /** What was appended since the last call; the elements still open stay open. */
-  part(): Generator<string>;
+  /**
+   * What was appended since the last call; the elements still open stay open. With `at`, only
+   * `at` and its ancestors stay open: everything else is finished and closes now — the cut is
+   * at the end of `at`, which is where the emit goes on appending.
+   */
+  part(at?: SsrNode): Generator<string>;
   /** The rest, closing every element left open. */
   end(): Generator<string>;
 }
+
+/** Every node of the rightmost path stays open. */
+const ALL = (): boolean => true;
 
 export function partSerializer(root: SsrNode): PartSerializer {
   /** Per element or fragment already reached: the first child not yet written whole. */
   const next = new Map<SsrNodeImpl, number>();
   /** The nodes written whole: leaves once written, containers once closed. */
   const done = new Set<SsrNodeImpl>();
+
+  /**
+   * Whether a node on the rightmost path stays open: all of them, or with `at` only the path
+   * down to `at` — the nodes below it are finished, since nothing is appended there any more.
+   */
+  let keep: (n: SsrNodeImpl) => boolean = ALL;
+
+  /** The rightmost path from the top down to `at`: `at` and its ancestors. */
+  function pathTo(top: SsrNodeImpl, at: SsrNodeImpl): ReadonlySet<SsrNodeImpl> {
+    const path = new Set<SsrNodeImpl>([top]);
+    for (let n = top; n !== at && n.children.length > 0; ) {
+      n = n.children[n.children.length - 1]!;
+      path.add(n);
+    }
+    return path;
+  }
 
   /** `n` from where the last part left it. `open`: it is on the rightmost path, and may grow. */
   function* write(n: SsrNodeImpl, open: boolean, raw: boolean): Generator<string> {
@@ -51,7 +74,7 @@ export function partSerializer(root: SsrNode): PartSerializer {
     }
     const rawChildren = n.kind === 'element' && isRawText(n);
     for (let i = next.get(n)!; i < n.children.length; i++) {
-      const last = open && i === n.children.length - 1;
+      const last = open && i === n.children.length - 1 && keep(n.children[i]!);
       yield* write(n.children[i]!, last, rawChildren);
       // The last child of an open node may still grow: it is visited again next time.
       next.set(n, last ? i : i + 1);
@@ -63,7 +86,14 @@ export function partSerializer(root: SsrNode): PartSerializer {
 
   const top = asImpl(root);
   return {
-    part: () => write(top, true, false),
+    part(at?: SsrNode): Generator<string> {
+      if (at === undefined) keep = ALL;
+      else {
+        const path = pathTo(top, asImpl(at));
+        keep = (n) => path.has(n);
+      }
+      return write(top, true, false);
+    },
     end: () => write(top, false, false),
   };
 }
