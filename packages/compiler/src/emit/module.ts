@@ -31,7 +31,7 @@ import type { Diagnostic } from '../types/index.js';
 import { spaceModeOf } from './space.js';
 import { hasForeignDisplay, hostDisplay, tagDisplay, type Boxes, type Display } from './display.js';
 import { CodeWriter, type EmitMapping } from './writer.js';
-import { MarkupEmitter, renderName, tpl } from './markup.js';
+import { hasAwait, MarkupEmitter, renderName, tpl } from './markup.js';
 import {
   AssetLinker,
   type AssetExists,
@@ -47,7 +47,7 @@ import { propDefaults, restGroups } from './rest.js';
 import { hasDependencyInjection } from './di.js';
 import { cellSlots, childTargets, reactiveScope } from './state.js';
 import { bridgeIds, formAssociatedTags, hydratableTags, shadowOptions } from './level.js';
-import { needsRuntime, packIo, routeBlocksOf, writeMapConstants, writeHydrationBlocks } from './maps.js';
+import { needsRuntime, packIo, routeBlocksOf, writeMapConstants, writeHydrationBlocks, writePartsOpen } from './maps.js';
 import { planControls } from './controls.js';
 import { apiImports } from './api-links.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
@@ -567,6 +567,8 @@ function buildPageModule(
   // opens a container tree at all: a page without a single DI call carries no root, no map
   // and no import of `@fudic/di` (SDD-38 §5).
   const hasDi = hasDependencyInjection(graph);
+  // A page with `@await` goes out in parts (SDD-70 §4.2); the `<head>` cannot hold one.
+  const parted = hasAwait(page.body.children);
   const bodyW = new CodeWriter();
   const em = new MarkupEmitter({
     source,
@@ -584,6 +586,7 @@ function buildPageModule(
     shadowOptions: shadowOptions(graph),
     styled,
     projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
+    ...(parted ? { parts: '$parts' } : {}),
   });
   em.emitChildren(page.body.children, '$body');
 
@@ -619,6 +622,7 @@ function buildPageModule(
           needsRuntime(hydratable, hasDi, blocks !== undefined),
           form,
           (options.i18n?.locales.length ?? 0) >= 2,
+          parted,
         ),
       ...(sheets === null ? {} : { sheet: sheets.own }),
     },
@@ -655,7 +659,8 @@ function buildPageModule(
   // The third parameter is the route's container, created once per request by the wrapper.
   // A page rendered on its own — the standalone emit, a golden — is handed none and opens
   // its own, so a component that owns a container always has one to hang it from.
-  w.line('export function* page(data, io, $ioc) {');
+  // `async` only with `@await`: a page without one writes the bytes it always wrote.
+  w.line(`export ${parted ? 'async ' : ''}function* page(data, io, $ioc) {`);
   w.indent();
   w.line(
     `const { createDom, serialize, escapeText, jsonBlock${hasDi ? ', iocRoot, publishedSeed' : ''}${packIo(blocks)} } = io;`,
@@ -674,9 +679,18 @@ function buildPageModule(
   w.line(`yield '<!DOCTYPE html><html${htmlLang(options.i18n)}><head>' + head + '</head>';`);
   w.line('const $dom = createDom();');
   w.line('const $body = $dom.element(\'body\');');
-  w.appendWriter(bodyW);
-  writeHydrationBlocks(w, maps, '$dom', '$body', hasDi ? '$root' : undefined, blocks);
-  w.line('yield* serialize($body);');
+  if (parted) {
+    // In parts (SDD-70 §3.5): the route claims the `<body>` and the parts start before a node
+    // is built; each `@await` cuts one, and the last goes out with the rest of the body.
+    w.line('let $parts;');
+    writePartsOpen(w, maps, '$parts', '$dom', '$body', hasDi ? '$root' : undefined, blocks);
+    w.appendWriter(bodyW);
+    w.line('yield* $parts.end();');
+  } else {
+    w.appendWriter(bodyW);
+    writeHydrationBlocks(w, maps, '$dom', '$body', hasDi ? '$root' : undefined, blocks);
+    w.line('yield* serialize($body);');
+  }
   w.line("yield '</html>';");
   w.dedent();
   w.line('}');

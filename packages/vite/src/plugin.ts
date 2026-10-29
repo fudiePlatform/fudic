@@ -1111,6 +1111,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
                   nonce,
                   request,
                   pending,
+                  // A rejected `later` field with no `@catch` (SDD-70 §3.4).
+                  (error) => toOverlay(server, error),
                 );
                 return { status: pending.status, html };
               } catch (err) {

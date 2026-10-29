@@ -22,7 +22,7 @@ import {
   emitRouteModule,
   emitRouteClientModule,
 } from '../../../src/emit/index.js';
-import { memoryIo, ssrIo } from '../_support.js';
+import { drain, memoryIo, ssrIo, type PageFn } from '../_support.js';
 
 const LAYOUT = [
   '<!DOCTYPE html><html><head>@RenderHead()</head>',
@@ -33,7 +33,6 @@ const LAYOUT = [
   '</body></html>',
 ].join('\n');
 
-type PageFn = (data: unknown, io: unknown) => Iterable<string>;
 
 /** Evaluate an emitted module with its imports stripped and their bindings injected. */
 function evalModule(code: string, bindings: Record<string, unknown>, returns: string): unknown {
@@ -97,12 +96,12 @@ function guardedDom(): { dom: DomClient<Node>; open: () => void } {
  * Render the composed document, parse its `<body>` into the live one, and hand the route its
  * `h`. What comes back is the controller, already hooked up.
  */
-function hydrate(route: string, extra: Record<string, string> = {}): ReturnType<RouteFactory> {
+async function hydrate(route: string, extra: Record<string, string> = {}): Promise<ReturnType<RouteFactory>> {
   const io = memoryIo({ '/r.fud': route, '/l.fud': LAYOUT, ...extra });
   const graph = resolveDocument('/r.fud', io).value;
   const layout = evalModule(emitLayoutModule(graph, graph.layouts[0]!), {}, 'layout');
   const page = evalModule(emitRouteModule(graph), { layout }, 'page') as PageFn;
-  const html = [...page({}, ssrIo().io)].join('');
+  const html = await drain(page({}, ssrIo().io));
   const open = html.indexOf('>', html.indexOf('<body')) + 1;
   document.body.innerHTML = html.slice(open, html.lastIndexOf('</body>'));
 
@@ -127,16 +126,16 @@ describe('a route adopts the composed page from the `<body>` (§6.4)', () => {
     '</div>',
   ].join('\n');
 
-  it('paints the initial value on the server and moves it on a click', () => {
-    hydrate(route);
+  it('paints the initial value on the server and moves it on a click', async () => {
+    await hydrate(route);
     const out = document.querySelector('output.valor')!;
     expect(out.textContent).toBe('1');
     (document.querySelector('button.mas') as HTMLElement).click();
     expect(out.textContent).toBe('2');
   });
 
-  it('hooks up a button written inside a `@section`, on the other side of the document', () => {
-    hydrate(route);
+  it('hooks up a button written inside a `@section`, on the other side of the document', async () => {
+    await hydrate(route);
     const out = document.querySelector('output.valor')!;
     // The nav button is a child of `<body>`, the output is inside `<main>`: one handler,
     // two positions of the same walk (§4.4).
@@ -144,13 +143,13 @@ describe('a route adopts the composed page from the `<body>` (§6.4)', () => {
     expect(out.textContent).toBe('2');
   });
 
-  it('leaves the layout alone: the footer is exactly what the server wrote', () => {
-    hydrate(route);
+  it('leaves the layout alone: the footer is exactly what the server wrote', async () => {
+    await hydrate(route);
     expect(document.querySelector('footer.site')!.textContent).toContain('pie');
   });
 
-  it('releases what it hooked up', () => {
-    const controller = hydrate(route);
+  it('releases what it hooked up', async () => {
+    const controller = await hydrate(route);
     const out = document.querySelector('output.valor')!;
     controller.r();
     (document.querySelector('button.mas') as HTMLElement).click();
@@ -171,23 +170,23 @@ describe('a route subscribes to the bus, with the `<body>` as its host', () => {
   ].join('\n');
   const items = (): string[] => [...document.querySelectorAll('li')].map((li) => li.textContent);
 
-  it('hears an event emitted anywhere in the page and repaints', () => {
-    const controller = hydrate(route);
+  it('hears an event emitted anywhere in the page and repaints', async () => {
+    const controller = await hydrate(route);
     document.body.querySelector('footer')!.dispatchEvent(new CustomEvent('alta', { detail: 'Luis', bubbles: true }));
     expect(items()).toEqual(['Ana', 'Luis']);
     // Its listener is on the document, which outlives this test.
     controller.r();
   });
 
-  it('stops hearing it once released', () => {
-    hydrate(route).r();
+  it('stops hearing it once released', async () => {
+    (await hydrate(route)).r();
     document.title = '';
     document.dispatchEvent(new CustomEvent('alta', { detail: 'Luis' }));
     expect(document.title).toBe('');
   });
 
-  it('emits from its `<body>`, and the event reaches the document', () => {
-    hydrate(
+  it('emits from its `<body>`, and the event reaches the document', async () => {
+    await hydrate(
       [
         '<link rel="layout" href="./l.fud">',
         '@code {',
@@ -220,13 +219,13 @@ describe('a signal written before the hookup', () => {
       '<p class="s">@s()</p>',
     ].join('\n');
 
-  it('is painted by h()', () => {
-    hydrate(route("  effect(() => { s.set('b'); });"));
+  it('is painted by h()', async () => {
+    await hydrate(route("  effect(() => { s.set('b'); });"));
     expect(document.querySelector('p.s')!.textContent).toBe('b');
   });
 
-  it('and an untouched one leaves the server’s text, and still moves afterwards', () => {
-    hydrate(route("  document.addEventListener('poke', () => s.set('c'));"));
+  it('and an untouched one leaves the server’s text, and still moves afterwards', async () => {
+    await hydrate(route("  document.addEventListener('poke', () => s.set('c'));"));
     const p = document.querySelector('p.s')!;
     expect(p.textContent).toBe('a');
     document.dispatchEvent(new Event('poke'));
@@ -249,8 +248,8 @@ describe('the constructs of a route reconcile like a component’s', () => {
     '<ul class="lista">@foreach (const fila of filas()) key (fila.id) { <li>fila @fila.id</li> }</ul>',
   ].join('\n');
 
-  it('switches the `@if` branch and grows the `@foreach`', () => {
-    hydrate(route);
+  it('switches the `@if` branch and grows the `@foreach`', async () => {
+    await hydrate(route);
     expect(document.querySelector('p.salida')!.textContent).toBe('uno');
     expect(document.querySelectorAll('ul.lista li')).toHaveLength(1);
     (document.querySelector('button.mas') as HTMLElement).click();
@@ -272,8 +271,8 @@ describe('a construct written straight in a hole of the layout (BUG-45 §2.3)', 
     '@if (v()) { <p class="rama">verdadera</p> } else { <p class="rama">falsa</p> }',
   ].join('\n');
 
-  it('adopts the server branch and switches, in both directions, inside `<main>`', () => {
-    hydrate(route);
+  it('adopts the server branch and switches, in both directions, inside `<main>`', async () => {
+    await hydrate(route);
     const branch = (): Element => document.querySelector('main > p.rama')!;
     expect(branch().textContent).toBe('verdadera');
     (document.querySelector('button.t') as HTMLElement).click();
@@ -283,8 +282,8 @@ describe('a construct written straight in a hole of the layout (BUG-45 §2.3)', 
     expect(document.querySelectorAll('p.rama')).toHaveLength(1);
   });
 
-  it('releases the branch it switched to', () => {
-    const controller = hydrate(route);
+  it('releases the branch it switched to', async () => {
+    const controller = await hydrate(route);
     (document.querySelector('button.t') as HTMLElement).click();
     controller.r();
     expect(document.querySelector('p.rama')).toBeNull();
@@ -292,7 +291,7 @@ describe('a construct written straight in a hole of the layout (BUG-45 §2.3)', 
 });
 
 describe('a page that owns its own shell adopts the same way', () => {
-  it('walks straight off the `<body>`, with no layout to step over', () => {
+  it('walks straight off the `<body>`, with no layout to step over', async () => {
     const io = memoryIo({
       '/p.fud': [
         '<!DOCTYPE html><html><head>',
@@ -305,7 +304,7 @@ describe('a page that owns its own shell adopts the same way', () => {
     });
     const graph = resolveDocument('/p.fud', io).value;
     const page = evalModule(emitPageModule(graph), {}, 'page') as PageFn;
-    const html = [...page({}, ssrIo().io)].join('');
+    const html = await drain(page({}, ssrIo().io));
     const open = html.indexOf('>', html.indexOf('<body')) + 1;
     document.body.innerHTML = html.slice(open, html.lastIndexOf('</body>'));
 
@@ -349,8 +348,8 @@ describe('a layout with constructs and slotted holes (SDD-48, criteria 5 and 8)'
   const slotOf = (selector: string): (string | null)[] =>
     [...document.querySelectorAll(selector)].map((el) => el.getAttribute('slot'));
 
-  it('stamps what the server paints, and the button responds past the layout’s constructs', () => {
-    hydrate(route, { '/l.fud': SLOTTED });
+  it('stamps what the server paints, and the button responds past the layout’s constructs', async () => {
+    await hydrate(route, { '/l.fud': SLOTTED });
     expect(document.querySelectorAll('span.miga')).toHaveLength(3);
     expect(slotOf('div.marco > button.t')).toEqual(['contenido']);
     expect(slotOf('div.marco > a.l, div.marco > i.x')).toEqual(['lateral', 'lateral']);
@@ -359,8 +358,8 @@ describe('a layout with constructs and slotted holes (SDD-48, criteria 5 and 8)'
     expect(document.querySelector('p.nuevo')).not.toBeNull();
   });
 
-  it('stamps what the chunk BUILDS on an update with the slot of its hole', () => {
-    hydrate(route, { '/l.fud': SLOTTED });
+  it('stamps what the chunk BUILDS on an update with the slot of its hole', async () => {
+    await hydrate(route, { '/l.fud': SLOTTED });
     (document.querySelector('button.t') as HTMLElement).click();
     expect(slotOf('div.marco > p.nuevo')).toEqual(['contenido']);
     expect(slotOf('div.marco > i.x')).toEqual(['lateral', 'lateral']);

@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { resolveComponents } from '../../src/emit/index.js';
-import { memoryIo, pageModuleOf, ssrIo } from './_support.js';
+import { drain, memoryIo, pageModuleOf, ssrIo } from './_support.js';
 
 const goldenDir = join(dirname(fileURLToPath(import.meta.url)), '__golden__');
 const golden = (file: string): string => readFileSync(join(goldenDir, file), 'utf8');
@@ -44,7 +44,7 @@ const io = memoryIo({
 
 async function render(): Promise<string> {
   const page = await pageModuleOf(resolveComponents('/home.fud', io));
-  return [...page({}, ssrIo().io)].join('');
+  return await drain(page({}, ssrIo().io));
 }
 
 describe('SDD-42 §5 — a project with no `styles` emits what it emitted before', () => {

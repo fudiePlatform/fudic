@@ -234,7 +234,17 @@ export function minimalSsr(): {
  * the rendered HTML and not the emitted source: the codegen tests, and BUG-07, whose
  * whole subject is the bytes of the document.
  */
-export type PageFn = (data: unknown, io: unknown) => Iterable<string>;
+export type PageFn = (data: unknown, io: unknown) => Pieces;
+
+/** What a `page`/`layout` yields: sync or async, strings plus the odd non-string marker (`FLUSH`). */
+export type Pieces = Iterable<unknown> | AsyncIterable<unknown>;
+
+/** Drain a `page`/`layout` stream into the document, skipping every non-string piece. */
+export async function drain(pieces: Pieces): Promise<string> {
+  let html = '';
+  for await (const piece of pieces) if (typeof piece === 'string') html += piece;
+  return html;
+}
 
 /**
  * Emit every module of a graph to a temp dir and import the page's `page(data, io)`.
@@ -261,7 +271,7 @@ export async function pageModuleOf(
 export async function renderPageHtml(graph: ComponentGraph, data: unknown): Promise<string> {
   const page = await pageModuleOf(graph);
   // `page` streams a trozos: join the pieces into the full document (SDD-19 §4.3).
-  return [...page(data, minimalSsr())].join('');
+  return drain(page(data, minimalSsr()));
 }
 
 /**

@@ -37,7 +37,7 @@ describe('emitRenderChunk — the edge variant', () => {
   it('imports page, the ssr streaming io, and load/paths from fudic:<id>', () => {
     expect(code).toContain('import { page } from "./customer/[id].fud";');
     expect(code).toContain(
-      'import { SsrDom, serializeChunks, htmlToByteStream, escapeText, escapeAttr, guardUrl, jsonBlock, packData, iocRoot } from "@fudic/ssr";',
+      'import { SsrDom, serializeChunks, htmlToByteStream, escapeText, escapeAttr, guardUrl, jsonBlock, packData, PageParts, iocRoot } from "@fudic/ssr";',
     );
     // `load` receives a `ServerContext` always, chain or not (SDD-56 §4.16).
     expect(code).toContain('import { markPrivate, pageContext, withRequest } from "@fudic/http/server";');

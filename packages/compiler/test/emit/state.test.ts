@@ -10,7 +10,7 @@
 import { describe, expect, it } from 'vitest';
 import { join } from 'node:path';
 import { resolveComponents, type ComponentGraph } from '../../src/emit/index.js';
-import { fixturesDir, fixtureIo, memoryIo, pageModuleOf, ssrIo } from './_support.js';
+import { drain, fixturesDir, fixtureIo, memoryIo, pageModuleOf, ssrIo } from './_support.js';
 
 interface Payload {
   readonly offsets: readonly number[];
@@ -21,7 +21,7 @@ interface Payload {
 async function render(graph: ComponentGraph, data: unknown): Promise<{ html: string; payload: Payload }> {
   const page = await pageModuleOf(graph);
   const { io, dom } = ssrIo();
-  const html = [...page(data, io)].join('');
+  const html = await drain(page(data, io));
   return { html, payload: dom().hydrationState() };
 }
 

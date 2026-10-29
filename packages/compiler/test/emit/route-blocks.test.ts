@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest';
 import { resolveDocument } from '../../src/emit/resolve.js';
 import { emitLayoutModule, emitRouteModule, emitRouteModuleMapped } from '../../src/emit/index.js';
-import { memoryIo, ssrIo } from './_support.js';
+import { drain, memoryIo, ssrIo, type PageFn } from './_support.js';
 import type { LinkedApi, ResolveIo } from '../../src/types/io.js';
 import type { SsrDom } from '@fudic/ssr';
 
@@ -32,8 +32,6 @@ const CHILD = [
   '<output>@count()</output>',
   '</template></signal-display>',
 ].join('\n');
-
-type PageFn = (data: unknown, io: unknown) => Iterable<string>;
 
 function evalModule(code: string, bindings: Record<string, unknown>, returns: string): unknown {
   const body = code.replace(/^import[^\n]*\n/gmu, '').replace(/^export\s+/gmu, '') + `\nreturn ${returns};`;
@@ -62,11 +60,11 @@ function childRender(tag: string) {
 }
 
 /** Render a route with its layout through the REAL `@fudic/ssr`, keeping the adapter. */
-function render(
+async function render(
   route: string,
   options: { routeName?: string } = {},
   extra: Record<string, string> = {},
-): { html: string; dom: SsrDom } {
+): Promise<{ html: string; dom: SsrDom }> {
   const io = routeIo({ '/r.fud': route, '/l.fud': LAYOUT, ...extra });
   const graph = resolveDocument('/r.fud', io).value;
   const bindings: Record<string, unknown> = {
@@ -77,7 +75,7 @@ function render(
   const layout = evalModule(emitLayoutModule(graph, graph.layouts[0]!), bindings, 'layout');
   const page = evalModule(emitRouteModule(graph, options), { ...bindings, layout }, 'page') as PageFn;
   const { io: ssr, dom } = ssrIo();
-  const html = [...page({ user: 'pedro', token: 'x', items: [1] }, ssr)].join('');
+  const html = await drain(page({ user: 'pedro', token: 'x', items: [1] }, ssr));
   return { html, dom: dom() };
 }
 
@@ -89,27 +87,27 @@ const blockOf = (html: string, id: string): string | null => {
 };
 
 describe('the `<body>` claims its id, and it is the last (§6.7, §4.2)', () => {
-  it('takes the highest id of the page and fills its slice through `stateOf`', () => {
+  it('takes the highest id of the page and fills its slice through `stateOf`', async () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
       '<link rel="component" href="./d.fud">',
       '@code { const count = signal(7); }',
       '<signal-display .count=@count></signal-display>',
     ].join('\n');
-    const { html } = render(route, { routeName: 'ruta' }, { '/d.fud': CHILD });
+    const { html } = await render(route, { routeName: 'ruta' }, { '/d.fud': CHILD });
     // The child claimed 0 while the body was being built; the route claims when it ends.
     expect(html).toContain('<signal-display data-fud-id="0"');
     expect(html).toContain('<body data-fud-id="1">');
   });
 
-  it('hands the child THE SAME cell: one address, written down once', () => {
+  it('hands the child THE SAME cell: one address, written down once', async () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
       '<link rel="component" href="./d.fud">',
       '@code { const count = signal(7); }',
       '<signal-display .count=@count></signal-display>',
     ].join('\n');
-    const { html } = render(route, { routeName: 'ruta' }, { '/d.fud': CHILD });
+    const { html } = await render(route, { routeName: 'ruta' }, { '/d.fud': CHILD });
     const [offsets, data] = JSON.parse(blockOf(html, 'fud-state')!) as [number[], unknown[]];
     // Instance 0 is the child: its one slot is a marker pointing at the route's cell.
     expect(data.slice(offsets[0], offsets[1])).toEqual([{ $: [1, 0] }]);
@@ -117,31 +115,31 @@ describe('the `<body>` claims its id, and it is the last (§6.7, §4.2)', () => 
     expect(data.slice(offsets[1], offsets[2])).toEqual([7]);
   });
 
-  it('publishes the route name, and it is what the runtime derives the URL from', () => {
+  it('publishes the route name, and it is what the runtime derives the URL from', async () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
       '@code { const n = signal(1); }',
       '<output>@n()</output>',
     ].join('\n');
-    const { html } = render(route, { routeName: 'blog-slug' });
+    const { html } = await render(route, { routeName: 'blog-slug' });
     expect(blockOf(html, 'fud-route')).toBe('"blog-slug"');
   });
 
-  it('claims nothing and publishes nothing when the route has no client half', () => {
+  it('claims nothing and publishes nothing when the route has no client half', async () => {
     const route = '<link rel="layout" href="./l.fud">\n<p>estática</p>';
-    const { html } = render(route, { routeName: 'ruta' });
+    const { html } = await render(route, { routeName: 'ruta' });
     expect(html).not.toContain('data-fud-id');
     expect(blockOf(html, 'fud-route')).toBeNull();
     expect(blockOf(html, 'fud-state')).toBeNull();
   });
 
-  it('and nothing either when the build does not know what the route is called', () => {
+  it('and nothing either when the build does not know what the route is called', async () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
       '@code { const n = signal(1); }',
       '<output>@n()</output>',
     ].join('\n');
-    const { html } = render(route);
+    const { html } = await render(route);
     expect(html).not.toContain('<body data-fud-id');
     expect(blockOf(html, 'fud-route')).toBeNull();
   });
@@ -248,13 +246,13 @@ describe('`fud-data`: only what the client half reads (§6.15, §6.16)', () => {
       '<output>@n()</output>',
     ].join('\n');
 
-  it('publishes the roots it reads and nothing else', () => {
+  it('publishes the roots it reads and nothing else', async () => {
     const route = withLoad('const n = signal(1); function saluda() { alert(data.user); }');
-    const { html } = render(route, { routeName: 'ruta' });
+    const { html } = await render(route, { routeName: 'ruta' });
     expect(JSON.parse(blockOf(html, 'fud-data')!)).toEqual({ user: 'pedro' });
   });
 
-  it('publishes what the TEMPLATE reads too: a reactive route repaints it in the browser', () => {
+  it('publishes what the TEMPLATE reads too: a reactive route repaints it in the browser', async () => {
     // Before, only the browser code was read: `fud-data` went out without `items`, and every
     // repaint of the `@foreach` threw «U.items is not iterable».
     const route = [
@@ -264,29 +262,29 @@ describe('`fud-data`: only what the client half reads (§6.15, §6.16)', () => {
       '<output>@n()</output>',
       '<ul>@foreach (const i of data.items) { <li>@i</li> }</ul>',
     ].join('\n');
-    const { html } = render(route, { routeName: 'ruta' });
+    const { html } = await render(route, { routeName: 'ruta' });
     // The roots read and only those: `user` and `token` stay on the server.
     expect(JSON.parse(blockOf(html, 'fud-data')!)).toEqual({ items: [1] });
   });
 
-  it('publishes no block at all when the client half never names `data`', () => {
+  it('publishes no block at all when the client half never names `data`', async () => {
     const route = withLoad('const n = signal(1);');
-    const { html } = render(route, { routeName: 'ruta' });
+    const { html } = await render(route, { routeName: 'ruta' });
     expect(blockOf(html, 'fud-data')).toBeNull();
   });
 
-  it('sends `data` whole for a dynamic access, and says nothing about it (§6.16)', () => {
+  it('sends `data` whole for a dynamic access, and says nothing about it (§6.16)', async () => {
     const route = withLoad('const n = signal(1); function lee(k) { return data[k]; }');
     const io = routeIo({ '/r.fud': route, '/l.fud': LAYOUT });
     const out = emitRouteModuleMapped(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
     expect(out.diagnostics).toEqual([]);
-    const { html } = render(route, { routeName: 'ruta' });
+    const { html } = await render(route, { routeName: 'ruta' });
     expect(JSON.parse(blockOf(html, 'fud-data')!)).toEqual({ user: 'pedro', token: 'x', items: [1] });
   });
 
-  it('sends it whole when `data` is handed to something, with no diagnostic either', () => {
+  it('sends it whole when `data` is handed to something, with no diagnostic either', async () => {
     const route = withLoad('const n = signal(1); function manda() { console.log(data); }');
-    const { html } = render(route, { routeName: 'ruta' });
+    const { html } = await render(route, { routeName: 'ruta' });
     expect(JSON.parse(blockOf(html, 'fud-data')!)).toEqual({ user: 'pedro', token: 'x', items: [1] });
   });
 

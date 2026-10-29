@@ -63,6 +63,11 @@ export interface RenderContext {
    * page or its data makes it, renders, and answers with it. Absent in the Service Worker.
    */
   readonly response?: { status: number; readonly headers: Headers };
+  /**
+   * Where a `later` field that rejects goes when its `@await` has no `@catch` (SDD-70 §3.4):
+   * the response is already out, so the error can only be reported. In dev, the overlay.
+   */
+  readonly onError?: (error: unknown) => void;
 }
 
 /**

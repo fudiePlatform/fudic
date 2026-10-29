@@ -24,7 +24,7 @@ import {
   type ComponentGraph,
 } from '../../src/emit/index.js';
 import { reactiveScope } from '../../src/emit/state.js';
-import { memoryIo, minimalSsr } from './_support.js';
+import { drain, memoryIo, minimalSsr, type Pieces } from './_support.js';
 import { clientFactory, controller, mountAsDsd, serverShadowHtml } from './hydrate/_harness.js';
 
 const CAMPO =
@@ -63,7 +63,7 @@ describe('the server', () => {
     );
   });
 
-  it('a layout keeps the rest in its pattern too', () => {
+  it('a layout keeps the rest in its pattern too', async () => {
     const layout =
       '<!DOCTYPE html>\n<html lang="es">\n  <head>\n  @code {\n  const { culture, ...resto } = props<{ culture: string; theme?: string }>();\n}\n  @RenderHead()\n  </head>\n' +
       '  <body data-theme="@resto.theme">@RenderBody()</body>\n</html>\n';
@@ -84,8 +84,8 @@ describe('the server', () => {
       io: unknown,
       ioc: unknown,
       props: unknown,
-    ) => Iterable<string>;
-    const html = [...page({}, { ...minimalSsr(), nonce: '' }, undefined, { culture: 'es', theme: 'oscuro' })].join('');
+    ) => Pieces;
+    const html = await drain(page({}, { ...minimalSsr(), nonce: '' }, undefined, { culture: 'es', theme: 'oscuro' }));
     expect(html).toContain('data-theme="oscuro"');
   });
 });

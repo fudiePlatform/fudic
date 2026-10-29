@@ -7,7 +7,7 @@
 > **Rama:** `sdd-70-await-en-la-vista`. Nace de `main` **con SDD-61, SDD-67 y SDD-68 en
 > `Hecho`**: el constructo nuevo entra en la lista blanca de la 61, las tramas del endpoint de
 > datos usan el codec de la 67 y `load.fetch` de la 68 pasa a leerlas.
-> **Progreso:** 17 / 34 — `En curso`.
+> **Progreso:** 22 / 34 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -34,11 +34,8 @@ origin**, y el agente empuja también la suya.
 **Estado.**
 - Fases 1, 2 y 3 cerradas. Los tests de la fase 2 (rama `sdd-70-tests-2`) están mergeados y en
   verde, sin defectos.
-- Fase 4, a medias. Está en el commit «wip(sdd-70)», con **73 tests del compilador en rojo**:
-  - Están en `emit/layout`, `layout-props`, `route-blocks`, `route-code`, `hydrate/route`,
-    `hydrate/refresh`, `hydrate/packed-data`, `hydrate/owned`, `di` y `rest-emit`.
-  - Son los que recorren `page` o `layout` en síncrono. Pasan a `for await` (tarea 16).
-  - Si cambia algún golden, es un defecto.
+- Fase 4: tareas 16–20 hechas y todo en verde (los tests recorren `page` con `drain`, en
+  `test/emit/_support.ts`; ningún golden cambió). Falta la 21, los tests de la fase, por agente.
 
 **Fase 4, hecho:**
 - `@fudic/ssr`: `PageParts` (`page-parts.ts`) escribe cada parte con su bloque delante y su
@@ -62,14 +59,13 @@ origin**, y el agente empuja también la suya.
   - El runtime va con `async` en las páginas por partes.
 - `@fudic/vite`: `io.parts` y `io.onError` en el wrapper.
 
+- `module.ts`: una página sin layout con `@await` sale por partes igual (`async function* page`).
+- `RenderContext.onError`; en dev, `renderRouteHtml` lo lleva al overlay.
+
 **Fase 4, falta:**
-- Pasar a `for await` los 73 tests de arriba.
-- `module.ts`: una página **sin layout** con `@await` (`async function* page`, `$parts`, sin
-  bloques al final). Hoy solo funcionan las rutas con layout.
-- Tarea 19, la parte de `onError`: que dev le dé a `render` un `ctx.onError` que lleve al
-  overlay.
-- La pieza del lector de partes en `runtime-pieces`. Es de la fase 5: el lector aún no existe.
 - La tarea 21 (tests, por agente).
+- La pieza del lector de partes en `runtime-pieces` (tarea 20) pasa a la 22: el lector aún no
+  existe.
 
 **Decisiones de esta fase, para pasar a §8.2:**
 - El bloque es texto cedido, no un nodo del árbol. El de la parte 0 va justo después de la
@@ -148,11 +144,11 @@ origin**, y el agente empuja también la suya.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 16 | — | **Layouts `async function*`.** El layout espera `body()` y `section()`; los tests que recorren `page` o `layout` en síncrono pasan a `for await`. Los goldens no cambian | `compiler` | `src/emit/layout.ts` · `src/emit/layout-code.ts` · `test/**` |
-| [ ] | 17 | 7, 14, 16 | **El emit por partes.** Con algún `@await`, `async function* page`; en cada `@await`: bloque de la parte, `part()`, `<!--fud-end-->`, `FLUSH`, esperar, cuerpo o `@catch` en el punto de inserción. Sin `@await`, el emit de hoy | `compiler` | `src/emit/module.ts` · `src/emit/layout.ts` · `src/emit/constructs.ts` |
-| [ ] | 18 | 17 | **El bloque por parte.** `data-fud-part` con `state` (`[firstId, offsets, data]` de lo reclamado en la parte), `fields`, `di`, y en la 0 los estáticos, `data` e `ioc`; nada vacío. `writeRouteClaim` en la parte 0. `ssr-dom` entrega el estado por tramos | `compiler` · `ssr` | `src/emit/maps.ts` · `src/ssr-dom.ts` · `src/seed.ts` |
-| [ ] | 19 | 17 | **Ninguna promesa suelta.** El wrapper engancha un manejador a cada campo `later` antes de pintar; un rechazo pasa a `Problem` (`problemOf`, `detail` solo en dev) y va al `@catch` o a `onError`; el aviso de redirección tras el primer byte en dev | `vite` · `compiler` | `src/wrapper.ts` · `src/emit/module.ts` |
-| [ ] | 20 | 17 | **El runtime con `async`.** `writeRuntimeTags` pone `async` en la etiqueta del runtime solo en las páginas con `@await`, y pide la pieza del lector de partes | `compiler` · `vite` | `src/emit/parts.ts` · `src/runtime-pieces.ts` |
+| [x] | 16 | — | **Layouts `async function*`.** El layout espera `body()` y `section()`; los tests que recorren `page` o `layout` en síncrono pasan a `for await`. Los goldens no cambian | `compiler` | `src/emit/layout.ts` · `src/emit/layout-code.ts` · `test/**` |
+| [x] | 17 | 7, 14, 16 | **El emit por partes.** Con algún `@await`, `async function* page`; en cada `@await`: bloque de la parte, `part()`, `<!--fud-end-->`, `FLUSH`, esperar, cuerpo o `@catch` en el punto de inserción. Sin `@await`, el emit de hoy | `compiler` | `src/emit/module.ts` · `src/emit/layout.ts` · `src/emit/constructs.ts` |
+| [x] | 18 | 17 | **El bloque por parte.** `data-fud-part` con `state` (`[firstId, offsets, data]` de lo reclamado en la parte), `fields`, `di`, y en la 0 los estáticos, `data` e `ioc`; nada vacío. `writeRouteClaim` en la parte 0. `ssr-dom` entrega el estado por tramos | `compiler` · `ssr` | `src/emit/maps.ts` · `src/ssr-dom.ts` · `src/seed.ts` |
+| [x] | 19 | 17 | **Ninguna promesa suelta.** El wrapper engancha un manejador a cada campo `later` antes de pintar; un rechazo pasa a `Problem` (`problemOf`, `detail` solo en dev) y va al `@catch` o a `onError`; el aviso de redirección tras el primer byte en dev | `vite` · `compiler` | `src/wrapper.ts` · `src/emit/module.ts` |
+| [x] | 20 | 17 | **El runtime con `async`.** `writeRuntimeTags` pone `async` en la etiqueta del runtime solo en las páginas con `@await`, y pide la pieza del lector de partes | `compiler` · `vite` | `src/emit/parts.ts` · `src/runtime-pieces.ts` |
 | [ ] | 21 | 18–20 | **Los tests de la fase.** Criterios 9–16, con promesas controladas y leyendo el `ReadableStream` trozo a trozo | `compiler` · `vite` | `test/**` |
 
 ## Fase 5 — la hidratación por partes en el navegador (6)

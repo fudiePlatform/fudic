@@ -123,9 +123,11 @@ export async function renderRouteHtml(
   nonce: string,
   request?: Request,
   response?: PendingResponse,
+  onError?: (error: unknown) => void,
 ): Promise<string> {
   const mod = await load(wrapperId);
-  return drainStream(mod.render(withRequest(edgeContext(pattern, url, nonce), request, response)));
+  const ctx = withRequest(edgeContext(pattern, url, nonce), request, response);
+  return drainStream(mod.render(onError === undefined ? ctx : { ...ctx, onError }));
 }
 
 /** Run a route's `@server load(ctx)` for one concrete URL — the data endpoint (§4.5). */

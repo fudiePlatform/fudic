@@ -16,7 +16,7 @@ import { browserDom } from '@fudic/dom';
 import { resolveDocument } from '../../../src/emit/resolve.js';
 import { emitLayoutModule, emitRouteClientModule, emitRouteModule } from '../../../src/emit/index.js';
 import type { DataShape, LinkedApi } from '../../../src/types/io.js';
-import { memoryIo, ssrIo } from '../_support.js';
+import { drain, memoryIo, ssrIo, type PageFn } from '../_support.js';
 
 const DATA_STALE_EVENT = 'fudic:data-stale';
 
@@ -84,7 +84,11 @@ const blockOf = (html: string, id: string): string => {
 /** What the endpoint answers after a call: the `data` with its keys, as `load.fetch` hands it. */
 let next: unknown;
 
-function served(): { readonly html: string; readonly chunk: string; readonly modules: Record<string, Record<string, unknown>> } {
+async function served(): Promise<{
+  readonly html: string;
+  readonly chunk: string;
+  readonly modules: Record<string, Record<string, unknown>>;
+}> {
   const graph = resolveDocument('/usuarios.fud', {
     ...memoryIo({ '/usuarios.fud': ROUTE, '/l.fud': LAYOUT }),
     api: (path) => (path === '/usuarios.fudapi' ? API : undefined),
@@ -101,11 +105,8 @@ function served(): { readonly html: string; readonly chunk: string; readonly mod
     modules,
   ).replace(/^export\s+/gmu, '');
   // eslint-disable-next-line @typescript-eslint/no-implied-eval
-  const page = new Function('$m', 'layout', `${routeSource}\nreturn page;`)(modules, layout) as (
-    data: unknown,
-    io: unknown,
-  ) => Iterable<string>;
-  const html = [...page({ users: [ANA, EVA], secret: 'x' }, ssrIo().io)].join('');
+  const page = new Function('$m', 'layout', `${routeSource}\nreturn page;`)(modules, layout) as PageFn;
+  const html = await drain(page({ users: [ANA, EVA], secret: 'x' }, ssrIo().io));
   return { html, chunk: emitRouteClientModule(graph)!, modules };
 }
 
@@ -118,8 +119,8 @@ afterEach(() => {
 });
 
 describe('`fud-data` by the shape of `load` (BUG-60)', () => {
-  it('1, 2. the block carries no key at any depth, and the roots the chunk does not read stay home', () => {
-    const block = blockOf(served().html, 'fud-data');
+  it('1, 2. the block carries no key at any depth, and the roots the chunk does not read stay home', async () => {
+    const block = blockOf((await served()).html, 'fud-data');
     expect(JSON.parse(block)).toEqual([
       [
         [1, 'Ana', null, Date.UTC(2020, 0, 1), 0, 1],
@@ -131,7 +132,7 @@ describe('`fud-data` by the shape of `load` (BUG-60)', () => {
 
   it('3, 6. the chunk adopts the page from what it reads back, and a refresh still repaints it', async () => {
     vi.stubGlobal('location', { ...location, pathname: '/usuarios', reload: vi.fn() });
-    const { html, chunk, modules } = served();
+    const { html, chunk, modules } = await served();
     document.body.innerHTML = html.slice(html.indexOf('>', html.indexOf('<body')) + 1, html.lastIndexOf('</body>'));
     expect(chunk).toContain('unpackData as $unpackData');
     const rows = (): string[] => [...document.querySelectorAll('tbody tr')].map((r) => r.outerHTML);

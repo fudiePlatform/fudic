@@ -14,7 +14,7 @@ import {
   emitComponentClientModule,
   type ComponentGraph,
 } from '../../src/emit/index.js';
-import { fixturesDir, fixtureIo, memoryIo, pageModuleOf, ssrIo } from './_support.js';
+import { drain, fixturesDir, fixtureIo, memoryIo, pageModuleOf, ssrIo } from './_support.js';
 
 /** Render a page and hand back its HTML plus the payload the adapter collected. */
 async function render(
@@ -23,7 +23,7 @@ async function render(
 ): Promise<{ html: string; payload: { offsets: readonly number[]; data: readonly unknown[] } }> {
   const page = await pageModuleOf(graph);
   const { io, dom } = ssrIo();
-  return { html: [...page(data, io)].join(''), payload: dom().hydrationState() };
+  return { html: await drain(page(data, io)), payload: dom().hydrationState() };
 }
 
 /** The raw text of a block, exactly as it travels in the document. */

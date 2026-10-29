@@ -15,7 +15,7 @@ import {
 } from '../../src/emit/index.js';
 import { cellSlots, childTargets } from '../../src/emit/state.js';
 import { codeOf, splicedOffset } from '../../src/emit/oxc-code.js';
-import { bareProps, memoryIo, pageModuleOf, ssrIo } from './_support.js';
+import { drain, bareProps, memoryIo, pageModuleOf, ssrIo } from './_support.js';
 
 const PARENT = `<link rel="component" href="./cell-child.fud">
 <link rel="component" href="./cell-form.fud">
@@ -258,7 +258,7 @@ describe('the payload of the acceptance page (§6.5, §6.6)', () => {
   it('the cell in the owner’s slice, the marker in the child’s', async () => {
     const page = await pageModuleOf(g);
     const { io, dom } = ssrIo();
-    const html = [...page({}, io)].join('');
+    const html = await drain(page({}, io));
     const { offsets, data } = dom().hydrationState();
 
     // Instance 0 is `[ start=0, count=0 ]`; instance 1 is «my slot is that cell».

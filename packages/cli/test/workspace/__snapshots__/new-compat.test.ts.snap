@@ -189,6 +189,20 @@ declare function $key(k?: unknown): void;
 
 declare function $empty(): boolean;
 
+declare function $await<D, K extends keyof D>(data: D, field: K): Omit<D, K> & { readonly [P in K]: Awaited<D[P]> };
+
+interface $Problem {
+  /** The HTTP status: 404, 500… */
+  readonly status: number;
+  /** The standard name of the status: \`Not Found\`. */
+  readonly title: string;
+  /** What the server said, in development only. */
+  readonly detail?: string;
+}
+
+/** The \`Problem\` of the \`@catch\` being projected. Opaque, like \`$empty\`. */
+declare function $problem(): $Problem;
+
 type $El<T extends string> = T extends keyof HTMLElementTagNameMap
   ? HTMLElementTagNameMap[T]
   : HTMLElement;
