@@ -1,6 +1,6 @@
 # BUG-60 · `fud-data` repite los nombres de los campos en cada fila
 
-> **Estado:** `Borrador` — documentado mientras se arregla, a petición de Pedro. [tareas](./BUG-60-Task.md).
+> **Estado:** `Hecho` — documentado mientras se arregla, a petición de Pedro. [tareas](./BUG-60-Task.md).
 > **Corrige:** [SDD-39](../SDD-39-rutas-reactivas.md) §4.8 (el bloque `fud-data`).
 > **Paquetes:** `@fudic/ssr` · `@fudic/core` · `@fudic/api` · `@fudic/vite` · `@fudic/compiler`
 

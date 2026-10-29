@@ -3,7 +3,7 @@
 > **BUG:** [BUG-60 — `fud-data` repite los nombres de los campos en cada fila](./BUG-60-fud-data-sin-claves.md)
 > **Paquetes:** `@fudic/ssr` · `@fudic/core` · `@fudic/api` · `@fudic/vite` · `@fudic/compiler`
 > **Rama:** `sdd-68-llamadas-sin-fontaneria` (a petición de Pedro: se cierra el producto aquí)
-> **Progreso:** 5 / 6 — `Borrador`.
+> **Progreso:** 6 / 6 — `Hecho`.
 
 ---
 
@@ -31,4 +31,4 @@
 | ✓ | # | tarea |
 |---|---|---|
 | [x] | 5 | `pnpm typecheck`, `pnpm test` y `pnpm build` en verde |
-| [ ] | 6 | Prueba de Pedro en el navegador sobre `/usuarios`; BUG-60 a `Hecho` con su fila y su entrada en `bugs/INDEX.md` |
+| [x] | 6 | Prueba de Pedro en el navegador sobre `/usuarios`; BUG-60 a `Hecho` con su fila y su entrada en `bugs/INDEX.md` |
