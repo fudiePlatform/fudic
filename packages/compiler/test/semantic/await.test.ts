@@ -75,6 +75,7 @@ describe('criterion 5 — a `later` field read outside its `@await`: FUD1321 on 
   it('nothing for a field without `later`, a computed read, or a `data` the template declares', () => {
     expect(codes(route('<p>@data.title @(data["users"])</p>'))).toEqual([]);
     expect(codes(route('<div>@{ let data = { users: 1 }; }<p>@data.users</p></div>'))).toEqual([]);
+    expect(codes(route('@foreach (const data of xs) key (data) { <p>@data.users</p> }'))).toEqual([]);
   });
 
   it('nothing when the host cannot say, or no field is `later`', () => {

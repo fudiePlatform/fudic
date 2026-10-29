@@ -85,7 +85,8 @@ export const awaitBlocks: Analyzer = {
     const { scope } = portableView(input);
     for (const fragment of scope.fragments) {
       // A name `data` the template declares itself is not the page's `data`.
-      if (scope.resolve('data', fragment.scope) === 'template') continue;
+      const owner = scope.resolve('data', fragment.scope);
+      if (owner === 'template' || owner === 'template-fixed') continue;
       for (const read of dataReads(fragment.root)) {
         const fieldName = nameOf(child(read, 'property')!);
         if (!later.has(fieldName)) continue;
