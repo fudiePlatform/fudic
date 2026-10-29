@@ -16,14 +16,29 @@ export interface StreamOptions {
 const DEFAULT_HIGH_WATER_MARK = 8192;
 
 /**
+ * Yielded by a render: send everything buffered now, whatever its size (SDD-70 §3.6).
+ *
+ * A page with `@await` yields it before it waits for a field, so the `<head>` and the part
+ * already built leave instead of sitting in the buffer until 8 KB gather. `Symbol.for`, so a
+ * render bundled with its own copy of this module still speaks to this one.
+ */
+export const FLUSH: unique symbol = Symbol.for('fudic.ssr.flush') as typeof FLUSH;
+
+/** What a render yields: HTML text, or `FLUSH`. */
+export type HtmlPiece = string | typeof FLUSH;
+
+/**
  * Turn a (sync OR async) sequence of HTML text pieces into a UTF-8 byte stream.
  * Pull-based: each `pull` advances the iterator, coalescing pieces up to
  * `highWaterMark` bytes per enqueue, and yields when `desiredSize <= 0`.
  * `cancel()` closes the source iterator (`return()`). Each piece is encoded
  * whole, so a multi-byte code point never splits across chunks.
+ *
+ * A `FLUSH` empties the buffer before the next piece is awaited; with the buffer empty it does
+ * nothing.
  */
 export function htmlToByteStream(
-  source: Iterable<string> | AsyncIterable<string>,
+  source: Iterable<HtmlPiece> | AsyncIterable<HtmlPiece>,
   options?: StreamOptions,
 ): ReadableStream<Uint8Array> {
   const minBytes = options?.highWaterMark ?? DEFAULT_HIGH_WATER_MARK;
@@ -60,6 +75,11 @@ export function htmlToByteStream(
         if (step.done === true) {
           exhausted = true;
           break;
+        }
+        if (step.value === FLUSH) {
+          // Enqueueing lowers `desiredSize`, so the loop yields to the consumer right here.
+          flush(controller);
+          continue;
         }
         const bytes = encoder.encode(step.value);
         pending.push(bytes);

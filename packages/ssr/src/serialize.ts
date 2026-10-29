@@ -43,7 +43,8 @@ export function renderToString(root: SsrNode): string {
   return [...serializeChunks(root)].join('');
 }
 
-function* serialize(n: SsrNodeImpl): Generator<string> {
+/** One node, whole: the walk `serializeChunks` makes, for a node `parts.ts` emits at once. */
+export function* serialize(n: SsrNodeImpl): Generator<string> {
   switch (n.kind) {
     case 'text':
       yield escapeText(n.data);
@@ -64,14 +65,25 @@ function* serialize(n: SsrNodeImpl): Generator<string> {
   }
 }
 
+/** A void element: no children, no closing tag. */
+export const isVoid = (n: SsrNodeImpl): boolean => VOID_ELEMENTS.has((n.tag as string).toLowerCase());
+
+/** A rawtext element: its text children go out unescaped. */
+export const isRawText = (n: SsrNodeImpl): boolean => RAWTEXT_ELEMENTS.has((n.tag as string).toLowerCase());
+
 function* serializeElement(n: SsrNodeImpl): Generator<string> {
-  const tag = n.tag as string;
-  yield `<${tag}${serializeAttrs(n)}>`;
+  yield* openElement(n);
+  if (isVoid(n)) return; // no children, no closing tag
+  yield* elementChildren(n);
+  yield `</${n.tag as string}>`;
+}
 
-  if (VOID_ELEMENTS.has(tag.toLowerCase())) {
-    return; // no children, no closing tag
-  }
-
+/**
+ * The opening of an element: its start tag and, for a host, its whole shadow root. What comes
+ * before its light children — and what `parts.ts` writes the first time it reaches one.
+ */
+export function* openElement(n: SsrNodeImpl): Generator<string> {
+  yield `<${n.tag as string}${serializeAttrs(n)}>`;
   if (n.shadow !== null) {
     // DSD template adopts the component's shared stylesheet, named by the host tag
     // (SDD-18). Standard form emitted day one so native support needs zero change.
@@ -92,14 +104,14 @@ function* serializeElement(n: SsrNodeImpl): Generator<string> {
     yield* serializeChildren(n.shadow);
     yield '</template>';
   }
+}
 
-  if (RAWTEXT_ELEMENTS.has(tag.toLowerCase())) {
+function* elementChildren(n: SsrNodeImpl): Generator<string> {
+  if (isRawText(n)) {
     yield* rawChildren(n);
   } else {
     yield* serializeChildren(n);
   }
-
-  yield `</${tag}>`;
 }
 
 function* serializeChildren(n: SsrNodeImpl): Generator<string> {
@@ -110,12 +122,15 @@ function* serializeChildren(n: SsrNodeImpl): Generator<string> {
 
 /** Rawtext children: text emitted verbatim; anything else falls back to normal. */
 function* rawChildren(n: SsrNodeImpl): Generator<string> {
-  for (const child of n.children) {
-    if (child.kind === 'text') {
-      yield child.data;
-    } else {
-      yield* serialize(child);
-    }
+  for (const child of n.children) yield* rawChild(child);
+}
+
+/** One child of a rawtext element: its text verbatim, anything else as usual. */
+export function* rawChild(child: SsrNodeImpl): Generator<string> {
+  if (child.kind === 'text') {
+    yield child.data;
+  } else {
+    yield* serialize(child);
   }
 }
 

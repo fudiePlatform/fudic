@@ -7,7 +7,7 @@
 > **Rama:** `sdd-70-await-en-la-vista`. Nace de `main` **con SDD-61, SDD-67 y SDD-68 en
 > `Hecho`**: el constructo nuevo entra en la lista blanca de la 61, las tramas del endpoint de
 > datos usan el codec de la 67 y `load.fetch` de la 68 pasa a leerlas.
-> **Progreso:** 13 / 34 — `En curso`.
+> **Progreso:** 15 / 34 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -82,8 +82,8 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 13 | — | **`FLUSH`.** El símbolo y `HtmlPiece`; `htmlToByteStream` vacía el búfer al recibirlo y no hace nada con el búfer vacío | `ssr` | `src/stream.ts` · `src/index.ts` |
-| [ ] | 14 | — | **`partSerializer`.** `part()` saca lo añadido desde el último corte dejando abiertos los elementos abiertos; `end()` cierra lo que queda. Reutiliza las reglas de `serialize.ts` (vacíos, rawtext, DSD, escapes) | `ssr` | `src/serialize.ts` · `src/parts.ts` |
+| [x] | 13 | — | **`FLUSH`.** El símbolo y `HtmlPiece`; `htmlToByteStream` vacía el búfer al recibirlo y no hace nada con el búfer vacío | `ssr` | `src/stream.ts` · `src/index.ts` |
+| [x] | 14 | — | **`partSerializer`.** `part()` saca lo añadido desde el último corte dejando abiertos los elementos abiertos; `end()` cierra lo que queda. Reutiliza las reglas de `serialize.ts` (vacíos, rawtext, DSD, escapes) | `ssr` | `src/serialize.ts` · `src/parts.ts` |
 | [ ] | 15 | 13, 14 | **Los tests de la fase.** `part()` + `end()` unidos dan los mismos bytes que `renderToString` sobre el mismo árbol, cortando a cualquier profundidad (dentro de `<table>`, `<ul>`, un anfitrión con DSD); `FLUSH` entrega antes de 8 KB | `ssr` | `test/**` |
 
 ## Fase 4 — el render por partes en el servidor (6)
