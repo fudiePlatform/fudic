@@ -2,6 +2,7 @@
 
 import { notFound, redirect } from '@fudic/http';
 import { layout, load } from 'fudic:routes/blog/[slug]';
+import { load as loadEspera } from 'fudic:routes/espera';
 import { load as loadMoved } from 'fudic:routes/moved';
 import { findPost } from '../data/posts';
 
@@ -16,3 +17,5 @@ layout.handle((_ctx, data) => ({ culture: data.lang }));
 loadMoved.handle(() => {
   throw redirect('/blog/x', 302);
 });
+
+loadEspera.handle(() => ({ total: Promise.resolve(3) }));

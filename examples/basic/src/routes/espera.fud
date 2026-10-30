@@ -1,0 +1,37 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/app-counter.fud">
+<link rel="server" href="./espera.fudapi">
+
+<head>
+  <title>Espera — fudic</title>
+</head>
+
+@section nav {
+  <site-nav .current="espera"></site-nav>
+}
+
+<h1>@data.title</h1>
+<p class="lede">
+  El título y el menú llegan con el primer byte. Cada bloque de abajo espera a su dato y se pinta
+  cuando llega, en orden y sin JavaScript para colocarlo. Lo lento va abajo: un bloque espera al
+  anterior.
+</p>
+
+<h2>A los 2 s</h2>
+@await data.inicio {
+  <p>El contador arranca en @data.inicio y responde a los clics mientras lo de abajo sigue sin llegar.</p>
+  <app-counter .start=@data.inicio></app-counter>
+}
+
+<h2>A los 5 s</h2>
+@await data.resumen {
+  <p>@data.resumen.activas de @data.resumen.personas personas están activas.</p>
+}
+
+<h2>Uno que falla</h2>
+@await data.roto {
+  <p>@data.roto</p>
+} @catch (e) {
+  <p>No se pudo cargar (@e.status @e.title).</p>
+}

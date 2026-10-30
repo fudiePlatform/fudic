@@ -1,0 +1,11 @@
+# SDD-70: the page goes out before the backend is done. `title` comes with the first byte; each
+# `later` field arrives when its promise settles, and its `@await` paints it in place.
+load ssr
+  title    str
+  inicio   i32  later
+  resumen  Resumen  later
+  roto     str  later
+
+type Resumen
+  personas  i32
+  activas   i32

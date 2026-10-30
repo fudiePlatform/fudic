@@ -8,7 +8,7 @@
  * Every import is tracked, so a gesture can wait for it (§4.7).
  */
 
-import { installHydration, ROUTE_BLOCK, signal, type HydrationOptions } from '@fudic/core';
+import { installHydration, PART_ATTR, readParts, ROUTE_BLOCK, signal, type HydrationOptions } from '@fudic/core';
 import { browserDom } from '@fudic/dom';
 import { track } from './pending.js';
 import { localized } from './project.js';
@@ -72,8 +72,15 @@ export function chunkMap(components: Iterable<{ readonly tag: string; readonly p
  */
 export function withRoute(chunks: ChunkMap, doc: Document, file: string, locale?: string): ChunkMap {
   const block = doc.getElementById(ROUTE_BLOCK);
-  if (block === null) return chunks;
-  const name = JSON.parse(String(block.textContent)) as string;
+  // A page in parts names its route in the block of part 0 (SDD-70 §3.5).
+  const first = doc.querySelector(`script[${PART_ATTR}="0"]`);
+  const name =
+    block !== null
+      ? (JSON.parse(String(block.textContent)) as string)
+      : first === null
+        ? undefined
+        : (JSON.parse(String(first.textContent)) as { route?: string }).route;
+  if (name === undefined) return chunks;
   return new Map([...chunks, [name, localized(`${file}?client`, locale)]]);
 }
 
@@ -100,5 +107,7 @@ export function hydrate(root: HTMLElement, chunks: ChunkMap, providers: readonly
     importDeferred,
     registry: pageRegistry(),
     ready: track(standTree(resolveChunk, providers)),
+    // A page with `@await` is read part by part, as the coordinator reads it (SDD-70 §4.4).
+    ...(document.querySelector(`script[${PART_ATTR}]`) === null ? {} : { parts: readParts }),
   });
 }

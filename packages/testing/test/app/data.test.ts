@@ -48,6 +48,12 @@ describe('GET /_fudic/data/<route>', () => {
     expect(await response.json()).toEqual({ status: 302, title: 'Redirect', location: '/blog/x' });
   });
 
+  test('a route that resolves nothing has no endpoint: a 404 with no body (SDD-70 §3.7)', async () => {
+    const response = await fetch('/_fudic/data/contador');
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe('');
+  });
+
   test('a path no route matches is a 404 with no body', async () => {
     const response = await fetch('/_fudic/data/no/such/route');
     expect(response.status).toBe(404);

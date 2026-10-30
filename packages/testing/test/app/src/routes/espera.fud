@@ -1,0 +1,19 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./espera.fudapi">
+
+@code {
+  import { signal } from "@fudic/core";
+
+  const n = signal(0);
+  function mas() { n.set(n() + 1); }
+}
+
+<head>
+  <title>Espera — test</title>
+</head>
+
+@await data.total {
+  <p class="total">@data.total</p>
+  <button @click=@mas>+1</button>
+  <output>@n()</output>
+}
