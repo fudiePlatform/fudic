@@ -7,7 +7,7 @@
 > **Rama:** `sdd-70-await-en-la-vista`. Nace de `main` **con SDD-61, SDD-67 y SDD-68 en
 > `Hecho`**: el constructo nuevo entra en la lista blanca de la 61, las tramas del endpoint de
 > datos usan el codec de la 67 y `load.fetch` de la 68 pasa a leerlas.
-> **Progreso:** 36 / 37 — `En curso`.
+> **Progreso:** 36 / 39 — `En curso`. La 32 queda abierta por el cierre: la prueba de Pedro en el navegador está hecha (2026-10-30, `espera` con y sin SW); falta la del editor (criterio 26).
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -211,6 +211,15 @@ componentes de esa página esperan al final para hidratarse.
 | [x] | 36 | — | **Sin refresco implícito.** Decisión de Pedro (2026-10-30), revierte en parte SDD-68 §4.8: una mutación de la ruta ya no hace que la página pida su `data` otra vez; solo lo hace una función que nombra la página en `invalidates`. El estado vive en las señales y lo actualiza el autor en sus handlers. La invalidación del caché del SW sigue igual | `http` | `src/contract/fn.ts` · `test/**` |
 | [x] | 37 | 36 | **`usuarios.fud` actualiza su señal.** `activar` espera a `guardar` y pone `personas` al día, o devuelve el checkbox a su sitio si falló; `borrar` espera a `quitar` y quita la fila si no falló. Los comentarios y el texto que hablan de `/_fudic/data/usuarios` se corrigen | `examples/basic` | `src/routes/usuarios.fud` |
 | [x] | 31 | 28–30, 36, 37 | **Los tests de la fase.** Criterios 17 y 21; una mutación sin `invalidates` no pide el `data`, una con `invalidates` de su página sí | `vite` · `transport` · `http` | `test/**` |
+
+## Fase 8 — el primer byte, también sin `@await` (2)
+
+Pedidas por Pedro el 2026-10-30, después de probar `espera`. Las implementa otra sesión.
+
+| ✓ | # | dep | tarea | package | fichero |
+|---|---|---|---|---|---|
+| [ ] | 38 | — | **Vaciar el búfer al cerrar el `<head>`.** Toda página (con o sin `@await`) cede `FLUSH` justo detrás de `</head>`, para que el navegador empiece a pedir el CSS y el runtime mientras el servidor construye el body. Un `FLUSH` con el búfer vacío no hace nada. Los goldens de bytes no cambian (`FLUSH` no es texto), pero sí cuándo sale cada trozo: un test lee el `ReadableStream` y ve el `<head>` en su propio trozo, aunque pese menos de 8 KB | `compiler` · `ssr` | `src/emit/module.ts` · `src/emit/layout.ts` · `test/**` |
+| [ ] | 39 | 38 | **El tamaño del búfer, por configuración en el `.fudapi`.** El valor por defecto, 8 KB, pasa a `@fudic/conventions` (hoy `DEFAULT_HIGH_WATER_MARK` en `ssr/src/stream.ts`). El autor puede cambiarlo en el `.fudapi` (de la app o de una ruta; la sintaxis, por decidir con Pedro antes de implementar), incluido `0`: cada trozo sale en cuanto se produce, sin retención. Llega a `htmlToByteStream` por las `StreamOptions` que ya acepta (`highWaterMark`). Diagnóstico para un valor que no es un entero ≥ 0 | `conventions` · `api` · `ssr` · `vite` · `diagnostics` | `src/index.ts` · `src/stream.ts` · `src/wrapper.ts` |
 
 ## Fase 7 — ejemplo y cierre (1)
 
