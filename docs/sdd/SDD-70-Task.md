@@ -7,7 +7,7 @@
 > **Rama:** `sdd-70-await-en-la-vista`. Nace de `main` **con SDD-61, SDD-67 y SDD-68 en
 > `Hecho`**: el constructo nuevo entra en la lista blanca de la 61, las tramas del endpoint de
 > datos usan el codec de la 67 y `load.fetch` de la 68 pasa a leerlas.
-> **Progreso:** 36 / 39 — `En curso`. La 32 queda abierta por el cierre: la prueba de Pedro en el navegador está hecha (2026-10-30, `espera` con y sin SW); falta la del editor (criterio 26).
+> **Progreso:** 37 / 39 — `En curso`. Pedro probó `espera` en el navegador (con y sin SW) y en el editor el 2026-10-30. Quedan las tareas 38 y 39 (fase 8), para otra sesión.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -225,4 +225,4 @@ Pedidas por Pedro el 2026-10-30, después de probar `espera`. Las implementa otr
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 32 | 31 | **Ejemplo, docs, entrega y cierre.** `examples/basic/src/routes/espera.{fud,fudapi,ts}` del criterio 22 y su enlace en `site-nav`; Pedro lo prueba en el navegador y en el editor (criterio 26). Criterio 23: la guía de `@await` en el README del compilador (dónde va, lo lento abajo, el status no es una promesa) y `later` en el del `.fudapi`; decisiones 168–170 ya en `gramatica-v1-decisiones.md`; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde y al 100 % en lo nuevo; SDD-70 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `examples/basic/**` · `packages/*/README.md` · `docs/sdd/*` |
+| [x] | 32 | 31 | **Ejemplo, docs, entrega y cierre.** `examples/basic/src/routes/espera.{fud,fudapi,ts}` del criterio 22 y su enlace en `site-nav`; Pedro lo prueba en el navegador y en el editor (criterio 26). Criterio 23: la guía de `@await` en el README del compilador (dónde va, lo lento abajo, el status no es una promesa) y `later` en el del `.fudapi`; decisiones 168–170 ya en `gramatica-v1-decisiones.md`; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde y al 100 % en lo nuevo; SDD-70 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `examples/basic/**` · `packages/*/README.md` · `docs/sdd/*` |
