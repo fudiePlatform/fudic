@@ -21,6 +21,7 @@ import {
   createApiIndex,
   dataShape,
   emitDeclarations,
+  framesShape,
   emitModule,
   layoutPropsType,
   parseApi,
@@ -158,10 +159,12 @@ export class ApiProject {
     if (source === undefined) return undefined;
     const decls = source.file.declarations;
     const load = decls.find((d): d is LoadDecl => d.kind === 'load');
+    const frames = framesShape(source, this.#read().index);
     return {
       id: source.id,
       file: source.path,
       ...(load !== undefined ? { load } : {}),
+      ...(frames !== undefined ? { frames } : {}),
       paths: decls.some((d) => d.kind === 'paths'),
       layout: decls.some((d) => d.kind === 'layout'),
     };

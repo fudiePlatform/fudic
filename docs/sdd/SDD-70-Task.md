@@ -7,7 +7,7 @@
 > **Rama:** `sdd-70-await-en-la-vista`. Nace de `main` **con SDD-61, SDD-67 y SDD-68 en
 > `Hecho`**: el constructo nuevo entra en la lista blanca de la 61, las tramas del endpoint de
 > datos usan el codec de la 67 y `load.fetch` de la 68 pasa a leerlas.
-> **Progreso:** 29 / 37 — `En curso`.
+> **Progreso:** 36 / 37 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -204,13 +204,13 @@ componentes de esa página esperan al final para hidratarse.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 28 | 17 | **Streaming en dev y preview.** `renderRouteHtml` y `previewRender` responden con el stream en lugar de `drainStream`; un error antes del primer byte sigue yendo a `page-errors.ts`. El prerender sigue drenando | `vite` | `src/plugin.ts` · `src/serve.ts` |
-| [ ] | 35 | — | **Los tipos de `load` y `layout` en la spec.** El `.fudapi` emite en la spec de la pieza `load` (y de `layout`) los tipos de sus campos, los que el codec de SDD-67 necesita para codificar el `data`. Decisión de Pedro (2026-10-30): el endpoint va en binario, no en JSON | `api` · `http` | `src/emit/*` · `src/contract/page.ts` |
-| [ ] | 29 | 19, 35 | **El endpoint por tramas, en binario.** En toda ruta, con el codec de SDD-67: la trama de `{ data, layout }` y una por campo `later` según se cumple; sin campos `later`, una sola trama. `load.fetch` (SDD-68) pasa a leer las tramas (SDD §3.7) | `vite` · `http` | `src/wrapper.ts` · `src/serve.ts` · `src/plugin.ts` · `src/contract/page.ts` |
-| [ ] | 30 | 29 | **El SW por tramas.** `fetchData` arma el `data` con promesas que cumplen las tramas y llama a `render` con la primera; la caché guarda la respuesta completa | `transport` | `src/router.ts` |
-| [ ] | 36 | — | **Sin refresco implícito.** Decisión de Pedro (2026-10-30), revierte en parte SDD-68 §4.8: una mutación de la ruta ya no hace que la página pida su `data` otra vez; solo lo hace una función que nombra la página en `invalidates`. El estado vive en las señales y lo actualiza el autor en sus handlers. La invalidación del caché del SW sigue igual | `http` | `src/contract/fn.ts` · `test/**` |
-| [ ] | 37 | 36 | **`usuarios.fud` actualiza su señal.** `activar` espera a `guardar` y pone `personas` al día, o devuelve el checkbox a su sitio si falló; `borrar` espera a `quitar` y quita la fila si no falló. Los comentarios y el texto que hablan de `/_fudic/data/usuarios` se corrigen | `examples/basic` | `src/routes/usuarios.fud` |
-| [ ] | 31 | 28–30, 36, 37 | **Los tests de la fase.** Criterios 17 y 21; una mutación sin `invalidates` no pide el `data`, una con `invalidates` de su página sí | `vite` · `transport` · `http` | `test/**` |
+| [x] | 28 | 17 | **Streaming en dev y preview.** `renderRouteHtml` y `previewRender` responden con el stream en lugar de `drainStream`; un error antes del primer byte sigue yendo a `page-errors.ts`. El prerender sigue drenando | `vite` | `src/plugin.ts` · `src/serve.ts` |
+| [x] | 35 | — | **Los tipos de `load` y `layout` en la spec.** El `.fudapi` emite en la spec de la pieza `load` (y de `layout`) los tipos de sus campos, los que el codec de SDD-67 necesita para codificar el `data`. Decisión de Pedro (2026-10-30): el endpoint va en binario, no en JSON | `api` · `http` | `src/emit/*` · `src/contract/page.ts` |
+| [x] | 29 | 19, 35 | **El endpoint por tramas, en binario.** En toda ruta, con el codec de SDD-67: la trama de `{ data, layout }` y una por campo `later` según se cumple; sin campos `later`, una sola trama. `load.fetch` (SDD-68) pasa a leer las tramas (SDD §3.7) | `vite` · `http` | `src/wrapper.ts` · `src/serve.ts` · `src/plugin.ts` · `src/contract/page.ts` |
+| [x] | 30 | 29 | **El SW por tramas.** `fetchData` arma el `data` con promesas que cumplen las tramas y llama a `render` con la primera; la caché guarda la respuesta completa | `transport` | `src/router.ts` |
+| [x] | 36 | — | **Sin refresco implícito.** Decisión de Pedro (2026-10-30), revierte en parte SDD-68 §4.8: una mutación de la ruta ya no hace que la página pida su `data` otra vez; solo lo hace una función que nombra la página en `invalidates`. El estado vive en las señales y lo actualiza el autor en sus handlers. La invalidación del caché del SW sigue igual | `http` | `src/contract/fn.ts` · `test/**` |
+| [x] | 37 | 36 | **`usuarios.fud` actualiza su señal.** `activar` espera a `guardar` y pone `personas` al día, o devuelve el checkbox a su sitio si falló; `borrar` espera a `quitar` y quita la fila si no falló. Los comentarios y el texto que hablan de `/_fudic/data/usuarios` se corrigen | `examples/basic` | `src/routes/usuarios.fud` |
+| [x] | 31 | 28–30, 36, 37 | **Los tests de la fase.** Criterios 17 y 21; una mutación sin `invalidates` no pide el `data`, una con `invalidates` de su página sí | `vite` · `transport` · `http` | `test/**` |
 
 ## Fase 7 — ejemplo y cierre (1)
 

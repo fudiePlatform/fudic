@@ -33,7 +33,8 @@ export function documentFiles(entry: string, io: ResolveIo): readonly string[] {
 /** The route wrapper module: the render fn, and `data` when the page has `load`. */
 export interface RenderModule {
   readonly render: (ctx: RenderContext) => ReadableStream<Uint8Array>;
-  readonly data?: (ctx: Omit<RenderContext, 'nonce'>) => Promise<unknown>;
+  /** The data endpoint: its frames, once `load` and `layout` have resolved (SDD-70 §3.7). */
+  readonly data?: (ctx: Omit<RenderContext, 'nonce'>) => Promise<ReadableStream<Uint8Array>>;
 }
 
 /** Injected loader: import a module id through the host's SSR module graph. */
@@ -227,10 +228,11 @@ export async function loadRouteData(
   url: string,
   request?: Request,
   response?: PendingResponse,
-): Promise<unknown> {
+): Promise<ReadableStream<Uint8Array> | null> {
   const mod = await load(wrapperId);
+  // A route that resolves nothing has no endpoint (SDD-70 §3.7): nobody asks it for frames.
   if (typeof mod.data !== 'function') {
-    return {};
+    return null;
   }
   const { nonce: _nonce, ...ctx } = withRequest(edgeContext(pattern, url, ''), request, response);
   return mod.data(ctx);

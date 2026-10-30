@@ -180,11 +180,11 @@ export function stub<C, R, A>(spec: FnSpec): Contract<C, R, A> {
     await invalidate(stale);
     // After the worker forgot them, so the page that asks for its data again gets the new one.
     //
-    // The page is told about ITSELF only by a function of its own route (BUG-55): a component's
-    // function knows nothing of the page that hosts it, and says what it changed through the
-    // bus. Making every page that hosts a form ask for its whole data again was a second
-    // request on every save. What a function names in `invalidates` is told either way.
-    await announceStale(spec.page === undefined ? own : stale);
+    // Only what the function names in `invalidates` is told (SDD-70, decision of 2026-10-30):
+    // a mutation does not make the page ask for its data again by itself. The state lives in
+    // the page's signals, and the handler that called this puts them right with what it knows.
+    // A page that wants its data again says so in the `.fudapi`, where it can be read.
+    await announceStale(own);
     return value;
   };
   return Object.assign(call, { spec, method: spec.method, handle: (h: unknown) => slot.set(h) }) as unknown as Contract<C, R, A>;

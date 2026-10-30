@@ -9,7 +9,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { declarationsOf, project } from './_project.js';
+import { declarationsOf, moduleOf, project } from './_project.js';
 
 /** A route whose `load` has a resolved field, three `later` ones and an optional plain one. */
 const ESPERA = [
@@ -43,6 +43,22 @@ describe('`later` in LoadData (SDD-70 criterion 1)', () => {
 
   it('a map', () => {
     expect(LOAD_DATA).toContain('readonly byName: Promise<Readonly<Record<string, Person>>>;');
+  });
+});
+
+describe('the types of `load` in its spec (SDD-70 §3.7)', () => {
+  it.each(['server', 'browser'] as const)('the %s variant names every field, a `later` one by what it resolves to', (side) => {
+    const line = moduleOf(p, 'routes/usuarios', side)
+      .split('\n')
+      .find((l) => l.startsWith('export const load'))!;
+    expect(line).toContain(
+      'fields: { title: "str", users: { list: $Person }, maybe: { opt: { list: $Person } }, byName: { map: ["str", $Person] }, plain: { opt: $Person } }, later: ["users", "maybe", "byName"]',
+    );
+  });
+
+  it('a `load` with no fields writes none', () => {
+    const empty = project({ 'routes/vacio': 'load ssr\n' });
+    expect(moduleOf(empty, 'routes/vacio', 'server')).not.toContain('fields:');
   });
 });
 

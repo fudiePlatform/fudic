@@ -44,6 +44,8 @@ describe('@fudic/conventions', () => {
     expect(conventions.FN_PREFIX).toBe('/_fudic/fn');
     // The data endpoint's, which vite and transport each kept a copy of until then.
     expect(conventions.DATA_PREFIX).toBe('/_fudic/data');
+    // And what it answers with (SDD-70 §3.7).
+    expect(conventions.DATA_FRAMES_TYPE).toBe('application/fud+frames');
     expect(conventions.ERROR_PREFIX).toBe('/_fudic/error');
   });
 
@@ -86,6 +88,7 @@ describe('@fudic/conventions', () => {
       'API_TYPES_DIR',
       'BROWSER_DIR',
       'COMPONENTS_DIR',
+      'DATA_FRAMES_TYPE',
       'DATA_PREFIX',
       'DATA_STALE_EVENT',
       'ERROR_FILE',

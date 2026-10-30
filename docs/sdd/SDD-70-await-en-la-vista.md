@@ -561,3 +561,22 @@ inserción actual después de un corte.
    (nombre y tipo del campo `later`), así que está aunque el programa aún no haya cargado.
 7. **Los snippets que reabren la lista lo hacen por las dos puertas.** El que llega con la
    respuesta de TypeScript no llevaba el comando de reabrir; ahora sí, igual que el del plugin.
+8. **Sin refresco implícito tras una mutación** (Pedro, 2026-10-30). Revierte en parte SDD-68
+   §4.8: una función de la ruta que no nombra la página en `invalidates` ya no hace que la página
+   pida su `data` otra vez. El estado vive en las señales y lo pone al día el handler que llamó.
+   Quien quiere el `data` nuevo lo dice en el `.fudapi` (`invalidates /usuarios`). La
+   invalidación del caché del SW no cambia.
+9. **El endpoint de datos, en binario por tramas** (Pedro, 2026-10-30). `data` viaja con los
+   tipos de `load` (la spec de la pieza lleva `fields`). Las props del layout viajan como `any`
+   del codec: su tipo es el del layout, escrito en TypeScript y no en un `.fudapi`. Una ruta que
+   no resuelve nada no tiene endpoint (404).
+10. **El SW lee las tramas con los tipos como JSON.** El chunk enlazado de la ruta no importa
+    nada del `.fudapi` (el SW no puede cargar sus módulos): lleva `dataShape`, la forma JSON de
+    `load` (`framesShape` de `@fudic/api`), y `@fudic/transport` la convierte en tipos del codec
+    (`typesOfShape`). `@fudic/transport` pasa a depender de `@fudic/http` por `./wire/frames`. El SW lleva
+    el lector binario siempre; una página solo lo lleva si su `.fudapi` tiene `load`: el módulo
+    generado le pasa `readFrames` a la pieza (`read`), que no lo importa.
+11. **El nonce del SW no retiene la marca de una parte.** Al sustituir el nonce en streaming, el
+    SW solo retiene el final de un trozo que pueda ser el principio del token; antes retenía
+    siempre los últimos caracteres, y la marca `<!--fud-end-->` de una parte no salía hasta la
+    siguiente.

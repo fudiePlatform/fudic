@@ -347,6 +347,7 @@ interface FakeRes {
   body: string;
   setHeader(k: string, v: string): void;
   removeHeader(k: string): void;
+  write(b: string | Uint8Array): void;
   end(b?: string): void;
   /** A real `ServerResponse` has it: the dev server listens for `close` to abort the request (SDD-56 §4.12). */
   on(event: string, listener: () => void): FakeRes;
@@ -360,8 +361,11 @@ const fakeRes = (): FakeRes => ({
   removeHeader(k) {
     delete this.headers[k.toLowerCase()];
   },
+  write(b) {
+    this.body += typeof b === 'string' ? b : new TextDecoder().decode(b);
+  },
   end(b = '') {
-    this.body = b;
+    this.body += b;
   },
   on() {
     return this;
@@ -678,7 +682,7 @@ describe('configurePreviewServer middleware', () => {
     mkdirSync(join(previewRoot, '.fudic', 'edge'), { recursive: true });
     writeFileSync(
       join(previewRoot, '.fudic', 'edge', 'about.js'),
-      'export function data(ctx) { return { at: ctx.url.pathname }; }\nexport function render() {}\n',
+      'export function data(ctx) { return new Response(ctx.url.pathname).body; }\nexport function render() {}\n',
     );
     const handler = withPreview(outDir, previewRoot);
     const res = fakeRes();
@@ -688,7 +692,40 @@ describe('configurePreviewServer middleware', () => {
       () => expect.unreachable('should not fall through'),
     );
     await settle();
-    expect(JSON.parse(res.body)).toEqual({ at: '/about' });
+    // The frames as the wrapper wrote them, passed on untouched (SDD-70 §3.7).
+    expect(res.body).toBe('/about');
+    expect(res.headers['content-type']).toBe('application/fud+frames');
+  });
+
+  it('SDD-70 criterion 17: preview sends what is rendered before the rest is ready', async () => {
+    const outDir = outputWith([{ pattern: '/espera', mode: 'ssr' }]);
+    const previewRoot = mkdtempSync(join(tmpdir(), 'fudic-preview-root-'));
+    mkdirSync(join(previewRoot, '.fudic', 'edge'), { recursive: true });
+    // A render whose second part waits for a promise the test settles.
+    writeFileSync(
+      join(previewRoot, '.fudic', 'edge', 'espera.js'),
+      [
+        'export function render() {',
+        '  const enc = new TextEncoder();',
+        '  return new ReadableStream({ async start(c) {',
+        "    c.enqueue(enc.encode('<html><head></head><body><h1>t</h1><!--fud-end-->'));",
+        '    await globalThis.__sdd70preview;',
+        "    c.enqueue(enc.encode('<p>tarde</p></body></html>'));",
+        '    c.close();',
+        '  } });',
+        '}',
+        '',
+      ].join('\n'),
+    );
+    let release!: () => void;
+    (globalThis as { __sdd70preview?: Promise<void> }).__sdd70preview = new Promise<void>((r) => (release = r));
+    const handler = withPreview(outDir, previewRoot);
+    const res = fakeRes();
+    handler(navigation('/espera'), res, () => expect.unreachable('should not fall through'));
+    await vi.waitFor(() => expect(res.body).toContain('<h1>t</h1><!--fud-end-->'), { timeout: 5000 });
+    expect(res.body).not.toContain('tarde');
+    release();
+    await vi.waitFor(() => expect(res.body).toContain('<p>tarde</p></body></html>'), { timeout: 5000 });
   });
 
   it('falls through for an unknown route, a non-GET, and a route with no output', () => {

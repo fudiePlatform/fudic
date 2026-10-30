@@ -54,7 +54,8 @@ describe('emitRenderChunk — the edge variant', () => {
     expect(code).toContain('export async function data(ctx) {');
     expect(code).toContain('const data = await $ready.then(() => $runLoad($load, $ctx, false));');
     // One response, two halves (SDD-40 §3.3) — `layout` absent when the route resolves none.
-    expect(code).toContain('return { data };');
+    expect(code).toContain('return writeFrames($load.spec, data);');
+    expect(code).toContain('import { writeFrames } from "@fudic/http/wire/frames";');
     // What read the session goes out private, also when it threw (SDD-69 §3.2).
     expect(code).toContain('}).finally(() => markPrivate($ctx.response));');
   });
@@ -140,7 +141,7 @@ describe('emitRenderChunk — the layout resolver (SDD-40)', () => {
 
   it('the endpoint answers with the two halves in ONE response (§6.10)', () => {
     expect(edge).toContain('const data = await $ready.then(() => $runLoad($load, $ctx, false));');
-    expect(edge).toContain('return { data, layout: await layoutProps($ctx, data) };');
+    expect(edge).toContain('return writeFrames($load.spec, data, await layoutProps($ctx, data));');
   });
 
   it('a route with a resolver and no `load` still gets an endpoint', () => {
@@ -149,7 +150,7 @@ describe('emitRenderChunk — the layout resolver (SDD-40)', () => {
     const noLoad = emitRenderChunk({ pageModule: './about.fud', withLoad: true, api: api({ layout: true }) });
     expect(noLoad).toContain('export async function data(ctx) {');
     expect(noLoad).toContain('const data = {};');
-    expect(noLoad).toContain('return { data, layout: await layoutProps($ctx, data) };');
+    expect(noLoad).toContain('return writeFrames({}, data, await layoutProps($ctx, data));');
   });
 
   it('never CALLS paths(): it is re-exported for the build and nothing else (§6.9)', () => {

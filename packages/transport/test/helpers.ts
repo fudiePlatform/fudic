@@ -4,6 +4,7 @@
  * `BroadcastChannel`; what Node has no equivalent of is the Cache API and the
  * `FetchEvent`, so those two are faked here — insertion-ordered, like the real one.
  */
+import { DATA_FRAMES_TYPE } from '@fudic/conventions';import { writeFrames } from '@fudic/http/wire/frames';
 
 /** Drain a byte stream and decode it as UTF-8 text. */
 export async function readAll(stream: ReadableStream<Uint8Array>): Promise<string> {
@@ -184,4 +185,14 @@ export function fetchEvent(url: string, init: RequestInit & { mode?: string } = 
     },
   };
   return event;
+}
+
+/**
+ * What the data endpoint answers since SDD-70 §3.7: the `{ data, layout? }` a test writes as
+ * JSON, sent as frames. Without declared types, as a route chunk without `dataShape` reads it.
+ */
+export function framedData(json: string, status = 200, headers: Record<string, string> = {}): Response {
+  if (status !== 200) return new Response(json, { status });
+  const { data, layout } = JSON.parse(json) as { data: Record<string, unknown>; layout?: unknown };
+  return new Response(writeFrames({}, data, layout), { headers: { 'content-type': DATA_FRAMES_TYPE, ...headers } });
 }

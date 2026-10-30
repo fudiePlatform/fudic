@@ -143,7 +143,9 @@ type-stripped to plain JS by Vite's Oxc transform.
 `vite dev` is the edge: it serves the manifest (every route `ssr` — Vite serves ESM
 untransformed, so there is nothing to link in dev), the generated `/_fudic/data/…`
 endpoints, and every navigation rendered on demand through Vite's SSR graph with the dev
-client injected. The Service Worker is **not registered in dev** unless `sw.json` says
+client injected. Both go out as they are produced: a page with `@await` in parts, a data
+endpoint as `application/fud+frames` — what `load` resolved first, then one frame per `later`
+field as it settles (SDD-70). The Service Worker is **not registered in dev** unless `sw.json` says
 `"dev": "preview"`, which is what SvelteKit, Next and Nuxt do and what keeps HMR sane.
 
 `vite preview` is the production edge: prerendered files where they exist, the data

@@ -57,6 +57,10 @@
       "types": "./dist/wire/json.d.ts",
       "import": "./dist/wire/json.js"
     },
+    "./wire/frames": {
+      "types": "./dist/wire/frames.d.ts",
+      "import": "./dist/wire/frames.js"
+    },
     "./wire/vectors.json": "./wire/vectors.json",
     "./package.json": "./package.json"
   },

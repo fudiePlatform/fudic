@@ -1,12 +1,13 @@
 /**
  * The data endpoint of the in-memory server: `GET /_fudic/data/<route>` answered as `vite dev`
  * answers it — the route's wrapper runs `load` (and `layout`) with the request, and the answer
- * is `{ data, layout? }` as JSON. What `load` throws is the problem of its status.
+ * is its frames (SDD-70 §3.7). What `load` throws is the problem of its status.
  *
  * It is what a page asks after a call invalidated it (SDD-68 §4.8): without it, every `save`
  * in a test would fail its refresh and reload the document.
  */
 
+import { DATA_FRAMES_TYPE } from '@fudic/conventions';
 import { classifyError, loadRouteData, matchRouteBuild, pageModuleOf } from '@fudic/vite/harness';
 import { loadWrapper, routeFacts } from './page.js';
 import { projectOf } from './project.js';
@@ -20,7 +21,9 @@ export async function routeData(request: Request, prefix: string): Promise<Respo
   if (rb === null) return new Response(null, { status: 404 });
   try {
     const wrapper = (): ReturnType<typeof loadWrapper> => loadWrapper(pageModuleOf(rb), routeFacts(rb));
-    return Response.json(await loadRouteData(wrapper, '', rb.route.pattern, routePath, request));
+    const frames = await loadRouteData(wrapper, '', rb.route.pattern, routePath, request);
+    if (frames === null) return new Response(null, { status: 404 });
+    return new Response(frames, { headers: { 'content-type': DATA_FRAMES_TYPE } });
   } catch (error) {
     const failure = classifyError(error, true);
     const problem =

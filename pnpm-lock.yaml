@@ -742,6 +742,9 @@ importers:
       '@fudic/conventions':
         specifier: workspace:*
         version: link:../conventions
+      '@fudic/http':
+        specifier: workspace:*
+        version: link:../http
     devDependencies:
       '@fudic/ssr':
         specifier: workspace:*
@@ -837,6 +840,9 @@ importers:
         specifier: workspace:*
         version: link:../typecheck
     devDependencies:
+      '@fudic/http':
+        specifier: workspace:*
+        version: link:../http
       '@fudic/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig

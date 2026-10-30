@@ -28,6 +28,7 @@ import {
 } from './manifest.js';
 import { isPrivate, type Store } from './store.js';
 import { hydrateNameOf } from './urls.js';
+import { readFrames, typesOfShape, type FramesShape } from '@fudic/http/wire/frames';
 
 /**
  * Structural view of the ServiceWorker `FetchEvent` (lib.dom carries no SW types, and
@@ -89,6 +90,12 @@ export type LayoutResolver<D = unknown, P = unknown> = (
 /** What a linked route chunk exports. The plugin generates it (SDD-20 §3.4). */
 export interface RouteChunk {
   render(ctx: RenderContext): ReadableStream<Uint8Array>;
+  /**
+   * The types of the route's `load` as JSON, which the frames of its data endpoint are read with
+   * (SDD-70 §3.7); `null` when it resolves only its layout. A route that resolves nothing has
+   * none, and is never asked for its data.
+   */
+  readonly dataShape?: FramesShape | null;
 }
 
 /** A `sw.json` resource class, already compiled and in evaluation order. */
@@ -277,6 +284,7 @@ export function createRouter(config: RouterConfig): Router {
   const fetchData = async (
     record: RouteRecord,
     params: Readonly<Record<string, string>>,
+    chunk: RouteChunk,
   ): Promise<{ data: unknown; layout?: unknown; private?: true }> => {
     // `dataPolicy` IS the "this route resolves something" signal: it is emitted exactly when
     // the page declares `@server load` or `@server layout`. One question, one branch.
@@ -292,7 +300,10 @@ export function createRouter(config: RouterConfig): Router {
     // A `load` that threw: a 404, a redirect, a 500. Not this worker's to paint — the server
     // answers the navigation with its error page or its `Location` (SDD-56 §4.8).
     if (!response.ok) throw new DataUnavailable();
-    const body = (await response.json()) as { data: unknown; layout?: unknown };
+    // The first frame is enough to render: the `later` fields arrive while the page is painted
+    // (SDD-70 §3.7). A response from the cache hands them all at once.
+    const shape = chunk.dataShape;
+    const body = await readFrames(shape == null ? {} : typesOfShape(shape), response.body!);
     // Data that depended on who is asking: the page painted with it is not kept either (SDD-69 §4.3).
     return isPrivate(response) ? { ...body, private: true } : body;
   };
@@ -312,7 +323,7 @@ export function createRouter(config: RouterConfig): Router {
         (record.deps ?? []).map((name) => abs(table.urls.depUrl(name))),
       );
       const chunk = exports as unknown as RouteChunk;
-      const { data, layout, private: personal } = await fetchData(record, params);
+      const { data, layout, private: personal } = await fetchData(record, params, chunk);
       // The chunk renders with the TOKEN, not with this response's nonce: the same bytes
       // may be persisted and served again, and a nonce is per response (§4.5).
       const ctx: RenderContext = {

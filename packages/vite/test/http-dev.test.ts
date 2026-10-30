@@ -9,6 +9,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { framed } from './helpers/frames.js';
 import { createServer, type ViteDevServer } from 'vite';
 import { mkdtempSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -271,7 +272,7 @@ describe('load through the chain', () => {
   it('criterion 9: the data endpoint runs only server halves — csrf.server lets the GET through', async () => {
     const res = await fetch(`${origin}/_fudic/data/usuarios`);
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ data: { count: 2 } });
+    expect(await framed(res, { fields: { count: 'i32' } })).toEqual({ data: { count: 2 } });
   });
 
   it('the data endpoint answers the status of what load threw, as a problem', async () => {

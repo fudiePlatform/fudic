@@ -25,6 +25,7 @@ import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
 import { manifestFile, routeTable } from './helpers/manifest.js';
 import { EDGE_DIR } from '../src/constants.js';
 import { safeName } from '../src/link.js';
+import { readFrames, typesOfShape, type FramesShape } from '@fudic/http/wire/frames';
 
 const LAYOUT = `<!DOCTYPE html>
 <html lang="@culture">
@@ -87,7 +88,22 @@ const textOf = (file: OutFile): string =>
 
 interface EdgeChunk {
   render(ctx: unknown): ReadableStream<Uint8Array>;
-  data(ctx: unknown): Promise<{ data: unknown; layout?: unknown }>;
+  data(ctx: unknown): Promise<ReadableStream<Uint8Array>>;
+}
+
+/** What the Service Worker downloads: its render, and the types it reads the frames with. */
+interface LinkedChunk {
+  render(ctx: unknown): ReadableStream<Uint8Array>;
+  readonly dataShape: FramesShape;
+}
+
+/**
+ * The endpoint's answer read the way the Service Worker reads it (SDD-70 §3.7): written by the
+ * edge with the descriptors of the `.fudapi`, read with the JSON the linked chunk carries.
+ */
+async function answerOf(chunk: EdgeChunk, ctx: unknown): Promise<{ data: unknown; layout?: unknown }> {
+  const linked = await linkedChunk();
+  return readFrames(typesOfShape(linked.dataShape), await chunk.data(ctx));
 }
 
 let output: OutFile[];
@@ -179,13 +195,13 @@ describe('SDD-40 §6.15–§6.16 — the layout gets its props, per route and pe
 describe('SDD-40 §6.10 — the endpoint answers with both halves, in ONE response', () => {
   it('returns `{ data, layout }`', async () => {
     const chunk = await edgeChunk('/blog/:slug');
-    const answer = await chunk.data(ctxFor('hola', 'edge'));
+    const answer = await answerOf(chunk, ctxFor('hola', 'edge'));
     expect(answer).toEqual({ data: { post: { lang: 'es' } }, layout: { culture: 'es' } });
   });
 
   it('resolves the layout props FROM what load returned (§6.8)', async () => {
     const chunk = await edgeChunk('/blog/:slug');
-    const answer = await chunk.data(ctxFor('hello', 'edge'));
+    const answer = await answerOf(chunk, ctxFor('hello', 'edge'));
     // `en` is nowhere in the URL or the params: it came out of the row `load` fetched.
     expect(answer.layout).toEqual({ culture: 'en' });
   });
@@ -202,7 +218,7 @@ describe('SDD-40 §6.11 — edge, sw and ssg produce the SAME <html lang>', () =
     const edge = htmlTagOf(await drain(chunk.render(ctxFor('hello', 'edge'))));
 
     // sw: the LINKED chunk, handed both halves by the endpoint. It never runs `src/server`.
-    const resolved = await chunk.data(ctxFor('hello', 'edge'));
+    const resolved = await answerOf(chunk, ctxFor('hello', 'edge'));
     const linked = await linkedChunk();
     const sw = htmlTagOf(
       await drain(
@@ -227,7 +243,7 @@ describe('SDD-40 §6.11 — edge, sw and ssg produce the SAME <html lang>', () =
  * the derivation the SW itself performs, and asserting through it is what proves the build
  * wrote the file the worker will ask for.
  */
-async function linkedChunk(): Promise<{ render(ctx: unknown): ReadableStream<Uint8Array> }> {
+async function linkedChunk(): Promise<LinkedChunk> {
   const table = routeTable(output);
   const record = manifestFile(output).routes.find((r) => r.pattern === '/blog/:slug')!;
   const file = join(root, 'dist', table.urls.renderUrl(record)!.replace(/^\//u, ''));
@@ -239,5 +255,5 @@ async function linkedChunk(): Promise<{ render(ctx: unknown): ReadableStream<Uin
   const exports: Record<string, unknown> = {};
   // eslint-disable-next-line @typescript-eslint/no-implied-eval
   new Function('exports', 'require', code)(exports, () => ssr);
-  return exports as unknown as { render(ctx: unknown): ReadableStream<Uint8Array> };
+  return exports as unknown as LinkedChunk;
 }

@@ -13,7 +13,7 @@ import { createStore, type Store } from '../src/store.js';
 import { createRouter, type RouterStores } from '../src/router.js';
 import { DEFAULT_CSP } from '../src/csp.js';
 import { INVALIDATE_MESSAGE } from '../src/index.js';
-import { fakeCache, fetchEvent, readAll } from './helpers.js';
+import { fakeCache, fetchEvent, framedData, readAll } from './helpers.js';
 
 const ORIGIN = 'https://app.test/';
 
@@ -51,7 +51,8 @@ function worker(base = '/', extra: Record<string, unknown> = {}) {
   const net = async (request: Request): Promise<Response> => {
     network.push(`${request.method} ${request.url}`);
     const hit = answers.get(request.url);
-    return hit === undefined ? new Response('net', { status: 200 }) : new Response(hit.body, { status: hit.status ?? 200 });
+    if (hit === undefined) return new Response('net', { status: 200 });
+    return request.url.includes('/_fudic/data/') ? framedData(hit.body, hit.status) : new Response(hit.body, { status: hit.status ?? 200 });
   };
   const make = (): Store => createStore({ cache: fakeCache().cache, net });
   const stores: RouterStores = { shell: make(), routes: make(), pages: make(), data: make() };

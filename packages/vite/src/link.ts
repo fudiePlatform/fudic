@@ -119,7 +119,9 @@ function linkPlugin(
       return emitRenderChunk({
         pageModule: pageModuleOf(rb),
         // No `api`, on purpose: with `withLoad: false` it would change nothing, and the omission is
-        // the statement — the SW imports neither `load`, `paths` nor `layout` (§4.5).
+        // the statement — the SW imports neither `load`, `paths` nor `layout` (§4.5). What it
+        // takes of the `.fudapi` is the types of `load`, as JSON (SDD-70 §3.7).
+        ...(rb.analysis.hasLoad || rb.analysis.hasLayout ? { frames: rb.analysis.frames ?? null } : {}),
         hasDi: routeUsesDi(rb.absPath, io),
         withLoad: false, // server code never ships to the client (§4.5)
         runtime: runtimeFor(pattern),

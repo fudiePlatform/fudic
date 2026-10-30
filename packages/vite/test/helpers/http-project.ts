@@ -22,6 +22,7 @@ const ENTRIES: Readonly<Record<string, string>> = {
   '@fudic/http': at('http/dist/index.js'),
   '@fudic/di/page': at('di/dist/page.js'),
   '@fudic/di': at('di/dist/index.js'),
+  '@fudic/http/wire/frames': at('http/dist/wire/frames.js'),
   '@fudic/http/wire/bin': at('http/dist/wire/bin.js'),
   '@fudic/http/wire/json': at('http/dist/wire/json.js'),
   '@fudic/http/wire': at('http/dist/wire/index.js'),

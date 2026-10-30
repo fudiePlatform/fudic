@@ -10,7 +10,7 @@ import { createLinker } from '../src/linker.js';
 import { createStore, type Store } from '../src/store.js';
 import { createRouter, type Router, type RouterStores } from '../src/router.js';
 import { DEFAULT_CSP, NONCE_TOKEN } from '../src/csp.js';
-import { countingCache, fakeCache, fetchEvent, readAll } from './helpers.js';
+import { countingCache, fakeCache, fetchEvent, framedData, readAll } from './helpers.js';
 
 const ORIGIN = 'https://app.test/';
 
@@ -74,7 +74,9 @@ function harness(): {
 
   const net = async (request: Request): Promise<Response> => {
     network.push(request.url);
-    const source = sources.get(request.url) ?? data.get(request.url);
+    const framed = data.get(request.url);
+    if (framed !== undefined) return request.url.includes('/_fudic/data/') ? framedData(framed) : new Response(framed);
+    const source = sources.get(request.url);
     if (source !== undefined) {
       return new Response(source);
     }
@@ -288,7 +290,7 @@ describe('createRouter.handle — the synchronous decision', () => {
     const h = harness();
     const net = async (request: Request): Promise<Response> =>
       request.url.includes('/_fudic/data/')
-        ? new Response('{"data":{"n":7}}', { headers: { 'cache-control': 'private, no-store' } })
+        ? framedData('{"data":{"n":7}}', 200, { 'cache-control': 'private, no-store' })
         : h.net(request);
     const r = persistRouter(h, { net, stores: { ...h.stores, data: createStore({ cache: fakeCache().cache, net }) } });
     await r.warm('/blog/x');
@@ -522,7 +524,7 @@ describe('createRouter — the shell has a policy (BUG-01)', () => {
       if (request.url.endsWith('sw/c/blog-slug-b1.js')) return new Response(CHUNK_SOURCE);
       if (request.url.endsWith('sw/c/dep-b1.js')) return new Response('exports.v = 1;');
       if (request.url.endsWith('_fudic/data/blog/x')) {
-        return new Response('{"data":{"n":42},"layout":{"culture":"gl"}}');
+        return framedData('{"data":{"n":42},"layout":{"culture":"gl"}}');
       }
       return new Response('[]');
     };

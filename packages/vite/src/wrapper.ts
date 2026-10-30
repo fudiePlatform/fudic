@@ -15,6 +15,7 @@
  * compiler-free (DIP).
  */
 
+import type { FramesShape } from '@fudic/api';
 import type { PageAnalysis } from './analyze.js';
 import type { RuntimeEntries } from './constants.js';
 import { withLocale } from './i18n.js';
@@ -22,6 +23,11 @@ import { withLocale } from './i18n.js';
 export interface RenderChunkOptions {
   /** Import specifier for the page module's `page(data, io)`. */
   readonly pageModule: string;
+  /**
+   * Linked variant of a route that resolves something: the types of its `load` as JSON, or
+   * `null` when it resolves only `layout` (SDD-70 §3.7). Absent when it resolves nothing.
+   */
+  readonly frames?: FramesShape | null;
   /** Edge variant: resolve data in process. Off for the linked (SW) variant. */
   readonly withLoad: boolean;
   /**
@@ -141,6 +147,8 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   lines.push(`import { page } from ${spec};`);
   lines.push(`import { ${ssr.join(', ')} } from "@fudic/ssr";`);
   if (http) lines.push('import { markPrivate, pageContext, withRequest } from "@fudic/http/server";');
+  // The frames of the data endpoint (SDD-70 §3.7), written on the edge.
+  if (http) lines.push('import { writeFrames } from "@fudic/http/wire/frames";');
   const pieces = [
     ...(edgeLoad ? ['load as $load'] : []),
     ...(edgeLayout ? ['layout as $layout'] : []),
@@ -182,16 +190,27 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   // The data endpoint: ONE response carrying both halves (§3.3). It exists whenever the route
   // resolves anything for a render — `load`, `layout`, or both — because the Service Worker
   // executes neither and has no other way to be handed them.
+  //
+  // It answers with frames (SDD-70 §3.7): `load` and `layout` are awaited first — what they
+  // throw is the endpoint's status — and then the stream carries what they resolved, and each
+  // `later` field as it settles.
   if (http) {
     lines.push('export async function data(ctx) {');
     lines.push('  const $root = iocRoot();');
     lines.push('  const $ctx = pageContext(ctx);');
     lines.push('  return withRequest($root, async () => {');
     lines.push(`    const data = ${edgeLoad ? `await ${loadCall}` : '{}'};`);
-    lines.push(`    return { data${edgeLayout ? ', layout: await layoutProps($ctx, data)' : ''} };`);
+    lines.push(`    return writeFrames(${edgeLoad ? '$load.spec' : '{}'}, data${edgeLayout ? ', await layoutProps($ctx, data)' : ''});`);
     // What read the session goes out private, also when it threw (SDD-69 §3.2).
     lines.push('  }).finally(() => markPrivate($ctx.response));');
     lines.push('}');
+    lines.push('');
+  }
+  // The Service Worker's half of the same endpoint: the types of this route's `load`, as JSON,
+  // which the worker reads the frames with. Data and not an import: the worker never loads a
+  // module of the `.fudapi` (§4.5). `null` for a route whose `.fudapi` resolves only `layout`.
+  if (!options.withLoad && options.frames !== undefined) {
+    lines.push(`export const dataShape = ${JSON.stringify(options.frames)};`);
     lines.push('');
   }
 

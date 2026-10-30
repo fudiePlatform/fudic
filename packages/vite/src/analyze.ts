@@ -8,7 +8,7 @@
  * `@fudic/compiler`, never Vite — and to the parser of `@fudic/api`, never Oxc (SDD-60 §4.5).
  */
 
-import type { LoadDecl } from '@fudic/api';
+import type { FramesShape, LoadDecl } from '@fudic/api';
 import type { Span } from '@fudic/diagnostics';
 import { linkHref, type Diagnostic, type StructuredDocument } from '@fudic/compiler';
 import { parseFudReporting } from './parse.js';
@@ -24,6 +24,8 @@ export interface PageApi {
   /** Its absolute path, where a diagnostic of its `load` points (SDD-69 §3.4). */
   readonly file: string;
   readonly load?: LoadDecl;
+  /** The types of `load` as JSON, which the Service Worker reads the data frames with (SDD-70 §3.7). */
+  readonly frames?: FramesShape;
   readonly paths: boolean;
   readonly layout: boolean;
 }
@@ -55,6 +57,8 @@ export interface PageAnalysis {
    * (SDD-60 §3.4): the wrapper takes them from the registry, by it. Absent when none does.
    */
   readonly api?: string;
+  /** The types of its `load` as JSON (SDD-70 §3.7): what the Service Worker reads its data with. */
+  readonly frames?: FramesShape;
   /** Where that `.fudapi` is, and its `load` keyword when it has one: where `FUD1300` points. */
   readonly apiAt?: { readonly file: string; readonly span?: Span };
   /** The `href` of `<link rel="layout">`, when the file declares one (SDD-21). */
@@ -94,6 +98,7 @@ export function analyzePage(source: string, apiOf?: PageApiOf): PageAnalysis {
     ...(own !== undefined
       ? { api: own.id, apiAt: { file: own.file, ...(own.load !== undefined ? { span: own.load.keyword } : {}) } }
       : {}),
+    ...(own?.frames !== undefined ? { frames: own.frames } : {}),
     ...(layoutHref ? { layoutHref } : {}),
     diagnostics: parsed.diagnostics,
   };

@@ -6,6 +6,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { framed } from './helpers/frames.js';
 import { build, createServer, preview, type PreviewServer, type ViteDevServer } from 'vite';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -137,7 +138,7 @@ function servesLocales(name: string, origin: () => string): void {
   describe(`${name}: criterion 25, the data endpoint under the prefixed pattern`, () => {
     it('/_fudic/data/en/blog/x answers the load of /en/blog/x', async () => {
       const res = await fetch(`${origin()}/_fudic/data/en/blog/x`);
-      expect(await res.json()).toEqual({ data: { slug: 'x' } });
+      expect(await framed(res, { fields: { slug: 'str' } })).toEqual({ data: { slug: 'x' } });
     });
   });
 

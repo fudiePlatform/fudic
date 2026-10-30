@@ -18,6 +18,7 @@ import { fudic } from '../src/index.js';
 import { WRAPPER_PREFIX } from '../src/constants.js';
 import { edgeContext, pendingResponse, type PendingResponse, type RenderModule } from '../src/serve.js';
 import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
+import { readFrames } from '@fudic/http/wire/frames';
 
 // ── what the test controls ──────────────────────────────────────────────────
 
@@ -355,8 +356,8 @@ describe('through the dev server', () => {
   const page = (path: string) => fetch(`${origin}${path}`, { headers: { accept: 'text/html' }, redirect: 'manual' });
 
   it('criterion 13: a later field that fails with no @catch answers 200, and goes to the overlay', async () => {
-    // The dev server drains the page before it answers (until SDD-70 phase 6): the field is
-    // settled when `load` asks for it, the failure born inside `load` as a real one would be.
+    // The field is settled when `load` asks for it, the failure born inside `load` as a real one
+    // would be.
     arm();
     control.__sdd70.users = () => Promise.resolve(['Ana']);
     control.__sdd70.stats = () => Promise.reject(new Error('stats down'));
@@ -375,6 +376,44 @@ describe('through the dev server', () => {
       server.ws.send = original;
     }
     expect(sent).toContainEqual(expect.objectContaining({ type: 'error', err: expect.objectContaining({ message: 'stats down' }) }));
+  });
+
+  it('criterion 17: the dev server sends part 0 before the later field settles', async () => {
+    const { users, stats } = arm();
+    const res = await page('/espera');
+    expect(res.status).toBe(200);
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let first = '';
+    while (!first.includes('<!--fud-end-->')) first += decoder.decode((await reader.read()).value);
+    // The head, the menu and the title are out; the table is not, and cannot be.
+    expect(first).toContain('<nav>menu</nav>');
+    expect(first).toContain('<h1>Usuarios</h1>');
+    expect(first).not.toContain('<li>');
+    users.resolve(['Ana']);
+    stats.resolve(3);
+    let tail = '';
+    for (let r = await reader.read(); !r.done; r = await reader.read()) tail += decoder.decode(r.value);
+    expect(tail).toContain('<li>Ana</li>');
+    expect(tail).toContain('3 personas');
+  });
+
+  it('the data endpoint answers with frames: what load resolved first, each later field as it settles', async () => {
+    const { users, stats } = arm();
+    const res = await fetch(`${origin}/_fudic/data/espera`);
+    expect(res.headers.get('content-type')).toBe('application/fud+frames');
+    const types = { fields: { title: 'str', users: { list: 'str' }, stats: 'i32' }, later: ['users', 'stats'] } as const;
+    // The first frame is there with both fields still pending.
+    const read = await readFrames(types, res.body!);
+    expect(read.data['title']).toBe('Usuarios');
+    // In the order they settle.
+    let got: unknown;
+    void (read.data['users'] as Promise<unknown>).then((v) => (got = v));
+    stats.resolve(12);
+    expect(await read.data['stats']).toEqual({ ok: 12 });
+    expect(got).toBeUndefined();
+    users.reject(new Error('lista caída'));
+    expect(await read.data['users']).toEqual({ error: expect.objectContaining({ status: 500 }) });
   });
 
   it('criterion 14: a load that throws notFound() before returning answers 404 with its error page', async () => {

@@ -104,6 +104,13 @@ export const runtimeMarkerUrl = (app: string): string => `/${RUNTIME_DIR}/marker
 export const DATA_PREFIX = '/_fudic/data';
 
 /**
+ * What those endpoints answer with (SDD-70 §3.7): frames of `fud-bin`, the first with what the
+ * route resolved and one per `later` field. `@fudic/http` writes and reads them; the plugin and
+ * the Service Worker only pass them on.
+ */
+export const DATA_FRAMES_TYPE = 'application/fud+frames';
+
+/**
  * Where a server function answers (SDD-56 §4.1): the compiler writes the URL into the client
  * stub, the plugin and every adapter serve it, and the Service Worker steps aside for it.
  */

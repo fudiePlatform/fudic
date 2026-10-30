@@ -91,6 +91,7 @@ import {
 } from './i18n.js';
 import {
   BROWSER_DIR,
+  DATA_FRAMES_TYPE as FRAMES_TYPE,
   ERROR_PREFIX,
   SERVER_DIR,
   RUNTIME_CACHE_PREFIX,
@@ -2676,22 +2677,43 @@ async function previewData(
   pathname: string,
   request: Request,
   response: PendingResponse,
-): Promise<unknown> {
+): Promise<ReadableStream<Uint8Array> | null> {
   const mod = await importEdgeChunk(edgeDir, record.pattern);
   if (typeof mod.data !== 'function') {
-    return {};
+    return null;
   }
   const { edgeContext, withRequest } = await import('./serve.js');
   const { nonce: _nonce, ...ctx } = withRequest(edgeContext(record.pattern, pathname, ''), request, response);
   return mod.data(ctx);
 }
 
-/** The data endpoint's answer (§4.5): what `load` wrote, then the JSON (SDD-69 §4.2). */
-function sendData(res: import('node:http').ServerResponse, pending: PendingResponse, data: unknown): void {
+/**
+ * The data endpoint's answer (§4.5): what `load` wrote, then its frames as they come (SDD-70
+ * §3.7). A route that resolves nothing has no endpoint.
+ */
+async function sendData(
+  res: import('node:http').ServerResponse,
+  pending: PendingResponse,
+  frames: ReadableStream<Uint8Array> | null,
+): Promise<void> {
+  if (frames === null) {
+    res.statusCode = 404;
+    res.end();
+    return;
+  }
   writeHeaders(res, pending.headers);
   res.statusCode = pending.status;
-  res.setHeader('Content-Type', 'application/json');
-  res.end(JSON.stringify(data));
+  res.setHeader('Content-Type', FRAMES_TYPE);
+  const reader = frames.getReader();
+  res.on('close', () => {
+    if (!res.writableEnded) void reader.cancel();
+  });
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    res.write(value);
+  }
+  res.end();
 }
 
 /**

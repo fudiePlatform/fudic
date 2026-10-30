@@ -26,6 +26,8 @@ export const runtimeAlias: Readonly<Record<string, string>> = {
   '@fudic/core': dist('core'),
   '@fudic/dom': dist('dom'),
   '@fudic/http/server': dist('http', 'server/index.js'),
+  // What the wrapper writes and reads the data endpoint's frames with (SDD-70 §3.7).
+  '@fudic/http/wire/frames': dist('http', 'wire/frames.js'),
 };
 
 /**
