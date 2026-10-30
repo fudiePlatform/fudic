@@ -193,11 +193,15 @@ describe('`@await` adopts its body with the field that came with the HTML (§4.4
     expect(document.querySelector('p.error')).toBeNull();
   });
 
-  it('releases what it hooked up inside the body', async () => {
+  it('releases what it hooked up: the body retires its nodes, what is outside stops moving', async () => {
     const { controller } = await hydrate(ROUTE, { users: ok(['ana']) });
+    const button = document.querySelector('button.mas') as HTMLElement;
     controller.r();
-    click('button.mas');
-    expect(text('output.valor')).toBe('1 de 1');
+    // A block retires its own nodes on release, like any `@if` (SDD-30).
+    expect(document.querySelector('ul.users')).toBeNull();
+    button.click();
+    expect(text('h1.top')).toBe('1');
+    expect(text('p.after')).toBe('1');
   });
 });
 

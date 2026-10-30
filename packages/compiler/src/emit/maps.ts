@@ -373,6 +373,12 @@ export function routeBlocksOf(
  * `data` and declares no `load` finds `undefined` there forever (`FUD0621`), and the emit must
  * not turn that into a throw while it says so.
  */
+/**
+ * What `dataExpression` gives when everything the page reads of `data` is a `later` field: the
+ * fields still travel, in the `fields` of their parts, but there is no `data` to write.
+ */
+const EMPTY_DATA = '{}';
+
 function dataExpression(
   code: ExtractedCode,
   hasLoad: boolean,
@@ -392,6 +398,7 @@ function dataExpression(
     return `(({ ${omitted}, ...$rest }) => $rest)(data ?? {})`;
   }
   const roots = access.roots.filter((r) => !later.includes(r));
+  if (roots.length === 0) return EMPTY_DATA;
   return `{ ${roots.map((r) => `${JSON.stringify(r)}: data?.${r}`).join(', ')} }`;
 }
 
@@ -483,7 +490,8 @@ export function writePartsOpen(
     ...(maps.hasBus ? ['bus: FUD_BUS'] : []),
     ...(maps.hasEager ? ['eager: FUD_EAGER'] : []),
     ...(route === undefined ? [] : [`route: ${JSON.stringify(route.name)}`]),
-    ...(data === null ? [] : [`data: ${data}`]),
+    // Nothing empty is written (§3.5): a `data` with only `later` fields is all in `fields`.
+    ...(data === null || data === EMPTY_DATA ? [] : [`data: ${data}`]),
   ];
   w.line(
     `${parts} = io.parts(${dom}, ${parent}, { first: { ${first.join(', ')} }, fields: ${String(data !== null)}${ioc === undefined ? '' : `, ioc: ${ioc}`} });`,

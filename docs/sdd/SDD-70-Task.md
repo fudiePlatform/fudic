@@ -7,7 +7,7 @@
 > **Rama:** `sdd-70-await-en-la-vista`. Nace de `main` **con SDD-61, SDD-67 y SDD-68 en
 > `Hecho`**: el constructo nuevo entra en la lista blanca de la 61, las tramas del endpoint de
 > datos usan el codec de la 67 y `load.fetch` de la 68 pasa a leerlas.
-> **Progreso:** 23 / 34 — `En curso`.
+> **Progreso:** 29 / 37 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -193,21 +193,24 @@ componentes de esa página esperan al final para hidratarse.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 22 | 18 | **El lector de partes.** `parts.ts`: con el documento cargándose, un `MutationObserver` recoge bloques `data-fud-part` y marcas `fud-end`; una parte está lista con su marca; con el documento completo, lo lee todo de una vez. Pieza aparte del runtime | `core` | `src/hydrate/parts.ts` · `src/runtime-entry.ts` |
-| [ ] | 23 | 22 | **Mapas en memoria y borrado.** `PageMaps` crece parte a parte; cada bloque y cada marca se borran al leerse; `readPageMaps` borra también los bloques del final en las páginas sin `@await`. El coordinador que lee `fud-ioc`/`fud-di` y `packages/testing` leen de memoria o del HTML servido, nunca del DOM vivo | `core` · `vite` · `testing` | `src/hydrate/maps.ts` · `src/coordinator.ts` · `src/providers.ts` |
-| [ ] | 24 | 23 | **Celdas por parte.** El barrido de `cells.ts` se hace al llegar cada parte; los anfitriones de una parte se hidratan con sus reglas de siempre en cuanto está lista | `core` | `src/hydrate/cells.ts` · `src/hydrate/install.ts` · `src/hydrate/cascade.ts` |
-| [ ] | 25 | 23 | **La ruta al final.** `raiseRoute` espera a la última parte; los componentes de cada parte no la esperan | `core` | `src/hydrate/install.ts` |
-| [ ] | 26 | 7 | **El constructo en el cliente.** `@await` pinta su cuerpo con `fields.<campo>.ok` o su `@catch` con `fields.<campo>.error`; con una promesa pendiente conserva lo pintado y repinta al cumplirse | `compiler` · `core` | `src/emit/markup-client.ts` · `src/emit/route-client.ts` |
-| [ ] | 27 | 22–26 | **Los tests de la fase.** Criterios 18–20, con un DOM que recibe los nodos poco a poco | `core` · `compiler` | `test/**` |
+| [x] | 22 | 18 | **El lector de partes.** `parts.ts`: con el documento cargándose, un `MutationObserver` recoge bloques `data-fud-part` y marcas `fud-end`; una parte está lista con su marca; con el documento completo, lo lee todo de una vez. Pieza aparte del runtime | `core` | `src/hydrate/parts.ts` · `src/runtime-entry.ts` |
+| [x] | 23 | 22 | **Mapas en memoria y borrado.** `PageMaps` crece parte a parte; cada bloque y cada marca se borran al leerse; `readPageMaps` borra también los bloques del final en las páginas sin `@await`. El coordinador que lee `fud-ioc`/`fud-di` y `packages/testing` leen de memoria o del HTML servido, nunca del DOM vivo | `core` · `vite` · `testing` | `src/hydrate/maps.ts` · `src/coordinator.ts` · `src/providers.ts` |
+| [x] | 24 | 23 | **Celdas por parte.** El barrido de `cells.ts` se hace al llegar cada parte; los anfitriones de una parte se hidratan con sus reglas de siempre en cuanto está lista | `core` | `src/hydrate/cells.ts` · `src/hydrate/install.ts` · `src/hydrate/cascade.ts` |
+| [x] | 25 | 23 | **La ruta al final.** `raiseRoute` espera a la última parte; los componentes de cada parte no la esperan | `core` | `src/hydrate/install.ts` |
+| [x] | 26 | 7 | **El constructo en el cliente.** `@await` pinta su cuerpo con `fields.<campo>.ok` o su `@catch` con `fields.<campo>.error`; con una promesa pendiente conserva lo pintado y repinta al cumplirse | `compiler` · `core` | `src/emit/markup-client.ts` · `src/emit/route-client.ts` |
+| [x] | 27 | 22–26 | **Los tests de la fase.** Criterios 18–20, con un DOM que recibe los nodos poco a poco | `core` · `compiler` | `test/**` |
 
-## Fase 6 — desarrollo, preview y el Service Worker (4)
+## Fase 6 — desarrollo, preview, el Service Worker y sin refresco implícito (7)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [ ] | 28 | 17 | **Streaming en dev y preview.** `renderRouteHtml` y `previewRender` responden con el stream en lugar de `drainStream`; un error antes del primer byte sigue yendo a `page-errors.ts`. El prerender sigue drenando | `vite` | `src/plugin.ts` · `src/serve.ts` |
-| [ ] | 29 | 19 | **El endpoint por tramas, en binario.** En toda ruta, con el codec de SDD-67: la trama de `{ data, layout }` y una por campo `later` según se cumple; sin campos `later`, una sola trama. `load.fetch` (SDD-68) pasa a leer las tramas (SDD §3.7) | `vite` · `http` | `src/wrapper.ts` · `src/serve.ts` · `src/plugin.ts` · `src/contract/page.ts` |
+| [ ] | 35 | — | **Los tipos de `load` y `layout` en la spec.** El `.fudapi` emite en la spec de la pieza `load` (y de `layout`) los tipos de sus campos, los que el codec de SDD-67 necesita para codificar el `data`. Decisión de Pedro (2026-10-30): el endpoint va en binario, no en JSON | `api` · `http` | `src/emit/*` · `src/contract/page.ts` |
+| [ ] | 29 | 19, 35 | **El endpoint por tramas, en binario.** En toda ruta, con el codec de SDD-67: la trama de `{ data, layout }` y una por campo `later` según se cumple; sin campos `later`, una sola trama. `load.fetch` (SDD-68) pasa a leer las tramas (SDD §3.7) | `vite` · `http` | `src/wrapper.ts` · `src/serve.ts` · `src/plugin.ts` · `src/contract/page.ts` |
 | [ ] | 30 | 29 | **El SW por tramas.** `fetchData` arma el `data` con promesas que cumplen las tramas y llama a `render` con la primera; la caché guarda la respuesta completa | `transport` | `src/router.ts` |
-| [ ] | 31 | 28–30 | **Los tests de la fase.** Criterios 17 y 21 | `vite` · `transport` | `test/**` |
+| [ ] | 36 | — | **Sin refresco implícito.** Decisión de Pedro (2026-10-30), revierte en parte SDD-68 §4.8: una mutación de la ruta ya no hace que la página pida su `data` otra vez; solo lo hace una función que nombra la página en `invalidates`. El estado vive en las señales y lo actualiza el autor en sus handlers. La invalidación del caché del SW sigue igual | `http` | `src/contract/fn.ts` · `test/**` |
+| [ ] | 37 | 36 | **`usuarios.fud` actualiza su señal.** `activar` espera a `guardar` y pone `personas` al día, o devuelve el checkbox a su sitio si falló; `borrar` espera a `quitar` y quita la fila si no falló. Los comentarios y el texto que hablan de `/_fudic/data/usuarios` se corrigen | `examples/basic` | `src/routes/usuarios.fud` |
+| [ ] | 31 | 28–30, 36, 37 | **Los tests de la fase.** Criterios 17 y 21; una mutación sin `invalidates` no pide el `data`, una con `invalidates` de su página sí | `vite` · `transport` · `http` | `test/**` |
 
 ## Fase 7 — ejemplo y cierre (1)
 

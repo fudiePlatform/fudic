@@ -253,7 +253,8 @@ export function installHydration(options: HydrationOptions): Hydration {
     for (const w of waiting) if (!still.includes(w)) w.wake();
     waiting = still;
   };
-  let markDone = (): void => {};
+  // Assigned below whenever there are parts, which is the only time it is called.
+  let markDone!: () => void;
   const done = finished
     ? Promise.resolve()
     : new Promise<void>((resolve) => {
