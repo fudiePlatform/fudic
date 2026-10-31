@@ -41,6 +41,13 @@ import type { SourceDiagnostic } from '@fudic/diagnostics';
 /** The scheme of a generated module: `fudic:routes/usuarios`. */
 export const API_SCHEME = 'fudic:';
 
+/**
+ * Whether a `.fudapi` declares only pipes (SDD-71 §3.3): its module needs no root, because
+ * nothing in it has a half to register.
+ */
+export const onlyPipes = (source: ApiSource): boolean =>
+  source.file.declarations.length > 0 && source.file.declarations.every((d) => d.kind === 'pipe');
+
 /** A dependency that publishes `.fudapi`, and where its compiled implementations are. */
 export interface ApiLibrary {
   readonly name: string;

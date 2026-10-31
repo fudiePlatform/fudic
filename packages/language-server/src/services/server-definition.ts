@@ -13,18 +13,22 @@
 
 import { API_TYPES_DIR } from '@fudic/conventions';
 import type { LanguageServicePlugin } from '@volar/language-service';
-import type { LocationLink } from 'vscode-languageserver-protocol';
+import type { Hover, LocationLink } from 'vscode-languageserver-protocol';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import type { ApiHost } from '../fudapi/host.js';
-import { generatedDefinition, serverDefinition, type ServerName } from '../fudapi/navigation.js';
+import { generatedDefinition, pipeDefinition, serverDefinition, type PipeTarget, type ServerName } from '../fudapi/navigation.js';
 import { isFudSourceUri, uriToPath } from '../uri.js';
 
 /** The two shapes `emitServerImports` and `emitDataDeclaration` write, one per line. */
 const SERVER_NAME = /^declare const ([A-Za-z_$][\w$]*): typeof import\('fudic:([^']+)'\)\['\1'\];/u;
 const SERVER_DATA = /^declare const data: import\('fudic:([^']+)'\)\.LoadData;/u;
 
-/** Wrap every TypeScript service so a contract's name opens its `.fudapi`. */
+/**
+ * Wrap every TypeScript service so a contract's name opens its `.fudapi`. A pipe the view
+ * imports too (SDD-71 §5): its definition is its `pipe`, and its hover carries that pipe's
+ * documentation under TypeScript's own.
+ */
 export function redirectServerDefinitions(plugins: readonly LanguageServicePlugin[], host: ApiHost): LanguageServicePlugin[] {
   return plugins.map((plugin) => ({
     ...plugin,
@@ -32,27 +36,51 @@ export function redirectServerDefinitions(plugins: readonly LanguageServicePlugi
       const instance = plugin.create(context);
       const inner = instance.provideDefinition?.bind(instance);
       if (inner === undefined) return instance;
+      const fudOf = (document: TextDocument): string | undefined => {
+        const decoded = context.decodeEmbeddedDocumentUri(URI.parse(document.uri));
+        return decoded === undefined || !isFudSourceUri(decoded[0]) ? undefined : uriToPath(decoded[0]);
+      };
+      const hover = instance.provideHover?.bind(instance);
 
       return {
         ...instance,
         async provideDefinition(document, position, token) {
           const links = await inner(document, position, token);
-          const decoded = context.decodeEmbeddedDocumentUri(URI.parse(document.uri));
-          if (links === undefined || links === null || decoded === undefined || !isFudSourceUri(decoded[0])) return links;
-
-          const fud = uriToPath(decoded[0]);
+          const fud = fudOf(document);
+          if (links === undefined || links === null || fud === undefined) return links;
           return links.map((link) => redirected(host, fud, document, link) ?? link);
         },
+        ...(hover === undefined
+          ? {}
+          : {
+              async provideHover(document, position, token) {
+                const shown = await hover(document, position, token);
+                if (shown === undefined || shown === null || fudOf(document) === undefined) return shown;
+                const links = (await inner(document, position, token)) ?? [];
+                const pipe = links
+                  .map((l) => pipeDefinition(host, uriToPath(URI.parse(l.targetUri))))
+                  .find((p) => p !== undefined);
+                return pipe === undefined ? shown : withPipe(shown, pipe);
+              },
+            }),
       };
     },
   }));
+}
+
+/** TypeScript's hover, and under it the `pipe` as written and its documentation. */
+function withPipe(shown: Hover, pipe: PipeTarget): Hover {
+  const own = Array.isArray(shown.contents) ? shown.contents : [shown.contents];
+  const text = own.map((c) => (typeof c === 'string' ? c : c.value)).join('\n\n');
+  const parts = [text, `\`\`\`fudapi\n${pipe.signature}\n\`\`\``, ...(pipe.doc !== undefined ? [pipe.doc] : [])];
+  return { ...shown, contents: { kind: 'markdown', value: parts.join('\n\n') } };
 }
 
 /** Where a target goes instead: the scaffolding and the generated `.d.ts` both stand for a `.fudapi`. */
 function redirected(host: ApiHost, fud: string, document: TextDocument, link: LocationLink): LocationLink | undefined {
   if (link.targetUri === document.uri) return contractLink(host, fud, document, link);
   const path = uriToPath(URI.parse(link.targetUri));
-  if (!path.includes(`/${API_TYPES_DIR}/`)) return undefined;
+  if (!path.includes(`/${API_TYPES_DIR}/`)) return retarget(link, pipeDefinition(host, path)?.link);
   const { line, character } = link.targetSelectionRange.start;
   return retarget(link, generatedDefinition(host, path, line, character));
 }

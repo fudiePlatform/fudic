@@ -28,6 +28,7 @@ const TYPE_OF: Readonly<Record<Exclude<ProjectKind, 'type'>, ApiTokenType>> = {
   rule: 'function',
   middleware: 'function',
   pattern: 'regexp',
+  pipe: 'function',
 };
 
 export function apiSemanticTokens(doc: ApiDocument): readonly ApiToken[] {

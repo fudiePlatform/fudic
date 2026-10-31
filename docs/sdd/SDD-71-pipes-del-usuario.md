@@ -133,7 +133,7 @@ pipe <nombre>
   proyecto: un nombre repetido en la app o sus librerías es `FUD1081`.
 - **`on` es obligatorio.** Sin él, `FUD1340`. Vale cualquier tipo de §3.2 de SDD-60: `str`,
   números, `date`, `uuid`, listas, `map`, un `type` o un `enum` del proyecto. Varios tipos son una
-  unión (`on date i64`).
+  unión (`on date f64`).
 - **Un pipe siempre da texto.** No se declara lo que devuelve: lo que sale de un pipe se pinta.
 - **Los parámetros** siguen las reglas de los argumentos (SDD-60 §3.2): nombre, tipo y `?` si
   puede faltar.
@@ -422,7 +422,7 @@ Filas nuevas de A.2 («El `@code` que el servidor evalúa» y «Lo que se pinta�
 4. **`g layout` y `g page`** en una app con `"locales": ["fr", "en"]` escriben `lang="fr"`.
 5. **El `.fudapi` de un pipe.** `pipe truncar` con `on str` y `max u32` genera
    `TruncarArgs`, `TruncarFormat` y `truncar.implement`, con los tipos de §3.3. Sin parámetros,
-   `implement` devuelve `Pipe<V>`. `on date i64` da `Date | number`. `on Post` da el tipo `Post`.
+   `implement` devuelve `Pipe<V>`. `on date f64` da `Date | number`. `on Post` da el tipo `Post`.
 6. **Errores del `.fudapi`.** Sin `on`, `FUD1340` sobre el nombre, y el resto del fichero se
    indexa. Un `pipe` junto a un `load`, `FUD1078`. Dos `pipe truncar` en el proyecto, `FUD1081`.
 7. **La implementación tipada.** Una implementación que devuelve un número, o que ignora un
@@ -508,3 +508,9 @@ Filas nuevas de A.2 («El `@code` que el servidor evalúa» y «Lo que se pinta�
    `@(data.x | pipe)`, la forma implícita `@data.x|pipe`. Lo entienden el compilador y el editor
    (LSP: tipos, hover, completado tras `|`). Tarea 14b de la fase 3. Pendiente de Pedro: si vale
    también con espacios alrededor de la barra.
+6. **El choque `FUD0501` de `sw/c/rules` se arregla aquí** (Pedro, 2026-10-31: «no quiero bugs
+   colgando»). Salió al quitar la etiqueta de idioma de una app con un solo idioma; existía ya en
+   una app sin `locales`. Tarea 14c.
+7. **`on date f64`, no `on date i64`.** El `.fudapi` de SDD-60 no tiene `i64` (los enteros
+   llegan a `i32`); el ejemplo de §3.2 y el criterio 5 pasan a `f64`, que da el mismo
+   `Date | number`.

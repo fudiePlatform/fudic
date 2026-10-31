@@ -38,7 +38,7 @@ import {
   type ProjectStyles,
 } from './transform.js';
 import { API_EXTENSION } from '@fudic/api';
-import { API_SCHEME, ApiProject } from './api-modules.js';
+import { API_SCHEME, ApiProject, onlyPipes } from './api-modules.js';
 import { BROWSER_ROOT_ID, ROOT_FILE_PREFIX, SERVER_ROOT_ID, emitRoot } from './api-root.js';
 import { emitFunctionsModule, isFnPath, noFunction, sendResponse, toRequest, writeHeaders, type ContractsHandler } from './functions.js';
 import { loadWithSourceMap } from './inputmaps.js';
@@ -454,10 +454,14 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    * The module `fudic:<id>` of a side. The browser variant brings the browser root with it: the
    * client halves and the `runs both` rules a call needs are registered by whoever imports a
    * contract, without anybody else having to remember.
+   *
+   * Not a file of only pipes (SDD-71 §3.3): it has no contract to register a half for, and
+   * bringing the root would load all of `src/browser` for one `@(x | p)`.
    */
   const apiModule = (id: string, side: 'server' | 'browser'): string | undefined => {
     const text = api.module(id, side);
-    return text === undefined || side === 'server' ? text : `import ${JSON.stringify(BROWSER_ROOT_ID)};\n${text}`;
+    if (text === undefined || side === 'server' || onlyPipes(api.source(id)!)) return text;
+    return `import ${JSON.stringify(BROWSER_ROOT_ID)};\n${text}`;
   };
   /**
    * The `server/` and `browser/` folders of the libraries, real and posix: a half there fills the

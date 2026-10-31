@@ -1,15 +1,17 @@
 /**
  * The builders of an extensions file's declarations: `rule`, `middleware` and `pattern`
- * (SDD §3.7–§3.9).
+ * (SDD §3.7–§3.9), and `pipe` (SDD-71 §3.2).
  */
 
-import { FUD1063, FUD1076, FUD1077 } from '@fudic/diagnostics';
+import { FUD1063, FUD1076, FUD1077, FUD1340 } from '@fudic/diagnostics';
 import type {
   AddsBlock,
   FailsClause,
   MiddlewareDecl,
   Name,
   PatternDecl,
+  PipeDecl,
+  PipeOn,
   RuleDecl,
   RuleFails,
   RuleOn,
@@ -144,7 +146,65 @@ function ruleOn(node: LineNode, c: Ctx): RuleOn | undefined {
   return { keyword: keyword.span, target: name(target), types, span: node.span };
 }
 
-const MIDDLEWARE_LINES = ['client', 'server', 'adds', 'fails', '<param> <type>'];
+const PIPE_LINES = ['on', '<param> <type>'];
+
+/**
+ * `pipe <name>`: `on <type>+` and its parameters (SDD-71 §3.2). Without `on` it is `FUD1340` on
+ * its name, and the pipe is still read, so the rest of the file and the editor keep it.
+ */
+export function pipeDecl(node: LineNode, c: Ctx): PipeDecl | undefined {
+  const [keyword] = node.tokens as [Token];
+  const pipeName = declName(node, 'kebab', 'pipe', c);
+  if (pipeName === undefined) return undefined;
+  trailing(node, 2, c);
+
+  let on: PipeOn | undefined;
+  let onLine: Token | undefined;
+  const params: TypedField[] = [];
+  for (const child of node.children) {
+    const [head] = child.tokens as [Token];
+    if (head.raw === 'on') {
+      if (repeated(onLine, head, c)) continue;
+      onLine = head;
+      const read = pipeOn(child, c);
+      if (read !== undefined) on = read;
+    } else {
+      const param = typedField(child, node, PIPE_LINES, c);
+      if (param !== undefined) params.push(param);
+    }
+  }
+  if (onLine === undefined) c.out.push(FUD1340({ span: pipeName.span, name: pipeName.text }));
+
+  return {
+    kind: 'pipe',
+    keyword: keyword.span,
+    name: pipeName,
+    ...(on !== undefined ? { on } : {}),
+    params,
+    ...doc(node),
+    span: blockSpan(node),
+  };
+}
+
+/** `on <type>+`: one type, or several for a union. */
+function pipeOn(node: LineNode, c: Ctx): PipeOn | undefined {
+  leaf(node, c);
+  const [keyword] = node.tokens as [Token];
+  let rest = node.tokens.slice(1);
+  if (rest.length === 0) {
+    c.out.push(FUD1063({ span: keyword.span, keyword: keyword.raw }));
+    return undefined;
+  }
+  const types: TypeExpr[] = [];
+  while (rest.length > 0) {
+    const { type, used } = readType(rest, c.out);
+    if (type !== undefined) types.push(type);
+    rest = rest.slice(used);
+  }
+  return { keyword: keyword.span, types, span: node.span };
+}
+
+const MIDDLEWARE_LINES =['client', 'server', 'adds', 'fails', '<param> <type>'];
 
 /** `middleware <name>`: its halves, its parameters, what it adds and how it fails. */
 export function middlewareDecl(node: LineNode, c: Ctx): MiddlewareDecl | undefined {

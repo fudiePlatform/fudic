@@ -79,6 +79,44 @@ export function apiDefinition(doc: ApiDocument, offset: number, host: ApiHost): 
   ];
 }
 
+/** `export default truncar.implement(…)`: the line a pipe's implementation is written with. */
+const PIPE_IMPL = /export\s+default\s+([A-Za-z_$][\w$]*)\s*\.\s*implement\b/u;
+const SCRIPT = /\.[cm]?[jt]s$/u;
+
+/** A pipe's declaration behind its implementation, and its documentation. */
+export interface PipeTarget {
+  readonly link: LocationLink;
+  readonly doc?: string;
+  readonly signature: string;
+}
+
+/**
+ * The `pipe` an implementation file implements (SDD-71 §5): the view imports the `export
+ * default` of `src/pipes/truncar.ts`, and what the developer wants on Ctrl+Click or hover is the
+ * contract written next to it, `truncar.fudapi`. `undefined` for any other file.
+ */
+export function pipeDefinition(host: ApiHost, path: string): PipeTarget | undefined {
+  if (!SCRIPT.test(path)) return undefined;
+  const name = PIPE_IMPL.exec(host.read(path) ?? '')?.[1];
+  const contract = path.replace(SCRIPT, API_EXTENSION);
+  const text = name === undefined ? undefined : host.read(contract);
+  if (text === undefined) return undefined;
+  const { source } = host.load(contract, text);
+  const decl = source.file.declarations
+    .filter((d) => d.kind === 'pipe')
+    .find((d) => d.name.text.replace(/-([a-z0-9])/gu, (_, c: string) => c.toUpperCase()) === name);
+  if (decl === undefined) return undefined;
+  return {
+    link: {
+      targetUri: pathToUri(contract).toString(),
+      targetRange: rangeOf(contract, text, decl.span),
+      targetSelectionRange: rangeOf(contract, text, decl.name.span),
+    },
+    ...(decl.doc !== undefined ? { doc: decl.doc } : {}),
+    signature: text.slice(decl.span.start, decl.span.end),
+  };
+}
+
 /** What a `.fud` takes from the contract it links: one of its names, or the `data` of its `load`. */
 export type ServerName = { readonly name: string } | { readonly load: true };
 

@@ -11,7 +11,7 @@ import { FUD1062, FUD1078, FUD1079, span, type SourceDiagnostic } from '@fudic/d
 import type { ApiFile, ChainDecl, Decl, FileRole, ParseResult } from './ast.js';
 import type { Ctx } from './clauses.js';
 import { bareDecl, chainDecl, enumDecl, fnDecl, loadDecl, messagesDecl, typeDecl } from './contract.js';
-import { middlewareDecl, patternDecl, ruleDecl } from './extensions.js';
+import { middlewareDecl, patternDecl, pipeDecl, ruleDecl } from './extensions.js';
 import { formDecl } from './form.js';
 import { lineTree, type LineNode } from './line.js';
 
@@ -34,6 +34,7 @@ const BUILDERS: Readonly<Record<string, Builder>> = {
   rule: ruleDecl,
   middleware: middlewareDecl,
   pattern: patternDecl,
+  pipe: pipeDecl,
 };
 
 /** The keywords a level-0 line can start with. */
@@ -48,6 +49,7 @@ function roleOf(decl: Decl): FileRole | undefined {
     case 'rule':
     case 'middleware':
     case 'pattern':
+    case 'pipe':
       return 'extensions';
     default:
       return 'contract';

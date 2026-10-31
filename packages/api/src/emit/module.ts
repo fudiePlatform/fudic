@@ -8,7 +8,7 @@
  * in. It imports `@fudic/*\/contract` and other `fudic:<id>`, never anything of the developer's.
  */
 
-import type { CompressClause, Decl, FailsClause, FnDecl, LoadDecl, MiddlewareArg, MiddlewareDecl, RuleUse, SkipClause, UseClause } from '../ast.js';
+import type { CompressClause, Decl, FailsClause, FnDecl, LoadDecl, MiddlewareArg, MiddlewareDecl, PipeDecl, RuleUse, SkipClause, UseClause } from '../ast.js';
 import type { ApiIndex, ApiSource } from '../index-api.js';
 import type { ApiContext } from '../validate.js';
 import { isArgRule } from '../validate-form.js';
@@ -46,7 +46,7 @@ interface ModuleCtx extends EmitCtx {
 }
 
 /** Declarations in the order their values must exist. */
-const ORDER: readonly Decl['kind'][] = ['type', 'enum', 'pattern', 'rule', 'middleware', 'messages', 'form', 'chain', 'load', 'paths', 'layout', 'fn'];
+const ORDER: readonly Decl['kind'][] = ['type', 'enum', 'pattern', 'rule', 'middleware', 'pipe', 'messages', 'form', 'chain', 'load', 'paths', 'layout', 'fn'];
 
 export function emitModule(source: ApiSource, index: ApiIndex, api: ApiContext, side: Side): string {
   const imports = new Map<string, Set<string>>();
@@ -109,6 +109,8 @@ function declaration(d: Decl, c: ModuleCtx): string {
     }
     case 'middleware':
       return middleware(d, c);
+    case 'pipe':
+      return pipe(d);
     case 'messages':
       c.forms.add('messages');
       return `messages({ ${d.entries.map((e) => `${camel(e.code.text)}: ${str(e.text.text)}`).join(', ')} });`;
@@ -128,6 +130,20 @@ function declaration(d: Decl, c: ModuleCtx): string {
 }
 
 const browser = (c: ModuleCtx): string => (c.side === 'browser' ? ', browser: true' : '');
+
+/**
+ * A pipe (SDD-71 §3.3): `implement` binds the implementation and hands back a `Pipe` — with
+ * parameters, a function of them. It registers nothing and imports nothing: the view imports
+ * the value, so a pipe nobody imports never reaches the browser. Same on both sides.
+ */
+function pipe(d: PipeDecl): string {
+  const name = str(d.name.text);
+  const value =
+    d.params.length > 0
+      ? `(format) => (args) => Object.freeze({ kind: 'pipe', name: ${name}, options: Object.freeze({ ...args }), format: (value, locale) => format(value, args, locale) })`
+      : `(format) => Object.freeze({ kind: 'pipe', name: ${name}, options: Object.freeze({}), format: (value, locale) => format(value, locale) })`;
+  return `export const ${camel(d.name.text)} = { implement: ${value} };`;
+}
 
 function failsOf(name: string, fails: readonly FailsClause[], c: ModuleCtx): string {
   if (fails.length === 0) return '';

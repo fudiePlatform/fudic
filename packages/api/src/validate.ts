@@ -37,6 +37,7 @@ import type {
   MiddlewareArg,
   MiddlewareDecl,
   Name,
+  PipeDecl,
   RuleDecl,
   SkipClause,
   TypeDecl,
@@ -157,7 +158,19 @@ function declaration(decl: Decl, c: Ctx): void {
       return middleware(decl, c);
     case 'pattern':
       return projectName('pattern', decl, 'pattern', c);
+    case 'pipe':
+      return pipe(decl, c);
   }
+}
+
+/**
+ * A pipe (SDD-71 §3.2): a project name, its `on` types and its parameters as any field. Its
+ * missing `on` is the parser's `FUD1340`.
+ */
+function pipe(decl: PipeDecl, c: Ctx): void {
+  projectName('pipe', decl, 'pipe', c);
+  for (const t of decl.on?.types ?? []) checkType(t, c.index, {}, c.out);
+  fields(decl.params, `pipe ${decl.name.text}`, c);
 }
 
 /** Whether the file is the sibling of a route, reporting the declaration when not (`FUD1090`). */

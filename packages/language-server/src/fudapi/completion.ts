@@ -42,6 +42,7 @@ type Context =
   | 'when'
   | 'rule'
   | 'middleware'
+  | 'pipe'
   | 'adds'
   | 'use-args'
   | 'none';
@@ -60,13 +61,14 @@ const CHILDREN: Readonly<Record<Context, readonly string[]>> = {
   when: ['require'],
   rule: ['on', 'runs', 'async', 'fails'],
   middleware: ['client', 'server', 'adds', 'fails'],
+  pipe: ['on'],
   adds: [],
   'use-args': [],
   none: [],
 };
 
 /** Contexts whose lines may be `<name>  <type>`. */
-const TYPED: ReadonlySet<Context> = new Set(['fn', 'load', 'type', 'form', 'group', 'rule', 'middleware', 'adds']);
+const TYPED: ReadonlySet<Context> = new Set(['fn', 'load', 'type', 'form', 'group', 'rule', 'middleware', 'pipe', 'adds']);
 
 /** One line above the cursor's, as typed. */
 interface Line {
@@ -139,7 +141,15 @@ function contextOf(chain: readonly Line[]): Context {
   if (parent.words[0] === 'use') return 'use-args';
   if (parent === root) {
     if (VERBS.has(head)) return 'fn';
-    if (head === 'load' || head === 'chain' || head === 'type' || head === 'form' || head === 'rule' || head === 'middleware') {
+    if (
+      head === 'load' ||
+      head === 'chain' ||
+      head === 'type' ||
+      head === 'form' ||
+      head === 'rule' ||
+      head === 'middleware' ||
+      head === 'pipe'
+    ) {
       return head;
     }
     return 'none';
@@ -205,6 +215,8 @@ function argument(
     case 'runs':
       return list(keywords(['both', 'server']));
     case 'on':
+      // A pipe's `on` takes types, as many as the union has (SDD-71 §3.2).
+      if (context === 'pipe') return list(types(index));
       return typing === 1
         ? list(keywords(['field', 'group', 'form']))
         : words[1] === 'field'
