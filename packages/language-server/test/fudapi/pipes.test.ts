@@ -11,7 +11,7 @@ import { URI } from 'vscode-uri';
 import { apiCompletions } from '../../src/fudapi/completion.js';
 import { apiDefinition, apiHover, pipeDefinition } from '../../src/fudapi/navigation.js';
 import { apiSemanticTokens } from '../../src/fudapi/semantic-tokens.js';
-import { FILES, SRC, apiDocument, cursor, world } from './_api.js';
+import { APP, FILES, ROOT, SRC, apiDocument, cursor, world } from './_api.js';
 
 const PRIMITIVES = ['str', 'html', 'bool', 'date', 'uuid', 'u8', 'i8', 'u16', 'i16', 'u32', 'i32', 'f32', 'f64'];
 const TYPES = [...PRIMITIVES, 'DevOnly', 'Person', 'Role'];
@@ -123,5 +123,81 @@ describe('pipeDefinition: from an implementation to its pipe (criterion 15)', ()
     expect(pipeDefinition(host, `${PIPES}/lonely.ts`)).toBeUndefined();
     expect(pipeDefinition(host, `${PIPES}/ghost.ts`)).toBeUndefined();
     expect(pipeDefinition(host, `${PIPES}/missing.ts`)).toBeUndefined();
+  });
+});
+
+describe('the pipes of a library, in the editor (SDD-71 §4.5)', () => {
+  const PIPE = 'pipe iniciales\n  on str\n';
+  const APP_FILES = (dependency: Readonly<Record<string, string | undefined>>): Record<string, string | undefined> => ({
+    [`${APP}/package.json`]: JSON.stringify({ name: 'app', dependencies: { '@acme/ui': '0.0.1', plain: '1.0.0' } }),
+    [`${APP}/node_modules/plain/index.js`]: '',
+    ...dependency,
+  });
+  const ids = (files: Record<string, string | undefined>): readonly string[] => {
+    const { host } = world({ files });
+    return host.load(`${SRC}/components/x.fudapi`, '').index.all('pipe').map((d) => `${d.source.id} ${d.decl.name.text}`);
+  };
+
+  it('an app reads the folder of pipes of each dependency, by the package', () => {
+    expect(ids(APP_FILES({ [`${APP}/node_modules/@acme/ui/src/pipes/iniciales.fudapi`]: PIPE }))).toEqual(['@acme/ui/pipes/iniciales iniciales']);
+  });
+
+  it('the folder the dependency\'s fudic.json names; a broken one is the convention', () => {
+    expect(
+      ids(
+        APP_FILES({
+          [`${APP}/node_modules/@acme/ui/fudic.json`]: JSON.stringify({ kind: 'lib', pipes: 'src/format' }),
+          [`${APP}/node_modules/@acme/ui/src/format/iniciales.fudapi`]: PIPE,
+          [`${APP}/node_modules/@acme/ui/src/pipes/otro.fudapi`]: 'pipe otro\n  on str\n',
+        }),
+      ),
+    ).toEqual(['@acme/ui/format/iniciales iniciales']);
+    expect(
+      ids(
+        APP_FILES({
+          [`${APP}/node_modules/@acme/ui/fudic.json`]: '{',
+          [`${APP}/node_modules/@acme/ui/src/pipes/iniciales.fudapi`]: PIPE,
+        }),
+      ),
+    ).toEqual(['@acme/ui/pipes/iniciales iniciales']);
+  });
+
+  describe('inside the library itself', () => {
+    const LIB = `${ROOT}/ui`;
+    const own = (files: Record<string, string | undefined>, path = `${LIB}/src/pipes/iniciales.fudapi`): string => {
+      const { host } = world({ files: { [path]: PIPE, ...files } });
+      return host.load(path, PIPE).source.id;
+    };
+
+    it('its own pipe carries its package name, as its apps know it', () => {
+      expect(own({ [`${LIB}/fudic.json`]: JSON.stringify({ kind: 'lib' }), [`${LIB}/package.json`]: JSON.stringify({ name: '@acme/ui' }) })).toBe(
+        '@acme/ui/pipes/iniciales',
+      );
+    });
+
+    it('any other .fudapi of the library does not', () => {
+      const files = { [`${LIB}/fudic.json`]: JSON.stringify({ kind: 'lib' }), [`${LIB}/package.json`]: JSON.stringify({ name: '@acme/ui' }) };
+      expect(own(files, `${LIB}/src/types/person.fudapi`)).toBe('types/person');
+    });
+
+    it('a package.json without a name, or one being written, names nothing yet', () => {
+      expect(own({ [`${LIB}/fudic.json`]: JSON.stringify({ kind: 'lib' }), [`${LIB}/package.json`]: '{}' })).toBe('pipes/iniciales');
+      expect(own({ [`${LIB}/fudic.json`]: JSON.stringify({ kind: 'lib' }), [`${LIB}/package.json`]: '{' })).toBe('pipes/iniciales');
+    });
+
+    it('an app\'s pipe is its path inside src/, with no prefix', () => {
+      expect(own({ [`${LIB}/fudic.json`]: JSON.stringify({ kind: 'app' }), [`${LIB}/package.json`]: JSON.stringify({ name: 'shop' }) })).toBe(
+        'pipes/iniciales',
+      );
+    });
+  });
+});
+
+describe('a library opened as a root with no package.json yet (SDD-71 §4.5)', () => {
+  it('names nothing: its pipe is its path inside src/', () => {
+    const lib = `${ROOT}/ui`;
+    const path = `${lib}/src/pipes/iniciales.fudapi`;
+    const { host } = world({ files: { [path]: 'pipe iniciales\n  on str\n', [`${lib}/fudic.json`]: JSON.stringify({ kind: 'lib' }) }, roots: [lib] });
+    expect(host.load(path, 'pipe iniciales\n  on str\n').source.id).toBe('pipes/iniciales');
   });
 });

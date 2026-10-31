@@ -70,9 +70,9 @@ describe('the checker over the projection', () => {
   const FIXTURES = resolve(fileURLToPath(new URL('../fixtures', import.meta.url)));
   const SLUG = 'blog/[slug].fud';
   const slug = readFileSync(resolve(FIXTURES, SLUG), 'utf8');
-  /** A preset that formats numbers, written structurally: the corpus has no `@fudic/i18n`. */
+  /** A preset that formats numbers, written structurally as `Pipe` is (SDD-71 §3.4): the corpus installs no package. */
   const PRESET =
-    "  const euros = { kind: 'currency', options: {} } as { readonly kind: 'currency'; readonly options: object; readonly __in?: (v: number | bigint) => void };";
+    "  const euros = { kind: 'currency', options: {} } as { readonly kind: 'currency'; readonly options: object; format(value: number | bigint, locale: string): string };";
 
   const withPipe = (decl: string, markup: string): Record<string, string> => ({
     [SLUG]: slug

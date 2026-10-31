@@ -39,7 +39,8 @@ describe('the project of a file (criterion 9)', () => {
   it('a dependency without fudapi/ adds nothing; one not in package.json is never read', () => {
     const { host, fs } = world();
     host.load(PATH, '');
-    expect(fs.reads.some((p) => p.includes('/no-api/'))).toBe(false);
+    // Its fudic.json is asked for, to know where its pipes would be (SDD-71 §4.5); nothing else.
+    expect(fs.reads.filter((p) => p.includes('/no-api/'))).toEqual([`${APP}/node_modules/no-api/fudic.json`]);
     expect(fs.reads.some((p) => p.includes('/transitive/'))).toBe(false);
   });
 

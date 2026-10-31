@@ -44,6 +44,7 @@ const ROOTS = [
   'packages/testing/test/bare-app',
   'packages/testing/test/conformance',
   'packages/testing/test/fixtures',
+  'packages/testing/test/locales-app',
   'packages/vscode/fixtures',
   'packages/workbench/test/fixtures/project',
 ] as const;
