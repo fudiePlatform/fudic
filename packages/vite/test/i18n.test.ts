@@ -408,7 +408,7 @@ describe('what a nested pass compiles with', () => {
   it('localePlugin compiles an app script for its locale, and nothing else', async () => {
     const plugin = localePlugin(ctx);
     const transform = plugin.transform as (code: string, id: string) => { code: string } | null;
-    const code = "import { locale } from '@fudic/i18n';\nexport const l = locale;\n";
+    const code = "import { locale } from '@fudic/core';\nexport const l = locale;\n";
     expect(transform(code, 'C:/app/src/x.ts?locale=en')?.code).toContain('export const l = (`en`);');
     expect(transform(code, 'C:/app/src/x.ts')).toBeNull();
     expect(transform(code, 'C:/app/src/x.css?locale=en')).toBeNull();
