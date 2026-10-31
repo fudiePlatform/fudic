@@ -46,8 +46,9 @@ export interface RazorExpression extends Node {
   readonly regions: readonly LexRegion[];
   /**
    * The `.` (or `?.`) written with no name behind it, where the chain stopped
-   * (decision 102). NOT part of `span` nor of `expr`: for the emit it is still literal
-   * text, so `@data.` keeps printing the dot (decision 2 intact).
+   * (decision 102), or a `|` with no pipe behind it (SDD-71). NOT part of `span` nor of
+   * `expr`: for the emit it is still literal text, so `@data.` keeps printing the dot
+   * (decision 2 intact).
    *
    * It is the EDITOR that needs it — the instant completion is asked for is exactly the
    * one where the dot is typed and the name is not — and that is why it travels apart.
@@ -259,6 +260,20 @@ export function scanImplicitExpression(
     }
 
     const char = source[i];
+    // A pipe written against the chain (SDD-71 §8.2, 5): `@data.x|pipe`, and `@x|a|b`. Only a
+    // name, adjacent on both sides: with a space the bar is text, as it always was, and `||`
+    // is never a pipe.
+    if (char === '|' && source[i + 1] !== '|') {
+      const next = identifierEnd(source, i + 1);
+      // A bar with no name behind it stays text, and is recorded like a dangling dot: the
+      // editor asks there for the pipes in scope.
+      if (next === i + 1) {
+        dangling = span(i, i + 1);
+        break;
+      }
+      i = next;
+      continue;
+    }
     if (char !== '(' && char !== '[') break;
     // The balancer owns the boundary, so a `)` inside a string argument does not close
     // the group, and the regions it walked travel with the node.

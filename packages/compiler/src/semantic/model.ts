@@ -57,6 +57,11 @@ export interface ProjectModule {
   /** Absolute path: the file a diagnostic inside it is reported on. */
   readonly path: string;
   readonly source: string;
+  /**
+   * Whether it is in its project's folder of pipes (SDD-71 §3.5, decision 172): its `export
+   * default` is a pipe the view may import. The host knows the folder; the compiler does not.
+   */
+  readonly pipe?: boolean;
 }
 
 /**

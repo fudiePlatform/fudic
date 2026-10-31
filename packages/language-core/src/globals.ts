@@ -111,10 +111,11 @@ interface $TrustedHTML { readonly fudicTrustedHtml: string }
 declare function $raw(v: $TrustedHTML | null | undefined): void;
 /**
  * \`a | b\` in the view (SDD-58 §4.4): \`b\` is a pipe that formats an \`a\`. Structural, like
- * \`$TrustedURL\`: an app with no \`@fudic/i18n\` still types. \`T\` is the pipe's, so a value of
- * the wrong type is the error, on the value.
+ * \`$TrustedURL\`: the projection needs no import, and a preset of \`@fudic/core\` and a project's
+ * own pipe are the same shape (SDD-71). \`T\` is the pipe's, so a value of the wrong type is the
+ * error, on the value.
  */
-interface $Pipe<in T> { readonly kind: string; readonly __in?: (value: T) => void }
+interface $Pipe<in T> { readonly kind: string; format(value: T, locale: string): string }
 declare function $pipe<T>(value: NoInfer<T>, pipe: $Pipe<T>): string;
 declare function $attrs<T>(a: T & $GlobalAttrs): void;
 
