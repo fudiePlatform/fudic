@@ -113,6 +113,40 @@ describe('criterion 20: pipes', () => {
   });
 });
 
+describe('SDD-71 criteria 8 and 12: a project\'s pipe, the same shape as a preset', () => {
+  // What `implement` hands back (SDD-71 §3.3), written in the `@code` so the module evaluates
+  // alone: the compiler does not tell it from a preset (§1.1, 5).
+  const CODE =
+    "@code {\n  import { currency } from '@fudic/core';\n" +
+    "  const corto = Object.freeze({ kind: 'pipe', name: 'truncar', options: { max: 3 }, format: (v, l) => `${v.slice(0, 3)}…@${l}` });\n" +
+    "  const iniciales = Object.freeze({ kind: 'pipe', name: 'iniciales', options: {}, format: (v, l) => `${v[0]}:${l}` });\n" +
+    "  const euros = currency('EUR');\n  const post = { resumen: 'fudic', autor: 'Ada', precio: 2 };\n}\n";
+  const BODY = '<p>@(post.resumen | corto)</p><p>@(post.autor | iniciales)</p><p>@(post.precio | euros)</p>';
+
+  it('the three uses of §3.5 paint on the server, created and hydrated in the client', () => {
+    const out = compile(BODY, CODE, {});
+    expect(out.server).toBe('<p>fud…@en</p><p>A:en</p><p>€2.00</p>');
+    expect(out.created()).toBe(out.server);
+    expect(out.hydrated()).toBe(out.server);
+  });
+
+  it('the locale the pipe receives is the page\'s: es for /es/…, en for /en/… (criterion 12)', () => {
+    expect(compile(BODY, CODE, {}, 'es').server).toContain('<p>fud…@es</p><p>A:es</p>');
+    expect(compile(BODY, CODE, {}, 'en').server).toContain('<p>fud…@en</p><p>A:en</p>');
+    expect(compile(BODY, CODE, {}, 'es').hydrated()).toContain('<p>A:es</p>');
+  });
+
+  it('written against the chain, `@post.autor|iniciales` and `@post.resumen|iniciales|corto` (§8.2, 5)', () => {
+    const out = compile('<p>@post.autor|iniciales</p><p>@post.resumen|iniciales|corto</p>', CODE, {}, 'es');
+    expect(out.server).toBe('<p>A:es</p><p>f:e…@es</p>');
+    expect(out.hydrated()).toBe(out.server);
+  });
+
+  it('with a space the bar is text, as it always was', () => {
+    expect(compile('<p>@post.autor |iniciales</p>', CODE, {}).server).toBe('<p>Ada |iniciales</p>');
+  });
+});
+
 describe('criterion 18: format() and locale', () => {
   it('format(x, euros) formats, and locale is the graph\'s', () => {
     const code =

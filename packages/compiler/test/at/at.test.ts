@@ -308,3 +308,27 @@ describe('the tokenizer seam (SDD-03 -> SDD-04)', () => {
     expect(tokens.some((t) => t.type === 'at-trigger')).toBe(false);
   });
 });
+
+describe('a pipe written against the chain (SDD-71 §8.2, 5)', () => {
+  it('`@data.x|pipe` and `@x|a|b` are one implicit expression with their pipes', () => {
+    expect(implicitExpr('@data.x|pipe')).toBe('data.x|pipe');
+    expect(implicitExpr('@x|a|b rest')).toBe('x|a|b');
+    expect(implicitExpr('@xs.length|n.')).toBe('xs.length|n');
+  });
+
+  it('`||` is never a pipe, and a space ends the chain before the bar', () => {
+    expect(implicitExpr('@a||b')).toBe('a');
+    expect(implicitExpr('@a |b')).toBe('a');
+  });
+
+  it('a bar with no name behind it is text, recorded apart like a dangling dot', () => {
+    const bar = scanImplicitExpression('@data|', 0).value;
+    expect(bar.expr).toEqual(span(1, 5));
+    expect(bar.dangling).toEqual(span(5, 6));
+    expect(scanImplicitExpression('@data| x', 0).value.dangling).toEqual(span(5, 6));
+  });
+
+  it('a call after a pipe stays in the chain, for the view rules to refuse (SDD-71 §7)', () => {
+    expect(implicitExpr('@x|p(1)')).toBe('x|p(1)');
+  });
+});
