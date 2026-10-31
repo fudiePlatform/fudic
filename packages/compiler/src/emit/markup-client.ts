@@ -290,12 +290,12 @@ export interface ClientScope {
    */
   readonly sheets?: (tag: string) => string;
   /**
-   * How many `<link>`s THIS component's shadow root ends with, its sheets as files (SDD-73
-   * §3.5). The adopt path finds a trailing run of the root as its last node, and the last
-   * nodes of a hydrated root are those links: it steps back over them. `0` — or absent — with
-   * no files.
+   * How many `<link>`s THIS component's shadow root opens with, its sheets as files (SDD-73
+   * §3.5). The adopt path finds the root's content from its first node and its first element,
+   * and in a hydrated root those are the links: it steps over them. `0` — or absent — with no
+   * files.
    */
-  readonly trailing?: number;
+  readonly leading?: number;
 }
 
 /** One slot of a child's positional payload: the expression, and where it can move from. */
@@ -645,7 +645,9 @@ export class ClientMarkupEmitter {
   /** The component template: the direct children of the shadow root. */
   emitRoots(children: readonly HtmlContent[]): void {
     const cursor = this.#cursorFor(children);
-    if (cursor !== null) this.#adopt.line(`let ${cursor} = $dom.firstElementChild($shadow);`);
+    if (cursor !== null) {
+      this.#adopt.line(`let ${cursor} = ${this.#first('$shadow', 'firstElementChild', 'nextElementSibling')};`);
+    }
     this.#items(this.#itemsOf(children), { fab: null, dom: '$shadow', cursor, end: null }, NOTHING_AHEAD);
   }
 
@@ -925,7 +927,7 @@ export class ClientMarkupEmitter {
     if (run.interpolated) return false;
     // The run that CLOSES the body: nothing of the block follows it, so what it merged with
     // is the level's next run — the very node handed back as the insertion anchor.
-    if (via === this.#last(level.dom)) return true;
+    if (via === `$dom.lastChild(${level.dom})`) return true;
     // And the run that OPENS it, which merged with the level's run in front. That one is not
     // an anchor, so nothing breaks when it goes — it is simply the level's TEXT, and a block
     // that took it with it deleted a sentence the author wrote outside the construct. An
@@ -942,28 +944,28 @@ export class ClientMarkupEmitter {
   /** The forward step the marked run takes instead of an anchor it cannot use. */
   #front(marker: Marker, level: Level): string {
     return marker.front === null
-      ? `$dom.firstChild(${level.dom})`
+      ? this.#first(level.dom, 'firstChild', 'nextSibling')
       : `$dom.nextSibling(${marker.front})`;
   }
 
   #anchor(level: Level, tail: Tail): string {
     if (tail.element) return `$dom.previousSibling(${level.cursor!})`;
     if (tail.any && level.cursor !== null) {
-      return `${level.cursor} ? $dom.previousSibling(${level.cursor}) : ${this.#last(level.dom)}`;
+      return `${level.cursor} ? $dom.previousSibling(${level.cursor}) : $dom.lastChild(${level.dom})`;
     }
-    return this.#last(level.dom);
+    return `$dom.lastChild(${level.dom})`;
   }
 
   /**
-   * The last node of a level the author wrote. At the component's root it is the one before
-   * the `<link>`s its sheets end it with, when they are files (SDD-73 §3.5); anywhere else,
-   * and with no files, simply the last.
+   * The first node — or element — of a level the author wrote. At the component's root it is
+   * the one after the `<link>`s its sheets open it with, when they are files (SDD-73 §3.5);
+   * anywhere else, and with no files, simply the first.
    */
-  #last(dom: string): string {
-    let last = `$dom.lastChild(${dom})`;
-    if (dom !== '$shadow') return last;
-    for (let i = 0; i < (this.#scope.trailing ?? 0); i += 1) last = `$dom.previousSibling(${last})`;
-    return last;
+  #first(dom: string, first: 'firstChild' | 'firstElementChild', next: 'nextSibling' | 'nextElementSibling'): string {
+    let at = `$dom.${first}(${dom})`;
+    if (dom !== '$shadow') return at;
+    for (let i = 0; i < (this.#scope.leading ?? 0); i += 1) at = `$dom.${next}(${at})`;
+    return at;
   }
 
   #fresh(): string {

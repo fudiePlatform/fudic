@@ -96,7 +96,7 @@ describe('FudicElement — instance entry points', () => {
     style.remove();
   });
 
-  it('ends a fabricated shadow root with the `<link>`s its host names, after the content (SDD-73 §3.5)', () => {
+  it('opens a fabricated shadow root with the `<link>`s its host names, before the content (SDD-73 §3.5)', () => {
     const tag = freshTag();
     customElements.define(
       tag,
@@ -114,9 +114,10 @@ describe('FudicElement — instance entry points', () => {
     (host as FudicElement).c([]);
 
     expect([...host.shadowRoot!.children].map((c) => c.outerHTML)).toEqual([
-      '<b></b>',
       '<link rel="stylesheet" href="/assets/x-Ab12.css">',
+      '<b></b>',
     ]);
+    expect(host.hasAttribute('data-fud-sheets')).toBe(false);
   });
 
   it('leaves a hydrated shadow root as the DSD left it: the parser adopted its sheets', () => {

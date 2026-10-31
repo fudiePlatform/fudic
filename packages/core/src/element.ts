@@ -74,9 +74,8 @@ export abstract class FudicElement extends Base {
     const controller = factoryOf(this).c([browserDom, shadow, ...props]);
     this.#controller = controller;
     controller.c();
-    // After the content: a sheet that is a file is a `<link>` at the END of the shadow root, as
-    // the server writes it (SDD-73 §3.5). An adopted sheet does not care, and no frame paints
-    // between the two lines.
+    // In the same task as the content: no frame paints it without its sheets. A sheet that is
+    // a file goes in FRONT of it, as the server writes it (SDD-73 §3.5).
     adoptSheets(this, shadow);
   }
 

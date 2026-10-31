@@ -108,7 +108,7 @@ describe('adoptSheets — one sheet per specifier (§5.2)', () => {
 });
 
 describe('adoptSheets — sheets that are files (SDD-73 §3.5, criterion 10)', () => {
-  it('ends the shadow root with a `<link>` per file, in order, after its content, adopting none', () => {
+  it('opens the shadow root with a `<link>` per file, in order, before its content, adopting none', () => {
     const el = document.createElement('div');
     el.setAttribute('data-fud-sheets', ' /assets/theme-Ab12.css  /assets/x-i-Cd34.css ');
     const shadow = el.attachShadow({ mode: 'open' });
@@ -117,11 +117,13 @@ describe('adoptSheets — sheets that are files (SDD-73 §3.5, criterion 10)', (
     adoptSheets(el, shadow);
 
     expect([...shadow.children].map((c) => c.outerHTML)).toEqual([
-      '<b></b>',
       '<link rel="stylesheet" href="/assets/theme-Ab12.css">',
       '<link rel="stylesheet" href="/assets/x-i-Cd34.css">',
+      '<b></b>',
     ]);
     expect(shadow.adoptedStyleSheets).toEqual([]);
+    // The marker was for this function only: the host no longer wears it.
+    expect(el.hasAttribute('data-fud-sheets')).toBe(false);
   });
 });
 

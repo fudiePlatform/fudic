@@ -5,6 +5,24 @@
 > pasa esperando a `load`, y el estudio de compatibilidad de navegadores y backends. Lo que aquí
 > se propone necesita su propia spec antes de implementarse.
 
+> **Implementado en [SDD-73](./SDD-73-early-hints.md) (2026-10-31).** Lo que quedó decidido
+> respecto a lo que este anexo proponía:
+>
+> - **El manifiesto es el contrato** (E.7.1): `routes[].hints` y, para la página de error,
+>   `errorHints`. Cada backend lo lee; ninguno ejecuta nada de fudic.
+> - **El 103, automático** (E.7.3): solo en HTTP/2 o más y con `Sec-Fetch-Mode: navigate`,
+>   uno por respuesta, y con la `Content-Security-Policy` y la `Referrer-Policy` de la página
+>   (el navegador comprueba las precargas contra la CSP que llega con el 103). La cabecera
+>   `Link` va siempre, con las pistas de lo que se pintó. `earlyHints: false` lo apaga.
+> - **El CSS como fichero** (E.4, E.7.4) se llama `css: "link"` y no es solo de componentes:
+>   también el `<style>` del head de rutas y layouts y las hojas `?inline`. Los `<link>` de un
+>   componente van al **principio** de su shadow root, no al final, y la página no lleva marca
+>   alguna; la hidratación los salta.
+> - **La CSP** (punto abierto de E.4): la política por defecto ya admite `style-src 'self'`.
+> - **Probarlo en `localhost`** (E.5): `examples/basic` trae `pnpm cert:h2` (el certificado de
+>   desarrollo de .NET, de confianza en Windows) y `pnpm preview:h2` / `preview:nosw:h2`. Con
+>   Service Worker, a partir de la segunda visita pinta él y no hay 103.
+
 ---
 
 ## E.1. El objetivo

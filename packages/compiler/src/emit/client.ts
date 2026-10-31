@@ -246,10 +246,10 @@ function buildComponentClientModule(
     // both sides, or a host hydrates adopting a different list than it rendered with.
     projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
     // And the same files, with `css: "link"` (SDD-73 §3.5) — and how many `<link>`s its own
-    // root ends with, for the adopt path to step back over.
+    // root opens with, for the adopt path to step over.
     ...(fileSheets === undefined
       ? {}
-      : { sheets: fileSheets, trailing: fileSheets(comp.tag).split(' ').filter((u) => u !== '').length }),
+      : { sheets: fileSheets, leading: fileSheets(comp.tag).split(' ').filter((u) => u !== '').length }),
   };
   // One channel for everything the emit has to SAY about this file, and one for what every
   // walk of it shares: a block three levels down reports through the same two.

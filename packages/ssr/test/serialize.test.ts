@@ -92,16 +92,17 @@ describe('renderToString — comments and shadow', () => {
     );
   });
 
-  it('a host with `data-fud-sheets` ends its template with a `<link>` per sheet, and adopts none (SDD-73 §3.5)', () => {
+  it('a host with `data-fud-sheets` opens its template with a `<link>` per sheet, adopts none, and does not wear the marker (SDD-73 §3.5)', () => {
     const d = new SsrDom();
     const host = d.element('app-counter');
     d.setAttr(host, 'data-fud-sheets', '/assets/theme-Ab12.css /assets/app-counter-"x.css');
+    d.setAttr(host, 'data-fud-id', '1');
     d.append(d.attachShadow(host, false), d.text('hi'));
     expect(renderToString(host)).toBe(
-      '<app-counter data-fud-sheets="/assets/theme-Ab12.css /assets/app-counter-&quot;x.css">' +
-        '<template shadowrootmode="open">hi' +
+      '<app-counter data-fud-id="1">' +
+        '<template shadowrootmode="open">' +
         '<link rel="stylesheet" href="/assets/theme-Ab12.css">' +
-        '<link rel="stylesheet" href="/assets/app-counter-&quot;x.css"></template></app-counter>',
+        '<link rel="stylesheet" href="/assets/app-counter-&quot;x.css">hi</template></app-counter>',
     );
   });
 

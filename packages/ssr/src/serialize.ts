@@ -101,13 +101,13 @@ export function* openElement(n: SsrNodeImpl): Generator<string> {
     const specifier = n.attrs.get('data-fud-adopt');
     const adopts = specifier === undefined ? '' : ` shadowrootadoptedstylesheets="${escapeAttr(specifier)}"`;
     yield `<template shadowrootmode="open"${focus}${clonable}${serializable}${bridge}${adopts}>`;
-    yield* serializeChildren(n.shadow);
-    // A component whose sheets are files (SDD-73 §3.5): one `<link>` per sheet, at the END of
-    // its shadow root. Hydration walks the children by position from the first, so what comes
-    // after them is never in its way.
-    for (const href of (n.attrs.get('data-fud-sheets') ?? '').split(' ').filter((h) => h !== '')) {
+    // A component whose sheets are files (SDD-73 §3.5): one `<link>` per sheet, at the START of
+    // its shadow root, so the browser asks for them before it reads the content they style.
+    // The hydration of the component knows how many there are and steps over them.
+    for (const href of (n.attrs.get(SHEETS_ATTR) ?? '').split(' ').filter((h) => h !== '')) {
       yield `<link rel="stylesheet" href="${escapeAttr(href)}">`;
     }
+    yield* serializeChildren(n.shadow);
     yield '</template>';
   }
 }
@@ -143,10 +143,16 @@ export function* rawChild(child: SsrNodeImpl): Generator<string> {
 function serializeAttrs(n: SsrNodeImpl): string {
   let out = '';
   for (const [name, value] of n.attrs) {
+    // What the emit tells the serializer about a host's sheets as files (SDD-73 §3.5): it is
+    // written as the `<link>`s of the template, and nothing in the page reads it after that.
+    if (name === SHEETS_ATTR) continue;
     out += ` ${name}="${escapeAttr(value)}"`;
   }
   return out;
 }
+
+/** The marker the emit puts on a host whose sheets are files; consumed, never written. */
+const SHEETS_ATTR = 'data-fud-sheets';
 
 /** Escape for text context: `& < >`. */
 export function escapeText(s: string): string {

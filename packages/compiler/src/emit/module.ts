@@ -20,6 +20,7 @@
 
 import {
   allComponents,
+  entryComponent,
   type ComponentGraph,
   type DocumentGraph,
   type ResolvedComponent,
@@ -278,9 +279,12 @@ export function sheetUrlsOf(
     const css = project.get(specifier);
     return css === undefined ? [] : [publish(specifier, linker.cssLinked(compactProjectCss(css)))];
   };
+  // The entry, when it is a component, is no component of its own graph: its client chunk
+  // still has to know its list, to step over the `<link>`s its root opens with.
+  const self = entryComponent(graph);
   return (tag) => {
     const urls = adopt(tag).split(' ').filter((s) => s !== '').flatMap(projectUrl);
-    const comp = graph.components.get(tag);
+    const comp = graph.components.get(tag) ?? (self?.tag === tag ? self : undefined);
     const css = comp === undefined ? '' : componentCss(comp.source, comp.doc);
     if (comp !== undefined && css !== '') {
       const own = css.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/gu, (whole, q: string, spec: string) =>

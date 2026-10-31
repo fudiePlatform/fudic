@@ -1,6 +1,6 @@
 # SDD-73 — Early Hints: el 103 en cualquier backend y el CSS de los componentes como fichero
 
-> **Estado:** `Listo` — [tareas](./SDD-73-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-73-Task.md).
 > **Paquetes:** `@fudic/compiler` · `@fudic/ssr` · `@fudic/core` · `@fudic/http` · `@fudic/config` · `@fudic/vite` ·
 > `@fudic/transport` · `examples/basic`
 > **Depende de:** 70 (las pistas por ruta en el manifiesto, `earlyHints` y `componentStyles` (que aquí pasa a `css`) en el
@@ -149,26 +149,28 @@ ruta, en su orden del head. Un `<style>` con `@` (se calcula al pintar) se queda
 - cada hoja (la de un componente o una del proyecto que se adopta) se publica como fichero con el
   hash de su contenido (`LinkedAssets.sheet`), y se sirve en desarrollo con los mismos bytes;
 - el `<head>` ya no lleva el polyfill ni los `<style type="module" specifier>`;
-- el anfitrión lleva `data-fud-sheets="<url> <url>"` en lugar de `data-fud-adopt`, y su
-  plantilla DSD acaba con un `<link rel="stylesheet" href="<url>">` por hoja, sin
-  `shadowrootadoptedstylesheets`;
-- un anfitrión que fabrica el runtime añade los mismos enlaces al final de su shadow root
-  (`core/src/adopt-sheets.ts`);
+- la plantilla DSD del anfitrión **empieza** con un `<link rel="stylesheet" href="<url>">` por
+  hoja, sin `shadowrootadoptedstylesheets` y sin ningún atributo en el anfitrión: el emit marca
+  el anfitrión con `data-fud-sheets` para el serializador, que lo consume y no lo escribe
+  (decisión 22);
+- un anfitrión que fabrica el runtime pone los mismos enlaces al principio de su shadow root, y
+  quita la marca después de leerla (`core/src/adopt-sheets.ts`);
 - las hojas que adopta algún componente de la página entran en sus pistas, detrás de las del head
   y antes de los módulos.
 
 ```html
-<app-counter data-fud-id="1" data-fud-sheets="/assets/theme-Ab12.css /assets/app-counter-Cd34.css">
+<app-counter data-fud-id="1">
   <template shadowrootmode="open">
-    <div class="panel">…</div>
     <link rel="stylesheet" href="/assets/theme-Ab12.css">
     <link rel="stylesheet" href="/assets/app-counter-Cd34.css">
+    <div class="panel">…</div>
   </template>
 </app-counter>
 ```
 
-Los enlaces van **al final** del shadow root: la hidratación recorre los hijos por posición
-desde el primero, y así no se encuentra nada que no esperaba.
+Los enlaces van **al principio** del shadow root: el navegador los pide antes de leer lo que
+estilan. La hidratación recorre los hijos por posición desde el primero; sabe cuántos enlaces
+abren la raíz de cada componente y los salta (decisión 22).
 
 ### 3.6. La página de error sabe de dónde venía el usuario
 
@@ -319,12 +321,13 @@ perdido, no un fallo.
 
 **`css: "link"`: los componentes**
 
-7. El head no lleva ni el polyfill ni ningún `<style type="module">`; cada anfitrión con hojas
-   lleva `data-fud-sheets` y su plantilla acaba con sus `<link rel="stylesheet">`.
+7. El head no lleva ni el polyfill ni ningún `<style type="module">`; la plantilla de cada
+   anfitrión con hojas empieza con sus `<link rel="stylesheet">`, y la página no lleva
+   `data-fud-sheets`.
 8. Los ficheros se publican en el build y el servidor de desarrollo los sirve con los mismos
    bytes; dos páginas con la misma hoja comparten fichero.
 9. Las pistas de la ruta incluyen las hojas de sus componentes, detrás de las del head.
-10. Un anfitrión fabricado en el navegador recibe los mismos `<link>` al final de su shadow root
+10. Un anfitrión fabricado en el navegador recibe los mismos `<link>` al principio de su shadow root
     (test de `core`), y un componente servido por el servidor se hidrata igual que en `inline`.
 11. Con `css` sin tocar, los goldens y el HTML de `examples/basic` no cambian.
 
@@ -389,8 +392,8 @@ perdido, no un fallo.
 3. **La respuesta final anuncia lo que pinta.** El 103 sale antes de saber si `load` falla, así
    que lleva las de la ruta; la cabecera `Link` de la respuesta final, las de lo que se pintó.
 4. **El SW no manda 103.** No puede, y no le hace falta.
-5. **Los `<link>` de las hojas, al final del shadow root.** La hidratación recorre por posición
-   desde el primer hijo.
+5. ~~**Los `<link>` de las hojas, al final del shadow root.**~~ Sustituida por la decisión 22:
+   al principio, y la hidratación los salta.
 6. **`back` en lugar de un enlace fijo** (Pedro, 2026-10-31). La página de error no puede
    saber a qué página volver si nadie se lo dice; el `Referer` del mismo origen es lo que el
    servidor tiene en la mano en cualquier lenguaje, sin JS en el navegador.
@@ -436,12 +439,16 @@ perdido, no un fallo.
 19. **Los `url(…)` del CSS de un componente se resuelven desde su propio fichero** antes de
     enlazarse, así cualquier módulo que lo compile (la página, el layout, su chunk de cliente)
     llega a los mismos bytes y al mismo fichero.
-20. **La hidratación salta los `<link>` del final.** Un texto al final de la raíz de un
-    componente se localiza como «el último nodo»; con hojas como fichero, ese último nodo es un
-    `<link>`. El compilador sabe cuántos son y el camino de hidratación retrocede sobre ellos.
-    En `inline` no cambia ni un byte.
-21. **Un anfitrión fabricado añade sus `<link>` después de construir su contenido**, en la
-    misma tarea: ningún fotograma pinta el componente sin su hoja.
+20. **La hidratación salta los `<link>` del principio.** El primer elemento y el primer nodo
+    de la raíz de un componente se buscan desde el principio; el compilador sabe cuántos enlaces
+    la abren y los salta. En `inline` no cambia ni un byte.
+21. **Un anfitrión fabricado pone sus `<link>` en la misma tarea que construye su contenido**:
+    ningún fotograma pinta el componente sin su hoja.
+22. **Enlaces al principio, y sin `data-fud-sheets` en la página** (Pedro, 2026-10-31). Sin
+    polyfill nadie lee esa marca en el navegador: el serializador la consume y no la escribe, y
+    el runtime la quita de un anfitrión fabricado después de leerla. Al principio, porque el
+    navegador pide la hoja antes de leer el contenido que estila; esto sustituye a la versión
+    «al final» de la redacción (§3.5, decisión 5).
 15. **El `detail` de una llamada ya no se ve en la página de error.** Los tests de
     `examples/basic` que lo esperaban (`sin sesión`, `no hay nadie con id 999`) comprueban ahora
     el enlace «Volver» a `/usuarios`.

@@ -213,7 +213,12 @@ function styleOptions(
   // a library looks like.
   hoist(styles.chainFor(graph.entryPath));
   const chains = new Map<string, readonly string[]>();
-  for (const component of allComponents(graph)) {
+  // The entry too, when it is a component: its client chunk hydrates its own root, and with
+  // `css: "link"` that root opens with the `<link>`s of ITS list — the sheets it chooses by
+  // name included — which the chunk has to count to step over them (SDD-73 §3.5). The emit
+  // reads a component entry's list for nothing else, so `inline` does not change.
+  const own = entryComponent(graph);
+  for (const component of own === undefined ? allComponents(graph) : [own, ...allComponents(graph)]) {
     const chain = projectSheetsOf(component, styles);
     chains.set(component.tag, chain.map((sheet) => sheet.specifier));
     hoist(chain);

@@ -5,7 +5,7 @@
 > `@fudic/transport` · `examples/basic`
 > **Rama:** `sdd-73-early-hints`. Nace de `main` **con SDD-70 en `Hecho`**: las pistas por ruta,
 > `earlyHints` y `componentStyles` son suyas (tareas 40–41).
-> **Progreso:** 16 / 17 — `En curso`.
+> **Progreso:** 17 / 17 — `Hecho`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -81,4 +81,4 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 15 | 1–14, 16, 17 | **Prueba, docs, entrega y cierre.** El banco del criterio 17 en `examples/basic` (`preview:h2` con el certificado de desarrollo de .NET en PEM, `.pem` en `.gitignore`, y la ruta `/lento` con un `load` de 2 s); Pedro prueba el criterio 17 (preview en HTTP/2, `css: "link"`); el contrato de §3.2 en el README de `@fudic/vite` con pseudocódigo para los demás backends; el anexo de SDD-70 al día; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde y lo nuevo al 100 %; SDD-73 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `packages/vite/README.md` · `docs/sdd/*` |
+| [x] | 15 | 1–14, 16, 17 | **Prueba, docs, entrega y cierre.** El banco del criterio 17 en `examples/basic` (`preview:h2` con el certificado de desarrollo de .NET en PEM, `.pem` en `.gitignore`, y la ruta `/lento` con un `load` de 2 s); Pedro prueba el criterio 17 (preview en HTTP/2, `css: "link"`); el contrato de §3.2 en el README de `@fudic/vite` con pseudocódigo para los demás backends; el anexo de SDD-70 al día; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde y lo nuevo al 100 %; SDD-73 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `packages/vite/README.md` · `docs/sdd/*` |

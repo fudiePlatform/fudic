@@ -221,9 +221,14 @@ describe('the client chunk (criterion 10)', () => {
     expect(client('x-p', host(false).options)).toContain(`'data-fud-adopt', "theme x-n"`);
   });
 
-  it('the adopt path steps back over the `<link>`s that end a hydrated root', () => {
-    expect(client('x-n', host().options)).toContain('$dom.previousSibling($dom.previousSibling($dom.lastChild($shadow)))');
-    expect(client('x-n', host(false).options)).not.toContain('$dom.previousSibling($dom.lastChild($shadow))');
+  it('the adopt path finds the root’s first element past the `<link>`s that open it', () => {
+    // `x-p` wears one file, the project's: one step.
+    expect(client('x-p', host().options)).toContain('= $dom.nextElementSibling($dom.firstElementChild($shadow));');
+    expect(client('x-p', host(false).options)).toContain('= $dom.firstElementChild($shadow);');
+  });
+
+  it('a run at the end of the root is still its last node: the links are in front', () => {
+    expect(client('x-n', host().options)).toContain('= $dom.lastChild($shadow);');
   });
 });
 
