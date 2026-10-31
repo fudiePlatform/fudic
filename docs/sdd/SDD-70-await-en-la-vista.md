@@ -328,12 +328,14 @@ Un valor de otro tipo: `FUD0725`, como el resto de campos del fichero.
 
   No van los chunks de los componentes: se piden al hidratarse. Con `earlyHints: false`, ninguna
   ruta lleva `hints`. Cualquier backend lee el manifiesto: no depende del render de Node.
-- **El servidor de Node** (desarrollo y preview), en una petición de página:
+- **El servidor de Node** (desarrollo y preview), en una petición de página — **movido a
+  [SDD-73](./SDD-73-early-hints.md) §3.2, como middleware con el mismo contrato en todo backend**:
   1. si la conexión es HTTP/2 o superior y la petición trae `Sec-Fetch-Mode: navigate`, manda un
      único `103` con las pistas **antes** de ejecutar `load`;
   2. la respuesta final lleva siempre esas pistas en su cabecera `Link` (también en HTTP/1.1, y
      lo que un CDN convierte en 103).
-- **`componentStyles: "link"`:**
+- **`componentStyles: "link"`** — **movido a [SDD-73](./SDD-73-early-hints.md) §3.5**; aquí solo se lee
+  del `fudic.json`:
   - cada hoja (la de un componente o una del proyecto) se publica como fichero con el hash de su
     contenido, como las hojas podadas de SDD-49;
   - el `<head>` ya no lleva el polyfill ni los `<style type="module" specifier>`;
@@ -564,11 +566,11 @@ Un valor de otro tipo: `FUD0725`, como el resto de campos del fichero.
     `hints` la hoja de su head, `boot`, `main` y los módulos del runtime que importan
     (`hydrate.js`, `registry.js`, `warm-sw.js`, `urls.js`), y ningún chunk de componente. Con
     `earlyHints: false` ninguna ruta lleva `hints`.
-31. **El 103.** Contra el servidor en proceso: una navegación en HTTP/2 recibe el 103 con las
+31. **El 103** — *movido a SDD-73 (criterios 3–6).* Contra el servidor en proceso: una navegación en HTTP/2 recibe el 103 con las
     pistas antes de que `load` se cumpla (promesa controlada); en HTTP/1.1 o sin
     `Sec-Fetch-Mode: navigate` no hay 103; la respuesta final lleva la cabecera `Link` en los dos
     casos.
-32. **`componentStyles: "link"`.** El head de la página no lleva ni el polyfill ni ningún
+32. **`componentStyles: "link"`** — *movido a SDD-73 (criterios 7–11).* El head de la página no lleva ni el polyfill ni ningún
     `<style type="module">`; cada anfitrión con hojas lleva `data-fud-sheets` y su plantilla
     acaba con sus `<link rel="stylesheet">`; los ficheros se publican en el build y se sirven en
     desarrollo con los mismos bytes; las pistas de la ruta los incluyen. Un anfitrión fabricado

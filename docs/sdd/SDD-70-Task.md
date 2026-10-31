@@ -7,7 +7,7 @@
 > **Rama:** `sdd-70-await-en-la-vista`. Nace de `main` **con SDD-61, SDD-67 y SDD-68 en
 > `Hecho`**: el constructo nuevo entra en la lista blanca de la 61, las tramas del endpoint de
 > datos usan el codec de la 67 y `load.fetch` de la 68 pasa a leerlas.
-> **Progreso:** 41 / 44 — `En curso`. Pedro probó `espera` en el navegador (con y sin SW) y en el editor el 2026-10-30. Fase 8 cerrada el 2026-10-31. Fase 9: 40 y 41 hechas (las pistas en el manifiesto); **parada por Pedro** para diseñar juntos el 103 y el CSS como fichero (42–44) a partir de la decisión 8.2.15.
+> **Progreso:** 41 / 42 — `En curso`. Pedro probó `espera` en el navegador (con y sin SW) y en el editor el 2026-10-30. Fases 8 y 9 (40–41) hechas el 2026-10-31. Las tareas 42 y 43 pasan a [SDD-73](./SDD-73-Task.md); queda la 44, el cierre, para otra sesión.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -230,9 +230,9 @@ en esta spec (SDD §3.10).
 |---|---|---|---|---|---|
 | [x] | 40 | — | **`fudic.json`.** `earlyHints` (`true` por defecto) y `componentStyles` (`"inline"` por defecto, o `"link"`); otro valor, `FUD0725` sobre el campo (criterio 29) | `config` · `diagnostics` | `src/read.ts` · `src/codes/FUD0725.ts` |
 | [x] | 41 | 40 | **Las pistas en el manifiesto.** El emit devuelve las hojas de su head; el build añade `boot`, `main` y su cierre de imports estáticos, y escribe `hints` por ruta en `fudic-routes.json` (criterio 30) | `compiler` · `vite` | `src/emit/module.ts` · `src/plugin.ts` |
-| [ ] | 42 | 41 | **El 103 en Node.** Dev y preview mandan el 103 en HTTP/2 a una navegación antes de `load`, y la cabecera `Link` en toda respuesta de página (criterio 31) | `vite` | `src/serve.ts` · `src/plugin.ts` |
-| [ ] | 43 | 40 | **`componentStyles: "link"`.** Hojas publicadas por contenido; head sin polyfill ni `<style type="module">`; `data-fud-sheets` en el anfitrión y sus `<link>` al final de la plantilla DSD; el runtime los añade a un anfitrión fabricado; las hojas entran en las pistas (criterio 32) | `compiler` · `ssr` · `core` · `vite` | `src/emit/*` · `src/serialize.ts` · `src/adopt-sheets.ts` · `src/linked-assets.ts` |
-| [ ] | 44 | 38–43 | **Cierre.** Criterio 33; el anexo pasa a normativo en lo que entra; guía en el README de `@fudic/vite`; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; SDD-70 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `docs/sdd/*` · `packages/vite/README.md` |
+| — | 42 | 41 | **Movida a [SDD-73](./SDD-73-Task.md) (fase 3).** **El 103 en Node.** Dev y preview mandan el 103 en HTTP/2 a una navegación antes de `load`, y la cabecera `Link` en toda respuesta de página (criterio 31) | `vite` | `src/serve.ts` · `src/plugin.ts` |
+| — | 43 | 40 | **Movida a [SDD-73](./SDD-73-Task.md) (fase 4).** **`componentStyles: "link"`.** Hojas publicadas por contenido; head sin polyfill ni `<style type="module">`; `data-fud-sheets` en el anfitrión y sus `<link>` al final de la plantilla DSD; el runtime los añade a un anfitrión fabricado; las hojas entran en las pistas (criterio 32) | `compiler` · `ssr` · `core` · `vite` | `src/emit/*` · `src/serialize.ts` · `src/adopt-sheets.ts` · `src/linked-assets.ts` |
+| [ ] | 44 | 38–41 | **Cierre.** Criterio 33 (los criterios 31 y 32 pasan a SDD-73); el anexo pasa a normativo en lo que entra; guía en el README de `@fudic/vite`; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; SDD-70 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `docs/sdd/*` · `packages/vite/README.md` |
 
 ## Fase 7 — ejemplo y cierre (1)
 
