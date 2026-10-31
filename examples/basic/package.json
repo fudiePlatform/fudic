@@ -12,6 +12,7 @@
     "preview:nosw": "vite preview --config nosw/vite.config.ts",
     "cert:h2": "dotnet dev-certs https --trust && dotnet dev-certs https --export-path h2/localhost.pem --format Pem --no-password",
     "preview:h2": "vite preview --config h2/vite.config.ts",
+    "preview:nosw:h2": "vite preview --config h2/nosw.config.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:spec": "fudic-workbench run",

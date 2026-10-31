@@ -357,7 +357,9 @@ perdido, no un fallo.
     con el certificado de desarrollo de .NET exportado a PEM, de confianza en Windows y sin
     avisos; los `.pem` no se commitean) y una ruta `/lento` cuyo `load` tarda 2 s, para que en
     la cascada se vea el CSS y el JS bajando mientras el servidor espera. `curl --http2 -v`
-    enseña el `103` en crudo.
+    enseña el `103` en crudo. Con Service Worker, a partir de la segunda visita pinta él y no
+    pregunta al servidor: `pnpm build:nosw` y `pnpm preview:nosw:h2` dan el mismo banco sin SW,
+    donde cada navegación recibe su `103`.
 
 **Entrega**
 
