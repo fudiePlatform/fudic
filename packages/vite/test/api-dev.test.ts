@@ -86,6 +86,8 @@ beforeAll(async () => {
       'src/routes/dup.fudapi': DUP_API,
       'src/server/home.ts': handler('hola'),
       'src/server/dup-a.ts': "import { twice } from 'fudic:routes/dup';\ntwice.handle(() => 'a');\n",
+      'src/pipes/truncar.fudapi': 'pipe truncar\n  on str\n  max u32\n',
+      'src/rules/empty.fudapi': '# Nothing yet.\n',
     }),
     start({
       'fudic.json': JSON.stringify({ server: 'src/backend' }),
@@ -116,6 +118,15 @@ describe('the functions of a .fudapi in dev', () => {
     const browserRoot = await (await fetch(`${app.origin}/fudic-root.browser.js`)).text();
     expect(browserRoot).toContain('the implementations of the browser');
     expect(browserRoot).not.toContain('/src/server/');
+  });
+
+  it('a file of only pipes brings no root: one `@(x | p)` loads no src/browser (SDD-71 §3.3)', async () => {
+    const pipes = await (await fetch(`${app.origin}/@id/fudic:pipes/truncar`)).text();
+    expect(pipes).toContain('export const truncar = { implement:');
+    expect(pipes).not.toContain('fudic-root');
+    // A file with no declarations is not a file of pipes: it keeps what every contract brings.
+    const empty = await (await fetch(`${app.origin}/@id/fudic:rules/empty`)).text();
+    expect(empty).toContain('import "/fudic-root.browser.js";');
   });
 
   it('criterion 16: without .handle, a 404 that says what is missing', async () => {
