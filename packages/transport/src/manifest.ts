@@ -146,6 +146,12 @@ export interface ManifestFile {
    * and nothing special happens.
    */
   readonly assets?: string;
+  /**
+   * The `Link` values of `_error.fud` (SDD-73 §3.3), for a response that paints it: no route
+   * matched, or `load` failed. Built like a route's `hints`; absent when there are none — no
+   * `_error.fud`, or `earlyHints: false`.
+   */
+  readonly errorHints?: readonly string[];
 }
 
 export interface RouteMatch {

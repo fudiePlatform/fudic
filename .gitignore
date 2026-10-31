@@ -50,3 +50,8 @@ npm-debug.log*
 # Storage of the local Verdaccio (`pnpm registry`): rebuilt from scratch on every run,
 # because a registry serving a tarball from a previous build is worse than no registry.
 .local-registry/
+
+# The local certificate of the HTTP/2 preview (`pnpm cert:h2` in examples/basic): one per
+# machine, and a private key.
+examples/basic/h2/localhost.pem
+examples/basic/h2/localhost.key

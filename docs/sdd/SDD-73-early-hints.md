@@ -119,7 +119,7 @@ Entran en `hints` en su sitio del head, como `rel=preload; as=style`:
 | `href` en el head | Pista |
 |---|---|
 | `./site.css` (podada, SDD-49) | la URL de la copia, como hoy |
-| `/public.css` (de `public/`) | `</base/public.css>; rel=preload; as=style` |
+| `/public.css` (de `public/`) | `</public.css>; rel=preload; as=style`, tal cual (decisión 9) |
 | `https://cdn.example/x.css` | `<https://cdn.example/x.css>; rel=preload; as=style` |
 | `./x.css?inline` | ninguna: va dentro de la página |
 | `./@(data.theme).css` | ninguna: no se sabe al compilar |
@@ -302,8 +302,8 @@ perdido, no un fallo.
 
 1. Un `_error.fud` con un `<link rel="stylesheet">` en su head deja en `errorHints` su hoja y los
    módulos que carga; sin `_error.fud`, no hay `errorHints`; con `earlyHints: false`, tampoco.
-2. Un head con `/public.css` y `https://cdn.example/x.css` los lleva en `hints`, en su orden y con
-   `base`; uno con `?inline` o con un `href` dinámico no deja pista.
+2. Un head con `/public.css` y `https://cdn.example/x.css` los lleva en `hints`, en su orden y
+   con la URL que escribe la página; uno con `?inline` o con un `href` dinámico no deja pista.
 
 **El middleware de Node** (contra el servidor en proceso, en HTTP/2 con `server.https`)
 
@@ -353,6 +353,11 @@ perdido, no un fallo.
 17. `examples/basic` con `css: "link"` y preview en HTTP/2: en la pestaña Network de
     Chrome, las hojas y los módulos de `/hidratacion` salen con iniciador `early-hints`; los
     componentes se ven con su estilo; `/test` enseña la página de error con su CSS.
+    El banco para verlo en `localhost`: `pnpm preview:h2` en `examples/basic` (preview en HTTP/2
+    con el certificado de desarrollo de .NET exportado a PEM, de confianza en Windows y sin
+    avisos; los `.pem` no se commitean) y una ruta `/lento` cuyo `load` tarda 2 s, para que en
+    la cascada se vea el CSS y el JS bajando mientras el servidor espera. `curl --http2 -v`
+    enseña el `103` en crudo.
 
 **Entrega**
 
@@ -396,3 +401,14 @@ perdido, no un fallo.
    `examples/basic` llevan `<style>` en su head, y su layout también: eso viaja en cada HTML
    igual que el de los componentes. La opción deja de ser solo de componentes y pasa a llamarse
    `css` (`"inline"` · `"link"`), en lugar del `componentStyles` de SDD-70.
+
+### 8.2. Tomadas al implementar
+
+9. **La pista de una hoja que no se poda es la URL que escribe la página.** El head escribe
+   `/public.css` tal cual, sin `base`; una pista con `base` precargaría una URL que la página no
+   pide.
+10. **Un solo `errorHints` por app.** Con idiomas, el del primero: las páginas de error de todos
+    comparten hojas y entradas.
+11. **La preview en HTTP/2 respondía `500` a toda página** (las pseudo-cabeceras `:method`,
+    `:path` pasaban a `Headers`). Arreglado al montar el banco del criterio 17: la petición ya no
+    las lleva, el host sale de `:authority` y el esquema es `https` sobre TLS.

@@ -5,7 +5,7 @@
 > `@fudic/transport` · `examples/basic`
 > **Rama:** `sdd-73-early-hints`. Nace de `main` **con SDD-70 en `Hecho`**: las pistas por ruta,
 > `earlyHints` y `componentStyles` son suyas (tareas 40–41).
-> **Progreso:** 0 / 17 — `Listo`.
+> **Progreso:** 3 / 17 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -45,9 +45,9 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **`errorHints`.** El build calcula las pistas de `_error.fud` como las de una ruta (sus hojas, `boot`, `main` y su cierre) y las escribe arriba del manifiesto; `ManifestFile.errorHints` en `@fudic/transport` (SDD §3.1, §3.3) | `vite` · `transport` | `src/plugin.ts` · `src/manifest.ts` · `src/manifest.ts` (transport) |
-| [ ] | 2 | — | **Las hojas que no se podan.** `EmitOutput.hints` incluye las del head de `public/` (con `base`) y las de otro origen, en su orden; ni `?inline` ni un `href` dinámico (SDD §3.4) | `compiler` | `src/emit/page-sheets.ts` · `src/emit/parts.ts` |
-| [ ] | 3 | 1, 2 | **Los tests de la fase.** Criterios 1–2 | `compiler` · `vite` | `test/**` |
+| [x] | 1 | — | **`errorHints`.** El build calcula las pistas de `_error.fud` como las de una ruta (sus hojas, `boot`, `main` y su cierre) y las escribe arriba del manifiesto; `ManifestFile.errorHints` en `@fudic/transport` (SDD §3.1, §3.3) | `vite` · `transport` | `src/plugin.ts` · `src/manifest.ts` · `src/manifest.ts` (transport) |
+| [x] | 2 | — | **Las hojas que no se podan.** `EmitOutput.hints` incluye las del head de `public/` (tal cual, decisión 9) y las de otro origen, en su orden; ni `?inline` ni un `href` dinámico (SDD §3.4) | `compiler` | `src/emit/page-sheets.ts` · `src/emit/parts.ts` |
+| [x] | 3 | 1, 2 | **Los tests de la fase.** Criterios 1–2 | `compiler` · `vite` | `test/**` |
 
 ## Fase 2 — la página de error sabe de dónde venía el usuario (4)
 
@@ -81,4 +81,4 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 15 | 1–14, 16, 17 | **Prueba, docs, entrega y cierre.** Pedro prueba el criterio 17 (preview en HTTP/2, `css: "link"`); el contrato de §3.2 en el README de `@fudic/vite` con pseudocódigo para los demás backends; el anexo de SDD-70 al día; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde y lo nuevo al 100 %; SDD-73 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `packages/vite/README.md` · `docs/sdd/*` |
+| [ ] | 15 | 1–14, 16, 17 | **Prueba, docs, entrega y cierre.** El banco del criterio 17 en `examples/basic` (`preview:h2` con el certificado de desarrollo de .NET en PEM, `.pem` en `.gitignore`, y la ruta `/lento` con un `load` de 2 s); Pedro prueba el criterio 17 (preview en HTTP/2, `css: "link"`); el contrato de §3.2 en el README de `@fudic/vite` con pseudocódigo para los demás backends; el anexo de SDD-70 al día; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde y lo nuevo al 100 %; SDD-73 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `packages/vite/README.md` · `docs/sdd/*` |

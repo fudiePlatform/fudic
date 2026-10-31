@@ -96,6 +96,21 @@ export function prunableHref(
 }
 
 /**
+ * The `href` of a `<link rel="stylesheet">` the page links as the author wrote it, to hint
+ * before the page (SDD-73 §3.4), or `null`: a root-absolute file of `public/` or a sheet of
+ * another origin, written literally. Neither is pruned, so the URL the page asks for is the
+ * one in the source. An embedded sheet (`?inline`) asks for nothing, and an interpolated
+ * `href` is not known until the page is painted.
+ */
+export function fixedSheetHref(el: ElementNode): string | null {
+  if (el.name !== 'link' || literalAttr(el, 'rel') !== 'stylesheet') return null;
+  if (interpolatesAttrs(el)) return null;
+  const href = literalAttr(el, 'href');
+  if (href === null || asksInline(href)) return null;
+  return href.startsWith('/') || /^https?:\/\//iu.test(href) ? href : null;
+}
+
+/**
  * The key under which a route hands its layout each prunable sheet of that layout's `<head>`
  * (SDD-49 §4.6): the layout's depth — how many layouts it has above it, which does not depend
  * on the route — and the sheet's position among the prunable ones of that head.

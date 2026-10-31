@@ -270,3 +270,24 @@ describe('buildManifest — the early hints of a route (SDD-70 §3.10, criterion
     expect('hints' in file.routes[0]!).toBe(false);
   });
 });
+
+describe('buildManifest — the hints of `_error.fud` (SDD-73 §3.3, criterion 1)', () => {
+  const hintsOf = (rb: RouteBuild): readonly string[] =>
+    rb.route.pattern === '/_error' ? ['</e.css>; rel=preload; as=style'] : [];
+
+  it('`errorHints` at the top, with the error page\'s', () => {
+    const { file } = buildManifest([routeBuild('/a', { mode: 'ssg' })], {
+      ...INPUTS,
+      hintsOf,
+      errorPage: routeBuild('/_error', { mode: 'ssr' }),
+    });
+    expect(file.errorHints).toEqual(['</e.css>; rel=preload; as=style']);
+  });
+
+  it('none without an error page, with `earlyHints: false`, or when it has none', () => {
+    const errorPage = routeBuild('/_error', { mode: 'ssr' });
+    expect('errorHints' in buildManifest([], { ...INPUTS, hintsOf }).file).toBe(false);
+    expect('errorHints' in buildManifest([], { ...INPUTS, errorPage }).file).toBe(false);
+    expect('errorHints' in buildManifest([], { ...INPUTS, errorPage, hintsOf: () => [] }).file).toBe(false);
+  });
+});

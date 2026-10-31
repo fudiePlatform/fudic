@@ -18,7 +18,7 @@ import { isComponentLink, isLayoutLink, isSnippetLink } from '../document/index.
 import type { AssetLinker } from './assets.js';
 import { flattenImports, plainSheet, type FileDiagnostic, type FlatSheet } from '../css/index.js';
 import type { EmitOptions } from './module.js';
-import { asksInline, linkWithHref, prunableHref, sheetKey } from './parts.js';
+import { asksInline, fixedSheetHref, linkWithHref, prunableHref, sheetKey } from './parts.js';
 import { projectAdoptOf, type ProjectStyle } from './project-styles.js';
 import { prunePage, sheetDiagnostics, type PageSheet } from './prune.js';
 import { allComponents, type DocumentGraph } from './resolve.js';
@@ -248,8 +248,16 @@ export function planPageSheets(
   const elements = linked.map((s) => ({ sheet: s, ...sheetElement(s, cssOf.get(s.key)!, linker) }));
   const layout = new Map(elements.filter((e) => layoutSheets.includes(e.sheet)).map((e) => [e.sheet.key, e.expr]));
   const own = new Map(elements.filter((e) => ownSheets.includes(e.sheet)).map((e) => [e.sheet.el, e.expr]));
-  const hints = elements.flatMap((e): EarlyHint[] =>
-    e.url === undefined ? [] : [{ href: e.url, rel: 'preload', as: 'style' }],
+  // Every sheet the heads link, in document order (SDD-73 §3.4): a pruned one under its copy's
+  // URL, one of `public/` or of another origin under the URL the author wrote.
+  const copyOf = new Map(elements.flatMap((e) => (e.url === undefined ? [] : [[e.sheet.el, e.url] as const])));
+  const heads = [...graph.layouts.map((l) => l.doc.head), ...(entryHead === undefined ? [] : [entryHead])];
+  const hints = heads.flatMap((head) =>
+    head.children.flatMap((child): EarlyHint[] => {
+      if (child.type !== 'element') return [];
+      const href = copyOf.get(child) ?? fixedSheetHref(child);
+      return href === null ? [] : [{ href, rel: 'preload', as: 'style' }];
+    }),
   );
   // An adopted sheet that came out empty is still registered, empty: the adopted lists that
   // name it are written in the modules of components, shared by every page, and a list that

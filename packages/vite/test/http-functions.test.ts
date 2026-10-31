@@ -132,6 +132,19 @@ describe('toRequest and sendResponse, over a real Node server', () => {
     expect(bare.signal.aborted).toBe(true);
   });
 
+  it('over HTTP/2: no pseudo-header among the headers, the host from `:authority`, https over TLS', () => {
+    const res = { on: () => res, writableFinished: true };
+    const req = {
+      headers: { ':method': 'GET', ':path': '/x', ':authority': 'app.test:4443', accept: 'text/html' },
+      method: 'GET',
+      url: '/x',
+      socket: { encrypted: true },
+    };
+    const request = toRequest(req as never, res as never);
+    expect(request.url).toBe('https://app.test:4443/x');
+    expect([...request.headers.keys()]).toEqual(['accept']);
+  });
+
   it('HEAD has no body either', () => {
     const res = { on: () => res, writableFinished: true };
     const request = toRequest({ headers: { host: 'h' }, method: 'HEAD', url: '/x' } as never, res as never);

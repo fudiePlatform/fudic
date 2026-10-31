@@ -1,0 +1,5 @@
+# SDD-73: a `load` that takes 2 s before the page can start, so the `103 Early Hints` has time to
+# work: the browser downloads the CSS and the JS while the server waits.
+load ssr
+  title  str
+  start  i32

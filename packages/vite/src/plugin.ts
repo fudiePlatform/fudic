@@ -2455,7 +2455,25 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         ];
         return routeHints(pageHints.get(pageHintKey(rb.absPath, rb.locale)) ?? [], modules);
       };
+      // `_error.fud` is no input of this bundle, so no `transform` here saw its head: it is the
+      // edge pass's, and the build's memory hands back what that pass compiled (SDD-73 §3.3).
+      // One `errorHints` for the app: with languages, the first locale's, whose sheets and
+      // entries every other locale's error page shares.
+      const errorPage = errorPages[0];
+      if (errorPage !== undefined) {
+        const compiled = await compileFud(
+          errorPage.absPath,
+          ioFor(errorPage.locale),
+          undefined,
+          projectStyles,
+          linked,
+          compileFor(errorPage.locale),
+        );
+        // A `.fud`, so compiled; and a build prunes every page, so its hints are there.
+        pageHints.set(pageHintKey(errorPage.absPath, errorPage.locale), compiled!.result.hints!);
+      }
       const { file, diagnostics } = buildManifest(builds, {
+        ...(errorPage === undefined ? {} : { errorPage }),
         build: buildId,
         base,
         serviceWorker: swConfig !== null,

@@ -26,14 +26,19 @@ export function toRequest(req: IncomingMessage, res: ServerResponse): Request {
   });
   const headers = new Headers();
   for (const [name, value] of Object.entries(req.headers)) {
-    if (value === undefined) continue;
+    // HTTP/2 hands its pseudo-headers (`:method`, `:path`, `:authority`) over with the rest, and
+    // no `Headers` takes a name with a colon: the preview over HTTP/2 answered every page `500`.
+    if (value === undefined || name.startsWith(':')) continue;
     for (const one of Array.isArray(value) ? value : [value]) headers.append(name, one);
   }
   const method = req.method ?? 'GET';
   const body = method === 'GET' || method === 'HEAD' ? undefined : (Readable.toWeb(req) as ReadableStream);
   // `originalUrl`: Connect's, with the app's `base` still on it.
   const path = (req as IncomingMessage & { readonly originalUrl?: string }).originalUrl ?? req.url ?? '/';
-  return new Request(new URL(path, `http://${req.headers.host ?? 'localhost'}`), {
+  // HTTP/2 has no `host`: it travels as `:authority`. A TLS socket is `https`.
+  const host = req.headers.host ?? (req.headers[':authority'] as string | undefined) ?? 'localhost';
+  const scheme = (req.socket as { readonly encrypted?: boolean } | undefined)?.encrypted === true ? 'https' : 'http';
+  return new Request(new URL(path, `${scheme}://${host}`), {
     method,
     headers,
     signal: controller.signal,
