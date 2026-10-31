@@ -5,7 +5,7 @@
 > `@fudic/transport` · `examples/basic`
 > **Rama:** `sdd-73-early-hints`. Nace de `main` **con SDD-70 en `Hecho`**: las pistas por ruta,
 > `earlyHints` y `componentStyles` son suyas (tareas 40–41).
-> **Progreso:** 3 / 17 — `En curso`.
+> **Progreso:** 7 / 17 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -53,10 +53,10 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 4 | — | **`path` y `back` en `ErrorPage`.** `back` solo de la cabecera `Referer`, resuelta con `new URL` y con el mismo origen exigido, como ruta sin `base`; ausente en otro caso (SDD §3.6) | `http` | `src/errors.ts` |
-| [ ] | 5 | 4 | **Los dos caminos, sin datos en la URL.** `errorUrl` deja de poner `?detail=`: `/_fudic/error/:status` y nada más; el servidor no lee ninguna query de esa URL; `back` y `path` del `Referer` en los dos caminos; `detail` solo si el error nace en la petición que pinta; `Referrer-Policy: strict-origin-when-cross-origin` en las respuestas de página; el SW igual (SDD §3.6, §4.5) | `http` · `vite` · `transport` | `src/error-pages.ts` · `src/page-errors.ts` · `src/plugin.ts` · `src/serve.ts` · `src/router.ts` |
-| [ ] | 6 | 4 | **El ejemplo.** `_error.fud` de `examples/basic` quita el enlace fijo a `/usuarios` y usa `@data.back`, con `/` si falta | `examples/basic` | `src/routes/_error.fud` |
-| [ ] | 7 | 5, 6 | **Los tests de la fase.** Criterios 12–15, el 14 (seguridad) con enlaces fabricados | `http` · `vite` · `transport` | `test/**` |
+| [x] | 4 | — | **`path` y `back` en `ErrorPage`.** `back` solo de la cabecera `Referer`, resuelta con `new URL` y con el mismo origen exigido, como ruta sin `base`; ausente en otro caso (SDD §3.6) | `http` | `src/errors.ts` |
+| [x] | 5 | 4 | **Los dos caminos, sin datos en la URL.** `errorUrl` deja de poner `?detail=`: `/_fudic/error/:status` y nada más; el servidor no lee ninguna query de esa URL; `back` y `path` del `Referer` en los dos caminos; `detail` solo si el error nace en la petición que pinta; `Referrer-Policy: strict-origin-when-cross-origin` en las respuestas de página; el SW igual (SDD §3.6, §4.5) | `http` · `vite` · `transport` | `src/error-pages.ts` · `src/page-errors.ts` · `src/plugin.ts` · `src/serve.ts` · `src/router.ts` |
+| [x] | 6 | 4 | **El ejemplo.** `_error.fud` de `examples/basic` quita el enlace fijo a `/usuarios` y usa `@data.back`, con `/` si falta | `examples/basic` | `src/routes/_error.fud` |
+| [x] | 7 | 5, 6 | **Los tests de la fase.** Criterios 12–15, el 14 (seguridad) con enlaces fabricados | `http` · `vite` · `transport` | `test/**` |
 
 ## Fase 3 — el middleware (3)
 

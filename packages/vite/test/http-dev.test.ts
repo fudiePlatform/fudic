@@ -140,7 +140,7 @@ load.handle(async (): Promise<{ n: number }> => {
 const ERROR_PAGE = `<!DOCTYPE html>
 <html>
 <head><title>Error</title></head>
-<body><h1>status @data.status</h1><p>@data.title</p><p>detail: [@data.detail]</p></body>
+<body><h1>status @data.status</h1><p>@data.title</p><p>detail: [@data.detail]</p><p>path: [@data.path]</p><p>back: [@data.back]</p></body>
 </html>
 `;
 
@@ -195,6 +195,9 @@ afterAll(async () => {
 });
 
 const page = (path: string) => fetch(`${origin}${path}`, { headers: { accept: 'text/html' }, redirect: 'manual' });
+/** A navigation that comes from `referer`, as the browser says it. */
+const refered = (path: string, referer: string) =>
+  fetch(`${origin}${path}`, { headers: { accept: 'text/html', referer }, redirect: 'manual' });
 const call = (path: string, init: RequestInit = {}) =>
   fetch(`${origin}/_fudic/fn${path}`, { ...init, headers: { 'x-fudic-csrf': '1', ...(init.headers as Record<string, string>) } });
 
@@ -342,18 +345,47 @@ describe('errors that reach a page (§4.8)', () => {
     expect(manifest.routes.map((r) => r.pattern).some((p) => p.includes('_error'))).toBe(false);
   });
 
-  it('/_fudic/error/401?detail=… paints _error.fud with the detail errorPages put there (BUG-51)', async () => {
-    const res = await page('/_fudic/error/401?detail=sin%20token');
+  it('criterion 14: nothing of the query of /_fudic/error/401 reaches the page', async () => {
+    const res = await page('/_fudic/error/401?detail=Llama+al+900&back=https://evil.com');
     expect(res.status).toBe(401);
     const html = await res.text();
     expect(html).toContain('status 401');
     expect(html).toContain('Unauthorized');
-    expect(html).toContain('detail: [sin token]');
+    expect(html).toContain('detail: []');
+    expect(html).toContain('back: []');
+    expect(html).not.toContain('900');
+    expect(html).not.toContain('evil');
   });
 
-  it('with no detail in the URL, or an empty one, the page has none', async () => {
-    expect(await (await page('/_fudic/error/401')).text()).toContain('detail: []');
-    expect(await (await page('/_fudic/error/401?detail=')).text()).toContain('detail: []');
+  it('criterion 13: a call of /usuarios?p=2 that failed comes back to it, by the Referer', async () => {
+    const html = await (await refered('/_fudic/error/401', `${origin}/usuarios?p=2`)).text();
+    expect(html).toContain('path: [/usuarios]');
+    expect(html).toContain('back: [/usuarios?p=2]');
+  });
+
+  it('criterion 13: no way back from another origin, a `\\` path or a Referer that is no URL', async () => {
+    for (const referer of ['https://evil.com/usuarios', `${origin}/\\evil.com`, 'no es una url']) {
+      expect(await (await refered('/_fudic/error/401', referer)).text()).toContain('back: []');
+    }
+  });
+
+  it('criterion 12: load that throws paints the path asked for and the way back', async () => {
+    const html = await (await refered('/missing', `${origin}/usuarios`)).text();
+    expect(html).toContain('path: [/missing]');
+    expect(html).toContain('back: [/usuarios]');
+    expect(await (await page('/missing')).text()).toContain('back: []');
+  });
+
+  it('no route: _error.fud as a 404, with its path (SDD-73 §4.3)', async () => {
+    const res = await page('/test');
+    expect(res.status).toBe(404);
+    expect(await res.text()).toContain('path: [/test]');
+  });
+
+  it('criterion 14: page responses state their Referrer-Policy', async () => {
+    for (const path of ['/missing', '/_fudic/error/401', '/test']) {
+      expect((await page(path)).headers.get('referrer-policy')).toBe('strict-origin-when-cross-origin');
+    }
   });
 
   it('/_fudic/error/<not a 4xx or 5xx> is no error page', async () => {

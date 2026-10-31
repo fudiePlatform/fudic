@@ -5,8 +5,8 @@
  *     use error-pages
  *       routes  403 /login
  *
- * A status with a route goes there; any other goes to `_error.fud`, with the server's `detail`
- * in the URL so the page can say what failed. What it never touches: a cancelled call, and an
+ * A status with a route goes there; any other goes to `_error.fud`, by its status alone: the
+ * server reads where the user came from off the `Referer`. What it never touches: a cancelled call, and an
  * error the form being sent keeps for itself (`form(…, { catches })`) — that one is the form's
  * to paint.
  *
@@ -34,12 +34,13 @@ function navigate(url: string): Promise<never> {
   return new Promise<never>(() => {});
 }
 
-/** `_error.fud`'s URL for `error`: its status, and the server's sentence when it has one. */
+/**
+ * `_error.fud`'s URL for `error`: its status, and nothing else (SDD-73 §3.6). Whatever a URL
+ * carries anyone can write in a link, and a `?detail=` painted someone else's sentence with the
+ * app's design. Where the user came from travels as the `Referer` the browser sends.
+ */
 function errorUrl(error: unknown): string {
-  if (!(error instanceof HttpError)) return `${ERROR_PREFIX}/500`;
-  const detail = error.problem.detail;
-  const query = detail === undefined || detail === '' ? '' : `?${new URLSearchParams({ detail }).toString()}`;
-  return `${ERROR_PREFIX}/${error.status}${query}`;
+  return `${ERROR_PREFIX}/${error instanceof HttpError ? error.status : 500}`;
 }
 
 /** The client half of `error-pages`, for its routes. */

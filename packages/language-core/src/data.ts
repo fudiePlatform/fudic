@@ -29,6 +29,10 @@ const ERROR_DATA =
   '  readonly title: string;\n' +
   "  /** What the server said, when it said something: `notFound('no such user')`. */\n" +
   '  readonly detail?: string;\n' +
+  '  /** The path that was asked for and failed, without the origin or the `base`: `/usuarios/99`. */\n' +
+  '  readonly path: string;\n' +
+  '  /** Where the user came from, when it is of this app: `/usuarios`. Absent when unknown. */\n' +
+  '  readonly back?: string;\n' +
   '}\n' +
   '/**\n' +
   ' * The error this page paints. Nobody declares it: `_error.fud` has no `load`, the server\n' +

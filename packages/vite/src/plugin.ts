@@ -103,8 +103,11 @@ import {
 import {
   classifyError,
   ERROR_PATTERN,
-  problemOfUrl,
+  PAGE_REFERRER_POLICY,
+  pageOriginOf,
+  problemOfStatus,
   renderErrorPage,
+  type PageOrigin,
   type PageProblem,
 } from './page-errors.js';
 import { nodeIo, nodeLinkCheckIo, nodeRuntimeFs } from './io.js';
@@ -1090,19 +1093,16 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               return;
             }
             const page = errorPageFor(errorPages, errorLocale(pathname, req.headers.referer));
-            devErrorPage(server, page, problemOfUrl(status, url))
-              .then((html) => server.transformIndexHtml(url, html))
-              .then((html) => {
-                res.statusCode = status;
-                res.setHeader('Content-Type', 'text/html; charset=utf-8');
-                res.end(html);
-              })
-              .catch(next);
+            const origin = pageOriginOf(toRequest(req, res), base, true);
+            sendDevErrorPage(server, res, url, page, problemOfStatus(status), origin).catch(next);
             return;
           }
           const rb = matchRouteBuild(builds, pathname);
           if (rb === null) {
-            next();
+            // No route: `_error.fud` as a `404`, after every file Vite serves (SDD-73 §4.3).
+            const page = errorPageFor(errorPages, localeOfPath(pathname, locales));
+            const origin = pageOriginOf(toRequest(req, res), base, false);
+            sendDevErrorPage(server, res, url, page, problemOfStatus(404), origin).catch(next);
             return;
           }
           const nonce = newNonce();
@@ -1138,7 +1138,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
                 if (failure.unexpected) toOverlay(server, err);
                 return {
                   status: failure.problem.status,
-                  html: await devErrorPage(server, errorPageFor(errorPages, rb.locale), failure.problem),
+                  html: await devErrorPage(
+                    server,
+                    errorPageFor(errorPages, rb.locale),
+                    failure.problem,
+                    pageOriginOf(request, base, false),
+                  ),
                 };
               }
             })
@@ -1147,6 +1152,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               writeHeaders(res, pending.headers);
               // fudic wins in the CSP, and in dev its CSP is none (below).
               res.removeHeader('Content-Security-Policy');
+              res.setHeader('Referrer-Policy', PAGE_REFERRER_POLICY);
               res.statusCode = page.status;
               if (page.location !== undefined) {
                 res.setHeader('Location', page.location);
@@ -1268,7 +1274,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             return;
           }
           const pattern = errorPatternOf(errorLocale(pathname, req.headers.referer));
-          sendErrorPage(edgeDir, res, problemOfUrl(status, url), nonce, manifest.csp.document, pattern).catch(next);
+          const origin = pageOriginOf(toRequest(req, res), base, true);
+          sendErrorPage(edgeDir, res, problemOfStatus(status), nonce, manifest.csp.document, pattern, origin).catch(next);
           return;
         }
 
@@ -1282,6 +1289,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           res.statusCode = 200;
           res.setHeader('Content-Type', 'text/html; charset=utf-8');
           res.setHeader('Content-Security-Policy', cspFor(manifest.csp.document, nonce));
+          res.setHeader('Referrer-Policy', PAGE_REFERRER_POLICY);
           res.end(applyNonce(readFileSync(file, 'utf8'), nonce));
           return;
         }
@@ -1292,13 +1300,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           return;
         }
         const pending = pendingResponse();
-        previewRender(edgeDir, record, pathname, nonce, toRequest(req, res), pending)
+        const request = toRequest(req, res);
+        previewRender(edgeDir, record, pathname, nonce, request, pending)
           .then(async (opened) => {
             // What `load` wrote first (SDD-69 §4.2): fudic's Content-Type and CSP win over it.
             writeHeaders(res, pending.headers);
             res.statusCode = pending.status;
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.setHeader('Content-Security-Policy', cspFor(manifest.csp.document, nonce));
+            res.setHeader('Referrer-Policy', PAGE_REFERRER_POLICY);
             // The page as it is rendered (SDD-70 §4.3): the head now, each part when it is in.
             res.write(opened.head);
             res.on('close', () => {
@@ -1323,10 +1333,26 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               return;
             }
             const pattern = errorPatternOf(localeOfPath(pathname, locales));
-            await sendErrorPage(edgeDir, res, failure.problem, nonce, manifest.csp.document, pattern);
+            const origin = pageOriginOf(request, base, false);
+            await sendErrorPage(edgeDir, res, failure.problem, nonce, manifest.csp.document, pattern, origin);
           })
           .catch(next);
       });
+      // No route and no file: `_error.fud` as a `404` (SDD-73 §4.3). After Vite's own
+      // middlewares, so everything `dist` holds is still served as a file.
+      return () => {
+        server.middlewares.use((req, res, next) => {
+          const manifest = readManifest();
+          if (manifest === null || req.method !== 'GET' || !(req.headers.accept ?? '').includes('text/html')) {
+            next();
+            return;
+          }
+          const pathname = pathnameOf(req.url ?? '/', base);
+          const pattern = errorPatternOf(localeOfPath(pathname, locales));
+          const origin = pageOriginOf(toRequest(req, res), base, false);
+          sendErrorPage(edgeDir, res, problemOfStatus(404), newNonce(), manifest.csp.document, pattern, origin).catch(next);
+        });
+      };
     },
 
     async buildStart() {
@@ -2701,12 +2727,29 @@ async function devErrorPage(
   server: ViteDevServer,
   errorPage: RouteBuild | undefined,
   problem: PageProblem,
+  origin: PageOrigin,
 ): Promise<string> {
   const mod =
     errorPage === undefined
       ? null
       : ((await server.ssrLoadModule(WRAPPER_PREFIX + errorPage.route.pattern)) as RenderModule);
-  return renderErrorPage(mod, problem, newNonce());
+  return renderErrorPage(mod, problem, newNonce(), origin);
+}
+
+/** The dev server's error page, whole, with the dev client in it and its status. */
+async function sendDevErrorPage(
+  server: ViteDevServer,
+  res: import('node:http').ServerResponse,
+  url: string,
+  errorPage: RouteBuild | undefined,
+  problem: PageProblem,
+  origin: PageOrigin,
+): Promise<void> {
+  const html = await server.transformIndexHtml(url, await devErrorPage(server, errorPage, problem, origin));
+  res.statusCode = problem.status;
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Referrer-Policy', PAGE_REFERRER_POLICY);
+  res.end(html);
 }
 
 /** Render a route in preview by importing its built ESM chunk. */
@@ -2798,11 +2841,13 @@ async function sendErrorPage(
   csp: Parameters<typeof cspFor>[0],
   /** The pattern of the locale's `_error.fud` (SDD-58 §4.5); the one pattern without locales. */
   pattern: string,
+  origin: PageOrigin,
 ): Promise<void> {
   const mod = existsSync(edgeChunkPath(edgeDir, pattern)) ? await importEdgeChunk(edgeDir, pattern) : null;
-  const html = await renderErrorPage(mod, problem, nonce);
+  const html = await renderErrorPage(mod, problem, nonce, origin);
   res.statusCode = problem.status;
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Referrer-Policy', PAGE_REFERRER_POLICY);
   res.setHeader('Content-Security-Policy', cspFor(csp, nonce));
   res.end(html);
 }

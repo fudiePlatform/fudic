@@ -57,11 +57,13 @@ async function answer(url: string, data: unknown): Promise<Answer> {
     if (failure.kind === 'redirect') {
       throw new Error(`visit('${url}'): redirected with ${failure.status} to ${failure.location} — visit that URL instead`);
     }
+    // A visit has no browser behind it, so no `Referer` and no way back.
+    const origin = { path: pathname };
     if (errorPage === undefined) {
-      return { html: await renderErrorPage(null, failure.problem, ''), status: failure.problem.status, page: rb };
+      return { html: await renderErrorPage(null, failure.problem, '', origin), status: failure.problem.status, page: rb };
     }
     const mod = await loadWrapper(pageModuleOf(errorPage), routeFacts(errorPage));
-    return { html: await renderErrorPage(mod, failure.problem, ''), status: failure.problem.status, page: errorPage };
+    return { html: await renderErrorPage(mod, failure.problem, '', origin), status: failure.problem.status, page: errorPage };
   }
 }
 

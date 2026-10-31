@@ -38,11 +38,13 @@ describe('error-pages and _error.fud in the type system (BUG-51)', () => {
     expectTypeOf<{ 401: 1 }>().toMatchTypeOf<http.ErrorRoutes>();
   });
 
-  it('ErrorPage is what _error.fud paints: status, title and maybe a detail', () => {
+  it('ErrorPage is what _error.fud paints: status, title, the path, and maybe a detail and a way back', () => {
     expectTypeOf<http.ErrorPage>().toEqualTypeOf<{
       readonly status: number;
       readonly title: string;
       readonly detail?: string;
+      readonly path: string;
+      readonly back?: string;
     }>();
   });
 });

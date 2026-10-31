@@ -412,3 +412,14 @@ perdido, no un fallo.
 11. **La preview en HTTP/2 respondía `500` a toda página** (las pseudo-cabeceras `:method`,
     `:path` pasaban a `Headers`). Arreglado al montar el banco del criterio 17: la petición ya no
     las lleva, el host sale de `:authority` y el esquema es `https` sobre TLS.
+12. **Una ruta que no existe pinta `_error.fud` con `404`.** §1 lo daba por hecho y no lo era: el
+    servidor de desarrollo y el de preview devolvían el `404` de Vite. Ahora, detrás de todos los
+    ficheros que sirve Vite, una navegación sin ruta pinta la página de error, con su `path`.
+13. **`back` también rechaza una ruta que resuelve a `//…`** y una fuera de la `base`: con el
+    mismo origen, `https://app.com/\evil.com` resuelve a `//evil.com`, que en un `href` es otro
+    host.
+14. **El SW no pinta la página de error**: un `load` que falla deja la navegación a la red
+    (SDD-56), así que `path` y `back` son solo del servidor y el SW no cambia.
+15. **El `detail` de una llamada ya no se ve en la página de error.** Los tests de
+    `examples/basic` que lo esperaban (`sin sesión`, `no hay nadie con id 999`) comprueban ahora
+    el enlace «Volver» a `/usuarios`.
