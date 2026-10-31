@@ -1,6 +1,7 @@
 # SDD-71 — Pipes sin i18n y pipes del usuario
 
-> **Estado:** `Listo` — [tareas](./SDD-71-Task.md).
+> **Estado:** `Hecho` (salvo la tarea 14b: el pipe con espacios, pendiente de Pedro) —
+> [tareas](./SDD-71-Task.md).
 > **Paquetes:** `@fudic/core` · `@fudic/i18n` · `@fudic/conventions` · `@fudic/config` ·
 > `@fudic/api` · `@fudic/compiler` · `@fudic/language-core` · `@fudic/vite` · `@fudic/cli` ·
 > `@fudic/diagnostics` · `examples/basic` · `examples/workspace`

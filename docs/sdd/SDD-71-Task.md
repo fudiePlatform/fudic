@@ -6,7 +6,8 @@
 > `@fudic/diagnostics` · `examples/basic` · `examples/workspace`
 > **Rama:** `sdd-71-pipes-del-usuario`. Nace de `main` **con SDD-61 en `Hecho`**: enmienda su
 > §3.9 y su anexo, y migra el reloj que ella escribió.
-> **Progreso:** 24 / 26 — `En curso`.
+> **Progreso:** 25 / 26 — `Hecho`, salvo la 14b (con espacios alrededor de `|`, a decidir por
+> Pedro).
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -88,7 +89,7 @@ código, no el test.
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 23 | 6, 13 | **La migración.** Todo el repositorio importa los presets, `Pipe`, `format` y `locale` de `@fudic/core`; `examples/basic` sin `"locales"` si solo estaba por los pipes, con el reloj igual; `examples/workspace` con un pipe en `libs/ui` usado por una app, y sus apps con su `tsconfig.json` (el build avisa `FUD0870` desde antes de esta spec; SDD §8.2, 9). Criterios 13 y 16 | `examples/*` · fixtures | `examples/basic/**` · `examples/workspace/**` · `packages/*/fixtures/**` |
-| [ ] | 24 | 23 | **Anexo, README, entrega y cierre.** Las filas de §4.7 en SDD-61 §A.2 y §A.4 (criterio 17); los README de `@fudic/core` e `@fudic/i18n` y la guía del `.fudapi` con `pipe`; criterio 18; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; SDD-71 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `docs/sdd/*` · `packages/*/README.md` |
+| [x] | 24 | 23 | **Anexo, README, entrega y cierre.** Las filas de §4.7 en SDD-61 §A.2 y §A.4 (criterio 17); los README de `@fudic/core` e `@fudic/i18n` y la guía del `.fudapi` con `pipe`; criterio 18; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; SDD-71 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `docs/sdd/*` · `packages/*/README.md` |
 
 ## Traspaso (2026-10-31)
 
@@ -133,3 +134,13 @@ La sesión que implementó se cierra antes del cierre; lo hace otra sesión. Est
   plano: >10 min) y `pnpm build`; criterio 18 (cobertura según el informe); SDD-71 y este fichero en
   `Hecho`; fila y registro del `INDEX.md`; merge `--no-ff` a main si Pedro lo pide.
 - **Decisiones tomadas al implementar:** SDD §8.2, puntos 1–18.
+
+## Cierre (2026-11-01)
+
+- `pnpm typecheck` y `pnpm build` en verde sobre `f9717d2b`. El build solo avisa del
+  `import.meta` de `@fudic/ssr`, que esta rama no toca.
+- `pnpm test` no se repite: desde el informe de cobertura (`8ece7f44`) solo cambió este fichero.
+  Criterio 18, según ese informe: ningún paquete baja de su suelo.
+- La evidencia que falta es manual: navegador, extensión de VS Code y CLI (Pedro), y
+  `node examples/pieces-bench/check.mjs`.
+- Abierta: la 14b con espacios, a decidir por Pedro.
