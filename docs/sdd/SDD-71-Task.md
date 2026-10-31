@@ -6,7 +6,7 @@
 > `@fudic/diagnostics` · `examples/basic` · `examples/workspace`
 > **Rama:** `sdd-71-pipes-del-usuario`. Nace de `main` **con SDD-61 en `Hecho`**: enmienda su
 > §3.9 y su anexo, y migra el reloj que ella escribió.
-> **Progreso:** 16 / 26 — `En curso`.
+> **Progreso:** 17 / 26 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -59,7 +59,7 @@ código, no el test.
 | [x] | 9 | 3, 8 | **La validación.** `FUD1340` sin `on`; `FUD1078` mezclado con un contrato; `FUD1081` repetido; tipos de `on` y de los parámetros como los de SDD-60 | `api` | `src/validate.ts` · `src/types-check.ts` |
 | [x] | 10 | 4, 8 | **Lo generado.** `fudic:pipes/<id>` y su `.d.ts`: `<N>Args`, `<N>Format` y `implement`, con y sin parámetros (SDD §3.3). El módulo de un fichero con solo pipes importa `@fudic/core` y nada más | `api` · `vite` | `src/emit/declarations.ts` · `src/emit/module.ts` · `src/api-modules.ts` |
 | [x] | 11 | 8 | **El índice y el editor.** Hover con la documentación, definición y completado bajo `pipe` y tras `on`; tocar el `.fudapi` revalida las vistas que lo importan | `api` · `language-server` | `src/index-api.ts` · `src/*` |
-| [ ] | 12 | 8–11 | **Los tests de la fase.** Criterios 5, 6, 7 y 15 | `api` · `language-server` · `vite` | `test/**` |
+| [x] | 12 | 8–11 | **Los tests de la fase.** Criterios 5, 6, 7 y 15 | `api` · `language-server` · `vite` | `test/**` |
 
 ## Fase 3 — la vista y el navegador (5)
 

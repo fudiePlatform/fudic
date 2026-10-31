@@ -528,3 +528,6 @@ Filas nuevas de A.2 («El `@code` que el servidor evalúa» y «Lo que se pinta�
 10. **Una pieza `core/pipe` para lo que comparten los presets.** Las cuatro piezas de presets
     importan el helper que guarda el formatter por idioma: copiarlo en cada una pondría el mismo
     módulo en cuatro piezas (SDD-45 §4.3, segunda regla).
+11. **El hover de traducciones sale en toda app.** Una app sin `"locales"` se comporta como con
+    `["en"]` (§1.1, 1), y con `["en"]` escrito el editor ya daba ese hover: callar solo cuando no
+    está escrito serían dos comportamientos para la misma app.
