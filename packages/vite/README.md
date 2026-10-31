@@ -171,10 +171,13 @@ on a page request:
      and header "sec-fetch-mode" == "navigate"
      and the server can send a 1xx:
         send 103 with  Link: hints joined by ", "
+                       and the page's Content-Security-Policy and Referrer-Policy
   answer as ever, and on that answer:
      Link: the hints of what was painted — errorHints when load threw
 ```
 
+- The browser checks the preloads of a `103` against the CSP that came with it: send the page's
+  own, with the same nonce as the final response.
 - One `103` per response; Chrome ignores the rest. There is no browser detection: a client
   that does not understand a `103` ignores it.
 - Only pages. A data endpoint, a server function or a static file gets neither.

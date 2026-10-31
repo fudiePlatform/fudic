@@ -89,6 +89,7 @@ earlyHints(petición, manifiesto):
      y petición.headers["sec-fetch-mode"] == "navigate"
      y el servidor sabe mandar 1xx:
         mandar 103 con  Link: <pistas unidas por ", ">
+                        Content-Security-Policy y Referrer-Policy: las de la respuesta final
   seguir con la respuesta de siempre, y en ella:
      Link: <pistas de la respuesta final>
 ```
@@ -422,6 +423,10 @@ perdido, no un fallo.
     host.
 14. **El SW no pinta la página de error**: un `load` que falla deja la navegación a la red
     (SDD-56), así que `path` y `back` son solo del servidor y el SW no cambia.
+16. **El 103 lleva la CSP y la `Referrer-Policy` de la página** (Pedro, 2026-10-31). El
+    navegador comprueba las precargas de un 103 contra la CSP que viene con él; sin ella salen
+    sin comprobar. Es la misma de la respuesta final, con el mismo nonce. En desarrollo no hay
+    CSP, así que tampoco va en el 103.
 15. **El `detail` de una llamada ya no se ve en la página de error.** Los tests de
     `examples/basic` que lo esperaban (`sin sesión`, `no hay nadie con id 999`) comprueban ahora
     el enlace «Volver» a `/usuarios`.

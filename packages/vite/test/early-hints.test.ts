@@ -34,18 +34,19 @@ describe('the pieces', () => {
     expect(wantsEarlyHints(req(2))).toBe(false);
   });
 
-  it('sendEarlyHints: the hints, as they are, when wanted and the server can', () => {
+  it('sendEarlyHints: the hints, as they are, with the page’s policies, when wanted and the server can', () => {
     const writeEarlyHints = vi.fn();
-    sendEarlyHints(req(2, 'navigate'), { writeEarlyHints } as never, ['</a.css>; rel=preload; as=style']);
-    expect(writeEarlyHints).toHaveBeenCalledExactlyOnceWith({ link: ['</a.css>; rel=preload; as=style'] });
+    const policies = { 'content-security-policy': "default-src 'self'", 'referrer-policy': 'no-referrer' };
+    sendEarlyHints(req(2, 'navigate'), { writeEarlyHints } as never, ['</a.css>; rel=preload; as=style'], policies);
+    expect(writeEarlyHints).toHaveBeenCalledExactlyOnceWith({ ...policies, link: ['</a.css>; rel=preload; as=style'] });
   });
 
   it('sendEarlyHints: nothing with no hints, unwanted, or a server that cannot send a 1xx', () => {
     const writeEarlyHints = vi.fn();
-    sendEarlyHints(req(2, 'navigate'), { writeEarlyHints } as never, []);
-    sendEarlyHints(req(1, 'navigate'), { writeEarlyHints } as never, ['</a.css>; rel=preload; as=style']);
+    sendEarlyHints(req(2, 'navigate'), { writeEarlyHints } as never, [], {});
+    sendEarlyHints(req(1, 'navigate'), { writeEarlyHints } as never, ['</a.css>; rel=preload; as=style'], {});
     expect(writeEarlyHints).not.toHaveBeenCalled();
-    expect(() => sendEarlyHints(req(2, 'navigate'), {} as never, ['</a.css>; rel=preload; as=style'])).not.toThrow();
+    expect(() => sendEarlyHints(req(2, 'navigate'), {} as never, ['</a.css>; rel=preload; as=style'], {})).not.toThrow();
   });
 
   it('setLinkHeader: the hints in one `Link`, and none when there are none', () => {
@@ -217,6 +218,10 @@ describe('criteria 3–6: the middleware in the preview, over HTTP/2', () => {
     expect(early!['link']).toBe(hints.join(', '));
     expect(status).toBe(200);
     expect(headers['link']).toBe(hints.join(', '));
+    // The preloads are checked against the page's own policy: the same CSP, the same nonce.
+    expect(early!['content-security-policy']).toBe(headers['content-security-policy']);
+    expect(early!['content-security-policy']).toMatch(/'nonce-[\w-]+'/u);
+    expect(early!['referrer-policy']).toBe('strict-origin-when-cross-origin');
     globalThis.__fudicGate = Promise.resolve();
   });
 
@@ -238,6 +243,7 @@ describe('criteria 3–6: the middleware in the preview, over HTTP/2', () => {
     expect(errorHints[0]).toMatch(/^<\/assets\/error-[\w-]+\.css>; rel=preload; as=style$/u);
     const { informational, status, headers } = await h2(origin, '/test', NAVIGATE);
     expect(informational.map((h) => h['link'])).toEqual([errorHints.join(', ')]);
+    expect(informational[0]!['content-security-policy']).toBe(headers['content-security-policy']);
     expect(status).toBe(404);
     expect(headers['link']).toBe(errorHints.join(', '));
   });
@@ -319,6 +325,8 @@ describe('§4.1: the dev server with `server.https` is HTTP/2, and sends the 103
     for (const path of ['/lento', '/missing', '/test', '/_fudic/error/401']) {
       const { informational, headers } = await h2(on.origin, path, NAVIGATE);
       expect(informational.map((h) => h[':status']), path).toEqual([103]);
+      // Dev ships no CSP, so its `103` carries none either.
+      expect(informational[0]!['content-security-policy'], path).toBeUndefined();
       expect(headers['link'], path).toContain('</fudic-main.js>; rel=modulepreload');
     }
     const { headers } = await h2(on.origin, '/lento', NAVIGATE);

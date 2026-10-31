@@ -15,8 +15,19 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 
 /** A response that may know how to send a `103` (Node's, plain or HTTP/2). */
 type HintedResponse = ServerResponse & {
-  readonly writeEarlyHints?: (hints: { readonly link: readonly string[] }) => void;
+  readonly writeEarlyHints?: (hints: Readonly<Record<string, string | readonly string[]>>) => void;
 };
+
+/**
+ * What the `103` says besides its `Link`: the policies of the page it announces. A browser
+ * checks the preloads of a `103` against the `Content-Security-Policy` that came WITH it, so
+ * without one they go out unchecked; the `Referrer-Policy` is the one the requests go with.
+ */
+export interface EarlyPolicies {
+  /** The page's own policy, with the same nonce the final response carries. */
+  readonly 'content-security-policy'?: string;
+  readonly 'referrer-policy'?: string;
+}
 
 /**
  * Whether a `103` is worth sending to `req`: a top-level navigation (`Sec-Fetch-Mode: navigate`)
@@ -31,10 +42,15 @@ export function wantsEarlyHints(req: IncomingMessage): boolean {
  * Send the `103` for `req` — once, before anything else is written — when it wants one and the
  * server knows how. Nothing with no hints.
  */
-export function sendEarlyHints(req: IncomingMessage, res: ServerResponse, hints: readonly string[]): void {
+export function sendEarlyHints(
+  req: IncomingMessage,
+  res: ServerResponse,
+  hints: readonly string[],
+  policies: EarlyPolicies,
+): void {
   const hinted = res as HintedResponse;
   if (hints.length === 0 || !wantsEarlyHints(req) || typeof hinted.writeEarlyHints !== 'function') return;
-  hinted.writeEarlyHints({ link: hints });
+  hinted.writeEarlyHints({ ...policies, link: hints });
 }
 
 /**

@@ -28,7 +28,7 @@ import { type FudicOptions, type ResolvedOptions, resolveOptions } from './optio
 import { discoverRoutes, type RouteBuild } from './discover.js';
 import { buildManifest } from './manifest.js';
 import { routeHints } from './hints.js';
-import { sendEarlyHints, setLinkHeader } from './early-hints.js';
+import { sendEarlyHints, setLinkHeader, type EarlyPolicies } from './early-hints.js';
 import { emitRenderChunk, routeApi } from './wrapper.js';
 import { emitBootBootstrap, emitSwBootstrap } from './bootstrap.js';
 import {
@@ -1136,7 +1136,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
                 // head whose sheets are hinted, and is what the render loads anyway.
                 await server.ssrLoadModule(WRAPPER_PREFIX + rb.route.pattern);
                 const hints = devHintsOf(rb);
-                sendEarlyHints(req, res, hints);
+                // Dev ships no CSP (below), so the `103` carries none either.
+                sendEarlyHints(req, res, hints, { 'referrer-policy': PAGE_REFERRER_POLICY });
                 // Opened, not drained (SDD-70 §4.3): what decides the status has run once the
                 // head is in, and the rest goes out as it is rendered.
                 const opened = await renderRouteStream(
@@ -1293,7 +1294,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           const pattern = errorPatternOf(errorLocale(pathname, req.headers.referer));
           const origin = pageOriginOf(toRequest(req, res), base, true);
           const errorHints = manifest.errorHints ?? [];
-          sendEarlyHints(req, res, errorHints);
+          sendEarlyHints(req, res, errorHints, pagePolicies(manifest.csp.document, nonce));
           sendErrorPage(edgeDir, res, problemOfStatus(status), nonce, manifest.csp.document, pattern, origin, errorHints)
             .catch(next);
           return;
@@ -1310,7 +1311,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         const hints = record.hints ?? [];
         const errorHints = manifest.errorHints ?? [];
         if (existsSync(file)) {
-          sendEarlyHints(req, res, hints);
+          sendEarlyHints(req, res, hints, pagePolicies(manifest.csp.document, nonce));
           res.statusCode = 200;
           res.setHeader('Content-Type', 'text/html; charset=utf-8');
           res.setHeader('Content-Security-Policy', cspFor(manifest.csp.document, nonce));
@@ -1328,7 +1329,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         const pending = pendingResponse();
         const request = toRequest(req, res);
         // Before `load` runs: that is the whole point of the `103`.
-        sendEarlyHints(req, res, hints);
+        sendEarlyHints(req, res, hints, pagePolicies(manifest.csp.document, nonce));
         previewRender(edgeDir, record, pathname, nonce, request, pending)
           .then(async (opened) => {
             // What `load` wrote first (SDD-69 §4.2): fudic's Content-Type and CSP win over it.
@@ -1380,8 +1381,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           const pattern = errorPatternOf(localeOfPath(pathname, locales));
           const origin = pageOriginOf(toRequest(req, res), base, false);
           const errorHints = manifest.errorHints ?? [];
-          sendEarlyHints(req, res, errorHints);
-          sendErrorPage(edgeDir, res, problemOfStatus(404), newNonce(), manifest.csp.document, pattern, origin, errorHints)
+          const nonce = newNonce();
+          sendEarlyHints(req, res, errorHints, pagePolicies(manifest.csp.document, nonce));
+          sendErrorPage(edgeDir, res, problemOfStatus(404), nonce, manifest.csp.document, pattern, origin, errorHints)
             .catch(next);
         });
       };
@@ -2764,6 +2766,14 @@ async function devErrorPage(
 }
 
 /**
+ * The policies a page's `103` carries in preview (SDD-73 §3.2): its CSP, with the nonce the final
+ * response will carry, and its `Referrer-Policy`.
+ */
+function pagePolicies(csp: Parameters<typeof cspFor>[0], nonce: string): EarlyPolicies {
+  return { 'content-security-policy': cspFor(csp, nonce), 'referrer-policy': PAGE_REFERRER_POLICY };
+}
+
+/**
  * The dev server's error page, whole, with the dev client in it and its status — and its hints
  * (SDD-73 §4.1), known once its module is loaded: `hintsOf` reads them then.
  */
@@ -2778,7 +2788,7 @@ async function sendDevErrorPage(
 ): Promise<void> {
   const page = await devErrorPage(server, errorPage, problem, origin);
   const hints = hintsOf(errorPage);
-  sendEarlyHints(req, res, hints);
+  sendEarlyHints(req, res, hints, { 'referrer-policy': PAGE_REFERRER_POLICY });
   // A request the dev server routed has its URL: Connect matched on it.
   const html = await server.transformIndexHtml(req.url!, page);
   res.statusCode = problem.status;
