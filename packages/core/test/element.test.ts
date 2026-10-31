@@ -90,10 +90,34 @@ describe('FudicElement — instance entry points', () => {
 
     (host as FudicElement).c([]);
 
-    // Before the controller fabricates: the sheet is there by the time `c` builds anything.
+    // In the same task as the fabrication: no frame paints the content without its sheet.
     expect(s.props[0]![1]).toBe(host.shadowRoot);
     expect(host.shadowRoot!.adoptedStyleSheets).toHaveLength(1);
     style.remove();
+  });
+
+  it('opens a fabricated shadow root with the `<link>`s its host names, before the content (SDD-73 §3.5)', () => {
+    const tag = freshTag();
+    customElements.define(
+      tag,
+      class extends FudicElement {
+        static c(props: readonly unknown[]): Controller {
+          const shadow = props[1] as ShadowRoot;
+          const noop = (): void => {};
+          return { c: () => shadow.append(document.createElement('b')), h: noop, u: noop, r: noop };
+        }
+      },
+    );
+    const host = document.createElement(tag);
+    host.setAttribute('data-fud-sheets', '/assets/x-Ab12.css');
+
+    (host as FudicElement).c([]);
+
+    expect([...host.shadowRoot!.children].map((c) => c.outerHTML)).toEqual([
+      '<link rel="stylesheet" href="/assets/x-Ab12.css">',
+      '<b></b>',
+    ]);
+    expect(host.hasAttribute('data-fud-sheets')).toBe(false);
   });
 
   it('leaves a hydrated shadow root as the DSD left it: the parser adopted its sheets', () => {

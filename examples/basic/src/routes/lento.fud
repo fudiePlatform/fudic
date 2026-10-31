@@ -1,0 +1,21 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/site-nav.fud">
+<link rel="component" href="../components/app-counter.fud">
+<link rel="server" href="./lento.fudapi">
+
+<head>
+  <title>@data.title — fudic</title>
+</head>
+
+@section nav {
+  <site-nav .current="lento"></site-nav>
+}
+
+<h1>@data.title</h1>
+<p class="lede">
+  El servidor tarda 2 s en tener el dato y no manda nada de la página hasta entonces. Con HTTP/2
+  manda antes un 103 con lo que la página va a necesitar: en la pestaña Network, el CSS y el JS
+  salen con iniciador <code>early-hints</code> y bajan mientras el servidor espera.
+</p>
+
+<app-counter .start=@data.start></app-counter>

@@ -21,6 +21,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type AddressInfo } from 'node:net';
+import { get } from 'node:http';
 import { fudic } from '../src/index.js';
 import { binInit, binProblem, binQuery, binValue, type Ty } from './helpers/fud-bin.js';
 import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
@@ -230,7 +231,7 @@ const ERROR_PAGE = `<!DOCTYPE html>
 <html>
 <head><title>Error</title>
 </head>
-<body><h1>status @data.status</h1><p>@data.title</p><p>detail: [@data.detail]</p></body>
+<body><h1>status @data.status</h1><p>@data.title</p><p>detail: [@data.detail]</p><p>path: [@data.path]</p><p>back: [@data.back]</p></body>
 </html>
 `;
 
@@ -476,13 +477,47 @@ describe('§4.8 in preview', () => {
     expect((await page('/_fudic/error/204')).status).toBe(404);
   });
 
-  it('/_fudic/error/401?detail=… paints _error.fud with the detail errorPages put there (BUG-51)', async () => {
-    const res = await page('/_fudic/error/401?detail=sin%20token');
+  it('criterion 14: nothing of the query of /_fudic/error/401 reaches the page', async () => {
+    const res = await page('/_fudic/error/401?detail=Llama+al+900');
     expect(res.status).toBe(401);
     const html = await res.text();
     expect(html).toContain('status 401');
-    expect(html).toContain('detail: [sin token]');
-    expect(await (await page('/_fudic/error/401')).text()).toContain('detail: []');
+    expect(html).toContain('detail: []');
+    expect(html).not.toContain('900');
+  });
+
+  it('criteria 12–13: the path and the way back, from the Referer of this origin only', async () => {
+    const refered = (path: string, referer: string) =>
+      fetch(`${origin}${path}`, { headers: { accept: 'text/html', referer }, redirect: 'manual' });
+    const call = await (await refered('/_fudic/error/401', `${origin}/usuarios?p=2`)).text();
+    expect(call).toContain('path: [/usuarios]');
+    expect(call).toContain('back: [/usuarios?p=2]');
+    const load = await (await refered('/missing', `${origin}/usuarios`)).text();
+    expect(load).toContain('path: [/missing]');
+    expect(load).toContain('back: [/usuarios]');
+    expect(await (await refered('/missing', 'https://evil.com/usuarios')).text()).toContain('back: []');
+  });
+
+  it('no route: _error.fud as a 404, and every page states its Referrer-Policy (SDD-73 §4.3)', async () => {
+    const res = await page('/test');
+    expect(res.status).toBe(404);
+    expect(await res.text()).toContain('path: [/test]');
+    // Only a navigation: a file nobody has, or a POST, is Vite's plain 404.
+    expect(await (await fetch(`${origin}/nada.png`)).text()).not.toContain('path:');
+    const post = await fetch(`${origin}/test`, { method: 'POST', headers: { accept: 'text/html' } });
+    expect(await post.text()).not.toContain('path:');
+    // Nor a request with no `accept` at all, which `fetch` would always send.
+    const bare = await new Promise<string>((resolve, reject) => {
+      get(`${origin}/test`, (r) => {
+        let body = '';
+        r.on('data', (c: Buffer) => (body += c.toString()));
+        r.on('end', () => resolve(body));
+      }).on('error', reject);
+    });
+    expect(bare).not.toContain('path:');
+    for (const path of ['/usuarios', '/missing', '/_fudic/error/401', '/test']) {
+      expect((await page(path)).headers.get('referrer-policy')).toBe('strict-origin-when-cross-origin');
+    }
   });
 
   it('the data endpoint answers the status of what load threw', async () => {

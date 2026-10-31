@@ -104,13 +104,11 @@ describe.each(IMPLEMENTATIONS)('%s', (_name, stepOf) => {
     });
   });
 
-  describe('errorPages: the detail of _error.fud (BUG-51)', () => {
-    it('carries the server’s detail in the query, encoded', async () => {
+  describe('errorPages: the URL of _error.fud carries the status alone (SDD-73 §3.6, criterion 13)', () => {
+    it('never the server’s detail: no query at all', async () => {
       const p = failWith(unauthorized('sin token & más'));
       expect(await pending(p)).toBe(true);
-      expect(assign).toHaveBeenCalledWith('/_fudic/error/401?detail=sin+token+%26+m%C3%A1s');
-      const url = new URL(assign.mock.calls[0]![0] as string, 'http://x');
-      expect(url.searchParams.get('detail')).toBe('sin token & más');
+      expect(assign).toHaveBeenCalledWith('/_fudic/error/401');
     });
 
     it('no query when the detail is absent or empty', async () => {
@@ -140,7 +138,7 @@ describe.each(IMPLEMENTATIONS)('%s', (_name, stepOf) => {
     it('a status with no route goes to _error.fud, routes or not', async () => {
       const p = failWith(notFound('no such user'), { 401: '/login' });
       expect(await pending(p)).toBe(true);
-      expect(assign).toHaveBeenCalledWith('/_fudic/error/404?detail=no+such+user');
+      expect(assign).toHaveBeenCalledWith('/_fudic/error/404');
     });
 
     it('a Redirect is never routed: it goes to its own location', async () => {
@@ -199,7 +197,7 @@ describe.each(IMPLEMENTATIONS)('%s', (_name, stepOf) => {
       const f = form({ name: str('') }, { catches: [422] });
       const p = failWith(conflict('taken'), {}, f);
       expect(await pending(p)).toBe(true);
-      expect(assign).toHaveBeenCalledWith('/_fudic/error/409?detail=taken');
+      expect(assign).toHaveBeenCalledWith('/_fudic/error/409');
     });
   });
 });

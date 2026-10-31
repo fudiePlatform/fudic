@@ -22,11 +22,10 @@ import {
 } from '@fudic/api';
 import { CompletionItemKind, type CompletionItem, type CompletionList } from 'vscode-languageserver-protocol';
 import type { ApiDocument } from './document.js';
+import { lineOf, loadCompletions } from './load-line.js';
 
 const PRIMITIVES = ['str', 'html', 'bool', 'date', 'uuid', 'u8', 'i8', 'u16', 'i16', 'u32', 'i32', 'f32', 'f64'];
 const VERBS = new Set(['get', 'post', 'put', 'patch', 'delete']);
-const MODES = ['ssg', 'ssr', 'sw'];
-const POLICIES = ['cache-first', 'network-first', 'stale-while-revalidate', 'network-only'];
 const EXPRESSION = ['and', 'or', 'not', 'contains', 'valid', 'empty', 'length'];
 
 /** What a line hangs from, by its parents. */
@@ -100,7 +99,9 @@ export function apiCompletions(doc: ApiDocument, offset: number): CompletionList
   if (indent === 0) {
     if (typing === 0) return list(keywords(DECLARATION_KEYWORDS));
     if (words[0] !== 'load') return undefined;
-    return list(keywords(words[typing - 1] === 'page' ? ['never', 'persist'] : [...MODES, 'ttl', ...POLICIES, 'page', 'buffer']));
+    // The rest of the line, without the rest of the word being typed.
+    const after = lineOf(text, offset).split(/\s+/u).slice(1);
+    return list(loadCompletions(words, after));
   }
   if (typing === 0) return list(firstWord(doc, offset, chain, context));
   return argument(doc, offset, words, typing, chain, context);

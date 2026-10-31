@@ -10,11 +10,17 @@
 }
 
 @* La página de error: sin URL propia ni `load`. Su `data` (`ErrorPage` de `@fudic/http`) es el
-   error que la trae aquí: `status`, `title` y, si el servidor dijo algo — `unauthorized("sin
-   sesión")` —, `detail`. Llega de dos sitios: un `load` que lanza, o una llamada que falla y
-   `error-pages` de `src/http.fudapi` trae al navegador a /_fudic/error/:status. *@
+   error que la trae aquí: `status`, `title`, la ruta que falló (`path`) y, si el servidor dijo
+   algo — `notFound("no existe")` en un `load` —, `detail`. Llega de tres sitios: un `load` que
+   lanza, una ruta que no existe, o una llamada que falla y `error-pages` de `src/http.fudapi`
+   trae al navegador a /_fudic/error/:status. `back` es la página de la que venía el usuario, si
+   es de esta app: el servidor la lee del `Referer`, nunca de la URL. *@
 <h1>@data.status · @data.title</h1>
 @if (data.detail !== undefined) {
   <p>@data.detail</p>
 }
-<p><a href="/usuarios">Volver a usuarios</a></p>
+@if (data.back !== undefined) {
+  <p><a href=@data.back>Volver</a></p>
+} @else {
+  <p><a href="/">Ir al inicio</a></p>
+}

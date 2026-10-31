@@ -10,12 +10,13 @@ import { fakeDevServerParts } from './helpers/dev-server.js';
 import { ERROR_FILE } from '@fudic/conventions';
 import {
   classifyError,
+  backOf,
   ERROR_PATTERN,
-  MAX_DETAIL,
   minimalErrorPage,
+  pageOriginOf,
   problemOfStatus,
-  problemOfUrl,
   renderErrorPage,
+  withoutBase,
 } from '../src/page-errors.js';
 
 describe('the functions middleware, before anything else (§4.15)', () => {
@@ -97,28 +98,59 @@ describe('the error page', () => {
     expect(problemOfStatus(599)).toEqual({ status: 599, title: 'Error' });
   });
 
-  it('problemOfUrl: the status gives the title, the query its detail (BUG-51)', () => {
-    expect(problemOfUrl(401, '/_fudic/error/401?detail=sin%20token')).toEqual({
-      status: 401,
-      title: 'Unauthorized',
-      detail: 'sin token',
+  it('withoutBase: the path inside the app, or null outside it', () => {
+    expect(withoutBase('/usuarios', '/')).toBe('/usuarios');
+    expect(withoutBase('/admin/usuarios', '/admin/')).toBe('/usuarios');
+    expect(withoutBase('/admin', '/admin/')).toBe('/');
+    expect(withoutBase('/administrar', '/admin/')).toBeNull();
+  });
+
+  describe('backOf: the way back is the Referer of this origin, resolved (SDD-73 §3.6, criteria 12–13)', () => {
+    const ORIGIN = 'https://app.com';
+
+    it('a page of this app: its path and its query, without the base', () => {
+      expect(backOf('https://app.com/usuarios?p=2', ORIGIN, '/')).toBe('/usuarios?p=2');
+      expect(backOf('https://app.com/admin/usuarios', ORIGIN, '/admin/')).toBe('/usuarios');
     });
-    expect(problemOfUrl(404, 'http://app.test/_fudic/error/404?x=1&detail=no+such+user')).toEqual({
-      status: 404,
-      title: 'Not Found',
-      detail: 'no such user',
+
+    it('none without a Referer, from another origin, outside the base, or not a URL', () => {
+      expect(backOf(null, ORIGIN, '/')).toBeUndefined();
+      expect(backOf('https://evil.com/usuarios', ORIGIN, '/')).toBeUndefined();
+      expect(backOf('http://app.com/usuarios', ORIGIN, '/')).toBeUndefined();
+      expect(backOf('https://app.com/otra/x', ORIGIN, '/admin/')).toBeUndefined();
+      expect(backOf('/usuarios', ORIGIN, '/')).toBeUndefined();
+      expect(backOf('no es una url', ORIGIN, '/')).toBeUndefined();
+    });
+
+    it('none for a path a browser reads as another host: `/\\evil.com`', () => {
+      expect(backOf('https://app.com/\\evil.com', ORIGIN, '/')).toBeUndefined();
+      expect(backOf('https://app.com//evil.com', ORIGIN, '/')).toBeUndefined();
     });
   });
 
-  it('problemOfUrl: an absent or empty detail is no detail', () => {
-    expect(problemOfUrl(403, '/_fudic/error/403')).toEqual({ status: 403, title: 'Forbidden' });
-    expect(problemOfUrl(403, '/_fudic/error/403?detail=')).toEqual({ status: 403, title: 'Forbidden' });
-  });
+  describe('pageOriginOf: path and back of a request (SDD-73 §4.5)', () => {
+    const request = (url: string, referer?: string): Request =>
+      new Request(url, referer === undefined ? {} : { headers: { referer } });
 
-  it(`problemOfUrl: a detail is cut at MAX_DETAIL (${MAX_DETAIL}), never refused`, () => {
-    const long = 'x'.repeat(MAX_DETAIL + 50);
-    expect(MAX_DETAIL).toBe(300);
-    expect(problemOfUrl(500, `/_fudic/error/500?detail=${long}`).detail).toBe('x'.repeat(MAX_DETAIL));
+    it('a navigation: the path asked for, and the Referer as the way back', () => {
+      expect(pageOriginOf(request('https://app.com/usuarios/99', 'https://app.com/usuarios'), '/', false)).toEqual({
+        path: '/usuarios/99',
+        back: '/usuarios',
+      });
+      expect(pageOriginOf(request('https://app.com/admin/test'), '/admin/', false)).toEqual({ path: '/test' });
+    });
+
+    it('a call that failed: the page that made it is the path and the way back', () => {
+      expect(pageOriginOf(request('https://app.com/_fudic/error/401', 'https://app.com/usuarios?p=2'), '/', true)).toEqual({
+        path: '/usuarios',
+        back: '/usuarios?p=2',
+      });
+      expect(pageOriginOf(request('https://app.com/_fudic/error/401'), '/', true)).toEqual({ path: '/_fudic/error/401' });
+    });
+
+    it('a path outside the base stays as it was asked', () => {
+      expect(pageOriginOf(request('https://app.com/fuera'), '/admin/', false)).toEqual({ path: '/fuera' });
+    });
   });
 
   it('the minimal page: the status and the title, escaped', () => {
@@ -129,7 +161,9 @@ describe('the error page', () => {
   });
 
   it('renderErrorPage without _error.fud is the minimal page', async () => {
-    expect(await renderErrorPage(null, { status: 410, title: 'Gone' }, 'n')).toBe(minimalErrorPage({ status: 410, title: 'Gone' }));
+    expect(await renderErrorPage(null, { status: 410, title: 'Gone' }, 'n', { path: '/x' })).toBe(
+      minimalErrorPage({ status: 410, title: 'Gone' }),
+    );
   });
 
   it('renderErrorPage with _error.fud renders it with the problem as data, at its URL', async () => {
@@ -145,9 +179,10 @@ describe('the error page', () => {
         });
       },
     };
-    const html = await renderErrorPage(mod as never, { status: 404, title: 'Not Found', detail: 'x' }, 'nonce1');
+    const origin = { path: '/usuarios/99', back: '/usuarios' };
+    const html = await renderErrorPage(mod as never, { status: 404, title: 'Not Found', detail: 'x' }, 'nonce1', origin);
     expect(html).toBe('<h1>404</h1>');
-    expect(seen!['data']).toEqual({ status: 404, title: 'Not Found', detail: 'x' });
+    expect(seen!['data']).toEqual({ status: 404, title: 'Not Found', detail: 'x', path: '/usuarios/99', back: '/usuarios' });
     expect(seen!['nonce']).toBe('nonce1');
     expect(JSON.stringify(seen)).toContain('/_fudic/error/404');
   });

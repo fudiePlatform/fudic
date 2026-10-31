@@ -60,7 +60,17 @@ interface OutFile {
   readonly source?: unknown;
 }
 
-async function built(config: Record<string, unknown>): Promise<ManifestFile> {
+const ERROR_PAGE = `<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="../styles/error.css">
+  <title>Error</title>
+</head>
+<body><h1 class="e">@data.status</h1></body>
+</html>
+`;
+
+async function built(config: Record<string, unknown>, errorPage = false): Promise<ManifestFile> {
   const root = mkdtempSync(join(tmpdir(), 'fudic-hints-'));
   writeTypecheckConfig(root);
   for (const dir of ['src/routes', 'src/components', 'src/styles']) mkdirSync(join(root, dir), { recursive: true });
@@ -68,6 +78,10 @@ async function built(config: Record<string, unknown>): Promise<ManifestFile> {
   writeFileSync(join(root, 'src/styles/site.css'), 'p { color: red }\n');
   writeFileSync(join(root, 'src/routes/index.fud'), HYDRATES);
   writeFileSync(join(root, 'src/routes/quieta.fud'), STATIC);
+  if (errorPage) {
+    writeFileSync(join(root, 'src/styles/error.css'), '.e { color: blue }\n');
+    writeFileSync(join(root, 'src/routes/_error.fud'), ERROR_PAGE);
+  }
   writeFileSync(join(root, 'sw.json'), JSON.stringify({ shell: [] }));
   writeFileSync(join(root, 'fudic.json'), JSON.stringify({ id: 'hints', ...config }));
   const result = (await build({
@@ -113,9 +127,20 @@ describe('the early hints in the route manifest (criterion 30)', () => {
   });
 });
 
+describe('`errorHints`: the hints of `_error.fud` (SDD-73 §3.3, criterion 1)', () => {
+  it('its sheet and `boot`, at the top of the manifest; none without `_error.fud`', async () => {
+    const manifest = await built({}, true);
+    expect(manifest.errorHints).toHaveLength(2);
+    expect(manifest.errorHints![0]).toMatch(/^<\/assets\/error-[\w-]+\.css>; rel=preload; as=style$/u);
+    expect(manifest.errorHints![1]).toBe(`</fudic-boot-${manifest.build}.js>; rel=modulepreload`);
+    expect('errorHints' in (await built({}))).toBe(false);
+  }, 240_000);
+});
+
 describe('`earlyHints: false`', () => {
-  it('writes no hints on any route', async () => {
-    const manifest = await built({ earlyHints: false });
+  it('writes no hints on any route, nor on the error page', async () => {
+    const manifest = await built({ earlyHints: false }, true);
     expect(manifest.routes.every((r) => !('hints' in r))).toBe(true);
+    expect('errorHints' in manifest).toBe(false);
   }, 120_000);
 });

@@ -20,6 +20,7 @@
 
 import {
   allComponents,
+  entryComponent,
   type ComponentGraph,
   type DocumentGraph,
   type ResolvedComponent,
@@ -39,7 +40,7 @@ import {
   type AssetText,
   type AssetUrl,
 } from './assets.js';
-import { planPageSheets, type EarlyHint, type PageSheets, type SheetUse } from './page-sheets.js';
+import { planPageSheets, rebaseSpec, type EarlyHint, type PageSheets, type SheetUse } from './page-sheets.js';
 import { compactStyleCss } from './css-compact.js';
 import { isRtl, type LocaleCompile } from '../i18n/localize.js';
 import { codeOf, codeOfDocument, diHelpers } from './oxc-code.js';
@@ -64,6 +65,7 @@ import {
   writeSharedHead,
 } from './parts.js';
 import {
+  compactProjectCss,
   projectAdoptOf,
   renderProjectStyles,
   type ProjectStyle,
@@ -139,6 +141,14 @@ export interface EmitOptions {
    * the page links keeps the URL of the whole file.
    */
   readonly assetSheet?: AssetSheet;
+  /**
+   * The URL of a sheet published as a file, named `name` and holding `css`, INJECTED: the host
+   * names it by its content and publishes it (SDD-73 §3.5). With it, a page's CSS leaves the
+   * page — each `<style>` of a head and each `?inline` sheet becomes a `<link>`, and every
+   * component wears `<link>`s at the end of its shadow root instead of adopting style modules.
+   * Absent, and the emit is what it always was, byte for byte.
+   */
+  readonly componentSheet?: (name: string, css: string) => string;
   /**
    * Module specifier for a linked component, INJECTED — the compiler never touches
    * `node:path`, so it cannot compute a path relative to the importing module. Default:
@@ -244,6 +254,78 @@ export function styledTags(graph: ComponentGraph): ReadonlySet<string> {
   }
   return styled;
 }
+
+/**
+ * The sheets ONE component wears as files, by URL, joined by a space in adoption order — the
+ * project's first, its own last — or `''` when it wears none (SDD-73 §3.5). `undefined` when
+ * the host publishes no files (`componentSheet` absent): the page adopts style modules, as ever.
+ *
+ * The same list for the same tag from any module that writes its host — a page, a layout, a
+ * component, a client chunk — because a URL is named by the content it holds: the component's
+ * `url(…)` are resolved from its own file before they are linked, so whoever compiles it gets
+ * the same bytes, and the same file. A project sheet is published whole: a client chunk is
+ * shared by every page, and a copy pruned for one page is not one it can name.
+ */
+export function sheetUrlsOf(
+  graph: ComponentGraph,
+  options: EmitOptions,
+  linker: AssetLinker,
+): ((tag: string) => string) | undefined {
+  const publish = options.componentSheet;
+  if (publish === undefined) return undefined;
+  const adopt = projectAdoptOf(options.projectStyles, options.styleChains);
+  const project = new Map((options.projectStyles ?? []).map((s) => [s.specifier, s.css]));
+  const projectUrl = (specifier: string): string[] => {
+    const css = project.get(specifier);
+    return css === undefined ? [] : [publish(specifier, linker.cssLinked(compactProjectCss(css)))];
+  };
+  // The entry, when it is a component, is no component of its own graph: its client chunk
+  // still has to know its list, to step over the `<link>`s its root opens with.
+  const self = entryComponent(graph);
+  return (tag) => {
+    const urls = adopt(tag).split(' ').filter((s) => s !== '').flatMap(projectUrl);
+    const comp = graph.components.get(tag) ?? (self?.tag === tag ? self : undefined);
+    const css = comp === undefined ? '' : componentCss(comp.source, comp.doc);
+    if (comp !== undefined && css !== '') {
+      const own = css.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/gu, (whole, q: string, spec: string) =>
+        isRelativeUrl(spec) ? `url(${q}${rebaseSpec(spec, comp.path, graph.entryPath)}${q})` : whole,
+      );
+      urls.push(publish(tag, linker.cssLinked(own)));
+    }
+    return urls.join(' ');
+  };
+}
+
+/**
+ * The hints of a page (SDD-73 §3.5): the sheets its heads link, then — with `css: "link"` —
+ * the files its components wear, each once, behind them. Before the modules, which the host
+ * appends.
+ */
+export function pageHintsOf(
+  sheets: PageSheets,
+  graph: ComponentGraph,
+  options: EmitOptions,
+  linker: AssetLinker,
+): readonly EarlyHint[] {
+  const urls = sheetUrlsOf(graph, options, linker);
+  if (urls === undefined) return sheets.hints;
+  const files = new Set(allComponents(graph).flatMap((c) => urls(c.tag).split(' ').filter((u) => u !== '')));
+  for (const hint of sheets.hints) files.delete(hint.href);
+  return [...sheets.hints, ...[...files].map((href): EarlyHint => ({ href, rel: 'preload', as: 'style' }))];
+}
+
+/** `{ sheets }` for a markup emitter's options when the host publishes files, `{}` otherwise. */
+export function withSheets(
+  graph: ComponentGraph,
+  options: EmitOptions,
+  linker: AssetLinker,
+): { readonly sheets?: (tag: string) => string } {
+  const sheets = sheetUrlsOf(graph, options, linker);
+  return sheets === undefined ? {} : { sheets };
+}
+
+/** A `url(…)` written relative to the file that holds it: not absolute, a scheme or a fragment. */
+const isRelativeUrl = (spec: string): boolean => !/^(?:[a-z][a-z0-9+.-]*:|\/|#)/iu.test(spec);
 
 /**
  * The PARSED body of that `<style>` — a `<style>` carries a `StyleNode` child, because
@@ -354,6 +436,7 @@ function buildComponentModule(
     shadowOptions: shadowOptions(graph),
     styled: styledTags(graph),
     projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
+    ...withSheets(graph, options, linker),
   });
   // The host's own attributes FIRST, so `$host` is declared before anything below could read
   // it — and inside the markup body, which `appendWriter` puts after the props, the inert
@@ -556,16 +639,17 @@ function buildPageModule(
   // SECOND list and not a filter of the first, because `comps` also drives the `render`
   // imports, and every component of the graph is rendered whether or not it is styled.
   const styled = styledTags(graph);
-  const styledComps = comps.filter((c) => styled.has(c.tag));
+  // With `css: "link"` (SDD-73 §3.5) no sheet travels in the page: each host names its files.
+  const linkCss = options.componentSheet !== undefined;
+  const styledComps = linkCss ? [] : comps.filter((c) => styled.has(c.tag));
   // The page's sheets, pruned (SDD-49). A page owns its whole shell, so it does alone what a
   // route and its layout share: prune, and write the result into its own head.
   const sheets = planPageSheets('layouts' in graph ? (graph as DocumentGraph) : { ...graph, layouts: [], serverApis: [] }, options, linker);
   // The project's guide (SDD-42), built here — before the body codegen and long before the
   // linker's imports are flushed — because compacting it can register an asset import.
-  const projectStylesLine = renderProjectStyles(
-    sheets === null ? options.projectStyles : sheets.projectStyles,
-    linker,
-  );
+  const projectStylesLine = linkCss
+    ? null
+    : renderProjectStyles(sheets === null ? options.projectStyles : sheets.projectStyles, linker);
 
   // Body codegen.
   const hydratable = hydratableTags(graph);
@@ -592,6 +676,7 @@ function buildPageModule(
     shadowOptions: shadowOptions(graph),
     styled,
     projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
+    ...withSheets(graph, options, linker),
     ...(parted ? { parts: '$parts' } : {}),
   });
   em.emitChildren(page.body.children, '$body');
@@ -641,7 +726,7 @@ function buildPageModule(
   // nothing to name in the head, so importing its two constants would be dead weight the
   // bundler carries into every page that composes it (BUG-31 §T4).
   for (const c of comps) {
-    const style = styled.has(c.tag)
+    const style = styledComps.includes(c)
       ? `, tag as ${renderName(c.tag)}Tag, css as ${renderName(c.tag)}Css`
       : '';
     w.line(`import { render as ${renderName(c.tag)}${style} } from ${specifier(c.tag)};`);
@@ -715,6 +800,6 @@ export function emitPageModuleMapped(graph: ComponentGraph, options: EmitOptions
     mappings: writer.mappings(),
     missingAssets: linker.missing(),
     diagnostics,
-    ...(sheets === null ? {} : { sheets: sheets.uses, hints: sheets.hints }),
+    ...(sheets === null ? {} : { sheets: sheets.uses, hints: pageHintsOf(sheets, graph, options, linker) }),
   };
 }

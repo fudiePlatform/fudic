@@ -212,7 +212,7 @@ componentes de esa página esperan al final para hidratarse.
 | [x] | 37 | 36 | **`usuarios.fud` actualiza su señal.** `activar` espera a `guardar` y pone `personas` al día, o devuelve el checkbox a su sitio si falló; `borrar` espera a `quitar` y quita la fila si no falló. Los comentarios y el texto que hablan de `/_fudic/data/usuarios` se corrigen | `examples/basic` | `src/routes/usuarios.fud` |
 | [x] | 31 | 28–30, 36, 37 | **Los tests de la fase.** Criterios 17 y 21; una mutación sin `invalidates` no pide el `data`, una con `invalidates` de su página sí | `vite` · `transport` · `http` | `test/**` |
 
-## Fase 8 — el primer byte, también sin `@await` (2)
+## Fase 8 — el primer byte, también sin `@await` (3)
 
 Pedidas por Pedro el 2026-10-30, después de probar `espera`. Las implementa otra sesión.
 
@@ -220,6 +220,7 @@ Pedidas por Pedro el 2026-10-30, después de probar `espera`. Las implementa otr
 |---|---|---|---|---|---|
 | [x] | 38 | — | **Vaciar el búfer al cerrar el `<head>`.** Toda página (con o sin `@await`) cede `FLUSH` justo detrás de `</head>`, para que el navegador empiece a pedir el CSS y el runtime mientras el servidor construye el body. Lo hace el wrapper detrás de la primera pieza (decisión 8.2.12): el código generado y los goldens no cambian. Un test lee el `ReadableStream` y ve el `<head>` en su propio trozo, aunque pese menos de 8 KB (criterio 27) | `vite` | `src/wrapper.ts` · `test/**` |
 | [x] | 39 | 38 | **El tamaño del búfer, por ruta, en la línea `load`** (SDD §3.9). `STREAM_BUFFER` (8192) en `@fudic/conventions`; `load … buffer <n>[k]` en el `.fudapi`, `FUD1325` si no es un entero ≥ 0; formatter, gramática y completado de la palabra; llega a `htmlToByteStream` por `highWaterMark` y al manifiesto como `buffer` (criterio 28) | `conventions` · `api` · `ssr` · `vite` · `diagnostics` · `language-server` · `vscode` | `src/index.ts` · `src/contract.ts` · `src/stream.ts` · `src/wrapper.ts` |
+| [x] | 45 | 39 | **El editor en la línea `load`, entera.** Pedida por Pedro el 2026-10-31, tras ver que la tarea 39 solo completaba la palabra `buffer`. Detrás de `buffer`, sus valores (`0`, `8k` —el `STREAM_BUFFER`—, `16k`), en ese orden y explicados; detrás de `ttl`, duraciones (`30s`, `5m`, `1h`, `1d`); detrás de `page`, `never` y `persist`. Tras `page persist` no se ofrece duración: es el `ttl` del dato, que gana (`FUD0396`). Lo que la línea ya tiene no se ofrece otra vez (un modo, una política, el resto una vez), contando lo que hay detrás del cursor. Hover sobre cada palabra de la línea y sobre los valores (`16k` → 16384 bytes, `5m` → 5 minutos). Las listas de la línea y la lectura de bytes y duraciones pasan a `@fudic/api` (`load-options.ts`): parser y editor leen de la misma fuente. Un test por el servicio prueba que `FUD1325` llega al editor. Pedro lo prueba en VS Code y da el ok | `api` · `language-server` | `src/load-options.ts` · `src/fudapi/load-line.ts` · `src/fudapi/completion.ts` · `src/fudapi/service.ts` · `test/fudapi/load-line.test.ts` |
 
 ## Fase 9 — 103 Early Hints y el CSS de los componentes como fichero (5)
 

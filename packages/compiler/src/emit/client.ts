@@ -37,6 +37,7 @@ import {
   componentContainer,
   componentStyleNode,
   styledTags,
+  sheetUrlsOf,
   type EmitOptions,
   type EmitOutput,
 } from './module.js';
@@ -217,6 +218,7 @@ function buildComponentClientModule(
   // What a block may be handed: the props (an update reassigns every one of them) and the
   // `@client` bindings the author can move. Everything else reaches it through the closure.
   const changeable = new Set([...propNames(props), ...mutable]);
+  const fileSheets = sheetUrlsOf(graph, options, linker);
   const scope = {
     childProps: (tag: string): readonly Prop[] | undefined => {
       const child = graph.components.get(tag);
@@ -243,6 +245,11 @@ function buildComponentClientModule(
     // Same reason, one level up: the project's guide is in front of the component's own on
     // both sides, or a host hydrates adopting a different list than it rendered with.
     projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
+    // And the same files, with `css: "link"` (SDD-73 §3.5) — and how many `<link>`s its own
+    // root opens with, for the adopt path to step over.
+    ...(fileSheets === undefined
+      ? {}
+      : { sheets: fileSheets, leading: fileSheets(comp.tag).split(' ').filter((u) => u !== '').length }),
   };
   // One channel for everything the emit has to SAY about this file, and one for what every
   // walk of it shares: a block three levels down reports through the same two.

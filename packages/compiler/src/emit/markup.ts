@@ -275,6 +275,12 @@ export interface MarkupOptions {
    */
   readonly projectAdopt: ProjectAdopt;
   /**
+   * The sheets each tag wears as files, joined (SDD-73 §3.5): with it, a host carries
+   * `data-fud-sheets` in place of `data-fud-adopt`, and the serializer ends its template with a
+   * `<link>` per sheet. Absent, and hosts adopt by specifier, as ever.
+   */
+  readonly sheets?: (tag: string) => string;
+  /**
    * The `PageParts` of a page that goes out in parts (SDD-70), by the name of its variable.
    * Absent everywhere an `@await` cannot be — a component, a layout — where one is `FUD1322`
    * already and paints nothing.
@@ -333,6 +339,7 @@ export class MarkupEmitter {
   #summaries = false;
   readonly #styled: ReadonlySet<string>;
   readonly #projectAdopt: ProjectAdopt;
+  readonly #sheets: ((tag: string) => string) | undefined;
   readonly #used = new Set<string>();
   /** The slot the roots of the walk in progress are stamped with (SDD-48), if any. */
   #rootSlot: { readonly parent: string; readonly name: string } | undefined;
@@ -371,6 +378,7 @@ export class MarkupEmitter {
     this.#shadowOptions = options.shadowOptions;
     this.#styled = options.styled;
     this.#projectAdopt = options.projectAdopt;
+    this.#sheets = options.sheets;
   }
 
   /**
@@ -561,9 +569,13 @@ export class MarkupEmitter {
       // The condition used to be *this component has CSS*; it is now *its adopted list is
       // empty*, and with no project guide the two say the same thing — which is why the
       // output of every project that had none is unchanged.
-      const adopt = adoptListOf(this.#projectAdopt, el.name, this.#styled.has(el.name));
+      // With `css: "link"` the same decision names files (SDD-73 §3.5): `data-fud-sheets`.
+      const [marker, adopt] =
+        this.#sheets === undefined
+          ? ['data-fud-adopt', adoptListOf(this.#projectAdopt, el.name, this.#styled.has(el.name))]
+          : ['data-fud-sheets', this.#sheets(el.name)];
       if (adopt !== '') {
-        this.#w.line(`$dom.setAttr(${v}, 'data-fud-adopt', ${JSON.stringify(adopt)});`);
+        this.#w.line(`$dom.setAttr(${v}, '${marker}', ${JSON.stringify(adopt)});`);
       }
       // The host's own attributes — its `.prop`s and its plain HTML ones (BUG-16 §4.1).
       // Level 1 is HTML with no JS, so this is the only place they can live.

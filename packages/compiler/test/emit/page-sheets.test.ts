@@ -412,16 +412,19 @@ describe('`@import` in a component’s `<style>` — `FUD0855` (criterion 30)', 
 });
 
 describe('the early hints of a page (SDD-70 §3.10, criterion 30)', () => {
-  it('the copies its head links, the layout first; not an inline one, nor one left empty', () => {
+  it('every sheet its heads link, the layout first; not an inline one, nor one left empty', () => {
     const graph = graphOf(
       '/app/index.fud',
       appFiles('<p class="a">x</p><em>e</em>', '<link rel="stylesheet" href="./own.css">'),
     );
     const out = emitRouteModuleMapped(graph, { ...host().options });
-    // `base.css` (layout) and `own.css` (route) are copies; `inline.css?inline` is a `<style>`
-    // and `empty.css` keeps nothing for this page.
+    // `base.css` (layout) and `own.css` (route) are copies; the layout's sheets of another
+    // origin and of `public/` as written (SDD-73 §3.4); `inline.css?inline` is a `<style>` and
+    // `empty.css` keeps nothing for this page.
     expect(out.hints).toEqual([
       { href: '/assets/pruned-1.css', rel: 'preload', as: 'style' },
+      { href: 'https://cdn.example/x.css', rel: 'preload', as: 'style' },
+      { href: '/public.css', rel: 'preload', as: 'style' },
       { href: '/assets/pruned-2.css', rel: 'preload', as: 'style' },
     ]);
   });
@@ -434,5 +437,21 @@ describe('the early hints of a page (SDD-70 §3.10, criterion 30)', () => {
     ]);
     expect(emitPageModuleMapped(graph, host({}, false).options).hints).toEqual([]);
     expect('hints' in emitPageModuleMapped(graph, {})).toBe(false);
+  });
+
+  it('no hint for a dynamic `href`, a `?inline` one of `public/`, a relative one nobody reads, nor a link that is no sheet (SDD-73 §3.4)', () => {
+    const page =
+      '<!DOCTYPE html>\n<html><head>\n' +
+      '<link rel="stylesheet" href="/@(data.theme).css">\n' +
+      '<link rel="stylesheet" href="/x.css?inline">\n' +
+      '<link rel="stylesheet" href="./missing.css">\n' +
+      '<link rel="stylesheet">\n' +
+      '<link rel="icon" href="/favicon.ico">\n' +
+      '<link rel="stylesheet" href="//cdn.example/y.css">\n' +
+      '</head><body><em>e</em></body></html>';
+    const graph = graphOf('/app/p.fud', { '/app/p.fud': page });
+    expect(emitPageModuleMapped(graph, host().options).hints).toEqual([
+      { href: '//cdn.example/y.css', rel: 'preload', as: 'style' },
+    ]);
   });
 });

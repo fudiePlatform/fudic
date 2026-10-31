@@ -4,6 +4,7 @@ export const API_EXTENSION = '.fudapi';
 export type * from './ast.js';
 export { parseApi, DECLARATION_KEYWORDS } from './parse.js';
 export { formatApi } from './format.js';
+export { LOAD_MODES, LOAD_OPTIONS, LOAD_POLICIES, PAGE_CACHES, bufferBytes, durationMs } from './load-options.js';
 export {
   createApiIndex,
   closest,

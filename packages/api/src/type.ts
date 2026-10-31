@@ -14,6 +14,7 @@ import type {
   TypeExpr,
 } from './ast.js';
 import { isString, stringText, type Token } from './line.js';
+import { durationMs } from './load-options.js';
 
 /** A name, its `[]`s and its `?`. `*` is any type: the validator only takes it in `on field`. */
 const NAMED = /^([A-Za-z_][A-Za-z0-9_]*|\*)((?:\[\])*)(\?)?$/u;
@@ -129,13 +130,10 @@ export function route(t: Token, out: SourceDiagnostic[]): Route | undefined {
   return { segments, span: t.span };
 }
 
-const UNIT: Readonly<Record<string, number>> = { s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 };
-const DURATION = /^(\d+)([smhd])$/u;
-
 /** `5m`, or `undefined` when the token is not a duration. Reports nothing: the caller knows why. */
 export function duration(t: Token): Duration | undefined {
-  const m = DURATION.exec(t.raw);
-  return m === null ? undefined : { text: t.raw, ms: Number(m[1]) * UNIT[m[2]!]!, span: t.span };
+  const ms = durationMs(t.raw);
+  return ms === undefined ? undefined : { text: t.raw, ms, span: t.span };
 }
 
 /** The span from the first to the last of `tokens`, which is never empty. */

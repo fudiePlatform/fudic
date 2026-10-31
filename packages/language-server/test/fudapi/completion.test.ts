@@ -34,6 +34,8 @@ describe('completion (criterion 28)', () => {
         'ssg', 'ssr', 'sw', 'ttl', 'cache-first', 'network-first', 'stale-while-revalidate', 'network-only', 'page', 'buffer',
       ]);
       expect(labels('load ssr page |')).toEqual(['never', 'persist']);
+      // The rest of the line, value by value, is `load-line.test.ts`.
+      expect(labels('load ssr buffer |')).toEqual(['0', '8k', '16k']);
     });
 
     it('after any other declaration word, nothing', () => {

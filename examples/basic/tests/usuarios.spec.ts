@@ -111,7 +111,9 @@ test.describe('/usuarios', () => {
     await row(page, 'Marta').getByLabel('Activo').click();
     await expect(page).toHaveURL(errorPage(401));
     await expect(page.locator('h1')).toContainText('401');
-    await expect(page.getByText('sin sesión')).toBeVisible();
+    // What the server said stays with the call (SDD-73 §3.6); the page offers the way back.
+    await expect(page.getByText('sin sesión')).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Volver' })).toHaveAttribute('href', /^\/usuarios/u);
   });
 
   test('a toggle with a fake session goes to /entrar, which speaks of the session', async ({ page }) => {
@@ -151,11 +153,12 @@ test.describe('/usuarios', () => {
     await expect(page.locator('h1')).toContainText('500');
   });
 
-  test('deleting nobody is the 404 page, with what the server said', async ({ page }) => {
+  test('deleting nobody is the 404 page, with the way back and nothing the URL could carry', async ({ page }) => {
     await open(page, 'ana');
     await page.getByRole('button', { name: 'Borrar a alguien que no existe' }).click();
-    await expect(page).toHaveURL(errorPage(404));
-    await expect(page.getByText('no hay nadie con id 999')).toBeVisible();
+    await expect(page).toHaveURL(/\/_fudic\/error\/404$/u);
+    await expect(page.getByText('no hay nadie con id 999')).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Volver' })).toHaveAttribute('href', /^\/usuarios/u);
   });
 });
 

@@ -35,8 +35,27 @@ function sheetOf(doc: Document, specifier: string): CSSStyleSheet | undefined {
   return undefined;
 }
 
-/** Adopt into `shadow` the sheets its host's `data-fud-adopt` names, in that order. */
+/**
+ * Adopt into `shadow` the sheets its host's `data-fud-adopt` names, in that order — or, for a
+ * component whose sheets are files (`data-fud-sheets`, SDD-73 §3.5), open `shadow` with a
+ * `<link rel="stylesheet">` per file, as the server writes them at the start of its template.
+ * The marker is the parent's message to this function and nobody else's: read, then gone, as
+ * the server never writes it either.
+ */
 export function adoptSheets(host: Element, shadow: ShadowRoot): void {
+  const files = (host.getAttribute('data-fud-sheets') ?? '').split(' ').filter(Boolean);
+  if (files.length > 0) {
+    const doc = host.ownerDocument;
+    shadow.prepend(
+      ...files.map((href) => {
+        const link = doc.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = href;
+        return link;
+      }),
+    );
+    host.removeAttribute('data-fud-sheets');
+  }
   const specifiers = (host.getAttribute('data-fud-adopt') ?? '').split(' ').filter(Boolean);
   if (specifiers.length === 0) return;
   const adopted: CSSStyleSheet[] = [];

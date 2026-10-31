@@ -283,6 +283,19 @@ export interface ClientScope {
    * branches have to answer it identically.
    */
   readonly projectAdopt: ProjectAdopt;
+  /**
+   * The sheets each tag wears as files, joined (SDD-73 §3.5) — the server branch's same list.
+   * With it, a fabricated host carries `data-fud-sheets`, and the runtime ends its shadow root
+   * with a `<link>` per sheet.
+   */
+  readonly sheets?: (tag: string) => string;
+  /**
+   * How many `<link>`s THIS component's shadow root opens with, its sheets as files (SDD-73
+   * §3.5). The adopt path finds the root's content from its first node and its first element,
+   * and in a hydrated root those are the links: it steps over them. `0` — or absent — with no
+   * files.
+   */
+  readonly leading?: number;
 }
 
 /** One slot of a child's positional payload: the expression, and where it can move from. */
@@ -632,7 +645,9 @@ export class ClientMarkupEmitter {
   /** The component template: the direct children of the shadow root. */
   emitRoots(children: readonly HtmlContent[]): void {
     const cursor = this.#cursorFor(children);
-    if (cursor !== null) this.#adopt.line(`let ${cursor} = $dom.firstElementChild($shadow);`);
+    if (cursor !== null) {
+      this.#adopt.line(`let ${cursor} = ${this.#first('$shadow', 'firstElementChild', 'nextElementSibling')};`);
+    }
     this.#items(this.#itemsOf(children), { fab: null, dom: '$shadow', cursor, end: null }, NOTHING_AHEAD);
   }
 
@@ -929,7 +944,7 @@ export class ClientMarkupEmitter {
   /** The forward step the marked run takes instead of an anchor it cannot use. */
   #front(marker: Marker, level: Level): string {
     return marker.front === null
-      ? `$dom.firstChild(${level.dom})`
+      ? this.#first(level.dom, 'firstChild', 'nextSibling')
       : `$dom.nextSibling(${marker.front})`;
   }
 
@@ -939,6 +954,18 @@ export class ClientMarkupEmitter {
       return `${level.cursor} ? $dom.previousSibling(${level.cursor}) : $dom.lastChild(${level.dom})`;
     }
     return `$dom.lastChild(${level.dom})`;
+  }
+
+  /**
+   * The first node — or element — of a level the author wrote. At the component's root it is
+   * the one after the `<link>`s its sheets open it with, when they are files (SDD-73 §3.5);
+   * anywhere else, and with no files, simply the first.
+   */
+  #first(dom: string, first: 'firstChild' | 'firstElementChild', next: 'nextSibling' | 'nextElementSibling'): string {
+    let at = `$dom.${first}(${dom})`;
+    if (dom !== '$shadow') return at;
+    for (let i = 0; i < (this.#scope.leading ?? 0); i += 1) at = `$dom.${next}(${at})`;
+    return at;
   }
 
   #fresh(): string {
@@ -971,9 +998,14 @@ export class ClientMarkupEmitter {
       // `data-fud-adopt` carries the style specifier the shared sheet is keyed by (SDD-18 D-6),
       // and only for a child that HAS a sheet (BUG-31 §T4) — the same condition the server
       // branch applies, because both write the same host.
-      const adopt = adoptListOf(this.#scope.projectAdopt, el.name, this.#scope.styled.has(el.name));
+      // With `css: "link"` the same decision names files (SDD-73 §3.5): `data-fud-sheets`.
+      const sheets = this.#scope.sheets;
+      const [marker, adopt] =
+        sheets === undefined
+          ? ['data-fud-adopt', adoptListOf(this.#scope.projectAdopt, el.name, this.#scope.styled.has(el.name))]
+          : ['data-fud-sheets', sheets(el.name)];
       if (adopt !== '') {
-        this.#fab.line(`$dom.setAttr(${v}, 'data-fud-adopt', ${JSON.stringify(adopt)});`);
+        this.#fab.line(`$dom.setAttr(${v}, '${marker}', ${JSON.stringify(adopt)});`);
       }
       // The host's own attributes, same as the server writes them (BUG-16 §4.1): the two
       // branches have to agree byte for byte, or `h` adopts a tree it does not recognise.

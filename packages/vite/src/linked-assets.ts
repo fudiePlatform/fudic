@@ -125,10 +125,27 @@ export class LinkedAssets {
     { used: boolean; diagnostics: readonly Diagnostic[]; site: SheetPlace | undefined }
   >();
 
-  constructor(base: string, publicDir = '', sheetDir = 'assets') {
+  /**
+   * Whether a page's CSS leaves the page as files (`css: "link"`, SDD-73 §3.5): the `<style>`
+   * of a head, an `?inline` sheet and every component's sheets. A policy of what this registry
+   * publishes, so every pass that compiles with it answers the same.
+   */
+  readonly linkCss: boolean;
+
+  constructor(base: string, publicDir = '', sheetDir = 'assets', linkCss = false) {
     this.#base = base.endsWith('/') ? base : `${base}/`;
     this.#publicDir = publicDir;
     this.#sheetDir = sheetDir;
+    this.linkCss = linkCss;
+  }
+
+  /**
+   * The URL of a sheet published whole, named `name` (a component's tag, a project sheet's
+   * name, a page's file) and holding `css` (SDD-73 §3.5). By the hash of its bytes, like a pruned
+   * copy: two pages, or two passes, with the same CSS write one file.
+   */
+  namedSheet(name: string, css: string): string {
+    return this.sheet(`/${name}.css`, css);
   }
 
   /**

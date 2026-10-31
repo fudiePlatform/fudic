@@ -71,10 +71,12 @@ export abstract class FudicElement extends Base {
    */
   c(props: readonly unknown[]): void {
     const shadow = this.attachShadow(this.shadowInit());
-    adoptSheets(this, shadow);
     const controller = factoryOf(this).c([browserDom, shadow, ...props]);
     this.#controller = controller;
     controller.c();
+    // In the same task as the content: no frame paints it without its sheets. A sheet that is
+    // a file goes in FRONT of it, as the server writes it (SDD-73 §3.5).
+    adoptSheets(this, shadow);
   }
 
   /**

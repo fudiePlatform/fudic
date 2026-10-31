@@ -402,6 +402,14 @@
     "hydration": "gesture",
     "hydrates": []
   },
+  "examples/basic/src/routes/lento.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "app-counter"
+    ]
+  },
   "examples/basic/src/routes/mapas.fud": {
     "kind": "route",
     "reactive": false,

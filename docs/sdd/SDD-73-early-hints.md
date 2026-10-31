@@ -1,6 +1,6 @@
 # SDD-73 — Early Hints: el 103 en cualquier backend y el CSS de los componentes como fichero
 
-> **Estado:** `Listo` — [tareas](./SDD-73-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-73-Task.md).
 > **Paquetes:** `@fudic/compiler` · `@fudic/ssr` · `@fudic/core` · `@fudic/http` · `@fudic/config` · `@fudic/vite` ·
 > `@fudic/transport` · `examples/basic`
 > **Depende de:** 70 (las pistas por ruta en el manifiesto, `earlyHints` y `componentStyles` (que aquí pasa a `css`) en el
@@ -89,6 +89,7 @@ earlyHints(petición, manifiesto):
      y petición.headers["sec-fetch-mode"] == "navigate"
      y el servidor sabe mandar 1xx:
         mandar 103 con  Link: <pistas unidas por ", ">
+                        Content-Security-Policy y Referrer-Policy: las de la respuesta final
   seguir con la respuesta de siempre, y en ella:
      Link: <pistas de la respuesta final>
 ```
@@ -119,7 +120,7 @@ Entran en `hints` en su sitio del head, como `rel=preload; as=style`:
 | `href` en el head | Pista |
 |---|---|
 | `./site.css` (podada, SDD-49) | la URL de la copia, como hoy |
-| `/public.css` (de `public/`) | `</base/public.css>; rel=preload; as=style` |
+| `/public.css` (de `public/`) | `</public.css>; rel=preload; as=style`, tal cual (decisión 9) |
 | `https://cdn.example/x.css` | `<https://cdn.example/x.css>; rel=preload; as=style` |
 | `./x.css?inline` | ninguna: va dentro de la página |
 | `./@(data.theme).css` | ninguna: no se sabe al compilar |
@@ -148,26 +149,28 @@ ruta, en su orden del head. Un `<style>` con `@` (se calcula al pintar) se queda
 - cada hoja (la de un componente o una del proyecto que se adopta) se publica como fichero con el
   hash de su contenido (`LinkedAssets.sheet`), y se sirve en desarrollo con los mismos bytes;
 - el `<head>` ya no lleva el polyfill ni los `<style type="module" specifier>`;
-- el anfitrión lleva `data-fud-sheets="<url> <url>"` en lugar de `data-fud-adopt`, y su
-  plantilla DSD acaba con un `<link rel="stylesheet" href="<url>">` por hoja, sin
-  `shadowrootadoptedstylesheets`;
-- un anfitrión que fabrica el runtime añade los mismos enlaces al final de su shadow root
-  (`core/src/adopt-sheets.ts`);
+- la plantilla DSD del anfitrión **empieza** con un `<link rel="stylesheet" href="<url>">` por
+  hoja, sin `shadowrootadoptedstylesheets` y sin ningún atributo en el anfitrión: el emit marca
+  el anfitrión con `data-fud-sheets` para el serializador, que lo consume y no lo escribe
+  (decisión 22);
+- un anfitrión que fabrica el runtime pone los mismos enlaces al principio de su shadow root, y
+  quita la marca después de leerla (`core/src/adopt-sheets.ts`);
 - las hojas que adopta algún componente de la página entran en sus pistas, detrás de las del head
   y antes de los módulos.
 
 ```html
-<app-counter data-fud-id="1" data-fud-sheets="/assets/theme-Ab12.css /assets/app-counter-Cd34.css">
+<app-counter data-fud-id="1">
   <template shadowrootmode="open">
-    <div class="panel">…</div>
     <link rel="stylesheet" href="/assets/theme-Ab12.css">
     <link rel="stylesheet" href="/assets/app-counter-Cd34.css">
+    <div class="panel">…</div>
   </template>
 </app-counter>
 ```
 
-Los enlaces van **al final** del shadow root: la hidratación recorre los hijos por posición
-desde el primero, y así no se encuentra nada que no esperaba.
+Los enlaces van **al principio** del shadow root: el navegador los pide antes de leer lo que
+estilan. La hidratación recorre los hijos por posición desde el primero; sabe cuántos enlaces
+abren la raíz de cada componente y los salta (decisión 22).
 
 ### 3.6. La página de error sabe de dónde venía el usuario
 
@@ -302,8 +305,8 @@ perdido, no un fallo.
 
 1. Un `_error.fud` con un `<link rel="stylesheet">` en su head deja en `errorHints` su hoja y los
    módulos que carga; sin `_error.fud`, no hay `errorHints`; con `earlyHints: false`, tampoco.
-2. Un head con `/public.css` y `https://cdn.example/x.css` los lleva en `hints`, en su orden y con
-   `base`; uno con `?inline` o con un `href` dinámico no deja pista.
+2. Un head con `/public.css` y `https://cdn.example/x.css` los lleva en `hints`, en su orden y
+   con la URL que escribe la página; uno con `?inline` o con un `href` dinámico no deja pista.
 
 **El middleware de Node** (contra el servidor en proceso, en HTTP/2 con `server.https`)
 
@@ -318,12 +321,13 @@ perdido, no un fallo.
 
 **`css: "link"`: los componentes**
 
-7. El head no lleva ni el polyfill ni ningún `<style type="module">`; cada anfitrión con hojas
-   lleva `data-fud-sheets` y su plantilla acaba con sus `<link rel="stylesheet">`.
+7. El head no lleva ni el polyfill ni ningún `<style type="module">`; la plantilla de cada
+   anfitrión con hojas empieza con sus `<link rel="stylesheet">`, y la página no lleva
+   `data-fud-sheets`.
 8. Los ficheros se publican en el build y el servidor de desarrollo los sirve con los mismos
    bytes; dos páginas con la misma hoja comparten fichero.
 9. Las pistas de la ruta incluyen las hojas de sus componentes, detrás de las del head.
-10. Un anfitrión fabricado en el navegador recibe los mismos `<link>` al final de su shadow root
+10. Un anfitrión fabricado en el navegador recibe los mismos `<link>` al principio de su shadow root
     (test de `core`), y un componente servido por el servidor se hidrata igual que en `inline`.
 11. Con `css` sin tocar, los goldens y el HTML de `examples/basic` no cambian.
 
@@ -353,6 +357,13 @@ perdido, no un fallo.
 17. `examples/basic` con `css: "link"` y preview en HTTP/2: en la pestaña Network de
     Chrome, las hojas y los módulos de `/hidratacion` salen con iniciador `early-hints`; los
     componentes se ven con su estilo; `/test` enseña la página de error con su CSS.
+    El banco para verlo en `localhost`: `pnpm preview:h2` en `examples/basic` (preview en HTTP/2
+    con el certificado de desarrollo de .NET exportado a PEM, de confianza en Windows y sin
+    avisos; los `.pem` no se commitean) y una ruta `/lento` cuyo `load` tarda 2 s, para que en
+    la cascada se vea el CSS y el JS bajando mientras el servidor espera. `curl --http2 -v`
+    enseña el `103` en crudo. Con Service Worker, a partir de la segunda visita pinta él y no
+    pregunta al servidor: `pnpm build:nosw` y `pnpm preview:nosw:h2` dan el mismo banco sin SW,
+    donde cada navegación recibe su `103`.
 
 **Entrega**
 
@@ -381,8 +392,8 @@ perdido, no un fallo.
 3. **La respuesta final anuncia lo que pinta.** El 103 sale antes de saber si `load` falla, así
    que lleva las de la ruta; la cabecera `Link` de la respuesta final, las de lo que se pintó.
 4. **El SW no manda 103.** No puede, y no le hace falta.
-5. **Los `<link>` de las hojas, al final del shadow root.** La hidratación recorre por posición
-   desde el primer hijo.
+5. ~~**Los `<link>` de las hojas, al final del shadow root.**~~ Sustituida por la decisión 22:
+   al principio, y la hidratación los salta.
 6. **`back` en lugar de un enlace fijo** (Pedro, 2026-10-31). La página de error no puede
    saber a qué página volver si nadie se lo dice; el `Referer` del mismo origen es lo que el
    servidor tiene en la mano en cualquier lenguaje, sin JS en el navegador.
@@ -396,3 +407,48 @@ perdido, no un fallo.
    `examples/basic` llevan `<style>` en su head, y su layout también: eso viaja en cada HTML
    igual que el de los componentes. La opción deja de ser solo de componentes y pasa a llamarse
    `css` (`"inline"` · `"link"`), en lugar del `componentStyles` de SDD-70.
+
+### 8.2. Tomadas al implementar
+
+9. **La pista de una hoja que no se poda es la URL que escribe la página.** El head escribe
+   `/public.css` tal cual, sin `base`; una pista con `base` precargaría una URL que la página no
+   pide.
+10. **Un solo `errorHints` por app.** Con idiomas, el del primero: las páginas de error de todos
+    comparten hojas y entradas.
+11. **La preview en HTTP/2 respondía `500` a toda página** (las pseudo-cabeceras `:method`,
+    `:path` pasaban a `Headers`). Arreglado al montar el banco del criterio 17: la petición ya no
+    las lleva, el host sale de `:authority` y el esquema es `https` sobre TLS.
+12. **Una ruta que no existe pinta `_error.fud` con `404`.** §1 lo daba por hecho y no lo era: el
+    servidor de desarrollo y el de preview devolvían el `404` de Vite. Ahora, detrás de todos los
+    ficheros que sirve Vite, una navegación sin ruta pinta la página de error, con su `path`.
+13. **`back` también rechaza una ruta que resuelve a `//…`** y una fuera de la `base`: con el
+    mismo origen, `https://app.com/\evil.com` resuelve a `//evil.com`, que en un `href` es otro
+    host.
+14. **El SW no pinta la página de error**: un `load` que falla deja la navegación a la red
+    (SDD-56), así que `path` y `back` son solo del servidor y el SW no cambia.
+16. **El 103 lleva la CSP y la `Referrer-Policy` de la página** (Pedro, 2026-10-31). El
+    navegador comprueba las precargas de un 103 contra la CSP que viene con él; sin ella salen
+    sin comprobar. Es la misma de la respuesta final, con el mismo nonce. En desarrollo no hay
+    CSP, así que tampoco va en el 103.
+17. **«Un `<style>` con `@`» es uno con atributos dinámicos** (`media=@x`). Desde la decisión
+    de gramática 136 el cuerpo de un `<style>` no admite Razor (`FUD0132`); lo único que se
+    calcula al pintar son sus atributos, y ese se queda dentro de la página.
+18. **Las hojas del proyecto que adopta un componente se publican enteras, sin podar.** El
+    chunk de cliente de un componente es de todas las páginas, y no puede nombrar una copia
+    podada para una. La poda por página sigue para las hojas del head.
+19. **Los `url(…)` del CSS de un componente se resuelven desde su propio fichero** antes de
+    enlazarse, así cualquier módulo que lo compile (la página, el layout, su chunk de cliente)
+    llega a los mismos bytes y al mismo fichero.
+20. **La hidratación salta los `<link>` del principio.** El primer elemento y el primer nodo
+    de la raíz de un componente se buscan desde el principio; el compilador sabe cuántos enlaces
+    la abren y los salta. En `inline` no cambia ni un byte.
+21. **Un anfitrión fabricado pone sus `<link>` en la misma tarea que construye su contenido**:
+    ningún fotograma pinta el componente sin su hoja.
+22. **Enlaces al principio, y sin `data-fud-sheets` en la página** (Pedro, 2026-10-31). Sin
+    polyfill nadie lee esa marca en el navegador: el serializador la consume y no la escribe, y
+    el runtime la quita de un anfitrión fabricado después de leerla. Al principio, porque el
+    navegador pide la hoja antes de leer el contenido que estila; esto sustituye a la versión
+    «al final» de la redacción (§3.5, decisión 5).
+15. **El `detail` de una llamada ya no se ve en la página de error.** Los tests de
+    `examples/basic` que lo esperaban (`sin sesión`, `no hay nadie con id 999`) comprueban ahora
+    el enlace «Volver» a `/usuarios`.

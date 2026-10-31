@@ -62,6 +62,11 @@ export interface ManifestInputs {
    * off (`earlyHints: false`), and then no route carries any.
    */
   readonly hintsOf?: (route: RouteBuild) => readonly string[];
+  /**
+   * The page a response paints when no route matched or `load` failed (`_error.fud`), whose
+   * hints `hintsOf` gives too (SDD-73 §3.3). Absent when the app has none.
+   */
+  readonly errorPage?: RouteBuild;
 }
 
 export interface ManifestResult {
@@ -172,6 +177,7 @@ export function buildManifest(
       ...stream,
     });
   }
+  const errorHints = inputs.errorPage === undefined ? [] : (inputs.hintsOf?.(inputs.errorPage) ?? []);
 
   // The dependency names, factored (BUG-31 §T5): the directory they share is stated once at
   // the top of the file instead of on every one of them.
@@ -208,6 +214,7 @@ export function buildManifest(
       // object in the file would say "asked and answered nothing", which is not the case.
       ...(tags.length === 0 ? {} : { hydrate: folded }),
       ...(assets === '' ? {} : { assets }),
+      ...(errorHints.length === 0 ? {} : { errorHints }),
     },
     diagnostics,
   };

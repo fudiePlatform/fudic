@@ -24,8 +24,18 @@ export interface ErrorPage {
   readonly status: number;
   /** The standard name of the status: `Not Found`. */
   readonly title: string;
-  /** What the server said, when it said something: `notFound('no such user')`. */
+  /**
+   * What the server said, when it said something: `notFound('no such user')`. Only when the
+   * error was thrown in the request that paints the page; never read from a URL (SDD-73 §3.6).
+   */
   readonly detail?: string;
+  /** The path that was asked for and failed, without the origin or the `base`: `/usuarios/99`. */
+  readonly path: string;
+  /**
+   * Where the user came from, when it is of this app: `/usuarios`. Read from the `Referer` the
+   * browser sent, never from the URL; absent when there is none, or it is another origin's.
+   */
+  readonly back?: string;
 }
 
 export class HttpError extends Error {
