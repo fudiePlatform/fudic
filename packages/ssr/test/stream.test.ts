@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { SsrDom } from '../src/ssr-dom.js';
 import { renderToString, serializeChunks } from '../src/serialize.js';
-import { FLUSH, htmlToByteStream, renderToStream, type HtmlPiece } from '../src/stream.js';
+import { FLUSH, flushHead, htmlToByteStream, renderToStream, type HtmlPiece } from '../src/stream.js';
 
 /** The canonical mixed tree of SDD-14 §6.3. */
 function canonicalTree(d: SsrDom) {
@@ -220,5 +220,46 @@ describe('UTF-8 chunking (SDD-16 §6.6)', () => {
     const fatal = new TextDecoder('utf-8', { fatal: true });
     const text = chunks.map((c) => fatal.decode(c)).join('');
     expect(text).toBe(renderToString(div));
+  });
+});
+
+describe('the buffer of a page (SDD-70 §3.9)', () => {
+  const texts = (chunks: Uint8Array[]): string[] => chunks.map((c) => new TextDecoder().decode(c));
+
+  it('flushHead: the first piece leaves on its own, the rest coalesces as before', async () => {
+    const head = '<!DOCTYPE html><html><head><title>x</title></head>';
+    const chunks = texts(await collect(htmlToByteStream(flushHead([head, '<body>', '</body>', '</html>']))));
+    expect(chunks).toEqual([head, '<body></body></html>']);
+  });
+
+  it('flushHead reads an async render and a FLUSH of its own passes through', async () => {
+    async function* page(): AsyncGenerator<HtmlPiece> {
+      yield '<head></head>';
+      yield '<p>';
+      yield FLUSH;
+      yield '</p>';
+    }
+    const pieces: HtmlPiece[] = [];
+    for await (const piece of flushHead(page())) pieces.push(piece);
+    expect(pieces).toEqual(['<head></head>', FLUSH, '<p>', FLUSH, '</p>']);
+  });
+
+  it('flushHead of an empty render yields nothing', async () => {
+    const pieces: HtmlPiece[] = [];
+    for await (const piece of flushHead([])) pieces.push(piece);
+    expect(pieces).toEqual([]);
+  });
+
+  it('highWaterMark 0 sends every piece as it comes', async () => {
+    expect(texts(await collect(htmlToByteStream(['<a>', '', '<b>', '<c>'], { highWaterMark: 0 })))).toEqual([
+      '<a>',
+      '<b>',
+      '<c>',
+    ]);
+  });
+
+  it('without options the mark is STREAM_BUFFER: 8192 bytes', async () => {
+    const big = 'x'.repeat(8191);
+    expect(texts(await collect(htmlToByteStream([big, 'y', 'z']))).map((t) => t.length)).toEqual([8192, 1]);
   });
 });

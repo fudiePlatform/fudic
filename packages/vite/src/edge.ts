@@ -137,6 +137,7 @@ export function edgePlugin(
         pageModule: pageModuleOf(rb),
         hasDi: routeUsesDi(rb.absPath, io),
         ...routeApi(rb, SERVER_ROOT_ID, false),
+        ...(rb.analysis.buffer !== undefined ? { buffer: rb.analysis.buffer } : {}),
         withLoad: true, // the edge resolves data in process
         runtime: runtimeFor(pattern),
         ...alternatesOf(rb, extras.locale?.locales, base, extras.locale?.site),

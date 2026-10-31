@@ -628,6 +628,9 @@ importers:
 
   packages/ssr:
     dependencies:
+      '@fudic/conventions':
+        specifier: workspace:*
+        version: link:../conventions
       '@fudic/di':
         specifier: workspace:*
         version: link:../di

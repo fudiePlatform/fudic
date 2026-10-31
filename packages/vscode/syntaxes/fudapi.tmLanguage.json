@@ -65,9 +65,10 @@
         { "include": "#comment" },
         {
           "name": "constant.language.strategy.fudapi",
-          "match": "(?<=\\s)(ssg|ssr|sw|ttl|page|never|persist|cache-first|network-first|stale-while-revalidate|network-only)(?=\\s|$)"
+          "match": "(?<=\\s)(ssg|ssr|sw|ttl|page|never|persist|cache-first|network-first|stale-while-revalidate|network-only|buffer)(?=\\s|$)"
         },
-        { "name": "constant.numeric.duration.fudapi", "match": "(?<=\\s)\\d+[smhd](?=\\s|$)" }
+        { "name": "constant.numeric.duration.fudapi", "match": "(?<=\\s)\\d+[smhd](?=\\s|$)" },
+        { "name": "constant.numeric.buffer.fudapi", "match": "(?<=\\s)\\d+k?(?=\\s|$)" }
       ]
     },
 

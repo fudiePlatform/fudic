@@ -11,6 +11,10 @@ describe('@fudic/conventions', () => {
     expect(conventions.LOCALES_DIR).toBe('src/locales');
   });
 
+  it('holds 8 KB of a page stream when the route says nothing (SDD-70 §3.9)', () => {
+    expect(conventions.STREAM_BUFFER).toBe(8192);
+  });
+
   it('names the runtime directory, outside every app base', () => {
     // The leading `_` is the whole guarantee: no application route can collide with it
     // (SDD-45 §3.1).
@@ -83,6 +87,9 @@ describe('@fudic/conventions', () => {
     // `DATA_STALE_EVENT` and `coversPath` are SDD-68's (§3.3, §4.8): the stub tells the page
     // its data is stale with the first, and decides that it is with the second — the same
     // comparison the Service Worker forgets by.
+    //
+    // `STREAM_BUFFER` is SDD-70's (§3.9): `@fudic/ssr` coalesces up to it and the build writes it into
+    // the manifest every other backend streams with.
     expect(Object.keys(conventions).sort()).toEqual([
       'API_DIR',
       'API_TYPES_DIR',
@@ -103,6 +110,7 @@ describe('@fudic/conventions', () => {
       'RUNTIME_DIR',
       'SERVER_DIR',
       'SRC_DIR',
+      'STREAM_BUFFER',
       'coversPath',
       'runtimeCacheName',
       'runtimeMarkerUrl',

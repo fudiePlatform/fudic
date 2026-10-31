@@ -1755,6 +1755,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           pageModule: pageModuleOf(rb),
           hasDi: routeUsesDi(rb.absPath, io),
           ...routeApi(rb, SERVER_ROOT_ID, isDev),
+          ...(rb.analysis.buffer !== undefined ? { buffer: rb.analysis.buffer } : {}),
           // In dev the origin is the request's: a page served at localhost links to localhost.
           ...alternatesOf(rb, locales, base, isDev ? undefined : site),
           // In DEV this module IS the edge: the dev server renders through the module

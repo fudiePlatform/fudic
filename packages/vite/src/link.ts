@@ -124,6 +124,7 @@ function linkPlugin(
         ...(rb.analysis.hasLoad || rb.analysis.hasLayout ? { frames: rb.analysis.frames ?? null } : {}),
         hasDi: routeUsesDi(rb.absPath, io),
         withLoad: false, // server code never ships to the client (§4.5)
+        ...(rb.analysis.buffer !== undefined ? { buffer: rb.analysis.buffer } : {}),
         runtime: runtimeFor(pattern),
         ...alternatesOf(rb, locale?.locales, base, locale?.site),
       });

@@ -59,6 +59,8 @@ export interface PageAnalysis {
   readonly api?: string;
   /** The types of its `load` as JSON (SDD-70 §3.7): what the Service Worker reads its data with. */
   readonly frames?: FramesShape;
+  /** The bytes its page stream holds before it sends: `buffer` on its `load` line (SDD-70 §3.9). */
+  readonly buffer?: number;
   /** Where that `.fudapi` is, and its `load` keyword when it has one: where `FUD1300` points. */
   readonly apiAt?: { readonly file: string; readonly span?: Span };
   /** The `href` of `<link rel="layout">`, when the file declares one (SDD-21). */
@@ -99,6 +101,7 @@ export function analyzePage(source: string, apiOf?: PageApiOf): PageAnalysis {
       ? { api: own.id, apiAt: { file: own.file, ...(own.load !== undefined ? { span: own.load.keyword } : {}) } }
       : {}),
     ...(own?.frames !== undefined ? { frames: own.frames } : {}),
+    ...(own?.load?.buffer !== undefined ? { buffer: own.load.buffer.bytes } : {}),
     ...(layoutHref ? { layoutHref } : {}),
     diagnostics: parsed.diagnostics,
   };

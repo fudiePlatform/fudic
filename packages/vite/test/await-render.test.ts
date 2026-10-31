@@ -152,6 +152,7 @@ import { load as espera } from 'fudic:routes/espera';
 import { load as sola } from 'fudic:routes/sola';
 import { load as rama } from 'fudic:routes/rama';
 import { load as falla } from 'fudic:routes/falla';
+import { load as cero } from 'fudic:routes/cero';
 
 const control = (): any => (globalThis as any).__sdd70;
 // The test rejects with the server's own \`notFound\`: the copy \`problemOf\` checks against.
@@ -164,6 +165,30 @@ rama.handle((): any => ({ show: control().show, users: control().users() }));
 falla.handle(async (): Promise<any> => {
   throw notFound('no está');
 });
+cero.handle((): any => ({ title: 'Cero' }));
+`;
+
+/** SDD-70 §3.9: no `@await`, under 8 KB (criterion 27). */
+const PLAIN = `<link rel="layout" href="../layouts/_layout.fud">
+
+<head>
+  <title>Plana</title>
+</head>
+
+<h1>plana</h1>
+<p class="after">fin</p>
+`;
+
+/** `buffer 0`: every piece leaves as it is yielded (criterion 28). */
+const ZERO = `<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./cero.fudapi">
+
+<h1>@data.title</h1>
+<p class="after">fin</p>
+`;
+
+const ZERO_API = `load ssr buffer 0
+  title  str
 `;
 
 const ERROR_PAGE = `<!DOCTYPE html>
@@ -197,6 +222,10 @@ beforeAll(async () => {
     'src/routes/falla.fud': FAILING,
     'src/routes/falla.fudapi': FAILING_API,
     'src/routes/_error.fud': ERROR_PAGE,
+    // SDD-70 §3.9: a page without @await, and one whose  sends every piece at once.
+    'src/routes/plana.fud': PLAIN,
+    'src/routes/cero.fud': ZERO,
+    'src/routes/cero.fudapi': ZERO_API,
     'src/server/routes.ts': SERVER,
     'sw.json': JSON.stringify({ shell: [] }),
     'fudic.json': JSON.stringify({ id: 'await' }),
@@ -269,11 +298,12 @@ const SHAPES = [
 // ── criteria ────────────────────────────────────────────────────────────────
 
 describe.each(SHAPES)('the render in parts — %s', (_name, pattern) => {
-  it('criterion 9: the head and part 0 are the first chunk, before the later field settles', async () => {
+  it('criterion 9: the head, then part 0, before the later field settles (and 27: the head alone)', async () => {
     const { users, stats } = arm();
     const reader = chunks((await render(pattern)).stream);
+    const head = (await reader.next())!;
+    expect(head.endsWith('</head>')).toBe(true);
     const first = (await reader.next())!;
-    expect(first).toContain('</head>');
     expect(first).toContain('<h1>Usuarios');
     expect(first).toContain('<!--fud-end-->');
     expect(first).not.toContain('<ul>');
@@ -303,6 +333,7 @@ describe.each(SHAPES)('the render in parts — %s', (_name, pattern) => {
   it('criterion 10: settled in reverse, the part of the first @await still goes out first', async () => {
     const { users, stats } = arm();
     const reader = chunks((await render(pattern)).stream);
+    await reader.next();
     await reader.next();
     stats.resolve(12);
     expect(await reader.pending()).toBe(true);
@@ -447,5 +478,28 @@ describe('criterion 15 — a later field in a branch that does not paint', () =>
     } finally {
       process.off('unhandledRejection', listen);
     }
+  });
+});
+
+describe('the buffer of a page (SDD-70 §3.9)', () => {
+  it('criterion 27: a page without @await sends its head alone, then the body', async () => {
+    const reader = chunks((await render('/plana')).stream);
+    const head = (await reader.next())!;
+    expect(head.startsWith('<!DOCTYPE html>')).toBe(true);
+    expect(head.endsWith('</head>')).toBe(true);
+    const body = (await reader.next())!;
+    expect(body).toContain('<h1>plana</h1>');
+    expect(body.endsWith('</html>')).toBe(true);
+    expect(await reader.next()).toBeNull();
+  });
+
+  it('criterion 28: `buffer 0` sends every piece as the render yields it', async () => {
+    const reader = chunks((await render('/cero')).stream);
+    const all: string[] = [];
+    for (let c = await reader.next(); c !== null; c = await reader.next()) all.push(c);
+    expect(all[0]!.endsWith('</head>')).toBe(true);
+    // The body goes out in more than the one piece the default buffer would make of it.
+    expect(all.length).toBeGreaterThan(2);
+    expect(all.join('')).toContain('<h1>Cero</h1>');
   });
 });

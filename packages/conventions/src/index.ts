@@ -164,3 +164,13 @@ export interface DataStaleDetail {
   /** A listener hands the work the call must wait for: the call resolves after it. */
   wait(done: Promise<void>): void;
 }
+
+/**
+ * The bytes a page's stream holds before it sends them, when the route says nothing (SDD-70
+ * §3.9). A route changes it on its `load` line (`buffer 0`, `buffer 16k`).
+ *
+ * Here because two sides must agree on it: `@fudic/ssr`, which coalesces the pieces of a render
+ * up to it, and the build, which writes into the route manifest the value every other backend
+ * streams with.
+ */
+export const STREAM_BUFFER = 8192;

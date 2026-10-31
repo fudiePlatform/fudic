@@ -103,7 +103,7 @@ describe('the render wrapper', () => {
     // be built twice for one response. `load` runs inside the request of that container
     // (SDD-56 §4.6), so a bare `inject()` finds it: its ctx carries none.
     expect(code).toContain('withRequest($root, () => $ready.then(() => $runLoad($load, $ctx, false)))');
-    expect(code).toContain('yield* page(data, io(ctx), $root, layout);');
+    expect(code).toContain('yield* flushHead(page(data, io(ctx), $root, layout));');
   });
 
   it('names nothing of the injector on a route without a single DI call', () => {
@@ -113,7 +113,7 @@ describe('the render wrapper', () => {
     expect(code).not.toContain('withDi');
     expect(code).not.toContain('publishedSeed');
     // The container's place is held by `undefined`, so the layout props keep theirs.
-    expect(code).toContain('yield* page(data, io(ctx), undefined, layout);');
+    expect(code).toContain('yield* flushHead(page(data, io(ctx), undefined, layout));');
   });
 
   it('with `load` and no DI call, opens the request container for `load` alone', () => {
@@ -124,7 +124,7 @@ describe('the render wrapper', () => {
     expect(code).toContain('const $root = iocRoot();');
     expect(code).not.toContain('withDi');
     expect(code).not.toContain('publishedSeed');
-    expect(code).toContain('yield* page(data, io(ctx), undefined, layout);');
+    expect(code).toContain('yield* flushHead(page(data, io(ctx), undefined, layout));');
   });
 });
 

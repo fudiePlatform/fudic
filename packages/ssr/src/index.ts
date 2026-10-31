@@ -34,6 +34,6 @@ export {
   type IocNode,
 } from './ioc.js';
 export { publishedSeed, seedBlock, SEED_BLOCK } from './seed.js';
-export { renderToStream, htmlToByteStream, FLUSH, type HtmlPiece, type StreamOptions } from './stream.js';
+export { renderToStream, htmlToByteStream, flushHead, FLUSH, type HtmlPiece, type StreamOptions } from './stream.js';
 export { partSerializer, type PartSerializer } from './parts.js';
 export { PageParts, PART_END, type PagePartsOptions, type Settled } from './page-parts.js';

@@ -75,6 +75,11 @@ export interface RenderChunkOptions {
    */
   readonly runtime?: RuntimeEntries;
   /**
+   * The bytes the page stream holds before it sends (SDD-70 §3.9): the route's `buffer`. Absent,
+   * `htmlToByteStream` keeps its own default, `STREAM_BUFFER`.
+   */
+  readonly buffer?: number;
+  /**
    * The locales of a page compiled for one of two or more (SDD-58 §4.7): its head carries its
    * own `<link rel="canonical">`, a `<link rel="alternate" hreflang>` per locale and `x-default`
    * on the URL without a prefix. Each one is the URL of THIS request with the prefix changed —
@@ -129,6 +134,8 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
     'SsrDom',
     'serializeChunks',
     'htmlToByteStream',
+    // The head leaves on its own, with or without `@await` (SDD-70 §3.9).
+    'flushHead',
     'escapeText',
     // The shell's opening tag is composed as a string, before there is a DOM to build it in,
     // and since SDD-40 §4.4 its attributes are interpolated rather than sliced out of the
@@ -253,8 +260,8 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
     lines.push('    return [data, layout];');
     lines.push('    })().finally(() => markPrivate($ctx.response));');
   }
-  lines.push(`    yield* page(data, io(ctx), ${hasDi ? '$root' : 'undefined'}, layout);`);
-  lines.push('  })());');
+  lines.push(`    yield* flushHead(page(data, io(ctx), ${hasDi ? '$root' : 'undefined'}, layout));`);
+  lines.push(options.buffer === undefined ? '  })());' : `  })(), { highWaterMark: ${options.buffer} });`);
   lines.push('}');
   lines.push('');
   return lines.join('\n');

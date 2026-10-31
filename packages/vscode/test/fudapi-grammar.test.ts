@@ -173,4 +173,11 @@ describe('the .fudapi grammar — scopes', () => {
     const t = await api('type later\n  later  str\n  x  str  later more\n  y  str  laterx');
     expect(t.filter((x) => x.scopes.includes('storage.modifier.later.fudapi'))).toEqual([]);
   });
+
+  it('SDD-70: paints `buffer` and its size on the `load` line', async () => {
+    const t = await api('load ssr buffer 16k\nload sw buffer 0');
+    expect(scopeAt(t, 0, 'buffer')).toBe('constant.language.strategy.fudapi');
+    expect(scopeAt(t, 0, '16k')).toBe('constant.numeric.buffer.fudapi');
+    expect(scopeAt(t, 1, '0')).toBe('constant.numeric.buffer.fudapi');
+  });
 });

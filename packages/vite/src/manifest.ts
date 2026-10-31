@@ -136,11 +136,13 @@ export function buildManifest(
     // the link pass uses, so the manifest can never promise a chunk that was not built.
     // Without a Service Worker nothing links at all.
     const deps = !inputs.serviceWorker || !isLinkable(decision) ? null : inputs.depsOf(rb);
+    // What a backend needs to stream the page as the Node render does (SDD-70 §3.9).
+    const stream = rb.analysis.buffer === undefined ? {} : { buffer: rb.analysis.buffer };
     if (deps === null) {
       // No `deps` key at all: its ABSENCE is what tells the router this route is the
       // server's, whatever its mode says (SDD-27 §5.4). An empty list would mean the
       // opposite — renderable, with no components.
-      records.push({ pattern: rb.route.pattern, mode });
+      records.push({ pattern: rb.route.pattern, mode, ...stream });
       continue;
     }
 
@@ -157,6 +159,7 @@ export function buildManifest(
       // enough for the route to have an endpoint.
       ...(rb.analysis.hasLoad || rb.analysis.hasLayout ? { dataPolicy } : {}),
       ...(page === undefined ? {} : { page }),
+      ...stream,
     });
   }
 

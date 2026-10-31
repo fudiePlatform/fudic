@@ -5,15 +5,17 @@
  * backpressure. `renderToStream` is that seam applied to the shared tree walk.
  */
 
+import { STREAM_BUFFER } from '@fudic/conventions';
 import { type SsrNode } from './tree.js';
 import { serializeChunks } from './serialize.js';
 
 export interface StreamOptions {
-  /** Min bytes buffered before an enqueue, to coalesce tiny pieces. Default 8192. */
+  /**
+   * Min bytes buffered before an enqueue, to coalesce tiny pieces. Default `STREAM_BUFFER`
+   * (8192); `0` sends every piece as it comes (SDD-70 §3.9).
+   */
   highWaterMark?: number;
 }
-
-const DEFAULT_HIGH_WATER_MARK = 8192;
 
 /**
  * Yielded by a render: send everything buffered now, whatever its size (SDD-70 §3.6).
@@ -26,6 +28,26 @@ export const FLUSH: unique symbol = Symbol.for('fudic.ssr.flush') as typeof FLUS
 
 /** What a render yields: HTML text, or `FLUSH`. */
 export type HtmlPiece = string | typeof FLUSH;
+
+/**
+ * A render whose first piece leaves on its own (SDD-70 §3.9): `FLUSH` right after it.
+ *
+ * A page yields its whole `<head>` as its first piece, with a layout or without one, so this is
+ * «empty the buffer at `</head>`» without the emit writing a line: the browser starts on the
+ * stylesheets and the runtime while the body is still being built.
+ */
+export async function* flushHead(
+  source: Iterable<HtmlPiece> | AsyncIterable<HtmlPiece>,
+): AsyncGenerator<HtmlPiece, void, undefined> {
+  let first = true;
+  for await (const piece of source) {
+    yield piece;
+    if (first) {
+      first = false;
+      yield FLUSH;
+    }
+  }
+}
 
 /**
  * Turn a (sync OR async) sequence of HTML text pieces into a UTF-8 byte stream.
@@ -41,7 +63,7 @@ export function htmlToByteStream(
   source: Iterable<HtmlPiece> | AsyncIterable<HtmlPiece>,
   options?: StreamOptions,
 ): ReadableStream<Uint8Array> {
-  const minBytes = options?.highWaterMark ?? DEFAULT_HIGH_WATER_MARK;
+  const minBytes = options?.highWaterMark ?? STREAM_BUFFER;
   const iterator =
     Symbol.asyncIterator in source
       ? source[Symbol.asyncIterator]()

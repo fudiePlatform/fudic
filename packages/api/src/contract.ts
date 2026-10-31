@@ -4,7 +4,7 @@
  * by what its context takes (SDD §3.2–§3.5, §3.9).
  */
 
-import { FUD1063, FUD1067, FUD1068, FUD1072, FUD1073, FUD1074, FUD1076, span } from '@fudic/diagnostics';
+import { FUD1063, FUD1067, FUD1068, FUD1072, FUD1073, FUD1074, FUD1076, FUD1325, span } from '@fudic/diagnostics';
 import type {
   ArgDecl,
   ChainDecl,
@@ -19,6 +19,7 @@ import type {
   LoadDecl,
   MessageEntry,
   MessagesDecl,
+  BufferOption,
   Name,
   PageOption,
   PathsDecl,
@@ -198,16 +199,20 @@ const ARG_LINES = ['<rule>'];
 const MODES = ['ssg', 'ssr', 'sw'];
 const POLICIES = ['cache-first', 'network-first', 'stale-while-revalidate', 'network-only'];
 const PAGE = ['never', 'persist'];
-const LOAD_OPTIONS = [...MODES, 'ttl', ...POLICIES, 'page'];
+const LOAD_OPTIONS = [...MODES, 'ttl', ...POLICIES, 'page', 'buffer'];
 
-/** `load [mode] [ttl <dur>] [<policy>] [page <never|persist> [<dur>]]`, `use`, `skip`, `fails`, fields. */
+/** `0`, `4096`, `16k`: a whole number of bytes, `k` for 1024 (SDD-70 §3.9). */
+const BUFFER = /^(0|[1-9][0-9]*)(k)?$/u;
+
+/** `load [mode] [ttl <dur>] [<policy>] [page <never|persist> [<dur>]] [buffer <bytes>]`, `use`, `skip`, `fails`, fields. */
 export function loadDecl(node: LineNode, c: Ctx): LoadDecl {
   const [keyword] = node.tokens as [Token];
   let mode: Name | undefined;
   let ttl: Duration | undefined;
   let policy: Name | undefined;
   let page: PageOption | undefined;
-  const bad = (t: Token | undefined, at: Token, expected: readonly string[]): void => {
+  let buffer: BufferOption | undefined;
+  const bad =(t: Token | undefined, at: Token, expected: readonly string[]): void => {
     c.out.push(FUD1074({ span: (t ?? at).span, text: t?.raw ?? '', expected }));
   };
 
@@ -243,6 +248,20 @@ export function loadDecl(node: LineNode, c: Ctx): LoadDecl {
           span: span(t.span.start, (d ?? value).span.end),
         };
       }
+    } else if (t.raw === 'buffer') {
+      // A value that is not a size is still consumed: it is `buffer`'s, not a stray option.
+      const value = tokens[i + 1];
+      if (value !== undefined) i++;
+      const m = value === undefined ? null : BUFFER.exec(value.raw);
+      if (m === null) {
+        c.out.push(FUD1325({ span: (value ?? t).span }));
+      } else if (!repeated(buffer, t, c)) {
+        buffer = {
+          keyword: t.span,
+          bytes: Number(m[1]) * (m[2] === undefined ? 1 : 1024),
+          span: span(t.span.start, value!.span.end),
+        };
+      }
     } else {
       bad(t, t, LOAD_OPTIONS);
     }
@@ -276,6 +295,7 @@ export function loadDecl(node: LineNode, c: Ctx): LoadDecl {
     ...(ttl !== undefined ? { ttl } : {}),
     ...(policy !== undefined ? { policy } : {}),
     ...(page !== undefined ? { page } : {}),
+    ...(buffer !== undefined ? { buffer } : {}),
     uses,
     skips,
     fails,

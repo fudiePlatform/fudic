@@ -29,9 +29,9 @@ describe('completion (criterion 28)', () => {
       expect(labels('type A\n  x  str\nge|')).toEqual(DECLARATION_KEYWORDS);
     });
 
-    it('after `load`: modes, `ttl`, policies and `page`; after `page`, its values', () => {
+    it('after `load`: modes, `ttl`, policies, `page` and `buffer`; after `page`, its values', () => {
       expect(labels('load |')).toEqual([
-        'ssg', 'ssr', 'sw', 'ttl', 'cache-first', 'network-first', 'stale-while-revalidate', 'network-only', 'page',
+        'ssg', 'ssr', 'sw', 'ttl', 'cache-first', 'network-first', 'stale-while-revalidate', 'network-only', 'page', 'buffer',
       ]);
       expect(labels('load ssr page |')).toEqual(['never', 'persist']);
     });

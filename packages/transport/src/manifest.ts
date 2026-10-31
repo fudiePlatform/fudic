@@ -90,6 +90,18 @@ export interface RouteRecord {
   /** Present exactly when the route declares `@server load`, and thus has a data endpoint. */
   readonly dataPolicy?: DataPolicy;
   readonly page?: PagePolicy;
+  /**
+   * The bytes the page stream holds before it sends, when the route's `load` line says
+   * `buffer` (SDD-70 §3.9). Absent: `STREAM_BUFFER`. For a backend that renders the route
+   * itself; the Node render has it compiled in.
+   */
+  readonly buffer?: number;
+  /**
+   * The `Link` values to send before the page (SDD-70 §3.10): as a `103 Early Hints` while
+   * `load` runs, and on the final response. Ready to use, in order; absent when there are none
+   * or the app turned them off (`earlyHints: false`).
+   */
+  readonly hints?: readonly string[];
 }
 
 export interface CspTemplates {

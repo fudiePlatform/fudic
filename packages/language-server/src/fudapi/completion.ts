@@ -100,7 +100,7 @@ export function apiCompletions(doc: ApiDocument, offset: number): CompletionList
   if (indent === 0) {
     if (typing === 0) return list(keywords(DECLARATION_KEYWORDS));
     if (words[0] !== 'load') return undefined;
-    return list(keywords(words[typing - 1] === 'page' ? ['never', 'persist'] : [...MODES, 'ttl', ...POLICIES, 'page']));
+    return list(keywords(words[typing - 1] === 'page' ? ['never', 'persist'] : [...MODES, 'ttl', ...POLICIES, 'page', 'buffer']));
   }
   if (typing === 0) return list(firstWord(doc, offset, chain, context));
   return argument(doc, offset, words, typing, chain, context);
