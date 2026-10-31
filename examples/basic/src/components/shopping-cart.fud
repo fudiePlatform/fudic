@@ -2,8 +2,7 @@
   // El suscriptor. Escucha en `document`, que es el ancestro común de la página: un
   // `@carrito` de host no recibiría nada. Tiene que estar VIVO antes de que el handler del
   // emisor corra, y eso es exactamente lo que la pre-hidratación de bus garantiza.
-  import { signal } from "@fudic/core";
-  import { currency } from "@fudic/i18n";
+  import { signal, currency } from "@fudic/core";
 
   const items = signal(0);
   const total = signal(0);

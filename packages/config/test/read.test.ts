@@ -4,6 +4,7 @@ import {
   readProjectConfig,
   type ConfigIo,
 } from '../src/index.js';
+import { DEFAULT_LOCALE, PIPES_DIR } from '@fudic/conventions';
 
 const ROOT = '/p';
 const PATH = `${ROOT}/${CONFIG_FILE}`;
@@ -26,7 +27,7 @@ describe('readProjectConfig', () => {
   it('reads the three fields and says nothing else (criterion 1)', () => {
     const result = readProjectConfig(ROOT, io('{"id":"shop","kind":"app","prefix":"shop"}'));
 
-    expect(result.config).toEqual({ id: 'shop', kind: 'app', prefix: 'shop', globalStyles: [], styles: [], server: 'src/server', browser: 'src/browser', earlyHints: true, css: 'inline' });
+    expect(result.config).toEqual({ id: 'shop', kind: 'app', prefix: 'shop', globalStyles: [], styles: [], locales: ['en'], server: 'src/server', browser: 'src/browser', pipes: 'src/pipes', earlyHints: true, css: 'inline' });
     expect(result.diagnostics).toEqual([]);
   });
 
@@ -45,7 +46,7 @@ describe('readProjectConfig', () => {
   it('fills the defaults of the fields that are not there (criterion 4)', () => {
     const result = readProjectConfig(ROOT, io('{}'));
 
-    expect(result.config).toEqual({ id: '', kind: 'app', prefix: '', globalStyles: [], styles: [], server: 'src/server', browser: 'src/browser', earlyHints: true, css: 'inline' });
+    expect(result.config).toEqual({ id: '', kind: 'app', prefix: '', globalStyles: [], styles: [], locales: ['en'], server: 'src/server', browser: 'src/browser', pipes: 'src/pipes', earlyHints: true, css: 'inline' });
     expect(result.diagnostics).toEqual([]);
   });
 
@@ -143,11 +144,20 @@ describe('readProjectConfig', () => {
     });
   });
 
-  describe('locales (SDD-58 criterion 1)', () => {
-    it('is absent when the file does not declare it', () => {
+  describe('locales (SDD-58 criterion 1, SDD-71 criterion 1)', () => {
+    it('an app that declares none is DEFAULT_LOCALE', () => {
       const result = readProjectConfig(ROOT, io('{"id":"shop"}'));
 
-      expect(result.config).not.toHaveProperty('locales');
+      expect(result.config?.locales).toEqual([DEFAULT_LOCALE]);
+      expect(result.config?.locales).toEqual(['en']);
+      expect(result.diagnostics).toEqual([]);
+    });
+
+    it('a library that declares none reads the default too, and says nothing', () => {
+      const result = readProjectConfig(ROOT, io('{"id":"ui","kind":"lib"}'));
+
+      expect(result.config?.locales).toEqual(['en']);
+      expect(result.diagnostics).toEqual([]);
     });
 
     it('reads ["es", "en"] in written order', () => {
@@ -162,6 +172,7 @@ describe('readProjectConfig', () => {
         locales: ['es', 'en'],
         server: 'src/server',
         browser: 'src/browser',
+        pipes: 'src/pipes',
         earlyHints: true,
         css: 'inline',
       });
@@ -290,6 +301,24 @@ describe('readProjectConfig', () => {
       expect(d.message).toContain(`"${field}" must be a folder inside the project`);
       expect(d.message).toContain(reason);
       expect(text.slice(d.span!.start, d.span!.end)).toBe(`"${field}"`);
+    });
+
+    it('pipes is PIPES_DIR when the file declares none, in an app and in a library (SDD-71 §3.1)', () => {
+      expect(readProjectConfig(ROOT, io('{"id":"shop"}')).config?.pipes).toBe(PIPES_DIR);
+      expect(readProjectConfig(ROOT, io('{"id":"ui","kind":"lib"}')).config?.pipes).toBe('src/pipes');
+    });
+
+    it('pipes is read like server and browser', () => {
+      expect(readProjectConfig(ROOT, io('{"pipes":"./src/format/"}')).config?.pipes).toBe('src/format');
+
+      const text = '{"id":"shop","pipes":"../shared"}';
+      const result = readProjectConfig(ROOT, io(text));
+      expect(result.config).toBeNull();
+      const d = result.diagnostics[0]!;
+      expect(d.code).toBe('FUD0725');
+      expect(d.message).toContain('"pipes" must be a folder inside the project');
+      expect(d.message).toContain('it leaves the project');
+      expect(text.slice(d.span!.start, d.span!.end)).toBe('"pipes"');
     });
 
     it('a library\'s api is checked like the others', () => {

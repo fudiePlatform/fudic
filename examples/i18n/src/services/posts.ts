@@ -1,4 +1,5 @@
-import { locale, t } from '@fudic/i18n';
+import { locale } from '@fudic/core';
+import { t } from '@fudic/i18n';
 
 /** A post. Its title is content, not interface: it comes per locale from the data. */
 export interface Post {

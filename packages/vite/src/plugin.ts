@@ -84,6 +84,8 @@ import {
   pageModuleOf,
   prefixPattern,
   resolveForLocale,
+  compilesPerLocale,
+  soleLocale,
   localeRedirect,
   redirectHtml,
   unprefixedPages,
@@ -311,9 +313,14 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   /** The route table, one route per locale when there are locales (§4.5). */
   const discover = (): ReturnType<typeof discoverRoutes> =>
     discoverRoutes(root, options, locales, (fud) => (href) => api.page(resolvePath(dirname(fud), href)));
-  /** The io a module compiled for `locale` reads `.fud` through; the plain one for none. */
-  const ioFor = (locale: string | undefined): ResolveIo =>
-    locale === undefined || localeIos === undefined ? io : localeIos.for(io, locale);
+  /**
+   * The io a module compiled for `locale` reads `.fud` through. An untagged module is the one
+   * locale's in an app with one (SDD-71), and plain in an app with two or more.
+   */
+  const ioFor = (locale: string | undefined): ResolveIo => {
+    const target = locale ?? soleLocale(locales);
+    return target === undefined || localeIos === undefined ? io : localeIos.for(io, target);
+  };
   /**
    * Dev's coordinator for a locale whose chunks have a directory: `fudic-main.en.js`, serving
    * `fudic-main?locale=en`, which resolves chunks under `en/` (§4.6). Every other page keeps
@@ -379,8 +386,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     res.end();
   };
   /** How a module is compiled for `locale`, for the emit's own use (`lang`, alternates). */
-  const compileFor = (locale: string | undefined): LocaleCompile | undefined =>
-    locale === undefined ? undefined : catalogs?.compileFor(locale);
+  const compileFor = (locale: string | undefined): LocaleCompile | undefined => {
+    const target = locale ?? soleLocale(locales);
+    return target === undefined ? undefined : catalogs?.compileFor(target);
+  };
   /**
    * The project's stylesheets, already read (SDD-42), and those of the libraries it consumes
    * (SDD-43 §4.6). Every emit path of the build is handed this same reader; a project with no
@@ -698,8 +707,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     // resolver for both, because the browser derives both URLs the same way.
     // `en/app-card`: a locale's chunks live under its own directory (SDD-58 §4.6).
     const slash = tag.indexOf('/');
-    // One locale has no directory, and its modules are still compiled for it.
-    const locale = slash === -1 ? (locales.length === 1 ? locales[0] : undefined) : tag.slice(0, slash);
+    // One locale has no directory and no tag: an untagged module is compiled for it (SDD-71).
+    const locale = slash === -1 ? undefined : tag.slice(0, slash);
     const named = slash === -1 ? tag : tag.slice(slash + 1);
     const localized = (id: string): string => (locale === undefined ? id : withLocale(id, locale));
     const isIoc = named.endsWith(IOC_SUFFIX);
@@ -997,7 +1006,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         // no function to answer.
         // In an app with languages, the first locale's root: the one its pages load, so the
         // functions and the pages read and write the same modules (as the edge pass does).
-        const rootId = withLocale(SERVER_ROOT_ID, locales[0]!);
+        const rootId = locales.length < 2 ? SERVER_ROOT_ID : withLocale(SERVER_ROOT_ID, locales[0]!);
         const answered = hasApi()
           ? (server.ssrLoadModule(rootId) as Promise<Record<string, unknown>>).then((mod) =>
               (mod['handler'] as ContractsHandler)({ base, dev: true, onError })(request),
@@ -1882,9 +1891,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       if (catalog !== undefined && existsSync(catalog)) this.addWatchFile(catalog);
       if (!path.endsWith('.fud')) {
         const script = /\.[cm]?[jt]sx?$/u.test(path);
-        // A module of the app compiled for a locale: `t`, `format` and `locale` replaced.
+        // A module of the app compiled for a locale: `t`, `format` and `locale` replaced. Untagged,
+        // it is the one locale's when the app has one, if it is a module of the project.
+        const forLocale =
+          locale !== undefined || (soleLocale(locales) !== undefined && compilesPerLocale(path, root, implementationDirs()));
         const translated =
-          locale !== undefined && script ? translateScript(code, path, compileFor(locale)!).value : undefined;
+          forLocale && script ? translateScript(code, path, compileFor(locale)!).value : undefined;
         return translated === undefined ? null : { code: translated.code, map: JSON.stringify(translated.map) };
       }
       const fudIo = ioFor(locale);

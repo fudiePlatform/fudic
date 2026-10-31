@@ -2,8 +2,7 @@
   // SDD-61 en el cliente: las tareas llegan del servidor, el usuario las marca y los contadores
   // cambian solos. El servidor evalúa los dos `computed` una vez y pinta; el cliente los
   // recalcula. Todo sin diagnóstico.
-  import { computed, now, signal } from "@fudic/core";
-  import { date } from "@fudic/i18n";
+  import { computed, now, signal, date } from "@fudic/core";
   import type { Tarea } from "fudic:routes/vista";
 
   const { inicial = [] } = props<{ inicial?: readonly Tarea[] }>();
