@@ -6,7 +6,7 @@
 > `@fudic/diagnostics` · `examples/basic` · `examples/workspace`
 > **Rama:** `sdd-71-pipes-del-usuario`. Nace de `main` **con SDD-61 en `Hecho`**: enmienda su
 > §3.9 y su anexo, y migra el reloj que ella escribió.
-> **Progreso:** 23 / 26 — `En curso`.
+> **Progreso:** 24 / 26 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -81,7 +81,7 @@ código, no el test.
 | [x] | 19 | 18 | **El `lang` de layout y página.** El primer idioma del proyecto, o `DEFAULT_LOCALE`, en `new`, `g layout` y `g page` | `cli` | `src/templates.ts` · `src/plans/layout.ts` · `src/plans/page.ts` |
 | [x] | 20 | 10 | **`fudic g pipe <nombre>`** con `--on` y `--project`: el `.fudapi`, la implementación y el test de §4.1, en app y en librería; ayuda | `cli` | `src/plans/pipe.ts` · `templates/pipe/*` · `src/args.ts` · `src/help/commands.ts` |
 | [x] | 21 | 20 | **La librería publica sus pipes.** `"./pipes/*": "./src/pipes/*.ts"` en `exports` | `cli` | `templates/lib/package.json.tmpl` |
-| [ ] | 22 | 18–21 | **Los tests de la fase.** Criterios 3, 4 y 14, con un proyecto recién creado que pasa `pnpm test` y `pnpm typecheck` sin tocarlo; `g pipe` en `pnpm verify:generated` si SDD-66 está `Hecho` | `cli` | `test/**` |
+| [x] | 22 | 18–21 | **Los tests de la fase.** Criterios 3, 4 y 14, con un proyecto recién creado que pasa `pnpm test` y `pnpm typecheck` sin tocarlo; `g pipe` en `pnpm verify:generated` si SDD-66 está `Hecho` | `cli` | `test/**` |
 
 ## Fase 5 — migración y cierre (2)
 
@@ -97,8 +97,31 @@ La sesión que implementó se cierra antes del cierre; lo hace otra sesión. Est
 - **Hecho y en origin:** fases 1–4 enteras y la tarea 23. De la 24 ya están el anexo de SDD-61
   (§A.2, §A.4), la enmienda de SDD-61 §3.9, la decisión 172 ampliada, los README de `@fudic/core`,
   `@fudic/i18n` y `@fudic/api`. `pnpm typecheck` y `pnpm build` en verde, sin un aviso.
-- **Pendiente de la sesión de test:** la tarea 22 (criterios 3, 4 y 14) y su informe final de
-  cobertura por paquete. Los arreglos de los defectos C–F ya están (último `d394e8ca`).
+- **Tarea 22 hecha** (sesión de test, `0a1ece21`, `628022c0`, `035f66fa`): `--locale`, el `lang`
+  de layout y páginas, el plan de `g pipe` rama a rama y, de verdad sobre disco, `g pipe` en una app
+  y en una librería recién creadas con su `vitest run` y `tsc` verdes (`cli/test/pipe-green.test.ts`).
+  `pnpm verify:generated` no existe aún: SDD-66 no está `Hecho`.
+- **Informe final de cobertura** (sesión de test, `8ece7f44`; `vitest run --coverage` por paquete,
+  sentencias / ramas / funciones / líneas):
+
+  | Paquete | Tests | Cobertura | Nota |
+  |---|---|---|---|
+  | `conventions` | 18 | 100 / 100 / 100 / 100 | |
+  | `config` | 79 | 100 / 100 / 100 / 100 | |
+  | `diagnostics` | 998 | 100 / 100 / 100 / 100 | |
+  | `core` | 318 | 100 / 100 / 100 / 100 | |
+  | `i18n` | 159 | 100 / 100 / 100 / 100 | |
+  | `api` | 594 | 100 / 100 / 100 / 100 | |
+  | `typecheck` | 460 | 100 / 100 / 100 / 100 | |
+  | `language-core` | 362 | 100 / 100 / 100 / 100 | |
+  | `language-server` | 1628 | 100 / 100 / 100 / 100 | 60 s de timeout por el arranque en frío del servicio TS |
+  | `testing` | 237 | 100 / 100 / 100 / 100 | nuevo proyecto `test/locales-app` (es, en) |
+  | `compiler` | 3861 | 99,63 / 99,19 / 99,76 / 99,88 | deuda heredada (suelo 95,6 en ramas); lo nuevo, al 100 |
+  | `vite` | 1259 | 98,82 / 95,95 / 99,60 / 99,05 | deuda heredada (suelo 83,1 en ramas) |
+  | `cli` | 584 | 98,83 / 98,28 / 98,48 / 99,10 | deuda heredada (suelo 80/80/75); `plans/pipe.ts` al 100 |
+
+  Ejemplos: `example-basic` 28, `example-ui` 4, `example-tienda` 5, `example-admin` 4, todos verdes.
+  Las e2e de Playwright (`examples/basic`, `examples/workspace`) no se han corrido en esta sesión.
 - **Pendiente de Pedro:**
   1. **Tarea 14b, el pipe con espacios.** Hecho y probado: `@x|pipe` pegado. Propuesta abierta:
      con espacios, `@precio | euros` es pipe solo si `euros` lo declara el `@code` del fichero; si
