@@ -292,9 +292,12 @@ describe('criterion 13: what it reports', () => {
     expect(plan.diagnostics.filter((d) => d.file !== 'src/components/app-card.fud').map((d) => d.diagnostic.code)).toEqual(['FUD1022']);
   });
 
-  it('an app without locales is FUD1026, and with no project at all FUD0781', async () => {
+  it('an app in a single language — no locales, or one — is FUD1026, and with no project at all FUD0781', async () => {
     const plan = await planTranslate(OPTS, project({}, JSON.stringify({ id: 'demo', kind: 'app' })));
     expect(plan.errors.map((e) => e.code)).toEqual(['FUD1026']);
+    const one = await planTranslate(OPTS, project({}, JSON.stringify({ id: 'demo', kind: 'app', locales: ['es'] })));
+    expect(one.errors.map((e) => e.code)).toEqual(['FUD1026']);
+    expect(one.changes).toEqual([]);
     expect((await planTranslate(OPTS, new MemoryFs({}, CWD))).errors.map((e) => e.code)).toEqual(['FUD0781']);
   });
 
