@@ -2034,7 +2034,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               runtimeEntriesFor,
               reporter,
               localeContext(),
-              hasApi() ? browserApi : undefined,
+              // Any generated module, a library's pipe included (SDD-71 §4.5): not only when the
+              // app declares a `.fudapi` of its own.
+              api.sources.length > 0 ? browserApi : undefined,
             );
       // A nested build's output is emitted as an ASSET, so nothing writes its `.map` or
       // appends its `sourceMappingURL` unless we do (BUG-05 §4.3).
@@ -2068,7 +2070,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           ...(errorPages.length > 0 ? { errorPages } : {}),
           ...(locale !== undefined ? { locale } : {}),
           ...(table.length > 0 ? { functions: emitFunctionsModule({ api: SERVER_ROOT_ID, base, table }) } : {}),
-          ...(contracts ? { api: serverApi, root: SERVER_ROOT_ID } : {}),
+          // The generated modules whenever there are any — a library's pipe needs no root — and
+          // the root only when the app declares a `.fudapi` of its own (SDD-71 §4.5).
+          ...(api.sources.length > 0 ? { api: serverApi } : {}),
+          ...(contracts ? { root: SERVER_ROOT_ID } : {}),
         };
       };
       const [link, edge] = await Promise.all([

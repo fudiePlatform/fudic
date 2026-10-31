@@ -12,7 +12,8 @@
   "exports": {
     "./fudic.json": "./fudic.json",
     "./*.fud": "./src/components/*/*.fud",
-    "./ui.css": "./ui.css"
+    "./ui.css": "./ui.css",
+    "./pipes/*": "./src/pipes/*.ts"
   },
   "dependencies": {
     "@fudic/example-guia": "workspace:*"

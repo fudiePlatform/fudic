@@ -35,7 +35,7 @@ import {
 } from '@fudic/api';
 import type { PageApi } from './analyze.js';
 import type { LinkedApi } from '@fudic/compiler';
-import { API_DIR, API_TYPES_DIR, ERROR_FILE, FN_PREFIX, ROUTES_DIR, SRC_DIR } from '@fudic/conventions';
+import { API_DIR, API_TYPES_DIR, ERROR_FILE, FN_PREFIX, PIPES_DIR, ROUTES_DIR, SRC_DIR } from '@fudic/conventions';
 import type { SourceDiagnostic } from '@fudic/diagnostics';
 
 /** The scheme of a generated module: `fudic:routes/usuarios`. */
@@ -211,15 +211,21 @@ export class ApiProject {
 
   #read(): State {
     if (this.#state !== undefined) return this.#state;
-    const found: { id: string; path: string; origin: ApiSource['origin'] }[] = walk(`${this.#root}/${SRC_DIR}`).map((path) => ({
-      id: path.slice(this.#root.length + SRC_DIR.length + 2, -API_EXTENSION.length),
-      path,
-      origin: 'app',
-    }));
+    // A library's own pipes carry its package name in their `<id>`, as its app sees them.
+    const own = ownPipes(this.#root);
+    const found: { id: string; path: string; origin: ApiSource['origin'] }[] = walk(`${this.#root}/${SRC_DIR}`).map((path) => {
+      const id = path.slice(this.#root.length + SRC_DIR.length + 2, -API_EXTENSION.length);
+      return { id: own !== undefined && path.startsWith(own.folder) ? `${own.name}/${id}` : id, path, origin: 'app' };
+    });
     const libraries: ApiLibrary[] = [];
     for (const name of dependencies(this.#root)) {
       const dir = `${this.#root}/node_modules/${name}`;
       const folders = libraryFolders(dir);
+      // A library's pipes (SDD-71 §4.5): what a view of the app imports by the package.
+      for (const path of walk(`${dir}/${folders.pipes}`)) {
+        const id = path.slice(dir.length + 1, -API_EXTENSION.length).replace(new RegExp(`^${SRC_DIR}/`, 'u'), '');
+        found.push({ id: `${name}/${id}`, path, origin: { package: name } });
+      }
       const api = `${dir}/${folders.api}`;
       if (!existsSync(api)) continue;
       libraries.push({ name, dir, server: folders.server, browser: folders.browser });
@@ -262,15 +268,43 @@ function dependencies(root: string): readonly string[] {
  * *Decided while implementing:* the defaults of a library are its root folders, not the
  * `src/server` of an app, because what it publishes is compiled.
  */
-function libraryFolders(dir: string): { readonly api: string; readonly server: string; readonly browser: string } {
-  let config: Record<string, unknown> = {};
-  try {
-    config = JSON.parse(readFileSync(`${dir}/fudic.json`, 'utf8')) as Record<string, unknown>;
-  } catch {
-    // without a readable `fudic.json`, the defaults
-  }
+function libraryFolders(dir: string): {
+  readonly api: string;
+  readonly server: string;
+  readonly browser: string;
+  readonly pipes: string;
+} {
+  const config = configOf(dir);
   const text = (key: string, fallback: string): string => (typeof config[key] === 'string' ? (config[key] as string) : fallback);
-  return { api: text('api', API_DIR), server: text('server', 'server'), browser: text('browser', 'browser') };
+  return { api: text('api', API_DIR), server: text('server', 'server'), browser: text('browser', 'browser'), pipes: text('pipes', PIPES_DIR) };
+}
+
+/** A project's `fudic.json` as written, `{}` when it has none or it does not parse. */
+function configOf(dir: string): Record<string, unknown> {
+  try {
+    return JSON.parse(readFileSync(`${dir}/fudic.json`, 'utf8')) as Record<string, unknown>;
+  } catch {
+    return {}; // without a readable `fudic.json`, the defaults
+  }
+}
+
+/**
+ * In a library, its folder of pipes and its package name (SDD-71 §4.5): its pipes are
+ * `fudic:<package>/pipes/<name>` in its own project too, so the implementation it publishes
+ * imports the same `<id>` its apps know it by. `undefined` in an app.
+ */
+function ownPipes(root: string): { readonly folder: string; readonly name: string } | undefined {
+  const config = configOf(root);
+  if (config['kind'] !== 'lib') return undefined;
+  let name: unknown;
+  try {
+    name = (JSON.parse(readFileSync(`${root}/package.json`, 'utf8')) as { name?: unknown }).name;
+  } catch {
+    return undefined; // a library with no readable `package.json` has no name to publish under
+  }
+  if (typeof name !== 'string') return undefined;
+  const pipes = typeof config['pipes'] === 'string' ? config['pipes'] : PIPES_DIR;
+  return { folder: `${root}/${pipes}/`, name };
 }
 
 /** Every `.fudapi` under a folder, `node_modules` and dot folders left out. */

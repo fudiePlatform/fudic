@@ -531,3 +531,13 @@ Filas nuevas de A.2 («El `@code` que el servidor evalúa» y «Lo que se pinta�
 11. **El hover de traducciones sale en toda app.** Una app sin `"locales"` se comporta como con
     `["en"]` (§1.1, 1), y con `["en"]` escrito el editor ya daba ese hover: callar solo cuando no
     está escrito serían dos comportamientos para la misma app.
+12. **El pipe de una librería es `fudic:<paquete>/pipes/<nombre>`, también dentro de ella.** Su
+    `.ts` lo cargan la propia librería (sus tests) y cada app que la usa, así que tiene que
+    importar un `<id>` que valga en los dos sitios. Es como ya lo hacen los contratos de una
+    librería (`fudic:@fudic/forms/rules`). Una app lee la carpeta de pipes de cada dependencia
+    además de su `fudapi/`, y `fudic g pipe` en una librería escribe ese import.
+13. **Los módulos generados se sirven aunque la app no declare un `.fudapi` propio.** Un pipe de
+    una librería no necesita raíz: el `edge` y el SW sirven `fudic:<id>` si existe alguno, y solo
+    la raíz pide que la app tenga los suyos.
+14. **`FUD0721` de `examples/basic` se arregla aquí** (como el 6 y el 9): `app-card` declaraba
+    `<app-badge>` sin usarlo en su vista; lo ponen en su ranura las páginas, que ya lo declaran.

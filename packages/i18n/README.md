@@ -1,6 +1,6 @@
 # @fudic/i18n
 
-Translations and formats for fudic. The text a page paints is translated at build time: every
+Translations for fudic. The text a page paints is translated at build time: every
 module is compiled once per locale with its text already inside, so a page without JavaScript
 stays without JavaScript, and the browser downloads only its own language.
 
@@ -58,16 +58,5 @@ Messages use a subset of ICU: `{name}`, `{n, plural, one {…} other {…}}` (wi
 
 ## Format with pipes
 
-```html
-@code {
-  import { currency, date } from '@fudic/i18n';
-  const euros = currency('EUR');
-  const long = date({ dateStyle: 'long', timeZone: 'Europe/Madrid' });
-}
-<p>Total: @(price | euros), @(published | long)</p>
-```
-
-A pipe is a preset — `date`, `number`, `currency`, `percent`, `relativeTime`, `list` — over
-`Intl`, and it is plain data. The locale is never written: the compiler adds the page's. In
-code, `format(value, euros)` does the same, and `locale` reads the page's locale. `date`
-requires a `timeZone`, so the server and the browser write the same time.
+Pipes are not part of this package: formatting a value is not translating a page, and every app
+has a locale. The presets, `format` and `locale` are `@fudic/core`'s; see its README.

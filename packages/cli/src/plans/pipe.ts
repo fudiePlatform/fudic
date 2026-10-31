@@ -13,6 +13,7 @@ import { joinPosix } from '../paths.js';
 import { targetChange } from '../project.js';
 import { renderTemplate } from '../templates.js';
 import { addedLine, dependOnModule, installFor, projectName } from '../workspace/modules.js';
+import { packageName } from '../workspace/link.js';
 import { resolveTarget } from '../workspace/target.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
 import { EMPTY_PLAN, type CliError, type FileChange, type Plan, type PipeOptions } from '../types.js';
@@ -31,8 +32,10 @@ export function planPipe(name: string, opts: PipeOptions, io: ReadIo = nodeReadI
 
   const folder = target.config.pipes;
   const symbol = camel(name);
-  // The `<id>` of a `.fudapi` is its path inside `src/`, without the extension.
-  const id = joinPosix(folder, name).replace(/^src\//u, '');
+  // The `<id>` of a `.fudapi` is its path inside `src/`, without the extension; a library's pipe
+  // carries its package name, so its implementation imports what its apps know it by (§4.5).
+  const local = joinPosix(folder, name).replace(/^src\//u, '');
+  const id = target.config.kind === 'lib' ? `${packageName(target.path, io)}/${local}` : local;
   const text = opts.on === 'str';
   const files = [
     { file: `${name}${API_EXTENSION}`, contents: renderTemplate('pipe/pipe.fudapi.tmpl', { name, on: opts.on }), what: `the contract: what it formats, on ${opts.on}` },
