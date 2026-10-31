@@ -1,9 +1,9 @@
 # SDD-73 — Early Hints: el 103 en cualquier backend y el CSS de los componentes como fichero
 
 > **Estado:** `Listo` — [tareas](./SDD-73-Task.md).
-> **Paquetes:** `@fudic/compiler` · `@fudic/ssr` · `@fudic/core` · `@fudic/http` · `@fudic/vite` ·
+> **Paquetes:** `@fudic/compiler` · `@fudic/ssr` · `@fudic/core` · `@fudic/http` · `@fudic/config` · `@fudic/vite` ·
 > `@fudic/transport` · `examples/basic`
-> **Depende de:** 70 (las pistas por ruta en el manifiesto, `earlyHints` y `componentStyles` en el
+> **Depende de:** 70 (las pistas por ruta en el manifiesto, `earlyHints` y `componentStyles` (que aquí pasa a `css`) en el
 > `fudic.json`, y su [anexo](./SDD-70-anexo-early-hints.md) con el estudio de navegadores y
 > backends), 56 (`_error.fud` y las páginas de error), 49 (las copias podadas de las hojas), 45
 > (las piezas del runtime en `/_fudic/`), 20 (el manifiesto de rutas y el SW).
@@ -44,7 +44,8 @@ Nadie las manda todavía. Quedan cinco huecos:
    `_error.fud` pintado por el servidor; en una app de verdad esa página lleva su CSS.
 3. **Una hoja que no se poda no entra.** Un `<link rel="stylesheet" href="/public.css">` o uno de
    otro origen sale en el head, pero no en las pistas.
-4. **`componentStyles: "link"` se lee y no hace nada.**
+4. **`componentStyles: "link"` se lee y no hace nada**, y aunque lo hiciera se quedaría corto: el
+   `<style>` del head de una ruta o de su layout también viaja dentro de cada HTML.
 5. **La página de error no sabe de dónde venía el usuario.** `_error.fud` de `examples/basic`
    lleva `<a href="/usuarios">Volver a usuarios</a>`: vale hoy para un error en `/usuarios` y
    para ningún otro.
@@ -123,9 +124,26 @@ Entran en `hints` en su sitio del head, como `rel=preload; as=style`:
 | `./x.css?inline` | ninguna: va dentro de la página |
 | `./@(data.theme).css` | ninguna: no se sabe al compilar |
 
-### 3.5. `componentStyles: "link"`
+### 3.5. `css: "link"`: el CSS como fichero
 
-Lo que SDD-70 §3.10 ya describe, sin cambios:
+El campo `componentStyles` de SDD-70 pasa a llamarse **`css`** (`"inline"` por defecto, o
+`"link"`), porque ya no es solo de componentes; `componentStyles` deja de leerse (`FUD0725` con el
+nombre nuevo en el mensaje). Con `"link"`:
+
+**El head de la ruta y del layout.** Cada `<style>` del `<head>` de una ruta, de una página o de
+su layout, y cada hoja `?inline`, sale como `<link rel="stylesheet" href="<url>">` en el mismo
+sitio, con lo que queda tras la poda de esa página (SDD-49) y publicado con el hash de su
+contenido: dos páginas que se quedan con lo mismo comparten fichero. Entra en las pistas de la
+ruta, en su orden del head. Un `<style>` con `@` (se calcula al pintar) se queda dentro.
+
+```html
+<!-- inline (hoy) -->
+<style nonce="…">.fold{height:140vh;…}</style>
+<!-- link -->
+<link rel="stylesheet" href="/assets/hidratacion-Ef56.css">
+```
+
+**Los componentes.** Lo que SDD-70 §3.10 ya describía:
 
 - cada hoja (la de un componente o una del proyecto que se adopta) se publica como fichero con el
   hash de su contenido (`LinkedAssets.sheet`), y se sirve en desarrollo con los mismos bytes;
@@ -172,9 +190,24 @@ export interface ErrorPage {
 - **`path`** es la ruta de la petición que acabó en error (sin el origen ni la `base`). En el
   error de una llamada que trae al navegador a `/_fudic/error/:status`, es la página desde la que
   se hizo la llamada (§4.5).
-- **`back`**, en un error de navegación, sale de la cabecera `Referer` cuando es del **mismo origen**, como ruta
-  (`/usuarios?p=2`). Otro origen, ninguna cabecera, o el propio `path`: ausente. Nunca una URL de
-  otro sitio: un enlace «volver» no puede llevar fuera de la app.
+- **`back` sale siempre de la cabecera `Referer`, nunca de la URL.** El navegador la pone y otro
+  sitio no puede fabricar una del nuestro. Se valida resolviéndola y exigiendo el mismo origen,
+  no mirando el texto (`/\evil.com` empieza por `/` y el navegador lo lee como `//evil.com`):
+
+  ```ts
+  const u = new URL(referer);
+  back = u.origin === requestOrigin ? withoutBase(u.pathname) + u.search : undefined;
+  ```
+
+  Otro origen, ninguna cabecera o una que no se puede leer: ausente. Nunca un enlace fuera de la
+  app.
+- **La URL de la página de error lleva solo el status:** `/_fudic/error/401`. `detail` deja de
+  viajar en la query (hoy `?detail=…`): un enlace fabricado con un texto cualquiera mostraba ese
+  texto con el diseño de la app, que es phishing servido desde el propio dominio. `detail` solo
+  se pinta cuando el error nace en la misma petición que pinta la página (un `load` que lanza).
+- **`Referrer-Policy: strict-origin-when-cross-origin`** en las respuestas de página, explícita:
+  es la que manda el `Referer` completo dentro del origen y solo el origen fuera. Sin ella, una
+  política más estricta del servidor dejaría a `back` siempre vacío.
 - Sin JS, como todo el resto de la página. Cualquier backend lo rellena con la petición que tiene
   en la mano.
 
@@ -217,9 +250,10 @@ export interface ErrorPage {
 En el tercer caso, lo que se precargó de `/usuarios` y no usa la página de error es trabajo
 perdido, no un fallo.
 
-### 4.4. El compilador con `componentStyles: "link"`
+### 4.4. El compilador con `css: "link"`
 
-- Una opción inyectada nueva, `componentSheet(name, css) → url`: con ella, el emit escribe
+- Una opción inyectada nueva, `componentSheet(name, css) → url`: con ella, el emit escribe el
+  `<style>` del head (de la ruta y del layout), las hojas `?inline` y las hojas adoptadas como
   ficheros en lugar de módulos de estilo. Sin ella, el emit de hoy, byte a byte.
 - `markup.ts` y `markup-client.ts` escriben `data-fud-sheets` con las URLs en el orden de
   adopción de hoy (las del proyecto primero, luego la del componente).
@@ -231,31 +265,30 @@ perdido, no un fallo.
 
 - **`load` lanza o no hay ruta** (el servidor pinta `_error.fud`, `page-errors.ts`): `path` es
   la ruta pedida y `back`, el `Referer` de la petición.
-- **Una llamada falla y `error-pages` trae al navegador a `/_fudic/error/:status`** (SDD-56). Los
-  datos viajan en la URL, como ya viaja `detail`: el cliente (`errorUrl` en
-  `packages/http/src/error-pages.ts`) añade `from` con la ruta de la página que hizo la llamada,
-  y el servidor la lee de la query. No depende del `Referer`, que una `Referrer-Policy` puede
-  quitar:
+- **Una llamada falla y `error-pages` trae al navegador a `/_fudic/error/:status`** (SDD-56). El
+  cliente (`errorUrl` en `packages/http/src/error-pages.ts`) navega con `location.assign`, y el
+  navegador manda como `Referer` la página que hizo la llamada: esa es `back`, y también `path`.
+  La URL ya no lleva nada más que el status:
 
   ```
-  hoy:   /_fudic/error/401?detail=sin+sesión
-  nuevo: /_fudic/error/401?detail=sin+sesión&from=%2Fusuarios%3Fp%3D2
+  antes: /_fudic/error/401?detail=sin+sesi%C3%B3n
+  ahora: /_fudic/error/401                     Referer: https://app.com/usuarios?p=2
+                                               → back: '/usuarios?p=2'
   ```
 
-  `path` y `back` son esa página: `back` no se omite aunque coincida con `path`, porque volver a
-  ella es justo lo que quiere el usuario. Un `from` que no empieza por `/`, o que empieza por
-  `//`, se descarta: nunca un enlace fuera de la app.
+  `back` no se omite aunque coincida con `path`: volver a esa página es justo lo que quiere el
+  usuario. El título es el genérico del status; el mensaje de un error de una llamada es de quien
+  la hizo (un formulario con `catches`, SDD-56), no de una URL.
 - **Cuándo se navega y cuándo no.** Un error de **navegación** (`load` lanza, no hay ruta) no
   redirige: el servidor responde en la URL pedida con el status del error y `_error.fud`, y
   recargar vuelve a pedir lo mismo. Un error de una **llamada** (la página ya está pintada) sí
-  navega a `/_fudic/error/:status`: es otra petición, y el `from` es lo que la une a la página
-  de la que viene.
+  navega a `/_fudic/error/:status`: es otra petición, y no lleva datos que alguien pueda falsear.
 - El SW que pinta la página de error rellena los dos igual, con la petición que intercepta.
 - El tipo de `data` en el editor (`ErrorPage`) los conoce: `@data.back` se completa y se tipa.
 
 ## 5. Invariantes
 
-- **Por defecto, los mismos bytes.** Con `componentStyles` sin tocar, el HTML de toda página y
+- **Por defecto, los mismos bytes.** Con `css` sin tocar, el HTML de toda página y
   los goldens del compilador no cambian; las pistas van en cabeceras y en el manifiesto.
 - **El contrato es el manifiesto.** El middleware de cualquier lenguaje solo lee
   `fudic-routes.json`; no ejecuta nada de fudic.
@@ -283,7 +316,7 @@ perdido, no un fallo.
 6. El endpoint de datos, una función del servidor y un fichero estático no llevan ni 103 ni
    `Link`. Con `earlyHints: false`, ninguna respuesta lleva ninguno.
 
-**`componentStyles: "link"`**
+**`css: "link"`: los componentes**
 
 7. El head no lleva ni el polyfill ni ningún `<style type="module">`; cada anfitrión con hojas
    lleva `data-fud-sheets` y su plantilla acaba con sus `<link rel="stylesheet">`.
@@ -292,26 +325,38 @@ perdido, no un fallo.
 9. Las pistas de la ruta incluyen las hojas de sus componentes, detrás de las del head.
 10. Un anfitrión fabricado en el navegador recibe los mismos `<link>` al final de su shadow root
     (test de `core`), y un componente servido por el servidor se hidrata igual que en `inline`.
-11. Con `componentStyles` sin tocar, los goldens y el HTML de `examples/basic` no cambian.
+11. Con `css` sin tocar, los goldens y el HTML de `examples/basic` no cambian.
 
 **La página de error** (§3.6, §4.5)
 
 12. `/usuarios/99` abierto desde `/usuarios` (con `Referer: <origen>/usuarios`) pinta
     `_error.fud` con `path: '/usuarios/99'` y `back: '/usuarios'`; sin `Referer`, o con uno de
     otro origen, sin `back`. Con una `base` distinta de `/`, los dos van sin ella.
-13. Una llamada de `/usuarios?p=2` que falla navega a `/_fudic/error/401?…&from=%2Fusuarios%3Fp%3D2` y pinta `back: '/usuarios?p=2'`, también con `Referrer-Policy: no-referrer`; un `from` de otro origen (`//x.com`, `https://x.com`) no da `back`.
-14. `_error.fud` de `examples/basic` quita el enlace fijo a `/usuarios` y usa `@data.back` (con `/` si falta); el
-    typecheck del ejemplo pasa.
+13. Una llamada de `/usuarios?p=2` que falla navega a `/_fudic/error/401`, sin query, y pinta
+    `back: '/usuarios?p=2'` del `Referer`. Un `Referer` de otro origen, uno con `\`
+    (`https://app.com/\evil.com`) o uno que no es una URL no dan `back`.
+14. **Seguridad.** `/_fudic/error/401?detail=Llama+al+900` pinta el título genérico y no el
+    texto: ningún dato de la query llega a la página. Las respuestas de página llevan
+    `Referrer-Policy: strict-origin-when-cross-origin`.
+15. `_error.fud` de `examples/basic` quita el enlace fijo a `/usuarios` y usa `@data.back` (con
+    `/` si falta); el typecheck del ejemplo pasa.
+
+**El CSS como fichero** (§3.5)
+
+16. Con `css: "link"`, el `<style>` del head de una ruta (`hidratacion.fud`) y el de su layout
+    salen como `<link rel="stylesheet">` a ficheros con el hash de su contenido, en su sitio del
+    head y con lo que queda tras la poda de esa página; están en las pistas de la ruta. Un
+    `<style>` con `@` (que se calcula al pintar) se queda dentro de la página.
 
 **Prueba en el navegador (la hace Pedro)**
 
-15. `examples/basic` con `componentStyles: "link"` y preview en HTTP/2: en la pestaña Network de
+17. `examples/basic` con `css: "link"` y preview en HTTP/2: en la pestaña Network de
     Chrome, las hojas y los módulos de `/hidratacion` salen con iniciador `early-hints`; los
     componentes se ven con su estilo; `/test` enseña la página de error con su CSS.
 
 **Entrega**
 
-16. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; lo nuevo al 100 %. El contrato de §3.2
+18. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; lo nuevo al 100 %. El contrato de §3.2
     en el README de `@fudic/vite`, con un ejemplo en pseudocódigo para los demás backends, y el
     anexo de SDD-70 actualizado con lo que queda decidido.
 
@@ -341,8 +386,13 @@ perdido, no un fallo.
 6. **`back` en lugar de un enlace fijo** (Pedro, 2026-10-31). La página de error no puede
    saber a qué página volver si nadie se lo dice; el `Referer` del mismo origen es lo que el
    servidor tiene en la mano en cualquier lenguaje, sin JS en el navegador.
-7. **`from` en la URL para el error de una llamada, `Referer` para el de una navegación**
-   (Pedro, 2026-10-31: «¿cómo se pasan los datos del navegador al servidor?»). El de una
-   llamada ya viaja en la URL (`status`, `detail`); `from` va con ellos y no depende de la
-   `Referrer-Policy`. El de una navegación no redirige: responde en la URL pedida, y el servidor
-   solo tiene el `Referer` para saber de dónde venía.
+7. **Nada en la URL de la página de error salvo el status; `back` por cabecera** (Pedro,
+   2026-10-31: «lo quiero seguro; no voy a hacer un mecanismo de redirección no seguro»). Lo que
+   viaja en una URL lo puede escribir cualquiera en un enlace: un `?detail=` pinta el texto de
+   otro con el diseño de la app, y un `?from=` es una puerta a validar para siempre. El
+   `Referer` lo pone el navegador y otro sitio no puede fabricar uno del nuestro; se valida por
+   origen, resolviéndolo, no por el texto. `detail` deja de viajar en la query.
+8. **El CSS del head de rutas y layouts, también a fichero** (Pedro, 2026-10-31). Las rutas de
+   `examples/basic` llevan `<style>` en su head, y su layout también: eso viaja en cada HTML
+   igual que el de los componentes. La opción deja de ser solo de componentes y pasa a llamarse
+   `css` (`"inline"` · `"link"`), en lugar del `componentStyles` de SDD-70.
