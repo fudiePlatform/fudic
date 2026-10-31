@@ -1,7 +1,6 @@
 import { parseSync } from 'oxc-parser';
 import { describe, expect, it } from 'vitest';
 import {
-  I18N_MODULE,
   child,
   children,
   eachNode,
@@ -81,8 +80,10 @@ describe('unwrap: the wrappers that do not change a value', () => {
 });
 
 describe('i18nImports', () => {
-  it('maps the local name of t, format and locale', () => {
-    const names = i18nImports(program(`import { t, format, locale } from '${I18N_MODULE}';`));
+  it('maps the local name of t (@fudic/i18n), format and locale (@fudic/core, SDD-71)', () => {
+    const names = i18nImports(
+      program(`import { t } from '@fudic/i18n';\nimport { format, locale } from '@fudic/core';`),
+    );
     expect([...names]).toEqual([
       ['t', 't'],
       ['format', 'format'],
@@ -90,8 +91,15 @@ describe('i18nImports', () => {
     ]);
   });
 
+  it('a name from the other package is not one: format and locale left @fudic/i18n', () => {
+    const names = i18nImports(
+      program(`import { format, locale } from '@fudic/i18n';\nimport { t } from '@fudic/core';`),
+    );
+    expect([...names]).toEqual([]);
+  });
+
   it('follows a rename, and an imported name written as a string', () => {
-    const names = i18nImports(program(`import { t as tr, "format" as fmt } from '@fudic/i18n';`));
+    const names = i18nImports(program(`import { t as tr } from '@fudic/i18n';\nimport { "format" as fmt } from '@fudic/core';`));
     expect([...names]).toEqual([
       ['tr', 't'],
       ['fmt', 'format'],
@@ -112,7 +120,7 @@ describe('i18nImports', () => {
   });
 
   it('reads every import statement', () => {
-    const names = i18nImports(program(`import { t } from '@fudic/i18n';\nimport { locale as l } from '@fudic/i18n';`));
+    const names = i18nImports(program(`import { t } from '@fudic/i18n';\nimport { locale as l } from '@fudic/core';`));
     expect([...names]).toEqual([
       ['t', 't'],
       ['l', 'locale'],

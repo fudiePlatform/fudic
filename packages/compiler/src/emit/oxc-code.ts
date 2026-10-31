@@ -663,8 +663,8 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
     offset: map,
   };
   // The whole `@code`: every name of it is the browser's (FUD0290). The
-  // import of `@fudic/i18n` aside: the expansion of translations writes `$format` and
-  // `$message` into it, and any other import that brings a `$` name is the author's.
+  // import of `@fudic/i18n` aside: the expansion of translations writes `$message` and
+  // `$href` into it, and any other import that brings a `$` name is the author's.
   checkReservedPrefix(sliced ? allStatements.filter((s) => !isI18nImport(s)) : clientStatements, map, own);
 
   // `form:=` that cannot send, said HERE and not by the client chunk: a route whose only

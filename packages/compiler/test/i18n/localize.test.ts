@@ -244,17 +244,17 @@ describe('t() (§4.3): always rewritten', () => {
   });
 });
 
-describe('pipes, format() and locale (§4.4)', () => {
-  const I = "@code { import { format, locale } from '@fudic/i18n'; }\n";
+describe('pipes, format() and locale (§4.4, SDD-71 §4.2)', () => {
+  const I = "@code { import { format, locale } from '@fudic/core'; }\n";
 
-  it('a | b in the view is $format((b),(a),"en"), and imports it', () => {
+  it('a | b in the view is ((b).format((a),"en")), and imports nothing', () => {
     const out = whole(component('<p>@(precio | euros)</p>', I));
-    expect(out).toContain('<p>@(($format((euros),(precio),`en`)))</p>');
-    expect(out).toContain("import { $format } from '@fudic/i18n';");
+    expect(out).toContain('<p>@(((euros).format((precio),`en`)))</p>');
+    expect(out).not.toContain("from '@fudic/i18n'");
   });
 
   it('nested pipes', () => {
-    expect(view('<p>@(a | b | c)</p>', {}, I)).toBe('<p>@(($format((c),(($format((b),(a),`en`))),`en`)))</p>');
+    expect(view('<p>@(a | b | c)</p>', {}, I)).toBe('<p>@(((c).format((((b).format((a),`en`))),`en`)))</p>');
   });
 
   it('a | in @code is the OR of bits', () => {
@@ -262,24 +262,26 @@ describe('pipes, format() and locale (§4.4)', () => {
   });
 
   it('format(x, p) anywhere, @code included; with fewer arguments it is left alone', () => {
-    const out = whole(component('<p>@format(x, p)</p>', "@code { import { format } from '@fudic/i18n'; const s = format(1, q); const z = format(1); }\n"));
-    expect(out).toContain('const s = ($format((q),(1),`en`));');
+    const out = whole(component('<p>@format(x, p)</p>', "@code { import { format } from '@fudic/core'; const s = format(1, q); const z = format(1); }\n"));
+    expect(out).toContain('const s = ((q).format((1),`en`));');
     expect(out).toContain('const z = format(1);');
-    expect(out).toContain('<p>@($format((p),(x),`en`))</p>');
+    expect(out).toContain('<p>@((p).format((x),`en`))</p>');
   });
 
-  it('a format that is not imported is not touched', () => {
+  it('a format that is not imported, or imported from @fudic/i18n, is not touched', () => {
     expect(view('<p>@format(x, p)</p>', {})).toBe('<p>@format(x, p)</p>');
+    const old = component('<p>@format(x, p)</p>', "@code { import { format } from '@fudic/i18n'; }\n");
+    expect(whole(old)).toBe(old);
   });
 
   it('locale is "en": a read, a shorthand; not a member, a key or the import', () => {
     const out = whole(
       component(
         '<p>@locale @(obj.locale)</p>',
-        "@code { import { locale } from '@fudic/i18n'; const a = { locale }; const b = { locale: 1 }; const c = obj.locale; const d = locale; }\n",
+        "@code { import { locale } from '@fudic/core'; const a = { locale }; const b = { locale: 1 }; const c = obj.locale; const d = locale; }\n",
       ),
     );
-    expect(out).toContain("import { locale } from '@fudic/i18n';");
+    expect(out).toContain("import { locale } from '@fudic/core';");
     expect(out).toContain('const a = { locale:`en` };');
     expect(out).toContain('const b = { locale: 1 };');
     expect(out).toContain('const c = obj.locale;');
@@ -288,9 +290,9 @@ describe('pipes, format() and locale (§4.4)', () => {
   });
 
   it('a renamed import is followed', () => {
-    const out = whole(component('<p>@l</p>', "@code { import { locale as l } from '@fudic/i18n'; }\n"));
+    const out = whole(component('<p>@l</p>', "@code { import { locale as l } from '@fudic/core'; }\n"));
     expect(out).toContain('<p>@(`en`)</p>');
-    expect(out).toContain("import { locale as l } from '@fudic/i18n';");
+    expect(out).toContain("import { locale as l } from '@fudic/core';");
   });
 });
 
@@ -360,32 +362,32 @@ describe('the document (§4.7, §4.8)', () => {
 });
 
 describe('the import of the runtime pieces (§4.6)', () => {
-  const PIPE = '<p>@(a | b)</p>';
+  const HREF = '<a href=@u>x</a>';
 
   it('in a @code of its own when there is none', () => {
-    expect(whole(component(PIPE)).startsWith("@code { import { $format } from '@fudic/i18n'; }\n<app-x>")).toBe(true);
+    expect(whole(component(HREF)).startsWith("@code { import { $href } from '@fudic/i18n'; }\n<app-x>")).toBe(true);
   });
 
   it('after a BOM', () => {
-    expect(whole(`﻿${component(PIPE)}`).startsWith("﻿@code { import { $format } from '@fudic/i18n'; }\n")).toBe(true);
+    expect(whole(`﻿${component(HREF)}`).startsWith("﻿@code { import { $href } from '@fudic/i18n'; }\n")).toBe(true);
   });
 
   it('before the } of an empty @code', () => {
-    expect(whole(component(PIPE, '@code { }\n')).startsWith("@code { import { $format } from '@fudic/i18n';\n}\n")).toBe(true);
+    expect(whole(component(HREF, '@code { }\n')).startsWith("@code { import { $href } from '@fudic/i18n';\n}\n")).toBe(true);
   });
 
   it('at the head of the first part of @code', () => {
-    expect(whole(component(PIPE, '@code {\n  const a = 1;\n}\n')).startsWith(
-      "@code {import { $format } from '@fudic/i18n';\n\n  const a = 1;\n}\n",
+    expect(whole(component(HREF, '@code {\n  const a = 1;\n}\n')).startsWith(
+      "@code {import { $href } from '@fudic/i18n';\n\n  const a = 1;\n}\n",
     )).toBe(true);
   });
 
-  it('every piece used, sorted, once', () => {
-    const out = whole(component('<p>@(a | b) @(c | d)</p><a href=@u>x</a><p>Hola @n</p>'), {
+  it('every piece used, sorted, once — a pipe is none (SDD-71)', () => {
+    const out = whole(component('<p>@(a | b) @(c | d)</p><a href=@u>x</a><a href=@v>y</a><p>Hola @n</p>'), {
       'Hola {n}': '{n, plural, other {#}}',
     });
     expect(out.match(/import \{[^}]*\} from '@fudic\/i18n';/gu)).toEqual([
-      "import { $format, $href, $message } from '@fudic/i18n';",
+      "import { $href, $message } from '@fudic/i18n';",
     ]);
   });
 

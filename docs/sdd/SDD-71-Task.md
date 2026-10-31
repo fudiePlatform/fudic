@@ -6,7 +6,7 @@
 > `@fudic/diagnostics` · `examples/basic` · `examples/workspace`
 > **Rama:** `sdd-71-pipes-del-usuario`. Nace de `main` **con SDD-61 en `Hecho`**: enmienda su
 > §3.9 y su anexo, y migra el reloj que ella escribió.
-> **Progreso:** 0 / 24 — `Listo`.
+> **Progreso:** 6 / 25 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -43,12 +43,12 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **Las convenciones.** `DEFAULT_LOCALE = 'en'` y `PIPES_DIR = 'src/pipes'` (SDD §3.1) | `conventions` | `src/index.ts` |
-| [ ] | 2 | 1 | **La configuración.** En una app, `locales` ausente es `[DEFAULT_LOCALE]` y deja de ser opcional en `ProjectConfig`; `"pipes"` con `readFolder`. En una librería, `locales` se ignora como hoy | `config` | `src/read.ts` |
-| [ ] | 3 | — | **Los códigos.** `FUD1340` (`.ts`, `.md`, línea en `index.ts`); `FUD1021` retirado (`.ts` borrado, `.md` como `retired`). El rango en la fila de SDD-71 del `INDEX.md` | `diagnostics` | `src/codes/FUD1340.{ts,md}` · `src/codes/FUD1021.*` · `src/index.ts` |
-| [ ] | 4 | — | **`Pipe` y los seis presets en `core`.** `Pipe<T>` con `kind`, `name?`, `options` y `format`; cada preset con solo su `Intl.*Format`, cacheado por idioma dentro del preset (SDD §3.4) | `core` | `src/pipe.ts` · `src/index.ts` |
-| [ ] | 5 | 4 | **`locale` y `format` en `core`.** Los nombres que sustituye el compilador se mudan; lanzan `compiled away` fuera de él, como en SDD-58 | `core` | `src/compiled-away.ts` · `src/index.ts` |
-| [ ] | 6 | 4, 5 | **`i18n` sin pipes.** Fuera `pipe.ts`, `runtime/format.ts`, `$format` y las exportaciones de §4.8; sin reexportación | `i18n` | `src/index.ts` · `src/pipe.ts` · `src/runtime/*` |
+| [x] | 1 | — | **Las convenciones.** `DEFAULT_LOCALE = 'en'` y `PIPES_DIR = 'src/pipes'` (SDD §3.1) | `conventions` | `src/index.ts` |
+| [x] | 2 | 1 | **La configuración.** En una app, `locales` ausente es `[DEFAULT_LOCALE]` y deja de ser opcional en `ProjectConfig`; `"pipes"` con `readFolder`. En una librería, `locales` se ignora como hoy | `config` | `src/read.ts` |
+| [x] | 3 | — | **Los códigos.** `FUD1340` (`.ts`, `.md`, línea en `index.ts`); `FUD1021` retirado (`.ts` borrado, `.md` como `retired`). El rango en la fila de SDD-71 del `INDEX.md` | `diagnostics` | `src/codes/FUD1340.{ts,md}` · `src/codes/FUD1021.*` · `src/index.ts` |
+| [x] | 4 | — | **`Pipe` y los seis presets en `core`.** `Pipe<T>` con `kind`, `name?`, `options` y `format`; cada preset con solo su `Intl.*Format`, cacheado por idioma dentro del preset (SDD §3.4) | `core` | `src/pipe.ts` · `src/index.ts` |
+| [x] | 5 | 4 | **`locale` y `format` en `core`.** Los nombres que sustituye el compilador se mudan; lanzan `compiled away` fuera de él, como en SDD-58 | `core` | `src/compiled-away.ts` · `src/index.ts` |
+| [x] | 6 | 4, 5 | **`i18n` sin pipes.** Fuera `pipe.ts`, `runtime/format.ts`, `$format` y las exportaciones de §4.8; sin reexportación. Arrastra la parte del compilador de la tarea 13 (SDD §8.2, 4) | `i18n` · `compiler` | `src/index.ts` · `src/pipe.ts` · `src/runtime/*` · `compiler/src/i18n/*` |
 | [ ] | 7 | 2–6 | **Los tests de la fase.** Criterios 1 y 2 (lectura y formato) | `config` · `core` · `i18n` | `test/**` |
 
 ## Fase 2 — `pipe` en el `.fudapi` (5)
@@ -67,6 +67,7 @@ código, no el test.
 |---|---|---|---|---|---|
 | [ ] | 13 | 4 | **El emit.** `a \| p` y `format(a, p)` se emiten como `p.format(a, "<idioma>")`; fuera `$format` de `localize.ts`, de `I18N_PIECES` y del import de `@fudic/i18n` que escribe la expansión. `$Pipe<T>` gana `format` en `GLOBALS_DTS` | `compiler` · `language-core` | `src/i18n/localize.ts` · `src/semantic/delegation.ts` · `src/emit/oxc-code.ts` · `src/globals.ts` |
 | [ ] | 14 | 2 | **La vista importa de la carpeta de pipes** (decisión 172). El `export default` de un fichero de esa carpeta, o el `pipes/*` de una librería, vale en el corte; solo a la derecha de `\|` o llamado en una `const` con un literal de datos; lo demás, `FUD1150` | `compiler` · `typecheck` | `src/semantic/analyzers/*` |
+| [ ] | 14b | 13 | **El pipe sin paréntesis** (SDD §8.2, 5): `@data.x\|pipe` además de `@(data.x \| pipe)`, en el compilador y en el editor (tipos, hover, completado tras `\|`) | `compiler` · `language-core` · `language-server` | `src/at/*` · `src/*` |
 | [ ] | 15 | 2, 10 | **Fuera de las raíces.** La carpeta de pipes no entra en ningún `import.meta.glob` de `api-root.ts`, aunque esté configurada dentro de `src/browser` o `src/server` | `vite` | `src/api-root.ts` · `src/plugin.ts` |
 | [ ] | 16 | 4 | **Una pieza publicada por preset.** El linker publica solo los presets que algún módulo importa (SDD-45) | `core` · `vite` | `src/runtime-entry.ts` · `src/*` |
 | [ ] | 17 | 13–16 | **Los tests de la fase.** Criterios 8–12, con el de bytes sobre un `dist` real | `compiler` · `vite` | `test/**` |

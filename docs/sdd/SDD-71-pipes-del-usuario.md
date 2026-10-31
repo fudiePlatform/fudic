@@ -489,3 +489,22 @@ Filas nuevas de A.2 («El `@code` que el servidor evalúa» y «Lo que se pinta�
 8. **`FUD1021` se retira.** Ninguna app queda sin idioma, así que el error no tiene caso.
 9. **`--locale` no escribe nada si no se pasa.** El valor por defecto vive en `@fudic/conventions`,
    no en cada `fudic.json`. Cambiarlo es cambiarlo en un sitio.
+
+### 8.2. Tomadas al implementar
+
+1. **`locales` es obligatorio en `ProjectConfig`, también en una librería.** Partir el tipo en app
+   y librería obligaba a tocar a cada lector. En una librería se lee y se valida como hoy, y nadie
+   lo usa.
+2. **Sin `fudic.json`, la app también es `en`.** El plugin usa `DEFAULT_LOCALE` cuando no hay
+   configuración: si no, un pipe no se compilaría y lanzaría `compiled away`.
+3. **Un módulo por preset en `@fudic/core`** (`pipes/date.ts`, `pipes/number.ts` para los tres de
+   `NumberFormat`, `pipes/relative-time.ts`, `pipes/list.ts`), y `pipe.ts` con el tipo y el helper
+   que guarda el formatter por idioma. Es lo que deja una pieza publicada por preset (tarea 16).
+4. **La emisión `p.format(a, "<idioma>")` se adelanta a la fase 1.** Quitar `$format` de
+   `@fudic/i18n` (tarea 6) rompía todo lo que compila un pipe hasta la fase 3. La parte del
+   compilador de la tarea 13 (reconocer `format` y `locale` de `@fudic/core`, emitir la llamada,
+   quitar `$format` de `I18N_PIECES`) va en la fase 1; `GLOBALS_DTS` sigue en la fase 3.
+5. **El pipe también se escribe sin paréntesis** (Pedro, 2026-10-31): además de
+   `@(data.x | pipe)`, la forma implícita `@data.x|pipe`. Lo entienden el compilador y el editor
+   (LSP: tipos, hover, completado tras `|`). Tarea 14b de la fase 3. Pendiente de Pedro: si vale
+   también con espacios alrededor de la barra.

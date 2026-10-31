@@ -47,6 +47,13 @@ export {
 export { untrack } from './tracking.js';
 export { now } from './now.js';
 export { subscribe, subscribeIf, written } from './subscribe.js';
+// Pipes (SDD-71): the six presets, one module each, and the two names the compiler replaces.
+export type { Pipe } from './pipe.js';
+export { date } from './pipes/date.js';
+export { number, currency, percent } from './pipes/number.js';
+export { relativeTime } from './pipes/relative-time.js';
+export { list } from './pipes/list.js';
+export { locale, format } from './compiled-away.js';
 export {
   strategy,
   type StrategyDecl,

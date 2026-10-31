@@ -256,8 +256,9 @@ describe('delegation — the event and the read (§6.8, §6.9)', () => {
     expect(codes('<b>@row[$day]</b>')).toEqual(['FUD0666']);
   });
 
-  it('leaves the runtime pieces a locale writes alone: `$format`, `$message`, `$href` (SDD-58)', () => {
-    expect(codes('<b>@($format(euros, precio, "en"))</b>')).toEqual([]);
+  it('leaves the runtime pieces a locale writes alone: `$message`, `$href` (SDD-58)', () => {
+    // A pipe writes none since SDD-71: `$format` is an author's name like any other.
+    expect(codes('<b>@($format(euros, precio, "en"))</b>')).toEqual(['FUD0666']);
     expect(codes('<b>@($message(parts, {}, "en"))</b>')).toEqual([]);
     expect(codes('<a href=@($href(url, "en", ["es", "en"]))>x</a>')).toEqual([]);
   });

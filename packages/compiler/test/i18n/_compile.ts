@@ -8,6 +8,7 @@
  */
 
 import * as i18nPackage from '@fudic/i18n';
+import * as core from '@fudic/core';
 import { compileMessage } from '@fudic/i18n';
 import { SsrDom, renderToString } from '@fudic/ssr';
 import {
@@ -61,12 +62,36 @@ export function graphOf(files: Record<string, string>, entry: string, i18n: Loca
   return resolveComponents(entry, localizedIo(memoryIo(files), i18n));
 }
 
-const I18N_IMPORT = /^import \{([^}]*)\} from '@fudic\/i18n';$/gmu;
+const I18N_IMPORT = /^\s*import \{([^}]*)\} from ['"]@fudic\/(?:i18n|core)['"];?$/gmu;
 
-/** The module's `@fudic/i18n` imports as bindings of the package, and nothing else imported. */
+/** The packages behind `$i18n`: the pipes and `format`/`locale` live in core since SDD-71. */
+const PACKAGES = { ...core, ...i18nPackage };
+
+/** What `clientFactory` already passes in by name: an import of it is not bound again. */
+const PASSED: ReadonlySet<string> = new Set([
+  'FudicElement',
+  'signal',
+  'computed',
+  'effect',
+  '$sub',
+  '$written',
+  '$live',
+  '$owned',
+]);
+
+/**
+ * The module's `@fudic/i18n` and `@fudic/core` imports as bindings of the packages, and nothing
+ * else imported.
+ */
 function bindI18n(source: string): string {
   return source
-    .replace(I18N_IMPORT, (_all, names: string) => `const {${names.replace(/\bas\b/gu, ':')}} = $i18n;`)
+    .replace(I18N_IMPORT, (_all, names: string) => {
+      const bound = names
+        .split(',')
+        .map((n) => n.trim())
+        .filter((n) => n !== '' && !PASSED.has(n.split(/\s+as\s+/u).pop()!));
+      return bound.length === 0 ? '' : `const {${bound.join(',').replace(/\bas\b/gu, ':')}} = $i18n;`;
+    })
     .replace(/^import .*$/gmu, '')
     .replace(/^export\s+/gmu, '');
 }
@@ -75,7 +100,7 @@ function bindI18n(source: string): string {
 export function serverRender(graph: ComponentGraph, tag: string): (dom: unknown, shadow: unknown, props: unknown) => void {
   const source = emitComponentModule(graph, componentOf(graph, tag)!);
   // eslint-disable-next-line @typescript-eslint/no-implied-eval
-  return new Function('$i18n', `${bindI18n(source)}\nreturn render;`)(i18nPackage) as (
+  return new Function('$i18n', `${bindI18n(source)}\nreturn render;`)(PACKAGES) as (
     dom: unknown,
     shadow: unknown,
     props: unknown,
@@ -116,6 +141,6 @@ export function clientFactory(graph: ComponentGraph, tag: string): FudicElementC
     'emit',
     'customElements',
     bindI18n(source),
-  )(i18nPackage, FudicElement, signal, computed, effect, subscribe, written, live, owned, emit, registry);
+  )(PACKAGES, FudicElement, signal, computed, effect, subscribe, written, live, owned, emit, registry);
   return captured!;
 }

@@ -15,7 +15,7 @@
  */
 
 import { CONFIG_FILE, ID_PATTERN, PREFIX_PATTERN, STYLE_NAME_PATTERN } from './constants.js';
-import { API_DIR, BROWSER_DIR, SERVER_DIR } from '@fudic/conventions';
+import { API_DIR, BROWSER_DIR, DEFAULT_LOCALE, PIPES_DIR, SERVER_DIR } from '@fudic/conventions';
 import { FUD0725, type FUD0725Problem, type FileDiagnostic, type Span } from '@fudic/diagnostics';
 
 /** What the file declares, with every default already filled. */
@@ -47,10 +47,13 @@ export interface ProjectConfig {
   readonly styles: readonly NamedStyle[];
   /**
    * The languages of the app (SDD-58), canonical BCP 47, the first one the language the code
-   * is written in. ABSENT when the file declares none: no extraction, no catalogs, no prefixes,
-   * and the framework behaves byte for byte as it did before translations existed.
+   * is written in. `[DEFAULT_LOCALE]` when the file declares none (SDD-71 §3.1): every app has
+   * a language, and one language has no prefix and no catalog, so its URLs are the same.
+   *
+   * A library has none of its own — the app that compiles its `.fud` gives them its own — so
+   * in a library this is read and validated as in an app, and nobody uses it.
    */
-  readonly locales?: readonly string[];
+  readonly locales: readonly string[];
   /**
    * The origin the app is published at (SDD-58), like `https://example.com`, without a trailing
    * slash. What the build writes into the absolute URLs of `canonical` and `hreflang`, which
@@ -64,6 +67,11 @@ export interface ProjectConfig {
   readonly server: string;
   /** Where the implementations that run in the browser live. `src/browser` when it declares none. */
   readonly browser: string;
+  /**
+   * Where the project's pipes live (SDD-71 §3.1): their `.fudapi` and their one implementation,
+   * which the view, the server and the browser import. `src/pipes` when it declares none.
+   */
+  readonly pipes: string;
   /** A library's `.fudapi` folder: present only for `kind: lib`, `fudapi` when it declares none. */
   readonly api?: string;
   /**
@@ -150,6 +158,7 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
   const site = readSite(fields, ctx);
   const server = readFolder(fields, 'server', SERVER_DIR, ctx);
   const browser = readFolder(fields, 'browser', BROWSER_DIR, ctx);
+  const pipes = readFolder(fields, 'pipes', PIPES_DIR, ctx);
   const api = kind === 'lib' ? readFolder(fields, 'api', API_DIR, ctx) : undefined;
   const earlyHints = readEarlyHints(fields, ctx);
   const css = readCss(fields, ctx);
@@ -167,10 +176,11 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
       prefix,
       globalStyles,
       styles,
-      ...(locales === undefined ? {} : { locales }),
+      locales,
       ...(site === undefined ? {} : { site }),
       server,
       browser,
+      pipes,
       ...(api === undefined ? {} : { api }),
       earlyHints,
       css,
@@ -207,19 +217,20 @@ function readFolder(fields: Record<string, unknown>, field: string, fallback: st
 }
 
 /**
- * An absent `locales` stays absent; a present one is a non-empty array of distinct BCP 47
- * tags, each canonicalized by `Intl.getCanonicalLocales` — so `"EN-us"` is read as `"en-US"`,
- * and two spellings of one tag are a repetition. Empty is refused rather than read as "no
- * languages": writing the key says the app has some, and the file should say which.
+ * An absent `locales` is `[DEFAULT_LOCALE]`; a present one is a non-empty array of distinct
+ * BCP 47 tags, each canonicalized by `Intl.getCanonicalLocales` — so `"EN-us"` is read as
+ * `"en-US"`, and two spellings of one tag are a repetition. Empty is refused rather than read
+ * as the default: writing the key says the app has some, and the file should say which.
  */
-function readLocales(fields: Record<string, unknown>, ctx: Ctx): readonly string[] | undefined {
+function readLocales(fields: Record<string, unknown>, ctx: Ctx): readonly string[] {
   const value = fields['locales'];
   if (value === undefined) {
-    return undefined;
+    return [DEFAULT_LOCALE];
   }
-  const refuse = (reason: string): undefined => {
+  // What a refused value reads as does not matter: a diagnostic makes the whole config `null`.
+  const refuse = (reason: string): readonly string[] => {
     ctx.diagnostics.push(malformed({ problem: 'locales', reason }, fieldSpan(ctx.text, 'locales')));
-    return undefined;
+    return [DEFAULT_LOCALE];
   };
   if (!Array.isArray(value)) {
     return refuse('it is not an array');

@@ -95,6 +95,7 @@ import {
 import {
   BROWSER_DIR,
   DATA_FRAMES_TYPE as FRAMES_TYPE,
+  DEFAULT_LOCALE,
   ERROR_PREFIX,
   SERVER_DIR,
   RUNTIME_CACHE_PREFIX,
@@ -298,10 +299,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   /** Where the edge pass writes and the preview reads the server bundle (`edgeDir`). */
   let edgeDir = '';
   /**
-   * The languages of the app, from `fudic.json` (SDD-58 §3.1). Undefined when it declares none,
-   * and then nothing of this SDD runs: no catalogs, no prefixes, no module compiled per locale.
+   * The languages of the app, from `fudic.json` (SDD-58 §3.1); `[DEFAULT_LOCALE]` when it
+   * declares none (SDD-71). One language has no prefixes and no catalog of its own.
    */
-  let locales: readonly string[] | undefined;
+  let locales: readonly string[] = [DEFAULT_LOCALE];
   /** Where the app is published (§4.7): the origin of the head's absolute URLs in a build. */
   let site: string | undefined;
   /** The catalogs, read and never written (§4.10), and the io each locale's graph reads by. */
@@ -320,7 +321,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    */
   const devMains = (): ReadonlyMap<string, string> =>
     new Map(
-      (locales ?? [])
+      locales
         .filter((l) => chunkDir(l, locales) !== '')
         .map((l) => [`/${MAIN_ID}.${l}.js`, withLocale(MAIN_ID, l)]),
     );
@@ -328,10 +329,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     devUrl(base, chunkDir(locale, locales) === '' ? DEV_MAIN_URL : `${MAIN_ID}.${locale}.js`);
   /**
    * What the nested passes compile each locale's graph with, as this plugin does (§4.6).
-   * Undefined in an app without `locales`: the passes are then the ones they always were.
+   * Undefined only before `configResolved` has read the catalogs.
    */
   const localeContext = (): LocaleContext | undefined =>
-    locales === undefined || localeIos === undefined || catalogs === undefined
+    localeIos === undefined || catalogs === undefined
       ? undefined
       : {
           root,
@@ -356,7 +357,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    * and the first locale's for a request in none (§4.5).
    */
   const errorPatternOf = (locale: string | undefined): string =>
-    locales === undefined ? ERROR_PATTERN : prefixPattern(ERROR_PATTERN, locale ?? locales[0]!, locales);
+    prefixPattern(ERROR_PATTERN, locale ?? locales[0]!, locales);
   /**
    * The redirect of a URL with no locale prefix (§4.5) — `/`, or a page of the app asked
    * without its prefix — or false when there is none. `isPage` is the route table of whoever
@@ -698,7 +699,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     // `en/app-card`: a locale's chunks live under its own directory (SDD-58 §4.6).
     const slash = tag.indexOf('/');
     // One locale has no directory, and its modules are still compiled for it.
-    const locale = slash === -1 ? (locales?.length === 1 ? locales[0] : undefined) : tag.slice(0, slash);
+    const locale = slash === -1 ? (locales.length === 1 ? locales[0] : undefined) : tag.slice(0, slash);
     const named = slash === -1 ? tag : tag.slice(slash + 1);
     const localized = (id: string): string => (locale === undefined ? id : withLocale(id, locale));
     const isIoc = named.endsWith(IOC_SUFFIX);
@@ -884,12 +885,14 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       );
       api = new ApiProject(root);
       appId = project.config?.id ?? '';
-      locales = project.config?.locales;
+      // Every app has a language (SDD-71 §3.1), also one without `fudic.json`: one language
+      // has no prefix and no catalog, so its URLs are the ones it always had.
+      locales = project.config?.locales ?? [DEFAULT_LOCALE];
       site = project.config?.site;
       // Dev re-reads the catalogs and the files on every compile: a save is seen without a
       // restart (§4.10, criterion 34). A build reads each once.
-      catalogs = locales === undefined ? undefined : new Catalogs(root, locales, isDev);
-      localeIos = catalogs === undefined ? undefined : new LocaleIos(catalogs, isDev);
+      catalogs = new Catalogs(root, locales, isDev);
+      localeIos = new LocaleIos(catalogs, isDev);
       // The project's style guide (SDD-42), read here for the same reason the id is: it is
       // a property of the project, it is needed before anything is emitted, and every emit
       // path of the build has to be handed the SAME list — `edge`, `sw` and `ssg` producing
@@ -994,7 +997,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         // no function to answer.
         // In an app with languages, the first locale's root: the one its pages load, so the
         // functions and the pages read and write the same modules (as the edge pass does).
-        const rootId = locales === undefined ? SERVER_ROOT_ID : withLocale(SERVER_ROOT_ID, locales[0]!);
+        const rootId = withLocale(SERVER_ROOT_ID, locales[0]!);
         const answered = hasApi()
           ? (server.ssrLoadModule(rootId) as Promise<Record<string, unknown>>).then((mod) =>
               (mod['handler'] as ContractsHandler)({ base, dev: true, onError })(request),
@@ -1442,7 +1445,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       await report(this, project.errors);
       // The head of every page of an app in two or more languages carries absolute URLs
       // (SDD-58 §4.7), and a prerendered page has no request to take the origin from.
-      if (!isDev && locales !== undefined && locales.length >= 2 && site === undefined) {
+      if (!isDev && locales.length >= 2 && site === undefined) {
         await report(this, [FUD1027()]);
       }
       // The style guide's own (SDD-42 §5). Errors, and for the same reason: a sheet that is
@@ -1605,7 +1608,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       //
       // Once per locale when the app has them (SDD-58 §4.6): a chunk compiled for `en`, under
       // `en/` when there are two or more — so the client of `/en/…` gets only `en`'s.
-      const chunkLocales: readonly (string | undefined)[] = locales ?? [undefined];
+      const chunkLocales: readonly (string | undefined)[] = locales;
       const localized = (id: string, locale: string | undefined): string =>
         locale === undefined ? id : withLocale(id, locale);
       for (const locale of chunkLocales) {
@@ -2624,7 +2627,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // Every page of a static build with two or more locales, also without its prefix
       // (SDD-58 §4.5): `/` and `/blog/hola` are the `x-default` of their pages, and a host
       // that cannot negotiate serves this one, which sends the browser to the first locale.
-      if (locales !== undefined && locales.length >= 2) {
+      if (locales.length >= 2) {
         for (const page of unprefixedPages(emitted, locales)) {
           this.emitFile({ type: 'asset', fileName: page.fileName, source: redirectHtml(page, base, site) });
           emitted.add(page.fileName);

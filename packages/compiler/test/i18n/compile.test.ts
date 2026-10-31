@@ -97,7 +97,7 @@ describe('criterion 16: literals in result position', () => {
 });
 
 describe('criterion 20: pipes', () => {
-  const CODE = "@code {\n  import { currency } from '@fudic/i18n';\n  const euros = currency('EUR');\n  const precio = 3.5;\n}\n";
+  const CODE = "@code {\n  import { currency } from '@fudic/core';\n  const euros = currency('EUR');\n  const precio = 3.5;\n}\n";
 
   it('3.5 | euros is "3,50 €" in /es and "€3.50" in /en, on the server and in the client', () => {
     const es = compile('<p>@(precio | euros)</p>', CODE, {}, 'es');
@@ -116,7 +116,7 @@ describe('criterion 20: pipes', () => {
 describe('criterion 18: format() and locale', () => {
   it('format(x, euros) formats, and locale is the graph\'s', () => {
     const code =
-      "@code {\n  import { currency, format, locale } from '@fudic/i18n';\n  const total = format(2, currency('USD'));\n}\n";
+      "@code {\n  import { currency, format, locale } from '@fudic/core';\n  const total = format(2, currency('USD'));\n}\n";
     const out = compile('<p>@total @locale</p>', code, {});
     expect(out.server).toBe('<p>$2.00 en</p>');
   });
