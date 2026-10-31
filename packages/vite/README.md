@@ -152,6 +152,39 @@ field as it settles (SDD-70). The Service Worker is **not registered in dev** un
 endpoints, on-demand render for the rest, and on every document a CSP header with a fresh
 nonce stamped into the page.
 
+## Early hints
+
+While `load` waits on the backend, the browser has nothing to do. The build writes, for each
+route, what its page needs before the body — its stylesheets, `boot`, `main` and what `main`
+imports — as ready-made `Link` values in `fudic-routes.json` (`routes[].hints`), and those of
+`_error.fud` at the top (`errorHints`).
+
+The server sends them as a `103 Early Hints` before running `load`, and always on the final
+response. The contract is the manifest, so any backend does the same in a few lines:
+
+```
+on a page request:
+  route = manifest.match(path)
+  hints = route ? route.hints : manifest.errorHints
+  if hints is empty: go on
+  if HTTP/2 or later
+     and header "sec-fetch-mode" == "navigate"
+     and the server can send a 1xx:
+        send 103 with  Link: hints joined by ", "
+  answer as ever, and on that answer:
+     Link: the hints of what was painted — errorHints when load threw
+```
+
+- One `103` per response; Chrome ignores the rest. There is no browser detection: a client
+  that does not understand a `103` ignores it.
+- Only pages. A data endpoint, a server function or a static file gets neither.
+- A server that cannot send a `1xx` sends the `Link` alone: a CDN turns it into a `103`, and the
+  browser preloads with it too, later.
+- `"earlyHints": false` in `fudic.json` writes no hints, so nothing is sent.
+
+`vite dev` and `vite preview` do this. Over plain HTTP they are HTTP/1.1 and send only the `Link`;
+with `server.https` / `preview.https` they speak HTTP/2 and send the `103` too.
+
 ## The two bootstraps
 
 A page opts into the shell by referencing the main-thread bootstrap in its `<head>`:

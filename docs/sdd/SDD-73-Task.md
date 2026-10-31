@@ -5,7 +5,7 @@
 > `@fudic/transport` · `examples/basic`
 > **Rama:** `sdd-73-early-hints`. Nace de `main` **con SDD-70 en `Hecho`**: las pistas por ruta,
 > `earlyHints` y `componentStyles` son suyas (tareas 40–41).
-> **Progreso:** 7 / 17 — `En curso`.
+> **Progreso:** 10 / 17 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -62,9 +62,9 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 8 | 1 | **El middleware de Node.** El contrato de SDD §3.2: ruta o `errorHints`; 103 con `writeEarlyHints` solo en HTTP/2+ y `Sec-Fetch-Mode: navigate`; `Link` en la respuesta final con las pistas de lo que se pintó; nada en datos, funciones ni estáticos; nada con `earlyHints: false` | `vite` | `src/early-hints.ts` |
-| [ ] | 9 | 8 | **Dev y preview.** Los dos servidores lo ponen delante del render de páginas y de la página de error; en dev, las pistas con las URLs del servidor de desarrollo (SDD §4.1) | `vite` | `src/plugin.ts` · `src/serve.ts` |
-| [ ] | 10 | 8, 9 | **Los tests de la fase.** Criterios 3–6, contra el servidor en proceso en HTTP/2 (`server.https`) con promesas controladas | `vite` | `test/**` |
+| [x] | 8 | 1 | **El middleware de Node.** El contrato de SDD §3.2: ruta o `errorHints`; 103 con `writeEarlyHints` solo en HTTP/2+ y `Sec-Fetch-Mode: navigate`; `Link` en la respuesta final con las pistas de lo que se pintó; nada en datos, funciones ni estáticos; nada con `earlyHints: false` | `vite` | `src/early-hints.ts` |
+| [x] | 9 | 8 | **Dev y preview.** Los dos servidores lo ponen delante del render de páginas y de la página de error; en dev, las pistas con las URLs del servidor de desarrollo (SDD §4.1) | `vite` | `src/plugin.ts` · `src/serve.ts` |
+| [x] | 10 | 8, 9 | **Los tests de la fase.** Criterios 3–6, contra el servidor en proceso en HTTP/2 (`server.https`) con promesas controladas | `vite` | `test/**` |
 
 ## Fase 4 — el CSS como fichero (6)
 

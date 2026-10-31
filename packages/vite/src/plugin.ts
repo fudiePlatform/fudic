@@ -28,6 +28,7 @@ import { type FudicOptions, type ResolvedOptions, resolveOptions } from './optio
 import { discoverRoutes, type RouteBuild } from './discover.js';
 import { buildManifest } from './manifest.js';
 import { routeHints } from './hints.js';
+import { sendEarlyHints, setLinkHeader } from './early-hints.js';
 import { emitRenderChunk, routeApi } from './wrapper.js';
 import { emitBootBootstrap, emitSwBootstrap } from './bootstrap.js';
 import {
@@ -532,6 +533,21 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   const pageHints = new Map<string, readonly EarlyHint[]>();
   const pageHintKey = (path: string, locale: string | undefined): string =>
     `${path.replace(/\\/gu, '/')}#${locale ?? ''}`;
+  /**
+   * `boot` as the dev server serves it: only with a worker in dev (`dev: 'preview'`); `dev:
+   * 'off'` — or no `sw.json` at all — registers nothing, so the page asks for nothing (§4.11).
+   */
+  const devBootUrl = (): string =>
+    swConfig !== null && swConfig.dev === 'preview' ? devUrl(base, DEV_BOOT_URL) : '';
+  /**
+   * The hints of a page in dev (SDD-73 §4.1): its head's sheets as the dev server serves them,
+   * then the two entries at their stable URLs. There is no bundle, so no closure under `main`.
+   * Read once its module is loaded: that is when its head was compiled.
+   */
+  const devHintsOf = (rb: RouteBuild | undefined): readonly string[] =>
+    rb === undefined || project.config?.earlyHints === false
+      ? []
+      : routeHints(pageHints.get(pageHintKey(rb.absPath, rb.locale)) ?? [], [devBootUrl(), devMainUrl(rb.locale)]);
   /**
    * Route pattern → what its page hydrates at LOAD, by the name the runtime asks for it, the
    * locale's directory included (BUG-53 §4.3). Filled with the coordinators, and only in a
@@ -1094,7 +1110,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             }
             const page = errorPageFor(errorPages, errorLocale(pathname, req.headers.referer));
             const origin = pageOriginOf(toRequest(req, res), base, true);
-            sendDevErrorPage(server, res, url, page, problemOfStatus(status), origin).catch(next);
+            sendDevErrorPage(server, req, res, page, problemOfStatus(status), origin, devHintsOf).catch(next);
             return;
           }
           const rb = matchRouteBuild(builds, pathname);
@@ -1102,7 +1118,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             // No route: `_error.fud` as a `404`, after every file Vite serves (SDD-73 §4.3).
             const page = errorPageFor(errorPages, localeOfPath(pathname, locales));
             const origin = pageOriginOf(toRequest(req, res), base, false);
-            sendDevErrorPage(server, res, url, page, problemOfStatus(404), origin).catch(next);
+            sendDevErrorPage(server, req, res, page, problemOfStatus(404), origin, devHintsOf).catch(next);
             return;
           }
           const nonce = newNonce();
@@ -1113,9 +1129,14 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           const pending = pendingResponse();
           live
             .blocking(documentFiles(rb.absPath, io))
-            .then(async (blocked): Promise<{ status: number; html?: string; location?: string; opened?: OpenedPage }> => {
+            .then(async (blocked): Promise<{ status: number; html?: string; location?: string; opened?: OpenedPage; hints: readonly string[] }> => {
               if (blocked !== undefined) throw asError(blocked);
               try {
+                // The `103` before `load` runs (SDD-73 §4.1): the module first, which compiles the
+                // head whose sheets are hinted, and is what the render loads anyway.
+                await server.ssrLoadModule(WRAPPER_PREFIX + rb.route.pattern);
+                const hints = devHintsOf(rb);
+                sendEarlyHints(req, res, hints);
                 // Opened, not drained (SDD-70 §4.3): what decides the status has run once the
                 // head is in, and the rest goes out as it is rendered.
                 const opened = await renderRouteStream(
@@ -1129,22 +1150,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
                   // A rejected `later` field with no `@catch` (SDD-70 §3.4).
                   (error) => toOverlay(server, error),
                 );
-                return { status: pending.status, opened };
+                return { status: pending.status, opened, hints };
               } catch (err) {
                 // What `load` or `layout` threw (SDD-56 §4.8): a redirect, or the error page
                 // with its status — and what is not an `HttpError`, in the overlay as well.
                 const failure = classifyError(err, true);
-                if (failure.kind === 'redirect') return { status: failure.status, location: failure.location };
+                if (failure.kind === 'redirect') return { status: failure.status, location: failure.location, hints: [] };
                 if (failure.unexpected) toOverlay(server, err);
-                return {
-                  status: failure.problem.status,
-                  html: await devErrorPage(
-                    server,
-                    errorPageFor(errorPages, rb.locale),
-                    failure.problem,
-                    pageOriginOf(request, base, false),
-                  ),
-                };
+                const errorPage = errorPageFor(errorPages, rb.locale);
+                const html = await devErrorPage(server, errorPage, failure.problem, pageOriginOf(request, base, false));
+                // The `Link` of what is painted: the error page's, whatever the `103` said.
+                return { status: failure.problem.status, html, hints: devHintsOf(errorPage) };
               }
             })
             .then(async (page) => {
@@ -1153,6 +1169,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               // fudic wins in the CSP, and in dev its CSP is none (below).
               res.removeHeader('Content-Security-Policy');
               res.setHeader('Referrer-Policy', PAGE_REFERRER_POLICY);
+              setLinkHeader(res, page.hints);
               res.statusCode = page.status;
               if (page.location !== undefined) {
                 res.setHeader('Location', page.location);
@@ -1275,7 +1292,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           }
           const pattern = errorPatternOf(errorLocale(pathname, req.headers.referer));
           const origin = pageOriginOf(toRequest(req, res), base, true);
-          sendErrorPage(edgeDir, res, problemOfStatus(status), nonce, manifest.csp.document, pattern, origin).catch(next);
+          const errorHints = manifest.errorHints ?? [];
+          sendEarlyHints(req, res, errorHints);
+          sendErrorPage(edgeDir, res, problemOfStatus(status), nonce, manifest.csp.document, pattern, origin, errorHints)
+            .catch(next);
           return;
         }
 
@@ -1285,11 +1305,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           return;
         }
         const file = join(outDir, htmlPathFor(pathname));
+        // What this page needs before its body (SDD-73 §3.2), and what the error page needs if
+        // `load` throws: the `103` goes before anything is known, the `Link` says what was painted.
+        const hints = record.hints ?? [];
+        const errorHints = manifest.errorHints ?? [];
         if (existsSync(file)) {
+          sendEarlyHints(req, res, hints);
           res.statusCode = 200;
           res.setHeader('Content-Type', 'text/html; charset=utf-8');
           res.setHeader('Content-Security-Policy', cspFor(manifest.csp.document, nonce));
           res.setHeader('Referrer-Policy', PAGE_REFERRER_POLICY);
+          setLinkHeader(res, hints);
           res.end(applyNonce(readFileSync(file, 'utf8'), nonce));
           return;
         }
@@ -1301,6 +1327,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         }
         const pending = pendingResponse();
         const request = toRequest(req, res);
+        // Before `load` runs: that is the whole point of the `103`.
+        sendEarlyHints(req, res, hints);
         previewRender(edgeDir, record, pathname, nonce, request, pending)
           .then(async (opened) => {
             // What `load` wrote first (SDD-69 §4.2): fudic's Content-Type and CSP win over it.
@@ -1309,6 +1337,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.setHeader('Content-Security-Policy', cspFor(manifest.csp.document, nonce));
             res.setHeader('Referrer-Policy', PAGE_REFERRER_POLICY);
+            setLinkHeader(res, hints);
             // The page as it is rendered (SDD-70 §4.3): the head now, each part when it is in.
             res.write(opened.head);
             res.on('close', () => {
@@ -1334,7 +1363,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             }
             const pattern = errorPatternOf(localeOfPath(pathname, locales));
             const origin = pageOriginOf(request, base, false);
-            await sendErrorPage(edgeDir, res, failure.problem, nonce, manifest.csp.document, pattern, origin);
+            await sendErrorPage(edgeDir, res, failure.problem, nonce, manifest.csp.document, pattern, origin, errorHints);
           })
           .catch(next);
       });
@@ -1350,7 +1379,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           const pathname = pathnameOf(req.url ?? '/', base);
           const pattern = errorPatternOf(localeOfPath(pathname, locales));
           const origin = pageOriginOf(toRequest(req, res), base, false);
-          sendErrorPage(edgeDir, res, problemOfStatus(404), newNonce(), manifest.csp.document, pattern, origin).catch(next);
+          const errorHints = manifest.errorHints ?? [];
+          sendEarlyHints(req, res, errorHints);
+          sendErrorPage(edgeDir, res, problemOfStatus(404), newNonce(), manifest.csp.document, pattern, origin, errorHints)
+            .catch(next);
         });
       };
     },
@@ -1805,12 +1837,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           // form there. That is §4.15: development does not change.
           runtime: isDev
             ? {
-                // `dev: 'off'` — or no `sw.json` at all — registers nothing, so the page
-                // asks for nothing either (§4.11).
-                boot:
-                  swConfig !== null && swConfig.dev === 'preview'
-                    ? devUrl(base, DEV_BOOT_URL)
-                    : '',
+                boot: devBootUrl(),
                 main: devMainUrl(rb.locale),
                 pieces: [],
                 inline: '',
@@ -2736,19 +2763,28 @@ async function devErrorPage(
   return renderErrorPage(mod, problem, newNonce(), origin);
 }
 
-/** The dev server's error page, whole, with the dev client in it and its status. */
+/**
+ * The dev server's error page, whole, with the dev client in it and its status — and its hints
+ * (SDD-73 §4.1), known once its module is loaded: `hintsOf` reads them then.
+ */
 async function sendDevErrorPage(
   server: ViteDevServer,
+  req: import('node:http').IncomingMessage,
   res: import('node:http').ServerResponse,
-  url: string,
   errorPage: RouteBuild | undefined,
   problem: PageProblem,
   origin: PageOrigin,
+  hintsOf: (page: RouteBuild | undefined) => readonly string[],
 ): Promise<void> {
-  const html = await server.transformIndexHtml(url, await devErrorPage(server, errorPage, problem, origin));
+  const page = await devErrorPage(server, errorPage, problem, origin);
+  const hints = hintsOf(errorPage);
+  sendEarlyHints(req, res, hints);
+  // A request the dev server routed has its URL: Connect matched on it.
+  const html = await server.transformIndexHtml(req.url!, page);
   res.statusCode = problem.status;
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Referrer-Policy', PAGE_REFERRER_POLICY);
+  setLinkHeader(res, hints);
   res.end(html);
 }
 
@@ -2842,12 +2878,15 @@ async function sendErrorPage(
   /** The pattern of the locale's `_error.fud` (SDD-58 §4.5); the one pattern without locales. */
   pattern: string,
   origin: PageOrigin,
+  /** The error page's hints, for the `Link` of what this response paints (SDD-73 §3.2). */
+  hints: readonly string[],
 ): Promise<void> {
   const mod = existsSync(edgeChunkPath(edgeDir, pattern)) ? await importEdgeChunk(edgeDir, pattern) : null;
   const html = await renderErrorPage(mod, problem, nonce, origin);
   res.statusCode = problem.status;
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Referrer-Policy', PAGE_REFERRER_POLICY);
+  setLinkHeader(res, hints);
   res.setHeader('Content-Security-Policy', cspFor(csp, nonce));
   res.end(html);
 }
