@@ -33,9 +33,9 @@ export interface Project {
   /** Whether the app declares a `.fudapi` of its own: only then is there a server root (SDD-60 §4.4). */
   readonly api: boolean;
   /**
-   * The app's first locale, when it has `locales`: what a component is mounted in. Without it,
-   * `a | preset` is not a pipe and `t()` is not translated — the module `vite dev` serves a
-   * page of the app is always compiled for a locale.
+   * The app's first locale, when it has two or more: what a component is mounted in, by its tag.
+   * With one it is absent and nothing is tagged, as in `vite dev`: the plugin compiles the
+   * untagged module for that locale (SDD-71).
    */
   readonly locale: string | undefined;
 }
@@ -54,7 +54,9 @@ export function projectOf(): Project {
       contracts.page(resolve(dirname(fud), href)),
     );
     const api = contracts.sources.some((source) => source.origin === 'app');
-    project = { root, base, routes: found.routes, errorPage: found.errorPage, api, locale: locales?.[0] };
+    // One locale tags nothing (SDD-71): the plugin compiles the untagged module for it.
+    const locale = locales === undefined || locales.length < 2 ? undefined : locales[0];
+    project = { root, base, routes: found.routes, errorPage: found.errorPage, api, locale };
   }
   return project;
 }

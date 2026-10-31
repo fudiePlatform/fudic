@@ -63,7 +63,9 @@ function testLocale(): Plugin {
     enforce: 'pre',
     configResolved(config) {
       root = config.root;
-      locale = readProject(root, false, nodeConfigIo()).config?.locales?.[0];
+      // One locale tags nothing (SDD-71): the untagged graph is already compiled for it.
+      const locales = readProject(root, false, nodeConfigIo()).config?.locales ?? [];
+      locale = locales.length < 2 ? undefined : locales[0];
     },
     resolveId(id, importer) {
       if (locale === undefined || importer === undefined || !TEST_FILE.test(importer)) return null;

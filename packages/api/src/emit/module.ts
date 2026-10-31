@@ -134,13 +134,14 @@ const browser = (c: ModuleCtx): string => (c.side === 'browser' ? ', browser: tr
 /**
  * A pipe (SDD-71 §3.3): `implement` binds the implementation and hands back a `Pipe` — with
  * parameters, a function of them. It registers nothing and imports nothing: the view imports
- * the value, so a pipe nobody imports never reaches the browser. Same on both sides.
+ * the value, so a pipe nobody imports never reaches the browser. Same on both sides. The
+ * arguments are copied once: what `options` says is what `format` formats with.
  */
 function pipe(d: PipeDecl): string {
   const name = str(d.name.text);
   const value =
     d.params.length > 0
-      ? `(format) => (args) => Object.freeze({ kind: 'pipe', name: ${name}, options: Object.freeze({ ...args }), format: (value, locale) => format(value, args, locale) })`
+      ? `(format) => (args) => { const options = Object.freeze({ ...args }); return Object.freeze({ kind: 'pipe', name: ${name}, options, format: (value, locale) => format(value, options, locale) }); }`
       : `(format) => Object.freeze({ kind: 'pipe', name: ${name}, options: Object.freeze({}), format: (value, locale) => format(value, locale) })`;
   return `export const ${camel(d.name.text)} = { implement: ${value} };`;
 }

@@ -296,8 +296,11 @@ test('truncar formats a value', () => {
 });
 ```
 
-**2. El usuario completa el contrato.** Añade `max u32`. Al guardar, `fudic:pipes/truncar` cambia
-y `tsc` señala la implementación: le falta el parámetro `args`.
+**2. El usuario completa el contrato.** Añade `max u32`. Al guardar, `fudic:pipes/truncar` cambia:
+`truncar` pasa a ser una función de sus parámetros, y `tsc` señala cada uso que no los fija — el
+test generado (`truncar.format` ya no existe) y la vista que lo pone tras un `|` sin llamarlo — y
+la implementación que use su segundo parámetro como el idioma. Una implementación que lo ignora
+sigue tipando: TypeScript acepta una función con menos parámetros (§8.2, 8).
 
 **3. El usuario escribe la implementación**, en TS completo:
 
@@ -425,8 +428,9 @@ Filas nuevas de A.2 («El `@code` que el servidor evalúa» y «Lo que se pinta�
    `implement` devuelve `Pipe<V>`. `on date f64` da `Date | number`. `on Post` da el tipo `Post`.
 6. **Errores del `.fudapi`.** Sin `on`, `FUD1340` sobre el nombre, y el resto del fichero se
    indexa. Un `pipe` junto a un `load`, `FUD1078`. Dos `pipe truncar` en el proyecto, `FUD1081`.
-7. **La implementación tipada.** Una implementación que devuelve un número, o que ignora un
-   parámetro que el contrato añadió después, rompe `tsc` en dev (overlay) y en build.
+7. **La implementación tipada.** Una implementación que devuelve un número, o que usa como idioma
+   el parámetro que el contrato añadió después, rompe `tsc` en dev (overlay) y en build; y añadir
+   parámetros rompe el test generado y cada vista que usa el pipe sin fijarlos.
 8. **La vista.** Los tres usos de §3.5 pintan lo esperado en el servidor y en el navegador
    después de hidratar. `@(post.precio | corto)`, con `corto` de `str`, es un error de tipos.
    `@(corto)`, `@(truncar)` o leer `corto.options` en la vista es error (`FUD1150` o de tipos).
@@ -514,3 +518,7 @@ Filas nuevas de A.2 («El `@code` que el servidor evalúa» y «Lo que se pinta�
 7. **`on date f64`, no `on date i64`.** El `.fudapi` de SDD-60 no tiene `i64` (los enteros
    llegan a `i32`); el ejemplo de §3.2 y el criterio 5 pasan a `f64`, que da el mismo
    `Date | number`.
+8. **Añadir parámetros no rompe la implementación que los ignora.** Lo destapó la sesión de
+   tests: `implement((value, locale) => value)` sigue tipando tras añadir `max`, porque
+   TypeScript acepta una función con menos parámetros. Lo que rompe es lo que importa — cada uso
+   del pipe sin fijarlos y el test generado —; §4.1 paso 2 y el criterio 7 dicen eso.
