@@ -1,6 +1,7 @@
 <link rel="layout" href="../layouts/_layout.fud">
 <link rel="component" href="../components/site-nav.fud">
 <link rel="component" href="../components/app-clock.fud">
+<link rel="server" href="./ruta-reloj.fudapi">
 
 @code {
   // El mismo reloj de `app-clock.fud`, letra por letra, escrito en la RUTA.

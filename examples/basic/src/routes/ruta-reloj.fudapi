@@ -1,0 +1,2 @@
+# Per request: the page paints the time it is now, and a prerendered one would paint the build's.
+load ssr
