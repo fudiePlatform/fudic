@@ -68,7 +68,7 @@ apps/ and libs/, empty or with the app and the libraries you name.`,
       ['--no-sw', 'no Service Worker'],
       DRY_RUN,
     ],
-    examples: ['fudic new shop', 'fudic new shop --locale es', 'fudic new shop --workspace --lib ui'],
+    examples: ['fudic new shop --locale es', 'fudic new shop --workspace --lib ui'],
   },
   generate: {
     usage: 'fudic generate <type> <name>',

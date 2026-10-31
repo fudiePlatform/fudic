@@ -549,3 +549,5 @@ Filas nuevas de A.2 («El `@code` que el servidor evalúa» y «Lo que se pinta�
     tiene (criterio 2).
 17. **Un script que el idioma deja como estaba sale de la transformación tal cual** (`null`): una
     segunda versión idéntica de un fichero son dos versiones para la cobertura y el depurador.
+18. **`FUD1026` es traducir una app de un solo idioma.** Sin `"locales"` ya no existe (es `en`),
+    y un solo idioma no tiene catálogo (SDD-58 §4.5): `fudic translate` pide al menos dos.

@@ -54,7 +54,8 @@ export async function planTranslate(opts: TranslateOptions, io: ReadIo = nodeRea
   const target = resolved.target;
   if (target === undefined) return failed(resolved.errors);
   const locales = target.config.locales;
-  if (locales === undefined) return failed([FUD1026()]);
+  // One language has no catalog (SDD-58 §4.5): every app has one now, so the case is fewer than two.
+  if (locales.length < 2) return failed([FUD1026()]);
 
   const diagnostics: PlanDiagnostic[] = [];
   const found = extract(opts.cwd, target, io, diagnostics);
