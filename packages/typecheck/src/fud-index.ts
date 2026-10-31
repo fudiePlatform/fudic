@@ -17,7 +17,7 @@
 
 import { API_EXTENSION, parseApi } from '@fudic/api';
 import type { ProjectModule, StructuredDocument } from '@fudic/compiler';
-import { readProjectConfig } from '@fudic/config';
+import { CONFIG_FILE, readProjectConfig } from '@fudic/config';
 import { PIPES_DIR, SRC_DIR } from '@fudic/conventions';
 import type { ServerImport } from '@fudic/language-core';
 import { findLibraries, type LookupFailure } from '@fudic/resolve';
@@ -199,10 +199,10 @@ export class FudIndex<E extends IndexedFud = IndexedFud> implements LinkIndex, F
 
   /** The folder of pipes of a project (SDD-71 §3.1): its `fudic.json`'s `pipes`, read each time. */
   #pipesOf(root: string): string {
-    const { config } = readProjectConfig(root, {
-      exists: (path) => this.fs.readFile(path) !== undefined,
-      read: (path) => this.fs.readFile(path) ?? '',
-    });
+    // Read once: the reader asks `exists` before `read`, and the text it gets is this one.
+    const text = this.fs.readFile(`${root}/${CONFIG_FILE}`);
+    if (text === undefined) return PIPES_DIR;
+    const { config } = readProjectConfig(root, { exists: () => true, read: () => text });
     return config?.pipes ?? PIPES_DIR;
   }
 
