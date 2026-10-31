@@ -105,7 +105,7 @@ Examples
 const GENERATE_TEST = `
 error  fudic does not generate "test" on its own
        a component comes with its unit test:   fudic g component button
-       it generates: component, page, layout, app, lib, service, form, style, snippet, term
+       it generates: component, page, layout, app, lib, service, form, pipe, style, snippet, term
 
 "fudic generate --help" for more.
 `;
@@ -176,6 +176,7 @@ describe('fudic <command> --help (§6.6)', () => {
     'generate app',
     'generate lib',
     'generate spec',
+    'generate pipe',
     'generate term',
     'fmt',
     'translate',
@@ -265,14 +266,15 @@ describe('a usage error (§6.8)', () => {
       [['translate', 'es'], 'translate', 'fudic translate takes no argument: "es"', 'it translates the app you are in, or the one --project names'],
       [['new'], 'new', 'fudic new needs a project name', 'e.g. fudic new shop'],
       [['new', 'shop', '--pm', 'bun'], 'new', 'unknown package manager "bun"', 'use --pm pnpm, npm or yarn'],
-      [['g'], 'generate', 'fudic generate needs to know what to generate', 'it generates: component, page, layout, app, lib, service, form, style, snippet, term'],
-      [['g', 'widget', 'x'], 'generate', 'fudic does not generate "widget"', 'it generates: component, page, layout, app, lib, service, form, style, snippet, term'],
+      [['g'], 'generate', 'fudic generate needs to know what to generate', 'it generates: component, page, layout, app, lib, service, form, pipe, style, snippet, term'],
+      [['g', 'widget', 'x'], 'generate', 'fudic does not generate "widget"', 'it generates: component, page, layout, app, lib, service, form, pipe, style, snippet, term'],
       [['g', 'c'], 'generate component', 'fudic generate component needs a name', 'e.g. fudic g component button'],
       [['g', 'p'], 'generate page', 'fudic generate page needs a name', 'e.g. fudic g page about'],
       [['g', 'l'], 'generate layout', 'fudic generate layout needs a name', 'e.g. fudic g layout docs'],
       [['g', 'a'], 'generate app', 'fudic generate app needs a name', 'e.g. fudic g app admin'],
       [['g', 'lib'], 'generate lib', 'fudic generate lib needs a name', 'e.g. fudic g lib ui'],
       [['g', 's'], 'generate spec', 'fudic generate spec needs a name', 'e.g. fudic g spec button'],
+      [['g', 'pipe'], 'generate pipe', 'fudic generate pipe needs a name', 'e.g. fudic g pipe truncate'],
       [['g', 't'], 'generate term', 'fudic generate term needs a name', 'e.g. fudic g term then cart-has'],
       [['g', 't', 'when'], 'generate term', 'fudic generate term needs a name', 'e.g. fudic g term when cart-has'],
     ];
@@ -290,13 +292,14 @@ describe('a usage error (§6.8)', () => {
       [['g', 'c', 'x', '--zz'], 'generate component', '--project, --dir, --in, --no-style, --slot, --skip-test, --skip-spec, --dry-run, --force'],
       [['g', 'p', 'x', '--zz'], 'generate page', '--project, --dir, --layout, --no-layout, --server, --sections, --skip-test, --dry-run, --force'],
       [['g', 'l', 'x', '--zz'], 'generate layout', '--project, --dir, --sections, --no-head, --skip-test, --dry-run, --force'],
-      [['g', 'a', 'x', '--zz'], 'generate app', '--dir, --id, --prefix, --no-sw, --uses, --base, --layout, --no-layout, --dry-run, --force'],
+      [['g', 'a', 'x', '--zz'], 'generate app', '--dir, --id, --prefix, --no-sw, --uses, --base, --layout, --no-layout, --locale, --dry-run, --force'],
+      [['g', 'pipe', 'x', '--zz'], 'generate pipe', '--project, --on, --dry-run, --force'],
       [['g', 'lib', 'x', '--zz'], 'generate lib', '--dir, --prefix, --uses, --styles-only, --dry-run, --force'],
       [['g', 's', 'x', '--zz'], 'generate spec', '--project, --dry-run, --force'],
       [['g', 't', 'then', 'x', '--zz'], 'generate term', '--project, --param, --dry-run, --force'],
       [['fmt', '--zz'], 'fmt', '--check, --print-width, --tab-width, --use-tabs, --quote, --end-of-line, --dry-run, --force'],
       [['translate', '--zz'], 'translate', '--project, --dry-run, --force'],
-      [['new', 'x', '--zz'], 'new', '--pm, --no-install, --no-git, --no-sw, --layout, --no-layout, --target, --id, --prefix, --workspace, --app, --uses, --lib, --dry-run, --force'],
+      [['new', 'x', '--zz'], 'new', '--pm, --no-install, --no-git, --no-sw, --layout, --no-layout, --target, --id, --prefix, --workspace, --app, --uses, --lib, --locale, --dry-run, --force'],
     ];
     for (const [argv, topic, flags] of cases) {
       expect(usage(argv), argv.join(' ')).toEqual({ message: expect.stringContaining('unknown flag --zz'), hints: [`it takes: ${flags}`], topic });
