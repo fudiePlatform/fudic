@@ -83,11 +83,16 @@ describe('Translations', () => {
     );
   });
 
-  it('says nothing away from a message, outside an app, or in an app without locales', () => {
+  it('says nothing away from a message, outside an app, or in an app whose fudic.json cannot be read', () => {
     expect(new Translations(memoryFs(workspace())).at(CARD, SOURCE, offsetOf('<hr>'))).toBeUndefined();
     expect(new Translations(memoryFs({ [CARD]: SOURCE })).at(CARD, SOURCE, offsetOf('Cerrar'))).toBeUndefined();
+    const broken = workspace({ '/w/app/fudic.json': '{ "kind": "app", "locales": [] }' });
+    expect(new Translations(memoryFs(broken)).at(CARD, SOURCE, offsetOf('Cerrar'))).toBeUndefined();
+  });
+
+  it('an app without locales is DEFAULT_LOCALE, as if it wrote ["en"] (SDD-71 §3.1, §8.2 point 11)', () => {
     const plain = workspace({ '/w/app/fudic.json': '{ "kind": "app" }' });
-    expect(new Translations(memoryFs(plain)).at(CARD, SOURCE, offsetOf('Cerrar'))).toBeUndefined();
+    expect(new Translations(memoryFs(plain)).at(CARD, SOURCE, offsetOf('Cerrar'))?.lines.map((l) => l.locale)).toEqual(['en']);
   });
 
   it('reads a changed catalog after it is invalidated, and only then', () => {
