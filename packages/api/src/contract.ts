@@ -51,6 +51,7 @@ import {
 } from './clauses.js';
 import { ruleUse } from './form.js';
 import type { LineNode, Token } from './line.js';
+import { bufferBytes, LOAD_MODES, LOAD_OPTIONS, LOAD_POLICIES, PAGE_CACHES } from './load-options.js';
 import { duration, readType, route, text } from './type.js';
 
 const doc = (node: LineNode): { doc?: string } => (node.doc !== undefined ? { doc: node.doc } : {});
@@ -196,14 +197,6 @@ function argDecl(node: LineNode, at: number, c: Ctx): Omit<ArgDecl, 'place'> | u
 
 const ARG_LINES = ['<rule>'];
 
-const MODES = ['ssg', 'ssr', 'sw'];
-const POLICIES = ['cache-first', 'network-first', 'stale-while-revalidate', 'network-only'];
-const PAGE = ['never', 'persist'];
-const LOAD_OPTIONS = [...MODES, 'ttl', ...POLICIES, 'page', 'buffer'];
-
-/** `0`, `4096`, `16k`: a whole number of bytes, `k` for 1024 (SDD-70 §3.9). */
-const BUFFER = /^(0|[1-9][0-9]*)(k)?$/u;
-
 /** `load [mode] [ttl <dur>] [<policy>] [page <never|persist> [<dur>]] [buffer <bytes>]`, `use`, `skip`, `fails`, fields. */
 export function loadDecl(node: LineNode, c: Ctx): LoadDecl {
   const [keyword] = node.tokens as [Token];
@@ -219,9 +212,9 @@ export function loadDecl(node: LineNode, c: Ctx): LoadDecl {
   const tokens = node.tokens;
   for (let i = 1; i < tokens.length; i++) {
     const t = tokens[i]!;
-    if (MODES.includes(t.raw)) {
+    if (LOAD_MODES.includes(t.raw)) {
       if (!repeated(mode, t, c)) mode = name(t);
-    } else if (POLICIES.includes(t.raw)) {
+    } else if (LOAD_POLICIES.includes(t.raw)) {
       if (!repeated(policy, t, c)) policy = name(t);
     } else if (t.raw === 'ttl') {
       const d = tokens[i + 1] !== undefined ? duration(tokens[i + 1]!) : undefined;
@@ -234,8 +227,8 @@ export function loadDecl(node: LineNode, c: Ctx): LoadDecl {
     } else if (t.raw === 'page') {
       const value = tokens[i + 1];
       i++;
-      if (value === undefined || !PAGE.includes(value.raw)) {
-        bad(value, t, PAGE);
+      if (value === undefined || !PAGE_CACHES.includes(value.raw)) {
+        bad(value, t, PAGE_CACHES);
         continue;
       }
       const d = tokens[i + 1] !== undefined ? duration(tokens[i + 1]!) : undefined;
@@ -252,13 +245,13 @@ export function loadDecl(node: LineNode, c: Ctx): LoadDecl {
       // A value that is not a size is still consumed: it is `buffer`'s, not a stray option.
       const value = tokens[i + 1];
       if (value !== undefined) i++;
-      const m = value === undefined ? null : BUFFER.exec(value.raw);
-      if (m === null) {
+      const bytes = value === undefined ? undefined : bufferBytes(value.raw);
+      if (bytes === undefined) {
         c.out.push(FUD1325({ span: (value ?? t).span }));
       } else if (!repeated(buffer, t, c)) {
         buffer = {
           keyword: t.span,
-          bytes: Number(m[1]) * (m[2] === undefined ? 1 : 1024),
+          bytes,
           span: span(t.span.start, value!.span.end),
         };
       }

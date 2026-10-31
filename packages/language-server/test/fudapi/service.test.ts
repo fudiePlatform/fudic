@@ -72,6 +72,14 @@ describe('live diagnostics (criterion 27)', () => {
     expect(await diagnostics('get f\n  -> Person\n', s)).toEqual([]);
   });
 
+  it('a `buffer` that is no size is FUD1325, on its value (SDD-70 §3.9)', async () => {
+    const found = await diagnostics('load ssr buffer 16kb\n  users  Person[]\n');
+    expect(found.map((d) => [d.code, d.range])).toEqual([
+      ['FUD1325', { start: { line: 0, character: 16 }, end: { line: 0, character: 20 } }],
+    ]);
+    expect(await diagnostics('load ssr buffer 16k\n  users  Person[]\n')).toEqual([]);
+  });
+
   it('knows a route sibling: `paths` in a route without parameters', async () => {
     expect((await diagnostics('paths\n')).map((d) => d.code)).toEqual(['FUD1091']);
   });
@@ -123,6 +131,12 @@ describe('the other requests', () => {
     expect((hover.contents as { value: string }).value).toContain('middleware auth');
     const definition = await s.provideDefinition?.(doc(TEXT), { line: 2, character: 6 }, NONE);
     expect(definition).toMatchObject([{ targetUri: URI.file(`${SRC}/types/person.fudapi`).toString() }]);
+  });
+
+  it('hovers the words of the `load` line, which name no declaration', async () => {
+    const hover = (await service().provideHover?.(doc('load ssr buffer 16k\n'), { line: 0, character: 17 }, NONE)) as Hover;
+    expect((hover.contents as { value: string }).value).toBe('16384 bytes held before the stream sends.');
+    expect(await service().provideHover?.(doc('load  ssr\n'), { line: 0, character: 5 }, NONE)).toBeUndefined();
   });
 
   it('encodes the semantic tokens against the legend', async () => {
