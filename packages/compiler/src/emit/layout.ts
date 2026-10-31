@@ -563,6 +563,6 @@ export function emitRouteModuleMapped(graph: DocumentGraph, options: EmitOptions
     mappings: writer.mappings(),
     missingAssets: linker.missing(),
     diagnostics,
-    ...(sheets === null ? {} : { sheets: sheets.uses }),
+    ...(sheets === null ? {} : { sheets: sheets.uses, hints: sheets.hints }),
   };
 }

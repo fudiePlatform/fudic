@@ -23,7 +23,7 @@ function io(files: Record<string, string>): ConfigIo {
   };
 }
 
-const CONFIG = { id: 'shop', kind: 'app', prefix: 'shop', globalStyles: [], styles: [], server: 'src/server', browser: 'src/browser' } as const;
+const CONFIG = { id: 'shop', kind: 'app', prefix: 'shop', globalStyles: [], styles: [], server: 'src/server', browser: 'src/browser', earlyHints: true, componentStyles: 'inline' } as const;
 const EMPTY = { global: [], optional: [], errors: [], warnings: [] };
 const theme = (path: string) => [{ name: 'theme', path }];
 

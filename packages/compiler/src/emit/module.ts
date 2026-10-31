@@ -39,7 +39,7 @@ import {
   type AssetText,
   type AssetUrl,
 } from './assets.js';
-import { planPageSheets, type PageSheets, type SheetUse } from './page-sheets.js';
+import { planPageSheets, type EarlyHint, type PageSheets, type SheetUse } from './page-sheets.js';
 import { compactStyleCss } from './css-compact.js';
 import { isRtl, type LocaleCompile } from '../i18n/localize.js';
 import { codeOf, codeOfDocument, diHelpers } from './oxc-code.js';
@@ -195,6 +195,12 @@ export interface EmitOutput {
    * a route compiled with `pruneStyles`. The host adds them up across the application.
    */
   readonly sheets?: readonly SheetUse[];
+  /**
+   * What the page needs before its body, from its own document (SDD-70 §3.10): the copies of
+   * the sheets its head links, its layout's first. Present with `sheets`. The host adds what only
+   * the build knows — the runtime the page loads — and writes them into the route manifest.
+   */
+  readonly hints?: readonly EarlyHint[];
 }
 
 /** The component's single `<style>` element, if it wrote one (decision 62). */
@@ -709,6 +715,6 @@ export function emitPageModuleMapped(graph: ComponentGraph, options: EmitOptions
     mappings: writer.mappings(),
     missingAssets: linker.missing(),
     diagnostics,
-    ...(sheets === null ? {} : { sheets: sheets.uses }),
+    ...(sheets === null ? {} : { sheets: sheets.uses, hints: sheets.hints }),
   };
 }

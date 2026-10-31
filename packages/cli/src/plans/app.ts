@@ -84,7 +84,7 @@ export function planApp(name: string, opts: AppOptions, io: ReadIo = nodeReadIo(
     ...projects
       .filter((project) => project.name !== name)
       .map((project) => ({ dir: project.name, config: project.config })),
-    { dir: name, config: { id: opts.id, kind: 'app', prefix: opts.prefix, globalStyles: [], styles: [], server: SERVER_DIR, browser: BROWSER_DIR } },
+    { dir: name, config: { id: opts.id, kind: 'app', prefix: opts.prefix, globalStyles: [], styles: [], server: SERVER_DIR, browser: BROWSER_DIR, earlyHints: true, componentStyles: 'inline' } },
   ]);
 
   // The other apps, and where they are: one base per app, and a dev port nobody else has.

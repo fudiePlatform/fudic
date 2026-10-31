@@ -57,6 +57,11 @@ export interface ManifestInputs {
    * under `assets`, so they are written after the folded chunk names and never folded.
    */
   readonly hydratePieces?: Readonly<Record<string, readonly string[]>>;
+  /**
+   * The early hints of a route, as `Link` values (SDD-70 §3.10). Absent when the app turned them
+   * off (`earlyHints: false`), and then no route carries any.
+   */
+  readonly hintsOf?: (route: RouteBuild) => readonly string[];
 }
 
 export interface ManifestResult {
@@ -136,8 +141,13 @@ export function buildManifest(
     // the link pass uses, so the manifest can never promise a chunk that was not built.
     // Without a Service Worker nothing links at all.
     const deps = !inputs.serviceWorker || !isLinkable(decision) ? null : inputs.depsOf(rb);
-    // What a backend needs to stream the page as the Node render does (SDD-70 §3.9).
-    const stream = rb.analysis.buffer === undefined ? {} : { buffer: rb.analysis.buffer };
+    // What a backend needs to stream the page as the Node render does: its buffer and what it
+    // announces before the page (SDD-70 §3.9, §3.10).
+    const hints = inputs.hintsOf?.(rb) ?? [];
+    const stream = {
+      ...(rb.analysis.buffer === undefined ? {} : { buffer: rb.analysis.buffer }),
+      ...(hints.length === 0 ? {} : { hints }),
+    };
     if (deps === null) {
       // No `deps` key at all: its ABSENCE is what tells the router this route is the
       // server's, whatever its mode says (SDD-27 §5.4). An empty list would mean the

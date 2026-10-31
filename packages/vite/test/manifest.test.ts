@@ -246,3 +246,27 @@ describe('buildManifest — the buffer of a route (SDD-70 §3.9, criterion 28)',
     expect('buffer' in file.routes[2]!).toBe(false);
   });
 });
+
+describe('buildManifest — the early hints of a route (SDD-70 §3.10, criterion 30)', () => {
+  it('writes `hints` on every route that has some, linkable or the server\'s', () => {
+    const { file } = buildManifest(
+      [routeBuild('/a', { mode: 'ssg' }), routeBuild('/b', { mode: 'ssr' }), routeBuild('/c', { mode: 'ssg' })],
+      {
+        ...INPUTS,
+        depsOf: (rb) => (rb.route.pattern === '/b' ? null : ['dep']),
+        hintsOf: (rb) => (rb.route.pattern === '/c' ? [] : [`<${rb.route.pattern}.css>; rel=preload; as=style`]),
+      },
+    );
+    expect(file.routes.map((r) => r.hints)).toEqual([
+      ['</a.css>; rel=preload; as=style'],
+      ['</b.css>; rel=preload; as=style'],
+      undefined,
+    ]);
+    expect('hints' in file.routes[2]!).toBe(false);
+  });
+
+  it('without `hintsOf` (`earlyHints: false`), no route carries any', () => {
+    const { file } = buildManifest([routeBuild('/a', { mode: 'ssg' })], INPUTS);
+    expect('hints' in file.routes[0]!).toBe(false);
+  });
+});

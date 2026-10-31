@@ -26,7 +26,7 @@ describe('readProjectConfig', () => {
   it('reads the three fields and says nothing else (criterion 1)', () => {
     const result = readProjectConfig(ROOT, io('{"id":"shop","kind":"app","prefix":"shop"}'));
 
-    expect(result.config).toEqual({ id: 'shop', kind: 'app', prefix: 'shop', globalStyles: [], styles: [], server: 'src/server', browser: 'src/browser' });
+    expect(result.config).toEqual({ id: 'shop', kind: 'app', prefix: 'shop', globalStyles: [], styles: [], server: 'src/server', browser: 'src/browser', earlyHints: true, componentStyles: 'inline' });
     expect(result.diagnostics).toEqual([]);
   });
 
@@ -45,7 +45,7 @@ describe('readProjectConfig', () => {
   it('fills the defaults of the fields that are not there (criterion 4)', () => {
     const result = readProjectConfig(ROOT, io('{}'));
 
-    expect(result.config).toEqual({ id: '', kind: 'app', prefix: '', globalStyles: [], styles: [], server: 'src/server', browser: 'src/browser' });
+    expect(result.config).toEqual({ id: '', kind: 'app', prefix: '', globalStyles: [], styles: [], server: 'src/server', browser: 'src/browser', earlyHints: true, componentStyles: 'inline' });
     expect(result.diagnostics).toEqual([]);
   });
 
@@ -162,6 +162,8 @@ describe('readProjectConfig', () => {
         locales: ['es', 'en'],
         server: 'src/server',
         browser: 'src/browser',
+        earlyHints: true,
+        componentStyles: 'inline',
       });
       expect(result.diagnostics).toEqual([]);
     });
@@ -240,7 +242,7 @@ describe('readProjectConfig', () => {
 
   describe('server, browser and api (SDD-60 §3.15, criterion 22)', () => {
     it('the conventions when the file declares none; api only in a library', () => {
-      expect(readProjectConfig(ROOT, io('{"id":"shop"}')).config).toMatchObject({ server: 'src/server', browser: 'src/browser' });
+      expect(readProjectConfig(ROOT, io('{"id":"shop"}')).config).toMatchObject({ server: 'src/server', browser: 'src/browser', earlyHints: true, componentStyles: 'inline' });
       expect(readProjectConfig(ROOT, io('{"id":"shop"}')).config).not.toHaveProperty('api');
       expect(readProjectConfig(ROOT, io('{"id":"ui","kind":"lib"}')).config).toMatchObject({
         server: 'src/server',
@@ -295,5 +297,27 @@ describe('readProjectConfig', () => {
       expect(result.config).toBeNull();
       expect(result.diagnostics[0]!.message).toContain('"api" must be a folder inside the project, like "src/api": it leaves the project');
     });
+  });
+});
+
+describe('earlyHints and componentStyles (SDD-70 §3.10, criterion 29)', () => {
+  it('read their values, and default to true and "inline"', () => {
+    const set = readProjectConfig(ROOT, io('{"earlyHints":false,"componentStyles":"link"}'));
+    expect(set.config?.earlyHints).toBe(false);
+    expect(set.config?.componentStyles).toBe('link');
+    expect(set.diagnostics).toEqual([]);
+    const unset = readProjectConfig(ROOT, io('{}'));
+    expect(unset.config?.earlyHints).toBe(true);
+    expect(unset.config?.componentStyles).toBe('inline');
+  });
+
+  it('another type is FUD0725 on the field', () => {
+    const text = '{"earlyHints":"yes","componentStyles":"file"}';
+    const result = readProjectConfig(ROOT, io(text));
+    expect(result.config).toBeNull();
+    expect(result.diagnostics.map((d) => [d.code, text.slice(d.span!.start, d.span!.end)])).toEqual([
+      ['FUD0725', '"earlyHints"'],
+      ['FUD0725', '"componentStyles"'],
+    ]);
   });
 });

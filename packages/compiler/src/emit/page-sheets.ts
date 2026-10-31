@@ -84,6 +84,8 @@ export interface PageSheets {
   /** The project's sheets, pruned; one no component of this page adopts is not here. */
   readonly projectStyles: readonly ProjectStyle[] | undefined;
   readonly uses: readonly SheetUse[];
+  /** The copies its head links, to hint before the page (SDD-70 §3.10), in document order. */
+  readonly hints: readonly EarlyHint[];
 }
 
 const isFrameworkLink = (el: ElementNode): boolean =>
@@ -155,18 +157,36 @@ function sitesOf(sheet: LinkedSheet): SheetSite[] {
   ];
 }
 
-/** The element a pruned `<link>` becomes: a `<link>` to the copy, a `<style>`, or nothing. */
-function sheetElement(sheet: LinkedSheet, css: string, linker: AssetLinker): string {
-  if (css === '') return "''";
+/**
+ * A resource the page needs before its body, to announce as early as it can (SDD-70 §3.10): a
+ * `Link` of a `103 Early Hints` and of the response. `href` is the URL the document carries.
+ */
+export interface EarlyHint {
+  readonly href: string;
+  readonly rel: 'preload' | 'modulepreload';
+  /** `style` for a stylesheet; a module needs none. */
+  readonly as?: 'style';
+}
+
+/**
+ * The element a pruned `<link>` becomes — a `<link>` to the copy, a `<style>`, or nothing — and
+ * the URL to hint when it is a `<link>` to a copy the host published.
+ */
+function sheetElement(
+  sheet: LinkedSheet,
+  css: string,
+  linker: AssetLinker,
+): { readonly expr: string; readonly url?: string } {
+  if (css === '') return { expr: "''" };
   if (asksInline(sheet.href)) {
-    return `'<style' + $nonce + '>' + ${linker.cssTemplate(css)} + '</style>'`;
+    return { expr: `'<style' + $nonce + '>' + ${linker.cssTemplate(css)} + '</style>'` };
   }
   // A static file has no import bindings: every `url()` in it is written as its final URL.
   const url = linker.sheetRef(sheet.spec, linker.cssLinked(css));
-  if (url !== null) return linkWithHref(sheet.source, sheet.el, JSON.stringify(url));
+  if (url !== null) return { expr: linkWithHref(sheet.source, sheet.el, JSON.stringify(url)), url };
   // No host publishes copies: the file as it is, under the URL it always had.
   const whole = linker.maybeRef(sheet.spec, 'head') ?? JSON.stringify(sheet.href);
-  return linkWithHref(sheet.source, sheet.el, whole);
+  return { expr: linkWithHref(sheet.source, sheet.el, whole) };
 }
 
 /**
@@ -224,8 +244,13 @@ export function planPageSheets(
   const cssOf = new Map(pruned.value.map((s) => [s.key, s.css]));
   const contributingOf = new Map(pruned.value.map((s) => [s.key, s.contributing]));
 
-  const layout = new Map(layoutSheets.map((s) => [s.key, sheetElement(s, cssOf.get(s.key)!, linker)]));
-  const own = new Map(ownSheets.map((s) => [s.el, sheetElement(s, cssOf.get(s.key)!, linker)]));
+  // In document order: the layout's head goes out first, and its sheets with it.
+  const elements = linked.map((s) => ({ sheet: s, ...sheetElement(s, cssOf.get(s.key)!, linker) }));
+  const layout = new Map(elements.filter((e) => layoutSheets.includes(e.sheet)).map((e) => [e.sheet.key, e.expr]));
+  const own = new Map(elements.filter((e) => ownSheets.includes(e.sheet)).map((e) => [e.sheet.el, e.expr]));
+  const hints = elements.flatMap((e): EarlyHint[] =>
+    e.url === undefined ? [] : [{ href: e.url, rel: 'preload', as: 'style' }],
+  );
   // An adopted sheet that came out empty is still registered, empty: the adopted lists that
   // name it are written in the modules of components, shared by every page, and a list that
   // names a sheet the document never registered keeps its host waiting for it.
@@ -246,5 +271,5 @@ export function planPageSheets(
       css: adopted.get(s.specifier) ? cssOf.get(`project:${s.specifier}`)! : '',
     })),
   ];
-  return { layout, own: (el) => own.get(el) ?? null, projectStyles, uses };
+  return { layout, own: (el) => own.get(el) ?? null, projectStyles, uses, hints };
 }

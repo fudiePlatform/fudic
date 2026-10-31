@@ -116,6 +116,9 @@ describe('a package href', () => {
           server: 'src/server',
           browser: 'src/browser',
           api: 'fudapi',
+          // SDD-70 §3.10, by default.
+          earlyHints: true,
+          componentStyles: 'inline',
         },
       },
     });

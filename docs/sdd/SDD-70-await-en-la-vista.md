@@ -674,3 +674,10 @@ Un valor de otro tipo: `FUD0725`, como el resto de campos del fichero.
     de Node.
 14. **`buffer` en la línea `load`** (Pedro, 2026-10-31: «fudapi por ruta»). Va donde ya van
     `ttl` y la política de caché, que también son de la ruta y no del campo.
+15. **Las pistas, primera versión** (tareas 40–41). El emit devuelve las hojas que enlaza el head
+    (`EmitOutput.hints`, las copias podadas que publica el host, las del layout primero); el
+    build les añade `boot`, `main` y su cierre estático **recorrido en el bundle**: los chunks
+    que importa (un runtime empaquetado en la app) y las piezas `/_fudic/` debajo (un runtime
+    enlazado). Las pistas son URLs, la única excepción a «nombres, no URLs» del manifiesto: un
+    `Link` nombra una URL. **Pendiente de diseñar con Pedro** antes de las tareas 42–43: una hoja
+    que no se poda (un `/public.css`, una de otro origen) aún no entra.

@@ -27,6 +27,7 @@ import {
 import { type FudicOptions, type ResolvedOptions, resolveOptions } from './options.js';
 import { discoverRoutes, type RouteBuild } from './discover.js';
 import { buildManifest } from './manifest.js';
+import { routeHints } from './hints.js';
 import { emitRenderChunk, routeApi } from './wrapper.js';
 import { emitBootBootstrap, emitSwBootstrap } from './bootstrap.js';
 import {
@@ -63,6 +64,7 @@ import {
   translateScript,
   type LocaleCompile,
   type ResolveIo,
+  type EarlyHint,
 } from '@fudic/compiler';
 import {
   Catalogs,
@@ -520,6 +522,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    * to write the SAME URL into its head.
    */
   let coordinators = new Map<string, Coordinator | null>();
+  /**
+   * The `.fud` of a page, with the locale it was compiled for → the sheets its head links, as
+   * the emit hinted them (SDD-70 §3.10). Filled by the host pass, read by the manifest.
+   */
+  const pageHints = new Map<string, readonly EarlyHint[]>();
+  const pageHintKey = (path: string, locale: string | undefined): string =>
+    `${path.replace(/\\/gu, '/')}#${locale ?? ''}`;
   /**
    * Route pattern → what its page hydrates at LOAD, by the name the runtime asks for it, the
    * locale's directory included (BUG-53 §4.3). Filled with the coordinators, and only in a
@@ -1861,6 +1870,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         return null;
       }
       const result = compiled.result;
+      if (result.hints !== undefined) pageHints.set(pageHintKey(path, locale), result.hints);
       // A literal asset URL with no file on disk: warn (FUD0363) and keep the literal —
       // the emit already left it un-linked, so the build does not abort.
       const diagnostics: FudDiagnostic[] = result.missingAssets.map((spec) => FUD0363({ file: path, spec }));
@@ -2422,12 +2432,36 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
 
       // 4. The manifest: the one contract, emitted at a fixed URL.
       const unlinked: FudDiagnostic[] = [];
+      // The early hints of each route (SDD-70 §3.10): the sheets its head links, then the entries
+      // it loads and their static imports in depth, under the build's own id. Off with
+      // `earlyHints: false`.
+      //
+      // What `main` loads is walked in the bundle, statically: the chunks it imports (a runtime
+      // bundled into the app) and the published pieces under all of them (a linked runtime).
+      const hintItems = bundleItems(bundle);
+      const hintsOf = (rb: RouteBuild): readonly string[] => {
+        const boot = runtimeEntriesFor(rb.route.pattern).boot.split(BUILD_TOKEN).join(buildId);
+        const coordinator = coordinators.get(rb.route.pattern) ?? null;
+        const id = coordinator === null ? undefined : coordinatorIds.get(coordinator.source);
+        const key = Object.keys(bundle).find((k) => {
+          const item = bundle[k]!;
+          return item.type === 'chunk' && id !== undefined && item.facadeModuleId === id;
+        });
+        const graph = key === undefined ? [] : reachableChunks(hintItems, (i) => i.fileName === key);
+        const modules = [
+          boot,
+          ...graph.map((k) => `${base}${bundle[k]!.fileName}`),
+          ...loadedPieces(graph.map((k) => codeOf.get(k)).join('\n'), runtime),
+        ];
+        return routeHints(pageHints.get(pageHintKey(rb.absPath, rb.locale)) ?? [], modules);
+      };
       const { file, diagnostics } = buildManifest(builds, {
         build: buildId,
         base,
         serviceWorker: swConfig !== null,
         hydrateDeps,
         hydratePieces,
+        ...(project.config?.earlyHints === false ? {} : { hintsOf }),
         depsOf: (rb) => {
           if (!link.entries.has(rb.route.pattern)) {
             unlinked.push(FUD0399({ pattern: rb.route.pattern }));
