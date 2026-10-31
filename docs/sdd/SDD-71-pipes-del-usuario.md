@@ -544,9 +544,10 @@ Filas nuevas de A.2 («El `@code` que el servidor evalúa» y «Lo que se pinta�
 15. **Criterio 16: dos tests importan `format` y `locale` de `@fudic/i18n` a propósito.** Prueban
     justo que esos nombres de ese paquete ya no se reemplazan (`compiler/test/i18n/ast.test.ts` y
     `localize.test.ts`). El criterio va de lo que escriben la app, los ejemplos y la documentación.
-16. **Un `.fudapi` que solo declara pipes no pide raíz** (`ApiProject.hasRoot`), ni en el plugin
-    ni en `@fudic/testing`: la raíz importa `@fudic/http`, que una app con pipes y sin contratos no
-    tiene (criterio 2).
+16. **Un `.fudapi` sin nada que implementar no pide raíz** (`ApiProject.hasRoot`): solo pipes,
+    `type` y `enum`, ni en el plugin ni en `@fudic/testing`. La raíz importa `@fudic/http`, que una
+    app con pipes y sin contratos no tiene (criterio 2), ni la que `fudic g pipe --on Post` deja con
+    un `type Post` (criterio 14).
 17. **Un script que el idioma deja como estaba sale de la transformación tal cual** (`null`): una
     segunda versión idéntica de un fichero son dos versiones para la cobertura y el depurador.
 18. **`FUD1026` es traducir una app de un solo idioma.** Sin `"locales"` ya no existe (es `en`),

@@ -41,12 +41,16 @@ import type { SourceDiagnostic } from '@fudic/diagnostics';
 /** The scheme of a generated module: `fudic:routes/usuarios`. */
 export const API_SCHEME = 'fudic:';
 
+/** What a `.fudapi` can declare with no implementation behind it: nothing to register. */
+const UNIMPLEMENTED: ReadonlySet<string> = new Set(['pipe', 'type', 'enum']);
+
 /**
- * Whether a `.fudapi` declares only pipes (SDD-71 §3.3): its module needs no root, because
- * nothing in it has a half to register.
+ * Whether a `.fudapi` has nothing to implement (SDD-71 §3.3): only pipes, types and enums. Its
+ * module needs no root — nothing in it has a half to register — and a root would ask for
+ * `@fudic/http`, which an app made by `fudic new` does not have until it declares a contract.
  */
-export const onlyPipes = (source: ApiSource): boolean =>
-  source.file.declarations.length > 0 && source.file.declarations.every((d) => d.kind === 'pipe');
+export const nothingToImplement = (source: ApiSource): boolean =>
+  source.file.declarations.length > 0 && source.file.declarations.every((d) => UNIMPLEMENTED.has(d.kind));
 
 /** A dependency that publishes `.fudapi`, and where its compiled implementations are. */
 export interface ApiLibrary {
@@ -93,12 +97,12 @@ export class ApiProject {
   }
 
   /**
-   * Whether the app declares a `.fudapi` that needs a root: one of its own that is more than
-   * pipes (SDD-71 §3.3). A file of only pipes has nothing to implement, and a root would ask for
-   * `@fudic/http`, which an app with pipes and no contracts does not have.
+   * Whether the app declares a `.fudapi` that needs a root: one of its own with something to
+   * implement (SDD-71 §3.3). Pipes, types and enums have nothing, and a root would ask for
+   * `@fudic/http`, which an app with them and no contracts does not have.
    */
   hasRoot(): boolean {
-    return this.sources.some((s) => s.origin === 'app' && !onlyPipes(s));
+    return this.sources.some((s) => s.origin === 'app' && !nothingToImplement(s));
   }
 
   /** Every `<id>` of the project, the dependencies' included. */
