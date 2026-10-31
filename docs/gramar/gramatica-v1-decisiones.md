@@ -1346,7 +1346,10 @@ los dos lados (Pedro, 2026-10-27).*
 un fichero de la carpeta de pipes, o del `pipes/*` de una librería, vale en el corte. Solo puede
 ir a la derecha de `|` o llamarse en una `const` con un literal de datos (`FUD1150`). Enmienda la
 158: un pipe, también un preset, lleva su `format`, y `a | p` se emite como `p.format(a, "<idioma>")`.
-Los presets viven en `@fudic/core`.
+Los presets viven en `@fudic/core`. Sin paréntesis, el pipe va pegado a la cadena implícita:
+`@data.x|corto`, y en cadena `@x|a|b` (SDD-71 §8.2, 5). *Por qué pegado: con espacios, la barra
+tras una expresión implícita es texto desde la decisión 101, y `Hola @nombre | Inicio` no puede
+pasar a ser un pipe en silencio.*
 
 **173.** **En `@fudic:result`, `@fudic:error` y `bus:`, el handler recibe el dato** (SDD-72 §3.1).
 Enmienda la 98 para esos tres eventos: la referencia desnuda y la lambda reciben `event.detail`,
