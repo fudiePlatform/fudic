@@ -39,6 +39,16 @@ export function localeOf(id: string): string | undefined {
 }
 
 /**
+ * Whether an untagged script of a one-locale app may have something to rewrite: an import of
+ * `@fudic/i18n` (`t`) or `@fudic/core` (`format`, `locale`). Read off the text, so a module
+ * that has none — every handler of `src/server`, most of the app — is never parsed, and leaves
+ * the transform byte for byte as it arrived, its source map included.
+ */
+export function mayLocalize(code: string): boolean {
+  return /['"]@fudic\/(?:i18n|core)['"]/u.test(code);
+}
+
+/**
  * What an id with no tag is compiled for: the app's one locale, or none when it has two or more
  * — then every module of a page names its own (SDD-71 §3.1).
  */
@@ -51,11 +61,23 @@ export function soleLocale(locales: readonly string[] | undefined): string | und
  * chunk of a locale's graph carries its prefix, `en-_layout-[hash].js`. Without it the layout
  * of `es` and that of `en` are two chunks of one name, the build id cannot replace the hash
  * of either (FUD0501), and the URL the manifest derives for them points at no file.
+ *
+ * The chunk of a generated contract says so, `api-rules-[hash].js`: `fudic:@fudic/forms/rules`
+ * and the `impl/browser/rules.ts` that implements it are both `rules`, and the two are one name
+ * once the build id replaces the hash (SDD-71). The locale's tag used to tell them apart, and a
+ * one-locale app no longer tags anything.
  */
-export function localeChunkFileNames(dir: string): (chunk: { readonly moduleIds: readonly string[] }) => string {
+export function localeChunkFileNames(
+  dir: string,
+): (chunk: { readonly moduleIds: readonly string[]; readonly name?: string }) => string {
   return (chunk) => {
     const locale = chunk.moduleIds.map(localeOf).find((l) => l !== undefined);
-    return `${dir}/${locale === undefined ? '' : `${locale}-`}[name]-[hash].js`;
+    // Named after a generated contract: one of its modules is `fudic:…/<name>`.
+    const api = chunk.moduleIds.some((id) => {
+      const bare = id.replace(/^\0/u, '').split('?')[0]!;
+      return bare.startsWith('fudic:') && bare.slice(bare.lastIndexOf('/') + 1) === chunk.name;
+    });
+    return `${dir}/${locale === undefined ? '' : `${locale}-`}${api ? 'api-' : ''}[name]-[hash].js`;
   };
 }
 
@@ -477,7 +499,8 @@ export function localePlugin(ctx: LocaleContext): Plugin {
       const tagged = localeOf(id);
       // Untagged, a module of the project is the one locale's in an app with one (SDD-71).
       const locale =
-        tagged ?? (compilesPerLocale(path, ctx.root, ctx.implementations) ? soleLocale(ctx.locales) : undefined);
+        tagged ??
+        (mayLocalize(code) && compilesPerLocale(path, ctx.root, ctx.implementations) ? soleLocale(ctx.locales) : undefined);
       if (locale === undefined) return null;
       // A `.fud` is the host plugin's to compile; here only an app's `.ts`/`.js`.
       if (!/\.[cm]?[jt]sx?$/u.test(path)) return null;

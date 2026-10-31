@@ -85,6 +85,7 @@ import {
   prefixPattern,
   resolveForLocale,
   compilesPerLocale,
+  mayLocalize,
   soleLocale,
   localeRedirect,
   redirectHtml,
@@ -1896,9 +1897,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       if (!path.endsWith('.fud')) {
         const script = /\.[cm]?[jt]sx?$/u.test(path);
         // A module of the app compiled for a locale: `t`, `format` and `locale` replaced. Untagged,
-        // it is the one locale's when the app has one, if it is a module of the project.
+        // it is the one locale's when the app has one, if it is a module of the project that
+        // imports a name to replace.
         const forLocale =
-          locale !== undefined || (soleLocale(locales) !== undefined && compilesPerLocale(path, root, implementationDirs()));
+          locale !== undefined ||
+          (soleLocale(locales) !== undefined && mayLocalize(code) && compilesPerLocale(path, root, implementationDirs()));
         const translated =
           forLocale && script ? translateScript(code, path, compileFor(locale)!).value : undefined;
         return translated === undefined ? null : { code: translated.code, map: JSON.stringify(translated.map) };
@@ -2428,10 +2431,21 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // below: they import the same shared chunks by name. They are what renders the head of
       // a page with no worker, so the eager preloads are filled here (3b-ter). That one line
       // changes length, and only the columns after it on that line move in its map.
-      const edgeChunks = edge.chunks.map((c) => ({
-        ...c,
-        code: fillGraph(fillEager(rewriteReferences(c.code.split(BUILD_TOKEN).join(buildId), renames))),
-      }));
+      //
+      // A name the edge pass wrote too is renamed only where it is written whole: a module both
+      // passes bundle alone — a preset of `@fudic/core`, which imports nothing — comes out with
+      // the same bytes and the same hash in each, and renaming it by its base name would point
+      // the edge's own `./number-<hash>.js` at a file that keeps its hash (SDD-71). The edge
+      // names a client chunk by its path; its own chunks, relative.
+      const baseName = (file: string): string => file.slice(file.lastIndexOf('/') + 1);
+      const edgeOwn = new Set(edge.chunks.map((c) => baseName(c.fileName)));
+      const edgeRenames = new Map([...renames].filter(([from]) => !edgeOwn.has(baseName(from))));
+      const shared = [...renames].filter(([from]) => edgeOwn.has(baseName(from)));
+      const edgeChunks = edge.chunks.map((c) => {
+        let code = rewriteReferences(c.code.split(BUILD_TOKEN).join(buildId), edgeRenames);
+        for (const [from, to] of shared) code = code.split(from).join(to);
+        return { ...c, code: fillGraph(fillEager(code)) };
+      });
       if (writeToDisk) {
         rmSync(edgeDir, { recursive: true, force: true });
         for (const chunk of edgeChunks) {

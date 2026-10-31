@@ -31,9 +31,11 @@ export function localizedIo<T extends ResolveIo>(io: T, i18n: LocaleCompile): T 
     return entry;
   };
   const read = (path: string): string => get(path).localized.source;
-  const origin = (path: string): { readonly source: string; readonly map: LocalizedSource['map'] } => {
+  // A file the locale leaves as it was has no rewrite to read back through (SDD-71): every app
+  // has a locale now, and one with nothing to translate compiles exactly as it did without.
+  const origin = (path: string): { readonly source: string; readonly map: LocalizedSource['map'] } | undefined => {
     const entry = get(path);
-    return { source: entry.source, map: entry.localized.map };
+    return entry.localized.source === entry.source ? undefined : { source: entry.source, map: entry.localized.map };
   };
   // Every other member of the host's io stays what it was: the plugin's carries more than reads.
   return new Proxy(io, {
