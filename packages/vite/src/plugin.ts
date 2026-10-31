@@ -508,8 +508,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         : undefined;
   /** The id a root resolves to: a file of the project that is never on disk. */
   const rootFile = (side: 'server' | 'browser'): string => `${slash(root)}/${ROOT_FILE_PREFIX}${side}.js`;
-  /** Whether the app declares a `.fudapi` of its own: only then is there a root to load. */
-  const hasApi = (): boolean => api.sources.some((s) => s.origin === 'app');
+  /** Whether the app declares a `.fudapi` of its own beyond pipes: only then is there a root to load. */
+  const hasApi = (): boolean => api.hasRoot();
   /** The server variant of a generated module, as a nested pass serves it, by id. */
   /**
    * A generated module of a side, as a nested pass serves it, by id: the same text for every
@@ -1907,7 +1907,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           (soleLocale(locales) !== undefined && mayLocalize(code) && compilesPerLocale(path, root, implementationDirs()));
         const translated =
           forLocale && script ? translateScript(code, path, compileFor(locale)!).value : undefined;
-        return translated === undefined ? null : { code: translated.code, map: JSON.stringify(translated.map) };
+        // Nothing to replace leaves the module as it arrived, map and all: a second, identical
+        // version of one file is two versions to whoever keeps them apart (coverage, a debugger).
+        return translated === undefined || translated.code === code
+          ? null
+          : { code: translated.code, map: JSON.stringify(translated.map) };
       }
       const fudIo = ioFor(locale);
       if (query === IOC_QUERY) {

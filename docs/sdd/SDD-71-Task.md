@@ -6,7 +6,7 @@
 > `@fudic/diagnostics` · `examples/basic` · `examples/workspace`
 > **Rama:** `sdd-71-pipes-del-usuario`. Nace de `main` **con SDD-61 en `Hecho`**: enmienda su
 > §3.9 y su anexo, y migra el reloj que ella escribió.
-> **Progreso:** 21 / 26 — `En curso`.
+> **Progreso:** 23 / 26 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -71,7 +71,7 @@ código, no el test.
 | [x] | 14c | — | **Dos trozos del SW con un mismo nombre** (SDD §8.2, 6): en `examples/basic`, `forms/impl/browser/rules.ts` y un trozo compartido salen los dos como `sw/c/rules-*` y el build avisa `FUD0501`. Ya pasaba en una app sin `locales` y lo tapaba la etiqueta de idioma. Cada trozo debe tener nombre propio y el build salir sin el aviso | `vite` | `src/link.ts` · `src/i18n.ts` · `src/rename.ts` |
 | [x] | 15 | 2, 10 | **Fuera de las raíces.** La carpeta de pipes no entra en ningún `import.meta.glob` de `api-root.ts`, aunque esté configurada dentro de `src/browser` o `src/server` | `vite` | `src/api-root.ts` · `src/plugin.ts` |
 | [x] | 16 | 4 | **Una pieza publicada por preset.** El linker publica solo los presets que algún módulo importa (SDD-45) | `core` · `vite` | `src/runtime-entry.ts` · `src/*` |
-| [ ] | 17 | 13–16 | **Los tests de la fase.** Criterios 8–12, con el de bytes sobre un `dist` real | `compiler` · `vite` | `test/**` |
+| [x] | 17 | 13–16 | **Los tests de la fase.** Criterios 8–12, con el de bytes sobre un `dist` real | `compiler` · `vite` | `test/**` |
 
 ## Fase 4 — la CLI (5)
 
@@ -87,5 +87,5 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 23 | 6, 13 | **La migración.** Todo el repositorio importa los presets, `Pipe`, `format` y `locale` de `@fudic/core`; `examples/basic` sin `"locales"` si solo estaba por los pipes, con el reloj igual; `examples/workspace` con un pipe en `libs/ui` usado por una app, y sus apps con su `tsconfig.json` (el build avisa `FUD0870` desde antes de esta spec; SDD §8.2, 9). Criterios 13 y 16 | `examples/*` · fixtures | `examples/basic/**` · `examples/workspace/**` · `packages/*/fixtures/**` |
+| [x] | 23 | 6, 13 | **La migración.** Todo el repositorio importa los presets, `Pipe`, `format` y `locale` de `@fudic/core`; `examples/basic` sin `"locales"` si solo estaba por los pipes, con el reloj igual; `examples/workspace` con un pipe en `libs/ui` usado por una app, y sus apps con su `tsconfig.json` (el build avisa `FUD0870` desde antes de esta spec; SDD §8.2, 9). Criterios 13 y 16 | `examples/*` · fixtures | `examples/basic/**` · `examples/workspace/**` · `packages/*/fixtures/**` |
 | [ ] | 24 | 23 | **Anexo, README, entrega y cierre.** Las filas de §4.7 en SDD-61 §A.2 y §A.4 (criterio 17); los README de `@fudic/core` e `@fudic/i18n` y la guía del `.fudapi` con `pipe`; criterio 18; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; SDD-71 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `docs/sdd/*` · `packages/*/README.md` |

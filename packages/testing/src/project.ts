@@ -53,7 +53,8 @@ export function projectOf(): Project {
     const found = discoverRoutes(root, resolveOptions(options, base).options, locales, (fud) => (href) =>
       contracts.page(resolve(dirname(fud), href)),
     );
-    const api = contracts.sources.some((source) => source.origin === 'app');
+    // A `.fudapi` of only pipes needs no root (SDD-71 §3.3), the plugin's own rule.
+    const api = contracts.hasRoot();
     // One locale tags nothing (SDD-71): the plugin compiles the untagged module for it.
     const locale = locales === undefined || locales.length < 2 ? undefined : locales[0];
     project = { root, base, routes: found.routes, errorPage: found.errorPage, api, locale };

@@ -92,6 +92,15 @@ export class ApiProject {
     return this.#read().libraries;
   }
 
+  /**
+   * Whether the app declares a `.fudapi` that needs a root: one of its own that is more than
+   * pipes (SDD-71 §3.3). A file of only pipes has nothing to implement, and a root would ask for
+   * `@fudic/http`, which an app with pipes and no contracts does not have.
+   */
+  hasRoot(): boolean {
+    return this.sources.some((s) => s.origin === 'app' && !onlyPipes(s));
+  }
+
   /** Every `<id>` of the project, the dependencies' included. */
   ids(): readonly string[] {
     return this.sources.map((s) => s.id);

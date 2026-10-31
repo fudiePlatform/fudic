@@ -541,3 +541,11 @@ Filas nuevas de A.2 («El `@code` que el servidor evalúa» y «Lo que se pinta�
     la raíz pide que la app tenga los suyos.
 14. **`FUD0721` de `examples/basic` se arregla aquí** (como el 6 y el 9): `app-card` declaraba
     `<app-badge>` sin usarlo en su vista; lo ponen en su ranura las páginas, que ya lo declaran.
+15. **Criterio 16: dos tests importan `format` y `locale` de `@fudic/i18n` a propósito.** Prueban
+    justo que esos nombres de ese paquete ya no se reemplazan (`compiler/test/i18n/ast.test.ts` y
+    `localize.test.ts`). El criterio va de lo que escriben la app, los ejemplos y la documentación.
+16. **Un `.fudapi` que solo declara pipes no pide raíz** (`ApiProject.hasRoot`), ni en el plugin
+    ni en `@fudic/testing`: la raíz importa `@fudic/http`, que una app con pipes y sin contratos no
+    tiene (criterio 2).
+17. **Un script que el idioma deja como estaba sale de la transformación tal cual** (`null`): una
+    segunda versión idéntica de un fichero son dos versiones para la cobertura y el depurador.

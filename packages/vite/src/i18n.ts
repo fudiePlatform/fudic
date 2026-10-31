@@ -508,7 +508,8 @@ export function localePlugin(ctx: LocaleContext): Plugin {
       // A `.fud` is the host plugin's to compile; here only an app's `.ts`/`.js`.
       if (!/\.[cm]?[jt]sx?$/u.test(path)) return null;
       const out = translateScript(code, path, ctx.compileFor(locale)).value;
-      return { code: out.code, map: JSON.stringify(out.map) };
+      // Nothing replaced: the module as it arrived, map and all.
+      return out.code === code ? null : { code: out.code, map: JSON.stringify(out.map) };
     },
   };
 }
