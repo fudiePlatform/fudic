@@ -47,6 +47,7 @@ function asNewOptions(opts: AppOptions): NewOptions {
     sw: opts.sw,
     layout: opts.layout,
     target: 'static',
+    ...(opts.locale === undefined ? {} : { locale: opts.locale }),
   };
 }
 

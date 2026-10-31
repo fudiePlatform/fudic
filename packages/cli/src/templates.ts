@@ -122,6 +122,14 @@ export function prefixField(prefix: string): string {
   return prefix === '' ? '' : `,\n  "prefix": ${JSON.stringify(prefix)}`;
 }
 
+/**
+ * `"locales": ["es"]` when `--locale` was given, and nothing otherwise (SDD-71 §3.6): the default
+ * lives in `@fudic/conventions`, not in each `fudic.json`.
+ */
+export function localesField(locale: string | undefined): string {
+  return locale === undefined ? '' : `,\n  "locales": [${JSON.stringify(locale)}]`;
+}
+
 /** One `@section name { … }` per name, in the order given (decision 84). */
 export function sectionBlocks(names: readonly string[]): string {
   if (names.length === 0) return '';

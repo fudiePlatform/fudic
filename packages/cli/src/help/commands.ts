@@ -15,6 +15,7 @@ export type Topic =
   | 'generate lib'
   | 'generate service'
   | 'generate form'
+  | 'generate pipe'
   | 'generate style'
   | 'generate spec'
   | 'generate term'
@@ -59,6 +60,7 @@ apps/ and libs/, empty or with the app and the libraries you name.`,
       ['--prefix <p>', 'what turns "button" into <p-button>   (default: the app\'s name)'],
       ['--layout <name|href>', "a name: the app's own layout   (default: _layout). An href: a library's, e.g. @shop/ui/layouts/main.fud"],
       ['--no-layout', 'no layout: the home page is a whole document'],
+      ['--locale <tag>', "the app's language, a BCP 47 tag   (default: en)"],
       ['--target <name>', 'where you deploy it   (default: static)'],
       ['--pm <pnpm|npm|yarn>', 'the package manager   (default: pnpm)'],
       ['--no-install', 'do not install the dependencies'],
@@ -66,7 +68,7 @@ apps/ and libs/, empty or with the app and the libraries you name.`,
       ['--no-sw', 'no Service Worker'],
       DRY_RUN,
     ],
-    examples: ['fudic new shop', 'fudic new shop --workspace --lib ui'],
+    examples: ['fudic new shop', 'fudic new shop --locale es', 'fudic new shop --workspace --lib ui'],
   },
   generate: {
     usage: 'fudic generate <type> <name>',
@@ -81,6 +83,7 @@ apps/ and libs/, empty or with the app and the libraries you name.`,
       ['lib', 'a component library in the workspace'],
       ['service', 'a service you can inject'],
       ['form', 'a form and its unit test'],
+      ['pipe', 'a pipe: its contract, its implementation and its unit test'],
       ['style', 'a global stylesheet of the project'],
       ['snippet', 'a snippet in a file of snippets, and its unit test'],
       ['spec', 'the .fudspec criteria of a component   (s)'],
@@ -169,6 +172,7 @@ and installs its dependencies.`,
       ['--prefix <p>', 'what turns "button" into <p-button>   (default: <name>)'],
       ['--layout <name|href>', "a name: its own layout   (default: _layout). An href: a library's, which it then uses"],
       ['--no-layout', 'no layout: the home page is a whole document'],
+      ['--locale <tag>', 'its language, a BCP 47 tag   (default: en)'],
       ['--id <id>', 'the identity of the app for its caches; never change it   (default: <name>)'],
       ['--dir <path>', 'another folder of the workspace   (default: apps)'],
       ['--no-sw', 'no Service Worker'],
@@ -216,6 +220,20 @@ its unit test. It adds @fudic/di to the project if it is not there.`,
       FORCE,
     ],
     examples: ['fudic g form person --project web'],
+  },
+  'generate pipe': {
+    usage: 'fudic generate pipe <name>',
+    about: `Creates a pipe in src/pipes: its contract in <name>.fudapi, its one implementation
+in <name>.ts — the view, the server and the browser import it — and its unit test.
+A view uses it as @(value | name).`,
+    args: [['<name>', '"truncate" becomes the pipe truncate in src/pipes/truncate.fudapi']],
+    options: [
+      ['--on <type>', 'what it formats: a type of the .fudapi   (default: str)'],
+      IN_PROJECT,
+      DRY_RUN,
+      FORCE,
+    ],
+    examples: ['fudic g pipe truncate', 'fudic g pipe initials --on Person --project ui'],
   },
   'generate style': {
     usage: 'fudic generate style <name>',

@@ -28,7 +28,9 @@ export function planLayout(name: string, opts: LayoutOptions, io: ReadIo = nodeR
   const folder = joinPosix(project.dir, opts.dir);
   const file = joinPosix(folder, `${name}.fud`);
   const contents = renderTemplate('layout.fud', {
-    lang: 'en',
+    // The project's first language (SDD-71 §3.6): the reader fills `DEFAULT_LOCALE` when it
+    // declares none, and never leaves the list empty.
+    lang: project.config.locales[0]!,
     renderHead: opts.head ? '    @RenderHead()' : '',
     sections: renderSectionBlocks(opts.sections),
   });

@@ -6,7 +6,7 @@
 > `@fudic/diagnostics` · `examples/basic` · `examples/workspace`
 > **Rama:** `sdd-71-pipes-del-usuario`. Nace de `main` **con SDD-61 en `Hecho`**: enmienda su
 > §3.9 y su anexo, y migra el reloj que ella escribió.
-> **Progreso:** 17 / 26 — `En curso`.
+> **Progreso:** 21 / 26 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -77,10 +77,10 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 18 | 2 | **`--locale`** en `new` y `g app`, normalizado; `FUD0725` con `problem: 'flag'`; sin él no se escribe la clave; `unknown-flag` en una librería; ayuda | `cli` | `src/args.ts` · `src/plans/new.ts` · `src/plans/app.ts` · `src/help/commands.ts` · `templates/fudic.json.tmpl` |
-| [ ] | 19 | 18 | **El `lang` de layout y página.** El primer idioma del proyecto, o `DEFAULT_LOCALE`, en `new`, `g layout` y `g page` | `cli` | `src/templates.ts` · `src/plans/layout.ts` · `src/plans/page.ts` |
-| [ ] | 20 | 10 | **`fudic g pipe <nombre>`** con `--on` y `--project`: el `.fudapi`, la implementación y el test de §4.1, en app y en librería; ayuda | `cli` | `src/plans/pipe.ts` · `templates/pipe/*` · `src/args.ts` · `src/help/commands.ts` |
-| [ ] | 21 | 20 | **La librería publica sus pipes.** `"./pipes/*": "./src/pipes/*.ts"` en `exports` | `cli` | `templates/lib/package.json.tmpl` |
+| [x] | 18 | 2 | **`--locale`** en `new` y `g app`, normalizado; `FUD0725` con `problem: 'flag'`; sin él no se escribe la clave; `unknown-flag` en una librería; ayuda | `cli` | `src/args.ts` · `src/plans/new.ts` · `src/plans/app.ts` · `src/help/commands.ts` · `templates/fudic.json.tmpl` |
+| [x] | 19 | 18 | **El `lang` de layout y página.** El primer idioma del proyecto, o `DEFAULT_LOCALE`, en `new`, `g layout` y `g page` | `cli` | `src/templates.ts` · `src/plans/layout.ts` · `src/plans/page.ts` |
+| [x] | 20 | 10 | **`fudic g pipe <nombre>`** con `--on` y `--project`: el `.fudapi`, la implementación y el test de §4.1, en app y en librería; ayuda | `cli` | `src/plans/pipe.ts` · `templates/pipe/*` · `src/args.ts` · `src/help/commands.ts` |
+| [x] | 21 | 20 | **La librería publica sus pipes.** `"./pipes/*": "./src/pipes/*.ts"` en `exports` | `cli` | `templates/lib/package.json.tmpl` |
 | [ ] | 22 | 18–21 | **Los tests de la fase.** Criterios 3, 4 y 14, con un proyecto recién creado que pasa `pnpm test` y `pnpm typecheck` sin tocarlo; `g pipe` en `pnpm verify:generated` si SDD-66 está `Hecho` | `cli` | `test/**` |
 
 ## Fase 5 — migración y cierre (2)
