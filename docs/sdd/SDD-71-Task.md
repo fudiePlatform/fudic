@@ -89,3 +89,24 @@ código, no el test.
 |---|---|---|---|---|---|
 | [x] | 23 | 6, 13 | **La migración.** Todo el repositorio importa los presets, `Pipe`, `format` y `locale` de `@fudic/core`; `examples/basic` sin `"locales"` si solo estaba por los pipes, con el reloj igual; `examples/workspace` con un pipe en `libs/ui` usado por una app, y sus apps con su `tsconfig.json` (el build avisa `FUD0870` desde antes de esta spec; SDD §8.2, 9). Criterios 13 y 16 | `examples/*` · fixtures | `examples/basic/**` · `examples/workspace/**` · `packages/*/fixtures/**` |
 | [ ] | 24 | 23 | **Anexo, README, entrega y cierre.** Las filas de §4.7 en SDD-61 §A.2 y §A.4 (criterio 17); los README de `@fudic/core` e `@fudic/i18n` y la guía del `.fudapi` con `pipe`; criterio 18; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; SDD-71 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `docs/sdd/*` · `packages/*/README.md` |
+
+## Traspaso (2026-10-31)
+
+La sesión que implementó se cierra antes del cierre; lo hace otra sesión. Estado:
+
+- **Hecho y en origin:** fases 1–4 enteras y la tarea 23. De la 24 ya están el anexo de SDD-61
+  (§A.2, §A.4), la enmienda de SDD-61 §3.9, la decisión 172 ampliada, los README de `@fudic/core`,
+  `@fudic/i18n` y `@fudic/api`. `pnpm typecheck` y `pnpm build` en verde, sin un aviso.
+- **Pendiente de la sesión de test:** la tarea 22 (criterios 3, 4 y 14) y su informe final de
+  cobertura por paquete. Los arreglos de los defectos C–F ya están (último `d394e8ca`).
+- **Pendiente de Pedro:**
+  1. **Tarea 14b, el pipe con espacios.** Hecho y probado: `@x|pipe` pegado. Propuesta abierta:
+     con espacios, `@precio | euros` es pipe solo si `euros` lo declara el `@code` del fichero; si
+     no, texto. Hasta que decida, la 14b queda abierta.
+  2. **`node examples/pieces-bench/check.mjs`** tras `pnpm build`: comprueba las piezas nuevas
+     `core/{pipe,date,number,relative-time,list}`. Ninguna sesión tiene permiso para `node`; se
+     añadió la excepción `compiled-away` en ese fichero.
+- **Para cerrar (tarea 24):** con la 22 y la 14b hechas, `pnpm typecheck`, `pnpm test` (en segundo
+  plano: >10 min) y `pnpm build`; criterio 18 (cobertura según el informe); SDD-71 y este fichero en
+  `Hecho`; fila y registro del `INDEX.md`; merge `--no-ff` a main si Pedro lo pide.
+- **Decisiones tomadas al implementar:** SDD §8.2, puntos 1–18.
