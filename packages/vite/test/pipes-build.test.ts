@@ -11,6 +11,8 @@
 
 import { beforeAll, describe, expect, it } from 'vitest';
 import { build } from 'vite';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fudic } from '../src/index.js';
 import { writeI18nProject } from './helpers/i18n-project.js';
 
@@ -215,5 +217,62 @@ export default sinUso.implement((value) => \`\${value}·UNUSED_PIPE\`);
     expect(holding(output, '$format')).toEqual([]);
     for (const fileName of holding(output, '·TRK·')) expect(page(output, fileName)).not.toMatch(/@fudic\/i18n|\/i18n\//u);
     expect(holding(output, 'corto.format(')).not.toEqual([]);
+  });
+});
+
+describe('criterion 2: an app without @fudic/i18n nor @fudic/http, with presets and a pipe of its own', () => {
+  const PRICE = `@code {
+  import { currency, date } from '@fudic/core';
+  import truncar from '../pipes/truncar';
+  const euros = currency('EUR');
+  const dia = date({ dateStyle: 'medium', timeZone: 'UTC' });
+  const corto = truncar({ max: 3 });
+}
+<app-price>
+  <template shadowrootmode="open">
+    <p>@(3.5 | euros) · @(0 | dia) · @('fudic' | corto)</p>
+  </template>
+</app-price>
+`;
+  let output: OutFile[];
+  let said: string[];
+  beforeAll(async () => {
+    const root = writeI18nProject({
+      files: {
+        ...BASE,
+        'src/components/app-price.fud': PRICE,
+        'src/routes/home.fud': HOME.replace('app-counter.fud', 'app-price.fud').replace('<app-counter></app-counter>', '<app-price></app-price>'),
+        'src/pipes/truncar.fudapi': 'pipe truncar\n  on str\n  max u32\n',
+        'src/pipes/truncar.ts': "import { truncar } from 'fudic:pipes/truncar';\nexport default truncar.implement((value, { max }) => `${value.slice(0, max)}…`);\n",
+      },
+    });
+    // Uninstalled: neither package is in the app, as `fudic new` writes it.
+    for (const name of ['i18n', 'http']) rmSync(join(root, 'node_modules', '@fudic', name), { recursive: true, force: true });
+    const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as { dependencies: Record<string, string> };
+    delete manifest.dependencies['@fudic/i18n'];
+    delete manifest.dependencies['@fudic/http'];
+    writeFileSync(join(root, 'package.json'), JSON.stringify(manifest));
+    said = [];
+    const logger = {
+      info: (m: string) => said.push(m),
+      warn: (m: string) => said.push(m),
+      warnOnce: (m: string) => said.push(m),
+      error: (m: string) => said.push(m),
+      clearScreen: () => undefined,
+      hasErrorLogged: () => false,
+      hasWarned: false,
+    };
+    const result = (await build({ root, customLogger: logger, plugins: [fudic()], build: { write: false, minify: false } })) as unknown as {
+      output: OutFile[];
+    };
+    output = result.output;
+  }, 240000);
+
+  it('builds, and paints the three in English', () => {
+    expect(page(output, 'home/index.html')).toContain('€3.50 · Jan 1, 1970 · fud…');
+  });
+
+  it('says no FUD1021, nor anything about a missing package', () => {
+    expect(said.join('\n')).not.toMatch(/FUD1021|@fudic\/(i18n|http)/u);
   });
 });
