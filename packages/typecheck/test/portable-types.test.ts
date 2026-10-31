@@ -35,6 +35,8 @@ export interface TrustedURL { readonly fudicTrustedUrl: string }
 export declare function signal<T>(v: T): Signal<T>;
 export declare function computed<T>(f: () => T): Computed<T>;
 export declare function trustedUrl(v: string): TrustedURL;
+export interface Pipe<in T> { readonly kind: string; readonly options: Readonly<Record<string, unknown>>; format(value: T, locale: string): string }
+export declare function date(options: Intl.DateTimeFormatOptions & { timeZone: string }): Pipe<Date | number>;
 `;
 
 const FORMS = `export type Readable<T> = () => T;
@@ -42,10 +44,6 @@ export interface Control<T> { (): T; set(v: T): void; touch(): void; readonly er
 export interface TypedControl<T> extends Control<T> { readonly type: string }
 export type Str = TypedControl<string>;
 export interface FormApi { readonly $valid: Readable<boolean>; $touch(): void }
-`;
-
-const I18N = `export interface Pipe<T> { readonly kind: string; readonly input?: T }
-export declare function date(options: Intl.DateTimeFormatOptions & { timeZone: string }): Pipe<Date | number>;
 `;
 
 const IMPORTS =`import { signal, computed, trustedUrl, type Readable, type TrustedURL } from '@fudic/core';
@@ -228,7 +226,7 @@ const CASES: Readonly<Record<string, string>> = {
   // §3.6 and §3.9: a default makes a name present, `null` included; a preset's options are not data.
   defaults: component(
     'defaults',
-    `import { date } from '@fudic/i18n';
+    `import { date } from '@fudic/core';
   type Ficha = { activo?: boolean | null; n?: number | null };
   const { titulo = 'x', fichas } = props<{ titulo?: string | null; fichas: readonly Ficha[] }>();
   const hora = date({ timeStyle: 'short', timeZone: 'UTC' });
@@ -256,8 +254,6 @@ function project(files: Readonly<Record<string, string>>): string {
     'node_modules/@fudic/core/index.d.ts': CORE,
     'node_modules/@fudic/forms/package.json': JSON.stringify({ name: '@fudic/forms', types: 'index.d.ts' }),
     'node_modules/@fudic/forms/index.d.ts': FORMS,
-    'node_modules/@fudic/i18n/package.json': JSON.stringify({ name: '@fudic/i18n', types: 'index.d.ts' }),
-    'node_modules/@fudic/i18n/index.d.ts': I18N,
     ...files,
   };
   for (const [relative, text] of Object.entries(all)) {

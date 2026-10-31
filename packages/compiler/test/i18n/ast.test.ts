@@ -110,9 +110,9 @@ describe('i18nImports', () => {
     const names = i18nImports(
       program(`
         import i18n, * as all from '@fudic/i18n';
-        import { currency, date } from '@fudic/i18n';
+        import { $message, $href } from '@fudic/i18n';
         import { t } from 'i18next';
-        import type { Pipe } from '@fudic/i18n';
+        import type { Catalog } from '@fudic/i18n';
         export const x = 1;
       `),
     );

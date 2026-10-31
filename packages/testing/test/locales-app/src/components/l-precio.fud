@@ -1,0 +1,14 @@
+@code {
+  import { currency, signal } from "@fudic/core";
+
+  const euros = currency("EUR");
+  const n = signal(2);
+  function mas() { n.set(n() + 1); }
+}
+
+<l-precio>
+  <template shadowrootmode="open">
+    <button @click=@mas>+1</button>
+    <output>@(n() | euros)</output>
+  </template>
+</l-precio>

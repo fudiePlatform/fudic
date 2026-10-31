@@ -1,0 +1,17 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="component" href="../components/l-precio.fud">
+
+@code {
+  import { signal } from "@fudic/core";
+
+  const n = signal(0);
+  function mas() { n.set(n() + 1); }
+}
+
+<head>
+  <title>Contador</title>
+</head>
+
+<button @click=@mas>Sumar</button>
+<output>@n()</output>
+<l-precio></l-precio>

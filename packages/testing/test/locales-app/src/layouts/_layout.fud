@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="@culture">
+  <head>
+    @code {
+      const { culture = "es" } = props<{ culture?: string }>();
+    }
+
+    <meta charset="utf-8">
+    <script type="module" src="fudic:runtime"></script>
+    @RenderHead()
+  </head>
+  <body>
+    <nav>@RenderSection(nav)</nav>
+    <main>@RenderBody()</main>
+  </body>
+</html>

@@ -25,6 +25,13 @@ export default defineConfig({
         root: 'test/conformance',
         test: { name: 'conformance', include: ['*.test.ts'] },
       },
+      // Two locales: the only case where a test's imports and a page's modules carry a tag. With
+      // one, as every other project here, nothing is tagged (SDD-71 §3.1).
+      {
+        plugins: [fudicTest()],
+        root: 'test/locales-app',
+        test: { name: 'locales-app', include: ['*.test.ts'] },
+      },
     ],
     coverage: {
       provider: 'v8',

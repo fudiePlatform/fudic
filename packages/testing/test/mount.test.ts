@@ -29,7 +29,8 @@ describe('criterion 3: an N1 component', () => {
     const t = await mount(XGreeting);
     expect(t.root.adoptedStyleSheets).toHaveLength(1);
     expect(t.root.querySelector('p')!.textContent).toBe('Hello, nobody');
-    expect(document.documentElement.lang).toBe('es');
+    // This package has no `fudic.json`: an app without `locales` is DEFAULT_LOCALE (SDD-71 §3.1).
+    expect(document.documentElement.lang).toBe('en');
   });
 });
 

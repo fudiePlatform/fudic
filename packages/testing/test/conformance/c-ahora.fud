@@ -1,7 +1,7 @@
 @* §3.12: `now()` as the initializer of a signal; a date is painted only with a pipe. *@
 @code {
   import { now, signal } from "@fudic/core";
-  import { date } from "@fudic/i18n";
+  import { date } from "@fudic/core";
 
   const ahora = signal(now());
   const hora = date({ timeStyle: "medium", timeZone: "UTC" });

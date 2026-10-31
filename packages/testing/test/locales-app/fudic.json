@@ -1,0 +1,7 @@
+{
+  "id": "locales-app",
+  "kind": "app",
+  "prefix": "l",
+  "locales": ["es", "en"],
+  "site": "https://example.com"
+}

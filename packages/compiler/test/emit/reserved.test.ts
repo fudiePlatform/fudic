@@ -123,7 +123,7 @@ describe('SDD-15 §4.7 — what it must leave alone', () => {
   });
 
   it('spares the import of @fudic/i18n, the one the expansion of translations writes', () => {
-    expect(flagged("    import { $format, $message } from '@fudic/i18n';")).toEqual([]);
+    expect(flagged("    import { $message, $href } from '@fudic/i18n';")).toEqual([]);
   });
 
   it('says nothing about a type: `x as $T` names no value', () => {
