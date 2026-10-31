@@ -25,7 +25,7 @@ import type { RazorExpression } from '../at/index.js';
 import type { Attribute, ElementNode, HtmlContent, HtmlDocument } from '../html/index.js';
 import type { CodeBlockNode, CodePart } from '../code/index.js';
 import type { StyleNode } from '../css/index.js';
-import type { ControlNode, KeyedNode } from '../control/index.js';
+import type { AwaitNode, ControlNode, KeyedNode } from '../control/index.js';
 import type { SectionNode } from '../layout/index.js';
 
 /**
@@ -296,10 +296,21 @@ function isControl(node: HtmlContent): node is ControlNode {
   );
 }
 
+/**
+ * `@await data.users { … } @catch (e) { … }` (SDD-70): what is awaited is JS — the editor
+ * completes the `later` fields there — and the two bodies are markup.
+ */
+function awaitRegion(source: string, node: AwaitNode, offset: number): Region | undefined {
+  if (insideJs(node.expression, offset)) return { kind: 'expression', span: node.expression };
+  return childRegion(source, node.body, offset) ?? childRegion(source, node.catch?.body ?? [], offset);
+}
+
 function nodeRegion(source: string, node: HtmlContent, offset: number): Region | undefined {
   if (isControl(node)) return controlRegion(source, node, offset);
 
   switch (node.type) {
+    case 'await':
+      return awaitRegion(source, node as unknown as AwaitNode, offset);
     case 'element':
       return elementRegion(source, node, offset);
     case 'style-content':

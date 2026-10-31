@@ -12,6 +12,8 @@
 
 import type { ElementNode, HtmlContent, RawExpressionNode } from '../html/index.js';
 import type {
+  AwaitNode,
+  ControlConstruct,
   ControlNode,
   ForNode,
   ForeachNode,
@@ -32,7 +34,7 @@ export type LoopNode = ForeachNode | ForNode | WhileNode;
 
 const LOOP_TYPES: ReadonlySet<string> = new Set(['foreach', 'for', 'while']);
 
-export function isLoop(node: ControlNode): node is LoopNode {
+export function isLoop(node: ControlConstruct): node is LoopNode {
   return LOOP_TYPES.has(node.type);
 }
 
@@ -59,7 +61,65 @@ export interface Branch {
    */
   readonly test?: Span;
   /** How the branch is reached, for the shape the emit writes around it. */
-  readonly kind: 'if' | 'else-if' | 'else' | 'case' | 'default' | 'loop' | 'empty';
+  readonly kind: 'if' | 'else-if' | 'else' | 'case' | 'default' | 'loop' | 'empty' | 'await' | 'catch';
+}
+
+/**
+ * The two blocks of an `@await` (SDD-70): its body, and its `@catch` when written. Only one of
+ * them ever paints, like two arms of an `@if`, and the field decides which.
+ */
+export function awaitBranches(node: AwaitNode): readonly Branch[] {
+  const body: Branch = { body: node.body, kind: 'await' };
+  return node.catch === undefined ? [body] : [body, { body: node.catch.body, kind: 'catch' }];
+}
+
+/** `data.<field>` after `@await`: the field it waits for. */
+const AWAITED = /^data\.([A-Za-z_$][\w$]*)$/u;
+
+/**
+ * The `later` field an `@await` waits for, or `undefined` when what follows it is not the read
+ * of one (`FUD1320`). Both emit branches ask THIS function: a field one of them read and the
+ * other did not is a block painted on one side only.
+ */
+export function awaitedField(node: AwaitNode, source: string): string | undefined {
+  return AWAITED.exec(source.slice(node.expression.start, node.expression.end))?.[1];
+}
+
+/** One `@await` of a markup tree, by the field it waits for and where that field is written. */
+export interface AwaitedRead {
+  readonly field: string;
+  readonly at: Span;
+}
+
+/**
+ * Every `later` field a markup tree awaits, nested constructs and elements included, in source
+ * order. What follows `@await` never reaches Oxc (§8.2.5), so a reader of `data` that walks
+ * the template's JS does not see it: this is that read.
+ */
+export function awaitedReads(nodes: readonly HtmlContent[], source: string): readonly AwaitedRead[] {
+  const out: AwaitedRead[] = [];
+  const walk = (list: readonly HtmlContent[]): void => {
+    for (const node of list) {
+      if (node.type === 'await') {
+        const awaited = node as unknown as AwaitNode;
+        const field = awaitedField(awaited, source);
+        if (field !== undefined) out.push({ field, at: awaited.expression });
+      }
+      if (node.type === 'element') walk((node as ElementNode).children);
+      for (const branch of blocksOf(node)) walk(branch.body);
+    }
+  };
+  walk(nodes);
+  return out;
+}
+
+/**
+ * The branches of any construct that holds markup, `@await` included: for a walk that only
+ * descends and asks nothing of the header.
+ */
+export function blocksOf(node: HtmlContent): readonly Branch[] {
+  if (node.type === 'await') return awaitBranches(node as unknown as AwaitNode);
+  return CONTROL_TYPES.has(node.type) ? branchesOf(node as unknown as ControlNode) : [];
 }
 
 /**
@@ -185,6 +245,11 @@ function collectNode(node: HtmlContent, visit: JsFragmentVisitor): void {
       }
       return;
     }
+    case 'await':
+      // What follows `@await` is no JS the template evaluates: it names a `later` field, and
+      // the emit reads that field by name (SDD-70). Its two blocks are markup like any other.
+      for (const branch of awaitBranches(node as unknown as AwaitNode)) collectTemplateJs(branch.body, visit);
+      return;
     case 'section':
       collectTemplateJs((node as unknown as SectionNode).children, visit);
       return;
@@ -253,8 +318,8 @@ export function refTargets(nodes: readonly HtmlContent[], source: string): Reado
         const name = refTarget(node as ElementNode, source);
         if (name !== null) out.add(name);
         walk((node as ElementNode).children);
-      } else if (CONTROL_TYPES.has(node.type)) {
-        for (const branch of branchesOf(node as unknown as ControlNode)) walk(branch.body);
+      } else {
+        for (const branch of blocksOf(node)) walk(branch.body);
       }
     }
   };

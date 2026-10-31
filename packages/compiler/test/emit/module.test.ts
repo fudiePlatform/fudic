@@ -20,7 +20,7 @@ import {
   emitPageModule,
   type ComponentGraph,
 } from '../../src/emit/index.js';
-import { fixturesDir, fixtureIo, memoryIo, recordingDom, evalLeafModule, minimalSsr } from './_support.js';
+import { drain, fixturesDir, fixtureIo, memoryIo, recordingDom, evalLeafModule, minimalSsr, type Pieces } from './_support.js';
 
 const graph: ComponentGraph = resolveComponents(join(fixturesDir, 'home.fud'), fixtureIo);
 const module = (tag: string): string => emitComponentModule(graph, graph.components.get(tag)!);
@@ -225,14 +225,14 @@ describe('emitPageModule — executed end to end', () => {
     }
     writeFileSync(join(dir, 'home.mjs'), emitPageModule(graph), 'utf8');
     const mod = (await import(pathToFileURL(join(dir, 'home.mjs')).href)) as {
-      page: (data: unknown, io: unknown) => Iterable<string>;
+      page: (data: unknown, io: unknown) => Pieces;
     };
     const data = {
       title: 'Inicio',
       items: [{ id: '1', title: 'Primero', description: 'Desc', featured: true }],
     };
     // `page` streams a trozos: join the pieces into the full document (SDD-19 §4.3).
-    html = [...mod.page(data, minimalSsr())].join('');
+    html = await drain(mod.page(data, minimalSsr()));
   });
 
   it('produces a full HTML document with the interpolated title', () => {

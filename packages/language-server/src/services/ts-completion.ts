@@ -77,6 +77,7 @@ import type { ApiFiles } from './href.js';
 import { contractFunctionsAt } from './contract-functions.js';
 import { styleClassNames } from './classes.js';
 import { scopeAt, snippetsAt } from './snippets.js';
+import { awaitedFieldAt, laterFields } from './await.js';
 import { interpolates, scopeNames, templateScope, type TemplateScope } from './template-scope.js';
 import { inPortableView, portableItems } from './view-completion.js';
 
@@ -438,6 +439,25 @@ function allowedItems(
     if (narrowed !== undefined) return narrowed;
   }
 
+  // `@await data.|` (SDD-70): the fields of `load` marked `later`, and nothing else. TypeScript's
+  // list there is every field of `data`, and a resolved one after `@await` is `FUD1320`. Ours,
+  // from the `.fudapi`, so it is there whether or not the program has loaded.
+  const awaited = awaitedFieldAt(source.cached, offset);
+  if (awaited !== undefined) {
+    const range = plainAnchor(document, position, awaited);
+    return {
+      items: laterFields(source.cached).map((field) => ({
+        label: field.name,
+        kind: CompletionItemKind.Field,
+        detail: field.type,
+        labelDetails: { description: 'later' },
+        filterText: field.name,
+        textEdit: { range, newText: field.name },
+      })),
+      at: offset,
+    };
+  }
+
   // A member reached with a `.` inside an expression: `@data.|`, `title="@data.|"`.
   //
   // TypeScript's list is exactly right here — it is the members of what the author wrote — and
@@ -787,7 +807,7 @@ function directiveSnippets(
   const typed = directive.text.length - 1;
   const start = document.positionAt(document.offsetAt(position) - typed);
 
-  return snippetsAt(cached, directive.span.start)
+  return snippetsAt(cached, directive.span.start, undefined, laterFields(cached).length > 0)
     .filter((snippet) => snippet.label.startsWith('@'))
     .map((snippet) => ({
       label: snippet.label,
@@ -802,6 +822,9 @@ function directiveSnippets(
       labelDetails: { description: 'fudic' },
       insertTextFormat: InsertTextFormat.Snippet,
       textEdit: { range: { start, end: position }, newText: snippet.body.slice(1) },
+      // The same promise the root service's items keep: a snippet whose last stop is a list
+      // opens it. Without it `@await` reached through this door landed on `data.` and waited.
+      ...(snippet.suggest ? { command: TRIGGER_SUGGEST } : {}),
     }));
 }
 

@@ -122,7 +122,7 @@
 
     "control": {
       "name": "meta.block.control.fudic",
-      "begin": "(@)(if|foreach|for|while|switch)\\b([^{]*)(\\{)",
+      "begin": "(@)(if|foreach|for|while|switch|await)\\b([^{]*)(\\{)",
       "beginCaptures": {
         "1": { "name": "punctuation.definition.keyword.fudic" },
         "2": { "name": "keyword.control.directive.fudic" },
@@ -135,9 +135,28 @@
         },
         "4": { "name": "punctuation.section.block.begin.fudic" }
       },
-      "end": "(\\})(?!\\s*(?:else\\b|@empty\\b))",
+      "end": "(\\})(?!\\s*(?:else\\b|@empty\\b|@catch\\b))",
       "endCaptures": { "1": { "name": "punctuation.section.block.end.fudic" } },
-      "patterns": [{ "include": "#control-else" }, { "include": "#control-empty" }, { "include": "$self" }]
+      "patterns": [
+        { "include": "#control-else" },
+        { "include": "#control-empty" },
+        { "include": "#control-catch" },
+        { "include": "$self" }
+      ]
+    },
+
+    "control-catch": {
+      "comment": "`} @catch (e) {` after an `@await`'s body (SDD-70): a continuation of the block, like `} else {`.",
+      "match": "(\\})\\s*(@)(catch)\\b\\s*(\\()\\s*([A-Za-z_$][\\w$]*)?\\s*(\\))\\s*(\\{)",
+      "captures": {
+        "1": { "name": "punctuation.section.block.end.fudic" },
+        "2": { "name": "punctuation.definition.keyword.fudic" },
+        "3": { "name": "keyword.control.directive.fudic" },
+        "4": { "name": "punctuation.section.parens.begin.fudic" },
+        "5": { "name": "variable.parameter.fudic" },
+        "6": { "name": "punctuation.section.parens.end.fudic" },
+        "7": { "name": "punctuation.section.block.begin.fudic" }
+      }
     },
 
     "control-empty": {

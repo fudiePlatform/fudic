@@ -19,7 +19,7 @@ import { resolveDocument } from '../../../src/emit/resolve.js';
 import { emitLayoutModule, emitRouteClientModule, emitRouteModule, resolveComponents } from '../../../src/emit/index.js';
 import { loadImport } from '../../../src/emit/api-links.js';
 import type { LinkedApi } from '../../../src/types/io.js';
-import { memoryIo, ssrIo } from '../_support.js';
+import { drain, memoryIo, ssrIo, type PageFn } from '../_support.js';
 
 /** `DATA_STALE_EVENT` of `@fudic/conventions`, which owns the name. */
 const DATA_STALE_EVENT = 'fudic:data-stale';
@@ -107,7 +107,7 @@ const load = {
 
 const probe: { run?: Promise<unknown> } = {};
 
-function hydrated(route = ROUTE): Controller {
+async function hydrated(route = ROUTE): Promise<Controller> {
   const graph = resolveDocument(
     '/usuarios.fud',
     { ...memoryIo({ '/usuarios.fud': route, '/l.fud': LAYOUT }), api: (path) => (path === '/usuarios.fudapi' ? API : undefined) },
@@ -134,12 +134,9 @@ function hydrated(route = ROUTE): Controller {
     modules,
   ).replace(/^export\s+/gmu, '');
   // eslint-disable-next-line @typescript-eslint/no-implied-eval
-  const page = new Function('$m', 'layout', `${routeSource}\nreturn page;`)(modules, layout) as (
-    data: unknown,
-    io: unknown,
-  ) => Iterable<string>;
+  const page = new Function('$m', 'layout', `${routeSource}\nreturn page;`)(modules, layout) as PageFn;
   const data = { users: db.map((u) => ({ ...u })) };
-  const html = [...page(data, ssrIo().io)].join('');
+  const html = await drain(page(data, ssrIo().io));
   document.body.innerHTML = html.slice(html.indexOf('>', html.indexOf('<body')) + 1, html.lastIndexOf('</body>'));
 
   const chunk = emitRouteClientModule(graph)!;
@@ -180,7 +177,7 @@ afterEach(() => {
 
 describe('a mutation repaints the route (§4.8)', () => {
   it('15. unticking «Activo» saves, asks for the data once, and updates the row in place', async () => {
-    controller = hydrated();
+    controller = await hydrated();
     const search = document.querySelector('input.otro') as HTMLInputElement;
     search.focus();
     search.value = 'a medio escribir';
@@ -206,7 +203,7 @@ describe('a mutation repaints the route (§4.8)', () => {
   });
 
   it('BUG-61: the first pass after hydrating, with blank runs between the rows, moves no row', async () => {
-    controller = hydrated();
+    controller = await hydrated();
     const tbody = document.querySelector('tbody')!;
     // The route keeps the blank runs the server wrote between the rows: the case of the bug.
     expect([...tbody.childNodes].some((n) => n.nodeType === Node.TEXT_NODE)).toBe(true);
@@ -223,7 +220,7 @@ describe('a mutation repaints the route (§4.8)', () => {
   });
 
   it('15b. a server-side change shows in the attribute the view writes, not only in the checkbox state', async () => {
-    controller = hydrated();
+    controller = await hydrated();
     // Leo is off; the server turns him on through a save from his own row.
     const leo = box(3);
     leo.checked = true;
@@ -233,7 +230,7 @@ describe('a mutation repaints the route (§4.8)', () => {
   });
 
   it('16. removing a row takes it out of the table; the others are the same nodes', async () => {
-    controller = hydrated();
+    controller = await hydrated();
     const [ana, , leo] = rows();
     (document.querySelector('tr[data-id="2"] button') as HTMLButtonElement).click();
     await probe.run;
@@ -247,7 +244,7 @@ describe('a mutation repaints the route (§4.8)', () => {
 
   it('17. with the data endpoint failing, the listener reloads the document', async () => {
     endpointFails = true;
-    controller = hydrated();
+    controller = await hydrated();
     const before = rows();
     const ana = box(1);
     ana.checked = false;
@@ -259,7 +256,7 @@ describe('a mutation repaints the route (§4.8)', () => {
   });
 
   it('a route torn down stops listening: a call after r() repaints nothing and reloads nothing', async () => {
-    controller = hydrated();
+    controller = await hydrated();
     controller.r();
     controller = undefined;
     const waits: Promise<void>[] = [];
@@ -296,7 +293,7 @@ const ids = (): string[] => rows().map((r) => r.dataset['id']!);
 
 describe('a signal sown from `data` is sown again by the new one (BUG-55 §2)', () => {
   it('4. removing a row takes it out of the signal the table paints', async () => {
-    controller = hydrated(SEEDED);
+    controller = await hydrated(SEEDED);
     (document.querySelector('tr[data-id="2"] button') as HTMLButtonElement).click();
     await probe.run;
     expect(asked).toEqual(['/usuarios']);
@@ -304,7 +301,7 @@ describe('a signal sown from `data` is sown again by the new one (BUG-55 §2)', 
   });
 
   it('4. the server wins: what the page added and the server does not have is gone', async () => {
-    controller = hydrated(SEEDED);
+    controller = await hydrated(SEEDED);
     (document.querySelector('button.alta') as HTMLButtonElement).click();
     expect(ids()).toEqual(['1', '2', '3', '9']);
     (document.querySelector('tr[data-id="1"] button') as HTMLButtonElement).click();
@@ -313,7 +310,7 @@ describe('a signal sown from `data` is sown again by the new one (BUG-55 §2)', 
   });
 
   it('5. a signal that does not read `data` keeps its value', async () => {
-    controller = hydrated(SEEDED);
+    controller = await hydrated(SEEDED);
     (document.querySelector('button.alta') as HTMLButtonElement).click();
     (document.querySelector('tr[data-id="1"] button') as HTMLButtonElement).click();
     await probe.run;

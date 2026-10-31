@@ -8,6 +8,7 @@
  */
 
 import type {
+  AwaitNode,
   ForeachNode,
   HtmlContent,
   IfNode,
@@ -25,7 +26,7 @@ import type { Doc } from '../doc/index.js';
 import { leafOf, sliceOf, type PrintContext } from './context.js';
 import { printElement } from './element.js';
 import { printCode, printInlineCode, printSection } from './code.js';
-import { printIf, printLoop, printSwitch, printWhile } from './control.js';
+import { printAwait, printIf, printLoop, printSwitch, printWhile } from './control.js';
 import { printRender, printSnippet } from './snippet.js';
 
 // A construct is stored as the base `RazorConstruct`; recover the concrete node.
@@ -76,6 +77,8 @@ export function printNode(ctx: PrintContext, node: HtmlContent): Doc {
       return printWhile(ctx, asWhile(node));
     case 'switch':
       return printSwitch(ctx, asSwitch(node));
+    case 'await':
+      return printAwait(ctx, node as unknown as AwaitNode);
     case 'code':
       return printCode(ctx, asCode(node));
     case 'section':

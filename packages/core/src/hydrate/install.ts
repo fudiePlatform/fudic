@@ -22,7 +22,8 @@
  * instrumentation, and nothing depends on anyone listening to them.
  */
 
-import { readPageMaps } from './maps.js';
+import { readPageMaps, type PartBlock } from './maps.js';
+import type { PartsOptions } from './parts.js';
 import { createCells, type Cells } from './cells.js';
 import {
   createChunkLoader,
@@ -158,6 +159,18 @@ export interface HydrationOptions {
    * else.
    */
   readonly ready?: PromiseLike<unknown>;
+  /**
+   * The reader of a page that arrives in parts (SDD-70 §4.4), injected because it is a piece
+   * of its own that only a route with `@await` downloads. Without it the page is read whole,
+   * from the blocks at the end of its body.
+   */
+  readonly parts?: (options: PartsOptions) => Promise<void>;
+  /**
+   * How the container tree of the page is stood up from its map and its seed (SDD-38), once
+   * the page has published them — at once for a page read whole, after its last part for one
+   * in parts. Its promise joins `ready`: no chunk runs before the tree stands.
+   */
+  readonly inject?: (map: unknown, seed: Readonly<Record<string, unknown>> | undefined) => PromiseLike<unknown>;
 }
 
 /**
@@ -225,7 +238,38 @@ export function installHydration(options: HydrationOptions): Hydration {
     report,
   });
 
-  const ready = options.ready ?? Promise.resolve();
+  /**
+   * A page in parts (SDD-70 §4.4): `finished` once its last part is in, and the hosts whose
+   * slice has not arrived yet wait in `waiting`. A page read whole is finished from the start.
+   */
+  let finished = options.parts === undefined;
+  let waiting: { readonly id: number; readonly wake: () => void }[] = [];
+  const arrival = (id: number): Promise<void> =>
+    new Promise((wake) => {
+      waiting.push({ id, wake });
+    });
+  const wakeArrived = (): void => {
+    const still = waiting.filter((w) => !finished && w.id >= maps.count);
+    for (const w of waiting) if (!still.includes(w)) w.wake();
+    waiting = still;
+  };
+  // Assigned below whenever there are parts, which is the only time it is called.
+  let markDone!: () => void;
+  const done = finished
+    ? Promise.resolve()
+    : new Promise<void>((resolve) => {
+        markDone = resolve;
+      });
+
+  // The container tree, from the map and the seed the page published — read from memory, so
+  // a block removed from the DOM is no loss (SDD-70 §4.4).
+  const inject = options.inject;
+  const injected =
+    inject === undefined
+      ? undefined
+      : done.then(() => (maps.ioc === null ? undefined : inject(maps.ioc, maps.di ?? undefined)));
+  const ready =
+    injected === undefined ? (options.ready ?? Promise.resolve()) : Promise.all([options.ready, injected]);
 
   /**
    * Path 2 for the ROUTE (SDD-39 §4.6), which is the same path with two substitutions.
@@ -246,6 +290,8 @@ export function installHydration(options: HydrationOptions): Hydration {
     replay: () => void,
     arriving: Promise<DeferredPieces>,
   ): Promise<void> => {
+    // The route's view spans every part, so it comes up once the last one is in (SDD-70 §4.4).
+    await done;
     const name = maps.route!;
     await ready;
     // 2c — the pieces of §4.4.1, in flight since the top of path 2 and normally warmed. The
@@ -258,7 +304,8 @@ export function installHydration(options: HydrationOptions): Hydration {
     // stays as the server painted it — which is a page that works — and the gesture is
     // replayed anyway, because cancelling it was this runtime's doing.
     if (factory !== null) {
-      factory([landed.dom, host, maps.data, ...cells.resolve(id)]).h();
+      // And the `later` fields, settled: what each `@await` of the route paints with.
+      factory([landed.dom, host, maps.data, ...cells.resolve(id)], maps.fields).h();
       report(id, name, elapsed(), 'downloaded');
     }
     replay();
@@ -292,6 +339,8 @@ export function installHydration(options: HydrationOptions): Hydration {
     // path 2 so the request is on the network while `ready` is still pending, and on a page
     // with a warm channel it was ordered long ago, when this component came into view.
     const arriving = deferred();
+    // A host the parser has shown but whose part is not in yet: its slice is on its way.
+    if (!finished && id >= maps.count) await arrival(id);
     // The `<body>` is the route's root and nobody else's (SDD-39 §4.2): a custom element
     // needs a dash in its name, so `body` can never be a tag the cascade would know.
     if (maps.route !== null && host.localName === ROUTE_HOST) {
@@ -350,45 +399,70 @@ export function installHydration(options: HydrationOptions): Hydration {
   // `setFormValue`, no `setValidity`, nothing in anybody's `FormData`. Raising the outermost
   // hydratable ancestor puts the whole chain up in one post-order walk, and the child gets
   // its node through the same `u` any other prop travels in.
-  const eagerHosts = new Map<number, Element>();
-  for (const tag of maps.eager) {
-    // The ROUTE is in this list under its own name, not a tag (SDD-39 §4.6): a `control`
-    // written straight in the route, or an `effect` in its `@client`, comes up at install for
-    // the same reasons a component's does. `outermostOwner` would land on the `<body>` anyway
-    // — it climbs to the outermost `[data-fud-id]` — but the route has no instances to look
-    // up, so it is named rather than queried.
-    if (tag === maps.route) {
-      // `instancesOf` over the one tag a route can be: it already asks for both halves of
-      // the question — the element is the `<body>`, and it carries an id.
-      for (const body of instancesOf(ROUTE_HOST, doc)) eagerHosts.set(idOf(body), body);
-      continue;
-    }
-    // `instancesOf` and not `querySelectorAll`: a control-component lives INSIDE the shadow
-    // root of the component that owns the form, and a query on the document stops there.
-    for (const instance of instancesOf(tag, doc)) {
-      const host = outermostOwner(instance);
-      eagerHosts.set(idOf(host), host);
-      // The owner FIRST and then the instance, and the second half is what a route made
-      // necessary (SDD-39 §4.10). Raising an owner brings its subtree up with it — through
-      // `fud-tree`, which for a component lists every hydratable tag it renders. A ROUTE's
-      // entry lists only what it hands a prop to, so a component that receives nothing from
-      // it is not on that walk; and since the `<body>` is now the outermost owner of
-      // everything, `app-clock` inside a route would be raised by nobody. Asking for it
-      // afterwards costs nothing when the cascade already got there — the loop below skips
-      // an id that is already hydrated — and is the whole difference when it did not.
-      eagerHosts.set(idOf(instance), instance);
-    }
-  }
-  if (eagerHosts.size > 0) {
-    void (async (): Promise<void> => {
-      for (const [id, host] of eagerHosts) {
-        if (state.hydrated.has(id)) continue;
-        // Before the await, exactly as the capturer does it: a gesture that lands on this
-        // very instance while its chunk is in flight must find it taken (§4.3, path 1).
-        state.hydrated.add(id);
-        await raise(host, id, NOTHING);
+  //
+  // A page in parts runs this again as each part arrives (SDD-70 §4.4): the hosts of that part
+  // come up with the same rules, and an id already up is skipped.
+  const raiseEager = (): void => {
+    const eagerHosts = new Map<number, Element>();
+    for (const tag of maps.eager) {
+      // The ROUTE is in this list under its own name, not a tag (SDD-39 §4.6): a `control`
+      // written straight in the route, or an `effect` in its `@client`, comes up at install for
+      // the same reasons a component's does. `outermostOwner` would land on the `<body>` anyway
+      // — it climbs to the outermost `[data-fud-id]` — but the route has no instances to look
+      // up, so it is named rather than queried.
+      if (tag === maps.route) {
+        // `instancesOf` over the one tag a route can be: it already asks for both halves of
+        // the question — the element is the `<body>`, and it carries an id.
+        for (const body of instancesOf(ROUTE_HOST, doc)) eagerHosts.set(idOf(body), body);
+        continue;
       }
-    })();
+      // `instancesOf` and not `querySelectorAll`: a control-component lives INSIDE the shadow
+      // root of the component that owns the form, and a query on the document stops there.
+      for (const instance of instancesOf(tag, doc)) {
+        const host = outermostOwner(instance);
+        eagerHosts.set(idOf(host), host);
+        // The owner FIRST and then the instance, and the second half is what a route made
+        // necessary (SDD-39 §4.10). Raising an owner brings its subtree up with it — through
+        // `fud-tree`, which for a component lists every hydratable tag it renders. A ROUTE's
+        // entry lists only what it hands a prop to, so a component that receives nothing from
+        // it is not on that walk; and since the `<body>` is now the outermost owner of
+        // everything, `app-clock` inside a route would be raised by nobody. Asking for it
+        // afterwards costs nothing when the cascade already got there — the loop below skips
+        // an id that is already hydrated — and is the whole difference when it did not.
+        eagerHosts.set(idOf(instance), instance);
+      }
+    }
+    if (eagerHosts.size > 0) {
+      void (async (): Promise<void> => {
+        for (const [id, host] of eagerHosts) {
+          if (state.hydrated.has(id)) continue;
+          // The route waits for the last part (SDD-70 §4.4), and the hosts of this one do not
+          // wait for it: it comes up in the pass that runs once the page is finished.
+          if (!finished && host.localName === ROUTE_HOST) continue;
+          // Before the await, exactly as the capturer does it: a gesture that lands on this
+          // very instance while its chunk is in flight must find it taken (§4.3, path 1).
+          state.hydrated.add(id);
+          await raise(host, id, NOTHING);
+        }
+      })();
+    }
+  };
+  raiseEager();
+  // Each part, as it arrives: into memory, its cells swept, the hosts waiting for it woken,
+  // and its eager hosts up. The block and the marker are already out of the DOM.
+  if (options.parts !== undefined) {
+    const onPart = (block: PartBlock): void => {
+      maps.absorb(block);
+      cells.sweep();
+      wakeArrived();
+      raiseEager();
+    };
+    void options.parts({ document: doc, onPart }).then(() => {
+      finished = true;
+      wakeArrived();
+      markDone();
+      raiseEager();
+    });
   }
   if (options.warm !== undefined) {
     const channel = options.warm;

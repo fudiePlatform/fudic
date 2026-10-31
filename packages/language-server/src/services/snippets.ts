@@ -119,6 +119,22 @@ function followsLoop(document: CachedDocument, offset: number): boolean {
   return found;
 }
 
+/**
+ * Whether only whitespace separates this offset from the closing `}` of an `@await` with no
+ * `@catch` yet (SDD-70) — the same test as `followsLoop`, for the same reason.
+ */
+function followsAwait(document: CachedDocument, offset: number): boolean {
+  let found = false;
+  walk(documentRoots(document.document), {
+    awaitBlock: (node) => {
+      if (node.catch !== undefined || node.span.end > offset) return;
+      const end = node.span.end;
+      if (document.source[end - 1] === '}' && document.source.slice(end, offset).trim() === '') found = true;
+    },
+  });
+  return found;
+}
+
 /** Whether this offset satisfies a placement. */
 function placedAt(document: CachedDocument, offset: number, placement: SnippetPlacement): boolean {
   if (placement === 'outside-head') return !insideHead(document, offset);
@@ -154,6 +170,10 @@ export interface FudSnippet {
   readonly requiresSnippets?: true;
   /** Only right after the `}` of a loop that has no `@empty` yet (decision 163). */
   readonly requiresLoopBefore?: true;
+  /** Only in a file whose `.fudapi` has a field of `load` marked `later` (SDD-70). */
+  readonly requiresLater?: true;
+  /** Only right after the `}` of an `@await` that has no `@catch` yet (SDD-70). */
+  readonly requiresAwaitBefore?: true;
   /**
    * Whether accepting it opens the next list at once: its last tabstop is a position the
    * server completes, and the author should not have to ask twice.
@@ -357,6 +377,27 @@ export const SNIPPETS: readonly FudSnippet[] = [
     roles: CONTROL_ROLES,
     requiresLoopBefore: true,
   },
+  // `@await` (SDD-70): only where a page waits — the body of a route or a page — and only when
+  // its `.fudapi` has something that arrives later. Accepting it leaves `@await data.` with the
+  // list of those fields open; the first byte leaves before them.
+  {
+    label: '@await',
+    detail: 'paint this part when a `later` field of load arrives',
+    scope: 'markup',
+    body: '@await data.$1 {\n  $0\n}',
+    roles: ['route', 'page'],
+    placement: 'outside-head',
+    requiresLater: true,
+    suggest: true,
+  },
+  {
+    label: '@catch',
+    detail: 'what the @await paints if its field fails',
+    scope: 'markup',
+    body: '@catch (${1:e}) {\n  $0\n}',
+    roles: ['route', 'page'],
+    requiresAwaitBefore: true,
+  },
   {
     label: '@switch',
     detail: 'multi-way branch, no fall-through (decision 14)',
@@ -487,14 +528,19 @@ export const SNIPPETS: readonly FudSnippet[] = [
  *
  * Six filters and nothing else: the scope, the role of the document, whether a `@code` block
  * is already there, where the construct is allowed to sit, whether the file may still become a
- * route, and whether it has a snippet to render. In an empty file the role is `component` —
- * that is what an empty `.fud` structures as — but the skeletons declare no roles, so all four
- * are offered.
+ * route, and whether it has a snippet to render; and where a construct only continues another
+ * (`@empty`, `@catch`), whether that other one is right before. In an empty file the role is
+ * `component` — that is what an empty `.fud` structures as — but the skeletons declare no
+ * roles, so all four are offered.
+ *
+ * `hasLater` is whether the document's `.fudapi` has a field of `load` marked `later`: the one
+ * fact here that is not in the document itself, so the caller, who holds the project, says it.
  */
 export function snippetsAt(
   document: CachedDocument,
   offset: number,
   componentTag = 'app-button',
+  hasLater = false,
 ): readonly FudSnippet[] {
   const scope = scopeAt(document, offset);
   if (scope === undefined) return [];
@@ -511,7 +557,9 @@ export function snippetsAt(
       (snippet.requiresUndecided === undefined || isUndecided(document.document)) &&
       (snippet.requiresSnippets === undefined ||
         document.document.snippets.length + document.document.snippetLinks.length > 0) &&
-      (snippet.requiresLoopBefore === undefined || followsLoop(document, offset)),
+      (snippet.requiresLoopBefore === undefined || followsLoop(document, offset)) &&
+      (snippet.requiresLater === undefined || hasLater) &&
+      (snippet.requiresAwaitBefore === undefined || followsAwait(document, offset)),
   ).map((snippet) =>
     snippet.label === 'component' ? { ...snippet, body: componentSkeleton(componentTag) } : snippet,
   );

@@ -11,6 +11,7 @@ import {
   FUD1070,
   FUD1071,
   FUD1075,
+  FUD1324,
   span,
   type FUD1070Shape,
   type SourceDiagnostic,
@@ -201,10 +202,36 @@ export function failsClause(node: LineNode, c: Ctx): FailsClause | undefined {
 }
 
 /**
- * `<name>  <type>` with nothing else: a field of a `type`, `load` or `adds`, the parameter of a
- * rule or a middleware. A lone word is a line its parent does not take (`FUD1065`).
+ * The word `later` at `node.tokens[at]`, if it is there. Where it is not `allowed` it is
+ * `FUD1324`; either way it is taken, so it is not reported again as left over.
  */
-export function typedField(node: LineNode, parent: LineNode, expected: readonly string[], c: Ctx): TypedField | undefined {
+export function laterWord(
+  node: LineNode,
+  at: number,
+  allowed: boolean,
+  c: Ctx,
+): { readonly later?: Span; readonly used: number } {
+  const t = node.tokens[at];
+  if (t?.raw !== 'later') return { used: 0 };
+  if (!allowed) {
+    c.out.push(FUD1324({ span: t.span }));
+    return { used: 1 };
+  }
+  return { later: t.span, used: 1 };
+}
+
+/**
+ * `<name>  <type>` with nothing else: a field of a `type`, `load` or `adds`, the parameter of a
+ * rule or a middleware. A lone word is a line its parent does not take (`FUD1065`). A field of
+ * `load` may end in `later` (`laterAllowed`); anywhere else that word is `FUD1324`.
+ */
+export function typedField(
+  node: LineNode,
+  parent: LineNode,
+  expected: readonly string[],
+  c: Ctx,
+  laterAllowed = false,
+): TypedField | undefined {
   const [first] = node.tokens as [Token];
   if (node.tokens.length < 2 || !isShape(first, 'identifier')) {
     unexpected(node, parent, expected, c);
@@ -212,12 +239,14 @@ export function typedField(node: LineNode, parent: LineNode, expected: readonly 
   }
   leaf(node, c);
   const { type, used } = readType(node.tokens.slice(1), c.out);
-  trailing(node, 1 + used, c);
+  const { later, used: marked } = laterWord(node, 1 + used, laterAllowed, c);
+  trailing(node, 1 + used + marked, c);
   if (type === undefined) return undefined;
   return {
     kind: 'field',
     name: name(first),
     type,
+    ...(later !== undefined ? { later } : {}),
     ...(node.doc !== undefined ? { doc: node.doc } : {}),
     span: node.span,
   };

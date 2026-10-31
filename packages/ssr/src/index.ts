@@ -12,7 +12,7 @@
 export const VERSION = '0.0.1';
 
 export { type SsrNode } from './tree.js';
-export { SsrDom, ID_ATTR, type CellDecl, type HydrationState } from './ssr-dom.js';
+export { SsrDom, ID_ATTR, type CellDecl, type HydrationPart, type HydrationState } from './ssr-dom.js';
 export {
   renderToString,
   serializeChunks,
@@ -34,4 +34,6 @@ export {
   type IocNode,
 } from './ioc.js';
 export { publishedSeed, seedBlock, SEED_BLOCK } from './seed.js';
-export { renderToStream, htmlToByteStream, type StreamOptions } from './stream.js';
+export { renderToStream, htmlToByteStream, flushHead, FLUSH, type HtmlPiece, type StreamOptions } from './stream.js';
+export { partSerializer, type PartSerializer } from './parts.js';
+export { PageParts, PART_END, type PagePartsOptions, type Settled } from './page-parts.js';

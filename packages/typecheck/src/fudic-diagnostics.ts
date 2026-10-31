@@ -38,11 +38,15 @@ function registryOf(document: ProjectedFud): ComponentRegistry {
  * links none, or when one of them could not be read — the caller cannot know, and the view then
  * keeps the rule of its role.
  */
-function apisOf(document: ProjectedFud): { readonly data: boolean; readonly names: ReadonlySet<string> } | undefined {
+function apisOf(document: ProjectedFud): SemanticInput['apis'] {
   const links = serverLinksOf(document.document).length;
   const servers = document.registry.servers();
   if (links === 0 || servers.length < links) return undefined;
-  return { data: servers.some((s) => s.load), names: new Set(servers.flatMap((s) => s.names)) };
+  return {
+    data: servers.some((s) => s.load),
+    names: new Set(servers.flatMap((s) => s.names)),
+    later: new Set(servers.flatMap((s) => (s.later ?? []).map((f) => f.name))),
+  };
 }
 
 /**

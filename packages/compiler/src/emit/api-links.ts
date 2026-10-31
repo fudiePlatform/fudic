@@ -86,6 +86,15 @@ export function dataShapeOf(graph: ComponentGraph): DataShape | undefined {
 }
 
 /**
+ * The fields of `load` marked `later` (SDD-70 §3.1): promises when the page is painted, so they
+ * are never part of what `fud-data` carries — they travel in the `fields` of their part.
+ */
+export function laterFieldsOf(graph: ComponentGraph): readonly string[] {
+  const apis = 'serverApis' in graph ? (graph as DocumentGraph).serverApis : [];
+  return apis.find((a) => a.api?.load === true)?.api?.later ?? [];
+}
+
+/**
  * The forms the `.fudapi` a file links give it, by name: stores from another module, which the
  * client subscribes to through what the markup reads (`userForm.$valid()`, BUG-42 §4.3) exactly
  * as it did when the form was an import of the `@code`. Functions are left out: a stub has

@@ -57,6 +57,35 @@ backend: `filter`, `map`, `reduce` (always with an initial value), `toSorted` an
 }
 ```
 
+### `@await`
+
+A field of `load` marked `later` in the route's `.fudapi` arrives after the first byte. The
+page goes out as soon as `load` returns what is already resolved, and each `@await` paints its
+part when its field settles:
+
+```
+<h1>@data.title</h1>
+@await data.users {
+  <user-table .rows=@data.users></user-table>
+} @catch (e) {
+  <p>Could not load the list (@e.status).</p>
+}
+```
+
+- **Where it goes.** In the view of a route or a page: its body or one of its `@section`s. Not
+  in the `<head>`, a component, a layout or the body of a snippet (`FUD1322`). A component
+  gets the resolved value as a prop.
+- **Inside**, `data.users` is the value; outside its `@await`, reading it is `FUD1321`. `e` is
+  a `Problem`: `status`, `title`, and `detail` in development only.
+- **Without `@catch`** a failed field paints nothing, the error goes to `onError` (the overlay
+  in development), and the page goes on.
+- **The slow, below.** The page is written in document order: an `@await` waits for the one
+  before it, so a slow field holds back everything after it. The promises themselves all
+  start at once, when `load` creates them.
+- **What decides the status is not a promise.** Once the first byte is out the answer is a
+  `200`. A missing user, a missing permission or a redirect is decided in `load` before it
+  returns, by throwing an `HttpError`, as ever.
+
 ### What the server evaluates of the `@code`
 
 What the view reads of the `@code` follows the same list: `props<T>()`, `signal(v)`,

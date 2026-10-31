@@ -28,6 +28,7 @@ import {
   span,
   type Attribute,
   type ElementNode,
+  type AwaitNode,
   type ForNode,
   type ForeachNode,
   type HtmlContent,
@@ -216,6 +217,17 @@ class TokenCollector {
       case 'switch': {
         this.control(node.span.start, node as unknown as KeyedNode);
         for (const branch of (node as unknown as SwitchNode).cases) this.walk(branch.body);
+        return;
+      }
+      // `@await` and its `@catch` (SDD-70): two words of the same construct, like `@empty`.
+      case 'await': {
+        const awaitNode = node as unknown as AwaitNode;
+        this.directiveAt(node.span.start);
+        this.walk(awaitNode.body);
+        if (awaitNode.catch !== undefined) {
+          this.directiveAt(awaitNode.catch.span.start);
+          this.walk(awaitNode.catch.body);
+        }
         return;
       }
       // The layout directives are the one family whose `keywordSpan` already excludes the `@`

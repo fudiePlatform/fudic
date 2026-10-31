@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { join } from 'node:path';
 import { resolveComponents, hydratableTags, type ComponentGraph } from '../../src/emit/index.js';
 import { fudTree } from '../../src/emit/maps.js';
-import { fixturesDir, fixtureIo, memoryIo, pageModuleOf, ssrIo } from './_support.js';
+import { drain, fixturesDir, fixtureIo, memoryIo, pageModuleOf, ssrIo } from './_support.js';
 
 const treeOf = (graph: ComponentGraph): Record<string, readonly string[]> =>
   fudTree(graph, hydratableTags(graph));
@@ -129,7 +129,7 @@ describe('fud-tree — only the effective N3 (§6.26)', () => {
     const graph = resolveComponents(join(fixturesDir, 'home.fud'), fixtureIo);
     const page = await pageModuleOf(graph);
     const { io, dom } = ssrIo();
-    const html = [...page({ title: 'x', items: [{ id: 'a', title: 'T', description: 'D', featured: true }] }, io)].join('');
+    const html = await drain(page({ title: 'x', items: [{ id: 'a', title: 'T', description: 'D', featured: true }] }, io));
     expect(html).toContain('<app-badge data-fud-adopt="app-badge"'); // it IS rendered…
     expect(html).not.toContain('<app-badge data-fud-id'); // …without identity,
     expect(treeOf(graph)['app-card']).not.toContain('app-badge'); // …absent from the map,

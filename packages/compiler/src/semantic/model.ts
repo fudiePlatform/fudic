@@ -35,7 +35,12 @@ export interface SemanticInput {
    * gives `data` (it declares `load`), and the names of their functions and forms. ABSENT when
    * the caller cannot know: `data` then follows the role, as before.
    */
-  readonly apis?: { readonly data: boolean; readonly names: ReadonlySet<string> };
+  readonly apis?: {
+    readonly data: boolean;
+    readonly names: ReadonlySet<string>;
+    /** The fields of `load` marked `later` (SDD-70): what an `@await` may wait for. Absent: none. */
+    readonly later?: ReadonlySet<string>;
+  };
   /**
    * Absolute path of the document, when the host knows it: the importer of its `@code`'s own
    * imports, and where a diagnostic reported in another file (a store, SDD-61 §3.9) points back.

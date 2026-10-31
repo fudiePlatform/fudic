@@ -15,6 +15,7 @@
  * compiler-free (DIP).
  */
 
+import type { FramesShape } from '@fudic/api';
 import type { PageAnalysis } from './analyze.js';
 import type { RuntimeEntries } from './constants.js';
 import { withLocale } from './i18n.js';
@@ -22,6 +23,11 @@ import { withLocale } from './i18n.js';
 export interface RenderChunkOptions {
   /** Import specifier for the page module's `page(data, io)`. */
   readonly pageModule: string;
+  /**
+   * Linked variant of a route that resolves something: the types of its `load` as JSON, or
+   * `null` when it resolves only `layout` (SDD-70 §3.7). Absent when it resolves nothing.
+   */
+  readonly frames?: FramesShape | null;
   /** Edge variant: resolve data in process. Off for the linked (SW) variant. */
   readonly withLoad: boolean;
   /**
@@ -68,6 +74,11 @@ export interface RenderChunkOptions {
    * the plugin substitutes it, in dev they are the dev server's two stable URLs.
    */
   readonly runtime?: RuntimeEntries;
+  /**
+   * The bytes the page stream holds before it sends (SDD-70 §3.9): the route's `buffer`. Absent,
+   * `htmlToByteStream` keeps its own default, `STREAM_BUFFER`.
+   */
+  readonly buffer?: number;
   /**
    * The locales of a page compiled for one of two or more (SDD-58 §4.7): its head carries its
    * own `<link rel="canonical">`, a `<link rel="alternate" hreflang>` per locale and `x-default`
@@ -123,6 +134,8 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
     'SsrDom',
     'serializeChunks',
     'htmlToByteStream',
+    // The head leaves on its own, with or without `@await` (SDD-70 §3.9).
+    'flushHead',
     'escapeText',
     // The shell's opening tag is composed as a string, before there is a DOM to build it in,
     // and since SDD-40 §4.4 its attributes are interpolated rather than sliced out of the
@@ -134,11 +147,15 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
     'jsonBlock',
     // What a page writes `fud-data` with when its `.fudapi` gave the shape of `data` (BUG-60 §3.2).
     'packData',
+    // What a page with `@await` sends its parts through (SDD-70 §4.2).
+    'PageParts',
     ...(hasDi ? ['iocRoot', 'publishedSeed'] : http ? ['iocRoot'] : []),
   ];
   lines.push(`import { page } from ${spec};`);
   lines.push(`import { ${ssr.join(', ')} } from "@fudic/ssr";`);
   if (http) lines.push('import { markPrivate, pageContext, withRequest } from "@fudic/http/server";');
+  // The frames of the data endpoint (SDD-70 §3.7), written on the edge.
+  if (http) lines.push('import { writeFrames } from "@fudic/http/wire/frames";');
   const pieces = [
     ...(edgeLoad ? ['load as $load'] : []),
     ...(edgeLayout ? ['layout as $layout'] : []),
@@ -172,7 +189,7 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   if (options.alternates !== undefined) lines.push(...alternatesSource(options.alternates));
   lines.push('function io(ctx) {');
   lines.push(
-    `  return { createDom: () => new SsrDom(), serialize: serializeChunks, escapeText, escapeAttr, guardUrl, jsonBlock, packData${hasDi ? ', iocRoot, publishedSeed' : ''}, nonce: ctx.nonce, runtime: RUNTIME${options.alternates !== undefined ? ', alternates: $alternates(ctx.url)' : ''} };`,
+    `  return { createDom: () => new SsrDom(), serialize: serializeChunks, escapeText, escapeAttr, guardUrl, jsonBlock, packData${hasDi ? ', iocRoot, publishedSeed' : ''}, parts: (dom, body, o) => new PageParts(dom, body, o), onError: ctx.onError, nonce: ctx.nonce, runtime: RUNTIME${options.alternates !== undefined ? ', alternates: $alternates(ctx.url)' : ''} };`,
   );
   lines.push('}');
   lines.push('');
@@ -180,16 +197,27 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
   // The data endpoint: ONE response carrying both halves (§3.3). It exists whenever the route
   // resolves anything for a render — `load`, `layout`, or both — because the Service Worker
   // executes neither and has no other way to be handed them.
+  //
+  // It answers with frames (SDD-70 §3.7): `load` and `layout` are awaited first — what they
+  // throw is the endpoint's status — and then the stream carries what they resolved, and each
+  // `later` field as it settles.
   if (http) {
     lines.push('export async function data(ctx) {');
     lines.push('  const $root = iocRoot();');
     lines.push('  const $ctx = pageContext(ctx);');
     lines.push('  return withRequest($root, async () => {');
     lines.push(`    const data = ${edgeLoad ? `await ${loadCall}` : '{}'};`);
-    lines.push(`    return { data${edgeLayout ? ', layout: await layoutProps($ctx, data)' : ''} };`);
+    lines.push(`    return writeFrames(${edgeLoad ? '$load.spec' : '{}'}, data${edgeLayout ? ', await layoutProps($ctx, data)' : ''});`);
     // What read the session goes out private, also when it threw (SDD-69 §3.2).
     lines.push('  }).finally(() => markPrivate($ctx.response));');
     lines.push('}');
+    lines.push('');
+  }
+  // The Service Worker's half of the same endpoint: the types of this route's `load`, as JSON,
+  // which the worker reads the frames with. Data and not an import: the worker never loads a
+  // module of the `.fudapi` (§4.5). `null` for a route whose `.fudapi` resolves only `layout`.
+  if (!options.withLoad && options.frames !== undefined) {
+    lines.push(`export const dataShape = ${JSON.stringify(options.frames)};`);
     lines.push('');
   }
 
@@ -232,8 +260,8 @@ export function emitRenderChunk(options: RenderChunkOptions): string {
     lines.push('    return [data, layout];');
     lines.push('    })().finally(() => markPrivate($ctx.response));');
   }
-  lines.push(`    yield* page(data, io(ctx), ${hasDi ? '$root' : 'undefined'}, layout);`);
-  lines.push('  })());');
+  lines.push(`    yield* flushHead(page(data, io(ctx), ${hasDi ? '$root' : 'undefined'}, layout));`);
+  lines.push(options.buffer === undefined ? '  })());' : `  })(), { highWaterMark: ${options.buffer} });`);
   lines.push('}');
   lines.push('');
   return lines.join('\n');

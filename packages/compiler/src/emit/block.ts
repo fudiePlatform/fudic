@@ -1,5 +1,6 @@
 /**
- * Block render (SDD-30): the five control constructs, emitted as FUNCTIONS.
+ * Block render (SDD-30): the five control constructs, and `@await` (SDD-70), emitted as
+ * FUNCTIONS.
  *
  * Flattened in line — the way SDD-15 left them — a construct has no identity: the node
  * variables of a `@foreach` are the component's, reassigned every turn, so only the last row
@@ -17,7 +18,7 @@
  * (§3.4), and identity is the author's `key` (§3.5).
  */
 
-import type { ControlNode } from '../control/index.js';
+import type { AwaitNode, ControlConstruct } from '../control/index.js';
 import { keyExpression } from '../control/index.js';
 import type { Span } from '../types/index.js';
 import { FUD0543 } from '@fudic/diagnostics';
@@ -25,6 +26,8 @@ import { type OxcNode, loopHeaderNames } from '../oxc/index.js';
 import { CodeWriter } from './writer.js';
 import type { AssetLinker } from './assets.js';
 import {
+  awaitBranches,
+  awaitedField,
   branchesOf,
   collectTemplateJs,
   isLoop,
@@ -106,6 +109,12 @@ interface BuiltBlock {
   readonly name: string;
   /** The dependency parameters, in order: the header's bindings first (§3.3). */
   readonly params: readonly string[];
+  /**
+   * What the PARENT passes for them, in the same order. The names themselves, except where the
+   * construct makes the value a block declares: an `@await` hands its body the `data` it paints
+   * with and its `@catch` the `Problem`, both under a name of the construct's own.
+   */
+  readonly args: readonly string[];
 }
 
 /**
@@ -126,13 +135,17 @@ export class BlockEmitter implements BlockSink {
   }
 
   /** Emit one construct; returns the name of its live-instance registry (§3.6). */
-  construct(node: ControlNode, at: BlockSite): string {
+  construct(node: ControlConstruct, at: BlockSite): string {
     const id = this.#ctx.nextConstruct();
     const registry = `$k${id}`;
     const own = this.#headerBindings(node);
-    const branches = branchesOf(node);
+    const branches = node.type === 'await' ? awaitBranches(node) : branchesOf(node);
     // An `@empty` renders outside the loop: it sees none of what the header declares.
-    const blocks = branches.map((branch) => this.#build(node, branch, branch.kind === 'empty' ? [] : own));
+    const blocks = branches.map((branch) =>
+      node.type === 'await'
+        ? this.#build(node, branch, [this.#awaitBinding(node, branch)], [awaitArg(id)])
+        : this.#build(node, branch, branch.kind === 'empty' ? [] : own),
+    );
 
     at.bodies.registries.push(registry);
     at.bodies.decls.line(`let ${registry} = [];`);
@@ -157,7 +170,7 @@ export class BlockEmitter implements BlockSink {
    * mutates. A `@foreach`/`@for` that declares nothing has no iteration to name, so its key
    * can only be a constant and its rows can never be told apart — `FUD0543`.
    */
-  #headerBindings(node: ControlNode): readonly string[] {
+  #headerBindings(node: ControlConstruct): readonly string[] {
     if (!isLoop(node)) return [];
     if (node.type === 'while') return [];
     const header = this.#ctx.hookup.template.ast(node.header.inner);
@@ -177,7 +190,7 @@ export class BlockEmitter implements BlockSink {
    * overreach into a name that does not exist here, which would make the CALL a
    * `ReferenceError` rather than a harmless extra argument.
    */
-  #dependencies(branch: Branch, node: ControlNode, own: readonly string[]): readonly string[] {
+  #dependencies(branch: Branch, node: ControlConstruct, own: readonly string[]): readonly string[] {
     const spans: Span[] = [];
     // The block's own key belongs to the block: it is read in the scope of the body, and
     // the instance computes it from the very parameters this list decides.
@@ -200,15 +213,22 @@ export class BlockEmitter implements BlockSink {
   // The block function (§3.1, §3.2)
   // ------------------------------------------------------------------
 
-  #build(node: ControlNode, branch: Branch, own: readonly string[]): BuiltBlock {
-    return {
-      name: `$b${this.#ctx.nextBlock()}`,
-      params: [...own, ...this.#dependencies(branch, node, own)],
-    };
+  #build(node: ControlConstruct, branch: Branch, own: readonly string[], values = own): BuiltBlock {
+    const deps = this.#dependencies(branch, node, own);
+    return { name: `$b${this.#ctx.nextBlock()}`, params: [...own, ...deps], args: [...values, ...deps] };
+  }
+
+  /**
+   * The one name a block of an `@await` declares (SDD-70 §4.4): `data` in its body, where the
+   * field is already its value, and the `@catch`'s own name in the `@catch`, for the `Problem`.
+   * The server binds the same two names around the same markup.
+   */
+  #awaitBinding(node: AwaitNode, branch: Branch): string {
+    return branch.kind === 'await' ? 'data' : this.#slice(node.catch!.header.inner);
   }
 
   /** Write `const $bN = ($parent, $anchor, …) => {…};` into the enclosing closure. */
-  #declare(block: BuiltBlock, branch: Branch, node: ControlNode, at: BlockSite): void {
+  #declare(block: BuiltBlock, branch: Branch, node: ControlConstruct, at: BlockSite): void {
     const bodies = newBodies();
     const inner = new BlockEmitter(this.#ctx, new Set([...this.#changeable, ...block.params]));
     const em = new ClientMarkupEmitter({
@@ -315,7 +335,7 @@ export class BlockEmitter implements BlockSink {
    * `FUD0541`— identifies every instance as `undefined`. That is a broken reconciliation and
    * it is meant to be: the diagnostic is the answer, and the chunk still has to be JS.
    */
-  #keyOf(node: ControlNode): string {
+  #keyOf(node: ControlConstruct): string {
     const expr = isLoop(node) ? keyExpression(node) : undefined;
     return expr === undefined ? 'undefined' : this.#slice(expr);
   }
@@ -436,7 +456,7 @@ export class BlockEmitter implements BlockSink {
   }
 
   #branching(
-    node: ControlNode,
+    node: ControlConstruct,
     branches: readonly Branch[],
     blocks: readonly BuiltBlock[],
     id: number,
@@ -447,10 +467,10 @@ export class BlockEmitter implements BlockSink {
     const pick = `$q${id}`;
     const make = `$f${id}`;
     const w = at.bodies.decls;
-    for (const line of this.#selector(node, branches, pick)) w.line(line);
+    for (const line of this.#selector(node, branches, pick, id)) w.line(line);
     const arms = blocks.map(
       (block, i) =>
-        `$x === ${i} ? ${block.name}(${parent}, $an${block.params.length === 0 ? '' : `, ${block.params.join(', ')}`})`,
+        `$x === ${i} ? ${block.name}(${parent}, $an${block.args.length === 0 ? '' : `, ${block.args.join(', ')}`})`,
     );
     w.line(`const ${make} = ($x, $an) => ${arms.join(' : ')} : null;`);
 
@@ -478,10 +498,10 @@ export class BlockEmitter implements BlockSink {
     // Staying on a branch is an UPDATE of the instance that is alive; changing branch is a
     // teardown and a build. Two arms share neither nodes nor signature (§4.1), so which
     // arguments an update carries is a question of which arm is live — hence `$gN`.
-    const feed = blocks.every((b) => b.params.length === 0)
+    const feed = blocks.every((b) => b.args.length === 0)
       ? '($x, $i) => $i.u()'
       : `($x, $i) => { ${blocks
-          .map((b, i) => `${i === 0 ? 'if' : 'else if'} ($x === ${i}) $i.u(${b.params.join(', ')});`)
+          .map((b, i) => `${i === 0 ? 'if' : 'else if'} ($x === ${i}) $i.u(${b.args.join(', ')});`)
           .join(' ')} }`;
     w.line(`const $g${id} = ${feed};`);
     w.line(`const $u${id} = () => {`);
@@ -502,7 +522,8 @@ export class BlockEmitter implements BlockSink {
    * once is not brevity: `c`, `h` and `u` must agree on the branch, and three copies of an
    * expression are three chances to disagree.
    */
-  #selector(node: ControlNode, branches: readonly Branch[], name: string): readonly string[] {
+  #selector(node: ControlConstruct, branches: readonly Branch[], name: string, id: number): readonly string[] {
+    if (node.type === 'await') return this.#awaitSelector(node, name, id);
     if (node.type === 'switch') {
       const cases = branches.map((branch, i) =>
         branch.test === undefined
@@ -524,6 +545,47 @@ export class BlockEmitter implements BlockSink {
   }
 
   /**
+   * Which block of an `@await` is live (SDD-70 §4.4): the body when the field came to `{ ok }`,
+   * the `@catch` when it came to `{ error }`, and nothing when it has no value — or when the
+   * failure has no `@catch` to paint, which is what the server painted for it too.
+   *
+   * The settled field arrived with the HTML, in the `fields` of its part, and the chunk took it
+   * into its `data`: on hydration this picks the very block the server painted, and `h` adopts
+   * it. A field that is a PROMISE is a new `data` still on its way: the live block stays as it
+   * is, updated like any other, until the promise settles — then the construct runs its update
+   * again and repaints. The promise resolves the way the server's does, to `{ ok }` or
+   * `{ error }`, and never rejects. What it came to is kept by promise, so a pass that finds the
+   * same one again neither waits twice nor subscribes twice.
+   *
+   * What the live block is handed is made once per settled value and per `data`, not per pass:
+   * a fresh object on every pass would be a row that always moved, and every child fed from it
+   * would be fed again.
+   */
+  #awaitSelector(node: AwaitNode, name: string, id: number): readonly string[] {
+    const field = awaitedField(node, this.#ctx.source);
+    // Not a `later` field (`FUD1320`): the server painted nothing, and neither does this.
+    if (field === undefined) return [`const ${name} = () => -1;`];
+    const [arg, seen, against, settled] = [awaitArg(id), `$as${id}`, `$ad${id}`, `$ap${id}`];
+    const failed = node.catch === undefined ? -1 : 1;
+    return [
+      `let ${arg}, ${seen}, ${against};`,
+      `const ${settled} = new WeakMap();`,
+      `const ${name} = () => {`,
+      `  let $s = data.${field};`,
+      `  if (typeof $s?.then === 'function') {`,
+      '    const $p = $s;',
+      `    if (!${settled}.has($p)) { ${settled}.set($p, undefined); $p.then(($v) => { ${settled}.set($p, $v); $u${id}(); }); }`,
+      `    $s = ${settled}.get($p);`,
+      `    if ($s === undefined) return $x${id};`,
+      '  }',
+      '  if ($s === undefined) return -1;',
+      `  if ($s !== ${seen} || data !== ${against}) { ${seen} = $s; ${against} = data; ${arg} = 'ok' in $s ? { ...data, ${field}: $s.ok } : $s.error; }`,
+      `  return 'ok' in $s ? 0 : ${failed};`,
+      '};',
+    ];
+  }
+
+  /**
    * How the adopt path chains the cursor through a block (§4.3): the block takes the
    * level's cursor and gives back the advanced one. A level with no element at all has no
    * cursor variable, so the block is handed `null` — and every read inside it is guarded.
@@ -540,8 +602,11 @@ export class BlockEmitter implements BlockSink {
 
 /** `const $i = $bN($parent, anchor, …params);` — one instance of `block`. */
 function callOf(block: BuiltBlock, parent: string, anchor: string): string {
-  return `const $i = ${block.name}(${[parent, anchor, ...block.params].join(', ')});`;
+  return `const $i = ${block.name}(${[parent, anchor, ...block.args].join(', ')});`;
 }
+
+/** What the live block of `@await` number `id` is handed: `data` with the field, or the `Problem`. */
+const awaitArg = (id: number): string => `$aw${id}`;
 
 /** The anchor a block inserts before: the next node of its level, or the level's end (§3.4). */
 function anchorOf(at: BlockSite): string {

@@ -33,6 +33,11 @@ export interface HydrationState {
   readonly data: readonly unknown[];
 }
 
+/** The state of one part of a page (SDD-70): the slices from instance `first` on. */
+export interface HydrationPart extends HydrationState {
+  readonly first: number;
+}
+
 /**
  * One CELL an instance publishes: something parent and child have to end up holding the very
  * same object of (BUG-24 §4.2).
@@ -220,9 +225,27 @@ export class SsrDom implements Dom<SsrNode> {
    * of the ids. The order of the reservations is.
    */
   hydrationState(): HydrationState {
+    return this.#statesFrom(0);
+  }
+
+  /**
+   * The state of the instances claimed since the last call, for a page that goes out in parts
+   * (SDD-70 §3.5): `first` is the id of the first one, and the ids keep counting across parts.
+   * Each slice goes out once, in the part that claimed it.
+   */
+  hydrationPart(): HydrationPart {
+    const first = this.#sent;
+    this.#sent = this.#slices.length;
+    return { first, ...this.#statesFrom(first) };
+  }
+
+  /** Slices already sent by `hydrationPart`. */
+  #sent = 0;
+
+  #statesFrom(from: number): HydrationState {
     const offsets: number[] = [0];
     const data: unknown[] = [];
-    for (const slice of this.#slices) {
+    for (const slice of this.#slices.slice(from)) {
       // The cell substitution happens HERE, when every cell of the page has been registered:
       // a slot holding the very object somebody published is written as that object's
       // ADDRESS, and the runtime resolves it back before handing the slice over. Doing it at

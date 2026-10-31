@@ -32,7 +32,8 @@ import {
   walkElements,
 } from './level.js';
 import { entryCellSlots } from './state.js';
-import { dataShapeOf } from './api-links.js';
+import { dataShapeOf, laterFieldsOf } from './api-links.js';
+import { awaitedReads } from './constructs.js';
 
 /** `Record<parent tag, direct hydratable child tags>` — an empty record for a flat page. */
 export type TagMap = Record<string, readonly string[]>;
@@ -337,7 +338,10 @@ export function routeBlocksOf(
   const entry = entryHalf(graph);
   if (entry === undefined || routeName === undefined || !isReactiveRoute(graph)) return undefined;
   const cells = entryCellSlots(graph, entry);
-  const data = dataExpression(entry.code, loads(graph), out);
+  // What an `@await` waits for is a promise here whatever the link says — one the host could not
+  // read included — so it is left out of `fud-data` with the `later` fields (SDD-70 §3.5).
+  const awaited = awaitedReads(entry.roots, graph.entrySource).map((a) => a.field);
+  const data = dataExpression(entry.code, loads(graph), out, [...laterFieldsOf(graph), ...awaited]);
   // With the shape of `load`, the block carries no key at any depth, and the chunk reads it back
   // by the same shape (BUG-60 §3.2). Without one — a link the host could not read — it keeps them.
   const shape = dataShapeOf(graph);
@@ -369,14 +373,33 @@ export function routeBlocksOf(
  * `data` and declares no `load` finds `undefined` there forever (`FUD0621`), and the emit must
  * not turn that into a throw while it says so.
  */
-function dataExpression(code: ExtractedCode, hasLoad: boolean, out: Diagnostic[]): string | null {
+/**
+ * What `dataExpression` gives when everything the page reads of `data` is a `later` field: the
+ * fields still travel, in the `fields` of their parts, but there is no `data` to write.
+ */
+const EMPTY_DATA = '{}';
+
+function dataExpression(
+  code: ExtractedCode,
+  hasLoad: boolean,
+  out: Diagnostic[],
+  later: readonly string[],
+): string | null {
   const access = code.dataAccess;
   if (access.kind === 'none') return null;
   if (!hasLoad) {
     out.push(FUD0621({ span: access.at }));
   }
-  if (access.kind === 'all') return 'data';
-  return `{ ${access.roots.map((r) => `${JSON.stringify(r)}: data?.${r}`).join(', ')} }`;
+  // A `later` field is a promise when the page is painted: it never travels here, but in the
+  // `fields` of the part that awaited it (SDD-70 §3.5).
+  if (access.kind === 'all') {
+    if (later.length === 0) return 'data';
+    const omitted = later.map((f, i) => `${JSON.stringify(f)}: $l${i}`).join(', ');
+    return `(({ ${omitted}, ...$rest }) => $rest)(data ?? {})`;
+  }
+  const roots = access.roots.filter((r) => !later.includes(r));
+  if (roots.length === 0) return EMPTY_DATA;
+  return `{ ${roots.map((r) => `${JSON.stringify(r)}: data?.${r}`).join(', ')} }`;
 }
 
 /**
@@ -439,6 +462,40 @@ export function writeHydrationBlocks(
   if (ioc !== undefined) writeIocBlocks(w, dom, parent, ioc);
   w.dedent();
   w.line('}');
+}
+
+/**
+ * The opening of a page that goes out in parts (SDD-70 §3.5): the route claims the `<body>`
+ * first, as it does before its blocks, and `parts` starts. What `fud-tree`, `fud-bus`,
+ * `fud-eager`, `fud-route` and `fud-data` carried at the end of the body travels once, in the
+ * block of part 0; the state, the fields and the container travel part by part.
+ *
+ * The static maps go whenever the page has them, not only when an instance was claimed: part 0
+ * is written before the page knows what its later parts will claim.
+ */
+export function writePartsOpen(
+  w: CodeWriter,
+  maps: PageMaps,
+  parts: string,
+  dom: string,
+  parent: string,
+  ioc?: string,
+  route?: RouteBlocks,
+): void {
+  if (route !== undefined) writeRouteClaim(w, route, dom, parent);
+  // The `later` fields travel when `fud-data` would: only a route whose client half reads it.
+  const data = route?.data ?? null;
+  const first = [
+    ...(maps.hasTree ? ['tree: FUD_TREE'] : []),
+    ...(maps.hasBus ? ['bus: FUD_BUS'] : []),
+    ...(maps.hasEager ? ['eager: FUD_EAGER'] : []),
+    ...(route === undefined ? [] : [`route: ${JSON.stringify(route.name)}`]),
+    // Nothing empty is written (§3.5): a `data` with only `later` fields is all in `fields`.
+    ...(data === null || data === EMPTY_DATA ? [] : [`data: ${data}`]),
+  ];
+  w.line(
+    `${parts} = io.parts(${dom}, ${parent}, { first: { ${first.join(', ')} }, fields: ${String(data !== null)}${ioc === undefined ? '' : `, ioc: ${ioc}`} });`,
+  );
 }
 
 /**

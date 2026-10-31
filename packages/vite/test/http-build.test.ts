@@ -14,6 +14,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { framed } from './helpers/frames.js';
 import { build, preview, type PreviewServer } from 'vite';
 import { existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -486,9 +487,10 @@ describe('§4.8 in preview', () => {
 
   it('the data endpoint answers the status of what load threw', async () => {
     const ok = await fetch(`${origin}/_fudic/data/usuarios`);
-    expect(await ok.json()).toEqual({ data: { count: 2 } });
-    // A route that resolves nothing answers an empty object.
-    expect(await (await fetch(`${origin}/_fudic/data/otra`)).json()).toEqual({});
+    expect(ok.headers.get('content-type')).toBe('application/fud+frames');
+    expect(await framed(ok, { fields: { count: 'i32' } })).toEqual({ data: { count: 2 } });
+    // A route that resolves nothing has no endpoint: nobody asks it for frames (SDD-70 §3.7).
+    expect((await fetch(`${origin}/_fudic/data/otra`)).status).toBe(404);
     const missing = await fetch(`${origin}/_fudic/data/missing`);
     expect(missing.status).toBe(404);
     expect(missing.headers.get('content-type')).toBe('application/problem+json');

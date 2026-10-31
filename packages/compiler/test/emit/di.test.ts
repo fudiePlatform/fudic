@@ -463,7 +463,7 @@ describe('a route with a layout', () => {
     // ride behind it (SDD-40 §3.4) and are as much not the layout's own.
     expect(route).toContain('}, $root, $props);');
     expect(emitLayoutModule(graph, graph.layouts[0]!)).toContain(
-      'export function* layout(data, io, route, $ioc, $props) {',
+      'export async function* layout(data, io, route, $ioc, $props) {',
     );
   });
 });

@@ -16,6 +16,7 @@
  */
 
 import type {
+  AwaitNode,
   ElementNode,
   ForNode,
   ForeachNode,
@@ -198,6 +199,11 @@ export function nestedContent(node: HtmlContent): readonly (readonly HtmlContent
     }
     case 'switch':
       return (node as SwitchNode).cases.map((c) => c.body);
+    case 'await': {
+      // `@await` (SDD-70): its body and its `@catch` hold markup of this file.
+      const awaitNode = node as unknown as AwaitNode;
+      return awaitNode.catch === undefined ? [awaitNode.body] : [awaitNode.body, awaitNode.catch.body];
+    }
     case 'section':
       return [(node as SectionNode).children];
     case 'snippet':

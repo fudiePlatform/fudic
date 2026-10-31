@@ -407,7 +407,16 @@ function runtimeMarkerForm(el: ElementNode): RuntimeForm | null {
  * `io.runtime` is absent in a standalone render (a golden, `renderToString`), and then the
  * marker produces nothing at all: there is no build, so there are no URLs to write.
  */
-export function writeRuntimeTags(w: CodeWriter, hydrates: boolean, form: RuntimeForm, alternates = false): void {
+export function writeRuntimeTags(
+  w: CodeWriter,
+  hydrates: boolean,
+  form: RuntimeForm,
+  alternates = false,
+  parted = false,
+): void {
+  // A page that goes out in parts (SDD-70 §3.5) runs its runtime `async`: a plain module waits
+  // for the whole document, and the parts are the point. Any other page keeps its tag.
+  const main = parted ? '<script type="module" async' : '<script type="module"';
   w.line('if (io.runtime !== undefined) {');
   w.indent();
   // The `<link rel="alternate" hreflang>` of a page compiled for one of two or more locales
@@ -430,7 +439,7 @@ export function writeRuntimeTags(w: CodeWriter, hydrates: boolean, form: Runtime
     w.line(
       "head += io.runtime.pieces.map(function (u) { return '<link rel=\"modulepreload\" href=\"' + u + '\">'; }).join('');",
     );
-    w.line("head += '<script type=\"module\" src=\"' + io.runtime.main + '\"></script>';");
+    w.line(`head += '${main} src="' + io.runtime.main + '"></script>';`);
   }
   if (hydrates && form === 'inline') {
     // The nonce, because an inline module is exactly what a strict `script-src` refuses
@@ -441,13 +450,11 @@ export function writeRuntimeTags(w: CodeWriter, hydrates: boolean, form: Runtime
     // development does not change — and not a silent fallback: a build always has the source.
     w.line("if (io.runtime.inline !== '') {");
     w.indent();
-    w.line(
-      "head += '<script type=\"module\"' + $nonce + '>' + io.runtime.inline + '</script>';",
-    );
+    w.line(`head += '${main}' + $nonce + '>' + io.runtime.inline + '</script>';`);
     w.dedent();
     w.line('} else {');
     w.indent();
-    w.line("head += '<script type=\"module\" src=\"' + io.runtime.main + '\"></script>';");
+    w.line(`head += '${main} src="' + io.runtime.main + '"></script>';`);
     w.dedent();
     w.line('}');
   }

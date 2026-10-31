@@ -23,7 +23,7 @@ import { displayOfTag, isBlockContainer, isBlockLevel, type Display, type RunCon
 // A value from `marker.ts`, and no cycle: what that module takes from this one is a TYPE,
 // erased at runtime. The closed set of control discriminants is stated once, where the other
 // consumer of this item list already states it.
-import { isControlNode } from './marker.js';
+import { isConstructNode } from './marker.js';
 
 /** One coalesced stretch of text/interpolation siblings. */
 export interface TextRun {
@@ -91,6 +91,8 @@ const ROLE: Record<HtmlContent['type'], ContentRole> = {
   foreach: 'node',
   while: 'node',
   switch: 'node',
+  await: 'node',
+  catch: 'node',
   code: 'node',
   'render-body': 'node',
   'render-head': 'node',
@@ -167,7 +169,7 @@ function keepRuns(items: readonly EmitItem[], at: RunContext): EmitItem[] {
 
 /** Whether an item ends up as a node of the DOM — a run always does, blank or not. */
 function isNode(item: EmitItem): boolean {
-  return item.kind === 'run' || item.node.type === 'element' || isControlNode(item.node);
+  return item.kind === 'run' || item.node.type === 'element' || isConstructNode(item.node);
 }
 
 /** The display of the item beside a run — `unknown` for everything that is not an element. */

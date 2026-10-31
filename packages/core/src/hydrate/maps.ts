@@ -75,6 +75,41 @@ export interface PageMaps {
    * what lets the owner's slice be resolved too — whichever of the two hydrates first.
    */
   readonly count: number;
+  /**
+   * What each `later` field the page awaited came to (SDD-70 §3.5): `{ ok }` or `{ error }`,
+   * by field. Empty on a page without `@await`, and on one whose route publishes no `data`.
+   */
+  readonly fields: Readonly<Record<string, Settled>>;
+  /** The container map, the last one the page wrote; `null` when it wrote none. */
+  readonly ioc: unknown;
+  /** The seed of the root container, every entry published so far; `null` when none was. */
+  readonly di: Readonly<Record<string, unknown>> | null;
+}
+
+/** What a `later` field came to, as the block of its part carries it (SDD-70 §3.5). */
+export type Settled = { readonly ok: unknown } | { readonly error: unknown };
+
+/**
+ * The block of one part (SDD-70 §3.5), and the shape the blocks at the end of a page without
+ * `@await` are read into: the same facts under the same keys, so the maps grow one way.
+ */
+export interface PartBlock {
+  /** `[firstId, offsets, data]`: the slices of the instances this part claimed. */
+  readonly state?: readonly [number, readonly number[], readonly unknown[]];
+  readonly fields?: Readonly<Record<string, Settled>>;
+  readonly di?: Readonly<Record<string, unknown>>;
+  readonly ioc?: unknown;
+  readonly tree?: TagMap;
+  readonly bus?: TagMap;
+  readonly eager?: readonly string[];
+  readonly route?: string;
+  readonly data?: unknown;
+}
+
+/** The maps, held in memory and grown one block at a time. */
+export interface GrowingMaps extends PageMaps {
+  /** Add what one block carries. The slices of a part are new ids: nothing is replaced. */
+  absorb(block: PartBlock): void;
 }
 
 /** The ids of the three blocks. Written by `writeHydrationBlocks` (SDD-15 §3.3–§3.5). */
@@ -85,6 +120,9 @@ export const EAGER_BLOCK = 'fud-eager';
 /** The route's own two (SDD-39 §3.3). Both may be absent, and absence is the base case. */
 export const ROUTE_BLOCK = 'fud-route';
 export const DATA_BLOCK = 'fud-data';
+/** The injection's two (SDD-38), read by the coordinator before the runtime starts. */
+export const IOC_BLOCK = 'fud-ioc';
+export const DI_BLOCK = 'fud-di';
 
 const EMPTY: readonly unknown[] = [];
 
@@ -118,35 +156,103 @@ function fromWire(value: unknown): unknown {
   return value;
 }
 
-/** The parsed content of a block, or `null` when the page does not publish it. */
-function readBlock(doc: Document, id: string): unknown {
-  const el = doc.getElementById(id);
-  return el === null ? null : (JSON.parse(String(el.textContent)) as unknown);
-}
-
-function readTagMap(doc: Document, id: string): TagMap {
-  return (readBlock(doc, id) as TagMap | null) ?? {};
-}
-
-export function readPageMaps(doc: Document): PageMaps {
-  // `[[0], []]` is the empty payload with the same shape as a real one: one offset, no
-  // data. Every slice of it is empty, so nothing downstream has to ask whether it is there.
-  const [offsets, wired] = (readBlock(doc, STATE_BLOCK) as [number[], unknown[]] | null) ?? [
-    [0],
-    [],
-  ];
-  const data = wired.map(fromWire);
+/**
+ * The maps of a page, empty, to be grown block by block (SDD-70 §4.4).
+ *
+ * They live in memory and not in the DOM: a component that hydrates minutes later, on a
+ * gesture, reads its slice here although its block was removed the moment it was read.
+ */
+export function growingMaps(): GrowingMaps {
+  const slices: (readonly unknown[])[] = [];
+  const fields: Record<string, Settled> = {};
+  let first: PartBlock = {};
+  let ioc: unknown = null;
+  let di: Record<string, unknown> | null = null;
   return {
-    tree: readTagMap(doc, TREE_BLOCK),
-    bus: readTagMap(doc, BUS_BLOCK),
-    eager: (readBlock(doc, EAGER_BLOCK) as string[] | null) ?? [],
-    route: readBlock(doc, ROUTE_BLOCK) as string | null,
-    data: readBlock(doc, DATA_BLOCK) ?? {},
-    count: offsets.length - 1,
+    get tree() {
+      return first.tree ?? {};
+    },
+    get bus() {
+      return first.bus ?? {};
+    },
+    get eager() {
+      return first.eager ?? [];
+    },
+    get route() {
+      return first.route ?? null;
+    },
+    get data() {
+      return first.data ?? {};
+    },
+    get count() {
+      return slices.length;
+    },
+    fields,
+    get ioc() {
+      return ioc;
+    },
+    get di() {
+      return di;
+    },
     slice(id: number): readonly unknown[] {
-      const start = offsets[id];
-      const end = offsets[id + 1];
-      return start === undefined || end === undefined ? EMPTY : data.slice(start, end);
+      return slices[id] ?? EMPTY;
+    },
+    absorb(block: PartBlock): void {
+      // What a page publishes once arrives in its first block: the static maps, the route.
+      const { state: _state, fields: _fields, ioc: _ioc, di: _di, ...once } = block;
+      first = { ...first, ...once };
+      if (block.state !== undefined) {
+        const [start, offsets, wired] = block.state;
+        const data = wired.map(fromWire);
+        for (let i = 0; i + 1 < offsets.length; i += 1) {
+          slices[start + i] = data.slice(offsets[i], offsets[i + 1]);
+        }
+      }
+      Object.assign(fields, block.fields);
+      // The map is written whole each time it grows, and replaces the last; the seed comes
+      // in new entries only.
+      if (block.ioc !== undefined) ioc = block.ioc;
+      if (block.di !== undefined) di = { ...di, ...block.di };
     },
   };
+}
+
+/** The ids of the blocks at the end of a page without `@await`, by the key each fills. */
+const CLASSIC: readonly (readonly [string, keyof PartBlock])[] = [
+  [TREE_BLOCK, 'tree'],
+  [BUS_BLOCK, 'bus'],
+  [EAGER_BLOCK, 'eager'],
+  [ROUTE_BLOCK, 'route'],
+  [DATA_BLOCK, 'data'],
+  [IOC_BLOCK, 'ioc'],
+  [DI_BLOCK, 'di'],
+];
+
+/**
+ * The blocks at the end of a page without `@await`, read into one part and REMOVED from the
+ * DOM (SDD-70 §4.4): no hydration block stays in the document once it is read. A page that
+ * publishes none of them reads as the empty block, which is the base case.
+ */
+export function readEndBlocks(doc: Document): PartBlock {
+  const block: Record<string, unknown> = {};
+  const take = (id: string): unknown => {
+    const el = doc.getElementById(id);
+    if (el === null) return undefined;
+    el.remove();
+    return JSON.parse(String(el.textContent)) as unknown;
+  };
+  const state = take(STATE_BLOCK) as [number[], unknown[]] | undefined;
+  if (state !== undefined) block['state'] = [0, state[0], state[1]];
+  for (const [id, key] of CLASSIC) {
+    const value = take(id);
+    if (value !== undefined) block[key] = value;
+  }
+  return block as PartBlock;
+}
+
+/** The maps of a page without `@await`: its end blocks, read once and removed. */
+export function readPageMaps(doc: Document): GrowingMaps {
+  const maps = growingMaps();
+  maps.absorb(readEndBlocks(doc));
+  return maps;
 }

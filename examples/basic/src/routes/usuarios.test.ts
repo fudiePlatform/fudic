@@ -5,8 +5,10 @@ import { respondProblem, visit } from '@fudic/testing';
 import { crash, login, search } from 'fudic:routes/usuarios';
 
 // SDD-68 §6, criteria 11, 15–17 and 19, on the page itself: its `load`, its functions and their
-// chain (`auth`, `error-pages`) run on the in-memory server, and the refresh after a call asks
-// that same server for `/_fudic/data/usuarios`.
+// chain (`auth`, `error-pages`) run on the in-memory server. A mutation does not make the page
+// ask for its data (SDD-70): the table puts its own signal right. A function that names the
+// page in `invalidates` (`login`, `logout`) does, and asks that same server for
+// `/_fudic/data/usuarios`.
 
 // The people table, mocked so every test starts from the same three rows: the real one is
 // module state, and a `remove` in one test would be missing from the next.
@@ -82,7 +84,7 @@ const rowOf = (name: string): HTMLTableRowElement => rows().find((r) => r.cells[
 const activeOf = (name: string): HTMLInputElement => rowOf(name).querySelector('input[type="checkbox"]')!;
 
 describe('criterion 15: unticking «Activo» repaints the row without reloading', () => {
-  test('saves, asks for the data once, and the row shows the new state', async () => {
+  test('saves, asks for nothing else, and the row shows the new state', async () => {
     const page = await usuarios();
     const before = rows();
     const box = activeOf('Ana');
@@ -99,10 +101,9 @@ describe('criterion 15: unticking «Activo» repaints the row without reloading'
     expect(churn).toEqual([]);
 
     expect(people.table.find((p) => p.id === 1)!.active).toBe(false);
+    // The save and nothing more: a mutation does not make the page ask for its data (SDD-70).
     expect(requests.filter((r) => r.startsWith('PUT '))).toHaveLength(1);
-    expect(requests.filter((r) => r === 'GET /_fudic/data/usuarios')).toHaveLength(1);
-    // The refresh comes after the save it follows.
-    expect(requests.findIndex((r) => r.startsWith('PUT '))).toBeLessThan(requests.indexOf('GET /_fudic/data/usuarios'));
+    expect(requests.filter((r) => r.startsWith('GET /_fudic/data/'))).toEqual([]);
     expect(reload).not.toHaveBeenCalled();
     expect(assign).not.toHaveBeenCalled();
     // The same rows, the same box, still focused: nothing was rebuilt, nothing reloaded.
@@ -112,31 +113,51 @@ describe('criterion 15: unticking «Activo» repaints the row without reloading'
     expect(document.activeElement).toBe(box);
   });
 
-  test('what the server says wins: a row turned on elsewhere shows on in the repaint', async () => {
+  // `error-pages` takes the page away on any other failure, and that call never comes back: a
+  // 422 is the one refusal that reaches the task.
+  test('a save the server refuses with a 422 puts the box back as it was', async () => {
     const page = await usuarios();
-    // Another tab turns Marta off; this one ticks Luis on.
-    people.table[2] = { ...people.table[2]!, active: false };
+    const original = vi.mocked(globalThis.fetch).getMockImplementation()!;
+    vi.mocked(globalThis.fetch).mockImplementation((input, init) => {
+      const request = input instanceof Request ? input : new Request(new URL(String(input), location.href), init);
+      if (request.method !== 'PUT') return original(request);
+      const problem = { status: 422, title: 'Unprocessable', errors: { active: ['no'] } };
+      return Promise.resolve(
+        new Response(JSON.stringify(problem), { status: 422, headers: { 'content-type': 'application/problem+json' } }),
+      );
+    });
     await page.click(activeOf('Luis'));
-    expect(activeOf('Luis').checked).toBe(true);
-    expect(activeOf('Marta').hasAttribute('checked')).toBe(false);
+    expect(people.table.find((p) => p.id === 2)!.active).toBe(false);
+    await vi.waitFor(() => expect(activeOf('Luis').checked).toBe(false));
+    expect(reload).not.toHaveBeenCalled();
   });
 });
 
 describe('criterion 16: «Borrar» takes the row out, and the others stay the same nodes', () => {
-  test('removes Luis; Ana and Marta are the nodes they were', async () => {
+  test('removes Luis; Ana and Marta are the nodes they were, and nothing else is asked', async () => {
     const page = await usuarios();
     const ana = rowOf('Ana');
     const marta = rowOf('Marta');
     await page.click(rowOf('Luis').querySelector('button')!);
     expect(people.table.map((p) => p.name)).toEqual(['Ana', 'Marta']);
-    expect(requests.filter((r) => r === 'GET /_fudic/data/usuarios')).toHaveLength(1);
+    expect(requests.filter((r) => r.startsWith('GET /_fudic/data/'))).toEqual([]);
     expect(rows()).toEqual([ana, marta]);
     expect(reload).not.toHaveBeenCalled();
   });
 });
 
-describe('criterion 17: a data endpoint that fails reloads the document', () => {
-  test('the save goes through, the refresh answers 500, and the page reloads', async () => {
+describe('a function that names the page in `invalidates` repaints it with its new data', () => {
+  test('«Entrar como Luis» asks for the data once, and the page says who is in', async () => {
+    const page = await usuarios();
+    const who = (): string => document.querySelector('.quien')!.textContent ?? '';
+    const luis = [...document.querySelectorAll('button')].find((b) => b.textContent === 'Entrar como Luis')!;
+    await page.click(luis);
+    expect(requests.filter((r) => r === 'GET /_fudic/data/usuarios')).toHaveLength(1);
+    await vi.waitFor(() => expect(who()).toBe('luis'));
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  test('criterion 17: a data endpoint that fails reloads the document', async () => {
     const page = await usuarios();
     const original = vi.mocked(globalThis.fetch).getMockImplementation()!;
     vi.mocked(globalThis.fetch).mockImplementation((input, init) => {
@@ -147,8 +168,8 @@ describe('criterion 17: a data endpoint that fails reloads the document', () => 
       }
       return original(request);
     });
-    await page.click(activeOf('Ana'));
-    expect(people.table.find((p) => p.id === 1)!.active).toBe(false);
+    const salir = [...document.querySelectorAll('button')].find((b) => b.textContent === 'Salir')!;
+    await page.click(salir);
     expect(requests).toContain('GET /_fudic/data/usuarios');
     expect(reload).toHaveBeenCalledTimes(1);
   });

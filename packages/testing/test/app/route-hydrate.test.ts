@@ -6,7 +6,8 @@ import { visit } from '../../src/index.js';
 describe('a route that hydrates', () => {
   test('its own handler runs and its own signal repaints', async () => {
     const page = await visit('/contador');
-    expect(page.document.getElementById('fud-route')).not.toBeNull();
+    // The page published its route, and the runtime read it and removed it (SDD-70 §4.4).
+    expect(page.document.getElementById('fud-route')).toBeNull();
     expect(page.query('output')).toHaveTextContent('0');
     await page.click(page.getByRole('button', { name: '+1' }));
     expect(page.query('output')).toHaveTextContent('1');

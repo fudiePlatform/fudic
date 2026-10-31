@@ -81,6 +81,8 @@ export interface RouteFacts {
   readonly hydrates: boolean;
   /** The route publishes an injection map, so its tree has to stand before any component. */
   readonly injects: boolean;
+  /** The page goes out in parts (SDD-70): it has an `@await`, so it reads them as they arrive. */
+  readonly parted?: boolean;
   /**
    * What the page can warm, by the name the runtime asks for it (`routeWarmTags`), when the
    * coordinator embeds the graph. A different set is a different coordinator: the graph is
@@ -135,6 +137,8 @@ export interface CoordinatorParams {
     readonly warm: PieceRef;
     readonly di: PieceRef;
     readonly urls: PieceRef;
+    /** The reader of a page in parts (SDD-70 §4.5), named only by a route with `@await`. */
+    readonly parts: PieceRef;
   };
 }
 
@@ -188,6 +192,7 @@ function coordinatorSource(facts: RouteFacts, params: CoordinatorParams): string
   // Named only when the route publishes a map: then, and only then, does the piece exist for
   // this route — not downloaded, not preloaded, not precached on its account.
   if (facts.injects) wanted.push([pieces.di, '$di']);
+  if (facts.parted === true) wanted.push([pieces.parts, '$parts']);
   if (chunks.mode === 'build') wanted.push([pieces.urls, '$resolver']);
   // The name of a chunk off its URL travels in the same piece as the arithmetic (BUG-53 §3).
   const graph = chunks.mode === 'build' && chunks.embedsGraph === true ? (facts.warms ?? []) : undefined;
@@ -246,31 +251,17 @@ function coordinatorSource(facts: RouteFacts, params: CoordinatorParams): string
   }
 
   lines.push('');
-  if (facts.injects) {
-    lines.push(
-      `// The two blocks the page printed. Reading them is the application's plumbing — where`,
-      `// a document keeps its map — so it lives here; what to DO with the map is the piece's,`,
-      `// and \`@fudic/di\` still never touches the DOM.`,
-      `const $iocBlock = document.getElementById('fud-ioc');`,
-      `const $seedBlock = document.getElementById('fud-di');`,
-      `// The ORDER is written here, by the generator that knows it, and not discovered in the`,
-      `// browser: the injection tree has to stand before the first component wakes up. It is`,
-      `// STARTED and handed over as \`ready\` rather than awaited first — the capturer has to`,
-      `// be listening from the first millisecond, because a click before it is installed is`,
-      `// not deferred, it is lost.`,
-      `const $tree = $iocBlock === null ? undefined : $di({`,
-      `  map: JSON.parse($iocBlock.textContent),`,
-      `  resolveChunk: $chunk,`,
-      `  seed: $seedBlock === null ? undefined : JSON.parse($seedBlock.textContent),`,
-      `});`,
-    );
-  }
   lines.push(
     `$hydrate({`,
     `  root: document,`,
     `  resolveChunk: $chunk,`,
     graph === undefined ? `  warm: $warm(),` : `  warm: $warm({ graph: $graph }),`,
-    ...(facts.injects ? [`  ready: $tree,`] : []),
+    // The injection tree has to stand before the first component wakes up. The runtime stands
+    // it from the map and the seed the page published, read into memory with the rest of its
+    // blocks (SDD-70 §4.4) — after the last part, on a page in parts — and holds every chunk
+    // until it does. The capturer is listening meanwhile: a click is deferred, never lost.
+    ...(facts.injects ? [`  inject: (map, seed) => $di({ map, resolveChunk: $chunk, seed }),`] : []),
+    ...(facts.parted === true ? [`  parts: $parts,`] : []),
     `});`,
     '',
   );

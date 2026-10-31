@@ -5,12 +5,14 @@ load ssr
   session  str?
 
 # Signs in as `user`: sets the session cookie, whoever it names. The next protected call says
-# whether the server knows it.
+# whether the server knows it. The page asks for its `data` again: it says who is in.
 post login
+  invalidates /usuarios
   user  str
 
-# Signs out: the session cookie goes.
+# Signs out: the session cookie goes, and the page asks for its `data` again.
 post logout
+  invalidates /usuarios
 
 # Public: searching needs no session. A longer text is refused in the browser, before it leaves.
 get search

@@ -21,7 +21,7 @@
 import type { Node } from '../types/index.js';
 import type { RazorExpression } from '../at/index.js';
 import type { Attribute } from '../html/index.js';
-import type { ForNode, ForeachNode } from '../control/index.js';
+import type { CatchBlock, ForNode, ForeachNode } from '../control/index.js';
 import type { SnippetDeclNode } from '../snippet/index.js';
 import { REF_NAME } from '../binding/index.js';
 import { loopHeaderNames, patternNames, type OxcNode } from '../oxc/index.js';
@@ -351,6 +351,10 @@ function collectFragments(input: SemanticInput): readonly ViewFragment[] {
         current = extend(current, header(owner as ForeachNode | ForNode));
       } else if (owner.type === 'snippet') {
         current = extend(EMPTY, { names: snippetParams(ast(owner as SnippetDeclNode)) });
+      } else if (owner.type === 'catch-block') {
+        // `@catch (e)` (SDD-70): its body reads the `Problem` by the name the header gives it.
+        const inner = (owner as CatchBlock).header.inner;
+        current = extend(current, { names: [input.source.slice(inner.start, inner.end).trim()] });
       }
     },
     exitBlock() {

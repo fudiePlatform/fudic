@@ -9,6 +9,7 @@
  */
 
 import type {
+  AwaitNode,
   HtmlContent,
   OxcNode,
   RenderCallNode,
@@ -27,7 +28,7 @@ import { emitPropsProjection, type PropsCall } from './props.js';
 import { emitElementBindings, emitHostBindings, emitShadowBindings } from './template/attrs.js';
 import type { FragmentAst, TemplateContext } from './template/context.js';
 import type { PipeSpan } from './template/pipes.js';
-import { emitControl, emitInlineCode, type ControlLike } from './template/control.js';
+import { emitAwait, emitControl, emitInlineCode, type ControlLike } from './template/control.js';
 import {
   emitHoleSlot,
   emitSection,
@@ -204,6 +205,9 @@ function emitContent(ctx: TemplateContext, content: readonly HtmlContent[]): voi
       case 'while':
       case 'switch':
         emitControl(ctx, node as ControlLike);
+        break;
+      case 'await':
+        emitAwait(ctx, node as unknown as AwaitNode);
         break;
       case 'render':
         emitRenderCall(ctx, node as unknown as RenderCallNode);

@@ -58,7 +58,11 @@ export type FUD0725Problem =
       readonly field: string;
       /** What is wrong with it: not a string, absolute, or outside the project. */
       readonly reason: string;
-    };
+    }
+  /** `earlyHints` that is not a boolean (SDD-70 §3.10). */
+  | { readonly problem: 'early-hints' }
+  /** `componentStyles` that is neither `"inline"` nor `"link"` (SDD-70 §3.10). */
+  | { readonly problem: 'component-styles' };
 
 /** Parameters of `FUD0725`. */
 export type FUD0725Params = FileInput & FUD0725Problem;
@@ -95,6 +99,10 @@ function describe(p: FUD0725Problem): string {
       return `fudic.json "site" must be the origin of an http(s) URL, like "https://example.com": ${p.reason}`;
     case 'folder':
       return `fudic.json "${p.field}" must be a folder inside the project, like "src/${p.field}": ${p.reason}`;
+    case 'early-hints':
+      return 'fudic.json "earlyHints" must be true or false';
+    case 'component-styles':
+      return 'fudic.json "componentStyles" must be "inline" (a style module in the page) or "link" (a file per sheet)';
   }
 }
 

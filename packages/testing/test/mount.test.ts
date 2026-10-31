@@ -81,7 +81,8 @@ describe('criterion 8: providers', () => {
 
   test('via ssr, the page’s tree stands with them before the first chunk is raised', async () => {
     const t = await mount(XOwner, { providers: fake });
-    expect(document.getElementById('fud-ioc')).not.toBeNull();
+    // The map was read into memory and removed from the DOM (SDD-70 §4.4).
+    expect(document.getElementById('fud-ioc')).toBeNull();
     const child = t.root.querySelector('x-injected')!;
     expect(child.shadowRoot!.querySelector('p')!.textContent).toBe('from the owner');
     child.shadowRoot!.querySelector('button')!.click();

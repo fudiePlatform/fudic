@@ -1,17 +1,19 @@
 # SDD-70 — `@await` en la vista: el primer byte no espera al backend
 
-> **Estado:** `Listo` — [tareas](./SDD-70-Task.md).
-> **Paquetes:** `@fudic/api` (`later`) · `@fudic/compiler` (`@await`/`@catch`, emit por partes) ·
-> `@fudic/diagnostics` · `@fudic/ssr` (partes y `FLUSH`) · `@fudic/core` (hidratación por partes) ·
-> `@fudic/vite` (render en streaming, endpoint de datos) · `@fudic/transport` (el SW lee el `data`
-> por partes) · `@fudic/language-core` · `@fudic/language-server` · `@fudic/formatter` ·
-> `fudic-vscode` (gramáticas) · `examples/basic`.
+> **Estado:** `Listo` — [tareas](./SDD-70-Task.md) · [anexo: 103 Early Hints](./SDD-70-anexo-early-hints.md)
+> (su propuesta E.7 entra en esta spec: §3.9–§3.10, §4.6).
+> **Paquetes:** `@fudic/api` (`later`, `buffer`) · `@fudic/compiler` (`@await`/`@catch`, emit por
+> partes, CSS de componentes como fichero) · `@fudic/diagnostics` · `@fudic/ssr` (partes, `FLUSH`,
+> enlaces en la plantilla DSD) · `@fudic/core` (hidratación por partes) · `@fudic/conventions` ·
+> `@fudic/config` (`earlyHints`, `componentStyles`) · `@fudic/vite` (render en streaming, endpoint
+> de datos, 103) · `@fudic/transport` (el SW lee el `data` por partes) · `@fudic/language-core` ·
+> `@fudic/language-server` · `@fudic/formatter` · `fudic-vscode` (gramáticas) · `examples/basic`.
 > **Depende de:** 61 (la vista portable: lista blanca y `@empty`, que esta spec amplía con un
 > constructo más), 67 (binario en todo: el endpoint de datos manda sus partes con ese codec), 68
 > (`load.fetch`, que pasa a leer las tramas), 60
 > (el `.fudapi` y su `load`), 56 (`@fudic/http`: `Problem`, `HttpError`), 39 (hidratación de la
 > ruta y `fud-data`), 15 (hidratación y `fud-state`), 20 (el SW que pinta las navegaciones).
-> **Rango de diagnósticos:** `FUD1320`–`FUD1339` (nuevo). Usa `FUD1320`–`FUD1324`.
+> **Rango de diagnósticos:** `FUD1320`–`FUD1339` (nuevo). Usa `FUD1320`–`FUD1325`.
 > **Decisiones de gramática:** 168–170 (nuevas).
 > **Origen:** conversación con Pedro del 2026-10-27 (IDEA-04 y lo que salió al revisarla).
 > **Rama sugerida:** `sdd-70-await-en-la-vista`
@@ -275,6 +277,7 @@ inserción actual después de un corte.
 | `FUD1322` | error | `@await` outside the body of a route or a page | `@await` en el `<head>`, en un componente, en un layout o en el cuerpo de un snippet | `@await` |
 | `FUD1323` | error | `@catch` without its `@await` | `@catch` que no sigue a la llave de cierre de un `@await`, o un segundo `@catch` | `@catch` |
 | `FUD1324` | error | `later` outside the fields of `load` | `later` en un campo de `type`, `form`, `layout`, función o middleware | la palabra |
+| `FUD1325` | error | `buffer` needs a whole number of bytes | Lo que sigue a `buffer` en la línea `load` no es un entero ≥ 0 (con `k` opcional) | el valor, o `buffer` si falta |
 
 **Fix** de cada `.md`:
 
@@ -283,6 +286,65 @@ inserción actual después de un corte.
 - `1322`: «move the `@await` to the route's own view, below the `<head>`; a component receives the resolved value as a prop: `@await data.users { <user-table .rows=@data.users></user-table> }`».
 - `1323`: «put `@catch (e) { … }` right after the closing brace of its `@await`».
 - `1324`: «only a field of `load` can arrive later; resolve the value before returning it».
+- `1325`: «write the bytes the stream may hold before it sends, `buffer 0` to send every piece at once or `buffer 16k`».
+
+### 3.9. El búfer del stream (tareas 38 y 39)
+
+- **El `<head>` sale solo.** Toda página, con o sin `@await`, vacía el búfer justo después de
+  `</head>`. El render lo hace al ceder la primera pieza (la del head), no el emit, así que el
+  código generado no cambia.
+- **El tamaño, por ruta, en la línea `load` del `.fudapi`:**
+
+  ```text
+  load ssr buffer 0        # cada trozo sale en cuanto se produce
+  load sw ttl 5m buffer 16k
+  ```
+
+  Un entero de bytes ≥ 0, con `k` opcional (×1024). Sin `buffer`, el valor por defecto de
+  `@fudic/conventions` (`STREAM_BUFFER`, 8192). Otro valor: `FUD1325`. Llega a `htmlToByteStream`
+  por `highWaterMark` y viaja en el manifiesto de rutas (`buffer`) para los demás backends.
+
+### 3.10. 103 Early Hints y el CSS de los componentes como fichero (anexo E.7)
+
+En el `fudic.json` de la app, dos campos opcionales:
+
+```json
+{ "earlyHints": true, "componentStyles": "inline" }
+```
+
+| Campo | Valores | Por defecto | Qué hace |
+|---|---|---|---|
+| `earlyHints` | `true` · `false` | `true` | El build escribe las pistas de cada ruta en el manifiesto, y el servidor de Node las manda |
+| `componentStyles` | `"inline"` · `"link"` | `"inline"` | `"link"`: el CSS de los componentes (y las hojas del proyecto que adoptan) va en ficheros, sin polyfill |
+
+Un valor de otro tipo: `FUD0725`, como el resto de campos del fichero.
+
+- **Las pistas las calcula el build, no el render.** El manifiesto de rutas (`fudic-routes.json`)
+  lleva en cada ruta `hints`: los valores de cabecera `Link` listos para usar, en este orden:
+  1. las hojas que enlaza el `<head>` de la página: `</assets/tokens-….css>; rel=preload; as=style`;
+  2. con `componentStyles: "link"`, las hojas que adopta algún componente de la página;
+  3. los módulos de arranque que carga la página (`boot`, `main`) y todo lo que importan de forma
+     estática, en profundidad: `</fudic-main-….js>; rel=modulepreload`.
+
+  No van los chunks de los componentes: se piden al hidratarse. Con `earlyHints: false`, ninguna
+  ruta lleva `hints`. Cualquier backend lee el manifiesto: no depende del render de Node.
+- **El servidor de Node** (desarrollo y preview), en una petición de página — **movido a
+  [SDD-73](./SDD-73-early-hints.md) §3.2, como middleware con el mismo contrato en todo backend**:
+  1. si la conexión es HTTP/2 o superior y la petición trae `Sec-Fetch-Mode: navigate`, manda un
+     único `103` con las pistas **antes** de ejecutar `load`;
+  2. la respuesta final lleva siempre esas pistas en su cabecera `Link` (también en HTTP/1.1, y
+     lo que un CDN convierte en 103).
+- **`componentStyles: "link"`** — **movido a [SDD-73](./SDD-73-early-hints.md) §3.5**; aquí solo se lee
+  del `fudic.json`:
+  - cada hoja (la de un componente o una del proyecto) se publica como fichero con el hash de su
+    contenido, como las hojas podadas de SDD-49;
+  - el `<head>` ya no lleva el polyfill ni los `<style type="module" specifier>`;
+  - el anfitrión lleva `data-fud-sheets="<url> <url>"` en lugar de `data-fud-adopt`, y su
+    plantilla DSD acaba con un `<link rel="stylesheet" href="<url>">` por hoja, sin
+    `shadowrootadoptedstylesheets`;
+  - un anfitrión que fabrica el runtime añade los mismos enlaces al final de su shadow root;
+  - sin el 103, el contenido del componente puede verse sin estilo hasta que baje su hoja (el
+    FOUC del anexo E.4). Es la apuesta de quien lo activa.
 
 ## 4. Comportamiento
 
@@ -301,6 +363,18 @@ inserción actual después de un corte.
   completado ven el valor resuelto. `FUD1321` lo da el analizador, no un error de TypeScript.
 - **Formatter y gramáticas.** `@await … { } @catch (e) { }` se formatea como `@if … { } @else { }`.
   `fudic.tmLanguage.json` resalta las dos palabras y `fudapi.tmLanguage.json` resalta `later`.
+- **Snippet y completado (lo que el autor ve al escribir).** El objetivo de `@await` es que el
+  primer byte salga cuanto antes, y el editor lo empuja hacia ahí:
+  - Snippet `@await`: `@await data.$1 {\n  $0\n}` con la lista abierta al aceptarlo (`suggest`).
+    Solo en el markup del body de una ruta o una página, fuera del `<head>`, y solo si su
+    `.fudapi` tiene **algún** campo `later`; en un componente, un layout o un snippet no sale.
+  - Completado **selectivo**: detrás de `@await data.` la lista ofrece **solo** los campos
+    marcados `later`, con su tipo resuelto como detalle. Un campo sin `later` no aparece.
+  - Snippet `@catch`: `@catch (${1:e}) {\n  $0\n}`, solo justo detrás de la `}` de un `@await`
+    que aún no tiene `@catch`, como `@empty` detrás de un bucle.
+  - Lo prueba un test que pasa por el **plugin del language server** (la misma entrada que usa
+    VS Code), no solo por el filtro del catálogo: un snippet que el filtro ofrece pero el plugin
+    no entrega es justo el fallo que se repite.
 
 ### 4.2. El render por partes en el servidor
 
@@ -467,6 +541,43 @@ inserción actual después de un corte.
     `examples/` sigue sin diagnósticos. Guía de `@await` en el README del compilador: dónde va,
     que lo lento va abajo y que lo que decide el status no es una promesa.
 
+**El editor** (§4.1, snippet y completado)
+
+24. Por el plugin del language server, en el body de una ruta cuyo `.fudapi` tiene `users` y
+    `stats` marcados `later` y `title` sin marcar: escribir `@` ofrece `@await`; aceptarlo deja
+    `@await data.` y la lista trae `users` y `stats`, **no** `title`. En el `<head>`, en un
+    componente, en un layout o en una ruta sin campos `later`, `@await` no se ofrece.
+25. Por el plugin, justo detrás de la `}` de un `@await` sin `@catch` se ofrece `@catch`;
+    detrás de uno que ya lo tiene, o de un `@if`, no.
+26. **Prueba en el editor (la hace Pedro).** Con la extensión construida desde esta rama,
+    abriendo `examples/basic/src/routes/espera.fud`: `@` → `@await` → la lista con solo los
+    campos `later`; `}` → `@catch`.
+
+**El búfer y las pistas** (§3.9, §3.10)
+
+27. **El head, solo.** En una página sin `@await` de menos de 8 KB, el primer trozo del
+    `ReadableStream` acaba en `</head>`. El código generado de los goldens no cambia.
+28. **`buffer`.** `load ssr buffer 0` entrega cada pieza en su propio trozo; `buffer 16k` agrupa
+    hasta 16384 bytes; sin `buffer`, 8192 (`STREAM_BUFFER`). `buffer -1`, `buffer x`, `buffer 1.5`
+    y `buffer` sin valor dan `FUD1325`. El manifiesto lleva `buffer` en la ruta que lo declara.
+29. **`fudic.json`.** `earlyHints` y `componentStyles` se leen con sus valores por defecto; un
+    `earlyHints: "yes"` o un `componentStyles: "file"` dan `FUD0725` sobre el campo.
+30. **Las pistas en el manifiesto.** En el build de `examples/basic`, `/hidratacion` lleva en
+    `hints` la hoja de su head, `boot`, `main` y los módulos del runtime que importan
+    (`hydrate.js`, `registry.js`, `warm-sw.js`, `urls.js`), y ningún chunk de componente. Con
+    `earlyHints: false` ninguna ruta lleva `hints`.
+31. **El 103** — *movido a SDD-73 (criterios 3–6).* Contra el servidor en proceso: una navegación en HTTP/2 recibe el 103 con las
+    pistas antes de que `load` se cumpla (promesa controlada); en HTTP/1.1 o sin
+    `Sec-Fetch-Mode: navigate` no hay 103; la respuesta final lleva la cabecera `Link` en los dos
+    casos.
+32. **`componentStyles: "link"`** — *movido a SDD-73 (criterios 7–11).* El head de la página no lleva ni el polyfill ni ningún
+    `<style type="module">`; cada anfitrión con hojas lleva `data-fud-sheets` y su plantilla
+    acaba con sus `<link rel="stylesheet">`; los ficheros se publican en el build y se sirven en
+    desarrollo con los mismos bytes; las pistas de la ruta los incluyen. Un anfitrión fabricado
+    en el navegador recibe los mismos enlaces (test de `core`).
+33. **Sin tocar nada, los mismos bytes.** Con los valores por defecto, el HTML de toda página y
+    los goldens no cambian: las pistas van en cabeceras y en el manifiesto.
+
 ## 7. Fuera de alcance
 
 - **Pintar fuera de orden** (que el segundo trozo salga antes que el primero y se coloque con
@@ -517,3 +628,58 @@ inserción actual después de un corte.
     pintado lo pone el render, así que el endpoint no tiene que retener nada.
 12. **Los bloques de hidratación siguen en JSON.** Van dentro del HTML y se leen con
     `JSON.parse`, como hoy. El binario de SDD-67 es para lo que viaja por `fetch`.
+
+### 8.2. Tomadas al implementar
+
+1. **El servidor no comprueba el `data` de `load`, así que no hay conform que cambiar.** La
+   pieza `load` de `@fudic/http` no lleva descriptor de campos: lo que devuelve el handler lo
+   comprueba el build con `LoadData`. La tarea 3 queda en el tipo `Promise<T>`.
+2. **`later` en un campo opcional.** `users  Person[]?  later` es
+   `Promise<readonly Person[] | undefined>`: el campo siempre está, lo opcional es el valor.
+3. **`later` mal puesto se consume.** Detrás del tipo de un argumento, del `->`, de un campo de
+   `form` o de `type`, `FUD1324` y nada más: no se informa otra vez como palabra sobrante.
+4. **`@await` no entra en `ControlNode`.** Va en una unión aparte (`ControlConstruct`) y el
+   recorrido común le da su propio aviso (`awaitBlock`). No tiene cabecera entre paréntesis ni
+   `key`, y todo lo que hoy lee una cabecera o una `key` tendría que descartarlo a mano.
+5. **Lo que sigue a `@await` no se manda a Oxc.** Es el nombre de un campo: el analizador lo
+   comprueba como texto (`data.<campo>`) y la proyección lo copia mapeado para hover y
+   completado.
+6. **El completado tras `@await data.` es nuestro, no el de TypeScript.** Sale del `.fudapi`
+   (nombre y tipo del campo `later`), así que está aunque el programa aún no haya cargado.
+7. **Los snippets que reabren la lista lo hacen por las dos puertas.** El que llega con la
+   respuesta de TypeScript no llevaba el comando de reabrir; ahora sí, igual que el del plugin.
+8. **Sin refresco implícito tras una mutación** (Pedro, 2026-10-30). Revierte en parte SDD-68
+   §4.8: una función de la ruta que no nombra la página en `invalidates` ya no hace que la página
+   pida su `data` otra vez. El estado vive en las señales y lo pone al día el handler que llamó.
+   Quien quiere el `data` nuevo lo dice en el `.fudapi` (`invalidates /usuarios`). La
+   invalidación del caché del SW no cambia.
+9. **El endpoint de datos, en binario por tramas** (Pedro, 2026-10-30). `data` viaja con los
+   tipos de `load` (la spec de la pieza lleva `fields`). Las props del layout viajan como `any`
+   del codec: su tipo es el del layout, escrito en TypeScript y no en un `.fudapi`. Una ruta que
+   no resuelve nada no tiene endpoint (404).
+10. **El SW lee las tramas con los tipos como JSON.** El chunk enlazado de la ruta no importa
+    nada del `.fudapi` (el SW no puede cargar sus módulos): lleva `dataShape`, la forma JSON de
+    `load` (`framesShape` de `@fudic/api`), y `@fudic/transport` la convierte en tipos del codec
+    (`typesOfShape`). `@fudic/transport` pasa a depender de `@fudic/http` por `./wire/frames`. El SW lleva
+    el lector binario siempre; una página solo lo lleva si su `.fudapi` tiene `load`: el módulo
+    generado le pasa `readFrames` a la pieza (`read`), que no lo importa.
+11. **El nonce del SW no retiene la marca de una parte.** Al sustituir el nonce en streaming, el
+    SW solo retiene el final de un trozo que pueda ser el principio del token; antes retenía
+    siempre los últimos caracteres, y la marca `<!--fud-end-->` de una parte no salía hasta la
+    siguiente.
+12. **El head se vacía en el render, no en el emit** (tarea 38). El head es siempre la primera
+    pieza que cede `page` (con o sin layout), así que el wrapper cede `FLUSH` detrás de ella.
+    El código generado no cambia y los goldens tampoco.
+13. **Early Hints dentro de esta spec** (Pedro, 2026-10-31). La propuesta E.7 del anexo pasa a
+    §3.10: `earlyHints` activo por defecto, `componentStyles: "link"` opcional por app, y las
+    pistas en el manifiesto de rutas para que cualquier backend las mande sin depender del render
+    de Node.
+14. **`buffer` en la línea `load`** (Pedro, 2026-10-31: «fudapi por ruta»). Va donde ya van
+    `ttl` y la política de caché, que también son de la ruta y no del campo.
+15. **Las pistas, primera versión** (tareas 40–41). El emit devuelve las hojas que enlaza el head
+    (`EmitOutput.hints`, las copias podadas que publica el host, las del layout primero); el
+    build les añade `boot`, `main` y su cierre estático **recorrido en el bundle**: los chunks
+    que importa (un runtime empaquetado en la app) y las piezas `/_fudic/` debajo (un runtime
+    enlazado). Las pistas son URLs, la única excepción a «nombres, no URLs» del manifiesto: un
+    `Link` nombra una URL. **Pendiente de diseñar con Pedro** antes de las tareas 42–43: una hoja
+    que no se poda (un `/public.css`, una de otro origen) aún no entra.

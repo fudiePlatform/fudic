@@ -9,7 +9,7 @@
  */
 
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import {
   resolveComponents,
   resolveDocument,
@@ -20,7 +20,7 @@ import {
   emitPageModule,
   type DocumentGraph,
 } from '../../src/emit/index.js';
-import { layoutFixturesDir, fixtureIo, memoryIo, minimalSsr } from './_support.js';
+import { drain, layoutFixturesDir, fixtureIo, memoryIo, minimalSsr, type PageFn } from './_support.js';
 
 const fixturePath = (name: string): string => join(layoutFixturesDir, name);
 
@@ -57,8 +57,6 @@ function componentBindings(tags: readonly string[]): Record<string, unknown> {
   return out;
 }
 
-type PageFn = (data: unknown, io: unknown) => Iterable<string>;
-
 const DATA = {
   title: 'Blog',
   posts: [
@@ -73,8 +71,8 @@ const DATA = {
  * `io.nonce ? … : ''`, so a page and a route that disagree about it still look identical
  * under a nonce-less `io`, and the divergence only surfaces in a browser under a real CSP.
  */
-function render(page: PageFn): string {
-  return [...page(DATA, { ...minimalSsr(), nonce: NONCE })].join('');
+async function render(page: PageFn): Promise<string> {
+  return drain(page(DATA, { ...minimalSsr(), nonce: NONCE }));
 }
 
 const NONCE = 'n0nc3-t3st';
@@ -82,7 +80,7 @@ const NONCE = 'n0nc3-t3st';
 const TAGS = ['app-badge', 'app-card', 'app-button'];
 
 /** Emit route + layout from the fixtures, link them in memory and run the result. */
-function renderComposed(): string {
+async function renderComposed(): Promise<string> {
   const graph = resolveDocument(fixturePath('blog.fud'), fixtureIo).value;
   const layout = evalModule(
     emitLayoutModule(graph, graph.layouts[0]!),
@@ -95,6 +93,12 @@ function renderComposed(): string {
     'page',
   ) as PageFn;
   return render(page);
+}
+
+/** The first string piece a `page` yields, sync or async. */
+async function firstChunk(pieces: ReturnType<PageFn>): Promise<string> {
+  for await (const piece of pieces) if (typeof piece === 'string') return piece;
+  return '';
 }
 
 const headOf = (html: string): string => html.slice(html.indexOf('<head>'), html.indexOf('</head>') + 7);
@@ -198,17 +202,18 @@ describe('emitted module shape (§6.12, SDD-21 §3.5)', () => {
 
   it('gives the layout a `layout(data, io, route)` generator that owns the shell', () => {
     const code = emitLayoutModule(graph, graph.layouts[0]!);
-    expect(code).toContain('export function* layout(data, io, route, $ioc, $props) {');
+    expect(code).toContain('export async function* layout(data, io, route, $ioc, $props) {');
     expect(code).toContain('<!DOCTYPE html>');
     expect(code).toContain('route.head();');
     expect(code).toContain('route.body($dom, ');
     expect(code).toContain("route.section(\"scripts\", $dom, ");
-    expect(code).toContain('yield* serialize($body);');
+    // The route closes the body (SDD-70 §4.2): its blocks and the serialization, or its last part.
+    expect(code).toContain('yield* route.close($dom, $body);');
   });
 
   it('keeps the route module on the SAME public shape as a page (§6.12)', () => {
     const code = emitRouteModule(graph);
-    expect(code).toContain('export function* page(data, io, $ioc, $props) {');
+    expect(code).toContain('export async function* page(data, io, $ioc, $props) {');
     expect(code).toContain("import { layout } from './_layout.mjs';");
     expect(code).toContain('yield* layout(data, io, {');
     // Its slots: head as a string, body/section as tree builders.
@@ -313,32 +318,35 @@ describe('emitted module shape (§6.12, SDD-21 §3.5)', () => {
 
 describe('composed output equals the monolithic page (§6.10, §6.11)', () => {
   const monolithicGraph = resolveComponents(fixturePath('blog-monolithic.fud'), fixtureIo);
-  const monolithic = render(
-    evalModule(emitPageModule(monolithicGraph), componentBindings(TAGS), 'page') as PageFn,
-  );
-
-  it('produces the same <head>, byte for byte (§6.11)', () => {
-    expect(headOf(renderComposed())).toBe(headOf(monolithic));
+  let monolithic: string;
+  beforeAll(async () => {
+    monolithic = await render(
+      evalModule(emitPageModule(monolithicGraph), componentBindings(TAGS), 'page') as PageFn,
+    );
   });
 
-  it('produces the same document (§6.10)', () => {
-    expect(normalize(renderComposed())).toBe(normalize(monolithic));
+  it('produces the same <head>, byte for byte (§6.11)', async () => {
+    expect(headOf(await renderComposed())).toBe(headOf(monolithic));
   });
 
-  it('renders the route title, not a layout default, and only once (§6.11)', () => {
-    const html = renderComposed();
+  it('produces the same document (§6.10)', async () => {
+    expect(normalize(await renderComposed())).toBe(normalize(monolithic));
+  });
+
+  it('renders the route title, not a layout default, and only once (§6.11)', async () => {
+    const html = await renderComposed();
     expect(html.match(/<title>/gu)).toHaveLength(1);
     expect(html).toContain('<title>Blog</title>');
   });
 
-  it('carries the CSP nonce into the composed polyfill (SDD-20 §4.9)', () => {
+  it('carries the CSP nonce into the composed polyfill (SDD-20 §4.9)', async () => {
     // Without this, a route under a strict `script-src 'self'` loses its polyfill and
     // every shadow root renders unstyled — while the equivalent page works.
-    expect(renderComposed()).toContain(`<script nonce="${NONCE}">`);
+    expect(await renderComposed()).toContain(`<script nonce="${NONCE}">`);
   });
 
-  it('emits the style polyfill once and the union of both graphs (§6.11)', () => {
-    const html = renderComposed();
+  it('emits the style polyfill once and the union of both graphs (§6.11)', async () => {
+    const html = await renderComposed();
     expect(html.match(/<script nonce=/gu)).toHaveLength(1);
     // app-badge comes from the layout, app-card + app-button from the route. The sheet
     // carries the same nonce as the polyfill (SDD-20 §4.9).
@@ -349,8 +357,8 @@ describe('composed output equals the monolithic page (§6.10, §6.11)', () => {
     }
   });
 
-  it('splices the route body inside the layout markup (§6.10)', () => {
-    const html = renderComposed();
+  it('splices the route body inside the layout markup (§6.10)', async () => {
+    const html = await renderComposed();
     const header = html.indexOf('[app-badge]');
     const body = html.indexOf('<h1>');
     const footer = html.indexOf('fudic 2026');
@@ -360,11 +368,11 @@ describe('composed output equals the monolithic page (§6.10, §6.11)', () => {
     expect(footer).toBeLessThan(section);
   });
 
-  it('yields the whole <head> in the FIRST chunk, before the body (§6.12)', () => {
+  it('yields the whole <head> in the FIRST chunk, before the body (§6.12)', async () => {
     const graph = resolveDocument(fixturePath('blog.fud'), fixtureIo).value;
     const layout = evalModule(emitLayoutModule(graph, graph.layouts[0]!), componentBindings(TAGS), 'layout');
     const page = evalModule(emitRouteModule(graph), { ...componentBindings(TAGS), layout }, 'page') as PageFn;
-    const first = page(DATA, minimalSsr())[Symbol.iterator]().next().value as string;
+    const first = await firstChunk(page(DATA, minimalSsr()));
     expect(first).toContain('<head>');
     expect(first).toContain('</head>');
     expect(first).not.toContain('<h1>');

@@ -1,7 +1,7 @@
 /** BUG-60 §3.1 — the shape of a route's `data`, as the compiler writes it into the page. */
 
 import { describe, expect, it } from 'vitest';
-import { createApiIndex, dataShape } from '../src/index.js';
+import { createApiIndex, dataShape, framesShape } from '../src/index.js';
 import { app } from './project.js';
 
 describe('dataShape', () => {
@@ -49,5 +49,21 @@ describe('dataShape', () => {
   it('nothing for a file with no load', () => {
     const source = app('routes/y', 'get search\n  -> str\n');
     expect(dataShape(source, createApiIndex([source]))).toBeUndefined();
+  });
+});
+
+describe('framesShape (SDD-70 §3.7)', () => {
+  it('every field of load, a `later` one by what it resolves to, and which are `later`', () => {
+    const route = app('routes/y', ['load ssr', '  title  str', '  users  Person[]  later', '', 'type Person', '  id  i32', ''].join('\n'));
+    expect(framesShape(route, createApiIndex([route]))).toEqual({
+      fields: { title: 'str', users: { list: { ref: 'Person' } } },
+      types: { Person: { id: 'i32' } },
+      later: ['users'],
+    });
+  });
+
+  it('a file without load has none', () => {
+    const route = app('routes/z', 'get f\n');
+    expect(framesShape(route, createApiIndex([route]))).toBeUndefined();
   });
 });

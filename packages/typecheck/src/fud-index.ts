@@ -208,10 +208,14 @@ export class FudIndex<E extends IndexedFud = IndexedFud> implements LinkIndex, F
     const names = declarations.flatMap((d) =>
       d.kind === 'fn' ? [d.name.text, ...(d.form === undefined ? [] : [d.form.name.text])] : d.kind === 'form' ? [d.name.text] : [],
     );
+    const later = declarations.flatMap((d) => (d.kind === 'load' ? d.fields.filter((f) => f.later !== undefined) : []));
     return {
       id: path.slice(root.length + SRC_DIR.length + 2, -API_EXTENSION.length),
       load: declarations.some((d) => d.kind === 'load'),
       names: [...new Set(names)],
+      ...(later.length === 0
+        ? {}
+        : { later: later.map((f) => ({ name: f.name.text, type: text.slice(f.type.span.start, f.type.span.end) })) }),
     };
   }
 

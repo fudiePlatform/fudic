@@ -78,4 +78,27 @@ describe('applyNonceStream', () => {
     });
     expect(await readAll(applyNonceStream(source, 'abc'))).toBe('ñabcñ');
   });
+
+  it('a held start of a token that the stream never completes goes out at the end, as it was', async () => {
+    const start = NONCE_TOKEN.slice(0, 3);
+    expect(await readAll(applyNonceStream(streamOf([`x${start}`]), 'abc'))).toBe(`x${start}`);
+  });
+
+  it('sends a chunk whole when its end cannot start a token: the marker of a part (SDD-70 §3.5)', async () => {
+    let more!: (text: string) => void;
+    const source = new ReadableStream<Uint8Array>({
+      start(c): void {
+        c.enqueue(new TextEncoder().encode('<h1>t</h1><!--fud-end-->'));
+        more = (text) => {
+          c.enqueue(new TextEncoder().encode(text));
+          c.close();
+        };
+      },
+    });
+    const reader = applyNonceStream(source, 'abc').getReader();
+    // Out before the next part exists: nothing at its end could be the start of a token.
+    expect(new TextDecoder().decode((await reader.read()).value)).toBe('<h1>t</h1><!--fud-end-->');
+    more(`<p nonce="${NONCE_TOKEN}">x</p>`);
+    expect(new TextDecoder().decode((await reader.read()).value)).toBe('<p nonce="abc">x</p>');
+  });
 });

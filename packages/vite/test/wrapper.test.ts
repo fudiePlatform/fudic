@@ -31,13 +31,13 @@ describe('emitRenderChunk — the edge variant', () => {
     expect(code).toContain('export function render(ctx) {');
     expect(code).toContain('return htmlToByteStream(');
     expect(code).toContain('async function* ()');
-    expect(code).toContain('yield* page(data, io(ctx), undefined, layout);');
+    expect(code).toContain('yield* flushHead(page(data, io(ctx), undefined, layout));');
   });
 
   it('imports page, the ssr streaming io, and load/paths from fudic:<id>', () => {
     expect(code).toContain('import { page } from "./customer/[id].fud";');
     expect(code).toContain(
-      'import { SsrDom, serializeChunks, htmlToByteStream, escapeText, escapeAttr, guardUrl, jsonBlock, packData, iocRoot } from "@fudic/ssr";',
+      'import { SsrDom, serializeChunks, htmlToByteStream, flushHead, escapeText, escapeAttr, guardUrl, jsonBlock, packData, PageParts, iocRoot } from "@fudic/ssr";',
     );
     // `load` receives a `ServerContext` always, chain or not (SDD-56 §4.16).
     expect(code).toContain('import { markPrivate, pageContext, withRequest } from "@fudic/http/server";');
@@ -54,7 +54,8 @@ describe('emitRenderChunk — the edge variant', () => {
     expect(code).toContain('export async function data(ctx) {');
     expect(code).toContain('const data = await $ready.then(() => $runLoad($load, $ctx, false));');
     // One response, two halves (SDD-40 §3.3) — `layout` absent when the route resolves none.
-    expect(code).toContain('return { data };');
+    expect(code).toContain('return writeFrames($load.spec, data);');
+    expect(code).toContain('import { writeFrames } from "@fudic/http/wire/frames";');
     // What read the session goes out private, also when it threw (SDD-69 §3.2).
     expect(code).toContain('}).finally(() => markPrivate($ctx.response));');
   });
@@ -135,12 +136,12 @@ describe('emitRenderChunk — the layout resolver (SDD-40)', () => {
   });
 
   it('hands what it resolved to the page, behind the container', () => {
-    expect(edge).toContain('yield* page(data, io(ctx), undefined, layout);');
+    expect(edge).toContain('yield* flushHead(page(data, io(ctx), undefined, layout));');
   });
 
   it('the endpoint answers with the two halves in ONE response (§6.10)', () => {
     expect(edge).toContain('const data = await $ready.then(() => $runLoad($load, $ctx, false));');
-    expect(edge).toContain('return { data, layout: await layoutProps($ctx, data) };');
+    expect(edge).toContain('return writeFrames($load.spec, data, await layoutProps($ctx, data));');
   });
 
   it('a route with a resolver and no `load` still gets an endpoint', () => {
@@ -149,7 +150,7 @@ describe('emitRenderChunk — the layout resolver (SDD-40)', () => {
     const noLoad = emitRenderChunk({ pageModule: './about.fud', withLoad: true, api: api({ layout: true }) });
     expect(noLoad).toContain('export async function data(ctx) {');
     expect(noLoad).toContain('const data = {};');
-    expect(noLoad).toContain('return { data, layout: await layoutProps($ctx, data) };');
+    expect(noLoad).toContain('return writeFrames({}, data, await layoutProps($ctx, data));');
   });
 
   it('never CALLS paths(): it is re-exported for the build and nothing else (§6.9)', () => {
@@ -178,7 +179,7 @@ describe('emitRenderChunk — the layout resolver (SDD-40)', () => {
     expect(withDi).toContain('$runLoad($load, $ctx, false)');
     expect(withDi).toContain('withRequest($root, () => layoutProps($ctx, data))');
     expect(withDi).not.toContain('withDi');
-    expect(withDi).toContain('yield* page(data, io(ctx), $root, layout);');
+    expect(withDi).toContain('yield* flushHead(page(data, io(ctx), $root, layout));');
   });
 
   it('a route that resolves nothing still hands the layout what the caller passed', () => {
@@ -228,5 +229,16 @@ describe('routeApi', () => {
 
   it('nothing for a route that links no .fudapi', () => {
     expect(routeApi({ analysis: analysis() }, 'fudic:root', false)).toEqual({});
+  });
+});
+
+describe('emitRenderChunk — the buffer of the route (SDD-70 §3.9)', () => {
+  it('passes `buffer` to the stream, and nothing without it', () => {
+    const base = { pageModule: './p.fud', withLoad: false };
+    expect(emitRenderChunk({ ...base, buffer: 0 })).toContain('  })(), { highWaterMark: 0 });');
+    expect(emitRenderChunk({ ...base, buffer: 16384 })).toContain('  })(), { highWaterMark: 16384 });');
+    const plain = emitRenderChunk(base);
+    expect(plain).toContain('  })());');
+    expect(plain).not.toContain('highWaterMark');
   });
 });

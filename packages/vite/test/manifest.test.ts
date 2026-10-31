@@ -12,7 +12,7 @@ import { NO_STRATEGY, type StrategyAnalysis } from '../src/strategy.js';
 function routeBuild(
   pattern: string,
   decision: Partial<ModeDecision> & Pick<ModeDecision, 'mode'>,
-  over: { hasLoad?: boolean; hasLayout?: boolean; strategy?: StrategyAnalysis } = {},
+  over: { hasLoad?: boolean; hasLayout?: boolean; strategy?: StrategyAnalysis; buffer?: number } = {},
 ): RouteBuild {
   return {
     route: { file: `${pattern}.fud`, pattern, params: pattern.includes(':') ? ['id'] : [] },
@@ -24,6 +24,7 @@ function routeBuild(
       hasPaths: false,
       hasLayout: over.hasLayout ?? false,
       strategy: over.strategy ?? NO_STRATEGY,
+      ...(over.buffer === undefined ? {} : { buffer: over.buffer }),
       diagnostics: [],
     },
     decision: { prerender: false, enumerate: false, prerenderedHtml: false, ...decision },
@@ -228,5 +229,44 @@ describe('buildManifest', () => {
 
   it('is empty when every route is excluded', () => {
     expect(buildManifest([routeBuild('/x', { mode: 'excluded' })], INPUTS).file.routes).toEqual([]);
+  });
+});
+
+describe('buildManifest — the buffer of a route (SDD-70 §3.9, criterion 28)', () => {
+  it('writes `buffer` on the route that declares it, linkable or the server\'s', () => {
+    const { file } = buildManifest(
+      [
+        routeBuild('/a', { mode: 'ssg' }, { buffer: 0 }),
+        routeBuild('/b', { mode: 'ssr' }, { buffer: 16384 }),
+        routeBuild('/c', { mode: 'ssg' }),
+      ],
+      { ...INPUTS, depsOf: (rb) => (rb.route.pattern === '/b' ? null : ['dep']) },
+    );
+    expect(file.routes.map((r) => r.buffer)).toEqual([0, 16384, undefined]);
+    expect('buffer' in file.routes[2]!).toBe(false);
+  });
+});
+
+describe('buildManifest — the early hints of a route (SDD-70 §3.10, criterion 30)', () => {
+  it('writes `hints` on every route that has some, linkable or the server\'s', () => {
+    const { file } = buildManifest(
+      [routeBuild('/a', { mode: 'ssg' }), routeBuild('/b', { mode: 'ssr' }), routeBuild('/c', { mode: 'ssg' })],
+      {
+        ...INPUTS,
+        depsOf: (rb) => (rb.route.pattern === '/b' ? null : ['dep']),
+        hintsOf: (rb) => (rb.route.pattern === '/c' ? [] : [`<${rb.route.pattern}.css>; rel=preload; as=style`]),
+      },
+    );
+    expect(file.routes.map((r) => r.hints)).toEqual([
+      ['</a.css>; rel=preload; as=style'],
+      ['</b.css>; rel=preload; as=style'],
+      undefined,
+    ]);
+    expect('hints' in file.routes[2]!).toBe(false);
+  });
+
+  it('without `hintsOf` (`earlyHints: false`), no route carries any', () => {
+    const { file } = buildManifest([routeBuild('/a', { mode: 'ssg' })], INPUTS);
+    expect('hints' in file.routes[0]!).toBe(false);
   });
 });

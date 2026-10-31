@@ -26,6 +26,7 @@ const devPieces = (hasWorker: boolean): CoordinatorParams['pieces'] => ({
     : { from: '@fudic/core', name: 'createPreloadWarmChannel' },
   di: { from: '@fudic/di/page', name: 'installPage' },
   urls: { from: '@fudic/transport', name: 'createUrlResolver' },
+  parts: { from: '@fudic/core', name: 'readParts' },
 });
 
 const built = (opts: { base?: string; hasWorker?: boolean; injects?: boolean } = {}): string => {
@@ -108,19 +109,25 @@ describe('the coordinator', () => {
     expect(code).not.toContain('@fudic/transport');
   });
 
-  it('rebuilds the container tree from the published map, before hydration installs', () => {
+  it('rebuilds the container tree from the published map, handed to hydration as `inject`', () => {
     const code = built({ injects: true });
 
     expect(code).toContain('import { installPage as $di } from "@fudic/di/page";');
-    expect(code).toContain(`document.getElementById('fud-ioc')`);
-    expect(code).toContain(`document.getElementById('fud-di')`);
-    // STARTED before the runtime installs and handed to it as `ready`, not awaited in front
-    // of it. The capturer has to be listening from the first millisecond — a click before it
-    // is installed is lost, not deferred — and path 2 is where the tree is waited for, which
-    // is the last moment at which a chunk could resolve against one that is not built.
-    expect(code.indexOf('const $tree =')).toBeLessThan(code.indexOf('$hydrate({'));
-    expect(code).toContain('ready: $tree,');
+    // The map and the seed are read by the runtime, into memory with the rest of the blocks
+    // (SDD-70 §4.4): the coordinator no longer reads the DOM. Handed over, never awaited in
+    // front of the install — the capturer has to be listening from the first millisecond.
+    expect(code).not.toContain('getElementById');
+    expect(code).toContain('inject: (map, seed) => $di({ map, resolveChunk: $chunk, seed }),');
     expect(code).not.toMatch(/^await /mu);
+  });
+
+  it('names the reader of parts only for a route that goes out in parts (SDD-70 §4.5)', () => {
+    const params: CoordinatorParams = { chunks: { mode: 'build', base: '/' }, pieces: devPieces(false) };
+    const parted = coordinatorFor({ hydrates: true, injects: false, parted: true }, params)!.source;
+    expect(parted).toContain('readParts as $parts');
+    expect(parted).toContain('parts: $parts,');
+    const whole = coordinatorFor({ hydrates: true, injects: false }, params)!.source;
+    expect(whole).not.toContain('$parts');
   });
 
   it('does not so much as name the injector when the route does not inject', () => {

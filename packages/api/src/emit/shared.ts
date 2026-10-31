@@ -7,6 +7,7 @@
  * and a name that does not resolve becomes `unknown` (or text on the wire) instead of a throw.
  */
 
+import type { Span } from '@fudic/diagnostics';
 import type { Decl, FnDecl, Literal, LoadDecl, MiddlewareDecl, SkipClause, TypeExpr, UseClause } from '../ast.js';
 import { GLOBAL_ID, type ApiIndex, type ApiSource, type ProjectKind } from '../index-api.js';
 import { FLOATS, INTEGERS } from '../types-check.js';
@@ -66,13 +67,22 @@ export function tsType(t: TypeExpr, c: EmitCtx): string {
 /** A type in a position where `[]` or `|` would bind wrong. */
 const wrap = (ts: string): string => (ts.includes(' | ') || ts.startsWith('readonly ') ? `(${ts})` : ts);
 
-/** `readonly name: T` or `readonly name?: T`, one per field. */
-export function fieldsType(fields: readonly { readonly name: { readonly text: string }; readonly type: TypeExpr }[], c: EmitCtx): string {
+/**
+ * `readonly name: T` or `readonly name?: T`, one per field. A `later` field is always there and
+ * is a promise of its type: `readonly users: Promise<readonly Person[]>`, and an optional one
+ * resolves to `T | undefined`.
+ */
+export function fieldsType(
+  fields: readonly { readonly name: { readonly text: string }; readonly type: TypeExpr; readonly later?: Span }[],
+  c: EmitCtx,
+): string {
   if (fields.length === 0) return '{}';
   const members = fields.map((f) =>
-    f.type.kind === 'optional'
-      ? `readonly ${f.name.text}?: ${tsType(f.type.inner, c)}`
-      : `readonly ${f.name.text}: ${tsType(f.type, c)}`,
+    f.later !== undefined
+      ? `readonly ${f.name.text}: Promise<${tsType(f.type, c)}>`
+      : f.type.kind === 'optional'
+        ? `readonly ${f.name.text}?: ${tsType(f.type.inner, c)}`
+        : `readonly ${f.name.text}: ${tsType(f.type, c)}`,
   );
   return `{ ${members.join('; ')} }`;
 }

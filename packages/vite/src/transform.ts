@@ -38,6 +38,7 @@ import {
   inlineRuntimeMarker,
   adoptedStylesOf,
   type Diagnostic,
+  type EarlyHint,
   type ElementNode,
   type DocumentGraph,
   type OffsetMap,
@@ -84,6 +85,11 @@ export interface TransformResult {
    * editing a snippet would rebuild nothing.
    */
   readonly watchFiles?: readonly string[];
+  /**
+   * What the page needs before its body, from its own document (SDD-70 §3.10): the copies of the
+   * sheets its head links. Present for a page or a route; the plugin adds the runtime.
+   */
+  readonly hints?: readonly EarlyHint[];
 }
 
 /** A POSIX, explicitly-relative specifier from `fromDir` to `target` (`./x.fud`, `../y/x.fud`). */
@@ -360,6 +366,7 @@ export function transformFud(
     ...(inlineRuntimeOf(id, graph) ?? {}),
     map: buildMap(id, origin.source, out, graph.entryMap),
     missingAssets: out.missingAssets,
+    ...(out.hints === undefined ? {} : { hints: out.hints }),
     // The sheets this page was pruned against are inputs of this module too: an edit to one
     // has to prune the page again on the next navigation (SDD-49 §4.8).
     watchFiles: [...graph.snippetFiles, ...sheetFiles],

@@ -12,15 +12,15 @@
   const found = task(search, () => ({ q: texto() }), { initial: [] });
   // La lenta solo sale con su botón, y tiene su propio «Cancelar».
   const lenta = task(slowSearch, undefined, { initial: [] });
-  // Un PUT y un DELETE: van en fila, en el orden en que se pulsaron, y al acabar la tabla se
-  // repinta con el `data` nuevo de `load`, sin recargar la página.
+  // Un PUT y un DELETE: van en fila, en el orden en que se pulsaron. Ninguno hace que la página
+  // pida su `data` otra vez: la tabla ya sabe qué cambió y se pone al día ella sola.
   const guardar = task(save);
   const quitar = task(remove);
 
-  // La tabla pinta esta señal, que arranca con lo que trajo `load` y vuelve a sembrarse cada
-  // vez que la página pide su `data` otra vez. Las altas de `user-form` llegan por el bus con
-  // la persona que devolvió el servidor: se suman a la señal y la tabla se repinta, sin
-  // recargar y sin pedir nada más que el `save`.
+  // La tabla pinta esta señal, que arranca con lo que trajo `load`. Activar y borrar la ponen
+  // al día cuando el servidor dice que sí; las altas de `user-form` llegan por el bus con la
+  // persona que devolvió el servidor y se suman a ella. Nada recarga y nada pide la lista otra
+  // vez.
   const personas = signal(data.users);
 
   function alta(e: CustomEvent) {
@@ -39,16 +39,27 @@
     lenta.cancel();
   }
 
-  function activar(id: number, e: Event) {
-    void guardar.run({ id, active: (e.target as HTMLInputElement).checked });
+  // Si el servidor no lo guarda, la casilla vuelve a como estaba: la señal no cambió, así que
+  // el repintado no tiene nada que corregir en ella.
+  async function activar(id: number, e: Event) {
+    const input = e.target as HTMLInputElement;
+    const active = input.checked;
+    await guardar.run({ id, active });
+    if (guardar.error() === undefined) {
+      personas.set(personas().map((p) => (p.id === id ? { ...p, active } : p)));
+    } else {
+      input.checked = !active;
+    }
   }
 
-  function borrar(id: number) {
-    void quitar.run({ id });
+  async function borrar(id: number) {
+    await quitar.run({ id });
+    if (quitar.error() === undefined) personas.set(personas().filter((p) => p.id !== id));
   }
 
-  // Entrar y salir son dos funciones del servidor: ponen y quitan la cookie, y la página se
-  // repinta con el `data` nuevo de `load`, que dice quién hay dentro.
+  // Entrar y salir son dos funciones del servidor: ponen y quitan la cookie. Las dos nombran
+  // esta página en su `invalidates`, así que la página pide su `data` nuevo, que dice quién hay
+  // dentro, y se repinta.
   async function entrar(nombre: string) {
     await login({ user: nombre });
   }
@@ -168,10 +179,10 @@
   </table>
   <p>
     Marcar o desmarcar <em>Activo</em> y <em>Borrar</em> no recargan la página. En Network sale
-    el <code>save</code> o el <code>remove</code> y, justo después, una sola petición a
-    <code>/_fudic/data/usuarios</code>: la página pide su <code>data</code> nuevo y la tabla se
-    repinta sin perder el scroll ni el foco. Si marcas deprisa varias veces, los
-    <code>save</code> salen en fila, uno detrás de otro, en el orden en que pulsaste.
+    el <code>save</code> o el <code>remove</code> y nada más: la tabla ya sabe qué cambió y se
+    repinta sola, sin perder el scroll ni el foco. Si el servidor dice que no, la casilla vuelve
+    a como estaba. Si marcas deprisa varias veces, los <code>save</code> salen en fila, uno
+    detrás de otro, en el orden en que pulsaste.
   </p>
 </div>
 

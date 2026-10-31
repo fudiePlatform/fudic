@@ -212,6 +212,8 @@ export interface TypedField extends Documented {
   readonly kind: 'field';
   readonly name: Name;
   readonly type: TypeExpr;
+  /** `later` after the type: `load` returns this field as a promise. Only a field of `load`. */
+  readonly later?: Span;
   readonly span: Span;
 }
 
@@ -302,6 +304,13 @@ export interface PageOption {
   readonly span: Span;
 }
 
+/** `buffer 16k` on the `load` line: `bytes` is 16384. */
+export interface BufferOption {
+  readonly keyword: Span;
+  readonly bytes: number;
+  readonly span: Span;
+}
+
 export interface LoadDecl extends Documented {
   readonly kind: 'load';
   readonly keyword: Span;
@@ -309,6 +318,8 @@ export interface LoadDecl extends Documented {
   readonly ttl?: Duration;
   readonly policy?: Name;
   readonly page?: PageOption;
+  /** `buffer <bytes>`: what the page stream holds before it sends (SDD-70 §3.9). */
+  readonly buffer?: BufferOption;
   readonly uses: readonly UseClause[];
   readonly skips: readonly SkipClause[];
   readonly fails: readonly FailsClause[];

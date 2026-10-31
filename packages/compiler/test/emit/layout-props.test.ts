@@ -22,7 +22,7 @@ import {
   type ResolvedLayout,
 } from '../../src/emit/index.js';
 import type { LinkedApi } from '../../src/types/io.js';
-import { memoryIo, minimalSsr, renderPageHtml } from './_support.js';
+import { drain, memoryIo, minimalSsr, renderPageHtml, type Pieces } from './_support.js';
 
 const ROUTE = '<link rel="layout" href="./_layout.fud"><p>hola</p>';
 
@@ -84,7 +84,11 @@ function layoutDiagnostics(layout: string, route = ROUTE): readonly Reported[] {
  * `new Function` over the emitted text with the imports stripped, exactly as the SDD-21 suite
  * does it: what is under test is what the modules PRODUCE, not that a bundler could link them.
  */
-function render(sources: { layout: string; route: string }, props: unknown, data: unknown = {}): string {
+async function render(
+  sources: { layout: string; route: string },
+  props: unknown,
+  data: unknown = {},
+): Promise<string> {
   const evaluate = (code: string, bindings: Record<string, unknown>, returns: string): unknown => {
     const body =
       code.replace(/^import[^\n]*\n/gmu, '').replace(/^export\s+/gmu, '') + `\nreturn ${returns};`;
@@ -98,8 +102,8 @@ function render(sources: { layout: string; route: string }, props: unknown, data
     io: unknown,
     ioc: unknown,
     props: unknown,
-  ) => Iterable<string>;
-  return [...page(data, { ...minimalSsr(), nonce: '' }, undefined, props)].join('');
+  ) => Pieces;
+  return drain(page(data, { ...minimalSsr(), nonce: '' }, undefined, props));
 }
 
 /** The span of `needle` in `source`, which is how every diagnostic here is anchored. */
@@ -122,23 +126,23 @@ describe('§6.1 — the `<html>` is interpolated, not sliced out of the source',
     expect(sources.layout).toContain("yield '<!DOCTYPE html>' + $open + '<head>' + head + '</head>';");
   });
 
-  it('renders the `lang` the route resolved, and not the text `@culture`', () => {
-    const html = render(sources, { culture: 'gl' });
+  it('renders the `lang` the route resolved, and not the text `@culture`', async () => {
+    const html = await render(sources, { culture: 'gl' });
     expect(html).toContain('<html lang="gl">');
     expect(html).not.toContain('@culture');
   });
 
-  it('escapes it the way the serializer would', () => {
-    expect(render(sources, { culture: 'a"b&c' })).toContain('<html lang="a&quot;b&amp;c">');
+  it('escapes it the way the serializer would', async () => {
+    expect(await render(sources, { culture: 'a"b&c' })).toContain('<html lang="a&quot;b&amp;c">');
   });
 
-  it('omits the attribute when the value is nullish (decision 21)', () => {
-    expect(render(sources, {})).toContain('<html>');
+  it('omits the attribute when the value is nullish (decision 21)', async () => {
+    expect(await render(sources, {})).toContain('<html>');
   });
 
-  it('keeps a static attribute a static attribute', () => {
+  it('keeps a static attribute a static attribute', async () => {
     const plain = chain(layoutSource({ html: 'lang="es" dir="ltr"' }));
-    expect(render(plain, undefined)).toContain('<html lang="es" dir="ltr">');
+    expect(await render(plain, undefined)).toContain('<html lang="es" dir="ltr">');
   });
 });
 
@@ -152,8 +156,8 @@ describe('§6.5 — the props reach the layout, destructured above the first yie
 
   it('takes them as a fifth parameter and destructures them at the top', () => {
     const body = chain(layout).layout;
-    const opens = body.indexOf('export function* layout(');
-    expect(body).toContain('export function* layout(data, io, route, $ioc, $props) {');
+    const opens = body.indexOf('export async function* layout(');
+    expect(body).toContain('export async function* layout(data, io, route, $ioc, $props) {');
     expect(body.indexOf('let { culture, theme } = $props ?? {}; theme ??= ("light");')).toBeGreaterThan(opens);
     expect(body.indexOf('let { culture, theme } = $props ?? {}; theme ??= ("light");')).toBeLessThan(
       body.indexOf('yield'),
@@ -162,12 +166,12 @@ describe('§6.5 — the props reach the layout, destructured above the first yie
 
   it('the route carries them and never reads them', () => {
     const route = chain(layout).route;
-    expect(route).toContain('export function* page(data, io, $ioc, $props) {');
+    expect(route).toContain('export async function* page(data, io, $ioc, $props) {');
     expect(route).toContain('}, $ioc, $props);');
   });
 
-  it('uses the default of a prop the route did not resolve, with no diagnostic (§6.3)', () => {
-    const html = render(chain(layout), { culture: 'es' });
+  it('uses the default of a prop the route did not resolve, with no diagnostic (§6.3)', async () => {
+    const html = await render(chain(layout), { culture: 'es' });
     expect(html).toContain('<html lang="es" data-theme="light">');
     expect(layoutDiagnostics(layout)).toEqual([]);
   });
@@ -317,7 +321,7 @@ describe('§6.2 — `FUD0700`: a layout `@code` declares props and nothing else'
     for (const statement of ['export async function load() { return {}; }', 'export const load = () => ({});']) {
       const layout = layoutSource({ code: statement });
       expect(layoutDiagnostics(layout)).toEqual([]);
-      expect(chain(layout).layout).toContain('export function* layout(');
+      expect(chain(layout).layout).toContain('export async function* layout(');
     }
   });
 
@@ -339,13 +343,13 @@ describe('§6.2 — `FUD0700`: a layout `@code` declares props and nothing else'
     ]);
   });
 
-  it('says nothing about a `props<T>()` declaration, nor about its type alias', () => {
+  it('says nothing about a `props<T>()` declaration, nor about its type alias', async () => {
     const layout = layoutSource({
       code: 'type P = { culture: string };\n  const { culture } = props<P>();',
       html: 'lang="@culture"',
     });
     expect(layoutDiagnostics(layout)).toEqual([]);
-    expect(render(chain(layout), { culture: 'eu' })).toContain('<html lang="eu">');
+    expect(await render(chain(layout), { culture: 'eu' })).toContain('<html lang="eu">');
   });
 });
 
@@ -357,10 +361,10 @@ describe('SDD-48 §4.1 — the body reads its props, in the build (criterion 2)'
       `${inner}@RenderBody()</body>`,
     );
 
-  it('renders a read in the body, in an attribute value and on the <body> itself', () => {
+  it('renders a read in the body, in an attribute value and on the <body> itself', async () => {
     const layout = withBody('<p title="@(culture)">@seccion</p>', 'data-x="@culture"');
     expect(layoutDiagnostics(layout)).toEqual([]);
-    const html = render(chain(layout), { culture: 'eu', seccion: 'Blog' });
+    const html = await render(chain(layout), { culture: 'eu', seccion: 'Blog' });
     expect(html).toContain('data-x="eu"');
     expect(html).toContain('<p title="eu">Blog</p>');
   });
@@ -383,16 +387,16 @@ describe('BUG-44 §3.2 — a prop read in the head reaches the document', () => 
       '  <link rel="alternate" hreflang="@culture" href="/x">\n  @RenderHead()',
   );
 
-  it('interpolates the attributes of a head element, escaped, and leaves a plain one verbatim', () => {
-    const html = render(chain(layout), { seccion: 'Blog & "más"' });
+  it('interpolates the attributes of a head element, escaped, and leaves a plain one verbatim', async () => {
+    const html = await render(chain(layout), { seccion: 'Blog & "más"' });
     expect(html).toContain('<meta charset="utf-8">');
     expect(html).toContain('<meta property="article:section" content="Blog &amp; &quot;más&quot;">');
     expect(html).toContain('<link rel="alternate" hreflang="es" href="/x">');
     expect(html).not.toContain('@seccion');
   });
 
-  it('omits an attribute whose prop is nullish (decision 21)', () => {
-    expect(render(chain(layout), {})).toContain('<meta property="article:section">');
+  it('omits an attribute whose prop is nullish (decision 21)', async () => {
+    expect(await render(chain(layout), {})).toContain('<meta property="article:section">');
   });
 });
 
@@ -414,17 +418,17 @@ describe('decision 136 — a `@` in a layout’s `<style>` is `FUD0132`, no long
       { code: 'FUD0132', span: { start: second, end: second + 2 } },
     ]);
     expect(layoutDiagnostics(layout)).toEqual([]);
-    expect(chain(layout).layout).toContain('export function* layout(');
+    expect(chain(layout).layout).toContain('export async function* layout(');
   });
 });
 
 describe('BUG-44 — the head of a route and of a page interpolates its attributes too', () => {
-  it('a route’s head contribution reads its `data`', () => {
+  it('a route’s head contribution reads its `data`', async () => {
     const route =
       '<link rel="layout" href="./_layout.fud">\n' +
       '<head><meta name="description" content="@data.summary"><title>@data.title</title></head>\n' +
       '<p>hola</p>';
-    const html = render(chain(layoutSource({}), route), undefined, { summary: 'a & "b"', title: 't' });
+    const html = await render(chain(layoutSource({}), route), undefined, { summary: 'a & "b"', title: 't' });
     expect(html).toContain('<meta name="description" content="a &amp; &quot;b&quot;">');
     expect(html).toContain('<title>t</title>');
   });
@@ -445,7 +449,7 @@ describe('SDD-48 §4.1–§4.2 — what the body may not write, in the build', (
   const withBody = (inner: string): string =>
     layoutSource({ code: PROPS }).replace('@RenderBody()</body>', `${inner}@RenderBody()</body>`);
 
-  it('writes every construct and expression without a word (criterion 2)', () => {
+  it('writes every construct and expression without a word (criterion 2)', async () => {
     for (const construct of [
       '@if (seccion) {\n  <i>@seccion</i>\n}',
       '@foreach (const s of items) key (s) {\n  <i>@s</i>\n}',
@@ -456,7 +460,7 @@ describe('SDD-48 §4.1–§4.2 — what the body may not write, in the build', (
     ]) {
       expect(layoutDiagnostics(withBody(construct)), construct).toEqual([]);
     }
-    const html = render(chain(withBody('@if (seccion) {\n  <i>@seccion</i>\n}')), { seccion: 'Blog' });
+    const html = await render(chain(withBody('@if (seccion) {\n  <i>@seccion</i>\n}')), { seccion: 'Blog' });
     // And the construct leaves its anchor behind it, for the route's chunk (§4.3).
     expect(html).toContain('<body> <i>Blog</i> <!--fud:l--><p>hola</p></body>');
   });
@@ -464,7 +468,7 @@ describe('SDD-48 §4.1–§4.2 — what the body may not write, in the build', (
   it('reports a `@{ }` over its opening, and still emits', () => {
     const layout = withBody('@{ const a = 1; }');
     expect(layoutDiagnostics(layout)).toEqual([{ code: 'FUD0705', span: at(layout, '@{') }]);
-    expect(chain(layout).layout).toContain('export function* layout(');
+    expect(chain(layout).layout).toContain('export async function* layout(');
   });
 
   it('reports a hole inside a construct over the hole, once (criterion 3)', () => {
@@ -478,12 +482,12 @@ describe('SDD-48 §4.1–§4.2 — what the body may not write, in the build', (
   it('says nothing about markup, a comment and the two holes', () => {
     const layout = withBody('<nav>menu</nav>\n@* note *@\n@RenderSection(nav)\n');
     expect(layoutDiagnostics(layout)).toEqual([]);
-    expect(chain(layout).layout).toContain('export function* layout(');
+    expect(chain(layout).layout).toContain('export async function* layout(');
   });
 });
 
 describe('§6.4 — `FUD0701`: a layout prop may not be reactive', () => {
-  it('reports a prop whose declared type is `Signal<…>`, and hands it over by value', () => {
+  it('reports a prop whose declared type is `Signal<…>`, and hands it over by value', async () => {
     const layout = layoutSource({
       code: 'const { culture } = props<{ culture: Signal<string> }>();',
       html: 'lang="@culture"',
@@ -494,10 +498,10 @@ describe('§6.4 — `FUD0701`: a layout prop may not be reactive', () => {
       { code: 'FUD0701', span: { start, end: start + 'culture'.length } },
     ]);
     // The value is ignored as a REFERENCE: it crosses by value like every other one.
-    expect(render(chain(layout), { culture: 'ca' })).toContain('<html lang="ca">');
+    expect(await render(chain(layout), { culture: 'ca' })).toContain('<html lang="ca">');
   });
 
-  it('reports a reactive default and drops it', () => {
+  it('reports a reactive default and drops it', async () => {
     const layout = layoutSource({
       code: 'const { theme = signal("light") } = props<{ theme?: string }>();',
       html: 'data-theme="@theme"',
@@ -508,10 +512,10 @@ describe('§6.4 — `FUD0701`: a layout prop may not be reactive', () => {
     const sources = chain(layout);
     expect(sources.layout).not.toContain('signal("light")');
     // Dropped, not emitted: the attribute is omitted when nobody resolves the prop.
-    expect(render(sources, {})).toContain('<html>');
+    expect(await render(sources, {})).toContain('<html>');
   });
 
-  it('keeps a PLAIN default on a prop whose type was the reactive half', () => {
+  it('keeps a PLAIN default on a prop whose type was the reactive half', async () => {
     // Only the channel is dropped here: what made the prop reactive was its type, and its
     // default is an ordinary value the layout still has to fall back to.
     const layout = layoutSource({
@@ -519,15 +523,15 @@ describe('§6.4 — `FUD0701`: a layout prop may not be reactive', () => {
       html: 'data-theme="@theme"',
     });
     expect(layoutDiagnostics(layout).map((d) => d.code)).toEqual(['FUD0701']);
-    expect(render(chain(layout), {})).toContain('data-theme="light"');
+    expect(await render(chain(layout), {})).toContain('data-theme="light"');
   });
 
-  it('leaves a plain default alone', () => {
+  it('leaves a plain default alone', async () => {
     const layout = layoutSource({
       code: 'const { theme = "light" } = props<{ theme?: string }>();',
       html: 'data-theme="@theme"',
     });
     expect(layoutDiagnostics(layout)).toEqual([]);
-    expect(render(chain(layout), {})).toContain('data-theme="light"');
+    expect(await render(chain(layout), {})).toContain('data-theme="light"');
   });
 });

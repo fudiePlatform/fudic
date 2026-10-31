@@ -25,15 +25,19 @@
 import type { HtmlContent } from '../html/index.js';
 import type { EmitItem } from './runs.js';
 
-/** The closed set of control discriminants, as they appear among HTML children. */
-const CONTROL_TYPES: ReadonlySet<string> = new Set(['if', 'switch', 'for', 'foreach', 'while']);
+/**
+ * The closed set of construct discriminants, as they appear among HTML children: the five
+ * control constructs, and `@await` (SDD-70). An `@await` paints one of its blocks or nothing,
+ * exactly like an `@if`, so the two trees have to treat it as one in every rule here.
+ */
+const CONSTRUCT_TYPES: ReadonlySet<string> = new Set(['if', 'switch', 'for', 'foreach', 'while', 'await']);
 
-export const isControlNode = (node: HtmlContent): boolean => CONTROL_TYPES.has(node.type);
+export const isConstructNode = (node: HtmlContent): boolean => CONSTRUCT_TYPES.has(node.type);
 
 /** Whether item `i` of a level is a control construct. Past the end it is not one. */
 function isConstructAt(items: readonly EmitItem[], i: number): boolean {
   const item = items[i];
-  return item !== undefined && item.kind === 'node' && isControlNode(item.node);
+  return item !== undefined && item.kind === 'node' && isConstructNode(item.node);
 }
 
 /** Whether an item is one the walk gives a variable to — which only elements always are. */

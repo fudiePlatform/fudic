@@ -11,9 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveDocument, emitLayoutModule, emitRouteModule, emitPageModule } from '../../src/emit/index.js';
 import { resolveComponents } from '../../src/emit/resolve.js';
 import type { LinkedApi, ResolveIo } from '../../src/types/io.js';
-import { memoryIo, minimalSsr } from './_support.js';
-
-type PageFn = (data: unknown, io: unknown) => Iterable<string>;
+import { drain, memoryIo, minimalSsr, type PageFn } from './_support.js';
 
 /** Evaluate an emitted module with its imports stripped and their bindings injected. */
 function evalModule(code: string, bindings: Record<string, unknown>, returns: string): unknown {
@@ -27,21 +25,21 @@ const SHELL =
   '<!DOCTYPE html><html><head>@RenderHead()</head><body>@RenderBody()</body></html>';
 
 /** Emit route + layout from an in-memory graph, link them and run the document. */
-function renderRoute(
+async function renderRoute(
   routeSource: string,
   bindings: Record<string, unknown> = {},
   options: { routeName?: string } = {},
-): string {
+): Promise<string> {
   const io = memoryIo({ '/r.fud': routeSource, '/l.fud': SHELL });
   const graph = resolveDocument('/r.fud', io).value;
   const layout = evalModule(emitLayoutModule(graph, graph.layouts[0]!), bindings, 'layout');
   const page = evalModule(emitRouteModule(graph, options), { ...bindings, layout }, 'page') as PageFn;
-  return [...page({}, minimalSsr())].join('');
+  return drain(page({}, minimalSsr()));
 }
 
 describe('the `@code` of a route (§6.1)', () => {
-  it('prerenders a reactive declared in the `@code`, painting its initial value', () => {
-    const html = renderRoute(
+  it('prerenders a reactive declared in the `@code`, painting its initial value', async () => {
+    const html = await renderRoute(
       [
         '<link rel="layout" href="./l.fud">',
         '@code {',
@@ -54,8 +52,8 @@ describe('the `@code` of a route (§6.1)', () => {
     expect(html).toContain('<output>1</output>');
   });
 
-  it('paints a `computed` too — it renders inert as the function itself', () => {
-    const html = renderRoute(
+  it('paints a `computed` too — it renders inert as the function itself', async () => {
+    const html = await renderRoute(
       [
         '<link rel="layout" href="./l.fud">',
         '@code {',
@@ -68,8 +66,8 @@ describe('the `@code` of a route (§6.1)', () => {
     expect(html).toContain('<p>4</p>');
   });
 
-  it('marks the `<body>` when the build knows what the route is called', () => {
-    const html = renderRoute(
+  it('marks the `<body>` when the build knows what the route is called', async () => {
+    const html = await renderRoute(
       [
         '<link rel="layout" href="./l.fud">',
         '@code { const count = signal(4); }',
@@ -82,8 +80,8 @@ describe('the `@code` of a route (§6.1)', () => {
     expect(html).toContain('<output>4</output>');
   });
 
-  it('reads the server cut on the server, in the order it was written', () => {
-    const html = renderRoute(
+  it('reads the server cut on the server, in the order it was written', async () => {
+    const html = await renderRoute(
       [
         '<link rel="layout" href="./l.fud">',
         '@code {',
@@ -126,8 +124,8 @@ describe('what the render module of a route carries (§6.2)', () => {
     expect(code).toContain('import { titulo } from "./meta.js";');
     expect(code).toContain('const saludo = "hola";');
     // Hoisted means at module scope: above the `page` generator, not inside it.
-    expect(code.indexOf('import { titulo }')).toBeLessThan(code.indexOf('export function* page'));
-    expect(code.indexOf('const saludo')).toBeGreaterThan(code.indexOf('export function* page'));
+    expect(code.indexOf('import { titulo }')).toBeLessThan(code.indexOf('export async function* page'));
+    expect(code.indexOf('const saludo')).toBeGreaterThan(code.indexOf('export async function* page'));
   });
 
   it('writes a reactive as an inert one and never the browser code around it', () => {
@@ -171,7 +169,7 @@ describe('what the render module of a route carries (§6.2)', () => {
 });
 
 describe('a standalone page splits its `@code` the same way', () => {
-  it('paints a reactive its `@code` declares', () => {
+  it('paints a reactive its `@code` declares', async () => {
     const io = memoryIo({
       '/p.fud': [
         '<!DOCTYPE html><html><head>',
@@ -181,6 +179,6 @@ describe('a standalone page splits its `@code` the same way', () => {
     });
     const graph = resolveComponents('/p.fud', io);
     const page = evalModule(emitPageModule(graph), {}, 'page') as PageFn;
-    expect([...page({}, minimalSsr())].join('')).toContain('<p>7</p>');
+    expect(await drain(page({}, minimalSsr()))).toContain('<p>7</p>');
   });
 });

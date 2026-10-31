@@ -40,7 +40,7 @@ describe('criterion 14: no imports of the developer', () => {
   it('a generated module imports only @fudic/* and fudic:*', () => {
     for (const id of IDS) {
       for (const text of [declarationsOf(p, id), moduleOf(p, id, 'server'), moduleOf(p, id, 'browser')]) {
-        for (const spec of specifiers(text)) expect(spec, `${id}: ${spec}`).toMatch(/^(?:@fudic\/(?:http|forms)\/contract|@fudic\/http\/wire(?:\/bin|\/json)?|fudic:.+)$/u);
+        for (const spec of specifiers(text)) expect(spec, `${id}: ${spec}`).toMatch(/^(?:@fudic\/(?:http|forms)\/contract|@fudic\/http\/wire(?:\/bin|\/json|\/frames)?|fudic:.+)$/u);
       }
     }
   });
@@ -62,7 +62,7 @@ describe('the variants differ only where the side does', () => {
   it('a server piece is marked impossible in the browser', () => {
     expect(moduleOf(p, 'rules/forms', 'browser')).toContain('server: true, async: true, never: true');
     expect(moduleOf(p, 'rules/forms', 'server')).not.toContain('never: true');
-    expect(moduleOf(p, 'routes/usuarios', 'browser')).toContain('name: "load", chain: [$global, { steps: [] }], browser: true');
+    expect(moduleOf(p, 'routes/usuarios', 'browser')).toMatch(/name: "load", chain: \[\$global, \{ steps: \[\] \}\], fields: .*, browser: true \}\);/u);
   });
 });
 

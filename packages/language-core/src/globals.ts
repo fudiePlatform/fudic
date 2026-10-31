@@ -330,6 +330,29 @@ declare function $key(k?: unknown): void;
  */
 declare function $empty(): boolean;
 
+/**
+ * \`data\` inside the body of \`@await data.<field>\` (SDD-70): the same \`data\`, with that field
+ * resolved. The body reads \`data.users\` by its own name, as TypeScript narrows inside an \`if\`.
+ */
+declare function $await<D, K extends keyof D>(data: D, field: K): Omit<D, K> & { readonly [P in K]: Awaited<D[P]> };
+
+/**
+ * What an \`@await\`'s \`@catch (e)\` receives: \`Problem\` of \`@fudic/http\`, the part of it a
+ * failed field carries. Structural for the reason \`$LayoutContext\` is: a route need not depend
+ * on that package to write \`@e.status\`.
+ */
+interface $Problem {
+  /** The HTTP status: 404, 500… */
+  readonly status: number;
+  /** The standard name of the status: \`Not Found\`. */
+  readonly title: string;
+  /** What the server said, in development only. */
+  readonly detail?: string;
+}
+
+/** The \`Problem\` of the \`@catch\` being projected. Opaque, like \`$empty\`. */
+declare function $problem(): $Problem;
+
 type $El<T extends string> = T extends keyof HTMLElementTagNameMap
   ? HTMLElementTagNameMap[T]
   : HTMLElement;

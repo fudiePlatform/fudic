@@ -100,7 +100,7 @@ export function apiCompletions(doc: ApiDocument, offset: number): CompletionList
   if (indent === 0) {
     if (typing === 0) return list(keywords(DECLARATION_KEYWORDS));
     if (words[0] !== 'load') return undefined;
-    return list(keywords(words[typing - 1] === 'page' ? ['never', 'persist'] : [...MODES, 'ttl', ...POLICIES, 'page']));
+    return list(keywords(words[typing - 1] === 'page' ? ['never', 'persist'] : [...MODES, 'ttl', ...POLICIES, 'page', 'buffer']));
   }
   if (typing === 0) return list(firstWord(doc, offset, chain, context));
   return argument(doc, offset, words, typing, chain, context);
@@ -224,12 +224,29 @@ function argument(
       return typing >= (head === 'require' ? 2 : 1) ? list([...paths(doc, offset, chain), ...keywords(EXPRESSION)]) : undefined;
   }
   if (context === 'field' || context === 'arg' || context === 'summary') return ruleArgument(index, head, typing);
+  // After the whole type of a field of `load` — one word, or `map K V` — the one word that may
+  // follow it (SDD-70).
+  if (context === 'load' && !CHILDREN.load.includes(head) && typeLength(words, 1) === typing - 1) {
+    return list(keywords(['later']));
+  }
   if (typing === 1 && TYPED.has(context) && !CHILDREN[context].includes(head)) {
     const extra = context === 'form' || context === 'group' ? [item('group', CompletionItemKind.Keyword)] : [];
     const pattern = context === 'rule' ? [item('pattern', CompletionItemKind.Keyword)] : [];
     return list([...types(index), ...extra, ...pattern]);
   }
   return undefined;
+}
+
+/**
+ * How many words the type starting at `words[at]` takes, as the parser reads it: `map K V`
+ * takes the key and its value (which may be a map), anything else one. `undefined` while the
+ * type is not finished. The word being typed (the last, possibly empty) is never counted.
+ */
+function typeLength(words: readonly string[], at: number): number | undefined {
+  if (at >= words.length - 1) return undefined;
+  if (words[at] !== 'map') return 1;
+  const value = typeLength(words, at + 2);
+  return value === undefined ? undefined : 2 + value;
 }
 
 /** The primitives, then the project's types and enums. */

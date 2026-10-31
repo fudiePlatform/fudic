@@ -8,6 +8,7 @@
  */
 
 import type {
+  AwaitNode,
   ForeachNode,
   HtmlContent,
   IfNode,
@@ -45,6 +46,10 @@ export function childrenOf(node: HtmlContent): readonly HtmlContent[] {
     }
     case 'switch':
       return asSwitch(node).cases.flatMap((c) => c.body);
+    case 'await': {
+      const awaitNode = node as unknown as AwaitNode;
+      return awaitNode.catch === undefined ? awaitNode.body : [...awaitNode.body, ...awaitNode.catch.body];
+    }
     case 'section':
       return asSection(node).children;
     default:

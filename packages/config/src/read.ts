@@ -66,6 +66,16 @@ export interface ProjectConfig {
   readonly browser: string;
   /** A library's `.fudapi` folder: present only for `kind: lib`, `fudapi` when it declares none. */
   readonly api?: string;
+  /**
+   * Whether the build writes each route's early hints into the route manifest and the Node server
+   * sends them (SDD-70 §3.10). `true` when the file declares none.
+   */
+  readonly earlyHints: boolean;
+  /**
+   * Where the sheets the components adopt live (SDD-70 §3.10): `inline`, a style module in the
+   * page, or `link`, a file per sheet. `inline` when the file declares none.
+   */
+  readonly componentStyles: 'inline' | 'link';
 }
 
 /** One `"name": "path"` entry of `globalStyles` or `styles`. */
@@ -140,6 +150,8 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
   const server = readFolder(fields, 'server', SERVER_DIR, ctx);
   const browser = readFolder(fields, 'browser', BROWSER_DIR, ctx);
   const api = kind === 'lib' ? readFolder(fields, 'api', API_DIR, ctx) : undefined;
+  const earlyHints = readEarlyHints(fields, ctx);
+  const componentStyles = readComponentStyles(fields, ctx);
 
   // Fields are NOT rescued one by one (§4.2). Identity is a unit, and half an identity is
   // worse than none: an `id` that got through alone would namespace caches under a name
@@ -159,6 +171,8 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
       server,
       browser,
       ...(api === undefined ? {} : { api }),
+      earlyHints,
+      componentStyles,
     },
     diagnostics: [],
   };
@@ -322,6 +336,29 @@ function readString(
       malformed({ problem: 'string-field', field, pattern: pattern.source, note }, fieldSpan(ctx.text, field)),
     );
     return '';
+  }
+  return value;
+}
+
+/** `earlyHints` absent is `true`: the hints cost the page nothing, and a client that does not
+ * understand a 103 ignores it (SDD-70 §3.10). */
+function readEarlyHints(fields: Record<string, unknown>, ctx: Ctx): boolean {
+  const value = fields['earlyHints'];
+  if (value === undefined) return true;
+  if (typeof value !== 'boolean') {
+    ctx.diagnostics.push(malformed({ problem: 'early-hints' }, fieldSpan(ctx.text, 'earlyHints')));
+    return true;
+  }
+  return value;
+}
+
+/** `componentStyles` absent is `inline`, what every page did before SDD-70 §3.10. */
+function readComponentStyles(fields: Record<string, unknown>, ctx: Ctx): 'inline' | 'link' {
+  const value = fields['componentStyles'];
+  if (value === undefined) return 'inline';
+  if (value !== 'inline' && value !== 'link') {
+    ctx.diagnostics.push(malformed({ problem: 'component-styles' }, fieldSpan(ctx.text, 'componentStyles')));
+    return 'inline';
   }
   return value;
 }

@@ -11,7 +11,7 @@ import {
   resolveComponents,
   type ProjectStyle,
 } from '../../src/emit/index.js';
-import { memoryIo, pageModuleOf, ssrIo } from './_support.js';
+import { drain, memoryIo, pageModuleOf, ssrIo } from './_support.js';
 
 /** The codes of every rule the linter objects to, in source order. */
 const codes = (css: string): readonly string[] => lintProjectStyle(css).map((d) => d.code);
@@ -126,7 +126,7 @@ describe('SDD-42 §4.5 — an advice, not a pruning', () => {
     const page = await pageModuleOf(resolveComponents('/home.fud', io), {
       projectStyles: [theme],
     });
-    const html = [...page({}, ssrIo().io)].join('');
+    const html = await drain(page({}, ssrIo().io));
 
     expect(html).toContain('<style type="module" specifier="_theme">:root{--gap:8px;}</style>');
     expect(html).toContain('shadowrootadoptedstylesheets="_theme s-card"');

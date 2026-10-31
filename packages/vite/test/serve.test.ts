@@ -115,15 +115,14 @@ describe('drainStream / renderRouteHtml / loadRouteData', () => {
     expect(seen).toEqual([{ id: '42' }]);
   });
 
-  it('runs @server load for the data endpoint, and returns {} when there is none', async () => {
+  it('runs @server load for the data endpoint, and answers null when there is none', async () => {
     const withData: RenderModule = {
       render: () => streamOf(''),
-      data: async (ctx) => ({ id: (ctx.params as Record<string, string>)['id'] }),
+      data: async (ctx) => streamOf((ctx.params as Record<string, string>)['id']!),
     };
-    expect(await loadRouteData(async () => withData, 'id', '/customer/:id', '/customer/7')).toEqual({
-      id: '7',
-    });
+    const frames = await loadRouteData(async () => withData, 'id', '/customer/:id', '/customer/7');
+    expect(await new Response(frames).text()).toBe('7');
     const without: RenderModule = { render: () => streamOf('') };
-    expect(await loadRouteData(async () => without, 'id', '/about', '/about')).toEqual({});
+    expect(await loadRouteData(async () => without, 'id', '/about', '/about')).toBeNull();
   });
 });

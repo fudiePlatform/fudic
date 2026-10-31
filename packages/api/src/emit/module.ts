@@ -39,8 +39,8 @@ interface ModuleCtx extends EmitCtx {
   readonly forms: Set<string>;
   /** The names `@fudic/http/wire` must give. */
   readonly wire: Set<string>;
-  /** The formats of this module's functions. */
-  readonly wires: Set<'bin' | 'json'>;
+  /** The formats of this module's functions, and the reader of the data frames when it has `load`. */
+  readonly wires: Set<'bin' | 'json' | 'frames'>;
   /** `fudic:<id>` → the names imported from it. */
   readonly imports: Map<string, Set<string>>;
 }
@@ -79,6 +79,7 @@ export function emitModule(source: ApiSource, index: ApiIndex, api: ApiContext, 
   // One format per module, as its functions need: a page bundles only the codecs it speaks.
   if (c.wires.has('bin')) head.push(`import { binWire } from '@fudic/http/wire/bin';`);
   if (c.wires.has('json')) head.push(`import { jsonWire } from '@fudic/http/wire/json';`);
+  if (c.wires.has('frames')) head.push(`import { readFrames } from '@fudic/http/wire/frames';`);
   const messages = index.messages()[0];
   if (messages !== undefined && messages.source !== source && source.file.declarations.some((d) => d.kind === 'form')) {
     head.push(`import ${str(`fudic:${messages.source.id}`)};`);
@@ -197,7 +198,14 @@ function chainOf(own: string, c: ModuleCtx): string {
 function load(d: LoadDecl, c: ModuleCtx): string {
   c.http.add('page');
   const chain = chainOf(level(d.uses, d.skips, undefined, c), c);
-  return `export const load = page({ id: ${str(c.source.id)}, name: "load", chain: ${chain}${browser(c)} });${failsOf('Load', d.fails, c)}`;
+  // The fields that arrive later (SDD-70): `runLoad` settles each one as soon as `load` returns.
+  const later = d.fields.filter((f) => f.later !== undefined).map((f) => str(f.name.text));
+  const settles = later.length === 0 ? '' : `, later: [${later.join(', ')}]`;
+  // The type of every field, a `later` one by what it resolves to: what the data endpoint writes
+  // its frames with, and what the browser reads them back with (SDD-70 §3.7).
+  const fields = d.fields.length === 0 ? '' : `, fields: ${descriptors(d.fields, c)}`;
+  c.wires.add('frames');
+  return `export const load = page({ id: ${str(c.source.id)}, name: "load", chain: ${chain}${fields}${settles}, read: readFrames${browser(c)} });${failsOf('Load', d.fails, c)}`;
 }
 
 /** The validators of `@fudic/forms/contract` by rule, imported under `$` so no rule shadows them. */

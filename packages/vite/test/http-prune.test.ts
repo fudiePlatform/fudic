@@ -80,12 +80,16 @@ function filesUnder(dir: string): { path: string; text: string }[] {
   });
 }
 
-/** The client output of an app: every script and page `vite build` wrote. */
+/**
+ * The client output of an app: every script and page `vite build` wrote, except the Service
+ * Worker. The worker is not a page, and it reads the data endpoint's frames in `fud-bin`
+ * whatever the functions speak (SDD-70 §3.7), so it always carries the binary reader.
+ */
 async function clientOf(api: string): Promise<string> {
   const root = project(api);
   await build({ root, logLevel: 'silent', resolve: { alias: httpAlias }, plugins: [fudic()], build: { minify: false } });
   return filesUnder(join(root, 'dist'))
-    .filter((f) => f.path.endsWith('.js') || f.path.endsWith('.html'))
+    .filter((f) => (f.path.endsWith('.js') || f.path.endsWith('.html')) && !f.path.endsWith('fudic-sw.js'))
     .map((f) => f.text)
     .join('\n');
 }

@@ -1,6 +1,6 @@
 /**
- * SDD-68 §4.8, step 1, and criterion 18 — after a call invalidates the page it was made from,
- * the stub tells the page with `DATA_STALE_EVENT` and resolves only after what the listeners
+ * SDD-68 §4.8, step 1, and criterion 18 — after a call whose `invalidates` names the page it was
+ * made from, the stub tells the page with `DATA_STALE_EVENT` and resolves only after what the listeners
  * handed over with `wait`. And `method` on the stub, which is what makes a server function a
  * `Callable` of `@fudic/core` (§3.2).
  *
@@ -104,7 +104,7 @@ describe('the stub tells the page its data is stale (§4.8, step 1)', () => {
       order.push('event');
       detail.wait(work.promise.then(() => void order.push('repainted')));
     });
-    const p = call('PUT', ['/blog'])({}).then((v) => {
+    const p = call('PUT', ['/usuarios', '/blog'])({}).then((v) => {
       order.push('resolved');
       return v;
     });
@@ -125,7 +125,7 @@ describe('the stub tells the page its data is stale (§4.8, step 1)', () => {
     doc.addEventListener(DATA_STALE_EVENT, (e) => (e as CustomEvent<DataStaleDetail>).detail.wait(a.promise));
     doc.addEventListener(DATA_STALE_EVENT, (e) => (e as CustomEvent<DataStaleDetail>).detail.wait(b.promise));
     let done = false;
-    const p = call('POST')({}).then(() => {
+    const p = call('POST', ['/usuarios'])({}).then(() => {
       done = true;
     });
     a.resolve();
@@ -138,7 +138,7 @@ describe('the stub tells the page its data is stale (§4.8, step 1)', () => {
 
   it('with no listener handing anything over, resolves as before', async () => {
     const { seen } = page();
-    expect(await call('DELETE')({})).toEqual({ ok: true });
+    expect(await call('DELETE', ['/usuarios'])({})).toEqual({ ok: true });
     expect(seen).toHaveLength(1);
   });
 
@@ -154,6 +154,28 @@ describe('the stub tells the page its data is stale (§4.8, step 1)', () => {
     expect(await call('GET')()).toEqual({ ok: true });
     expect(seen).toHaveLength(0);
   });
+
+  it.each(['POST', 'PUT', 'DELETE'] as const)(
+    'a %s of the route that names nothing does not make the page ask for its data (SDD-70)',
+    async (method) => {
+      const { seen } = page();
+      const posted: unknown[] = [];
+      vi.stubGlobal('navigator', {
+        serviceWorker: {
+          controller: {
+            postMessage: (message: unknown, [port]: MessagePort[]) => {
+              posted.push(message);
+              port!.postMessage(null);
+            },
+          },
+        },
+      });
+      expect(await call(method)({})).toEqual({ ok: true });
+      expect(seen).toHaveLength(0);
+      // The worker still forgets what it kept of the page.
+      expect(posted).toEqual([{ type: 'fudic:invalidate', paths: ['/usuarios'] }]);
+    },
+  );
 
   it('a GET whose invalidates do not cover the current page does not dispatch', async () => {
     const { seen } = page();
@@ -188,7 +210,7 @@ describe('the stub tells the page its data is stale (§4.8, step 1)', () => {
   it('a failed call does not dispatch', async () => {
     const { seen } = page();
     vi.stubGlobal('fetch', async () => new Response('{"status":409,"title":"Conflict"}', { status: 409 }));
-    await expect(call('PUT')({})).rejects.toMatchObject({ status: 409 });
+    await expect(call('PUT', ['/usuarios'])({})).rejects.toMatchObject({ status: 409 });
     expect(seen).toHaveLength(0);
   });
 });

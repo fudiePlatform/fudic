@@ -15,7 +15,7 @@ import {
   emitLayoutModule,
   type ProjectStyle,
 } from '../../src/emit/index.js';
-import { memoryIo, pageModuleOf, ssrIo } from './_support.js';
+import { drain, memoryIo, pageModuleOf, ssrIo } from './_support.js';
 
 const CARD =
   '<head><style>.card { padding: 8px; }</style></head>\n' +
@@ -42,7 +42,7 @@ async function render(
   projectStyles: readonly ProjectStyle[],
 ): Promise<string> {
   const page = await pageModuleOf(resolveComponents('/home.fud', io), { projectStyles });
-  return [...page({}, ssrIo().io)].join('');
+  return await drain(page({}, ssrIo().io));
 }
 
 describe('SDD-42 §4.1 — the hoisted sheet and the adopted list', () => {

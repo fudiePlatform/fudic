@@ -137,7 +137,7 @@ describe.each([
     const res = await fetch(`${originOf()}/_fudic/data/writes`);
     expect(res.status).toBe(203);
     expect(res.headers.getSetCookie()).toHaveLength(2);
-    expect(res.headers.get('content-type')).toBe('application/json');
+    expect(res.headers.get('content-type')).toBe('application/fud+frames');
   });
 
   it('criterion 12: deleteCookie then unauthorized is the error page, with the Set-Cookie', async () => {

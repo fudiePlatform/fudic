@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { SsrDom } from '../src/ssr-dom.js';
 import { renderToString, serializeChunks } from '../src/serialize.js';
-import { htmlToByteStream, renderToStream } from '../src/stream.js';
+import { FLUSH, flushHead, htmlToByteStream, renderToStream, type HtmlPiece } from '../src/stream.js';
 
 /** The canonical mixed tree of SDD-14 §6.3. */
 function canonicalTree(d: SsrDom) {
@@ -150,6 +150,63 @@ describe('htmlToByteStream (SDD-16 §6.5)', () => {
   });
 });
 
+describe('htmlToByteStream — FLUSH (SDD-70 §3.6)', () => {
+  const texts = (chunks: Uint8Array[]): string[] => chunks.map((c) => new TextDecoder().decode(c));
+
+  it('a piece under 8 KB followed by FLUSH is its own chunk before the next piece is awaited', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let passedGate = false;
+    async function* source(): AsyncGenerator<HtmlPiece> {
+      yield '<head></head>';
+      yield '<body>';
+      yield FLUSH;
+      await gate; // the field the page waits for
+      passedGate = true;
+      yield 'late</body>';
+    }
+    const reader = htmlToByteStream(source()).getReader();
+    const first = await reader.read();
+    expect(first.done).toBe(false);
+    expect(new TextDecoder().decode(first.value)).toBe('<head></head><body>');
+    expect(passedGate).toBe(false); // delivered while the source still waits
+    release();
+    const second = await reader.read();
+    expect(new TextDecoder().decode(second.value)).toBe('late</body>');
+    expect(passedGate).toBe(true);
+    expect((await reader.read()).done).toBe(true);
+  });
+
+  it('FLUSH with an empty buffer enqueues nothing', async () => {
+    expect(await collect(htmlToByteStream([FLUSH]))).toHaveLength(0);
+    const chunks = await collect(htmlToByteStream([FLUSH, 'a', FLUSH, FLUSH, 'b', FLUSH]));
+    expect(texts(chunks)).toEqual(['a', 'b']);
+  });
+
+  it('works with a sync iterable: FLUSH cuts where coalescing would not', async () => {
+    function* pieces(): Generator<HtmlPiece> {
+      yield '<a>';
+      yield FLUSH;
+      yield '<b>';
+      yield '<c>';
+    }
+    expect(texts(await collect(htmlToByteStream(pieces())))).toEqual(['<a>', '<b><c>']);
+  });
+
+  it('is the shared symbol, so another copy of the module speaks to this one', () => {
+    expect(FLUSH).toBe(Symbol.for('fudic.ssr.flush'));
+  });
+
+  it('without FLUSH, coalescing is unchanged: one chunk under the mark, a cut at it', async () => {
+    expect(texts(await collect(htmlToByteStream(['<a>', '<b>', '<c>'])))).toEqual(['<a><b><c>']);
+    expect(
+      texts(await collect(htmlToByteStream(['12', '345', '6', '78'], { highWaterMark: 4 }))),
+    ).toEqual(['12345', '678']);
+  });
+});
+
 describe('UTF-8 chunking (SDD-16 §6.6)', () => {
   it('never splits a multi-byte code point across chunks', async () => {
     const d = new SsrDom();
@@ -163,5 +220,46 @@ describe('UTF-8 chunking (SDD-16 §6.6)', () => {
     const fatal = new TextDecoder('utf-8', { fatal: true });
     const text = chunks.map((c) => fatal.decode(c)).join('');
     expect(text).toBe(renderToString(div));
+  });
+});
+
+describe('the buffer of a page (SDD-70 §3.9)', () => {
+  const texts = (chunks: Uint8Array[]): string[] => chunks.map((c) => new TextDecoder().decode(c));
+
+  it('flushHead: the first piece leaves on its own, the rest coalesces as before', async () => {
+    const head = '<!DOCTYPE html><html><head><title>x</title></head>';
+    const chunks = texts(await collect(htmlToByteStream(flushHead([head, '<body>', '</body>', '</html>']))));
+    expect(chunks).toEqual([head, '<body></body></html>']);
+  });
+
+  it('flushHead reads an async render and a FLUSH of its own passes through', async () => {
+    async function* page(): AsyncGenerator<HtmlPiece> {
+      yield '<head></head>';
+      yield '<p>';
+      yield FLUSH;
+      yield '</p>';
+    }
+    const pieces: HtmlPiece[] = [];
+    for await (const piece of flushHead(page())) pieces.push(piece);
+    expect(pieces).toEqual(['<head></head>', FLUSH, '<p>', FLUSH, '</p>']);
+  });
+
+  it('flushHead of an empty render yields nothing', async () => {
+    const pieces: HtmlPiece[] = [];
+    for await (const piece of flushHead([])) pieces.push(piece);
+    expect(pieces).toEqual([]);
+  });
+
+  it('highWaterMark 0 sends every piece as it comes', async () => {
+    expect(texts(await collect(htmlToByteStream(['<a>', '', '<b>', '<c>'], { highWaterMark: 0 })))).toEqual([
+      '<a>',
+      '<b>',
+      '<c>',
+    ]);
+  });
+
+  it('without options the mark is STREAM_BUFFER: 8192 bytes', async () => {
+    const big = 'x'.repeat(8191);
+    expect(texts(await collect(htmlToByteStream([big, 'y', 'z']))).map((t) => t.length)).toEqual([8192, 1]);
   });
 });

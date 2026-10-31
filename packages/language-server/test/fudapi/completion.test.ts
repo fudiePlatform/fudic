@@ -29,9 +29,9 @@ describe('completion (criterion 28)', () => {
       expect(labels('type A\n  x  str\nge|')).toEqual(DECLARATION_KEYWORDS);
     });
 
-    it('after `load`: modes, `ttl`, policies and `page`; after `page`, its values', () => {
+    it('after `load`: modes, `ttl`, policies, `page` and `buffer`; after `page`, its values', () => {
       expect(labels('load |')).toEqual([
-        'ssg', 'ssr', 'sw', 'ttl', 'cache-first', 'network-first', 'stale-while-revalidate', 'network-only', 'page',
+        'ssg', 'ssr', 'sw', 'ttl', 'cache-first', 'network-first', 'stale-while-revalidate', 'network-only', 'page', 'buffer',
       ]);
       expect(labels('load ssr page |')).toEqual(['never', 'persist']);
     });
@@ -170,6 +170,36 @@ describe('completion (criterion 28)', () => {
       expect(labels('get f\n  invalidates |')).toBeUndefined();
       expect(labels('get f\n  q str |')).toBeUndefined();
       expect(labels('chain\n  x |')).toBeUndefined();
+    });
+  });
+
+  describe('after the type of a field (SDD-70 §3.1)', () => {
+    it('`later` in a field of `load`, plain or optional', () => {
+      expect(labels('load\n  users Person[] |')).toEqual(['later']);
+      expect(labels('load ssr\n  title  str\n  users  Person[]?  |')).toEqual(['later']);
+    });
+
+    it('`later` after a map type too, once the whole type is there', () => {
+      expect(labels('load\n  byName map str Person |')).toEqual(['later']);
+    });
+
+    it('not inside a map type: before its key or its value type', () => {
+      expect(labels('load\n  byName map |') ?? []).not.toContain('later');
+      expect(labels('load\n  byName map str |') ?? []).not.toContain('later');
+    });
+
+    it('nothing once `later` is there', () => {
+      expect(labels('load\n  users Person[] later |')).toBeUndefined();
+    });
+
+    it('not in a type, a form, a function, a middleware, nor after a clause of `load`', () => {
+      expect(labels('type A\n  x str |')).toBeUndefined();
+      expect(labels('form f\n  a str |')).toBeUndefined();
+      expect(labels('get f\n  q str |')).toBeUndefined();
+      expect(labels('middleware m\n  adds\n    user str |')).toBeUndefined();
+      expect(labels('load\n  use auth |')).not.toContain('later');
+      expect(labels('load\n  skip auth |')).not.toContain('later');
+      expect(labels('load\n  fails gone |')).toBeUndefined();
     });
   });
 

@@ -25,7 +25,7 @@ import {
   emitRouteModule,
   resolveComponents,
 } from '../../../src/emit/index.js';
-import { fixturesDir, memoryIo, ssrIo } from '../_support.js';
+import { drain, fixturesDir, memoryIo, ssrIo, type PageFn } from '../_support.js';
 
 type Modules = Readonly<Record<string, Record<string, unknown>>>;
 
@@ -224,11 +224,8 @@ describe('criterion 14 — a task on the server never calls, and the page hydrat
       modules,
     ).replace(/^export\s+/gmu, '');
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    const page = new Function('$m', 'layout', `${routeSource}\nreturn page;`)(modules, layout) as (
-      data: unknown,
-      io: unknown,
-    ) => Iterable<string>;
-    const html = [...page({}, ssrIo().io)].join('');
+    const page = new Function('$m', 'layout', `${routeSource}\nreturn page;`)(modules, layout) as PageFn;
+    const html = await drain(page({}, ssrIo().io));
     expect(calls).toHaveLength(0);
     const body = html.slice(html.indexOf('>', html.indexOf('<body')) + 1, html.lastIndexOf('</body>'));
     expect(body).toContain('<li>ana</li>');

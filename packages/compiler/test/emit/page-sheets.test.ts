@@ -410,3 +410,29 @@ describe('`@import` in a component’s `<style>` — `FUD0855` (criterion 30)', 
     expect(resolveDocument('/x-a.fud', memoryIo({ '/x-a.fud': source })).diagnostics).toEqual([]);
   });
 });
+
+describe('the early hints of a page (SDD-70 §3.10, criterion 30)', () => {
+  it('the copies its head links, the layout first; not an inline one, nor one left empty', () => {
+    const graph = graphOf(
+      '/app/index.fud',
+      appFiles('<p class="a">x</p><em>e</em>', '<link rel="stylesheet" href="./own.css">'),
+    );
+    const out = emitRouteModuleMapped(graph, { ...host().options });
+    // `base.css` (layout) and `own.css` (route) are copies; `inline.css?inline` is a `<style>`
+    // and `empty.css` keeps nothing for this page.
+    expect(out.hints).toEqual([
+      { href: '/assets/pruned-1.css', rel: 'preload', as: 'style' },
+      { href: '/assets/pruned-2.css', rel: 'preload', as: 'style' },
+    ]);
+  });
+
+  it('a page without a layout, and nothing when no host publishes copies', () => {
+    const page = '<!DOCTYPE html>\n<html><head>\n<link rel="stylesheet" href="./own.css">\n</head><body><em>e</em></body></html>';
+    const graph = graphOf('/app/p.fud', { '/app/p.fud': page });
+    expect(emitPageModuleMapped(graph, host().options).hints).toEqual([
+      { href: '/assets/pruned-1.css', rel: 'preload', as: 'style' },
+    ]);
+    expect(emitPageModuleMapped(graph, host({}, false).options).hints).toEqual([]);
+    expect('hints' in emitPageModuleMapped(graph, {})).toBe(false);
+  });
+});

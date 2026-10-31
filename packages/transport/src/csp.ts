@@ -44,13 +44,23 @@ export function applyNonce(html: string, nonce: string): string {
   return html.split(NONCE_TOKEN).join(nonce);
 }
 
+/** How many characters at the end of `text` could be the start of a token the next chunk ends. */
+function partialToken(text: string): number {
+  for (let n = Math.min(NONCE_TOKEN.length - 1, text.length); n > 0; n -= 1) {
+    if (NONCE_TOKEN.startsWith(text.slice(-n))) return n;
+  }
+  return 0;
+}
+
 /**
  * `applyNonce` over a stream, so the render never has to be buffered to get its nonce.
  *
  * The Service Worker renders with the TOKEN rather than a literal nonce, because the
  * same bytes may be persisted and served again later, and a reused nonce is not a nonce
- * (BUG-02 §4.5). The token can straddle a chunk boundary, so the last
- * `NONCE_TOKEN.length - 1` characters are held back until the next chunk completes them;
+ * (BUG-02 §4.5). The token can straddle a chunk boundary, so the end of a chunk that could be
+ * the start of one is held back until the next chunk completes it — and only that: a page in
+ * parts (SDD-70 §3.5) ends each part with its marker, and holding the marker back until the
+ * next part would keep the browser from reading the part it closes;
  * re-running the substitution over that carry is harmless, as a nonce never contains
  * the token.
  */
@@ -60,13 +70,12 @@ export function applyNonceStream(
 ): ReadableStream<Uint8Array> {
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
-  const hold = NONCE_TOKEN.length - 1;
   let carry = '';
   return source.pipeThrough(
     new TransformStream<Uint8Array, Uint8Array>({
       transform(chunk, controller): void {
         const text = applyNonce(carry + decoder.decode(chunk, { stream: true }), nonce);
-        const keep = Math.max(0, text.length - hold);
+        const keep = text.length - partialToken(text);
         carry = text.slice(keep);
         if (keep > 0) {
           controller.enqueue(encoder.encode(text.slice(0, keep)));

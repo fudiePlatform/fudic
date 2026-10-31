@@ -187,6 +187,7 @@ exports[`the corners, as text > routes/sloppy: the .d.ts and both variants > bro
 import { fails, page, stub, use } from '@fudic/http/contract';
 import { arr, formOf, group, str, text } from '@fudic/forms/contract';
 import { binWire } from '@fudic/http/wire/bin';
+import { readFrames } from '@fudic/http/wire/frames';
 import { minLength, pattern } from "fudic:@fudic/forms/rules";
 
 export const sloppy = formOf({
@@ -197,7 +198,7 @@ export const sloppy = formOf({
     x: str(""),
   }, []),
 }, [], { validateOn: 1 });
-export const load = page({ id: "routes/sloppy", name: "load", chain: [{ steps: [] }], browser: true });
+export const load = page({ id: "routes/sloppy", name: "load", chain: [{ steps: [] }], read: readFrames, browser: true });
 export const LoadFails = fails({ gone: [410] });
 export const odd = stub({ id: "routes/sloppy", name: "odd", method: "GET", args: { thing: "str", grid: { list: { list: "str" } }, loose: { map: ["str", { opt: "str" }] } }, wire: binWire, sig: "43f349c2", returns: "str", chain: [{ steps: [{ use: [] }], compress: { format: "gzip" } }] });
 "
@@ -230,6 +231,7 @@ exports[`the corners, as text > routes/sloppy: the .d.ts and both variants > ser
 import { fails, fn, page, use } from '@fudic/http/contract';
 import { arr, formOf, group, str, text } from '@fudic/forms/contract';
 import { binWire } from '@fudic/http/wire/bin';
+import { readFrames } from '@fudic/http/wire/frames';
 import { minLength, pattern } from "fudic:@fudic/forms/rules";
 
 export const sloppy = formOf({
@@ -240,7 +242,7 @@ export const sloppy = formOf({
     x: str(""),
   }, []),
 }, [], { validateOn: 1 });
-export const load = page({ id: "routes/sloppy", name: "load", chain: [{ steps: [] }] });
+export const load = page({ id: "routes/sloppy", name: "load", chain: [{ steps: [] }], read: readFrames });
 export const LoadFails = fails({ gone: [410] });
 export const odd = fn({ id: "routes/sloppy", name: "odd", method: "GET", args: { thing: "str", grid: { list: { list: "str" } }, loose: { map: ["str", { opt: "str" }] } }, wire: binWire, sig: "43f349c2", returns: "str", chain: [{ steps: [{ use: [] }], compress: { format: "gzip" } }] });
 "

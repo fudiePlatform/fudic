@@ -116,10 +116,13 @@ describe('the published manifest', () => {
   });
 
   it('criterion 11: three routes fit well inside the budget', () => {
-    const bytes = Buffer.byteLength(
-      String(output.find((o) => o.fileName === 'fudic-routes.json')!.source),
-      'utf8',
-    );
+    // The early hints are the one part that is URLs by necessity — a `Link` names a URL — and
+    // they are the server's, not the worker's (SDD-70 §3.10): the budget is measured without them.
+    const parsed = JSON.parse(String(output.find((o) => o.fileName === 'fudic-routes.json')!.source)) as {
+      routes: Record<string, unknown>[];
+    };
+    for (const route of parsed.routes) delete route['hints'];
+    const bytes = Buffer.byteLength(JSON.stringify(parsed), 'utf8');
     // The CSP templates alone are ~250 B and do not grow with the route count, so the
     // budget is about what a ROUTE costs: names, not URLs.
     expect(bytes).toBeLessThanOrEqual(500);

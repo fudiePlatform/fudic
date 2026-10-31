@@ -31,6 +31,28 @@ export interface DataShape {
 export function dataShape(source: ApiSource, index: ApiIndex): DataShape | undefined {
   const load = source.file.declarations.find((d) => d.kind === 'load');
   if (load === undefined) return undefined;
+  // A `later` field is not in `fud-data`: it arrives in the block of the part that awaited it
+  // (SDD-70 §3.5), and at the moment `fud-data` is written it is still a promise.
+  return shapeOf(load.fields.filter((f) => f.later === undefined), index);
+}
+
+/**
+ * The shape of the data endpoint's frames (SDD-70 §3.7): every field of `load`, a `later` one by
+ * what it resolves to, and which are `later`. What the Service Worker reads them with, as JSON:
+ * it never imports a `.fudapi` module.
+ */
+export interface FramesShape extends DataShape {
+  readonly later: readonly string[];
+}
+
+export function framesShape(source: ApiSource, index: ApiIndex): FramesShape | undefined {
+  const load = source.file.declarations.find((d) => d.kind === 'load');
+  if (load === undefined) return undefined;
+  const later = load.fields.filter((f) => f.later !== undefined).map((f) => f.name.text);
+  return { ...shapeOf(load.fields, index), later };
+}
+
+function shapeOf(fields: readonly TypedField[], index: ApiIndex): DataShape {
   const types: Record<string, Record<string, DataTy>> = {};
 
   const fieldsOf = (fields: readonly TypedField[]): Record<string, DataTy> =>
@@ -60,5 +82,5 @@ export function dataShape(source: ApiSource, index: ApiIndex): DataShape | undef
     }
   }
 
-  return { fields: fieldsOf(load.fields), types };
+  return { fields: fieldsOf(fields), types };
 }

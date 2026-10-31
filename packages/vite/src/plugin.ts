@@ -27,6 +27,7 @@ import {
 import { type FudicOptions, type ResolvedOptions, resolveOptions } from './options.js';
 import { discoverRoutes, type RouteBuild } from './discover.js';
 import { buildManifest } from './manifest.js';
+import { routeHints } from './hints.js';
 import { emitRenderChunk, routeApi } from './wrapper.js';
 import { emitBootBootstrap, emitSwBootstrap } from './bootstrap.js';
 import {
@@ -54,6 +55,7 @@ import {
   routeHydrates,
   routeNameLookup,
   routeUsesDi,
+  routeInParts,
 } from './client.js';
 import {
   INLINE_QUERY,
@@ -62,6 +64,7 @@ import {
   translateScript,
   type LocaleCompile,
   type ResolveIo,
+  type EarlyHint,
 } from '@fudic/compiler';
 import {
   Catalogs,
@@ -90,6 +93,7 @@ import {
 } from './i18n.js';
 import {
   BROWSER_DIR,
+  DATA_FRAMES_TYPE as FRAMES_TYPE,
   ERROR_PREFIX,
   SERVER_DIR,
   RUNTIME_CACHE_PREFIX,
@@ -176,7 +180,8 @@ import { devUrl, devManifest, devClientTag, devClientPrefix, withInlineSourceMap
 import {
   documentFiles,
   matchRouteBuild,
-  renderRouteHtml,
+  renderRouteStream,
+  type OpenedPage,
   loadRouteData,
   pendingResponse,
   type PendingResponse,
@@ -518,6 +523,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    */
   let coordinators = new Map<string, Coordinator | null>();
   /**
+   * The `.fud` of a page, with the locale it was compiled for → the sheets its head links, as
+   * the emit hinted them (SDD-70 §3.10). Filled by the host pass, read by the manifest.
+   */
+  const pageHints = new Map<string, readonly EarlyHint[]>();
+  const pageHintKey = (path: string, locale: string | undefined): string =>
+    `${path.replace(/\\/gu, '/')}#${locale ?? ''}`;
+  /**
    * Route pattern → what its page hydrates at LOAD, by the name the runtime asks for it, the
    * locale's directory included (BUG-53 §4.3). Filled with the coordinators, and only in a
    * build with no worker: with one the head preloads nothing.
@@ -637,6 +649,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             ? piece('@fudic/core', 'warm-sw', '@fudic/core', 'createServiceWorkerWarmChannel')
             : piece('@fudic/core', 'warm-preload', '@fudic/core', 'createPreloadWarmChannel'),
           di: piece('@fudic/di', 'page', '@fudic/di/page', 'installPage'),
+          parts: piece('@fudic/core', 'parts', '@fudic/core', 'readParts'),
           urls: {
             ...piece('@fudic/transport', 'urls', '@fudic/transport', 'createUrlResolver'),
             // Not a startup piece: the coordinator CALLS it to derive URLs, so it keeps the
@@ -1100,10 +1113,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           const pending = pendingResponse();
           live
             .blocking(documentFiles(rb.absPath, io))
-            .then(async (blocked): Promise<{ status: number; html?: string; location?: string }> => {
+            .then(async (blocked): Promise<{ status: number; html?: string; location?: string; opened?: OpenedPage }> => {
               if (blocked !== undefined) throw asError(blocked);
               try {
-                const html = await renderRouteHtml(
+                // Opened, not drained (SDD-70 §4.3): what decides the status has run once the
+                // head is in, and the rest goes out as it is rendered.
+                const opened = await renderRouteStream(
                   (id) => server.ssrLoadModule(id) as Promise<RenderModule>,
                   WRAPPER_PREFIX + rb.route.pattern,
                   rb.route.pattern,
@@ -1111,8 +1126,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
                   nonce,
                   request,
                   pending,
+                  // A rejected `later` field with no `@catch` (SDD-70 §3.4).
+                  (error) => toOverlay(server, error),
                 );
-                return { status: pending.status, html };
+                return { status: pending.status, opened };
               } catch (err) {
                 // What `load` or `layout` threw (SDD-56 §4.8): a redirect, or the error page
                 // with its status — and what is not an `HttpError`, in the overlay as well.
@@ -1140,7 +1157,25 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
               // In dev the HMR client is injected inline and evaluates at load; a strict
               // policy would kill it. The CSP is exercised in preview and production,
               // which is where the emitted output is what ships.
-              res.end(await server.transformIndexHtml(url, page.html!)); // injects the dev client
+              const opened = page.opened;
+              if (opened === undefined || opened.whole) {
+                res.end(await server.transformIndexHtml(url, page.html ?? opened!.head)); // injects the dev client
+                return;
+              }
+              // The dev client goes in the head, which is all of the page Vite gets to see; the
+              // body streams behind it untouched (SDD-70 §4.3).
+              const head = await server.transformIndexHtml(url, `${opened.head}</html>`);
+              res.write(head.slice(0, head.lastIndexOf('</html>')));
+              res.on('close', () => {
+                if (!res.writableEnded) opened.cancel();
+              });
+              try {
+                for await (const chunk of opened.rest) res.write(chunk);
+              } catch (err) {
+                // After the first byte the status is out: an error can only be reported (§3.4).
+                toOverlay(server, err);
+              }
+              res.end();
             })
             .catch((err: Error) => {
               server.ssrFixStacktrace(err);
@@ -1258,13 +1293,23 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         }
         const pending = pendingResponse();
         previewRender(edgeDir, record, pathname, nonce, toRequest(req, res), pending)
-          .then((html) => {
+          .then(async (opened) => {
             // What `load` wrote first (SDD-69 §4.2): fudic's Content-Type and CSP win over it.
             writeHeaders(res, pending.headers);
             res.statusCode = pending.status;
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.setHeader('Content-Security-Policy', cspFor(manifest.csp.document, nonce));
-            res.end(html);
+            // The page as it is rendered (SDD-70 §4.3): the head now, each part when it is in.
+            res.write(opened.head);
+            res.on('close', () => {
+              if (!res.writableEnded) opened.cancel();
+            });
+            try {
+              for await (const chunk of opened.rest) res.write(chunk);
+            } catch {
+              // After the first byte the status is out: what fails now can only be cut short.
+            }
+            res.end();
           })
           .catch(async (err: unknown) => {
             // What `load` or `layout` threw (SDD-56 §4.8): the redirect, or the error page —
@@ -1418,6 +1463,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             {
               hydrates: routeHydrates(rb.absPath, io),
               injects: routeUsesDi(rb.absPath, io),
+              parted: routeInParts(rb.absPath, io),
               // Only read with no worker: then the coordinator carries their graph.
               warms: routeWarmTags(rb.absPath, io, rb.route.pattern).map((tag) => `${dir}${tag}`),
             },
@@ -1661,7 +1707,13 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             : { mode: 'build', base, ...(dir === '' ? {} : { dir }) },
         );
         const coordinator = coordinatorFor(
-          { hydrates: true, injects: discoverComponents(builds, io).some((c) => c.usesDi) },
+          {
+            hydrates: true,
+            injects: discoverComponents(builds, io).some((c) => c.usesDi),
+            // One coordinator for every page in dev: it reads parts when any route has them. On
+            // a page without, the reader finds no marker and the end blocks are read as ever.
+            parted: builds.some((rb) => routeInParts(rb.absPath, io)),
+          },
           params,
         );
         // `hydrates: true` above, so there is always one: in dev the tag is served at a fixed
@@ -1712,6 +1764,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           pageModule: pageModuleOf(rb),
           hasDi: routeUsesDi(rb.absPath, io),
           ...routeApi(rb, SERVER_ROOT_ID, isDev),
+          ...(rb.analysis.buffer !== undefined ? { buffer: rb.analysis.buffer } : {}),
           // In dev the origin is the request's: a page served at localhost links to localhost.
           ...alternatesOf(rb, locales, base, isDev ? undefined : site),
           // In DEV this module IS the edge: the dev server renders through the module
@@ -1817,6 +1870,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         return null;
       }
       const result = compiled.result;
+      if (result.hints !== undefined) pageHints.set(pageHintKey(path, locale), result.hints);
       // A literal asset URL with no file on disk: warn (FUD0363) and keep the literal —
       // the emit already left it un-linked, so the build does not abort.
       const diagnostics: FudDiagnostic[] = result.missingAssets.map((spec) => FUD0363({ file: path, spec }));
@@ -2378,12 +2432,36 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
 
       // 4. The manifest: the one contract, emitted at a fixed URL.
       const unlinked: FudDiagnostic[] = [];
+      // The early hints of each route (SDD-70 §3.10): the sheets its head links, then the entries
+      // it loads and their static imports in depth, under the build's own id. Off with
+      // `earlyHints: false`.
+      //
+      // What `main` loads is walked in the bundle, statically: the chunks it imports (a runtime
+      // bundled into the app) and the published pieces under all of them (a linked runtime).
+      const hintItems = bundleItems(bundle);
+      const hintsOf = (rb: RouteBuild): readonly string[] => {
+        const boot = runtimeEntriesFor(rb.route.pattern).boot.split(BUILD_TOKEN).join(buildId);
+        const coordinator = coordinators.get(rb.route.pattern) ?? null;
+        const id = coordinator === null ? undefined : coordinatorIds.get(coordinator.source);
+        const key = Object.keys(bundle).find((k) => {
+          const item = bundle[k]!;
+          return item.type === 'chunk' && id !== undefined && item.facadeModuleId === id;
+        });
+        const graph = key === undefined ? [] : reachableChunks(hintItems, (i) => i.fileName === key);
+        const modules = [
+          boot,
+          ...graph.map((k) => `${base}${bundle[k]!.fileName}`),
+          ...loadedPieces(graph.map((k) => codeOf.get(k)).join('\n'), runtime),
+        ];
+        return routeHints(pageHints.get(pageHintKey(rb.absPath, rb.locale)) ?? [], modules);
+      };
       const { file, diagnostics } = buildManifest(builds, {
         build: buildId,
         base,
         serviceWorker: swConfig !== null,
         hydrateDeps,
         hydratePieces,
+        ...(project.config?.earlyHints === false ? {} : { hintsOf }),
         depsOf: (rb) => {
           if (!link.entries.has(rb.route.pattern)) {
             unlinked.push(FUD0399({ pattern: rb.route.pattern }));
@@ -2621,10 +2699,10 @@ async function previewRender(
   nonce: string,
   request: Request,
   response: PendingResponse,
-): Promise<string> {
+): Promise<OpenedPage> {
   const mod = await importEdgeChunk(edgeDir, record.pattern);
-  const { drainStream, edgeContext, withRequest } = await import('./serve.js');
-  return drainStream(mod.render(withRequest(edgeContext(record.pattern, pathname, nonce), request, response)));
+  const { openStream, edgeContext, withRequest } = await import('./serve.js');
+  return openStream(mod.render(withRequest(edgeContext(record.pattern, pathname, nonce), request, response)));
 }
 
 /** Run a route's `@server load` in preview — the generated data endpoint. */
@@ -2634,22 +2712,43 @@ async function previewData(
   pathname: string,
   request: Request,
   response: PendingResponse,
-): Promise<unknown> {
+): Promise<ReadableStream<Uint8Array> | null> {
   const mod = await importEdgeChunk(edgeDir, record.pattern);
   if (typeof mod.data !== 'function') {
-    return {};
+    return null;
   }
   const { edgeContext, withRequest } = await import('./serve.js');
   const { nonce: _nonce, ...ctx } = withRequest(edgeContext(record.pattern, pathname, ''), request, response);
   return mod.data(ctx);
 }
 
-/** The data endpoint's answer (§4.5): what `load` wrote, then the JSON (SDD-69 §4.2). */
-function sendData(res: import('node:http').ServerResponse, pending: PendingResponse, data: unknown): void {
+/**
+ * The data endpoint's answer (§4.5): what `load` wrote, then its frames as they come (SDD-70
+ * §3.7). A route that resolves nothing has no endpoint.
+ */
+async function sendData(
+  res: import('node:http').ServerResponse,
+  pending: PendingResponse,
+  frames: ReadableStream<Uint8Array> | null,
+): Promise<void> {
+  if (frames === null) {
+    res.statusCode = 404;
+    res.end();
+    return;
+  }
   writeHeaders(res, pending.headers);
   res.statusCode = pending.status;
-  res.setHeader('Content-Type', 'application/json');
-  res.end(JSON.stringify(data));
+  res.setHeader('Content-Type', FRAMES_TYPE);
+  const reader = frames.getReader();
+  res.on('close', () => {
+    if (!res.writableEnded) void reader.cancel();
+  });
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    res.write(value);
+  }
+  res.end();
 }
 
 /**

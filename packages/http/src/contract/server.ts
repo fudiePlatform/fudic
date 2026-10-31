@@ -12,7 +12,7 @@
 import { FN_PREFIX } from '@fudic/conventions';
 import { createRoot } from '@fudic/di';
 import { run } from '../compose.js';
-import { HttpError, notFound } from '../errors.js';
+import { HttpError, notFound, type Problem } from '../errors.js';
 import { serverContext } from '../server/context.js';
 import { bodyArgs } from '../server/body.js';
 import { queryArgs, valueResponse, withForm, type DispatchOptions } from '../server/dispatch.js';
@@ -165,5 +165,41 @@ export function runLoad(load: PagePiece<(ctx: never) => unknown>, ctx: ServerCon
   const handler = load.slot.get();
   if (handler === undefined) return Promise.reject(missing(load.slot.missing(), dev));
   const { steps } = compose(load.spec.chain ?? [], 'server');
-  return run(steps as never, ctx, (inner: ServerContext) => (handler as (c: ServerContext) => unknown)(inner)).then(unmarked);
+  const later = load.spec.later ?? [];
+  return run(steps as never, ctx, (inner: ServerContext) => (handler as (c: ServerContext) => unknown)(inner))
+    .then(unmarked)
+    .then((data) => (later.length === 0 ? data : settleLater(data as Record<string, unknown>, later, dev)));
+}
+
+/**
+ * What a `later` field comes to: its value, or the `Problem` it failed with — and the error
+ * itself, for whoever reports it (SDD-70 §3.4).
+ */
+export type Settled = { readonly ok: unknown } | { readonly error: Problem; readonly cause: unknown };
+
+/**
+ * `data` with every `later` field settled, the moment `load` returns (SDD-70 §4.2).
+ *
+ * Each promise gets its handler HERE, before a byte is painted: one the view never awaits — in
+ * the branch of an `@if` that does not render — fails without an unhandled rejection, and
+ * nothing waits for it at the end. What the page awaits never rejects: a failure is a
+ * `Problem` by the rule of `problemOf` (an `HttpError` keeps its status, anything else is a
+ * `500`, `detail` only in dev). A redirect lands there too, and in dev says it cannot be
+ * followed: the response is already a `200`.
+ */
+export function settleLater(data: Record<string, unknown>, later: readonly string[], dev: boolean): Record<string, unknown> {
+  const out = { ...data };
+  for (const name of later) {
+    out[name] = Promise.resolve(data[name]).then(
+      (ok): Settled => ({ ok }),
+      (cause: unknown): Settled => {
+        const error = problemOf(cause, dev);
+        if (dev && error.status >= 300 && error.status < 400) {
+          console.warn(`fudic: the later field "${name}" redirected after the first byte; the page cannot follow it.`);
+        }
+        return { error, cause };
+      },
+    );
+  }
+  return out;
 }

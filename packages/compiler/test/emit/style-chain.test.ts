@@ -19,7 +19,7 @@ import {
   emitComponentClientModule,
   type ProjectStyle,
 } from '../../src/emit/index.js';
-import { memoryIo, pageModuleOf, ssrIo } from './_support.js';
+import { drain, memoryIo, pageModuleOf, ssrIo } from './_support.js';
 
 const TOKENS: ProjectStyle = { specifier: '_tokens', css: ':host { --accent: red; }' };
 const UI: ProjectStyle = { specifier: '_ui', css: ':host { display: block; }' };
@@ -57,7 +57,7 @@ async function html(): Promise<string> {
     projectStyles: [TOKENS, UI, TIENDA],
     styleChains: CHAINS,
   });
-  return [...page({}, ssrIo().io)].join('');
+  return await drain(page({}, ssrIo().io));
 }
 
 describe('the chain of the package that defines the component', () => {
@@ -100,7 +100,7 @@ describe('the chain of the package that defines the component', () => {
       projectStyles: [TOKENS],
       styleChains: new Map(),
     });
-    const out = [...page({}, ssrIo().io)].join('');
+    const out = await drain(page({}, ssrIo().io));
     expect(out).toContain('shadowrootadoptedstylesheets="ui-card"');
     expect(out).toContain('shadowrootadoptedstylesheets="app-panel"');
   });
@@ -109,7 +109,7 @@ describe('the chain of the package that defines the component', () => {
     const page = await pageModuleOf(resolveComponents('/ws/apps/tienda/src/routes/index.fud', files), {
       projectStyles: [TOKENS, UI],
     });
-    const out = [...page({}, ssrIo().io)].join('');
+    const out = await drain(page({}, ssrIo().io));
     expect(out).toContain('shadowrootadoptedstylesheets="_tokens _ui ui-card"');
     expect(out).toContain('shadowrootadoptedstylesheets="_tokens _ui app-panel"');
   });

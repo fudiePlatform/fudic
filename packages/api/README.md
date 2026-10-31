@@ -15,6 +15,24 @@ middlewares, patterns, messages and the chain. It never holds code. fudic genera
 This package is the language itself and depends only on `@fudic/diagnostics`: no compiler, no
 Oxc.
 
+## Fields that arrive later
+
+A field of `load` can end with `later`: its handler returns a promise for it, unawaited, and
+the page goes out without waiting for it. The view paints it inside `@await data.<field>`.
+
+```
+load ssr
+  title  str
+  users  Person[]  later
+```
+
+```ts
+load.handle(async () => ({ title: 'Users', users: db.listUsers() }));
+```
+
+The generated type is `readonly users: Promise<readonly Person[]>`. `later` only applies to the
+fields of `load`; anywhere else it is `FUD1324`.
+
 ## What it exports
 
 ```ts

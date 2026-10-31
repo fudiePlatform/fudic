@@ -360,6 +360,14 @@
     "hydration": "gesture",
     "hydrates": []
   },
+  "examples/basic/src/routes/espera.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": [
+      "app-counter"
+    ]
+  },
   "examples/basic/src/routes/formularios.fud": {
     "kind": "route",
     "reactive": false,
@@ -1018,6 +1026,12 @@
     "hydrates": []
   },
   "packages/testing/test/app/src/routes/contador.fud": {
+    "kind": "route",
+    "reactive": true,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/testing/test/app/src/routes/espera.fud": {
     "kind": "route",
     "reactive": true,
     "hydration": "gesture",

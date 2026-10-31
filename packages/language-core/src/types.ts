@@ -121,6 +121,15 @@ export interface ServerImport {
   readonly load: boolean;
   /** Its functions and its forms: the names the file gets without importing them. */
   readonly names: readonly string[];
+  /** The fields of its `load` marked `later` (SDD-70): what `@await` takes. Absent: none. */
+  readonly later?: readonly LaterField[];
+}
+
+/** A field of `load` marked `later`, as the editor offers it after `@await data.` (SDD-70). */
+export interface LaterField {
+  readonly name: string;
+  /** The type as the `.fudapi` writes it: `Person[]`. What it resolves to. */
+  readonly type: string;
 }
 
 /** One `<link rel="snippet">`, as the projection needs it. */

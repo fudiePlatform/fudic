@@ -69,6 +69,7 @@ const PIECES: Readonly<Record<string, string>> = {
   hydrate: 'bundle/hydrate.ts',
   'warm-sw': 'bundle/warm-sw.ts',
   'warm-preload': 'bundle/warm-preload.ts',
+  parts: 'bundle/parts.ts',
   registry: 'src/hydrate/registry.ts',
   live: 'src/hydrate/live.ts',
   signal: 'bundle/signal.ts',

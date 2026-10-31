@@ -17,6 +17,13 @@ import type { HtmlContent } from '../html/index.js';
 export type ControlNode = IfNode | ForeachNode | ForNode | WhileNode | SwitchNode;
 
 /**
+ * What `parseControl` produces: the five control constructs, and `@await`. `@await` stays out
+ * of `ControlNode` on purpose: it has no header in parentheses and no key, and every reader of
+ * a header or a key would otherwise have to rule it out. Who needs it asks for it by name.
+ */
+export type ControlConstruct = ControlNode | AwaitNode;
+
+/**
  * The `key (…)` clause that follows a control header (decisions 91–93, SDD-30 §3.5).
  *
  * It is written OUTSIDE the parenthesis so the header still reaches Oxc verbatim, and it
@@ -136,6 +143,33 @@ export interface SwitchNode extends Node, KeyedNode {
   readonly type: 'switch';
   readonly header: ControlHeader;
   readonly cases: readonly SwitchCase[];
+}
+
+/**
+ * `@await data.users { … } @catch (e) { … }` — decisions 168, 169 (SDD-70). The body paints
+ * when the `later` field resolves, with `data.users` already its value; the `@catch` when it
+ * fails, with `e` a `Problem`.
+ *
+ * It takes no parentheses and no key: what follows the keyword is the read of a field, as
+ * written, up to the `{`. Whether it IS a `later` field of `data` is semantics' (`FUD1320`).
+ */
+export interface AwaitNode extends Node {
+  readonly type: 'await';
+  /** What is awaited, trimmed: `data.users`. Empty at the `{` when nothing was written. */
+  readonly expression: Span;
+  readonly body: readonly HtmlContent[];
+  readonly catch?: CatchBlock;
+}
+
+/**
+ * `@catch (e) { … }` right after the body of an `@await`. A child of the `@await` and not a
+ * sibling, like `@empty` of a loop, so the `@await`'s span covers it.
+ */
+export interface CatchBlock extends Node {
+  readonly type: 'catch-block';
+  /** `( e )`: its `inner` is the name the `Problem` takes. Degraded when the `(` is missing. */
+  readonly header: ControlHeader;
+  readonly body: readonly HtmlContent[];
 }
 
 /** A `case <expr>:` (arbitrary expression, decision 15) or `default:`. Independent body. */

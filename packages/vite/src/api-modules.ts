@@ -21,6 +21,7 @@ import {
   createApiIndex,
   dataShape,
   emitDeclarations,
+  framesShape,
   emitModule,
   layoutPropsType,
   parseApi,
@@ -123,6 +124,7 @@ export class ApiProject {
     ];
     const route = this.context(source).route === undefined ? undefined : `${path.slice(0, -API_EXTENSION.length)}.fud`;
     const data = dataShape(source, this.#read().index);
+    const later = decls.flatMap((d) => (d.kind === 'load' ? d.fields.filter((f) => f.later !== undefined) : []));
     return {
       id: source.id,
       load: has('load'),
@@ -132,6 +134,7 @@ export class ApiProject {
       forms: [...new Set(forms)],
       ...(route !== undefined ? { route } : {}),
       ...(data !== undefined ? { data } : {}),
+      ...(later.length > 0 ? { later: later.map((f) => f.name.text) } : {}),
     };
   }
 
@@ -156,10 +159,12 @@ export class ApiProject {
     if (source === undefined) return undefined;
     const decls = source.file.declarations;
     const load = decls.find((d): d is LoadDecl => d.kind === 'load');
+    const frames = framesShape(source, this.#read().index);
     return {
       id: source.id,
       file: source.path,
       ...(load !== undefined ? { load } : {}),
+      ...(frames !== undefined ? { frames } : {}),
       paths: decls.some((d) => d.kind === 'paths'),
       layout: decls.some((d) => d.kind === 'layout'),
     };
