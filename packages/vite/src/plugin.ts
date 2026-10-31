@@ -100,6 +100,7 @@ import {
   DATA_FRAMES_TYPE as FRAMES_TYPE,
   DEFAULT_LOCALE,
   ERROR_PREFIX,
+  PIPES_DIR,
   SERVER_DIR,
   RUNTIME_CACHE_PREFIX,
   RUNTIME_DIR,
@@ -444,9 +445,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    */
   let api = new ApiProject(root);
   /** The app's two folders of implementations, from `fudic.json` or the conventions (§3.15). */
-  const apiFolders = (): { readonly server: string; readonly browser: string } => ({
+  const apiFolders = (): { readonly server: string; readonly browser: string; readonly pipes: string } => ({
     server: project.config?.server ?? SERVER_DIR,
     browser: project.config?.browser ?? BROWSER_DIR,
+    pipes: project.config?.pipes ?? PIPES_DIR,
   });
   /** The generated root of a side (§4.4). */
   const rootSource = (side: 'server' | 'browser'): string =>

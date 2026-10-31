@@ -97,6 +97,10 @@ const EXCEPTIONS = {
       why: 'The package version constant. Nothing in a browser reads it; it exists for whoever inspects the package.',
     },
     {
+      match: /^@fudic\/core:src\/compiled-away\.ts:/,
+      why: 'SDD-71: `locale` and `format` are replaced by the compiler in every module of a locale, as a literal and as the pipe\'s own `format`. Reaching one at runtime is a module that escaped the compiler, and it throws.',
+    },
+    {
       match: /^@fudic\/core:src\/strategy\.ts:/,
       why: 'A route strategy is a build-time declaration the compiler reads out of the source. It never reaches a browser.',
     },

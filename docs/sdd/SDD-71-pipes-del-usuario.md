@@ -522,3 +522,9 @@ Filas nuevas de A.2 («El `@code` que el servidor evalúa» y «Lo que se pinta�
    tests: `implement((value, locale) => value)` sigue tipando tras añadir `max`, porque
    TypeScript acepta una función con menos parámetros. Lo que rompe es lo que importa — cada uso
    del pipe sin fijarlos y el test generado —; §4.1 paso 2 y el criterio 7 dicen eso.
+9. **`FUD0870` en `examples/workspace` se arregla aquí** (como el punto 6): sus apps no tienen
+   `tsconfig.json` y el build lo avisa desde antes de esta spec. Va con la tarea 23, que ya toca
+   ese ejemplo.
+10. **Una pieza `core/pipe` para lo que comparten los presets.** Las cuatro piezas de presets
+    importan el helper que guarda el formatter por idioma: copiarlo en cada una pondría el mismo
+    módulo en cuatro piezas (SDD-45 §4.3, segunda regla).

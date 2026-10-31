@@ -81,6 +81,13 @@ const PIECES: Readonly<Record<string, string>> = {
   'route-data': 'src/route-data.ts',
   subscribe: 'src/subscribe.ts',
   element: 'src/element.ts',
+  // One piece per preset, so a page downloads only the `Intl` formatter it formats with
+  // (SDD-71 §4.3); `number` holds the three over `NumberFormat`. `pipe` is what they share.
+  pipe: 'src/pipe.ts',
+  date: 'src/pipes/date.ts',
+  number: 'src/pipes/number.ts',
+  'relative-time': 'src/pipes/relative-time.ts',
+  list: 'src/pipes/list.ts',
 };
 
 /**
@@ -115,6 +122,7 @@ const FRONTIERS: Readonly<Record<string, string>> = {
   'src/effect.ts': 'effect',
   'src/subscribe.ts': 'subscribe',
   'src/element.ts': 'element',
+  'src/pipe.ts': 'pipe',
 };
 
 /** Absolute path → the piece that owns it, resolved once so the hook below is a lookup. */
