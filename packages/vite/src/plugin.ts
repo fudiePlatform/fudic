@@ -1622,7 +1622,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       //
       // Once per locale when the app has them (SDD-58 §4.6): a chunk compiled for `en`, under
       // `en/` when there are two or more — so the client of `/en/…` gets only `en`'s.
-      const chunkLocales: readonly (string | undefined)[] = locales;
+      // One locale tags nothing (SDD-71): its chunks are the untagged ones, compiled for it.
+      const chunkLocales: readonly (string | undefined)[] = locales.length < 2 ? [undefined] : locales;
       const localized = (id: string, locale: string | undefined): string =>
         locale === undefined ? id : withLocale(id, locale);
       for (const locale of chunkLocales) {

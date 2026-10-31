@@ -202,7 +202,8 @@ export async function runEdgePass(
   // In an app with languages, what no route brings in — `functions.mjs` and the root — enters
   // as the first locale's: the pages of that locale and the functions share ONE graph, so a
   // module that keeps data is one instance for both, and the graph is compiled once.
-  const home = extras.locale?.locales[0];
+  // One locale tags nothing (SDD-71): its untagged graph is already compiled for it.
+  const home = (extras.locale?.locales.length ?? 0) < 2 ? undefined : extras.locale!.locales[0];
   const atHome = (id: string): string => (home === undefined ? id : withLocale(id, home));
   if (extras.functions !== undefined) input[FUNCTIONS_ENTRY] = atHome(FUNCTIONS_ID);
   if (extras.root !== undefined) input[ROOT_ENTRY] = atHome(extras.root);

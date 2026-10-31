@@ -73,9 +73,12 @@ export function localeChunkFileNames(
   return (chunk) => {
     const locale = chunk.moduleIds.map(localeOf).find((l) => l !== undefined);
     // Named after a generated contract: one of its modules is `fudic:…/<name>`.
+    // `fudic:rules` at the root of the project as much as `fudic:@fudic/forms/rules`.
     const api = chunk.moduleIds.some((id) => {
       const bare = id.replace(/^\0/u, '').split('?')[0]!;
-      return bare.startsWith('fudic:') && bare.slice(bare.lastIndexOf('/') + 1) === chunk.name;
+      if (!bare.startsWith('fudic:')) return false;
+      const path = bare.slice('fudic:'.length);
+      return path.slice(path.lastIndexOf('/') + 1) === chunk.name;
     });
     return `${dir}/${locale === undefined ? '' : `${locale}-`}${api ? 'api-' : ''}[name]-[hash].js`;
   };
