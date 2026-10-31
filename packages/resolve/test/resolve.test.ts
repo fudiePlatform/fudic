@@ -118,7 +118,7 @@ describe('a package href', () => {
           api: 'fudapi',
           // SDD-70 §3.10, by default.
           earlyHints: true,
-          componentStyles: 'inline',
+          css: 'inline',
         },
       },
     });

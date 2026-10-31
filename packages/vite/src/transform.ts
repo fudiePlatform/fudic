@@ -251,6 +251,11 @@ function emitOptionsFor(
     ...(assets === undefined
       ? {}
       : { pruneStyles: true, assetSheet: assetSheetFrom(assets, baseDir) }),
+    // And with `css: "link"`, every sheet of the page is a file the same registry names
+    // (SDD-73 §3.5): the head's `<style>`, an `?inline` sheet, each component's.
+    ...(assets?.linkCss === true
+      ? { componentSheet: (name: string, css: string): string => assets.namedSheet(name, css) }
+      : {}),
     // The bytes of a resource the author asked to embed (SDD-45 §3.6). Read here because
     // reading a file is the host's, and read at emit time and not before: `?inline` is rare,
     // and a project's assets are not something to load into memory on the chance one of them

@@ -35,8 +35,20 @@ function sheetOf(doc: Document, specifier: string): CSSStyleSheet | undefined {
   return undefined;
 }
 
-/** Adopt into `shadow` the sheets its host's `data-fud-adopt` names, in that order. */
+/**
+ * Adopt into `shadow` the sheets its host's `data-fud-adopt` names, in that order — or, for a
+ * component whose sheets are files (`data-fud-sheets`, SDD-73 §3.5), end `shadow` with a
+ * `<link rel="stylesheet">` per file, as the server writes them in its template. Called once
+ * the shadow root is built: the links go AFTER its content, where hydration never looks.
+ */
 export function adoptSheets(host: Element, shadow: ShadowRoot): void {
+  const files = (host.getAttribute('data-fud-sheets') ?? '').split(' ').filter(Boolean);
+  for (const href of files) {
+    const link = host.ownerDocument.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = href;
+    shadow.append(link);
+  }
   const specifiers = (host.getAttribute('data-fud-adopt') ?? '').split(' ').filter(Boolean);
   if (specifiers.length === 0) return;
   const adopted: CSSStyleSheet[] = [];

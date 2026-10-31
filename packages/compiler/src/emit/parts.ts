@@ -86,13 +86,30 @@ function inlineStyleExpr(el: ElementNode, linker: AssetLinker): string | null {
 export function prunableHref(
   el: ElementNode,
   linker: AssetLinker,
-  resolve: (href: string) => string = (href) => href,
+  resolve: (href: string) => string,
 ): string | null {
   if (el.name !== 'link' || literalAttr(el, 'rel') !== 'stylesheet') return null;
   if (interpolatesAttrs(el)) return null;
   const href = literalAttr(el, 'href');
   if (href === null || href.startsWith('/')) return null;
   return linker.textOf(resolve(href)) === null ? null : href;
+}
+
+/**
+ * Whether the ROUTE delivers this element of a `<head>` (SDD-49 §4.6, SDD-73 §3.5): a sheet it
+ * prunes, and with `css: "link"` also a `<style>` it moves to a file. A `<style>` whose
+ * attributes carry a `@` is known only when the page is painted, and stays where it is. The
+ * layout and the route ask this same question about the same element, so the keys they agree
+ * on cannot drift.
+ */
+export function deliveredSheet(
+  el: ElementNode,
+  linker: AssetLinker,
+  linkCss: boolean,
+  resolve: (href: string) => string = (href) => href,
+): boolean {
+  if (linkCss && el.name === 'style') return !interpolatesAttrs(el);
+  return prunableHref(el, linker, resolve) !== null;
 }
 
 /**

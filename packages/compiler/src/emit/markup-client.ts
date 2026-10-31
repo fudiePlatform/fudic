@@ -283,6 +283,19 @@ export interface ClientScope {
    * branches have to answer it identically.
    */
   readonly projectAdopt: ProjectAdopt;
+  /**
+   * The sheets each tag wears as files, joined (SDD-73 §3.5) — the server branch's same list.
+   * With it, a fabricated host carries `data-fud-sheets`, and the runtime ends its shadow root
+   * with a `<link>` per sheet.
+   */
+  readonly sheets?: (tag: string) => string;
+  /**
+   * How many `<link>`s THIS component's shadow root ends with, its sheets as files (SDD-73
+   * §3.5). The adopt path finds a trailing run of the root as its last node, and the last
+   * nodes of a hydrated root are those links: it steps back over them. `0` — or absent — with
+   * no files.
+   */
+  readonly trailing?: number;
 }
 
 /** One slot of a child's positional payload: the expression, and where it can move from. */
@@ -912,7 +925,7 @@ export class ClientMarkupEmitter {
     if (run.interpolated) return false;
     // The run that CLOSES the body: nothing of the block follows it, so what it merged with
     // is the level's next run — the very node handed back as the insertion anchor.
-    if (via === `$dom.lastChild(${level.dom})`) return true;
+    if (via === this.#last(level.dom)) return true;
     // And the run that OPENS it, which merged with the level's run in front. That one is not
     // an anchor, so nothing breaks when it goes — it is simply the level's TEXT, and a block
     // that took it with it deleted a sentence the author wrote outside the construct. An
@@ -936,9 +949,21 @@ export class ClientMarkupEmitter {
   #anchor(level: Level, tail: Tail): string {
     if (tail.element) return `$dom.previousSibling(${level.cursor!})`;
     if (tail.any && level.cursor !== null) {
-      return `${level.cursor} ? $dom.previousSibling(${level.cursor}) : $dom.lastChild(${level.dom})`;
+      return `${level.cursor} ? $dom.previousSibling(${level.cursor}) : ${this.#last(level.dom)}`;
     }
-    return `$dom.lastChild(${level.dom})`;
+    return this.#last(level.dom);
+  }
+
+  /**
+   * The last node of a level the author wrote. At the component's root it is the one before
+   * the `<link>`s its sheets end it with, when they are files (SDD-73 §3.5); anywhere else,
+   * and with no files, simply the last.
+   */
+  #last(dom: string): string {
+    let last = `$dom.lastChild(${dom})`;
+    if (dom !== '$shadow') return last;
+    for (let i = 0; i < (this.#scope.trailing ?? 0); i += 1) last = `$dom.previousSibling(${last})`;
+    return last;
   }
 
   #fresh(): string {
@@ -971,9 +996,14 @@ export class ClientMarkupEmitter {
       // `data-fud-adopt` carries the style specifier the shared sheet is keyed by (SDD-18 D-6),
       // and only for a child that HAS a sheet (BUG-31 §T4) — the same condition the server
       // branch applies, because both write the same host.
-      const adopt = adoptListOf(this.#scope.projectAdopt, el.name, this.#scope.styled.has(el.name));
+      // With `css: "link"` the same decision names files (SDD-73 §3.5): `data-fud-sheets`.
+      const sheets = this.#scope.sheets;
+      const [marker, adopt] =
+        sheets === undefined
+          ? ['data-fud-adopt', adoptListOf(this.#scope.projectAdopt, el.name, this.#scope.styled.has(el.name))]
+          : ['data-fud-sheets', sheets(el.name)];
       if (adopt !== '') {
-        this.#fab.line(`$dom.setAttr(${v}, 'data-fud-adopt', ${JSON.stringify(adopt)});`);
+        this.#fab.line(`$dom.setAttr(${v}, '${marker}', ${JSON.stringify(adopt)});`);
       }
       // The host's own attributes, same as the server writes them (BUG-16 §4.1): the two
       // branches have to agree byte for byte, or `h` adopts a tree it does not recognise.

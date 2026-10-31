@@ -851,9 +851,6 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // The registry knows it too, because a root-absolute `href` in a `.fud` names a file
       // of THIS directory: that is what makes it checkable, and what puts it in the shell.
       isDev = config.command === 'serve';
-      // Pruned copies are served from memory in dev, under a prefix no file of the project
-      // can collide with (SDD-49 §4.8); a build publishes them beside every other asset.
-      linked = new LinkedAssets(config.base, publicDir, isDev ? DEV_SHEET_DIR : 'assets');
       // Forwarded to the Service Worker's nested build, which runs `configFile: false`.
       resolveAlias = config.resolve?.alias;
       // A nested build inherits the host's OUTPUT configuration; what it does not inherit
@@ -876,6 +873,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // Who this project is (SDD-41). Read here, next to `sw.json`, and reported in
       // `buildStart`, which is the first hook with a context to report through.
       project = readProject(root, swConfig !== null, configIo);
+      // Pruned copies are served from memory in dev, under a prefix no file of the project
+      // can collide with (SDD-49 §4.8); a build publishes them beside every other asset. With
+      // `css: "link"` the registry publishes every sheet of a page as a file (SDD-73 §3.5).
+      linked = new LinkedAssets(
+        config.base,
+        publicDir,
+        isDev ? DEV_SHEET_DIR : 'assets',
+        project.config?.css === 'link',
+      );
       api = new ApiProject(root);
       appId = project.config?.id ?? '';
       locales = project.config?.locales;

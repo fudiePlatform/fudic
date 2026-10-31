@@ -18,7 +18,9 @@ import { isComponentLink, isLayoutLink, isSnippetLink } from '../document/index.
 import type { AssetLinker } from './assets.js';
 import { flattenImports, plainSheet, type FileDiagnostic, type FlatSheet } from '../css/index.js';
 import type { EmitOptions } from './module.js';
-import { asksInline, fixedSheetHref, linkWithHref, prunableHref, sheetKey } from './parts.js';
+import { asksInline, deliveredSheet, fixedSheetHref, linkWithHref, prunableHref, sheetKey } from './parts.js';
+import { compactStyleCss } from './css-compact.js';
+import type { StyleNode } from '../css/index.js';
 import { projectAdoptOf, type ProjectStyle } from './project-styles.js';
 import { prunePage, sheetDiagnostics, type PageSheet } from './prune.js';
 import { allComponents, type DocumentGraph } from './resolve.js';
@@ -60,7 +62,10 @@ export interface SheetSite {
   readonly span: Span;
 }
 
-/** A `<link>` of a `<head>` the page delivers pruned. */
+/**
+ * A sheet of a `<head>` the page delivers pruned: a `<link>` to a file of the project, or —
+ * with `css: "link"` — a `<style>` the page moves to a file (SDD-73 §3.5).
+ */
 interface LinkedSheet {
   readonly key: string;
   readonly el: ElementNode;
@@ -68,12 +73,18 @@ interface LinkedSheet {
   readonly source: string;
   /** Its path, as the graph holds it. */
   readonly path: string;
-  /** The `href` as the author wrote it. */
+  /** The `href` as the author wrote it; `''` for a `<style>`. */
   readonly href: string;
-  /** The same file, relative to the entry being compiled. */
+  /** The same file, relative to the entry being compiled; the `.fud`'s own for a `<style>`. */
   readonly spec: string;
   /** Its text with every relative `@import` flattened in (§4.2). */
   readonly flat: FlatSheet;
+}
+
+/** The `.fud`'s file name without its extension: what a `<style>` moved to a file is named. */
+function fudName(path: string): string {
+  const file = path.replace(/\\/gu, '/').split('/').pop()!;
+  return file.replace(/\.fud$/u, '');
 }
 
 export interface PageSheets {
@@ -123,20 +134,31 @@ export function rebaseSpec(spec: string, from: string, to: string): string {
   return (rel.startsWith('..') ? rel : `./${rel}`) + query;
 }
 
-/** The prunable `<link>`s of one `<head>`, in order, each resolved as the entry sees it. */
+/**
+ * The sheets one `<head>` delivers, in order, each resolved as the entry sees it: the prunable
+ * `<link>`s, and with `linkCss` the `<style>`s too (`deliveredSheet` decides, for both sides).
+ */
 function linkedSheets(
   head: ElementNode,
   source: string,
   path: string,
   linker: AssetLinker,
+  linkCss: boolean,
   key: (ordinal: number) => string,
   resolve: (href: string) => string,
 ): LinkedSheet[] {
   const out: LinkedSheet[] = [];
   for (const child of head.children) {
     if (child.type !== 'element' || isFrameworkLink(child)) continue;
-    const href = prunableHref(child, linker, resolve);
-    if (href === null) continue;
+    if (!deliveredSheet(child, linker, linkCss, resolve)) continue;
+    if (child.name === 'style') {
+      // A parsed `<style>` always holds exactly one `StyleNode` (see `headStyleExpr`).
+      const css = compactStyleCss(source, child.children[0] as StyleNode);
+      const name = fudName(path);
+      out.push({ key: key(out.length), el: child, source, path, href: '', spec: name, flat: plainSheet(name, css) });
+      continue;
+    }
+    const href = prunableHref(child, linker, resolve)!;
     const spec = resolve(href);
     const flat = flattenImports(spec, linker.textOf(spec)!, (s) => linker.textOf(s));
     out.push({ key: key(out.length), el: child, source, path, href, spec, flat });
@@ -176,9 +198,18 @@ function sheetElement(
   sheet: LinkedSheet,
   css: string,
   linker: AssetLinker,
+  componentSheet: EmitOptions['componentSheet'],
 ): { readonly expr: string; readonly url?: string } {
   if (css === '') return { expr: "''" };
-  if (asksInline(sheet.href)) {
+  // `css: "link"` (SDD-73 §3.5): a `<style>` leaves the page as a file of its own, with the
+  // author's attributes (`media`) on the `<link>` that names it, and an `?inline` sheet stays
+  // a file. Both are hinted like any other.
+  if (componentSheet !== undefined && sheet.el.name === 'style') {
+    const url = componentSheet(sheet.spec, linker.cssLinked(css));
+    const attrs = sheet.source.slice(sheet.el.openSpan.start + '<style'.length, sheet.el.openSpan.end - 1);
+    return { expr: JSON.stringify(`<link rel="stylesheet" href="${url}"${attrs}>`), url };
+  }
+  if (componentSheet === undefined && asksInline(sheet.href)) {
     return { expr: `'<style' + $nonce + '>' + ${linker.cssTemplate(css)} + '</style>'` };
   }
   // A static file has no import bindings: every `url()` in it is written as its final URL.
@@ -200,6 +231,7 @@ export function planPageSheets(
 ): PageSheets | null {
   if (options.pruneStyles !== true) return null;
   const entryHead = 'head' in graph.entry ? graph.entry.head : undefined;
+  const linkCss = options.componentSheet !== undefined;
 
   // The layouts' sheets. A layout names no layout (FUD0439), so the chain is at most one
   // deep and its only layout has no ancestor: depth 0.
@@ -209,6 +241,7 @@ export function planPageSheets(
       layout.source,
       layout.path,
       linker,
+      linkCss,
       (ordinal) => sheetKey(graph.layouts.length - 1 - i, ordinal),
       (href) => rebaseSpec(href, layout.path, graph.entryPath),
     ),
@@ -216,7 +249,7 @@ export function planPageSheets(
   const ownSheets =
     entryHead === undefined
       ? []
-      : linkedSheets(entryHead, graph.entrySource, graph.entryPath, linker, (ordinal) => `head:${ordinal}`, (h) => h);
+      : linkedSheets(entryHead, graph.entrySource, graph.entryPath, linker, linkCss, (ordinal) => `head:${ordinal}`, (h) => h);
 
   const document = documentSurface(graph);
   const linked = [...layoutSheets, ...ownSheets];
@@ -245,7 +278,10 @@ export function planPageSheets(
   const contributingOf = new Map(pruned.value.map((s) => [s.key, s.contributing]));
 
   // In document order: the layout's head goes out first, and its sheets with it.
-  const elements = linked.map((s) => ({ sheet: s, ...sheetElement(s, cssOf.get(s.key)!, linker) }));
+  const elements = linked.map((s) => ({
+    sheet: s,
+    ...sheetElement(s, cssOf.get(s.key)!, linker, options.componentSheet),
+  }));
   const layout = new Map(elements.filter((e) => layoutSheets.includes(e.sheet)).map((e) => [e.sheet.key, e.expr]));
   const own = new Map(elements.filter((e) => ownSheets.includes(e.sheet)).map((e) => [e.sheet.el, e.expr]));
   // Every sheet the heads link, in document order (SDD-73 §3.4): a pruned one under its copy's
@@ -266,7 +302,8 @@ export function planPageSheets(
     ?.filter((s) => adopted.get(s.specifier))
     .map((s) => ({ specifier: s.specifier, css: cssOf.get(`project:${s.specifier}`)! }));
   const uses: SheetUse[] = [
-    ...linked.map((s) => ({
+    // A `<style>` is the page's own text and no file of the project: nothing to report on.
+    ...linked.filter((s) => s.el.name !== 'style').map((s) => ({
       spec: s.spec,
       css: cssOf.get(s.key)!,
       files: s.flat.files,

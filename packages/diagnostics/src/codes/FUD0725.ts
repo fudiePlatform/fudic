@@ -61,8 +61,8 @@ export type FUD0725Problem =
     }
   /** `earlyHints` that is not a boolean (SDD-70 §3.10). */
   | { readonly problem: 'early-hints' }
-  /** `componentStyles` that is neither `"inline"` nor `"link"` (SDD-70 §3.10). */
-  | { readonly problem: 'component-styles' };
+  /** `css` that is neither `"inline"` nor `"link"` (SDD-73 §3.5). */
+  | { readonly problem: 'css' };
 
 /** Parameters of `FUD0725`. */
 export type FUD0725Params = FileInput & FUD0725Problem;
@@ -101,8 +101,8 @@ function describe(p: FUD0725Problem): string {
       return `fudic.json "${p.field}" must be a folder inside the project, like "src/${p.field}": ${p.reason}`;
     case 'early-hints':
       return 'fudic.json "earlyHints" must be true or false';
-    case 'component-styles':
-      return 'fudic.json "componentStyles" must be "inline" (a style module in the page) or "link" (a file per sheet)';
+    case 'css':
+      return 'fudic.json "css" must be "inline" (the CSS inside the page) or "link" (a file per sheet)';
   }
 }
 

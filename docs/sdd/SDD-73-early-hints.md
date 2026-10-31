@@ -427,6 +427,21 @@ perdido, no un fallo.
     navegador comprueba las precargas de un 103 contra la CSP que viene con él; sin ella salen
     sin comprobar. Es la misma de la respuesta final, con el mismo nonce. En desarrollo no hay
     CSP, así que tampoco va en el 103.
+17. **«Un `<style>` con `@`» es uno con atributos dinámicos** (`media=@x`). Desde la decisión
+    de gramática 136 el cuerpo de un `<style>` no admite Razor (`FUD0132`); lo único que se
+    calcula al pintar son sus atributos, y ese se queda dentro de la página.
+18. **Las hojas del proyecto que adopta un componente se publican enteras, sin podar.** El
+    chunk de cliente de un componente es de todas las páginas, y no puede nombrar una copia
+    podada para una. La poda por página sigue para las hojas del head.
+19. **Los `url(…)` del CSS de un componente se resuelven desde su propio fichero** antes de
+    enlazarse, así cualquier módulo que lo compile (la página, el layout, su chunk de cliente)
+    llega a los mismos bytes y al mismo fichero.
+20. **La hidratación salta los `<link>` del final.** Un texto al final de la raíz de un
+    componente se localiza como «el último nodo»; con hojas como fichero, ese último nodo es un
+    `<link>`. El compilador sabe cuántos son y el camino de hidratación retrocede sobre ellos.
+    En `inline` no cambia ni un byte.
+21. **Un anfitrión fabricado añade sus `<link>` después de construir su contenido**, en la
+    misma tarea: ningún fotograma pinta el componente sin su hoja.
 15. **El `detail` de una llamada ya no se ve en la página de error.** Los tests de
     `examples/basic` que lo esperaban (`sin sesión`, `no hay nadie con id 999`) comprueban ahora
     el enlace «Volver» a `/usuarios`.

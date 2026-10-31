@@ -102,6 +102,12 @@ export function* openElement(n: SsrNodeImpl): Generator<string> {
     const adopts = specifier === undefined ? '' : ` shadowrootadoptedstylesheets="${escapeAttr(specifier)}"`;
     yield `<template shadowrootmode="open"${focus}${clonable}${serializable}${bridge}${adopts}>`;
     yield* serializeChildren(n.shadow);
+    // A component whose sheets are files (SDD-73 §3.5): one `<link>` per sheet, at the END of
+    // its shadow root. Hydration walks the children by position from the first, so what comes
+    // after them is never in its way.
+    for (const href of (n.attrs.get('data-fud-sheets') ?? '').split(' ').filter((h) => h !== '')) {
+      yield `<link rel="stylesheet" href="${escapeAttr(href)}">`;
+    }
     yield '</template>';
   }
 }

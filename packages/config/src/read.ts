@@ -72,10 +72,11 @@ export interface ProjectConfig {
    */
   readonly earlyHints: boolean;
   /**
-   * Where the sheets the components adopt live (SDD-70 §3.10): `inline`, a style module in the
-   * page, or `link`, a file per sheet. `inline` when the file declares none.
+   * Where a page's CSS lives (SDD-73 §3.5): `inline`, inside the page — the `<style>` of its head
+   * and the components' style modules — or `link`, a file per sheet, hinted before the page.
+   * `inline` when the file declares none.
    */
-  readonly componentStyles: 'inline' | 'link';
+  readonly css: 'inline' | 'link';
 }
 
 /** One `"name": "path"` entry of `globalStyles` or `styles`. */
@@ -151,7 +152,7 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
   const browser = readFolder(fields, 'browser', BROWSER_DIR, ctx);
   const api = kind === 'lib' ? readFolder(fields, 'api', API_DIR, ctx) : undefined;
   const earlyHints = readEarlyHints(fields, ctx);
-  const componentStyles = readComponentStyles(fields, ctx);
+  const css = readCss(fields, ctx);
 
   // Fields are NOT rescued one by one (§4.2). Identity is a unit, and half an identity is
   // worse than none: an `id` that got through alone would namespace caches under a name
@@ -172,7 +173,7 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
       browser,
       ...(api === undefined ? {} : { api }),
       earlyHints,
-      componentStyles,
+      css,
     },
     diagnostics: [],
   };
@@ -352,12 +353,12 @@ function readEarlyHints(fields: Record<string, unknown>, ctx: Ctx): boolean {
   return value;
 }
 
-/** `componentStyles` absent is `inline`, what every page did before SDD-70 §3.10. */
-function readComponentStyles(fields: Record<string, unknown>, ctx: Ctx): 'inline' | 'link' {
-  const value = fields['componentStyles'];
+/** `css` absent is `inline`, what every page did before SDD-73 §3.5. */
+function readCss(fields: Record<string, unknown>, ctx: Ctx): 'inline' | 'link' {
+  const value = fields['css'];
   if (value === undefined) return 'inline';
   if (value !== 'inline' && value !== 'link') {
-    ctx.diagnostics.push(malformed({ problem: 'component-styles' }, fieldSpan(ctx.text, 'componentStyles')));
+    ctx.diagnostics.push(malformed({ problem: 'css' }, fieldSpan(ctx.text, 'css')));
     return 'inline';
   }
   return value;

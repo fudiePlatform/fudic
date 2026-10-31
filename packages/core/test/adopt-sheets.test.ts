@@ -107,6 +107,24 @@ describe('adoptSheets — one sheet per specifier (§5.2)', () => {
   });
 });
 
+describe('adoptSheets — sheets that are files (SDD-73 §3.5, criterion 10)', () => {
+  it('ends the shadow root with a `<link>` per file, in order, after its content, adopting none', () => {
+    const el = document.createElement('div');
+    el.setAttribute('data-fud-sheets', ' /assets/theme-Ab12.css  /assets/x-i-Cd34.css ');
+    const shadow = el.attachShadow({ mode: 'open' });
+    shadow.append(document.createElement('b'));
+
+    adoptSheets(el, shadow);
+
+    expect([...shadow.children].map((c) => c.outerHTML)).toEqual([
+      '<b></b>',
+      '<link rel="stylesheet" href="/assets/theme-Ab12.css">',
+      '<link rel="stylesheet" href="/assets/x-i-Cd34.css">',
+    ]);
+    expect(shadow.adoptedStyleSheets).toEqual([]);
+  });
+});
+
 describe('adoptSheets — what is not there (§5.3, §5.4)', () => {
   it('leaves a host with no `data-fud-adopt` alone', () => {
     const { host: el, shadow } = host();

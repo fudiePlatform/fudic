@@ -5,7 +5,7 @@
 > `@fudic/transport` · `examples/basic`
 > **Rama:** `sdd-73-early-hints`. Nace de `main` **con SDD-70 en `Hecho`**: las pistas por ruta,
 > `earlyHints` y `componentStyles` son suyas (tareas 40–41).
-> **Progreso:** 10 / 17 — `En curso`.
+> **Progreso:** 16 / 17 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -70,12 +70,12 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 16 | — | **`componentStyles` pasa a `css`.** `ProjectConfig.css` (`"inline"` · `"link"`); `componentStyles` deja de leerse; `FUD0725` con el nombre nuevo (SDD §3.5, decisión 8) | `config` · `diagnostics` · `vite` · `cli` | `src/read.ts` · `src/codes/FUD0725.ts` |
-| [ ] | 17 | 16 | **El head de la ruta y del layout.** Con `componentSheet`, cada `<style>` del head (ruta, página, layout) y cada hoja `?inline` sale como `<link rel="stylesheet">` a un fichero podado y con hash, en su sitio; un `<style>` con `@` se queda; entra en `EmitOutput.hints` en su orden (SDD §3.5, §4.4) | `compiler` · `vite` | `src/emit/page-sheets.ts` · `src/emit/parts.ts` · `src/emit/layout.ts` |
-| [ ] | 11 | 16 | **`componentSheet` en el emit.** Opción inyectada: con ella, las hojas de componentes y del proyecto son ficheros (`LinkedAssets.sheet`); head sin polyfill ni `<style type="module">`; `data-fud-sheets` en el anfitrión, en servidor y en cliente. Sin ella, el emit de hoy (SDD §3.5, §4.4) | `compiler` · `vite` | `src/emit/parts.ts` · `src/emit/markup.ts` · `src/emit/markup-client.ts` · `src/transform.ts` |
-| [ ] | 12 | 11 | **El serializador y el runtime.** `openElement` escribe los `<link>` al final de la plantilla y no `shadowrootadoptedstylesheets`; `adoptSheets` los añade al final del shadow root de un anfitrión fabricado | `ssr` · `core` | `src/serialize.ts` · `src/adopt-sheets.ts` |
-| [ ] | 13 | 11 | **Las hojas en las pistas.** `EmitOutput.hints` lleva las de los componentes de la página, detrás de las del head | `compiler` | `src/emit/page-sheets.ts` |
-| [ ] | 14 | 11–13, 16, 17 | **Los tests de la fase.** Criterios 7–11 y 16 | `compiler` · `ssr` · `core` · `vite` | `test/**` |
+| [x] | 16 | — | **`componentStyles` pasa a `css`.** `ProjectConfig.css` (`"inline"` · `"link"`); `componentStyles` deja de leerse; `FUD0725` con el nombre nuevo (SDD §3.5, decisión 8) | `config` · `diagnostics` · `vite` · `cli` | `src/read.ts` · `src/codes/FUD0725.ts` |
+| [x] | 17 | 16 | **El head de la ruta y del layout.** Con `componentSheet`, cada `<style>` del head (ruta, página, layout) y cada hoja `?inline` sale como `<link rel="stylesheet">` a un fichero podado y con hash, en su sitio; un `<style>` con `@` se queda; entra en `EmitOutput.hints` en su orden (SDD §3.5, §4.4) | `compiler` · `vite` | `src/emit/page-sheets.ts` · `src/emit/parts.ts` · `src/emit/layout.ts` |
+| [x] | 11 | 16 | **`componentSheet` en el emit.** Opción inyectada: con ella, las hojas de componentes y del proyecto son ficheros (`LinkedAssets.sheet`); head sin polyfill ni `<style type="module">`; `data-fud-sheets` en el anfitrión, en servidor y en cliente. Sin ella, el emit de hoy (SDD §3.5, §4.4) | `compiler` · `vite` | `src/emit/parts.ts` · `src/emit/markup.ts` · `src/emit/markup-client.ts` · `src/transform.ts` |
+| [x] | 12 | 11 | **El serializador y el runtime.** `openElement` escribe los `<link>` al final de la plantilla y no `shadowrootadoptedstylesheets`; `adoptSheets` los añade al final del shadow root de un anfitrión fabricado | `ssr` · `core` | `src/serialize.ts` · `src/adopt-sheets.ts` |
+| [x] | 13 | 11 | **Las hojas en las pistas.** `EmitOutput.hints` lleva las de los componentes de la página, detrás de las del head | `compiler` | `src/emit/page-sheets.ts` |
+| [x] | 14 | 11–13, 16, 17 | **Los tests de la fase.** Criterios 7–11 y 16 | `compiler` · `ssr` · `core` · `vite` | `test/**` |
 
 ## Fase 5 — prueba y cierre (1)
 

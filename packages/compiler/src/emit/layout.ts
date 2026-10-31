@@ -31,7 +31,7 @@ import { bridgeIds, formAssociatedTags, hydratableTags, shadowOptions } from './
 import { hasDependencyInjection } from './di.js';
 import { needsRuntime, packIo, routeBlocksOf, writeMapConstants, writeHydrationBlocks, writePartsOpen } from './maps.js';
 import type { DocumentGraph, ResolvedLayout } from './resolve.js';
-import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
+import { pageHintsOf, styledTags, withSheets, type EmitOptions, type EmitOutput } from './module.js';
 import { projectAdoptOf, renderProjectStyles } from './project-styles.js';
 import { codeOfDocument, type Prop } from './oxc-code.js';
 import { propDefaults, restGroups } from './rest.js';
@@ -42,8 +42,8 @@ import { apiImports } from './api-links.js';
 import { planPageSheets, type PageSheets } from './page-sheets.js';
 import type { Diagnostic } from '../types/index.js';
 import {
+  deliveredSheet,
   headEmbedsAsset,
-  prunableHref,
   quoteSpecifier,
   sheetKey,
   specifierResolver,
@@ -148,6 +148,7 @@ function buildLayoutModule(
     shadowOptions: shadowOptions(graph),
     styled: styledTags(graph),
     projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
+    ...withSheets(graph, options, linker),
   });
   em.emitChildren(doc.body.children, '$body');
 
@@ -163,9 +164,9 @@ function buildLayoutModule(
   const sheet =
     options.pruneStyles === true
       ? (el: ElementNode): string | null =>
-          prunableHref(el, linker) === null
-            ? null
-            : `${SLOTS}.sheet(${JSON.stringify(sheetKey(0, ordinal++))})`
+          deliveredSheet(el, linker, options.componentSheet !== undefined)
+            ? `${SLOTS}.sheet(${JSON.stringify(sheetKey(0, ordinal++))})`
+            : null
       : undefined;
   writeHeadElements(
     source,
@@ -299,10 +300,12 @@ function buildRouteModule(
   // The project's guide (SDD-42), built before anything flushes the linker's imports —
   // compacting a sheet can register one, and a binding imported after the flush is a
   // module that does not parse.
-  const projectStylesLine = renderProjectStyles(
-    sheets === null ? options.projectStyles : sheets.projectStyles,
-    linker,
-  );
+  // With `css: "link"` (SDD-73 §3.5) no sheet travels in the page: no guide, no style modules,
+  // no polyfill. Each host names its files instead.
+  const linkCss = options.componentSheet !== undefined;
+  const projectStylesLine = linkCss
+    ? null
+    : renderProjectStyles(sheets === null ? options.projectStyles : sheets.projectStyles, linker);
   const projectAdopt = projectAdoptOf(options.projectStyles, options.styleChains);
 
   const hydratable = hydratableTags(graph);
@@ -312,6 +315,9 @@ function buildRouteModule(
   // The styled half of the graph (BUG-31 §T4): what wears an adopt marker, what reaches
   // `COMPONENTS`, and — when it is empty — whether the polyfill is emitted at all.
   const styled = styledTags(graph);
+  // What the page carries as style modules: the styled half, or nothing when they are files.
+  const moduled = linkCss ? new Set<string>() : styled;
+  const fileSheets = withSheets(graph, options, linker);
   const isComponent = (t: string): boolean => graph.components.has(t);
   // Whether ANY component the route reaches injects or provides. A route without a single
   // DI call opens no container tree, imports nothing and publishes no map (SDD-38 §5).
@@ -334,6 +340,7 @@ function buildRouteModule(
     shadowOptions: shadow,
     styled,
     projectAdopt,
+    ...fileSheets,
     ...parts,
   });
   // The slots the layout puts each hole in (SDD-48). Known here and not only in the layout:
@@ -360,6 +367,7 @@ function buildRouteModule(
     shadowOptions: shadow,
     styled,
     projectAdopt,
+    ...fileSheets,
     ...parts,
   });
   for (const section of route.sections as readonly SectionNode[]) {
@@ -382,7 +390,7 @@ function buildRouteModule(
       headW,
     );
   }
-  writeSharedHead(headW, styled.size > 0, projectStylesLine !== null);
+  writeSharedHead(headW, moduled.size > 0, projectStylesLine !== null);
 
 
   const w = new CodeWriter();
@@ -394,7 +402,7 @@ function buildRouteModule(
   // `tag`/`css` only for the styled ones (BUG-31 §T4); `render` for every component, since
   // the graph renders them all whether or not they have a sheet.
   for (const c of comps) {
-    const style = styled.has(c.tag)
+    const style = moduled.has(c.tag)
       ? `, tag as ${renderName(c.tag)}Tag, css as ${renderName(c.tag)}Css`
       : '';
     w.line(`import { render as ${renderName(c.tag)}${style} } from ${specifier(c.tag)};`);
@@ -406,10 +414,10 @@ function buildRouteModule(
   writeEntryImports(w, code);
   for (const line of apiImports(graph)) w.line(line); // what its `.fudapi` give the view (SDD-60 §3.14)
   w.line('');
-  w.line(`const COMPONENTS = [${componentPairs(graph, styled).join(', ')}];`);
+  w.line(`const COMPONENTS = [${componentPairs(graph, moduled).join(', ')}];`);
   if (projectStylesLine !== null) w.line(projectStylesLine);
   // The MINIFIED form: it is inline in every page's head, once per page (BUG-07 §4.3).
-  if (styled.size > 0 || projectStylesLine !== null) {
+  if (moduled.size > 0 || projectStylesLine !== null) {
     w.line(`const STYLE_POLYFILL = ${tpl(STYLE_POLYFILL_MIN)};`);
   }
   // The maps belong to the ROUTE and not to the layout, and that is not a placement choice:
@@ -563,6 +571,6 @@ export function emitRouteModuleMapped(graph: DocumentGraph, options: EmitOptions
     mappings: writer.mappings(),
     missingAssets: linker.missing(),
     diagnostics,
-    ...(sheets === null ? {} : { sheets: sheets.uses, hints: sheets.hints }),
+    ...(sheets === null ? {} : { sheets: sheets.uses, hints: pageHintsOf(sheets, graph, options, linker) }),
   };
 }
