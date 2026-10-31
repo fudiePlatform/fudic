@@ -1,6 +1,7 @@
 # SDD-70 — `@await` en la vista: el primer byte no espera al backend
 
-> **Estado:** `Listo` — [tareas](./SDD-70-Task.md).
+> **Estado:** `Listo` — [tareas](./SDD-70-Task.md) · [anexo: 103 Early Hints](./SDD-70-anexo-early-hints.md)
+> (estudio, no cambia el alcance).
 > **Paquetes:** `@fudic/api` (`later`) · `@fudic/compiler` (`@await`/`@catch`, emit por partes) ·
 > `@fudic/diagnostics` · `@fudic/ssr` (partes y `FLUSH`) · `@fudic/core` (hidratación por partes) ·
 > `@fudic/vite` (render en streaming, endpoint de datos) · `@fudic/transport` (el SW lee el `data`
