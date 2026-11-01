@@ -308,3 +308,72 @@ describe('the tokenizer seam (SDD-03 -> SDD-04)', () => {
     expect(tokens.some((t) => t.type === 'at-trigger')).toBe(false);
   });
 });
+
+describe('a pipe written against the chain (SDD-71 §8.2, 5)', () => {
+  it('`@data.x|pipe` and `@x|a|b` are one implicit expression with their pipes', () => {
+    expect(implicitExpr('@data.x|pipe')).toBe('data.x|pipe');
+    expect(implicitExpr('@x|a|b rest')).toBe('x|a|b');
+    expect(implicitExpr('@xs.length|n.')).toBe('xs.length|n');
+  });
+
+  it('`||` is never a pipe, and a space ends the chain before the bar', () => {
+    expect(implicitExpr('@a||b')).toBe('a');
+    expect(implicitExpr('@a |b')).toBe('a');
+  });
+
+  it('a bar with no name behind it is text, recorded apart like a dangling dot', () => {
+    const bar = scanImplicitExpression('@data|', 0).value;
+    expect(bar.expr).toEqual(span(1, 5));
+    expect(bar.dangling).toEqual(span(5, 6));
+    expect(scanImplicitExpression('@data| x', 0).value.dangling).toEqual(span(5, 6));
+  });
+
+  it('a call after a pipe stays in the chain, for the view rules to refuse (SDD-71 §7)', () => {
+    expect(implicitExpr('@x|p(1)')).toBe('x|p(1)');
+  });
+});
+
+describe('a pipe with blanks around the bar (SDD-71 §8.2, 5)', () => {
+  const pipes = (...names: string[]) => (name: string) => names.includes(name);
+  const expr = (source: string, isPipe = pipes('date', 'a', 'b')): string => {
+    const value = scanImplicitExpression(source, 0, isPipe).value;
+    return source.slice(value.expr.start, value.expr.end);
+  };
+
+  it('joins the chain, with any number of blanks, when the name is a pipe', () => {
+    expect(expr('@data.date | date')).toBe('data.date | date');
+    expect(expr(`@data.date |${' '.repeat(20)}date rest`)).toBe(`data.date |${' '.repeat(20)}date`);
+    expect(expr('@x\t|\ta')).toBe('x\t|\ta');
+    expect(expr('@x |a')).toBe('x |a');
+    expect(expr('@x| a')).toBe('x| a');
+  });
+
+  it('chains: `@x | a | b`, blanks and glued in any mix', () => {
+    expect(expr('@x | a | b.')).toBe('x | a | b');
+    expect(expr('@x | a|b')).toBe('x | a|b');
+  });
+
+  it('stays text when the name is not one, and the chain stops before the blanks', () => {
+    expect(expr('@precio | Envío')).toBe('precio');
+    expect(expr('@x | a | nope')).toBe('x | a');
+    // Adjacent on both sides it is still the pipe of before, whatever the scope says.
+    expect(expr('@x|nope', pipes())).toBe('x|nope');
+  });
+
+  it('never crosses a line, and `||` is never a pipe', () => {
+    expect(expr('@x\n| a')).toBe('x');
+    expect(expr('@x | \na')).toBe('x');
+    expect(expr('@x || a')).toBe('x');
+  });
+
+  it('a bar with blanks and no name is dangling up to where the name would start', () => {
+    const value = scanImplicitExpression('@data | <', 0, pipes()).value;
+    expect(value.expr).toEqual(span(1, 5));
+    expect(value.dangling).toEqual(span(5, 8));
+  });
+
+  it('resolveTrigger hands the scope to the scanner', () => {
+    const resolution = resolveTrigger('@x | a', 0, pipes('a'));
+    expect(resolution.value.kind === 'implicit' && resolution.value.expression.expr).toEqual(span(1, 6));
+  });
+});

@@ -1,6 +1,6 @@
 /**
  * The little the translation passes read of an Oxc AST: typed access, the wrappers a value is
- * seen through, the names `@fudic/i18n` exports, and a generic walk.
+ * seen through, the names the compiler replaces, and a generic walk.
  */
 
 import type { OxcNode } from '../oxc/index.js';
@@ -45,27 +45,36 @@ export function stringLiteral(node: OxcNode): string | undefined {
   return node.type === 'Literal' && typeof node['value'] === 'string' ? node['value'] : undefined;
 }
 
-/** The specifier the compiler replaces names of. */
-export const I18N_MODULE = '@fudic/i18n';
-
-/** The names `@fudic/i18n` exports that the compiler replaces in a language's graph. */
+/** The names the compiler replaces in a language's graph. */
 export type I18nName = 't' | 'format' | 'locale';
 
 /**
- * Local name → which name of `@fudic/i18n` it imports, read off the `import` statements among
+ * Which package each of those names is imported from: `t` translates, so it is `@fudic/i18n`'s;
+ * `format` and `locale` speak of the page's language, which every app has, and live with the
+ * pipes in `@fudic/core` (SDD-71 §3.4).
+ */
+const MODULE_OF: Readonly<Record<I18nName, string>> = {
+  t: '@fudic/i18n',
+  format: '@fudic/core',
+  locale: '@fudic/core',
+};
+
+/**
+ * Local name → which of those names it imports, read off the `import` statements among
  * `statements`. `import { t as tr }` maps `tr` to `t`. A namespace import is not followed: the
  * three names are written by name, which is what makes them extractable.
  */
 export function i18nImports(statements: readonly OxcNode[]): ReadonlyMap<string, I18nName> {
   const names = new Map<string, I18nName>();
   for (const stmt of statements) {
-    if (stmt.type !== 'ImportDeclaration' || stringLiteral(child(stmt, 'source')!) !== I18N_MODULE) continue;
+    if (stmt.type !== 'ImportDeclaration') continue;
+    const from = stringLiteral(child(stmt, 'source')!);
     for (const spec of children(stmt, 'specifiers')) {
       if (spec.type !== 'ImportSpecifier') continue;
       const imported = child(spec, 'imported')!;
-      const name = imported.type === 'Identifier' ? imported['name'] : imported['value'];
-      if (name === 't' || name === 'format' || name === 'locale') {
-        names.set(String(child(spec, 'local')!['name']), name);
+      const name = String(imported.type === 'Identifier' ? imported['name'] : imported['value']);
+      if (Object.hasOwn(MODULE_OF, name) && MODULE_OF[name as I18nName] === from) {
+        names.set(String(child(spec, 'local')!['name']), name as I18nName);
       }
     }
   }

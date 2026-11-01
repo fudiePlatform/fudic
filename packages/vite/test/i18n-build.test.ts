@@ -60,7 +60,7 @@ paths
 `;
 
 /** Compiled once per locale: `locale` is the one of the page being prerendered (SDD-60 §3.11). */
-const POST_SERVER = `import { locale } from '@fudic/i18n';
+const POST_SERVER = `import { locale } from '@fudic/core';
 import { load, paths } from 'fudic:routes/blog/[slug]';
 
 load.handle((ctx) => ({ slug: ctx.params.slug }));
@@ -68,7 +68,7 @@ paths.handle(() => (locale === 'en' ? ['a', 'b'] : ['a']));
 `;
 
 const PRICE = `@code {
-  import { currency } from '@fudic/i18n';
+  import { currency } from '@fudic/core';
   const euros = currency('EUR');
   const precio = 3.5;
 }
@@ -116,8 +116,7 @@ const LAYOUT = `<!DOCTYPE html>
 
 /** Hydrated and with a pipe: its chunk imports the preset, which the worker warms with it. */
 const TOTAL = `@code {
-  import { currency } from '@fudic/i18n';
-  import { signal } from '@fudic/core';
+  import { currency, signal } from '@fudic/core';
   const euros = currency('EUR');
   const n = signal(1);
   function mas(): void { n.set(n() + 1); }

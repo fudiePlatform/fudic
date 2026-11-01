@@ -157,7 +157,7 @@ describe('the forms of the cut (§3.9)', () => {
 
   it('the catalogue calls take literals of data, holes and values', () => {
     const code = `
-      import { date, currency } from '@fudic/i18n';
+      import { date, currency } from '@fudic/core';
       import { t } from '@fudic/i18n';
       import { trustedUrl } from '@fudic/dom';
       const zona = 'Europe/Madrid';
@@ -331,7 +331,7 @@ describe('now() (criterion 24)', () => {
 
   it('in the view it is FUD0912, and in a handler it is a function like any other', () => {
     const code = `${CORE}
-      import { date } from '@fudic/i18n';
+      import { date } from '@fudic/core';
       const hora = date({ hour: 'numeric' });
       const ahora = signal(now());`;
     expect(cut('<p>@(now() | hora)</p>', code)).toEqual(['FUD0912 now()']);

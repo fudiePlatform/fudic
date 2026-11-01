@@ -60,6 +60,11 @@ describe('@fudic/conventions', () => {
     expect(conventions.BROWSER_DIR).toBe('src/browser');
   });
 
+  it('gives an app without locales English, and names the folder of its pipes (SDD-71 §3.1)', () => {
+    expect(conventions.DEFAULT_LOCALE).toBe('en');
+    expect(conventions.PIPES_DIR).toBe('src/pipes');
+  });
+
   it('names the error page', () => {
     // SDD-56 §3.6: a file of `src/routes/` with no URL of its own.
     expect(conventions.ERROR_FILE).toBe('_error.fud');
@@ -90,6 +95,9 @@ describe('@fudic/conventions', () => {
     //
     // `STREAM_BUFFER` is SDD-70's (§3.9): `@fudic/ssr` coalesces up to it and the build writes it into
     // the manifest every other backend streams with.
+    //
+    // `DEFAULT_LOCALE` and `PIPES_DIR` are SDD-71's (§3.1): the language of an app that declares
+    // none — one place to change it, not every `fudic.json` — and the folder of a project's pipes.
     expect(Object.keys(conventions).sort()).toEqual([
       'API_DIR',
       'API_TYPES_DIR',
@@ -98,6 +106,7 @@ describe('@fudic/conventions', () => {
       'DATA_FRAMES_TYPE',
       'DATA_PREFIX',
       'DATA_STALE_EVENT',
+      'DEFAULT_LOCALE',
       'ERROR_FILE',
       'ERROR_PREFIX',
       'FN_PREFIX',
@@ -105,6 +114,7 @@ describe('@fudic/conventions', () => {
       'INVALIDATE_MESSAGE',
       'LAYOUTS_DIR',
       'LOCALES_DIR',
+      'PIPES_DIR',
       'ROUTES_DIR',
       'RUNTIME_CACHE_PREFIX',
       'RUNTIME_DIR',

@@ -1,7 +1,7 @@
 /**
  * Compiling a `.fud` for one locale (SDD-58 §4.2–§4.8, decisions 158–161): the SOURCE is
  * rewritten — the translated phrase in the order of the translation, `t()` as a literal, a pipe
- * as `$format(…)`, `locale` as `"en"`, a link with its prefix — and the result is compiled as
+ * as `p.format(…)`, `locale` as `"en"`, a link with its prefix — and the result is compiled as
  * any other `.fud`.
  *
  * Why the source and not the emit. The server emit, the client emit and the hydration all read
@@ -62,7 +62,7 @@ interface Edit {
 }
 
 /** The runtime pieces a rewrite may call, imported only when called (§4.6). */
-type RuntimeName = '$format' | '$message' | '$href';
+type RuntimeName = '$message' | '$href';
 
 /** Rewrite a `.fud` for one locale. */
 export function localizeSource(source: string, file: string, i18n: LocaleCompile): LocalizedSource {
@@ -284,12 +284,15 @@ class Rewriter {
     return spelled;
   }
 
+  /**
+   * `a | p` and `format(a, p)` → `((p).format((a),"en"))` (SDD-71 §4.2): a call of the pipe's
+   * own method, the same for a preset and a project's pipe, that imports nothing.
+   */
   #format(pipe: OxcNode, value: OxcNode, whole: OxcNode): void {
-    this.#runtime.add('$format');
     this.#edit(this.#span(whole), () => [
-      { text: '($format((' },
+      { text: '((' },
       ...this.#render(this.#span(pipe)),
-      { text: '),(' },
+      { text: ').format((' },
       ...this.#render(this.#span(value)),
       { text: `),${this.#locale}))` },
     ]);
@@ -350,7 +353,7 @@ class Rewriter {
 
   // ── Imports of the runtime pieces ──
 
-  /** `import { $format } from '@fudic/i18n';` at the head of `@code`, or a `@code` of its own. */
+  /** `import { $message } from '@fudic/i18n';` at the head of `@code`, or a `@code` of its own. */
   importRuntime(document: StructuredDocument): void {
     const code = document.code;
     if (code === undefined) {

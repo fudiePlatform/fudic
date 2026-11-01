@@ -4,6 +4,11 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   test: {
     include: ['test/**/*.test.ts'],
+    // The first question of a file to a TypeScript service pays its cold start, and under v8
+    // coverage that is past the 5 s default: `view-completion` timed out on every coverage run
+    // and passed on every plain one. The same budget typecheck and language-core give it.
+    testTimeout: 60_000,
+    hookTimeout: 60_000,
     // The servers under test run in process, and Volar writes to the console on its own — a
     // `console.warn` per capability the test client does not declare, a batch of diagnostics
     // 250 ms after an edit. Intercepted, a write that lands while Vitest closes the file fails

@@ -56,7 +56,9 @@ export function planPage(route: string, opts: PageOptions, io: ReadIo = nodeRead
   const contents =
     layout.path === null
       ? renderTemplate('page.fud', {
-          lang: 'en',
+          // The project's first language (SDD-71 §3.6): the reader fills `DEFAULT_LOCALE` when it
+          // declares none, and never leaves the list empty.
+          lang: resolved.target.config.locales[0]!,
           title: titleOf(route),
           code: opts.server ? indent(link, '    ') : '',
         })

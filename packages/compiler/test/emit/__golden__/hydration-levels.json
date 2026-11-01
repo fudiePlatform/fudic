@@ -1308,6 +1308,25 @@
     "tag": "x-pair",
     "hydrates": false
   },
+  "packages/testing/test/locales-app/src/components/l-precio.fud": {
+    "kind": "component",
+    "tag": "l-precio",
+    "hydrates": true
+  },
+  "packages/testing/test/locales-app/src/layouts/_layout.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/testing/test/locales-app/src/routes/contador.fud": {
+    "kind": "route",
+    "reactive": true,
+    "hydration": "gesture",
+    "hydrates": [
+      "l-precio"
+    ]
+  },
   "packages/vscode/fixtures/blog/[slug].fud": {
     "kind": "route",
     "reactive": false,

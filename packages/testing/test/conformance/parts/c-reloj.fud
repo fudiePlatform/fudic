@@ -2,7 +2,7 @@
    lives in this project, whose `"locales"` make `a | preset` one. *@
 @code {
   import { now, signal } from "@fudic/core";
-  import { date } from "@fudic/i18n";
+  import { date } from "@fudic/core";
 
   const ahora = signal(now());
   const instante = date({ dateStyle: "short", timeStyle: "medium", timeZone: "UTC" });

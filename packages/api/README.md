@@ -9,7 +9,7 @@ src/server/users.ts           the handlers, joined with `.handle`
 ```
 
 A `.fudapi` only declares: functions, `load`, `paths`, `layout`, types, enums, forms, rules,
-middlewares, patterns, messages and the chain. It never holds code. fudic generates the
+middlewares, patterns, pipes, messages and the chain. It never holds code. fudic generates the
 `fudic:<id>` module from it, and the code you write imports that module.
 
 This package is the language itself and depends only on `@fudic/diagnostics`: no compiler, no
@@ -32,6 +32,25 @@ load.handle(async () => ({ title: 'Users', users: db.listUsers() }));
 
 The generated type is `readonly users: Promise<readonly Person[]>`. `later` only applies to the
 fields of `load`; anywhere else it is `FUD1324`.
+
+## Pipes
+
+A pipe formats a value as text. It is an extension, like a rule: its own file, in `src/pipes`.
+
+```
+# Cuts a text at `max` characters.
+pipe truncate
+  on str
+  max u32
+```
+
+`on` is what it formats — one type, or several for a union (`on date f64`) — and the lines
+below are its parameters. A pipe always gives text, so nothing says what it returns. Without
+`on` it is `FUD1340`.
+
+`fudic:pipes/truncate` exports `TruncateArgs`, `TruncateFormat` and `truncate`, whose
+`implement` takes the implementation and gives back the pipe — with parameters, a function of
+them. It registers nothing: a view imports the pipe, so one nobody uses never reaches a browser.
 
 ## What it exports
 

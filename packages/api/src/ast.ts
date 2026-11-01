@@ -548,6 +548,24 @@ export interface PatternDecl extends Documented {
   readonly span: Span;
 }
 
+/** `on <type>+` of a pipe: what it formats, a union when there are several (SDD-71 §3.2). */
+export interface PipeOn {
+  readonly keyword: Span;
+  readonly types: readonly TypeExpr[];
+  readonly span: Span;
+}
+
+/** `pipe <name>`: what it formats and its parameters. It always gives text (SDD-71 §3.2). */
+export interface PipeDecl extends Documented {
+  readonly kind: 'pipe';
+  readonly keyword: Span;
+  readonly name: Name;
+  /** Absent when the pipe has no `on` line: `FUD1340`. */
+  readonly on?: PipeOn;
+  readonly params: readonly TypedField[];
+  readonly span: Span;
+}
+
 export type ContractDecl =
   | FnDecl
   | LoadDecl
@@ -557,7 +575,7 @@ export type ContractDecl =
   | FormDecl
   | MessagesDecl;
 
-export type ExtensionDecl = RuleDecl | MiddlewareDecl | PatternDecl;
+export type ExtensionDecl = RuleDecl | MiddlewareDecl | PatternDecl | PipeDecl;
 
 export type Decl = ContractDecl | ExtensionDecl | TypeDecl | EnumDecl;
 

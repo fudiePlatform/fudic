@@ -22,7 +22,7 @@ import {
   type ParseResult,
 } from '@fudic/api';
 import type { SourceDiagnostic } from '@fudic/diagnostics';
-import { API_DIR, API_TYPES_DIR, ERROR_FILE, ROUTES_DIR, SRC_DIR } from '@fudic/conventions';
+import { API_DIR, API_TYPES_DIR, ERROR_FILE, PIPES_DIR, ROUTES_DIR, SRC_DIR } from '@fudic/conventions';
 import type { ApiFs } from './fs.js';
 
 export interface ApiHostDeps {
@@ -92,7 +92,7 @@ export class ApiHost {
   load(path: string, text: string): ApiProject {
     const project = this.projectOf(path);
     const found = this.#filesOf(project);
-    const own = found.find((f) => f.path === path) ?? { id: idOf(project, path), path, origin: 'app' as const };
+    const own = found.find((f) => f.path === path) ?? { id: this.#appId(project, path), path, origin: 'app' as const };
     const others = found.filter((f) => f !== own).map((f) => this.#source(f, this.read(f.path) ?? '').source);
     const { source, diagnostics } = this.#source(own, text);
     return {
@@ -119,11 +119,17 @@ export class ApiHost {
     if (known !== undefined) return known;
 
     const found: Found[] = this.#walk(`${project}/${SRC_DIR}`).map((path) => ({
-      id: idOf(project, path),
+      id: this.#appId(project, path),
       path,
       origin: 'app',
     }));
     for (const dependency of this.#dependencies(project)) {
+      // A library's pipes: what a view of the app imports by the package (SDD-71 §4.5).
+      const dir = `${project}/node_modules/${dependency}`;
+      const pipes = `${dir}/${this.#pipesOf(dir)}`;
+      for (const path of this.#walk(pipes)) {
+        found.push({ id: `${dependency}/${idOf(dir, path)}`, path, origin: { package: dependency } });
+      }
       const folder = `${project}/node_modules/${dependency}/${API_DIR}`;
       for (const path of this.#walk(folder)) {
         found.push({
@@ -135,6 +141,42 @@ export class ApiHost {
     }
     this.#files.set(project, found);
     return found;
+  }
+
+  /** A project's `fudic.json` as written, `{}` when it has none or it does not parse. */
+  #config(dir: string): Record<string, unknown> {
+    try {
+      return JSON.parse(this.#deps.fs.readFile(`${dir}/fudic.json`) ?? '{}') as Record<string, unknown>;
+    } catch {
+      return {}; // a fudic.json being written is the defaults, not an error
+    }
+  }
+
+  /** A project's folder of pipes, relative to it: its `pipes`, or `PIPES_DIR`. */
+  #pipesOf(dir: string): string {
+    const pipes = this.#config(dir)['pipes'];
+    return typeof pipes === 'string' ? pipes : PIPES_DIR;
+  }
+
+  /**
+   * The `<id>` of a `.fudapi` of the project: its path inside `src/`, and in a library's folder of
+   * pipes with its package name in front, as its apps see it (SDD-71 §4.5).
+   */
+  #appId(project: string, path: string): string {
+    const own = this.#ownPipes(project);
+    return own !== undefined && path.startsWith(own.folder) ? `${own.name}/${idOf(project, path)}` : idOf(project, path);
+  }
+
+  /** In a library, its folder of pipes and its package name; `undefined` in an app. */
+  #ownPipes(project: string): { readonly folder: string; readonly name: string } | undefined {
+    if (this.#config(project)['kind'] !== 'lib') return undefined;
+    let name: unknown;
+    try {
+      name = (JSON.parse(this.#deps.fs.readFile(`${project}/package.json`) ?? '{}') as { name?: unknown }).name;
+    } catch {
+      return undefined; // a package.json being written names nothing yet
+    }
+    return typeof name === 'string' ? { folder: `${project}/${this.#pipesOf(project)}/`, name } : undefined;
   }
 
   /** The direct dependencies of a project, by its `package.json`. */
@@ -200,7 +242,7 @@ export class ApiHost {
   /** Removes the types of a `.fudapi` that is gone. */
   forget(path: string): void {
     const project = this.projectOf(path);
-    const target = typesPath(project, idOf(project, path));
+    const target = typesPath(project, this.#appId(project, path));
     this.#deps.fs.removeFile(target);
     this.#wrote(target, undefined);
   }

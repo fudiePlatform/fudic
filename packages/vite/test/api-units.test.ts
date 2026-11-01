@@ -178,6 +178,18 @@ describe('emitRoot', () => {
     expect(text).toContain('export const ready = inTurn(load);');
   });
 
+  it('the folder of pipes is left out of the folder it is configured inside, and of no other (SDD-71 §4.3)', () => {
+    const inside = emitRoot({ side: 'server', folders: { server: 'src/server', browser: 'src/browser', pipes: 'src/browser/pipes' }, libraries, ids: [] });
+    expect(inside).toContain('"!/src/browser/pipes/**"');
+    expect(inside.match(/!\/src\/browser\/pipes\/\*\*/gu)).toHaveLength(1);
+
+    const apart = emitRoot({ side: 'server', folders: { server: 'src/server', browser: 'src/browser', pipes: 'src/pipes' }, libraries, ids: [] });
+    expect(apart).not.toContain('src/pipes');
+    // A folder that only starts like another is not inside it.
+    const lookalike = emitRoot({ side: 'browser', folders: { server: 'src/server', browser: 'src/browser', pipes: 'src/browser-pipes' }, libraries, ids: [] });
+    expect(lookalike).not.toContain('browser-pipes');
+  });
+
   it('a load never empties the registry, and waits for the root before it: one root per locale', () => {
     const text = emitRoot({ side: 'server', folders: { server: 'src/server', browser: 'src/browser' }, libraries, ids: [] });
     expect(text).not.toContain('resetRegistry');

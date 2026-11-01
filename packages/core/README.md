@@ -89,6 +89,56 @@ travels in the page's state, and a client that hydrates reads it from there inst
 calling `now()` again. Paint it with a date pipe, and move it on from a handler
 (`at.set(new Date())`), where any code is allowed.
 
+## Pipes
+
+```html
+@code {
+  import { currency, date } from '@fudic/core';
+  const euros = currency('EUR');
+  const long = date({ dateStyle: 'long', timeZone: 'Europe/Madrid' });
+}
+<p>Total: @(price | euros), @(published | long)</p>
+```
+
+A pipe formats a value as text for the page's locale. The six presets — `date`, `number`,
+`currency`, `percent`, `relativeTime`, `list` — are over `Intl`, each with only its own
+formatter, so a page downloads only what it formats with. The locale is never written: the
+compiler adds the page's, and an app without `"locales"` is `en`. In code, `format(value, euros)`
+does the same, and `locale` reads the page's locale. `date` requires a `timeZone`, so the
+server and the browser write the same time.
+
+A pipe of your own is declared in a `.fudapi` and implemented once in TypeScript, in
+`src/pipes`; `fudic g pipe <name>` writes both and a test:
+
+```
+# src/pipes/truncate.fudapi
+# Cuts a text at `max` characters.
+pipe truncate
+  on str
+  max u32
+```
+
+```ts
+// src/pipes/truncate.ts
+import { truncate } from 'fudic:pipes/truncate';
+
+export default truncate.implement((value, { max }) => (value.length <= max ? value : `${value.slice(0, max)}…`));
+```
+
+```html
+@code {
+  import truncate from '../pipes/truncate';
+  const short = truncate({ max: 40 });
+}
+<p>@(post.summary | short)</p>
+```
+
+Parameters are fixed in the `@code` with literals; the view only writes `|`. Without
+parentheses the pipe goes against the value, `@post.summary|short`. The same file paints on the
+server, in the prerender, in the Service Worker and in the browser. For a backend in another
+language fudic generates the pipe's interface and the record of its parameters; implementing it
+is that backend's.
+
 ## `task()`
 
 ```ts

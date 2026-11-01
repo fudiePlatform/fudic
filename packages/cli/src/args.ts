@@ -26,6 +26,7 @@ import type {
   ServiceOptions,
   SnippetOptions,
   FormOptions,
+  PipeOptions,
   AddOptions,
   SpecOptions,
   TermOptions,
@@ -52,6 +53,7 @@ export type ParsedCommand =
   | { readonly kind: 'lib'; readonly name: string; readonly opts: LibOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'service'; readonly name: string; readonly opts: ServiceOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'form'; readonly name: string; readonly opts: FormOptions; readonly flags: GlobalFlags }
+  | { readonly kind: 'pipe'; readonly name: string; readonly opts: PipeOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'style'; readonly name: string; readonly opts: TargetedOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'add'; readonly module: string; readonly opts: AddOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'component'; readonly tag: string; readonly opts: ComponentOptions; readonly flags: GlobalFlags }
@@ -68,7 +70,7 @@ export type ParsedCommand =
   | { readonly kind: 'help'; readonly topic: Topic | null }
   | ({ readonly kind: 'error' } & UsageError);
 
-type GenerateType = 'component' | 'page' | 'layout' | 'app' | 'lib' | 'service' | 'form' | 'style' | 'snippet' | 'spec' | 'term';
+type GenerateType = 'component' | 'page' | 'layout' | 'app' | 'lib' | 'service' | 'form' | 'pipe' | 'style' | 'snippet' | 'spec' | 'term';
 
 /** Every spelling of a type `fudic generate` takes, aliases included. */
 const GENERATE_TYPES: Readonly<Record<string, GenerateType>> = {
@@ -85,6 +87,7 @@ const GENERATE_TYPES: Readonly<Record<string, GenerateType>> = {
   s: 'spec',
   service: 'service',
   form: 'form',
+  pipe: 'pipe',
   style: 'style',
   snippet: 'snippet',
   term: 'term',
@@ -101,6 +104,7 @@ const EXAMPLE: Readonly<Record<GenerateType, string>> = {
   spec: 'button',
   service: 'cart',
   form: 'person',
+  pipe: 'truncate',
   style: 'theme',
   snippet: 'ui productCard',
   term: 'then cart-has',
@@ -127,7 +131,7 @@ interface Tokens {
 function tokenize(argv: readonly string[]): Tokens {
   const positionals: string[] = [];
   const flags = new Map<string, string[]>();
-  const valued = new Set(['base', 'cwd', 'pm', 'layout', 'target', 'dir', 'in', 'sections', 'print-width', 'tab-width', 'quote', 'end-of-line', 'id', 'prefix', 'app', 'uses', 'lib', 'project', 'param', 'port', 'locales']);
+  const valued = new Set(['base', 'cwd', 'pm', 'layout', 'target', 'dir', 'in', 'sections', 'print-width', 'tab-width', 'quote', 'end-of-line', 'id', 'prefix', 'app', 'uses', 'lib', 'project', 'param', 'port', 'locales', 'locale', 'on']);
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i] ?? '';
@@ -184,6 +188,12 @@ function list(tokens: Tokens, name: string): readonly string[] | null {
 function target(tokens: Tokens): { readonly project?: string } {
   const project = tokens.flags.get('project')?.at(-1);
   return project === undefined ? {} : { project };
+}
+
+/** `--locale`, omitted when it was not given: the app is then `DEFAULT_LOCALE` (SDD-71 §3.6). */
+function locale(tokens: Tokens): { readonly locale?: string } {
+  const value = tokens.flags.get('locale')?.at(-1);
+  return value === undefined ? {} : { locale: value };
 }
 
 /** A usage error about `topic`, with the lines that say how to go on. */
@@ -329,7 +339,7 @@ function number(tokens: Tokens, name: string, fallback: number): number | undefi
 }
 
 function parseNew(tokens: Tokens, rest: readonly string[], base: Base, flags: GlobalFlags): ParsedCommand {
-  const unknown = unknownFlag(tokens, [...GLOBAL, 'pm', 'no-install', 'no-git', 'no-sw', 'layout', 'no-layout', 'target', 'id', 'prefix', 'workspace', 'app', 'uses', 'lib'], 'new');
+  const unknown = unknownFlag(tokens, [...GLOBAL, 'pm', 'no-install', 'no-git', 'no-sw', 'layout', 'no-layout', 'target', 'id', 'prefix', 'workspace', 'app', 'uses', 'lib', 'locale'], 'new');
   if (unknown !== null) return unknown;
 
   const name = rest[0];
@@ -359,6 +369,7 @@ function parseNew(tokens: Tokens, rest: readonly string[], base: Base, flags: Gl
     sw: !bool(tokens, 'no-sw'),
     layout,
     target: single(tokens, 'target', 'static'),
+    ...locale(tokens),
   };
   const uses = list(tokens, 'uses') ?? [];
   const libs = list(tokens, 'lib') ?? [];
@@ -370,7 +381,7 @@ function parseNew(tokens: Tokens, rest: readonly string[], base: Base, flags: Gl
   }
   const named = tokens.flags.has('app');
   // What only an app has, asked of a workspace with none.
-  for (const flag of ['uses', 'layout', 'no-layout'] as const) {
+  for (const flag of ['uses', 'layout', 'no-layout', 'locale'] as const) {
     if (!named && tokens.flags.has(flag)) {
       return fail({ problem: 'unknown-flag', name: flag }, 'new', `--${flag} is about the first app: add --app <name>`);
     }
@@ -413,7 +424,7 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
 
   switch (type) {
     case 'app': {
-      const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'id', 'prefix', 'no-sw', 'uses', 'base', 'layout', 'no-layout'], topic);
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'id', 'prefix', 'no-sw', 'uses', 'base', 'layout', 'no-layout', 'locale'], topic);
       if (unknown !== null) return unknown;
       const opts: AppOptions = {
         ...base,
@@ -425,6 +436,7 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
         sw: !bool(tokens, 'no-sw'),
         uses: list(tokens, 'uses') ?? [],
         layout: layoutChoice(tokens),
+        ...locale(tokens),
         ...(tokens.flags.has('base') ? { base: single(tokens, 'base', '/') } : {}),
       };
       return { kind: 'app', name, opts, flags };
@@ -452,6 +464,12 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
       const unknown = unknownFlag(tokens, [...GLOBAL, 'project', 'skip-test'], topic);
       if (unknown !== null) return unknown;
       return { kind: 'form', name, opts: { ...base, ...target(tokens), test: !bool(tokens, 'skip-test') }, flags };
+    }
+
+    case 'pipe': {
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'project', 'on'], topic);
+      if (unknown !== null) return unknown;
+      return { kind: 'pipe', name, opts: { ...base, ...target(tokens), on: single(tokens, 'on', 'str') }, flags };
     }
 
     case 'style': {

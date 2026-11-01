@@ -33,16 +33,26 @@ export const ROOT_FILE_PREFIX = 'fudic-root.';
 
 export interface RootInput {
   readonly side: 'server' | 'browser';
-  /** The app's folders, relative to its root: `src/server`, `src/browser`. */
-  readonly folders: { readonly server: string; readonly browser: string };
+  /**
+   * The app's folders, relative to its root: `src/server`, `src/browser`, and the pipes', which
+   * no root loads even when it is configured inside one of the other two (SDD-71 §4.3). Absent,
+   * there is none to leave out.
+   */
+  readonly folders: { readonly server: string; readonly browser: string; readonly pipes?: string };
   readonly libraries: readonly ApiLibrary[];
   /** The `<id>` the server root imports so every function has its contract. */
   readonly ids: readonly string[];
 }
 
-/** One folder's files as the root loads them: `[side, { label: () => import(…) }]`. */
-const glob = (folder: string): string =>
-  `import.meta.glob(${JSON.stringify([`/${folder}/**/*.{ts,js}`, `!/${folder}/**/*.d.ts`, `!/${folder}/**/*.{test,spec}.{ts,js}`])})`;
+/**
+ * One folder's files as the root loads them: `[side, { label: () => import(…) }]`. Never the
+ * folder of pipes inside it: a pipe reaches a page only when a view imports it (SDD-71 §4.3).
+ */
+const glob = (folder: string, pipes: string | undefined): string => {
+  const patterns = [`/${folder}/**/*.{ts,js}`, `!/${folder}/**/*.d.ts`, `!/${folder}/**/*.{test,spec}.{ts,js}`];
+  if (pipes?.startsWith(`${folder}/`) === true) patterns.push(`!/${pipes}/**`);
+  return `import.meta.glob(${JSON.stringify(patterns)})`;
+};
 
 export function emitRoot(input: RootInput): string {
   const sides = input.side === 'server' ? (['browser', 'server'] as const) : (['browser'] as const);
@@ -62,13 +72,13 @@ export function emitRoot(input: RootInput): string {
       const entries = files.map((file) => `${JSON.stringify(`${lib.name}${file.slice(lib.dir.length)}`)}: () => import(${JSON.stringify(file)})`);
       if (entries.length > 0) lines.push(`  [${JSON.stringify(side)}, { ${entries.join(', ')} }],`);
     }
-    lines.push(`  [${JSON.stringify(side)}, ${glob(input.folders[side])}],`);
+    lines.push(`  [${JSON.stringify(side)}, ${glob(input.folders[side], input.folders.pipes)}],`);
   }
   lines.push(
     '];',
     '',
     'async function load() {',
-    `  setFolders(${JSON.stringify(input.folders)});`,
+    `  setFolders(${JSON.stringify({ server: input.folders.server, browser: input.folders.browser })});`,
     '  try {',
     '    for (const [side, files] of folders) {',
     '      for (const [file, imported] of Object.entries(files)) {',

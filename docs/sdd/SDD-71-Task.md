@@ -6,7 +6,7 @@
 > `@fudic/diagnostics` · `examples/basic` · `examples/workspace`
 > **Rama:** `sdd-71-pipes-del-usuario`. Nace de `main` **con SDD-61 en `Hecho`**: enmienda su
 > §3.9 y su anexo, y migra el reloj que ella escribió.
-> **Progreso:** 0 / 24 — `Listo`.
+> **Progreso:** 26 / 26 — `Hecho`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -43,47 +43,105 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **Las convenciones.** `DEFAULT_LOCALE = 'en'` y `PIPES_DIR = 'src/pipes'` (SDD §3.1) | `conventions` | `src/index.ts` |
-| [ ] | 2 | 1 | **La configuración.** En una app, `locales` ausente es `[DEFAULT_LOCALE]` y deja de ser opcional en `ProjectConfig`; `"pipes"` con `readFolder`. En una librería, `locales` se ignora como hoy | `config` | `src/read.ts` |
-| [ ] | 3 | — | **Los códigos.** `FUD1340` (`.ts`, `.md`, línea en `index.ts`); `FUD1021` retirado (`.ts` borrado, `.md` como `retired`). El rango en la fila de SDD-71 del `INDEX.md` | `diagnostics` | `src/codes/FUD1340.{ts,md}` · `src/codes/FUD1021.*` · `src/index.ts` |
-| [ ] | 4 | — | **`Pipe` y los seis presets en `core`.** `Pipe<T>` con `kind`, `name?`, `options` y `format`; cada preset con solo su `Intl.*Format`, cacheado por idioma dentro del preset (SDD §3.4) | `core` | `src/pipe.ts` · `src/index.ts` |
-| [ ] | 5 | 4 | **`locale` y `format` en `core`.** Los nombres que sustituye el compilador se mudan; lanzan `compiled away` fuera de él, como en SDD-58 | `core` | `src/compiled-away.ts` · `src/index.ts` |
-| [ ] | 6 | 4, 5 | **`i18n` sin pipes.** Fuera `pipe.ts`, `runtime/format.ts`, `$format` y las exportaciones de §4.8; sin reexportación | `i18n` | `src/index.ts` · `src/pipe.ts` · `src/runtime/*` |
-| [ ] | 7 | 2–6 | **Los tests de la fase.** Criterios 1 y 2 (lectura y formato) | `config` · `core` · `i18n` | `test/**` |
+| [x] | 1 | — | **Las convenciones.** `DEFAULT_LOCALE = 'en'` y `PIPES_DIR = 'src/pipes'` (SDD §3.1) | `conventions` | `src/index.ts` |
+| [x] | 2 | 1 | **La configuración.** En una app, `locales` ausente es `[DEFAULT_LOCALE]` y deja de ser opcional en `ProjectConfig`; `"pipes"` con `readFolder`. En una librería, `locales` se ignora como hoy | `config` | `src/read.ts` |
+| [x] | 3 | — | **Los códigos.** `FUD1340` (`.ts`, `.md`, línea en `index.ts`); `FUD1021` retirado (`.ts` borrado, `.md` como `retired`). El rango en la fila de SDD-71 del `INDEX.md` | `diagnostics` | `src/codes/FUD1340.{ts,md}` · `src/codes/FUD1021.*` · `src/index.ts` |
+| [x] | 4 | — | **`Pipe` y los seis presets en `core`.** `Pipe<T>` con `kind`, `name?`, `options` y `format`; cada preset con solo su `Intl.*Format`, cacheado por idioma dentro del preset (SDD §3.4) | `core` | `src/pipe.ts` · `src/index.ts` |
+| [x] | 5 | 4 | **`locale` y `format` en `core`.** Los nombres que sustituye el compilador se mudan; lanzan `compiled away` fuera de él, como en SDD-58 | `core` | `src/compiled-away.ts` · `src/index.ts` |
+| [x] | 6 | 4, 5 | **`i18n` sin pipes.** Fuera `pipe.ts`, `runtime/format.ts`, `$format` y las exportaciones de §4.8; sin reexportación. Arrastra la parte del compilador de la tarea 13 (SDD §8.2, 4) | `i18n` · `compiler` | `src/index.ts` · `src/pipe.ts` · `src/runtime/*` · `compiler/src/i18n/*` |
+| [x] | 7 | 2–6 | **Los tests de la fase.** Criterios 1 y 2 (lectura y formato) | `config` · `core` · `i18n` | `test/**` |
 
 ## Fase 2 — `pipe` en el `.fudapi` (5)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 8 | — | **El parser.** `pipe <nombre>` con `on <tipo>+` y parámetros, como extensión; nodo `PipeDecl` con spans; sin lanzar (SDD §3.2, §5) | `api` | `src/ast.ts` · `src/extensions.ts` · `src/parse.ts` |
-| [ ] | 9 | 3, 8 | **La validación.** `FUD1340` sin `on`; `FUD1078` mezclado con un contrato; `FUD1081` repetido; tipos de `on` y de los parámetros como los de SDD-60 | `api` | `src/validate.ts` · `src/types-check.ts` |
-| [ ] | 10 | 4, 8 | **Lo generado.** `fudic:pipes/<id>` y su `.d.ts`: `<N>Args`, `<N>Format` y `implement`, con y sin parámetros (SDD §3.3). El módulo de un fichero con solo pipes importa `@fudic/core` y nada más | `api` · `vite` | `src/emit/declarations.ts` · `src/emit/module.ts` · `src/api-modules.ts` |
-| [ ] | 11 | 8 | **El índice y el editor.** Hover con la documentación, definición y completado bajo `pipe` y tras `on`; tocar el `.fudapi` revalida las vistas que lo importan | `api` · `language-server` | `src/index-api.ts` · `src/*` |
-| [ ] | 12 | 8–11 | **Los tests de la fase.** Criterios 5, 6, 7 y 15 | `api` · `language-server` · `vite` | `test/**` |
+| [x] | 8 | — | **El parser.** `pipe <nombre>` con `on <tipo>+` y parámetros, como extensión; nodo `PipeDecl` con spans; sin lanzar (SDD §3.2, §5) | `api` | `src/ast.ts` · `src/extensions.ts` · `src/parse.ts` |
+| [x] | 9 | 3, 8 | **La validación.** `FUD1340` sin `on`; `FUD1078` mezclado con un contrato; `FUD1081` repetido; tipos de `on` y de los parámetros como los de SDD-60 | `api` | `src/validate.ts` · `src/types-check.ts` |
+| [x] | 10 | 4, 8 | **Lo generado.** `fudic:pipes/<id>` y su `.d.ts`: `<N>Args`, `<N>Format` y `implement`, con y sin parámetros (SDD §3.3). El módulo de un fichero con solo pipes importa `@fudic/core` y nada más | `api` · `vite` | `src/emit/declarations.ts` · `src/emit/module.ts` · `src/api-modules.ts` |
+| [x] | 11 | 8 | **El índice y el editor.** Hover con la documentación, definición y completado bajo `pipe` y tras `on`; tocar el `.fudapi` revalida las vistas que lo importan | `api` · `language-server` | `src/index-api.ts` · `src/*` |
+| [x] | 12 | 8–11 | **Los tests de la fase.** Criterios 5, 6, 7 y 15 | `api` · `language-server` · `vite` | `test/**` |
 
 ## Fase 3 — la vista y el navegador (5)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 13 | 4 | **El emit.** `a \| p` y `format(a, p)` se emiten como `p.format(a, "<idioma>")`; fuera `$format` de `localize.ts`, de `I18N_PIECES` y del import de `@fudic/i18n` que escribe la expansión. `$Pipe<T>` gana `format` en `GLOBALS_DTS` | `compiler` · `language-core` | `src/i18n/localize.ts` · `src/semantic/delegation.ts` · `src/emit/oxc-code.ts` · `src/globals.ts` |
-| [ ] | 14 | 2 | **La vista importa de la carpeta de pipes** (decisión 172). El `export default` de un fichero de esa carpeta, o el `pipes/*` de una librería, vale en el corte; solo a la derecha de `\|` o llamado en una `const` con un literal de datos; lo demás, `FUD1150` | `compiler` · `typecheck` | `src/semantic/analyzers/*` |
-| [ ] | 15 | 2, 10 | **Fuera de las raíces.** La carpeta de pipes no entra en ningún `import.meta.glob` de `api-root.ts`, aunque esté configurada dentro de `src/browser` o `src/server` | `vite` | `src/api-root.ts` · `src/plugin.ts` |
-| [ ] | 16 | 4 | **Una pieza publicada por preset.** El linker publica solo los presets que algún módulo importa (SDD-45) | `core` · `vite` | `src/runtime-entry.ts` · `src/*` |
-| [ ] | 17 | 13–16 | **Los tests de la fase.** Criterios 8–12, con el de bytes sobre un `dist` real | `compiler` · `vite` | `test/**` |
+| [x] | 13 | 4 | **El emit.** `a \| p` y `format(a, p)` se emiten como `p.format(a, "<idioma>")`; fuera `$format` de `localize.ts`, de `I18N_PIECES` y del import de `@fudic/i18n` que escribe la expansión. `$Pipe<T>` gana `format` en `GLOBALS_DTS` | `compiler` · `language-core` | `src/i18n/localize.ts` · `src/semantic/delegation.ts` · `src/emit/oxc-code.ts` · `src/globals.ts` |
+| [x] | 14 | 2 | **La vista importa de la carpeta de pipes** (decisión 172). El `export default` de un fichero de esa carpeta, o el `pipes/*` de una librería, vale en el corte; solo a la derecha de `\|` o llamado en una `const` con un literal de datos; lo demás, `FUD1150` | `compiler` · `typecheck` | `src/semantic/analyzers/*` |
+| [x] | 14b | 13 | **El pipe sin paréntesis** (SDD §8.2, 5): `@data.x\|pipe` además de `@(data.x \| pipe)`, en el compilador y en el editor (tipos, hover, completado tras `\|`) | `compiler` · `language-core` · `language-server` | `src/at/*` · `src/*` |
+| [x] | 14c | — | **Dos trozos del SW con un mismo nombre** (SDD §8.2, 6): en `examples/basic`, `forms/impl/browser/rules.ts` y un trozo compartido salen los dos como `sw/c/rules-*` y el build avisa `FUD0501`. Ya pasaba en una app sin `locales` y lo tapaba la etiqueta de idioma. Cada trozo debe tener nombre propio y el build salir sin el aviso | `vite` | `src/link.ts` · `src/i18n.ts` · `src/rename.ts` |
+| [x] | 15 | 2, 10 | **Fuera de las raíces.** La carpeta de pipes no entra en ningún `import.meta.glob` de `api-root.ts`, aunque esté configurada dentro de `src/browser` o `src/server` | `vite` | `src/api-root.ts` · `src/plugin.ts` |
+| [x] | 16 | 4 | **Una pieza publicada por preset.** El linker publica solo los presets que algún módulo importa (SDD-45) | `core` · `vite` | `src/runtime-entry.ts` · `src/*` |
+| [x] | 17 | 13–16 | **Los tests de la fase.** Criterios 8–12, con el de bytes sobre un `dist` real | `compiler` · `vite` | `test/**` |
 
 ## Fase 4 — la CLI (5)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 18 | 2 | **`--locale`** en `new` y `g app`, normalizado; `FUD0725` con `problem: 'flag'`; sin él no se escribe la clave; `unknown-flag` en una librería; ayuda | `cli` | `src/args.ts` · `src/plans/new.ts` · `src/plans/app.ts` · `src/help/commands.ts` · `templates/fudic.json.tmpl` |
-| [ ] | 19 | 18 | **El `lang` de layout y página.** El primer idioma del proyecto, o `DEFAULT_LOCALE`, en `new`, `g layout` y `g page` | `cli` | `src/templates.ts` · `src/plans/layout.ts` · `src/plans/page.ts` |
-| [ ] | 20 | 10 | **`fudic g pipe <nombre>`** con `--on` y `--project`: el `.fudapi`, la implementación y el test de §4.1, en app y en librería; ayuda | `cli` | `src/plans/pipe.ts` · `templates/pipe/*` · `src/args.ts` · `src/help/commands.ts` |
-| [ ] | 21 | 20 | **La librería publica sus pipes.** `"./pipes/*": "./src/pipes/*.ts"` en `exports` | `cli` | `templates/lib/package.json.tmpl` |
-| [ ] | 22 | 18–21 | **Los tests de la fase.** Criterios 3, 4 y 14, con un proyecto recién creado que pasa `pnpm test` y `pnpm typecheck` sin tocarlo; `g pipe` en `pnpm verify:generated` si SDD-66 está `Hecho` | `cli` | `test/**` |
+| [x] | 18 | 2 | **`--locale`** en `new` y `g app`, normalizado; `FUD0725` con `problem: 'flag'`; sin él no se escribe la clave; `unknown-flag` en una librería; ayuda | `cli` | `src/args.ts` · `src/plans/new.ts` · `src/plans/app.ts` · `src/help/commands.ts` · `templates/fudic.json.tmpl` |
+| [x] | 19 | 18 | **El `lang` de layout y página.** El primer idioma del proyecto, o `DEFAULT_LOCALE`, en `new`, `g layout` y `g page` | `cli` | `src/templates.ts` · `src/plans/layout.ts` · `src/plans/page.ts` |
+| [x] | 20 | 10 | **`fudic g pipe <nombre>`** con `--on` y `--project`: el `.fudapi`, la implementación y el test de §4.1, en app y en librería; ayuda | `cli` | `src/plans/pipe.ts` · `templates/pipe/*` · `src/args.ts` · `src/help/commands.ts` |
+| [x] | 21 | 20 | **La librería publica sus pipes.** `"./pipes/*": "./src/pipes/*.ts"` en `exports` | `cli` | `templates/lib/package.json.tmpl` |
+| [x] | 22 | 18–21 | **Los tests de la fase.** Criterios 3, 4 y 14, con un proyecto recién creado que pasa `pnpm test` y `pnpm typecheck` sin tocarlo; `g pipe` en `pnpm verify:generated` si SDD-66 está `Hecho` | `cli` | `test/**` |
 
 ## Fase 5 — migración y cierre (2)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 23 | 6, 13 | **La migración.** Todo el repositorio importa los presets, `Pipe`, `format` y `locale` de `@fudic/core`; `examples/basic` sin `"locales"` si solo estaba por los pipes, con el reloj igual; `examples/workspace` con un pipe en `libs/ui` usado por una app. Criterios 13 y 16 | `examples/*` · fixtures | `examples/basic/**` · `examples/workspace/**` · `packages/*/fixtures/**` |
-| [ ] | 24 | 23 | **Anexo, README, entrega y cierre.** Las filas de §4.7 en SDD-61 §A.2 y §A.4 (criterio 17); los README de `@fudic/core` e `@fudic/i18n` y la guía del `.fudapi` con `pipe`; criterio 18; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; SDD-71 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `docs/sdd/*` · `packages/*/README.md` |
+| [x] | 23 | 6, 13 | **La migración.** Todo el repositorio importa los presets, `Pipe`, `format` y `locale` de `@fudic/core`; `examples/basic` sin `"locales"` si solo estaba por los pipes, con el reloj igual; `examples/workspace` con un pipe en `libs/ui` usado por una app, y sus apps con su `tsconfig.json` (el build avisa `FUD0870` desde antes de esta spec; SDD §8.2, 9). Criterios 13 y 16 | `examples/*` · fixtures | `examples/basic/**` · `examples/workspace/**` · `packages/*/fixtures/**` |
+| [x] | 24 | 23 | **Anexo, README, entrega y cierre.** Las filas de §4.7 en SDD-61 §A.2 y §A.4 (criterio 17); los README de `@fudic/core` e `@fudic/i18n` y la guía del `.fudapi` con `pipe`; criterio 18; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; SDD-71 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `docs/sdd/*` · `packages/*/README.md` |
+
+## Traspaso (2026-10-31)
+
+La sesión que implementó se cierra antes del cierre; lo hace otra sesión. Estado:
+
+- **Hecho y en origin:** fases 1–4 enteras y la tarea 23. De la 24 ya están el anexo de SDD-61
+  (§A.2, §A.4), la enmienda de SDD-61 §3.9, la decisión 172 ampliada, los README de `@fudic/core`,
+  `@fudic/i18n` y `@fudic/api`. `pnpm typecheck` y `pnpm build` en verde, sin un aviso.
+- **Tarea 22 hecha** (sesión de test, `0a1ece21`, `628022c0`, `035f66fa`): `--locale`, el `lang`
+  de layout y páginas, el plan de `g pipe` rama a rama y, de verdad sobre disco, `g pipe` en una app
+  y en una librería recién creadas con su `vitest run` y `tsc` verdes (`cli/test/pipe-green.test.ts`).
+  `pnpm verify:generated` no existe aún: SDD-66 no está `Hecho`.
+- **Informe final de cobertura** (sesión de test, `8ece7f44`; `vitest run --coverage` por paquete,
+  sentencias / ramas / funciones / líneas):
+
+  | Paquete | Tests | Cobertura | Nota |
+  |---|---|---|---|
+  | `conventions` | 18 | 100 / 100 / 100 / 100 | |
+  | `config` | 79 | 100 / 100 / 100 / 100 | |
+  | `diagnostics` | 998 | 100 / 100 / 100 / 100 | |
+  | `core` | 318 | 100 / 100 / 100 / 100 | |
+  | `i18n` | 159 | 100 / 100 / 100 / 100 | |
+  | `api` | 594 | 100 / 100 / 100 / 100 | |
+  | `typecheck` | 460 | 100 / 100 / 100 / 100 | |
+  | `language-core` | 362 | 100 / 100 / 100 / 100 | |
+  | `language-server` | 1628 | 100 / 100 / 100 / 100 | 60 s de timeout por el arranque en frío del servicio TS |
+  | `testing` | 237 | 100 / 100 / 100 / 100 | nuevo proyecto `test/locales-app` (es, en) |
+  | `compiler` | 3861 | 99,63 / 99,19 / 99,76 / 99,88 | deuda heredada (suelo 95,6 en ramas); lo nuevo, al 100 |
+  | `vite` | 1259 | 98,82 / 95,95 / 99,60 / 99,05 | deuda heredada (suelo 83,1 en ramas) |
+  | `cli` | 584 | 98,83 / 98,28 / 98,48 / 99,10 | deuda heredada (suelo 80/80/75); `plans/pipe.ts` al 100 |
+
+  Ejemplos: `example-basic` 28, `example-ui` 4, `example-tienda` 5, `example-admin` 4, todos verdes.
+  Las e2e de Playwright (`examples/basic`, `examples/workspace`) no se han corrido en esta sesión.
+- **Pendiente de Pedro:**
+  1. **Tarea 14b, el pipe con espacios.** Hecho y probado: `@x|pipe` pegado. Propuesta abierta:
+     con espacios, `@precio | euros` es pipe solo si `euros` lo declara el `@code` del fichero; si
+     no, texto. Hasta que decida, la 14b queda abierta.
+  2. **`node examples/pieces-bench/check.mjs`** tras `pnpm build`: comprueba las piezas nuevas
+     `core/{pipe,date,number,relative-time,list}`. Ninguna sesión tiene permiso para `node`; se
+     añadió la excepción `compiled-away` en ese fichero.
+- **Para cerrar (tarea 24):** con la 22 y la 14b hechas, `pnpm typecheck`, `pnpm test` (en segundo
+  plano: >10 min) y `pnpm build`; criterio 18 (cobertura según el informe); SDD-71 y este fichero en
+  `Hecho`; fila y registro del `INDEX.md`; merge `--no-ff` a main si Pedro lo pide.
+- **Decisiones tomadas al implementar:** SDD §8.2, puntos 1–18.
+
+## Cierre (2026-11-01)
+
+- `pnpm typecheck` y `pnpm build` en verde sobre `f9717d2b`. El build solo avisa del
+  `import.meta` de `@fudic/ssr`, que esta rama no toca.
+- `pnpm test` no se repite: desde el informe de cobertura (`8ece7f44`) solo cambió este fichero.
+  Criterio 18, según ese informe: ningún paquete baja de su suelo.
+- Evidencia manual (Pedro): navegador con y sin SW, extensión de VS Code y CLI. Destapó que el
+  reloj de `examples/basic` se prerenderizaba con la hora del build: la ruta pasa a `load ssr`.
+- 14b cerrada con espacios (SDD §8.2, 5): `compiler` 3878 tests, cobertura igual a su suelo
+  (99,63 / 99,19 / 99,76 / 99,88), lo nuevo al 100; el editor, en `pipes-editor.test.ts`.
+- Queda `node examples/pieces-bench/check.mjs`, que ninguna sesión corre sin permiso.

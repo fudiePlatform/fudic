@@ -1,6 +1,6 @@
 @* §3.4: `a | preset`, the pipe of the catalog. What it formats is the platform's ICU: the .html writes it {{pipe}}. *@
 @code {
-  import { currency, date, list, number, percent, relativeTime } from "@fudic/i18n";
+  import { currency, date, list, number, percent, relativeTime } from "@fudic/core";
 
   const { cuando, total = 3.5, parte = 0.25, n = 1234.5, dias = -2, nombres = [] } =
     props<{ cuando: Date; total?: number; parte?: number; n?: number; dias?: number; nombres?: readonly string[] }>();

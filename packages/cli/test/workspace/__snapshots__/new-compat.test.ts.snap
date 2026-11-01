@@ -139,7 +139,7 @@ interface $TrustedURL { readonly fudicTrustedUrl: string }
 declare function $url(v: $Scalar | $TrustedURL): void;
 interface $TrustedHTML { readonly fudicTrustedHtml: string }
 declare function $raw(v: $TrustedHTML | null | undefined): void;
-interface $Pipe<in T> { readonly kind: string; readonly __in?: (value: T) => void }
+interface $Pipe<in T> { readonly kind: string; format(value: T, locale: string): string }
 declare function $pipe<T>(value: NoInfer<T>, pipe: $Pipe<T>): string;
 declare function $attrs<T>(a: T & $GlobalAttrs): void;
 

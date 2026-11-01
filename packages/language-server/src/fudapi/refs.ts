@@ -118,6 +118,11 @@ export function apiRefs(file: ApiFile, index: ApiIndex): readonly ApiRef[] {
       case 'pattern':
         refs.push({ name: d.name, kind: 'pattern', declaration: true });
         break;
+      case 'pipe':
+        refs.push({ name: d.name, kind: 'pipe', declaration: true });
+        d.on?.types.forEach(type);
+        d.params.forEach((p) => type(p.type));
+        break;
       default:
         break;
     }

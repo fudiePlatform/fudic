@@ -1,7 +1,7 @@
 @* N1: no JavaScript reaches the browser. Its text, its formats and its plural are written by
    the server, already in the page's language. *@
 @code {
-  import { currency, date } from '@fudic/i18n';
+  import { currency, date } from '@fudic/core';
 
   const { name = "", count = 0, vip = false, alta } = props<{ name?: string; count?: number; vip?: boolean; alta: Date }>();
   const euros = currency('EUR');

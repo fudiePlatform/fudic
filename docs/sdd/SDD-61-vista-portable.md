@@ -361,6 +361,11 @@ en runtime.
 
 ### 3.9. Lo que el servidor evalúa del `@code` (decisión 164)
 
+> **Enmienda de SDD-71 (decisión 172).** También vale el `export default` de un fichero de la
+> carpeta de pipes del proyecto, o del `pipes/*` de una librería. Ese nombre solo puede ir a la
+> derecha de un `|` o llamarse en una `const` con literales de datos; lo demás es `FUD1150`. Los
+> presets se importan de `@fudic/core`.
+
 El corte de servidor de SDD-60 §4.8 son las declaraciones que la vista lee, transitivamente. Cada
 una tiene que tener una de estas formas:
 

@@ -12,7 +12,7 @@
  */
 
 import { parseControl } from './control/index.js';
-import { parseCodeBlock } from './code/index.js';
+import { type CodeBlockNode, codeNames, parseCodeBlock } from './code/index.js';
 import { parseDirective } from './layout/index.js';
 import { parseSnippet } from './snippet/index.js';
 import type { AtConstructParser } from './html/index.js';
@@ -23,4 +23,6 @@ export const atConstructs: AtConstructParser = {
   parseCodeBlock,
   parseDirective,
   parseSnippet,
+  // What it receives is what `parseCodeBlock` returned, and that is always a `CodeBlockNode`.
+  codeNames: (source, block) => codeNames(source, block as CodeBlockNode),
 };

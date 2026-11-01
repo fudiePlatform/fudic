@@ -47,14 +47,19 @@ describe('diagnostics map back to the file on disk', () => {
     expect(graph.entryOrigin.source).toBe(source);
   });
 
-  it('a file whose translation leaves it as it was maps to itself', () => {
+  it('a file whose translation leaves it as it was compiles as if read without a locale (SDD-71)', () => {
     const source = '<app-x><template shadowrootmode="open"><p>Hola</p><div></span></div></template></app-x>';
-    const io = localizedIo(memoryIo({ '/c/x.fud': source }), i18nOf({}));
-    const { value: graph, diagnostics } = resolveDocument('/c/x.fud', io);
+    const localized = resolveDocument('/c/x.fud', localizedIo(memoryIo({ '/c/x.fud': source }), i18nOf({})));
+    const plain = resolveDocument('/c/x.fud', memoryIo({ '/c/x.fud': source }));
 
-    expect(graph.entrySource).toBe(source);
-    const back = graph.entryMap.spanOf(diagnostics[0]!.span!)!;
-    expect(back.span.start).toBe(source.indexOf('</span>'));
+    expect(localized.value.entrySource).toBe(source);
+    expect(localized.value.entryOrigin.source).toBe(source);
+    // No rewrite to read back through: the diagnostic is already on the file, as without a locale.
+    expect(localized.diagnostics[0]!.span!.start).toBe(source.indexOf('</span>'));
+    expect(localized.diagnostics.map((d) => d.span)).toEqual(plain.diagnostics.map((d) => d.span));
+    expect(localized.value.entryMap.spanOf(localized.diagnostics[0]!.span!)).toEqual(
+      plain.value.entryMap.spanOf(plain.diagnostics[0]!.span!),
+    );
   });
 });
 

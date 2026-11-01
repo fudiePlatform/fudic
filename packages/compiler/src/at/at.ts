@@ -46,8 +46,9 @@ export interface RazorExpression extends Node {
   readonly regions: readonly LexRegion[];
   /**
    * The `.` (or `?.`) written with no name behind it, where the chain stopped
-   * (decision 102). NOT part of `span` nor of `expr`: for the emit it is still literal
-   * text, so `@data.` keeps printing the dot (decision 2 intact).
+   * (decision 102), or a `|` with no pipe behind it (SDD-71). NOT part of `span` nor of
+   * `expr`: for the emit it is still literal text, so `@data.` keeps printing the dot
+   * (decision 2 intact).
    *
    * It is the EDITOR that needs it — the instant completion is asked for is exactly the
    * one where the dot is typed and the name is not — and that is why it travels apart.
@@ -195,6 +196,19 @@ export function classifySnippet(identifier: string): SnippetDirective | null {
 }
 
 /**
+ * Whether `name` is a pipe the view may apply with blanks around the bar: one the `@code`
+ * imports or declares (SDD-71 §8.2, 5). Absent where that form does not exist.
+ */
+export type PipeScope = (name: string) => boolean;
+
+/** End offset of the spaces and tabs from `from`: blanks never cross a line. */
+function blanksEnd(source: string, from: number): number {
+  let i = from;
+  while (source[i] === ' ' || source[i] === '\t') i++;
+  return i;
+}
+
+/**
  * The `.` or `?.` a chain link starts with, or 0 when the character at `i` is neither.
  * Its LENGTH, because that is what both callers need: how far to look for the name, and
  * how wide the dangling span is when no name follows.
@@ -226,6 +240,7 @@ function accessorAt(source: string, i: number): 0 | 1 | 2 {
 export function scanImplicitExpression(
   source: string,
   atOffset: number,
+  isPipe?: PipeScope,
 ): ParseResult<RazorExpression> {
   const exprStart = atOffset + 1;
   let i = identifierEnd(source, exprStart);
@@ -258,6 +273,25 @@ export function scanImplicitExpression(
       continue;
     }
 
+    // A pipe written against the chain (SDD-71 §8.2, 5): `@data.x|pipe`, and `@x|a|b`. Adjacent
+    // on both sides it is always one; with blanks around the bar — on the same line — only when
+    // `isPipe` says the name is one, and otherwise the bar is text, as it always was. `||` is
+    // never a pipe.
+    const bar = isPipe === undefined ? i : blanksEnd(source, i);
+    if (source[bar] === '|' && source[bar + 1] !== '|') {
+      const nameStart = isPipe === undefined ? bar + 1 : blanksEnd(source, bar + 1);
+      const next = identifierEnd(source, nameStart);
+      // A bar with no name behind it stays text, and is recorded like a dangling dot: the
+      // editor asks there for the pipes in scope.
+      if (next === nameStart) {
+        dangling = span(i, nameStart);
+        break;
+      }
+      const glued = bar === i && nameStart === bar + 1;
+      if (!glued && !isPipe!(source.slice(nameStart, next))) break;
+      i = next;
+      continue;
+    }
     const char = source[i];
     if (char !== '(' && char !== '[') break;
     // The balancer owns the boundary, so a `)` inside a string argument does not close
@@ -298,7 +332,11 @@ export function expressionFromToken(token: JsRegionToken): RazorExpression {
  * dispatches control/code keywords, or scans the implicit expression. Never throws.
  * The caller advances the lexer with `lexer.seekTo(resolutionEnd(resolution))`.
  */
-export function resolveTrigger(source: string, atOffset: number): ParseResult<TriggerResolution> {
+export function resolveTrigger(
+  source: string,
+  atOffset: number,
+  isPipe?: PipeScope,
+): ParseResult<TriggerResolution> {
   const identStart = atOffset + 1;
   const identEnd = identifierEnd(source, identStart);
 
@@ -343,7 +381,7 @@ export function resolveTrigger(source: string, atOffset: number): ParseResult<Tr
       : withDiagnostics(resolution, group.diagnostics);
   }
 
-  const expression = scanImplicitExpression(source, atOffset);
+  const expression = scanImplicitExpression(source, atOffset, isPipe);
   const resolution: TriggerResolution = { kind: 'implicit', expression: expression.value };
   // An unterminated group in the chain has something to say; a bare path never does.
   return expression.diagnostics.length === 0

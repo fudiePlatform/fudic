@@ -404,7 +404,7 @@ describe('t() (§4.3)', () => {
   it('nor a method called t, nor format()', () => {
     const source = component(
       '<p>@obj.t("Hola") @format(x, p) @other("Hola")</p>',
-      "@code { import { t, format } from '@fudic/i18n'; }\n",
+      "@code { import { t } from '@fudic/i18n'; import { format } from '@fudic/core'; }\n",
     );
     expect(extract(source)).toEqual({ value: [], diagnostics: [] });
   });
@@ -490,7 +490,7 @@ describe('t() (§4.3)', () => {
   });
 
   it('with only format imported, no call is looked at', () => {
-    const source = component('<p>@t(x)</p>', "@code { import { format } from '@fudic/i18n'; }\n");
+    const source = component('<p>@t(x)</p>', "@code { import { format } from '@fudic/core'; }\n");
     expect(extract(source).diagnostics).toEqual([]);
   });
 });

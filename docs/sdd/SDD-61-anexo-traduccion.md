@@ -146,7 +146,9 @@
 | Atributo URL sin origen fijo | `$dom.setUrl(n, "href", x)` | `dom.SetUrl(n, "href", x)` |
 | `x()` (señal, `computed`, `Readable`) | igual | La variable `x` |
 | `form.$valid()`, `form.$issues()`, `campo.errors()`, `campo()` | igual | El runtime de forms portado: `form.Valid`, `form.Issues`, `campo.Errors`, `campo.Value` |
-| `x \| preset` | `$format(preset, x, "es")` | `Fud.Format(preset, x, "es")` |
+| `x \| preset` | `preset.format(x, "es")` (SDD-71) | `Fud.Format(preset, x, "es")` |
+| `x \| corto` (pipe del proyecto con parámetros, SDD-71) | `corto.format(x, "es")` | `ioc.Get<ITruncarPipe>().Format(x, corto_1, "es")` (C#; el resto, igual con su forma) |
+| `x \| iniciales` (pipe del proyecto sin parámetros) | `iniciales.format(x, "es")` | `ioc.Get<IInicialesPipe>().Format(x, "es")` |
 | `t("…")` | El literal del idioma | El literal del idioma; con huecos, `Fud.Message(partes, args, "es")` |
 | `<app-x .a=@e>` | `render$N($dom, $dom.attachShadow(n), { "a": e }, $ioc)` | `AppX.Render(dom, dom.AttachShadow(n), new AppXProps(A: e), ioc)` |
 
@@ -188,6 +190,8 @@ La desestructuración tiene su propia sección (A.3).
 | `provide(Token, factoría)` | Nada al pintar: el anfitrión registra su implementación del token por nombre |
 | `trustedUrl(s)`, `trustedHtml(s)` | `Fud.TrustedUrl(s)`, `Fud.TrustedHtml(s)` |
 | `date({ … })` y los demás presets | Un preset de datos del runtime con las mismas opciones (`kind` + `options`) |
+| `import truncar from '../pipes/truncar'` (SDD-71) | Nada |
+| `const corto = truncar({ max: 40 })` | El record de sus parámetros: `var corto_1 = new TruncarArgs(Max: 40.0);` (C#; el resto, igual con su forma) |
 | Store importado | Una variable del módulo generado para el store, con su valor inicial |
 | Módulo de datos | El literal, generado como constante del tipo con nombre |
 | Literal de datos con tipo | El constructor del tipo generado: `new Nodo(…)`, `Nodo{…}`, `Nodo(…)` |
@@ -679,6 +683,18 @@ Lo que se escribe a mano, una vez por lenguaje. La suite de conformidad lo prueb
 **Texto formateado.** Un pipe puede dar bytes distintos en .NET y en el navegador: un espacio de
 CLDR, otra versión de ICU. No rompe nada, porque la hidratación no compara texto (IDEA-03 §4). En la
 suite de conformidad, las filas de pipes comparan todo el HTML salvo el texto que formatea el pipe.
+
+**Pipes del proyecto (SDD-71 §4.7).** Los presets del catálogo siguen siendo `Fud.Format`, escritos
+una vez por runtime. Los pipes que declara el proyecto no los escribe fudic: de su `.fudapi` el
+generador escribe solo la interfaz del pipe y el record (o struct) de sus parámetros, y la
+implementación es del equipo de backend, que la registra en su contenedor como la de un token de
+`inject`. fudic no comprueba que exista y no hace fallar ningún build por eso. En la suite de
+conformidad, una fila con un pipe del proyecto compara todo el HTML salvo el texto del pipe.
+
+| | C# | Java | Go | Rust | Python |
+|---|---|---|---|---|---|
+| El pipe | `interface ITruncarPipe { string Format(string value, TruncarArgs args, string locale); }` | `interface TruncarPipe { String format(String value, TruncarArgs args, String locale); }` | `type TruncarPipe interface { Format(value string, args TruncarArgs, locale string) string }` | `trait TruncarPipe { fn format(&self, value: &str, args: &TruncarArgs, locale: &str) -> String; }` | `class TruncarPipe(Protocol): def format(self, value: str, args: TruncarArgs, locale: str) -> str: ...` |
+| Sus parámetros | `sealed record TruncarArgs(double Max)` | `record TruncarArgs(double max)` | `type TruncarArgs struct { Max float64 }` | `struct TruncarArgs { max: f64 }` | `@dataclass class TruncarArgs: max: float` |
 
 ## A.5. Lo particular de cada lenguaje
 

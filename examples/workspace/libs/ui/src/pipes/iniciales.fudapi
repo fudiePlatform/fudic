@@ -1,0 +1,3 @@
+# The initials of a name, upper case: "ada lovelace" → "AL".
+pipe iniciales
+  on str

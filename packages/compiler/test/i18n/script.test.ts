@@ -38,7 +38,7 @@ function decode(mappings: string): [number, number, number, number][] {
   return out;
 }
 
-const T = "import { t, format, locale, currency } from '@fudic/i18n';\n";
+const T = "import { t } from '@fudic/i18n';\nimport { format, locale, currency } from '@fudic/core';\n";
 
 describe('translateScript', () => {
   it('t() as a literal or a template literal, translated', () => {
@@ -60,12 +60,12 @@ describe('translateScript', () => {
     expect(value.code).toContain(',`en`))');
   });
 
-  it('format() is $format, and locale is "en"', () => {
+  it('format() is the pipe\'s own format, and locale is "en" (SDD-71 §4.2)', () => {
     const source = `${T}export const s = format(3.5, currency('EUR'));\nexport const l = locale;\nexport const o = { locale };\n`;
     const { value } = translateScript(source, 'src/lib/f.ts', i18nOf({}));
 
     expect(value.code).toBe(
-      `import { $format } from '@fudic/i18n';\n${T}export const s = ($format((currency('EUR')),(3.5),\`en\`));\nexport const l = (\`en\`);\nexport const o = { locale:\`en\` };\n`,
+      `${T}export const s = ((currency('EUR')).format((3.5),\`en\`));\nexport const l = (\`en\`);\nexport const o = { locale:\`en\` };\n`,
     );
   });
 
@@ -119,12 +119,12 @@ describe('translateScript', () => {
     lines.forEach((line, i) => {
       if (line !== '') expect(segments.some(([l, c]) => l === i && c === 0)).toBe(true);
     });
-    // `export const b = 1;` is line 2 in both, and so is its mapping.
+    // `export const b = 1;` is line 3 in both, and so is its mapping.
     const b = lines.indexOf('export const b = 1;');
-    expect(segments.find(([l, c]) => l === b && c === 0)).toEqual([b, 0, 2, 0]);
-    // `export const c` comes after an inserted import: its line maps to the original line 4.
+    expect(segments.find(([l, c]) => l === b && c === 0)).toEqual([b, 0, 3, 0]);
+    // `export const c`, whose `format` was rewritten in place, maps to the original line 5.
     const c = lines.findIndex((l) => l.startsWith('export const c'));
-    expect(segments.find(([l, col]) => l === c && col === 0)?.[2]).toBe(4);
+    expect(segments.find(([l, col]) => l === c && col === 0)?.[2]).toBe(5);
   });
 });
 

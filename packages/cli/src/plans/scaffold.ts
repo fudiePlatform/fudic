@@ -10,11 +10,11 @@
 
 import { CONFIG_FILE, ID_PATTERN, PREFIX_PATTERN } from '@fudic/config';
 import { FUD0443, FUD0447, FUD0725 } from '@fudic/diagnostics';
-import { API_TYPES_DIR, BROWSER_DIR, COMPONENTS_DIR, LAYOUTS_DIR, ROUTES_DIR, SERVER_DIR } from '@fudic/conventions';
+import { API_TYPES_DIR, BROWSER_DIR, COMPONENTS_DIR, DEFAULT_LOCALE, LAYOUTS_DIR, ROUTES_DIR, SERVER_DIR } from '@fudic/conventions';
 import { GLOBALS_DTS, GLOBALS_FILE_NAME } from '@fudic/language-core';
 import { absolute, hrefBetween, joinPosix } from '../paths.js';
 import { FUDIC_VERSION, targetChange, TYPESCRIPT_VERSION, VITE_VERSION, VITEST_VERSION } from '../project.js';
-import { layoutTest, pageTest, prefixField, renderSectionBlocks, renderTemplate, viteSettings } from '../templates.js';
+import { layoutTest, localesField, pageTest, prefixField, renderSectionBlocks, renderTemplate, viteSettings } from '../templates.js';
 import { ENV_DECLARATION, ENV_FILE } from './spec.js';
 import type { ReadIo } from '../io.js';
 import type { AppLayout, BaseOptions, CliError, FileChange, NewOptions } from '../types.js';
@@ -53,6 +53,18 @@ export interface ProjectSite {
   readonly serve?: { readonly base: string; readonly port: number };
 }
 
+/**
+ * `--locale` as `fudic.json` keeps it (SDD-71 §3.6): canonical BCP 47, `es-es` → `es-ES`, read
+ * the way the config reader reads `locales`. `undefined` when it is not a tag.
+ */
+export function canonicalLocale(tag: string): string | undefined {
+  try {
+    return Intl.getCanonicalLocales(tag)[0];
+  } catch {
+    return undefined;
+  }
+}
+
 /** `null` when the field is usable. An empty `prefix` is the field being absent, not a value. */
 function invalidField(field: string, value: string, pattern: RegExp): CliError | null {
   if (field === 'prefix' && value === '') return null;
@@ -79,6 +91,9 @@ export function scaffoldRefusal(
   const badField =
     invalidField('id', opts.id, ID_PATTERN) ?? invalidField('prefix', opts.prefix, PREFIX_PATTERN);
   if (badField !== null) return badField;
+  if (opts.locale !== undefined && canonicalLocale(opts.locale) === undefined) {
+    return FUD0725({ file: CONFIG_FILE, problem: 'flag', field: 'locale', value: opts.locale, pattern: 'a BCP 47 tag, like es or en-US' });
+  }
 
   const root = absolute(opts.cwd, name);
   if (io.exists(root) && io.list(root).length > 0 && !opts.force) {
@@ -117,6 +132,9 @@ export function tsconfigFor(site: ProjectSite): string {
 export function appFiles(site: ProjectSite, opts: NewOptions): readonly ScaffoldFile[] {
   const indexFile = joinPosix(site.dir, ROUTES_DIR, 'index.fud');
   const frame = frameOf(site.dir, opts.layout, indexFile);
+  // `scaffoldRefusal` already refused one that is not a tag.
+  const locale = opts.locale === undefined ? undefined : canonicalLocale(opts.locale);
+  const lang = locale ?? DEFAULT_LOCALE;
 
   return [
     [
@@ -155,6 +173,7 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
       renderTemplate('fudic.json.tmpl', {
         id: opts.id,
         prefix: prefixField(opts.prefix),
+        locales: localesField(locale),
         server: SERVER_DIR,
         browser: BROWSER_DIR,
       }),
@@ -176,7 +195,7 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
           [
             joinPosix(site.dir, LAYOUTS_DIR, `${frame.own}.fud`),
             renderTemplate('layout.fud', {
-              lang: 'en',
+              lang,
               renderHead: '    @RenderHead()',
               sections: renderSectionBlocks([]),
             }),
@@ -186,7 +205,7 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
     [
       indexFile,
       frame.href === null
-        ? renderTemplate('page.fud', { lang: 'en', title: 'Home', code: '' })
+        ? renderTemplate('page.fud', { lang, title: 'Home', code: '' })
         : renderTemplate('route.fud', { layoutHref: frame.href, code: '', title: 'Home', sections: '' }),
     ],
     [joinPosix(site.dir, ROUTES_DIR, 'index.test.ts'), pageTest('/')],

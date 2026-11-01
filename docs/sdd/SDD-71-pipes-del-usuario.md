@@ -1,6 +1,6 @@
 # SDD-71 — Pipes sin i18n y pipes del usuario
 
-> **Estado:** `Listo` — [tareas](./SDD-71-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-71-Task.md).
 > **Paquetes:** `@fudic/core` · `@fudic/i18n` · `@fudic/conventions` · `@fudic/config` ·
 > `@fudic/api` · `@fudic/compiler` · `@fudic/language-core` · `@fudic/vite` · `@fudic/cli` ·
 > `@fudic/diagnostics` · `examples/basic` · `examples/workspace`
@@ -133,7 +133,7 @@ pipe <nombre>
   proyecto: un nombre repetido en la app o sus librerías es `FUD1081`.
 - **`on` es obligatorio.** Sin él, `FUD1340`. Vale cualquier tipo de §3.2 de SDD-60: `str`,
   números, `date`, `uuid`, listas, `map`, un `type` o un `enum` del proyecto. Varios tipos son una
-  unión (`on date i64`).
+  unión (`on date f64`).
 - **Un pipe siempre da texto.** No se declara lo que devuelve: lo que sale de un pipe se pinta.
 - **Los parámetros** siguen las reglas de los argumentos (SDD-60 §3.2): nombre, tipo y `?` si
   puede faltar.
@@ -296,8 +296,11 @@ test('truncar formats a value', () => {
 });
 ```
 
-**2. El usuario completa el contrato.** Añade `max u32`. Al guardar, `fudic:pipes/truncar` cambia
-y `tsc` señala la implementación: le falta el parámetro `args`.
+**2. El usuario completa el contrato.** Añade `max u32`. Al guardar, `fudic:pipes/truncar` cambia:
+`truncar` pasa a ser una función de sus parámetros, y `tsc` señala cada uso que no los fija — el
+test generado (`truncar.format` ya no existe) y la vista que lo pone tras un `|` sin llamarlo — y
+la implementación que use su segundo parámetro como el idioma. Una implementación que lo ignora
+sigue tipando: TypeScript acepta una función con menos parámetros (§8.2, 8).
 
 **3. El usuario escribe la implementación**, en TS completo:
 
@@ -422,11 +425,12 @@ Filas nuevas de A.2 («El `@code` que el servidor evalúa» y «Lo que se pinta�
 4. **`g layout` y `g page`** en una app con `"locales": ["fr", "en"]` escriben `lang="fr"`.
 5. **El `.fudapi` de un pipe.** `pipe truncar` con `on str` y `max u32` genera
    `TruncarArgs`, `TruncarFormat` y `truncar.implement`, con los tipos de §3.3. Sin parámetros,
-   `implement` devuelve `Pipe<V>`. `on date i64` da `Date | number`. `on Post` da el tipo `Post`.
+   `implement` devuelve `Pipe<V>`. `on date f64` da `Date | number`. `on Post` da el tipo `Post`.
 6. **Errores del `.fudapi`.** Sin `on`, `FUD1340` sobre el nombre, y el resto del fichero se
    indexa. Un `pipe` junto a un `load`, `FUD1078`. Dos `pipe truncar` en el proyecto, `FUD1081`.
-7. **La implementación tipada.** Una implementación que devuelve un número, o que ignora un
-   parámetro que el contrato añadió después, rompe `tsc` en dev (overlay) y en build.
+7. **La implementación tipada.** Una implementación que devuelve un número, o que usa como idioma
+   el parámetro que el contrato añadió después, rompe `tsc` en dev (overlay) y en build; y añadir
+   parámetros rompe el test generado y cada vista que usa el pipe sin fijarlos.
 8. **La vista.** Los tres usos de §3.5 pintan lo esperado en el servidor y en el navegador
    después de hidratar. `@(post.precio | corto)`, con `corto` de `str`, es un error de tipos.
    `@(corto)`, `@(truncar)` o leer `corto.options` en la vista es error (`FUD1150` o de tipos).
@@ -489,3 +493,67 @@ Filas nuevas de A.2 («El `@code` que el servidor evalúa» y «Lo que se pinta�
 8. **`FUD1021` se retira.** Ninguna app queda sin idioma, así que el error no tiene caso.
 9. **`--locale` no escribe nada si no se pasa.** El valor por defecto vive en `@fudic/conventions`,
    no en cada `fudic.json`. Cambiarlo es cambiarlo en un sitio.
+
+### 8.2. Tomadas al implementar
+
+1. **`locales` es obligatorio en `ProjectConfig`, también en una librería.** Partir el tipo en app
+   y librería obligaba a tocar a cada lector. En una librería se lee y se valida como hoy, y nadie
+   lo usa.
+2. **Sin `fudic.json`, la app también es `en`.** El plugin usa `DEFAULT_LOCALE` cuando no hay
+   configuración: si no, un pipe no se compilaría y lanzaría `compiled away`.
+3. **Un módulo por preset en `@fudic/core`** (`pipes/date.ts`, `pipes/number.ts` para los tres de
+   `NumberFormat`, `pipes/relative-time.ts`, `pipes/list.ts`), y `pipe.ts` con el tipo y el helper
+   que guarda el formatter por idioma. Es lo que deja una pieza publicada por preset (tarea 16).
+4. **La emisión `p.format(a, "<idioma>")` se adelanta a la fase 1.** Quitar `$format` de
+   `@fudic/i18n` (tarea 6) rompía todo lo que compila un pipe hasta la fase 3. La parte del
+   compilador de la tarea 13 (reconocer `format` y `locale` de `@fudic/core`, emitir la llamada,
+   quitar `$format` de `I18N_PIECES`) va en la fase 1; `GLOBALS_DTS` sigue en la fase 3.
+5. **El pipe también se escribe sin paréntesis** (Pedro, 2026-10-31): además de
+   `@(data.x | pipe)`, la forma implícita `@data.x|pipe`. Lo entienden el compilador y el editor
+   (LSP: tipos, hover, completado tras `|`). Tarea 14b de la fase 3. **Con espacios** (Pedro,
+   2026-11-01): `@data.date |     date` es pipe si `date` lo importa o lo declara el `@code` del
+   fichero; si no, la barra es texto, como siempre. Los espacios y tabuladores van en la misma
+   línea, se encadena (`@x | a | b`) y solo en el contenido: en un atributo la barra con espacios
+   es texto. Pegada a los dos lados sigue siendo pipe siempre. Si el `@code` va después de la
+   vista, el parser lee el fichero una segunda vez con sus nombres. Para texto con ese nombre,
+   `@(data.date) | date`.
+6. **El choque `FUD0501` de `sw/c/rules` se arregla aquí** (Pedro, 2026-10-31: «no quiero bugs
+   colgando»). Salió al quitar la etiqueta de idioma de una app con un solo idioma; existía ya en
+   una app sin `locales`. Tarea 14c.
+7. **`on date f64`, no `on date i64`.** El `.fudapi` de SDD-60 no tiene `i64` (los enteros
+   llegan a `i32`); el ejemplo de §3.2 y el criterio 5 pasan a `f64`, que da el mismo
+   `Date | number`.
+8. **Añadir parámetros no rompe la implementación que los ignora.** Lo destapó la sesión de
+   tests: `implement((value, locale) => value)` sigue tipando tras añadir `max`, porque
+   TypeScript acepta una función con menos parámetros. Lo que rompe es lo que importa — cada uso
+   del pipe sin fijarlos y el test generado —; §4.1 paso 2 y el criterio 7 dicen eso.
+9. **`FUD0870` en `examples/workspace` se arregla aquí** (como el punto 6): sus apps no tienen
+   `tsconfig.json` y el build lo avisa desde antes de esta spec. Va con la tarea 23, que ya toca
+   ese ejemplo.
+10. **Una pieza `core/pipe` para lo que comparten los presets.** Las cuatro piezas de presets
+    importan el helper que guarda el formatter por idioma: copiarlo en cada una pondría el mismo
+    módulo en cuatro piezas (SDD-45 §4.3, segunda regla).
+11. **El hover de traducciones sale en toda app.** Una app sin `"locales"` se comporta como con
+    `["en"]` (§1.1, 1), y con `["en"]` escrito el editor ya daba ese hover: callar solo cuando no
+    está escrito serían dos comportamientos para la misma app.
+12. **El pipe de una librería es `fudic:<paquete>/pipes/<nombre>`, también dentro de ella.** Su
+    `.ts` lo cargan la propia librería (sus tests) y cada app que la usa, así que tiene que
+    importar un `<id>` que valga en los dos sitios. Es como ya lo hacen los contratos de una
+    librería (`fudic:@fudic/forms/rules`). Una app lee la carpeta de pipes de cada dependencia
+    además de su `fudapi/`, y `fudic g pipe` en una librería escribe ese import.
+13. **Los módulos generados se sirven aunque la app no declare un `.fudapi` propio.** Un pipe de
+    una librería no necesita raíz: el `edge` y el SW sirven `fudic:<id>` si existe alguno, y solo
+    la raíz pide que la app tenga los suyos.
+14. **`FUD0721` de `examples/basic` se arregla aquí** (como el 6 y el 9): `app-card` declaraba
+    `<app-badge>` sin usarlo en su vista; lo ponen en su ranura las páginas, que ya lo declaran.
+15. **Criterio 16: dos tests importan `format` y `locale` de `@fudic/i18n` a propósito.** Prueban
+    justo que esos nombres de ese paquete ya no se reemplazan (`compiler/test/i18n/ast.test.ts` y
+    `localize.test.ts`). El criterio va de lo que escriben la app, los ejemplos y la documentación.
+16. **Un `.fudapi` sin nada que implementar no pide raíz** (`ApiProject.hasRoot`): solo pipes,
+    `type` y `enum`, ni en el plugin ni en `@fudic/testing`. La raíz importa `@fudic/http`, que una
+    app con pipes y sin contratos no tiene (criterio 2), ni la que `fudic g pipe --on Post` deja con
+    un `type Post` (criterio 14).
+17. **Un script que el idioma deja como estaba sale de la transformación tal cual** (`null`): una
+    segunda versión idéntica de un fichero son dos versiones para la cobertura y el depurador.
+18. **`FUD1026` es traducir una app de un solo idioma.** Sin `"locales"` ya no existe (es `en`),
+    y un solo idioma no tiene catálogo (SDD-58 §4.5): `fudic translate` pide al menos dos.

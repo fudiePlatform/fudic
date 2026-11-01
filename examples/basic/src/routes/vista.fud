@@ -16,7 +16,8 @@
   // el servidor de cualquier backend sabe evaluar.
   import type { Nodo } from "fudic:components/signal-while";
   import { trustedUrl } from "@fudic/dom";
-  import { currency, t } from "@fudic/i18n";
+  import { currency } from "@fudic/core";
+  import { t } from "@fudic/i18n";
   import { count } from "../store/contador";
   import pasos from "../data/pasos";
 

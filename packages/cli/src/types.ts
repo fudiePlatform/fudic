@@ -127,6 +127,11 @@ export interface NewOptions extends BaseOptions {
   readonly sw: boolean;
   readonly layout: AppLayout;
   readonly target: string;
+  /**
+   * `--locale`, as given (SDD-71 §3.6). Absent ⇒ `fudic.json` carries no `locales` and the app
+   * is `DEFAULT_LOCALE`. Checked and canonicalized before anything is written.
+   */
+  readonly locale?: string;
 }
 
 /**
@@ -174,6 +179,8 @@ export interface AppOptions extends ProjectOptions {
   readonly id: string;
   readonly sw: boolean;
   readonly layout: AppLayout;
+  /** `--locale`, as given (SDD-71 §3.6): what `fudic new --locale` is. */
+  readonly locale?: string;
   /**
    * `--base`, as given. Absent ⇒ `/` for the first app of the workspace, `/<name>/` for the
    * others (BUG-50 §3.2).
@@ -299,4 +306,10 @@ export interface ServiceOptions extends TargetedOptions {
 export interface FormOptions extends TargetedOptions {
   /** Write its unit test; `--skip-test` is `false`. */
   readonly test: boolean;
+}
+
+/** `fudic g pipe` (SDD-71 §3.6). */
+export interface PipeOptions extends TargetedOptions {
+  /** What it formats, the type of its `on` line: `--on`, `str` when not given. */
+  readonly on: string;
 }

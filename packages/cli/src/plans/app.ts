@@ -11,7 +11,7 @@
  * an app nobody can run without a second command is the bug this replaces.
  */
 
-import { BROWSER_DIR, SERVER_DIR } from '@fudic/conventions';
+import { BROWSER_DIR, DEFAULT_LOCALE, PIPES_DIR, SERVER_DIR } from '@fudic/conventions';
 import { FUD0449, FUD0452 } from '@fudic/diagnostics';
 import { appFiles, scaffoldChanges, scaffoldRefusal } from './scaffold.js';
 import { duplicateIds } from '../project.js';
@@ -47,6 +47,7 @@ function asNewOptions(opts: AppOptions): NewOptions {
     sw: opts.sw,
     layout: opts.layout,
     target: 'static',
+    ...(opts.locale === undefined ? {} : { locale: opts.locale }),
   };
 }
 
@@ -84,7 +85,7 @@ export function planApp(name: string, opts: AppOptions, io: ReadIo = nodeReadIo(
     ...projects
       .filter((project) => project.name !== name)
       .map((project) => ({ dir: project.name, config: project.config })),
-    { dir: name, config: { id: opts.id, kind: 'app', prefix: opts.prefix, globalStyles: [], styles: [], server: SERVER_DIR, browser: BROWSER_DIR, earlyHints: true, css: 'inline' } },
+    { dir: name, config: { id: opts.id, kind: 'app', prefix: opts.prefix, globalStyles: [], styles: [], locales: [DEFAULT_LOCALE], server: SERVER_DIR, browser: BROWSER_DIR, pipes: PIPES_DIR, earlyHints: true, css: 'inline' } },
   ]);
 
   // The other apps, and where they are: one base per app, and a dev port nobody else has.

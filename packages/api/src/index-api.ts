@@ -17,6 +17,7 @@ import type {
   MessagesDecl,
   MiddlewareDecl,
   PatternDecl,
+  PipeDecl,
   RuleDecl,
   TypeDecl,
   TypeExpr,
@@ -42,6 +43,7 @@ export interface ProjectDecls {
   readonly rule: RuleDecl;
   readonly middleware: MiddlewareDecl;
   readonly pattern: PatternDecl;
+  readonly pipe: PipeDecl;
 }
 
 export type ProjectKind = keyof ProjectDecls;
@@ -81,6 +83,7 @@ const KIND_OF: Readonly<Record<string, ProjectKind>> = {
   rule: 'rule',
   middleware: 'middleware',
   pattern: 'pattern',
+  pipe: 'pipe',
 };
 
 /** `str`, `Person[]`, `i32?`, `map str u8`: a type as it is written. */

@@ -30,6 +30,17 @@ export const LAYOUTS_DIR = 'src/layouts';
  */
 export const LOCALES_DIR = 'src/locales';
 /**
+ * The language of an app whose fudic.json declares no `locales` (SDD-71 §3.1). The config
+ * reader fills it, the CLI writes it into a new layout's `lang`.
+ */
+export const DEFAULT_LOCALE = 'en';
+/**
+ * Where the pipes a project writes live: their `.fudapi` and their implementation (SDD-71
+ * §3.1). Outside `src/browser` and `src/server` on purpose: neither root loads it, so a pipe
+ * reaches the browser only when a view imports it. A project may move it (`pipes`).
+ */
+export const PIPES_DIR = 'src/pipes';
+/**
  * The global level of every server function's chain (SDD-60 §3.5): its `chain` is the global
  * level. Optional; without it the global level is empty.
  */

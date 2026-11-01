@@ -39,12 +39,13 @@ function withExports(fs: MemoryFs, exports: unknown): void {
 const OLD_EXPORTS = { './fudic.json': './fudic.json', './*.fud': './src/components/*/*.fud' };
 
 describe('a new library exports its layouts', () => {
-  it('has the layouts and snippets rules in its package.json from the start', async () => {
+  it('has the layouts, snippets and pipes rules in its package.json from the start (SDD-71 §3.6)', async () => {
     const fs = await shop();
     expect((JSON.parse(fs.read(MANIFEST)) as { exports: unknown }).exports).toEqual({
       ...OLD_EXPORTS,
       './layouts/*.fud': './src/layouts/*.fud',
       './snippets/*.fud': './src/snippets/*.fud',
+      './pipes/*': './src/pipes/*.ts',
     });
   });
 

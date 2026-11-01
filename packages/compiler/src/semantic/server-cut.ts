@@ -87,6 +87,8 @@ interface Read {
   readonly name: string;
   /** Whether it is read as the callee of a call: a function then is the view rules' business. */
   readonly callee: boolean;
+  /** Whether it is the pipe of a `|` in the view: the one place a pipe may be read (decision 172). */
+  readonly piped: boolean;
   readonly use: RelatedLocation;
 }
 
@@ -152,18 +154,27 @@ class ServerCut {
       site: fudSite(input),
       ...(input.path === undefined ? {} : { importer: input.path }),
     };
-    const callees = calleesOf(view.scope.fragments.map((fragment) => fragment.root));
-    const reads = view.reads.map((node) => this.#readOf(unit, node, callees));
+    const roots = view.scope.fragments.map((fragment) => fragment.root);
+    const callees = calleesOf(roots);
+    const piped = pipesOf(roots);
+    const reads = view.reads.map((node) => this.#readOf(unit, node, callees, undefined, piped));
     // The first use of a name is the one its diagnostic points back to.
     reads.sort((a, b) => a.use.span.start - b.use.span.start);
     for (const read of reads) this.#read(unit, read);
     return { diagnostics: this.#out, expressions: this.#cut, declarations: this.#declared };
   }
 
-  #readOf(unit: Unit, node: OxcNode, callees: ReadonlySet<OxcNode>, use?: RelatedLocation): Read {
+  #readOf(
+    unit: Unit,
+    node: OxcNode,
+    callees: ReadonlySet<OxcNode>,
+    use?: RelatedLocation,
+    piped: ReadonlySet<OxcNode> = NONE,
+  ): Read {
     return {
       name: nameOf(node),
       callee: callees.has(node),
+      piped: piped.has(node),
       use: use ?? { span: this.#span(unit, node), message: READ_HERE },
     };
   }
@@ -209,6 +220,11 @@ class ServerCut {
   #read(unit: Unit, read: Read): void {
     const declaration = unit.declarations.get(read.name);
     if (declaration === undefined) return;
+    // A pipe, imported or fixed with its arguments (decision 172): only to the right of a `|`.
+    // Anywhere else — painted, read a member of, handed on — the view would hold a function.
+    const pipe = this.#pipeKind(unit, declaration);
+    if (pipe === 'pipe' && !read.piped) this.#out.push(FUD1150({ span: read.use.span, related: [read.use] }));
+    if (pipe !== 'no') return;
     const callable = isCallable(declaration);
     // A function the view CALLS (or a class it `new`s): the call is the view's to judge, the
     // body the browser's.
@@ -221,6 +237,34 @@ class ServerCut {
     }
     if (declaration.kind === 'import') this.#import(unit, declaration, read);
     else this.#declarator(unit, declaration.node, read.use);
+  }
+
+  /**
+   * Whether a declaration of the `@code` is a pipe of the project or of a library (decision
+   * 172): the `export default` of a module of its folder of pipes, or a `const` that calls one
+   * with literals of data. `unknown` when the host cannot read the module: the cut is then
+   * silent about it, as it is about any module it cannot read.
+   */
+  #pipeKind(unit: Unit, declaration: Declaration): 'pipe' | 'unknown' | 'no' {
+    if (unit.file !== undefined) return 'no';
+    if (declaration.kind === 'import') {
+      if (declaration.node.type !== 'ImportDefaultSpecifier') return 'no';
+      const from = String(child(declaration.statement, 'source')!['value']);
+      if (LIBRARY_PIPE.test(from)) return 'pipe';
+      if (!from.startsWith('.') && !from.startsWith('/')) return 'no';
+      if (unit.importer === undefined || this.#input.readModule === undefined) return 'unknown';
+      const module = this.#input.readModule(from, unit.importer);
+      return module === undefined ? 'unknown' : module.pipe === true ? 'pipe' : 'no';
+    }
+    if (declaration.kind !== 'variable') return 'no';
+    const init = child(declaration.node, 'init');
+    const call = init === undefined ? undefined : inner(init);
+    if (call?.type !== 'CallExpression') return 'no';
+    const callee = child(call, 'callee')!;
+    const target = callee.type === 'Identifier' ? unit.declarations.get(nameOf(callee)) : undefined;
+    if (target === undefined || target.kind !== 'import') return 'no';
+    const kind = this.#pipeKind(unit, target);
+    return kind === 'pipe' && !children(call, 'arguments').every(isDataLiteral) ? 'no' : kind;
   }
 
   /** An import the cut reads (§3.9): a `.fudapi`, fudic's catalogue, or a module of the project. */
@@ -278,14 +322,14 @@ class ServerCut {
       if (statement.type === 'ExportNamedDeclaration') {
         const declaration = child(statement, 'declaration');
         if (declaration !== undefined) {
-          if (declaredNames(declaration).includes(name)) this.#read(unit, { name, callee: false, use });
+          if (declaredNames(declaration).includes(name)) this.#read(unit, { name, callee: false, piped: false, use });
           continue;
         }
         const source = child(statement, 'source');
         for (const specifier of children(statement, 'specifiers')) {
           if (moduleName(child(specifier, 'exported')!) !== name) continue;
           const local = moduleName(child(specifier, 'local')!);
-          if (source === undefined) this.#read(unit, { name: local, callee: false, use });
+          if (source === undefined) this.#read(unit, { name: local, callee: false, piped: false, use });
           else this.#module(unit, String(source['value']), local, use);
         }
         continue;
@@ -300,7 +344,7 @@ class ServerCut {
   #default(unit: Unit, value: OxcNode, statement: OxcNode, use: RelatedLocation): void {
     if (isDataLiteral(value)) return;
     if (value.type === 'Identifier') {
-      this.#read(unit, { name: nameOf(value), callee: false, use });
+      this.#read(unit, { name: nameOf(value), callee: false, piped: false, use });
       return;
     }
     this.#unportable(unit, statement, use);
@@ -497,6 +541,26 @@ function catalogueCall(view: ViewScope, call: OxcNode): string | undefined {
   if (imported === undefined || !imported.startsWith(FUDIC_PACKAGE)) return undefined;
   const member = imported.slice(imported.indexOf('#') + 1);
   return CATALOGUE.has(member) ? member : undefined;
+}
+
+const NONE: ReadonlySet<OxcNode> = new Set();
+
+/** A library's pipe, imported by the package (SDD-71 §4.5): `@acme/ui/pipes/truncar`. */
+const LIBRARY_PIPE = /^(?:@[^/.][^/]*\/)?[^/.@][^/]*\/pipes\/[^/]+$/u;
+
+/** Every identifier that is the pipe of a `|`, in the view's `root`: `corto` of `x | corto`. */
+function pipesOf(root: unknown, out: Set<OxcNode> = new Set()): Set<OxcNode> {
+  if (Array.isArray(root)) {
+    for (const item of root) pipesOf(item, out);
+    return out;
+  }
+  if (!isNode(root)) return out;
+  if (root.type === 'BinaryExpression' && field(root, 'operator') === '|') {
+    const pipe = inner(child(root, 'right')!);
+    if (pipe.type === 'Identifier') out.add(pipe);
+  }
+  for (const key of Object.keys(root)) pipesOf(root[key], out);
+  return out;
 }
 
 /** Every identifier that is the callee of a call, in `root`: `hora` of `hora()`. */

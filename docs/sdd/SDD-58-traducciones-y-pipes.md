@@ -400,13 +400,16 @@ En una expresión de la vista, `|` es el **pipe**:
 
 ```html
 @code {
-  import { currency, date } from '@fudic/i18n';
+  import { currency, date } from '@fudic/core';
   const euros = currency('EUR');
   const larga = date({ dateStyle: 'long', timeZone: 'Europe/Madrid' });
 }
 <p>Total: @(precio | euros)</p>
 <time>@(data.publicado | larga)</time>
 ```
+
+> **SDD-71:** los presets, `format` y `locale` se mudaron a `@fudic/core`; este ejemplo los
+> importaba de `@fudic/i18n`.
 
 - **Operandos.** El izquierdo es el valor y el derecho una expresión de tipo `Pipe<T>`. Si no lo
   es, la proyección (`$pipe(valor, preset)`, §3.6) da el error de tipos, y SDD-35 lo convierte en

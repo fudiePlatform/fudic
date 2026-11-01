@@ -166,8 +166,20 @@ describe('the chunks of one build over every locale (§4.6)', () => {
 
   it('localeChunkFileNames: a chunk of a locale’s graph carries its prefix, a shared one none', () => {
     const name = localeChunkFileNames('sw/c');
-    expect(name({ moduleIds: ['/a/b.ts', '/a/_layout.fud?locale=en'] })).toBe('sw/c/en-[name]-[hash].js');
-    expect(name({ moduleIds: ['/a/b.ts'] })).toBe('sw/c/[name]-[hash].js');
+    expect(name({ moduleIds: ['/a/b.ts', '/a/_layout.fud?locale=en'], name: '_layout' })).toBe('sw/c/en-[name]-[hash].js');
+    expect(name({ moduleIds: ['/a/b.ts'], name: 'b' })).toBe('sw/c/[name]-[hash].js');
+  });
+
+  it('localeChunkFileNames: a chunk named after a generated contract carries `api-` (task 14c)', () => {
+    // Two chunks named `rules` — the app's `src/browser/rules.ts` and `fudic:rules` — would
+    // collide in `sw/c` (FUD0501); the generated one steps aside.
+    const name = localeChunkFileNames('sw/c');
+    expect(name({ moduleIds: ['\0fudic:rules?browser'], name: 'rules' })).toBe('sw/c/api-[name]-[hash].js');
+    expect(name({ moduleIds: ['fudic:routes/log'], name: 'log' })).toBe('sw/c/api-[name]-[hash].js');
+    expect(name({ moduleIds: ['fudic:routes/log?locale=en'], name: 'log' })).toBe('sw/c/en-api-[name]-[hash].js');
+    expect(name({ moduleIds: ['/a/src/browser/rules.ts'], name: 'rules' })).toBe('sw/c/[name]-[hash].js');
+    // A chunk that merely contains a contract is named after something else: no prefix.
+    expect(name({ moduleIds: ['fudic:rules', '/a/b.ts'], name: 'b' })).toBe('sw/c/[name]-[hash].js');
   });
 });
 
@@ -408,7 +420,7 @@ describe('what a nested pass compiles with', () => {
   it('localePlugin compiles an app script for its locale, and nothing else', async () => {
     const plugin = localePlugin(ctx);
     const transform = plugin.transform as (code: string, id: string) => { code: string } | null;
-    const code = "import { locale } from '@fudic/i18n';\nexport const l = locale;\n";
+    const code = "import { locale } from '@fudic/core';\nexport const l = locale;\n";
     expect(transform(code, 'C:/app/src/x.ts?locale=en')?.code).toContain('export const l = (`en`);');
     expect(transform(code, 'C:/app/src/x.ts')).toBeNull();
     expect(transform(code, 'C:/app/src/x.css?locale=en')).toBeNull();

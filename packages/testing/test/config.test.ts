@@ -1,5 +1,6 @@
-import { existsSync } from 'node:fs';
-import { basename, resolve } from 'node:path';
+import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 import type { Plugin, UserConfig } from 'vite';
@@ -180,11 +181,26 @@ describe('a test in an app with locales (SDD-58 §4.6)', () => {
   const conformance = fileURLToPath(new URL('./conformance', import.meta.url));
   const app = fileURLToPath(new URL('./app', import.meta.url));
 
-  test('imports what the test reads compiled for the first locale, as the pages it mounts are', async () => {
-    const resolveIn = resolverIn(conformance);
-    const at = posix(conformance);
+  test('with two locales, imports what the test reads compiled for the first, as the pages it mounts are', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'fudic-testing-locales-'));
+    writeFileSync(join(root, 'fudic.json'), JSON.stringify({ kind: 'app', locales: ['es', 'en'] }));
+    const resolveIn = resolverIn(root);
+    const at = posix(root);
     expect(await resolveIn('./c-if.fud', `${at}/conformance.test.ts`)).toBe(`${at}/c-if.fud?locale=es`);
     expect(await resolveIn('./c-blog.fixture.ts', `${at}/x.spec.mts`)).toBe(`${at}/c-blog.fixture.ts?locale=es`);
+  });
+
+  test('with one locale tags nothing, as the plugin does not: a mock reaches the server\'s module (SDD-71)', async () => {
+    const at = posix(conformance);
+    expect(await resolverIn(conformance)('./c-if.fud', `${at}/conformance.test.ts`)).toBeNull();
+  });
+
+  test('without fudic.json, or with one that cannot be read, tags nothing either', async () => {
+    const bare = mkdtempSync(join(tmpdir(), 'fudic-testing-bare-'));
+    expect(await resolverIn(bare)('./x.fud', `${posix(bare)}/a.test.ts`)).toBeNull();
+    const broken = mkdtempSync(join(tmpdir(), 'fudic-testing-broken-'));
+    writeFileSync(join(broken, 'fudic.json'), '{');
+    expect(await resolverIn(broken)('./x.fud', `${posix(broken)}/a.test.ts`)).toBeNull();
   });
 
   test('and leaves alone what is not a test, and every import of an app without locales', async () => {

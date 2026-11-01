@@ -1,5 +1,3 @@
-<link rel="component" href="./app-badge.fud">
-
 @code {
   type Variant = "default" | "highlight";
 

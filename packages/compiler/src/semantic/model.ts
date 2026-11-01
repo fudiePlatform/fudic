@@ -25,12 +25,6 @@ export interface SemanticInput {
   /** Declared component tags (from `<link rel="component">`). Injected; see §7 for its origin. */
   readonly components: ComponentRegistry;
   /**
-   * Whether the app declares `locales` (SDD-58). `false` makes a pipe, `t()`, `format()` and
-   * `locale` an error (`FUD1021`); ABSENT means the caller cannot know, and the rule is silent.
-   * The analyzer is told — it never reads the configuration itself.
-   */
-  readonly locales?: boolean;
-  /**
    * What the linked `.fudapi` bring into the view without an import (SDD-60 §3.14): whether one
    * gives `data` (it declares `load`), and the names of their functions and forms. ABSENT when
    * the caller cannot know: `data` then follows the role, as before.
@@ -63,6 +57,11 @@ export interface ProjectModule {
   /** Absolute path: the file a diagnostic inside it is reported on. */
   readonly path: string;
   readonly source: string;
+  /**
+   * Whether it is in its project's folder of pipes (SDD-71 §3.5, decision 172): its `export
+   * default` is a pipe the view may import. The host knows the folder; the compiler does not.
+   */
+  readonly pipe?: boolean;
 }
 
 /**

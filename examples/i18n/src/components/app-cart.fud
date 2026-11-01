@@ -1,7 +1,8 @@
 @* Hydrated: its chunk is compiled once per locale, and the plural the catalogs write for the
-   text and the price are formatted again in the browser with the runtime pieces of `@fudic/i18n`. *@
+   text and the price are formatted again in the browser: the plural with the runtime piece of
+   `@fudic/i18n`, the price with its own preset from `@fudic/core`. *@
 @code {
-  import { currency } from '@fudic/i18n';
+  import { currency } from '@fudic/core';
 
   const euros = currency('EUR');
 

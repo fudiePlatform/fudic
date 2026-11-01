@@ -175,7 +175,7 @@ function mapped(subpath: string, exports: unknown): string | undefined {
 }
 
 /** The `name` of the `package.json` at `root`, or its folder name when it declares none. */
-function packageName(root: string, io: ReadIo): string {
+export function packageName(root: string, io: ReadIo): string {
   const declared = (parse(io.read(joinPosix(root, 'package.json'))) as { name?: unknown }).name;
   return typeof declared === 'string' && declared !== '' ? declared : root.slice(root.lastIndexOf('/') + 1);
 }

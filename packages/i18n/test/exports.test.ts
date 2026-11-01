@@ -10,27 +10,18 @@ const piece = async <T>(name: string): Promise<T> =>
   (await import(/* @vite-ignore */ new URL(`../runtime/${name}.js`, import.meta.url).href)) as T;
 
 describe('what the package exports', () => {
-  it('the entry point names the presets, the compiled-away names, the pieces and the catalog', () => {
+  it('the entry point names t(), the pieces and the catalog — no pipe (SDD-71 §4.8)', () => {
     expect(Object.keys(main).sort()).toEqual(
       [
-        '$format',
         '$href',
         '$message',
         'catalogPathOf',
         'compileMessage',
-        'currency',
-        'date',
-        'format',
         'joinCatalogs',
-        'list',
-        'locale',
         'mergeCatalog',
         'messageKey',
-        'number',
         'parseCatalog',
-        'percent',
         'printCatalog',
-        'relativeTime',
         'shapeOf',
         'splitCatalog',
         't',
@@ -38,9 +29,8 @@ describe('what the package exports', () => {
     );
   });
 
-  it('the runtime entry names the three pieces, the same functions', () => {
-    expect(Object.keys(runtime).sort()).toEqual(['$format', '$href', '$message']);
-    expect(runtime.$format).toBe(main.$format);
+  it('the runtime entry names the two pieces, the same functions', () => {
+    expect(Object.keys(runtime).sort()).toEqual(['$href', '$message']);
     expect(runtime.$message).toBe(main.$message);
     expect(runtime.$href).toBe(main.$href);
   });
@@ -58,7 +48,6 @@ describe('what the package exports', () => {
 
 describe('the built runtime: one closed piece per file (task 13)', () => {
   it.each([
-    ['format', '$format'],
     ['message', '$message'],
     ['href', '$href'],
   ])('runtime/%s.js exists, imports nothing and exports %s', async (base, name) => {
@@ -74,13 +63,11 @@ describe('the built runtime: one closed piece per file (task 13)', () => {
   it('the built pieces behave as the source', async () => {
     const built = {
       ...(await piece<Pick<typeof runtime, '$href'>>('href')),
-      ...(await piece<Pick<typeof runtime, '$format'>>('format')),
       ...(await piece<Pick<typeof runtime, '$message'>>('message')),
     };
     const m = main.compileMessage('{n, plural, one {# item} other {# items}}', 'en').value;
 
     expect(built.$href('/about', 'en', ['es', 'en'])).toBe('/en/about');
-    expect(built.$format(main.currency('EUR'), 3.5, 'en')).toBe('€3.50');
     expect(built.$message(m, { n: 1 }, 'en')).toBe('1 item');
   });
 });

@@ -2,15 +2,18 @@
 
 > **Estado:** `Listo` — [tareas](./SDD-72-Task.md).
 > **Paquetes:** `@fudic/compiler` · `@fudic/language-core` · `@fudic/dom` · `@fudic/forms` ·
-> `@fudic/typecheck` · `examples/basic`
+> `@fudic/typecheck` · `@fudic/diagnostics` · `examples/basic`
 > **Depende de:** 15 (el emit de los event bindings y del `bus:`), 23 (la proyección TS de la
 > vista), 56 (`form:=@save`, `fudic:result` y `fudic:error`), 60 (los stubs tipados del
 > `.fudapi`), BUG-23 (la proyección suscribe la misma forma que el emit)
-> **Rango de diagnósticos:** sin diagnósticos. Los errores de tipos son de TypeScript, en el sitio
-> donde el autor se equivoca.
-> **Decisiones de gramática:** 173 (enmienda la 98).
+> **Rango de diagnósticos:** `FUD1380`–`FUD1399` (nuevo, por la ampliación del 2026-11-01). Usa
+> `FUD1380`–`FUD1383`; cambia el texto de `FUD0667`. Los errores de tipos del handler son de
+> TypeScript, en el sitio donde el autor se equivoca.
+> **Decisiones de gramática:** 173 (enmienda la 98), 176 (enmienda la 117), 177 (enmienda la 118).
 > **Origen:** conversación con Pedro del 2026-10-29, sobre `user-form.fud`, `usuarios.fud` y el bus
-> de `hidratacion.fud`.
+> de `hidratacion.fud`. **Ampliada el 2026-11-01** (§3.4, §3.5, §4.7, §4.8, criterios 31–43): un
+> evento dentro de un bucle avisa y sugiere delegar, el marcador dice a qué eventos sirve, la fila
+> se lee por su nombre sin `$` (`@borrar(p)`), y la tabla de `usuarios.fud` pasa a delegación.
 > **Rama sugerida:** `sdd-72-handlers-que-reciben-el-dato`
 >
 > **Qué añade en una frase.** En `@fudic:result`, `@fudic:error` y `bus:`, el handler escrito
@@ -179,6 +182,66 @@ Una entrada del registro es `'<ruta del .fud>#<n>': readonly ['<nombre>', BusPar
 clave es única en el proyecto. El nombre va **dentro** del valor y no como clave, para que dos
 receptores del mismo nombre se sumen en vez de chocar (TS2717).
 
+### 3.4. El marcador dice a qué eventos sirve (decisión 176)
+
+- `delegate:p` **sin valor**: como hoy. Lo lee todo handler de un ancestro que mencione `p`.
+- `delegate:p="click"` o `delegate:p="change input"`: un texto literal con nombres de evento
+  separados por espacios. El marcador solo lo leen los handlers de **esos** eventos que mencionan
+  `p`.
+- Para cada evento, el marcador va al ancestro más cercano que tenga un handler de ese evento y
+  mencione `p` (la regla de la decisión 119, ahora por evento).
+- Así una fila con una casilla y un botón no se cruzan:
+
+  ```html
+  <tbody @change=@activar(p, $event) @click=@borrar(p)>
+    @foreach (const p of personas()) key (p.id) {
+      <tr>
+        <td><input type="checkbox" checked=@p.active delegate:p="change" aria-label="Activo"></td>
+        <td><button delegate:p="click">Borrar</button></td>
+      </tr>
+    }
+  </tbody>
+  ```
+
+  Un clic en la casilla no llama a `borrar`: su marcador solo sirve a `change`.
+- `p` llega a la función con el tipo del elemento de la lista (`Person`), igual que hoy llega
+  `$p` (SDD-37, `language-core/src/template/attrs.ts`). `function borrar(p: Person)` y
+  `function activar(p: Person, e: Event)` comprueban sin ningún cast.
+
+### 3.4.b. La fila se lee sin `$` (decisión 177)
+
+- En los argumentos de un handler, un nombre suelto que coincide con un `delegate:<nombre>` de un
+  descendiente es la fila de ese bucle: `@borrar(p)`, no `@borrar($p)`. `$event` no cambia.
+- Lo demás de la delegación sigue igual: el emparejamiento por nombre (119, ahora por evento), el
+  handler que no se llama fuera de una fila (120) y el marcador sin rastro en el DOM (121).
+- **Choque de nombres.** Si en el sitio del handler ya hay algo que se llama igual (un nombre del
+  nivel superior del `@code`, un import, el binding de un bucle que rodea al handler), es
+  `FUD1382`. No se elige uno por el autor: se renombra el binding del bucle o la variable.
+- **La forma vieja.** `$p` en un handler es `FUD1383`, con el arreglo: escribir `p`. Se migran
+  `examples/basic/src/components/app-calendar.fud`, el texto de `routes/delegacion.fud`,
+  `packages/compiler/fixtures/app-calendar.fud` y los tests de SDD-37.
+- La proyección ya reabre la cabecera del bucle alrededor del handler (`for (const p of
+  personas()) { … }`); ahora no declara un `$p` aparte: el handler lee el `p` de la cabecera.
+
+### 3.5. Diagnósticos nuevos y cambiados
+
+| Código | Severidad | Cuándo | Mensaje |
+|---|---|---|---|
+| `FUD1380` | warning | Un `@evento` en un elemento dentro del cuerpo de un `@foreach`, `@for` o `@while`, a cualquier profundidad dentro de la misma plantilla. Span: el nombre del atributo. | ``an `@<evento>` inside a loop adds one listener per item. Delegate it: put the handler on an element outside the loop, pass it `<nombre>`, and mark this element with `delegate:<nombre>` `` |
+| `FUD1381` | error | Un evento de la lista de un marcador para el que ningún ancestro tiene un handler de ese evento que lea `$<nombre>`. Span: el valor del atributo. | ``no ancestor `@<evento>` reads `<nombre>`: this marker serves an event nobody listens to`` |
+| `FUD1382` | error | Un nombre de fila delegada que también existe en el sitio del handler. Span: el nombre en el handler. | ``` `<nombre>` is both the delegated row and a name in scope here: rename the loop binding or the variable``` |
+| `FUD1383` | error | `$<nombre>` en un handler. Span: el `$<nombre>`. | ``a delegated row is read by its name: write `<nombre>`, not `$<nombre>` `` |
+| `FUD0667` | error | Cambia: solo salta con un valor que no es un texto literal (`delegate:p=@x`) o con un texto vacío. | ``a `delegate:` marker takes no value, or the names of the events it serves: `delegate:<nombre>="click"` `` |
+
+- En `FUD1380`, `<nombre>` es el binding de la cabecera del bucle más cercano cuando declara
+  exactamente uno (`p` en `const p of personas()`). Si declara varios o ninguno, el mensaje dice
+  `name` y `delegate:name`.
+- `FUD1380` **no** salta con los eventos que no se pueden delegar, los que no tienen sustituto en
+  `NON_BUBBLING` (`compiler/src/semantic/delegation.ts`): `load`, `error`, `abort`, `scroll`,
+  `resize`, `unload`. Con `focus`, `blur`, `mouseenter`, `mouseleave`, `pointerenter` y
+  `pointerleave` sí salta, y el mensaje añade el sustituto: ``(use `@focusin`)``.
+- Un aviso no rompe el build ni `pnpm typecheck`.
+
 ## 4. Comportamiento
 
 ### 4.1. El emit del compilador
@@ -312,6 +375,29 @@ ejemplo pasa a la forma nueva:
 - Los tests del emit (`events.test.ts`, `hydrate/events.test.ts`, `bus-map.test.ts`…) y de la
   proyección cuyas expectativas escriben la forma vieja.
 
+### 4.7. El aviso y el marcador con eventos
+
+- `FUD1380` lo emite un analizador nuevo, `event-in-loop`, que recorre el documento como
+  `ref-in-loop` (contador de bucles abiertos). Sale en el editor y en el build.
+- La regla del marcador con eventos vive en `planDelegation`, la misma función que usan el
+  analizador `delegation` y el emit: una sola regla para los dos.
+- En el emit, la tabla de un nombre pasa a ser por nombre **y evento**: el envoltorio de cada
+  listener delegado solo mira los marcadores que sirven a su evento. Un marcador sin valor entra en
+  todas las tablas de su nombre, como hoy.
+- Ni el marcador ni su valor dejan rastro en el DOM (decisión 121).
+
+### 4.8. `usuarios.fud` delegado
+
+- La tabla de personas queda como en §3.4: `@change` y `@click` en el `<tbody>`, `delegate:p` con
+  su evento en la casilla y en el botón.
+- `activar(p: Person, e: Event)` y `borrar(p: Person)` reciben la persona, no su `id`.
+- `usuarios.fud` sale sin `FUD1380`.
+- `examples/basic` no tiene ningún `FUD1380` salvo en `app-calendar-plain.fud`, que se escribe
+  sin delegar a propósito para comparar en `/delegacion`. Cualquier otro sitio que lo dé se pasa a
+  delegación en esta misma spec.
+- El texto de la página dice en una frase que la tabla usa un listener por evento, tenga las filas
+  que tenga.
+
 ## 5. Invariantes
 
 - **Una sola clasificación.** La forma del handler la decide `handlerShape` para el emit y para la
@@ -408,6 +494,36 @@ ejemplo pasa a la forma nueva:
     (`fudic:result`/`fudic:error`) enseñan la forma nueva. `pnpm typecheck`, `pnpm test` y
     `pnpm build` en verde; lo nuevo al 100 %; ningún umbral baja.
 
+**La delegación (ampliación del 2026-11-01)**
+
+31. **`FUD1380`.** `@click` en un `<button>` dentro de un `@foreach (const p of ps)` da el aviso, con
+    span en `@click` y el texto con `p` y `delegate:p`. También dentro de un `@for` y de un
+    `@while`, y a varios niveles de profundidad dentro del bucle.
+32. **Sin aviso.** El mismo `@click` fuera de todo bucle; `@load` y `@scroll` dentro de un bucle;
+    `@if` y `@switch` no cuentan como bucle.
+33. **Sustituto.** `@focus` dentro de un bucle avisa y el mensaje sugiere `@focusin`.
+34. **Varios bindings.** Con `@foreach (const [k, v] of m)`, el mensaje dice `name` y
+    `delegate:name`.
+35. **Marcador con eventos.** En la tabla de §3.4, un `click` en la casilla no llama a `borrar`, un
+    `change` en la casilla llama a `activar` con su persona, y un `click` en el botón llama a
+    `borrar` con su persona. Probado en el emit y en el navegador.
+36. **Sin valor, igual que antes.** Los tests de delegación de SDD-37 pasan sin cambios.
+37. **`FUD1381`.** `delegate:p="input"` sin ningún `@input` de un ancestro que lea `p` da `FUD1381`
+    sobre el valor.
+38. **`FUD0667`.** `delegate:p=@x` y `delegate:p=""` lo dan con el texto nuevo; `delegate:p="click"`
+    no.
+39. **Tipos.** En `usuarios.fud`, `borrar(p: Person)` comprueba limpio en el editor y en
+    `pnpm typecheck`. Con `borrar(p: number)` sale el error de TypeScript sobre la `p` del handler.
+40. **Ejemplo.** `usuarios.fud` sin `FUD1380`; en `examples/basic` solo `app-calendar-plain.fud`
+    lo da. En `/usuarios`, con el contador de listeners de `/delegacion` (`probe-listeners.js`),
+    añadir 7 personas no añade ningún listener; marcar, desmarcar y borrar funcionan como antes.
+41. **Sin `$`.** `<div @click=@pick(day)>` con `delegate:day` dentro llama a `pick` con la fila, y el
+    hover sobre `day` en el handler enseña su tipo.
+42. **`FUD1382`.** Con `const day = …` en el `@code` y `@pick(day)` sobre un `delegate:day`, error en
+    el `day` del handler. Igual con un bucle exterior que declara `day`.
+43. **`FUD1383`.** `@pick($day)` da el error con el arreglo; el calendario de `/delegacion` y su
+    fixture, migrados, compilan limpios.
+
 ## 7. Fuera de alcance
 
 - **Los eventos propios de un componente** (`@mi-evento`, con guion): siguen recibiendo el evento.
@@ -445,5 +561,11 @@ ejemplo pasa a la forma nueva:
 6. **`fudic:error` siempre es un `Error`; un `AbortError` no se anuncia.** Así `Error` es un tipo
    verdadero, `instanceof HttpError` es la forma de leer el status, y una cancelación se trata igual
    que en `error-pages` y en `task`.
-7. **Sin diagnósticos propios.** Los errores son de tipos y TypeScript los dice en el sitio
-   correcto, mapeados al atributo o al `emit`.
+7. **Sin diagnósticos propios para los handlers.** Los errores son de tipos y TypeScript los dice en
+   el sitio correcto, mapeados al atributo o al `emit`. Los diagnósticos de la ampliación (§3.5) son
+   de la delegación, no de los handlers.
+8. **Un evento en un bucle es un aviso, no un error** (Pedro, 2026-11-01: «yo no voy a prohibir
+   nada»). Hay casos legítimos, como el calendario sin delegar de `/delegacion`.
+9. **El marcador dice a qué eventos sirve.** Sin eso, una fila con una casilla y un botón no se
+   puede delegar: el `click` de la casilla llegaría al handler de borrar. La alternativa de que el
+   handler mirase `$event.target` a mano se descartó: deja la regla en cada página.

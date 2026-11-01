@@ -47,7 +47,7 @@
     },
 
     "named-declaration": {
-      "match": "^(type|enum|form|rule|middleware)(?=\\s|$)(?:[ ]+([^\\s#]+))?",
+      "match": "^(type|enum|form|rule|middleware|pipe)(?=\\s|$)(?:[ ]+([^\\s#]+))?",
       "captures": {
         "1": { "name": "keyword.control.declaration.fudapi" },
         "2": { "name": "entity.name.type.fudapi" }

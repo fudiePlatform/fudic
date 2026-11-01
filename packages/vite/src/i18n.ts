@@ -32,10 +32,28 @@ export function catalogFileOf(root: string, locale: string, path: string): strin
   return join(catalogDir(root, locale), catalogPathOf(relative(root, path).replace(/\\/gu, '/')));
 }
 
-/** The locale a module id is compiled for, or `undefined` for one compiled for none. */
+/** The locale a module id is tagged with, or `undefined` for one that names none. */
 export function localeOf(id: string): string | undefined {
   const q = id.indexOf('?');
   return q === -1 ? undefined : (new URLSearchParams(id.slice(q + 1)).get(LOCALE_PARAM) ?? undefined);
+}
+
+/**
+ * Whether an untagged script of a one-locale app may have something to rewrite: an import of
+ * `@fudic/i18n` (`t`) or `@fudic/core` (`format`, `locale`). Read off the text, so a module
+ * that has none — every handler of `src/server`, most of the app — is never parsed, and leaves
+ * the transform byte for byte as it arrived, its source map included.
+ */
+export function mayLocalize(code: string): boolean {
+  return /['"]@fudic\/(?:i18n|core)['"]/u.test(code);
+}
+
+/**
+ * What an id with no tag is compiled for: the app's one locale, or none when it has two or more
+ * — then every module of a page names its own (SDD-71 §3.1).
+ */
+export function soleLocale(locales: readonly string[] | undefined): string | undefined {
+  return locales?.length === 1 ? locales[0] : undefined;
 }
 
 /**
@@ -43,11 +61,26 @@ export function localeOf(id: string): string | undefined {
  * chunk of a locale's graph carries its prefix, `en-_layout-[hash].js`. Without it the layout
  * of `es` and that of `en` are two chunks of one name, the build id cannot replace the hash
  * of either (FUD0501), and the URL the manifest derives for them points at no file.
+ *
+ * The chunk of a generated contract says so, `api-rules-[hash].js`: `fudic:@fudic/forms/rules`
+ * and the `impl/browser/rules.ts` that implements it are both `rules`, and the two are one name
+ * once the build id replaces the hash (SDD-71). The locale's tag used to tell them apart, and a
+ * one-locale app no longer tags anything.
  */
-export function localeChunkFileNames(dir: string): (chunk: { readonly moduleIds: readonly string[] }) => string {
+export function localeChunkFileNames(
+  dir: string,
+): (chunk: { readonly moduleIds: readonly string[]; readonly name?: string }) => string {
   return (chunk) => {
     const locale = chunk.moduleIds.map(localeOf).find((l) => l !== undefined);
-    return `${dir}/${locale === undefined ? '' : `${locale}-`}[name]-[hash].js`;
+    // Named after a generated contract: one of its modules is `fudic:…/<name>`.
+    // `fudic:rules` at the root of the project as much as `fudic:@fudic/forms/rules`.
+    const api = chunk.moduleIds.some((id) => {
+      const bare = id.replace(/^\0/u, '').split('?')[0]!;
+      if (!bare.startsWith('fudic:')) return false;
+      const path = bare.slice('fudic:'.length);
+      return path.slice(path.lastIndexOf('/') + 1) === chunk.name;
+    });
+    return `${dir}/${locale === undefined ? '' : `${locale}-`}${api ? 'api-' : ''}[name]-[hash].js`;
   };
 }
 
@@ -90,9 +123,13 @@ export function prefixPattern(pattern: string, locale: string, locales: readonly
 /**
  * Every route once per locale (§4.5). Literal patterns, not a `:locale` parameter, so they never
  * collide with the author's own. Route-major, so a route's locales stay together in the table.
+ *
+ * One locale tags nothing (SDD-71 §3.1): every app has one now, and its routes, module ids and
+ * chunks stay the ones an app without `locales` always had. What a module without a tag is
+ * compiled for is that one locale (`soleLocale`).
  */
 export function localizeRoutes(builds: readonly RouteBuild[], locales: readonly string[] | undefined): RouteBuild[] {
-  if (locales === undefined) return [...builds];
+  if (locales === undefined || locales.length < 2) return [...builds];
   return builds.flatMap((rb) =>
     locales.map((locale) => ({
       ...rb,
@@ -396,8 +433,11 @@ export function localeTarget(ctx: LocaleContext | undefined, io: ResolveIo, id: 
   const q = id.indexOf('?');
   const path = q === -1 ? id : id.slice(0, q);
   const query = q === -1 ? '' : id.slice(q + 1);
-  const locale = localeOf(id);
+  const tagged = localeOf(id);
+  const locale = tagged ?? soleLocale(ctx?.locales);
   if (ctx === undefined || locale === undefined) return { path, query, io };
+  // An untagged `.fud` of a one-locale app is compiled for it, under the id it always had.
+  if (tagged === undefined) return { path, query, io: ctx.ioFor(io, locale), i18n: ctx.compileFor(locale) };
   return { path, query: withoutLocale(query), locale, io: ctx.ioFor(io, locale), i18n: ctx.compileFor(locale) };
 }
 
@@ -457,13 +497,19 @@ export function localePlugin(ctx: LocaleContext): Plugin {
       return handed === undefined ? null : resolveForLocale((i, from, o) => this.resolve(i, from, o), id, handed, ctx.root, ctx.implementations);
     },
     transform(code, id) {
-      const locale = localeOf(id);
+      const q = id.indexOf('?');
+      const path = q === -1 ? id : id.slice(0, q);
+      const tagged = localeOf(id);
+      // Untagged, a module of the project is the one locale's in an app with one (SDD-71).
+      const locale =
+        tagged ??
+        (mayLocalize(code) && compilesPerLocale(path, ctx.root, ctx.implementations) ? soleLocale(ctx.locales) : undefined);
       if (locale === undefined) return null;
       // A `.fud` is the host plugin's to compile; here only an app's `.ts`/`.js`.
-      const path = id.slice(0, id.indexOf('?'));
       if (!/\.[cm]?[jt]sx?$/u.test(path)) return null;
       const out = translateScript(code, path, ctx.compileFor(locale)).value;
-      return { code: out.code, map: JSON.stringify(out.map) };
+      // Nothing replaced: the module as it arrived, map and all.
+      return out.code === code ? null : { code: out.code, map: JSON.stringify(out.map) };
     },
   };
 }

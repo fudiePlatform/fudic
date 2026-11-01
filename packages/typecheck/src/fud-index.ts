@@ -17,7 +17,8 @@
 
 import { API_EXTENSION, parseApi } from '@fudic/api';
 import type { ProjectModule, StructuredDocument } from '@fudic/compiler';
-import { SRC_DIR } from '@fudic/conventions';
+import { CONFIG_FILE, readProjectConfig } from '@fudic/config';
+import { PIPES_DIR, SRC_DIR } from '@fudic/conventions';
 import type { ServerImport } from '@fudic/language-core';
 import { findLibraries, type LookupFailure } from '@fudic/resolve';
 import type { CheckFs, FudList } from './files.js';
@@ -181,17 +182,28 @@ export class FudIndex<E extends IndexedFud = IndexedFud> implements LinkIndex, F
     // Relative, or absolute: from the root of the disk, or from a drive on Windows.
     if (!specifier.startsWith('.') && !specifier.startsWith('/') && !/^[A-Za-z]:\//u.test(specifier)) return undefined;
     const base = this.serverPath(fromFile, specifier);
-    if (![...this.#roots].some((root) => base.startsWith(`${root}/`))) return undefined;
+    const root = [...this.#roots].find((r) => base.startsWith(`${r}/`));
+    if (root === undefined) return undefined;
     for (const path of new Set([base, `${base}.ts`, base.replace(/\.js$/u, '.ts'), `${base}/index.ts`])) {
       const source = this.fs.readFile(path);
       if (source === undefined) continue;
+      const pipe = path.startsWith(`${root}/${this.#pipesOf(root)}/`);
       const cached = this.#modules.get(path);
-      if (cached?.source === source) return cached;
-      const module: ProjectModule = { path, source };
+      if (cached?.source === source && (cached.pipe === true) === pipe) return cached;
+      const module: ProjectModule = { path, source, ...(pipe ? { pipe } : {}) };
       this.#modules.set(path, module);
       return module;
     }
     return undefined;
+  }
+
+  /** The folder of pipes of a project (SDD-71 §3.1): its `fudic.json`'s `pipes`, read each time. */
+  #pipesOf(root: string): string {
+    // Read once: the reader asks `exists` before `read`, and the text it gets is this one.
+    const text = this.fs.readFile(`${root}/${CONFIG_FILE}`);
+    if (text === undefined) return PIPES_DIR;
+    const { config } = readProjectConfig(root, { exists: () => true, read: () => text });
+    return config?.pipes ?? PIPES_DIR;
   }
 
   /**

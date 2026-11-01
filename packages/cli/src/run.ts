@@ -258,6 +258,8 @@ async function build(command: Exclude<ReturnType<typeof parseArgs>, { kind: 'hel
       return (await import('./plans/piece.js')).planService(command.name, command.opts, io);
     case 'form':
       return (await import('./plans/piece.js')).planForm(command.name, command.opts, io);
+    case 'pipe':
+      return (await import('./plans/pipe.js')).planPipe(command.name, command.opts, io);
     case 'style':
       return (await import('./plans/style.js')).planStyle(command.name, command.opts, io);
     case 'translate':
