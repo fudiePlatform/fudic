@@ -101,6 +101,12 @@ export interface AtConstructParser {
     directive: SnippetDirective,
     keywordSpan: Span,
   ): ParseResult<RazorConstruct>;
+  /**
+   * The names the `@code` that `parseCodeBlock` returned imports or declares (SDD-71 §8.2, 5):
+   * the pipes `@x | name` may apply with blanks around the bar. Omitted ⇒ none, and the bar
+   * with blanks is text.
+   */
+  codeNames?(source: string, block: RazorConstruct): ReadonlySet<string>;
 }
 
 export interface HtmlParserOptions {
@@ -198,15 +204,42 @@ class HtmlParser {
    */
   #hrefDiagnostics: { from: number; to: number } = { from: 0, to: 0 };
 
-  constructor(source: string, atConstructs: AtConstructParser | undefined) {
+  /**
+   * The names the `@code` brings into the view, as far as the parse has read it (SDD-71 §8.2,
+   * 5): `@x | name`, with blanks around the bar, is a pipe only when `name` is one of them.
+   */
+  readonly #codeNames: Set<string>;
+  /** The names a bar with blanks asked for and did not find — yet. */
+  readonly #missed = new Set<string>();
+  /** A second parse, which already knows every name of the `@code`. */
+  readonly #second: boolean;
+
+  readonly #isPipe = (name: string): boolean => {
+    if (this.#codeNames.has(name)) return true;
+    this.#missed.add(name);
+    return false;
+  };
+
+  constructor(
+    source: string,
+    atConstructs: AtConstructParser | undefined,
+    codeNames?: ReadonlySet<string>,
+  ) {
     this.#source = source;
     this.#lexer = new Lexer(source);
     this.#atConstructs = atConstructs;
+    this.#codeNames = new Set(codeNames);
+    this.#second = codeNames !== undefined;
   }
 
   parse(): ParseResult<HtmlDocument> {
     const mode: DocumentMode = DOCTYPE_START.test(this.#source) ? 'page' : 'component';
     const children = this.#parseContent('html');
+    // A `@code` written after the view that pipes with its names: the bar was read before the
+    // names were. The parse runs once more, knowing them all — only then, and only once.
+    if (!this.#second && [...this.#missed].some((name) => this.#codeNames.has(name))) {
+      return new HtmlParser(this.#source, this.#atConstructs, this.#codeNames).parse();
+    }
     const document: HtmlDocument = {
       type: 'document',
       mode,
@@ -770,7 +803,9 @@ class HtmlParser {
   #parseAt(namespace: Namespace): HtmlContent {
     const trigger = this.#next();
     const at = trigger.span.start;
-    const resolved = resolveTrigger(this.#source, at);
+    // Content only: in an attribute value a blank ends the value, so there the bar with blanks
+    // around it stays text.
+    const resolved = resolveTrigger(this.#source, at, this.#isPipe);
     if (resolved.diagnostics.length > 0) this.#diagnostics.push(...resolved.diagnostics);
     const resolution = resolved.value;
 
@@ -804,9 +839,11 @@ class HtmlParser {
         if (handler === undefined) {
           return this.#unhandled(at, resolution.keywordSpan, 'code');
         }
-        return this.#delegate(
+        const block = this.#delegate(
           handler.parseCodeBlock(this.#context(namespace), resolution.keywordSpan),
         );
+        for (const name of handler.codeNames?.(this.#source, block) ?? []) this.#codeNames.add(name);
+        return block;
       }
 
       case 'directive': {

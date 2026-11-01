@@ -8,7 +8,15 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { DefinitionRequest, HoverRequest, type Hover, type Location } from 'vscode-languageserver-protocol/node';
+import {
+  CompletionRequest,
+  DefinitionRequest,
+  HoverRequest,
+  type CompletionItem,
+  type CompletionList,
+  type Hover,
+  type Location,
+} from 'vscode-languageserver-protocol/node';
 import { URI } from 'vscode-uri';
 import { copyWorkspace, startHarness, type Harness } from './_harness.js';
 
@@ -25,6 +33,7 @@ const SOURCE = `@code {
   <template shadowrootmode="open">
     <p>@(texto | corto)</p>
     <p>@(texto | iniciales)</p>
+    <p>@texto |   iniciales</p>
   </template>
 </post-card>
 `;
@@ -117,5 +126,24 @@ describe('criterion 15: a pipe the view imports', () => {
     expect(await hoverAt('const texto', 7)).not.toContain('```fudapi');
     const [target] = await definitionAt('| corto)', 3);
     expect(target?.file).toBe('src/components/post-card.fud');
+  });
+});
+
+describe('SDD-71 §8.2, 5: the pipe with no parentheses and blanks around the bar', () => {
+  it('Ctrl+Click and hover reach the pipe from `@texto |   iniciales`', async () => {
+    expect(await definitionAt('|   iniciales<', 5)).toEqual([{ file: 'src/pipes/iniciales.fudapi', text: 'pipe iniciales' }]);
+    expect(await hoverAt('|   iniciales<', 5)).toContain('```fudapi\npipe iniciales\n  on str\n```');
+  });
+
+  it('after `@texto | ` the completion offers the pipes of the @code', async () => {
+    const uri = URI.file(`${root}/${VIEW}`).toString();
+    const text = SOURCE.replace('<p>@texto |   iniciales</p>', '<p>@texto | </p>');
+    await harness.change(uri, text, 2);
+    const answer = (await harness.client.sendRequest(CompletionRequest.type, {
+      textDocument: { uri },
+      position: harness.positionAt(text, text.indexOf('@texto | ') + '@texto | '.length),
+    })) as CompletionList | CompletionItem[] | null;
+    const items = answer === null ? [] : Array.isArray(answer) ? answer : answer.items;
+    expect(items.map((i) => i.label)).toEqual(expect.arrayContaining(['corto', 'iniciales']));
   });
 });

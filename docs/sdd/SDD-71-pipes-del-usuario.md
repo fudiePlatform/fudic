@@ -1,7 +1,6 @@
 # SDD-71 — Pipes sin i18n y pipes del usuario
 
-> **Estado:** `Hecho` (salvo la tarea 14b: el pipe con espacios, pendiente de Pedro) —
-> [tareas](./SDD-71-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-71-Task.md).
 > **Paquetes:** `@fudic/core` · `@fudic/i18n` · `@fudic/conventions` · `@fudic/config` ·
 > `@fudic/api` · `@fudic/compiler` · `@fudic/language-core` · `@fudic/vite` · `@fudic/cli` ·
 > `@fudic/diagnostics` · `examples/basic` · `examples/workspace`
@@ -511,8 +510,13 @@ Filas nuevas de A.2 («El `@code` que el servidor evalúa» y «Lo que se pinta�
    quitar `$format` de `I18N_PIECES`) va en la fase 1; `GLOBALS_DTS` sigue en la fase 3.
 5. **El pipe también se escribe sin paréntesis** (Pedro, 2026-10-31): además de
    `@(data.x | pipe)`, la forma implícita `@data.x|pipe`. Lo entienden el compilador y el editor
-   (LSP: tipos, hover, completado tras `|`). Tarea 14b de la fase 3. Pendiente de Pedro: si vale
-   también con espacios alrededor de la barra.
+   (LSP: tipos, hover, completado tras `|`). Tarea 14b de la fase 3. **Con espacios** (Pedro,
+   2026-11-01): `@data.date |     date` es pipe si `date` lo importa o lo declara el `@code` del
+   fichero; si no, la barra es texto, como siempre. Los espacios y tabuladores van en la misma
+   línea, se encadena (`@x | a | b`) y solo en el contenido: en un atributo la barra con espacios
+   es texto. Pegada a los dos lados sigue siendo pipe siempre. Si el `@code` va después de la
+   vista, el parser lee el fichero una segunda vez con sus nombres. Para texto con ese nombre,
+   `@(data.date) | date`.
 6. **El choque `FUD0501` de `sw/c/rules` se arregla aquí** (Pedro, 2026-10-31: «no quiero bugs
    colgando»). Salió al quitar la etiqueta de idioma de una app con un solo idioma; existía ya en
    una app sin `locales`. Tarea 14c.

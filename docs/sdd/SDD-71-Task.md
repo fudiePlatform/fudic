@@ -6,8 +6,7 @@
 > `@fudic/diagnostics` · `examples/basic` · `examples/workspace`
 > **Rama:** `sdd-71-pipes-del-usuario`. Nace de `main` **con SDD-61 en `Hecho`**: enmienda su
 > §3.9 y su anexo, y migra el reloj que ella escribió.
-> **Progreso:** 25 / 26 — `Hecho`, salvo la 14b (con espacios alrededor de `|`, a decidir por
-> Pedro).
+> **Progreso:** 26 / 26 — `Hecho`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -68,7 +67,7 @@ código, no el test.
 |---|---|---|---|---|---|
 | [x] | 13 | 4 | **El emit.** `a \| p` y `format(a, p)` se emiten como `p.format(a, "<idioma>")`; fuera `$format` de `localize.ts`, de `I18N_PIECES` y del import de `@fudic/i18n` que escribe la expansión. `$Pipe<T>` gana `format` en `GLOBALS_DTS` | `compiler` · `language-core` | `src/i18n/localize.ts` · `src/semantic/delegation.ts` · `src/emit/oxc-code.ts` · `src/globals.ts` |
 | [x] | 14 | 2 | **La vista importa de la carpeta de pipes** (decisión 172). El `export default` de un fichero de esa carpeta, o el `pipes/*` de una librería, vale en el corte; solo a la derecha de `\|` o llamado en una `const` con un literal de datos; lo demás, `FUD1150` | `compiler` · `typecheck` | `src/semantic/analyzers/*` |
-| [ ] | 14b | 13 | **El pipe sin paréntesis** (SDD §8.2, 5): `@data.x\|pipe` además de `@(data.x \| pipe)`, en el compilador y en el editor (tipos, hover, completado tras `\|`) | `compiler` · `language-core` · `language-server` | `src/at/*` · `src/*` |
+| [x] | 14b | 13 | **El pipe sin paréntesis** (SDD §8.2, 5): `@data.x\|pipe` además de `@(data.x \| pipe)`, en el compilador y en el editor (tipos, hover, completado tras `\|`) | `compiler` · `language-core` · `language-server` | `src/at/*` · `src/*` |
 | [x] | 14c | — | **Dos trozos del SW con un mismo nombre** (SDD §8.2, 6): en `examples/basic`, `forms/impl/browser/rules.ts` y un trozo compartido salen los dos como `sw/c/rules-*` y el build avisa `FUD0501`. Ya pasaba en una app sin `locales` y lo tapaba la etiqueta de idioma. Cada trozo debe tener nombre propio y el build salir sin el aviso | `vite` | `src/link.ts` · `src/i18n.ts` · `src/rename.ts` |
 | [x] | 15 | 2, 10 | **Fuera de las raíces.** La carpeta de pipes no entra en ningún `import.meta.glob` de `api-root.ts`, aunque esté configurada dentro de `src/browser` o `src/server` | `vite` | `src/api-root.ts` · `src/plugin.ts` |
 | [x] | 16 | 4 | **Una pieza publicada por preset.** El linker publica solo los presets que algún módulo importa (SDD-45) | `core` · `vite` | `src/runtime-entry.ts` · `src/*` |
@@ -141,6 +140,8 @@ La sesión que implementó se cierra antes del cierre; lo hace otra sesión. Est
   `import.meta` de `@fudic/ssr`, que esta rama no toca.
 - `pnpm test` no se repite: desde el informe de cobertura (`8ece7f44`) solo cambió este fichero.
   Criterio 18, según ese informe: ningún paquete baja de su suelo.
-- La evidencia que falta es manual: navegador, extensión de VS Code y CLI (Pedro), y
-  `node examples/pieces-bench/check.mjs`.
-- Abierta: la 14b con espacios, a decidir por Pedro.
+- Evidencia manual (Pedro): navegador con y sin SW, extensión de VS Code y CLI. Destapó que el
+  reloj de `examples/basic` se prerenderizaba con la hora del build: la ruta pasa a `load ssr`.
+- 14b cerrada con espacios (SDD §8.2, 5): `compiler` 3878 tests, cobertura igual a su suelo
+  (99,63 / 99,19 / 99,76 / 99,88), lo nuevo al 100; el editor, en `pipes-editor.test.ts`.
+- Queda `node examples/pieces-bench/check.mjs`, que ninguna sesión corre sin permiso.

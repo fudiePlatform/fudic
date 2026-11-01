@@ -142,8 +142,15 @@ describe('SDD-71 criteria 8 and 12: a project\'s pipe, the same shape as a prese
     expect(out.hydrated()).toBe(out.server);
   });
 
-  it('with a space the bar is text, as it always was', () => {
-    expect(compile('<p>@post.autor |iniciales</p>', CODE, {}).server).toBe('<p>Ada |iniciales</p>');
+  it('with blanks around the bar, a pipe the @code brings: `@post.autor |    iniciales` (§8.2, 5)', () => {
+    const out = compile('<p>@post.autor |    iniciales</p><p>@post.resumen | iniciales | corto</p>', CODE, {}, 'es');
+    expect(out.server).toBe('<p>A:es</p><p>f:e…@es</p>');
+    expect(out.created()).toBe(out.server);
+    expect(out.hydrated()).toBe(out.server);
+  });
+
+  it('with blanks, any other name leaves the bar as text, as it always was', () => {
+    expect(compile('<p>@post.autor | Envío</p>', CODE, {}).server).toBe('<p>Ada | Envío</p>');
   });
 });
 

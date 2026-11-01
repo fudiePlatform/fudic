@@ -4,3 +4,4 @@
 
 export type { CodeBlockNode, CodePart, NeutralJs } from './nodes.js';
 export { parseCodeBlock } from './code.js';
+export { codeNames } from './names.js';

@@ -11,6 +11,7 @@ export type {
   LayoutDirective,
   SnippetDirective,
   TriggerResolution,
+  PipeScope,
 } from './at.js';
 export {
   classifyKeyword,
