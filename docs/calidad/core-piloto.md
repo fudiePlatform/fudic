@@ -90,9 +90,18 @@ copias de main y de la rama.
 - Lista completa: [core-stryker-supervivientes.txt](core-stryker-supervivientes.txt)
   (fichero:línea, tipo de cambio, código original `=>` lo que puso Stryker). Sin repasar.
 
-## 4. Pendiente de decisión
+## 4. Método decidido por Pedro
 
-- Orden propuesto: arreglar el diseño sin tocar tests → Stryker otra vez → repasar lo que quede.
+Con un 100 % de cobertura, lo destapado no tiene explicación. Se sigue este orden, sin saltar pasos:
+
+1. **Clean code:** quitar los comentarios y todo lo que no cumpla clean code.
+2. **Ejecutar los tests.**
+3. **SOLID:** dejar la librería con el diseño correcto (los nueve puntos de la sección 1).
+4. **Preguntar** qué tests se ven afectados, y aceptar solo esos cambios.
+5. **Tests otra vez**, y justificar cada cambio.
+
+## 5. Pendiente de decisión
+
 - Idea: un paquete de fixtures (`.fud` + salida esperada) que compilador y core importan por
   separado, para que cada paquete pruebe solo lo suyo.
 - Dónde vive Stryker: fuera del repo, o dentro como herramienta con excepción para `@babel`.
