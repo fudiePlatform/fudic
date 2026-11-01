@@ -1,14 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { computed, signal, untrack } from '../src/index.js';
-import { type Dependency, type LeafSource, runTracked } from '../src/tracking.js';
+import { type LeafSource, runTracked } from '../src/tracking.js';
+import { recorder } from './_consumer.js';
 
-/** A consumer that just writes down what was reported to it. */
-function recorder(): { seen: Dependency[]; add(dep: Dependency): void } {
-  const seen: Dependency[] = [];
-  return { seen, add: (dep) => void seen.push(dep) };
-}
-
-describe('computed (SDD-31 §6.1–§6.5)', () => {
+describe('computed', () => {
   it('derives, and does not recompute while no source moved', () => {
     const a = signal(2);
     let runs = 0;

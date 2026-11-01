@@ -1,10 +1,5 @@
-/**
- * `onStaleData` — the route's half of the repaint after a call (SDD-68 §4.8, steps 2 and 4).
- *
- * The stub dispatches `DATA_STALE_EVENT` on `document`; here the test does, with a `wait` that
- * records what it was handed. `load` is a fake whose requests the test answers by hand, so the
- * race between two notices can be played in either order.
- */
+// The test dispatches `DATA_STALE_EVENT` itself, with a `wait` that records what it was
+// handed. `load` answers when the test says, so two notices can race in either order.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DATA_STALE_EVENT, type DataStaleDetail } from '@fudic/conventions';

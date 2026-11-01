@@ -1,37 +1,19 @@
-/**
- * `signal` — fine-grained reactivity (SDD-14 §4.4, decision 72). A signal holds a
- * value, a version counter and a live `Set` of subscribers.
- *
- * Two operations, and only two: read it and write it (SDD-31 §4.0). The call form
- * is a TRACKED read — inside an `effect` or a `computed` it registers the
- * dependency, and outside one, which is where handlers and `h()` live, it does
- * nothing at all. `peek()` is gone because it was the same function; the loose
- * read inside a consumer is `untrack`, spelled out where it matters. Subscription
- * is not a method either: it is the emit's channel, imported as a function, and
- * a view author who needs to react has `effect`, which hands back its teardown.
- *
- * The version counter is what lets a derived value cache without subscribing to
- * anything (SDD-31 §4.2): one integer per signal, not one more `Set`.
- *
- * Rehydration is DOM-first: the signal is rebuilt from the painted markup, not
- * from a parallel state blob.
- */
-
 import { notify } from './batch.js';
 import { type LeafSource, report, tagLeaf } from './tracking.js';
 
+/** A reactive value: call it to read, `set` to write. */
 export interface Signal<T> {
-  /** Tracked read: inside an `effect` or a `computed`, registers the dependency. */
+  /** Reads the value. Inside an `effect` or a `computed`, also registers the dependency. */
   (): T;
-  /** Write; notifies subscribers only when the value changes (`Object.is`). */
+  /** Writes the value. Subscribers are notified only if it changed (`Object.is`). */
   set(v: T): void;
 }
 
 export function signal<T>(initial: T): Signal<T> {
   let value = initial;
+  // Lets a derived value tell whether this changed without subscribing to it.
   let version = 0;
-  // Stored as thunks so that a batch can dedupe by subscriber identity: an
-  // effect subscribed to two signals written in the same batch runs once.
+  // Zero-argument thunks, so a batch can run each subscriber once.
   const subscribers = new Set<() => void>();
 
   const source: LeafSource = {
@@ -52,11 +34,8 @@ export function signal<T>(initial: T): Signal<T> {
     return value;
   }) as Signal<T>;
   sig.set = (v: T) => {
-    if (Object.is(v, value)) {
-      return;
-    }
-    // Value and version move immediately, batch or no batch: a read on the next
-    // line has to see what was just written. Only the delivery can be deferred.
+    if (Object.is(v, value)) return;
+    // The value moves at once, even inside a batch: only the notification waits.
     value = v;
     version += 1;
     notify(subscribers);

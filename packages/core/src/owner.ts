@@ -1,17 +1,9 @@
-/**
- * Ownership — who tears down what a component's code block created (SDD-68 §3.5).
- *
- * The emit runs the code block of a component or a route inside `owned`, and `r` tears down the
- * list it hands back. While `fn` runs, every `effect(…)` and every `task(…)` created there
- * leaves its teardown in that list, so removing the component stops them. Anything created later — inside a handler, inside a rerun — finds no owner and lives
- * with the page, exactly as before.
- *
- * One module-level variable, like the tracking context: reentrant, restored in `finally`.
- */
-
 let current: (() => void)[] | null = null;
 
-/** Run `fn`, collecting the teardown of everything it creates. For the emit only. */
+/**
+ * Runs `fn` and returns its result with the teardowns of every `effect` and `task` it
+ * created. The compiled component calls these when it is removed.
+ */
 export function owned<T>(fn: () => T): readonly [T, readonly (() => void)[]] {
   const previous = current;
   const list: (() => void)[] = [];
@@ -23,7 +15,7 @@ export function owned<T>(fn: () => T): readonly [T, readonly (() => void)[]] {
   }
 }
 
-/** Hand `dispose` to the owner running right now. Outside `owned` it is a no-op. */
+/** Hands `dispose` to the running `owned`, if any. */
 export function own(dispose: () => void): void {
   current?.push(dispose);
 }

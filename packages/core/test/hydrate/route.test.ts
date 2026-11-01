@@ -1,36 +1,10 @@
-/**
- * SDD-39 §6.9–§6.13 — the runtime raises a route.
- *
- * Nothing new in the engine, and that is the claim under test: the same capturer, the same
- * three paths, the same cascade. What changes is the root — the `<body>` instead of a shadow
- * root — and the name, which comes out of a JSON block instead of a `localName`.
- */
+// A route comes up through the same capturer and cascade as a component. Only the root
+// changes, the `<body>` instead of a shadow root, and the name, read from a block.
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { browserDom } from '@fudic/dom';
 import { installHydration, HYDRATED_EVENT, type HydratedDetail } from '../../src/hydrate/install.js';
 import { startWarmObserver } from '../../src/hydrate/warm/observer.js';
-import { signal } from '../../src/signal.js';
-import { host, publish, TestRegistry } from './_page.js';
-
-/**
- * The pieces the load does not pay for (SDD-45 §4.4.1), off-network like every other port
- * here: hydration asks for the DOM adapter and the signal when something is hydrated, and a
- * test that waited for a real `import` would be measuring the module loader.
- */
-const deferred = async (): Promise<{ dom: typeof browserDom; signal: typeof signal }> => ({
-  dom: browserDom,
-  signal,
-});
-
-async function settle(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  await new Promise((resolve) => setTimeout(resolve, 0));
-}
-
-function click(target: EventTarget): void {
-  target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, composed: true }));
-}
+import { click, deferred, host, publish, settle, TestRegistry, unhandled } from './_page.js';
 
 interface Run {
   readonly trace: string[];
@@ -93,7 +67,7 @@ function run(routeName: string): Run {
   return { trace, hydrated, props };
 }
 
-describe('the route takes path 2 whole (§6.10)', () => {
+describe('a gesture brings the route up', () => {
   beforeEach(() => {
     publish();
   });
@@ -127,7 +101,7 @@ describe('the route takes path 2 whole (§6.10)', () => {
     expect(slice).toEqual([7]);
   });
 
-  it('raises what it hands values to first, by the LIGHT — the `<body>` has no shadow (§6.9)', async () => {
+  it('raises what it hands values to first, by the LIGHT — the `<body>` has no shadow', async () => {
     publish({
       route: 'ruta',
       bodyId: 1,
@@ -178,25 +152,6 @@ describe('a chunk that answers with something else', () => {
 });
 
 describe('a route whose factory throws', () => {
-  /** The rejections nobody handled while `body` ran, instead of the runner's own report. */
-  async function unhandled(body: () => Promise<void>): Promise<unknown[]> {
-    const caught: unknown[] = [];
-    const runner = process.listeners('unhandledRejection');
-    process.removeAllListeners('unhandledRejection');
-    const mine = (reason: unknown): void => {
-      caught.push(reason);
-    };
-    process.on('unhandledRejection', mine);
-    try {
-      await body();
-      await settle();
-    } finally {
-      process.off('unhandledRejection', mine);
-      for (const listener of runner) process.on('unhandledRejection', listener);
-    }
-    return caught;
-  }
-
   beforeEach(() => {
     publish();
   });
@@ -240,7 +195,7 @@ describe('a route whose factory throws', () => {
   });
 });
 
-describe('the `<body>` is a backstop, never a competitor (§6.11)', () => {
+describe('the `<body>` is a backstop, never a competitor', () => {
   beforeEach(() => {
     publish();
   });
@@ -262,7 +217,7 @@ describe('the `<body>` is a backstop, never a competitor (§6.11)', () => {
   });
 });
 
-describe('a page with no route asks for none (§6.12)', () => {
+describe('a page with no route asks for none', () => {
   beforeEach(() => {
     publish();
   });
@@ -296,7 +251,7 @@ describe('a page with no route asks for none (§6.12)', () => {
   });
 });
 
-describe('the warm observer does not look at the `<body>` (§6.13)', () => {
+describe('the warm observer does not look at the `<body>`', () => {
   beforeEach(() => {
     publish();
   });
@@ -335,7 +290,7 @@ describe('the warm observer does not look at the `<body>` (§6.13)', () => {
   });
 });
 
-describe('a route that comes up without a gesture (§4.6)', () => {
+describe('a route that comes up without a gesture', () => {
   beforeEach(() => {
     publish();
   });
@@ -350,7 +305,7 @@ describe('a route that comes up without a gesture (§4.6)', () => {
   });
 
   it('raises an eager COMPONENT inside it too, even with no prop between them', async () => {
-    // The clock of SDD-39 §6.20: it receives nothing from the route, so it is not on the
+    // A clock: it receives nothing from the route, so it is not on the
     // route's `fud-tree` walk — and the `<body>` is its outermost owner, so without asking
     // for it by name nobody would raise it. Unhydrated it paints the server's time and
     // freezes, which is not «works worse».

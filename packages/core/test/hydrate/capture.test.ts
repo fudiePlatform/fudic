@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createCapturer } from '../../src/hydrate/capture.js';
-import { instanceState, type InstanceState } from '../../src/hydrate/registry.js';
+import { instanceState, type InstanceState } from '../../src/hydrate/instances.js';
 import { host, publish, TestRegistry } from './_page.js';
 
 interface Harness {
@@ -138,7 +138,7 @@ function coldWith<E extends Element>(tag: string, id: number, child: E): E {
   return child;
 }
 
-describe('SDD-47 §4.3 — what the user writes is not cancelled', () => {
+describe('what the user writes is not cancelled', () => {
   beforeEach(() => {
     publish();
   });
@@ -204,7 +204,7 @@ describe('SDD-47 §4.3 — what the user writes is not cancelled', () => {
   });
 });
 
-describe('SDD-47 §4.4 — gestures that land while an instance is being raised', () => {
+describe('gestures that land while an instance is being raised', () => {
   beforeEach(() => {
     publish();
   });

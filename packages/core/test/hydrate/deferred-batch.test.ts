@@ -1,17 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 
-/**
- * ONE batch of two, and not a chain (SDD-45 §4.4.1, §1.5 rule 2).
- *
- * The two pieces have nothing to do with each other, so asking for them with two awaits
- * would discover the second only once the first answered — two round trips for two
- * independent modules, which is the very shape this SDD is spent removing. The difference is
- * invisible on localhost and is the whole cost on a slow link, so it is fixed here by
- * interleaving rather than by reading the source.
- *
- * Its own file because the two specifiers are mocked, and `../signal.js` is a module the rest
- * of the hydrate suite imports for real.
- */
+// Both pieces are requested before either answers: two awaits in a row would be two round
+// trips, invisible on localhost and the whole cost on a slow link. A file of its own because
+// both modules are mocked here and imported for real everywhere else.
 
 const trace: string[] = [];
 

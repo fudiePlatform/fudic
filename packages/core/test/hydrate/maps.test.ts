@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readPageMaps } from '../../src/hydrate/maps.js';
 import { publish } from './_page.js';
 
-describe('the three blocks the page publishes', () => {
+describe('the blocks the page publishes', () => {
   it('a page that hydrates nothing publishes nothing, and that is the base case', () => {
     publish();
     const maps = readPageMaps(document);
@@ -22,8 +22,7 @@ describe('the three blocks the page publishes', () => {
     publish({ state: [[0, 2, 2, 5], ['a', 'b', 1, 2, 3]] });
     const maps = readPageMaps(document);
     expect(maps.slice(0)).toEqual(['a', 'b']);
-    // A claimed host whose render destructured nothing: an empty slice, and that is what it
-    // means (SDD-15 §3.3).
+    // A hydratable host with no state.
     expect(maps.slice(1)).toEqual([]);
     expect(maps.slice(2)).toEqual([1, 2, 3]);
   });
@@ -35,7 +34,7 @@ describe('the three blocks the page publishes', () => {
     expect(maps.slice(9)).toEqual([]); // beyond the table altogether
   });
 
-  it('an instant comes back a Date, an invalid one an invalid Date (SDD-61 §3.12)', () => {
+  it('an instant comes back a Date, an invalid one an invalid Date', () => {
     publish({ state: [[0, 3], [{ $d: 1793008800000 }, { $d: null }, { a: 1 }]] });
     const [at, invalid, plain] = readPageMaps(document).slice(0) as [Date, Date, object];
     expect(at).toBeInstanceOf(Date);

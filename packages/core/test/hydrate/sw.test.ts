@@ -1,7 +1,5 @@
-/**
- * SDD-17 §4.7.1: the channel of a page served by the render Service Worker — and the case
- * that makes it more than a `postMessage`: a first load has a worker and no controller.
- */
+// The channel for a page a Service Worker controls. A first load has a worker but no
+// controller yet, which is what makes it more than a `postMessage`.
 
 import { describe, it, expect, vi } from 'vitest';
 import {

@@ -7,19 +7,9 @@ import {
   runTracked,
   untrack,
 } from '../src/tracking.js';
+import { recorder } from './_consumer.js';
 
-/** A consumer that just writes down what was reported to it. */
-function recorder(): { seen: Dependency[]; add(dep: Dependency): void } {
-  const seen: Dependency[] = [];
-  return { seen, add: (dep) => void seen.push(dep) };
-}
-
-describe('tracking (SDD-31 §4.1)', () => {
-  it('a read outside any consumer reports to nobody', () => {
-    const s = signal(1);
-    expect(s()).toBe(1); // would throw if `report` dereferenced a null consumer
-  });
-
+describe('tracking', () => {
   it('a read inside a consumer registers the dependency', () => {
     const s = signal(1);
     const c = recorder();

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { batch, computed, effect, signal, untrack } from '../src/index.js';
 
-describe('effect (SDD-31 §6.6–§6.10)', () => {
+describe('effect', () => {
   it('runs once on creation and once per change of what it read', () => {
     const a = signal(1);
     const seen: number[] = [];
@@ -102,7 +102,7 @@ describe('effect (SDD-31 §6.6–§6.10)', () => {
   });
 });
 
-describe('effect cleanup (SDD-31 §6.21)', () => {
+describe('effect cleanup', () => {
   it('runs before the next run and once on dispose', () => {
     const a = signal(1);
     const log: string[] = [];
@@ -150,7 +150,7 @@ describe('effect cleanup (SDD-31 §6.21)', () => {
   });
 });
 
-describe('batch (SDD-31 §6.11–§6.13)', () => {
+describe('batch', () => {
   it('without it, two writes are two runs and the first sees the old value', () => {
     const a = signal(0);
     const b = signal(0);

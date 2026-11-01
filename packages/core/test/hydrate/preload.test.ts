@@ -1,7 +1,5 @@
-/**
- * SDD-17 §4.7.1: the channel of a page with no Service Worker. It fetches and parses,
- * it does NOT evaluate, and it says so when the chunk is in place.
- */
+// The channel for a page with no Service Worker: it fetches and parses, never evaluates, and
+// announces when a chunk is in place.
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createPreloadWarmChannel } from '../../src/hydrate/warm/preload.js';
@@ -45,8 +43,7 @@ describe('the modulepreload channel', () => {
       ['modulepreload', '/h/app-counter.js'],
       ['modulepreload', '/h/app-toggle.js'],
     ]);
-    // Low, like the worker's `fetch(url, { priority: 'low' })`: warm is background network
-    // in both channels, or it is not warm (§4.7).
+    // Low, like the worker's `fetch(url, { priority: 'low' })`: warm is background network.
     expect(links().map((l) => l.getAttribute('fetchpriority'))).toEqual(['low', 'low']);
     // `preload` would fetch it as a plain resource and `prefetch` would not parse it;
     // neither of the three evaluates, which is the invariant this channel must keep.
@@ -76,7 +73,6 @@ describe('the modulepreload channel', () => {
   });
 });
 
-/** BUG-53 §4.3: with the manifest's graph, a link per file of the chunk's graph. */
 describe('the modulepreload channel with a graph', () => {
   beforeEach(() => {
     document.head.innerHTML = '';
@@ -98,7 +94,7 @@ describe('the modulepreload channel with a graph', () => {
     expect(new Set(links().map((l) => l.getAttribute('fetchpriority')))).toEqual(new Set(['low']));
   });
 
-  it('criterion 5: one link per URL, across tags and against what the head preloaded', async () => {
+  it('one link per URL, across tags and against what the head preloaded', async () => {
     // The head's own preload of a runtime piece, by another spelling of the same URL.
     const head = document.createElement('link');
     head.rel = 'modulepreload';
@@ -119,7 +115,7 @@ describe('the modulepreload channel with a graph', () => {
       ].toSorted(),
     );
 
-    // criterion 6: announced once every file of the tag landed, the head's included.
+    // Announced once every file of the tag landed, the head's included.
     land('/h/app-toggle.js');
     await flush();
     expect(seen).toEqual([]);
@@ -131,7 +127,7 @@ describe('the modulepreload channel with a graph', () => {
     expect(seen).toEqual(['app-toggle', 'app-counter']);
   });
 
-  it('criterion 6: a file of the graph that fails keeps the tag unannounced', async () => {
+  it('a file of the graph that fails keeps the tag unannounced', async () => {
     const seen = listen();
     createPreloadWarmChannel({ document, graph }).warm(['/h/app-counter.js'], ['app-counter']);
     await flush();
@@ -143,7 +139,7 @@ describe('the modulepreload channel with a graph', () => {
     expect(seen).toEqual([]);
   });
 
-  it('criterion 7: an empty graph preloads the chunk alone', async () => {
+  it('an empty graph preloads the chunk alone', async () => {
     const seen = listen();
     createPreloadWarmChannel({ document, graph: () => Promise.resolve([]) }).warm(
       ['/h/app-counter.js'],

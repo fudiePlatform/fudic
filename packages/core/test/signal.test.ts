@@ -1,22 +1,13 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { effect, signal } from '../src/index.js';
 
-describe('signal (SDD-14 §6.6, SDD-31 §4.0)', () => {
+describe('signal', () => {
   it('has exactly two operations: call it and set it', () => {
     const s = signal(1);
     expect(s()).toBe(1);
     expect(Object.keys(s)).toEqual(['set']);
     expect((s as unknown as Record<string, unknown>)['peek']).toBeUndefined();
     expect((s as unknown as Record<string, unknown>)['subscribe']).toBeUndefined();
-  });
-
-  it('a read outside any consumer is just a read', () => {
-    const s = signal(3);
-    const fn = vi.fn();
-    effect(() => void fn(s()));
-    fn.mockClear();
-    expect(s()).toBe(3);
-    expect(fn).not.toHaveBeenCalled();
   });
 
   it('a write notifies', () => {

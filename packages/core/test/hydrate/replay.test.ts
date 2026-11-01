@@ -40,7 +40,7 @@ describe('replaying the gesture that had nobody to handle it', () => {
   });
 });
 
-describe('SDD-47 §4.3 — what the handler reads travels with the replay', () => {
+describe('what the handler reads travels with the replay', () => {
   /** Replay `original` on a fresh target and hand back what a listener received. */
   function replayed<E extends Event>(original: E): E {
     const target = new EventTarget();

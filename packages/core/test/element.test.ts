@@ -1,13 +1,3 @@
-/**
- * `FudicElement` — the emit contract of SDD-15 §3.7, checked from the outside: the base
- * routes to the SUBCLASS's factory, stays inert until someone hands it props, and tears
- * down only when the browser says so.
- *
- * Acceptance criteria covered: §6.9 (the base routes to the subclass's factory), §6.10
- * (no `connectedCallback`), §6.11 (the public interface is exactly `{c, h, u, r}`), and
- * BUG-12 §6.1–§6.2 (`u` is the third entry point, and a no-op with no controller).
- */
-
 import { describe, expect, it } from 'vitest';
 import { browserDom } from '@fudic/dom';
 import { FudicElement } from '../src/element.js';
@@ -78,7 +68,7 @@ describe('FudicElement — instance entry points', () => {
     host.remove();
   });
 
-  it('adopts the sheets its host names when it is created at runtime (BUG-45 §5.1)', () => {
+  it('adopts the sheets its host names when it is created at runtime', () => {
     const style = document.createElement('style');
     style.setAttribute('type', 'module');
     style.setAttribute('specifier', 'app-el-sheet');
@@ -96,7 +86,7 @@ describe('FudicElement — instance entry points', () => {
     style.remove();
   });
 
-  it('opens a fabricated shadow root with the `<link>`s its host names, before the content (SDD-73 §3.5)', () => {
+  it('opens a fabricated shadow root with the `<link>`s its host names, before the content', () => {
     const tag = freshTag();
     customElements.define(
       tag,
@@ -137,7 +127,7 @@ describe('FudicElement — instance entry points', () => {
     style.remove();
   });
 
-  it('opens the bridge its author wrote, as the server did (BUG-42, decision 132)', () => {
+  it('opens the reference target its author wrote, as the server did', () => {
     const tag = freshTag();
     customElements.define(
       tag,
@@ -159,7 +149,7 @@ describe('FudicElement — instance entry points', () => {
     expect(inits).toEqual([{ mode: 'open', referenceTarget: 'campo' }]);
   });
 
-  it('opens the shadow root its author declared: delegatesFocus, clonable, serializable (SDD-57 §6.9)', () => {
+  it('opens the shadow root its author declared: delegatesFocus, clonable, serializable', () => {
     const tag = freshTag();
     customElements.define(
       tag,
@@ -196,12 +186,7 @@ describe('FudicElement — instance entry points', () => {
   });
 });
 
-/**
- * BUG-12 — `u` is the third entry point, and its caller is the PARENT: the owner of the
- * signal writes the value again. It is not a lifecycle callback, and it does not build
- * anything, so an instance with no controller has nothing to forward to and says nothing.
- */
-describe('FudicElement — u, the update entry point (BUG-12 §6.1, §6.2)', () => {
+describe('FudicElement — u, the update entry point', () => {
   it('forwards the array to the controller after an h', () => {
     const s = spy();
     const host = document.createElement(define(s)) as FudicElement;
@@ -274,7 +259,7 @@ describe('FudicElement — u, the update entry point (BUG-12 §6.1, §6.2)', () 
   });
 });
 
-describe('FudicElement — §6.9 the base routes to the subclass factory', () => {
+describe('FudicElement — the base routes to the subclass factory', () => {
   it('gives each subclass the controller of ITS own factory', () => {
     const a = spy();
     const b = spy();
@@ -291,7 +276,7 @@ describe('FudicElement — §6.9 the base routes to the subclass factory', () =>
   });
 });
 
-describe('FudicElement — §6.10 no connectedCallback', () => {
+describe('FudicElement — no connectedCallback', () => {
   it('stays inert when the host is connected: no factory, no hookup', () => {
     const s = spy();
     const tag = define(s);
@@ -371,7 +356,7 @@ describe('FudicElement — teardown', () => {
   });
 });
 
-describe('FudicElement — §6.11 the controller interface is exactly {c, h, u, r}', () => {
+describe('FudicElement — the controller interface is exactly {c, h, u, r}', () => {
   it('the base calls nothing else on it, and exposes no controller surface', async () => {
     const seen: string[] = [];
     const tag = freshTag();

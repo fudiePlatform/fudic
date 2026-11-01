@@ -1,26 +1,24 @@
-/**
- * Building the page the runtime reads, by hand.
- *
- * `innerHTML` does not materialize a declarative shadow root — not in happy-dom and not in a
- * browser — so every shadow here is opened with `attachShadow`, which leaves exactly the tree
- * the parser would have left. What matters to the runtime is the SHAPE (a host carrying
- * `data-fud-id`, an open shadow under it), never how it got there.
- */
+// Builds by hand the page the runtime reads. `innerHTML` does not materialize a declarative
+// shadow root, so shadows are opened with `attachShadow`, which leaves the same tree.
 
-import { type TagMap } from '../../src/hydrate/maps.js';
-import { allInstances, type ElementRegistry } from '../../src/hydrate/registry.js';
+import { browserDom } from '@fudic/dom';
+import { createCascade, type Cascade } from '../../src/hydrate/cascade.js';
+import { createCells } from '../../src/hydrate/cells.js';
+import { createChunkLoader } from '../../src/hydrate/chunks.js';
+import { readPageMaps, type PageMaps, type TagMap } from '../../src/hydrate/maps.js';
+import { allInstances, instanceState, type InstanceState } from '../../src/hydrate/instances.js';
+import { type ElementRegistry } from '../../src/hydrate/registry.js';
+import { type ReportHydrated } from '../../src/hydrate/report.js';
+import { signal } from '../../src/signal.js';
 
 export interface PagePayload {
   readonly state?: readonly [readonly number[], readonly unknown[]];
   readonly tree?: TagMap;
   readonly bus?: TagMap;
-  /** The control-components, which come up without a gesture (SDD-34 §4.5). */
   readonly eager?: readonly string[];
-  /** The route's chunk name (SDD-39 §4.7). Absent ⇒ this page has no client half of its own. */
   readonly route?: string;
-  /** What `load()` returned, trimmed to what the client half reads (SDD-39 §4.8). */
   readonly data?: unknown;
-  /** The `data-fud-id` the `<body>` carries when the route is reactive (SDD-39 §4.2). */
+  /** The `data-fud-id` of the `<body>`, for a route with browser code. */
   readonly bodyId?: number;
 }
 
@@ -32,7 +30,7 @@ function block(id: string, value: unknown): void {
   document.body.appendChild(el);
 }
 
-/** Reset the document and publish the blocks the page would carry. */
+/** Resets the document and writes the blocks the page would carry. */
 export function publish(payload: PagePayload = {}): void {
   document.body.innerHTML = '';
   document.body.removeAttribute('data-fud-id');
@@ -42,7 +40,6 @@ export function publish(payload: PagePayload = {}): void {
   if (payload.eager !== undefined) block('fud-eager', payload.eager);
   if (payload.route !== undefined) block('fud-route', payload.route);
   if (payload.data !== undefined) block('fud-data', payload.data);
-  // The route's id goes on the `<body>` itself: it has no element of its own (SDD-39 §4.2).
   if (payload.bodyId !== undefined) {
     document.body.setAttribute('data-fud-id', String(payload.bodyId));
   }
@@ -57,24 +54,15 @@ export function host(tag: string, id: number, parent: ParentNode = document.body
   return el;
 }
 
-/** What every fake chunk defines: an element that records the slice it was handed. */
+/** What every fake chunk defines: an element that records the state it was handed. */
 export interface Recorder extends HTMLElement {
   slice?: readonly unknown[];
 }
 
 /**
- * A faithful custom-element registry, and the reason it exists.
- *
- * The one platform rule the whole cascade is built on is that `define` upgrades every
- * instance of a tag ALREADY IN THE TREE, in place, keeping each instance's shadow root.
- * happy-dom does not model it: it REPLACES the node and drops the shadow root, which would
- * make every test here measure the emulation instead of the runtime. So the registry is a
- * port (SDD-17 §4.4) and this is the model — the same shape the real one has, with `define`
- * doing what the platform does. That the platform really does it is what the Playwright
- * suite of §6 proves, in a real browser.
- *
- * An upgrade here is a prototype swap and no constructor call: what the runtime needs from
- * an upgraded instance is its `h`, and a component's constructor does nothing (SDD-15 §3.7).
+ * A registry where `define` upgrades every instance already in the tree, in place, keeping
+ * its shadow root, as browsers do. happy-dom replaces the node instead. An upgrade here is a
+ * prototype swap with no constructor call.
  */
 export class TestRegistry implements ElementRegistry {
   readonly #ctors = new Map<string, CustomElementConstructor>();
@@ -106,10 +94,7 @@ export class TestRegistry implements ElementRegistry {
   }
 }
 
-/**
- * Define `tag` the way an emitted chunk does — a `define` with a side effect — recording the
- * order the definitions happened in and the slice each instance received.
- */
+/** Defines `tag` as a chunk does, recording the definition and each `h`. */
 export function defineRecorder(registry: TestRegistry, tag: string, trace: string[]): void {
   trace.push(`define:${tag}`);
   registry.define(
@@ -121,4 +106,85 @@ export function defineRecorder(registry: TestRegistry, tag: string, trace: strin
       }
     },
   );
+}
+
+/** The deferred pieces, without a network. */
+export const deferred = async (): Promise<{ dom: typeof browserDom; signal: typeof signal }> => ({
+  dom: browserDom,
+  signal,
+});
+
+/** Lets the runtime's promise chains run out. */
+export async function settle(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+export function click(target: EventTarget): void {
+  target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, composed: true }));
+}
+
+/** The rejections nobody handled while `body` ran, taken from the test runner. */
+export async function unhandled(body: () => Promise<void>): Promise<unknown[]> {
+  const caught: unknown[] = [];
+  const runner = process.listeners('unhandledRejection');
+  process.removeAllListeners('unhandledRejection');
+  const mine = (reason: unknown): void => {
+    caught.push(reason);
+  };
+  process.on('unhandledRejection', mine);
+  try {
+    await body();
+    await settle();
+  } finally {
+    process.off('unhandledRejection', mine);
+    for (const listener of runner) process.on('unhandledRejection', listener);
+  }
+  return caught;
+}
+
+export interface CascadeHarness {
+  readonly cascade: Cascade;
+  readonly maps: PageMaps;
+  readonly state: InstanceState;
+  readonly registry: TestRegistry;
+  readonly report: ReportHydrated;
+  /** Definitions and `h` calls, in order. */
+  readonly trace: string[];
+  /** `from:tag#id`, in order. */
+  readonly reported: string[];
+}
+
+/**
+ * A cascade over the page as it stands: publish the blocks first. Each downloaded chunk is
+ * defined by `define`, a recorder by default.
+ */
+export function cascadeHarness(
+  define: (registry: TestRegistry, tag: string, trace: string[]) => void = defineRecorder,
+): CascadeHarness {
+  const trace: string[] = [];
+  const reported: string[] = [];
+  const maps = readPageMaps(document);
+  const state = instanceState();
+  const registry = new TestRegistry();
+  const loader = createChunkLoader({
+    registry,
+    resolveChunk: (tag) => tag,
+    importModule: async (tag) => {
+      define(registry, tag, trace);
+    },
+  });
+  const report: ReportHydrated = (id, tag, _ms, from) => {
+    reported.push(`${from}:${tag}#${id}`);
+  };
+  const cascade = createCascade({
+    maps,
+    cells: createCells(maps, signal),
+    loader,
+    registry,
+    state,
+    root: document,
+    report,
+  });
+  return { cascade, maps, state, registry, report, trace, reported };
 }

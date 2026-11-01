@@ -16,11 +16,8 @@ import { createCascade } from '../../../../core/src/hydrate/cascade.js';
 import { createCells } from '../../../../core/src/hydrate/cells.js';
 import { createChunkLoader } from '../../../../core/src/hydrate/chunks.js';
 import { readPageMaps } from '../../../../core/src/hydrate/maps.js';
-import {
-  allInstances,
-  instanceState,
-  type ElementRegistry,
-} from '../../../../core/src/hydrate/registry.js';
+import { allInstances, instanceState } from '../../../../core/src/hydrate/instances.js';
+import { type ElementRegistry } from '../../../../core/src/hydrate/registry.js';
 import { signal } from '../../../../core/src/signal.js';
 import { SsrDom, renderToString } from '@fudic/ssr';
 import { browserDom } from '@fudic/dom';
@@ -222,10 +219,7 @@ function render(): Page {
   return {
     // Path 2 of SDD-17 §4.4 minus the bus, which nothing here emits on.
     async raise(tag: string): Promise<void> {
-      await cascade.prepareTag(tag);
-      await loader.ensureDefined(tag);
-      await cascade.prepareCells(tag);
-      cascade.attachAll(tag);
+      await cascade.raise(tag);
     },
     hosts: (tag) => allInstances(document).filter((el) => el.localName === tag),
   };

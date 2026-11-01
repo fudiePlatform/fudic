@@ -1,56 +1,29 @@
-/**
- * The warm trigger (SDD-17 §4.7): WHICH chunks are worth anticipating, and WHEN.
- *
- * It is the same trigger for both channels — the Service Worker one and the
- * `modulepreload` one — because what changes between a page with a worker and one without
- * is the transport, never the policy. So this module decides and the channel carries.
- *
- * Three rules, and each one is what separates `viewport` from a blanket preload:
- *
- *  - **A tag is warmed when the FIRST of its instances enters the viewport**, and never
- *    again: `warmedTags` is idempotent by tag, so N instances of one tag cost one order.
- *    A tag whose instances stay below the fold costs no network at all until the user
- *    scrolls near it — the network is spent in proportion to what is seen.
- *  - **The transitive closure, not the bare tag.** Interacting with a tag makes the runtime
- *    need exactly its bus receivers and its subtree (§4.4), so warming only the host would
- *    leave the cascade paying network inside the gesture. None of the four refunded
- *    prototypes did this: warm was prototyped without bus and without cascade.
- *  - **Ordered in idle.** Warm is background work and must not steal main-thread time while
- *    there is render or interaction pending; the timeout bounds the wait so a page that
- *    never goes idle still warms.
- *
- * Nothing here evaluates a chunk. The founding invariant — zero component JavaScript until
- * the interaction — is untouched: this schedules a deposit, and hydration is correct whether
- * or not the deposit ever happens.
- */
+// Decides which chunks to download ahead of a gesture, and when. A tag is warmed once, when
+// its first instance comes into view, together with everything bringing it up will need:
+// the components that listen to it and its subtree. Nothing here evaluates a chunk.
 
 import { type ResolveChunk } from '../chunks.js';
 import { type PageMaps } from '../maps.js';
-import { allInstances, ROUTE_HOST } from '../registry.js';
+import { allInstances, ROUTE_HOST } from '../instances.js';
 import { type WarmChannel } from './channel.js';
 
-/** Port: watch these hosts and call back the first time each one becomes visible. */
+/** Calls `onVisible` the first time each target comes into view. */
 export type ObserveVisible = (
   targets: readonly Element[],
   onVisible: (target: Element) => void,
 ) => void;
 
-/** Port: run this background task when the main thread has nothing better to do. */
+/** Runs a background task when the main thread is idle. */
 export type Schedule = (task: () => void) => void;
 
-/** Without a hole of idle time in this long, the warm is ordered anyway. */
 const IDLE_TIMEOUT = 800;
-/** The wait of the fallback, for engines with no `requestIdleCallback`. */
 const FALLBACK_DELAY = 200;
 
-/** The platform trigger: a single observer, each host observed exactly once. */
 export const viewportObserver: ObserveVisible = (targets, onVisible) => {
   const observer = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
         if (entry.isIntersecting) {
-          // Unobserved BEFORE the callback: the host is done with, and an instance that
-          // leaves and re-enters the viewport must not re-order anything.
           observer.unobserve(entry.target);
           onVisible(entry.target);
         }
@@ -63,7 +36,7 @@ export const viewportObserver: ObserveVisible = (targets, onVisible) => {
   }
 };
 
-/** The platform scheduler: idle with a bound, and a plain timeout where idle is absent. */
+// Bounded, so a page that is never idle still warms.
 export const idleSchedule: Schedule = (task) => {
   if ('requestIdleCallback' in globalThis) {
     requestIdleCallback(task, { timeout: IDLE_TIMEOUT });
@@ -73,13 +46,9 @@ export const idleSchedule: Schedule = (task) => {
 };
 
 export interface WarmObserverConfig {
-  /** `fud-tree` and `fud-bus`: what a tag drags along with it (§4.4). */
   readonly maps: PageMaps;
-  /** The same port hydration resolves chunks with — one derivation, one answer (§4.6). */
   readonly resolveChunk: ResolveChunk;
-  /** Where the order is carried: a worker, a `<link>`, or nowhere. */
   readonly channel: WarmChannel;
-  /** The tree the hydratable instances are looked for in. */
   readonly root: ParentNode;
   readonly observe?: ObserveVisible;
   readonly schedule?: Schedule;
@@ -89,14 +58,10 @@ export function startWarmObserver(config: WarmObserverConfig): void {
   const { maps, resolveChunk, channel, root } = config;
   const observe = config.observe ?? viewportObserver;
   const schedule = config.schedule ?? idleSchedule;
-  /** The client half of the two-layer idempotence of §4.7; the worker holds the other. */
   const warmedTags = new Set<string>();
 
-  /** `tag` plus its bus receivers plus its subtree, recursively — minus what is done. */
   const closure = (tag: string, out: string[]): void => {
-    if (warmedTags.has(tag)) {
-      return;
-    }
+    if (warmedTags.has(tag)) return;
     warmedTags.add(tag);
     out.push(tag);
     for (const next of [...(maps.bus[tag] ?? []), ...(maps.tree[tag] ?? [])]) {
@@ -104,19 +69,13 @@ export function startWarmObserver(config: WarmObserverConfig): void {
     }
   };
 
-  // The `<body>` is left out (SDD-39 §4.9). It carries a `data-fud-id` when the route is
-  // reactive, so `allInstances` finds it — and it is in the viewport from the first frame,
-  // which would put the route's chunk in the cache ON LOAD. A deposit evaluates nothing, but
-  // it is traffic with no interaction behind it, and the general case of a route is the
-  // gesture. An EAGER route does not need it either: it comes up at install, so its chunk is
-  // asked for outright rather than anticipated.
+  // The route's `<body>` is always in view: watching it would download the route's chunk on
+  // load, with no gesture behind it.
   const watched = allInstances(root).filter((el) => el.localName !== ROUTE_HOST);
   observe(watched, (target) => {
     const tags: string[] = [];
     closure(target.localName, tags);
-    if (tags.length === 0) {
-      return; // a sibling instance of a tag already ordered: nothing left to warm
-    }
+    if (tags.length === 0) return;
     schedule(() => {
       channel.warm(tags.map(resolveChunk), tags);
     });

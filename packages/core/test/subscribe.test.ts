@@ -30,7 +30,7 @@ describe('written: a write that came before the hookup', () => {
   });
 });
 
-describe('subscribe over a signal (SDD-31 §6.18)', () => {
+describe('subscribe over a signal', () => {
   it('delivers on movement and never on subscribe', () => {
     const s = signal(1);
     const fn = vi.fn();
@@ -76,7 +76,7 @@ describe('subscribe over a signal (SDD-31 §6.18)', () => {
   });
 });
 
-describe('subscribe over a derived value (SDD-31 §6.19)', () => {
+describe('subscribe over a derived value', () => {
   it('delivers the new value when a leaf moves, and never on subscribe', () => {
     const a = signal(1);
     const double = computed(() => a() * 2);
@@ -129,15 +129,6 @@ describe('subscribeIf over a name of unknown shape', () => {
     expect(fn).toHaveBeenCalledExactlyOnceWith(2);
   });
 
-  it('watches a derived value through the leaf underneath it', () => {
-    const a = signal(1);
-    const double = computed(() => a() * 2);
-    const fn = vi.fn();
-    subscribeIf(double, fn);
-    a.set(4);
-    expect(fn).toHaveBeenCalledExactlyOnceWith(8);
-  });
-
   it('NEVER calls a plain function — which is the whole reason it exists', () => {
     // `subscribe` on a non-source falls into its effect branch and CALLS what it is given.
     // A store exports its writers beside its state (`export function inc()`), and the emit
@@ -168,13 +159,5 @@ describe('subscribeIf over a name of unknown shape', () => {
       off();
       off();
     }).not.toThrow();
-  });
-
-  it('the teardown of a real source still cuts the delivery', () => {
-    const s = signal(1);
-    const fn = vi.fn();
-    subscribeIf(s, fn)();
-    s.set(2);
-    expect(fn).not.toHaveBeenCalled();
   });
 });

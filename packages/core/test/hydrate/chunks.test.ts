@@ -26,6 +26,31 @@ describe('one chunk per tag', () => {
     expect(registry.get('chk-one')).toBeTypeOf('function');
   });
 
+  it('a failed download is asked for again by the next caller, for a tag and for a route', async () => {
+    const registry = new TestRegistry();
+    const asked: string[] = [];
+    const factory = (): never => {
+      throw new Error('unused');
+    };
+    const loader = createChunkLoader({
+      registry,
+      resolveChunk: (name) => name,
+      importModule: async (name) => {
+        asked.push(name);
+        if (asked.filter((n) => n === name).length === 1) throw new Error(`offline ${name}`);
+        if (name === 'chk-retry') registry.define(name, class extends HTMLElement {});
+        return { default: factory };
+      },
+    });
+
+    await expect(loader.ensureDefined('chk-retry')).rejects.toThrow('offline chk-retry');
+    await loader.ensureDefined('chk-retry');
+    await expect(loader.loadRoute('chk-route')).rejects.toThrow('offline chk-route');
+    expect(await loader.loadRoute('chk-route')).toBe(factory);
+
+    expect(asked).toEqual(['chk-retry', 'chk-retry', 'chk-route', 'chk-route']);
+  });
+
   it('a tag already defined is never asked for', async () => {
     const registry = new TestRegistry();
     registry.define('chk-two', class extends HTMLElement {});

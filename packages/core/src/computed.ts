@@ -1,32 +1,19 @@
-/**
- * `computed` — a derived value, PULL (SDD-31 §4.2).
- *
- * A derived value subscribes to NOTHING. It remembers, from its last run, which
- * sources it read and what version each of them had; reading it walks that list
- * and compares integers. That is the whole model, and it buys the property that
- * makes `computed` asymmetric with `effect`: there is no disposer, so there is
- * no leak to forget. A derived value nobody reads never runs its `fn` and never
- * keeps anything alive.
- *
- * A derived value carries its own version, bumped when a recomputation produces
- * a different value by `Object.is`. That is all the cascade needs: a `computed`
- * over another `computed` compares versions exactly like over a signal, with no
- * special case written for nesting — and it CUTS, because an intermediate that
- * recomputes to the same value does not move its version.
- */
+// A derived value subscribes to nothing. It remembers which sources its last run read and
+// at which version; a read compares those versions and recomputes only if one moved. So it
+// needs no disposer, and one nobody reads never runs. Its own version moves only when the
+// result changes, which stops the cascade at an intermediate that recomputes to the same value.
 
 import { type Consumer, type Dependency, report, runTracked, tagSource } from './tracking.js';
 
-/** A derived value is exactly one operation: read it. */
+/** A derived value: call it to read. */
 export interface Computed<T> {
-  /** Tracked read; recomputes only if some source moved. */
+  /** Reads the value, recomputing it only if a source changed. */
   (): T;
 }
 
-/** Anything readable in a tracked way: a signal or a derived value. */
+/** A signal or a derived value. */
 export type Readable<T> = () => T;
 
-/** One source of the last run, pinned at the version it had then. */
 interface Binding {
   readonly dep: Dependency;
   readonly version: number;
@@ -39,20 +26,15 @@ export function computed<T>(fn: () => T): Computed<T> {
 
   const someSourceMoved = (): boolean => {
     for (const b of bindings) {
-      // `version()` on a derived source refreshes it first: that is what makes
-      // the comparison meaningful two levels down.
-      if (b.dep.version() !== b.version) {
-        return true;
-      }
+      // On a derived source this refreshes it first.
+      if (b.dep.version() !== b.version) return true;
     }
     return false;
   };
 
   const refresh = (): T => {
     const previous = cache;
-    if (previous !== null && !someSourceMoved()) {
-      return previous.value;
-    }
+    if (previous !== null && !someSourceMoved()) return previous.value;
     const next: Binding[] = [];
     const consumer: Consumer = {
       add: (dep) => {
@@ -61,9 +43,7 @@ export function computed<T>(fn: () => T): Computed<T> {
     };
     const value = runTracked(consumer, fn);
     bindings = next;
-    if (previous !== null && !Object.is(value, previous.value)) {
-      version += 1;
-    }
+    if (previous !== null && !Object.is(value, previous.value)) version += 1;
     cache = { value };
     return value;
   };
@@ -73,18 +53,12 @@ export function computed<T>(fn: () => T): Computed<T> {
       refresh();
       return version;
     },
-    // The leaves behind a derived value are the leaves behind its sources: an
-    // effect that reads it ends up subscribed to the signals at the bottom.
+    // An effect that reads this ends up subscribed to the signals underneath.
     collectLeaves: (out) => {
-      for (const b of bindings) {
-        b.dep.collectLeaves(out);
-      }
+      for (const b of bindings) b.dep.collectLeaves(out);
     },
   };
 
-  // Branded, like a signal: a derived value has no leaf of its own, but it is still
-  // something `subscribe` knows how to watch — and an IMPORTED name has to be told apart
-  // from a plain helper before anybody subscribes to it (`isSource`).
   return tagSource(() => {
     const value = refresh();
     report(self);

@@ -1,16 +1,7 @@
-/**
- * Raising an instance nobody painted (SDD-17 §3, SDD-15 §3.7).
- *
- * The cascade reaches what the server rendered, by page identity. A component created at
- * runtime — a host inside a `@foreach` whose list just grew — has no identity and no slice
- * of the payload, so the only code that can bring it up is the parent that made it. What is
- * measured here is that bridge: the definition is asked for once, the element is upgraded,
- * and `c` gets the props the parent composed.
- */
-
 import { describe, expect, it, vi } from 'vitest';
 import { publishTagSource, type ElementRegistry } from '../../src/hydrate/registry.js';
 import { live } from '../../src/hydrate/live.js';
+import { settle, unhandled } from './_page.js';
 
 /** A host that records the props it was raised with. Anything with `c` serves. */
 function host(tag: string): Element & { raised: unknown[][] } {
@@ -66,6 +57,26 @@ describe('live — a parent raising the child it fabricated', () => {
     expect(define).toHaveBeenCalledWith('x-new');
     await Promise.resolve();
     expect(el.raised).toEqual([['b']]);
+  });
+
+  it('after a definition that failed, the next call raises the element', async () => {
+    const boom = new Error('offline');
+    let asked = 0;
+    publishTagSource(async () => {
+      asked += 1;
+      if (asked === 1) throw boom;
+    }, registryOf([]));
+    const el = host('x-flaky');
+
+    const reasons = await unhandled(async () => {
+      live(el, ['first']);
+    });
+    expect(reasons).toEqual([boom]);
+    expect(el.raised).toEqual([]);
+
+    live(el, ['again']);
+    await settle();
+    expect(el.raised).toEqual([['again']]);
   });
 
   it('raises one element once, however many times it is asked', async () => {

@@ -1,47 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createCascade, type Cascade } from '../../src/hydrate/cascade.js';
-import { createCells } from '../../src/hydrate/cells.js';
-import { createChunkLoader } from '../../src/hydrate/chunks.js';
-import { readPageMaps } from '../../src/hydrate/maps.js';
-import { instanceState, type InstanceState } from '../../src/hydrate/registry.js';
-import { signal } from '../../src/signal.js';
-import { defineRecorder, host, publish, TestRegistry, type Recorder } from './_page.js';
-
-interface Harness {
-  readonly cascade: Cascade;
-  readonly state: InstanceState;
-  readonly registry: TestRegistry;
-  readonly trace: string[];
-  readonly reported: string[];
-}
-
-/** The cascade over the document as it stands: the blocks are published before this runs. */
-function harness(): Harness {
-  const trace: string[] = [];
-  const reported: string[] = [];
-  const maps = readPageMaps(document);
-  const state = instanceState();
-  const registry = new TestRegistry();
-  const loader = createChunkLoader({
-    registry,
-    resolveChunk: (tag) => tag,
-    importModule: async (tag) => {
-      defineRecorder(registry, tag, trace);
-    },
-  });
-  const cascade = createCascade({
-    maps,
-    cells: createCells(maps, signal),
-    loader,
-    registry,
-    state,
-    root: document,
-    report: (id, tag, _ms, from) => {
-      reported.push(`${from}:${tag}#${id}`);
-    },
-  });
-  return { cascade, state, registry, trace, reported };
-}
+import { cascadeHarness as harness, defineRecorder, host, publish, type Recorder } from './_page.js';
 
 describe('the composition cascade', () => {
   beforeEach(() => {

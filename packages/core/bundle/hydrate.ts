@@ -1,26 +1,14 @@
-/**
- * Entry of the `core/hydrate` piece (SDD-45 §4.3.1): the hydration runtime, bundled.
- *
- * It lives beside `src` and not inside it because it is an ARTEFACT of the build, not a
- * module of the package: `dist` must not grow a second copy of the capturer under a second
- * name, and `src/**` is the denominator of this package's coverage — a re-export nobody
- * imports from a test would be a hole in a number that exists to be honest.
- */
+// Entry of the published `core/hydrate` runtime piece. Kept out of `src` so `dist` does not
+// get a second name for the same code and coverage does not count a re-export.
 
 import { installHydration, type HydrationOptions } from '../src/hydrate/install.js';
 import type { RuntimeEntry } from '../src/runtime-entry.js';
 
-/**
- * The uniform startup name (§3.4), and the annotation is the contract being checked rather
- * than described: a drift away from the shape the coordinator imports fails `pnpm typecheck`
- * instead of failing in a browser, inside a module the user did not write.
- *
- * `installHydration` is re-exported unchanged below. Today's callers — the generated
- * bootstrap of SDD-19, the tests, anybody holding `@fudic/core` — keep the name they know;
- * `install` is the name the coordinator imports, and it is an alias, not a second entry.
- */
+// The name the page coordinator imports; typed so a drift fails the typecheck.
 export const install: RuntimeEntry<HydrationOptions>['install'] = installHydration;
 
+// `isCellMark` and the block ids are not exported: no browser imports them, and naming them
+// would stop the minifier from shortening them in the piece every hydrating page loads.
 export {
   installHydration,
   READY_EVENT,
@@ -29,17 +17,3 @@ export {
   type HydrationOptions,
   type HydratedDetail,
 } from '../src/hydrate/install.js';
-
-/**
- * `isCellMark` and the six block ids are deliberately NOT re-exported here, and the fourth
- * rule of §4.3 lists them as the written exception it allows: constants the emit consumes.
- *
- * They are inside these bytes already, so the export looks free — it is not. Naming them
- * keeps their identifiers out of the minifier's hands and costs 167 bytes on the ONE piece
- * every hydrating page downloads, to publish names no browser imports: the compiler writes
- * the block id as a literal, and `isCellMark` is read by the cells inside this very piece.
- * Rule 1 of §1.5 decides it — nothing fixed that has to serve everybody.
- *
- * If a component ever does import one, the linker has no URL for it and says so (`FUD0801`),
- * in the build, which is where that conversation belongs.
- */

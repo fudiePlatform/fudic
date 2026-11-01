@@ -1,7 +1,5 @@
-/**
- * SDD-17 §4.7: the warm trigger. Network in proportion to what the user sees, the whole
- * closure a gesture will need, once per tag, and out of the main thread's way.
- */
+// Network in proportion to what the user sees: the whole closure a gesture will need, once
+// per tag, out of the main thread's way.
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
@@ -77,7 +75,7 @@ describe('the warm trigger', () => {
     eye.show(parent);
 
     // The subtree, recursively: warming the host alone would leave the cascade paying
-    // network inside the gesture (§4.4).
+    // network inside the gesture.
     expect(orders).toEqual([
       {
         tags: ['wt-parent', 'wt-child', 'wt-grandchild'],

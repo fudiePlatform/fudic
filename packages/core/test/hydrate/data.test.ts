@@ -1,7 +1,5 @@
-/**
- * `unpackData` — `fud-data` read back by its shape (BUG-60 §3). The same shape and the same rows
- * as the writing end's test in `@fudic/ssr`: the two halves of one wire format, held to one vector.
- */
+// The same shape and rows as the writing end's test in `@fudic/ssr`: both halves of one wire
+// format, held to one vector.
 import { describe, expect, it } from 'vitest';
 import { unpackData, type DataShape } from '../../src/hydrate/data.js';
 

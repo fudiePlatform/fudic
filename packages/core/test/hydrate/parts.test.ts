@@ -1,28 +1,12 @@
-/**
- * SDD-70 §4.4, §6.18–§6.20 — the browser reads a page that arrives in parts.
- *
- * The document is fed the way the parser feeds it: a part's block, then what the part painted,
- * then its marker, one append at a time, with `readyState` held at `loading` until the test
- * says the document is complete. happy-dom delivers the observer's records on a microtask, so
- * `settle` is what lets each append be heard.
- */
+// The document is fed as the parser feeds it: a part's block, what it painted, its marker,
+// one append at a time, with `readyState` held at `loading` until the test completes it.
+// happy-dom delivers mutation records on a microtask, so `settle` lets each append be heard.
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { browserDom } from '@fudic/dom';
 import { installHydration } from '../../src/hydrate/install.js';
 import { readParts, PART_ATTR, PART_END } from '../../src/hydrate/parts.js';
 import { readPageMaps, type PartBlock } from '../../src/hydrate/maps.js';
-import { signal } from '../../src/signal.js';
-import { host, publish, TestRegistry } from './_page.js';
-
-async function settle(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  await new Promise((resolve) => setTimeout(resolve, 0));
-}
-
-function click(target: EventTarget): void {
-  target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, composed: true }));
-}
+import { click, deferred, host, publish, settle, TestRegistry } from './_page.js';
 
 /** The block of part `index`, appended where the parser would put it. */
 function block(index: number, value: PartBlock, parent: ParentNode = document.body): void {
@@ -135,7 +119,7 @@ function run(options: { inject?: boolean } = {}): Run {
     document,
     registry,
     parts: readParts,
-    importDeferred: async () => ({ dom: browserDom, signal }),
+    importDeferred: deferred,
     resolveChunk: (name) => name,
     ...(options.inject === true
       ? {
@@ -168,7 +152,7 @@ function run(options: { inject?: boolean } = {}): Run {
   return { trace, injected };
 }
 
-describe('hydration part by part (§6.18, §6.19)', () => {
+describe('hydration part by part', () => {
   beforeEach(() => {
     publish();
   });
@@ -303,7 +287,7 @@ describe('hydration part by part (§6.18, §6.19)', () => {
   });
 });
 
-describe('every page removes its blocks (§6.20)', () => {
+describe('every page removes its blocks', () => {
   it('a page without `@await`: the blocks at the end are read into memory and taken out', () => {
     publish({ state: [[0, 1], ['A']], tree: { 'x-a': [] }, eager: ['x-a'], route: 'r', data: { n: 1 } });
     const maps = readPageMaps(document);

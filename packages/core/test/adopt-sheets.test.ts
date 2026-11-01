@@ -1,14 +1,5 @@
-/**
- * BUG-45 §3.1 — the shared sheets of a component created in the browser.
- *
- * A host the runtime fabricates opens its shadow root with `attachShadow`, which adopts
- * nothing. `adoptSheets` reads the specifiers its `data-fud-adopt` names and adopts the sheet
- * each `<style type="module" specifier>` of the document holds, built once.
- *
- * The cache is the module's and outlives a test, so every test names its own specifiers.
- *
- * Acceptance criteria covered: BUG-45 §5.1–§5.4.
- */
+// The sheet cache belongs to the module and outlives a test, so every test names its own
+// specifiers.
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { adoptSheets } from '../src/adopt-sheets.js';
@@ -38,7 +29,7 @@ afterEach(() => {
   document.head.replaceChildren();
 });
 
-describe('adoptSheets — what the host names (§5.1)', () => {
+describe('adoptSheets — what the host names', () => {
   it('adopts every named sheet, in the order `data-fud-adopt` lists them', () => {
     moduleStyle('x-a', '.a { color: red; }');
     moduleStyle('_t1', ':host { color: blue; }');
@@ -82,7 +73,7 @@ describe('adoptSheets — what the host names (§5.1)', () => {
   });
 });
 
-describe('adoptSheets — one sheet per specifier (§5.2)', () => {
+describe('adoptSheets — one sheet per specifier', () => {
   it('hands every instance the same sheet object', () => {
     moduleStyle('x-e', '.e { color: red; }');
     const one = host('x-e');
@@ -107,7 +98,7 @@ describe('adoptSheets — one sheet per specifier (§5.2)', () => {
   });
 });
 
-describe('adoptSheets — sheets that are files (SDD-73 §3.5, criterion 10)', () => {
+describe('adoptSheets — sheets that are files', () => {
   it('opens the shadow root with a `<link>` per file, in order, before its content, adopting none', () => {
     const el = document.createElement('div');
     el.setAttribute('data-fud-sheets', ' /assets/theme-Ab12.css  /assets/x-i-Cd34.css ');
@@ -127,7 +118,7 @@ describe('adoptSheets — sheets that are files (SDD-73 §3.5, criterion 10)', (
   });
 });
 
-describe('adoptSheets — what is not there (§5.3, §5.4)', () => {
+describe('adoptSheets — what is not there', () => {
   it('leaves a host with no `data-fud-adopt` alone', () => {
     const { host: el, shadow } = host();
 

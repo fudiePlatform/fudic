@@ -1,11 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import {
-  allInstances,
-  idOf,
-  instanceState,
-  instancesOf,
-  stopwatch,
-} from '../../src/hydrate/registry.js';
+import { allInstances, idOf, instancesOf } from '../../src/hydrate/instances.js';
+import { stopwatch } from '../../src/hydrate/report.js';
 import { host, publish } from './_page.js';
 
 describe('finding instances across shadow boundaries', () => {
@@ -37,12 +32,6 @@ describe('finding instances across shadow boundaries', () => {
 
     expect(instancesOf('reg-inner', document).map(idOf)).toEqual([1, 2]);
     expect(instancesOf('reg-missing', document)).toEqual([]);
-  });
-
-  it('the two sets are two: `hydrated` governs the paths, `attached` the handout', () => {
-    const state = instanceState();
-    state.attached.add(7);
-    expect(state.hydrated.has(7)).toBe(false);
   });
 
   it('the stopwatch reports in the one format `fud:hydrated` declares', () => {

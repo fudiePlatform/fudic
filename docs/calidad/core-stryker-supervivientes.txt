@@ -1,0 +1,95 @@
+src/adopt-sheets.ts:30  [StringLiteral]  const files = (host.getAttribute('data-fud-sheets') ?? '').split(' ').filter(Boolean);  =>  "Stryker was here!"
+src/adopt-sheets.ts:31  [ConditionalExpression]  if (files.length > 0) {  =>  true
+src/adopt-sheets.ts:31  [EqualityOperator]  if (files.length > 0) {  =>  files.length >= 0
+src/adopt-sheets.ts:43  [MethodExpression]  const specifiers = (host.getAttribute('data-fud-adopt') ?? '').split(' ').filter(Boolean);  =>  (host.getAttribute('data-fud-adopt') ?? '').split(' ')
+src/adopt-sheets.ts:43  [StringLiteral]  const specifiers = (host.getAttribute('data-fud-adopt') ?? '').split(' ').filter(Boolean);  =>  "Stryker was here!"
+src/adopt-sheets.ts:44  [ConditionalExpression]  if (specifiers.length === 0) return;  =>  false
+src/batch.ts:32  [CallExpression]  pending.clear();  =>  ;
+src/computed.ts:25  [ArrayDeclaration]  let bindings: readonly Binding[] = [];  =>  ["Stryker was here"]
+src/computed.ts:46  [AssignmentOperator]  if (previous !== null && !Object.is(value, previous.value)) version += 1;  =>  version -= 1
+src/effect.ts:24  [BlockStatement]  const unsubscribeAll = (): void => {  =>  {}
+src/effect.ts:25  [CallExpression]  for (const off of sources.values()) off();  =>  ;
+src/effect.ts:26  [CallExpression]  sources.clear();  =>  ;
+src/effect.ts:39  [AssignmentOperator]  chained -= 1;  =>  chained += 1
+src/effect.ts:42  [StringLiteral]  `so each run schedules another one (stopped after ${MAX_CHAINED_RUNS}).`,  =>  ``
+src/effect.ts:38  [EqualityOperator]  if (chained > MAX_CHAINED_RUNS) {  =>  chained >= MAX_CHAINED_RUNS
+src/effect.ts:56  [BlockStatement]  } finally {  =>  {}
+src/effect.ts:65  [CallExpression]  sources.delete(leaf);  =>  ;
+src/effect.ts:57  [AssignmentOperator]  chained -= 1;  =>  chained += 1
+src/effect.ts:69  [ConditionalExpression]  if (!sources.has(leaf)) sources.set(leaf, leaf.subscribe(run));  =>  true
+src/effect.ts:77  [CallExpression]  unsubscribeAll();  =>  ;
+src/hydrate/arrivals.ts:29  [EqualityOperator]  const still = waiting.filter((w) => !finished && w.id >= maps.count);  =>  w.id > maps.count
+src/hydrate/bus.ts:33  [CallExpression]  state.hydrated.add(id);  =>  ;
+src/hydrate/capture.ts:24  [ConditionalExpression]  if (target === undefined) return null;  =>  false
+src/hydrate/capture.ts:51  [ConditionalExpression]  return el.localName === 'input' && !NON_TEXT_INPUTS.has((target as HTMLInputElement).type)  =>  true
+src/hydrate/cascade.ts:49  [CallExpression]  registry.upgrade(host);  =>  ;
+src/hydrate/cascade.ts:71  [CallExpression]  state.hydrated.add(id);  =>  ;
+src/hydrate/cascade.ts:73  [BlockStatement]  } finally {  =>  {}
+src/hydrate/cascade.ts:74  [CallExpression]  raising.delete(id);  =>  ;
+src/hydrate/cascade.ts:81  [ConditionalExpression]  if (state.attached.has(idOf(host))) continue;  =>  false
+src/hydrate/cascade.ts:102  [ArithmeticOperator]  await visit(kid, depth + 1);  =>  depth - 1
+src/hydrate/cascade.ts:100  [ArrayDeclaration]  for (const childTag of maps.tree[key] ?? []) {  =>  ["Stryker was here"]
+src/hydrate/cells.ts:45  [ConditionalExpression]  if (typeof value !== 'object' || value === null) return false;  =>  false
+src/hydrate/cells.ts:62  [EqualityOperator]  for (; swept < maps.count; swept += 1) {  =>  swept <= maps.count
+src/hydrate/chunks.ts:68  [OptionalChaining]  return typeof module?.default === 'function' ? module.default : null;  =>  module.default
+src/hydrate/chunks.ts:61  [ArrowFunction]  await once(tag, () => importModule(resolveChunk(tag)).then(() => registry.whenDefined(tag)  =>  () => undefined
+src/hydrate/data.ts:49  [ConditionalExpression]  if (v !== undefined) out[k] = v;  =>  true
+src/hydrate/eager.ts:55  [ConditionalExpression]  if (hosts.size === 0) return;  =>  false
+src/hydrate/eager.ts:60  [ConditionalExpression]  if (!arrivals.finished && host.localName === ROUTE_HOST) continue;  =>  false
+src/hydrate/install.ts:100  [LogicalOperator]  const deferred = deferredOnce(options.importDeferred ?? importDeferred);  =>  options.importDeferred && importDeferred
+src/hydrate/install.ts:98  [CallExpression]  publishTagSource(loader.ensureDefined, registry);  =>  ;
+src/hydrate/install.ts:109  [ArrowFunction]  const cells = createCells(maps, (initial) => landed!.signal(initial));  =>  () => undefined
+src/hydrate/install.ts:120  [ArrayDeclaration]  injected === undefined ? (options.ready ?? Promise.resolve()) : Promise.all([options.ready  =>  []
+src/hydrate/install.ts:120  [ConditionalExpression]  injected === undefined ? (options.ready ?? Promise.resolve()) : Promise.all([options.ready  =>  true
+src/hydrate/install.ts:120  [ConditionalExpression]  injected === undefined ? (options.ready ?? Promise.resolve()) : Promise.all([options.ready  =>  false
+src/hydrate/install.ts:120  [EqualityOperator]  injected === undefined ? (options.ready ?? Promise.resolve()) : Promise.all([options.ready  =>  injected !== undefined
+src/hydrate/install.ts:141  [StringLiteral]  report(id, name, elapsed(), 'downloaded');  =>  ""
+src/hydrate/install.ts:150  [ConditionalExpression]  if (arrival !== null) await arrival;  =>  true
+src/hydrate/install.ts:151  [ConditionalExpression]  if (maps.route !== null && host.localName === ROUTE_HOST) {  =>  true
+src/hydrate/install.ts:199  [CallExpression]  cells.sweep();  =>  ;
+src/hydrate/install.ts:29  [StringLiteral]  export const READY_EVENT = 'fud:ready';  =>  ""
+src/hydrate/install.ts:31  [StringLiteral]  export const HYDRATED_EVENT = 'fud:hydrated';  =>  ""
+src/hydrate/instances.ts:76  [ConditionalExpression]  if (index !== null) return index.byId.get(id);  =>  false
+src/hydrate/maps.ts:101  [ArrayDeclaration]  return first.eager ?? [];  =>  ["Stryker was here"]
+src/hydrate/maps.ts:128  [EqualityOperator]  for (let i = 0; i + 1 < offsets.length; i += 1) {  =>  i + 1 <= offsets.length
+src/hydrate/maps.ts:128  [ArithmeticOperator]  for (let i = 0; i + 1 < offsets.length; i += 1) {  =>  i - 1
+src/hydrate/maps.ts:163  [ConditionalExpression]  if (value !== undefined) block[key] = value;  =>  true
+src/hydrate/parts.ts:23  [ConditionalExpression]  return node.nodeType === 8 && (node as Comment).data === PART_END;  =>  true
+src/hydrate/parts.ts:55  [ConditionalExpression]  if (records.some((r) => [...r.addedNodes].some(isEnd))) sweep();  =>  true
+src/hydrate/parts.ts:55  [MethodExpression]  if (records.some((r) => [...r.addedNodes].some(isEnd))) sweep();  =>  records.every(r => [...r.addedNodes].some(isEnd))
+src/hydrate/parts.ts:55  [MethodExpression]  if (records.some((r) => [...r.addedNodes].some(isEnd))) sweep();  =>  [...r.addedNodes].every(isEnd)
+src/hydrate/parts.ts:14  [StringLiteral]  export const PART_END = 'fud-end';  =>  ""
+src/hydrate/registry.ts:16  [BlockStatement]  upgrade: (node) => {  =>  {}
+src/hydrate/registry.ts:17  [CallExpression]  customElements.upgrade(node);  =>  ;
+src/hydrate/replay.ts:47  [ConditionalExpression]  if (key in event) init[key] = source[key];  =>  true
+src/hydrate/replay.ts:6  [StringLiteral]  'view',  =>  ""
+src/hydrate/replay.ts:10  [StringLiteral]  'altKey',  =>  ""
+src/hydrate/replay.ts:11  [StringLiteral]  'metaKey',  =>  ""
+src/hydrate/replay.ts:12  [StringLiteral]  'screenX',  =>  ""
+src/hydrate/replay.ts:13  [StringLiteral]  'screenY',  =>  ""
+src/hydrate/replay.ts:16  [StringLiteral]  'movementX',  =>  ""
+src/hydrate/replay.ts:17  [StringLiteral]  'movementY',  =>  ""
+src/hydrate/replay.ts:19  [StringLiteral]  'buttons',  =>  ""
+src/hydrate/replay.ts:21  [StringLiteral]  'pointerId',  =>  ""
+src/hydrate/replay.ts:22  [StringLiteral]  'pointerType',  =>  ""
+src/hydrate/replay.ts:23  [StringLiteral]  'isPrimary',  =>  ""
+src/hydrate/replay.ts:24  [StringLiteral]  'width',  =>  ""
+src/hydrate/replay.ts:25  [StringLiteral]  'height',  =>  ""
+src/hydrate/replay.ts:26  [StringLiteral]  'pressure',  =>  ""
+src/hydrate/replay.ts:29  [StringLiteral]  'location',  =>  ""
+src/hydrate/replay.ts:32  [StringLiteral]  'charCode',  =>  ""
+src/hydrate/replay.ts:31  [StringLiteral]  'isComposing',  =>  ""
+src/hydrate/replay.ts:33  [StringLiteral]  'keyCode',  =>  ""
+src/hydrate/replay.ts:36  [StringLiteral]  'dataTransfer',  =>  ""
+src/hydrate/report.ts:9  [ArithmeticOperator]  return () => (performance.now() - start).toFixed(1);  =>  performance.now() + start
+src/hydrate/warm/channel.ts:12  [StringLiteral]  export const WARMED_EVENT = 'fud:warmed';  =>  ""
+src/hydrate/warm/preload.ts:44  [StringLiteral]  link.addEventListener('error', () => {  =>  ""
+src/hydrate/warm/preload.ts:44  [BlockStatement]  link.addEventListener('error', () => {  =>  {}
+src/hydrate/warm/preload.ts:62  [ArrayDeclaration]  ...(graph === undefined ? [] : [graph(url).then((deps) => Promise.all(deps.map(preload)))]  =>  ["Stryker was here"]
+src/hydrate/warm/sw.ts:7  [StringLiteral]  export const WARMED_MESSAGE = 'fudic:warmed';  =>  ""
+src/subscribe.ts:11  [BlockStatement]  if (leaf !== null) {  =>  {}
+src/subscribe.ts:11  [ConditionalExpression]  if (leaf !== null) {  =>  false
+src/task.ts:61  [StringLiteral]  const queue = (options.mode ?? (fn.method === undefined || fn.method === 'GET' ? 'latest'   =>  ""
+src/task.ts:105  [AssignmentOperator]  generation += 1;  =>  generation -= 1
+src/task.ts:112  [CallExpression]  waiting.clear();  =>  ;
+src/task.ts:130  [CallExpression]  waiting.delete(resolve);  =>  ;

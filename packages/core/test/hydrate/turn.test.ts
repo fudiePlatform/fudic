@@ -4,26 +4,14 @@ import {
   instanceById,
   instancesOf,
   openTurn,
-} from '../../src/hydrate/registry.js';
+} from '../../src/hydrate/instances.js';
 import { host, publish } from './_page.js';
 
-/**
- * One walk per gesture, and not one per tag (SDD-45 §4.11).
- *
- * The index is opened in `raise` — the single entrance of path 2 — and closed in its
- * `finally`. What these tests hold is the reason it is PER TURN and not global: a global one
- * would have to be kept alive against everything that inserts nodes afterwards (the
- * fabricator in `live`, the worker's render, the user's own script), and a stale index is a
- * silent wrong answer where today there is a slow correct one. This one is born with the
- * gesture and dies with it, so it cannot age.
- *
- * And the invariant it may not touch: the ORDER of `instancesOf` is SDD-17's, because the
- * cascade and the handout both depend on it. The index is built from the same shadow-inclusive
- * pre-order walk and a `Map` keeps insertion order, so the order is copied, never recomputed.
- */
+// One walk per gesture. The index must not outlive its gesture, and must keep the
+// shadow-inclusive pre-order the cascade depends on.
 
 describe('the turn index', () => {
-  it('answers by tag and by id from the index, with SDD-17’s order untouched', () => {
+  it('answers by tag and by id from the index, in the same order as a walk', () => {
     publish();
     const outer = host('turn-outer', 0);
     host('turn-inner', 1, outer.shadowRoot!);

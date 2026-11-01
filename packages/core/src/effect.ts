@@ -1,63 +1,39 @@
-/**
- * `effect` — run, track, resubscribe (SDD-31 §4.3).
- *
- * An effect is PUSH, and it subscribes to the LEAVES: a `computed` read inside
- * it recomputes in its own context and then hands over the signals underneath,
- * so what the effect ends up subscribed to is the bottom of the graph. That is
- * the deliberate half of the design — there is no equality cut at the derived
- * boundary, and `$w` on the emit side is where that cut is paid instead.
- *
- * Dependencies are recomputed on every run, never accumulated: an `if` inside
- * the body changes what the body reads, so it changes what the effect depends
- * on. And so is the cleanup: whatever a run set up is torn down with that run,
- * which is why the cleanup is the body's return value and not a disposer the
- * caller has to keep.
- */
-
 import { own } from './owner.js';
 import { type Consumer, type LeafSource, runTracked, untrack } from './tracking.js';
 
-/** What an effect may return to undo what it just did. */
+/** What an effect may return to undo what its run did. */
 export type Cleanup = () => void;
 
-/**
- * How many chained runs we allow before calling it a feedback loop. An effect
- * that writes a signal it reads re-enters through its own live subscription;
- * this is the count that turns an infinite loop into an error with a name.
- */
+// An effect that writes a signal it reads runs again from inside itself; past this many
+// chained runs it is a feedback loop.
 const MAX_CHAINED_RUNS = 100;
 
+/**
+ * Runs `fn` now and again whenever a signal it read changes. Its dependencies are those of
+ * the last run, and what `fn` returns is called before the next run and on dispose. Created
+ * while a component sets up, it is disposed with the component. Returns the disposer.
+ */
 export function effect(fn: () => void | Cleanup): () => void {
-  // Keyed by leaf, so a rerun can DIFF instead of unsubscribing and resubscribing
-  // wholesale. That is not an optimisation: a signal notifies by walking its live
-  // `Set`, and a `Set` revisits what is appended behind the cursor, so an effect
-  // that dropped itself and re-added itself mid-notification would be called
-  // again, and again, forever.
+  // A rerun diffs its subscriptions rather than dropping and re-adding them: a `Set` visits
+  // entries added during iteration, so re-adding itself mid-notification would loop forever.
   const sources = new Map<LeafSource, () => void>();
   let cleanup: Cleanup | null = null;
   let disposed = false;
   let chained = 0;
 
   const unsubscribeAll = (): void => {
-    for (const off of sources.values()) {
-      off();
-    }
+    for (const off of sources.values()) off();
     sources.clear();
   };
 
-  /** Undoing something is not reading state to depend on: never tracked. */
   const runCleanup = (): void => {
     const pending = cleanup;
     cleanup = null;
-    if (pending !== null) {
-      untrack(pending);
-    }
+    if (pending !== null) untrack(pending);
   };
 
   const run = (): void => {
-    if (disposed) {
-      return;
-    }
+    if (disposed) return;
     chained += 1;
     if (chained > MAX_CHAINED_RUNS) {
       chained -= 1;
@@ -81,9 +57,8 @@ export function effect(fn: () => void | Cleanup): () => void {
       chained -= 1;
     }
     cleanup = next;
-    // Reconciled AFTER the body, not before it: while `fn` runs the previous
-    // subscriptions are still live, which is what lets a self-feeding effect
-    // re-enter and hit the guard above instead of silently doing nothing.
+    // Reconciled after the run, so a self-feeding effect re-enters through its live
+    // subscriptions and hits the loop guard instead of silently stopping.
     for (const [leaf, off] of sources) {
       if (!leaves.has(leaf)) {
         off();
@@ -91,9 +66,7 @@ export function effect(fn: () => void | Cleanup): () => void {
       }
     }
     for (const leaf of leaves) {
-      if (!sources.has(leaf)) {
-        sources.set(leaf, leaf.subscribe(run));
-      }
+      if (!sources.has(leaf)) sources.set(leaf, leaf.subscribe(run));
     }
   };
 
@@ -104,7 +77,6 @@ export function effect(fn: () => void | Cleanup): () => void {
     unsubscribeAll();
     runCleanup();
   };
-  // Created while a component's code block runs: it is torn down with the component.
   own(dispose);
   return dispose;
 }

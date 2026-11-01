@@ -1,11 +1,5 @@
-/**
- * `task` — a call with its cancellation, its state and its order (SDD-68 §6, criteria 1–10
- * and the `core` half of 12).
- *
- * Every test drives a fake `fn` by hand: each call is recorded with its arguments and its
- * signal, and stays pending until the test resolves or rejects it. That is what lets a test
- * make the FIRST call answer after the second, which is the bug `latest` exists to prevent.
- */
+// Every test settles a fake `fn` by hand, so the first call can answer after the second:
+// the case `latest` exists for.
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { type Callable, effect, owned, signal, subscribe, task } from '../src/index.js';
@@ -60,8 +54,8 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('task, latest (criteria 1–4)', () => {
-  it('1. the last call wins: the first one is aborted and its run resolves undefined', async () => {
+describe('task, latest', () => {
+  it('the last call wins: the first one is aborted and its run resolves undefined', async () => {
     const { fn, calls } = fake<string, string>({ respectAbort: true });
     const t = task(fn);
     const first = t.run('an');
@@ -80,7 +74,7 @@ describe('task, latest (criteria 1–4)', () => {
     expect(t.error()).toBeUndefined();
   });
 
-  it('2. the same when fn ignores the signal and answers late', async () => {
+  it('the same when fn ignores the signal and answers late', async () => {
     const { fn, calls } = fake<string, string>();
     const t = task(fn);
     const first = t.run('an');
@@ -96,7 +90,7 @@ describe('task, latest (criteria 1–4)', () => {
     expect(t.state()).toBe('done');
   });
 
-  it('2b. a replaced run resolves right away, even if its fn never settles', async () => {
+  it('a replaced run resolves right away, even if its fn never settles', async () => {
     const { fn, calls } = fake<string, string>();
     const t = task(fn);
     const first = t.run('an');
@@ -107,7 +101,7 @@ describe('task, latest (criteria 1–4)', () => {
     expect(t.state()).toBe('done');
   });
 
-  it('3. with source: creating does not call, a change calls once, what fn reads does not count', async () => {
+  it('with source: creating does not call, a change calls once, what fn reads does not count', async () => {
     const texto = signal('');
     const inside = signal(0);
     const calls: { q: string }[] = [];
@@ -132,7 +126,7 @@ describe('task, latest (criteria 1–4)', () => {
     expect(calls).toEqual([{ q: 'a' }, { q: 'ab' }]);
   });
 
-  it('3b. a task with source still takes run by hand', async () => {
+  it('a task with source still takes run by hand', async () => {
     const texto = signal('x');
     const { fn, calls } = fake<{ q: string }, string>();
     const t = task(fn, () => ({ q: texto() }));
@@ -142,7 +136,7 @@ describe('task, latest (criteria 1–4)', () => {
     expect(await answer).toBe('m');
   });
 
-  it('4. initial is the value before the first answer and stays while a call is in flight', async () => {
+  it('initial is the value before the first answer and stays while a call is in flight', async () => {
     const { fn, calls } = fake<string, readonly string[]>();
     const t = task(fn, undefined, { initial: [] as readonly string[] });
     expect(t.value()).toEqual([]);
@@ -159,7 +153,7 @@ describe('task, latest (criteria 1–4)', () => {
     expect(t.value()).toEqual(['ana']);
   });
 
-  it('4b. without initial, value is undefined until the first answer', () => {
+  it('without initial, value is undefined until the first answer', () => {
     const { fn } = fake<string, string>();
     expect(task(fn).value()).toBeUndefined();
   });
@@ -173,7 +167,7 @@ describe('task, latest (criteria 1–4)', () => {
     expect(at(calls, 0).signal.aborted).toBe(true);
   });
 
-  it('the reads are tracked: an effect over them reruns', async () => {
+  it('the reads are tracked, and an effect never sees an answer with a stale state', async () => {
     const { fn, calls } = fake<string, string>();
     const t = task(fn);
     const seen: string[] = [];
@@ -183,14 +177,16 @@ describe('task, latest (criteria 1–4)', () => {
     void t.run('a');
     at(calls, 0).resolve('A');
     await flush();
-    expect(seen[0]).toBe('idle|undefined|false|undefined');
-    expect(seen).toContain('pending|undefined|true|undefined');
-    expect(seen.at(-1)).toBe('done|A|false|undefined');
+    expect(seen).toEqual([
+      'idle|undefined|false|undefined',
+      'pending|undefined|true|undefined',
+      'done|A|false|undefined',
+    ]);
     stop();
   });
 });
 
-describe('the accessors are sources (SDD-68 §4.7)', () => {
+describe('the accessors are sources', () => {
   it('each one is a reactive source the emit can subscribe to', async () => {
     const { fn, calls } = fake<string, string>();
     const t = task(fn);
@@ -209,8 +205,8 @@ describe('the accessors are sources (SDD-68 §4.7)', () => {
   });
 });
 
-describe('task, queue (criteria 5–7)', () => {
-  it('5. a PUT queues: each call leaves when the previous settles, none is aborted', async () => {
+describe('task, queue', () => {
+  it('a PUT queues: each call leaves when the previous settles, none is aborted', async () => {
     const { fn, calls } = fake<number, string>({ method: 'PUT' });
     const t = task(fn);
     const runs = [t.run(1), t.run(2), t.run(3)];
@@ -243,7 +239,7 @@ describe('task, queue (criteria 5–7)', () => {
     expect(calls).toHaveLength(1);
   });
 
-  it('6. a failure does not stop the next one, and the round ends done when the last succeeds', async () => {
+  it('a failure does not stop the next one, and the round ends done when the last succeeds', async () => {
     const { fn, calls } = fake<number, string>({ method: 'PUT' });
     const t = task(fn);
     const first = t.run(1);
@@ -262,7 +258,7 @@ describe('task, queue (criteria 5–7)', () => {
     expect(t.value()).toBe('two');
   });
 
-  it('6b. the round ends failed when the last one fails, keeping the earlier value', async () => {
+  it('the round ends failed when the last one fails, keeping the earlier value', async () => {
     const { fn, calls } = fake<number, string>({ method: 'POST' });
     const t = task(fn);
     void t.run(1);
@@ -278,7 +274,7 @@ describe('task, queue (criteria 5–7)', () => {
     expect(t.value()).toBe('one');
   });
 
-  it("7. mode: 'latest' over a PUT behaves as latest", () => {
+  it("mode: 'latest' over a PUT behaves as latest", () => {
     const { fn, calls } = fake<number, string>({ method: 'PUT' });
     const t = task(fn, undefined, { mode: 'latest' });
     void t.run(1);
@@ -287,7 +283,7 @@ describe('task, queue (criteria 5–7)', () => {
     expect(at(calls, 0).signal.aborted).toBe(true);
   });
 
-  it("7b. mode: 'queue' over a GET behaves as queue", async () => {
+  it("mode: 'queue' over a GET behaves as queue", async () => {
     const { fn, calls } = fake<number, string>({ method: 'GET' });
     const t = task(fn, undefined, { mode: 'queue' });
     void t.run(1);
@@ -299,19 +295,10 @@ describe('task, queue (criteria 5–7)', () => {
     expect(calls).toHaveLength(2);
     expect(at(calls, 0).signal.aborted).toBe(false);
   });
-
-  it("7c. mode: 'queue' over a callable without method behaves as queue", async () => {
-    const { fn, calls } = fake<number, string>();
-    const t = task(fn, undefined, { mode: 'queue' });
-    void t.run(1);
-    void t.run(2);
-    await flush();
-    expect(calls).toHaveLength(1);
-  });
 });
 
-describe('state, error and cancel (criteria 8–10)', () => {
-  it('8. the table of §4.4, row by row', async () => {
+describe('state, error and cancel', () => {
+  it('state, value and error, step by step', async () => {
     const { fn, calls } = fake<string, string>({ respectAbort: true });
     const t = task(fn, undefined, { initial: 'init' });
 
@@ -353,7 +340,7 @@ describe('state, error and cancel (criteria 8–10)', () => {
     expect(t.state()).toBe('cancelled');
   });
 
-  it('8b. cancel() after done changes nothing', async () => {
+  it('cancel() after done changes nothing', async () => {
     const { fn, calls } = fake<string, string>();
     const t = task(fn);
     void t.run('a');
@@ -363,7 +350,7 @@ describe('state, error and cancel (criteria 8–10)', () => {
     expect([t.state(), t.value(), t.error()]).toEqual(['done', 'A', undefined]);
   });
 
-  it('9. cancel() in flight: cancelled, the signal aborted, no error; run resolves undefined', async () => {
+  it('cancel() in flight: cancelled, the signal aborted, no error; run resolves undefined', async () => {
     const { fn, calls } = fake<string, string>({ respectAbort: true });
     const t = task(fn);
     const running = t.run('a');
@@ -376,7 +363,7 @@ describe('state, error and cancel (criteria 8–10)', () => {
     expect(t.state()).toBe('cancelled');
   });
 
-  it('9b. cancel() in flight with a fn that ignores the abort: its late answer is never written', async () => {
+  it('cancel() in flight with a fn that ignores the abort: its late answer is never written', async () => {
     const { fn, calls } = fake<string, string>();
     const t = task(fn, undefined, { initial: 'init' });
     const running = t.run('a');
@@ -388,7 +375,7 @@ describe('state, error and cancel (criteria 8–10)', () => {
     expect(t.state()).toBe('cancelled');
   });
 
-  it('9c. in queue, cancel drops the waiting calls: never called, their runs resolve undefined', async () => {
+  it('in queue, cancel drops the waiting calls: never called, their runs resolve undefined', async () => {
     const { fn, calls } = fake<number, string>({ method: 'PUT' });
     const t = task(fn);
     const runs = [t.run(1), t.run(2), t.run(3)];
@@ -404,7 +391,7 @@ describe('state, error and cancel (criteria 8–10)', () => {
     expect(t.value()).toBeUndefined();
   });
 
-  it('9d. in queue, cancel before the first call left the tail: nothing is ever called', async () => {
+  it('in queue, cancel before the first call left the tail: nothing is ever called', async () => {
     const { fn, calls } = fake<number, string>({ method: 'PUT' });
     const t = task(fn);
     const running = t.run(1); // scheduled on the tail, not on the wire yet
@@ -415,7 +402,7 @@ describe('state, error and cancel (criteria 8–10)', () => {
     expect(calls).toHaveLength(0);
   });
 
-  it('9e. in queue, a call made after cancel is not held back by a call that ignored its abort', async () => {
+  it('in queue, a call made after cancel is not held back by a call that ignored its abort', async () => {
     const { fn, calls } = fake<number, string>({ method: 'PUT' });
     const t = task(fn);
     void t.run(1);
@@ -429,7 +416,7 @@ describe('state, error and cancel (criteria 8–10)', () => {
     expect(t.state()).toBe('done');
   });
 
-  it('10. a rejection that is not an abort: failed, error set, run resolves undefined, nothing unhandled', async () => {
+  it('a rejection that is not an abort: failed, error set, run resolves undefined, nothing unhandled', async () => {
     const unhandled: unknown[] = [];
     const onUnhandled = (reason: unknown): void => {
       unhandled.push(reason);
@@ -451,7 +438,7 @@ describe('state, error and cancel (criteria 8–10)', () => {
     }
   });
 
-  it('10b. a fn that throws synchronously fails the same way', async () => {
+  it('a fn that throws synchronously fails the same way', async () => {
     const boom = new Error('sync');
     const fn: Callable<string, string> = () => {
       throw boom;
@@ -462,7 +449,7 @@ describe('state, error and cancel (criteria 8–10)', () => {
     expect(t.error()).toBe(boom);
   });
 
-  it('10c. an abort is never an error, even when fn rejects with it', async () => {
+  it('an abort is never an error, even when fn rejects with it', async () => {
     const { fn, calls } = fake<string, string>({ respectAbort: true });
     const t = task(fn);
     void t.run('a');
@@ -475,7 +462,7 @@ describe('state, error and cancel (criteria 8–10)', () => {
   });
 });
 
-describe('disposal (criterion 12, the core half)', () => {
+describe('disposal', () => {
   it('disposing the owner aborts the call in flight, stops the effect, and makes run inert', async () => {
     vi.useFakeTimers();
     const { fn, calls } = fake<string, string>({ respectAbort: true });

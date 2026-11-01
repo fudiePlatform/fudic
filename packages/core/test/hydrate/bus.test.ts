@@ -1,59 +1,21 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createBusPrehydrator, type PreHydrateBus } from '../../src/hydrate/bus.js';
-import { createCascade } from '../../src/hydrate/cascade.js';
-import { createCells } from '../../src/hydrate/cells.js';
-import { createChunkLoader } from '../../src/hydrate/chunks.js';
-import { readPageMaps } from '../../src/hydrate/maps.js';
-import { instanceState, type InstanceState } from '../../src/hydrate/registry.js';
-import { signal } from '../../src/signal.js';
-import { defineRecorder, host, publish, TestRegistry } from './_page.js';
+import { cascadeHarness, host, publish, type CascadeHarness } from './_page.js';
 
-interface Harness {
-  readonly preHydrateBus: PreHydrateBus;
-  readonly state: InstanceState;
-  readonly registry: TestRegistry;
-  readonly trace: string[];
-  readonly reported: string[];
-}
-
-function harness(): Harness {
-  const trace: string[] = [];
-  const reported: string[] = [];
-  const maps = readPageMaps(document);
-  const state = instanceState();
-  const registry = new TestRegistry();
-  const loader = createChunkLoader({
-    registry,
-    resolveChunk: (tag) => tag,
-    importModule: async (tag) => {
-      defineRecorder(registry, tag, trace);
-    },
-  });
-  const report = (id: number, tag: string, _ms: string, from: string): void => {
-    reported.push(`${from}:${tag}#${id}`);
-  };
-  const cascade = createCascade({
-    maps,
-    cells: createCells(maps, signal),
-    loader,
-    registry,
-    state,
-    root: document,
-    report,
-  });
+function harness(): CascadeHarness & { readonly preHydrateBus: PreHydrateBus } {
+  const h = cascadeHarness();
   const preHydrateBus = createBusPrehydrator({
-    maps,
-    loader,
-    registry,
-    cascade,
-    state,
+    maps: h.maps,
+    registry: h.registry,
+    cascade: h.cascade,
+    state: h.state,
     root: document,
-    report,
+    report: h.report,
   });
-  return { preHydrateBus, state, registry, trace, reported };
+  return { ...h, preHydrateBus };
 }
 
-describe('directed hydration: the receivers, before the emitter', () => {
+describe('the listeners of a tag come up before it', () => {
   beforeEach(() => {
     publish();
   });
@@ -72,8 +34,6 @@ describe('directed hydration: the receivers, before the emitter', () => {
     const h = harness();
     await h.preHydrateBus('bus-emitter');
 
-    // The receiver's own subtree first — defining its tag upgrades its instances, so the
-    // invariant of §4.4 applies to it verbatim — then the receiver, then the next one.
     expect(h.trace.filter((t) => t.startsWith('define:'))).toEqual([
       'define:bus-kid',
       'define:bus-first',

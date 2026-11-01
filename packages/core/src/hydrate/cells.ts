@@ -1,97 +1,51 @@
-/**
- * The CELL registry: the one place a shared signal is built, and therefore the only place an
- * identity can be unique (BUG-24 §4.3).
- *
- * The rule fits in a sentence. **The cell is created by the runtime; the chunk receives it.**
- * Parent and child end up holding the same object because nobody constructs it twice — and
- * that is what closes the two halves of §2 at once. A chunk cannot do it: the author writes
- * `const n = signal(start)` and that line is copied verbatim into every instance's closure,
- * so two instances that wanted to share would build two objects. Nor could the ORDER be
- * arranged around: hydration is post-order, so the parent comes up LAST and its `count` does
- * not exist yet when the child is handed its slice. If the object belongs to neither of them,
- * the order in which their code runs stops mattering.
- *
- * ## What the payload says, and what it leaves out
- *
- *     [[0,2,3],[ 0, 0, {"$":[0,1]} ]]
- *      instance 0: [ start=0, count=0 ]      ← the cell's VALUE, in the owner's own slot
- *      instance 1: [ {"$":[0,1]} ]           ← «my slot is that cell»
- *
- * The owner's slot carries the value and not a marker, which is what keeps the bytes of a
- * page unchanged and the initial value readable. The consequence is that the address `(0,1)`
- * is written down ONLY in the consumers' markers — so the registry sweeps the payload once
- * when it is built and collects every address it finds. Without that sweep an owner that
- * hydrated FIRST would find a plain `0` in its own slot and `$p3 ?? signal(start)` would hand
- * it the number.
- *
- * The registry is per PAGE. It outlives both ends on purpose — a child may write with its
- * owner still cold, and the owner, waking up, subscribes and paints the right value — and it
- * dies with the page: `clear()` is what the router calls on every navigation (SDD-20), or a
- * SPA accumulates one cell per instance per route visited.
- */
+// Shared state across shadow boundaries. A signal a parent passes down cannot travel in the
+// page's state, so the runtime builds it once, as a cell, and hands the same object to the
+// owner and to every consumer, in whatever order they hydrate.
+//
+//     [[0,2,3],[ 0, 0, {"$":[0,1]} ]]
+//      instance 0: [ start=0, count=0 ]    the owner keeps the value in its own slot
+//      instance 1: [ {"$":[0,1]} ]         a consumer points at that slot
+//
+// Only consumers carry the address, so the page is swept for markers up front: otherwise an
+// owner hydrating first would get the plain value instead of the cell.
 
 import type { Signal } from '../signal.js';
 import { type PageMaps } from './maps.js';
 
-/** The address of a cell: the instance that owns it, and the slot it occupies in its slice. */
+/** The address of a cell: the instance that owns it and the slot it occupies. */
 export type CellRef = readonly [owner: number, slot: number];
 
-/**
- * How a cell is built — injected, and `core/signal` is why (SDD-45 §4.4.1).
- *
- * This module holds the identity of a shared signal, so it needs the factory; what it must
- * not do is IMPORT it, because then the one module every hydrating page loads would drag the
- * signal and its tracking into the load, and a page nobody touches pays for them. A cell is
- * materialised only while an instance is being handed its slice, which is the moment path 2
- * has the piece in hand.
- *
- * `unknown` in and `unknown` out, because a payload slot has no type until a component reads
- * it: the generic `signal` satisfies this signature without the registry knowing it is one.
- */
+// Injected rather than imported, so the signal is not loaded until something hydrates.
 export type MakeCell = (initial: unknown) => Signal<unknown>;
 
-/**
- * The marker that travels in `fud-state`. Two shapes, and the difference is urgency.
- *
- * It is a WIRE format: `@fudic/ssr` writes exactly these two shapes at the other end and the
- * two packages depend on neither each other nor a third, which is the arrangement `fud-state`
- * itself already has.
- */
+/** A marker in the page's state, pointing at a cell. */
 export interface CellMark {
-  /** A cell WITH a serialised value, in `data[offsets[owner] + slot]`. */
+  /** A cell with a serialized value. */
   readonly $?: CellRef;
-  /** A cell with no serialisable value — a function. Its owner has to be raised first. */
+  /** A cell holding a function, which its owner has to come up to provide. */
   readonly $f?: CellRef;
 }
 
+/** The page's cells. */
 export interface Cells {
-  /** The cell at that address, materialised the first time anyone asks for it. */
+  /** The cell at that address, built the first time it is asked for. */
   get(ref: CellRef): Signal<unknown>;
-  /** Sweep the slices the maps gained since the last sweep: a part arrived (SDD-70 §4.4). */
+  /** Learns the cells of the parts that arrived since the last sweep. */
   sweep(): void;
-  /**
-   * The addresses instance `id` depends on that carry NO value — the ones whose owner has to
-   * be alive before this slice can be handed over.
-   */
+  /** The function cells instance `id` depends on, whose owners must come up first. */
   eager(id: number): readonly CellRef[];
-  /**
-   * The slice of `id` with its cells in place of its markers — and in place of its own cell
-   * slots, which carry a value rather than a marker and would otherwise come through as the
-   * plain number they hold.
-   */
+  /** Instance `id`'s state with its cells in place of markers and of its own cell slots. */
   resolve(id: number): readonly unknown[];
-  /** Empty the registry. The router calls it on navigation (SDD-20). */
+  /** Forgets every cell, for an in-place navigation. */
   clear(): void;
 }
 
-/** Whether a payload slot is a marker rather than a value. */
+/** Whether a state slot is a cell marker rather than a value. */
 export function isCellMark(value: unknown): value is CellMark {
   if (typeof value !== 'object' || value === null) return false;
-  const mark = value as CellMark;
-  return refOf(mark) !== undefined;
+  return refOf(value as CellMark) !== undefined;
 }
 
-/** The address a marker points at, whichever of the two shapes it has. */
 function refOf(mark: CellMark): CellRef | undefined {
   const ref = mark.$ ?? mark.$f;
   return Array.isArray(ref) && ref.length === 2 ? ref : undefined;
@@ -102,10 +56,6 @@ const keyOf = (ref: CellRef): string => `${ref[0]}:${ref[1]}`;
 export function createCells(maps: PageMaps, make: MakeCell): Cells {
   const cells = new Map<string, Signal<unknown>>();
 
-  // The sweep of §4.3: every address any marker in the page points at. It is done when the
-  // registry is built, because whether a slot of MY slice is a cell is a fact written down in
-  // SOMEBODY ELSE's — and the two may hydrate in either order. A page in parts sweeps again
-  // as each part arrives, over the slices that part added (SDD-70 §4.4).
   const addresses = new Set<string>();
   let swept = 0;
   const sweep = (): void => {
@@ -121,9 +71,6 @@ export function createCells(maps: PageMaps, make: MakeCell): Cells {
     const key = keyOf(ref);
     let cell = cells.get(key);
     if (cell === undefined) {
-      // The initial value is the owner's own slot, which the runtime already knows how to
-      // read. Whoever asks first materialises it; everyone after gets the same object, and
-      // that is the whole of the identity this file exists for.
       cell = make(maps.slice(ref[0])[ref[1]]);
       cells.set(key, cell);
     }

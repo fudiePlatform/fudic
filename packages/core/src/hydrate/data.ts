@@ -1,15 +1,8 @@
-/**
- * `fud-data` read back by its shape (BUG-60 §3): the arrays `@fudic/ssr` wrote, turned back into
- * the `data` `load` returned.
- *
- * The reading end of a WIRE format: `@fudic/ssr` declares the same shape at the writing end and
- * the two packages depend on neither each other nor a third. A record is an array in the order
- * its fields are declared — a slot beyond its end, or `null`, is an absent field — a list an
- * array, a `map` an object, a `bool` `1`/`0`, an `enum` the index of its member and a `date` its
- * milliseconds. Everything else is as it came.
- */
+// The server writes a route's `data` compactly: a record is an array in field order (a
+// missing slot or `null` is an absent field), a `bool` is `1`/`0`, an enum is its member's
+// index and a `date` its milliseconds.
 
-/** A type of `data`: a primitive by its name, or one of the shapes around it. */
+/** A type of `data`: a primitive by name, or a shape around one. */
 export type DataTy =
   | string
   | { readonly list: DataTy }
@@ -18,16 +11,13 @@ export type DataTy =
   | { readonly oneOf: readonly string[] }
   | { readonly ref: string };
 
-/** The fields of `load`, and every `type` they name by its name. */
+/** The fields of `load`'s result, and the named types they use. */
 export interface DataShape {
   readonly fields: Readonly<Record<string, DataTy>>;
   readonly types: Readonly<Record<string, Readonly<Record<string, DataTy>>>>;
 }
 
-/**
- * `data` from what `fud-data` carried. A page that published no block hands over `{}`, which is
- * not a row: it reads as a record with every field absent.
- */
+/** Turns what the page carries back into the `data` object. Anything not a row reads as all fields absent. */
 export function unpackData(shape: DataShape, raw: unknown): Record<string, unknown> {
   return record(shape.fields, raw, shape);
 }

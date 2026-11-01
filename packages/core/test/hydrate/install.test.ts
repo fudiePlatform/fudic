@@ -5,35 +5,10 @@ import {
   READY_EVENT,
   type HydratedDetail,
 } from '../../src/hydrate/install.js';
-import { browserDom } from '@fudic/dom';
-import { signal } from '../../src/signal.js';
-import { host, publish, TestRegistry } from './_page.js';
+import { click, deferred, host, publish, settle, TestRegistry } from './_page.js';
 
-/**
- * The pieces the load does not pay for (SDD-45 §4.4.1), off-network like every other port
- * here: path 2 awaits the DOM adapter and the signal at its top, and a test that waited for a
- * real `import` would be measuring the module loader instead of the runtime.
- */
-const deferred = async (): Promise<{ dom: typeof browserDom; signal: typeof signal }> => ({
-  dom: browserDom,
-  signal,
-});
-
-/** One macrotask turn drains every microtask the runtime chained; two, with room to spare. */
-async function settle(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  await new Promise((resolve) => setTimeout(resolve, 0));
-}
-
-function click(target: EventTarget): void {
-  target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, composed: true }));
-}
-
-/**
- * The application area of one test. The capturer goes HERE and not on the document, so a
- * capturer left over from an earlier test cannot swallow this one's gesture — which is
- * exactly what `stopImmediatePropagation` would do to a second listener on the same node.
- */
+// The capture listeners go on this element, not the document, so one left over from an
+// earlier test cannot swallow this test's gesture.
 let app: HTMLElement;
 
 interface Run {
@@ -147,7 +122,7 @@ describe('the runtime installed', () => {
     ]);
   });
 
-  it('the eager list comes up with no gesture, and nothing else does (SDD-34 §6.16)', async () => {
+  it('the eager list comes up with no gesture, and nothing else does', async () => {
     // The one hydration in the framework the user does not conduct. A form-associated element
     // that is not defined is not labelable, adds nothing to a `FormData` and has no validity,
     // so a `<label for>` aimed at it is aimed at an element that participates in nothing.
@@ -195,11 +170,8 @@ describe('the runtime installed', () => {
   });
 
   it('the OWNER of an eager tag comes up too, because the node is the owner’s to give', async () => {
-    // The half of §4.5 the browser found. A control-component's node is not in its own
-    // payload: the parent names it with `control="@f.body"` and hands it over as a prop
-    // (§4.6), and the cascade hooks children up in post-order — so a marked tag raised alone
-    // is defined, upgraded and holding NOTHING, which is the half-raised element the eager
-    // list exists to prevent. Raising the outermost hydratable ancestor puts the chain up.
+    // A control's node is not in its own state: its parent hands it over as a prop, and
+    // children come up before parents. Raised alone, the control would hold nothing.
     publish({
       eager: ['ins-input'],
       tree: { 'ins-owner': ['ins-input'] },
@@ -322,7 +294,7 @@ describe('the runtime installed', () => {
 
   it('a page with no warm channel orders no network, and hydrates the same', () => {
     // The observer is a separate axis: with no channel there is nothing to observe FOR,
-    // and warm is an optimization, never a requirement (§4.7).
+    // and warm is an optimization, never a requirement.
     vi.stubGlobal('IntersectionObserver', class {
       constructor() {
         throw new Error('a page with no channel must not observe anything');
@@ -381,7 +353,7 @@ describe('the runtime installed', () => {
     }
   });
 
-  it('SDD-47 §4.2 — listens, in the capture phase, to the ten gestures and to nothing else', () => {
+  it('listens, in the capture phase, to the ten gestures and to nothing else', () => {
     const heard: [string, boolean][] = [];
     const root = {
       addEventListener: (type: string, _l: unknown, capture: boolean) => heard.push([type, capture]),
@@ -405,7 +377,7 @@ describe('the runtime installed', () => {
     );
   });
 
-  it('SDD-47 §4.4 — a focus that raises a component does not lose the click behind it', async () => {
+  it('a focus that raises a component does not lose the click behind it', async () => {
     publish({ state: [[0, 1], ['F']] });
     app = document.createElement('div');
     document.body.appendChild(app);
@@ -448,15 +420,8 @@ describe('the runtime installed', () => {
     expect(seen.at(-1)).toEqual({ id: 0, tag: 'ins-default', ms: '0.0', from: 'shared-chunk' });
   });
 
-  /**
-   * SDD-38 §4.2 — what a page has to have in place before the first chunk runs.
-   *
-   * The container tree is one round trip away, and in dev that round trip is a compile. The
-   * temptation is to await it in front of `installHydration`; the cost of doing that is that
-   * the capturer is not listening yet, and a click in the meantime is not deferred — it is
-   * gone, with the page painted and looking alive. So the runtime goes up first and the wait
-   * moves inside path 2, where it belongs.
-   */
+  // Awaiting `ready` before installing would leave a click made meanwhile with no listener:
+  // lost, on a page that looks alive.
   it('is listening before `ready` settles, and raises nothing until it does', async () => {
     publish({ state: [[0, 1], ['G']] });
     app = document.createElement('div');

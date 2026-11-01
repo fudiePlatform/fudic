@@ -1,31 +1,8 @@
 /**
- * Entry point of `@fudic/core`.
- *
- * The package has two faces, and they are downloaded by different people. The
- * emitted chunk of a component carries only its `static c($props)` factory, which
- * returns a closure controller `{c, h, u, r}`; the instance scaffolding around it is
- * `FudicElement`, inherited from here, and `signal` is the reactivity the factory
- * closes over (SDD-15 §3.7). The other face is `installHydration` — the global
- * capturer of SDD-17: the ONE module the PAGE downloads on the initial load, which
- * decides who is downloaded, when, and in which order. A component's chunk imports
- * the first; the page's bootstrap imports the second.
- *
- * `Render`/`RenderFactory`/`SsrBuild` and the `hydrateRoot`/`mountRoot` bootstrap
- * were removed rather than kept: they were the SDD-14 *component* lifecycle, and
- * relabelling them as the block contract left a shape that contradicts the emit
- * (`mount` vs `m`, `Cursor` vs baked positional traversal, `DomClient`-only
- * factories vs one controller on two adapters). The block render contract will
- * come from the SDD that owns `@if` / `@foreach` emission.
- *
- * The node contract lives in `@fudic/dom`; the build adapter in `@fudic/ssr`.
+ * `@fudic/core`: the reactivity and the component base class a compiled component imports,
+ * and the hydration runtime a page loads.
  */
 
-export const VERSION = '0.0.1';
-
-// The shape of a startup piece (SDD-45 §3.4). It is exported from here because the packages
-// that publish one — `@fudic/di` today, `@fudic/http` tomorrow — have to be able to name the
-// contract they satisfy, and a contract each package retyped for itself would be four
-// contracts that happen to agree until one of them stops.
 export type { RuntimeEntry } from './runtime-entry.js';
 
 export { FudicElement } from './element.js';
@@ -70,8 +47,6 @@ export type {
   RouteFactory,
   RouteController,
 } from './hydrate/chunks.js';
-// The block ids a page publishes. The four of SDD-15/SDD-34 plus the route's own two, which
-// may be absent — and absence is the base case (SDD-39 §3.3).
 export {
   STATE_BLOCK,
   TREE_BLOCK,
@@ -86,11 +61,9 @@ export {
   type Settled,
   type TagMap,
 } from './hydrate/maps.js';
-// The reader of a page in parts (SDD-70 §4.4): the dev coordinator imports it from here.
 export { readParts, PART_ATTR, PART_END, type PartsOptions } from './hydrate/parts.js';
-// What a route's chunk reads `fud-data` with, by the shape its `.fudapi` gave (BUG-60).
 export { unpackData, type DataShape, type DataTy } from './hydrate/data.js';
-export type { HydratedFrom } from './hydrate/registry.js';
+export type { HydratedFrom } from './hydrate/report.js';
 export {
   nullWarmChannel,
   WARMED_EVENT,

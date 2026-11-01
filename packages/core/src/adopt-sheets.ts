@@ -1,29 +1,15 @@
-/**
- * TEMPORARY BRIDGE — the shared stylesheets of a component created in the browser (BUG-45).
- *
- * A host the server painted gets its sheets from its `<template shadowrootmode
- * shadowrootadoptedstylesheets>`: the parser (or the inline polyfill, before
- * `DOMContentLoaded`) adopts them. A host the runtime FABRICATES opens its shadow root with
- * `attachShadow`, which adopts nothing, and no platform API yet resolves a
- * `<style type="module" specifier>` for an imperative shadow root. So this module does it by
- * hand: it reads the specifiers off the host's `data-fud-adopt` (the same list the server
- * wrote on the template), finds each `<style type="module" specifier>` in the document, and
- * builds the sheet with `replaceSync`.
- *
- * It does NOT read the polyfill's sheets: the polyfill is dead code the day the browsers ship
- * the feature, and nothing in the runtime may depend on it.
- *
- * Isolated on purpose. When the platform can open a shadow root that adopts by specifier,
- * this file and its ONE call site in `element.ts` are deleted, and nothing else changes.
- */
+// A shadow root the server rendered gets its shared stylesheets from its template. One
+// opened with `attachShadow` adopts nothing, and no platform API resolves a
+// `<style type="module" specifier>` for it yet. Until one does, this does it by hand; then
+// this file and its one call site in `element.ts` go.
 
-/** One sheet per specifier, shared by every instance — parsed once, adopted by reference. */
+// One sheet per specifier, shared by every instance.
 const sheets = new Map<string, CSSStyleSheet>();
 
 function sheetOf(doc: Document, specifier: string): CSSStyleSheet | undefined {
   const cached = sheets.get(specifier);
   if (cached !== undefined) return cached;
-  // Compared, not interpolated into a selector: a specifier is data, not CSS syntax.
+  // Compared rather than put in a selector: a specifier is data, not CSS.
   for (const style of doc.querySelectorAll('style[type="module"][specifier]')) {
     if (style.getAttribute('specifier') !== specifier) continue;
     const sheet = new CSSStyleSheet();
@@ -31,16 +17,14 @@ function sheetOf(doc: Document, specifier: string): CSSStyleSheet | undefined {
     sheets.set(specifier, sheet);
     return sheet;
   }
-  // Not cached when missing: a sheet that is not in the document yet may still arrive.
+  // Not cached when missing: it may still arrive.
   return undefined;
 }
 
 /**
- * Adopt into `shadow` the sheets its host's `data-fud-adopt` names, in that order — or, for a
- * component whose sheets are files (`data-fud-sheets`, SDD-73 §3.5), open `shadow` with a
- * `<link rel="stylesheet">` per file, as the server writes them at the start of its template.
- * The marker is the parent's message to this function and nobody else's: read, then gone, as
- * the server never writes it either.
+ * Opens `shadow` with a `<link rel="stylesheet">` per file in the host's `data-fud-sheets`,
+ * then adopts the sheets named in its `data-fud-adopt`, in order. `data-fud-sheets` is
+ * removed once read, as the server never writes it.
  */
 export function adoptSheets(host: Element, shadow: ShadowRoot): void {
   const files = (host.getAttribute('data-fud-sheets') ?? '').split(' ').filter(Boolean);

@@ -1,16 +1,8 @@
-/**
- * `owned` — who tears down what a component's `@code` created (SDD-68 §3.5, §4.6).
- *
- * The emit wraps the `@code` in `owned` and pours the list into `$d`. What matters here is
- * WHAT lands in the list: every `effect` created while `fn` runs, nothing created outside,
- * and nested owners keep their own lists.
- */
-
 import { describe, expect, it } from 'vitest';
 import { effect, owned, signal } from '../src/index.js';
 import { own } from '../src/owner.js';
 
-describe('owned (SDD-68 §3.5)', () => {
+describe('owned', () => {
   it('returns what fn returned, with an empty list when nothing was created', () => {
     const [result, disposers] = owned(() => 42);
     expect(result).toBe(42);
@@ -60,7 +52,7 @@ describe('owned (SDD-68 §3.5)', () => {
   });
 });
 
-describe('effect with an owner (SDD-68 §4.6)', () => {
+describe('effect with an owner', () => {
   it('an effect created inside owned is torn down by its disposer, cleanup included', () => {
     const a = signal(1);
     const seen: number[] = [];

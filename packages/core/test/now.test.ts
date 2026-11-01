@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { now } from '../src/index.js';
 
-describe('now (SDD-61 §3.12)', () => {
+describe('now', () => {
   afterEach(() => {
     vi.useRealTimers();
   });
