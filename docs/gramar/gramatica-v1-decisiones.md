@@ -490,7 +490,7 @@ haría ilegal el patrón sobre el que está construido SDD-34. El sitio del cruc
 comprueba, en el fichero donde está el `<form>`: una pregunta léxica, hecha dos veces, cubre la
 cadena entera.
 
-**117.** **Prefijo `delegate:nombre` — el marcador de delegación.** Atributo **sin valor**,
+**117.** **Prefijo `delegate:nombre` — el marcador de delegación.** *(Enmendada por la 176: admite la lista de eventos a los que sirve.)* Atributo **sin valor**,
 hermano de `bus:`/`class:`/`style:` (decisiones 22, 28.a), admitido **solo** dentro del cuerpo de
 un `@foreach`/`@for`/`@while`, y donde `nombre` es un binding declarado por la cabecera de ese
 bucle. Marca que ese elemento entrega la identidad de su fila a un handler de un ancestro.
@@ -504,7 +504,7 @@ bucle. Marca que ese elemento entrega la identidad de su fila a un handler de un
 </div>
 ```
 
-**118.** **`$nombre` es del compilador, igual que `$event`.** Vive en la reserva del prefijo `$`
+**118.** **`$nombre` es del compilador, igual que `$event`.** *(Enmendada por la 177: la fila se lee sin `$`.)* Vive en la reserva del prefijo `$`
 (decisión 97) y solo aparece en la **lista de argumentos** de un event binding. En el dispatch se
 resuelve al valor que tenía la fila del marcador que se pulsó — no a un string, no a un índice:
 el objeto, con su tipo.
@@ -1370,6 +1370,20 @@ se comportaba distinto según lo enviara un formulario o un botón (Pedro, 2026-
 `FUD1360`. El handler lanza un error de `@fudic/http` (`conflict('…')`, `notFound('…')`…).
 *Por qué: un nombre inventado para un status y un texto no aportaba nada (Pedro, 2026-11-01).*
 
+**176.** **El marcador dice a qué eventos sirve** (SDD-72 §3.4). Enmienda la 117: `delegate:nombre`
+admite, además de ir sin valor, un texto literal con nombres de evento separados por espacios
+(`delegate:p="click"`). Con valor, solo lo leen los handlers de esos eventos que mencionan
+`$nombre`; sin valor, todos, como hasta ahora. La regla de la 119 se aplica por evento. Un `@evento`
+dentro de un bucle avisa con `FUD1380` y sugiere delegar. *Por qué: una fila con una casilla y un
+botón no se podía delegar, porque el `click` de la casilla llegaba al handler de borrar; y una tabla
+de muchas filas con un listener por fila no escala (Pedro, 2026-11-01).*
+
+**177.** **La fila delegada se lee sin `$`** (SDD-72 §3.4.b). Enmienda la 118: en los argumentos de un
+handler, un nombre suelto que coincide con un `delegate:<nombre>` de un descendiente es esa fila,
+con su tipo: `@borrar(p)`. `$p` pasa a ser `FUD1383`. Si el nombre también existe en el sitio del
+handler, `FUD1382`: se renombra, no se adivina. `$event` no cambia. *Por qué: «ya tenemos bastantes
+dólares» (Pedro, 2026-11-01).*
+
 ### Gramática de referencia
 
 ```
@@ -1691,3 +1705,5 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 173 | Interpolación | En `@fudic:result`, `@fudic:error` y `bus:`, referencia y lambda reciben el `detail`; la llamada, igual. Tipado por el `form:=` y por los receptores del bus. Enmienda la 98 (SDD-72) |
 | 174 | `.fudapi` | `catches <status>+` en una función: ese error llega a quien llamó, no a `error-pages`; con un form, la unión (SDD-74) |
 | 175 | `.fudapi` | `fails` solo en reglas y middlewares; en una función o `load`, `FUD1360` (SDD-74) |
+| 176 | Interpolación | `delegate:nombre="click change"`: el marcador sirve solo a esos eventos; sin valor, a todos. Un `@evento` en un bucle avisa (`FUD1380`). Enmienda la 117 (SDD-72) |
+| 177 | Interpolación | La fila delegada se lee sin `$`: `@borrar(p)`; `$p` es `FUD1383` y un nombre que choca, `FUD1382`. Enmienda la 118 (SDD-72) |

@@ -2,9 +2,10 @@
 
 > **Estado:** `Listo` — [tareas](./SDD-74-Task.md).
 > **Paquetes:** `@fudic/api` · `@fudic/http` · `@fudic/core` · `@fudic/compiler` · `@fudic/diagnostics` ·
-> `@fudic/language-server` · `examples/basic` · `examples/fudapi-editor`
-> **Depende de:** 56 (`error-pages`, `catches` de los formularios), 60 (el `.fudapi`), 68 (`task`),
-> 72 (los handlers reciben el dato) — las cuatro en `Hecho`.
+> `@fudic/language-server` · `@fudic/cli` · `@fudic/vite` · `examples/basic` · `examples/fudapi-editor` ·
+> `examples/i18n`
+> **Depende de:** 56 (`error-pages`, `catches` de los formularios), 58 (traducciones), 60 (el
+> `.fudapi`), 68 (`task`), 72 (los handlers reciben el dato) — las cinco en `Hecho`.
 > **Rango de diagnósticos:** `FUD1360`–`FUD1379` (nuevo). Usa `FUD1360`.
 > **Decisiones de gramática:** 174, 175.
 > **Origen:** conversación con Pedro del 2026-11-01, tras la revisión de `usuarios.fud` que hizo
@@ -32,6 +33,10 @@
   **atributo** y solo cuando el valor cambia respecto al último escrito. Cuando el usuario ya ha
   tocado la casilla, el atributo no la mueve, y si la señal no cambió no se escribe nada. Por eso
   `usuarios.fud:51` hace `input.checked = !active` a mano.
+- **Los textos del `.fudapi` no se traducen.** Ni los mensajes de los formularios
+  (`required "Escribe el nombre."`), ni los de las reglas, ni el `detail` de un `fails` de
+  middleware entran en `fudic translate`. En una app con dos idiomas, el formulario sale en el
+  idioma en que se escribió el `.fudapi`, sea cual sea el de la página.
 - **Ya resuelto, sin trabajo aquí:** una señal que nace de `data` (`signal(data.users)`) se
   vuelve a sembrar cuando llega el `data` nuevo tras un `invalidates`
   (BUG-55, `compiler/src/emit/route-client.ts:267`). Solo se añade un criterio que lo fija
@@ -50,7 +55,14 @@
   una regla con su texto) y en los **middlewares** (`cross-site` de `csrf`, `denied` de `auth`).
   El handler de una función lanza un error de `@fudic/http`: `badRequest`, `unauthorized`,
   `forbidden`, `notFound`, `conflict` o `new HttpError({ status, title, detail })`.
+  **Su texto se traduce con `t()`**, como cualquier texto de un `.ts`: los handlers ya se compilan
+  una vez por idioma (SDD-60, fase 11), así que
+  `throw conflict(t("Ese nombre está reservado."))` sale en el idioma de la página. Es lo que
+  `fails` no podía hacer: su texto vivía en el `.fudapi`, que no se traducía.
 - **`run()` devuelve el resultado de su propia llamada**, y nunca rechaza.
+- **Los textos del `.fudapi` se traducen como un `t()`.** El autor los sigue escribiendo en el
+  `.fudapi`, en su idioma de origen; `fudic translate` los extrae y lo generado se compila una vez
+  por idioma. La sintaxis del `.fudapi` no cambia.
 - **La vista manda sobre las propiedades vivas.** En el navegador, `checked`, `value` y
   `selected` se escriben como propiedad del DOM y se comparan con lo que el DOM tiene en ese
   momento, no con lo último escrito. En cada pase, el DOM vuelve a lo que dice la señal.
@@ -126,7 +138,7 @@ export interface Task<A, R, V = R | undefined> {
 - `emitModule` y `emitDeclarations` dejan de emitir `<Nombre>Fails` y `LoadFails`.
 - Migración, en el mismo cambio:
   - `examples/basic/src/components/user-form.fudapi` y `src/server/user-form.ts`:
-    `throw conflict("Ese nombre está reservado.")`, y `catches 409` en la función.
+    `throw conflict(t("Ese nombre está reservado."))`, y `catches 409` en la función.
   - `examples/fudapi-editor`: `user-form.fudapi`, `usuarios.fudapi`, `src/server/user-form.ts` y
     `src/server/usuarios.ts`, igual.
   - `experiments/fudapi-form/fudapi/user-form.fudapi`: se quita la línea.
@@ -161,26 +173,53 @@ export interface Task<A, R, V = R | undefined> {
   deshace:
 
   ```ts
+  // La tabla ya está delegada (SDD-72): `@change=@activar(p, $event)` en el <tbody>.
   function marcar(id: number, active: boolean) {
-    personas.set(personas().map((p) => (p.id === id ? { ...p, active } : p)));
+    personas.set(personas().map((x) => (x.id === id ? { ...x, active } : x)));
   }
 
-  async function activar(id: number, e: Event) {
+  async function activar(p: Person, e: Event) {
     const active = (e.target as HTMLInputElement).checked;
-    marcar(id, active);
-    const r = await guardar.run({ id, active });
-    if (r.status !== "done") marcar(id, !active);
+    marcar(p.id, active);
+    const r = await guardar.run({ id: p.id, active });
+    if (r.status !== "done") marcar(p.id, !active);
   }
   ```
 
-### 4.5. `examples/basic`
+### 4.5. Los textos del `.fudapi`, traducidos
+
+- **Qué se traduce:** el texto de cada regla bajo un campo de formulario (`required "…"`,
+  `min 18 "…"`), el de una regla de `summary` o un `require`, el `range "…"` de un campo, y el
+  `detail` de un `fails` de middleware. Los `fails` de una regla no tienen texto propio: lo pone
+  quien la usa.
+- **Extracción.** `@fudic/api` gana
+  `extractApiMessages(source: string, file: string): ParseResult<readonly Message[]>`, con el mismo
+  `Message` de SDD-58 y `origin: 'fudapi'`. Los `{n}` del texto son sus huecos, con el nombre del
+  parámetro de la regla. La clave es `messageKey(context, source)`, como en un `.fud`; el contexto
+  es la ruta de la declaración (`personForm.age.min`), para que dos textos iguales en sitios
+  distintos se puedan traducir distinto.
+- **`fudic translate`** lee también los `.fudapi` de `src` y de las librerías, y escribe su
+  catálogo en `src/locales/<idioma>/<ruta>.json`, como el de un `.fud` (`forms/person.json`).
+  Mensajes, conflictos y `FUD1024`–`FUD1026`, igual que para un `.fud`.
+- **Lo generado.** `emitModule` recibe el `LocaleCompile` del idioma y escribe cada texto ya
+  traducido; un texto sin traducción se queda en el de origen (SDD-58 §4.10). Sin `i18n`, la
+  salida es byte a byte la de hoy. El plugin de Vite ya compila los `fudic:<id>` una vez por
+  idioma: solo les pasa el `LocaleCompile`.
+- **El editor.** Un texto del `.fudapi` sin traducción en algún idioma tiene el mismo aviso que uno
+  de un `.fud` (el de `language-server/src/translations.ts`).
+- **`examples/i18n`.** `routes/index.fudapi` gana un formulario de una línea con `required "…"` y
+  una función `post` con `catches 409` cuyo handler lanza `conflict(t("…"))`. Los dos textos,
+  traducidos en `locales/en` y `locales/es`.
+
+### 4.6. `examples/basic`
 
 - `usuarios.fudapi`: `save` gana `catches 409`.
 - `src/server/usuarios.ts`: `save` rechaza desactivar a la persona `1` con
-  `conflict("A Ana no se la puede desactivar.")`.
+  `conflict(t("A Ana no se la puede desactivar."))`.
 - `usuarios.fud`:
   - `activar` como en §4.4; ni `input.checked` ni `.error() === undefined` en el `@code`;
-  - `borrar` usa `run()`: `if ((await quitar.run({ id })).status === "done") …`;
+  - `borrar(p: Person)` usa `run()`: `if ((await quitar.run({ id: p.id })).status === "done") …`;
+  - la tabla sigue delegada como la deja SDD-72;
   - bajo la tabla, `@if (guardar.error()) { <p role="alert">@(guardar.error().message)</p> }`;
   - el texto de la página explica en una frase la regla: lo que la función pone en `catches` se
     queda en la página; lo demás va a `error-pages`.
@@ -223,5 +262,18 @@ export interface Task<A, R, V = R | undefined> {
     el servidor.
 14. **Ejemplo, señal desde `data`.** Tras «Entrar como Ana», `personas` vuelve a valer lo que
     trae el `data` nuevo (lo que ya hace BUG-55, fijado con un test).
-15. **Cobertura.** Ningún paquete tocado baja de su umbral. El código nuevo de `task` y
-    `errorPagesStep` queda cubierto en las cuatro métricas.
+15. **Cobertura.** Ningún paquete tocado baja de su umbral. El código nuevo de `task`,
+    `errorPagesStep` y `extractApiMessages` queda cubierto en las cuatro métricas.
+16. **Extracción del `.fudapi`.** `extractApiMessages` sobre `forms/person.fudapi` da un mensaje
+    por texto, con `origin: 'fudapi'`; el de `min 18 "Tiene que tener al menos {n} años."` tiene el
+    hueco `n`. Dos textos iguales en dos campos dan dos claves.
+17. **`fudic translate`.** En `examples/i18n`, escribe `src/locales/en/routes/index.json` con los
+    textos del `.fudapi`, y una segunda pasada no cambia nada.
+18. **Lo generado por idioma.** El `fudic:routes/index` de `en` lleva el texto en inglés y el de
+    `es` en español. Sin `i18n`, `emitModule` da los mismos bytes que antes.
+19. **El `throw` traducido.** En `examples/i18n`, la función con `catches 409`: en `/en` el error
+    que se pinta está en inglés; en `/es`, en español.
+20. **El formulario traducido.** En `/en`, enviar el formulario vacío pinta el `required` en
+    inglés.
+21. **Texto sin traducir.** Quitar la traducción inglesa de un texto del `.fudapi`: la página en
+    inglés pinta el de origen y el editor avisa en el texto.

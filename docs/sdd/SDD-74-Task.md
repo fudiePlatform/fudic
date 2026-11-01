@@ -2,9 +2,10 @@
 
 > **SDD:** [SDD-74 — Errores que se quedan en la página y una `task` que no miente](./SDD-74-errores-en-la-pagina.md)
 > **Paquetes:** `@fudic/api` · `@fudic/http` · `@fudic/core` · `@fudic/compiler` · `@fudic/diagnostics` ·
-> `@fudic/language-server` · `examples/basic` · `examples/fudapi-editor`
+> `@fudic/language-server` · `@fudic/cli` · `@fudic/vite` · `examples/basic` · `examples/fudapi-editor` ·
+> `examples/i18n`
 > **Rama:** `sdd-74-errores-en-la-pagina`. Nace de `main` **con SDD-72 en `Hecho`**.
-> **Progreso:** 0 / 12 — `Listo`.
+> **Progreso:** 0 / 16 — `Listo`.
 
 ---
 
@@ -15,7 +16,8 @@
 5 FUD1360 + fuera fails ─→ 6 migración ─→ 7 tests
 8 task por llamada ─→ 9 tests
 10 propiedades vivas ─→ 11 tests
-4, 7, 9, 11 ─→ 12 ejemplo, completado y cierre
+13 extracción del .fudapi ─→ 14 fudic translate + lo generado por idioma ─→ 15 examples/i18n ─→ 16 tests
+4, 7, 9, 11, 16 ─→ 12 ejemplo, completado y cierre
 ```
 
 ---
@@ -55,4 +57,15 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 12 | 4, 7, 9, 11 | **Completado** (`catches` sí, `fails` no en funciones); **`examples/basic`** según SDD §4.5; tests de los criterios 11–14; cobertura (15); prueba de Pedro; INDEX y estado | `language-server` · `examples/basic` | `src/fudapi/completion.ts` · `src/routes/usuarios.*` · `src/server/usuarios.ts` |
+| [ ] | 12 | 4, 7, 9, 11, 16 | **Completado** (`catches` sí, `fails` no en funciones); **`examples/basic`** según SDD §4.6; tests de los criterios 11–14; cobertura (15); prueba de Pedro; INDEX y estado | `language-server` · `examples/basic` | `src/fudapi/completion.ts` · `src/routes/usuarios.*` · `src/server/usuarios.ts` |
+
+## Fase 6 — los textos del `.fudapi`, traducidos (4)
+
+Va antes del cierre (tarea 12).
+
+| ✓ | # | dep | tarea | package | fichero |
+|---|---|---|---|---|---|
+| [ ] | 13 | — | **`extractApiMessages`**: un `Message` por texto, `origin: 'fudapi'`, huecos `{n}`, contexto por la ruta de la declaración (SDD §4.5) | `api` · `compiler` | `src/messages.ts` · `src/index.ts` |
+| [ ] | 14 | 13 | **`fudic translate`** lee los `.fudapi`; **`emitModule`** con `LocaleCompile`; el plugin se lo pasa por idioma; el aviso del editor (SDD §4.5) | `cli` · `api` · `vite` · `language-server` | `src/plans/translate.ts` · `src/emit/*.ts` · `src/plugin.ts` · `src/translations.ts` |
+| [ ] | 15 | 14 | **`examples/i18n`**: el formulario y la función con `catches 409` y `conflict(t(…))`; los catálogos `en` y `es` (SDD §4.5) | `examples/i18n` | `src/routes/index.fudapi` · `src/server/index.ts` · `src/locales/**` |
+| [ ] | 16 | 15 | **Los tests de la fase.** Criterios 16–21 | `api` · `cli` · `vite` · `examples/i18n` | `test/**` |
