@@ -100,7 +100,25 @@ Con un 100 % de cobertura, lo destapado no tiene explicación. Se sigue este ord
 4. **Preguntar** qué tests se ven afectados, y aceptar solo esos cambios.
 5. **Tests otra vez**, y justificar cada cambio.
 
-## 5. Pendiente de decisión
+Además del método, al acabar:
+
+- **Stryker otra vez**, para comparar antes y después.
+- **Probar en el navegador** sobre `examples/basic`.
+- **Revisar los tests mismos** tras el paso 3: los que solo vigilaban la estructura interna.
+
+## 5. Lo que se descarga el navegador
+
+Preocupación de Pedro, más allá de core: código copiado entre trozos y peso del service worker.
+
+- Una página debe descargar solo lo que usa, y nada dos veces. Caso conocido:
+  `examples/pieces-bench/check.mjs` falla también en main porque `owner.ts` va copiado dentro de
+  los trozos `effect`, `owner` y `task`.
+- Lo mismo hay que revisarlo en todo lo que va al navegador: **core, forms, di, dom, http** y la
+  coordinación con el **service worker**.
+- El service worker pesaba unos **13 kB** y ahora va por el **doble** (observación de Pedro). Hay
+  que saber qué lo ha hecho crecer y qué sobra.
+
+## 6. Pendiente de decisión
 
 - Idea: un paquete de fixtures (`.fud` + salida esperada) que compilador y core importan por
   separado, para que cada paquete pruebe solo lo suyo.
