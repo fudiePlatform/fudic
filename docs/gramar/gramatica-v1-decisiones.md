@@ -1360,6 +1360,16 @@ eventos, igual. El editor tipa el dato: el resultado, por el `form:=` del mismo 
 `Error`; el bus, por la intersección de lo que declaran sus receptores. *Por qué: el desarrollador
 declara el tipo del parámetro y se acabó, sin `CustomEvent` ni `detail` (Pedro, 2026-10-29).*
 
+**174.** **`catches` en las funciones** (SDD-74 §2). Una función admite `catches <status>+`, con la
+misma sintaxis que un formulario. Un `HttpError` de un status de la lista no va a `error-pages`:
+llega a quien llamó (`task.run()`, `task.error()` o el rechazo del `await`). Sin `catches`, nada se
+queda. Una llamada que envía un formulario se queda la unión de los dos. *Por qué: el mismo error
+se comportaba distinto según lo enviara un formulario o un botón (Pedro, 2026-11-01).*
+
+**175.** **`fails` solo en reglas y middlewares** (SDD-74 §2). En una función o en `load` es
+`FUD1360`. El handler lanza un error de `@fudic/http` (`conflict('…')`, `notFound('…')`…).
+*Por qué: un nombre inventado para un status y un texto no aportaba nada (Pedro, 2026-11-01).*
+
 ### Gramática de referencia
 
 ```
@@ -1679,3 +1689,5 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 171 | `.fudapi` | `pipe <nombre>` con `on <tipo>+` y parámetros; da texto; `implement` devuelve el pipe; implementación TS una vez en `src/pipes` (`FUD1340`) (SDD-71) |
 | 172 | Interpolación | La vista importa el `export default` de la carpeta de pipes; `a \| p` se emite `p.format(a, idioma)`; presets en `@fudic/core`. Enmienda 158 y SDD-61 §3.9 (SDD-71) |
 | 173 | Interpolación | En `@fudic:result`, `@fudic:error` y `bus:`, referencia y lambda reciben el `detail`; la llamada, igual. Tipado por el `form:=` y por los receptores del bus. Enmienda la 98 (SDD-72) |
+| 174 | `.fudapi` | `catches <status>+` en una función: ese error llega a quien llamó, no a `error-pages`; con un form, la unión (SDD-74) |
+| 175 | `.fudapi` | `fails` solo en reglas y middlewares; en una función o `load`, `FUD1360` (SDD-74) |
