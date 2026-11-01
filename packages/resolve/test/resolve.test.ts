@@ -112,9 +112,12 @@ describe('a package href', () => {
           prefix: 'ui',
           globalStyles: [],
           styles: [],
-          // The folders of SDD-60 §3.15, by convention, and a library's `fudapi/`.
+          // SDD-71 §3.1: every project has a language, by default.
+          locales: ['en'],
+          // The folders of SDD-60 §3.15 and SDD-71, by convention, and a library's `fudapi/`.
           server: 'src/server',
           browser: 'src/browser',
+          pipes: 'src/pipes',
           api: 'fudapi',
           // SDD-70 §3.10, by default.
           earlyHints: true,
