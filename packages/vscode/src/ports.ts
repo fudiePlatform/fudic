@@ -31,6 +31,17 @@ export interface NotificationPort {
   warn(message: string): void;
 }
 
+/** What the commands also say when a thing went well: `Regenerated N files.` (SDD-75). */
+export interface InformingPort extends NotificationPort {
+  info(message: string): void;
+}
+
+/** An LSP range, as the server sends it: what a click on an implementation lands on. */
+export interface LspRange {
+  readonly start: { readonly line: number; readonly character: number };
+  readonly end: { readonly line: number; readonly character: number };
+}
+
 /** The output channel, which is also where §4.4 sends the user when the status bar is clicked. */
 export interface LoggerPort {
   info(message: string): void;
@@ -51,6 +62,8 @@ export type DelayPort = (ms: number) => Promise<void>;
 export interface EditorPort {
   /** The URI of the active `.fud`, or `undefined` when the active document is not one. */
   activeFudUri(): string | undefined;
+  /** The URI of the active `.fudapi`, or `undefined` when the active document is not one (SDD-75). */
+  activeFudapiUri(): string | undefined;
   /**
    * The file path of the active `.fud` or `.fudspec`, POSIX-shaped: what the workbench opens.
    * `undefined` when the active document is neither.
@@ -127,6 +140,10 @@ export interface ProgressPort {
 /** Opening the read-only views the debugging commands produce (§4.3). */
 export interface DocumentsPort {
   openReadOnly(name: string, languageId: string, text: string): Promise<void>;
+  /** Replaces the text of a read-only view, which an editor showing it follows. */
+  updateReadOnly(name: string, text: string): void;
+  /** Opens a file of the disk, with `range` selected when there is one. */
+  openFile(path: string, range?: LspRange): Promise<void>;
 }
 
 /** Formatting, which is delegated all the way to SDD-26 through the server. */
@@ -136,7 +153,7 @@ export interface FormatterPort {
 
 /** Command registration. The adapter binds it to `vscode.commands`. */
 export interface CommandsPort {
-  register(id: string, handler: () => Promise<void>): void;
+  register(id: string, handler: (...args: readonly unknown[]) => Promise<void>): void;
 }
 /**
  * How a comment is written in one region, as the server answers it (BUG-22 §5).

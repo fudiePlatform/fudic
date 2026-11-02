@@ -247,7 +247,6 @@ function load(decl: LoadDecl, c: Ctx): void {
   if (c.api.route?.error === true) c.out.push(FUD1010({ span: decl.keyword, name: 'load' }));
   fields(decl.fields, 'load', c);
   middlewares(decl.uses, decl.skips, c.index.inherited(c.source, decl), c);
-  failCodes(decl.fails, c);
 }
 
 function chain(decl: ChainDecl, c: Ctx): void {

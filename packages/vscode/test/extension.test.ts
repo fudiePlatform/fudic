@@ -24,6 +24,7 @@ import {
   moveCaret,
   Range,
   reset,
+  saveDocument,
   showEditors,
   state,
   ThemeColor,
@@ -131,7 +132,7 @@ describe('activate', () => {
     ]);
   });
 
-  it('points the server at the bundled bundle and watches the eight globs', async () => {
+  it('points the server at the bundled bundle and watches its globs', async () => {
     await activate(context());
 
     const options = LanguageClient.created[0]?.serverOptions as { run: { module: string } };
@@ -145,6 +146,9 @@ describe('activate', () => {
       '**/*.fixture.ts',
       '**/src/locales/**/*.json',
       '**/*.fudapi',
+      '**/src/server/**',
+      '**/src/browser/**',
+      '**/src/pipes/**',
     ]);
   });
 
@@ -264,6 +268,61 @@ describe('the commands, through the adapter', () => {
     const [uri] = state.openedDocuments[0] ?? [];
     // Asked with the very `Uri` object the editor holds, not with a string built here.
     expect(provider?.provideTextDocumentContent(uri!)).toBe('const a = 1;');
+  });
+
+  describe('the .fudapi commands (SDD-75)', () => {
+    const API = 'file:///work/app/src/routes/usuarios.fudapi';
+    const call = async (id: string, ...args: unknown[]): Promise<void> => {
+      await (state.commandHandlers.get(id) as (...args: unknown[]) => Promise<void>)(...args);
+    };
+
+    it('the palette acts on the active .fudapi, and nothing else', async () => {
+      LanguageClient.answers['fudic/apiTypes'] = { path: '/work/app/.fudic/api/routes/usuarios.d.ts' };
+      state.activeEditor = editorFor('fudapi', API);
+      await activate(context());
+      await call('fudic.api.showTypes');
+      // The file on disk, at its top: the types are a file, not a view.
+      expect(state.shownDocuments).toEqual([
+        [{ uri: expect.objectContaining({ path: '/work/app/.fudic/api/routes/usuarios.d.ts' }) }, { preview: false, selection: new Range(0, 0, 0, 0) }],
+      ]);
+      state.activeEditor = editorFor('fudic');
+      await call('fudic.api.showTypes');
+      expect(state.warnings.at(-1)).toBe('Fudic: this command needs an active .fudapi file.');
+    });
+
+    it('an implementation opens at its call', async () => {
+      await activate(context());
+      await call('fudic.api.goToImplementation', '/work/app/src/server/usuarios.ts', {
+        start: { line: 2, character: 5 },
+        end: { line: 2, character: 11 },
+      });
+      expect(state.shownDocuments[0]?.[1]).toEqual({ preview: false, selection: new Range(2, 5, 2, 11) });
+    });
+
+    it('Regenerate tells, through the information surface', async () => {
+      LanguageClient.answers['fudic/apiRegenerate'] = { count: 3 };
+      await activate(context());
+      await call('fudic.api.regenerate', API);
+      expect(state.infos).toEqual(['Regenerated 3 files.']);
+    });
+
+    it('a saved .fudapi refreshes its open module, and the editor is told which', async () => {
+      LanguageClient.answers['fudic/apiModule'] = { name: 'fudic:routes/usuarios.server.ts', text: 'v1' };
+      await activate(context());
+      await call('fudic.api.showServer', API);
+      const provider = state.contentProviders.get('fudic-virtual') as unknown as {
+        onDidChange: (listener: (uri: { path: string }) => void) => unknown;
+        provideTextDocumentContent(uri: unknown): string;
+      };
+      const changed: { path: string }[] = [];
+      provider.onDidChange((uri) => changed.push(uri));
+
+      LanguageClient.answers['fudic/apiModule'] = { name: 'fudic:routes/usuarios.server.ts', text: 'v2' };
+      saveDocument({ languageId: 'fudic', uri: { toString: () => API } });
+      saveDocument({ languageId: 'fudapi', uri: { toString: () => API } });
+      await vi.waitFor(() => expect(changed).toHaveLength(1));
+      expect(provider.provideTextDocumentContent(changed[0])).toBe('v2');
+    });
   });
 
   it('formats through the editor command, not by talking to the server', async () => {

@@ -44,6 +44,31 @@ backend: `filter`, `map`, `reduce` (always with an initial value), `toSorted` an
 | Join text | ``authors.reduce((s, a, i) => i === 0 ? a.name : `${s}, ${a.name}`, "")`` |
 | Sort | `xs.toSorted((a, b) => a.title < b.title ? -1 : a.title > b.title ? 1 : 0)` |
 
+### Events in a list: delegate them
+
+An `@event` inside a loop adds one listener per item, and the compiler warns about it
+(`FUD1380`). Put one handler on an element outside the loop and mark each row instead:
+
+```html
+<tbody @change=@toggle(p, $event) @click=@remove(p.id, p.name)>
+  @foreach (const p of people()) key (p.id) {
+    <tr>
+      <td><input type="checkbox" checked=@p.active delegate:p="change"></td>
+      <td><button delegate:p="click">Remove</button></td>
+    </tr>
+  }
+</tbody>
+```
+
+- **The handler reads the row by its name**, anywhere in its arguments: `p`, `p.id`. It arrives
+  typed, so `function remove(id: number, name: string)` checks with no cast.
+- **The marker says which events it serves.** `delegate:p="click"` is read only by `@click`, so a
+  click on the checkbox does not remove the row. With no value, every handler that reads `p`
+  reads it.
+- **One marker per variable**: `delegate:p delegate:i` lets the handler read `p` and `i`. A fixed
+  value is written in the handler, `@remove(p.id, 123)`.
+- A click outside every row calls nothing. Nothing is written to the DOM for the marker.
+
 ### `@empty`
 
 "Nothing to show" is said with `@empty`, right after the body of `@foreach`, `@for` or

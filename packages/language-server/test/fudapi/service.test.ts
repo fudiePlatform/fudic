@@ -17,6 +17,8 @@ import { createFudapiLanguagePlugin, FUDAPI_LANGUAGE_ID } from '../../src/fudapi
 import { createFudapiService } from '../../src/fudapi/service.js';
 import { createFudspecLanguagePlugin } from '../../src/fudspec/language-plugin.js';
 import { createFudspecService } from '../../src/fudspec/service.js';
+import { MISSING, Translations } from '../../src/translations.js';
+import { messageKey } from '@fudic/i18n';
 import { SpecHost } from '../../src/fudspec/host.js';
 import { createFudicLanguagePlugin } from '../../src/language-plugin.js';
 import { RequestStats } from '../../src/stats.js';
@@ -24,7 +26,7 @@ import { isFudapiUri } from '../../src/uri.js';
 import { WorkspaceIndex } from '../../src/workspace-index.js';
 import { fakeServiceContext } from '../_lsp.js';
 import { memoryFs } from '../_support.js';
-import { FILES, SRC, world } from './_api.js';
+import { APP, FILES, SRC, world } from './_api.js';
 
 const PATH = `${SRC}/routes/usuarios.fudapi`;
 const API_URI = URI.file(PATH);
@@ -37,9 +39,9 @@ const ZERO = { line: 0, character: 0 };
 const WHOLE = { start: ZERO, end: { line: 99, character: 0 } };
 
 function service(files = FILES, open: Readonly<Record<string, string>> = {}): LanguageServicePluginInstance {
-  const { host } = world({ files, open });
+  const { host, implementations, generated } = world({ files, open });
   const decode = (uri: URI): [URI, string] | undefined => (uri.toString() === EMBEDDED.toString() ? [API_URI, 'root'] : undefined);
-  return createFudapiService({ host, stats: new RequestStats() }).create(fakeServiceContext({}, decode));
+  return createFudapiService({ host, implementations, generated, stats: new RequestStats() }).create(fakeServiceContext({}, decode));
 }
 
 const doc = (text: string, uri: URI = EMBEDDED): TextDocument => TextDocument.create(uri.toString(), 'fudapi', 1, text);
@@ -108,7 +110,7 @@ describe('live diagnostics (criterion 27)', () => {
     host.load(PATH, '');
     const readless = { ...host, read: () => undefined, load: host.load.bind(host) } as unknown as typeof host;
     const decode = (uri: URI): [URI, string] | undefined => (uri.toString() === EMBEDDED.toString() ? [API_URI, 'root'] : undefined);
-    const s = createFudapiService({ host: readless, stats: new RequestStats() }).create(fakeServiceContext({}, decode));
+    const s = createFudapiService({ ...world(), host: readless, stats: new RequestStats() }).create(fakeServiceContext({}, decode));
     const [clash] = (await s.provideDiagnostics?.(doc('type Clash\n  y  str\n'), NONE)) as Diagnostic[];
     expect(clash?.relatedInformation?.[0]?.location.range).toEqual({ start: ZERO, end: ZERO });
   });
@@ -137,6 +139,38 @@ describe('the other requests', () => {
     const hover = (await service().provideHover?.(doc('load ssr buffer 16k\n'), { line: 0, character: 17 }, NONE)) as Hover;
     expect((hover.contents as { value: string }).value).toBe('16384 bytes held before the stream sends.');
     expect(await service().provideHover?.(doc('load  ssr\n'), { line: 0, character: 5 }, NONE)).toBeUndefined();
+  });
+
+  it('SDD-74 §4.1: hovers `catches` in a function with what it keeps, on the keyword only', async () => {
+    const text = 'type T\n  x  str\nget g\n  -> str\npost save\n  catches 409\n';
+    const s = service();
+    const hover = (await s.provideHover?.(doc(text), { line: 5, character: 4 }, NONE)) as Hover;
+    expect((hover.contents as { value: string }).value).toContain('error-pages');
+    expect(hover.range).toEqual({ start: { line: 5, character: 2 }, end: { line: 5, character: 9 } });
+    // On the status, nothing: the keyword is what the hover explains.
+    expect(await s.provideHover?.(doc(text), { line: 5, character: 11 }, NONE)).toBeUndefined();
+  });
+
+  it('SDD-74: hovers a text with its translations, and says nothing without catalogs', async () => {
+    const text = 'form person\n  name  str = ""\n    required  "Escribe el nombre."\n';
+    const key = messageKey('person.name.required', 'Escribe el nombre.');
+    const catalog = (translation?: string): string =>
+      JSON.stringify({ 'person.name.required': { [key]: { source: 'Escribe el nombre.', ...(translation === undefined ? {} : { translation }), where: 'x', at: 0 } } });
+    const translations = new Translations(
+      memoryFs({
+        [`${APP}/fudic.json`]: '{ "kind": "app", "locales": ["es", "en"] }',
+        [`${SRC}/locales/es/routes/usuarios.json`]: catalog('Escribe el nombre.'),
+        [`${SRC}/locales/en/routes/usuarios.json`]: catalog(),
+        [PATH]: text,
+      }),
+    );
+    const { host, implementations, generated } = world({ files: FILES });
+    const decode = (uri: URI): [URI, string] | undefined => (uri.toString() === EMBEDDED.toString() ? [API_URI, 'root'] : undefined);
+    const s = createFudapiService({ host, implementations, generated, stats: new RequestStats(), translations }).create(fakeServiceContext({}, decode));
+    const on = { line: 2, character: 16 };
+    const hover = (await s.provideHover?.(doc(text), on, NONE)) as Hover;
+    expect(hover.contents).toEqual({ kind: 'markdown', value: `es: Escribe el nombre.  \nen: ${MISSING}` });
+    expect(await service().provideHover?.(doc(text), on, NONE)).toBeUndefined();
   });
 
   it('encodes the semantic tokens against the legend', async () => {
@@ -168,9 +202,10 @@ describe('the other requests', () => {
   });
 
   it('declares its triggers and its capabilities', () => {
-    const plugin = createFudapiService({ host: world().host, stats: new RequestStats() });
+    const plugin = createFudapiService({ ...world(), stats: new RequestStats() });
     expect(plugin.capabilities.completionProvider?.triggerCharacters).toEqual(['{', ' ']);
     expect(plugin.capabilities.diagnosticProvider).toEqual({ interFileDependencies: true, workspaceDiagnostics: false });
+    expect(plugin.capabilities.codeLensProvider).toEqual({ resolveProvider: false });
   });
 });
 
@@ -185,6 +220,7 @@ describe('isolation (criterion 31)', () => {
       expect(await s.provideDefinition?.(other, ZERO, NONE)).toBeUndefined();
       expect(await s.provideDocumentSemanticTokens?.(other, WHOLE, SEMANTIC_TOKENS_LEGEND, NONE)).toBeUndefined();
       expect(await s.provideDocumentFormattingEdits?.(other, WHOLE, { tabSize: 2, insertSpaces: true }, undefined as never, NONE)).toBeUndefined();
+      expect(await s.provideCodeLenses?.(other, NONE)).toBeUndefined();
     }
   });
 

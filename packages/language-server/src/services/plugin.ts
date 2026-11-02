@@ -63,6 +63,7 @@ import {
   brokenValueContextAt,
   classContextAt,
   delegateContextAt,
+  delegateValueContextAt,
   classValueContextAt,
   controlNameAt,
   controlValueAt,
@@ -102,7 +103,7 @@ import {
 import { typeScriptService } from './ts-service.js';
 import { interpolates, scopeNames, templateScope } from './template-scope.js';
 import { styleClassNames } from './classes.js';
-import { delegateNames } from './delegate.js';
+import { delegateEvents, delegateNames } from './delegate.js';
 import { sectionCompletions } from './sections.js';
 import { contractFunctionsAt } from './contract-functions.js';
 import { HOLE_TRIGGER_CHARACTERS, holeArgumentContextAt, slotsAround } from './hole-args.js';
@@ -380,6 +381,9 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
               // `ts-completion.ts` — the same names, with the types behind them.
               const binding = attributeValueBindingAt(cached.source, offset, region);
               if (binding === undefined) return undefined;
+              // The value of a `delegate:` is a list of event names, answered whole by the root
+              // service (`delegateEvents`): no name of the view can go there, with `@` or without.
+              if (delegateValueContextAt(cached.source, offset, region) !== undefined) return undefined;
 
               // `shadowrootadoptedstylesheets="|"` on the root template: the `styles` of the
               // project's fudic.json that are not written yet. The list is space-separated, so
@@ -1011,6 +1015,24 @@ function completions(
       }),
     );
     if (items.length > 0) return list(items);
+  }
+
+  // Inside the value of a marker: the events it may serve, and nothing else — not HTML's event
+  // attributes with their `@`, which is what answered here before anyone did. Exact even when
+  // empty: a marker no ancestor reads has no event to offer, and anything offered would be a
+  // `FUD1381` the author is invited to write.
+  const delegateValue = delegateValueContextAt(cached.source, offset, region);
+  if (delegateValue !== undefined) {
+    return list(
+      delegateEvents(cached, delegateValue).map(
+        (event): CompletionItem => ({
+          label: event,
+          kind: CompletionItemKind.Event,
+          detail: `handled above, reads ${delegateValue.name}`,
+          textEdit: { range: rangeOf(document, delegateValue.span), newText: event },
+        }),
+      ),
+    );
   }
 
   // Inside the value of a plain `class`: the same names, at the other place the grammar spells a

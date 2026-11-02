@@ -36,7 +36,7 @@ const CALENDAR = (tag: string): string =>
   '  function pick(ev, day) { globalThis.__fudLog.push(day); }\n' +
   '}\n' +
   `<${tag}>\n  <template shadowrootmode="open">` +
-  '<div class="grid" @click="@pick($event, $day)"><h2>Month</h2>\n' +
+  '<div class="grid" @click="@pick($event, day)"><h2>Month</h2>\n' +
   '    @foreach (const day of days) key (day.id) {\n' +
   '      <div class="cell c-@day.id"><span>@day.n</span><button class="edit">e</button></div>\n' +
   '    }\n' +
@@ -143,7 +143,7 @@ describe('through the shadow of a child (§6.16)', () => {
       '  function pick(ev, day) { globalThis.__fudLog.push(day); }\n' +
       '}\n' +
       `<${tag}>\n  <template shadowrootmode="open">` +
-      '<div class="grid" @click="@pick($event, $day)">\n' +
+      '<div class="grid" @click="@pick($event, day)">\n' +
       '    @foreach (const day of days) key (day.id) {\n' +
       '      <app-card class="c-@day.id" delegate:day></app-card>\n' +
       '    }\n' +
@@ -174,6 +174,116 @@ describe('through the shadow of a child (§6.16)', () => {
     // `composedPath()` crosses the boundary and the host is on it: `closest()` could not see
     // out of the child at all, which is §4.2 in one dispatch.
     expect(log()[0]).toBe(rows[1]);
+  });
+});
+
+/** A created instance of `tag` from `source`, with `values` as its props. */
+function created(tag: string, source: string, values: readonly unknown[]): ShadowRoot {
+  const host = document.createElement(tag);
+  const shadow = host.attachShadow({ mode: 'open' });
+  document.body.append(host);
+  controller(clientFactory(graphOf(tag, source), tag), browserDom, shadow, values).c();
+  return shadow;
+}
+
+const fire = (root: ParentNode, selector: string, type: string): void => {
+  root.querySelector(selector)!.dispatchEvent(new Event(type, { bubbles: true, composed: true }));
+};
+
+interface Person {
+  id: number;
+  name: string;
+}
+const person = (id: number, name: string): Person => ({ id, name });
+
+describe('the marker serves its events (SDD-72 §3.4, criterion 35)', () => {
+  /** The table of §3.4: a checkbox for `change` and a button for `click` in every row. */
+  const TABLE = (tag: string): string =>
+    '@code {\n' +
+    '  const { ps = [] } = props<{ ps?: { id: number; name: string }[] }>();\n' +
+    '  globalThis.__fudLog = [];\n' +
+    '  function activar(p, e) { globalThis.__fudLog.push(["activar", p, e.type]); }\n' +
+    '  function borrar(p) { globalThis.__fudLog.push(["borrar", p]); }\n' +
+    '}\n' +
+    `<${tag}>\n  <template shadowrootmode="open">` +
+    '<table><tbody @change=@activar(p, $event) @click=@borrar(p)>\n' +
+    '    @foreach (const p of ps) key (p.id) {\n' +
+    '      <tr class="r-@p.id"><td><input type="checkbox" delegate:p="change"></td>' +
+    '<td><button delegate:p="click">Borrar</button></td></tr>\n' +
+    '    }\n' +
+    `  </tbody></table></template>\n</${tag}>\n`;
+
+  it('a click on the checkbox does not call borrar; a change calls activar with its person', () => {
+    const rows = [person(1, 'Ana'), person(2, 'Luis')];
+    const shadow = created('x-table', TABLE('x-table'), [rows]);
+
+    fire(shadow, '.r-2 input', 'click');
+    expect(log()).toEqual([]);
+
+    fire(shadow, '.r-2 input', 'change');
+    expect(log()).toHaveLength(1);
+    expect(log()[0]).toEqual(['activar', rows[1], 'change']);
+    expect((log()[0] as unknown[])[1]).toBe(rows[1]);
+  });
+
+  it('a click on the button calls borrar with its person, and a change there calls nothing', () => {
+    const rows = [person(1, 'Ana'), person(2, 'Luis')];
+    const shadow = created('x-table2', TABLE('x-table2'), [rows]);
+
+    fire(shadow, '.r-1 button', 'change');
+    expect(log()).toEqual([]);
+
+    fire(shadow, '.r-1 button', 'click');
+    expect(log()).toHaveLength(1);
+    expect((log()[0] as unknown[])[1]).toBe(rows[0]);
+  });
+});
+
+describe('the row read anywhere in the arguments (SDD-72 decision 177, criteria 41, 44, 45)', () => {
+  it('@pick(day) with no $ hands over the row (criterion 41)', () => {
+    const rows = [day('a', 1), day('b', 2)];
+    const source = MARKED('x-bare')
+      .replace('@pick($event, day)', '@pick(day)')
+      .replace('function pick(ev, day)', 'function pick(day)');
+    const shadow = created('x-bare', source, [rows]);
+    click(shadow, '.c-b');
+    expect(log()[0]).toBe(rows[1]);
+  });
+
+  it('@borrar(p.id, p.name) calls with the id and the name of the clicked row (criterion 44)', () => {
+    const tag = 'x-fields';
+    const source =
+      '@code {\n' +
+      '  const { ps = [] } = props<{ ps?: { id: number; name: string }[] }>();\n' +
+      '  globalThis.__fudLog = [];\n' +
+      '  function borrar(id, name) { globalThis.__fudLog.push([id, name]); }\n' +
+      '}\n' +
+      `<${tag}>\n  <template shadowrootmode="open">` +
+      '<ul @click=@borrar(p.id, p.name)>\n' +
+      '    @foreach (const p of ps) key (p.id) { <li class="r-@p.id"><button delegate:p="click">x</button></li> }\n' +
+      `  </ul></template>\n</${tag}>\n`;
+    const shadow = created(tag, source, [[person(1, 'Ana'), person(2, 'Luis')]]);
+    fire(shadow, '.r-2 button', 'click');
+    expect(log()).toEqual([[2, 'Luis']]);
+  });
+
+  it('two marks hand over the person and the index; a fixed value arrives as written (criterion 45)', () => {
+    const tag = 'x-index';
+    const source =
+      '@code {\n' +
+      '  const { ps = [] } = props<{ ps?: { id: number; name: string }[] }>();\n' +
+      '  globalThis.__fudLog = [];\n' +
+      '  function borrar(id, i, fixed) { globalThis.__fudLog.push([id, i, fixed]); }\n' +
+      '}\n' +
+      `<${tag}>\n  <template shadowrootmode="open">` +
+      '<ul @click=@borrar(p.id, i, 123)>\n' +
+      '    @foreach (const [i, p] of ps.entries()) key (p.id) {\n' +
+      '      <li class="r-@p.id"><button delegate:p="click" delegate:i="click">x</button></li>\n' +
+      '    }\n' +
+      `  </ul></template>\n</${tag}>\n`;
+    const shadow = created(tag, source, [[person(7, 'Ana'), person(9, 'Luis')]]);
+    fire(shadow, '.r-9 button', 'click');
+    expect(log()).toEqual([[9, 1, 123]]);
   });
 });
 

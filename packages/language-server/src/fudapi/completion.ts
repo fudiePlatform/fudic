@@ -23,6 +23,7 @@ import {
 import { CompletionItemKind, type CompletionItem, type CompletionList } from 'vscode-languageserver-protocol';
 import type { ApiDocument } from './document.js';
 import { lineOf, loadCompletions } from './load-line.js';
+import { SNIPPETS, ruleSnippet, withSnippets } from './snippets.js';
 
 const PRIMITIVES = ['str', 'html', 'bool', 'date', 'uuid', 'u8', 'i8', 'u16', 'i16', 'u32', 'i32', 'f32', 'f64'];
 const VERBS = new Set(['get', 'post', 'put', 'patch', 'delete']);
@@ -49,8 +50,8 @@ type Context =
 
 /** The words a line of each context can start with. */
 const CHILDREN: Readonly<Record<Context, readonly string[]>> = {
-  fn: ['use', 'skip', 'form', 'invalidates', 'compress', 'fails', 'query', '->'],
-  load: ['use', 'skip', 'fails'],
+  fn: ['use', 'skip', 'form', 'invalidates', 'compress', 'catches', 'fails', 'query', '->'],
+  load: ['use', 'skip'],
   chain: ['use', 'skip', 'compress'],
   type: [],
   form: ['validate-on', 'validity', 'catches', 'summary'],
@@ -99,13 +100,13 @@ export function apiCompletions(doc: ApiDocument, offset: number): CompletionList
   if (/(?:^|\s)#/u.test(before)) return undefined;
 
   if (indent === 0) {
-    if (typing === 0) return list(keywords(DECLARATION_KEYWORDS));
+    if (typing === 0) return list(withSnippets(DECLARATION_KEYWORDS, SNIPPETS.root, 0));
     if (words[0] !== 'load') return undefined;
     // The rest of the line, without the rest of the word being typed.
     const after = lineOf(text, offset).split(/\s+/u).slice(1);
     return list(loadCompletions(words, after));
   }
-  if (typing === 0) return list(firstWord(doc, offset, chain, context));
+  if (typing === 0) return list(firstWord(doc, offset, indent, chain, context));
   return argument(doc, offset, words, typing, chain, context);
 }
 
@@ -163,12 +164,19 @@ function contextOf(chain: readonly Line[]): Context {
   return parent.words[1] === 'group' ? 'group' : 'field';
 }
 
-/** The first word of an indented line: what its parent takes. */
-function firstWord(doc: ApiDocument, offset: number, chain: readonly Line[], context: Context): CompletionItem[] {
-  const items = keywords(CHILDREN[context]);
+/** The snippets of the lines of each context; a context missing here offers bare keywords. */
+const CONTEXT_SNIPPETS: Partial<Record<Context, (typeof SNIPPETS)[keyof typeof SNIPPETS]>> = {
+  fn: SNIPPETS.fn,
+  form: SNIPPETS.form,
+  group: SNIPPETS.form,
+};
+
+/** The first word of an indented line: what its parent takes, as snippets where there are. */
+function firstWord(doc: ApiDocument, offset: number, indent: number, chain: readonly Line[], context: Context): CompletionItem[] {
+  const items = withSnippets(CHILDREN[context], CONTEXT_SNIPPETS[context] ?? {}, indent);
   if (context === 'field') {
     const field = fieldAt(formAt(doc, offset), chain[0]!.start);
-    if (field !== undefined) items.push(...rules(doc.index.rulesFor(field.type).map((r) => r.decl)));
+    if (field !== undefined) items.push(...doc.index.rulesFor(field.type).map((r) => ruleSnippet(r.decl, indent)));
   } else if (context === 'arg') {
     items.push(...rules(doc.index.all('rule').filter(isArgRule).map((r) => r.decl)));
   } else if (context === 'summary') {

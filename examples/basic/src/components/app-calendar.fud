@@ -90,7 +90,7 @@
   <template shadowrootmode="open" shadowrootadoptedstylesheets="panel">
     <section class="panel">
       @* Un solo `@click`, en el contenedor. Las celdas no llevan listener: llevan marcador. *@
-      <div class="grid" @click=@pick($day)>
+      <div class="grid" @click=@pick(day)>
         <div class="hueco">pad</div>
         @foreach (const day of rows()) key (day.id) {
           <div class="cell" delegate:day>

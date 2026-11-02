@@ -152,6 +152,44 @@ describe('the hover', () => {
   });
 });
 
+describe('SDD-74 §4.5, criterion 21: the texts of a .fudapi', () => {
+  const API = '/w/app/src/forms/person.fudapi';
+  const TEXT = 'form person\n  name  str = ""\n    required  "Escribe el nombre."\n';
+  const KEY = messageKey('person.name.required', 'Escribe el nombre.');
+  const catalog = (translation?: string): string =>
+    JSON.stringify({
+      'person.name.required': {
+        [KEY]: { source: 'Escribe el nombre.', ...(translation === undefined ? {} : { translation }), where: 'src/forms/person.fudapi', at: 0 },
+      },
+    });
+  const files = (en?: string): Record<string, string> =>
+    workspace({
+      [API]: TEXT,
+      '/w/app/src/locales/es/forms/person.json': catalog('Escribe el nombre.'),
+      '/w/app/src/locales/en/forms/person.json': catalog(en),
+    });
+  const onText = TEXT.indexOf('Escribe') + 1;
+
+  it('the hover over a text of a .fudapi gives it in every locale, as for a .fud', () => {
+    const found = new Translations(memoryFs(files('Write the name.'))).at(API, TEXT, onText);
+    expect(found?.message.source).toBe('Escribe el nombre.');
+    expect(translationsMarkdown(found!)).toBe('es: Escribe el nombre.  \nen: Write the name.');
+  });
+
+  it('a text with no English translation is marked with the dash, as a .fud’s is', () => {
+    const found = new Translations(memoryFs(files())).at(API, TEXT, onText);
+    expect(found?.lines).toEqual([
+      { locale: 'es', text: 'Escribe el nombre.' },
+      { locale: 'en', text: undefined },
+    ]);
+    expect(translationsMarkdown(found!)).toBe(`es: Escribe el nombre.  \nen: ${MISSING}`);
+  });
+
+  it('nothing outside a text', () => {
+    expect(new Translations(memoryFs(files('x'))).at(API, TEXT, 1)).toBeUndefined();
+  });
+});
+
 describe('the diagnostics of a .fud', () => {
   it('never carry the command’s FUD1022–FUD1025', () => {
     // Two `t()` with the same text and different hole keys: FUD1025 for `fudic translate`.

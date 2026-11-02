@@ -63,3 +63,24 @@ test('without a session, the server half of auth stops the call before the form'
   expect(emailTaken).not.toHaveBeenCalled();
   expect(t.errorOf('Email')).toBeNull();
 });
+
+test('a save that goes through: the notice names the person, and the bus carries it (SDD-72)', async () => {
+  const t = await mounted('ana');
+  // What `hecho` emits on `alta` is the person it was given, not an event: a listener on the
+  // document reads it in the `detail` of the bus event, which is what a receiver is handed.
+  const carried: unknown[] = [];
+  const listener = (e: Event): void => {
+    carried.push((e as CustomEvent).detail);
+  };
+  document.addEventListener('alta', listener);
+  try {
+    await fill(t, 'pedro@fudic.dev');
+    await t.submit();
+    expect(carried).toHaveLength(1);
+    expect(carried[0]).toMatchObject({ name: 'Pedro', email: 'pedro@fudic.dev' });
+    const id = (carried[0] as { id: number }).id;
+    expect(t.query('.aviso')?.textContent).toBe(`Guardado: Pedro (id ${String(id)}).`);
+  } finally {
+    document.removeEventListener('alta', listener);
+  }
+});

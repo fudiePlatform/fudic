@@ -23,7 +23,7 @@ import { ClientMarkupEmitter, coreUsage, nodeIds, NOTHING_AHEAD, renderPass, typ
 import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js';
 import { AssetLinker } from './assets.js';
 import { codeOf, type ExtractedCode } from './oxc-code.js';
-import { hookupContext, templateDelegationJs } from './events.js';
+import { codeScope, hookupContext, templateDelegationJs } from './events.js';
 import { planDelegation } from '../semantic/delegation.js';
 import { planControls } from './controls.js';
 import { NO_BOXES, rootContext } from './display.js';
@@ -202,7 +202,11 @@ function buildRouteClientModule(
     styled: styledTags(graph),
     projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
   };
-  const delegation = planDelegation(source, roots, templateDelegationJs(code.template));
+  const delegation = planDelegation(
+    source,
+    roots,
+    templateDelegationJs(code.template, codeScope(source, graph.entry.code)),
+  );
   emitDiagnostics.push(...delegation.diagnostics);
   const hookup = hookupContext(
     code.template,

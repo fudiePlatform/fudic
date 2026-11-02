@@ -22,8 +22,42 @@ function emitImpl(this: EventTarget, name: string, detail?: unknown): void {
   );
 }
 
+declare global {
+  /**
+   * One entry per typed `bus:` receiver of the project, written by the editor's projection of
+   * each `.fud`: `'<file>#<n>': readonly ['<name>', <what the handler takes>]`. The name rides
+   * in the value and not in the key, so two receivers of one name add up instead of clashing.
+   * A name only a library listens to can be registered by hand the same way.
+   */
+  interface FudicBusReceivers {}
+}
+
+type Entry = FudicBusReceivers[keyof FudicBusReceivers];
+type Fns<K> = Entry extends infer E ? (E extends readonly [K, infer P] ? (x: P) => void : never) : never;
+
+/**
+ * What `emit(name, detail)` must send: what EVERY receiver of `name` accepts — the
+ * intersection of their parameters, since they all receive the same object. A name nobody
+ * registers accepts anything, and so does a name that is not a literal: a `string` would
+ * match every entry and demand what the whole project receives.
+ */
+export type BusDetail<K extends string> = string extends K
+  ? unknown
+  : [Fns<K>] extends [never]
+    ? unknown
+    : Fns<K> extends (x: infer I) => void
+      ? I
+      : never;
+
+/** The detail a handler takes: its first parameter, or `unknown` if it takes none. */
+export type BusParam<F> = F extends (...a: infer A) => unknown ? (A extends [] ? unknown : A[0]) : unknown;
+
+/** The detail of `emit`, optional exactly when every receiver of `name` admits `undefined`. */
+export type BusArgs<K extends string> =
+  undefined extends BusDetail<K> ? [detail?: BusDetail<K>] : [detail: BusDetail<K>];
+
 /**
  * Public developer surface. The `this`-bound host is erased from this type on
  * purpose — the compiler supplies it via `emit.call(host, …)`.
  */
-export const emit = emitImpl as (name: string, detail?: unknown) => void;
+export const emit = emitImpl as <K extends string>(name: K, ...detail: BusArgs<K>) => void;

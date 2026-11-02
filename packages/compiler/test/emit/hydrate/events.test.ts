@@ -161,6 +161,45 @@ const BUS = (tag: string): string =>
   `<button bus:carrito="@onCarrito($event)" @click="@press($event)">x</button>` +
   `</template>\n</${tag}>\n`;
 
+/** One emitter and the three shapes of a `bus:` receiver, in one component (SDD-72). */
+const BUS_DATUM = (tag: string): string =>
+  '@code {\n' +
+  "  import { emit } from '@fudic/dom';\n" +
+  '  globalThis.__fudLog = [];\n' +
+  '  function alta(p) { globalThis.__fudLog.push(["ref", this, p]); }\n' +
+  '  function viaCall(ev) { globalThis.__fudLog.push(["call", this, ev]); }\n' +
+  '  function press() { emit("alta", globalThis.__fudObj); }\n' +
+  '}\n' +
+  `<${tag}>\n  <template shadowrootmode="open">` +
+  '<button bus:alta="@alta" @click="@press()">x</button>' +
+  '<i bus:alta="@(function (p) { globalThis.__fudLog.push([\'lambda\', this, p]); })"></i>' +
+  '<b bus:alta="@viaCall($event)"></b>' +
+  `</template>\n</${tag}>\n`;
+
+describe('a bus receiver gets what was emitted, not the event (SDD-72 criterion 6)', () => {
+  it('a reference and a lambda receive the SAME object, with the host as this; a call, the event', () => {
+    const obj = { id: 1, name: 'Ada' };
+    (globalThis as unknown as { __fudObj: unknown }).__fudObj = obj;
+    const { host, shadow, controller: c } = created('x-datum', BUS_DATUM('x-datum'));
+
+    click(shadow, 'button');
+    const entries = log();
+    const ref = entries.find((e) => e[0] === 'ref')!;
+    const lambda = entries.find((e) => e[0] === 'lambda')!;
+    const call = entries.find((e) => e[0] === 'call')!;
+    // Identity, not equality: the bus hands over the object, never a copy of it.
+    expect(ref[2]).toBe(obj);
+    expect(lambda[2]).toBe(obj);
+    expect(ref[1]).toBe(host);
+    expect(lambda[1]).toBe(host);
+    // The way out keeps `$event` as the event (decision 97).
+    expect(call[1]).toBe(host);
+    expect(call[2]).toBeInstanceOf(CustomEvent);
+    expect((call[2] as CustomEvent).detail).toBe(obj);
+    c.r();
+  });
+});
+
 describe('teardown cuts every listener (§6.13)', () => {
   it('after r() the node does not respond and the bus stops receiving', () => {
     const { shadow, controller: c } = created('x-tear', BUS('x-tear'));

@@ -2,7 +2,7 @@
 
 import { inject } from '@fudic/di';
 import { deleteCookie, setCookie } from '@fudic/http';
-import { crash, load, login, logout, remove, save, search, searchJson, slowSearch } from 'fudic:routes/usuarios';
+import { crash, load, login, logout, remove, save, SaveFails, search, searchJson, slowSearch } from 'fudic:routes/usuarios';
 import { SESSION_COOKIE } from '../services/sessions';
 import { Users } from '../services/users';
 
@@ -26,6 +26,9 @@ searchJson.handle((ctx) => inject(Users).find(ctx.args.q));
 slowSearch.handle((ctx) => inject(Users).find(ctx.args.q, 3000));
 
 save.handle((ctx) => {
+  // A 409 the function keeps (`catches 409`): the page paints the text of `ana` instead of going to
+  // `_error.fud`. The server sends the code; the words are the .fudapi's, in the page's language.
+  if (ctx.args.id === 1 && !ctx.args.active) throw SaveFails.ana();
   inject(Users).setActive(ctx.args.id, ctx.args.active);
 });
 

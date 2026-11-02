@@ -289,6 +289,27 @@ places, which is what GOV.UK recommends; drop the marker to have it only in the 
 The `*` of a required field goes in `aria-hidden`: it is a visual mark, not part of the name.
 Without it a screen reader says *"Name star"*.
 
+### Sending it
+
+`form:=@save` makes a valid submit call the server function `save` instead of navigating. A
+status the form keeps (`catches`: 400, 409 and 422 by default) is painted into it. Anything
+else is announced on the `<form>`, and the handler receives the datum, not the event:
+
+```html
+@code {
+  function saved(person: Person) { … }       // what `save` returns: `put save … -> Person`
+  function failed(error: Error) {
+    if (error instanceof HttpError) error.status;
+  }
+}
+<form control=@personForm form:=@save @fudic:result=@saved @fudic:error=@failed>
+```
+
+The editor types `person` from the `.fudapi`: declare a different type and `@saved` is
+underlined. `fudic:error` always carries an `Error`; a rejection that is not one arrives as its
+`cause`, and a cancelled call is not announced. A call keeps the event: `@saved($event.detail, 1)`.
+On an ancestor without `form:=`, the result is `unknown`.
+
 ### Four ways to write a field
 
 | Pattern | Name | Description | Clicking the label |

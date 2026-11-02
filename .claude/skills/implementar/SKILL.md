@@ -128,5 +128,11 @@ en verde; los criterios extremo a extremo; marcar el BUG/SDD como `Hecho` en su 
 —**tabla y registro de progreso**—; y las anotaciones cruzadas en otros documentos que la
 spec pida.
 
+**Si una decisión cambió al implementar**, no basta con anotarla en esta spec: busca en
+`docs/sdd/` las specs que la citan o dependen de esta (columna *Depende de* del INDEX, y un
+`grep` de la decisión y de la sintaxis afectada) y corrige las que aún no están `Hecho`, junto
+con su Task y la gramática. Una spec en `Listo` que se queda con la versión vieja se implementa
+mal más tarde.
+
 Commit final aparte. Después dilo listo para revisión y **quédate en el worktree**: no
 salgas ni lo borres salvo que se pida.

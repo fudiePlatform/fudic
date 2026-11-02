@@ -24,6 +24,7 @@ import type { Hover, LocationLink } from 'vscode-languageserver-protocol';
 import { pathToUri } from '../uri.js';
 import { rangeOf, touches, type ApiDocument } from './document.js';
 import type { ApiHost } from './host.js';
+import { generatedIn } from './lenses.js';
 import { apiRefs, type ApiRef } from './refs.js';
 
 /**
@@ -75,6 +76,28 @@ export function apiDefinition(doc: ApiDocument, offset: number, host: ApiHost): 
       targetRange: rangeOf(source.path, text, decl.span),
       targetSelectionRange: range,
       originSelectionRange: rangeOf(doc.path, doc.text, target.ref.name.span),
+    },
+  ];
+}
+
+/**
+ * On the name a declaration is declared with, what it generates (SDD-75, Pedro 2026-11-02): Ctrl+Click
+ * on `type Person` opens `interface Person` in the types of the file — where else would the
+ * declaration itself lead. `undefined` off a declared name, or when the types do not have it.
+ */
+export function declaredTypes(doc: ApiDocument, offset: number, host: ApiHost): LocationLink[] | undefined {
+  const names = doc.source.file.declarations.flatMap((d) => ('name' in d ? [d.name] : []));
+  const name = names.find((n) => touches(n.span, offset));
+  if (name === undefined) return undefined;
+  const types = host.typesText(doc.path);
+  const found = generatedIn(types, name.text);
+  if (found === undefined) return undefined;
+  return [
+    {
+      targetUri: pathToUri(types.path).toString(),
+      targetRange: found.range,
+      targetSelectionRange: found.range,
+      originSelectionRange: rangeOf(doc.path, doc.text, name.span),
     },
   ];
 }

@@ -15,6 +15,7 @@ import {
   collectTemplateJs,
   documentRoots,
   reactiveNames,
+  topLevelBindings,
   walk,
   type FragmentId,
   type JsBatchResult,
@@ -27,7 +28,7 @@ import { emitCssVirtuals } from './css.js';
 import { emitClientVirtual, type TemplateJs } from './emit-client.js';
 import type { FragmentAst } from './template/context.js';
 import { pipesOf } from './template/pipes.js';
-import { findPropsCall, type PropsCall } from './props.js';
+import { findPropsCall, isPropsCall, type PropsCall } from './props.js';
 import type { FileRegistry, VirtualFile } from './types.js';
 
 /**
@@ -112,17 +113,40 @@ function statementsOf(result: JsBatchResult, id: FragmentId): readonly OxcNode[]
   return result.ast(id) as readonly OxcNode[];
 }
 
-/** What the template projection needs out of the batch: the reactives, the ASTs and the pipes. */
+/**
+ * What the template projection needs out of the batch: the reactives, the names the `@code`
+ * declares at its top level, the ASTs and the pipes.
+ */
 function templateJs(js: EmitJs, source: string): TemplateJs {
   const reactives = new Set<string>();
+  const topLevel = new Set<string>();
   // The `@code` is browser code, all of it (SDD-60 §4.8): its `signal(...)` are reactive
   // wherever they sit, exactly as the compiler reads them.
   for (const id of js.code) {
-    for (const name of reactiveNames(statementsOf(js.result, id))) reactives.add(name);
+    const statements = statementsOf(js.result, id);
+    for (const name of reactiveNames(statements)) reactives.add(name);
+    // The props are the parent's, not this file's: a callback cell is not a receiver whose
+    // parameter is a contract of the bus.
+    for (const name of topLevelBindings(statements.filter((s) => !declaresProps(s)))) topLevel.add(name);
   }
-  if (js.ast === undefined) return { reactives };
+  if (js.ast === undefined) return { reactives, topLevel };
   const ast = (at: Span): FragmentAst | undefined => js.ast?.(at);
-  return { reactives, ast, pipes: (at) => pipesOf(ast(at), (a, b) => js.result.mapSpan(a, b), source) };
+  return {
+    reactives,
+    topLevel,
+    ast,
+    pipes: (at) => pipesOf(ast(at), (a, b) => js.result.mapSpan(a, b), source),
+  };
+}
+
+/** `const { … } = props<T>();` — the one top-level declaration whose names are not the file's. */
+function declaresProps(statement: OxcNode): boolean {
+  if (statement.type !== 'VariableDeclaration') return false;
+  const declarations = statement['declarations'] as readonly OxcNode[];
+  return declarations.some((d) => {
+    const init = d['init'] as OxcNode | null;
+    return init !== null && isPropsCall(init);
+  });
 }
 
 /**

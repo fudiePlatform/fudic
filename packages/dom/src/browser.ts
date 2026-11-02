@@ -8,7 +8,7 @@
  */
 
 import { NS, type Ns } from './ns.js';
-import { type DomClient } from './dom.js';
+import { type DomClient, type LiveProperty } from './dom.js';
 import { guardUrl } from './url.js';
 import { htmlOf } from './html.js';
 import { attrsDiff } from './attrs.js';
@@ -43,6 +43,12 @@ export const browserDom: DomClient<Node> = {
   },
   removeAttr(el: Node, name: string): void {
     (el as Element).removeAttribute(name);
+  },
+  setLive(el: Node, name: LiveProperty, value: unknown): void {
+    const control = el as unknown as Record<LiveProperty, unknown>;
+    // The same reading the attribute gets: `false` and `null` write none, `true` the empty one.
+    const next = name === 'value' ? (value === true || value === false || value == null ? '' : String(value)) : value !== false && value != null;
+    if (control[name] !== next) control[name] = next;
   },
   append(parent: Node, child: Node): void {
     parent.appendChild(child);

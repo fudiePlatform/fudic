@@ -38,6 +38,7 @@ import type { TemplateJs } from './oxc-code.js';
 import { EMPTY_CONTROLS, type ControlPlan } from './controls.js';
 import type { DelegationJs, DelegationPlan, DelegationRead } from '../semantic/delegation.js';
 import { CodeWriter } from './writer.js';
+import { codeNames, type CodeBlockNode } from '../code/index.js';
 
 /**
  * What the hookup needs beyond the markup, shared by every walk of ONE file.
@@ -142,12 +143,18 @@ const EMPTY_DELEGATION: DelegationPlan = {
  * The pairing of SDD-37 is one function with two callers, and this is the half that differs —
  * the semantic pass looks a fragment up by node, the emit by the span it registered it under.
  */
-export function templateDelegationJs(template: TemplateJs): DelegationJs {
+export function templateDelegationJs(template: TemplateJs, scope: ReadonlySet<string>): DelegationJs {
   return {
     headerAst: (loop) => rootOf(template.ast(loop.header.inner)),
     valueAst: (expr) => rootOf(template.ast(expr.expr)),
     spanOf: (node) => span(template.offset(node.start), template.offset(node.end)),
+    scope,
   };
+}
+
+/** What the `@code` of a document imports or declares, the scope a delegated row may clash with. */
+export function codeScope(source: string, code: CodeBlockNode | undefined): ReadonlySet<string> {
+  return code === undefined ? new Set() : codeNames(source, code);
 }
 
 /** A CALL whose callee arrived as a cell, with the read spliced in: `onSave(x)` → `onSave()(x)`. */
@@ -167,10 +174,23 @@ function rootOf(ast: FragmentAst): OxcNode | undefined {
   return unwrapParens(Array.isArray(ast) ? undefined : (ast as OxcNode));
 }
 
+/**
+ * The events fudic dispatches with THE datum in `detail`: what a form's call returned and
+ * what it failed with (decision 173). A reference or a lambda bound to one of them receives
+ * the datum; a call keeps `$event` as the way out.
+ */
+const DATUM_EVENTS: ReadonlySet<string> = new Set(['fudic:result', 'fudic:error']);
+
 /** The listener a plain `@event` binding subscribes, or `undefined` for `FUD0291`. */
-export function eventHandler(source: string, at: Span, ctx: HookupContext): string | undefined {
+export function eventHandler(
+  source: string,
+  at: Span,
+  ctx: HookupContext,
+  event: string,
+): string | undefined {
   const root = rootOf(ctx.template.ast(at));
   const text = source.slice(at.start, at.end);
+  const datum = DATUM_EVENTS.has(event);
   switch (handlerShape(root)) {
     // Invoked at DISPATCH, inside an arrow whose parameter is spelled `$event`: the argument
     // list is copied character for character, so what the author wrote is what runs.
@@ -179,9 +199,10 @@ export function eventHandler(source: string, at: Span, ctx: HookupContext): stri
     // A bare reference to a callback prop has to be read at dispatch too, and the arrow is
     // what defers it: the cell may still be empty when this listener is registered.
     case 'reference':
-      return ctx.callbacks.has(text) ? `($event) => ${text}()($event)` : text;
+      if (ctx.callbacks.has(text)) return `($event) => ${text}()(${datum ? '$event.detail' : '$event'})`;
+      return datum ? `($event) => ${text}($event.detail)` : text;
     case 'lambda':
-      return text;
+      return datum ? `($event) => (${text})($event.detail)` : text;
     case 'unsuitable':
       return undefined;
   }
@@ -197,15 +218,16 @@ export function eventHandler(source: string, at: Span, ctx: HookupContext): stri
  * ```
  *
  * One pass and not one per name: the path is the same list for all of them, and walking it
- * twice would double the only cost delegation has. The guard is what makes `$day` a `Day` and
+ * twice would double the only cost delegation has. The guard is what makes `day` a `Day` and
  * never a `Day | undefined` (§3.3) — a click born outside every row calls nothing.
  *
  * `composedPath()` and not `closest()`, because a selector needs an attribute in the DOM and
  * §3.4 does not write one. It crosses shadow roots too, which is what makes a
  * `<app-card delegate:day>` work from inside the child's own shadow.
  *
- * The call text is the author's, spliced: each `$name` is replaced by its getter call, in
- * reverse source order so an earlier splice cannot move a later offset.
+ * The call text is the author's, spliced: each mention of a row — `day`, the `p` of `p.id` — is
+ * replaced by its getter call, in reverse source order so an earlier splice cannot move a later
+ * offset.
  */
 export function delegatedHandler(
   source: string,
@@ -218,17 +240,21 @@ export function delegatedHandler(
   // shape reaches here with no reads at all and never reaches here.
   if (handlerShape(root) !== 'call') return undefined;
 
-  const getters = reads.map((_, i) => `$z${i}`);
+  // One getter per TABLE and not per mention: `@borrar(p.id, p.name)` reads one row twice, and
+  // looking it up twice would walk the path for nothing.
+  const tables = [...new Set(reads.map((read) => read.table))];
+  const getters = tables.map((_, i) => `$z${i}`);
+  const getterOf = (table: string): string => getters[tables.indexOf(table)]!;
   let call = withCellRead(source.slice(at.start, at.end), at, root!, ctx);
-  const spliced = reads
-    .map((read, i) => ({ read, getter: getters[i]! }))
-    .sort((a, b) => b.read.at.start - a.read.at.start);
-  for (const { read, getter } of spliced) {
+  const spliced = [...reads].sort((a, b) => b.at.start - a.at.start);
+  for (const read of spliced) {
     const start = read.at.start - at.start;
-    call = call.slice(0, start) + `${getter}()` + call.slice(read.at.end - at.start);
+    // `{ p }` keeps its key: the value is what changes, and a bare `{ $z0() }` is not an object.
+    const value = `${read.shorthand ? `${read.name}: ` : ''}${getterOf(read.table)}()`;
+    call = call.slice(0, start) + value + call.slice(read.at.end - at.start);
   }
 
-  const lookups = reads.map((read, i) => `${getters[i]!} ??= ${read.table}.get($y);`).join(' ');
+  const lookups = tables.map((table, i) => `${getters[i]!} ??= ${table}.get($y);`).join(' ');
   const guard = getters.map((g) => `${g} === undefined`).join(' || ');
   return (
     `($event) => { let ${getters.join(', ')}; ` +
@@ -261,10 +287,11 @@ export function busHandler(source: string, at: Span, ctx: HookupContext): string
       return `($event) => ${source.slice(at.start, ctx.template.offset(callee.end))}.call($host${written})`;
     }
     // A bare reference takes no parens; a lambda does, or `.call` would parse as part of it.
+    // Both receive what was passed to `emit` (decision 173); a call keeps `$event`.
     case 'reference':
-      return `($event) => ${text}.call($host, $event)`;
+      return `($event) => ${text}.call($host, $event.detail)`;
     case 'lambda':
-      return `($event) => (${text}).call($host, $event)`;
+      return `($event) => (${text}).call($host, $event.detail)`;
     case 'unsuitable':
       return undefined;
   }

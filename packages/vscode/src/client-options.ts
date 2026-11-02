@@ -31,6 +31,12 @@ export const FILE_EVENTS: readonly string[] = [
   // The contracts (SDD-60 §4.9): a rule changed in one `.fudapi` revalidates the one that uses
   // it. A library's `fudapi/` changes with its `package.json`, already watched above.
   '**/*.fudapi',
+  // Who implements a contract (SDD-75 §4.2): a handler written or removed changes the lens over
+  // its declaration without reopening the `.fudapi`.
+  '**/src/server/**',
+  '**/src/browser/**',
+  // And a pipe's implementation, beside its contract in the folder of pipes.
+  '**/src/pipes/**',
 ];
 
 export const buildClientLaunch = (

@@ -714,6 +714,10 @@ function emitBehaviour(
 
   switch (binding.type) {
     case 'event':
+      if (binding.name === 'fudic:result' || binding.name === 'fudic:error') {
+        emitFormEvent(ctx, el, attr, binding.name, binding.value);
+        return;
+      }
       // A hyphen means a custom event, which has no entry in `HTMLElementEventMap`; `as
       // never` keeps the handler checked as a function while giving up on the event type
       // (decision 28). A standard name stays typed, so `e` is a `MouseEvent` in `@click`.
@@ -725,16 +729,23 @@ function emitBehaviour(
       ctx.w.scaffold(');\n');
       return;
 
-    case 'bus':
-      // The bus name may itself be an expression (decision 28.b); either way the event
-      // type is unknowable, so the handler is checked and the event is not.
-      ctx.w.scaffold('$on(', attr.span);
-      if (typeof binding.eventName === 'string') ctx.w.scaffold(`'${binding.eventName}'`);
-      else copyRazor(ctx, binding.eventName);
-      ctx.w.scaffold(' as never, ');
+    case 'bus': {
+      // A reference or a lambda receives the datum, a call gets `$event` (decision 173). A
+      // literal name is typed by what its receivers declare; an expression (decision 28.b)
+      // names a channel no type can look up, so its datum is `any`.
+      const call = handlerShape(rootAt(ctx, binding.value.expr)) === 'call';
+      if (typeof binding.eventName === 'string') {
+        ctx.w.scaffold(call ? '$busEvent(' : '$busOn(', attr.span);
+        ctx.w.scaffold(`'${binding.eventName}'`);
+      } else {
+        ctx.w.scaffold(call ? '$busEventAny(' : '$busOnAny(', attr.span);
+        copyRazor(ctx, binding.eventName);
+      }
+      ctx.w.scaffold(', ');
       emitHandler(ctx, attr, binding.value);
       ctx.w.scaffold(');\n');
       return;
+    }
 
     case 'class':
       ctx.w.scaffold('$cls(', attr.span);
@@ -801,6 +812,51 @@ function emitBehaviour(
     default:
       return;
   }
+}
+
+/**
+ * `@fudic:result` and `@fudic:error`, whose reference or lambda receives the DATUM the form
+ * announced and whose call gets the event (decision 173).
+ *
+ * ```ts
+ * $onResult(save, hecho);                                 // hecho: (persona: Person) => …
+ * $onResultEvent(save, ($event) => hecho($event.detail)); // $event: CustomEvent<Person>
+ * $onError(fallo);                                        // fallo: (error: Error) => …
+ * ```
+ *
+ * The type of a result is what the `form:=` OF THE SAME ELEMENT returns; that is why its
+ * expression is the first argument. It is copied as scaffolding: it is already projected, once,
+ * in its own `$formSend`, and a second mapping over the same characters would answer a hover or
+ * a go-to-definition on `save` twice. An element without one is an ancestor listening to a
+ * bubbling event, and an ancestor does not know which form announced: `undefined`, so `unknown`.
+ */
+function emitFormEvent(
+  ctx: TemplateContext,
+  el: ElementNode,
+  attr: Attribute,
+  name: 'fudic:result' | 'fudic:error',
+  value: RazorExpression,
+): void {
+  const call = handlerShape(rootAt(ctx, value.expr)) === 'call';
+  if (name === 'fudic:error') {
+    ctx.w.scaffold(call ? '$onErrorEvent(' : '$onError(', attr.span);
+  } else {
+    ctx.w.scaffold(call ? '$onResultEvent(' : '$onResult(', attr.span);
+    ctx.w.scaffold(`${formSendText(ctx, el) ?? 'undefined'}, `);
+  }
+  emitHandler(ctx, attr, value);
+  ctx.w.scaffold(');\n');
+}
+
+/** The source text of the `form:=` an element carries, if it carries one. */
+function formSendText(ctx: TemplateContext, el: ElementNode): string | undefined {
+  for (const attr of el.attributes) {
+    const binding = classifyAttribute(attr, ctx.source).value;
+    if (binding.type === 'form-send') {
+      return ctx.source.slice(binding.value.expr.start, binding.value.expr.end);
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -890,11 +946,13 @@ function emitHandler(ctx: TemplateContext, attr: Attribute, value: RazorExpressi
     return;
   }
 
-  // `$day` is written HERE and declared by a loop BELOW, so there is no scope in the
-  // projection that holds it — and inventing one out of `unknown` would give the author a
-  // name that type-checks against everything. The loop's own header re-opens the exact scope
-  // instead: destructuring, defaults and a C-style `@for` all arrive with the type they have
-  // inside the body, because it is the same header that gives them that type in the body.
+  // `day` is written HERE and declared by a loop BELOW, so there is no scope in the projection
+  // that holds it — and inventing one out of `unknown` would give the author a name that
+  // type-checks against everything. The loop's own header re-opens the exact scope instead:
+  // destructuring, defaults and a C-style `@for` all arrive with the type they have inside the
+  // body, because it is the same header that gives them that type in the body. The handler is
+  // copied inside it, so its `day` — bare, or in `day.id` — IS the header's binding (decision
+  // 177): the hover on it is the row's.
   //
   // Every header the reads need, in source order and each one once. Source order IS nesting
   // order — an enclosing header is written before the one inside it — so opening them like
@@ -910,12 +968,6 @@ function emitHandler(ctx: TemplateContext, attr: Attribute, value: RazorExpressi
   ctx.w.scaffold('($event) => { ');
   for (const at of headers) {
     ctx.w.scaffold(`for (${ctx.source.slice(at.start, at.end)}) { `);
-  }
-  // One declaration per NAME and not per read: `@fn($item, $item)` is a handler that reads
-  // the same row twice, which is legal, and two `const $item` would be a TS2451 of the
-  // projection's own making.
-  for (const name of new Set(reads.map((read) => read.name))) {
-    ctx.w.scaffold(`const $${name} = ${name}; `);
   }
   ctx.w.scaffold('return ');
   copyRazor(ctx, value);

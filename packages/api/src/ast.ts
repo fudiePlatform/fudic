@@ -281,6 +281,9 @@ export interface FnDecl extends Documented {
   readonly form?: FormRef;
   readonly invalidates: readonly InvalidatesClause[];
   readonly compress?: CompressClause;
+  /** `catches <status>+`: the statuses that reach the caller instead of `error-pages` (decision 174). */
+  readonly catches?: CatchesOption;
+  /** `fails <code> <status> "<text>"`: the text is the page's to say, by its code (decision 175). */
   readonly fails: readonly FailsClause[];
   readonly args: readonly ArgDecl[];
   readonly returns?: ReturnsClause;
@@ -322,7 +325,6 @@ export interface LoadDecl extends Documented {
   readonly buffer?: BufferOption;
   readonly uses: readonly UseClause[];
   readonly skips: readonly SkipClause[];
-  readonly fails: readonly FailsClause[];
   /** The shape of `data`. */
   readonly fields: readonly TypedField[];
   readonly span: Span;

@@ -3,5 +3,6 @@
 put save
   use auth
   form personForm
+  catches 409
   fails reserved 409 "Ese nombre está reservado."
   -> Person

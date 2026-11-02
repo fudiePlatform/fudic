@@ -387,3 +387,8 @@ export * from './codes/FUD1323.js';
 export * from './codes/FUD1324.js';
 export * from './codes/FUD1325.js';
 export * from './codes/FUD1340.js';
+export * from './codes/FUD1360.js';
+export * from './codes/FUD1380.js';
+export * from './codes/FUD1381.js';
+export * from './codes/FUD1382.js';
+export * from './codes/FUD1383.js';

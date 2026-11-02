@@ -10,6 +10,7 @@
  * chooses from: a workspace opened at its root holds several projects, each with its catalogs.
  */
 
+import { API_EXTENSION, extractApiMessages } from '@fudic/api';
 import { extractMessages, type Message } from '@fudic/compiler';
 import { CONFIG_FILE, readProjectConfig } from '@fudic/config';
 import { LOCALES_DIR } from '@fudic/conventions';
@@ -59,7 +60,7 @@ export class Translations {
     return true;
   }
 
-  /** The translations of the message under `offset` in the `.fud` at `path`, if there is one. */
+  /** The translations of the message under `offset` in the `.fud` or `.fudapi` at `path`, if there is one. */
   at(path: string, source: string, offset: number): MessageTranslations | undefined {
     const file = toPosix(path);
     const app = this.#appOf(file.slice(0, file.lastIndexOf('/')));
@@ -83,7 +84,9 @@ export class Translations {
     if (known?.source === source) return known.messages;
     // Named as `fudic translate` names it: relative to the app's root, so the context — and
     // with it the key — is the catalog's.
-    const messages = extractMessages(source, file.slice(root.length + 1)).value;
+    // A `.fudapi`'s texts are messages too (SDD-74 §4.5), with the same hover.
+    const name = file.slice(root.length + 1);
+    const messages = (file.endsWith(API_EXTENSION) ? extractApiMessages(source, name) : extractMessages(source, name)).value;
     this.#messages.set(file, { source, messages });
     return messages;
   }

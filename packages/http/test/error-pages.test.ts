@@ -148,6 +148,60 @@ describe.each(IMPLEMENTATIONS)('%s', (_name, stepOf) => {
     });
   });
 
+  describe('errorPages: what the function keeps (SDD-74 §4.1, criterion 5)', () => {
+    const failKept = (e: unknown, catches: readonly number[], args: unknown = undefined, routes?: ErrorRoutes) =>
+      run(stepOf(routes), { ...clientCtx(), args, catches }, () => { throw e; });
+
+    it('a 409 in ctx.catches is rethrown as is and never navigates, route or not', async () => {
+      const e = conflict('Ese nombre está reservado.');
+      await expect(failKept(e, [409], undefined, { 409: '/never' })).rejects.toBe(e);
+      expect(assign).not.toHaveBeenCalled();
+    });
+
+    it('a 404 not in ctx.catches navigates to _error.fud/404', async () => {
+      const p = failKept(notFound(), [409]);
+      expect(await pending(p)).toBe(true);
+      expect(assign).toHaveBeenCalledWith('/_fudic/error/404');
+    });
+
+    it('a status not kept still goes to its route', async () => {
+      const p = failKept(unauthorized(), [409], undefined, { 401: '/login' });
+      expect(await pending(p)).toBe(true);
+      expect(assign).toHaveBeenCalledWith('/login');
+    });
+
+    it('a 409 with ctx.catches = [] but sent by a form that keeps 409 is rethrown', async () => {
+      const f = form({ name: str('') }, { catches: [409] });
+      const e = conflict('taken');
+      await expect(failKept(e, [], f)).rejects.toBe(e);
+      expect(assign).not.toHaveBeenCalled();
+    });
+
+    it('the call keeps the union: the function’s 409 and the form’s 400', async () => {
+      const f = form({ name: str('') }, { catches: [400] });
+      await expect(failKept(conflict(), [409], f)).rejects.toBeInstanceOf(HttpError);
+      await expect(failKept(badRequest(), [409], f)).rejects.toBeInstanceOf(HttpError);
+      expect(assign).not.toHaveBeenCalled();
+
+      const p = failKept(forbidden(), [409], f);
+      expect(await pending(p)).toBe(true);
+      expect(assign).toHaveBeenCalledWith('/_fudic/error/403');
+    });
+
+    it('ctx.catches never keeps what is not an HttpError: a 500 it declares is a status, not a crash', async () => {
+      const boom = failKept(new TypeError('boom'), [500]);
+      expect(await pending(boom)).toBe(true);
+      expect(assign).toHaveBeenCalledWith('/_fudic/error/500');
+    });
+
+    it('a 422 is rethrown whether ctx.catches has it or not', async () => {
+      const e = new ValidationError({ status: 422, title: 'Unprocessable Content' });
+      await expect(failKept(e, [])).rejects.toBe(e);
+      await expect(failKept(e, [422])).rejects.toBe(e);
+      expect(assign).not.toHaveBeenCalled();
+    });
+  });
+
   describe('errorPages: what the sent form keeps (BUG-51)', () => {
     it('rethrows a status the form’s $catches keeps, route or not', async () => {
       const e = conflict('taken');

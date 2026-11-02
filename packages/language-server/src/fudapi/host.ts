@@ -139,6 +139,15 @@ export class ApiHost {
         });
       }
     }
+    // A library's own contracts, by the name its apps and its own scripts import them with
+    // (SDD-75): what its types, its modules and its implementations are found under.
+    const name = this.#packageName(project);
+    if (name !== undefined) {
+      const published = `${project}/${API_DIR}`;
+      for (const path of this.#walk(published)) {
+        found.push({ id: `${name}/${path.slice(published.length + 1, -API_EXTENSION.length)}`, path, origin: { package: name } });
+      }
+    }
     this.#files.set(project, found);
     return found;
   }
@@ -170,13 +179,32 @@ export class ApiHost {
   /** In a library, its folder of pipes and its package name; `undefined` in an app. */
   #ownPipes(project: string): { readonly folder: string; readonly name: string } | undefined {
     if (this.#config(project)['kind'] !== 'lib') return undefined;
-    let name: unknown;
+    const name = this.#packageName(project);
+    return name !== undefined ? { folder: `${project}/${this.#pipesOf(project)}/`, name } : undefined;
+  }
+
+  /** The name a project's `package.json` gives it; `undefined` without one. */
+  #packageName(project: string): string | undefined {
     try {
-      name = (JSON.parse(this.#deps.fs.readFile(`${project}/package.json`) ?? '{}') as { name?: unknown }).name;
+      const name = (JSON.parse(this.#deps.fs.readFile(`${project}/package.json`) ?? '{}') as { name?: unknown }).name;
+      return typeof name === 'string' ? name : undefined;
     } catch {
       return undefined; // a package.json being written names nothing yet
     }
-    return typeof name === 'string' ? { folder: `${project}/${this.#pipesOf(project)}/`, name } : undefined;
+  }
+
+  /**
+   * The project whose `.fudic/api` holds the types of a `.fudapi`: the app's, for a dependency's
+   * file reached through the app's `node_modules` — the library's own folder is no place to write.
+   */
+  #typesProject(path: string): string {
+    const at = path.indexOf('/node_modules/');
+    return at === -1 ? this.projectOf(path) : path.slice(0, at);
+  }
+
+  /** The `<id>` of a `.fudapi` of a project: as the project lists it, or as an app file would be named. */
+  #idIn(project: string, path: string): string {
+    return this.#filesOf(project).find((f) => f.path === path)?.id ?? this.#appId(project, path);
   }
 
   /** The direct dependencies of a project, by its `package.json`. */
@@ -239,10 +267,60 @@ export class ApiHost {
     return written;
   }
 
+  /**
+   * Where the types of the `.fudapi` at `path` are, written first when they are not there
+   * (SDD-75 §3.2, `Types`).
+   */
+  typesOf(path: string): string {
+    const project = this.#typesProject(path);
+    const target = typesPath(project, this.#idIn(project, path));
+    if (this.#deps.fs.readFile(target) === undefined) this.generate(project);
+    return target;
+  }
+
+  /** The types of the `.fudapi` at `path` and their text, as `typesOf` leaves them on disk: none on a disk that refuses them. */
+  typesText(path: string): { readonly path: string; readonly text: string } {
+    const target = this.typesOf(path);
+    return { path: target, text: this.#deps.fs.readFile(target) ?? '' };
+  }
+
+  /**
+   * Writes again the types of the `.fudapi` at `path` and of every one whose types import it,
+   * whether they changed or not (SDD-75 §3.2, `Regenerate`): the way back after a branch switch
+   * or a lost file event. Answers the paths written.
+   */
+  regenerate(path: string): readonly string[] {
+    const project = this.#typesProject(path);
+    const sources = this.#filesOf(project).map((f) => this.#source(f, this.read(f.path) ?? '').source);
+    const index = createApiIndex(sources);
+    const id = this.#idIn(project, path);
+    const written: string[] = [];
+    for (const source of sources) {
+      const text = emitDeclarations(source, index, this.#context(project, source.path));
+      if (source.id !== id && !text.includes(JSON.stringify(`fudic:${id}`))) continue;
+      const target = typesPath(project, source.id);
+      this.#deps.fs.writeFile(target, text);
+      this.#wrote(target, text);
+      written.push(target);
+    }
+    return written;
+  }
+
+  /**
+   * Where the scripts that implement the `.fudapi` at `path` are (SDD-75 §4.2): the `server/` and
+   * `browser/` of its app's `src/` — of the library itself, for a library's own contract — and the
+   * project's folder of pipes.
+   */
+  implementationFolders(path: string): readonly string[] {
+    const project = this.projectOf(path);
+    const base = path.startsWith(`${project}/${API_DIR}/`) ? project : `${project}/${SRC_DIR}`;
+    return [`${base}/server`, `${base}/browser`, `${project}/${this.#pipesOf(project)}`];
+  }
+
   /** Removes the types of a `.fudapi` that is gone. */
   forget(path: string): void {
     const project = this.projectOf(path);
-    const target = typesPath(project, this.#appId(project, path));
+    const target = typesPath(project, this.#idIn(project, path));
     this.#deps.fs.removeFile(target);
     this.#wrote(target, undefined);
   }

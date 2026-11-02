@@ -60,6 +60,10 @@ export interface FnSpec {
   /** Global, file and its own level, from the outside in. */
   readonly chain: readonly Level[];
   readonly invalidates?: readonly string[];
+  /** Its `catches`: the statuses that reach the caller instead of `error-pages`. */
+  readonly catches?: readonly number[];
+  /** The text of each of its `fails` codes, in the language of the page its module was written for. */
+  readonly fails?: Readonly<Record<string, string>>;
   /** The app's `base`. Default `/`. */
   readonly base?: string;
 }
@@ -150,6 +154,7 @@ export function stub<C, R, A>(spec: FnSpec): Contract<C, R, A> {
       headers: new Headers(),
       args,
       signal: options.signal ?? new AbortController().signal,
+      catches: spec.catches ?? [],
     };
     const value = await run(steps as never, ctx, async (c: ClientContext) => {
       const target = new URL(c.url);
@@ -173,7 +178,7 @@ export function stub<C, R, A>(spec: FnSpec): Contract<C, R, A> {
         credentials: 'same-origin',
         ...(sent !== undefined ? { body: sent } : {}),
       });
-      return decode(response, { wire, ...(spec.returns !== undefined ? { returns: spec.returns } : {}) });
+      return decode(response, { wire, ...(spec.returns !== undefined ? { returns: spec.returns } : {}), ...(spec.fails !== undefined ? { fails: spec.fails } : {}) });
     });
     const own = (spec.invalidates ?? []).map((path) => join(base, path));
     const stale = spec.method === 'GET' ? own : [globalThis.location.pathname, ...own];

@@ -53,6 +53,16 @@ function setup(
 
 const flush = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
 
+/**
+ * The shape `@fudic/http`'s `HttpError` has where `bindForm` looks: an `Error` with a numeric
+ * `status`. Forms does not depend on http, so the test spells it out.
+ */
+class HttpError extends Error {
+  constructor(readonly status: number) {
+    super(`HTTP ${String(status)}`);
+  }
+}
+
 describe('bindForm with a server function', () => {
   it('a valid submit is prevented, sends the form, and emits fudic:result with the value', async () => {
     const send = vi.fn(async () => ({ id: 7 }));
@@ -106,15 +116,66 @@ describe('bindForm with a server function', () => {
     expect(document.activeElement).toBe(summary);
   });
 
-  it('any other error is fudic:error with the error as detail', async () => {
-    const boom = { status: 500, title: 'Internal Server Error' };
+  it('an HttpError the form does not keep is fudic:error with that same error (SDD-72 criterion 7)', async () => {
+    const boom = new HttpError(500);
     const { f, events, submit } = setup(async () => {
       throw boom;
     });
     f.a.set('Pedro');
     submit();
     await flush();
-    expect(events).toEqual([{ type: 'fudic:error', detail: boom }]);
+    expect(events).toHaveLength(1);
+    expect(events[0]!.type).toBe('fudic:error');
+    expect(events[0]!.detail).toBe(boom);
+  });
+
+  it('a network TypeError is fudic:error with that same TypeError (SDD-72 criterion 7)', async () => {
+    const offline = new TypeError('failed to fetch');
+    const { f, events, submit } = setup(async () => {
+      throw offline;
+    });
+    f.a.set('Pedro');
+    submit();
+    await flush();
+    expect(events.map((e) => e.detail)).toEqual([offline]);
+    expect(events[0]!.detail).toBe(offline);
+  });
+
+  it('a rejection that is not an Error travels as the cause of one (SDD-72 criterion 8)', async () => {
+    const boom = { status: 500 };
+    const { f, events, submit } = setup(async () => {
+      throw boom;
+    });
+    f.a.set('Pedro');
+    submit();
+    await flush();
+    expect(events).toHaveLength(1);
+    expect(events[0]!.type).toBe('fudic:error');
+    const detail = events[0]!.detail as Error;
+    expect(detail).toBeInstanceOf(Error);
+    expect(detail.message).toBe('fudic:error: the call was rejected with a non-Error value');
+    expect(detail.cause).toBe(boom);
+  });
+
+  it('a cancelled call is no failure: an AbortError announces nothing (SDD-72 criterion 9)', async () => {
+    const { f, events, submit } = setup(async () => {
+      throw new DOMException('', 'AbortError');
+    });
+    f.a.set('Pedro');
+    submit();
+    await flush();
+    expect(events).toEqual([]);
+  });
+
+  it('another DOMException is a failure like any Error, announced as itself', async () => {
+    const other = new DOMException('quota', 'QuotaExceededError');
+    const { f, events, submit } = setup(async () => {
+      throw other;
+    });
+    f.a.set('Pedro');
+    submit();
+    await flush();
+    expect(events.map((e) => e.detail)).toEqual([other]);
   });
 
   it('a 422 without errors stays in the form: its problem is the summary, under `server` (BUG-51)', async () => {
@@ -191,7 +252,10 @@ describe('bindForm with a server function', () => {
     submit();
     await flush();
     expect(f.$summary()).toBeNull();
-    expect(events).toEqual([{ type: 'fudic:error', detail: refusal }]);
+    // A plain refusal is not an `Error`: it arrives as the cause of one (SDD-72 §4.3).
+    expect(events).toHaveLength(1);
+    expect(events[0]!.type).toBe('fudic:error');
+    expect((events[0]!.detail as Error).cause).toBe(refusal);
   });
 
   it('a status the form adds (`catches: [...DEFAULT_CATCHES, 403]`) stays in it', async () => {
@@ -210,19 +274,34 @@ describe('bindForm with a server function', () => {
   });
 
   it.each([
-    ['null', null],
-    ['a string', 'nope'],
     ['an Error', new Error('x')],
     ['a TypeError, which has no status', new TypeError('failed to fetch')],
-    ['a status that is not a number', { status: '409' }],
-  ])('%s is not a rejection of the form: fudic:error', async (_, error) => {
+  ])('%s is not a rejection of the form: fudic:error with it as detail', async (_, error) => {
     const { f, events, submit } = setup(async () => {
       throw error;
     });
     f.a.set('Pedro');
     submit();
     await flush();
-    expect(events).toEqual([{ type: 'fudic:error', detail: error }]);
+    expect(events).toHaveLength(1);
+    expect(events[0]!.detail).toBe(error);
+  });
+
+  it.each([
+    ['null', null],
+    ['a string', 'nope'],
+    ['a status that is not a number', { status: '409' }],
+  ])('%s is not a rejection of the form: fudic:error with it as cause', async (_, error) => {
+    const { f, events, submit } = setup(async () => {
+      throw error;
+    });
+    f.a.set('Pedro');
+    submit();
+    await flush();
+    expect(events).toHaveLength(1);
+    expect(events[0]!.type).toBe('fudic:error');
+    expect(events[0]!.detail).toBeInstanceOf(Error);
+    expect((events[0]!.detail as Error).cause).toBe(error);
   });
 
   it('without a server function, a valid submit is not prevented, as before', () => {

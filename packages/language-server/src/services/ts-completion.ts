@@ -1422,13 +1422,18 @@ function fudSourceAt(
   const decoded = context.decodeEmbeddedDocumentUri(URI.parse(document.uri));
   if (decoded === undefined) return undefined;
 
-  const [sourceUri] = decoded;
+  const [sourceUri, embeddedId] = decoded;
   if (!isFudSourceUri(sourceUri)) return undefined;
 
   const root = context.language.scripts.get(sourceUri)?.generated?.root as
     | FudicVirtualCode<CachedDocument>
     | undefined;
   if (root === undefined) return undefined;
+  // Volar asks every plugin about the `.fud` itself as well, and its offsets are the SOURCE's.
+  // Read as positions of the projection they land anywhere — inside some other handler — and
+  // the names offered there arrived at the caret of a `delegate:` value. Only the client
+  // projection is this decorator's to narrow.
+  if (embeddedId !== root.client.id) return undefined;
 
   return { cached: root.document };
 }

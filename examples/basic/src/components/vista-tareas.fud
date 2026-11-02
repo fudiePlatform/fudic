@@ -19,6 +19,10 @@
   const dia = date({ day: "numeric", month: "short", timeZone: "Europe/Madrid" });
 
   const quitadas = signal(0);
+
+  function alternar(t: Tarea) {
+    tareas.set(tareas().map(x => x.id === t.id ? { ...x, hecha: !x.hecha } : x));
+  }
 }
 
 <head>
@@ -46,13 +50,13 @@
       @* Leer un valor reactivo: la única llamada de la vista. Sin diagnóstico. *@
       <p class="recuento">Hechas: @hechas() · Pendientes: @pendientes()</p>
 
-      @* Un manejador es TS completo: `{ ...x }`, `Math`, `new Date()`. Sin diagnóstico. *@
-      <ul>
+      @* Un manejador es TS completo: `{ ...x }`, `Math`, `new Date()`. Sin diagnóstico. Y la
+         lista tiene uno solo, en el `<ul>`: cada casilla se marca con `delegate:t`. *@
+      <ul @change=@alternar(t)>
         @foreach (const t of tareas()) key (t.id) {
           <li>
             <label>
-              <input type="checkbox" .checked=@t.hecha
-                     @change=@(() => tareas.set(tareas().map(x => x.id === t.id ? { ...x, hecha: !x.hecha } : x)))>
+              <input type="checkbox" .checked=@t.hecha delegate:t="change">
               @t.titulo
               @* Dos fechas se comparan con `<`, por instante. Sin diagnóstico. *@
               <small>(@(t.creada | dia), @(t.creada < ahora() ? "pasada" : "futura"))</small>

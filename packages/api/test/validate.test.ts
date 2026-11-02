@@ -259,15 +259,12 @@ describe('each validator code (criterion 8)', () => {
   });
 
   it('FUD1093: a `fails` code twice in one declaration', () => {
-    const text = 'get f\n  fails gone 410\n  fails gone 404';
+    const text = 'middleware m\n  client\n  fails gone 410\n  fails gone 404';
     const { d, related } = only(text);
     expect([d.code, d.span.start]).toEqual(['FUD1093', text.lastIndexOf('gone')]);
     expect(related).toEqual([['first here', undefined]]);
-    expect(codesOf('load\n  fails a 404\n  fails a 410', { ctx: route() })).toEqual(['FUD1093']);
     expect(codesOf('rule r\n  on form\n  runs both\n  fails a\n  fails a')).toEqual(['FUD1093']);
-    expect(codesOf('middleware m\n  client\n  fails a 403\n  fails a 401')).toEqual(['FUD1093']);
-    expect(codesOf('get f\n  fails gone 410\nget g\n  fails gone 410')).toEqual([]);
-  });
+    expect(codesOf('middleware m\n  client\n  fails gone 410\nmiddleware n\n  client\n  fails gone 410')).toEqual([]);  });
 
   it('FUD1096: a second `messages` in the project', () => {
     const first = lib('p', 'm', 'messages\n  x  "A."');

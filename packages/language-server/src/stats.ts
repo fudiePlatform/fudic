@@ -23,6 +23,7 @@ import type { CancellationToken } from 'vscode-languageserver-protocol';
  */
 export type RequestKind =
   | 'codeActions'
+  | 'codeLens'
   | 'completion'
   | 'tagCompletion'
   | 'definition'

@@ -6,7 +6,7 @@
  * nobody's business.
  */
 
-import { HttpError, type Problem } from '../errors.js';
+import { CODE_HEADER, HttpError, type Problem } from '../errors.js';
 import { binWire } from '../wire/bin.js';
 import { jsonWire } from '../wire/json.js';
 import type { Wire } from '../wire/wire.js';
@@ -36,7 +36,10 @@ export function problemResponse(problem: Problem, wire: Wire = jsonWire, respons
     for (const [name, value] of response.headers) headers.append(name, value);
   }
   headers.set('content-type', wire.problemType);
-  return new Response(wire.encodeProblem(problem) as BodyInit, { status: problem.status, headers });
+  // The code of a `fails` goes in a header: the body is the published problem, the same for every backend.
+  const { code, ...body } = problem;
+  if (code !== undefined) headers.set(CODE_HEADER, code);
+  return new Response(wire.encodeProblem(body) as BodyInit, { status: problem.status, headers });
 }
 
 /**

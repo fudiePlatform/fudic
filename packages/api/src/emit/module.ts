@@ -11,6 +11,7 @@
 import type { CompressClause, Decl, FailsClause, FnDecl, LoadDecl, MiddlewareArg, MiddlewareDecl, PipeDecl, RuleUse, SkipClause, UseClause } from '../ast.js';
 import type { ApiIndex, ApiSource } from '../index-api.js';
 import type { ApiContext } from '../validate.js';
+import { localizedTexts, type ApiLocale } from '../messages.js';
 import { isArgRule } from '../validate-form.js';
 import { formCode } from './form.js';
 import { canonical, fnv1a } from './signature.js';
@@ -27,6 +28,7 @@ import {
   pascal,
   projectRef,
   str,
+  textOf,
   type EmitCtx,
 } from './shared.js';
 
@@ -48,13 +50,18 @@ interface ModuleCtx extends EmitCtx {
 /** Declarations in the order their values must exist. */
 const ORDER: readonly Decl['kind'][] = ['type', 'enum', 'pattern', 'rule', 'middleware', 'pipe', 'messages', 'form', 'chain', 'load', 'paths', 'layout', 'fn'];
 
-export function emitModule(source: ApiSource, index: ApiIndex, api: ApiContext, side: Side): string {
+/**
+ * The module `fudic:<id>` of a side. With `i18n`, the module of that locale: each text of the
+ * `.fudapi` written translated, or as written when it has no translation (SDD-74 §4.5).
+ */
+export function emitModule(source: ApiSource, index: ApiIndex, api: ApiContext, side: Side, i18n?: ApiLocale): string {
   const imports = new Map<string, Set<string>>();
   const c: ModuleCtx = {
     source,
     index,
     api,
     side,
+    ...(i18n !== undefined ? { texts: localizedTexts(source.file, i18n) } : {}),
     http: new Set(),
     forms: new Set(),
     wire: new Set(),
@@ -149,7 +156,10 @@ function pipe(d: PipeDecl): string {
 function failsOf(name: string, fails: readonly FailsClause[], c: ModuleCtx): string {
   if (fails.length === 0) return '';
   c.http.add('fails');
-  const entries = fails.map((f) => `${camel(f.code.text)}: [${f.status.value}${f.detail === undefined ? '' : `, ${str(f.detail.text)}`}]`);
+  // The server says the text as written, whatever locale its module was compiled for: it sends the
+  // code, and the browser puts the words of the page's language (decision 175).
+  const say = (detail: NonNullable<FailsClause['detail']>): string => (c.side === 'browser' ? textOf(c, detail) : detail.text);
+  const entries = fails.map((f) => `${camel(f.code.text)}: [${f.status.value}${f.detail === undefined ? '' : `, ${str(say(f.detail))}`}]`);
   return `\nexport const ${name}Fails = fails({ ${entries.join(', ')} });`;
 }
 
@@ -222,7 +232,7 @@ function load(d: LoadDecl, c: ModuleCtx): string {
   // its frames with, and what the browser reads them back with (SDD-70 §3.7).
   const fields = d.fields.length === 0 ? '' : `, fields: ${descriptors(d.fields, c)}`;
   c.wires.add('frames');
-  return `export const load = page({ id: ${str(c.source.id)}, name: "load", chain: ${chain}${fields}${settles}, read: readFrames${browser(c)} });${failsOf('Load', d.fails, c)}`;
+  return `export const load = page({ id: ${str(c.source.id)}, name: "load", chain: ${chain}${fields}${settles}, read: readFrames${browser(c)} });`;
 }
 
 /** The validators of `@fudic/forms/contract` by rule, imported under `$` so no rule shadows them. */
@@ -288,6 +298,11 @@ function fn(d: FnDecl, c: ModuleCtx): string {
     ...(rules !== undefined ? [`rules: ${rules}`] : []),
     `chain: ${chainOf(level(d.uses, d.skips, d.compress, c), c)}`,
     ...(d.invalidates.length > 0 ? [`invalidates: [${d.invalidates.flatMap((i) => i.routes).map((r) => str(r.text)).join(', ')}]`] : []),
+    ...(d.catches !== undefined ? [`catches: [${d.catches.statuses.map((s) => s.value).join(', ')}]`] : []),
+    // The words of each failure, in the language of this module: the server only sends the code.
+    ...(c.side === 'browser' && d.fails.some((f) => f.detail !== undefined)
+      ? [`fails: { ${d.fails.flatMap((f) => (f.detail === undefined ? [] : [`${str(f.code.text)}: ${str(textOf(c, f.detail))}`])).join(', ')} }`]
+      : []),
   ];
   return `export const ${d.name.text} = ${kind}({ ${fields.join(', ')} });${failsOf(pascal(d.name.text), d.fails, c)}`;
 }

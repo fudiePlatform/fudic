@@ -11,8 +11,39 @@
  * written at all.
  */
 
+import { documentRoots, eventsReadingRow, type OxcNode } from '@fudic/compiler';
 import type { CachedDocument } from '../document-cache.js';
+import type { DelegateValueContext } from './position.js';
 import { loopBindingNames } from './template-scope.js';
+
+/**
+ * The events a `delegate:p="…"` may still list (decision 176): those of the handlers above the
+ * marker that read `p`, minus the ones its value already names. Spelled without `@`, because
+ * the value is a list of event NAMES and not of bindings.
+ *
+ * The answer comes from the compiler's own pairing, read over the batch this document already
+ * parsed: what is offered is exactly what `FUD1381` accepts.
+ */
+export function delegateEvents(document: CachedDocument, at: DelegateValueContext): readonly string[] {
+  const astOf = (node: Parameters<CachedDocument['js']['fragmentId']>[0]): OxcNode | undefined => {
+    const id = document.js.fragmentId(node);
+    const root = id === undefined ? undefined : document.js.result.ast(id);
+    return Array.isArray(root) ? undefined : (root as OxcNode | undefined);
+  };
+  const events = eventsReadingRow(
+    document.source,
+    documentRoots(document.document),
+    {
+      headerAst: astOf,
+      valueAst: astOf,
+      spanOf: (node) => document.js.result.mapSpan(node.start, node.end),
+      scope: new Set(),
+    },
+    at.element,
+    at.name,
+  );
+  return events.filter((event) => !at.listed.includes(event));
+}
 
 /**
  * The bindings of every loop whose body contains `offset`, innermost last.

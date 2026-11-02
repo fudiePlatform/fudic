@@ -467,18 +467,44 @@ describe('classifyAttribute — delegate: (SDD-37 §6.1, §6.4; decision 117)', 
     expect(binding.name).toBe('list-item');
   });
 
-  it('FUD0667: a marker with a value keeps the binding and the value is not part of it', () => {
-    const { binding, diagnostics } = classifyOne('<div delegate:day="x"></div>');
-    expect(codes(diagnostics)).toEqual(['FUD0667']);
-    expect(binding.type).toBe('delegate');
-    if (binding.type !== 'delegate') return;
-    expect(binding.name).toBe('day');
-    expect(diagnostics[0]?.message).toContain('$day');
+  it('a literal text lists the events it serves, split on blanks (SDD-72 §3.4, decision 176)', () => {
+    const { binding, diagnostics, source } = classifyOne('<div delegate:day="click"></div>');
+    expect(diagnostics).toEqual([]);
+    if (binding.type !== 'delegate') throw new Error('expected a delegate binding');
+    expect(binding.events).toEqual(['click']);
+    expect(source.slice(binding.eventsSpan!.start, binding.eventsSpan!.end)).toBe('click');
+
+    const many = classifyOne('<div delegate:day="  change   input "></div>');
+    expect(many.diagnostics).toEqual([]);
+    if (many.binding.type !== 'delegate') throw new Error('expected a delegate binding');
+    expect(many.binding.events).toEqual(['change', 'input']);
   });
 
-  it('FUD0667: an expression value is rejected too — `delegate:day=@edit` is §7, not v1', () => {
-    const { diagnostics } = classifyOne('<div delegate:day="@edit"></div>');
+  it('with no value it lists none: it serves every event, as before', () => {
+    const { binding } = classifyOne('<div delegate:day></div>');
+    if (binding.type !== 'delegate') throw new Error('expected a delegate binding');
+    expect(binding.events).toBeUndefined();
+    expect(binding.eventsSpan).toBeUndefined();
+  });
+
+  it('FUD0667: an expression value keeps the binding, serving every event, with the new text (criterion 38)', () => {
+    const { binding, diagnostics, source } = classifyOne('<div delegate:day=@x></div>');
     expect(codes(diagnostics)).toEqual(['FUD0667']);
+    if (binding.type !== 'delegate') throw new Error('expected a delegate binding');
+    expect(binding.name).toBe('day');
+    expect(binding.events).toBeUndefined();
+    expect(diagnostics[0]?.message).toBe(
+      'a `delegate:` marker takes no value, or the names of the events it serves: `delegate:day="click"`',
+    );
+    expect(source.slice(diagnostics[0]!.span.start, diagnostics[0]!.span.end)).toBe('@x');
+    expect(codes(classifyOne('<div delegate:day="@edit"></div>').diagnostics)).toEqual(['FUD0667']);
+  });
+
+  it('FUD0667: an empty or blank text too, on the whole attribute when there is no value to point at (criterion 38)', () => {
+    const empty = classifyOne('<div delegate:day=""></div>');
+    expect(codes(empty.diagnostics)).toEqual(['FUD0667']);
+    expect(empty.source.slice(empty.diagnostics[0]!.span.start, empty.diagnostics[0]!.span.end)).toBe('delegate:day=""');
+    expect(codes(classifyOne('<div delegate:day="   "></div>').diagnostics)).toEqual(['FUD0667']);
   });
 
   it('FUD0099: the prefix with no name reuses the code every prefix shares', () => {
@@ -490,8 +516,8 @@ describe('classifyAttribute — delegate: (SDD-37 §6.1, §6.4; decision 117)', 
     expect(source.slice(binding.nameSpan.start, binding.nameSpan.end)).toBe('');
   });
 
-  it('reports both codes when the nameless prefix also carries a value', () => {
-    const { diagnostics } = classifyOne('<div delegate:="x"></div>');
+  it('reports both codes when the nameless prefix also carries a wrong value', () => {
+    const { diagnostics } = classifyOne('<div delegate:=@x></div>');
     expect(codes(diagnostics)).toEqual(['FUD0099', 'FUD0667']);
   });
 

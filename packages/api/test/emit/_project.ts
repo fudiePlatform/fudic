@@ -89,15 +89,14 @@ export const WIDE = [
   '',
 ].join('\n');
 
-/** `userForm` (SDD §3.6) with a function that sends it, and `fails`. */
+/** `userForm` (SDD §3.6) with a function that sends it, and `catches` (SDD-74). */
 export const USER_FORM_FILE = [
   USER_FORM,
   '# Creates the person.',
   'put save',
   '  use auth',
   '  form userForm',
-  '  fails reserved 409 "Ese nombre está reservado."',
-  '  fails gone 410',
+  '  catches 409 410',
   '  -> Saved',
   '',
   'type Saved',

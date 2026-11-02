@@ -8,6 +8,7 @@
  */
 
 import { planDelegation, type DelegationJs } from '../delegation.js';
+import { codeNames } from '../../code/index.js';
 import type { OxcNode } from '../../oxc/index.js';
 import type { Node } from '../../types/index.js';
 import type { Analyzer, SemanticInput } from '../model.js';
@@ -27,10 +28,12 @@ function jsOf(input: SemanticInput): DelegationJs {
     const root = input.js.ast(id);
     return Array.isArray(root) ? undefined : (root as OxcNode);
   };
+  const code = input.document.code;
   return {
     headerAst: astOf,
     valueAst: astOf,
     spanOf: (node) => input.js.mapSpan(node.start, node.end),
+    scope: code === undefined ? new Set() : codeNames(input.source, code),
   };
 }
 

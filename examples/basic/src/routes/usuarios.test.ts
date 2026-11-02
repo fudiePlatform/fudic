@@ -87,7 +87,8 @@ describe('criterion 15: unticking «Activo» repaints the row without reloading'
   test('saves, asks for nothing else, and the row shows the new state', async () => {
     const page = await usuarios();
     const before = rows();
-    const box = activeOf('Ana');
+    // Marta, not Ana: the server refuses to switch Ana off (SDD-74 §4.6).
+    const box = activeOf('Marta');
     expect(box.checked).toBe(true);
     // Focused as a click in a browser leaves it: the repaint must not take the focus away.
     box.focus();
@@ -100,7 +101,7 @@ describe('criterion 15: unticking «Activo» repaints the row without reloading'
     observer.disconnect();
     expect(churn).toEqual([]);
 
-    expect(people.table.find((p) => p.id === 1)!.active).toBe(false);
+    expect(people.table.find((p) => p.id === 3)!.active).toBe(false);
     // The save and nothing more: a mutation does not make the page ask for its data (SDD-70).
     expect(requests.filter((r) => r.startsWith('PUT '))).toHaveLength(1);
     expect(requests.filter((r) => r.startsWith('GET /_fudic/data/'))).toEqual([]);
@@ -108,7 +109,7 @@ describe('criterion 15: unticking «Activo» repaints the row without reloading'
     expect(assign).not.toHaveBeenCalled();
     // The same rows, the same box, still focused: nothing was rebuilt, nothing reloaded.
     expect(rows()).toEqual(before);
-    expect(activeOf('Ana')).toBe(box);
+    expect(activeOf('Marta')).toBe(box);
     expect(box.checked).toBe(false);
     expect(document.activeElement).toBe(box);
   });
@@ -130,6 +131,102 @@ describe('criterion 15: unticking «Activo» repaints the row without reloading'
     expect(people.table.find((p) => p.id === 2)!.active).toBe(false);
     await vi.waitFor(() => expect(activeOf('Luis').checked).toBe(false));
     expect(reload).not.toHaveBeenCalled();
+  });
+});
+
+/** The alert under the table: what the server said when a call kept its error on the page. */
+const alert = (): string => (document.querySelector('[role="alert"]')?.textContent ?? '').trim();
+
+/** Answer the PUTs of `save` by the order they arrive: `fail(n)` says whether the n-th (from 1) gets a 409. */
+function failingSaves(fail: (n: number) => boolean): void {
+  const original = vi.mocked(globalThis.fetch).getMockImplementation()!;
+  let n = 0;
+  vi.mocked(globalThis.fetch).mockImplementation((input, init) => {
+    const request = input instanceof Request ? input : new Request(new URL(String(input), location.href), init);
+    if (request.method !== 'PUT') return original(request);
+    n += 1;
+    if (!fail(n)) return original(request);
+    requests.push(`${request.method} ${new URL(request.url).pathname}`);
+    const problem = { status: 409, title: 'Conflict', detail: 'No se pudo guardar.' };
+    return Promise.resolve(new Response(JSON.stringify(problem), { status: 409, headers: { 'content-type': 'application/problem+json' } }));
+  });
+}
+
+describe('SDD-74 criterion 12: the error stays on the page', () => {
+  test('unticking Ana: the page does not navigate, says why, and the box goes back to ticked', async () => {
+    const page = await usuarios();
+    expect(alert()).toBe('');
+    const box = activeOf('Ana');
+    await page.click(box);
+    await vi.waitFor(() => expect(alert()).toBe('A Ana no se la puede desactivar.'));
+    expect(assign).not.toHaveBeenCalled();
+    expect(reload).not.toHaveBeenCalled();
+    expect(people.table.find((p) => p.id === 1)!.active).toBe(true);
+    expect(activeOf('Ana')).toBe(box);
+    expect(box.checked).toBe(true);
+  });
+
+  test('the next save that goes through clears the alert', async () => {
+    const page = await usuarios();
+    await page.click(activeOf('Ana'));
+    await vi.waitFor(() => expect(alert()).not.toBe(''));
+    await page.click(activeOf('Marta'));
+    await vi.waitFor(() => expect(alert()).toBe(''));
+    expect(people.table.find((p) => p.id === 3)!.active).toBe(false);
+  });
+
+  test('a 404 the function does not keep still goes to error-pages', async () => {
+    const page = await usuarios();
+    const nadie = [...document.querySelectorAll('button')].find((b) => b.textContent === 'Borrar a alguien que no existe')!;
+    await page.click(nadie);
+    await vi.waitFor(() => expect(assign).toHaveBeenCalled());
+    expect(assign.mock.calls[0]![0]).toMatch(/\/404(\?|$)/u);
+  });
+});
+
+describe('SDD-74 criterion 13: three quick clicks, the 2nd refused', () => {
+  test('when they are done, the box and the server agree', async () => {
+    await usuarios();
+    failingSaves((n) => n === 2);
+    const box = activeOf('Marta');
+    expect(box.checked).toBe(true);
+    // Three clicks before any answer: off, on, off — the 2nd (on) is refused.
+    box.click();
+    box.click();
+    box.click();
+    await vi.waitFor(() => expect(requests.filter((r) => r.startsWith('PUT '))).toHaveLength(3));
+    await vi.waitFor(() => expect(activeOf('Marta').checked).toBe(people.table.find((p) => p.id === 3)!.active));
+    expect(people.table.find((p) => p.id === 3)!.active).toBe(false);
+    expect(activeOf('Marta').checked).toBe(false);
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  test('and when the last one is the refused one, both say what the server kept', async () => {
+    await usuarios();
+    failingSaves((n) => n === 2);
+    const box = activeOf('Luis');
+    expect(box.checked).toBe(false);
+    // On, then off refused: the server keeps Luis on.
+    box.click();
+    box.click();
+    await vi.waitFor(() => expect(requests.filter((r) => r.startsWith('PUT '))).toHaveLength(2));
+    await vi.waitFor(() => expect(alert()).toBe('No se pudo guardar.'));
+    expect(people.table.find((p) => p.id === 2)!.active).toBe(true);
+    expect(activeOf('Luis').checked).toBe(true);
+  });
+});
+
+describe('SDD-74 criterion 14: a signal born of data takes the new data', () => {
+  test('after «Entrar como Ana», personas is what the new data brings', async () => {
+    const page = await usuarios();
+    // The server changes behind the page's back: Luis on, Marta gone.
+    people.table[1] = { ...people.table[1]!, active: true };
+    people.table.splice(2, 1);
+    const ana = [...document.querySelectorAll('button')].find((b) => b.textContent === 'Entrar como Ana')!;
+    await page.click(ana);
+    expect(requests.filter((r) => r === 'GET /_fudic/data/usuarios')).toHaveLength(1);
+    await vi.waitFor(() => expect(rows().map((r) => r.cells[0]!.textContent)).toEqual(['Ana', 'Luis']));
+    expect(activeOf('Luis').checked).toBe(true);
   });
 });
 
@@ -190,7 +287,8 @@ describe('criterion 11: error-pages decides before the task', () => {
     const problem = { status: 422, title: 'Unprocessable', errors: { q: ['demasiado largo'] } };
     await usuarios({ fetch: () => respondProblem(search, problem) });
     const t = task(search);
-    expect(await t.run({ q: 'ana' })).toBeUndefined();
+    expect(await t.run({ q: 'ana' })).toEqual({ ok: false, status: 'failed', error: expect.any(ValidationError) });
+    expect(t.message()).toBe((t.error() as Error).message);
     expect(t.state()).toBe('failed');
     expect(t.error()).toBeInstanceOf(ValidationError);
     expect(assign).not.toHaveBeenCalled();

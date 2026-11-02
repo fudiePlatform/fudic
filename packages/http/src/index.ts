@@ -17,6 +17,7 @@ export type {
   ServerStep,
 } from './types.js';
 export {
+  CODE_HEADER,
   HttpError,
   ValidationError,
   Redirect,

@@ -17,7 +17,8 @@ import type {
   StructuredDocument,
   TextNode,
 } from '@fudic/compiler';
-import { collectTemplateJs, planDelegation, span, unwrapParens } from '@fudic/compiler';
+import { codeNames, collectTemplateJs, planDelegation, span, unwrapParens } from '@fudic/compiler';
+import { busReceivers, emitBusReceivers } from './bus-receivers.js';
 import { codeChunks } from './code.js';
 import { emitDataDeclaration } from './data.js';
 import { emitImports, emitSnippetImports, templateContent } from './imports.js';
@@ -84,9 +85,10 @@ export function emitClientVirtual(
   const delegation = planDelegation(source, content, {
     headerAst: (loop) => rootOf(template.ast?.(loop.header.inner)),
     valueAst: (expr) => rootOf(template.ast?.(expr.expr)),
-    // The `$name` spans are the compiler emit's business, not the projection's: this side
-    // reads the NAMES and the loop header, never an offset inside the batch's buffer.
+    // The read spans are the compiler emit's business, not the projection's: this side reads
+    // the NAMES and the loop header, never an offset inside the batch's buffer.
     spanOf: (node) => span(node.start, node.end),
+    scope: doc.code === undefined ? new Set() : codeNames(source, doc.code),
   });
 
   const ctx = hostContext(
@@ -129,6 +131,11 @@ export function emitClientVirtual(
   // Referencing `$tpl` keeps "declared but never read" quiet without exporting it: the
   // template is not part of anyone's contract.
   w.scaffold('}\n$tpl;\n');
+  // After `$tpl` and at the top level, where `typeof` sees the `@code` and nothing else.
+  const ast = template.ast;
+  if (ast !== undefined) {
+    emitBusReceivers(w, fudPath, busReceivers(source, doc, template.topLevel ?? new Set(), ast));
+  }
 
   return w.build(clientFileName(fudPath), 'typescript');
 }
@@ -249,6 +256,8 @@ function emitElement(ctx: TemplateContext, el: Extract<HtmlContent, { type: 'ele
 export interface TemplateJs {
   /** `signal(...)` / `computed(...)` names of this file, from `reactiveNames`. */
   readonly reactives?: ReadonlySet<string>;
+  /** The names the `@code` declares at its top level, props aside: who may register on the bus. */
+  readonly topLevel?: ReadonlySet<string>;
   /** The AST registered at a source span — the attribute values included. */
   readonly ast?: (at: Span) => FragmentAst | undefined;
   /** The pipes of the view expression at a source span (SDD-58 §4.11). */
