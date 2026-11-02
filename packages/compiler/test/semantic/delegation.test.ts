@@ -15,7 +15,8 @@ import { parseDocument, type AtConstructParser } from '../../src/html/index.js';
 import { parseControl } from '../../src/control/index.js';
 import { parseCodeBlock } from '../../src/code/index.js';
 import { structureDocument } from '../../src/document/index.js';
-import { JsBatch, type FragmentId } from '../../src/oxc/index.js';
+import { JsBatch, type FragmentId, type OxcNode } from '../../src/oxc/index.js';
+import { eventsReadingRow } from '../../src/semantic/delegation.js';
 import { documentRoots, walk, type SemanticInput } from '../../src/semantic/index.js';
 import type { Diagnostic, Node } from '../../src/types/index.js';
 import { delegation } from '../../src/semantic/analyzers/delegation.js';
@@ -544,6 +545,49 @@ describe('delegation — it never throws (§5, invariant 5)', () => {
     const message = report(inner)[0]?.message ?? '';
     expect(message).toContain('`row`');
     expect(message).toContain('`cell`');
+  });
+});
+
+describe('eventsReadingRow — what a marker\'s value may list (criterion 46)', () => {
+  /** The events above the element that starts at the first `<needle`, reading `name`. */
+  function eventsAt(inner: string, needle: string, name: string): readonly string[] {
+    const source = component(inner);
+    const input = inputFor(source);
+    const astOf = (node: Node) => {
+      const id = input.fragmentId(node);
+      return id === undefined ? undefined : (input.js.ast(id) as OxcNode);
+    };
+    const start = source.indexOf(needle);
+    return eventsReadingRow(
+      source,
+      documentRoots(input.document),
+      { headerAst: astOf, valueAst: astOf, spanOf: (n) => input.js.mapSpan(n.start, n.end), scope: new Set() },
+      { start, end: start + needle.length },
+      name,
+    );
+  }
+
+  it('the events of every handler above that reads the row, each once, at any height', () => {
+    expect(eventsAt(TABLE.replace('<tbody', '<tbody @keydown=@k(p)'), '<input', 'p')).toEqual(['keydown', 'change', 'click']);
+    expect(
+      eventsAt(`<section @click=@a(p)><ul @click=@b(p)>
+        @foreach (const p of ps) key (p.id) { <li delegate:p></li> }
+      </ul></section>`, '<li', 'p'),
+    ).toEqual(['click']);
+  });
+
+  it('a handler that does not read the name, or a call that is no handler call, offers nothing', () => {
+    expect(eventsAt(TABLE, '<input', 'q')).toEqual([]);
+    expect(
+      eventsAt(`<ul @click=@b>
+        @foreach (const p of ps) key (p.id) { <li delegate:p></li> }
+      </ul>`, '<li', 'p'),
+    ).toEqual([]);
+  });
+
+  it('an element with no ancestor element, or one that is not there, offers nothing', () => {
+    expect(eventsAt('<b delegate:p></b>', '<b', 'p')).toEqual([]);
+    expect(eventsAt(TABLE, 'nowhere', 'p')).toEqual([]);
   });
 });
 
