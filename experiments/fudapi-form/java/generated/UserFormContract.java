@@ -35,15 +35,6 @@ public final class UserFormContract {
     /** {@code form person}, already valid. {@code u8} is an {@code int}: Java has no unsigned byte. */
     public record PersonForm(String name, String nif, String email, int age, boolean active, String notes) {}
 
-    /** The {@code fails} of {@code save}: {@code throw SaveFails.reserved();} */
-    public static final class SaveFails {
-        private SaveFails() {}
-
-        public static Fail reserved() {
-            return new Fail(409, "reserved", "Ese nombre está reservado.");
-        }
-    }
-
     // ── The form: the same declaration as ts/generated/user-form.ts ───────────
 
     static final class PersonSchema {

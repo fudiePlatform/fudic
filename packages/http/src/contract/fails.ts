@@ -1,6 +1,7 @@
 /**
- * The `fails` of a function or a middleware (SDD-60 §3.3): named rejections the handler throws,
- * `throw SaveFails.reserved()`, each with the status and the `detail` its declaration wrote.
+ * The `fails` of a middleware (SDD-60 §3.3, SDD-74 decision 175): named rejections its server half
+ * throws, `throw AuthFails.denied()`, each with the status and the `detail` its declaration wrote. A
+ * function throws the helpers of `errors.ts` instead: `conflict(t("…"))`.
  */
 
 import { HttpError } from '../errors.js';
