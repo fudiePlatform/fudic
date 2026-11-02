@@ -5,7 +5,7 @@
 > `@fudic/typecheck` · `examples/basic`
 > **Rama:** `sdd-72-handlers-que-reciben-el-dato`. Nace de `main` **con SDD-68 en `Hecho`**: el
 > ejemplo `usuarios` que se migra es el de la 68.
-> **Progreso:** 0 / 22 — `Listo`. Ampliada el 2026-11-01 con la fase 5 (la delegación).
+> **Progreso:** 4 / 22 — `En curso`. Ampliada el 2026-11-01 con la fase 5 (la delegación).
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -47,10 +47,10 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **La decisión 173.** Su texto en la sección 7 y su fila en el índice de decisiones; la 98, con la nota «enmendada por la 173» | docs | `docs/gramar/gramatica-v1-decisiones.md` |
-| [ ] | 2 | — | **`eventHandler` conoce el evento.** Recibe el nombre; en `fudic:result` y `fudic:error`, referencia, celda y lambda pasan `$event.detail` (SDD §4.1); la llamada, igual | `compiler` | `src/emit/events.ts` · `src/emit/markup-client.ts` |
-| [ ] | 3 | — | **`busHandler` pasa el dato.** Referencia y lambda llaman con `$event.detail`; la llamada, igual | `compiler` | `src/emit/events.ts` |
-| [ ] | 4 | — | **`fudic:error` siempre lleva un `Error`.** Lo que no es `Error` se envuelve con `cause`; un `AbortError` no se anuncia (SDD §4.3) | `forms` | `src/dom/bind-form.ts` |
+| [x] | 1 | — | **La decisión 173.** Su texto en la sección 7 y su fila en el índice de decisiones; la 98, con la nota «enmendada por la 173» | docs | `docs/gramar/gramatica-v1-decisiones.md` |
+| [x] | 2 | — | **`eventHandler` conoce el evento.** Recibe el nombre; en `fudic:result` y `fudic:error`, referencia, celda y lambda pasan `$event.detail` (SDD §4.1); la llamada, igual | `compiler` | `src/emit/events.ts` · `src/emit/markup-client.ts` |
+| [x] | 3 | — | **`busHandler` pasa el dato.** Referencia y lambda llaman con `$event.detail`; la llamada, igual | `compiler` | `src/emit/events.ts` |
+| [x] | 4 | — | **`fudic:error` siempre lleva un `Error`.** Lo que no es `Error` se envuelve con `cause`; un `AbortError` no se anuncia (SDD §4.3) | `forms` | `src/dom/bind-form.ts` |
 | [ ] | 5 | 2–4 | **Los tests de la fase.** Criterios 1–9; se actualizan las expectativas de la forma vieja en `events.test.ts`, `hydrate/events.test.ts`, `bus-map.test.ts` y los demás que la escriban | `compiler` · `forms` | `test/**` |
 
 ## Fase 2 — el editor: los eventos del formulario (3)

@@ -54,6 +54,19 @@ interface Refusal {
   readonly problem?: { readonly status: number; readonly title: string; readonly detail?: string };
 }
 
+/** A cancelled call is not a failure: nobody hears about it, as with `error-pages`. */
+const isAbort = (e: unknown): boolean => e instanceof DOMException && e.name === 'AbortError';
+
+/**
+ * What `fudic:error` carries: always an `Error`, so the type the view is given does not lie. A
+ * client step may reject with anything; what is not an `Error` travels as its `cause`.
+ */
+function asError(error: unknown): Error {
+  return error instanceof Error
+    ? error
+    : new Error('fudic:error: the call was rejected with a non-Error value', { cause: error });
+}
+
 function statusOf(error: unknown): number | undefined {
   const status = (error as { readonly status?: unknown } | null | undefined)?.status;
   return typeof status === 'number' ? status : undefined;
@@ -140,7 +153,8 @@ export function bindForm(
             stop();
             return;
           }
-          el.dispatchEvent(new CustomEvent('fudic:error', { detail: error, bubbles: true }));
+          if (isAbort(error)) return;
+          el.dispatchEvent(new CustomEvent('fudic:error', { detail: asError(error), bubbles: true }));
         },
       );
     }),

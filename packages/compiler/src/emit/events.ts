@@ -167,10 +167,23 @@ function rootOf(ast: FragmentAst): OxcNode | undefined {
   return unwrapParens(Array.isArray(ast) ? undefined : (ast as OxcNode));
 }
 
+/**
+ * The events fudic dispatches with THE datum in `detail`: what a form's call returned and
+ * what it failed with (decision 173). A reference or a lambda bound to one of them receives
+ * the datum; a call keeps `$event` as the way out.
+ */
+const DATUM_EVENTS: ReadonlySet<string> = new Set(['fudic:result', 'fudic:error']);
+
 /** The listener a plain `@event` binding subscribes, or `undefined` for `FUD0291`. */
-export function eventHandler(source: string, at: Span, ctx: HookupContext): string | undefined {
+export function eventHandler(
+  source: string,
+  at: Span,
+  ctx: HookupContext,
+  event: string,
+): string | undefined {
   const root = rootOf(ctx.template.ast(at));
   const text = source.slice(at.start, at.end);
+  const datum = DATUM_EVENTS.has(event);
   switch (handlerShape(root)) {
     // Invoked at DISPATCH, inside an arrow whose parameter is spelled `$event`: the argument
     // list is copied character for character, so what the author wrote is what runs.
@@ -179,9 +192,10 @@ export function eventHandler(source: string, at: Span, ctx: HookupContext): stri
     // A bare reference to a callback prop has to be read at dispatch too, and the arrow is
     // what defers it: the cell may still be empty when this listener is registered.
     case 'reference':
-      return ctx.callbacks.has(text) ? `($event) => ${text}()($event)` : text;
+      if (ctx.callbacks.has(text)) return `($event) => ${text}()(${datum ? '$event.detail' : '$event'})`;
+      return datum ? `($event) => ${text}($event.detail)` : text;
     case 'lambda':
-      return text;
+      return datum ? `($event) => (${text})($event.detail)` : text;
     case 'unsuitable':
       return undefined;
   }
@@ -261,10 +275,11 @@ export function busHandler(source: string, at: Span, ctx: HookupContext): string
       return `($event) => ${source.slice(at.start, ctx.template.offset(callee.end))}.call($host${written})`;
     }
     // A bare reference takes no parens; a lambda does, or `.call` would parse as part of it.
+    // Both receive what was passed to `emit` (decision 173); a call keeps `$event`.
     case 'reference':
-      return `($event) => ${text}.call($host, $event)`;
+      return `($event) => ${text}.call($host, $event.detail)`;
     case 'lambda':
-      return `($event) => (${text}).call($host, $event)`;
+      return `($event) => (${text}).call($host, $event.detail)`;
     case 'unsuitable':
       return undefined;
   }
