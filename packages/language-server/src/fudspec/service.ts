@@ -20,6 +20,7 @@ import {
 import { SEMANTIC_TOKENS_LEGEND } from '../capabilities.js';
 import type { RequestStats } from '../stats.js';
 import { pathToUri } from '../uri.js';
+import { explainActions } from '../services/actions.js';
 import { typeScriptService } from '../services/ts-service.js';
 import { specCodeActions } from './actions.js';
 import { specCompletions } from './completion.js';
@@ -97,12 +98,16 @@ export function createFudspecService(deps: FudspecServiceContext): LanguageServi
             () => {
               const spec = specDocumentOf(context, document);
               if (spec === undefined) return undefined;
-              return specCodeActions({
+              const start = document.offsetAt(range.start);
+              const end = document.offsetAt(range.end);
+              // Every code explains itself, as in a `.fud` (SDD-75).
+              const found = [...spec.parseDiagnostics, ...validateSpec(spec.file, host.context(spec.path))];
+              const repairs = specCodeActions({
                 spec,
                 host,
                 document,
-                start: document.offsetAt(range.start),
-                end: document.offsetAt(range.end),
+                start,
+                end,
                 // The project's program, the one the `.fud` services read the card from. Without
                 // TypeScript a fixture is still created, with its keys and no props (SDD-53 §4.5).
                 propsOf: (path) => {
@@ -110,6 +115,7 @@ export function createFudspecService(deps: FudspecServiceContext): LanguageServi
                   return program === undefined ? undefined : propShapes(program, path);
                 },
               });
+              return [...repairs, ...explainActions(found, start, end)];
             },
             undefined,
           );

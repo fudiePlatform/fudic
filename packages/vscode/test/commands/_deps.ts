@@ -23,6 +23,12 @@ export interface CommandRecording {
   readonly replacements: LineReplacement[];
   /** Every file the workbench was asked to open (SDD-32). */
   readonly workbenchOpens: string[];
+  /** What went well, said (SDD-75). */
+  readonly infos: string[];
+  /** Every read-only view whose text was replaced. */
+  readonly updated: { name: string; text: string }[];
+  /** Every file opened, with the range selected. */
+  readonly files: { path: string; range: unknown }[];
 }
 
 export interface CommandFixture {
@@ -33,6 +39,8 @@ export interface CommandFixture {
 export const commandFixture = (options: {
   running?: boolean;
   activeUri?: string | undefined;
+  /** The active `.fudapi`'s URI (SDD-75). */
+  activeFudapiUri?: string;
   formatEnable?: boolean;
   /** What `sendRequest` resolves to, by method. */
   answers?: Record<string, unknown>;
@@ -57,6 +65,9 @@ export const commandFixture = (options: {
   const restarts: number[] = [];
   const replacements: LineReplacement[] = [];
   const workbenchOpens: string[] = [];
+  const infos: string[] = [];
+  const updated: { name: string; text: string }[] = [];
+  const files: { path: string; range: unknown }[] = [];
 
   const settings: FudicSettings = {
     serverPath: null,
@@ -89,11 +100,16 @@ export const commandFixture = (options: {
       session,
       editor: {
         activeFudUri: () => options.activeUri,
+        activeFudapiUri: () => options.activeFudapiUri,
         activeWorkbenchFile: () => options.workbenchFile,
       },
       documents: {
         openReadOnly: async (name, languageId, text) => {
           opened.push({ name, languageId, text });
+        },
+        updateReadOnly: (name, text) => void updated.push({ name, text }),
+        openFile: async (path, range) => {
+          files.push({ path, range });
         },
       },
       formatter: {
@@ -101,7 +117,7 @@ export const commandFixture = (options: {
           formatted.push(formatted.length + 1);
         },
       },
-      notifications: { warn: (message) => warnings.push(message) },
+      notifications: { warn: (message) => warnings.push(message), info: (message) => infos.push(message) },
       workbenches: {
         open: async (file) => {
           workbenchOpens.push(file);
@@ -120,6 +136,6 @@ export const commandFixture = (options: {
         },
       },
     },
-    recording: { warnings, log, opened, requests, formatted, restarts, replacements, workbenchOpens },
+    recording: { warnings, log, opened, requests, formatted, restarts, replacements, workbenchOpens, infos, updated, files },
   };
 };

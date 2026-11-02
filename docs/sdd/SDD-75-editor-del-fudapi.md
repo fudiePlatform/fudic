@@ -1,9 +1,9 @@
 # SDD-75 — El editor del `.fudapi`: snippets, implementaciones y lo generado a un clic
 
-> **Estado:** `Listo` — [tareas](./SDD-75-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-75-Task.md).
 > **Paquetes:** `@fudic/language-server` · `@fudic/api` · `@fudic/vscode`
 > **Depende de:** 60 (el `.fudapi` y su language server), 32 (los CodeLens del `.fudspec`, que se
-> imitan), 74 (`catches` en las funciones, `fails` fuera de ellas) — las tres en `Hecho`.
+> imitan), 74 (`catches` en las funciones; `fails` en ellas pero no en `load`; lo generado por idioma) — las tres en `Hecho`.
 > **Rango de diagnósticos:** ninguno.
 > **Decisiones de gramática:** ninguna.
 > **Origen:** conversación con Pedro del 2026-11-01.
@@ -48,13 +48,14 @@ igual a la palabra clave y un `detail` de una línea. Se ofrecen solo en su cont
   - `form`: `form ${1:name}\n\n  ${2:field}  ${3:str} = ${4:""}\n    required  "${5:Write it.}"$0`
   - `type`: `type ${1:Name}\n  ${2:field}  ${3:str}$0`
   - `enum`: `enum ${1:Name}\n  ${2:value}$0`
-  - `rule`: `rule ${1:name}\n  on ${2:str}\n  fails ${3:code}$0`
+  - `rule`: `rule ${1:name}\n  on field ${2:str}\n  runs ${3|both,server|}\n  fails ${4:code}$0`
+    (*corregido al implementar:* sin `on field` ni `runs` la regla no valida)
   - `middleware`: `middleware ${1:name}\n  fails ${2:code} ${3:401} "${4:detail}"$0`
   - `pattern`: `pattern ${1:name} "${2:regex}"$0`
   - `pipe`: `pipe ${1:name}\n  on ${2:str}$0`
   - `chain`: `chain\n  use ${1:log}$0`
 - **Dentro de una función:** `use ${1}`, `invalidates /${1}`, `catches ${1:409}`,
-  `query ${1:name}  ${2:str}`, `-> ${1:Type}`, `form ${1}`.
+  `fails ${1:code} ${2:409} "${3:text}"`, `query ${1:name}  ${2:str}`, `-> ${1:Type}`, `form ${1}`.
 - **Dentro de un formulario:** `catches ${1:400 409 422}`, `summary\n  ${1}`,
   `validate-on ${1|submit,blur,input|}`.
 - **Debajo de un campo de formulario:** cada regla aplicable al tipo del campo, con su texto:
@@ -76,15 +77,30 @@ Las sangrías del snippet salen del sangrado de la línea donde se acepta.
 | `Browser` | Igual con `'browser'`. |
 | `Regenerate` | Reescribe ya el `.d.ts` de este fichero y de los que dependen de él, haya cambiado o no. Avisa: `Regenerated N files.` |
 
+Con `i18n`, `Server` y `Browser` muestran lo generado sin `LocaleCompile`: los textos en el idioma
+de origen del `.fudapi`, que es lo que el autor escribió. Lo traducido es cosa del build.
+
 **Encima de cada declaración que se implementa** (función, `load`, `paths`, `layout`, regla,
-middleware):
+middleware, pipe):
 
 | Caso | Lente |
 |---|---|
-| Una implementación | `implemented in src/server/usuarios.ts`. El clic lleva a la llamada `.handle(`/`.check(`/`.client(`/`.server(`. |
+| Una implementación | `implemented in src/server/usuarios.ts`. El clic lleva a la llamada `.handle(`/`.check(`/`.client(`/`.server(`/`.implement(`. |
 | Ninguna | `not implemented`, sin clic. |
 | Dos o más | Una lente por fichero. El error de duplicado lo sigue dando el build. |
 | Middleware | Una lente por mitad: `client: src/browser/auth.ts` · `server: not implemented`. |
+
+**Encima de cada `type`, `enum`, `form` y `pattern`** (*añadido al implementar, Pedro,
+2026-11-02*): lo que genera en los tipos del fichero — `interface Person`, `type Role`,
+`const personForm` — y el clic lleva a esa línea de `.fudic/api/<id>.d.ts`. Si los tipos no la
+tienen, no sale lente. Lo mismo con Ctrl+Click en el nombre de cualquier declaración
+(`type Person`, `post save`): abre lo que genera, en vez de apuntar a sí misma.
+
+*Arreglado al implementar (Pedro, 2026-11-02):* un diagnóstico de un `.fudapi` o de un `.fudspec`
+tiene su bombilla `Explain FUDnnnn`, que abre su `.md`, como en un `.fud`. Y al pulsar Ctrl sobre
+un nombre, la tarjeta ya no repite la declaración: VS Code añadía al hover la vista previa de la
+definición, y el servidor la deja vacía (en `.fud`, `.fudspec` y `.fudapi`, para un cliente con
+enlaces), sin cambiar adónde lleva el Ctrl+Click.
 
 ### 3.3. Comandos de VS Code
 
@@ -101,20 +117,26 @@ middleware):
 - Salen en el mismo `apiCompletions` que hoy, según el `Context` que ya calcula. Donde había una
   palabra suelta con el mismo nombre, sale el snippet en su lugar.
 - Dentro de un texto entre comillas no sale ninguno.
-- `fails` no se ofrece dentro de una función ni de `load` (SDD-74).
+- `fails` se ofrece dentro de una función (como snippet), de una regla y de un middleware, y no
+  dentro de `load` (SDD-74, decisión 175).
 
 ### 4.2. Implementaciones
 
-- El language server mira los `.ts`/`.js` de `src/server/**` y `src/browser/**` (en una
-  librería, sus carpetas `server/` y `browser/`). Para cada uno busca, con un único parseo de
-  Oxc:
+- El language server mira los `.ts`/`.js` de `src/server/**`, `src/browser/**` y la carpeta de
+  pipes del proyecto (`src/pipes/**` o la `pipes` de su `fudic.json`); en una librería, sus
+  carpetas `server/` y `browser/`. Para cada uno busca, con un único parseo de Oxc:
   - un `import { x } from 'fudic:<id>'`;
-  - una llamada `x.handle(…)`, `x.check(…)`, `x.client(…)` o `x.server(…)` sobre ese nombre.
+  - una llamada `x.handle(…)`, `x.check(…)`, `x.client(…)`, `x.server(…)` o, en un pipe,
+    `x.implement(…)` sobre ese nombre.
 - El resultado se guarda en un índice por `<id>` y nombre, con el fichero y el span de la
   llamada.
 - El índice se actualiza cuando cambia, se crea o se borra un fichero de esas carpetas.
-  `FILE_EVENTS` de la extensión añade `**/src/server/**` y `**/src/browser/**`.
+  `FILE_EVENTS` de la extensión añade `**/src/server/**`, `**/src/browser/**` y `**/src/pipes/**`.
 - Un fichero que no parsea no aporta nada y no rompe el índice.
+- *Añadido al implementar (Pedro, 2026-11-02):* los pipes, que se implementan con `.implement(`
+  junto a su contrato. Y el `.fudapi` propio de una librería (`fudapi/` de su paquete) tiene el
+  `<id>` con que lo importan sus apps y sus scripts (`@fudic/forms/rules`); abierto desde los
+  `node_modules` de una app, sus tipos son los de esa app (`.fudic/api/@fudic/forms/rules.d.ts`).
 
 ### 4.3. Lo generado
 
@@ -137,7 +159,8 @@ middleware):
    proyecto `on str` sale debajo de un campo `str`, con sus parámetros como tabstops.
 4. **Sangrado.** Un snippet aceptado con la línea sangrada a 2 deja sus líneas interiores a 4.
 5. **Comillas.** Dentro de `"…"` no sale ningún snippet.
-6. **`catches` y `fails`.** Dentro de una función sale `catches` y no `fails`.
+6. **`catches` y `fails`.** Dentro de una función salen `catches` y `fails` como snippets; dentro
+   de `load`, ninguno de los dos.
 7. **Lentes de la línea 1.** Un `.fudapi` sin errores tiene `Types`, `Server`, `Browser` y
    `Regenerate` en la línea 1.
 8. **`Types`.** Abre `.fudic/api/<id>.d.ts`. Si se borró, lo regenera y lo abre.

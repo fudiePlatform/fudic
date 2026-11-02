@@ -133,6 +133,26 @@
         "icon": "$(open-preview)"
       },
       {
+        "command": "fudic.api.showTypes",
+        "title": "Fudic: Show API Types"
+      },
+      {
+        "command": "fudic.api.showServer",
+        "title": "Fudic: Show API Server Module"
+      },
+      {
+        "command": "fudic.api.showBrowser",
+        "title": "Fudic: Show API Browser Module"
+      },
+      {
+        "command": "fudic.api.regenerate",
+        "title": "Fudic: Regenerate API Types"
+      },
+      {
+        "command": "fudic.api.goToImplementation",
+        "title": "Fudic: Go to API Implementation"
+      },
+      {
         "command": "fudic.runCriterion",
         "title": "Fudic: Run Criterion"
       }
@@ -161,6 +181,26 @@
       "commandPalette": [
         {
           "command": "fudic.runCriterion",
+          "when": "false"
+        },
+        {
+          "command": "fudic.api.showTypes",
+          "when": "editorLangId == fudapi"
+        },
+        {
+          "command": "fudic.api.showServer",
+          "when": "editorLangId == fudapi"
+        },
+        {
+          "command": "fudic.api.showBrowser",
+          "when": "editorLangId == fudapi"
+        },
+        {
+          "command": "fudic.api.regenerate",
+          "when": "editorLangId == fudapi"
+        },
+        {
+          "command": "fudic.api.goToImplementation",
           "when": "false"
         }
       ],

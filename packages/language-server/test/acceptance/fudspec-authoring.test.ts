@@ -138,7 +138,17 @@ describe('criterion 17 — the light bulb through the live connection', () => {
 
   it('offers the repairs of each diagnostic, the fixture filled by type from the TS program', async () => {
     const actions = await bulb(BROKEN);
-    expect(actions.map((a) => a.title).sort()).toEqual(["Change to 'visible'", 'Create app-probe.fixture.ts', 'Create then/visibl.js']);
+    expect(actions.map((a) => a.title).sort()).toEqual([
+      "Change to 'visible'",
+      'Create app-probe.fixture.ts',
+      'Create then/visibl.js',
+      // And every code explains itself, as in a `.fud` (SDD-75).
+      'Explain FUD0940',
+      'Explain FUD0953',
+    ]);
+    const explain = actions.find((a) => a.title === 'Explain FUD0940')!;
+    expect(explain.command?.command).toBe('fudic.explain');
+    expect(String(explain.command?.arguments?.[0])).toMatch(/FUD0940\.md$/u);
 
     const fixture = actions.find((a) => a.title === 'Create app-probe.fixture.ts');
     const [create, write] = fixture?.edit?.documentChanges as unknown as [{ uri: string }, { edits: TextEdit[] }];

@@ -39,9 +39,9 @@ const ZERO = { line: 0, character: 0 };
 const WHOLE = { start: ZERO, end: { line: 99, character: 0 } };
 
 function service(files = FILES, open: Readonly<Record<string, string>> = {}): LanguageServicePluginInstance {
-  const { host } = world({ files, open });
+  const { host, implementations, generated } = world({ files, open });
   const decode = (uri: URI): [URI, string] | undefined => (uri.toString() === EMBEDDED.toString() ? [API_URI, 'root'] : undefined);
-  return createFudapiService({ host, stats: new RequestStats() }).create(fakeServiceContext({}, decode));
+  return createFudapiService({ host, implementations, generated, stats: new RequestStats() }).create(fakeServiceContext({}, decode));
 }
 
 const doc = (text: string, uri: URI = EMBEDDED): TextDocument => TextDocument.create(uri.toString(), 'fudapi', 1, text);
@@ -110,7 +110,7 @@ describe('live diagnostics (criterion 27)', () => {
     host.load(PATH, '');
     const readless = { ...host, read: () => undefined, load: host.load.bind(host) } as unknown as typeof host;
     const decode = (uri: URI): [URI, string] | undefined => (uri.toString() === EMBEDDED.toString() ? [API_URI, 'root'] : undefined);
-    const s = createFudapiService({ host: readless, stats: new RequestStats() }).create(fakeServiceContext({}, decode));
+    const s = createFudapiService({ ...world(), host: readless, stats: new RequestStats() }).create(fakeServiceContext({}, decode));
     const [clash] = (await s.provideDiagnostics?.(doc('type Clash\n  y  str\n'), NONE)) as Diagnostic[];
     expect(clash?.relatedInformation?.[0]?.location.range).toEqual({ start: ZERO, end: ZERO });
   });
@@ -164,9 +164,9 @@ describe('the other requests', () => {
         [PATH]: text,
       }),
     );
-    const { host } = world({ files: FILES });
+    const { host, implementations, generated } = world({ files: FILES });
     const decode = (uri: URI): [URI, string] | undefined => (uri.toString() === EMBEDDED.toString() ? [API_URI, 'root'] : undefined);
-    const s = createFudapiService({ host, stats: new RequestStats(), translations }).create(fakeServiceContext({}, decode));
+    const s = createFudapiService({ host, implementations, generated, stats: new RequestStats(), translations }).create(fakeServiceContext({}, decode));
     const on = { line: 2, character: 16 };
     const hover = (await s.provideHover?.(doc(text), on, NONE)) as Hover;
     expect(hover.contents).toEqual({ kind: 'markdown', value: `es: Escribe el nombre.  \nen: ${MISSING}` });
@@ -202,9 +202,10 @@ describe('the other requests', () => {
   });
 
   it('declares its triggers and its capabilities', () => {
-    const plugin = createFudapiService({ host: world().host, stats: new RequestStats() });
+    const plugin = createFudapiService({ ...world(), stats: new RequestStats() });
     expect(plugin.capabilities.completionProvider?.triggerCharacters).toEqual(['{', ' ']);
     expect(plugin.capabilities.diagnosticProvider).toEqual({ interFileDependencies: true, workspaceDiagnostics: false });
+    expect(plugin.capabilities.codeLensProvider).toEqual({ resolveProvider: false });
   });
 });
 
@@ -219,6 +220,7 @@ describe('isolation (criterion 31)', () => {
       expect(await s.provideDefinition?.(other, ZERO, NONE)).toBeUndefined();
       expect(await s.provideDocumentSemanticTokens?.(other, WHOLE, SEMANTIC_TOKENS_LEGEND, NONE)).toBeUndefined();
       expect(await s.provideDocumentFormattingEdits?.(other, WHOLE, { tabSize: 2, insertSpaces: true }, undefined as never, NONE)).toBeUndefined();
+      expect(await s.provideCodeLenses?.(other, NONE)).toBeUndefined();
     }
   });
 

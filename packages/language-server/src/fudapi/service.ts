@@ -9,26 +9,34 @@
  * one does (`ApiHost.affects`).
  */
 
-import { formatApi, validateApi } from '@fudic/api';
+import { formatApi } from '@fudic/api';
 import { docsUrl, type Severity, type SourceDiagnostic } from '@fudic/diagnostics';
 import type { LanguageServicePlugin, SemanticToken } from '@volar/language-service';
 import { DiagnosticSeverity, type Diagnostic as LspDiagnostic } from 'vscode-languageserver-protocol';
 import { SEMANTIC_TOKENS_LEGEND } from '../capabilities.js';
+import { explainActions } from '../services/actions.js';
 import type { RequestKind, RequestStats } from '../stats.js';
 import type { CancellationToken } from 'vscode-languageserver-protocol';
 import { pathToUri } from '../uri.js';
 import { apiCompletions } from './completion.js';
 import { apiDocumentOf, rangeOf, type ApiDocument } from './document.js';
 import type { ApiHost } from './host.js';
+import type { ImplementationIndex } from './implementations.js';
+import type { ApiGenerated } from './generated.js';
+import { generatedLenses, implementationLenses, typeLenses } from './lenses.js';
 import { catchesHover } from './catches-hover.js';
 import { loadHover } from './load-line.js';
-import { apiDefinition, apiHover } from './navigation.js';
+import { apiDefinition, apiHover, declaredTypes } from './navigation.js';
 import { apiSemanticTokens } from './semantic-tokens.js';
 import { translationsMarkdown, type Translations } from '../translations.js';
 
 export interface FudapiServiceContext {
   readonly host: ApiHost;
   readonly stats: RequestStats;
+  /** Who implements each declaration, for the lenses over them (SDD-75 §4.2). */
+  readonly implementations: ImplementationIndex;
+  /** What the file generates, and the last text of it that had no error (SDD-75 §4.3). */
+  readonly generated: ApiGenerated;
   /** The catalogs, for the hover over a text (SDD-74 §4.5): its line per locale, — where it is missing. */
   readonly translations?: Translations;
 }
@@ -65,7 +73,7 @@ function textHover(doc: ApiDocument, offset: number, translations: Translations 
 }
 
 export function createFudapiService(deps: FudapiServiceContext): LanguageServicePlugin {
-  const { host, stats, translations } = deps;
+  const { host, stats, implementations, generated, translations } = deps;
 
   return {
     name: 'fudapi',
@@ -77,6 +85,8 @@ export function createFudapiService(deps: FudapiServiceContext): LanguageService
       semanticTokensProvider: { legend: SEMANTIC_TOKENS_LEGEND },
       diagnosticProvider: { interFileDependencies: true, workspaceDiagnostics: false },
       documentFormattingProvider: true,
+      codeLensProvider: { resolveProvider: false },
+      codeActionProvider: { codeActionKinds: ['quickfix'] },
     },
 
     create(context) {
@@ -88,8 +98,16 @@ export function createFudapiService(deps: FudapiServiceContext): LanguageService
           return run('diagnostics', token, () => {
             const doc = apiDocumentOf(context, document, host);
             if (doc === undefined) return undefined;
-            const found = [...doc.parseDiagnostics, ...validateApi(doc.source, doc.index, doc.context)];
-            return found.map((d) => toLsp(doc, d, host));
+            return generated.check(doc.path, doc.text, doc).map((d) => toLsp(doc, d, host));
+          });
+        },
+
+        provideCodeActions(document, range, _codeActionContext, token) {
+          return run('codeActions', token, () => {
+            const doc = apiDocumentOf(context, document, host);
+            if (doc === undefined) return undefined;
+            // Its own diagnostics, as the `.fud` does: the ones the client sends may be stale.
+            return explainActions(generated.check(doc.path, doc.text, doc), document.offsetAt(range.start), document.offsetAt(range.end));
           });
         },
 
@@ -124,7 +142,23 @@ export function createFudapiService(deps: FudapiServiceContext): LanguageService
         provideDefinition(document, position, token) {
           return run('definition', token, () => {
             const doc = apiDocumentOf(context, document, host);
-            return doc === undefined ? undefined : apiDefinition(doc, document.offsetAt(position), host);
+            if (doc === undefined) return undefined;
+            const offset = document.offsetAt(position);
+            // On the name a declaration is declared with, its own definition is itself: what it generates is the useful answer.
+            return declaredTypes(doc, offset, host) ?? apiDefinition(doc, offset, host);
+          });
+        },
+
+        provideCodeLenses(document, token) {
+          return run('codeLens', token, () => {
+            const doc = apiDocumentOf(context, document, host);
+            if (doc === undefined) return undefined;
+            const project = host.projectOf(doc.path);
+            return [
+              ...generatedLenses(doc),
+              ...implementationLenses(doc, project, implementations.of(host.implementationFolders(doc.path), doc.source.id)),
+              ...typeLenses(doc, host.typesText(doc.path)),
+            ];
           });
         },
 
