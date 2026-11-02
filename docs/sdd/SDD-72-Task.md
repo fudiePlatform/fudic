@@ -5,7 +5,7 @@
 > `@fudic/typecheck` · `examples/basic`
 > **Rama:** `sdd-72-handlers-que-reciben-el-dato`. Nace de `main` **con SDD-68 en `Hecho`**: el
 > ejemplo `usuarios` que se migra es el de la 68.
-> **Progreso:** 6 / 22 — `En curso`. Ampliada el 2026-11-01 con la fase 5 (la delegación).
+> **Progreso:** 10 / 22 — `En curso`. Ampliada el 2026-11-01 con la fase 5 (la delegación).
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -51,7 +51,7 @@ código, no el test.
 | [x] | 2 | — | **`eventHandler` conoce el evento.** Recibe el nombre; en `fudic:result` y `fudic:error`, referencia, celda y lambda pasan `$event.detail` (SDD §4.1); la llamada, igual | `compiler` | `src/emit/events.ts` · `src/emit/markup-client.ts` |
 | [x] | 3 | — | **`busHandler` pasa el dato.** Referencia y lambda llaman con `$event.detail`; la llamada, igual | `compiler` | `src/emit/events.ts` |
 | [x] | 4 | — | **`fudic:error` siempre lleva un `Error`.** Lo que no es `Error` se envuelve con `cause`; un `AbortError` no se anuncia (SDD §4.3) | `forms` | `src/dom/bind-form.ts` |
-| [ ] | 5 | 2–4 | **Los tests de la fase.** Criterios 1–9; se actualizan las expectativas de la forma vieja en `events.test.ts`, `hydrate/events.test.ts`, `bus-map.test.ts` y los demás que la escriban | `compiler` · `forms` | `test/**` |
+| [x] | 5 | 2–4 | **Los tests de la fase.** Criterios 1–9; se actualizan las expectativas de la forma vieja en `events.test.ts`, `hydrate/events.test.ts`, `bus-map.test.ts` y los demás que la escriban | `compiler` · `forms` | `test/**` |
 
 ## Fase 2 — el editor: los eventos del formulario (3)
 
@@ -65,9 +65,9 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 9 | — | **`emit` tipado.** `FudicBusReceivers` global, `BusDetail`, `BusParam` y `BusArgs` exportados; la firma nueva de `emit` (SDD §3.3); la implementación, igual | `dom` | `src/emit.ts` · `src/index.ts` |
-| [ ] | 10 | 9 | **Los tipos de la proyección.** `$BusDetail` (reexporta el de `@fudic/dom`), `$BusParam`, `$busOn`, `$busEvent`, `$busOnAny` en `GLOBALS_DTS` | `language-core` | `src/globals.ts` |
-| [ ] | 11 | 10 | **La proyección y el registro.** `bus:` literal con `$busOn`/`$busEvent`, `bus:(expr)` con `$busOnAny`; se reúnen los `bus:<literal>=@f` con `f` en el nivel superior del `@code` y se escribe un solo `declare global { interface FudicBusReceivers { … } }` y `export {}` al final del módulo, con clave `'<ruta>#<n>'` (SDD §4.4) | `language-core` | `src/template/attrs.ts` · `src/emit-client.ts` |
+| [x] | 9 | — | **`emit` tipado.** `FudicBusReceivers` global, `BusDetail`, `BusParam` y `BusArgs` exportados; la firma nueva de `emit` (SDD §3.3); la implementación, igual | `dom` | `src/emit.ts` · `src/index.ts` |
+| [x] | 10 | 9 | **Los tipos de la proyección.** `$BusDetail` (reexporta el de `@fudic/dom`), `$BusParam`, `$busOn`, `$busEvent`, `$busOnAny` en `GLOBALS_DTS` | `language-core` | `src/globals.ts` |
+| [x] | 11 | 10 | **La proyección y el registro.** `bus:` literal con `$busOn`/`$busEvent`, `bus:(expr)` con `$busOnAny`; se reúnen los `bus:<literal>=@f` con `f` en el nivel superior del `@code` y se escribe un solo `declare global { interface FudicBusReceivers { … } }` y `export {}` al final del módulo, con clave `'<ruta>#<n>'` (SDD §4.4) | `language-core` | `src/template/attrs.ts` · `src/emit-client.ts` |
 | [ ] | 12 | 11 | **El lote ve el registro.** Todos los `.fud` del `tsconfig` en el mismo programa aunque se compruebe uno; si ya es así, un test que lo fije (SDD §4.5) | `typecheck` | `src/project.ts` · `src/checker.ts` |
 | [ ] | 13 | 9–12 | **Los tests de la fase.** Criterios 17–26, con un proyecto de varios `.fud` (emisor y receptores) en el editor y en el lote | `dom` · `language-core` · `language-server` · `typecheck` | `test/**` |
 

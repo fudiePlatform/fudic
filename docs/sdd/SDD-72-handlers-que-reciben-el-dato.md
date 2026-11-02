@@ -573,3 +573,10 @@ ejemplo pasa a la forma nueva:
     escrito de `fudic:result` o `fudic:error` no pasa por `$on`, como dice §4.2. Pero un nombre a
     medio escribir (`@fudic:r`) sí, y esa lista es la que lo autocompleta y la que subraya
     `@fudic:resul`. Quitar las entradas rompía las dos cosas sin ganar nada.
+11. **La clave del registro lleva la ruta que recibe la proyección** (al implementar, corrige
+    §3.3 y §4.4). `language-core` no conoce la raíz del proyecto: recibe la ruta del `.fud` tal
+    cual (absoluta en el editor y en el lote), con `\` pasado a `/`. La clave solo tiene que ser
+    única en el programa, y lo es igual.
+12. **`bus:(expr)` sigue proyectando su expresión** (al implementar, corrige §4.4). `$busOnAny`
+    y `$busEventAny` reciben el nombre como primer argumento (`unknown`), para que `NOMBRE` siga
+    comprobado y con hover y definición; el dato es `any`, como dice §3.2.
