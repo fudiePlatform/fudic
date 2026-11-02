@@ -5,7 +5,7 @@
 > `@fudic/language-server` · `@fudic/cli` · `@fudic/vite` · `examples/basic` · `examples/fudapi-editor` ·
 > `examples/i18n`
 > **Rama:** `sdd-74-errores-en-la-pagina`. Nace de `main` **con SDD-72 en `Hecho`**.
-> **Progreso:** 3 / 16 — `En curso`.
+> **Progreso:** 4 / 16 — `En curso`.
 
 ---
 
@@ -29,7 +29,7 @@
 | [x] | 1 | — | **`catches` en una función.** Cláusula en `FnDecl`, con los diagnósticos de los formularios (`FUD1063`, `FUD1075`, `FUD1071`) (SDD §3.1) | `api` | `src/ast.ts` · `src/clauses.ts` · `src/parse.ts` |
 | [x] | 2 | 1 | **Lo generado.** El stub lleva `catches`; `ClientContext.catches`, `[]` por defecto (SDD §3.2) | `api` · `http` | `src/emit/module.ts` · `src/types.ts` · `src/contract/fn.ts` |
 | [x] | 3 | 2 | **`errorPagesStep`.** Relanza un status de `ctx.catches` o del form enviado (SDD §4.1) | `http` | `src/error-pages.ts` |
-| [ ] | 4 | 3 | **Los tests de la fase.** Criterios 1, 2, 4, 5 | `api` · `http` | `test/**` |
+| [x] | 4 | 3 | **Los tests de la fase.** Criterios 1, 2, 4, 5 | `api` · `http` | `test/**` |
 
 ## Fase 2 — fuera `fails` de funciones y `load` (3)
 

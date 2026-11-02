@@ -16,6 +16,7 @@ export function clientCtx(method: Method = 'PUT', name = 'save'): ClientContext 
     headers: new Headers(),
     args: undefined,
     signal: new AbortController().signal,
+    catches: [],
   };
 }
 

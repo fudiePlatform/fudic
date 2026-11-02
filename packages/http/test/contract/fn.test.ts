@@ -601,3 +601,31 @@ describe('a call waits for the browser root (SDD-67: the race after hydration)',
     expect(trace).toEqual(['client half', 'server']);
   });
 });
+
+describe('SDD-74 §3.2, criterion 4: ctx.catches is what the function declares', () => {
+  /** A function whose client half records the `ctx.catches` it is given. */
+  function recorded(over: Partial<FnSpec> = {}) {
+    const keep = middleware({ id: 'middlewares/keep', name: 'keep', client: true });
+    const spec: FnSpec = { id: 'routes/usuarios', name: 'save', method: 'PUT', chain: [{ steps: [{ use: [use(keep)] }] }], wire: binWire, ...over };
+    const catches: (readonly number[])[] = [];
+    keep.client((ctx, next) => {
+      catches.push(ctx.catches);
+      return next(ctx);
+    });
+    fn(spec).handle(() => undefined);
+    served(contractsOf('routes/usuarios').get('save')!);
+    return { save: stub<never, unknown, void>(spec), catches };
+  }
+
+  it('a stub with catches [409, 422] gives its client steps ctx.catches = [409, 422]', async () => {
+    const { save, catches } = recorded({ catches: [409, 422] });
+    await save();
+    expect(catches).toEqual([[409, 422]]);
+  });
+
+  it('without catches, ctx.catches is []', async () => {
+    const { save, catches } = recorded();
+    await save();
+    expect(catches).toEqual([[]]);
+  });
+});
