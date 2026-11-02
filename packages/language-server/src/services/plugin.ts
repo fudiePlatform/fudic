@@ -381,6 +381,9 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
               // `ts-completion.ts` — the same names, with the types behind them.
               const binding = attributeValueBindingAt(cached.source, offset, region);
               if (binding === undefined) return undefined;
+              // The value of a `delegate:` is a list of event names, answered whole by the root
+              // service (`delegateEvents`): no name of the view can go there, with `@` or without.
+              if (delegateValueContextAt(cached.source, offset, region) !== undefined) return undefined;
 
               // `shadowrootadoptedstylesheets="|"` on the root template: the `styles` of the
               // project's fudic.json that are not written yet. The list is space-separated, so
