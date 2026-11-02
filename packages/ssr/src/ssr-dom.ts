@@ -292,11 +292,27 @@ export class SsrDom implements Dom<SsrNode> {
   removeAttr(el: SsrNode, name: string): void {
     asImpl(el).attrs.delete(name);
   }
-  // The server paints a live property as the attribute any interpolated value writes.
+  /**
+   * A live property as the markup that says it with no script (SDD-74 §4.4). An `<input>` and
+   * an `<option>` take the attribute any interpolated value writes. A `<textarea>` has no
+   * `value` attribute: its value is its text, and the parser drops a first line feed, so one
+   * that starts with one gets another. A `<select>` has none either: the serializer marks
+   * `selected` on the option that holds the value.
+   */
   setLive(el: SsrNode, name: LiveProperty, value: unknown): void {
-    const attrs = asImpl(el).attrs;
-    if (value === false || value == null) attrs.delete(name);
-    else attrs.set(name, value === true ? '' : String(value));
+    const node = asImpl(el);
+    const text = value === false || value == null ? undefined : value === true ? '' : String(value);
+    const tag = node.tag!.toLowerCase();
+    if (tag === 'textarea') {
+      for (const child of [...node.children]) detach(child);
+      if (text !== undefined && text !== '') this.append(el, SsrNodeImpl.leaf('text', text.startsWith('\n') ? `\n${text}` : text));
+    } else if (tag === 'select') {
+      node.selectValue = text ?? '';
+    } else if (text === undefined) {
+      node.attrs.delete(name);
+    } else {
+      node.attrs.set(name, text);
+    }
   }
 
   append(parent: SsrNode, child: SsrNode): void {

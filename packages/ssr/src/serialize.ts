@@ -141,14 +141,36 @@ export function* rawChild(child: SsrNodeImpl): Generator<string> {
 }
 
 function serializeAttrs(n: SsrNodeImpl): string {
+  const chosen = chosenBy(n);
   let out = '';
   for (const [name, value] of n.attrs) {
     // What the emit tells the serializer about a host's sheets as files (SDD-73 §3.5): it is
     // written as the `<link>`s of the template, and nothing in the page reads it after that.
     if (name === SHEETS_ATTR) continue;
+    // The `value=@x` of its `<select>` decides, over a `selected` the option wrote itself.
+    if (chosen !== undefined && name === 'selected') continue;
     out += ` ${name}="${escapeAttr(value)}"`;
   }
-  return out;
+  return chosen === true ? `${out} selected=""` : out;
+}
+
+/**
+ * Whether the `value=@x` of the `<select>` an `<option>` belongs to — directly or through an
+ * `<optgroup>` — chooses it (SDD-74 §4.4); `undefined` when no such value is in play. The value
+ * of an option is its `value` attribute, or its text with its white space collapsed, as HTML
+ * reads it.
+ */
+function chosenBy(n: SsrNodeImpl): boolean | undefined {
+  if (n.tag?.toLowerCase() !== 'option') return undefined;
+  const group = n.parent?.tag?.toLowerCase() === 'optgroup' ? n.parent.parent : n.parent;
+  const wanted = group?.tag?.toLowerCase() === 'select' ? group.selectValue : undefined;
+  if (wanted === undefined) return undefined;
+  return (n.attrs.get('value') ?? textOf(n).replace(/[\t\n\f\r ]+/gu, ' ').trim()) === wanted;
+}
+
+/** The text of a node and everything below it. */
+function textOf(n: SsrNodeImpl): string {
+  return n.kind === 'text' ? n.data : n.children.map(textOf).join('');
 }
 
 /** The marker the emit puts on a host whose sheets are files; consumed, never written. */

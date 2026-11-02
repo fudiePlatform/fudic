@@ -32,9 +32,10 @@ get slowSearch
   q  str
   -> Person[]
 
-# Turns a person on or off.
+# Turns a person on or off. A 409 is the page's to paint: `catches` keeps it there.
 put save
   use auth
+  catches 409
   id      i32
   active  bool
 

@@ -163,7 +163,12 @@ export interface Task<A, R, V = R | undefined> {
 
 - Afecta a `checked` en `<input>`, `value` en `<input>`, `<textarea>` y `<select>`, y `selected`
   en `<option>`, con valor `=@expr`.
-- En el servidor no cambia nada: se pintan como atributo.
+- En el servidor, `checked` y `value` de `<input>` y `selected` de `<option>` se pintan como atributo,
+  igual que hoy. `<textarea>` y `<select>` no tienen atributo `value` en HTML: el textarea lleva el
+  valor como su texto (con un salto de línea más si empieza por uno, que el parser se come) y el
+  select marca `selected` en el `<option>` cuyo valor coincide. Así salen bien sin script.
+- Al hidratar no se escribe nada: el DOM ya dice lo que dice la señal, y lo que el usuario escribió
+  antes de que llegara el script se respeta, como en un formulario.
 - En el navegador, el pase escribe la **propiedad** (`el.checked = v`) cuando
   `el.checked !== v`, y lo compara con el DOM, no con la caché de lo último escrito.
 - Un pase corre, como hoy, cuando cambia una señal que lee la vista o el estado de una `task`. Así,
@@ -220,7 +225,9 @@ export interface Task<A, R, V = R | undefined> {
   - `activar` como en §4.4; ni `input.checked` ni `.error() === undefined` en el `@code`;
   - `borrar(p: Person)` usa `run()`: `if ((await quitar.run({ id: p.id })).status === "done") …`;
   - la tabla sigue delegada como la deja SDD-72;
-  - bajo la tabla, `@if (guardar.error()) { <p role="alert">@(guardar.error().message)</p> }`;
+  - bajo la tabla, `@if (motivo() !== "") { <p role="alert">@motivo()</p> }`: `activar` guarda en la
+    señal `motivo` el mensaje de `run()` cuando dice `failed` (la vista no admite `@if (guardar.error())`,
+    que no es un `boolean`, ni leer `.message` de un `unknown`);
   - el texto de la página explica en una frase la regla: lo que la función pone en `catches` se
     queda en la página; lo demás va a `error-pages`.
 - `borrarNadie` se queda como está: su 404 no está en `catches` y enseña `error-pages`.
@@ -250,7 +257,9 @@ export interface Task<A, R, V = R | undefined> {
 8. **Propiedad viva.** Un `<input type="checkbox" checked=@x()>` con `x` a `false`: el usuario lo
    marca, se ejecuta un pase y la casilla vuelve a desmarcada. Igual con `value` en `<input>` y
    `<textarea>`, y `selected` en `<option>`.
-9. **SSR intacto.** El HTML del servidor de esos cuatro casos es el mismo byte a byte que antes.
+9. **SSR.** El HTML del servidor de `checked` y `value` en `<input>` y `selected` en `<option>` es el
+   mismo byte a byte que antes. `<textarea value=@x()>` sale con el valor como texto y `<select value=@x()>`
+   con `selected` en su option, sin atributo `value`; sin script, los dos muestran el valor.
 10. **Migración.** `pnpm typecheck` y `pnpm build` en verde con los ejemplos migrados. No queda
     ningún `Fails.` de función ni de `load` en el repo.
 11. **Completado.** Dentro de una función se ofrece `catches` y no `fails`. Dentro de una regla

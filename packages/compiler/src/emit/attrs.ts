@@ -572,8 +572,14 @@ export function writeElementAttrs(
       const name = JSON.stringify(written.name);
       // A live property of a control: the browser writes the property, compared with the DOM on
       // every pass, so what the user moved goes back to what the view says (SDD-74 §4.4).
-      if (values.live !== undefined && isLiveProp(el.name, written.name)) {
-        values.live(crossingExpr(source, attr, written.value, host.signals), ($v) => `$dom.setLive(${v}, ${name}, ${$v});`);
+      // Where the writes do not repeat — the server, a row fabricated in the browser — it is
+      // the same call once: the server writes what says it without a script (a `<textarea>`'s
+      // text, the `selected` of an `<option>`), the browser the property.
+      if (isLiveProp(el.name, written.name)) {
+        const expr = crossingExpr(source, attr, written.value, host.signals);
+        const write = ($v: string): string => `$dom.setLive(${v}, ${name}, ${$v});`;
+        if (values.live !== undefined) values.live(expr, write);
+        else values.bound(expr, write);
         continue;
       }
       const clear = values.repeats ? ` else $dom.removeAttr(${v}, ${name});` : '';

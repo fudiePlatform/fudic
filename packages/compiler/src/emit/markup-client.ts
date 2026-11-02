@@ -556,6 +556,8 @@ export class ClientMarkupEmitter {
     // `$o` is what the slot held before this write, for the one write that reads it: a spread.
     const prev = keepPrev ? `const $o = $w[${slot}]; ` : '';
     // A live property is written on every pass: it compares with the DOM, which the user moves.
+    // Never on `h`: the server painted it right, and what the user typed before the script
+    // arrived is theirs, as a form keeps it.
     if (live) this.#apply.line(write('$v'));
     else this.#apply.line(`if ($v !== $w[${slot}]) { ${prev}$w[${slot}] = $v; ${write('$v')} }`);
     return slot;
