@@ -48,7 +48,8 @@ igual a la palabra clave y un `detail` de una línea. Se ofrecen solo en su cont
   - `form`: `form ${1:name}\n\n  ${2:field}  ${3:str} = ${4:""}\n    required  "${5:Write it.}"$0`
   - `type`: `type ${1:Name}\n  ${2:field}  ${3:str}$0`
   - `enum`: `enum ${1:Name}\n  ${2:value}$0`
-  - `rule`: `rule ${1:name}\n  on ${2:str}\n  fails ${3:code}$0`
+  - `rule`: `rule ${1:name}\n  on field ${2:str}\n  runs ${3|both,server|}\n  fails ${4:code}$0`
+    (*corregido al implementar:* sin `on field` ni `runs` la regla no valida)
   - `middleware`: `middleware ${1:name}\n  fails ${2:code} ${3:401} "${4:detail}"$0`
   - `pattern`: `pattern ${1:name} "${2:regex}"$0`
   - `pipe`: `pipe ${1:name}\n  on ${2:str}$0`

@@ -3,7 +3,7 @@
 > **SDD:** [SDD-75 — El editor del `.fudapi`](./SDD-75-editor-del-fudapi.md)
 > **Paquetes:** `@fudic/language-server` · `@fudic/api` · `@fudic/vscode`
 > **Rama:** `sdd-75-editor-del-fudapi`. Nace de `main` **con SDD-74 en `Hecho`**.
-> **Progreso:** 0 / 9 — `Listo`.
+> **Progreso:** 2 / 9 — `Listo`.
 
 ---
 
@@ -22,8 +22,8 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **Snippets por contexto**, en lugar de la palabra suelta, con el sangrado de la línea (SDD §3.1, §4.1) | `language-server` | `src/fudapi/completion.ts` |
-| [ ] | 2 | 1 | **Los tests de la fase.** Criterios 1–6 | `language-server` | `test/**` |
+| [x] | 1 | — | **Snippets por contexto**, en lugar de la palabra suelta, con el sangrado de la línea (SDD §3.1, §4.1) | `language-server` | `src/fudapi/completion.ts` |
+| [x] | 2 | 1 | **Los tests de la fase.** Criterios 1–6 | `language-server` | `test/**` |
 
 ## Fase 2 — implementaciones (3)
 
