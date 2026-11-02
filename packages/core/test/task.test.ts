@@ -57,9 +57,9 @@ function at<A, R>(calls: Call<A, R>[], index: number): Call<A, R> {
 }
 
 /** What `run()` resolves with (SDD-74 §3.3). */
-const done = <R>(value: R): TaskResult<R> => ({ status: 'done', value });
-const failed = (error: unknown): TaskResult<never> => ({ status: 'failed', error });
-const CANCELLED: TaskResult<never> = { status: 'cancelled' };
+const done = <R>(value: R): TaskResult<R> => ({ ok: true, status: 'done', value });
+const failed = (error: unknown): TaskResult<never> => ({ ok: false, status: 'failed', error });
+const CANCELLED: TaskResult<never> = { ok: false, status: 'cancelled' };
 
 afterEach(() => {
   vi.useRealTimers();
@@ -544,6 +544,66 @@ describe('disposal (criterion 12, the core half)', () => {
   });
 });
 
+describe('SDD-74 §3.3: ok and message()', () => {
+  it('ok is true only for done: the one test a caller needs', async () => {
+    const { fn, calls } = fake<string, string>({ method: 'POST' });
+    const t = task(fn);
+    const good = t.run('a');
+    await flush();
+    at(calls, 0).resolve('A');
+    expect((await good).ok).toBe(true);
+    const bad = t.run('b');
+    await flush();
+    at(calls, 1).reject(new Error('no'));
+    expect((await bad).ok).toBe(false);
+    const dropped = t.run('c');
+    t.cancel();
+    expect((await dropped).ok).toBe(false);
+  });
+
+  it('the cancelled result is one frozen value', async () => {
+    const { fn } = fake<string, string>();
+    const t = task(fn);
+    const a = t.run('a');
+    t.cancel();
+    const result = await a;
+    expect(Object.isFrozen(result)).toBe(true);
+  });
+
+  it.each([
+    ['nothing failed', undefined, ''],
+    ['an Error', new Error('Ya no quedan plazas.'), 'Ya no quedan plazas.'],
+    ['a string', 'texto suelto', 'texto suelto'],
+    ['a number', 409, '409'],
+    ['null', null, 'null'],
+  ])('message() of %s', async (_what, reason, text) => {
+    const { fn, calls } = fake<string, string>();
+    const t = task(fn);
+    expect(t.message()).toBe('');
+    const running = t.run('a');
+    if (reason === undefined) at(calls, 0).resolve('A');
+    else at(calls, 0).reject(reason);
+    await running;
+    expect(t.message()).toBe(text);
+  });
+
+  it('message() is tracked: an effect over it reruns when a call fails and when the next one clears it', async () => {
+    const { fn, calls } = fake<string, string>();
+    const t = task(fn);
+    const seen: string[] = [];
+    effect(() => {
+      seen.push(t.message());
+    });
+    const a = t.run('a');
+    at(calls, 0).reject(new Error('boom'));
+    await a;
+    const b = t.run('b');
+    at(calls, 1).resolve('B');
+    await b;
+    expect(seen).toEqual(['', 'boom', '']);
+  });
+});
+
 describe('SDD-74 criterion 6: run() resolves with the outcome of its own call', () => {
   it('done: { status: "done", value }', async () => {
     const { fn, calls } = fake<string, number>();
@@ -557,7 +617,7 @@ describe('SDD-74 criterion 6: run() resolves with the outcome of its own call', 
     const t = task<void, void>(async () => undefined);
     const ok = await t.run();
     expect(ok.status).toBe('done');
-    expect(ok).toEqual({ status: 'done', value: undefined });
+    expect(ok).toEqual({ ok: true, status: 'done', value: undefined });
 
     const boom = new Error('boom');
     const bad = task<void, void>(async () => {
@@ -684,6 +744,24 @@ describe('SDD-74 criterion 7: the queue does not lie', () => {
     at(calls, 2).resolve('three');
     await flush();
     expect(seen).toEqual([undefined, boom, undefined]);
+  });
+
+  it('message() follows error() call by call: the 2nd’s text while the 3rd is in flight, then empty', async () => {
+    const { fn, calls } = fake<number, string>({ method: 'PUT' });
+    const t = task(fn);
+    void t.run(1);
+    const second = t.run(2);
+    void t.run(3);
+    await flush();
+    at(calls, 0).resolve('one');
+    await flush();
+    at(calls, 1).reject(new Error('A Ana no se la puede desactivar.'));
+    await second;
+    expect(t.message()).toBe('A Ana no se la puede desactivar.');
+    await flush();
+    at(calls, 2).resolve('three');
+    await flush();
+    expect(t.message()).toBe('');
   });
 
   it('the round ends with how the LAST call ended: failed, while an earlier one succeeded', async () => {

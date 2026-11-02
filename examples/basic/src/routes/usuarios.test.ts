@@ -287,7 +287,8 @@ describe('criterion 11: error-pages decides before the task', () => {
     const problem = { status: 422, title: 'Unprocessable', errors: { q: ['demasiado largo'] } };
     await usuarios({ fetch: () => respondProblem(search, problem) });
     const t = task(search);
-    expect(await t.run({ q: 'ana' })).toEqual({ status: 'failed', error: expect.any(ValidationError) });
+    expect(await t.run({ q: 'ana' })).toEqual({ ok: false, status: 'failed', error: expect.any(ValidationError) });
+    expect(t.message()).toBe((t.error() as Error).message);
     expect(t.state()).toBe('failed');
     expect(t.error()).toBeInstanceOf(ValidationError);
     expect(assign).not.toHaveBeenCalled();
