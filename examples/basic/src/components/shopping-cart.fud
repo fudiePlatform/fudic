@@ -8,9 +8,11 @@
   const total = signal(0);
   const euros = currency("EUR");
 
-  function onCarrito(ev: CustomEvent) {
+  // Recibe lo que el emisor mandó con `emit("carrito", precio)`. Declarar `number` aquí es el
+  // contrato: un `emit("carrito", "5")` sale subrayado en el emisor.
+  function onCarrito(precio: number) {
     items.set(items() + 1);
-    total.set(total() + Number(ev.detail));
+    total.set(total() + precio);
   }
 }
 
@@ -41,7 +43,7 @@
 
 <shopping-cart>
   <template shadowrootmode="open">
-    <p class="cart" bus:carrito=@onCarrito($event)>
+    <p class="cart" bus:carrito=@onCarrito>
       <span class="badge">@items()</span>
       <span class="total">@(total() | euros)</span>
     </p>

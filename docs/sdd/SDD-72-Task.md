@@ -5,7 +5,7 @@
 > `@fudic/typecheck` · `examples/basic`
 > **Rama:** `sdd-72-handlers-que-reciben-el-dato`. Nace de `main` **con SDD-68 en `Hecho`**: el
 > ejemplo `usuarios` que se migra es el de la 68.
-> **Progreso:** 10 / 22 — `En curso`. Ampliada el 2026-11-01 con la fase 5 (la delegación).
+> **Progreso:** 11 / 22 — `En curso`. Ampliada el 2026-11-01 con la fase 5 (la delegación).
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -75,7 +75,7 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 14 | 5, 8, 13 | **La migración.** `user-form`, `usuarios`, `shopping-cart`, `bus-log` en `examples/basic` y `x-alias.fud` de `@fudic/testing` a la forma nueva (SDD §4.6); `app-actions.fud` se queda con la llamada | `examples/*` · fixtures | `examples/basic/src/**` · `packages/testing/test/app/**` |
+| [x] | 14 | 5, 8, 13 | **La migración.** `user-form`, `usuarios`, `shopping-cart`, `bus-log` en `examples/basic` y `x-alias.fud` de `@fudic/testing` a la forma nueva (SDD §4.6); `app-actions.fud` se queda con la llamada | `examples/*` · fixtures | `examples/basic/src/**` · `packages/testing/test/app/**` |
 | [ ] | 15 | 14 | **Los tests del ejemplo y la prueba en navegador.** Criterios 27–29; el 28 en `dev` y en `preview` | `examples/basic` | `src/**/*.test.ts` · `tests/**` |
 | [ ] | 16 | 15, 21 | **README, entrega y cierre.** Los README de `@fudic/dom` y de `@fudic/forms` con la forma nueva, y el del compilador con `delegate:p="click"` y `FUD1380`; criterio 30; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; SDD-72 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `docs/sdd/*` · `packages/*/README.md` |
 
