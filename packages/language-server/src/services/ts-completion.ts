@@ -49,7 +49,6 @@ import {
   brokenValueContextAt,
   controlValueAt,
   controlValueOpeningAt,
-  delegateValueContextAt,
   directiveContextAt,
   memberContextAt,
   eventContextAt,
@@ -374,11 +373,6 @@ function allowedItems(
   if (apis !== undefined && contractFunctionsAt(source.cached, offset, apis) !== undefined) return { items: [], at: offset };
 
   const region = regionAt(source.cached.source, source.cached.html, offset);
-
-  // The value of a `delegate:` is a list of event names, and the root service answers it whole
-  // (`delegateEvents`). The caret may still map into the projection — a handler above that reads
-  // the row re-opens the loop around itself — and TypeScript's handlers there are not events.
-  if (delegateValueContextAt(source.cached.source, offset, region) !== undefined) return { items: [], at: offset };
 
   // The portable view's own list, FIRST, so every branch below narrows what the view may write
   // and not what TypeScript would. `undefined` survives it, and the scope test below lets it.
@@ -1428,13 +1422,18 @@ function fudSourceAt(
   const decoded = context.decodeEmbeddedDocumentUri(URI.parse(document.uri));
   if (decoded === undefined) return undefined;
 
-  const [sourceUri] = decoded;
+  const [sourceUri, embeddedId] = decoded;
   if (!isFudSourceUri(sourceUri)) return undefined;
 
   const root = context.language.scripts.get(sourceUri)?.generated?.root as
     | FudicVirtualCode<CachedDocument>
     | undefined;
   if (root === undefined) return undefined;
+  // Volar asks every plugin about the `.fud` itself as well, and its offsets are the SOURCE's.
+  // Read as positions of the projection they land anywhere — inside some other handler — and
+  // the names offered there arrived at the caret of a `delegate:` value. Only the client
+  // projection is this decorator's to narrow.
+  if (embeddedId !== root.client.id) return undefined;
 
   return { cached: root.document };
 }
