@@ -1,10 +1,13 @@
 /**
- * SDD-37 §6.2–§6.10: the seven diagnostics of delegation, over the AST and nothing else.
+ * SDD-37 §6.2–§6.10 and SDD-72 §3.4–§3.5: the diagnostics of delegation, over the AST and
+ * nothing else.
  *
- * The harness registers exactly what the language server's batch registers — attribute values,
- * interpolations and loop headers — so the analyzer is exercised through the same door it will
- * be asked through in the editor. TypeScript is never built, never asked and never present:
- * that absence is criterion 10, and it is asserted rather than assumed.
+ * Since decisions 176–177 a marker may list the events it serves, the pairing is per event, and
+ * the row is read by its plain name anywhere in the handler's arguments; `$day` is the retired
+ * spelling (`FUD1383`). The harness registers exactly what the language server's batch registers
+ * — attribute values, interpolations and loop headers — so the analyzer is exercised through the
+ * same door it will be asked through in the editor. TypeScript is never built, never asked and
+ * never present: that absence is criterion 10, and it is asserted rather than assumed.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -19,9 +22,9 @@ import { delegation } from '../../src/semantic/analyzers/delegation.js';
 
 const constructs: AtConstructParser = { parseControl, parseCodeBlock };
 
-/** Wrap markup in a minimal valid component (DSD host wrapper, decision 75). */
-const component = (inner: string): string =>
-  `<app-test><template shadowrootmode="open">${inner}</template></app-test>`;
+/** Wrap markup in a minimal valid component (DSD host wrapper, decision 75), with an optional `@code`. */
+const component = (inner: string, code?: string): string =>
+  `${code === undefined ? '' : `@code {\n${code}\n}\n`}<app-test><template shadowrootmode="open">${inner}</template></app-test>`;
 
 /** The semantic input of one snippet, registered the way `js-batch.ts` registers a document. */
 function inputFor(source: string): SemanticInput {
@@ -56,38 +59,48 @@ function inputFor(source: string): SemanticInput {
   };
 }
 
-function report(inner: string): readonly Diagnostic[] {
+function report(inner: string, code?: string): readonly Diagnostic[] {
   const found: Diagnostic[] = [];
-  delegation.run(inputFor(component(inner)), (d) => void found.push(d));
+  delegation.run(inputFor(component(inner, code)), (d) => void found.push(d));
   return found;
 }
 
-function codes(inner: string): readonly string[] {
-  return report(inner).map((d) => d.code);
+function codes(inner: string, code?: string): readonly string[] {
+  return report(inner, code).map((d) => d.code);
 }
 
 /** The source text a diagnostic points at — the readable form of every span assertion. */
-function blamed(inner: string, index = 0): string {
-  const source = component(inner);
-  const diagnostic = report(inner)[index];
+function blamed(inner: string, index = 0, code?: string): string {
+  const source = component(inner, code);
+  const diagnostic = report(inner, code)[index];
   if (diagnostic === undefined) throw new Error('no diagnostic to read a span from');
   return source.slice(diagnostic.span.start, diagnostic.span.end);
 }
 
 /** The canonical shape of §3.1: a marker in a loop, read by an ancestor above it. */
-const CALENDAR = `<div @click="@fn($event, $day)">
+const CALENDAR = `<div @click="@fn($event, day)">
   @foreach (const day of days) key (day.id) {
     <div class="cell" delegate:day>@day.n</div>
     <button delegate:day>edit</button>
   }
 </div>`;
 
+/** The table of SDD-72 §3.4: a checkbox and a button per row, each marked for its own event. */
+const TABLE = `<tbody @change=@activar(p, $event) @click=@borrar(p)>
+  @foreach (const p of personas) key (p.id) {
+    <tr>
+      <td><input type="checkbox" delegate:p="change"></td>
+      <td><button delegate:p="click">Borrar</button></td>
+    </tr>
+  }
+</tbody>`;
+
 describe('delegation — what is legal', () => {
   it('accepts the canonical form, and two markers of the SAME loop are one delegation', () => {
     expect(codes(CALENDAR)).toEqual([]);
   });
 
-  it('leaves a handler with no `$name` exactly as it found it', () => {
+  it('leaves a handler that names no marked row exactly as it found it', () => {
     expect(
       codes(`<div @click="@fn($event)">
         @foreach (const day of days) key (day.id) { <div>@day.n</div> }
@@ -97,7 +110,7 @@ describe('delegation — what is legal', () => {
 
   it('accepts a destructured header: the member is the name, not the row', () => {
     expect(
-      codes(`<ul @click="@pick($id)">
+      codes(`<ul @click="@pick(id)">
         @foreach (const { id, label } of rows) key (id) { <li delegate:id>@label</li> }
       </ul>`),
     ).toEqual([]);
@@ -105,7 +118,7 @@ describe('delegation — what is legal', () => {
 
   it('accepts a `@for` header, whose binding is its index', () => {
     expect(
-      codes(`<div @click="@pick($i)">
+      codes(`<div @click="@pick(i)">
         @for (let i = 0; i < n; i++) key (i) { <b delegate:i>@i</b> }
       </div>`),
     ).toEqual([]);
@@ -113,13 +126,98 @@ describe('delegation — what is legal', () => {
 
   it('binds to the NEAREST ancestor that reads the name, not to the outermost', () => {
     expect(
-      codes(`<section @click="@outer($day)">
-        <div @click="@inner($day)">
+      codes(`<section @click="@outer(day)">
+        <div @click="@inner(day)">
           @foreach (const day of days) key (day.id) { <b delegate:day>@day.n</b> }
         </div>
       </section>`),
       // The outer one is left with no marker of its own — which is `FUD0660` and not silence.
     ).toEqual(['FUD0660']);
+  });
+
+  it('accepts the table of §3.4: one marker per event (criterion 35)', () => {
+    expect(codes(TABLE)).toEqual([]);
+  });
+
+  it('a marker may serve several events at once', () => {
+    expect(
+      codes(`<ul @click=@pick(day) @keydown=@key(day)>
+        @foreach (const day of days) key (day.id) { <li delegate:day="click keydown"></li> }
+      </ul>`),
+    ).toEqual([]);
+  });
+});
+
+describe('delegation — the row in any argument, one marker per variable (decision 177, criteria 41, 44, 45)', () => {
+  it('reads the row inside any expression of the arguments', () => {
+    expect(
+      codes(`<tbody @click=@borrar(p.id, p.name, \`\${p.name}!\`, p.tags.length)>
+        @foreach (const p of personas) key (p.id) { <tr><td><button delegate:p="click">x</button></td></tr> }
+      </tbody>`),
+    ).toEqual([]);
+  });
+
+  it('a property name or a key is not the row (criterion 44)', () => {
+    // Neither `x.p` nor `{ p: 1 }` mention the row, so the handler reads none and the marker
+    // is read by nobody.
+    const member = `<div @click=@f(x.p)>
+      @foreach (const p of ps) key (p.id) { <b delegate:p></b> }
+    </div>`;
+    expect(codes(member)).toEqual(['FUD0661']);
+    const key = `<div @click=@f({ p: 1 })>
+      @foreach (const p of ps) key (p.id) { <b delegate:p></b> }
+    </div>`;
+    expect(codes(key)).toEqual(['FUD0661']);
+  });
+
+  it('a shorthand property is a read: its value is the row', () => {
+    expect(
+      codes(`<div @click=@f({ p })>
+        @foreach (const p of ps) key (p.id) { <b delegate:p></b> }
+      </div>`),
+    ).toEqual([]);
+  });
+
+  it('a function inside the arguments that declares the name hides it, shorthand included', () => {
+    expect(
+      codes(`<div @click=@f((p) => p.id)>
+        @foreach (const p of ps) key (p.id) { <b delegate:p></b> }
+      </div>`),
+    ).toEqual(['FUD0661']);
+    expect(
+      codes(`<div @click=@f(function (p) { return { p }; })>
+        @foreach (const p of ps) key (p.id) { <b delegate:p></b> }
+      </div>`),
+    ).toEqual(['FUD0661']);
+  });
+
+  it('a marker whose ancestors read only OTHER rows is read by nobody', () => {
+    expect(
+      codes(`<div @click=@f(a)>
+        @foreach (const a of as) key (a.id) {
+          <i delegate:a></i>
+          @foreach (const b of a.bs) key (b.id) { <u delegate:b></u> }
+        }
+      </div>`),
+    ).toEqual(['FUD0661']);
+  });
+
+  it('two variables of the row, one marker each (criterion 45)', () => {
+    expect(
+      codes(`<tbody @click=@borrar(p.id, i)>
+        @foreach (const [i, p] of personas.entries()) key (p.id) {
+          <tr><td><button delegate:p="click" delegate:i="click">x</button></td></tr>
+        }
+      </tbody>`),
+    ).toEqual([]);
+  });
+
+  it('a fixed value is no row and needs no marker (criterion 45)', () => {
+    expect(
+      codes(`<tbody @click=@borrar(p.id, 123)>
+        @foreach (const p of personas) key (p.id) { <tr><td><button delegate:p="click">x</button></td></tr> }
+      </tbody>`),
+    ).toEqual([]);
   });
 });
 
@@ -134,7 +232,7 @@ describe('delegation — the marker (§6.2, §6.3, §6.6)', () => {
   });
 
   it('FUD0662: a name the header does not declare, and the message offers what it does', () => {
-    const inner = `<div @click="@fn($dia)">
+    const inner = `<div @click="@fn(dia)">
       @foreach (const day of days) key (day.id) { <b delegate:dia>@day.n</b> }
     </div>`;
     expect(codes(inner)).toEqual(['FUD0662', 'FUD0660']);
@@ -143,7 +241,7 @@ describe('delegation — the marker (§6.2, §6.3, §6.6)', () => {
   });
 
   it('FUD0662: a `@while` declares nothing, and the message says so', () => {
-    const inner = `<div @click="@fn($day)">
+    const inner = `<div @click="@fn(day)">
       @while (more) key (id) { <b delegate:day></b> }
     </div>`;
     expect(codes(inner)).toContain('FUD0662');
@@ -159,25 +257,59 @@ describe('delegation — the marker (§6.2, §6.3, §6.6)', () => {
   });
 
   it('FUD0661: the element that carries the handler is not its own ancestor', () => {
+    // Its `day` is the loop's own, an ordinary argument: no row is read, so no FUD0660 either.
     expect(
       codes(`@foreach (const day of days) key (day.id) {
-        <b delegate:day @click="@fn($day)"></b>
+        <b delegate:day @click="@fn(day)"></b>
       }`),
-    ).toEqual(['FUD0661', 'FUD0660']);
+    ).toEqual(['FUD0661']);
+  });
+});
+
+describe('delegation — the marker with its events (decision 176, criteria 35, 37)', () => {
+  it('FUD1381: a listed event no ancestor handler of that event reads the name in, on the value (criterion 37)', () => {
+    const inner = `<div @click=@fn(p)>
+      @foreach (const p of ps) key (p.id) { <b delegate:p="click input"></b> }
+    </div>`;
+    expect(codes(inner)).toEqual(['FUD1381']);
+    expect(blamed(inner)).toBe('click input');
+    expect(report(inner)[0]?.message).toBe(
+      'no ancestor `@input` reads `p`: this marker serves an event nobody listens to',
+    );
+  });
+
+  it('FUD1381 with no handler at all, and the read of another event has no table: FUD0660', () => {
+    const inner = `<div @click=@fn(p)>
+      @foreach (const p of ps) key (p.id) { <b delegate:p="input"></b> }
+    </div>`;
+    expect(codes(inner)).toEqual(['FUD1381', 'FUD0660']);
+    expect(blamed(inner, 1)).toBe('p');
+    expect(report(inner)[1]?.message).toBe('no `delegate:p` below serves `@click`: `p` would have no row to read');
+  });
+
+  it('per event, the marker goes to the nearest ancestor with a handler of THAT event', () => {
+    // The click goes to the inner div, the change to the outer section: neither is left over.
+    expect(
+      codes(`<section @change=@outer(day)>
+        <div @click=@inner(day)>
+          @foreach (const day of days) key (day.id) { <b delegate:day></b> }
+        </div>
+      </section>`),
+    ).toEqual([]);
   });
 });
 
 describe('delegation — the pairing (§6.5, §6.7)', () => {
-  it('FUD0660: a `$name` with no marker under it', () => {
-    const inner = `<div @click="@fn($event, $day)">
-      @foreach (const day of days) key (day.id) { <b>@day.n</b> }
-    </div>`;
-    expect(codes(inner)).toEqual(['FUD0660']);
-    expect(blamed(inner)).toBe('$day');
+  it('a name with no marker under it is an ordinary argument, not a read', () => {
+    expect(
+      codes(`<div @click="@fn($event, day)">
+        @foreach (const day of days) key (day.id) { <b>@day.n</b> }
+      </div>`),
+    ).toEqual([]);
   });
 
   it('FUD0664: two loops offering the same name to the same handler', () => {
-    const inner = `<div @click="@fn($item)">
+    const inner = `<div @click="@fn(item)">
       @foreach (const item of a) key (item.id) { <b delegate:item></b> }
       @foreach (const item of b) key (item.id) { <i delegate:item></i> }
     </div>`;
@@ -187,7 +319,7 @@ describe('delegation — the pairing (§6.5, §6.7)', () => {
 
   it('FUD0664: it is an error even when both loops iterate the same list', () => {
     expect(
-      codes(`<div @click="@fn($item)">
+      codes(`<div @click="@fn(item)">
         @foreach (const item of rows) key (item.id) { <b delegate:item></b> }
         @foreach (const item of rows) key (item.id) { <i delegate:item></i> }
       </div>`),
@@ -197,10 +329,10 @@ describe('delegation — the pairing (§6.5, §6.7)', () => {
   it('two loops under DIFFERENT handlers are two delegations and neither is ambiguous', () => {
     expect(
       codes(`<section>
-        <div @click="@one($item)">
+        <div @click="@one(item)">
           @foreach (const item of a) key (item.id) { <b delegate:item></b> }
         </div>
-        <div @click="@two($item)">
+        <div @click="@two(item)">
           @foreach (const item of b) key (item.id) { <i delegate:item></i> }
         </div>
       </section>`),
@@ -209,7 +341,7 @@ describe('delegation — the pairing (§6.5, §6.7)', () => {
 
   it('nested loops delegate two names to one handler', () => {
     expect(
-      codes(`<div @click="@fn($row, $tag)">
+      codes(`<div @click="@fn(row, tag)">
         @foreach (const row of rows) key (row.id) {
           @foreach (const tag of row.tags) key (tag.id) { <b delegate:row delegate:tag></b> }
         }
@@ -218,9 +350,41 @@ describe('delegation — the pairing (§6.5, §6.7)', () => {
   });
 });
 
+describe('delegation — a name that clashes (FUD1382, criterion 42)', () => {
+  const PICK = `<div @click=@pick(day)>
+    @foreach (const day of days) key (day.id) { <b delegate:day></b> }
+  </div>`;
+
+  it('a name of the @code is FUD1382 on the handler\'s mention, and nothing is delegated', () => {
+    expect(codes(PICK, '  const day = 1;\n  const days = [];\n  function pick(d) {}')).toEqual(['FUD1382']);
+    expect(blamed(PICK, 0, '  const day = 1;')).toBe('day');
+    expect(report(PICK, '  const day = 1;')[0]?.message).toBe(
+      '`day` is both the delegated row and a name in scope here: rename the loop binding or the variable',
+    );
+  });
+
+  it('an import of the @code clashes too', () => {
+    expect(codes(PICK, "  import { day } from './x';")).toEqual(['FUD1382']);
+  });
+
+  it('a loop around the handler that declares the name clashes', () => {
+    const inner = `@foreach (const day of weeks) key (day.id) {
+      <div @click=@pick(day)>
+        @foreach (const day of day.days) key (day.id) { <b delegate:day></b> }
+      </div>
+    }`;
+    expect(codes(inner)).toEqual(['FUD1382']);
+    expect(blamed(inner)).toBe('day');
+  });
+
+  it('a name of the @code that is not the row is no clash', () => {
+    expect(codes(PICK, '  const other = 1;')).toEqual([]);
+  });
+});
+
 describe('delegation — the event and the read (§6.8, §6.9)', () => {
   it('FUD0665: an event that does not bubble can never be delegated', () => {
-    const inner = `<div @mouseenter="@fn($event, $day)">
+    const inner = `<div @mouseenter="@fn($event, day)">
       @foreach (const day of days) key (day.id) { <b delegate:day></b> }
     </div>`;
     expect(codes(inner)).toEqual(['FUD0665']);
@@ -229,14 +393,14 @@ describe('delegation — the event and the read (§6.8, §6.9)', () => {
   });
 
   it('FUD0665: with no substitute, the message offers none', () => {
-    const inner = `<div @scroll="@fn($day)">
+    const inner = `<div @scroll="@fn(day)">
       @foreach (const day of days) key (day.id) { <b delegate:day></b> }
     </div>`;
     expect(codes(inner)).toEqual(['FUD0665']);
     expect(report(inner)[0]?.message).not.toContain('use `@');
   });
 
-  it('the same event with no `$name` is an ordinary listener and stays legal', () => {
+  it('the same event with no row read is an ordinary listener and stays legal', () => {
     expect(codes('<div @mouseenter="@fn($event)"></div>')).toEqual([]);
   });
 
@@ -246,11 +410,22 @@ describe('delegation — the event and the read (§6.8, §6.9)', () => {
     expect(blamed('<b class:on="@$day"></b>')).toBe('$day');
   });
 
-  it('FUD0666: `$name` inside a lambda is in a scope the wrapper does not build', () => {
-    expect(codes('<div @click="@(() => fn($day))"></div>')).toEqual(['FUD0666']);
+  it('FUD1383: `$name` in a handler is the retired spelling, with the fix (criterion 43)', () => {
+    const inner = `<div @click=@pick($day)>
+      @foreach (const day of days) key (day.id) { <b delegate:day></b> }
+    </div>`;
+    // And the marker is read by nobody now: the plain name is what pairs.
+    expect(codes(inner)).toEqual(['FUD1383', 'FUD0661']);
+    expect(blamed(inner)).toBe('$day');
+    expect(report(inner)[0]?.message).toBe('a delegated row is read by its name: write `day`, not `$day`');
   });
 
-  it('FUD0666: a `$name` that is a member or a key names somebody else\'s namespace', () => {
+  it('FUD1383 inside a lambda handler and through a hole in an array argument too', () => {
+    expect(codes('<div @click="@(() => fn($day))"></div>')).toEqual(['FUD1383']);
+    expect(codes('<div @click="@fn([$day, , 1])"></div>')).toEqual(['FUD1383']);
+  });
+
+  it('a `$name` that is a member or a key names somebody else\'s namespace', () => {
     expect(codes('<b>@row.$day</b>')).toEqual([]);
     expect(codes('<div @click="@fn({ $day: 1 })"></div>')).toEqual([]);
     expect(codes('<b>@row[$day]</b>')).toEqual(['FUD0666']);
@@ -267,13 +442,9 @@ describe('delegation — the event and the read (§6.8, §6.9)', () => {
     expect(codes('<div @click="@fn($)"></div>')).toEqual([]);
   });
 
-  it('reads through a hole in an array argument without tripping over it', () => {
-    expect(codes('<div @click="@fn([$day, , 1])"></div>')).toEqual(['FUD0666']);
-  });
-
   it('collects the reads of TWO handlers on the same element', () => {
     expect(
-      codes(`<div @click="@one($day)" @keydown="@two($day)">
+      codes(`<div @click="@one(day)" @keydown="@two(day)">
         @foreach (const day of days) key (day.id) { <b delegate:day></b> }
       </div>`),
     ).toEqual([]);
@@ -286,13 +457,26 @@ describe('delegation — the event and the read (§6.8, §6.9)', () => {
   });
 });
 
-describe('delegation — the marker with a value (§6.4)', () => {
-  it('FUD0667 reaches the editor too, and not only `pnpm build`', () => {
-    const inner = `<div @click="@fn($day)">
-      @foreach (const day of days) key (day.id) { <b delegate:day="x"></b> }
+describe('delegation — the marker with a wrong value (§6.4, criterion 38)', () => {
+  it('FUD0667 reaches the editor too, and the marker still serves every event', () => {
+    const inner = `<div @click="@fn(day)">
+      @foreach (const day of days) key (day.id) { <b delegate:day=@x></b> }
     </div>`;
     expect(codes(inner)).toEqual(['FUD0667']);
-    expect(blamed(inner)).toBe('x');
+    expect(blamed(inner)).toBe('@x');
+  });
+
+  it('and an empty text the same; a literal event list does not', () => {
+    expect(
+      codes(`<div @click="@fn(day)">
+        @foreach (const day of days) key (day.id) { <b delegate:day=""></b> }
+      </div>`),
+    ).toEqual(['FUD0667']);
+    expect(
+      codes(`<div @click="@fn(day)">
+        @foreach (const day of days) key (day.id) { <b delegate:day="click"></b> }
+      </div>`),
+    ).toEqual([]);
   });
 });
 
@@ -343,7 +527,7 @@ describe('delegation — it never throws (§5, invariant 5)', () => {
 
   it('adds two markers of the same name from two nested loops without confusing them', () => {
     expect(
-      codes(`<div @click="@fn($row)">
+      codes(`<div @click="@fn(row)">
         @foreach (const row of rows) key (row.id) {
           @foreach (const cell of row.cells) key (cell.id) { <b delegate:row></b> }
         }
@@ -352,7 +536,7 @@ describe('delegation — it never throws (§5, invariant 5)', () => {
   });
 
   it('offers the names of EVERY enclosing loop when the marker names none of them', () => {
-    const inner = `<div @click="@fn($x)">
+    const inner = `<div @click="@fn(x)">
       @foreach (const row of rows) key (row.id) {
         @foreach (const cell of row.cells) key (cell.id) { <b delegate:x></b> }
       }
@@ -363,24 +547,32 @@ describe('delegation — it never throws (§5, invariant 5)', () => {
   });
 });
 
-describe('delegation — the eight, out of the AST and out of the checker (§6.10)', () => {
-  /** One document that breaks all seven pairing rules plus the one the classification owns. */
+describe('delegation — every code, out of the AST and out of the checker (§6.10)', () => {
+  /** One document that breaks every pairing rule plus the one the classification owns. */
   const BROKEN = `<div delegate:loose></div>
 <div @click="@a($ghost)"></div>
-<div @mouseenter="@b($day)">
+<div @mouseenter="@b(day)">
   @foreach (const day of days) key (day.id) { <i delegate:day></i> }
 </div>
-<div @click="@c($item)">
+<div @click="@c(item)">
   @foreach (const item of a) key (item.id) { <b delegate:item></b> }
-  @foreach (const item of b) key (item.id) { <u delegate:item="1"></u> }
+  @foreach (const item of b) key (item.id) { <u delegate:item=@one></u> }
 </div>
 @foreach (const dead of xs) key (dead.id) { <s delegate:dead></s> }
-<div @click="@d($dia)">
+<div @click="@d(dia)">
   @foreach (const day of ys) key (day.id) { <em delegate:dia></em> }
 </div>
+<div @click="@e(q)">
+  @foreach (const q of zs) key (q.id) { <em delegate:q="input"></em> }
+</div>
+@foreach (const w of ws) key (w.id) {
+  <div @click="@f(w)">
+    @foreach (const w of w.ws) key (w.id) { <em delegate:w></em> }
+  </div>
+}
 <b class:on="@$stray"></b>`;
 
-  it('reports all eight codes over one document', () => {
+  it('reports all eleven codes over one document', () => {
     expect(new Set(codes(BROKEN))).toEqual(
       new Set([
         'FUD0660',
@@ -391,13 +583,16 @@ describe('delegation — the eight, out of the AST and out of the checker (§6.1
         'FUD0665',
         'FUD0666',
         'FUD0667',
+        'FUD1381',
+        'FUD1382',
+        'FUD1383',
       ]),
     );
   });
 
   it('and the compiler that produced them cannot reach TypeScript at all', async () => {
     // The strongest form the promise of §4.5 can take in a test: the package that decides
-    // these eight declares no dependency a checker could arrive through. Its runtime
+    // these codes declares no dependency a checker could arrive through. Its runtime
     // dependencies are the parser and two packages of plain data and functions (diagnostics,
     // and the ICU subset and catalog of SDD-58), neither of which reaches a checker either.
     const manifest: { dependencies: Record<string, string> } = (

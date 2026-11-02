@@ -160,6 +160,17 @@ interface $FudicEvents {
 type $Events = HTMLElementEventMap & $FudicEvents;
 declare function $on<K extends keyof $Events>(
   type: K, h: (ev: $Events[K]) => unknown): void;
+type $Result<F> = F extends (...a: never[]) => infer R ? Awaited<R> : unknown;
+declare function $onResult<F>(fn: F, h: (value: $Result<F>) => unknown): void;
+declare function $onResultEvent<F>(fn: F, h: (ev: CustomEvent<$Result<F>>) => unknown): void;
+declare function $onError(h: (error: Error) => unknown): void;
+declare function $onErrorEvent(h: (ev: CustomEvent<Error>) => unknown): void;
+type $BusDetail<K extends string> = import('@fudic/dom').BusDetail<K>;
+type $BusParam<F> = import('@fudic/dom').BusParam<F>;
+declare function $busOn<K extends string>(name: K, h: (detail: $BusDetail<K>) => unknown): void;
+declare function $busEvent<K extends string>(name: K, h: (ev: CustomEvent<$BusDetail<K>>) => unknown): void;
+declare function $busOnAny(name: unknown, h: (detail: any) => unknown): void;
+declare function $busEventAny(name: unknown, h: (ev: CustomEvent<any>) => unknown): void;
 declare function $section<T extends string>(name: T): void;
 declare function $cls(v: boolean): void;
 declare function $sty(v: string): void;

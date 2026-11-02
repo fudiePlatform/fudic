@@ -99,6 +99,25 @@ describe('examples/basic, as its build checks it (criterion 26)', () => {
     expect(mine).toEqual([]);
   });
 
+  it('usuarios.fud delegated: borrar(p: number) is TS2345 on the p of the handler (criterion 39)', { timeout: 120_000 }, () => {
+    const USUARIOS = `${ROOT}/src/routes/usuarios.fud`;
+    const base = nodeFileSystem();
+    const fs: CheckFs = {
+      ...base,
+      readFile: (path) =>
+        toPosix(path) === USUARIOS
+          ? base.readFile(path)!.replace('async function borrar(p: Person)', 'async function borrar(p: number)')
+          : base.readFile(path),
+    };
+    expect(fs.readFile(USUARIOS)).toContain('async function borrar(p: number)');
+    const report = createProjectChecker({ root: ROOT }, fs).check();
+    const mine = shown(report, ROOT, fs.readFile).filter((line) => line.startsWith('src/routes/usuarios.fud'));
+    expect(mine).toContain('src/routes/usuarios.fud TS2345 p');
+    const source = fs.readFile(USUARIOS)!;
+    const handler = source.indexOf('@borrar(p)') + '@borrar('.length;
+    expect(report.problems.some((p) => p.file.endsWith('usuarios.fud') && p.span.start === handler && p.code === 'TS2345')).toBe(true);
+  });
+
   it('emit("alta", "x") in user-form is TS2345 on the "x"', { timeout: 120_000 }, () => {
     const fs = editing((source) => source.replace('emit("alta", persona);', 'emit("alta", "x");'));
     const report = createProjectChecker({ root: ROOT }, fs).check();

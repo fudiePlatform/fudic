@@ -89,8 +89,11 @@ describe('analyze — runner', () => {
     // + view-rest, view-control (SDD-61: FUD1147, FUD1148)
     // + server-cut (SDD-61: FUD1150, the server cut of `@code`)
     // + await (SDD-70: FUD1320–FUD1322)
-    expect(ANALYZERS).toHaveLength(30);
+    // + event-in-loop, right after delegation (SDD-72: FUD1380)
+    expect(ANALYZERS).toHaveLength(31);
     expect(ANALYZERS.at(-1)?.name).toBe('await');
+    const names = ANALYZERS.map((a) => a.name);
+    expect(names.indexOf('event-in-loop')).toBe(names.indexOf('delegation') + 1);
     const { value } = analyze(buildInput(component('<p>hi</p>')));
     expect(value).toEqual({});
     expect('strategies' in value).toBe(false); // decisions 63–65 retired: no hydration strategy

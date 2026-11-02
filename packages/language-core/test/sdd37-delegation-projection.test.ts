@@ -1,20 +1,22 @@
 /**
- * `$name` in the editor (SDD-37 §4.5, §6.18).
+ * The delegated row in the editor (SDD-37 §4.5, §6.18; SDD-72 decision 177).
  *
- * `$day` is written in an ANCESTOR's handler and declared by a loop below it, so there is no
- * scope in the projection that holds it. The loop's own header re-opens the exact one, which
- * is what makes `$day` the element of `days` — and, with a destructured header, the type of
- * the member and not of the row.
+ * The row is written in an ANCESTOR's handler and declared by a loop below it, so there is no
+ * scope in the projection that holds it. The loop's own header re-opens the exact one around the
+ * handler, which is what makes `day` the element of `days` — and, with a destructured header, the
+ * type of the member and not of the row. Since decision 177 the handler reads the header's own
+ * name: no `const $day = day` is written any more.
  *
  * The text assertions say what is projected; the corpus run says TypeScript agrees.
  */
 
 import { describe, expect, it } from 'vitest';
+import ts from 'typescript';
 import { emitVirtualFiles } from '../src/emit.js';
 import { clientFileName } from '../src/paths.js';
 import type { VirtualFile } from '../src/types.js';
 import { parseFud, registryOf } from './_support.js';
-import { typecheckCorpus, type CorpusDiagnostic } from './typecheck.js';
+import { languageServiceFor, typecheckCorpus, type CorpusDiagnostic } from './typecheck.js';
 
 /**
  * The client virtual, through the ORCHESTRATOR and not through `emitClientVirtual`.
@@ -51,24 +53,20 @@ const CALENDAR = (header: string, marker: string, args: string): string =>
   '    </div>\n' +
   '  </template>\n</app-cal>\n';
 
-describe('the scope a `$name` is read in (§4.5)', () => {
-  it('re-opens the loop header around the handler, and binds the name to it', () => {
-    const { text } = project(CALENDAR('const day of days', 'delegate:day', '$event, $day'));
+describe('the scope a delegated row is read in (§4.5)', () => {
+  it('re-opens the loop header around the handler, which reads the header\'s own name', () => {
+    const { text } = project(CALENDAR('const day of days', 'delegate:day', '$event, day'));
 
-    expect(text).toContain(
-      '$on(\'click\', ($event) => { for (const day of days) { const $day = day; return pick($event, $day); } })',
-    );
+    expect(text).toContain("$on('click', ($event) => { for (const day of days) { return pick($event, day); } });");
+    expect(text).not.toContain('const $day');
   });
 
-  it('binds the MEMBER of a destructured header, not the row', () => {
+  it('reads the MEMBER of a destructured header, not the row', () => {
     const { text } = project(
-      CALENDAR('const { id, n } of days', 'delegate:n', '$event, $n').replace(
-        'key (day.id)',
-        'key (id)',
-      ),
+      CALENDAR('const { id, n } of days', 'delegate:n', '$event, n').replace('key (day.id)', 'key (id)'),
     );
 
-    expect(text).toContain('for (const { id, n } of days) { const $n = n; return pick($event, $n); }');
+    expect(text).toContain('for (const { id, n } of days) { return pick($event, n); }');
   });
 
   it('nests two headers for two names, outermost first', () => {
@@ -80,7 +78,7 @@ describe('the scope a `$name` is read in (§4.5)', () => {
       '  function pick(row, tag) { void row; void tag; }\n' +
       '}\n' +
       '<app-cal>\n  <template shadowrootmode="open">\n' +
-      '    <div @click="@pick($row, $tag)">\n' +
+      '    <div @click="@pick(row, tag)">\n' +
       '      @foreach (const row of rows) key (row.id) {\n' +
       '        @foreach (const tag of row.tags) key (tag.id) {\n' +
       '          <b delegate:row delegate:tag>x</b>\n' +
@@ -89,11 +87,9 @@ describe('the scope a `$name` is read in (§4.5)', () => {
       '    </div>\n' +
       '  </template>\n</app-cal>\n';
 
-    const { text } = project(source);
     // The outer header first: the inner one reads `row`, so any other order is a TS2304.
-    expect(text).toContain(
-      'for (const row of rows) { for (const tag of row.tags) { const $row = row; const $tag = tag; ' +
-        'return pick($row, $tag); } }',
+    expect(project(source).text).toContain(
+      'for (const row of rows) { for (const tag of row.tags) { return pick(row, tag); } }',
     );
   });
 
@@ -103,15 +99,13 @@ describe('the scope a `$name` is read in (§4.5)', () => {
       '  const { n } = props<{ n: number }>();\n' +
       '  function pick(i) { void i; }\n}\n' +
       '<app-cal>\n  <template shadowrootmode="open">\n' +
-      '    <div @click="@pick($i)">\n' +
+      '    <div @click="@pick(i)">\n' +
       '      @for (let i = 0; i < n; i++) key (i) {\n' +
       '        <b delegate:i>x</b>\n' +
       '      }\n' +
       '    </div>\n  </template>\n</app-cal>\n';
 
-    expect(project(source).text).toContain(
-      'for (let i = 0; i < n; i++) { const $i = i; return pick($i); }',
-    );
+    expect(project(source).text).toContain('for (let i = 0; i < n; i++) { return pick(i); }');
   });
 
   it('registers no header for what declares nothing, and does not trip over it', () => {
@@ -129,15 +123,14 @@ describe('the scope a `$name` is read in (§4.5)', () => {
     expect(text).toContain('for (const $item of []) {');
   });
 
-  it('leaves a handler with no `$name` byte for byte as it was', () => {
-    const { text } = project(CALENDAR('const day of days', 'delegate:day', '$event, day'));
+  it('leaves a handler that reads no marked row byte for byte as it was', () => {
+    const { text } = project(CALENDAR('const day of days', 'class="x"', '$event, day'));
 
     expect(text).toContain("$on('click', ($event) => pick($event, day));");
-    expect(text).not.toContain('const $day');
   });
 
   it('copies the header as SCAFFOLDING: `days` is mapped once, where it is written', () => {
-    const source = CALENDAR('const day of days', 'delegate:day', '$event, $day');
+    const source = CALENDAR('const day of days', 'delegate:day', '$event, day');
     const { text, mappings } = project(source);
 
     // Twice in the generated text — the real loop and the synthetic scope — and exactly one
@@ -150,17 +143,17 @@ describe('the scope a `$name` is read in (§4.5)', () => {
   });
 });
 
-describe('and TypeScript agrees (§6.18)', () => {
+describe('and TypeScript agrees (§6.18, criteria 39, 41, 44)', () => {
   const CORPUS = 'components/app-list.fud';
 
   /** The corpus list, with the inner loop delegating its row to a handler on the outer `<ul>`. */
-  const delegated = (call: string): Record<string, string> => ({
+  const delegated = (call: string, pick = 'function pick(ev: Event, row: Row) { void ev; void row.label; }'): Record<string, string> => ({
     [CORPUS]:
       '@code {\n' +
       '  type Row = { id: string; label: string };\n' +
       '  type Group = { id: string; rows: Row[] };\n\n' +
       '  const { groups } = props<{ groups: Group[] }>();\n\n' +
-      '  function pick(ev: Event, row: Row) { void ev; void row.label; }\n' +
+      `  ${pick}\n` +
       '}\n\n' +
       '<app-list>\n  <template shadowrootmode="open">\n' +
       `    <ul @click="@pick(${call})">\n` +
@@ -177,18 +170,44 @@ describe('and TypeScript agrees (§6.18)', () => {
       '  </template>\n</app-list>\n',
   });
 
-  it('types `$item` as the row: a correct handler typechecks clean', () => {
-    expect(typecheckCorpus(delegated('$event, $item')).map(describeDiag)).toEqual([]);
+  it('types `item` as the row: a correct handler typechecks clean', () => {
+    expect(typecheckCorpus(delegated('$event, item')).map(describeDiag)).toEqual([]);
   });
 
-  it('and a handler that expects something else is an error ON the `$name`', () => {
-    // `pick` takes `(Event, Row)`. Handing it `($item, $item)` puts a `Row` where an `Event`
-    // goes — which only has an answer at all because `$item` carries the row's type.
-    const diags = typecheckCorpus(delegated('$item, $item'));
+  it('and a handler that expects something else is an error ON the `item` of the handler (criterion 39)', () => {
+    // `pick` takes `(Event, Row)`. Handing it `(item, item)` puts a `Row` where an `Event`
+    // goes — which only has an answer at all because `item` carries the row's type.
+    const diags = typecheckCorpus(delegated('item, item'));
 
     expect(diags).toHaveLength(1);
     expect(diags[0]!.code).toBe(2345);
-    expect(diags[0]!.sourceText).toBe('$item');
+    expect(diags[0]!.sourceText).toBe('item');
     expect(diags[0]!.message).toContain('Row');
+  });
+
+  it('the hover on `item` in the handler shows the row type (criterion 41)', () => {
+    const overrides = delegated('$event, item');
+    const { service, pathOf, projected } = languageServiceFor(overrides);
+    const entry = projected.find(({ file }) => file.path === CORPUS)!;
+    const at = entry.file.source.indexOf('item)"');
+    let shown: string | undefined;
+    for (const v of entry.virtuals) {
+      for (const m of v.mappings) {
+        if (at < m.sourceOffset || at >= m.sourceOffset + m.sourceLength) continue;
+        const info = service.getQuickInfoAtPosition(pathOf(v.fileName), m.generatedOffset + (at - m.sourceOffset));
+        if (info !== undefined) shown = ts.displayPartsToString(info.displayParts);
+      }
+    }
+    expect(shown).toContain('Row');
+  });
+
+  it('the row inside an argument is typed too: id and label check, the wrong type is red (criterion 44)', () => {
+    const typed = 'function pick(id: string, label: string) { void id; void label; }';
+    expect(typecheckCorpus(delegated('item.id, item.label', typed)).map(describeDiag)).toEqual([]);
+    const wrong = 'function pick(id: number, label: string) { void id; void label; }';
+    const diags = typecheckCorpus(delegated('item.id, item.label', wrong));
+    expect(diags).toHaveLength(1);
+    expect(diags[0]!.code).toBe(2345);
+    expect(diags[0]!.sourceText).toBe('item.id');
   });
 });

@@ -330,4 +330,68 @@ test.describe('user-form', () => {
     await row(page, 'Nuevo').getByRole('button', { name: 'Borrar' }).click();
     await expect(row(page, 'Nuevo')).toHaveCount(0);
   });
+
+  test('SDD-72 criterion 40: seven sign-ups add no listener, and the delegated rows still toggle and delete', async ({ page }) => {
+    // The counter of `/delegacion` (`public/probe-listeners.js`), installed before anything
+    // loads: every `addEventListener` and `removeEventListener` of the page, counted.
+    await page.addInitScript(() => {
+      const probe = { add: 0, remove: 0 };
+      (window as unknown as { __probe: typeof probe }).__probe = probe;
+      const add = EventTarget.prototype.addEventListener;
+      const remove = EventTarget.prototype.removeEventListener;
+      EventTarget.prototype.addEventListener = function (...args: Parameters<typeof add>) {
+        probe.add += 1;
+        return add.apply(this, args);
+      };
+      EventTarget.prototype.removeEventListener = function (...args: Parameters<typeof remove>) {
+        probe.remove += 1;
+        return remove.apply(this, args);
+      };
+    });
+    const probe = () => page.evaluate(() => (window as unknown as { __probe: { add: number; remove: number } }).__probe);
+    const zero = () => page.evaluate(() => {
+      const p = (window as unknown as { __probe: { add: number; remove: number } }).__probe;
+      p.add = 0;
+      p.remove = 0;
+    });
+
+    await open(page, 'ana');
+    // Everything that hydrates on a gesture is up before the count starts: the form, by a
+    // click on its first field, and the table, by a toggle there and back.
+    await form(page).getByLabel('Nombre').click();
+    await ready(page, 'user-form');
+    const marta = row(page, 'Marta').getByLabel('Activo');
+    const toggled = page.waitForResponse((r) => r.url().endsWith(`${FN}/save`));
+    await marta.click();
+    await toggled;
+    const back = page.waitForResponse((r) => r.url().endsWith(`${FN}/save`));
+    await marta.click();
+    await back;
+    await zero();
+
+    const names = Array.from({ length: 7 }, (_, i) => `Siete${String(i)}`);
+    for (const name of names) {
+      await fill(page, name, `${name.toLowerCase()}@fudic.dev`);
+      await Promise.all([saved(page, 200), submit(page)]);
+      await expect(row(page, name)).toHaveCount(1);
+    }
+    // Seven more rows, each with a checkbox and a button, and not one more listener: the two
+    // on the `<tbody>` serve them all.
+    expect(await probe()).toMatchObject({ add: 0 });
+
+    // A new row toggles like the old ones (its own person reaches the handler)…
+    const box = row(page, 'Siete3').getByLabel('Activo');
+    const wasChecked = await box.isChecked();
+    const sent = page.waitForResponse((r) => r.url().endsWith(`${FN}/save`));
+    await box.click();
+    await sent;
+    await expect(box).toBeChecked({ checked: !wasChecked });
+    // The click on the checkbox serves `change` only (criterion 35): `borrar` was not called.
+    await expect(row(page, 'Siete3')).toHaveCount(1);
+    // …and every one of them deletes, the click on its button reaching `borrar` with its row.
+    for (const name of names) {
+      await row(page, name).getByRole('button', { name: 'Borrar' }).click();
+      await expect(row(page, name)).toHaveCount(0);
+    }
+  });
 });

@@ -469,7 +469,7 @@ describe('what a route shares with a component, asked of a route', () => {
       '  const dias = signal([{ id: 1, n: "L" }]);',
       '  function pick(ev, dia) { void ev; void dia; }',
       '}',
-      '<div class="grid" @click=@pick($event, $dia)>',
+      '<div class="grid" @click=@pick($event, dia)>',
       '  @foreach (const dia of dias()) key (dia.id) {',
       '    <div class="cell" delegate:dia><span>@dia.n</span></div>',
       '  }',

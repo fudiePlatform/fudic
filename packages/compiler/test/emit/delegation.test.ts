@@ -74,19 +74,28 @@ describe('delegatedHandler — the wrapper itself (§4.1)', () => {
     const doc = parse(source) as ComponentDocument;
     const { template } = extractCode(source, doc);
     const roots = doc.template!.children;
-    const plan = planDelegation(source, roots, templateDelegationJs(template));
+    return wrappers(inner)[0];
+  }
+
+  /** Every delegated listener of the component, in the order the plan lists its readers. */
+  function wrappers(inner: string): (string | undefined)[] {
+    const source = `<m-el>\n  <template shadowrootmode="open">${inner}</template>\n</m-el>\n`;
+    const doc = parse(source) as ComponentDocument;
+    const { template } = extractCode(source, doc);
+    const roots = doc.template!.children;
+    const plan = planDelegation(source, roots, templateDelegationJs(template, new Set()));
     const ctx = hookupContext(template, [], new Set(), EMPTY_CONTROLS, new Set(), plan);
-    const [attr, reads] = [...plan.reads][0] ?? [];
-    if (attr === undefined || reads === undefined) return undefined;
-    const binding = classifyAttribute(attr, source).value;
-    if (binding.type !== 'event') throw new Error('expected an event binding');
-    return delegatedHandler(source, binding.value.expr, ctx, reads);
+    return [...plan.reads].map(([attr, reads]) => {
+      const binding = classifyAttribute(attr, source).value;
+      if (binding.type !== 'event') throw new Error('expected an event binding');
+      return delegatedHandler(source, binding.value.expr, ctx, reads);
+    });
   }
 
   it('walks the path ONCE for two names, and guards on both', () => {
     expect(
       wrapper(
-        `<div @click="@fn($event, $row, $tag)">` +
+        `<div @click="@fn($event, row, tag)">` +
           `@foreach (const row of rows) key (row.id) {` +
           `@foreach (const tag of row.tags) key (tag.id) { <b delegate:row delegate:tag></b> }` +
           `}</div>`,
@@ -99,15 +108,58 @@ describe('delegatedHandler — the wrapper itself (§4.1)', () => {
   });
 
   it('splices from the right, so an earlier getter cannot move a later name', () => {
-    // `$b` is written before `$a` here: the substitution has to survive the reversal.
+    // `b` is written before `a` here: the substitution has to survive the reversal.
     expect(
       wrapper(
-        `<div @click="@fn($b, $a)">` +
+        `<div @click="@fn(b, a)">` +
           `@foreach (const a of xs) key (a.id) {` +
           `@foreach (const b of a.ys) key (b.id) { <i delegate:a delegate:b></i> }` +
           `}</div>`,
       ),
     ).toContain('return fn($z0(), $z1());');
+  });
+
+  it('reads the row inside any argument, with ONE getter for one table (criterion 44)', () => {
+    expect(
+      wrapper(
+        `<tbody @click=@borrar(p.id, p.name)>` +
+          `@foreach (const p of ps) key (p.id) { <tr><td><button delegate:p="click">x</button></td></tr> }` +
+          `</tbody>`,
+      ),
+    ).toBe(
+      '($event) => { let $z0; for (const $y of $event.composedPath()) { $z0 ??= $t0.get($y); } ' +
+        'if ($z0 === undefined) return; return borrar($z0().id, $z0().name); }',
+    );
+  });
+
+  it('two marks, two getters; a fixed value goes as written (criterion 45)', () => {
+    const [both] = wrappers(
+      `<tbody @click=@borrar(p.id, i, 123)>` +
+        `@foreach (const [i, p] of ps.entries()) key (p.id) { <tr><td><button delegate:p="click" delegate:i="click">x</button></td></tr> }` +
+        `</tbody>`,
+    );
+    expect(both).toContain('$z0 ??= $t0.get($y); $z1 ??= $t1.get($y);');
+    expect(both).toMatch(/return borrar\(\$z\d\(\)\.id, \$z\d\(\), 123\); \}$/u);
+  });
+
+  it('a shorthand keeps its key: `{ p }` is `{ p: $z0() }`', () => {
+    expect(
+      wrapper(`<div @click=@f({ p })>@foreach (const p of ps) key (p.id) { <b delegate:p></b> }</div>`),
+    ).toContain('return f({ p: $z0() });');
+  });
+
+  it('one table per EVENT: the click looks only among the markers that serve click (criterion 35)', () => {
+    const [change, click] = wrappers(
+      `<tbody @change=@activar(p, $event) @click=@borrar(p)>` +
+        `@foreach (const p of ps) key (p.id) { <tr>` +
+        `<td><input type="checkbox" delegate:p="change"></td>` +
+        `<td><button delegate:p="click">x</button></td>` +
+        `</tr> }</tbody>`,
+    );
+    expect(change).toContain('$z0 ??= $t0.get($y);');
+    expect(change).toContain('return activar($z0(), $event);');
+    expect(click).toContain('$z0 ??= $t1.get($y);');
+    expect(click).toContain('return borrar($z0());');
   });
 
   it('returns nothing for a value that is not a call: there is no argument list to wrap', () => {
@@ -119,7 +171,7 @@ describe('delegatedHandler — the wrapper itself (§4.1)', () => {
     if (binding.type !== 'event') throw new Error('expected an event binding');
     expect(
       delegatedHandler(source, binding.value.expr, hookupContext(template, []), [
-        { name: 'day', table: '$t0', at: binding.value.expr, loopHeaders: [] },
+        { name: 'day', table: '$t0', at: binding.value.expr, shorthand: false, loopHeaders: [] },
       ]),
     ).toBeUndefined();
   });
@@ -135,7 +187,9 @@ describe('delegation — the HTML (§6.11, invariant 1)', () => {
     // The fixture with `delegate:day` removed, compiled through the same pipeline. Byte for
     // byte: the marker is a fact about the CLIENT, and the server has no opinion on it.
     const source = readFileSync(join(fixturesDir, 'app-calendar.fud'), 'utf8');
-    const plain = source.replaceAll(' delegate:day', '').replace('@click=@pick($event, $day)', '');
+    const handler = '@click=@pick($event, day)';
+    expect(source).toContain(handler);
+    const plain = source.replaceAll(' delegate:day', '').replace(handler, '');
     const io = {
       ...fixtureIo,
       read: (file: string): string =>
