@@ -1,6 +1,6 @@
 # SDD-74 — Errores que se quedan en la página y una `task` que no miente
 
-> **Estado:** `Listo` — [tareas](./SDD-74-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-74-Task.md).
 > **Paquetes:** `@fudic/api` · `@fudic/http` · `@fudic/core` · `@fudic/compiler` · `@fudic/diagnostics` ·
 > `@fudic/language-server` · `@fudic/cli` · `@fudic/vite` · `examples/basic` · `examples/fudapi-editor` ·
 > `examples/i18n`

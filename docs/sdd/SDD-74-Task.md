@@ -5,7 +5,7 @@
 > `@fudic/language-server` · `@fudic/cli` · `@fudic/vite` · `examples/basic` · `examples/fudapi-editor` ·
 > `examples/i18n`
 > **Rama:** `sdd-74-errores-en-la-pagina`. Nace de `main` **con SDD-72 en `Hecho`**.
-> **Progreso:** 15 / 16 — `En curso`.
+> **Progreso:** 16 / 16 — `Hecho`.
 
 ---
 
@@ -57,7 +57,7 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 12 | 4, 7, 9, 11, 16 | **Completado** (`catches` sí, `fails` no en funciones); **`examples/basic`** según SDD §4.6; tests de los criterios 11–14; cobertura (15); prueba de Pedro; INDEX y estado | `language-server` · `examples/basic` | `src/fudapi/completion.ts` · `src/routes/usuarios.*` · `src/server/usuarios.ts` |
+| [x] | 12 | 4, 7, 9, 11, 16 | **Completado** (`catches` y `fails` en funciones, `fails` no en `load`); **`examples/basic`** según SDD §4.6; tests de los criterios 11–14; cobertura (15); prueba de Pedro; INDEX y estado | `language-server` · `examples/basic` | `src/fudapi/completion.ts` · `src/routes/usuarios.*` · `src/server/usuarios.ts` |
 
 ## Fase 6 — los textos del `.fudapi`, traducidos (4)
 
