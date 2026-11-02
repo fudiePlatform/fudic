@@ -45,8 +45,8 @@ describe('completion (criterion 28)', () => {
 
   describe('the first word of an indented line', () => {
     it('what its parent takes', () => {
-      expect(labels('get f\n  |')).toEqual(['use', 'skip', 'form', 'invalidates', 'compress', 'fails', 'query', '->']);
-      expect(labels('load\n  |')).toEqual(['use', 'skip', 'fails']);
+      expect(labels('get f\n  |')).toEqual(['use', 'skip', 'form', 'invalidates', 'compress', 'catches', 'query', '->']);
+      expect(labels('load\n  |')).toEqual(['use', 'skip']);
       expect(labels('chain\n  |')).toEqual(['use', 'skip', 'compress']);
       expect(labels('type A\n  |')).toEqual([]);
       expect(labels('form f\n  |')).toEqual(['validate-on', 'validity', 'catches', 'summary']);
@@ -201,7 +201,26 @@ describe('completion (criterion 28)', () => {
       expect(labels('middleware m\n  adds\n    user str |')).toBeUndefined();
       expect(labels('load\n  use auth |')).not.toContain('later');
       expect(labels('load\n  skip auth |')).not.toContain('later');
-      expect(labels('load\n  fails gone |')).toBeUndefined();
+    });
+  });
+
+  describe('SDD-74 criterion 11: `catches` in a function, `fails` only in a rule and a middleware', () => {
+    it.each(['get', 'post', 'put', 'patch', 'delete'])('under %s: `catches` and never `fails`', (verb) => {
+      const found = labels(`${verb} f\n  |`)!;
+      expect(found).toContain('catches');
+      expect(found).not.toContain('fails');
+    });
+
+    it('`load` offers neither', () => {
+      expect(labels('load\n  |')).not.toContain('fails');
+      expect(labels('load\n  |')).not.toContain('catches');
+    });
+
+    it('a rule and a middleware still offer `fails`, and never `catches`', () => {
+      expect(labels('rule r\n  |')).toContain('fails');
+      expect(labels('middleware m\n  |')).toContain('fails');
+      expect(labels('rule r\n  |')).not.toContain('catches');
+      expect(labels('middleware m\n  |')).not.toContain('catches');
     });
   });
 

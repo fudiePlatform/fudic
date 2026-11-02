@@ -141,6 +141,16 @@ describe('the other requests', () => {
     expect(await service().provideHover?.(doc('load  ssr\n'), { line: 0, character: 5 }, NONE)).toBeUndefined();
   });
 
+  it('SDD-74 §4.1: hovers `catches` in a function with what it keeps, on the keyword only', async () => {
+    const text = 'type T\n  x  str\nget g\n  -> str\npost save\n  catches 409\n';
+    const s = service();
+    const hover = (await s.provideHover?.(doc(text), { line: 5, character: 4 }, NONE)) as Hover;
+    expect((hover.contents as { value: string }).value).toContain('error-pages');
+    expect(hover.range).toEqual({ start: { line: 5, character: 2 }, end: { line: 5, character: 9 } });
+    // On the status, nothing: the keyword is what the hover explains.
+    expect(await s.provideHover?.(doc(text), { line: 5, character: 11 }, NONE)).toBeUndefined();
+  });
+
   it('SDD-74: hovers a text with its translations, and says nothing without catalogs', async () => {
     const text = 'form person\n  name  str = ""\n    required  "Escribe el nombre."\n';
     const key = messageKey('person.name.required', 'Escribe el nombre.');

@@ -29,9 +29,12 @@ const LIVE =
   "  const name = signal('Ana');\n" +
   '  const pick = signal(true);\n' +
   '  const tick = signal(0);\n' +
+  "  const city = signal('bcn');\n" +
+  "  const lines = signal('\\nsegunda');\n" +
   '\n' +
   "  document.addEventListener('lp-tick', () => tick.set(tick() + 1));\n" +
   "  document.addEventListener('lp-on', () => on.set(!on()));\n" +
+  "  document.addEventListener('lp-city', () => city.set('mad'));\n" +
   '}\n' +
   '\n' +
   '<x-live>\n' +
@@ -40,6 +43,8 @@ const LIVE =
   '<input class="name" value=@name()>' +
   '<textarea class="note" value=@name()></textarea>' +
   '<select class="pick"><option value="a">a</option><option class="b" value="b" selected=@pick()>b</option></select>' +
+  '<select class="city" value=@city()><option value="mad">Madrid</option><option value="bcn">Barcelona</option></select>' +
+  '<textarea class="lines" value=@lines()></textarea>' +
   '<span class="tick">@tick()</span>' +
   '</template>\n' +
   '</x-live>\n';
@@ -131,7 +136,8 @@ describe('criterion 8: the view puts back what the user moved', () => {
   it('value on a <textarea>: the same', () => {
     const { host, shadow } = hydrated('x-live');
     const note = shadow.querySelector<HTMLTextAreaElement>('.note')!;
-    // A <textarea> takes no `value` attribute: what the server paints only shows after a pass.
+    // The server painted it as the textarea's text, and hydration did not move the cursor off it.
+    expect(note.value).toBe('Ana');
     note.value = 'otra cosa';
     fire('lp-tick');
     expect(note.value).toBe('Ana');
@@ -148,6 +154,39 @@ describe('criterion 8: the view puts back what the user moved', () => {
     fire('lp-tick');
     expect(b.selected).toBe(true);
     expect(select.value).toBe('b');
+    host.remove();
+  });
+
+  it('value on a <select>: what the user picked goes back, and the signal moving moves it', () => {
+    const { host, shadow } = hydrated('x-live');
+    const city = shadow.querySelector<HTMLSelectElement>('.city')!;
+    expect(city.value).toBe('bcn');
+    city.value = 'mad';
+    fire('lp-tick');
+    expect(city.value).toBe('bcn');
+    fire('lp-city');
+    expect(city.value).toBe('mad');
+    host.remove();
+  });
+
+  it('the cursor of hydration is not thrown off by the text inside a textarea: the nodes after it are adopted', () => {
+    const { host, shadow } = hydrated('x-live');
+    const tick = shadow.querySelector('.tick')!;
+    fire('lp-tick');
+    expect(tick.textContent).toBe('1');
+    expect(shadow.querySelectorAll('.tick')).toHaveLength(1);
+    host.remove();
+  });
+
+  it('what the user typed before the script came is kept: hydration writes no property', () => {
+    const { host, shadow } = mountAsDsd('x-live', serverShadowHtml(graph, 'x-live', {}));
+    const input = shadow.querySelector<HTMLInputElement>('.name')!;
+    const box = shadow.querySelector<HTMLInputElement>('.box')!;
+    input.value = 'tecleado antes';
+    box.checked = true;
+    (host as FudicElement).h([]);
+    expect(input.value).toBe('tecleado antes');
+    expect(box.checked).toBe(true);
     host.remove();
   });
 
@@ -172,21 +211,54 @@ describe('criterion 8: the view puts back what the user moved', () => {
   });
 });
 
-describe('criterion 9: the server still paints the attribute', () => {
-  it('the HTML of the four controls is the attribute an interpolated value always wrote', () => {
+describe('criterion 9: what the server paints', () => {
+  it('input and option: the attribute an interpolated value always wrote; textarea its text, select the selected option', () => {
     expect(serverShadowHtml(graph, 'x-live', {})).toBe(
       '<input type="checkbox" class="box">' +
         '<input value="Ana" class="name">' +
-        '<textarea value="Ana" class="note"></textarea>' +
+        '<textarea class="note">Ana</textarea>' +
         '<select class="pick"><option value="a">a</option><option value="b" selected="" class="b">b</option></select>' +
+        '<select class="city"><option value="mad">Madrid</option><option value="bcn" selected="">Barcelona</option></select>' +
+        '<textarea class="lines">\n\nsegunda</textarea>' +
         '<span class="tick">0</span>',
     );
   });
 
-  it('the server module never writes a property: no setLive in it', () => {
-    for (const tag of ['x-live', 'x-rows']) {
-      expect(emitComponentModule(graph, graph.components.get(tag)!)).not.toContain('setLive');
-    }
+  it('without script the page shows each value: the HTML as the parser reads it', () => {
+    const doc = new DOMParser().parseFromString(`<body>${serverShadowHtml(graph, 'x-live', {})}</body>`, 'text/html');
+    expect(doc.querySelector<HTMLInputElement>('.box')!.checked).toBe(false);
+    expect(doc.querySelector<HTMLInputElement>('.name')!.value).toBe('Ana');
+    expect(doc.querySelector<HTMLTextAreaElement>('.note')!.value).toBe('Ana');
+    expect(doc.querySelector<HTMLSelectElement>('.pick')!.value).toBe('b');
+    expect(doc.querySelector<HTMLSelectElement>('.city')!.value).toBe('bcn');
+    // `.lines` is left out: a browser's parser drops the first line break of a <textarea> and
+    // happy-dom's does not. Its bytes, with the extra break, are checked above.
+  });
+
+  it('a select whose value matches no option marks none', () => {
+    const none = resolveComponents(
+      '/page.fud',
+      memoryIo({
+        '/page.fud': '<link rel="component" href="./x-none.fud">\n<html><head></head><body><x-none></x-none></body></html>\n',
+        '/x-none.fud':
+          "@code {\n  import { signal } from '@fudic/core';\n  const v = signal('zz');\n}\n\n" +
+          '<x-none>\n  <template shadowrootmode="open"><select value=@v()><option value="a" selected>a</option><optgroup label="g"><option>b</option></optgroup></select></template>\n</x-none>\n',
+      }),
+    );
+    expect(serverShadowHtml(none, 'x-none', {})).toBe('<select><option value="a">a</option><optgroup label="g"><option>b</option></optgroup></select>');
+  });
+
+  it('through an optgroup, and by an option’s text when it has no value', () => {
+    const grouped = resolveComponents(
+      '/page.fud',
+      memoryIo({
+        '/page.fud': '<link rel="component" href="./x-grp.fud">\n<html><head></head><body><x-grp></x-grp></body></html>\n',
+        '/x-grp.fud':
+          "@code {\n  import { signal } from '@fudic/core';\n  const v = signal('b');\n}\n\n" +
+          '<x-grp>\n  <template shadowrootmode="open"><select value=@v()><option>a</option><optgroup label="g"><option> b </option></optgroup></select></template>\n</x-grp>\n',
+      }),
+    );
+    expect(serverShadowHtml(grouped, 'x-grp', {})).toBe('<select><option>a</option><optgroup label="g"><option selected=""> b </option></optgroup></select>');
   });
 
   it('a live property is the same server output as the same attribute where it is not live', () => {
