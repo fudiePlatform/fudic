@@ -714,6 +714,10 @@ function emitBehaviour(
 
   switch (binding.type) {
     case 'event':
+      if (binding.name === 'fudic:result' || binding.name === 'fudic:error') {
+        emitFormEvent(ctx, el, attr, binding.name, binding.value);
+        return;
+      }
       // A hyphen means a custom event, which has no entry in `HTMLElementEventMap`; `as
       // never` keeps the handler checked as a function while giving up on the event type
       // (decision 28). A standard name stays typed, so `e` is a `MouseEvent` in `@click`.
@@ -801,6 +805,51 @@ function emitBehaviour(
     default:
       return;
   }
+}
+
+/**
+ * `@fudic:result` and `@fudic:error`, whose reference or lambda receives the DATUM the form
+ * announced and whose call gets the event (decision 173).
+ *
+ * ```ts
+ * $onResult(save, hecho);                                 // hecho: (persona: Person) => …
+ * $onResultEvent(save, ($event) => hecho($event.detail)); // $event: CustomEvent<Person>
+ * $onError(fallo);                                        // fallo: (error: Error) => …
+ * ```
+ *
+ * The type of a result is what the `form:=` OF THE SAME ELEMENT returns; that is why its
+ * expression is the first argument. It is copied as scaffolding: it is already projected, once,
+ * in its own `$formSend`, and a second mapping over the same characters would answer a hover or
+ * a go-to-definition on `save` twice. An element without one is an ancestor listening to a
+ * bubbling event, and an ancestor does not know which form announced: `undefined`, so `unknown`.
+ */
+function emitFormEvent(
+  ctx: TemplateContext,
+  el: ElementNode,
+  attr: Attribute,
+  name: 'fudic:result' | 'fudic:error',
+  value: RazorExpression,
+): void {
+  const call = handlerShape(rootAt(ctx, value.expr)) === 'call';
+  if (name === 'fudic:error') {
+    ctx.w.scaffold(call ? '$onErrorEvent(' : '$onError(', attr.span);
+  } else {
+    ctx.w.scaffold(call ? '$onResultEvent(' : '$onResult(', attr.span);
+    ctx.w.scaffold(`${formSendText(ctx, el) ?? 'undefined'}, `);
+  }
+  emitHandler(ctx, attr, value);
+  ctx.w.scaffold(');\n');
+}
+
+/** The source text of the `form:=` an element carries, if it carries one. */
+function formSendText(ctx: TemplateContext, el: ElementNode): string | undefined {
+  for (const attr of el.attributes) {
+    const binding = classifyAttribute(attr, ctx.source).value;
+    if (binding.type === 'form-send') {
+      return ctx.source.slice(binding.value.expr.start, binding.value.expr.end);
+    }
+  }
+  return undefined;
 }
 
 /**
