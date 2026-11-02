@@ -1554,7 +1554,6 @@ exports[`the canonical files (criterion 1) > usuarios has no diagnostics and the
   "declarations": [
     {
       "doc": "Per request: the list changes with every new person.",
-      "fails": [],
       "fields": [
         {
           "kind": "field",
@@ -1609,7 +1608,6 @@ exports[`the canonical files (criterion 1) > usuarios has no diagnostics and the
           },
         },
       ],
-      "fails": [],
       "invalidates": [],
       "kind": "fn",
       "name": {
@@ -1679,7 +1677,6 @@ exports[`the canonical files (criterion 1) > usuarios has no diagnostics and the
           },
         },
       ],
-      "fails": [],
       "invalidates": [],
       "kind": "fn",
       "name": {

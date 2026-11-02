@@ -125,7 +125,7 @@ describe('criterion 12 — a component takes its task and its effect with it', (
     vi.advanceTimersByTime(5000);
     expect(probe.tick).toHaveBeenCalledTimes(3);
 
-    expect(await probe.found!.run('ana')).toBeUndefined();
+    expect(await probe.found!.run('ana')).toEqual({ status: 'cancelled' });
     expect(calls).toHaveLength(1);
   });
 
