@@ -848,10 +848,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // with browser halves, each locale has its own root, and two `fudic-root.browser` are one
       // name once the build id replaces the hash (FUD0501) — one locale's page would load the
       // other's.
-      const chunkName = (chunk: { readonly moduleIds: readonly string[] }): string => {
-        // A configured locale only: the query of a virtual id can carry more than its tag.
+      const chunkName = (chunk: { readonly name: string; readonly moduleIds: readonly string[] }): string => {
+        // A configured locale only: the query of a virtual id can carry more than its tag. And
+        // not on a name that already says it — the hydration chunks are `h/<locale>/<tag>`.
         const locale = chunk.moduleIds.map(localeOf).find((l) => l !== undefined && locales.includes(l));
-        return `assets/${locale === undefined ? '' : `${locale}-`}[name]-[hash].js`;
+        const prefix = locale === undefined || chunk.name.split('/').includes(locale) ? '' : `${locale}-`;
+        return `assets/${prefix}[name]-[hash].js`;
       };
       return {
         appType: 'custom',
