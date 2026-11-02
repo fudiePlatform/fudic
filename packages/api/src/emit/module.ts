@@ -288,6 +288,7 @@ function fn(d: FnDecl, c: ModuleCtx): string {
     ...(rules !== undefined ? [`rules: ${rules}`] : []),
     `chain: ${chainOf(level(d.uses, d.skips, d.compress, c), c)}`,
     ...(d.invalidates.length > 0 ? [`invalidates: [${d.invalidates.flatMap((i) => i.routes).map((r) => str(r.text)).join(', ')}]`] : []),
+    ...(d.catches !== undefined ? [`catches: [${d.catches.statuses.map((s) => s.value).join(', ')}]`] : []),
   ];
   return `export const ${d.name.text} = ${kind}({ ${fields.join(', ')} });${failsOf(pascal(d.name.text), d.fails, c)}`;
 }

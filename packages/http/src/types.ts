@@ -21,6 +21,8 @@ export interface BaseContext<A = unknown> {
 
 export interface ClientContext<A = unknown> extends BaseContext<A> {
   readonly side: 'client';
+  /** The statuses the function keeps for its caller (`catches`); empty when it declares none. */
+  readonly catches: readonly number[];
 }
 
 export interface ServerContext<A = unknown> extends BaseContext<A> {

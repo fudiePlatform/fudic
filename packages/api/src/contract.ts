@@ -7,6 +7,7 @@
 import { FUD1063, FUD1067, FUD1068, FUD1072, FUD1073, FUD1074, FUD1076, FUD1325, span } from '@fudic/diagnostics';
 import type {
   ArgDecl,
+  CatchesOption,
   ChainDecl,
   CompressClause,
   Duration,
@@ -33,6 +34,7 @@ import type {
 } from './ast.js';
 import {
   blockSpan,
+  catchesClause,
   compressClause,
   declName,
   failsClause,
@@ -56,7 +58,7 @@ import { duration, readType, route, text } from './type.js';
 
 const doc = (node: LineNode): { doc?: string } => (node.doc !== undefined ? { doc: node.doc } : {});
 
-const FN_CLAUSES = ['use', 'skip', 'form', 'invalidates', 'compress', 'fails', 'query', '->', '<arg> <type>'];
+const FN_CLAUSES = ['use', 'skip', 'form', 'invalidates', 'compress', 'catches', 'fails', 'query', '->', '<arg> <type>'];
 
 const INVALIDATED = /^\/(?:(?:[A-Za-z0-9_-]+|:[A-Za-z_][A-Za-z0-9_]*)(?:\/(?:[A-Za-z0-9_-]+|:[A-Za-z_][A-Za-z0-9_]*))*)?$/u;
 
@@ -75,6 +77,7 @@ export function fnDecl(node: LineNode, c: Ctx): FnDecl | undefined {
   const fails: FailsClause[] = [];
   const args: Omit<ArgDecl, 'place'>[] = [];
   let form: FormRef | undefined;
+  let catches: CatchesOption | undefined;
   let compress: CompressClause | undefined;
   let returns: ReturnsClause | undefined;
 
@@ -113,6 +116,10 @@ export function fnDecl(node: LineNode, c: Ctx): FnDecl | undefined {
       case 'compress': {
         if (repeated(compress, head, c)) break;
         compress = compressClause(child, c);
+        break;
+      }
+      case 'catches': {
+        if (!repeated(catches, head, c)) catches = catchesClause(child, c);
         break;
       }
       case 'fails': {
@@ -169,6 +176,7 @@ export function fnDecl(node: LineNode, c: Ctx): FnDecl | undefined {
     ...(form !== undefined ? { form } : {}),
     invalidates,
     ...(compress !== undefined ? { compress } : {}),
+    ...(catches !== undefined ? { catches } : {}),
     fails,
     args: placed,
     ...(returns !== undefined ? { returns } : {}),

@@ -60,6 +60,8 @@ export interface FnSpec {
   /** Global, file and its own level, from the outside in. */
   readonly chain: readonly Level[];
   readonly invalidates?: readonly string[];
+  /** Its `catches`: the statuses that reach the caller instead of `error-pages`. */
+  readonly catches?: readonly number[];
   /** The app's `base`. Default `/`. */
   readonly base?: string;
 }
@@ -150,6 +152,7 @@ export function stub<C, R, A>(spec: FnSpec): Contract<C, R, A> {
       headers: new Headers(),
       args,
       signal: options.signal ?? new AbortController().signal,
+      catches: spec.catches ?? [],
     };
     const value = await run(steps as never, ctx, async (c: ClientContext) => {
       const target = new URL(c.url);
