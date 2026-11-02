@@ -17,6 +17,8 @@ import { createFudapiLanguagePlugin, FUDAPI_LANGUAGE_ID } from '../../src/fudapi
 import { createFudapiService } from '../../src/fudapi/service.js';
 import { createFudspecLanguagePlugin } from '../../src/fudspec/language-plugin.js';
 import { createFudspecService } from '../../src/fudspec/service.js';
+import { MISSING, Translations } from '../../src/translations.js';
+import { messageKey } from '@fudic/i18n';
 import { SpecHost } from '../../src/fudspec/host.js';
 import { createFudicLanguagePlugin } from '../../src/language-plugin.js';
 import { RequestStats } from '../../src/stats.js';
@@ -24,7 +26,7 @@ import { isFudapiUri } from '../../src/uri.js';
 import { WorkspaceIndex } from '../../src/workspace-index.js';
 import { fakeServiceContext } from '../_lsp.js';
 import { memoryFs } from '../_support.js';
-import { FILES, SRC, world } from './_api.js';
+import { APP, FILES, SRC, world } from './_api.js';
 
 const PATH = `${SRC}/routes/usuarios.fudapi`;
 const API_URI = URI.file(PATH);
@@ -137,6 +139,28 @@ describe('the other requests', () => {
     const hover = (await service().provideHover?.(doc('load ssr buffer 16k\n'), { line: 0, character: 17 }, NONE)) as Hover;
     expect((hover.contents as { value: string }).value).toBe('16384 bytes held before the stream sends.');
     expect(await service().provideHover?.(doc('load  ssr\n'), { line: 0, character: 5 }, NONE)).toBeUndefined();
+  });
+
+  it('SDD-74: hovers a text with its translations, and says nothing without catalogs', async () => {
+    const text = 'form person\n  name  str = ""\n    required  "Escribe el nombre."\n';
+    const key = messageKey('person.name.required', 'Escribe el nombre.');
+    const catalog = (translation?: string): string =>
+      JSON.stringify({ 'person.name.required': { [key]: { source: 'Escribe el nombre.', ...(translation === undefined ? {} : { translation }), where: 'x', at: 0 } } });
+    const translations = new Translations(
+      memoryFs({
+        [`${APP}/fudic.json`]: '{ "kind": "app", "locales": ["es", "en"] }',
+        [`${SRC}/locales/es/routes/usuarios.json`]: catalog('Escribe el nombre.'),
+        [`${SRC}/locales/en/routes/usuarios.json`]: catalog(),
+        [PATH]: text,
+      }),
+    );
+    const { host } = world({ files: FILES });
+    const decode = (uri: URI): [URI, string] | undefined => (uri.toString() === EMBEDDED.toString() ? [API_URI, 'root'] : undefined);
+    const s = createFudapiService({ host, stats: new RequestStats(), translations }).create(fakeServiceContext({}, decode));
+    const on = { line: 2, character: 16 };
+    const hover = (await s.provideHover?.(doc(text), on, NONE)) as Hover;
+    expect(hover.contents).toEqual({ kind: 'markdown', value: `es: Escribe el nombre.  \nen: ${MISSING}` });
+    expect(await service().provideHover?.(doc(text), on, NONE)).toBeUndefined();
   });
 
   it('encodes the semantic tokens against the legend', async () => {
