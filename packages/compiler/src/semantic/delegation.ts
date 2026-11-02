@@ -233,6 +233,35 @@ export function planDelegation(
   return pair(collected, js.scope);
 }
 
+/**
+ * The events a `delegate:name="…"` written on the element at `element` may list: those of the
+ * handlers of its ancestors that read `name` (decision 176). What the editor offers inside the
+ * marker's value, from the same reading the pairing makes — so every name it offers is one the
+ * pairing accepts, and `FUD1381` stops being written at all.
+ *
+ * The element is found by its span: the editor asks from the tree its regions are answered over,
+ * which is not the object this walk visits.
+ */
+export function eventsReadingRow(
+  source: string,
+  roots: readonly HtmlContent[],
+  js: DelegationJs,
+  element: Span,
+  name: string,
+): readonly string[] {
+  const { candidates, parentOf } = collect(source, roots, js);
+  const target = [...parentOf.keys()].find((el) => el.span.start === element.start);
+  const events = new Set<string>();
+  for (let at = target === undefined ? undefined : parentOf.get(target); at !== undefined; at = parentOf.get(at)) {
+    for (const candidate of candidates) {
+      if (candidate.element === at && candidate.mentions.some((m) => m.name === name)) {
+        events.add(candidate.eventName);
+      }
+    }
+  }
+  return [...events];
+}
+
 // ---------------------------------------------------------------------------
 // Collection — one walk over the tree
 // ---------------------------------------------------------------------------

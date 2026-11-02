@@ -405,6 +405,11 @@ ejemplo pasa a la forma nueva:
   listener delegado solo mira los marcadores que sirven a su evento. Un marcador sin valor entra en
   todas las tablas de su nombre, como hoy.
 - Ni el marcador ni su valor dejan rastro en el DOM (decisión 121).
+- **El editor completa el valor** (Pedro, 2026-11-02: sin esto la DX no vale). Dentro de
+  `delegate:p="…"` ofrece, sin `@`, solo los eventos de los handlers de un ancestro que leen `p`,
+  menos los que el valor ya lista. Nada más: ni los atributos de evento de HTML ni nombres del
+  ámbito. La lista sale de la misma lectura que el emparejamiento (`eventsReadingRow`), así que
+  lo que se ofrece es lo que `FUD1381` acepta.
 
 ### 4.8. `usuarios.fud` delegado
 
@@ -551,6 +556,10 @@ ejemplo pasa a la forma nueva:
 45. **Varias marcas.** Con `@foreach (const [i, p] of …)`, `delegate:p="click" delegate:i="click"`
     y `@borrar(p.id, i)`, el clic llama a `borrar` con el `id` y el índice de su fila. Con
     `@borrar(p.id, 123)`, el `123` llega tal cual.
+46. **El valor del marcador se completa.** En la tabla de §3.4, con el cursor en
+    `delegate:p="|"` de la casilla, el editor ofrece `change` y `click`, sin `@`, y nada más; en
+    `delegate:p="change |"`, solo `click`. En un marcador cuya fila no lee ningún ancestro, la
+    lista está vacía. Probado por el plugin del language server.
 
 ## 7. Fuera de alcance
 

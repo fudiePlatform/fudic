@@ -191,6 +191,44 @@ export function delegateContextAt(
 }
 
 /**
+ * An event being typed inside the value of a marker: `delegate:p="cl|"`, `delegate:p="change |"`.
+ *
+ * The value is a list of event names separated by blanks (decision 176), so only the word under
+ * the cursor is replaced. A name may hold a `-` or a `:` — `my-event`, `fudic:result` — and both
+ * belong to the word.
+ */
+export interface DelegateValueContext extends PartialName {
+  /** The marker's name, after `delegate:`. */
+  readonly name: string;
+  /** The element the marker is written on. */
+  readonly element: Span;
+  /** The events the value already lists, the word being typed aside. */
+  readonly listed: readonly string[];
+}
+
+export function delegateValueContextAt(
+  source: string,
+  offset: number,
+  region: Region,
+): DelegateValueContext | undefined {
+  // An `attr-value` region always carries its element and its attribute (`regionAt`).
+  if (region.kind !== 'attr-value') return undefined;
+  const attribute = region.attribute!;
+  if (typeof attribute.name !== 'string' || !attribute.name.startsWith('delegate:')) return undefined;
+
+  const start = runStart(source, offset, /[-\w:]/u);
+  const value = source.slice(region.span.start, region.span.end);
+  const word = source.slice(start, offset);
+  return {
+    span: span(start, offset),
+    text: word,
+    name: attribute.name.slice('delegate:'.length),
+    element: region.element!.span,
+    listed: value.split(/\s+/u).filter((e) => e !== '' && e !== word),
+  };
+}
+
+/**
  * An EMPTY position inside a start tag, where another attribute could be typed:
  * `<app-badge |>`, `<app-badge | tone="x">`, `<app-badge na|>`.
  *
