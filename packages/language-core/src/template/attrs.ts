@@ -729,16 +729,23 @@ function emitBehaviour(
       ctx.w.scaffold(');\n');
       return;
 
-    case 'bus':
-      // The bus name may itself be an expression (decision 28.b); either way the event
-      // type is unknowable, so the handler is checked and the event is not.
-      ctx.w.scaffold('$on(', attr.span);
-      if (typeof binding.eventName === 'string') ctx.w.scaffold(`'${binding.eventName}'`);
-      else copyRazor(ctx, binding.eventName);
-      ctx.w.scaffold(' as never, ');
+    case 'bus': {
+      // A reference or a lambda receives the datum, a call gets `$event` (decision 173). A
+      // literal name is typed by what its receivers declare; an expression (decision 28.b)
+      // names a channel no type can look up, so its datum is `any`.
+      const call = handlerShape(rootAt(ctx, binding.value.expr)) === 'call';
+      if (typeof binding.eventName === 'string') {
+        ctx.w.scaffold(call ? '$busEvent(' : '$busOn(', attr.span);
+        ctx.w.scaffold(`'${binding.eventName}'`);
+      } else {
+        ctx.w.scaffold(call ? '$busEventAny(' : '$busOnAny(', attr.span);
+        copyRazor(ctx, binding.eventName);
+      }
+      ctx.w.scaffold(', ');
       emitHandler(ctx, attr, binding.value);
       ctx.w.scaffold(');\n');
       return;
+    }
 
     case 'class':
       ctx.w.scaffold('$cls(', attr.span);

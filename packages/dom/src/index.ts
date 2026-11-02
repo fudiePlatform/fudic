@@ -17,6 +17,7 @@ export { type Dom, type DomClient } from './dom.js';
 export { browserDom } from './browser.js';
 export { type Cursor, cursorOf } from './cursor.js';
 export { emit } from './emit.js';
+export type { BusArgs, BusDetail, BusParam } from './emit.js';
 export { type TrustedURL, trustedUrl, isTrustedUrl, safeUrl, guardUrl, INERT_URL } from './url.js';
 export { type TrustedHTML, trustedHtml, isTrustedHtml, htmlOf } from './html.js';
 export { type AttrsDiff, attrsOf, attrsDiff } from './attrs.js';

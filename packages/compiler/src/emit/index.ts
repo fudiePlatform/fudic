@@ -108,7 +108,7 @@ export { extractCode, type Prop } from './oxc-code.js';
  * reading of "a name this markup consumes and does not declare" the emit uses, and a second
  * one would drift from it in exactly the cases that are hard to see.
  */
-export { freeReferences, freeReferenceNodes, type FragmentAst } from './scope.js';
+export { freeReferences, freeReferenceNodes, topLevelBindings, type FragmentAst } from './scope.js';
 /**
  * The walk that says which JS a run of markup holds (SDD-30 §3.3), public for the same
  * reason: the projection asks the batch for the AST of a span, and only this walk knows

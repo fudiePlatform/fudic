@@ -89,7 +89,8 @@ export function emitPropsProjection(w: VirtualWriter, props: PropsCall | undefin
 }
 
 /** `props(...)` or `props<T>(...)` — a direct call of the ambient `props`. */
-function isPropsCall(init: OxcNode): boolean {
+/** `props<T>()` itself — the call a component's contract is declared with. */
+export function isPropsCall(init: OxcNode): boolean {
   if (init.type !== 'CallExpression') return false;
   const callee = child(init, 'callee');
   return callee?.type === 'Identifier' && callee['name'] === 'props';

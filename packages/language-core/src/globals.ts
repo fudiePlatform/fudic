@@ -205,6 +205,19 @@ declare function $onResult<F>(fn: F, h: (value: $Result<F>) => unknown): void;
 declare function $onResultEvent<F>(fn: F, h: (ev: CustomEvent<$Result<F>>) => unknown): void;
 declare function $onError(h: (error: Error) => unknown): void;
 declare function $onErrorEvent(h: (ev: CustomEvent<Error>) => unknown): void;
+/**
+ * \`bus:alta\`: a reference or a lambda receives what \`emit\` sent, a call gets \`$event\`
+ * (decision 173). The datum is what every receiver of the name declares, read from the same
+ * \`BusDetail\` the emitter's \`emit\` is typed with, so sender and receiver share ONE definition.
+ * A name written as an expression, \`bus:(NAME)\`, has no type to look up: its datum is \`any\`,
+ * and the expression is still passed so it is checked and navigable.
+ */
+type $BusDetail<K extends string> = import('@fudic/dom').BusDetail<K>;
+type $BusParam<F> = import('@fudic/dom').BusParam<F>;
+declare function $busOn<K extends string>(name: K, h: (detail: $BusDetail<K>) => unknown): void;
+declare function $busEvent<K extends string>(name: K, h: (ev: CustomEvent<$BusDetail<K>>) => unknown): void;
+declare function $busOnAny(name: unknown, h: (detail: any) => unknown): void;
+declare function $busEventAny(name: unknown, h: (ev: CustomEvent<any>) => unknown): void;
 declare function $section<T extends string>(name: T): void;
 declare function $cls(v: boolean): void;
 declare function $sty(v: string): void;
