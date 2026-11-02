@@ -8,7 +8,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { type Callable, effect, owned, signal, subscribe, task } from '../src/index.js';
+import { type Callable, effect, owned, signal, subscribe, task, type TaskResult } from '../src/index.js';
 import { isSource } from '../src/tracking.js';
 
 interface Call<A, R> {
@@ -56,12 +56,17 @@ function at<A, R>(calls: Call<A, R>[], index: number): Call<A, R> {
   return call;
 }
 
+/** What `run()` resolves with (SDD-74 §3.3). */
+const done = <R>(value: R): TaskResult<R> => ({ status: 'done', value });
+const failed = (error: unknown): TaskResult<never> => ({ status: 'failed', error });
+const CANCELLED: TaskResult<never> = { status: 'cancelled' };
+
 afterEach(() => {
   vi.useRealTimers();
 });
 
 describe('task, latest (criteria 1–4)', () => {
-  it('1. the last call wins: the first one is aborted and its run resolves undefined', async () => {
+  it('1. the last call wins: the first one is aborted and its run resolves cancelled', async () => {
     const { fn, calls } = fake<string, string>({ respectAbort: true });
     const t = task(fn);
     const first = t.run('an');
@@ -72,8 +77,8 @@ describe('task, latest (criteria 1–4)', () => {
 
     at(calls, 1).resolve('result:ana');
     at(calls, 0).resolve('result:an'); // too late, and already rejected by its abort
-    expect(await second).toBe('result:ana');
-    expect(await first).toBeUndefined();
+    expect(await second).toEqual(done('result:ana'));
+    expect(await first).toEqual(CANCELLED);
     await flush();
     expect(t.value()).toBe('result:ana');
     expect(t.state()).toBe('done');
@@ -88,9 +93,9 @@ describe('task, latest (criteria 1–4)', () => {
     expect(at(calls, 0).signal.aborted).toBe(true);
 
     at(calls, 1).resolve('result:ana');
-    expect(await second).toBe('result:ana');
+    expect(await second).toEqual(done('result:ana'));
     at(calls, 0).resolve('result:an'); // answers after the good one: never written
-    expect(await first).toBeUndefined();
+    expect(await first).toEqual(CANCELLED);
     await flush();
     expect(t.value()).toBe('result:ana');
     expect(t.state()).toBe('done');
@@ -101,7 +106,7 @@ describe('task, latest (criteria 1–4)', () => {
     const t = task(fn);
     const first = t.run('an');
     void t.run('ana');
-    expect(await first).toBeUndefined();
+    expect(await first).toEqual(CANCELLED);
     at(calls, 1).resolve('ok');
     await flush();
     expect(t.state()).toBe('done');
@@ -139,7 +144,7 @@ describe('task, latest (criteria 1–4)', () => {
     const answer = t.run({ q: 'manual' });
     expect(at(calls, 0).args).toEqual({ q: 'manual' });
     at(calls, 0).resolve('m');
-    expect(await answer).toBe('m');
+    expect(await answer).toEqual(done('m'));
   });
 
   it('4. initial is the value before the first answer and stays while a call is in flight', async () => {
@@ -228,7 +233,7 @@ describe('task, queue (criteria 5–7)', () => {
     expect(calls.map((c) => c.args)).toEqual([1, 2, 3]);
 
     at(calls, 2).resolve('three');
-    expect(await Promise.all(runs)).toEqual(['one', 'two', 'three']);
+    expect(await Promise.all(runs)).toEqual([done('one'), done('two'), done('three')]);
     expect(calls.every((c) => !c.signal.aborted)).toBe(true);
     expect(t.value()).toBe('three');
     expect(t.state()).toBe('done');
@@ -249,14 +254,15 @@ describe('task, queue (criteria 5–7)', () => {
     const first = t.run(1);
     const second = t.run(2);
     await flush();
-    at(calls, 0).reject(new Error('first failed'));
+    const boom = new Error('first failed');
+    at(calls, 0).reject(boom);
     await flush();
     expect(calls).toHaveLength(2);
-    expect(t.state()).toBe('pending'); // one still outstanding: nothing published yet
-    expect(t.error()).toBeUndefined();
+    expect(t.state()).toBe('pending'); // one still outstanding: the state waits for it
+    expect(t.error()).toBe(boom); // SDD-74: the failure is not hidden behind the next call
     at(calls, 1).resolve('two');
-    expect(await first).toBeUndefined();
-    expect(await second).toBe('two');
+    expect(await first).toEqual(failed(boom));
+    expect(await second).toEqual(done('two'));
     expect(t.state()).toBe('done');
     expect(t.error()).toBeUndefined();
     expect(t.value()).toBe('two');
@@ -272,7 +278,7 @@ describe('task, queue (criteria 5–7)', () => {
     await flush();
     const boom = new Error('second failed');
     at(calls, 1).reject(boom);
-    expect(await second).toBeUndefined();
+    expect(await second).toEqual(failed(boom));
     expect(t.state()).toBe('failed');
     expect(t.error()).toBe(boom);
     expect(t.value()).toBe('one');
@@ -363,14 +369,14 @@ describe('state, error and cancel (criteria 8–10)', () => {
     expect([t.state(), t.value(), t.error()]).toEqual(['done', 'A', undefined]);
   });
 
-  it('9. cancel() in flight: cancelled, the signal aborted, no error; run resolves undefined', async () => {
+  it('9. cancel() in flight: cancelled, the signal aborted, no error; run resolves cancelled', async () => {
     const { fn, calls } = fake<string, string>({ respectAbort: true });
     const t = task(fn);
     const running = t.run('a');
     t.cancel();
     expect(t.state()).toBe('cancelled');
     expect(at(calls, 0).signal.aborted).toBe(true);
-    expect(await running).toBeUndefined();
+    expect(await running).toEqual(CANCELLED);
     await flush();
     expect(t.error()).toBeUndefined();
     expect(t.state()).toBe('cancelled');
@@ -381,14 +387,14 @@ describe('state, error and cancel (criteria 8–10)', () => {
     const t = task(fn, undefined, { initial: 'init' });
     const running = t.run('a');
     t.cancel();
-    expect(await running).toBeUndefined();
+    expect(await running).toEqual(CANCELLED);
     at(calls, 0).resolve('late');
     await flush();
     expect(t.value()).toBe('init');
     expect(t.state()).toBe('cancelled');
   });
 
-  it('9c. in queue, cancel drops the waiting calls: never called, their runs resolve undefined', async () => {
+  it('9c. in queue, cancel drops the waiting calls: never called, their runs resolve cancelled', async () => {
     const { fn, calls } = fake<number, string>({ method: 'PUT' });
     const t = task(fn);
     const runs = [t.run(1), t.run(2), t.run(3)];
@@ -397,7 +403,7 @@ describe('state, error and cancel (criteria 8–10)', () => {
     t.cancel();
     expect(t.state()).toBe('cancelled');
     expect(at(calls, 0).signal.aborted).toBe(true);
-    expect(await Promise.all(runs)).toEqual([undefined, undefined, undefined]);
+    expect(await Promise.all(runs)).toEqual([CANCELLED, CANCELLED, CANCELLED]);
     at(calls, 0).resolve('late'); // ignored the abort
     await flush();
     expect(calls).toHaveLength(1);
@@ -410,7 +416,7 @@ describe('state, error and cancel (criteria 8–10)', () => {
     const running = t.run(1); // scheduled on the tail, not on the wire yet
     t.cancel();
     expect(t.state()).toBe('cancelled');
-    expect(await running).toBeUndefined();
+    expect(await running).toEqual(CANCELLED);
     await flush();
     expect(calls).toHaveLength(0);
   });
@@ -425,11 +431,11 @@ describe('state, error and cancel (criteria 8–10)', () => {
     await flush();
     expect(calls.map((c) => c.args)).toEqual([1, 2]);
     at(calls, 1).resolve('two');
-    expect(await next).toBe('two');
+    expect(await next).toEqual(done('two'));
     expect(t.state()).toBe('done');
   });
 
-  it('10. a rejection that is not an abort: failed, error set, run resolves undefined, nothing unhandled', async () => {
+  it('10. a rejection that is not an abort: failed, error set, run resolves failed, nothing unhandled', async () => {
     const unhandled: unknown[] = [];
     const onUnhandled = (reason: unknown): void => {
       unhandled.push(reason);
@@ -441,7 +447,7 @@ describe('state, error and cancel (criteria 8–10)', () => {
       const running = t.run('a');
       const boom = new Error('boom');
       at(calls, 0).reject(boom);
-      expect(await running).toBeUndefined();
+      expect(await running).toEqual(failed(boom));
       expect(t.state()).toBe('failed');
       expect(t.error()).toBe(boom);
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -457,7 +463,7 @@ describe('state, error and cancel (criteria 8–10)', () => {
       throw boom;
     };
     const t = task(fn);
-    expect(await t.run('a')).toBeUndefined();
+    expect(await t.run('a')).toEqual(failed(boom));
     expect(t.state()).toBe('failed');
     expect(t.error()).toBe(boom);
   });
@@ -498,11 +504,11 @@ describe('disposal (criterion 12, the core half)', () => {
 
     for (const dispose of disposers) dispose();
     expect(at(calls, 0).signal.aborted).toBe(true);
-    expect(await running).toBeUndefined();
+    expect(await running).toEqual(CANCELLED);
     vi.advanceTimersByTime(5000);
     expect(ticks()).toBe(2);
 
-    expect(await t.run('b')).toBeUndefined();
+    expect(await t.run('b')).toEqual(CANCELLED);
     expect(calls).toHaveLength(1);
   });
 
@@ -535,5 +541,166 @@ describe('disposal (criterion 12, the core half)', () => {
     const { fn } = fake<string, string>();
     task(fn);
     expect(disposers).toEqual([]);
+  });
+});
+
+describe('SDD-74 criterion 6: run() resolves with the outcome of its own call', () => {
+  it('done: { status: "done", value }', async () => {
+    const { fn, calls } = fake<string, number>();
+    const t = task(fn);
+    const running = t.run('a');
+    at(calls, 0).resolve(7);
+    expect(await running).toEqual(done(7));
+  });
+
+  it('a fn that returns nothing is done, never mistaken for a failure', async () => {
+    const t = task<void, void>(async () => undefined);
+    const ok = await t.run();
+    expect(ok.status).toBe('done');
+    expect(ok).toEqual({ status: 'done', value: undefined });
+
+    const boom = new Error('boom');
+    const bad = task<void, void>(async () => {
+      throw boom;
+    });
+    expect(await bad.run()).toEqual(failed(boom));
+  });
+
+  it('failed: { status: "failed", error }', async () => {
+    const { fn, calls } = fake<string, string>({ method: 'POST' });
+    const t = task(fn);
+    const running = t.run('a');
+    await flush();
+    const conflict = { status: 409, message: 'A Ana no se la puede desactivar.' };
+    at(calls, 0).reject(conflict);
+    expect(await running).toEqual(failed(conflict));
+  });
+
+  it('cancel() → { status: "cancelled" }, in latest and in queue', async () => {
+    const latest = fake<string, string>();
+    const l = task(latest.fn);
+    const a = l.run('a');
+    l.cancel();
+    expect(await a).toEqual(CANCELLED);
+
+    const queued = fake<string, string>({ method: 'PUT' });
+    const q = task(queued.fn);
+    const b = q.run('b');
+    q.cancel();
+    expect(await b).toEqual(CANCELLED);
+  });
+
+  it('replaced in latest → { status: "cancelled" }; the one that replaced it, done', async () => {
+    const { fn, calls } = fake<string, string>({ respectAbort: true });
+    const t = task(fn);
+    const first = t.run('an');
+    const second = t.run('ana');
+    expect(await first).toEqual(CANCELLED);
+    at(calls, 1).resolve('ANA');
+    expect(await second).toEqual(done('ANA'));
+  });
+
+  it('unmounted → { status: "cancelled" }, and so is a run after it', async () => {
+    const { fn } = fake<string, string>();
+    const [t, disposers] = owned(() => task(fn));
+    const running = t.run('a');
+    for (const dispose of disposers) dispose();
+    expect(await running).toEqual(CANCELLED);
+    expect(await t.run('b')).toEqual(CANCELLED);
+  });
+
+  it('run() never rejects, whatever its call does', async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown): void => {
+      unhandled.push(reason);
+    };
+    process.on('unhandledRejection', onUnhandled);
+    try {
+      const { fn, calls } = fake<number, string>({ method: 'PUT', respectAbort: true });
+      const t = task(fn);
+      const runs = [t.run(1), t.run(2), t.run(3)];
+      await flush();
+      at(calls, 0).reject(new Error('one'));
+      await flush();
+      at(calls, 1).reject(new DOMException('aborted', 'AbortError'));
+      await flush();
+      t.cancel();
+      const settled = await Promise.allSettled(runs);
+      expect(settled.map((s) => s.status)).toEqual(['fulfilled', 'fulfilled', 'fulfilled']);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off('unhandledRejection', onUnhandled);
+    }
+  });
+});
+
+describe('SDD-74 criterion 7: the queue does not lie', () => {
+  it('three calls; the 2nd fails while the 3rd is in flight: error() is its error, state() pending; then undefined and done', async () => {
+    const { fn, calls } = fake<number, string>({ method: 'PUT' });
+    const t = task(fn);
+    const first = t.run(1);
+    const second = t.run(2);
+    const third = t.run(3);
+    await flush();
+    at(calls, 0).resolve('one');
+    expect(await first).toEqual(done('one'));
+    await flush();
+
+    const boom = new Error('second failed');
+    at(calls, 1).reject(boom);
+    const r2 = await second;
+    // The moment the 2nd's run() resolves: its error is visible, the round is not over.
+    expect(r2).toEqual(failed(boom));
+    expect(t.error()).toBe(boom);
+    expect(t.state()).toBe('pending');
+    expect(t.pending()).toBe(true);
+
+    await flush();
+    expect(calls.map((c) => c.args)).toEqual([1, 2, 3]);
+    at(calls, 2).resolve('three');
+    expect(await third).toEqual(done('three'));
+    expect(t.error()).toBeUndefined();
+    expect(t.state()).toBe('done');
+    expect(t.value()).toBe('three');
+  });
+
+  it('every settled call writes error(): an effect over it sees the 2nd fail and the 3rd clear it', async () => {
+    const { fn, calls } = fake<number, string>({ method: 'POST' });
+    const t = task(fn);
+    const seen: unknown[] = [];
+    effect(() => {
+      seen.push(t.error());
+    });
+    void t.run(1);
+    void t.run(2);
+    void t.run(3);
+    await flush();
+    at(calls, 0).resolve('one');
+    await flush();
+    const boom = new Error('2nd');
+    at(calls, 1).reject(boom);
+    await flush();
+    at(calls, 2).resolve('three');
+    await flush();
+    expect(seen).toEqual([undefined, boom, undefined]);
+  });
+
+  it('the round ends with how the LAST call ended: failed, while an earlier one succeeded', async () => {
+    const { fn, calls } = fake<number, string>({ method: 'PUT' });
+    const t = task(fn);
+    const first = t.run(1);
+    const second = t.run(2);
+    await flush();
+    at(calls, 0).resolve('one');
+    expect(await first).toEqual(done('one'));
+    expect(t.error()).toBeUndefined();
+    expect(t.state()).toBe('pending');
+    await flush();
+    const boom = new Error('last');
+    at(calls, 1).reject(boom);
+    expect(await second).toEqual(failed(boom));
+    expect(t.state()).toBe('failed');
+    expect(t.error()).toBe(boom);
   });
 });
