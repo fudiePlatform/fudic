@@ -462,8 +462,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    * to register a half for, and bringing the root would load all of `src/browser` for one
    * `@(x | p)`.
    */
-  const apiModule = (id: string, side: 'server' | 'browser'): string | undefined => {
-    const text = api.module(id, side);
+  const apiModule = (id: string, side: 'server' | 'browser', locale?: string): string | undefined => {
+    const text = api.module(id, side, compileFor(locale));
     if (text === undefined || side === 'server' || nothingToImplement(api.source(id)!)) return text;
     return `import ${JSON.stringify(BROWSER_ROOT_ID)};\n${text}`;
   };
@@ -513,13 +513,14 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   const hasApi = (): boolean => api.hasRoot();
   /** The server variant of a generated module, as a nested pass serves it, by id. */
   /**
-   * A generated module of a side, as a nested pass serves it, by id: the same text for every
-   * locale, since what differs between locales is what its imports resolve to.
+   * A generated module of a side, as a nested pass serves it, by id. A `fudic:<id>` writes the
+   * texts of its `.fudapi` in the locale of the id (SDD-74 §4.5); the rest differ between locales
+   * only in what their imports resolve to.
    */
   const generatedText = (tagged: string, side: 'server' | 'browser'): string | undefined => {
     const id = idWithoutLocale(tagged);
     if (id === (side === 'server' ? SERVER_ROOT_ID : BROWSER_ROOT_ID)) return rootSource(side);
-    return id.startsWith(API_SCHEME) ? apiModule(id.slice(API_SCHEME.length), side) : undefined;
+    return id.startsWith(API_SCHEME) ? apiModule(id.slice(API_SCHEME.length), side, localeOf(tagged)) : undefined;
   };
   const serverApi = (id: string): string | undefined => generatedText(id, 'server');
   /** The browser variant, as the link pass serves it to the pages the Service Worker renders. */
@@ -843,6 +844,17 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         if (chunk.name === 'fudic-boot') return bootFileName(BUILD_TOKEN);
         return 'assets/[name]-[hash].js';
       };
+      // A chunk of a locale's graph carries its locale (SDD-74): with two locales and a library
+      // with browser halves, each locale has its own root, and two `fudic-root.browser` are one
+      // name once the build id replaces the hash (FUD0501) — one locale's page would load the
+      // other's.
+      const chunkName = (chunk: { readonly name: string; readonly moduleIds: readonly string[] }): string => {
+        // A configured locale only: the query of a virtual id can carry more than its tag. And
+        // not on a name that already says it — `h/<locale>/<tag>`, `index_locale_<locale>`.
+        const locale = chunk.moduleIds.map(localeOf).find((l) => l !== undefined && locales.includes(l));
+        const prefix = locale === undefined || chunk.name.split(/[/_.-]/u).includes(locale) ? '' : `${locale}-`;
+        return `assets/${prefix}[name]-[hash].js`;
+      };
       return {
         appType: 'custom',
         build: {
@@ -851,7 +863,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             // they are emitted in `buildStart`, where the routes are known (SDD-45 §4.4).
             input: { 'fudic-boot': BOOT_ID },
             ...checks,
-            ...(hasOutputConfig ? {} : { output: { entryFileNames: pinned } }),
+            ...(hasOutputConfig ? {} : { output: { entryFileNames: pinned, chunkFileNames: chunkName } }),
           },
         },
       };
@@ -1777,7 +1789,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         // Every `.fudapi` of the project is an input: a type or a middleware of another file
         // changes this one's text.
         for (const source of api.sources) this.addWatchFile(source.path);
-        return apiModule(bare.slice(API_SCHEME.length), side) ?? null;
+        return apiModule(bare.slice(API_SCHEME.length), side, localeOf(id)) ?? null;
       }
       if (id === MAIN_ID || id.startsWith(`${MAIN_ID}?`)) {
         const dir = chunkDir(localeOf(id), locales);

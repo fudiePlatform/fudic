@@ -18,11 +18,13 @@ import {
   type Span,
 } from '@fudic/diagnostics';
 import type {
+  CatchesOption,
   CompressClause,
   FailsClause,
   MiddlewareArg,
   MiddlewareRef,
   Name,
+  NumberLiteral,
   SkipClause,
   TypedField,
   UseClause,
@@ -174,6 +176,21 @@ export function failureStatus(t: Token, c: Ctx): ReturnType<typeof wholeNumber> 
     return undefined;
   }
   return status;
+}
+
+/** `catches <status>+`, of a form or a function. */
+export function catchesClause(node: LineNode, c: Ctx): CatchesOption | undefined {
+  leaf(node, c);
+  const [keyword] = node.tokens as [Token];
+  if (node.tokens.length === 1) {
+    c.out.push(FUD1063({ span: keyword.span, keyword: keyword.raw }));
+    return undefined;
+  }
+  const statuses = node.tokens
+    .slice(1)
+    .map((t) => failureStatus(t, c))
+    .filter((s): s is NumberLiteral => s !== undefined);
+  return { keyword: keyword.span, statuses, span: node.span };
 }
 
 /** `fails <code> <status> ["<detail>"]`. */

@@ -591,8 +591,8 @@
   },
   "examples/i18n/src/routes/index.fud": {
     "kind": "route",
-    "reactive": false,
-    "hydration": "gesture",
+    "reactive": true,
+    "hydration": "eager",
     "hydrates": [
       "app-cart"
     ]

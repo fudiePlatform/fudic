@@ -15,6 +15,7 @@ put save /:id
   query notify bool
   id      uuid
   active  bool
+  catches 409
   fails locked 409  "That person is locked."
 
 delete remove /:id

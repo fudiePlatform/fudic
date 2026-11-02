@@ -6,8 +6,9 @@
  *       routes  403 /login
  *
  * A status with a route goes there; any other goes to `_error.fud`, by its status alone: the
- * server reads where the user came from off the `Referer`. What it never touches: a cancelled call, and an
- * error the form being sent keeps for itself (`form(…, { catches })`) — that one is the form's
+ * server reads where the user came from off the `Referer`. What it never touches: a cancelled call,
+ * an error the function keeps for its caller (`catches` in the `.fudapi`, `ctx.catches`), and an
+ * error the form being sent keeps for itself (`form(…, { catches })`) — those are the caller's
  * to paint.
  *
  * A navigation leaves the call pending forever rather than resolving it: the page is going
@@ -50,7 +51,7 @@ export function errorPagesStep(routes: ErrorRoutes = {}): ClientStep {
       return await next(ctx);
     } catch (e) {
       if (isAbort(e)) throw e;
-      if (e instanceof HttpError && keptByForm(ctx.args, e.status)) throw e;
+      if (e instanceof HttpError && (ctx.catches.includes(e.status) || keptByForm(ctx.args, e.status))) throw e;
       // A 422 belongs to whoever sent the value it rejects, form or not: there is no page to say it on.
       if (e instanceof ValidationError) throw e;
       if (e instanceof Redirect) return navigate(e.location);

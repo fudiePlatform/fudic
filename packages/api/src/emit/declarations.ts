@@ -186,7 +186,6 @@ function loadDecl(d: LoadDecl, c: DeclCtx): string {
     // `fetch` is the browser module's: what the route's chunk asks the server with (SDD-68 §3.4).
     `${I}export const load: PagePiece<LoadHandler> & BrowserLoadPiece<LoadData>;`,
   ];
-  if (d.fails.length > 0) lines.push(`${I}export const LoadFails: ${failsType(d.fails, c)};`);
   return lines.join('\n');
 }
 

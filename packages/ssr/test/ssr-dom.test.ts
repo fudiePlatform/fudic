@@ -58,6 +58,94 @@ describe('SsrDom tree mutation', () => {
     expect(renderToString(el)).toBe('<input>');
   });
 
+  it.each([
+    ['checked', true, '<input checked="">'],
+    ['checked', false, '<input>'],
+    ['checked', null, '<input>'],
+    ['checked', undefined, '<input>'],
+    ['value', 'Ana', '<input value="Ana">'],
+    ['value', 42, '<input value="42">'],
+    ['value', '', '<input value="">'],
+  ] as const)('setLive %s of %j paints the attribute an interpolated value would (SDD-74 §4.4)', (name, value, html) => {
+    const d = new SsrDom();
+    const el = d.element('input');
+    d.setAttr(el, name, 'stale');
+    d.setLive(el, name, value);
+    expect(renderToString(el)).toBe(html);
+  });
+
+  it.each([
+    ['Ana', '<textarea>Ana</textarea>'],
+    ['\nsegunda', '<textarea>\n\nsegunda</textarea>'],
+    [42, '<textarea>42</textarea>'],
+    ['', '<textarea></textarea>'],
+    [false, '<textarea></textarea>'],
+    [null, '<textarea></textarea>'],
+  ] as const)('setLive value of %j on a textarea is its text (SDD-74 §4.4)', (value, html) => {
+    const d = new SsrDom();
+    const el = d.element('textarea');
+    d.append(el, d.text('old'));
+    d.setLive(el, 'value', value);
+    expect(renderToString(el)).toBe(html);
+  });
+
+  /** A `<select>` with `value` set live over two options, one inside an optgroup. */
+  function select(value: unknown, options: (d: SsrDom, sel: SsrNode) => void): string {
+    const d = new SsrDom();
+    const sel = d.element('select');
+    options(d, sel);
+    d.setLive(sel, 'value', value);
+    return renderToString(sel);
+  }
+  const option = (d: SsrDom, parent: SsrNode, text: string, attrs: Record<string, string> = {}): void => {
+    const o = d.element('option');
+    for (const [k, v] of Object.entries(attrs)) d.setAttr(o, k, v);
+    d.append(o, d.text(text));
+    d.append(parent, o);
+  };
+
+  it('setLive value on a select marks the option with that value, over the one the markup selected', () => {
+    const html = select('b', (d, sel) => {
+      option(d, sel, 'A', { value: 'a', selected: '' });
+      option(d, sel, 'B', { value: 'b' });
+    });
+    expect(html).toBe('<select><option value="a">A</option><option value="b" selected="">B</option></select>');
+  });
+
+  it('through an optgroup, and by the collapsed text of an option without value', () => {
+    const html = select('dos palabras', (d, sel) => {
+      option(d, sel, 'x');
+      const group = d.element('optgroup');
+      d.append(sel, group);
+      option(d, group, '  dos \n palabras ');
+    });
+    expect(html).toBe('<select><option>x</option><optgroup><option selected="">  dos \n palabras </option></optgroup></select>');
+  });
+
+  it('a value no option holds, or false/null, marks none', () => {
+    for (const value of ['zz', false, null]) {
+      const html = select(value, (d, sel) => option(d, sel, 'A', { value: 'a', selected: '' }));
+      expect(html).toBe('<select><option value="a">A</option></select>');
+    }
+  });
+
+  it('an option outside a select, or in a select with no live value, keeps its own selected', () => {
+    const d = new SsrDom();
+    const sel = d.element('select');
+    option(d, sel, 'A', { value: 'a', selected: '' });
+    expect(renderToString(sel)).toBe('<select><option value="a" selected="">A</option></select>');
+    const loose = d.element('datalist');
+    option(d, loose, 'B', { selected: '' });
+    expect(renderToString(loose)).toBe('<datalist><option selected="">B</option></datalist>');
+  });
+
+  it('setLive selected on an option is the attribute too', () => {
+    const d = new SsrDom();
+    const el = d.element('option');
+    d.setLive(el, 'selected', true);
+    expect(renderToString(el)).toBe('<option selected=""></option>');
+  });
+
   it('attachShadow is idempotent', () => {
     const d = new SsrDom();
     const host = d.element('app-x');

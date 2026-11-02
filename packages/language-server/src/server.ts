@@ -243,7 +243,7 @@ export function createFudicServer(
       // Criteria files: a service of their own, which answers only in a `.fudspec` (SDD-52).
       createFudspecService({ host: specs, stats }),
       // Contract files: likewise, only in a `.fudapi` (SDD-60).
-      createFudapiService({ host: apis, stats }),
+      createFudapiService({ host: apis, stats, translations }),
     ];
 
     // Nothing speaks over a library's file (SDD-43 §4.4): read-only means every service,

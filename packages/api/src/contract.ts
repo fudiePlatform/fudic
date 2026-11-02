@@ -4,9 +4,10 @@
  * by what its context takes (SDD §3.2–§3.5, §3.9).
  */
 
-import { FUD1063, FUD1067, FUD1068, FUD1072, FUD1073, FUD1074, FUD1076, FUD1325, span } from '@fudic/diagnostics';
+import { FUD1063, FUD1067, FUD1068, FUD1072, FUD1073, FUD1074, FUD1076, FUD1325, FUD1360, span } from '@fudic/diagnostics';
 import type {
   ArgDecl,
+  CatchesOption,
   ChainDecl,
   CompressClause,
   Duration,
@@ -33,6 +34,7 @@ import type {
 } from './ast.js';
 import {
   blockSpan,
+  catchesClause,
   compressClause,
   declName,
   failsClause,
@@ -56,7 +58,7 @@ import { duration, readType, route, text } from './type.js';
 
 const doc = (node: LineNode): { doc?: string } => (node.doc !== undefined ? { doc: node.doc } : {});
 
-const FN_CLAUSES = ['use', 'skip', 'form', 'invalidates', 'compress', 'fails', 'query', '->', '<arg> <type>'];
+const FN_CLAUSES = ['use', 'skip', 'form', 'invalidates', 'compress', 'catches', 'fails', 'query', '->', '<arg> <type>'];
 
 const INVALIDATED = /^\/(?:(?:[A-Za-z0-9_-]+|:[A-Za-z_][A-Za-z0-9_]*)(?:\/(?:[A-Za-z0-9_-]+|:[A-Za-z_][A-Za-z0-9_]*))*)?$/u;
 
@@ -75,6 +77,7 @@ export function fnDecl(node: LineNode, c: Ctx): FnDecl | undefined {
   const fails: FailsClause[] = [];
   const args: Omit<ArgDecl, 'place'>[] = [];
   let form: FormRef | undefined;
+  let catches: CatchesOption | undefined;
   let compress: CompressClause | undefined;
   let returns: ReturnsClause | undefined;
 
@@ -113,6 +116,10 @@ export function fnDecl(node: LineNode, c: Ctx): FnDecl | undefined {
       case 'compress': {
         if (repeated(compress, head, c)) break;
         compress = compressClause(child, c);
+        break;
+      }
+      case 'catches': {
+        if (!repeated(catches, head, c)) catches = catchesClause(child, c);
         break;
       }
       case 'fails': {
@@ -169,6 +176,7 @@ export function fnDecl(node: LineNode, c: Ctx): FnDecl | undefined {
     ...(form !== undefined ? { form } : {}),
     invalidates,
     ...(compress !== undefined ? { compress } : {}),
+    ...(catches !== undefined ? { catches } : {}),
     fails,
     args: placed,
     ...(returns !== undefined ? { returns } : {}),
@@ -197,7 +205,7 @@ function argDecl(node: LineNode, at: number, c: Ctx): Omit<ArgDecl, 'place'> | u
 
 const ARG_LINES = ['<rule>'];
 
-/** `load [mode] [ttl <dur>] [<policy>] [page <never|persist> [<dur>]] [buffer <bytes>]`, `use`, `skip`, `fails`, fields. */
+/** `load [mode] [ttl <dur>] [<policy>] [page <never|persist> [<dur>]] [buffer <bytes>]`, `use`, `skip`, fields; `fails` is FUD1360. */
 export function loadDecl(node: LineNode, c: Ctx): LoadDecl {
   const [keyword] = node.tokens as [Token];
   let mode: Name | undefined;
@@ -262,7 +270,6 @@ export function loadDecl(node: LineNode, c: Ctx): LoadDecl {
 
   const uses: UseClause[] = [];
   const skips: SkipClause[] = [];
-  const fails: FailsClause[] = [];
   const fields: TypedField[] = [];
   for (const child of node.children) {
     const head = child.tokens[0]!.raw;
@@ -273,10 +280,9 @@ export function loadDecl(node: LineNode, c: Ctx): LoadDecl {
       const skip = skipClause(child, c);
       if (skip !== undefined) skips.push(skip);
     } else if (head === 'fails') {
-      const f = failsClause(child, c);
-      if (f !== undefined) fails.push(f);
+      c.out.push(FUD1360({ span: child.span }));
     } else {
-      const field = typedField(child, node, ['use', 'skip', 'fails', '<field> <type> [later]'], c, true);
+      const field = typedField(child, node, ['use', 'skip', '<field> <type> [later]'], c, true);
       if (field !== undefined) fields.push(field);
     }
   }
@@ -291,7 +297,6 @@ export function loadDecl(node: LineNode, c: Ctx): LoadDecl {
     ...(buffer !== undefined ? { buffer } : {}),
     uses,
     skips,
-    fails,
     fields,
     ...doc(node),
     span: blockSpan(node),

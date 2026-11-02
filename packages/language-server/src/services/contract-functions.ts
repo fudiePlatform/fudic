@@ -2,7 +2,7 @@
  * The two positions whose answer is a server function (BUG-59): the first argument of a
  * `task(` and the value of a `form:=`. The list there is the functions of the `.fudapi` the
  * file links and nothing else. TypeScript offers every name in scope — `salir`, `satisfies`,
- * `SharedArrayBuffer`, the `SaveFails` types of each contract — because `task` takes any
+ * `SharedArrayBuffer`, the `SaveHandler` types of each contract — because `task` takes any
  * callable; the view offers its whole scope. The one the developer is reaching for is declared
  * in the contract.
  *

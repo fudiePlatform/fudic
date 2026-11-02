@@ -37,7 +37,10 @@ const TSCONFIG = {
 /** What a developer writes in `src/server` and `src/browser`, and calls from a view. */
 const HANDLERS = `
 import { load, search, save, type SearchHandler, type Person, type LoadData } from 'fudic:routes/usuarios';
-import { save as register, SaveFails, userForm, type SaveHandler, type UserFormValue } from 'fudic:components/user-form';
+import { conflict } from '@fudic/http';
+import { save as register, userForm, type SaveHandler, type UserFormValue } from 'fudic:components/user-form';
+// @ts-expect-error a function has no <Name>Fails any more: its handler throws an error of @fudic/http (SDD-74)
+import { SaveFails } from 'fudic:components/user-form';
 import { save as savePost, move, drop, load as loadPost, layout, paths, type Post, type Variant } from 'fudic:routes/blog/[slug]';
 import { auth, AuthFails, log, type AuthServer } from 'fudic:middlewares/auth';
 import { nif, between, emailLoose, type NifCheck } from 'fudic:rules/forms';
@@ -57,7 +60,8 @@ save.handle((ctx) => {
 
 export const alta = ((ctx) => {
   const value: UserFormValue = ctx.form.$value();
-  if (value.name === 'admin') throw SaveFails.reserved();
+  if (value.name === 'admin') throw conflict('Ese nombre está reservado.');
+  void SaveFails;
   return { id: 1, name: value.acceso.clave.length > 0 ? value.name : '' };
 }) satisfies SaveHandler;
 register.handle(alta);

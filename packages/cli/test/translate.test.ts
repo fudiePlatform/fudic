@@ -151,6 +151,57 @@ describe('the catalogs it writes', () => {
     expect(files(fs, 'en')).toContain('src/locales/en/@acme/ui/src/ui-badge.json');
   });
 
+  describe('SDD-74 §4.5, criterion 17: the texts of a .fudapi', () => {
+    const API = [
+      'form newsletter',
+      '  email  str = ""',
+      '    required  "Escribe tu email."',
+      '    min-length 5  "Al menos {n} letras."',
+      '',
+    ].join('\n');
+
+    it('src/routes/index.fudapi writes src/locales/<locale>/routes/index.json, a second pass changes nothing', async () => {
+      const fs = project({ 'src/routes/index.fudapi': API });
+      const first = await translate(fs);
+      expect(first.changes.map((c) => c.path)).toContain('src/locales/en/routes/index.json');
+      expect(first.changes.map((c) => c.path)).toContain('src/locales/es/routes/index.json');
+      expect(entry(fs, 'en', 'newsletter.email.required', 'Escribe tu email.')).toBeDefined();
+      // The first locale is the source's: translated as itself.
+      expect(entry(fs, 'es', 'newsletter.email.required', 'Escribe tu email.')!.translation).toBe('Escribe tu email.');
+      const en = fs.at('src/locales/en/routes/index.json');
+
+      const second = await translate(fs);
+      expect(second.changes).toEqual([]);
+      expect(second.deletions).toBeUndefined();
+      expect(fs.at('src/locales/en/routes/index.json')).toBe(en);
+    });
+
+    it('a text’s {n} is a hole, and a translation without it is FUD1024', async () => {
+      const fs = project({ 'src/routes/index.fudapi': API });
+      await translate(fs);
+      translateTo(fs, 'en', { 'Al menos {n} letras.': 'Too short.' });
+      const plan = await planTranslate(OPTS, fs);
+      expect(plan.diagnostics.map((d) => [d.file, d.diagnostic.code])).toContainEqual(['src/routes/index.fudapi', 'FUD1024']);
+    });
+
+    it('an untranslated text of a .fudapi is FUD1022, on the .fudapi', async () => {
+      const fs = project({ 'src/routes/index.fudapi': API });
+      const plan = await translate(fs);
+      expect(plan.diagnostics.map((d) => [d.file, d.diagnostic.code])).toContainEqual(['src/routes/index.fudapi', 'FUD1022']);
+    });
+
+    it('the .fudapi of a fudic library are translated in the app’s catalog', async () => {
+      const fs = project({
+        'package.json': JSON.stringify({ name: 'demo', dependencies: { '@acme/ui': '*' } }),
+        'node_modules/@acme/ui/package.json': JSON.stringify({ name: '@acme/ui' }),
+        'node_modules/@acme/ui/fudic.json': JSON.stringify({ kind: 'lib', prefix: 'ui' }),
+        'node_modules/@acme/ui/src/guard.fudapi': 'middleware guard\n  server\n  fails denied 403 "No puedes pasar."\n',
+      });
+      await translate(fs);
+      expect(entry(fs, 'en', 'guard.denied', 'No puedes pasar.')).toBeDefined();
+    });
+  });
+
   it('criterion 10: twice over the same code, the same bytes, and the second plan changes nothing', async () => {
     const fs = project({ 'src/lib/validation.ts': SERVICE });
     const first = await translate(fs);

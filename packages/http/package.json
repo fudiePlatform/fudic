@@ -24,6 +24,18 @@
   ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "client": ["./dist/client/index.d.ts"],
+      "server": ["./dist/server/index.d.ts"],
+      "contract": ["./dist/contract/index.d.ts"],
+      "contract/server": ["./dist/contract/server.d.ts"],
+      "wire": ["./dist/wire/index.d.ts"],
+      "wire/bin": ["./dist/wire/bin.d.ts"],
+      "wire/json": ["./dist/wire/json.d.ts"],
+      "wire/frames": ["./dist/wire/frames.d.ts"]
+    }
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

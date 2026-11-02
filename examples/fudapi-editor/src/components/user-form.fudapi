@@ -33,5 +33,6 @@ form userForm
 post register
   use auth
   form userForm
+  catches 409
   fails reserved 409  "Ese nombre está reservado."
   -> Person

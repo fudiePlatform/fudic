@@ -28,6 +28,7 @@ import {
   validateApi,
   type ApiContext,
   type ApiIndex,
+  type ApiLocale,
   type ApiSource,
   type Decl,
   type LoadDecl,
@@ -115,11 +116,14 @@ export class ApiProject {
     return this.#read().byId.get(id);
   }
 
-  /** The module `fudic:<id>`, or `undefined` when there is no such file. */
-  module(id: string, side: Side): string | undefined {
+  /**
+   * The module `fudic:<id>`, or `undefined` when there is no such file. With `i18n`, the one of
+   * its locale: the texts of the `.fudapi` translated (SDD-74 §4.5).
+   */
+  module(id: string, side: Side, i18n?: ApiLocale): string | undefined {
     const state = this.#read();
     const source = state.byId.get(id);
-    return source === undefined ? undefined : emitModule(source, state.index, this.context(source), side);
+    return source === undefined ? undefined : emitModule(source, state.index, this.context(source), side, i18n);
   }
 
   /** What the parser and the validator say about every file of the app, by file. */

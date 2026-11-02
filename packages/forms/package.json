@@ -24,6 +24,13 @@
   ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "dom": ["./dist/dom/index.d.ts"],
+      "contract": ["./dist/contract/index.d.ts"],
+      "element": ["./dist/element.d.ts"]
+    }
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

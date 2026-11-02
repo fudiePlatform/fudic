@@ -40,24 +40,29 @@
     lenta.cancel();
   }
 
-  // Si el servidor no lo guarda, la casilla vuelve a como estaba: la señal no cambió, así que
-  // el repintado no tiene nada que corregir en ella.
+  function marcar(id: number, active: boolean) {
+    personas.set(personas().map((x) => (x.id === id ? { ...x, active } : x)));
+  }
+
+  // En optimista: primero la señal, luego el servidor, y si no sale bien se deshace. La casilla
+  // sigue a la señal en cada repintado, así que no hay que tocarla a mano; el motivo de un error
+  // que se queda en la página (`catches 409`) lo pinta la vista con `guardar.message()`.
   // Las dos reciben la persona de la fila pulsada: la tabla tiene un listener por evento en el
   // `<tbody>`, no uno por fila, y cada fila se marca con `delegate:p` para el evento que sirve.
   async function activar(p: Person, e: Event) {
-    const input = e.target as HTMLInputElement;
-    const active = input.checked;
-    await guardar.run({ id: p.id, active });
-    if (guardar.error() === undefined) {
-      personas.set(personas().map((x) => (x.id === p.id ? { ...x, active } : x)));
-    } else {
-      input.checked = !active;
+    const active = (e.target as HTMLInputElement).checked;
+    marcar(p.id, active);
+    const guardado = await guardar.run({ id: p.id, active });
+    if (!guardado.ok) {
+      marcar(p.id, !active);
     }
   }
 
   async function borrar(p: Person) {
-    await quitar.run({ id: p.id });
-    if (quitar.error() === undefined) personas.set(personas().filter((x) => x.id !== p.id));
+    const borrado = await quitar.run({ id: p.id });
+    if (borrado.ok) {
+      personas.set(personas().filter((x) => x.id !== p.id));
+    }
   }
 
   // Entrar y salir son dos funciones del servidor: ponen y quitan la cookie. Las dos nombran
@@ -180,6 +185,9 @@
       }
     </tbody>
   </table>
+  @if (guardar.message() !== "") {
+    <p role="alert">@guardar.message()</p>
+  }
   <p>
     La tabla usa un listener por evento en el <code>&lt;tbody&gt;</code>, tenga las filas que
     tenga. Marcar o desmarcar <em>Activo</em> y <em>Borrar</em> no recargan la página. En Network sale
@@ -187,6 +195,11 @@
     repinta sola, sin perder el scroll ni el foco. Si el servidor dice que no, la casilla vuelve
     a como estaba. Si marcas deprisa varias veces, los <code>save</code> salen en fila, uno
     detrás de otro, en el orden en que pulsaste.
+  </p>
+  <p>
+    Desmarca a Ana: el servidor responde 409 y la página se queda, con el motivo debajo de la
+    tabla. Lo que una función pone en su <code>catches</code> se queda en la página; lo demás va a
+    <code>error-pages</code>, como el 404 de <em>Borrar a alguien que no existe</em>.
   </p>
 </div>
 

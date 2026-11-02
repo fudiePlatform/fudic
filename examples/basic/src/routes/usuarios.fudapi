@@ -32,9 +32,11 @@ get slowSearch
   q  str
   -> Person[]
 
-# Turns a person on or off.
+# Turns a person on or off. A 409 is the page's to paint: `catches` keeps it there.
 put save
   use auth
+  catches 409
+  fails ana 409 "A Ana no se la puede desactivar."
   id      i32
   active  bool
 

@@ -11,7 +11,6 @@ import type {
   FormDecl,
   FormGroup,
   FormMember,
-  NumberLiteral,
   PathExpr,
   RequireRule,
   RuleUse,
@@ -24,8 +23,8 @@ import type {
 } from './ast.js';
 import {
   blockSpan,
+  catchesClause,
   declName,
-  failureStatus,
   isShape,
   laterWord,
   leaf,
@@ -76,21 +75,6 @@ function validity(node: LineNode, c: Ctx): ValidityOption | undefined {
     return undefined;
   }
   return { keyword: keyword.span, value: name(value), span: node.span };
-}
-
-/** `catches <status>+`. */
-function catches(node: LineNode, c: Ctx): CatchesOption | undefined {
-  leaf(node, c);
-  const [keyword] = node.tokens as [Token];
-  if (node.tokens.length === 1) {
-    c.out.push(FUD1063({ span: keyword.span, keyword: keyword.raw }));
-    return undefined;
-  }
-  const statuses = node.tokens
-    .slice(1)
-    .map((t) => failureStatus(t, c))
-    .filter((s): s is NumberLiteral => s !== undefined);
-  return { keyword: keyword.span, statuses, span: node.span };
 }
 
 /** The options a form, a group and a field share, and what each saw. */
@@ -144,7 +128,7 @@ function members(
     const [head] = child.tokens as [Token];
     if (option(child, options, c)) continue;
     if (head.raw === 'catches' && allowCatches) {
-      if (!repeated(caught, head, c)) caught = catches(child, c);
+      if (!repeated(caught, head, c)) caught = catchesClause(child, c);
     } else if (head.raw === 'summary') {
       if (summaryLine(child, c) && !repeated(summary, head, c)) summary = summaryBlock(child, c);
     } else if (child.tokens.length >= 2 && isShape(head, 'identifier')) {

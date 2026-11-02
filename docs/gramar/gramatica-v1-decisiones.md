@@ -1366,9 +1366,13 @@ llega a quien llamó (`task.run()`, `task.error()` o el rechazo del `await`). Si
 queda. Una llamada que envía un formulario se queda la unión de los dos. *Por qué: el mismo error
 se comportaba distinto según lo enviara un formulario o un botón (Pedro, 2026-11-01).*
 
-**175.** **`fails` solo en reglas y middlewares** (SDD-74 §2). En una función o en `load` es
-`FUD1360`. El handler lanza un error de `@fudic/http` (`conflict('…')`, `notFound('…')`…).
-*Por qué: un nombre inventado para un status y un texto no aportaba nada (Pedro, 2026-11-01).*
+**175.** **El servidor manda el código de un `fails`; la página pone su texto** (SDD-74 §2). El
+texto de un `fails` de una función se escribe una vez, en el `.fudapi`; el handler lanza
+`<Nombre>Fails.<código>()`, que viaja como status y `code`, y la función en el navegador pinta el
+texto de ese código en el idioma de la página. En `load`, `fails` es `FUD1360`: lo que falla ahí va a
+`error-pages`. *Por qué: con el texto en el servidor, una app de dos idiomas lo pintaba siempre en
+el del servidor, y cada backend (C#, Java, Go…) tendría que traducir por su cuenta (Pedro,
+2026-11-02). Sustituye a la versión del 2026-11-01, que quitaba `fails` de las funciones.*
 
 **176.** **El marcador dice a qué eventos sirve** (SDD-72 §3.4). Enmienda la 117: `delegate:nombre`
 admite, además de ir sin valor, un texto literal con nombres de evento separados por espacios
@@ -1708,6 +1712,6 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 172 | Interpolación | La vista importa el `export default` de la carpeta de pipes; `a \| p` se emite `p.format(a, idioma)`; presets en `@fudic/core`. Enmienda 158 y SDD-61 §3.9 (SDD-71) |
 | 173 | Interpolación | En `@fudic:result`, `@fudic:error` y `bus:`, referencia y lambda reciben el `detail`; la llamada, igual. Tipado por el `form:=` y por los receptores del bus. Enmienda la 98 (SDD-72) |
 | 174 | `.fudapi` | `catches <status>+` en una función: ese error llega a quien llamó, no a `error-pages`; con un form, la unión (SDD-74) |
-| 175 | `.fudapi` | `fails` solo en reglas y middlewares; en una función o `load`, `FUD1360` (SDD-74) |
+| 175 | `.fudapi` | El servidor manda el código de un `fails`; la página pone su texto. En `load`, `FUD1360` (SDD-74) |
 | 176 | Interpolación | `delegate:nombre="click change"`: el marcador sirve solo a esos eventos; sin valor, a todos. Un `@evento` en un bucle avisa (`FUD1380`). Enmienda la 117 (SDD-72) |
 | 177 | Interpolación | La fila delegada se lee sin `$`, suelta o dentro de un argumento: `@borrar(p)`, `@borrar(p.id, i)`; `$p` es `FUD1383` y un nombre que choca, `FUD1382`. Enmienda la 118 (SDD-72) |

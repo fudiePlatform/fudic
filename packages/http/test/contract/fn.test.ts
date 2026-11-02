@@ -11,6 +11,7 @@ import { createRoot } from '@fudic/di';
 import { formOf, inTurn, required, serverValidator, str, u8 } from '@fudic/forms/contract';
 import {
   contractsOf,
+  fails,
   fn,
   loadingFile,
   middleware,
@@ -22,7 +23,7 @@ import {
   type ServerContract,
 } from '../../src/contract/index.js';
 import { serve } from '../../src/contract/server.js';
-import { HttpError, notFound, redirect, Redirect, ValidationError } from '../../src/errors.js';
+import { CODE_HEADER, HttpError, notFound, redirect, Redirect, ValidationError } from '../../src/errors.js';
 import type { DispatchOptions } from '../../src/server/dispatch.js';
 import type { ServerContext } from '../../src/types.js';
 import { fromBase64url } from '../../src/wire/base64url.js';
@@ -599,5 +600,89 @@ describe('a call waits for the browser root (SDD-67: the race after hydration)',
     await root;
     expect(await answer).toBe('pong');
     expect(trace).toEqual(['client half', 'server']);
+  });
+});
+
+describe('SDD-74 criterion 10: the code travels, the page puts the text', () => {
+  const ReserveFails = fails({ full: [409, 'Ya no quedan plazas.'] });
+  const spec = (wire: FnSpec['wire'], over: Partial<FnSpec> = {}): FnSpec => ({ id: 'routes/index', name: 'reserve', method: 'POST', catches: [409], chain: [], wire, ...over });
+
+  /** The response the server gives, and what the stub of the page rejects with. */
+  async function call(wire: FnSpec['wire'], texts?: Record<string, string>, thrown: () => never = () => { throw ReserveFails.full(); }) {
+    const server = fn(spec(wire));
+    server.handle(thrown);
+    let response: Response | undefined;
+    vi.stubGlobal('fetch', async (url: URL, init: RequestInit) => {
+      response = await serve({ request: new Request(url, init), contract: server, page: {}, route: {} });
+      return response.clone();
+    });
+    const e = await stub<never, unknown, void>(spec(wire, texts === undefined ? {} : { fails: texts }))().catch((x: unknown) => x);
+    return { response: response!, e: e as HttpError };
+  }
+
+  it.each([['fud-bin', binWire], ['JSON', jsonWire]] as const)('%s: the server sets fud-code and keeps the code out of the body', async (_name, wire) => {
+    const { response } = await call(wire);
+    expect(response.status).toBe(409);
+    expect(response.headers.get(CODE_HEADER)).toBe('full');
+    const problem = wire === binWire ? await binProblem(response) : ((await response.json()) as Record<string, unknown>);
+    expect(problem).not.toHaveProperty('code');
+    // For a caller with no page — a curl, another service — the detail is the .fudapi's text.
+    expect(problem['detail' as never]).toBe('Ya no quedan plazas.');
+  });
+
+  it.each([['fud-bin', binWire], ['JSON', jsonWire]] as const)('%s: a stub that declares the code rejects with its text as detail and message', async (_name, wire) => {
+    const { e } = await call(wire, { full: 'No places left.' });
+    expect(e).toBeInstanceOf(HttpError);
+    expect(e.status).toBe(409);
+    expect(e.problem.detail).toBe('No places left.');
+    expect(e.problem.code).toBe('full');
+    expect(e.message).toBe('No places left.');
+  });
+
+  it('a code the stub does not declare leaves the problem as it came, with its code', async () => {
+    const { e } = await call(binWire, { other: 'never' });
+    expect(e.problem.detail).toBe('Ya no quedan plazas.');
+    expect(e.problem.code).toBe('full');
+  });
+
+  it('a code that is an inherited name is not one of its texts', async () => {
+    const proto = fails({ toString: [409, 'origin'] });
+    const { e } = await call(binWire, { full: 'x' }, () => { throw proto.toString(); });
+    expect(e.problem.detail).toBe('origin');
+  });
+
+  it('a response without the header — another backend, an error without code — is unchanged', async () => {
+    const { e } = await call(binWire, { full: 'never' }, () => { throw notFound('no such thing'); });
+    expect(e.status).toBe(404);
+    expect(e.problem.detail).toBe('no such thing');
+    expect(e.problem).not.toHaveProperty('code');
+  });
+});
+
+describe('SDD-74 §3.2, criterion 4: ctx.catches is what the function declares', () => {
+  /** A function whose client half records the `ctx.catches` it is given. */
+  function recorded(over: Partial<FnSpec> = {}) {
+    const keep = middleware({ id: 'middlewares/keep', name: 'keep', client: true });
+    const spec: FnSpec = { id: 'routes/usuarios', name: 'save', method: 'PUT', chain: [{ steps: [{ use: [use(keep)] }] }], wire: binWire, ...over };
+    const catches: (readonly number[])[] = [];
+    keep.client((ctx, next) => {
+      catches.push(ctx.catches);
+      return next(ctx);
+    });
+    fn(spec).handle(() => undefined);
+    served(contractsOf('routes/usuarios').get('save')!);
+    return { save: stub<never, unknown, void>(spec), catches };
+  }
+
+  it('a stub with catches [409, 422] gives its client steps ctx.catches = [409, 422]', async () => {
+    const { save, catches } = recorded({ catches: [409, 422] });
+    await save();
+    expect(catches).toEqual([[409, 422]]);
+  });
+
+  it('without catches, ctx.catches is []', async () => {
+    const { save, catches } = recorded();
+    await save();
+    expect(catches).toEqual([[]]);
   });
 });

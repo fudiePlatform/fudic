@@ -11,7 +11,8 @@ import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { extractMessages } from '@fudic/compiler';
+import { API_EXTENSION, extractApiMessages } from '@fudic/api';
+import { extractMessages, extractScriptMessages } from '@fudic/compiler';
 import { splitCatalog, type Catalog } from '@fudic/i18n';
 
 const pkgDir = (name: string): string => fileURLToPath(new URL(`../../../${name}`, import.meta.url));
@@ -30,6 +31,8 @@ export interface I18nProject {
   readonly files: Readonly<Record<string, string>>;
   /** Per locale: source text → translation. `null` writes an unreadable catalog. */
   readonly catalogs?: Readonly<Record<string, Readonly<Record<string, string>> | null>>;
+  /** More `@fudic/*` packages linked under `node_modules`, and named in `package.json`. */
+  readonly installed?: readonly string[];
 }
 
 function siteOf(project: I18nProject): { site?: string } {
@@ -63,24 +66,33 @@ export function writeI18nProject(project: I18nProject): string {
 
   const scope = join(root, 'node_modules', '@fudic');
   mkdirSync(scope, { recursive: true });
-  for (const name of INSTALLED) symlinkSync(pkgDir(name), join(scope, name), 'junction');
+  const installed = [...INSTALLED, ...(project.installed ?? [])];
+  for (const name of installed) symlinkSync(pkgDir(name), join(scope, name), 'junction');
   write(
     'package.json',
     JSON.stringify({
       name: 'i18n-app',
       type: 'module',
-      dependencies: Object.fromEntries(INSTALLED.map((n) => [`@fudic/${n}`, '*'])),
+      dependencies: Object.fromEntries(installed.map((n) => [`@fudic/${n}`, '*'])),
     }),
   );
   return root;
 }
 
-/** A catalog whose entries are the `.fud` messages `table` translates, one file per source. */
+/** The messages of a source file, extracted as `fudic translate` does: a `.fud`, a `.fudapi` or a `.ts`. */
+function messagesOf(path: string, text: string): readonly { context: string; key: string; source: string; at: number }[] {
+  if (path.endsWith('.fud')) return extractMessages(text, path).value;
+  if (path.endsWith(API_EXTENSION)) return extractApiMessages(text, path).value;
+  // A script's context is its path under `src/`, as the catalogs of an app name it: `server/index.ts`.
+  if (path.endsWith('.ts')) return extractScriptMessages(text, path.replace(/^src\//u, '')).value;
+  return [];
+}
+
+/** A catalog whose entries are the messages `table` translates, one file per source. */
 function catalogOf(files: Readonly<Record<string, string>>, table: Readonly<Record<string, string>>): Catalog {
   const catalog: Record<string, Record<string, Catalog[string][string]>> = {};
   for (const [path, text] of Object.entries(files)) {
-    if (!path.endsWith('.fud')) continue;
-    for (const m of extractMessages(text, path).value) {
+    for (const m of messagesOf(path, text)) {
       const translation = table[m.source];
       if (translation === undefined) continue;
       (catalog[m.context] ??= {})[m.key] = { source: m.source, translation, where: path, at: m.at };
