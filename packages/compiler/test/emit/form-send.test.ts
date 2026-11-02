@@ -118,6 +118,31 @@ describe('form:= (criterion 26, its compile part)', () => {
     );
   });
 
+  it('fudic:result and fudic:error hand the handler the datum (SDD-72 criterion 1)', () => {
+    const code = chunk(
+      route(
+        server,
+        '    function hecho(p) {}\n    function fallo(e) {}',
+        '<form control=@userForm form:=@save @fudic:result=@hecho @fudic:error=@fallo><button>ok</button></form>',
+        neutral,
+      ),
+    )!;
+    expect(code).toMatch(/\$dom\.event\(\$n\d+, "fudic:result", \(\$event\) => hecho\(\$event\.detail\)\)/u);
+    expect(code).toMatch(/\$dom\.event\(\$n\d+, "fudic:error", \(\$event\) => fallo\(\$event\.detail\)\)/u);
+  });
+
+  it('with a call, the event is $event as before (SDD-72 criterion 3)', () => {
+    const code = chunk(
+      route(
+        server,
+        '    function hecho(p, n) {}',
+        '<form control=@userForm form:=@save @fudic:result=@hecho($event.detail, 1)><button>ok</button></form>',
+        neutral,
+      ),
+    )!;
+    expect(code).toMatch(/\$dom\.event\(\$n\d+, "fudic:result", \(\$event\) => hecho\(\$event\.detail, 1\)\)/u);
+  });
+
   it('FUD1006: on an element that is not a <form>', () => {
     expect(diagnosticsOf(route(server, '', '<div control=@userForm form:="@save"></div>', neutral))).toEqual([
       { code: 'FUD1006', text: 'form:="@save"' },

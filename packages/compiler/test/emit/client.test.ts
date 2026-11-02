@@ -835,6 +835,15 @@ describe('emitComponentClientModule — bus subscriptions (§4.4, §6.23, §6.24
     expect(src).toContain('let $host = $dom.host($shadow);');
   });
 
+  it('a reference receives what was emitted, a call keeps $event (SDD-72 criterion 4)', () => {
+    const src = inlineChunk(
+      'x-alta',
+      '@code {\n  function alta(p) {}\n}\n' +
+        '<x-alta>\n  <template shadowrootmode="open"><div bus:alta=@alta></div></template>\n</x-alta>\n',
+    );
+    expect(src).toContain('$d.push($dom.bus($host, "alta", ($event) => alta.call($host, $event.detail)));');
+  });
+
   it('takes an expression name as an expression, evaluated where it subscribes (§6.22)', () => {
     // Not resolvable statically? Not an error, and the listener is emitted all the same:
     // what resolution decides is who enters `fud-bus`, and that is a fact about the page.
