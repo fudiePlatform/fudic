@@ -42,6 +42,11 @@ export class SsrNodeImpl implements SsrNode {
   clonable = false;
   /** Whether it is serializable — `shadowrootserializable` on the template (SDD-57). */
   serializable = false;
+  /**
+   * What `value=@x` chose for a `<select>` (SDD-74 §4.4), or `undefined` when nothing did. HTML has no
+   * `value` attribute there: the serializer marks `selected` on the option that holds it.
+   */
+  selectValue: string | undefined = undefined;
 
   constructor(
     readonly kind: SsrKind,

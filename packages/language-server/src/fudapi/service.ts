@@ -20,6 +20,7 @@ import { pathToUri } from '../uri.js';
 import { apiCompletions } from './completion.js';
 import { apiDocumentOf, rangeOf, type ApiDocument } from './document.js';
 import type { ApiHost } from './host.js';
+import { catchesHover } from './catches-hover.js';
 import { loadHover } from './load-line.js';
 import { apiDefinition, apiHover } from './navigation.js';
 import { apiSemanticTokens } from './semantic-tokens.js';
@@ -116,7 +117,7 @@ export function createFudapiService(deps: FudapiServiceContext): LanguageService
             const doc = apiDocumentOf(context, document, host);
             if (doc === undefined) return undefined;
             const offset = document.offsetAt(position);
-            return apiHover(doc, offset, host) ?? loadHover(doc, offset) ?? textHover(doc, offset, translations);
+            return apiHover(doc, offset, host) ?? loadHover(doc, offset) ?? catchesHover(doc, offset) ?? textHover(doc, offset, translations);
           });
         },
 
