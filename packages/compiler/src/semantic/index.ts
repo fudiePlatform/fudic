@@ -23,6 +23,7 @@ export {
 } from './portable-regions.js';
 export { HTML_EVENT_ATTRIBUTES, isNativeEventAttribute } from './html-events.js';
 export {
+  eventsReadingRow,
   planDelegation,
   type DelegationJs,
   type DelegationMark,
