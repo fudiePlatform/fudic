@@ -25,6 +25,12 @@
   "sideEffects": false,
   "main": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "types": ["./dist/src/types.d.ts"],
+      "explain": ["./dist/src/explain.d.ts"]
+    }
+  },
   "exports": {
     ".": {
       "types": "./dist/src/index.d.ts",
