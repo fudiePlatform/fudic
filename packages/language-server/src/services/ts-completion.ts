@@ -49,6 +49,7 @@ import {
   brokenValueContextAt,
   controlValueAt,
   controlValueOpeningAt,
+  delegateValueContextAt,
   directiveContextAt,
   memberContextAt,
   eventContextAt,
@@ -373,6 +374,11 @@ function allowedItems(
   if (apis !== undefined && contractFunctionsAt(source.cached, offset, apis) !== undefined) return { items: [], at: offset };
 
   const region = regionAt(source.cached.source, source.cached.html, offset);
+
+  // The value of a `delegate:` is a list of event names, and the root service answers it whole
+  // (`delegateEvents`). The caret may still map into the projection — a handler above that reads
+  // the row re-opens the loop around itself — and TypeScript's handlers there are not events.
+  if (delegateValueContextAt(source.cached.source, offset, region) !== undefined) return { items: [], at: offset };
 
   // The portable view's own list, FIRST, so every branch below narrows what the view may write
   // and not what TypeScript would. `undefined` survives it, and the scope test below lets it.
