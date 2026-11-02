@@ -35,7 +35,7 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [x] | 5 | — | **`FUD1360`** y la línea descartada; sin `<Nombre>Fails` ni `LoadFails` en lo generado (SDD §3.1, §4.2) | `diagnostics` · `api` | `src/codes/FUD1360.ts` · `.md` · `src/parse.ts` · `src/emit/*.ts` |
+| [x] | 5 | — | **`FUD1360`** en `load` y la línea descartada; sin `LoadFails`; el código de un `fails` viaja y la página pone su texto (decisión 175) (SDD §3.1, §4.2) | `diagnostics` · `api` | `src/codes/FUD1360.ts` · `.md` · `src/parse.ts` · `src/emit/*.ts` |
 | [x] | 6 | 5 | **Migración** de ejemplos, experimento y tests a `conflict(…)` (SDD §4.2) | `examples` · `api` · `compiler` | ver SDD §4.2 |
 | [x] | 7 | 6 | **Los tests de la fase.** Criterios 3, 10 | `api` | `test/**` |
 

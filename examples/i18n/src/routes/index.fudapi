@@ -11,6 +11,8 @@ form newsletter
 post subscribe
   form newsletter
 
-# Always a 409, and `catches` keeps it on the page: its text comes translated from the handler.
+# Always a 409, and `catches` keeps it on the page: the server sends the code `full`, and the page
+# paints its text in its own language.
 post reserve
   catches 409
+  fails full 409 "Ya no quedan plazas."

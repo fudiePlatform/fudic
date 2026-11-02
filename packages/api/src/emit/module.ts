@@ -296,6 +296,10 @@ function fn(d: FnDecl, c: ModuleCtx): string {
     `chain: ${chainOf(level(d.uses, d.skips, d.compress, c), c)}`,
     ...(d.invalidates.length > 0 ? [`invalidates: [${d.invalidates.flatMap((i) => i.routes).map((r) => str(r.text)).join(', ')}]`] : []),
     ...(d.catches !== undefined ? [`catches: [${d.catches.statuses.map((s) => s.value).join(', ')}]`] : []),
+    // The words of each failure, in the language of this module: the server only sends the code.
+    ...(c.side === 'browser' && d.fails.some((f) => f.detail !== undefined)
+      ? [`fails: { ${d.fails.flatMap((f) => (f.detail === undefined ? [] : [`${str(f.code.text)}: ${str(textOf(c, f.detail))}`])).join(', ')} }`]
+      : []),
   ];
-  return `export const ${d.name.text} = ${kind}({ ${fields.join(', ')} });`;
+  return `export const ${d.name.text} = ${kind}({ ${fields.join(', ')} });${failsOf(pascal(d.name.text), d.fails, c)}`;
 }

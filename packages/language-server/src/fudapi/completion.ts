@@ -49,7 +49,7 @@ type Context =
 
 /** The words a line of each context can start with. */
 const CHILDREN: Readonly<Record<Context, readonly string[]>> = {
-  fn: ['use', 'skip', 'form', 'invalidates', 'compress', 'catches', 'query', '->'],
+  fn: ['use', 'skip', 'form', 'invalidates', 'compress', 'catches', 'fails', 'query', '->'],
   load: ['use', 'skip'],
   chain: ['use', 'skip', 'compress'],
   type: [],

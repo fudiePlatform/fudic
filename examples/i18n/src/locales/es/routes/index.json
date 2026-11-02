@@ -7,6 +7,14 @@
       "at": 0
     }
   },
+  "reserve.full": {
+    "d0e3cb46": {
+      "source": "Ya no quedan plazas.",
+      "translation": "Ya no quedan plazas.",
+      "where": "src/routes/index.fudapi",
+      "at": 1
+    }
+  },
   "routes/index.fud": {
     "ed4317e9": {
       "source": "Inicio",

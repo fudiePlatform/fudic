@@ -13,6 +13,8 @@ import type { Wire } from '../wire/wire.js';
 export interface Returns {
   readonly wire: Wire;
   readonly returns?: Ty;
+  /** The text of each `fails` code in the language of the page (SDD-74): what a problem with that code says. */
+  readonly fails?: Readonly<Record<string, string>>;
 }
 
 const JSON_PROBLEM = 'application/problem+json';
@@ -34,7 +36,11 @@ export async function decode(response: Response, spec: Returns): Promise<unknown
     if (response.status === 204 || spec.returns === undefined) return undefined;
     return spec.wire.decodeValue(spec.returns, await bytesOf(response));
   }
-  throw fromProblem(await problemOf(response, spec.wire));
+  const problem = await problemOf(response, spec.wire);
+  // The server names the failure by its code; the words are the page's, in its language.
+  const { code } = problem;
+  const text = code !== undefined && spec.fails !== undefined && Object.hasOwn(spec.fails, code) ? spec.fails[code] : undefined;
+  throw fromProblem(text === undefined ? problem : { ...problem, detail: text });
 }
 
 /** The body of a failed response by its type, or a `Problem` made of its status when it is neither. */

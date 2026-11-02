@@ -283,6 +283,8 @@ export interface FnDecl extends Documented {
   readonly compress?: CompressClause;
   /** `catches <status>+`: the statuses that reach the caller instead of `error-pages` (decision 174). */
   readonly catches?: CatchesOption;
+  /** `fails <code> <status> "<text>"`: the text is the page's to say, by its code (decision 175). */
+  readonly fails: readonly FailsClause[];
   readonly args: readonly ArgDecl[];
   readonly returns?: ReturnsClause;
   readonly span: Span;

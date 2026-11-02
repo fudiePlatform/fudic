@@ -850,9 +850,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // other's.
       const chunkName = (chunk: { readonly name: string; readonly moduleIds: readonly string[] }): string => {
         // A configured locale only: the query of a virtual id can carry more than its tag. And
-        // not on a name that already says it — the hydration chunks are `h/<locale>/<tag>`.
+        // not on a name that already says it — `h/<locale>/<tag>`, `index_locale_<locale>`.
         const locale = chunk.moduleIds.map(localeOf).find((l) => l !== undefined && locales.includes(l));
-        const prefix = locale === undefined || chunk.name.split('/').includes(locale) ? '' : `${locale}-`;
+        const prefix = locale === undefined || chunk.name.split(/[/_.-]/u).includes(locale) ? '' : `${locale}-`;
         return `assets/${prefix}[name]-[hash].js`;
       };
       return {

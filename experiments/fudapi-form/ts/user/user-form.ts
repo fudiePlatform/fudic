@@ -4,14 +4,13 @@
 // joins it to the generated function. When it runs, the form already passed every rule.
 
 import { inject } from '@fudic/di';
-import { conflict } from '@fudic/http';
-import { save, type SaveHandler } from '../generated/user-form';
+import { save, SaveFails, type SaveHandler } from '../generated/user-form';
 import { Users } from '../services/users';
 
 export const altaDeUsuario = ((ctx) => {
   const person = ctx.form.$value();
   // A 409: the form keeps it (its `catches`) and paints it in the summary.
-  if (person.name.trim().toLowerCase() === 'admin') throw conflict('Ese nombre está reservado.');
+  if (person.name.trim().toLowerCase() === 'admin') throw SaveFails.reserved();
   console.info(`[user-form] ${ctx.user.name} da de alta a ${person.name}`);
   return inject(Users).add({ ...person, age: person.age ?? 0 }); // `required` passed: never 0
 }) satisfies SaveHandler;

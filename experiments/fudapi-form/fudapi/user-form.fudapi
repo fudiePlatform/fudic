@@ -4,6 +4,7 @@
 put save
   use auth
   form person
+  fails reserved 409  "Ese nombre está reservado."
   -> Saved
 
 type Saved

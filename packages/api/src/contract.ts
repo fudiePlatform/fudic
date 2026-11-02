@@ -12,6 +12,7 @@ import type {
   CompressClause,
   Duration,
   EnumDecl,
+  FailsClause,
   FnDecl,
   FormRef,
   InvalidatesClause,
@@ -36,6 +37,7 @@ import {
   catchesClause,
   compressClause,
   declName,
+  failsClause,
   isShape,
   leaf,
   name,
@@ -56,7 +58,7 @@ import { duration, readType, route, text } from './type.js';
 
 const doc = (node: LineNode): { doc?: string } => (node.doc !== undefined ? { doc: node.doc } : {});
 
-const FN_CLAUSES = ['use', 'skip', 'form', 'invalidates', 'compress', 'catches', 'query', '->', '<arg> <type>'];
+const FN_CLAUSES = ['use', 'skip', 'form', 'invalidates', 'compress', 'catches', 'fails', 'query', '->', '<arg> <type>'];
 
 const INVALIDATED = /^\/(?:(?:[A-Za-z0-9_-]+|:[A-Za-z_][A-Za-z0-9_]*)(?:\/(?:[A-Za-z0-9_-]+|:[A-Za-z_][A-Za-z0-9_]*))*)?$/u;
 
@@ -72,6 +74,7 @@ export function fnDecl(node: LineNode, c: Ctx): FnDecl | undefined {
   const uses: UseClause[] = [];
   const skips: SkipClause[] = [];
   const invalidates: InvalidatesClause[] = [];
+  const fails: FailsClause[] = [];
   const args: Omit<ArgDecl, 'place'>[] = [];
   let form: FormRef | undefined;
   let catches: CatchesOption | undefined;
@@ -120,7 +123,8 @@ export function fnDecl(node: LineNode, c: Ctx): FnDecl | undefined {
         break;
       }
       case 'fails': {
-        c.out.push(FUD1360({ span: child.span }));
+        const f = failsClause(child, c);
+        if (f !== undefined) fails.push(f);
         break;
       }
       case 'query': {
@@ -173,6 +177,7 @@ export function fnDecl(node: LineNode, c: Ctx): FnDecl | undefined {
     invalidates,
     ...(compress !== undefined ? { compress } : {}),
     ...(catches !== undefined ? { catches } : {}),
+    fails,
     args: placed,
     ...(returns !== undefined ? { returns } : {}),
     ...doc(node),

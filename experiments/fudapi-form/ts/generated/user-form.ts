@@ -3,7 +3,7 @@
 // Nothing here imports the developer's code, so there is no cycle.
 
 import { bool, form, max, min, pattern, required, str, u8 } from '@fudic/forms';
-import { put } from '@fudic/http';
+import { conflict, put } from '@fudic/http';
 import { auth, emailLoose, nif, nifUnique } from './shared';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -12,6 +12,11 @@ export interface Saved {
   readonly id: number;
   readonly name: string;
 }
+
+/** The `fails` of `save`: `throw SaveFails.reserved()`. */
+export const SaveFails = {
+  reserved: () => conflict('Ese nombre está reservado.'),
+};
 
 // ── The form ─────────────────────────────────────────────────────────────────
 

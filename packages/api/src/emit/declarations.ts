@@ -249,5 +249,6 @@ function fnDecl(d: FnDecl, c: DeclCtx): string {
     `${I}export type ${prefix}Handler = (ctx: ${prefix}Ctx) => ${R} | Promise<${R}>;`,
     `${I}export const ${d.name.text}: Contract<${prefix}Ctx, ${R}, ${call}>;`,
   ];
+  if (d.fails.length > 0) lines.push(`${I}export const ${prefix}Fails: ${failsType(d.fails, c)};`);
   return lines.join('\n');
 }

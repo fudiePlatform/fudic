@@ -90,9 +90,6 @@ importers:
       '@fudic/http':
         specifier: workspace:*
         version: link:../../packages/http
-      '@fudic/i18n':
-        specifier: workspace:*
-        version: link:../../packages/i18n
 
   examples/i18n:
     dependencies:

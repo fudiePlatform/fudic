@@ -10,6 +10,11 @@ export interface Problem {
   readonly status: number;
   readonly title: string;
   readonly detail?: string;
+  /**
+   * The `fails` code it was thrown with: `reserved`. The browser paints the text the `.fudapi` wrote
+   * for it in the language of the page, whatever language the server is written in (SDD-74).
+   */
+  readonly code?: string;
   readonly errors?: ErrorMap | null;
   readonly summary?: Errors | null;
   readonly location?: string;

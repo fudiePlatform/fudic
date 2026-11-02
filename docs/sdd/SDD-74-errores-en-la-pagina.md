@@ -21,9 +21,10 @@
   un 422 o una cancelación. Todo lo demás navega a `_error.fud`. Un botón que llama a `save` no
   puede quedarse su 409: la `task` se queda en `pending` para siempre y su `error()` no llega a
   tener nada.
-- **`fails` en una función es un invento que no aporta.** Solo hay uno en `examples/basic`
-  (`fails reserved 409`). Lo mismo se escribe con los ayudantes de `@fudic/http`:
-  `throw conflict("Ese nombre está reservado.")`.
+- **El texto de un `fails` de una función lo dice el servidor.** `fails reserved 409 "…"` hace que
+  el handler lance un `HttpError` con ese texto ya escrito, en el idioma del `.fudapi`. Con dos
+  idiomas, la página en inglés pinta el error en español; y un backend en otro lenguaje tendría
+  que traducirlo por su cuenta.
 - **`task` miente con varias llamadas en fila.** `error()` solo se escribe cuando termina la
   última llamada (`core/src/task.ts:118`). Si con tres clics rápidos falla el 2.º mientras el 3.º
   sigue en curso, `error()` vale `undefined` justo después del `await` del 2.º, y quien llama
@@ -51,14 +52,15 @@
   status de esa lista no va a `error-pages`: llega a quien llamó. Sin `catches`, la función no se
   queda nada (opción B, la de los formularios). Una llamada que envía un formulario se queda la
   unión de los dos `catches`.
-- **175. `fails` sale de las funciones y de `load`.** Solo queda en las **reglas** (es lo que une
-  una regla con su texto) y en los **middlewares** (`cross-site` de `csrf`, `denied` de `auth`).
-  El handler de una función lanza un error de `@fudic/http`: `badRequest`, `unauthorized`,
-  `forbidden`, `notFound`, `conflict` o `new HttpError({ status, title, detail })`.
-  **Su texto se traduce con `t()`**, como cualquier texto de un `.ts`: los handlers ya se compilan
-  una vez por idioma (SDD-60, fase 11), así que
-  `throw conflict(t("Ese nombre está reservado."))` sale en el idioma de la página. Es lo que
-  `fails` no podía hacer: su texto vivía en el `.fudapi`, que no se traducía.
+- **175. El servidor manda el código; la página pone el texto.** El texto de un `fails` de una
+  función se escribe una sola vez, en el `.fudapi`. El handler lanza `SaveFails.reserved()`, que
+  viaja como el status y el **código** (`code: "reserved"` en el `Problem`). El módulo de la
+  función en el navegador, compilado por idioma, lleva el texto de cada código ya traducido y lo
+  pone en el error. Ningún backend — TypeScript, C#, Java, Go — sabe nada de idiomas: responde
+  status y código. `fails` sale solo de `load`: lo que falla en un `load` va a `error-pages`.
+  *Decidido al implementar (2026-11-02):* la primera versión quitaba `fails` de las funciones y
+  traducía con `t()` en el handler, pero las llamadas las atiende un solo servidor (el del primer
+  idioma, que comparte el estado con las páginas), y el texto salía siempre en ese idioma.
 - **`run()` devuelve el resultado de su propia llamada**, y nunca rechaza.
 - **Los textos del `.fudapi` se traducen como un `t()`.** El autor los sigue escribiendo en el
   `.fudapi`, en su idioma de origen; `fudic translate` los extrae y lo generado se compila una vez
@@ -77,6 +79,7 @@
 post save
   use auth
   catches 409
+  fails ana 409 "A Ana no se la puede desactivar."
   id      i32
   active  bool
 ```
@@ -86,8 +89,8 @@ post save
   `400`–`599`, `FUD1075`; `catches` dos veces, `FUD1071`.
 - `catches` en `load`, `paths`, `layout`, un middleware o una regla: el diagnóstico de cláusula
   desconocida que ya existe para ese padre.
-- **`FUD1360`** (error): `fails` dentro de una función o de `load`. Mensaje:
-  ``"`fails` belongs to rules and middlewares. In a function, throw an error of @fudic/http from its handler: conflict('…'), notFound('…')."``
+- **`FUD1360`** (error): `fails` dentro de `load`. Mensaje:
+  ``"`fails` does not belong to `load`: a page whose data fails goes to error-pages. Throw an error of @fudic/http from its handler: notFound(), forbidden()."``
   El span es la línea entera del `fails`.
 
 ### 3.2. Lo generado
@@ -95,8 +98,11 @@ post save
 - El stub de navegador de una función lleva `catches: [409]` cuando la declara.
 - `ClientContext` (`http/src/types.ts`) gana `readonly catches: readonly number[]`, vacío si la
   función no declara nada.
-- El `.d.ts` deja de exportar `<Nombre>Fails` de funciones y de `load`. El de reglas y
-  middlewares no cambia.
+- El stub de navegador de una función con `fails` lleva `fails: { ana: "<texto en el idioma del módulo>" }`.
+- `Problem` (`http/src/errors.ts`) gana `readonly code?: string`; `fails()` lo escribe. Al leer un
+  problema, la función cambia su `detail` por el texto de su código, si lo tiene.
+- El `.d.ts` deja de exportar `LoadFails`. `<Nombre>Fails` de funciones, reglas y middlewares no
+  cambia.
 
 ### 3.3. `@fudic/core`
 
@@ -128,22 +134,22 @@ export interface Task<A, R, V = R | undefined> {
   navega, una ruta de `routes` navega, lo demás va a `_error.fud`.
 - Con `task`, el error llega a `run()` como `{ status: 'failed', error }` y a `error()`. Con
   `await save(…)` a secas, llega como rechazo de la promesa.
-- El completado del `.fudapi` ofrece `catches` dentro de una función y deja de ofrecer `fails`
-  dentro de una función y de `load`. El hover de `catches` explica la cláusula.
+- El completado del `.fudapi` ofrece `catches` y `fails` dentro de una función, y deja de ofrecer
+  `fails` dentro de `load`. El hover de `catches` explica la cláusula.
 
-### 4.2. Fuera `fails` de funciones y `load`
+### 4.2. `fails`: el código viaja, el texto lo pone la página
 
-- Parser: `fails` bajo una función o `load` da `FUD1360` y la línea se descarta. El resto del
-  fichero se sigue validando.
-- `emitModule` y `emitDeclarations` dejan de emitir `<Nombre>Fails` y `LoadFails`.
-- Migración, en el mismo cambio:
-  - `examples/basic/src/components/user-form.fudapi` y `src/server/user-form.ts`:
-    `throw conflict(t("Ese nombre está reservado."))`, y `catches 409` en la función.
-  - `examples/fudapi-editor`: `user-form.fudapi`, `usuarios.fudapi`, `src/server/user-form.ts` y
-    `src/server/usuarios.ts`, igual.
-  - `experiments/fudapi-form/fudapi/user-form.fudapi`: se quita la línea.
-  - Los tests que usan `SaveFails` (`packages/api/test/emit/tsc.test.ts`,
-    `packages/compiler/test/emit/hydrate/refresh.test.ts`) pasan a usar los ayudantes.
+- Parser: `fails` bajo `load` da `FUD1360` y la línea se descarta. Bajo una función, como
+  siempre.
+- `emitModule` y `emitDeclarations` dejan de emitir `LoadFails`.
+- Servidor: `<Nombre>Fails.<code>()` es un `HttpError` con su status, su `code` y el texto de
+  origen como `detail` (para quien llame sin página: un `curl`, otro servicio).
+- Navegador: si el problema trae un `code` que la función declara, el `detail` (y el `message`
+  del error) pasa a ser su texto en el idioma de la página. Sin código, o con uno que no declara,
+  el problema queda como llegó.
+- Los textos de `fails` de una función entran en `fudic translate` (§4.5), con contexto
+  `<función>.<código>`.
+- Los ejemplos declaran `catches 409` junto a su `fails`, y sus handlers lanzan `<Nombre>Fails`.
 
 ### 4.3. `task`
 
@@ -195,7 +201,7 @@ export interface Task<A, R, V = R | undefined> {
 
 - **Qué se traduce:** el texto de cada regla bajo un campo de formulario (`required "…"`,
   `min 18 "…"`), el de una regla de `summary` o un `require`, el `range "…"` de un campo, y el
-  `detail` de un `fails` de middleware. Los `fails` de una regla no tienen texto propio: lo pone
+  `detail` de un `fails` de una función o de un middleware. Los `fails` de una regla no tienen texto propio: lo pone
   quien la usa.
 - **Extracción.** `@fudic/api` gana
   `extractApiMessages(source: string, file: string): ParseResult<readonly Message[]>`, con el mismo
@@ -213,14 +219,18 @@ export interface Task<A, R, V = R | undefined> {
 - **El editor.** Un texto del `.fudapi` sin traducción en algún idioma tiene el mismo aviso que uno
   de un `.fud` (el de `language-server/src/translations.ts`).
 - **`examples/i18n`.** `routes/index.fudapi` gana un formulario de una línea con `required "…"` y
-  una función `post` con `catches 409` cuyo handler lanza `conflict(t("…"))`. Los dos textos,
-  traducidos en `locales/en` y `locales/es`.
+  una función `post reserve` con `catches 409` y `fails full 409 "Ya no quedan plazas."`, cuyo
+  handler lanza `ReserveFails.full()`. Los dos textos, traducidos en `locales/en` y `locales/es`.
+- **El plugin, por idioma.** Con dos idiomas y una librería con mitades de navegador
+  (`@fudic/forms`), cada idioma tiene su raíz del navegador: un chunk de un idioma lleva el idioma
+  delante (`en-fudic-root.browser-…`) salvo que su nombre ya lo diga (`h/en/…`,
+  `index_locale_en`). Sin eso, las dos raíces eran un fichero tras poner el id del build
+  (`FUD0501`).
 
 ### 4.6. `examples/basic`
 
-- `usuarios.fudapi`: `save` gana `catches 409`.
-- `src/server/usuarios.ts`: `save` rechaza desactivar a la persona `1` con
-  `conflict(t("A Ana no se la puede desactivar."))`.
+- `usuarios.fudapi`: `save` gana `catches 409` y `fails ana 409 "A Ana no se la puede desactivar."`.
+- `src/server/usuarios.ts`: `save` rechaza desactivar a la persona `1` con `SaveFails.ana()`.
 - `usuarios.fud`:
   - `activar` como en §4.4; ni `input.checked` ni `.error() === undefined` en el `@code`;
   - `borrar(p: Person)` usa `run()`: `if ((await quitar.run({ id: p.id })).status === "done") …`;
@@ -240,11 +250,12 @@ export interface Task<A, R, V = R | undefined> {
    status, `FUD1063`; `catches 302`, `FUD1075`; dos veces, `FUD1071`.
 2. **`catches` donde no va.** En `load` y en un middleware, el diagnóstico de cláusula
    desconocida de ese padre.
-3. **`FUD1360`.** `fails reserved 409 "x"` bajo una función y bajo `load` dan `FUD1360` con el
-   span de la línea. Bajo una regla y bajo un middleware, nada.
+3. **`FUD1360`.** `fails reserved 409 "x"` bajo `load` da `FUD1360` con el span de la línea. Bajo
+   una función, una regla o un middleware, nada.
 4. **Emit.** El stub de navegador de una función con `catches 409 422` lleva
-   `catches: [409, 422]`. Sin `catches`, no lleva el campo y `ctx.catches` es `[]`. El `.d.ts` de
-   una función ya no tiene `SaveFails`.
+   `catches: [409, 422]`. Sin `catches`, no lleva el campo y `ctx.catches` es `[]`. Con
+   `fails full 409 "x"`, el stub lleva `fails: { full: "x" }` y el `.d.ts` exporta `SaveFails`; el
+   de `load` ya no exporta `LoadFails`.
 5. **`errorPagesStep`.** Con `ctx.catches = [409]`, un `HttpError` 409 se relanza y no navega. Un
    404 navega a `_error.fud/404`. Un 409 con `ctx.catches = []` pero enviado por un form con
    `catches 409` se relanza.
@@ -260,10 +271,12 @@ export interface Task<A, R, V = R | undefined> {
 9. **SSR.** El HTML del servidor de `checked` y `value` en `<input>` y `selected` en `<option>` es el
    mismo byte a byte que antes. `<textarea value=@x()>` sale con el valor como texto y `<select value=@x()>`
    con `selected` en su option, sin atributo `value`; sin script, los dos muestran el valor.
-10. **Migración.** `pnpm typecheck` y `pnpm build` en verde con los ejemplos migrados. No queda
-    ningún `Fails.` de función ni de `load` en el repo.
-11. **Completado.** Dentro de una función se ofrece `catches` y no `fails`. Dentro de una regla
-    se sigue ofreciendo `fails`.
+10. **El código viaja.** `SaveFails.full()` responde un problema con `code: "full"` (en JSON y en
+    `fud-bin`). En el navegador, una función con `fails: { full: "y" }` que recibe ese problema
+    rechaza con un `HttpError` cuyo `detail` y `message` son `"y"`; con un código que no declara,
+    el problema queda como llegó. `pnpm typecheck` y `pnpm build` en verde.
+11. **Completado.** Dentro de una función se ofrecen `catches` y `fails`; dentro de `load`, `fails`
+    no. Dentro de una regla se sigue ofreciendo `fails`.
 12. **Ejemplo, el error se pinta.** En `/usuarios`, desmarcar a Ana: la página no navega, sale
     «A Ana no se la puede desactivar.» y la casilla vuelve a marcada.
 13. **Ejemplo, tres clics rápidos.** Sobre una persona que no es Ana, con el `save` del servidor
@@ -280,8 +293,9 @@ export interface Task<A, R, V = R | undefined> {
     textos del `.fudapi`, y una segunda pasada no cambia nada.
 18. **Lo generado por idioma.** El `fudic:routes/index` de `en` lleva el texto en inglés y el de
     `es` en español. Sin `i18n`, `emitModule` da los mismos bytes que antes.
-19. **El `throw` traducido.** En `examples/i18n`, la función con `catches 409`: en `/en` el error
-    que se pinta está en inglés; en `/es`, en español.
+19. **El error traducido.** En `examples/i18n`, `reserve` (`catches 409`, `fails full`): en `/en`
+    el error que se pinta está en inglés; en `/es`, en español. El servidor es uno, y el mismo para
+    los dos idiomas.
 20. **El formulario traducido.** En `/en`, enviar el formulario vacío pinta el `required` en
     inglés.
 21. **Texto sin traducir.** Quitar la traducción inglesa de un texto del `.fudapi`: la página en

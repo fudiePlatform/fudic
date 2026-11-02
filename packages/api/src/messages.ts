@@ -4,7 +4,7 @@
  * on what a message is or what it is called.
  *
  * What is a text: a rule's under a form field or in a `summary`, a `require`'s, a field's
- * `range`, and the `detail` of a middleware's `fails`. Its context is the path of its
+ * `range`, and the `detail` of a `fails` of a function or a middleware. Its context is the path of its
  * declaration — `personForm.age.min` — so the same words in two places can be said two ways.
  * Its `{n}` are its holes, named as the rule's parameter.
  */
@@ -79,7 +79,7 @@ function texts(file: ApiFile): readonly Found[] {
     if (d.kind === 'form') {
       summary(d.summary, d.name.text);
       members(d.fields, d.name.text);
-    } else if (d.kind === 'middleware') {
+    } else if (d.kind === 'middleware' || d.kind === 'fn') {
       for (const f of d.fails) {
         if (f.detail !== undefined) out.push({ text: f.detail, context: `${d.name.text}.${f.code.text}`, filler: f.detail.span });
       }

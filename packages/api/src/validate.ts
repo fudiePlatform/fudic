@@ -217,6 +217,7 @@ function fn(decl: FnDecl, c: Ctx): void {
     c.out.push(FUD1080({ span: name.span, name: name.text, what: 'form', candidates: c.index.candidates('form', name.text) }));
   }
   middlewares(decl.uses, decl.skips, c.index.inherited(c.source, decl), c);
+  failCodes(decl.fails, c);
 
   const args = new Set(decl.args.map((a) => a.name.text));
   for (const segment of decl.route?.segments ?? []) {

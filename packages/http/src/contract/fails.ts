@@ -1,7 +1,9 @@
 /**
- * The `fails` of a middleware (SDD-60 §3.3, SDD-74 decision 175): named rejections its server half
- * throws, `throw AuthFails.denied()`, each with the status and the `detail` its declaration wrote. A
- * function throws the helpers of `errors.ts` instead: `conflict(t("…"))`.
+ * The `fails` of a function or a middleware (SDD-60 §3.3): named rejections the handler throws,
+ * `throw SaveFails.reserved()`, each with its status, its `code` and the `detail` its declaration
+ * wrote. The code travels in the problem, and the browser paints the text of that code in the
+ * language of the page (SDD-74 decision 175): the server, in whatever language it is written,
+ * never says the text itself.
  */
 
 import { HttpError } from '../errors.js';
@@ -40,7 +42,7 @@ export function fails<K extends string>(
 ): Readonly<Record<K, () => HttpError>> {
   const out = {} as Record<K, () => HttpError>;
   for (const [code, [status, detail]] of Object.entries(table) as [K, readonly [number, string?]][]) {
-    out[code] = () => new HttpError({ status, title: titleOf(status), ...(detail !== undefined ? { detail } : {}) });
+    out[code] = () => new HttpError({ status, title: titleOf(status), ...(detail !== undefined ? { detail } : {}), code });
   }
   return out;
 }
