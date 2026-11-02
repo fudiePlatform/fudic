@@ -105,9 +105,9 @@ describe('a handler that is a call is a deferred invocation (task 11)', () => {
     expect(project(component('<div @click="@(1)"></div>', CLIENT))).toContain("$on('click', 1);");
   });
 
-  it('defers a `bus:` call the same way, with the event given up as never', () => {
+  it('defers a `bus:` call the same way, its $event typed by the receivers (SDD-72)', () => {
     expect(project(component('<div bus:cart="@onClick($event)"></div>', CLIENT))).toContain(
-      "$on('cart' as never, ($event) => onClick($event));",
+      "$busEvent('cart', ($event) => onClick($event));",
     );
   });
 
