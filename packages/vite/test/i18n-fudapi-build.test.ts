@@ -31,7 +31,7 @@ const PAGE = `<!DOCTYPE html>
   const reservar = task(reserve);
   const motivo = signal("");
   async function reservarPlaza() {
-    const r = await reservar.run(undefined as never);
+    const r = await reservar.run();
     motivo.set(r.status === "failed" ? (r.error as Error).message : "");
   }
 }
@@ -80,6 +80,11 @@ const FILES = {
   'src/routes/index.fudapi': API,
   'src/server/index.ts': SERVER,
   'sw.json': JSON.stringify({ shell: [] }),
+  // The example's: strict, as an app has it. Without one the check infers loose options.
+  'tsconfig.json': JSON.stringify({
+    compilerOptions: { target: 'ES2024', module: 'ESNext', moduleResolution: 'bundler', lib: ['ES2024', 'DOM', 'DOM.Iterable'], strict: true, skipLibCheck: true, noEmit: true },
+    include: ['src/**/*.ts', 'src/**/*.fud', '.fudic/api/**/*.d.ts'],
+  }),
 };
 
 const EN = {
