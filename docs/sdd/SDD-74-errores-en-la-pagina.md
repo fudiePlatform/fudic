@@ -99,8 +99,10 @@ post save
 - `ClientContext` (`http/src/types.ts`) gana `readonly catches: readonly number[]`, vacío si la
   función no declara nada.
 - El stub de navegador de una función con `fails` lleva `fails: { ana: "<texto en el idioma del módulo>" }`.
-- `Problem` (`http/src/errors.ts`) gana `readonly code?: string`; `fails()` lo escribe. Al leer un
-  problema, la función cambia su `detail` por el texto de su código, si lo tiene.
+- `Problem` (`http/src/errors.ts`) gana `readonly code?: string`; `fails()` lo escribe. Viaja en la
+  cabecera `fud-code` de la respuesta, no en el cuerpo: el problema es un formato publicado
+  (`wire/vectors.json`, SDD-67) y no cambia. Al leer un problema, la función cambia su `detail` por
+  el texto de ese código, si lo declara.
 - El `.d.ts` deja de exportar `LoadFails`. `<Nombre>Fails` de funciones, reglas y middlewares no
   cambia.
 
@@ -271,8 +273,8 @@ export interface Task<A, R, V = R | undefined> {
 9. **SSR.** El HTML del servidor de `checked` y `value` en `<input>` y `selected` en `<option>` es el
    mismo byte a byte que antes. `<textarea value=@x()>` sale con el valor como texto y `<select value=@x()>`
    con `selected` en su option, sin atributo `value`; sin script, los dos muestran el valor.
-10. **El código viaja.** `SaveFails.full()` responde un problema con `code: "full"` (en JSON y en
-    `fud-bin`). En el navegador, una función con `fails: { full: "y" }` que recibe ese problema
+10. **El código viaja.** `SaveFails.full()` responde su problema con la cabecera `fud-code: full`,
+    y el cuerpo, en JSON y en `fud-bin`, es el de siempre (los vectores publicados no cambian). En el navegador, una función con `fails: { full: "y" }` que recibe ese problema
     rechaza con un `HttpError` cuyo `detail` y `message` son `"y"`; con un código que no declara,
     el problema queda como llegó. `pnpm typecheck` y `pnpm build` en verde.
 11. **Completado.** Dentro de una función se ofrecen `catches` y `fails`; dentro de `load`, `fails`

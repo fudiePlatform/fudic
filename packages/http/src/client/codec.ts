@@ -5,7 +5,7 @@
  * asks for it.
  */
 
-import { HttpError, Redirect, ValidationError, type Problem } from '../errors.js';
+import { CODE_HEADER, HttpError, Redirect, ValidationError, type Problem } from '../errors.js';
 import type { Ty } from '../wire/ty.js';
 import type { Wire } from '../wire/wire.js';
 
@@ -38,9 +38,10 @@ export async function decode(response: Response, spec: Returns): Promise<unknown
   }
   const problem = await problemOf(response, spec.wire);
   // The server names the failure by its code; the words are the page's, in its language.
-  const { code } = problem;
+  const code = response.headers.get(CODE_HEADER) ?? undefined;
   const text = code !== undefined && spec.fails !== undefined && Object.hasOwn(spec.fails, code) ? spec.fails[code] : undefined;
-  throw fromProblem(text === undefined ? problem : { ...problem, detail: text });
+  const coded = code === undefined ? problem : { ...problem, code };
+  throw fromProblem(text === undefined ? coded : { ...coded, detail: text });
 }
 
 /** The body of a failed response by its type, or a `Problem` made of its status when it is neither. */

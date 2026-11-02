@@ -15,6 +15,5 @@ export const PROBLEM: Ty = {
     location: { opt: 'str' },
     errors: { opt: { map: ['str', ERRORS] } },
     summary: { opt: ERRORS },
-    code: { opt: 'str' },
   }),
 };

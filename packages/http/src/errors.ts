@@ -12,7 +12,8 @@ export interface Problem {
   readonly detail?: string;
   /**
    * The `fails` code it was thrown with: `reserved`. The browser paints the text the `.fudapi` wrote
-   * for it in the language of the page, whatever language the server is written in (SDD-74).
+   * for it in the language of the page, whatever language the server is written in (SDD-74). It
+   * travels in the `fud-code` header, not in the body: the body of a problem is a published format.
    */
   readonly code?: string;
   readonly errors?: ErrorMap | null;
@@ -42,6 +43,9 @@ export interface ErrorPage {
    */
   readonly back?: string;
 }
+
+/** The header a failure's `fails` code travels in (SDD-74 decision 175). */
+export const CODE_HEADER = 'fud-code';
 
 export class HttpError extends Error {
   override readonly name: string = 'HttpError';
