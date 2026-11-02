@@ -17,7 +17,7 @@
  * order never to call it.
  */
 
-import { attrsDiff, guardUrl, htmlOf, type Dom, type Ns } from '@fudic/dom';
+import { attrsDiff, guardUrl, htmlOf, type Dom, type LiveProperty, type Ns } from '@fudic/dom';
 import { type SsrNode, SsrNodeImpl, asImpl } from './tree.js';
 
 /** The identity attribute of a hydratable instance (SDD-15 §3.1). */
@@ -291,6 +291,12 @@ export class SsrDom implements Dom<SsrNode> {
   }
   removeAttr(el: SsrNode, name: string): void {
     asImpl(el).attrs.delete(name);
+  }
+  // The server paints a live property as the attribute any interpolated value writes.
+  setLive(el: SsrNode, name: LiveProperty, value: unknown): void {
+    const attrs = asImpl(el).attrs;
+    if (value === false || value == null) attrs.delete(name);
+    else attrs.set(name, value === true ? '' : String(value));
   }
 
   append(parent: SsrNode, child: SsrNode): void {

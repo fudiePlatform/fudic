@@ -5,7 +5,7 @@
 > `@fudic/language-server` · `@fudic/cli` · `@fudic/vite` · `examples/basic` · `examples/fudapi-editor` ·
 > `examples/i18n`
 > **Rama:** `sdd-74-errores-en-la-pagina`. Nace de `main` **con SDD-72 en `Hecho`**.
-> **Progreso:** 8 / 16 — `En curso`.
+> **Progreso:** 9 / 16 — `En curso`.
 
 ---
 
@@ -50,7 +50,7 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 10 | — | **`checked`, `value`, `selected`** como propiedad comparada con el DOM en el navegador; SSR igual (SDD §4.4) | `compiler` | `src/emit/**` |
+| [x] | 10 | — | **`checked`, `value`, `selected`** como propiedad comparada con el DOM en el navegador; SSR igual (SDD §4.4) | `compiler` | `src/emit/**` |
 | [ ] | 11 | 10 | **Los tests de la fase.** Criterios 8, 9 | `compiler` | `test/**` |
 
 ## Fase 5 — ejemplo y cierre (1)

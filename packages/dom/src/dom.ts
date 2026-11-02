@@ -21,6 +21,9 @@
 
 import { type Ns } from './ns.js';
 
+/** The properties of a control the user moves, which the view writes back (SDD-74 §4.4). */
+export type LiveProperty = 'checked' | 'value' | 'selected';
+
 /**
  * Construction contract — generic in `N` (the node type). Everything `create()`
  * needs, and nothing else. Both `browserDom` (N = Node, live DOM) and `SsrDom`
@@ -53,6 +56,14 @@ export interface Dom<N> {
    */
   setAttrs(el: N, next: readonly unknown[], prev: readonly unknown[] | undefined, except: readonly string[]): void;
   removeAttr(el: N, name: string): void;
+  /**
+   * Write a live property of a control — `checked`, `value`, `selected` — from `name=@expr`
+   * (SDD-74 §4.4). The server writes it as the attribute an interpolated value writes: `true`
+   * empty, `false` and `null` absent, the rest its text. The browser writes the PROPERTY, and
+   * only when the DOM holds something else: what the user typed or ticked goes back to what the
+   * view says on every pass, whether or not the value moved since the last one.
+   */
+  setLive(el: N, name: LiveProperty, value: unknown): void;
   append(parent: N, child: N): void;
   /** `anchor.before(node)`: in the browser fires `connectedCallback`; in SSR it fixes tree order. */
   before(anchor: N, node: N): void;

@@ -81,6 +81,18 @@ export function attrExpr(source: string, attr: Attribute): string {
   return '`' + template + '`';
 }
 
+/** The live properties of a control, by element (SDD-74 §4.4): what the user moves and the view writes back. */
+const LIVE_PROPS: Readonly<Record<string, readonly string[]>> = {
+  input: ['checked', 'value'],
+  textarea: ['value'],
+  select: ['value'],
+  option: ['selected'],
+};
+
+/** Whether `attribute` of an `<element>` is a live property the browser writes as one. */
+export const isLiveProp = (element: string, attribute: string): boolean =>
+  LIVE_PROPS[element.toLowerCase()]?.includes(attribute.toLowerCase()) === true;
+
 /**
  * The attributes a browser navigates to or loads from (SDD-51 §3.7, decision 140). `data` is
  * one only on an `<object>`; everywhere else it is a plain attribute.
@@ -466,6 +478,11 @@ export interface ValueSink {
    * take off the attributes its objects no longer write. `prev` is `undefined` the first time.
    */
   diff(expr: string, write: (value: string, prev: string) => string): void;
+  /**
+   * A write that runs on every pass, never filtered by what it wrote last: a live property of a
+   * control (SDD-74 §4.4), which compares with the DOM instead. Only a sink that repeats has one.
+   */
+  live?(expr: string, write: (value: string) => string): void;
 }
 
 /** The single-body sink: the server, and the fabricate body inside a `@foreach`. */
@@ -553,6 +570,12 @@ export function writeElementAttrs(
       // that repeats also has to CLEAR it: a value that turned falsy on an update would
       // otherwise leave the attribute the previous value put there.
       const name = JSON.stringify(written.name);
+      // A live property of a control: the browser writes the property, compared with the DOM on
+      // every pass, so what the user moved goes back to what the view says (SDD-74 §4.4).
+      if (values.live !== undefined && isLiveProp(el.name, written.name)) {
+        values.live(crossingExpr(source, attr, written.value, host.signals), ($v) => `$dom.setLive(${v}, ${name}, ${$v});`);
+        continue;
+      }
       const clear = values.repeats ? ` else $dom.removeAttr(${v}, ${name});` : '';
       // A URL whose prefix does not pin the origin goes through the guard (SDD-51 §3.7), and
       // goes UNSTRINGIFIED: a `trustedUrl(…)` is told apart by what it is, not by its text.
