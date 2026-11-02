@@ -76,7 +76,8 @@ export type TaskResult<R> =
 /** How a call that was not dropped settled. */
 type Outcome<R> = Exclude<TaskResult<R>, { readonly status: 'cancelled' }>;
 
-const CANCELLED: TaskResult<never> = Object.freeze({ status: 'cancelled' });
+// Pure, or the module has a side effect and the bundler splits the runtime out of its chunk.
+const CANCELLED: TaskResult<never> = /*#__PURE__*/ Object.freeze({ status: 'cancelled' });
 
 export function task<A, R>(fn: Callable<A, R>, source?: () => A): Task<A, R>;
 export function task<A, R>(
