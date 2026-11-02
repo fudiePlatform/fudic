@@ -1,6 +1,6 @@
 # SDD-75 — El editor del `.fudapi`: snippets, implementaciones y lo generado a un clic
 
-> **Estado:** `Listo` — [tareas](./SDD-75-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-75-Task.md).
 > **Paquetes:** `@fudic/language-server` · `@fudic/api` · `@fudic/vscode`
 > **Depende de:** 60 (el `.fudapi` y su language server), 32 (los CodeLens del `.fudspec`, que se
 > imitan), 74 (`catches` en las funciones; `fails` en ellas pero no en `load`; lo generado por idioma) — las tres en `Hecho`.

@@ -3,7 +3,7 @@
 > **SDD:** [SDD-75 — El editor del `.fudapi`](./SDD-75-editor-del-fudapi.md)
 > **Paquetes:** `@fudic/language-server` · `@fudic/api` · `@fudic/vscode`
 > **Rama:** `sdd-75-editor-del-fudapi`. Nace de `main` **con SDD-74 en `Hecho`**.
-> **Progreso:** 8 / 9 — `Listo`.
+> **Progreso:** 9 / 9 — `Hecho`.
 
 ---
 
@@ -45,4 +45,4 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 9 | 2, 5, 8 | **Cobertura** (criterio 18), prueba de Pedro en VS Code, INDEX y estado | — | — |
+| [x] | 9 | 2, 5, 8 | **Cobertura** (criterio 18), prueba de Pedro en VS Code, INDEX y estado | — | — |
