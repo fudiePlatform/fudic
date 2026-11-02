@@ -62,7 +62,7 @@ describe('the canonical files (criterion 1)', () => {
       '  # Who changes it.',
       '  id  i32',
       '  # Taken.',
-      '  fails taken 409 "Taken."',
+      '  catches 409',
       'type A',
       '  # The x.',
       '  x  str',
@@ -93,7 +93,7 @@ describe('the canonical files (criterion 1)', () => {
       Extract<Decl, { kind: 'form' }>,
     ];
     expect(fn.args[0]!.doc).toBe('Who changes it.');
-    expect(fn.fails[0]!.doc).toBe('Taken.');
+    expect(fn.args.map((a) => a.doc)).toEqual(['Who changes it.']);
     expect(type.fields[0]!.doc).toBe('The x.');
     expect(messages.entries[0]!.doc).toBe('Global.');
     const field = form.fields[0] as Extract<(typeof form.fields)[number], { kind: 'form-field' }>;

@@ -82,8 +82,7 @@ describe('functions', () => {
       '  skip *',
       '  invalidates /usuarios /blog/:slug /',
       '  compress deflate-raw 512',
-      '  fails gone 410 "Gone."',
-      '  fails busy 409',
+      '  catches 409 410',
       '  m  map str map u8 bool',
       '  -> Person?',
     );
@@ -101,10 +100,7 @@ describe('functions', () => {
     expect(fn.invalidates[0]!.routes.map((r) => r.text)).toEqual(['/usuarios', '/blog/:slug', '/']);
     expect(fn.compress!.encoding!.text).toBe('deflate-raw');
     expect(fn.compress!.min!.value).toBe(512);
-    expect(fn.fails.map((f) => [f.code.text, f.status.value, f.detail?.text])).toEqual([
-      ['gone', 410, 'Gone.'],
-      ['busy', 409, undefined],
-    ]);
+    expect(fn.catches!.statuses.map((s) => s.value)).toEqual([409, 410]);
     const m = fn.args[0]!.type;
     expect(m.kind === 'map' && m.value.kind === 'map' && slice(source, m.value.span)).toBe('map u8 bool');
     expect(fn.returns!.type.kind).toBe('optional');
@@ -132,11 +128,7 @@ describe('functions', () => {
     ['a second `compress`', 'get f\n  compress gzip\n  compress off', ['FUD1071']],
     ['`compress` alone', 'get f\n  compress', ['FUD1075']],
     ['a line under `compress`', 'get f\n  compress off\n    x', ['FUD1065']],
-    ['`fails` alone', 'get f\n  fails', ['FUD1063']],
-    ['`fails` with no status', 'get f\n  fails x', ['FUD1068']],
-    ['`fails` with a word for its detail', 'get f\n  fails x 409 nope', ['FUD1064']],
-    ['`fails` with a code in the wrong shape', 'get f\n  fails Taken 409', ['FUD1070']],
-    ['a line under `fails`', 'get f\n  fails x 409\n    y', ['FUD1065']],
+    ['a line under `catches`', 'get f\n  catches 409\n    y', ['FUD1065']],
     ['`query` alone', 'get f\n  query', ['FUD1063']],
     ['`query` with no type', 'get f\n  query q', ['FUD1067']],
     ['`query` with a word after its type', 'get f\n  query q str x', ['FUD1064']],
@@ -169,8 +161,8 @@ describe('functions', () => {
   });
 
   it('a bad status or a bad argument type drops only that line', () => {
-    const fn = first('get f\n  fails x 200\n  fails y 409\n  a  str[\n  b  str', 'fn');
-    expect(fn.fails.map((f) => f.code.text)).toEqual(['y']);
+    const fn = first('get f\n  catches 200 409\n  a  str[\n  b  str', 'fn');
+    expect(fn.catches!.statuses.map((s) => s.value)).toEqual([409]);
     expect(fn.args.map((a) => a.name.text)).toEqual(['b']);
   });
 });
@@ -201,9 +193,9 @@ describe('load', () => {
     for (const key of ['mode', 'ttl', 'policy', 'page']) expect(load).not.toHaveProperty(key);
   });
 
-  it('reads `use`, `skip`, `fails` and fields below it', () => {
-    const load = first('load\n  use auth\n  skip log\n  fails gone 404\n  users  Person[]', 'load');
-    expect([load.uses.length, load.skips.length, load.fails.length, load.fields.length]).toEqual([1, 1, 1, 1]);
+  it('reads `use`, `skip` and fields below it', () => {
+    const load = first('load\n  use auth\n  skip log\n  users  Person[]', 'load');
+    expect([load.uses.length, load.skips.length, load.fields.length]).toEqual([1, 1, 1]);
   });
 
   const broken: readonly (readonly [string, string, readonly string[]])[] = [
@@ -219,7 +211,7 @@ describe('load', () => {
     ['an unknown clause below', 'load\n  frob', ['FUD1065']],
     ['an empty `use` below', 'load\n  use', ['FUD1063']],
     ['an empty `skip` below', 'load\n  skip', ['FUD1063']],
-    ['an empty `fails` below', 'load\n  fails', ['FUD1063']],
+    ['a `fails` below, not its clause (SDD-74)', 'load\n  fails', ['FUD1360']],
   ];
   for (const [what, source, expected] of broken) {
     it(`reports ${what}`, () => {

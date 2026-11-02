@@ -5,7 +5,7 @@
 > `@fudic/language-server` · `@fudic/cli` · `@fudic/vite` · `examples/basic` · `examples/fudapi-editor` ·
 > `examples/i18n`
 > **Rama:** `sdd-74-errores-en-la-pagina`. Nace de `main` **con SDD-72 en `Hecho`**.
-> **Progreso:** 7 / 16 — `En curso`.
+> **Progreso:** 8 / 16 — `En curso`.
 
 ---
 
@@ -37,7 +37,7 @@
 |---|---|---|---|---|---|
 | [x] | 5 | — | **`FUD1360`** y la línea descartada; sin `<Nombre>Fails` ni `LoadFails` en lo generado (SDD §3.1, §4.2) | `diagnostics` · `api` | `src/codes/FUD1360.ts` · `.md` · `src/parse.ts` · `src/emit/*.ts` |
 | [x] | 6 | 5 | **Migración** de ejemplos, experimento y tests a `conflict(…)` (SDD §4.2) | `examples` · `api` · `compiler` | ver SDD §4.2 |
-| [ ] | 7 | 6 | **Los tests de la fase.** Criterios 3, 10 | `api` | `test/**` |
+| [x] | 7 | 6 | **Los tests de la fase.** Criterios 3, 10 | `api` | `test/**` |
 
 ## Fase 3 — `task` por llamada (2)
 
