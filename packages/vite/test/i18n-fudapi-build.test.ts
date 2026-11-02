@@ -123,7 +123,9 @@ describe('SDD-74: the texts of a .fudapi in a two-locale build', () => {
     expect(english.filter((f) => spanish.includes(f))).toEqual([]);
   });
 
-  it('criterion 19: the handler that throws conflict(t(…)) is compiled once per locale, each with its text', () => {
+  // Not criterion 19: which of these servers answers a call is the open question of SDD-74 §4.5
+  // (calls are served by the first locale's root). This only pins that each one is compiled.
+  it('the handler that throws conflict(t(…)) is compiled into each locale’s edge server, with its text', () => {
     // The server's chunks are the edge pass's, written beside the app, not the browser output.
     const dir = join(root, '.fudic', 'edge', 'c');
     const servers = readdirSync(dir)
