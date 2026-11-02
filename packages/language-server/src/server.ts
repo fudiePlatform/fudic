@@ -35,6 +35,7 @@ import { DocumentCache, type CachedDocument } from './document-cache.js';
 import { API_EXTENSION } from '@fudic/api';
 import { nodeApiFs, type ApiFs } from './fudapi/fs.js';
 import { ApiHost } from './fudapi/host.js';
+import { ImplementationIndex } from './fudapi/implementations.js';
 import { createFudapiLanguagePlugin } from './fudapi/language-plugin.js';
 import { createFudapiService } from './fudapi/service.js';
 import { mountApiTypes } from './fudapi/types-mount.js';
@@ -112,6 +113,8 @@ export interface FudicServer {
   readonly specs: SpecHost;
   /** What a `.fudapi` is validated against (SDD-60). */
   readonly apis: ApiHost;
+  /** Who implements each declaration of a `.fudapi` (SDD-75). */
+  readonly implementations: ImplementationIndex;
   /** The catalogs a hover over a message reads (SDD-58). */
   readonly translations: Translations;
 }
@@ -188,6 +191,7 @@ export function createFudicServer(
     // A `.fudapi` being edited speaks with its unsaved text to the ones that use it.
     open: (path) => server.documents.get(pathToUri(path))?.getText(),
   });
+  const implementations = new ImplementationIndex(deps.apiFs);
 
   /** The parse behind a URI: the open document if there is one, the disk otherwise. */
   const documentOf = (raw: string): CachedDocument | undefined => {
@@ -243,7 +247,7 @@ export function createFudicServer(
       // Criteria files: a service of their own, which answers only in a `.fudspec` (SDD-52).
       createFudspecService({ host: specs, stats }),
       // Contract files: likewise, only in a `.fudapi` (SDD-60).
-      createFudapiService({ host: apis, stats, translations }),
+      createFudapiService({ host: apis, stats, implementations, translations }),
     ];
 
     // Nothing speaks over a library's file (SDD-43 §4.4): read-only means every service,
@@ -330,6 +334,11 @@ export function createFudicServer(
       const path = uriToPath(URI.parse(change.uri));
       if (SpecHost.affects(path)) criteria = true;
       if (ApiHost.affects(path)) contracts = true;
+      // A handler written, moved or removed: the lenses over what it implements (SDD-75 §4.2).
+      if (ImplementationIndex.affects(path)) {
+        implementations.invalidate(path);
+        contracts = true;
+      }
       if (path.endsWith(API_EXTENSION)) {
         if (change.type === 3) apis.forget(path);
         generated.add(apis.projectOf(path));
@@ -390,5 +399,5 @@ export function createFudicServer(
     },
   );
 
-  return { index, cache, stats, configs, specs, apis, translations };
+  return { index, cache, stats, configs, specs, apis, implementations, translations };
 }

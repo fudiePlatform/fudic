@@ -35,6 +35,9 @@ describe('buildClientLaunch', () => {
       // The contracts (SDD-60 criterion 27): a rule changed in one .fudapi revalidates the one
       // that uses it, without reopening it.
       '**/*.fudapi',
+      // Who implements a contract (SDD-75 criterion 12).
+      '**/src/server/**',
+      '**/src/browser/**',
     ]);
   });
 

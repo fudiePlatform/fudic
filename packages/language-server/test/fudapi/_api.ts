@@ -7,6 +7,7 @@ import { URI } from 'vscode-uri';
 import type { ApiDocument } from '../../src/fudapi/document.js';
 import type { ApiEntry, ApiFs } from '../../src/fudapi/fs.js';
 import { ApiHost } from '../../src/fudapi/host.js';
+import { ImplementationIndex } from '../../src/fudapi/implementations.js';
 
 export const ROOT = '/ws';
 export const APP = `${ROOT}/app`;
@@ -137,7 +138,7 @@ export function world(options: WorldOptions = {}) {
   const roots = options.roots ?? [ROOT];
   const open = options.open ?? {};
   const host = new ApiHost({ fs, roots: () => roots, open: (path) => open[path] });
-  return { host, fs };
+  return { host, fs, implementations: new ImplementationIndex(fs) };
 }
 
 /** A `.fudapi` document as the service sees it, through `host`. */

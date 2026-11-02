@@ -145,6 +145,8 @@ describe('activate', () => {
       '**/*.fixture.ts',
       '**/src/locales/**/*.json',
       '**/*.fudapi',
+      '**/src/server/**',
+      '**/src/browser/**',
     ]);
   });
 

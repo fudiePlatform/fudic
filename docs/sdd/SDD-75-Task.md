@@ -3,7 +3,7 @@
 > **SDD:** [SDD-75 — El editor del `.fudapi`](./SDD-75-editor-del-fudapi.md)
 > **Paquetes:** `@fudic/language-server` · `@fudic/api` · `@fudic/vscode`
 > **Rama:** `sdd-75-editor-del-fudapi`. Nace de `main` **con SDD-74 en `Hecho`**.
-> **Progreso:** 2 / 9 — `Listo`.
+> **Progreso:** 5 / 9 — `Listo`.
 
 ---
 
@@ -29,9 +29,9 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 3 | — | **Índice** de `.handle`/`.check`/`.client`/`.server` por `<id>` y nombre, un parseo de Oxc por fichero, actualizado con los eventos de fichero (SDD §4.2) | `language-server` · `vscode` | `src/fudapi/implementations.ts` · `src/settings.ts` (`FILE_EVENTS`) |
-| [ ] | 4 | 3 | **Lentes** encima de cada declaración que se implementa (SDD §3.2) | `language-server` | `src/fudapi/service.ts` |
-| [ ] | 5 | 4 | **Los tests de la fase.** Criterios 11–15 | `language-server` | `test/**` |
+| [x] | 3 | — | **Índice** de `.handle`/`.check`/`.client`/`.server` por `<id>` y nombre, un parseo de Oxc por fichero, actualizado con los eventos de fichero (SDD §4.2) | `language-server` · `vscode` | `src/fudapi/implementations.ts` · `src/client-options.ts` (`FILE_EVENTS`) |
+| [x] | 4 | 3 | **Lentes** encima de cada declaración que se implementa (SDD §3.2) | `language-server` | `src/fudapi/lenses.ts` · `src/fudapi/service.ts` |
+| [x] | 5 | 4 | **Los tests de la fase.** Criterios 11–15 | `language-server` | `test/**` |
 
 ## Fase 3 — lo generado (3)
 

@@ -23,3 +23,5 @@ export { dataShape, framesShape, type DataShape, type DataTy, type FramesShape }
 export { emitDeclarations } from './emit/declarations.js';
 export { emitModule, type Side } from './emit/module.js';
 export { extractApiMessages, type ApiLocale, type ApiMessage } from './messages.js';
+/** The name a declaration of a `.fudapi` is exported by from `fudic:<id>`: `email-taken` → `emailTaken`. */
+export { camel as exportedName } from './emit/shared.js';

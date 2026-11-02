@@ -20,6 +20,8 @@ import { pathToUri } from '../uri.js';
 import { apiCompletions } from './completion.js';
 import { apiDocumentOf, rangeOf, type ApiDocument } from './document.js';
 import type { ApiHost } from './host.js';
+import type { ImplementationIndex } from './implementations.js';
+import { implementationLenses } from './lenses.js';
 import { catchesHover } from './catches-hover.js';
 import { loadHover } from './load-line.js';
 import { apiDefinition, apiHover } from './navigation.js';
@@ -29,6 +31,8 @@ import { translationsMarkdown, type Translations } from '../translations.js';
 export interface FudapiServiceContext {
   readonly host: ApiHost;
   readonly stats: RequestStats;
+  /** Who implements each declaration, for the lenses over them (SDD-75 §4.2). */
+  readonly implementations: ImplementationIndex;
   /** The catalogs, for the hover over a text (SDD-74 §4.5): its line per locale, — where it is missing. */
   readonly translations?: Translations;
 }
@@ -65,7 +69,7 @@ function textHover(doc: ApiDocument, offset: number, translations: Translations 
 }
 
 export function createFudapiService(deps: FudapiServiceContext): LanguageServicePlugin {
-  const { host, stats, translations } = deps;
+  const { host, stats, implementations, translations } = deps;
 
   return {
     name: 'fudapi',
@@ -77,6 +81,7 @@ export function createFudapiService(deps: FudapiServiceContext): LanguageService
       semanticTokensProvider: { legend: SEMANTIC_TOKENS_LEGEND },
       diagnosticProvider: { interFileDependencies: true, workspaceDiagnostics: false },
       documentFormattingProvider: true,
+      codeLensProvider: { resolveProvider: false },
     },
 
     create(context) {
@@ -125,6 +130,15 @@ export function createFudapiService(deps: FudapiServiceContext): LanguageService
           return run('definition', token, () => {
             const doc = apiDocumentOf(context, document, host);
             return doc === undefined ? undefined : apiDefinition(doc, document.offsetAt(position), host);
+          });
+        },
+
+        provideCodeLenses(document, token) {
+          return run('codeLens', token, () => {
+            const doc = apiDocumentOf(context, document, host);
+            if (doc === undefined) return undefined;
+            const project = host.projectOf(doc.path);
+            return implementationLenses(doc, project, implementations.of(project, doc.path, doc.source.id));
           });
         },
 
