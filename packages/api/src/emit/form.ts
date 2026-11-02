@@ -7,7 +7,7 @@
 
 import type { Expr, FieldDecl, FormDecl, FormGroup, FormMember, RequireRule, RuleUse, StringLiteral, SummaryBlock, TypeExpr, ValidateOnOption, ValidityOption } from '../ast.js';
 import { FLOATS, INTEGERS } from '../types-check.js';
-import { camel, literal, projectRef, str, tsType, type EmitCtx } from './shared.js';
+import { camel, literal, projectRef, str, textOf, tsType, type EmitCtx } from './shared.js';
 
 /** The name of the field type a `.fudapi` type is, without `?`. */
 const bare = (t: TypeExpr): TypeExpr => (t.kind === 'optional' ? t.inner : t);
@@ -89,7 +89,7 @@ const messagesOf = (texts: readonly string[]): string | undefined => (texts.leng
 /** `key: text("…")`. */
 function textEntry(key: string, text: StringLiteral, f: FormCtx): string {
   f.used.add('text');
-  return `${key}: text(${str(text.text)})`;
+  return `${key}: text(${str(textOf(f.c, text))})`;
 }
 
 /** A rule named under a field or in a `summary`: its validator and its texts. */
@@ -144,7 +144,7 @@ function field(m: FieldDecl, path: string, f: FormCtx): string {
   }
   if (m.range !== undefined) {
     const isUuid = nameOf(type) === 'uuid';
-    texts.push(textEntry(isUuid ? 'uuid' : 'range', { ...m.range, text: range(nameOf(type), m.range.text) }, f));
+    texts.push(textEntry(isUuid ? 'uuid' : 'range', { ...m.range, text: range(nameOf(type), textOf(f.c, m.range)) }, f));
   }
   const opts = options([messagesOf(texts), validateOn(m.validateOn), validity(m.validity)]);
   const args = [initial(m, type), ...(rules.length > 0 || opts !== undefined ? [`[${rules.join(', ')}]`] : []), ...(opts !== undefined ? [opts] : [])];

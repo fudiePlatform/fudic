@@ -2,3 +2,15 @@
 # it does not build them, so any backend can paint the page.
 load ssg
   alta  date
+
+# One line, and its text in the catalogs like any other text of the app (SDD-74).
+form newsletter
+  email  str = ""
+    required  "Escribe tu email."
+
+post subscribe
+  form newsletter
+
+# Always a 409, and `catches` keeps it on the page: its text comes translated from the handler.
+post reserve
+  catches 409

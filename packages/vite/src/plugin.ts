@@ -462,8 +462,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    * to register a half for, and bringing the root would load all of `src/browser` for one
    * `@(x | p)`.
    */
-  const apiModule = (id: string, side: 'server' | 'browser'): string | undefined => {
-    const text = api.module(id, side);
+  const apiModule = (id: string, side: 'server' | 'browser', locale?: string): string | undefined => {
+    const text = api.module(id, side, compileFor(locale));
     if (text === undefined || side === 'server' || nothingToImplement(api.source(id)!)) return text;
     return `import ${JSON.stringify(BROWSER_ROOT_ID)};\n${text}`;
   };
@@ -513,13 +513,14 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   const hasApi = (): boolean => api.hasRoot();
   /** The server variant of a generated module, as a nested pass serves it, by id. */
   /**
-   * A generated module of a side, as a nested pass serves it, by id: the same text for every
-   * locale, since what differs between locales is what its imports resolve to.
+   * A generated module of a side, as a nested pass serves it, by id. A `fudic:<id>` writes the
+   * texts of its `.fudapi` in the locale of the id (SDD-74 §4.5); the rest differ between locales
+   * only in what their imports resolve to.
    */
   const generatedText = (tagged: string, side: 'server' | 'browser'): string | undefined => {
     const id = idWithoutLocale(tagged);
     if (id === (side === 'server' ? SERVER_ROOT_ID : BROWSER_ROOT_ID)) return rootSource(side);
-    return id.startsWith(API_SCHEME) ? apiModule(id.slice(API_SCHEME.length), side) : undefined;
+    return id.startsWith(API_SCHEME) ? apiModule(id.slice(API_SCHEME.length), side, localeOf(tagged)) : undefined;
   };
   const serverApi = (id: string): string | undefined => generatedText(id, 'server');
   /** The browser variant, as the link pass serves it to the pages the Service Worker renders. */
@@ -1777,7 +1778,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         // Every `.fudapi` of the project is an input: a type or a middleware of another file
         // changes this one's text.
         for (const source of api.sources) this.addWatchFile(source.path);
-        return apiModule(bare.slice(API_SCHEME.length), side) ?? null;
+        return apiModule(bare.slice(API_SCHEME.length), side, localeOf(id)) ?? null;
       }
       if (id === MAIN_ID || id.startsWith(`${MAIN_ID}?`)) {
         const dir = chunkDir(localeOf(id), locales);

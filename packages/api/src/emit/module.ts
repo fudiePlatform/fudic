@@ -11,6 +11,7 @@
 import type { CompressClause, Decl, FailsClause, FnDecl, LoadDecl, MiddlewareArg, MiddlewareDecl, PipeDecl, RuleUse, SkipClause, UseClause } from '../ast.js';
 import type { ApiIndex, ApiSource } from '../index-api.js';
 import type { ApiContext } from '../validate.js';
+import { localizedTexts, type ApiLocale } from '../messages.js';
 import { isArgRule } from '../validate-form.js';
 import { formCode } from './form.js';
 import { canonical, fnv1a } from './signature.js';
@@ -27,6 +28,7 @@ import {
   pascal,
   projectRef,
   str,
+  textOf,
   type EmitCtx,
 } from './shared.js';
 
@@ -48,13 +50,18 @@ interface ModuleCtx extends EmitCtx {
 /** Declarations in the order their values must exist. */
 const ORDER: readonly Decl['kind'][] = ['type', 'enum', 'pattern', 'rule', 'middleware', 'pipe', 'messages', 'form', 'chain', 'load', 'paths', 'layout', 'fn'];
 
-export function emitModule(source: ApiSource, index: ApiIndex, api: ApiContext, side: Side): string {
+/**
+ * The module `fudic:<id>` of a side. With `i18n`, the module of that locale: each text of the
+ * `.fudapi` written translated, or as written when it has no translation (SDD-74 §4.5).
+ */
+export function emitModule(source: ApiSource, index: ApiIndex, api: ApiContext, side: Side, i18n?: ApiLocale): string {
   const imports = new Map<string, Set<string>>();
   const c: ModuleCtx = {
     source,
     index,
     api,
     side,
+    ...(i18n !== undefined ? { texts: localizedTexts(source.file, i18n) } : {}),
     http: new Set(),
     forms: new Set(),
     wire: new Set(),
@@ -149,7 +156,7 @@ function pipe(d: PipeDecl): string {
 function failsOf(name: string, fails: readonly FailsClause[], c: ModuleCtx): string {
   if (fails.length === 0) return '';
   c.http.add('fails');
-  const entries = fails.map((f) => `${camel(f.code.text)}: [${f.status.value}${f.detail === undefined ? '' : `, ${str(f.detail.text)}`}]`);
+  const entries = fails.map((f) => `${camel(f.code.text)}: [${f.status.value}${f.detail === undefined ? '' : `, ${str(textOf(c, f.detail))}`}]`);
   return `\nexport const ${name}Fails = fails({ ${entries.join(', ')} });`;
 }
 

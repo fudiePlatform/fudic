@@ -8,7 +8,7 @@
  */
 
 import type { Span } from '@fudic/diagnostics';
-import type { Decl, FnDecl, Literal, LoadDecl, MiddlewareDecl, SkipClause, TypeExpr, UseClause } from '../ast.js';
+import type { Decl, FnDecl, Literal, LoadDecl, MiddlewareDecl, SkipClause, StringLiteral, TypeExpr, UseClause } from '../ast.js';
 import { GLOBAL_ID, type ApiIndex, type ApiSource, type ProjectKind } from '../index-api.js';
 import { FLOATS, INTEGERS } from '../types-check.js';
 
@@ -30,7 +30,12 @@ export interface EmitCtx {
   readonly index: ApiIndex;
   /** How a name exported by another `.fudapi` is written here. */
   readonly ref: (source: ApiSource, name: string) => string;
+  /** What each text of the file says in the locale being written; absent without one (SDD-74 §4.5). */
+  readonly texts?: ReadonlyMap<StringLiteral, string>;
 }
+
+/** What a text of the file says in the module being written: its translation, or as written. */
+export const textOf = (c: EmitCtx, text: StringLiteral): string => c.texts?.get(text) ?? text.text;
 
 /** The TS name of a project declaration, reached from this file. */
 export function projectRef(c: EmitCtx, kind: ProjectKind, name: string, ts = camel(name)): string | undefined {

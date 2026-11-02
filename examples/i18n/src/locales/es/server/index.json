@@ -1,0 +1,10 @@
+{
+  "server/index.ts": {
+    "9e2f2d36": {
+      "source": "Ya no quedan plazas.",
+      "translation": "Ya no quedan plazas.",
+      "where": "src/server/index.ts",
+      "at": 0
+    }
+  }
+}

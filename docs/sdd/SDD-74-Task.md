@@ -5,7 +5,7 @@
 > `@fudic/language-server` · `@fudic/cli` · `@fudic/vite` · `examples/basic` · `examples/fudapi-editor` ·
 > `examples/i18n`
 > **Rama:** `sdd-74-errores-en-la-pagina`. Nace de `main` **con SDD-72 en `Hecho`**.
-> **Progreso:** 7 / 16 — `En curso`.
+> **Progreso:** 10 / 16 — `En curso`.
 
 ---
 
@@ -65,7 +65,7 @@ Va antes del cierre (tarea 12).
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 13 | — | **`extractApiMessages`**: un `Message` por texto, `origin: 'fudapi'`, huecos `{n}`, contexto por la ruta de la declaración (SDD §4.5) | `api` · `compiler` | `src/messages.ts` · `src/index.ts` |
-| [ ] | 14 | 13 | **`fudic translate`** lee los `.fudapi`; **`emitModule`** con `LocaleCompile`; el plugin se lo pasa por idioma; el aviso del editor (SDD §4.5) | `cli` · `api` · `vite` · `language-server` | `src/plans/translate.ts` · `src/emit/*.ts` · `src/plugin.ts` · `src/translations.ts` |
-| [ ] | 15 | 14 | **`examples/i18n`**: el formulario y la función con `catches 409` y `conflict(t(…))`; los catálogos `en` y `es` (SDD §4.5) | `examples/i18n` | `src/routes/index.fudapi` · `src/server/index.ts` · `src/locales/**` |
+| [x] | 13 | — | **`extractApiMessages`**: un `Message` por texto, `origin: 'fudapi'`, huecos `{n}`, contexto por la ruta de la declaración (SDD §4.5) | `api` · `compiler` | `src/messages.ts` · `src/index.ts` |
+| [x] | 14 | 13 | **`fudic translate`** lee los `.fudapi`; **`emitModule`** con `LocaleCompile`; el plugin se lo pasa por idioma; el aviso del editor (SDD §4.5) | `cli` · `api` · `vite` · `language-server` | `src/plans/translate.ts` · `src/emit/*.ts` · `src/plugin.ts` · `src/translations.ts` |
+| [x] | 15 | 14 | **`examples/i18n`**: el formulario y la función con `catches 409` y `conflict(t(…))`; los catálogos `en` y `es` (SDD §4.5) | `examples/i18n` | `src/routes/index.fudapi` · `src/server/index.ts` · `src/locales/**` |
 | [ ] | 16 | 15 | **Los tests de la fase.** Criterios 16–21 | `api` · `cli` · `vite` · `examples/i18n` | `test/**` |

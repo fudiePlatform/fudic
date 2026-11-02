@@ -22,3 +22,4 @@ export { layoutPropsType } from './layout-props.js';
 export { dataShape, framesShape, type DataShape, type DataTy, type FramesShape } from './data-shape.js';
 export { emitDeclarations } from './emit/declarations.js';
 export { emitModule, type Side } from './emit/module.js';
+export { extractApiMessages, type ApiLocale, type ApiMessage } from './messages.js';

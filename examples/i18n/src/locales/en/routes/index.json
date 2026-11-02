@@ -1,4 +1,12 @@
 {
+  "newsletter.email.required": {
+    "6389fee4": {
+      "source": "Escribe tu email.",
+      "translation": "Write your email.",
+      "where": "src/routes/index.fudapi",
+      "at": 0
+    }
+  },
   "routes/index.fud": {
     "ed4317e9": {
       "source": "Inicio",
@@ -17,6 +25,24 @@
       "translation": "Read <0>how prices are formatted</0>.",
       "where": "src/routes/index.fud",
       "at": 2
+    },
+    "4a9ba718": {
+      "source": "Email",
+      "translation": "Email",
+      "where": "src/routes/index.fud",
+      "at": 3
+    },
+    "046e6b85": {
+      "source": "Apuntarme",
+      "translation": "Sign me up",
+      "where": "src/routes/index.fud",
+      "at": 4
+    },
+    "ac768afa": {
+      "source": "Reservar plaza",
+      "translation": "Book a seat",
+      "where": "src/routes/index.fud",
+      "at": 5
     }
   }
 }
