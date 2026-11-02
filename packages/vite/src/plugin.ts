@@ -844,6 +844,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         if (chunk.name === 'fudic-boot') return bootFileName(BUILD_TOKEN);
         return 'assets/[name]-[hash].js';
       };
+      // A chunk of a locale's graph carries its locale (SDD-74): with two locales and a library
+      // with browser halves, each locale has its own root, and two `fudic-root.browser` are one
+      // name once the build id replaces the hash (FUD0501) — one locale's page would load the
+      // other's.
+      const chunkName = (chunk: { readonly moduleIds: readonly string[] }): string => {
+        // A configured locale only: the query of a virtual id can carry more than its tag.
+        const locale = chunk.moduleIds.map(localeOf).find((l) => l !== undefined && locales.includes(l));
+        return `assets/${locale === undefined ? '' : `${locale}-`}[name]-[hash].js`;
+      };
       return {
         appType: 'custom',
         build: {
@@ -852,7 +861,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
             // they are emitted in `buildStart`, where the routes are known (SDD-45 §4.4).
             input: { 'fudic-boot': BOOT_ID },
             ...checks,
-            ...(hasOutputConfig ? {} : { output: { entryFileNames: pinned } }),
+            ...(hasOutputConfig ? {} : { output: { entryFileNames: pinned, chunkFileNames: chunkName } }),
           },
         },
       };
