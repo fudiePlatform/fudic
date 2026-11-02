@@ -134,12 +134,16 @@ test.describe('/usuarios', () => {
     const headers = await (await sent).allHeaders();
     expect(headers['cookie']).toContain('fudic-session=ana');
     expect(headers['authorization']).toBeUndefined();
+    await (await sent).response();
     await expect(box()).toBeChecked();
     await page.reload();
     await ready(page);
     await expect(box()).toBeChecked();
-    // Back as it was, for the tests that come after.
+    // Back as it was, for the tests that come after. The box unticks before the call lands, so
+    // the reload waits for the server's answer: reloading earlier reads the row still active.
+    const reverted = page.waitForResponse((r) => r.url().endsWith(`${FN}/save`));
     await box().click();
+    await reverted;
     await expect(box()).not.toBeChecked();
     await page.reload();
     await ready(page);
