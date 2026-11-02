@@ -13,7 +13,7 @@
 
 ```
 1 catches en el parser ─→ 2 emit + ClientContext ─→ 3 errorPagesStep ─→ 4 tests
-5 FUD1360 + fuera fails ─→ 6 migración ─→ 7 tests
+5 FUD1360 + el código de fails ─→ 6 migración ─→ 7 tests
 8 task por llamada ─→ 9 tests
 10 propiedades vivas ─→ 11 tests
 13 extracción del .fudapi ─→ 14 fudic translate + lo generado por idioma ─→ 15 examples/i18n ─→ 16 tests
@@ -31,12 +31,12 @@
 | [x] | 3 | 2 | **`errorPagesStep`.** Relanza un status de `ctx.catches` o del form enviado (SDD §4.1) | `http` | `src/error-pages.ts` |
 | [x] | 4 | 3 | **Los tests de la fase.** Criterios 1, 2, 4, 5 | `api` · `http` | `test/**` |
 
-## Fase 2 — fuera `fails` de funciones y `load` (3)
+## Fase 2 — `fails` fuera de `load`, y su código viaja (3)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 5 | — | **`FUD1360`** en `load` y la línea descartada; sin `LoadFails`; el código de un `fails` viaja y la página pone su texto (decisión 175) (SDD §3.1, §4.2) | `diagnostics` · `api` | `src/codes/FUD1360.ts` · `.md` · `src/parse.ts` · `src/emit/*.ts` |
-| [x] | 6 | 5 | **Migración** de ejemplos, experimento y tests a `conflict(…)` (SDD §4.2) | `examples` · `api` · `compiler` | ver SDD §4.2 |
+| [x] | 6 | 5 | **Migración** de ejemplos, experimento y tests a `<Nombre>Fails.<código>()` con `catches 409` (SDD §4.2) | `examples` · `api` · `compiler` | ver SDD §4.2 |
 | [x] | 7 | 6 | **Los tests de la fase.** Criterios 3, 10 | `api` | `test/**` |
 
 ## Fase 3 — `task` por llamada (2)
@@ -67,5 +67,5 @@ Va antes del cierre (tarea 12).
 |---|---|---|---|---|---|
 | [x] | 13 | — | **`extractApiMessages`**: un `Message` por texto, `origin: 'fudapi'`, huecos `{n}`, contexto por la ruta de la declaración (SDD §4.5) | `api` · `compiler` | `src/messages.ts` · `src/index.ts` |
 | [x] | 14 | 13 | **`fudic translate`** lee los `.fudapi`; **`emitModule`** con `LocaleCompile`; el plugin se lo pasa por idioma; el aviso del editor (SDD §4.5) | `cli` · `api` · `vite` · `language-server` | `src/plans/translate.ts` · `src/emit/*.ts` · `src/plugin.ts` · `src/translations.ts` |
-| [x] | 15 | 14 | **`examples/i18n`**: el formulario y la función con `catches 409` y `conflict(t(…))`; los catálogos `en` y `es` (SDD §4.5) | `examples/i18n` | `src/routes/index.fudapi` · `src/server/index.ts` · `src/locales/**` |
+| [x] | 15 | 14 | **`examples/i18n`**: el formulario y la función con `catches 409` y `fails full`, cuyo handler lanza `ReserveFails.full()`; los catálogos `en` y `es` (SDD §4.5) | `examples/i18n` | `src/routes/index.fudapi` · `src/server/index.ts` · `src/locales/**` |
 | [x] | 16 | 15 | **Los tests de la fase.** Criterios 16–21 | `api` · `cli` · `vite` · `examples/i18n` | `test/**` |

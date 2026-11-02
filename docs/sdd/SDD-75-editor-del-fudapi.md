@@ -3,7 +3,7 @@
 > **Estado:** `Listo` — [tareas](./SDD-75-Task.md).
 > **Paquetes:** `@fudic/language-server` · `@fudic/api` · `@fudic/vscode`
 > **Depende de:** 60 (el `.fudapi` y su language server), 32 (los CodeLens del `.fudspec`, que se
-> imitan), 74 (`catches` en las funciones, `fails` fuera de ellas) — las tres en `Hecho`.
+> imitan), 74 (`catches` en las funciones; `fails` en ellas pero no en `load`; lo generado por idioma) — las tres en `Hecho`.
 > **Rango de diagnósticos:** ninguno.
 > **Decisiones de gramática:** ninguna.
 > **Origen:** conversación con Pedro del 2026-11-01.
@@ -54,7 +54,7 @@ igual a la palabra clave y un `detail` de una línea. Se ofrecen solo en su cont
   - `pipe`: `pipe ${1:name}\n  on ${2:str}$0`
   - `chain`: `chain\n  use ${1:log}$0`
 - **Dentro de una función:** `use ${1}`, `invalidates /${1}`, `catches ${1:409}`,
-  `query ${1:name}  ${2:str}`, `-> ${1:Type}`, `form ${1}`.
+  `fails ${1:code} ${2:409} "${3:text}"`, `query ${1:name}  ${2:str}`, `-> ${1:Type}`, `form ${1}`.
 - **Dentro de un formulario:** `catches ${1:400 409 422}`, `summary\n  ${1}`,
   `validate-on ${1|submit,blur,input|}`.
 - **Debajo de un campo de formulario:** cada regla aplicable al tipo del campo, con su texto:
@@ -75,6 +75,9 @@ Las sangrías del snippet salen del sangrado de la línea donde se acepta.
 | `Server` | Abre de solo lectura lo que da `emitModule(…, 'server')` para este fichero, como `typescript`. |
 | `Browser` | Igual con `'browser'`. |
 | `Regenerate` | Reescribe ya el `.d.ts` de este fichero y de los que dependen de él, haya cambiado o no. Avisa: `Regenerated N files.` |
+
+Con `i18n`, `Server` y `Browser` muestran lo generado sin `LocaleCompile`: los textos en el idioma
+de origen del `.fudapi`, que es lo que el autor escribió. Lo traducido es cosa del build.
 
 **Encima de cada declaración que se implementa** (función, `load`, `paths`, `layout`, regla,
 middleware):
@@ -101,7 +104,8 @@ middleware):
 - Salen en el mismo `apiCompletions` que hoy, según el `Context` que ya calcula. Donde había una
   palabra suelta con el mismo nombre, sale el snippet en su lugar.
 - Dentro de un texto entre comillas no sale ninguno.
-- `fails` no se ofrece dentro de una función ni de `load` (SDD-74).
+- `fails` se ofrece dentro de una función (como snippet), de una regla y de un middleware, y no
+  dentro de `load` (SDD-74, decisión 175).
 
 ### 4.2. Implementaciones
 
@@ -137,7 +141,8 @@ middleware):
    proyecto `on str` sale debajo de un campo `str`, con sus parámetros como tabstops.
 4. **Sangrado.** Un snippet aceptado con la línea sangrada a 2 deja sus líneas interiores a 4.
 5. **Comillas.** Dentro de `"…"` no sale ningún snippet.
-6. **`catches` y `fails`.** Dentro de una función sale `catches` y no `fails`.
+6. **`catches` y `fails`.** Dentro de una función salen `catches` y `fails` como snippets; dentro
+   de `load`, ninguno de los dos.
 7. **Lentes de la línea 1.** Un `.fudapi` sin errores tiene `Types`, `Server`, `Browser` y
    `Regenerate` en la línea 1.
 8. **`Types`.** Abre `.fudic/api/<id>.d.ts`. Si se borró, lo regenera y lo abre.
