@@ -239,6 +239,39 @@ export class ApiHost {
     return written;
   }
 
+  /**
+   * Where the types of the `.fudapi` at `path` are, written first when they are not there
+   * (SDD-75 §3.2, `Types`).
+   */
+  typesOf(path: string): string {
+    const project = this.projectOf(path);
+    const target = typesPath(project, this.#appId(project, path));
+    if (this.#deps.fs.readFile(target) === undefined) this.generate(project);
+    return target;
+  }
+
+  /**
+   * Writes again the types of the `.fudapi` at `path` and of every one whose types import it,
+   * whether they changed or not (SDD-75 §3.2, `Regenerate`): the way back after a branch switch
+   * or a lost file event. Answers the paths written.
+   */
+  regenerate(path: string): readonly string[] {
+    const project = this.projectOf(path);
+    const sources = this.#filesOf(project).map((f) => this.#source(f, this.read(f.path) ?? '').source);
+    const index = createApiIndex(sources);
+    const id = this.#appId(project, path);
+    const written: string[] = [];
+    for (const source of sources) {
+      const text = emitDeclarations(source, index, this.#context(project, source.path));
+      if (source.id !== id && !text.includes(JSON.stringify(`fudic:${id}`))) continue;
+      const target = typesPath(project, source.id);
+      this.#deps.fs.writeFile(target, text);
+      this.#wrote(target, text);
+      written.push(target);
+    }
+    return written;
+  }
+
   /** Removes the types of a `.fudapi` that is gone. */
   forget(path: string): void {
     const project = this.projectOf(path);

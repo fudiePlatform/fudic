@@ -3,7 +3,7 @@
 > **SDD:** [SDD-75 — El editor del `.fudapi`](./SDD-75-editor-del-fudapi.md)
 > **Paquetes:** `@fudic/language-server` · `@fudic/api` · `@fudic/vscode`
 > **Rama:** `sdd-75-editor-del-fudapi`. Nace de `main` **con SDD-74 en `Hecho`**.
-> **Progreso:** 5 / 9 — `Listo`.
+> **Progreso:** 8 / 9 — `Listo`.
 
 ---
 
@@ -37,9 +37,9 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 6 | — | **Lentes de la línea 1** y los cinco comandos (SDD §3.2, §3.3) | `language-server` · `vscode` | `src/fudapi/service.ts` · `package.json` · `src/commands/api.ts` |
-| [ ] | 7 | 6 | **`Server`/`Browser`** por el proveedor virtual, refrescados; **`Regenerate`** forzado con dependientes; el caso con errores (SDD §4.3) | `language-server` · `vscode` | `src/fudapi/**` · `src/virtual-doc-provider.ts` |
-| [ ] | 8 | 7 | **Los tests de la fase.** Criterios 7–10, 16, 17 | `language-server` · `vscode` | `test/**` |
+| [x] | 6 | — | **Lentes de la línea 1** y los cinco comandos (SDD §3.2, §3.3) | `language-server` · `vscode` | `src/fudapi/service.ts` · `package.json` · `src/commands/api.ts` · `src/extension.ts` |
+| [x] | 7 | 6 | **`Server`/`Browser`** por el proveedor virtual, refrescados; **`Regenerate`** forzado con dependientes; el caso con errores (SDD §4.3) | `language-server` · `vscode` | `src/fudapi/generated.ts` · `src/fudapi/host.ts` · `src/extension.ts` (el proveedor virtual avisa del cambio) |
+| [x] | 8 | 7 | **Los tests de la fase.** Criterios 7–10, 16, 17 | `language-server` · `vscode` | `test/**` |
 
 ## Fase 4 — cierre (1)
 

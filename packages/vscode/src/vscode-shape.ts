@@ -49,6 +49,10 @@ export const languageOf = (editor: EditorLike | undefined): string | undefined =
 export const fudUriOf = (editor: EditorLike | undefined): string | undefined =>
   editor?.document.languageId === 'fudic' ? editor.document.uri.toString() : undefined;
 
+/** The URI of the active document when it is a `.fudapi` (SDD-75): what its palette commands act on. */
+export const fudapiUriOf = (editor: EditorLike | undefined): string | undefined =>
+  editor?.document.languageId === 'fudapi' ? editor.document.uri.toString() : undefined;
+
 /** The shape of `vscode.TextDocumentChangeEvent`, reduced to what the tag closer reads. */
 export interface ChangeEventLike {
   readonly document: {

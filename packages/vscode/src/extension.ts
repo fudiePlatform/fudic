@@ -26,6 +26,7 @@ import {
   caretAtOf,
   commentSelectionOf,
   folderPaths,
+  fudapiUriOf,
   fudUriOf,
   insertClosingTag,
   languageOf,
@@ -231,10 +232,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const bar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   bar.command = SHOW_OUTPUT;
   const virtuals = createVirtualDocStore();
+  // An open module of a `.fudapi` follows its saves (SDD-75 §4.3): the provider says which changed.
+  const virtualChanged = new vscode.EventEmitter<vscode.Uri>();
 
   context.subscriptions.push(
     output,
     bar,
+    virtualChanged,
     vscode.commands.registerCommand(SHOW_OUTPUT, () => output.show()),
     vscode.commands.registerCommand(EXPLAIN, (path: string) =>
       vscode.commands.executeCommand('markdown.showPreview', vscode.Uri.file(path)),
@@ -246,6 +250,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       // `uri.path`, not `uri.toString()`: the path is what `Uri.parse` decoded back into the
       // name the store was keyed on. The full text is re-encoded by VS Code's own table, which
       // does not agree with `encodeURIComponent` about `/`.
+      onDidChange: virtualChanged.event,
       provideTextDocumentContent: (uri) => virtuals.get(uri.path),
     }),
   );
@@ -334,7 +339,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
   opened.focus(workbenchFileOf(vscode.window.activeTextEditor));
 
-  registerCommands(
+  const api = registerCommands(
     {
       register: (id, handler) =>
         context.subscriptions.push(vscode.commands.registerCommand(id, handler)),
@@ -343,6 +348,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       session,
       editor: {
         activeFudUri: () => fudUriOf(vscode.window.activeTextEditor),
+        activeFudapiUri: () => fudapiUriOf(vscode.window.activeTextEditor),
         activeWorkbenchFile: () => workbenchFileOf(vscode.window.activeTextEditor),
       },
       documents: {
@@ -353,6 +359,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           await vscode.languages.setTextDocumentLanguage(document, languageId);
           await vscode.window.showTextDocument(document, { preview: false });
         },
+        updateReadOnly: (name, text) => virtualChanged.fire(vscode.Uri.parse(virtuals.put(name, text))),
+        openFile: async (path, range) => {
+          const document = await vscode.workspace.openTextDocument(vscode.Uri.file(path));
+          const { start, end } = range ?? { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } };
+          await vscode.window.showTextDocument(document, {
+            preview: false,
+            selection: new vscode.Range(start.line, start.character, end.line, end.character),
+          });
+        },
       },
       // Through the editor rather than straight to the server: that is what routes to the
       // default formatter the `[fudic]` defaults set, and from there to SDD-26.
@@ -361,7 +376,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           await vscode.commands.executeCommand('editor.action.formatDocument');
         },
       },
-      notifications: { warn: (message) => void vscode.window.showWarningMessage(message) },
+      notifications: {
+        warn: (message) => void vscode.window.showWarningMessage(message),
+        info: (message) => void vscode.window.showInformationMessage(message),
+      },
       logger: { info: (message) => output.appendLine(message) },
       workbenches,
       selection: {
@@ -375,6 +393,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           ),
       },
     },
+  );
+  // A saved `.fudapi`: its open module views show what it generates now (SDD-75 §4.3).
+  context.subscriptions.push(
+    vscode.workspace.onDidSaveTextDocument((document) => {
+      if (document.languageId === 'fudapi') void api.refresh(document.uri.toString());
+    }),
   );
 
   // Bound to the session rather than to the client: a restart replaces the client, and this

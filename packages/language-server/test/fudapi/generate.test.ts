@@ -150,7 +150,7 @@ describe('criterion 27: touching the .fudapi of a rule revalidates the one that 
 
   async function diagnosticsOf(host: ApiHost): Promise<readonly string[]> {
     const uri = URI.file(USER);
-    const service: LanguageServicePluginInstance = createFudapiService({ host, implementations: world().implementations, stats: new RequestStats() }).create(
+    const service: LanguageServicePluginInstance = createFudapiService({ ...world(), host, stats: new RequestStats() }).create(
       fakeServiceContext({}, (u) => (u.toString() === uri.toString() ? [uri, 'root'] : undefined)),
     );
     const found = (await service.provideDiagnostics?.(TextDocument.create(uri.toString(), 'fudapi', 1, USES), CancellationToken.None)) as Diagnostic[];

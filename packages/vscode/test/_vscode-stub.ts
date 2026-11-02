@@ -74,6 +74,16 @@ export interface StubState {
   shownDocuments: [unknown, unknown][];
   /** Every `withProgress` shown, in order: its options, and whether its task has ended. */
   progress: { readonly options: { readonly location: number; readonly title: string }; ended: boolean }[];
+  /** Everything `showInformationMessage` was called with (SDD-75). */
+  infos: string[];
+  /** Handlers registered for `onDidSaveTextDocument`. */
+  saveListeners: ((document: SavedDocumentStub) => void)[];
+}
+
+/** A `vscode.TextDocument`, as a save hands it over. */
+export interface SavedDocumentStub {
+  readonly languageId: string;
+  readonly uri: { toString(): string };
 }
 
 /** A CodeLens provider, as the adapter registers it. */
@@ -283,9 +293,13 @@ export const state: StubState = {
   codeLensProviders: [],
   shownDocuments: [],
   progress: [],
+  infos: [],
+  saveListeners: [],
 };
 
 export const reset = (): void => {
+  state.infos = [];
+  state.saveListeners = [];
   state.progress = [];
   state.benchBar = emptyBar();
   state.decorationTypes = [];
@@ -323,6 +337,11 @@ export const reset = (): void => {
 /** Fires `onDidChangeTextEditorSelection`, as moving the caret would. */
 export const moveCaret = (event: SelectionEventStub): void => {
   for (const listener of state.selectionListeners) listener(event);
+};
+
+/** Fires `onDidSaveTextDocument`, as saving would. */
+export const saveDocument = (document: SavedDocumentStub): void => {
+  for (const listener of state.saveListeners) listener(document);
 };
 
 /** Fires `onDidChangeTextDocument`, as typing would. */
@@ -471,6 +490,10 @@ export const window = {
     state.warnings.push(message);
     return Promise.resolve(undefined);
   },
+  showInformationMessage: (message: string) => {
+    state.infos.push(message);
+    return Promise.resolve(undefined);
+  },
   createWebviewPanel: (viewType: string, title: string, column: number, options: unknown) => {
     const received: ((message: unknown) => void)[] = [];
     const disposed: (() => void)[] = [];
@@ -598,6 +621,10 @@ export const workspace = {
   openTextDocument: (uri: URI) => Promise.resolve({ uri }),
   onDidChangeTextDocument: (listener: (event: ChangeEventStub) => void) => {
     state.changeListeners.push(listener);
+    return { dispose: () => undefined };
+  },
+  onDidSaveTextDocument: (listener: (document: SavedDocumentStub) => void) => {
+    state.saveListeners.push(listener);
     return { dispose: () => undefined };
   },
 };

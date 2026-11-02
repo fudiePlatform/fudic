@@ -167,7 +167,7 @@ describe('settings', () => {
 });
 
 describe('commands', () => {
-  it('contributes the seven commands with their titles', () => {
+  it('contributes the twelve commands with their titles', () => {
     expect(at(manifest, 'contributes', 'commands')).toEqual([
       { command: 'fudic.restartServer', title: 'Fudic: Restart Language Server' },
       { command: 'fudic.showVirtualFiles', title: 'Fudic: Show Virtual Files' },
@@ -175,6 +175,12 @@ describe('commands', () => {
       { command: 'fudic.formatDocument', title: 'Fudic: Format Document' },
       { command: 'fudic.toggleComment', title: 'Fudic: Toggle Comment' },
       { command: 'fudic.openWorkbench', title: 'Fudic: Open Workbench', icon: '$(open-preview)' },
+      // The .fudapi ones (SDD-75 criterion 17).
+      { command: 'fudic.api.showTypes', title: 'Fudic: Show API Types' },
+      { command: 'fudic.api.showServer', title: 'Fudic: Show API Server Module' },
+      { command: 'fudic.api.showBrowser', title: 'Fudic: Show API Browser Module' },
+      { command: 'fudic.api.regenerate', title: 'Fudic: Regenerate API Types' },
+      { command: 'fudic.api.goToImplementation', title: 'Fudic: Go to API Implementation' },
       { command: 'fudic.runCriterion', title: 'Fudic: Run Criterion' },
     ]);
   });
@@ -418,7 +424,15 @@ describe('the workbench contributions (SDD-32 criterion 23)', () => {
 
   it('puts its icon in the editor title bar, for the same two languages, and keeps the CodeLens command out of the palette', () => {
     expect(at(manifest, 'contributes', 'menus')).toEqual({
-      commandPalette: [{ command: 'fudic.runCriterion', when: 'false' }],
+      commandPalette: [
+        { command: 'fudic.runCriterion', when: 'false' },
+        // SDD-75 criterion 17: four in the palette with a .fudapi active; the lens one never.
+        { command: 'fudic.api.showTypes', when: 'editorLangId == fudapi' },
+        { command: 'fudic.api.showServer', when: 'editorLangId == fudapi' },
+        { command: 'fudic.api.showBrowser', when: 'editorLangId == fudapi' },
+        { command: 'fudic.api.regenerate', when: 'editorLangId == fudapi' },
+        { command: 'fudic.api.goToImplementation', when: 'false' },
+      ],
       'editor/title': [{ command: 'fudic.openWorkbench', when: WHEN, group: 'navigation' }],
     });
   });

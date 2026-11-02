@@ -7,6 +7,7 @@
  * side, so the two halves cannot drift apart in silence.
  */
 
+import { API_COMMAND_IDS, ApiCommands } from './api.js';
 import { toggleCommentCommand } from './comment.js';
 import { formatDocument } from './format.js';
 import { restartServer } from './restart.js';
@@ -23,23 +24,32 @@ export const COMMAND_IDS = {
   formatDocument: 'fudic.formatDocument',
   toggleComment: 'fudic.toggleComment',
   openWorkbench: 'fudic.openWorkbench',
+  ...API_COMMAND_IDS,
 } as const;
 
-/** Every command as a handler, so a test drives them without a command registry. */
+/**
+ * Every command as a handler, so a test drives them without a command registry; the `.fudapi`
+ * ones from `api`, which keeps the module views open.
+ */
 export const createHandlers = (
   deps: CommandDeps,
-): Readonly<Record<string, () => Promise<void>>> => ({
+  api: ApiCommands = new ApiCommands(deps),
+): Readonly<Record<string, (...args: readonly unknown[]) => Promise<void>>> => ({
   [COMMAND_IDS.restartServer]: () => restartServer(deps),
   [COMMAND_IDS.showVirtualFiles]: () => showVirtualFiles(deps),
   [COMMAND_IDS.showRegistry]: () => showRegistry(deps),
   [COMMAND_IDS.formatDocument]: () => formatDocument(deps),
   [COMMAND_IDS.toggleComment]: () => toggleCommentCommand(deps),
   [COMMAND_IDS.openWorkbench]: () => openWorkbench(deps),
+  ...api.handlers(),
 });
 
-export const registerCommands = (commands: CommandsPort, deps: CommandDeps): void => {
-  for (const [id, handler] of Object.entries(createHandlers(deps))) commands.register(id, handler);
+/** Registers every command; answers the `.fudapi` ones, whose views follow a save. */
+export const registerCommands = (commands: CommandsPort, deps: CommandDeps): ApiCommands => {
+  const api = new ApiCommands(deps);
+  for (const [id, handler] of Object.entries(createHandlers(deps, api))) commands.register(id, handler);
+  return api;
 };
 
-export { formatDocument, openWorkbench, restartServer, showRegistry, showVirtualFiles, toggleCommentCommand };
+export { ApiCommands, formatDocument, openWorkbench, restartServer, showRegistry, showVirtualFiles, toggleCommentCommand };
 export type { CommandDeps };

@@ -1,6 +1,7 @@
 /**
- * The CodeLens of a `.fudapi` (SDD-75 §3.2): over each declaration a handler implements, who does
- * it — a lens per file, `not implemented` when none, and one per half of a middleware.
+ * The CodeLens of a `.fudapi` (SDD-75 §3.2): on line 1, what it generates; over each declaration a
+ * handler implements, who does it — a lens per file, `not implemented` when none, and one per half
+ * of a middleware.
  */
 
 import { exportedName, type Decl } from '@fudic/api';
@@ -8,8 +9,26 @@ import type { CodeLens } from 'vscode-languageserver-protocol';
 import { rangeOf, type ApiDocument } from './document.js';
 import type { Implementation, ImplementationMethod } from './implementations.js';
 
-/** The client command a lens over a declaration runs: `(file, range)`. */
-export const GO_TO_IMPLEMENTATION = 'fudic.api.goToImplementation';
+/** The client commands of the lenses (SDD-75 §3.3): the first four take the `.fudapi`'s URI; the last `(file, range)`. */
+export const API_COMMANDS = {
+  showTypes: 'fudic.api.showTypes',
+  showServer: 'fudic.api.showServer',
+  showBrowser: 'fudic.api.showBrowser',
+  regenerate: 'fudic.api.regenerate',
+  goToImplementation: 'fudic.api.goToImplementation',
+} as const;
+
+/** On line 1, what the file generates and the way to write it again; there with errors too. */
+export function generatedLenses(doc: ApiDocument): CodeLens[] {
+  const range = { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } };
+  const lens = (title: string, command: string): CodeLens => ({ range, command: { title, command, arguments: [doc.uri.toString()] } });
+  return [
+    lens('Types', API_COMMANDS.showTypes),
+    lens('Server', API_COMMANDS.showServer),
+    lens('Browser', API_COMMANDS.showBrowser),
+    lens('Regenerate', API_COMMANDS.regenerate),
+  ];
+}
 
 /** What a declaration is implemented by: the name its module exports and the methods called on it. */
 function implemented(decl: Decl): { readonly name: string; readonly methods: readonly ImplementationMethod[] } | undefined {
@@ -51,7 +70,7 @@ export function implementationLenses(doc: ApiDocument, project: string, found: r
           range,
           command: {
             title: half === '' ? `implemented in ${where}` : `${half}${where}`,
-            command: GO_TO_IMPLEMENTATION,
+            command: API_COMMANDS.goToImplementation,
             arguments: [f.file, f.range],
           },
         });

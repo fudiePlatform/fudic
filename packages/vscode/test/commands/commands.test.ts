@@ -20,7 +20,7 @@ import { commandFixture } from './_deps.js';
 const URI = 'file:///work/app/blog/[slug].fud';
 
 describe('registration', () => {
-  it('registers exactly the six ids package.json contributes', () => {
+  it('registers exactly the eleven ids package.json contributes', () => {
     // The other half of this assertion lives in the manifest test. A command contributed
     // and not registered fails when picked; one registered and not contributed can never be
     // picked at all — and neither shows up as a test failure anywhere else.
@@ -36,6 +36,12 @@ describe('registration', () => {
       'fudic.formatDocument',
       'fudic.toggleComment',
       'fudic.openWorkbench',
+      // SDD-75 criterion 17.
+      'fudic.api.showTypes',
+      'fudic.api.showServer',
+      'fudic.api.showBrowser',
+      'fudic.api.regenerate',
+      'fudic.api.goToImplementation',
     ]);
     expect(Object.values(COMMAND_IDS)).toEqual(registered);
   });

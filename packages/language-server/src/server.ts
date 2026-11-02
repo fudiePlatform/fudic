@@ -32,9 +32,10 @@ import { URI } from 'vscode-uri';
 import { SERVER_CAPABILITIES } from './capabilities.js';
 import { mountGlobals, mountWorkspaceFuds, nodeFileSystem, toPosix } from '@fudic/typecheck';
 import { DocumentCache, type CachedDocument } from './document-cache.js';
-import { API_EXTENSION } from '@fudic/api';
+import { API_EXTENSION, type Side } from '@fudic/api';
 import { nodeApiFs, type ApiFs } from './fudapi/fs.js';
 import { ApiHost } from './fudapi/host.js';
+import { API_MODULE_REQUEST, API_REGENERATE_REQUEST, API_TYPES_REQUEST, ApiGenerated } from './fudapi/generated.js';
 import { ImplementationIndex } from './fudapi/implementations.js';
 import { createFudapiLanguagePlugin } from './fudapi/language-plugin.js';
 import { createFudapiService } from './fudapi/service.js';
@@ -192,6 +193,7 @@ export function createFudicServer(
     open: (path) => server.documents.get(pathToUri(path))?.getText(),
   });
   const implementations = new ImplementationIndex(deps.apiFs);
+  const generated = new ApiGenerated(apis);
 
   /** The parse behind a URI: the open document if there is one, the disk otherwise. */
   const documentOf = (raw: string): CachedDocument | undefined => {
@@ -247,7 +249,7 @@ export function createFudicServer(
       // Criteria files: a service of their own, which answers only in a `.fudspec` (SDD-52).
       createFudspecService({ host: specs, stats }),
       // Contract files: likewise, only in a `.fudapi` (SDD-60).
-      createFudapiService({ host: apis, stats, implementations, translations }),
+      createFudapiService({ host: apis, stats, implementations, generated, translations }),
     ];
 
     // Nothing speaks over a library's file (SDD-43 §4.4): read-only means every service,
@@ -368,6 +370,11 @@ export function createFudicServer(
     for (const project of generated) apis.generate(project);
     if (criteria || contracts) void server.languageFeatures?.requestRefresh(false);
   });
+
+  // What a `.fudapi` generates, for the lenses on its line 1 (SDD-75 §3.2).
+  connection.onRequest(API_TYPES_REQUEST, ({ uri }: { uri: string }) => ({ path: apis.typesOf(uriToPath(URI.parse(uri))) }));
+  connection.onRequest(API_MODULE_REQUEST, ({ uri, side }: { uri: string; side: Side }) => generated.module(uriToPath(URI.parse(uri)), side));
+  connection.onRequest(API_REGENERATE_REQUEST, ({ uri }: { uri: string }) => ({ count: apis.regenerate(uriToPath(URI.parse(uri))).length }));
 
   connection.onRequest(VIRTUAL_FILES_REQUEST, ({ uri }: { uri: string }) => {
     const document = documentOf(uri);

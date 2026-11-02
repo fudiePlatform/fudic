@@ -17,6 +17,7 @@ import { copyWorkspace, startHarness, type Harness } from './_harness.js';
 
 const USUARIOS = 'src/routes/usuarios.fudapi';
 const AUTH = 'src/middlewares/auth.fudapi';
+const GENERATED = new Set(['Types', 'Server', 'Browser', 'Regenerate']);
 const HANDLES = "import { save } from 'fudic:routes/usuarios';\n\nsave.handle(() => {});\n";
 
 let harness: Harness;
@@ -32,8 +33,10 @@ async function write(relative: string, text: string | undefined): Promise<void> 
   });
 }
 
+/** The lenses over the declarations: the four of line 1 are `fudapi-generated.test.ts`. */
 async function lenses(relative: string): Promise<readonly CodeLens[]> {
-  return (await harness.client.sendRequest(CodeLensRequest.type, { textDocument: { uri: harness.uriOf(relative) } })) ?? [];
+  const all = (await harness.client.sendRequest(CodeLensRequest.type, { textDocument: { uri: harness.uriOf(relative) } })) ?? [];
+  return all.filter((l) => !GENERATED.has(l.command?.title ?? ''));
 }
 
 const titles = async (relative: string): Promise<readonly string[]> => (await lenses(relative)).map((l) => l.command?.title ?? '');

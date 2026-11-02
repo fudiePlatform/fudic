@@ -8,6 +8,8 @@
 
 export const NO_ACTIVE_FUD = 'Fudic: this command needs an active .fud file.';
 
+export const NO_ACTIVE_FUDAPI = 'Fudic: this command needs an active .fudapi file.';
+
 export const SERVER_DOWN =
   'Fudic: the language server is not running. Run "Fudic: Restart Language Server".';
 
