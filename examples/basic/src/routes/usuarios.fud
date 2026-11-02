@@ -44,23 +44,25 @@
     personas.set(personas().map((x) => (x.id === id ? { ...x, active } : x)));
   }
 
-  // En optimista: primero la señal, luego el servidor, y si `run()` no dice `done` se deshace.
-  // La casilla sigue a la señal en cada repintado, así que no hay que tocarla a mano.
+  // En optimista: primero la señal, luego el servidor, y si no sale bien se deshace. La casilla
+  // sigue a la señal en cada repintado, así que no hay que tocarla a mano; el motivo de un error
+  // que se queda en la página (`catches 409`) lo pinta la vista con `guardar.message()`.
   // Las dos reciben la persona de la fila pulsada: la tabla tiene un listener por evento en el
   // `<tbody>`, no uno por fila, y cada fila se marca con `delegate:p` para el evento que sirve.
-  // Lo que dijo el servidor cuando se queda un error en la página (`catches 409`): la vista lo pinta.
-  const motivo = signal("");
-
   async function activar(p: Person, e: Event) {
     const active = (e.target as HTMLInputElement).checked;
     marcar(p.id, active);
-    const r = await guardar.run({ id: p.id, active });
-    motivo.set(r.status === "failed" ? (r.error as Error).message : "");
-    if (r.status !== "done") marcar(p.id, !active);
+    const guardado = await guardar.run({ id: p.id, active });
+    if (!guardado.ok) {
+      marcar(p.id, !active);
+    }
   }
 
   async function borrar(p: Person) {
-    if ((await quitar.run({ id: p.id })).status === "done") personas.set(personas().filter((x) => x.id !== p.id));
+    const borrado = await quitar.run({ id: p.id });
+    if (borrado.ok) {
+      personas.set(personas().filter((x) => x.id !== p.id));
+    }
   }
 
   // Entrar y salir son dos funciones del servidor: ponen y quitan la cookie. Las dos nombran
@@ -183,8 +185,8 @@
       }
     </tbody>
   </table>
-  @if (motivo() !== "") {
-    <p role="alert">@motivo()</p>
+  @if (guardar.message() !== "") {
+    <p role="alert">@guardar.message()</p>
   }
   <p>
     La tabla usa un listener por evento en el <code>&lt;tbody&gt;</code>, tenga las filas que

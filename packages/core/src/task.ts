@@ -47,9 +47,9 @@ export interface TaskOptions<R> {
 }
 
 /**
- * The four reads are `Readable`s, derived values like a `computed`, and not methods: that is
+ * The reads are `Readable`s, derived values like a `computed`, and not methods: that is
  * what makes `@if (found.pending())` a portable view. On the server a task never calls, so
- * each of them is a constant there — `initial`, `'idle'`, `false`, `undefined` — which any
+ * each of them is a constant there — `initial`, `'idle'`, `false`, `undefined`, `''` — which any
  * backend can paint with.
  */
 export interface Task<A, R, V = R | undefined> {
@@ -61,6 +61,11 @@ export interface Task<A, R, V = R | undefined> {
   readonly pending: Readable<boolean>;
   /** What the last call that settled rejected with; `undefined` if it succeeded. Tracked. */
   readonly error: Readable<unknown>;
+  /**
+   * The text of `error()`, ready for the view: its `message`, or `''` when the last call that
+   * settled succeeded. `@if (save.message() !== "")` paints it with no cast. Tracked.
+   */
+  readonly message: Readable<string>;
   /** Starts a call. Resolves with the outcome of THIS call. Never rejects. */
   // `[A]` and not `A`: not distributed, so an `A` inferred `any` — an app without `strictNullChecks` — still
   // takes no argument when the function takes none.
@@ -71,15 +76,18 @@ export interface Task<A, R, V = R | undefined> {
 
 /** How one call of a task ended: what `run()` resolves with. */
 export type TaskResult<R> =
-  | { readonly status: 'done'; readonly value: R }
-  | { readonly status: 'failed'; readonly error: unknown }
-  | { readonly status: 'cancelled' };
+  | { readonly ok: true; readonly status: 'done'; readonly value: R }
+  | { readonly ok: false; readonly status: 'failed'; readonly error: unknown }
+  | { readonly ok: false; readonly status: 'cancelled' };
 
 /** How a call that was not dropped settled. */
 type Outcome<R> = Exclude<TaskResult<R>, { readonly status: 'cancelled' }>;
 
 // Pure, or the module has a side effect and the bundler splits the runtime out of its chunk.
-const CANCELLED: TaskResult<never> = /*#__PURE__*/ Object.freeze({ status: 'cancelled' });
+const CANCELLED: TaskResult<never> = /*#__PURE__*/ Object.freeze({ ok: false, status: 'cancelled' });
+
+/** What an error says: an `Error`'s `message`, anything else as text, and nothing for none. */
+const messageOf = (e: unknown): string => (e === undefined ? '' : e instanceof Error ? e.message : String(e));
 
 export function task<A, R>(fn: Callable<A, R>, source?: () => A): Task<A, R>;
 export function task<A, R>(
@@ -116,8 +124,8 @@ export function task<A, R>(
     return new Promise<R>((resolve) => {
       resolve(fn(args, { signal: controller.signal }));
     }).then(
-      (answer): Outcome<R> => ({ status: 'done', value: answer }),
-      (reason: unknown): Outcome<R> => ({ status: 'failed', error: reason }),
+      (answer): Outcome<R> => ({ ok: true, status: 'done', value: answer }),
+      (reason: unknown): Outcome<R> => ({ ok: false, status: 'failed', error: reason }),
     );
   };
 
@@ -223,6 +231,7 @@ export function task<A, R>(
     state: computed(() => state()),
     pending: computed(() => state() === 'pending'),
     error: computed(() => error()),
+    message: computed(() => messageOf(error())),
     run: (...args) => start(args[0] as A),
     cancel,
   };

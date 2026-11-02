@@ -5,16 +5,15 @@
 <link rel="server" href="./index.fudapi">
 
 @code {
-  import { signal, task } from '@fudic/core';
+  import { task } from '@fudic/core';
   import { t } from '@fudic/i18n';
 
-  // `reserve` declares `catches 409`: its error stays here, in the language of the page.
+  // `reserve` declares `catches 409`: its error stays here, and `reservar.message()` says it in
+  // the language of the page.
   const reservar = task(reserve);
-  const motivo = signal("");
 
   async function reservarPlaza() {
-    const r = await reservar.run();
-    motivo.set(r.status === "failed" ? (r.error as Error).message : "");
+    await reservar.run();
   }
 }
 
@@ -36,6 +35,6 @@
 </form>
 
 <button type="button" @click=@reservarPlaza>Reservar plaza</button>
-@if (motivo() !== "") {
-  <p role="alert">@motivo()</p>
+@if (reservar.message() !== "") {
+  <p role="alert">@reservar.message()</p>
 }

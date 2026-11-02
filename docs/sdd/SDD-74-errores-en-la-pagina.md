@@ -110,20 +110,26 @@ post save
 
 ```ts
 export type TaskResult<R> =
-  | { readonly status: 'done'; readonly value: R }
-  | { readonly status: 'failed'; readonly error: unknown }
-  | { readonly status: 'cancelled' };
+  | { readonly ok: true; readonly status: 'done'; readonly value: R }
+  | { readonly ok: false; readonly status: 'failed'; readonly error: unknown }
+  | { readonly ok: false; readonly status: 'cancelled' };
 
 export interface Task<A, R, V = R | undefined> {
   // value, state, pending, cancel: sin cambios.
   /** What the last call that settled rejected with; `undefined` if it succeeded. Tracked. */
   readonly error: Readable<unknown>;
+  /** The `message` of `error()`, or `''` when the last call that settled succeeded. Tracked. */
+  readonly message: Readable<string>;
   /** Starts a call. Resolves with the outcome of THIS call. Never rejects. */
   run(...args: A extends void ? [args?: A] : [args: A]): Promise<TaskResult<R>>;
 }
 ```
 
-- `TaskResult` se exporta desde `@fudic/core`.
+- `TaskResult` se exporta desde `@fudic/core`. `ok` es lo que lee el código: `if (guardado.ok)`
+  deja leer `guardado.value` ya tipado; `status` queda para quien distinga `failed` de `cancelled`.
+- `message()` es lo que lee la vista: `@if (guardar.message() !== "")`, sin cast ni señal propia.
+  *Decidido al implementar (Pedro, 2026-11-02):* la primera versión obligaba a comparar
+  `status === "done"` y a hacer `(r.error as Error).message` en la página.
 
 ---
 
@@ -194,8 +200,10 @@ export interface Task<A, R, V = R | undefined> {
   async function activar(p: Person, e: Event) {
     const active = (e.target as HTMLInputElement).checked;
     marcar(p.id, active);
-    const r = await guardar.run({ id: p.id, active });
-    if (r.status !== "done") marcar(p.id, !active);
+    const guardado = await guardar.run({ id: p.id, active });
+    if (!guardado.ok) {
+      marcar(p.id, !active);
+    }
   }
   ```
 
@@ -235,11 +243,9 @@ export interface Task<A, R, V = R | undefined> {
 - `src/server/usuarios.ts`: `save` rechaza desactivar a la persona `1` con `SaveFails.ana()`.
 - `usuarios.fud`:
   - `activar` como en §4.4; ni `input.checked` ni `.error() === undefined` en el `@code`;
-  - `borrar(p: Person)` usa `run()`: `if ((await quitar.run({ id: p.id })).status === "done") …`;
+  - `borrar(p: Person)` usa `run()`: `const borrado = await quitar.run({ id: p.id }); if (borrado.ok) { … }`;
   - la tabla sigue delegada como la deja SDD-72;
-  - bajo la tabla, `@if (motivo() !== "") { <p role="alert">@motivo()</p> }`: `activar` guarda en la
-    señal `motivo` el mensaje de `run()` cuando dice `failed` (la vista no admite `@if (guardar.error())`,
-    que no es un `boolean`, ni leer `.message` de un `unknown`);
+  - bajo la tabla, `@if (guardar.message() !== "") { <p role="alert">@guardar.message()</p> }`;
   - el texto de la página explica en una frase la regla: lo que la función pone en `catches` se
     queda en la página; lo demás va a `error-pages`.
 - `borrarNadie` se queda como está: su 404 no está en `catches` y enseña `error-pages`.
@@ -261,9 +267,10 @@ export interface Task<A, R, V = R | undefined> {
 5. **`errorPagesStep`.** Con `ctx.catches = [409]`, un `HttpError` 409 se relanza y no navega. Un
    404 navega a `_error.fud/404`. Un 409 con `ctx.catches = []` pero enviado por un form con
    `catches 409` se relanza.
-6. **`run()` por llamada.** Bien → `{ status: 'done', value }`; falla → `{ status: 'failed', error }`;
-   `cancel()` → `{ status: 'cancelled' }`; reemplazada en `latest` → `{ status: 'cancelled' }`.
-   `run()` nunca rechaza.
+6. **`run()` por llamada.** Bien → `{ ok: true, status: 'done', value }`; falla →
+   `{ ok: false, status: 'failed', error }`; `cancel()` y reemplazada en `latest` →
+   `{ ok: false, status: 'cancelled' }`. `run()` nunca rechaza. `message()` es el `message` del
+   error de la última llamada que terminó, o `''`.
 7. **La fila.** Tres llamadas en `queue`; la 2.ª falla y la 3.ª sigue en curso. El `run()` de la
    2.ª resuelve `failed`; en ese momento `error()` es su error y `state()` es `pending`. Al
    terminar la 3.ª bien, `error()` es `undefined` y `state()` es `done`.
