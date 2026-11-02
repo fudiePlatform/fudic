@@ -14,6 +14,7 @@ import { docsUrl, type Severity, type SourceDiagnostic } from '@fudic/diagnostic
 import type { LanguageServicePlugin, SemanticToken } from '@volar/language-service';
 import { DiagnosticSeverity, type Diagnostic as LspDiagnostic } from 'vscode-languageserver-protocol';
 import { SEMANTIC_TOKENS_LEGEND } from '../capabilities.js';
+import { explainActions } from '../services/actions.js';
 import type { RequestKind, RequestStats } from '../stats.js';
 import type { CancellationToken } from 'vscode-languageserver-protocol';
 import { pathToUri } from '../uri.js';
@@ -85,6 +86,7 @@ export function createFudapiService(deps: FudapiServiceContext): LanguageService
       diagnosticProvider: { interFileDependencies: true, workspaceDiagnostics: false },
       documentFormattingProvider: true,
       codeLensProvider: { resolveProvider: false },
+      codeActionProvider: { codeActionKinds: ['quickfix'] },
     },
 
     create(context) {
@@ -97,6 +99,15 @@ export function createFudapiService(deps: FudapiServiceContext): LanguageService
             const doc = apiDocumentOf(context, document, host);
             if (doc === undefined) return undefined;
             return generated.check(doc.path, doc.text, doc).map((d) => toLsp(doc, d, host));
+          });
+        },
+
+        provideCodeActions(document, range, _codeActionContext, token) {
+          return run('codeActions', token, () => {
+            const doc = apiDocumentOf(context, document, host);
+            if (doc === undefined) return undefined;
+            // Its own diagnostics, as the `.fud` does: the ones the client sends may be stale.
+            return explainActions(generated.check(doc.path, doc.text, doc), document.offsetAt(range.start), document.offsetAt(range.end));
           });
         },
 

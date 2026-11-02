@@ -37,6 +37,7 @@ import { nodeApiFs, type ApiFs } from './fudapi/fs.js';
 import { ApiHost } from './fudapi/host.js';
 import { API_MODULE_REQUEST, API_REGENERATE_REQUEST, API_TYPES_REQUEST, ApiGenerated } from './fudapi/generated.js';
 import { ImplementationIndex } from './fudapi/implementations.js';
+import { definitionsWithoutPreview } from './services/no-preview.js';
 import { createFudapiLanguagePlugin } from './fudapi/language-plugin.js';
 import { createFudapiService } from './fudapi/service.js';
 import { mountApiTypes } from './fudapi/types-mount.js';
@@ -297,7 +298,8 @@ export function createFudicServer(
       project = deps.createSimpleProject(languagePlugins);
     }
 
-    const result = server.initialize(params, project, readOnly(plugins));
+    // And no definition previews: every name already has a hover that says what it is (SDD-75).
+    const result = server.initialize(params, project, definitionsWithoutPreview(readOnly(plugins)));
     // §3.2 is a contract with the client, so it is declared rather than inferred from whichever
     // plugins happened to load: with no TypeScript the list must still say what a `.fud` supports.
     //

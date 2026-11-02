@@ -9,7 +9,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { emitModule } from '@fudic/api';
-import { CodeLensRequest, DefinitionRequest, type Location } from 'vscode-languageserver-protocol/node';
+import { CodeActionRequest, CodeLensRequest, DefinitionRequest, type CodeAction, type Location } from 'vscode-languageserver-protocol/node';
 import { URI } from 'vscode-uri';
 import { API_MODULE_REQUEST, API_REGENERATE_REQUEST, API_TYPES_REQUEST, NOTHING_GENERATED, type ModuleAnswer } from '../../src/fudapi/generated.js';
 import { uriToPath } from '../../src/uri.js';
@@ -79,6 +79,23 @@ describe('what a .fudapi generates (SDD-75)', () => {
     const target = uriToPath(URI.parse(links[0]!.uri));
     expect(target.endsWith('/.fudic/api/types/person.d.ts')).toBe(true);
     expect(readFileSync(target, 'utf8').split('\n')[links[0]!.range.start.line]).toContain('export interface Person');
+  });
+
+  it('a diagnostic has its light bulb, which opens its explanation, as in a .fud', async () => {
+    const text = 'type Person\n  name  Nope\n\n# nothing wrong here\n';
+    await harness.open('src/types/bulb.fudapi', text, 'fudapi');
+    const bulb = async (line: number, character: number): Promise<CodeAction[]> =>
+      ((await harness.client.sendRequest(CodeActionRequest.type, {
+        textDocument: { uri: harness.uriOf('src/types/bulb.fudapi') },
+        range: { start: { line, character }, end: { line, character } },
+        context: { diagnostics: [] },
+      })) ?? []) as CodeAction[];
+    const [explain, ...rest] = await bulb(1, 9);
+    expect(rest).toEqual([]);
+    expect(explain!.title).toMatch(/^Explain FUD\d{4}$/u);
+    expect(explain!.command?.command).toBe('fudic.explain');
+    expect(String(explain!.command?.arguments?.[0])).toMatch(/FUD\d{4}\.md$/u);
+    expect(await bulb(3, 0)).toEqual([]);
   });
 
   it('criterion 8: Types is .fudic/api/<id>.d.ts, written again when it was deleted', async () => {

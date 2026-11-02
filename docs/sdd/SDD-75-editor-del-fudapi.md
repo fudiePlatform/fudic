@@ -96,6 +96,12 @@ middleware, pipe):
 tienen, no sale lente. Lo mismo con Ctrl+Click en el nombre de cualquier declaración
 (`type Person`, `post save`): abre lo que genera, en vez de apuntar a sí misma.
 
+*Arreglado al implementar (Pedro, 2026-11-02):* un diagnóstico de un `.fudapi` o de un `.fudspec`
+tiene su bombilla `Explain FUDnnnn`, que abre su `.md`, como en un `.fud`. Y al pulsar Ctrl sobre
+un nombre, la tarjeta ya no repite la declaración: VS Code añadía al hover la vista previa de la
+definición, y el servidor la deja vacía (en `.fud`, `.fudspec` y `.fudapi`, para un cliente con
+enlaces), sin cambiar adónde lleva el Ctrl+Click.
+
 ### 3.3. Comandos de VS Code
 
 `fudic.api.showTypes`, `fudic.api.showServer`, `fudic.api.showBrowser`, `fudic.api.regenerate` y

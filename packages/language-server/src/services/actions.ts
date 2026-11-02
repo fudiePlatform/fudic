@@ -19,7 +19,7 @@
 import type { CodeAction, CreateFile, Position, Range, TextDocumentEdit } from '@volar/language-service';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 import { CONTROL_NAME, span, type Diagnostic, type RouteDocument, type Span } from '@fudic/compiler';
-import type { FudCode } from '@fudic/diagnostics';
+import type { FudCode, SourceDiagnostic } from '@fudic/diagnostics';
 import { explanationFile } from '@fudic/diagnostics/explain';
 import { URI } from 'vscode-uri';
 import type { CachedDocument } from '../document-cache.js';
@@ -540,7 +540,7 @@ export const EXPLAIN_COMMAND = 'fudic.explain';
  * answer — its own `src/codes/` in the workspace, `codes/` beside the bundled server in the
  * `.vsix`, where the extension's build copies them.
  */
-function explainAction(code: FudCode): CodeAction {
+export function explainAction(code: FudCode): CodeAction {
   const title = `Explain ${code}`;
   return {
     title,
@@ -615,3 +615,12 @@ export function codeActions(deps: ActionDeps): CodeAction[] {
 
 /** Which diagnostic codes have a bulb today. Read by the test that guards the table. */
 export const REPAIRED_CODES: readonly string[] = [...REPAIRS.keys()];
+
+/**
+ * "Explain FUDnnnn" for each code of `diagnostics` whose span meets `[start, end]`, once per code:
+ * what a `.fudapi` and a `.fudspec` offer, as a `.fud` does (SDD-75).
+ */
+export function explainActions(diagnostics: readonly SourceDiagnostic[], start: number, end: number): CodeAction[] {
+  const codes = diagnostics.filter((d) => d.span.start <= end && start <= d.span.end).map((d) => d.code);
+  return [...new Set(codes)].map(explainAction);
+}
