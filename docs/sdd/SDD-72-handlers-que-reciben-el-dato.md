@@ -11,7 +11,9 @@
 > TypeScript, en el sitio donde el autor se equivoca.
 > **Decisiones de gramática:** 173 (enmienda la 98), 176 (enmienda la 117), 177 (enmienda la 118).
 > **Origen:** conversación con Pedro del 2026-10-29, sobre `user-form.fud`, `usuarios.fud` y el bus
-> de `hidratacion.fud`. **Ampliada el 2026-11-01** (§3.4, §3.5, §4.7, §4.8, criterios 31–43): un
+> de `hidratacion.fud`. **Ampliada el 2026-11-02** (§3.4.b, criterios 44–45): la fila vale dentro de
+> cualquier argumento del handler (`@borrar(p.id, p.name)`), con una marca por variable.
+> **Ampliada el 2026-11-01** (§3.4, §3.5, §4.7, §4.8, criterios 31–43): un
 > evento dentro de un bucle avisa y sugiere delegar, el marcador dice a qué eventos sirve, la fila
 > se lee por su nombre sin `$` (`@borrar(p)`), y la tabla de `usuarios.fud` pasa a delegación.
 > **Rama sugerida:** `sdd-72-handlers-que-reciben-el-dato`
@@ -212,6 +214,24 @@ receptores del mismo nombre se sumen en vez de chocar (TS2717).
 
 - En los argumentos de un handler, un nombre suelto que coincide con un `delegate:<nombre>` de un
   descendiente es la fila de ese bucle: `@borrar(p)`, no `@borrar($p)`. `$event` no cambia.
+- **La fila vale dentro de cualquier argumento** (Pedro, 2026-11-02). No hace falta pasar la
+  persona entera: `@borrar(p.id, p.name)` llama a `function borrar(id: number, name: string)` con
+  el id y el nombre de la fila pulsada. Vale cualquier expresión que use la fila (`p.id`,
+  `` `${p.name}!` ``, `p.tags.length`); se evalúa al disparar el evento, con la fila de ese clic.
+  Un nombre de propiedad no cuenta: en `x.p` o `{ p: 1 }`, esa `p` no es la fila.
+- **Varias variables, una marca por cada una.** La marca solo dice qué variable de la fila se
+  comparte; lo que se pasa a la función se escribe en el handler:
+
+  ```html
+  <tbody @click=@borrar(p.id, p.name, i)>
+    @foreach (const [i, p] of personas().entries()) {
+      <tr><td><button delegate:p="click" delegate:i="click">Borrar</button></td></tr>
+    }
+  </tbody>
+  ```
+
+  Un valor fijo no es de la fila y no se delega: se escribe en el handler, `@borrar(p.id, 123)`.
+  La marca no lleva expresiones: `delegate:p.id` o `delegate:p,123` no existen.
 - Lo demás de la delegación sigue igual: el emparejamiento por nombre (119, ahora por evento), el
   handler que no se llama fuera de una fila (120) y el marcador sin rastro en el DOM (121).
 - **Choque de nombres.** Si en el sitio del handler ya hay algo que se llama igual (un nombre del
@@ -228,7 +248,7 @@ receptores del mismo nombre se sumen en vez de chocar (TS2717).
 | Código | Severidad | Cuándo | Mensaje |
 |---|---|---|---|
 | `FUD1380` | warning | Un `@evento` en un elemento dentro del cuerpo de un `@foreach`, `@for` o `@while`, a cualquier profundidad dentro de la misma plantilla. Span: el nombre del atributo. | ``an `@<evento>` inside a loop adds one listener per item. Delegate it: put the handler on an element outside the loop, pass it `<nombre>`, and mark this element with `delegate:<nombre>` `` |
-| `FUD1381` | error | Un evento de la lista de un marcador para el que ningún ancestro tiene un handler de ese evento que lea `$<nombre>`. Span: el valor del atributo. | ``no ancestor `@<evento>` reads `<nombre>`: this marker serves an event nobody listens to`` |
+| `FUD1381` | error | Un evento de la lista de un marcador para el que ningún ancestro tiene un handler de ese evento que lea `<nombre>`. Span: el valor del atributo. | ``no ancestor `@<evento>` reads `<nombre>`: this marker serves an event nobody listens to`` |
 | `FUD1382` | error | Un nombre de fila delegada que también existe en el sitio del handler. Span: el nombre en el handler. | ``` `<nombre>` is both the delegated row and a name in scope here: rename the loop binding or the variable``` |
 | `FUD1383` | error | `$<nombre>` en un handler. Span: el `$<nombre>`. | ``a delegated row is read by its name: write `<nombre>`, not `$<nombre>` `` |
 | `FUD0667` | error | Cambia: solo salta con un valor que no es un texto literal (`delegate:p=@x`) o con un texto vacío. | ``a `delegate:` marker takes no value, or the names of the events it serves: `delegate:<nombre>="click"` `` |
@@ -523,6 +543,14 @@ ejemplo pasa a la forma nueva:
     el `day` del handler. Igual con un bucle exterior que declara `day`.
 43. **`FUD1383`.** `@pick($day)` da el error con el arreglo; el calendario de `/delegacion` y su
     fixture, migrados, compilan limpios.
+44. **La fila dentro de un argumento.** `<tbody @click=@borrar(p.id, p.name)>` con
+    `delegate:p="click"` en el botón: un clic en el botón de una fila llama a `borrar` con el `id`
+    y el `name` de esa fila; `function borrar(id: number, name: string)` comprueba limpio, y con
+    `(id: string, …)` sale el error de TypeScript. En `@f(x.p)` y `@f({ p: 1 })`, esa `p` no es la
+    fila.
+45. **Varias marcas.** Con `@foreach (const [i, p] of …)`, `delegate:p="click" delegate:i="click"`
+    y `@borrar(p.id, i)`, el clic llama a `borrar` con el `id` y el índice de su fila. Con
+    `@borrar(p.id, 123)`, el `123` llega tal cual.
 
 ## 7. Fuera de alcance
 
@@ -585,3 +613,8 @@ ejemplo pasa a la forma nueva:
     `new CustomEvent(…)` de `app-eventos.fud` (eventos de componente, §7), el `detail` del
     problema en `_error.fud` y la etiqueta `<details>`. Ningún handler de `fudic:result`,
     `fudic:error` ni `bus:` lee ya `detail` ni tipa un `CustomEvent`.
+14. **La fila vale dentro de un argumento, y una marca por variable** (Pedro, 2026-11-02; amplía
+    §3.4.b y la decisión 177, criterios 44–45). SDD-37 solo aceptaba la fila suelta como
+    argumento, y `$p.id` era `FUD0666`. Ahora la fila se lee en cualquier parte de los argumentos,
+    porque el envoltorio del emit ya tiene la fila a mano antes de llamar: `p.id` se emite como
+    `$z0().id`. La marca sigue nombrando solo la variable; lo demás va en el handler.

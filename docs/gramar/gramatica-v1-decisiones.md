@@ -1381,8 +1381,12 @@ de muchas filas con un listener por fila no escala (Pedro, 2026-11-01).*
 **177.** **La fila delegada se lee sin `$`** (SDD-72 §3.4.b). Enmienda la 118: en los argumentos de un
 handler, un nombre suelto que coincide con un `delegate:<nombre>` de un descendiente es esa fila,
 con su tipo: `@borrar(p)`. `$p` pasa a ser `FUD1383`. Si el nombre también existe en el sitio del
-handler, `FUD1382`: se renombra, no se adivina. `$event` no cambia. *Por qué: «ya tenemos bastantes
-dólares» (Pedro, 2026-11-01).*
+handler, `FUD1382`: se renombra, no se adivina. `$event` no cambia. La fila no tiene que ir suelta:
+vale dentro de cualquier argumento (`@borrar(p.id, p.name)`), y se leen tantas filas como marcas
+(`delegate:p delegate:i` → `@borrar(p.id, i)`). La marca nombra la variable; lo que se pasa se
+escribe en el handler, y un valor fijo no se delega (`@borrar(p.id, 123)`). *Por qué: «ya tenemos
+bastantes dólares» (Pedro, 2026-11-01); y pasar a la función solo los datos que necesita, no la fila
+entera (Pedro, 2026-11-02).*
 
 ### Gramática de referencia
 
@@ -1658,8 +1662,8 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 114 | Interpolación | `control` dentro de un bucle → error (`FUD0594`), hermana de la 31 |
 | 115 | Interpolación | Un `control` necesita un `<form control>` por encima (`FUD0595`); exento el control-componente, cuyo nodo se comprueba en el fichero del padre (BUG-25) |
 | 116 | Control flujo | `@{ ... }` corre **en su sitio**, en las dos ramas y en las tres pasadas del cliente; y un nombre que el cuerpo de un bloque **asigna** va por closure, no por parámetro. Es lo que hace escribible el `@while` de la 91 (BUG-28) |
-| 117 | Interpolación | Prefijo `delegate:nombre` — marcador sin valor, solo en cuerpo de bucle, `nombre` de la cabecera |
-| 118 | Interpolación | `$nombre` lo inyecta el compilador (reserva `$`, hermana de la 97); solo en la lista de argumentos de un event binding |
+| 117 | Interpolación | Prefijo `delegate:nombre` — marcador sin valor, solo en cuerpo de bucle, `nombre` de la cabecera (enmendada por la 176) |
+| 118 | Interpolación | `$nombre` lo inyecta el compilador (reserva `$`, hermana de la 97); solo en la lista de argumentos de un event binding (enmendada por la 177) |
 | 119 | Interpolación | La unión es por **nombre**: `$day` ↔ `delegate:day`, ancestro más cercano que lo mencione |
 | 120 | Interpolación | Un handler con `$nombre` no se invoca si el evento no nace bajo un marcador; sin `$nombre`, listener normal |
 | 121 | Interpolación | `delegate:` no deja rastro en el DOM (ni atributo, ni índice) |
@@ -1706,4 +1710,4 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 174 | `.fudapi` | `catches <status>+` en una función: ese error llega a quien llamó, no a `error-pages`; con un form, la unión (SDD-74) |
 | 175 | `.fudapi` | `fails` solo en reglas y middlewares; en una función o `load`, `FUD1360` (SDD-74) |
 | 176 | Interpolación | `delegate:nombre="click change"`: el marcador sirve solo a esos eventos; sin valor, a todos. Un `@evento` en un bucle avisa (`FUD1380`). Enmienda la 117 (SDD-72) |
-| 177 | Interpolación | La fila delegada se lee sin `$`: `@borrar(p)`; `$p` es `FUD1383` y un nombre que choca, `FUD1382`. Enmienda la 118 (SDD-72) |
+| 177 | Interpolación | La fila delegada se lee sin `$`, suelta o dentro de un argumento: `@borrar(p)`, `@borrar(p.id, i)`; `$p` es `FUD1383` y un nombre que choca, `FUD1382`. Enmienda la 118 (SDD-72) |
