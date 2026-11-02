@@ -1,6 +1,6 @@
 # SDD-72 — Los handlers reciben el dato: `fudic:result`, `fudic:error` y el bus, tipados y sin `detail`
 
-> **Estado:** `Listo` — [tareas](./SDD-72-Task.md).
+> **Estado:** `Hecho` (2026-11-02) — [tareas](./SDD-72-Task.md).
 > **Paquetes:** `@fudic/compiler` · `@fudic/language-core` · `@fudic/dom` · `@fudic/forms` ·
 > `@fudic/typecheck` · `@fudic/diagnostics` · `examples/basic`
 > **Depende de:** 15 (el emit de los event bindings y del `bus:`), 23 (la proyección TS de la

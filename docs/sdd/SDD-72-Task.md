@@ -5,7 +5,7 @@
 > `@fudic/typecheck` · `examples/basic`
 > **Rama:** `sdd-72-handlers-que-reciben-el-dato`. Nace de `main` **con SDD-68 en `Hecho`**: el
 > ejemplo `usuarios` que se migra es el de la 68.
-> **Progreso:** 18 / 22 — `En curso`. Ampliada el 2026-11-01 con la fase 5 (la delegación).
+> **Progreso:** 22 / 22 — `Hecho` (2026-11-02). Ampliada el 2026-11-01 con la fase 5 (la delegación).
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -76,8 +76,8 @@ código, no el test.
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 14 | 5, 8, 13 | **La migración.** `user-form`, `usuarios`, `shopping-cart`, `bus-log` en `examples/basic` y `x-alias.fud` de `@fudic/testing` a la forma nueva (SDD §4.6); `app-actions.fud` se queda con la llamada | `examples/*` · fixtures | `examples/basic/src/**` · `packages/testing/test/app/**` |
-| [ ] | 15 | 14 | **Los tests del ejemplo y la prueba en navegador.** Criterios 27–29; el 28 en `dev` y en `preview` | `examples/basic` | `src/**/*.test.ts` · `tests/**` |
-| [ ] | 16 | 15, 21 | **README, entrega y cierre.** Los README de `@fudic/dom` y de `@fudic/forms` con la forma nueva, y el del compilador con `delegate:p="click"` y `FUD1380`; criterio 30; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; SDD-72 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `docs/sdd/*` · `packages/*/README.md` |
+| [x] | 15 | 14 | **Los tests del ejemplo y la prueba en navegador.** Criterios 27–29; el 28 en `dev` y en `preview` | `examples/basic` | `src/**/*.test.ts` · `tests/**` |
+| [x] | 16 | 15, 21 | **README, entrega y cierre.** Los README de `@fudic/dom` y de `@fudic/forms` con la forma nueva, y el del compilador con `delegate:p="click"` y `FUD1380`; criterio 30; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; SDD-72 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `docs/sdd/*` · `packages/*/README.md` |
 
 ## Fase 5 — la delegación (6)
 
@@ -89,5 +89,5 @@ Ampliación del 2026-11-01. Va antes del cierre (tarea 16).
 | [x] | 18 | 17 | **El aviso.** Analizador `event-in-loop`, como `ref-in-loop`; el binding de la cabecera en el mensaje; sin aviso para los eventos sin sustituto de `NON_BUBBLING`, con sustituto en el texto para los que lo tienen (SDD §3.5, §4.7) | `compiler` | `src/semantic/analyzers/event-in-loop.ts` · `src/semantic/analyze.ts` |
 | [x] | 19 | 17 | **El marcador con eventos.** El editor completa el valor con los eventos que lo leen, sin `@` (SDD §4.7, criterio 46; `eventsReadingRow` + `language-server/src/services/delegate.ts`). `planDelegation` lee el valor literal, empareja por nombre y evento, da `FUD1381`; el emit hace las tablas por nombre y evento; la proyección sigue tipando `$p` (SDD §3.4, §4.7) | `compiler` · `language-core` | `src/semantic/delegation.ts` · `src/emit/**` · `src/template/attrs.ts` |
 | [x] | 22 | 19 | **La fila sin `$`.** `planDelegation` reconoce el nombre de la fila suelto o dentro de cualquier argumento (`@borrar(p.id, p.name)`, una marca por variable: `delegate:p delegate:i` → `@borrar(p.id, i)`; SDD §8.1.14), da `FUD1382` y `FUD1383`; la proyección deja de declarar `$p`; se migran `app-calendar.fud` (ejemplo y fixture), el texto de `delegacion.fud` y los tests de SDD-37 (SDD §3.4.b) | `compiler` · `language-core` · `examples/basic` | `src/semantic/delegation.ts` · `src/template/attrs.ts` · `fixtures/app-calendar.fud` |
-| [ ] | 20 | 18, 22 | **Los tests de la fase.** Criterios 31–39, 41–46 (el 46, el completado del valor del marcador, por el plugin del language server) | `compiler` · `language-core` · `language-server` | `test/**` |
-| [ ] | 21 | 14, 20 | **`usuarios.fud` delegado.** La tabla como en SDD §3.4; `activar(p: Person, e)` y `borrar(p: Person)`; el resto de `examples/basic` sin `FUD1380` salvo `app-calendar-plain.fud`; criterio 40 con el contador de listeners, en `dev` y en `preview` (SDD §4.8) | `examples/basic` | `src/routes/usuarios.fud` · `src/**` |
+| [x] | 20 | 18, 22 | **Los tests de la fase.** Criterios 31–39, 41–46 (el 46, el completado del valor del marcador, por el plugin del language server) | `compiler` · `language-core` · `language-server` | `test/**` |
+| [x] | 21 | 14, 20 | **`usuarios.fud` delegado.** La tabla como en SDD §3.4; `activar(p: Person, e)` y `borrar(p: Person)`; el resto de `examples/basic` sin `FUD1380` salvo `app-calendar-plain.fud`; criterio 40 con el contador de listeners, en `dev` y en `preview` (SDD §4.8) | `examples/basic` | `src/routes/usuarios.fud` · `src/**` |

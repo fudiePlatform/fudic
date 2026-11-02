@@ -25,7 +25,6 @@
   }
 
   EventTarget.prototype.addEventListener = function () {
-    console.log(this);
     n.add += 1;
     paint();
     return add.apply(this, arguments);
