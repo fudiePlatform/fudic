@@ -278,6 +278,12 @@ export class ApiHost {
     return target;
   }
 
+  /** The types of the `.fudapi` at `path` and their text, as `typesOf` leaves them on disk: none on a disk that refuses them. */
+  typesText(path: string): { readonly path: string; readonly text: string } {
+    const target = this.typesOf(path);
+    return { path: target, text: this.#deps.fs.readFile(target) ?? '' };
+  }
+
   /**
    * Writes again the types of the `.fudapi` at `path` and of every one whose types import it,
    * whether they changed or not (SDD-75 §3.2, `Regenerate`): the way back after a branch switch

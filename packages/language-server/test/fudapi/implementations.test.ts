@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { ImplementationIndex, implementationsIn } from '../../src/fudapi/implementations.js';
-import { implementationLenses } from '../../src/fudapi/lenses.js';
+import { implementationLenses, typeLenses } from '../../src/fudapi/lenses.js';
 import { APP, FILES, SRC, apiDocument, apiFs, world } from './_api.js';
 
 const found = (text: string, file = 'a.ts') => implementationsIn(file, text).map((i) => `${i.id}:${i.name}.${i.method}`);
@@ -128,6 +128,41 @@ describe('where a contract is implemented, by the host', () => {
       const { host } = world({ files: { [`${LIB}/package.json`]: pkg, [`${LIB}/fudapi/rules.fudapi`]: RULE }, roots: ['/ws'] });
       expect(apiDocument(host, RULE, `${LIB}/fudapi/rules.fudapi`).source.id).toBe('rules');
     }
+  });
+});
+
+describe('typeLenses', () => {
+  const PATH = `${SRC}/routes/blog.fudapi`;
+  const TEXT = 'type Person\n  name  str\nenum Role\n  a\npattern email "x"\nget find\n  id  i32\n';
+
+  it('over each type, enum, form and pattern, what it generates, and a click to it in the types', () => {
+    const { host } = world({ files: { ...FILES, [PATH]: TEXT } });
+    const doc = apiDocument(host, TEXT, PATH);
+    const types = host.typesText(PATH);
+    const lenses = typeLenses(doc, types);
+    expect(lenses.map((l) => [l.range.start.line, l.command!.title])).toEqual([
+      [0, 'interface Person'],
+      [2, 'type Role'],
+      [4, 'const email'],
+    ]);
+    const [file, range] = lenses[0]!.command!.arguments as [string, { start: { line: number; character: number } }];
+    expect(file).toBe(types.path);
+    expect(types.text.split('\n')[range.start.line]!.slice(range.start.character)).toMatch(/^interface Person\b/u);
+  });
+
+  it('a form, in its own file, by the name it is exported with', () => {
+    const path = `${SRC}/forms/person.fudapi`;
+    const text = 'form personForm\n  a  str\n';
+    const { host } = world({ files: { ...FILES, [path]: text } });
+    expect(typeLenses(apiDocument(host, text, path), host.typesText(path)).map((l) => l.command!.title)).toEqual(['const personForm']);
+  });
+
+  it('nothing over a declaration the types do not have, as on a disk that refuses them', () => {
+    const { host, fs } = world({ files: { ...FILES, [PATH]: TEXT } });
+    fs.writeFile = () => undefined;
+    const types = host.typesText(PATH);
+    expect(types.text).toBe('');
+    expect(typeLenses(apiDocument(host, TEXT, PATH), types)).toEqual([]);
   });
 });
 

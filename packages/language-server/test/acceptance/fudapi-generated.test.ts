@@ -59,8 +59,14 @@ describe('what a .fudapi generates (SDD-75)', () => {
       [0, 'Server', 'fudic.api.showServer'],
       [0, 'Browser', 'fudic.api.showBrowser'],
       [0, 'Regenerate', 'fudic.api.regenerate'],
+      // And over `type Person`, its interface in the types (added at implementation).
+      [0, 'interface Person', 'fudic.api.goToImplementation'],
     ]);
     expect(lenses[0]!.command!.arguments).toEqual([harness.uriOf(PERSON)]);
+    const [types, range] = lenses[4]!.command!.arguments as [string, unknown];
+    expect(types.endsWith('/.fudic/api/types/person.d.ts')).toBe(true);
+    const line = readFileSync(types, 'utf8').split('\n')[(range as { start: { line: number } }).start.line]!;
+    expect(line).toContain('export interface Person');
   });
 
   it('criterion 8: Types is .fudic/api/<id>.d.ts, written again when it was deleted', async () => {

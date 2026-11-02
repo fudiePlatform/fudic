@@ -90,6 +90,11 @@ middleware, pipe):
 | Dos o más | Una lente por fichero. El error de duplicado lo sigue dando el build. |
 | Middleware | Una lente por mitad: `client: src/browser/auth.ts` · `server: not implemented`. |
 
+**Encima de cada `type`, `enum`, `form` y `pattern`** (*añadido al implementar, Pedro,
+2026-11-02*): lo que genera en los tipos del fichero — `interface Person`, `type Role`,
+`const personForm` — y el clic lleva a esa línea de `.fudic/api/<id>.d.ts`. Si los tipos no la
+tienen, no sale lente.
+
 ### 3.3. Comandos de VS Code
 
 `fudic.api.showTypes`, `fudic.api.showServer`, `fudic.api.showBrowser`, `fudic.api.regenerate` y

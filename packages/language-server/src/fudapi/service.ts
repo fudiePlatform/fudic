@@ -22,7 +22,7 @@ import { apiDocumentOf, rangeOf, type ApiDocument } from './document.js';
 import type { ApiHost } from './host.js';
 import type { ImplementationIndex } from './implementations.js';
 import type { ApiGenerated } from './generated.js';
-import { generatedLenses, implementationLenses } from './lenses.js';
+import { generatedLenses, implementationLenses, typeLenses } from './lenses.js';
 import { catchesHover } from './catches-hover.js';
 import { loadHover } from './load-line.js';
 import { apiDefinition, apiHover } from './navigation.js';
@@ -140,7 +140,11 @@ export function createFudapiService(deps: FudapiServiceContext): LanguageService
             const doc = apiDocumentOf(context, document, host);
             if (doc === undefined) return undefined;
             const project = host.projectOf(doc.path);
-            return [...generatedLenses(doc), ...implementationLenses(doc, project, implementations.of(host.implementationFolders(doc.path), doc.source.id))];
+            return [
+              ...generatedLenses(doc),
+              ...implementationLenses(doc, project, implementations.of(host.implementationFolders(doc.path), doc.source.id)),
+              ...typeLenses(doc, host.typesText(doc.path)),
+            ];
           });
         },
 

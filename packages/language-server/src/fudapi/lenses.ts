@@ -4,7 +4,7 @@
  * of a middleware.
  */
 
-import { exportedName, type Decl } from '@fudic/api';
+import { exportedName, type Decl, type EnumDecl, type FormDecl, type PatternDecl, type TypeDecl } from '@fudic/api';
 import type { CodeLens } from 'vscode-languageserver-protocol';
 import { rangeOf, type ApiDocument } from './document.js';
 import type { Implementation, ImplementationMethod } from './implementations.js';
@@ -28,6 +28,32 @@ export function generatedLenses(doc: ApiDocument): CodeLens[] {
     lens('Browser', API_COMMANDS.showBrowser),
     lens('Regenerate', API_COMMANDS.regenerate),
   ];
+}
+
+/** The declarations nobody implements: what they are is what they generate. */
+const generates = (decl: Decl): decl is TypeDecl | EnumDecl | FormDecl | PatternDecl =>
+  decl.kind === 'type' || decl.kind === 'enum' || decl.kind === 'form' || decl.kind === 'pattern';
+
+/**
+ * Over each type, enum, form and pattern, what it generates in the types of the file —
+ * `interface Person`, `type Role`, `const personForm` — and a click to it there (Pedro,
+ * 2026-11-02). Nothing over one the types do not have.
+ */
+export function typeLenses(doc: ApiDocument, types: { readonly path: string; readonly text: string }): CodeLens[] {
+  const lenses: CodeLens[] = [];
+  for (const decl of doc.source.file.declarations) {
+    if (!generates(decl)) continue;
+    const name = exportedName(decl.name.text);
+    const found = new RegExp(`export (interface|type|const) ${name}\\b`, 'u').exec(types.text);
+    if (found === null) continue;
+    const start = found.index + 'export '.length;
+    const at = rangeOf(types.path, types.text, { start, end: start + found[0].length - 'export '.length });
+    lenses.push({
+      range: rangeOf(doc.path, doc.text, { start: decl.span.start, end: decl.span.start }),
+      command: { title: `${found[1]} ${name}`, command: API_COMMANDS.goToImplementation, arguments: [types.path, at] },
+    });
+  }
+  return lenses;
 }
 
 /** What a declaration is implemented by: the name its module exports and the methods called on it. */
