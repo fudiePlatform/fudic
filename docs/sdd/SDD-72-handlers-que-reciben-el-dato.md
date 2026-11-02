@@ -569,3 +569,7 @@ ejemplo pasa a la forma nueva:
 9. **El marcador dice a qué eventos sirve.** Sin eso, una fila con una casilla y un botón no se
    puede delegar: el `click` de la casilla llegaría al handler de borrar. La alternativa de que el
    handler mirase `$event.target` a mano se descartó: deja la regla en cada página.
+10. **`$FudicEvents` conserva sus dos nombres** (al implementar, corrige §4.2). Un binding ya
+    escrito de `fudic:result` o `fudic:error` no pasa por `$on`, como dice §4.2. Pero un nombre a
+    medio escribir (`@fudic:r`) sí, y esa lista es la que lo autocompleta y la que subraya
+    `@fudic:resul`. Quitar las entradas rompía las dos cosas sin ganar nada.

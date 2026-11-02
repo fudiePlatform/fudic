@@ -5,7 +5,7 @@
 > `@fudic/typecheck` · `examples/basic`
 > **Rama:** `sdd-72-handlers-que-reciben-el-dato`. Nace de `main` **con SDD-68 en `Hecho`**: el
 > ejemplo `usuarios` que se migra es el de la 68.
-> **Progreso:** 4 / 22 — `En curso`. Ampliada el 2026-11-01 con la fase 5 (la delegación).
+> **Progreso:** 6 / 22 — `En curso`. Ampliada el 2026-11-01 con la fase 5 (la delegación).
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -57,8 +57,8 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 6 | — | **Los tipos.** `$Result`, `$onResult`, `$onResultEvent`, `$onError`, `$onErrorEvent` en `GLOBALS_DTS`; `$FudicEvents` pierde sus dos entradas (SDD §4.2) | `language-core` | `src/globals.ts` |
-| [ ] | 7 | 6 | **La proyección.** `@fudic:result` busca el `form:=` del mismo elemento y lo copia como andamiaje sin mapear; `$onResult` para referencia y lambda, `$onResultEvent` para llamada; `fudic:error`, igual con `$onError`/`$onErrorEvent`. El error de TS cae sobre el valor del atributo | `language-core` | `src/template/attrs.ts` |
+| [x] | 6 | — | **Los tipos.** `$Result`, `$onResult`, `$onResultEvent`, `$onError`, `$onErrorEvent` en `GLOBALS_DTS`; `$FudicEvents` pierde sus dos entradas (SDD §4.2) | `language-core` | `src/globals.ts` |
+| [x] | 7 | 6 | **La proyección.** `@fudic:result` busca el `form:=` del mismo elemento y lo copia como andamiaje sin mapear; `$onResult` para referencia y lambda, `$onResultEvent` para llamada; `fudic:error`, igual con `$onError`/`$onErrorEvent`. El error de TS cae sobre el valor del atributo | `language-core` | `src/template/attrs.ts` |
 | [ ] | 8 | 6, 7 | **Los tests de la fase.** Criterios 10–16, en `language-core` (proyección) y en `language-server` (diagnóstico, hover y definición) | `language-core` · `language-server` | `test/**` |
 
 ## Fase 3 — el editor: el bus (5)

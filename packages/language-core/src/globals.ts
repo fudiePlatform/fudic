@@ -183,6 +183,10 @@ declare function $spreadAttrs(o: object | null | undefined): void;
 /**
  * The events a bound \`<form>\` announces once it is sent with \`form:=@save\`: what the server
  * function returned, or the error the form did not keep. They bubble, so any ancestor may listen.
+ *
+ * A finished binding of either goes through \`$onResult\`/\`$onError\` below, never \`$on\`. They
+ * stay in this map for the NAME alone: \`@fudic:r\` is still being written, reaches \`$on\`, and
+ * this is the list its completion and its misspelling are answered from.
  */
 interface $FudicEvents {
   'fudic:result': CustomEvent<unknown>;
@@ -191,6 +195,16 @@ interface $FudicEvents {
 type $Events = HTMLElementEventMap & $FudicEvents;
 declare function $on<K extends keyof $Events>(
   type: K, h: (ev: $Events[K]) => unknown): void;
+/**
+ * \`@fudic:result\` and \`@fudic:error\`: a reference or a lambda receives the DATUM, a call gets
+ * \`$event\` (decision 173). \`fn\` is the \`form:=\` of the same element, or \`undefined\` — an
+ * ancestor does not know which form announced, so its value is \`unknown\`.
+ */
+type $Result<F> = F extends (...a: never[]) => infer R ? Awaited<R> : unknown;
+declare function $onResult<F>(fn: F, h: (value: $Result<F>) => unknown): void;
+declare function $onResultEvent<F>(fn: F, h: (ev: CustomEvent<$Result<F>>) => unknown): void;
+declare function $onError(h: (error: Error) => unknown): void;
+declare function $onErrorEvent(h: (ev: CustomEvent<Error>) => unknown): void;
 declare function $section<T extends string>(name: T): void;
 declare function $cls(v: boolean): void;
 declare function $sty(v: string): void;
