@@ -1608,6 +1608,7 @@ exports[`the canonical files (criterion 1) > usuarios has no diagnostics and the
           },
         },
       ],
+      "fails": [],
       "invalidates": [],
       "kind": "fn",
       "name": {
@@ -1677,6 +1678,7 @@ exports[`the canonical files (criterion 1) > usuarios has no diagnostics and the
           },
         },
       ],
+      "fails": [],
       "invalidates": [],
       "kind": "fn",
       "name": {

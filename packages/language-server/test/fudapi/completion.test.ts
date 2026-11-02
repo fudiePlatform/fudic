@@ -45,7 +45,7 @@ describe('completion (criterion 28)', () => {
 
   describe('the first word of an indented line', () => {
     it('what its parent takes', () => {
-      expect(labels('get f\n  |')).toEqual(['use', 'skip', 'form', 'invalidates', 'compress', 'catches', 'query', '->']);
+      expect(labels('get f\n  |')).toEqual(['use', 'skip', 'form', 'invalidates', 'compress', 'catches', 'fails', 'query', '->']);
       expect(labels('load\n  |')).toEqual(['use', 'skip']);
       expect(labels('chain\n  |')).toEqual(['use', 'skip', 'compress']);
       expect(labels('type A\n  |')).toEqual([]);
@@ -204,11 +204,11 @@ describe('completion (criterion 28)', () => {
     });
   });
 
-  describe('SDD-74 criterion 11: `catches` in a function, `fails` only in a rule and a middleware', () => {
-    it.each(['get', 'post', 'put', 'patch', 'delete'])('under %s: `catches` and never `fails`', (verb) => {
+  describe('SDD-74 criterion 11: `catches` and `fails` in a function, neither in `load`', () => {
+    it.each(['get', 'post', 'put', 'patch', 'delete'])('under %s: `catches` and `fails`', (verb) => {
       const found = labels(`${verb} f\n  |`)!;
       expect(found).toContain('catches');
-      expect(found).not.toContain('fails');
+      expect(found).toContain('fails');
     });
 
     it('`load` offers neither', () => {

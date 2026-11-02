@@ -1,8 +1,8 @@
 /**
  * SDD-74 §4.5, criteria 18–20, in a real `vite build` with `"locales": ["es", "en"]`: the
- * `fudic:<id>` of a `.fudapi` is written once per locale with its texts translated, the handler
- * that throws `conflict(t(…))` is compiled once per locale too, and each locale's browser root
- * is a chunk of its own name (FUD0501).
+ * `fudic:<id>` of a `.fudapi` is written once per locale with its texts translated — the text of
+ * each `fails` code of a function included, which the page puts on the error the one server sends
+ * by its code (decision 175) — and each locale's browser root is a chunk of its own name (FUD0501).
  */
 
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -62,16 +62,15 @@ post subscribe
 
 post reserve
   catches 409
+  fails full 409 "Ya no quedan plazas."
 `;
 
-const SERVER = `import { conflict } from '@fudic/http';
-import { t } from '@fudic/i18n';
-import { load, reserve, subscribe } from 'fudic:routes/index';
+const SERVER = `import { load, reserve, ReserveFails, subscribe } from 'fudic:routes/index';
 
 load.handle(() => ({ alta: 'hoy' }));
 subscribe.handle(() => undefined);
 reserve.handle(() => {
-  throw conflict(t('Ya no quedan plazas.'));
+  throw ReserveFails.full();
 });
 `;
 
@@ -128,21 +127,23 @@ describe('SDD-74: the texts of a .fudapi in a two-locale build', () => {
     expect(english.filter((f) => spanish.includes(f))).toEqual([]);
   });
 
-  // Not criterion 19: which of these servers answers a call is the open question of SDD-74 §4.5
-  // (calls are served by the first locale's root). This only pins that each one is compiled.
-  it('the handler that throws conflict(t(…)) is compiled into each locale’s edge server, with its text', () => {
-    // The server's chunks are the edge pass's, written beside the app, not the browser output.
+  it('criterion 19: the browser module of each locale carries the text of `full` in its language', () => {
+    const english = output.filter((o) => code(o).includes('fails: { "full": "No places left." }')).map((o) => o.fileName);
+    const spanish = output.filter((o) => code(o).includes('fails: { "full": "Ya no quedan plazas." }')).map((o) => o.fileName);
+    expect(english.length).toBeGreaterThan(0);
+    expect(spanish.length).toBeGreaterThan(0);
+    expect(english.filter((f) => spanish.includes(f))).toEqual([]);
+  });
+
+  it('criterion 19: the server sends the code and never the English text: no edge chunk says it', () => {
+    // The edge pass's chunks, written beside the app. Whatever locale's server answers, the words
+    // of the page are the browser's: the server holds the code and the source text only.
     const dir = join(root, '.fudic', 'edge', 'c');
-    const servers = readdirSync(dir)
-      .filter((f) => f.startsWith('server-') && f.endsWith('.js'))
+    const chunks = readdirSync(dir)
+      .filter((f) => f.endsWith('.js'))
       .map((f) => readFileSync(join(dir, f), 'utf8'));
-    const english = servers.filter((s) => s.includes('No places left.'));
-    const spanish = servers.filter((s) => s.includes('Ya no quedan plazas.'));
-    expect(english).toHaveLength(1);
-    expect(spanish).toHaveLength(1);
-    expect(english[0]).not.toBe(spanish[0]);
-    // And never in the browser: the handler is the server's.
-    expect(carrying('No places left.')).toEqual([]);
+    expect(chunks.some((s) => /full: \[409, "Ya no quedan plazas\."\]/u.test(s))).toBe(true);
+    expect(chunks.some((s) => s.includes('No places left.'))).toBe(false);
   });
 
   it('the pages of each locale paint their own words', () => {

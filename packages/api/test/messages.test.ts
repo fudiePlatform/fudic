@@ -85,6 +85,11 @@ describe('extractApiMessages: every kind of text (§4.5)', () => {
     expect(found[0]!.holes).toEqual([]);
   });
 
+  it('the detail of a function’s `fails`, as `<function>.<code>`; one without detail is no text (decision 175)', () => {
+    const source = lines('post reserve', '  catches 409', '  fails full 409 "Ya no quedan plazas."', '  fails gone 410');
+    expect(messages(source).map((m) => [m.context, m.source])).toEqual([['reserve.full', 'Ya no quedan plazas.']]);
+  });
+
   it('a rule without a text, a rule’s own `fails` and the rest of the file: no message', () => {
     const source = lines('rule r', '  on field str', '  runs both', '  fails r', 'type A', '  x  str', 'form f', '  a  str', '    required');
     expect(messages(source)).toEqual([]);
@@ -145,14 +150,20 @@ describe('criterion 18: the module of a locale', () => {
     'Falta el nombre.': ['The name is missing.'],
   };
 
-  it('each text written in the locale, on both sides', () => {
+  it('each text of a form written in the locale, on both sides', () => {
     for (const side of ['server', 'browser'] as const) {
       const text = emitModule(source, index, {}, side, locale(EN));
-      for (const translated of ['You can\'t.', 'Write the name.', 'At least {n} years old.', 'Between 0 and 255.', 'The name is missing.']) {
+      for (const translated of ['Write the name.', 'At least {n} years old.', 'Between 0 and 255.', 'The name is missing.']) {
         expect(text, side).toContain(translated);
       }
       expect(text).not.toContain('Escribe el nombre.');
     }
+  });
+
+  it('the detail of a `fails` stays as written on the server, whatever the locale (decision 175)', () => {
+    const server = emitModule(source, index, {}, 'server', locale(EN));
+    expect(server).toContain('GuardFails = fails({ denied: [403, "No puedes."] })');
+    expect(server).not.toContain("You can't.");
   });
 
   it('without i18n, the same bytes as before; with a locale that has nothing, the same too', () => {

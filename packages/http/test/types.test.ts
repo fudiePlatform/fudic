@@ -53,6 +53,8 @@ describe('the package entry', () => {
   it('exports what a handler throws and the cookies it sets (SDD-69 §3.1), and nothing that builds a function (SDD-60 §3.10)', () => {
     expect(Object.keys(http).sort()).toEqual(
       [
+        // SDD-74: the header the code of a `fails` travels in, for a backend in another language.
+        'CODE_HEADER',
         'deleteCookie',
         'serializeCookie',
         'setCookie',
