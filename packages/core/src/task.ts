@@ -62,7 +62,9 @@ export interface Task<A, R, V = R | undefined> {
   /** What the last call that settled rejected with; `undefined` if it succeeded. Tracked. */
   readonly error: Readable<unknown>;
   /** Starts a call. Resolves with the outcome of THIS call. Never rejects. */
-  run(...args: A extends void ? [args?: A] : [args: A]): Promise<TaskResult<R>>;
+  // `[A]` and not `A`: not distributed, so an `A` inferred `any` — an app without `strictNullChecks` — still
+  // takes no argument when the function takes none.
+  run(...args: [A] extends [void] ? [args?: A] : [args: A]): Promise<TaskResult<R>>;
   /** Aborts the call in flight and drops the ones waiting. */
   cancel(): void;
 }
