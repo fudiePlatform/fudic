@@ -199,6 +199,13 @@ export interface DelegateBinding extends Node {
   readonly type: 'delegate';
   readonly name: string;
   readonly nameSpan: Span;
+  /**
+   * The events the marker serves, from `delegate:day="click change"` (decision 176). Absent,
+   * the marker serves every handler that reads its name, as a marker with no value always has.
+   */
+  readonly events?: readonly string[];
+  /** The literal the events were read from — what `FUD1381` points at. Present with `events`. */
+  readonly eventsSpan?: Span;
 }
 
 /**

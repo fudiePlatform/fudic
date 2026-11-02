@@ -946,11 +946,13 @@ function emitHandler(ctx: TemplateContext, attr: Attribute, value: RazorExpressi
     return;
   }
 
-  // `$day` is written HERE and declared by a loop BELOW, so there is no scope in the
-  // projection that holds it — and inventing one out of `unknown` would give the author a
-  // name that type-checks against everything. The loop's own header re-opens the exact scope
-  // instead: destructuring, defaults and a C-style `@for` all arrive with the type they have
-  // inside the body, because it is the same header that gives them that type in the body.
+  // `day` is written HERE and declared by a loop BELOW, so there is no scope in the projection
+  // that holds it — and inventing one out of `unknown` would give the author a name that
+  // type-checks against everything. The loop's own header re-opens the exact scope instead:
+  // destructuring, defaults and a C-style `@for` all arrive with the type they have inside the
+  // body, because it is the same header that gives them that type in the body. The handler is
+  // copied inside it, so its `day` — bare, or in `day.id` — IS the header's binding (decision
+  // 177): the hover on it is the row's.
   //
   // Every header the reads need, in source order and each one once. Source order IS nesting
   // order — an enclosing header is written before the one inside it — so opening them like
@@ -966,12 +968,6 @@ function emitHandler(ctx: TemplateContext, attr: Attribute, value: RazorExpressi
   ctx.w.scaffold('($event) => { ');
   for (const at of headers) {
     ctx.w.scaffold(`for (${ctx.source.slice(at.start, at.end)}) { `);
-  }
-  // One declaration per NAME and not per read: `@fn($item, $item)` is a handler that reads
-  // the same row twice, which is legal, and two `const $item` would be a TS2451 of the
-  // projection's own making.
-  for (const name of new Set(reads.map((read) => read.name))) {
-    ctx.w.scaffold(`const $${name} = ${name}; `);
   }
   ctx.w.scaffold('return ');
   copyRazor(ctx, value);

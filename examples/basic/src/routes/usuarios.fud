@@ -42,20 +42,22 @@
 
   // Si el servidor no lo guarda, la casilla vuelve a como estaba: la señal no cambió, así que
   // el repintado no tiene nada que corregir en ella.
-  async function activar(id: number, e: Event) {
+  // Las dos reciben la persona de la fila pulsada: la tabla tiene un listener por evento en el
+  // `<tbody>`, no uno por fila, y cada fila se marca con `delegate:p` para el evento que sirve.
+  async function activar(p: Person, e: Event) {
     const input = e.target as HTMLInputElement;
     const active = input.checked;
-    await guardar.run({ id, active });
+    await guardar.run({ id: p.id, active });
     if (guardar.error() === undefined) {
-      personas.set(personas().map((p) => (p.id === id ? { ...p, active } : p)));
+      personas.set(personas().map((x) => (x.id === p.id ? { ...x, active } : x)));
     } else {
       input.checked = !active;
     }
   }
 
-  async function borrar(id: number) {
-    await quitar.run({ id });
-    if (quitar.error() === undefined) personas.set(personas().filter((p) => p.id !== id));
+  async function borrar(p: Person) {
+    await quitar.run({ id: p.id });
+    if (quitar.error() === undefined) personas.set(personas().filter((x) => x.id !== p.id));
   }
 
   // Entrar y salir son dos funciones del servidor: ponen y quitan la cookie. Las dos nombran
@@ -166,20 +168,21 @@
     <thead>
       <tr><th>Nombre</th><th>Email</th><th>Edad</th><th>Activo</th><th></th></tr>
     </thead>
-    <tbody>
+    <tbody @change=@activar(p, $event) @click=@borrar(p)>
       @foreach (const p of personas()) key (p.id) {
         <tr>
           <td>@p.name</td>
           <td>@p.email</td>
           <td>@p.age</td>
-          <td><input type="checkbox" checked=@p.active @change=@activar(p.id, $event) aria-label="Activo"></td>
-          <td><button @click=@borrar(p.id)>Borrar</button></td>
+          <td><input type="checkbox" checked=@p.active delegate:p="change" aria-label="Activo"></td>
+          <td><button delegate:p="click">Borrar</button></td>
         </tr>
       }
     </tbody>
   </table>
   <p>
-    Marcar o desmarcar <em>Activo</em> y <em>Borrar</em> no recargan la página. En Network sale
+    La tabla usa un listener por evento en el <code>&lt;tbody&gt;</code>, tenga las filas que
+    tenga. Marcar o desmarcar <em>Activo</em> y <em>Borrar</em> no recargan la página. En Network sale
     el <code>save</code> o el <code>remove</code> y nada más: la tabla ya sabe qué cambió y se
     repinta sola, sin perder el scroll ni el foco. Si el servidor dice que no, la casilla vuelve
     a como estaba. Si marcas deprisa varias veces, los <code>save</code> salen en fila, uno

@@ -3,7 +3,7 @@ import type { SourceDiagnostic, SourceInput } from '../types.js';
 
 /** Parameters of `FUD0661`. */
 export interface FUD0661Params extends SourceInput {
-  /** The delegated name, without the leading `$`. */
+  /** The delegated name. */
   readonly name: string;
 }
 
@@ -12,6 +12,6 @@ export const FUD0661 = (p: FUD0661Params): SourceDiagnostic =>
   source(
     'FUD0661',
     'error',
-    `no ancestor handler reads \`$${p.name}\`: this marker is never read`,
+    `no ancestor handler reads \`${p.name}\`: this marker is never read`,
     p,
   );

@@ -24,7 +24,7 @@ import { BlockEmitter, blockContext, newBodies, releaseCalls } from './block.js'
 import { AssetLinker } from './assets.js';
 import { codeOf, splicedOffset, type ClientStatement, type NeutralStatement, type Prop } from './oxc-code.js';
 import { localOf, propDefaults, restAssignments, restGroups } from './rest.js';
-import { hookupContext, templateDelegationJs } from './events.js';
+import { codeScope, hookupContext, templateDelegationJs } from './events.js';
 import { planDelegation } from '../semantic/delegation.js';
 import { planControls } from './controls.js';
 import { isFormAssociated, shadowOptionsOf } from '../binding/index.js';
@@ -261,7 +261,7 @@ function buildComponentClientModule(
   const delegation = planDelegation(
     comp.source,
     comp.doc.template!.children,
-    templateDelegationJs(template),
+    templateDelegationJs(template, codeScope(comp.source, comp.doc.code)),
   );
   emitDiagnostics.push(...delegation.diagnostics);
   const hookup = hookupContext(

@@ -102,7 +102,8 @@
 
 <h2 class="paso">Delegado — <code>delegate:day</code></h2>
 <p>
-  Un <code>@@click</code> en la rejilla y un marcador por celda. La celda no entrega un índice
+  Un <code>@@click</code> en la rejilla y un marcador por celda. El handler lee la fila por su
+  nombre, como la declara el bucle: <code>@@click=@@pick(day)</code>. La celda no entrega un índice
   ni un <code>data-*</code>: entrega <strong>su objeto</strong>. Se ve en el contador de
   pulsaciones —está guardado dentro del propio objeto de la fila, así que si sube es que
   llegó el mismo y no una copia—, y sigue siendo el correcto después de

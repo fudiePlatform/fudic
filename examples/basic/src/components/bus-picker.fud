@@ -25,12 +25,13 @@
 
 <bus-picker>
   <template shadowrootmode="open" shadowrootadoptedstylesheets="panel">
-    <section class="panel">
+    @* Un solo `@click`, en el panel: cada opción se marca con `delegate:option`. *@
+    <section class="panel" @click=@pick(option.label)>
       @foreach (const option of options) key (option.label) {
         <bus-option
           .label=@option.label
           .picked=@option.picked
-          @click=@pick(option.label)
+          delegate:option="click"
         ></bus-option>
       }
     </section>

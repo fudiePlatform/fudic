@@ -24,7 +24,7 @@
 
 <app-calendar>
   <template shadowrootmode="open">
-    <div class="grid" @click=@pick($event, $day)>
+    <div class="grid" @click=@pick($event, day)>
       @foreach (const day of days) key (day.id) {
         <div class="cell" delegate:day>
           <span>@day.n</span>

@@ -7,13 +7,11 @@ export interface FUD0667Params extends SourceInput {
   readonly name: string;
 }
 
-/** A `delegate:` marker written with a value (SDD-37). */
+/** A `delegate:` marker whose value is not a non-empty literal list of events (SDD-37, SDD-72). */
 export const FUD0667 = (p: FUD0667Params): SourceDiagnostic =>
   source(
     'FUD0667',
     'error',
-    '`delegate:` marker takes no value: the ancestor handler reads it as `$' +
-      (p.name.length > 0 ? p.name : 'name') +
-      '`',
+    `a \`delegate:\` marker takes no value, or the names of the events it serves: \`delegate:${p.name.length > 0 ? p.name : 'name'}="click"\``,
     p,
   );

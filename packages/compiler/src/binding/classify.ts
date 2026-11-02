@@ -35,6 +35,7 @@ import type { RazorExpression } from '../at/index.js';
 import type { Attribute, AttributeValuePart } from '../html/index.js';
 import {
   type Binding,
+  type DelegateBinding,
   type Interpolation,
   BUS_PREFIX,
   CLASS_PREFIX,
@@ -110,7 +111,7 @@ export function classifyAttribute(attr: Attribute, source: string): ParseResult<
     return classifyStyle(attr, name.slice(STYLE_PREFIX.length));
   }
   if (name.startsWith(DELEGATE_PREFIX)) {
-    return classifyDelegate(attr, name.slice(DELEGATE_PREFIX.length));
+    return classifyDelegate(attr, name.slice(DELEGATE_PREFIX.length), source);
   }
   if (name === REF_NAME) return classifyRef(attr, source);
   if (name === CONTROL_NAME) return classifyControl(attr);
@@ -256,31 +257,44 @@ function classifyStyle(attr: Attribute, property: string): ParseResult<Binding> 
 }
 
 /**
- * `delegate:day` (decision 117). Two structural rules, and both are about what the marker is
- * NOT: it names something — `delegate:` alone falls into the `FUD0099` every prefix shares —
- * and it carries nothing, because the element is not being given a value, it is handing its
- * row identity to an ancestor (§3.1).
+ * `delegate:day` and `delegate:day="click change"` (decisions 117 and 176). It names something
+ * — `delegate:` alone falls into the `FUD0099` every prefix shares — and it carries no value
+ * but, optionally, the events it serves: a literal text of names separated by blanks. The
+ * element is not being given anything, it is handing its row identity to an ancestor.
  *
- * A marker written with a value keeps its binding and drops the value: hiding the marker from
- * the editor over a mistake in a value it never wanted is the reading BUG-16 settled for
- * `.prop`, and here the value is not even part of the node.
+ * Anything else as a value — an expression, an empty text — is `FUD0667`, and the marker keeps
+ * its binding as if it served every event: hiding the marker from the editor over a mistake in
+ * its value is the reading BUG-16 settled for `.prop`.
  */
-function classifyDelegate(attr: Attribute, name: string): ParseResult<Binding> {
+function classifyDelegate(attr: Attribute, name: string, source: string): ParseResult<Binding> {
   const diagnostics: Diagnostic[] = [];
 
   if (name.length === 0) {
     diagnostics.push(FUD0099({ span: nameSpan(attr, DELEGATE_PREFIX + name), binding: 'delegate' }));
   }
 
-  if (attr.value.length > 0) diagnostics.push(FUD0667({ span: valueSpan(attr), name }));
-
   // The name is the tail of the attribute NAME, and the attribute always spans at least its
   // own name, so neither end needs clamping the way `nameSpan` does for a prefix it is handed.
   const start = attr.span.start + DELEGATE_PREFIX.length;
-  return withDiagnostics(
-    { type: 'delegate', span: attr.span, name, nameSpan: span(start, start + name.length) },
-    diagnostics,
-  );
+  const binding: DelegateBinding = {
+    type: 'delegate',
+    span: attr.span,
+    name,
+    nameSpan: span(start, start + name.length),
+  };
+
+  // No `=` at all: the marker serves every event, as it always has. `delegate:day=""` has one
+  // and no parts, which is the empty text the rule rejects.
+  if (attr.value.length === 0 && !source.slice(attr.span.start, attr.span.end).includes('=')) {
+    return withDiagnostics(binding, diagnostics);
+  }
+  const only = attr.value.length === 1 ? attr.value[0] : undefined;
+  const events = only?.type === 'attribute-text' ? only.value.trim().split(/\s+/u) : [''];
+  if (events[0] === '') {
+    diagnostics.push(FUD0667({ span: attr.value.length > 0 ? valueSpan(attr) : attr.span, name }));
+    return withDiagnostics(binding, diagnostics);
+  }
+  return withDiagnostics({ ...binding, events, eventsSpan: only!.span }, diagnostics);
 }
 
 /** What may follow the `...` of a spread: a name, or a path of names. */

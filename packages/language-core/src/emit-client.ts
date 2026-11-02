@@ -17,7 +17,7 @@ import type {
   StructuredDocument,
   TextNode,
 } from '@fudic/compiler';
-import { collectTemplateJs, planDelegation, span, unwrapParens } from '@fudic/compiler';
+import { codeNames, collectTemplateJs, planDelegation, span, unwrapParens } from '@fudic/compiler';
 import { busReceivers, emitBusReceivers } from './bus-receivers.js';
 import { codeChunks } from './code.js';
 import { emitDataDeclaration } from './data.js';
@@ -85,9 +85,10 @@ export function emitClientVirtual(
   const delegation = planDelegation(source, content, {
     headerAst: (loop) => rootOf(template.ast?.(loop.header.inner)),
     valueAst: (expr) => rootOf(template.ast?.(expr.expr)),
-    // The `$name` spans are the compiler emit's business, not the projection's: this side
-    // reads the NAMES and the loop header, never an offset inside the batch's buffer.
+    // The read spans are the compiler emit's business, not the projection's: this side reads
+    // the NAMES and the loop header, never an offset inside the batch's buffer.
     spanOf: (node) => span(node.start, node.end),
+    scope: doc.code === undefined ? new Set() : codeNames(source, doc.code),
   });
 
   const ctx = hostContext(
