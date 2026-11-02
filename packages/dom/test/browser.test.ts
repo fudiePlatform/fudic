@@ -30,6 +30,95 @@ describe('browserDom mutation', () => {
     expect(el.hasAttribute('type')).toBe(false);
   });
 
+  it('setLive writes checked as the property, and puts back what the user ticked (SDD-74 §4.4)', () => {
+    const box = dom.element('input') as HTMLInputElement;
+    box.type = 'checkbox';
+    dom.setLive(box, 'checked', false);
+    expect(box.checked).toBe(false);
+    box.checked = true; // the user ticks it
+    dom.setLive(box, 'checked', false); // the same value as before: written anyway
+    expect(box.checked).toBe(false);
+    dom.setLive(box, 'checked', true);
+    expect(box.checked).toBe(true);
+    // The attribute is never touched: it is the default, not the state.
+    expect(box.hasAttribute('checked')).toBe(false);
+  });
+
+  it.each([
+    [true, true],
+    ['', true],
+    [0, true],
+    [false, false],
+    [null, false],
+    [undefined, false],
+  ])('setLive checked of %j is %j: false and null write none, the rest one', (value, checked) => {
+    const box = dom.element('input') as HTMLInputElement;
+    box.type = 'checkbox';
+    box.checked = !checked;
+    dom.setLive(box, 'checked', value);
+    expect(box.checked).toBe(checked);
+  });
+
+  it('setLive writes value on an input and a textarea, over what the user typed', () => {
+    for (const tag of ['input', 'textarea']) {
+      const field = dom.element(tag) as HTMLInputElement | HTMLTextAreaElement;
+      dom.setLive(field, 'value', 'Ana');
+      expect(field.value).toBe('Ana');
+      field.value = 'Anabel'; // typed
+      dom.setLive(field, 'value', 'Ana');
+      expect(field.value).toBe('Ana');
+      expect(field.hasAttribute('value')).toBe(false);
+    }
+  });
+
+  it.each([
+    [42, '42'],
+    ['x', 'x'],
+    [true, ''],
+    [false, ''],
+    [null, ''],
+    [undefined, ''],
+  ])('setLive value of %j is %j', (value, text) => {
+    const field = dom.element('input') as HTMLInputElement;
+    field.value = 'typed';
+    dom.setLive(field, 'value', value);
+    expect(field.value).toBe(text);
+  });
+
+  it('setLive writes selected on an option, over what the user picked', () => {
+    const select = dom.element('select') as HTMLSelectElement;
+    const a = dom.element('option') as HTMLOptionElement;
+    const b = dom.element('option') as HTMLOptionElement;
+    a.value = 'a';
+    b.value = 'b';
+    dom.append(select, a);
+    dom.append(select, b);
+    dom.setLive(b, 'selected', true);
+    expect(select.value).toBe('b');
+    a.selected = true; // the user picks a
+    dom.setLive(b, 'selected', true);
+    expect(select.value).toBe('b');
+    expect(b.hasAttribute('selected')).toBe(false);
+  });
+
+  it('setLive does not write when the DOM already holds the value', () => {
+    let writes = 0;
+    let held: unknown = 'same';
+    const fake = {
+      get value(): unknown {
+        return held;
+      },
+      set value(v: unknown) {
+        writes += 1;
+        held = v;
+      },
+    };
+    dom.setLive(fake as unknown as Node, 'value', 'same');
+    expect(writes).toBe(0);
+    dom.setLive(fake as unknown as Node, 'value', 'other');
+    expect(writes).toBe(1);
+  });
+
   it('setText retouches an existing text node', () => {
     const t = dom.text('0');
     dom.setText(t, '1');

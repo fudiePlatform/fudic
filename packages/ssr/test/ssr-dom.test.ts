@@ -58,6 +58,29 @@ describe('SsrDom tree mutation', () => {
     expect(renderToString(el)).toBe('<input>');
   });
 
+  it.each([
+    ['checked', true, '<input checked="">'],
+    ['checked', false, '<input>'],
+    ['checked', null, '<input>'],
+    ['checked', undefined, '<input>'],
+    ['value', 'Ana', '<input value="Ana">'],
+    ['value', 42, '<input value="42">'],
+    ['value', '', '<input value="">'],
+  ] as const)('setLive %s of %j paints the attribute an interpolated value would (SDD-74 §4.4)', (name, value, html) => {
+    const d = new SsrDom();
+    const el = d.element('input');
+    d.setAttr(el, name, 'stale');
+    d.setLive(el, name, value);
+    expect(renderToString(el)).toBe(html);
+  });
+
+  it('setLive selected on an option is the attribute too', () => {
+    const d = new SsrDom();
+    const el = d.element('option');
+    d.setLive(el, 'selected', true);
+    expect(renderToString(el)).toBe('<option selected=""></option>');
+  });
+
   it('attachShadow is idempotent', () => {
     const d = new SsrDom();
     const host = d.element('app-x');

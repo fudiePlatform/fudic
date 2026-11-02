@@ -75,6 +75,8 @@ let db: User[];
 /** What the fake data endpoint was asked, and how it answers. */
 let asked: string[];
 let endpointFails: boolean;
+/** The server refuses the next save: a 409 its `catches` keeps (SDD-74), so nothing is invalidated. */
+let refuse: boolean;
 let reload: ReturnType<typeof vi.fn>;
 
 /**
@@ -116,6 +118,7 @@ async function hydrated(route = ROUTE): Promise<Controller> {
     '@fudic/core': core,
     'fudic:routes/usuarios': {
       save: stubOf<{ id: number; active: boolean }>('PUT', ({ id, active }) => {
+        if (refuse) throw new Error('409 Conflict');
         db = db.map((u) => (u.id === id ? { ...u, active } : u));
       }),
       remove: stubOf<{ id: number }>('DELETE', ({ id }) => {
@@ -164,6 +167,7 @@ beforeEach(() => {
   ];
   asked = [];
   endpointFails = false;
+  refuse = false;
   reload = vi.fn();
   vi.stubGlobal('location', { ...location, pathname: '/usuarios', reload });
   delete probe.run;
@@ -219,14 +223,28 @@ describe('a mutation repaints the route (§4.8)', () => {
     expect(box(1).checked).toBe(false);
   });
 
-  it('15b. a server-side change shows in the attribute the view writes, not only in the checkbox state', async () => {
+  it('15b. a server-side change is what the box shows: the view writes the property (SDD-74 §4.4)', async () => {
     controller = await hydrated();
     // Leo is off; the server turns him on through a save from his own row.
     const leo = box(3);
     leo.checked = true;
     leo.dispatchEvent(new Event('change', { bubbles: true }));
     await probe.run;
-    expect(box(3).hasAttribute('checked')).toBe(true);
+    expect(db.find((u) => u.id === 3)!.active).toBe(true);
+    expect(box(3).checked).toBe(true);
+  });
+
+  it('15c. a save the server refuses puts the box back to what the data says', async () => {
+    controller = await hydrated();
+    // Ana is on; the box is unticked, the save is refused, the data that comes back still says on.
+    const ana = box(1);
+    expect(ana.checked).toBe(true);
+    ana.checked = false;
+    refuse = true;
+    ana.dispatchEvent(new Event('change', { bubbles: true }));
+    await probe.run;
+    expect(db.find((u) => u.id === 1)!.active).toBe(true);
+    expect(box(1).checked).toBe(true);
   });
 
   it('16. removing a row takes it out of the table; the others are the same nodes', async () => {
