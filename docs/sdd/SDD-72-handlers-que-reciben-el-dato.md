@@ -580,3 +580,8 @@ ejemplo pasa a la forma nueva:
 12. **`bus:(expr)` sigue proyectando su expresión** (al implementar, corrige §4.4). `$busOnAny`
     y `$busEventAny` reciben el nombre como primer argumento (`unknown`), para que `NOMBRE` siga
     comprobado y con hover y definición; el dato es `any`, como dice §3.2.
+13. **El criterio 27 se lee como «ningún handler desenvuelve el dato»** (al implementar). El
+    `grep` literal encuentra usos que no son de estos eventos y que se quedan: los
+    `new CustomEvent(…)` de `app-eventos.fud` (eventos de componente, §7), el `detail` del
+    problema en `_error.fud` y la etiqueta `<details>`. Ningún handler de `fudic:result`,
+    `fudic:error` ni `bus:` lee ya `detail` ni tipa un `CustomEvent`.

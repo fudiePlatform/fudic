@@ -5,6 +5,7 @@
 
 @code {
   import { signal, task } from "@fudic/core";
+  import type { Person } from "fudic:routes/usuarios";
 
   const texto = signal("");
 
@@ -23,8 +24,8 @@
   // vez.
   const personas = signal(data.users);
 
-  function alta(e: CustomEvent) {
-    personas.set([...personas(), e.detail]);
+  function alta(persona: Person) {
+    personas.set([...personas(), persona]);
   }
 
   function buscar(e: Event) {
@@ -160,7 +161,7 @@
 </div>
 
 <h2>Personas</h2>
-<div class="panel" bus:alta=@alta($event)>
+<div class="panel" bus:alta=@alta>
   <table>
     <thead>
       <tr><th>Nombre</th><th>Email</th><th>Edad</th><th>Activo</th><th></th></tr>

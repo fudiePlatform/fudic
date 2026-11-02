@@ -38,10 +38,16 @@ type Fns<K> = Entry extends infer E ? (E extends readonly [K, infer P] ? (x: P) 
 /**
  * What `emit(name, detail)` must send: what EVERY receiver of `name` accepts — the
  * intersection of their parameters, since they all receive the same object. A name nobody
- * registers accepts anything.
+ * registers accepts anything, and so does a name that is not a literal: a `string` would
+ * match every entry and demand what the whole project receives.
  */
-export type BusDetail<K extends string> =
-  [Fns<K>] extends [never] ? unknown : Fns<K> extends (x: infer I) => void ? I : never;
+export type BusDetail<K extends string> = string extends K
+  ? unknown
+  : [Fns<K>] extends [never]
+    ? unknown
+    : Fns<K> extends (x: infer I) => void
+      ? I
+      : never;
 
 /** The detail a handler takes: its first parameter, or `unknown` if it takes none. */
 export type BusParam<F> = F extends (...a: infer A) => unknown ? (A extends [] ? unknown : A[0]) : unknown;
