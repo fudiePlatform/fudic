@@ -13,7 +13,7 @@
 export const VERSION = '0.0.1';
 
 export { NS, type Ns } from './ns.js';
-export { type Dom, type DomClient } from './dom.js';
+export { type Dom, type DomClient, type LiveProperty } from './dom.js';
 export { browserDom } from './browser.js';
 export { type Cursor, cursorOf } from './cursor.js';
 export { emit } from './emit.js';
