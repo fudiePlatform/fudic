@@ -222,7 +222,7 @@ function load(d: LoadDecl, c: ModuleCtx): string {
   // its frames with, and what the browser reads them back with (SDD-70 §3.7).
   const fields = d.fields.length === 0 ? '' : `, fields: ${descriptors(d.fields, c)}`;
   c.wires.add('frames');
-  return `export const load = page({ id: ${str(c.source.id)}, name: "load", chain: ${chain}${fields}${settles}, read: readFrames${browser(c)} });${failsOf('Load', d.fails, c)}`;
+  return `export const load = page({ id: ${str(c.source.id)}, name: "load", chain: ${chain}${fields}${settles}, read: readFrames${browser(c)} });`;
 }
 
 /** The validators of `@fudic/forms/contract` by rule, imported under `$` so no rule shadows them. */
@@ -290,5 +290,5 @@ function fn(d: FnDecl, c: ModuleCtx): string {
     ...(d.invalidates.length > 0 ? [`invalidates: [${d.invalidates.flatMap((i) => i.routes).map((r) => str(r.text)).join(', ')}]`] : []),
     ...(d.catches !== undefined ? [`catches: [${d.catches.statuses.map((s) => s.value).join(', ')}]`] : []),
   ];
-  return `export const ${d.name.text} = ${kind}({ ${fields.join(', ')} });${failsOf(pascal(d.name.text), d.fails, c)}`;
+  return `export const ${d.name.text} = ${kind}({ ${fields.join(', ')} });`;
 }

@@ -283,7 +283,6 @@ export interface FnDecl extends Documented {
   readonly compress?: CompressClause;
   /** `catches <status>+`: the statuses that reach the caller instead of `error-pages` (decision 174). */
   readonly catches?: CatchesOption;
-  readonly fails: readonly FailsClause[];
   readonly args: readonly ArgDecl[];
   readonly returns?: ReturnsClause;
   readonly span: Span;
@@ -324,7 +323,6 @@ export interface LoadDecl extends Documented {
   readonly buffer?: BufferOption;
   readonly uses: readonly UseClause[];
   readonly skips: readonly SkipClause[];
-  readonly fails: readonly FailsClause[];
   /** The shape of `data`. */
   readonly fields: readonly TypedField[];
   readonly span: Span;
