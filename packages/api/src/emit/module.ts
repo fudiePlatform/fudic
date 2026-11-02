@@ -156,7 +156,10 @@ function pipe(d: PipeDecl): string {
 function failsOf(name: string, fails: readonly FailsClause[], c: ModuleCtx): string {
   if (fails.length === 0) return '';
   c.http.add('fails');
-  const entries = fails.map((f) => `${camel(f.code.text)}: [${f.status.value}${f.detail === undefined ? '' : `, ${str(textOf(c, f.detail))}`}]`);
+  // The server says the text as written, whatever locale its module was compiled for: it sends the
+  // code, and the browser puts the words of the page's language (decision 175).
+  const say = (detail: NonNullable<FailsClause['detail']>): string => (c.side === 'browser' ? textOf(c, detail) : detail.text);
+  const entries = fails.map((f) => `${camel(f.code.text)}: [${f.status.value}${f.detail === undefined ? '' : `, ${str(say(f.detail))}`}]`);
   return `\nexport const ${name}Fails = fails({ ${entries.join(', ')} });`;
 }
 
