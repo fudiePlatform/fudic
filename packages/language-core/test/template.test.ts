@@ -263,8 +263,34 @@ describe('behaviour bindings', () => {
       component('    <div bus:cart="@onCart" bus:(name)="@onDyn"></div>'),
     );
 
-    expect(text).toContain("$on('cart' as never, onCart);");
-    expect(text).toContain('$on(name as never, onDyn);');
+    expect(text).toContain("$busOn('cart', onCart);");
+    expect(text).toContain('$busOnAny(name, onDyn);');
+  });
+
+  it('a bus call keeps $event, typed or any (SDD-72 §4.4)', () => {
+    const { text } = emitClient(
+      component('    <div bus:cart="@onCart($event)" bus:(name)="@onDyn($event)"></div>'),
+    );
+
+    expect(text).toContain("$busEvent('cart', ($event) => onCart($event));");
+    expect(text).toContain('$busEventAny(name, ($event) => onDyn($event));');
+  });
+
+  it('fudic:result takes the form:= of its element, fudic:error none (SDD-72 §4.2)', () => {
+    const { text } = emitClient(
+      component(
+        '    <form form:=@save @fudic:result=@done @fudic:error=@failed></form>' +
+          '<div @fudic:result=@up @fudic:error=@down($event)></div>' +
+          '<form form:=@save @fudic:result=@done($event.detail)></form>',
+      ),
+    );
+
+    expect(text).toContain('$onResult(save, done);');
+    expect(text).toContain('$onError(failed);');
+    expect(text).toContain('$onResult(undefined, up);');
+    expect(text).toContain('$onErrorEvent(($event) => down($event));');
+    expect(text).toContain('$onResultEvent(save, ($event) => done($event.detail));');
+    expect(text).not.toContain("$on('fudic:");
   });
 
   it('demands boolean for class: and string for style:', () => {

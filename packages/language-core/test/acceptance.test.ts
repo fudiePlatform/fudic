@@ -38,16 +38,18 @@ describe('the events of a sent form (BUG-51)', () => {
   const withForm = (attrs: string): Record<string, string> =>
     mutate(SLUG, '<h1>@data.title</h1>', `<h1>@data.title</h1>\n  <form ${attrs}></form>`);
 
-  it('`@fudic:result` and `@fudic:error` are events every element can listen to, as CustomEvents', () => {
+  it('`@fudic:result` and `@fudic:error` are events every element can listen to: the datum, or the event of a call (SDD-72)', () => {
     const diags = typecheckCorpus(
-      withForm('@fudic:result="@((e: CustomEvent<unknown>) => e.detail)" @fudic:error="@((e) => e.detail)"'),
+      withForm(
+        '@fudic:result="@((v: unknown) => v)" @fudic:error="@((e) => e.message)"',
+      ),
     );
 
     expect(diags.map(describeDiag)).toEqual([]);
   });
 
-  it('a handler that expects another event is TS2345 on it', () => {
-    const diags = typecheckCorpus(withForm('@fudic:result="@((e: MouseEvent) => e.button)"'));
+  it('a handler that expects the event where the datum arrives is TS2345 on it', () => {
+    const diags = typecheckCorpus(withForm('@fudic:error="@((e: MouseEvent) => e.button)"'));
 
     expect(diags).toHaveLength(1);
     expect(diags[0]!.code).toBe(2345);

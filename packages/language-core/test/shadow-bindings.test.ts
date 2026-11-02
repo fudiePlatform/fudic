@@ -33,7 +33,7 @@ describe('criterion 10 — what the template projects', () => {
   });
 
   it('a `bus:` subscription, the host’s twin', () => {
-    expect(tpl('bus:carrito=@onClick')).toContain("$on('carrito' as never, onClick);");
+    expect(tpl('bus:carrito=@onClick')).toContain("$busOn('carrito', onClick);");
   });
 
   it('an `@` still being written, so the editor has a place to ask from', () => {

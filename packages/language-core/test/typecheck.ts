@@ -50,7 +50,11 @@ export function loadCorpus(overrides: Readonly<Record<string, string>> = {}): re
 }
 
 /** The registry of one file: its own `<link>`s resolved against the corpus. */
-function registryFor(file: CorpusFile, corpus: readonly CorpusFile[]): FileRegistry {
+function registryFor(
+  file: CorpusFile,
+  corpus: readonly CorpusFile[],
+  overrides: Readonly<Record<string, string>>,
+): FileRegistry {
   const byTag = new Map<string, string>();
 
   for (const link of file.document.links) {
@@ -73,12 +77,16 @@ function registryFor(file: CorpusFile, corpus: readonly CorpusFile[]): FileRegis
 
   // The `.fudapi` a file links, as the host reads them: its `<id>` is its corpus path, and
   // whether it declares `load` (SDD-60 §4.7).
+  // A contract an override adds also gives its function and form names, which is what declares
+  // them in the client virtual; its types are the `declare module 'fudic:<id>'` of an added `.ts`.
   const servers = ('serverLinks' in file.document ? (file.document.serverLinks ?? []) : []).flatMap((link) => {
     const href = linkHref(link);
     if (href === undefined) return [];
     const path = posix.normalize(posix.join(posix.dirname(file.path), href));
-    const text = readFileSync(resolve(FIXTURES, path), 'utf8');
-    return [{ id: path.slice(0, -'.fudapi'.length), load: /^load\b/mu.test(text), names: [] }];
+    const added = overrides[path];
+    const text = added ?? readFileSync(resolve(FIXTURES, path), 'utf8');
+    const names = added === undefined ? [] : [...text.matchAll(/^(?:get|post|put|patch|delete|form)\s+([A-Za-z_]\w*)/gmu)].map((m) => m[1]!);
+    return [{ id: path.slice(0, -'.fudapi'.length), load: /^load\b/mu.test(text), names }];
   });
 
   return {
@@ -100,7 +108,7 @@ export function projectCorpus(
       source: file.source,
       fileName: file.path,
       document: file.document,
-      registry: registryFor(file, corpus),
+      registry: registryFor(file, corpus, overrides),
     }),
   }));
 }
@@ -274,6 +282,11 @@ const COMPILER_OPTIONS: ts.CompilerOptions = {
  * server functions has installed. Its types come from its `dist`, as a user's would.
  */
 const BARE_ANCHOR = resolve(fileURLToPath(new URL('../../http/src/index.ts', import.meta.url)));
+/**
+ * Where `@fudic/dom` is resolved from: inside `@fudic/core`, which depends on it. The projection
+ * reads the bus types from it (`$BusDetail`), and an emitter imports `emit` from it (SDD-72).
+ */
+const DOM_ANCHOR = resolve(fileURLToPath(new URL('../../core/src/index.ts', import.meta.url)));
 /** The only stretch of the disk a bare specifier may land in. */
 const PACKAGES = posix.join(...resolve(fileURLToPath(new URL('../..', import.meta.url))).split(/[\\/]/));
 
@@ -291,7 +304,8 @@ function resolveLiteral(
     return ts.resolveModuleName(specifier, containingFile, COMPILER_OPTIONS, ts.sys);
   }
   if (!specifier.startsWith('.')) {
-    return ts.resolveModuleName(specifier, BARE_ANCHOR, COMPILER_OPTIONS, ts.sys);
+    const anchor = specifier === '@fudic/dom' ? DOM_ANCHOR : BARE_ANCHOR;
+    return ts.resolveModuleName(specifier, anchor, COMPILER_OPTIONS, ts.sys);
   }
   const candidate = posix.normalize(posix.join(posix.dirname(containingFile), specifier));
   for (const suffix of ['.ts', '.d.ts', '']) {
@@ -335,16 +349,21 @@ function fudFiles(dir: string): readonly string[] {
   return walkDir(dir).filter((f) => f.endsWith('.fud'));
 }
 
-/** The `.ts` of the corpus by corpus path, an override replacing the text on disk. */
+/**
+ * The `.ts` of the corpus by corpus path, an override replacing the text on disk; a `.ts` path
+ * the corpus does not have is added to it.
+ */
 function tsCorpus(overrides: Readonly<Record<string, string>>): ReadonlyMap<string, string> {
-  return new Map(
-    walkDir(FIXTURES)
-      .filter((f) => f.endsWith('.ts'))
-      .map((absolute) => {
-        const path = posix.join(...relative(FIXTURES, absolute).split(/[\\/]/));
-        return [path, overrides[path] ?? readFileSync(absolute, 'utf8')] as const;
-      }),
+  const onDisk = walkDir(FIXTURES)
+    .filter((f) => f.endsWith('.ts'))
+    .map((absolute) => {
+      const path = posix.join(...relative(FIXTURES, absolute).split(/[\\/]/));
+      return [path, overrides[path] ?? readFileSync(absolute, 'utf8')] as const;
+    });
+  const added = Object.entries(overrides).filter(
+    ([path]) => path.endsWith('.ts') && !onDisk.some(([known]) => known === path),
   );
+  return new Map([...onDisk, ...added]);
 }
 
 function walkDir(dir: string): readonly string[] {

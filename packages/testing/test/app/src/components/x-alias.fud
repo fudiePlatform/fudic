@@ -5,8 +5,8 @@
 
   const result = signal("");
 
-  function done(e: Event) {
-    result.set(String((e as CustomEvent<string>).detail));
+  function done(value: string) {
+    result.set(value);
   }
 }
 
