@@ -4,13 +4,22 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { FILES, SRC, world } from './_api.js';
+import { APP, FILES, FORMS, SRC, world } from './_api.js';
 
 describe('generated, at the edges', () => {
   it('a file that cannot be read is an empty one: clean, and its module is empty of pieces', () => {
     const { generated } = world({ files: { ...FILES, [`${SRC}/routes/gone.fudapi`]: undefined } });
     const answer = generated.module(`${SRC}/routes/gone.fudapi`, 'server');
     expect(answer).toMatchObject({ name: 'fudic:routes/gone.server.ts' });
+  });
+
+  it("a dependency's contract, reached through the app's node_modules: its types are the app's", () => {
+    const { host } = world();
+    const rules = `${FORMS}/rules.fudapi`;
+    const types = `${APP}/.fudic/api/@fudic/forms/rules.d.ts`;
+    expect(host.typesOf(rules)).toBe(types);
+    expect(host.written(types)).toContain('required');
+    expect(host.regenerate(rules)).toContain(types);
   });
 
   it('Regenerate reads a listed file that cannot be read as empty, and writes its own types', () => {

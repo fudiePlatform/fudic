@@ -132,7 +132,7 @@ describe('activate', () => {
     ]);
   });
 
-  it('points the server at the bundled bundle and watches the eight globs', async () => {
+  it('points the server at the bundled bundle and watches its globs', async () => {
     await activate(context());
 
     const options = LanguageClient.created[0]?.serverOptions as { run: { module: string } };
@@ -148,6 +148,7 @@ describe('activate', () => {
       '**/*.fudapi',
       '**/src/server/**',
       '**/src/browser/**',
+      '**/src/pipes/**',
     ]);
   });
 

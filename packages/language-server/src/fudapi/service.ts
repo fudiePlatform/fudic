@@ -140,7 +140,7 @@ export function createFudapiService(deps: FudapiServiceContext): LanguageService
             const doc = apiDocumentOf(context, document, host);
             if (doc === undefined) return undefined;
             const project = host.projectOf(doc.path);
-            return [...generatedLenses(doc), ...implementationLenses(doc, project, implementations.of(project, doc.path, doc.source.id))];
+            return [...generatedLenses(doc), ...implementationLenses(doc, project, implementations.of(host.implementationFolders(doc.path), doc.source.id))];
           });
         },
 

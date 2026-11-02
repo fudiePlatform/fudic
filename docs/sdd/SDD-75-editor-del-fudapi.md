@@ -81,11 +81,11 @@ Con `i18n`, `Server` y `Browser` muestran lo generado sin `LocaleCompile`: los t
 de origen del `.fudapi`, que es lo que el autor escribió. Lo traducido es cosa del build.
 
 **Encima de cada declaración que se implementa** (función, `load`, `paths`, `layout`, regla,
-middleware):
+middleware, pipe):
 
 | Caso | Lente |
 |---|---|
-| Una implementación | `implemented in src/server/usuarios.ts`. El clic lleva a la llamada `.handle(`/`.check(`/`.client(`/`.server(`. |
+| Una implementación | `implemented in src/server/usuarios.ts`. El clic lleva a la llamada `.handle(`/`.check(`/`.client(`/`.server(`/`.implement(`. |
 | Ninguna | `not implemented`, sin clic. |
 | Dos o más | Una lente por fichero. El error de duplicado lo sigue dando el build. |
 | Middleware | Una lente por mitad: `client: src/browser/auth.ts` · `server: not implemented`. |
@@ -110,16 +110,21 @@ middleware):
 
 ### 4.2. Implementaciones
 
-- El language server mira los `.ts`/`.js` de `src/server/**` y `src/browser/**` (en una
-  librería, sus carpetas `server/` y `browser/`). Para cada uno busca, con un único parseo de
-  Oxc:
+- El language server mira los `.ts`/`.js` de `src/server/**`, `src/browser/**` y la carpeta de
+  pipes del proyecto (`src/pipes/**` o la `pipes` de su `fudic.json`); en una librería, sus
+  carpetas `server/` y `browser/`. Para cada uno busca, con un único parseo de Oxc:
   - un `import { x } from 'fudic:<id>'`;
-  - una llamada `x.handle(…)`, `x.check(…)`, `x.client(…)` o `x.server(…)` sobre ese nombre.
+  - una llamada `x.handle(…)`, `x.check(…)`, `x.client(…)`, `x.server(…)` o, en un pipe,
+    `x.implement(…)` sobre ese nombre.
 - El resultado se guarda en un índice por `<id>` y nombre, con el fichero y el span de la
   llamada.
 - El índice se actualiza cuando cambia, se crea o se borra un fichero de esas carpetas.
-  `FILE_EVENTS` de la extensión añade `**/src/server/**` y `**/src/browser/**`.
+  `FILE_EVENTS` de la extensión añade `**/src/server/**`, `**/src/browser/**` y `**/src/pipes/**`.
 - Un fichero que no parsea no aporta nada y no rompe el índice.
+- *Añadido al implementar (Pedro, 2026-11-02):* los pipes, que se implementan con `.implement(`
+  junto a su contrato. Y el `.fudapi` propio de una librería (`fudapi/` de su paquete) tiene el
+  `<id>` con que lo importan sus apps y sus scripts (`@fudic/forms/rules`); abierto desde los
+  `node_modules` de una app, sus tipos son los de esa app (`.fudic/api/@fudic/forms/rules.d.ts`).
 
 ### 4.3. Lo generado
 

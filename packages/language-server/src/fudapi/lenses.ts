@@ -41,6 +41,8 @@ function implemented(decl: Decl): { readonly name: string; readonly methods: rea
       return { name: decl.kind, methods: ['handle'] };
     case 'rule':
       return { name: exportedName(decl.name.text), methods: ['check'] };
+    case 'pipe':
+      return { name: exportedName(decl.name.text), methods: ['implement'] };
     case 'middleware':
       return {
         name: exportedName(decl.name.text),

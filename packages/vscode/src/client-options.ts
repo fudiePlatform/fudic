@@ -35,6 +35,8 @@ export const FILE_EVENTS: readonly string[] = [
   // its declaration without reopening the `.fudapi`.
   '**/src/server/**',
   '**/src/browser/**',
+  // And a pipe's implementation, beside its contract in the folder of pipes.
+  '**/src/pipes/**',
 ];
 
 export const buildClientLaunch = (

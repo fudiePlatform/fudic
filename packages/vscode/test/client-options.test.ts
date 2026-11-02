@@ -38,6 +38,7 @@ describe('buildClientLaunch', () => {
       // Who implements a contract (SDD-75 criterion 12).
       '**/src/server/**',
       '**/src/browser/**',
+      '**/src/pipes/**',
     ]);
   });
 

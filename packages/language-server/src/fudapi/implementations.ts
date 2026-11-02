@@ -1,22 +1,20 @@
 /**
  * Who implements each declaration of a `.fudapi` (SDD-75 §4.2): the `.handle(`, `.check(`,
- * `.client(` and `.server(` called on a name imported from `fudic:<id>`, in the scripts of the
- * project's `src/server/` and `src/browser/` — a library's own `server/` and `browser/`.
+ * `.client(`, `.server(` and `.implement(` called on a name imported from `fudic:<id>`, in the
+ * scripts of the folders the host names for it.
  *
  * One Oxc parse per file, kept until the watcher says the file changed; a file that does not
  * parse adds nothing and costs the rest nothing. The folders are listed again after any change
  * of a script, which is also how a new or a deleted one is seen.
  */
 
-import { API_EXTENSION } from '@fudic/api';
-import { API_DIR, SRC_DIR } from '@fudic/conventions';
 import { parseSync, type CallExpression } from 'oxc-parser';
 import type { Range } from 'vscode-languageserver-protocol';
 import { rangeOf } from './document.js';
 import type { ApiFs } from './fs.js';
 
-/** What a handler calls on a piece of `fudic:<id>`. */
-export type ImplementationMethod = 'handle' | 'check' | 'client' | 'server';
+/** What a handler calls on a piece of `fudic:<id>`; a pipe, `implement`. */
+export type ImplementationMethod = 'handle' | 'check' | 'client' | 'server' | 'implement';
 
 /** One call that implements a declaration. */
 export interface Implementation {
@@ -30,11 +28,9 @@ export interface Implementation {
   readonly range: Range;
 }
 
-const METHODS: ReadonlySet<string> = new Set<ImplementationMethod>(['handle', 'check', 'client', 'server']);
+const METHODS: ReadonlySet<string> = new Set<ImplementationMethod>(['handle', 'check', 'client', 'server', 'implement']);
 const SCRIPT = /\.[cm]?[jt]s$/u;
 const PREFIX = 'fudic:';
-/** The folders of the implementations, relative to where they hang from. */
-const HALVES = ['server', 'browser'] as const;
 
 export class ImplementationIndex {
   readonly #fs: ApiFs;
@@ -47,18 +43,12 @@ export class ImplementationIndex {
     this.#fs = fs;
   }
 
-  /**
-   * The calls that implement the `.fudapi` at `path` of `project`, whose `<id>` in its app is `id`.
-   * A library's own contract, under its `fudapi/`, is imported by its package name.
-   */
-  of(project: string, path: string, id: string): readonly Implementation[] {
-    const library = `${project}/${API_DIR}/`;
-    const own = path.startsWith(library);
-    const imported = own ? this.#libraryId(project, path.slice(library.length, -API_EXTENSION.length)) : id;
-    const base = own ? project : `${project}/${SRC_DIR}`;
-    return HALVES.flatMap((half) => this.#scripts(`${base}/${half}`))
+  /** The calls on pieces of `fudic:<id>` in the scripts under `folders`. */
+  of(folders: readonly string[], id: string): readonly Implementation[] {
+    return folders
+      .flatMap((folder) => this.#scripts(folder))
       .flatMap((file) => this.#scan(file))
-      .filter((found) => found.id === imported);
+      .filter((found) => found.id === id);
   }
 
   /** Whether a changed file can change what this index says: a script. */
@@ -70,16 +60,6 @@ export class ImplementationIndex {
   invalidate(path: string): void {
     this.#found.delete(path);
     this.#lists.clear();
-  }
-
-  /** `<package>/<file>`, as a library's scripts import their own contract; nothing without a name. */
-  #libraryId(project: string, file: string): string | undefined {
-    try {
-      const name = (JSON.parse(this.#fs.readFile(`${project}/package.json`) ?? '{}') as { name?: unknown }).name;
-      return typeof name === 'string' ? `${name}/${file}` : undefined;
-    } catch {
-      return undefined; // a package.json being written names nothing yet
-    }
   }
 
   /** Every script under a folder, `node_modules` and dot folders left out. */

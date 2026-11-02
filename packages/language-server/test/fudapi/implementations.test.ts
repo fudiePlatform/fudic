@@ -16,9 +16,9 @@ describe('implementationsIn', () => {
     expect(found("import { 'save' as s } from 'fudic:routes/u';\ns.handle(() => {});")).toEqual(['routes/u:save.handle']);
   });
 
-  it('the four methods, nested anywhere in the module, and plain JavaScript too', () => {
-    const text = "import { a, b, c, d } from 'fudic:x';\nexport function f() { a.handle(); if (1) { b.check(); } }\nc.client();\nd.server();";
-    expect(found(text)).toEqual(['x:a.handle', 'x:b.check', 'x:c.client', 'x:d.server']);
+  it('the five methods, nested anywhere in the module, and plain JavaScript too', () => {
+    const text = "import { a, b, c, d, e } from 'fudic:x';\nexport function f() { a.handle(); if (1) { b.check(); } }\nc.client();\nd.server();\nexport default e.implement((v) => v);";
+    expect(found(text)).toEqual(['x:a.handle', 'x:b.check', 'x:c.client', 'x:d.server', 'x:e.implement']);
     expect(found("import { a } from 'fudic:x';\na.handle(() => 1);", 'a.js')).toEqual(['x:a.handle']);
   });
 
@@ -47,8 +47,9 @@ describe('implementationsIn', () => {
 
 describe('ImplementationIndex', () => {
   const HANDLES = "import { save } from 'fudic:routes/u';\nsave.handle();";
+  const FOLDERS = [`${SRC}/server`, `${SRC}/browser`];
 
-  it("an app: its src/server and src/browser, at any depth, scripts only, by the file's <id>", () => {
+  it("under its folders, at any depth, scripts only, by the file's <id>", () => {
     const fs = apiFs({
       [`${SRC}/server/a.ts`]: HANDLES,
       [`${SRC}/server/deep/b.mts`]: HANDLES,
@@ -62,35 +63,15 @@ describe('ImplementationIndex', () => {
       [`${SRC}/routes/f.ts`]: HANDLES,
       [`${SRC}/server/other.ts`]: "import { save } from 'fudic:routes/other';\nsave.handle();",
     });
-    const files = new ImplementationIndex(fs).of(APP, `${SRC}/routes/u.fudapi`, 'routes/u').map((i) => i.file);
+    const files = new ImplementationIndex(fs).of(FOLDERS, 'routes/u').map((i) => i.file);
     expect(files).toEqual([`${SRC}/server/a.ts`, `${SRC}/server/deep/b.mts`, `${SRC}/browser/c.js`]);
-  });
-
-  it('a library: its own server/ and browser/, by its package name', () => {
-    const lib = '/ws/forms';
-    const fs = apiFs({
-      [`${lib}/package.json`]: JSON.stringify({ name: '@fudic/forms' }),
-      [`${lib}/fudapi/rules.fudapi`]: 'rule required\n',
-      [`${lib}/browser/rules.js`]: "import { required } from 'fudic:@fudic/forms/rules';\nrequired.check(() => true);",
-    });
-    const found = new ImplementationIndex(fs).of(lib, `${lib}/fudapi/rules.fudapi`, 'rules');
-    expect(found.map((i) => `${i.file}:${i.name}`)).toEqual([`${lib}/browser/rules.js:required`]);
-  });
-
-  it('a library whose package.json names nothing, or is being written, implements nothing', () => {
-    const lib = '/ws/forms';
-    const script = { [`${lib}/browser/rules.js`]: "import { required } from 'fudic:undefined/rules';\nrequired.check();" };
-    for (const pkg of [JSON.stringify({}), '{', undefined]) {
-      const fs = apiFs({ ...script, ...(pkg !== undefined ? { [`${lib}/package.json`]: pkg } : {}) });
-      expect(new ImplementationIndex(fs).of(lib, `${lib}/fudapi/rules.fudapi`, 'rules')).toEqual([]);
-    }
   });
 
   it('reads a script once, and again after it changed; a new one after any change', () => {
     const files: Record<string, string | undefined> = { [`${SRC}/server/a.ts`]: HANDLES };
     const fs = apiFs(files);
     const index = new ImplementationIndex(fs);
-    const of = () => index.of(APP, `${SRC}/routes/u.fudapi`, 'routes/u').map((i) => i.file);
+    const of = () => index.of(FOLDERS, 'routes/u').map((i) => i.file);
     expect(of()).toEqual([`${SRC}/server/a.ts`]);
     expect(of()).toEqual([`${SRC}/server/a.ts`]);
     expect(fs.reads.filter((r) => r.endsWith('a.ts'))).toHaveLength(1);
@@ -112,24 +93,66 @@ describe('ImplementationIndex', () => {
   });
 });
 
+describe('where a contract is implemented, by the host', () => {
+  const LIB = '/ws/forms';
+  const RULE = 'rule required\n  on field *\n  runs both\n  fails required\n';
+
+  it('an app: its src/server, src/browser and its folder of pipes, by its fudic.json', () => {
+    const { host } = world();
+    expect(host.implementationFolders(`${SRC}/routes/u.fudapi`)).toEqual([`${SRC}/server`, `${SRC}/browser`, `${SRC}/pipes`]);
+    const custom = world({ files: { ...FILES, [`${APP}/fudic.json`]: JSON.stringify({ pipes: 'src/formats' }) } }).host;
+    expect(custom.implementationFolders(`${SRC}/routes/u.fudapi`)[2]).toBe(`${SRC}/formats`);
+  });
+
+  it("a library's own contract: its server/ and browser/, its <id> and its types by its package name", () => {
+    const path = `${LIB}/fudapi/rules.fudapi`;
+    const files = {
+      [`${LIB}/package.json`]: JSON.stringify({ name: '@fudic/forms' }),
+      [path]: RULE,
+      [`${LIB}/browser/rules.js`]: "import { required } from 'fudic:@fudic/forms/rules';\nrequired.check(() => true);",
+    };
+    const { host, implementations } = world({ files, roots: ['/ws'] });
+    const doc = apiDocument(host, RULE, path);
+    expect(doc.source.id).toBe('@fudic/forms/rules');
+    expect(host.implementationFolders(path)).toEqual([`${LIB}/server`, `${LIB}/browser`, `${LIB}/src/pipes`]);
+    const found = implementations.of(host.implementationFolders(path), doc.source.id);
+    expect(found.map((i) => `${i.file}:${i.name}`)).toEqual([`${LIB}/browser/rules.js:required`]);
+    // Its types, where an app keeps a library's: under its package name.
+    const types = `${LIB}/.fudic/api/@fudic/forms/rules.d.ts`;
+    expect(host.typesOf(path)).toBe(types);
+    expect(host.written(types)).toContain('required');
+  });
+
+  it('a library whose package.json names nothing has no contracts of its own', () => {
+    for (const pkg of [JSON.stringify({}), '{']) {
+      const { host } = world({ files: { [`${LIB}/package.json`]: pkg, [`${LIB}/fudapi/rules.fudapi`]: RULE }, roots: ['/ws'] });
+      expect(apiDocument(host, RULE, `${LIB}/fudapi/rules.fudapi`).source.id).toBe('rules');
+    }
+  });
+});
+
 describe('implementationLenses', () => {
-  const PROJECT = APP;
   const lensesOf = (text: string, scripts: Readonly<Record<string, string>>): readonly string[] => {
     const { host, implementations } = world({ files: { ...FILES, ...scripts } });
     const doc = apiDocument(host, text, `${SRC}/routes/blog.fudapi`);
-    return implementationLenses(doc, PROJECT, implementations.of(PROJECT, doc.path, doc.source.id)).map((l) => l.command!.title);
+    return implementationLenses(doc, APP, implementations.of(host.implementationFolders(doc.path), doc.source.id)).map((l) => l.command!.title);
   };
 
-  it('`load`, `paths`, `layout`, a function and a rule are implemented by their name; a type is not', () => {
-    const text = 'load ssg\n  title  str\npaths\nlayout\nget find-one\n  id  i32\nrule nif-letter\n  on field str\n  runs both\n  fails x\ntype T\n  x  str\n';
+  it('`load`, `paths`, `layout`, a function, a rule and a pipe are implemented by their name; a type is not', () => {
+    const text =
+      'load ssg\n  title  str\npaths\nlayout\nget find-one\n  id  i32\nrule nif-letter\n  on field str\n  runs both\n  fails x\npipe upper-case\n  on str\ntype T\n  x  str\n';
     const script = [
       "import { load, paths, layout, findOne, nifLetter } from 'fudic:routes/blog';",
       'load.handle(); paths.handle(); layout.handle(); findOne.handle(); nifLetter.check();',
       // The wrong method implements nothing.
       'nifLetter.handle();',
     ].join('\n');
-    expect(lensesOf(text, { [`${SRC}/server/blog.ts`]: script })).toEqual(Array(5).fill('implemented in src/server/blog.ts'));
-    expect(lensesOf(text, {})).toEqual(Array(5).fill('not implemented'));
+    const pipe = "import { upperCase } from 'fudic:routes/blog';\nexport default upperCase.implement((v) => v.toUpperCase());";
+    expect(lensesOf(text, { [`${SRC}/server/blog.ts`]: script, [`${SRC}/pipes/upper-case.ts`]: pipe })).toEqual([
+      ...Array<string>(5).fill('implemented in src/server/blog.ts'),
+      'implemented in src/pipes/upper-case.ts',
+    ]);
+    expect(lensesOf(text, {})).toEqual(Array<string>(6).fill('not implemented'));
   });
 
   it('two calls in one file are one lens', () => {
