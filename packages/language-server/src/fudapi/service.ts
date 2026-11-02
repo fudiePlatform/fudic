@@ -25,7 +25,7 @@ import type { ApiGenerated } from './generated.js';
 import { generatedLenses, implementationLenses, typeLenses } from './lenses.js';
 import { catchesHover } from './catches-hover.js';
 import { loadHover } from './load-line.js';
-import { apiDefinition, apiHover } from './navigation.js';
+import { apiDefinition, apiHover, declaredTypes } from './navigation.js';
 import { apiSemanticTokens } from './semantic-tokens.js';
 import { translationsMarkdown, type Translations } from '../translations.js';
 
@@ -131,7 +131,10 @@ export function createFudapiService(deps: FudapiServiceContext): LanguageService
         provideDefinition(document, position, token) {
           return run('definition', token, () => {
             const doc = apiDocumentOf(context, document, host);
-            return doc === undefined ? undefined : apiDefinition(doc, document.offsetAt(position), host);
+            if (doc === undefined) return undefined;
+            const offset = document.offsetAt(position);
+            // On the name a declaration is declared with, its own definition is itself: what it generates is the useful answer.
+            return declaredTypes(doc, offset, host) ?? apiDefinition(doc, offset, host);
           });
         },
 

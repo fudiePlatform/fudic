@@ -9,7 +9,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { emitModule } from '@fudic/api';
-import { CodeLensRequest } from 'vscode-languageserver-protocol/node';
+import { CodeLensRequest, DefinitionRequest, type Location } from 'vscode-languageserver-protocol/node';
 import { URI } from 'vscode-uri';
 import { API_MODULE_REQUEST, API_REGENERATE_REQUEST, API_TYPES_REQUEST, NOTHING_GENERATED, type ModuleAnswer } from '../../src/fudapi/generated.js';
 import { uriToPath } from '../../src/uri.js';
@@ -67,6 +67,18 @@ describe('what a .fudapi generates (SDD-75)', () => {
     expect(types.endsWith('/.fudic/api/types/person.d.ts')).toBe(true);
     const line = readFileSync(types, 'utf8').split('\n')[(range as { start: { line: number } }).start.line]!;
     expect(line).toContain('export interface Person');
+  });
+
+  it('Ctrl+Click on `type Person` opens its interface in the types (added at implementation)', async () => {
+    const links = (await harness.client.sendRequest(DefinitionRequest.type, {
+      textDocument: { uri: harness.uriOf(PERSON) },
+      position: { line: 0, character: 6 },
+    })) as Location[];
+    // A Location: the test client does not declare link support, and Volar answers in kind.
+    expect(links).toHaveLength(1);
+    const target = uriToPath(URI.parse(links[0]!.uri));
+    expect(target.endsWith('/.fudic/api/types/person.d.ts')).toBe(true);
+    expect(readFileSync(target, 'utf8').split('\n')[links[0]!.range.start.line]).toContain('export interface Person');
   });
 
   it('criterion 8: Types is .fudic/api/<id>.d.ts, written again when it was deleted', async () => {

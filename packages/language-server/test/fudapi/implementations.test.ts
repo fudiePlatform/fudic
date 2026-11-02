@@ -6,6 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { ImplementationIndex, implementationsIn } from '../../src/fudapi/implementations.js';
 import { implementationLenses, typeLenses } from '../../src/fudapi/lenses.js';
+import { declaredTypes } from '../../src/fudapi/navigation.js';
 import { APP, FILES, SRC, apiDocument, apiFs, world } from './_api.js';
 
 const found = (text: string, file = 'a.ts') => implementationsIn(file, text).map((i) => `${i.id}:${i.name}.${i.method}`);
@@ -163,6 +164,34 @@ describe('typeLenses', () => {
     const types = host.typesText(PATH);
     expect(types.text).toBe('');
     expect(typeLenses(apiDocument(host, TEXT, PATH), types)).toEqual([]);
+  });
+});
+
+describe('declaredTypes: Ctrl+Click on the name a declaration is declared with', () => {
+  const PATH = `${SRC}/routes/blog.fudapi`;
+  const TEXT = 'load ssr\n  t  Person\ntype Person\n  name  str\nget find\n  id  i32\n';
+
+  it('opens what it generates in the types of the file', () => {
+    const { host } = world({ files: { ...FILES, [PATH]: TEXT } });
+    const doc = apiDocument(host, TEXT, PATH);
+    const [link] = declaredTypes(doc, TEXT.indexOf('Person\n  name'), host)!;
+    const types = host.typesText(PATH);
+    expect(link!.targetUri.endsWith('/.fudic/api/routes/blog.d.ts')).toBe(true);
+    expect(types.text.split('\n')[link!.targetSelectionRange.start.line]).toContain('export interface Person');
+    expect(link!.originSelectionRange).toEqual({ start: { line: 2, character: 5 }, end: { line: 2, character: 11 } });
+    const [fn] = declaredTypes(doc, TEXT.indexOf('find'), host)!;
+    expect(types.text.split('\n')[fn!.targetSelectionRange.start.line]).toContain('export const find');
+  });
+
+  it('nothing off a declared name, nor for a name the types do not have', () => {
+    const { host } = world({ files: { ...FILES, [PATH]: TEXT } });
+    const doc = apiDocument(host, TEXT, PATH);
+    expect(declaredTypes(doc, 1, host)).toBeUndefined();
+    expect(declaredTypes(doc, TEXT.indexOf('  t  Person') + 6, host)).toBeUndefined();
+    // On a disk that refuses the types, there is nothing to open.
+    const refused = world({ files: { ...FILES, [PATH]: TEXT } });
+    refused.fs.writeFile = () => undefined;
+    expect(declaredTypes(apiDocument(refused.host, TEXT, PATH), TEXT.indexOf('find'), refused.host)).toBeUndefined();
   });
 });
 

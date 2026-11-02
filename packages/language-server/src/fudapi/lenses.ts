@@ -5,7 +5,7 @@
  */
 
 import { exportedName, type Decl, type EnumDecl, type FormDecl, type PatternDecl, type TypeDecl } from '@fudic/api';
-import type { CodeLens } from 'vscode-languageserver-protocol';
+import type { CodeLens, Range } from 'vscode-languageserver-protocol';
 import { rangeOf, type ApiDocument } from './document.js';
 import type { Implementation, ImplementationMethod } from './implementations.js';
 
@@ -39,21 +39,36 @@ const generates = (decl: Decl): decl is TypeDecl | EnumDecl | FormDecl | Pattern
  * `interface Person`, `type Role`, `const personForm` — and a click to it there (Pedro,
  * 2026-11-02). Nothing over one the types do not have.
  */
-export function typeLenses(doc: ApiDocument, types: { readonly path: string; readonly text: string }): CodeLens[] {
+export function typeLenses(doc: ApiDocument, types: GeneratedTypes): CodeLens[] {
   const lenses: CodeLens[] = [];
   for (const decl of doc.source.file.declarations) {
     if (!generates(decl)) continue;
-    const name = exportedName(decl.name.text);
-    const found = new RegExp(`export (interface|type|const) ${name}\\b`, 'u').exec(types.text);
-    if (found === null) continue;
-    const start = found.index + 'export '.length;
-    const at = rangeOf(types.path, types.text, { start, end: start + found[0].length - 'export '.length });
+    const found = generatedIn(types, decl.name.text);
+    if (found === undefined) continue;
     lenses.push({
       range: rangeOf(doc.path, doc.text, { start: decl.span.start, end: decl.span.start }),
-      command: { title: `${found[1]} ${name}`, command: API_COMMANDS.goToImplementation, arguments: [types.path, at] },
+      command: { title: found.title, command: API_COMMANDS.goToImplementation, arguments: [types.path, found.range] },
     });
   }
   return lenses;
+}
+
+/** The types of a `.fudapi` on disk: where, and what they say. */
+export interface GeneratedTypes {
+  readonly path: string;
+  readonly text: string;
+}
+
+/**
+ * Where the types export what a declaration named `name` generates — `interface Person`,
+ * `const save` — and that text; `undefined` when they do not.
+ */
+export function generatedIn(types: GeneratedTypes, name: string): { readonly title: string; readonly range: Range } | undefined {
+  const exported = exportedName(name);
+  const found = new RegExp(`export ((?:interface|type|const) ${exported})\\b`, 'u').exec(types.text);
+  if (found === null) return undefined;
+  const start = found.index + 'export '.length;
+  return { title: found[1]!, range: rangeOf(types.path, types.text, { start, end: start + found[1]!.length }) };
 }
 
 /** What a declaration is implemented by: the name its module exports and the methods called on it. */
