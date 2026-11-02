@@ -5,7 +5,17 @@
 <link rel="server" href="./index.fudapi">
 
 @code {
+  import { signal, task } from '@fudic/core';
   import { t } from '@fudic/i18n';
+
+  // `reserve` declares `catches 409`: its error stays here, in the language of the page.
+  const reservar = task(reserve);
+  const motivo = signal("");
+
+  async function reservarPlaza() {
+    const r = await reservar.run();
+    motivo.set(r.status === "failed" ? (r.error as Error).message : "");
+  }
 }
 
 <head>
@@ -17,3 +27,15 @@
 <app-greeting .name="Luis" .count=@(4) .vip=@(true) .alta=@data.alta></app-greeting>
 <app-cart></app-cart>
 <p>Lee <a href="/blog/pipes">cómo se formatean los precios</a>.</p>
+
+<form control=@newsletter form:=@subscribe>
+  <label for="email">Email</label>
+  <input id="email" control=@newsletter.email type="email">
+  <small error=@newsletter.email></small>
+  <button type="submit">Apuntarme</button>
+</form>
+
+<button type="button" @click=@reservarPlaza>Reservar plaza</button>
+@if (motivo() !== "") {
+  <p role="alert">@motivo()</p>
+}

@@ -102,6 +102,9 @@ importers:
       '@fudic/dom':
         specifier: workspace:*
         version: link:../../packages/dom
+      '@fudic/forms':
+        specifier: workspace:*
+        version: link:../../packages/forms
       '@fudic/http':
         specifier: workspace:*
         version: link:../../packages/http
@@ -249,6 +252,9 @@ importers:
       '@fudic/diagnostics':
         specifier: workspace:*
         version: link:../diagnostics
+      '@fudic/i18n':
+        specifier: workspace:*
+        version: link:../i18n
     devDependencies:
       '@fudic/forms':
         specifier: workspace:*

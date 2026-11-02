@@ -37,7 +37,8 @@ export interface Message {
   readonly holes: readonly { readonly name: string; readonly expr: Span }[];
   /** Inline elements inside the message. */
   readonly tags: number;
-  readonly origin: 'text' | 'attribute' | 'result' | 't';
+  // `fudapi`: a text of a `.fudapi`, which `@fudic/api` extracts with this very shape (SDD-74).
+  readonly origin: 'text' | 'attribute' | 'result' | 't' | 'fudapi';
   readonly span: Span;
   readonly at: number;
 }

@@ -25,12 +25,6 @@ public sealed record Saved(int Id, string Name);
 /// <summary><c>form person</c>, already valid: <c>required</c> makes <c>Age</c> a byte, not a byte?.</summary>
 public sealed record PersonForm(string Name, string Nif, string Email, byte Age, bool Active, string Notes);
 
-/// <summary>The <c>fails</c> of <c>save</c>: <c>throw SaveFails.Reserved();</c></summary>
-public static class SaveFails
-{
-    public static Fail Reserved() => new(409, "reserved", "Ese nombre está reservado.");
-}
-
 // ── The form: the same declaration as ts/generated/user-form.ts ───────────────
 
 internal static class PersonSchema

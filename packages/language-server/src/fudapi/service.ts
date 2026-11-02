@@ -23,10 +23,13 @@ import type { ApiHost } from './host.js';
 import { loadHover } from './load-line.js';
 import { apiDefinition, apiHover } from './navigation.js';
 import { apiSemanticTokens } from './semantic-tokens.js';
+import { translationsMarkdown, type Translations } from '../translations.js';
 
 export interface FudapiServiceContext {
   readonly host: ApiHost;
   readonly stats: RequestStats;
+  /** The catalogs, for the hover over a text (SDD-74 §4.5): its line per locale, — where it is missing. */
+  readonly translations?: Translations;
 }
 
 const SEVERITY: Readonly<Record<Severity, DiagnosticSeverity>> = {
@@ -54,8 +57,14 @@ function toLsp(doc: ApiDocument, d: SourceDiagnostic, host: ApiHost): LspDiagnos
   };
 }
 
+/** The translations of the text under `offset`, as the hover over a message of a `.fud` shows them. */
+function textHover(doc: ApiDocument, offset: number, translations: Translations | undefined): { contents: { kind: 'markdown'; value: string } } | undefined {
+  const found = translations?.at(doc.path, doc.text, offset);
+  return found === undefined ? undefined : { contents: { kind: 'markdown', value: translationsMarkdown(found) } };
+}
+
 export function createFudapiService(deps: FudapiServiceContext): LanguageServicePlugin {
-  const { host, stats } = deps;
+  const { host, stats, translations } = deps;
 
   return {
     name: 'fudapi',
@@ -107,7 +116,7 @@ export function createFudapiService(deps: FudapiServiceContext): LanguageService
             const doc = apiDocumentOf(context, document, host);
             if (doc === undefined) return undefined;
             const offset = document.offsetAt(position);
-            return apiHover(doc, offset, host) ?? loadHover(doc, offset);
+            return apiHover(doc, offset, host) ?? loadHover(doc, offset) ?? textHover(doc, offset, translations);
           });
         },
 

@@ -1,8 +1,8 @@
 /**
  * `fudic translate` (SDD-58 §3.5, §4.10): the one command that writes the catalogs.
  *
- * It reads every `.fud` and every `.ts`/`.js` of the app's `src`, and the `.fud` of the fudic
- * libraries it depends on — the same files the plugin compiles. It extracts their messages,
+ * It reads every `.fud`, `.fudapi` and `.ts`/`.js` of the app's `src`, and the `.fud` and `.fudapi` of
+ * the fudic libraries it depends on — the same files the plugin compiles. It extracts their messages,
  * merges them into `src/locales/<locale>/`, one file per source file, and returns as
  * `FileChange`s the catalogs whose text changes, and as deletions those left with no message. Two runs over the same code give the same bytes, and the second has no change.
  *
@@ -13,6 +13,7 @@
  * The pipeline (dev, build, preview) never runs this, and says nothing of what it finds.
  */
 
+import { API_EXTENSION, extractApiMessages } from '@fudic/api';
 import { extractMessages, extractScriptMessages, type Message } from '@fudic/compiler';
 import { LOCALES_DIR, SRC_DIR } from '@fudic/conventions';
 import { FUD1022, FUD1024, FUD1025, FUD1026, type FileDiagnostic } from '@fudic/diagnostics';
@@ -119,7 +120,12 @@ function extract(cwd: string, target: Target, io: ReadIo, diagnostics: PlanDiagn
       .filter((f) => !f.endsWith('.d.ts'))
       .sort()
       .map((f) => joinPosix(src, f)),
-    ...findLibraries(target.path, libraryFs(io)).flatMap((library) => library.files),
+    // The texts of the `.fudapi` are messages too (SDD-74 §4.5), and their catalog sits next to the `.fud`'s.
+    ...walkFiles(src, io, API_EXTENSION).map((f) => joinPosix(src, f)),
+    ...findLibraries(target.path, libraryFs(io)).flatMap((library) => [
+      ...library.files,
+      ...walkFiles(library.root, io, API_EXTENSION).map((f) => joinPosix(library.root, f)),
+    ]),
   ];
 
   const found: Found[] = [];
@@ -129,7 +135,11 @@ function extract(cwd: string, target: Target, io: ReadIo, diagnostics: PlanDiagn
     // snippet is its path, and both sides must spell it the same.
     const name = relativeTo(target.path, absolute);
     const file = relativeTo(cwd, absolute);
-    const result = absolute.endsWith('.fud') ? extractMessages(source, name) : extractScriptMessages(source, name);
+    const result = absolute.endsWith('.fud')
+      ? extractMessages(source, name)
+      : absolute.endsWith(API_EXTENSION)
+        ? extractApiMessages(source, name)
+        : extractScriptMessages(source, name);
     for (const diagnostic of result.diagnostics) {
       if (diagnostic.code === CONFLICT) diagnostics.push({ file, diagnostic });
     }
