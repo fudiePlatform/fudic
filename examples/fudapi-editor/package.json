@@ -6,6 +6,7 @@
   "type": "module",
   "dependencies": {
     "@fudic/forms": "workspace:*",
-    "@fudic/http": "workspace:*"
+    "@fudic/http": "workspace:*",
+    "@fudic/i18n": "workspace:*"
   }
 }
