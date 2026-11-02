@@ -5,7 +5,7 @@
 > `@fudic/language-server` · `@fudic/cli` · `@fudic/vite` · `examples/basic` · `examples/fudapi-editor` ·
 > `examples/i18n`
 > **Rama:** `sdd-74-errores-en-la-pagina`. Nace de `main` **con SDD-72 en `Hecho`**.
-> **Progreso:** 5 / 16 — `En curso`.
+> **Progreso:** 6 / 16 — `En curso`.
 
 ---
 
@@ -43,7 +43,7 @@
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 8 | — | **`TaskResult`**, `run()` con el resultado de su llamada, `error()` escrito por cada llamada (SDD §3.3, §4.3) | `core` | `src/task.ts` · `src/index.ts` |
+| [x] | 8 | — | **`TaskResult`**, `run()` con el resultado de su llamada, `error()` escrito por cada llamada (SDD §3.3, §4.3) | `core` | `src/task.ts` · `src/index.ts` |
 | [ ] | 9 | 8 | **Los tests de la fase.** Criterios 6, 7 | `core` | `test/**` |
 
 ## Fase 4 — propiedades vivas (2)

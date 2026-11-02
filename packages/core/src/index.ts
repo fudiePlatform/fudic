@@ -39,6 +39,7 @@ export { onStaleData, type DataSource } from './route-data.js';
 export {
   task,
   type Task,
+  type TaskResult,
   type TaskState,
   type TaskMode,
   type TaskOptions,

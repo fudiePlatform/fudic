@@ -14,8 +14,10 @@
  *   however it settles, and then leaves. Nothing is dropped and nothing overtakes, because
  *   reordering two `save`s is how the database ends up disagreeing with the screen.
  *
- * `run` never rejects: an `@click` that calls it has nobody to catch. The failure is in
- * `error()`, and an abort is never a failure. `error-pages` acts before any of this, because
+ * `run` never rejects: an `@click` that calls it has nobody to catch. It resolves with what
+ * happened to ITS call (`TaskResult`), and every call that settles writes `error()`, even with
+ * others still waiting: a failure is never hidden behind the call that comes after it. An abort
+ * is never a failure. `error-pages` acts before any of this, because
  * it is a step INSIDE the call: what it navigates away from never settles here.
  *
  * On the server nobody writes a signal and nobody clicks, so a task never calls there:
@@ -57,16 +59,24 @@ export interface Task<A, R, V = R | undefined> {
   readonly state: Readable<TaskState>;
   /** `state() === 'pending'`. Tracked. */
   readonly pending: Readable<boolean>;
-  /** What the last failed call rejected with; `undefined` unless state() is 'failed'. Tracked. */
+  /** What the last call that settled rejected with; `undefined` if it succeeded. Tracked. */
   readonly error: Readable<unknown>;
-  /** Starts a call by hand. Resolves with its answer, or `undefined` if it was cancelled, replaced or failed. Never rejects. */
-  run(...args: A extends void ? [args?: A] : [args: A]): Promise<R | undefined>;
+  /** Starts a call. Resolves with the outcome of THIS call. Never rejects. */
+  run(...args: A extends void ? [args?: A] : [args: A]): Promise<TaskResult<R>>;
   /** Aborts the call in flight and drops the ones waiting. */
   cancel(): void;
 }
 
-/** How a call settled, without ever rejecting. */
-type Outcome<R> = { readonly ok: true; readonly value: R } | { readonly ok: false; readonly error: unknown };
+/** How one call of a task ended: what `run()` resolves with. */
+export type TaskResult<R> =
+  | { readonly status: 'done'; readonly value: R }
+  | { readonly status: 'failed'; readonly error: unknown }
+  | { readonly status: 'cancelled' };
+
+/** How a call that was not dropped settled. */
+type Outcome<R> = Exclude<TaskResult<R>, { readonly status: 'cancelled' }>;
+
+const CANCELLED: TaskResult<never> = Object.freeze({ status: 'cancelled' });
 
 export function task<A, R>(fn: Callable<A, R>, source?: () => A): Task<A, R>;
 export function task<A, R>(
@@ -94,7 +104,7 @@ export function task<A, R>(
   /** `queue`: what the next call waits for. */
   let tail: Promise<unknown> = Promise.resolve();
   /** The `run` promises of this generation that have not resolved yet. */
-  const waiting = new Set<(answer: R | undefined) => void>();
+  const waiting = new Set<(result: TaskResult<R>) => void>();
   let disposed = false;
 
   /** Call `fn`. A synchronous throw becomes a rejection, and no outcome ever rejects. */
@@ -103,28 +113,31 @@ export function task<A, R>(
     return new Promise<R>((resolve) => {
       resolve(fn(args, { signal: controller.signal }));
     }).then(
-      (answer): Outcome<R> => ({ ok: true, value: answer }),
-      (reason: unknown): Outcome<R> => ({ ok: false, error: reason }),
+      (answer): Outcome<R> => ({ status: 'done', value: answer }),
+      (reason: unknown): Outcome<R> => ({ status: 'failed', error: reason }),
     );
   };
 
-  /** Write what one current call left, and close the round if it was the last one. */
-  const settle = (outcome: Outcome<R>): R | undefined => {
+  /**
+   * Write what one current call left: its error, or `undefined`, whether or not others wait
+   * behind it; the state only when it was the last one.
+   */
+  const settle = (outcome: Outcome<R>): Outcome<R> => {
     inFlight = null;
     outstanding -= 1;
-    if (outcome.ok) {
+    if (outcome.status === 'done') {
       value.set(outcome.value);
     }
+    error.set(outcome.status === 'done' ? undefined : outcome.error);
     if (outstanding === 0) {
-      error.set(outcome.ok ? undefined : outcome.error);
-      state.set(outcome.ok ? 'done' : 'failed');
+      state.set(outcome.status);
     }
-    return outcome.ok ? outcome.value : undefined;
+    return outcome;
   };
 
   /**
    * Forget every call of this generation: abort the one on the wire and resolve every `run`
-   * with `undefined` NOW. Not when `fn` settles — a `fn` that ignores its signal may never
+   * as cancelled NOW. Not when `fn` settles — a `fn` that ignores its signal may never
    * settle, and a replaced or cancelled `run` must not wait for it.
    */
   const drop = (): void => {
@@ -135,14 +148,14 @@ export function task<A, R>(
     // A call that ignores its abort must not hold back the ones that come after.
     tail = Promise.resolve();
     for (const resolve of waiting) {
-      resolve(undefined);
+      resolve(CANCELLED);
     }
     waiting.clear();
   };
 
-  const start = (args: A): Promise<R | undefined> => {
+  const start = (args: A): Promise<TaskResult<R>> => {
     if (disposed) {
-      return Promise.resolve(undefined);
+      return Promise.resolve(CANCELLED);
     }
     if (!queue) {
       drop();
@@ -151,7 +164,7 @@ export function task<A, R>(
     state.set('pending');
     outstanding += 1;
     const mine = generation;
-    return new Promise<R | undefined>((resolve) => {
+    return new Promise<TaskResult<R>>((resolve) => {
       waiting.add(resolve);
       const call = async (): Promise<void> => {
         if (mine !== generation) {
