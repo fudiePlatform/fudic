@@ -303,13 +303,31 @@ function emitOptionsFor(
     ...styleOptions(graph, styles),
     // The locale this module is compiled for (SDD-58), when it is compiled for one.
     ...(i18n === undefined ? {} : { i18n }),
-    // Where each element was written, when the host asks for it (SDD-64): the file by its name.
-    ...(sourceLabel === undefined ? {} : { sourceLocations: sourceLabel(id) }),
+    // Where each element was written, when the host asks for it (SDD-64).
+    ...(sourceLabel === undefined ? {} : { sourceLocations: sourceLocator(sourceLabel) }),
   };
 }
 
 /** The name a file is stamped with in `data-fud-src`: relative to the project root, with '/'. */
 export type SourceLabel = (file: string) => string;
+
+/**
+ * `<file>:<line>:<column>` of a place, 1-based, the file named by `label`. Each file is read once
+ * per module: its elements are stamped one by one, and a snippet's file is not the module's.
+ */
+function sourceLocator(label: SourceLabel): (file: string, offset: number) => string {
+  const lines = new Map<string, LineMap>();
+  return (file, offset) => {
+    let map = lines.get(file);
+    if (map === undefined) {
+      // The compiler has just read it to compile this module: it is there.
+      map = new LineMap(readFileSync(file, 'utf8'));
+      lines.set(file, map);
+    }
+    const at = map.positionAt(offset);
+    return `${label(file)}:${at.line + 1}:${at.character + 1}`;
+  };
+}
 
 /**
  * What this page kept of each sheet it receives, recorded for the whole build (SDD-49 §4.9),

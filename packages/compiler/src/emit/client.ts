@@ -247,7 +247,7 @@ function buildComponentClientModule(
     // both sides, or a host hydrates adopting a different list than it rendered with.
     projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
     // The same `data-fud-src` the server writes, on what this branch fabricates.
-    ...stampOption(options, comp.source),
+    ...stampOption(options, comp.path, comp.path === graph.entryPath ? graph.entryMap : undefined),
     // And the same files, with `css: "link"` (SDD-73 §3.5) — and how many `<link>`s its own
     // root opens with, for the adopt path to step over.
     ...(fileSheets === undefined

@@ -138,7 +138,7 @@ function buildLayoutModule(
   const bodyW = new CodeWriter();
   const em = new MarkupEmitter({
     source,
-    ...stampOption(options, source),
+    ...stampOption(options, layout.path, layout.path === graph.entryPath ? graph.entryMap : undefined),
     w: bodyW,
     isComponent: (t) => graph.components.has(t),
     linker,
@@ -329,7 +329,7 @@ function buildRouteModule(
   const parted = inParts(route);
   const parts = parted ? { parts: PARTS } : {};
   const bodyW = new CodeWriter();
-  const stamp = stampOption(options, source);
+  const stamp = stampOption(options, graph.entryPath, graph.entryMap);
   const em = new MarkupEmitter({
     source,
     ...stamp,

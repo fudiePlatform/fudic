@@ -562,9 +562,11 @@ Todos son `error`. Cada `.md` sigue la forma de SDD-50 §4.4.
     `CriterionResult.diagnostics`, que no viaja en el mensaje `result` (los mensajes no cambian).
 11. **Las causas que el banco ya conocía conservan su código**: la fixture que lanza sigue siendo
     `FUD0973` y la señal no literal `FUD0974`; una entrada que la fixture no tiene es `FUD1207`.
-12. **En el compilador la opción es el nombre del fichero, no un booleano.** El compilador tiene un
-    texto y no conoce la raíz: `EmitOptions.sourceLocations?: string` es el nombre con el que se
-    sella (relativo a la raíz, con `/`), y lo inyecta el plugin. `fudic({ sourceLocations: true })`
+12. **En el compilador la opción es una función, no un booleano.** El compilador no lee ficheros ni
+    conoce la raíz, y un snippet se expande en el sitio de su `@render`: la posición de su etiqueta
+    está en otro fichero. `EmitOptions.sourceLocations?: (file, offset) => string` recibe el fichero
+    y el offset ORIGINALES (la tabla de la expansión devuelve cada posición a su fichero, el del
+    componente o el del snippet) y el plugin escribe `<fichero relativo>:<línea>:<columna>`. `fudic({ sourceLocations: true })`
     y `fudicTest({ sourceLocations: true })` siguen siendo booleanos; el plugin solo sella en
     `vite dev`, nunca en el build. `fudicTest` ya pasaba sus opciones al plugin: no cambia.
 13. **`data-fud-src` va justo tras crear el elemento**, en los dos emisores y antes de cualquier
