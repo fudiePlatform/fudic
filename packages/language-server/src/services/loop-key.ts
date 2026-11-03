@@ -33,14 +33,24 @@ export function loopKeyAt(
   return id !== undefined && keyable(checker, checker.getTypeOfSymbolAtLocation(id, node)) ? 'id' : undefined;
 }
 
-/**
- * Whether every value of a type is a string or a number. By the name each primitive prints as,
- * for the reason `tag-card.ts` gives: TypeScript is a type here, never a runtime value. A union
- * has to be unanimous, so an optional `id` — `string | undefined` — is not a key.
- */
+/** Whether every value of a type is a string, or every one a number: what a key ports as. */
 function keyable(checker: ts.TypeChecker, type: ts.Type): boolean {
-  if (type.isUnion()) return type.types.every((member) => keyable(checker, member));
-  if (type.isStringLiteral() || type.isNumberLiteral()) return true;
+  return primitiveOf(checker, type) !== undefined;
+}
+
+/**
+ * The one primitive every value of a type is. By the name each primitive prints as, for the
+ * reason `tag-card.ts` gives: TypeScript is a type here, never a runtime value. A union has to be
+ * unanimous: `'a' | 'b'` is a string, but `string | number` and an optional `string | undefined`
+ * are neither.
+ */
+function primitiveOf(checker: ts.TypeChecker, type: ts.Type): 'string' | 'number' | undefined {
+  if (type.isUnion()) {
+    const kinds = new Set(type.types.map((member) => primitiveOf(checker, member)));
+    return kinds.size === 1 ? [...kinds][0] : undefined;
+  }
+  if (type.isStringLiteral()) return 'string';
+  if (type.isNumberLiteral()) return 'number';
   const name = checker.typeToString(type);
-  return name === 'string' || name === 'number';
+  return name === 'string' || name === 'number' ? name : undefined;
 }
