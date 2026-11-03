@@ -77,6 +77,12 @@ interface ParamRef {
 interface BodyPlan {
   readonly refs: readonly ParamRef[];
   readonly renders: readonly RenderCallNode[];
+  /**
+   * Whether the body assigns to one of its parameters. Where the body is checked that is
+   * `FUD0901`; substituted, it would be an assignment to the argument — a literal, a call —
+   * that Oxc rejects again over the caller's text: a second voice, in the wrong place.
+   */
+  readonly writesParam: boolean;
 }
 
 /**
@@ -102,7 +108,7 @@ const CHAIN = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$/u;
 const PLANS = new WeakMap<SnippetDeclNode, BodyPlan>();
 
 /** The empty plan: what the file being compiled has, since it binds no parameters. */
-const NO_PLAN: BodyPlan = { refs: [], renders: [] };
+const NO_PLAN: BodyPlan = { refs: [], renders: [], writesParam: false };
 
 /**
  * The five control constructs and `@await` (SDD-70), whose bodies hang off their branches and
@@ -180,6 +186,7 @@ function planOf(snippet: ResolvedSnippet): BodyPlan {
   const renders = rendersOf(snippet.decl.children);
 
   const refs: ParamRef[] = [];
+  let writesParam = false;
   if (names.size > 0) {
     const batch = new JsBatch(snippet.source);
     const ids: number[] = [];
@@ -190,9 +197,11 @@ function planOf(snippet: ResolvedSnippet): BodyPlan {
     const parsed = batch.parse().value;
     const atoms = implicitAtoms(snippet.decl.children);
     for (const id of ids) {
+      const written = assignedStarts(parsed.ast(id));
       for (const node of freeReferenceNodes([parsed.ast(id)])) {
         const index = names.get(String((node as OxcNode)['name']));
         if (index === undefined) continue;
+        if (written.has(node.start)) writesParam = true;
         const at = parsed.mapSpan(node.start, node.end);
         const atom = atoms.get(at.start);
         refs.push({ at, index, ...(atom !== undefined ? { atom } : {}) });
@@ -201,9 +210,31 @@ function planOf(snippet: ResolvedSnippet): BodyPlan {
     refs.sort((a, b) => a.at.start - b.at.start);
   }
 
-  const plan: BodyPlan = { refs, renders };
+  const plan: BodyPlan = { refs, renders, writesParam };
   PLANS.set(snippet.decl, plan);
   return plan;
+}
+
+/**
+ * Where a fragment's assigned identifiers start: the targets of `=`, `+=` and the like, and of
+ * `++`/`--`. Matched against the free references, a local that shadows a parameter is not one.
+ */
+function assignedStarts(root: unknown): ReadonlySet<number> {
+  const out = new Set<number>();
+  const targets = (node: unknown): void => {
+    if (node === null || typeof node !== 'object') return;
+    if ((node as OxcNode).type === 'Identifier') out.add((node as OxcNode).start);
+    for (const value of Object.values(node)) targets(value);
+  };
+  const visit = (node: unknown): void => {
+    if (node === null || typeof node !== 'object') return;
+    const type = (node as OxcNode).type;
+    if (type === 'AssignmentExpression') targets((node as OxcNode)['left']);
+    else if (type === 'UpdateExpression') targets((node as OxcNode)['argument']);
+    for (const value of Object.values(node)) visit(value);
+  };
+  visit(root);
+  return out;
 }
 
 /** Whether `inner` lies within `outer`. */
@@ -375,7 +406,8 @@ class Expander {
     const own: Diagnostic[] = [];
     const resolved = checkRenderCall(call, frame.scope, frame.file, frame.stack, own);
     this.#report(frame.file, own);
-    if (resolved === undefined) {
+    // A body that writes a parameter is left unexpanded, as a cycle is: its FUD0901 is the voice.
+    if (resolved === undefined || planOf(resolved.snippet).writesParam) {
       this.#out.copy(frame.file, frame.source, call.span);
       return;
     }

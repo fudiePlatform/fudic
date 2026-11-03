@@ -23,6 +23,8 @@ import {
   type ResolveIo,
   type SemanticInput,
 } from '@fudic/compiler';
+import { ERROR_FILE } from '@fudic/conventions';
+import { posix } from 'node:path';
 import { holeDiagnostics } from './holes.js';
 import { parseFud } from './parse.js';
 import { serverLinksOf } from './links.js';
@@ -48,14 +50,15 @@ function registryOf(document: ProjectedFud): ComponentRegistry {
 /**
  * What the `.fudapi` the document links bring into its view (SDD-60 §3.14): nothing at all when
  * it links none — no `load`, so no `data` — and `undefined` when one of them could not be read:
- * the caller cannot know, and the view then keeps the rule of its role.
+ * the caller cannot know, and the view then keeps the rule of its role. `_error.fud` has `data`
+ * with no `load`: the framework hands it the error it paints, as the projection types it.
  */
 function apisOf(document: ProjectedFud): SemanticInput['apis'] {
   const links = serverLinksOf(document.document).length;
   const servers = document.registry.servers();
   if (servers.length < links) return undefined;
   return {
-    data: servers.some((s) => s.load),
+    data: posix.basename(document.path) === ERROR_FILE || servers.some((s) => s.load),
     names: new Set(servers.flatMap((s) => s.names)),
     later: new Set(servers.flatMap((s) => (s.later ?? []).map((f) => f.name))),
   };

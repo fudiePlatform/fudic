@@ -168,7 +168,7 @@ describe('createProjectChecker — what it reports', () => {
     expect(report.problems.every((problem) => problem.file.endsWith('app-badge.fud'))).toBe(true);
   });
 
-  it('reads data as unknown in a route that links no .fudapi with load, as the editor does', () => {
+  it('says a route that links no .fudapi with load has no data, as the editor does', () => {
     const route = `<link rel="layout" href="../layouts/_layout.fud">
 
 <p>@data.missing</p>
@@ -184,7 +184,8 @@ describe('createProjectChecker — what it reports', () => {
     const root = project({ 'src/routes/index.fud': route, 'src/layouts/_layout.fud': layout });
     const report = createProjectChecker({ root }).check();
 
-    expect(shown(report, root)).toEqual(['src/routes/index.fud TS18046 data']);
+    // FUD0907 says it, and TypeScript's TS18046 on the same read is its echo (SDD-62).
+    expect(shown(report, root)).toEqual(['src/routes/index.fud FUD0907 data']);
   });
 
   it('reports the declaration diagnostics when the tsconfig asks for declarations', () => {

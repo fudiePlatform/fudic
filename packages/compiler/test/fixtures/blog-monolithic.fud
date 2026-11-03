@@ -3,6 +3,7 @@
   <head>
     <link rel="component" href="../../fixtures/app-badge.fud">
     <link rel="component" href="../../fixtures/app-card.fud">
+    <link rel="server" href="./blog-monolithic.fudapi">
 
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">

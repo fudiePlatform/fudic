@@ -257,6 +257,29 @@ describe('a snippet inside a snippet (§4.6)', () => {
     // The first level expanded; the one that closed the cycle is left where it was.
     expect(source).toContain('<i>@render a()</i>');
   });
+
+  // Substituted, `title = …` would be `"Ada" = …`: Oxc's error over the caller's argument, when
+  // the fact is the body's FUD0901, reported where the body is checked (SDD-62).
+  it.each([
+    ['an assignment', '@{ title = title + "!"; }'],
+    ['a compound one', '@{ title += "!"; }'],
+    ['an update', '@{ title++; }'],
+    ['a destructuring', '@{ ({ title } = { title: "x" }); }'],
+  ])('leaves a call inert when the body writes a parameter: %s', (_, write) => {
+    const { source, diagnostics } = expand({
+      [ENTRY]: `@snippet row(title: string) { ${write} <p>@title</p> }\n${component('@render row("Ada")')}`,
+    });
+    expect(diagnostics).toEqual([]);
+    expect(source).toContain('@render row("Ada")');
+  });
+
+  it('expands a body whose write is to a local that shadows the parameter', () => {
+    const { source } = expand({
+      [ENTRY]: `@snippet row(title: string) { @{ let x = 1; { let title = "t"; title = "u"; } x = 2; } <p>@title</p> }\n${component('@render row("Ada")')}`,
+    });
+    expect(source).not.toContain('@render row');
+    expect(source).toContain('<p>@("Ada")</p>');
+  });
 });
 
 describe('what an expansion drags with it (§4.5)', () => {
