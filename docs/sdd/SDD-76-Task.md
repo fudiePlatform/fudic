@@ -3,7 +3,7 @@
 > **SDD:** [SDD-76 — `effect` con dependencias explícitas](./SDD-76-efectos-con-dependencias.md)
 > **Paquetes:** `@fudic/core` · `@fudic/compiler` (solo un test)
 > **Rama:** `sdd-76-efectos-con-dependencias`, desde `main`.
-> **Progreso:** 5 / 7 — `En curso`.
+> **Progreso:** 7 / 7 — `Hecho` (2026-11-03).
 
 **El orden manda en un punto: los defectos antes que las dependencias.** El modo con `deps` pasa
 por el mismo `run`; si la regla de la vuelta superada (SDD §4.4) llega después, habría que
@@ -43,5 +43,5 @@ escribirla dos veces.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 6 | 3 | **README y SDD-31.** En el README de `core`, una sección `effect` con los dos modos, el corte, `[]` y cuándo usar cada uno; quitar «no automatic tracking in v1» de la viñeta de `signal`, que es falso desde SDD-31. En SDD-31 §3, la viñeta «no toma dependencias» con la nota «enmendada por SDD-76: opcionales» | `core` · docs | `README.md` · `docs/sdd/SDD-31-signals-derivadas.md` |
-| [ ] | 7 | 2, 4–6 | **Cierre.** Criterio 23: `pnpm typecheck`, `pnpm test`, `pnpm build`, `core` al 100 % en las cuatro métricas. Estado `Hecho` en la SDD, en este fichero y en la tabla de `INDEX.md`; entrada en el registro de progreso | docs | `docs/sdd/*` |
+| [x] | 6 | 3 | **README y SDD-31.** En el README de `core`, una sección `effect` con los dos modos, el corte, `[]` y cuándo usar cada uno; quitar «no automatic tracking in v1» de la viñeta de `signal`, que es falso desde SDD-31. En SDD-31 §3, la viñeta «no toma dependencias» con la nota «enmendada por SDD-76: opcionales» | `core` · docs | `README.md` · `docs/sdd/SDD-31-signals-derivadas.md` |
+| [x] | 7 | 2, 4–6 | **Cierre.** Criterio 23: `pnpm typecheck`, `pnpm test`, `pnpm build`, `core` al 100 % en las cuatro métricas. Estado `Hecho` en la SDD, en este fichero y en la tabla de `INDEX.md`; entrada en el registro de progreso | docs | `docs/sdd/*` |

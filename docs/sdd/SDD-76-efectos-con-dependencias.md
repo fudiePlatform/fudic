@@ -1,6 +1,6 @@
 # SDD-76 — `effect` con dependencias explícitas, y un efecto que no deja nada atrás
 
-> **Estado:** `Listo` — [tareas](./SDD-76-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-76-Task.md).
 > **Paquetes:** `@fudic/core` (y un test en `@fudic/compiler`)
 > **Depende de:** 31 (`effect`, `computed`, `untrack`, el rastreo por hojas), 68 (el owner que da
 > de baja lo que crea el `@code`) — las dos en `Hecho`.
