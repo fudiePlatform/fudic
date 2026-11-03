@@ -1,6 +1,5 @@
 @code {
-  import type { Signal } from "@fudic/core";
-  const { count } = props<{ count: Signal<number> }>();
+  const { onSave } = props<{ onSave: () => void }>();
 }
 
 <app-child>

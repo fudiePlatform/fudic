@@ -1,0 +1,9 @@
+@code {
+  const { onSave } = props<{ onSave: () => void }>();
+}
+
+<app-child>
+  <template shadowrootmode="open">
+    <button @click=@onSave()>Save</button>
+  </template>
+</app-child>

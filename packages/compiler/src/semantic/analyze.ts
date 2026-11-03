@@ -39,6 +39,8 @@ import { translations } from './analyzers/translations.js';
 import { awaitBlocks } from './analyzers/await.js';
 import { jsxText } from './analyzers/jsx-text.js';
 import { attributeBindings } from './analyzers/attribute-bindings.js';
+import { loopBindings } from './analyzers/loop-bindings.js';
+import { dataWithoutLoad } from './analyzers/data-without-load.js';
 
 /** The ordered list of analyzers (§4). One rule per unit. */
 export const ANALYZERS: readonly Analyzer[] = [
@@ -72,6 +74,8 @@ export const ANALYZERS: readonly Analyzer[] = [
   spreadTarget,
   translations,
   awaitBlocks,
+  loopBindings,
+  dataWithoutLoad,
   jsxText,
 ];
 

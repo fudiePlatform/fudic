@@ -46,14 +46,14 @@ function registryOf(document: ProjectedFud): ComponentRegistry {
 }
 
 /**
- * What the `.fudapi` the document links bring into its view (SDD-60 §3.14): `undefined` when it
- * links none, or when one of them could not be read — the caller cannot know, and the view then
- * keeps the rule of its role.
+ * What the `.fudapi` the document links bring into its view (SDD-60 §3.14): nothing at all when
+ * it links none — no `load`, so no `data` — and `undefined` when one of them could not be read:
+ * the caller cannot know, and the view then keeps the rule of its role.
  */
 function apisOf(document: ProjectedFud): SemanticInput['apis'] {
   const links = serverLinksOf(document.document).length;
   const servers = document.registry.servers();
-  if (links === 0 || servers.length < links) return undefined;
+  if (servers.length < links) return undefined;
   return {
     data: servers.some((s) => s.load),
     names: new Set(servers.flatMap((s) => s.names)),

@@ -20,7 +20,6 @@ import { allComponents, componentOf, type ComponentGraph, type ResolvedComponent
 import type { CodeWriter } from './writer.js';
 import { classifyAttribute } from '../binding/index.js';
 import type { Diagnostic } from '../types/index.js';
-import { FUD0621 } from '@fudic/diagnostics';
 import { codeOf, type ExtractedCode } from './oxc-code.js';
 import {
   entryHalf,
@@ -333,7 +332,6 @@ const DATA_BLOCK = 'fud-data';
 export function routeBlocksOf(
   graph: ComponentGraph,
   routeName: string | undefined,
-  out: Diagnostic[],
 ): RouteBlocks | undefined {
   const entry = entryHalf(graph);
   if (entry === undefined || routeName === undefined || !isReactiveRoute(graph)) return undefined;
@@ -341,7 +339,7 @@ export function routeBlocksOf(
   // What an `@await` waits for is a promise here whatever the link says — one the host could not
   // read included — so it is left out of `fud-data` with the `later` fields (SDD-70 §3.5).
   const awaited = awaitedReads(entry.roots, graph.entrySource).map((a) => a.field);
-  const data = dataExpression(entry.code, loads(graph), out, [...laterFieldsOf(graph), ...awaited]);
+  const data = dataExpression(entry.code, [...laterFieldsOf(graph), ...awaited]);
   // With the shape of `load`, the block carries no key at any depth, and the chunk reads it back
   // by the same shape (BUG-60 §3.2). Without one — a link the host could not read — it keeps them.
   const shape = dataShapeOf(graph);
@@ -369,9 +367,9 @@ export function routeBlocksOf(
  * or `data` handed to a function — sends the object whole, with NO diagnostic: a warning there
  * would fire for writing correct JavaScript.
  *
- * `?.` on every root, because the one case that is knowable IS reported: a route that reads
- * `data` and declares no `load` finds `undefined` there forever (`FUD0621`), and the emit must
- * not turn that into a throw while it says so.
+ * `?.` on every root, because a route that reads `data` and declares no `load` finds `undefined`
+ * there forever — the semantic pass reports it (`FUD0621`) — and the emit must not turn that
+ * into a throw.
  */
 /**
  * What `dataExpression` gives when everything the page reads of `data` is a `later` field: the
@@ -381,15 +379,10 @@ const EMPTY_DATA = '{}';
 
 function dataExpression(
   code: ExtractedCode,
-  hasLoad: boolean,
-  out: Diagnostic[],
   later: readonly string[],
 ): string | null {
   const access = code.dataAccess;
   if (access.kind === 'none') return null;
-  if (!hasLoad) {
-    out.push(FUD0621({ span: access.at }));
-  }
   // A `later` field is a promise when the page is painted: it never travels here, but in the
   // `fields` of the part that awaited it (SDD-70 §3.5).
   if (access.kind === 'all') {

@@ -442,7 +442,7 @@ function buildRouteModule(
       ...unresolvedLayoutProps(requiredLayoutProps(graph.layouts), route.layoutLink.openSpan),
     );
   }
-  const blocks = routeBlocksOf(graph, options.routeName, routeDiagnostics);
+  const blocks = routeBlocksOf(graph, options.routeName);
   // The maps carry the route too — its entry in `fud-tree`, and its name in `fud-eager` when
   // it comes up without a gesture — under the name it publishes, never under a tag.
   const maps = writeMapConstants(w, graph, hydratable, blocks?.name);

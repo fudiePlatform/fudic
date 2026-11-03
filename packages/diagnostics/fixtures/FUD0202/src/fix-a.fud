@@ -1,12 +1,13 @@
 <link rel="component" href="./app-child.fud">
 
 @code {
-  import { signal } from "@fudic/core";
-  const count = signal(0);
+  function save(): void {
+    console.log("saved");
+  }
 }
 
 <fix-a>
   <template shadowrootmode="open">
-    <app-child .count="@count"></app-child>
+    <app-child .onSave=@save></app-child>
   </template>
 </fix-a>
