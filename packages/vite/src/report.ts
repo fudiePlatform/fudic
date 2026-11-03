@@ -13,7 +13,15 @@
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { format, render, type FudDiagnostic, type Span, type WireDiagnostic } from '@fudic/diagnostics';
+import {
+  format,
+  render,
+  type FudCode,
+  type FudDiagnostic,
+  type Severity,
+  type Span,
+  type WireDiagnostic,
+} from '@fudic/diagnostics';
 import { echoes, relativePath, toPosix, type CheckReport } from '@fudic/typecheck/problems';
 
 /**
@@ -144,6 +152,32 @@ export function isFudicCompileError(error: unknown): error is FudicCompileError 
   if (!(error instanceof Error) || !('fudic' in error)) return false;
   const fudic = error.fudic;
   return typeof fudic === 'object' && fudic !== null && 'diagnostics' in fudic && Array.isArray(fudic.diagnostics);
+}
+
+/** A head line of the message, as `pluginLog` writes it: `<file>:<line>:<column> - <severity> <code>: <message>`. */
+const HEAD = /^(.+?):(\d+):(\d+) - (error|warning|info|hint) (FUD\d{4}): (.*)$/gmu;
+
+/**
+ * The diagnostics of a `.fud` that did not compile, from whatever reached the caller: the
+ * `FudicCompileError` itself, or what is left of it after crossing a process — vitest's module
+ * runner keeps the message and drops the rest, and the message says every error in this
+ * plugin's own words. Undefined when it is not such an error.
+ */
+export function compileDiagnosticsOf(error: unknown): readonly WireDiagnostic[] | undefined {
+  if (isFudicCompileError(error)) return error.fudic.diagnostics;
+  const message = typeof error === 'object' && error !== null ? (error as { message?: unknown }).message : undefined;
+  if (typeof message !== 'string') return undefined;
+  const found = [...message.matchAll(HEAD)].map(
+    ([, file, line, column, severity, code, text]): WireDiagnostic => ({
+      code: code as FudCode,
+      severity: severity as Severity,
+      message: text!,
+      file: file!,
+      line: Number(line),
+      column: Number(column),
+    }),
+  );
+  return found.length > 0 ? found : undefined;
 }
 
 /** A located diagnostic for a reader: its file relative to the root, line and column 1-based. */

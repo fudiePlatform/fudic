@@ -72,7 +72,7 @@ function visit(node: Node, into: (AriaNode | string)[]): void {
     return;
   }
   if (!isElement(node) || SKIPPED.has(node.localName) || isInaccessible(node)) return;
-  const role = getRole(node);
+  const role = roleOf(node);
   if (role === null || SILENT.has(role)) {
     for (const child of flatChildren(node)) visit(child, into);
     return;
@@ -88,6 +88,46 @@ function visit(node: Node, into: (AriaNode | string)[]): void {
     props: propsOf(node, role),
     children,
   });
+}
+
+/**
+ * The implicit roles the browser gives and `dom-accessibility-api` does not: the text-level ones.
+ * A `<legend>` has none — its text joins what follows it.
+ */
+const IMPLICIT: ReadonlyMap<string, string | null> = new Map([
+  ['p', 'paragraph'],
+  ['blockquote', 'blockquote'],
+  ['code', 'code'],
+  ['em', 'emphasis'],
+  ['strong', 'strong'],
+  ['del', 'deletion'],
+  ['ins', 'insertion'],
+  ['sub', 'subscript'],
+  ['sup', 'superscript'],
+  ['time', 'time'],
+  ['caption', 'caption'],
+  ['dfn', 'term'],
+  ['legend', null],
+]);
+
+/** Where a `<header>` or `<footer>` is no longer the page's banner or content info. */
+const SECTIONING = new Set(['article', 'aside', 'main', 'nav', 'section']);
+
+/** An element's role as the browser computes it: the author's first, then the implicit one. */
+function roleOf(element: Element): string | null {
+  if (element.hasAttribute('role')) return getRole(element);
+  const name = element.localName;
+  const implicit = IMPLICIT.get(name);
+  if (implicit !== undefined) return implicit;
+  if ((name === 'header' || name === 'footer') && inSection(element)) return null;
+  return getRole(element);
+}
+
+function inSection(element: Element): boolean {
+  for (let at = parentOf(element); at !== null; at = parentOf(at)) {
+    if (SECTIONING.has(at.localName)) return true;
+  }
+  return false;
 }
 
 /** The value a textbox shows, as Playwright writes it: a text child. */

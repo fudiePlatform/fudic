@@ -9,6 +9,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, posix, resolve } from 'node:path';
 import { FUD1207, type FilePosition, type WireDiagnostic } from '@fudic/diagnostics';
+import { compileDiagnosticsOf } from '@fudic/vite';
 import type { Reporter, TestCase, TestModule } from 'vitest/node';
 
 export interface RunTestsOptions {
@@ -79,11 +80,12 @@ const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/u;
 /** An error as vitest hands it over: serialized, so a class is only its `name`. */
 interface ReportedError {
   readonly name?: string;
-  readonly message?: string;
+  readonly message: string;
   readonly expected?: unknown;
   readonly actual?: unknown;
   readonly stacks?: readonly { readonly file: string; readonly line: number; readonly column: number }[];
-  readonly fudic?: unknown;
+  /** What vitest adds to the error of a matcher of `expect.extend`. */
+  readonly __vitest_error_context__?: { readonly assertionName?: unknown };
 }
 
 export async function runTests(options: RunTestsOptions): Promise<TestReport> {
@@ -104,11 +106,20 @@ export async function runTests(options: RunTestsOptions): Promise<TestReport> {
   return report;
 }
 
+/** One vitest run: these files (none = every one), and only these names when there are any. */
+interface Pass {
+  readonly paths?: readonly string[];
+  readonly names?: readonly string[];
+}
+
 async function run(root: string, options: RunTestsOptions, started: number): Promise<TestReport> {
-  const chosen = options.failing === true ? lastFailing(root, options) : options;
-  // Everything passed last time: there is nothing to run again.
-  if (chosen === null) return reportOf(root, [], Date.now() - started);
-  const { paths, names } = chosen;
+  const passes = options.failing === true ? lastFailing(root, options) : [options];
+  const modules: TestModule[] = [];
+  for (const pass of passes) modules.push(...(await vitestRun(root, pass)));
+  return reportOf(root, modules, Date.now() - started);
+}
+
+async function vitestRun(root: string, { paths, names }: Pass): Promise<readonly TestModule[]> {
   let modules: readonly TestModule[] = [];
   const collect: Reporter = {
     onTestRunEnd(testModules) {
@@ -122,32 +133,33 @@ async function run(root: string, options: RunTestsOptions, started: number): Pro
     watch: false,
     passWithNoTests: true,
     reporters: [collect],
-    ...(names !== undefined && names.length > 0 ? { testNamePattern: namePattern(names) } : {}),
+    ...(names === undefined ? {} : { testNamePattern: namePattern(names) }),
   });
   try {
     await vitest.start(paths === undefined ? [] : [...paths]);
   } finally {
     await vitest.close();
   }
-  return reportOf(root, modules, Date.now() - started);
+  return modules;
 }
 
 /**
- * What did not pass last time: its files, and its names unless a file did not load — then that
- * file runs whole, and so does every file of the run, since vitest has one name filter for all.
- * With no report before, everything; with one where everything passed, null: nothing.
+ * What did not pass last time. A file that did not load runs whole; a test that failed runs by
+ * its name, in its file. Two runs, because vitest has one name filter for every file. With no
+ * report before, everything; with one where everything passed, nothing.
  */
-function lastFailing(
-  root: string,
-  options: RunTestsOptions,
-): { paths?: readonly string[]; names?: readonly string[] } | null {
+function lastFailing(root: string, options: RunTestsOptions): readonly Pass[] {
   const last = readLast(root);
-  if (last === undefined) return options;
-  if (last.tests.length === 0) return null;
-  const files = [...new Set(last.tests.map((test) => test.file))];
-  const whole = last.tests.some((test) => test.name === null);
-  const failed = last.tests.flatMap((test) => (test.name === null ? [] : [test.name]));
-  return { paths: files, ...(whole ? {} : { names: failed }) };
+  if (last === undefined) return [options];
+  const whole = [...new Set(last.tests.flatMap((test) => (test.name === null ? [test.file] : [])))];
+  // A file that did not load has no tests of its own: the two lists never share a file.
+  const named = last.tests.filter((test) => test.name !== null);
+  const passes: Pass[] = [];
+  if (whole.length > 0) passes.push({ paths: whole });
+  if (named.length > 0) {
+    passes.push({ paths: [...new Set(named.map((test) => test.file))], names: named.map((test) => test.name!) });
+  }
+  return passes;
 }
 
 function readLast(root: string): TestReport | undefined {
@@ -175,7 +187,7 @@ function namePattern(names: readonly string[]): string {
 function reportOf(root: string, modules: readonly TestModule[], ms: number): TestReport {
   const tests: TestResult[] = [];
   const files: FileCounts[] = [];
-  const sorted = [...modules].sort((a, b) => (a.moduleId < b.moduleId ? -1 : a.moduleId > b.moduleId ? 1 : 0));
+  const sorted = [...modules].sort((a, b) => a.moduleId.localeCompare(b.moduleId));
   for (const module of sorted) {
     const file = relativeTo(root, module.moduleId);
     const counts = { file, pass: 0, fail: 0, broken: 0, skipped: 0 };
@@ -211,19 +223,20 @@ function brokenFile(file: string, errors: readonly ReportedError[]): BrokenTest 
 }
 
 function failedTest(root: string, file: string, test: TestCase, errors: readonly ReportedError[]): TestResult {
-  const error = errors[0] ?? {};
+  // A failed test has at least one error: the first is what stopped it.
+  const error = errors[0]!;
   const place = placeOf(root, error);
-  if (ASSERTIONS.has(error.name ?? '')) {
-    // An assertion always points at a line of the test: it was thrown there.
+  if (isAssertion(error)) {
     return {
       verdict: 'fail',
       file,
       name: test.fullName,
+      // An assertion made outside every test file (in a helper's timer) has no line of the test.
       at: place?.at ?? { file, line: 1, column: 1 },
       quote: place?.quote ?? '',
       ...textOf('expected', error.expected),
       ...textOf('actual', error.actual),
-      message: firstLine(error.message ?? ''),
+      message: firstLine(error.message),
     };
   }
   return {
@@ -244,32 +257,28 @@ function textOf<K extends 'expected' | 'actual'>(key: K, value: unknown): { [P i
 function placeOf(root: string, error: ReportedError): { at: FilePosition; quote: string } | undefined {
   for (const frame of error.stacks ?? []) {
     const file = relativeTo(root, frame.file);
-    if (file.startsWith('../') || file.includes('node_modules/') || !TEST_FILE.test(file)) continue;
-    const quote = lineOf(frame.file, frame.line);
-    if (quote === undefined) continue;
+    if (file.startsWith('../') || !TEST_FILE.test(file)) continue;
+    // The test file that just ran, at a line its own stack names: both are there.
+    const quote = readFileSync(frame.file, 'utf8').split(/\r?\n/u)[frame.line - 1]!.trim();
     return { at: { file, line: frame.line, column: frame.column }, quote };
   }
   return undefined;
 }
 
-function lineOf(file: string, line: number): string | undefined {
-  try {
-    return readFileSync(file, 'utf8').split(/\r?\n/u)[line - 1]?.trim();
-  } catch {
-    return undefined;
-  }
+/**
+ * What a broken test says, with codes: the diagnostics of a `.fud` that did not compile, as the
+ * plugin tells them, or one FUD1207 with the original message.
+ */
+function diagnosticsOf(error: ReportedError): readonly WireDiagnostic[] {
+  return compileDiagnosticsOf(error) ?? [could(firstLine(error.message))];
 }
 
 /**
- * What a broken test says, with codes: the diagnostics of a `.fud` that did not compile as the
- * plugin carried them, or one FUD1207 with the original message.
+ * Whether an assertion said no: vitest's own `expect` names its error, and a matcher added with
+ * `expect.extend` — jest-dom's — throws a plain `Error` that vitest marks with its name.
  */
-function diagnosticsOf(error: ReportedError): WireDiagnostic[] {
-  const fudic = error.fudic;
-  if (typeof fudic === 'object' && fudic !== null && Array.isArray((fudic as { diagnostics?: unknown }).diagnostics)) {
-    return (fudic as { diagnostics: WireDiagnostic[] }).diagnostics;
-  }
-  return [could(firstLine(error.message ?? String(error.name ?? 'unknown error')))];
+function isAssertion(error: ReportedError): boolean {
+  return ASSERTIONS.has(String(error.name)) || typeof error.__vitest_error_context__?.assertionName === 'string';
 }
 
 function could(reason: string): WireDiagnostic {
@@ -281,7 +290,10 @@ function relativeTo(root: string, file: string): string {
   return posix.relative(root.replace(/\\/gu, '/'), file.replace(/\\/gu, '/'));
 }
 
+/** A terminal colour: jest-dom paints its messages, and a report is not a terminal. */
+const COLOUR = /\u001b\[[0-9;]*m/gu;
+
 function firstLine(value: unknown): string {
   const text = value instanceof Error ? value.message : String(value);
-  return text.split('\n')[0]!;
+  return text.replace(COLOUR, '').split('\n')[0]!;
 }
