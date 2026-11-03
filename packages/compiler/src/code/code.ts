@@ -88,22 +88,19 @@ class RegionCursor {
   }
 
   /**
-   * If `offset` falls inside an opaque region, the offset just past it; otherwise
-   * `offset` itself. Always strictly greater than `offset` when it skips, so the
-   * caller's loop cannot stall.
+   * The opaque region `offset` falls inside, if any. Its end is strictly greater than
+   * `offset`, so a caller that skips to it cannot stall.
    */
-  skipFrom(offset: number): number {
+  at(offset: number): LexRegion | undefined {
     for (
       let region = this.#regions[this.#index];
       region !== undefined;
       region = this.#regions[this.#index]
     ) {
-      if (region.span.end > offset) {
-        return region.span.start <= offset ? region.span.end : offset;
-      }
+      if (region.span.end > offset) return region.span.start <= offset ? region : undefined;
       this.#index++;
     }
-    return offset;
+    return undefined;
   }
 }
 
@@ -153,9 +150,15 @@ class BodySplitter {
         this.#chunkStart = this.#offset;
         continue;
       }
-      const skipped = this.#regions.skipFrom(this.#offset);
-      if (skipped !== this.#offset) {
-        this.#offset = skipped;
+      const region = this.#regions.at(this.#offset);
+      if (region !== undefined) {
+        // A Razor comment is `FUD0114`, and it is left out of the chunks: copied as JS it would
+        // be a syntax error too, a second voice for the one comment.
+        if (region.kind === 'razor-comment') {
+          this.#closeChunk(this.#offset);
+          this.#chunkStart = region.span.end;
+        }
+        this.#offset = region.span.end;
         continue;
       }
       this.#step();

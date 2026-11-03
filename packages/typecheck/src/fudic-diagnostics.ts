@@ -103,7 +103,9 @@ function snippetDiagnostics(document: ProjectedFud, index: LinkIndex): readonly 
   const scope = new SnippetRegistry(io).scopeOf(document.path, document.source, document.document, []);
   const out: Diagnostic[] = [];
   checkRenderCalls(documentRoots(document.document), scope, document.path, out);
-  return out;
+  // A call inside an imported snippet's body is that file's to report: the check and the editor
+  // check it too, and said from here as well it would be said once per file that imports it.
+  return out.filter((d) => d.file === undefined);
 }
 
 /**

@@ -1,9 +1,9 @@
 @code {
-  const { names = [] } = props<{ names?: string[] }>();
+  const { count = 0 } = props<{ count?: number }>();
 }
 
 <app-names>
   <template shadowrootmode="open">
-    <p>@(names.map((n) => n).length)</p>
+    <p>@count</p>
   </template>
 </app-names>
