@@ -1,6 +1,6 @@
 # SDD-62 — Diagnósticos que dicen la verdad: el catálogo y las bombillas, listos para un LLM
 
-> **Estado:** `Listo` — [tareas](./SDD-62-Task.md).
+> **Estado:** `Hecho` (2026-11-03) — [tareas](./SDD-62-Task.md).
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/language-server` ·
 > `fudic-vscode`
 > **Depende de:** 50 (catálogo), 36 (la bombilla), 24 (language server), 61 (la vista portable,
@@ -350,3 +350,27 @@ alguno no es ASCII inglés (sin `ñ`, tildes ni palabras de una lista corta en e
      frente a `FUD0835` y `FUD1151`).
    - **El arnés**, que tiene que pasar lo mismo que el build: el layout de una ruta, los estilos y
      los assets del proyecto, los paquetes de runtime y los ficheros que crea un arreglo.
+3. **`FUD0914` y `FUD0195`, retirados.** Un snippet que se renderiza a sí mismo es siempre
+   `FUD0835`, y un literal de array u objeto en la vista es siempre `FUD1143`: nunca podían hablar
+   solos.
+4. **Una voz por hecho, como regla general.** TypeScript calla donde habla un error fudic del mismo
+   fichero, en el check y en el editor (`echoes`, de `@fudic/typecheck`). El `FUD0170` de Oxc calla
+   donde ya habló el parse (un string sin cerrar es `FUD0003`; un comentario Razor es `FUD0114` y
+   no entra en el chunk). El reporter del build calla un error del emit que se encuentra con uno
+   del check. Un enlace roto (`FUD0460`) se queda con los tags que no resuelven: `FUD0191` vuelve
+   cuando el enlace se arregla. Un elemento crudo sin cerrar es `FUD0014`, sin `FUD0052`.
+5. **Lo que solo decía el build lo dicen también el editor y el check:** los `@render`
+   (`FUD0826`–`FUD0831`), la forma de una prop (`FUD0200`, `FUD0201`, con los nombres importados
+   como opacos), `FUD0429` (un aviso, ya no un `TS2345` de la proyección), `FUD0543` y `FUD0621`.
+6. **`FUD0202` solo puede ser un callback** (quien pasa una señal hace hidratar al hijo): su `.md` y
+   su par, reescritos. **`FUD1382`** solo habla del choque con un bucle que rodea al handler; el
+   choque con el `@code` es el `FUD0918` del bucle.
+7. **Un snippet que asigna a un parámetro no se expande**, como un ciclo: sustituido, la asignación
+   caía sobre el argumento de quien llama y Oxc decía `FUD0170` allí. Habla solo su `FUD0901`.
+8. **`_error.fud` tiene `data` sin `load`**: se la da el framework, como ya la tipa la proyección.
+   El check no dice `FUD0907` al leerla.
+9. **Un `@catch` suelto sin `(`** consume solo la palabra: `FUD1323` y nada más.
+10. **SDD-71, criterio 8:** la mitad de TypeScript (el `TS2345` junto a `FUD1150`) queda superada
+    por la regla de una voz; el test espera `FUD1150` solo.
+11. **`examples/vista-errores`** enlaza `src/vista-errores.fudapi` con `load`, para que sus lecturas
+    de `data` sigan siendo los casos que anotan.

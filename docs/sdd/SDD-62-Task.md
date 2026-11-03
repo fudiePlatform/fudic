@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/language-server` · `fudic-vscode`
 > **Rama:** `sdd-62-diagnosticos-que-dicen-la-verdad`. Nace de `main` **con SDD-61 en `Hecho`**:
 > sus catorce códigos y sus reescritos entran en la migración.
-> **Progreso:** 22 / 27 — `En curso`.
+> **Progreso:** 27 / 27 — `Hecho`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -57,10 +57,10 @@ código, no el test.
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 9 | 3 | **El arnés.** Saca de los `.md` la lista de códigos con ejemplo de código; para cada uno busca `fixtures/FUDnnnn.<ext>` y `.fixed.<ext>` (o su carpeta), los pasa por el mismo pase que el build y comprueba roto = ese código y ningún otro error, arreglado = nada | `cli` | `test/fixes.test.ts` (SDD §8.2.1: en `diagnostics` cerraba un ciclo de build) |
-| [ ] | 10 | 9 | **Los pares de `.fud`.** Uno por código del compilador y del pase tipado de la lista | `diagnostics` | `fixtures/*.fud` · `fixtures/FUDnnnn/` |
+| [x] | 10 | 9 | **Los pares de `.fud`.** Uno por código del compilador y del pase tipado de la lista | `diagnostics` | `fixtures/*.fud` · `fixtures/FUDnnnn/` |
 | [x] | 11 | 9 | **Los pares de `.fudspec` y `.fudapi`.** Igual, con sus extensiones | `diagnostics` | `fixtures/*.fudspec` · `fixtures/*.fudapi` |
 | [x] | 12 | 10, 11 | **Corregir lo que el par demuestre.** `FUD0191` por papel del fichero (SDD §4.1) y cada `.md` cuyo par falle; los de fuera del lenguaje (`fudic.json`, CLI, banco) se revisan a mano | `diagnostics` | `src/codes/*.md` |
-| [ ] | 13 | 12 | **Los tests de la fase.** Criterios 4–6 | `cli` | `test/fixes.test.ts` |
+| [x] | 13 | 12 | **Los tests de la fase.** Criterios 4–6 | `cli` | `test/fixes.test.ts` |
 
 ## Fase 2b — los defectos que destapan los pares (6)
 
@@ -70,10 +70,10 @@ SDD §8.2.2. Cada tarea se da por hecha cuando los pares de sus códigos pasan.
 |---|---|---|---|---|---|
 | [x] | 22 | 10 | **Lo que se calcula y se tira.** Los diagnósticos de la clasificación de atributos y spreads llegan al usuario, una vez | `compiler` | `src/semantic/**` · `src/binding/**` |
 | [x] | 23 | 10 | **El emit no lanza.** Fichero solo de markup, host sin `<template>`, enlace a un `.fud` que no existe: diagnóstico, nunca excepción | `compiler` | `src/emit/**` |
-| [ ] | 24 | 10 | **Una voz por hecho.** Donde hablan un código nuestro y TypeScript (u otro código) sobre el mismo fallo, calla el segundo | `compiler` · `typecheck` | varios |
+| [x] | 24 | 10 | **Una voz por hecho.** Donde hablan un código nuestro y TypeScript (u otro código) sobre el mismo fallo, calla el segundo | `compiler` · `typecheck` | varios |
 | [x] | 25 | 10 | **Lo que no sale y lo que se contradice.** `FUD0543`, `FUD0621`; `FUD0914` frente a `FUD0835`/`FUD1151` | `compiler` · `diagnostics` | varios |
 | [x] | 26 | 9 | **El arnés pasa lo que pasa el build.** Layout de ruta, estilos, assets, runtime, ficheros creados; códigos que solo emite el plugin, fuera | `cli` | `test/fixes*.test.ts` |
-| [ ] | 27 | 22–26 | **Los tests de la fase.** Cada defecto con su test en rojo antes del arreglo | varios | `test/**` |
+| [x] | 27 | 22–26 | **Los tests de la fase.** Cada defecto con su test en rojo antes del arreglo | varios | `test/**` |
 
 ## Fase 3 — las bombillas (5)
 
@@ -91,7 +91,7 @@ SDD §8.2.2. Cada tarea se da por hecha cuando los pares de sus códigos pasan.
 |---|---|---|---|---|---|
 | [x] | 19 | 1 | **`FUD1160` y `FUD1161`.** `className`/`htmlFor` en el analizador de atributos nativos, con su bombilla; el parser emite `FUD1161` en lugar de `FUD0056` para un valor `{…}` | `compiler` · `language-server` | `src/semantic/analyzers/native-event-attributes.ts` · `src/html/parser.ts` · `src/repairs.ts` |
 | [x] | 20 | 1 | **`FUD1162` y las variantes de `FUD0907`.** Analizador de texto (fuera de `<code>` y `<pre>`); `props` y `children` con su frase | `compiler` | `src/semantic/analyzers/jsx-text.ts` · `ANALYZERS` · `src/semantic/view-portable.ts` |
-| [ ] | 21 | 19, 20 | **Tests, docs, entrega y cierre.** Criterios 11–15; los pares de los tres códigos nuevos; README de `@fudic/diagnostics` (la forma del `.md` y `explain`), que hoy falta aunque `files` lo pide; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde y al 100 %; SDD-62 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `test/**` · `packages/diagnostics/README.md` · `docs/sdd/*` |
+| [x] | 21 | 19, 20 | **Tests, docs, entrega y cierre.** Criterios 11–15; los pares de los tres códigos nuevos; README de `@fudic/diagnostics` (la forma del `.md` y `explain`), que hoy falta aunque `files` lo pide; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde y al 100 %; SDD-62 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `test/**` · `packages/diagnostics/README.md` · `docs/sdd/*` |
 
 ---
 
@@ -195,3 +195,14 @@ file-registry, fudic-diagnostics); `examples/vista-errores` enlazado a su `.fuda
 
 El worktree temporal `.claude/worktrees/floor-main` (detached en 2a820ec0) sigue ahí para medir
 el suelo; quitarlo con `git worktree remove --force` al terminar.
+
+### Cierre (2026-11-03)
+
+Los dos relevos, saldados. Los pares, 156 / 156. Las dos propuestas pendientes se tomaron como
+estaban (SDD §8.2.7 y §8.2.8). El `@catch` suelto sin `(` da solo `FUD1323`. Los tests de una voz
+del editor, de los reflejos de React (criterios 11–14), de los spans ensanchados y de los ecos de
+sintaxis, escritos. `diagnostics`, `language-server` y `typecheck` al 100 en las cuatro métricas; el
+compilador (99,65 / 99,24 / 99,76 / 99,88) y vite (98,83 / 96,03 / 99,61 / 99,05) por encima de
+su suelo de `main`. `api-modules.ts` de vite ya incumplía su umbral en `main`: queda fuera. `pnpm typecheck`,
+`pnpm build` y `pnpm test` en verde (tres tests de testing, cli y vscode fallan solo con todo el
+repositorio a la vez, por tiempo o por un fichero bloqueado de Windows, y pasan solos).
