@@ -8,7 +8,7 @@ import { posix } from 'node:path';
 import { LineMap, type FilePosition } from '@fudic/diagnostics';
 import type { CriterionResult } from './engine.js';
 import type { PlannedCriterion, PlannedStep } from './pages.js';
-import type { StepPassed, StepResult, Verdict, WireDiagnostic } from './protocol.js';
+import { toWire, type StepPassed, type StepResult, type Verdict, type WireDiagnostic } from './protocol.js';
 
 export interface FailedStep {
   /** The step as written: `"then  emitted press 0"`. */
@@ -90,14 +90,17 @@ export function reportOf(session: ReportSession, result: CriterionResult, shots:
   // A step is one line: from its term to the end of that line.
   const written = (step: PlannedStep): string => `${step.block}  ${source.text.slice(step.offset).split(/\r?\n/u, 1)[0]!.trimEnd()}`;
 
+  const where = at(criterion?.offset ?? 0);
   const failed = result.verdict === 'fail' && criterion !== undefined ? failedStep() : undefined;
+  const broken = result.verdict === 'error' ? brokenRun() : undefined;
   return {
     spec,
     id: result.id,
-    at: at(criterion?.offset ?? 0),
+    at: where,
     verdict: result.verdict,
     ms: result.ms,
     ...(failed !== undefined ? { failed } : {}),
+    ...(broken !== undefined ? { broken } : {}),
     ...(result.verdict !== 'pass' && (shots.before !== undefined || shots.after !== undefined) ? { shots } : {}),
     pageErrors: result.pageErrors,
   };
@@ -109,6 +112,19 @@ export function reportOf(session: ReportSession, result: CriterionResult, shots:
     if (step === undefined || !isRed(step) || planned === undefined) return undefined;
     const describe = source.expectations.get(result.id)?.[index] ?? null;
     return { step: written(planned), at: at(planned.offset), ...evidenceOf(step.evidence, describe ?? written(planned)) };
+  }
+
+  /** The step that threw, when one did, and every problem of the run, located for a reader. */
+  function brokenRun(): BrokenRun {
+    const planned = criterion?.steps[result.steps.findIndex((step) => 'error' in step)];
+    const read = (file: string) => (file === source.spec ? source.text : undefined);
+    const diagnostics = result.diagnostics.map((diagnostic) => {
+      const wire = toWire(diagnostic, null, read);
+      return wire.file === null ? wire : { ...wire, file: posix.relative(source.root, wire.file) };
+    });
+    return planned === undefined
+      ? { at: where, diagnostics }
+      : { step: written(planned), at: at(planned.offset), diagnostics };
   }
 }
 

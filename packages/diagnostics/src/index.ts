@@ -14,6 +14,7 @@ export type {
   FudDiagnostic,
   SourceInput,
   FileInput,
+  WireDiagnostic,
 } from './types.js';
 export type { Span } from './span.js';
 export { span, emptySpan, spanLength, isEmptySpan, mergeSpans, spanContains } from './span.js';

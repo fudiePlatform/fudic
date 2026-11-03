@@ -7,22 +7,14 @@
  * carries its `tag`.
  */
 
-import { render, type FudCode, type FudDiagnostic, type Severity } from '@fudic/diagnostics';
+import { FUD1207, render, type FudCode, type FudDiagnostic, type WireDiagnostic } from '@fudic/diagnostics';
+import { isFudicCompileError } from '@fudic/vite';
 import type { BlockKind, Layer } from '@fudic/spec';
 import type { BrowserName } from './browser.js';
 import type { CriterionReport } from './report-of.js';
 
 /** A diagnostic as the shell paints it: line and column are computed here, never stored. */
-export interface WireDiagnostic {
-  readonly code: FudCode;
-  readonly severity: Severity;
-  readonly message: string;
-  /** Null for a problem with no file (a project, a command line). */
-  readonly file: string | null;
-  /** 1-based; null without a span or without the file's text. */
-  readonly line: number | null;
-  readonly column: number | null;
-}
+export type { WireDiagnostic };
 
 interface StepBase {
   readonly block: BlockKind;
@@ -40,6 +32,8 @@ export interface StepPassed extends StepBase {
 
 export interface StepFailed extends StepBase {
   readonly error: string;
+  /** Why it threw, as the code of its diagnostic. */
+  readonly code: FudCode;
 }
 
 export type StepResult = StepPassed | StepFailed;
@@ -161,7 +155,19 @@ export interface CancelledMessage {
 export interface ProblemMessage {
   readonly v: 2;
   readonly type: 'problem';
+  /** For the shell: one line. */
   readonly message: string;
+  /** The same, with codes: a `.fud` that does not compile gives every one of its errors. */
+  readonly diagnostics: readonly WireDiagnostic[];
+}
+
+/** A problem from what was caught: a `.fud` that does not compile, or anything else (`FUD1207`). */
+export function problemOf(error: unknown): ProblemMessage {
+  const message = (error instanceof Error ? error.message : String(error)).split('\n')[0]!;
+  const diagnostics = isFudicCompileError(error)
+    ? error.fudic.diagnostics
+    : [toWire(FUD1207({ reason: message }), null, () => undefined)];
+  return { v: 2, type: 'problem', message, diagnostics };
 }
 
 /** A criterion's result as a machine reads it: published right after its `result`. */

@@ -117,6 +117,7 @@ export async function runSpecs(paths: readonly string[], options: RunOptions = {
       for (const target of targets) {
         const session = await loadSession({ target, vite: project.vite, dir: project.dir });
         project.publish({ ...session.message, browser: project.browser.name, viewport: project.browser.viewport });
+        if (session.problem !== undefined) project.publish(session.problem);
         // A `.fudspec` with errors runs nothing, and that is an error of the run.
         if (session.message.diagnostics.some((d) => d.severity === 'error')) tally.error++;
         // The pool answers in the order criteria finish; the reports keep the `.fudspec`'s.
@@ -129,7 +130,7 @@ export async function runSpecs(paths: readonly string[], options: RunOptions = {
             signal: new AbortController().signal,
             run: (criterion, signal) => runCriterion(project.browser, project.server.origin, criterion, session.loadTerm, session.extensions, signal),
             done: (result) => {
-              const { shots, ...rest } = result;
+              const { shots, diagnostics: _diagnostics, ...rest } = result;
               const message: ResultMessage = { v: 2, type: 'result', tag: target.tag, ...rest, shots: {} };
               tally[result.verdict]++;
               results.push(message);

@@ -5,10 +5,21 @@
  * listens to Vite: a reload on save would land in the middle of a criterion.
  */
 
+import {
+  FUD1200,
+  FUD1201,
+  FUD1202,
+  FUD1203,
+  FUD1204,
+  FUD1205,
+  FUD1206,
+  FUD1207,
+  type FudDiagnostic,
+} from '@fudic/diagnostics';
 import type { BlockKind, Layer, TermParam } from '@fudic/spec';
 import { firstLine, type BrowserLike, type LocatorLike } from './browser.js';
-import { chainContext, setUp, type LoadedExtension, type TermHost } from './extension.js';
-import type { PlannedCriterion } from './pages.js';
+import { chainContext, ExtensionError, setUp, type LoadedExtension, type TermHost } from './extension.js';
+import type { PlannedCriterion, PlannedStep } from './pages.js';
 import type { Box, Mark, StepResult, Verdict } from './protocol.js';
 import { OBSERVER, settled } from './settle.js';
 
@@ -32,6 +43,16 @@ export interface LoadedTerm {
 
 export type TermLoader = (block: BlockKind, name: string) => Promise<LoadedTerm>;
 
+/** What a `TermLoader` throws for a term neither the project nor `@fudic/terms` has. */
+export class MissingTermError extends Error {
+  constructor(
+    readonly block: BlockKind,
+    readonly term: string,
+  ) {
+    super(`there is no ${block} term "${term}"`);
+  }
+}
+
 export interface CriterionResult {
   readonly id: string;
   readonly verdict: Verdict;
@@ -44,6 +65,8 @@ export interface CriterionResult {
   readonly marks: readonly Mark[];
   /** Why the criterion could not run at all. */
   readonly error?: string;
+  /** Every problem of the run, each with its code: empty when it reached a verdict cleanly. */
+  readonly diagnostics: readonly FudDiagnostic[];
 }
 
 /** The workbench's own paths: the only WebSockets the measuring page may open. */
@@ -60,6 +83,34 @@ export function namedArgs(params: readonly TermParam[], args: readonly string[])
 interface Ending {
   readonly verdict: Verdict;
   readonly error?: string;
+  /** Why it did not reach a verdict, when it did not. */
+  readonly problem?: FudDiagnostic;
+}
+
+/** What a step that threw says, by why it threw. */
+export function stepProblem(error: unknown, step: PlannedStep, file: string): FudDiagnostic {
+  const at = { file, span: { start: step.offset, end: step.offset } };
+  const reason = firstLine(error);
+  if (error instanceof MissingTermError) return FUD1201({ ...at, term: step.term });
+  if (error instanceof Error && error.name === 'TimeoutError') return FUD1202({ ...at, term: step.term, reason });
+  if (isAmbiguous(error)) return FUD1203({ ...at, ref: error.ref, count: error.count });
+  return FUD1204({ ...at, term: step.term, reason });
+}
+
+/** The guard of `ctx.locate`, by its name: the project may load its own copy of `@fudic/terms`. */
+function isAmbiguous(error: unknown): error is Error & { ref: string; count: number } {
+  return (
+    error instanceof Error &&
+    error.name === 'AmbiguousReference' &&
+    typeof (error as { ref?: unknown }).ref === 'string' &&
+    typeof (error as { count?: unknown }).count === 'number'
+  );
+}
+
+/** What stopped a criterion outside its steps: an extension, or anything else. */
+function runProblem(error: unknown): FudDiagnostic {
+  if (error instanceof ExtensionError) return FUD1206({ file: error.file, reason: error.reason });
+  return FUD1207({ reason: firstLine(error) });
 }
 
 export async function runCriterion(
@@ -82,8 +133,15 @@ export async function runCriterion(
     shots,
     marks,
     ...(ending.error !== undefined ? { error: ending.error } : {}),
+    diagnostics: [
+      ...(ending.problem !== undefined ? [ending.problem] : []),
+      ...pageErrors.map((message) => FUD1205({ error: firstLine(message) })),
+    ],
   });
-  if (criterion.error !== undefined) return done({ verdict: 'error', error: criterion.error });
+  if (criterion.error !== undefined) {
+    const problem = criterion.problem ?? FUD1207({ reason: criterion.error });
+    return done({ verdict: 'error', error: criterion.error, problem });
+  }
 
   const page = await browser.newPage();
   // A cancel closes the page under the run: whatever it was waiting on rejects, and it ends.
@@ -99,7 +157,8 @@ export async function runCriterion(
 
     const status = await page.goto(origin + criterion.route);
     if (status === null || status >= 400) {
-      return done({ verdict: 'error', error: `the page ${criterion.route} answered ${status ?? 'nothing'}` });
+      const error = `the page ${criterion.route} answered ${status ?? 'nothing'}`;
+      return done({ verdict: 'error', error, problem: FUD1200({ route: criterion.route, status }) });
     }
 
     const mount = page.locate(criterion.mount);
@@ -142,8 +201,9 @@ export async function runCriterion(
           steps.push({ ...base, layer: term.layer, pass: outcome.pass, evidence: outcome.evidence });
           if (step.block === 'then' && !outcome.pass) verdict = 'fail';
         } catch (error) {
-          steps.push({ ...base, layer: term?.layer ?? 'workspace', error: firstLine(error) });
-          return { verdict: 'error' };
+          const problem = stepProblem(error, step, criterion.spec);
+          steps.push({ ...base, layer: term?.layer ?? 'workspace', error: firstLine(error), code: problem.code });
+          return { verdict: 'error', problem };
         }
         if (pageErrors.length > 0) return { verdict: 'error' };
       }
@@ -151,7 +211,7 @@ export async function runCriterion(
       return { verdict: pageErrors.length > 0 ? 'error' : verdict };
     }
   } catch (error) {
-    return done({ verdict: 'error', error: firstLine(error) });
+    return done({ verdict: 'error', error: firstLine(error), problem: runProblem(error) });
   } finally {
     signal?.removeEventListener('abort', cancel);
     await page.close();

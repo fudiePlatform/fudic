@@ -93,5 +93,6 @@ export {
   type RuntimePiecesResult,
   runtimePieces,
 } from './runtime-pieces.js';
+export { type FudicCompileError, isFudicCompileError } from './report.js';
 export { fudic } from './plugin.js';
 export { fudic as default } from './plugin.js';

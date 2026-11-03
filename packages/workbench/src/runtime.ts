@@ -7,6 +7,7 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { FUD1206, type FudDiagnostic } from '@fudic/diagnostics';
 import type { ViteDevServer } from 'vite';
 import { firstLine } from './browser.js';
 import type { BenchExtension, LoadedExtension } from './extension.js';
@@ -74,7 +75,7 @@ export function missingRuntime(projectRoot: string): LoadedExtension {
 export async function loadProjectExtension(
   projectRoot: string,
   vite: ViteDevServer,
-): Promise<LoadedExtension | { readonly error: string } | null> {
+): Promise<LoadedExtension | { readonly error: string; readonly problem: FudDiagnostic } | null> {
   const file = `${projectRoot}/${BENCH_FILE}`;
   if (!existsSync(file)) return null;
   invalidateFile(vite, file);
@@ -82,6 +83,7 @@ export async function loadProjectExtension(
     const module = await vite.ssrLoadModule(file);
     return { file, extension: (module['default'] ?? {}) as BenchExtension };
   } catch (error) {
-    return { error: `${file}: ${firstLine(error)}` };
+    const reason = firstLine(error);
+    return { error: `${file}: ${reason}`, problem: FUD1206({ file, reason }) };
   }
 }

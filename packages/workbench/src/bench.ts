@@ -6,9 +6,9 @@
  */
 
 import type { ViteDevServer } from 'vite';
-import { firstLine, type BrowserLike } from './browser.js';
+import type { BrowserLike } from './browser.js';
 import { runCriterion, type CriterionResult } from './engine.js';
-import type { BenchMessage, RunCommand, ShotRef, Verdict } from './protocol.js';
+import { problemOf, type BenchMessage, type RunCommand, type ShotRef, type Verdict } from './protocol.js';
 import { classify, Rerunner } from './rerun.js';
 import { runOrder, runPool } from './runner.js';
 import { loadSession, type LoadedSession } from './session.js';
@@ -71,6 +71,7 @@ export async function openBench(input: BenchInput): Promise<Bench> {
     if (!isFailure(again)) target = again;
     const loaded = await loadSession({ target, vite: input.vite, dir: input.dir });
     input.publish({ ...loaded.message, browser: input.browser.name, viewport: input.browser.viewport });
+    if (loaded.problem !== undefined) input.publish(loaded.problem);
     return loaded;
   }
 
@@ -79,7 +80,7 @@ export async function openBench(input: BenchInput): Promise<Bench> {
   }
 
   function publishResult(result: CriterionResult): void {
-    const { id, shots, ...rest } = result;
+    const { id, shots, diagnostics: _diagnostics, ...rest } = result;
     const was = verdicts.get(id);
     verdicts.set(id, result.verdict);
     const refs: { before?: ShotRef; after?: ShotRef } = {};
@@ -111,7 +112,7 @@ export async function openBench(input: BenchInput): Promise<Bench> {
       if (unfinished.length > 0) input.publish({ v: 2, type: 'cancelled', tag, ids: unfinished });
     } catch (error) {
       // The browser went away under the run: the workbench is closing, or the browser died.
-      input.publish({ v: 2, type: 'problem', message: firstLine(error) });
+      input.publish(problemOf(error));
     } finally {
       running = undefined;
     }
@@ -122,7 +123,7 @@ export async function openBench(input: BenchInput): Promise<Bench> {
       try {
         session = await load();
       } catch (error) {
-        input.publish({ v: 2, type: 'problem', message: firstLine(error) });
+        input.publish(problemOf(error));
       }
     },
     run,

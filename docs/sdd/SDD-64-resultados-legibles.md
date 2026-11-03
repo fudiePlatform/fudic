@@ -550,3 +550,15 @@ Todos son `error`. Cada `.md` sigue la forma de SDD-50 §4.4.
    banco los reparte por él. El resto de campos es el `CriterionReport` tal cual.
 7. **«El paso tal como está escrito»** es el bloque, dos espacios y la línea del término en la
    `.fudspec` (`then  text role:tabpanel "panel B"`).
+8. **`WireDiagnostic` vive en `@fudic/diagnostics`.** `@fudic/vite` lo necesita para
+   `FudicCompileError` y no puede depender del banco; el banco lo reexporta. En el error de Vite,
+   `file` va relativo a la raíz, como en el resto del informe.
+9. **El banco compila el componente al cargar la sesión.** Un `.fud` roto hace que sus páginas
+   respondan 500 sin decir por qué; la sesión lo transforma con el Vite del banco y, si lanza un
+   `FudicCompileError`, publica el `problem` con todos sus diagnósticos (criterio 10). Los criterios
+   siguen ejecutándose y acaban en `FUD1200`.
+10. **Cada criterio sabe en qué fichero están sus pasos** (`PlannedCriterion.spec`), para que el
+    diagnóstico de un paso apunte a su línea; y el motor guarda los diagnósticos de la ejecución en
+    `CriterionResult.diagnostics`, que no viaja en el mensaje `result` (los mensajes no cambian).
+11. **Las causas que el banco ya conocía conservan su código**: la fixture que lanza sigue siendo
+    `FUD0973` y la señal no literal `FUD0974`; una entrada que la fixture no tiene es `FUD1207`.

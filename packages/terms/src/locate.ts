@@ -54,6 +54,21 @@ function free(key: string | symbol): boolean {
 }
 
 /**
+ * A reference matched more than one element. Recognised by its `name`, not by its class: the
+ * workbench and the project may each load their own copy of this package.
+ */
+export class AmbiguousReference extends Error {
+  override readonly name = 'AmbiguousReference';
+
+  constructor(
+    readonly ref: string,
+    readonly count: number,
+  ) {
+    super(`${ref} matches ${count} elements; a reference must match one`);
+  }
+}
+
+/**
  * The locator of `ref`, guarded: before each call that reads or acts on the element, it counts
  * them. More than one is an error that says how many; exactly one is reported to `onLocate`.
  * None is left to the call itself, which waits for it to appear.
@@ -62,7 +77,7 @@ export function guardedLocator(page: Page, ref: string, onLocate: (ref: string, 
   const locator = locatorOf(page, ref);
   const one = async (): Promise<void> => {
     const count = await locator.count();
-    if (count > 1) throw new Error(`${ref} matches ${count} elements; a reference must match one`);
+    if (count > 1) throw new AmbiguousReference(ref, count);
     if (count === 0) return;
     const box = await locator.boundingBox();
     if (box !== null) onLocate(ref, box);

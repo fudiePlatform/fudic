@@ -23,11 +23,18 @@ import {
 } from '@fudic/spec';
 import type { ViteDevServer } from 'vite';
 import { firstLine } from './browser.js';
-import { namedArgs, type LoadedTerm, type TermLoader } from './engine.js';
+import { MissingTermError, namedArgs, type LoadedTerm, type TermLoader } from './engine.js';
 import type { LoadedExtension } from './extension.js';
 import { loadProjectExtension, missingRuntime, resolveRuntime, type TermsRuntime } from './runtime.js';
 import { planBench, type BenchPlan, type ExecutedFixtures, type PlannedCriterion } from './pages.js';
-import { toWire, type DescribedCriterion, type DescribedStep, type SessionMessage } from './protocol.js';
+import {
+  problemOf,
+  toWire,
+  type DescribedCriterion,
+  type DescribedStep,
+  type ProblemMessage,
+  type SessionMessage,
+} from './protocol.js';
 import type { ReportSource } from './report-of.js';
 import type { BenchTarget } from './target.js';
 import { writePlanFiles } from './bench-dir.js';
@@ -56,6 +63,8 @@ export interface LoadedSession {
   readonly reads: ReadonlySet<string>;
   /** What the report of each criterion is read from. */
   readonly source: ReportSource;
+  /** The component does not compile: every error of it, for the shells. */
+  readonly problem?: ProblemMessage;
 }
 
 /** The disk, as the catalog and the validator read it. */
@@ -120,15 +129,33 @@ export async function loadSession(input: SessionInput): Promise<LoadedSession> {
   writePlanFiles(input.dir, target.tag, plan.files);
   for (const name of plan.files.keys()) invalidateFile(vite, `${input.dir}/${name}`);
 
-  const fixtureOk = executed.error === undefined ? plan.criteria : failProps(plan, executed.error.message);
+  const fixtureOk = executed.error === undefined ? plan.criteria : failProps(plan, executed.error);
   // A `fudic/bench.js` that does not load leaves every criterion in error, saying why.
-  const criteria = project !== null && 'error' in project ? fixtureOk.map((c) => ({ ...c, error: project.error })) : fixtureOk;
+  const criteria =
+    project !== null && 'error' in project
+      ? fixtureOk.map((c) => ({ ...c, error: project.error, problem: project.problem }))
+      : fixtureOk;
   // The 1-based line of an offset: the margin, Problems and the shell point at it.
   const lineOf = (offset: number) => specText.slice(0, offset).split('\n').length;
   const described = await Promise.all(criteria.map((c) => describeCriterion(c, lineOf, loadTerm)));
   const expectations = new Map(described.map((d) => [d.criterion.id, d.expectations]));
   const message = sessionMessage(target, diagnostics, described.map((d) => d.criterion));
-  return { criteria, message, loadTerm, extensions, reads, source: source(expectations) };
+  const problem = await compileProblem(vite, target.component);
+  return { criteria, message, loadTerm, extensions, reads, source: source(expectations), ...(problem !== undefined ? { problem } : {}) };
+}
+
+/**
+ * The component compiled as its pages will compile it: when it does not, its pages answer an
+ * error and say nothing of why, so the reason is published here, with every diagnostic.
+ */
+async function compileProblem(vite: ViteDevServer, component: string): Promise<ProblemMessage | undefined> {
+  invalidateFile(vite, component);
+  try {
+    await vite.environments['ssr']!.transformRequest(component);
+    return undefined;
+  } catch (error) {
+    return problemOf(error);
+  }
 }
 
 /** `fudic/terms/` of the project first, then the framework's: the editor's roots, in its order. */
@@ -166,15 +193,15 @@ async function executeFixture(
 }
 
 /** A fixture that threw leaves the criteria that mount with props in error; the rest still run. */
-function failProps(plan: BenchPlan, message: string): PlannedCriterion[] {
-  return plan.criteria.map((c) => (c.fixture === null ? c : { ...c, error: message }));
+function failProps(plan: BenchPlan, problem: FudDiagnostic): PlannedCriterion[] {
+  return plan.criteria.map((c) => (c.fixture === null ? c : { ...c, error: problem.message, problem }));
 }
 
 /** A term module, resolved in the catalog and executed by Vite. */
 function termLoader(catalog: TermCatalog, vite: ViteDevServer): TermLoader {
   return async (block: BlockKind, name: string): Promise<LoadedTerm> => {
     const module = catalog.resolve(block, name);
-    if (module === undefined) throw new Error(`there is no ${block} term "${name}"`);
+    if (module === undefined) throw new MissingTermError(block, name);
     const loaded = await vite.ssrLoadModule(module.path);
     const meta = loaded['meta'] as { describe?: LoadedTerm['describe'] } | undefined;
     return {
