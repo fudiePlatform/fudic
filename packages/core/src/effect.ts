@@ -12,6 +12,10 @@
  * on. And so is the cleanup: whatever a run set up is torn down with that run,
  * which is why the cleanup is the body's return value and not a disposer the
  * caller has to keep.
+ *
+ * Every cleanup a body returns runs exactly once, and nothing stays subscribed after
+ * the disposer, whatever happens mid-run (SDD-76 §4.4): a run that is disposed, or
+ * overtaken by a re-entrant one, while its body runs undoes itself on the spot.
  */
 
 import { own } from './owner.js';
@@ -37,6 +41,10 @@ export function effect(fn: () => void | Cleanup): () => void {
   let cleanup: Cleanup | null = null;
   let disposed = false;
   let chained = 0;
+  // Counts runs ever started. A run that finds it moved on while its body ran was
+  // superseded by a re-entrant one, which already left the fresher cleanup and
+  // subscriptions behind.
+  let started = 0;
 
   const unsubscribeAll = (): void => {
     for (const off of sources.values()) {
@@ -66,6 +74,7 @@ export function effect(fn: () => void | Cleanup): () => void {
           `so each run schedules another one (stopped after ${MAX_CHAINED_RUNS}).`,
       );
     }
+    const self = ++started;
     runCleanup();
     const leaves = new Set<LeafSource>();
     const consumer: Consumer = {
@@ -79,6 +88,15 @@ export function effect(fn: () => void | Cleanup): () => void {
       next = typeof returned === 'function' ? returned : null;
     } finally {
       chained -= 1;
+    }
+    // A run that is no longer the current one publishes nothing: disposed while its
+    // body ran, or overtaken by a re-entrant run. Its cleanup is owed right away —
+    // nobody else will ever hold it — and the subscriptions stay as they are.
+    if (disposed || self !== started) {
+      if (next !== null) {
+        untrack(next);
+      }
+      return;
     }
     cleanup = next;
     // Reconciled AFTER the body, not before it: while `fn` runs the previous

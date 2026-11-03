@@ -3,7 +3,7 @@
 > **SDD:** [SDD-76 — `effect` con dependencias explícitas](./SDD-76-efectos-con-dependencias.md)
 > **Paquetes:** `@fudic/core` · `@fudic/compiler` (solo un test)
 > **Rama:** `sdd-76-efectos-con-dependencias`, desde `main`.
-> **Progreso:** 0 / 7 — `Listo`.
+> **Progreso:** 2 / 7 — `En curso`.
 
 **El orden manda en un punto: los defectos antes que las dependencias.** El modo con `deps` pasa
 por el mismo `run`; si la regla de la vuelta superada (SDD §4.4) llega después, habría que
@@ -28,8 +28,8 @@ escribirla dos veces.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **Una vuelta superada no publica nada.** Contador de vueltas por efecto; al terminar el cuerpo, si el efecto se dio de baja o empezó otra vuelta, se ejecuta sin rastrear la limpieza recién devuelta y no se tocan `cleanup` ni las suscripciones (SDD §4.4). Actualizar el comentario de cabecera y el de la reconciliación | `core` | `src/effect.ts` |
-| [ ] | 2 | 1 | **Los tests de la fase.** Criterios 1, 3, 4 y 6 (sin `deps`). Los que existen pasan sin modificar (criterio 22) | `core` | `test/effect.test.ts` |
+| [x] | 1 | — | **Una vuelta superada no publica nada.** Contador de vueltas por efecto; al terminar el cuerpo, si el efecto se dio de baja o empezó otra vuelta, se ejecuta sin rastrear la limpieza recién devuelta y no se tocan `cleanup` ni las suscripciones (SDD §4.4). Actualizar el comentario de cabecera y el de la reconciliación | `core` | `src/effect.ts` |
+| [x] | 2 | 1 | **Los tests de la fase.** Criterios 1, 3, 4 y 6 (sin `deps`). Los que existen pasan sin modificar (criterio 22) | `core` | `test/effect.test.ts` |
 
 ## Fase 2 — las dependencias (3)
 

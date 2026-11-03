@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { batch, computed, effect, signal, untrack } from '../src/index.js';
+import { batch, computed, effect, owned, signal, untrack } from '../src/index.js';
+import { type LeafSource, report } from '../src/tracking.js';
 
 describe('effect (SDD-31 §6.6–§6.10)', () => {
   it('runs once on creation and once per change of what it read', () => {
@@ -220,5 +221,126 @@ describe('batch (SDD-31 §6.11–§6.13)', () => {
       }),
     ).toThrow('boom');
     expect(seen).toEqual([0, 1]);
+  });
+});
+
+/**
+ * A leaf that counts its subscribers, so "nothing survives the disposer" is a number
+ * and not an inference. `read` is a tracked read; `notify` is a write.
+ */
+function probe(): { read: () => void; notify: () => void; live: () => number } {
+  const subscribers = new Set<() => void>();
+  const leaf: LeafSource = {
+    version: () => 0,
+    collectLeaves: (out) => {
+      out.add(leaf);
+    },
+    subscribe: (fn) => {
+      subscribers.add(fn);
+      return () => {
+        subscribers.delete(fn);
+      };
+    },
+  };
+  return {
+    read: () => {
+      report(leaf);
+    },
+    notify: () => {
+      for (const fn of [...subscribers]) fn();
+    },
+    live: () => subscribers.size,
+  };
+}
+
+describe('a run that is no longer the current one (SDD-76 §4.4)', () => {
+  it('an effect disposed by its own body keeps no subscription and runs every cleanup (criterion 1)', () => {
+    const p = probe();
+    let cleanups = 0;
+    let runs = 0;
+    let selfStop = false;
+    const stop: () => void = effect(() => {
+      runs += 1;
+      p.read();
+      if (selfStop) stop();
+      return () => {
+        cleanups += 1;
+      };
+    });
+    selfStop = true;
+    p.notify();
+    expect(p.live()).toBe(0);
+    expect(cleanups).toBe(2);
+    p.notify();
+    expect(runs).toBe(2);
+  });
+
+  it('disposed from outside while its body runs: the same (criterion 3)', () => {
+    const p = probe();
+    const trigger = signal(0);
+    let cleanups = 0;
+    let armed = false;
+    let stopFirst = (): void => {};
+    // A second effect, subscribed to what the first one writes, disposes the first —
+    // the shape of a component torn down by a write its own effect made.
+    effect(() => {
+      if (trigger() > 0) stopFirst();
+    });
+    stopFirst = effect(() => {
+      p.read();
+      if (armed) trigger.set(1);
+      return () => {
+        cleanups += 1;
+      };
+    });
+    armed = true;
+    p.notify();
+    expect(p.live()).toBe(0);
+    expect(cleanups).toBe(2);
+  });
+
+  it('a re-entrant run that converges loses no cleanup (criterion 4)', () => {
+    const a = signal(10);
+    const made: number[] = [];
+    const undone: number[] = [];
+    const stop = effect(() => {
+      const v = a();
+      if (v < 2) a.set(v + 1);
+      made.push(v);
+      return () => undone.push(v);
+    });
+    a.set(0);
+    expect(made).toEqual([10, 2, 1, 0]);
+    expect(undone).toEqual([10, 1, 0]);
+    stop();
+    expect(undone).toEqual([10, 1, 0, 2]);
+    a.set(5);
+    expect(made).toEqual([10, 2, 1, 0]);
+  });
+
+  it('a superseded run with no cleanup has nothing to undo', () => {
+    const a = signal(10);
+    const seen: number[] = [];
+    effect(() => {
+      const v = a();
+      if (v < 2) a.set(v + 1);
+      seen.push(v);
+    });
+    a.set(1);
+    expect(seen).toEqual([10, 2, 1]);
+  });
+
+  it('a first run that throws leaves nothing subscribed and nothing owned (criterion 6)', () => {
+    const p = probe();
+    const [, owned_] = owned(() => {
+      expect(() =>
+        effect(() => {
+          p.read();
+          throw new Error('boom');
+        }),
+      ).toThrow('boom');
+    });
+    expect(p.live()).toBe(0);
+    expect(owned_).toEqual([]);
   });
 });
