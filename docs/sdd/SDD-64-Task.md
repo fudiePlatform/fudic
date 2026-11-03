@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/terms` · `@fudic/workbench` · `@fudic/compiler` ·
 > `@fudic/vite` · `@fudic/testing`
 > **Rama:** `sdd-64-resultados-legibles`, desde `main`.
-> **Progreso:** 0 / 26 — `Listo`.
+> **Progreso:** 2 / 26 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -48,8 +48,8 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **Los códigos.** `FUD1200`–`FUD1207`: `.ts` con su función tipada, `.md` con la forma de SDD-50 §4.4 y el «Fix» de SDD §5, y su línea en `index.ts`. El rango en la fila de SDD-64 del `INDEX.md` | `diagnostics` | `src/codes/FUD1200`–`1207.{ts,md}` · `src/index.ts` |
-| [ ] | 2 | — | **`Position` y `formatPosition`** (SDD §3.1) | `diagnostics` | `src/position.ts` · `src/index.ts` |
+| [x] | 1 | — | **Los códigos.** `FUD1200`–`FUD1207`: `.ts` con su función tipada, `.md` con la forma de SDD-50 §4.4 y el «Fix» de SDD §5, y su línea en `index.ts`. El rango en la fila de SDD-64 del `INDEX.md` | `diagnostics` | `src/codes/FUD1200`–`1207.{ts,md}` · `src/index.ts` |
+| [x] | 2 | — | **`FilePosition` y `formatPosition`** (SDD §3.1, §8.2) | `diagnostics` | `src/position.ts` · `src/index.ts` |
 
 ## Fase 2 — el informe de un criterio (5)
 

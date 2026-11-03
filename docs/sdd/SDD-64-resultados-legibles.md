@@ -82,16 +82,17 @@ pueda leer sin adivinar**, para que el MCP (y cualquier otra herramienta) solo t
 ```ts
 // @fudic/diagnostics
 /** A place in a file, as a person reads it: 1-based line and column, path relative to the project root, with '/'. */
-export interface Position {
+export interface FilePosition {
   readonly file: string;
   readonly line: number;
   readonly column: number;
 }
 /** "src/components/acme-button/acme-button.fud:22:3" */
-export function formatPosition(position: Position): string;
+export function formatPosition(position: FilePosition): string;
 ```
 
-Toda posición de esta spec es un `Position`. La columna cuenta unidades UTF-16 desde 1, como el
+Toda posición de esta spec es un `FilePosition` (en los tipos de abajo, `Position` se lee
+`FilePosition`; ver §8.2). La columna cuenta unidades UTF-16 desde 1, como el
 editor.
 
 ### 3.2. El informe de un criterio
@@ -528,3 +529,13 @@ Todos son `error`. Cada `.md` sigue la forma de SDD-50 §4.4.
    git es de SDD-65.
 6. **El informe nombra solo el primer `then` en rojo.** El motor sigue ejecutando los demás, y
    siguen en `result.steps`, pero el bucle arregla uno cada vez.
+
+### 8.2. Tomadas al implementar
+
+1. **`FilePosition`, no `Position`.** `@fudic/diagnostics` ya exporta `Position`: la del editor
+   (0-based, `line` + `character`, la de LSP), que usan el language server y los source maps. La
+   posición de esta spec se llama `FilePosition` para que las dos convivan sin renombrar nada de
+   lo que ya existe.
+2. **La forma de cada código.** Los que señalan un paso (`FUD1201`–`FUD1204`) llevan fichero (la
+   `.fudspec`) y el span del paso; `FUD1206`, el fichero `fudic/bench.js`; `FUD1200`, `FUD1205` y
+   `FUD1207` no tienen fichero al que apuntar.
