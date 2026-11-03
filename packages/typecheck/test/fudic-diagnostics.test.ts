@@ -43,15 +43,15 @@ describe('semanticDiagnostics', () => {
   });
 
   it('resolves the Oxc fragment of an interpolation, which is what SDD-12 asks it for', () => {
-    // FUD0195 (decision 19): an object literal interpolated. Reachable only through
-    // `fragmentId` — the analyzer needs the AST of that one expression.
+    // An object literal interpolated: FUD1143 since FUD0195 was retired (SDD-62). Reachable only
+    // through `fragmentId` — the rule needs the AST of that one expression.
     const source = `<app-x>
   <template shadowrootmode="open"><i>@({ a: 1 })</i></template>
 </app-x>
 `;
     const { document } = setup('/p/components/app-x.fud', source);
 
-    expect(semanticDiagnostics(document).map((diagnostic) => diagnostic.code)).toContain('FUD0195');
+    expect(semanticDiagnostics(document).map((diagnostic) => diagnostic.code)).toContain('FUD1143');
   });
 
   it('says nothing about a tag this file did declare', () => {
@@ -284,6 +284,7 @@ describe('the names a linked .fudapi gives the view (SDD-60 §3.14)', () => {
   });
 
   it('a link that cannot be read tells nothing: the names stay unknown, and a component has no `data`', () => {
-    expect(unknown(view('<link rel="server" href="./ghost.fudapi">'))).toEqual(['personForm', 'save', 'data']);
+    // `save` in `form:=` is deferred, so it is FUD1005's to judge and not FUD0907's (SDD-62).
+    expect(unknown(view('<link rel="server" href="./ghost.fudapi">'))).toEqual(['personForm', 'data']);
   });
 });

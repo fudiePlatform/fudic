@@ -1,0 +1,5 @@
+# What vista-errores.fud reads as `data`: a page with a load, so every case that reads it
+# reads a name the view has, and says only the code it is there to show.
+load
+  titulo  str
+  ruta    str

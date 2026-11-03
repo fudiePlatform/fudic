@@ -3,6 +3,7 @@
   <head>
     <link rel="component" href="./app-pieza.fud">
     <link rel="snippet" href="./snippets.fud">
+    <link rel="server" href="./src/vista-errores.fudapi">
 
     @code {
       // SDD-51 y SDD-61 — lo que NO se puede escribir en la vista. Cada caso lleva encima un
@@ -351,8 +352,8 @@
     @while (true) key (n) { <p>x</p> }
     @* FUD0913 sobre `constante > 0`: ningún `@{ }` del cuerpo escribe lo que lee. *@
     @while (constante > 0) key (n) { <p>x</p> }
-    @* (El snippet `bucle`, en `snippets.fud`, da su FUD0914 en `bucle`: se invoca a sí mismo
-       sin condición. Esta línea solo lo invoca.) *@
+    @* (El snippet `bucle`, en `snippets.fud`, da su FUD0835 en su `@render bucle(@v)`: se invoca
+       a sí mismo sin condición. Esta línea solo lo invoca.) *@
     @render bucle(@n)
 
     @* ════════════════════════════════════════════════════════════════════════════════

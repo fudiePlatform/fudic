@@ -104,15 +104,10 @@ describe('criterion 8: a pipe of the project in the typed pass', () => {
     expect(problems[0]).toMatch(/^TS\d+ post\.precio$/u);
   });
 
-  it('the pipe read anywhere but to the right of a | is FUD1150 on the use, and a type error: it is no text', () => {
-    expect(found(report, root, 'read', SOURCES.read)).toEqual([
-      'FUD1150 corto',
-      'TS2345 corto',
-      'FUD1150 truncar',
-      'TS2345 truncar',
-      'FUD1150 corto',
-      'TS2345 corto.options',
-    ]);
+  it('the pipe read anywhere but to the right of a | is FUD1150 on the use, and TypeScript is silent there', () => {
+    // SDD-71 criterion 8 asked for a type error beside it; under SDD-62's one fact, one voice the
+    // TS2345 that meets FUD1150 on the same stretch is not said (SDD-62 §8.2).
+    expect(found(report, root, 'read', SOURCES.read)).toEqual(['FUD1150 corto', 'FUD1150 truncar', 'FUD1150 corto']);
   });
 });
 
@@ -130,7 +125,7 @@ describe('the folder of pipes is the project\'s (SDD-71 §3.1)', () => {
       'src/components/app-other.fud': other,
     });
     const report = createProjectChecker({ root }).check();
-    expect(found(report, root, 'read', read)).toEqual(['FUD1150 corto', 'TS2345 corto']);
+    expect(found(report, root, 'read', read)).toEqual(['FUD1150 corto']);
     // Outside the folder it is a module of the project like any other: calling its default in
     // the cut is what SDD-61 refuses, on the declarator.
     expect(found(report, root, 'other', other)).toEqual(['FUD1150 corto = truncar({ max: 40 })', 'TS2345 corto']);
