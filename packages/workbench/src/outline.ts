@@ -10,6 +10,7 @@ export async function outlineOf(page: Page, selector: string): Promise<string> {
   try {
     return await page.locator(selector).ariaSnapshot();
   } catch (error) {
-    return `error: ${(error instanceof Error ? error.message : String(error)).split('\n')[0]}`;
+    // Playwright rejects with an Error, always.
+    return `error: ${(error as Error).message.split('\n')[0]}`;
   }
 }

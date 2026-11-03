@@ -1,6 +1,6 @@
 # SDD-64 — Resultados que una máquina entiende: criterios, tests y el árbol de roles
 
-> **Estado:** `Listo` — [tareas](./SDD-64-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-64-Task.md).
 > **Paquetes:** `@fudic/workbench` · `@fudic/terms` · `@fudic/testing` · `@fudic/compiler` ·
 > `@fudic/vite` · `@fudic/diagnostics`
 > **Depende de:** 32 (banco), 52 (`.fudspec`), 53 (fixtures), 57 (`@fudic/testing`), 59 (términos

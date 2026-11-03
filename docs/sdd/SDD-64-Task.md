@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/terms` · `@fudic/workbench` · `@fudic/compiler` ·
 > `@fudic/vite` · `@fudic/testing`
 > **Rama:** `sdd-64-resultados-legibles`, desde `main`.
-> **Progreso:** 24 / 26 — `En curso`.
+> **Progreso:** 26 / 26 — `Hecho`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -102,5 +102,5 @@ código, no el test.
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 24 | 23 | **Docs.** README de `@fudic/workbench` (el informe, `run --json`), de `@fudic/terms` (`Evidence` para quien escribe un término) y de `@fudic/testing` (`runTests`, `outline` y lo que happy-dom no sabe), en inglés y sin citar SDD | varios | `packages/*/README.md` |
-| [ ] | 25 | 24 | **Entrega.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; lo nuevo al 100 % en las cuatro métricas sin `v8 ignore`; ningún umbral baja (criterio 23) | — | — |
-| [ ] | 26 | 25 | **Cierre.** SDD-64 y este fichero en `Hecho`; fila y registro de progreso del `INDEX.md` | — | `docs/sdd/*` |
+| [x] | 25 | 24 | **Entrega.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; lo nuevo al 100 % en las cuatro métricas sin `v8 ignore`; ningún umbral baja (criterio 23) | — | — |
+| [x] | 26 | 25 | **Cierre.** SDD-64 y este fichero en `Hecho`; fila y registro de progreso del `INDEX.md` | — | `docs/sdd/*` |
