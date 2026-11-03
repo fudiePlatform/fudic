@@ -1,0 +1,5 @@
+<app-note>
+  <template shadowrootmode="open">
+    <div class="card"><label for="email">Email</label></div>
+  </template>
+</app-note>

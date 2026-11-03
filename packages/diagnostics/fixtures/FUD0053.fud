@@ -1,0 +1,5 @@
+<fix-a>
+  <template shadowrootmode="open">
+    <input></input>
+  </template>
+</fix-a>

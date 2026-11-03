@@ -1,0 +1,7 @@
+<link rel="component" href="./app-card.fud">
+
+<fix-a>
+  <template shadowrootmode="open">
+    <app-card></app-card>
+  </template>
+</fix-a>

@@ -1,0 +1,13 @@
+<link rel="server" href="./index.fudapi">
+
+<head>
+  <title>@data.title</title>
+</head>
+
+@await data.note {
+  <p>@data.note</p>
+}
+<hr>
+@catch (e) {
+  <p>@e.title</p>
+}

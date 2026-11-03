@@ -1,0 +1,10 @@
+@code {
+  // todo
+  const n = 1;
+}
+
+<fix-a>
+  <template shadowrootmode="open">
+    <p>@n</p>
+  </template>
+</fix-a>

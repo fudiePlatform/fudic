@@ -1,0 +1,10 @@
+<link rel="server" href="./index.fudapi">
+
+<head>
+  <title>@data.title</title>
+</head>
+
+<h1>@data.title</h1>
+@await data.note {
+  <p>@data.note</p>
+}

@@ -1,0 +1,11 @@
+@code {
+  const { count } = props<{ count: number }>();
+}
+
+<app-note>
+  <template shadowrootmode="open">
+    @if (count == 0) {
+      <p>Empty</p>
+    }
+  </template>
+</app-note>

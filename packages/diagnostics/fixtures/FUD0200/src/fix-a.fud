@@ -1,0 +1,12 @@
+<link rel="component" href="./app-child.fud">
+
+@code {
+  import { signal } from "@fudic/core";
+  const count = signal(0);
+}
+
+<fix-a>
+  <template shadowrootmode="open">
+    <app-child .count="@count()"></app-child>
+  </template>
+</fix-a>

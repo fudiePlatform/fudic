@@ -1,0 +1,14 @@
+@code {
+  type Post = { title: string };
+  const { post = { title: "Hello" } } = props<{ post?: Post }>();
+}
+
+<app-blog>
+  <template shadowrootmode="open">
+    @render card(post.title, "New", 3)
+  </template>
+</app-blog>
+
+@snippet card(title: string, badge: string, count: number) {
+  <p>@title @badge @count</p>
+}

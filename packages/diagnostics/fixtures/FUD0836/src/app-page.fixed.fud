@@ -1,0 +1,7 @@
+<link rel="snippet" href="./snippets/cards.fud">
+
+<app-page>
+  <template shadowrootmode="open">
+    @render card("Tea")
+  </template>
+</app-page>

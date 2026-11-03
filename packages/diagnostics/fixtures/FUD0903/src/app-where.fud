@@ -1,0 +1,9 @@
+@code {
+  const { name = 'Ada' } = props<{ name?: string }>();
+}
+
+<app-where>
+  <template shadowrootmode="open">
+    <p>@(import.meta.url) @name</p>
+  </template>
+</app-where>

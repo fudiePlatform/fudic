@@ -1,0 +1,9 @@
+<app-note>
+  <template shadowrootmode="open">
+    <ul>
+      @foreach (const item of ["a", "b"]) key (item) {
+        <li>@item</li>
+      }
+    </ul>
+  </template>
+</app-note>

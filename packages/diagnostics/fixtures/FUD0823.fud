@@ -1,0 +1,12 @@
+<app-page>
+  <template shadowrootmode="open">
+    @render card()
+  </template>
+</app-page>
+
+@snippet card() {
+  @code {
+    const item = "Tea";
+  }
+  <p>Tea</p>
+}

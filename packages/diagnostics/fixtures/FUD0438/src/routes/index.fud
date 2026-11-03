@@ -1,0 +1,8 @@
+<link rel="layout" href="../layouts/main.fud">
+
+<head>
+  <title>Hello</title>
+  <link rel="component" href="../components/app-card.fud">
+</head>
+
+<app-card>Hello</app-card>

@@ -1,0 +1,16 @@
+<link rel="server" href="../forms/f.fudapi">
+
+@code {
+  const { hint } = props<{ hint: boolean }>();
+}
+
+<app-form>
+  <template shadowrootmode="open">
+    <form control=@f>
+      <input control="@f.title"> <span error="@f.title"></span>
+      @if (hint) {
+        <p>Required</p>
+      }
+    </form>
+  </template>
+</app-form>

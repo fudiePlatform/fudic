@@ -1,0 +1,5 @@
+<app-count>
+  <template shadowrootmode="open">
+    <p>@(this)</p>
+  </template>
+</app-count>

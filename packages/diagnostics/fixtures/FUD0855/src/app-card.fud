@@ -1,0 +1,12 @@
+<head>
+  <style>
+    @import "./cards.css";
+    :host { display: block; }
+  </style>
+</head>
+
+<app-card>
+  <template shadowrootmode="open">
+    <div class="card"><slot></slot></div>
+  </template>
+</app-card>

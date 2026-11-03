@@ -1,0 +1,9 @@
+@code {
+  const label = "Hi";
+}
+
+<app-note>
+  <template shadowrootmode="open">
+    <span title={label}>Hi</span>
+  </template>
+</app-note>

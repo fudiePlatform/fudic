@@ -1,0 +1,11 @@
+@code {
+  import { trustedHtml } from "@fudic/dom";
+
+  const html = trustedHtml("<p>Hello</p>");
+}
+
+<app-note>
+  <template shadowrootmode="open">
+    Post: <div class="post">@raw(html)</div>
+  </template>
+</app-note>

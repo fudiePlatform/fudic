@@ -1,0 +1,10 @@
+@code {
+  import type { Signal } from "@fudic/core";
+  const { count } = props<{ count: Signal<number> }>();
+}
+
+<app-child>
+  <template shadowrootmode="open">
+    <p>@count()</p>
+  </template>
+</app-child>

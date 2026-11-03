@@ -1,0 +1,9 @@
+@code {
+  const name = "x";
+}
+
+<fix-a>
+  <template shadowrootmode="open">
+    <p .title="Hi @name">a</p>
+  </template>
+</fix-a>

@@ -1,0 +1,10 @@
+<link rel="layout" href="../layouts/main.fud">
+<link rel="server" href="./index.fudapi">
+
+@code {
+  function show() {
+    console.log(data);
+  }
+}
+
+<button @click=@show>Show</button>

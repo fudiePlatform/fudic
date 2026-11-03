@@ -1,0 +1,9 @@
+@code {
+  const pi = 3.14159;
+}
+
+<app-circle>
+  <template shadowrootmode="open">
+    <p>@pi</p>
+  </template>
+</app-circle>

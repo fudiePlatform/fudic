@@ -1,0 +1,9 @@
+@code {
+  const isActive = true;
+}
+
+<fix-a>
+  <template shadowrootmode="open">
+    <p class:active="@isActive">a</p>
+  </template>
+</fix-a>

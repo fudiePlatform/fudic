@@ -1,0 +1,7 @@
+<link rel="server" href="./index.fudapi">
+
+<head>
+  <title>@data.title</title>
+</head>
+
+<p>@data.note</p>

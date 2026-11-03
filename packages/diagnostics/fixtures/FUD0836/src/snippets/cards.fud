@@ -1,0 +1,3 @@
+@snippet card(item: string) {
+  <p>@item</p>
+}

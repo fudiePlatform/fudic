@@ -1,0 +1,5 @@
+<app-field>
+  <template shadowrootmode="open" shadowrootreferencetarget="field">
+    <input id="input" type="text">
+  </template>
+</app-field>

@@ -1,0 +1,9 @@
+@code {
+  const { names = [] } = props<{ names?: string[] }>();
+}
+
+<app-names>
+  <template shadowrootmode="open">
+    <p>@(names.map(async (n) => n).length)</p>
+  </template>
+</app-names>

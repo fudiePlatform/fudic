@@ -1,0 +1,5 @@
+<app-frame>
+  <template shadowrootmode="open">
+    <main><slot name="main"></slot></main>
+  </template>
+</app-frame>

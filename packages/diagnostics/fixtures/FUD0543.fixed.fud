@@ -1,0 +1,17 @@
+@code {
+  const { rows } = props<{ rows: string[] }>();
+
+  function pick() {
+    console.log("picked");
+  }
+}
+
+<app-list>
+  <template shadowrootmode="open">
+    <ul @click=@pick>
+      @foreach (const row of rows) key (row) {
+        <li>@rows.length</li>
+      }
+    </ul>
+  </template>
+</app-list>

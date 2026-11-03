@@ -1,0 +1,5 @@
+<fix-a>
+  <template shadowrootmode="open">
+    <p>a @@ b</p>
+  </template>
+</fix-a>

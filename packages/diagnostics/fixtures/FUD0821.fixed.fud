@@ -1,0 +1,11 @@
+<app-page>
+  <template shadowrootmode="open">
+    <p>One</p>
+    @render divider()
+    <p>Two</p>
+  </template>
+</app-page>
+
+@snippet divider() {
+  <hr>
+}

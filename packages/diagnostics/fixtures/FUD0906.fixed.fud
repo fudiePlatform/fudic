@@ -1,0 +1,11 @@
+@code {
+  const { b = 2 } = props<{ b?: number }>();
+  let seen = 0;
+}
+
+<app-pair>
+  <template shadowrootmode="open">
+    @{ seen = 1; }
+    <p>@b @seen</p>
+  </template>
+</app-pair>

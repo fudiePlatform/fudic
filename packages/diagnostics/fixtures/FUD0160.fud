@@ -1,0 +1,11 @@
+<head>
+  <style host="fix-a">
+    p { color: red; }
+  </style>
+</head>
+
+<fix-a>
+  <template shadowrootmode="open">
+    <p>a</p>
+  </template>
+</fix-a>

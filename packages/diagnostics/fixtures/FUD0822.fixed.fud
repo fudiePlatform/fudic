@@ -1,0 +1,15 @@
+<head>
+  <style>
+    .note { color: gray; }
+  </style>
+</head>
+
+<app-page>
+  <template shadowrootmode="open">
+    @render note("Hi")
+  </template>
+</app-page>
+
+@snippet note(text: string) {
+  <p class="note">@text</p>
+}

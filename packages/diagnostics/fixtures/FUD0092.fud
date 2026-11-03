@@ -1,0 +1,9 @@
+@code {
+  function save() {}
+}
+
+<fix-a>
+  <template shadowrootmode="open">
+    <button @click="save">Save</button>
+  </template>
+</fix-a>

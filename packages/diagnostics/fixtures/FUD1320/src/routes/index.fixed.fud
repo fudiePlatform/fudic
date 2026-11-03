@@ -1,0 +1,13 @@
+<link rel="server" href="./index.fudapi">
+
+<head>
+  <title>@data.title</title>
+</head>
+
+@await data.users {
+  <ul>
+    @foreach (const user of data.users) key (user.name) {
+      <li>@user.name</li>
+    }
+  </ul>
+}

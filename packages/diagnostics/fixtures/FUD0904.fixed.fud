@@ -1,0 +1,9 @@
+@code {
+  const count = 0;
+}
+
+<app-count>
+  <template shadowrootmode="open">
+    <p>@count</p>
+  </template>
+</app-count>

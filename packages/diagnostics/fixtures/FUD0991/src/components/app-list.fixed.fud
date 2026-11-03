@@ -1,0 +1,14 @@
+<link rel="server" href="./app-list.fudapi">
+<link rel="component" href="./app-card.fud">
+
+@code {
+  import type { Note } from "fudic:components/app-list";
+
+  const { note } = props<{ note: Note }>();
+}
+
+<app-list>
+  <template shadowrootmode="open">
+    <app-card ...note></app-card>
+  </template>
+</app-list>

@@ -1,0 +1,9 @@
+@code {
+  const n = 1;
+}
+
+<app-card>
+  <template shadowrootmode="open">
+    <p>@n</p>
+  </template>
+</app-card>

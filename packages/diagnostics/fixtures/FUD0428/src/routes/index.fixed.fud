@@ -1,0 +1,8 @@
+<link rel="layout" href="../layouts/main.fud">
+
+@section nav {
+  <p>Home</p>
+  <p>About</p>
+}
+
+<h1>Hello</h1>

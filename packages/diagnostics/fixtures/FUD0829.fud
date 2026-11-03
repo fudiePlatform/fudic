@@ -1,0 +1,9 @@
+<app-page>
+  <template shadowrootmode="open">
+    @render card("Tea", "Coffee")
+  </template>
+</app-page>
+
+@snippet card(item: string) {
+  <p>@item</p>
+}

@@ -1,0 +1,9 @@
+@code {
+  const { name = 'Ada' } = props<{ name?: string }>();
+}
+
+<app-kind>
+  <template shadowrootmode="open">
+    <p>@name.constructor.name</p>
+  </template>
+</app-kind>

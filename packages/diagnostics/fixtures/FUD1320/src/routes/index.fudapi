@@ -1,0 +1,6 @@
+load ssr
+  title  str
+  users  Person[]  later
+
+type Person
+  name  str

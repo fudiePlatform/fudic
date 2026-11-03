@@ -1,0 +1,10 @@
+@code {
+  import { greeting } from './greeting.js';
+  const { name = 'Ada' } = props<{ name?: string }>();
+}
+
+<app-where>
+  <template shadowrootmode="open">
+    <p>@greeting @name</p>
+  </template>
+</app-where>

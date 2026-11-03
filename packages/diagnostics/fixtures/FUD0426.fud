@@ -1,0 +1,5 @@
+<app-frame>
+  <template shadowrootmode="open">
+    <div>@RenderBody()</div>
+  </template>
+</app-frame>

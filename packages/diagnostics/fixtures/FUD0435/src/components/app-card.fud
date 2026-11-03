@@ -1,0 +1,5 @@
+<app-card>
+  <template shadowrootmode="open">
+    <slot></slot>
+  </template>
+</app-card>

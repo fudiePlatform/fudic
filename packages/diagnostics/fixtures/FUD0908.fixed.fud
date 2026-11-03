@@ -1,0 +1,13 @@
+@code {
+  const { on = false } = props<{ on?: boolean }>();
+}
+
+<app-state>
+  <template shadowrootmode="open">
+    @if (on) {
+      <p>on</p>
+    } else {
+      <p>off</p>
+    }
+  </template>
+</app-state>

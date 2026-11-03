@@ -1,0 +1,6 @@
+@code {
+  const name = "x";
+}
+
+<p>Hi</p>
+@(`Hi ${name})

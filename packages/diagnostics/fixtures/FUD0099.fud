@@ -1,0 +1,9 @@
+@code {
+  function go() {}
+}
+
+<fix-a>
+  <template shadowrootmode="open">
+    <button @="@go">a</button>
+  </template>
+</fix-a>

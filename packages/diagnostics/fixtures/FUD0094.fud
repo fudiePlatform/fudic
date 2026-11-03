@@ -1,0 +1,9 @@
+@code {
+  let input: HTMLInputElement | undefined;
+}
+
+<fix-a>
+  <template shadowrootmode="open">
+    <input ref="@(input)">
+  </template>
+</fix-a>

@@ -1,0 +1,11 @@
+@code {
+  const { ok } = props<{ ok: boolean }>();
+}
+
+<app-status>
+  <template shadowrootmode="open">
+    @if (ok) key (ok) {
+      <p>Ready</p>
+    }
+  </template>
+</app-status>

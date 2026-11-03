@@ -1,0 +1,7 @@
+<link rel="component" href="./app-badge.fud">
+
+<app-card>
+  <template shadowrootmode="open">
+    <app-badge>New</app-badge>
+  </template>
+</app-card>

@@ -1,0 +1,5 @@
+<app-plain>
+  <template shadowrootmode="open">
+    <p>No snippet here.</p>
+  </template>
+</app-plain>

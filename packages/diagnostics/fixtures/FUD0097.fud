@@ -1,0 +1,9 @@
+@code {
+  function refresh() {}
+}
+
+<fix-a>
+  <template shadowrootmode="open">
+    <p bus:="@refresh">a</p>
+  </template>
+</fix-a>

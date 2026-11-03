@@ -1,0 +1,15 @@
+@code {
+  const { items } = props<{ items: string[] }>();
+}
+
+<app-note>
+  <template shadowrootmode="open">
+    <ul>
+      @foreach (const item of items) key (item) {
+        <li>@item</li>
+      } @empty {
+        <li>None</li>
+      }
+    </ul>
+  </template>
+</app-note>

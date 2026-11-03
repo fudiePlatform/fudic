@@ -1,0 +1,5 @@
+<fix-a>
+  <template shadowrootmode="open">
+    <ul><li>One</li></ul>
+  </template>
+</fix-a>

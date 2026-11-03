@@ -1,0 +1,5 @@
+<app-badge>
+  <template shadowrootmode="open">
+    <span><slot></slot></span>
+  </template>
+</app-badge>

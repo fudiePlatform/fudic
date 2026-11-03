@@ -1,0 +1,6 @@
+@code {
+  const items = ["a"];
+}
+
+<p>Count</p>
+@(items.length
