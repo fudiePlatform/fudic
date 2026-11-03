@@ -45,6 +45,12 @@ export interface FudicOptions {
    */
   readonly serverReload?: boolean;
   /**
+   * Stamps every element a `.fud` writes with `data-fud-src="<file>:<line>:<column>"`, the place
+   * of its opening tag. Default: `false`. Dev only — a build never carries it. `@fudic/workbench`
+   * turns it on, so a criterion that fails names the line of the element.
+   */
+  readonly sourceLocations?: boolean;
+  /**
    * Whether the build reads `sw.json` and emits a Service Worker. Default: `true`. `false` builds
    * the same project without one, as if it had no `sw.json`: a second build of one app to compare
    * the two shapes, without a second project root that cannot see the app's `.fudapi`.

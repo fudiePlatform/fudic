@@ -714,6 +714,9 @@ importers:
       '@fudic/di':
         specifier: workspace:*
         version: link:../di
+      '@fudic/diagnostics':
+        specifier: workspace:*
+        version: link:../diagnostics
       '@fudic/dom':
         specifier: workspace:*
         version: link:../dom
@@ -735,6 +738,9 @@ importers:
       '@testing-library/user-event':
         specifier: 14.6.8
         version: 14.6.8(@testing-library/dom@10.4.2)
+      dom-accessibility-api:
+        specifier: 0.6.3
+        version: 0.6.3
       happy-dom:
         specifier: 20.10.6
         version: 20.10.6

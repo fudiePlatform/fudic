@@ -46,17 +46,29 @@ export const meta = {
 /** @type {import('@fudic/terms').Term['run']} */
 export async function run(ctx, { target, name }) {
   const classes = await ctx.locate(String(target)).evaluate((el) => [...el.classList]);
-  return { pass: classes.includes(String(name)), evidence: classes.join(' ') };
+  return {
+    pass: classes.includes(String(name)),
+    evidence: { expected: `class "${name}"`, actual: `classes "${classes.join(' ')}"` },
+  };
 }
 
 export const selfTest = [{ args: { target: 'ui-card', name: 'raised' }, expect: 'pass' }];
 ```
 
+A `then` answers its `evidence` as an `Evidence`: what it looked for and what it found, both as
+text a person reads — `{ expected: 'at least 44px', actual: '32px' }`. Every stock `then` does,
+whether it passes or not; when the element is missing, `actual` is `not there`. That is what the
+report of a red criterion shows, so write the value the way you would say it. A term that
+answers a sentence, or `null`, still works: the report then takes its `describe` (or the step as
+written) as what was expected, and the sentence (or `—`) as what was found. A `when` or a `given`
+answers a sentence of what it did.
+
 `ctx` has four things:
 
 - `page` — the Playwright `Page`: keyboard, mouse, `evaluate`…
 - `locate(ref)` — a Playwright `Locator`. A reference must match one element: more is an error
-  that says how many.
+  that says how many. The element it reads or acts on is marked in the shot, with the place in
+  the `.fud` that wrote it.
 - `act(target, gesture)` — runs a gesture and waits until the page has served it, hydration
   included. A `when` that touches the page goes through it.
 - `text(target)` — the text a person sees, across shadow roots and slots.

@@ -63,6 +63,7 @@ import {
 import { blocksOf, rawChild, refTarget } from './constructs.js';
 import { isConstructNode, markerSite } from './marker.js';
 import { adoptListOf, type ProjectAdopt } from './project-styles.js';
+import { writeStamp, type SourceStamp } from './source-locations.js';
 import { bodyContext, childrenContext, type RunContext } from './display.js';
 import { emitItems, type EmitItem, type TextRun } from './runs.js';
 import type { Prop } from './oxc-code.js';
@@ -296,6 +297,8 @@ export interface ClientScope {
    * files.
    */
   readonly leading?: number;
+  /** The server branch's `data-fud-src` stamp, written on what this branch fabricates. */
+  readonly stamp?: SourceStamp;
 }
 
 /** One slot of a child's positional payload: the expression, and where it can move from. */
@@ -996,6 +999,8 @@ export class ClientMarkupEmitter {
     this.#at = childrenContext(outer, el, isComponent);
     this.#elementVars.set(el, v);
     this.#fab.line(`${v} = $dom.element(${JSON.stringify(el.name)});`);
+    // Only where it fabricates: an adopted element already came from the server with it.
+    writeStamp(this.#fab, this.#scope.stamp, el, v);
     if (isComponent) {
       // A child component host: fabricate it and hang its light DOM, but do NOT open its
       // shadow or drive its controller. Who downloads a child's chunk, and in which order

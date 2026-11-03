@@ -101,7 +101,7 @@ pnpm exec fudic-workbench run --json             # one JSON message per line
 ```
 
 ```sh
-fudic-workbench run [<path>…] [--browser <b>] [--workers <n>] [--json] [--pass-with-no-specs]
+fudic-workbench run [<path>…] [--browser <b>] [--workers <n>] [--json] [--pass-with-no-specs] [--failing]
 ```
 
 Without paths it runs every `.fudspec` under the current folder (`node_modules`, `dist` and hidden
@@ -124,6 +124,47 @@ the `spec` script of a project `fudic` creates uses until it has its first `.fud
 
 `<b>` is `auto`, `chrome`, `msedge`, `chromium`, `firefox` or `webkit`. Firefox and WebKit are
 Playwright's builds: `npx playwright-core install firefox`.
+
+`--failing` runs only the criteria that did not pass last time; with no last run, all of them.
+
+## The report of a criterion
+
+Every run answers one report per criterion, made to be read by a tool (or a model) without
+matching messages by hand. With `--json`, each `result` line is followed by a `report` line; from
+code, `runSpecs` returns them in `reports`, in the order of the criteria in each `.fudspec`:
+
+```json
+{ "v": 2, "type": "report", "tag": "acme-button",
+  "spec": "src/components/acme-button/acme-button.fudspec", "id": "disabled-no-press",
+  "at": { "file": "src/components/acme-button/acme-button.fudspec", "line": 12, "column": 1 },
+  "verdict": "fail", "ms": 184,
+  "failed": { "step": "then  emitted press 0", "at": { "file": "…", "line": 16, "column": 5 },
+              "expected": "0 times", "actual": "1" },
+  "source": { "at": { "file": "src/components/acme-button/acme-button.fud", "line": 22, "column": 3 },
+              "quote": "<button disabled=@disabled>" },
+  "shots": { "after": ".fudic/runs/acme-button/disabled-no-press.after.png" },
+  "pageErrors": [] }
+```
+
+- `failed` is the first `then` that said no, with what it expected and what it found, as text.
+- `broken` replaces it when the criterion could not reach a verdict: the step that threw, and
+  every reason as a diagnostic with its code — a term that does not exist (`FUD1201`), a step that
+  ran out of time (`FUD1202`), a reference that matches several elements (`FUD1203`), a term that
+  threw (`FUD1204`), a page that did not load (`FUD1200`), an error in the page (`FUD1205`),
+  `fudic/bench.js` (`FUD1206`), anything else (`FUD1207`).
+- `source` is the element the step located, back in the `.fud` that wrote it, and that line. The
+  workbench compiles every page with `sourceLocations` on, so each element carries
+  `data-fud-src="<file>:<line>:<column>"`; a text inside an element no `.fud` wrote lands on the
+  nearest one that did.
+- `shots` are on disk, under `.fudic/runs/<tag>/`, only for criteria that did not pass. They are
+  removed once the criterion passes.
+
+A component that does not compile publishes a `problem` with every one of its diagnostics, each
+with its file, line and column in the `.fud`. The project's last report is kept in
+`.fudic/runs/last-spec.json`; that is what `--failing` reads.
+
+`outlineOf(page, selector)` gives a piece's accessibility tree, as Playwright's ARIA snapshot
+writes it: the reference that `outline` of `@fudic/testing` answers the same as.
 
 ## The workbench process
 
@@ -168,7 +209,8 @@ Criteria run in parallel, each in its own page; a page has 30 s to load.
 
 A term module is `run(ctx, args)` → `{ pass, evidence }`, with `args` by the names in
 `meta.params` (a `number` parameter arrives as a number). An evidence `{ expected, actual }` is
-shown one against the other.
+shown one against the other; any other evidence of a `then` is reported with the term's
+`describe` as what was expected.
 
 The workbench does not build `ctx`: its extensions do, in order — the stock one of
 `@fudic/terms`, then the project's `fudic/bench.js` — and each can also prepare the page before

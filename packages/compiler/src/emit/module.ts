@@ -33,6 +33,7 @@ import { spaceModeOf } from './space.js';
 import { hasForeignDisplay, hostDisplay, tagDisplay, type Boxes, type Display } from './display.js';
 import { CodeWriter, type EmitMapping } from './writer.js';
 import { inParts, MarkupEmitter, renderName, tpl } from './markup.js';
+import { stampOption } from './source-locations.js';
 import {
   AssetLinker,
   type AssetExists,
@@ -180,6 +181,13 @@ export interface EmitOptions {
    * what it was before translations existed.
    */
   readonly i18n?: LocaleCompile;
+  /**
+   * The name of this module's file as a `data-fud-src` reads it — relative to the project root,
+   * with '/'. With it, every element the template writes carries `data-fud-src` with the place of
+   * its opening tag, on the server and on the client alike. INJECTED: the compiler holds one
+   * text and knows no root. Absent, the output is byte for byte what it was.
+   */
+  readonly sourceLocations?: string;
 }
 
 export type { ComponentSpecifier, LayoutSpecifier, ProjectStyle };
@@ -423,6 +431,7 @@ function buildComponentModule(
   });
   const em = new MarkupEmitter({
     source: comp.source,
+    ...stampOption(options, comp.source),
     w: bodyW,
     isComponent: (t) => graph.components.has(t),
     linker,
@@ -665,6 +674,7 @@ function buildPageModule(
   const bodyW = new CodeWriter();
   const em = new MarkupEmitter({
     source,
+    ...stampOption(options, source),
     w: bodyW,
     isComponent: (t) => graph.components.has(t),
     linker,

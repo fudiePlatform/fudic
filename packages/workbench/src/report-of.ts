@@ -65,6 +65,8 @@ export interface ReportSource {
   readonly text: string;
   /** By criterion id, each step's `describe`: null when its term has none. */
   readonly expectations: ReadonlyMap<string, readonly (string | null)[]>;
+  /** The text of a file, by its absolute path: what a `source` quotes. */
+  readonly read: (file: string) => string | undefined;
 }
 
 export interface ReportSession {
@@ -93,39 +95,62 @@ export function reportOf(session: ReportSession, result: CriterionResult, shots:
   const where = at(criterion?.offset ?? 0);
   const failed = result.verdict === 'fail' && criterion !== undefined ? failedStep() : undefined;
   const broken = result.verdict === 'error' ? brokenRun() : undefined;
+  const sourced = failed ?? broken;
+  const element = sourced === undefined ? undefined : sourceRef(result, source, sourced.index);
   return {
     spec,
     id: result.id,
     at: where,
     verdict: result.verdict,
     ms: result.ms,
-    ...(failed !== undefined ? { failed } : {}),
-    ...(broken !== undefined ? { broken } : {}),
+    ...(failed !== undefined ? { failed: failed.step } : {}),
+    ...(broken !== undefined ? { broken: broken.run } : {}),
+    ...(element !== undefined ? { source: element } : {}),
     ...(result.verdict !== 'pass' && (shots.before !== undefined || shots.after !== undefined) ? { shots } : {}),
     pageErrors: result.pageErrors,
   };
 
-  function failedStep(): FailedStep | undefined {
+  function failedStep(): { step: FailedStep; index: number } | undefined {
     const index = result.steps.findIndex(isRed);
     const step = result.steps[index];
     const planned = criterion!.steps[index];
     if (step === undefined || !isRed(step) || planned === undefined) return undefined;
     const describe = source.expectations.get(result.id)?.[index] ?? null;
-    return { step: written(planned), at: at(planned.offset), ...evidenceOf(step.evidence, describe ?? written(planned)) };
+    const evidence = evidenceOf(step.evidence, describe ?? written(planned));
+    return { step: { step: written(planned), at: at(planned.offset), ...evidence }, index };
   }
 
   /** The step that threw, when one did, and every problem of the run, located for a reader. */
-  function brokenRun(): BrokenRun {
-    const planned = criterion?.steps[result.steps.findIndex((step) => 'error' in step)];
+  function brokenRun(): { run: BrokenRun; index: number } {
+    const index = result.steps.findIndex((step) => 'error' in step);
+    const planned = criterion?.steps[index];
     const read = (file: string) => (file === source.spec ? source.text : undefined);
     const diagnostics = result.diagnostics.map((diagnostic) => {
       const wire = toWire(diagnostic, null, read);
       return wire.file === null ? wire : { ...wire, file: posix.relative(source.root, wire.file) };
     });
-    return planned === undefined
-      ? { at: where, diagnostics }
-      : { step: written(planned), at: at(planned.offset), diagnostics };
+    const run = planned === undefined ? { at: where, diagnostics } : { step: written(planned), at: at(planned.offset), diagnostics };
+    return { run, index };
   }
+}
+
+/** `<file>:<line>:<column>`, as `data-fud-src` writes it. */
+const STAMP = /^(.+):(\d+):(\d+)$/u;
+
+/**
+ * The element a step located, back in its `.fud`: the last mark of that step that says where
+ * its element was written, and that line of the file, trimmed. Nothing when no mark of the step
+ * has a source — an element no `.fud` wrote — or the stamp names a file that cannot be read.
+ */
+function sourceRef(result: CriterionResult, source: ReportSource, step: number): SourceRef | undefined {
+  const stamp = result.marks.findLast((mark) => mark.step === step && mark.source !== undefined)?.source;
+  const parts = stamp === undefined ? null : STAMP.exec(stamp);
+  if (parts === null) return undefined;
+  const [, file, line, column] = parts as unknown as [string, string, string, string];
+  const text = source.read(posix.join(source.root, file));
+  const quote = text?.split(/\r?\n/u)[Number(line) - 1];
+  if (quote === undefined) return undefined;
+  return { at: { file, line: Number(line), column: Number(column) }, quote: quote.trim() };
 }
 
 /** A `then` that answered false. */

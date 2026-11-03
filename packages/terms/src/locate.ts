@@ -54,6 +54,22 @@ function free(key: string | symbol): boolean {
 }
 
 /**
+ * Runs in the page, so it travels as source text: the `data-fud-src` of the element, or of the
+ * nearest ancestor that has one — leaving a shadow root by its host — so a text inside an element
+ * no `.fud` wrote lands on the element that wrote it. Null when none has it.
+ */
+const sourceOf = new Function(
+  'element',
+  `for (let at = element; at; ) {
+    const source = at.getAttribute && at.getAttribute('data-fud-src');
+    if (source) return source;
+    const parent = at.parentNode;
+    at = parent && parent.host ? parent.host : parent;
+  }
+  return null;`,
+) as (element: unknown) => string | null;
+
+/**
  * A reference matched more than one element. Recognised by its `name`, not by its class: the
  * workbench and the project may each load their own copy of this package.
  */
@@ -73,14 +89,18 @@ export class AmbiguousReference extends Error {
  * them. More than one is an error that says how many; exactly one is reported to `onLocate`.
  * None is left to the call itself, which waits for it to appear.
  */
-export function guardedLocator(page: Page, ref: string, onLocate: (ref: string, box: Box) => void): Locator {
+export function guardedLocator(
+  page: Page,
+  ref: string,
+  onLocate: (ref: string, box: Box, source: string | null) => void,
+): Locator {
   const locator = locatorOf(page, ref);
   const one = async (): Promise<void> => {
     const count = await locator.count();
     if (count > 1) throw new AmbiguousReference(ref, count);
     if (count === 0) return;
     const box = await locator.boundingBox();
-    if (box !== null) onLocate(ref, box);
+    if (box !== null) onLocate(ref, box, await locator.evaluate(sourceOf));
   };
   const guarded = new Proxy(locator, {
     get(target, key) {

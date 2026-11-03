@@ -162,16 +162,17 @@ export async function runCriterion(
     }
 
     const mount = page.locate(criterion.mount);
-    const located: { step: number; ref: string; box: Box }[] = [];
+    const located: Mark[] = [];
     let current = 0;
     const host: TermHost = {
       page: page.page,
       settle: (target, gesture) => settled(page, page.adopt(target), gesture),
       // A term may read a reference and then act on it: one mark per step and reference, the last.
-      onLocate(ref, box) {
-        const same = located.findIndex((mark) => mark.step === current && mark.ref === ref);
-        if (same === -1) located.push({ step: current, ref, box });
-        else located[same] = { step: current, ref, box };
+      onLocate(ref, box, source) {
+        const mark: Mark = { step: current, ref, box, ...(source !== null ? { source } : {}) };
+        const same = located.findIndex((m) => m.step === current && m.ref === ref);
+        if (same === -1) located.push(mark);
+        else located[same] = mark;
       },
     };
     const ctx = chainContext(extensions, host);
@@ -246,8 +247,7 @@ async function shot(mount: LocatorLike): Promise<Shot | undefined> {
 /** Each located box, in the coordinates of the `after` shot. */
 function relative(located: readonly Mark[], origin: Box): Mark[] {
   return located.map((mark) => ({
-    step: mark.step,
-    ref: mark.ref,
+    ...mark,
     box: { x: mark.box.x - origin.x, y: mark.box.y - origin.y, width: mark.box.width, height: mark.box.height },
   }));
 }

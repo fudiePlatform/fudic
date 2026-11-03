@@ -562,3 +562,38 @@ Todos son `error`. Cada `.md` sigue la forma de SDD-50 §4.4.
     `CriterionResult.diagnostics`, que no viaja en el mensaje `result` (los mensajes no cambian).
 11. **Las causas que el banco ya conocía conservan su código**: la fixture que lanza sigue siendo
     `FUD0973` y la señal no literal `FUD0974`; una entrada que la fixture no tiene es `FUD1207`.
+12. **En el compilador la opción es el nombre del fichero, no un booleano.** El compilador tiene un
+    texto y no conoce la raíz: `EmitOptions.sourceLocations?: string` es el nombre con el que se
+    sella (relativo a la raíz, con `/`), y lo inyecta el plugin. `fudic({ sourceLocations: true })`
+    y `fudicTest({ sourceLocations: true })` siguen siendo booleanos; el plugin solo sella en
+    `vite dev`, nunca en el build. `fudicTest` ya pasaba sus opciones al plugin: no cambia.
+13. **`data-fud-src` va justo tras crear el elemento**, en los dos emisores y antes de cualquier
+    otro atributo: el orden de atributos sale igual por los dos caminos.
+14. **`TermHost.onLocate` gana un tercer argumento**, `source: string | null`. El recorrido hacia
+    arriba lo hace el propio `ctx.locate` en la página.
+15. **`source` sale de las marcas**, que solo existen cuando hubo captura `after` del montaje: un
+    criterio cuyo montaje desapareció no tiene `source`. Para leer la línea, `ReportSource` gana
+    `read`: la sesión le pasa la lectura del disco; `reportOf` sigue sin tocar el disco por su
+    cuenta.
+16. **`names` va al filtro de vitest.** El informe escribe el nombre completo con ` > ` y vitest
+    filtra por el nombre unido con espacios: cada nombre se traduce y se escapa, y basta uno.
+17. **`failing` en `runTests`**: ejecuta los ficheros de lo que no pasó, filtrando por sus nombres;
+    si un fichero no cargaba, sin filtro de nombres (vitest tiene un solo filtro para todos los
+    ficheros), así que esos ficheros corren enteros. Si en el último informe todo pasó, no ejecuta
+    nada y devuelve un informe vacío.
+18. **El último informe del banco es por proyecto**: `.fudic/runs/last-spec.json` en la raíz de
+    cada proyecto (un monorepo ejecutado desde arriba guarda uno en cada app). Tras un `failing`
+    guarda solo lo que volvió a ejecutar: lo que no está, pasó. `fudic-workbench run` gana
+    `--failing`.
+19. **Si vitest no arranca**, `runTests` no lanza: devuelve un `BrokenTest` con `file: '.'`,
+    `name: null` y un `FUD1207` con el mensaje.
+20. **`@fudic/testing` depende de `@fudic/diagnostics`** (el `FUD1207` y los tipos de posición).
+21. **`outline` usa solo `dom-accessibility-api`** (`getRole`, `computeAccessibleName`,
+    `isDisabled`, `isInaccessible`), declarada en `@fudic/testing` con versión exacta: su `getRole`
+    ya da el rol explícito o implícito, y `aria-query` no aporta nada más. Sin dependencias
+    fantasma de Testing Library.
+22. **Lo que Playwright escribe además, `outline` lo escribe igual**: el `href` de un enlace como
+    `- /url: …`, un `placeholder` distinto del nombre como `- /placeholder: …`, y el valor de un
+    campo de texto como su texto. El texto que el nombre ya dice no se repite debajo.
+23. **`outlineOf` no lanza**: si Playwright no puede tomar la instantánea (el selector no
+    encuentra nada), devuelve `error: <primera línea>`.

@@ -16,7 +16,7 @@
 import { transformWithOxc } from 'vite';
 import { type LocaleCompile, type ResolveIo } from '@fudic/compiler';
 import { remembered } from './build-memory.js';
-import { transformFud, type ProjectStyles, type TransformResult } from './transform.js';
+import { transformFud, type ProjectStyles, type SourceLabel, type TransformResult } from './transform.js';
 import { type LinkedAssets } from './linked-assets.js';
 
 type Stripped = Awaited<ReturnType<typeof transformWithOxc>>;
@@ -50,9 +50,11 @@ export function compileFud(
    * alternates. Remembered apart because `io` is that locale's, with a memory of its own.
    */
   i18n?: LocaleCompile,
+  /** With it, every element is stamped with where it was written: `vite dev` asked for it. */
+  sourceLabel?: SourceLabel,
 ): Promise<CompiledFud | null> {
   return remembered(io, `fud:${path}#${routeName ?? ''}`, async () => {
-    const result = transformFud(path, io, routeName, styles, assets, i18n);
+    const result = transformFud(path, io, routeName, styles, assets, i18n, sourceLabel);
     if (result === null) return null;
     // `inMap`: Oxc composes `.fud` → TS with its own TS → JS, so the map describes the code
     // it actually returns rather than the text before the strip.

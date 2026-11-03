@@ -36,7 +36,9 @@ import {
   transformFudIoc,
   NO_STYLES,
   type ProjectStyles,
+  type SourceLabel,
 } from './transform.js';
+import { toPosix } from '@fudic/typecheck/problems';
 import { API_EXTENSION } from '@fudic/api';
 import { API_SCHEME, ApiProject, nothingToImplement } from './api-modules.js';
 import { BROWSER_ROOT_ID, ROOT_FILE_PREFIX, SERVER_ROOT_ID, emitRoot } from './api-root.js';
@@ -287,6 +289,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   let outDir = '';
   let publicDir = '';
   let isDev = false;
+  /**
+   * How a file is named in `data-fud-src`: only in dev and only when asked — a build never
+   * carries it, whatever the option says.
+   */
+  const sourceLabel = (): SourceLabel | undefined =>
+    userOptions.sourceLocations === true && isDev ? (file) => toPosix(relative(root, file)) : undefined;
   let builds: readonly RouteBuild[] = [];
   /** `_error.fud`, out of the route table (SDD-56 §4.8): one per locale (SDD-58 §4.5). */
   let errorPages: readonly RouteBuild[] = [];
@@ -1937,7 +1945,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         return (await transformWithOxc(ioc.code, `${path}.ts`, { lang: 'ts' })).code;
       }
       if (query === CLIENT_QUERY) {
-        const chunk = transformFudClient(path, fudIo, projectStyles, linked);
+        const chunk = transformFudClient(path, fudIo, projectStyles, linked, sourceLabel());
         if (chunk === null) {
           return null;
         }
@@ -1968,7 +1976,15 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       //
       // Compiled through the build's memory (`compileFud`): the link pass and the edge pass
       // ask for the same module later and get this one instead of compiling it again.
-      const compiled = await compileFud(path, fudIo, routeNameOf(path, locale), projectStyles, linked, compileFor(locale));
+      const compiled = await compileFud(
+        path,
+        fudIo,
+        routeNameOf(path, locale),
+        projectStyles,
+        linked,
+        compileFor(locale),
+        sourceLabel(),
+      );
       if (compiled === null) {
         return null;
       }

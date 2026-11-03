@@ -12,8 +12,8 @@ export interface TermHost {
   readonly page: Page;
   /** Runs a gesture and waits for the page to serve it. */
   settle<T>(target: Locator, gesture: () => Promise<T>): Promise<T>;
-  /** For the shot: where each resolved reference was. */
-  onLocate(ref: string, box: Box): void;
+  /** For the shot: where each resolved reference was, and its `data-fud-src` (null without one). */
+  onLocate(ref: string, box: Box, source: string | null): void;
 }
 
 /** An extension of the workbench: it prepares the page before the mount, and extends the ctx. */
