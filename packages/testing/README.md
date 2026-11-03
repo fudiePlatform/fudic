@@ -84,10 +84,52 @@ component's own). Mount once with each `via` and compare: the server path and th
 must give the same result. `renderToHtml(X)` returns the server's HTML, and
 `toContainTemplate({ … })` checks its `shadowroot*` attributes exactly.
 
+## The accessibility tree
+
+`outline(root)` writes what a screen reader meets in a painted piece, in Playwright's ARIA
+snapshot format — the same text `outlineOf` of `@fudic/workbench` gives in a real browser:
+
+```ts
+const { host } = await mount(AcmeButton, { props: { label: 'Save', disabled: true } });
+expect(outline(host)).toBe('- button "Save" [disabled]');
+```
+
+It goes through shadow roots and follows slots. Each element with a role is a line with its
+accessible name and its states (`checked`, `disabled`, `expanded`, `level`, `pressed`,
+`selected`); an element without one writes nothing and its children rise to its level.
+
+## Running the tests from code
+
+`runTests` from `@fudic/testing/run` (Node only) runs the project's tests with vitest in the same
+process, with the project's `vitest.config`, and answers a report:
+
+```ts
+import { runTests } from '@fudic/testing/run';
+
+const report = await runTests({ root, paths: ['src/components'], names: ['acme-button'] });
+// report.summary → { pass: 4, fail: 1, broken: 0, skipped: 0 }
+```
+
+Only what did not pass is listed in `report.tests`; every file is counted in `report.files`.
+
+- **`fail`** — an assertion said no (`expect`, or a jest-dom matcher): the line of the `expect`,
+  that line quoted, and `expected` and `actual` when the assertion gives them.
+- **`broken`** — the test never got to check: it threw, `mount` threw, it timed out. A file that
+  did not load is one `broken` entry with `name: null`; when the cause is a `.fud` that does not
+  compile, its diagnostics come with their code and their place in the `.fud`.
+
+The last report is kept in `.fudic/runs/last-test.json`, and `failing: true` runs only what did
+not pass in it.
+
 ## What belongs elsewhere
 
 happy-dom does no layout, no real focus and no ARIA references across shadow roots. Test those
-in a browser with a `.fudspec`.
+in a browser with a `.fudspec`. For the same reason `outline` does not know what CSS hides or
+what depends on layout: a piece hidden by a stylesheet still appears in it. Compare against
+`outlineOf` in the browser for those.
+
+`fudicTest({ sourceLocations: true })` stamps every element with `data-fud-src`, the place in the
+`.fud` of its opening tag; it is off by default.
 
 One module graph serves the test, the client and the server. A module's state (a form object,
 a global signal) is therefore shared between the two sides, and between the tests of one file.
