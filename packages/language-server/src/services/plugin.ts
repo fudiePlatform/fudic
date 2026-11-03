@@ -751,6 +751,7 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
               // client sends what it last rendered, and a repair computed against a stale span
               // edits the wrong stretch. Recomputing is free — the parse and the Oxc batch are
               // the cache's.
+              const typescript = typeScriptService(context);
               return codeActions({
                 cached,
                 index,
@@ -778,6 +779,8 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
                     ),
                 },
                 ...(deps.apis === undefined ? {} : { apis: deps.apis }),
+                // What a loop's element can be keyed by is the checker's to say.
+                ...(typescript === undefined ? {} : { typescript }),
               });
             },
             undefined,

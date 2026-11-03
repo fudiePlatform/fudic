@@ -328,3 +328,11 @@ alguno no es ASCII inglés (sin `ñ`, tildes ni palabras de una lista corta en e
 5. **`repairsFor` en `@fudic/language-server`, en una entrada propia.** Las reparaciones necesitan
    el índice del workspace y el TypeScript de la proyección, que ya viven ahí; moverlas a otro
    paquete arrastraría a los dos.
+
+### 8.2. Tomadas al implementar
+
+1. **El arnés de pares vive en `@fudic/cli` (`test/fixes.test.ts`); los pares, en
+   `packages/diagnostics/fixtures/`.** Ponerlo en `@fudic/diagnostics` le daba dependencias de
+   desarrollo sobre `compiler`, `typecheck`, `spec` y `api`, que dependen de él: el orden de
+   `pnpm -r build` se invertía y un checkout limpio no construía. La CLI ya depende de todos y es
+   donde vive la comprobación de un proyecto.

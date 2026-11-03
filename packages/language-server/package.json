@@ -31,6 +31,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./repairs": {
+      "types": "./dist/repairs.d.ts",
+      "import": "./dist/repairs.js"
     }
   },
   "files": [

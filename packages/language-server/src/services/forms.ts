@@ -579,7 +579,7 @@ const ALL_MEANINGS = ~0 as ts.SymbolFlags;
  * for the reason `ALL_MEANINGS` exists. The walk descends while a child contains the offset, so
  * the last assignment is the deepest one, which is the identifier a type is wanted from.
  */
-function nodeAt(source: ts.SourceFile, offset: number): ts.Node {
+export function nodeAt(source: ts.SourceFile, offset: number): ts.Node {
   let found: ts.Node = source;
 
   const visit = (node: ts.Node): void => {

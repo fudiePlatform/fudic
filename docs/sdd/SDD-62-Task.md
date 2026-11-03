@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/language-server` · `fudic-vscode`
 > **Rama:** `sdd-62-diagnosticos-que-dicen-la-verdad`. Nace de `main` **con SDD-61 en `Hecho`**:
 > sus catorce códigos y sus reescritos entran en la migración.
-> **Progreso:** 8 / 21 — `En curso`.
+> **Progreso:** 12 / 21 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -56,20 +56,20 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 9 | 3 | **El arnés.** Saca de los `.md` la lista de códigos con ejemplo de código; para cada uno busca `fixtures/FUDnnnn.<ext>` y `.fixed.<ext>` (o su carpeta), los pasa por el mismo pase que el build y comprueba roto = ese código y ningún otro error, arreglado = nada | `diagnostics` | `test/fixes.test.ts` (dev-deps: `compiler`, `typecheck`, `spec`, `api`) |
+| [ ] | 9 | 3 | **El arnés.** Saca de los `.md` la lista de códigos con ejemplo de código; para cada uno busca `fixtures/FUDnnnn.<ext>` y `.fixed.<ext>` (o su carpeta), los pasa por el mismo pase que el build y comprueba roto = ese código y ningún otro error, arreglado = nada | `cli` | `test/fixes.test.ts` (SDD §8.2.1: en `diagnostics` cerraba un ciclo de build) |
 | [ ] | 10 | 9 | **Los pares de `.fud`.** Uno por código del compilador y del pase tipado de la lista | `diagnostics` | `fixtures/*.fud` · `fixtures/FUDnnnn/` |
 | [ ] | 11 | 9 | **Los pares de `.fudspec` y `.fudapi`.** Igual, con sus extensiones | `diagnostics` | `fixtures/*.fudspec` · `fixtures/*.fudapi` |
 | [ ] | 12 | 10, 11 | **Corregir lo que el par demuestre.** `FUD0191` por papel del fichero (SDD §4.1) y cada `.md` cuyo par falle; los de fuera del lenguaje (`fudic.json`, CLI, banco) se revisan a mano | `diagnostics` | `src/codes/*.md` |
-| [ ] | 13 | 12 | **Los tests de la fase.** Criterios 4–6 | `diagnostics` | `test/fixes.test.ts` |
+| [ ] | 13 | 12 | **Los tests de la fase.** Criterios 4–6 | `cli` | `test/fixes.test.ts` |
 
 ## Fase 3 — las bombillas (5)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 14 | — | **`repairsFor`.** Entrada `@fudic/language-server/repairs`; las funciones de `REPAIRS` devuelven `Repair`; el plugin de Volar las adapta a code actions | `language-server` | `src/repairs.ts` · `src/services/actions.ts` · `package.json` (`exports`) |
-| [ ] | 15 | 14 | **`FUD0540`.** Los tres casos de SDD §4.3 con el tipo del elemento; ninguno en otro caso | `language-server` | `src/repairs.ts` |
-| [ ] | 16 | 14, 19 | **`FUD0056`.** Sin bombilla cuando el valor empieza por `{` | `language-server` | `src/repairs.ts` |
-| [ ] | 17 | 14 | **Títulos en inglés.** La tabla de SDD §4.4, también los de contrato y control del plugin | `language-server` | `src/repairs.ts` · `src/services/actions.ts` |
+| [x] | 14 | — | **`repairsFor`.** Entrada `@fudic/language-server/repairs`; las funciones de `REPAIRS` devuelven `Repair`; el plugin de Volar las adapta a code actions | `language-server` | `src/repairs.ts` · `src/services/actions.ts` · `package.json` (`exports`) |
+| [x] | 15 | 14 | **`FUD0540`.** Los tres casos de SDD §4.3 con el tipo del elemento; ninguno en otro caso | `language-server` | `src/repairs.ts` |
+| [x] | 16 | 14, 19 | **`FUD0056`.** Sin bombilla cuando el valor empieza por `{` | `language-server` | `src/repairs.ts` |
+| [x] | 17 | 14 | **Títulos en inglés.** La tabla de SDD §4.4, también los de contrato y control del plugin | `language-server` | `src/repairs.ts` · `src/services/actions.ts` |
 | [ ] | 18 | 15–17 | **Los tests de la fase.** Criterios 7–10, con el test que recorre todos los títulos; aplicar cada reparación deja el fichero sin un error nuevo | `language-server` | `test/**` |
 
 ## Fase 4 — los reflejos de React y cierre (3)
