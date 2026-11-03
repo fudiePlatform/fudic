@@ -30,9 +30,16 @@ export interface TermContext {
   text(target: Locator): Promise<string>;
 }
 
+/** What a `then` looked for and what it found, as a person reads them. */
+export interface Evidence {
+  readonly expected: string;
+  readonly actual: string;
+}
+
 export interface TermOutcome {
   readonly pass: boolean;
-  readonly evidence: string | { readonly expected: unknown; readonly actual: unknown } | null;
+  /** For a `then`: what it looked for and what it found, as text. For a `when` or a `given`: what it did. */
+  readonly evidence: string | Evidence | null;
 }
 
 export interface TermMeta<P extends string = string> {

@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/terms` · `@fudic/workbench` · `@fudic/compiler` ·
 > `@fudic/vite` · `@fudic/testing`
 > **Rama:** `sdd-64-resultados-legibles`, desde `main`.
-> **Progreso:** 2 / 26 — `En curso`.
+> **Progreso:** 6 / 26 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -55,10 +55,10 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 3 | — | **La evidencia.** `Evidence` de texto en `TermOutcome`; cada `then` de serie la devuelve según la tabla de SDD §4.2, pase o no | `terms` | `src/types.ts` · `terms/then/*.js` |
-| [ ] | 4 | 2, 3 | **`reportOf(session, result)`.** Pura: `at` de criterio y pasos desde los `Span` de la `.fudspec`, `failed` (primer `then` en rojo), la normalización de la evidencia de un término del proyecto (SDD §4.2) | `workbench` | `src/report-of.ts` |
-| [ ] | 5 | 4 | **`runSpecs` y `run --json`.** `RunSummary.reports`; la línea `report` tras cada `result`; los mensajes de antes sin cambios | `workbench` | `src/run.ts` · `src/run-cli.ts` · `src/protocol.ts` |
-| [ ] | 6 | 5 | **Capturas en disco.** `.fudic/runs/<tag>/<id>.{before,after}.png` de los criterios que no pasan; se borran las de los que pasan; `shots` del informe | `workbench` | `src/run.ts` |
+| [x] | 3 | — | **La evidencia.** `Evidence` de texto en `TermOutcome`; cada `then` de serie la devuelve según la tabla de SDD §4.2, pase o no | `terms` | `src/types.ts` · `terms/then/*.js` |
+| [x] | 4 | 2, 3 | **`reportOf(session, result)`.** Pura: `at` de criterio y pasos desde los `Span` de la `.fudspec`, `failed` (primer `then` en rojo), la normalización de la evidencia de un término del proyecto (SDD §4.2) | `workbench` | `src/report-of.ts` |
+| [x] | 5 | 4 | **`runSpecs` y `run --json`.** `RunSummary.reports`; la línea `report` tras cada `result`; los mensajes de antes sin cambios | `workbench` | `src/run.ts` · `src/run-cli.ts` · `src/protocol.ts` |
+| [x] | 6 | 5 | **Capturas en disco.** `.fudic/runs/<tag>/<id>.{before,after}.png` de los criterios que no pasan; se borran las de los que pasan; `shots` del informe | `workbench` | `src/run.ts` |
 | [ ] | 7 | 3–6 | **Los tests de la fase.** Criterios 1 (sin `source`), 2–7 | `workbench` · `terms` | `test/**` |
 
 ## Fase 3 — los problemas con código (3)

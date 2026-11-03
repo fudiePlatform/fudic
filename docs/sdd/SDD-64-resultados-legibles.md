@@ -539,3 +539,14 @@ Todos son `error`. Cada `.md` sigue la forma de SDD-50 §4.4.
 2. **La forma de cada código.** Los que señalan un paso (`FUD1201`–`FUD1204`) llevan fichero (la
    `.fudspec`) y el span del paso; `FUD1206`, el fichero `fudic/bench.js`; `FUD1200`, `FUD1205` y
    `FUD1207` no tienen fichero al que apuntar.
+3. **`slotted` habla de slots, no de texto.** El término comprueba a qué slot fue un elemento, no
+   qué texto guarda el slot: `expected` = `slot "title"` · `the default slot` · `no slot`, y
+   `actual` lo mismo para el slot que le tocó, o `not there`. La fila de §4.2 se lee así.
+4. **`hidden` sin elemento pasa, y lo dice.** Un elemento que no está no se ve: `pass: true` con
+   `actual: 'not there'`. `visible` sin elemento falla con el mismo `actual`.
+5. **`focused` nombra quién tiene el foco** por su etiqueta (`focus on body`, `focus on input`); si
+   lo tiene el elemento buscado, `actual` repite la referencia del paso.
+6. **El mensaje `report` lleva `tag`.** Como todo mensaje sobre un componente: el servidor del
+   banco los reparte por él. El resto de campos es el `CriterionReport` tal cual.
+7. **«El paso tal como está escrito»** es el bloque, dos espacios y la línea del término en la
+   `.fudspec` (`then  text role:tabpanel "panel B"`).

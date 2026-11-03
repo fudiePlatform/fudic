@@ -16,10 +16,17 @@ const SLOT = new Function(
   return slot === null ? 'none' : slot.name === '' ? 'default' : slot.name;`,
 );
 
+/** The slot as a person reads it. */
+const named = (slot) => (slot === 'none' ? 'no slot' : slot === 'default' ? 'the default slot' : `slot "${slot}"`);
+
 /** @type {import('@fudic/terms').Term['run']} */
 export async function run(ctx, { target, slot }) {
+  const wanted = String(slot);
   const element = ctx.locate(String(target));
   // Content no slot takes is not rendered, and a role does not find it: it went nowhere.
-  const actual = (await element.count()) === 0 ? 'none' : await element.evaluate(SLOT);
-  return { pass: actual === String(slot), evidence: { expected: slot, actual } };
+  if ((await element.count()) === 0) {
+    return { pass: wanted === 'none', evidence: { expected: named(wanted), actual: 'not there' } };
+  }
+  const actual = await element.evaluate(SLOT);
+  return { pass: actual === wanted, evidence: { expected: named(wanted), actual: named(actual) } };
 }

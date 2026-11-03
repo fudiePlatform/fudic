@@ -11,6 +11,7 @@ export type {
   BenchExtension,
   Box,
   ContextOf,
+  Evidence,
   Fixtures,
   Term,
   TermContext,

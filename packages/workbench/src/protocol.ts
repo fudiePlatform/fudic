@@ -10,6 +10,7 @@
 import { render, type FudCode, type FudDiagnostic, type Severity } from '@fudic/diagnostics';
 import type { BlockKind, Layer } from '@fudic/spec';
 import type { BrowserName } from './browser.js';
+import type { CriterionReport } from './report-of.js';
 
 /** A diagnostic as the shell paints it: line and column are computed here, never stored. */
 export interface WireDiagnostic {
@@ -163,10 +164,14 @@ export interface ProblemMessage {
   readonly message: string;
 }
 
+/** A criterion's result as a machine reads it: published right after its `result`. */
+export type ReportMessage = { readonly v: 2; readonly type: 'report'; readonly tag: string } & CriterionReport;
+
 export type BenchMessage =
   | SessionMessage
   | RunningMessage
   | ResultMessage
+  | ReportMessage
   | StateMessage
   | CancelledMessage
   | ProblemMessage;

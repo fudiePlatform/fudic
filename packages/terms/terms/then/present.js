@@ -9,5 +9,5 @@ export const meta = {
 /** @type {import('@fudic/terms').Term['run']} */
 export async function run(ctx, { target }) {
   const present = (await ctx.locate(String(target)).count()) > 0;
-  return { pass: present, evidence: present ? 'in the page' : 'not there' };
+  return { pass: present, evidence: { expected: 'in the page', actual: present ? 'in the page' : 'not there' } };
 }

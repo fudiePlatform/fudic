@@ -7,12 +7,13 @@
  * from its root) one after another too, each with its own Vite.
  */
 
-import { readdirSync, statSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { FUD0972, FUD0976, type FudDiagnostic } from '@fudic/diagnostics';
 import { SPEC_EXTENSION } from '@fudic/spec';
 import type { BrowserChoice, BrowserName } from './browser.js';
-import { runCriterion } from './engine.js';
+import { runCriterion, type Shots } from './engine.js';
+import { reportOf, type CriterionReport, type ShotPaths } from './report-of.js';
 import { nodeTargetFs } from './open.js';
 import { startProject } from './project.js';
 import type { BenchMessage, ResultMessage } from './protocol.js';
@@ -42,6 +43,8 @@ export interface RunSummary {
   /** The browser it ran in; null when nothing ran. */
   readonly browser: BrowserName | null;
   readonly results: readonly ResultMessage[];
+  /** One per criterion that ran: by `.fudspec` path, and in each in the order of its criteria. */
+  readonly reports: readonly CriterionReport[];
 }
 
 /** Folders a search never enters: dependencies, builds, and anything hidden. */
@@ -75,6 +78,7 @@ export async function runSpecs(paths: readonly string[], options: RunOptions = {
   const root = resolve(options.root ?? '.');
   const tally = { pass: 0, fail: 0, error: 0 };
   const results: ResultMessage[] = [];
+  const reports: CriterionReport[] = [];
   const diagnose = (diagnostic: FudDiagnostic) => options.onDiagnostic?.(diagnostic);
 
   // Components, once each, grouped by project.
@@ -115,6 +119,8 @@ export async function runSpecs(paths: readonly string[], options: RunOptions = {
         project.publish({ ...session.message, browser: project.browser.name, viewport: project.browser.viewport });
         // A `.fudspec` with errors runs nothing, and that is an error of the run.
         if (session.message.diagnostics.some((d) => d.severity === 'error')) tally.error++;
+        // The pool answers in the order criteria finish; the reports keep the `.fudspec`'s.
+        const found: { order: number; report: CriterionReport }[] = [];
         if (session.criteria.length > 0) {
           project.publish({ v: 2, type: 'running', tag: target.tag, ids: session.criteria.map((c) => c.id), trigger: { file: null, at: Date.now() } });
           await runPool({
@@ -123,19 +129,47 @@ export async function runSpecs(paths: readonly string[], options: RunOptions = {
             signal: new AbortController().signal,
             run: (criterion, signal) => runCriterion(project.browser, project.server.origin, criterion, session.loadTerm, session.extensions, signal),
             done: (result) => {
-              const { shots: _shots, ...rest } = result;
+              const { shots, ...rest } = result;
               const message: ResultMessage = { v: 2, type: 'result', tag: target.tag, ...rest, shots: {} };
               tally[result.verdict]++;
               results.push(message);
               project.publish(message);
+              const report = reportOf(session, result, keepShots(projectRoot, target.tag, result.id, result.verdict === 'pass' ? {} : shots));
+              found.push({ order: session.criteria.findIndex((c) => c.id === result.id), report });
+              project.publish({ v: 2, type: 'report', tag: target.tag, ...report });
             },
           });
         }
+        reports.push(...found.sort((a, b) => a.order - b.order).map((f) => f.report));
         options.onDone?.(target.tag);
       }
     } finally {
       await project.close();
     }
   }
-  return { ...tally, ms: Date.now() - started, browser, results };
+  return { ...tally, ms: Date.now() - started, browser, results, reports };
+}
+
+/** Where a run keeps what it leaves for the next look, relative to the project root. */
+export const RUNS_FOLDER = '.fudic/runs';
+
+/**
+ * The shots of a criterion, on disk: written when it did not pass, removed when it did, so what
+ * is there is always the last red. Answers their paths relative to the project root.
+ */
+function keepShots(root: string, tag: string, id: string, shots: Shots): ShotPaths {
+  const kept: { before?: string; after?: string } = {};
+  for (const moment of ['before', 'after'] as const) {
+    const relative = `${RUNS_FOLDER}/${tag}/${id}.${moment}.png`;
+    const absolute = join(root, relative);
+    const shot = shots[moment];
+    if (shot === undefined) {
+      rmSync(absolute, { force: true });
+      continue;
+    }
+    mkdirSync(dirname(absolute), { recursive: true });
+    writeFileSync(absolute, shot.png);
+    kept[moment] = relative;
+  }
+  return kept;
 }
