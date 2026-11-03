@@ -8,7 +8,7 @@ import { FUD1201, FUD1205, FUD1207 } from '@fudic/diagnostics';
 import { describe, expect, it } from 'vitest';
 import type { CriterionResult } from '../src/engine.js';
 import type { PlannedCriterion } from '../src/pages.js';
-import { problemOf } from '../src/protocol.js';
+import { problemOf, toWire } from '../src/protocol.js';
 import { evidenceOf, reportOf, type ReportSession } from '../src/report-of.js';
 
 const ROOT = 'C:/p';
@@ -169,5 +169,17 @@ describe('problemOf — what stops the bench, with codes (§4.3)', () => {
       diagnostics: [{ code: 'FUD1207', severity: 'error', message: 'could not run: Chrome went away', file: null, line: null, column: null }],
     });
     expect(problemOf('plain').diagnostics[0]).toMatchObject({ code: 'FUD1207', message: 'could not run: plain' });
+  });
+});
+
+describe('toWire — a diagnostic for the wire', () => {
+  const step = FUD1201({ file: SPEC, span: { start: offset('click'), end: offset('click') }, term: 'click' });
+
+  it('with the text of its file, its line and column', () => {
+    expect(toWire(step, null, () => TEXT)).toMatchObject({ file: SPEC, line: 5, column: 5 });
+  });
+
+  it('without a way to read its file, the file alone', () => {
+    expect(toWire(step, null)).toMatchObject({ file: SPEC, line: null, column: null });
   });
 });
