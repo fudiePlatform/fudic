@@ -149,6 +149,35 @@ describe('ApiProject', () => {
     expect(new ApiProject(tree({ 'package.json': '{}' })).ids()).toEqual([]);
   });
 
+  it("a dependency's pipes, in its src/pipes or where its fudic.json moves them, by the package (SDD-71 §4.5)", () => {
+    const pipe = 'pipe upper\n  on str\n';
+    const app = new ApiProject(
+      tree({
+        'package.json': JSON.stringify({ dependencies: { 'lib-p': '1', 'lib-q': '1' } }),
+        'node_modules/lib-p/src/pipes/upper.fudapi': pipe,
+        'node_modules/lib-q/fudic.json': JSON.stringify({ pipes: 'out/fmt' }),
+        'node_modules/lib-q/out/fmt/lower.fudapi': pipe,
+      }),
+    );
+    expect(app.ids()).toEqual(['lib-p/pipes/upper', 'lib-q/out/fmt/lower']);
+    expect(app.source('lib-p/pipes/upper')?.origin).toEqual({ package: 'lib-p' });
+    // Pipes alone publish no implementations to load: neither is a library of the root.
+    expect(app.libraries).toEqual([]);
+  });
+
+  it("a library's own pipes carry its package name; its other files and an unnamed library do not (SDD-71 §4.5)", () => {
+    const pipe = 'pipe upper\n  on str\n';
+    const lib = (pkg: Readonly<Record<string, string>>, config: object = { kind: 'lib' }): readonly string[] =>
+      new ApiProject(tree({ ...pkg, 'fudic.json': JSON.stringify(config), 'src/pipes/upper.fudapi': pipe, 'src/fmt/x.fudapi': pipe, 'src/a.fudapi': 'get a\n' })).ids();
+    expect(lib({ 'package.json': JSON.stringify({ name: '@acme/ui' }) })).toEqual(['a', 'fmt/x', '@acme/ui/pipes/upper']);
+    expect(lib({ 'package.json': JSON.stringify({ name: 'ui' }) }, { kind: 'lib', pipes: 'src/fmt' })).toEqual(['a', 'ui/fmt/x', 'pipes/upper']);
+    // No readable `package.json`, or one with no name: nothing to publish under.
+    expect(lib({})).toEqual(['a', 'fmt/x', 'pipes/upper']);
+    expect(lib({ 'package.json': '{}' })).toEqual(['a', 'fmt/x', 'pipes/upper']);
+    // An app keeps the ids of its folders.
+    expect(lib({ 'package.json': JSON.stringify({ name: 'app' }) }, { kind: 'app' })).toEqual(['a', 'fmt/x', 'pipes/upper']);
+  });
+
   it('the compiled files of a library folder: .js only, and none for a folder that is not there', () => {
     expect(libraryFiles(`${root}/node_modules/lib-a/browser`)).toEqual([`${root}/node_modules/lib-a/browser/rules.js`]);
     expect(libraryFiles(`${root}/node_modules/lib-a/server`)).toEqual([]);
