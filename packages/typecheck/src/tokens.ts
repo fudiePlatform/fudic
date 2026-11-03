@@ -66,7 +66,9 @@ export function projectTokens(root: string, io: TokenIo = nodePackageFs()): Proj
   const tokens: Token[] = [];
   const diagnostics: FileDiagnostic[] = [];
   for (const pkg of dependencyChain(root, io)) {
-    const from = pkg.root === project ? null : pkg.name;
+    // Both sides through the same `toPosix`: the walk spells a drive letter as Windows does,
+    // this package lowers it, and a project compared to itself must not come out as a library.
+    const from = toPosix(pkg.root) === project ? null : pkg.name;
     const styles = readProjectStyles(pkg.root, pkg.config, config);
     // `readProjectStyles` names the file it complains about as the author reads it; across a
     // chain, `fudic.json` alone does not say whose.
