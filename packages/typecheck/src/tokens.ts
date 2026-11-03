@@ -109,7 +109,9 @@ export function projectTokens(root: string, io: TokenIo = nodePackageFs()): Proj
 function declarationsOf(css: string, rules: readonly CssRule[]): readonly CssDeclaration[] {
   return rules.flatMap((rule) => {
     if (rule.type === 'at-block') {
-      return rule.name === 'layer' ? declarationsOf(css, rule.children ?? []) : [];
+      // `@layer` is a grouping at-rule, so the reader always gives its block children; only a
+      // block that does not group (`@font-face`) comes without them.
+      return rule.name === 'layer' ? declarationsOf(css, rule.children!) : [];
     }
     if (rule.type !== 'style-rule' || !isTokenRule(css.slice(rule.prelude.start, rule.prelude.end))) {
       return [];
