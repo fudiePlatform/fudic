@@ -41,6 +41,21 @@ route: it answers empty. That is what stops a rename from touching scaffolding.
   diagnostic is debugged blind.
 - `fudic/componentRegistry` — the tags a document declares and what they resolve to.
 
+## Repairs without an editor
+
+`@fudic/language-server/repairs` is the light bulb as data. Give it a parsed file, the workspace
+index and, when there is one, the project's TypeScript:
+
+```ts
+import { repairsFor } from '@fudic/language-server/repairs';
+
+repairsFor({ cached, index, typescript }, diagnostic);
+// [{ title: 'Add key (item.id)', code: 'FUD0540', edits: [{ path, span, newText: ' key (item.id)' }] }]
+```
+
+Several repairs means the author chooses; none means no repair is safe. The editor's bulb is an
+adapter of this same table.
+
 ## Invariants
 
 - **Never throws.** Every exception is logged and the request answers empty. A dead server

@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/language-server` · `fudic-vscode`
 > **Rama:** `sdd-62-diagnosticos-que-dicen-la-verdad`. Nace de `main` **con SDD-61 en `Hecho`**:
 > sus catorce códigos y sus reescritos entran en la migración.
-> **Progreso:** 15 / 21 — `En curso`.
+> **Progreso:** 16 / 27 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -62,6 +62,19 @@ código, no el test.
 | [ ] | 12 | 10, 11 | **Corregir lo que el par demuestre.** `FUD0191` por papel del fichero (SDD §4.1) y cada `.md` cuyo par falle; los de fuera del lenguaje (`fudic.json`, CLI, banco) se revisan a mano | `diagnostics` | `src/codes/*.md` |
 | [ ] | 13 | 12 | **Los tests de la fase.** Criterios 4–6 | `cli` | `test/fixes.test.ts` |
 
+## Fase 2b — los defectos que destapan los pares (6)
+
+SDD §8.2.2. Cada tarea se da por hecha cuando los pares de sus códigos pasan.
+
+| ✓ | # | dep | tarea | package | fichero |
+|---|---|---|---|---|---|
+| [ ] | 22 | 10 | **Lo que se calcula y se tira.** Los diagnósticos de la clasificación de atributos y spreads llegan al usuario, una vez | `compiler` | `src/semantic/**` · `src/binding/**` |
+| [ ] | 23 | 10 | **El emit no lanza.** Fichero solo de markup, host sin `<template>`, enlace a un `.fud` que no existe: diagnóstico, nunca excepción | `compiler` | `src/emit/**` |
+| [ ] | 24 | 10 | **Una voz por hecho.** Donde hablan un código nuestro y TypeScript (u otro código) sobre el mismo fallo, calla el segundo | `compiler` · `typecheck` | varios |
+| [ ] | 25 | 10 | **Lo que no sale y lo que se contradice.** `FUD0543`, `FUD0621`; `FUD0914` frente a `FUD0835`/`FUD1151` | `compiler` · `diagnostics` | varios |
+| [ ] | 26 | 9 | **El arnés pasa lo que pasa el build.** Layout de ruta, estilos, assets, runtime, ficheros creados; códigos que solo emite el plugin, fuera | `cli` | `test/fixes*.test.ts` |
+| [ ] | 27 | 22–26 | **Los tests de la fase.** Cada defecto con su test en rojo antes del arreglo | varios | `test/**` |
+
 ## Fase 3 — las bombillas (5)
 
 | ✓ | # | dep | tarea | package | fichero |
@@ -70,7 +83,7 @@ código, no el test.
 | [x] | 15 | 14 | **`FUD0540`.** Los tres casos de SDD §4.3 con el tipo del elemento; ninguno en otro caso | `language-server` | `src/repairs.ts` |
 | [x] | 16 | 14, 19 | **`FUD0056`.** Sin bombilla cuando el valor empieza por `{` | `language-server` | `src/repairs.ts` |
 | [x] | 17 | 14 | **Títulos en inglés.** La tabla de SDD §4.4, también los de contrato y control del plugin | `language-server` | `src/repairs.ts` · `src/services/actions.ts` |
-| [ ] | 18 | 15–17 | **Los tests de la fase.** Criterios 7–10, con el test que recorre todos los títulos; aplicar cada reparación deja el fichero sin un error nuevo | `language-server` | `test/**` |
+| [x] | 18 | 15–17 | **Los tests de la fase.** Criterios 7–10, con el test que recorre todos los títulos; aplicar cada reparación deja el fichero sin un error nuevo | `language-server` | `test/**` |
 
 ## Fase 4 — los reflejos de React y cierre (3)
 

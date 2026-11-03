@@ -336,3 +336,17 @@ alguno no es ASCII inglés (sin `ñ`, tildes ni palabras de una lista corta en e
    desarrollo sobre `compiler`, `typecheck`, `spec` y `api`, que dependen de él: el orden de
    `pnpm -r build` se invertía y un checkout limpio no construía. La CLI ya depende de todos y es
    donde vive la comprobación de un proyecto.
+2. **Los defectos que destapan los pares se arreglan aquí** (decisión de Pedro, 2026-11-03). Los
+   pares compilan un fichero de punta a punta, como el build, y exigen ese código y ningún otro:
+   eso no lo comprobaba ningún test. Salieron cinco familias, y todas entran en esta spec:
+   - **Diagnósticos que se calculan y se tiran.** La clasificación de atributos y de spreads produce
+     `FUD0091`–`FUD0099`, `FUD0590`, `FUD0596` y `FUD0991`, y nadie los entrega (solo la
+     delegación reenviaba los suyos).
+   - **El emit lanza.** Un `.fud` que solo tiene markup, un host sin `<template>` o un enlace a un
+     `.fud` que no existe hacen que `transformFud` lance en lugar de diagnosticar.
+   - **Dos voces para un hecho.** Nuestro código y un error de TypeScript (o un segundo código)
+     sobre el mismo fallo. Habla uno: el nuestro, que dice cómo se arregla.
+   - **Códigos que no salen** (`FUD0543`, `FUD0621`) y explicaciones que se contradicen (`FUD0914`
+     frente a `FUD0835` y `FUD1151`).
+   - **El arnés**, que tiene que pasar lo mismo que el build: el layout de una ruta, los estilos y
+     los assets del proyecto, los paquetes de runtime y los ficheros que crea un arreglo.
