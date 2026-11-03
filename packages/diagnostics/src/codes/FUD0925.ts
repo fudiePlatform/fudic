@@ -7,6 +7,6 @@ export interface FUD0925Params extends SourceInput {
   readonly keyword: 'component' | 'criterion';
 }
 
-/** A `component` or `criterion` keyword with no name after it (`.fudspec`). */
+/** A `component` or `criterion` keyword with no name after it (`.fudspec`) (SDD-52). */
 export const FUD0925 = (p: FUD0925Params): SourceDiagnostic =>
   source('FUD0925', 'error', `\`${p.keyword}\` needs a name`, p);

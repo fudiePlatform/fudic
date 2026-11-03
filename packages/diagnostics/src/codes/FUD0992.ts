@@ -1,7 +1,7 @@
 import { source } from '../make.js';
 import type { SourceDiagnostic, SourceInput } from '../types.js';
 
-/** A spread on the component's own host wrapper or on its `<template shadowrootmode>`. */
+/** A spread on the component's own host wrapper or on its `<template shadowrootmode>` (SDD-54, SDD-55). */
 export const FUD0992 = (p: SourceInput): SourceDiagnostic =>
   source(
     'FUD0992',

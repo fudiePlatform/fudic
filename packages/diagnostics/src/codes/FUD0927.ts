@@ -7,6 +7,6 @@ export interface FUD0927Params extends SourceInput {
   readonly slug: string;
 }
 
-/** Two criteria with the same slug in one file (`.fudspec`). */
+/** Two criteria with the same slug in one file (`.fudspec`) (SDD-52). */
 export const FUD0927 = (p: FUD0927Params): SourceDiagnostic =>
   source('FUD0927', 'error', `a criterion named \`${p.slug}\` already exists in this file`, p);

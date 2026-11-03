@@ -1,7 +1,7 @@
 import { source } from '../make.js';
 import type { SourceDiagnostic, SourceInput } from '../types.js';
 
-/** A props spread whose object is not a name or a property path, or that takes a value. */
+/** A props spread whose object is not a name or a property path, or that takes a value (SDD-54). */
 export const FUD0991 = (p: SourceInput): SourceDiagnostic =>
   source(
     'FUD0991',

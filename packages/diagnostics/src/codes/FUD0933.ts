@@ -7,6 +7,6 @@ export interface FUD0933Params extends SourceInput {
   readonly slug: string;
 }
 
-/** A criterion with no `then` block (`.fudspec`). */
+/** A criterion with no `then` block (`.fudspec`) (SDD-52). */
 export const FUD0933 = (p: FUD0933Params): SourceDiagnostic =>
   source('FUD0933', 'error', `criterion \`${p.slug}\` has no \`then\`: a criterion without an outcome checks nothing`, p);

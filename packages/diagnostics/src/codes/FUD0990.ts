@@ -1,7 +1,7 @@
 import { source } from '../make.js';
 import type { SourceDiagnostic, SourceInput } from '../types.js';
 
-/** An `@raw(…)` that is not the only content of its element (decision 18). */
+/** An `@raw(…)` that is not the only content of its element (decision 18) (SDD-54). */
 export const FUD0990 = (p: SourceInput): SourceDiagnostic =>
   source(
     'FUD0990',
