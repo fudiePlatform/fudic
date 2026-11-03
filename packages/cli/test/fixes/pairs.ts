@@ -44,11 +44,13 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { Diagnostic, Span } from '@fudic/compiler';
 import { FUD0852 } from '@fudic/diagnostics';
 import { explain } from '@fudic/diagnostics/explain';
 import { createTermCatalog, parseSpec, readFixtures, validateSpec, type SpecContext, type SpecFs } from '@fudic/spec';
 import { nodePackageFs } from '@fudic/resolve';
 import { createProjectChecker, parseFud, tagOf } from '@fudic/typecheck';
+import { echoes } from '@fudic/typecheck/problems';
 import { LinkedAssets, nodeIo, ProjectStyleChains, transformFud } from '@fudic/vite';
 import { ApiProject, nodeConfigIo, readProject } from '@fudic/vite/harness';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -238,10 +240,11 @@ function check(root: string): Found[] {
   for (const { file, diagnostics } of api.diagnostics()) for (const d of diagnostics) add(file, d);
   api.writeDeclarations();
 
-  // The emit set of every `.fud`.
+  // The emit set of every `.fud`, held until the check has spoken (below).
   const io = nodeIo((path) => api.linked(path));
+  const emitted: { readonly file: string; readonly d: Diagnostic }[] = [];
   for (const file of files.filter((f) => f.endsWith('.fud'))) {
-    for (const d of transformFud(file, io, undefined, styles, assets)?.diagnostics ?? []) add(file, d);
+    for (const d of transformFud(file, io, undefined, styles, assets)?.diagnostics ?? []) emitted.push({ file, d });
   }
   // Once every page is compiled, what each sheet says about itself and the sheets no page keeps
   // a rule of — the plugin's last word on the CSS, said once per sheet.
@@ -258,6 +261,18 @@ function check(root: string): Found[] {
   const report = checker.check();
   for (const p of report.problems) add(p.file, p);
   for (const p of report.project) found.push({ file: '', code: p.code, severity: p.severity, start: 0, message: p.message });
+  // The build reporter's rule: an emit error that meets a check error of its file is the same
+  // fact said by the expansion (a reassigned snippet parameter is FUD0901 in the check, and the
+  // code it expands to is FUD0170 in the emit), so the check's voice is the one kept.
+  const spoken = new Map<string, Span[]>();
+  for (const p of report.problems) {
+    if (p.severity === 'error') spoken.set(posix(p.file), [...(spoken.get(posix(p.file)) ?? []), p.span]);
+  }
+  for (const { file, d } of emitted) {
+    const at = posix(d.file === undefined ? file : resolve(root, d.file));
+    if (d.severity === 'error' && echoes(d.span, spoken.get(at) ?? [])) continue;
+    add(at, d);
+  }
 
   // The `.fudspec`, against the project's components, fixtures and terms.
   const components = files
