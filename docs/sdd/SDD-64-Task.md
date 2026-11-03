@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/terms` · `@fudic/workbench` · `@fudic/compiler` ·
 > `@fudic/vite` · `@fudic/testing`
 > **Rama:** `sdd-64-resultados-legibles`, desde `main`.
-> **Progreso:** 21 / 26 — `En curso`.
+> **Progreso:** 22 / 26 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -78,7 +78,7 @@ código, no el test.
 | [x] | 13 | 11 | **La opción en el plugin y en el harness.** `fudic({ sourceLocations })`, `fudicTest({ sourceLocations })`; el banco la enciende siempre | `vite` · `testing` · `workbench` | `vite/src/index.ts` · `testing/src/config.ts` · `workbench/src/*` |
 | [x] | 14 | 13 | **La marca lo lee.** `onLocate` lee `data-fud-src` del elemento o del primer ancestro que lo tenga, cruzando shadow roots; `Mark.source` | `terms` · `workbench` | `terms/src/locate.ts` · `workbench/src/engine.ts` · `src/protocol.ts` |
 | [x] | 15 | 4, 14 | **`source` en el informe.** Posición y `quote` leído del fichero | `workbench` | `src/report-of.ts` |
-| [ ] | 16 | 11–15 | **Los tests de la fase.** Criterios 1 (con `source`), 11–14 | `compiler` · `workbench` | `test/**` |
+| [x] | 16 | 11–15 | **Los tests de la fase.** Criterios 1 (con `source`), 11–14 | `compiler` · `workbench` | `test/**` |
 
 ## Fase 5 — los tests unitarios (4)
 
