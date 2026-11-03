@@ -67,6 +67,11 @@
       "outline": "- text: fallback words"
     },
     {
+      "name": "a header and footer outside any section, a textarea, radios and a heading by role",
+      "html": "<app-shell><template shadowrootmode=\"open\"><header><span>Shop</span></header><textarea aria-label=\"Notes\">first words</textarea><label><input type=\"radio\" name=\"r\" checked> One</label><label><input type=\"radio\" name=\"r\"> Two</label><div role=\"heading\">Plain heading</div><div role=\"group\" aria-label=\"Box\"><span>a</span><div role=\"note\">b</div><span>c</span></div><footer>Fine print</footer></template></app-shell>",
+      "outline": "- banner: Shop\n- textbox \"Notes\": first words\n- radio \"One\" [checked]\n- text: One\n- radio \"Two\"\n- text: Two\n- heading \"Plain heading\"\n- group \"Box\":\n  - text: a\n  - note: b\n  - text: c\n- contentinfo: Fine print"
+    },
+    {
       "name": "texts that need quotes, and names that do or do not say their text",
       "html": "<ui-texts><template shadowrootmode=\"open\"><div role=\"note\">- dash first</div><div role=\"note\">true</div><div role=\"note\">42</div><div role=\"note\">key: value</div><button aria-label=\"Close dialog\">Close</button><button aria-label=\"Go\">Next page</button></template></ui-texts>",
       "outline": "- note: \"- dash first\"\n- note: \"true\"\n- note: \"42\"\n- note: \"key: value\"\n- button \"Close dialog\": Close\n- button \"Go\": Next page"
