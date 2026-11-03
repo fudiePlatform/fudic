@@ -167,6 +167,11 @@ describe('runSpecs — SDD-64 criteria 1–3, the report of a criterion', () => 
     });
     expect(red!.ms).toBeGreaterThanOrEqual(0);
     expect(red).not.toHaveProperty('broken');
+    // 1. The element the red step located, back in its .fud: the <p role="tabpanel"> of line 25.
+    expect(red!.source).toEqual({
+      at: { file: 'src/components/app-tabs.fud', line: 25, column: 5 },
+      quote: '<p role="tabpanel">@(active() === 0 ? "panel A" : "panel B")</p>',
+    });
 
     // 2. The shot on disk, named by the report; no `when`, so no `before`.
     expect(red!.shots).toEqual({ after: AFTER });

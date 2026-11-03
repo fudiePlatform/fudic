@@ -447,7 +447,7 @@ describe('runCriterion — criterion 8, shots and marks', () => {
   };
   const sees: Record<string, Run> = {
     sees: async ({ host }, { target }) => {
-      host.onLocate(String(target), BOXES[String(target)]!);
+      host.onLocate(String(target), BOXES[String(target)]!, null);
       return { pass: true, evidence: 'seen' };
     },
   };
@@ -488,9 +488,9 @@ describe('runCriterion — criterion 8, shots and marks', () => {
 
   it('keeps one mark per reference and step, the last, in its place; another step marks it again', async () => {
     const twice: Run = async ({ host }) => {
-      host.onLocate('role:link', { x: 110, y: 60, width: 30, height: 10 });
-      host.onLocate(MOUNT, { x: 100, y: 50, width: 200, height: 40 });
-      host.onLocate('role:link', { x: 120, y: 70, width: 40, height: 20 });
+      host.onLocate('role:link', { x: 110, y: 60, width: 30, height: 10 }, null);
+      host.onLocate(MOUNT, { x: 100, y: 50, width: 200, height: 40 }, null);
+      host.onLocate('role:link', { x: 120, y: 70, width: 40, height: 20 }, null);
       return { pass: true, evidence: null };
     };
     const { result } = await run(

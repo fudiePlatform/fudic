@@ -41,11 +41,12 @@ function plays(summary: Partial<RunSummary>) {
 
 describe('parseRunArgs — criterion 12', () => {
   it('reads paths, a browser, the workers and --json, in any order', () => {
-    expect(parseRunArgs([])).toEqual({ paths: [], json: false, passWithNoSpecs: false });
-    expect(parseRunArgs(['src', '--json', '--browser', 'firefox', 'lib', '--workers', '2', '--pass-with-no-specs'])).toEqual({
+    expect(parseRunArgs([])).toEqual({ paths: [], json: false, passWithNoSpecs: false, failing: false });
+    expect(parseRunArgs(['src', '--json', '--browser', 'firefox', 'lib', '--workers', '2', '--pass-with-no-specs', '--failing'])).toEqual({
       paths: ['src', 'lib'],
       json: true,
       passWithNoSpecs: true,
+      failing: true,
       browser: 'firefox',
       workers: 2,
     });
