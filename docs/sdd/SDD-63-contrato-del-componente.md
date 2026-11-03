@@ -386,3 +386,17 @@ diga que está memoizado. El contrato usa `codeOfDocument`, la versión memoizad
    necesita `holds` (qué valor vacío escribir), que no es parte del contrato.
 5. **Los tokens leídos** salen de los valores de las declaraciones del árbol de reglas, no del
    texto: un `var(--x)` dentro de un comentario no lee nada.
+6. **`uses` guarda todo elemento con guion salvo el propio host**, no solo los enlazados; es
+   `usesOf` quien filtra, en el momento de la consulta, por los tags que define algún componente
+   del índice. Lo que resuelve un `<link>` depende de ficheros que se indexan después, y el
+   índice no puede saberlo al describir uno.
+7. **`.css` del proyecto en el editor.** La extensión abre también los `.css` (selector y
+   `**/*.css` vigilado) para que `var(--` ofrezca tokens allí, y el servicio CSS de Volar se
+   limita a los `<style>` de un `.fud` (`embeddedOnly`): en un `.css` VS Code ya tiene el suyo y
+   saldría todo dos veces.
+8. **Completado de tokens: uno por nombre, el último declarado**, que es el que gana en CSS. La
+   lista de `projectTokens` conserva las dos entradas (§3.3); el completado no repite etiqueta.
+9. **Parts dinámicas en la tarjeta**: con `partsDynamic`, la sección dice que hay parts que se
+   calculan al ejecutar, en lugar de dar la lista por cerrada.
+10. **Sin checker, la tarjeta enseña el tipo tal como está escrito** (§3.1). Antes solo salía
+    con checker.
