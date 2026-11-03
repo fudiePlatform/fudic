@@ -3,7 +3,7 @@
 > **SDD:** [SDD-76 — `effect` con dependencias explícitas](./SDD-76-efectos-con-dependencias.md)
 > **Paquetes:** `@fudic/core` · `@fudic/compiler` (solo un test)
 > **Rama:** `sdd-76-efectos-con-dependencias`, desde `main`.
-> **Progreso:** 2 / 7 — `En curso`.
+> **Progreso:** 5 / 7 — `En curso`.
 
 **El orden manda en un punto: los defectos antes que las dependencias.** El modo con `deps` pasa
 por el mismo `run`; si la regla de la vuelta superada (SDD §4.4) llega después, habría que
@@ -35,9 +35,9 @@ escribirla dos veces.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 3 | 1 | **`effect(fn, deps?)`.** Firma y JSDoc de SDD §3; el array se copia al crear; cada vuelta: fase de dependencias rastreada, corte por `Object.is` (salvo la primera vuelta), reconciliación, limpieza y `fn` dentro de `untrack` (SDD §4.2). La regla de la vuelta superada también tras la fase de dependencias. Errores según la tabla de §4.3 | `core` | `src/effect.ts` |
-| [ ] | 4 | 3 | **Los tests de la fase.** Criterios 2, 5 y 7–20. El 20 (tipos) con `// @ts-expect-error` en un test de `core` | `core` | `test/effect.test.ts` |
-| [ ] | 5 | 3 | **El compilador no cambia, y se fija.** Criterio 21 junto a los dos casos de `fud-eager` | `compiler` | `test/emit/route-blocks.test.ts` |
+| [x] | 3 | 1 | **`effect(fn, deps?)`.** Firma y JSDoc de SDD §3; el array se copia al crear; cada vuelta: fase de dependencias rastreada, corte por `Object.is` (salvo la primera vuelta), reconciliación, limpieza y `fn` dentro de `untrack` (SDD §4.2). La regla de la vuelta superada también tras la fase de dependencias. Errores según la tabla de §4.3 | `core` | `src/effect.ts` |
+| [x] | 4 | 3 | **Los tests de la fase.** Criterios 2, 5 y 7–20. El 20 (tipos) con `// @ts-expect-error` en un test de `core` | `core` | `test/effect.test.ts` |
+| [x] | 5 | 3 | **El compilador no cambia, y se fija.** Criterio 21 junto a los dos casos de `fud-eager` | `compiler` | `test/emit/route-blocks.test.ts` |
 
 ## Fase 3 — documentación y cierre (2)
 

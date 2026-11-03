@@ -208,6 +208,20 @@ describe('what the route contributes to the page maps (§6.8, §4.6)', () => {
     expect(eagerOf(code)).toEqual(['ruta']);
   });
 
+  it('an `effect(...)` with declared dependencies is still an effect (SDD-76 criterion 21)', () => {
+    const route = [
+      '<link rel="layout" href="./l.fud">',
+      '@code {',
+      '  const ahora = signal(0);',
+      '  effect(() => { document.title = String(ahora()); }, [ahora]);',
+      '}',
+      '<time>@ahora()</time>',
+    ].join('\n');
+    const io = routeIo({ '/r.fud': route, '/l.fud': LAYOUT });
+    const code = emitRouteModule(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
+    expect(eagerOf(code)).toEqual(['ruta']);
+  });
+
   it('and a COMPONENT whose `@code` calls `effect(...)` joins the same list', () => {
     const clock = [
       '@code {',

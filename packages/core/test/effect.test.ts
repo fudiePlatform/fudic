@@ -344,3 +344,314 @@ describe('a run that is no longer the current one (SDD-76 §4.4)', () => {
     expect(owned_).toEqual([]);
   });
 });
+
+describe('effect with declared dependencies (SDD-76 §4.2)', () => {
+  it('an effect disposed by its own body: same as without deps (criterion 2)', () => {
+    const p = probe();
+    const dep = signal(0);
+    let cleanups = 0;
+    let selfStop = false;
+    const stop: () => void = effect(() => {
+      if (selfStop) stop();
+      return () => {
+        cleanups += 1;
+      };
+    }, [dep, p.read]);
+    selfStop = true;
+    dep.set(1);
+    expect(p.live()).toBe(0);
+    expect(cleanups).toBe(2);
+  });
+
+  it('a re-entrant run that converges loses no cleanup (criterion 5)', () => {
+    const a = signal(10);
+    const made: number[] = [];
+    const undone: number[] = [];
+    const stop = effect(() => {
+      const v = a();
+      if (v < 2) a.set(v + 1);
+      made.push(v);
+      return () => undone.push(v);
+    }, [a]);
+    a.set(0);
+    expect(made).toEqual([10, 2, 1, 0]);
+    expect(undone).toEqual([10, 1, 0]);
+    stop();
+    expect(undone).toEqual([10, 1, 0, 2]);
+  });
+
+  it('a run overtaken while reading its dependencies neither reconciles nor runs the body (§4.4)', () => {
+    const a = signal(10);
+    const seen: number[] = [];
+    effect(() => {
+      seen.push(untrack(a));
+    }, [
+      () => {
+        const v = a();
+        if (v < 2) a.set(v + 1);
+        return v;
+      },
+    ]);
+    a.set(0);
+    expect(seen).toEqual([10, 2]);
+  });
+
+  it('a first run that throws, in a dependency or in the body, leaves nothing behind (criterion 6)', () => {
+    const p = probe();
+    const [, list] = owned(() => {
+      expect(() =>
+        effect(() => {}, [
+          () => {
+            p.read();
+            throw new Error('boom');
+          },
+        ]),
+      ).toThrow('boom');
+      expect(() =>
+        effect(() => {
+          throw new Error('boom');
+        }, [p.read]),
+      ).toThrow('boom');
+    });
+    expect(p.live()).toBe(0);
+    expect(list).toEqual([]);
+  });
+
+  it('only what is listed triggers it, and the body sees the rest current (criterion 7)', () => {
+    const a = signal(1);
+    const b = signal(10);
+    const seen: string[] = [];
+    effect(() => {
+      seen.push(`${a()}/${b()}`);
+    }, [a]);
+    b.set(20);
+    expect(seen).toEqual(['1/10']);
+    a.set(2);
+    expect(seen).toEqual(['1/10', '2/20']);
+  });
+
+  it('runs once, synchronously, on creation (criterion 8)', () => {
+    const a = signal(1);
+    let runs = 0;
+    effect(() => {
+      runs += 1;
+    }, [a]);
+    expect(runs).toBe(1);
+  });
+
+  it('[] runs once, subscribes to nothing, and cleans up only on dispose (criterion 9)', () => {
+    const p = probe();
+    let runs = 0;
+    let cleanups = 0;
+    const stop = effect(() => {
+      runs += 1;
+      p.read();
+      return () => {
+        cleanups += 1;
+      };
+    }, []);
+    expect(runs).toBe(1);
+    expect(p.live()).toBe(0);
+    expect(cleanups).toBe(0);
+    stop();
+    expect(cleanups).toBe(1);
+  });
+
+  it('a computed that returns to the same value does not run the body (criterion 10)', () => {
+    const a = signal(1);
+    const b = signal(2);
+    const total = computed(() => a() + b());
+    const log: string[] = [];
+    effect(() => {
+      log.push(`up:${total()}`);
+      return () => log.push('down');
+    }, [total]);
+    let tracked = 0;
+    effect(() => {
+      total();
+      tracked += 1;
+    });
+    batch(() => {
+      a.set(2);
+      b.set(1);
+    });
+    expect(log).toEqual(['up:3']);
+    // Without deps there is no cut at the derived boundary (SDD-31 §4.3): it runs.
+    expect(tracked).toBe(2);
+  });
+
+  it('an arrow dependency cuts on what it returns (criterion 11)', () => {
+    const user = signal({ id: 1, name: 'Ana' });
+    let runs = 0;
+    effect(() => {
+      runs += 1;
+    }, [() => user().id]);
+    user.set({ id: 1, name: 'Luis' });
+    expect(runs).toBe(1);
+    user.set({ id: 2, name: 'Luis' });
+    expect(runs).toBe(2);
+  });
+
+  it('a batch that moves a signal and puts it back does not run the body (criterion 12)', () => {
+    const a = signal(1);
+    let runs = 0;
+    effect(() => {
+      runs += 1;
+    }, [a]);
+    batch(() => {
+      a.set(2);
+      a.set(1);
+    });
+    expect(runs).toBe(1);
+  });
+
+  it('subscriptions follow a dependency with a branch even when its value holds (criterion 13)', () => {
+    const flag = signal(true);
+    const x = probe();
+    const y = probe();
+    let runs = 0;
+    effect(() => {
+      runs += 1;
+    }, [
+      flag,
+      () => {
+        if (flag()) x.read();
+        else y.read();
+        return 0;
+      },
+    ]);
+    expect([x.live(), y.live()]).toEqual([1, 0]);
+    flag.set(false);
+    expect([x.live(), y.live()]).toEqual([0, 1]);
+    expect(runs).toBe(2);
+    y.notify(); // reruns the dependencies; neither value moved
+    expect(runs).toBe(2);
+    expect([x.live(), y.live()]).toEqual([0, 1]);
+  });
+
+  it('the array is copied when the effect is created (criterion 14)', () => {
+    const a = signal(1);
+    const b = signal(1);
+    const deps = [a];
+    let runs = 0;
+    effect(() => {
+      runs += 1;
+    }, deps);
+    deps.push(b);
+    b.set(2);
+    expect(runs).toBe(1);
+  });
+
+  it('a repeated dependency is one subscription and one run (criterion 15)', () => {
+    const p = probe();
+    let runs = 0;
+    let n = 0;
+    const read = (): number => {
+      p.read();
+      return n;
+    };
+    effect(() => {
+      runs += 1;
+    }, [read, read]);
+    expect(p.live()).toBe(1);
+    n = 1;
+    p.notify();
+    expect(runs).toBe(2);
+  });
+
+  it('a body that always writes its dependency is the same feedback loop, caught on creation (criterion 16)', () => {
+    const p = probe();
+    const a = signal(0);
+    expect(() =>
+      effect(() => {
+        a.set(untrack(a) + 1);
+      }, [a, p.read]),
+    ).toThrow(/feedback loop/);
+    expect(p.live()).toBe(0);
+  });
+
+  it('neither the body nor the cleanup tracks what it reads (criterion 17)', () => {
+    const a = signal(1);
+    const inBody = probe();
+    const inCleanup = probe();
+    effect(() => {
+      inBody.read();
+      return () => inCleanup.read();
+    }, [a]);
+    a.set(2);
+    expect(inBody.live()).toBe(0);
+    expect(inCleanup.live()).toBe(0);
+  });
+
+  it('a dependency that throws on a later run leaves the previous run in place (criterion 18)', () => {
+    const a = signal(1);
+    const log: string[] = [];
+    const stop = effect(() => {
+      log.push(`up:${untrack(a)}`);
+      return () => log.push('down');
+    }, [
+      () => {
+        if (a() === 2) throw new Error('boom');
+        return a();
+      },
+    ]);
+    expect(() => a.set(2)).toThrow('boom');
+    expect(log).toEqual(['up:1']);
+    // The previous subscription is still live, and the previous cleanup still pending.
+    a.set(3);
+    expect(log).toEqual(['up:1', 'down', 'up:3']);
+    stop();
+    expect(log).toEqual(['up:1', 'down', 'up:3', 'down']);
+    a.set(4);
+    expect(log).toHaveLength(4);
+  });
+
+  it('a body that throws on a later run leaves no cleanup and this run subscribed (criterion 18)', () => {
+    const a = signal(1);
+    const b = probe();
+    const log: string[] = [];
+    const stop = effect(() => {
+      const v = untrack(a);
+      if (v === 2) throw new Error('boom');
+      log.push(`up:${v}`);
+      return () => log.push('down');
+    }, [
+      a,
+      () => {
+        if (a() === 2) b.read();
+        return 0;
+      },
+    ]);
+    expect(() => a.set(2)).toThrow('boom');
+    expect(log).toEqual(['up:1', 'down']);
+    expect(b.live()).toBe(1);
+    stop();
+    expect(log).toEqual(['up:1', 'down']);
+    expect(b.live()).toBe(0);
+  });
+
+  it('created inside owned, the owner tears it down (criterion 19)', () => {
+    const p = probe();
+    let cleanups = 0;
+    const [, list] = owned(() => {
+      effect(() => {
+        return () => {
+          cleanups += 1;
+        };
+      }, [p.read]);
+    });
+    expect(p.live()).toBe(1);
+    for (const dispose of list) dispose();
+    expect(p.live()).toBe(0);
+    expect(cleanups).toBe(1);
+  });
+
+  it('a dependency is a function, not a value (criterion 20)', () => {
+    const count = signal(1);
+    const total = computed(() => count() * 2);
+    const user = signal({ id: 1 });
+    // @ts-expect-error -- `count()` is a number: the React habit, caught by the type.
+    expect(() => effect(() => {}, [count()])).toThrow(TypeError);
+    expect(() => effect(() => {}, [count, total, () => user().id])).not.toThrow();
+  });
+});

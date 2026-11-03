@@ -189,7 +189,9 @@ Consecuencias que se escriben para que nadie las descubra:
   valor se compara en cada posición. No es un error.
 - **El cuerpo puede escribir una dependencia.** Es un bucle como en §4.1: la vuelta vuelve a
   entrar por la suscripción y la guarda de `MAX_CHAINED_RUNS` lo corta con el mismo `Error`. Si
-  converge, §4.4 B se aplica igual.
+  converge, §4.4 B se aplica igual. Como la vuelta de creación ya está suscrita cuando corre el
+  cuerpo (paso 3 antes del 4), con `deps` el bucle se detecta **al crear** el efecto, no en la
+  escritura siguiente: `effect` lanza y no deja ninguna suscripción (§4.3, primera fila).
 - **Leer una dependencia dentro del cuerpo** da su valor actual y no suscribe nada (está dentro
   de `untrack`), así que no cambia nada que el autor la repita.
 
@@ -296,7 +298,8 @@ prueba que cuenta sus suscriptores vale para comprobar «cero suscripciones» si
 14. **El array se copia.** Hacer `push` al array tras crear el efecto no añade dependencias.
 15. **Dependencia repetida.** `[a, a]`: una suscripción; cambiar `a` ejecuta el cuerpo una vez.
 16. **Bucle.** Un cuerpo que escribe siempre un valor nuevo en su dependencia lanza el mismo
-    `Error` de `MAX_CHAINED_RUNS` que sin `deps`.
+    `Error` de `MAX_CHAINED_RUNS` que sin `deps`, ya en la llamada a `effect`, y no deja ninguna
+    suscripción.
 17. **El cuerpo no rastrea, la limpieza tampoco.** Una signal leída solo en el cuerpo o solo en la
     limpieza no es suscripción.
 18. **Errores (§4.3).** Una dependencia que lanza en una vuelta posterior deja limpieza,
