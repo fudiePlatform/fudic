@@ -36,11 +36,16 @@ function linkedApis(path: string, source: string): { readonly data: boolean; rea
   return { data: texts.some((t) => /^load\b/mu.test(t)), names: new Set(names) };
 }
 
-/** Every tracked `.fud` outside `experiments/` and `examples/vista-errores/`, from the root. */
+/**
+ * Every tracked `.fud` outside `experiments/`, `examples/vista-errores/` and the broken/fixed pairs
+ * of `packages/diagnostics/fixtures/` (SDD-62 §4.2), from the root: the last two give codes on purpose.
+ */
 function corpus(): readonly string[] {
   return execFileSync('git', ['ls-files', '*.fud'], { cwd: ROOT, encoding: 'utf8' })
     .split('\n')
-    .filter((path) => path !== '' && !path.startsWith('experiments/') && !path.startsWith('examples/vista-errores/'));
+    .filter((path) => path !== '' && !path.startsWith('experiments/') && !path.startsWith('examples/vista-errores/') &&
+        !path.startsWith('packages/diagnostics/fixtures/'),
+    );
 }
 
 describe('the repository writes the portable view (criterion 33)', () => {

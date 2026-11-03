@@ -58,6 +58,9 @@ const BENCH = 'packages/workbench/test/expected/app-card';
 /** Where the view gives its codes on purpose (criterion 32), held to its comments elsewhere. */
 const ERRORS = 'examples/vista-errores';
 
+/** The broken/fixed pairs of SDD-62 §4.2: each one a project of its own, which `@fudic/cli` checks. */
+const PAIRS = 'packages/diagnostics/fixtures';
+
 /** The codes of the view: SDD-51's range with the template's `$` (FUD0461), and SDD-61's. */
 const VIEW = /^FUD09[01]\d$|^FUD0461$|^FUD11[45]\d$/u;
 
@@ -78,7 +81,7 @@ describe('every .fud of the repository is in a project of the net', () => {
       (path) =>
         path !== '' &&
         !path.startsWith('experiments/') &&
-        ![...ROOTS, BENCH, ERRORS].some((root) => path.startsWith(`${root}/`)),
+        ![...ROOTS, BENCH, ERRORS, PAIRS].some((root) => path.startsWith(`${root}/`)),
     );
     expect(loose).toEqual([]);
   });

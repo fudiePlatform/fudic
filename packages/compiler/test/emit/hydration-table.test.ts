@@ -75,11 +75,14 @@ function rowOf(path: string): Row | undefined {
   return undefined;
 }
 
-/** Every tracked `.fud` outside `experiments/`, by its path from the root. */
+/**
+ * Every tracked `.fud` outside `experiments/` and the broken/fixed pairs of
+ * `packages/diagnostics/fixtures/` (SDD-62 §4.2), broken on purpose, by its path from the root.
+ */
 function files(): readonly string[] {
   return execFileSync('git', ['ls-files', '*.fud'], { cwd: repo, encoding: 'utf8' })
     .split('\n')
-    .filter((f) => f !== '' && !f.startsWith('experiments/'))
+    .filter((f) => f !== '' && !f.startsWith('experiments/') && !f.startsWith('packages/diagnostics/fixtures/'))
     .sort();
 }
 

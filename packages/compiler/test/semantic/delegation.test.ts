@@ -20,6 +20,7 @@ import { eventsReadingRow } from '../../src/semantic/delegation.js';
 import { documentRoots, walk, type SemanticInput } from '../../src/semantic/index.js';
 import type { Diagnostic, Node } from '../../src/types/index.js';
 import { delegation } from '../../src/semantic/analyzers/delegation.js';
+import { attributeBindings } from '../../src/semantic/analyzers/attribute-bindings.js';
 
 const constructs: AtConstructParser = { parseControl, parseCodeBlock };
 
@@ -64,6 +65,18 @@ function report(inner: string, code?: string): readonly Diagnostic[] {
   const found: Diagnostic[] = [];
   delegation.run(inputFor(component(inner, code)), (d) => void found.push(d));
   return found;
+}
+
+/**
+ * With the classification's analyzer in front, as `ANALYZERS` runs them: `FUD0667`, a marker
+ * whose value is not an event list, is the classification's (SDD-62), not the delegation rule's.
+ */
+function withBindings(inner: string): readonly string[] {
+  const found: Diagnostic[] = [];
+  const input = inputFor(component(inner));
+  attributeBindings.run(input, (d) => void found.push(d));
+  delegation.run(input, (d) => void found.push(d));
+  return found.map((d) => d.code);
 }
 
 function codes(inner: string, code?: string): readonly string[] {
@@ -463,18 +476,19 @@ describe('delegation — the marker with a wrong value (§6.4, criterion 38)', (
     const inner = `<div @click="@fn(day)">
       @foreach (const day of days) key (day.id) { <b delegate:day=@x></b> }
     </div>`;
-    expect(codes(inner)).toEqual(['FUD0667']);
-    expect(blamed(inner)).toBe('@x');
+    expect(withBindings(inner)).toEqual(['FUD0667']);
+    // The delegation rule itself is silent about it: one fact, one voice.
+    expect(codes(inner)).toEqual([]);
   });
 
   it('and an empty text the same; a literal event list does not', () => {
     expect(
-      codes(`<div @click="@fn(day)">
+      withBindings(`<div @click="@fn(day)">
         @foreach (const day of days) key (day.id) { <b delegate:day=""></b> }
       </div>`),
     ).toEqual(['FUD0667']);
     expect(
-      codes(`<div @click="@fn(day)">
+      withBindings(`<div @click="@fn(day)">
         @foreach (const day of days) key (day.id) { <b delegate:day="click"></b> }
       </div>`),
     ).toEqual([]);
@@ -617,7 +631,7 @@ describe('delegation — every code, out of the AST and out of the checker (§6.
 <b class:on="@$stray"></b>`;
 
   it('reports all eleven codes over one document', () => {
-    expect(new Set(codes(BROKEN))).toEqual(
+    expect(new Set(withBindings(BROKEN))).toEqual(
       new Set([
         'FUD0660',
         'FUD0661',

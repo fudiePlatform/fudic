@@ -90,8 +90,11 @@ describe('analyze — runner', () => {
     // + server-cut (SDD-61: FUD1150, the server cut of `@code`)
     // + await (SDD-70: FUD1320–FUD1322)
     // + event-in-loop, right after delegation (SDD-72: FUD1380)
-    expect(ANALYZERS).toHaveLength(31);
-    expect(ANALYZERS.at(-1)?.name).toBe('await');
+    // + attribute-bindings, first: what the classification says, said once (SDD-62)
+    // + jsx-text, last (SDD-62: FUD1162)
+    expect(ANALYZERS).toHaveLength(33);
+    expect(ANALYZERS[0]?.name).toBe('attribute-bindings');
+    expect(ANALYZERS.at(-1)?.name).toBe('jsx-text');
     const names = ANALYZERS.map((a) => a.name);
     expect(names.indexOf('event-in-loop')).toBe(names.indexOf('delegation') + 1);
     const { value } = analyze(buildInput(component('<p>hi</p>')));
