@@ -19,13 +19,11 @@
 import { allComponents, componentOf, type ComponentGraph, type ResolvedComponent } from './resolve.js';
 import type { CodeWriter } from './writer.js';
 import { classifyAttribute } from '../binding/index.js';
-import type { Diagnostic } from '../types/index.js';
 import { codeOf, type ExtractedCode } from './oxc-code.js';
 import {
   entryHalf,
   formAssociatedTags,
   isReactiveRoute,
-  loads,
   routeHydration,
   templateOf,
   walkElements,

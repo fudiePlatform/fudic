@@ -62,7 +62,7 @@ export function propChannelDiagnostics(
     {
       source,
       document,
-      components: { has: (tag) => childProps(tag) !== undefined, propsOf: childProps },
+      components: { propsOf: childProps },
       ...crossingsOf(document.type === 'snippet-document' ? undefined : codeOfDocument(source, document)),
     },
     (diagnostic) => out.push(diagnostic),

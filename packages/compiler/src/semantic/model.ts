@@ -116,7 +116,9 @@ export interface ComponentRegistry {
 export type CrossingKind = 'signal' | 'computed' | 'fn';
 
 /** What a rule about the FORM of a crossing needs: the tree, the child's contract, and this. */
-export type ChannelInput = Pick<SemanticInput, 'source' | 'document' | 'components'> & {
+export type ChannelInput = Pick<SemanticInput, 'source' | 'document'> & {
+  /** What the rule asks about a child: its props, and the two graph facts only a build knows. */
+  readonly components: Pick<ComponentRegistry, 'propsOf' | 'hydratable' | 'writes'>;
   readonly names: ReadonlyMap<string, CrossingKind>;
   /** The names whose kind the file cannot tell — its imports: TypeScript checks what they are. */
   readonly opaque?: ReadonlySet<string>;

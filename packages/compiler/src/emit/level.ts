@@ -401,15 +401,6 @@ export function entryMoving(code: ExtractedCode, refreshes = false): ReadonlySet
 }
 
 /**
- * Whether the route has a `load`: a `.fudapi` it links declares one (SDD-60). A link the host
- * could not read is given the benefit: nothing is said.
- */
-export function loads(graph: ComponentGraph): boolean {
-  const apis = 'serverApis' in graph ? (graph as DocumentGraph).serverApis : [];
-  return apis.some((a) => a.api === undefined || a.api.load);
-}
-
-/**
  * Whether a call can refresh the route's `data` without reloading the document (SDD-68 §4.8):
  * a route with a client half, a `load`, and a client half that reads `data` at all. Then
  * `data` is a name that moves — every read of it in the view is a write the pass re-applies —
