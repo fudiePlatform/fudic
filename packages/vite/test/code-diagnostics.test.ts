@@ -44,10 +44,18 @@ describe('a @code that does not parse stops the build in its own file', () => {
   it('reports FUD0114 for a Razor comment, with the message that names the fix', () => {
     const path = componentFile('  @* a razor comment *@\n  const count = signal(0);');
     const codes = transformFud(path, io)!.diagnostics.map((d) => d.code);
-    // Oxc's own `FUD0170` also fires — the comment stays in its chunk and is not JS — but
-    // "unexpected token" does not tell anyone to write `//`. That is FUD0114's job, and it
-    // only reaches the build because `resolveDocument` stopped dropping the parse's list.
-    expect(codes).toContain('FUD0114');
+    // "Unexpected token" would not tell anyone to write `//`: FUD0114 does, and it alone speaks —
+    // the comment is left out of the chunk Oxc reads (SDD-62, one voice).
+    expect(codes).toEqual(['FUD0114']);
+  });
+
+  it('a JS syntax error over what the parse rejected is said by the parse alone (SDD-62)', () => {
+    const root = mkdtempSync(join(tmpdir(), 'fudic-echo-'));
+    const path = join(root, 'x-echo.fud');
+    writeFileSync(path, '<x-echo>\n  <template shadowrootmode="open"><p>@("abc)</p></template>\n</x-echo>\n');
+    const codes = transformFud(path, io)!.diagnostics.map((d) => d.code);
+    expect(codes).toContain('FUD0003');
+    expect(codes).not.toContain('FUD0170');
   });
 
   it('says nothing when the JS is fine — JS comments included (§7.6)', () => {
