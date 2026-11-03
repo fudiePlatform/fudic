@@ -21,6 +21,7 @@ import {
   FUD0055,
   FUD0056,
   FUD0057,
+  FUD1161,
 } from '@fudic/diagnostics';
 import { type ParseResult, ok, withDiagnostics } from '../types/index.js';
 import { Lexer, type Token } from '../lexer/index.js';
@@ -138,6 +139,9 @@ const DOCTYPE_START = /^\s*<!DOCTYPE/iu;
  * 104 exists for.
  */
 const SCALAR_LITERAL = /^(?:[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|true|false|null|undefined)$/u;
+
+/** A value in braces, as JSX passes an expression: `onClick={save}`. */
+const JSX_VALUE = /^\{[\s\S]*\}$/u;
 
 /**
  * A `.prop` — the only attribute a bare literal is legal on (decisions 24, 105).
@@ -786,7 +790,10 @@ class HtmlParser {
         });
         return token.span.end;
       }
-      this.#diagnostics.push(FUD0056({ span: token.span }));
+      // `onClick={save}` is JSX, and saying so is the one useful thing to say about it: quoting
+      // it, which is what `FUD0056` asks for, would make it a string. One fact, one code.
+      const unquoted = JSX_VALUE.test(this.#slice(token.span)) ? FUD1161 : FUD0056;
+      this.#diagnostics.push(unquoted({ span: token.span }));
       this.#checkReferences(token.span);
       parts.push({ type: 'attribute-text', span: token.span, value: this.#slice(token.span) });
       return token.span.end;

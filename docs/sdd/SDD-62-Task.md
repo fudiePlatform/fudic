@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/language-server` · `fudic-vscode`
 > **Rama:** `sdd-62-diagnosticos-que-dicen-la-verdad`. Nace de `main` **con SDD-61 en `Hecho`**:
 > sus catorce códigos y sus reescritos entran en la migración.
-> **Progreso:** 12 / 21 — `En curso`.
+> **Progreso:** 15 / 21 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -56,7 +56,7 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 9 | 3 | **El arnés.** Saca de los `.md` la lista de códigos con ejemplo de código; para cada uno busca `fixtures/FUDnnnn.<ext>` y `.fixed.<ext>` (o su carpeta), los pasa por el mismo pase que el build y comprueba roto = ese código y ningún otro error, arreglado = nada | `cli` | `test/fixes.test.ts` (SDD §8.2.1: en `diagnostics` cerraba un ciclo de build) |
+| [x] | 9 | 3 | **El arnés.** Saca de los `.md` la lista de códigos con ejemplo de código; para cada uno busca `fixtures/FUDnnnn.<ext>` y `.fixed.<ext>` (o su carpeta), los pasa por el mismo pase que el build y comprueba roto = ese código y ningún otro error, arreglado = nada | `cli` | `test/fixes.test.ts` (SDD §8.2.1: en `diagnostics` cerraba un ciclo de build) |
 | [ ] | 10 | 9 | **Los pares de `.fud`.** Uno por código del compilador y del pase tipado de la lista | `diagnostics` | `fixtures/*.fud` · `fixtures/FUDnnnn/` |
 | [ ] | 11 | 9 | **Los pares de `.fudspec` y `.fudapi`.** Igual, con sus extensiones | `diagnostics` | `fixtures/*.fudspec` · `fixtures/*.fudapi` |
 | [ ] | 12 | 10, 11 | **Corregir lo que el par demuestre.** `FUD0191` por papel del fichero (SDD §4.1) y cada `.md` cuyo par falle; los de fuera del lenguaje (`fudic.json`, CLI, banco) se revisan a mano | `diagnostics` | `src/codes/*.md` |
@@ -76,6 +76,6 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 19 | 1 | **`FUD1160` y `FUD1161`.** `className`/`htmlFor` en el analizador de atributos nativos, con su bombilla; el parser emite `FUD1161` en lugar de `FUD0056` para un valor `{…}` | `compiler` · `language-server` | `src/semantic/analyzers/native-event-attributes.ts` · `src/html/parser.ts` · `src/repairs.ts` |
-| [ ] | 20 | 1 | **`FUD1162` y las variantes de `FUD0907`.** Analizador de texto (fuera de `<code>` y `<pre>`); `props` y `children` con su frase | `compiler` | `src/semantic/analyzers/jsx-text.ts` · `ANALYZERS` · `src/semantic/view-js.ts` |
+| [x] | 19 | 1 | **`FUD1160` y `FUD1161`.** `className`/`htmlFor` en el analizador de atributos nativos, con su bombilla; el parser emite `FUD1161` en lugar de `FUD0056` para un valor `{…}` | `compiler` · `language-server` | `src/semantic/analyzers/native-event-attributes.ts` · `src/html/parser.ts` · `src/repairs.ts` |
+| [x] | 20 | 1 | **`FUD1162` y las variantes de `FUD0907`.** Analizador de texto (fuera de `<code>` y `<pre>`); `props` y `children` con su frase | `compiler` | `src/semantic/analyzers/jsx-text.ts` · `ANALYZERS` · `src/semantic/view-portable.ts` |
 | [ ] | 21 | 19, 20 | **Tests, docs, entrega y cierre.** Criterios 11–15; los pares de los tres códigos nuevos; README de `@fudic/diagnostics` (la forma del `.md` y `explain`), que hoy falta aunque `files` lo pide; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde y al 100 %; SDD-62 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `test/**` · `packages/diagnostics/README.md` · `docs/sdd/*` |

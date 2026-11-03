@@ -39,6 +39,7 @@ import { rawOnlyChild } from './analyzers/raw-only-child.js';
 import { spreadTarget } from './analyzers/spread-target.js';
 import { translations } from './analyzers/translations.js';
 import { awaitBlocks } from './analyzers/await.js';
+import { jsxText } from './analyzers/jsx-text.js';
 
 /** The ordered list of analyzers (§4). One rule per unit. */
 export const ANALYZERS: readonly Analyzer[] = [
@@ -73,6 +74,7 @@ export const ANALYZERS: readonly Analyzer[] = [
   spreadTarget,
   translations,
   awaitBlocks,
+  jsxText,
 ];
 
 /** The empty semantic model of v1 (§3): no facts are produced yet. */

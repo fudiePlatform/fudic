@@ -346,7 +346,7 @@ export class PortableCheck {
       return;
     }
     const origin = this.#view.resolve(name, this.#template);
-    if (origin === undefined) this.#report('identifier', FUD0907(this.#span(node)));
+    if (origin === undefined) this.#report('identifier', FUD0907({ ...this.#span(node), name }));
     else if (origin === 'code' || origin === 'neutral-let') this.#reads.push(node);
   }
 
@@ -626,7 +626,7 @@ export class PortableCheck {
     for (const reference of freeReferenceNodes([node])) {
       const name = nameOf(reference);
       if (!name.startsWith('$') && this.#view.inline(name, this.#template)) {
-        this.#report('identifier', FUD0907(this.#span(reference)));
+        this.#report('identifier', FUD0907({ ...this.#span(reference), name }));
       }
     }
   }

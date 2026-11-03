@@ -176,6 +176,16 @@ const addArgumentAt: Repairer = ({ cached }, diagnostic) => {
   ];
 };
 
+/**
+ * `FUD1160` — React's `className` or `htmlFor` as an attribute: write the HTML name. The span
+ * is the name, and it is one of the two in some case.
+ */
+const htmlName: Repairer = ({ cached }, diagnostic) => {
+  const name = cached.source.slice(diagnostic.span.start, diagnostic.span.end);
+  const html = name.toLowerCase() === 'classname' ? 'class' : 'for';
+  return [{ title: `Change to ${html}`, edits: [{ span: diagnostic.span, newText: html }] }];
+};
+
 /** A diagnostic code, and what repairs it. A code that is not here has no repair. */
 const REPAIRS: ReadonlyMap<FudCode, Repairer> = new Map<FudCode, Repairer>([
   ['FUD0894', addArgumentAt],
@@ -183,6 +193,7 @@ const REPAIRS: ReadonlyMap<FudCode, Repairer> = new Map<FudCode, Repairer>([
   ['FUD0191', addComponentLink],
   ['FUD0890', addRequiredSections],
   ['FUD0540', addLoopKey],
+  ['FUD1160', htmlName],
 ]);
 
 /** The codes that have a repair. */
