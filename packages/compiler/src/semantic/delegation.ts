@@ -294,14 +294,10 @@ function collect(source: string, roots: readonly HtmlContent[], js: DelegationJs
     element(el, host) {
       if (host !== undefined) parentOf.set(el, host);
       for (const attr of el.attributes) {
-        const classified = classifyAttribute(attr, source);
-        const binding = classified.value;
+        // `FUD0667`, decided by the classification, reaches the author through the
+        // `attribute-bindings` analyzer, with every other reason the classification gives.
+        const binding = classifyAttribute(attr, source).value;
         if (binding.type === 'delegate') {
-          // `FUD0667` is decided by the classification (SDD-07's layer) and would otherwise be
-          // seen by `pnpm build` alone — the very split BUG-23 spent a month closing for
-          // `FUD0291`. Forwarding it here is what puts all eight in one place, and the rule
-          // still has exactly one definition.
-          diagnostics.push(...classified.diagnostics);
           markers.push({
             name: binding.name,
             attr,

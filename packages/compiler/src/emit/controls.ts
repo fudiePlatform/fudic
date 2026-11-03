@@ -329,10 +329,9 @@ export function formSendDiagnostics(
     const bound = el.attributes.some((attr) => classifyAttribute(attr, source).value.type === 'control');
     for (const attr of el.attributes) {
       if (attr.name !== FORM_SEND_NAME) continue;
-      // What the classification itself had to say: a value that is not one `@` expression.
-      const classified = classifyAttribute(attr, source);
-      out.push(...classified.diagnostics);
-      const binding = classified.value;
+      // What the classification itself has to say — a value that is not one `@` expression —
+      // is the `attribute-bindings` analyzer's to report.
+      const binding = classifyAttribute(attr, source).value;
       if (binding.type !== 'form-send') continue;
       const name = source.slice(binding.value.expr.start, binding.value.expr.end).trim();
       if (el.name.toLowerCase() !== 'form' || !bound) out.push(FUD1006({ span: attr.span }));

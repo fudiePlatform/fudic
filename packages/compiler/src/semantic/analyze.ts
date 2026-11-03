@@ -40,9 +40,11 @@ import { spreadTarget } from './analyzers/spread-target.js';
 import { translations } from './analyzers/translations.js';
 import { awaitBlocks } from './analyzers/await.js';
 import { jsxText } from './analyzers/jsx-text.js';
+import { attributeBindings } from './analyzers/attribute-bindings.js';
 
 /** The ordered list of analyzers (§4). One rule per unit. */
 export const ANALYZERS: readonly Analyzer[] = [
+  attributeBindings,
   duplicateAttributes,
   reservedAttributes,
   refInLoop,
