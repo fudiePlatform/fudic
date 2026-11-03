@@ -8,9 +8,10 @@
  * package: declaring them there would be a cycle in the workspace, and the build order with it.
  *
  * Which codes. A code is on the list when its `**Fix:**` has a fragment between backticks with
- * `<`, `@` or `{`, and its name appears in the source of a package of the language passes
- * (`PASSES`). Both read from the disk, so a new code joins the list on its own; a code that only
- * the CLI, `fudic.json`, the bench or the plugin's own checks give is reviewed by hand.
+ * `<`, `@` or `{` that is not a shell command (`pnpm add <pkg>` is no file of the language), and
+ * the code of a language pass (`PASSES`, `PASS_FILES`) uses its function — a name in a comment
+ * emits nothing. Both read from the disk, so a new code joins the list on its own; a code
+ * that only the CLI, `fudic.json`, the bench or the plugin's own checks give is reviewed by hand.
  *
  * A pair is `fixtures/FUDnnnn.<ext>` + `fixtures/FUDnnnn.fixed.<ext>`, copied into `src/` of a
  * project of its own; or a folder `fixtures/FUDnnnn/`, copied as it is to the root of the
@@ -19,9 +20,13 @@
  * The fixed file is checked under the broken one's name: file names and tags matter. A project
  * without a `fudic.json` or a `tsconfig.json` gets the defaults below.
  *
- * The passes are the build's: `transformFud` over every `.fud` (the emit set), the project
- * checker of `@fudic/typecheck` (the typed set), `ApiProject` for the `.fudapi`, and
- * `parseSpec` + `validateSpec` for the `.fudspec`. Run one code with `-t FUDnnnn`.
+ * The passes are the build's: `fudic.json` and its style chains read as the plugin reads them,
+ * `transformFud` over every `.fud` with those chains and an asset registry (the emit set), the
+ * project checker of `@fudic/typecheck` (the typed set), `ApiProject` for the `.fudapi`, and
+ * `parseSpec` + `validateSpec` for the `.fudspec`.
+ *
+ * The codes are split over `fixes-<n>.test.ts` by their number, so vitest checks them in
+ * parallel and a code always lands in the same file. Run one with `vitest run test/fixes -t FUDnnnn`.
  */
 
 import {
@@ -37,19 +42,21 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { FUD0852 } from '@fudic/diagnostics';
 import { explain } from '@fudic/diagnostics/explain';
 import { createTermCatalog, parseSpec, readFixtures, validateSpec, type SpecContext, type SpecFs } from '@fudic/spec';
+import { nodePackageFs } from '@fudic/resolve';
 import { createProjectChecker, parseFud, tagOf } from '@fudic/typecheck';
-import { nodeIo, transformFud } from '@fudic/vite';
-import { ApiProject } from '@fudic/vite/harness';
+import { LinkedAssets, nodeIo, ProjectStyleChains, transformFud } from '@fudic/vite';
+import { ApiProject, nodeConfigIo, readProject } from '@fudic/vite/harness';
 import { afterAll, describe, expect, it } from 'vitest';
 
 const posix = (path: string): string => path.replace(/\\/gu, '/');
 const at = (path: string): string => posix(fileURLToPath(new URL(path, import.meta.url))).replace(/\/$/u, '');
 
-const PACKAGES = at('../../');
+const PACKAGES = at('../../../');
 const CODES = `${PACKAGES}/diagnostics/src/codes`;
 const FIXTURES = `${PACKAGES}/diagnostics/fixtures`;
 /** The framework's terms, as a project that installed `@fudic/terms` reads them. */
@@ -62,6 +69,11 @@ const NODE_MODULES = `${PACKAGES}/cli/node_modules`;
 
 /** The packages whose source gives a code from a `.fud`, a `.fudspec` or a `.fudapi`. */
 const PASSES = ['compiler', 'language-core', 'resolve', 'typecheck', 'spec', 'api'] as const;
+/**
+ * And the one module of the plugin that runs inside `transformFud`, the emit set: what a file
+ * adopts of the project's styles (`FUD0744`). The rest of `plugin.ts` is the build's own checks.
+ */
+const PASS_FILES = ['vite/src/transform.ts'] as const;
 
 const EXTENSIONS = ['fud', 'fudspec', 'fudapi'] as const;
 /** `<name>.fixed.<ext>` in a folder pair, of any extension: a fix may create a `.fixture.ts`. */
@@ -95,22 +107,41 @@ function walk(dir: string): string[] {
   });
 }
 
-/** The codes whose `**Fix:**` shows code: a backtick fragment with `<`, `@` or `{`. */
+/** A fragment that is typed in a terminal, not written in a file. */
+const SHELL = /^(?:pnpm|npm|npx|yarn|fudic) /u;
+
+/** The codes whose `**Fix:**` shows code: a backtick fragment with `<`, `@` or `{`, not a command. */
 function withExample(): string[] {
   return readdirSync(CODES)
     .filter((f) => f.endsWith('.md'))
     .map((f) => f.slice(0, -'.md'.length))
-    .filter((code) => [...(explain(code)?.fix ?? '').matchAll(/`([^`]*)`/gu)].some((m) => /[<@{]/u.test(m[1]!)))
+    .filter((code) =>
+      [...(explain(code)?.fix ?? '').matchAll(/`([^`]*)`/gu)].some((m) => /[<@{]/u.test(m[1]!) && !SHELL.test(m[1]!)),
+    )
     .sort();
 }
 
-/** The source of the language passes, read once. */
-const passSource = PASSES.flatMap((pkg) => walk(`${PACKAGES}/${pkg}/src`))
+/**
+ * A source without its comments: a code a comment names — `FUD0803` is the build saying so — is
+ * not one the module emits. A `//` after a `:` is a URL, not a comment.
+ */
+const uncommented = (source: string): string =>
+  source.replace(/\/\*[\s\S]*?\*\//gu, '').replace(/(^|[^:])\/\/.*$/gmu, '$1');
+
+/** The code of the language passes, read once. */
+const passSource = [
+  ...PASSES.flatMap((pkg) => walk(`${PACKAGES}/${pkg}/src`)),
+  ...PASS_FILES.map((file) => `${PACKAGES}/${file}`),
+]
   .filter((f) => f.endsWith('.ts'))
-  .map((f) => readFileSync(f, 'utf8'))
+  .map((f) => uncommented(readFileSync(f, 'utf8')))
   .join('\n');
 
-const listed = withExample().filter((code) => new RegExp(`\\b${code}\\b`, 'u').test(passSource));
+/**
+ * The codes a pair checks: an example in the Fix, and the code's function used by a pass — called,
+ * or picked as a value (`const unquoted = jsx ? FUD1161 : FUD0056`).
+ */
+export const listed = withExample().filter((code) => new RegExp(`\\b${code}\\b`, 'u').test(passSource));
 
 /** One pair, as files relative to the project root: what the broken project and the fixed one hold. */
 interface Pair {
@@ -165,10 +196,6 @@ interface Found {
 }
 
 const projects: string[] = [];
-afterAll(() => {
-  for (const root of projects) rmSync(root, { recursive: true, force: true });
-});
-
 /** A project of its own holding `files` (root-relative path → source file). */
 function project(files: ReadonlyMap<string, string>): string {
   const root = posix(mkdtempSync(join(tmpdir(), 'fudic-fixes-')));
@@ -196,6 +223,16 @@ function check(root: string): Found[] {
   };
   const files = walk(root);
 
+  // The project as the plugin reads it: `fudic.json`, and its style chains with what they say.
+  const config = readProject(root, false, nodeConfigIo());
+  const styles = new ProjectStyleChains(root, nodePackageFs());
+  const own = styles.own(root);
+  for (const d of [...config.errors, ...own.errors, ...own.warnings]) {
+    add(posix(resolve(root, d.file)), { ...d, span: d.span ?? { start: 0 } });
+  }
+  // The registry the plugin hands every emit: what a `.fud` links, `public/` and the page sheets.
+  const assets = new LinkedAssets('/', `${root}/public`, 'assets', config.config?.css === 'link');
+
   // The `.fudapi`: parsed and validated, and their declarations written, as the build does.
   const api = new ApiProject(root);
   for (const { file, diagnostics } of api.diagnostics()) for (const d of diagnostics) add(file, d);
@@ -204,7 +241,16 @@ function check(root: string): Found[] {
   // The emit set of every `.fud`.
   const io = nodeIo((path) => api.linked(path));
   for (const file of files.filter((f) => f.endsWith('.fud'))) {
-    for (const d of transformFud(file, io)?.diagnostics ?? []) add(file, d);
+    for (const d of transformFud(file, io, undefined, styles, assets)?.diagnostics ?? []) add(file, d);
+  }
+  // Once every page is compiled, what each sheet says about itself and the sheets no page keeps
+  // a rule of — the plugin's last word on the CSS, said once per sheet.
+  for (const [sheet, diagnostics] of assets.sheetDiagnostics()) {
+    for (const d of diagnostics) add(posix(resolve(root, d.file ?? sheet)), { ...d, span: d.span ?? { start: 0 } });
+  }
+  for (const { name, site } of assets.unusedSheets()) {
+    const unused = site === undefined ? FUD0852({ file: 'fudic.json', sheet: name }) : FUD0852({ ...site, sheet: name });
+    add(posix(resolve(root, unused.file)), { ...unused, span: unused.span ?? { start: 0 } });
   }
 
   // The typed set, over the whole project.
@@ -256,38 +302,39 @@ function check(root: string): Found[] {
 
 const print = (found: readonly Found[]): string[] => found.map((f) => `${f.file}@${f.start} ${f.code} ${f.severity}: ${f.message}`);
 
-describe('the list of codes whose Fix is checked by a pair (criterion 5)', () => {
-  it('is read from the catalogue and the passes, not written by hand', () => {
-    // A code the compiler gives, with an example in its Fix: if it falls off, the rule broke.
-    expect(listed).toContain('FUD0540');
-    expect(listed.length).toBeGreaterThan(100);
+/** Every entry of `fixtures/`: a pair's file or folder. */
+export const fixtureEntries = (): readonly string[] => (existsSync(FIXTURES) ? readdirSync(FIXTURES) : []);
+
+/** How many `fixes-<n>.test.ts` share the pairs. */
+export const SHARDS = 4;
+
+/** The pairs of shard `shard`: the codes whose number leaves that remainder. */
+export function pairTests(shard: number): void {
+  afterAll(() => {
+    for (const root of projects) rmSync(root, { recursive: true, force: true });
   });
-
-  it('every folder or file in fixtures/ belongs to a code of the list', () => {
-    const entries = existsSync(FIXTURES) ? readdirSync(FIXTURES) : [];
-    const stray = entries.filter((name) => !listed.includes(/^FUD\d{4}/u.exec(name)?.[0] ?? ''));
-    expect(stray).toEqual([]);
+  describe('each pair: broken gives its code and no other error, fixed gives nothing (criteria 5 and 6)', () => {
+    for (const code of listed.filter((c) => Number(c.slice(3)) % SHARDS === shard)) pairTest(code);
   });
-});
+}
 
-describe('each pair: broken gives its code and no other error, fixed gives nothing (criteria 5 and 6)', () => {
-  for (const code of listed) {
-    it(code, { timeout: 120_000 }, () => {
-      const pair = pairOf(code);
-      if (typeof pair === 'string') expect.fail(pair);
+/** One code's pair, checked. */
+function pairTest(code: string): void {
+  it(code, { timeout: 120_000 }, () => {
+    const pair = pairOf(code);
+    if (typeof pair === 'string') expect.fail(pair);
 
-      const broken = check(project(pair.broken));
-      expect(
-        broken.some((f) => f.code === code),
-        `${code}: the broken ${pair.file} does not give ${code}; it gives ${JSON.stringify(print(broken))}`,
-      ).toBe(true);
-      expect(
-        print(broken.filter((f) => f.code !== code && f.severity === 'error')),
-        `${code}: the broken ${pair.file} gives other errors`,
-      ).toEqual([]);
+    const broken = check(project(pair.broken));
+    expect(
+      broken.some((f) => f.code === code),
+      `${code}: the broken ${pair.file} does not give ${code}; it gives ${JSON.stringify(print(broken))}`,
+    ).toBe(true);
+    expect(
+      print(broken.filter((f) => f.code !== code && f.severity === 'error')),
+      `${code}: the broken ${pair.file} gives other errors`,
+    ).toEqual([]);
 
-      const fixed = check(project(pair.fixed));
-      expect(print(fixed), `${code}: the fixed ${pair.file} is not clean`).toEqual([]);
-    });
-  }
-});
+    const fixed = check(project(pair.fixed));
+    expect(print(fixed), `${code}: the fixed ${pair.file} is not clean`).toEqual([]);
+  });
+}
