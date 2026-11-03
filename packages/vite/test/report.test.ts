@@ -187,6 +187,25 @@ describe('BuildReporter — every diagnostic of a batch, positioned, once', () =
     expect(() => reporter.report(ctx, [at(13, 19)], file)).toThrow();
   });
 
+  it('an emit error that meets an error of the check is its echo, whatever its code (SDD-62)', () => {
+    const reporter = new BuildReporter(root);
+    reporter.rememberCheck(checked());
+    const ctx = context();
+    // FUD0170 over a snippet's substituted argument, inside what the check already said.
+    reporter.report(ctx, [at(9, 11, { code: 'FUD0170' })], file);
+    expect(ctx.error).not.toHaveBeenCalled();
+    // A warning of the emit there is not an error repeated: it is still said.
+    reporter.report(ctx, [at(9, 11, { code: 'FUD0170', severity: 'warning' })], file);
+    expect(ctx.warnings).toHaveLength(1);
+  });
+
+  it('a warning of the check silences nothing', () => {
+    const reporter = new BuildReporter(root);
+    const report = checked();
+    reporter.rememberCheck({ ...report, problems: report.problems.map((p) => ({ ...p, severity: 'warning' as const })) });
+    expect(() => reporter.report(context(), [at(9, 11, { code: 'FUD0170' })], file)).toThrow();
+  });
+
   it('a pass that compiles the same file again does not repeat it', () => {
     const reporter = new BuildReporter(root);
     const first = context();
