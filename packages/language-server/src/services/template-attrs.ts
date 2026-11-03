@@ -41,46 +41,46 @@ export const TEMPLATE_ATTRIBUTES: readonly TemplateAttribute[] = [
     name: 'shadowrootmode',
     insertText: 'shadowrootmode="open"',
     suggest: false,
-    hover: '**`shadowrootmode`** · HTML\n\nAbre la raíz de sombra declarativa del componente: `open` o `closed`.',
+    hover: '**`shadowrootmode`** · HTML\n\nOpens the declarative shadow root of the component: `open` or `closed`.',
   },
   {
     name: 'shadowrootdelegatesfocus',
     insertText: 'shadowrootdelegatesfocus',
     suggest: false,
-    hover: '**`shadowrootdelegatesfocus`** · HTML\n\nEl foco que llega al host pasa al primer elemento enfocable de dentro.',
+    hover: '**`shadowrootdelegatesfocus`** · HTML\n\nFocus that reaches the host moves to the first focusable element inside.',
   },
   {
     name: 'shadowrootreferencetarget',
     insertText: 'shadowrootreferencetarget="$1"',
     suggest: true,
     hover:
-      '**`shadowrootreferencetarget`** · HTML\n\nLo que apunta al host por id (un `<label for>`, un `aria-labelledby`) se reenvía al elemento de dentro con ese id.\n\nLo escribe el autor. En un control-componente, fudic lleva además a ese elemento lo que el puente no reenvía, y todo donde el navegador no tiene puente.',
+      '**`shadowrootreferencetarget`** · HTML\n\nWhat points to the host by id (a `<label for>`, an `aria-labelledby`) is forwarded to the element inside with that id.\n\nThe author writes it. In a control component, fudic also brings to that element what the bridge does not forward, and everything where the browser has no bridge.',
   },
   {
     name: 'shadowrootadoptedstylesheets',
     insertText: 'shadowrootadoptedstylesheets="$1"',
     suggest: true,
     hover:
-      '**`shadowrootadoptedstylesheets`** · HTML\n\nLas hojas que este componente elige, por nombre, de los `styles` de su `fudic.json`, separadas por espacios.\n\nSe adoptan después de las `globalStyles` y antes de su `<style>` propio, en el orden en que se escriben.',
+      '**`shadowrootadoptedstylesheets`** · HTML\n\nThe sheets this component picks by name from the `styles` of its `fudic.json`, separated by spaces.\n\nThey are adopted after the `globalStyles` and before its own `<style>`, in the order they are written.',
   },
   {
     name: 'shadowrootclonable',
     insertText: 'shadowrootclonable',
     suggest: false,
-    hover: '**`shadowrootclonable`** · HTML\n\nLa raíz de sombra se copia con `cloneNode` del host.',
+    hover: '**`shadowrootclonable`** · HTML\n\nThe shadow root is copied by `cloneNode` on the host.',
   },
   {
     name: 'shadowrootserializable',
     insertText: 'shadowrootserializable',
     suggest: false,
-    hover: '**`shadowrootserializable`** · HTML\n\nLa raíz de sombra sale en `getHTML({ serializableShadowRoots: true })`.',
+    hover: '**`shadowrootserializable`** · HTML\n\nThe shadow root is included in `getHTML({ serializableShadowRoots: true })`.',
   },
   {
     name: 'formassociated',
     insertText: 'formassociated',
     suggest: false,
     hover:
-      '**`formassociated`** · fudic\n\nMarca un control-componente: un marcador de fudic, no del estándar, que fudic quiere proponer.\n\nDecide su clase (`FudicControlElement`), `delegatesFocus` y que se hidrate al cargar la página. El puente (`shadowrootreferencetarget`) es estándar y lo escribe el autor; fudic aporta el respaldo donde falta.',
+      '**`formassociated`** · fudic\n\nMarks a control component: a fudic marker, not part of the standard, that fudic means to propose.\n\nIt decides its class (`FudicControlElement`), `delegatesFocus` and that it hydrates when the page loads. The bridge (`shadowrootreferencetarget`) is standard and the author writes it; fudic supplies the fallback where it is missing.',
   },
 ];
 

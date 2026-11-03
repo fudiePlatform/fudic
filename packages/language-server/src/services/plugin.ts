@@ -397,7 +397,7 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
                   .map((name) => ({
                     label: name,
                     kind: CompletionItemKind.Color,
-                    detail: 'styles de fudic.json',
+                    detail: 'styles of fudic.json',
                     sortText: `0_${name}`,
                     labelDetails: { description: 'fudic' },
                     // The word under the caret only: the value is a space-separated list.
@@ -414,7 +414,7 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
                 const items = ids.map((id) => ({
                   label: id,
                   kind: CompletionItemKind.Reference,
-                  detail: 'id de esta plantilla',
+                  detail: 'an id of this template',
                   sortText: `0_${id}`,
                   labelDetails: { description: 'fudic' },
                   textEdit: { range, newText: id },
@@ -1310,13 +1310,13 @@ function controlHover(wants: ReturnType<typeof controlWants> & {}): string {
 
   switch (wants) {
     case 'form':
-      return `${head}\n\nEnlaza este \`<form>\` con el formulario: \`control=@userForm\`.\n\nValida al enviar y lleva el foco al primer campo con error.`;
+      return `${head}\n\nBinds this \`<form>\` to the form: \`control=@userForm\`.\n\nIt validates on submit and moves the focus to the first field with an error.`;
     case 'control':
-      return `${head}\n\nEnlaza este campo con un control del formulario: \`control=@userForm.alias\`.\n\nEl enlace lo elige el elemento: \`type\`, \`multiple\` y el tag deciden cuál de los seis.`;
+      return `${head}\n\nBinds this field to a control of the form: \`control=@userForm.alias\`.\n\nThe element chooses the binding: \`type\`, \`multiple\` and the tag decide which of the six.`;
     case 'group':
-      return `${head}\n\nAgrupa parte del formulario en este elemento: \`control=@userForm.direccion\`.\n\nToma un grupo o el formulario entero, nunca un control suelto.`;
+      return `${head}\n\nGroups part of the form in this element: \`control=@userForm.address\`.\n\nIt takes a group or the whole form, never a single control.`;
     default:
-      return `${head}\n\nCruza el nodo al componente por su prop \`${CONTROL_PROP}\`: \`control=@userForm.alias\`.\n\nQué encaja lo dice el \`${CONTROL_PROP}\` que el componente declara.`;
+      return `${head}\n\nPasses the node to the component through its \`${CONTROL_PROP}\` prop: \`control=@userForm.alias\`.\n\nWhat fits is what the \`${CONTROL_PROP}\` the component declares says.`;
   }
 }
 
@@ -1334,7 +1334,7 @@ function templateAttributeItems(
   return templateAttributeOffers(cached, element).map((attr) => ({
     label: attr.name,
     kind: CompletionItemKind.Property,
-    detail: attr.name === 'formassociated' ? 'control-componente' : 'raíz de sombra',
+    detail: attr.name === 'formassociated' ? 'control component' : 'shadow root',
     documentation: { kind: 'markdown' as const, value: attr.hover },
     sortText: `0_${attr.name}`,
     labelDetails: { description: 'fudic' },
@@ -1351,11 +1351,11 @@ function templateAttributeItems(
 function markerHover(attr: typeof ERROR_NAME | typeof SUMMARY_NAME | typeof FIELDS_NAME): string {
   switch (attr) {
     case ERROR_NAME:
-      return '**`error`** · fudic\n\nMarca el elemento que dice el error de un control: `error=@userForm.alias`.\n\nEl compilador le pone `id` y apunta a él con `aria-describedby`; el mensaje sale cuando el campo está tocado.';
+      return "**`error`** · fudic\n\nMarks the element that shows a control's error: `error=@userForm.alias`.\n\nThe compiler gives it an `id` and points to it with `aria-describedby`; the message shows once the field is touched.";
     case SUMMARY_NAME:
-      return '**`summary`** · fudic\n\nMarca el resumen de un form o de un grupo: `summary=@userForm`.\n\nEs una lista de sus errores, en una región `aria-live`, vacía cuando no hay nada que decir.';
+      return '**`summary`** · fudic\n\nMarks the summary of a form or a group: `summary=@userForm`.\n\nIt lists their errors in an `aria-live` region, empty when there is nothing to say.';
     default:
-      return '**`fields`** · fudic\n\nEl resumen lista también, tras un envío, el error de cada campo, enlazado a él.\n\nUn envío fallido le lleva el foco.';
+      return "**`fields`** · fudic\n\nAfter a submit, the summary also lists each field's error, linked to the field.\n\nA failed submit moves the focus to it.";
   }
 }
 
