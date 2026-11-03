@@ -202,7 +202,7 @@ function buildRouteClientModule(
     moving: entryMoving(code, refreshes),
     styled: styledTags(graph),
     projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
-    ...stampOption(options, source),
+    ...stampOption(options, graph.entryPath, graph.entryMap),
   };
   const delegation = planDelegation(
     source,
