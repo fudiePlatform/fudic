@@ -125,6 +125,8 @@ Cuatro cosas de la firma que son decisiones, no notación:
 - **`effect` devuelve la baja y no toma dependencias.** El array de dependencias explícito
   (`effect([a, b], fn)`) se descartó: es el modelo que el desarrollador olvida actualizar, y el
   rastreo cuesta quince líneas (§4.1).
+  *Enmendada por [SDD-76](./SDD-76-efectos-con-dependencias.md):* el array existe como segundo
+  parámetro **opcional**, `effect(fn, [a, b])`; sin él, todo lo de esta spec sigue igual.
 - **La limpieza es el valor de retorno de `fn`, no un segundo parámetro.** Un efecto que hace
   `window.addEventListener(...)` tiene que poder quitarlo, y tiene que quitarlo **también entre
   vuelta y vuelta**, no solo al morir el componente: si las dependencias se recalculan en cada
