@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/compiler` · `@fudic/language-server` · `fudic-vscode`
 > **Rama:** `sdd-62-diagnosticos-que-dicen-la-verdad`. Nace de `main` **con SDD-61 en `Hecho`**:
 > sus catorce códigos y sus reescritos entran en la migración.
-> **Progreso:** 6 / 21 — `En curso`.
+> **Progreso:** 8 / 21 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -48,9 +48,9 @@ código, no el test.
 | [x] | 3 | 2 | **`.md` sin origen.** La segunda línea queda en `**<severidad>**`, en los 379 | `diagnostics` | `src/codes/*.md` |
 | [x] | 4 | 3 | **Cuerpos sin SDD.** Las 28 menciones del texto se reescriben diciendo lo que pasa | `diagnostics` | `src/codes/*.md` |
 | [x] | 5 | 3 | **`FUD0725`.** Sus ejemplos entran en la línea del `**Fix:**`; nada detrás | `diagnostics` | `src/codes/FUD0725.md` |
-| [ ] | 6 | 3–5 | **El test de forma, cerrado.** Severidad sola, última línea `**Fix:**`/`**Replaced by:**`, sin `SDD-`/`BUG-`; cada `.ts` nombra su origen en el JSDoc | `diagnostics` | `test/catalog.test.ts` |
+| [x] | 6 | 3–5 | **El test de forma, cerrado.** Severidad sola, última línea `**Fix:**`/`**Replaced by:**`, sin `SDD-`/`BUG-`; cada `.ts` nombra su origen en el JSDoc | `diagnostics` | `test/catalog.test.ts` |
 | [x] | 7 | 3 | **`explain`.** Lee y parte un `.md` en `Explanation`; nunca lanza | `diagnostics` | `src/explain.ts` |
-| [ ] | 8 | 6, 7 | **Los tests de la fase.** Criterios 1–3 | `diagnostics` | `test/**` |
+| [x] | 8 | 6, 7 | **Los tests de la fase.** Criterios 1–3 | `diagnostics` | `test/**` |
 
 ## Fase 2 — los pares roto/arreglado (5)
 
