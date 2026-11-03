@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/terms` · `@fudic/workbench` · `@fudic/compiler` ·
 > `@fudic/vite` · `@fudic/testing`
 > **Rama:** `sdd-64-resultados-legibles`, desde `main`.
-> **Progreso:** 19 / 26 — `En curso`.
+> **Progreso:** 21 / 26 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -59,7 +59,7 @@ código, no el test.
 | [x] | 4 | 2, 3 | **`reportOf(session, result)`.** Pura: `at` de criterio y pasos desde los `Span` de la `.fudspec`, `failed` (primer `then` en rojo), la normalización de la evidencia de un término del proyecto (SDD §4.2) | `workbench` | `src/report-of.ts` |
 | [x] | 5 | 4 | **`runSpecs` y `run --json`.** `RunSummary.reports`; la línea `report` tras cada `result`; los mensajes de antes sin cambios | `workbench` | `src/run.ts` · `src/run-cli.ts` · `src/protocol.ts` |
 | [x] | 6 | 5 | **Capturas en disco.** `.fudic/runs/<tag>/<id>.{before,after}.png` de los criterios que no pasan; se borran las de los que pasan; `shots` del informe | `workbench` | `src/run.ts` |
-| [ ] | 7 | 3–6 | **Los tests de la fase.** Criterios 1 (sin `source`), 2–4, 6 y 7 (el 5, `failing`, va con la tarea 20: se implementa en la 19) | `workbench` · `terms` | `test/**` |
+| [x] | 7 | 3–6 | **Los tests de la fase.** Criterios 1 (sin `source`), 2–4, 6 y 7 (el 5, `failing`, va con la tarea 20: se implementa en la 19) | `workbench` · `terms` | `test/**` |
 
 ## Fase 3 — los problemas con código (3)
 
@@ -67,7 +67,7 @@ código, no el test.
 |---|---|---|---|---|---|
 | [x] | 8 | 1 | **`FudicCompileError`.** El error del transform lleva `fudic.diagnostics` con todos los errores; `isFudicCompileError`; `message`, `loc`, `frame` como hoy | `vite` | `src/report.ts` · `src/index.ts` |
 | [x] | 9 | 1, 8 | **Los problemas.** Clasificar la excepción de un paso (`FUD1201`–`1204`, `StepFailed.code`), página que no carga (`1200`), `pageErrors` (`1205`), `bench.js` (`1206`), y el `problem` del banco con `diagnostics` (los del `.fud` o `1207`). `broken` en el informe | `workbench` | `src/engine.ts` · `src/bench.ts` · `src/session.ts` · `src/protocol.ts` · `src/report-of.ts` |
-| [ ] | 10 | 8, 9 | **Los tests de la fase.** Criterios 8–10, 20 | `workbench` · `vite` | `test/**` |
+| [x] | 10 | 8, 9 | **Los tests de la fase.** Criterios 8–10, 20 | `workbench` · `vite` | `test/**` |
 
 ## Fase 4 — del DOM al fuente (6)
 
