@@ -406,3 +406,8 @@ diga que está memoizado. El contrato usa `codeOfDocument`, la versión memoizad
    calculan al ejecutar, en lugar de dar la lista por cerrada.
 10. **Sin checker, la tarjeta enseña el tipo tal como está escrito** (§3.1). Antes solo salía
     con checker.
+11. **Un token redeclarado enseña lo que pisa.** `tienda` redeclara `--guia-accent` en su propia
+    hoja, así que en `tienda` el hover del criterio 12 enseña el valor y la doc de la app, que es
+    la que gana, y debajo «Overrides `#0b5fff` from `@fudic/example-guia`». Sin esa línea, el
+    hover de un token de librería sobrescrito escondía de dónde venía. La sobrescritura de
+    `tienda.css` se documenta también.

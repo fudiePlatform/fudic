@@ -88,12 +88,16 @@ export class WorkspaceIndex extends FudIndex<IndexEntry> {
    * The name of the package a file belongs to, as its `package.json` spells it — what the card
    * of a library's component names in its header.
    *
-   * Through the dependency walk, whose last package is the one it starts from, because that walk
-   * already reads a manifest without throwing; nothing when the package declares no name.
+   * Through the dependency walk, whose last package is the one it starts from when that one has
+   * a `fudic.json`, because that walk already reads a manifest without throwing. Nothing when
+   * the package has no `fudic.json` — the last one is then a library it depends on — or
+   * declares no name.
    */
   packageNameOf(file: string): string | undefined {
     const root = owningPackage(toPosix(file), this.fs);
-    const name = root === undefined ? '' : (dependencyChain(root, this.fs).at(-1)?.name ?? '');
+    const own = root === undefined ? undefined : dependencyChain(root, this.fs).at(-1);
+    // Both sides through the same `toPosix`: the walk keeps a drive letter as Windows spells it.
+    const name = own === undefined || toPosix(own.root) !== toPosix(root!) ? '' : own.name;
     return name === '' ? undefined : name;
   }
 

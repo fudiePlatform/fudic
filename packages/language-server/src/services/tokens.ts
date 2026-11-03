@@ -97,7 +97,7 @@ export function createFudicTokenService(tokens: TokenCache): LanguageServicePlug
               label: token.name,
               kind: VARIABLE,
               detail: token.value,
-              documentation: { kind: 'markdown' as const, value: tokenMarkdown(token) },
+              documentation: { kind: 'markdown' as const, value: tokenMarkdown(token, tokens.tokensFor(file)) },
               textEdit: { range, newText: token.name },
             })),
           };
@@ -107,7 +107,7 @@ export function createFudicTokenService(tokens: TokenCache): LanguageServicePlug
           const found = tokenAt(context, tokens, document, position);
           if (found === undefined) return undefined;
           return {
-            contents: { kind: 'markdown' as const, value: tokenMarkdown(found.token) },
+            contents: { kind: 'markdown' as const, value: tokenMarkdown(found.token, tokens.tokensFor(found.file)) },
             range: found.range,
           };
         },
@@ -161,7 +161,7 @@ function tokenAt(
   tokens: TokenCache,
   document: TextDocument,
   position: Position,
-): { readonly token: Token; readonly range: { start: Position; end: Position } } | undefined {
+): { readonly token: Token; readonly file: string; readonly range: { start: Position; end: Position } } | undefined {
   const file = cssFileOf(context, document);
   if (file === undefined) return undefined;
   const text = document.getText();
@@ -176,19 +176,32 @@ function tokenAt(
   if (!name.startsWith('--') || !/var\(\s*$/u.test(text.slice(0, start))) return undefined;
   const token = latest(tokens.tokensFor(file)).find((candidate) => candidate.name === name);
   if (token === undefined) return undefined;
-  return { token, range: { start: document.positionAt(start), end: document.positionAt(end) } };
+  return { token, file, range: { start: document.positionAt(start), end: document.positionAt(end) } };
 }
 
-/** What a token is, for a hover and for a completion's documentation. */
-export function tokenMarkdown(token: Token): string {
+/**
+ * What a token is, for a hover and for a completion's documentation.
+ *
+ * `all` is every token the file sees: when an app redeclares a library's token, the one that
+ * wins is the one shown, and the ones it overrides are named under it — otherwise a hover in
+ * the app hides where the token comes from in the first place.
+ */
+export function tokenMarkdown(token: Token, all: readonly Token[]): string {
   const parts = [`\`${token.name}: ${token.value}\``];
   if (token.doc !== undefined) parts.push(token.doc);
+  parts.push(`From ${origin(token)}`);
+  const overridden = all.filter((other) => other.name === token.name && other !== token);
+  for (const other of overridden) parts.push(`Overrides \`${other.value}\` from ${origin(other)}`);
+  return parts.join('\n\n');
+}
+
+/** Where a token is declared: its package and its style. */
+function origin(token: Token): string {
   const from = token.from === null ? 'this project' : `\`${token.from}\``;
   // A token of an optional style is seen only by a component that adopts it, and saying so is
   // what keeps a completion from offering a value that renders as nothing.
   const style = token.style.global
     ? `style \`${token.style.name}\``
     : `style \`${token.style.name}\`, only in components that adopt it`;
-  parts.push(`From ${from} · ${style}`);
-  return parts.join('\n\n');
+  return `${from} · ${style}`;
 }
