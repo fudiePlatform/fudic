@@ -154,3 +154,44 @@ tests (la otra) va por detrás escribiendo los tests de cada arreglo y midiendo 
   regla de una voz; el test ya espera `FUD1150` solo.
 - El ejemplo `examples/vista-errores` enlaza `src/vista-errores.fudapi` con `load`, para que sus
   lecturas de `data` sigan siendo los casos que anotan.
+
+### Relevo de la sesión de tests (tareas 13, 26, 27 y los tests de la 21)
+
+**Hecho y commiteado** (último: 08af2da6): el arnés completo (tarea 26: shards, estilos y
+assets, regla de la lista, ficheros que crea el arreglo, regla de eco del reporter); tests del
+compilador (no-lanzar, `FUD0543`/`FUD0621`, delegación, 33 analizadores, `FUD1143` en await,
+`FUD0429` en contract, block/route-blocks/server-link); tests de typecheck (una voz, pipes,
+file-registry, fudic-diagnostics); `examples/vista-errores` enlazado a su `.fudapi`.
+
+**Pendiente, en orden:**
+
+1. **Sin commitear en el árbol** (de la sesión de tests): `language-server/test/acceptance/one-voice.test.ts`
+   (nuevo) y `diagnostics`/`parity`/`robustness.test.ts` (de `TS2304` + código fudic al código
+   fudic solo). Pasar la suite del LS, commitear y dejar `services/one-voice.ts` al 100 (ramas: doc
+   que no es `.fud`, otro código embebido, rango que no mapea, plugin sin `provideDiagnostics`).
+2. **Cuatro tests del compilador en rojo:**
+   - `await.test` líneas 134–137 y 152–153: `<p>@catch</p>` (un `@catch` suelto **sin cabecera**)
+     da ahora `FUD1323` + `FUD0070` + otro. **Es un defecto del arreglo del `@catch` huérfano**
+     (`control.ts` `#orphanCatch`, que ahora parsea cabecera y bloque siempre): sin `(` debe
+     consumir solo la palabra y dar solo `FUD1323`. Arreglar el código; el test acierta.
+   - `code.test:318`: el comentario Razor ya no está en el chunk; actualizar la expectativa.
+   - `parser.test:204` `<script>a`: esperar `['FUD0014']`, sin `FUD0052`.
+3. **language-core** `test/acceptance.test.ts:91` (mutante C): ya no hay `TS2345`; esperar
+   `FUD0429` sobre `footer`.
+4. **Tests sin escribir** del código de G1, G2 y 1035d043:
+   - typecheck `snippetDiagnostics` (solo los diagnósticos sin `file`; el `FUD0835` entre ficheros)
+     y `channelDiagnostics` (funciones que cruzan, importados opacos);
+   - las exportaciones del compilador `propChannelDiagnostics` / `declaredPropsOf`;
+   - los spans ensanchados: `FUD0827` (`ns.card`), `FUD0831` (el argumento con nombre entero),
+     `FUD0098`/`FUD0200`/`FUD0201` (el atributo entero), `FUD0003`/`FUD0004` (desde la comilla);
+   - `FUD0170` que calla al encontrarse con un error del parse (typecheck `parseSource`, vite
+     `withoutSyntaxEchoes`);
+   - vite `report.ts`: `BuildReporter` calla un error del emit que se encuentra con uno del check;
+   - `view-scope` `isDeferred`: `form:=` da `FUD1005` sin `FUD1150`.
+5. **Cobertura contra el suelo de `main`**, volver a medir: compiler 99,64 / 99,20 / 99,76 /
+   99,88; vite 98,82 / 96,01 / 99,60 / 99,05; typecheck 100. En Windows, la cobertura se lanza
+   desde una ruta corta: una ruta temporal profunda rompe los `#imports` de Node.
+6. **Los dos pares en rojo** (`FUD0901`, `FUD1010`): ver los puntos 1 y 2 del relevo de arriba.
+
+El worktree temporal `.claude/worktrees/floor-main` (detached en 2a820ec0) sigue ahí para medir
+el suelo; quitarlo con `git worktree remove --force` al terminar.
