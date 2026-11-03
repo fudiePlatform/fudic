@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/typecheck` · `@fudic/compiler` · `@fudic/language-server` ·
 > `examples/workspace` · `examples/basic`
 > **Rama:** `sdd-63-contrato-del-componente`, desde `main`.
-> **Progreso:** 2 / 20 — `Listo`.
+> **Progreso:** 8 / 20 — `Listo`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -48,12 +48,12 @@ tocarlos.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 3 | 1 | **`default`.** `ContractProp.default` desde `Prop.def` | `typecheck` | `src/contract.ts` |
-| [ ] | 4 | 1 | **`defaultSlot`.** Un `<slot>` sin `name` o con `name=""` | `typecheck` | `src/contract.ts` |
-| [ ] | 5 | — | **El segundo argumento de `emit`.** `EmitCall` gana el `Span` de su segundo argumento | `compiler` | `src/emit/oxc-code.ts` |
-| [ ] | 6 | 1, 5 | **Eventos.** `ContractEvent` con `doc` (JSDoc de la sentencia) y, en `typedContract`, `detail` (tipos unidos en orden) | `typecheck` | `src/contract.ts` |
-| [ ] | 7 | 1 | **Parts.** Los literales de `part="…"` del template, partidos y sin repetir; `partsDynamic` con una expresión | `typecheck` | `src/contract.ts` |
-| [ ] | 8 | 1 | **Tokens leídos.** Los `var(--…)` del `<style>` del componente | `typecheck` | `src/contract.ts` |
+| [x] | 3 | 1 | **`default`.** `ContractProp.default` desde `Prop.def` | `typecheck` | `src/contract.ts` |
+| [x] | 4 | 1 | **`defaultSlot`.** Un `<slot>` sin `name` o con `name=""` | `typecheck` | `src/contract.ts` |
+| [x] | 5 | — | **El segundo argumento de `emit`.** `EmitCall` gana el `Span` de su segundo argumento | `compiler` | `src/emit/oxc-code.ts` |
+| [x] | 6 | 1, 5 | **Eventos.** `ContractEvent` con `doc` (JSDoc de la sentencia) y, en `typedContract`, `detail` (tipos unidos en orden) | `typecheck` | `src/contract.ts` |
+| [x] | 7 | 1 | **Parts.** Los literales de `part="…"` del template, partidos y sin repetir; `partsDynamic` con una expresión | `typecheck` | `src/contract.ts` |
+| [x] | 8 | 1 | **Tokens leídos.** Los `var(--…)` del `<style>` del componente | `typecheck` | `src/contract.ts` |
 | [ ] | 9 | 3–8 | **Los tests de la fase.** Criterios 1–6 | `typecheck` · `compiler` | `test/contract*.test.ts` |
 
 ## Fase 3 — los tokens (3)

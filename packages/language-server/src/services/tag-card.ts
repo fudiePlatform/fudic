@@ -95,7 +95,7 @@ export function cardMarkdown(card: TagCard, props: ReadonlyMap<string, PropDetai
   }
 
   if (card.contract.events.length > 0) {
-    parts.push(`**Eventos**\n${card.contract.events.map((event) => `- \`@${event}\``).join('\n')}`);
+    parts.push(`**Eventos**\n${card.contract.events.map((event) => `- \`@${event.name}\``).join('\n')}`);
   }
 
   return parts.join('\n\n');

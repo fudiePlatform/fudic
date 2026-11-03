@@ -16,10 +16,16 @@ import type * as ts from 'typescript';
 import {
   codeOfDocument,
   documentRoots,
+  parseCssRules,
   walk,
+  type Attribute,
   type CodeBlockNode,
   type ComponentDocument,
+  type CssRule,
+  type ElementNode,
+  type EmitCall,
   type LayoutDocument,
+  type Span,
   type StructuredDocument,
 } from '@fudic/compiler';
 
@@ -33,7 +39,18 @@ export interface ContractProp {
    * with a checker, as TypeScript prints it.
    */
   readonly type?: string;
+  /** The default value as written in the destructuring: `'primary'`, `0`, `[]`. */
+  readonly default?: string;
   /** Its JSDoc (needs a checker). */
+  readonly doc?: string;
+}
+
+/** One event a component emits. */
+export interface ContractEvent {
+  readonly name: string;
+  /** The type of the detail as TypeScript prints it (needs a checker). Absent when no `emit` passes one. */
+  readonly detail?: string;
+  /** The JSDoc right before the first statement that emits it. */
   readonly doc?: string;
 }
 
@@ -48,20 +65,44 @@ export interface Contract {
   readonly props: readonly ContractProp[];
   /** The names of `<slot name="…">`, in source order. The default slot is not one. */
   readonly slots: readonly string[];
+  /** True when the template has a `<slot>` without a name. */
+  readonly defaultSlot: boolean;
   /** The events the component emits, from every `emit('…')` whose name resolves statically. */
-  readonly events: readonly string[];
+  readonly events: readonly ContractEvent[];
+  /** The literal names of every `part="…"` in its template, in source order, without repeats. */
+  readonly parts: readonly string[];
+  /** True when some `part` takes an expression: then `parts` may not be all. */
+  readonly partsDynamic: boolean;
+  /** The custom properties its `<style>` reads with `var(--…)`, in source order, without repeats. */
+  readonly tokens: readonly string[];
 }
 
 /** The empty contract, which is what everything that is not a component declares. */
-const NO_CONTRACT: Contract = { props: [], slots: [], events: [] };
+const NO_CONTRACT: Contract = {
+  props: [],
+  slots: [],
+  defaultSlot: false,
+  events: [],
+  parts: [],
+  partsDynamic: false,
+  tokens: [],
+};
+
+/**
+ * Where the detail of each event is written, in `.fud` coordinates, for `typedContract`.
+ *
+ * Kept beside the contract rather than in it: a span is a fact about the source the contract was
+ * read from, not something a consumer of the component reads.
+ */
+const detailSpans = new WeakMap<Contract, ReadonlyMap<string, readonly Span[]>>();
 
 /**
  * The contract of a component or of a LAYOUT, and the empty one for anything else.
  *
  * A page and a route have none: they are reached by URL, so there is nobody to declare a
  * contract TO. A layout declares props with the same `props<T>()` a component uses, and the
- * route that links to it is exactly the somebody. What it never has is slots or events: nobody
- * writes it as an element.
+ * route that links to it is exactly the somebody. What it never has is slots, events, parts or
+ * tokens: nobody writes it as an element.
  *
  * One Oxc invocation per document: `codeOfDocument` memoizes the extraction on the document, so
  * every reader below shares it.
@@ -70,31 +111,26 @@ export function contractOf(source: string, document: StructuredDocument): Contra
   if (document.type === 'layout-document') {
     return document.code === undefined
       ? NO_CONTRACT
-      : { props: propContract(source, document), slots: [], events: [] };
+      : { ...NO_CONTRACT, props: propContract(source, document) };
   }
   if (document.type !== 'component-document') return NO_CONTRACT;
 
-  const slots = slotNames(document);
-  if (document.code === undefined) return { props: [], slots, events: [] };
+  const markup = markupOf(document);
+  if (document.code === undefined) return markup;
 
-  const code = codeOfDocument(source, document);
+  const calls = codeOfDocument(source, document).emitCalls;
   const doc = componentDoc(source, document.code);
-
-  return {
+  const contract: Contract = {
+    ...markup,
     props: propContract(source, document),
-    slots,
-    // A name that did not resolve statically is absent on purpose: `emit(name)` with a variable
-    // is a real emission the card cannot name, and inventing `name` for it would be worse than
-    // the gap. Duplicates collapse — a component that emits `change` from three places emits
-    // one event.
-    events: [
-      ...new Set(code.emitCalls.flatMap((call) => (call.name === undefined ? [] : [call.name]))),
-    ],
+    events: eventsOf(source, calls),
     ...(doc === undefined ? {} : { doc }),
   };
+  detailSpans.set(contract, detailsOf(calls));
+  return contract;
 }
 
-/** The props a file declares, as a consumer reads them: the name, the `?`, and the type source. */
+/** The props a file declares, as a consumer reads them: name, `?`, type source and default. */
 function propContract(
   source: string,
   document: ComponentDocument | LayoutDocument,
@@ -103,28 +139,127 @@ function propContract(
     name: prop.name,
     required: !prop.optional,
     ...(prop.type === undefined ? {} : { type: prop.type }),
+    ...(prop.def === undefined ? {} : { default: prop.def }),
   }));
 }
 
 /**
- * The names of the `<slot name="…">` this component declares, in source order.
+ * What a component's markup declares: its slots, its parts and the tokens its `<style>` reads.
  *
- * A literal name and nothing else: `name=""` is the default slot (decision 44) and an
- * interpolated one is not a name any consumer can write into a `slot=` attribute.
+ * One walk of the parse, which is all three need.
  */
-function slotNames(document: StructuredDocument): readonly string[] {
-  const names: string[] = [];
+function markupOf(document: ComponentDocument): Contract {
+  const slots: string[] = [];
+  let defaultSlot = false;
+  const parts = new Set<string>();
+  let partsDynamic = false;
+  const tokens = new Set<string>();
+
   walk(documentRoots(document), {
     element(el) {
-      if (el.name !== 'slot') return;
+      if (el.name === 'slot') {
+        const name = slotName(el);
+        if (name === '') defaultSlot = true;
+        else if (name !== undefined) slots.push(name);
+      }
+      if (el.name === 'style') for (const token of tokensRead(el)) tokens.add(token);
       for (const attribute of el.attributes) {
-        if (attribute.name !== 'name') continue;
-        const only = attribute.value.length === 1 ? attribute.value[0] : undefined;
-        if (only?.type === 'attribute-text' && only.value !== '') names.push(only.value);
+        if (attribute.name !== 'part') continue;
+        const value = literalOf(attribute);
+        if (value === undefined) partsDynamic = true;
+        else for (const word of value.split(/\s+/u)) if (word !== '') parts.add(word);
       }
     },
   });
-  return names;
+  return { ...NO_CONTRACT, slots, defaultSlot, parts: [...parts], partsDynamic, tokens: [...tokens] };
+}
+
+/**
+ * The name of a `<slot>`: `''` for the default one — no `name`, or `name=""` (decision 44) —
+ * and nothing for an interpolated one, which is not a name any consumer can write into `slot=`.
+ */
+function slotName(slot: ElementNode): string | undefined {
+  const attribute = slot.attributes.find((it) => it.name === 'name');
+  return attribute === undefined ? '' : literalOf(attribute);
+}
+
+/** The value of an attribute when it is literal text throughout; nothing when it holds an expression. */
+function literalOf(attribute: Attribute): string | undefined {
+  let text = '';
+  for (const part of attribute.value) {
+    if (part.type !== 'attribute-text') return undefined;
+    text += part.value;
+  }
+  return text;
+}
+
+/** `var(--name` — the custom property a value reads. */
+const VAR_READ = /var\(\s*(--[\w-]+)/gu;
+
+/**
+ * The custom properties a `<style>` reads with `var(…)`, in source order.
+ *
+ * Read off the declarations of the rule tree rather than off the text: a `var(--x)` inside a
+ * comment reads nothing.
+ */
+function tokensRead(style: ElementNode): readonly string[] {
+  const body = style.children[0];
+  if (body?.type !== 'style-content') return [];
+  const css = body.parts.map((part) => part.value).join('');
+  const found: string[] = [];
+  const visit = (rules: readonly CssRule[]): void => {
+    for (const rule of rules) {
+      if (rule.type === 'style-rule') {
+        for (const declaration of rule.declarations) {
+          const value = css.slice(declaration.value.start, declaration.value.end);
+          for (const match of value.matchAll(VAR_READ)) found.push(match[1]!);
+        }
+        visit(rule.children);
+      } else if (rule.type === 'at-block') {
+        visit(rule.children ?? []);
+      }
+    }
+  };
+  visit(parseCssRules(css).value.rules);
+  return found;
+}
+
+/**
+ * The events, one per name in the order they are first emitted.
+ *
+ * A name that did not resolve statically is absent on purpose: `emit(name)` with a variable is a
+ * real emission the card cannot name, and inventing `name` for it would be worse than the gap.
+ * The doc is the one before the FIRST statement that emits the event.
+ */
+function eventsOf(source: string, calls: readonly EmitCall[]): readonly ContractEvent[] {
+  const events = new Map<string, ContractEvent>();
+  for (const call of calls) {
+    if (call.name === undefined || events.has(call.name)) continue;
+    const doc = docBefore(source, call.statement);
+    events.set(call.name, { name: call.name, ...(doc === undefined ? {} : { doc }) });
+  }
+  return [...events.values()];
+}
+
+/** Where each named event's detail is written, by name, in the order of the calls. */
+function detailsOf(calls: readonly EmitCall[]): ReadonlyMap<string, readonly Span[]> {
+  const spans = new Map<string, Span[]>();
+  for (const call of calls) {
+    if (call.name === undefined || call.detail === undefined) continue;
+    spans.set(call.name, [...(spans.get(call.name) ?? []), call.detail]);
+  }
+  return spans;
+}
+
+/** The `/** … *\/` that only whitespace separates from `at`, as its text. */
+function docBefore(source: string, at: number): string | undefined {
+  const before = source.slice(0, at).trimEnd();
+  if (!before.endsWith(BLOCK_CLOSE)) return undefined;
+  const open = before.lastIndexOf('/*', before.length - BLOCK_CLOSE.length - 1);
+  // `/*` alone is a comment and not a doc. A `*/` always has a `/*` before it in valid code;
+  // in a file being typed it may not, and then there is nothing to read.
+  if (open === -1 || before.charAt(open + 2) !== '*') return undefined;
+  return unstarred(before.slice(open + DOC_OPEN.length, before.length - BLOCK_CLOSE.length));
 }
 
 /**
@@ -297,18 +432,30 @@ export function propDetails(
 }
 
 /**
- * The same contract with each prop's type and doc as the checker reads them.
+ * Where a `.fud` offset lands in the client projection the program holds, or nothing.
+ *
+ * The holder of the service owns the mapping — the language server through its virtual code,
+ * the build through Volar's maps — so it is handed in rather than rebuilt here.
+ */
+export type ToGenerated = (offset: number) => number | undefined;
+
+/**
+ * The same contract with each prop's type and doc, and each event's detail, as the checker
+ * reads them.
  *
  * A prop the checker does not know keeps what the parse said: the typed half adds, it never
- * takes away.
+ * takes away. The detail needs `toGenerated` too, because it is the type of an expression the
+ * author wrote and the checker only knows the projection's offsets; without it, no detail.
  */
 export function typedContract(
   contract: Contract,
   service: ts.LanguageService | undefined,
   file: string,
+  toGenerated?: ToGenerated,
 ): Contract {
   const details = propDetails(service, file);
-  if (details.size === 0) return contract;
+  const events = eventDetails(contract, service, file, toGenerated);
+  if (details.size === 0 && events.size === 0) return contract;
   return {
     ...contract,
     props: contract.props.map((prop) => {
@@ -320,7 +467,56 @@ export function typedContract(
         ...(detail.doc === undefined ? {} : { doc: detail.doc }),
       };
     }),
+    events: contract.events.map((event) => {
+      const detail = events.get(event.name);
+      return detail === undefined ? event : { ...event, detail };
+    }),
   };
+}
+
+/**
+ * The detail type of each event, by name: the distinct types of every second argument, in the
+ * order the calls are written, joined with ` | `.
+ *
+ * An argument whose offset the projection did not copy, or where no expression of the same
+ * length starts, says nothing — it is skipped rather than guessed.
+ */
+function eventDetails(
+  contract: Contract,
+  service: ts.LanguageService | undefined,
+  file: string,
+  toGenerated: ToGenerated | undefined,
+): ReadonlyMap<string, string> {
+  const spans = detailSpans.get(contract);
+  const program = service?.getProgram();
+  const source = program?.getSourceFile(file);
+  const found = new Map<string, string>();
+  if (spans === undefined || toGenerated === undefined || source === undefined) return found;
+
+  const checker = program!.getTypeChecker();
+  for (const [name, written] of spans) {
+    const types = new Set<string>();
+    for (const span of written) {
+      const start = toGenerated(span.start);
+      const node = start === undefined ? undefined : nodeSpanning(source, start, start + span.end - span.start);
+      if (node !== undefined) types.add(checker.typeToString(checker.getTypeAtLocation(node)));
+    }
+    if (types.size > 0) found.set(name, [...types].join(' | '));
+  }
+  return found;
+}
+
+/**
+ * The outermost node that covers exactly `[start, end)`.
+ *
+ * Walked with the node's own `forEachChild`, because this module holds TypeScript as a type
+ * only: `ts.forEachChild` and `SyntaxKind` are values of a copy the program may not share.
+ */
+function nodeSpanning(node: ts.Node, start: number, end: number): ts.Node | undefined {
+  if (node.getStart() === start && node.end === end) return node;
+  return node.forEachChild((child) =>
+    child.pos <= start && end <= child.end ? nodeSpanning(child, start, end) : undefined,
+  );
 }
 
 /**

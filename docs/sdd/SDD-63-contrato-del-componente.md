@@ -368,3 +368,21 @@ diga que está memoizado. El contrato usa `codeOfDocument`, la versión memoizad
    nombres, y esas las pone el usuario.
 5. **Tokens: `:host` y `:root`.** `:host` es como se escribe una hoja adoptada en un shadow root
    (SDD-42); `:root`, la de una página. Lo demás son variables locales de una regla.
+
+### 8.2. Tomadas al implementar
+
+1. **`typedContract` recibe un cuarto parámetro opcional, `toGenerated`.** El `detail` es el tipo
+   de una expresión escrita en el `.fud`, y el checker solo conoce los offsets de la proyección:
+   con `(contract, service, file)` no hay forma de llegar de uno a otro. Quien tiene el servicio
+   tiene el mapeo (el language server, `projectedOffset`; el build, los mapas de Volar) y lo pasa.
+   Sin él, el contrato sale igual pero sin `detail`.
+2. **Los spans del `detail` viajan aparte del contrato**, en un `WeakMap` interno de
+   `contractOf` a `typedContract`: son un hecho del fuente, no algo que lea quien usa el
+   componente, y meterlos en `ContractEvent` los sacaría en el hover y en el MCP.
+3. **`EmitCall` gana también `statement`**, el inicio de la sentencia más interna que contiene la
+   llamada. Es lo que necesita la `doc` de un evento (§4.1) y el compilador ya tiene el AST en la
+   mano; buscarla en el texto sería adivinar.
+4. **`propDetails` se queda exportado** junto a `typedContract`: el arreglo de props requeridas
+   necesita `holds` (qué valor vacío escribir), que no es parte del contrato.
+5. **Los tokens leídos** salen de los valores de las declaraciones del árbol de reglas, no del
+   texto: un `var(--x)` dentro de un comentario no lee nada.
