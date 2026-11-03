@@ -44,6 +44,7 @@ export default defineConfig({
       '@fudic/typecheck/contract': fileURLToPath(
         new URL('../typecheck/src/contract.ts', import.meta.url),
       ),
+      '@fudic/typecheck/tokens': fileURLToPath(new URL('../typecheck/src/tokens.ts', import.meta.url)),
       '@fudic/typecheck': fileURLToPath(new URL('../typecheck/src/index.ts', import.meta.url)),
     },
   },

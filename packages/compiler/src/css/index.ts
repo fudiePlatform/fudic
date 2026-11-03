@@ -10,6 +10,7 @@ export type {
   CssRuleTree,
   CssRule,
   CssDeclaration,
+  CssDoc,
   StyleRule,
   BlockAtRule,
   StatementAtRule,

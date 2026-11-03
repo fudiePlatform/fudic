@@ -112,13 +112,14 @@ describe('tagCardAt', () => {
       // The type source rides along since SDD-40: the repair that writes a value has to
       // know what the value is a value OF.
       { name: 'label', required: true, type: 'string' },
-      { name: 'tone', required: false, type: 'string' },
+      { name: 'tone', required: false, type: 'string', default: "'neutral'" },
     ]);
     // The default slot is not a name a consumer can write into a `slot=` (decision 44).
     expect(card?.contract.slots).toEqual(['icon']);
+    expect(card?.contract.defaultSlot).toBe(true);
     // Emitted twice from the same component, offered once: a component emits an event, not a
     // list of the places it emits it from.
-    expect(card?.contract.events).toEqual(['picked']);
+    expect(card?.contract.events).toEqual([{ name: 'picked' }]);
   });
 
   it('carries the doc the author wrote, with the stars taken off', () => {
@@ -140,7 +141,15 @@ describe('tagCardAt', () => {
   it('gives an empty contract for a component that declares nothing', () => {
     const card = cardAt('<app-bare></app-bare>', '<app-bare');
 
-    expect(card?.contract).toEqual({ props: [], slots: [], events: [] });
+    expect(card?.contract).toEqual({
+      props: [],
+      slots: [],
+      defaultSlot: false,
+      events: [],
+      parts: [],
+      partsDynamic: false,
+      tokens: [],
+    });
   });
 
   it('names only what it can name, and skips what it cannot', () => {

@@ -27,7 +27,8 @@
   "typesVersions": {
     "*": {
       "problems": ["./dist/problems.d.ts"],
-      "contract": ["./dist/contract.d.ts"]
+      "contract": ["./dist/contract.d.ts"],
+      "tokens": ["./dist/tokens.d.ts"]
     }
   },
   "exports": {
@@ -42,6 +43,10 @@
     "./contract": {
       "types": "./dist/contract.d.ts",
       "import": "./dist/contract.js"
+    },
+    "./tokens": {
+      "types": "./dist/tokens.d.ts",
+      "import": "./dist/tokens.js"
     }
   },
   "files": [

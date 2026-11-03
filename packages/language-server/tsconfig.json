@@ -8,7 +8,8 @@
       "@fudic/formatter": ["../formatter/src/index.ts"],
       "@fudic/language-core": ["../language-core/src/index.ts"],
       "@fudic/typecheck": ["../typecheck/src/index.ts"],
-      "@fudic/typecheck/contract": ["../typecheck/src/contract.ts"]
+      "@fudic/typecheck/contract": ["../typecheck/src/contract.ts"],
+      "@fudic/typecheck/tokens": ["../typecheck/src/tokens.ts"]
     }
   },
   "include": ["src", "test"]

@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/typecheck` · `@fudic/compiler` · `@fudic/language-server` ·
 > `examples/workspace` · `examples/basic`
 > **Rama:** `sdd-63-contrato-del-componente`, desde `main`.
-> **Progreso:** 8 / 20 — `Listo`.
+> **Progreso:** 10 / 20 — `Listo`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -60,8 +60,8 @@ tocarlos.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 10 | — | **La doc en el parser de CSS.** `CssDeclaration.doc` con el `/** … */` pegado, sin asteriscos | `compiler` | `src/css/rules.ts` |
-| [ ] | 11 | 10 | **`projectTokens`.** Entrada `@fudic/typecheck/tokens`: cadena de dependencias, globales antes que opcionales, `:host` y `:root` (también en `@layer`), `group`, `from`, `style`; las hojas rotas dan su diagnóstico | `typecheck` | `src/tokens.ts` · `package.json` (`exports`) |
+| [x] | 10 | — | **La doc en el parser de CSS.** `CssDeclaration.doc` con el `/** … */` pegado, sin asteriscos | `compiler` | `src/css/rules.ts` |
+| [x] | 11 | 10 | **`projectTokens`.** Entrada `@fudic/typecheck/tokens`: cadena de dependencias, globales antes que opcionales, `:host` y `:root` (también en `@layer`), `group`, `from`, `style`; las hojas rotas dan su diagnóstico | `typecheck` | `src/tokens.ts` · `package.json` (`exports`) |
 | [ ] | 12 | 10, 11 | **Los tests de la fase.** Criterios 7–10 | `compiler` · `typecheck` | `test/**` |
 
 ## Fase 4 — el editor (5)
