@@ -83,7 +83,8 @@ interface ReportedError {
   readonly message: string;
   readonly expected?: unknown;
   readonly actual?: unknown;
-  readonly stacks?: readonly { readonly file: string; readonly line: number; readonly column: number }[];
+  /** Parsed by vitest for every error it reports, even an empty one. */
+  readonly stacks: readonly { readonly file: string; readonly line: number; readonly column: number }[];
   /** What vitest adds to the error of a matcher of `expect.extend`. */
   readonly __vitest_error_context__?: { readonly assertionName?: unknown };
 }
@@ -255,7 +256,7 @@ function textOf<K extends 'expected' | 'actual'>(key: K, value: unknown): { [P i
 
 /** The first frame of the stack inside a test file of the project, and that line of it. */
 function placeOf(root: string, error: ReportedError): { at: FilePosition; quote: string } | undefined {
-  for (const frame of error.stacks ?? []) {
+  for (const frame of error.stacks) {
     const file = relativeTo(root, frame.file);
     if (file.startsWith('../') || !TEST_FILE.test(file)) continue;
     // The test file that just ran, at a line its own stack names: both are there.

@@ -17,6 +17,7 @@ import { FUD0051, FUD0399, span, type FudDiagnostic } from '@fudic/diagnostics';
 import { toPosix, type CheckReport } from '@fudic/typecheck';
 import {
   BuildReporter,
+  compileDiagnosticsOf,
   isFudicCompileError,
   pluginLog,
   reportText,
@@ -274,5 +275,33 @@ describe('SDD-64 criterion 20 — the error of a .fud that does not compile carr
     expect(isFudicCompileError(with_({}))).toBe(false);
     expect(isFudicCompileError(with_({ diagnostics: 'all' }))).toBe(false);
     expect(isFudicCompileError(with_({ diagnostics: [] }))).toBe(true);
+  });
+});
+
+describe('SDD-64 criterion 17 — compileDiagnosticsOf, the same diagnostics after crossing a process', () => {
+  /** The error the plugin throws for these diagnostics. */
+  function thrownFor(diagnostics: readonly FudDiagnostic[]): Error {
+    const ctx = context();
+    expect(() => new BuildReporter(root).report(ctx, diagnostics, file)).toThrow();
+    return ctx.errors[0] as unknown as Error;
+  }
+
+  it('the error itself: its fudic.diagnostics, as they are', () => {
+    const thrown = thrownFor([at(8, 12)]);
+    expect(compileDiagnosticsOf(thrown)).toBe((thrown as FudicCompileError).fudic.diagnostics);
+  });
+
+  it('what is left after vitest revives it — only the message — says every error, with its place', () => {
+    const thrown = thrownFor([at(8, 12), at(13, 19)]);
+    // vitest's module runner hands over a plain object with the message and drops `fudic`.
+    const revived = { name: 'Error', message: thrown.message };
+    expect(compileDiagnosticsOf(revived)).toEqual((thrown as FudicCompileError).fudic.diagnostics);
+  });
+
+  it('anything else is not a .fud that did not compile', () => {
+    expect(compileDiagnosticsOf(new Error('plain'))).toBeUndefined();
+    expect(compileDiagnosticsOf({ message: 42 })).toBeUndefined();
+    expect(compileDiagnosticsOf('text')).toBeUndefined();
+    expect(compileDiagnosticsOf(null)).toBeUndefined();
   });
 });

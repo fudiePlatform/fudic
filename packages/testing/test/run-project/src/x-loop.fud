@@ -1,0 +1,13 @@
+@code {
+  const { items = [] } = props<{ items?: string[] }>();
+}
+
+<x-loop>
+  <template shadowrootmode="open">
+    <ul>
+      @foreach (const item of items) {
+        <li>@item</li>
+      }
+    </ul>
+  </template>
+</x-loop>

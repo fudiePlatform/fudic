@@ -192,6 +192,46 @@ describe('runSpecs — SDD-64 criteria 1–3, the report of a criterion', () => 
   }, 180_000);
 });
 
+describe('runSpecs — SDD-64 criterion 5, failing', () => {
+  const SPEC_FILE = 'src/components/app-tabs.fudspec';
+  const THREE =
+    'component app-tabs\n\ncriterion uno\n  then\n    text role:tabpanel "panel A"\n\n' +
+    'criterion dos\n  then\n    text role:tabpanel "panel Z"\n\n' +
+    'criterion tres\n  then\n    present role:tabpanel\n';
+
+  async function ids(failing: boolean, args: readonly string[] = [SPEC_FILE]): Promise<string[]> {
+    const summary = await runSpecs(args, { root: project!.root, failing });
+    if (isFailure(summary)) throw new Error(summary.diagnostic.message);
+    return summary.reports.map((r) => `${r.id}:${r.verdict}`);
+  }
+
+  it('with no report before, all three; after one red, only that one; once it passes, none', async () => {
+    project = tempProject('run-failing');
+    project.write(SPEC_FILE, THREE);
+
+    expect(await ids(true)).toEqual(['uno:pass', 'dos:fail', 'tres:pass']);
+    expect(existsSync(project.path('.fudic/runs/last-spec.json'))).toBe(true);
+    expect(await ids(true)).toEqual(['dos:fail']);
+
+    project.write(SPEC_FILE, THREE.replace('"panel Z"', '"panel A"'));
+    expect(await ids(true)).toEqual(['dos:pass']);
+    // What it did not run had passed: nothing is red now.
+    expect(await ids(true)).toEqual([]);
+    // Without it, everything runs again.
+    expect(await ids(false)).toEqual(['uno:pass', 'dos:pass', 'tres:pass']);
+  }, 240_000);
+
+  it('fudic-workbench run --failing runs only what did not pass', async () => {
+    project = tempProject('run-failing-cli');
+    project.write(SPEC_FILE, THREE);
+    await run(['--json'], project.root);
+    const { lines, code } = await run(['--json', '--failing'], project.root);
+    expect(code).toBe(1);
+    const reports = lines.map((l) => JSON.parse(l) as { type: string; id?: string }).filter((m) => m.type === 'report');
+    expect(reports.map((r) => r.id)).toEqual(['dos']);
+  }, 240_000);
+});
+
 describe('findSpecs', () => {
   it('finds every .fudspec under a folder, sorted, and skips node_modules, dist and hidden folders', () => {
     project = tempProject('find');

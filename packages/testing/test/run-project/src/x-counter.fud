@@ -1,0 +1,18 @@
+@code {
+  import { signal } from "@fudic/core";
+
+  const { start = 0 } = props<{ start?: number }>();
+
+  const n = signal(start);
+
+  function inc() {
+    n.set(n() + 1);
+  }
+}
+
+<x-counter>
+  <template shadowrootmode="open">
+    <button @click=@inc>+</button>
+    <output role="status">@n()</output>
+  </template>
+</x-counter>
