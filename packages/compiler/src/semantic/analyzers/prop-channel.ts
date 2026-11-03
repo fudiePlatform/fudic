@@ -82,13 +82,15 @@ export function checkPropChannel(input: ChannelInput, report: Report): void {
         const name = bareName(source, binding.value);
         const kind = name === undefined ? undefined : names.get(name);
 
+        // A crossing of the wrong form is about the whole attribute, prop and value: over it, the
+        // type error the projection raises on the prop name is the same fact and stays silent.
         if (channel === 'fn') {
           if (kind !== 'fn') {
-            report(FUD0201({ span: at, prop: binding.name }));
+            report(FUD0201({ span: attr.span, prop: binding.name }));
             continue;
           }
         } else if (kind === undefined || !REACTIVE.has(kind)) {
-          report(FUD0200({ span: at, prop: binding.name }));
+          report(FUD0200({ span: attr.span, prop: binding.name }));
           continue;
         }
 

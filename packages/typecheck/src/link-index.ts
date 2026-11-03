@@ -36,4 +36,11 @@ export interface LinkIndex {
    * index that cannot read modules leaves the project's imports unchecked.
    */
   module?(fromFile: string, specifier: string): ProjectModule | undefined;
+  /**
+   * A file's text, and where an `href` written inside `fromFile` points whether or not there is a
+   * file there: what reads the snippets a file imports. Optional: without them, a `@render` of an
+   * imported snippet is checked by TypeScript alone.
+   */
+  read?(path: string): string | undefined;
+  serverPath?(fromFile: string, href: string): string;
 }

@@ -18,7 +18,8 @@ import { checkScriptBody } from '../semantic/analyzers/script-body.js';
 import { documentRoots, walk } from '../semantic/walk.js';
 import type { ComponentGraph, ResolvedComponent } from './resolve.js';
 import { componentOf } from './resolve.js';
-import { codeOf } from './oxc-code.js';
+import { codeOf, codeOfDocument, type ExtractedCode } from './oxc-code.js';
+import type { ComponentDocument, StructuredDocument } from '../document/index.js';
 import { hydratableTags } from './level.js';
 
 /**
@@ -34,11 +35,40 @@ import { hydratableTags } from './level.js';
  * asks the very same question about the very same child (`state.ts`).
  */
 export function declaredProps(comp: ResolvedComponent): readonly ComponentDeclaredProps[] {
-  return codeOf(comp).props.map((prop) => ({
+  return propsOfCode(codeOf(comp));
+}
+
+function propsOfCode(code: ExtractedCode): readonly ComponentDeclaredProps[] {
+  return code.props.map((prop) => ({
     name: prop.name,
     required: !prop.optional,
     ...(prop.channel === undefined ? {} : { channel: prop.channel }),
   }));
+}
+
+/**
+ * The FORM of every crossing one document writes — `FUD0200`, `FUD0201` — from the document and
+ * what each child declares, without a resolved graph: what the editor and the check run, so the
+ * fudic voice is theirs too. The two rules that need the graph, whether a child hydrates and
+ * whether it writes a prop (`FUD0202`, `FUD0203`), stay with the build.
+ */
+export function propChannelDiagnostics(
+  source: string,
+  document: StructuredDocument,
+  childProps: (tag: string) => readonly ComponentDeclaredProps[] | undefined,
+): readonly Diagnostic[] {
+  const out: Diagnostic[] = [];
+  const names = document.type === 'component-document' ? crossingNamesOf(codeOfDocument(source, document)) : new Map();
+  checkPropChannel(
+    { source, document, components: { has: (tag) => childProps(tag) !== undefined, propsOf: childProps }, names },
+    (diagnostic) => out.push(diagnostic),
+  );
+  return out;
+}
+
+/** What one component, parsed, declares as props. */
+export function declaredPropsOf(source: string, document: ComponentDocument): readonly ComponentDeclaredProps[] {
+  return propsOfCode(codeOfDocument(source, document));
 }
 
 /** The registry of a resolved graph: the entry included, which is what `componentOf` adds. */
@@ -70,7 +100,10 @@ export function graphRegistry(graph: ComponentGraph): ComponentRegistry {
  * the one thing props-spec decision 153 exists to allow.
  */
 function crossingNames(comp: ResolvedComponent): ReadonlyMap<string, CrossingKind> {
-  const code = codeOf(comp);
+  return crossingNamesOf(codeOf(comp));
+}
+
+function crossingNamesOf(code: ExtractedCode): ReadonlyMap<string, CrossingKind> {
   const out = new Map<string, CrossingKind>();
   for (const reactive of code.signals) out.set(reactive.name, reactive.kind);
   for (const fn of code.clientFunctions) out.set(fn, 'fn');

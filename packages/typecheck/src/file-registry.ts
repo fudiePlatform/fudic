@@ -11,8 +11,11 @@
  */
 
 import {
+  documentRoots,
+  isComponentLink,
   linkHref,
   readSnippetLink,
+  walk,
   type ElementNode,
   type Span,
   type StructuredDocument,
@@ -32,14 +35,20 @@ export function createFileRegistry(
   index: LinkIndex,
 ): ProjectRegistry {
   const byTag = new Map<string, string>();
+  let broken: string | undefined;
 
-  for (const link of document.links) {
+  // The links the structure rejected (`FUD0152`, `FUD0438`) resolve too: the build ignores them,
+  // and that is the one thing their diagnostic says. Leaving their tag undeclared would say it
+  // again as `FUD0191` and as a type error on every use.
+  for (const link of [...document.links, ...strayComponentLinks(document)]) {
     const href = linkHref(link);
     if (href === undefined) continue;
     const target = index.resolve(filePath, href);
-    // A tag with no entry stays unresolved on purpose: SDD-23 projects it as an undeclared
-    // type name so the checker reports it, and FUD0460 covers the href itself.
-    if (target !== undefined && target.tag !== '') byTag.set(target.tag, href);
+    // A link that points at nothing (`FUD0460`) may be the one a tag of this file was meant to
+    // come from: until it is fixed, an unresolved tag is that link's, so the link's diagnostic is
+    // the only voice. Once it is, a tag nobody declares is `FUD0191` again.
+    if (target === undefined) broken ??= href;
+    else if (target.tag !== '') byTag.set(target.tag, href);
   }
 
   const layout = layoutHrefOf(document);
@@ -65,11 +74,23 @@ export function createFileRegistry(
     });
 
   return {
-    component: (tag) => byTag.get(tag),
+    component: (tag) => byTag.get(tag) ?? broken,
     layout: () => (layout === '' ? undefined : layout),
     snippets: () => snippets,
     servers,
   };
+}
+
+/** Every `<link rel="component">` of the tree that is not one of the document's own. */
+function strayComponentLinks(document: StructuredDocument): readonly ElementNode[] {
+  const own = new Set(document.links);
+  const stray: ElementNode[] = [];
+  walk(documentRoots(document), {
+    element(el) {
+      if (isComponentLink(el) && !own.has(el)) stray.push(el);
+    },
+  });
+  return stray;
 }
 
 /**

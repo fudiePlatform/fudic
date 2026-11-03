@@ -145,7 +145,8 @@ function classifyExpressionName(
   // Only `bus:` may be followed by an expression name (decision 28.b). The SDD-05 lexer
   // accepts ANY `name:` before the `(`, so the check belongs to this dispatch layer.
   if (prefix !== BUS_PREFIX) {
-    return degrade(plainAttribute(attr, prefix), FUD0098({ span: prefixSpan, prefix }));
+    // Over the whole attribute: with no event to bind, its value means nothing either.
+    return degrade(plainAttribute(attr, prefix), FUD0098({ span: attr.span, prefix }));
   }
 
   const handler = requireSingleExpression(attr);

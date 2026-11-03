@@ -11,8 +11,20 @@
  * for diagnostics costs no parse.
  */
 
-import { analyze, type ComponentRegistry, type Diagnostic, type SemanticInput } from '@fudic/compiler';
+import {
+  analyze,
+  checkRenderCalls,
+  declaredPropsOf,
+  documentRoots,
+  propChannelDiagnostics,
+  SnippetRegistry,
+  type ComponentRegistry,
+  type Diagnostic,
+  type ResolveIo,
+  type SemanticInput,
+} from '@fudic/compiler';
 import { holeDiagnostics } from './holes.js';
+import { parseFud } from './parse.js';
 import { serverLinksOf } from './links.js';
 import { hrefDiagnostics } from './href.js';
 import type { LinkIndex } from './link-index.js';
@@ -74,6 +86,47 @@ export function semanticDiagnostics(document: ProjectedFud, index?: LinkIndex): 
 }
 
 /**
+ * Every `@render` of the document against the snippets in its scope: the check the build runs
+ * before it expands, so the editor and the build say the same thing about a call. What the scope
+ * says about its links is left out: that is the links' to say, once.
+ */
+function snippetDiagnostics(document: ProjectedFud, index: LinkIndex): readonly Diagnostic[] {
+  const io: ResolveIo = {
+    // The registry's contract is a read that throws: an import it cannot read is a missing one.
+    read: (path) => {
+      const text = index.read?.(path);
+      if (text === undefined) throw new Error(`cannot read ${path}`);
+      return text;
+    },
+    resolve: (from, href) => index.serverPath?.(from, href) ?? href,
+  };
+  const scope = new SnippetRegistry(io).scopeOf(document.path, document.source, document.document, []);
+  const out: Diagnostic[] = [];
+  checkRenderCalls(documentRoots(document.document), scope, document.path, out);
+  return out;
+}
+
+/**
+ * The form of each prop crossing this document writes (`FUD0200`, `FUD0201`), against what each
+ * child declares: the build's rule, so the fudic voice is the editor's and the check's as well
+ * and not only TypeScript's. A child that cannot be read is not checked.
+ */
+function channelDiagnostics(document: ProjectedFud, index: LinkIndex): readonly Diagnostic[] {
+  const declared = new Map<string, ReturnType<typeof declaredPropsOf> | undefined>();
+  const childProps = (tag: string): ReturnType<typeof declaredPropsOf> | undefined => {
+    if (declared.has(tag)) return declared.get(tag);
+    const href = document.registry.component(tag);
+    const path = href === undefined ? undefined : index.serverPath?.(document.path, href);
+    const text = path === undefined ? undefined : index.read?.(path);
+    const child = text === undefined ? undefined : parseFud(text).document;
+    const props = child?.type === 'component-document' ? declaredPropsOf(text!, child) : undefined;
+    declared.set(tag, props);
+    return props;
+  };
+  return propChannelDiagnostics(document.source, document.document, childProps);
+}
+
+/**
  * Every `FUD` diagnostic of one document: the compiler's, plus the rules no other layer can
  * see — an `href` that resolves to nothing, a route against its layout's holes, the reserved
  * `$`.
@@ -85,6 +138,8 @@ export function fudicDiagnostics(document: ProjectedFud, index: LinkIndex): read
   return [
     ...document.diagnostics,
     ...semanticDiagnostics(document, index),
+    ...snippetDiagnostics(document, index),
+    ...channelDiagnostics(document, index),
     ...hrefDiagnostics(document, index),
     ...holeDiagnostics(document, index),
     ...reservedDollarDiagnostics(document),
