@@ -72,6 +72,11 @@
       "outline": "- banner: Shop\n- textbox \"Notes\": first words\n- radio \"One\" [checked]\n- text: One\n- radio \"Two\"\n- text: Two\n- heading \"Plain heading\"\n- group \"Box\":\n  - text: a\n  - note: b\n  - text: c\n- contentinfo: Fine print"
     },
     {
+      "name": "a header slotted into an article, a switch, and inline words that run together",
+      "html": "<ui-post><template shadowrootmode=\"open\"><article><slot name=\"top\"></slot><div role=\"switch\" aria-checked=\"true\" aria-label=\"Live\" tabindex=\"0\"></div><div role=\"note\">un<b>bold</b>broken</div></article></template><header slot=\"top\"><span>Top bar</span></header></ui-post>",
+      "outline": "- article:\n  - banner: Top bar\n  - switch \"Live\" [checked]\n  - note: unboldbroken"
+    },
+    {
       "name": "texts that need quotes, and names that do or do not say their text",
       "html": "<ui-texts><template shadowrootmode=\"open\"><div role=\"note\">- dash first</div><div role=\"note\">true</div><div role=\"note\">42</div><div role=\"note\">key: value</div><button aria-label=\"Close dialog\">Close</button><button aria-label=\"Go\">Next page</button></template></ui-texts>",
       "outline": "- note: \"- dash first\"\n- note: \"true\"\n- note: \"42\"\n- note: \"key: value\"\n- button \"Close dialog\": Close\n- button \"Go\": Next page"
