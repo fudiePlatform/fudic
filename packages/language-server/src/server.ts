@@ -62,6 +62,7 @@ import { createFudicService, createFudicTagService } from './services/plugin.js'
 import { silenceOwnedPositions } from './services/owned.js';
 import { redirectServerDefinitions } from './services/server-definition.js';
 import { filterTypeScriptCompletions } from './services/ts-completion.js';
+import { silenceEchoes } from './services/one-voice.js';
 import { RequestStats } from './stats.js';
 import { hasTypeScript, loadTypeScript } from './tsdk.js';
 import type { FileSystemScanner, Logger } from './types.js';
@@ -264,7 +265,10 @@ export function createFudicServer(
       // TypeScript and wrong answers — the reserved `$` scaffolding, and the global scope
       // it falls back to when a component's contract has no members (BUG-23, TODOs 1, 4).
       plugins.unshift(
-        ...redirectServerDefinitions(filterTypeScriptCompletions(createTypeScriptServices(typescript.typescript), apis), apis),
+        ...silenceEchoes(
+          redirectServerDefinitions(filterTypeScriptCompletions(createTypeScriptServices(typescript.typescript), apis), apis),
+          index,
+        ),
       );
       project = deps.createTypeScriptProject(
         typescript.typescript,
