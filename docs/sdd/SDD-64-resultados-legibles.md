@@ -590,6 +590,15 @@ Todos son `error`. Cada `.md` sigue la forma de SDD-50 §4.4.
 19. **Si vitest no arranca**, `runTests` no lanza: devuelve un `BrokenTest` con `file: '.'`,
     `name: null` y un `FUD1207` con el mensaje.
 20. **`@fudic/testing` depende de `@fudic/diagnostics`** (el `FUD1207` y los tipos de posición).
+24. **`fail` también por la marca de vitest.** Un matcher de jest-dom no lanza un error con nombre
+    propio: lanza un `Error` que vitest marca con el nombre de la aserción. Esa marca cuenta como
+    aserción, igual que `AssertionError`. El mensaje del informe va sin códigos de color.
+25. **Un `.fud` que no compila llega a `runTests` como texto.** El ejecutor de módulos de vitest
+    conserva el mensaje del error y pierde la propiedad `fudic`. `compileDiagnosticsOf` de
+    `@fudic/vite` lee los diagnósticos del error o, si ya no la tiene, del mensaje, que el propio
+    plugin escribe con forma fija (`<fichero>:<línea>:<col> - error FUDnnnn: …`).
+26. **`failing` en `runTests` son dos ejecuciones**: los ficheros que no cargaban, enteros; y los
+    tests que fallaron, por su nombre y en su fichero. Sustituye al punto 17.
 21. **`outline` usa solo `dom-accessibility-api`** (`getRole`, `computeAccessibleName`,
     `isDisabled`, `isInaccessible`), declarada en `@fudic/testing` con versión exacta: su `getRole`
     ya da el rol explícito o implícito, y `aria-query` no aporta nada más. Sin dependencias
