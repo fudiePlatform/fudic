@@ -294,6 +294,8 @@ describe('the bulbs (criteria 14 and 15)', () => {
       { title: 'Write @titulo', text: '@titulo' },
       { title: 'Explain FUD0894', text: undefined },
       { title: 'Wrap in @( … )', text: '@(a ? "a" : "b")' },
+      // `cb` is required and not passed: the editor says it too, as the build does.
+      { title: 'Explain FUD0828', text: undefined },
     ]);
   });
 });

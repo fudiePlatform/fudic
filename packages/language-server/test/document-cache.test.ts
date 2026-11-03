@@ -100,7 +100,9 @@ describe('get', () => {
 
   it('carries the parse diagnostics and the Oxc ones together', () => {
     const { cache } = setup();
-    const broken = cache.get('/p/broken.fud', 1, `@code {\n  const = ;\n}\n`);
+    // A component with its host: in a file with none, `FUD0156` speaks over the `@code` and Oxc's
+    // `FUD0170` there is its echo (SDD-62, one voice).
+    const broken = cache.get('/p/components/app-badge.fud', 1, BADGE.replace('const { tone', 'const = ;\n  const { tone'));
 
     expect(broken.diagnostics.some((diagnostic) => diagnostic.code === 'FUD0170')).toBe(true);
   });
@@ -112,7 +114,9 @@ describe('invalidation by the workspace index', () => {
     const source = `<link rel="layout" href="../layouts/_layout.fud">\n<link rel="component" href="../components/app-card.fud">\n<article><app-card></app-card></article>\n`;
     const before = cache.get(SLUG, 1, source);
 
-    expect(before.registry.component('app-card')).toBeUndefined();
+    // The link points at nothing yet: the tag is that broken link's (FUD0460 is the one voice).
+    expect(before.registry.component('app-card')).toBe('../components/app-card.fud');
+    expect(before.registry.component('app-other')).toBe('../components/app-card.fud');
 
     files['/p/components/app-card.fud'] = component('app-card');
     index.upsert('/p/components/app-card.fud');
@@ -122,6 +126,7 @@ describe('invalidation by the workspace index', () => {
     expect(after.document).toBe(before.document); // the expensive half survives
     expect(after.js).toBe(before.js);
     expect(after.registry.component('app-card')).toBe('../components/app-card.fud');
+    expect(after.registry.component('app-other')).toBeUndefined();
   });
 
   it('does not re-project while the workspace stands still', () => {
