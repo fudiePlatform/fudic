@@ -562,3 +562,16 @@ Todos son `error`. Cada `.md` sigue la forma de SDD-50 §4.4.
     `CriterionResult.diagnostics`, que no viaja en el mensaje `result` (los mensajes no cambian).
 11. **Las causas que el banco ya conocía conservan su código**: la fixture que lanza sigue siendo
     `FUD0973` y la señal no literal `FUD0974`; una entrada que la fixture no tiene es `FUD1207`.
+12. **En el compilador la opción es el nombre del fichero, no un booleano.** El compilador tiene un
+    texto y no conoce la raíz: `EmitOptions.sourceLocations?: string` es el nombre con el que se
+    sella (relativo a la raíz, con `/`), y lo inyecta el plugin. `fudic({ sourceLocations: true })`
+    y `fudicTest({ sourceLocations: true })` siguen siendo booleanos; el plugin solo sella en
+    `vite dev`, nunca en el build. `fudicTest` ya pasaba sus opciones al plugin: no cambia.
+13. **`data-fud-src` va justo tras crear el elemento**, en los dos emisores y antes de cualquier
+    otro atributo: el orden de atributos sale igual por los dos caminos.
+14. **`TermHost.onLocate` gana un tercer argumento**, `source: string | null`. El recorrido hacia
+    arriba lo hace el propio `ctx.locate` en la página.
+15. **`source` sale de las marcas**, que solo existen cuando hubo captura `after` del montaje: un
+    criterio cuyo montaje desapareció no tiene `source`. Para leer la línea, `ReportSource` gana
+    `read`: la sesión le pasa la lectura del disco; `reportOf` sigue sin tocar el disco por su
+    cuenta.

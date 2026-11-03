@@ -36,8 +36,9 @@ export function startVite(input: ViteInput): Promise<ViteDevServer> {
     // them, and the checker cost most of a second to start and kept checking while Chrome measured.
     // `serverReload: false`: the workbench reruns on save by itself (`processedChanges`), and a
     // reload of its page took the page from under the criterion that was running.
+    // `sourceLocations`: every element says where it was written, so a red step names its line.
     plugins: [
-      fudic({ routesDir: input.routesDir, liveCheck: false, serverReload: false }),
+      fudic({ routesDir: input.routesDir, liveCheck: false, serverReload: false, sourceLocations: true }),
       ...(input.onProcessed !== undefined ? [processedChanges(input.onProcessed)] : []),
     ],
     // The overlay painted one criterion's error over another's page and swallowed its clicks.

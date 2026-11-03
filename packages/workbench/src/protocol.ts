@@ -113,6 +113,8 @@ export interface Mark {
   readonly step: number;
   readonly ref: string;
   readonly box: Box;
+  /** Where the element was written: `<file>:<line>:<column>`, its `data-fud-src` or its nearest ancestor's. */
+  readonly source?: string;
 }
 
 export interface ResultMessage {

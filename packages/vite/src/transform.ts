@@ -244,6 +244,7 @@ function emitOptionsFor(
   styles: ProjectStyles,
   assets: LinkedAssets | undefined,
   i18n?: LocaleCompile,
+  sourceLabel?: SourceLabel,
 ): Parameters<typeof emitPageModuleMapped>[1] {
   // A linkable asset exists when it resolves to a real file next to the `.fud` (§6.13) —
   // or, for a root-absolute `/logo.svg`, when the project's public directory holds it.
@@ -302,8 +303,13 @@ function emitOptionsFor(
     ...styleOptions(graph, styles),
     // The locale this module is compiled for (SDD-58), when it is compiled for one.
     ...(i18n === undefined ? {} : { i18n }),
+    // Where each element was written, when the host asks for it (SDD-64): the file by its name.
+    ...(sourceLabel === undefined ? {} : { sourceLocations: sourceLabel(id) }),
   };
 }
+
+/** The name a file is stamped with in `data-fud-src`: relative to the project root, with '/'. */
+export type SourceLabel = (file: string) => string;
 
 /**
  * What this page kept of each sheet it receives, recorded for the whole build (SDD-49 §4.9),
@@ -369,6 +375,7 @@ export function transformFud(
   styles: ProjectStyles = NO_STYLES,
   assets?: LinkedAssets,
   i18n?: LocaleCompile,
+  sourceLabel?: SourceLabel,
 ): TransformResult | null {
   if (!id.endsWith('.fud')) {
     return null;
@@ -378,7 +385,7 @@ export function transformFud(
   const resolved = resolveDocument(id, io);
   const graph = resolved.value;
   const origin = graph.entryOrigin;
-  const options = emitOptionsFor(id, graph, routeName, styles, assets, i18n);
+  const options = emitOptionsFor(id, graph, routeName, styles, assets, i18n, sourceLabel);
   const out = emitFor(id, graph, options);
   const sheetFiles = assets === undefined ? [] : recordSheets(id, out, assets);
   return {
@@ -436,6 +443,7 @@ export function transformFudClient(
   io: ResolveIo,
   styles: ProjectStyles = NO_STYLES,
   assets?: LinkedAssets,
+  sourceLabel?: SourceLabel,
 ): TransformResult | null {
   if (!id.endsWith('.fud')) {
     return null;
@@ -444,7 +452,7 @@ export function transformFudClient(
   const graph = resolved.value;
   const entry = graph.entry;
   if (entry.type === 'route-document' || entry.type === 'page-document') {
-    return routeClientResult(id, graph, styles, resolved.diagnostics, assets);
+    return routeClientResult(id, graph, styles, resolved.diagnostics, assets, sourceLabel);
   }
   if (entry.type !== 'component-document') {
     return null;
@@ -452,7 +460,11 @@ export function transformFudClient(
   // `entryComponent` and not a literal of the same fields: `ExtractedCode` is memoized on
   // the object, so a second one would be a second Oxc invocation for one file.
   const comp = entryComponent(graph)!;
-  const out = emitComponentClientModuleMapped(graph, comp, emitOptionsFor(id, graph, undefined, styles, assets));
+  const out = emitComponentClientModuleMapped(
+    graph,
+    comp,
+    emitOptionsFor(id, graph, undefined, styles, assets, undefined, sourceLabel),
+  );
   return {
     code: out.code,
     map: buildMap(id, graph.entryOrigin.source, out, graph.entryMap),
@@ -472,8 +484,9 @@ function routeClientResult(
   styles: ProjectStyles,
   graphDiagnostics: readonly Diagnostic[],
   assets: LinkedAssets | undefined,
+  sourceLabel: SourceLabel | undefined,
 ): TransformResult | null {
-  const out = emitRouteClientModuleMapped(graph, emitOptionsFor(id, graph, undefined, styles, assets));
+  const out = emitRouteClientModuleMapped(graph, emitOptionsFor(id, graph, undefined, styles, assets, undefined, sourceLabel));
   if (out === null) {
     return null;
   }

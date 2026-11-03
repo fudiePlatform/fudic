@@ -43,6 +43,7 @@ import { markerSite } from './marker.js';
 import { adoptListOf, type ProjectAdopt } from './project-styles.js';
 import { awaitedField, blocksOf, loopHead, rawChild, type LoopNode } from './constructs.js';
 import { EMPTY_CONTROLS, type ControlPlan, type MarkerSite } from './controls.js';
+import { writeStamp, type SourceStamp } from './source-locations.js';
 
 /** `render` + PascalCase of a `prefix-name` tag: `app-button` → `renderAppButton`. */
 export const renderName = (tag: string): string =>
@@ -160,6 +161,8 @@ const SERVER_ROLE: Record<HtmlContent['type'], ServerRole> = {
  */
 export interface MarkupOptions {
   readonly source: string;
+  /** Stamps every element with where it was written (`data-fud-src`). Absent, nothing is. */
+  readonly stamp?: SourceStamp;
   readonly w: CodeWriter;
   /** Whether a tag is a component of the graph — what decides host vs plain element. */
   readonly isComponent: (tag: string) => boolean;
@@ -341,6 +344,7 @@ export class MarkupEmitter {
   readonly #projectAdopt: ProjectAdopt;
   readonly #sheets: ((tag: string) => string) | undefined;
   readonly #used = new Set<string>();
+  readonly #stamp: SourceStamp | undefined;
   /** The slot the roots of the walk in progress are stamped with (SDD-48), if any. */
   #rootSlot: { readonly parent: string; readonly name: string } | undefined;
   /** Whether each outermost construct leaves an anchor behind it — a layout (SDD-48). */
@@ -356,6 +360,7 @@ export class MarkupEmitter {
   #at: RunContext;
 
   constructor(options: MarkupOptions) {
+    this.#stamp = options.stamp;
     this.#source = options.source;
     this.#w = options.w;
     this.#isComponent = options.isComponent;
@@ -551,6 +556,7 @@ export class MarkupEmitter {
       this.#used.add(el.name);
       const s = this.#fresh();
       this.#w.line(`const ${v} = $dom.element(${JSON.stringify(el.name)});`);
+      writeStamp(this.#w, this.#stamp, el, v);
       // Identity first, and the pre-order of §3.2 falls out of the walk: the host is
       // fabricated before this emitter descends into its shadow and before its light DOM,
       // so the counter in the adapter hands out `0,1,2,…` in exactly that order.
@@ -613,6 +619,7 @@ export class MarkupEmitter {
       this.#markerText(el, v);
     } else {
       this.#w.line(`const ${v} = $dom.element(${JSON.stringify(el.name)});`);
+      writeStamp(this.#w, this.#stamp, el, v);
       this.#elementAttrs(el, v, false);
       this.#controlAttrs(el, v);
       this.#markerAttrs(el, v);

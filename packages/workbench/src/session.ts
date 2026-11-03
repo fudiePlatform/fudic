@@ -107,6 +107,7 @@ export async function loadSession(input: SessionInput): Promise<LoadedSession> {
     spec: target.spec ?? target.component,
     text: specText,
     expectations,
+    read: readText,
   });
   if (target.spec !== null) {
     specText = readText(target.spec) ?? '';
