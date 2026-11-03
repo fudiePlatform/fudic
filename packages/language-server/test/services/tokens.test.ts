@@ -215,8 +215,32 @@ describe('tokenMarkdown', () => {
   };
 
   it("says a project token comes from this project, and that an optional style's is not everywhere", () => {
-    expect(tokenMarkdown(token)).toBe(
+    expect(tokenMarkdown(token, [token])).toBe(
       '`--app-space: 4px`\n\nFrom this project · style `extra`, only in components that adopt it',
+    );
+  });
+
+  it('names every other declaration of the same name it overrides', () => {
+    const library: Token = { ...token, value: '2px', from: '@acme/guia', style: { name: 'tokens', global: true } };
+    const other: Token = { ...token, name: '--app-gap', value: '9px' };
+
+    expect(tokenMarkdown(token, [library, other, token])).toBe(
+      '`--app-space: 4px`\n\n' +
+        'From this project · style `extra`, only in components that adopt it\n\n' +
+        'Overrides `2px` from `@acme/guia` · style `tokens`',
+    );
+  });
+});
+
+describe('the hover of a token declared twice', () => {
+  it('says the value that wins and the one it overrides', () => {
+    const { document, position } = at('.a { color: var(--acme-i|nk); }');
+    const hover = service().instance.provideHover!(document, position, cancel) as { contents: { value: string } };
+
+    expect(hover.contents.value).toBe(
+      '`--acme-ink: #222`\n\n' +
+        'From this project · style `extra`, only in components that adopt it\n\n' +
+        'Overrides `#111` from `@acme/guia` · style `tokens`',
     );
   });
 });

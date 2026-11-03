@@ -136,6 +136,11 @@ describe('WorkspaceIndex.packageNameOf', () => {
     expect(index.packageNameOf('/elsewhere/x.fud')).toBeUndefined();
   });
 
+  it('is nothing for a package without a fudic.json that depends on a library', () => {
+    // The walk lists only the library, and its name is not this package's.
+    expect(index.packageNameOf('/ws/apps/tienda/src/components/tienda-card.fud')).toBeUndefined();
+  });
+
   it('is nothing for a package that is not a fudic one', () => {
     // No `fudic.json`: the dependency walk lists nothing to name.
     expect(index.packageNameOf('/ws/plain/x.fud')).toBeUndefined();

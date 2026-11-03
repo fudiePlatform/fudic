@@ -154,6 +154,21 @@ describe('§6.12 — the tokens in the `<style>` of a `.fud` of tienda', () => {
     );
     expect(targets).toContainEqual({ uri: expect.stringMatching(/\/libs\/guia\/tokens\.css$/u), line: 8 });
   });
+
+  it("says over `--guia-accent` the app's value and doc, and the guide's value it overrides", async () => {
+    const original = (await atApp.open(TIENDA_CARD)).text;
+    const anchor = original.indexOf('display: block;');
+    const text = `${original.slice(0, anchor)}color: var(--guia-accent); ${original.slice(anchor)}`;
+    const hover = await hoverText(atApp, TIENDA_CARD, text, anchor + 'color: var(--gu'.length);
+
+    // Volar merges the CSS service's own hover into the same answer; ours is one block of it.
+    expect(hover).toContain(
+      '`--guia-accent: #0f7b3f`\n\n' +
+        "The storefront's green, over the guide's blue, for the components of this app.\n\n" +
+        'From this project · style `tienda`\n\n' +
+        'Overrides `#0b5fff` from `@fudic/example-guia` · style `tokens`',
+    );
+  });
 });
 
 describe('§6.13 — the references of a tag', () => {
