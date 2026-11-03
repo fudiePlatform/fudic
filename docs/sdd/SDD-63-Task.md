@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/typecheck` · `@fudic/compiler` · `@fudic/language-server` ·
 > `examples/workspace` · `examples/basic`
 > **Rama:** `sdd-63-contrato-del-componente`, desde `main`.
-> **Progreso:** 18 / 20 — `Listo`.
+> **Progreso:** 20 / 20 — `Hecho`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -79,5 +79,5 @@ tocarlos.
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 18 | 17 | **La evidencia.** `libs/guia/tokens.css` documenta cada token; `ui-card` documenta componente, props y slot. Criterio 15, comprobado en el editor por Pedro | `examples` | `examples/workspace/libs/**` |
-| [ ] | 19 | 18 | **Docs y entrega.** README de `@fudic/typecheck` (las dos entradas nuevas) y de la extensión (tokens y referencias), en inglés y sin citar SDD. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; lo nuevo al 100 % en las cuatro métricas (criterio 16) | varios | `packages/*/README.md` |
-| [ ] | 20 | 19 | **Cierre.** SDD-63 y este fichero en `Hecho`; fila y registro de progreso del `INDEX.md` | — | `docs/sdd/*` |
+| [x] | 19 | 18 | **Docs y entrega.** README de `@fudic/typecheck` (las dos entradas nuevas) y de la extensión (tokens y referencias), en inglés y sin citar SDD. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; lo nuevo al 100 % en las cuatro métricas (criterio 16) | varios | `packages/*/README.md` |
+| [x] | 20 | 19 | **Cierre.** SDD-63 y este fichero en `Hecho`; fila y registro de progreso del `INDEX.md` | — | `docs/sdd/*` |

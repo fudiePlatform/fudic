@@ -1,6 +1,6 @@
 # SDD-63 — Un componente cuenta todo sobre sí mismo: su contrato y los tokens de estilo
 
-> **Estado:** `Listo` — [tareas](./SDD-63-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-63-Task.md).
 > **Paquetes:** `@fudic/typecheck` · `@fudic/compiler` · `@fudic/language-server` ·
 > `examples/workspace` · `examples/basic`
 > **Depende de:** 24 (language server), 36 (la tarjeta del tag), 42 y 46 (guía de estilos y
