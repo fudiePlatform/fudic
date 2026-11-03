@@ -50,26 +50,51 @@ describe('the folder is the catalogue (criterion 2)', () => {
   });
 });
 
-describe('every .md has the shape of §4.4 (criterion 3)', () => {
+/** A JSDoc block (`/** … *\/`) anywhere in a source. */
+const JSDOC = /\/\*\*[\s\S]*?\*\//gu;
+
+/** The internal documents a maintainer reads; a reader of the `.md` never does. */
+const ORIGIN = /\b(SDD|BUG)-\d+/u;
+
+describe('every .md has the closed shape (SDD-62 §3.1, criterion 1)', () => {
   for (const code of md) {
     it(code, () => {
-      const lines = read(`${code}.md`).replace(/\r\n/gu, '\n').trimEnd().split('\n');
+      const text = read(`${code}.md`);
+      const lines = text.replace(/\r\n/gu, '\n').trimEnd().split('\n');
       expect(lines[0]).toMatch(new RegExp(`^# ${code} — \\S`, 'u'));
       expect(lines[2]).toBe('');
 
-      const status = /^\*\*(error|warning|info|hint|retired)\*\* · (SDD|BUG)-\d+/u.exec(lines[1]!);
-      expect(status, `${code}: second line`).not.toBeNull();
-      const body = lines.slice(3);
+      // The severity alone: the origin stays in the .ts.
+      const status = /^\*\*(error|warning|info|hint|retired)\*\*$/u.exec(lines[1]!);
+      expect(status, `${code}: second line is ${JSON.stringify(lines[1])}`).not.toBeNull();
+      expect(text, `${code}: names an internal document`).not.toMatch(/SDD-|BUG-/u);
+
+      // At least one line of why, with no headings, and the closing line last: nothing after it.
+      const body = lines.slice(3, -1);
+      const last = lines.at(-1)!;
+      expect(body.length, `${code}: no why`).toBeGreaterThan(0);
+      expect(body.filter((l) => l.trim() === '' || l.startsWith('#')), `${code}: why`).toEqual([]);
 
       if (status![1] === 'retired') {
         // A retired code cannot be emitted: it has no function to call.
         expect(ts).not.toContain(code);
-        expect(body.some((l) => l.startsWith('**Replaced by:**'))).toBe(true);
+        expect(last, `${code}: last line`).toMatch(/^\*\*Replaced by:\*\* \S/u);
+        expect(body.filter((l) => /^\*\*(Fix|Replaced by):\*\*/u.test(l))).toEqual([]);
       } else {
         expect(ts).toContain(code);
-        expect(body.some((l) => l.startsWith('**Fix:**'))).toBe(true);
+        expect(last, `${code}: last line`).toMatch(/^\*\*Fix:\*\* \S/u);
+        expect(body.filter((l) => /^\*\*(Fix|Replaced by):\*\*/u.test(l))).toEqual([]);
         expect(severitiesOf(code)).toEqual(new Set([status![1]]));
       }
+    });
+  }
+});
+
+describe('every .ts names its origin in its JSDoc (criterion 2)', () => {
+  for (const code of ts) {
+    it(code, () => {
+      const docs = read(`${code}.ts`).match(JSDOC) ?? [];
+      expect(docs.some((d) => ORIGIN.test(d)), `${code}: no SDD-nn or BUG-nn in a JSDoc`).toBe(true);
     });
   }
 });
