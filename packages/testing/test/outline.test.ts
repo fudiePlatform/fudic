@@ -48,3 +48,28 @@ describe('criterion 22 — the two engines say the same', () => {
     expect(outline(painted(piece.html))).toBe(piece.outline);
   });
 });
+
+describe('outline — its roots, and what only script can set', () => {
+  test('a document, a shadow root and an element give the same piece', () => {
+    const host = painted('<ui-x><template shadowrootmode="open"><button>Go</button></template></ui-x>');
+    expect(outline(document)).toBe('- button "Go"');
+    expect(outline(host.shadowRoot!)).toBe('- button "Go"');
+    expect(outline(host)).toBe('- button "Go"');
+  });
+
+  test('an indeterminate checkbox is checked=mixed', () => {
+    const host = painted('<ui-x><template shadowrootmode="open"><input type="checkbox" aria-label="Some"></template></ui-x>');
+    (host.shadowRoot!.querySelector('input') as HTMLInputElement).indeterminate = true;
+    expect(outline(host)).toBe('- checkbox "Some" [checked=mixed]');
+  });
+
+  test('a textarea shows what is typed in it, not what it was written with', () => {
+    const host = painted('<ui-x><template shadowrootmode="open"><textarea aria-label="Notes">old</textarea></template></ui-x>');
+    (host.shadowRoot!.querySelector('textarea') as HTMLTextAreaElement).value = 'new';
+    expect(outline(host)).toBe('- textbox "Notes": new');
+  });
+
+  test('a root with nothing in it is the empty text', () => {
+    expect(outline(painted('<ui-x><template shadowrootmode="open"></template></ui-x>'))).toBe('');
+  });
+});
