@@ -65,6 +65,17 @@ describe('fudic({ sourceLocations: true }) under vite dev', () => {
     expect(stamps(await served(root, badge, { sourceLocations: true }))).toEqual(['../libs/ui/ui-badge.fud:3:5', '../libs/ui/ui-badge.fud:3:11']);
   });
 
+  it('an element of a snippet of another file: at its tag, in that file', async () => {
+    const { root } = workspace();
+    writeFileSync(join(root, 'src', 'components', 'helpers.fud'), '@snippet badge(text: string) {\n  <mark>@text</mark>\n}\n');
+    const user = join(root, 'src', 'components', 'app-note.fud');
+    writeFileSync(
+      user,
+      '<link rel="snippet" href="./helpers.fud">\n\n<app-note>\n  <template shadowrootmode="open">\n    @render badge("hi")\n  </template>\n</app-note>\n',
+    );
+    expect(stamps(await served(root, user, { sourceLocations: true }))).toEqual(['src/components/helpers.fud:2:3']);
+  });
+
   it('off by default: nothing is stamped', async () => {
     const { root, card } = workspace();
     expect(await served(root, card, {})).not.toContain('data-fud-src');
