@@ -30,6 +30,7 @@ import { nodeFileSystem, type CheckFs } from './files.js';
 import { describeFud, FudIndex } from './fud-index.js';
 import { fudicDiagnostics } from './fudic-diagnostics.js';
 import { mountGlobals } from './globals.js';
+import { echoes } from './one-voice.js';
 import { FUD_EXTRA_FILE_EXTENSIONS, fudLanguagePlugin } from './language-plugin.js';
 import { implementationsOf, type Implementations } from './implementations.js';
 import { readCommandLine, type CheckCommandLine } from './options.js';
@@ -185,6 +186,12 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
       // script of its client virtual is always there.
       const sourceFile = program.getSourceFile(entry.path)!;
       const map = state.language.maps.get(root.client, script);
+      const own = [
+        ...fudicProblems(entry.path, fudicDiagnostics(root.document, state.index), elsewhere),
+        ...fudicProblems(entry.path, portableTypeDiagnostics(program, root.document), elsewhere),
+      ];
+      // One fact, one voice: TypeScript is silent where a fudic error of this file speaks.
+      const spoken = own.filter((p) => p.file === entry.path && p.severity === 'error').map((p) => p.span);
       const found = [
         ...program.getSyntacticDiagnostics(sourceFile),
         ...program.getSemanticDiagnostics(sourceFile),
@@ -199,6 +206,7 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
         for (const [start, end] of map.toSourceRange(diagnostic.start, generatedEnd, true, (data) =>
           shouldReportDiagnostics(data, 'ts', diagnostic.code),
         )) {
+          if (echoes({ start, end }, spoken)) break;
           problems.push({
             file: entry.path,
             span: { start, end },
@@ -210,8 +218,7 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
         }
       }
 
-      problems.push(...fudicProblems(entry.path, fudicDiagnostics(root.document, state.index), elsewhere));
-      problems.push(...fudicProblems(entry.path, portableTypeDiagnostics(program, root.document), elsewhere));
+      problems.push(...own);
     }
 
     // A handler of `src/server` or `src/browser`, in its own `.ts` (SDD-60 §4.6).
