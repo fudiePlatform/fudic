@@ -73,6 +73,7 @@
     "@testing-library/dom": "10.4.2",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/user-event": "14.6.8",
+    "dom-accessibility-api": "0.6.3",
     "happy-dom": "20.10.6"
   },
   "peerDependencies": {

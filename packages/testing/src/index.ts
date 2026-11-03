@@ -8,6 +8,7 @@ export { renderLayout, type LayoutOptions } from './layout.js';
 export { renderSnippet, type SnippetOptions } from './snippet.js';
 export type { TemplateAttributes } from './matchers.js';
 export { shadowOf, type ShadowShape } from './shadow.js';
+export { outline } from './outline.js';
 export type { ProviderOverride } from './providers.js';
 export type { Queries, ByRoleOptions } from './queries.js';
 export type { Gestures } from './gestures.js';

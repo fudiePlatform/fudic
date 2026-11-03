@@ -588,3 +588,12 @@ Todos son `error`. Cada `.md` sigue la forma de SDD-50 §4.4.
 19. **Si vitest no arranca**, `runTests` no lanza: devuelve un `BrokenTest` con `file: '.'`,
     `name: null` y un `FUD1207` con el mensaje.
 20. **`@fudic/testing` depende de `@fudic/diagnostics`** (el `FUD1207` y los tipos de posición).
+21. **`outline` usa solo `dom-accessibility-api`** (`getRole`, `computeAccessibleName`,
+    `isDisabled`, `isInaccessible`), declarada en `@fudic/testing` con versión exacta: su `getRole`
+    ya da el rol explícito o implícito, y `aria-query` no aporta nada más. Sin dependencias
+    fantasma de Testing Library.
+22. **Lo que Playwright escribe además, `outline` lo escribe igual**: el `href` de un enlace como
+    `- /url: …`, un `placeholder` distinto del nombre como `- /placeholder: …`, y el valor de un
+    campo de texto como su texto. El texto que el nombre ya dice no se repite debajo.
+23. **`outlineOf` no lanza**: si Playwright no puede tomar la instantánea (el selector no
+    encuentra nada), devuelve `error: <primera línea>`.
