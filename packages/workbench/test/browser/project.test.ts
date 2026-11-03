@@ -49,13 +49,15 @@ describe('app-slotted and app-frame', () => {
         layer: 'framework',
         args: ['role:link'],
         error: expect.stringContaining('matches 2 elements') as unknown,
+        // SDD-64 §4.3: the guard of locate is FUD1203, recognised across the copy of @fudic/terms.
+        code: 'FUD1203',
       },
     ]);
   }, 60_000);
 
   it('criterion 10 — the fallback of an empty slot counts, a <style> does not', async () => {
     const result = await run('app-slotted', 'criterion vacio\n  then\n    text app-slotted "Hello card fallback text One Featured"\n');
-    expect(result).toMatchObject({ verdict: 'pass', steps: [{ evidence: { actual: 'Hello card fallback text One Featured' } }] });
+    expect(result).toMatchObject({ verdict: 'pass', steps: [{ evidence: { actual: '"Hello card fallback text One Featured"' } }] });
   }, 60_000);
 
   it('criterion 10 — the nodes assigned to a slot count, and replace its fallback', async () => {
@@ -66,8 +68,8 @@ describe('app-slotted and app-frame', () => {
     expect(result).toMatchObject({
       verdict: 'pass',
       steps: [
-        { evidence: { expected: 'assigned words', actual: 'Hello card assigned words One Featured' } },
-        { evidence: { expected: 'assigned words', actual: 'Hello card assigned words One Featured' } },
+        { evidence: { expected: 'contains "assigned words"', actual: '"Hello card assigned words One Featured"' } },
+        { evidence: { expected: 'contains "assigned words"', actual: '"Hello card assigned words One Featured"' } },
       ],
     });
   }, 60_000);
@@ -95,11 +97,11 @@ describe('criterion 15 — the signal the component writes is the host\'s, alive
     );
     expect(plan.files.has('components/app-bump/bench-host-app-bump-suma-uno.fud')).toBe(true);
     const [before, after] = await Promise.all(plan.criteria.map((c) => runCriterion(browser, bench.origin, c, terms, extensions)));
-    expect(before).toMatchObject({ verdict: 'pass', steps: [{ evidence: { expected: '10', actual: 'more 10' } }] });
+    expect(before).toMatchObject({ verdict: 'pass', steps: [{ evidence: { expected: 'contains "10"', actual: '"more 10"' } }] });
     expect(after).toMatchObject({ verdict: 'pass', pageErrors: [] });
     expect(after!.steps.map((s) => ('evidence' in s ? s.evidence : s.error))).toEqual([
       'clicked role:button',
-      { expected: '11', actual: 'more 11' },
+      { expected: 'contains "11"', actual: '"more 11"' },
     ]);
   }, 60_000);
 });

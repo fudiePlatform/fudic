@@ -100,6 +100,10 @@ describe('openWorkbench, failing', () => {
       v: 2,
       type: 'problem',
       message: 'Target page, context or browser has been closed',
+      // SDD-64 §4.3: what stops the bench is a diagnostic; this one has no file to point at.
+      diagnostics: [
+        { severity: 'error', code: 'FUD1207', message: 'could not run: Target page, context or browser has been closed', file: null, line: null, column: null },
+      ],
     });
   }, 60_000);
 

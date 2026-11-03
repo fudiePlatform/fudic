@@ -109,7 +109,7 @@ describe('SDD-59 §6.4 — the user extends the workbench without touching fudic
     expect(results[0]).toMatchObject({ verdict: 'pass' });
     expect(results[0]!.steps.map((s) => ('pass' in s ? s.evidence : s.error))).toEqual([
       'opened role:tab/"Tab B"',
-      { expected: 'panel B', actual: 'panel B' },
+      { expected: 'contains "panel B"', actual: '"panel B"' },
     ]);
   }, 90_000);
 
@@ -117,7 +117,7 @@ describe('SDD-59 §6.4 — the user extends the workbench without touching fudic
     const { results } = await open(TABS, OPENS, ['abre'], { 'fudic/terms/when/open-menu.js': OPEN_MENU });
     expect(results[0]).toMatchObject({ verdict: 'error' });
     expect(results[0]!.steps).toEqual([
-      { block: 'when', term: 'open-menu', layer: 'workspace', args: ['role:tab/"Tab B"'], error: 'ctx.openMenu is not a function' },
+      { block: 'when', term: 'open-menu', layer: 'workspace', args: ['role:tab/"Tab B"'], error: 'ctx.openMenu is not a function', code: 'FUD1204' },
     ]);
   }, 90_000);
 

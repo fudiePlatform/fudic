@@ -123,6 +123,7 @@ describe('planBench — criterion 4, a criterion without props', () => {
         route: '/app-card/bare',
         mount: 'body > app-card',
         offset: 20,
+        spec: TARGET.spec,
         fixture: null,
         // The offset of its term: `    visible` on the line after `  then`.
         steps: [{ block: 'then', term: 'visible', args: ['app-card'], offset: 46 }],
@@ -139,7 +140,7 @@ describe('planBench — criterion 4, a criterion without props', () => {
       fixtures: { vacia: {} },
       dir: DIR,
     });
-    expect(plan.criteria[0]).toEqual({ id: 'empty', route: '/app-card/empty', mount: 'body > app-card', offset: 20, fixture: 'vacia', propsOffset: 48, steps: [] });
+    expect(plan.criteria[0]).toEqual({ id: 'empty', route: '/app-card/empty', mount: 'body > app-card', offset: 20, spec: TARGET.spec, fixture: 'vacia', propsOffset: 48, steps: [] });
     expect(plan.files.get('routes/app-card/empty.fud')).not.toContain('@code');
     expect(plan.files.get('routes/app-card/empty.fud')).toContain('    <app-card></app-card>\n');
   });
@@ -151,7 +152,10 @@ describe('planBench — criterion 4, a criterion without props', () => {
       fixtures: {},
       dir: DIR,
     });
-    expect(plan.criteria).toEqual([{ id: 'app-card', route: '/app-card/app-card', mount: 'body > app-card', offset: 0, fixture: null, steps: [] }]);
+    // Without a .fudspec, the bare card's steps are "written" in the component.
+    expect(plan.criteria).toEqual([
+      { id: 'app-card', route: '/app-card/app-card', mount: 'body > app-card', offset: 0, spec: TARGET.component, fixture: null, steps: [] },
+    ]);
     expect([...plan.files]).toEqual([
       [MOUNT, expected('bare')],
       ['routes/app-card/app-card.fud', expected('bare')],
@@ -176,7 +180,7 @@ describe('planBench — criterion 4, a criterion without props', () => {
       fixtures: {},
       dir: DIR,
     });
-    expect(plan.criteria[0]).toEqual({ id: 'bare', route: '/app-card/bare', mount: 'body > app-card', offset: 20, fixture: null, propsOffset: 47, steps: [] });
+    expect(plan.criteria[0]).toEqual({ id: 'bare', route: '/app-card/bare', mount: 'body > app-card', offset: 20, spec: TARGET.spec, fixture: null, propsOffset: 47, steps: [] });
     expect(plan.files.get('routes/app-card/bare.fud')).not.toContain('@code');
   });
 });
@@ -187,7 +191,19 @@ describe('planBench — a fixture entry it cannot mount', () => {
   it('ends the criterion in error, without a page, when the entry is not in the fixture', () => {
     const plan = planBench({ target: TARGET, spec: source, fixtures: { other: { title: 'x' } }, dir: DIR });
     expect(plan.criteria).toEqual([
-      { id: 'c', route: '/app-card/c', mount: 'body > app-card', offset: 20, fixture: 'missing', propsOffset: 44, steps: [], error: 'the fixture has no entry "missing"' },
+      {
+        id: 'c',
+        route: '/app-card/c',
+        mount: 'body > app-card',
+        offset: 20,
+        spec: TARGET.spec,
+        fixture: 'missing',
+        propsOffset: 44,
+        steps: [],
+        error: 'the fixture has no entry "missing"',
+        // SDD-64 §4.3: nothing names this cause, so it could not run.
+        problem: { severity: 'error', code: 'FUD1207', message: 'could not run: the fixture has no entry "missing"' },
+      },
     ]);
     expect([...plan.files.keys()]).toEqual([MOUNT]);
   });
@@ -255,6 +271,7 @@ describe('planBench — criterion 5, a Signal prop', () => {
       route: '/signal-display/diez',
       mount: 'body > bench-host-signal-display-diez',
       offset: 26,
+      spec: TARGET_SIGNAL.spec,
       fixture: 'diez',
       propsOffset: 53,
       steps: [{ block: 'then', term: 'text', args: ['signal-display', '10'], offset: 75 }],
@@ -329,10 +346,13 @@ describe('planBench — criterion 6, an initial value that is not a JSON literal
       route: '/app-card/fecha',
       mount: 'body > app-card',
       offset: 20,
+      spec: TARGET_SIGNAL.spec,
       fixture: 'fecha',
       propsOffset: 48,
       steps: [],
       error: 'the initial value of signal prop "value" is not a JSON literal',
+      // The criterion ends with the same diagnostic the plan gave: one fact, one voice.
+      problem: plan.diagnostics[0],
     });
     expect([...plan.files.keys()]).toEqual([MOUNT, 'components/app-card/bench-host-app-card-sana.fud', 'routes/app-card/sana.fud']);
   });

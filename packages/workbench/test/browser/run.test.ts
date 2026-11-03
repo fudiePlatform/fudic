@@ -4,7 +4,7 @@
  */
 
 import { execSync, spawn } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { findSpecs, runSpecs } from '../../src/run.js';
@@ -69,23 +69,35 @@ describe('runMain on a project — criterion 12', () => {
       expect.stringMatching(/^ {2}✓ empieza-en-a {2}\d+ ms$/u),
       expect.stringMatching(/^ {2}✗ roto {10}\d+ ms$/u),
       '      then role:tabpanel says "panel Z"',
-      '        expected  panel Z',
-      '        actual    panel A',
+      // SDD-64 §4.2: what the stock `text` says it looked for, and what it found.
+      '        expected  contains "panel Z"',
+      '        actual    "panel A"',
       expect.stringMatching(/^2 criteria · 1 pass · 1 fail · 0 error · [\d.]+ s · \w+$/u),
     ]);
   }, 120_000);
 
-  it('with --json, every line is a v: 2 message and the last one is the summary', async () => {
+  it('with --json, every line is a v: 2 message, each result followed by its report, and the last one is the summary (SDD-64 criterion 4)', async () => {
     project = tempProject('run-json');
     project.write('src/components/app-tabs.fudspec', TABS_SPEC);
     const { lines, code } = await run(['--json', '--workers', '1'], project.root);
     expect(code).toBe(1);
-    const messages = lines.map((l) => JSON.parse(l) as { v: number; type: string; shots?: unknown });
+    const messages = lines.map((l) => JSON.parse(l) as { v: number; type: string; tag?: string; id?: string; shots?: unknown });
     expect(messages.every((m) => m.v === 2)).toBe(true);
-    expect(messages.map((m) => m.type)).toEqual(['session', 'running', 'result', 'result', 'summary']);
-    // `run` keeps no shots: nothing would serve them once it exits.
-    expect(messages.filter((m) => m.type === 'result').map((m) => m.shots)).toEqual([{}, {}]);
+    expect(messages.map((m) => m.type)).toEqual(['session', 'running', 'result', 'report', 'result', 'report', 'summary']);
+    // Each report is about the result right before it, and carries its tag (§8.2.6).
+    for (const at of [2, 4]) {
+      expect(messages[at + 1]).toMatchObject({ tag: 'app-tabs', id: messages[at]!.id });
+    }
+    // The messages from before do not change: `result` keeps its shape, and keeps no shots.
+    for (const result of messages.filter((m) => m.type === 'result')) {
+      expect(Object.keys(result).sort()).toEqual(['id', 'marks', 'ms', 'pageErrors', 'shots', 'steps', 'tag', 'type', 'v', 'verdict']);
+      expect(result.shots).toEqual({});
+    }
+    expect(Object.keys(messages.at(-1)!).sort()).toEqual(['browser', 'error', 'fail', 'ms', 'pass', 'type', 'v']);
     expect(messages.at(-1)).toMatchObject({ type: 'summary', pass: 1, fail: 1, error: 0 });
+    // The report is the CriterionReport as it is, after the message's own fields.
+    const red = messages.find((m) => m.type === 'report' && m.id === 'roto') as Record<string, unknown>;
+    expect(red).toMatchObject({ spec: 'src/components/app-tabs.fudspec', verdict: 'fail', failed: { expected: 'contains "panel Z"' } });
   }, 120_000);
 
   it('without anything to run, FUD0976 and exit 1', async () => {
@@ -118,6 +130,61 @@ describe('runMain on a project — criterion 12', () => {
     expect(summary).toMatchObject({ pass: 0, fail: 0, error: 2, results: [] });
     expect(summary.browser).toMatch(/^(chrome|msedge|chromium)$/u);
   }, 120_000);
+});
+
+describe('runSpecs — SDD-64 criteria 1–3, the report of a criterion', () => {
+  /** The red one is on line 7; its `then` on line 9, its term at column 5. */
+  const SPEC_FILE = 'src/components/app-tabs.fudspec';
+  const AFTER = '.fudic/runs/app-tabs/roto.after.png';
+
+  async function reports() {
+    const summary = await runSpecs([SPEC_FILE], { root: project!.root, workers: 2 });
+    if (isFailure(summary)) throw new Error(summary.diagnostic.message);
+    return summary.reports;
+  }
+
+  it('red with everything, the shot on disk; green without anything; fixed, the shot is gone', async () => {
+    project = tempProject('run-report');
+    project.write(SPEC_FILE, TABS_SPEC);
+
+    const [green, red] = await reports();
+    // In the order of the .fudspec, whatever order they finished in.
+    expect([green?.id, red?.id]).toEqual(['empieza-en-a', 'roto']);
+
+    // 1. Red: where the criterion is, the first red then with its line, expected and actual as text.
+    expect(red).toMatchObject({
+      spec: SPEC_FILE,
+      id: 'roto',
+      at: { file: SPEC_FILE, line: 7, column: 1 },
+      verdict: 'fail',
+      failed: {
+        step: 'then  text role:tabpanel "panel Z"',
+        at: { file: SPEC_FILE, line: 9, column: 5 },
+        expected: 'contains "panel Z"',
+        actual: '"panel A"',
+      },
+      pageErrors: [],
+    });
+    expect(red!.ms).toBeGreaterThanOrEqual(0);
+    expect(red).not.toHaveProperty('broken');
+
+    // 2. The shot on disk, named by the report; no `when`, so no `before`.
+    expect(red!.shots).toEqual({ after: AFTER });
+    expect(existsSync(project.path(AFTER))).toBe(true);
+    expect(existsSync(project.path('.fudic/runs/app-tabs/roto.before.png'))).toBe(false);
+
+    // 3. Green: none of what a red needs, and no shot on disk.
+    expect(green).toMatchObject({ spec: SPEC_FILE, id: 'empieza-en-a', at: { file: SPEC_FILE, line: 3, column: 1 }, verdict: 'pass', pageErrors: [] });
+    for (const key of ['failed', 'broken', 'source', 'shots']) expect(green).not.toHaveProperty(key);
+    expect(existsSync(project.path('.fudic/runs/app-tabs/empieza-en-a.after.png'))).toBe(false);
+
+    // 2. Fixed and run again: it passes, and its shot is gone.
+    project.write(SPEC_FILE, TABS_SPEC.replace('"panel Z"', '"panel A"'));
+    const [, fixed] = await reports();
+    expect(fixed).toMatchObject({ id: 'roto', verdict: 'pass' });
+    expect(fixed).not.toHaveProperty('shots');
+    expect(existsSync(project.path(AFTER))).toBe(false);
+  }, 180_000);
 });
 
 describe('findSpecs', () => {

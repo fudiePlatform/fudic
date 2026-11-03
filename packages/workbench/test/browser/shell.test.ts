@@ -560,7 +560,7 @@ describe('the steps — criterion 13', () => {
     await deliver(
       p,
       result('a', 'error', {
-        steps: [{ block: 'when', term: 'click', layer: 'workspace', args: [], error: 'role:link matches 2 elements' }],
+        steps: [{ block: 'when', term: 'click', layer: 'workspace', args: [], error: 'role:link matches 2 elements', code: 'FUD1203' }],
       }),
     );
     expect(await all(p, '.card[data-id=a] .steps li', '(li) => [li.className, li.querySelector(".mark").textContent, li.querySelector(".evidence").textContent]')).toEqual([
@@ -571,8 +571,8 @@ describe('the steps — criterion 13', () => {
       p,
       result('a', 'error', {
         steps: [
-          { block: 'when', term: 'click', layer: 'workspace', args: [], error: 'role:link matches 2 elements' },
-          { block: 'then', term: 'text', layer: 'workspace', args: [], error: 'never ran' },
+          { block: 'when', term: 'click', layer: 'workspace', args: [], error: 'role:link matches 2 elements', code: 'FUD1203' },
+          { block: 'then', term: 'text', layer: 'workspace', args: [], error: 'never ran', code: 'FUD1204' },
         ],
       }),
     );
@@ -749,7 +749,7 @@ describe('links, theme and noise — criterion 13', () => {
     await deliver(p, { v: 1, type: 'session' });
     await deliver(p, { v: 2, type: 'pinned' } as unknown as BenchMessage);
     expect(await p.evaluate<number>('() => document.querySelectorAll(".card").length')).toBe(0);
-    await deliver(p, { v: 2, type: 'problem', message: 'Chrome went away' });
+    await deliver(p, { v: 2, type: 'problem', message: 'Chrome went away', diagnostics: [] });
     expect(await text(p, '#problem')).toBe('Chrome went away');
   }, 60_000);
 });

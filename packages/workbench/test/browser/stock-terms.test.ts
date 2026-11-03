@@ -109,8 +109,8 @@ describe('SDD-59 §6.1 — keyboard', () => {
     );
     expect(steps(results[0]!)).toEqual([
       ['press', 'framework', true, 'pressed x'],
-      ['visible', 'framework', true, 'visible'],
-      ['focused', 'framework', true, 'focused'],
+      ['visible', 'framework', true, { expected: 'visible', actual: 'visible' }],
+      ['focused', 'framework', true, { expected: 'focus on role:menuitem/"Primero"', actual: 'focus on role:menuitem/"Primero"' }],
     ]);
     expect(results[0]!.verdict).toBe('pass');
   }, 90_000);
@@ -124,8 +124,8 @@ describe('SDD-59 §6.1 — keyboard', () => {
     expect(results[0]!.verdict).toBe('fail');
     expect(steps(results[0]!)).toEqual([
       ['press', 'framework', true, 'pressed x'],
-      ['visible', 'framework', false, 'hidden'],
-      ['focused', 'framework', false, 'not there'],
+      ['visible', 'framework', false, { expected: 'visible', actual: 'not there' }],
+      ['focused', 'framework', false, { expected: 'focus on role:menuitem/"Primero"', actual: 'not there' }],
     ]);
   }, 90_000);
 });
@@ -139,19 +139,19 @@ describe('SDD-59 §6.2 — slots', () => {
     );
     expect(results[0]!.verdict).toBe('pass');
     expect(steps(results[0]!)).toEqual([
-      ['slotted', 'framework', true, { expected: 'icon', actual: 'icon' }],
-      ['visible', 'framework', true, 'visible'],
+      ['slotted', 'framework', true, { expected: 'slot "icon"', actual: 'slot "icon"' }],
+      ['visible', 'framework', true, { expected: 'visible', actual: 'visible' }],
     ]);
   }, 90_000);
 
-  it('red when the card does not declare icon, with actual none', async () => {
+  it('red when the card does not declare icon: the icon is not there', async () => {
     const { results } = await open(
       'ui-card',
       { 'ui-card.fud': CARD_WITHOUT_ICON, 'ui-card.fudspec': CARD_SPEC, 'ui-card.fixture.ts': CARD_FIXTURE },
       ['icono-en-su-slot'],
     );
     expect(results[0]!.verdict).toBe('fail');
-    expect(steps(results[0]!)[0]).toEqual(['slotted', 'framework', false, { expected: 'icon', actual: 'none' }]);
+    expect(steps(results[0]!)[0]).toEqual(['slotted', 'framework', false, { expected: 'slot "icon"', actual: 'not there' }]);
   }, 90_000);
 });
 
@@ -162,7 +162,7 @@ describe('SDD-59 §6.7.4–6 — the layers', () => {
     const { message, results } = await open('ui-button', BUTTON_FILES, ['renders']);
     expect(message.diagnostics).toEqual([]);
     expect(results[0]!.verdict).toBe('pass');
-    expect(steps(results[0]!)).toEqual([['visible', 'framework', true, 'visible']]);
+    expect(steps(results[0]!)).toEqual([['visible', 'framework', true, { expected: 'visible', actual: 'visible' }]]);
   }, 90_000);
 
   it('5. without @fudic/terms, visible is an unknown term, and nothing runs', async () => {
