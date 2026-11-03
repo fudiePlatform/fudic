@@ -90,7 +90,7 @@ describe('the bench server — criterion 21', () => {
     server.publish(STATE);
     server.publish({ v: 2, type: 'cancelled', tag: 'app-card', ids: [] });
     server.publish(result('x', 'pass', 'app-tabs'));
-    server.publish({ v: 2, type: 'problem', message: 'Chrome went away' });
+    server.publish({ v: 2, type: 'problem', message: 'Chrome went away', diagnostics: [] });
 
     const late = await shell(server.origin);
     await expect.poll(() => late.messages.length).toBe(5);
