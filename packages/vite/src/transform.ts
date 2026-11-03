@@ -50,7 +50,7 @@ import {
   type SourceMapV3,
   type LocaleCompile,
 } from '@fudic/compiler';
-import { FUD0744 } from '@fudic/diagnostics';
+import { FUD0170, FUD0744 } from '@fudic/diagnostics';
 import { echoes } from '@fudic/typecheck/problems';
 
 /** `emitted` minus the JS syntax errors (`FUD0170`) that meet an error the parse already gave. */
@@ -60,7 +60,7 @@ function withoutSyntaxEchoes(emitted: readonly Diagnostic[], parsed: readonly Di
 }
 
 /** Oxc's syntax error, the one voice the emit repeats about what the parse rejected. */
-const SYNTAX_ERROR = 'FUD0170';
+const SYNTAX_ERROR = FUD0170({ span: { start: 0, end: 0 }, detail: '' }).code;
 
 /** The extension the emitted imports point at, so Vite resolves the `.fud` graph. */
 const IMPORT_EXT = '.fud';
