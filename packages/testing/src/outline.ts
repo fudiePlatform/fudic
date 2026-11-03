@@ -74,20 +74,25 @@ function visit(node: Node, into: (AriaNode | string)[]): void {
   if (!isElement(node) || SKIPPED.has(node.localName) || isInaccessible(node)) return;
   const role = roleOf(node);
   if (role === null || SILENT.has(role)) {
+    // A box that is not inline separates its text from its neighbours', as the browser lays it out.
+    const block = getComputedStyle(node).display !== 'inline';
+    if (block) into.push(' ');
     for (const child of flatChildren(node)) visit(child, into);
+    if (block) into.push(' ');
     return;
   }
   const children: (AriaNode | string)[] = [];
   for (const child of flatChildren(node)) visit(child, children);
-  const value = valueOf(node, role);
+  const value = valueOf(node);
   if (value !== '') children.push(value);
-  into.push({
-    role,
-    name: normalize(computeAccessibleName(node)),
-    states: statesOf(node, role),
-    props: propsOf(node, role),
-    children,
-  });
+  const name = nameOf(node);
+  into.push({ role, name, states: statesOf(node, role), props: propsOf(node, role, name), children });
+}
+
+/** The accessible name; a field with no other name is named by its placeholder, as the browser does. */
+function nameOf(element: Element): string {
+  const name = normalize(computeAccessibleName(element));
+  return name === '' ? normalize(element.getAttribute('placeholder') ?? '') : name;
 }
 
 /**
@@ -130,12 +135,16 @@ function inSection(element: Element): boolean {
   return false;
 }
 
-/** The value a textbox shows, as Playwright writes it: a text child. */
-function valueOf(element: Element, role: string): string {
-  if (role !== 'textbox' && role !== 'searchbox' && role !== 'spinbutton' && role !== 'combobox') return '';
-  const value = (element as HTMLInputElement).value;
-  return typeof value === 'string' ? value : '';
+/** The text a field holds, as Playwright writes it: a text child. A `<select>` shows none. */
+function valueOf(element: Element): string {
+  if (element.localName === 'textarea') return (element as HTMLTextAreaElement).value;
+  if (element.localName !== 'input') return '';
+  const input = element as HTMLInputElement;
+  return CHOICES.has(input.type) ? '' : input.value;
 }
+
+/** Inputs whose value is not text a person reads. */
+const CHOICES = new Set(['checkbox', 'radio', 'button', 'submit', 'reset', 'image', 'file', 'range', 'color', 'hidden']);
 
 function statesOf(element: Element, role: string): string[] {
   const states: string[] = [];
@@ -155,18 +164,21 @@ function statesOf(element: Element, role: string): string[] {
 
 function checkedOf(element: Element, role: string): boolean | 'mixed' {
   if (!CHECKABLE.has(role)) return false;
-  const aria = element.getAttribute('aria-checked');
-  if (aria === 'mixed') return 'mixed';
-  if (aria === 'true') return true;
-  if (aria === 'false') return false;
+  // A native checkbox or radio says its own state, whatever `aria-checked` claims.
   const input = element as HTMLInputElement;
-  if (input.indeterminate === true) return 'mixed';
-  return input.checked === true;
+  if (element.localName === 'input' && (input.type === 'checkbox' || input.type === 'radio')) {
+    return input.indeterminate ? 'mixed' : input.checked;
+  }
+  const aria = element.getAttribute('aria-checked');
+  return aria === 'mixed' ? 'mixed' : aria === 'true';
 }
 
-/** Disabled by itself, by `aria-disabled` on it or an ancestor, or by a disabled fieldset around it. */
+/**
+ * Disabled by itself, by `aria-disabled` on it or an ancestor, or by a disabled fieldset around
+ * it. A disabled fieldset disables what it holds, not its own group.
+ */
 function disabledOf(element: Element): boolean {
-  if (isDisabled(element)) return true;
+  if (element.localName !== 'fieldset' && isDisabled(element)) return true;
   for (let at: Element | null = element; at !== null; at = parentOf(at)) {
     if (at.getAttribute('aria-disabled') === 'true') return true;
     if (at !== element && at.localName === 'fieldset' && at.hasAttribute('disabled')) return true;
@@ -198,14 +210,12 @@ function selectedOf(element: Element, role: string): boolean {
   return role === 'option' && (element as HTMLOptionElement).selected === true;
 }
 
-function propsOf(element: Element, role: string): [string, string][] {
+function propsOf(element: Element, role: string, name: string): [string, string][] {
   const props: [string, string][] = [];
   const href = element.getAttribute('href');
   if (role === 'link' && href !== null) props.push(['url', href]);
-  const placeholder = element.getAttribute('placeholder');
-  if (placeholder !== null && placeholder !== '' && placeholder !== normalize(computeAccessibleName(element))) {
-    props.push(['placeholder', placeholder]);
-  }
+  const placeholder = normalize(element.getAttribute('placeholder') ?? '');
+  if (placeholder !== '' && placeholder !== name) props.push(['placeholder', placeholder]);
   return props;
 }
 
@@ -252,9 +262,9 @@ function write(node: AriaNode | string, indent: string, lines: string[], parent:
   }
 }
 
-/** A text the name already says is not repeated under it. */
+/** A text that is the name itself is not repeated under it; any other is. */
 function includesText(node: AriaNode, text: string): boolean {
-  return node.name === '' || !node.name.includes(text);
+  return node.name !== text;
 }
 
 /** A YAML scalar, quoted only when it has to be. */
