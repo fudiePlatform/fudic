@@ -11,7 +11,12 @@ import type { LanguageServiceContext } from '@volar/language-service';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import type { Token } from '@fudic/typecheck/tokens';
-import { createFudicTokenService, TokenCache, tokenMarkdown } from '../../src/services/tokens.js';
+import {
+  createFudicTokenService,
+  TokenCache,
+  tokenMarkdown,
+  withoutTokenEchoes,
+} from '../../src/services/tokens.js';
 import { embeddedOnly } from '../../src/services/embedded-css.js';
 import { memoryFs } from '../_support.js';
 
@@ -242,6 +247,76 @@ describe('the hover of a token declared twice', () => {
         'From this project · style `extra`, only in components that adopt it\n\n' +
         'Overrides `#111` from `@acme/guia` · style `tokens`',
     );
+  });
+});
+
+describe('withoutTokenEchoes', () => {
+  /** A CSS service that offers `labels` (or answers `list` as is) and hovers with `'theirs'`. */
+  const css = (list: unknown) => ({
+    name: 'css',
+    capabilities: {},
+    create: () => ({
+      provideCompletionItems: async () => list,
+      provideHover: () => 'theirs',
+      dispose: () => 'disposed',
+    }),
+  });
+
+  const wrap = (plugin: unknown) =>
+    withoutTokenEchoes(plugin as never, new TokenCache(memoryFs(FILES()))).create(context) as unknown as {
+      provideCompletionItems?: (...args: unknown[]) => Promise<unknown>;
+      provideHover?: (...args: unknown[]) => unknown;
+      dispose?: () => unknown;
+    };
+
+  const items = (labels: readonly string[]) => ({
+    isIncomplete: false,
+    items: labels.map((label) => ({ label })),
+  });
+
+  it('drops from its completion the names that are tokens of the file, and keeps the local ones', async () => {
+    const { document, position } = at('.a { --local: 1; color: var(--|');
+    const list = (await wrap(css(items(['--acme-ink', '--local', '--app-space']))).provideCompletionItems!(
+      document,
+      position,
+      { triggerKind: 1 },
+      cancel,
+    )) as { isIncomplete: boolean; items: { label: string }[] };
+
+    expect(list).toEqual({ isIncomplete: false, items: [{ label: '--local' }] });
+  });
+
+  it.each([
+    ['no list', undefined],
+    ['a null list', null],
+  ])('passes %s through untouched', async (_label, list) => {
+    const { document, position } = at('var(--|');
+
+    expect(await wrap(css(list)).provideCompletionItems!(document, position, { triggerKind: 1 }, cancel)).toBe(list);
+  });
+
+  it('passes the list through in a document that is not CSS', async () => {
+    const list = items(['--acme-ink']);
+    const { document, position } = at('var(--|', URI.file(FUD).toString(), 'fud');
+
+    expect(await wrap(css(list)).provideCompletionItems!(document, position, { triggerKind: 1 }, cancel)).toBe(list);
+  });
+
+  it('steps aside on hover over a token, and answers anywhere else', () => {
+    const wrapped = wrap(css(undefined));
+    const over = at('.a { color: var(--acme-i|nk); }');
+    const elsewhere = at('.a { col|or: red; }');
+
+    expect(wrapped.provideHover!(over.document, over.position, cancel)).toBeUndefined();
+    expect(wrapped.provideHover!(elsewhere.document, elsewhere.position, cancel)).toBe('theirs');
+    expect(wrapped.dispose!()).toBe('disposed');
+  });
+
+  it('adds nothing a plugin did not provide', () => {
+    const wrapped = wrap({ name: 'bare', capabilities: {}, create: () => ({}) });
+
+    expect(wrapped.provideCompletionItems).toBeUndefined();
+    expect(wrapped.provideHover).toBeUndefined();
   });
 });
 

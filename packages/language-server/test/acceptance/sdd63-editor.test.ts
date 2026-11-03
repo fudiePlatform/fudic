@@ -110,8 +110,10 @@ describe('§6.12 — the tokens in the `<style>` of a `.fud` of tienda', () => {
   const edited = async () => {
     const original = (await atApp.open(TIENDA_CARD)).text;
     const anchor = original.indexOf('display: block;');
-    const text = `${original.slice(0, anchor)}color: var(--guia-ink); outline: var(--${original.slice(anchor)}`;
-    return { text, typed: anchor + 'color: var(--guia-ink); outline: var(--'.length, ink: anchor + 'color: var(--gu'.length };
+    // A custom property local to this `<style>`, and a token it already reads, before the cursor.
+    const written = '--card-gap: 4px; color: var(--guia-ink); outline: var(--';
+    const text = `${original.slice(0, anchor)}${written}${original.slice(anchor)}`;
+    return { text, typed: anchor + written.length, ink: anchor + '--card-gap: 4px; color: var(--gu'.length };
   };
 
   it('offers the guide tokens after `var(--`, with their value and their doc', async () => {
@@ -122,14 +124,16 @@ describe('§6.12 — the tokens in the `<style>` of a `.fud` of tienda', () => {
       position: atApp.positionAt(text, typed),
     })) as CompletionList | CompletionItem[] | null;
     const items = Array.isArray(answer) ? answer : (answer?.items ?? []);
-    // The CSS service offers the variables the same `<style>` already uses, without a value;
-    // the token service's item is the one that carries it.
-    const ofTokens = items.filter((item) => item.detail !== undefined);
-    const ink = ofTokens.find((item) => item.label === '--guia-ink');
-    const accent = ofTokens.find((item) => item.label === '--guia-accent');
+    const ink = items.filter((item) => item.label === '--guia-ink');
+    const accent = items.find((item) => item.label === '--guia-accent');
 
-    expect(ink?.detail).toBe('#1c1c1e');
-    expect(JSON.stringify(ink?.documentation)).toContain('Body text.');
+    // Once, with its value: the CSS service no longer echoes a token the `<style>` reads.
+    expect(ink).toHaveLength(1);
+    // A custom property local to the `<style>` is not a token, and the CSS service still offers it.
+    expect(items.some((item) => item.label === '--card-gap')).toBe(true);
+
+    expect(ink[0]?.detail).toBe('#1c1c1e');
+    expect(JSON.stringify(ink[0]?.documentation)).toContain('Body text.');
     // tienda redeclares `--guia-accent` in its own sheet, and the last declaration is the one
     // that wins in CSS — so that is the one offered.
     expect(accent?.detail).toBe('#0f7b3f');
@@ -161,8 +165,8 @@ describe('§6.12 — the tokens in the `<style>` of a `.fud` of tienda', () => {
     const text = `${original.slice(0, anchor)}color: var(--guia-accent); ${original.slice(anchor)}`;
     const hover = await hoverText(atApp, TIENDA_CARD, text, anchor + 'color: var(--gu'.length);
 
-    // Volar merges the CSS service's own hover into the same answer; ours is one block of it.
-    expect(hover).toContain(
+    // Ours alone: the CSS service steps aside over a token.
+    expect(hover).toBe(
       '`--guia-accent: #0f7b3f`\n\n' +
         "The storefront's green, over the guide's blue, for the components of this app.\n\n" +
         'From this project · style `tienda`\n\n' +
