@@ -714,6 +714,9 @@ importers:
       '@fudic/di':
         specifier: workspace:*
         version: link:../di
+      '@fudic/diagnostics':
+        specifier: workspace:*
+        version: link:../diagnostics
       '@fudic/dom':
         specifier: workspace:*
         version: link:../dom

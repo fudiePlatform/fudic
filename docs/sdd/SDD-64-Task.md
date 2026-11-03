@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/terms` · `@fudic/workbench` · `@fudic/compiler` ·
 > `@fudic/vite` · `@fudic/testing`
 > **Rama:** `sdd-64-resultados-legibles`, desde `main`.
-> **Progreso:** 13 / 26 — `En curso`.
+> **Progreso:** 16 / 26 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -84,9 +84,9 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 17 | 8 | **`runTests`.** Entrada `@fudic/testing/run`: `createVitest` en proceso, el `vitest.config` del proyecto, reporter en memoria; `paths` y `names` | `testing` | `src/run.ts` · `package.json` (`exports`) |
-| [ ] | 18 | 17 | **`fail` y `broken`.** Por el nombre del error; fichero que no carga con `name: null` y los diagnósticos de un `FudicCompileError`; `at` y `quote` de la pila; `expected` y `actual` | `testing` | `src/run.ts` |
-| [ ] | 19 | 5, 17 | **Último informe y `failing`.** `.fudic/runs/last-spec.json` y `last-test.json`; `failing` en `runSpecs` y `runTests` (SDD §4.6) | `workbench` · `testing` | `src/run.ts` (los dos) |
+| [x] | 17 | 8 | **`runTests`.** Entrada `@fudic/testing/run`: `createVitest` en proceso, el `vitest.config` del proyecto, reporter en memoria; `paths` y `names` | `testing` | `src/run.ts` · `package.json` (`exports`) |
+| [x] | 18 | 17 | **`fail` y `broken`.** Por el nombre del error; fichero que no carga con `name: null` y los diagnósticos de un `FudicCompileError`; `at` y `quote` de la pila; `expected` y `actual` | `testing` | `src/run.ts` |
+| [x] | 19 | 5, 17 | **Último informe y `failing`.** `.fudic/runs/last-spec.json` y `last-test.json`; `failing` en `runSpecs` y `runTests` (SDD §4.6) | `workbench` · `testing` | `src/run.ts` (los dos) |
 | [ ] | 20 | 17–19 | **Los tests de la fase.** Criterios 5 y 15–19 | `testing` · `workbench` | `test/run*.test.ts` |
 
 ## Fase 6 — el árbol de roles (3)

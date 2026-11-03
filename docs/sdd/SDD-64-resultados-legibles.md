@@ -575,3 +575,16 @@ Todos son `error`. Cada `.md` sigue la forma de SDD-50 §4.4.
     criterio cuyo montaje desapareció no tiene `source`. Para leer la línea, `ReportSource` gana
     `read`: la sesión le pasa la lectura del disco; `reportOf` sigue sin tocar el disco por su
     cuenta.
+16. **`names` va al filtro de vitest.** El informe escribe el nombre completo con ` > ` y vitest
+    filtra por el nombre unido con espacios: cada nombre se traduce y se escapa, y basta uno.
+17. **`failing` en `runTests`**: ejecuta los ficheros de lo que no pasó, filtrando por sus nombres;
+    si un fichero no cargaba, sin filtro de nombres (vitest tiene un solo filtro para todos los
+    ficheros), así que esos ficheros corren enteros. Si en el último informe todo pasó, no ejecuta
+    nada y devuelve un informe vacío.
+18. **El último informe del banco es por proyecto**: `.fudic/runs/last-spec.json` en la raíz de
+    cada proyecto (un monorepo ejecutado desde arriba guarda uno en cada app). Tras un `failing`
+    guarda solo lo que volvió a ejecutar: lo que no está, pasó. `fudic-workbench run` gana
+    `--failing`.
+19. **Si vitest no arranca**, `runTests` no lanza: devuelve un `BrokenTest` con `file: '.'`,
+    `name: null` y un `FUD1207` con el mensaje.
+20. **`@fudic/testing` depende de `@fudic/diagnostics`** (el `FUD1207` y los tipos de posición).
