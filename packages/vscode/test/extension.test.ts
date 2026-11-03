@@ -142,6 +142,7 @@ describe('activate', () => {
       '**/tsconfig*.json',
       '**/package.json',
       '**/fudic.json',
+      '**/*.css',
       '**/fudic/terms/**/*.js',
       '**/*.fixture.ts',
       '**/src/locales/**/*.json',

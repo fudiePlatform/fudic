@@ -184,4 +184,13 @@ describe('the two-app workspace (§6.8)', () => {
     expect(own[0]!.path.endsWith('/examples/workspace/apps/tienda/src/tienda.css')).toBe(true);
     expect(accent.span.end).toBeGreaterThan(accent.span.start);
   });
+
+  it('carries the doc the guide writes on every token (§6.15)', () => {
+    const guide = tokens.filter((token) => token.from === '@fudic/example-guia');
+
+    expect(guide.every((token) => token.doc !== undefined && token.doc !== '')).toBe(true);
+    expect(guide.find((token) => token.name === '--guia-accent')?.doc).toBe(
+      "The one colour that marks what matters: a link, an active item, a card's edge.",
+    );
+  });
 });

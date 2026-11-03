@@ -11,6 +11,7 @@ import type * as ts from 'typescript';
 import { DocumentCache } from '../../src/document-cache.js';
 import { WorkspaceIndex } from '../../src/workspace-index.js';
 import { cardMarkdown, propDetails, tagCardAt } from '../../src/services/tag-card.js';
+import type { Contract } from '@fudic/typecheck/contract';
 import { LAYOUT, memoryFs } from '../_support.js';
 
 /** A component that declares props, slots, an event and a doc comment. */
@@ -182,51 +183,76 @@ describe('tagCardAt', () => {
 });
 
 describe('cardMarkdown', () => {
-  it('renders the tag, the doc and the three lists', () => {
-    const card = cardAt('<app-button></app-button>', '<app-button');
-    const text = cardMarkdown(card!, new Map());
+  const button = () => cardAt('<app-button></app-button>', '<app-button')!;
+
+  it('renders the tag, the doc and every section the parse gives', () => {
+    const card = button();
+    const text = cardMarkdown(card, card.contract);
 
     expect(text).toContain('**`<app-button>`** · fudic component');
     expect(text).toContain('Un botón con tono.');
     // The `?` is how TypeScript spells optional, so the card needs no legend for it.
-    expect(text).toContain('- `.label`');
-    expect(text).toContain('- `.tone?`');
-    expect(text).toContain('- `icon`');
-    expect(text).toContain('- `@picked`');
-  });
-
-  it('adds the type of a prop when the projection supplied one', () => {
-    const card = cardAt('<app-button></app-button>', '<app-button');
-    const text = cardMarkdown(card!, new Map([['label', { type: 'string', holds: 'string' as const }]]));
-
     expect(text).toContain('- `.label` — `string`');
-    // The one with no type keeps its line: the card is complete without the second half.
-    expect(text).toContain('- `.tone?`');
+    // The default as written, after the type the way a parameter writes it (SDD-63 §3.5).
+    expect(text).toContain("- `.tone?` — `string` = `'neutral'`");
+    // The default slot first, then the named ones.
+    expect(text).toContain('**Slots**\n- (default)\n- `icon`');
+    // «Events», in English (SDD-63 §3.5).
+    expect(text).toContain('**Events**\n- `@picked`');
   });
 
-  it('puts the doc of a prop under its own line, indented into the item', () => {
-    // Two spaces, and every line of it: a second line at column zero would end the list and
-    // turn the rest of the card into one paragraph (decision 107).
-    const card = cardAt('<app-button></app-button>', '<app-button');
-    const text = cardMarkdown(
-      card!,
-      new Map([
-        [
-          'label',
-          { type: 'string', holds: 'string' as const, doc: 'Lo que se lee.\nEn dos líneas.' },
-        ],
-      ]),
-    );
+  it('puts the six sections in order, with what only the checker adds', () => {
+    const card = { ...button(), library: '@acme/ui' };
+    const contract: Contract = {
+      doc: 'A button.',
+      props: [
+        {
+          name: 'variant',
+          required: false,
+          type: "'primary' | 'ghost'",
+          default: "'primary'",
+          doc: 'Visual weight.\nOne per view.',
+        },
+        { name: 'raw', required: true },
+        { name: 'size', required: false, default: '1' },
+      ],
+      slots: ['icon'],
+      defaultSlot: true,
+      events: [
+        { name: 'press', detail: 'number', doc: 'Fired on click.' },
+        { name: 'close' },
+      ],
+      parts: ['label'],
+      partsDynamic: true,
+      tokens: ['--acme-color-primary', '--acme-space'],
+    };
 
-    expect(text).toContain('- `.label` — `string`\n  Lo que se lee.\n  En dos líneas.');
+    expect(cardMarkdown(card, contract)).toBe(
+      [
+        '**`<app-button>`** · fudic component · @acme/ui',
+        'A button.',
+        "**Props**\n- `.variant?` — `'primary' | 'ghost'` = `'primary'`\n  Visual weight.\n  One per view.\n- `.raw`\n- `.size?` = `1`",
+        '**Slots**\n- (default)\n- `icon`',
+        '**Events**\n- `@press` — detail: `number`\n  Fired on click.\n- `@close`',
+        '**Parts**\n- `label`\n- (and parts computed at run time)',
+        '**Tokens**\n- `--acme-color-primary`, `--acme-space`',
+      ].join('\n\n'),
+    );
+  });
+
+  it('says parts are computed at run time even when none is literal', () => {
+    const card = button();
+    const text = cardMarkdown(card, { ...card.contract, parts: [], partsDynamic: true });
+
+    expect(text).toContain('**Parts**\n- (and parts computed at run time)');
   });
 
   it('leaves out a section that would be empty', () => {
-    // Three headings with nothing under them reads as broken; the absence already says the
-    // component declares none of that kind.
-    const text = cardMarkdown(cardAt('<app-bare></app-bare>', '<app-bare')!, new Map());
+    // Headings with nothing under them read as broken; the absence already says the component
+    // declares none of that kind.
+    const card = cardAt('<app-bare></app-bare>', '<app-bare')!;
 
-    expect(text).toBe('**`<app-bare>`** · fudic component');
+    expect(cardMarkdown(card, card.contract)).toBe('**`<app-bare>`** · fudic component');
   });
 });
 

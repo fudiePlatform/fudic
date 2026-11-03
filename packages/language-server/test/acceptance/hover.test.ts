@@ -55,7 +55,8 @@ describe('the card of a component', () => {
     // copies the type argument verbatim, so what the consumer reads is what the author wrote.
     // The JSDoc of the member comes with it, which is decision 107 asking nothing of the author
     // but ordinary TypeScript.
-    expect(card).toContain('- `.tone?` — `Tone`\n  El color con el que se pinta la etiqueta.');
+    // The default rides after the type, as written (SDD-63 §3.5).
+    expect(card).toContain("- `.tone?` — `Tone` = `'neutral'`\n  El color con el que se pinta la etiqueta.");
   });
 
   it('names a component the consumer did not open', async () => {

@@ -26,6 +26,8 @@ describe('buildClientLaunch', () => {
       '**/tsconfig*.json',
       '**/package.json',
       '**/fudic.json',
+      // The style sheets, whose tokens `var(--` offers (SDD-63 §3.5).
+      '**/*.css',
       // What an open .fudspec is validated against (SDD-52 criterion 25): a term module deleted
       // on disk, or a fixture renamed, changes its diagnostics without reopening it.
       '**/fudic/terms/**/*.js',
@@ -42,11 +44,12 @@ describe('buildClientLaunch', () => {
     ]);
   });
 
-  it('selects file-scheme fudic, fudspec and fudapi documents only (SDD-52 criterion 26, SDD-60 §4.10)', () => {
+  it('selects file-scheme fudic, fudspec, fudapi and css documents only (SDD-52 criterion 26, SDD-60 §4.10, SDD-63 §3.5)', () => {
     expect(buildClientLaunch(settings, '/srv.js', '/lib').documentSelector).toEqual([
       { scheme: 'file', language: 'fudic' },
       { scheme: 'file', language: 'fudspec' },
       { scheme: 'file', language: 'fudapi' },
+      { scheme: 'file', language: 'css' },
     ]);
   });
 
