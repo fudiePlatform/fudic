@@ -12,6 +12,10 @@ import { emitLayoutModule, emitRouteModule, emitRouteModuleMapped } from '../../
 import { drain, memoryIo, ssrIo, type PageFn } from './_support.js';
 import type { LinkedApi, ResolveIo } from '../../src/types/io.js';
 import type { SsrDom } from '@fudic/ssr';
+import { viewDiagnostics } from '../semantic/_view.js';
+
+/** What the semantic pass is told when the file's links are known and none declares `load`. */
+const NO_LOAD = { data: false, names: new Set<string>() };
 
 /** The facts of the `.fudapi` files these routes link (SDD-60 §3.14), as a host hands them over. */
 const APIS: Record<string, LinkedApi> = {
@@ -288,15 +292,17 @@ describe('`fud-data`: only what the client half reads (§6.15, §6.16)', () => {
     expect(JSON.parse(blockOf(html, 'fud-data')!)).toEqual({ user: 'pedro', token: 'x', items: [1] });
   });
 
-  it('warns FUD0621 when the client reads `data` and the route declares no `load`', () => {
+  it('warns FUD0621 when the client reads `data` and the route declares no `load` — in the semantic pass', () => {
     const route = [
       '<link rel="layout" href="./l.fud">',
       '@code { const n = signal(1); function saluda() { alert(data.user); } }',
       '<output>@n()</output>',
     ].join('\n');
+    // The analyzer says it for every route, reactive or not (SDD-62); the emit does not repeat it.
     const io = routeIo({ '/r.fud': route, '/l.fud': LAYOUT });
     const out = emitRouteModuleMapped(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
-    const found = out.diagnostics.filter((d) => d.code === 'FUD0621');
+    expect(out.diagnostics.filter((d) => d.code === 'FUD0621')).toEqual([]);
+    const found = viewDiagnostics(route, NO_LOAD).filter((d) => d.code === 'FUD0621');
     expect(found).toHaveLength(1);
     expect(found[0]!.severity).toBe('warning');
     // The span points at the `data` the author wrote, not at the top of the file.
@@ -313,9 +319,7 @@ describe('`fud-data`: only what the client half reads (§6.15, §6.16)', () => {
         `@code { ${load} const n = signal(1); function s() { alert(data.user); } }`,
         '<output>@n()</output>',
       ].join('\n');
-      const io = routeIo({ '/r.fud': route, '/l.fud': LAYOUT });
-      const out = emitRouteModuleMapped(resolveDocument('/r.fud', io).value, { routeName: 'ruta' });
-      expect(out.diagnostics.map((d) => d.code)).toEqual(['FUD0621']);
+      expect(viewDiagnostics(route, NO_LOAD).filter((d) => d.code === 'FUD0621'), load).toHaveLength(1);
     }
   });
 

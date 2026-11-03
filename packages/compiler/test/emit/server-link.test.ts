@@ -237,20 +237,34 @@ describe('`data` and FUD0621 with a linked `load`', () => {
     expect(emitted({ '/r.fudapi': api({ load: true, route: '/r.fud' }) })).not.toContain('FUD0621');
   });
 
-  it('FUD0621 when no linked file declares `load`', () => {
-    expect(emitted({ '/r.fudapi': api({ functions: ['f'] }) })).toContain('FUD0621');
+  it('FUD0621 when no linked file declares `load`: the semantic pass says it, the emit does not', () => {
+    // SDD-62: a fact about the file, said for every route and page, in the build and the editor.
+    expect(emitted({ '/r.fudapi': api({ functions: ['f'] }) })).not.toContain('FUD0621');
+    const src = route(
+      '<link rel="server" href="./r.fudapi">',
+      '  const n = signal(1);\n  function hi() { alert(data.user); }',
+      '<output>@n()</output>',
+    );
+    const semantic = (apis?: { data: boolean; names: ReadonlySet<string> }): string[] =>
+      codes(analyze(apis === undefined ? viewInput(src) : { ...viewInput(src), apis }).diagnostics);
+    expect(semantic({ data: false, names: new Set(['f']) })).toContain('FUD0621');
+    expect(semantic({ data: true, names: new Set() })).not.toContain('FUD0621');
+    // A file whose links could not be read is given the benefit.
+    expect(semantic()).not.toContain('FUD0621');
   });
 
   it('a link nobody read is given the benefit', () => {
     expect(emitted({}, false)).not.toContain('FUD0621');
   });
 
-  it('a page reached without the document graph has no links to look at', () => {
+  it('a page reached without the document graph: the emit says nothing, and neither does the analyzer without links', () => {
     const page =
       '<!DOCTYPE html><html><head>@code { const n = signal(1); function hi() { alert(data.user); } }</head>' +
       '<body><output>@n()</output></body></html>';
     const graph = resolveComponents('/p.fud', memoryIo({ '/p.fud': page }));
-    expect(codes(emitPageModuleMapped(graph, { routeName: 'p' }).diagnostics)).toContain('FUD0621');
+    expect(codes(emitPageModuleMapped(graph, { routeName: 'p' }).diagnostics)).not.toContain('FUD0621');
+    expect(codes(analyze(viewInput(page)).diagnostics)).not.toContain('FUD0621');
+    expect(codes(analyze({ ...viewInput(page), apis: { data: false, names: new Set() } }).diagnostics)).toContain('FUD0621');
   });
 });
 

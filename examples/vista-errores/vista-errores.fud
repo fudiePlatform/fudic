@@ -237,8 +237,9 @@
     @* FUD0907 sobre `Math`, `JSON`, `Date`, `Intl`, `Number`, `Object` y `NaN`: los globales de
        JS que no existen igual en todos los backends (SDD-61 criterio 3). *@
     <p>@(Math.max(a, b)) @(JSON.stringify(a)) @(Date.UTC(2026, 1)) @(Intl.DateTimeFormat.name) @(Number.isInteger(a)) @(Object.keys(o).length) @(NaN)</p>
-    @* FUD0907 sobre `$shadow`, `$dom` y `$ioc`, y FUD0666 sobre `$shadow`, `$dom` y `$ioc`: son
-       del emit, y la regla de SDD-37 solo los deja leer en los argumentos de un manejador. *@
+    @* FUD0666 sobre `$shadow`, `$dom` y `$ioc`: son del emit, y la regla de SDD-37 solo los deja
+       leer en los argumentos de un manejador. Un `$nombre` no es además FUD0907: un hecho, una voz
+       (SDD-62). *@
     <p>@($shadow === undefined) @($dom === undefined) @($ioc === undefined)</p>
     @* FUD0907 sobre `ctx`: es el parámetro de `load(ctx)`, no un nombre de la vista. *@
     <p>@ctx.url</p>

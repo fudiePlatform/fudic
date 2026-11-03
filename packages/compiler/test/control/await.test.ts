@@ -152,7 +152,8 @@ describe('a misplaced `@catch` is FUD1323, and the parse goes on (criterion 7)',
   it('through the whole pass: a stray `@catch` beside a view error reports both', () => {
     const source = component('<p>@catch</p><p>@({ a: 1 })</p>');
     expect(parse(source).codes).toEqual(['FUD1323 @catch']);
-    expect(viewDiagnostics(source).map((d) => d.code)).toContain('FUD0195');
+    // The object literal is the portable view's FUD1143 since FUD0195 was retired (SDD-62).
+    expect(viewDiagnostics(source).map((d) => d.code)).toContain('FUD1143');
   });
 });
 
