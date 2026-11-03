@@ -140,7 +140,8 @@ const addLoopKey: Repairer = ({ cached, typescript }, diagnostic) => {
   );
   if (loop?.statement === undefined) return [];
 
-  const key = loopKey(loop.statement, (at) => loopKeyAt(typescript, cached, at));
+  // The header's AST is in the batch's coordinates; the checker is asked at the `.fud`'s.
+  const key = loopKey(loop.statement, (at) => loopKeyAt(typescript, cached, cached.js.result.mapOffset(at)));
   if (key === undefined) return [];
   const at = loop.headerClose;
   return [{ title: `Add key (${key})`, edits: [{ span: span(at, at), newText: ` key (${key})` }] }];
