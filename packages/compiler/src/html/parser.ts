@@ -498,9 +498,10 @@ class HtmlParser {
       };
     }
     // Unclosed: located on the START tag, which is the actionable place in an editor. One
-    // report per file once a tag ran off the end — everything outside it is a consequence.
+    // report per file once a tag ran off the end — everything outside it is a consequence. A
+    // `<script>` or `<style>` with no close tag is the lexer's `FUD0014` already: one voice.
     if (!this.#tagRanOff) {
-      this.#diagnostics.push(FUD0052({ span: openSpan, name }));
+      if (element.kind !== 'raw') this.#diagnostics.push(FUD0052({ span: openSpan, name }));
       this.#tagRanOff = this.#ranOff(openSpan);
     }
     // `closeSpan` is OMITTED, never set to undefined (exactOptionalPropertyTypes).

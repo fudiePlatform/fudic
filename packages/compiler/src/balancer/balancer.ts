@@ -302,7 +302,8 @@ class Scanner {
     }
     const end = Math.min(i, this.#length);
     this.#region('string', start, end);
-    this.#diagnostics.push(FUD0003({ span: emptySpan(end) }));
+    // Over the string, from its quote: what Oxc reports about the same text is this fact again.
+    this.#diagnostics.push(FUD0003({ span: span(start, end) }));
     return end;
   }
 
@@ -332,7 +333,7 @@ class Scanner {
       i++;
     }
     this.#region('template', start, this.#length);
-    this.#diagnostics.push(FUD0004({ span: emptySpan(this.#length) }));
+    this.#diagnostics.push(FUD0004({ span: span(start, this.#length) }));
     return this.#length;
   }
 

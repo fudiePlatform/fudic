@@ -51,6 +51,16 @@ import {
   type LocaleCompile,
 } from '@fudic/compiler';
 import { FUD0744 } from '@fudic/diagnostics';
+import { echoes } from '@fudic/typecheck/problems';
+
+/** `emitted` minus the JS syntax errors (`FUD0170`) that meet an error the parse already gave. */
+function withoutSyntaxEchoes(emitted: readonly Diagnostic[], parsed: readonly Diagnostic[]): Diagnostic[] {
+  const spoken = parsed.filter((d) => d.severity === 'error').map((d) => d.span);
+  return emitted.filter((d) => d.code !== SYNTAX_ERROR || !echoes(d.span, spoken));
+}
+
+/** Oxc's syntax error, the one voice the emit repeats about what the parse rejected. */
+const SYNTAX_ERROR = 'FUD0170';
 
 /** The extension the emitted imports point at, so Vite resolves the `.fud` graph. */
 const IMPORT_EXT = '.fud';
@@ -396,7 +406,9 @@ export function transformFud(
     diagnostics: remapDiagnostics(
       [
         ...resolved.diagnostics,
-        ...out.diagnostics,
+        // One voice: a JS syntax error over a stretch the parse already rejected (an unclosed
+        // string of `@( … )` is `FUD0003`) is the parse's to say, as in the editor.
+        ...withoutSyntaxEchoes(out.diagnostics, resolved.diagnostics),
         ...contractDiagnostics(graph),
         // What the linked `.fudapi` say about the file (SDD-60 §3.14): names given twice, `form:=`.
         ...apiDiagnostics(graph),
