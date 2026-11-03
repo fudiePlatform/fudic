@@ -19,7 +19,6 @@ import { controlUniqueness } from './analyzers/control-uniqueness.js';
 import { controlInsideForm } from './analyzers/control-inside-form.js';
 import { errorMarker } from './analyzers/error-marker.js';
 import { formAssociatedPlacement } from './analyzers/form-associated-placement.js';
-import { primitiveInterpolation } from './analyzers/primitive-interpolation.js';
 import { componentDeclared } from './analyzers/component-declared.js';
 import { eventHandlerShape } from './analyzers/event-handler-shape.js';
 import { layoutLoad } from './analyzers/layout-load.js';
@@ -34,7 +33,6 @@ import { viewControl } from './analyzers/view-control.js';
 import { serverCut } from './analyzers/server-cut.js';
 import { nativeEventAttributes } from './analyzers/native-event-attributes.js';
 import { viewAttributes } from './analyzers/view-attributes.js';
-import { snippetRecursion } from './analyzers/snippet-recursion.js';
 import { rawOnlyChild } from './analyzers/raw-only-child.js';
 import { spreadTarget } from './analyzers/spread-target.js';
 import { translations } from './analyzers/translations.js';
@@ -56,7 +54,6 @@ export const ANALYZERS: readonly Analyzer[] = [
   controlInsideForm,
   errorMarker,
   formAssociatedPlacement,
-  primitiveInterpolation,
   componentDeclared,
   eventHandlerShape,
   layoutLoad,
@@ -71,7 +68,6 @@ export const ANALYZERS: readonly Analyzer[] = [
   serverCut,
   nativeEventAttributes,
   viewAttributes,
-  snippetRecursion,
   rawOnlyChild,
   spreadTarget,
   translations,

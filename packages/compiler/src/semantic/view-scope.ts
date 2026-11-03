@@ -23,7 +23,7 @@ import type { RazorExpression } from '../at/index.js';
 import type { Attribute } from '../html/index.js';
 import type { CatchBlock, ForNode, ForeachNode } from '../control/index.js';
 import type { SnippetDeclNode } from '../snippet/index.js';
-import { REF_NAME } from '../binding/index.js';
+import { FORM_SEND_NAME, REF_NAME } from '../binding/index.js';
 import { loopHeaderNames, patternNames, type OxcNode } from '../oxc/index.js';
 import type { SemanticInput } from './model.js';
 import { documentRoots, walk } from './walk.js';
@@ -365,11 +365,14 @@ function collectFragments(input: SemanticInput): readonly ViewFragment[] {
   return out;
 }
 
-/** The value of an `@event` or `bus:` binding: invoked later, by the handler rule (§3.8). */
+/**
+ * The value of an `@event` or `bus:` binding: invoked later, by the handler rule (§3.8). So is
+ * `form:=@save`, called on a valid submit and never while painting.
+ */
 function isDeferred(expr: RazorExpression, attr: Attribute): boolean {
   // `bus:( … )` names its event with an expression, and that one IS a value of the view.
   if (typeof attr.name !== 'string') return attr.name !== expr;
-  return attr.name.startsWith(EVENT_PREFIX) || attr.name.startsWith(BUS_PREFIX);
+  return attr.name.startsWith(EVENT_PREFIX) || attr.name.startsWith(BUS_PREFIX) || attr.name === FORM_SEND_NAME;
 }
 
 /** The names a `@snippet` declares: its parameters, read off the `function` Oxc built. */

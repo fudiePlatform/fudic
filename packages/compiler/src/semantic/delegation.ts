@@ -199,6 +199,8 @@ interface Candidate {
   readonly mentions: readonly Mention[];
   /** What the loops around the HANDLER declare: a row of the same name would clash. */
   readonly enclosingNames: ReadonlySet<string>;
+  /** The rows the handler writes with the retired `$` (`FUD1383`): it reads them all the same. */
+  readonly retired: ReadonlySet<string>;
 }
 
 /** One event binding that reads at least one row. */
@@ -321,6 +323,7 @@ function collect(source: string, roots: readonly HtmlContent[], js: DelegationJs
           at: span(start, start + binding.name.length),
           mentions: mentionsOf(js, unwrapParens(root)!),
           enclosingNames: new Set(loops.flatMap((at) => at.names)),
+          retired: retiredRows(unwrapParens(root)!),
         });
       }
     },
@@ -411,8 +414,8 @@ function strayDollars(js: DelegationJs, expr: RazorExpression, handler: boolean,
   });
 }
 
-/** A `$`-prefixed identifier that is not `$event`, which belongs to SDD-15. */
-function isDollarName(name: string): boolean {
+/** A `$`-prefixed identifier that is not `$event` nor an i18n piece: `FUD0666` or `FUD1383`. */
+export function isDollarName(name: string): boolean {
   return name.length > 1 && name.startsWith('$') && name !== EVENT_ARGUMENT && !I18N_PIECES.has(name);
 }
 
@@ -431,6 +434,13 @@ function visitDollars(node: OxcNode, found: (node: OxcNode) => void): void {
     }
     if (isNode(value)) visitDollars(value, found);
   }
+}
+
+/** The `$name`s of a handler's call, without the `$`. */
+function retiredRows(call: OxcNode): ReadonlySet<string> {
+  const out = new Set<string>();
+  visitDollars(call, (found) => out.add(String(found['name']).slice(1)));
+  return out;
 }
 
 function isNode(value: unknown): value is OxcNode {
@@ -471,7 +481,9 @@ function pair(collected: Collected, scope: ReadonlySet<string>): DelegationPlan 
     const reader: Reader = { attr, element, eventName, at, reads: rows };
     for (const row of rows) {
       if (!scope.has(row.name) && !candidate.enclosingNames.has(row.name)) continue;
-      diagnostics.push(FUD1382({ span: row.at, name: row.name }));
+      // A clash with a name of `@code` is the loop's own `FUD0918`, renamed away the same way;
+      // with a loop around the handler, only this code can say it.
+      if (candidate.enclosingNames.has(row.name)) diagnostics.push(FUD1382({ span: row.at, name: row.name }));
       clashing.add(reader);
     }
     readersOf.set(candidate.element, [...(readersOf.get(candidate.element) ?? []), reader]);
@@ -489,6 +501,14 @@ function pair(collected: Collected, scope: ReadonlySet<string>): DelegationPlan 
   };
 
   /** The events whose handlers, above `from`, read `name`: what a marker with no list serves. */
+  /** Whether a handler above `from` writes the row as `$name`. */
+  const writtenRetired = (from: ElementNode, name: string): boolean => {
+    for (let at = parentOf.get(from); at !== undefined; at = parentOf.get(at)) {
+      if (candidates.some((c) => c.element === at && c.retired.has(name))) return true;
+    }
+    return false;
+  };
+
   const eventsReading = (from: ElementNode, name: string): readonly string[] => {
     const events = new Set<string>();
     for (let at = parentOf.get(from); at !== undefined; at = parentOf.get(at)) {
@@ -523,6 +543,8 @@ function pair(collected: Collected, scope: ReadonlySet<string>): DelegationPlan 
       diagnostics.push(notAHeaderBinding(marker));
       continue;
     }
+    // A handler above that writes `$name` is `FUD1383`, and that is the one thing to fix.
+    if (writtenRetired(marker.element, marker.name)) continue;
     const served = marker.events ?? eventsReading(marker.element, marker.name);
     if (served.length === 0) {
       diagnostics.push(FUD0661({ span: marker.attr.span, name: marker.name }));

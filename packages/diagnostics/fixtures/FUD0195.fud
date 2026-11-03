@@ -1,5 +1,0 @@
-<fix-a>
-  <template shadowrootmode="open">
-    <p>@([1, 2])</p>
-  </template>
-</fix-a>

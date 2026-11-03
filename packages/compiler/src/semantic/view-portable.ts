@@ -50,6 +50,7 @@ import { patternNames, type OxcNode } from '../oxc/index.js';
 import { span, type Diagnostic, type Span } from '../types/index.js';
 import type { SemanticInput } from './model.js';
 import { alwaysTrue, child, children, field, nameOf, readNames } from './view-ast.js';
+import { isDollarName } from './delegation.js';
 import {
   NO_TEMPLATE,
   readsName,
@@ -346,7 +347,8 @@ export class PortableCheck {
       return;
     }
     const origin = this.#view.resolve(name, this.#template);
-    if (origin === undefined) this.#report('identifier', FUD0907({ ...this.#span(node), name }));
+    // A `$name` is not a name the view lacks: `FUD0666` or `FUD1383` already say what it is.
+    if (origin === undefined && !isDollarName(name)) this.#report('identifier', FUD0907({ ...this.#span(node), name }));
     else if (origin === 'code' || origin === 'neutral-let') this.#reads.push(node);
   }
 
