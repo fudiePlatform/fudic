@@ -68,14 +68,15 @@ function flatChildren(node: Node): Node[] {
 
 function visit(node: Node, into: (AriaNode | string)[]): void {
   if (node.nodeType === 3) {
-    into.push(node.textContent ?? '');
+    into.push((node as Text).data);
     return;
   }
   if (!isElement(node) || SKIPPED.has(node.localName) || isInaccessible(node)) return;
   const role = roleOf(node);
   if (role === null || SILENT.has(role)) {
-    // A box that is not inline separates its text from its neighbours', as the browser lays it out.
-    const block = getComputedStyle(node).display !== 'inline';
+    // A box that is not inline separates its text from its neighbours', as the browser lays it
+    // out. By its tag: happy-dom computes no `display`.
+    const block = !INLINE.has(node.localName) && !node.localName.includes('-');
     if (block) into.push(' ');
     for (const child of flatChildren(node)) visit(child, into);
     if (block) into.push(' ');
@@ -116,6 +117,15 @@ const IMPLICIT: ReadonlyMap<string, string | null> = new Map([
   ['legend', null],
   // The page itself is no line: Playwright starts at what it holds.
   ['html', null],
+]);
+
+/**
+ * The elements a browser lays out inline by default, with `<slot>` (`display: contents`); a
+ * custom element is inline too, which the walk tells by the hyphen of its name.
+ */
+const INLINE = new Set([
+  'a', 'abbr', 'b', 'bdi', 'bdo', 'cite', 'data', 'em', 'i', 'kbd', 'label', 'mark', 'q', 's', 'samp',
+  'slot', 'small', 'span', 'u', 'var',
 ]);
 
 /** Where a `<header>` or `<footer>` is no longer the page's banner or content info. */
@@ -189,10 +199,11 @@ function disabledOf(element: Element): boolean {
   return false;
 }
 
-/** The parent in the flat tree: a shadow root's host, a slotted element's slot. */
+/**
+ * The parent in the DOM, leaving a shadow root by its host. Not the flat tree: the browser decides
+ * a banner and a disabled fieldset by where an element is written, not by the slot it is shown in.
+ */
 function parentOf(element: Element): Element | null {
-  const slot = (element as Element & { assignedSlot?: Element | null }).assignedSlot;
-  if (slot !== undefined && slot !== null) return slot;
   const parent = element.parentNode;
   if (parent === null) return null;
   if (isElement(parent)) return parent;
