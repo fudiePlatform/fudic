@@ -14,7 +14,8 @@
  *
  * A pair is `fixtures/FUDnnnn.<ext>` + `fixtures/FUDnnnn.fixed.<ext>`, copied into `src/` of a
  * project of its own; or a folder `fixtures/FUDnnnn/`, copied as it is to the root of the
- * project, holding support files and exactly one `<name>.fixed.<ext>` beside its `<name>.<ext>`.
+ * project, holding support files and at least one `<name>.fixed.<ext>`: beside its `<name>.<ext>`
+ * it replaces that file in the fixed run; alone, it is a file the fix creates.
  * The fixed file is checked under the broken one's name: file names and tags matter. A project
  * without a `fudic.json` or a `tsconfig.json` gets the defaults below.
  *
@@ -63,7 +64,8 @@ const NODE_MODULES = `${PACKAGES}/cli/node_modules`;
 const PASSES = ['compiler', 'language-core', 'resolve', 'typecheck', 'spec', 'api'] as const;
 
 const EXTENSIONS = ['fud', 'fudspec', 'fudapi'] as const;
-const FIXED = new RegExp(`\\.fixed\\.(${EXTENSIONS.join('|')})$`, 'u');
+/** `<name>.fixed.<ext>` in a folder pair, of any extension: a fix may create a `.fixture.ts`. */
+const FIXED_ANY = /^(.*)\.fixed(\.[^./]+)$/u;
 
 const FUDIC_JSON = JSON.stringify({ id: 'fixes', kind: 'app' });
 const TSCONFIG = JSON.stringify({
@@ -123,16 +125,22 @@ function pairOf(code: string): Pair | string {
   const folder = `${FIXTURES}/${code}`;
   if (existsSync(folder) && statSync(folder).isDirectory()) {
     const files = walk(folder).map((f) => f.slice(folder.length + 1));
-    const fixed = files.filter((f) => FIXED.test(f));
-    if (fixed.length !== 1) return `${code}: fixtures/${code}/ holds ${fixed.length} *.fixed.<ext>, not one`;
-    const fixedFile = fixed[0]!;
-    const file = fixedFile.replace(/\.fixed(\.\w+)$/u, '$1');
-    if (!files.includes(file)) return `${code}: fixtures/${code}/${fixedFile} has no broken ${file} beside it`;
-    const support = files.filter((f) => f !== file && f !== fixedFile).map((f) => [f, `${folder}/${f}`] as const);
+    // Each `<name>.fixed.<ext>` replaces its `<name>.<ext>` in the fixed run, or — with no twin —
+    // is a file the fix creates: absent from the broken run, added to the fixed one.
+    const fixed = new Map(files.filter((f) => FIXED_ANY.test(f)).map((f) => [f.replace(FIXED_ANY, '$1$2'), f] as const));
+    if (fixed.size === 0) return `${code}: fixtures/${code}/ holds no *.fixed.<ext>`;
+    const changed = [...fixed.keys()].filter((f) => files.includes(f));
+    const created = [...fixed.keys()].filter((f) => !files.includes(f));
+    const fixedFiles = new Set(fixed.values());
+    const broken = files.filter((f) => !fixedFiles.has(f));
+    const kept = broken.filter((f) => !fixed.has(f));
     return {
-      file,
-      broken: new Map([...support, [file, `${folder}/${file}`]]),
-      fixed: new Map([...support, [file, `${folder}/${fixedFile}`]]),
+      file: [...changed, ...created.map((f) => `${f} (created)`)].join(', '),
+      broken: new Map(broken.map((f) => [f, `${folder}/${f}`] as const)),
+      fixed: new Map([
+        ...kept.map((f) => [f, `${folder}/${f}`] as const),
+        ...[...fixed].map(([f, from]) => [f, `${folder}/${from}`] as const),
+      ]),
     };
   }
   for (const ext of EXTENSIONS) {
