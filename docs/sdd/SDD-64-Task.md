@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/diagnostics` · `@fudic/terms` · `@fudic/workbench` · `@fudic/compiler` ·
 > `@fudic/vite` · `@fudic/testing`
 > **Rama:** `sdd-64-resultados-legibles`, desde `main`.
-> **Progreso:** 23 / 26 — `En curso`.
+> **Progreso:** 24 / 26 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -95,7 +95,7 @@ código, no el test.
 |---|---|---|---|---|---|
 | [x] | 21 | — | **`outline` en happy-dom.** Árbol aplanado (shadow roots y slots), rol, nombre y estados con `aria-query` y `dom-accessibility-api`, en el formato de Playwright (SDD §4.7) | `testing` | `src/outline.ts` · `src/index.ts` · `package.json` |
 | [x] | 22 | — | **`outlineOf` en el navegador.** `ariaSnapshot()` de Playwright | `workbench` | `src/outline.ts` · `src/index.ts` |
-| [ ] | 23 | 21, 22 | **Los tests de los dos motores.** Criterios 21 y 22: el mismo texto en las ocho piezas | `testing` · `workbench` | `test/outline*.test.ts` |
+| [x] | 23 | 21, 22 | **Los tests de los dos motores.** Criterios 21 y 22: el mismo texto en las ocho piezas | `testing` · `workbench` | `test/outline*.test.ts` |
 
 ## Fase 7 — cierre (3)
 
