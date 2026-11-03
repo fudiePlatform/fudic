@@ -53,7 +53,10 @@ const CODES = `${PACKAGES}/diagnostics/src/codes`;
 const FIXTURES = `${PACKAGES}/diagnostics/fixtures`;
 /** The framework's terms, as a project that installed `@fudic/terms` reads them. */
 const FRAMEWORK_TERMS = `${PACKAGES}/terms/terms`;
-/** So that a fixture's `import` of a package resolves as it does in a project of this repository. */
+/**
+ * So that a fixture's `import` of a package resolves as it does in an app of this repository: the
+ * CLI carries the runtime packages `examples/basic` depends on as dev-dependencies for this.
+ */
 const NODE_MODULES = `${PACKAGES}/cli/node_modules`;
 
 /** The packages whose source gives a code from a `.fud`, a `.fudspec` or a `.fudapi`. */

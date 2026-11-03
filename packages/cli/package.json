@@ -62,6 +62,13 @@
     "@fudic/typecheck": "workspace:*"
   },
   "devDependencies": {
+    "@fudic/core": "workspace:*",
+    "@fudic/di": "workspace:*",
+    "@fudic/dom": "workspace:*",
+    "@fudic/forms": "workspace:*",
+    "@fudic/http": "workspace:*",
+    "@fudic/ssr": "workspace:*",
+    "@fudic/transport": "workspace:*",
     "@fudic/tsconfig": "workspace:*",
     "@fudic/vite": "workspace:*",
     "@types/node": "22.20.0",
