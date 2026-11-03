@@ -59,7 +59,7 @@ import {
   virtualFilesPayload,
 } from './requests.js';
 import { createFudicService, createFudicTagService } from './services/plugin.js';
-import { createFudicTokenService, TokenCache } from './services/tokens.js';
+import { createFudicTokenService, TokenCache, withoutTokenEchoes } from './services/tokens.js';
 import { embeddedOnly } from './services/embedded-css.js';
 import { silenceOwnedPositions } from './services/owned.js';
 import { redirectServerDefinitions } from './services/server-definition.js';
@@ -245,7 +245,8 @@ export function createFudicServer(
       silenceOwnedPositions(createHtmlService({ documentSelector: ['fud'] })),
       // Inside a `.fud` only: a plain `.css` is open here for its tokens, and there the editor
       // already has a CSS service of its own.
-      embeddedOnly(createCssService()),
+      // And without repeating the tokens the service below answers for, with their value.
+      withoutTokenEchoes(embeddedOnly(createCssService()), tokens),
       // The tokens of the project and its libraries, wherever CSS is written (SDD-63 §3.5).
       createFudicTokenService(tokens),
       // The one position where this server ADDS instead of deciding: after a `<`, the workspace

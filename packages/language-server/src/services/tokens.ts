@@ -133,6 +133,48 @@ export function createFudicTokenService(tokens: TokenCache): LanguageServicePlug
 }
 
 /**
+ * The CSS service, without repeating the tokens this service answers for.
+ *
+ * Volar's CSS service offers every custom property the `<style>` already reads, with no value
+ * and no doc, so a token used once came up twice in the list — once bare, once with what it is.
+ * Over a token its hover says nothing ours does not, and Volar joins both hovers into one. So
+ * its completion drops the names that are tokens of the file, and its hover steps aside over a
+ * token. A custom property local to the `<style>` is not a token and is still its to offer.
+ */
+export function withoutTokenEchoes(plugin: LanguageServicePlugin, tokens: TokenCache): LanguageServicePlugin {
+  return {
+    ...plugin,
+    create(context) {
+      const instance = plugin.create(context);
+      const completion = instance.provideCompletionItems?.bind(instance);
+      const hover = instance.provideHover?.bind(instance);
+      return {
+        ...instance,
+        ...(completion === undefined
+          ? {}
+          : {
+              async provideCompletionItems(document, position, completionContext, token) {
+                const list = await completion(document, position, completionContext, token);
+                const file = cssFileOf(context, document);
+                if (list === undefined || list === null || file === undefined) return list;
+                const names = new Set(tokens.tokensFor(file).map((it) => it.name));
+                return { ...list, items: list.items.filter((item) => !names.has(item.label)) };
+              },
+            }),
+        ...(hover === undefined
+          ? {}
+          : {
+              provideHover(document, position, token) {
+                if (tokenAt(context, tokens, document, position) !== undefined) return undefined;
+                return hover(document, position, token);
+              },
+            }),
+      };
+    },
+  };
+}
+
+/**
  * The file a CSS document belongs to: the `.fud` its `<style>` is embedded in, or the `.css`
  * itself. Nothing for a document that is not CSS.
  */

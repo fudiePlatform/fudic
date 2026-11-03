@@ -411,3 +411,8 @@ diga que está memoizado. El contrato usa `codeOfDocument`, la versión memoizad
     la que gana, y debajo «Overrides `#0b5fff` from `@fudic/example-guia`». Sin esa línea, el
     hover de un token de librería sobrescrito escondía de dónde venía. La sobrescritura de
     `tienda.css` se documenta también.
+12. **Un token sale una sola vez.** El servicio CSS de Volar ofrecía las propiedades que el
+    `<style>` ya lee, sin valor ni doc, y un token usado una vez salía dos veces en la lista; su
+    hover se juntaba con el nuestro. Envuelto (`withoutTokenEchoes`): su completado quita los
+    nombres que son tokens del fichero y su hover se aparta sobre un token. Una variable local
+    del `<style>` la sigue ofreciendo él.
