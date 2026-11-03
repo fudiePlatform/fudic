@@ -1,3 +1,5 @@
+<link rel="layout" href="../layouts/main.fud">
+
 <p>Hi</p>
 <style>
   p { color: red; }

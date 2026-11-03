@@ -1,3 +1,5 @@
+<link rel="layout" href="../layouts/main.fud">
+
 @code {
   const items = ["a"];
 }
