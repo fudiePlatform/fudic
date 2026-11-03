@@ -101,6 +101,47 @@ describe('style rules (criterion 1)', () => {
   });
 });
 
+describe('the doc of a declaration (SDD-63 §3.4, §6.7)', () => {
+  /** The declarations of the only rule of `:host { body }`. */
+  const declarationsOf = (body: string): readonly CssDeclaration[] =>
+    style(rulesOf(`:host { ${body} }`)[0]).declarations;
+
+  it('keeps the `/** … */` that only whitespace separates from the declaration', () => {
+    const css = ':host { /** Main. */ --a: 1; }';
+    const [d] = style(rulesOf(css)[0]).declarations;
+    expect(d!.doc?.text).toBe('Main.');
+    expect(slice(css, d!.doc!.span)).toBe('/** Main. */');
+  });
+
+  it('takes the stars and the indent off every line', () => {
+    const [d] = declarationsOf('/**\n   * One.\n   * Two.\n   */\n  --a: 1;');
+    expect(d!.doc?.text).toBe('One.\nTwo.');
+  });
+
+  it('documents only the declaration it is written before', () => {
+    const [a, b] = declarationsOf('/** A. */ --a: 1; --b: 2;');
+    expect(a!.doc?.text).toBe('A.');
+    expect(b).not.toHaveProperty('doc');
+  });
+
+  it('documents a declaration without a colon too', () => {
+    expect(declarationsOf('/** Odd. */ stray;')[0]!.doc?.text).toBe('Odd.');
+  });
+
+  it.each([
+    ['a plain comment', '/* no */ --a: 1;'],
+    ['a doc followed by a plain comment', '/** a */ /* b */ --a: 1;'],
+    ['an empty comment', '/**/ --a: 1;'],
+    ['a doc that says nothing', '/** */ --a: 1;'],
+  ])('is not taken from %s', (_label, body) => {
+    expect(declarationsOf(body)[0]).not.toHaveProperty('doc');
+  });
+
+  it('is the last comment of the trivia when several come before', () => {
+    expect(declarationsOf('/* note */ /** Real. */ --a: 1;')[0]!.doc?.text).toBe('Real.');
+  });
+});
+
 describe('nesting (criterion 1)', () => {
   it('separates the own declarations from the nested rules', () => {
     const css = '.card { padding: 1rem; & .body { margin: 0 } > li { x: y } color: red }';
