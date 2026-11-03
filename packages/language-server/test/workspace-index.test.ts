@@ -47,7 +47,16 @@ describe('scan', () => {
       holes: { renderSections: [] },
       snippets: [],
       requiredProps: [],
-      contract: { props: [], slots: [], events: [] },
+      contract: {
+        props: [],
+        slots: [],
+        defaultSlot: true,
+        events: [],
+        parts: [],
+        partsDynamic: false,
+        tokens: [],
+      },
+      uses: [],
       external: false,
     });
     expect(index.get('/p/blog/[slug].fud')).toEqual({
@@ -59,7 +68,16 @@ describe('scan', () => {
       holes: { renderSections: [] },
       snippets: [],
       requiredProps: [],
-      contract: { props: [], slots: [], events: [] },
+      contract: {
+        props: [],
+        slots: [],
+        defaultSlot: false,
+        events: [],
+        parts: [],
+        partsDynamic: false,
+        tokens: [],
+      },
+      uses: [],
       external: false,
     });
   });

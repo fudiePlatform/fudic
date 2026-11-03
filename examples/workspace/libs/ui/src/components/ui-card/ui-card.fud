@@ -1,5 +1,12 @@
 @code {
-  const { title } = props<{ title: string }>();
+  /**
+   * A card with a title, framed with the guide's tokens. Whatever is written inside the tag (text,
+   * a list, any markup) fills its default slot, under the title.
+   */
+  const { title } = props<{
+    /** The heading of the card: one short line. */
+    title: string;
+  }>();
 }
 
 <head>

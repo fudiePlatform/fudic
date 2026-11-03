@@ -59,6 +59,8 @@ import {
   virtualFilesPayload,
 } from './requests.js';
 import { createFudicService, createFudicTagService } from './services/plugin.js';
+import { createFudicTokenService, TokenCache, withoutTokenEchoes } from './services/tokens.js';
+import { embeddedOnly } from './services/embedded-css.js';
 import { silenceOwnedPositions } from './services/owned.js';
 import { redirectServerDefinitions } from './services/server-definition.js';
 import { filterTypeScriptCompletions } from './services/ts-completion.js';
@@ -177,6 +179,7 @@ export function createFudicServer(
   const index = new WorkspaceIndex(deps.fileSystem);
   const configs = new ProjectConfigs(deps.fileSystem);
   const translations = new Translations(deps.fileSystem);
+  const tokens = new TokenCache(deps.fileSystem);
   const cache = new DocumentCache(index);
   const stats = new RequestStats();
   const logger = loggerFor(connection);
@@ -240,7 +243,12 @@ export function createFudicServer(
       // silence the projection left — which is what a `.` on a component actually offered
       // (BUG-23, TODO 1).
       silenceOwnedPositions(createHtmlService({ documentSelector: ['fud'] })),
-      createCssService(),
+      // Inside a `.fud` only: a plain `.css` is open here for its tokens, and there the editor
+      // already has a CSS service of its own.
+      // And without repeating the tokens the service below answers for, with their value.
+      withoutTokenEchoes(embeddedOnly(createCssService()), tokens),
+      // The tokens of the project and its libraries, wherever CSS is written (SDD-63 §3.5).
+      createFudicTokenService(tokens),
       // The one position where this server ADDS instead of deciding: after a `<`, the workspace
       // components are a voice next to the native tags rather than in place of them. It is
       // additional, so it neither claims the position nor is silenced by the service above it
@@ -359,6 +367,8 @@ export function createFudicServer(
       // A catalog, or the `locales` of a `fudic.json`: the next hover over a message reads
       // them again (SDD-58 §4.11).
       translations.invalidate(path);
+      // A sheet or a `fudic.json`: the next `var(--` reads the tokens again.
+      tokens.invalidate(path);
       if (path.endsWith(`/${CONFIG_FILE}`)) {
         configs.invalidate(path);
         continue;

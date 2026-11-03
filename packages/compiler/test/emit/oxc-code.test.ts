@@ -220,6 +220,26 @@ describe('extractCode', () => {
     expect(text(second.hostAt)).toBe("'press',");
   });
 
+  it('knows where the detail is written and where the statement holding the call starts (SDD-63 §4.1)', () => {
+    const source = wrap(
+      '@code {\n' +
+        "  import { emit } from '@fudic/dom';\n" +
+        "  emit('close');\n" +
+        "  function press(count) { if (count) emit('press', count + 1); }\n" +
+        '}\n',
+    );
+    const { emitCalls } = extractCode(source, componentDoc(source));
+    const [close, press] = emitCalls as [(typeof emitCalls)[0], (typeof emitCalls)[0]];
+
+    // No second argument, no detail; the statement is the call's own.
+    expect(close).not.toHaveProperty('detail');
+    expect(source.slice(close.statement, close.statement + 13)).toBe("emit('close')");
+    // The detail is the whole second argument; the statement is the INNERMOST one around the
+    // call — its own, not the `if` nor the function that hold it.
+    expect(source.slice(press.detail!.start, press.detail!.end)).toBe('count + 1');
+    expect(source.slice(press.statement, press.statement + 13)).toBe("emit('press',");
+  });
+
   it('finds nothing when emit is not the one imported from @fudic/dom', () => {
     const source = wrap(
       '@code {\n' +

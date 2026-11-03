@@ -39,6 +39,12 @@ export default defineConfig({
       '@fudic/language-core': fileURLToPath(
         new URL('../language-core/src/index.ts', import.meta.url),
       ),
+      // The subpath before the package: a string alias also matches `key/…`, and the first
+      // entry that matches wins.
+      '@fudic/typecheck/contract': fileURLToPath(
+        new URL('../typecheck/src/contract.ts', import.meta.url),
+      ),
+      '@fudic/typecheck/tokens': fileURLToPath(new URL('../typecheck/src/tokens.ts', import.meta.url)),
       '@fudic/typecheck': fileURLToPath(new URL('../typecheck/src/index.ts', import.meta.url)),
     },
   },

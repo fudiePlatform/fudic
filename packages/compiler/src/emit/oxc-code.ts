@@ -174,6 +174,16 @@ export interface EmitCall {
    * also admits; the second needs the module graph, which one file's model does not have.
    */
   readonly name?: string;
+  /**
+   * The second argument — the event's detail — in SOURCE coordinates, when the call passes one.
+   * The contract asks the checker for its type there.
+   */
+  readonly detail?: Span;
+  /**
+   * Where the innermost statement holding the call starts, in SOURCE coordinates: a JSDoc
+   * written right before it documents the event.
+   */
+  readonly statement: number;
 }
 
 /**
@@ -677,7 +687,7 @@ export function extractCode(source: string, doc: CodeDocument): ExtractedCode {
 
   const binding = emitBinding(clientStatements);
   const emitCalls: EmitCall[] = [];
-  if (binding !== undefined) collectEmitCalls(clientStatements, binding, map, emitCalls);
+  if (binding !== undefined) collectEmitCalls(clientStatements, binding, map, emitCalls, 0);
   // The body is read AFTER the calls are known: each statement is copied with the host
   // spliced into every `emit(...)` it holds (§4.4).
   // The callbacks this component received as cells: reading one is CALLING it (§4.6, step 4),
@@ -980,21 +990,32 @@ function emitBinding(statements: readonly OxcNode[]): string | undefined {
   return undefined;
 }
 
+/** The ESTree node types a JSDoc is written before: every statement and every declaration. */
+const STATEMENT = /(?:Statement|Declaration)$/u;
+
 /**
  * Every call of `binding`, however deep — a handler nested three functions down emits just
  * as much as a statement at the top of the region. The walk is generic on purpose: what it
  * must never do is match text, and a node it does not know about cannot hide a call.
  */
-function collectEmitCalls(node: unknown, binding: string, map: MapOffset, out: EmitCall[]): void {
+function collectEmitCalls(
+  node: unknown,
+  binding: string,
+  map: MapOffset,
+  out: EmitCall[],
+  statement: number,
+): void {
   if (Array.isArray(node)) {
-    for (const child of node) collectEmitCalls(child, binding, map, out);
+    for (const child of node) collectEmitCalls(child, binding, map, out, statement);
     return;
   }
   if (node === null || typeof node !== 'object') return;
   const current = node as OxcNode;
+  // The innermost statement around the call is the one its JSDoc is written before.
+  const around = STATEMENT.test(current.type) ? map(current.start) : statement;
   const callee = is(current, 'CallExpression') ? field(current, 'callee') : undefined;
   if (is(callee, 'Identifier') && name(callee!) === binding) {
-    const first = fieldArray(current, 'arguments')[0];
+    const [first, second] = fieldArray(current, 'arguments');
     // A string literal is the whole of v1's resolution. Anything else — an identifier, a
     // template literal, a member expression — leaves the name absent, which is the
     // permissive posture and not a hole to fill by default.
@@ -1005,10 +1026,12 @@ function collectEmitCalls(node: unknown, binding: string, map: MapOffset, out: E
       // call closes: a `CallExpression` always ends at its `)`.
       hostAt: first === undefined ? map(current.end - 1) : map(first.start),
       hasArgs: first !== undefined,
+      statement: around,
+      ...(second === undefined ? {} : { detail: span(map(second.start), map(second.end)) }),
       ...(typeof literal === 'string' ? { name: literal } : {}),
     });
   }
-  for (const value of Object.values(current)) collectEmitCalls(value, binding, map, out);
+  for (const value of Object.values(current)) collectEmitCalls(value, binding, map, out, around);
 }
 
 /**

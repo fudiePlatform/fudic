@@ -29,6 +29,8 @@ export {
   FudIndex,
   describeFud,
   type IndexedFud,
+  type TagUse,
+  type TagUseSite,
   type DescribeInput,
 } from './fud-index.js';
 export { createFileRegistry } from './file-registry.js';

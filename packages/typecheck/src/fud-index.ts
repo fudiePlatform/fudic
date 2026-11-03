@@ -16,7 +16,14 @@
  */
 
 import { API_EXTENSION, parseApi } from '@fudic/api';
-import type { ProjectModule, StructuredDocument } from '@fudic/compiler';
+import {
+  documentRoots,
+  span,
+  walk,
+  type ProjectModule,
+  type Span,
+  type StructuredDocument,
+} from '@fudic/compiler';
 import { CONFIG_FILE, readProjectConfig } from '@fudic/config';
 import { PIPES_DIR, SRC_DIR } from '@fudic/conventions';
 import type { ServerImport } from '@fudic/language-core';
@@ -39,6 +46,25 @@ export interface IndexedFud extends LinkTarget {
    * diagnosed as the author's own code. The author of an app does not fix a library's errors.
    */
   readonly external: boolean;
+  /**
+   * Every custom element in its markup other than its own host, with the span of the tag name.
+   *
+   * Every one and not only those a `<link rel="component">` resolves: what a link resolves to
+   * depends on files indexed after this one, so `usesOf` asks the index at query time.
+   */
+  readonly uses: readonly TagUse[];
+}
+
+/** One element written with a component tag. */
+export interface TagUse {
+  readonly tag: string;
+  readonly span: Span;
+}
+
+/** Where a component tag is used: the file and the tag name in it. */
+export interface TagUseSite {
+  readonly path: string;
+  readonly span: Span;
 }
 
 /** What an entry is built from: the file, its text and its one parse. */
@@ -56,7 +82,26 @@ export function describeFud(input: DescribeInput): IndexedFud {
     tag: tagOf(input.document),
     holes: holesOf(input.document),
     external: input.external,
+    uses: usesIn(input.document),
   };
+}
+
+/**
+ * The custom elements a document writes, in source order. A native element has no hyphen
+ * (decision 41), and a component's own host is its definition, not a use.
+ */
+function usesIn(document: StructuredDocument): readonly TagUse[] {
+  const own = tagOf(document);
+  const uses: TagUse[] = [];
+  walk(documentRoots(document), {
+    element(el) {
+      if (!el.name.includes('-') || el.name === own) return;
+      // `<` and then the name: the open tag starts with it.
+      const start = el.openSpan.start + 1;
+      uses.push({ tag: el.name, span: span(start, start + el.name.length) });
+    },
+  });
+  return uses;
 }
 
 export class FudIndex<E extends IndexedFud = IndexedFud> implements LinkIndex, FudList {
@@ -139,6 +184,21 @@ export class FudIndex<E extends IndexedFud = IndexedFud> implements LinkIndex, F
   /** Every entry, in insertion order. */
   all(): readonly E[] {
     return [...this.#entries.values()];
+  }
+
+  /**
+   * Where a component tag is used, across the project and its libraries, ordered by path and
+   * position. Only a tag some indexed component defines has uses: anything else is a typo or a
+   * native custom element, and listing it as a reference would be a guess.
+   */
+  usesOf(tag: string): readonly TagUseSite[] {
+    const entries = this.all();
+    if (!entries.some((entry) => entry.tag === tag)) return [];
+    return entries
+      .flatMap((entry) =>
+        entry.uses.filter((use) => use.tag === tag).map((use) => ({ path: entry.path, span: use.span })),
+      )
+      .sort((a, b) => (a.path === b.path ? a.span.start - b.span.start : a.path < b.path ? -1 : 1));
   }
 
   /**
