@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/typecheck` · `@fudic/compiler` · `@fudic/language-server` ·
 > `examples/workspace` · `examples/basic`
 > **Rama:** `sdd-63-contrato-del-componente`, desde `main`.
-> **Progreso:** 0 / 20 — `Listo`.
+> **Progreso:** 2 / 20 — `Listo`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -41,8 +41,8 @@ tocarlos.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **Mover.** `contractOf`, sus tipos y `propDetails` (que pasa a ser `typedContract`) salen de `language-server` a la entrada nueva `@fudic/typecheck/contract`; el language server los importa. Sin cambios de comportamiento | `typecheck` · `language-server` | `typecheck/src/contract.ts` · `package.json` (`exports`) · `language-server/src/mode.ts` · `src/services/tag-card.ts` |
-| [ ] | 2 | 1 | **Una pasada de Oxc.** El contrato usa `codeOfDocument` (memoizado) en lugar de dos `extractCode` | `typecheck` | `src/contract.ts` |
+| [x] | 1 | — | **Mover.** `contractOf`, sus tipos y `propDetails` (que pasa a ser `typedContract`) salen de `language-server` a la entrada nueva `@fudic/typecheck/contract`; el language server los importa. Sin cambios de comportamiento | `typecheck` · `language-server` | `typecheck/src/contract.ts` · `package.json` (`exports`) · `language-server/src/mode.ts` · `src/services/tag-card.ts` |
+| [x] | 2 | 1 | **Una pasada de Oxc.** El contrato usa `codeOfDocument` (memoizado) en lugar de dos `extractCode` | `typecheck` | `src/contract.ts` |
 
 ## Fase 2 — lo que le faltaba al contrato (7)
 

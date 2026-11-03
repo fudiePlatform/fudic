@@ -26,7 +26,8 @@
   "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
-      "problems": ["./dist/problems.d.ts"]
+      "problems": ["./dist/problems.d.ts"],
+      "contract": ["./dist/contract.d.ts"]
     }
   },
   "exports": {
@@ -37,6 +38,10 @@
     "./problems": {
       "types": "./dist/problems.d.ts",
       "import": "./dist/problems.js"
+    },
+    "./contract": {
+      "types": "./dist/contract.d.ts",
+      "import": "./dist/contract.js"
     }
   },
   "files": [
