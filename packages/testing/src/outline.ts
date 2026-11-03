@@ -82,7 +82,8 @@ function visit(node: Node, into: (AriaNode | string)[]): void {
     return;
   }
   const children: (AriaNode | string)[] = [];
-  for (const child of flatChildren(node)) visit(child, children);
+  // A `<textarea>`'s text node is only where its value started: what it shows is its value.
+  if (node.localName !== 'textarea') for (const child of flatChildren(node)) visit(child, children);
   const value = valueOf(node);
   if (value !== '') children.push(value);
   const name = nameOf(node);
@@ -97,7 +98,7 @@ function nameOf(element: Element): string {
 
 /**
  * The implicit roles the browser gives and `dom-accessibility-api` does not: the text-level ones.
- * A `<legend>` has none — its text joins what follows it.
+ * A `<legend>` has none — its text joins what follows it — and nor does `<html>`.
  */
 const IMPLICIT: ReadonlyMap<string, string | null> = new Map([
   ['p', 'paragraph'],
@@ -113,6 +114,8 @@ const IMPLICIT: ReadonlyMap<string, string | null> = new Map([
   ['caption', 'caption'],
   ['dfn', 'term'],
   ['legend', null],
+  // The page itself is no line: Playwright starts at what it holds.
+  ['html', null],
 ]);
 
 /** Where a `<header>` or `<footer>` is no longer the page's banner or content info. */
@@ -196,12 +199,12 @@ function parentOf(element: Element): Element | null {
   return (parent as ShadowRoot).host ?? null;
 }
 
+/** `aria-level`, or the number of an `<h1>`–`<h6>`; a `role="heading"` without one has none. */
 function levelOf(element: Element, role: string): number | undefined {
   const aria = Number(element.getAttribute('aria-level'));
   if (Number.isInteger(aria) && aria > 0) return aria;
-  if (role !== 'heading') return undefined;
-  const heading = /^h([1-6])$/u.exec(element.localName);
-  return heading === null ? 2 : Number(heading[1]);
+  const heading = role === 'heading' ? /^h([1-6])$/u.exec(element.localName) : null;
+  return heading === null ? undefined : Number(heading[1]);
 }
 
 function selectedOf(element: Element, role: string): boolean {
