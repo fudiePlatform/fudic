@@ -168,7 +168,7 @@ export function problemOf(error: unknown): ProblemMessage {
   const message = (error instanceof Error ? error.message : String(error)).split('\n')[0]!;
   const diagnostics = isFudicCompileError(error)
     ? error.fudic.diagnostics
-    : [toWire(FUD1207({ reason: message }), null, () => undefined)];
+    : [toWire(FUD1207({ reason: message }), null)];
   return { v: 2, type: 'problem', message, diagnostics };
 }
 
@@ -264,15 +264,16 @@ function runCommand(tag: string, ids: unknown, failing: unknown): RunCommand | u
 
 /**
  * A diagnostic for the wire. `file` stands in when the diagnostic names none (a `.fudspec`
- * parse error is about the `.fudspec`); `read` gives the text a span is located in.
+ * parse error is about the `.fudspec`); `read` gives the text a span is located in. Without it,
+ * or without a file, there is no line to give.
  */
 export function toWire(
   diagnostic: FudDiagnostic,
   file: string | null,
-  read: (file: string) => string | undefined,
+  read?: (file: string) => string | undefined,
 ): WireDiagnostic {
   const at = diagnostic.file ?? file;
-  const start = at === null ? undefined : render(diagnostic, read(at)).start;
+  const start = at === null ? undefined : render(diagnostic, read?.(at)).start;
   return {
     code: diagnostic.code,
     severity: diagnostic.severity,

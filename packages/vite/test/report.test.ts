@@ -15,7 +15,15 @@ import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { FUD0051, FUD0399, span, type FudDiagnostic } from '@fudic/diagnostics';
 import { toPosix, type CheckReport } from '@fudic/typecheck';
-import { BuildReporter, pluginLog, reportText, type PluginLog, type ReportContext } from '../src/report.js';
+import {
+  BuildReporter,
+  isFudicCompileError,
+  pluginLog,
+  reportText,
+  type FudicCompileError,
+  type PluginLog,
+  type ReportContext,
+} from '../src/report.js';
 
 const root = mkdtempSync(join(tmpdir(), 'fudic-report-'));
 mkdirSync(join(root, 'src'), { recursive: true });
@@ -224,5 +232,47 @@ describe('BuildReporter — every diagnostic of a batch, positioned, once', () =
     expect(() => reporter.report(ctx, [stray], file)).toThrow();
     expect(() => reporter.report(ctx, [stray], file)).toThrow();
     expect(ctx.errors).toHaveLength(2);
+  });
+});
+
+describe('SDD-64 criterion 20 — the error of a .fud that does not compile carries every diagnostic', () => {
+  it('three errors: all three in fudic.diagnostics, relative and 1-based; message, loc and frame as before', () => {
+    const ctx = context();
+    expect(() => new BuildReporter(root).report(ctx, [at(8, 12), at(0, 4, { severity: 'warning' }), at(13, 19), at(1, 4)], file)).toThrow();
+    const thrown = ctx.errors[0] as unknown as Error;
+    expect(isFudicCompileError(thrown)).toBe(true);
+    expect((thrown as FudicCompileError).fudic.diagnostics).toEqual([
+      { code: 'FUD0051', severity: 'error', message: stray.message, file: 'src/a.fud', line: 2, column: 3 },
+      { code: 'FUD0051', severity: 'error', message: stray.message, file: 'src/a.fud', line: 3, column: 1 },
+      { code: 'FUD0051', severity: 'error', message: stray.message, file: 'src/a.fud', line: 1, column: 2 },
+    ]);
+    // What the overlay and the terminal read does not change: the first error positions it, and
+    // the message says them all.
+    const log = ctx.errors[0]!;
+    expect(log.loc).toEqual({ file, line: 2, column: 3 });
+    expect(log.frame).toBe('  2    </q>\n       ────');
+    expect(log.id).toBe(file);
+    expect(thrown.message).toMatch(/^src\/a\.fud:2:3 - error FUD0051/u);
+    expect(thrown.message.match(/error FUD0051/gu)).toHaveLength(3);
+  });
+
+  it('a diagnostic with no place travels with null file, line and column', () => {
+    const ctx = context();
+    const placeless = { ...FUD0399({ pattern: '/blog' }), severity: 'error' } as FudDiagnostic;
+    expect(() => new BuildReporter(root).report(ctx, [placeless])).toThrow();
+    expect((ctx.errors[0] as unknown as FudicCompileError).fudic.diagnostics).toEqual([
+      { code: 'FUD0399', severity: 'error', message: placeless.message, file: null, line: null, column: null },
+    ]);
+  });
+
+  it('isFudicCompileError tells the error apart from anything that only looks like it', () => {
+    const with_ = (fudic: unknown) => Object.assign(new Error('x'), { fudic });
+    expect(isFudicCompileError(new Error('plain'))).toBe(false);
+    expect(isFudicCompileError({ fudic: { diagnostics: [] } })).toBe(false);
+    expect(isFudicCompileError(with_(null))).toBe(false);
+    expect(isFudicCompileError(with_('text'))).toBe(false);
+    expect(isFudicCompileError(with_({}))).toBe(false);
+    expect(isFudicCompileError(with_({ diagnostics: 'all' }))).toBe(false);
+    expect(isFudicCompileError(with_({ diagnostics: [] }))).toBe(true);
   });
 });

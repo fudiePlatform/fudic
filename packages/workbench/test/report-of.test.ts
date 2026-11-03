@@ -8,7 +8,7 @@ import { FUD1201, FUD1205, FUD1207 } from '@fudic/diagnostics';
 import { describe, expect, it } from 'vitest';
 import type { CriterionResult } from '../src/engine.js';
 import type { PlannedCriterion } from '../src/pages.js';
-import { problemOf } from '../src/protocol.js';
+import { problemOf, toWire } from '../src/protocol.js';
 import { evidenceOf, reportOf, type ReportSession } from '../src/report-of.js';
 
 const ROOT = 'C:/p';
@@ -43,8 +43,18 @@ const CRITERION: PlannedCriterion = {
   ],
 };
 
+/** The component and a workspace library's, as the disk would answer them. */
+const FILES: Record<string, string> = {
+  'C:/p/src/components/acme-button/acme-button.fud':
+    '<acme-button>\n  <template shadowrootmode="open">\n    <button disabled>\n      <span>Save</span>\n    </button>\n  </template>\n</acme-button>\n',
+  'C:/libs/ui/src/components/ui-card/ui-card.fud': '<ui-card>\n  <template shadowrootmode="open">\n    <article>card</article>\n  </template>\n</ui-card>\n',
+};
+
 function session(expectations: readonly (string | null)[] = [null, null, null]): ReportSession {
-  return { criteria: [CRITERION], source: { root: ROOT, spec: SPEC, text: TEXT, expectations: new Map([[CRITERION.id, expectations]]) } };
+  return {
+    criteria: [CRITERION],
+    source: { root: ROOT, spec: SPEC, text: TEXT, expectations: new Map([[CRITERION.id, expectations]]), read: (file) => FILES[file] },
+  };
 }
 
 function result(extra: Partial<CriterionResult>): CriterionResult {
@@ -102,6 +112,47 @@ describe('reportOf — the first red then (criteria 1, 2 and 7)', () => {
     const unplanned = { ...session(), criteria: [{ ...CRITERION, steps: [] }] };
     expect(reportOf(unplanned, result({ verdict: 'fail', steps: [red('1')] }))).not.toHaveProperty('failed');
     expect(reportOf(session(), result({ id: 'gone', verdict: 'fail', steps: [red('1')] }))).not.toHaveProperty('failed');
+  });
+});
+
+describe('reportOf — the element back in its .fud (criteria 1 and 14, §4.1)', () => {
+  const red = { block: 'then', term: 'emitted', layer: 'workspace', args: [], pass: false, evidence: '1' } as const;
+  const THREW = { block: 'when', term: 'click', layer: 'workspace', args: [], error: 'x', code: 'FUD1204' } as const;
+  const box = { x: 0, y: 0, width: 80, height: 32 };
+  const mark = (step: number, source?: string) => ({ step, ref: 'acme-button', box, ...(source !== undefined ? { source } : {}) });
+  const BUTTON = 'src/components/acme-button/acme-button.fud';
+
+  it('a red then: the last mark of that step with a source, its line quoted and trimmed', () => {
+    const marks = [mark(0, `${BUTTON}:1:1`), mark(1, `${BUTTON}:1:1`), mark(1), mark(1, `${BUTTON}:3:5`), mark(2, `${BUTTON}:4:7`)];
+    const report = reportOf(session(), result({ verdict: 'fail', steps: [CLICKED, red], marks }));
+    expect(report.source).toEqual({ at: { file: BUTTON, line: 3, column: 5 }, quote: '<button disabled>' });
+  });
+
+  it('a step that threw: the mark of that step', () => {
+    const report = reportOf(session(), result({ verdict: 'error', steps: [THREW], marks: [mark(0, `${BUTTON}:4:7`)] }));
+    expect(report.source).toEqual({ at: { file: BUTTON, line: 4, column: 7 }, quote: '<span>Save</span>' });
+  });
+
+  it('a component of a workspace library: its path relative to the project, read from there', () => {
+    const LIB = '../libs/ui/src/components/ui-card/ui-card.fud';
+    const report = reportOf(session(), result({ verdict: 'fail', steps: [CLICKED, red], marks: [mark(1, `${LIB}:3:5`)] }));
+    expect(report.source).toEqual({ at: { file: LIB, line: 3, column: 5 }, quote: '<article>card</article>' });
+  });
+
+  it.each([
+    ['no mark on the failed step', [mark(0, `${BUTTON}:3:5`)]],
+    ['marks without a source: an element no .fud wrote, like the body', [mark(1)]],
+    ['a source that is not file:line:column', [mark(1, 'nowhere')]],
+    ['a file that cannot be read', [mark(1, 'src/gone.fud:1:1')]],
+    ['a line past the end of the file', [mark(1, `${BUTTON}:99:1`)]],
+  ])('no source: %s', (_what, marks) => {
+    expect(reportOf(session(), result({ verdict: 'fail', steps: [CLICKED, red], marks }))).not.toHaveProperty('source');
+  });
+
+  it('no source on a green, nor on an error where no step threw', () => {
+    const marks = [mark(0, `${BUTTON}:3:5`)];
+    expect(reportOf(session(), result({ steps: [CLICKED], marks }))).not.toHaveProperty('source');
+    expect(reportOf(session(), result({ verdict: 'error', steps: [CLICKED], marks }))).not.toHaveProperty('source');
   });
 });
 
@@ -169,5 +220,17 @@ describe('problemOf — what stops the bench, with codes (§4.3)', () => {
       diagnostics: [{ code: 'FUD1207', severity: 'error', message: 'could not run: Chrome went away', file: null, line: null, column: null }],
     });
     expect(problemOf('plain').diagnostics[0]).toMatchObject({ code: 'FUD1207', message: 'could not run: plain' });
+  });
+});
+
+describe('toWire — a diagnostic for the wire', () => {
+  const step = FUD1201({ file: SPEC, span: { start: offset('click'), end: offset('click') }, term: 'click' });
+
+  it('with the text of its file, its line and column', () => {
+    expect(toWire(step, null, () => TEXT)).toMatchObject({ file: SPEC, line: 5, column: 5 });
+  });
+
+  it('without a way to read its file, the file alone', () => {
+    expect(toWire(step, null)).toMatchObject({ file: SPEC, line: null, column: null });
   });
 });
