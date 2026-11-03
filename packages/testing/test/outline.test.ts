@@ -69,6 +69,12 @@ describe('outline — its roots, and what only script can set', () => {
     expect(outline(host)).toBe('- textbox "Notes": new');
   });
 
+  test('a header that is in no document yet is a banner', () => {
+    const header = document.createElement('header');
+    header.textContent = 'Loose';
+    expect(outline(header)).toBe('- banner: Loose');
+  });
+
   test('a root with nothing in it is the empty text', () => {
     expect(outline(painted('<ui-x><template shadowrootmode="open"></template></ui-x>'))).toBe('');
   });
