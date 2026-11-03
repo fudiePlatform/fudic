@@ -259,6 +259,10 @@ export function checkRenderCalls(
     for (const node of nodes) {
       if (node.type === 'snippet') {
         const decl = node as unknown as SnippetDeclNode;
+        // Walked once, here or through a call that reached it first: twice, a call it makes to
+        // itself would be reported twice.
+        if (seen.has(decl)) continue;
+        seen.add(decl);
         walk(decl.children, inScope, inFile, [...stack, { file: inFile, name: decl.name }]);
         continue;
       }

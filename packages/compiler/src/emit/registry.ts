@@ -12,7 +12,7 @@
 import type { Diagnostic } from '../types/index.js';
 import { FUD0721 } from '@fudic/diagnostics';
 import type { ComponentDeclaredProps } from '../binding/index.js';
-import type { ComponentRegistry, CrossingKind } from '../semantic/model.js';
+import type { ChannelInput, ComponentRegistry, CrossingKind } from '../semantic/model.js';
 import { checkPropChannel } from '../semantic/analyzers/prop-channel.js';
 import { checkScriptBody } from '../semantic/analyzers/script-body.js';
 import { documentRoots, walk } from '../semantic/walk.js';
@@ -58,12 +58,26 @@ export function propChannelDiagnostics(
   childProps: (tag: string) => readonly ComponentDeclaredProps[] | undefined,
 ): readonly Diagnostic[] {
   const out: Diagnostic[] = [];
-  const names = document.type === 'component-document' ? crossingNamesOf(codeOfDocument(source, document)) : new Map();
   checkPropChannel(
-    { source, document, components: { has: (tag) => childProps(tag) !== undefined, propsOf: childProps }, names },
+    {
+      source,
+      document,
+      components: { has: (tag) => childProps(tag) !== undefined, propsOf: childProps },
+      ...crossingsOf(document.type === 'snippet-document' ? undefined : codeOfDocument(source, document)),
+    },
     (diagnostic) => out.push(diagnostic),
   );
   return out;
+}
+
+/**
+ * What the names of a file can cross as, and which it cannot tell: its imports. A page and a
+ * route cross their functions by name as a component does (a callback, BUG-24); they own no
+ * reactive, so a page naming something against a `Signal<T>` prop is the `FUD0200` it should be.
+ */
+function crossingsOf(code: ExtractedCode | undefined): Pick<ChannelInput, 'names' | 'opaque'> {
+  if (code === undefined) return { names: new Map() };
+  return { names: crossingNamesOf(code), opaque: new Set(code.clientImports) };
 }
 
 /** What one component, parsed, declares as props. */
@@ -99,10 +113,6 @@ export function graphRegistry(graph: ComponentGraph): ComponentRegistry {
  * with something that is not a function of its own, and reading that as `FUD0201` would reject
  * the one thing props-spec decision 153 exists to allow.
  */
-function crossingNames(comp: ResolvedComponent): ReadonlyMap<string, CrossingKind> {
-  return crossingNamesOf(codeOf(comp));
-}
-
 function crossingNamesOf(code: ExtractedCode): ReadonlyMap<string, CrossingKind> {
   const out = new Map<string, CrossingKind>();
   for (const reactive of code.signals) out.set(reactive.name, reactive.kind);
@@ -141,21 +151,11 @@ export function contractDiagnostics(graph: ComponentGraph): readonly Diagnostic[
   // The FORM of every crossing this file writes (BUG-24 §4.9): what one file may write depends
   // on what ANOTHER declares, and only a caller that resolved the graph can put the two side by
   // side.
-  //
-  // A page or a route has no names of its own to cross — the reactive primitives are of the
-  // client (SDD-31 §8) — so an empty map is the honest reading, and a page naming something
-  // against a `Signal<T>` prop is exactly the `FUD0200` it should be.
   const entry = graph.entry;
   const own = entry.type === 'component-document' ? componentOf(graph, entry.name) : undefined;
-  checkPropChannel(
-    {
-      source: graph.entrySource,
-      document: entry,
-      components,
-      names: own === undefined ? new Map() : crossingNames(own),
-    },
-    report,
-  );
+  const code =
+    own !== undefined ? codeOf(own) : entry.type === 'snippet-document' ? undefined : codeOfDocument(graph.entrySource, entry);
+  checkPropChannel({ source: graph.entrySource, document: entry, components, ...crossingsOf(code) }, report);
   // The declaration nobody uses (BUG-32 T6). Here and not in an analyzer of its own for the
   // same reason as the two above: a `<link>` carries a PATH and a component carries its tag,
   // so only a caller that resolved the graph can put the two side by side.

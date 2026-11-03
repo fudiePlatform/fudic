@@ -80,6 +80,8 @@ export function checkPropChannel(input: ChannelInput, report: Report): void {
 
         const at = valueSpan(attr, binding.value);
         const name = bareName(source, binding.value);
+        // An imported name crosses as whatever it is, and only TypeScript knows that.
+        if (name !== undefined && input.opaque?.has(name) === true) continue;
         const kind = name === undefined ? undefined : names.get(name);
 
         // A crossing of the wrong form is about the whole attribute, prop and value: over it, the
