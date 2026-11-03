@@ -1,0 +1,5 @@
+<app-circle>
+  <template shadowrootmode="open">
+    <p>@Math.PI</p>
+  </template>
+</app-circle>

@@ -1,0 +1,12 @@
+@code {
+  import { t } from "@fudic/i18n";
+
+  const { name } = props<{ name: string }>();
+  const greeting = t("Hello {name}");
+}
+
+<app-note>
+  <template shadowrootmode="open">
+    <p>@greeting @name</p>
+  </template>
+</app-note>

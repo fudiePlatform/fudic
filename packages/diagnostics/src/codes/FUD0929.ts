@@ -7,6 +7,6 @@ export interface FUD0929Params extends SourceInput {
   readonly found: string;
 }
 
-/** A line at indentation 2 that is not `given`, `when` or `then` (`.fudspec`). */
+/** A line at indentation 2 that is not `given`, `when` or `then` (`.fudspec`) (SDD-52). */
 export const FUD0929 = (p: FUD0929Params): SourceDiagnostic =>
   source('FUD0929', 'error', `expected \`given\`, \`when\` or \`then\`, found \`${p.found}\``, p);

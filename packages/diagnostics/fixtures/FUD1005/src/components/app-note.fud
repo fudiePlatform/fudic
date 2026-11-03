@@ -1,0 +1,14 @@
+<link rel="server" href="./app-note.fudapi">
+
+@code {
+  function send(): void {}
+}
+
+<app-note>
+  <template shadowrootmode="open">
+    <form control=@noteForm form:=@send>
+      <input control=@noteForm.text type="text">
+      <button type="submit">Save</button>
+    </form>
+  </template>
+</app-note>

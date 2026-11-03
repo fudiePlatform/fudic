@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    @code {
+      const n = 1;
+    }
+    <title>Fix</title>
+  </head>
+  <body>
+    <p>a</p>
+  </body>
+</html>

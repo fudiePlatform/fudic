@@ -4,10 +4,9 @@
  *     @section nav { … }  →  $section<$L0>('nav'); …children…
  *     <slot>              →  $slot();
  *
- * `$section<T extends string>(name: T)` with `T` bound to the layout's `$Sections` union is
- * what makes a section the layout does not declare fail with `TS2345`, suggesting the names
- * that do exist — and what makes completion work right after `@section `, because at that
- * point TypeScript is completing a string-literal union.
+ * `$section<T extends string>(name: T)` is bound to the layout's `$Sections` union, but the name
+ * is scaffold: a section the layout does not render is the compiler's `FUD0429`, a warning, and
+ * the server completes the names after `@section ` from the layout's holes.
  */
 
 import type {
@@ -20,7 +19,7 @@ import type {
   Span,
   StructuredDocument,
 } from '@fudic/compiler';
-import { DIAGNOSTIC_ONLY_CAPS, LITERAL_NAME_CAPS } from '../caps.js';
+import { LITERAL_NAME_CAPS } from '../caps.js';
 import { slotsAlias } from './attrs.js';
 import { nestedContent, templateContent } from '../imports.js';
 import type { VirtualWriter } from '../writer.js';
@@ -31,18 +30,10 @@ export function emitSection(ctx: TemplateContext, node: SectionNode): void {
   // than inventing an error the file cannot be responsible for: a route with no layout link
   // already has its own diagnostic, and piling a second one on every section would bury it.
   ctx.w.scaffold(`$section<${ctx.aliases.layout ?? 'string'}>(`, node.keywordSpan);
-  // The literal is ONE stretch standing for the bare name, quotes included, under the same
-  // profile as a projected tag: the diagnostic must reach the source, nothing else may.
-  //
-  // TypeScript reports the `TS2345` over `'nav'` WITH its quotes, and a reported range only
-  // maps back when BOTH its ends land in one stretch that carries `verification`. Written as
-  // scaffold + copy + scaffold, the range began on mute scaffolding and the error reached
-  // nobody — the projection produced the right error and the editor never showed it.
-  ctx.w.projected(
-    `'${ctx.source.slice(node.nameSpan.start, node.nameSpan.end)}'`,
-    node.nameSpan,
-    DIAGNOSTIC_ONLY_CAPS,
-  );
+  // Scaffold: a section the layout does not render is `FUD0429`, a WARNING (decision 86), and the
+  // checker saying it again as an error would contradict it. The names are completed by the
+  // server, from the layout's holes.
+  ctx.w.scaffold(`'${ctx.source.slice(node.nameSpan.start, node.nameSpan.end)}'`, node.nameSpan);
   ctx.w.scaffold(');\n');
   ctx.emit(node.children);
 }

@@ -1,0 +1,9 @@
+@code {
+  const ok = true;
+}
+
+<fix-a>
+  <template shadowrootmode="open">
+    @if ok { <p>x</p> }
+  </template>
+</fix-a>

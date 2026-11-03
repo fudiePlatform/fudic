@@ -1,0 +1,9 @@
+@code {
+  const { count = 0 } = props<{ count?: number }>();
+}
+
+<app-names>
+  <template shadowrootmode="open">
+    <p>@(await count)</p>
+  </template>
+</app-names>

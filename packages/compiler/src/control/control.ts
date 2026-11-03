@@ -679,13 +679,19 @@ class ControlParser {
   }
 
   /**
-   * A `@catch` that follows no `@await` body, or a second one (`FUD1323`). Like an orphan
-   * `@empty`, it consumes only its keyword: what is behind it is still parsed as content.
+   * A `@catch` that follows no `@await` body, or a second one (`FUD1323`). It consumes its
+   * header and its block, which belong to nothing: read as content, its body would say that the
+   * name its header declares does not exist, a second voice for the one misplaced `@catch`.
+   * With no `(` there is no header to consume: only the keyword is, and what follows is content.
    */
   #orphanCatch(keywordSpan: Span, start: number): IfNode {
-    const at = span(start, keywordSpan.end);
-    this.#diagnostics.push(FUD1323({ span: at }));
-    return { type: 'if', span: at, branches: [] };
+    this.#diagnostics.push(FUD1323({ span: span(start, keywordSpan.end) }));
+    if (charAt(this.#source, skipTrivia(this.#source, keywordSpan.end)) !== '(') {
+      return { type: 'if', span: span(start, keywordSpan.end), branches: [] };
+    }
+    // It is a `@catch` at `start`, so it parses as one.
+    const parsed = this.#catch(start)!;
+    return { type: 'if', span: parsed.span, branches: [] };
   }
 
   // ------------------------------------------------------------------

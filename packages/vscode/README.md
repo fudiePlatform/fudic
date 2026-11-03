@@ -16,6 +16,17 @@ uses it, in the `.fud`, on the line you wrote — not in a generated file you ha
 component actually declares, and an expression inside one is completed with its type.
 `F12` on the tag opens the file that defines it.
 
+**Know a component without opening it.** Hover a tag to see what it takes: its description,
+each prop with its type, default and doc, its slots, the events it emits and what they carry,
+its CSS parts and the tokens it reads. A component from a library says which one. «Find All
+References» on a tag lists every place it is used, in your project and in your libraries.
+
+**Style tokens where you write CSS.** After `var(--`, in a `<style>` of a `.fud` or in a `.css`
+of the project, the completion offers the tokens of your style sheets and of your libraries'
+ones, with their value and doc. Hover one to see where it comes from; `F12` opens the sheet
+that declares it. A token of an optional style says so: only the components that adopt that
+style see it.
+
 **Links that write themselves.** Type `link` and pick one of the three `<link>` fudic reads;
 the caret lands in its `href` with the list of what you can link already open:
 

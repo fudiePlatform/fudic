@@ -165,18 +165,20 @@ describe('SDD-35 §6.3 — parity between the editor and the build', () => {
     it('B — a name the file never declares, used in the template', async () => {
       // What was a `@server` import is now just a name nobody declares: the view says so too.
       const set = await parity({ [SLUG]: replace('<h1>@data.title</h1>', '<h1>@findPost</h1>') });
-      expect(codes(set)).toEqual(['FUD0907', 'TS2304']);
+      // TypeScript's TS2304 meets FUD0907 and is silent, in the build and in the editor (SDD-62).
+      expect(codes(set)).toEqual(['FUD0907']);
     });
 
     it('C — a section the layout does not declare', async () => {
-      expect(codes(await parity({ [SLUG]: replace('@section nav {', '@section footer {') }))).toEqual(['TS2345']);
+      expect(codes(await parity({ [SLUG]: replace('@section nav {', '@section footer {') }))).toEqual(['FUD0429']);
     });
 
     it('D — a tag with no <link>', async () => {
       const set = await parity({
         [SLUG]: (text) => text.replace('<app-badge .tone', '<app-missing .tone').replace('</app-badge>', '</app-missing>'),
       });
-      expect(new Set(codes(set))).toEqual(new Set(['FUD0191', 'TS2304']));
+      // TypeScript's TS2304 meets FUD0191 and is silent, in the build and in the editor (SDD-62).
+      expect(codes(set)).toEqual(['FUD0191']);
     });
 
     it('E — interpolating an object', async () => {

@@ -6,10 +6,10 @@
  * the value is unquoted and nowhere else, so a bulb that shows up is always a bulb with
  * something to fix. One that appears over healthy code trains the developer to ignore it.
  *
- * Nothing here re-derives what is already parsed. The `<link>` comes from `linkInsertionFor`,
- * which is the same edit the tag completion writes; the binding of a loop comes from the
- * headers registered in the `JsBatch`, which is the same place the template scope reads. Two
- * sources for one fact is how the editor and the build came to disagree in BUG-23.
+ * The repairs of a `.fud` diagnostic are `repairsFor`'s, which needs no editor; this module
+ * turns each one into a code action. What stays here hangs on something that is not a `FUD`
+ * code: the contract facts TypeScript reports, the cursor of the `control` action, and the
+ * `href` that creates a file.
  *
  * Every action carries its `WorkspaceEdit` whole: no `command`, no `resolve`. An action that
  * has to be resolved is an action that can fail after the user accepted it, and the failure
@@ -17,28 +17,20 @@
  */
 
 import type { CodeAction, CreateFile, Position, Range, TextDocumentEdit } from '@volar/language-service';
+import type * as ts from 'typescript';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
-import { CONTROL_NAME, span, type Diagnostic, type RouteDocument, type Span } from '@fudic/compiler';
+import { CONTROL_NAME, span, type Diagnostic, type Span } from '@fudic/compiler';
 import type { FudCode, SourceDiagnostic } from '@fudic/diagnostics';
 import { explanationFile } from '@fudic/diagnostics/explain';
 import { URI } from 'vscode-uri';
 import type { CachedDocument } from '../document-cache.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
+import { repairsFor } from '../repairs.js';
 import { contractIssues, type ContractIssue, type MissingInContract } from './contract.js';
 import type { ApiFiles } from './href.js';
 import type { PropDetail, PropHolds } from './tag-card.js';
-import { missingSections, unresolvedHrefs } from '@fudic/typecheck';
-import { linkInsertionFor } from './tags.js';
-import { loopBindingNames } from './template-scope.js';
+import { unresolvedHrefs } from '@fudic/typecheck';
 import { accepts, boundPaths, controlBindingSites, type NodeKind } from './forms.js';
-
-/** What every repair is handed: the document, the index, and the diagnostic it repairs. */
-interface Repair {
-  readonly cached: CachedDocument;
-  readonly index: WorkspaceIndex;
-  readonly document: TextDocument;
-  readonly diagnostic: Diagnostic;
-}
 
 /** One replacement of a stretch of the `.fud` being edited. */
 interface Edit {
@@ -46,134 +38,11 @@ interface Edit {
   readonly newText: string;
 }
 
-/**
- * A quick fix over the file being edited. A title and a `WorkspaceEdit`, and nothing else.
- *
- * There was a version of this that could carry TABSTOPS, by sending a `command` for the
- * extension to apply as a snippet instead of an `edit`. It never once worked in the editor, and
- * the trace says why in one line: the `document` a plugin is handed is Volar's, and its uri is
- *
- *     volar-embedded-content://root/file%253A%252F%252F%252Fc%25253A%252F…
- *
- * not the `.fud`. Volar rewrites the uri of an `edit` on its way out — which is exactly why
- * every other repair here lands — and it cannot rewrite the ARGUMENTS of a command, because
- * nothing in them announces itself as a uri. So the command arrived pointing at a virtual
- * document, found no editor, and `applyEdit` on a document nobody can write returned `false` in
- * silence. A bulb that opens onto nothing.
- *
- * The tabstops are not worth a second delivery path. `.id=""` with the caret elsewhere is a
- * repair; a repair that never happens is not.
- */
+/** A quick fix over the file being edited: a title and its edits, and nothing else. */
 interface Fix {
   readonly title: string;
   readonly edits: readonly Edit[];
 }
-
-/** The repairs of one diagnostic code. Empty means this code has no bulb. */
-type Repairer = (repair: Repair) => readonly Fix[];
-
-/**
- * `FUD0056` — an unquoted value the grammar cannot read.
- *
- * The repair is the whole of what the compiler asks for: put quotes around what is there. It
- * touches the value and nothing else — not the attribute name, not the `=` — because the
- * author's mistake is the quoting and re-writing more than that would be an opinion.
- *
- * The diagnostic's own span IS the value: the parser reports on the stretch it could not read,
- * so nothing has to be searched for. That is why this repair needs no tree at all.
- */
-const quoteValue: Repairer = ({ cached, diagnostic }) => {
-  const text = cached.source.slice(diagnostic.span.start, diagnostic.span.end);
-  // Nothing to quote, and a `"` already there means the parser is reporting something else
-  // about a value that IS quoted — in neither case is adding a pair of quotes the answer.
-  if (text === '' || text.includes('"')) return [];
-
-  return [
-    { title: 'Entrecomillar el valor', edits: [{ span: diagnostic.span, newText: `"${text}"` }] },
-  ];
-};
-
-/**
- * Whether an open tag — `<app-badge class="x">` — is the opening of `tag`.
- *
- * The boundary is the whole of it. A prefix test alone reads `<app-badge-large>` as opening
- * `app-badge`, and the repair would then add the link of a component the author did not write.
- * Past the end of the string `charAt` gives `''`, which matches nothing, so a bare `<app-badge`
- * still being typed is recognised.
- */
-const opensTag = (opened: string, tag: string): boolean =>
-  tag !== '' && opened.startsWith(`<${tag}`) && !/[-\w]/u.test(opened.charAt(tag.length + 1));
-
-/**
- * `FUD0191` — a custom element with no `<link rel="component">`.
- *
- * The `href` is not guessed: the index knows every `.fud` of the workspace and which tag each
- * one defines, so the repair exists only for a tag the index has actually seen. And the edit is
- * `linkInsertionFor`'s, the very one the tag completion writes when it adds a link — so the two
- * cannot drift apart, which is the point of the rule that one fact has one source.
- */
-const addComponentLink: Repairer = ({ cached, index, diagnostic }) => {
-  // The diagnostic underlines the whole OPEN TAG — `<app-badge class="x">` — because that is
-  // what the author has to look at. Rather than read a name out of it and then look that name
-  // up, the question is asked the other way round: which component of the workspace does this
-  // open tag open? That has one answer or none, and neither is a case the code has to invent a
-  // value for — a name parsed out of the span would need an «unreadable» branch that no input
-  // can reach and therefore no test can cover.
-  //
-  // Of the components that answer, the first this file can LINK: in a monorepo the folder holds
-  // other projects too, and a link into the app next door is one the build never resolves.
-  const opened = cached.source.slice(diagnostic.span.start, diagnostic.span.end);
-  const hrefTo = index.linker(cached.path);
-  for (const entry of index.byRole('component')) {
-    if (entry.path === cached.path || !opensTag(opened, entry.tag)) continue;
-    const href = hrefTo(entry.path);
-    if (href === undefined) continue;
-
-    // Always an insertion, never `undefined`: `linkInsertionFor` declines only a file that
-    // already links the href, and a file that links it does not get `FUD0191` in the first
-    // place. The diagnostic and the repair read the same fact, so they cannot disagree about it.
-    const insertion = linkInsertionFor(cached, href) as { span: Span; newText: string };
-    return [
-      {
-        title: `Añadir <link rel="component"> de <${entry.tag}>`,
-        edits: [{ span: insertion.span, newText: insertion.newText }],
-      },
-    ];
-  }
-  return [];
-};
-
-/**
- * `FUD0540` — a loop that renders markup and declares no `key (…)`.
- *
- * The binding comes from the header Oxc already parsed, which is the same source the template
- * scope reads (`DocumentJs.loops`). A header that declares several — `const { id, tag } of xs` —
- * offers the first; one that declares none offers nothing, because that is `FUD0543` and it has
- * its own message. Writing `key ()` empty would trade one diagnostic for another.
- *
- * The diagnostic's span is the header, so the insertion point is its end plus the `)` that
- * closes it — the `key (…)` goes between the header and the `{` (decision 91).
- */
-const addLoopKey: Repairer = ({ cached, diagnostic }) => {
-  const loop = cached.js.loops.find(
-    (candidate) =>
-      candidate.span.start <= diagnostic.span.start && diagnostic.span.end <= candidate.span.end,
-  );
-  if (loop?.statement === undefined) return [];
-
-  const binding = loopBindingNames(loop.statement)[0];
-  if (binding === undefined) return [];
-
-  // `headerClose` is past the `)`, straight from the balancer: the key goes between the header
-  // and the `{` (decision 91), and nothing has to be searched for to find it.
-  const at = loop.headerClose;
-  return [
-    {
-      title: `Añadir key (${binding})`,
-      edits: [{ span: span(at, at), newText: ` key (${binding})` }],
-    },
-  ];
-};
 
 /** What a prop's type is asked from: the projection of the file that declares the component. */
 export type PropLookup = (file: string) => ReadonlyMap<string, PropDetail>;
@@ -248,7 +117,7 @@ function contractFixes(issue: Exclude<ContractIssue, MissingInContract>, propsOf
 
     return [
       {
-        title: `Completar las props requeridas de <${issue.tag}>`,
+        title: `Add the required props of <${issue.tag}>`,
         // In source order: the edits of one `WorkspaceEdit` may not overlap, and a client is
         // entitled to refuse a set that arrives out of order.
         edits: edits.sort((a, b) => a.span.start - b.span.start),
@@ -262,7 +131,7 @@ function contractFixes(issue: Exclude<ContractIssue, MissingInContract>, propsOf
     if (issue.suggestion === undefined) return [];
     return [
       {
-        title: `Cambiar a .${issue.suggestion}`,
+        title: `Change to .${issue.suggestion}`,
         edits: [{ span: issue.at, newText: `.${issue.suggestion}` }],
       },
     ];
@@ -274,19 +143,19 @@ function contractFixes(issue: Exclude<ContractIssue, MissingInContract>, propsOf
   if (issue.declared.length === 0) {
     return [
       {
-        title: `Quitar slot="${issue.written}"`,
+        title: `Remove slot="${issue.written}"`,
         edits: [{ span: issue.attribute, newText: '' }],
       },
     ];
   }
   return issue.declared.map((name) => ({
-    title: `Cambiar a slot="${name}"`,
+    title: `Change to slot="${name}"`,
     edits: [{ span: issue.at, newText: name }],
   }));
 }
 
 /**
- * *«Completar las props requeridas del layout»* (SDD-40 §3.5, SDD-60 §4.7): `layout` written at the
+ * *«Add the layout's required props»* (SDD-40 §3.5, SDD-60 §4.7): `layout` written at the
  * end of the route's sibling `.fudapi` — created first when there is none — and the
  * `<link rel="server">` that makes it the route's, when the route does not link it yet. Its handler and the props it
  * returns are the author's, in `src/server`, where TypeScript asks for each one.
@@ -322,7 +191,7 @@ function layoutContractAction(
     });
   }
   return {
-    title: 'Completar las props requeridas del layout',
+    title: "Add the layout's required props",
     kind: 'quickfix',
     diagnostics: [],
     edit: { documentChanges: changes },
@@ -339,60 +208,6 @@ function endOf(text: string): Position {
   const lines = text.split(/\r\n|\r|\n/u);
   return { line: lines.length - 1, character: (lines[lines.length - 1] as string).length };
 }
-
-/**
- * The table: a diagnostic code, and what repairs it.
- *
- * A code that is not here has no bulb, and that is the normal case — most diagnostics describe
- * a decision only the author can make. Adding a row is the whole cost of adding a quick fix.
- */
-/**
- * `FUD0890` — the route leaves a `required: true` section of its layout unfilled (SDD-48).
- *
- * One action writes every missing section, empty, after the route's last `@section` — or at
- * the end of the file when it has none — because that is where the route keeps its sections
- * and an author who asked for one would be asked again for the next.
- */
-const addRequiredSections: Repairer = ({ cached, index }) => {
-  // The diagnostic is the server's own, and only a route that leaves a required section of
-  // its layout unfilled carries it: the document is that route, and the list is not empty.
-  const route = cached.document as RouteDocument;
-  const missing = missingSections(cached, index);
-  const at = route.sections.at(-1)?.span.end ?? cached.source.trimEnd().length;
-  const text = missing.map((s) => `\n\n@section ${s.name} {\n}`).join('');
-  const names = missing.map((s) => s.name).join(', ');
-  return [
-    {
-      title: `Añadir las secciones requeridas del layout (${names})`,
-      edits: [{ span: span(at, at), newText: text }],
-    },
-  ];
-};
-
-/**
- * `FUD0894` — a `@render` argument that reads the scope, written without its `@` (SDD-48).
- *
- * A name or a path takes the `@` in front; anything else goes into `@( … )`, which is the one
- * form that holds an arbitrary expression. The diagnostic's span IS the argument's value.
- */
-const addArgumentAt: Repairer = ({ cached, diagnostic }) => {
-  const text = cached.source.slice(diagnostic.span.start, diagnostic.span.end);
-  const path = /^[A-Za-z_$][\w$]*(?:\??\.[A-Za-z_$][\w$]*)*$/u.test(text);
-  return [
-    {
-      title: path ? `Escribir @${text}` : 'Envolver en @( … )',
-      edits: [{ span: diagnostic.span, newText: path ? `@${text}` : `@(${text})` }],
-    },
-  ];
-};
-
-const REPAIRS: ReadonlyMap<FudCode, Repairer> = new Map<FudCode, Repairer>([
-  ['FUD0894', addArgumentAt],
-  ['FUD0056', quoteValue],
-  ['FUD0191', addComponentLink],
-  ['FUD0890', addRequiredSections],
-  ['FUD0540', addLoopKey],
-]);
 
 /**
  * The `href` that does not resolve, which was here before the table and stays outside it.
@@ -473,7 +288,7 @@ function controlFixes(
     for (const candidate of candidates) {
       if (!accepts(site.wants, candidate.kind) || taken.has(candidate.path)) continue;
       fixes.push({
-        title: `Enlazar ${CONTROL_NAME}=${candidate.path}`,
+        title: `Bind ${CONTROL_NAME}=${candidate.path}`,
         edits: [
           {
             span: span(site.insertAt, site.insertAt),
@@ -530,6 +345,8 @@ export interface ActionDeps {
   readonly formNodes: FormNodes;
   /** The `.fudapi` of the app, which the layout repair writes. */
   readonly apis?: ApiFiles;
+  /** The project's TypeScript, which the loop-key repair asks for an element's type. */
+  readonly typescript?: ts.LanguageService;
 }
 
 /** The client command that opens an explanation in the markdown preview (`fudic-vscode`). */
@@ -582,13 +399,13 @@ export function codeActions(deps: ActionDeps): CodeAction[] {
   for (const diagnostic of diagnostics) {
     if (!overlaps(rangeOf(document, diagnostic.span), range)) continue;
 
-    const repair = REPAIRS.get(diagnostic.code);
-    if (repair !== undefined) {
-      for (const fix of repair({ cached, index, document, diagnostic })) emit(fix);
-    }
+    // Every repair of the table edits the file it was asked about, so its edits go to Volar's
+    // uri for it, which Volar maps back to the `.fud`.
+    const input = { cached, index, ...(deps.typescript === undefined ? {} : { typescript: deps.typescript }) };
+    for (const repair of repairsFor(input, diagnostic)) emit(repair);
 
     // Every code also explains itself, once per code however many times it fires here. A
-    // `command` and not an edit, which the header rules out for REPAIRS: this one edits nothing,
+    // `command` and not an edit, which the header rules out for repairs: this one edits nothing,
     // and its argument is a path on disk, not a document uri Volar would have to rewrite.
     if (explained.has(diagnostic.code)) continue;
     explained.add(diagnostic.code);
@@ -612,9 +429,6 @@ export function codeActions(deps: ActionDeps): CodeAction[] {
 
   return actions;
 }
-
-/** Which diagnostic codes have a bulb today. Read by the test that guards the table. */
-export const REPAIRED_CODES: readonly string[] = [...REPAIRS.keys()];
 
 /**
  * "Explain FUDnnnn" for each code of `diagnostics` whose span meets `[start, end]`, once per code:

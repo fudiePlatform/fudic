@@ -84,17 +84,20 @@ describe('§6.2 — the nine mutants of SDD-23, as LSP diagnostics on the .fud',
     const source = mutate(slug, '<h1>@data.title</h1>', '<h1>@findPost</h1>');
     const diagnostics = await diagnosticsOf(slugUri, source);
 
-    expect(diagnostics.map((d) => d.code).sort()).toEqual([2304, 'FUD0907']);
-    expect(diagnostics.map((d) => textAt(source, d))).toEqual(['findPost', 'findPost']);
+    // The view says so, and TypeScript's «cannot find name» on the same stretch is silent: one
+    // fact, one voice (SDD-62).
+    expect(diagnostics.map((d) => d.code)).toEqual(['FUD0907']);
+    expect(diagnostics.map((d) => textAt(source, d))).toEqual(['findPost']);
   });
 
+  // A section the layout does not declare is fudic's to say (FUD0429, a warning), not a type error.
   it('C — a section the layout does not declare', async () => {
     const source = mutate(slug, '@section nav {', '@section footer {');
     const [diagnostic, ...rest] = await diagnosticsOf(slugUri, source);
 
     expect(rest).toEqual([]);
-    expect(diagnostic?.code).toBe(2345);
-    expect(textAt(source, diagnostic!)).toBe('footer');
+    expect(diagnostic?.code).toBe('FUD0429');
+    expect(textAt(source, diagnostic!)).toBe('@section footer {');
   });
 
   it('D — a tag with no <link>', async () => {
@@ -103,17 +106,11 @@ describe('§6.2 — the nine mutants of SDD-23, as LSP diagnostics on the .fud',
       .replace('</app-badge>', '</app-missing>');
     const diagnostics = await diagnosticsOf(slugUri, source);
 
-    // Two layers report it, and both land on the tag: the semantic pass of SDD-12 (FUD0191,
-    // decision 41) and the checker over the projection (TS2304 on `$C_app_missing`).
-    expect(new Set(diagnostics.map((diagnostic) => diagnostic.code))).toEqual(
-      new Set(['FUD0191', 2304]),
-    );
-    // The checker lands on the tag name itself; the semantic pass underlines the element it
-    // belongs to, which is the span SDD-12 gives that rule.
-    for (const diagnostic of diagnostics) {
-      expect(textAt(source, diagnostic)).toContain('app-missing');
-    }
-    expect(textAt(source, diagnostics.find((d) => d.code === 2304)!)).toBe('app-missing');
+    // The semantic pass of SDD-12 reports it (FUD0191, decision 41) over the element; the
+    // checker's TS2304 on `$C_app_missing` lands inside it and is silent: one fact, one voice
+    // (SDD-62).
+    expect(diagnostics.map((diagnostic) => diagnostic.code)).toEqual(['FUD0191']);
+    expect(textAt(source, diagnostics[0]!)).toContain('app-missing');
   });
 
   it('E — interpolating an object', async () => {

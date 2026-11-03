@@ -223,11 +223,11 @@ describe('FUD0592 — an element that carries no user value (§6.5)', () => {
   });
 
   it('a `control` whose value is not an expression is left to FUD0590 alone', () => {
-    // It degraded to a plain attribute in the SDD-07 pass — which is where `FUD0590` is
-    // reported and where `classify.test.ts` asserts it — so no rule about `control` sees it,
-    // and the author is not told twice about one mistake.
-    expect(codes(component('<input type="submit" control="go">'))).toEqual([]);
-    expect(codes(component('<input control="go"><input control="go">'))).toEqual([]);
+    // It degraded to a plain attribute in the classification — which is where `FUD0590` comes
+    // from, and since SDD-62 the semantic pass says it once — so no rule about `control` sees
+    // it, and the author is not told twice about one mistake.
+    expect(codes(component('<input type="submit" control="go">'))).toEqual(['FUD0590']);
+    expect(codes(component('<input control="go"><input control="go">'))).toEqual(['FUD0590', 'FUD0590']);
   });
 });
 

@@ -117,7 +117,13 @@ export interface Harness {
 
 /** Start a server and a client wired to each other. */
 export async function startHarness(
-  options: { tsdk?: string; root?: string; overrides?: Partial<FudicServerDeps> } = {},
+  options: {
+    tsdk?: string;
+    root?: string;
+    overrides?: Partial<FudicServerDeps>;
+    /** The file opened to build the program before any test asks, relative to `root`. */
+    warmup?: string;
+  } = {},
 ): Promise<Harness> {
   // The shared fixtures by default; a private copy for the tests that write files into it.
   const root = options.root ?? FIXTURES;
@@ -205,16 +211,17 @@ export async function startHarness(
   // costs seconds where every later one costs milliseconds. Paying for it here, inside the
   // generous timeout of a `beforeAll`, is what keeps the tests measuring features instead of
   // measuring a cold start — and it is also what a real editor does while the file opens.
+  const warmup = options.warmup ?? 'src/layouts/_layout.fud';
   await client.sendNotification(DidOpenTextDocumentNotification.type, {
     textDocument: {
-      uri: uriOf('src/layouts/_layout.fud'),
+      uri: uriOf(warmup),
       languageId: EDITOR_LANGUAGE_ID,
       version: 1,
-      text: textOf('src/layouts/_layout.fud'),
+      text: textOf(warmup),
     },
   });
   await client.sendRequest(DocumentDiagnosticRequest.type, {
-    textDocument: { uri: uriOf('src/layouts/_layout.fud') },
+    textDocument: { uri: uriOf(warmup) },
   });
 
   return {

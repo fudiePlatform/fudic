@@ -68,6 +68,10 @@ describe('resolving the name (§4.7)', () => {
 
   it('reports a namespace no import declares (FUD0827)', () => {
     expect(codes(withCard('<p>@render form.card("A")</p>'))).toEqual(['FUD0827']);
+    // Over the whole `ns.name`, which is what the fix rewrites: TypeScript's error there is its echo.
+    const source = withCard('<p>@render form.card("A")</p>')[ENTRY]!;
+    const [d] = check(withCard('<p>@render form.card("A")</p>'));
+    expect(source.slice(d!.span.start, d!.span.end)).toBe('form.card');
   });
 
   it('reports a name the namespace does not hold (criterion 17, FUD0826)', () => {
@@ -130,6 +134,9 @@ describe('binding the arguments (§4.8.c)', () => {
     const diagnostics = check(withCard('<p>@render card("A", title: "B")</p>'));
     expect(diagnostics.map((d) => d.code)).toEqual(['FUD0831']);
     expect(diagnostics[0]!.related).toHaveLength(1);
+    // Over the whole named argument, name and value (SDD-62).
+    const source = withCard('<p>@render card("A", title: "B")</p>')[ENTRY]!;
+    expect(source.slice(diagnostics[0]!.span.start, diagnostics[0]!.span.end)).toBe('title: "B"');
   });
 
   it('reports a positional after a named, and still binds the rest (criterion 10)', () => {

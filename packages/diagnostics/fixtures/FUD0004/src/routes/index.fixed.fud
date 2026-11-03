@@ -1,0 +1,8 @@
+<link rel="layout" href="../layouts/main.fud">
+
+@code {
+  const name = "x";
+}
+
+<p>Hi</p>
+@(`Hi ${name}`)

@@ -314,6 +314,8 @@ describe('classifyAttribute — bus bindings (decision 28)', () => {
   it('FUD0098: an expression name after a prefix other than `bus:`', () => {
     const { binding, diagnostics } = classifyOne('<x class:(x)="@a"></x>');
     expect(codes(diagnostics)).toEqual(['FUD0098']);
+    // The whole attribute, name and value (SDD-62).
+    expect('<x class:(x)="@a"></x>'.slice(diagnostics[0]!.span.start, diagnostics[0]!.span.end)).toBe('class:(x)="@a"');
     expect(binding.type).toBe('attr');
     if (binding.type !== 'attr') return;
     expect(binding.name).toBe('class:');

@@ -55,3 +55,26 @@ describe('every code', () => {
     });
   }
 });
+
+/** SDD-62 §4.5: the names React gives say why they are not fudic's. */
+describe('FUD0907 says why for the names React gives', () => {
+  const at = { span: span(0, 1) };
+
+  it('props: a function in @code, read by the destructured name', () => {
+    expect(catalogue.FUD0907({ ...at, name: 'props' }).message).toBe(
+      'this name is not available to the view: `props` is a function in `@code`: read the destructured name',
+    );
+  });
+
+  it('children: a <slot> for the content between the tags', () => {
+    expect(catalogue.FUD0907({ ...at, name: 'children' }).message).toBe(
+      'this name is not available to the view: use a `<slot>` for the content between the tags',
+    );
+  });
+
+  it('any other name, or none, keeps the general reason', () => {
+    const general = 'this name is not available to the view: the only global is `undefined`; declare or import the rest in `@code`';
+    expect(catalogue.FUD0907({ ...at, name: 'Math' }).message).toBe(general);
+    expect(catalogue.FUD0907(at).message).toBe(general);
+  });
+});

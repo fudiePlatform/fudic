@@ -195,12 +195,48 @@ lives as long as the page.
 On the server a task never calls: `state()` is `'idle'` and `value()` is `initial`, which is
 where the browser hydrates from — and why the view can read a task and stay portable.
 
+## `effect()`
+
+(SDD-31 §4.3, SDD-76.)
+
+```ts
+effect(() => {
+  title.textContent = `${user().name} — ${filters().length} filters`;
+});                                   // reruns when user or filters change
+
+effect(() => {
+  load(userId(), filters());
+}, [userId]);                         // reruns only when userId changes
+
+effect(() => {
+  const id = setInterval(tick, 1000);
+  return () => clearInterval(id);
+}, []);                               // once; the cleanup runs on removal
+```
+
+**Without dependencies** the effect depends on everything it reads, recomputed on every run: an
+`if` in the body changes what it depends on. It subscribes to the signals at the bottom, so a
+`computed` that comes back to the same value still reruns it.
+
+**With dependencies** it depends on those sources only. Each one is a function: a signal, a
+`computed`, or an arrow (`[() => user().id]` depends on the id, not on the whole user). It reruns
+only when one of their values changed (`Object.is`), and the body runs untracked, so whatever
+else it reads is never a dependency. `[]` runs once. `[count()]` passes a value, not a source,
+and does not compile.
+
+Both run on creation. A returned function is the cleanup: it runs before the next run and on
+removal, and every cleanup runs exactly once. `effect` returns the disposer, and one created while a component's
+`@code` runs is torn down with the component. An effect that writes what it depends on throws
+after 100 chained runs.
+
+Prefer the default; declare the dependencies when the body reads more than should trigger it.
+
 ## The signals and the element base
 
 (SDD-14, SDD-15 §3.7.)
 
-- **`signal`** — fine-grained reactivity: value + live subscriber set, explicit
-  subscribe/unsubscribe (no automatic tracking in v1), DOM-first rehydration.
+- **`signal`** — fine-grained reactivity: value + live subscriber set; a call is a
+  tracked read inside an `effect` or a `computed` (SDD-31), DOM-first rehydration.
 - **`FudicElement`** — the base class of every N3 custom element. The emitted
   chunk of a component carries its `static c($props)` factory and the
   `customElements.define`, and nothing else; the instance scaffolding lives here.

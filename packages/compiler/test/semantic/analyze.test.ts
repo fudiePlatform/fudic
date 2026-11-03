@@ -90,8 +90,14 @@ describe('analyze — runner', () => {
     // + server-cut (SDD-61: FUD1150, the server cut of `@code`)
     // + await (SDD-70: FUD1320–FUD1322)
     // + event-in-loop, right after delegation (SDD-72: FUD1380)
-    expect(ANALYZERS).toHaveLength(31);
-    expect(ANALYZERS.at(-1)?.name).toBe('await');
+    // + attribute-bindings, first: what the classification says, said once (SDD-62)
+    // + jsx-text, last (SDD-62: FUD1162)
+    // − primitive-interpolation and snippet-recursion (SDD-62: FUD0195 and FUD0914 retired;
+    //   FUD1143 and FUD0835 say those facts)
+    // + loop-bindings (SDD-62: FUD0543 for every loop), data-without-load (SDD-62: FUD0621)
+    expect(ANALYZERS).toHaveLength(33);
+    expect(ANALYZERS[0]?.name).toBe('attribute-bindings');
+    expect(ANALYZERS.at(-1)?.name).toBe('jsx-text');
     const names = ANALYZERS.map((a) => a.name);
     expect(names.indexOf('event-in-loop')).toBe(names.indexOf('delegation') + 1);
     const { value } = analyze(buildInput(component('<p>hi</p>')));
@@ -137,15 +143,14 @@ describe('ref-in-loop (§7 crit. #3)', () => {
   });
 });
 
-describe('primitive-interpolation (§7 crit. #6)', () => {
-  it('flags an evident array/object literal, not a plain reference', () => {
-    expect(codes(component('@([1, 2, 3])'))).toContain('FUD0195');
-    expect(codes(component('@({ a: 1 })'))).toContain('FUD0195');
-    // User-written parens around the literal are peeled before the check.
-    expect(codes(component('@(([1, 2, 3]))'))).toContain('FUD0195');
-    expect(codes(component('@title'))).not.toContain('FUD0195');
-    // @raw content is still an interpolation: a reference does not trip the rule.
-    expect(codes(component('@raw(safeHtml)'))).not.toContain('FUD0195');
+describe('no analyzer for a retired code (SDD-62)', () => {
+  it('neither primitive-interpolation (FUD0195) nor snippet-recursion (FUD0914) runs any more', () => {
+    const names = ANALYZERS.map((a) => a.name);
+    expect(names).not.toContain('primitive-interpolation');
+    expect(names).not.toContain('snippet-recursion');
+    // An array or object literal interpolated is not FUD0195 any more: the portable view says it.
+    expect(codes(component('@([1, 2, 3])'))).not.toContain('FUD0195');
+    expect(codes(component('@({ a: 1 })'))).not.toContain('FUD0195');
   });
 });
 

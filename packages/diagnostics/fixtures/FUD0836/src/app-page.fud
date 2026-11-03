@@ -1,0 +1,7 @@
+<link rel="snippet" href="./snippets/plain.fud">
+
+<app-page>
+  <template shadowrootmode="open">
+    <p>Tea</p>
+  </template>
+</app-page>

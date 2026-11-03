@@ -9,6 +9,7 @@ import { resolveDocument } from '../../src/emit/resolve.js';
 import { apiDiagnostics, emitRouteClientModule, emitRouteModuleMapped } from '../../src/emit/index.js';
 import type { LinkedApi } from '../../src/types/io.js';
 import { memoryIo } from './_support.js';
+import { viewDiagnostics } from '../semantic/_view.js';
 
 const LAYOUT = '<!DOCTYPE html><html><head>@RenderHead()</head><body>@RenderBody()</body></html>';
 
@@ -165,11 +166,14 @@ describe('form:= (criterion 26, its compile part)', () => {
     expect(diagnosticsOf(src)).toEqual([{ code: 'FUD1005', text: 'load' }]);
   });
 
-  it('FUD1005: a value that is not one @ expression', () => {
-    const plain = diagnosticsOf(route(server, '', '<form control=@userForm form:="save"></form>', neutral));
-    expect(plain.map((d) => d.code)).toEqual(['FUD1005']);
-    const mixed = diagnosticsOf(route(server, '', '<form control=@userForm form:="x @save"></form>', neutral));
-    expect(mixed.map((d) => d.code)).toEqual(['FUD1005']);
+  it('FUD1005: a value that is not one @ expression comes from the classification, said once by the semantic pass', () => {
+    // SDD-62: the shape of a `form:` comes out of `classifyAttribute`, and the analyzer that
+    // forwards it is the one place it reaches the author; the emit does not say it again.
+    for (const form of ['form:="save"', 'form:="x @save"']) {
+      const src = route(server, '', `<form control=@userForm ${form}></form>`, neutral);
+      expect(diagnosticsOf(src), form).toEqual([]);
+      expect(viewDiagnostics(src).filter((d) => d.code === 'FUD1005'), form).toHaveLength(1);
+    }
   });
 });
 

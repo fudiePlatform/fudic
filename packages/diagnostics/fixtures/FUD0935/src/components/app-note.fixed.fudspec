@@ -1,0 +1,5 @@
+component app-note
+
+criterion shows
+  then
+    text app-note "Note"

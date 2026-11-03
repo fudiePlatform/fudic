@@ -1,0 +1,10 @@
+@code {
+  const name = "x";
+  function h() {}
+}
+
+<fix-a>
+  <template shadowrootmode="open">
+    <p on:(name)="@h">a</p>
+  </template>
+</fix-a>

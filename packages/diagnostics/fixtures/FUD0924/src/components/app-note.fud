@@ -1,0 +1,5 @@
+<app-note>
+  <template shadowrootmode="open">
+    <p>Note</p>
+  </template>
+</app-note>

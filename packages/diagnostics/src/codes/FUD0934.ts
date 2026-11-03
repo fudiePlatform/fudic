@@ -7,6 +7,6 @@ export interface FUD0934Params extends SourceInput {
   readonly keyword: 'given' | 'when' | 'then';
 }
 
-/** A block with no term lines (`.fudspec`). */
+/** A block with no term lines (`.fudspec`) (SDD-52). */
 export const FUD0934 = (p: FUD0934Params): SourceDiagnostic =>
   source('FUD0934', 'error', `\`${p.keyword}\` is empty: write at least one term under it`, p);

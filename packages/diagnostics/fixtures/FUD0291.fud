@@ -1,0 +1,11 @@
+@code {
+  function save() {
+    console.log("saved");
+  }
+}
+
+<app-saver>
+  <template shadowrootmode="open">
+    <button @click="@(save ?? save)">Save</button>
+  </template>
+</app-saver>

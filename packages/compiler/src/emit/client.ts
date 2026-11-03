@@ -564,8 +564,8 @@ function buildComponentClientModule(
   w.line('}');
   w.dedent();
   w.line('});');
-  // The emit's own diagnostics travel with `@code`'s: a loop whose header declares nothing
-  // (FUD0543) or a binding that cannot be subscribed (FUD0291) is as much a fact about this
+  // The emit's own diagnostics travel with `@code`'s: a binding that cannot be subscribed
+  // (FUD0291) is as much a fact about this
   // file as a `@code` that does not parse, and the emit does not stop for any of them (§5).
   return { writer: w, linker, diagnostics: [...diagnostics, ...emitDiagnostics] };
 }

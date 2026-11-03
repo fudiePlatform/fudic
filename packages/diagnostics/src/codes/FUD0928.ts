@@ -7,6 +7,6 @@ export interface FUD0928Params extends SourceInput {
   readonly found: string;
 }
 
-/** An unindented line that is neither `component` nor `criterion` (`.fudspec`). */
+/** An unindented line that is neither `component` nor `criterion` (`.fudspec`) (SDD-52). */
 export const FUD0928 = (p: FUD0928Params): SourceDiagnostic =>
   source('FUD0928', 'error', `expected \`component\` or \`criterion\`, found \`${p.found}\``, p);

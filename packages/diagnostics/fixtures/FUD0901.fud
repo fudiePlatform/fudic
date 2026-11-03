@@ -1,0 +1,10 @@
+<app-rows>
+  <template shadowrootmode="open">
+    @render row("Ada")
+  </template>
+</app-rows>
+
+@snippet row(title: string) {
+  @{ title = title + "!"; }
+  <p>@title</p>
+}

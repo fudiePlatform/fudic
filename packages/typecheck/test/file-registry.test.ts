@@ -48,10 +48,32 @@ describe('component', () => {
     expect(registry.component('site-nav')).toBeUndefined();
   });
 
-  it('leaves an href that points nowhere unresolved', () => {
+  it('while a link points nowhere (FUD0460), every tag it may have been meant for is that link’s', () => {
+    // SDD-62: the broken link is the one voice; an unresolved tag is not also FUD0191 or a type error.
     const registry = registryFor(SLUG, route('../layouts/_layout.fud', ['./ghost.fud']));
 
-    expect(registry.component('ghost')).toBeUndefined();
+    expect(registry.component('ghost')).toBe('./ghost.fud');
+    expect(registry.component('app-anything')).toBe('./ghost.fud');
+  });
+
+  it('keeps the tags its good links declare, and answers the first broken href for the rest', () => {
+    const registry = registryFor(
+      SLUG,
+      route('../layouts/_layout.fud', ['./ghost.fud', '../components/app-badge.fud', './other-ghost.fud']),
+    );
+
+    expect(registry.component('app-badge')).toBe('../components/app-badge.fud');
+    expect(registry.component('app-x')).toBe('./ghost.fud');
+  });
+
+  it('a component link the structure rejected (FUD0152, FUD0438) still declares its tag', () => {
+    // A `<link rel="component">` inside the template, not at the top: the build ignores it, and
+    // that is what its own diagnostic says; the tag it names is not undeclared on top of that.
+    const source = `<app-x>\n  <template shadowrootmode="open">\n    <link rel="component" href="../components/app-badge.fud">\n    <app-badge></app-badge>\n  </template>\n</app-x>\n`;
+    const registry = registryFor('/p/components/app-x.fud', source);
+
+    expect(registry.component('app-badge')).toBe('../components/app-badge.fud');
+    expect(registry.component('site-nav')).toBeUndefined();
   });
 
   it('ignores a link whose target defines no tag', () => {

@@ -1,0 +1,12 @@
+@code {
+  import { signal, now, date } from "@fudic/core";
+
+  const ahora = signal(now());
+  const hora = date({ timeStyle: "medium", timeZone: "Europe/Madrid" });
+}
+
+<app-clock>
+  <template shadowrootmode="open">
+    <time>@(ahora() | hora)</time>
+  </template>
+</app-clock>

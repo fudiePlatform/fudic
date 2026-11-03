@@ -1,0 +1,9 @@
+<app-rows>
+  <template shadowrootmode="open">
+    @{ let n = 0; }
+    @while (n < 3) key (n) {
+      @{ n++; }
+      <p>@n</p>
+    }
+  </template>
+</app-rows>

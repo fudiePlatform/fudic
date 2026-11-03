@@ -1,0 +1,9 @@
+<app-shop>
+  <template shadowrootmode="open">
+    @render product_card("Tea")
+  </template>
+</app-shop>
+
+@snippet product_card(name: string) {
+  <p>@name</p>
+}

@@ -1,0 +1,9 @@
+<app-shop>
+  <template shadowrootmode="open">
+    <p>Tea</p>
+  </template>
+</app-shop>
+
+@snippet (name: string) {
+  <p>@name</p>
+}

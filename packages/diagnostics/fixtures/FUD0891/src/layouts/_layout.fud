@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="component" href="../components/app-frame.fud">
+    <meta charset="utf-8">
+    <script type="module" src="fudic:runtime"></script>
+    @RenderHead()
+  </head>
+  <body>
+    <app-frame>
+      @RenderBody(slot: "main")
+    </app-frame>
+  </body>
+</html>

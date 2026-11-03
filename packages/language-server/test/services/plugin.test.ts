@@ -991,16 +991,16 @@ describe('hover over a `control`', () => {
 
   it('says «form» over a `<form>` and «control» over a field', async () => {
     expect(await cardAt('<input control="@userForm.alias">', 'form')).toContain(
-      'Enlaza este `<form>` con el formulario',
+      'Binds this `<form>` to the form',
     );
     expect(await cardAt('<input control="@userForm.alias">', 'input')).toContain(
-      'Enlaza este campo con un control del formulario',
+      'Binds this field to a control of the form',
     );
   });
 
   it('says «group» over anything that groups part of the form', async () => {
     expect(await cardAt('<div control="@userForm"><input></div>', 'div')).toContain(
-      'Agrupa parte del formulario',
+      'Groups part of the form',
     );
   });
 
@@ -1008,7 +1008,7 @@ describe('hover over a `control`', () => {
     // The honest answer: what fits is whatever the `ctrl` the component declared takes, and
     // this server has not read it.
     expect(await cardAt('<app-badge control="@userForm.alias"></app-badge>', 'app-badge')).toContain(
-      'Cruza el nodo al componente por su prop `ctrl`',
+      'Passes the node to the component through its `ctrl` prop',
     );
   });
 
@@ -1163,17 +1163,17 @@ describe('code actions', () => {
     const bulbsIn = async (markup: string) =>
       (await fixesIn(FORM_ROUTE(markup), {}, true))
         .map((action) => action.title)
-        .filter((title) => title.startsWith('Enlazar'));
+        .filter((title) => title.startsWith('Bind'));
 
     it('offers the fields of the form above, through the very path the author wrote', async () => {
       // `@userForm.alias` and not `alias`: the path a repair writes is the path they would
       // have written, which is why the owner travels as TEXT and not as a type.
-      expect(await bulbsIn('<input>')).toEqual(['Enlazar control=@userForm.alias']);
+      expect(await bulbsIn('<input>')).toEqual(['Bind control=@userForm.alias']);
     });
 
     it('writes the binding just past the tag name', async () => {
       const actions = await fixesIn(FORM_ROUTE('<input id="a">'), {}, true);
-      const bind = actions.find((action) => action.title === 'Enlazar control=@userForm.alias');
+      const bind = actions.find((action) => action.title === 'Bind control=@userForm.alias');
 
       expect(edit(bind)?.newText).toBe(' control=@userForm.alias');
     });
@@ -1192,11 +1192,11 @@ describe('code actions', () => {
 `;
       const titles = (await fixesIn(source, {}, true))
         .map((action) => action.title)
-        .filter((title) => title.startsWith('Enlazar'));
+        .filter((title) => title.startsWith('Bind'));
 
       // The `<form>` takes the form; the `<input>` under it has no owner yet, and a leaf is
       // not what a form's own scope offers it.
-      expect(titles).toEqual(['Enlazar control=@userForm']);
+      expect(titles).toEqual(['Bind control=@userForm']);
     });
 
     it('never offers a path the file already binds', async () => {
@@ -1212,7 +1212,7 @@ describe('code actions', () => {
     it('offers nothing when no TypeScript is mounted to say what a node is', async () => {
       const titles = (await fixesIn(FORM_ROUTE('<input>')))
         .map((action) => action.title)
-        .filter((title) => title.startsWith('Enlazar'));
+        .filter((title) => title.startsWith('Bind'));
 
       expect(titles).toEqual([]);
     });
@@ -1247,7 +1247,7 @@ describe('code actions', () => {
       const actions =
         (await service.provideCodeActions?.(document, whole, { diagnostics: [] }, TOKEN)) ?? [];
 
-      expect(actions.map((action) => action.title).filter((t) => t.startsWith('Enlazar'))).toEqual(
+      expect(actions.map((action) => action.title).filter((t) => t.startsWith('Bind'))).toEqual(
         [],
       );
     });
@@ -1258,7 +1258,7 @@ describe('code actions', () => {
       const actions = await fixesIn(
         `<link rel="layout" href="../layouts/_layout.fud">\n<div title=hola></div>\n`,
       );
-      const quote = actions.find((action) => action.title === 'Entrecomillar el valor');
+      const quote = actions.find((action) => action.title === 'Quote the value');
 
       expect(quote).toBeDefined();
       expect(edit(quote)?.newText).toBe('"hola"');
@@ -1268,9 +1268,9 @@ describe('code actions', () => {
       const actions = await fixesIn(
         `<link rel="layout" href="../layouts/_layout.fud">\n<app-badge></app-badge>\n`,
       );
-      const link = actions.find((action) => action.title.startsWith('Añadir <link'));
+      const link = actions.find((action) => action.title.startsWith('Add <link'));
 
-      expect(link?.title).toBe('Añadir <link rel="component"> de <app-badge>');
+      expect(link?.title).toBe('Add <link rel="component"> for <app-badge>');
       // The very edit `linkInsertionFor` writes, which is what the tag completion uses.
       expect(edit(link)?.newText).toContain('<link rel="component" href="../components/app-badge.fud">');
     });
@@ -1287,32 +1287,50 @@ describe('code actions', () => {
         '/p/components/app-tag.fud': component('app-tag'),
       };
       const source = `<link rel="layout" href="../layouts/_layout.fud">\n<app-tag></app-tag>\n`;
-      const link = (await fixesIn(source, reachable)).find((a) => a.title.startsWith('Añadir <link'));
+      const link = (await fixesIn(source, reachable)).find((a) => a.title.startsWith('Add <link'));
 
       expect(edit(link)?.newText).toContain('href="../components/app-tag.fud"');
 
       const unreachable = { '/p/package.json': own, '/p/other/package.json': other, '/p/other/app-tag.fud': component('app-tag') };
-      expect((await fixesIn(source, unreachable)).filter((a) => a.title.startsWith('Añadir <link'))).toEqual([]);
+      expect((await fixesIn(source, unreachable)).filter((a) => a.title.startsWith('Add <link'))).toEqual([]);
     });
 
-    it('adds the key of a loop that renders markup (FUD0540)', async () => {
+    it('offers no key for a plain binding when no type says what the element is (FUD0540)', async () => {
+      // Without the projection's TypeScript the element is unknown: `key (item)` over an object
+      // trades FUD0540 for a key that is neither a string nor a number (SDD-62 §4.3).
       const actions = await fixesIn(
         `<link rel="layout" href="../layouts/_layout.fud">\n@foreach (const item of data.xs) {\n  <p>x</p>\n}\n`,
       );
-      const key = actions.find((action) => action.title.startsWith('Añadir key'));
 
-      expect(key?.title).toBe('Añadir key (item)');
-      expect(edit(key)?.newText).toBe(' key (item)');
+      expect(actions.filter((action) => action.title.startsWith('Add key'))).toEqual([]);
     });
 
-    it('uses the FIRST binding of a destructuring header', async () => {
+    it('keys a destructuring header by its `id`, wherever it stands, with no type needed', async () => {
       const actions = await fixesIn(
-        `<link rel="layout" href="../layouts/_layout.fud">\n@foreach (const { id, tag } of data.xs) {\n  <p>x</p>\n}\n`,
+        `<link rel="layout" href="../layouts/_layout.fud">\n@foreach (const { tag, id } of data.xs) {\n  <p>x</p>\n}\n`,
+      );
+      const key = actions.find((action) => action.title.startsWith('Add key'));
+
+      expect(key?.title).toBe('Add key (id)');
+      expect(edit(key)?.newText).toBe(' key (id)');
+    });
+
+    it('keys a renamed `id` by the name the header gives it', async () => {
+      const actions = await fixesIn(
+        `<link rel="layout" href="../layouts/_layout.fud">\n@foreach (const { id: k } of data.xs) {\n  <p>x</p>\n}\n`,
       );
 
-      expect(actions.find((action) => action.title.startsWith('Añadir key'))?.title).toBe(
-        'Añadir key (id)',
-      );
+      expect(actions.find((action) => action.title.startsWith('Add key'))?.title).toBe('Add key (k)');
+    });
+
+    it('offers no key for a destructuring with no plain `id`', async () => {
+      // `{ tag }` has no id; `{ id = 1 }` defaults it, so it is not the row's identity for sure.
+      for (const header of ['const { tag } of data.xs', 'const { id = 1 } of data.xs', 'const [id] of data.xs']) {
+        const actions = await fixesIn(
+          `<link rel="layout" href="../layouts/_layout.fud">\n@foreach (${header}) {\n  <p>x</p>\n}\n`,
+        );
+        expect(actions.filter((action) => action.title.startsWith('Add key')), header).toEqual([]);
+      }
     });
 
     it('offers no key where the header declares no binding', async () => {
@@ -1322,7 +1340,7 @@ describe('code actions', () => {
         `<link rel="layout" href="../layouts/_layout.fud">\n@foreach (x of data.xs) {\n  <p>x</p>\n}\n`,
       );
 
-      expect(actions.filter((action) => action.title.startsWith('Añadir key'))).toEqual([]);
+      expect(actions.filter((action) => action.title.startsWith('Add key'))).toEqual([]);
     });
 
     it('does not quote a value that already carries a quote', async () => {
@@ -1333,7 +1351,7 @@ describe('code actions', () => {
         `<link rel="layout" href="../layouts/_layout.fud">\n<div title=a"b></div>\n`,
       );
 
-      expect(actions.filter((action) => action.title === 'Entrecomillar el valor')).toEqual([]);
+      expect(actions.filter((action) => action.title === 'Quote the value')).toEqual([]);
     });
 
     it('does not mistake a longer tag for the one it starts with', async () => {
@@ -1343,7 +1361,7 @@ describe('code actions', () => {
         `<link rel="layout" href="../layouts/_layout.fud">\n<app-badge-large></app-badge-large>\n`,
       );
 
-      expect(actions.filter((action) => action.title.startsWith('Añadir <link'))).toEqual([]);
+      expect(actions.filter((action) => action.title.startsWith('Add <link'))).toEqual([]);
     });
 
     it('offers no link for a tag the workspace does not have', async () => {
@@ -1354,7 +1372,7 @@ describe('code actions', () => {
         `<link rel="layout" href="../layouts/_layout.fud">\n<app-ghost></app-ghost>\n`,
       );
 
-      expect(actions.filter((action) => action.title.startsWith('Añadir <link'))).toEqual([]);
+      expect(actions.filter((action) => action.title.startsWith('Add <link'))).toEqual([]);
     });
 
     it('offers no key where Oxc could not read the header', async () => {
@@ -1364,7 +1382,7 @@ describe('code actions', () => {
         `<link rel="layout" href="../layouts/_layout.fud">\n@foreach (const of) {\n  <p>x</p>\n}\n`,
       );
 
-      expect(actions.filter((action) => action.title.startsWith('Añadir key'))).toEqual([]);
+      expect(actions.filter((action) => action.title.startsWith('Add key'))).toEqual([]);
     });
 
     it('offers nothing for a repairable diagnostic outside the range asked about', async () => {
@@ -1420,9 +1438,9 @@ describe('code actions', () => {
 
     it('completes the required props a tag passes none of', async () => {
       const actions = await contractFixesIn('<app-input></app-input>');
-      const fix = titled(actions, 'Completar')[0];
+      const fix = titled(actions, 'Add the required props')[0];
 
-      expect(fix?.title).toBe('Completar las props requeridas de <app-input>');
+      expect(fix?.title).toBe('Add the required props of <app-input>');
       // One insertion and not two: two zero-length edits at one offset are two a client may
       // order either way. The optional `hint` is not in it — only what is required.
       expect(edit(fix)?.newText).toBe(' .id="" .name=""');
@@ -1434,7 +1452,7 @@ describe('code actions', () => {
       // a second one beside it.
       const actions = await contractFixesIn('<app-input .id="" .name="n"></app-input>');
 
-      expect(edit(titled(actions, 'Completar')[0])?.newText).toBe('.id=""');
+      expect(edit(titled(actions, 'Add the required props')[0])?.newText).toBe('.id=""');
     });
 
     it('sorts a replacement and an insertion into source order', async () => {
@@ -1442,7 +1460,7 @@ describe('code actions', () => {
       // the attribute and one at the `>`. They may not overlap and they may not arrive out of
       // order — a client is entitled to refuse a set that does.
       const actions = await contractFixesIn('<app-input .id=""></app-input>');
-      const edits = Object.values(titled(actions, 'Completar')[0]?.edit?.changes ?? {})[0] as
+      const edits = Object.values(titled(actions, 'Add the required props')[0]?.edit?.changes ?? {})[0] as
         | { newText: string }[]
         | undefined;
 
@@ -1452,7 +1470,7 @@ describe('code actions', () => {
     it('inserts before the slash of a self-closing tag', async () => {
       const actions = await contractFixesIn('<app-input/>');
 
-      expect(edit(titled(actions, 'Completar')[0])?.newText).toBe(' .id="" .name=""');
+      expect(edit(titled(actions, 'Add the required props')[0])?.newText).toBe(' .id="" .name=""');
     });
 
     it('says nothing about a tag that passes everything it must', async () => {
@@ -1465,14 +1483,14 @@ describe('code actions', () => {
       // the attribute twice.
       const actions = await contractFixesIn('<app-input .id= .name=></app-input>');
 
-      expect(edit(titled(actions, 'Completar')[0])?.newText).not.toContain('.name');
+      expect(edit(titled(actions, 'Add the required props')[0])?.newText).not.toContain('.name');
     });
 
     it('renames a prop the component does not declare', async () => {
       const actions = await contractFixesIn('<app-input .idd="1" .name="n"></app-input>');
-      const fix = titled(actions, 'Cambiar a .')[0];
+      const fix = titled(actions, 'Change to .')[0];
 
-      expect(fix?.title).toBe('Cambiar a .id');
+      expect(fix?.title).toBe('Change to .id');
       expect(edit(fix)?.newText).toBe('.id');
     });
 
@@ -1481,20 +1499,20 @@ describe('code actions', () => {
       // offers has to be obviously right.
       const actions = await contractFixesIn('<app-input .zzzzzz="1"></app-input>');
 
-      expect(titled(actions, 'Cambiar a .')).toEqual([]);
+      expect(titled(actions, 'Change to .')).toEqual([]);
     });
 
     it('never suggests a name the tag already carries', async () => {
       // Renaming `.nam` to a `.name` that is right there trades one error for a duplicate.
       const actions = await contractFixesIn('<app-input .id="1" .name="n" .nam="x"></app-input>');
 
-      expect(titled(actions, 'Cambiar a .')).toEqual([]);
+      expect(titled(actions, 'Change to .')).toEqual([]);
     });
 
     it('ignores a bare `.`, which names no prop at all', async () => {
       const actions = await contractFixesIn('<app-input .="1" .id="1" .name="n"></app-input>');
 
-      expect(titled(actions, 'Cambiar a .')).toEqual([]);
+      expect(titled(actions, 'Change to .')).toEqual([]);
     });
 
     it('ignores an attribute whose NAME is an expression', async () => {
@@ -1504,7 +1522,7 @@ describe('code actions', () => {
         '<app-input .id="1" .name="n" bus:(EVENTS.cart)="@h"></app-input>',
       );
 
-      expect(titled(actions, 'Cambiar a .')).toEqual([]);
+      expect(titled(actions, 'Change to .')).toEqual([]);
     });
 
     it('suggests nothing once every declared prop is already written', async () => {
@@ -1514,24 +1532,24 @@ describe('code actions', () => {
         '<app-input .id="1" .name="n" .hint="h" .xxx="1"></app-input>',
       );
 
-      expect(titled(actions, 'Cambiar a .')).toEqual([]);
+      expect(titled(actions, 'Change to .')).toEqual([]);
     });
 
     it('renames a slot to each one the host declares', async () => {
       const actions = await contractFixesIn(
         '<app-input .id="1" .name="n"><div slot="PEPITO"></div></app-input>',
       );
-      const fix = titled(actions, 'Cambiar a slot')[0];
+      const fix = titled(actions, 'Change to slot')[0];
 
-      expect(fix?.title).toBe('Cambiar a slot="icon"');
+      expect(fix?.title).toBe('Change to slot="icon"');
       expect(edit(fix)?.newText).toBe('icon');
     });
 
     it('removes the slot when the host declares none to rename it to', async () => {
       const actions = await contractFixesIn('<app-bare><div slot="PEPITO"></div></app-bare>');
-      const fix = titled(actions, 'Quitar slot')[0];
+      const fix = titled(actions, 'Remove slot')[0];
 
-      expect(fix?.title).toBe('Quitar slot="PEPITO"');
+      expect(fix?.title).toBe('Remove slot="PEPITO"');
       // The whitespace before it goes too, or the tag keeps a gap where the attribute was.
       expect(edit(fix)?.newText).toBe('');
     });
@@ -1541,8 +1559,8 @@ describe('code actions', () => {
         '<app-input .id="1" .name="n"><div slot="icon"></div></app-input>',
       );
 
-      expect(titled(actions, 'Cambiar a slot')).toEqual([]);
-      expect(titled(actions, 'Quitar slot')).toEqual([]);
+      expect(titled(actions, 'Change to slot')).toEqual([]);
+      expect(titled(actions, 'Remove slot')).toEqual([]);
     });
 
     it('says nothing about a slot whose name is not a literal', async () => {
@@ -1552,8 +1570,8 @@ describe('code actions', () => {
         '<app-input .id="1" .name="n"><div slot="@(1)"></div><b slot=""></b></app-input>',
       );
 
-      expect(titled(actions, 'Cambiar a slot')).toEqual([]);
-      expect(titled(actions, 'Quitar slot')).toEqual([]);
+      expect(titled(actions, 'Change to slot')).toEqual([]);
+      expect(titled(actions, 'Remove slot')).toEqual([]);
     });
 
     it('says nothing about a slot with no component parent', async () => {
@@ -1569,7 +1587,7 @@ describe('code actions', () => {
         WORKSPACE,
       );
 
-      expect(titled(actions, 'Completar')).toEqual([]);
+      expect(titled(actions, 'Add the required props')).toEqual([]);
     });
 
     it('offers nothing for a contract mistake outside the range asked about', async () => {
@@ -1588,7 +1606,7 @@ describe('code actions', () => {
       // A component's markup IS its own tag (decision 75). Nobody passes props to it there.
       const actions = await fixesIn(INPUT, WORKSPACE);
 
-      expect(titled(actions, 'Completar')).toEqual([]);
+      expect(titled(actions, 'Add the required props')).toEqual([]);
     });
   });
 });

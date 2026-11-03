@@ -1,0 +1,11 @@
+@code {
+  @client {
+    const label = "Hi";
+  }
+}
+
+<app-note>
+  <template shadowrootmode="open">
+    <p>@label</p>
+  </template>
+</app-note>

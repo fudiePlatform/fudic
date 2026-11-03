@@ -101,7 +101,8 @@ describe('FUD0891 / FUD0892 — the roots of a slotted hole', () => {
   });
 
   it('reads a section against ITS hole, and a section of an unslotted hole not at all', () => {
-    expect(contract('<p>x</p>\n@section lateral { texto }\n@section otra { texto }', slotted)).toEqual([
+    const withOtra = slotted.replace('</app-marco>', '</app-marco>@RenderSection(otra)');
+    expect(contract('<p>x</p>\n@section lateral { texto }\n@section otra { texto }', withOtra)).toEqual([
       'FUD0891: texto',
     ]);
   });

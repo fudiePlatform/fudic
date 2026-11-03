@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Fixes</title>
+    <script type="module" src="fudic:runtime"></script>
+  </head>
+  <body>
+    @RenderBody()
+  </body>
+</html>

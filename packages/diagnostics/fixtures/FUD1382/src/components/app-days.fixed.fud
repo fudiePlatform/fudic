@@ -1,0 +1,25 @@
+<link rel="server" href="./app-days.fudapi">
+
+@code {
+  import type { Day, Week } from "fudic:components/app-days";
+
+  const { weeks, days } = props<{ weeks: Week[]; days: Day[] }>();
+
+  function pick(row: { id: string }): void {
+    console.log(row.id);
+  }
+}
+
+<app-days>
+  <template shadowrootmode="open">
+    <section @click=@pick(d)>
+      @foreach (const day of weeks) key (day.id) {
+        <div>
+          @foreach (const d of days) key (d.id) {
+            <button delegate:d="click">@d.n</button>
+          }
+        </div>
+      }
+    </section>
+  </template>
+</app-days>

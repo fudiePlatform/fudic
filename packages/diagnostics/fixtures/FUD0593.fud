@@ -1,0 +1,9 @@
+<app-input>
+  <template shadowrootmode="open">
+    <div>
+      <template formassociated>
+        <input type="text">
+      </template>
+    </div>
+  </template>
+</app-input>

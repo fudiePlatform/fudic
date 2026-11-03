@@ -1,0 +1,12 @@
+<head>
+  <style>
+    p { color: red; }
+    a { color: blue; }
+  </style>
+</head>
+
+<fix-a>
+  <template shadowrootmode="open">
+    <p>a</p>
+  </template>
+</fix-a>

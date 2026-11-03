@@ -7,6 +7,7 @@
  * custom properties the library reads.
  */
 :host {
+  /** The storefront's green, over the guide's blue, for the components of this app. */
   --guia-accent: #0f7b3f;
   font-family: system-ui, sans-serif;
 }

@@ -200,8 +200,10 @@ describe('raw elements (§6.6, decision 43)', () => {
     expect(el.closeSpan).toBeDefined();
   });
 
-  it('reports an unterminated raw element as unclosed', () => {
-    expect(codes('<script>a')).toEqual(['FUD0014', 'FUD0052']);
+  it('reports an unterminated raw element as unclosed, once', () => {
+    // FUD0014 says the element is not closed; a FUD0052 for the same missing end tag would be a
+    // second voice (SDD-62).
+    expect(codes('<script>a')).toEqual(['FUD0014']);
   });
 });
 

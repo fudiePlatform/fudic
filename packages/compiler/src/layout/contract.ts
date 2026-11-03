@@ -16,7 +16,7 @@
  */
 
 import type { Diagnostic, Span } from '../types/index.js';
-import { FUD0890, FUD0891, FUD0892 } from '@fudic/diagnostics';
+import { FUD0429, FUD0890, FUD0891, FUD0892 } from '@fudic/diagnostics';
 import type { ElementNode, HtmlContent, RawExpressionNode } from '../html/index.js';
 import type { ControlNode } from '../control/index.js';
 import type { LayoutDocument, RouteDocument } from '../document/index.js';
@@ -57,6 +57,11 @@ export function holeContractDiagnostics(
   for (const section of route.sections) {
     const slot = sectionSlots.get(section.name);
     if (slot !== undefined) slottedRoots(section.children, slot, out);
+  }
+  // A section no `@RenderSection` consumes disappears from the page: a warning (decision 86).
+  const rendered = new Set(layout.renderSections.map((rs) => rs.name));
+  for (const section of route.sections) {
+    if (section.name !== '' && !rendered.has(section.name)) out.push(FUD0429({ span: section.span, section: section.name }));
   }
   return out;
 }

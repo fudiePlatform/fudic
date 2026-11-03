@@ -88,12 +88,12 @@ describe('mutants', () => {
     expect(diags[0]!.sourceText).toBe('findPost');
   });
 
-  it('C — a section the layout does not declare is TS2345 on the name', () => {
+  it('C — a section the layout does not declare is no type error on the .fud', () => {
     const diags = typecheckCorpus(mutate(SLUG, '@section nav {', '@section footer {'));
 
-    expect(diags).toHaveLength(1);
-    expect(diags[0]!.code).toBe(2345);
-    expect(diags[0]!.sourceText).toBe('footer');
+    // It is the compiler's FUD0429, a warning (SDD-62): the name is scaffold, so whatever the
+    // checker makes of it maps back to nothing in the source.
+    expect(diags.filter((d) => d.sourceText !== undefined)).toEqual([]);
   });
 
   it('D — a tag with no <link> is TS2304 on the tag', () => {

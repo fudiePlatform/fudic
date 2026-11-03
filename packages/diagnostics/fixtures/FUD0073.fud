@@ -1,0 +1,10 @@
+@code {
+  const ok = true;
+}
+
+<fix-a>
+  <template shadowrootmode="open">
+    <p>a</p>
+    @else { <p>b</p> }
+  </template>
+</fix-a>

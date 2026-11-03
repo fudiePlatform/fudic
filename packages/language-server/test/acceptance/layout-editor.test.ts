@@ -196,7 +196,7 @@ describe('the arguments of a `@render`', () => {
       range: diagnostic.range as never,
       context: { diagnostics: [diagnostic] as never },
     })) as readonly { title: string; edit?: { changes?: Record<string, { newText: string }[]> } }[];
-    const fix = actions.find((a) => a.title === 'Escribir @title');
+    const fix = actions.find((a) => a.title === 'Write @title');
 
     expect(Object.values(fix?.edit?.changes ?? {})[0]?.map((e) => e.newText)).toEqual(['@title']);
   });

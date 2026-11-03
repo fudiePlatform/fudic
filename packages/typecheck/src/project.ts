@@ -13,6 +13,7 @@ import type { Diagnostic, HtmlDocument, StructuredDocument } from '@fudic/compil
 import { batchDocumentJs, type DocumentJs } from './js-batch.js';
 import { createFileRegistry, type ProjectRegistry } from './file-registry.js';
 import type { LinkIndex } from './link-index.js';
+import { echoes } from './one-voice.js';
 import { parseFud } from './parse.js';
 import { toPosix } from './paths.js';
 
@@ -47,7 +48,11 @@ export interface ProjectInput {
 export function parseSource(source: string): ParsedSource {
   const { document, html, diagnostics } = parseFud(source);
   const js = batchDocumentJs(source, document);
-  return { source, document, html, diagnostics: [...diagnostics, ...js.diagnostics], js };
+  // One voice: a JS syntax error over a stretch the parse already rejected — an unclosed string
+  // of `@( … )` is `FUD0003` and Oxc's `FUD0170` again — is the parse's to say.
+  const spoken = diagnostics.filter((d) => d.severity === 'error').map((d) => d.span);
+  const syntax = js.diagnostics.filter((d) => !echoes(d.span, spoken));
+  return { source, document, html, diagnostics: [...diagnostics, ...syntax], js };
 }
 
 /** Project a parsed source against the index its links resolve in. */

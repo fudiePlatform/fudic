@@ -1,0 +1,7 @@
+component app-note
+
+criterion shows
+  given
+    props base
+  then
+    text app-note "Note"

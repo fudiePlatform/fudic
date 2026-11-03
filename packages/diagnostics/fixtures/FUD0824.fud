@@ -1,0 +1,9 @@
+<app-page>
+  <template shadowrootmode="open">
+    <div>
+      @snippet note() {
+        <p>Hi</p>
+      }
+    </div>
+  </template>
+</app-page>

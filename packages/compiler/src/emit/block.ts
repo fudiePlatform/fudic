@@ -21,7 +21,6 @@
 import type { AwaitNode, ControlConstruct } from '../control/index.js';
 import { keyExpression } from '../control/index.js';
 import type { Span } from '../types/index.js';
-import { FUD0543 } from '@fudic/diagnostics';
 import { type OxcNode, loopHeaderNames } from '../oxc/index.js';
 import { CodeWriter } from './writer.js';
 import type { AssetLinker } from './assets.js';
@@ -168,17 +167,14 @@ export class BlockEmitter implements BlockSink {
    *
    * `@while` declares nothing and that is legal (§3.5): its key comes from what the body
    * mutates. A `@foreach`/`@for` that declares nothing has no iteration to name, so its key
-   * can only be a constant and its rows can never be told apart — `FUD0543`.
+   * can only be a constant and its rows can never be told apart — `FUD0543`, which the semantic
+   * pass reports for every loop; the emit only reads the names.
    */
   #headerBindings(node: ControlConstruct): readonly string[] {
     if (!isLoop(node)) return [];
     if (node.type === 'while') return [];
     const header = this.#ctx.hookup.template.ast(node.header.inner);
-    const names = loopHeaderNames(Array.isArray(header) ? undefined : header, node.type);
-    if (names.length === 0) {
-      this.#ctx.hookup.diagnostics.push(FUD0543({ span: node.header.span }));
-    }
-    return names;
+    return loopHeaderNames(Array.isArray(header) ? undefined : header, node.type);
   }
 
   /**

@@ -1,0 +1,8 @@
+@code
+  const n = 1;
+
+<fix-a>
+  <template shadowrootmode="open">
+    <p>a</p>
+  </template>
+</fix-a>

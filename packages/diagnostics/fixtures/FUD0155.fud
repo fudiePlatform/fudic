@@ -1,0 +1,15 @@
+<head>
+  <style>
+    p { color: red; }
+  </style>
+</head>
+
+@code {
+  const n = 1;
+}
+
+<fix-a>
+  <template shadowrootmode="open">
+    <p>@n</p>
+  </template>
+</fix-a>

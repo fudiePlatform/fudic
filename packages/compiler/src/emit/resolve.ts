@@ -23,7 +23,7 @@ import {
   type Span,
   emptySpan,
 } from '../types/index.js';
-import { FUD0423, FUD0429, FUD0435, FUD0761, FUD1111, FUD1114, FUD1115 } from '@fudic/diagnostics';
+import { FUD0423, FUD0435, FUD0761, FUD1111, FUD1114, FUD1115 } from '@fudic/diagnostics';
 import { expandDocument, type DraggedLink, type OffsetMap } from '../expand/index.js';
 import { holeContractDiagnostics } from '../layout/index.js';
 import { lowerPortable, type LoweredSource } from './lower.js';
@@ -415,7 +415,14 @@ function visitDragged(dragged: readonly DraggedLink[], walk: Walk): void {
 /** One file of the graph: read it, expand it, register its tag, and follow what it names. */
 function visitComponent(path: string, at: Span, walk: Walk): void {
   {
-    const loaded = load(path, walk.io);
+    // A link to a file that cannot be read is `FUD0460`, which the link check reports over the
+    // `href`; the graph simply lacks that component. The io is the host's, and its read throws.
+    let loaded: LoadedFud;
+    try {
+      loaded = load(path, walk.io);
+    } catch {
+      return;
+    }
     const doc = loaded.doc;
     const source = loaded.source;
     for (const file of loaded.snippetFiles) walk.snippetFiles.add(file);
@@ -609,15 +616,7 @@ function reportOrphanSections(
 ): void {
   if (entry.type !== 'route-document') return;
   const route: RouteDocument = entry;
-  const rendered = new Set<string>();
-  for (const layout of layouts) {
-    for (const rs of layout.doc.renderSections) rendered.add(rs.name);
-  }
-  // The holes' own contract (SDD-48): required sections, and what a slotted hole may hold.
+  // The holes' own contract, orphan sections included: the one function the editor and the check
+  // call too.
   for (const layout of layouts) diagnostics.push(...holeContractDiagnostics(route, layout.doc));
-  for (const section of route.sections) {
-    if (section.name !== '' && !rendered.has(section.name)) {
-      diagnostics.push(FUD0429({ span: section.span, section: section.name }));
-    }
-  }
 }

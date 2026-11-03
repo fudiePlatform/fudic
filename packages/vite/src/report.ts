@@ -13,8 +13,8 @@
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { format, render, type FudDiagnostic } from '@fudic/diagnostics';
-import { relativePath, toPosix, type CheckReport } from '@fudic/typecheck/problems';
+import { format, render, type FudDiagnostic, type Span } from '@fudic/diagnostics';
+import { echoes, relativePath, toPosix, type CheckReport } from '@fudic/typecheck/problems';
 
 /**
  * `module` is the file being compiled when the diagnostic is about it: a compiler diagnostic
@@ -74,6 +74,8 @@ export class BuildReporter {
   readonly #root: string;
   readonly #remember: boolean;
   readonly #said = new Set<string>();
+  /** The error spans the check reported, by file: an emit error that meets one says it again. */
+  readonly #spoken = new Map<string, Span[]>();
 
   /**
    * `remember: false` is dev: there a file is compiled again on every save, and a diagnostic
@@ -90,6 +92,9 @@ export class BuildReporter {
     if (!this.#remember) return;
     for (const problem of report.problems) {
       this.#said.add(keyOf(problem.file, problem.span.start, problem.span.end, problem.code));
+      if (problem.severity !== 'error') continue;
+      const file = toPosix(problem.file);
+      this.#spoken.set(file, [...(this.#spoken.get(file) ?? []), problem.span]);
     }
   }
 
@@ -103,13 +108,12 @@ export class BuildReporter {
     for (const diagnostic of diagnostics) {
       const located = locate(diagnostic, module);
       if (located.file !== undefined && located.span !== undefined) {
-        const key = keyOf(
-          resolve(this.#root, located.file),
-          located.span.start,
-          located.span.end,
-          located.code,
-        );
+        const file = resolve(this.#root, located.file);
+        const key = keyOf(file, located.span.start, located.span.end, located.code);
         if (this.#said.has(key)) continue;
+        // One fact, one voice: the check spoke first, at this very place — an error the
+        // expansion's code repeats, `FUD0170` over a snippet's substituted argument.
+        if (located.severity === 'error' && echoes(located.span, this.#spoken.get(toPosix(file)) ?? [])) continue;
         if (this.#remember) this.#said.add(key);
       }
       if (located.severity === 'error') errors.push(located);

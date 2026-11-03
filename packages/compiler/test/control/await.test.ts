@@ -142,7 +142,7 @@ describe('a misplaced `@catch` is FUD1323, and the parse goes on (criterion 7)',
   });
 
   it('what follows is still parsed, and its own diagnostics still reported', () => {
-    // The stray `@catch` consumes only its keyword: `(e)` and the block are content, and the
+    // The stray `@catch` consumes its header and its block, which belong to nothing, and the
     // `@if` after them still says its own FUD0070.
     const { nodes, codes } = parse('<p>@catch (e) { x }</p> @if { <i>y</i> }');
     expect(codes).toEqual(['FUD1323 @catch', 'FUD0070 ']);
@@ -152,7 +152,8 @@ describe('a misplaced `@catch` is FUD1323, and the parse goes on (criterion 7)',
   it('through the whole pass: a stray `@catch` beside a view error reports both', () => {
     const source = component('<p>@catch</p><p>@({ a: 1 })</p>');
     expect(parse(source).codes).toEqual(['FUD1323 @catch']);
-    expect(viewDiagnostics(source).map((d) => d.code)).toContain('FUD0195');
+    // The object literal is the portable view's FUD1143 since FUD0195 was retired (SDD-62).
+    expect(viewDiagnostics(source).map((d) => d.code)).toContain('FUD1143');
   });
 });
 

@@ -1,0 +1,10 @@
+<link rel="server" href="../forms/f.fudapi">
+
+<app-form>
+  <template shadowrootmode="open">
+    <form control=@f>
+      <input control=@f.title type="text">
+      <span id="title-error" error=@f.title>Write a title.</span>
+    </form>
+  </template>
+</app-form>

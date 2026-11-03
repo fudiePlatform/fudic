@@ -1,0 +1,10 @@
+@code {
+  const { a = 1, b = 2 } = props<{ a?: number; b?: number }>();
+}
+
+<app-sum>
+  <template shadowrootmode="open">
+    @{ let total = 0; }
+    <p>@(total = a + b)</p>
+  </template>
+</app-sum>

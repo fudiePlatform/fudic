@@ -1,0 +1,10 @@
+<link rel="server" href="../forms/f.fudapi">
+
+<app-form>
+  <template shadowrootmode="open">
+    <form control=@f>
+      <div summary=@f></div>
+      <input control=@f.title type="text">
+    </form>
+  </template>
+</app-form>

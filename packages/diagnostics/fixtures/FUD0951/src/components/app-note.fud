@@ -1,0 +1,9 @@
+@code {
+  const { title } = props<{ title: string }>();
+}
+
+<app-note>
+  <template shadowrootmode="open">
+    <p>@title</p>
+  </template>
+</app-note>

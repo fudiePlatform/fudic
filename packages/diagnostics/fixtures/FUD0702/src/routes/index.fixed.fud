@@ -1,0 +1,8 @@
+<link rel="layout" href="../layouts/_layout.fud">
+<link rel="server" href="./index.fudapi">
+
+<head>
+  <title>Home</title>
+</head>
+
+<p>Hello</p>

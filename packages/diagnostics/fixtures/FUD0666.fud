@@ -1,0 +1,23 @@
+@code {
+  interface Day {
+    id: string;
+    label: string;
+  }
+
+  const { days } = props<{ days: Day[] }>();
+
+  function pick(day: Day) {
+    console.log(day.label);
+  }
+}
+
+<app-days>
+  <template shadowrootmode="open">
+    <ul @click="@pick(day)">
+      @foreach (const day of days) key (day.id) {
+        <li delegate:day>@day.label</li>
+      }
+    </ul>
+    <p title="@$day">Picked</p>
+  </template>
+</app-days>

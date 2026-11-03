@@ -1,0 +1,15 @@
+@code {
+  const w = 10;
+}
+
+<head>
+  <style>
+    .card { width: @(w)px; }
+  </style>
+</head>
+
+<fix-a>
+  <template shadowrootmode="open">
+    <p class="card">a</p>
+  </template>
+</fix-a>

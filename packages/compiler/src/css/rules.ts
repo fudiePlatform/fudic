@@ -34,6 +34,23 @@ export interface CssDeclaration extends Node {
   readonly name: string;
   /** What follows the `:`, trimmed; empty when there is no `:`. */
   readonly value: Span;
+  /** The `/** … *\/` comment that only whitespace separates from the declaration. */
+  readonly doc?: CssDoc;
+}
+
+/** A declaration's doc: its text without `/**`, `*\/` nor the stars of each line, and the comment's span. */
+export interface CssDoc {
+  readonly text: string;
+  readonly span: Span;
+}
+
+/** A doc body as the author meant it to read: without the leading stars and the indent. */
+function unstarred(body: string): string {
+  return body
+    .split('\n')
+    .map((line) => line.replace(/^\s*\*? ?/u, '').trimEnd())
+    .join('\n')
+    .trim();
 }
 
 /** `selector { declarations; nested rules }` */
@@ -170,6 +187,31 @@ class RuleScanner {
     return css.length;
   }
 
+  /**
+   * The doc in the trivia `[from, to)` that ends right before a declaration: its LAST comment,
+   * when it is a `/** … *\/` and only whitespace follows it. The trivia was already read, so
+   * every comment in it is closed.
+   */
+  #docIn(from: number, to: number): CssDoc | undefined {
+    const css = this.#css;
+    let last: Span | undefined;
+    for (let i = from; i < to; ) {
+      if (SPACE.test(css[i]!)) {
+        i += 1;
+        continue;
+      }
+      const end = css.indexOf('*/', i + 2) + 2;
+      last = span(i, end);
+      i = end;
+    }
+    // `/**/` is an empty comment, not the opening of a doc.
+    if (last === undefined || !css.startsWith('/**', last.start) || last.end - last.start <= 4) {
+      return undefined;
+    }
+    const text = unstarred(css.slice(last.start + 3, last.end - 2));
+    return text === '' ? undefined : { text, span: last };
+  }
+
   /** The `{` at `open` never closed. */
   #unclosed(open: number): number {
     return this.#fail('brace', span(open, open + 1));
@@ -195,8 +237,9 @@ class RuleScanner {
   }
 
   /** The declaration in `[start, end)`: its name before the first top-level `:`, its value after. */
-  #declaration(start: number, end: number): CssDeclaration {
+  #declaration(start: number, end: number, doc: CssDoc | undefined): CssDeclaration {
     const whole = this.#trim(start, end);
+    const documented = doc === undefined ? {} : { doc };
     const colon = this.#find(whole.start, ':');
     if (colon >= whole.end) {
       return {
@@ -204,6 +247,7 @@ class RuleScanner {
         span: whole,
         name: this.#css.slice(whole.start, whole.end).toLowerCase(),
         value: span(whole.end, whole.end),
+        ...documented,
       };
     }
     const raw = this.#css.slice(whole.start, colon).trim();
@@ -212,6 +256,7 @@ class RuleScanner {
       span: whole,
       name: raw.startsWith('--') ? raw : raw.toLowerCase(),
       value: this.#trim(colon + 1, whole.end),
+      ...documented,
     };
   }
 
@@ -260,6 +305,7 @@ class RuleScanner {
     const children: CssRule[] = [];
     let i = open + 1;
     for (;;) {
+      const from = i;
       i = this.#trivia(i);
       if (i >= css.length) {
         this.#unclosed(open);
@@ -285,7 +331,7 @@ class RuleScanner {
           children.push(rule);
           i = rule.span.end;
         } else {
-          declarations.push(this.#declaration(i, stop));
+          declarations.push(this.#declaration(i, stop, this.#docIn(from, i)));
           i = css[stop] === ';' ? stop + 1 : stop;
         }
       }

@@ -1,6 +1,6 @@
 # SDD-63 — Un componente cuenta todo sobre sí mismo: su contrato y los tokens de estilo
 
-> **Estado:** `Listo` — [tareas](./SDD-63-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-63-Task.md).
 > **Paquetes:** `@fudic/typecheck` · `@fudic/compiler` · `@fudic/language-server` ·
 > `examples/workspace` · `examples/basic`
 > **Depende de:** 24 (language server), 36 (la tarjeta del tag), 42 y 46 (guía de estilos y
@@ -112,7 +112,13 @@ export interface ContractEvent {
 export function contractOf(source: string, document: StructuredDocument): Contract;
 
 /** The same contract with prop types, prop docs and event details from the checker. */
-export function typedContract(contract: Contract, service: ts.LanguageService, file: string): Contract;
+export function typedContract(
+  contract: Contract,
+  service: ts.LanguageService | undefined,
+  file: string,
+  /** A `.fud` offset → its client projection. Without it, no event details (§8.2.1). */
+  toGenerated?: (offset: number) => number | undefined,
+): Contract;
 ```
 
 - `contractOf` y `typedContract` salen de `@fudic/language-server` (`mode.ts` y la parte de
@@ -368,3 +374,45 @@ diga que está memoizado. El contrato usa `codeOfDocument`, la versión memoizad
    nombres, y esas las pone el usuario.
 5. **Tokens: `:host` y `:root`.** `:host` es como se escribe una hoja adoptada en un shadow root
    (SDD-42); `:root`, la de una página. Lo demás son variables locales de una regla.
+
+### 8.2. Tomadas al implementar
+
+1. **`typedContract` recibe un cuarto parámetro opcional, `toGenerated`.** El `detail` es el tipo
+   de una expresión escrita en el `.fud`, y el checker solo conoce los offsets de la proyección:
+   con `(contract, service, file)` no hay forma de llegar de uno a otro. Quien tiene el servicio
+   tiene el mapeo (el language server, `projectedOffset`; el build, los mapas de Volar) y lo pasa.
+   Sin él, el contrato sale igual pero sin `detail`.
+2. **Los spans del `detail` viajan aparte del contrato**, en un `WeakMap` interno de
+   `contractOf` a `typedContract`: son un hecho del fuente, no algo que lea quien usa el
+   componente, y meterlos en `ContractEvent` los sacaría en el hover y en el MCP.
+3. **`EmitCall` gana también `statement`**, el inicio de la sentencia más interna que contiene la
+   llamada. Es lo que necesita la `doc` de un evento (§4.1) y el compilador ya tiene el AST en la
+   mano; buscarla en el texto sería adivinar.
+4. **`propDetails` se queda exportado** junto a `typedContract`: el arreglo de props requeridas
+   necesita `holds` (qué valor vacío escribir), que no es parte del contrato.
+5. **Los tokens leídos** salen de los valores de las declaraciones del árbol de reglas, no del
+   texto: un `var(--x)` dentro de un comentario no lee nada.
+6. **`uses` guarda todo elemento con guion salvo el propio host**, no solo los enlazados; es
+   `usesOf` quien filtra, en el momento de la consulta, por los tags que define algún componente
+   del índice. Lo que resuelve un `<link>` depende de ficheros que se indexan después, y el
+   índice no puede saberlo al describir uno.
+7. **`.css` del proyecto en el editor.** La extensión abre también los `.css` (selector y
+   `**/*.css` vigilado) para que `var(--` ofrezca tokens allí, y el servicio CSS de Volar se
+   limita a los `<style>` de un `.fud` (`embeddedOnly`): en un `.css` VS Code ya tiene el suyo y
+   saldría todo dos veces.
+8. **Completado de tokens: uno por nombre, el último declarado**, que es el que gana en CSS. La
+   lista de `projectTokens` conserva las dos entradas (§3.3); el completado no repite etiqueta.
+9. **Parts dinámicas en la tarjeta**: con `partsDynamic`, la sección dice que hay parts que se
+   calculan al ejecutar, en lugar de dar la lista por cerrada.
+10. **Sin checker, la tarjeta enseña el tipo tal como está escrito** (§3.1). Antes solo salía
+    con checker.
+11. **Un token redeclarado enseña lo que pisa.** `tienda` redeclara `--guia-accent` en su propia
+    hoja, así que en `tienda` el hover del criterio 12 enseña el valor y la doc de la app, que es
+    la que gana, y debajo «Overrides `#0b5fff` from `@fudic/example-guia`». Sin esa línea, el
+    hover de un token de librería sobrescrito escondía de dónde venía. La sobrescritura de
+    `tienda.css` se documenta también.
+12. **Un token sale una sola vez.** El servicio CSS de Volar ofrecía las propiedades que el
+    `<style>` ya lee, sin valor ni doc, y un token usado una vez salía dos veces en la lista; su
+    hover se juntaba con el nuestro. Envuelto (`withoutTokenEchoes`): su completado quita los
+    nombres que son tokens del fichero y su hover se aparta sobre un token. Una variable local
+    del `<style>` la sigue ofreciendo él.

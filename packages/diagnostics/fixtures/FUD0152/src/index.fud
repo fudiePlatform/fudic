@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Fix</title>
+  </head>
+  <body>
+    <link rel="component" href="./app-child.fud">
+    <app-child></app-child>
+  </body>
+</html>

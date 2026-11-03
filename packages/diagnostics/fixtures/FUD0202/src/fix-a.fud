@@ -1,0 +1,13 @@
+<link rel="component" href="./app-child.fud">
+
+@code {
+  function save(): void {
+    console.log("saved");
+  }
+}
+
+<fix-a>
+  <template shadowrootmode="open">
+    <app-child .onSave=@save></app-child>
+  </template>
+</fix-a>

@@ -1,0 +1,10 @@
+<link rel="server" href="./app-note.fudapi">
+
+<app-note>
+  <template shadowrootmode="open">
+    <form control=@noteForm form:=@save>
+      <input control=@noteForm.text type="text">
+      <button type="submit">Save</button>
+    </form>
+  </template>
+</app-note>

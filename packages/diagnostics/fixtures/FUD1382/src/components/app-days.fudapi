@@ -1,0 +1,7 @@
+type Day
+  id  str
+  n   i32
+
+type Week
+  id    str
+  days  Day[]

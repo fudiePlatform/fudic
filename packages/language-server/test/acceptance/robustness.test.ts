@@ -87,19 +87,19 @@ describe('§6.13 — invalidation', () => {
   it('a .fud created on disk makes its tag resolve, and deleting it makes it stop', async () => {
     const { uri } = await harness.open(SLUG, SLUG_USING_CARD);
 
-    // Before the file exists: the href resolves to nothing (FUD0460), the tag is undeclared
-    // (FUD0191, decision 41) and the projection cannot name it (TS2304).
+    // Before the file exists: the href resolves to nothing (FUD0460), and the undeclared tag
+    // is the broken link's until it is fixed, so FUD0460 is the one voice; the projection's
+    // TS2304 meets it and is silent (SDD-62).
     const missing = await diagnosticsOf(uri, SLUG_USING_CARD);
     expect(new Set(missing.map((item) => item.code))).toEqual(
-      new Set(['FUD0460', 'FUD0191', 2304]),
+      new Set(['FUD0460']),
     );
 
     writeFileSync(cardPath, CARD_SOURCE);
     await watched(cardPath, FileChangeType.Created);
 
     // The same server, the same session, the same open document: nothing was restarted, and
-    // the three errors are gone — including the one that came from the type checker, which
-    // means the new file entered the program too.
+    // the errors are gone.
     expect(await diagnosticsOf(uri, SLUG_USING_CARD)).toEqual([]);
 
     // Completion sees it as well: the index is what both features read.
@@ -116,7 +116,7 @@ describe('§6.13 — invalidation', () => {
     // And back: invalidation is not a one-way door, and a deleted component is a broken link
     // again rather than a stale entry pointing at a file that is not there.
     expect(new Set((await diagnosticsOf(uri, SLUG_USING_CARD)).map((item) => item.code))).toEqual(
-      new Set(['FUD0460', 'FUD0191', 2304]),
+      new Set(['FUD0460']),
     );
   });
 });

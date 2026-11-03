@@ -453,8 +453,9 @@ describe('a child component built inside a block (§4.6)', () => {
   });
 });
 
-describe('FUD0543 — a loop header that names nothing', () => {
-  it('fires when the header assigns to an outer binding instead of declaring', () => {
+describe('a loop header that names nothing: the emit goes on, and says nothing (SDD-62)', () => {
+  // FUD0543 is the `loop-bindings` analyzer's now, for every loop (see semantic/loop-bindings).
+  it('an assignment header is emitted as written', () => {
     const out = emitted(
       'x-nodecl',
       component(
@@ -463,12 +464,12 @@ describe('FUD0543 — a loop header that names nothing', () => {
         '<ul>@foreach (r of rows) key (r) { <li>@r</li> }</ul>',
       ),
     );
-    expect(codes(out)).toEqual(['FUD0543']);
+    expect(codes(out)).toEqual([]);
     // And the emit goes on: the rest of the page is still emitted (§5).
     expect(out.code).toContain('for (r of rows) {');
   });
 
-  it('fires when the header did not parse at all, and does not stop the emit', () => {
+  it('a header that did not parse does not stop the emit', () => {
     const out = emitted(
       'x-nohead',
       component(
@@ -477,7 +478,7 @@ describe('FUD0543 — a loop header that names nothing', () => {
         '<ul>@foreach const r of rows { <li>x</li> }</ul>',
       ),
     );
-    expect(codes(out)).toEqual(['FUD0543']);
+    expect(codes(out)).toEqual([]);
     expect(out.code).toContain('customElements.define("x-nohead"');
   });
 

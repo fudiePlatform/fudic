@@ -93,7 +93,10 @@ function resolve(
   }
   const namespace = scope.namespaced.get(call.namespace.name);
   if (namespace === undefined) {
-    diagnostics.push(FUD0827({ span: call.namespace.span, namespace: call.namespace.name }));
+    // Over `ns.card` and not `ns` alone: the name it qualifies is unresolvable for the same reason.
+    diagnostics.push(
+      FUD0827({ span: { start: call.namespace.span.start, end: call.nameSpan.end }, namespace: call.namespace.name }),
+    );
     return undefined;
   }
   const found = namespace.get(call.name);
@@ -142,7 +145,8 @@ function bind(
     if (taken !== undefined) {
       diagnostics.push(
         FUD0831({
-          span: arg.nameSpan,
+          // The whole named argument: it is the value that arrives twice, not only its name.
+          span: arg.span,
           arg: arg.name,
           related: [{ span: taken.value.span, message: 'it already arrived by position here' }],
         }),
@@ -255,6 +259,10 @@ export function checkRenderCalls(
     for (const node of nodes) {
       if (node.type === 'snippet') {
         const decl = node as unknown as SnippetDeclNode;
+        // Walked once, here or through a call that reached it first: twice, a call it makes to
+        // itself would be reported twice.
+        if (seen.has(decl)) continue;
+        seen.add(decl);
         walk(decl.children, inScope, inFile, [...stack, { file: inFile, name: decl.name }]);
         continue;
       }

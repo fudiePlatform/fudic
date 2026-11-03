@@ -1,0 +1,9 @@
+@code {
+  const on = true;
+}
+
+<fix-a>
+  <template shadowrootmode="open">
+    <p class:="@on">a</p>
+  </template>
+</fix-a>

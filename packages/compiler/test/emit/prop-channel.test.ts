@@ -197,7 +197,7 @@ describe('with no `propsOf` the rule is silent entirely', () => {
       {
         source: graph.entrySource,
         document: graph.entry,
-        components: { has: () => true },
+        components: {},
         names: new Map(),
       },
       (d) => out.push(d.code),

@@ -48,6 +48,10 @@ export {
 } from './options.js';
 export { nodeIo } from './io.js';
 export { type TransformResult, transformFud } from './transform.js';
+// What `transformFud` is handed beside the I/O, built as the plugin builds them: a caller that
+// checks a project as the build does needs the same style chains and the same asset registry.
+export { ProjectStyleChains } from './styles.js';
+export { LinkedAssets } from './linked-assets.js';
 export { parseFud } from './parse.js';
 export { type RouteBuild, type DiscoverResult, discoverRoutes } from './discover.js';
 export { type ManifestInputs, type ManifestResult, buildManifest } from './manifest.js';

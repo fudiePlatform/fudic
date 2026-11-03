@@ -196,12 +196,15 @@ describe('scanBalanced — EOF degradation (§6.6)', () => {
     const { value, diagnostics } = scanParens('("abc)', 0);
     expect(value.closed).toBe(false);
     expect(diagnostics.map((d) => d.code)).toEqual(['FUD0003']);
+    // From the opening quote, which is what is left open (SDD-62).
+    expect(diagnostics[0]!.span.start).toBe(1);
   });
 
   it('reports FUD0004 for an unterminated template', () => {
     const { value, diagnostics } = scanParens('(`abc)', 0);
     expect(value.closed).toBe(false);
     expect(diagnostics.map((d) => d.code)).toEqual(['FUD0004']);
+    expect(diagnostics[0]!.span.start).toBe(1);
   });
 
   it('reports FUD0005 for an unterminated block comment', () => {

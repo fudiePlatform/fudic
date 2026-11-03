@@ -8,6 +8,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { parseFud } from '../src/index.js';
+import { parseSource } from '../src/project.js';
 import { component, LAYOUT } from './_support.js';
 
 describe('parseFud', () => {
@@ -38,5 +39,19 @@ describe('parseFud', () => {
     for (const diagnostic of diagnostics) {
       expect(diagnostic.span.end).toBeGreaterThanOrEqual(diagnostic.span.start);
     }
+  });
+});
+
+describe('parseSource — one voice for a syntax error (SDD-62)', () => {
+  it('a JS syntax error over what the parse rejected is the parse’s alone', () => {
+    const source = '<x-echo>\n  <template shadowrootmode="open"><p>@("abc)</p></template>\n</x-echo>\n';
+    const codes = parseSource(source).diagnostics.map((d) => d.code);
+    expect(codes).toContain('FUD0003');
+    expect(codes).not.toContain('FUD0170');
+  });
+
+  it('one the parse did not reject is still said', () => {
+    const source = '@code {\n  const = ;\n}\n<x-echo>\n  <template shadowrootmode="open"><p>x</p></template>\n</x-echo>\n';
+    expect(parseSource(source).diagnostics.map((d) => d.code)).toEqual(['FUD0170']);
   });
 });

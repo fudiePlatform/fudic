@@ -398,6 +398,9 @@ function buildComponentModule(
     options.assetUrl,
     options.assetText,
   );
+  // No host template — a file of bare markup, a host with none (`FUD0156`, `FUD0157`): there is
+  // no component to emit, and the structure already said why. An empty module, never a throw.
+  if (comp.doc.template === undefined) return { writer: new CodeWriter(), linker, diagnostics: [] };
   const { props, signals, neutral, diagnostics, di } = codeOf(comp);
   const cells = cellSlots(comp, graph);
   const hydratable = hydratableTags(graph);
@@ -693,7 +696,7 @@ function buildPageModule(
   // runtime tag below depends on the answer: the same condition that makes the `<body>` claim
   // an id is what makes the page carry the runtime that reads it.
   const routeDiagnostics: Diagnostic[] = [];
-  const blocks = routeBlocksOf(graph, options.routeName, routeDiagnostics);
+  const blocks = routeBlocksOf(graph, options.routeName);
   const headW = new CodeWriter();
   // A standalone page owns its whole `<head>`, so it answers the `fudic:runtime` marker
   // itself (BUG-31 §T1) — there is no layout to ask and no route slot to go through. The

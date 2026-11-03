@@ -1,0 +1,9 @@
+@code {
+  const save = (): void => {};
+}
+
+<app-save>
+  <template shadowrootmode="open">
+    <button @click="@save">Save</button>
+  </template>
+</app-save>

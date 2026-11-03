@@ -20,6 +20,7 @@ import { eventsReadingRow } from '../../src/semantic/delegation.js';
 import { documentRoots, walk, type SemanticInput } from '../../src/semantic/index.js';
 import type { Diagnostic, Node } from '../../src/types/index.js';
 import { delegation } from '../../src/semantic/analyzers/delegation.js';
+import { attributeBindings } from '../../src/semantic/analyzers/attribute-bindings.js';
 
 const constructs: AtConstructParser = { parseControl, parseCodeBlock };
 
@@ -64,6 +65,18 @@ function report(inner: string, code?: string): readonly Diagnostic[] {
   const found: Diagnostic[] = [];
   delegation.run(inputFor(component(inner, code)), (d) => void found.push(d));
   return found;
+}
+
+/**
+ * With the classification's analyzer in front, as `ANALYZERS` runs them: `FUD0667`, a marker
+ * whose value is not an event list, is the classification's (SDD-62), not the delegation rule's.
+ */
+function withBindings(inner: string): readonly string[] {
+  const found: Diagnostic[] = [];
+  const input = inputFor(component(inner));
+  attributeBindings.run(input, (d) => void found.push(d));
+  delegation.run(input, (d) => void found.push(d));
+  return found.map((d) => d.code);
 }
 
 function codes(inner: string, code?: string): readonly string[] {
@@ -356,19 +369,17 @@ describe('delegation — a name that clashes (FUD1382, criterion 42)', () => {
     @foreach (const day of days) key (day.id) { <b delegate:day></b> }
   </div>`;
 
-  it('a name of the @code is FUD1382 on the handler\'s mention, and nothing is delegated', () => {
-    expect(codes(PICK, '  const day = 1;\n  const days = [];\n  function pick(d) {}')).toEqual(['FUD1382']);
-    expect(blamed(PICK, 0, '  const day = 1;')).toBe('day');
-    expect(report(PICK, '  const day = 1;')[0]?.message).toBe(
-      '`day` is both the delegated row and a name in scope here: rename the loop binding or the variable',
-    );
+  it('a name of the @code is no clash: the loop binding is the row the handler reads (SDD-62)', () => {
+    // The handler sits in the loop's scope for the delegated read, and there the binding shadows
+    // the module's name: nothing is ambiguous, so FUD1382 is not said.
+    expect(codes(PICK, '  const day = 1;\n  const days = [];\n  function pick(d) {}')).toEqual([]);
   });
 
-  it('an import of the @code clashes too', () => {
-    expect(codes(PICK, "  import { day } from './x';")).toEqual(['FUD1382']);
+  it('nor is an import of the @code', () => {
+    expect(codes(PICK, "  import { day } from './x';")).toEqual([]);
   });
 
-  it('a loop around the handler that declares the name clashes', () => {
+  it('a loop around the handler that declares the name clashes: FUD1382, on the mention', () => {
     const inner = `@foreach (const day of weeks) key (day.id) {
       <div @click=@pick(day)>
         @foreach (const day of day.days) key (day.id) { <b delegate:day></b> }
@@ -376,6 +387,9 @@ describe('delegation — a name that clashes (FUD1382, criterion 42)', () => {
     }`;
     expect(codes(inner)).toEqual(['FUD1382']);
     expect(blamed(inner)).toBe('day');
+    expect(report(inner)[0]?.message).toBe(
+      '`day` is both the delegated row and a name in scope here: rename the loop binding or the variable',
+    );
   });
 
   it('a name of the @code that is not the row is no clash', () => {
@@ -415,10 +429,25 @@ describe('delegation — the event and the read (§6.8, §6.9)', () => {
     const inner = `<div @click=@pick($day)>
       @foreach (const day of days) key (day.id) { <b delegate:day></b> }
     </div>`;
-    // And the marker is read by nobody now: the plain name is what pairs.
-    expect(codes(inner)).toEqual(['FUD1383', 'FUD0661']);
+    // The marker is read by the retired spelling, and that is FUD1383's fact alone: not also a
+    // dead marker (FUD0661) on the same mistake (SDD-62).
+    expect(codes(inner)).toEqual(['FUD1383']);
     expect(blamed(inner)).toBe('$day');
     expect(report(inner)[0]?.message).toBe('a delegated row is read by its name: write `day`, not `$day`');
+  });
+
+  it('nor is a listed event read by `$name` FUD1381: the handler of that event reads it, retired', () => {
+    const inner = `<div @input=@pick($day)>
+      @foreach (const day of days) key (day.id) { <b delegate:day="input"></b> }
+    </div>`;
+    expect(codes(inner)).toEqual(['FUD1383']);
+  });
+
+  it('a marker no handler reads at all, by either spelling, is still FUD0661', () => {
+    const inner = `<div @click=@pick(other)>
+      @foreach (const day of days) key (day.id) { <b delegate:day></b> }
+    </div>`;
+    expect(codes(inner)).toEqual(['FUD0661']);
   });
 
   it('FUD1383 inside a lambda handler and through a hole in an array argument too', () => {
@@ -463,18 +492,19 @@ describe('delegation — the marker with a wrong value (§6.4, criterion 38)', (
     const inner = `<div @click="@fn(day)">
       @foreach (const day of days) key (day.id) { <b delegate:day=@x></b> }
     </div>`;
-    expect(codes(inner)).toEqual(['FUD0667']);
-    expect(blamed(inner)).toBe('@x');
+    expect(withBindings(inner)).toEqual(['FUD0667']);
+    // The delegation rule itself is silent about it: one fact, one voice.
+    expect(codes(inner)).toEqual([]);
   });
 
   it('and an empty text the same; a literal event list does not', () => {
     expect(
-      codes(`<div @click="@fn(day)">
+      withBindings(`<div @click="@fn(day)">
         @foreach (const day of days) key (day.id) { <b delegate:day=""></b> }
       </div>`),
     ).toEqual(['FUD0667']);
     expect(
-      codes(`<div @click="@fn(day)">
+      withBindings(`<div @click="@fn(day)">
         @foreach (const day of days) key (day.id) { <b delegate:day="click"></b> }
       </div>`),
     ).toEqual([]);
@@ -617,7 +647,7 @@ describe('delegation — every code, out of the AST and out of the checker (§6.
 <b class:on="@$stray"></b>`;
 
   it('reports all eleven codes over one document', () => {
-    expect(new Set(codes(BROKEN))).toEqual(
+    expect(new Set(withBindings(BROKEN))).toEqual(
       new Set([
         'FUD0660',
         'FUD0661',

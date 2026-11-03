@@ -13,8 +13,8 @@
   <p>escribe fuera</p>
 }
 
-@* FUD0914 sobre `bucle`: se invoca a sí mismo sin un `@if` ni un `@foreach` en medio, y la
-   expansión no termina (§3.8). *@
+@* FUD0835 sobre `@render bucle(@v)`: se invoca a sí mismo sin un `@if` ni un `@foreach` en medio,
+   y la expansión no termina (§3.8). FUD0914 se retiró en SDD-62: lo dice FUD0835. *@
 @snippet bucle(v: number) {
   <p>@v @render bucle(@v)</p>
 }

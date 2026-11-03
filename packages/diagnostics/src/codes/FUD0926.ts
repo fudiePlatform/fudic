@@ -7,6 +7,6 @@ export interface FUD0926Params extends SourceInput {
   readonly keyword: 'component' | 'criterion' | 'given' | 'when' | 'then';
 }
 
-/** Text after a structural line that takes nothing more (`.fudspec`). */
+/** Text after a structural line that takes nothing more (`.fudspec`) (SDD-52). */
 export const FUD0926 = (p: FUD0926Params): SourceDiagnostic =>
   source('FUD0926', 'error', `unexpected text after \`${p.keyword}\``, p);

@@ -43,15 +43,15 @@ describe('semanticDiagnostics', () => {
   });
 
   it('resolves the Oxc fragment of an interpolation, which is what SDD-12 asks it for', () => {
-    // FUD0195 (decision 19): an object literal interpolated. Reachable only through
-    // `fragmentId` — the analyzer needs the AST of that one expression.
+    // An object literal interpolated: FUD1143 since FUD0195 was retired (SDD-62). Reachable only
+    // through `fragmentId` — the rule needs the AST of that one expression.
     const source = `<app-x>
   <template shadowrootmode="open"><i>@({ a: 1 })</i></template>
 </app-x>
 `;
     const { document } = setup('/p/components/app-x.fud', source);
 
-    expect(semanticDiagnostics(document).map((diagnostic) => diagnostic.code)).toContain('FUD0195');
+    expect(semanticDiagnostics(document).map((diagnostic) => diagnostic.code)).toContain('FUD1143');
   });
 
   it('says nothing about a tag this file did declare', () => {
@@ -284,6 +284,62 @@ describe('the names a linked .fudapi gives the view (SDD-60 §3.14)', () => {
   });
 
   it('a link that cannot be read tells nothing: the names stay unknown, and a component has no `data`', () => {
-    expect(unknown(view('<link rel="server" href="./ghost.fudapi">'))).toEqual(['personForm', 'save', 'data']);
+    // `save` in `form:=` is deferred, so it is FUD1005's to judge and not FUD0907's (SDD-62).
+    expect(unknown(view('<link rel="server" href="./ghost.fudapi">'))).toEqual(['personForm', 'data']);
+  });
+
+  it('`_error.fud` reads `data` with no `load`: the framework hands it the error (SDD-62)', () => {
+    const page = '<link rel="layout" href="../layouts/main.fud">\n\n<h1>@data.status · @data.title</h1>\n';
+    const layout = '<!DOCTYPE html>\n<html><head>@RenderHead()</head><body>@RenderBody()</body></html>\n';
+    const read = (path: string): readonly string[] =>
+      semanticDiagnostics(projected(path, page, { '/p/src/layouts/main.fud': layout }).document)
+        .filter((d) => d.code === 'FUD0907')
+        .map((d) => page.slice(d.span.start, d.span.end));
+    expect(read('/p/src/routes/_error.fud')).toEqual([]);
+    // Any other route without a `load` has none to read.
+    expect(read('/p/src/routes/about.fud')).toEqual(['data', 'data']);
+  });
+});
+
+describe('the @render of a document, as the build checks them (SDD-62)', () => {
+  const PATH = '/p/components/app-x.fud';
+  const view = (body: string, head = ''): string =>
+    `${head}<app-x>\n  <template shadowrootmode="open">${body}</template>\n</app-x>\n`;
+  const renders = (source: string, files: Record<string, string> = {}): readonly string[] => {
+    const { index, document } = projected(PATH, source, files);
+    return fudicDiagnostics(document, index)
+      .filter((d) => d.code.startsWith('FUD08'))
+      .map((d) => `${d.code} ${source.slice(d.span.start, d.span.end)}`);
+  };
+
+  it('a call with an argument missing, against a snippet of the file', () => {
+    expect(renders(`@snippet row(title: string) { <p>@title</p> }\n${view('@render row()')}`)).toEqual([
+      'FUD0828 @render row()',
+    ]);
+  });
+
+  it('against a snippet it imports, read through the index', () => {
+    const head = '<link rel="snippet" href="./ui.fud">\n';
+    const files = { '/p/components/ui.fud': '@snippet row(title: string) { <p>@title</p> }\n' };
+    expect(renders(view('@render row()', head), files)).toEqual(['FUD0828 @render row()']);
+    expect(renders(view('@render row("a")', head), files)).toEqual([]);
+  });
+
+  it('a call inside an imported body is that file’s to report, not this one’s', () => {
+    const head = '<link rel="snippet" href="./ui.fud">\n';
+    const files = { '/p/components/ui.fud': '@snippet row() { @render ghost() }\n' };
+    expect(renders(view('@render row()', head), files)).toEqual([]);
+  });
+
+  it('an import that cannot be read is the link’s to say, never a throw', () => {
+    const head = '<link rel="snippet" href="./missing.fud">\n';
+    expect(() => renders(view('@render missing.row()', head))).not.toThrow();
+  });
+
+  it('an index that can neither read nor resolve a server path still checks the file', () => {
+    const source = `<link rel="snippet" href="./ui.fud">\n@snippet row(title: string) { <p>@title</p> }\n${view('@render row()')}`;
+    const { index, document } = projected(PATH, source, {});
+    const blind = { resolve: index.resolve.bind(index), failure: index.failure.bind(index) };
+    expect(fudicDiagnostics(document, blind).map((d) => d.code)).toContain('FUD0828');
   });
 });

@@ -1,0 +1,13 @@
+@code {
+  const a = 1;
+}
+
+@code {
+  const b = 2;
+}
+
+<fix-a>
+  <template shadowrootmode="open">
+    <p>@a</p>
+  </template>
+</fix-a>

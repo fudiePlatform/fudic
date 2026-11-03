@@ -1,0 +1,5 @@
+<app-page>
+  <template shadowrootmode="open">
+    @render note("Hi")
+  </template>
+</app-page>

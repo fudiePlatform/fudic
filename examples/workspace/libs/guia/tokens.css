@@ -5,9 +5,14 @@
  * `body` would match nothing where this sheet goes, and the build says so (FUD0743).
  */
 :host {
+  /** Body text. Use it for anything read, never for a border. */
   --guia-ink: #1c1c1e;
+  /** Hairlines and borders that separate, without drawing attention. */
   --guia-line: #dcdcdc;
+  /** The one colour that marks what matters: a link, an active item, a card's edge. */
   --guia-accent: #0b5fff;
+  /** Corner radius of a surface. Smaller elements inside it use none. */
   --guia-radius: 10px;
+  /** Padding inside a surface, block then inline. */
   --guia-pad: 1rem 1.15rem;
 }

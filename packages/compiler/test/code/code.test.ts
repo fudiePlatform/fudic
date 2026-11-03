@@ -324,10 +324,10 @@ describe('parseCodeBlock — Razor comments are not JavaScript (BUG-13)', () => 
     expect(source[node.span.end - 1]).toBe('}');
     expect(source.slice(node.span.end)).toBe('<p>after</p>');
     expect(lexer.offset).toBe(node.span.end);
-    // The `@client` in the comment is text, not a marker: no FUD1110, and the comment stays
-    // where the author wrote it, inside the chunk (§4).
+    // The `@client` in the comment is text, not a marker: no FUD1110. The comment is FUD0114's
+    // alone, so it is left out of the chunk Oxc reads: its FUD0170 would be a second voice.
     expect(types(node.parts)).toEqual(['neutral-js']);
-    expect(text(source, node.parts[0]!.js)).toBe(`@* deja una { abierta, un } suelto y un @client { *@ ${COUNT}`);
+    expect(text(source, node.parts[0]!.js)).toBe(COUNT);
   });
 
   it('never hangs or throws on an unterminated Razor comment (§7.5)', () => {
