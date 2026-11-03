@@ -415,7 +415,14 @@ function visitDragged(dragged: readonly DraggedLink[], walk: Walk): void {
 /** One file of the graph: read it, expand it, register its tag, and follow what it names. */
 function visitComponent(path: string, at: Span, walk: Walk): void {
   {
-    const loaded = load(path, walk.io);
+    // A link to a file that cannot be read is `FUD0460`, which the link check reports over the
+    // `href`; the graph simply lacks that component. The io is the host's, and its read throws.
+    let loaded: LoadedFud;
+    try {
+      loaded = load(path, walk.io);
+    } catch {
+      return;
+    }
     const doc = loaded.doc;
     const source = loaded.source;
     for (const file of loaded.snippetFiles) walk.snippetFiles.add(file);

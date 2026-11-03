@@ -398,6 +398,9 @@ function buildComponentModule(
     options.assetUrl,
     options.assetText,
   );
+  // No host template — a file of bare markup, a host with none (`FUD0156`, `FUD0157`): there is
+  // no component to emit, and the structure already said why. An empty module, never a throw.
+  if (comp.doc.template === undefined) return { writer: new CodeWriter(), linker, diagnostics: [] };
   const { props, signals, neutral, diagnostics, di } = codeOf(comp);
   const cells = cellSlots(comp, graph);
   const hydratable = hydratableTags(graph);
