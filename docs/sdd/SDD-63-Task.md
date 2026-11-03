@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/typecheck` · `@fudic/compiler` · `@fudic/language-server` ·
 > `examples/workspace` · `examples/basic`
 > **Rama:** `sdd-63-contrato-del-componente`, desde `main`.
-> **Progreso:** 10 / 20 — `Listo`.
+> **Progreso:** 14 / 20 — `Listo`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -68,10 +68,10 @@ tocarlos.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 13 | 1 | **`uses` y `usesOf`.** Cada uso de un tag enlazado, con su `Span`, al indexar; `usesOf` ordenado por ruta y posición | `typecheck` | `src/fud-index.ts` |
-| [ ] | 14 | 6–8 | **La tarjeta.** Las seis secciones de SDD §3.5 en orden, la librería en la cabecera, el defecto tras el tipo, «Events» en inglés | `language-server` | `src/services/tag-card.ts` |
-| [ ] | 15 | 11 | **`var(--` en el editor.** Autocompletado, hover e ir a la definición de los tokens en el `<style>` de un `.fud` y en un `.css` del proyecto; caché por proyecto que se invalida con las hojas y los `fudic.json` | `language-server` | `src/services/tokens.ts` · `src/services/plugin.ts` |
-| [ ] | 16 | 13 | **Referencias de un tag.** `provideReferences` sobre una etiqueta de componente, en su fichero o en un uso | `language-server` | `src/services/plugin.ts` |
+| [x] | 13 | 1 | **`uses` y `usesOf`.** Cada uso de un tag enlazado, con su `Span`, al indexar; `usesOf` ordenado por ruta y posición | `typecheck` | `src/fud-index.ts` |
+| [x] | 14 | 6–8 | **La tarjeta.** Las seis secciones de SDD §3.5 en orden, la librería en la cabecera, el defecto tras el tipo, «Events» en inglés | `language-server` | `src/services/tag-card.ts` |
+| [x] | 15 | 11 | **`var(--` en el editor.** Autocompletado, hover e ir a la definición de los tokens en el `<style>` de un `.fud` y en un `.css` del proyecto; caché por proyecto que se invalida con las hojas y los `fudic.json` | `language-server` | `src/services/tokens.ts` · `src/services/plugin.ts` |
+| [x] | 16 | 13 | **Referencias de un tag.** `provideReferences` sobre una etiqueta de componente, en su fichero o en un uso | `language-server` | `src/services/plugin.ts` |
 | [ ] | 17 | 13–16 | **Los tests de la fase.** Criterios 11–14 | `language-server` | `test/**` |
 
 ## Fase 5 — evidencia y cierre (3)

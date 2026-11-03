@@ -19,7 +19,6 @@
  */
 
 import type { Span } from '@fudic/compiler';
-import type { PropDetail } from '@fudic/typecheck/contract';
 import type { CachedDocument } from '../document-cache.js';
 import type { Contract } from '../mode.js';
 import type { WorkspaceIndex } from '../workspace-index.js';
@@ -31,6 +30,8 @@ export interface TagCard {
   /** Absolute path of the `.fud` that declares it. */
   readonly file: string;
   readonly contract: Contract;
+  /** The package that publishes it, when it comes from a library; absent for the project's own. */
+  readonly library?: string;
   /**
    * The tag NAME in the source, which is what the hover underlines.
    *
@@ -60,7 +61,14 @@ export function tagCardAt(
   const entry = index.byRole('component').find((candidate) => candidate.tag === name.text);
   if (entry === undefined) return undefined;
 
-  return { tag: entry.tag, file: entry.path, contract: entry.contract, span: name.span };
+  const library = entry.external ? index.packageNameOf(entry.path) : undefined;
+  return {
+    tag: entry.tag,
+    file: entry.path,
+    contract: entry.contract,
+    ...(library === undefined ? {} : { library }),
+    span: name.span,
+  };
 }
 
 /**
@@ -71,31 +79,47 @@ export function tagCardAt(
  * says the component declares none of that kind. A component that declares nothing at all still
  * gets its tag and its file, which is the answer to «what is this and where does it live».
  */
-export function cardMarkdown(card: TagCard, props: ReadonlyMap<string, PropDetail>): string {
-  const parts: string[] = [`**\`<${card.tag}>\`** · fudic component`];
+export function cardMarkdown(card: TagCard, contract: Contract): string {
+  // A component of the project says nothing after «component»; one of a library says whose.
+  const head = `**\`<${card.tag}>\`** · fudic component`;
+  const parts: string[] = [card.library === undefined ? head : `${head} · ${card.library}`];
 
-  if (card.contract.doc !== undefined) parts.push(card.contract.doc);
+  if (contract.doc !== undefined) parts.push(contract.doc);
 
-  if (card.contract.props.length > 0) {
-    const rows = card.contract.props.map((prop) => {
-      const detail = props.get(prop.name);
+  if (contract.props.length > 0) {
+    const rows = contract.props.map((prop) => {
       // The `?` is how TypeScript itself spells optional, so it needs no legend.
       const name = `\`.${prop.name}${prop.required ? '' : '?'}\``;
-      const head = detail === undefined ? `- ${name}` : `- ${name} — \`${detail.type}\``;
+      const typed = prop.type === undefined ? `- ${name}` : `- ${name} — \`${prop.type}\``;
+      // The default as written, after the type the way a parameter writes it.
+      const row = prop.default === undefined ? typed : `${typed} = \`${prop.default}\``;
       // The doc under its prop, indented into the same list item so a second line stays part
-      // of it. Written by the author on the member of `props<T>()`, and printed as they wrote
-      // it (decision 107).
-      return detail?.doc === undefined ? head : `${head}\n${indented(detail.doc)}`;
+      // of it. Written by the author on the member of `props<T>()` (decision 107).
+      return prop.doc === undefined ? row : `${row}\n${indented(prop.doc)}`;
     });
     parts.push(`**Props**\n${rows.join('\n')}`);
   }
 
-  if (card.contract.slots.length > 0) {
-    parts.push(`**Slots**\n${card.contract.slots.map((slot) => `- \`${slot}\``).join('\n')}`);
+  const slots = [...(contract.defaultSlot ? ['(default)'] : []), ...contract.slots.map((slot) => `\`${slot}\``)];
+  if (slots.length > 0) parts.push(`**Slots**\n${slots.map((slot) => `- ${slot}`).join('\n')}`);
+
+  if (contract.events.length > 0) {
+    const rows = contract.events.map((event) => {
+      const name = `- \`@${event.name}\``;
+      const row = event.detail === undefined ? name : `${name} — detail: \`${event.detail}\``;
+      return event.doc === undefined ? row : `${row}\n${indented(event.doc)}`;
+    });
+    parts.push(`**Events**\n${rows.join('\n')}`);
   }
 
-  if (card.contract.events.length > 0) {
-    parts.push(`**Eventos**\n${card.contract.events.map((event) => `- \`@${event.name}\``).join('\n')}`);
+  // A part written with an expression may name more than the literal ones, and the card says so
+  // rather than pretending the list is closed.
+  const named = contract.parts.map((part) => `- \`${part}\``);
+  if (contract.partsDynamic) named.push('- (and parts computed at run time)');
+  if (named.length > 0) parts.push(`**Parts**\n${named.join('\n')}`);
+
+  if (contract.tokens.length > 0) {
+    parts.push(`**Tokens**\n- ${contract.tokens.map((token) => `\`${token}\``).join(', ')}`);
   }
 
   return parts.join('\n\n');

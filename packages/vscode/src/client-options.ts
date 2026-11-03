@@ -22,6 +22,8 @@ export const FILE_EVENTS: readonly string[] = [
   '**/tsconfig*.json',
   '**/package.json',
   '**/fudic.json',
+  // The sheets of `globalStyles` and `styles`: a token edited there is what `var(--` offers next.
+  '**/*.css',
   // What an open `.fudspec` is validated against (SDD-52 §4.4): the workspace's term modules
   // and the fixture files. A term deleted on disk turns its lines red without reopening.
   '**/fudic/terms/**/*.js',
@@ -53,6 +55,9 @@ export const buildClientLaunch = (
     { scheme: 'file', language: 'fudspec' },
     // And a `.fudapi` (SDD-60): its project is the `.fudapi` files on disk.
     { scheme: 'file', language: 'fudapi' },
+    // And a `.css`, for the tokens its `var(--` offers (SDD-63 §3.5). Volar's CSS service stays
+    // out of it: VS Code has its own there.
+    { scheme: 'file', language: 'css' },
   ],
   fileEvents: FILE_EVENTS,
   initializationOptions: {

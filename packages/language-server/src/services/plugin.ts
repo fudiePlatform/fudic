@@ -119,6 +119,8 @@ import {
 } from './tags.js';
 import { semanticTokens } from './semantic-tokens.js';
 import { cardMarkdown, propDetails, tagCardAt } from './tag-card.js';
+import { typedContract } from '@fudic/typecheck/contract';
+import { tagReferencesAt } from './references.js';
 
 /** What opens an expression, and therefore what every name in scope is written with. */
 const EXPRESSION_PREFIX = '@';
@@ -252,6 +254,17 @@ export function fudicDocumentOf(
   if (!isFudSourceUri(source)) return undefined;
 
   const root = context.language.scripts.get(source)?.generated?.root as
+    | FudicVirtualCode<CachedDocument>
+    | undefined;
+  return root?.document;
+}
+
+/**
+ * The parsed `.fud` at `file`, through the same root code `fudicDocumentOf` reads — for a file
+ * that is not the one being edited, such as the component a card is about.
+ */
+function fudicDocumentAt(context: LanguageServiceContext, file: string): CachedDocument | undefined {
+  const root = context.language.scripts.get(URI.file(file))?.generated?.root as
     | FudicVirtualCode<CachedDocument>
     | undefined;
   return root?.document;
@@ -495,6 +508,8 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
       documentLinkProvider: { resolveProvider: false },
       // Only the tag: everything inside it is answered by TypeScript over the projection.
       definitionProvider: true,
+      // The uses of a component tag, across the project and its libraries (SDD-63 §3.5).
+      referencesProvider: true,
       // Same boundary, for the same reason: a component's contract is knowledge this package
       // has and TypeScript does not — the tag is projected as a type name nobody can hover.
       hoverProvider: true,
@@ -552,6 +567,22 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
                   originSelectionRange: rangeOf(document, found.span),
                 },
               ];
+            },
+            undefined,
+          );
+        },
+
+        provideReferences(document, position, _referenceContext, token) {
+          return stats.run(
+            'references',
+            token,
+            () => {
+              const cached = fudicDocumentOf(context, document);
+              if (cached === undefined) return undefined;
+              return tagReferencesAt(cached, index, document.offsetAt(position))?.map((use) => ({
+                uri: URI.file(use.path).toString(),
+                range: fileRangeOf(use.path, use.text, use.span),
+              }));
             },
             undefined,
           );
@@ -730,7 +761,15 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
               return {
                 contents: {
                   kind: 'markdown',
-                  value: cardMarkdown(card, propDetails(typeScriptService(context), card.file)),
+                  value: cardMarkdown(
+                    card,
+                    typedContract(card.contract, typeScriptService(context), card.file, (at) => {
+                      // The detail of an event is an expression of the component's file, so it
+                      // is that file's projection the offset crosses into.
+                      const component = fudicDocumentAt(context, card.file);
+                      return component === undefined ? undefined : projectedOffset(component, at);
+                    }),
+                  ),
                 },
                 range: rangeOf(document, card.span),
               };

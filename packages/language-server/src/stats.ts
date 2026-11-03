@@ -32,6 +32,7 @@ export type RequestKind =
   | 'formatting'
   | 'hover'
   | 'onTypeFormatting'
+  | 'references'
   | 'semanticTokens';
 
 /** What the server did for one kind of request. */
