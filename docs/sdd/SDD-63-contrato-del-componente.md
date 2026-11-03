@@ -112,7 +112,13 @@ export interface ContractEvent {
 export function contractOf(source: string, document: StructuredDocument): Contract;
 
 /** The same contract with prop types, prop docs and event details from the checker. */
-export function typedContract(contract: Contract, service: ts.LanguageService, file: string): Contract;
+export function typedContract(
+  contract: Contract,
+  service: ts.LanguageService | undefined,
+  file: string,
+  /** A `.fud` offset → its client projection. Without it, no event details (§8.2.1). */
+  toGenerated?: (offset: number) => number | undefined,
+): Contract;
 ```
 
 - `contractOf` y `typedContract` salen de `@fudic/language-server` (`mode.ts` y la parte de
