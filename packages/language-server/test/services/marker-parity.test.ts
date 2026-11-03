@@ -299,13 +299,13 @@ describe('the value of `summary` (criterion 27)', () => {
 describe('hover (criterion 28)', () => {
   it('explains `error`, `summary` and `fields`', async () => {
     expect(await hoverOf('<input control="@userForm.name"><small error="@userForm.name"></small>', 'error')).toContain(
-      'Marca el elemento que dice el error de un control',
+      "Marks the element that shows a control's error",
     );
-    expect(await hoverOf('<div summary="@userForm" fields></div>', 'summary')).toContain('Marca el resumen de un form o de un grupo');
+    expect(await hoverOf('<div summary="@userForm" fields></div>', 'summary')).toContain('Marks the summary of a form or a group');
     const { service, document, cached } = servicesAt('<div summary="@userForm" fields></div>');
     const at = cached.source.indexOf(' fields') + 2;
     const hover = await service.provideHover?.(document, document.positionAt(at), TOKEN);
-    expect(String((hover?.contents as { value: string }).value)).toContain('El resumen lista también');
+    expect(String((hover?.contents as { value: string }).value)).toContain('the summary also lists');
   });
 
   it('`fields` on an element with no summary is the author’s word, and says nothing', async () => {

@@ -109,7 +109,7 @@ async function actionsOn(body: string): Promise<readonly WireAction[]> {
 }
 
 const completing = (actions: readonly WireAction[]): WireAction | undefined =>
-  actions.find((action) => action.title.startsWith('Completar las props'));
+  actions.find((action) => action.title.startsWith('Add the required props'));
 
 describe('a repair as the client receives it', () => {
   it('completes the required props in the shape each TYPE holds', async () => {

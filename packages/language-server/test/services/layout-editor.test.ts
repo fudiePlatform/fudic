@@ -277,12 +277,12 @@ describe('the bulbs (criteria 14 and 15)', () => {
 
   it('writes every missing section after the last one, or at the end of the file', async () => {
     expect(await fixes(route('<p>x</p>\n@section cabecera {\n}\n\n'))).toEqual([
-      { title: 'Añadir las secciones requeridas del layout (pie)', text: '\n\n@section pie {\n}' },
+      { title: "Add the layout's required sections (pie)", text: '\n\n@section pie {\n}' },
       { title: 'Explain FUD0890', text: undefined },
     ]);
     const bare = await fixes(route('<p>x</p>\n'));
     expect(bare.map((f) => f.title)).toEqual([
-      'Añadir las secciones requeridas del layout (cabecera, pie)',
+      "Add the layout's required sections (cabecera, pie)",
       'Explain FUD0890',
     ]);
   });
@@ -291,9 +291,9 @@ describe('the bulbs (criteria 14 and 15)', () => {
     const source = route('@section cabecera {}\n@section pie {}\n<p>@render ficha(titulo, tono: a ? "a" : "b")</p>\n');
     const got = await fixes(source.replace('<link rel="layout" href="../layouts/_frame.fud">', '<link rel="layout" href="../layouts/_frame.fud">\n<link rel="snippet" href="../snippets/ui.fud">'));
     expect(got).toEqual([
-      { title: 'Escribir @titulo', text: '@titulo' },
+      { title: 'Write @titulo', text: '@titulo' },
       { title: 'Explain FUD0894', text: undefined },
-      { title: 'Envolver en @( … )', text: '@(a ? "a" : "b")' },
+      { title: 'Wrap in @( … )', text: '@(a ? "a" : "b")' },
     ]);
   });
 });

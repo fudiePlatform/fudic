@@ -54,7 +54,7 @@ describe('the root template (criterion 30)', () => {
       ]),
     );
     const marker = answer.items.find((i) => i.label === 'formassociated');
-    expect(String((marker?.documentation as { value: string }).value)).toContain('marcador de fudic');
+    expect(String((marker?.documentation as { value: string }).value)).toContain('a fudic marker');
     expect(answer.items.find((i) => i.label === 'shadowrootreferencetarget')?.command).toBeDefined();
   });
 

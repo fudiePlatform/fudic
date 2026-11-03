@@ -76,7 +76,7 @@ async function actionsOn(source: string): Promise<readonly WireAction[]> {
 }
 
 const completing = (actions: readonly WireAction[]): WireAction | undefined =>
-  actions.find((action) => action.title === 'Completar las props requeridas del layout');
+  actions.find((action) => action.title === "Add the layout's required props");
 
 /**
  * The ERRORS the server reports for a route source.

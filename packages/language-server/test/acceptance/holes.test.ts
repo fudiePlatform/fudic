@@ -79,7 +79,7 @@ describe('FUD0890 — a required section the route leaves unfilled', () => {
       range: diagnostic.range as never,
       context: { diagnostics: [diagnostic] as never },
     })) as readonly WireAction[];
-    const action = got.find((a) => a.title.startsWith('Añadir las secciones requeridas'));
+    const action = got.find((a) => a.title.startsWith("Add the layout's required sections"));
     const changes = Object.values(action?.edit?.changes ?? {})[0];
 
     expect(action?.title).toContain('cabecera, pie');
