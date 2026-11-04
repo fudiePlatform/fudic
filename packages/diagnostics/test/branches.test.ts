@@ -80,6 +80,7 @@ const CASES: readonly (readonly [FudDiagnostic, string])[] = [
   [c.FUD0456({ problem: 'taken', name: 'theme', path: 'theme.css' }), 'the project already has a global stylesheet "theme" (theme.css)'],
   [c.FUD0457({ kind: 'service', name: 'Cart' }), 'invalid service name "Cart": kebab-case, starting with a letter, e.g. "shopping-cart"'],
   [c.FUD0448({ problem: 'new-needs-name' }), 'fudic new needs a project name'],
+  [c.FUD0448({ problem: 'needs-argument', command: 'accept', what: 'what the client said' }), 'fudic accept needs what the client said'],
   [c.FUD0448({ problem: 'package-manager', value: 'zz' }), 'unknown package manager "zz"'],
   [c.FUD0448({ problem: 'generate-needs-type' }), 'fudic generate needs to know what to generate'],
   [c.FUD0448({ problem: 'generate-needs-name', type: 'page' }), 'fudic generate page needs a name'],
