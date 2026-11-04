@@ -24,7 +24,10 @@ Add to a project
   generate form <name>            a form and its unit test
   generate style <name>           a global stylesheet of the project
   generate snippet <file> <name>  a snippet in a file of snippets, and its unit test
+  generate spec <component>       the .fudspec criteria of a component and their fixture
   generate term <kind> <name>     a step you can use in .fudspec criteria
+  generate api <piece>            the server of a route or a component: its .fudapi and handler
+  generate showcase [<library>]   a page per component that shows each case of its fixture
   add <module>                    an optional module (di, forms, http, i18n) or a library of the workspace
 
 Run
@@ -36,6 +39,11 @@ Run
 Maintain
   fmt [path…]                     format .fud and .fudspec files
   translate                       extract the texts to translate into src/locales/
+
+History of a piece
+  approve <piece>                 approve its criteria and props
+  accept <piece> "<text>"         record that the client accepted it, and tag the commit
+  history <piece>                 whether its approval and its last runs still hold
 
 Words
   app         what you serve: it has pages and a base URL ("/", "/admin/")

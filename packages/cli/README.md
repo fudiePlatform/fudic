@@ -46,7 +46,10 @@ fudic g service cart                     # a service you inject(), and its test
 fudic g form person --binary             # a form with typed controls, and its test
 fudic g style theme                      # a global stylesheet of the project
 fudic g lib guia --styles-only           # a library of design tokens and nothing else
+fudic g spec button --project ui         # the .fudspec criteria of a component and their fixture
 fudic g term then cart-has --param n:number   # a step of your own for .fudspec criteria
+fudic g api src/components/shop-cart     # its server: the .fudapi, its handler and its link
+fudic g showcase ui                      # an app with a page per component, a block per case
 fudic add forms --project admin          # an optional module: di, forms, http, i18n
 fudic add ui --project web               # a library of the workspace
 ```
@@ -54,6 +57,17 @@ fudic add ui --project web               # a library of the workspace
 `g` is `generate`. Nothing asks: every choice is an argument or an option, so every command
 goes into a script as it is. `--dry-run` shows what a command would write and run, and `--json`
 prints it as data.
+
+`g api` takes the `.fud` of a route or a component, or the folder of a component, relative to
+the project. A component gets a `hello` function to start from; a route, its `load`. The handler
+goes in the server folder of `fudic.json` (`src/server` by default), at the `<id>` of the `.fudapi`.
+
+`g showcase` writes one page per component that has a fixture, with a block per case as the
+fixture holds it, and an index. In a workspace the pages live in an app that uses the library
+(`--app`, default `showcase`), created when it does not exist; in an app on its own, under
+`src/routes/showcase`. Every file it writes is marked on its first line: run it again after
+changing a fixture and it rewrites its own files, adds the new ones and deletes the ones whose
+component lost its fixture. A file without the mark in its way is someone's, and it stops.
 
 ## Run
 
@@ -74,7 +88,33 @@ fudic fmt [path…]   # format .fud and .fudspec files; --check for CI
 fudic translate     # extract the texts to translate into src/locales/
 ```
 
+## The history of a piece
+
+Each component and route keeps a `.fudlog` next to its `.fud`: it only grows, it goes to git,
+and `fudic new` writes the `.gitattributes` that lets two branches add to it without a conflict.
+
+```sh
+fudic approve src/components/acme-button              # approve its criteria and props
+fudic accept  src/components/acme-button "Looks good"  # the client accepted it; tags HEAD
+fudic history src/components/acme-button              # what still holds, now
+```
+
+```
+acme-button  approved by pedro (valid) · tests pass 6/6 · spec pass 4/4 · done
+```
+
+A piece is a component's or a route's `.fud`, or its folder. `approve` writes your git name and
+the hash of the `.fudspec` and its fixture: touch either and the approval expires. `accept` tags
+the commit you are on as `accepted/<name>/<date>`. `history --json` prints the whole state.
+
 ## Errors
 
 A command that cannot run says why in one line, how to go on in the next, and which help to
 read. Codes are `FUD0440`–`FUD0459`; each one is explained in `@fudic/diagnostics`.
+
+## Developing the CLI
+
+`pnpm verify:generated`, from the root of this repository, publishes the packages to a local
+registry, runs every generator in a temporary folder as a user would, and checks that each
+project passes `pnpm test`, `pnpm spec` and `pnpm build` untouched. Run it before landing any
+change to a generator or a template; a new generator has to be added to its table.

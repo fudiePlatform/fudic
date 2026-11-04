@@ -183,8 +183,12 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
     // constant the language server mounts in memory (SDD-23 §3.3), so the editor and `tsc`
     // can never disagree about what `props<T>()` or `$text` mean. Inside a workspace they
     // are at the root instead, once (§4.6).
+    // So is the `.gitattributes`: it is the repository's.
     ...(site.up === null
-      ? ([[joinPosix(site.dir, GLOBALS_FILE_NAME), GLOBALS_DTS]] as const)
+      ? ([
+          [joinPosix(site.dir, GLOBALS_FILE_NAME), GLOBALS_DTS],
+          [joinPosix(site.dir, '.gitattributes'), renderTemplate('gitattributes.tmpl', {})],
+        ] as const)
       : []),
     ...(opts.sw
       ? ([[joinPosix(site.dir, 'sw.json'), renderTemplate('sw.json.tmpl', {})]] as const)

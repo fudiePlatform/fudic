@@ -38,6 +38,7 @@ function rootFiles(name: string, opts: WorkspaceOptions): readonly ScaffoldFile[
     [joinPosix(name, 'tsconfig.base.json'), renderTemplate('workspace/tsconfig.base.json.tmpl', {})],
     [joinPosix(name, GLOBALS_FILE_NAME), GLOBALS_DTS],
     [joinPosix(name, '.gitignore'), renderTemplate('gitignore.tmpl', {})],
+    [joinPosix(name, '.gitattributes'), renderTemplate('gitattributes.tmpl', {})],
     // `libs/` and `apps/` exist from the start, so the tree says where each goes: empty, or
     // with what `--lib`, `--uses` and `--app` asked for.
     ...(libraries(opts).length === 0

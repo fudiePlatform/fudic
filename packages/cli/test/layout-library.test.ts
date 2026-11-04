@@ -43,6 +43,8 @@ describe('a new library exports its layouts', () => {
     const fs = await shop();
     expect((JSON.parse(fs.read(MANIFEST)) as { exports: unknown }).exports).toEqual({
       ...OLD_EXPORTS,
+      // An app imports a component's cases by name (SDD-66 §3.3): its showcase reads them.
+      './*.fixture': './src/components/*/*.fixture.ts',
       './layouts/*.fud': './src/layouts/*.fud',
       './snippets/*.fud': './src/snippets/*.fud',
       './pipes/*': './src/pipes/*.ts',

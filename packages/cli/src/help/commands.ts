@@ -20,13 +20,18 @@ export type Topic =
   | 'generate spec'
   | 'generate term'
   | 'generate snippet'
+  | 'generate api'
+  | 'generate showcase'
   | 'add'
   | 'dev'
   | 'preview'
   | 'test'
   | 'spec'
   | 'fmt'
-  | 'translate';
+  | 'translate'
+  | 'approve'
+  | 'accept'
+  | 'history';
 
 interface CommandHelp {
   readonly usage: string;
@@ -88,6 +93,8 @@ apps/ and libs/, empty or with the app and the libraries you name.`,
       ['snippet', 'a snippet in a file of snippets, and its unit test'],
       ['spec', 'the .fudspec criteria of a component   (s)'],
       ['term', 'a step you can use in .fudspec criteria   (t)'],
+      ['api', 'the server of a route or a component: its .fudapi, its handler and its link'],
+      ['showcase', 'a page per component that shows each case of its fixture'],
     ],
     options: [],
     examples: ['fudic g component button --project ui', 'fudic g page about'],
@@ -269,6 +276,23 @@ name: <link rel="snippet" href="@shop/ui/snippets/ui.fud">.`,
     ],
     examples: ['fudic g snippet ui productCard --project ui', 'fudic g snippet fields textField'],
   },
+  'generate api': {
+    usage: 'fudic generate api <piece>',
+    about: `Gives a route or a component that already exists its server: the .fudapi beside
+it, its handler in src/server and the <link rel="server"> in its place.`,
+    args: [['<piece>', 'the .fud of a route or a component, or the folder of a component,\nrelative to the project: "src/components/ui-cart" or "src/routes/about.fud"']],
+    options: [IN_APP, DRY_RUN, FORCE],
+    examples: ['fudic g api src/components/shop-cart', 'fudic g api src/routes/about.fud --project web'],
+  },
+  'generate showcase': {
+    usage: 'fudic generate showcase [<library>]',
+    about: `Writes a page per component with a block per case of its fixture, and an index.
+In a workspace, in an app that uses <library>; in an app on its own, under
+src/routes/showcase. Run it again whenever a fixture changes: it rewrites its own pages.`,
+    args: [['<library>', 'in a workspace, the library to show: "ui"']],
+    options: [['--app <name>', 'the app that shows it   (default: showcase)'], DRY_RUN],
+    examples: ['fudic g showcase ui', 'fudic g showcase'],
+  },
   'generate term': {
     usage: 'fudic generate term <kind> <name>',
     alias: 'fudic g t',
@@ -364,6 +388,34 @@ per source file, for each locale of fudic.json. What you translated is kept.`,
     args: [],
     options: [IN_APP],
     examples: ['fudic translate', 'fudic translate --project web'],
+  },
+  approve: {
+    usage: 'fudic approve <piece>',
+    about: `Approves a component's or a route's criteria and props: writes it in the piece's
+.fudlog with your git name and the hash of its .fudspec and fixture. Touching
+either afterwards expires the approval.`,
+    args: [['<piece>', "a component's or a route's .fud, or its folder"]],
+    options: [DRY_RUN],
+    examples: ['fudic approve src/components/acme-button', 'fudic approve src/routes/blog/index.fud'],
+  },
+  accept: {
+    usage: 'fudic accept <piece> "<text>"',
+    about: `Records that the client accepted a piece, in its .fudlog, and tags the commit
+you are on as accepted/<name>/<date>.`,
+    args: [
+      ['<piece>', "a component's or a route's .fud, or its folder"],
+      ['<text>', 'what the client said'],
+    ],
+    options: [DRY_RUN],
+    examples: ['fudic accept src/components/acme-button "Client accepted it"', 'fudic accept src/routes/blog "Approved in the demo" --dry-run'],
+  },
+  history: {
+    usage: 'fudic history <piece>',
+    about: `Shows what the history of a piece says now: whether its approval still holds,
+and whether its tests and criteria passed with the files as they are.`,
+    args: [['<piece>', "a component's or a route's .fud, or its folder"]],
+    options: [['--json', 'the whole state, as JSON']],
+    examples: ['fudic history src/components/acme-button', 'fudic history src/routes/blog --json'],
   },
 };
 

@@ -1,8 +1,8 @@
 import { expect, test } from 'vitest';
 import { {{form}} } from 'fudic:forms/{{name}}';
 
-test('asks for the name', () => {
-  expect({{form}}.$valid()).toBe(false);
+test('asks for the name', async () => {
+  expect(await {{form}}.$validate()).toBe(false);
   {{form}}.name.set('Ada');
-  expect({{form}}.$valid()).toBe(true);
+  expect(await {{form}}.$validate()).toBe(true);
 });

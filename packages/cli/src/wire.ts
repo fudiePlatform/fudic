@@ -29,7 +29,18 @@ export { alreadyLinked, componentLinkAnchor as anchorFor, componentLinkTag };
  */
 export function wireComponentLink(source: string, doc: StructuredDocument, href: string): string | null {
   if (alreadyLinked(doc, href)) return null;
-  const tag = componentLinkTag(href);
+  return spliceLink(source, doc, componentLinkTag(href));
+}
+
+/**
+ * The source with `<link rel="server">` inserted where a component link would go (SDD-66 §4.1):
+ * the role of the document decides, and one rule serves both kinds of link.
+ */
+export function wireServerLink(source: string, doc: StructuredDocument, tag: string): string {
+  return spliceLink(source, doc, tag);
+}
+
+function spliceLink(source: string, doc: StructuredDocument, tag: string): string {
   const { offset, indent } = componentLinkAnchor(source, doc);
   if (offset === 0) return `${tag}\n${source}`;
   return `${source.slice(0, offset)}\n${indent}${tag}${source.slice(offset)}`;

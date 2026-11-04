@@ -68,6 +68,9 @@ describe('fudicTest', () => {
   test('has vitest transform what the harness writes under node_modules', () => {
     expect(configOf({}).test?.server?.deps?.inline).toEqual([INLINE]);
     expect(INLINE.test('/p/node_modules/.fudic-test/wrapper-1.js')).toBe(true);
+    // SDD-66: the registry every server function fills, which loads by import() what it is handed.
+    expect(INLINE.test('/p/node_modules/@fudic/http/dist/contract/index.js')).toBe(true);
+    expect(INLINE.test('/p/node_modules/@fudic/forms/dist/index.js')).toBe(true);
     expect(INLINE.test('/p/node_modules/vite/index.js')).toBe(false);
     expect(INLINE.test('/p/node_modules/@fudic/vite/dist/index.js')).toBe(false);
   });

@@ -1,6 +1,6 @@
 # SDD-65 — El historial de cada pieza: aprobaciones y ejecuciones en git
 
-> **Estado:** `Listo` — [tareas](./SDD-65-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-65-Task.md).
 > **Paquetes:** `@fudic/history` (nuevo) · `@fudic/cli` · `@fudic/diagnostics` ·
 > `@fudic/conventions`
 > **Depende de:** 64 (los informes de criterios y tests), 63 (el contrato, para saber qué está
@@ -352,3 +352,55 @@ del proyecto, con `/`), escribiendo por cada uno su ruta, un salto, su contenido
    la pieza; incluirlas haría caducar todos los verdes al actualizar cualquier paquete.
 6. **`unitState` da hechos, no fases.** Las fases necesitan saber cosas que no están en el
    historial (el `.fudapi`, las funciones conectadas); mezclarlo aquí ataría este paquete a la API.
+
+### 8.2. Tomadas al implementar
+
+1. **`FUD1220` es un diagnóstico de fuente**: lleva el `span` de la línea siempre y el fichero solo
+   si se conoce, porque `parseHistory` recibe `file` opcional.
+2. **`HistoryIo`** es todo lo que el paquete toca fuera: `root` (la raíz del proyecto, contra la que
+   van la pieza y las rutas del hash), `fs` (el mismo `CheckFs` de `@fudic/typecheck` que usan el
+   editor y el build, para leer y resolver enlaces), `append`, `now` y `head`. `nodeIo(root)` es el
+   de disco; los tests dan uno propio para fijar el reloj y el commit.
+3. **Columnas.** `formatLine` rellena el suceso hasta doce caracteres y separa los grupos de campos
+   con dos espacios, como el ejemplo de §1.1; al leer, cualquier número de espacios vale.
+4. **`<quién>` sin espacios** lo garantiza `formatLine` (`person`), no quien llama: el nombre de
+   git `Pedro Hurtado` se escribe `Pedro-Hurtado`.
+5. **Un `.fudlog` sin salto final** (cortado a mano o por un merge) recibe un salto antes de la
+   línea nueva: sigue siendo añadir, y la línea nueva no se pega a la anterior.
+6. **Hermanos = mismo nombre.** Los hermanos de `acme-button.fud` son `acme-button.fudspec`,
+   `.fixture.ts`, `.test.ts` y `.fudapi`, no todo lo de la carpeta: en `routes/blog/` conviven
+   varias rutas y sus ficheros no son de las demás.
+7. **Todos los `<link>` cuentan**, no solo `rel="component"`: un snippet o el layout también cambian
+   lo que pinta la pieza, y el `.fudapi` de un `rel="server"` cambia lo que carga. El `href` se
+   resuelve con la resolución de `FudIndex`; un `.fudapi` no se sigue más allá.
+8. **Imports.** Se leen de las sentencias de nivel superior (`import`, `export … from`) que da el
+   parser del compilador (`JsBatch`), en el `@code` de un `.fud` y en cada módulo. Un relativo se
+   resuelve como TypeScript (tal cual, `.ts`, `.js`→`.ts`, `index.ts`); un nombre de paquete, como
+   un enlace. Cada destino pasa por su ruta real: lo que queda bajo `node_modules` (una librería
+   publicada) se descarta, y una librería del workspace, enlazada por pnpm, queda dentro.
+9. **Los informes, por su forma.** `recordSpecRun` y `recordTestRun` piden solo lo que leen
+   (`CriterionOutcome`: `spec`, `id`, `verdict`; `TestOutcome`: `files` con sus recuentos). El
+   `CriterionReport` del banco y el `TestReport` de `@fudic/testing` encajan tal cual, y este
+   paquete no depende de ninguno de los dos, ni siquiera por tipos.
+10. **El `snapshot` decide qué se graba.** Una pieza que no está en el `snapshot` no se graba: no se
+    sabe qué hash tenía antes de ejecutar. Así queda fuera, sin mirar el disco, un test que no es
+    hermano de ningún `.fud` (`src/services/x.test.ts`).
+11. **`look` sin las capturas.** Este paquete no hace capturas y no puede recalcular su hash. Quien
+    las hace lo da con `HistoryIo.lookHash`; sin él, un `look` desde el último `reopened` vale
+    `valid`: no hay nada con qué compararlo.
+12. **`tests`, `spec`, `done` y `accepted` miran todo el historial**; `approval` y `look`, solo desde el
+    último `reopened` (§4.4).
+13. **Qué es una pieza para la CLI.** Una carpeta vale por su `<carpeta>/<carpeta>.fud` o, si no, su
+    `index.fud`. Es pieza un `.fud` bajo `src/routes/` o uno que declara un tag; un layout, un
+    fichero de snippets, otra extensión o algo fuera de un proyecto es `FUD1221`. El `<nombre>` de la
+    etiqueta es el tag del componente o la ruta (`blog`, `index` para la raíz), sin los caracteres
+    que git no admite en una etiqueta (`[slug]` → `-slug-`); la fecha es UTC.
+14. **`approve` y `accept` son planes** que añaden la línea como un cambio del `.fudlog` (crear o
+    modificar con lo de antes más la línea: el fichero solo crece); `accept` lleva además `git tag`.
+    `history` no es un plan: no cambia nada, y con `--json` imprime el `UnitState`.
+15. **La línea se escribe con `historyLine` y `appendix`** de `@fudic/history`, las mismas que usa
+    `record`: la CLI y el MCP no pueden escribir líneas distintas.
+16. **`.gitattributes` solo en la raíz del repositorio**: el de una app suelta, o el del workspace.
+    Una app dentro de un workspace no lleva uno propio.
+17. **`FUD0448` gana `needs-argument`** para `approve`/`accept`/`history` sin pieza y `accept` sin
+    texto.

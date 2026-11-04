@@ -313,3 +313,11 @@ export interface PipeOptions extends TargetedOptions {
   /** What it formats, the type of its `on` line: `--on`, `str` when not given. */
   readonly on: string;
 }
+
+/** `fudic g showcase [<library>]` (SDD-66 §3.2). */
+export interface ShowcaseOptions extends TargetedOptions {
+  /** The library of the workspace to show; absent ⇒ the components of the app itself. */
+  readonly library?: string;
+  /** `--app`: the app that shows the library. */
+  readonly app: string;
+}

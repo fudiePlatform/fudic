@@ -92,7 +92,7 @@ function addLibrary(module: string, target: Target, opts: AddOptions, io: ReadIo
 }
 
 /** The `name` of a library's `package.json`; its folder name when it has none. */
-function packageNameOf(library: Project, io: ReadIo): string {
+export function packageNameOf(library: Project, io: ReadIo): string {
   const file = joinPosix(library.path, 'package.json');
   const declared = io.exists(file) ? (JSON.parse(io.read(file)) as { name?: unknown }).name : undefined;
   return typeof declared === 'string' && declared !== '' ? declared : library.name;

@@ -80,6 +80,7 @@ const CASES: readonly (readonly [FudDiagnostic, string])[] = [
   [c.FUD0456({ problem: 'taken', name: 'theme', path: 'theme.css' }), 'the project already has a global stylesheet "theme" (theme.css)'],
   [c.FUD0457({ kind: 'service', name: 'Cart' }), 'invalid service name "Cart": kebab-case, starting with a letter, e.g. "shopping-cart"'],
   [c.FUD0448({ problem: 'new-needs-name' }), 'fudic new needs a project name'],
+  [c.FUD0448({ problem: 'needs-argument', command: 'accept', what: 'what the client said' }), 'fudic accept needs what the client said'],
   [c.FUD0448({ problem: 'package-manager', value: 'zz' }), 'unknown package manager "zz"'],
   [c.FUD0448({ problem: 'generate-needs-type' }), 'fudic generate needs to know what to generate'],
   [c.FUD0448({ problem: 'generate-needs-name', type: 'page' }), 'fudic generate page needs a name'],
@@ -183,6 +184,12 @@ const CASES: readonly (readonly [FudDiagnostic, string])[] = [
   [c.FUD1113({ span: S, name: 'save', other: './b.fudapi' }), 'given by two linked `.fudapi`: this one and "./b.fudapi"'],
   [c.FUD1200({ route: '/missing', status: null }), 'the page /missing did not answer'],
   [c.FUD1200({ route: '/missing', status: 404 }), 'the page /missing answered 404'],
+  [c.FUD1220({ file: 'src/a.fudlog', span: S, reason: 'unknown event `garbage`' }), 'a history line cannot be read: unknown event `garbage`'],
+  [c.FUD1221({ file: 'src/a.css' }), 'src/a.css is not a component or a route'],
+  [c.FUD1222({ file: F }), 'src/a.fud has no criteria to approve'],
+  [c.FUD1240({ file: 'src/layouts/_layout.fud' }), 'src/layouts/_layout.fud is not a route or a component: only they have a server'],
+  [c.FUD1241({ file: 'libs/ui/src/components/ui-card/ui-card.fud' }), 'belongs to a library: its server is not generated yet'],
+  [c.FUD1242({ file: 'libs/ui' }), 'libs/ui has no component with a fixture: nothing to show'],
 ];
 
 describe('every variant says its own sentence', () => {

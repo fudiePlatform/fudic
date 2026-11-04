@@ -283,6 +283,9 @@ importers:
       '@fudic/formatter':
         specifier: workspace:*
         version: link:../formatter
+      '@fudic/history':
+        specifier: workspace:*
+        version: link:../history
       '@fudic/i18n':
         specifier: workspace:*
         version: link:../i18n
@@ -481,6 +484,58 @@ importers:
       rolldown:
         specifier: 1.2.1
         version: 1.2.1
+
+  packages/history:
+    dependencies:
+      '@fudic/api':
+        specifier: workspace:*
+        version: link:../api
+      '@fudic/compiler':
+        specifier: workspace:*
+        version: link:../compiler
+      '@fudic/conventions':
+        specifier: workspace:*
+        version: link:../conventions
+      '@fudic/diagnostics':
+        specifier: workspace:*
+        version: link:../diagnostics
+      '@fudic/spec':
+        specifier: workspace:*
+        version: link:../spec
+      '@fudic/typecheck':
+        specifier: workspace:*
+        version: link:../typecheck
+    devDependencies:
+      '@fudic/core':
+        specifier: workspace:*
+        version: link:../core
+      '@fudic/dom':
+        specifier: workspace:*
+        version: link:../dom
+      '@fudic/ssr':
+        specifier: workspace:*
+        version: link:../ssr
+      '@fudic/terms':
+        specifier: workspace:*
+        version: link:../terms
+      '@fudic/testing':
+        specifier: workspace:*
+        version: link:../testing
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@fudic/workbench':
+        specifier: workspace:*
+        version: link:../workbench
+      '@types/node':
+        specifier: 22.20.0
+        version: 22.20.0
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: 4.1.9
+        version: 4.1.9(@types/node@22.20.0)(@vitest/coverage-v8@4.1.9)(happy-dom@20.10.6)(vite@8.0.16(@types/node@22.20.0))
 
   packages/http:
     dependencies:

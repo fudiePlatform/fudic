@@ -6,6 +6,7 @@
 
 import { isDeepStrictEqual } from 'node:util';
 import { fixtureOf } from './access.js';
+import { propAttrs } from './mount-source.js';
 
 /** A signal as the fixture holds it: a function with a `set` method. */
 export interface SignalLike {
@@ -48,7 +49,7 @@ export function hostComponent(input: HostInput): string {
       : `  import fixtures from "${input.fixture.specifier}";\n\n` +
         `  const { ${input.forwarded.join(', ')} } = ${fixtureOf(input.fixture.name)};\n\n`;
   const signals = input.signals.map((s) => `  const ${s.prop} = signal(${s.literal});\n`).join('');
-  const attrs = input.order.map((prop) => ` .${prop}=@${prop}`).join('');
+  const attrs = propAttrs(input.order, (prop) => prop);
   return (
     `<link rel="component" href="${input.component}">\n\n` +
     // One `@code`, browser code (SDD-60 §4.8): the signals the markup reads are the browser's.

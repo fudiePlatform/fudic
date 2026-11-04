@@ -36,15 +36,17 @@ describe('fixtureEntry', () => {
 describe('fixtureModule (criterion 3)', () => {
   const source = fixtureModule('app-card', ['a', 'b'], PROPS);
 
-  it('writes the import type, one entry per key in order, and the satisfies', () => {
+  // SDD-66 criterion 14: the form `g component` writes, `Fixtures<$Props>` and its import.
+  it('writes the import types, one entry per key in order, and the satisfies of Fixtures', () => {
     expect(source).toBe(
       [
+        "import type { Fixtures } from '@fudic/terms';",
         "import type { $Props } from './app-card.fud';",
         '',
         'export default {',
         "  a: { title: '', href: '' },",
         "  b: { title: '', href: '' },",
-        '} satisfies Record<string, $Props>;',
+        '} satisfies Fixtures<$Props>;',
         '',
       ].join('\n'),
     );
@@ -58,7 +60,7 @@ describe('fixtureModule (criterion 3)', () => {
     const fixtures = readFixtures(source, PATH);
     expect(fixtures.names.map((n) => n.text)).toEqual(['a', 'b']);
     expect(fixtures.end).toBeDefined();
-    expect(source.slice(fixtures.end)).toBe('} satisfies Record<string, $Props>;\n');
+    expect(source.slice(fixtures.end)).toBe('} satisfies Fixtures<$Props>;\n');
   });
 
   it('takes a new entry inserted before `end`', () => {
