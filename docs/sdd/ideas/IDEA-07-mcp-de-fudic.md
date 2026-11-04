@@ -1094,7 +1094,7 @@ en dos, la primera mitad ya sirve sola.
 
 *2026-11-04:* el 6 y el 7 son [SDD-77](../SDD-77-mcp-desde-el-chat.md), salvo ver la pieza
 (`render`, `call`, `preview`), que pasa a SDD-78. `test` y `spec_run` entran en la 77: sin ellos
-`status` mandaría a una herramienta que no existe.
+`status` mandaría a una herramienta que no existe. *2026-11-04:* SDD-77 `Hecho`.
 
 **En conjunto: como hacer tres veces SDD-60.**
 

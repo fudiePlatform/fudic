@@ -1,6 +1,6 @@
 # SDD-77 — El MCP de fudic: crear con fudic desde un chat
 
-> **Estado:** `Listo` — [tareas](./SDD-77-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-77-Task.md).
 > **Paquetes:** `@fudic/mcp` (nuevo) · `@fudic/typecheck` · `@fudic/spec` · `@fudic/vite` ·
 > `@fudic/language-server` · `@fudic/cli` · `@fudic/workbench` · `@fudic/diagnostics`
 > **Depende de:** 22 y 44 (la CLI y sus planes), 35 (el pase tipado del proyecto), 52 y 53

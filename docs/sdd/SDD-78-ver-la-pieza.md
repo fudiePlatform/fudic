@@ -47,7 +47,7 @@ ramas, previews por rama, builder). Ver §7.
 
 | SDD | Qué aporta |
 |---|---|
-| 77 | `@fudic/mcp`: las dos entradas (stdio y HTTP con secreto y túnel), la forma común de las respuestas (§3.4 de SDD-77), `fudic_status` con sus fases y su regla de `next`, `fudic_record`, `runTests` y `runSpecs` del proyecto, y la regla de cargar el fudic **del proyecto** (SDD-77 §8.2.7, §8.2.24, §8.2.37). |
+| 77 | `@fudic/mcp`: las dos entradas (stdio y HTTP con secreto y túnel), la forma común de las respuestas (§3.4 de SDD-77), `fudic_status` con sus fases y su regla de `next`, `fudic_record`, `runTests` y `runSpecs` del proyecto, y la regla de cargar el fudic **del proyecto** (SDD-77 §8.2.7, §8.2.24, §8.2.37). En un workspace, el MCP comprueba, ejecuta y lee las fases proyecto a proyecto, y lo del `.fudapi` pide arrancarlo en la carpeta de la app (SDD-77 §8.2.50); `fudic_status` responde `summary` y `expired` (§8.2.51). |
 | 57 | `mount(component, { props })`, `visit(url)`, `renderToHtml`: el render del servidor más la hidratación sobre happy-dom, dentro del vitest del proyecto (`@fudic/testing/run`). |
 | 64 | `outline(root)` en el formato de ARIA snapshot de Playwright, en happy-dom y en el navegador (`outlineOf`); el motor del banco (`startProject`, `runCriterion`) y sus capturas. |
 | 65 | La línea `look` (`by <quién> hash <hash>`), `UnitState.look` (`none` / `valid` / `expired`) y `HistoryIo.lookHash(unit)`; `InputGraph.filesOf(unit)`. |
