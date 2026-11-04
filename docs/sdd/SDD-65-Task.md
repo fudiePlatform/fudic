@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/history` (nuevo) · `@fudic/cli` · `@fudic/diagnostics` · `@fudic/conventions`
 > **Rama:** `sdd-65-historial-de-cada-pieza`. Nace de `main` **con SDD-64 en `Hecho`** (los
 > informes que graba) y SDD-63 (el contrato).
-> **Progreso:** 11 / 17 — `En curso`.
+> **Progreso:** 12 / 17 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -60,7 +60,7 @@ código, no el test.
 |---|---|---|---|---|---|
 | [x] | 8 | 3 | **Hash de aprobación.** `.fudspec` y fixture, ordenados, `LF` | `history` | `src/hash.ts` |
 | [x] | 9 | 8 | **Hash de entrada.** Hermanos, `<link rel="component">` transitivos con sus `.fudapi` (por `FudIndex`), imports del proyecto transitivos (parser del compilador); sin `node_modules` | `history` | `src/inputs.ts` |
-| [ ] | 10 | 8, 9 | **Los tests de la fase.** Criterios 4–6 | `history` | `test/**` |
+| [x] | 10 | 8, 9 | **Los tests de la fase.** Criterios 4–6 | `history` | `test/**` |
 
 ## Fase 4 — el estado y las ejecuciones (3)
 
