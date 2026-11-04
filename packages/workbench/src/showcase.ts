@@ -21,9 +21,12 @@ export function showcaseMark(command: string): string {
   return `${MARK_START}${command}\`. Run it again instead of editing this file. -->`;
 }
 
-/** Whether a file is the showcase's: its first line is the mark of a `fudic g showcase`. */
+/**
+ * Whether a file is the showcase's: its first line is the mark of a `fudic g showcase` — its
+ * second in a whole document, where nothing may come before the `<!DOCTYPE html>`.
+ */
 export function isShowcaseFile(contents: string): boolean {
-  return contents.startsWith(`${MARK_START}fudic g showcase`);
+  return contents.replace(/^<!DOCTYPE html>\n/u, '').startsWith(`${MARK_START}fudic g showcase`);
 }
 
 /** A component to show: how a page links it and imports its cases, and the cases, executed. */
@@ -191,7 +194,7 @@ function documentOf(input: ShowcaseInput, mark: string, title: string, links: re
   const inCode = code === '' ? '' : `${code.trimEnd().split('\n').map((line) => (line === '' ? line : `    ${line}`)).join('\n')}\n`;
   const indented = body.trimEnd().split('\n').map((line) => (line === '' ? line : `    ${line}`)).join('\n');
   return (
-    `${mark}\n<!DOCTYPE html>\n<html lang="${input.lang}">\n  <head>\n    <meta charset="utf-8">\n` +
+    `<!DOCTYPE html>\n${mark}\n<html lang="${input.lang}">\n  <head>\n    <meta charset="utf-8">\n` +
     `    <meta name="viewport" content="width=device-width, initial-scale=1">\n${inHead}${inCode}` +
     `    <script type="module" src="fudic:runtime"></script>\n    <title>${title}</title>\n  </head>\n  <body>\n${indented}\n  </body>\n</html>\n`
   );
