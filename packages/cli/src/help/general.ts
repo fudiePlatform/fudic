@@ -37,6 +37,11 @@ Maintain
   fmt [path…]                     format .fud and .fudspec files
   translate                       extract the texts to translate into src/locales/
 
+History of a piece
+  approve <piece>                 approve its criteria and props
+  accept <piece> "<text>"         record that the client accepted it, and tag the commit
+  history <piece>                 whether its approval and its last runs still hold
+
 Words
   app         what you serve: it has pages and a base URL ("/", "/admin/")
   library     components your apps use; it is not served

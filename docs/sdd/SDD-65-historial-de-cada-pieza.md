@@ -390,3 +390,17 @@ del proyecto, con `/`), escribiendo por cada uno su ruta, un salto, su contenido
     `valid`: no hay nada con qué compararlo.
 12. **`tests`, `spec`, `done` y `accepted` miran todo el historial**; `approval` y `look`, solo desde el
     último `reopened` (§4.4).
+13. **Qué es una pieza para la CLI.** Una carpeta vale por su `<carpeta>/<carpeta>.fud` o, si no, su
+    `index.fud`. Es pieza un `.fud` bajo `src/routes/` o uno que declara un tag; un layout, un
+    fichero de snippets, otra extensión o algo fuera de un proyecto es `FUD1221`. El `<nombre>` de la
+    etiqueta es el tag del componente o la ruta (`blog`, `index` para la raíz), sin los caracteres
+    que git no admite en una etiqueta (`[slug]` → `-slug-`); la fecha es UTC.
+14. **`approve` y `accept` son planes** que añaden la línea como un cambio del `.fudlog` (crear o
+    modificar con lo de antes más la línea: el fichero solo crece); `accept` lleva además `git tag`.
+    `history` no es un plan: no cambia nada, y con `--json` imprime el `UnitState`.
+15. **La línea se escribe con `historyLine` y `appendix`** de `@fudic/history`, las mismas que usa
+    `record`: la CLI y el MCP no pueden escribir líneas distintas.
+16. **`.gitattributes` solo en la raíz del repositorio**: el de una app suelta, o el del workspace.
+    Una app dentro de un workspace no lleva uno propio.
+17. **`FUD0448` gana `needs-argument`** para `approve`/`accept`/`history` sin pieza y `accept` sin
+    texto.

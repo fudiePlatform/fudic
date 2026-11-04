@@ -16,7 +16,7 @@ import { commandHelp } from './help/commands.js';
 import { GENERAL_HELP } from './help/general.js';
 import { formatUsageError } from './help/usage.js';
 import { apply } from './apply.js';
-import type { FudCode } from '@fudic/diagnostics';
+import { format, type FudCode } from '@fudic/diagnostics';
 import { commandFailed } from './diagnostics.js';
 import { absolute } from './paths.js';
 import { createRequire } from 'node:module';
@@ -26,7 +26,8 @@ import type { CheckKind, CheckPlan } from './plans/check.js';
 import { duration, nodeServeDeps, serveWorkspace, type ServeDeps } from './serve/workspace.js';
 import { formatDiff, formatError, formatDiagnostic, formatPlan, planToJson } from './report.js';
 import { nodeCommandRunner, nodeReadIo, nodeWriteIo, type CommandRunner, type ReadIo, type WriteIo } from './io.js';
-import type { Plan, TranslatePlan } from './types.js';
+import type { BaseOptions, Plan, TranslatePlan } from './types.js';
+import type { HistoryDeps } from './plans/history.js';
 
 /**
  * The errors that mean "a source file could not be read", which is exit code 2: `--in` that
@@ -51,6 +52,8 @@ export interface RunDeps {
   readonly clock?: () => number;
   /** Where the vitest a project installed is (its `dist/node.js`); the real lookup when absent. */
   readonly vitestOf?: (dir: string) => string | undefined;
+  /** The clock, git and the user of `approve`, `accept` and `history`; the real ones when absent. */
+  readonly history?: HistoryDeps;
 }
 
 function nodeStreams(): Streams {
@@ -95,7 +98,9 @@ async function execute(argv: readonly string[], deps: RunDeps): Promise<number> 
     }
     return serveWorkspace(command.serve, apps, command.opts.port, machine);
   }
-  const plan = await build(command, deps.readIo);
+  // Not a plan either: it changes nothing, it says what the history says.
+  if (command.kind === 'history') return showHistory(command.piece, command.opts, command.flags.json, deps);
+  const plan = await build(command, deps);
   const { flags } = command;
   const human = flags.json ? deps.streams.err : deps.streams.out;
 
@@ -215,6 +220,26 @@ function closing(plan: Plan, human: (text: string) => void): number {
   return plan.diagnostics.some((entry) => entry.diagnostic.severity === 'error') ? 1 : 0;
 }
 
+/**
+ * `fudic history <piece>`: the state in one line, after a warning per line of the history that
+ * did not read; with `--json`, the whole `UnitState` and the warnings on stderr.
+ */
+async function showHistory(piece: string, opts: BaseOptions, json: boolean, deps: RunDeps): Promise<number> {
+  const { pieceState, describeState } = await import('./plans/history.js');
+  const human = json ? deps.streams.err : deps.streams.out;
+  const found = await pieceState(piece, opts, deps.readIo, deps.history);
+  if (!found.found) {
+    for (const error of found.errors) human(`${formatError(error)}\n`);
+    return 1;
+  }
+  const { state } = found;
+  // A warning is about a line of the `.fudlog`: it was read, so it is there to quote.
+  for (const warning of state.diagnostics) human(`${format(warning, { source: deps.readIo.read(found.log) })}\n`);
+  if (json) deps.streams.out(`${JSON.stringify(state, null, 2)}\n`);
+  else human(`${describeState(found.name, state)}\n`);
+  return 0;
+}
+
 /** The text a diagnostic's span refers to, when it can still be read. */
 function sourceOf(cwd: string, file: string, io: ReadIo): string | undefined {
   const path = absolute(cwd, file);
@@ -226,8 +251,16 @@ function sourceOf(cwd: string, file: string, io: ReadIo): string | undefined {
  * between them they load the compiler, the formatter and the typecheck, and `fudic --help` or
  * `fudic test` has no use for any of it.
  */
-async function build(command: Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } | { kind: 'error' } | { kind: 'serve' }>, io: ReadIo): Promise<Plan> {
+async function build(
+  command: Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } | { kind: 'error' } | { kind: 'serve' } | { kind: 'history' }>,
+  deps: RunDeps,
+): Promise<Plan> {
+  const io = deps.readIo;
   switch (command.kind) {
+    case 'approve':
+      return (await import('./plans/history.js')).planApprove(command.piece, command.opts, io, deps.history);
+    case 'accept':
+      return (await import('./plans/history.js')).planAccept(command.piece, command.text, command.opts, io, deps.history);
     case 'new':
       return (await import('./plans/new.js')).planNew(command.name, command.opts, io);
     case 'workspace':

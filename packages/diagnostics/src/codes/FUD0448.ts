@@ -38,7 +38,9 @@ export type FUD0448Params =
   /** A route with a segment that cannot be a file name. */
   | { readonly problem: 'route-segment'; readonly part: string; readonly route: string }
   /** An argument a command that takes none was given (`fudic translate x`). */
-  | { readonly problem: 'unexpected-argument'; readonly command: string; readonly value: string };
+  | { readonly problem: 'unexpected-argument'; readonly command: string; readonly value: string }
+  /** A command was not given an argument it needs (`fudic approve` with no piece). */
+  | { readonly problem: 'needs-argument'; readonly command: string; readonly what: string };
 
 function describe(p: FUD0448Params): string {
   switch (p.problem) {
@@ -78,6 +80,8 @@ function describe(p: FUD0448Params): string {
       return `invalid route segment "${p.part}" in "${p.route}"`;
     case 'unexpected-argument':
       return `fudic ${p.command} takes no argument: "${p.value}"`;
+    case 'needs-argument':
+      return `fudic ${p.command} needs ${p.what}`;
   }
 }
 
