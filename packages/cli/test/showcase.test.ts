@@ -16,6 +16,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { fudic } from '@fudic/vite';
 import { nodeReadIo, nodeWriteIo } from '../src/io.js';
 import { workbenchOf, type ShowcaseKit } from '../src/plans/showcase.js';
+import { parseFud } from '../src/parse.js';
 import { run } from '../src/run.js';
 import { captureStreams, MemoryFs, RecordingRunner } from './helpers.js';
 
@@ -267,6 +268,19 @@ describe('criterion 11: an app on its own', () => {
     // The app's own home page is not the showcase's.
     expect(fs.at('solo/src/routes/index.fud').startsWith('<!--')).toBe(false);
   });
+  it('in an app with no layout, each page is a whole document that is still a page', async () => {
+    const fs = new MemoryFs({}, W);
+    expect((await cli(fs, kit({}), 'new', 'bare', '--no-layout', '--no-install', '--no-git', '--cwd', W)).code).toBe(0);
+    expect((await cli(fs, kit({}), 'g', 'component', 'card', '--cwd', `${W}/bare`)).code).toBe(0);
+    const tag = fs.paths().find((path) => /^bare\/src\/components\/[^/]+\/[^/]+\.fixture\.ts$/u.test(path))!.split('/')[3]!;
+    const { code } = await cli(fs, kit({ [tag]: { base: { title: 'T' } } }), 'g', 'showcase', '--cwd', `${W}/bare`);
+    expect(code).toBe(0);
+    for (const file of [`${tag}.fud`, 'index.fud']) {
+      const parsed = parseFud(fs.at(`bare/src/routes/showcase/${file}`));
+      expect(parsed.diagnostics.filter((d) => d.severity === 'error'), file).toEqual([]);
+      expect(parsed.doc.type, file).toBe('page-document');
+    }
+  });
 });
 
 describe('workbenchOf: the workbench the project installed', () => {
@@ -305,9 +319,12 @@ describe('criterion 6: g showcase ui over examples/workspace builds, each case p
       recursive: true,
       filter: (path) => !/[\\/](node_modules|dist|\.fudic|tests)([\\/]|$)/u.test(path.slice(from.length)),
     });
-    // In the repository the example is a member of the repository's own workspace; on its own,
-    // as a user has it, it is one.
-    writeFileSync(join(ws, 'pnpm-workspace.yaml'), "packages:\n  - 'apps/*'\n  - 'libs/*'\n");
+    // In the repository the example is a member of the repository's own workspace and leans on
+    // its root. On its own, as a user has it, it has the root `fudic new --workspace` writes: its
+    // `pnpm-workspace.yaml`, and the `tsconfig.base.json` and globals a new app extends.
+    const root = new MemoryFs({}, W);
+    expect((await cli(root, kit({}), 'new', 'shop', '--workspace', '--app', 'web', '--cwd', W)).code).toBe(0);
+    for (const file of ['pnpm-workspace.yaml', 'tsconfig.base.json', 'fudic-globals.d.ts']) writeFileSync(join(ws, file), root.at(`shop/${file}`));
     // A second case with content, as an author adds one: the page must paint both.
     const fixture = join(ws, 'libs/ui/src/components/ui-card/ui-card.fixture.ts');
     writeFileSync(fixture, readFileSync(fixture, 'utf8').replace("base: { title: 'Tarjeta' },", "base: { title: 'Tarjeta' },\n  'con-lista': { title: 'Con lista', $content: '<ul><li>uno</li></ul>' },"));
@@ -326,7 +343,7 @@ describe('criterion 6: g showcase ui over examples/workspace builds, each case p
     link(join(ws, 'apps/showcase'), '@fudic/example-ui', join(ws, 'libs/ui'));
     const result = (await build({
       root: join(ws, 'apps/showcase'),
-      logLevel: 'info',
+      logLevel: 'silent',
       configFile: false,
       resolve: { alias: { '@fudic/ssr': ssrDist, '@fudic/transport': transportDist, '@fudic/core': coreDist } },
       plugins: [fudic()],
