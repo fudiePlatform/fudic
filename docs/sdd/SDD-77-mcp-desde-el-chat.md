@@ -761,3 +761,15 @@ framework.
 36. **`done` escribe** `documented <con doc>/<props>`, `connected` con las funciones que tienen
     handler y no salían en un `connected` anterior (si hay alguna) y `done`. Sobre una pieza ya
     `done`, no escribe nada.
+37. **`runTests` y `runSpecs` son siempre los del proyecto** (`@fudic/testing/run`,
+    `@fudic/workbench`): corren con su vitest y su navegador. Sin ellos, `FUD1207` diciendo qué
+    instalar. El historial lo graba el MCP: nadie llamaba aún a `recordTestRun` ni a
+    `recordSpecRun`. Un fichero de test que no carga no entra en `files` del informe y no deja
+    línea: la pieza sigue sin ejecución vigente.
+38. **`runSpecs` gana `criteria`** (los ids a ejecutar): `fudic_spec_run` lo pedía y el banco no lo
+    tenía. Se combina con `failing`.
+39. **`source` solo cuando cae dentro del proyecto**: el paso que localiza el propio host apunta a
+    la página que montó el banco (`node_modules/.fudic-bench/…`), que el chat no puede abrir.
+40. **El `next` de una ejecución acotada habla solo de lo que corrió**; sin acotar, de la primera
+    pieza en `red` o `view`. Un `broken` o un `error` manda arreglarlo antes que nada.
+41. **`openProject` resuelve la raíz**: todo `at` y toda ruta se dan relativos a ella.

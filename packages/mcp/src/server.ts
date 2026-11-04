@@ -14,6 +14,7 @@ import { SYMBOL_KINDS } from '@fudic/language-server/project';
 import { contractOf, describeName, listSymbols } from './symbols.js';
 import { registerProjectTools } from './project-tools.js';
 import { RECORD_EVENTS, recordEvent } from './record.js';
+import { RunQueue, runSpecsTool, runTestsTool } from './runs.js';
 import { Guide, TOPICS } from './guide.js';
 import { instructions, newAppPrompt } from './instructions.js';
 import type { Project } from './project.js';
@@ -29,6 +30,8 @@ export interface ServerOptions {
   readonly guide?: Guide;
   /** Shared by every session: one checker for the life of the server. */
   readonly checks?: Checks;
+  /** Shared by every session: one run of tests or criteria at a time, for the whole server. */
+  readonly queue?: RunQueue;
 }
 
 /** The names of the tools the server registers, for the instructions that name them. */
@@ -45,6 +48,8 @@ export function toolNames(entry: Entry): ReadonlySet<string> {
     'fudic_generate',
     'fudic_add',
     'fudic_record',
+    'fudic_test',
+    'fudic_spec_run',
     ...(entry === 'http' ? FILE_TOOLS : []),
   ]);
 }
@@ -56,6 +61,7 @@ export function createServer(options: ServerOptions): McpServer {
   const { project, entry } = options;
   const guide = options.guide ?? new Guide();
   const checks = options.checks ?? new Checks(project.root);
+  const queue = options.queue ?? new RunQueue();
   const tools = toolNames(entry);
   const server = new McpServer({ name: 'fudic', version: VERSION }, { instructions: instructions(tools) });
 
@@ -191,6 +197,50 @@ export function createServer(options: ServerOptions): McpServer {
     },
     async ({ piece, event, text }) =>
       respond(project, await recordEvent(project, checks, { piece, event, ...(text !== undefined ? { text } : {}) })),
+  );
+
+  server.registerTool(
+    'fudic_test',
+    {
+      title: 'fudic test',
+      description:
+        "Runs the fudic project's unit tests, in process, and writes the run in each piece's history. Says how many pass, " +
+        'fail (an assertion said no) and are broken (a test that never got to say: it threw, its file did not load), and ' +
+        'details only what did not pass.',
+      inputSchema: {
+        paths: z.array(z.string()).optional().describe('Test files or folders; without them, every test'),
+        names: z.array(z.string()).optional().describe('Only tests whose full name contains one of these'),
+        failing: z.boolean().default(false).describe('Only what did not pass in the last run'),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    },
+    async ({ paths: asked, names, failing }) =>
+      respond(
+        project,
+        await runTestsTool(project, checks, queue, { failing, ...(asked !== undefined ? { paths: asked } : {}), ...(names !== undefined ? { names } : {}) }),
+      ),
+  );
+
+  server.registerTool(
+    'fudic_spec_run',
+    {
+      title: 'fudic spec run',
+      description:
+        "Runs the acceptance criteria of the fudic project's .fudspec files in a browser, and writes the run in each piece's " +
+        'history. For what did not pass: the step in red with what was expected and what came out, the element in its .fud, ' +
+        'and a screenshot.',
+      inputSchema: {
+        spec: z.string().optional().describe('A component tag, a route, or a .fudspec; without it, every piece'),
+        criteria: z.array(z.string()).optional().describe('Only the criteria with these ids'),
+        failing: z.boolean().default(false).describe('Only what did not pass in the last run'),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    },
+    async ({ spec, criteria, failing }) =>
+      respond(
+        project,
+        await runSpecsTool(project, checks, queue, { failing, ...(spec !== undefined ? { spec } : {}), ...(criteria !== undefined ? { criteria } : {}) }),
+      ),
   );
 
   if (entry === 'http') registerFileTools(server, project, checks);

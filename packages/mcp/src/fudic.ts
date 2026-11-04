@@ -67,6 +67,26 @@ async function projectCli(root: string, load: Importer): Promise<Cli | undefined
   return typeof cli.planOf === 'function' && typeof cli.needsShell === 'function' ? (cli as Cli) : undefined;
 }
 
+type TestingRun = typeof import('@fudic/testing/run');
+type Workbench = typeof import('@fudic/workbench');
+
+/** What runs the project's tests and criteria: always its own, with its vitest and its browser. */
+export interface Runners {
+  readonly runTests?: TestingRun['runTests'];
+  readonly runSpecs?: Workbench['runSpecs'];
+}
+
+/** The runners the project installed; a missing one is absent, and its tool says so. */
+export async function loadRunners(root: string, load: Importer = (url) => import(url)): Promise<Runners> {
+  const testing = packageDir('@fudic/testing', root);
+  const tests = testing === undefined ? undefined : exportedFile(testing, './run');
+  const workbench = packageDir('@fudic/workbench', root);
+  const specs = workbench === undefined ? undefined : exportedFile(workbench, '.');
+  const runTests = tests === undefined ? undefined : ((await load(pathToFileURL(tests).href)) as TestingRun).runTests;
+  const runSpecs = specs === undefined ? undefined : ((await load(pathToFileURL(specs).href)) as Workbench).runSpecs;
+  return { ...(runTests !== undefined ? { runTests } : {}), ...(runSpecs !== undefined ? { runSpecs } : {}) };
+}
+
 /** The fudic of the project at `root`, or the server's own, piece by piece. */
 export async function loadFudic(root: string, load: Importer = (url) => import(url)): Promise<Fudic> {
   const ownCheck = await projectCheck(root, load);

@@ -7,6 +7,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { format } from '@fudic/diagnostics';
 import { parseArgs, USAGE, type Options } from './args.js';
 import { Checks } from './checks.js';
+import { RunQueue } from './runs.js';
 import { Guide } from './guide.js';
 import { startHttp } from './http.js';
 import { openProject, type Project } from './project.js';
@@ -26,12 +27,13 @@ export interface MainDeps {
 async function serveHttp(project: Project, options: Options, deps: MainDeps): Promise<number> {
   const guide = new Guide();
   const checks = new Checks(project.root);
+  const queue = new RunQueue();
   let entry;
   try {
     entry = await startHttp({
       port: options.port,
       secret: secretOf(project.root, options.newSecret),
-      create: () => createServer({ project, entry: 'http', guide, checks }),
+      create: () => createServer({ project, entry: 'http', guide, checks, queue }),
     });
   } catch (error) {
     deps.err(`fudic-mcp: cannot listen on 127.0.0.1:${options.port}: ${(error as Error).message}\n`);

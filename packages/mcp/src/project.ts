@@ -4,7 +4,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { basename, dirname, join } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 
 /** What an answer says when the project is not a git repository, or has no commit yet. */
 export const NO_COMMIT = 'none';
@@ -51,7 +51,9 @@ export function isFudicProject(root: string): boolean {
   }
 }
 
-export function openProject(root: string, git: Git = nodeGit): Project {
+export function openProject(folder: string, git: Git = nodeGit): Project {
+  // Absolute, whatever it was given: every path a tool answers is relative to it.
+  const root = resolve(folder);
   return {
     root,
     name: nameOf(root),

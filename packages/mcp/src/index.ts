@@ -19,6 +19,8 @@ export { runPlan, flagsOf, flagOf, quietRunner, afterInstall, type CommandRun, t
 export { registerProjectTools, GENERATE_KINDS, inPlace } from './project-tools.js';
 export { PHASES, unitsOf, showcaseCurrent, isLibrary, type Phase, type Unit, type StateOf } from './phases.js';
 export { recordEvent, RECORD_EVENTS, type RecordEvent, type RecordInput } from './record.js';
+export { RunQueue, runTestsTool, runSpecsTool, type RunsDeps, type TestInput, type SpecInput } from './runs.js';
+export { loadRunners, type Runners } from './fudic.js';
 export { secretOf, secretFile } from './secret.js';
 export { openTunnel, type Spawn, type Tunnel, type TunnelResult } from './tunnel.js';
 export { startHttp, type HttpEntry, type HttpOptions } from './http.js';

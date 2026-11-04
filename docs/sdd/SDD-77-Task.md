@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/mcp` (nuevo) · `@fudic/typecheck` · `@fudic/spec` · `@fudic/vite` ·
 > `@fudic/language-server` · `@fudic/cli` · `@fudic/workbench` · `@fudic/diagnostics`
 > **Rama:** `sdd-77-mcp-desde-el-chat`, desde `main`.
-> **Progreso:** 17 / 30 — `En curso`.
+> **Progreso:** 19 / 30 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -131,8 +131,8 @@ sesión). No se cierra una fase sin su prueba en Claude Web.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 22 | 9 | **`fudic_test`.** `runTests` en proceso, `fail` frente a `broken` con sus diagnósticos, `failing`, `snapshot` + `recordTestRun`, `next` según la fase; una ejecución a la vez | `mcp` | `src/tools/test.ts` · `src/queue.ts` |
-| [ ] | 23 | 22 | **`fudic_spec_run`.** `runSpecs` en proceso, el paso en rojo con `expected`/`got`, `source` + `quote`, `shot`, `failing`, `recordSpecRun` | `mcp` | `src/tools/spec-run.ts` |
+| [x] | 22 | 9 | **`fudic_test`.** `runTests` en proceso, `fail` frente a `broken` con sus diagnósticos, `failing`, `snapshot` + `recordTestRun`, `next` según la fase; una ejecución a la vez | `mcp` | `src/tools/test.ts` · `src/queue.ts` |
+| [x] | 23 | 22 | **`fudic_spec_run`.** `runSpecs` en proceso, el paso en rojo con `expected`/`got`, `source` + `quote`, `shot`, `failing`, `recordSpecRun` | `mcp` | `src/tools/spec-run.ts` |
 | [ ] | 24 | 22, 23 | **Los tests de la fase.** Criterios 24 y 25. **Prueba en Claude Web:** fila «Ejecutar» | `mcp` | `test/**` |
 
 ## Fase 7 — `status`, `fudic new` y la prueba de punta a punta (6)

@@ -69,6 +69,7 @@
     "@fudic/transport": "workspace:*",
     "@fudic/tsconfig": "workspace:*",
     "@fudic/vite": "workspace:*",
+    "@fudic/workbench": "workspace:*",
     "@types/node": "22.20.0",
     "typescript": "5.9.3",
     "vite": "8.0.16",

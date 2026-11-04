@@ -745,6 +745,9 @@ importers:
       '@fudic/vite':
         specifier: workspace:*
         version: link:../vite
+      '@fudic/workbench':
+        specifier: workspace:*
+        version: link:../workbench
       '@types/node':
         specifier: 22.20.0
         version: 22.20.0
