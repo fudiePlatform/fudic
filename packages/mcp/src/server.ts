@@ -38,8 +38,8 @@ export function createServer(options: ServerOptions): McpServer {
       description:
         'The fudic guide: how to write each kind of fudic file, and what a fudic diagnostic code means. ' +
         'Call it before writing a kind of file for the first time. ' +
-        `Topics: ${TOPICS.join(', ')}; or a code such as FUD0540 for its why and its fix.`,
-      inputSchema: { topic: z.string().describe(`One of ${TOPICS.join(', ')}, or a code such as FUD0540`) },
+        `Topics: ${TOPICS.join(', ')}; or a diagnostic code (FUD and four digits) for its why and its fix.`,
+      inputSchema: { topic: z.string().describe(`One of ${TOPICS.join(', ')}, or a diagnostic code: FUD and four digits`) },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     ({ topic }) => {
