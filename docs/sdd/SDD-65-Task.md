@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/history` (nuevo) · `@fudic/cli` · `@fudic/diagnostics` · `@fudic/conventions`
 > **Rama:** `sdd-65-historial-de-cada-pieza`. Nace de `main` **con SDD-64 en `Hecho`** (los
 > informes que graba) y SDD-63 (el contrato).
-> **Progreso:** 8 / 17 — `En curso`.
+> **Progreso:** 9 / 17 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -52,7 +52,7 @@ código, no el test.
 | [x] | 4 | 3 | **`formatLine`.** Cada suceso de SDD §3.2; textos con escape de JSON | `history` | `src/format.ts` |
 | [x] | 5 | 1, 4 | **`parseHistory`.** Nunca lanza; `FUD1220` por línea rota; ordenado por instante, estable | `history` | `src/parse.ts` |
 | [x] | 6 | 4 | **`record`.** Añade al final, crea el fichero si falta; instante UTC al minuto y commit de `HEAD` (o `-------`) | `history` | `src/record.ts` |
-| [ ] | 7 | 4–6 | **Los tests de la fase.** Criterios 1–3 (el de merge con un git temporal) | `history` | `test/**` |
+| [x] | 7 | 4–6 | **Los tests de la fase.** Criterios 1–3 (el de merge con un git temporal) | `history` | `test/**` |
 
 ## Fase 3 — los hashes (3)
 
