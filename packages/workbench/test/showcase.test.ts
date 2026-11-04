@@ -70,7 +70,7 @@ function written(plan: ReturnType<typeof planShowcase>): ReadonlyMap<string, str
 }
 
 describe('the page of a component (§3.2)', () => {
-  it('one block per case, in fixture order; each prop as .prop=@case.prop and $content as children', () => {
+  it('one block per case, in fixture order; each prop read into <case><Prop> and $content as children', () => {
     const plan = planShowcase(input());
     expect(plan.errors).toEqual([]);
     expect(plan.diagnostics).toEqual([]);
@@ -82,8 +82,8 @@ describe('the page of a component (§3.2)', () => {
 @code {
   import cases from '@acme/ui/acme-button.fixture';
 
-  const primary = cases["primary"];
-  const disabled = cases["disabled"];
+  const { variant: primaryVariant } = cases.primary;
+  const { variant: disabledVariant, disabled: disabledDisabled } = cases.disabled;
 }
 
 <head>
@@ -94,12 +94,12 @@ describe('the page of a component (§3.2)', () => {
 
 <section>
   <h2>primary</h2>
-  <acme-button .variant=@primary.variant>Save</acme-button>
+  <acme-button .variant=@primaryVariant>Save</acme-button>
 </section>
 
 <section>
   <h2>disabled</h2>
-  <acme-button .variant=@disabled.variant .disabled=@disabled.disabled>Save</acme-button>
+  <acme-button .variant=@disabledVariant .disabled=@disabledDisabled>Save</acme-button>
 </section>
 `);
   });
@@ -121,7 +121,8 @@ describe('the page of a component (§3.2)', () => {
     const plan = planShowcase(input({ components: [component('acme-icon', { solo: {} })] }));
     const page = written(plan).get(`${ROUTES}/acme-icon.fud`)!;
     expect(page).toContain('<acme-icon></acme-icon>');
-    expect(page).toContain('const solo = cases["solo"];');
+    // Nothing to read: the case has no props, so the page has no @code.
+    expect(page).not.toContain('@code');
   });
 
   it('the index links each page, with the tag as its text, in the order given', () => {
@@ -155,8 +156,8 @@ ${MARK}
     @code {
       import cases from '@acme/ui/acme-button.fixture';
 
-      const primary = cases["primary"];
-      const disabled = cases["disabled"];
+      const { variant: primaryVariant } = cases.primary;
+      const { variant: disabledVariant, disabled: disabledDisabled } = cases.disabled;
     }
     <script type="module" src="fudic:runtime"></script>
     <title>acme-button</title>
@@ -166,12 +167,12 @@ ${MARK}
 
     <section>
       <h2>primary</h2>
-      <acme-button .variant=@primary.variant>Save</acme-button>
+      <acme-button .variant=@primaryVariant>Save</acme-button>
     </section>
 
     <section>
       <h2>disabled</h2>
-      <acme-button .variant=@disabled.variant .disabled=@disabled.disabled>Save</acme-button>
+      <acme-button .variant=@disabledVariant .disabled=@disabledDisabled>Save</acme-button>
     </section>
   </body>
 </html>
@@ -188,7 +189,7 @@ ${MARK}
 });
 
 describe('criterion 7: one variable per case', () => {
-  it("'titulo-largo' is tituloLargo; a clash is numbered, and `cases` is taken", () => {
+  it("'titulo-largo' reads into tituloLargo<Prop>; a clash is numbered, and `cases` is taken", () => {
     const plan = planShowcase(
       input({
         components: [
@@ -204,15 +205,16 @@ describe('criterion 7: one variable per case', () => {
       }),
     );
     const page = written(plan).get(`${ROUTES}/acme-card.fud`)!;
-    expect(page).toContain(`  const tituloLargo = cases["titulo-largo"];
-  const tituloLargo2 = cases["tituloLargo"];
-  const tituloLargo3 = cases["titulo largo"];
-  const cases2 = cases["cases"];
-  const case2Col = cases["2-col"];
-  const conMayScula = cases["Con-Mayúscula"];`);
-    // The heading keeps the case's own name; the variable is only how the view reads it.
-    expect(page).toContain('<h2>titulo-largo</h2>\n  <acme-card .title=@tituloLargo.title></acme-card>');
-    expect(page).toContain('<h2>cases</h2>\n  <acme-card .title=@cases2.title></acme-card>');
+    // A name that is an identifier is read with a dot; any other, with brackets.
+    expect(page).toContain(`  const { title: tituloLargoTitle } = cases["titulo-largo"];
+  const { title: tituloLargo2Title } = cases.tituloLargo;
+  const { title: tituloLargo3Title } = cases["titulo largo"];
+  const { title: cases2Title } = cases.cases;
+  const { title: case2ColTitle } = cases["2-col"];
+  const { title: conMaySculaTitle } = cases["Con-Mayúscula"];`);
+    // The heading keeps the case's own name; the constant is only how the view reads it.
+    expect(page).toContain('<h2>titulo-largo</h2>\n  <acme-card .title=@tituloLargoTitle></acme-card>');
+    expect(page).toContain('<h2>cases</h2>\n  <acme-card .title=@cases2Title></acme-card>');
   });
 
   it('a case with a signal prop is mounted through a host in the hosts folder, which the page links', () => {
@@ -248,8 +250,8 @@ describe('criterion 7: one variable per case', () => {
     );
     expect(page).toContain('<h2>cuenta-larga</h2>\n  <showcase-acme-counter-cuenta-larga></showcase-acme-counter-cuenta-larga>');
     // The page reads only the cases it mounts itself.
-    expect(page).toContain('  const fijo = cases["fijo"];\n}');
-    expect(page).not.toContain('const tituloLargo');
+    expect(page).toContain('  const { label: fijoLabel } = cases.fijo;\n}');
+    expect(page).toContain('<acme-counter .label=@fijoLabel></acme-counter>');
     expect(page).not.toContain('cases["cuenta-larga"]');
   });
 

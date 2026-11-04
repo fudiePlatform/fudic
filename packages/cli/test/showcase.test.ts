@@ -107,9 +107,9 @@ describe('criterion 6: g showcase ui in a workspace (the plan)', () => {
     const button = fs.at(`${PAGES}/ui-button.fud`);
     expect(button.split('\n').slice(0, 3)).toEqual([MARK, '<link rel="layout" href="../layouts/_layout.fud">', '<link rel="component" href="@shop/ui/ui-button.fud">']);
     expect(button).toContain("import cases from '@shop/ui/ui-button.fixture';");
-    expect(button).toContain('const tituloLargo = cases["titulo-largo"];');
-    expect(button).toContain('<ui-button .variant=@primary.variant>Save</ui-button>');
-    expect(fs.at(`${PAGES}/ui-card.fud`)).toContain('<ui-card .title=@base.title><p>body</p></ui-card>');
+    expect(button).toContain('const { variant: tituloLargoVariant } = cases["titulo-largo"];');
+    expect(button).toContain('<ui-button .variant=@primaryVariant>Save</ui-button>');
+    expect(fs.at(`${PAGES}/ui-card.fud`)).toContain('<ui-card .title=@baseTitle><p>body</p></ui-card>');
 
     const index = fs.at(`${PAGES}/index.fud`);
     expect(index.startsWith(`${MARK}\n`)).toBe(true);
@@ -421,7 +421,10 @@ describe('criterion 6: g showcase ui over examples/workspace builds, each case p
     const page = html('ui-card/index.html');
     expect(page).toContain('<h2>base</h2>');
     expect(page).toContain('<h2>con-lista</h2>');
-    expect(page.match(/<ui-card><template shadowrootmode=/gu)).toHaveLength(2);
+    // Each case rendered by the server: the component with its shadow root inlined.
+    expect(page.match(/<ui-card[^>]*><template shadowrootmode="open"/gu)).toHaveLength(2);
+    expect(page).toContain('<h2>Tarjeta</h2>');
+    expect(page).toContain('<h2>Con lista</h2>');
     expect(page).toContain('Tarjeta');
     expect(page).toContain('Con lista');
     expect(page).toContain('<ul><li>uno</li></ul>');
