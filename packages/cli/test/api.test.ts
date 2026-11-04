@@ -88,6 +88,8 @@ const LIST = `<link rel="component" href="../acme-cart/acme-cart.fud">
 </acme-list>
 `;
 
+const PACKAGE = '{ "name": "demo", "dependencies": {} }\n';
+
 const SNIPPETS = `@snippet badge() {
   <div class="badge"></div>
 }
@@ -102,6 +104,8 @@ const CART_ID = 'components/acme-cart/acme-cart';
 function project(): MemoryFs {
   return projectFs(
     {
+      // What `g api` adds `@fudic/http` to: the server root it generates imports it.
+      'package.json': PACKAGE,
       'src/layouts/_layout.fud': LAYOUT,
       'src/routes/about.fud': ROUTE,
       'src/routes/solo.fud': PAGE,
@@ -137,6 +141,18 @@ describe('criterion 1: g api on a component (the plan)', () => {
     // A component with no links: the server link is its first line, and nothing else moves.
     expect(fs.at('src/components/acme-cart/acme-cart.fud')).toBe(`<link rel="server" href="./acme-cart.fudapi">\n${CART}`);
     expect(errorsOf(fs.at('src/components/acme-cart/acme-cart.fud'))).toEqual([]);
+    // The server root a `.fudapi` gives the app imports `@fudic/http`: the app now depends on it.
+    const pkg = JSON.parse(fs.at('package.json')) as { dependencies: Record<string, string> };
+    expect(Object.keys(pkg.dependencies)).toContain('@fudic/http');
+  });
+
+  it('does not add @fudic/http to an app that already depends on it', async () => {
+    const fs = project();
+    const declared = '{ "name": "demo", "dependencies": { "@fudic/http": "0.0.1" } }\n';
+    fs.write(`${CWD}/package.json`, declared);
+    const { code } = await cli(fs, 'g', 'api', 'src/components/acme-cart', '--cwd', CWD);
+    expect(code).toBe(0);
+    expect(fs.at('package.json')).toBe(declared);
   });
 
   it('takes the .fud as well as its folder, and both write the same files', async () => {
@@ -164,7 +180,7 @@ describe('criterion 1: g api on a component (the plan)', () => {
 
   it('reads the server folder from fudic.json', async () => {
     const fs = projectFs(
-      { 'src/components/acme-cart/acme-cart.fud': CART },
+      { 'package.json': PACKAGE, 'src/components/acme-cart/acme-cart.fud': CART },
       CWD,
       { id: 'demo', kind: 'app', prefix: 'acme', server: 'backend' },
     );
@@ -317,7 +333,7 @@ describe('criterion 5: --dry-run --json', () => {
 
     const plan = JSON.parse(out) as { changes: { path: string; kind: string }[] };
     expect(plan.changes.map((change) => change.path).sort()).toEqual(
-      ['src/components/acme-cart/acme-cart.fud', 'src/components/acme-cart/acme-cart.fudapi', `src/server/${CART_ID}.ts`].sort(),
+      ['package.json', 'src/components/acme-cart/acme-cart.fud', 'src/components/acme-cart/acme-cart.fudapi', `src/server/${CART_ID}.ts`].sort(),
     );
     expect(plan.changes.find((change) => change.path.endsWith('.fud'))!.kind).toBe('modify');
 
