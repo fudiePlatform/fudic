@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/history` (nuevo) · `@fudic/cli` · `@fudic/diagnostics` · `@fudic/conventions`
 > **Rama:** `sdd-65-historial-de-cada-pieza`. Nace de `main` **con SDD-64 en `Hecho`** (los
 > informes que graba) y SDD-63 (el contrato).
-> **Progreso:** 0 / 17 — `Listo`.
+> **Progreso:** 3 / 17 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -41,9 +41,9 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **Los códigos.** `FUD1220`–`FUD1222`: `.ts`, `.md` y línea en `index.ts`. El rango en la fila de SDD-65 del `INDEX.md` | `diagnostics` | `src/codes/FUD1220`–`1222.{ts,md}` · `src/index.ts` |
-| [ ] | 2 | — | **`HISTORY_EXTENSION = '.fudlog'`** | `conventions` | `src/index.ts` |
-| [ ] | 3 | — | **`@fudic/history`.** `package.json` con versiones exactas, `tsconfig`, `vitest.config` con umbrales al 100 en las cuatro métricas e `include: ['src/**/*.ts']`, README corto | `history` | `packages/history/*` |
+| [x] | 1 | — | **Los códigos.** `FUD1220`–`FUD1222`: `.ts`, `.md` y línea en `index.ts`. El rango en la fila de SDD-65 del `INDEX.md` | `diagnostics` | `src/codes/FUD1220`–`1222.{ts,md}` · `src/index.ts` |
+| [x] | 2 | — | **`HISTORY_EXTENSION = '.fudlog'`** | `conventions` | `src/index.ts` |
+| [x] | 3 | — | **`@fudic/history`.** `package.json` con versiones exactas, `tsconfig`, `vitest.config` con umbrales al 100 en las cuatro métricas e `include: ['src/**/*.ts']`, README corto | `history` | `packages/history/*` |
 
 ## Fase 2 — el fichero (4)
 

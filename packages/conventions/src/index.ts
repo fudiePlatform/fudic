@@ -140,6 +140,12 @@ export const ERROR_PREFIX = '/_fudic/error';
 export const ERROR_FILE = '_error.fud';
 
 /**
+ * The history of a piece, next to its `.fud` with the same name (SDD-65 §3.1): the CLI and the
+ * MCP append to it, and the editor and the workbench read it.
+ */
+export const HISTORY_EXTENSION = '.fudlog';
+
+/**
  * page → SW: "forget the data of these paths" (SDD-56 §4.9), with a `MessagePort` the worker
  * answers on once it has. The stub of a server function sends it and the worker handles it,
  * and neither package depends on the other.
