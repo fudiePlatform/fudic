@@ -3,12 +3,11 @@
  * project — a change in a component breaks whoever uses it —; `paths` only narrows the list.
  */
 
-import { isAbsolute, relative } from 'node:path';
 import { FUD1404, type FileDiagnostic } from '@fudic/diagnostics';
 import type { CheckReport } from '@fudic/typecheck';
 import type { Checks } from './checks.js';
 import { outDiagnostic, type Problem } from './diagnostics.js';
-import { locate } from './locate.js';
+import { locate, within } from './locate.js';
 import { isFudicProject, type Project } from './project.js';
 import { read, type Answer } from './respond.js';
 
@@ -35,10 +34,7 @@ export async function problemsOf(report: CheckReport, checks: Checks): Promise<r
 export function inside(problem: Problem, under: readonly string[]): boolean {
   if (problem.file === undefined || under.length === 0) return true;
   const file = problem.file;
-  return under.some((path) => {
-    const rel = relative(path, file);
-    return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
-  });
+  return under.some((path) => within(path, file));
 }
 
 /** The folders and files a tool was asked about, absolute; or the first that is refused. */

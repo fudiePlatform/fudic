@@ -13,6 +13,7 @@ import { API_TYPES_DIR, BROWSER_DIR, SERVER_DIR } from '@fudic/conventions';
 import type { Checks } from './checks.js';
 import { placeOf } from './diagnostics.js';
 import { packageDir } from './fudic.js';
+import { within } from './locate.js';
 import { isFudicProject, type Project } from './project.js';
 import { read, type Answer } from './respond.js';
 
@@ -27,7 +28,7 @@ function posix(path: string): string {
  */
 function at(place: Place, root: string, from?: string | null): string | undefined {
   const where = placeOf(place, root, read).at;
-  if (where === undefined || !where.startsWith('..') || from === undefined || from === null) return where;
+  if (where === undefined || within(root, place.file) || from === undefined || from === null) return where;
   const dir = packageDir(from, root);
   if (dir === undefined) return where;
   const inside = posix(relative(dir, place.file));

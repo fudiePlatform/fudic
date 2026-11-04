@@ -10,10 +10,13 @@ import { FUD1400, type FileDiagnostic } from '@fudic/diagnostics';
 /** Folders no tool reads or writes into. */
 const CLOSED: ReadonlySet<string> = new Set(['.git', 'node_modules', '.fudic']);
 
-/** Whether `inner` is `outer` or under it. */
-function within(outer: string, inner: string): boolean {
+/**
+ * Whether `inner` is `outer` or under it. Climbing out is a first segment that IS `..`: a file
+ * called `..notes` is inside.
+ */
+export function within(outer: string, inner: string): boolean {
   const rel = relative(outer, inner);
-  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+  return !isAbsolute(rel) && rel.split(sep)[0] !== '..';
 }
 
 /** The absolute path of `path` in the project at `root`, or why it is refused. */
