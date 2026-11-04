@@ -73,8 +73,8 @@ describe('app-card of the example', () => {
     expect(result).toMatchObject({ verdict: 'pass' });
     expect(result!.steps[0]).toMatchObject({
       evidence: {
-        expected: 'A title long enough',
-        actual: 'A title long enough that it has to wrap onto a second line inside the card',
+        expected: 'contains "A title long enough"',
+        actual: '"A title long enough that it has to wrap onto a second line inside the card"',
       },
     });
   }, 60_000);

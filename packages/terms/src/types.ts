@@ -30,9 +30,16 @@ export interface TermContext {
   text(target: Locator): Promise<string>;
 }
 
+/** What a `then` looked for and what it found, as a person reads them. */
+export interface Evidence {
+  readonly expected: string;
+  readonly actual: string;
+}
+
 export interface TermOutcome {
   readonly pass: boolean;
-  readonly evidence: string | { readonly expected: unknown; readonly actual: unknown } | null;
+  /** For a `then`: what it looked for and what it found, as text. For a `when` or a `given`: what it did. */
+  readonly evidence: string | Evidence | null;
 }
 
 export interface TermMeta<P extends string = string> {
@@ -56,8 +63,11 @@ export interface TermHost {
   readonly page: Page;
   /** Runs a gesture and waits for the page to serve it. */
   settle<T>(target: Locator, gesture: () => Promise<T>): Promise<T>;
-  /** For the shot: where each resolved reference was. */
-  onLocate(ref: string, box: Box): void;
+  /**
+   * For the shot: where each resolved reference was, and where its element was written — the
+   * `data-fud-src` of it or of its nearest ancestor; null when none has one.
+   */
+  onLocate(ref: string, box: Box, source: string | null): void;
 }
 
 /**

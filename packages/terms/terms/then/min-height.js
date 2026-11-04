@@ -11,10 +11,11 @@ export const meta = {
 
 /** @type {import('@fudic/terms').Term['run']} */
 export async function run(ctx, { target, px }) {
+  const expected = `at least ${px}px`;
   const element = ctx.locate(String(target));
   // An element that is not there has no size: a fail, not a wait.
-  if ((await element.count()) === 0) return { pass: false, evidence: 'not there' };
+  if ((await element.count()) === 0) return { pass: false, evidence: { expected, actual: 'not there' } };
   const box = await element.boundingBox();
-  if (box === null) return { pass: false, evidence: 'not rendered' };
-  return { pass: box.height >= Number(px), evidence: `${box.height}px` };
+  if (box === null) return { pass: false, evidence: { expected, actual: 'not rendered' } };
+  return { pass: box.height >= Number(px), evidence: { expected, actual: `${box.height}px` } };
 }

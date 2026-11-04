@@ -1,0 +1,9 @@
+@code {
+  const { disabled = false } = props<{ disabled?: boolean }>();
+}
+
+<acme-button>
+  <template shadowrootmode="open">
+    <button disabled=@disabled>Save</button>
+  </template>
+</acme-button>

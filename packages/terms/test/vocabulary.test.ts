@@ -167,73 +167,80 @@ describe('§6.7.3 — when', () => {
   });
 });
 
-describe('§6.7.3 — then', () => {
-  it('visible: pass when on screen, fail when hidden or not there', async () => {
+/** SDD-64 §4.2: every stock `then` answers `{ expected, actual }` in words, pass or not. */
+const ev = (expected: string, actual: string) => ({ expected, actual });
+
+describe('§6.7.3 — then, with the evidence of SDD-64 §4.2', () => {
+  it('visible: pass when on screen; fail when hidden, or not there, saying which', async () => {
     await page.setContent('<ui-a>a</ui-a><ui-b style="display:none">b</ui-b>');
-    expect(await run('then', 'visible', { target: 'ui-a' })).toEqual({ pass: true, evidence: 'visible' });
-    expect(await run('then', 'visible', { target: 'ui-b' })).toEqual({ pass: false, evidence: 'hidden' });
-    expect(await run('then', 'visible', { target: 'ui-c' })).toEqual({ pass: false, evidence: 'hidden' });
+    expect(await run('then', 'visible', { target: 'ui-a' })).toEqual({ pass: true, evidence: ev('visible', 'visible') });
+    expect(await run('then', 'visible', { target: 'ui-b' })).toEqual({ pass: false, evidence: ev('visible', 'hidden') });
+    expect(await run('then', 'visible', { target: 'ui-c' })).toEqual({ pass: false, evidence: ev('visible', 'not there') });
   });
 
   it('present: pass when it is in the page, even empty and taking no room; fail when not there', async () => {
     await page.setContent('<ui-a></ui-a>');
-    expect(await run('then', 'present', { target: 'ui-a' })).toEqual({ pass: true, evidence: 'in the page' });
+    expect(await run('then', 'present', { target: 'ui-a' })).toEqual({ pass: true, evidence: ev('in the page', 'in the page') });
     // What `present` exists for: a new component, with nothing in it yet, is not visible.
-    expect(await run('then', 'visible', { target: 'ui-a' })).toEqual({ pass: false, evidence: 'hidden' });
-    expect(await run('then', 'present', { target: 'ui-b' })).toEqual({ pass: false, evidence: 'not there' });
+    expect(await run('then', 'visible', { target: 'ui-a' })).toEqual({ pass: false, evidence: ev('visible', 'hidden') });
+    expect(await run('then', 'present', { target: 'ui-b' })).toEqual({ pass: false, evidence: ev('in the page', 'not there') });
   });
 
-  it('hidden: pass when hidden or not there, fail when on screen', async () => {
+  it('hidden: pass when hidden, and when not there saying so (§8.2.4); fail when on screen', async () => {
     await page.setContent('<ui-a>a</ui-a><ui-b style="display:none">b</ui-b>');
-    expect(await run('then', 'hidden', { target: 'ui-b' })).toEqual({ pass: true, evidence: 'hidden' });
-    expect(await run('then', 'hidden', { target: 'ui-c' })).toEqual({ pass: true, evidence: 'hidden' });
-    expect(await run('then', 'hidden', { target: 'ui-a' })).toEqual({ pass: false, evidence: 'visible' });
+    expect(await run('then', 'hidden', { target: 'ui-b' })).toEqual({ pass: true, evidence: ev('hidden', 'hidden') });
+    expect(await run('then', 'hidden', { target: 'ui-c' })).toEqual({ pass: true, evidence: ev('hidden', 'not there') });
+    expect(await run('then', 'hidden', { target: 'ui-a' })).toEqual({ pass: false, evidence: ev('hidden', 'visible') });
   });
 
-  it('text: pass when the visible text contains it, through shadow roots and slots; fail with expected and actual', async () => {
+  it('text: pass when the visible text contains it, through shadow roots and slots; fail quoting what it says', async () => {
     await page.setContent(`
       <ui-card><template shadowrootmode="open"><h2>Title</h2> <slot></slot></template>Body text</ui-card>`);
     expect(await run('then', 'text', { target: 'ui-card', expected: 'Title Body' })).toEqual({
       pass: true,
-      evidence: { expected: 'Title Body', actual: 'Title Body text' },
+      evidence: ev('contains "Title Body"', '"Title Body text"'),
     });
     expect(await run('then', 'text', { target: 'ui-card', expected: 'Footer' })).toEqual({
       pass: false,
-      evidence: { expected: 'Footer', actual: 'Title Body text' },
+      evidence: ev('contains "Footer"', '"Title Body text"'),
     });
   });
 
-  it('attribute: pass on exactly that value; fail on another, and on none with actual null', async () => {
+  it('attribute: pass on exactly that value; fail on another, and on none saying it has none', async () => {
     await page.setContent('<button aria-expanded="true">a</button>');
     expect(await run('then', 'attribute', { target: 'role:button', attribute: 'aria-expanded', expected: 'true' })).toEqual({
       pass: true,
-      evidence: { expected: 'true', actual: 'true' },
+      evidence: ev('aria-expanded="true"', 'aria-expanded="true"'),
     });
     expect(await run('then', 'attribute', { target: 'role:button', attribute: 'aria-expanded', expected: 'tru' })).toEqual({
       pass: false,
-      evidence: { expected: 'tru', actual: 'true' },
+      evidence: ev('aria-expanded="tru"', 'aria-expanded="true"'),
     });
     expect(await run('then', 'attribute', { target: 'role:button', attribute: 'aria-pressed', expected: 'true' })).toEqual({
       pass: false,
-      evidence: { expected: 'true', actual: null },
+      evidence: ev('aria-pressed="true"', 'no aria-pressed'),
     });
   });
 
-  it('focused: pass on the focused element inside a shadow root; fail saying where the focus is', async () => {
+  it('focused: pass on the focused element inside a shadow root; fail naming who holds the focus (§8.2.5)', async () => {
     await page.setContent(`
       <ui-menu><template shadowrootmode="open"><ul role="menu"><li role="menuitem" tabindex="-1">Primero</li><li role="menuitem" tabindex="-1">Segundo</li></ul></template></ui-menu>
       <input aria-label="outside">`);
-    expect(await run('then', 'focused', { target: 'role:menuitem/"Primero"' })).toEqual({ pass: false, evidence: 'the focus is on nothing' });
-    await ctx.locate('role:menuitem/"Primero"').focus();
-    expect(await run('then', 'focused', { target: 'role:menuitem/"Primero"' })).toEqual({ pass: true, evidence: 'focused' });
-    expect(await run('then', 'focused', { target: 'role:menuitem/"Segundo"' })).toEqual({ pass: false, evidence: 'the focus is on li' });
+    const first = 'role:menuitem/"Primero"';
+    expect(await run('then', 'focused', { target: first })).toEqual({ pass: false, evidence: ev(`focus on ${first}`, 'focus on body') });
+    await ctx.locate(first).focus();
+    expect(await run('then', 'focused', { target: first })).toEqual({ pass: true, evidence: ev(`focus on ${first}`, `focus on ${first}`) });
+    expect(await run('then', 'focused', { target: 'role:menuitem/"Segundo"' })).toEqual({
+      pass: false,
+      evidence: ev('focus on role:menuitem/"Segundo"', 'focus on li'),
+    });
     // The host holds the focus of its shadow root, but it is not the focused element.
-    expect(await run('then', 'focused', { target: 'ui-menu' })).toEqual({ pass: false, evidence: 'the focus is on li' });
+    expect(await run('then', 'focused', { target: 'ui-menu' })).toEqual({ pass: false, evidence: ev('focus on ui-menu', 'focus on li') });
     await ctx.locate('role:textbox').focus();
-    expect(await run('then', 'focused', { target: 'role:menuitem/"Primero"' })).toEqual({ pass: false, evidence: 'the focus is on input' });
+    expect(await run('then', 'focused', { target: first })).toEqual({ pass: false, evidence: ev(`focus on ${first}`, 'focus on input') });
   });
 
-  it('slotted: pass on the slot it went to, named or default; fail saying which, or none', async () => {
+  it('slotted: pass on the slot it went to, named or default; fail saying which, or none (§8.2.3)', async () => {
     await page.setContent(`
       <ui-card>
         <template shadowrootmode="open"><slot name="icon"></slot><slot></slot></template>
@@ -243,39 +250,48 @@ describe('§6.7.3 — then', () => {
       </ui-card>`);
     expect(await run('then', 'slotted', { target: 'role:img/"estrella"', slot: 'icon' })).toEqual({
       pass: true,
-      evidence: { expected: 'icon', actual: 'icon' },
+      evidence: ev('slot "icon"', 'slot "icon"'),
     });
     expect(await run('then', 'slotted', { target: 'role:note', slot: 'default' })).toEqual({
       pass: true,
-      evidence: { expected: 'default', actual: 'default' },
+      evidence: ev('the default slot', 'the default slot'),
     });
     expect(await run('then', 'slotted', { target: 'role:img/"estrella"', slot: 'default' })).toEqual({
       pass: false,
-      evidence: { expected: 'default', actual: 'icon' },
+      evidence: ev('the default slot', 'slot "icon"'),
     });
     // A slot the component does not declare: assigned nowhere. By tag: an element assigned nowhere
     // is not rendered, so it has no role for a `role:` reference to find.
     expect(await run('then', 'slotted', { target: 'ui-badge', slot: 'badge' })).toEqual({
       pass: false,
-      evidence: { expected: 'badge', actual: 'none' },
+      evidence: ev('slot "badge"', 'no slot'),
+    });
+    expect(await run('then', 'slotted', { target: 'ui-badge', slot: 'none' })).toEqual({
+      pass: true,
+      evidence: ev('no slot', 'no slot'),
     });
   });
 
-  it('slotted: an element no slot took is not rendered, so a role finds nothing: none, at once', async () => {
+  it('slotted: an element no slot took is not rendered, so a role finds nothing: not there, at once', async () => {
     await page.setContent(`
       <ui-card><template shadowrootmode="open"><p>card</p></template><span slot="icon" role="img" aria-label="estrella">★</span></ui-card>`);
     expect(await run('then', 'slotted', { target: 'role:img/"estrella"', slot: 'icon' })).toEqual({
       pass: false,
-      evidence: { expected: 'icon', actual: 'none' },
+      evidence: ev('slot "icon"', 'not there'),
+    });
+    // Asking for no slot, that is what it got.
+    expect(await run('then', 'slotted', { target: 'role:img/"estrella"', slot: 'none' })).toEqual({
+      pass: true,
+      evidence: ev('no slot', 'not there'),
     });
   });
 
   it.each([
-    ['text', { expected: 'x' }, { expected: 'x', actual: 'not there' }],
-    ['attribute', { attribute: 'role', expected: 'x' }, { expected: 'x', actual: 'not there' }],
-    ['focused', {}, 'not there'],
-    ['min-height', { px: 1 }, 'not there'],
-    ['min-width', { px: 1 }, 'not there'],
+    ['text', { expected: 'x' }, ev('contains "x"', 'not there')],
+    ['attribute', { attribute: 'role', expected: 'x' }, ev('role="x"', 'not there')],
+    ['focused', {}, ev('focus on role:menuitem', 'not there')],
+    ['min-height', { px: 1 }, ev('at least 1px', 'not there')],
+    ['min-width', { px: 1 }, ev('at least 1px', 'not there')],
   ] as const)('%s on an element that is not there fails at once, and does not wait for it', async (name, args, evidence) => {
     await page.setContent('<ui-a></ui-a>');
     page.setDefaultTimeout(1000);
@@ -287,8 +303,15 @@ describe('§6.7.3 — then', () => {
 
   it.each(['min-height', 'min-width'] as const)('%s: pass from the size up; fail below it, and on an element without a box', async (name) => {
     await page.setContent(`<ui-a style="display:block;width:44px;height:44px"></ui-a><ui-b style="display:none"></ui-b>`);
-    expect(await run('then', name, { target: 'ui-a', px: 44 })).toEqual({ pass: true, evidence: '44px' });
-    expect(await run('then', name, { target: 'ui-a', px: 45 })).toEqual({ pass: false, evidence: '44px' });
-    expect(await run('then', name, { target: 'ui-b', px: 1 })).toEqual({ pass: false, evidence: 'not rendered' });
+    expect(await run('then', name, { target: 'ui-a', px: 44 })).toEqual({ pass: true, evidence: ev('at least 44px', '44px') });
+    expect(await run('then', name, { target: 'ui-a', px: 45 })).toEqual({ pass: false, evidence: ev('at least 45px', '44px') });
+    expect(await run('then', name, { target: 'ui-b', px: 1 })).toEqual({ pass: false, evidence: ev('at least 1px', 'not rendered') });
+  });
+
+  it.each(VOCABULARY.then)('%s answers Evidence of text, never a bare sentence (SDD-64 §3.3)', async (name) => {
+    await page.setContent('<ui-a style="display:block;width:4px;height:4px">a</ui-a>');
+    const args = { target: 'ui-a', expected: 'a', attribute: 'id', px: 1, slot: 'default' };
+    const { evidence } = await run('then', name, args);
+    expect(evidence).toEqual({ expected: expect.any(String), actual: expect.any(String) });
   });
 });

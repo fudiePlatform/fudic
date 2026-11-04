@@ -13,7 +13,15 @@
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { format, render, type FudDiagnostic, type Span } from '@fudic/diagnostics';
+import {
+  format,
+  render,
+  type FudCode,
+  type FudDiagnostic,
+  type Severity,
+  type Span,
+  type WireDiagnostic,
+} from '@fudic/diagnostics';
 import { echoes, relativePath, toPosix, type CheckReport } from '@fudic/typecheck/problems';
 
 /**
@@ -122,11 +130,68 @@ export class BuildReporter {
     const first = errors[0];
     if (first === undefined) return;
     const log = pluginLog(first, this.#root);
-    context.error({
+    const message = errors.map((error) => pluginLog(error, this.#root).message).join('\n\n');
+    // An Error, not a bare log: what Vite throws is this very object, and whoever catches it —
+    // a test that imported the `.fud`, the workbench — reads every error from `fudic`.
+    const error: FudicCompileError = Object.assign(new Error(message), {
       ...log,
-      message: errors.map((error) => pluginLog(error, this.#root).message).join('\n\n'),
+      message,
+      fudic: { diagnostics: errors.map((e) => wireOf(e, this.#root)) },
     });
+    context.error(error);
   }
+}
+
+/** The error a `.fud` that does not compile throws: its text as always, and every error as data. */
+export interface FudicCompileError extends Error {
+  readonly fudic: { readonly diagnostics: readonly WireDiagnostic[] };
+}
+
+/** Whether a caught error is a `.fud` that did not compile. */
+export function isFudicCompileError(error: unknown): error is FudicCompileError {
+  if (!(error instanceof Error) || !('fudic' in error)) return false;
+  const fudic = error.fudic;
+  return typeof fudic === 'object' && fudic !== null && 'diagnostics' in fudic && Array.isArray(fudic.diagnostics);
+}
+
+/** A head line of the message, as `pluginLog` writes it: `<file>:<line>:<column> - <severity> <code>: <message>`. */
+const HEAD = /^(.+?):(\d+):(\d+) - (error|warning|info|hint) (FUD\d{4}): (.*)$/gmu;
+
+/**
+ * The diagnostics of a `.fud` that did not compile, from whatever reached the caller: the
+ * `FudicCompileError` itself, or what is left of it after crossing a process — vitest's module
+ * runner keeps the message and drops the rest, and the message says every error in this
+ * plugin's own words. Undefined when it is not such an error.
+ */
+export function compileDiagnosticsOf(error: unknown): readonly WireDiagnostic[] | undefined {
+  if (isFudicCompileError(error)) return error.fudic.diagnostics;
+  const message = typeof error === 'object' && error !== null ? (error as { message?: unknown }).message : undefined;
+  if (typeof message !== 'string') return undefined;
+  const found = [...message.matchAll(HEAD)].map(
+    ([, file, line, column, severity, code, text]): WireDiagnostic => ({
+      code: code as FudCode,
+      severity: severity as Severity,
+      message: text!,
+      file: file!,
+      line: Number(line),
+      column: Number(column),
+    }),
+  );
+  return found.length > 0 ? found : undefined;
+}
+
+/** A located diagnostic for a reader: its file relative to the root, line and column 1-based. */
+function wireOf(diagnostic: FudDiagnostic, root: string): WireDiagnostic {
+  const options = withSource(diagnostic, root);
+  const start = render(diagnostic, options.source).start;
+  return {
+    code: diagnostic.code,
+    severity: diagnostic.severity,
+    message: diagnostic.message,
+    file: diagnostic.file === undefined ? null : relativePath(resolve(root, diagnostic.file), root),
+    line: start?.line ?? null,
+    column: start?.column ?? null,
+  };
 }
 
 function keyOf(file: string, start: number, end: number, code: string): string {

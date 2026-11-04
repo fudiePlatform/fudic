@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { namedArgs, runCriterion, type LoadedTerm, type TermLoader } from '../src/engine.js';
+import { MissingTermError, namedArgs, runCriterion, stepProblem, type LoadedTerm, type TermLoader } from '../src/engine.js';
 import type { BenchExtension, LoadedExtension, TermHost } from '../src/extension.js';
 import type { PlannedCriterion, PlannedStep } from '../src/pages.js';
 import { missingRuntime } from '../src/runtime.js';
@@ -13,7 +13,7 @@ const SHOT = `screenshot ${MOUNT}`;
 
 /** A criterion of these steps; where they are written does not matter to the engine. */
 function criterion(steps: Omit<PlannedStep, 'offset'>[], extra: { error?: string } = {}): PlannedCriterion {
-  return { id: 'c', route: '/c', mount: MOUNT, offset: 0, fixture: null, steps: steps.map((s) => ({ ...s, offset: 0 })), ...extra };
+  return { id: 'c', route: '/c', mount: MOUNT, offset: 0, spec: 'C:/p/c.fudspec', fixture: null, steps: steps.map((s) => ({ ...s, offset: 0 })), ...extra };
 }
 
 /** The ctx of these tests: one fake extension hands the terms the host itself. */
@@ -25,9 +25,10 @@ type Run = (ctx: HostCtx, args: Readonly<Record<string, unknown>>) => Promise<{ 
 
 /** Terms by name: each answers what the test says; an unknown name fails to load. */
 function terms(table: Record<string, Run>): TermLoader {
-  return async (_block, name) => {
+  return async (block, name) => {
     const run = table[name];
-    if (run === undefined) throw new Error(`no term "${name}"\nsecond line`);
+    // What the session's loader throws: the engine reads it as FUD1201.
+    if (run === undefined) throw new MissingTermError(block, name);
     const term: LoadedTerm = {
       path: `C:/terms/${name}.js`,
       layer: 'framework',
@@ -149,7 +150,7 @@ describe('runCriterion, on a page without a browser — criterion 12', () => {
     expect(result.verdict).toBe('error');
     expect(result.steps).toEqual([
       { block: 'then', term: 'no', layer: 'framework', args: [], pass: false, evidence: 'no' },
-      { block: 'then', term: 'boom', layer: 'framework', args: [], error: 'app-card matches 2 elements' },
+      { block: 'then', term: 'boom', layer: 'framework', args: [], error: 'app-card matches 2 elements', code: 'FUD1204' },
     ]);
     expect(page.closed).toBe(true);
   });
@@ -158,7 +159,7 @@ describe('runCriterion, on a page without a browser — criterion 12', () => {
     const { result } = await run(fakePage(), criterion([{ block: 'when', term: 'missing', args: ['a'] }]), terms({}));
     expect(result.verdict).toBe('error');
     expect(result.steps).toEqual([
-      { block: 'when', term: 'missing', layer: 'workspace', args: ['a'], error: 'no term "missing"' },
+      { block: 'when', term: 'missing', layer: 'workspace', args: ['a'], error: 'there is no when term "missing"', code: 'FUD1201' },
     ]);
   });
 
@@ -428,7 +429,7 @@ describe('runCriterion — the host the extensions receive', () => {
         act: async ({ host }) => host.settle(fakeLocator('app-card'), () => Promise.reject(new Error('click timed out'))),
       }),
     );
-    expect(result.steps).toEqual([{ block: 'when', term: 'act', layer: 'framework', args: ['app-card'], error: 'click timed out' }]);
+    expect(result.steps).toEqual([{ block: 'when', term: 'act', layer: 'framework', args: ['app-card'], error: 'click timed out', code: 'FUD1204' }]);
   });
 });
 
@@ -446,7 +447,7 @@ describe('runCriterion — criterion 8, shots and marks', () => {
   };
   const sees: Record<string, Run> = {
     sees: async ({ host }, { target }) => {
-      host.onLocate(String(target), BOXES[String(target)]!);
+      host.onLocate(String(target), BOXES[String(target)]!, null);
       return { pass: true, evidence: 'seen' };
     },
   };
@@ -487,9 +488,9 @@ describe('runCriterion — criterion 8, shots and marks', () => {
 
   it('keeps one mark per reference and step, the last, in its place; another step marks it again', async () => {
     const twice: Run = async ({ host }) => {
-      host.onLocate('role:link', { x: 110, y: 60, width: 30, height: 10 });
-      host.onLocate(MOUNT, { x: 100, y: 50, width: 200, height: 40 });
-      host.onLocate('role:link', { x: 120, y: 70, width: 40, height: 20 });
+      host.onLocate('role:link', { x: 110, y: 60, width: 30, height: 10 }, null);
+      host.onLocate(MOUNT, { x: 100, y: 50, width: 200, height: 40 }, null);
+      host.onLocate('role:link', { x: 120, y: 70, width: 40, height: 20 }, null);
       return { pass: true, evidence: null };
     };
     const { result } = await run(
@@ -632,6 +633,7 @@ describe('runCriterion — SDD-59 §4.2, without @fudic/terms', () => {
         layer: 'framework',
         args: ['app-card'],
         error: '@fudic/terms is not installed in C:/proj: pnpm add -D @fudic/terms',
+        code: 'FUD1204',
       },
     ]);
   });
@@ -639,5 +641,137 @@ describe('runCriterion — SDD-59 §4.2, without @fudic/terms', () => {
   it('a term that does not touch ctx still runs', async () => {
     const { result } = await run(fakePage(), criterion([{ block: 'then', term: 'ok', args: [] }]), terms({ ok }), [missingRuntime('C:/proj')]);
     expect(result.verdict).toBe('pass');
+  });
+});
+
+describe('runCriterion — SDD-64 §4.3, every problem has a code (criteria 8 and 9)', () => {
+  /** The diagnostics of a run, as code and the words that tell it apart. */
+  const said = (diagnostics: readonly { code: string; message: string }[]) => diagnostics.map((d) => [d.code, d.message]);
+
+  /** A criterion of one `when` written at offset 42 of its `.fudspec`. */
+  const one = (term: string): PlannedCriterion => ({ ...criterion([]), steps: [{ block: 'when', term, args: ['app-card'], offset: 42 }] });
+
+  /** Throws what it is given, as a term. */
+  const throwing =
+    (error: unknown): Run =>
+    async () => {
+      throw error;
+    };
+
+  /** An error with the name Playwright and `@fudic/terms` give theirs. */
+  const named = (name: string, message: string, extra: object = {}) => Object.assign(new Error(message), extra, { name });
+
+  it('a clean run, green or red, has no diagnostics', async () => {
+    expect((await run(fakePage(), criterion([{ block: 'then', term: 'ok', args: [] }]), terms({ ok }))).result.diagnostics).toEqual([]);
+    expect((await run(fakePage(), criterion([{ block: 'then', term: 'no', args: [] }]), terms({ no }))).result.diagnostics).toEqual([]);
+  });
+
+  it.each([
+    ['a term that does not exist', 'missing', undefined, 'FUD1201', 'there is no term "missing"'],
+    [
+      'a step that ran out of time',
+      'slow',
+      named('TimeoutError', 'locator.click: Timeout 5000ms exceeded.\nCall log:'),
+      'FUD1202',
+      'term "slow" ran out of time: locator.click: Timeout 5000ms exceeded.',
+    ],
+    [
+      'a reference that matches two',
+      'twice',
+      named('AmbiguousReference', 'x', { ref: 'role:button', count: 2 }),
+      'FUD1203',
+      '"role:button" matches 2 elements: a step acts on one',
+    ],
+    ['an error named like the guard but without its data', 'fake', named('AmbiguousReference', 'not the guard'), 'FUD1204', 'term "fake" threw: not the guard'],
+    ['a term that throws', 'boom', new Error('boom\n  at stack'), 'FUD1204', 'term "boom" threw: boom'],
+    ['a term that throws what is not an Error', 'odd', 'a string', 'FUD1204', 'term "odd" threw: a string'],
+  ] as const)('%s: the step and the criterion carry its code, pointing at the step in the .fudspec', async (_what, term, error, code, message) => {
+    const table: Record<string, Run> = error === undefined ? {} : { [term]: throwing(error) };
+    const { result } = await run(fakePage(), one(term), terms(table));
+    expect(result.verdict).toBe('error');
+    expect(result.steps[0]).toMatchObject({ term, code });
+    expect(result.diagnostics).toEqual([{ severity: 'error', code, message, file: 'C:/p/c.fudspec', span: { start: 42, end: 42 } }]);
+  });
+
+  it('stepProblem classifies by the error alone, wherever the step is', () => {
+    const step = { block: 'then' as const, term: 'text', args: [], offset: 7 };
+    expect(stepProblem(new MissingTermError('then', 'text'), step, 'a.fudspec')).toMatchObject({
+      code: 'FUD1201',
+      file: 'a.fudspec',
+      span: { start: 7, end: 7 },
+    });
+    expect(stepProblem(named('TimeoutError', 't'), step, 'a.fudspec').code).toBe('FUD1202');
+    // The name on something that is not an Error is not Playwright's, nor the guard's.
+    expect(stepProblem({ name: 'TimeoutError', message: 't' }, step, 'a.fudspec').code).toBe('FUD1204');
+    expect(stepProblem({ name: 'AmbiguousReference', ref: 'r', count: 2 }, step, 'a.fudspec').code).toBe('FUD1204');
+    expect(stepProblem(named('AmbiguousReference', 'x', { ref: 'r', count: '2' }), step, 'a.fudspec').code).toBe('FUD1204');
+    expect(stepProblem(named('AmbiguousReference', 'x', { ref: 3, count: 2 }), step, 'a.fudspec').code).toBe('FUD1204');
+  });
+
+  it('a page that answers 404 is FUD1200 with its status; one that answers nothing, without', async () => {
+    const answered = (await run(fakePage(undefined, { status: 404 }), criterion([]), terms({}))).result;
+    expect(said(answered.diagnostics)).toEqual([['FUD1200', 'the page /c answered 404']]);
+    const silent = (await run(fakePage(undefined, { status: null }), criterion([]), terms({}))).result;
+    expect(said(silent.diagnostics)).toEqual([['FUD1200', 'the page /c did not answer']]);
+  });
+
+  it('every error the page throws is a FUD1205 with its first line', async () => {
+    const page = fakePage();
+    const { result } = await run(
+      page,
+      criterion([{ block: 'when', term: 'breaks', args: [] }]),
+      terms({
+        breaks: async () => {
+          page.fail('TypeError: x is undefined\n    at render');
+          page.fail('RangeError: too deep');
+          return { pass: true, evidence: 'clicked' };
+        },
+      }),
+    );
+    expect(result.verdict).toBe('error');
+    expect(said(result.diagnostics)).toEqual([
+      ['FUD1205', 'the page threw: TypeError: x is undefined'],
+      ['FUD1205', 'the page threw: RangeError: too deep'],
+    ]);
+  });
+
+  it('a step that throws on a page that also threw gives both codes, the step first', async () => {
+    const page = fakePage();
+    const { result } = await run(
+      page,
+      one('boom'),
+      terms({
+        boom: async () => {
+          page.fail('TypeError: x');
+          throw new Error('boom');
+        },
+      }),
+    );
+    expect(result.diagnostics.map((d) => d.code)).toEqual(['FUD1204', 'FUD1205']);
+  });
+
+  it('fudic/bench.js that throws in its setup is FUD1206, naming the file', async () => {
+    const extension = loaded('C:/p/fudic/bench.js', {
+      setup: async () => {
+        throw new Error('no login');
+      },
+    });
+    const { result } = await run(fakePage(), criterion([]), terms({}), [extension]);
+    expect(result.diagnostics).toMatchObject([{ code: 'FUD1206', file: 'C:/p/fudic/bench.js' }]);
+    expect(result.diagnostics[0]?.message).toContain('no login');
+  });
+
+  it('anything else that stops the run is FUD1207 with the original message', async () => {
+    const page = fakePage(undefined, { goto: () => Promise.reject(new Error('net::ERR_CONNECTION_REFUSED\nCall log:')) });
+    const { result } = await run(page, criterion([]), terms({}));
+    expect(said(result.diagnostics)).toEqual([['FUD1207', 'could not run: net::ERR_CONNECTION_REFUSED']]);
+  });
+
+  it('a criterion planned in error keeps the problem it was planned with, or is FUD1207', async () => {
+    const problem = { severity: 'error', code: 'FUD0974', message: 'not JSON', file: 'C:/p/a.fixture.ts' } as const;
+    const planned = await run(fakePage(), { ...criterion([], { error: 'not JSON' }), problem }, terms({}));
+    expect(planned.result.diagnostics).toEqual([problem]);
+    const bare = await run(fakePage(), criterion([], { error: 'no entry' }), terms({}));
+    expect(said(bare.result.diagnostics)).toEqual([['FUD1207', 'could not run: no entry']]);
   });
 });

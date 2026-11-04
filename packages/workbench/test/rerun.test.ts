@@ -299,7 +299,7 @@ describe('processedChanges — criterion 1, against a real Vite', () => {
 });
 
 describe('startVite — criterion 2', () => {
-  it('creates the plugin with liveCheck: false and serverReload: false', async () => {
+  it('creates the plugin with liveCheck: false, serverReload: false and sourceLocations: true (SDD-64 §3.4)', async () => {
     vi.resetModules();
     const options: unknown[] = [];
     vi.doMock('@fudic/vite', () => ({
@@ -313,7 +313,7 @@ describe('startVite — criterion 2', () => {
       const http = createServer();
       const v = await start({ root: tmpdir(), routesDir: 'routes', http, onProcessed: () => undefined });
       await v.close();
-      expect(options).toEqual([{ routesDir: 'routes', liveCheck: false, serverReload: false }]);
+      expect(options).toEqual([{ routesDir: 'routes', liveCheck: false, serverReload: false, sourceLocations: true }]);
     } finally {
       vi.doUnmock('@fudic/vite');
       vi.resetModules();

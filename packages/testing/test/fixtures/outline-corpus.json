@@ -1,0 +1,85 @@
+{
+  "_": "SDD-64 criterion 22: painted pieces (declarative shadow roots, as the server sends them), the same text in happy-dom (outline) and in Chrome (outlineOf). `outline` is what both must write: Chrome's ARIA snapshot, the reference.",
+  "pieces": [
+    {
+      "name": "a disabled acme-button (criterion 21)",
+      "html": "<acme-button><template shadowrootmode=\"open\"><button disabled>Save</button></template></acme-button>",
+      "outline": "- button \"Save\" [disabled]"
+    },
+    {
+      "name": "a form with label and fieldset",
+      "html": "<app-form><template shadowrootmode=\"open\"><form aria-label=\"Shipping form\"><fieldset><legend>Shipping</legend><label for=\"street\">Street</label><input id=\"street\" type=\"text\"><label><input type=\"checkbox\" checked> Gift wrap</label></fieldset><button type=\"submit\">Send</button></form></template></app-form>",
+      "outline": "- form \"Shipping form\":\n  - group \"Shipping\":\n    - text: Shipping Street\n    - textbox \"Street\"\n    - checkbox \"Gift wrap\" [checked]\n    - text: Gift wrap\n  - button \"Send\""
+    },
+    {
+      "name": "content projected into named and unnamed slots",
+      "html": "<ui-card><template shadowrootmode=\"open\"><article><header><slot name=\"title\"></slot></header><slot></slot></article></template><h2 slot=\"title\">Hello card</h2><p>Body text</p></ui-card>",
+      "outline": "- article:\n  - heading \"Hello card\" [level=2]\n  - paragraph: Body text"
+    },
+    {
+      "name": "nested components, each with its shadow root",
+      "html": "<app-page><template shadowrootmode=\"open\"><main><app-tabs><template shadowrootmode=\"open\"><div role=\"tablist\"><button role=\"tab\" aria-selected=\"true\">Tab A</button><button role=\"tab\" aria-selected=\"false\">Tab B</button></div><div role=\"tabpanel\">panel A</div></template></app-tabs></main></template></app-page>",
+      "outline": "- main:\n  - tablist:\n    - tab \"Tab A\" [selected]\n    - tab \"Tab B\"\n  - tabpanel: panel A"
+    },
+    {
+      "name": "a menu button with aria-expanded",
+      "html": "<ui-menu><template shadowrootmode=\"open\"><button aria-expanded=\"true\" aria-haspopup=\"menu\">Options</button><ul role=\"menu\"><li role=\"menuitem\">First</li><li role=\"menuitem\">Second</li></ul></template></ui-menu>",
+      "outline": "- button \"Options\" [expanded]\n- menu:\n  - menuitem \"First\"\n  - menuitem \"Second\""
+    },
+    {
+      "name": "a checked checkbox and a mixed one",
+      "html": "<ui-check><template shadowrootmode=\"open\"><label><input type=\"checkbox\" checked> Accept</label><div role=\"checkbox\" aria-checked=\"mixed\" aria-label=\"All\" tabindex=\"0\"></div></template></ui-check>",
+      "outline": "- checkbox \"Accept\" [checked]\n- text: Accept\n- checkbox \"All\" [checked=mixed]"
+    },
+    {
+      "name": "headings with their level",
+      "html": "<app-doc><template shadowrootmode=\"open\"><h1>Title</h1><h2>Section</h2><h3>Detail</h3><div role=\"heading\" aria-level=\"4\">Note</div></template></app-doc>",
+      "outline": "- heading \"Title\" [level=1]\n- heading \"Section\" [level=2]\n- heading \"Detail\" [level=3]\n- heading \"Note\" [level=4]"
+    },
+    {
+      "name": "a link and a list",
+      "html": "<app-nav><template shadowrootmode=\"open\"><nav aria-label=\"Main\"><ul><li><a href=\"/home\">Home</a></li><li><a href=\"/about\">About us</a></li></ul></nav><p>Loose words</p></template></app-nav>",
+      "outline": "- navigation \"Main\":\n  - list:\n    - listitem:\n      - link \"Home\":\n        - /url: /home\n    - listitem:\n      - link \"About us\":\n        - /url: /about\n- paragraph: Loose words"
+    },
+    {
+      "name": "pressed, mixed, and checkboxes that say their state in aria",
+      "html": "<ui-toggles><template shadowrootmode=\"open\"><button aria-pressed=\"true\">Bold</button><button aria-pressed=\"mixed\">Italic</button><button aria-pressed=\"false\">Plain</button><input type=\"checkbox\" aria-label=\"Some\" aria-checked=\"true\"><input type=\"checkbox\" aria-label=\"None\" aria-checked=\"false\" checked></template></ui-toggles>",
+      "outline": "- button \"Bold\" [pressed]\n- button \"Italic\" [pressed=mixed]\n- button \"Plain\"\n- checkbox \"Some\"\n- checkbox \"None\" [checked]"
+    },
+    {
+      "name": "disabled by aria-disabled above, and by a disabled fieldset",
+      "html": "<ui-locked><template shadowrootmode=\"open\"><div role=\"toolbar\" aria-label=\"Tools\" aria-disabled=\"true\"><button>Cut</button></div><fieldset disabled aria-label=\"Old\"><input type=\"text\" aria-label=\"Field\"></fieldset></template></ui-locked>",
+      "outline": "- toolbar \"Tools\" [disabled]:\n  - button \"Cut\" [disabled]\n- group \"Old\":\n  - textbox \"Field\" [disabled]"
+    },
+    {
+      "name": "a listbox with a selected option, and a select",
+      "html": "<ui-pick><template shadowrootmode=\"open\"><div role=\"listbox\" aria-label=\"Fruit\"><div role=\"option\" aria-selected=\"true\">Apple</div><div role=\"option\">Pear</div></div><select aria-label=\"Size\"><option>S</option><option selected>M</option></select></template></ui-pick>",
+      "outline": "- listbox \"Fruit\":\n  - option \"Apple\" [selected]\n  - option \"Pear\"\n- combobox \"Size\":\n  - option \"S\"\n  - option \"M\" [selected]"
+    },
+    {
+      "name": "a textbox with a value and a placeholder",
+      "html": "<ui-search><template shadowrootmode=\"open\"><input type=\"text\" aria-label=\"Query\" placeholder=\"Type here\" value=\"shoes\"><input type=\"text\" placeholder=\"Name\"></template></ui-search>",
+      "outline": "- textbox \"Query\":\n  - /placeholder: Type here\n  - text: shoes\n- textbox \"Name\""
+    },
+    {
+      "name": "what is not content: hidden, scripts, styles; a slot's fallback is",
+      "html": "<ui-quiet><template shadowrootmode=\"open\"><style>b{}</style><script>1</script><b hidden>gone</b><b aria-hidden=\"true\">gone too</b><slot name=\"empty\"><span>fallback words</span></slot></template></ui-quiet>",
+      "outline": "- text: fallback words"
+    },
+    {
+      "name": "a header and footer outside any section, a textarea, radios and a heading by role",
+      "html": "<app-shell><template shadowrootmode=\"open\"><header><span>Shop</span></header><textarea aria-label=\"Notes\">first words</textarea><label><input type=\"radio\" name=\"r\" checked> One</label><label><input type=\"radio\" name=\"r\"> Two</label><div role=\"heading\">Plain heading</div><div role=\"group\" aria-label=\"Box\"><span>a</span><div role=\"note\">b</div><span>c</span></div><footer>Fine print</footer></template></app-shell>",
+      "outline": "- banner: Shop\n- textbox \"Notes\": first words\n- radio \"One\" [checked]\n- text: One\n- radio \"Two\"\n- text: Two\n- heading \"Plain heading\"\n- group \"Box\":\n  - text: a\n  - note: b\n  - text: c\n- contentinfo: Fine print"
+    },
+    {
+      "name": "a header slotted into an article, a switch, and inline words that run together",
+      "html": "<ui-post><template shadowrootmode=\"open\"><article><slot name=\"top\"></slot><div role=\"switch\" aria-checked=\"true\" aria-label=\"Live\" tabindex=\"0\"></div><div role=\"note\">un<b>bold</b>broken</div></article></template><header slot=\"top\"><span>Top bar</span></header></ui-post>",
+      "outline": "- article:\n  - banner: Top bar\n  - switch \"Live\" [checked]\n  - note: unboldbroken"
+    },
+    {
+      "name": "texts that need quotes, and names that do or do not say their text",
+      "html": "<ui-texts><template shadowrootmode=\"open\"><div role=\"note\">- dash first</div><div role=\"note\">true</div><div role=\"note\">42</div><div role=\"note\">key: value</div><button aria-label=\"Close dialog\">Close</button><button aria-label=\"Go\">Next page</button></template></ui-texts>",
+      "outline": "- note: \"- dash first\"\n- note: \"true\"\n- note: \"42\"\n- note: \"key: value\"\n- button \"Close dialog\": Close\n- button \"Go\": Next page"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # SDD-64 — Resultados que una máquina entiende: criterios, tests y el árbol de roles
 
-> **Estado:** `Listo` — [tareas](./SDD-64-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-64-Task.md).
 > **Paquetes:** `@fudic/workbench` · `@fudic/terms` · `@fudic/testing` · `@fudic/compiler` ·
 > `@fudic/vite` · `@fudic/diagnostics`
 > **Depende de:** 32 (banco), 52 (`.fudspec`), 53 (fixtures), 57 (`@fudic/testing`), 59 (términos
@@ -82,16 +82,17 @@ pueda leer sin adivinar**, para que el MCP (y cualquier otra herramienta) solo t
 ```ts
 // @fudic/diagnostics
 /** A place in a file, as a person reads it: 1-based line and column, path relative to the project root, with '/'. */
-export interface Position {
+export interface FilePosition {
   readonly file: string;
   readonly line: number;
   readonly column: number;
 }
 /** "src/components/acme-button/acme-button.fud:22:3" */
-export function formatPosition(position: Position): string;
+export function formatPosition(position: FilePosition): string;
 ```
 
-Toda posición de esta spec es un `Position`. La columna cuenta unidades UTF-16 desde 1, como el
+Toda posición de esta spec es un `FilePosition` (en los tipos de abajo, `Position` se lee
+`FilePosition`; ver §8.2). La columna cuenta unidades UTF-16 desde 1, como el
 editor.
 
 ### 3.2. El informe de un criterio
@@ -528,3 +529,87 @@ Todos son `error`. Cada `.md` sigue la forma de SDD-50 §4.4.
    git es de SDD-65.
 6. **El informe nombra solo el primer `then` en rojo.** El motor sigue ejecutando los demás, y
    siguen en `result.steps`, pero el bucle arregla uno cada vez.
+
+### 8.2. Tomadas al implementar
+
+1. **`FilePosition`, no `Position`.** `@fudic/diagnostics` ya exporta `Position`: la del editor
+   (0-based, `line` + `character`, la de LSP), que usan el language server y los source maps. La
+   posición de esta spec se llama `FilePosition` para que las dos convivan sin renombrar nada de
+   lo que ya existe.
+2. **La forma de cada código.** Los que señalan un paso (`FUD1201`–`FUD1204`) llevan fichero (la
+   `.fudspec`) y el span del paso; `FUD1206`, el fichero `fudic/bench.js`; `FUD1200`, `FUD1205` y
+   `FUD1207` no tienen fichero al que apuntar.
+3. **`slotted` habla de slots, no de texto.** El término comprueba a qué slot fue un elemento, no
+   qué texto guarda el slot: `expected` = `slot "title"` · `the default slot` · `no slot`, y
+   `actual` lo mismo para el slot que le tocó, o `not there`. La fila de §4.2 se lee así.
+4. **`hidden` sin elemento pasa, y lo dice.** Un elemento que no está no se ve: `pass: true` con
+   `actual: 'not there'`. `visible` sin elemento falla con el mismo `actual`.
+5. **`focused` nombra quién tiene el foco** por su etiqueta (`focus on body`, `focus on input`); si
+   lo tiene el elemento buscado, `actual` repite la referencia del paso.
+6. **El mensaje `report` lleva `tag`.** Como todo mensaje sobre un componente: el servidor del
+   banco los reparte por él. El resto de campos es el `CriterionReport` tal cual.
+7. **«El paso tal como está escrito»** es el bloque, dos espacios y la línea del término en la
+   `.fudspec` (`then  text role:tabpanel "panel B"`).
+8. **`WireDiagnostic` vive en `@fudic/diagnostics`.** `@fudic/vite` lo necesita para
+   `FudicCompileError` y no puede depender del banco; el banco lo reexporta. En el error de Vite,
+   `file` va relativo a la raíz, como en el resto del informe.
+9. **El banco compila el componente al cargar la sesión.** Un `.fud` roto hace que sus páginas
+   respondan 500 sin decir por qué; la sesión lo transforma con el Vite del banco y, si lanza un
+   `FudicCompileError`, publica el `problem` con todos sus diagnósticos (criterio 10). Los criterios
+   siguen ejecutándose y acaban en `FUD1200`.
+10. **Cada criterio sabe en qué fichero están sus pasos** (`PlannedCriterion.spec`), para que el
+    diagnóstico de un paso apunte a su línea; y el motor guarda los diagnósticos de la ejecución en
+    `CriterionResult.diagnostics`, que no viaja en el mensaje `result` (los mensajes no cambian).
+11. **Las causas que el banco ya conocía conservan su código**: la fixture que lanza sigue siendo
+    `FUD0973` y la señal no literal `FUD0974`; una entrada que la fixture no tiene es `FUD1207`.
+12. **En el compilador la opción es una función, no un booleano.** El compilador no lee ficheros ni
+    conoce la raíz, y un snippet se expande en el sitio de su `@render`: la posición de su etiqueta
+    está en otro fichero. `EmitOptions.sourceLocations?: (file, offset) => string` recibe el fichero
+    y el offset ORIGINALES (la tabla de la expansión devuelve cada posición a su fichero, el del
+    componente o el del snippet) y el plugin escribe `<fichero relativo>:<línea>:<columna>`. `fudic({ sourceLocations: true })`
+    y `fudicTest({ sourceLocations: true })` siguen siendo booleanos; el plugin solo sella en
+    `vite dev`, nunca en el build. `fudicTest` ya pasaba sus opciones al plugin: no cambia.
+13. **`data-fud-src` va justo tras crear el elemento**, en los dos emisores y antes de cualquier
+    otro atributo: el orden de atributos sale igual por los dos caminos.
+14. **`TermHost.onLocate` gana un tercer argumento**, `source: string | null`. El recorrido hacia
+    arriba lo hace el propio `ctx.locate` en la página.
+15. **`source` sale de las marcas**, que solo existen cuando hubo captura `after` del montaje: un
+    criterio cuyo montaje desapareció no tiene `source`. Para leer la línea, `ReportSource` gana
+    `read`: la sesión le pasa la lectura del disco; `reportOf` sigue sin tocar el disco por su
+    cuenta.
+16. **`names` va al filtro de vitest.** El informe escribe el nombre completo con ` > ` y vitest
+    filtra por el nombre unido con espacios: cada nombre se traduce y se escapa, y basta uno.
+17. **`failing` en `runTests`**: ejecuta los ficheros de lo que no pasó, filtrando por sus nombres;
+    si un fichero no cargaba, sin filtro de nombres (vitest tiene un solo filtro para todos los
+    ficheros), así que esos ficheros corren enteros. Si en el último informe todo pasó, no ejecuta
+    nada y devuelve un informe vacío.
+18. **El último informe del banco es por proyecto**: `.fudic/runs/last-spec.json` en la raíz de
+    cada proyecto (un monorepo ejecutado desde arriba guarda uno en cada app). Tras un `failing`
+    guarda solo lo que volvió a ejecutar: lo que no está, pasó. `fudic-workbench run` gana
+    `--failing`.
+19. **Si vitest no arranca**, `runTests` no lanza: devuelve un `BrokenTest` con `file: '.'`,
+    `name: null` y un `FUD1207` con el mensaje.
+20. **`@fudic/testing` depende de `@fudic/diagnostics`** (el `FUD1207` y los tipos de posición).
+21. **`outline` usa solo `dom-accessibility-api`** (`getRole`, `computeAccessibleName`,
+    `isDisabled`, `isInaccessible`), declarada en `@fudic/testing` con versión exacta: su `getRole`
+    ya da el rol explícito o implícito, y `aria-query` no aporta nada más. Sin dependencias
+    fantasma de Testing Library.
+22. **Lo que Playwright escribe además, `outline` lo escribe igual**: el `href` de un enlace como
+    `- /url: …`, un `placeholder` distinto del nombre como `- /placeholder: …`, y el valor de un
+    campo de texto como su texto. El texto que el nombre ya dice no se repite debajo.
+23. **`outlineOf` no lanza**: si Playwright no puede tomar la instantánea (el selector no
+    encuentra nada), devuelve `error: <primera línea>`.
+24. **`fail` también por la marca de vitest.** Un matcher de jest-dom no lanza un error con nombre
+    propio: lanza un `Error` que vitest marca con el nombre de la aserción. Esa marca cuenta como
+    aserción, igual que `AssertionError`. El mensaje del informe va sin códigos de color.
+25. **Un `.fud` que no compila llega a `runTests` como texto.** El ejecutor de módulos de vitest
+    conserva el mensaje del error y pierde la propiedad `fudic`. `compileDiagnosticsOf` de
+    `@fudic/vite` lee los diagnósticos del error o, si ya no la tiene, del mensaje, que el propio
+    plugin escribe con forma fija (`<fichero>:<línea>:<col> - error FUDnnnn: …`).
+26. **`failing` en `runTests` son dos ejecuciones**: los ficheros que no cargaban, enteros; y los
+    tests que fallaron, por su nombre y en su fichero. Sustituye al punto 17.
+27. **`outline` se ajusta a Chrome donde `dom-accessibility-api` no llega**: los roles implícitos
+    de texto (`p`, `strong`, `em`, `code`…), `<legend>` y `<html>` sin rol, `<header>`/`<footer>`
+    sin rol dentro de una sección (por sus ancestros en el DOM, no por el slot), el estado real de
+    un checkbox nativo, el placeholder como nombre, y la separación de textos por etiqueta (happy-dom
+    no calcula `display`). Cada caso es una pieza del juego que se compara con Chrome.

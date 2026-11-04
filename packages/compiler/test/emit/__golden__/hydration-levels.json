@@ -1218,6 +1218,11 @@
     "tag": "c-reloj",
     "hydrates": true
   },
+  "packages/testing/test/fixtures/acme-button.fud": {
+    "kind": "component",
+    "tag": "acme-button",
+    "hydrates": false
+  },
   "packages/testing/test/fixtures/broken-expr.fud": {
     "kind": "component",
     "tag": "broken-expr",
@@ -1326,6 +1331,16 @@
     "hydrates": [
       "l-precio"
     ]
+  },
+  "packages/testing/test/run-project/src/x-counter.fud": {
+    "kind": "component",
+    "tag": "x-counter",
+    "hydrates": true
+  },
+  "packages/testing/test/run-project/src/x-loop.fud": {
+    "kind": "component",
+    "tag": "x-loop",
+    "hydrates": false
   },
   "packages/vscode/fixtures/blog/[slug].fud": {
     "kind": "route",

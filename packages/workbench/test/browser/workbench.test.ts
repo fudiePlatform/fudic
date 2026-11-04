@@ -128,7 +128,7 @@ describe('criterion 18 — red, save the fix, green', () => {
     const { shell: sh } = await open(project, TABS);
     expect(await sh.next(resultOf('cambia-de-pestana'))).toMatchObject({
       verdict: 'fail',
-      steps: [{ term: 'click' }, { term: 'text', pass: false, evidence: { expected: 'panel B', actual: 'panel A' } }],
+      steps: [{ term: 'click' }, { term: 'text', pass: false, evidence: { expected: 'contains "panel B"', actual: '"panel A"' } }],
     });
 
     const from = sh.messages.length;

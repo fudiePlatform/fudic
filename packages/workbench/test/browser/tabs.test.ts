@@ -119,7 +119,7 @@ describe('criterion 11 — the first click is served (bug A)', () => {
     try {
       const result = await runCriterion(careless, bench.origin, byId('cambia-de-pestana'), loader(0), extensions);
       expect(result.verdict).toBe('fail');
-      expect(result.steps.at(-1)).toMatchObject({ term: 'text', pass: false, evidence: { actual: 'panel A' } });
+      expect(result.steps.at(-1)).toMatchObject({ term: 'text', pass: false, evidence: { expected: 'contains "panel B"', actual: '"panel A"' } });
     } finally {
       bench.slow = null;
     }
@@ -156,6 +156,6 @@ describe('criterion 14 — the measuring page does not listen to Vite', () => {
     const listening = patched(() => ({ silenceWebSockets: async () => undefined }));
     const result = await runCriterion(listening, bench.origin, byId('recarga-a-mitad'), loader(0), extensions);
     expect(result.verdict).toBe('fail');
-    expect(result.steps.at(-1)).toMatchObject({ term: 'text', pass: false, evidence: { actual: 'panel A' } });
+    expect(result.steps.at(-1)).toMatchObject({ term: 'text', pass: false, evidence: { expected: 'contains "panel B"', actual: '"panel A"' } });
   }, 60_000);
 });

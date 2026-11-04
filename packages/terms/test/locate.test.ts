@@ -89,6 +89,57 @@ describe('ctx.locate: one element', () => {
   });
 });
 
+describe('ctx.locate: where the element was written (SDD-64 §4.4, criterion 14)', () => {
+  /** A library card whose title is a `<span>` the emit did not stamp, inside its shadow root. */
+  const LIB = '../../libs/ui/src/components/ui-card/ui-card.fud';
+  const CARD = `
+    <app-page data-fud-src="src/pages/index.fud:4:5">
+      <template shadowrootmode="open">
+        <ui-card data-fud-src="src/components/app-page.fud:9:7">
+          <template shadowrootmode="open">
+            <h2 data-fud-src="${LIB}:3:5"><span>Title</span></h2>
+            <slot></slot>
+          </template>
+          <b>light</b>
+        </ui-card>
+      </template>
+    </app-page>
+    <p>no fud wrote me</p>`;
+
+  it('an element with the attribute brings its own', async () => {
+    await page.setContent(CARD);
+    await ctx.locate('role:heading').isVisible();
+    expect(host.sources).toEqual([`${LIB}:3:5`]);
+  });
+
+  it('a span without it climbs to the nearest ancestor that has it, with the library path as written', async () => {
+    await page.setContent(CARD);
+    await ctx.locate('role:heading').locator('span').click();
+    // `locator()` gives an unguarded locator: no mark. Through `ctx.locate`, the text's element is the span.
+    expect(host.sources).toEqual([]);
+    await ctx.locate('ui-card h2 span').click();
+    expect(host.sources).toEqual([`${LIB}:3:5`]);
+  });
+
+  it('it crosses the host of a shadow root on the way up', async () => {
+    await page.setContent(CARD.replace(` data-fud-src="${LIB}:3:5"`, ''));
+    await ctx.locate('ui-card h2 span').click();
+    expect(host.sources).toEqual(['src/components/app-page.fud:9:7']);
+  });
+
+  it('a slotted element climbs through its light DOM parent', async () => {
+    await page.setContent(CARD);
+    await ctx.locate('ui-card > b').click();
+    expect(host.sources).toEqual(['src/components/app-page.fud:9:7']);
+  });
+
+  it('an element no .fud wrote, nor any ancestor, brings null', async () => {
+    await page.setContent(CARD);
+    await ctx.locate('body > p').click();
+    expect(host.sources).toEqual([null]);
+  });
+});
+
 describe('ctx.locate: several elements', () => {
   const MESSAGE = 'role:menuitem matches 3 elements; a reference must match one';
 

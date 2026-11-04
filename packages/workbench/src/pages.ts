@@ -7,7 +7,7 @@
  * observes goes in through the browser, into its own instance only.
  */
 
-import { FUD0972, FUD0974, type FudDiagnostic } from '@fudic/diagnostics';
+import { FUD0972, FUD0974, FUD1207, type FudDiagnostic } from '@fudic/diagnostics';
 import { normalizeTerm, type Arg, type BlockKind, type Criterion, type SpecFile } from '@fudic/spec';
 import { fixtureOf } from './access.js';
 import { hostComponent, isSignal, jsonLiteral } from './host.js';
@@ -36,9 +36,13 @@ export interface PlannedCriterion {
   readonly propsOffset?: number;
   /** Offset of its `criterion` keyword in the `.fudspec`; 0 for the bare card without one. */
   readonly offset: number;
+  /** The file its steps are written in: the `.fudspec`, or the component on the bare card. */
+  readonly spec: string;
   readonly steps: readonly PlannedStep[];
   /** Present when the criterion cannot run: it ends in error without opening its page. */
   readonly error?: string;
+  /** With `error`: the same cause, as a diagnostic with its code. */
+  readonly problem?: FudDiagnostic;
 }
 
 export interface BenchPlan {
@@ -175,7 +179,8 @@ class Planner {
   ) {}
 
   plan(id: string, fixture: string | null, steps: readonly PlannedStep[], offset: number): PlannedCriterion {
-    const base = { id, route: `/${this.target.tag}/${id}`, mount: `body > ${this.target.tag}`, fixture, offset, steps };
+    const spec = this.target.spec ?? this.target.component;
+    const base = { id, route: `/${this.target.tag}/${id}`, mount: `body > ${this.target.tag}`, fixture, offset, spec, steps };
     const component = this.target.component;
     if (fixture === null) {
       this.page(id, bare(this.target));
@@ -185,7 +190,8 @@ class Planner {
     const values = this.fixtures[fixture];
     const file = this.target.fixture;
     if (values === undefined || file === null) {
-      return { ...base, error: `the fixture has no entry "${fixture}"` };
+      const error = `the fixture has no entry "${fixture}"`;
+      return { ...base, error, problem: FUD1207({ reason: error }) };
     }
     const specifier = file.replace(/\.ts$/u, '');
     const { [CONTENT]: children, ...props } = values;
@@ -208,8 +214,9 @@ class Planner {
     for (const prop of signals) {
       const literal = jsonLiteral((props[prop] as () => unknown)());
       if (literal === undefined) {
-        this.diagnostics.push(FUD0974({ file, fixture, prop }));
-        return { ...base, error: `the initial value of signal prop "${prop}" is not a JSON literal` };
+        const problem = FUD0974({ file, fixture, prop });
+        this.diagnostics.push(problem);
+        return { ...base, error: `the initial value of signal prop "${prop}" is not a JSON literal`, problem };
       }
       literals.push({ prop, literal });
     }

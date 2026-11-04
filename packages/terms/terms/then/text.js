@@ -11,9 +11,10 @@ export const meta = {
 
 /** @type {import('@fudic/terms').Term['run']} */
 export async function run(ctx, { target, expected }) {
+  const wanted = `contains "${expected}"`;
   const element = ctx.locate(String(target));
   // An element that is not there says nothing: a fail, not a wait.
-  if ((await element.count()) === 0) return { pass: false, evidence: { expected, actual: 'not there' } };
+  if ((await element.count()) === 0) return { pass: false, evidence: { expected: wanted, actual: 'not there' } };
   const actual = await ctx.text(element);
-  return { pass: actual.includes(String(expected)), evidence: { expected, actual } };
+  return { pass: actual.includes(String(expected)), evidence: { expected: wanted, actual: `"${actual}"` } };
 }

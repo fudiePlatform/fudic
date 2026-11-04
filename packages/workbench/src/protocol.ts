@@ -7,21 +7,14 @@
  * carries its `tag`.
  */
 
-import { render, type FudCode, type FudDiagnostic, type Severity } from '@fudic/diagnostics';
+import { FUD1207, render, type FudCode, type FudDiagnostic, type WireDiagnostic } from '@fudic/diagnostics';
+import { isFudicCompileError } from '@fudic/vite';
 import type { BlockKind, Layer } from '@fudic/spec';
 import type { BrowserName } from './browser.js';
+import type { CriterionReport } from './report-of.js';
 
 /** A diagnostic as the shell paints it: line and column are computed here, never stored. */
-export interface WireDiagnostic {
-  readonly code: FudCode;
-  readonly severity: Severity;
-  readonly message: string;
-  /** Null for a problem with no file (a project, a command line). */
-  readonly file: string | null;
-  /** 1-based; null without a span or without the file's text. */
-  readonly line: number | null;
-  readonly column: number | null;
-}
+export type { WireDiagnostic };
 
 interface StepBase {
   readonly block: BlockKind;
@@ -39,6 +32,8 @@ export interface StepPassed extends StepBase {
 
 export interface StepFailed extends StepBase {
   readonly error: string;
+  /** Why it threw, as the code of its diagnostic. */
+  readonly code: FudCode;
 }
 
 export type StepResult = StepPassed | StepFailed;
@@ -118,6 +113,8 @@ export interface Mark {
   readonly step: number;
   readonly ref: string;
   readonly box: Box;
+  /** Where the element was written: `<file>:<line>:<column>`, its `data-fud-src` or its nearest ancestor's. */
+  readonly source?: string;
 }
 
 export interface ResultMessage {
@@ -160,13 +157,29 @@ export interface CancelledMessage {
 export interface ProblemMessage {
   readonly v: 2;
   readonly type: 'problem';
+  /** For the shell: one line. */
   readonly message: string;
+  /** The same, with codes: a `.fud` that does not compile gives every one of its errors. */
+  readonly diagnostics: readonly WireDiagnostic[];
 }
+
+/** A problem from what was caught: a `.fud` that does not compile, or anything else (`FUD1207`). */
+export function problemOf(error: unknown): ProblemMessage {
+  const message = (error instanceof Error ? error.message : String(error)).split('\n')[0]!;
+  const diagnostics = isFudicCompileError(error)
+    ? error.fudic.diagnostics
+    : [toWire(FUD1207({ reason: message }), null)];
+  return { v: 2, type: 'problem', message, diagnostics };
+}
+
+/** A criterion's result as a machine reads it: published right after its `result`. */
+export type ReportMessage = { readonly v: 2; readonly type: 'report'; readonly tag: string } & CriterionReport;
 
 export type BenchMessage =
   | SessionMessage
   | RunningMessage
   | ResultMessage
+  | ReportMessage
   | StateMessage
   | CancelledMessage
   | ProblemMessage;
@@ -251,15 +264,16 @@ function runCommand(tag: string, ids: unknown, failing: unknown): RunCommand | u
 
 /**
  * A diagnostic for the wire. `file` stands in when the diagnostic names none (a `.fudspec`
- * parse error is about the `.fudspec`); `read` gives the text a span is located in.
+ * parse error is about the `.fudspec`); `read` gives the text a span is located in. Without it,
+ * or without a file, there is no line to give.
  */
 export function toWire(
   diagnostic: FudDiagnostic,
   file: string | null,
-  read: (file: string) => string | undefined,
+  read?: (file: string) => string | undefined,
 ): WireDiagnostic {
   const at = diagnostic.file ?? file;
-  const start = at === null ? undefined : render(diagnostic, read(at)).start;
+  const start = at === null ? undefined : render(diagnostic, read?.(at)).start;
   return {
     code: diagnostic.code,
     severity: diagnostic.severity,

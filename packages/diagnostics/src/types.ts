@@ -70,6 +70,22 @@ export interface ProjectDiagnostic extends DiagnosticBase {
 
 export type FudDiagnostic = SourceDiagnostic | FileDiagnostic | ProjectDiagnostic;
 
+/**
+ * A diagnostic as a reader receives it, across a process or a wire: the span already turned
+ * into a 1-based line and column, so whoever reads it needs neither the file's text nor this
+ * package.
+ */
+export interface WireDiagnostic {
+  readonly code: FudCode;
+  readonly severity: Severity;
+  readonly message: string;
+  /** Null for a problem with no file (a project, a command line). */
+  readonly file: string | null;
+  /** 1-based; null without a span or without the file's text. */
+  readonly line: number | null;
+  readonly column: number | null;
+}
+
 /** What every source-located code receives, plus the data its message needs. */
 export interface SourceInput {
   readonly span: Span;

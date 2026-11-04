@@ -17,7 +17,7 @@ export interface RunIo {
   readonly cwd: string;
 }
 
-export const RUN_USAGE = `usage: fudic-workbench run [<path>…] [--browser <${BROWSER_CHOICES.join('|')}>] [--workers <n>] [--json] [--pass-with-no-specs]`;
+export const RUN_USAGE = `usage: fudic-workbench run [<path>…] [--browser <${BROWSER_CHOICES.join('|')}>] [--workers <n>] [--json] [--pass-with-no-specs] [--failing]`;
 
 /** The code of "nothing to run", taken from the code itself: no package spells a code by hand. */
 const NOTHING_TO_RUN = FUD0976({ where: '' }).code;
@@ -33,6 +33,8 @@ export interface RunArgs {
    * lost its specs does not pass.
    */
   readonly passWithNoSpecs: boolean;
+  /** Only what did not pass in the last report. */
+  readonly failing: boolean;
 }
 
 export function parseRunArgs(argv: readonly string[]): RunArgs | undefined {
@@ -41,10 +43,12 @@ export function parseRunArgs(argv: readonly string[]): RunArgs | undefined {
   let workers: number | undefined;
   let json = false;
   let passWithNoSpecs = false;
+  let failing = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
     if (arg === '--json') json = true;
     else if (arg === '--pass-with-no-specs') passWithNoSpecs = true;
+    else if (arg === '--failing') failing = true;
     else if (arg === '--workers') {
       workers = Number(argv[++i]);
       if (!Number.isInteger(workers) || workers < 1) return undefined;
@@ -55,7 +59,7 @@ export function parseRunArgs(argv: readonly string[]): RunArgs | undefined {
     } else if (arg.startsWith('--')) return undefined;
     else paths.push(arg);
   }
-  return { paths, json, passWithNoSpecs, ...(browser !== undefined ? { browser } : {}), ...(workers !== undefined ? { workers } : {}) };
+  return { paths, json, passWithNoSpecs, failing, ...(browser !== undefined ? { browser } : {}), ...(workers !== undefined ? { workers } : {}) };
 }
 
 export async function runMain(argv: readonly string[], io: RunIo): Promise<void> {
@@ -69,6 +73,7 @@ export async function runMain(argv: readonly string[], io: RunIo): Promise<void>
   const json = (value: unknown) => io.write(JSON.stringify(value));
   const options: RunOptions = {
     root: io.cwd,
+    ...(args.failing ? { failing: true } : {}),
     ...(args.browser !== undefined ? { browser: args.browser } : {}),
     ...(args.workers !== undefined ? { workers: args.workers } : {}),
     ...(args.json

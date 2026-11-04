@@ -52,7 +52,7 @@ describe('HumanReport — criterion 12', () => {
     human.message({ v: 2, type: 'running', tag: 'app-card', ids: [], trigger: { file: null, at: 0 } });
     // Results arrive as they finish, not in order.
     human.message(
-      result('destacada', 'error', [{ block: 'when', term: 'click', layer: 'workspace', args: [], error: 'role:link/"Featured" matches 2 elements' }]),
+      result('destacada', 'error', [{ block: 'when', term: 'click', layer: 'workspace', args: [], error: 'role:link/"Featured" matches 2 elements', code: 'FUD1203' }]),
     );
     human.message(result('titulo-largo-visible', 'fail', [{ ...step, pass: false, evidence: { expected: 'A title', actual: 'A tilte long' } }], { ms: 268 }));
     human.message(result('altura-minima', 'pass', [{ ...step, pass: true, evidence: 'ok' }]));
@@ -150,8 +150,8 @@ describe('HumanReport — criterion 12', () => {
   it('prints a diagnostic on its own line, and the count with the time and the browser', () => {
     const { lines, human } = report();
     human.diagnostic(FUD0972({ file: 'C:/p/app-x.fud' }));
-    human.summary({ pass: 1, fail: 1, error: 1, ms: 1234, browser: 'chrome', results: [] });
-    human.summary({ pass: 0, fail: 0, error: 1, ms: 50, browser: null, results: [] });
+    human.summary({ pass: 1, fail: 1, error: 1, ms: 1234, browser: 'chrome', results: [], reports: [] });
+    human.summary({ pass: 0, fail: 0, error: 1, ms: 50, browser: null, results: [], reports: [] });
     expect(lines[0]).toMatch(/^warning FUD0972 /u);
     expect(lines.slice(1)).toEqual([
       '3 criteria · 1 pass · 1 fail · 1 error · 1.2 s · chrome',

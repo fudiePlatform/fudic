@@ -154,12 +154,12 @@ describe('main', () => {
     let publish: (m: BenchMessage) => void = () => undefined;
     open.mockImplementation(async (_file: string, options: { onMessage: (m: BenchMessage) => void }) => {
       publish = options.onMessage;
-      publish({ v: 2, type: 'problem', message: 'early' });
+      publish({ v: 2, type: 'problem', message: 'early', diagnostics: [] });
       return session(steps);
     });
     const t = io();
     await main(['app-card.fud'], t.io);
-    publish({ v: 2, type: 'problem', message: 'late' });
+    publish({ v: 2, type: 'problem', message: 'late', diagnostics: [] });
     expect(t.lines.map((l) => (JSON.parse(l) as { message?: string; tag?: string }).message ?? 'first')).toEqual([
       'first',
       'early',
@@ -261,7 +261,7 @@ describe('main — at a terminal, for a person', () => {
     open.mockImplementation(async (_file: string, options: { onMessage: (m: BenchMessage) => void }) => {
       publish = options.onMessage;
       // Before the first line: printed after where the shell is.
-      publish({ v: 2, type: 'problem', message: 'early' });
+      publish({ v: 2, type: 'problem', message: 'early', diagnostics: [] });
       return session(steps, { onMessage: (m) => publish(m) });
     });
     const t = io(true);
@@ -271,7 +271,7 @@ describe('main — at a terminal, for a person', () => {
 
   it('says where the shell is and how to stop it, then the problems, as text', async () => {
     const { t, publish } = await human();
-    publish({ v: 2, type: 'problem', message: 'Chrome went away' });
+    publish({ v: 2, type: 'problem', message: 'Chrome went away', diagnostics: [] });
     expect(t.lines).toEqual([
       'app-card workbench (msedge): http://127.0.0.1:1/__bench/app-card/',
       'Open it in a browser; saving a file runs the criteria again. Ctrl+C stops it.',

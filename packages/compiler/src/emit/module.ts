@@ -33,6 +33,7 @@ import { spaceModeOf } from './space.js';
 import { hasForeignDisplay, hostDisplay, tagDisplay, type Boxes, type Display } from './display.js';
 import { CodeWriter, type EmitMapping } from './writer.js';
 import { inParts, MarkupEmitter, renderName, tpl } from './markup.js';
+import { stampOption, type SourceLocator } from './source-locations.js';
 import {
   AssetLinker,
   type AssetExists,
@@ -180,6 +181,14 @@ export interface EmitOptions {
    * what it was before translations existed.
    */
   readonly i18n?: LocaleCompile;
+  /**
+   * How a place is written in `data-fud-src`: an absolute file and an offset in its text, as
+   * `<file>:<line>:<column>`. With it, every element a template writes carries `data-fud-src`
+   * with the place of its opening tag — in the snippet's file for a snippet's element — on the
+   * server and on the client alike. INJECTED: the compiler reads no file and knows no root.
+   * Absent, the output is byte for byte what it was.
+   */
+  readonly sourceLocations?: SourceLocator;
 }
 
 export type { ComponentSpecifier, LayoutSpecifier, ProjectStyle };
@@ -423,6 +432,7 @@ function buildComponentModule(
   });
   const em = new MarkupEmitter({
     source: comp.source,
+    ...stampOption(options, comp.path, comp.path === graph.entryPath ? graph.entryMap : undefined),
     w: bodyW,
     isComponent: (t) => graph.components.has(t),
     linker,
@@ -665,6 +675,7 @@ function buildPageModule(
   const bodyW = new CodeWriter();
   const em = new MarkupEmitter({
     source,
+    ...stampOption(options, graph.entryPath, graph.entryMap),
     w: bodyW,
     isComponent: (t) => graph.components.has(t),
     linker,

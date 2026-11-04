@@ -8,6 +8,8 @@ export const meta = {
 
 /** @type {import('@fudic/terms').Term['run']} */
 export async function run(ctx, { target }) {
-  const visible = await ctx.locate(String(target)).isVisible();
-  return { pass: !visible, evidence: visible ? 'visible' : 'hidden' };
+  const element = ctx.locate(String(target));
+  if ((await element.count()) === 0) return { pass: true, evidence: { expected: 'hidden', actual: 'not there' } };
+  const visible = await element.isVisible();
+  return { pass: !visible, evidence: { expected: 'hidden', actual: visible ? 'visible' : 'hidden' } };
 }

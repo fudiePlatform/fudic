@@ -23,11 +23,19 @@ import {
 } from '@fudic/spec';
 import type { ViteDevServer } from 'vite';
 import { firstLine } from './browser.js';
-import { namedArgs, type LoadedTerm, type TermLoader } from './engine.js';
+import { MissingTermError, namedArgs, type LoadedTerm, type TermLoader } from './engine.js';
 import type { LoadedExtension } from './extension.js';
 import { loadProjectExtension, missingRuntime, resolveRuntime, type TermsRuntime } from './runtime.js';
 import { planBench, type BenchPlan, type ExecutedFixtures, type PlannedCriterion } from './pages.js';
-import { toWire, type DescribedCriterion, type DescribedStep, type SessionMessage } from './protocol.js';
+import {
+  problemOf,
+  toWire,
+  type DescribedCriterion,
+  type DescribedStep,
+  type ProblemMessage,
+  type SessionMessage,
+} from './protocol.js';
+import type { ReportSource } from './report-of.js';
 import type { BenchTarget } from './target.js';
 import { writePlanFiles } from './bench-dir.js';
 import { componentFiles } from './links.js';
@@ -53,6 +61,10 @@ export interface LoadedSession {
   readonly extensions: readonly LoadedExtension[];
   /** The `.fud` files the component reads: a save of one of them reruns it. */
   readonly reads: ReadonlySet<string>;
+  /** What the report of each criterion is read from. */
+  readonly source: ReportSource;
+  /** The component does not compile: every error of it, for the shells. */
+  readonly problem?: ProblemMessage;
 }
 
 /** The disk, as the catalog and the validator read it. */
@@ -90,6 +102,13 @@ export async function loadSession(input: SessionInput): Promise<LoadedSession> {
 
   let spec = EMPTY_SPEC;
   let specText = '';
+  const source = (expectations: ReportSource['expectations']): ReportSource => ({
+    root: target.projectRoot,
+    spec: target.spec ?? target.component,
+    text: specText,
+    expectations,
+    read: readText,
+  });
   if (target.spec !== null) {
     specText = readText(target.spec) ?? '';
     const parsed = parseSpec(specText);
@@ -98,7 +117,8 @@ export async function loadSession(input: SessionInput): Promise<LoadedSession> {
     for (const diagnostic of found) diagnostics.push({ diagnostic, file: target.spec });
     // A file with errors is not run: half a file gives greens that mean nothing.
     if (found.some((d) => d.severity === 'error')) {
-      return { criteria: [], message: sessionMessage(target, diagnostics, []), loadTerm, extensions, reads };
+      const message = sessionMessage(target, diagnostics, []);
+      return { criteria: [], message, loadTerm, extensions, reads, source: source(new Map()) };
     }
   }
 
@@ -110,13 +130,33 @@ export async function loadSession(input: SessionInput): Promise<LoadedSession> {
   writePlanFiles(input.dir, target.tag, plan.files);
   for (const name of plan.files.keys()) invalidateFile(vite, `${input.dir}/${name}`);
 
-  const fixtureOk = executed.error === undefined ? plan.criteria : failProps(plan, executed.error.message);
+  const fixtureOk = executed.error === undefined ? plan.criteria : failProps(plan, executed.error);
   // A `fudic/bench.js` that does not load leaves every criterion in error, saying why.
-  const criteria = project !== null && 'error' in project ? fixtureOk.map((c) => ({ ...c, error: project.error })) : fixtureOk;
+  const criteria =
+    project !== null && 'error' in project
+      ? fixtureOk.map((c) => ({ ...c, error: project.error, problem: project.problem }))
+      : fixtureOk;
   // The 1-based line of an offset: the margin, Problems and the shell point at it.
   const lineOf = (offset: number) => specText.slice(0, offset).split('\n').length;
   const described = await Promise.all(criteria.map((c) => describeCriterion(c, lineOf, loadTerm)));
-  return { criteria, message: sessionMessage(target, diagnostics, described), loadTerm, extensions, reads };
+  const expectations = new Map(described.map((d) => [d.criterion.id, d.expectations]));
+  const message = sessionMessage(target, diagnostics, described.map((d) => d.criterion));
+  const problem = await compileProblem(vite, target.component);
+  return { criteria, message, loadTerm, extensions, reads, source: source(expectations), ...(problem !== undefined ? { problem } : {}) };
+}
+
+/**
+ * The component compiled as its pages will compile it: when it does not, its pages answer an
+ * error and say nothing of why, so the reason is published here, with every diagnostic.
+ */
+async function compileProblem(vite: ViteDevServer, component: string): Promise<ProblemMessage | undefined> {
+  invalidateFile(vite, component);
+  try {
+    await vite.environments['ssr']!.transformRequest(component);
+    return undefined;
+  } catch (error) {
+    return problemOf(error);
+  }
 }
 
 /** `fudic/terms/` of the project first, then the framework's: the editor's roots, in its order. */
@@ -154,15 +194,15 @@ async function executeFixture(
 }
 
 /** A fixture that threw leaves the criteria that mount with props in error; the rest still run. */
-function failProps(plan: BenchPlan, message: string): PlannedCriterion[] {
-  return plan.criteria.map((c) => (c.fixture === null ? c : { ...c, error: message }));
+function failProps(plan: BenchPlan, problem: FudDiagnostic): PlannedCriterion[] {
+  return plan.criteria.map((c) => (c.fixture === null ? c : { ...c, error: problem.message, problem }));
 }
 
 /** A term module, resolved in the catalog and executed by Vite. */
 function termLoader(catalog: TermCatalog, vite: ViteDevServer): TermLoader {
   return async (block: BlockKind, name: string): Promise<LoadedTerm> => {
     const module = catalog.resolve(block, name);
-    if (module === undefined) throw new Error(`there is no ${block} term "${name}"`);
+    if (module === undefined) throw new MissingTermError(block, name);
     const loaded = await vite.ssrLoadModule(module.path);
     const meta = loaded['meta'] as { describe?: LoadedTerm['describe'] } | undefined;
     return {
@@ -178,37 +218,42 @@ function termLoader(catalog: TermCatalog, vite: ViteDevServer): TermLoader {
 /**
  * Each step's line, from `meta.describe` run with its arguments; the line as written when the term
  * has no `describe`, or its `describe` throws, or the term does not load. The step names its
- * module whenever the term loaded.
+ * module whenever the term loaded. Beside it, what each `describe` said, for the report: null
+ * where there was none.
  */
 async function describeCriterion(
   criterion: PlannedCriterion,
   lineOf: (offset: number) => number,
   loadTerm: TermLoader,
-): Promise<DescribedCriterion> {
-  const steps = await Promise.all(
-    criterion.steps.map(async (step): Promise<DescribedStep> => {
+): Promise<{ criterion: DescribedCriterion; expectations: (string | null)[] }> {
+  const described = await Promise.all(
+    criterion.steps.map(async (step): Promise<{ step: DescribedStep; describe: string | null }> => {
       const written = [step.term, ...step.args].join(' ');
       const line = lineOf(step.offset);
       let term: LoadedTerm;
       try {
         term = await loadTerm(step.block, step.term);
       } catch {
-        return { block: step.block, text: written, file: null, line };
+        return { step: { block: step.block, text: written, file: null, line }, describe: null };
       }
-      let text = written;
+      let describe: string | null = null;
       try {
-        text = term.describe?.(namedArgs(term.params, step.args)) ?? written;
+        describe = term.describe?.(namedArgs(term.params, step.args)) ?? null;
       } catch {
         // A describe that throws is the term's problem: the step still reads as written.
       }
-      return { block: step.block, text, file: term.path, line };
+      return { step: { block: step.block, text: describe ?? written, file: term.path, line }, describe };
     }),
   );
   const props =
     criterion.fixture === null || criterion.propsOffset === undefined
       ? null
       : { name: criterion.fixture, line: lineOf(criterion.propsOffset) };
-  return { id: criterion.id, route: criterion.route, line: lineOf(criterion.offset), props, steps };
+  const steps = described.map((d) => d.step);
+  return {
+    criterion: { id: criterion.id, route: criterion.route, line: lineOf(criterion.offset), props, steps },
+    expectations: described.map((d) => d.describe),
+  };
 }
 
 function sessionMessage(

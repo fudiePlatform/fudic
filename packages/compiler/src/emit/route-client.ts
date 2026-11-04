@@ -45,6 +45,7 @@ import { composePage, holeContent, holeSlot, type ComposeItem } from './compose.
 import { inParts, LAYOUT_ANCHOR } from './markup.js';
 import { styledTags, type EmitOptions, type EmitOutput } from './module.js';
 import { projectAdoptOf } from './project-styles.js';
+import { stampOption } from './source-locations.js';
 import type { DocumentGraph } from './resolve.js';
 import type { RouteDocument, PageDocument } from '../document/index.js';
 import type { DataShape, Diagnostic } from '../types/index.js';
@@ -201,6 +202,7 @@ function buildRouteClientModule(
     moving: entryMoving(code, refreshes),
     styled: styledTags(graph),
     projectAdopt: projectAdoptOf(options.projectStyles, options.styleChains),
+    ...stampOption(options, graph.entryPath, graph.entryMap),
   };
   const delegation = planDelegation(
     source,

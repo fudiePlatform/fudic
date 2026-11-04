@@ -12,8 +12,8 @@ export interface TermHost {
   readonly page: Page;
   /** Runs a gesture and waits for the page to serve it. */
   settle<T>(target: Locator, gesture: () => Promise<T>): Promise<T>;
-  /** For the shot: where each resolved reference was. */
-  onLocate(ref: string, box: Box): void;
+  /** For the shot: where each resolved reference was, and its `data-fud-src` (null without one). */
+  onLocate(ref: string, box: Box, source: string | null): void;
 }
 
 /** An extension of the workbench: it prepares the page before the mount, and extends the ctx. */
@@ -28,9 +28,20 @@ export interface LoadedExtension {
   readonly extension: BenchExtension;
 }
 
+/** An extension threw: its message names the file, and `file` and `reason` say it as data. */
+export class ExtensionError extends Error {
+  constructor(
+    readonly file: string,
+    readonly reason: string,
+    cause: unknown,
+  ) {
+    super(`${file}: ${reason}`, { cause });
+  }
+}
+
 /** An extension's error, as the criterion reports it. */
 function failure(file: string, error: unknown): Error {
-  return new Error(`${file}: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+  return new ExtensionError(file, error instanceof Error ? error.message : String(error), error);
 }
 
 /** Every `setup`, in order. */

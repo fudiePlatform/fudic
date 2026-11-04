@@ -181,6 +181,8 @@ const CASES: readonly (readonly [FudDiagnostic, string])[] = [
   [c.FUD1111({ span: S, href: './r.fudapi', problem: 'not-found' }), '"./r.fudapi" does not exist'],
   [c.FUD1113({ span: S, name: 'save' }), 'is declared again in the `@code`'],
   [c.FUD1113({ span: S, name: 'save', other: './b.fudapi' }), 'given by two linked `.fudapi`: this one and "./b.fudapi"'],
+  [c.FUD1200({ route: '/missing', status: null }), 'the page /missing did not answer'],
+  [c.FUD1200({ route: '/missing', status: 404 }), 'the page /missing answered 404'],
 ];
 
 describe('every variant says its own sentence', () => {

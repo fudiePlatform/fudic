@@ -1,0 +1,5 @@
+{
+  "id": "run-project",
+  "kind": "app",
+  "prefix": "x"
+}
