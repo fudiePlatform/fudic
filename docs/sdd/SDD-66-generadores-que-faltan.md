@@ -346,3 +346,10 @@ component its cases: `fudic g spec <name>` writes its fixture».
 6. **En un documento entero la marca va en la segunda línea**, tras el `<!DOCTYPE html>`: nada
    puede ir delante de él, o el fichero deja de leerse como página (`FUD0156`). Una página dentro
    de un layout, un host y el índice con layout la llevan en la primera, como dice §3.2.
+7. **Lo que encontró `verify:generated` se arregló en su sitio**, fuera de los paquetes de la
+   cabecera cuando hizo falta: `g api` y `g page --server` añaden `@fudic/http` (la raíz del
+   servidor lo importa); `--uses` depende del `name` real de la librería; `@fudic/testing` pasa
+   por el grafo de vitest `@fudic/http` y `@fudic/forms` (registran por `import()`, y Node no
+   conoce `fudic:`) y carga la raíz del servidor antes de cada fichero (un test de formulario
+   valida sin visitar una página); y el test que escribe `g form` valida con `$validate()`, porque
+   `$valid()` de un formulario sin tocar es `true` por diseño (BUG-42).
