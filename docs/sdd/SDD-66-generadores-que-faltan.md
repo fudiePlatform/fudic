@@ -339,3 +339,7 @@ component its cases: `fudic g spec <name>` writes its fixture».
    `fudic.json`. Sin eso, `server-cut` sigue dando `FUD1150` a todo especificador de paquete.
 4. **`FUD0973` y `FUD0974` paran `g showcase`.** Una fixture que lanza o una señal sin literal
    JSON no se pueden enseñar como son; mejor no escribir nada que escribir un escaparate a medias.
+5. **El criterio 6 se comprueba sobre una copia de `examples/workspace`** con su propio
+   `pnpm-workspace.yaml`. Dentro del repo, `examples/workspace` no es un workspace por sí mismo:
+   la raíz que encuentra la CLI es la del repo, y la app nacería en `<repo>/apps/showcase`. Darle
+   su yaml cambiaría cómo el repo instala el ejemplo, y eso no es de esta spec.

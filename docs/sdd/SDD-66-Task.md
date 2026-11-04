@@ -5,7 +5,7 @@
 > `examples/workspace`
 > **Rama:** `sdd-66-generadores-que-faltan`. Nace de `main` **con SDD-61 en `Hecho`**: enmienda su
 > analizador `server-cut` (tarea 17).
-> **Progreso:** 11 / 17 — `En curso`.
+> **Progreso:** 12 / 17 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -69,7 +69,7 @@ tests lo comprueban sin tocarlos.
 | [x] | 11 | — | **Las librerías exportan sus fixtures.** `"./*.fixture"` en la plantilla de librería y en `examples/workspace/libs/ui` | `cli` · `examples` | `templates/lib/package.json.tmpl` · `examples/workspace/libs/ui/package.json` |
 | [x] | 12 | — | **Una sola forma de fixture.** `fixtureModule` escribe `Fixtures<$Props>` con su import | `spec` | `src/scaffold/fixture.ts` |
 | [x] | 17 | — | **La enmienda a SDD-61 §3.9.** `server-cut` acepta como módulo de datos el `export default` de un módulo resuelto dentro de una librería fudic (paquete con `fudic.json`); un paquete cualquiera sigue en `FUD1150`. Nota en la cabecera de SDD-61: «Enmendada por SDD-66» | `compiler` · `docs` | `src/semantic/analyzers/server-cut.ts` · `docs/sdd/SDD-61-vista-portable.md` |
-| [ ] | 13 | 11, 12, 17 | **Los tests de la fase.** Criterios 13–16 | `cli` · `spec` · `compiler` | `test/**` |
+| [x] | 13 | 11, 12, 17 | **Los tests de la fase.** Criterios 13–16 | `cli` · `spec` · `compiler` | `test/**` |
 
 ## Fase 5 — la garantía y cierre (3)
 

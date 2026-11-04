@@ -96,16 +96,17 @@ function overlay(io: ReadIo, cwd: string, changes: readonly FileChange[]): ReadI
   for (const path of written.keys()) {
     for (let dir = dirname(path); !dirs.has(dir) && dir !== dirname(dir); dir = dirname(dir)) dirs.add(dir);
   }
+  // The readers ask with every spelling of a path: relative, with `\`, with or without a drive.
+  const key = (path: string): string => toPosix(absolute(cwd, path));
   return {
-    exists: (path) => written.has(path) || dirs.has(path) || io.exists(path),
-    read: (path) => written.get(path) ?? io.read(path),
-    isDirectory: (path) => dirs.has(path) || io.isDirectory(path),
-    list: (dir) => [
-      ...new Set([
-        ...io.list(dir),
-        ...[...written.keys(), ...dirs].filter((path) => path.startsWith(`${dir}/`) && !path.slice(dir.length + 1).includes('/')).map((path) => path.slice(dir.length + 1)),
-      ]),
-    ],
+    exists: (path) => written.has(key(path)) || dirs.has(key(path)) || io.exists(path),
+    read: (path) => written.get(key(path)) ?? io.read(path),
+    isDirectory: (path) => dirs.has(key(path)) || io.isDirectory(path),
+    list: (dir) => {
+      const at = key(dir);
+      const mine = [...written.keys(), ...dirs].filter((path) => path.startsWith(`${at}/`) && !path.slice(at.length + 1).includes('/'));
+      return [...new Set([...io.list(dir), ...mine.map((path) => path.slice(at.length + 1))])];
+    },
     realPath: (path) => io.realPath(path),
   };
 }
