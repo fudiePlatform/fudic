@@ -4,16 +4,15 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import { relative } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { FUD1404, FUD1405 } from '@fudic/diagnostics';
 import type { Description, Handler, Place, ProjectSymbol, SymbolKind } from '@fudic/language-server/project';
 import { closest } from '@fudic/spec';
+import { toPosix } from '@fudic/typecheck';
 import { readApiProject } from '@fudic/typecheck/api';
 import { API_TYPES_DIR, BROWSER_DIR, SERVER_DIR } from '@fudic/conventions';
 import type { Checks } from './checks.js';
 import { placeOf } from './diagnostics.js';
-import { packageDir } from './fudic.js';
-import { within } from './locate.js';
 import { isFudicProject, type Project } from './project.js';
 import { read, type Answer } from './respond.js';
 
@@ -26,13 +25,24 @@ function posix(path: string): string {
  * package — `@acme/ui/src/card.fud:3:1` —, which is how the project reaches it, not by a path
  * that climbs out of the project.
  */
-function at(place: Place, root: string, from?: string | null): string | undefined {
+export function at(place: Place, root: string, from?: string | null): string | undefined {
   const where = placeOf(place, root, read).at;
-  if (where === undefined || within(root, place.file) || from === undefined || from === null) return where;
-  const dir = packageDir(from, root);
+  if (where === undefined || from === undefined || from === null) return where;
+  // By the package the file is in, wherever it was installed: under the project's own
+  // node_modules, or beside the library that brought it.
+  const dir = packageOf(place.file, from);
   if (dir === undefined) return where;
   const inside = posix(relative(dir, place.file));
   return `${from}/${where.replace(/^[^:]*/u, inside)}`;
+}
+
+/** The folder of the package called `name` that holds `file`: the nearest one up from it. */
+function packageOf(file: string, name: string): string | undefined {
+  for (let dir = dirname(file); dirname(dir) !== dir; dir = dirname(dir)) {
+    const manifest = join(dir, 'package.json');
+    if (existsSync(manifest) && (JSON.parse(readFileSync(manifest, 'utf8')) as { name?: unknown }).name === name) return dir;
+  }
+  return undefined;
 }
 
 /** A symbol without its span and its absolute file. */
@@ -59,7 +69,8 @@ export async function listSymbols(project: Project, checks: Checks, kind?: Symbo
 
 /** The `<id>` of the `.fudapi` a symbol is declared in. */
 function idOf(symbol: ProjectSymbol, root: string): string | undefined {
-  const source = readApiProject(root).byPath.get(posix(symbol.file));
+  // Read as the project service read it: its paths are `toPosix`, a drive in lower case.
+  const source = readApiProject(toPosix(root)).byPath.get(symbol.file);
   return source?.id;
 }
 
@@ -101,10 +112,10 @@ function fileFor(handler: Handler, id: string, apiPath: string, root: string, fo
 }
 
 /** The lines of the generated `.d.ts` that type what `fudic:<id>` exports as `name`: its doc, its types, its const. */
-export function signatureOf(types: string, name: string): string | undefined {
+export function signatureOf(types: string, name: string): string | null {
   const lines = types.split('\n');
   const end = lines.findIndex((line) => new RegExp(`^\\s*export const ${name}\\b`, 'u').test(line));
-  if (end === -1) return undefined;
+  if (end === -1) return null; // as the answer carries it: a signature the types do not have
   let start = end;
   while (start > 0 && lines[start - 1]!.trim() !== '' && !lines[start - 1]!.includes('declare module')) start--;
   return lines
@@ -120,7 +131,7 @@ function callOf(handler: Handler, method: string): string {
 }
 
 /** The folders of handlers, from `fudic.json` or the defaults. */
-function foldersOf(root: string): { server: string; browser: string } {
+export function foldersOf(root: string): { server: string; browser: string } {
   try {
     const config = JSON.parse(readFileSync(`${root}/fudic.json`, 'utf8')) as { server?: unknown; browser?: unknown };
     return {
@@ -144,14 +155,15 @@ export async function contractOf(project: Project, checks: Checks, id: string): 
     return { body: { id }, diagnostics: [FUD1405({ name: id, ...(near !== undefined ? { closest: near } : {}) })], failed: true };
   }
   const typesFile = `${project.root}/${API_TYPES_DIR}/${id}.d.ts`;
-  const types = existsSync(typesFile) ? readFileSync(typesFile, 'utf8') : '';
+  // The check above wrote it: it writes the types of every `.fudapi` it reads.
+  const types = readFileSync(typesFile, 'utf8');
   const folders = foldersOf(project.root);
   const pieces = handlers.map((handler) => ({
     name: handler.name,
     exported: handler.exported,
     state: handler.state,
     file: fileFor(handler, id, source.path, project.root, folders),
-    signature: signatureOf(types, handler.exported) ?? null,
+    signature: signatureOf(types, handler.exported),
     implementedIn: handler.implementedIn.map((file) => posix(relative(project.root, file))),
   }));
   // One skeleton per file, with what is still missing in it: written as is, it compiles.

@@ -266,12 +266,12 @@ describe('where each kind of handler goes (§8.2.30)', () => {
 
   it('a middleware: its client half in the browser folder, its server half in the server one; an existing file is added to', async () => {
     const { body } = await call(client, 'fudic_contract', { id: 'middlewares/auth' });
-    expect((body['handlers'] as Body[]).map((h) => [h['name'], h['file']])).toEqual([['middlewares/auth.auth', 'src/front/middlewares/auth.ts']]);
+    expect((body['handlers'] as Body[]).map((h) => [h['name'], h['file']])).toEqual([['auth', 'src/front/middlewares/auth.ts']]);
     expect(body['skeleton']).toEqual([
       {
         file: 'src/front/middlewares/auth.ts',
         exists: false,
-        text: "import { auth } from 'fudic:middlewares/auth';\n\nauth.client(() => {\n  throw new Error('middlewares/auth.auth: not written yet');\n});\n\nauth.server(() => {\n  throw new Error('middlewares/auth.auth: not written yet');\n});\n",
+        text: "import { auth } from 'fudic:middlewares/auth';\n\nauth.client(() => {\n  throw new Error('auth: not written yet');\n});\n\nauth.server(() => {\n  throw new Error('auth: not written yet');\n});\n",
       },
     ]);
   }, 120_000);
@@ -291,7 +291,7 @@ describe('where each kind of handler goes (§8.2.30)', () => {
       {
         file: 'src/pipes/shout.ts',
         exists: false,
-        text: "import { shout } from 'fudic:pipes/shout';\n\nexport default shout.implement(() => {\n  throw new Error('pipes/shout: not written yet');\n});\n",
+        text: "import { shout } from 'fudic:pipes/shout';\n\nexport default shout.implement(() => {\n  throw new Error('shout: not written yet');\n});\n",
       },
     ]);
   }, 120_000);
@@ -345,12 +345,12 @@ describe('signatureOf', () => {
   });
 
   it('nothing for a name it does not export, or a const that starts the file', () => {
-    expect(signatureOf(TYPES, 'cou')).toBeUndefined();
+    expect(signatureOf(TYPES, 'cou')).toBeNull();
     expect(signatureOf('export const first = 1;', 'first')).toBe('export const first = 1;');
   });
 
   it('a missing .d.ts gives no signature', () => {
-    expect(signatureOf('', 'count')).toBeUndefined();
+    expect(signatureOf('', 'count')).toBeNull();
     expect(existsSync('/never/.fudic/api/x.d.ts')).toBe(false);
   });
 });

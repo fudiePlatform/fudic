@@ -140,10 +140,13 @@ describe('fudic_write (criterion 10)', () => {
     }
   });
 
-  it('without content or edits, nothing changes and the file is checked as it is', async () => {
-    const { body, isError } = await call('fudic_write', { path: BADGE_FILE });
-    expect(isError).toBe(false);
+  it.each([
+    ['neither content nor edits', {}],
+    ['both content and edits', { content: 'x', edits: [] }],
+  ])('with %s the SDK refuses the input, and nothing changes', async (_why, input) => {
+    const result = await client.callTool({ name: 'fudic_write', arguments: { path: BADGE_FILE, ...input } });
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result.content)).toContain('exactly one of them');
     expect(readFileSync(join(app.root, BADGE_FILE), 'utf8')).toBe(BADGE);
-    expect(body['written']).toBe(BADGE_FILE);
-  }, 120_000);
+  });
 });

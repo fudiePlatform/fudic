@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/mcp` (nuevo) · `@fudic/typecheck` · `@fudic/spec` · `@fudic/vite` ·
 > `@fudic/language-server` · `@fudic/cli` · `@fudic/workbench` · `@fudic/diagnostics`
 > **Rama:** `sdd-77-mcp-desde-el-chat`, desde `main`.
-> **Progreso:** 21 / 30 — `En curso`.
+> **Progreso:** 24 / 30 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -16,7 +16,25 @@ como lo instalaría un usuario. La fase no se cierra sin esa prueba. Lo que fall
 Hasta la tarea 26, `fudic new` aún no trae el MCP: en las pruebas se usa el MCP instalado en global
 (SDD §8.2.7).
 
-## Traspaso (2026-11-04, tarde) — leer primero
+## Traspaso (2026-11-04, noche) — leer primero
+
+- **Los tests de las fases 1 a 6 están cerrados** (tareas 5, 10, 14, 18, 21, 24): `@fudic/mcp` al
+  100 % en las cuatro métricas (411 tests), `language-server/src/project.ts` y
+  `project-symbols.ts` también. Pedro probó las fases 2 a 6 en Claude Web: funcionan; tiene una
+  lista de mejoras del chat que pasará aparte.
+- **Los tests destaparon defectos, ya arreglados en `src`** (SDD §8.2.42–49): la raíz de un
+  workspace no era proyecto para el MCP; un plan que lanza escapaba sin diagnóstico (`FUD1411`,
+  nuevo: el criterio 26 cuenta ya doce códigos, `FUD1400`–`FUD1411`); `done` no cerraba una pieza
+  completa; las rutas del servicio de proyecto (`c:/…`) no casaban con las del MCP en Windows; el
+  `at` de librerías; `source` bajo `node_modules`; `fudic_write` sin `content` ni `edits`.
+- **Sigue la fase 7 en otra sesión** (tareas 25–30), desde lo de abajo. Ojo con la raíz de un
+  workspace: `fudic_check`, `phases` (`isLibrary`) y `fudic_contract` (`foldersOf`) leen el
+  `fudic.json` de la raíz, que en un workspace no existe; `fudic_status` tiene que recorrer sus
+  proyectos.
+- **Para probar en Claude Web:** el registro local sigue abierto en este worktree; tras cambiar el
+  MCP, `pnpm registry` de nuevo y reinstalar en global (abajo, «Cómo se prueba»).
+
+## Traspaso (2026-11-04, tarde)
 
 **Orden nuevo de Pedro:** no se para entre fases aunque falten sus tests. Al acabar la
 implementación, las fases de test que falten se reparten: una la hace el implementador y otra la
@@ -203,7 +221,7 @@ salga de la rama `sdd-77-mcp-desde-el-chat`. La coordinadora lo mezcla y marca l
 | [x] | 15 | 11 | **`fudic_symbols`.** Los siete `kind`, con origen, `at` y la primera línea de la doc; funciones `connected`/`missing` con `implementationsOf`; tokens con `group` | `language-server` · `mcp` | `src/project.ts` · `src/tools/symbols.ts` |
 | [x] | 16 | 11 | **`fudic_describe`.** El contrato de SDD-63 entero y el `example` generado desde él; rutas, tipos, funciones y tokens; `FUD1405` con el más parecido | `language-server` · `mcp` | `src/project.ts` · `src/tools/describe.ts` · `src/example.ts` |
 | [x] | 17 | 15 | **`fudic_contract`.** Cada declaración que pide handler, su firma del `.d.ts`, su fichero y un esqueleto que compila | `mcp` | `src/tools/contract.ts` |
-| [ ] | 18 | 15–17 | **Los tests de la fase.** Criterios 15–17. **Prueba en Claude Web:** fila «Lo que existe» | `mcp` | `test/**` |
+| [x] | 18 | 15–17 | **Los tests de la fase.** Criterios 15–17. **Prueba en Claude Web:** fila «Lo que existe» | `mcp` | `test/**` |
 
 ## Fase 5 — crear y anotar (3)
 
@@ -219,7 +237,7 @@ salga de la rama `sdd-77-mcp-desde-el-chat`. La coordinadora lo mezcla y marca l
 |---|---|---|---|---|---|
 | [x] | 22 | 9 | **`fudic_test`.** `runTests` en proceso, `fail` frente a `broken` con sus diagnósticos, `failing`, `snapshot` + `recordTestRun`, `next` según la fase; una ejecución a la vez | `mcp` | `src/tools/test.ts` · `src/queue.ts` |
 | [x] | 23 | 22 | **`fudic_spec_run`.** `runSpecs` en proceso, el paso en rojo con `expected`/`got`, `source` + `quote`, `shot`, `failing`, `recordSpecRun` | `mcp` | `src/tools/spec-run.ts` |
-| [ ] | 24 | 22, 23 | **Los tests de la fase.** Criterios 24 y 25. **Prueba en Claude Web:** fila «Ejecutar» | `mcp` | `test/**` |
+| [x] | 24 | 22, 23 | **Los tests de la fase.** Criterios 24 y 25. **Prueba en Claude Web:** fila «Ejecutar» | `mcp` | `test/**` |
 
 ## Fase 7 — `status`, `fudic new` y la prueba de punta a punta (6)
 

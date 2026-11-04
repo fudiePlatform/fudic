@@ -523,8 +523,8 @@ temporal creado con `planNew`. La prueba de Pedro (§6.1) es aparte y no se sust
 
 12. `check` de un proyecto con un `FUD0540` y un `TS2322` da los dos, ordenados, con `codes` solo
     para el FUD; `limit: 1` corta la lista y no `summary`.
-13. `fix` arregla un `FUD0191` y deja un `FUD0540` sobre un objeto sin `id` en `remaining` con sus
-    opciones; el diff es el de lo aplicado; `dryRun` no escribe.
+13. `fix` arregla un `FUD0191` y deja un `FUD0540` sobre un objeto sin `id` en `remaining`, sin
+    reparación (§8.2.49); el diff es el de lo aplicado; `dryRun` no escribe.
 14. `format` de un `.fud` mal sangrado devuelve el diff de `fudic fmt` y lo aplica.
 
 **Lo que existe**
@@ -784,3 +784,18 @@ framework.
 44. **`done` sobre una pieza completa no escribía nada** (tarea 21): `unitsOf` da `phase: "done"`
     tanto a la pieza cerrada como a la completa sin cerrar, y `record` miraba solo la fase. Ahora
     solo no escribe la que el historial ya cierra (`complete: false`).
+45. **Las rutas del servicio de proyecto van en `toPosix`** (tareas 18 y 24): la unidad en
+    minúscula (`c:/…`). El MCP las comparaba con las suyas (`C:/…`) y en Windows no casaban:
+    `fudic_symbols` no decía qué función faltaba y `fudic_spec_run { spec }` no hablaba de la
+    pieza que acababa de correr. Las dos comparaciones pasan por `toPosix`.
+46. **El `at` de un fichero de librería sale siempre por su paquete** (§8.2.28), buscando hacia
+    arriba desde el fichero el `package.json` con ese nombre: una librería que trae otra
+    (`@fudic/example-guia` a través de `@fudic/example-ui`) no está en el `node_modules` del
+    proyecto, y un fichero bajo `node_modules/` dentro de la carpeta no se reescribía.
+47. **`source` de un criterio se calla también bajo `node_modules`** (§8.2.39): la página del
+    banco (`node_modules/.fudic-bench/…`) está dentro de la carpeta, y se enseñaba.
+48. **`fudic_write` lleva `content` o `edits`, exactamente uno**: sin ninguno reescribía el fichero
+    igual. El esquema lo exige y el SDK rechaza lo demás, como cualquier entrada inválida (§3.4).
+49. **Criterio 13: un `FUD0540` sobre un objeto sin `id` no tiene reparación**, ni una ni varias:
+    queda en `remaining` con `fixable: false` y sin `options`. Ningún reparador da hoy más de una
+    opción, así que `options` se prueba con un check simulado.

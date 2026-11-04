@@ -59,19 +59,24 @@ export function registerFileTools(server: McpServer, project: Project, checks: C
       description:
         'Writes a file of the fudic project — the whole "content", or "edits" where each "old" is in the file exactly once, ' +
         'all or none — and answers at once with the diagnostics of what was written, as fudic_check does. Runs nothing.',
-      inputSchema: {
-        path: z.string().describe('Relative to the project root; missing folders are created'),
-        content: z.string().optional().describe('The whole new text of the file'),
-        edits: z
-          .array(z.object({ old: z.string().describe('Text that is in the file once'), new: z.string().describe('What replaces it') }))
-          .optional()
-          .describe('Replacements, applied in order; if one does not match, nothing is written'),
-      },
+      // One of content and edits, never both and never neither: the SDK refuses any other input.
+      inputSchema: z
+        .object({
+          path: z.string().describe('Relative to the project root; missing folders are created'),
+          content: z.string().optional().describe('The whole new text of the file'),
+          edits: z
+            .array(z.object({ old: z.string().describe('Text that is in the file once'), new: z.string().describe('What replaces it') }))
+            .optional()
+            .describe('Replacements, applied in order; if one does not match, nothing is written'),
+        })
+        .refine((input) => (input.content === undefined) !== (input.edits === undefined), {
+          message: 'give either content or edits, exactly one of them',
+        }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
     },
     async ({ path, content, edits }) => {
       const written =
-        content !== undefined ? writeFile(project.root, { path, content }) : writeFile(project.root, { path, edits: edits ?? [] });
+        content !== undefined ? writeFile(project.root, { path, content }) : writeFile(project.root, { path, edits: edits! });
       if ('error' in written) return respond(project, { body: {}, diagnostics: [written.error], failed: true });
       const checked = await checkProject(project, checks, { paths: [written.path], limit: WRITE_LIMIT });
       return respond(project, { ...checked, body: { written: written.shown, ...checked.body } });

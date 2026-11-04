@@ -312,7 +312,8 @@ export class ProjectSymbols {
     const api = readApiProject(root);
     const service = this.#deps.typescript();
     const out: Piece[] = [];
-    for (const entry of [...index.all()].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))) {
+    // Paths are unique in the index: no two entries compare equal.
+    for (const entry of [...index.all()].sort((a, b) => (a.path < b.path ? -1 : 1))) {
       if (entry.external) continue;
       const pattern = routePattern(root, entry.path);
       const component = entry.role === 'component' && entry.tag !== '';
@@ -386,7 +387,8 @@ export class ProjectSymbols {
     const item = this.#declarations().find((d) => d.name === name);
     if (item === undefined) return undefined;
     const { state, found } = this.#implementers(item);
-    const text = nodeApiFs().readFile(item.source.path) ?? '';
+    // `#declarations` has just read it: a file is not taken away between the two reads.
+    const text = nodeApiFs().readFile(item.source.path)!;
     const kind = item.kind === 'types' ? 'type' : item.kind === 'functions' ? 'function' : item.kind === 'middlewares' ? 'middleware' : 'pipe';
     const doc = item.decl.doc;
     return {
@@ -421,7 +423,8 @@ export class ProjectSymbols {
 /** The config reader's disk. */
 const nodeApiFsConfig = {
   exists: (path: string) => nodeApiFs().readFile(path) !== undefined,
-  read: (path: string) => nodeApiFs().readFile(path) ?? '',
+  // `exists` answered first, and a file is not taken away between the two questions.
+  read: (path: string) => nodeApiFs().readFile(path)!,
 };
 
 /**

@@ -5,10 +5,11 @@
  */
 
 import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { relative, resolve } from 'node:path';
 import { within } from './locate.js';
 import { FUD1207, FUD1404, FUD1405, type FilePosition, type FudDiagnostic, type WireDiagnostic } from '@fudic/diagnostics';
 import { nodeIo, recordSpecRun, recordTestRun, snapshot } from '@fudic/history';
+import { toPosix } from '@fudic/typecheck';
 import type { Checks } from './checks.js';
 import { located } from './check.js';
 import { loadRunners, type Runners } from './fudic.js';
@@ -21,8 +22,14 @@ function posix(path: string): string {
 }
 
 /** `file:line:column`, as every answer writes a place. */
-function at(position: FilePosition | undefined): string | undefined {
-  return position === undefined ? undefined : `${posix(position.file)}:${position.line}:${position.column}`;
+function at(position: FilePosition): string {
+  return `${posix(position.file)}:${position.line}:${position.column}`;
+}
+
+/** Whether a file is the project's own: inside it, and not in what was installed into it. */
+function ours(root: string, file: string): boolean {
+  const path = resolve(root, file);
+  return within(root, path) && !posix(relative(root, path)).split('/').includes('node_modules');
 }
 
 /** A diagnostic of a run in the shape of §3.4. */
@@ -57,10 +64,11 @@ async function phases(project: Project, checks: Checks): Promise<readonly Unit[]
 /** The pieces a narrowed run was asked about: the next step is about what just ran, and only that. */
 function ranFirst(units: readonly Unit[], root: string, ran: readonly string[]): readonly Unit[] {
   if (ran.length === 0) return units;
+  // In one form, `toPosix`: the project service names a file with its drive in lower case.
   return units.filter((unit) => {
-    const piece = resolve(root, unit.piece);
+    const piece = toPosix(resolve(root, unit.piece));
     const stem = piece.slice(0, -'.fud'.length);
-    return ran.some((path) => within(path, piece) || resolve(path).startsWith(stem));
+    return ran.map((path) => toPosix(resolve(path))).some((path) => piece.startsWith(`${path}/`) || path.startsWith(stem));
   });
 }
 
@@ -164,10 +172,12 @@ export async function runSpecsTool(project: Project, checks: Checks, queue: RunQ
         verdict: r.verdict,
         at: at(r.at),
         ...(r.failed !== undefined ? { step: r.failed.step, stepAt: at(r.failed.at), expected: r.failed.expected, got: r.failed.actual } : {}),
-        ...(r.broken !== undefined ? { step: r.broken.step, diagnostics: r.broken.diagnostics.map(wire) } : {}),
-        // A step that located the host itself points at the page the bench mounted it in, outside
-        // the project: nothing the chat can open or change.
-        ...(r.source !== undefined && within(root, resolve(root, r.source.at.file)) ? { source: at(r.source.at), quote: r.source.quote } : {}),
+        ...(r.broken !== undefined
+          ? { ...(r.broken.step !== undefined ? { step: r.broken.step } : {}), diagnostics: r.broken.diagnostics.map(wire) }
+          : {}),
+        // A step that located the host itself points at the page the bench mounted it in, under
+        // node_modules or outside the project: nothing the chat can open or change.
+        ...(r.source !== undefined && ours(root, r.source.at.file) ? { source: at(r.source.at), quote: r.source.quote } : {}),
         ...(r.shots?.after !== undefined ? { shot: posix(r.shots.after) } : r.shots?.before !== undefined ? { shot: posix(r.shots.before) } : {}),
         ...(r.pageErrors.length > 0 ? { pageErrors: r.pageErrors } : {}),
       }));
