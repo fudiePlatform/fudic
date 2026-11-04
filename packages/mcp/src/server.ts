@@ -12,6 +12,8 @@ import { fixProject } from './fix.js';
 import { formatProject } from './format.js';
 import { SYMBOL_KINDS } from '@fudic/language-server/project';
 import { contractOf, describeName, listSymbols } from './symbols.js';
+import { registerProjectTools } from './project-tools.js';
+import { RECORD_EVENTS, recordEvent } from './record.js';
 import { Guide, TOPICS } from './guide.js';
 import { instructions, newAppPrompt } from './instructions.js';
 import type { Project } from './project.js';
@@ -39,6 +41,10 @@ export function toolNames(entry: Entry): ReadonlySet<string> {
     'fudic_symbols',
     'fudic_describe',
     'fudic_contract',
+    'fudic_new',
+    'fudic_generate',
+    'fudic_add',
+    'fudic_record',
     ...(entry === 'http' ? FILE_TOOLS : []),
   ]);
 }
@@ -164,6 +170,27 @@ export function createServer(options: ServerOptions): McpServer {
       annotations: lookup,
     },
     async ({ id }) => respond(project, await contractOf(project, checks, id)),
+  );
+
+  registerProjectTools(server, project, checks, tools);
+
+  server.registerTool(
+    'fudic_record',
+    {
+      title: 'fudic record',
+      description:
+        'Writes in the history of a fudic piece what a person decided, or that it is finished: "approved" (its props and ' +
+        'criteria, only after the user approved them in this conversation), "accepted" (the client accepted it, with the ' +
+        "user's words in text), \"reopened\" (a change to its contract, with text) or \"done\" (every phase finished).",
+      inputSchema: {
+        piece: z.string().describe("A component's or a route's .fud, or its folder, relative to the project"),
+        event: z.enum(RECORD_EVENTS),
+        text: z.string().optional().describe('accepted and reopened: what the user said, in their words'),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    },
+    async ({ piece, event, text }) =>
+      respond(project, await recordEvent(project, checks, { piece, event, ...(text !== undefined ? { text } : {}) })),
   );
 
   if (entry === 'http') registerFileTools(server, project, checks);

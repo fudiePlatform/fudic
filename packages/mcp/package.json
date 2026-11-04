@@ -51,6 +51,7 @@
     "@fudic/cli": "workspace:*",
     "@fudic/conventions": "workspace:*",
     "@fudic/diagnostics": "workspace:*",
+    "@fudic/history": "workspace:*",
     "@fudic/language-server": "workspace:*",
     "@fudic/spec": "workspace:*",
     "@fudic/typecheck": "workspace:*",

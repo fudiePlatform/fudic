@@ -11,7 +11,8 @@ import type { Span } from '@fudic/compiler';
 import { BROWSER_DIR, PIPES_DIR, ROUTES_DIR, SERVER_DIR } from '@fudic/conventions';
 import { readProjectConfig } from '@fudic/config';
 import { sampleValue, type PropShape } from '@fudic/spec';
-import { propShapes } from '@fudic/typecheck';
+import { linkHref } from '@fudic/compiler';
+import { parseFud, propShapes, serverLinksOf } from '@fudic/typecheck';
 import { typedContract, type Contract } from '@fudic/typecheck/contract';
 import { readApiProject } from '@fudic/typecheck/api';
 import { projectTokens, type Token } from '@fudic/typecheck/tokens';
@@ -91,6 +92,21 @@ export interface TokenDescription extends Place {
 }
 
 export type Description = ComponentDescription | RouteDescription | DeclarationDescription | TokenDescription;
+
+/** A piece of the project — one of its components or routes —, as its phases are read. */
+export interface Piece {
+  readonly kind: 'component' | 'route';
+  /** The tag, or the URL pattern. */
+  readonly name: string;
+  /** Absolute, POSIX. */
+  readonly file: string;
+  /** The `<id>` of each `.fudapi` its `<link rel="server">` reach. */
+  readonly servers: readonly string[];
+  /** The `<id>` of the `.fudapi` beside it, linked or not. */
+  readonly sibling?: string;
+  /** Its JSDoc, and how many of its props have one. */
+  readonly documented: { readonly doc: boolean; readonly props: number; readonly documented: number };
+}
 
 /** One declaration of a `.fudapi` that needs a handler. */
 export interface Handler {
@@ -288,6 +304,41 @@ export class ProjectSymbols {
         },
       ];
     });
+  }
+
+  /** The components and routes of the project itself, in path order. */
+  pieces(): readonly Piece[] {
+    const { root, index } = this.#deps;
+    const api = readApiProject(root);
+    const service = this.#deps.typescript();
+    const out: Piece[] = [];
+    for (const entry of [...index.all()].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))) {
+      if (entry.external) continue;
+      const pattern = routePattern(root, entry.path);
+      const component = entry.role === 'component' && entry.tag !== '';
+      if (pattern === undefined && !component) continue;
+      const source = nodeApiFs().readFile(entry.path) ?? '';
+      const servers = serverLinksOf(parseFud(source).document).flatMap((link) => {
+        const href = linkHref(link);
+        const linked = href === undefined ? undefined : index.server(entry.path, href);
+        return linked === undefined ? [] : [linked.id];
+      });
+      const sibling = api.byPath.get(`${entry.path.slice(0, -'.fud'.length)}.fudapi`)?.id;
+      const contract = component ? typedContract(entry.contract, service, entry.path) : entry.contract;
+      out.push({
+        kind: component ? 'component' : 'route',
+        name: component ? entry.tag : pattern!,
+        file: entry.path,
+        servers,
+        ...(sibling !== undefined ? { sibling } : {}),
+        documented: {
+          doc: contract.doc !== undefined && contract.doc.trim() !== '',
+          props: contract.props.length,
+          documented: contract.props.filter((p) => p.doc !== undefined && p.doc.trim() !== '').length,
+        },
+      });
+    }
+    return out;
   }
 
   /** Every name `describe` knows, for a «did you mean». */

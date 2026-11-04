@@ -696,6 +696,9 @@ importers:
       '@fudic/diagnostics':
         specifier: workspace:*
         version: link:../diagnostics
+      '@fudic/history':
+        specifier: workspace:*
+        version: link:../history
       '@fudic/language-server':
         specifier: workspace:*
         version: link:../language-server

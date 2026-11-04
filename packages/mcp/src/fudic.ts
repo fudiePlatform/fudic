@@ -61,7 +61,10 @@ async function projectCheck(root: string, load: Importer): Promise<{ main: Typec
 async function projectCli(root: string, load: Importer): Promise<Cli | undefined> {
   const dir = packageDir('@fudic/cli', root);
   const main = dir === undefined ? undefined : exportedFile(dir, '.');
-  return main === undefined ? undefined : ((await load(pathToFileURL(main).href)) as Cli);
+  if (main === undefined) return undefined;
+  const cli = (await load(pathToFileURL(main).href)) as Partial<Cli>;
+  // An install older than this server cannot plan in process: the server's own CLI does.
+  return typeof cli.planOf === 'function' && typeof cli.needsShell === 'function' ? (cli as Cli) : undefined;
 }
 
 /** The fudic of the project at `root`, or the server's own, piece by piece. */

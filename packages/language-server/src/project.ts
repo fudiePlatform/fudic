@@ -8,7 +8,7 @@ import type * as ts from 'typescript';
 import type { SourceDiagnostic } from '@fudic/diagnostics';
 import { nodeFileSystem, toPosix } from '@fudic/typecheck';
 import { DocumentCache } from './document-cache.js';
-import { ProjectSymbols, type Description, type Handler, type ProjectSymbol, type SymbolKind } from './project-symbols.js';
+import { ProjectSymbols, type Description, type Handler, type Piece, type ProjectSymbol, type SymbolKind } from './project-symbols.js';
 import { repairsFor, type Repair } from './repairs.js';
 import type { FileSystemScanner } from './types.js';
 import { WorkspaceIndex } from './workspace-index.js';
@@ -21,6 +21,7 @@ export {
   type ComponentDescription,
   type DeclarationDescription,
   type Handler,
+  type Piece,
   type Description,
   type Place,
   type ProjectSymbol,
@@ -40,6 +41,8 @@ export interface ProjectService {
   names(): readonly string[];
   /** What the `.fudapi` of `<id>` asks to be implemented; undefined when there is no such `<id>`. */
   handlers(id: string): readonly Handler[] | undefined;
+  /** The components and routes of the project itself, as their phases are read. */
+  pieces(): readonly Piece[];
   /** A file changed on disk: the next call re-reads it. */
   invalidate(path: string): void;
 }
@@ -94,6 +97,7 @@ export function openProject(root: string, options: ProjectOptions = {}): Project
     describe: (name) => mounted().symbols.describe(name),
     names: () => mounted().symbols.names(),
     handlers: (id) => mounted().symbols.handlers(id),
+    pieces: () => mounted().symbols.pieces(),
 
     invalidate(path) {
       if (index === undefined || cache === undefined || known === undefined) return;

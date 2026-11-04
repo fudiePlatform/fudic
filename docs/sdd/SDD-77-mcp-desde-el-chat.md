@@ -263,6 +263,9 @@ recién instalado y llama a `fudic_status`.
 | `FUD1405` | Nothing by that name | `fudic_describe` o `fudic_contract` con un nombre que no existe; el arreglo sugiere el más parecido |
 | `FUD1406` | cloudflared is not installed | `--tunnel` sin `cloudflared` en el `PATH` |
 | `FUD1407` | Not done yet | `fudic_record { event: "done" }` sobre una pieza a la que le falta una fase: dice cuál |
+| `FUD1408` | Generated without a purpose | `fudic_generate` de un `component` o una `page` sin `purpose` (§8.2.34) |
+| `FUD1409` | Already a fudic project | `fudic_new` en una carpeta que ya tiene `fudic.json`, en ella o encima (§8.2.32) |
+| `FUD1410` | Recorded without a text | `fudic_record` de `accepted` o `reopened` sin `text` (§8.2.34) |
 
 ## 4. Comportamiento
 
@@ -734,3 +737,27 @@ framework.
     `src/browser/<id>.ts` para la mitad `client` de un middleware y una regla que no es
     `runs server`; un pipe, junto a su `.fudapi`, con `export default`. Si el fichero existe,
     `exists: true`: se añade, no se reemplaza. La firma es el bloque del `.d.ts` generado.
+31. **Los planes salen de la línea de comandos**: cada herramienta escribe el `argv` de su
+    comando (`g component app-badge --no-style`, en camelCase → kebab-case), lo lee el `parseArgs`
+    de la CLI y lo planifica `planOf`, su función interna `build` ahora exportada. Las opciones que
+    un `kind` no admite las rechaza la CLI con su `FUD0448` y sus pistas (`hints`). Una CLI del
+    proyecto sin `planOf` (anterior a esto) cede el sitio a la del MCP.
+32. **`fudic_new` crea el proyecto en la carpeta del MCP**: es el plan de `fudic new <name>` con
+    `<name>/` quitado de cada ruta y de cada comando (y la línea `cd` del informe). En una carpeta
+    que ya es un proyecto, `FUD1409` y nada escrito.
+33. **Los comandos de un plan corren con la salida guardada**: por stdio, stdout es el protocolo.
+    La respuesta trae `ran` (comando, carpeta, estado y, si falló, sus últimas 20 líneas). Tras
+    `new` y `add`, el MCP vuelve a montar su checker: el fudic del proyecto puede ser otro.
+34. **Dos códigos más**: `FUD1408` (un `component` o una `page` sin `purpose`) y `FUD1410`
+    (`accepted` o `reopened` sin `text`). `started` y `reopened` van `by agent`; `approved` y
+    `accepted`, por quien es el usuario para la CLI.
+35. **Las fases de §4.4 se calculan ya en la fase 5** (`phases.ts`), porque `done` las necesita:
+    `criteria` = `.fudspec` + aprobación `valid`; con servidor = un `.fudapi` al lado o enlazado
+    (nunca en una librería); `api` = enlazado el de al lado; `red` = hay `<pieza>.test.ts` y la
+    última ejecución vigente es `red`/`pass` en tests y `fail`/`pass` en criterios; `view` = las dos
+    `pass`; `connect` = cada handler `connected`; `document` = JSDoc del componente y de cada prop
+    (una ruta no tiene); `showcase` = en una librería de un workspace con `apps/showcase`, el plan
+    en seco de `g showcase <lib>` no cambia nada.
+36. **`done` escribe** `documented <con doc>/<props>`, `connected` con las funciones que tienen
+    handler y no salían en un `connected` anterior (si hay alguna) y `done`. Sobre una pieza ya
+    `done`, no escribe nada.

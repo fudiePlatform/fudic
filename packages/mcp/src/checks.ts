@@ -73,6 +73,12 @@ export class Checks {
     return checker.check();
   }
 
+  /** Forget the checker and the fudic it was made with: the next call mounts them again. */
+  reset(): void {
+    this.#mounted = undefined;
+    this.#stamps = new Map();
+  }
+
   /** The editor's project service, kept current by every check. */
   async service(): Promise<ProjectService> {
     return (await this.#mount()).service;

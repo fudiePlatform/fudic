@@ -15,6 +15,10 @@ export { listFiles, filesUnder, readLines, writeFile, READ_LIMIT, type ReadInput
 export { registerFileTools, FILE_TOOLS } from './file-tools.js';
 export type { Cli } from './fudic.js';
 export { listSymbols, describeName, contractOf, signatureOf } from './symbols.js';
+export { runPlan, flagsOf, flagOf, quietRunner, afterInstall, type CommandRun, type OptionValue, type Planned } from './plans.js';
+export { registerProjectTools, GENERATE_KINDS, inPlace } from './project-tools.js';
+export { PHASES, unitsOf, showcaseCurrent, isLibrary, type Phase, type Unit, type StateOf } from './phases.js';
+export { recordEvent, RECORD_EVENTS, type RecordEvent, type RecordInput } from './record.js';
 export { secretOf, secretFile } from './secret.js';
 export { openTunnel, type Spawn, type Tunnel, type TunnelResult } from './tunnel.js';
 export { startHttp, type HttpEntry, type HttpOptions } from './http.js';
