@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/mcp` (nuevo) · `@fudic/typecheck` · `@fudic/spec` · `@fudic/vite` ·
 > `@fudic/language-server` · `@fudic/cli` · `@fudic/workbench` · `@fudic/diagnostics`
 > **Rama:** `sdd-77-mcp-desde-el-chat`, desde `main`.
-> **Progreso:** 0 / 30 — `Listo`.
+> **Progreso:** 4 / 30 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -42,10 +42,10 @@ Hasta la tarea 26, `fudic new` aún no trae el MCP: en las pruebas se añade con
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **El paquete y los códigos.** `packages/mcp` con `bin` `fudic-mcp`, el SDK de MCP y `zod` en versión exacta, umbrales al 100 % en las cuatro métricas e `include: ['src/**/*.ts']`. `FUD1400`–`FUD1407` con `.ts`, `.md` y línea en `index.ts`; el rango en la fila de SDD-77 del `INDEX.md` | `mcp` · `diagnostics` | `packages/mcp/*` · `src/codes/FUD1400`–`1407.{ts,md}` |
-| [ ] | 2 | 1 | **El servidor.** Un `McpServer` con dos transportes (stdio, Streamable HTTP en `127.0.0.1`); `instructions` (SDD §3.3); prompt `new-app`; la forma común de las respuestas (§3.4: `fudicVersion`, `commit`, `structuredContent` + `text`, `isError` con diagnósticos); las herramientas de ficheros solo en HTTP | `mcp` | `src/server.ts` · `src/transports.ts` · `src/respond.ts` · `src/bin.ts` |
-| [ ] | 3 | 2 | **Secreto y túnel.** `.fudic/mcp/secret`, `/mcp/<secret>` y `404` para lo demás, `--new-secret`, `--port`; `--tunnel` lanza `cloudflared` y lee su URL (`FUD1406` sin él); la salida de la terminal (§3.1) | `mcp` | `src/secret.ts` · `src/tunnel.ts` · `src/bin.ts` |
-| [ ] | 4 | 2 | **`fudic_guide`.** Los nueve temas en `guide/*.md` (§4.3), con lo de SDD-68 a 76; un código como tema con `explain()` y `related`; `TS…`; `FUD1403` | `mcp` | `guide/*.md` · `src/tools/guide.ts` |
+| [x] | 1 | — | **El paquete y los códigos.** `packages/mcp` con `bin` `fudic-mcp`, el SDK de MCP y `zod` en versión exacta, umbrales al 100 % en las cuatro métricas e `include: ['src/**/*.ts']`. `FUD1400`–`FUD1407` con `.ts`, `.md` y línea en `index.ts`; el rango en la fila de SDD-77 del `INDEX.md` | `mcp` · `diagnostics` | `packages/mcp/*` · `src/codes/FUD1400`–`1407.{ts,md}` |
+| [x] | 2 | 1 | **El servidor.** Un `McpServer` con dos transportes (stdio, Streamable HTTP en `127.0.0.1`); `instructions` (SDD §3.3); prompt `new-app`; la forma común de las respuestas (§3.4: `fudicVersion`, `commit`, `structuredContent` + `text`, `isError` con diagnósticos); las herramientas de ficheros solo en HTTP | `mcp` | `src/server.ts` · `src/transports.ts` · `src/respond.ts` · `src/bin.ts` |
+| [x] | 3 | 2 | **Secreto y túnel.** `.fudic/mcp/secret`, `/mcp/<secret>` y `404` para lo demás, `--new-secret`, `--port`; `--tunnel` lanza `cloudflared` y lee su URL (`FUD1406` sin él); la salida de la terminal (§3.1) | `mcp` | `src/secret.ts` · `src/tunnel.ts` · `src/bin.ts` |
+| [x] | 4 | 2 | **`fudic_guide`.** Los nueve temas en `guide/*.md` (§4.3), con lo de SDD-68 a 76; un código como tema con `explain()` y `related`; `TS…`; `FUD1403` | `mcp` | `guide/*.md` · `src/tools/guide.ts` |
 | [ ] | 5 | 2–4 | **Los tests de la fase.** Criterios 1–4, 7 y 8 (cada bloque ` ```fud ` compila; cada `broken` da su código). **Prueba en Claude Web:** fila «Servidor y guía» | `mcp` | `test/**` |
 
 ## Fase 2 — `.fudspec` en el build y `fudic_check` (5)

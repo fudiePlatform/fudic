@@ -627,4 +627,18 @@ framework.
 
 ### 8.2. Tomadas al implementar
 
-(vacía)
+1. **Las instrucciones solo nombran las herramientas que hay.** Cada línea de §3.3 que manda llamar
+   a una herramienta sale solo si está registrada: mientras se implementa por fases, una instrucción
+   que manda a `fudic_status` antes de que exista manda al chat a buscar lo que no hay. Lo mismo el
+   prompt `new-app`.
+2. **`FUD1406` es un aviso**, no un error: el servidor sigue en su URL local.
+3. **Una app y una librería nuevas declaran `@fudic/dom`.** `emit` vive ahí, la plantilla no lo
+   declaraba y `fudic add` no sabe añadirlo: un chat que escribe un evento se quedaba sin salida.
+   La app lo pone en `dependencies`; la librería, en `peerDependencies` y `devDependencies`, como
+   `examples/workspace/libs/ui`. Cambia la instantánea de `new-compat` de la CLI.
+4. **`FUD0057` decía mentira**: mandaba a `&nbsp;`, que el parser rechaza (solo lee las cinco
+   referencias de XML y las numéricas). Su `.md` dice ahora lo que el parser hace.
+5. **Las reglas de serie (`required`, `max-length`…) son de `@fudic/forms`**: un `.fudapi` sin ese
+   paquete en el proyecto da `FUD1080`. La guía `fudapi` lo dice y manda a `fudic_add`.
+6. **`related` de un código** son los temas de la guía que lo nombran; el de un tema, los temas que
+   nombra entre comillas invertidas.
