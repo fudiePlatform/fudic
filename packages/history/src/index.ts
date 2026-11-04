@@ -7,3 +7,7 @@ export { nodeIo } from './io.js';
 export { historyOf, record } from './record.js';
 export { approvalHash } from './hash.js';
 export { inputsHash } from './inputs.js';
+export type { RunState, UnitState } from './state.js';
+export { unitState } from './state.js';
+export type { CriterionOutcome, Snapshot, TestOutcome } from './runs.js';
+export { recordSpecRun, recordTestRun, snapshot } from './runs.js';

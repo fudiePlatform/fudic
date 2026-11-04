@@ -16,6 +16,11 @@ export interface HistoryIo {
   now(): Date;
   /** The full hash of `HEAD`, or `undefined` outside git or before the first commit. */
   head(): Promise<string | undefined>;
+  /**
+   * The hash of a piece's screenshots as they are now: who takes them gives it. Absent here,
+   * a `look` cannot be checked against the piece and holds until it reopens.
+   */
+  lookHash?(unit: string): Promise<string>;
 }
 
 /** Asks git, in `cwd`; `undefined` when git is missing, it is not a repository or the command fails. */
