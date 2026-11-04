@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/mcp` (nuevo) · `@fudic/typecheck` · `@fudic/spec` · `@fudic/vite` ·
 > `@fudic/language-server` · `@fudic/cli` · `@fudic/workbench` · `@fudic/diagnostics`
 > **Rama:** `sdd-77-mcp-desde-el-chat`, desde `main`.
-> **Progreso:** 20 / 30 — `En curso`.
+> **Progreso:** 21 / 30 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -194,7 +194,7 @@ salga de la rama `sdd-77-mcp-desde-el-chat`. La coordinadora lo mezcla y marca l
 | [x] | 11 | — | **El servicio de proyecto.** `@fudic/language-server/project`: `openProject(root)` con `repairs`, `symbols`, `describe` e `invalidate`, sobre el mismo `WorkspaceIndex` y `repairsFor` que el editor (SDD §3.5); `fixable` en `check` pasa a usarlo | `language-server` · `mcp` | `src/project.ts` · `package.json` (`exports`) |
 | [x] | 12 | 9 | **`files`, `read`, `write`.** La carpeta como frontera (`FUD1400`, enlaces simbólicos incluidos), `FUD1401`, ediciones todas o ninguna (`FUD1402`), la respuesta de `write` con los diagnósticos de lo escrito | `mcp` | `src/tools/files.ts` · `src/sandbox.ts` |
 | [x] | 13 | 11, 12 | **`fix` y `format`.** Reparaciones de una sola opción hasta 5 vueltas, `applied`, `diff`, `remaining` con `options`; `format` sobre `planFmt`; los dos con `apply` y `dryRun` | `mcp` | `src/tools/fix.ts` · `src/tools/format.ts` · `src/diff.ts` |
-| [ ] | 14 | 11–13 | **Los tests de la fase.** Criterios 9–11, 13 y 14. **Prueba en Claude Web:** fila «Ficheros» | `language-server` · `mcp` | `test/**` |
+| [x] | 14 | 11–13 | **Los tests de la fase.** Criterios 9–11, 13 y 14. **Prueba en Claude Web:** fila «Ficheros» | `language-server` · `mcp` | `test/**` |
 
 ## Fase 4 — lo que existe (4)
 
