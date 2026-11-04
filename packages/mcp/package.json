@@ -53,9 +53,20 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@fudic/cli": "workspace:*",
+    "@fudic/core": "workspace:*",
+    "@fudic/dom": "workspace:*",
+    "@fudic/forms": "workspace:*",
+    "@fudic/http": "workspace:*",
+    "@fudic/ssr": "workspace:*",
+    "@fudic/terms": "workspace:*",
+    "@fudic/testing": "workspace:*",
+    "@fudic/transport": "workspace:*",
     "@fudic/tsconfig": "workspace:*",
+    "@fudic/vite": "workspace:*",
     "@types/node": "22.20.0",
     "typescript": "5.9.3",
+    "vite": "8.0.16",
     "vitest": "4.1.9"
   }
 }

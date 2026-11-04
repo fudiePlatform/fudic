@@ -264,6 +264,7 @@ interface $LoadContext<P extends string> {
   },
   "dependencies": {
     "@fudic/core": "0.0.1",
+    "@fudic/dom": "0.0.1",
     "@fudic/ssr": "0.0.1",
     "@fudic/transport": "0.0.1"
   },

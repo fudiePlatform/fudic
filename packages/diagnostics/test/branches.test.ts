@@ -190,6 +190,17 @@ const CASES: readonly (readonly [FudDiagnostic, string])[] = [
   [c.FUD1240({ file: 'src/layouts/_layout.fud' }), 'src/layouts/_layout.fud is not a route or a component: only they have a server'],
   [c.FUD1241({ file: 'libs/ui/src/components/ui-card/ui-card.fud' }), 'belongs to a library: its server is not generated yet'],
   [c.FUD1242({ file: 'libs/ui' }), 'libs/ui has no component with a fixture: nothing to show'],
+  [c.FUD1400({ file: '../x' }), '../x is outside the project: only files inside it can be read or written'],
+  [c.FUD1401({ file: F, reason: 'missing' }), 'src/a.fud does not exist'],
+  [c.FUD1401({ file: F, reason: 'binary' }), 'src/a.fud is not a text file'],
+  [c.FUD1402({ file: F, old: 'a', found: 0 }), 'src/a.fud does not contain "a": nothing was written'],
+  [c.FUD1402({ file: F, old: 'a', found: 2 }), 'src/a.fud contains "a" 2 times: nothing was written'],
+  [c.FUD1403({ topic: 'react', topics: ['overview', 'view'] }), 'there is no guide topic "react"; the topics are overview, view, or a code such as FUD0540'],
+  [c.FUD1404({ folder: 'demo' }), 'demo is not a fudic project: there is no fudic.json in it or above it'],
+  [c.FUD1405({ name: 'acme-buton' }), 'nothing in the project is called acme-buton'],
+  [c.FUD1405({ name: 'acme-buton', closest: 'acme-button' }), 'nothing in the project is called acme-buton; did you mean acme-button?'],
+  [c.FUD1406(), 'cloudflared is not installed: there is no public URL, the server goes on locally'],
+  [c.FUD1407({ file: F, phase: 'red' }), 'src/a.fud is not done: its red phase is not finished'],
 ];
 
 describe('every variant says its own sentence', () => {
