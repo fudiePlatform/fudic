@@ -10,7 +10,8 @@
 import { FUD0972, FUD0974, FUD1207, type FudDiagnostic } from '@fudic/diagnostics';
 import { normalizeTerm, type Arg, type BlockKind, type Criterion, type SpecFile } from '@fudic/spec';
 import { fixtureOf } from './access.js';
-import { hostComponent, isSignal, jsonLiteral } from './host.js';
+import { hostComponent } from './host.js';
+import { caseShape, propAttrs, signalLiterals } from './mount-source.js';
 import type { BenchTarget } from './target.js';
 
 export interface PlannedStep {
@@ -152,9 +153,6 @@ function bare(target: BenchTarget): Mount {
   return { href: target.component, tag: target.tag, code: '', attrs: '', content: '' };
 }
 
-/** The key of a fixture entry that is not a prop: the host's children. */
-const CONTENT = '$content';
-
 function pageSource(tag: string, title: string, mount: Mount): string {
   return (
     '<!DOCTYPE html>\n<html>\n  <head>\n' +
@@ -194,10 +192,8 @@ class Planner {
       return { ...base, error, problem: FUD1207({ reason: error }) };
     }
     const specifier = file.replace(/\.ts$/u, '');
-    const { [CONTENT]: children, ...props } = values;
-    const content = typeof children === 'string' ? children : '';
-    const order = Object.keys(props);
-    const signals = order.filter((prop) => isSignal(props[prop]));
+    const shape = caseShape(values);
+    const { order, signals, content } = shape;
 
     if (signals.length === 0) {
       const code =
@@ -205,20 +201,17 @@ class Planner {
           ? ''
           : `    @code {\n      import fixtures from "${specifier}";\n` +
             `      const { ${order.join(', ')} } = ${fixtureOf(fixture)};\n    }\n`;
-      const attrs = order.map((prop) => ` .${prop}=@${prop}`).join('');
+      const attrs = propAttrs(order, (prop) => prop);
       this.page(id, { href: component, tag: this.target.tag, code, attrs, content });
       return base;
     }
 
-    const literals: { prop: string; literal: string }[] = [];
-    for (const prop of signals) {
-      const literal = jsonLiteral((props[prop] as () => unknown)());
-      if (literal === undefined) {
-        const problem = FUD0974({ file, fixture, prop });
-        this.diagnostics.push(problem);
-        return { ...base, error: `the initial value of signal prop "${prop}" is not a JSON literal`, problem };
-      }
-      literals.push({ prop, literal });
+    const seeded = signalLiterals(shape);
+    if ('failed' in seeded) {
+      const prop = seeded.failed;
+      const problem = FUD0974({ file, fixture, prop });
+      this.diagnostics.push(problem);
+      return { ...base, error: `the initial value of signal prop "${prop}" is not a JSON literal`, problem };
     }
     // The component's tag in the host's: one Vite compiles the hosts of every open component.
     const hostTag = `bench-host-${this.target.tag}-${id}`;
@@ -230,7 +223,7 @@ class Planner {
         component,
         componentTag: this.target.tag,
         fixture: { specifier, name: fixture },
-        signals: literals,
+        signals: seeded.literals,
         forwarded: order.filter((prop) => !signals.includes(prop)),
         order,
         content,

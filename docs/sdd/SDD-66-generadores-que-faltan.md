@@ -333,3 +333,9 @@ component its cases: `fudic g spec <name>` writes its fixture».
    §3.1 y el criterio 1 decían `components/<tag>`, que no casaba con el módulo `fudic:<id>`.
 2. **`<pieza>` es relativa al proyecto**, no a `--cwd`: es lo que hace que
    `g api src/components/web-cart --project web` funcione desde la raíz del workspace.
+3. **La enmienda a SDD-61 la decide el host.** El compilador no sabe de paquetes: `ProjectModule`
+   gana `library?: true`, y el índice de `@fudic/typecheck` lo pone cuando un especificador de
+   paquete resuelve (por los `exports`, como un `href`) a un fichero cuya raíz de paquete tiene
+   `fudic.json`. Sin eso, `server-cut` sigue dando `FUD1150` a todo especificador de paquete.
+4. **`FUD0973` y `FUD0974` paran `g showcase`.** Una fixture que lanza o una señal sin literal
+   JSON no se pueden enseñar como son; mejor no escribir nada que escribir un escaparate a medias.

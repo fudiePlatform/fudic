@@ -27,6 +27,7 @@ Add to a project
   generate spec <component>       the .fudspec criteria of a component and their fixture
   generate term <kind> <name>     a step you can use in .fudspec criteria
   generate api <piece>            the server of a route or a component: its .fudapi and handler
+  generate showcase [<library>]   a page per component that shows each case of its fixture
   add <module>                    an optional module (di, forms, http, i18n) or a library of the workspace
 
 Run

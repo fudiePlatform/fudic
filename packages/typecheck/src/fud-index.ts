@@ -240,7 +240,7 @@ export class FudIndex<E extends IndexedFud = IndexedFud> implements LinkIndex, F
    */
   module(fromFile: string, specifier: string): ProjectModule | undefined {
     // Relative, or absolute: from the root of the disk, or from a drive on Windows.
-    if (!specifier.startsWith('.') && !specifier.startsWith('/') && !/^[A-Za-z]:\//u.test(specifier)) return undefined;
+    if (!specifier.startsWith('.') && !specifier.startsWith('/') && !/^[A-Za-z]:\//u.test(specifier)) return this.#libraryModule(fromFile, specifier);
     const base = this.serverPath(fromFile, specifier);
     const root = [...this.#roots].find((r) => base.startsWith(`${r}/`));
     if (root === undefined) return undefined;
@@ -255,6 +255,25 @@ export class FudIndex<E extends IndexedFud = IndexedFud> implements LinkIndex, F
       return module;
     }
     return undefined;
+  }
+
+  /**
+   * A module a package specifier reaches, when that package is a fudic library — its root, the
+   * nearest folder above the file with a `package.json`, has a `fudic.json` (SDD-66 §4.2). The
+   * specifier names the file through the package's `exports`, so it is resolved as an href is.
+   */
+  #libraryModule(fromFile: string, specifier: string): ProjectModule | undefined {
+    const path = this.serverPath(fromFile, specifier);
+    const source = this.fs.readFile(path);
+    if (source === undefined) return undefined;
+    let root = path.slice(0, path.lastIndexOf('/'));
+    while (this.fs.readFile(`${root}/package.json`) === undefined && root.includes('/')) root = root.slice(0, root.lastIndexOf('/'));
+    if (this.fs.readFile(`${root}/${CONFIG_FILE}`) === undefined) return undefined;
+    const cached = this.#modules.get(path);
+    if (cached?.source === source && cached.library === true) return cached;
+    const module: ProjectModule = { path, source, library: true };
+    this.#modules.set(path, module);
+    return module;
   }
 
   /** The folder of pipes of a project (SDD-71 §3.1): its `fudic.json`'s `pipes`, read each time. */

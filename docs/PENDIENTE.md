@@ -36,6 +36,8 @@ Baseline
 Incluir FrontMater para definir props(componentes)
 y estado inicial de la página(load) en fudapi y fudspec
 Integrarlo con params y layout
+propagar @fudic:result=@hecho y @fudic:error en formularios y que puedan
+ser capturados desde la página en el host
 
 
 ## Analisis con sesión 

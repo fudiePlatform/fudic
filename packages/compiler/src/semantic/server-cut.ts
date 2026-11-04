@@ -279,10 +279,14 @@ class ServerCut {
       return;
     }
     // A path, relative or absolute (from the root of the disk, or from a drive on Windows), is
-    // a module of the project; anything else names a package.
+    // a module of the project; anything else names a package, and only a fudic library's module
+    // is data the cut reads (SDD-66 §4.2): one the host does not say is a library's is unportable.
     if (!from.startsWith('.') && !from.startsWith('/') && !/^[A-Za-z]:\//u.test(from)) {
-      this.#unportable(unit, specifier, read.use);
-      return;
+      const module = unit.importer === undefined ? undefined : this.#input.readModule?.(from, unit.importer);
+      if (module?.library !== true) {
+        this.#unportable(unit, specifier, read.use);
+        return;
+      }
     }
     // A namespace import reads no one export: what the view takes of it is not known here.
     if (imported !== undefined) this.#module(unit, from, imported, read.use);
