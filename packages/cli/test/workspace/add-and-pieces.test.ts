@@ -293,10 +293,10 @@ form personForm
     expect(fs.at('shop/apps/web/src/forms/person.test.ts')).toBe(`import { expect, test } from 'vitest';
 import { personForm } from 'fudic:forms/person';
 
-test('asks for the name', () => {
-  expect(personForm.$valid()).toBe(false);
+test('asks for the name', async () => {
+  expect(await personForm.$validate()).toBe(false);
   personForm.name.set('Ada');
-  expect(personForm.$valid()).toBe(true);
+  expect(await personForm.$validate()).toBe(true);
 });
 `);
   });

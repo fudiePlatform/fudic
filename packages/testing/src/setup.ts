@@ -6,7 +6,8 @@
  */
 
 import '@testing-library/jest-dom/vitest';
-import { afterAll, afterEach, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, vi } from 'vitest';
+import { serverRoot } from './api.js';
 import { cleanup, onCleanup } from './cleanup.js';
 import { closeClientGraphs } from './client-graph.js';
 import { BASE_URL, RENEW_WINDOW } from './constants.js';
@@ -33,6 +34,11 @@ onCleanup(() => {
   forgetCookies();
   controlWith(false);
   serveOverrides([]);
+});
+// The implementations of the app — its handlers, and the rules of its forms — before the first test
+// (SDD-66): a test of a form validates without visiting a page, and nothing else would load them.
+beforeAll(async () => {
+  await serverRoot();
 });
 afterEach(cleanup);
 afterAll(closeClientGraphs);

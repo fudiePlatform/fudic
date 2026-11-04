@@ -46,6 +46,14 @@ describe("a fudic library's module is data (SDD-66, amending SDD-61 §3.9)", () 
     expect(codes(CODE, host(undefined))).toEqual(['FUD1150']);
   });
 
+  it('a library named under @fudic/ is still a library, and fudic outside its catalogue is FUD1150', () => {
+    const code = `import cases from '@fudic/example-ui/ui-card.fixture';\nconst primary = cases["primary"];`;
+    const module = { path: FIXTURE, source: DATA, library: true };
+    const reads: Pick<SemanticInput, 'readModule' | 'path'> = { path: FUD, readModule: (specifier) => (specifier.startsWith('@fudic/example-ui/') ? module : undefined) };
+    expect(codes(code, reads)).toEqual([]);
+    expect(codes(`import { nada } from '@fudic/core';\nconst primary = nada;`, reads)).toEqual(['FUD1150']);
+  });
+
   it('without a reader of modules, or without the path of the .fud, a package is FUD1150', () => {
     expect(codes(CODE, {})).toEqual(['FUD1150']);
     const { readModule } = host({ path: FIXTURE, source: DATA, library: true });

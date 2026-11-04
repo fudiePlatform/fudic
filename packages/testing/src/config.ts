@@ -31,8 +31,13 @@ export const SETUP = sibling('setup');
  * graph"; handed to Node, that import is Node's, which refuses `C:/…` and never compiles a `.fud`
  * (BUG-50: a project installed from a registry failed its first test; the workspace never saw
  * it, because a linked package is not under `node_modules`).
+ *
+ * `@fudic/http` and `@fudic/forms` too (SDD-66): the server root and every `fudic:<id>` register
+ * into them, and they load what they were handed through `import()`. Handed to Node, that import
+ * is Node's, which knows no `fudic:` scheme — so an app with a `.fudapi` or a form, installed from
+ * a registry, failed every test that visits a page.
  */
-export const INLINE = /node_modules[\\/](?:\.fudic-test|@fudic[\\/]testing)[\\/]/u;
+export const INLINE = /node_modules[\\/](?:\.fudic-test|@fudic[\\/](?:testing|http|forms))[\\/]/u;
 
 /**
  * What only the harness runs — the plugin and the compiler, which `mount` asks for a graph

@@ -107,7 +107,7 @@ function overlay(io: ReadIo, cwd: string, changes: readonly FileChange[]): ReadI
       const mine = [...written.keys(), ...dirs].filter((path) => path.startsWith(`${at}/`) && !path.slice(at.length + 1).includes('/'));
       return [...new Set([...io.list(dir), ...mine.map((path) => path.slice(at.length + 1))])];
     },
-    realPath: (path) => io.realPath(path),
+    realPath: io.realPath.bind(io),
   };
 }
 
@@ -209,6 +209,6 @@ export async function planShowcase(
     ...app.plan,
     changes: [...app.plan.changes.filter((change) => !ours.has(change.path)), ...planned.changes],
     deletions: [...(app.plan.deletions ?? []), ...planned.deletions],
-    report: [...(app.plan.report ?? []), '', `Showcase of ${source.name} in ${relativeTo(cwd, routesDir) || '.'}/`, ...planned.changes.map((change) => `  ${change.kind === 'create' ? 'create' : 'modify'}  ${change.path}`), ...planned.deletions.map((path) => `  delete  ${path}`)],
+    report: [...(app.plan.report ?? []), '', `Showcase of ${source.name} in ${relativeTo(cwd, routesDir)}/`, ...planned.changes.map((change) => `  ${change.kind === 'create' ? 'create' : 'modify'}  ${change.path}`), ...planned.deletions.map((path) => `  delete  ${path}`)],
   };
 }
