@@ -13,8 +13,50 @@ código, no el test.
 **Cada fase termina con la prueba de Pedro en Claude Web** (SDD §6.1), sobre un proyecto creado a
 mano fuera del repo y con el MCP instalado desde el registro local (`scripts/local-registry.mjs`),
 como lo instalaría un usuario. La fase no se cierra sin esa prueba. Lo que falle es bug de la fase.
-Hasta la tarea 26, `fudic new` aún no trae el MCP: en las pruebas se añade con
-`pnpm add -D @fudic/mcp`.
+Hasta la tarea 26, `fudic new` aún no trae el MCP: en las pruebas se usa el MCP instalado en global
+(SDD §8.2.7).
+
+## Dónde estamos (2026-11-04, para la sesión siguiente)
+
+**El orden de trabajo lo marcó Pedro:** en cada fase, primero **solo la implementación**; Pedro la
+prueba en Claude Web, se afina con lo que vea, y **después** se escriben los tests (seguramente otra
+sesión). No se cierra una fase sin su prueba en Claude Web.
+
+- **Fase 1: implementada** (commit `b7ef49b5`), tareas 1–4. **Pendiente:** la prueba de Pedro en
+  Claude Web y la tarea 5 (tests).
+- La guía la redactaron cuatro agentes desde el código, los README y los ejemplos que compilan.
+  **Cada bloque se compiló** en una copia limpia de una app de `fudic new` (`vite build`, con los
+  paquetes que añadirían `fudic_add`/`fudic_generate`): los buenos de cada tema juntos, sin
+  diagnósticos; cada `broken=FUDnnnn` solo, con su código. Los `.test.ts` de `testing` pasan con
+  vitest (17 tests). Los `.fudspec` no se ejecutaron en el navegador. Es lo que la tarea 5
+  convierte en test (criterio 8); el script era de la sesión y no está en el repo.
+- Quedan dos avisos ciertos en `html-css` (`FUD0742`, `FUD0852`): sus componentes no los usa
+  ninguna página del ejemplo. No son errores.
+
+**Cómo se prueba en esta máquina** (lo dejó montado la sesión del 2026-11-04):
+
+1. En el worktree, `pnpm registry`: construye, publica `@fudic/*` en Verdaccio
+   (`http://localhost:4873`) y se queda abierto. Tiene que seguir abierto mientras se prueba.
+2. CLI y MCP en global desde ese registro:
+   `npm install -g @fudic/cli@0.0.1 @fudic/mcp@0.0.1 --registry http://localhost:4873`.
+   **Tras cada cambio** del MCP: volver a `pnpm registry` y a esta instalación (Verdaccio borra y
+   republica `0.0.1` en cada arranque).
+3. `cloudflared` instalado con `winget install Cloudflare.cloudflared` (en
+   `C:\Program Files (x86)\cloudflared`); una terminal abierta antes de instalarlo no lo ve.
+4. Pedro, en una terminal nueva y en una carpeta fuera del repo: `fudic new demo`, `cd demo`,
+   `fudic-mcp --http --tunnel`, y pega la URL pública en Claude → Settings → Connectors → Add
+   custom connector. Una conversación nueva por prueba. La URL del túnel cambia en cada arranque.
+
+**Lo que salió en la fase 1 y queda por hacer** (no es de esta spec salvo lo marcado):
+
+- La instantánea `new-compat` de la CLI cambia por `@fudic/dom` en las plantillas (SDD §8.2.3):
+  la actualiza la sesión de tests.
+- `packages/diagnostics/test/branches.test.ts` no tiene aún los mensajes de `FUD1400`–`FUD1407`
+  (tarea 5).
+- READMEs desactualizados que la guía no siguió: `packages/core/README.md` dice que `task.run()`
+  resuelve con `undefined` (devuelve `{ ok, status, value | error }`); `packages/http/README.md`
+  dice que toda mutación repinta la página (solo si su ruta está en `invalidates`);
+  `packages/vite/README.md` enseña `@server` con `load` en el `@code` (hoy `FUD1110`).
 
 ---
 

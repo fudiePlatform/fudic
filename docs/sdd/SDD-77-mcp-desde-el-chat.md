@@ -642,3 +642,10 @@ framework.
    paquete en el proyecto da `FUD1080`. La guía `fudapi` lo dice y manda a `fudic_add`.
 6. **`related` de un código** son los temas de la guía que lo nombran; el de un tema, los temas que
    nombra entre comillas invertidas.
+7. **El MCP también se instala en global** (Pedro, 2026-11-04): `npm i -g @fudic/mcp`, y en
+   cualquier proyecto basta `fudic-mcp --http --tunnel`, sin tocar su `package.json`. Es como se
+   prueba. Lo de §3.7 (`@fudic/mcp` en `devDependencies` y `.mcp.json`) se mantiene para quien lo
+   quiera fijado al proyecto. **Regla para las fases que compilan (2 en adelante):** el MCP carga
+   el compilador, el checker, la CLI y el banco **desde el `node_modules` del proyecto** cuando el
+   proyecto los tiene, y solo si no, los suyos. Un MCP global con otra versión de fudic diría
+   cosas distintas que el build del proyecto, y eso rompe «un solo origen» (§5).
