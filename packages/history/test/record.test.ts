@@ -5,12 +5,13 @@
 
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
+import { toPosix } from '@fudic/typecheck';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { git } from '../src/io.js';
 import { historyOf, nodeIo, parseHistory, record, type HistoryEvent } from '../src/index.js';
 import { instantOf } from '../src/record.js';
-import { memoryIo, ROOT } from './memory-io.js';
+import { memoryIo } from './memory-io.js';
 
 const UNIT = 'src/components/acme-button/acme-button.fud';
 const LOG = 'src/components/acme-button/acme-button.fudlog';
@@ -86,8 +87,13 @@ describe('record', () => {
     expect(io.text('src/routes/index.fudlog')).toBe('2026-10-22T10:00Z ------- done\r\n2026-10-22T10:02Z ------- done\n');
   });
 
-  it('resolves the piece against the root', () => {
-    expect(resolve(ROOT, historyOf(UNIT))).toBe(join(ROOT, 'src', 'components', 'acme-button', 'acme-button.fudlog'));
+  it('takes an absolute piece as it is, and a relative one against the root, with either slash', async () => {
+    const io = memoryIo();
+    await record(`/project/${UNIT}`, { kind: 'done' }, io);
+    await record(`./${UNIT}`, { kind: 'done' }, io);
+    await record(UNIT.replace(/\//gu, '\\'), { kind: 'done' }, io);
+    expect(io.text(LOG)!.split('\n')).toHaveLength(4);
+    expect([...io.files.keys()]).toEqual([`/project/${LOG}`]);
   });
 });
 
@@ -107,12 +113,12 @@ describe('on disk (nodeIo)', () => {
   it('reads a missing file as undefined, appends and creates, and tells the time', async () => {
     const root = temp();
     const io = nodeIo(root);
-    expect(io.root).toBe(root);
+    expect(io.root).toBe(toPosix(root));
     const file = join(root, 'a.fudlog');
-    expect(await io.read(file)).toBeUndefined();
+    expect(io.fs.readFile(file)).toBeUndefined();
     await io.append(file, 'one\n');
     await io.append(file, 'two\n');
-    expect(await io.read(file)).toBe('one\ntwo\n');
+    expect(io.fs.readFile(file)).toBe('one\ntwo\n');
     const before = Date.now();
     expect(io.now().getTime()).toBeGreaterThanOrEqual(before);
   });
@@ -133,6 +139,6 @@ describe('on disk (nodeIo)', () => {
     writeFileSync(join(root, 'a.fud'), '');
     await record('a.fud', { kind: 'done' });
     expect(readFileSync(join(root, 'a.fudlog'), 'utf8')).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z ------- done\n$/u);
-    expect(nodeIo().root).toBe(root);
+    expect(nodeIo().root).toBe(toPosix(root));
   });
 });
