@@ -1092,6 +1092,10 @@ configuración que apunta a un servidor que no existe rompería la regla de BUG-
 El 1, el 2 y el 5 pueden ir a la vez. El MCP en una sola SDD sería del tamaño de SDD-60; partido
 en dos, la primera mitad ya sirve sola.
 
+*2026-11-04:* el 6 y el 7 son [SDD-77](../SDD-77-mcp-desde-el-chat.md), salvo ver la pieza
+(`render`, `call`, `preview`), que pasa a SDD-78. `test` y `spec_run` entran en la 77: sin ellos
+`status` mandaría a una herramienta que no existe.
+
 **En conjunto: como hacer tres veces SDD-60.**
 
 ### 11.3. Aparte, sin prisa
@@ -1111,6 +1115,24 @@ Ninguna bloquea el MCP en Claude Code:
 Servidores con copias de trabajo, git remoto, el builder, las imágenes por lenguaje, las previews
 por rama y la plataforma (aislamiento, secretos, cuotas, OAuth). Lleva su propia tanda de SDD y
 no toca el framework.
+
+### 11.4 bis. El chat desde la máquina de Pedro (Pedro, 2026-11-04)
+
+**Decidido:** el objetivo es vender fudic (gratuito) desde un chat. La prueba: un proyecto creado a
+mano con `fudic new`, sin el contexto de este repo, y un chat (claude.ai) que se entera de qué es
+fudic y crea cosas en él. Pedro abre su máquina al mundo para estas pruebas, a sabiendas.
+
+No es la plataforma de §11.4: es el mismo MCP con un segundo transporte.
+
+- **Dos transportes, un núcleo.** stdio para Claude Code; HTTP (Streamable HTTP de MCP) para el
+  chat, que llega desde la nube del proveedor y necesita una URL pública: un túnel a la máquina.
+- **El workspace es una carpeta del disco**, la única que el MCP toca. Con HTTP se encienden las
+  herramientas que el chat no tiene (`read`, `write`, la lista de ficheros); git, el builder y las
+  ramas siguen fuera.
+- **Lo mínimo de seguridad, aunque sea una prueba:** un secreto largo en la URL, nada fuera de la
+  carpeta y ningún comando que no salga de un plan de la CLI.
+- **La preview por el mismo túnel**: el chat no abre `localhost`.
+- La SDD-77 lo incluye; la prueba de cada SDD es ese chat, no Claude Code.
 
 ### 11.5. Lo que se toca del compilador
 
