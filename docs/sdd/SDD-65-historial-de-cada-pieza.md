@@ -352,3 +352,17 @@ del proyecto, con `/`), escribiendo por cada uno su ruta, un salto, su contenido
    la pieza; incluirlas haría caducar todos los verdes al actualizar cualquier paquete.
 6. **`unitState` da hechos, no fases.** Las fases necesitan saber cosas que no están en el
    historial (el `.fudapi`, las funciones conectadas); mezclarlo aquí ataría este paquete a la API.
+
+### 8.2. Tomadas al implementar
+
+1. **`FUD1220` es un diagnóstico de fuente**: lleva el `span` de la línea siempre y el fichero solo
+   si se conoce, porque `parseHistory` recibe `file` opcional.
+2. **`HistoryIo`** es todo lo que el paquete toca fuera: `root` (la raíz del proyecto, contra la que
+   van la pieza y las rutas del hash), `read`, `append`, `now` y `head`. `nodeIo(root)` es el de
+   disco; los tests dan uno propio para fijar el reloj y el commit.
+3. **Columnas.** `formatLine` rellena el suceso hasta doce caracteres y separa los grupos de campos
+   con dos espacios, como el ejemplo de §1.1; al leer, cualquier número de espacios vale.
+4. **`<quién>` sin espacios** lo garantiza `formatLine` (`person`), no quien llama: el nombre de
+   git `Pedro Hurtado` se escribe `Pedro-Hurtado`.
+5. **Un `.fudlog` sin salto final** (cortado a mano o por un merge) recibe un salto antes de la
+   línea nueva: sigue siendo añadir, y la línea nueva no se pega a la anterior.
