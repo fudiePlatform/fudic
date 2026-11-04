@@ -77,10 +77,10 @@ export type ParsedCommand =
   | { readonly kind: 'help'; readonly topic: Topic | null }
   | ({ readonly kind: 'error' } & UsageError);
 
-type GenerateType = 'component' | 'page' | 'layout' | 'app' | 'lib' | 'service' | 'form' | 'pipe' | 'style' | 'snippet' | 'spec' | 'term' | 'api' | 'showcase';
+export type GenerateType = 'component' | 'page' | 'layout' | 'app' | 'lib' | 'service' | 'form' | 'pipe' | 'style' | 'snippet' | 'spec' | 'term' | 'api' | 'showcase';
 
 /** Every spelling of a type `fudic generate` takes, aliases included. */
-const GENERATE_TYPES: Readonly<Record<string, GenerateType>> = {
+export const GENERATE_TYPES: Readonly<Record<string, GenerateType>> = {
   component: 'component',
   c: 'component',
   page: 'page',
