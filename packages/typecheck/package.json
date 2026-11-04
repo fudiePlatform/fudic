@@ -28,7 +28,8 @@
     "*": {
       "problems": ["./dist/problems.d.ts"],
       "contract": ["./dist/contract.d.ts"],
-      "tokens": ["./dist/tokens.d.ts"]
+      "tokens": ["./dist/tokens.d.ts"],
+      "api": ["./dist/api-project.d.ts"]
     }
   },
   "exports": {
@@ -47,6 +48,10 @@
     "./tokens": {
       "types": "./dist/tokens.d.ts",
       "import": "./dist/tokens.js"
+    },
+    "./api": {
+      "types": "./dist/api-project.d.ts",
+      "import": "./dist/api-project.js"
     }
   },
   "files": [

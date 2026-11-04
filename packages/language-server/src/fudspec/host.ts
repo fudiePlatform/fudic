@@ -13,14 +13,15 @@
 
 import {
   TERMS_DIR,
-  createTermCatalog,
-  readFixtures,
+  TERMS_PACKAGE,
+  fixturePathOf,
+  installedTerms as installedTermsOf,
+  specContextOf,
   type ComponentInfo,
   type Fixtures,
   type SpecContext,
   type SpecFs,
   type TermCatalog,
-  type TermRoot,
 } from '@fudic/spec';
 import { CONFIG_FILE } from '@fudic/config';
 import type { WorkspaceIndex } from '../workspace-index.js';
@@ -45,29 +46,18 @@ function dirname(path: string): string {
   return path.slice(0, path.lastIndexOf('/'));
 }
 
-/** The package whose `terms/` is the framework layer. */
-export const TERMS_PACKAGE = '@fudic/terms';
+export { TERMS_PACKAGE };
 
-/**
- * The `terms/` of the `@fudic/terms` in the `node_modules` of a folder or of one above it: what
- * that project installed. In a workspace each app and each library has its own, or none.
- */
+/** The `@fudic/terms` a folder's project installed, as a lookup by folder. */
 export function installedTerms(fs: SpecFs): (folder: string) => string | undefined {
-  return (folder) => {
-    // Up to the root of the disk, included: `C:` on Windows, `` on POSIX.
-    for (let dir = folder; ; dir = dirname(dir)) {
-      const pkg = `${dir}/node_modules/${TERMS_PACKAGE}`;
-      if (fs.readDirectory(pkg).includes('terms')) return `${pkg}/terms`;
-      if (!dir.includes('/')) return undefined;
-    }
-  };
+  return (folder) => installedTermsOf(fs, folder);
 }
 
 export class SpecHost {
   readonly #deps: SpecHostDeps;
   readonly #frameworkTerms: (folder: string) => string | undefined;
-  /** One catalog per project folder, until a term changes. */
-  readonly #catalogs = new Map<string, TermCatalog>();
+  /** One context per project folder, until a term changes: its catalog is a snapshot. */
+  readonly #contexts = new Map<string, SpecContext>();
 
   constructor(deps: SpecHostDeps) {
     this.#deps = deps;
@@ -97,19 +87,7 @@ export class SpecHost {
 
   /** The term catalog a `.fudspec` at `path` resolves against. */
   terms(path: string): TermCatalog {
-    const folder = this.#folderOf(path);
-    const known = this.#catalogs.get(folder);
-    if (known !== undefined) return known;
-
-    const roots: TermRoot[] = [];
-    const own = this.workspaceTerms(path);
-    if (own !== undefined) roots.push({ layer: 'workspace', path: own });
-    const framework = folder === '' ? undefined : this.#frameworkTerms(folder);
-    if (framework !== undefined) roots.push({ layer: 'framework', path: framework });
-
-    const catalog = createTermCatalog(roots, this.#deps.fs);
-    this.#catalogs.set(folder, catalog);
-    return catalog;
+    return this.context(path).terms;
   }
 
   /**
@@ -134,14 +112,12 @@ export class SpecHost {
   /** The fixture file of a component: `<tag>.fixture.ts`, next to its `.fud`. */
   fixturePath(tag: string): string | undefined {
     const component = this.component(tag);
-    return component === undefined ? undefined : `${dirname(component.path)}/${tag}.fixture.ts`;
+    return component === undefined ? undefined : fixturePathOf(component);
   }
 
+  /** The fixtures of a component; the same for every project, since they sit next to it. */
   fixtures(tag: string): Fixtures | undefined {
-    const path = this.fixturePath(tag);
-    if (path === undefined) return undefined;
-    const source = this.#deps.fs.readFile(path);
-    return source === undefined ? undefined : readFixtures(source, path);
+    return this.context('').fixtures(tag);
   }
 
   /** The text of a file the diagnostics or a definition point into. */
@@ -151,11 +127,16 @@ export class SpecHost {
 
   /** Everything `validateSpec` needs for the `.fudspec` at `path`. */
   context(path: string): SpecContext {
-    return {
-      terms: this.terms(path),
+    const folder = path === '' ? '' : this.#folderOf(path);
+    const known = this.#contexts.get(folder);
+    if (known !== undefined) return known;
+    const context = specContextOf(folder, {
+      fs: this.#deps.fs,
       component: (tag) => this.component(tag),
-      fixtures: (tag) => this.fixtures(tag),
-    };
+      frameworkTerms: folder === '' ? null : (this.#frameworkTerms(folder) ?? null),
+    });
+    this.#contexts.set(folder, context);
+    return context;
   }
 
   /**
@@ -174,6 +155,6 @@ export class SpecHost {
 
   /** Forget every catalog: a term was added, changed or removed. */
   invalidate(): void {
-    this.#catalogs.clear();
+    this.#contexts.clear();
   }
 }

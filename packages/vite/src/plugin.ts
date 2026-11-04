@@ -1442,13 +1442,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // A new memory per build: a watch rebuild must not answer with the previous graphs.
       if (!isDev) io = buildIo(nodeIo((path) => api.linked(path)));
       // The contracts as this build reads them, and their types on disk before the background
-      // typecheck reads `.fudic/api` (SDD-60 §3.11). What a `.fudapi` of the app says that is
-      // wrong stops the build, as a `.fud` that does not parse does.
+      // typecheck reads `.fudic/api` (SDD-60 §3.11). What a `.fudapi` or a `.fudspec` of the app
+      // says that is wrong is the typecheck's to report, once, with the rest: it stops the build
+      // as a `.fud` that does not parse does.
       api = new ApiProject(root);
       api.writeDeclarations();
-      if (!isDev) {
-        await report(this, api.diagnostics().flatMap(({ file, diagnostics }) => diagnostics.map((d) => ({ ...d, file }))));
-      }
       // What the editor marks, before anything is compiled (SDD-35 §4.4). The whole project,
       // and not only what a route reaches: a component nobody links yet is red in the editor
       // too. Every problem is printed, and the build fails ONCE with the count — the author

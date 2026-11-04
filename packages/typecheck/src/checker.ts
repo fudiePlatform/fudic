@@ -43,9 +43,11 @@ import {
   type ProjectProblem,
 } from './report.js';
 import type { FudicVirtualCode } from './virtual-code.js';
-import type { PropField } from '@fudic/spec';
+import type { ComponentInfo, PropField } from '@fudic/spec';
 import { propShapes } from './prop-shapes.js';
 import { portableTypeDiagnostics } from './portable-types.js';
+import { apiDiagnostics, readApiProject } from './api-project.js';
+import { specDiagnostics } from './spec-problems.js';
 
 /** What a project check is made over. */
 export interface CheckOptions {
@@ -76,6 +78,8 @@ interface Mounted {
   readonly parses: Map<string, { readonly source: string; readonly parsed: ParsedSource }>;
   /** The handlers beside the `.fudapi` and their generated types (SDD-60 §4.6). */
   implementations: Implementations;
+  /** The component behind each `.fud` a `.fudspec` names, kept while its text is the same. */
+  readonly components: Map<string, { readonly source: string; readonly info: ComponentInfo | undefined }>;
   bump(): void;
 }
 
@@ -155,6 +159,7 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
       commandLine,
       snapshots,
       parses,
+      components: new Map(),
       get implementations() {
         return implementations;
       },
@@ -238,8 +243,17 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
       }
     }
 
+    // What the parser and the validator say of each `.fudapi` of the app and each `.fudspec`: the
+    // build reports them here, once, with everything else.
+    const api = readApiProject(root);
+    const specs = specDiagnostics(root, fs, state.index, state.components);
+    for (const { file, diagnostics } of [...apiDiagnostics(root, api), ...specs.files]) {
+      problems.push(...fudicProblems(file, diagnostics, elsewhere));
+    }
+    const read = [...api.sources.filter((s) => s.origin === 'app').map((s) => s.path), ...specs.read];
+
     const project: ProjectProblem[] = state.commandLine.configFile === undefined ? [FUD0870()] : [];
-    return { problems: problems.sort(compareProblems), project, inputs: [...inputs.values()] };
+    return { problems: problems.sort(compareProblems), project, inputs: [...new Set([...inputs.values(), ...read])] };
   };
 
   return {

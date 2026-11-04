@@ -128,8 +128,10 @@ export function startLiveCheck(server: ViteDevServer, root: string, checker: Che
     const posix = toPosix(path);
     const relevant =
       inputs.has(keyOf(posix)) ||
-      // A `.fud` that appears or goes away changes the program even if nobody read it yet.
-      (posix.endsWith('.fud') && event !== 'change') ||
+      // A `.fud` that appears or goes away changes the program even if nobody read it yet; so
+      // does a `.fudapi` or a `.fudspec`, and a term module the criteria may now resolve.
+      (/\.(fud|fudapi|fudspec)$/u.test(posix) && event !== 'change') ||
+      /(^|\/)fudic\/terms\//u.test(posix) ||
       /(^|\/)tsconfig(\.[^/]*)?\.json$/u.test(posix);
     if (!relevant) return;
     checker.invalidate(posix);

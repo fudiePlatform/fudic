@@ -2,8 +2,9 @@
  * The `.fudapi` of a project, as the plugin serves them (SDD-60 §3.10, §3.11).
  *
  * One index for the whole project: every `.fudapi` of the app under `src/`, and the `fudapi/`
- * folder of each DIRECT dependency of its `package.json` — one existence check per dependency,
- * `node_modules` is never walked. From it come the three things the plugin hands out:
+ * folder of each DIRECT dependency of its `package.json` — read by `@fudic/typecheck/api`, the
+ * same reader the project check reports from. From it come the three things the plugin hands
+ * out:
  *
  *   - the virtual module `fudic:<id>`, in its server or its browser variant;
  *   - `.fudic/api/<id>.d.ts`, written only when its text changes;
@@ -14,30 +15,34 @@
  * `.fudapi` or the `package.json` changes on disk.
  */
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { existsSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   API_EXTENSION,
-  createApiIndex,
   dataShape,
-  emitDeclarations,
   framesShape,
   emitModule,
-  layoutPropsType,
-  parseApi,
-  validateApi,
   type ApiContext,
-  type ApiIndex,
   type ApiLocale,
   type ApiSource,
   type Decl,
   type LoadDecl,
   type Side,
 } from '@fudic/api';
+import {
+  apiContextOf,
+  apiDiagnostics,
+  readApiProject,
+  writeApiDeclarations,
+  type ApiFileDiagnostics,
+  type ApiLibrary,
+  type ApiProjectFiles,
+} from '@fudic/typecheck/api';
 import type { PageApi } from './analyze.js';
 import type { LinkedApi } from '@fudic/compiler';
-import { API_DIR, API_TYPES_DIR, ERROR_FILE, FN_PREFIX, PIPES_DIR, ROUTES_DIR, SRC_DIR } from '@fudic/conventions';
-import type { SourceDiagnostic } from '@fudic/diagnostics';
+import { FN_PREFIX } from '@fudic/conventions';
+
+export type { ApiLibrary };
 
 /** The scheme of a generated module: `fudic:routes/usuarios`. */
 export const API_SCHEME = 'fudic:';
@@ -53,31 +58,12 @@ const UNIMPLEMENTED: ReadonlySet<string> = new Set(['pipe', 'type', 'enum']);
 export const nothingToImplement = (source: ApiSource): boolean =>
   source.file.declarations.length > 0 && source.file.declarations.every((d) => UNIMPLEMENTED.has(d.kind));
 
-/** A dependency that publishes `.fudapi`, and where its compiled implementations are. */
-export interface ApiLibrary {
-  readonly name: string;
-  /** Absolute folder of the package. */
-  readonly dir: string;
-  /** Its folders, relative to the package: `server` and `browser` unless its `fudic.json` moves them. */
-  readonly server: string;
-  readonly browser: string;
-}
-
-interface State {
-  readonly sources: readonly ApiSource[];
-  readonly index: ApiIndex;
-  readonly byId: ReadonlyMap<string, ApiSource>;
-  readonly byPath: ReadonlyMap<string, ApiSource>;
-  readonly parse: ReadonlyMap<ApiSource, readonly SourceDiagnostic[]>;
-  readonly libraries: readonly ApiLibrary[];
-}
-
 const PARAM = /^\[([A-Za-z_][A-Za-z0-9_]*)\]$/u;
 const posix = (path: string): string => path.replace(/\\/gu, '/');
 
 export class ApiProject {
   readonly #root: string;
-  #state: State | undefined;
+  #state: ApiProjectFiles | undefined;
 
   constructor(root: string) {
     this.#root = posix(root);
@@ -127,12 +113,8 @@ export class ApiProject {
   }
 
   /** What the parser and the validator say about every file of the app, by file. */
-  diagnostics(): readonly { readonly file: string; readonly diagnostics: readonly SourceDiagnostic[] }[] {
-    const state = this.#read();
-    return state.sources
-      .filter((s) => s.origin === 'app')
-      .map((s) => ({ file: s.path, diagnostics: [...state.parse.get(s)!, ...validateApi(s, state.index, this.context(s))] }))
-      .filter((f) => f.diagnostics.length > 0);
+  diagnostics(): readonly ApiFileDiagnostics[] {
+    return apiDiagnostics(this.#root, this.#read());
   }
 
   /** What the compiler is told about the `.fudapi` at `path` (SDD-60 §3.14). */
@@ -196,15 +178,7 @@ export class ApiProject {
 
   /** Whether the file is the sibling of a route, its parameters and its URL pattern. */
   context(source: ApiSource): ApiContext {
-    const routes = `${this.#root}/${ROUTES_DIR}/`;
-    const page = `${source.path.slice(0, -API_EXTENSION.length)}.fud`;
-    if (source.origin !== 'app' || !source.path.startsWith(routes) || !existsSync(page)) return {};
-    const segments = page.slice(routes.length, -'.fud'.length).split('/');
-    const params = segments.map((s) => PARAM.exec(s)?.[1]).filter((p): p is string => p !== undefined);
-    const error = `${segments[segments.length - 1]}.fud` === ERROR_FILE;
-    const pattern = `/${segments.filter((s, i) => !(s === 'index' && i === segments.length - 1)).map((s) => s.replace(PARAM, ':$1')).join('/')}`;
-    const layoutProps = layoutPropsType(page, readFileSync(page, 'utf8'), `${this.#root}/${API_TYPES_DIR}/${source.id}.d.ts`);
-    return { route: { params, pattern, ...(error ? { error: true } : {}), ...(layoutProps !== undefined ? { layoutProps } : {}) } };
+    return apiContextOf(this.#root, source);
   }
 
   /**
@@ -213,128 +187,13 @@ export class ApiProject {
    * Answers the paths written.
    */
   writeDeclarations(): readonly string[] {
-    const state = this.#read();
-    const written: string[] = [];
-    for (const source of state.sources) {
-      const target = `${this.#root}/${API_TYPES_DIR}/${source.id}.d.ts`;
-      const text = emitDeclarations(source, state.index, this.context(source));
-      if (existsSync(target) && readFileSync(target, 'utf8') === text) continue;
-      mkdirSync(dirname(target), { recursive: true });
-      writeFileSync(target, text);
-      written.push(target);
-    }
-    return written;
+    return writeApiDeclarations(this.#root, this.#read());
   }
 
-  #read(): State {
-    if (this.#state !== undefined) return this.#state;
-    // A library's own pipes carry its package name in their `<id>`, as its app sees them.
-    const own = ownPipes(this.#root);
-    const found: { id: string; path: string; origin: ApiSource['origin'] }[] = walk(`${this.#root}/${SRC_DIR}`).map((path) => {
-      const id = path.slice(this.#root.length + SRC_DIR.length + 2, -API_EXTENSION.length);
-      return { id: own !== undefined && path.startsWith(own.folder) ? `${own.name}/${id}` : id, path, origin: 'app' };
-    });
-    const libraries: ApiLibrary[] = [];
-    for (const name of dependencies(this.#root)) {
-      const dir = `${this.#root}/node_modules/${name}`;
-      const folders = libraryFolders(dir);
-      // A library's pipes (SDD-71 §4.5): what a view of the app imports by the package.
-      for (const path of walk(`${dir}/${folders.pipes}`)) {
-        const id = path.slice(dir.length + 1, -API_EXTENSION.length).replace(new RegExp(`^${SRC_DIR}/`, 'u'), '');
-        found.push({ id: `${name}/${id}`, path, origin: { package: name } });
-      }
-      const api = `${dir}/${folders.api}`;
-      if (!existsSync(api)) continue;
-      libraries.push({ name, dir, server: folders.server, browser: folders.browser });
-      for (const path of walk(api)) {
-        found.push({ id: `${name}/${path.slice(api.length + 1, -API_EXTENSION.length)}`, path, origin: { package: name } });
-      }
-    }
-    const parse = new Map<ApiSource, readonly SourceDiagnostic[]>();
-    const sources = found.map((f) => {
-      const result = parseApi(readFileSync(f.path, 'utf8'));
-      const source: ApiSource = { ...f, file: result.value };
-      parse.set(source, result.diagnostics);
-      return source;
-    });
-    this.#state = {
-      sources,
-      index: createApiIndex(sources),
-      byId: new Map(sources.map((s) => [s.id, s])),
-      byPath: new Map(sources.map((s) => [s.path, s])),
-      parse,
-      libraries,
-    };
+  #read(): ApiProjectFiles {
+    this.#state ??= readApiProject(this.#root);
     return this.#state;
   }
-}
-
-/** The direct dependencies of the app, by its `package.json`. */
-function dependencies(root: string): readonly string[] {
-  try {
-    const pkg = JSON.parse(readFileSync(`${root}/package.json`, 'utf8')) as { dependencies?: object; devDependencies?: object };
-    return [...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.devDependencies ?? {})];
-  } catch {
-    return []; // no `package.json`, or one that does not parse: no dependencies to read
-  }
-}
-
-/**
- * Where a library keeps its `.fudapi` and its compiled implementations (SDD-60 §3.10):
- * `fudapi/`, `server/` and `browser/` at its root unless its `fudic.json` says otherwise.
- * *Decided while implementing:* the defaults of a library are its root folders, not the
- * `src/server` of an app, because what it publishes is compiled.
- */
-function libraryFolders(dir: string): {
-  readonly api: string;
-  readonly server: string;
-  readonly browser: string;
-  readonly pipes: string;
-} {
-  const config = configOf(dir);
-  const text = (key: string, fallback: string): string => (typeof config[key] === 'string' ? (config[key] as string) : fallback);
-  return { api: text('api', API_DIR), server: text('server', 'server'), browser: text('browser', 'browser'), pipes: text('pipes', PIPES_DIR) };
-}
-
-/** A project's `fudic.json` as written, `{}` when it has none or it does not parse. */
-function configOf(dir: string): Record<string, unknown> {
-  try {
-    return JSON.parse(readFileSync(`${dir}/fudic.json`, 'utf8')) as Record<string, unknown>;
-  } catch {
-    return {}; // without a readable `fudic.json`, the defaults
-  }
-}
-
-/**
- * In a library, its folder of pipes and its package name (SDD-71 §4.5): its pipes are
- * `fudic:<package>/pipes/<name>` in its own project too, so the implementation it publishes
- * imports the same `<id>` its apps know it by. `undefined` in an app.
- */
-function ownPipes(root: string): { readonly folder: string; readonly name: string } | undefined {
-  const config = configOf(root);
-  if (config['kind'] !== 'lib') return undefined;
-  let name: unknown;
-  try {
-    name = (JSON.parse(readFileSync(`${root}/package.json`, 'utf8')) as { name?: unknown }).name;
-  } catch {
-    return undefined; // a library with no readable `package.json` has no name to publish under
-  }
-  if (typeof name !== 'string') return undefined;
-  const pipes = typeof config['pipes'] === 'string' ? config['pipes'] : PIPES_DIR;
-  return { folder: `${root}/${pipes}/`, name };
-}
-
-/** Every `.fudapi` under a folder, `node_modules` and dot folders left out. */
-function walk(folder: string): string[] {
-  if (!existsSync(folder)) return [];
-  const out: string[] = [];
-  for (const entry of readdirSync(folder, { withFileTypes: true })) {
-    if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
-    const path = `${folder}/${entry.name}`;
-    if (entry.isDirectory()) out.push(...walk(path));
-    else if (entry.name.endsWith(API_EXTENSION)) out.push(path);
-  }
-  return out.sort();
 }
 
 /** The compiled files of a library folder, `.js` only, for the root to load one by one. */

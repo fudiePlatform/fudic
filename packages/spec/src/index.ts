@@ -1,11 +1,6 @@
-/** The extension of a criteria file, sibling of the component it specifies. */
-export const SPEC_EXTENSION = '.fudspec';
-
-/** Where a project keeps its own term modules, next to its `fudic.json`. */
-export const TERMS_DIR = 'fudic/terms';
-
-/** The extension of a component's fixture file, `<tag>.fixture.ts`. */
-export const FIXTURE_EXTENSION = '.fixture.ts';
+export { FIXTURE_EXTENSION, SPEC_EXTENSION, TERMS_DIR } from './names.js';
+export type { SpecIo } from './context.js';
+export { TERMS_PACKAGE, fixturePathOf, installedTerms, specContextOf, termRootsOf } from './context.js';
 
 export type {
   Arg,
