@@ -62,6 +62,12 @@ export interface ProjectModule {
    * default` is a pipe the view may import. The host knows the folder; the compiler does not.
    */
   readonly pipe?: boolean;
+  /**
+   * Whether it was reached by a package specifier and lives in a fudic library: a package with a
+   * `fudic.json` (SDD-66 §4.2, amending SDD-61 §3.9). Its `export default` is data under the same
+   * rules as a module of the project; any other package is not the project's, and is `FUD1150`.
+   */
+  readonly library?: boolean;
 }
 
 /**
