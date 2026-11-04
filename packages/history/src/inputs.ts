@@ -54,7 +54,7 @@ export class InputGraph {
     for (const target of targets) this.#visit(this.io.fs.realPath(target), seen);
   }
 
-  /** What a `.fud` links (components, snippets, its layout, its `.fudapi`) and what its `@code` imports. */
+  /** A `.fud`'s own `.fudapi`, what it links (components, snippets, its layout, a `.fudapi`) and what its `@code` imports. */
   #fudTargets(path: string, source: string): readonly string[] {
     const { document } = parseFud(source);
     const links = linksOf(document).flatMap((link) => {
@@ -67,7 +67,8 @@ export class InputGraph {
     const js = batchDocumentJs(source, document);
     // A chunk of `@code` is parsed as module statements: its AST is always their list.
     const imports = js.code.flatMap((id) => specifiersOf(js.result.ast(id) as readonly OxcNode[]));
-    return [...links, ...imports.flatMap((specifier) => this.#resolveImport(path, specifier))];
+    // Its own `.fudapi` is part of it, linked or not: a linked component is one with its contract.
+    return [stemOf(path) + API_EXTENSION, ...links, ...imports.flatMap((specifier) => this.#resolveImport(path, specifier))];
   }
 
   /** What a TypeScript or JavaScript module imports. */
