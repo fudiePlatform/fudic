@@ -230,6 +230,33 @@ describe('criterion 10 and the refusals', () => {
     expect(out).toContain('FUD0783');
   });
 
+  it('without a library, outside any project, is the error of a missing project', async () => {
+    const fs = new MemoryFs({}, W);
+    const { code, out } = await cli(fs, kit(CASES), 'g', 'showcase', '--cwd', W);
+    expect(code).toBe(1);
+    expect(out).toMatch(/FUD\d{4}/u);
+    expect(fs.paths()).toEqual([]);
+  });
+
+  it('a library named in an app that is not in a workspace is FUD0455: there is no library to find', async () => {
+    const fs = new MemoryFs({}, W);
+    expect((await cli(fs, kit({}), 'new', 'solo', '--no-install', '--no-git', '--cwd', W)).code).toBe(0);
+    const before = fs.paths();
+    const { code, out } = await cli(fs, kit(CASES), 'g', 'showcase', 'ui', '--cwd', `${W}/solo`);
+    expect(code).toBe(1);
+    expect(out).toContain('FUD0455');
+    expect(fs.paths()).toEqual(before);
+  });
+
+  it('an --app the workspace cannot create is refused with the error of g app, and nothing is written', async () => {
+    const fs = await shop();
+    const before = fs.paths();
+    const { code, out } = await cli(fs, kit(CASES), 'g', 'showcase', 'ui', '--app', 'Bad Name', '--cwd', SHOP);
+    expect(code).toBe(1);
+    expect(out).toMatch(/FUD\d{4}/u);
+    expect(fs.paths()).toEqual(before);
+  });
+
   it('a fixture that throws (FUD0973) stops it, and nothing is written', async () => {
     const fs = await shop();
     const before = fs.paths();
@@ -280,6 +307,29 @@ describe('criterion 11: an app on its own', () => {
       const parsed = parseFud(fs.at(`bare/src/routes/showcase/${file}`));
       expect(parsed.diagnostics.filter((d) => d.severity === 'error'), file).toEqual([]);
       expect(parsed.doc.type, file).toBe('page-document');
+    }
+  });
+});
+
+describe('an app that uses a library depends on it by its own name', () => {
+  it('the name its package.json declares, whatever the workspace scope', async () => {
+    const fs = await shop();
+    const manifest = `${SHOP}/libs/ui/package.json`;
+    fs.write(manifest, JSON.stringify({ ...(JSON.parse(fs.read(manifest)) as object), name: '@acme/kit' }));
+    expect((await cli(fs, kit(CASES), 'g', 'showcase', 'ui', '--cwd', SHOP)).code).toBe(0);
+    const pkg = JSON.parse(fs.at('shop/apps/showcase/package.json')) as { dependencies: Record<string, string> };
+    expect(pkg.dependencies['@acme/kit']).toBe('workspace:*');
+    expect(fs.at(`${PAGES}/ui-card.fud`)).toContain('<link rel="component" href="@acme/kit/ui-card.fud">');
+  });
+
+  it('the scope and the folder when its package.json has no name, or none at all', async () => {
+    for (const manifest of ['{}', null]) {
+      const fs = await shop();
+      if (manifest === null) fs.remove(`${SHOP}/libs/ui/package.json`);
+      else fs.write(`${SHOP}/libs/ui/package.json`, manifest);
+      expect((await cli(fs, kit({}), 'g', 'app', 'back', '--uses', 'ui', '--cwd', SHOP)).code).toBe(0);
+      const pkg = JSON.parse(fs.at('shop/apps/back/package.json')) as { dependencies: Record<string, string> };
+      expect(pkg.dependencies['@shop/ui'], String(manifest)).toBe('workspace:*');
     }
   });
 });
@@ -344,7 +394,7 @@ describe('criterion 6: g showcase ui over examples/workspace builds, each case p
     link(join(ws, 'apps/showcase'), '@fudic/example-ui', join(ws, 'libs/ui'));
     const result = (await build({
       root: join(ws, 'apps/showcase'),
-      logLevel: 'info',
+      logLevel: 'silent',
       configFile: false,
       resolve: { alias: { '@fudic/ssr': ssrDist, '@fudic/transport': transportDist, '@fudic/core': coreDist } },
       plugins: [fudic()],
