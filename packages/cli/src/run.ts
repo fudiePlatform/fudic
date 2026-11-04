@@ -28,6 +28,7 @@ import { formatDiff, formatError, formatDiagnostic, formatPlan, planToJson } fro
 import { nodeCommandRunner, nodeReadIo, nodeWriteIo, type CommandRunner, type ReadIo, type WriteIo } from './io.js';
 import type { BaseOptions, Plan, TranslatePlan } from './types.js';
 import type { HistoryDeps } from './plans/history.js';
+import type { ShowcaseKit } from './plans/showcase.js';
 
 /**
  * The errors that mean "a source file could not be read", which is exit code 2: `--in` that
@@ -54,6 +55,8 @@ export interface RunDeps {
   readonly vitestOf?: (dir: string) => string | undefined;
   /** The clock, git and the user of `approve`, `accept` and `history`; the real ones when absent. */
   readonly history?: HistoryDeps;
+  /** The @fudic/workbench a project installed, for `g showcase`; the real lookup when absent. */
+  readonly workbenchOf?: (dir: string) => Promise<ShowcaseKit>;
 }
 
 function nodeStreams(): Streams {
@@ -283,6 +286,10 @@ async function build(
       return (await import('./plans/term.js')).planTerm(command.name, command.opts, io);
     case 'api':
       return (await import('./plans/api.js')).planApi(command.piece, command.opts, io);
+    case 'showcase': {
+      const { planShowcase, workbenchOf } = await import('./plans/showcase.js');
+      return planShowcase(command.opts, io, deps.workbenchOf ?? workbenchOf);
+    }
     case 'fmt':
       return (await import('./plans/fmt.js')).planFmt(command.paths, command.opts, io);
     case 'check':

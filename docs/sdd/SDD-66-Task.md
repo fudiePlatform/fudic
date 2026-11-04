@@ -5,7 +5,7 @@
 > `examples/workspace`
 > **Rama:** `sdd-66-generadores-que-faltan`. Nace de `main` **con SDD-61 en `Hecho`**: enmienda su
 > analizador `server-cut` (tarea 17).
-> **Progreso:** 4 / 17 — `En curso`.
+> **Progreso:** 8 / 17 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -56,10 +56,10 @@ tests lo comprueban sin tocarlos.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 6 | — | **Las páginas del banco, compartidas.** Lo que `pages.ts` escribe para montar un caso (props, `$content`, host con señales) pasa a una función exportada; el banco la usa sin cambiar su salida | `workbench` | `src/mount-source.ts` · `src/pages.ts` · `src/index.ts` |
-| [ ] | 7 | 6 | **`planShowcase`.** Ejecuta las fixtures como el banco; una ruta por componente con un bloque por caso, una variable por caso (camelCase, numerada si choca), hosts en `src/components/showcase/`, índice; la marca en la primera línea | `workbench` | `src/showcase.ts` · `src/index.ts` |
-| [ ] | 8 | 7 | **Regenerar.** Reescribe lo marcado sin `--force`, añade lo nuevo, borra lo de componentes sin fixture; `FUD0443` sobre lo no marcado; `FUD1242` sin nada que enseñar | `workbench` | `src/showcase.ts` |
-| [ ] | 9 | 7, 8 | **`g showcase` en la CLI.** Workspace (crea o amplía la app con `planApp`/`planAdd`) y app sola (`src/routes/showcase/`); resuelve `@fudic/workbench` desde el proyecto; ayuda | `cli` | `src/plans/showcase.ts` · `src/args.ts` · `src/run.ts` · `src/help/*` |
+| [x] | 6 | — | **Las páginas del banco, compartidas.** Lo que `pages.ts` escribe para montar un caso (props, `$content`, host con señales) pasa a una función exportada; el banco la usa sin cambiar su salida | `workbench` | `src/mount-source.ts` · `src/pages.ts` · `src/index.ts` |
+| [x] | 7 | 6 | **`planShowcase`.** Ejecuta las fixtures como el banco; una ruta por componente con un bloque por caso, una variable por caso (camelCase, numerada si choca), hosts en `src/components/showcase/`, índice; la marca en la primera línea | `workbench` | `src/showcase.ts` · `src/index.ts` |
+| [x] | 8 | 7 | **Regenerar.** Reescribe lo marcado sin `--force`, añade lo nuevo, borra lo de componentes sin fixture; `FUD0443` sobre lo no marcado; `FUD1242` sin nada que enseñar | `workbench` | `src/showcase.ts` |
+| [x] | 9 | 7, 8 | **`g showcase` en la CLI.** Workspace (crea o amplía la app con `planApp`/`planAdd`) y app sola (`src/routes/showcase/`); resuelve `@fudic/workbench` desde el proyecto; ayuda | `cli` | `src/plans/showcase.ts` · `src/args.ts` · `src/run.ts` · `src/help/*` |
 | [ ] | 10 | 6–9 | **Los tests de la fase.** Criterios 6–12 | `workbench` · `cli` | `test/**` |
 
 ## Fase 4 — lo que cambia (4)
