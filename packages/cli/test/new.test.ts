@@ -48,6 +48,9 @@ describe('fudic new', () => {
       'demo/tsconfig.json',
       'demo/fudic-globals.d.ts',
       'demo/.gitattributes',
+      'demo/.mcp.json',
+      'demo/AGENTS.md',
+      'demo/CLAUDE.md',
       'demo/sw.json',
       'demo/src/layouts/_layout.fud',
       'demo/src/layouts/_layout.test.ts',
@@ -71,6 +74,9 @@ describe('fudic new', () => {
       'tsconfig.json',
       'fudic-globals.d.ts',
       '.gitattributes',
+      '.mcp.json',
+      'AGENTS.md',
+      'CLAUDE.md',
       'sw.json',
     ];
     for (const change of plan.changes) {

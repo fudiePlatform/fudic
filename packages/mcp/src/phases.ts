@@ -8,7 +8,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { relative } from 'node:path';
 import { nodeIo, unitState, type UnitState } from '@fudic/history';
 import type { Piece, ProjectService } from '@fudic/language-server/project';
+import type { Checks } from './checks.js';
 import type { Cli } from './fudic.js';
+import { projectOf } from './project.js';
 
 /** The phases of a piece, in the order they are done. */
 export const PHASES = ['criteria', 'api', 'red', 'view', 'connect', 'document', 'showcase', 'done'] as const;
@@ -25,6 +27,10 @@ export interface Unit {
   /** Every phase but `done` is finished, and the history does not say `done` yet. */
   readonly complete: boolean;
   readonly approval: UnitState['approval'];
+  /** The commit of its last `approved`: what an expired approval is compared with. */
+  readonly approvedAt?: string;
+  /** The project it is in: the server's folder, or its app or library in a workspace. */
+  readonly project: string;
   readonly server: boolean;
   readonly tests: string;
   readonly spec: string;
@@ -82,16 +88,30 @@ export async function showcaseCurrent(root: string, cli: Cli): Promise<boolean> 
   return plan.errors.length === 0 && plan.changes.length === 0 && (plan.deletions ?? []).length === 0;
 }
 
-/** Each piece of the project with its phase, in the order of its files. */
-export async function unitsOf(
-  root: string,
-  service: ProjectService,
-  options: { readonly showcase: boolean; readonly stateOf?: StateOf },
-): Promise<readonly Unit[]> {
+export interface UnitsOptions {
+  /** Whether the showcase of the project at a folder is current: `showcaseCurrent`. */
+  readonly showcase: (project: string) => Promise<boolean>;
+  /** The projects under `root`: in a workspace, its apps and libraries. By default, `root`. */
+  readonly projects?: readonly string[];
+  readonly stateOf?: StateOf;
+}
+
+/** The pieces of the server's folder and their phases, as the tools read them: off its checks. */
+export async function phasesOf(root: string, checks: Checks): Promise<readonly Unit[]> {
+  const { cli } = await checks.fudic();
+  return unitsOf(root, await checks.service(), { showcase: (project) => showcaseCurrent(project, cli), projects: await checks.folders() });
+}
+
+/** Each piece of the project with its phase, in the order of its files; in a workspace, each in its own project. */
+export async function unitsOf(root: string, service: ProjectService, options: UnitsOptions): Promise<readonly Unit[]> {
   const read = options.stateOf ?? ((file: string) => unitState(file, nodeIo(root)));
-  const library = isLibrary(root);
+  const projects = options.projects ?? [root];
+  const showcases = new Map<string, boolean>();
   const units: Unit[] = [];
   for (const piece of service.pieces()) {
+    const folder = projectOf(projects, root, piece.file);
+    const library = isLibrary(folder);
+    if (!showcases.has(folder)) showcases.set(folder, await options.showcase(folder));
     const state = await read(piece.file);
     const stem = piece.file.slice(0, -'.fud'.length);
     const api = piece.sibling ?? piece.servers[0];
@@ -111,7 +131,7 @@ export async function unitsOf(
       connect: !server || (handlers.length > 0 && connected.length === handlers.length),
       document: piece.kind === 'route' || (piece.documented.doc && piece.documented.documented === piece.documented.props),
       // A library's page of its components, which `fudic g showcase` keeps current.
-      showcase: piece.kind === 'route' || options.showcase,
+      showcase: piece.kind === 'route' || showcases.get(folder) === true,
       done: state.done,
     };
     const open = PHASES.find((phase) => phase !== 'done' && !done[phase]);
@@ -122,6 +142,8 @@ export async function unitsOf(
       phase: state.done ? 'done' : (open ?? 'done'),
       complete: open === undefined && !state.done,
       approval: state.approval,
+      ...(state.approvedAt !== undefined ? { approvedAt: state.approvedAt } : {}),
+      project: folder,
       server,
       tests: runText(tests),
       spec: runText(spec),

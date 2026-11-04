@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/mcp` (nuevo) · `@fudic/typecheck` · `@fudic/spec` · `@fudic/vite` ·
 > `@fudic/language-server` · `@fudic/cli` · `@fudic/workbench` · `@fudic/diagnostics`
 > **Rama:** `sdd-77-mcp-desde-el-chat`, desde `main`.
-> **Progreso:** 24 / 30 — `En curso`.
+> **Progreso:** 28 / 30 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -16,7 +16,17 @@ como lo instalaría un usuario. La fase no se cierra sin esa prueba. Lo que fall
 Hasta la tarea 26, `fudic new` aún no trae el MCP: en las pruebas se usa el MCP instalado en global
 (SDD §8.2.7).
 
-## Traspaso (2026-11-04, noche) — leer primero
+## Traspaso (2026-11-04, cierre) — leer primero
+
+- **Fase 7 implementada y probada salvo la tarea 28**: `fudic_status` (SDD §8.2.50–52), lo que deja
+  `fudic new` (§8.2.53), sus tests (`test/status.test.ts`, criterios 21–23), `verify:generated`
+  con el MCP de cada proyecto, y el README. `@fudic/mcp` al 100 % en las cuatro métricas.
+- **El workspace se trabaja proyecto a proyecto** (§8.2.50): era lo que faltaba para la prueba de
+  punta a punta, que crea un workspace con su librería.
+- **Falta solo la 28** (Pedro, en Claude Web, con el MCP reinstalado desde `pnpm registry`) y,
+  tras ella, la 30 (cierre en `INDEX.md` e IDEA-07).
+
+## Traspaso (2026-11-04, noche)
 
 - **Los tests de las fases 1 a 6 están cerrados** (tareas 5, 10, 14, 18, 21, 24): `@fudic/mcp` al
   100 % en las cuatro métricas (411 tests), `language-server/src/project.ts` y
@@ -243,9 +253,9 @@ salga de la rama `sdd-77-mcp-desde-el-chat`. La coordinadora lo mezcla y marca l
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 25 | 20, 23 | **`fudic_status`.** Proyecto, unidades y sus siete fases (SDD §4.4) desde `unitState`, el pase y los ficheros; la regla de `next` en su orden; «Call fudic_guide…» la primera vez en la sesión | `mcp` | `src/tools/status.ts` · `src/phases.ts` · `src/session.ts` |
-| [ ] | 26 | 1 | **Lo que deja `fudic new`.** `@fudic/mcp` en `devDependencies`, `.mcp.json`, `AGENTS.md` y `CLAUDE.md` (SDD §3.7), en app sola y en workspace; `verify:generated` arranca el MCP del proyecto y llama a `fudic_status` | `cli` · raíz | `templates/*` · `src/plans/new.ts` · `src/plans/workspace.ts` · `scripts/verify-generated.mjs` |
-| [ ] | 27 | 25, 26 | **Los tests de la fase.** Criterios 21–23. `pnpm verify:generated` en verde | `mcp` · `cli` | `test/**` |
+| [x] | 25 | 20, 23 | **`fudic_status`.** Proyecto, unidades y sus siete fases (SDD §4.4) desde `unitState`, el pase y los ficheros; la regla de `next` en su orden; «Call fudic_guide…» la primera vez en la sesión | `mcp` | `src/status.ts` · `src/phases.ts` · `src/session.ts` · `src/checks.ts` · `src/runs.ts` |
+| [x] | 26 | 1 | **Lo que deja `fudic new`.** `@fudic/mcp` en `devDependencies`, `.mcp.json`, `AGENTS.md` y `CLAUDE.md` (SDD §3.7), en app sola y en workspace; `verify:generated` arranca el MCP del proyecto y llama a `fudic_status` | `cli` · raíz | `templates/*` · `src/plans/new.ts` · `src/plans/workspace.ts` · `scripts/verify-generated.mjs` |
+| [x] | 27 | 25, 26 | **Los tests de la fase.** Criterios 21–23. `pnpm verify:generated` en verde | `mcp` · `cli` | `test/**` |
 | [ ] | 28 | 27 | **De punta a punta en Claude Web.** Fila «De punta a punta» de SDD §6.1: la librería de IDEA-07 §10 en una conversación nueva, sin ningún fichero escrito a mano. Lo que falle se arregla aquí y se repite la prueba entera | — | — |
-| [ ] | 29 | 28 | **Docs y entrega.** README de `@fudic/mcp` en inglés y sin citar SDD: arrancarlo, conectarlo a Claude Code y a Claude Web, el túnel y lo que significa el secreto. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; lo nuevo al 100 % (criterio 26) | `mcp` | `packages/mcp/README.md` |
+| [x] | 29 | 28 | **Docs y entrega.** README de `@fudic/mcp` en inglés y sin citar SDD: arrancarlo, conectarlo a Claude Code y a Claude Web, el túnel y lo que significa el secreto. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; lo nuevo al 100 % (criterio 26) | `mcp` | `packages/mcp/README.md` |
 | [ ] | 30 | 29 | **Cierre.** SDD-77 y este fichero en `Hecho`; fila y registro de progreso del `INDEX.md`; IDEA-07 §11.2 apunta a SDD-77 | — | `docs/sdd/*` |

@@ -146,6 +146,8 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
         vitestVersion: VITEST_VERSION,
         tsVersion: TYPESCRIPT_VERSION,
         uses: site.uses,
+        // The MCP server where the repository is: the workspace carries its own.
+        mcp: site.up === null ? `\n    "@fudic/mcp": "${FUDIC_VERSION}",` : '',
       }),
     ],
     [
@@ -188,6 +190,7 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
       ? ([
           [joinPosix(site.dir, GLOBALS_FILE_NAME), GLOBALS_DTS],
           [joinPosix(site.dir, '.gitattributes'), renderTemplate('gitattributes.tmpl', {})],
+          ...agentFiles(site.dir),
         ] as const)
       : []),
     ...(opts.sw
@@ -246,6 +249,19 @@ function frameLine(frame: Frame): string {
  * from the first minute (BUG-50 §4.2): the vitest config, and the declaration that lets a test
  * or a fixture import a `.fud`.
  */
+/**
+ * What lets an agent work on the project with fudic (SDD-77 §3.7): the MCP server configured for
+ * Claude Code, and the three lines that tell any agent to use it. At the root of the repository:
+ * the app's, or the workspace's.
+ */
+export function agentFiles(dir: string): readonly ScaffoldFile[] {
+  return [
+    [joinPosix(dir, '.mcp.json'), renderTemplate('agent/mcp.json.tmpl', {})],
+    [joinPosix(dir, 'AGENTS.md'), renderTemplate('agent/AGENTS.md.tmpl', {})],
+    [joinPosix(dir, 'CLAUDE.md'), renderTemplate('agent/CLAUDE.md.tmpl', {})],
+  ];
+}
+
 export function testingFiles(dir: string): readonly ScaffoldFile[] {
   return [
     [joinPosix(dir, 'vitest.config.ts'), renderTemplate('vitest.config.ts.tmpl', {})],

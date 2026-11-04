@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createProjectChecker, toPosix } from '@fudic/typecheck';
-import { exampleOf, routePattern } from '../src/project-symbols.js';
+import { exampleOf, projectFolder, routePattern } from '../src/project-symbols.js';
 import { openProject, type ProjectService } from '../src/project.js';
 
 // Each project is checked whole before it is asked: slow beside the rest of the suite.
@@ -131,6 +131,16 @@ describe('routePattern', () => {
     expect(routePattern(root, '/p/src/routes/admin/_error.fud')).toBeUndefined();
     expect(routePattern(root, '/p/src/routes/notes.md')).toBeUndefined();
     expect(routePattern(root, '/p/src/components/a.fud')).toBeUndefined();
+  });
+
+  it('in a workspace, under the routes of the project that holds the file', () => {
+    const ws = toPosix(mkdtempSync(join(tmpdir(), 'fudic-ws-')));
+    roots.push(ws);
+    mkdirSync(`${ws}/apps/web/src/routes/shop`, { recursive: true });
+    writeFileSync(`${ws}/apps/web/fudic.json`, '{}');
+    expect(projectFolder(ws, `${ws}/apps/web/src/routes/shop/[id].fud`)).toBe(`${ws}/apps/web`);
+    expect(routePattern(ws, `${ws}/apps/web/src/routes/shop/[id].fud`)).toBe('/shop/:id');
+    expect(projectFolder(ws, `${ws}/src/routes/a.fud`)).toBe(ws);
   });
 });
 

@@ -68,7 +68,7 @@ describe('isLibrary', () => {
 describe('unitsOf', () => {
   it('a finished component: complete, with what status lists', async () => {
     const root = folder(finished);
-    const [unit] = await unitsOf(root, service([component(root)]), { showcase: true, stateOf: async () => state() });
+    const [unit] = await unitsOf(root, service([component(root)]), { showcase: async () => true, stateOf: async () => state() });
     expect(unit).toEqual({
       piece: 'src/components/app-badge/app-badge.fud',
       kind: 'component',
@@ -76,6 +76,7 @@ describe('unitsOf', () => {
       phase: 'done',
       complete: true,
       approval: 'valid',
+      project: root,
       server: false,
       tests: 'pass 2/2',
       spec: 'pass 2/2',
@@ -87,7 +88,7 @@ describe('unitsOf', () => {
 
   it('closed by the history: done, and not complete', async () => {
     const root = folder(finished);
-    const [unit] = await unitsOf(root, service([component(root)]), { showcase: true, stateOf: async () => state({ done: true }) });
+    const [unit] = await unitsOf(root, service([component(root)]), { showcase: async () => true, stateOf: async () => state({ done: true }) });
     expect(unit).toMatchObject({ phase: 'done', complete: false });
   });
 
@@ -105,7 +106,7 @@ describe('unitsOf', () => {
   ])('a component %s stops at its phase', async (_why, files, over, piece, showcase, phase) => {
     const present = Object.fromEntries(Object.entries(files).filter(([, text]) => text !== undefined));
     const root = folder(present);
-    const [unit] = await unitsOf(root, service([component(root, piece)]), { showcase, stateOf: async () => state(over) });
+    const [unit] = await unitsOf(root, service([component(root, piece)]), { showcase: async () => showcase, stateOf: async () => state(over) });
     expect(unit?.phase).toBe(phase);
     expect(unit?.complete).toBe(false);
   });
@@ -113,7 +114,7 @@ describe('unitsOf', () => {
   it('runs as a person reads them', async () => {
     const root = folder(finished);
     const read = async (over: Partial<UnitState>): Promise<unknown> =>
-      (await unitsOf(root, service([component(root)]), { showcase: true, stateOf: async () => state(over) }))[0]?.tests;
+      (await unitsOf(root, service([component(root)]), { showcase: async () => true, stateOf: async () => state(over) }))[0]?.tests;
     expect(await read({ tests: { state: 'not run' } })).toBe('not run');
     expect(await read({ tests: { state: 'stale', last: 'red' } })).toBe('stale (was red)');
     expect(await read({ tests: { state: 'red', passed: 0, total: 6 } })).toBe('red 0/6');
@@ -132,7 +133,7 @@ describe('unitsOf', () => {
 
     it('its .fudapi beside it and not linked: api', async () => {
       const root = folder(files);
-      const [unit] = await unitsOf(root, service([route(root, { sibling: 'routes/shop' })]), { showcase: false, stateOf: async () => state() });
+      const [unit] = await unitsOf(root, service([route(root, { sibling: 'routes/shop' })]), { showcase: async () => false, stateOf: async () => state() });
       expect(unit).toMatchObject({ phase: 'api', server: true, api: 'routes/shop' });
     });
 
@@ -140,29 +141,29 @@ describe('unitsOf', () => {
       const root = folder(files);
       const piece = route(root, { sibling: 'routes/shop', servers: ['routes/shop'] });
       const half = { 'routes/shop': [handler('routes/shop.load', true), handler('routes/shop.save', false)] };
-      const [open] = await unitsOf(root, service([piece], half), { showcase: false, stateOf: async () => state() });
+      const [open] = await unitsOf(root, service([piece], half), { showcase: async () => false, stateOf: async () => state() });
       expect(open).toMatchObject({ phase: 'connect', functions: { connected: 1, missing: 1 }, connectedFunctions: ['routes/shop.load'] });
       const all = { 'routes/shop': [handler('routes/shop.load', true)] };
-      const [closed] = await unitsOf(root, service([piece], all), { showcase: false, stateOf: async () => state() });
+      const [closed] = await unitsOf(root, service([piece], all), { showcase: async () => false, stateOf: async () => state() });
       expect(closed).toMatchObject({ phase: 'done', complete: true, functions: { connected: 1, missing: 0 } });
     });
 
     it('a .fudapi it reaches but whose declarations are unknown: connect', async () => {
       const root = folder(files);
-      const [unit] = await unitsOf(root, service([route(root, { servers: ['shared'] })]), { showcase: false, stateOf: async () => state() });
+      const [unit] = await unitsOf(root, service([route(root, { servers: ['shared'] })]), { showcase: async () => false, stateOf: async () => state() });
       expect(unit).toMatchObject({ phase: 'connect', server: true, api: 'shared' });
     });
 
     it('in a library there is no server: no api, no connect', async () => {
       const root = folder({ ...files, 'fudic.json': '{ "kind": "lib" }' });
-      const [unit] = await unitsOf(root, service([route(root, { sibling: 'routes/shop' })]), { showcase: false, stateOf: async () => state() });
+      const [unit] = await unitsOf(root, service([route(root, { sibling: 'routes/shop' })]), { showcase: async () => false, stateOf: async () => state() });
       expect(unit).toMatchObject({ phase: 'done', complete: true, server: false, functions: { connected: 0, missing: 0 } });
     });
   });
 
   it('without stateOf, the history on disk: nothing approved, nothing run', async () => {
     const root = folder(finished);
-    const [unit] = await unitsOf(root, service([component(root)]), { showcase: true });
+    const [unit] = await unitsOf(root, service([component(root)]), { showcase: async () => true });
     expect(unit).toMatchObject({ phase: 'criteria', approval: 'none', tests: 'not run' });
   });
 });

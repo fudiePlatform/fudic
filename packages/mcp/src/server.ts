@@ -19,6 +19,8 @@ import { Guide, TOPICS } from './guide.js';
 import { instructions, newAppPrompt } from './instructions.js';
 import type { Project } from './project.js';
 import { respond } from './respond.js';
+import { Session } from './session.js';
+import { statusOf } from './status.js';
 import { VERSION } from './version.js';
 
 export type Entry = 'stdio' | 'http';
@@ -38,6 +40,7 @@ export interface ServerOptions {
 export function toolNames(entry: Entry): ReadonlySet<string> {
   return new Set([
     'fudic_guide',
+    'fudic_status',
     'fudic_check',
     'fudic_fix',
     'fudic_format',
@@ -63,6 +66,8 @@ export function createServer(options: ServerOptions): McpServer {
   const checks = options.checks ?? new Checks(project.root);
   const queue = options.queue ?? new RunQueue();
   const tools = toolNames(entry);
+  // One server per MCP session: what it remembers dies with it.
+  const session = new Session();
   const server = new McpServer({ name: 'fudic', version: VERSION }, { instructions: instructions(tools) });
 
   server.registerTool(
@@ -79,8 +84,23 @@ export function createServer(options: ServerOptions): McpServer {
     ({ topic }) => {
       const result = guide.read(topic);
       if ('error' in result) return respond(project, { body: { topic }, diagnostics: [result.error], failed: true });
+      session.read(result.page.topic);
       return respond(project, { body: { ...result.page } });
     },
+  );
+
+  server.registerTool(
+    'fudic_status',
+    {
+      title: 'fudic status',
+      description:
+        'Where the fudic project is, and the one next step: the first call for any fudic task. Lists each component and ' +
+        'route with its phase — criteria, api, red, view, connect, document, showcase, done — and says what to do next, ' +
+        'one step at a time. Without a project, what to ask the user to create one.',
+      inputSchema: {},
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async () => respond(project, await statusOf(project, checks, session)),
   );
 
   server.registerTool(
@@ -178,7 +198,7 @@ export function createServer(options: ServerOptions): McpServer {
     async ({ id }) => respond(project, await contractOf(project, checks, id)),
   );
 
-  registerProjectTools(server, project, checks, tools);
+  registerProjectTools(server, project, checks);
 
   server.registerTool(
     'fudic_record',

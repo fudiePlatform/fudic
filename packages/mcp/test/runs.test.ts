@@ -17,7 +17,7 @@ import { unitsOf } from '../src/phases.js';
 import { openProject, type Project } from '../src/project.js';
 import { recordEvent } from '../src/record.js';
 import type { Answer } from '../src/respond.js';
-import { RunQueue, runSpecsTool, runTestsTool, type RunsDeps } from '../src/runs.js';
+import { mergedTests, RunQueue, runSpecsTool, runTestsTool, targetsOf, type RunsDeps } from '../src/runs.js';
 import { connect, newApp, tempDir } from './helpers.js';
 import { createServer } from '../src/server.js';
 
@@ -46,7 +46,7 @@ afterAll(() => app.dispose());
 
 /** The phase of app-badge, as status would read it. */
 async function phase(): Promise<string | undefined> {
-  return (await unitsOf(app.root, await checks.service(), { showcase: true })).find((u) => u.piece === BADGE)?.phase;
+  return (await unitsOf(app.root, await checks.service(), { showcase: async () => true })).find((u) => u.piece === BADGE)?.phase;
 }
 
 const pos = (file: string, line: number): { file: string; line: number; column: number } => ({ file, line, column: 3 });
@@ -370,4 +370,28 @@ describe('over a client', () => {
       dir.dispose();
     }
   }, 60_000);
+});
+
+describe('in a workspace: project by project (SDD-77 §8.2.50)', () => {
+  it('targetsOf: every project; or those holding what was asked, with it; or whole, when what was asked holds them', () => {
+    const folders = ['/w/apps/web', '/w/libs/ui'];
+    expect(targetsOf(folders, [])).toEqual([{ folder: '/w/apps/web' }, { folder: '/w/libs/ui' }]);
+    expect(targetsOf(folders, ['/w/libs/ui/src/a.test.ts'])).toEqual([{ folder: '/w/libs/ui', paths: ['/w/libs/ui/src/a.test.ts'] }]);
+    expect(targetsOf(folders, ['/w/apps'])).toEqual([{ folder: '/w/apps/web' }]);
+    expect(targetsOf(folders, ['/w/docs'])).toEqual([]);
+  });
+
+  it('mergedTests: counted together, listed in the order of the projects', () => {
+    const report = (n: number, file: string) => ({
+      summary: { pass: n, fail: 1, broken: 0, skipped: n },
+      tests: [{ verdict: 'fail', file, name: file, at: { file, line: 1, column: 1 }, quote: '', message: '' }],
+      files: [{ file, pass: n, fail: 1, broken: 0, skipped: 0 }],
+      ms: n,
+    }) as never;
+    const merged = mergedTests([report(1, 'a'), report(2, 'b')]);
+    expect(merged.summary).toEqual({ pass: 3, fail: 2, broken: 0, skipped: 3 });
+    expect(merged.tests.map((t) => t.file)).toEqual(['a', 'b']);
+    expect(merged.files.map((f) => f.file)).toEqual(['a', 'b']);
+    expect(merged.ms).toBe(3);
+  });
 });

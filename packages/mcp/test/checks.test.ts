@@ -55,7 +55,7 @@ function fakeChecker(report: CheckReport): ProjectChecker & { readonly invalidat
 
 const EMPTY: CheckReport = { problems: [], project: [], inputs: [] };
 
-function harness(stamps: Stamps[]): { checks: Checks; checker: ReturnType<typeof fakeChecker>; fudic: Fudic; load: ReturnType<typeof vi.fn>; write: ReturnType<typeof vi.fn> } {
+function harness(stamps: Stamps[], projects: (root: string) => readonly string[] = (root) => [root]): { checks: Checks; checker: ReturnType<typeof fakeChecker>; fudic: Fudic; load: ReturnType<typeof vi.fn>; write: ReturnType<typeof vi.fn> } {
   dir = tempDir();
   const checker = fakeChecker(EMPTY);
   const write = vi.fn(() => []);
@@ -67,7 +67,7 @@ function harness(stamps: Stamps[]): { checks: Checks; checker: ReturnType<typeof
   };
   const load = vi.fn(() => Promise.resolve(fudic));
   let i = 0;
-  const checks = new Checks(dir.root, { load, stamps: () => stamps[Math.min(i++, stamps.length - 1)]! });
+  const checks = new Checks(dir.root, { load, stamps: () => stamps[Math.min(i++, stamps.length - 1)]!, projects });
   return { checks, checker, fudic, load, write };
 }
 
@@ -98,11 +98,31 @@ describe('Checks.run', () => {
     await checks.run();
     expect(checker.invalidated).toEqual(['/p/a.fud', '/p/b.fud', '/p/c.fud']);
     checker.invalidated.length = 0;
-    expect(await checks.run()).toBe(EMPTY);
+    expect(await checks.run()).toEqual(EMPTY);
     expect(checker.invalidated).toEqual(['/p/b.fud', '/p/d.fud', '/p/c.fud']);
     checker.invalidated.length = 0;
     await checks.run();
     expect(checker.invalidated).toEqual([]);
+  });
+});
+
+describe('a workspace', () => {
+  it('one checker per project, each with the fudic it installed, and one report in their order', async () => {
+    const problem = (file: string): CheckProblem => ({ file, span: { start: 0, end: 1 }, severity: 'error', code: 'FUD0001', message: 'x' });
+    const { checks, fudic, load, write } = harness([new Map([['/w/apps/web/a.fud', 1]])], (root) => [`${root}/apps/web`, `${root}/libs/ui`]);
+    const reports: Record<string, CheckReport> = {
+      web: { problems: [problem('/w/apps/web/a.fud')], project: [], inputs: ['a'] },
+      ui: { problems: [problem('/w/libs/ui/b.fud')], project: [{ severity: 'warning', code: 'FUD0870', message: 'y' }], inputs: ['b'] },
+    };
+    const made = vi.fn(({ root }: { root: string }) => fakeChecker(reports[root.endsWith('web') ? 'web' : 'ui']!));
+    (fudic as { createProjectChecker: unknown }).createProjectChecker = made;
+    const report = await checks.run();
+    expect(load.mock.calls.map(([root]) => root)).toEqual([dir!.root, `${dir!.root}/apps/web`, `${dir!.root}/libs/ui`]);
+    expect(write.mock.calls.map(([root]) => root)).toEqual([`${dir!.root}/apps/web`, `${dir!.root}/libs/ui`]);
+    expect(report.problems.map((p) => p.file)).toEqual(['/w/apps/web/a.fud', '/w/libs/ui/b.fud']);
+    expect(report.project.map((p) => p.code)).toEqual(['FUD0870']);
+    expect(report.inputs).toEqual(['a', 'b']);
+    expect(await checks.folders()).toEqual([`${dir!.root}/apps/web`, `${dir!.root}/libs/ui`]);
   });
 });
 

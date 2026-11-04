@@ -11,6 +11,7 @@ import type { SourceDiagnostic } from '@fudic/diagnostics';
 import { openProject, type ProjectService, type Repair } from '@fudic/language-server/project';
 import type { CheckProblem, CheckReport, ProjectChecker } from '@fudic/typecheck';
 import { loadFudic, type Fudic } from './fudic.js';
+import { projectsOf } from './project.js';
 
 /** The date of every file of the project, by absolute path. */
 export type Stamps = ReadonlyMap<string, number>;
@@ -36,14 +37,33 @@ export function stampsOf(root: string): Stamps {
 export interface ChecksDeps {
   readonly load: (root: string) => Promise<Fudic>;
   readonly stamps: (root: string) => Stamps;
+  /** The projects under the server's folder. By default, as they are on disk. */
+  readonly projects: (root: string) => readonly string[];
 }
 
-const nodeChecksDeps: ChecksDeps = { load: loadFudic, stamps: stampsOf };
+const nodeChecksDeps: ChecksDeps = { load: loadFudic, stamps: stampsOf, projects: projectsOf };
 
-interface Mounted {
+/** One project's checker: in a workspace, one per app and library, as each builds on its own. */
+interface Checked {
+  readonly folder: string;
   readonly fudic: Fudic;
   readonly checker: ProjectChecker;
+}
+
+interface Mounted {
+  /** The fudic of the server's folder: its CLI is the one that plans. */
+  readonly fudic: Fudic;
+  readonly checked: readonly Checked[];
   readonly service: ProjectService;
+}
+
+/** The reports of every project as one, in the order of the projects: path order. */
+function merged(reports: readonly CheckReport[]): CheckReport {
+  return {
+    problems: reports.flatMap((r) => r.problems),
+    project: reports.flatMap((r) => r.project),
+    inputs: reports.flatMap((r) => r.inputs),
+  };
 }
 
 export class Checks {
@@ -59,18 +79,23 @@ export class Checks {
 
   /** Check the project, as its build would before compiling anything. */
   async run(): Promise<CheckReport> {
-    const { fudic, checker, service } = await this.#mount();
+    const { checked, service } = await this.#mount();
     // The types of `fudic:<id>`, as the build writes them before it checks.
-    fudic.writeApiDeclarations(this.#root);
+    for (const { fudic, folder } of checked) fudic.writeApiDeclarations(folder);
     const now = this.#deps.stamps(this.#root);
     const changed = [...now].filter(([path, date]) => this.#stamps.get(path) !== date).map(([path]) => path);
     const gone = [...this.#stamps.keys()].filter((path) => !now.has(path));
     for (const path of [...changed, ...gone]) {
-      checker.invalidate(path);
+      for (const { checker } of checked) checker.invalidate(path);
       service.invalidate(path);
     }
     this.#stamps = now;
-    return checker.check();
+    return merged(checked.map(({ checker }) => checker.check()));
+  }
+
+  /** The folders checked: the server's, or each project of its workspace. */
+  async folders(): Promise<readonly string[]> {
+    return (await this.#mount()).checked.map((c) => c.folder);
   }
 
   /** Forget the checker and the fudic it was made with: the next call mounts them again. */
@@ -97,12 +122,19 @@ export class Checks {
   }
 
   #mount(): Promise<Mounted> {
-    this.#mounted ??= this.#deps.load(this.#root).then((fudic) => {
-      const checker = fudic.createProjectChecker({ root: this.#root });
-      // The service asks the check's own TypeScript: one program, and the types the build sees.
-      const service = openProject(this.#root, { typescript: () => checker.languageService?.() });
-      return { fudic, checker, service };
-    });
+    this.#mounted ??= (async () => {
+      const fudic = await this.#deps.load(this.#root);
+      const checked: Checked[] = [];
+      for (const folder of this.#deps.projects(this.#root)) {
+        // Each project with the fudic it installed; the server's folder is loaded once.
+        const own = folder === this.#root ? fudic : await this.#deps.load(folder);
+        checked.push({ folder, fudic: own, checker: own.createProjectChecker({ root: folder }) });
+      }
+      // The service asks a check's own TypeScript: one program, and the types the build sees.
+      // In a workspace, the first project's: the service reads them all, a program sees one.
+      const service = openProject(this.#root, { typescript: () => checked[0]?.checker.languageService?.() });
+      return { fudic, checked, service };
+    })();
     return this.#mounted;
   }
 }

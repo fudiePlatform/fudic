@@ -13,10 +13,9 @@ import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { apply, nodeReadIo, nodeWriteIo, parseArgs, planOf, type PlannedCommand } from '@fudic/cli';
 import { nodeIo, unitState } from '@fudic/history';
 import { Checks } from '../src/checks.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Cli } from '../src/fudic.js';
 import { flagOf, flagsOf, runPlan } from '../src/plans.js';
-import { inPlace, registerProjectTools } from '../src/project-tools.js';
+import { inPlace } from '../src/project-tools.js';
 import { openProject } from '../src/project.js';
 import { createServer } from '../src/server.js';
 import { connect, fakeProject } from './helpers.js';
@@ -173,10 +172,10 @@ describe('fudic_new (criterion 18)', () => {
     expect(child.spawnSync).not.toHaveBeenCalled();
   });
 
-  it('then says what comes next: the check, until fudic_status is there', async () => {
+  it('then says what comes next: the compass', async () => {
     const mcp = folder('demo');
     const answer = await call(await clientIn(mcp), 'fudic_new', { name: 'demo', dryRun: true });
-    expect(answer.body['next']).toBe('Run fudic_check.');
+    expect(answer.body['next']).toBe('Call fudic_status.');
   });
 
   it('in a folder that is already a project: FUD1409, and nothing written', async () => {
@@ -400,15 +399,5 @@ describe('runPlan', () => {
       ['FUD0448', undefined],
       ['FUD0540', '/p/src/b.fud'],
     ]);
-  });
-});
-
-describe('what comes after a plan', () => {
-  it('with fudic_status registered, the compass', async () => {
-    const root = folder('demo');
-    const server = new McpServer({ name: 'fudic', version: '0' });
-    registerProjectTools(server, openProject(root), new Checks(root), new Set(['fudic_status']));
-    const answer = await call(await connect(server), 'fudic_new', { name: 'demo', dryRun: true });
-    expect(answer.body['next']).toBe('Call fudic_status.');
   });
 });

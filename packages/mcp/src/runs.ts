@@ -13,8 +13,8 @@ import { toPosix } from '@fudic/typecheck';
 import type { Checks } from './checks.js';
 import { located } from './check.js';
 import { loadRunners, type Runners } from './fudic.js';
-import { showcaseCurrent, unitsOf, type Unit } from './phases.js';
-import { isFudicProject, type Project } from './project.js';
+import { phasesOf, type Unit } from './phases.js';
+import { isFudicProject, projectOf, type Project } from './project.js';
 import type { Answer } from './respond.js';
 
 function posix(path: string): string {
@@ -55,12 +55,6 @@ export interface RunsDeps {
 
 const nodeRunsDeps: RunsDeps = { runners: (root) => loadRunners(root) };
 
-/** The pieces of the project and their phases, after a run wrote its lines. */
-async function phases(project: Project, checks: Checks): Promise<readonly Unit[]> {
-  const { cli } = await checks.fudic();
-  return unitsOf(project.root, await checks.service(), { showcase: await showcaseCurrent(project.root, cli) });
-}
-
 /** The pieces a narrowed run was asked about: the next step is about what just ran, and only that. */
 function ranFirst(units: readonly Unit[], root: string, ran: readonly string[]): readonly Unit[] {
   if (ran.length === 0) return units;
@@ -70,6 +64,35 @@ function ranFirst(units: readonly Unit[], root: string, ran: readonly string[]):
     const stem = piece.slice(0, -'.fud'.length);
     return ran.map((path) => toPosix(resolve(path))).some((path) => piece.startsWith(`${path}/`) || path.startsWith(stem));
   });
+}
+
+/** A project to run tests in, and the files or folders of it that were asked; none = all of it. */
+export interface Target {
+  readonly folder: string;
+  readonly paths?: readonly string[];
+}
+
+/** The projects a run touches: all of them, or those that hold or are held by what was asked. */
+export function targetsOf(folders: readonly string[], under: readonly string[]): readonly Target[] {
+  if (under.length === 0) return folders.map((folder) => ({ folder }));
+  return folders.flatMap((folder): Target[] => {
+    if (under.some((path) => within(path, folder))) return [{ folder }];
+    const paths = under.filter((path) => within(folder, path));
+    return paths.length === 0 ? [] : [{ folder, paths }];
+  });
+}
+
+type TestReport = Awaited<ReturnType<NonNullable<Runners['runTests']>>>;
+
+/** The reports of each project as one: counted together, listed in the order of the projects. */
+export function mergedTests(reports: readonly TestReport[]): TestReport {
+  const sum = (key: keyof TestReport['summary']): number => reports.reduce((n, r) => n + r.summary[key], 0);
+  return {
+    summary: { pass: sum('pass'), fail: sum('fail'), broken: sum('broken'), skipped: sum('skipped') },
+    tests: reports.flatMap((r) => r.tests),
+    files: reports.flatMap((r) => r.files),
+    ms: reports.reduce((n, r) => n + r.ms, 0),
+  };
 }
 
 /** What to do after a test run, by the phase the pieces are in. */
@@ -92,21 +115,31 @@ export async function runTestsTool(project: Project, checks: Checks, queue: RunQ
   if (!isFudicProject(root)) return { body: {}, diagnostics: [FUD1404({ folder: root })], failed: true };
   const asked = located(root, input.paths);
   if ('error' in asked) return { body: {}, diagnostics: [asked.error], failed: true };
-  const { runTests } = await deps.runners(root);
-  if (runTests === undefined) {
-    return { body: {}, diagnostics: [FUD1207({ reason: '@fudic/testing is not installed in the project: pnpm add -D @fudic/testing' })], failed: true };
+  // Each project runs its own tests with its own vitest, as `pnpm test` does in a workspace.
+  const runs: { readonly target: Target; readonly runTests: NonNullable<Runners['runTests']> }[] = [];
+  for (const target of targetsOf(await checks.folders(), asked.under)) {
+    const { runTests } = await deps.runners(target.folder);
+    if (runTests === undefined) {
+      return { body: {}, diagnostics: [FUD1207({ reason: '@fudic/testing is not installed in the project: pnpm add -D @fudic/testing' })], failed: true };
+    }
+    runs.push({ target, runTests });
   }
   return queue.run(async () => {
     const io = nodeIo(root);
     const service = await checks.service();
-    const before = await snapshot(service.pieces().map((p) => p.file), io);
-    const report = await runTests({
-      root,
-      ...(asked.under.length > 0 ? { paths: asked.under } : {}),
-      ...(input.names !== undefined ? { names: input.names } : {}),
-      failing: input.failing,
-    });
-    await recordTestRun(report, before, io);
+    const reports: TestReport[] = [];
+    for (const { target, runTests } of runs) {
+      const before = await snapshot(service.pieces().map((p) => p.file), io);
+      const one = await runTests({
+        root: target.folder,
+        ...(target.paths !== undefined ? { paths: target.paths } : {}),
+        ...(input.names !== undefined ? { names: input.names } : {}),
+        failing: input.failing,
+      });
+      await recordTestRun(one, before, io);
+      reports.push(one);
+    }
+    const report = mergedTests(reports);
     const tests = report.tests.map((t) =>
       t.verdict === 'fail'
         ? { verdict: 'fail', file: posix(t.file), name: t.name, at: at(t.at), quote: t.quote, message: t.message, ...(t.expected !== undefined ? { expected: t.expected } : {}), ...(t.actual !== undefined ? { got: t.actual } : {}) }
@@ -114,7 +147,7 @@ export async function runTestsTool(project: Project, checks: Checks, queue: RunQ
     );
     return {
       body: { summary: report.summary, tests, ms: report.ms },
-      next: nextAfterTests(ranFirst(await phases(project, checks), root, asked.under), report.summary.broken),
+      next: nextAfterTests(ranFirst(await phasesOf(root, checks), root, asked.under), report.summary.broken),
     };
   });
 }
@@ -145,7 +178,10 @@ export async function runSpecsTool(project: Project, checks: Checks, queue: RunQ
     if (found === undefined) return { body: { spec: input.spec }, diagnostics: [FUD1405({ name: input.spec })], failed: true };
     paths = [found];
   }
-  const { runSpecs } = await deps.runners(root);
+  // One bench for every project: it groups the `.fudspec` files by project itself. A workspace's
+  // root installs none, so it is the one of the project that holds the spec, or of the first.
+  const folders = await checks.folders();
+  const { runSpecs } = await deps.runners(paths.length === 0 ? folders[0]! : projectOf(folders, root, paths[0]!));
   if (runSpecs === undefined) {
     return { body: {}, diagnostics: [FUD1207({ reason: '@fudic/workbench is not installed in the project: pnpm add -D @fudic/workbench' })], failed: true };
   }
@@ -181,7 +217,7 @@ export async function runSpecsTool(project: Project, checks: Checks, queue: RunQ
         ...(r.shots?.after !== undefined ? { shot: posix(r.shots.after) } : r.shots?.before !== undefined ? { shot: posix(r.shots.before) } : {}),
         ...(r.pageErrors.length > 0 ? { pageErrors: r.pageErrors } : {}),
       }));
-    const units = ranFirst(await phases(project, checks), root, paths);
+    const units = ranFirst(await phasesOf(root, checks), root, paths);
     const red = units.find((u) => u.phase === 'red' || u.phase === 'view');
     return {
       body: { summary: { pass: summary.pass, fail: summary.fail, error: summary.error }, browser: summary.browser, criteria, ms: summary.ms },

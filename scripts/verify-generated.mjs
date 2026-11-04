@@ -3,7 +3,8 @@
  *
  * It builds the packages and publishes them to the local registry, then, in a temporary folder
  * and installing from that registry as a user would, runs every generator of the table below and
- * `pnpm test`, `pnpm spec` and `pnpm build` in each project. It exits 0 only when all of it is
+ * `pnpm test`, `pnpm spec` and `pnpm build` in each project, and asks each project's own MCP
+ * server for its `fudic_status`. It exits 0 only when all of it is
  * green; otherwise it says which command failed and prints its output.
  *
  * Not part of `pnpm test`: it needs a registry, an install and several minutes. It is run when a
@@ -16,7 +17,7 @@
  *   node scripts/verify-generated.mjs --keep       leave the temporary folder to look at
  */
 
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -58,6 +59,58 @@ export const STEPS = [
 export const PROJECTS = ['acme', 'solo'];
 export const CHECKS = [['test'], ['spec'], ['build']];
 
+/**
+ * Starts the project's own MCP server over stdio, as `.mcp.json` does (`pnpm exec fudic-mcp`), and
+ * calls `fudic_status`: what an agent does first. Speaks the protocol by hand — newline-delimited
+ * JSON-RPC — so the script needs nothing installed. Green when the answer is a status, not an error.
+ */
+function mcpStatus(cwd, env) {
+  return new Promise((resolveStatus) => {
+    const child = spawn('pnpm', ['exec', 'fudic-mcp'], { cwd, env, shell: process.platform === 'win32' });
+    let output = '';
+    let buffer = '';
+    let settled = false;
+    const done = (status) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      // Resolved once the server is gone: its folder is removed next. On Windows the child is
+      // the shell, so the whole tree goes, or the server keeps the folder busy.
+      child.once('exit', () => resolveStatus({ status, output }));
+      if (process.platform === 'win32') spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F']);
+      else child.kill();
+    };
+    const timer = setTimeout(() => done(1), 120_000);
+    const send = (message) => child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', ...message })}\n`);
+    child.stderr.on('data', (chunk) => (output += chunk));
+    child.on('error', (error) => {
+      // It never started: there is nothing to stop.
+      output += error.message;
+      settled = true;
+      clearTimeout(timer);
+      resolveStatus({ status: 1, output });
+    });
+    child.stdout.on('data', (chunk) => {
+      buffer += chunk;
+      let end;
+      while ((end = buffer.indexOf('\n')) !== -1) {
+        const line = buffer.slice(0, end);
+        buffer = buffer.slice(end + 1);
+        output += `${line}\n`;
+        const message = JSON.parse(line);
+        if (message.id === 1) {
+          send({ method: 'notifications/initialized' });
+          send({ id: 2, method: 'tools/call', params: { name: 'fudic_status', arguments: {} } });
+        } else if (message.id === 2) {
+          const ok = message.result !== undefined && message.result.isError !== true && typeof message.result.structuredContent?.phase === 'string';
+          done(ok ? 0 : 1);
+        }
+      }
+    });
+    send({ id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'verify-generated', version: '0.0.0' } } });
+  });
+}
+
 /** Run a command and keep its output; Windows needs a shell for `.cmd` shims. */
 function exec(command, args, cwd, env) {
   const result = spawnSync(command, args, { cwd, env, encoding: 'utf8', shell: process.platform === 'win32' && command !== process.execPath });
@@ -80,6 +133,16 @@ async function main() {
     for (const step of run) {
       console.log(`› ${step.label}`);
       const { status, output } = exec(step.command, step.args, step.dir, env);
+      if (status !== 0) {
+        failed = { ...step, status, output };
+        break;
+      }
+    }
+    // What an agent does first in a project `fudic new` made: its MCP server answers.
+    for (const project of failed === undefined ? PROJECTS : []) {
+      const step = { label: `${project}: fudic_status through pnpm exec fudic-mcp`, dir: join(at, project) };
+      console.log(`› ${step.label}`);
+      const { status, output } = await mcpStatus(step.dir, env);
       if (status !== 0) {
         failed = { ...step, status, output };
         break;

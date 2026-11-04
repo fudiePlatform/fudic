@@ -5,6 +5,7 @@
  * `.fudapi` reader, the implementation index of the CodeLens, the token reader.
  */
 
+import { existsSync } from 'node:fs';
 import type * as ts from 'typescript';
 import type { ApiSource, Decl } from '@fudic/api';
 import type { Span } from '@fudic/compiler';
@@ -165,9 +166,20 @@ function declared(source: ApiSource, decl: Decl): Declared | undefined {
   }
 }
 
-/** The URL of a route file: `src/routes/products/[id].fud` → `/products/:id`. */
+/**
+ * The project a file of `root` is in: the nearest folder up from it with a `fudic.json`, short
+ * of `root`; `root` itself when none. In a workspace, `apps/web` or `libs/ui`.
+ */
+export function projectFolder(root: string, file: string): string {
+  for (let dir = file.slice(0, file.lastIndexOf('/')); dir.startsWith(`${root}/`); dir = dir.slice(0, dir.lastIndexOf('/'))) {
+    if (existsSync(`${dir}/fudic.json`)) return dir;
+  }
+  return root;
+}
+
+/** The URL of a route file: `src/routes/products/[id].fud` → `/products/:id`, in its own project. */
 export function routePattern(root: string, file: string): string | undefined {
-  const base = `${root}/${ROUTES_DIR}/`;
+  const base = `${projectFolder(root, file)}/${ROUTES_DIR}/`;
   if (!file.startsWith(base) || !file.endsWith('.fud')) return undefined;
   const segments = file.slice(base.length, -'.fud'.length).split('/');
   // `_layout`, `_error` and every `_` file are the router's, not pages.

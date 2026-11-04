@@ -10,7 +10,7 @@ import { FUD1401, FUD1404, FUD1407, FUD1410 } from '@fudic/diagnostics';
 import { nodeIo, record, unitState } from '@fudic/history';
 import type { Checks } from './checks.js';
 import { locate } from './locate.js';
-import { showcaseCurrent, unitsOf } from './phases.js';
+import { phasesOf } from './phases.js';
 import { runPlan } from './plans.js';
 import { isFudicProject, type Project } from './project.js';
 import type { Answer } from './respond.js';
@@ -56,16 +56,15 @@ export async function recordEvent(project: Project, checks: Checks, input: Recor
       await record(unit, { kind: 'reopened', by: 'agent', text }, nodeIo(root));
       return { body: { piece: shown, recorded: ['reopened'] } };
     case 'done':
-      return done(project, checks, unit, shown, cli);
+      return done(project, checks, unit, shown);
   }
 }
 
 /** `documented`, `connected` and `done`, once every phase of the piece is finished. */
-async function done(project: Project, checks: Checks, unit: string, shown: string, cli: Parameters<typeof showcaseCurrent>[1]): Promise<Answer> {
+async function done(project: Project, checks: Checks, unit: string, shown: string): Promise<Answer> {
   const { root } = project;
   await checks.run();
-  const service = await checks.service();
-  const units = await unitsOf(root, service, { showcase: await showcaseCurrent(root, cli) });
+  const units = await phasesOf(root, checks);
   const found = units.find((u) => u.piece === shown);
   if (found === undefined) return { body: {}, diagnostics: [FUD1401({ file: shown, reason: 'missing' })], failed: true };
   // A finished piece is `done` too, but only the history's `done` line closes it.

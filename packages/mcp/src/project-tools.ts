@@ -85,9 +85,9 @@ function generateArgv(kind: string, name: string | undefined, input: { file?: st
   return ['g', kind, ...(name === undefined ? [] : [name])];
 }
 
-export function registerProjectTools(server: McpServer, project: Project, checks: Checks, tools: ReadonlySet<string>): void {
-  // What comes after a plan: the compass when it is there, the check until then.
-  const then = tools.has('fudic_status') ? 'Call fudic_status.' : 'Run fudic_check.';
+export function registerProjectTools(server: McpServer, project: Project, checks: Checks): void {
+  // What comes after a plan: the compass.
+  const then = 'Call fudic_status.';
   server.registerTool(
     'fudic_new',
     {

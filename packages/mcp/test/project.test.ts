@@ -1,8 +1,9 @@
 /** The folder the server was started in: its name and its commit. */
 
-import { basename, resolve } from 'node:path';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { basename, join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { NO_COMMIT, openProject, type Git } from '../src/project.js';
+import { isFudicProject, isWorkspace, NO_COMMIT, openProject, projectOf, projectsOf, type Git } from '../src/project.js';
 import { tempDir } from './helpers.js';
 
 function named(files: Readonly<Record<string, string>>): string {
@@ -54,5 +55,36 @@ describe('openProject', () => {
     });
     expect(project.commit()).toBe(NO_COMMIT);
     expect(NO_COMMIT).toBe('none');
+  });
+});
+
+describe('a workspace: its projects (SDD-77 §8.2.50)', () => {
+  it('each <group>/<name> with a fudic.json, in path order; anything else is one project, the folder itself', () => {
+    const dir = tempDir();
+    try {
+      for (const folder of ['libs/ui', 'apps/web', 'apps/notes', 'node_modules/x']) mkdirSync(join(dir.root, folder), { recursive: true });
+      for (const folder of ['libs/ui', 'apps/web', 'node_modules/x']) writeFileSync(join(dir.root, folder, 'fudic.json'), '{}');
+      writeFileSync(join(dir.root, 'README.md'), '');
+      // Without pnpm-workspace.yaml it is no workspace: the folder is all there is.
+      expect(isWorkspace(dir.root)).toBe(false);
+      expect(projectsOf(dir.root)).toEqual([dir.root]);
+      writeFileSync(join(dir.root, 'pnpm-workspace.yaml'), '');
+      expect(isWorkspace(dir.root)).toBe(true);
+      expect(isFudicProject(dir.root)).toBe(true);
+      const projects = projectsOf(dir.root);
+      expect(projects).toEqual([join(dir.root, 'apps/web'), join(dir.root, 'libs/ui')]);
+      expect(projectOf(projects, dir.root, join(dir.root, 'libs/ui/src/a.fud'))).toBe(join(dir.root, 'libs/ui'));
+      expect(projectOf(projects, dir.root, join(dir.root, 'src/a.fud'))).toBe(dir.root);
+      // A root with a fudic.json of its own is that project, whatever it holds.
+      writeFileSync(join(dir.root, 'fudic.json'), '{}');
+      expect(isWorkspace(dir.root)).toBe(false);
+      expect(projectsOf(dir.root)).toEqual([dir.root]);
+    } finally {
+      dir.dispose();
+    }
+  });
+
+  it('the deepest project that holds a file', () => {
+    expect(projectOf(['/w', '/w/apps/web'], '/w', '/w/apps/web/src/a.fud')).toBe('/w/apps/web');
   });
 });

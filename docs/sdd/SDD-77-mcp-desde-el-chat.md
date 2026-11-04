@@ -561,7 +561,7 @@ temporal creado con `planNew`. La prueba de Pedro (§6.1) es aparte y no se sust
 
 **Entrega**
 
-26. Los ocho códigos con `.ts`, `.md` y línea en `index.ts`. `pnpm typecheck`, `pnpm test` y
+26. Los doce códigos (`FUD1400`–`FUD1411`) con `.ts`, `.md` y línea en `index.ts`. `pnpm typecheck`, `pnpm test` y
     `pnpm build` en verde; `@fudic/mcp` al 100 % en las cuatro métricas y lo nuevo de los demás
     paquetes también.
 
@@ -799,3 +799,26 @@ framework.
 49. **Criterio 13: un `FUD0540` sobre un objeto sin `id` no tiene reparación**, ni una ni varias:
     queda en `remaining` con `fixable: false` y sin `options`. Ningún reparador da hoy más de una
     opción, así que `options` se prueba con un check simulado.
+50. **Un workspace se comprueba y se ejecuta proyecto a proyecto** (tarea 25), como su build: su
+    raíz no tiene `fudic.json` ni `tsconfig.json`, y un checker en ella comprobaba con las opciones
+    por defecto (`FUD0870`). El MCP monta un checker por cada `<grupo>/<nombre>` con `fudic.json`,
+    cada uno con el fudic que instaló, y junta sus informes en el orden de las rutas. `fudic_test`
+    corre el vitest de cada proyecto; `fudic_spec_run`, un solo banco (ya agrupa por proyecto),
+    el del proyecto de la `.fudspec` pedida o el del primero. Las fases leen `kind` y el
+    escaparate del proyecto de cada pieza, y la ruta de una página sale de su proyecto
+    (`projectFolder` en el servicio de proyecto): sin eso, las páginas de `apps/web` no eran
+    piezas. **Límite:** el servicio de proyecto lee los `.fudapi` de `<raíz>/src`; en un workspace,
+    lo de las funciones (`symbols { kind: "functions" }`, `contract`, las fases `api` y
+    `connect`) pide arrancar el MCP en la carpeta de la app. Una librería no tiene esas fases.
+51. **`fudic_status` responde `summary`, no `diagnostics: { errors, warnings }`**: `diagnostics` es
+    siempre la lista de §3.4. Con una aprobación caducada lleva `expired` (`piece`, `since`, el
+    commit del `approved`, y `diff`, el `git diff` de la `.fudspec` y su fixture desde él; `null`
+    sin git o sin ese commit): el chat no tiene git y tiene que enseñárselo al usuario. En un
+    workspace, `project` lleva `projects`. La fase 1 de una ruta pregunta «what the page shows
+    and does», no sus props.
+52. **Tras `fudic_new` y `fudic_generate`, `next` es siempre `fudic_status`**: el «Run fudic_check»
+    de mientras no existía (§8.2.1) ya no tiene caso.
+53. **`.mcp.json`, `AGENTS.md`, `CLAUDE.md` y `@fudic/mcp` van donde está el repositorio**: la raíz
+    de una app suelta y la de un workspace, nunca una app o una librería dentro de él (`fudic g
+    app` no los escribe). `verify:generated` arranca `pnpm exec fudic-mcp` en los dos proyectos que
+    genera y les pide `fudic_status` hablando JSON-RPC a mano, sin instalar nada.
