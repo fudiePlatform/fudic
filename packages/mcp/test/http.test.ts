@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { startHttp, type HttpEntry } from '../src/http.js';
-import { createServer } from '../src/server.js';
+import { createServer, toolNames } from '../src/server.js';
 import { fakeProject } from './helpers.js';
 
 const listeners: RequestListener[] = [];
@@ -70,7 +70,7 @@ describe('startHttp (criterion 2)', () => {
     expect(entry.url).toMatch(new RegExp(`^http://127\\.0\\.0\\.1:\\d+/mcp/${SECRET}$`, 'u'));
     const client = await connectTo(entry.url);
     const { tools } = await client.listTools();
-    expect(tools.map((t) => t.name)).toEqual(['fudic_guide']);
+    expect(tools.map((t) => t.name)).toEqual([...toolNames('http')]);
     const answer = await client.callTool({ name: 'fudic_guide', arguments: { topic: 'overview' } });
     expect(answer.structuredContent).toMatchObject({ topic: 'overview' });
     await client.close();
@@ -83,7 +83,7 @@ describe('startHttp (criterion 2)', () => {
     const b = await connectTo(entry.url);
     expect(created).toHaveBeenCalledTimes(2);
     await a.close();
-    expect((await b.listTools()).tools).toHaveLength(1);
+    expect((await b.listTools()).tools).toHaveLength(toolNames('http').size);
     await b.close();
   });
 
@@ -122,7 +122,7 @@ describe('startHttp (criterion 2)', () => {
     expect(res.status).toBe(400);
     // Its server was closed: a real session still works after it.
     const client = await connectTo(entry.url);
-    expect((await client.listTools()).tools).toHaveLength(1);
+    expect((await client.listTools()).tools).toHaveLength(toolNames('http').size);
     await client.close();
   });
 
