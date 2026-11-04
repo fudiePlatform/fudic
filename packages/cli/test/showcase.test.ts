@@ -268,6 +268,7 @@ describe('criterion 11: an app on its own', () => {
     // The app's own home page is not the showcase's.
     expect(fs.at('solo/src/routes/index.fud').startsWith('<!--')).toBe(false);
   });
+
   it('in an app with no layout, each page is a whole document that is still a page', async () => {
     const fs = new MemoryFs({}, W);
     expect((await cli(fs, kit({}), 'new', 'bare', '--no-layout', '--no-install', '--no-git', '--cwd', W)).code).toBe(0);
