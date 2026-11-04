@@ -15,9 +15,11 @@ export function fixtureEntry(key: string, props: readonly PropField[]): string {
 /** The whole `<tag>.fixture.ts`, one entry per key, in the order given. */
 export function fixtureModule(tag: string, keys: readonly string[], props: readonly PropField[]): string {
   const entries = keys.map((key) => `  ${fixtureEntry(key, props)},\n`).join('');
+  // The same shape `g component` writes: one form of fixture, whichever command wrote it.
   return (
+    "import type { Fixtures } from '@fudic/terms';\n" +
     `import type { $Props } from './${tag}.fud';\n` +
     '\n' +
-    `export default {\n${entries}} satisfies Record<string, $Props>;\n`
+    `export default {\n${entries}} satisfies Fixtures<$Props>;\n`
   );
 }

@@ -18,6 +18,7 @@ import { duplicateIds } from '../project.js';
 import { absolute, dirname, joinPosix, relativeTo } from '../paths.js';
 import { DEV_PORT, normalizeBase, servedApps, type ServedApp } from '../workspace/bases.js';
 import { placeProject } from '../workspace/place.js';
+import type { Project } from '../workspace/discover.js';
 import { appUses, packageOf, usesErrors } from '../workspace/uses.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
 import { EMPTY_PLAN, type AppLayout, type AppOptions, type CliError, type NewOptions, type Plan } from '../types.js';
@@ -106,7 +107,7 @@ export function planApp(name: string, opts: AppOptions, io: ReadIo = nodeReadIo(
 
   const built = scaffoldChanges(
     opts,
-    appFiles({ dir, pkgName: packageOf(scope, name), up, uses: appUses(scope, uses), serve: { base, port } }, asNew),
+    appFiles({ dir, pkgName: packageOf(scope, name), up, uses: appUses(scope, uses, (lib) => declaredName(projects.find((project) => project.name === lib)!, io) ?? packageOf(scope, lib)), serve: { base, port } }, asNew),
     io,
   );
 
@@ -164,4 +165,15 @@ function appReport(r: AppReport): readonly string[] {
 function layoutLine(layout: AppLayout): readonly string[] {
   if (layout === null) return ['  layout     none: each page is a whole document'];
   return 'href' in layout ? [`  layout     ${layout.href}`] : [];
+}
+
+/**
+ * The `name` a library's `package.json` declares: what an app depends on it by, whatever the
+ * workspace's scope (SDD-66 §4.2 — `examples/workspace` calls its `ui` `@fudic/example-ui`).
+ */
+function declaredName(library: Project, io: ReadIo): string | undefined {
+  const file = joinPosix(library.path, 'package.json');
+  if (!io.exists(file)) return undefined;
+  const name = (JSON.parse(io.read(file)) as { name?: unknown }).name;
+  return typeof name === 'string' && name !== '' ? name : undefined;
 }

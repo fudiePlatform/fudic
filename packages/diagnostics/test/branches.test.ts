@@ -187,6 +187,9 @@ const CASES: readonly (readonly [FudDiagnostic, string])[] = [
   [c.FUD1220({ file: 'src/a.fudlog', span: S, reason: 'unknown event `garbage`' }), 'a history line cannot be read: unknown event `garbage`'],
   [c.FUD1221({ file: 'src/a.css' }), 'src/a.css is not a component or a route'],
   [c.FUD1222({ file: F }), 'src/a.fud has no criteria to approve'],
+  [c.FUD1240({ file: 'src/layouts/_layout.fud' }), 'src/layouts/_layout.fud is not a route or a component: only they have a server'],
+  [c.FUD1241({ file: 'libs/ui/src/components/ui-card/ui-card.fud' }), 'belongs to a library: its server is not generated yet'],
+  [c.FUD1242({ file: 'libs/ui' }), 'libs/ui has no component with a fixture: nothing to show'],
 ];
 
 describe('every variant says its own sentence', () => {

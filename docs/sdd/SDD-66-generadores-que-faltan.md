@@ -1,6 +1,6 @@
 # SDD-66 — Los generadores que faltan: el `.fudapi` de una pieza y el escaparate
 
-> **Estado:** `Listo` — [tareas](./SDD-66-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-66-Task.md).
 > **Paquetes:** `@fudic/cli` · `@fudic/workbench` · `@fudic/spec` · `@fudic/compiler` ·
 > `@fudic/diagnostics` · `examples/workspace`
 > **Depende de:** 22 y 44 (la CLI y el workspace), 60 (`.fudapi`), 61 (la vista portable y su
@@ -70,14 +70,14 @@ fudic g api src/routes/productos.fud          # a route: its load
 
 ```
 # acme-cart.fudapi
-# The server functions of the component: their handlers are in src/server/components/acme-cart.ts.
+# The server functions of the component: their handlers are in src/server/components/acme-cart/acme-cart.ts.
 get hello
   -> str
 ```
 
 ```ts
-// src/server/components/acme-cart.ts
-import { hello } from 'fudic:components/acme-cart';
+// src/server/components/acme-cart/acme-cart.ts
+import { hello } from 'fudic:components/acme-cart/acme-cart';
 
 hello.handle(() => 'Hello from the server');
 ```
@@ -116,20 +116,20 @@ fudic g showcase                    # standalone app: its own components, under 
    @code {
      import cases from '@acme/ui/acme-button.fixture';
 
-     const primary = cases["primary"];
-     const disabled = cases["disabled"];
+     const { variant: primaryVariant } = cases.primary;
+     const { variant: disabledVariant, disabled: disabledDisabled } = cases.disabled;
    }
 
    <h1>acme-button</h1>
 
    <section>
      <h2>primary</h2>
-     <acme-button .variant=@primary.variant>Save</acme-button>
+     <acme-button .variant=@primaryVariant>Save</acme-button>
    </section>
 
    <section>
      <h2>disabled</h2>
-     <acme-button .variant=@disabled.variant .disabled=@disabled.disabled>Save</acme-button>
+     <acme-button .variant=@disabledVariant .disabled=@disabledDisabled>Save</acme-button>
    </section>
    ```
 
@@ -190,7 +190,7 @@ component its cases: `fudic g spec <name>` writes its fixture».
 ### 4.1. `g api`
 
 - **El `<id>`** es el de SDD-60 §3.11: la ruta del `.fudapi` dentro de `src/`, sin extensión
-  (`components/acme-cart`, `routes/productos`). El handler va en `<server>/<id>.ts`, con `server`
+  (`components/acme-cart/acme-cart`, `routes/productos`). El handler va en `<server>/<id>.ts`, con `server`
   leído de `fudic.json` (`src/server` por defecto).
 - **El enlace va donde manda el papel del fichero**: arriba del todo en un componente y en una
   ruta (en una ruta, tras su `<link rel="layout">`), dentro de `<head>` en una página. Es la misma
@@ -250,7 +250,7 @@ component its cases: `fudic g spec <name>` writes its fixture».
 **`g api`**
 
 1. Sobre un componente sin servidor escribe el `.fudapi`, el handler en
-   `src/server/components/<tag>.ts` y el enlace arriba del `.fud`; el proyecto compila sin
+   `src/server/components/<tag>/<tag>.ts` y el enlace arriba del `.fud`; el proyecto compila sin
    diagnósticos y `hello` responde su texto (test con el servidor de dev en memoria de
    `@fudic/testing`).
 2. Sobre una ruta escribe su `load`, su handler y el enlace en su sitio; el título del `.fud` no
@@ -324,3 +324,41 @@ component its cases: `fudic g spec <name>` writes its fixture».
    fuentes que se separan; importar la fixture de la librería es lo que haría un usuario. La
    frontera queda en «librería fudic» (con `fudic.json`), que es código que el proyecto controla y
    que el corte de servidor ya sabe resolver; un paquete cualquiera sigue fuera.
+
+### 8.2. Tomadas al implementar
+
+1. **El `<id>` de un componente nombra su carpeta y su fichero.** El componente vive en
+   `src/components/<tag>/<tag>.fud`, así que por la regla de SDD-60 §3.11 su `<id>` es
+   `components/<tag>/<tag>` y su handler `<server>/components/<tag>/<tag>.ts`. Los ejemplos de
+   §3.1 y el criterio 1 decían `components/<tag>`, que no casaba con el módulo `fudic:<id>`.
+2. **`<pieza>` es relativa al proyecto**, no a `--cwd`: es lo que hace que
+   `g api src/components/web-cart --project web` funcione desde la raíz del workspace.
+3. **La enmienda a SDD-61 la decide el host.** El compilador no sabe de paquetes: `ProjectModule`
+   gana `library?: true`, y el índice de `@fudic/typecheck` lo pone cuando un especificador de
+   paquete resuelve (por los `exports`, como un `href`) a un fichero cuya raíz de paquete tiene
+   `fudic.json`. Sin eso, `server-cut` sigue dando `FUD1150` a todo especificador de paquete.
+4. **`FUD0973` y `FUD0974` paran `g showcase`.** Una fixture que lanza o una señal sin literal
+   JSON no se pueden enseñar como son; mejor no escribir nada que escribir un escaparate a medias.
+5. **El criterio 6 se comprueba sobre una copia de `examples/workspace`** con su propio
+   `pnpm-workspace.yaml`. Dentro del repo, `examples/workspace` no es un workspace por sí mismo:
+   la raíz que encuentra la CLI es la del repo, y la app nacería en `<repo>/apps/showcase`. Darle
+   su yaml cambiaría cómo el repo instala el ejemplo, y eso no es de esta spec.
+6. **En un documento entero la marca va en la segunda línea**, tras el `<!DOCTYPE html>`: nada
+   puede ir delante de él, o el fichero deja de leerse como página (`FUD0156`). Una página dentro
+   de un layout, un host y el índice con layout la llevan en la primera, como dice §3.2.
+7. **Lo que encontró `verify:generated` se arregló en su sitio**, fuera de los paquetes de la
+   cabecera cuando hizo falta: `g api` y `g page --server` añaden `@fudic/http` (la raíz del
+   servidor lo importa); `--uses` depende del `name` real de la librería; `@fudic/testing` pasa
+   por el grafo de vitest `@fudic/http` y `@fudic/forms` (registran por `import()`, y Node no
+   conoce `fudic:`) y carga la raíz del servidor antes de cada fichero (un test de formulario
+   valida sin visitar una página); y el test que escribe `g form` valida con `$validate()`, porque
+   `$valid()` de un formulario sin tocar es `true` por diseño (BUG-42).
+8. **Una constante por prop, no por caso** (corrige §3.2, §4.2 y §8.1.2). `const primary =
+   cases["primary"]` no porta: el objeto de un caso no tiene un tipo que la vista portable admita
+   (`FUD1153`), y `cases["primary"]` con un nombre que el punto sabe escribir tampoco (SDD-61 §3.5).
+   El escaparate lee como el banco: `const { variant: primaryVariant } = cases.primary;` y
+   `.variant=@primaryVariant`; los corchetes, solo para `cases["titulo-largo"]`. El nombre de cada
+   constante es el del caso más la prop (`tituloLargoVariant`), numerado si choca.
+9. **Una librería con nombre `@fudic/…` también es una librería.** El corte de servidor pregunta
+   primero al host si el paquete es una librería fudic, y solo si no lo es aplica el catálogo de
+   `@fudic/*`: `examples/workspace` llama a la suya `@fudic/example-ui`.

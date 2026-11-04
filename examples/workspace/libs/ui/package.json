@@ -12,6 +12,7 @@
   "exports": {
     "./fudic.json": "./fudic.json",
     "./*.fud": "./src/components/*/*.fud",
+    "./*.fixture": "./src/components/*/*.fixture.ts",
     "./ui.css": "./ui.css",
     "./pipes/*": "./src/pipes/*.ts"
   },

@@ -26,7 +26,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -127,8 +127,12 @@ async function waitUntilReady() {
   throw new Error(`the registry did not come up at ${REGISTRY} within ${READY_TIMEOUT_MS} ms`);
 }
 
-async function main() {
-  if (!flags.has('--no-build')) {
+/**
+ * Build (unless `build` is false), wipe, start Verdaccio and publish `@fudic/*` to it. Answers the
+ * function that stops it: `scripts/verify-generated.mjs` installs from it and then stops it.
+ */
+export async function startRegistry({ build = true } = {}) {
+  if (build) {
     console.log('› building the workspace, so what gets published is what was just built');
     run('pnpm', ['-r', 'build']);
   }
@@ -158,7 +162,11 @@ async function main() {
   // other half of why this is a faithful rehearsal.
   console.log('› publishing @fudic/* to the local registry');
   run('pnpm', ['-r', '--filter', './packages/*', 'publish', '--registry', REGISTRY, '--no-git-checks']);
+  return stop;
+}
 
+async function main() {
+  const stop = await startRegistry({ build: !flags.has('--no-build') });
   if (flags.has('--publish')) {
     stop();
     return;
@@ -174,4 +182,5 @@ Ctrl-C stops it. Everything it serves lives in .local-registry/ and is thrown aw
 next run.`);
 }
 
-await main();
+// Run as a script, not when `verify-generated.mjs` imports it.
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) await main();

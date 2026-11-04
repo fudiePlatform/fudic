@@ -2,6 +2,8 @@
 
 > **Estado:** `Hecho` — [tareas](./SDD-61-Task.md) · [anexo: cómo se traduce a cada
 > lenguaje](./SDD-61-anexo-traduccion.md).
+> **Enmendada por [SDD-66](./SDD-66-generadores-que-faltan.md) §4.2:** en §3.9 un módulo de datos también puede venir de
+> una librería fudic (un paquete con `fudic.json`); un paquete cualquiera sigue siendo `FUD1150`.
 > **Paquetes:** `@fudic/compiler` (analizadores, `@empty`, emit) · `@fudic/diagnostics` ·
 > `@fudic/core` (`now`) · `@fudic/dom` (orden del spread) · `@fudic/ssr` (`now` en `fud-state`, `@empty`) · `@fudic/typecheck` (pase
 > tipado) · `@fudic/language-core` (proyección de `@empty`, completado de la vista) ·
