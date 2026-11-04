@@ -9,6 +9,7 @@
  */
 
 import { FUD0443, FUD0974, FUD1242, type FudDiagnostic } from '@fudic/diagnostics';
+import { fixtureOf } from './access.js';
 import { hostComponent } from './host.js';
 import { caseShape, propAttrs, signalLiterals } from './mount-source.js';
 import type { ExecutedFixtures } from './pages.js';
@@ -139,12 +140,24 @@ function pageOf(component: ShowcaseComponent, input: ShowcaseInput, mark: string
   const reads: string[] = [];
   const blocks: string[] = [];
 
+  // One const per prop, as the workbench reads them: a case's object has no type the portable view
+  // ports (FUD1153), each of its props does. `primary` + `variant` → `primaryVariant`.
+  const taken = new Set(['cases', ...vars]);
+  const local = (variable: string, prop: string): string => {
+    const base = `${variable}${prop.charAt(0).toUpperCase()}${prop.slice(1)}`;
+    let candidate = base;
+    for (let n = 2; taken.has(candidate); n += 1) candidate = `${base}${n}`;
+    taken.add(candidate);
+    return candidate;
+  };
+
   names.forEach((name, i) => {
     const shape = caseShape(component.cases[name]!);
     const variable = vars[i]!;
     if (shape.signals.length === 0) {
-      reads.push(`  const ${variable} = cases[${JSON.stringify(name)}];`);
-      const attrs = propAttrs(shape.order, (prop) => `${variable}.${prop}`);
+      const locals = new Map(shape.order.map((prop) => [prop, local(variable, prop)]));
+      if (locals.size > 0) reads.push(`  const { ${[...locals].map(([prop, name]) => `${prop}: ${name}`).join(', ')} } = ${fixtureOf(name, 'cases')};`);
+      const attrs = propAttrs(shape.order, (prop) => locals.get(prop)!);
       blocks.push(block(name, `<${component.tag}${attrs}>${shape.content}</${component.tag}>`));
       return;
     }

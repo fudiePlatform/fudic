@@ -274,17 +274,15 @@ class ServerCut {
     const from = String(child(declaration.statement, 'source')!['value']);
     if (from.startsWith(FUDAPI)) return;
     const imported = importedName(specifier);
-    if (from.startsWith(FUDIC_PACKAGE)) {
-      if (imported === undefined || !CATALOGUE.has(imported)) this.#unportable(unit, specifier, read.use);
-      return;
-    }
     // A path, relative or absolute (from the root of the disk, or from a drive on Windows), is
     // a module of the project; anything else names a package, and only a fudic library's module
-    // is data the cut reads (SDD-66 §4.2): one the host does not say is a library's is unportable.
+    // is data the cut reads (SDD-66 §4.2). Asked first: a library may be named under `@fudic/`
+    // too — `examples/workspace` calls its own `@fudic/example-ui`.
     if (!from.startsWith('.') && !from.startsWith('/') && !/^[A-Za-z]:\//u.test(from)) {
       const module = unit.importer === undefined ? undefined : this.#input.readModule?.(from, unit.importer);
       if (module?.library !== true) {
-        this.#unportable(unit, specifier, read.use);
+        // fudic's own packages: what the cut evaluates is their catalogue, and nothing else.
+        if (!from.startsWith(FUDIC_PACKAGE) || imported === undefined || !CATALOGUE.has(imported)) this.#unportable(unit, specifier, read.use);
         return;
       }
     }

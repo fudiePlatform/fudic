@@ -116,20 +116,20 @@ fudic g showcase                    # standalone app: its own components, under 
    @code {
      import cases from '@acme/ui/acme-button.fixture';
 
-     const primary = cases["primary"];
-     const disabled = cases["disabled"];
+     const { variant: primaryVariant } = cases.primary;
+     const { variant: disabledVariant, disabled: disabledDisabled } = cases.disabled;
    }
 
    <h1>acme-button</h1>
 
    <section>
      <h2>primary</h2>
-     <acme-button .variant=@primary.variant>Save</acme-button>
+     <acme-button .variant=@primaryVariant>Save</acme-button>
    </section>
 
    <section>
      <h2>disabled</h2>
-     <acme-button .variant=@disabled.variant .disabled=@disabled.disabled>Save</acme-button>
+     <acme-button .variant=@disabledVariant .disabled=@disabledDisabled>Save</acme-button>
    </section>
    ```
 
@@ -353,3 +353,12 @@ component its cases: `fudic g spec <name>` writes its fixture».
    conoce `fudic:`) y carga la raíz del servidor antes de cada fichero (un test de formulario
    valida sin visitar una página); y el test que escribe `g form` valida con `$validate()`, porque
    `$valid()` de un formulario sin tocar es `true` por diseño (BUG-42).
+8. **Una constante por prop, no por caso** (corrige §3.2, §4.2 y §8.1.2). `const primary =
+   cases["primary"]` no porta: el objeto de un caso no tiene un tipo que la vista portable admita
+   (`FUD1153`), y `cases["primary"]` con un nombre que el punto sabe escribir tampoco (SDD-61 §3.5).
+   El escaparate lee como el banco: `const { variant: primaryVariant } = cases.primary;` y
+   `.variant=@primaryVariant`; los corchetes, solo para `cases["titulo-largo"]`. El nombre de cada
+   constante es el del caso más la prop (`tituloLargoVariant`), numerado si choca.
+9. **Una librería con nombre `@fudic/…` también es una librería.** El corte de servidor pregunta
+   primero al host si el paquete es una librería fudic, y solo si no lo es aplica el catálogo de
+   `@fudic/*`: `examples/workspace` llama a la suya `@fudic/example-ui`.
