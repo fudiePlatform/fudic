@@ -5,7 +5,7 @@
 > `examples/workspace`
 > **Rama:** `sdd-66-generadores-que-faltan`. Nace de `main` **con SDD-61 en `Hecho`**: enmienda su
 > analizador `server-cut` (tarea 17).
-> **Progreso:** 15 / 17 — `En curso`.
+> **Progreso:** 17 / 17 — `Hecho`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -76,5 +76,5 @@ tests lo comprueban sin tocarlos.
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 14 | 5, 10, 13 | **`verify:generated`.** El script de SDD §3.4 sobre el registro local, con su tabla de comandos; el test de la CLI que compara la tabla con `GENERATE_TYPES`. Criterio 17, ejecutado y en verde | raíz · `cli` | `scripts/verify-generated.mjs` · `package.json` · `packages/cli/test/verify-table.test.ts` |
-| [ ] | 15 | 14 | **Docs y entrega.** README de la CLI (`g api`, `g showcase`) y su sección de desarrollo (`verify:generated`), en inglés y sin citar SDD. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; lo nuevo al 100 % (criterio 18) | `cli` | `packages/cli/README.md` |
-| [ ] | 16 | 15 | **Cierre.** SDD-66 y este fichero en `Hecho`; fila y registro de progreso del `INDEX.md` | — | `docs/sdd/*` |
+| [x] | 15 | 14 | **Docs y entrega.** README de la CLI (`g api`, `g showcase`) y su sección de desarrollo (`verify:generated`), en inglés y sin citar SDD. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; lo nuevo al 100 % (criterio 18) | `cli` | `packages/cli/README.md` |
+| [x] | 16 | 15 | **Cierre.** SDD-66 y este fichero en `Hecho`; fila y registro de progreso del `INDEX.md` | — | `docs/sdd/*` |

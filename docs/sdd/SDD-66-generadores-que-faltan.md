@@ -1,6 +1,6 @@
 # SDD-66 — Los generadores que faltan: el `.fudapi` de una pieza y el escaparate
 
-> **Estado:** `Listo` — [tareas](./SDD-66-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-66-Task.md).
 > **Paquetes:** `@fudic/cli` · `@fudic/workbench` · `@fudic/spec` · `@fudic/compiler` ·
 > `@fudic/diagnostics` · `examples/workspace`
 > **Depende de:** 22 y 44 (la CLI y el workspace), 60 (`.fudapi`), 61 (la vista portable y su
