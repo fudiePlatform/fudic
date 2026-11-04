@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/history` (nuevo) · `@fudic/cli` · `@fudic/diagnostics` · `@fudic/conventions`
 > **Rama:** `sdd-65-historial-de-cada-pieza`. Nace de `main` **con SDD-64 en `Hecho`** (los
 > informes que graba) y SDD-63 (el contrato).
-> **Progreso:** 16 / 17 — `En curso`.
+> **Progreso:** 17 / 17 — `Hecho`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -82,4 +82,4 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 17 | 16 | **Docs, entrega y cierre.** README de `@fudic/history` y de la CLI (los tres comandos), en inglés y sin citar SDD; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde y al 100 % (criterio 16); SDD-65 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `packages/*/README.md` · `docs/sdd/*` |
+| [x] | 17 | 16 | **Docs, entrega y cierre.** README de `@fudic/history` y de la CLI (los tres comandos), en inglés y sin citar SDD; `pnpm typecheck`, `pnpm test` y `pnpm build` en verde y al 100 % (criterio 16); SDD-65 y este fichero en `Hecho`, fila y registro del `INDEX.md` | varios | `packages/*/README.md` · `docs/sdd/*` |

@@ -74,6 +74,25 @@ fudic fmt [path…]   # format .fud and .fudspec files; --check for CI
 fudic translate     # extract the texts to translate into src/locales/
 ```
 
+## The history of a piece
+
+Each component and route keeps a `.fudlog` next to its `.fud`: it only grows, it goes to git,
+and `fudic new` writes the `.gitattributes` that lets two branches add to it without a conflict.
+
+```sh
+fudic approve src/components/acme-button              # approve its criteria and props
+fudic accept  src/components/acme-button "Looks good"  # the client accepted it; tags HEAD
+fudic history src/components/acme-button              # what still holds, now
+```
+
+```
+acme-button  approved by pedro (valid) · tests pass 6/6 · spec pass 4/4 · done
+```
+
+A piece is a component's or a route's `.fud`, or its folder. `approve` writes your git name and
+the hash of the `.fudspec` and its fixture: touch either and the approval expires. `accept` tags
+the commit you are on as `accepted/<name>/<date>`. `history --json` prints the whole state.
+
 ## Errors
 
 A command that cannot run says why in one line, how to go on in the next, and which help to

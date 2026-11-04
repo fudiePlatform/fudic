@@ -1,6 +1,6 @@
 # SDD-65 — El historial de cada pieza: aprobaciones y ejecuciones en git
 
-> **Estado:** `Listo` — [tareas](./SDD-65-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-65-Task.md).
 > **Paquetes:** `@fudic/history` (nuevo) · `@fudic/cli` · `@fudic/diagnostics` ·
 > `@fudic/conventions`
 > **Depende de:** 64 (los informes de criterios y tests), 63 (el contrato, para saber qué está
