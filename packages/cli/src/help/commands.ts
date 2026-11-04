@@ -26,7 +26,10 @@ export type Topic =
   | 'test'
   | 'spec'
   | 'fmt'
-  | 'translate';
+  | 'translate'
+  | 'approve'
+  | 'accept'
+  | 'history';
 
 interface CommandHelp {
   readonly usage: string;
@@ -364,6 +367,34 @@ per source file, for each locale of fudic.json. What you translated is kept.`,
     args: [],
     options: [IN_APP],
     examples: ['fudic translate', 'fudic translate --project web'],
+  },
+  approve: {
+    usage: 'fudic approve <piece>',
+    about: `Approves a component's or a route's criteria and props: writes it in the piece's
+.fudlog with your git name and the hash of its .fudspec and fixture. Touching
+either afterwards expires the approval.`,
+    args: [['<piece>', "a component's or a route's .fud, or its folder"]],
+    options: [DRY_RUN],
+    examples: ['fudic approve src/components/acme-button', 'fudic approve src/routes/blog/index.fud'],
+  },
+  accept: {
+    usage: 'fudic accept <piece> "<text>"',
+    about: `Records that the client accepted a piece, in its .fudlog, and tags the commit
+you are on as accepted/<name>/<date>.`,
+    args: [
+      ['<piece>', "a component's or a route's .fud, or its folder"],
+      ['<text>', 'what the client said'],
+    ],
+    options: [DRY_RUN],
+    examples: ['fudic accept src/components/acme-button "Client accepted it"', 'fudic accept src/routes/blog "Approved in the demo" --dry-run'],
+  },
+  history: {
+    usage: 'fudic history <piece>',
+    about: `Shows what the history of a piece says now: whether its approval still holds,
+and whether its tests and criteria passed with the files as they are.`,
+    args: [['<piece>', "a component's or a route's .fud, or its folder"]],
+    options: [['--json', 'the whole state, as JSON']],
+    examples: ['fudic history src/components/acme-button', 'fudic history src/routes/blog --json'],
   },
 };
 

@@ -18,7 +18,7 @@ export interface UsageError {
 export const GENERATES = 'component, page, layout, app, lib, service, form, pipe, style, snippet, term';
 
 /** The commands, for an unknown one. */
-export const COMMANDS = 'new, generate (g), add, dev, preview, test, spec, fmt, translate';
+export const COMMANDS = 'new, generate (g), add, dev, preview, test, spec, fmt, translate, approve, accept, history';
 
 const INDENT = '       ';
 

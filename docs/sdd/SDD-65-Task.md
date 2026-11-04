@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/history` (nuevo) · `@fudic/cli` · `@fudic/diagnostics` · `@fudic/conventions`
 > **Rama:** `sdd-65-historial-de-cada-pieza`. Nace de `main` **con SDD-64 en `Hecho`** (los
 > informes que graba) y SDD-63 (el contrato).
-> **Progreso:** 12 / 17 — `En curso`.
+> **Progreso:** 14 / 17 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -74,8 +74,8 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 14 | 11 | **`approve`, `accept` y `history`.** Planes; la persona de `git config user.name`; la etiqueta como `PlanCommand`; `FUD1221`/`FUD1222`; ayuda de cada comando | `cli` | `src/plans/history.ts` · `src/args.ts` · `src/run.ts` · `src/help/*` |
-| [ ] | 15 | — | **`.gitattributes` en `new`.** `*.fudlog merge=union` en las dos formas de `new` | `cli` | `templates/gitattributes.tmpl` · `src/plans/scaffold.ts` · `src/plans/workspace.ts` |
+| [x] | 14 | 11 | **`approve`, `accept` y `history`.** Planes; la persona de `git config user.name`; la etiqueta como `PlanCommand`; `FUD1221`/`FUD1222`; ayuda de cada comando | `cli` | `src/plans/history.ts` · `src/args.ts` · `src/run.ts` · `src/help/*` |
+| [x] | 15 | — | **`.gitattributes` en `new`.** `*.fudlog merge=union` en las dos formas de `new` | `cli` | `templates/gitattributes.tmpl` · `src/plans/scaffold.ts` · `src/plans/workspace.ts` |
 | [ ] | 16 | 14, 15 | **Los tests de la fase.** Criterios 12–15 | `cli` | `test/**` |
 
 ## Fase 6 — cierre (1)

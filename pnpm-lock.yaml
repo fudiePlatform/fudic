@@ -283,6 +283,9 @@ importers:
       '@fudic/formatter':
         specifier: workspace:*
         version: link:../formatter
+      '@fudic/history':
+        specifier: workspace:*
+        version: link:../history
       '@fudic/i18n':
         specifier: workspace:*
         version: link:../i18n

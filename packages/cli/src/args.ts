@@ -15,6 +15,7 @@ import { APPS_DIR, LIBS_DIR, SNIPPETS_DIR } from './dirs.js';
 import type {
   AppLayout,
   AppOptions,
+  BaseOptions,
   ComponentOptions,
   FmtOptions,
   LayoutOptions,
@@ -66,6 +67,9 @@ export type ParsedCommand =
   | { readonly kind: 'translate'; readonly opts: TranslateOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'serve'; readonly serve: ServeKind; readonly opts: ServeOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'check'; readonly check: CheckKind; readonly opts: TargetedOptions; readonly flags: GlobalFlags }
+  | { readonly kind: 'approve'; readonly piece: string; readonly opts: BaseOptions; readonly flags: GlobalFlags }
+  | { readonly kind: 'accept'; readonly piece: string; readonly text: string; readonly opts: BaseOptions; readonly flags: GlobalFlags }
+  | { readonly kind: 'history'; readonly piece: string; readonly opts: BaseOptions; readonly flags: GlobalFlags }
   /** `topic: null` is the general help. */
   | { readonly kind: 'help'; readonly topic: Topic | null }
   | ({ readonly kind: 'error' } & UsageError);
@@ -115,6 +119,7 @@ function topicOf(positionals: readonly string[]): Topic | null {
   const [command, type] = positionals;
   if (command === 'new' || command === 'fmt' || command === 'translate') return command;
   if (command === 'dev' || command === 'preview' || command === 'test' || command === 'spec' || command === 'add') return command;
+  if (command === 'approve' || command === 'accept' || command === 'history') return command;
   if (command !== 'generate' && command !== 'g') return null;
   const canonical = type === undefined ? undefined : GENERATE_TYPES[type];
   return canonical === undefined ? 'generate' : `generate ${canonical}`;
@@ -233,6 +238,9 @@ export function parseArgs(argv: readonly string[]): ParsedCommand {
   if (command === 'new') return parseNew(tokens, rest, { cwd, force }, flags);
   if (command === 'generate' || command === 'g') return parseGenerate(tokens, rest, { cwd, force }, flags);
   if (command === 'add') return parseAdd(tokens, rest, { cwd, force }, flags);
+  if (command === 'approve' || command === 'accept' || command === 'history') {
+    return parseHistory(command, tokens, rest, { cwd, force }, flags);
+  }
   return fail({ problem: 'unknown-command', command }, null, `the commands are: ${COMMANDS}`);
 }
 
@@ -329,6 +337,34 @@ function parseCheck(check: CheckKind, tokens: Tokens, rest: readonly string[], b
     return fail({ problem: 'unexpected-argument', command: check, value: extra }, check, 'it runs the project you are in, every project from the workspace root, or the one --project names');
   }
   return { kind: 'check', check, opts: { ...base, ...target(tokens) }, flags };
+}
+
+/**
+ * `fudic approve <piece>`, `fudic accept <piece> "<text>"` and `fudic history <piece>`: a piece is
+ * a component's or a route's `.fud`, or its folder. No option of their own.
+ */
+function parseHistory(
+  command: 'approve' | 'accept' | 'history',
+  tokens: Tokens,
+  rest: readonly string[],
+  base: Base,
+  flags: GlobalFlags,
+): ParsedCommand {
+  const unknown = unknownFlag(tokens, GLOBAL, command);
+  if (unknown !== null) return unknown;
+  const [piece, text, extra] = rest;
+  if (piece === undefined) {
+    return fail({ problem: 'needs-argument', command, what: 'a piece' }, command, `name a component's or a route's .fud, or its folder: fudic ${command} src/components/button`);
+  }
+  if (command !== 'accept') {
+    if (text !== undefined) return fail({ problem: 'unexpected-argument', command, value: text }, command, `fudic ${command} takes one piece`);
+    return { kind: command, piece, opts: base, flags };
+  }
+  if (text === undefined || text.trim() === '') {
+    return fail({ problem: 'needs-argument', command, what: 'what the client said' }, command, `fudic accept ${piece} "Client accepted it"`);
+  }
+  if (extra !== undefined) return fail({ problem: 'unexpected-argument', command, value: extra }, command, 'quote the text: fudic accept <piece> "<text>"');
+  return { kind: 'accept', piece, text, opts: base, flags };
 }
 
 /** A numeric flag, or `undefined` when what was given is not one. */
