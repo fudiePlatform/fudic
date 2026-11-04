@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/history` (nuevo) · `@fudic/cli` · `@fudic/diagnostics` · `@fudic/conventions`
 > **Rama:** `sdd-65-historial-de-cada-pieza`. Nace de `main` **con SDD-64 en `Hecho`** (los
 > informes que graba) y SDD-63 (el contrato).
-> **Progreso:** 14 / 17 — `En curso`.
+> **Progreso:** 16 / 17 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -68,7 +68,7 @@ código, no el test.
 |---|---|---|---|---|---|
 | [x] | 11 | 5, 9 | **`unitState`.** `approval`, `tests`, `spec`, `look`, `done`, `accepted` según SDD §4.4 | `history` | `src/state.ts` |
 | [x] | 12 | 9 | **`snapshot`, `recordSpecRun` y `recordTestRun`.** A qué pieza va cada ejecución (SDD §4.3), con el hash del `snapshot` | `history` | `src/runs.ts` |
-| [ ] | 13 | 11, 12 | **Los tests de la fase.** Criterios 7–11, con `runSpecs` y `runTests` de verdad sobre un proyecto de prueba | `history` | `test/**` |
+| [x] | 13 | 11, 12 | **Los tests de la fase.** Criterios 7–11, con `runSpecs` y `runTests` de verdad sobre un proyecto de prueba | `history` | `test/**` |
 
 ## Fase 5 — la CLI (3)
 
@@ -76,7 +76,7 @@ código, no el test.
 |---|---|---|---|---|---|
 | [x] | 14 | 11 | **`approve`, `accept` y `history`.** Planes; la persona de `git config user.name`; la etiqueta como `PlanCommand`; `FUD1221`/`FUD1222`; ayuda de cada comando | `cli` | `src/plans/history.ts` · `src/args.ts` · `src/run.ts` · `src/help/*` |
 | [x] | 15 | — | **`.gitattributes` en `new`.** `*.fudlog merge=union` en las dos formas de `new` | `cli` | `templates/gitattributes.tmpl` · `src/plans/scaffold.ts` · `src/plans/workspace.ts` |
-| [ ] | 16 | 14, 15 | **Los tests de la fase.** Criterios 12–15 | `cli` | `test/**` |
+| [x] | 16 | 14, 15 | **Los tests de la fase.** Criterios 12–15 | `cli` | `test/**` |
 
 ## Fase 6 — cierre (1)
 
