@@ -73,6 +73,11 @@ export class Checks {
     return checker.check();
   }
 
+  /** The fudic the project answers with: its checker's, its CLI. */
+  async fudic(): Promise<Fudic> {
+    return (await this.#mount()).fudic;
+  }
+
   /** The repairs the editor offers for one problem of the last check; none for TypeScript's. */
   async repairs(problem: CheckProblem): Promise<readonly Repair[]> {
     if (!problem.code.startsWith('FUD')) return [];

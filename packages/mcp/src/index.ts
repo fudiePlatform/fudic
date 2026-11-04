@@ -8,7 +8,12 @@ export { outDiagnostic, codeTexts, type CodeText, type OutDiagnostic, type Probl
 export { loadFudic, packageDir, exportedFile, type Fudic, type Importer } from './fudic.js';
 export { locate } from './locate.js';
 export { Checks, stampsOf, type ChecksDeps, type Stamps } from './checks.js';
-export { checkProject, problemsOf, type CheckInput } from './check.js';
+export { checkProject, problemsOf, inside, located, summaryOf, nextOf, type CheckInput } from './check.js';
+export { fixProject, ROUNDS, type FixInput } from './fix.js';
+export { formatProject, type FormatInput } from './format.js';
+export { listFiles, filesUnder, readLines, writeFile, READ_LIMIT, type ReadInput, type WriteInput, type Edit } from './files.js';
+export { registerFileTools, FILE_TOOLS } from './file-tools.js';
+export type { Cli } from './fudic.js';
 export { secretOf, secretFile } from './secret.js';
 export { openTunnel, type Spawn, type Tunnel, type TunnelResult } from './tunnel.js';
 export { startHttp, type HttpEntry, type HttpOptions } from './http.js';

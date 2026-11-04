@@ -1,9 +1,9 @@
 /**
  * The fudic the answers are made with: the one the project installed, so the chat is told what
- * its build will say; the server's own only when the project has none.
+ * its build and its CLI will say; the server's own only when the project has none.
  *
- * The project depends on `@fudic/vite`, and the checker is what that `@fudic/vite` resolves:
- * found as Node finds a package, from the folder of the one that depends on it.
+ * The project depends on `@fudic/vite` and `@fudic/cli`. The checker is what that `@fudic/vite`
+ * resolves, found as Node finds a package, from the folder of the one that depends on it.
  */
 
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
@@ -12,13 +12,15 @@ import { pathToFileURL } from 'node:url';
 
 type Typecheck = typeof import('@fudic/typecheck');
 type TypecheckApi = typeof import('@fudic/typecheck/api');
+export type Cli = typeof import('@fudic/cli');
 
 /** The machines a tool calls, and whose they are. */
 export interface Fudic {
   readonly createProjectChecker: Typecheck['createProjectChecker'];
   readonly writeApiDeclarations: TypecheckApi['writeApiDeclarations'];
-  /** `project` when they are the project's own install. */
-  readonly from: 'project' | 'server';
+  readonly cli: Cli;
+  /** Whose each one is: the project's own install, or this server's. */
+  readonly from: { readonly check: 'project' | 'server'; readonly cli: 'project' | 'server' };
 }
 
 /** Imports a module by its file URL. */
@@ -44,7 +46,7 @@ export function exportedFile(dir: string, subpath: string): string | undefined {
 }
 
 /** The project's typecheck, through its `@fudic/vite`; undefined when it has neither. */
-async function projectFudic(root: string, load: Importer): Promise<Fudic | undefined> {
+async function projectCheck(root: string, load: Importer): Promise<{ main: Typecheck; api: TypecheckApi } | undefined> {
   const vite = packageDir('@fudic/vite', root);
   const typecheck = vite === undefined ? undefined : packageDir('@fudic/typecheck', vite);
   if (typecheck === undefined) return undefined;
@@ -52,24 +54,25 @@ async function projectFudic(root: string, load: Importer): Promise<Fudic | undef
   const api = exportedFile(typecheck, './api');
   // An install older than this server has no `./api`: it cannot answer as the build would.
   if (main === undefined || api === undefined) return undefined;
-  const checker = (await load(pathToFileURL(main).href)) as Typecheck;
-  const declarations = (await load(pathToFileURL(api).href)) as TypecheckApi;
-  return {
-    createProjectChecker: checker.createProjectChecker,
-    writeApiDeclarations: declarations.writeApiDeclarations,
-    from: 'project',
-  };
+  return { main: (await load(pathToFileURL(main).href)) as Typecheck, api: (await load(pathToFileURL(api).href)) as TypecheckApi };
 }
 
-/** The fudic of the project at `root`, or the server's own. */
+/** The project's CLI; undefined when it has none. */
+async function projectCli(root: string, load: Importer): Promise<Cli | undefined> {
+  const dir = packageDir('@fudic/cli', root);
+  const main = dir === undefined ? undefined : exportedFile(dir, '.');
+  return main === undefined ? undefined : ((await load(pathToFileURL(main).href)) as Cli);
+}
+
+/** The fudic of the project at `root`, or the server's own, piece by piece. */
 export async function loadFudic(root: string, load: Importer = (url) => import(url)): Promise<Fudic> {
-  const own = await projectFudic(root, load);
-  if (own !== undefined) return own;
-  const checker = await import('@fudic/typecheck');
-  const declarations = await import('@fudic/typecheck/api');
+  const ownCheck = await projectCheck(root, load);
+  const check = ownCheck ?? { main: await import('@fudic/typecheck'), api: await import('@fudic/typecheck/api') };
+  const ownCli = await projectCli(root, load);
   return {
-    createProjectChecker: checker.createProjectChecker,
-    writeApiDeclarations: declarations.writeApiDeclarations,
-    from: 'server',
+    createProjectChecker: check.main.createProjectChecker,
+    writeApiDeclarations: check.api.writeApiDeclarations,
+    cli: ownCli ?? (await import('@fudic/cli')),
+    from: { check: ownCheck === undefined ? 'server' : 'project', cli: ownCli === undefined ? 'server' : 'project' },
   };
 }

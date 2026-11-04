@@ -8,6 +8,8 @@ import { z } from 'zod';
 import { checkProject } from './check.js';
 import { Checks } from './checks.js';
 import { FILE_TOOLS, registerFileTools } from './file-tools.js';
+import { fixProject } from './fix.js';
+import { formatProject } from './format.js';
 import { Guide, TOPICS } from './guide.js';
 import { instructions, newAppPrompt } from './instructions.js';
 import type { Project } from './project.js';
@@ -27,7 +29,7 @@ export interface ServerOptions {
 
 /** The names of the tools the server registers, for the instructions that name them. */
 export function toolNames(entry: Entry): ReadonlySet<string> {
-  return new Set(['fudic_guide', 'fudic_check', ...(entry === 'http' ? FILE_TOOLS : [])]);
+  return new Set(['fudic_guide', 'fudic_check', 'fudic_fix', 'fudic_format', ...(entry === 'http' ? FILE_TOOLS : [])]);
 }
 
 /** The most diagnostics an answer lists unless asked: the summary counts them all. */
@@ -73,6 +75,43 @@ export function createServer(options: ServerOptions): McpServer {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async ({ paths, limit }) => respond(project, await checkProject(project, checks, { limit, ...(paths !== undefined ? { paths } : {}) })),
+  );
+
+  const paths = z.array(z.string()).optional().describe('Files or folders, relative to the project; without them, the whole project');
+  const dryRun = z.boolean().default(false).describe('Only say what would change: nothing is written');
+
+  server.registerTool(
+    'fudic_fix',
+    {
+      title: 'fudic fix',
+      description:
+        'Applies the fudic repairs that have only one option — what the editor would do without asking — checks again ' +
+        'and repeats, up to 5 rounds. Answers what was applied, the diff, and what is left; a diagnostic with several ' +
+        'repairs lists them in "options", for you to choose and write.',
+      inputSchema: {
+        paths,
+        codes: z.array(z.string()).optional().describe('Only these diagnostic codes'),
+        dryRun,
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    },
+    async ({ paths: asked, codes, dryRun: dry }) =>
+      respond(
+        project,
+        await fixProject(project, checks, { dryRun: dry, ...(asked !== undefined ? { paths: asked } : {}), ...(codes !== undefined ? { codes } : {}) }),
+      ),
+  );
+
+  server.registerTool(
+    'fudic_format',
+    {
+      title: 'fudic format',
+      description: 'Formats .fud, .fudspec and .fudapi files as `fudic fmt` does, and answers the diff.',
+      inputSchema: { paths, dryRun },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    },
+    async ({ paths: asked, dryRun: dry }) =>
+      respond(project, await formatProject(project, checks, { dryRun: dry, ...(asked !== undefined ? { paths: asked } : {}) })),
   );
 
   if (entry === 'http') registerFileTools(server, project, checks);

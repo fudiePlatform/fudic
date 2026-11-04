@@ -699,3 +699,14 @@ framework.
     --exclude-standard`); sin git, todo menos `node_modules`, `dist`, `.git` y `.fudic`.
     `fudic_read` responde `lines` (`"20-25"`), `total` y `text`. Un binario es un fichero con un
     NUL en sus primeros 8000 bytes, como lo decide git.
+22. **`fudic_fix` en seco hace una sola vuelta**: sin escribir, el checker no puede ver la
+    siguiente. `applied` y `diff` dicen lo que haría esa vuelta; `summary` y la lista, lo que hay.
+    Dos reparaciones que tocan el mismo texto no van en la misma vuelta: la segunda espera a la
+    siguiente, ya sobre el fichero cambiado.
+23. **`fudic_format` es `fudic fmt` leído por el mismo parser** (`parseArgs(['fmt', …paths])`): los
+    valores por defecto son los de la CLI y no una copia. Como `fudic fmt`, un plan con un fichero
+    que no parsea **no se aplica entero** (`FUD0450` y los diagnósticos de ese fichero); `formatted`
+    dice qué cambiaría y `written`, si se escribió.
+24. **La CLI también sale del proyecto** (§8.2.7): el `@fudic/cli` de su `node_modules` (un
+    `fudic new` lo pone en `devDependencies`), y si no, la del MCP, que pasa a ser dependencia de
+    ejecución del paquete.

@@ -19,6 +19,8 @@ export interface Problem {
   readonly file?: string;
   readonly span?: Span;
   readonly fixable?: boolean;
+  /** The titles of its repairs, when there are several and the choice is the caller's. */
+  readonly options?: readonly string[];
 }
 
 export interface OutDiagnostic {
@@ -31,6 +33,8 @@ export interface OutDiagnostic {
   readonly quote?: string;
   /** One repair, and only one, that the editor would offer. */
   readonly fixable?: boolean;
+  /** The titles of its repairs, when there are several. */
+  readonly options?: readonly string[];
 }
 
 export interface CodeText {
@@ -50,7 +54,12 @@ function posix(path: string): string {
 export function outDiagnostic(d: Problem, root: string, read: ReadSource): OutDiagnostic {
   const base = { code: d.code, severity: d.severity, message: d.message };
   const place = placeOf(d, root, read);
-  return { ...base, ...place, ...(d.fixable !== undefined ? { fixable: d.fixable } : {}) };
+  return {
+    ...base,
+    ...place,
+    ...(d.fixable !== undefined ? { fixable: d.fixable } : {}),
+    ...(d.options !== undefined ? { options: d.options } : {}),
+  };
 }
 
 /** `at` and `quote`, as far as the file and its text allow. */
