@@ -1,7 +1,7 @@
-import { resolve } from 'node:path';
 import { HISTORY_EXTENSION } from '@fudic/conventions';
 import { formatLine } from './format.js';
 import { type HistoryIo, nodeIo } from './io.js';
+import { pathOf } from './unit.js';
 import { type HistoryEvent, NO_COMMIT } from './types.js';
 
 /** The `.fudlog` of a piece: its `.fud` with the other extension. */
@@ -12,8 +12,8 @@ export const instantOf = (date: Date): string => `${date.toISOString().slice(0, 
 
 /** Appends one line to the unit's .fudlog, creating it when it does not exist. */
 export async function record(unit: string, event: HistoryEvent, io: HistoryIo = nodeIo()): Promise<void> {
-  const path = resolve(io.root, historyOf(unit));
-  const before = await io.read(path);
+  const path = historyOf(pathOf(unit, io));
+  const before = io.fs.readFile(path);
   // A history cut without its last line ending (by hand, or by a merge) still gets a line of its own.
   const separator = before !== undefined && before !== '' && !before.endsWith('\n') ? '\n' : '';
   const head = await io.head();

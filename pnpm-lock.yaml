@@ -484,12 +484,24 @@ importers:
 
   packages/history:
     dependencies:
+      '@fudic/api':
+        specifier: workspace:*
+        version: link:../api
+      '@fudic/compiler':
+        specifier: workspace:*
+        version: link:../compiler
       '@fudic/conventions':
         specifier: workspace:*
         version: link:../conventions
       '@fudic/diagnostics':
         specifier: workspace:*
         version: link:../diagnostics
+      '@fudic/spec':
+        specifier: workspace:*
+        version: link:../spec
+      '@fudic/typecheck':
+        specifier: workspace:*
+        version: link:../typecheck
     devDependencies:
       '@fudic/tsconfig':
         specifier: workspace:*

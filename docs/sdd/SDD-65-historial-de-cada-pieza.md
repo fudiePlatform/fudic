@@ -358,11 +358,23 @@ del proyecto, con `/`), escribiendo por cada uno su ruta, un salto, su contenido
 1. **`FUD1220` es un diagnóstico de fuente**: lleva el `span` de la línea siempre y el fichero solo
    si se conoce, porque `parseHistory` recibe `file` opcional.
 2. **`HistoryIo`** es todo lo que el paquete toca fuera: `root` (la raíz del proyecto, contra la que
-   van la pieza y las rutas del hash), `read`, `append`, `now` y `head`. `nodeIo(root)` es el de
-   disco; los tests dan uno propio para fijar el reloj y el commit.
+   van la pieza y las rutas del hash), `fs` (el mismo `CheckFs` de `@fudic/typecheck` que usan el
+   editor y el build, para leer y resolver enlaces), `append`, `now` y `head`. `nodeIo(root)` es el
+   de disco; los tests dan uno propio para fijar el reloj y el commit.
 3. **Columnas.** `formatLine` rellena el suceso hasta doce caracteres y separa los grupos de campos
    con dos espacios, como el ejemplo de §1.1; al leer, cualquier número de espacios vale.
 4. **`<quién>` sin espacios** lo garantiza `formatLine` (`person`), no quien llama: el nombre de
    git `Pedro Hurtado` se escribe `Pedro-Hurtado`.
 5. **Un `.fudlog` sin salto final** (cortado a mano o por un merge) recibe un salto antes de la
    línea nueva: sigue siendo añadir, y la línea nueva no se pega a la anterior.
+6. **Hermanos = mismo nombre.** Los hermanos de `acme-button.fud` son `acme-button.fudspec`,
+   `.fixture.ts`, `.test.ts` y `.fudapi`, no todo lo de la carpeta: en `routes/blog/` conviven
+   varias rutas y sus ficheros no son de las demás.
+7. **Todos los `<link>` cuentan**, no solo `rel="component"`: un snippet o el layout también cambian
+   lo que pinta la pieza, y el `.fudapi` de un `rel="server"` cambia lo que carga. El `href` se
+   resuelve con la resolución de `FudIndex`; un `.fudapi` no se sigue más allá.
+8. **Imports.** Se leen de las sentencias de nivel superior (`import`, `export … from`) que da el
+   parser del compilador (`JsBatch`), en el `@code` de un `.fud` y en cada módulo. Un relativo se
+   resuelve como TypeScript (tal cual, `.ts`, `.js`→`.ts`, `index.ts`); un nombre de paquete, como
+   un enlace. Cada destino pasa por su ruta real: lo que queda bajo `node_modules` (una librería
+   publicada) se descarta, y una librería del workspace, enlazada por pnpm, queda dentro.
