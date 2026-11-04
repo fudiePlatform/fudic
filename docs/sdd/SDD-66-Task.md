@@ -5,7 +5,7 @@
 > `examples/workspace`
 > **Rama:** `sdd-66-generadores-que-faltan`. Nace de `main` **con SDD-61 en `Hecho`**: enmienda su
 > analizador `server-cut` (tarea 17).
-> **Progreso:** 0 / 17 — `Listo`.
+> **Progreso:** 1 / 17 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -41,7 +41,7 @@ tests lo comprueban sin tocarlos.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **Los códigos.** `FUD1240`–`FUD1242`: `.ts`, `.md` y línea en `index.ts`. El rango en la fila de SDD-66 del `INDEX.md` | `diagnostics` | `src/codes/FUD1240`–`1242.{ts,md}` · `src/index.ts` |
+| [x] | 1 | — | **Los códigos.** `FUD1240`–`FUD1242`: `.ts`, `.md` y línea en `index.ts`. El rango en la fila de SDD-66 del `INDEX.md` | `diagnostics` | `src/codes/FUD1240`–`1242.{ts,md}` · `src/index.ts` |
 
 ## Fase 2 — `g api` (4)
 
