@@ -503,9 +503,27 @@ importers:
         specifier: workspace:*
         version: link:../typecheck
     devDependencies:
+      '@fudic/core':
+        specifier: workspace:*
+        version: link:../core
+      '@fudic/dom':
+        specifier: workspace:*
+        version: link:../dom
+      '@fudic/ssr':
+        specifier: workspace:*
+        version: link:../ssr
+      '@fudic/terms':
+        specifier: workspace:*
+        version: link:../terms
+      '@fudic/testing':
+        specifier: workspace:*
+        version: link:../testing
       '@fudic/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      '@fudic/workbench':
+        specifier: workspace:*
+        version: link:../workbench
       '@types/node':
         specifier: 22.20.0
         version: 22.20.0
