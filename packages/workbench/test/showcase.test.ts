@@ -217,6 +217,28 @@ describe('criterion 7: one variable per case', () => {
     expect(page).toContain('<h2>cases</h2>\n  <acme-card .title=@cases2Title></acme-card>');
   });
 
+  it('a constant that clashes with a case or with another constant is numbered', () => {
+    const plan = planShowcase(
+      input({
+        components: [
+          component('acme-button', {
+            primary: { variant: 'a' },
+            primaryVariant: { x: 'b' },
+            a: { bC: 'c' },
+            aB: { c: 'd' },
+          }),
+        ],
+      }),
+    );
+    const page = written(plan).get(`${ROUTES}/acme-button.fud`)!;
+    expect(page).toContain(`  const { variant: primaryVariant2 } = cases.primary;
+  const { x: primaryVariantX } = cases.primaryVariant;
+  const { bC: aBC } = cases.a;
+  const { c: aBC2 } = cases.aB;`);
+    expect(page).toContain('<acme-button .variant=@primaryVariant2></acme-button>');
+    expect(page).toContain('<acme-button .c=@aBC2></acme-button>');
+  });
+
   it('a case with a signal prop is mounted through a host in the hosts folder, which the page links', () => {
     const counter = component('acme-counter', {
       'cuenta-larga': { value: signal(10), label: 'Clicks', $content: 'more' },
