@@ -62,8 +62,11 @@ export function outDiagnostic(d: Problem, root: string, read: ReadSource): OutDi
   };
 }
 
-/** `at` and `quote`, as far as the file and its text allow. */
-function placeOf(d: Problem, root: string, read: ReadSource): { at?: string; quote?: string } {
+/**
+ * `at` and `quote` of a place — a problem, a symbol —, as far as the file and its text allow:
+ * relative to the project, 1-based, never an offset.
+ */
+export function placeOf(d: { readonly file?: string; readonly span?: Span }, root: string, read: ReadSource): { at?: string; quote?: string } {
   if (d.file === undefined) return {};
   const file = isAbsolute(d.file) ? posix(relative(root, d.file)) : d.file;
   const source = d.span === undefined ? undefined : read(d.file);

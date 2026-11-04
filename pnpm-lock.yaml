@@ -690,12 +690,18 @@ importers:
       '@fudic/cli':
         specifier: workspace:*
         version: link:../cli
+      '@fudic/conventions':
+        specifier: workspace:*
+        version: link:../conventions
       '@fudic/diagnostics':
         specifier: workspace:*
         version: link:../diagnostics
       '@fudic/language-server':
         specifier: workspace:*
         version: link:../language-server
+      '@fudic/spec':
+        specifier: workspace:*
+        version: link:../spec
       '@fudic/typecheck':
         specifier: workspace:*
         version: link:../typecheck

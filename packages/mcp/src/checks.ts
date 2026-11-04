@@ -73,6 +73,11 @@ export class Checks {
     return checker.check();
   }
 
+  /** The editor's project service, kept current by every check. */
+  async service(): Promise<ProjectService> {
+    return (await this.#mount()).service;
+  }
+
   /** The fudic the project answers with: its checker's, its CLI. */
   async fudic(): Promise<Fudic> {
     return (await this.#mount()).fudic;

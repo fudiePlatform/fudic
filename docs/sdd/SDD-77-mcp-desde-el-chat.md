@@ -525,11 +525,13 @@ temporal creado con `planNew`. La prueba de Pedro (§6.1) es aparte y no se sust
 
 **Lo que existe**
 
-15. `symbols { kind: "components" }` en `examples/workspace` lista los de `libs/ui` con su doc;
+15. `symbols { kind: "components" }` en `examples/workspace/apps/tienda` lista `ui-card` de
+    `libs/ui` con su doc y su `at` por el paquete (`@fudic/example-ui/src/…`);
     `{ kind: "functions" }` marca `missing` una función sin handler y `connected` otra con él;
-    `{ kind: "tokens" }` da los tokens de la librería de estilos con `group` y `doc`.
-16. `describe { name: "acme-button" }` da el contrato de SDD-63 y un `example` que, pegado en una
-    ruta, compila; `describe { name: "acme-buton" }` da `FUD1405` sugiriendo `acme-button`.
+    `{ kind: "tokens" }` da los tokens de `libs/guia` con `doc` (y `group` cuando el nombre tiene
+    tres segmentos o más), en el orden en que se adoptan.
+16. `describe { name: "ui-card" }` da el contrato de SDD-63 y un `example` que, pegado en una
+    ruta con su `link`, compila; `describe { name: "ui-crad" }` da `FUD1405` sugiriendo `ui-card`.
 17. `contract { id }` da un esqueleto de handler que, escrito en su sitio, deja la función
     `connected` y el proyecto sin diagnósticos.
 
@@ -710,3 +712,25 @@ framework.
 24. **La CLI también sale del proyecto** (§8.2.7): el `@fudic/cli` de su `node_modules` (un
     `fudic new` lo pone en `devDependencies`), y si no, la del MCP, que pasa a ser dependencia de
     ejecución del paquete.
+25. **Los criterios 15 y 16 nombraban `acme-button`**, que `examples/workspace` no tiene: su
+    componente de librería es `ui-card`, y sus tokens (`--guia-ink`…) tienen dos segmentos, sin
+    `group`. Reescritos con lo que hay.
+26. **`symbols` y `describe` viven en `project-symbols.ts` del language server**, sobre lo que el
+    editor ya usa: el índice (`byRole('component')`, `usesOf`, `linker`), `readApiProject`, el
+    `ImplementationIndex` y `implemented()` del CodeLens (exportado), `projectTokens`,
+    `typedContract` y `propShapes` + `sampleValue` para el ejemplo. Las funciones son los `fn`,
+    `load`, `paths`, `layout` y las `rule`, por `<id>.<nombre>` (`routes/products.save`,
+    `routes/products.load`); los tipos, `type`, `enum` y `form`.
+27. **La doc de una lista es su primera frase**, no su primera línea: un JSDoc va partido al
+    ancho de su autor. `describe` da la doc entera.
+28. **El `at` de un fichero de librería va por su paquete** (`@fudic/example-ui/src/…:3:1`), que
+    es como el proyecto la alcanza; nunca una ruta que sale con `../..`.
+29. **El `example` da a cada prop obligatoria el menor valor que compila** (`sampleValue`, el de
+    los fixtures de SDD-53); una prop sin valor honrado se queda fuera y se nombra en `fill`, con
+    un `next` que lo dice. El `link` es el que escribe una ruta de `src/routes`.
+30. **El esqueleto de `fudic_contract` es una llamada que lanza** (`x.handle(() => { throw new
+    Error('…: not written yet') })`): compila con cualquier firma y deja la función `connected`
+    sin fingir una implementación. Va donde la busca el CodeLens: `src/server/<id>.ts`;
+    `src/browser/<id>.ts` para la mitad `client` de un middleware y una regla que no es
+    `runs server`; un pipe, junto a su `.fudapi`, con `export default`. Si el fichero existe,
+    `exists: true`: se añade, no se reemplaza. La firma es el bloque del `.d.ts` generado.

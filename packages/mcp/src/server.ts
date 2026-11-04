@@ -10,6 +10,8 @@ import { Checks } from './checks.js';
 import { FILE_TOOLS, registerFileTools } from './file-tools.js';
 import { fixProject } from './fix.js';
 import { formatProject } from './format.js';
+import { SYMBOL_KINDS } from '@fudic/language-server/project';
+import { contractOf, describeName, listSymbols } from './symbols.js';
 import { Guide, TOPICS } from './guide.js';
 import { instructions, newAppPrompt } from './instructions.js';
 import type { Project } from './project.js';
@@ -29,7 +31,16 @@ export interface ServerOptions {
 
 /** The names of the tools the server registers, for the instructions that name them. */
 export function toolNames(entry: Entry): ReadonlySet<string> {
-  return new Set(['fudic_guide', 'fudic_check', 'fudic_fix', 'fudic_format', ...(entry === 'http' ? FILE_TOOLS : [])]);
+  return new Set([
+    'fudic_guide',
+    'fudic_check',
+    'fudic_fix',
+    'fudic_format',
+    'fudic_symbols',
+    'fudic_describe',
+    'fudic_contract',
+    ...(entry === 'http' ? FILE_TOOLS : []),
+  ]);
 }
 
 /** The most diagnostics an answer lists unless asked: the summary counts them all. */
@@ -112,6 +123,47 @@ export function createServer(options: ServerOptions): McpServer {
     },
     async ({ paths: asked, dryRun: dry }) =>
       respond(project, await formatProject(project, checks, { dryRun: dry, ...(asked !== undefined ? { paths: asked } : {}) })),
+  );
+
+  const lookup = { readOnlyHint: true, openWorldHint: false };
+
+  server.registerTool(
+    'fudic_symbols',
+    {
+      title: 'fudic symbols',
+      description:
+        'What the fudic project has: routes, components, types, functions (connected when their handler is written, ' +
+        'missing when not), middlewares, pipes and tokens — its own and its libraries\', each with where it is and its doc.',
+      inputSchema: { kind: z.enum(SYMBOL_KINDS).optional().describe('One kind; without it, all of them') },
+      annotations: lookup,
+    },
+    async ({ kind }) => respond(project, await listSymbols(project, checks, kind)),
+  );
+
+  server.registerTool(
+    'fudic_describe',
+    {
+      title: 'fudic describe',
+      description:
+        'One thing of the fudic project in full: a component tag (its props, slots, events, parts, tokens, where it is ' +
+        'used, and an example of use that compiles), a route (/products/:id), a type, a function (routes/products.save) or a token.',
+      inputSchema: { name: z.string().describe('A tag, a route, a type, a function or a token, as fudic_symbols names it') },
+      annotations: lookup,
+    },
+    async ({ name }) => respond(project, await describeName(project, checks, name)),
+  );
+
+  server.registerTool(
+    'fudic_contract',
+    {
+      title: 'fudic contract',
+      description:
+        'What a fudic .fudapi asks you to implement: each declaration with a handler, its TypeScript signature, the file it ' +
+        'goes in, whether it is written, and a skeleton of what is missing that compiles.',
+      inputSchema: { id: z.string().describe('The id of the .fudapi: its path under src/, without the extension (routes/products)') },
+      annotations: lookup,
+    },
+    async ({ id }) => respond(project, await contractOf(project, checks, id)),
   );
 
   if (entry === 'http') registerFileTools(server, project, checks);

@@ -8,15 +8,38 @@ import type * as ts from 'typescript';
 import type { SourceDiagnostic } from '@fudic/diagnostics';
 import { nodeFileSystem, toPosix } from '@fudic/typecheck';
 import { DocumentCache } from './document-cache.js';
+import { ProjectSymbols, type Description, type Handler, type ProjectSymbol, type SymbolKind } from './project-symbols.js';
 import { repairsFor, type Repair } from './repairs.js';
 import type { FileSystemScanner } from './types.js';
 import { WorkspaceIndex } from './workspace-index.js';
 
 export type { Repair, RepairEdit } from './repairs.js';
+export {
+  SYMBOL_KINDS,
+  exampleOf,
+  routePattern,
+  type ComponentDescription,
+  type DeclarationDescription,
+  type Handler,
+  type Description,
+  type Place,
+  type ProjectSymbol,
+  type RouteDescription,
+  type SymbolKind,
+  type TokenDescription,
+} from './project-symbols.js';
 
 export interface ProjectService {
   /** The repairs of one diagnostic, as the editor's light bulb offers them. */
   repairs(file: string, diagnostic: SourceDiagnostic): readonly Repair[];
+  /** Every symbol of the project and its libraries, in a stable order. */
+  symbols(kind?: SymbolKind): readonly ProjectSymbol[];
+  /** What one name — a tag, a route, a declaration, a token — is, in full. */
+  describe(name: string): Description | undefined;
+  /** Every name `describe` knows. */
+  names(): readonly string[];
+  /** What the `.fudapi` of `<id>` asks to be implemented; undefined when there is no such `<id>`. */
+  handlers(id: string): readonly Handler[] | undefined;
   /** A file changed on disk: the next call re-reads it. */
   invalidate(path: string): void;
 }
@@ -40,13 +63,17 @@ export function openProject(root: string, options: ProjectOptions = {}): Project
   const versions = new Map<string, { readonly text: string; readonly version: number }>();
   let next = 0;
 
-  const mounted = (): { index: WorkspaceIndex; cache: DocumentCache } => {
-    if (index === undefined || cache === undefined) {
+  let known: ProjectSymbols | undefined;
+  const typescript = (): ts.LanguageService | undefined => options.typescript?.();
+
+  const mounted = (): { index: WorkspaceIndex; cache: DocumentCache; symbols: ProjectSymbols } => {
+    if (index === undefined || cache === undefined || known === undefined) {
       index = new WorkspaceIndex(fs);
       index.scan(root);
       cache = new DocumentCache(index);
+      known = new ProjectSymbols({ root: toPosix(root), index, typescript });
     }
-    return { index, cache };
+    return { index, cache, symbols: known };
   };
 
   return {
@@ -59,13 +86,19 @@ export function openProject(root: string, options: ProjectOptions = {}): Project
       versions.set(path, { text, version });
       const { index: workspace, cache: documents } = mounted();
       const cached = documents.get(path, version, text);
-      const typescript = options.typescript?.();
-      return repairsFor({ cached, index: workspace, ...(typescript !== undefined ? { typescript } : {}) }, diagnostic);
+      const service = typescript();
+      return repairsFor({ cached, index: workspace, ...(service !== undefined ? { typescript: service } : {}) }, diagnostic);
     },
 
+    symbols: (kind) => mounted().symbols.symbols(kind),
+    describe: (name) => mounted().symbols.describe(name),
+    names: () => mounted().symbols.names(),
+    handlers: (id) => mounted().symbols.handlers(id),
+
     invalidate(path) {
-      if (index === undefined || cache === undefined) return;
+      if (index === undefined || cache === undefined || known === undefined) return;
       const posix = toPosix(path);
+      known.invalidate(posix);
       if (posix.endsWith('.fud')) {
         // Read again, or dropped when it is gone: what a tag resolves to may have changed.
         index.upsert(posix);

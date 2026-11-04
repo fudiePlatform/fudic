@@ -72,7 +72,7 @@ export function generatedIn(types: GeneratedTypes, name: string): { readonly tit
 }
 
 /** What a declaration is implemented by: the name its module exports and the methods called on it. */
-function implemented(decl: Decl): { readonly name: string; readonly methods: readonly ImplementationMethod[] } | undefined {
+export function implemented(decl: Decl): { readonly name: string; readonly methods: readonly ImplementationMethod[] } | undefined {
   switch (decl.kind) {
     case 'fn':
       return { name: exportedName(decl.name.text), methods: ['handle'] };
