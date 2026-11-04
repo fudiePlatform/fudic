@@ -99,7 +99,9 @@ describe('the app of a workspace and a standalone app', () => {
       .filter((path) => path.startsWith('ws/apps/demo/'))
       .map((path) => path.slice('ws/apps/demo/'.length));
 
-    expect(standaloneFiles.filter((file) => !appFiles.includes(file))).toEqual([GLOBALS_FILE_NAME]);
+    // The repository's files: the workspace keeps them at its root, once.
+    expect(standaloneFiles.filter((file) => !appFiles.includes(file))).toEqual(['.gitattributes', GLOBALS_FILE_NAME]);
+    expect(workspace.paths()).toContain('ws/.gitattributes');
     expect(appFiles.filter((file) => !standaloneFiles.includes(file))).toEqual([]);
 
     // Of the files both have, three differ and no more: `tsconfig.json`, because §4.6 put

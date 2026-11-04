@@ -62,6 +62,11 @@ Maintain
   fmt [path…]                     format .fud and .fudspec files
   translate                       extract the texts to translate into src/locales/
 
+History of a piece
+  approve <piece>                 approve its criteria and props
+  accept <piece> "<text>"         record that the client accepted it, and tag the commit
+  history <piece>                 whether its approval and its last runs still hold
+
 Words
   app         what you serve: it has pages and a base URL ("/", "/admin/")
   library     components your apps use; it is not served
@@ -180,6 +185,9 @@ describe('fudic <command> --help (§6.6)', () => {
     'generate term',
     'fmt',
     'translate',
+    'approve',
+    'accept',
+    'history',
   ];
 
   it('gives every command the same shape: usage, what it does, and two examples', () => {
@@ -244,7 +252,7 @@ describe('a usage error (§6.8)', () => {
   it('points an unknown command at the general help', () => {
     const parsed = parseArgs(['frobnicate']);
     expect(parsed.kind === 'error' && formatUsageError(parsed)).toBe(
-      '\nerror  unknown command "frobnicate"\n       the commands are: new, generate (g), add, dev, preview, test, spec, fmt, translate\n\n"fudic --help" for more.\n',
+      '\nerror  unknown command "frobnicate"\n       the commands are: new, generate (g), add, dev, preview, test, spec, fmt, translate, approve, accept, history\n\n"fudic --help" for more.\n',
     );
   });
 

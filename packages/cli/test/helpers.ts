@@ -8,7 +8,8 @@ import { resolve } from 'node:path';
 import type { CommandRunner, ReadIo, WriteIo } from '../src/io.js';
 import type { Streams } from '../src/run.js';
 
-const key = (path: string): string => resolve(path).replace(/\\/gu, '/');
+// The drive letter in any case, as Windows reads it: `@fudic/typecheck` writes it in lower case.
+const key = (path: string): string => resolve(path).replace(/\\/gu, '/').replace(/^[a-z]:/u, (drive) => drive.toUpperCase());
 
 /**
  * A `MemoryFs` that is a fudic PROJECT — that is, one carrying a `fudic.json`.

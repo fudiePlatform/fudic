@@ -46,6 +46,7 @@ describe('fudic new --workspace', () => {
       'tienda/tsconfig.base.json',
       `tienda/${GLOBALS_FILE_NAME}`,
       'tienda/.gitignore',
+      'tienda/.gitattributes',
       'tienda/libs/.gitkeep',
       'tienda/apps/tienda/package.json',
       'tienda/apps/tienda/vite.config.ts',

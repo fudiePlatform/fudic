@@ -23,6 +23,8 @@ export default defineConfig({
         // New code is born at 100 (CLAUDE.md): the help and the usage errors (BUG-50).
         'src/help/*.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/version.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // New code is born at 100 (CLAUDE.md): approve, accept and history (SDD-65).
+        'src/plans/history.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
       },
     },
   },

@@ -2,6 +2,9 @@
 
 exports[`fudic new, without --workspace > writes the standalone tree, byte for byte (criterion 2) 1`] = `
 {
+  "demo/.gitattributes": "# The history of each piece only grows: two branches that add lines join without a conflict.
+*.fudlog merge=union
+",
   "demo/.gitignore": "node_modules/
 dist/
 .fudic/
