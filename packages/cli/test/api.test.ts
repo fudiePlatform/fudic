@@ -8,6 +8,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createApiIndex, emitDeclarations, parseApi, type ApiSource } from '@fudic/api';
@@ -127,8 +128,8 @@ const errorsOf = (fud: string): unknown[] => parseFud(fud).diagnostics.filter((d
 describe('criterion 1: g api on a component (the plan)', () => {
   it('writes the .fudapi beside it, its handler in src/server and the link at the very top', async () => {
     const fs = project();
-    const { code, err } = await cli(fs, 'g', 'api', 'src/components/acme-cart', '--cwd', CWD);
-    expect(err).not.toMatch(/FUD\d{4}/u);
+    const { code, out } = await cli(fs, 'g', 'api', 'src/components/acme-cart', '--cwd', CWD);
+    expect(out).not.toMatch(/FUD\d{4}/u);
     expect(code).toBe(0);
 
     expect(fs.at('src/components/acme-cart/acme-cart.fudapi')).toBe(componentApi(CART_ID));
@@ -218,7 +219,7 @@ describe('criterion 3: a second time', () => {
     fs.write(`${CWD}/src/server/${CART_ID}.ts`, '// mine\n');
     const again = await cli(fs, 'g', 'api', 'src/components/acme-cart', '--cwd', CWD);
     expect(again.code).toBe(1);
-    expect(again.err).toContain('FUD0443');
+    expect(again.out).toContain('FUD0443');
     expect(fs.at(`src/server/${CART_ID}.ts`)).toBe('// mine\n');
     expect(fs.at('src/components/acme-cart/acme-cart.fud')).toBe(fud);
 
@@ -233,9 +234,9 @@ describe('criterion 3: a second time', () => {
   it('a .fudapi already there, without a handler, is FUD0443 too', async () => {
     const fs = project();
     fs.write(`${CWD}/src/routes/about.fudapi`, 'load\n  title  str\n');
-    const { code, err } = await cli(fs, 'g', 'api', 'src/routes/about.fud', '--cwd', CWD);
+    const { code, out } = await cli(fs, 'g', 'api', 'src/routes/about.fud', '--cwd', CWD);
     expect(code).toBe(1);
-    expect(err).toContain('FUD0443');
+    expect(out).toContain('FUD0443');
     expect(fs.exists(`${CWD}/src/server/routes/about.ts`)).toBe(false);
     expect(fs.at('src/routes/about.fud')).toBe(ROUTE);
   });
@@ -249,9 +250,32 @@ describe('criterion 4: what has no server of its own', () => {
   ])('%s is FUD1240, and nothing is written', async (_, piece) => {
     const fs = project();
     const before = fs.paths();
-    const { code, err } = await cli(fs, 'g', 'api', piece, '--cwd', CWD);
+    const { code, out } = await cli(fs, 'g', 'api', piece, '--cwd', CWD);
     expect(code).toBe(1);
-    expect(err).toContain('FUD1240');
+    expect(out).toContain('FUD1240');
+    expect(fs.paths()).toEqual(before);
+  });
+
+  it('a folder without its .fud, or a .fud that does not exist, is FUD1240', async () => {
+    const fs = project();
+    fs.write(`${CWD}/src/components/acme-empty/notes.md`, 'nothing here\n');
+    const before = fs.paths();
+    for (const piece of ['src/components/acme-empty', 'src/routes/nope.fud']) {
+      const { code, out } = await cli(fs, 'g', 'api', piece, '--cwd', CWD);
+      expect(code, piece).toBe(1);
+      expect(out, piece).toContain('FUD1240');
+    }
+    expect(fs.paths()).toEqual(before);
+  });
+
+  it('a --project that does not exist is refused before the piece is looked at', async () => {
+    const fs = new MemoryFs({}, '/w');
+    expect((await cli(fs, 'new', 'shop', '--workspace', '--app', 'web', '--cwd', '/w')).code).toBe(0);
+    const before = fs.paths();
+    const { code, out } = await cli(fs, 'g', 'api', 'src/components/x', '--project', 'nope', '--cwd', '/w/shop');
+    expect(code).toBe(1);
+    expect(out).toMatch(/FUD\d{4}/u);
+    expect(out).not.toContain('FUD1240');
     expect(fs.paths()).toEqual(before);
   });
 
@@ -262,9 +286,9 @@ describe('criterion 4: what has no server of its own', () => {
     expect((await cli(fs, 'g', 'component', 'button', '--project', 'ui', '--cwd', '/w/shop')).code).toBe(0);
     const before = fs.paths();
 
-    const { code, err } = await cli(fs, 'g', 'api', 'src/components/ui-button', '--project', 'ui', '--cwd', '/w/shop');
+    const { code, out } = await cli(fs, 'g', 'api', 'src/components/ui-button', '--project', 'ui', '--cwd', '/w/shop');
     expect(code).toBe(1);
-    expect(err).toContain('FUD1241');
+    expect(out).toContain('FUD1241');
     expect(fs.paths()).toEqual(before);
   });
 
@@ -317,7 +341,7 @@ describe('criterion 5: --dry-run --json', () => {
 // ---------------------------------------------------------------------------------------------
 
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
-const PACKAGES = ['core', 'dom', 'ssr', 'transport', 'testing', 'vite', 'http'];
+const PACKAGES = ['core', 'dom', 'ssr', 'transport', 'testing', 'vite', 'http', 'terms'];
 const TOOLS = ['vitest', 'vite', 'typescript'];
 const VITEST = join(REPO, 'node_modules/vitest/vitest.mjs');
 const TSC = join(REPO, 'node_modules/typescript/bin/tsc');
@@ -354,7 +378,9 @@ function exec(file: string, args: readonly string[], cwd: string): { status: num
 }
 
 describe('criterion 1: g api on a component, end to end', () => {
-  const ROOT = mkdtempSync(join(fileURLToPath(new URL('../node_modules/', import.meta.url)), '.fudic-api-green-'));
+  // Outside any `node_modules`: Vite leaves a module under one to Node, and the server root the
+  // plugin generates is never on disk.
+  const ROOT = mkdtempSync(join(tmpdir(), 'fudic-api-green-'));
   const app = join(ROOT, 'tienda');
   const tag = 'tienda-cart';
   const id = `components/${tag}/${tag}`;
@@ -365,15 +391,15 @@ describe('criterion 1: g api on a component, end to end', () => {
     await real('g', 'api', `src/components/${tag}`, '--cwd', app);
     install(app);
     declarations(app, `src/components/${tag}/${tag}.fudapi`, id);
-    // What a user writes to see it answer: the function, called through the in-memory server.
+    // What a user writes to see it answer: the function, called through the in-memory server
+    // (`/_fudic/fn/<id>/hello`), as a component calls it.
     writeFileSync(
       join(app, 'src/hello.test.ts'),
       `import { expect, test } from 'vitest';
+import { hello } from 'fudic:${id}';
 
 test('hello answers its text', async () => {
-  const response = await fetch('/_fudic/fn/${id}/hello');
-  expect(response.status).toBe(200);
-  expect(await response.text()).toContain('Hello from the server');
+  expect(await hello()).toBe('Hello from the server');
 });
 `,
     );
