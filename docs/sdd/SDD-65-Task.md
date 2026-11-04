@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/history` (nuevo) · `@fudic/cli` · `@fudic/diagnostics` · `@fudic/conventions`
 > **Rama:** `sdd-65-historial-de-cada-pieza`. Nace de `main` **con SDD-64 en `Hecho`** (los
 > informes que graba) y SDD-63 (el contrato).
-> **Progreso:** 9 / 17 — `En curso`.
+> **Progreso:** 11 / 17 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -66,8 +66,8 @@ código, no el test.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 11 | 5, 9 | **`unitState`.** `approval`, `tests`, `spec`, `look`, `done`, `accepted` según SDD §4.4 | `history` | `src/state.ts` |
-| [ ] | 12 | 9 | **`snapshot`, `recordSpecRun` y `recordTestRun`.** A qué pieza va cada ejecución (SDD §4.3), con el hash del `snapshot` | `history` | `src/runs.ts` |
+| [x] | 11 | 5, 9 | **`unitState`.** `approval`, `tests`, `spec`, `look`, `done`, `accepted` según SDD §4.4 | `history` | `src/state.ts` |
+| [x] | 12 | 9 | **`snapshot`, `recordSpecRun` y `recordTestRun`.** A qué pieza va cada ejecución (SDD §4.3), con el hash del `snapshot` | `history` | `src/runs.ts` |
 | [ ] | 13 | 11, 12 | **Los tests de la fase.** Criterios 7–11, con `runSpecs` y `runTests` de verdad sobre un proyecto de prueba | `history` | `test/**` |
 
 ## Fase 5 — la CLI (3)

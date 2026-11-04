@@ -378,3 +378,15 @@ del proyecto, con `/`), escribiendo por cada uno su ruta, un salto, su contenido
    resuelve como TypeScript (tal cual, `.ts`, `.js`→`.ts`, `index.ts`); un nombre de paquete, como
    un enlace. Cada destino pasa por su ruta real: lo que queda bajo `node_modules` (una librería
    publicada) se descarta, y una librería del workspace, enlazada por pnpm, queda dentro.
+9. **Los informes, por su forma.** `recordSpecRun` y `recordTestRun` piden solo lo que leen
+   (`CriterionOutcome`: `spec`, `id`, `verdict`; `TestOutcome`: `files` con sus recuentos). El
+   `CriterionReport` del banco y el `TestReport` de `@fudic/testing` encajan tal cual, y este
+   paquete no depende de ninguno de los dos, ni siquiera por tipos.
+10. **El `snapshot` decide qué se graba.** Una pieza que no está en el `snapshot` no se graba: no se
+    sabe qué hash tenía antes de ejecutar. Así queda fuera, sin mirar el disco, un test que no es
+    hermano de ningún `.fud` (`src/services/x.test.ts`).
+11. **`look` sin las capturas.** Este paquete no hace capturas y no puede recalcular su hash. Quien
+    las hace lo da con `HistoryIo.lookHash`; sin él, un `look` desde el último `reopened` vale
+    `valid`: no hay nada con qué compararlo.
+12. **`tests`, `spec`, `done` y `accepted` miran todo el historial**; `approval` y `look`, solo desde el
+    último `reopened` (§4.4).
