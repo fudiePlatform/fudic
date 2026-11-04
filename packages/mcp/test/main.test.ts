@@ -12,6 +12,7 @@ import { FUD1406, format } from '@fudic/diagnostics';
 import { USAGE } from '../src/args.js';
 import { main, type MainDeps } from '../src/main.js';
 import { secretOf } from '../src/secret.js';
+import { toolNames } from '../src/server.js';
 import type { TunnelResult } from '../src/tunnel.js';
 import { tempDir } from './helpers.js';
 
@@ -99,7 +100,7 @@ describe('stdio (criterion 1)', () => {
     expect(h.err).toEqual([]);
     const client = new Client({ name: 'agent', version: '0' });
     await client.connect(stdio.clientSide as InMemoryTransport);
-    expect((await client.listTools()).tools.map((t) => t.name)).toEqual(['fudic_guide']);
+    expect((await client.listTools()).tools.map((t) => t.name)).toEqual([...toolNames('stdio')]);
     await client.close();
   });
 });
@@ -116,7 +117,7 @@ describe('http (criteria 2 and 3)', () => {
     ]);
     const client = new Client({ name: 'chat', version: '0' });
     await client.connect(new StreamableHTTPClientTransport(new URL(local)));
-    expect((await client.listTools()).tools).toHaveLength(1);
+    expect((await client.listTools()).tools).toHaveLength(toolNames('http').size);
     await client.close();
   });
 

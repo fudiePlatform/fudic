@@ -104,6 +104,8 @@ describe('the layout contract of a route resolver', () => {
 `;
   const routed = (handler: string): string =>
     project({
+      // The route of r.fudapi: a .fudapi with load and no route beside it is FUD1090.
+      'src/routes/r.fud': PAGE('<p>@data.n</p>'),
       '.fudic/api/routes/l.d.ts': TYPES_WITH_LAYOUT,
       'src/layouts/_layout.fud': LAYOUT,
       'src/routes/l.fud': '<link rel="layout" href="../layouts/_layout.fud">\n\n<h1>x</h1>\n',
@@ -138,7 +140,7 @@ describe('a .fud with <link rel="server"> (SDD-60 §4.7)', () => {
   });
 
   it('a link without href gives the file nothing (FUD1111 says why)', () => {
-    const root = project({ 'src/routes/x.fud': PAGE('<p>x</p>').replace(' href="./r.fudapi"', '') });
+    const root = project({ 'src/routes/r.fud': PAGE('<p>@data.n</p>'), 'src/routes/x.fud': PAGE('<p>x</p>').replace(' href="./r.fudapi"', '') });
     expect(shown(createProjectChecker({ root }).check(), root)).toEqual(['src/routes/x.fud FUD1111']);
   });
 });

@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/mcp` (nuevo) · `@fudic/typecheck` · `@fudic/spec` · `@fudic/vite` ·
 > `@fudic/language-server` · `@fudic/cli` · `@fudic/workbench` · `@fudic/diagnostics`
 > **Rama:** `sdd-77-mcp-desde-el-chat`, desde `main`.
-> **Progreso:** 19 / 30 — `En curso`.
+> **Progreso:** 20 / 30 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -38,11 +38,11 @@ sesión de tests; el implementador coordina. Commit siempre con rutas explícita
 - **Pedro no ha probado en Claude Web las fases 2–6.** Para probar: `pnpm registry` (se cerró),
   reinstalar en global `@fudic/cli` y `@fudic/mcp` desde Verdaccio, `fudic-mcp --http --tunnel`.
 - **Sesión de tests:** `sdd-77-mcp-desde-el-chat-1a` (antes `-41`), worktree
-  `.claude/worktrees/sdd-77-tests`, rama `sdd-77-tests`. La fase 1 (tarea 5) ya está mezclada
-  (`2de95b30`). Tiene encargada la **fase 2 (tarea 10)**, con la lista de tests que el cambio rompe
-  a propósito (§8.2.9 y §8.2.18) y los 8 de mcp que rompen las herramientas nuevas. Responde con
-  hash y cobertura; al recibirlo, mezclar su rama y marcar la tarea 10. **Fases de test sin
-  asignar:** 3 (tarea 14), 4 (18), 5 (21) y 6 (24); repartir cuando acabe la implementación.
+  `.claude/worktrees/sdd-77-tests`, rama `sdd-77-tests`. **Ha parado** por orden de Pedro. Sus fases
+  1 y 2 (tareas 5 y 10) están mezcladas aquí (`2de95b30`, `a7d81763`): todo en verde, `spec`,
+  `typecheck` y lo de las fases 1–2 de `mcp` al 100 %. Ver su «Relevo de la sesión de tests» más
+  abajo. **Fases de test sin hacer:** 3 (tarea 14), 4 (18), 5 (21) y 6 (24): una nueva sesión de
+  tests sigue con 14, 18 y 21; la 24 se reparte al acabar la implementación.
 
 ## Dónde estamos (2026-11-04, mañana)
 
@@ -87,6 +87,64 @@ sesión). No se cierra una fase sin su prueba en Claude Web.
   dice que toda mutación repinta la página (solo si su ruta está en `invalidates`);
   `packages/vite/README.md` enseña `@server` con `load` en el `@code` (hoy `FUD1110`).
 
+## Relevo de la sesión de tests (2026-11-04)
+
+Lo deja la sesión de tests, que trabajó en el worktree `.claude/worktrees/sdd-77-tests`, rama
+`sdd-77-tests`. **Nunca escribas en el worktree de la coordinadora**
+(`.claude/worktrees/sdd-77-mcp-desde-el-chat`): los commits se mezclan. Trabaja en el tuyo, que
+salga de la rama `sdd-77-mcp-desde-el-chat`. La coordinadora lo mezcla y marca la tarea.
+
+**Hecho:**
+
+- **Tarea 5 (fase 1):** mezclada en `sdd-77-mcp-desde-el-chat` y marcada.
+- **Tarea 10 (fase 2):** escrita, en verde y marcada en `sdd-77-tests`, **sin mezclar todavía**. La rama ya
+  incluye `c266f1a3` (fases 3 a 5 de la coordinadora). Falta la prueba de Pedro en Claude Web de
+  la fila «Comprobar», y el overlay de una `.fudspec` rota en `vite dev`, en el navegador.
+  - spec: `test/context.test.ts` (specContextOf, installedTerms, fixturePathOf, termRootsOf, nombres).
+  - typecheck: `test/fudspec-check.test.ts` (`.fudspec` en `check()`, FUD0951 con las props del
+    contrato, caché por texto, fs sin `specFiles`/`readDirectory`, `languageService()`) y
+    `test/api-project.test.ts` (lector de `.fudapi`, `apiContextOf`, `apiDiagnostics`,
+    `writeApiDeclarations`).
+  - vite: `test/api-build-errors.test.ts` (el build falla una vez con `.fudspec` y `.fudapi` rotos,
+    en el mismo sitio que `check()`) y `test/dev-typecheck.test.ts` (dev recomprueba con un
+    `.fudapi`/`.fudspec` nuevo y con `fudic/terms/`; overlay real de una `.fudspec` rota).
+  - language-server: `test/acceptance/fudspec-projects.test.ts` (el editor y `check()` marcan una
+    `.fudspec` igual: criterio 5).
+  - mcp: `test/fudic.test.ts`, `test/locate.test.ts`, `test/checks.test.ts`, `test/check.test.ts`
+    (con `fudic_check` por un cliente sobre una app de `fudic new`: criterio 12).
+  - Tests que la fase 2 rompió a propósito, ajustados: `typecheck/test/implementations.test.ts`
+    (J, J2, J3 y «link without href»: una ruta para el `.fudapi` con `load`),
+    `vite/test/api-build-errors.test.ts` (el error del build es el recuento; el problema va al log),
+    `language-server/test/acceptance/parity.test.ts` (compara todo salvo `.fudapi` y `.fudspec`,
+    §8.2.18), y los seis `cli/test/fixes-*.test.ts` de `.fudspec`: la CLI gana `@fudic/terms` en
+    `devDependencies`, como ya decía el comentario de `fixes/pairs.ts`.
+- **Cobertura** al cerrar la tarea 10: spec y typecheck al 100 % en las cuatro métricas. En mcp, todo
+  lo de las fases 1 y 2 está al 100 % (`args`, `bin`, `check`, `checks`, `diagnostics`, `fudic`,
+  `guide`, `http`, `instructions`, `locate`, `main`, `project`, `respond`, `secret`, `tunnel`). Lo
+  que queda por debajo es de las fases 3 a 5. En vite, cada línea nueva de la fase está cubierta
+  (el paquete arrastra deuda heredada).
+
+**Lo que tiene que hacer la sesión que da el relevo:**
+
+1. Avisar a la coordinadora para que mezcle `sdd-77-tests` (la tarea 10 ya va marcada en ella).
+2. Esperar a que la coordinadora diga qué tarea de tests sigue. Pendientes: **14** (fase 3: fix,
+   format, files/read/write y el servicio de proyecto; criterios 9–11, 13 y 14), **18** (fase 4:
+   symbols, describe, contract; criterios 15–17) y **21** (fase 5: new, generate, add, record;
+   criterios 18–20). Cada una, solo cuando Pedro haya probado su fase en Claude Web.
+3. En cada una, las reglas que se siguieron aquí:
+   - Solo `test/**`. Si un test destapa un bug de `src`, para y avisa a la coordinadora con
+     `SendMessage`; no se arregla `src` desde la sesión de tests.
+   - `@fudic/mcp` al 100 % en las cuatro métricas sobre `src/**/*.ts`. Lo que toca proceso, git,
+     cloudflared o disco va con deps inyectadas o con `vi.mock`; nunca se lanza nada real.
+   - Para un proyecto de verdad: `newApp()` de `packages/mcp/test/helpers.ts` (lo que escribe
+     `fudic new`, con el `node_modules` del MCP enlazado). Para un cliente MCP: `connect()`.
+   - Antes de cerrar, pasar los tests de **todos** los paquetes que tocó la fase (cli, typecheck,
+     vite, language-server, workbench, spec, diagnostics), no solo los de mcp: un cambio de la
+     coordinadora puede romper tests de otros paquetes, y esos los arregla la sesión de tests.
+   - Commit en la rama propia y push a origin; responder a la coordinadora con el hash y la
+     cobertura.
+4. Las sesiones cambian de nombre al reiniciarse: busca el de la coordinadora con `ListAgents`.
+
 ---
 
 ## Mapa de dependencias
@@ -127,7 +185,7 @@ sesión). No se cierra una fase sin su prueba en Claude Web.
 | [x] | 7 | 6 | **`.fudspec` en `check()`.** Parse y `validateSpec` de cada `.fudspec` en el `CheckReport`, en su orden; `invalidate` las relee | `typecheck` | `src/checker.ts` |
 | [x] | 8 | 7 | **Build y dev.** Una `.fudspec` rota rompe `pnpm build` y saca el overlay; cada problema una sola vez en el informe final | `vite` | `src/plugin.ts` · `src/api-modules.ts` |
 | [x] | 9 | 7 | **`fudic_check`.** Un checker por MCP, invalidado por fichero y por fecha en stdio; `summary`, `limit`, `codes`, `at` + `quote`, `fixable` (una sola reparación: con la tarea 11, hasta entonces `false`), `next` | `mcp` | `src/project.ts` · `src/tools/check.ts` · `src/locate.ts` |
-| [ ] | 10 | 6–9 | **Los tests de la fase.** Criterios 5, 6 y 12. **Prueba en Claude Web:** fila «Comprobar», y Pedro comprueba en el navegador que `vite dev` enseña el overlay de una `.fudspec` rota | `spec` · `typecheck` · `vite` · `mcp` | `test/**` |
+| [x] | 10 | 6–9 | **Los tests de la fase.** Criterios 5, 6 y 12. **Prueba en Claude Web:** fila «Comprobar», y Pedro comprueba en el navegador que `vite dev` enseña el overlay de una `.fudspec` rota | `spec` · `typecheck` · `vite` · `mcp` | `test/**` |
 
 ## Fase 3 — ficheros, fix y format (4)
 

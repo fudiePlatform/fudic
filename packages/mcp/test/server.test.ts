@@ -38,13 +38,27 @@ async function guide(c: Client, topic: string): Promise<Answer> {
 }
 
 describe('the server (criterion 1)', () => {
-  it('lists the tools of its entry, the same over stdio and http for what this phase has', async () => {
+  it('lists the tools of its entry: the file tools only over http', async () => {
     for (const entry of ['stdio', 'http'] as const) {
       const { tools } = await (await client(entry)).listTools();
       expect(tools.map((t) => t.name)).toEqual([...toolNames(entry)]);
     }
-    expect([...toolNames('stdio')]).toEqual(['fudic_guide']);
-    expect([...toolNames('http')]).toEqual(['fudic_guide']);
+    // What the phases so far registered; fudic_status, fudic_test and fudic_spec_run come later.
+    const common = [
+      'fudic_guide',
+      'fudic_check',
+      'fudic_fix',
+      'fudic_format',
+      'fudic_symbols',
+      'fudic_describe',
+      'fudic_contract',
+      'fudic_new',
+      'fudic_generate',
+      'fudic_add',
+      'fudic_record',
+    ];
+    expect([...toolNames('stdio')]).toEqual(common);
+    expect([...toolNames('http')]).toEqual([...common, 'fudic_files', 'fudic_read', 'fudic_write']);
   });
 
   it('answers the same call the same over both entries, byte for byte', async () => {
@@ -76,8 +90,13 @@ describe('what the client is told (criterion 4)', () => {
       [
         'fudic is a UI framework you have no prior knowledge of. Never write fudic code from memory or by analogy with React, Vue or any other framework.',
         'Before writing a kind of file for the first time, call fudic_guide for its topic. Start with fudic_guide { topic: "overview" }.',
+        'Create files with fudic_generate, never from scratch.',
+        'After every write, run fudic_check and fix every diagnostic before moving on.',
+        'Never approve on the user\'s behalf: fudic_record "approved" only after the user said so in this conversation.',
       ].join('\n'),
     );
+    // Without fudic_status yet, nothing sends there.
+    expect(c.getInstructions()).not.toContain('fudic_status');
   });
 
   it('instructions, once every tool is there, say the text of the spec', () => {
@@ -88,7 +107,7 @@ describe('what the client is told (criterion 4)', () => {
         'For any fudic task, the first call is fudic_status. Do what its "next" says, one step at a time.',
         'Before writing a kind of file for the first time, call fudic_guide for its topic. Start with fudic_guide { topic: "overview" }.',
         'Create files with fudic_generate, never from scratch.',
-        'After every write, fix every diagnostic before moving on.',
+        'After every write, run fudic_check and fix every diagnostic before moving on.',
         'Never approve on the user\'s behalf: fudic_record "approved" only after the user said so in this conversation.',
       ].join('\n'),
     );
