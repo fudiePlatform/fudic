@@ -22,8 +22,9 @@ Hasta la tarea 26, `fudic new` aún no trae el MCP: en las pruebas se usa el MCP
 prueba en Claude Web, se afina con lo que vea, y **después** se escriben los tests (seguramente otra
 sesión). No se cierra una fase sin su prueba en Claude Web.
 
-- **Fase 1: implementada** (commit `b7ef49b5`), tareas 1–4. **Pendiente:** la prueba de Pedro en
-  Claude Web y la tarea 5 (tests).
+- **Fase 1: implementada** (commit `b7ef49b5`), tareas 1–4. **Probada por Pedro en Claude Web
+  (2026-11-04): todo correcto.** Pendiente: la tarea 5 (tests), encargada a la sesión de tests
+  `sdd-77-mcp-desde-el-chat-41`.
 - La guía la redactaron cuatro agentes desde el código, los README y los ejemplos que compilan.
   **Cada bloque se compiló** en una copia limpia de una app de `fudic new` (`vite build`, con los
   paquetes que añadirían `fudic_add`/`fudic_generate`): los buenos de cada tema juntos, sin
