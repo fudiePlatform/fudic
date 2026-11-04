@@ -9,6 +9,7 @@
 import { spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import type { FileChange, Plan, PlanCommand, PlannedCommand } from '@fudic/cli';
+import { FUD1411 } from '@fudic/diagnostics';
 import type { Checks } from './checks.js';
 import type { Cli } from './fudic.js';
 import type { Problem } from './diagnostics.js';
@@ -107,7 +108,14 @@ export async function runPlan(
   const runs: CommandRun[] = [];
   const runner = quietRunner(cli, runs);
   const deps = { readIo: cli.nodeReadIo(), writeIo: cli.nodeWriteIo(), runner, streams: { out: () => undefined, err: () => undefined } };
-  const planned = await cli.planOf(command, deps);
+  let planned: Plan;
+  try {
+    planned = await cli.planOf(command, deps);
+  } catch (error) {
+    // A planner that stops — `g showcase` before the install — is a diagnostic, never a throw.
+    const shown = `fudic ${argv.join(' ')}`;
+    return { command, answer: { body: { command: shown }, diagnostics: [FUD1411({ command: shown, reason: (error as Error).message })], failed: true } };
+  }
   const plan = options.rewrite === undefined ? planned : options.rewrite(planned);
   const problems = problemsOf(plan, project.root);
   const body = {

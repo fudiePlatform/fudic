@@ -266,6 +266,7 @@ recién instalado y llama a `fudic_status`.
 | `FUD1408` | Generated without a purpose | `fudic_generate` de un `component` o una `page` sin `purpose` (§8.2.34) |
 | `FUD1409` | Already a fudic project | `fudic_new` en una carpeta que ya tiene `fudic.json`, en ella o encima (§8.2.32) |
 | `FUD1410` | Recorded without a text | `fudic_record` de `accepted` o `reopened` sin `text` (§8.2.34) |
+| `FUD1411` | The command stopped | Un plan de la CLI que lanza en vez de dar un diagnóstico (`g showcase` sin instalar) (§8.2.43) |
 
 ## 4. Comportamiento
 
@@ -773,3 +774,13 @@ framework.
 40. **El `next` de una ejecución acotada habla solo de lo que corrió**; sin acotar, de la primera
     pieza en `red` o `view`. Un `broken` o un `error` manda arreglarlo antes que nada.
 41. **`openProject` resuelve la raíz**: todo `at` y toda ruta se dan relativos a ella.
+42. **La raíz de un workspace es un proyecto** para el MCP (tarea 21): no lleva `fudic.json`
+    (SDD-44), así que tras `fudic_new { workspace }` el resto de herramientas daban `FUD1404`. Cuenta
+    como proyecto la carpeta con `pnpm-workspace.yaml` y algún `<grupo>/<nombre>/fudic.json`
+    debajo; ahí la CLI apunta cada comando con `--project`, y `fudic_new` da `FUD1409`.
+43. **`FUD1411`**: un planificador de la CLI que lanza (`g showcase` busca el `@fudic/workbench`
+    instalado) llegaba al chat como excepción suelta, contra «nada lanza fuera de una
+    herramienta» (§5). `runPlan` lo convierte en `FUD1411` con el mensaje de la CLI.
+44. **`done` sobre una pieza completa no escribía nada** (tarea 21): `unitsOf` da `phase: "done"`
+    tanto a la pieza cerrada como a la completa sin cerrar, y `record` miraba solo la fase. Ahora
+    solo no escribe la que el historial ya cierra (`complete: false`).

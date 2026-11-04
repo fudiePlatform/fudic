@@ -43,7 +43,7 @@ describe('the server (criterion 1)', () => {
       const { tools } = await (await client(entry)).listTools();
       expect(tools.map((t) => t.name)).toEqual([...toolNames(entry)]);
     }
-    // What the phases so far registered; fudic_status, fudic_test and fudic_spec_run come later.
+    // What the phases so far registered; fudic_status comes later.
     const common = [
       'fudic_guide',
       'fudic_check',
@@ -56,6 +56,8 @@ describe('the server (criterion 1)', () => {
       'fudic_generate',
       'fudic_add',
       'fudic_record',
+      'fudic_test',
+      'fudic_spec_run',
     ];
     expect([...toolNames('stdio')]).toEqual(common);
     expect([...toolNames('http')]).toEqual([...common, 'fudic_files', 'fudic_read', 'fudic_write']);

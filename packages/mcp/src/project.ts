@@ -3,7 +3,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 
 /** What an answer says when the project is not a git repository, or has no commit yet. */
@@ -40,11 +40,29 @@ function nameOf(root: string): string {
   return basename(root);
 }
 
+/** The file that makes a folder the root of a workspace, as the CLI finds it. */
+const WORKSPACE_FILE = 'pnpm-workspace.yaml';
+
+/** Whether a folder of `root`'s folders has a `fudic.json`: `apps/web`, `libs/ui`. */
+function holdsProjects(root: string): boolean {
+  return readdirSync(root, { withFileTypes: true }).some(
+    (group) =>
+      group.isDirectory() &&
+      group.name !== 'node_modules' &&
+      readdirSync(join(root, group.name), { withFileTypes: true }).some(
+        (entry) => entry.isDirectory() && existsSync(join(root, group.name, entry.name, 'fudic.json')),
+      ),
+  );
+}
+
 /**
- * Whether `root` is a fudic project: a `fudic.json` in it or above it. Asked on every call,
- * since the chat may have just created it.
+ * Whether `root` is a fudic project: a `fudic.json` in it or above it, or the root of a
+ * workspace of fudic projects — which carries no `fudic.json` of its own, and where the CLI
+ * aims each command with `--project`. Asked on every call, since the chat may have just
+ * created it.
  */
 export function isFudicProject(root: string): boolean {
+  if (existsSync(join(root, WORKSPACE_FILE)) && holdsProjects(root)) return true;
   for (let dir = root; ; dir = dirname(dir)) {
     if (existsSync(join(dir, 'fudic.json'))) return true;
     if (dirname(dir) === dir) return false;

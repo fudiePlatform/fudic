@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/mcp` (nuevo) · `@fudic/typecheck` · `@fudic/spec` · `@fudic/vite` ·
 > `@fudic/language-server` · `@fudic/cli` · `@fudic/workbench` · `@fudic/diagnostics`
 > **Rama:** `sdd-77-mcp-desde-el-chat`, desde `main`.
-> **Progreso:** 20 / 30 — `En curso`.
+> **Progreso:** 21 / 30 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -211,7 +211,7 @@ salga de la rama `sdd-77-mcp-desde-el-chat`. La coordinadora lo mezcla y marca l
 |---|---|---|---|---|---|
 | [x] | 19 | 9 | **`new`, `generate`, `add`.** Los `plan*` de la CLI con su esquema JSON por `kind`, `apply` con sus comandos, `dryRun`; `purpose` obligatorio en `component` y `page`, y su línea `started`; el checker se invalida con lo aplicado | `mcp` | `src/tools/plans.ts` · `src/schemas.ts` |
 | [x] | 20 | 19 | **`fudic_record`.** `approved` y `accepted` con los planes de la CLI; `reopened`; `done` con `documented` y `connected` delante, y `FUD1407` si falta una fase | `mcp` | `src/tools/record.ts` · `src/phases.ts` |
-| [ ] | 21 | 19, 20 | **Los tests de la fase.** Criterios 18–20 (cada `kind` contra el plan de la CLI). **Prueba en Claude Web:** fila «Crear» | `mcp` | `test/**` |
+| [x] | 21 | 19, 20 | **Los tests de la fase.** Criterios 18–20 (cada `kind` contra el plan de la CLI). **Prueba en Claude Web:** fila «Crear» | `mcp` | `test/**` |
 
 ## Fase 6 — ejecutar (3)
 

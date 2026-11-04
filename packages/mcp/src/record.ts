@@ -68,7 +68,8 @@ async function done(project: Project, checks: Checks, unit: string, shown: strin
   const units = await unitsOf(root, service, { showcase: await showcaseCurrent(root, cli) });
   const found = units.find((u) => u.piece === shown);
   if (found === undefined) return { body: {}, diagnostics: [FUD1401({ file: shown, reason: 'missing' })], failed: true };
-  if (found.phase === 'done') return { body: { piece: shown, recorded: [] }, next: null };
+  // A finished piece is `done` too, but only the history's `done` line closes it.
+  if (found.phase === 'done' && !found.complete) return { body: { piece: shown, recorded: [] }, next: null };
   if (!found.complete) return { body: { piece: shown, phase: found.phase }, diagnostics: [FUD1407({ file: shown, phase: found.phase })], failed: true };
 
   const io = nodeIo(root);

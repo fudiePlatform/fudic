@@ -4,6 +4,7 @@
  */
 
 import { EventEmitter } from 'node:events';
+import { resolve } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { nodeDeps } from '../src/main.js';
 import { openProject } from '../src/project.js';
@@ -35,7 +36,8 @@ describe('git, for the commit', () => {
     child.execFileSync.mockReturnValue('b59fa7d\n');
     expect(openProject('/p').commit()).toBe('b59fa7d');
     expect(child.execFileSync).toHaveBeenCalledWith('git', ['rev-parse', '--short', 'HEAD'], {
-      cwd: '/p',
+      // The root is resolved: `/p` is `C:\p` on Windows.
+      cwd: resolve('/p'),
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     });

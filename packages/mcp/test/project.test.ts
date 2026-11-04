@@ -1,6 +1,6 @@
 /** The folder the server was started in: its name and its commit. */
 
-import { basename } from 'node:path';
+import { basename, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { NO_COMMIT, openProject, type Git } from '../src/project.js';
 import { tempDir } from './helpers.js';
@@ -42,8 +42,9 @@ describe('openProject', () => {
     head = 'c0ffee1';
     expect(project.commit()).toBe('c0ffee1');
     expect(calls).toEqual([
-      ['/p', ['rev-parse', '--short', 'HEAD']],
-      ['/p', ['rev-parse', '--short', 'HEAD']],
+      // The root is resolved: `/p` is `C:\p` on Windows.
+      [resolve('/p'), ['rev-parse', '--short', 'HEAD']],
+      [resolve('/p'), ['rev-parse', '--short', 'HEAD']],
     ]);
   });
 
