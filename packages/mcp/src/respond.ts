@@ -5,13 +5,13 @@
  */
 
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import type { FudDiagnostic } from '@fudic/diagnostics';
 import { readFileSync } from 'node:fs';
-import { codeTexts, outDiagnostic, type ReadSource } from './diagnostics.js';
+import { codeTexts, outDiagnostic, type Problem, type ReadSource } from './diagnostics.js';
 import type { Project } from './project.js';
 import { VERSION } from './version.js';
 
-const readSource: ReadSource = (file) => {
+/** A file of the project, as `at` and `quote` are read from. */
+export const read: ReadSource = (file) => {
   try {
     return readFileSync(file, 'utf8');
   } catch {
@@ -22,7 +22,7 @@ const readSource: ReadSource = (file) => {
 export interface Answer {
   /** The tool's own fields, in the order they should be read. */
   readonly body: Readonly<Record<string, unknown>>;
-  readonly diagnostics?: readonly FudDiagnostic[];
+  readonly diagnostics?: readonly Problem[];
   /** One sentence, or null when there is nothing left to do. */
   readonly next?: string | null;
   /** The tool could not do what it was asked. */
@@ -30,7 +30,7 @@ export interface Answer {
 }
 
 export function respond(project: Project, answer: Answer): CallToolResult {
-  const diagnostics = (answer.diagnostics ?? []).map((d) => outDiagnostic(d, project.root, readSource));
+  const diagnostics = (answer.diagnostics ?? []).map((d) => outDiagnostic(d, project.root, read));
   const codes = codeTexts(diagnostics.map((d) => d.code));
   const content = {
     fudicVersion: VERSION,

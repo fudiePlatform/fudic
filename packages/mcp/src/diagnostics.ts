@@ -3,9 +3,23 @@
  * and the why and the fix of each fudic code once per answer instead of once per diagnostic.
  */
 
-import { relative } from 'node:path';
-import { LineMap, type FudDiagnostic, type Severity } from '@fudic/diagnostics';
+import { isAbsolute, relative } from 'node:path';
+import { LineMap, type Severity, type Span } from '@fudic/diagnostics';
 import { explain } from '@fudic/diagnostics/explain';
+
+/**
+ * A problem a tool reports: a fudic diagnostic, or one of a project check — whose code may be
+ * TypeScript's, `TS2322`. Whether it is fixable is the check's to say.
+ */
+export interface Problem {
+  readonly code: string;
+  readonly severity: Severity;
+  readonly message: string;
+  /** Absolute; a path as the caller wrote it when it is not. */
+  readonly file?: string;
+  readonly span?: Span;
+  readonly fixable?: boolean;
+}
 
 export interface OutDiagnostic {
   readonly code: string;
@@ -15,6 +29,8 @@ export interface OutDiagnostic {
   readonly at?: string;
   /** The line the problem starts on, without its indentation. */
   readonly quote?: string;
+  /** One repair, and only one, that the editor would offer. */
+  readonly fixable?: boolean;
 }
 
 export interface CodeText {
@@ -31,15 +47,24 @@ function posix(path: string): string {
 }
 
 /** The diagnostic as an answer carries it. A span without the file's text keeps only the file. */
-export function outDiagnostic(d: FudDiagnostic, root: string, read: ReadSource): OutDiagnostic {
+export function outDiagnostic(d: Problem, root: string, read: ReadSource): OutDiagnostic {
   const base = { code: d.code, severity: d.severity, message: d.message };
-  if (d.file === undefined) return base;
-  const file = posix(relative(root, d.file));
+  const place = placeOf(d, root, read);
+  return { ...base, ...place, ...(d.fixable !== undefined ? { fixable: d.fixable } : {}) };
+}
+
+/** `at` and `quote`, as far as the file and its text allow. */
+function placeOf(d: Problem, root: string, read: ReadSource): { at?: string; quote?: string } {
+  if (d.file === undefined) return {};
+  const file = isAbsolute(d.file) ? posix(relative(root, d.file)) : d.file;
   const source = d.span === undefined ? undefined : read(d.file);
-  if (d.span === undefined || source === undefined) return { ...base, at: file };
-  const { line, character } = new LineMap(source).positionAt(d.span.start);
-  const quote = (source.split(/\r\n|\r|\n/u)[line] ?? '').trim();
-  return { ...base, at: `${file}:${line + 1}:${character + 1}`, quote };
+  if (d.span === undefined || source === undefined) return { at: file };
+  const map = new LineMap(source);
+  const { line, character } = map.positionAt(d.span.start);
+  // The line from its first character to the next one's: its break goes with the trim.
+  const end = line + 1 < map.lineCount ? map.offsetAt({ line: line + 1, character: 0 }) : source.length;
+  const quote = source.slice(map.offsetAt({ line, character: 0 }), end).trim();
+  return { at: `${file}:${line + 1}:${character + 1}`, quote };
 }
 
 /** The why and the fix of every fudic code among `codes`, each once. A TypeScript code has none. */

@@ -4,7 +4,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 
 /** What an answer says when the project is not a git repository, or has no commit yet. */
 export const NO_COMMIT = 'none';
@@ -17,6 +17,8 @@ export interface Project {
   readonly name: string;
   /** The short `HEAD` of its repository, read on every call: the agent commits between calls. */
   commit(): string;
+  /** How git is run in it. */
+  readonly git: Git;
 }
 
 /** Runs `git` in `root` and returns its trimmed output; throws when git fails or is missing. */
@@ -38,10 +40,22 @@ function nameOf(root: string): string {
   return basename(root);
 }
 
+/**
+ * Whether `root` is a fudic project: a `fudic.json` in it or above it. Asked on every call,
+ * since the chat may have just created it.
+ */
+export function isFudicProject(root: string): boolean {
+  for (let dir = root; ; dir = dirname(dir)) {
+    if (existsSync(join(dir, 'fudic.json'))) return true;
+    if (dirname(dir) === dir) return false;
+  }
+}
+
 export function openProject(root: string, git: Git = nodeGit): Project {
   return {
     root,
     name: nameOf(root),
+    git,
     commit: () => {
       try {
         return git(root, ['rev-parse', '--short', 'HEAD']);

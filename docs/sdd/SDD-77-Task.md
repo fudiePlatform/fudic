@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/mcp` (nuevo) · `@fudic/typecheck` · `@fudic/spec` · `@fudic/vite` ·
 > `@fudic/language-server` · `@fudic/cli` · `@fudic/workbench` · `@fudic/diagnostics`
 > **Rama:** `sdd-77-mcp-desde-el-chat`, desde `main`.
-> **Progreso:** 4 / 30 — `En curso`.
+> **Progreso:** 11 / 30 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -89,24 +89,24 @@ sesión). No se cierra una fase sin su prueba en Claude Web.
 | [x] | 2 | 1 | **El servidor.** Un `McpServer` con dos transportes (stdio, Streamable HTTP en `127.0.0.1`); `instructions` (SDD §3.3); prompt `new-app`; la forma común de las respuestas (§3.4: `fudicVersion`, `commit`, `structuredContent` + `text`, `isError` con diagnósticos); las herramientas de ficheros solo en HTTP | `mcp` | `src/server.ts` · `src/transports.ts` · `src/respond.ts` · `src/bin.ts` |
 | [x] | 3 | 2 | **Secreto y túnel.** `.fudic/mcp/secret`, `/mcp/<secret>` y `404` para lo demás, `--new-secret`, `--port`; `--tunnel` lanza `cloudflared` y lee su URL (`FUD1406` sin él); la salida de la terminal (§3.1) | `mcp` | `src/secret.ts` · `src/tunnel.ts` · `src/bin.ts` |
 | [x] | 4 | 2 | **`fudic_guide`.** Los nueve temas en `guide/*.md` (§4.3), con lo de SDD-68 a 76; un código como tema con `explain()` y `related`; `TS…`; `FUD1403` | `mcp` | `guide/*.md` · `src/tools/guide.ts` |
-| [ ] | 5 | 2–4 | **Los tests de la fase.** Criterios 1–4, 7 y 8 (cada bloque ` ```fud ` compila; cada `broken` da su código). **Prueba en Claude Web:** fila «Servidor y guía» | `mcp` | `test/**` |
+| [x] | 5 | 2–4 | **Los tests de la fase.** Criterios 1–4, 7 y 8 (cada bloque ` ```fud ` compila; cada `broken` da su código). **Prueba en Claude Web:** fila «Servidor y guía» | `mcp` | `test/**` |
 
 ## Fase 2 — `.fudspec` en el build y `fudic_check` (5)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 6 | — | **`specContextOf`.** Lo que construyen `fudspec/host.ts` y `session.ts` pasa a `@fudic/spec`; los dos lo usan sin cambiar su salida | `spec` · `language-server` · `workbench` | `src/context.ts` · `src/fudspec/host.ts` · `src/session.ts` |
-| [ ] | 7 | 6 | **`.fudspec` en `check()`.** Parse y `validateSpec` de cada `.fudspec` en el `CheckReport`, en su orden; `invalidate` las relee | `typecheck` | `src/checker.ts` |
-| [ ] | 8 | 7 | **Build y dev.** Una `.fudspec` rota rompe `pnpm build` y saca el overlay; cada problema una sola vez en el informe final | `vite` | `src/plugin.ts` · `src/api-modules.ts` |
-| [ ] | 9 | 7 | **`fudic_check`.** Un checker por MCP, invalidado por fichero y por fecha en stdio; `summary`, `limit`, `codes`, `at` + `quote`, `fixable` (una sola reparación: con la tarea 11, hasta entonces `false`), `next` | `mcp` | `src/project.ts` · `src/tools/check.ts` · `src/locate.ts` |
+| [x] | 6 | — | **`specContextOf`.** Lo que construyen `fudspec/host.ts` y `session.ts` pasa a `@fudic/spec`; los dos lo usan sin cambiar su salida | `spec` · `language-server` · `workbench` | `src/context.ts` · `src/fudspec/host.ts` · `src/session.ts` |
+| [x] | 7 | 6 | **`.fudspec` en `check()`.** Parse y `validateSpec` de cada `.fudspec` en el `CheckReport`, en su orden; `invalidate` las relee | `typecheck` | `src/checker.ts` |
+| [x] | 8 | 7 | **Build y dev.** Una `.fudspec` rota rompe `pnpm build` y saca el overlay; cada problema una sola vez en el informe final | `vite` | `src/plugin.ts` · `src/api-modules.ts` |
+| [x] | 9 | 7 | **`fudic_check`.** Un checker por MCP, invalidado por fichero y por fecha en stdio; `summary`, `limit`, `codes`, `at` + `quote`, `fixable` (una sola reparación: con la tarea 11, hasta entonces `false`), `next` | `mcp` | `src/project.ts` · `src/tools/check.ts` · `src/locate.ts` |
 | [ ] | 10 | 6–9 | **Los tests de la fase.** Criterios 5, 6 y 12. **Prueba en Claude Web:** fila «Comprobar», y Pedro comprueba en el navegador que `vite dev` enseña el overlay de una `.fudspec` rota | `spec` · `typecheck` · `vite` · `mcp` | `test/**` |
 
 ## Fase 3 — ficheros, fix y format (4)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 11 | — | **El servicio de proyecto.** `@fudic/language-server/project`: `openProject(root)` con `repairs`, `symbols`, `describe` e `invalidate`, sobre el mismo `WorkspaceIndex` y `repairsFor` que el editor (SDD §3.5); `fixable` en `check` pasa a usarlo | `language-server` · `mcp` | `src/project.ts` · `package.json` (`exports`) |
-| [ ] | 12 | 9 | **`files`, `read`, `write`.** La carpeta como frontera (`FUD1400`, enlaces simbólicos incluidos), `FUD1401`, ediciones todas o ninguna (`FUD1402`), la respuesta de `write` con los diagnósticos de lo escrito | `mcp` | `src/tools/files.ts` · `src/sandbox.ts` |
+| [x] | 11 | — | **El servicio de proyecto.** `@fudic/language-server/project`: `openProject(root)` con `repairs`, `symbols`, `describe` e `invalidate`, sobre el mismo `WorkspaceIndex` y `repairsFor` que el editor (SDD §3.5); `fixable` en `check` pasa a usarlo | `language-server` · `mcp` | `src/project.ts` · `package.json` (`exports`) |
+| [x] | 12 | 9 | **`files`, `read`, `write`.** La carpeta como frontera (`FUD1400`, enlaces simbólicos incluidos), `FUD1401`, ediciones todas o ninguna (`FUD1402`), la respuesta de `write` con los diagnósticos de lo escrito | `mcp` | `src/tools/files.ts` · `src/sandbox.ts` |
 | [ ] | 13 | 11, 12 | **`fix` y `format`.** Reparaciones de una sola opción hasta 5 vueltas, `applied`, `diff`, `remaining` con `options`; `format` sobre `planFmt`; los dos con `apply` y `dryRun` | `mcp` | `src/tools/fix.ts` · `src/tools/format.ts` · `src/diff.ts` |
 | [ ] | 14 | 11–13 | **Los tests de la fase.** Criterios 9–11, 13 y 14. **Prueba en Claude Web:** fila «Ficheros» | `language-server` · `mcp` | `test/**` |
 

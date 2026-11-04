@@ -649,3 +649,53 @@ framework.
    el compilador, el checker, la CLI y el banco **desde el `node_modules` del proyecto** cuando el
    proyecto los tiene, y solo si no, los suyos. Un MCP global con otra versión de fudic diría
    cosas distintas que el build del proyecto, y eso rompe «un solo origen» (§5).
+8. **`specContextOf(root, io)`, sin `specPath`.** Lo que valida una `.fudspec` depende de su
+   proyecto, no del fichero: quien llama ya sabe la raíz. `io` trae el disco, cómo se encuentra un
+   componente por su tag (el editor, con su índice y las props obligatorias; el banco, solo el que
+   monta) y la carpeta de términos del framework (por defecto, el `@fudic/terms` instalado). Las
+   constantes (`TERMS_DIR`, …) pasan a `names.ts` de `@fudic/spec`.
+9. **Los `.fudapi` también entran en `check()`.** §4.1 contaba con ello y no era así: el build los
+   comprobaba por su cuenta y `dev` no los enseñaba. El lector de `.fudapi` de `@fudic/vite` pasa a
+   `@fudic/typecheck/api` (`readApiProject`, `apiContextOf`, `apiDiagnostics`,
+   `writeApiDeclarations`); el plugin lo usa y deja de informar aparte. Así cada problema sale una
+   vez y `dev` también saca el overlay de un `.fudapi` roto. Cambian cuatro tests de
+   `typecheck/test/implementations.test.ts`: su proyecto tiene un `.fudapi` con `load` y sin ruta
+   al lado (`FUD1090`), que el build siempre rechazó. Y uno de `vite/test/api-build-errors.test.ts`:
+   el error con el que falla el build ya no trae el texto del problema del `.fudapi`, sino
+   «the typecheck failed: 1 error in 1 file», como con un `.fud`; el problema, con su
+   `fichero:línea`, sale en el log, antes.
+10. **`dev` vuelve a comprobar** cuando aparece o desaparece un `.fudapi` o una `.fudspec`, y con
+    cualquier cambio bajo `fudic/terms/`.
+11. **`fudic_check` escribe `.fudic/api` antes de comprobar**, como el build: si no, un `.fudapi`
+    recién tocado se comprobaría con los tipos de antes.
+12. **El checker del MCP sabe qué cambió por la fecha de cada fichero**, en stdio y en HTTP: un
+    solo mecanismo, que ve igual lo que escribe el agente y lo que escribe el MCP. El barrido salta
+    `node_modules`, `dist` y `.git`.
+13. **El checker del proyecto se encuentra a través de su `@fudic/vite`**: en una app de pnpm
+    `@fudic/typecheck` no está arriba en `node_modules`, sino junto al `@fudic/vite` que depende de
+    él. Un proyecto sin `@fudic/vite`, o con uno anterior a `@fudic/typecheck/api`, usa el del MCP.
+14. **`fixable` es `false` hasta la fase 3** (`repairs`), como dice la tarea 9; el resumen lo cuenta.
+    La instrucción de §3.3 nombra la herramienta: «After every write, run fudic_check and fix every
+    diagnostic».
+15. **`FUD1062` no nombraba `pipe`** entre las declaraciones; su mensaje sí. Arreglado el `.md`.
+16. **Las instrucciones añaden «Start with fudic_guide { topic: "overview" }.»** a la línea de la
+    guía (fase 1): con solo `fudic_guide` registrada, sin ella el chat no sabía por dónde empezar.
+    Se queda también cuando exista `fudic_status`.
+17. **La tabla «Instead of…» cita un código solo donde lo prohibido lo tiene.** `useState`,
+    `useMemo` o el spread de JSX no son errores de fudic: no hay código que citar, y la fila lleva
+    «—». El criterio 8 exige que todo código citado exista y que lo prohibido cite el suyo.
+18. **Los fixtures del language server tienen un `.fudapi` que el build rechaza**
+    (`src/blog/[slug].fudapi`, `load` y `paths` fuera de `src/routes`: `FUD1090`). Con los `.fudapi`
+    en `check()`, los tests de paridad ven dos problemas de más en el lado del build: hay que
+    arreglar el fixture o que la paridad compare solo los `.fud`.
+19. **`@fudic/language-server/project` crece por fases**: `repairs` e `invalidate` llegan con la
+    fase 3; `symbols` y `describe`, con las tareas 15 y 16, que son quienes los usan. Las
+    reparaciones son las de `repairsFor`, la tabla sin editor; las de `href` de la bombilla
+    (insertar un `<link>`) siguen siendo solo del editor.
+20. **El servicio de proyecto pregunta los tipos al TypeScript del checker**
+    (`ProjectChecker.languageService()`, nuevo): un solo programa, el que ve el build. Sin él,
+    `FUD0540` no tiene reparación (no se sabe por qué indexar el bucle).
+21. **`fudic_files` lista lo que git sigue o seguiría** (`ls-files --cached --others
+    --exclude-standard`); sin git, todo menos `node_modules`, `dist`, `.git` y `.fudic`.
+    `fudic_read` responde `lines` (`"20-25"`), `total` y `text`. Un binario es un fichero con un
+    NUL en sus primeros 8000 bytes, como lo decide git.

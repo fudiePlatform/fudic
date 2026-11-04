@@ -64,6 +64,11 @@ export interface ProjectChecker {
   invalidate(path: string): void;
   /** The props of the component in `file`, as shapes (SDD-53 §3.3); undefined when unreadable. */
   propShapes(file: string): readonly PropField[] | undefined;
+  /**
+   * The TypeScript service of the check, once it has run: what a repair outside the editor asks
+   * a type of — the element of a loop — without building a second program.
+   */
+  languageService(): ts.LanguageService | undefined;
 }
 
 /** Everything a check holds between runs. Rebuilt only when the `tsconfig.json` changes. */
@@ -279,6 +284,10 @@ export function createProjectChecker(options: CheckOptions, fs: CheckFs = nodeFi
         mounted = undefined;
         return undefined;
       }
+    },
+
+    languageService() {
+      return mounted?.service;
     },
 
     invalidate(path) {

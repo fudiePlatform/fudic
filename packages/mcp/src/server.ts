@@ -5,6 +5,9 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import { checkProject } from './check.js';
+import { Checks } from './checks.js';
+import { FILE_TOOLS, registerFileTools } from './file-tools.js';
 import { Guide, TOPICS } from './guide.js';
 import { instructions, newAppPrompt } from './instructions.js';
 import type { Project } from './project.js';
@@ -18,16 +21,22 @@ export interface ServerOptions {
   readonly entry: Entry;
   /** Shared by every session: the topics are read once. */
   readonly guide?: Guide;
+  /** Shared by every session: one checker for the life of the server. */
+  readonly checks?: Checks;
 }
 
 /** The names of the tools the server registers, for the instructions that name them. */
-export function toolNames(_entry: Entry): ReadonlySet<string> {
-  return new Set(['fudic_guide']);
+export function toolNames(entry: Entry): ReadonlySet<string> {
+  return new Set(['fudic_guide', 'fudic_check', ...(entry === 'http' ? FILE_TOOLS : [])]);
 }
+
+/** The most diagnostics an answer lists unless asked: the summary counts them all. */
+const CHECK_LIMIT = 20;
 
 export function createServer(options: ServerOptions): McpServer {
   const { project, entry } = options;
   const guide = options.guide ?? new Guide();
+  const checks = options.checks ?? new Checks(project.root);
   const tools = toolNames(entry);
   const server = new McpServer({ name: 'fudic', version: VERSION }, { instructions: instructions(tools) });
 
@@ -48,6 +57,25 @@ export function createServer(options: ServerOptions): McpServer {
       return respond(project, { body: { ...result.page } });
     },
   );
+
+  server.registerTool(
+    'fudic_check',
+    {
+      title: 'fudic check',
+      description:
+        'The fudic project check: what the build would say, without building — .fud, TypeScript, .fudapi and .fudspec. ' +
+        'Each diagnostic has its file:line:column and the line it is on; each fudic code is explained once. ' +
+        '"paths" narrows the list, never the check: the whole project is always checked.',
+      inputSchema: {
+        paths: z.array(z.string()).optional().describe('Files or folders, relative to the project, to list the diagnostics of'),
+        limit: z.number().int().positive().default(CHECK_LIMIT).describe('The most diagnostics to list; the summary counts all of them'),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async ({ paths, limit }) => respond(project, await checkProject(project, checks, { limit, ...(paths !== undefined ? { paths } : {}) })),
+  );
+
+  if (entry === 'http') registerFileTools(server, project, checks);
 
   server.registerPrompt(
     'new-app',

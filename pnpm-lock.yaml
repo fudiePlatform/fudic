@@ -690,6 +690,12 @@ importers:
       '@fudic/diagnostics':
         specifier: workspace:*
         version: link:../diagnostics
+      '@fudic/language-server':
+        specifier: workspace:*
+        version: link:../language-server
+      '@fudic/typecheck':
+        specifier: workspace:*
+        version: link:../typecheck
       '@modelcontextprotocol/sdk':
         specifier: 1.32.2
         version: 1.32.2(zod@4.6.7)

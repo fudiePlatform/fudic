@@ -11,7 +11,7 @@ const LINES: readonly { readonly needs?: string; readonly text: string }[] = [
   { needs: 'fudic_status', text: 'For any fudic task, the first call is fudic_status. Do what its "next" says, one step at a time.' },
   { text: 'Before writing a kind of file for the first time, call fudic_guide for its topic. Start with fudic_guide { topic: "overview" }.' },
   { needs: 'fudic_generate', text: 'Create files with fudic_generate, never from scratch.' },
-  { needs: 'fudic_check', text: 'After every write, fix every diagnostic before moving on.' },
+  { needs: 'fudic_check', text: 'After every write, run fudic_check and fix every diagnostic before moving on.' },
   { needs: 'fudic_record', text: 'Never approve on the user\'s behalf: fudic_record "approved" only after the user said so in this conversation.' },
 ];
 
