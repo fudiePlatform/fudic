@@ -344,7 +344,7 @@ describe('criterion 6: g showcase ui over examples/workspace builds, each case p
     link(join(ws, 'apps/showcase'), '@fudic/example-ui', join(ws, 'libs/ui'));
     const result = (await build({
       root: join(ws, 'apps/showcase'),
-      logLevel: 'silent',
+      logLevel: 'info',
       configFile: false,
       resolve: { alias: { '@fudic/ssr': ssrDist, '@fudic/transport': transportDist, '@fudic/core': coreDist } },
       plugins: [fudic()],
