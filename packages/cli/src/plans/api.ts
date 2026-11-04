@@ -14,6 +14,7 @@ import { absolute, joinPosix, relativeTo, toPosix } from '../paths.js';
 import { targetChange } from '../project.js';
 import { renderTemplate, serverLink } from '../templates.js';
 import { wireServerLink } from '../wire.js';
+import { dependOnModule, installFor } from '../workspace/modules.js';
 import { resolveTarget } from '../workspace/target.js';
 import { EMPTY_PLAN, type CliError, type FileChange, type Plan, type TargetedOptions } from '../types.js';
 
@@ -77,5 +78,9 @@ export function planApi(written: string, opts: TargetedOptions, io: ReadIo = nod
   const linked = (doc.serverLinks ?? []).some((link) => staticAttr(link, 'href') === href);
   if (!linked) changes.push({ kind: 'modify', path: fud, contents: wireServerLink(source, doc, serverLink(href)), before: source });
 
-  return Promise.resolve({ ...EMPTY_PLAN, changes: errors.length > 0 ? [] : changes, errors });
+  if (errors.length > 0) return Promise.resolve({ ...EMPTY_PLAN, errors });
+  // A server function is called through @fudic/http: the project depends on it once it has one.
+  const dependency = dependOnModule(target, '@fudic/http', io);
+  if (dependency === undefined) return Promise.resolve({ ...EMPTY_PLAN, changes });
+  return Promise.resolve({ ...EMPTY_PLAN, changes: [...changes, dependency], commands: [installFor(target, opts.cwd, io)] });
 }

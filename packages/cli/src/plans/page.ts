@@ -12,6 +12,7 @@ import { hrefBetween, joinPosix } from '../paths.js';
 import { resolveLayout } from '../layout.js';
 import { targetChange } from '../project.js';
 import { routeToFile, routeToUrl } from '../route.js';
+import { dependOnModule, installFor } from '../workspace/modules.js';
 import { resolveTarget, routeRefusal } from '../workspace/target.js';
 import { indent, pageTest, renderTemplate, sectionBlocks, serverLink } from '../templates.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
@@ -93,7 +94,10 @@ export function planPage(route: string, opts: PageOptions, io: ReadIo = nodeRead
     if (test.change !== undefined) changes.push(test.change);
   }
 
-  return Promise.resolve({ changes, commands: [], diagnostics, errors });
+  // A `load` is called through @fudic/http: the project depends on it once it has one.
+  const dependency = opts.server ? dependOnModule(resolved.target, '@fudic/http', io) : undefined;
+  if (dependency === undefined) return Promise.resolve({ changes, commands: [], diagnostics, errors });
+  return Promise.resolve({ changes: [...changes, dependency], commands: [installFor(resolved.target, opts.cwd, io)], diagnostics, errors });
 }
 
 /**

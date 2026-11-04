@@ -75,9 +75,9 @@ function librariesOf(projects: readonly Project[]): readonly string[] {
   return projects.filter((project) => project.config.kind === 'lib').map((project) => project.name);
 }
 
-/** One `"@scope/name": "workspace:*"` per dependency, already quoted for JSON. */
-function entries(scope: string, uses: readonly string[]): readonly string[] {
-  return uses.map((name) => `${JSON.stringify(packageOf(scope, name))}: "workspace:*"`);
+/** One `"<package>": "workspace:*"` per dependency, already quoted for JSON. */
+function entries(uses: readonly string[], packageNamed: (name: string) => string): readonly string[] {
+  return uses.map((name) => `${JSON.stringify(packageNamed(name))}: "workspace:*"`);
 }
 
 /**
@@ -87,8 +87,13 @@ function entries(scope: string, uses: readonly string[]): readonly string[] {
  * templates substitute and nothing else. `''` leaves `fudic new`'s `package.json` byte for
  * byte what it was, which is what criterion 2 checks.
  */
-export function appUses(scope: string, uses: readonly string[]): string {
-  const lines = entries(scope, uses);
+export function appUses(
+  scope: string,
+  uses: readonly string[],
+  // A library that exists says its own name (its `package.json`); one created alongside is `@scope/name`.
+  packageNamed: (name: string) => string = (name) => packageOf(scope, name),
+): string {
+  const lines = entries(uses, packageNamed);
   return lines.length === 0 ? '' : `,\n    ${lines.join(',\n    ')}`;
 }
 
@@ -98,7 +103,7 @@ export function appUses(scope: string, uses: readonly string[]): string {
  * A library's own runtime is a PEER, not a dependency (see `plans/lib.ts`), so what `--uses`
  * adds is the first real dependency the package has.
  */
-export function libUses(scope: string, uses: readonly string[]): string {
-  const lines = entries(scope, uses);
+export function libUses(scope: string, uses: readonly string[], packageNamed: (name: string) => string = (name) => packageOf(scope, name)): string {
+  const lines = entries(uses, packageNamed);
   return lines.length === 0 ? '' : `,\n  "dependencies": {\n    ${lines.join(',\n    ')}\n  }`;
 }

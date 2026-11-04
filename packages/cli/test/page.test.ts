@@ -171,7 +171,8 @@ describe('g page', () => {
   });
 
   it('--server links the .fudapi beside the route, declares its load there and implements it in src/server', async () => {
-    const withLayout = projectFs({ 'src/layouts/_layout.fud': LAYOUT });
+    const MANIFEST = { 'package.json': '{ "name": "demo", "dependencies": {} }' };
+    const withLayout = projectFs({ 'src/layouts/_layout.fud': LAYOUT, ...MANIFEST });
     const route = await planPage('blog/:slug', options({ server: true }), withLayout);
     expect(route.errors).toEqual([]);
     expect(route.changes.map((c) => c.path)).toEqual([
@@ -179,7 +180,11 @@ describe('g page', () => {
       'src/routes/blog/[slug].fudapi',
       'src/server/routes/blog/[slug].ts',
       'src/routes/blog/[slug].test.ts',
+      // A `load` is called through @fudic/http (SDD-66): the project depends on it, then installs.
+      'package.json',
     ]);
+    expect(route.changes[4]!.contents).toContain('"@fudic/http"');
+    expect(route.commands.map((c) => `${c.command} ${c.args.join(' ')}`)).toEqual(['pnpm install']);
     const routeDoc = parseFud(route.changes[0]!.contents);
     expect(routeDoc.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     expect(routeDoc.doc.type).toBe('route-document');
@@ -192,7 +197,7 @@ describe('g page', () => {
       "import { load } from 'fudic:routes/blog/[slug]';\n\nload.handle(() => ({ title: 'Untitled' }));\n",
     );
 
-    const bare = projectFs();
+    const bare = projectFs(MANIFEST);
     const page = await planPage('blog', options({ server: true }), bare);
     const pageDoc = parseFud(page.changes[0]!.contents);
     expect(pageDoc.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
