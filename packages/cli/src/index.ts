@@ -53,7 +53,7 @@ export { planPage } from './plans/page.js';
 export { planLayout } from './plans/layout.js';
 export { planSnippet } from './plans/snippet.js';
 export { apply } from './apply.js';
-export { run, defaultDeps, type RunDeps, type Streams } from './run.js';
+export { run, defaultDeps, planOf, type PlannedCommand, type RunDeps, type Streams } from './run.js';
 
 export { parseArgs, type ParsedCommand, type GlobalFlags } from './args.js';
 export { GENERAL_HELP } from './help/general.js';
@@ -83,6 +83,7 @@ export {
   nodeReadIo,
   nodeWriteIo,
   nodeCommandRunner,
+  needsShell,
   walkFud,
   type ReadIo,
   type WriteIo,

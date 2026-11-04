@@ -36,6 +36,9 @@ import type { ShowcaseKit } from './plans/showcase.js';
  */
 const BROKEN_SOURCE: ReadonlySet<FudCode> = new Set<FudCode>(['FUD0445', 'FUD0450']);
 
+/** A parsed command that is a plan: not help, not an error, not a server, not a history read. */
+export type PlannedCommand = Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } | { kind: 'error' } | { kind: 'serve' } | { kind: 'history' }>;
+
 /** Output seam: tests capture, the binary writes to the real streams. */
 export interface Streams {
   out(text: string): void;
@@ -103,7 +106,7 @@ async function execute(argv: readonly string[], deps: RunDeps): Promise<number> 
   }
   // Not a plan either: it changes nothing, it says what the history says.
   if (command.kind === 'history') return showHistory(command.piece, command.opts, command.flags.json, deps);
-  const plan = await build(command, deps);
+  const plan = await planOf(command, deps);
   const { flags } = command;
   const human = flags.json ? deps.streams.err : deps.streams.out;
 
@@ -253,9 +256,12 @@ function sourceOf(cwd: string, file: string, io: ReadIo): string | undefined {
  * The plan of a command. Each plan is imported when its command runs and not before (BUG-51):
  * between them they load the compiler, the formatter and the typecheck, and `fudic --help` or
  * `fudic test` has no use for any of it.
+ *
+ * Exported for a tool that runs the CLI in process — the MCP —: what it plans is what the
+ * command line plans, from the same parsed command.
  */
-async function build(
-  command: Exclude<ReturnType<typeof parseArgs>, { kind: 'help' } | { kind: 'error' } | { kind: 'serve' } | { kind: 'history' }>,
+export async function planOf(
+  command: PlannedCommand,
   deps: RunDeps,
 ): Promise<Plan> {
   const io = deps.readIo;

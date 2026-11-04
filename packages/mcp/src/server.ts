@@ -10,6 +10,10 @@ import { Checks } from './checks.js';
 import { FILE_TOOLS, registerFileTools } from './file-tools.js';
 import { fixProject } from './fix.js';
 import { formatProject } from './format.js';
+import { SYMBOL_KINDS } from '@fudic/language-server/project';
+import { contractOf, describeName, listSymbols } from './symbols.js';
+import { registerProjectTools } from './project-tools.js';
+import { RECORD_EVENTS, recordEvent } from './record.js';
 import { Guide, TOPICS } from './guide.js';
 import { instructions, newAppPrompt } from './instructions.js';
 import type { Project } from './project.js';
@@ -29,7 +33,20 @@ export interface ServerOptions {
 
 /** The names of the tools the server registers, for the instructions that name them. */
 export function toolNames(entry: Entry): ReadonlySet<string> {
-  return new Set(['fudic_guide', 'fudic_check', 'fudic_fix', 'fudic_format', ...(entry === 'http' ? FILE_TOOLS : [])]);
+  return new Set([
+    'fudic_guide',
+    'fudic_check',
+    'fudic_fix',
+    'fudic_format',
+    'fudic_symbols',
+    'fudic_describe',
+    'fudic_contract',
+    'fudic_new',
+    'fudic_generate',
+    'fudic_add',
+    'fudic_record',
+    ...(entry === 'http' ? FILE_TOOLS : []),
+  ]);
 }
 
 /** The most diagnostics an answer lists unless asked: the summary counts them all. */
@@ -112,6 +129,68 @@ export function createServer(options: ServerOptions): McpServer {
     },
     async ({ paths: asked, dryRun: dry }) =>
       respond(project, await formatProject(project, checks, { dryRun: dry, ...(asked !== undefined ? { paths: asked } : {}) })),
+  );
+
+  const lookup = { readOnlyHint: true, openWorldHint: false };
+
+  server.registerTool(
+    'fudic_symbols',
+    {
+      title: 'fudic symbols',
+      description:
+        'What the fudic project has: routes, components, types, functions (connected when their handler is written, ' +
+        'missing when not), middlewares, pipes and tokens — its own and its libraries\', each with where it is and its doc.',
+      inputSchema: { kind: z.enum(SYMBOL_KINDS).optional().describe('One kind; without it, all of them') },
+      annotations: lookup,
+    },
+    async ({ kind }) => respond(project, await listSymbols(project, checks, kind)),
+  );
+
+  server.registerTool(
+    'fudic_describe',
+    {
+      title: 'fudic describe',
+      description:
+        'One thing of the fudic project in full: a component tag (its props, slots, events, parts, tokens, where it is ' +
+        'used, and an example of use that compiles), a route (/products/:id), a type, a function (routes/products.save) or a token.',
+      inputSchema: { name: z.string().describe('A tag, a route, a type, a function or a token, as fudic_symbols names it') },
+      annotations: lookup,
+    },
+    async ({ name }) => respond(project, await describeName(project, checks, name)),
+  );
+
+  server.registerTool(
+    'fudic_contract',
+    {
+      title: 'fudic contract',
+      description:
+        'What a fudic .fudapi asks you to implement: each declaration with a handler, its TypeScript signature, the file it ' +
+        'goes in, whether it is written, and a skeleton of what is missing that compiles.',
+      inputSchema: { id: z.string().describe('The id of the .fudapi: its path under src/, without the extension (routes/products)') },
+      annotations: lookup,
+    },
+    async ({ id }) => respond(project, await contractOf(project, checks, id)),
+  );
+
+  registerProjectTools(server, project, checks, tools);
+
+  server.registerTool(
+    'fudic_record',
+    {
+      title: 'fudic record',
+      description:
+        'Writes in the history of a fudic piece what a person decided, or that it is finished: "approved" (its props and ' +
+        'criteria, only after the user approved them in this conversation), "accepted" (the client accepted it, with the ' +
+        "user's words in text), \"reopened\" (a change to its contract, with text) or \"done\" (every phase finished).",
+      inputSchema: {
+        piece: z.string().describe("A component's or a route's .fud, or its folder, relative to the project"),
+        event: z.enum(RECORD_EVENTS),
+        text: z.string().optional().describe('accepted and reopened: what the user said, in their words'),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    },
+    async ({ piece, event, text }) =>
+      respond(project, await recordEvent(project, checks, { piece, event, ...(text !== undefined ? { text } : {}) })),
   );
 
   if (entry === 'http') registerFileTools(server, project, checks);

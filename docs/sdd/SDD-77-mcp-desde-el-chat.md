@@ -263,6 +263,9 @@ recién instalado y llama a `fudic_status`.
 | `FUD1405` | Nothing by that name | `fudic_describe` o `fudic_contract` con un nombre que no existe; el arreglo sugiere el más parecido |
 | `FUD1406` | cloudflared is not installed | `--tunnel` sin `cloudflared` en el `PATH` |
 | `FUD1407` | Not done yet | `fudic_record { event: "done" }` sobre una pieza a la que le falta una fase: dice cuál |
+| `FUD1408` | Generated without a purpose | `fudic_generate` de un `component` o una `page` sin `purpose` (§8.2.34) |
+| `FUD1409` | Already a fudic project | `fudic_new` en una carpeta que ya tiene `fudic.json`, en ella o encima (§8.2.32) |
+| `FUD1410` | Recorded without a text | `fudic_record` de `accepted` o `reopened` sin `text` (§8.2.34) |
 
 ## 4. Comportamiento
 
@@ -525,11 +528,13 @@ temporal creado con `planNew`. La prueba de Pedro (§6.1) es aparte y no se sust
 
 **Lo que existe**
 
-15. `symbols { kind: "components" }` en `examples/workspace` lista los de `libs/ui` con su doc;
+15. `symbols { kind: "components" }` en `examples/workspace/apps/tienda` lista `ui-card` de
+    `libs/ui` con su doc y su `at` por el paquete (`@fudic/example-ui/src/…`);
     `{ kind: "functions" }` marca `missing` una función sin handler y `connected` otra con él;
-    `{ kind: "tokens" }` da los tokens de la librería de estilos con `group` y `doc`.
-16. `describe { name: "acme-button" }` da el contrato de SDD-63 y un `example` que, pegado en una
-    ruta, compila; `describe { name: "acme-buton" }` da `FUD1405` sugiriendo `acme-button`.
+    `{ kind: "tokens" }` da los tokens de `libs/guia` con `doc` (y `group` cuando el nombre tiene
+    tres segmentos o más), en el orden en que se adoptan.
+16. `describe { name: "ui-card" }` da el contrato de SDD-63 y un `example` que, pegado en una
+    ruta con su `link`, compila; `describe { name: "ui-crad" }` da `FUD1405` sugiriendo `ui-card`.
 17. `contract { id }` da un esqueleto de handler que, escrito en su sitio, deja la función
     `connected` y el proyecto sin diagnósticos.
 
@@ -710,3 +715,49 @@ framework.
 24. **La CLI también sale del proyecto** (§8.2.7): el `@fudic/cli` de su `node_modules` (un
     `fudic new` lo pone en `devDependencies`), y si no, la del MCP, que pasa a ser dependencia de
     ejecución del paquete.
+25. **Los criterios 15 y 16 nombraban `acme-button`**, que `examples/workspace` no tiene: su
+    componente de librería es `ui-card`, y sus tokens (`--guia-ink`…) tienen dos segmentos, sin
+    `group`. Reescritos con lo que hay.
+26. **`symbols` y `describe` viven en `project-symbols.ts` del language server**, sobre lo que el
+    editor ya usa: el índice (`byRole('component')`, `usesOf`, `linker`), `readApiProject`, el
+    `ImplementationIndex` y `implemented()` del CodeLens (exportado), `projectTokens`,
+    `typedContract` y `propShapes` + `sampleValue` para el ejemplo. Las funciones son los `fn`,
+    `load`, `paths`, `layout` y las `rule`, por `<id>.<nombre>` (`routes/products.save`,
+    `routes/products.load`); los tipos, `type`, `enum` y `form`.
+27. **La doc de una lista es su primera frase**, no su primera línea: un JSDoc va partido al
+    ancho de su autor. `describe` da la doc entera.
+28. **El `at` de un fichero de librería va por su paquete** (`@fudic/example-ui/src/…:3:1`), que
+    es como el proyecto la alcanza; nunca una ruta que sale con `../..`.
+29. **El `example` da a cada prop obligatoria el menor valor que compila** (`sampleValue`, el de
+    los fixtures de SDD-53); una prop sin valor honrado se queda fuera y se nombra en `fill`, con
+    un `next` que lo dice. El `link` es el que escribe una ruta de `src/routes`.
+30. **El esqueleto de `fudic_contract` es una llamada que lanza** (`x.handle(() => { throw new
+    Error('…: not written yet') })`): compila con cualquier firma y deja la función `connected`
+    sin fingir una implementación. Va donde la busca el CodeLens: `src/server/<id>.ts`;
+    `src/browser/<id>.ts` para la mitad `client` de un middleware y una regla que no es
+    `runs server`; un pipe, junto a su `.fudapi`, con `export default`. Si el fichero existe,
+    `exists: true`: se añade, no se reemplaza. La firma es el bloque del `.d.ts` generado.
+31. **Los planes salen de la línea de comandos**: cada herramienta escribe el `argv` de su
+    comando (`g component app-badge --no-style`, en camelCase → kebab-case), lo lee el `parseArgs`
+    de la CLI y lo planifica `planOf`, su función interna `build` ahora exportada. Las opciones que
+    un `kind` no admite las rechaza la CLI con su `FUD0448` y sus pistas (`hints`). Una CLI del
+    proyecto sin `planOf` (anterior a esto) cede el sitio a la del MCP.
+32. **`fudic_new` crea el proyecto en la carpeta del MCP**: es el plan de `fudic new <name>` con
+    `<name>/` quitado de cada ruta y de cada comando (y la línea `cd` del informe). En una carpeta
+    que ya es un proyecto, `FUD1409` y nada escrito.
+33. **Los comandos de un plan corren con la salida guardada**: por stdio, stdout es el protocolo.
+    La respuesta trae `ran` (comando, carpeta, estado y, si falló, sus últimas 20 líneas). Tras
+    `new` y `add`, el MCP vuelve a montar su checker: el fudic del proyecto puede ser otro.
+34. **Dos códigos más**: `FUD1408` (un `component` o una `page` sin `purpose`) y `FUD1410`
+    (`accepted` o `reopened` sin `text`). `started` y `reopened` van `by agent`; `approved` y
+    `accepted`, por quien es el usuario para la CLI.
+35. **Las fases de §4.4 se calculan ya en la fase 5** (`phases.ts`), porque `done` las necesita:
+    `criteria` = `.fudspec` + aprobación `valid`; con servidor = un `.fudapi` al lado o enlazado
+    (nunca en una librería); `api` = enlazado el de al lado; `red` = hay `<pieza>.test.ts` y la
+    última ejecución vigente es `red`/`pass` en tests y `fail`/`pass` en criterios; `view` = las dos
+    `pass`; `connect` = cada handler `connected`; `document` = JSDoc del componente y de cada prop
+    (una ruta no tiene); `showcase` = en una librería de un workspace con `apps/showcase`, el plan
+    en seco de `g showcase <lib>` no cambia nada.
+36. **`done` escribe** `documented <con doc>/<props>`, `connected` con las funciones que tienen
+    handler y no salían en un `connected` anterior (si hay alguna) y `done`. Sobre una pieza ya
+    `done`, no escribe nada.

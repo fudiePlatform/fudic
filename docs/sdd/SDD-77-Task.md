@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/mcp` (nuevo) · `@fudic/typecheck` · `@fudic/spec` · `@fudic/vite` ·
 > `@fudic/language-server` · `@fudic/cli` · `@fudic/workbench` · `@fudic/diagnostics`
 > **Rama:** `sdd-77-mcp-desde-el-chat`, desde `main`.
-> **Progreso:** 12 / 30 — `En curso`.
+> **Progreso:** 17 / 30 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -114,17 +114,17 @@ sesión). No se cierra una fase sin su prueba en Claude Web.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 15 | 11 | **`fudic_symbols`.** Los siete `kind`, con origen, `at` y la primera línea de la doc; funciones `connected`/`missing` con `implementationsOf`; tokens con `group` | `language-server` · `mcp` | `src/project.ts` · `src/tools/symbols.ts` |
-| [ ] | 16 | 11 | **`fudic_describe`.** El contrato de SDD-63 entero y el `example` generado desde él; rutas, tipos, funciones y tokens; `FUD1405` con el más parecido | `language-server` · `mcp` | `src/project.ts` · `src/tools/describe.ts` · `src/example.ts` |
-| [ ] | 17 | 15 | **`fudic_contract`.** Cada declaración que pide handler, su firma del `.d.ts`, su fichero y un esqueleto que compila | `mcp` | `src/tools/contract.ts` |
+| [x] | 15 | 11 | **`fudic_symbols`.** Los siete `kind`, con origen, `at` y la primera línea de la doc; funciones `connected`/`missing` con `implementationsOf`; tokens con `group` | `language-server` · `mcp` | `src/project.ts` · `src/tools/symbols.ts` |
+| [x] | 16 | 11 | **`fudic_describe`.** El contrato de SDD-63 entero y el `example` generado desde él; rutas, tipos, funciones y tokens; `FUD1405` con el más parecido | `language-server` · `mcp` | `src/project.ts` · `src/tools/describe.ts` · `src/example.ts` |
+| [x] | 17 | 15 | **`fudic_contract`.** Cada declaración que pide handler, su firma del `.d.ts`, su fichero y un esqueleto que compila | `mcp` | `src/tools/contract.ts` |
 | [ ] | 18 | 15–17 | **Los tests de la fase.** Criterios 15–17. **Prueba en Claude Web:** fila «Lo que existe» | `mcp` | `test/**` |
 
 ## Fase 5 — crear y anotar (3)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 19 | 9 | **`new`, `generate`, `add`.** Los `plan*` de la CLI con su esquema JSON por `kind`, `apply` con sus comandos, `dryRun`; `purpose` obligatorio en `component` y `page`, y su línea `started`; el checker se invalida con lo aplicado | `mcp` | `src/tools/plans.ts` · `src/schemas.ts` |
-| [ ] | 20 | 19 | **`fudic_record`.** `approved` y `accepted` con los planes de la CLI; `reopened`; `done` con `documented` y `connected` delante, y `FUD1407` si falta una fase | `mcp` | `src/tools/record.ts` · `src/phases.ts` |
+| [x] | 19 | 9 | **`new`, `generate`, `add`.** Los `plan*` de la CLI con su esquema JSON por `kind`, `apply` con sus comandos, `dryRun`; `purpose` obligatorio en `component` y `page`, y su línea `started`; el checker se invalida con lo aplicado | `mcp` | `src/tools/plans.ts` · `src/schemas.ts` |
+| [x] | 20 | 19 | **`fudic_record`.** `approved` y `accepted` con los planes de la CLI; `reopened`; `done` con `documented` y `connected` delante, y `FUD1407` si falta una fase | `mcp` | `src/tools/record.ts` · `src/phases.ts` |
 | [ ] | 21 | 19, 20 | **Los tests de la fase.** Criterios 18–20 (cada `kind` contra el plan de la CLI). **Prueba en Claude Web:** fila «Crear» | `mcp` | `test/**` |
 
 ## Fase 6 — ejecutar (3)

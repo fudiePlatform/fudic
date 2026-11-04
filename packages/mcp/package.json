@@ -49,8 +49,11 @@
   },
   "dependencies": {
     "@fudic/cli": "workspace:*",
+    "@fudic/conventions": "workspace:*",
     "@fudic/diagnostics": "workspace:*",
+    "@fudic/history": "workspace:*",
     "@fudic/language-server": "workspace:*",
+    "@fudic/spec": "workspace:*",
     "@fudic/typecheck": "workspace:*",
     "@modelcontextprotocol/sdk": "1.32.2",
     "zod": "4.6.7"
