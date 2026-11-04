@@ -343,3 +343,6 @@ component its cases: `fudic g spec <name>` writes its fixture».
    `pnpm-workspace.yaml`. Dentro del repo, `examples/workspace` no es un workspace por sí mismo:
    la raíz que encuentra la CLI es la del repo, y la app nacería en `<repo>/apps/showcase`. Darle
    su yaml cambiaría cómo el repo instala el ejemplo, y eso no es de esta spec.
+6. **En un documento entero la marca va en la segunda línea**, tras el `<!DOCTYPE html>`: nada
+   puede ir delante de él, o el fichero deja de leerse como página (`FUD0156`). Una página dentro
+   de un layout, un host y el índice con layout la llevan en la primera, como dice §3.2.
