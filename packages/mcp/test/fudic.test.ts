@@ -29,6 +29,9 @@ function write(files: Readonly<Record<string, string>>): void {
 
 const manifest = (exports: Record<string, unknown>): string => JSON.stringify({ name: 'x', exports });
 
+/** A CLI that can plan in process, as this server needs it. */
+const PROJECT_CLI = { planOf: () => undefined, needsShell: () => false };
+
 /** An importer that answers a module per file, and remembers what it was asked. */
 function importer(): Importer & { readonly asked: string[] } {
   const asked: string[] = [];
@@ -36,7 +39,8 @@ function importer(): Importer & { readonly asked: string[] } {
     asked.push(url);
     if (url.endsWith('/typecheck/dist/index.js')) return Promise.resolve({ createProjectChecker: 'project checker' });
     if (url.endsWith('/typecheck/dist/api-project.js')) return Promise.resolve({ writeApiDeclarations: 'project declarations' });
-    if (url.endsWith('/cli/dist/index.js')) return Promise.resolve({ planNew: 'project cli' });
+    if (url.endsWith('/cli/dist/index.js')) return Promise.resolve(PROJECT_CLI);
+    if (url.endsWith('/old-cli/dist/index.js')) return Promise.resolve({ planNew: () => undefined });
     return Promise.reject(new Error(`unexpected import ${url}`));
   };
   return Object.assign(load, { asked });
@@ -91,7 +95,7 @@ describe('loadFudic', () => {
     expect(fudic.from).toEqual({ check: 'project', cli: 'project' });
     expect(fudic.createProjectChecker).toBe('project checker');
     expect(fudic.writeApiDeclarations).toBe('project declarations');
-    expect(fudic.cli).toEqual({ planNew: 'project cli' });
+    expect(fudic.cli).toBe(PROJECT_CLI);
     expect(load.asked).toEqual([
       pathToFileURL(join(dir.root, TYPECHECK, 'dist', 'index.js')).href,
       pathToFileURL(join(dir.root, TYPECHECK, 'dist', 'api-project.js')).href,
@@ -128,6 +132,21 @@ describe('loadFudic', () => {
     dir = tempDir();
     write({ [`${VITE}/package.json`]: '{}', [`${TYPECHECK}/package.json`]: manifest({ './api': { import: './dist/api-project.js' } }) });
     expect((await loadFudic(dir.root, importer())).from.check).toBe('server');
+  });
+
+  it('a CLI older than this server cannot plan in process: the server\'s', async () => {
+    dir = tempDir();
+    write({ 'node_modules/@fudic/cli/package.json': manifest({ '.': { import: './old-cli/dist/index.js' } }) });
+    const fudic = await loadFudic(dir.root, importer());
+    expect(fudic.from.cli).toBe('server');
+    expect(fudic.cli.planNew).toBe(serverCli.planNew);
+  });
+
+  it('a CLI with planOf but no needsShell is older too', async () => {
+    dir = tempDir();
+    write({ 'node_modules/@fudic/cli/package.json': manifest({ '.': { import: './half/dist/index.js' } }) });
+    const load: Importer = (url) => (url.endsWith('/half/dist/index.js') ? Promise.resolve({ planOf: () => undefined }) : Promise.reject(new Error(url)));
+    expect((await loadFudic(dir.root, load)).from.cli).toBe('server');
   });
 
   it('a CLI that exports nothing to import: the server\'s', async () => {

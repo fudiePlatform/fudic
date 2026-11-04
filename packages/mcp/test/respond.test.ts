@@ -27,6 +27,12 @@ describe('outDiagnostic', () => {
     });
   });
 
+  it('on the last line, without a break after it, the quote is that line', () => {
+    const last = join(ROOT, 'last.fud');
+    const d = { ...FUD0540({ span: span(4, 5) }), file: last } as FudDiagnostic;
+    expect(outDiagnostic(d, ROOT, (f) => (f === last ? '<p>\n  @x' : undefined))).toMatchObject({ at: 'last.fud:2:1', quote: '@x' });
+  });
+
   it('a diagnostic of the project has no place', () => {
     expect(outDiagnostic(FUD1406(), ROOT, read)).toEqual({ code: 'FUD1406', severity: 'warning', message: FUD1406().message });
   });
@@ -34,6 +40,16 @@ describe('outDiagnostic', () => {
   it('a file without a span keeps only the file', () => {
     const d = FUD1400({ file: join(ROOT, 'a.fud') });
     expect(outDiagnostic(d, ROOT, read)).toEqual({ code: 'FUD1400', severity: 'error', message: d.message, at: 'a.fud' });
+  });
+
+  it('fixable and the options of its repairs, when the check says them', () => {
+    const d = { code: 'FUD0540', severity: 'error' as const, message: 'm', fixable: false, options: ['Key by item.id', 'Key by index'] };
+    expect(outDiagnostic(d, ROOT, read)).toEqual({ code: 'FUD0540', severity: 'error', message: 'm', fixable: false, options: ['Key by item.id', 'Key by index'] });
+  });
+
+  it('a path as the caller wrote it stays as written', () => {
+    const d = FUD1400({ file: '../elsewhere/x.fud' });
+    expect(outDiagnostic(d, ROOT, read)).toMatchObject({ at: '../elsewhere/x.fud' });
   });
 
   it('a span in a file that cannot be read keeps only the file', () => {

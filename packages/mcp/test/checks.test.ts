@@ -3,7 +3,7 @@
  * told by the dates of the files what changed, with `.fudic/api` written before every check.
  */
 
-import { mkdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Cli } from '../src/fudic.js';
@@ -28,6 +28,8 @@ describe('stampsOf', () => {
       writeFileSync(join(dir.root, file), '');
     }
     utimesSync(join(dir.root, 'a.fud'), 1000, 1000);
+    // A link is not a file of the project: what it points at is somebody else's.
+    symlinkSync(join(dir.root, 'src'), join(dir.root, 'linked'), 'junction');
     const stamps = stampsOf(dir.root);
     expect([...stamps.keys()].map((p) => p.slice(dir!.root.length + 1).replace(/\\/gu, '/')).sort()).toEqual([
       '.fudic/api/r.d.ts',
@@ -101,6 +103,25 @@ describe('Checks.run', () => {
     checker.invalidated.length = 0;
     await checks.run();
     expect(checker.invalidated).toEqual([]);
+  });
+});
+
+describe('Checks.reset and Checks.service', () => {
+  it('reset forgets the fudic and the dates: the next run mounts again and tells everything', async () => {
+    const { checks, checker, load } = harness([new Map([['/p/a.fud', 1]])]);
+    await checks.run();
+    checker.invalidated.length = 0;
+    checks.reset();
+    await checks.run();
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(checker.invalidated).toEqual(['/p/a.fud']);
+  });
+
+  it('the editor\'s project service, the same one every time', async () => {
+    const { checks } = harness([new Map()]);
+    const service = await checks.service();
+    expect(typeof service.repairs).toBe('function');
+    expect(await checks.service()).toBe(service);
   });
 });
 

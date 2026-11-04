@@ -320,6 +320,9 @@ importers:
       '@fudic/ssr':
         specifier: workspace:*
         version: link:../ssr
+      '@fudic/terms':
+        specifier: workspace:*
+        version: link:../terms
       '@fudic/transport':
         specifier: workspace:*
         version: link:../transport
