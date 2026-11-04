@@ -52,7 +52,13 @@
     "@fudic/typecheck": "workspace:*"
   },
   "devDependencies": {
+    "@fudic/core": "workspace:*",
+    "@fudic/dom": "workspace:*",
+    "@fudic/ssr": "workspace:*",
+    "@fudic/terms": "workspace:*",
+    "@fudic/testing": "workspace:*",
     "@fudic/tsconfig": "workspace:*",
+    "@fudic/workbench": "workspace:*",
     "@types/node": "22.20.0",
     "typescript": "5.9.3",
     "vitest": "4.1.9"
