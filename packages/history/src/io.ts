@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
-import { appendFile, readFile } from 'node:fs/promises';
+import { appendFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
+import { type CheckFs, nodeFileSystem, toPosix } from '@fudic/typecheck';
 
 const run = promisify(execFile);
 
@@ -8,8 +9,8 @@ const run = promisify(execFile);
 export interface HistoryIo {
   /** The project root, absolute: what a piece's path and every hashed path are relative to. */
   readonly root: string;
-  /** A file's text, or `undefined` when it cannot be read. */
-  read(path: string): Promise<string | undefined>;
+  /** How files are read and links resolved: the same port the editor and the build use. */
+  readonly fs: CheckFs;
   /** Adds text at the end of a file, creating it when missing. */
   append(path: string, text: string): Promise<void>;
   now(): Date;
@@ -30,14 +31,8 @@ export async function git(cwd: string, args: readonly string[]): Promise<string 
 /** The history as it is on disk, under `root`. */
 export function nodeIo(root: string = process.cwd()): HistoryIo {
   return {
-    root,
-    read: async (path) => {
-      try {
-        return await readFile(path, 'utf8');
-      } catch {
-        return undefined;
-      }
-    },
+    root: toPosix(root),
+    fs: nodeFileSystem(),
     append: (path, text) => appendFile(path, text, 'utf8'),
     now: () => new Date(),
     head: () => git(root, ['rev-parse', '--verify', '--quiet', 'HEAD']),

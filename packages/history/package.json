@@ -44,8 +44,12 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@fudic/api": "workspace:*",
+    "@fudic/compiler": "workspace:*",
     "@fudic/conventions": "workspace:*",
-    "@fudic/diagnostics": "workspace:*"
+    "@fudic/diagnostics": "workspace:*",
+    "@fudic/spec": "workspace:*",
+    "@fudic/typecheck": "workspace:*"
   },
   "devDependencies": {
     "@fudic/tsconfig": "workspace:*",

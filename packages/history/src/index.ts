@@ -5,3 +5,5 @@ export { parseHistory } from './parse.js';
 export type { HistoryIo } from './io.js';
 export { nodeIo } from './io.js';
 export { historyOf, record } from './record.js';
+export { approvalHash } from './hash.js';
+export { inputsHash } from './inputs.js';
