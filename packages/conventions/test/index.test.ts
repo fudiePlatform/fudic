@@ -75,6 +75,10 @@ describe('@fudic/conventions', () => {
     expect(conventions.INVALIDATE_MESSAGE).toBe('fudic:invalidate');
   });
 
+  it('names the history file of a piece, next to its .fud (SDD-65 §3.1)', () => {
+    expect(conventions.HISTORY_EXTENSION).toBe('.fudlog');
+  });
+
   it('exports those names and nothing else', () => {
     // The door stays shut (BUG-20 §3.4). A ninth export is not a smaller change than a
     // second package: it is how a convention package turns into a drawer of shared strings,
@@ -98,6 +102,9 @@ describe('@fudic/conventions', () => {
     //
     // `DEFAULT_LOCALE` and `PIPES_DIR` are SDD-71's (§3.1): the language of an app that declares
     // none — one place to change it, not every `fudic.json` — and the folder of a project's pipes.
+    //
+    // `HISTORY_EXTENSION` is SDD-65's (§3.1): the CLI writes the `.fudlog` and `@fudic/history`
+    // reads it, and the `.gitattributes` of a new project names it.
     expect(Object.keys(conventions).sort()).toEqual([
       'API_DIR',
       'API_TYPES_DIR',
@@ -110,6 +117,7 @@ describe('@fudic/conventions', () => {
       'ERROR_FILE',
       'ERROR_PREFIX',
       'FN_PREFIX',
+      'HISTORY_EXTENSION',
       'HTTP_FILE',
       'INVALIDATE_MESSAGE',
       'LAYOUTS_DIR',

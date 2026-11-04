@@ -183,6 +183,9 @@ const CASES: readonly (readonly [FudDiagnostic, string])[] = [
   [c.FUD1113({ span: S, name: 'save', other: './b.fudapi' }), 'given by two linked `.fudapi`: this one and "./b.fudapi"'],
   [c.FUD1200({ route: '/missing', status: null }), 'the page /missing did not answer'],
   [c.FUD1200({ route: '/missing', status: 404 }), 'the page /missing answered 404'],
+  [c.FUD1220({ file: 'src/a.fudlog', span: S, reason: 'unknown event `garbage`' }), 'a history line cannot be read: unknown event `garbage`'],
+  [c.FUD1221({ file: 'src/a.css' }), 'src/a.css is not a component or a route'],
+  [c.FUD1222({ file: F }), 'src/a.fud has no criteria to approve'],
 ];
 
 describe('every variant says its own sentence', () => {
