@@ -61,6 +61,7 @@ export type ParsedCommand =
   | { readonly kind: 'page'; readonly route: string; readonly opts: PageOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'layout'; readonly name: string; readonly opts: LayoutOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'spec'; readonly name: string; readonly opts: SpecOptions; readonly flags: GlobalFlags }
+  | { readonly kind: 'api'; readonly piece: string; readonly opts: TargetedOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'term'; readonly name: string; readonly opts: TermOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'snippet'; readonly name: string; readonly opts: SnippetOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'fmt'; readonly paths: readonly string[]; readonly opts: FmtOptions; readonly flags: GlobalFlags }
@@ -74,7 +75,7 @@ export type ParsedCommand =
   | { readonly kind: 'help'; readonly topic: Topic | null }
   | ({ readonly kind: 'error' } & UsageError);
 
-type GenerateType = 'component' | 'page' | 'layout' | 'app' | 'lib' | 'service' | 'form' | 'pipe' | 'style' | 'snippet' | 'spec' | 'term';
+type GenerateType = 'component' | 'page' | 'layout' | 'app' | 'lib' | 'service' | 'form' | 'pipe' | 'style' | 'snippet' | 'spec' | 'term' | 'api';
 
 /** Every spelling of a type `fudic generate` takes, aliases included. */
 const GENERATE_TYPES: Readonly<Record<string, GenerateType>> = {
@@ -96,6 +97,7 @@ const GENERATE_TYPES: Readonly<Record<string, GenerateType>> = {
   snippet: 'snippet',
   term: 'term',
   t: 'term',
+  api: 'api',
 };
 
 /** What a `fudic generate <type>` without a name could have been. */
@@ -112,6 +114,7 @@ const EXAMPLE: Readonly<Record<GenerateType, string>> = {
   style: 'theme',
   snippet: 'ui productCard',
   term: 'then cart-has',
+  api: 'src/components/button',
 };
 
 /** The command a help or an error is about, from what was typed before it. */
@@ -564,6 +567,12 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
       const unknown = unknownFlag(tokens, [...GLOBAL, 'project'], topic);
       if (unknown !== null) return unknown;
       return { kind: 'spec', name, opts: { ...base, ...target(tokens) }, flags };
+    }
+
+    case 'api': {
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'project'], topic);
+      if (unknown !== null) return unknown;
+      return { kind: 'api', piece: name, opts: { ...base, ...target(tokens) }, flags };
     }
 
     case 'snippet': {

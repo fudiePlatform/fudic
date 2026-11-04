@@ -20,6 +20,7 @@ export type Topic =
   | 'generate spec'
   | 'generate term'
   | 'generate snippet'
+  | 'generate api'
   | 'add'
   | 'dev'
   | 'preview'
@@ -91,6 +92,7 @@ apps/ and libs/, empty or with the app and the libraries you name.`,
       ['snippet', 'a snippet in a file of snippets, and its unit test'],
       ['spec', 'the .fudspec criteria of a component   (s)'],
       ['term', 'a step you can use in .fudspec criteria   (t)'],
+      ['api', 'the server of a route or a component: its .fudapi, its handler and its link'],
     ],
     options: [],
     examples: ['fudic g component button --project ui', 'fudic g page about'],
@@ -271,6 +273,14 @@ name: <link rel="snippet" href="@shop/ui/snippets/ui.fud">.`,
       DRY_RUN,
     ],
     examples: ['fudic g snippet ui productCard --project ui', 'fudic g snippet fields textField'],
+  },
+  'generate api': {
+    usage: 'fudic generate api <piece>',
+    about: `Gives a route or a component that already exists its server: the .fudapi beside
+it, its handler in src/server and the <link rel="server"> in its place.`,
+    args: [['<piece>', 'the .fud of a route or a component, or the folder of a component,\nrelative to the project: "src/components/ui-cart" or "src/routes/about.fud"']],
+    options: [IN_APP, DRY_RUN, FORCE],
+    examples: ['fudic g api src/components/shop-cart', 'fudic g api src/routes/about.fud --project web'],
   },
   'generate term': {
     usage: 'fudic generate term <kind> <name>',

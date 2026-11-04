@@ -70,14 +70,14 @@ fudic g api src/routes/productos.fud          # a route: its load
 
 ```
 # acme-cart.fudapi
-# The server functions of the component: their handlers are in src/server/components/acme-cart.ts.
+# The server functions of the component: their handlers are in src/server/components/acme-cart/acme-cart.ts.
 get hello
   -> str
 ```
 
 ```ts
-// src/server/components/acme-cart.ts
-import { hello } from 'fudic:components/acme-cart';
+// src/server/components/acme-cart/acme-cart.ts
+import { hello } from 'fudic:components/acme-cart/acme-cart';
 
 hello.handle(() => 'Hello from the server');
 ```
@@ -190,7 +190,7 @@ component its cases: `fudic g spec <name>` writes its fixture».
 ### 4.1. `g api`
 
 - **El `<id>`** es el de SDD-60 §3.11: la ruta del `.fudapi` dentro de `src/`, sin extensión
-  (`components/acme-cart`, `routes/productos`). El handler va en `<server>/<id>.ts`, con `server`
+  (`components/acme-cart/acme-cart`, `routes/productos`). El handler va en `<server>/<id>.ts`, con `server`
   leído de `fudic.json` (`src/server` por defecto).
 - **El enlace va donde manda el papel del fichero**: arriba del todo en un componente y en una
   ruta (en una ruta, tras su `<link rel="layout">`), dentro de `<head>` en una página. Es la misma
@@ -250,7 +250,7 @@ component its cases: `fudic g spec <name>` writes its fixture».
 **`g api`**
 
 1. Sobre un componente sin servidor escribe el `.fudapi`, el handler en
-   `src/server/components/<tag>.ts` y el enlace arriba del `.fud`; el proyecto compila sin
+   `src/server/components/<tag>/<tag>.ts` y el enlace arriba del `.fud`; el proyecto compila sin
    diagnósticos y `hello` responde su texto (test con el servidor de dev en memoria de
    `@fudic/testing`).
 2. Sobre una ruta escribe su `load`, su handler y el enlace en su sitio; el título del `.fud` no
@@ -324,3 +324,12 @@ component its cases: `fudic g spec <name>` writes its fixture».
    fuentes que se separan; importar la fixture de la librería es lo que haría un usuario. La
    frontera queda en «librería fudic» (con `fudic.json`), que es código que el proyecto controla y
    que el corte de servidor ya sabe resolver; un paquete cualquiera sigue fuera.
+
+### 8.2. Tomadas al implementar
+
+1. **El `<id>` de un componente nombra su carpeta y su fichero.** El componente vive en
+   `src/components/<tag>/<tag>.fud`, así que por la regla de SDD-60 §3.11 su `<id>` es
+   `components/<tag>/<tag>` y su handler `<server>/components/<tag>/<tag>.ts`. Los ejemplos de
+   §3.1 y el criterio 1 decían `components/<tag>`, que no casaba con el módulo `fudic:<id>`.
+2. **`<pieza>` es relativa al proyecto**, no a `--cwd`: es lo que hace que
+   `g api src/components/web-cart --project web` funcione desde la raíz del workspace.

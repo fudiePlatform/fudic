@@ -281,6 +281,8 @@ async function build(
       return (await import('./plans/spec.js')).planSpec(command.name, command.opts, io);
     case 'term':
       return (await import('./plans/term.js')).planTerm(command.name, command.opts, io);
+    case 'api':
+      return (await import('./plans/api.js')).planApi(command.piece, command.opts, io);
     case 'fmt':
       return (await import('./plans/fmt.js')).planFmt(command.paths, command.opts, io);
     case 'check':

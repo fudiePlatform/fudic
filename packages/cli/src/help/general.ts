@@ -24,7 +24,9 @@ Add to a project
   generate form <name>            a form and its unit test
   generate style <name>           a global stylesheet of the project
   generate snippet <file> <name>  a snippet in a file of snippets, and its unit test
+  generate spec <component>       the .fudspec criteria of a component and their fixture
   generate term <kind> <name>     a step you can use in .fudspec criteria
+  generate api <piece>            the server of a route or a component: its .fudapi and handler
   add <module>                    an optional module (di, forms, http, i18n) or a library of the workspace
 
 Run

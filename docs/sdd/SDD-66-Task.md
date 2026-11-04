@@ -5,7 +5,7 @@
 > `examples/workspace`
 > **Rama:** `sdd-66-generadores-que-faltan`. Nace de `main` **con SDD-61 en `Hecho`**: enmienda su
 > analizador `server-cut` (tarea 17).
-> **Progreso:** 1 / 17 — `En curso`.
+> **Progreso:** 4 / 17 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina. La otra escribe los tests de cada fase (las tareas
 «Los tests de…») contra los criterios de SDD §6. Si un test destapa un defecto, se corrige el
@@ -47,9 +47,9 @@ tests lo comprueban sin tocarlos.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 2 | — | **Plantillas.** `component-api.fudapi.tmpl` y `component-api.ts.tmpl` (SDD §3.1); la de ruta reutiliza `load.fudapi.tmpl` y `load.ts.tmpl` | `cli` | `templates/*` · `src/templates.ts` |
-| [ ] | 3 | 1, 2 | **`planApi`.** Pieza por `.fud` o carpeta; `<id>` y handler en `<server>/<id>.ts`; el enlace en su sitio por papel (`componentLinkAnchor`); `FUD0443`, `FUD1240`, `FUD1241` | `cli` | `src/plans/api.ts` |
-| [ ] | 4 | 3 | **En la CLI.** `GenerateType` `api`, `parseGenerate`, el `switch` de `run.ts`, `HELP`, `GENERATES` (y `spec`, que faltaba) y la ayuda general | `cli` | `src/args.ts` · `src/run.ts` · `src/help/*` |
+| [x] | 2 | — | **Plantillas.** `component-api.fudapi.tmpl` y `component-api.ts.tmpl` (SDD §3.1); la de ruta reutiliza `load.fudapi.tmpl` y `load.ts.tmpl` | `cli` | `templates/*` · `src/templates.ts` |
+| [x] | 3 | 1, 2 | **`planApi`.** Pieza por `.fud` o carpeta; `<id>` y handler en `<server>/<id>.ts`; el enlace en su sitio por papel (`componentLinkAnchor`); `FUD0443`, `FUD1240`, `FUD1241` | `cli` | `src/plans/api.ts` |
+| [x] | 4 | 3 | **En la CLI.** `GenerateType` `api`, `parseGenerate`, el `switch` de `run.ts`, `HELP`, `GENERATES` (y `spec`, que faltaba) y la ayuda general | `cli` | `src/args.ts` · `src/run.ts` · `src/help/*` |
 | [ ] | 5 | 3, 4 | **Los tests de la fase.** Criterios 1–5 (el 1 con el servidor en memoria de `@fudic/testing`) | `cli` | `test/api.test.ts` |
 
 ## Fase 3 — `g showcase` (5)
