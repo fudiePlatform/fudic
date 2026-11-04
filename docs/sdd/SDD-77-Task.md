@@ -16,7 +16,35 @@ como lo instalaría un usuario. La fase no se cierra sin esa prueba. Lo que fall
 Hasta la tarea 26, `fudic new` aún no trae el MCP: en las pruebas se usa el MCP instalado en global
 (SDD §8.2.7).
 
-## Dónde estamos (2026-11-04, para la sesión siguiente)
+## Traspaso (2026-11-04, tarde) — leer primero
+
+**Orden nuevo de Pedro:** no se para entre fases aunque falten sus tests. Al acabar la
+implementación, las fases de test que falten se reparten: una la hace el implementador y otra la
+sesión de tests; el implementador coordina. Commit siempre con rutas explícitas (nunca `-a`).
+
+- **Implementado y comiteado en `sdd-77-mcp-desde-el-chat`** (último `c6961ed7`, sin push): fases
+  1 a 6 enteras (tareas 1–4, 6–9, 11–13, 15–17, 19–20, 22–23). Las decisiones de cada una, en SDD
+  §8.2.8–41. Todo probado a mano con proyectos reales (scripts de la sesión en su scratchpad, no en
+  el repo): build roto por `.fudspec`/`.fudapi`, check/fix/format, ficheros, symbols/describe/contract
+  (criterios 15–17 cumplidos a mano sobre `examples/workspace/apps/tienda` y una copia de la guía),
+  new en seco, generate con `started`, record, test y spec_run en Chrome.
+- **Sigue: fase 7.** Tarea 25 `fudic_status`: `phases.ts` (`unitsOf`, `showcaseCurrent`) ya calcula
+  las fases; falta la herramienta, la regla de `next` de §4.4 y la memoria de temas leídos por
+  sesión. **Antes**, en `language-server/src/project-symbols.ts`, `routePattern` usa la raíz del MCP:
+  en un workspace tiene que usar la carpeta con `fudic.json` de cada fichero (3 llamadas). Cuando
+  exista `fudic_status`, `project-tools.ts` ya cambia su `next` solo. Luego tareas 26 (`fudic new`
+  deja `@fudic/mcp`, `.mcp.json`, `AGENTS.md`, `CLAUDE.md`), 28 (punta a punta en Claude Web), 29
+  (README) y 30 (cierre). El criterio 26 dice «ocho códigos»: ya son once (`FUD1400`–`FUD1410`).
+- **Pedro no ha probado en Claude Web las fases 2–6.** Para probar: `pnpm registry` (se cerró),
+  reinstalar en global `@fudic/cli` y `@fudic/mcp` desde Verdaccio, `fudic-mcp --http --tunnel`.
+- **Sesión de tests:** `sdd-77-mcp-desde-el-chat-1a` (antes `-41`), worktree
+  `.claude/worktrees/sdd-77-tests`, rama `sdd-77-tests`. La fase 1 (tarea 5) ya está mezclada
+  (`2de95b30`). Tiene encargada la **fase 2 (tarea 10)**, con la lista de tests que el cambio rompe
+  a propósito (§8.2.9 y §8.2.18) y los 8 de mcp que rompen las herramientas nuevas. Responde con
+  hash y cobertura; al recibirlo, mezclar su rama y marcar la tarea 10. **Fases de test sin
+  asignar:** 3 (tarea 14), 4 (18), 5 (21) y 6 (24); repartir cuando acabe la implementación.
+
+## Dónde estamos (2026-11-04, mañana)
 
 **El orden de trabajo lo marcó Pedro:** en cada fase, primero **solo la implementación**; Pedro la
 prueba en Claude Web, se afina con lo que vea, y **después** se escriben los tests (seguramente otra
