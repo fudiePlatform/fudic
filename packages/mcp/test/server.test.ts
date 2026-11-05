@@ -88,6 +88,19 @@ describe('the server (criterion 1)', () => {
     const result = await (await client('stdio')).callTool({ name: 'fudic_guide', arguments: { topic: 7 } });
     expect(result.isError).toBe(true);
   });
+
+  it('the tools that show a piece take every input their schema has; outside a project, FUD1404', async () => {
+    const c = await client('stdio');
+    for (const [name, args] of [
+      ['fudic_call', { fn: 'routes/products/[id].save', args: { name: 'x' }, params: { id: '42' } }],
+      ['fudic_look', { piece: 'src/components/acme-button/acme-button.fud' }],
+      ['fudic_preview', { route: '/productos' }],
+    ] as const) {
+      const result = await c.callTool({ name, arguments: args });
+      expect(result.isError, name).toBe(true);
+      expect((result.structuredContent as { diagnostics: { code: string }[] }).diagnostics[0]?.code, name).toBe('FUD1404');
+    }
+  });
 });
 
 describe('what the client is told (criterion 4)', () => {
