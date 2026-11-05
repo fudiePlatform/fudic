@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/mcp` · `@fudic/testing` · `@fudic/workbench` · `@fudic/history` ·
 > `@fudic/vite` · `@fudic/diagnostics`
 > **Rama:** `sdd-78-ver-la-pieza`, desde `main` con SDD-77 ya mezclada.
-> **Progreso:** 14 / 19 — `Listo`.
+> **Progreso:** 16 / 19 — `Listo`.
 
 **Antes de empezar:** SDD-77 tiene que estar entera en `main`, `fudic_status` incluido (sus tareas
 25–30). La 78 le añade una fase y reglas de `next`.
@@ -44,7 +44,7 @@ el `node_modules` del proyecto; sin ellos, `FUD1207` diciendo qué instalar.
 | [x] | 9 | 8 | **La puerta por cookie.** En el servidor HTTP: `/mcp/<secret>` sigue siendo el MCP; `/_fudic/preview/<secret>?to=…` pone la cookie `fudic-preview` (`HttpOnly`, `SameSite=Lax`, `Secure` por https, valor derivado del secreto) y redirige; todo lo demás va a Vite solo con la cookie, si no `404` sin cuerpo; el upgrade del HMR pasa por la misma puerta; `--new-secret` invalida las cookies | `mcp` | `src/http.ts` · `src/gate.ts` |
 | [x] | 10 | 8, 9 | **`fudic_preview`.** `state` (`starting` espera hasta 30 s, `ready`, `failed`), `local` y `public` (solo con el túnel arriba), `routes` (estáticas y las de `paths()`), `route` como `to` (`FUD1422` si no casa), los errores guardados y el `next` de SDD §4.3 | `mcp` | `src/tools/preview.ts` |
 | [x] | 11 | 8 | **`fudic_call`.** La petición de `$fn` a `/_fudic/fn/<id>/<nombre>…` contra el dev server, sin cookie; `args` y `params`; `status` y `value` o `problem` sin `isError`; `FUD1405` con la más parecida, `FUD1423` sin llamar; `next` con un `Problem` que la función no declara | `mcp` | `src/tools/call.ts` |
-| [ ] | 12 | 8–11 | **Los tests de la fase.** Criterios 7–10, con el HMR conectando por la puerta. **Prueba en Claude Web:** filas «Call» y «Preview» (la URL pública en el móvil) | `mcp` | `test/**` |
+| [x] | 12 | 8–11 | **Los tests de la fase.** Criterios 7–10, con el HMR conectando por la puerta. **Prueba en Claude Web:** filas «Call» y «Preview» (la URL pública en el móvil) | `mcp` | `test/**` |
 
 ## Fase 4 — `look` (4)
 
@@ -53,7 +53,7 @@ el `node_modules` del proyecto; sin ellos, `FUD1207` diciendo qué instalar.
 | [x] | 13 | 1 | **El hash del aspecto y la fase 8.** `lookHash` = `InputGraph.filesOf(unit)` sin `.test.ts` ni `.fudspec`, más las hojas globales del proyecto y de cada librería que adopta (SDD §3.4), dado a `@fudic/history` con `HistoryIo.lookHash`. La fase `look` solo en componentes; la regla de `next` de SDD §4.5 (`none` y `expired`); `done` exige la fase 8 (`FUD1407` la nombra) | `mcp` | `src/look-hash.ts` · `src/phases.ts` · `src/tools/status.ts` |
 | [x] | 14 | 2, 13 | **`fudic_look`.** Cada caso de la fixture en el navegador del banco, captura del host, `.fudic/looks/<tag>/<lookHash>/<caso>.png` y limpieza de las carpetas huérfanas; comparación por píxeles con la carpeta del último `look` (`new`, `same`, `changed`, `gone`; todo `new` si no está en el disco); bloques `image` (como mucho 8); `cases`; `FUD1420` por caso, `FUD1421`, `FUD1426`; la cola de ejecuciones | `workbench` · `mcp` | `src/look.ts` (workbench, exportado) · `src/tools/look.ts` |
 | [x] | 15 | 13, 14 | **`fudic_record { event: "look" }` y la guía.** `look by <usuario> hash <lookHash>` solo si hay capturas del hash de ahora (`FUD1427` si no). La guía `workflow` cuenta la fase `look`, «mirar no es aprobar» y cuándo se pide; sus ejemplos siguen compilando | `mcp` | `src/record.ts` · `guide/workflow.md` |
-| [ ] | 16 | 13–15 | **Los tests de la fase.** Criterios 11–14. **Prueba en Claude Web:** fila «Look» | `mcp` | `test/**` |
+| [x] | 16 | 13–15 | **Los tests de la fase.** Criterios 11–14. **Prueba en Claude Web:** fila «Look» | `mcp` | `test/**` |
 
 ## Fase 5 — de punta a punta y entrega (3)
 

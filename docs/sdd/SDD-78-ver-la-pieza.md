@@ -176,8 +176,8 @@ Pinta **una pieza** y devuelve lo que sale, al instante y sin servidor arrancado
 }
 ```
 
-- **`calls`**: las funciones del `.fudapi` que la pieza llamó al pintarse (`load`, una `task`), con
-  `fn` y `status`. Una función sin handler da su `404` y, además, `FUD1423` en `diagnostics`.
+- **`calls`**: las funciones del `.fudapi` que la pieza llamó al pintarse (`load`, lo que llama un
+  `effect`; una `task` no llama al crearse, SDD-68 §4.1 — ver §8.2.4), con `fn` y `status`. Una función sin handler da su `404` y, además, `FUD1423` en `diagnostics`.
 - **La vista previa** va en `_meta` de la respuesta (no en `structuredContent`: el LLM no la
   necesita y son miles de tokens): el HTML con su DSD y **las hojas globales del proyecto en
   línea**, sin scripts. Lo pinta el recurso de §3.2.
@@ -440,4 +440,42 @@ conversación nueva por prueba.
 
 ### 8.2. Tomadas al implementar
 
-(vacío)
+1. **`fudic_call` la hace la propia llamada de la página.** La petición de `$fn` depende del
+   codec del `.fudapi`, de su cabecera de firma y de las reglas del navegador; reconstruirla en el
+   MCP sería un segundo cliente. `callJob` (`@fudic/testing`) llama a la función desde el vitest del
+   proyecto y reenvía por HTTP al dev server la petición que hace el stub. Sigue siendo §8.1.8: la
+   atiende el dev server, con su cadena de middlewares, las reglas del form y `fails`/`catches`.
+2. **El `next` de un `Problem` solo para un 5xx.** §4.2 pedía «Fix the handler» con un `Problem`
+   que la función no declara en `fails`, pero un `401` de un middleware de sesión o un `422` de la
+   validación tampoco están en `fails` y son respuestas legítimas. El `next` sale solo cuando la
+   respuesta es un 5xx: lo que el handler lanzó sin querer.
+3. **El render en happy-dom es un fichero de test generado.** `renderPiece` escribe
+   `.fudic/render/<uuid>.test.ts`, lo corre solo con el `vitest.config` del proyecto (con `include`
+   apuntando a él) y lee lo que escribe en un `.json`. La pieza y su fixture se importan **relativas**
+   a ese fichero, como lo haría un test: importado por ruta absoluta, un `.fud` que enlaza su
+   `.fudapi` se compilaba sin encontrarlo (`FUD1111`). Las URL concretas de `fudic_preview` y de
+   `FUD1422` (rutas sin parámetros y las de `paths()`) salen igual, con `listRoutes`.
+4. **El `load` de una ruta es una de sus `calls`.** Corre en el SSR, no por `fetch`: se nombra con
+   el status de la página, y con `FUD1423` si no tiene handler. Las llamadas del cliente se recogen
+   del `fetch` del arnés después de un `settled()` más: las de un `effect` salen; una `task` no,
+   porque no llama al crearse (SDD-68 §4.1), solo cuando cambia su fuente o se le hace `run()`, y
+   pintar una pieza no cambia nada. §4.1 nombraba «una `task`»: queda matizado ahí.
+5. **El CSS del componente, entero.** happy-dom devuelve vacía una regla anidada al releer una hoja
+   adoptada; el texto de cada hoja se guarda al crearla (`sourceOf`) y es el que va en el HTML.
+6. **`engine: "browser"` es de componentes.** Una ruta en el navegador ya es `fudic_preview`;
+   pedirla da `FUD1207` diciéndolo.
+7. **`FUD1425` solo para lo que se lanzó.** El overlay de Vite recibe también el chequeo de tipos
+   en vivo; se guardan solo los errores con traza, y los diagnósticos siguen siendo de
+   `fudic_check`.
+8. **La puerta deja pasar al propio MCP.** Por HTTP, `fudic_call` entra por el mismo puerto con la
+   cookie de la preview; la puerta la quita de la petición antes de dársela a Vite, así que la app
+   nunca la ve y la llamada sigue yendo «sin sesión».
+9. **Un caso de `look` que falla no tiene veredicto.** Su `FUD1420` (o `FUD1428` si sus valores no
+   son JSON) va en `diagnostics` y el caso no sale en `cases`; los demás siguen. `same` y `changed`
+   se deciden por igualdad de bytes del PNG, que es lo que da un mismo navegador.
+10. **Una pieza `done` que cambia vuelve a su fase.** La fase es la primera sin hacer aunque el
+    historial diga `done` (§4.5); antes `done` la tapaba. Cuando nada queda abierto, el `done` de
+    antes vuelve a valer.
+11. **Fronteras.** `@fudic/http/contract` exporta también `contractIds` (para nombrar una llamada
+    por su URL) y `@fudic/history` exporta `InputGraph` y `hashFiles` (para el `lookHash`). Las
+    herramientas nuevas viven en `src/` como las de SDD-77, no en `src/tools/`.
