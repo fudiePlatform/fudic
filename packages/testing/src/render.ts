@@ -185,3 +185,4 @@ export async function renderJob(job: RenderJob): Promise<RenderOutcome> {
     return thrownOf(error);
   }
 }
+export { callJob, forward, type CallJob, type CallOutcome } from './call.js';

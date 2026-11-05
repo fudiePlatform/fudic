@@ -6,14 +6,19 @@
 
 import { randomUUID } from 'node:crypto';
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import type { Duplex } from 'node:stream';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import type { DevServer } from './dev-server.js';
+import { destinationOf, hasCookie, isSecure, previewPath, setCookie, withoutCookie } from './gate.js';
 
 export interface HttpOptions {
   readonly port: number;
   readonly secret: string;
   /** A fresh server for a new session. */
   readonly create: () => McpServer;
+  /** The app, behind the preview's door: everything that is not the MCP. */
+  readonly app?: DevServer;
 }
 
 export interface HttpEntry {
@@ -28,10 +33,36 @@ export function startHttp(options: HttpOptions): Promise<HttpEntry> {
   const path = `/mcp/${options.secret}`;
   const sessions = new Map<string, StreamableHTTPServerTransport>();
 
-  const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
-    const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
-    if (pathname !== path) {
+  const { app, secret } = options;
+  const opener = previewPath(secret);
+
+  /** Everything that is not the MCP: the door that gives the cookie, and the app behind it. */
+  const door = async (req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> => {
+    if (app === undefined) {
       res.writeHead(404).end();
+      return;
+    }
+    if (url.pathname === opener) {
+      res.writeHead(302, { 'set-cookie': setCookie(secret, isSecure(req)), location: destinationOf(url.searchParams.get('to')) }).end();
+      return;
+    }
+    if (!hasCookie(req, secret)) {
+      res.writeHead(404).end();
+      return;
+    }
+    // A door opened before this MCP started: the app starts when it is first asked for.
+    if ((await app.ready()) !== 'ready') {
+      res.writeHead(503, { 'content-type': 'text/plain; charset=utf-8' }).end(`The preview did not start: ${app.failure}`);
+      return;
+    }
+    withoutCookie(req);
+    app.handle(req, res);
+  };
+
+  const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+    const url = new URL(req.url ?? '/', 'http://localhost');
+    if (url.pathname !== path) {
+      await door(req, res, url);
       return;
     }
     const header = req.headers[SESSION_HEADER];
@@ -68,6 +99,16 @@ export function startHttp(options: HttpOptions): Promise<HttpEntry> {
     handle(req, res).catch((error: unknown) => {
       if (!res.headersSent) res.writeHead(500).end(String(error));
     });
+  });
+
+  // The app's HMR: through the same door, and only once the app is up.
+  http.on('upgrade', (req: IncomingMessage, socket: Duplex, head: Buffer) => {
+    if (app === undefined || app.state !== 'ready' || !hasCookie(req, secret)) {
+      socket.destroy();
+      return;
+    }
+    withoutCookie(req);
+    app.upgrade(req, socket, head);
   });
 
   return new Promise((resolve, reject) => {

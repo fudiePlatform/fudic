@@ -13,6 +13,7 @@ import { startHttp } from './http.js';
 import { openProject, type Project } from './project.js';
 import { secretOf } from './secret.js';
 import { createServer } from './server.js';
+import { HttpSite } from './site.js';
 import { openTunnel, type TunnelResult } from './tunnel.js';
 
 export interface MainDeps {
@@ -28,12 +29,16 @@ async function serveHttp(project: Project, options: Options, deps: MainDeps): Pr
   const guide = new Guide();
   const checks = new Checks(project.root);
   const queue = new RunQueue();
+  const secret = secretOf(project.root, options.newSecret);
+  // One app for every session, behind the door of the MCP's own port.
+  const site = new HttpSite(project.root, secret, options.port);
   let entry;
   try {
     entry = await startHttp({
       port: options.port,
-      secret: secretOf(project.root, options.newSecret),
-      create: () => createServer({ project, entry: 'http', guide, checks, queue }),
+      secret,
+      app: site.dev,
+      create: () => createServer({ project, entry: 'http', guide, checks, queue, site }),
     });
   } catch (error) {
     deps.err(`fudic-mcp: cannot listen on 127.0.0.1:${options.port}: ${(error as Error).message}\n`);
@@ -46,6 +51,7 @@ async function serveHttp(project: Project, options: Options, deps: MainDeps): Pr
     if ('tunnel' in result) {
       const path = new URL(entry.url).pathname;
       lines.push(`  public  ${result.tunnel.url}${path}`, 'Add the public URL in Claude: Settings → Connectors → Add custom connector.');
+      site.publicOrigin = result.tunnel.url;
       close = result.tunnel.close;
     } else if ('missing' in result) {
       lines.push(format(result.missing));
@@ -58,6 +64,7 @@ async function serveHttp(project: Project, options: Options, deps: MainDeps): Pr
   deps.onStop(() => {
     close();
     void entry.close();
+    void site.dev.close();
   });
   return 0;
 }

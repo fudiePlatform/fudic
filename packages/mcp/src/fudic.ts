@@ -76,6 +76,10 @@ export interface Runners {
   readonly runSpecs?: Workbench['runSpecs'];
   /** A piece painted by the project's vitest. Absent in a `@fudic/testing` older than this server. */
   readonly renderPiece?: TestingRun['renderPiece'];
+  /** A function called as the browser calls it, by the project's vitest. */
+  readonly callFunction?: TestingRun['callFunction'];
+  /** The project's concrete URLs, by its vitest. */
+  readonly listRoutes?: TestingRun['listRoutes'];
   /** A piece painted in the bench's browser. Absent in a `@fudic/workbench` older than this server. */
   readonly renderInBrowser?: Workbench['renderInBrowser'];
 }
@@ -91,6 +95,8 @@ export async function loadRunners(root: string, load: Importer = (url) => import
   return {
     ...(run?.runTests !== undefined ? { runTests: run.runTests } : {}),
     ...(run?.renderPiece !== undefined ? { renderPiece: run.renderPiece } : {}),
+    ...(run?.callFunction !== undefined ? { callFunction: run.callFunction } : {}),
+    ...(run?.listRoutes !== undefined ? { listRoutes: run.listRoutes } : {}),
     ...(bench?.runSpecs !== undefined ? { runSpecs: bench.runSpecs } : {}),
     ...(bench?.renderInBrowser !== undefined ? { renderInBrowser: bench.renderInBrowser } : {}),
   };

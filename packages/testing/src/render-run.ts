@@ -12,6 +12,7 @@ import { relative, resolve } from 'node:path';
 import { FUD1207, type WireDiagnostic } from '@fudic/diagnostics';
 import { compileDiagnosticsOf } from '@fudic/vite';
 import type { Reporter, TestModule } from 'vitest/node';
+import type { CallOutcome } from './call.js';
 import type { RenderOutcome } from './render.js';
 
 /** Where the render's files are written, relative to the project. */
@@ -36,7 +37,13 @@ export interface RenderPieceOptions {
 }
 
 /** What `renderJob` answered, or why the file that calls it never ran: it did not compile. */
-export type RenderPieceResult = RenderOutcome | { readonly kind: 'broken'; readonly diagnostics: readonly WireDiagnostic[] };
+/** Why the file that calls a job never answered: it did not compile, or vitest did not run it. */
+export interface Broken {
+  readonly kind: 'broken';
+  readonly diagnostics: readonly WireDiagnostic[];
+}
+
+export type RenderPieceResult = RenderOutcome | Broken;
 
 const path = (file: string): string => JSON.stringify(file.replace(/\\/gu, '/'));
 
@@ -94,24 +101,24 @@ function could(reason: string): WireDiagnostic {
 }
 
 /** Why the file did not answer: what the `.fud` it imports says when it did not compile. */
-function brokenOf(module: TestModule | undefined): RenderPieceResult {
+function brokenOf(module: TestModule | undefined): Broken {
   const errors = (module?.errors() ?? []) as readonly { readonly message: string }[];
   const diagnostics = errors.flatMap((error) => compileDiagnosticsOf(error) ?? [could(error.message.split('\n')[0]!)]);
   return { kind: 'broken', diagnostics: diagnostics.length > 0 ? diagnostics : [could('the render did not run')] };
 }
 
-export async function renderPiece(options: RenderPieceOptions): Promise<RenderPieceResult> {
-  const root = resolve(options.root);
+/** Writes the test file `source(out)` makes, runs it alone, and reads what it wrote to `out`. */
+async function runJob<T>(root: string, source: (out: string) => string): Promise<T | Broken> {
   const dir = resolve(root, RENDER_DIR);
   mkdirSync(dir, { recursive: true });
   const id = randomUUID();
   const file = resolve(dir, `${id}.test.ts`);
   const out = resolve(dir, `${id}.json`);
-  writeFileSync(file, renderSource(options, out));
+  writeFileSync(file, source(out));
   try {
     const module = await vitestRun(root, file);
     try {
-      return JSON.parse(readFileSync(out, 'utf8')) as RenderOutcome;
+      return JSON.parse(readFileSync(out, 'utf8')) as T;
     } catch {
       return brokenOf(module);
     }
@@ -121,4 +128,74 @@ export async function renderPiece(options: RenderPieceOptions): Promise<RenderPi
     rmSync(file, { force: true });
     rmSync(out, { force: true });
   }
+}
+
+export function renderPiece(options: RenderPieceOptions): Promise<RenderPieceResult> {
+  return runJob<RenderOutcome>(resolve(options.root), (out) => renderSource(options, out));
+}
+
+export interface CallFunctionOptions {
+  readonly root: string;
+  /** `<id>` of the `.fudapi`: `routes/products`. */
+  readonly id: string;
+  readonly name: string;
+  readonly args?: unknown;
+  readonly params?: Readonly<Record<string, string>>;
+  /** The dev server that answers. */
+  readonly origin: string;
+  readonly headers?: Readonly<Record<string, string>>;
+}
+
+export type CallFunctionResult = CallOutcome | Broken;
+
+/** The test file that calls the function and writes what it answered to `out`. */
+export function callSource(options: CallFunctionOptions, out: string): string {
+  const fields = [
+    `fn: api[${JSON.stringify(options.name)}]`,
+    `origin: ${JSON.stringify(options.origin)}`,
+    ...(options.args !== undefined ? [`args: ${JSON.stringify(options.args)}`] : []),
+    ...(options.params !== undefined ? [`params: ${JSON.stringify(options.params)}`] : []),
+    ...(options.headers !== undefined ? [`headers: ${JSON.stringify(options.headers)}`] : []),
+  ];
+  return [
+    "import { writeFileSync } from 'node:fs';",
+    "import { test } from 'vitest';",
+    "import { callJob } from '@fudic/testing/render';",
+    `import * as api from ${JSON.stringify(`fudic:${options.id}`)};`,
+    '',
+    "test('fudic call', async () => {",
+    `  writeFileSync(${path(out)}, JSON.stringify(await callJob({ ${fields.join(', ')} })));`,
+    '}, 60_000);',
+    '',
+  ].join('\n');
+}
+
+export function callFunction(options: CallFunctionOptions): Promise<CallFunctionResult> {
+  return runJob<CallOutcome>(resolve(options.root), (out) => callSource(options, out));
+}
+
+export interface ListRoutesOptions {
+  readonly root: string;
+}
+
+/** The concrete URLs of the project, or why the file that lists them did not answer. */
+export type ListRoutesResult = { readonly kind: 'routes'; readonly routes: readonly string[] } | Broken;
+
+/** The test file that lists the project's concrete URLs and writes them to `out`. */
+export function routesSource(out: string): string {
+  return [
+    "import { writeFileSync } from 'node:fs';",
+    "import { test } from 'vitest';",
+    "import { concreteRoutes } from '@fudic/testing/render';",
+    '',
+    "test('fudic routes', async () => {",
+    `  writeFileSync(${path(out)}, JSON.stringify({ kind: 'routes', routes: await concreteRoutes() }));`,
+    '}, 60_000);',
+    '',
+  ].join('\n');
+}
+
+/** Every URL of the project that can be opened as it is: the routes without params, and the `paths()` of the rest. */
+export function listRoutes(options: ListRoutesOptions): Promise<ListRoutesResult> {
+  return runJob<ListRoutesResult>(resolve(options.root), routesSource);
 }

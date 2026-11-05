@@ -8,6 +8,9 @@ import { z } from 'zod';
 import { registerAppTool } from '@modelcontextprotocol/ext-apps/server';
 import { registerView, VIEW_TOOL_META } from './apps.js';
 import { ENGINES, RENDER_AS, renderTool } from './render.js';
+import { callTool } from './call.js';
+import { previewTool } from './preview.js';
+import { stdioSite, type Site } from './site.js';
 import { checkProject } from './check.js';
 import { Checks } from './checks.js';
 import { FILE_TOOLS, registerFileTools } from './file-tools.js';
@@ -37,6 +40,8 @@ export interface ServerOptions {
   readonly checks?: Checks;
   /** Shared by every session: one run of tests or criteria at a time, for the whole server. */
   readonly queue?: RunQueue;
+  /** Shared by every session: the app's dev server, and where it is seen from. */
+  readonly site?: Site;
 }
 
 /** The names of the tools the server registers, for the instructions that name them. */
@@ -57,6 +62,8 @@ export function toolNames(entry: Entry): ReadonlySet<string> {
     'fudic_test',
     'fudic_spec_run',
     'fudic_render',
+    'fudic_call',
+    'fudic_preview',
     ...(entry === 'http' ? FILE_TOOLS : []),
   ]);
 }
@@ -69,6 +76,7 @@ export function createServer(options: ServerOptions): McpServer {
   const guide = options.guide ?? new Guide();
   const checks = options.checks ?? new Checks(project.root);
   const queue = options.queue ?? new RunQueue();
+  const site = options.site ?? stdioSite(project.root);
   const tools = toolNames(entry);
   // One server per MCP session: what it remembers dies with it.
   const session = new Session();
@@ -307,6 +315,39 @@ export function createServer(options: ServerOptions): McpServer {
           ...(select !== undefined ? { select } : {}),
         }),
       ),
+  );
+
+  server.registerTool(
+    'fudic_call',
+    {
+      title: 'fudic call',
+      description:
+        'What a function of a fudic .fudapi answers to a call: the same request the page would make, to the dev server, ' +
+        'through its middlewares, its rules and its fails. Answers its status and its value, or its Problem — an answer, ' +
+        'not an error. It goes without a session: a function behind one answers its 401.',
+      inputSchema: {
+        fn: z.string().describe('The function: routes/products.save, as fudic_symbols names it'),
+        args: z.unknown().optional().describe('Its arguments as JSON, in the shape of the signature fudic_contract gives'),
+        params: z.record(z.string(), z.string()).optional().describe('The values of the route params of its id: { "id": "42" } for routes/products/[id]'),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+    },
+    async ({ fn, args, params }) =>
+      respond(project, await callTool(project, checks, site, { fn, ...(args !== undefined ? { args } : {}), ...(params !== undefined ? { params } : {}) })),
+  );
+
+  server.registerTool(
+    'fudic_preview',
+    {
+      title: 'fudic preview',
+      description:
+        'The whole fudic app, running, at a URL a person opens — from a phone too, through the tunnel. Starts the dev ' +
+        'server the first time and keeps it: what you write is seen without calling again. Answers the URL and the ' +
+        'concrete routes that can be opened. Opening it is seeing, not approving.',
+      inputSchema: { route: z.string().optional().describe('A concrete URL to open at: /products/42') },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async ({ route }) => respond(project, await previewTool(project, checks, site, route !== undefined ? { route } : {})),
   );
 
   server.registerPrompt(

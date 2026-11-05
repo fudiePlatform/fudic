@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/mcp` · `@fudic/testing` · `@fudic/workbench` · `@fudic/history` ·
 > `@fudic/vite` · `@fudic/diagnostics`
 > **Rama:** `sdd-78-ver-la-pieza`, desde `main` con SDD-77 ya mezclada.
-> **Progreso:** 6 / 19 — `Listo`.
+> **Progreso:** 10 / 19 — `Listo`.
 
 **Antes de empezar:** SDD-77 tiene que estar entera en `main`, `fudic_status` incluido (sus tareas
 25–30). La 78 le añade una fase y reglas de `next`.
@@ -40,10 +40,10 @@ el `node_modules` del proyecto; sin ellos, `FUD1207` diciendo qué instalar.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 8 | — | **El dev server del MCP.** `createServer` de Vite con el `vite.config` del proyecto, en proceso, arrancado la primera vez que se pide y vivo lo que vive el MCP. Por stdio escucha en `127.0.0.1:4318` (o el siguiente libre); por HTTP, en modo middleware. Guarda las excepciones del SSR y de los handlers para devolverlas una vez (`FUD1425`, con posición); `FUD1424` si no arranca | `mcp` | `src/dev-server.ts` |
-| [ ] | 9 | 8 | **La puerta por cookie.** En el servidor HTTP: `/mcp/<secret>` sigue siendo el MCP; `/_fudic/preview/<secret>?to=…` pone la cookie `fudic-preview` (`HttpOnly`, `SameSite=Lax`, `Secure` por https, valor derivado del secreto) y redirige; todo lo demás va a Vite solo con la cookie, si no `404` sin cuerpo; el upgrade del HMR pasa por la misma puerta; `--new-secret` invalida las cookies | `mcp` | `src/http.ts` · `src/gate.ts` |
-| [ ] | 10 | 8, 9 | **`fudic_preview`.** `state` (`starting` espera hasta 30 s, `ready`, `failed`), `local` y `public` (solo con el túnel arriba), `routes` (estáticas y las de `paths()`), `route` como `to` (`FUD1422` si no casa), los errores guardados y el `next` de SDD §4.3 | `mcp` | `src/tools/preview.ts` |
-| [ ] | 11 | 8 | **`fudic_call`.** La petición de `$fn` a `/_fudic/fn/<id>/<nombre>…` contra el dev server, sin cookie; `args` y `params`; `status` y `value` o `problem` sin `isError`; `FUD1405` con la más parecida, `FUD1423` sin llamar; `next` con un `Problem` que la función no declara | `mcp` | `src/tools/call.ts` |
+| [x] | 8 | — | **El dev server del MCP.** `createServer` de Vite con el `vite.config` del proyecto, en proceso, arrancado la primera vez que se pide y vivo lo que vive el MCP. Por stdio escucha en `127.0.0.1:4318` (o el siguiente libre); por HTTP, en modo middleware. Guarda las excepciones del SSR y de los handlers para devolverlas una vez (`FUD1425`, con posición); `FUD1424` si no arranca | `mcp` | `src/dev-server.ts` |
+| [x] | 9 | 8 | **La puerta por cookie.** En el servidor HTTP: `/mcp/<secret>` sigue siendo el MCP; `/_fudic/preview/<secret>?to=…` pone la cookie `fudic-preview` (`HttpOnly`, `SameSite=Lax`, `Secure` por https, valor derivado del secreto) y redirige; todo lo demás va a Vite solo con la cookie, si no `404` sin cuerpo; el upgrade del HMR pasa por la misma puerta; `--new-secret` invalida las cookies | `mcp` | `src/http.ts` · `src/gate.ts` |
+| [x] | 10 | 8, 9 | **`fudic_preview`.** `state` (`starting` espera hasta 30 s, `ready`, `failed`), `local` y `public` (solo con el túnel arriba), `routes` (estáticas y las de `paths()`), `route` como `to` (`FUD1422` si no casa), los errores guardados y el `next` de SDD §4.3 | `mcp` | `src/tools/preview.ts` |
+| [x] | 11 | 8 | **`fudic_call`.** La petición de `$fn` a `/_fudic/fn/<id>/<nombre>…` contra el dev server, sin cookie; `args` y `params`; `status` y `value` o `problem` sin `isError`; `FUD1405` con la más parecida, `FUD1423` sin llamar; `next` con un `Problem` que la función no declara | `mcp` | `src/tools/call.ts` |
 | [ ] | 12 | 8–11 | **Los tests de la fase.** Criterios 7–10, con el HMR conectando por la puerta. **Prueba en Claude Web:** filas «Call» y «Preview» (la URL pública en el móvil) | `mcp` | `test/**` |
 
 ## Fase 4 — `look` (4)
