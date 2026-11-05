@@ -82,6 +82,8 @@ export interface Runners {
   readonly listRoutes?: TestingRun['listRoutes'];
   /** A piece painted in the bench's browser. Absent in a `@fudic/workbench` older than this server. */
   readonly renderInBrowser?: Workbench['renderInBrowser'];
+  /** Every case of a fixture photographed in the bench's browser. */
+  readonly lookInBrowser?: Workbench['lookInBrowser'];
 }
 
 /** The runners the project installed; a missing one is absent, and its tool says so. */
@@ -99,6 +101,7 @@ export async function loadRunners(root: string, load: Importer = (url) => import
     ...(run?.listRoutes !== undefined ? { listRoutes: run.listRoutes } : {}),
     ...(bench?.runSpecs !== undefined ? { runSpecs: bench.runSpecs } : {}),
     ...(bench?.renderInBrowser !== undefined ? { renderInBrowser: bench.renderInBrowser } : {}),
+    ...(bench?.lookInBrowser !== undefined ? { lookInBrowser: bench.lookInBrowser } : {}),
   };
 }
 

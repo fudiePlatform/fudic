@@ -157,3 +157,42 @@ export async function renderInBrowser(input: BrowserRenderInput): Promise<Browse
   return { kind: 'rendered', outline: one.outline, errors: one.errors };
 }
 
+
+export interface BrowserLookInput {
+  /** The component's `.fud`, absolute. */
+  readonly component: string;
+  /** Only these cases; every case of the fixture without them. */
+  readonly cases?: readonly string[];
+  readonly browser?: BrowserChoice;
+}
+
+export type BrowserLook =
+  /** `cases`: every case of the fixture, in its order; `painted`: those asked, with their shots. */
+  | { readonly kind: 'looked'; readonly cases: readonly string[]; readonly painted: readonly PaintedCase[] }
+  | { readonly kind: 'no-fixture' }
+  | { readonly kind: 'no-cases' }
+  | { readonly kind: 'no-case'; readonly name: string; readonly cases: readonly string[] }
+  | { readonly kind: 'threw'; readonly message: string }
+  | WorkbenchFailure;
+
+/** Every case of a component's fixture, photographed in the bench's browser (SDD-78 §4.4). */
+export async function lookInBrowser(input: BrowserLookInput): Promise<BrowserLook> {
+  const target = resolveTarget(input.component, nodeTargetFs);
+  if (isFailure(target)) return target;
+  if (target.fixture === null) return { kind: 'no-fixture' };
+  const fixture = await casesOf(target);
+  if (isFailure(fixture)) return { kind: 'threw', message: fixture.diagnostic.message };
+  const cases = Object.keys(fixture.cases);
+  if (cases.length === 0) return { kind: 'no-cases' };
+  const unknown = input.cases?.find((name) => !cases.includes(name));
+  if (unknown !== undefined) return { kind: 'no-case', name: unknown, cases };
+  const asked = input.cases ?? cases;
+  const painted = await paintCases({
+    target,
+    cases: asked.map((name) => ({ name, values: fixture.cases[name]! })),
+    shoot: true,
+    ...(input.browser !== undefined ? { browser: input.browser } : {}),
+  });
+  if (isFailure(painted)) return painted;
+  return { kind: 'looked', cases, painted };
+}

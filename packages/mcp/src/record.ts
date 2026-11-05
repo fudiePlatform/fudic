@@ -5,17 +5,21 @@
  */
 
 import { existsSync, statSync } from 'node:fs';
+import { userInfo } from 'node:os';
 import { basename, relative } from 'node:path';
-import { FUD1401, FUD1404, FUD1407, FUD1410 } from '@fudic/diagnostics';
-import { nodeIo, record, unitState } from '@fudic/history';
+import { FUD1401, FUD1404, FUD1407, FUD1410, FUD1426, FUD1427 } from '@fudic/diagnostics';
+import { git, nodeIo, record, unitState } from '@fudic/history';
+import { toPosix } from '@fudic/typecheck';
 import type { Checks } from './checks.js';
 import { locate } from './locate.js';
+import { looked } from './look.js';
+import { lookHashOf } from './look-hash.js';
 import { phasesOf } from './phases.js';
 import { runPlan } from './plans.js';
-import { isFudicProject, type Project } from './project.js';
+import { isFudicProject, projectOf, type Project } from './project.js';
 import type { Answer } from './respond.js';
 
-export const RECORD_EVENTS = ['approved', 'accepted', 'reopened', 'done'] as const;
+export const RECORD_EVENTS = ['approved', 'accepted', 'reopened', 'look', 'done'] as const;
 export type RecordEvent = (typeof RECORD_EVENTS)[number];
 
 export interface RecordInput {
@@ -55,6 +59,8 @@ export async function recordEvent(project: Project, checks: Checks, input: Recor
       if (text === '') return { body: {}, diagnostics: [FUD1410({ event: 'reopened' })], failed: true };
       await record(unit, { kind: 'reopened', by: 'agent', text }, nodeIo(root));
       return { body: { piece: shown, recorded: ['reopened'] } };
+    case 'look':
+      return look(project, checks, unit, shown);
     case 'done':
       return done(project, checks, unit, shown);
   }
@@ -85,4 +91,24 @@ async function done(project: Project, checks: Checks, unit: string, shown: strin
   await record(unit, { kind: 'done' }, io);
   recorded.push('done');
   return { body: { piece: shown, recorded } };
+}
+
+/** Who approves: the name git commits with, or the user of the system. */
+async function personOf(root: string): Promise<string> {
+  return (await git(root, ['config', 'user.name'])) ?? userInfo().username;
+}
+
+/**
+ * `look by <person> hash <lookHash>`: the user approved how the component looks, over the shots
+ * `fudic_look` took of it as its files are now (SDD-78 §4.5). Without them nothing is written:
+ * what nobody saw is not approved.
+ */
+async function look(project: Project, checks: Checks, unit: string, shown: string): Promise<Answer> {
+  const { root } = project;
+  const piece = (await checks.service()).pieces().find((p) => toPosix(p.file) === toPosix(unit));
+  if (piece?.kind !== 'component') return { body: { piece: shown }, diagnostics: [FUD1426({ file: shown, reason: 'route' })], failed: true };
+  const hash = lookHashOf(piece.file, projectOf(await checks.folders(), root, piece.file), root);
+  if (!looked(root, piece.name, hash)) return { body: { piece: shown }, diagnostics: [FUD1427({ file: shown })], failed: true };
+  await record(unit, { kind: 'look', by: await personOf(root), hash }, nodeIo(root));
+  return { body: { piece: shown, recorded: ['look'], hash } };
 }

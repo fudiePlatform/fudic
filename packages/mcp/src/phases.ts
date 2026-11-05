@@ -10,10 +10,11 @@ import { nodeIo, unitState, type UnitState } from '@fudic/history';
 import type { Piece, ProjectService } from '@fudic/language-server/project';
 import type { Checks } from './checks.js';
 import type { Cli } from './fudic.js';
+import { lookHashOf } from './look-hash.js';
 import { projectOf } from './project.js';
 
 /** The phases of a piece, in the order they are done. */
-export const PHASES = ['criteria', 'api', 'red', 'view', 'connect', 'document', 'showcase', 'done'] as const;
+export const PHASES = ['criteria', 'api', 'red', 'view', 'connect', 'document', 'showcase', 'look', 'done'] as const;
 export type Phase = (typeof PHASES)[number];
 
 /** A piece as `fudic_status` lists it. */
@@ -27,6 +28,8 @@ export interface Unit {
   /** Every phase but `done` is finished, and the history does not say `done` yet. */
   readonly complete: boolean;
   readonly approval: UnitState['approval'];
+  /** Whether the user approved how it looks, as its files are now. A route has no look: always `valid`. */
+  readonly look: UnitState['look'];
   /** The commit of its last `approved`: what an expired approval is compared with. */
   readonly approvedAt?: string;
   /** The project it is in: the server's folder, or its app or library in a workspace. */
@@ -104,7 +107,7 @@ export async function phasesOf(root: string, checks: Checks): Promise<readonly U
 
 /** Each piece of the project with its phase, in the order of its files; in a workspace, each in its own project. */
 export async function unitsOf(root: string, service: ProjectService, options: UnitsOptions): Promise<readonly Unit[]> {
-  const read = options.stateOf ?? ((file: string) => unitState(file, nodeIo(root)));
+  const read = options.stateOf ?? ((file: string) => unitState(file, { ...nodeIo(root), lookHash: async (path) => lookHashOf(path, projectOf(projects, root, path), root) }));
   const projects = options.projects ?? [root];
   const showcases = new Map<string, boolean>();
   const units: Unit[] = [];
@@ -132,6 +135,8 @@ export async function unitsOf(root: string, service: ProjectService, options: Un
       document: piece.kind === 'route' || (piece.documented.doc && piece.documented.documented === piece.documented.props),
       // A library's page of its components, which `fudic g showcase` keeps current.
       showcase: piece.kind === 'route' || showcases.get(folder) === true,
+      // How it looks, approved over the files as they are (SDD-78 §3.4). A route has no look.
+      look: piece.kind === 'route' || state.look === 'valid',
       done: state.done,
     };
     const open = PHASES.find((phase) => phase !== 'done' && !done[phase]);
@@ -139,9 +144,12 @@ export async function unitsOf(root: string, service: ProjectService, options: Un
       piece: posix(relative(root, piece.file)),
       kind: piece.kind,
       name: piece.name,
-      phase: state.done ? 'done' : (open ?? 'done'),
+      // A piece that was done and changed is open again (SDD-78 §4.5); once nothing is open, its
+      // `done` line holds again and no other is written.
+      phase: open ?? 'done',
       complete: open === undefined && !state.done,
       approval: state.approval,
+      look: piece.kind === 'route' ? 'valid' : state.look,
       ...(state.approvedAt !== undefined ? { approvedAt: state.approvedAt } : {}),
       project: folder,
       server,

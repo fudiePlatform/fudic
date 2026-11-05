@@ -83,7 +83,7 @@ export function renderSource(options: RenderPieceOptions, out: string): string {
 }
 
 /** The one module vitest ran, or nothing when it never got to it. */
-async function vitestRun(root: string, file: string): Promise<TestModule | undefined> {
+async function vitestRun(root: string, file: string): Promise<TestModule> {
   let modules: readonly TestModule[] = [];
   const collect: Reporter = {
     onTestRunEnd(testModules) {
@@ -99,7 +99,8 @@ async function vitestRun(root: string, file: string): Promise<TestModule | undef
   } finally {
     await vitest.close();
   }
-  return modules[0];
+  // The one file it was given: vitest rejects with "No test files found" when it does not run it.
+  return modules[0]!;
 }
 
 function could(reason: string): WireDiagnostic {
@@ -108,8 +109,8 @@ function could(reason: string): WireDiagnostic {
 }
 
 /** Why the file did not answer: what the `.fud` it imports says when it did not compile. */
-function brokenOf(module: TestModule | undefined): Broken {
-  const errors = (module?.errors() ?? []) as readonly { readonly message: string }[];
+function brokenOf(module: TestModule): Broken {
+  const errors = module.errors() as readonly { readonly message: string }[];
   const diagnostics = errors.flatMap((error) => compileDiagnosticsOf(error) ?? [could(error.message.split('\n')[0]!)]);
   return { kind: 'broken', diagnostics: diagnostics.length > 0 ? diagnostics : [could('the render did not run')] };
 }

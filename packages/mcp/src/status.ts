@@ -43,6 +43,7 @@ function shown(unit: Unit): Readonly<Record<string, unknown>> {
     name: unit.name,
     phase: unit.phase,
     approval: unit.approval,
+    ...(unit.kind === 'component' ? { look: unit.look } : {}),
     server: unit.server,
     tests: unit.tests,
     spec: unit.spec,
@@ -106,6 +107,10 @@ export function stepOf(unit: Unit): string {
       return `Document ${piece}: a JSDoc on the component and one on each prop (${unit.documented} props have one).`;
     case 'showcase':
       return `The showcase of the library is out of date: call fudic_generate { kind: "showcase", name: "${basename(unit.project)}" }.`;
+    case 'look': {
+      const step = `Run fudic_look { piece: "${piece}" } and show the user how ${name} looks in each case. fudic_record look only after they approve it.`;
+      return unit.look === 'expired' ? `The look of ${name} changed since it was approved. ${step}` : step;
+    }
     default:
       // `done`: a piece left to close; its every phase is finished.
       return `${piece} is finished: call fudic_record { piece: "${piece}", event: "done" }.`;

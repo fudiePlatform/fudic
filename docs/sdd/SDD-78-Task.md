@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/mcp` · `@fudic/testing` · `@fudic/workbench` · `@fudic/history` ·
 > `@fudic/vite` · `@fudic/diagnostics`
 > **Rama:** `sdd-78-ver-la-pieza`, desde `main` con SDD-77 ya mezclada.
-> **Progreso:** 10 / 19 — `Listo`.
+> **Progreso:** 14 / 19 — `Listo`.
 
 **Antes de empezar:** SDD-77 tiene que estar entera en `main`, `fudic_status` incluido (sus tareas
 25–30). La 78 le añade una fase y reglas de `next`.
@@ -34,7 +34,7 @@ el `node_modules` del proyecto; sin ellos, `FUD1207` diciendo qué instalar.
 |---|---|---|---|---|---|
 | [x] | 5 | 2 | **Render en happy-dom.** Dentro del vitest del proyecto, como `runTests` (SDD §8.1.3): `visit(url)` para una ruta y `mount` con el caso de la fixture más `props` para un componente; `outline`, `html` (DSD sin mapas ni scripts) y `select`; `calls` con las funciones llamadas y `FUD1423` para una sin handler; `FUD1420`, `FUD1421`, `FUD1422`. La vista previa en `_meta`, con las hojas globales en línea y sin scripts | `testing` · `mcp` | `src/render-run.ts` (`@fudic/testing/run`) · `src/render.ts` |
 | [x] | 6 | 5 | **Render en el navegador.** `engine: "browser"`: el montaje del banco y `outlineOf`; `FUD1428` para una prop que no es JSON; los códigos de SDD-64 si no hay navegador. Entra en la cola de ejecuciones de `fudic_test`/`fudic_spec_run` | `workbench` · `mcp` | `src/render.ts` (workbench, exportado) · `src/render.ts` |
-| [ ] | 7 | 5, 6 | **Los tests de la fase.** Criterios 2–6. **Prueba en Claude Web:** fila «Render» | `testing` · `workbench` · `mcp` | `test/**` |
+| [x] | 7 | 5, 6 | **Los tests de la fase.** Criterios 2–6. **Prueba en Claude Web:** fila «Render» | `testing` · `workbench` · `mcp` | `test/**` |
 
 ## Fase 3 — el dev server: `fudic_preview` y `fudic_call` (5)
 
@@ -50,9 +50,9 @@ el `node_modules` del proyecto; sin ellos, `FUD1207` diciendo qué instalar.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 13 | 1 | **El hash del aspecto y la fase 8.** `lookHash` = `InputGraph.filesOf(unit)` sin `.test.ts` ni `.fudspec`, más las hojas globales del proyecto y de cada librería que adopta (SDD §3.4), dado a `@fudic/history` con `HistoryIo.lookHash`. La fase `look` solo en componentes; la regla de `next` de SDD §4.5 (`none` y `expired`); `done` exige la fase 8 (`FUD1407` la nombra) | `mcp` | `src/look-hash.ts` · `src/phases.ts` · `src/tools/status.ts` |
-| [ ] | 14 | 2, 13 | **`fudic_look`.** Cada caso de la fixture en el navegador del banco, captura del host, `.fudic/looks/<tag>/<lookHash>/<caso>.png` y limpieza de las carpetas huérfanas; comparación por píxeles con la carpeta del último `look` (`new`, `same`, `changed`, `gone`; todo `new` si no está en el disco); bloques `image` (como mucho 8); `cases`; `FUD1420` por caso, `FUD1421`, `FUD1426`; la cola de ejecuciones | `workbench` · `mcp` | `src/look.ts` (workbench, exportado) · `src/tools/look.ts` |
-| [ ] | 15 | 13, 14 | **`fudic_record { event: "look" }` y la guía.** `look by <usuario> hash <lookHash>` solo si hay capturas del hash de ahora (`FUD1427` si no). La guía `workflow` cuenta la fase `look`, «mirar no es aprobar» y cuándo se pide; sus ejemplos siguen compilando | `mcp` | `src/record.ts` · `guide/workflow.md` |
+| [x] | 13 | 1 | **El hash del aspecto y la fase 8.** `lookHash` = `InputGraph.filesOf(unit)` sin `.test.ts` ni `.fudspec`, más las hojas globales del proyecto y de cada librería que adopta (SDD §3.4), dado a `@fudic/history` con `HistoryIo.lookHash`. La fase `look` solo en componentes; la regla de `next` de SDD §4.5 (`none` y `expired`); `done` exige la fase 8 (`FUD1407` la nombra) | `mcp` | `src/look-hash.ts` · `src/phases.ts` · `src/tools/status.ts` |
+| [x] | 14 | 2, 13 | **`fudic_look`.** Cada caso de la fixture en el navegador del banco, captura del host, `.fudic/looks/<tag>/<lookHash>/<caso>.png` y limpieza de las carpetas huérfanas; comparación por píxeles con la carpeta del último `look` (`new`, `same`, `changed`, `gone`; todo `new` si no está en el disco); bloques `image` (como mucho 8); `cases`; `FUD1420` por caso, `FUD1421`, `FUD1426`; la cola de ejecuciones | `workbench` · `mcp` | `src/look.ts` (workbench, exportado) · `src/tools/look.ts` |
+| [x] | 15 | 13, 14 | **`fudic_record { event: "look" }` y la guía.** `look by <usuario> hash <lookHash>` solo si hay capturas del hash de ahora (`FUD1427` si no). La guía `workflow` cuenta la fase `look`, «mirar no es aprobar» y cuándo se pide; sus ejemplos siguen compilando | `mcp` | `src/record.ts` · `guide/workflow.md` |
 | [ ] | 16 | 13–15 | **Los tests de la fase.** Criterios 11–14. **Prueba en Claude Web:** fila «Look» | `mcp` | `test/**` |
 
 ## Fase 5 — de punta a punta y entrega (3)

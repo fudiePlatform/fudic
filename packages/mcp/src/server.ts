@@ -9,6 +9,7 @@ import { registerAppTool } from '@modelcontextprotocol/ext-apps/server';
 import { registerView, VIEW_TOOL_META } from './apps.js';
 import { ENGINES, RENDER_AS, renderTool } from './render.js';
 import { callTool } from './call.js';
+import { lookTool } from './look.js';
 import { previewTool } from './preview.js';
 import { stdioSite, type Site } from './site.js';
 import { checkProject } from './check.js';
@@ -64,6 +65,7 @@ export function toolNames(entry: Entry): ReadonlySet<string> {
     'fudic_render',
     'fudic_call',
     'fudic_preview',
+    'fudic_look',
     ...(entry === 'http' ? FILE_TOOLS : []),
   ]);
 }
@@ -107,7 +109,7 @@ export function createServer(options: ServerOptions): McpServer {
       title: 'fudic status',
       description:
         'Where the fudic project is, and the one next step: the first call for any fudic task. Lists each component and ' +
-        'route with its phase — criteria, api, red, view, connect, document, showcase, done — and says what to do next, ' +
+        'route with its phase — criteria, api, red, view, connect, document, showcase, look, done — and says what to do next, ' +
         'one step at a time. Without a project, what to ask the user to create one.',
       inputSchema: {},
       annotations: { readOnlyHint: true, openWorldHint: false },
@@ -219,7 +221,8 @@ export function createServer(options: ServerOptions): McpServer {
       description:
         'Writes in the history of a fudic piece what a person decided, or that it is finished: "approved" (its props and ' +
         'criteria, only after the user approved them in this conversation), "accepted" (the client accepted it, with the ' +
-        "user's words in text), \"reopened\" (a change to its contract, with text) or \"done\" (every phase finished).",
+        "user's words in text), \"reopened\" (a change to its contract, with text), \"look\" (how a component looks, only after " +
+        'fudic_look showed it and the user approved it in this conversation) or "done" (every phase finished).',
       inputSchema: {
         piece: z.string().describe("A component's or a route's .fud, or its folder, relative to the project"),
         event: z.enum(RECORD_EVENTS),
@@ -346,6 +349,25 @@ export function createServer(options: ServerOptions): McpServer {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async ({ route }) => respond(project, await previewTool(project, checks, site, route !== undefined ? { route } : {})),
+  );
+
+  registerAppTool(
+    server,
+    'fudic_look',
+    {
+      title: 'fudic look',
+      description:
+        'How a fudic component looks, for the user to approve: every case of its fixture painted in a real browser and ' +
+        'photographed, beside the shot of the same case in the look they last approved — new, same, changed or gone. ' +
+        'Show the user the before and after; looking is not approving.',
+      inputSchema: {
+        piece: z.string().describe("The component's .fud, or its folder, relative to the project"),
+        cases: z.array(z.string()).optional().describe('Only these cases of its fixture'),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      _meta: VIEW_TOOL_META,
+    },
+    async ({ piece, cases }) => respond(project, await lookTool(project, checks, queue, { piece, ...(cases !== undefined ? { cases } : {}) })),
   );
 
   if (entry === 'http') registerFileTools(server, project, checks);

@@ -29,6 +29,7 @@ when its condition holds; `fudic_status` reports the phase of every piece in `un
 | 5 | `connect` | Only with a server: every function of the `.fudapi` has a handler | You |
 | 6 | `document` | JSDoc on the component and on each prop | You |
 | 7 | `showcase` | Only in a library with a showcase: its page is up to date | You |
+| 8 | `look` | Only in a component: the user approved how each case of its fixture looks, over the files as they are now | The user, after seeing `fudic_look` |
 | — | `done` | `fudic_record { event: "done" }` wrote it in the history | You, when `next` says so |
 
 A library has no `api` and no `connect` phase. A run whose files changed since is `stale` and
@@ -150,6 +151,20 @@ Only in a library that has a showcase: `fudic_generate { kind: "showcase", name:
 page per component that has a fixture, with a block per case. Run it again after changing a
 fixture; the phase is done when running it would change nothing.
 
+### 8. Look
+
+Only in a component. `fudic_look { piece }` paints every case of its fixture in a browser and
+answers each one beside the shot of the look the user last approved: `new`, `same`, `changed` or
+`gone`. Show the user the before and after and ask whether they approve how it looks. Only if they
+say so, `fudic_record { piece, event: "look" }`; without a `fudic_look` over the files as they are
+now it answers `FUD1427` and writes nothing.
+
+**Seeing is not approving.** `fudic_render`, `fudic_preview` and `fudic_look` show; only
+`fudic_record` writes. The look holds the hash of the files that can change how the component is
+drawn — its view, what it links and imports, the global sheets — not its tests or its criteria. Change
+any of them and the look **expires**: a piece that was `done` opens again, and `next` takes you through
+its tests, its criteria and `fudic_look` once more. Approved again, it is complete; its `done` stays.
+
 ### Done
 
 When `next` says so, `fudic_record { piece, event: "done" }`. If a phase is still missing it
@@ -161,6 +176,7 @@ Other events of `fudic_record`, each only when the user says so in the conversat
 |---|---|
 | `accepted` | The user says the client accepted the piece; `text` is what they said |
 | `reopened` | The user asks to change the contract of a piece that is `done`; `text` says why |
+| `look` | The user approved how the component looks, after `fudic_look` showed it to them |
 
 ## Write, check, fix
 

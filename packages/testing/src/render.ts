@@ -16,6 +16,7 @@ import { serverRoot } from './api.js';
 import { recordCalls, type RecordedCall } from './fetch.js';
 import { mount, type MountTarget } from './mount.js';
 import { outline } from './outline.js';
+import { settled } from './pending.js';
 import { loadWrapper, routeFacts } from './page.js';
 import { projectOf } from './project.js';
 import { previewDocument, serialize } from './serialize.js';
@@ -111,8 +112,8 @@ async function pathsOf(rb: RouteBuild): Promise<readonly string[]> {
 /** Every URL of the project that can be opened as it is: the routes without params, and the `paths()` of the rest. */
 export async function concreteRoutes(): Promise<readonly string[]> {
   const urls: string[] = [];
-  for (const rb of projectOf().routes) {
-    if (rb.decision.mode === 'excluded') continue;
+  // What the dev server does not serve is no URL to open: `matchRouteBuild` skips it too.
+  for (const rb of projectOf().routes.filter((r) => r.decision.mode !== 'excluded')) {
     urls.push(...(rb.route.params.length === 0 ? [rb.route.pattern] : await pathsOf(rb)));
   }
   return urls;
@@ -168,6 +169,9 @@ async function paint(job: RenderJob): Promise<RenderOutcome> {
     if ('cases' in asked) return { kind: 'no-case', cases: asked.cases };
     root = (await mount(target.component, { props: asked.props })).host;
   }
+  // A `task` of the hydration calls its function once the page's client halves are registered,
+  // a turn after `mount` and `visit` settle: its call is one of the piece's too.
+  await settled();
   const chosen = job.select === undefined ? root : deepSelect(root, job.select);
   if (chosen === null) return { kind: 'no-match', select: job.select! };
   const html = serialize(chosen);
