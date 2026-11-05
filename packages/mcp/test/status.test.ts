@@ -272,6 +272,7 @@ describe('the step of each phase', () => {
     phase: 'criteria',
     complete: false,
     approval: 'valid',
+    look: 'valid',
     project: '/w/libs/ui',
     server: false,
     tests: 'pass 1/1',
