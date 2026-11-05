@@ -945,9 +945,24 @@
     "tag": "x-badge",
     "hydrates": true
   },
+  "packages/testing/test/app/src/components/x-boom.fud": {
+    "kind": "component",
+    "tag": "x-boom",
+    "hydrates": false
+  },
+  "packages/testing/test/app/src/components/x-card.fud": {
+    "kind": "component",
+    "tag": "x-card",
+    "hydrates": false
+  },
   "packages/testing/test/app/src/components/x-effects.fud": {
     "kind": "component",
     "tag": "x-effects",
+    "hydrates": true
+  },
+  "packages/testing/test/app/src/components/x-finder.fud": {
+    "kind": "component",
+    "tag": "x-finder",
     "hydrates": true
   },
   "packages/testing/test/app/src/components/x-guarded.fud": {
@@ -1051,6 +1066,18 @@
     "hydration": "gesture",
     "hydrates": []
   },
+  "packages/testing/test/app/src/routes/roto.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/testing/test/app/src/routes/tags/[tag].fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
   "packages/testing/test/bare-app/src/layouts/_layout.fud": {
     "kind": "route",
     "reactive": false,
@@ -1058,6 +1085,23 @@
     "hydrates": []
   },
   "packages/testing/test/bare-app/src/routes/missing.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/testing/test/call-project/src/components/x-ping.fud": {
+    "kind": "component",
+    "tag": "x-ping",
+    "hydrates": false
+  },
+  "packages/testing/test/call-project/src/layouts/_layout.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/testing/test/call-project/src/routes/ping.fud": {
     "kind": "route",
     "reactive": false,
     "hydration": "gesture",
@@ -1331,6 +1375,28 @@
     "hydrates": [
       "l-precio"
     ]
+  },
+  "packages/testing/test/render-project/src/components/x-broken.fud": {
+    "kind": "component",
+    "tag": "x-broken",
+    "hydrates": false
+  },
+  "packages/testing/test/render-project/src/components/x-tile.fud": {
+    "kind": "component",
+    "tag": "x-tile",
+    "hydrates": false
+  },
+  "packages/testing/test/render-project/src/layouts/_layout.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
+  },
+  "packages/testing/test/render-project/src/routes/index.fud": {
+    "kind": "route",
+    "reactive": false,
+    "hydration": "gesture",
+    "hydrates": []
   },
   "packages/testing/test/run-project/src/x-counter.fud": {
     "kind": "component",
