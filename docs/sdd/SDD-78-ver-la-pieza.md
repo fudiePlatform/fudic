@@ -1,6 +1,6 @@
 # SDD-78 — El MCP de fudic: ver la pieza
 
-> **Estado:** `Listo` — [tareas](./SDD-78-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-78-Task.md).
 > **Paquetes:** `@fudic/mcp` · `@fudic/testing` · `@fudic/workbench` · `@fudic/history` ·
 > `@fudic/vite` · `@fudic/diagnostics`
 > **Depende de:** 77 (el MCP entero, `fudic_status` incluido), 57 (`@fudic/testing`: `mount`,
@@ -261,9 +261,10 @@ host y la compara con las del último `look` aprobado.
   píxeles son iguales a los del último `look`), `changed`, o `gone` (estaba y ya no). Las capturas
   del último `look` se leen de su carpeta; si no están en el disco (otra máquina, `.fudic` borrado),
   todo sale `new` y el `next` lo dice.
-- **El LLM las ve**: la respuesta lleva, además del JSON, bloques `image` (`after` de cada caso
-  `new` o `changed`, y su `before`), como mucho 8; el resto se nombra con su ruta. En el chat, el
-  recurso de §3.2 las pone lado a lado.
+- **El LLM las nombra**: cada caso lleva la ruta de su `before` y su `after` y, por HTTP, sus URL
+  (`beforeUrl`, `afterUrl`) para dárselas al usuario; ningún bloque `image` (§8.2.12). Cada caso
+  dice también qué criterios de la `.fudspec` lo montan (`criteria`). En el chat, el recurso de
+  §3.2 las pone lado a lado.
 - `cases` limita la comparación a esos casos; el hash y la carpeta son siempre los de todos.
 
 ```json
@@ -365,8 +366,8 @@ Como en SDD-77: cliente del SDK sobre transporte en memoria y un proyecto tempor
 
 **Look**
 
-11. `look` de un componente sin `look` previo: cada caso `new`, capturas en su carpeta, bloques
-    `image` en la respuesta (como mucho 8). Tras `record look`, `status` da la fase 8 hecha.
+11. `look` de un componente sin `look` previo: cada caso `new`, capturas en su carpeta, sus
+    rutas en la respuesta y ningún bloque `image` (§8.2.12). Tras `record look`, `status` da la fase 8 hecha.
 12. Cambiar el CSS del componente: `status` da `look: "expired"` sin abrir un navegador; `look` da
     `changed` en los casos afectados y `same` en el resto, con `before` y `after`.
 13. `record look` sin un `fudic_look` sobre los ficheros de ahora da `FUD1427` y no escribe; `done`
@@ -479,3 +480,30 @@ conversación nueva por prueba.
 11. **Fronteras.** `@fudic/http/contract` exporta también `contractIds` (para nombrar una llamada
     por su URL) y `@fudic/history` exporta `InputGraph` y `hashFiles` (para el `lookHash`). Las
     herramientas nuevas viven en `src/` como las de SDD-77, no en `src/tools/`.
+
+### 8.2 bis. Tomadas tras la prueba en Claude Web (2026-11-05)
+
+12. **Las capturas van por URL, no como bloques `image`.** Con ellas en base64, una respuesta de
+    `look` pesaba cientos de KB que el chat no necesita para preguntar, y la vista las cargaba
+    también en `data:`. Por HTTP, el servidor sirve los PNG de `.fudic` en
+    `/_fudic/shots/<token>/` (un token derivado del secreto, no el secreto: estas URL acaban en el
+    chat) sin cookie, solo `.png` y sin salir de `.fudic`; la respuesta las lleva para el modelo
+    (`shot`, `beforeUrl`, `afterUrl`) y la vista las carga declarando esos orígenes en su
+    `_meta.ui.csp.resourceDomains`. Por stdio no hay quien las sirva: van las rutas. La página de la
+    vista sigue sin peticiones propias (criterio 1); lo único que carga son esas imágenes.
+13. **`shown` le dice al modelo lo que el usuario ya ve.** `_meta` no llega al modelo, y sin esto
+    contestaba que no había nada que ver. Sale (`html` para un render, `image` para lo demás) solo
+    si el cliente declaró que pinta MCP Apps.
+14. **`engine: "browser"` responde también su HTML y su captura.** El HTML es el del navegador,
+    serializado como lo hace `@fudic/testing` (`htmlOf`: DSD, hojas adoptadas en línea, sin
+    scripts, comentarios ni `data-fud-src`), así que `as: "html"` vale en los dos motores. La vista
+    pinta la captura, no el markup otra vez en otro sitio. Se guarda la última por componente en
+    `.fudic/renders/<tag>/`, nombrada por sus bytes para que una URL vieja no enseñe la nueva.
+15. **Cada caso de `look` nombra los criterios que lo montan** (`props <caso>` en la `.fudspec`):
+    la captura es la evidencia de lo que esos criterios ven, y el usuario aprueba sabiéndolo.
+16. **`$content` de un caso se pinta en happy-dom**, dentro del host como lo hace el banco; antes se
+    descartaba y el render de un caso con hijos no era el que se aprobaba.
+17. **La línea de `status` en las instrucciones** pasa a «Its "next" is the next step of building
+    the project: follow it when the user asked you to build, not when they asked for something
+    else». Con «do what its next says», el chat contestaba a «enséñame el botón» con el siguiente
+    paso de construcción. Corrige el texto de SDD-77 §3.3.

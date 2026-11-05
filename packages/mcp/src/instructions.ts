@@ -8,7 +8,7 @@ const LINES: readonly { readonly needs?: readonly string[]; readonly text: strin
   {
     text: 'fudic is a UI framework you have no prior knowledge of. Never write fudic code from memory or by analogy with React, Vue or any other framework.',
   },
-  { needs: ['fudic_status'], text: 'For any fudic task, the first call is fudic_status. Do what its "next" says, one step at a time.' },
+  { needs: ['fudic_status'], text: 'For any fudic task, the first call is fudic_status. Its "next" is the next step of building the project: follow it when the user asked you to build, not when they asked for something else.' },
   { text: 'Before writing a kind of file for the first time, call fudic_guide for its topic. Start with fudic_guide { topic: "overview" }.' },
   { needs: ['fudic_generate'], text: 'Create files with fudic_generate, never from scratch.' },
   { needs: ['fudic_check'], text: 'After every write, run fudic_check and fix every diagnostic before moving on.' },

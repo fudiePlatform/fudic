@@ -26,6 +26,7 @@ function look(cases) {
   for (const c of cases) {
     const row = document.createElement('section');
     row.append(text('h2', c.case + ' — ' + c.verdict, c.verdict));
+    row.append(text('p', c.criteria && c.criteria.length > 0 ? 'Criteria: ' + c.criteria.join(', ') : 'No criterion mounts this case', 'criteria'));
     const pair = document.createElement('div');
     pair.className = 'pair';
     pair.append(image(c.before, 'before'), image(c.after, 'after'));
@@ -39,6 +40,7 @@ function show(result) {
   root.replaceChildren();
   if (view && view.kind === 'render') root.append(piece(view.html));
   else if (view && view.kind === 'look') root.append(look(view.cases));
+  else if (view && view.kind === 'shot') root.append(image(view.png, 'browser'));
   else root.append(text('p', 'Nothing to show.', 'empty'));
 }
 const app = new App({ name: 'fudic view', version: '1' });
@@ -56,7 +58,8 @@ h2.changed { color: #b45309; } h2.new { color: #1d4ed8; } h2.gone { color: #b91c
 .pair { display: flex; gap: 8px; flex-wrap: wrap; }
 figure { margin: 0; flex: 1 1 160px; }
 img { max-width: 100%; border: 1px solid #8884; border-radius: 6px; }
-figcaption, .empty { color: #888; font-size: 12px; }
+figcaption, .empty, .criteria { color: #888; font-size: 12px; }
+.criteria { margin: 0 0 6px; }
 `;
 
 /** The bundle's last statement, `export{… ,eI as App}`, which an inline script cannot keep. */

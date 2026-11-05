@@ -140,12 +140,14 @@ export function deepSelect(root: ParentNode, selector: string): Element | null {
 }
 
 /** The case of the fixture with the props on top, or the cases it has when it has not that one. */
-function propsOf(target: Extract<RenderTarget, { component: MountTarget }>): { props: Record<string, unknown> } | { cases: readonly string[] } {
+function propsOf(
+  target: Extract<RenderTarget, { component: MountTarget }>,
+): { props: Record<string, unknown>; content?: string } | { cases: readonly string[] } {
   const fixture = target.fixture ?? {};
   if (target.case !== undefined && !(target.case in fixture)) return { cases: Object.keys(fixture) };
-  // `$content` is the children of a case, not a prop of it.
-  const { $content: _, ...values } = target.case === undefined ? {} : fixture[target.case]!;
-  return { props: { ...values, ...target.props } };
+  // `$content` is the children of a case, not a prop of it: written inside the host, as the bench does.
+  const { $content: content, ...values } = target.case === undefined ? {} : fixture[target.case]!;
+  return { props: { ...values, ...target.props }, ...(content !== undefined ? { content: String(content) } : {}) };
 }
 
 async function paint(job: RenderJob): Promise<RenderOutcome> {
@@ -168,6 +170,7 @@ async function paint(job: RenderJob): Promise<RenderOutcome> {
     const asked = propsOf(target);
     if ('cases' in asked) return { kind: 'no-case', cases: asked.cases };
     root = (await mount(target.component, { props: asked.props })).host;
+    if (asked.content !== undefined) root.insertAdjacentHTML('beforeend', asked.content);
   }
   // A `task` of the hydration calls its function once the page's client halves are registered,
   // a turn after `mount` and `visit` settle: its call is one of the piece's too.

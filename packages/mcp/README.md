@@ -119,11 +119,15 @@ of its fixture — `props` go on top — and answers its outline: the roles, nam
 `.fudspec` finds it by. `{ route: "/products/42" }` paints a page with its `load`, and `calls`
 names the functions it called. `as: "html"` answers the markup with its declarative shadow DOM;
 `select` narrows either one. By default it is the render the unit tests see, in the project's
-vitest; `engine: "browser"` paints it in a real browser, for when CSS or layout matter.
+vitest; `engine: "browser"` paints it in a real browser, for when CSS or layout matter, and
+answers its HTML as that browser drew it and a shot of it.
 
 A chat that speaks [MCP Apps](https://modelcontextprotocol.io/docs/extensions/apps) — Claude on
 the web — draws the piece in the conversation: the server declares one resource,
-`ui://fudic/view.html`, a single HTML page that asks nothing of the network.
+`ui://fudic/view.html`, a single HTML page with no script or stylesheet from outside. The only
+thing it loads is the shots, and only from this server: over HTTP they are served under
+`/_fudic/shots/<token>/`, a token derived from the secret but not the secret, and their URLs go
+in the answer too, for the model to hand to the user. Over stdio the answer names their files.
 
 ### The whole app
 
@@ -149,7 +153,8 @@ goes without a session, so a function behind one answers its `401`.
 
 A component's last phase is `look`. `fudic_look { piece }` paints every case of its fixture in a
 browser, keeps the shots in `.fudic/looks/<tag>/<hash>/` (ignored by git) and sets each beside the
-same case in the look last approved: `new`, `same`, `changed` or `gone`, with the images. After
+same case in the look last approved: `new`, `same`, `changed` or `gone`, with the paths of the
+shots (and their URLs over HTTP) and the criteria of the `.fudspec` that mount each case. After
 the user says they approve it, `fudic_record { piece, event: "look" }`.
 
 The hash is of the files that can change how it is drawn — its view, what it links and imports,

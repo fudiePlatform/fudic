@@ -15,6 +15,14 @@ export function previewPath(secret: string): string {
   return `/_fudic/preview/${secret}`;
 }
 
+/**
+ * Where the shots of `.fudic` are served, under a token derived from the secret and not the secret
+ * itself: their URLs go into the chat, and the secret opens the MCP.
+ */
+export function shotsPath(secret: string): string {
+  return `/_fudic/shots/${createHmac('sha256', secret).update('fudic-shots').digest('hex').slice(0, 32)}/`;
+}
+
 /** The cookie's value: never the secret, which also opens the MCP. */
 export function cookieValue(secret: string): string {
   return createHmac('sha256', secret).update(PREVIEW_COOKIE).digest('hex');

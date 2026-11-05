@@ -46,7 +46,8 @@ describe('the resource (criterion 1)', () => {
     const { contents } = await (await client('stdio')).readResource({ uri: VIEW_URI });
     expect(contents).toHaveLength(1);
     const [content] = contents as { uri: string; mimeType: string; text: string }[];
-    expect(content).toEqual({ uri: VIEW_URI, mimeType: 'text/html;profile=mcp-app', text: viewHtml() });
+    // Over stdio nothing serves the shots: the view may load images from no origin.
+    expect(content).toEqual({ uri: VIEW_URI, mimeType: 'text/html;profile=mcp-app', text: viewHtml(), _meta: { ui: { csp: { resourceDomains: [] } } } });
     expect(content!.text.startsWith('<!doctype html>')).toBe(true);
   });
 
@@ -194,16 +195,22 @@ describe('what the view draws (criterion 1)', () => {
         [VIEW_META_KEY]: {
           kind: 'look',
           cases: [
-            { case: 'primary', verdict: 'changed', before: 'data:image/png;base64,AA', after: 'data:image/png;base64,BB' },
-            { case: 'big', verdict: 'new', after: 'data:image/png;base64,CC' },
+            { case: 'primary', criteria: ['saves', 'greys-out'], verdict: 'changed', before: 'data:image/png;base64,AA', after: 'data:image/png;base64,BB' },
+            { case: 'big', criteria: [], verdict: 'new', after: 'data:image/png;base64,CC' },
+            { case: 'old', verdict: 'gone', before: 'data:image/png;base64,DD' },
           ],
         },
       },
     });
     const sections = root.all().filter((e) => e.tag === 'section');
-    expect(sections).toHaveLength(2);
+    expect(sections).toHaveLength(3);
 
-    const [primary, big] = sections;
+    const [primary, big, old] = sections;
+    // Which criteria mount each case: what its shot is the evidence of.
+    const criteria = (s: FakeElement) => s.children.find((e) => e.className === 'criteria')!.textContent;
+    expect(criteria(primary!)).toBe('Criteria: saves, greys-out');
+    expect(criteria(big!)).toBe('No criterion mounts this case');
+    expect(criteria(old!)).toBe('No criterion mounts this case');
     const heading = (s: FakeElement) => s.children.find((e) => e.tag === 'h2')!;
     expect(heading(primary!).textContent).toBe('primary — changed');
     expect(heading(primary!).className).toBe('changed');
@@ -223,6 +230,13 @@ describe('what the view draws (criterion 1)', () => {
       ['figcaption', 'before', ''],
     ]);
     expect(figures[1]!.children[0]!.tag).toBe('img');
+  });
+
+  it('a shot of the browser: the image as it drew it', async () => {
+    const { root, app } = await run();
+    app.ontoolresult({ _meta: { [VIEW_META_KEY]: { kind: 'shot', png: 'https://x.example/s.png' } } });
+    const img = root.all().find((e) => e.tag === 'img')!;
+    expect([img.src, img.alt]).toEqual(['https://x.example/s.png', 'browser']);
   });
 
   it('anything else: says there is nothing to show, and replaces what was there', async () => {

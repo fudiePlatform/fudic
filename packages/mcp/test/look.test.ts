@@ -12,7 +12,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { BrowserLook, PaintedCase } from '@fudic/workbench';
 import { Checks } from '../src/checks.js';
 import type { Runners } from '../src/fudic.js';
-import { LOOKS_DIR, lookDir, lookTool, MAX_IMAGES, type LookDeps } from '../src/look.js';
+import { LOOKS_DIR, lookDir, lookTool, type LookDeps } from '../src/look.js';
 import { lookHashOf } from '../src/look-hash.js';
 import { phasesOf, type Unit } from '../src/phases.js';
 import { openProject } from '../src/project.js';
@@ -46,7 +46,7 @@ beforeAll(async () => {
 afterAll(() => app.dispose());
 
 const png = (text: string): Buffer => Buffer.from(text);
-const shot = (name: string, bytes: string): PaintedCase => ({ name, outline: '', png: png(bytes), errors: [] });
+const shot = (name: string, bytes: string): PaintedCase => ({ name, outline: '', html: '', png: png(bytes), errors: [] });
 
 /** A bench that answers `answer`, and remembers what it was asked. */
 function bench(answer: BrowserLook): LookDeps & { asked: unknown[] } {
@@ -134,23 +134,21 @@ describe('a look, approved, and its change (criteria 11–13)', { timeout: 60_00
     expect(deps.asked).toEqual([{ component: expect.stringMatching(/app-card\.fud$/u) }]);
     expect(answer.body).toMatchObject({ piece: PIECE, look: 'none', hash });
     expect(cases(answer)).toEqual([
-      { case: 'titulo-largo', verdict: 'new', after: `${LOOKS_DIR}/app-card/${hash}/titulo-largo.png` },
-      { case: 'destacada', verdict: 'new', after: `${LOOKS_DIR}/app-card/${hash}/destacada.png` },
-      { case: 'minima', verdict: 'new', after: `${LOOKS_DIR}/app-card/${hash}/minima.png` },
+      { case: 'titulo-largo', criteria: [], verdict: 'new', after: `${LOOKS_DIR}/app-card/${hash}/titulo-largo.png` },
+      { case: 'destacada', criteria: [], verdict: 'new', after: `${LOOKS_DIR}/app-card/${hash}/destacada.png` },
+      { case: 'minima', criteria: [], verdict: 'new', after: `${LOOKS_DIR}/app-card/${hash}/minima.png` },
     ]);
     expect(readFileSync(join(lookDir(app.root, 'app-card', hash), 'destacada.png'), 'utf8')).toBe('B1');
-    expect(answer.blocks).toEqual([
-      { type: 'image', data: png('A1').toString('base64'), mimeType: 'image/png' },
-      { type: 'image', data: png('B1').toString('base64'), mimeType: 'image/png' },
-      { type: 'image', data: png('C1').toString('base64'), mimeType: 'image/png' },
-    ]);
+    // No image goes to the model: the paths name them, and a chat that draws turns them into URLs.
+    expect(answer).not.toHaveProperty('blocks');
     expect(answer.meta).toEqual({
       'fudic/view': {
         kind: 'look',
-        cases: ['titulo-largo', 'destacada', 'minima'].map((name, i) => ({
+        cases: ['titulo-largo', 'destacada', 'minima'].map((name) => ({
           case: name,
           verdict: 'new',
-          after: `data:image/png;base64,${png(`${'ABC'[i]!}1`).toString('base64')}`,
+          criteria: [],
+          after: `${LOOKS_DIR}/app-card/${hash}/${name}.png`,
         })),
       },
     });
@@ -170,8 +168,7 @@ describe('a look, approved, and its change (criteria 11–13)', { timeout: 60_00
   it('the same pixels: every case same, no image, no paths', async () => {
     const answer = await lookTool(project(), checks, queue, { piece: PIECE }, bench(looked([shot('titulo-largo', 'A1'), shot('destacada', 'B1'), shot('minima', 'C1')])));
     expect(answer.body['look']).toBe('valid');
-    expect(cases(answer)).toEqual(['titulo-largo', 'destacada', 'minima'].map((name) => ({ case: name, verdict: 'same' })));
-    expect(answer.blocks).toEqual([]);
+    expect(cases(answer)).toEqual(['titulo-largo', 'destacada', 'minima'].map((name) => ({ case: name, criteria: [], verdict: 'same' })));
   });
 
   it('a change of its CSS expires the look without a browser; the next look says what changed (criterion 12)', async () => {
@@ -187,13 +184,11 @@ describe('a look, approved, and its change (criteria 11–13)', { timeout: 60_00
     expect(hash).not.toBe(before);
     expect(answer.body).toMatchObject({ look: 'expired', hash });
     expect(cases(answer)).toEqual([
-      { case: 'titulo-largo', verdict: 'changed', before: `${LOOKS_DIR}/app-card/${before}/titulo-largo.png`, after: `${LOOKS_DIR}/app-card/${hash}/titulo-largo.png` },
-      { case: 'destacada', verdict: 'same' },
-      { case: 'nueva', verdict: 'new', after: `${LOOKS_DIR}/app-card/${hash}/nueva.png` },
-      { case: 'minima', verdict: 'gone', before: `${LOOKS_DIR}/app-card/${before}/minima.png` },
+      { case: 'titulo-largo', criteria: [], verdict: 'changed', before: `${LOOKS_DIR}/app-card/${before}/titulo-largo.png`, after: `${LOOKS_DIR}/app-card/${hash}/titulo-largo.png` },
+      { case: 'destacada', criteria: [], verdict: 'same' },
+      { case: 'nueva', criteria: [], verdict: 'new', after: `${LOOKS_DIR}/app-card/${hash}/nueva.png` },
+      { case: 'minima', criteria: [], verdict: 'gone', before: `${LOOKS_DIR}/app-card/${before}/minima.png` },
     ]);
-    // The before of what changed, its after, and the after of what is new.
-    expect(answer.blocks?.map((b) => (b as { data: string }).data)).toEqual(['A1', 'A2', 'D1'].map((t) => png(t).toString('base64')));
     const view = (answer.meta?.['fudic/view'] as { cases: Record<string, unknown>[] }).cases;
     expect(view.map((c) => [c['case'], c['verdict'], 'before' in c, 'after' in c])).toEqual([
       ['titulo-largo', 'changed', true, true],
@@ -209,15 +204,15 @@ describe('a look, approved, and its change (criteria 11–13)', { timeout: 60_00
     const deps = bench(looked([shot('destacada', 'B1')], ['titulo-largo', 'destacada', 'minima']));
     const answer = await lookTool(project(), checks, queue, { piece: PIECE, cases: ['destacada'] }, deps);
     expect(deps.asked).toEqual([{ component: expect.any(String), cases: ['destacada'] }]);
-    expect(cases(answer)).toEqual([{ case: 'destacada', verdict: 'same' }]);
+    expect(cases(answer)).toEqual([{ case: 'destacada', criteria: [], verdict: 'same' }]);
   });
 
   it('a case that is no JSON, one that threw, one with errors in its page, one with nothing to photograph', async () => {
     const painted: PaintedCase[] = [
       { name: 'signal', notJson: 'count' },
       { name: 'broken', error: 'the page answered 500' },
-      { name: 'noisy', outline: '', png: png('N'), errors: ['TypeError: x is undefined'] },
-      { name: 'empty', outline: '', errors: [] },
+      { name: 'noisy', outline: '', html: '', png: png('N'), errors: ['TypeError: x is undefined'] },
+      { name: 'empty', outline: '', html: '', errors: [] },
       shot('destacada', 'B1'),
     ];
     const answer = await lookTool(project(), checks, queue, { piece: PIECE, cases: painted.map((p) => p.name) }, bench(looked(painted)));
@@ -227,11 +222,11 @@ describe('a look, approved, and its change (criteria 11–13)', { timeout: 60_00
       'app-card (noisy) threw while rendering: TypeError: x is undefined',
       'app-card (empty) threw while rendering: it drew nothing to photograph',
     ]);
-    expect(cases(answer)).toEqual([{ case: 'destacada', verdict: 'same' }]);
+    expect(cases(answer)).toEqual([{ case: 'destacada', criteria: [], verdict: 'same' }]);
     expect(answer.failed).toBeUndefined();
   });
 
-  it('at most eight images; the rest are named by their path', async () => {
+  it('many changed cases: each named by its before and after', async () => {
     const names = ['a', 'b', 'c', 'd', 'e'];
     // First a look of these five, approved; then every one of them changed.
     await lookTool(project(), checks, queue, { piece: PIECE }, bench(looked(names.map((n) => shot(n, `${n}1`)))));
@@ -242,13 +237,12 @@ describe('a look, approved, and its change (criteria 11–13)', { timeout: 60_00
     // The earlier tests left other cases in the approved folder: those are gone, and carry no image.
     const five = cases(answer).filter((c) => names.includes(c['case'] as string));
     expect(five.every((c) => c['verdict'] === 'changed' && typeof c['before'] === 'string')).toBe(true);
-    expect(answer.blocks).toHaveLength(MAX_IMAGES);
   });
 
   it('the shots of the approved look are not on this disk: every case new, and next says why', async () => {
     rmSync(join(app.root, LOOKS_DIR), { recursive: true, force: true });
     const answer = await lookTool(project(), checks, queue, { piece: PIECE }, bench(looked([shot('a', 'a3')])));
-    expect(cases(answer)).toEqual([{ case: 'a', verdict: 'new', after: `${LOOKS_DIR}/app-card/${hashNow()}/a.png` }]);
+    expect(cases(answer)).toEqual([{ case: 'a', criteria: [], verdict: 'new', after: `${LOOKS_DIR}/app-card/${hashNow()}/a.png` }]);
     expect(answer.next).toMatch(/^The shots of the last approved look are not on this disk, so every case is new\. Show the user/u);
   });
 
@@ -280,7 +274,37 @@ describe('a look, approved, and its change (criteria 11–13)', { timeout: 60_00
     expect((await unit()).look).toBe('none');
     const answer = await lookTool(project(), checks, queue, { piece: PIECE }, bench(looked([shot('a', 'a3')])));
     expect(answer.body['look']).toBe('none');
-    expect(cases(answer)).toEqual([{ case: 'a', verdict: 'new', after: `${LOOKS_DIR}/app-card/${hashNow()}/a.png` }]);
+    expect(cases(answer)).toEqual([{ case: 'a', criteria: [], verdict: 'new', after: `${LOOKS_DIR}/app-card/${hashNow()}/a.png` }]);
+  });
+});
+
+describe('the criteria of each case', () => {
+  it('each case names the criteria of the .fudspec that mount it with props, in the answer and in the view', async () => {
+    const spec = join(app.root, 'src/components/app-card/app-card.fudspec');
+    // One with no name, one that mounts with a role, one with no case, and two that mount minima.
+    writeFileSync(
+      spec,
+      [
+        'component app-card',
+        'criterion', '  given', '    props minima',
+        'criterion uno', '  given', '    props minima', '    route /blog', '  then', '    visible app-card',
+        'criterion dos', '  given', '    props role:button/"x"', '    props', '    props minima',
+        'criterion tres', '  given', '    props destacada',
+        '',
+      ].join('\n'),
+    );
+    try {
+      const answer = await lookTool(project(), checks, queue, { piece: PIECE, cases: ['minima', 'destacada', 'titulo-largo'] }, bench(looked([shot('minima', 'm'), shot('destacada', 'd'), shot('titulo-largo', 't')])));
+      expect(cases(answer).map((c) => [c['case'], c['criteria']])).toEqual([
+        ['minima', ['uno', 'dos']],
+        ['destacada', ['tres']],
+        ['titulo-largo', []],
+      ]);
+      const view = (answer.meta?.['fudic/view'] as { cases: Record<string, unknown>[] }).cases;
+      expect(view.map((c) => c['criteria'])).toEqual([['uno', 'dos'], ['tres'], []]);
+    } finally {
+      rmSync(spec);
+    }
   });
 });
 

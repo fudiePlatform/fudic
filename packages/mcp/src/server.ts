@@ -6,7 +6,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { registerAppTool } from '@modelcontextprotocol/ext-apps/server';
-import { registerView, VIEW_TOOL_META } from './apps.js';
+import { forChat, registerView, VIEW_TOOL_META } from './apps.js';
 import { ENGINES, RENDER_AS, renderTool } from './render.js';
 import { callTool } from './call.js';
 import { lookTool } from './look.js';
@@ -278,7 +278,7 @@ export function createServer(options: ServerOptions): McpServer {
       ),
   );
 
-  registerView(server);
+  registerView(server, site);
 
   registerAppTool(
     server,
@@ -306,7 +306,7 @@ export function createServer(options: ServerOptions): McpServer {
     async ({ component, route, fixture, props, as, select, engine }) =>
       respond(
         project,
-        await renderTool(project, checks, queue, {
+        forChat(server, site, await renderTool(project, checks, queue, {
           as,
           engine,
           ...(component !== undefined ? { component } : {}),
@@ -314,7 +314,7 @@ export function createServer(options: ServerOptions): McpServer {
           ...(fixture !== undefined ? { fixture } : {}),
           ...(props !== undefined ? { props } : {}),
           ...(select !== undefined ? { select } : {}),
-        }),
+        })),
       ),
   );
 
@@ -367,7 +367,7 @@ export function createServer(options: ServerOptions): McpServer {
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       _meta: VIEW_TOOL_META,
     },
-    async ({ piece, cases }) => respond(project, await lookTool(project, checks, queue, { piece, ...(cases !== undefined ? { cases } : {}) })),
+    async ({ piece, cases }) => respond(project, forChat(server, site, await lookTool(project, checks, queue, { piece, ...(cases !== undefined ? { cases } : {}) }))),
   );
 
   if (entry === 'http') registerFileTools(server, project, checks);

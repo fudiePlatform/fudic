@@ -5,12 +5,14 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { join, normalize, sep } from 'node:path';
 import type { Duplex } from 'node:stream';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { DevServer } from './dev-server.js';
-import { destinationOf, hasCookie, isSecure, previewPath, setCookie, withoutCookie } from './gate.js';
+import { destinationOf, hasCookie, isSecure, previewPath, setCookie, shotsPath, withoutCookie } from './gate.js';
 
 export interface HttpOptions {
   readonly port: number;
@@ -19,6 +21,8 @@ export interface HttpOptions {
   readonly create: () => McpServer;
   /** The app, behind the preview's door: everything that is not the MCP. */
   readonly app?: DevServer;
+  /** The project's root: its `.fudic` shots are served under `shotsPath`. */
+  readonly root?: string;
 }
 
 export interface HttpEntry {
@@ -35,6 +39,21 @@ export function startHttp(options: HttpOptions): Promise<HttpEntry> {
 
   const { app, secret } = options;
   const opener = previewPath(secret);
+  const shots = shotsPath(secret);
+
+  /** A PNG of the project's `.fudic`, and nothing else: no path out of it, no other kind of file. */
+  const shot = (res: ServerResponse, url: URL): void => {
+    const base = join(options.root!, '.fudic');
+    const file = normalize(join(base, decodeURIComponent(url.pathname.slice(shots.length))));
+    if (!file.startsWith(base + sep) || !file.endsWith('.png') || !existsSync(file)) {
+      res.writeHead(404).end();
+      return;
+    }
+    // Named by their bytes or their hash: what a URL shows never changes.
+    res
+      .writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable', 'access-control-allow-origin': '*' })
+      .end(readFileSync(file));
+  };
 
   /** Everything that is not the MCP: the door that gives the cookie, and the app behind it. */
   const door = async (req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> => {
@@ -61,6 +80,10 @@ export function startHttp(options: HttpOptions): Promise<HttpEntry> {
 
   const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const url = new URL(req.url ?? '/', 'http://localhost');
+    if (options.root !== undefined && url.pathname.startsWith(shots)) {
+      shot(res, url);
+      return;
+    }
     if (url.pathname !== path) {
       await door(req, res, url);
       return;

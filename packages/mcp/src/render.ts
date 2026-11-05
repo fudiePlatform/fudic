@@ -5,7 +5,8 @@
  * draws it, the document in `_meta`: thousands of tokens the model does not need.
  */
 
-import { existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   FUD1207,
@@ -66,6 +67,22 @@ function shown(as: RenderInput['as'], outline: string, html: string): Readonly<R
   return as === 'outline' ? { outline } : { html };
 }
 
+/** Where the last shot of a render in the browser is kept, relative to the project. */
+export const RENDERS_DIR = '.fudic/renders';
+
+/**
+ * The shot, on disk: one per component, the last, named by its bytes so a URL of a previous one
+ * never shows the new one. Answers its path, relative to the project.
+ */
+function keepShot(root: string, tag: string, fixture: string | undefined, png: Buffer): string {
+  const dir = join(root, RENDERS_DIR, tag);
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  const name = `${fixture ?? 'props'}-${createHash('sha256').update(png).digest('hex').slice(0, 12)}.png`;
+  writeFileSync(join(dir, name), png);
+  return `${RENDERS_DIR}/${tag}/${name}`;
+}
+
 export async function renderTool(project: Project, checks: Checks, queue: RunQueue, input: RenderInput, deps: RenderDeps = nodeRenderDeps): Promise<Answer> {
   const { root } = project;
   if (!isFudicProject(root)) return { body: {}, diagnostics: [FUD1404({ folder: root })], failed: true };
@@ -108,7 +125,12 @@ export async function renderTool(project: Project, checks: Checks, queue: RunQue
     if (result.kind === 'no-case') return fail([FUD1421({ tag: asked.component, name: input.fixture!, cases: result.cases })]);
     if (result.kind === 'not-json') return fail([FUD1428({ prop: result.prop })]);
     if (result.kind === 'threw') return threw(result.message, '');
-    return { body: { ...head, outline: result.outline, calls: [] }, next: null };
+    return {
+      body: { ...head, ...shown(input.as, result.outline, result.html), calls: [] },
+      next: null,
+      // What the browser drew, as it drew it: its shot, not the markup painted again elsewhere.
+      ...(result.png !== undefined ? { meta: { [VIEW_META_KEY]: { kind: 'shot', png: keepShot(root, asked.component, input.fixture, result.png) } } } : {}),
+    };
   }
 
   if (runners.renderPiece === undefined) {

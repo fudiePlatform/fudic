@@ -29,8 +29,6 @@ export interface Answer {
   readonly failed?: true;
   /** What goes beside the JSON and not to the model: what a chat's view draws. */
   readonly meta?: Readonly<Record<string, unknown>>;
-  /** Blocks after the JSON's: the images a model sees. */
-  readonly blocks?: readonly CallToolResult['content'][number][];
 }
 
 export function respond(project: Project, answer: Answer): CallToolResult {
@@ -45,7 +43,7 @@ export function respond(project: Project, answer: Answer): CallToolResult {
     next: answer.next ?? null,
   };
   return {
-    content: [{ type: 'text', text: JSON.stringify(content, null, 2) }, ...(answer.blocks ?? [])],
+    content: [{ type: 'text', text: JSON.stringify(content, null, 2) }],
     structuredContent: content,
     ...(answer.failed === true ? { isError: true } : {}),
     ...(answer.meta !== undefined ? { _meta: answer.meta } : {}),

@@ -54,7 +54,11 @@ afterAll(() => {
 describe('criterion 4: the browser reads what happy-dom reads, unless CSS hides it', () => {
   it('a case with no hiding CSS: the outline happy-dom gives', async () => {
     const result = await renderInBrowser({ component: project.path(SHY), case: 'disabled' });
-    expect(result).toEqual({ kind: 'rendered', outline: '- button "Save" [disabled]', errors: [] });
+    expect(result).toMatchObject({ kind: 'rendered', outline: '- button "Save" [disabled]', errors: [] });
+    // What it drew, as markup and as a PNG of the host.
+    const { html, png } = result as { html: string; png: Buffer };
+    expect(html).toBe('<app-shy data-fud-adopt="app-shy"><template shadowrootmode="open"><style>.gone { display: none; }</style> <button disabled="" class="shown">Save</button> </template></app-shy>');
+    expect(png.subarray(1, 4).toString('latin1')).toBe('PNG');
   }, 120_000);
 
   it('a case whose CSS has display: none: another outline, without the button', async () => {
@@ -67,7 +71,7 @@ describe('criterion 4: the browser reads what happy-dom reads, unless CSS hides 
 
   it('props on top of the case change what they change', async () => {
     const result = await renderInBrowser({ component: project.path(SHY), case: 'hidden', props: { hidden: false, disabled: false } });
-    expect(result).toEqual({ kind: 'rendered', outline: '- button "Save"', errors: [] });
+    expect(result).toMatchObject({ kind: 'rendered', outline: '- button "Save"', errors: [] });
   }, 120_000);
 });
 

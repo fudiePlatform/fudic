@@ -6,7 +6,7 @@
 import { createHmac } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
 import { describe, expect, it } from 'vitest';
-import { cookieValue, destinationOf, hasCookie, isSecure, PREVIEW_COOKIE, previewPath, setCookie, withoutCookie } from '../src/gate.js';
+import { cookieValue, destinationOf, hasCookie, isSecure, PREVIEW_COOKIE, previewPath, setCookie, shotsPath, withoutCookie } from '../src/gate.js';
 import { HttpSite, stdioSite } from '../src/site.js';
 
 const SECRET = 'a'.repeat(64);
@@ -106,5 +106,22 @@ describe('the site', () => {
     Object.defineProperty(site.dev, 'local', { value: 'http://127.0.0.1:4401' });
     expect(site.urls('/productos')).toEqual({ local: 'http://127.0.0.1:4401/productos' });
     expect(site.callTarget()).toEqual({ origin: 'http://127.0.0.1:4401' });
+  });
+});
+
+describe('the URLs of the shots', () => {
+  it('over HTTP: under the token of the shots, local until the tunnel is up, public after; .fudic/ is the root', () => {
+    const site = new HttpSite('/project', SECRET, 4317);
+    expect(site.shotUrl('.fudic/looks/acme-button/91c2/primary.png')).toBe(`http://127.0.0.1:4317${shotsPath(SECRET)}looks/acme-button/91c2/primary.png`);
+    expect(site.shotOrigins()).toEqual(['http://127.0.0.1:4317']);
+    site.publicOrigin = 'https://brave-otter-12.trycloudflare.com';
+    expect(site.shotUrl('.fudic/renders/acme-button/props-1.png')).toBe(`https://brave-otter-12.trycloudflare.com${shotsPath(SECRET)}renders/acme-button/props-1.png`);
+    expect(site.shotOrigins()).toEqual(['http://127.0.0.1:4317', 'https://brave-otter-12.trycloudflare.com']);
+  });
+
+  it('over stdio: nothing serves them, and the view loads from no origin', () => {
+    const site = stdioSite('/project', 4400);
+    expect(site.shotUrl('.fudic/looks/a/b/c.png')).toBeUndefined();
+    expect(site.shotOrigins()).toEqual([]);
   });
 });

@@ -50,10 +50,12 @@ describe('criterion 2: a component with a case of its fixture', () => {
     expect(rendered(await renderJob({ target: { component: XCard, fixture } })).outline).toContain('heading "none"');
   });
 
-  test('$content is the children of a case, not a prop', async () => {
+  test('$content is the children of a case, not a prop: written inside the host, as the bench does', async () => {
     const out = rendered(await renderJob({ target: { component: XCard, fixture, case: 'filled' } }));
     expect(out.outline).toContain('heading "Filled"');
+    expect(out.outline).toContain('paragraph: inside');
     expect(out.html).not.toContain('content');
+    expect(out.html).toMatch(/<\/template><p>inside<\/p><\/x-card>$/u);
   });
 
   test('as html: the markup with its declarative shadow root and the sheets it adopted', async () => {

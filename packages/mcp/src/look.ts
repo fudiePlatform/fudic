@@ -11,8 +11,8 @@ import { join, relative, resolve } from 'node:path';
 import { FUD1207, FUD1404, FUD1405, FUD1420, FUD1421, FUD1426, FUD1428 } from '@fudic/diagnostics';
 import { nodeIo, unitState } from '@fudic/history';
 import type { Piece } from '@fudic/language-server/project';
+import { parseSpec } from '@fudic/spec';
 import { toPosix } from '@fudic/typecheck';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { VIEW_META_KEY } from './apps.js';
 import type { Checks } from './checks.js';
 import type { Problem } from './diagnostics.js';
@@ -25,9 +25,6 @@ import type { RunQueue } from './runs.js';
 
 /** Where the shots of every look are kept, relative to the project. */
 export const LOOKS_DIR = '.fudic/looks';
-
-/** The most images an answer carries; the rest are named by their path. */
-export const MAX_IMAGES = 8;
 
 /** The folder of the shots of `tag` at `hash`, absolute. */
 export function lookDir(root: string, tag: string, hash: string): string {
@@ -74,7 +71,24 @@ function sweep(root: string, tag: string, keep: ReadonlySet<string>): void {
   for (const name of readdirSync(dir)) if (!keep.has(name)) rmSync(join(dir, name), { recursive: true, force: true });
 }
 
-const dataUrl = (png: Buffer): string => `data:image/png;base64,${png.toString('base64')}`;
+/**
+ * The criteria of the piece's `.fudspec` that mount each case, by its `props <case>` line: the
+ * shot of a case is what those criteria see. Empty without a `.fudspec`.
+ */
+function criteriaByCase(file: string): ReadonlyMap<string, readonly string[]> {
+  const spec = `${file.slice(0, -'.fud'.length)}.fudspec`;
+  const byCase = new Map<string, string[]>();
+  if (!existsSync(spec)) return byCase;
+  for (const criterion of parseSpec(readFileSync(spec, 'utf8')).value.criteria) {
+    if (criterion.slug === undefined) continue;
+    for (const line of criterion.blocks.flatMap((block) => block.terms)) {
+      const arg = line.args[0];
+      if (line.name.text !== 'props' || arg === undefined || arg.kind === 'role') continue;
+      byCase.set(arg.text, [...(byCase.get(arg.text) ?? []), criterion.slug.text]);
+    }
+  }
+  return byCase;
+}
 
 export async function lookTool(project: Project, checks: Checks, queue: RunQueue, input: LookInput, deps: LookDeps = nodeLookDeps): Promise<Answer> {
   const { root } = project;
@@ -127,7 +141,8 @@ export async function lookTool(project: Project, checks: Checks, queue: RunQueue
   const diagnostics: Problem[] = [];
   const cases: Record<string, unknown>[] = [];
   const view: Record<string, unknown>[] = [];
-  const images: { png: Buffer }[] = [];
+  const byCase = criteriaByCase(piece.file);
+  const criteriaOf = (name: string): readonly string[] => byCase.get(name) ?? [];
   const at = (hashOf: string, name: string): string => `${LOOKS_DIR}/${tag}/${hashOf}/${name}.png`;
   for (const one of result.painted) {
     if ('notJson' in one) {
@@ -143,31 +158,24 @@ export async function lookTool(project: Project, checks: Checks, queue: RunQueue
     const was = old.get(one.name);
     const verdict: Verdict = was === undefined ? 'new' : was.equals(one.png) ? 'same' : 'changed';
     const shownBefore = verdict === 'changed' ? at(last!, one.name) : undefined;
-    cases.push({ case: one.name, verdict, ...(verdict !== 'same' ? { ...(shownBefore !== undefined ? { before: shownBefore } : {}), after: at(hash, one.name) } : {}) });
-    view.push({ case: one.name, verdict, ...(was !== undefined ? { before: dataUrl(was) } : {}), after: dataUrl(one.png) });
-    if (verdict !== 'same') {
-      if (was !== undefined && verdict === 'changed') images.push({ png: was });
-      images.push({ png: one.png });
-    }
+    cases.push({ case: one.name, criteria: criteriaOf(one.name), verdict, ...(verdict !== 'same' ? { ...(shownBefore !== undefined ? { before: shownBefore } : {}), after: at(hash, one.name) } : {}) });
+    view.push({ case: one.name, criteria: criteriaOf(one.name), verdict, ...(was !== undefined ? { before: at(last!, one.name) } : {}), after: at(hash, one.name) });
   }
   // What was there and is no more: only when every case was looked at.
   if (input.cases === undefined) {
     for (const name of old.keys()) {
       if (result.cases.includes(name)) continue;
-      cases.push({ case: name, verdict: 'gone', before: at(last!, name) });
-      view.push({ case: name, verdict: 'gone', before: dataUrl(old.get(name)!) });
+      cases.push({ case: name, criteria: criteriaOf(name), verdict: 'gone', before: at(last!, name) });
+      view.push({ case: name, criteria: criteriaOf(name), verdict: 'gone', before: at(last!, name) });
     }
   }
 
-  const blocks: CallToolResult['content'][number][] = images
-    .slice(0, MAX_IMAGES)
-    .map(({ png }) => ({ type: 'image', data: png.toString('base64'), mimeType: 'image/png' }));
   const lost = last !== undefined && !kept ? `The shots of the last approved look are not on this disk, so every case is new. ` : '';
   return {
     body: { piece: shown, look: state.look, hash, cases },
     diagnostics,
     next: `${lost}Show the user the before and after of ${tag} and ask whether they approve its look. Only if they do, call fudic_record { event: "look" }.`,
+    // Paths of the project: the server turns them into the URLs it serves them at.
     meta: { [VIEW_META_KEY]: { kind: 'look', cases: view } },
-    blocks,
   };
 }

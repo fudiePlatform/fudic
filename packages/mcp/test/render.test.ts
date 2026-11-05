@@ -5,7 +5,7 @@
  * end to end, is in `render-e2e.test.ts`.
  */
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Piece, ProjectService } from '@fudic/language-server/project';
@@ -108,7 +108,7 @@ function runners(over: { piece?: RenderPieceResult; browser?: BrowserRender; non
         },
         renderInBrowser: async (input: BrowserRenderInput) => {
           asked.browser.push(input);
-          return over.browser ?? { kind: 'rendered', outline: '- button "Save"', errors: [] };
+          return over.browser ?? { kind: 'rendered', outline: '- button "Save"', html: '<button>Save</button>', errors: [] };
         },
       } as unknown as Runners;
   return {
@@ -387,6 +387,28 @@ describe('with the browser', () => {
     const bare = runners();
     await renderTool(project, checks(), queue, input({ component: 'acme-card', engine: 'browser' }), bare.deps);
     expect(bare.asked.browser).toEqual([{ component: at('src/components/acme-card/acme-card.fud') }]);
+  });
+
+  it('what the browser drew: its HTML when asked, and its shot kept on disk, the last one per component', async () => {
+    const shot = (png: string, fixture?: string) =>
+      renderTool(
+        project,
+        checks(),
+        queue,
+        input({ component: 'acme-button', engine: 'browser', as: 'html', ...(fixture !== undefined ? { fixture } : {}) }),
+        runners({ browser: { kind: 'rendered', outline: '- button "Save"', html: '<button>Save</button>', png: Buffer.from(png), errors: [] } }).deps,
+      );
+    const first = await shot('P1', 'disabled');
+    expect(first.body).toEqual({ component: 'acme-button', fixture: 'disabled', engine: 'browser', as: 'html', html: '<button>Save</button>', calls: [] });
+    const firstPath = (first.meta?.[VIEW_META_KEY] as { kind: string; png: string });
+    expect(firstPath).toEqual({ kind: 'shot', png: expect.stringMatching(/^\.fudic\/renders\/acme-button\/disabled-[0-9a-f]{12}\.png$/u) });
+    expect(readFileSync(join(root, firstPath.png), 'utf8')).toBe('P1');
+
+    // With no case, named props; and the one before is gone: a URL of it never shows this one.
+    const second = await shot('P2');
+    const secondPath = (second.meta?.[VIEW_META_KEY] as { png: string }).png;
+    expect(secondPath).toMatch(/^\.fudic\/renders\/acme-button\/props-[0-9a-f]{12}\.png$/u);
+    expect(readdirSync(join(root, '.fudic/renders/acme-button'))).toEqual([secondPath.split('/').at(-1)]);
   });
 
   it('every way the bench does not answer an outline', async () => {

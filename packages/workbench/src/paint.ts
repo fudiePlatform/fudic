@@ -13,6 +13,7 @@ import { executeFixtures } from './execute-fixtures.js';
 import { jsonLiteral } from './host.js';
 import { caseShape, propAttrs } from './mount-source.js';
 import { nodeTargetFs } from './open.js';
+import { htmlOf } from './html.js';
 import { outlineOf } from './outline.js';
 import { mountFiles, pageSource } from './pages.js';
 import { startProject } from './project.js';
@@ -26,7 +27,7 @@ export interface PaintCase {
 }
 
 export type PaintedCase =
-  | { readonly name: string; readonly outline: string; readonly png?: Buffer; readonly errors: readonly string[] }
+  | { readonly name: string; readonly outline: string; readonly html: string; readonly png?: Buffer; readonly errors: readonly string[] }
   /** A value that does not come back the same from JSON: it cannot be written into the page. */
   | { readonly name: string; readonly notJson: string }
   /** The page did not open: it answered an error status. */
@@ -100,11 +101,13 @@ async function paintOne(
     const status = await page.goto(origin + route);
     if (status === null || status >= 400) return { name, error: `the page answered ${status ?? 'nothing'}` };
     const host = `body > ${tag}`;
-    const outline = await outlineOf(page.page, input.select === undefined ? host : `${host} >> ${input.select}`);
-    if (!input.shoot) return { name, outline, errors };
+    const selector = input.select === undefined ? host : `${host} >> ${input.select}`;
+    const outline = await outlineOf(page.page, selector);
+    const html = await htmlOf(page.page, selector);
+    if (!input.shoot) return { name, outline, html, errors };
     const box = await page.locate(host).box();
     const png = box === null || box.width === 0 || box.height === 0 ? undefined : await page.locate(host).screenshot();
-    return { name, outline, ...(png !== undefined ? { png } : {}), errors };
+    return { name, outline, html, ...(png !== undefined ? { png } : {}), errors };
   } finally {
     await page.close();
   }
@@ -129,7 +132,7 @@ export interface BrowserRenderInput {
 }
 
 export type BrowserRender =
-  | { readonly kind: 'rendered'; readonly outline: string; readonly errors: readonly string[] }
+  | { readonly kind: 'rendered'; readonly outline: string; readonly html: string; readonly png?: Buffer; readonly errors: readonly string[] }
   | { readonly kind: 'no-case'; readonly cases: readonly string[] }
   | { readonly kind: 'not-json'; readonly prop: string }
   | { readonly kind: 'threw'; readonly message: string }
@@ -146,7 +149,7 @@ export async function renderInBrowser(input: BrowserRenderInput): Promise<Browse
   const painted = await paintCases({
     target,
     cases: [{ name: input.case ?? 'props', values }],
-    shoot: false,
+    shoot: true,
     ...(input.select !== undefined ? { select: input.select } : {}),
     ...(input.browser !== undefined ? { browser: input.browser } : {}),
   });
@@ -154,7 +157,7 @@ export async function renderInBrowser(input: BrowserRenderInput): Promise<Browse
   const one = painted[0]!;
   if ('notJson' in one) return { kind: 'not-json', prop: one.notJson };
   if ('error' in one) return { kind: 'threw', message: one.error };
-  return { kind: 'rendered', outline: one.outline, errors: one.errors };
+  return { kind: 'rendered', outline: one.outline, html: one.html, ...(one.png !== undefined ? { png: one.png } : {}), errors: one.errors };
 }
 
 

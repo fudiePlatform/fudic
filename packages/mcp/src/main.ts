@@ -38,6 +38,7 @@ async function serveHttp(project: Project, options: Options, deps: MainDeps): Pr
       port: options.port,
       secret,
       app: site.dev,
+      root: project.root,
       create: () => createServer({ project, entry: 'http', guide, checks, queue, site }),
     });
   } catch (error) {

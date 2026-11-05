@@ -155,6 +155,10 @@ before moving on. Never approve on the user's behalf: fudic_record "approved" on
 user said so in this conversation.
 ```
 
+> *2026-11-05:* SDD-78 §8.2.17 cambia la línea de `fudic_status`: «Its "next" is the next step of
+> building the project: follow it when the user asked you to build, not when they asked for
+> something else.»
+
 Cada herramienta lleva una descripción cuya primera frase dice «fudic»: con muchas herramientas, el
 cliente ve los nombres y carga las descripciones bajo demanda.
 

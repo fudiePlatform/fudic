@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/mcp` · `@fudic/testing` · `@fudic/workbench` · `@fudic/history` ·
 > `@fudic/vite` · `@fudic/diagnostics`
 > **Rama:** `sdd-78-ver-la-pieza`, desde `main` con SDD-77 ya mezclada.
-> **Progreso:** 17 / 19 — `Listo`. Falta la prueba de punta a punta en Claude Web (17) y, tras ella, el cierre (19).
+> **Progreso:** 19 / 19 — `Hecho`. La prueba de punta a punta en Claude Web (17) dejó los ajustes de SDD §8.2 bis.
 
 **Antes de empezar:** SDD-77 tiene que estar entera en `main`, `fudic_status` incluido (sus tareas
 25–30). La 78 le añade una fase y reglas de `next`.
@@ -59,6 +59,6 @@ el `node_modules` del proyecto; sin ellos, `FUD1207` diciendo qué instalar.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 17 | 16 | **De punta a punta en Claude Web.** Fila «De punta a punta» de SDD §6.1: el guion de SDD-77 entero, cada componente con su `look` aprobado y la URL de la preview del escaparate al final. Lo que falle se arregla aquí y se repite la prueba entera | — | — |
+| [x] | 17 | 16 | **De punta a punta en Claude Web.** Fila «De punta a punta» de SDD §6.1: el guion de SDD-77 entero, cada componente con su `look` aprobado y la URL de la preview del escaparate al final. Lo que falle se arregla aquí y se repite la prueba entera | — | — |
 | [x] | 18 | 17 | **Docs y entrega.** README de `@fudic/mcp` (en inglés, sin citar SDD): ver una pieza, la preview por el túnel y su cookie, el aspecto. Criterios 1 (18 y 21 herramientas) y 15. `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; `@fudic/mcp` al 100 % en las cuatro métricas y lo nuevo de los demás paquetes también | `mcp` | `packages/mcp/README.md` |
-| [ ] | 19 | 18 | **Cierre.** SDD-78 y este fichero en `Hecho`; fila y registro de progreso del `INDEX.md`; IDEA-07 §11.2 apunta a SDD-78 | — | `docs/sdd/*` |
+| [x] | 19 | 18 | **Cierre.** SDD-78 y este fichero en `Hecho`; fila y registro de progreso del `INDEX.md`; IDEA-07 §11.2 apunta a SDD-78 | — | `docs/sdd/*` |

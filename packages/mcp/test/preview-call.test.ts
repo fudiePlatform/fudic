@@ -78,6 +78,8 @@ function site(state: DevState, over: { errors?: DevError[]; app?: string; public
     } as unknown as Site['dev'],
     urls: (to) => ({ local: `http://127.0.0.1:4318${to}`, ...(over.public ? { public: `https://x.trycloudflare.com${to}` } : {}) }),
     callTarget: () => ({ origin: 'http://127.0.0.1:4318', headers: { cookie: 'fudic-preview=v' } }),
+    shotUrl: () => undefined,
+    shotOrigins: () => [],
   };
 }
 

@@ -4,16 +4,18 @@
  * app, only with the cookie — HMR's upgrades too. The app is a stand-in here.
  */
 
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { request } from 'node:http';
 import { createServer as createNetServer, type Socket } from 'node:net';
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { join } from 'node:path';
 import type { Duplex } from 'node:stream';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { DevServer, DevState } from '../src/dev-server.js';
-import { cookieValue } from '../src/gate.js';
+import { cookieValue, shotsPath } from '../src/gate.js';
 import { startHttp, type HttpEntry } from '../src/http.js';
 import { createServer } from '../src/server.js';
-import { fakeProject } from './helpers.js';
+import { fakeProject, tempDir } from './helpers.js';
 
 const SECRET = 'a'.repeat(64);
 const OTHER = 'b'.repeat(64);
@@ -166,5 +168,48 @@ describe('with the app (criterion 9)', () => {
     });
     expect(res.status).toBe(200);
     expect(await res.text()).toContain('"name":"fudic"');
+  });
+});
+
+describe('the shots of .fudic, under a token of the secret', () => {
+  async function withShots(): Promise<{ origin: string; shots: string; dispose(): void }> {
+    const dir = tempDir({ 'secret.png': 'S' });
+    const shotDir = join(dir.root, '.fudic/looks/acme-button/91c2');
+    mkdirSync(shotDir, { recursive: true });
+    writeFileSync(join(shotDir, 'primary.png'), 'PNG');
+    writeFileSync(join(shotDir, 'notes.txt'), 'x');
+    const port = await freePort();
+    const entry = await startHttp({ port, secret: SECRET, root: dir.root, create: () => createServer({ project: fakeProject(), entry: 'http' }) });
+    entries.push(entry);
+    return { origin: `http://127.0.0.1:${port}`, shots: shotsPath(SECRET), dispose: () => dir.dispose() };
+  }
+
+  it('a PNG of the project: served with no cookie, cached for good, open to any origin', async () => {
+    const { origin, shots, dispose } = await withShots();
+    const res = await get(`${origin}${shots}looks/acme-button/91c2/primary.png`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toBe('image/png');
+    expect(res.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
+    expect(res.headers.get('access-control-allow-origin')).toBe('*');
+    expect(await res.text()).toBe('PNG');
+    dispose();
+  });
+
+  it('nothing else: another kind of file, one that is not there, a path out of .fudic', async () => {
+    const { origin, shots, dispose } = await withShots();
+    for (const path of ['looks/acme-button/91c2/notes.txt', 'looks/acme-button/91c2/nada.png', '..%2Fsecret.png', '']) {
+      const res = await get(`${origin}${shots}${path}`);
+      expect(res.status, path).toBe(404);
+      expect(await res.text()).toBe('');
+    }
+    dispose();
+  });
+
+  it('the token is not the secret, and without a root nothing is served there', async () => {
+    expect(shotsPath(SECRET)).not.toContain(SECRET);
+    expect(shotsPath(SECRET)).toMatch(/^\/_fudic\/shots\/[0-9a-f]{32}\/$/u);
+    expect(shotsPath(OTHER)).not.toBe(shotsPath(SECRET));
+    const { origin } = await start();
+    expect((await get(`${origin}${shotsPath(SECRET)}looks/x.png`)).status).toBe(404);
   });
 });

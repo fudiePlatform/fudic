@@ -54,6 +54,10 @@ vi.mock('../src/outline.js', () => ({
   },
 }));
 
+vi.mock('../src/html.js', () => ({
+  htmlOf: async (_page: unknown, selector: string) => `<html of ${selector}>`,
+}));
+
 vi.mock('../src/execute-fixtures.js', () => ({
   executeFixtures: async () => state.executed!,
 }));
@@ -122,9 +126,9 @@ describe('paintCases: every case on its page, in one start of the project', () =
       shoot: false,
     });
     expect(painted).toEqual([
-      { name: 'primary', outline: '- outline of body > app-card', errors: [] },
+      { name: 'primary', outline: '- outline of body > app-card', html: '<html of body > app-card>', errors: [] },
       { name: 'fn', notJson: 'onClick' },
-      { name: 'empty', outline: '- outline of body > app-card', errors: [] },
+      { name: 'empty', outline: '- outline of body > app-card', html: '<html of body > app-card>', errors: [] },
     ]);
     expect(state.started).toEqual([{ root: '/p', targets: [TARGET], options: {} }]);
     expect(state.closed).toBe(1);
@@ -158,7 +162,7 @@ describe('paintCases: every case on its page, in one start of the project', () =
       return status;
     };
     const painted = await paintCases({ target: TARGET, cases: [{ name: 'a', values: {} }], shoot: true });
-    expect(painted).toEqual([{ name: 'a', outline: '- outline of body > app-card', png: Buffer.from('PNG'), errors: ['Boom'] }]);
+    expect(painted).toEqual([{ name: 'a', outline: '- outline of body > app-card', html: '<html of body > app-card>', png: Buffer.from('PNG'), errors: ['Boom'] }]);
     expect(state.page.calls).toContain('screenshot body > app-card');
   });
 
@@ -169,7 +173,7 @@ describe('paintCases: every case on its page, in one start of the project', () =
   ] as const)('shoot, a host with %s: no png', async (_name, box) => {
     state.page = fakePage(() => ({ box } as FakeElement));
     const painted = await paintCases({ target: TARGET, cases: [{ name: 'a', values: {} }], shoot: true });
-    expect(painted).toEqual([{ name: 'a', outline: '- outline of body > app-card', errors: [] }]);
+    expect(painted).toEqual([{ name: 'a', outline: '- outline of body > app-card', html: '<html of body > app-card>', errors: [] }]);
     expect(state.page.calls.some((c) => c.startsWith('screenshot'))).toBe(false);
   });
 
@@ -233,7 +237,9 @@ describe('renderInBrowser: one component, a case and props on top', () => {
   it('the case with the props on top, under the case name; select and browser passed on', async () => {
     state.executed = { fixtures: new Map([[BUMP_FIXTURE, { diez: { value: 10, label: 'a' } }]]), diagnostics: [] };
     const result = await renderInBrowser({ component: BUMP, case: 'diez', props: { label: 'b' }, select: 'output', browser: 'chrome' });
-    expect(result).toEqual({ kind: 'rendered', outline: '- outline of body > app-bump >> output', errors: [] });
+    expect(result).toEqual({ kind: 'rendered', outline: '- outline of body > app-bump >> output', html: '<html of body > app-bump >> output>', png: Buffer.from('body > app-bump'), errors: [] });
+    // Photographed: the host, whatever select narrowed the outline to.
+    expect(state.page!.calls).toContain('screenshot body > app-bump');
     const page = readFileSync(`${state.dir}/routes/app-bump/case-0.fud`, 'utf8');
     expect(page).toContain('const value = 10;');
     expect(page).toContain('const label = "b";');
@@ -242,13 +248,15 @@ describe('renderInBrowser: one component, a case and props on top', () => {
 
   it('no case and no fixture: the props alone', async () => {
     const result = await renderInBrowser({ component: SLOTTED, props: { title: 'x' } });
-    expect(result).toEqual({ kind: 'rendered', outline: '- outline of body > app-slotted', errors: [] });
+    expect(result).toEqual({ kind: 'rendered', outline: '- outline of body > app-slotted', html: '<html of body > app-slotted>', png: Buffer.from('body > app-slotted'), errors: [] });
     expect(readFileSync(`${state.dir}/routes/app-slotted/case-0.fud`, 'utf8')).toContain('const title = "x";');
   });
 
   it('no case and no props: the bare component', async () => {
+    // A host with nothing to photograph: no shot, and the rest still comes back.
+    state.page = fakePage(() => ({ box: null }) as FakeElement);
     const result = await renderInBrowser({ component: SLOTTED });
-    expect(result).toEqual({ kind: 'rendered', outline: '- outline of body > app-slotted', errors: [] });
+    expect(result).toEqual({ kind: 'rendered', outline: '- outline of body > app-slotted', html: '<html of body > app-slotted>', errors: [] });
   });
 
   it('a prop that is not JSON: not-json, naming it', async () => {
