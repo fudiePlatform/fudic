@@ -275,8 +275,6 @@ export function createServer(options: ServerOptions): McpServer {
       ),
   );
 
-  if (entry === 'http') registerFileTools(server, project, checks);
-
   registerView(server);
 
   registerAppTool(
@@ -349,6 +347,8 @@ export function createServer(options: ServerOptions): McpServer {
     },
     async ({ route }) => respond(project, await previewTool(project, checks, site, route !== undefined ? { route } : {})),
   );
+
+  if (entry === 'http') registerFileTools(server, project, checks);
 
   server.registerPrompt(
     'new-app',

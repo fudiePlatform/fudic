@@ -128,6 +128,9 @@ function routeOf(url: string): RouteBuild | null {
 export function deepSelect(root: ParentNode, selector: string): Element | null {
   const found = root.querySelector(selector);
   if (found !== null) return found;
+  // A component's own shadow root first: what it paints lives there, not under its light children.
+  const own = root instanceof Element && root.shadowRoot !== null ? deepSelect(root.shadowRoot, selector) : null;
+  if (own !== null) return own;
   for (const element of root.querySelectorAll('*')) {
     const inner = element.shadowRoot === null ? null : deepSelect(element.shadowRoot, selector);
     if (inner !== null) return inner;

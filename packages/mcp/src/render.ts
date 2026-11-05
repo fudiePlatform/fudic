@@ -144,11 +144,12 @@ export async function renderTool(project: Project, checks: Checks, queue: RunQue
       const missing = missingFns(service);
       const calls = result.calls.map((c) => ({ fn: c.fn ?? c.path, status: c.status }));
       const unconnected = [...new Set(calls.filter((c) => c.status === 404 && missing.has(c.fn)).map((c) => c.fn))];
-      // A route whose `load` has no handler answers its 404 without calling anything.
-      const load = piece?.sibling === undefined || piece.kind !== 'route' ? undefined : `${piece.sibling}.load`;
-      if (load !== undefined && result.status === 404 && missing.has(load) && !unconnected.includes(load)) {
-        calls.unshift({ fn: load, status: 404 });
-        unconnected.unshift(load);
+      // A route's `load` runs in its server render, not through `fetch`: it is a call all the
+      // same, with the page's status. Without a handler, that status is its 404.
+      const load = 'route' in asked && piece?.sibling !== undefined ? service.handlers(piece.sibling)?.find((h) => h.kind === 'load') : undefined;
+      if (load !== undefined) {
+        calls.unshift({ fn: load.name, status: result.status! });
+        if (load.state === 'missing') unconnected.unshift(load.name);
       }
       return {
         body: {

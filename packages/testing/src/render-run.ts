@@ -8,7 +8,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { relative, resolve } from 'node:path';
+import { dirname, relative, resolve } from 'node:path';
 import { FUD1207, type WireDiagnostic } from '@fudic/diagnostics';
 import { compileDiagnosticsOf } from '@fudic/vite';
 import type { Reporter, TestModule } from 'vitest/node';
@@ -47,6 +47,13 @@ export type RenderPieceResult = RenderOutcome | Broken;
 
 const path = (file: string): string => JSON.stringify(file.replace(/\\/gu, '/'));
 
+/**
+ * A module of the project as the test file beside `out` imports it: relative, as a test of the
+ * project would. Imported by an absolute path, a `.fud` that links its `.fudapi` was compiled
+ * without finding it.
+ */
+const from = (out: string, file: string): string => JSON.stringify(`./${relative(dirname(out), file).replace(/\\/gu, '/')}`);
+
 /** The test file that paints the piece and writes what came out to `out`. */
 export function renderSource(options: RenderPieceOptions, out: string): string {
   const { target } = options;
@@ -54,8 +61,8 @@ export function renderSource(options: RenderPieceOptions, out: string): string {
   let job: string;
   if ('route' in target) job = `{ route: ${JSON.stringify(target.route)} }`;
   else {
-    imports.push(`import * as piece from ${path(target.component)};`);
-    if (target.fixture !== undefined) imports.push(`import fixture from ${path(target.fixture)};`);
+    imports.push(`import * as piece from ${from(out, target.component)};`);
+    if (target.fixture !== undefined) imports.push(`import fixture from ${from(out, target.fixture)};`);
     const fields = [
       'component: piece',
       ...(target.fixture !== undefined ? ['fixture'] : []),
@@ -123,7 +130,8 @@ async function runJob<T>(root: string, source: (out: string) => string): Promise
       return brokenOf(module);
     }
   } catch (error) {
-    return { kind: 'broken', diagnostics: [could(error instanceof Error ? error.message : String(error))] };
+    // Vitest rejects with an Error, even for what a config throws that is not one.
+    return { kind: 'broken', diagnostics: [could((error as Error).message)] };
   } finally {
     rmSync(file, { force: true });
     rmSync(out, { force: true });
