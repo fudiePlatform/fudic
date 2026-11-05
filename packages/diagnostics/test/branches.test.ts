@@ -201,6 +201,19 @@ const CASES: readonly (readonly [FudDiagnostic, string])[] = [
   [c.FUD1405({ name: 'acme-buton', closest: 'acme-button' }), 'nothing in the project is called acme-buton; did you mean acme-button?'],
   [c.FUD1406(), 'cloudflared is not installed: there is no public URL, the server goes on locally'],
   [c.FUD1407({ file: F, phase: 'red' }), 'src/a.fud is not done: its red phase is not finished'],
+  [c.FUD1420({ file: F, piece: 'acme-button', reason: 'boom' }), 'acme-button threw while rendering: boom'],
+  [c.FUD1421({ tag: 'acme-button', name: 'big', cases: ['primary', 'disabled'] }), 'the fixture of acme-button has no case "big"; its cases are: primary, disabled'],
+  [c.FUD1422({ url: '/productos/:id', paths: [] }), '/productos/:id is not a concrete URL of a route'],
+  [c.FUD1422({ url: '/productos/:id', paths: ['/productos/1', '/productos/2'] }), 'try one of: /productos/1, /productos/2'],
+  [c.FUD1423({ fn: 'routes/products.save' }), 'routes/products.save has no handler yet'],
+  [c.FUD1424({ reason: 'port in use' }), 'the preview did not start: port in use'],
+  [c.FUD1425({ reason: 'boom' }), 'the server failed while previewing: boom'],
+  [c.FUD1425({ reason: 'bang', file: F }), 'the server failed while previewing: bang'],
+  [c.FUD1426({ file: F, reason: 'route' }), 'it is a route, and only a component has a look'],
+  [c.FUD1426({ file: F, reason: 'no-fixture' }), `nothing to look at in ${F}: it has no fixture`],
+  [c.FUD1426({ file: F, reason: 'no-cases' }), 'its fixture has no cases'],
+  [c.FUD1427({ file: F }), `the look of ${F} as it is now was never shown: run fudic_look first`],
+  [c.FUD1428({ prop: 'onClick' }), 'the prop onClick is not JSON, so it cannot be rendered in the browser'],
 ];
 
 describe('every variant says its own sentence', () => {
@@ -235,5 +248,21 @@ describe('the three constructors keep the place and drop the data', () => {
 
   it('a project diagnostic has neither file nor span', () => {
     expect(Object.keys(c.FUD0451({ line: 'x', status: 1 })).sort()).toEqual(['code', 'message', 'severity']);
+  });
+});
+
+describe('FUD1425 keeps the place where the server failed, when there is one', () => {
+  it('no file: a project diagnostic', () => {
+    expect(Object.keys(c.FUD1425({ reason: 'boom' })).sort()).toEqual(['code', 'message', 'severity']);
+  });
+
+  it('a file and no span: the file alone', () => {
+    const d = c.FUD1425({ reason: 'boom', file: F });
+    expect(d).toMatchObject({ file: F });
+    expect(d).not.toHaveProperty('span');
+  });
+
+  it('a file and a span: both', () => {
+    expect(c.FUD1425({ reason: 'boom', file: F, span: S })).toMatchObject({ file: F, span: S });
   });
 });

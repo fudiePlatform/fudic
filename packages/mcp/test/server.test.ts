@@ -97,13 +97,21 @@ describe('what the client is told (criterion 4)', () => {
         'Before writing a kind of file for the first time, call fudic_guide for its topic. Start with fudic_guide { topic: "overview" }.',
         'Create files with fudic_generate, never from scratch.',
         'After every write, run fudic_check and fix every diagnostic before moving on.',
-        'Never approve on the user\'s behalf: fudic_record "approved" only after the user said so in this conversation.',
+        'Never approve on the user\'s behalf: fudic_record "approved" or "look" only after the user said so in this conversation.',
       ].join('\n'),
     );
   });
 
   it('instructions, once every tool is there, say the text of the spec', () => {
-    const all = new Set(['fudic_guide', 'fudic_status', 'fudic_generate', 'fudic_check', 'fudic_record']);
+    const all = new Set([
+      'fudic_guide',
+      'fudic_status',
+      'fudic_generate',
+      'fudic_check',
+      'fudic_record',
+      'fudic_render',
+      'fudic_preview',
+    ]);
     expect(instructions(all)).toBe(
       [
         'fudic is a UI framework you have no prior knowledge of. Never write fudic code from memory or by analogy with React, Vue or any other framework.',
@@ -111,9 +119,17 @@ describe('what the client is told (criterion 4)', () => {
         'Before writing a kind of file for the first time, call fudic_guide for its topic. Start with fudic_guide { topic: "overview" }.',
         'Create files with fudic_generate, never from scratch.',
         'After every write, run fudic_check and fix every diagnostic before moving on.',
-        'Never approve on the user\'s behalf: fudic_record "approved" only after the user said so in this conversation.',
+        'Never approve on the user\'s behalf: fudic_record "approved" or "look" only after the user said so in this conversation.',
+        'When the user wants to see something, use fudic_render for one piece and fudic_preview for the whole app. Seeing is not approving.',
       ].join('\n'),
     );
+  });
+
+  it('instructions: the line on seeing needs both fudic_render and fudic_preview', () => {
+    const seeing = /When the user wants to see something/u;
+    expect(instructions(new Set(['fudic_render']))).not.toMatch(seeing);
+    expect(instructions(new Set(['fudic_preview']))).not.toMatch(seeing);
+    expect(instructions(new Set(['fudic_render', 'fudic_preview']))).toMatch(seeing);
   });
 
   it('every tool description starts by naming fudic', async () => {
