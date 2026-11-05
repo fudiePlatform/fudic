@@ -146,8 +146,14 @@ describe('criterion 5: what is not a painting', () => {
   });
 
   test('a component that throws while painting: an Error, and what is no Error', async () => {
-    expect(await renderJob({ target: { component: XBoom } })).toMatchObject({ kind: 'threw', error: { message: expect.stringContaining('boom') } });
-    expect(await renderJob({ target: { component: XBoom, props: { how: 'string' } } })).toMatchObject({
+    expect(await renderJob({ target: { component: XBoom } })).toMatchObject({ kind: 'threw', error: { message: expect.stringContaining('name') } });
+    const item = {
+      get name(): string {
+        // eslint-disable-next-line @typescript-eslint/only-throw-error -- what is no Error, on purpose
+        throw 'kaput';
+      },
+    };
+    expect(await renderJob({ target: { component: XBoom, props: { item } } })).toMatchObject({
       kind: 'threw',
       error: { message: expect.stringContaining('kaput') },
     });

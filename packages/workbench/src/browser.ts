@@ -214,6 +214,8 @@ function adaptLocator(locator: Locator): LocatorLike {
   return {
     box: () => locator.boundingBox(),
     evaluate: (script, arg) => locator.evaluate(inPage(script, 'element, arg') as never, arg),
-    screenshot: () => locator.screenshot({ animations: 'disabled' }),
+    // A shot is no term's call: it waits for the host to be stable, which on a busy machine takes
+    // what loading the page takes, and a look or a criterion without its shot says nothing.
+    screenshot: () => locator.screenshot({ animations: 'disabled', timeout: LOAD_TIMEOUT }),
   };
 }
