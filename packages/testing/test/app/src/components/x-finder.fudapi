@@ -1,0 +1,12 @@
+get find
+  q  str
+  -> str
+
+# No handler in src/server: the render answers its 404.
+get lost
+  -> str
+
+# A function with a route of its own: what the URL of a call is matched against.
+get item /:id
+  id  i32
+  -> str

@@ -1,0 +1,15 @@
+@code {
+  const { how = "error" } = props<{ how?: string }>();
+
+  // Throws while the markup is painted: an Error, or what is no Error.
+  function fail(): string {
+    if (how === "string") throw "kaput";
+    throw new Error("boom");
+  }
+}
+
+<x-boom>
+  <template shadowrootmode="open">
+    <p>@fail()</p>
+  </template>
+</x-boom>

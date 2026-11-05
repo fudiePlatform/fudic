@@ -1,0 +1,19 @@
+@code {
+  const { label = "none", hidden = false } = props<{ label?: string; hidden?: boolean }>();
+}
+
+<head>
+  <style>
+    .card { & h2 { margin: 0; } }
+  </style>
+</head>
+
+<x-card>
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="panel">
+    <section class="card panel" hidden=@hidden>
+      <h2>@label</h2>
+      <button>Open</button>
+      <slot></slot>
+    </section>
+  </template>
+</x-card>

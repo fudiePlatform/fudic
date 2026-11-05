@@ -60,9 +60,11 @@ describe('the server (criterion 1)', () => {
       'fudic_test',
       'fudic_spec_run',
     ];
-    expect([...toolNames('stdio')]).toEqual(common);
+    // SDD-78 adds the tools that show a piece; fudic_look closes the count at 18 and 21.
+    const seeing = ['fudic_render', 'fudic_call', 'fudic_preview'];
+    expect([...toolNames('stdio')]).toEqual([...common, ...seeing]);
     expect(common).toHaveLength(14);
-    expect([...toolNames('http')]).toEqual([...common, 'fudic_files', 'fudic_read', 'fudic_write']);
+    expect([...toolNames('http')]).toEqual([...common, ...seeing, 'fudic_files', 'fudic_read', 'fudic_write']);
   });
 
   it('answers the same call the same over both entries, byte for byte', async () => {
@@ -98,6 +100,7 @@ describe('what the client is told (criterion 4)', () => {
         'Create files with fudic_generate, never from scratch.',
         'After every write, run fudic_check and fix every diagnostic before moving on.',
         'Never approve on the user\'s behalf: fudic_record "approved" or "look" only after the user said so in this conversation.',
+        'When the user wants to see something, use fudic_render for one piece and fudic_preview for the whole app. Seeing is not approving.',
       ].join('\n'),
     );
   });
