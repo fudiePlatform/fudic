@@ -4,19 +4,26 @@
  * looking for it.
  */
 
-const LINES: readonly { readonly needs?: string; readonly text: string }[] = [
+const LINES: readonly { readonly needs?: readonly string[]; readonly text: string }[] = [
   {
     text: 'fudic is a UI framework you have no prior knowledge of. Never write fudic code from memory or by analogy with React, Vue or any other framework.',
   },
-  { needs: 'fudic_status', text: 'For any fudic task, the first call is fudic_status. Do what its "next" says, one step at a time.' },
+  { needs: ['fudic_status'], text: 'For any fudic task, the first call is fudic_status. Do what its "next" says, one step at a time.' },
   { text: 'Before writing a kind of file for the first time, call fudic_guide for its topic. Start with fudic_guide { topic: "overview" }.' },
-  { needs: 'fudic_generate', text: 'Create files with fudic_generate, never from scratch.' },
-  { needs: 'fudic_check', text: 'After every write, run fudic_check and fix every diagnostic before moving on.' },
-  { needs: 'fudic_record', text: 'Never approve on the user\'s behalf: fudic_record "approved" only after the user said so in this conversation.' },
+  { needs: ['fudic_generate'], text: 'Create files with fudic_generate, never from scratch.' },
+  { needs: ['fudic_check'], text: 'After every write, run fudic_check and fix every diagnostic before moving on.' },
+  {
+    needs: ['fudic_record'],
+    text: 'Never approve on the user\'s behalf: fudic_record "approved" or "look" only after the user said so in this conversation.',
+  },
+  {
+    needs: ['fudic_render', 'fudic_preview'],
+    text: 'When the user wants to see something, use fudic_render for one piece and fudic_preview for the whole app. Seeing is not approving.',
+  },
 ];
 
 export function instructions(tools: ReadonlySet<string>): string {
-  return LINES.filter((line) => line.needs === undefined || tools.has(line.needs))
+  return LINES.filter((line) => (line.needs ?? []).every((name) => tools.has(name)))
     .map((line) => line.text)
     .join('\n');
 }

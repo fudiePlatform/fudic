@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/mcp` · `@fudic/testing` · `@fudic/workbench` · `@fudic/history` ·
 > `@fudic/vite` · `@fudic/diagnostics`
 > **Rama:** `sdd-78-ver-la-pieza`, desde `main` con SDD-77 ya mezclada.
-> **Progreso:** 0 / 19 — `Listo`.
+> **Progreso:** 3 / 19 — `Listo`.
 
 **Antes de empezar:** SDD-77 tiene que estar entera en `main`, `fudic_status` incluido (sus tareas
 25–30). La 78 le añade una fase y reglas de `next`.
@@ -23,9 +23,9 @@ el `node_modules` del proyecto; sin ellos, `FUD1207` diciendo qué instalar.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **Los códigos.** `FUD1420`–`FUD1428` (SDD §3.5), cada uno con su `.ts`, su `.md` de unas cinco líneas y su línea en `index.ts`; el rango en el `INDEX.md` | `diagnostics` | `src/codes/FUD142*.ts` · `src/codes/FUD142*.md` · `src/index.ts` |
-| [ ] | 2 | — | **MCP Apps.** `@modelcontextprotocol/ext-apps` `1.7.5` exacta, solo en `@fudic/mcp`, sin React. El recurso `ui://fudic/view.html` (`text/html;profile=mcp-app`): un solo HTML construido con el paquete, con el `App` de `app-with-deps` en línea y sin peticiones de red; pinta el `preview` de `render` en un `<iframe srcdoc>` y los casos de `look` lado a lado. Registro con `registerAppResource`/`registerAppTool` (SDD §3.2) | `mcp` | `package.json` · `src/view/*` · `src/apps.ts` · `tsconfig.build.json` |
-| [ ] | 3 | 2 | **Las instrucciones.** La línea de aprobaciones nombra `approved` y `look`; la línea de «ver» (SDD §3.3); cada una solo si sus herramientas están registradas | `mcp` | `src/instructions.ts` |
+| [x] | 1 | — | **Los códigos.** `FUD1420`–`FUD1428` (SDD §3.5), cada uno con su `.ts`, su `.md` de unas cinco líneas y su línea en `index.ts`; el rango en el `INDEX.md` | `diagnostics` | `src/codes/FUD142*.ts` · `src/codes/FUD142*.md` · `src/index.ts` |
+| [x] | 2 | — | **MCP Apps.** `@modelcontextprotocol/ext-apps` `1.7.5` exacta, solo en `@fudic/mcp`, sin React. El recurso `ui://fudic/view.html` (`text/html;profile=mcp-app`): un solo HTML construido con el paquete, con el `App` de `app-with-deps` en línea y sin peticiones de red; pinta el `preview` de `render` en un `<iframe srcdoc>` y los casos de `look` lado a lado. Registro con `registerAppResource`/`registerAppTool` (SDD §3.2) | `mcp` | `package.json` · `src/view/*` · `src/apps.ts` · `tsconfig.build.json` |
+| [x] | 3 | 2 | **Las instrucciones.** La línea de aprobaciones nombra `approved` y `look`; la línea de «ver» (SDD §3.3); cada una solo si sus herramientas están registradas | `mcp` | `src/instructions.ts` |
 | [ ] | 4 | 1–3 | **Los tests de la fase.** Criterio 1 (salvo el recuento de herramientas, que se cierra en la tarea 18) | `mcp` | `test/**` |
 
 ## Fase 2 — `fudic_render` (3)

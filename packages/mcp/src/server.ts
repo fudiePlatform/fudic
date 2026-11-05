@@ -5,6 +5,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import { registerView } from './apps.js';
 import { checkProject } from './check.js';
 import { Checks } from './checks.js';
 import { FILE_TOOLS, registerFileTools } from './file-tools.js';
@@ -264,6 +265,8 @@ export function createServer(options: ServerOptions): McpServer {
   );
 
   if (entry === 'http') registerFileTools(server, project, checks);
+
+  registerView(server);
 
   server.registerPrompt(
     'new-app',

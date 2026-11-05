@@ -55,6 +55,7 @@
     "@fudic/language-server": "workspace:*",
     "@fudic/spec": "workspace:*",
     "@fudic/typecheck": "workspace:*",
+    "@modelcontextprotocol/ext-apps": "1.7.5",
     "@modelcontextprotocol/sdk": "1.32.2",
     "zod": "4.6.7"
   },
