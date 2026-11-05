@@ -60,10 +60,12 @@ describe('the server (criterion 1)', () => {
       'fudic_test',
       'fudic_spec_run',
     ];
-    // SDD-78 adds the tools that show a piece; fudic_look closes the count at 18 and 21.
-    const seeing = ['fudic_render', 'fudic_call', 'fudic_preview'];
+    // SDD-78 adds the four that show a piece: eighteen over stdio, twenty-one over http.
+    const seeing = ['fudic_render', 'fudic_call', 'fudic_preview', 'fudic_look'];
     expect([...toolNames('stdio')]).toEqual([...common, ...seeing]);
     expect(common).toHaveLength(14);
+    expect(toolNames('stdio').size).toBe(18);
+    expect(toolNames('http').size).toBe(21);
     expect([...toolNames('http')]).toEqual([...common, ...seeing, 'fudic_files', 'fudic_read', 'fudic_write']);
   });
 

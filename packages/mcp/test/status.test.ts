@@ -134,6 +134,19 @@ describe('a project made and grown through the tools (criteria 21 and 22)', { ti
     expect(status.next).toMatch(/^Document src\/components\/app-badge\/app-badge\.fud: a JSDoc on the component/u);
     await call(client, 'fudic_write', { path: BADGE, content: DOCUMENTED });
 
+    // 8. Look: nobody has seen how it looks yet (SDD-78 §4.5).
+    status = await call(client, 'fudic_status');
+    expect(status.body['phase']).toBe('look');
+    expect((status.body['units'] as { piece: string; look?: string }[]).find((u) => u.piece === BADGE)?.look).toBe('none');
+    expect(status.next).toBe(
+      `Run fudic_look { piece: "${BADGE}" } and show the user how app-badge looks in each case. fudic_record look only after they approve it.`,
+    );
+    over.states.set(BADGE, { tests: pass, spec: pass, look: 'expired' });
+    expect((await call(client, 'fudic_status')).next).toBe(
+      `The look of app-badge changed since it was approved. Run fudic_look { piece: "${BADGE}" } and show the user how app-badge looks in each case. fudic_record look only after they approve it.`,
+    );
+    over.states.set(BADGE, { tests: pass, spec: pass, look: 'valid' });
+
     // 5. Finished: closed with done, and the next piece comes.
     status = await call(client, 'fudic_status');
     expect(status.body['phase']).toBe('done');
@@ -222,8 +235,10 @@ describe('statusOf, over a project of the test\'s', () => {
   });
 
   it('every piece done: phase done, and next is null', async () => {
-    const root = folder({ 'fudic.json': '{}' });
-    over.states.set('ui-a/ui-a.fud', { done: true });
+    // Done is not enough: a piece that is done and changed opens again (SDD-78 §4.5). This one
+    // has everything its phases ask for, its look approved among them.
+    const root = folder({ 'fudic.json': '{}', 'src/components/ui-a/ui-a.fudspec': '', 'src/components/ui-a/ui-a.test.ts': '' });
+    over.states.set('ui-a/ui-a.fud', { done: true, approval: 'valid', tests: pass, spec: pass, look: 'valid' });
     const answer = await statusOf(project(root), fakeChecks(root, [piece(root, 'ui-a')]), new Session());
     expect(answer.body['phase']).toBe('done');
     expect(answer.body).not.toHaveProperty('expired');

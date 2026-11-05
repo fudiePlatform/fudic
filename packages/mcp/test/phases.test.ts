@@ -28,7 +28,7 @@ function folder(files: Readonly<Record<string, string>> = {}): string {
 const pass = { state: 'pass', passed: 2, total: 2 } as const;
 
 function state(over: Partial<UnitState> = {}): UnitState {
-  return { unit: 'x', lines: [], diagnostics: [], approval: 'valid', tests: pass, spec: pass, look: 'none', done: false, ...over };
+  return { unit: 'x', lines: [], diagnostics: [], approval: 'valid', tests: pass, spec: pass, look: 'valid', done: false, ...over };
 }
 
 const handler = (name: string, connected: boolean): Handler =>
@@ -76,6 +76,7 @@ describe('unitsOf', () => {
       phase: 'done',
       complete: true,
       approval: 'valid',
+      look: 'valid',
       project: root,
       server: false,
       tests: 'pass 2/2',
@@ -103,6 +104,8 @@ describe('unitsOf', () => {
     ['a prop without doc', finished, {}, { documented: { doc: true, props: 2, documented: 1 } }, true, 'document'],
     ['no doc of its own', finished, {}, { documented: { doc: false, props: 0, documented: 0 } }, true, 'document'],
     ['a showcase not current', finished, {}, {}, false, 'showcase'],
+    ['never looked at', finished, { look: 'none' }, {}, true, 'look'],
+    ['with a look that expired', finished, { look: 'expired' }, {}, true, 'look'],
   ])('a component %s stops at its phase', async (_why, files, over, piece, showcase, phase) => {
     const present = Object.fromEntries(Object.entries(files).filter(([, text]) => text !== undefined));
     const root = folder(present);

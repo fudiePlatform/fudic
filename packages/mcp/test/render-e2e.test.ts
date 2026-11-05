@@ -83,7 +83,7 @@ const FILES: Readonly<Record<string, string>> = {
     '  return { name: `Producto ${ctx.params.id}` };',
     '});',
     '',
-    'paths.handle(() => [1, 2]);',
+    "paths.handle(() => ['1', '2']);",
     '',
   ].join('\n'),
 };

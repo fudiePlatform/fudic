@@ -19,3 +19,17 @@ declare module 'fudic:components/x-hello' {
 declare module 'fudic:components/x-save' {
   export const save: import('@fudic/http').ServerFunction<void, string>;
 }
+declare module 'fudic:components/x-alias' {
+  export const save: import('@fudic/http').ServerFunction<{ readonly alias: string }, string>;
+}
+declare module 'fudic:components/x-finder' {
+  export const find: import('@fudic/http').ServerFunction<{ readonly q: string }, string>;
+  export const lost: import('@fudic/http').ServerFunction<void, string>;
+  export const item: import('@fudic/http').ServerFunction<{ readonly id: number }, string>;
+}
+declare module 'fudic:components/x-guarded' {
+  export const whoami: import('@fudic/http').ServerFunction<void, string>;
+}
+declare module 'fudic:routes/tags/[tag]' {
+  export const like: import('@fudic/http').ServerFunction<void, string>;
+}
