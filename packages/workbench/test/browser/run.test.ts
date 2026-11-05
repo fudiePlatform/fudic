@@ -221,6 +221,21 @@ describe('runSpecs — SDD-64 criterion 5, failing', () => {
     expect(await ids(false)).toEqual(['uno:pass', 'dos:pass', 'tres:pass']);
   }, 240_000);
 
+  it('with criteria, only those ids run; with failing too, only those that did not pass', async () => {
+    project = tempProject('run-named');
+    project.write(SPEC_FILE, THREE);
+    const named = async (criteria: readonly string[], failing = false): Promise<string[]> => {
+      const summary = await runSpecs([SPEC_FILE], { root: project!.root, criteria, failing });
+      if (isFailure(summary)) throw new Error(summary.diagnostic.message);
+      return summary.reports.map((r) => `${r.id}:${r.verdict}`);
+    };
+    expect(await named(['tres', 'dos'])).toEqual(['dos:fail', 'tres:pass']);
+    expect(await named(['nada'])).toEqual([]);
+    // The last report holds only what ran: `dos` red, and asked with `uno` it is the only one left.
+    expect(await named(['dos', 'tres'])).toEqual(['dos:fail', 'tres:pass']);
+    expect(await named(['uno', 'dos'], true)).toEqual(['dos:fail']);
+  }, 240_000);
+
   it('fudic-workbench run --failing runs only what did not pass', async () => {
     project = tempProject('run-failing-cli');
     project.write(SPEC_FILE, THREE);
