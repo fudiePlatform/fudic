@@ -15,3 +15,5 @@ export type { ShowcaseChange, ShowcaseComponent, ShowcaseInput, ShowcasePlan } f
 export { executeFixtures } from './execute-fixtures.js';
 export type { ExecutedProject } from './execute-fixtures.js';
 export type { ExecutedFixtures } from './pages.js';
+export { casePage, casesOf, paintCases, renderInBrowser } from './paint.js';
+export type { BrowserRender, BrowserRenderInput, PaintCase, PaintedCase, PaintInput } from './paint.js';

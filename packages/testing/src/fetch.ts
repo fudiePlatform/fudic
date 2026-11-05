@@ -54,6 +54,23 @@ function keepCookies(response: Response): Response {
   return response;
 }
 
+/** A call to a function the page made, and what it was answered. */
+export interface RecordedCall {
+  readonly method: string;
+  /** Under the app's `base`, query aside: `/_fudic/fn/routes/products/save`. */
+  readonly path: string;
+  readonly status: number;
+}
+
+let recorded: RecordedCall[] | undefined;
+
+/** Start keeping every call to a function from now on; the result reads what was kept. */
+export function recordCalls(): () => readonly RecordedCall[] {
+  const calls: RecordedCall[] = [];
+  recorded = calls;
+  return () => calls;
+}
+
 async function answer(request: Request): Promise<Response> {
   if (override !== undefined) return override(request);
   const url = new URL(request.url);
@@ -62,7 +79,9 @@ async function answer(request: Request): Promise<Response> {
     // Loaded on the first call: most test files never make one, and the setup stays light.
     const { functions } = await import('./server.js');
     // The prefix was just checked, which is the only case in which the handler answers `null`.
-    return keepCookies((await functions()(asSent(request)))!);
+    const response = keepCookies((await functions()(asSent(request)))!);
+    recorded?.push({ method: request.method, path: url.pathname.slice(base.length), status: response.status });
+    return response;
   }
   // The page asking for its `data` again, after a call invalidated it (SDD-68 §4.8).
   if (url.origin === location.origin && url.pathname.startsWith(`${base}${DATA_PREFIX}/`)) {

@@ -24,6 +24,12 @@ export function initOf(template: Element): DeclaredInit {
 }
 
 /**
+ * The text each adopted sheet was made from. happy-dom reads back a nested rule empty, and the
+ * markup written back from a painted piece has to draw as the source does (SDD-78).
+ */
+export const sourceOf = new WeakMap<CSSStyleSheet, string>();
+
+/**
  * The sheets `shadowrootadoptedstylesheets` names, from the `<style type="module" specifier>`
  * of `doc`, in order. A specifier with no style adopts nothing, as in the browser.
  */
@@ -35,6 +41,7 @@ function sheetsOf(template: Element, doc: Document): CSSStyleSheet[] {
     if (style === null) continue;
     const sheet = new CSSStyleSheet();
     sheet.replaceSync(style.textContent);
+    sourceOf.set(sheet, style.textContent);
     sheets.push(sheet);
   }
   return sheets;

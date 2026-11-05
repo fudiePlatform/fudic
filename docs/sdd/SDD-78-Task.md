@@ -4,7 +4,7 @@
 > **Paquetes:** `@fudic/mcp` · `@fudic/testing` · `@fudic/workbench` · `@fudic/history` ·
 > `@fudic/vite` · `@fudic/diagnostics`
 > **Rama:** `sdd-78-ver-la-pieza`, desde `main` con SDD-77 ya mezclada.
-> **Progreso:** 3 / 19 — `Listo`.
+> **Progreso:** 6 / 19 — `Listo`.
 
 **Antes de empezar:** SDD-77 tiene que estar entera en `main`, `fudic_status` incluido (sus tareas
 25–30). La 78 le añade una fase y reglas de `next`.
@@ -26,14 +26,14 @@ el `node_modules` del proyecto; sin ellos, `FUD1207` diciendo qué instalar.
 | [x] | 1 | — | **Los códigos.** `FUD1420`–`FUD1428` (SDD §3.5), cada uno con su `.ts`, su `.md` de unas cinco líneas y su línea en `index.ts`; el rango en el `INDEX.md` | `diagnostics` | `src/codes/FUD142*.ts` · `src/codes/FUD142*.md` · `src/index.ts` |
 | [x] | 2 | — | **MCP Apps.** `@modelcontextprotocol/ext-apps` `1.7.5` exacta, solo en `@fudic/mcp`, sin React. El recurso `ui://fudic/view.html` (`text/html;profile=mcp-app`): un solo HTML construido con el paquete, con el `App` de `app-with-deps` en línea y sin peticiones de red; pinta el `preview` de `render` en un `<iframe srcdoc>` y los casos de `look` lado a lado. Registro con `registerAppResource`/`registerAppTool` (SDD §3.2) | `mcp` | `package.json` · `src/view/*` · `src/apps.ts` · `tsconfig.build.json` |
 | [x] | 3 | 2 | **Las instrucciones.** La línea de aprobaciones nombra `approved` y `look`; la línea de «ver» (SDD §3.3); cada una solo si sus herramientas están registradas | `mcp` | `src/instructions.ts` |
-| [ ] | 4 | 1–3 | **Los tests de la fase.** Criterio 1 (salvo el recuento de herramientas, que se cierra en la tarea 18) | `mcp` | `test/**` |
+| [x] | 4 | 1–3 | **Los tests de la fase.** Criterio 1 (salvo el recuento de herramientas, que se cierra en la tarea 18) | `mcp` | `test/**` |
 
 ## Fase 2 — `fudic_render` (3)
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 5 | 2 | **Render en happy-dom.** Dentro del vitest del proyecto, como `runTests` (SDD §8.1.3): `visit(url)` para una ruta y `mount` con el caso de la fixture más `props` para un componente; `outline`, `html` (DSD sin mapas ni scripts) y `select`; `calls` con las funciones llamadas y `FUD1423` para una sin handler; `FUD1420`, `FUD1421`, `FUD1422`. La vista previa en `_meta`, con las hojas globales en línea y sin scripts | `testing` · `mcp` | `src/render-run.ts` (`@fudic/testing/run`) · `src/render.ts` |
-| [ ] | 6 | 5 | **Render en el navegador.** `engine: "browser"`: el montaje del banco y `outlineOf`; `FUD1428` para una prop que no es JSON; los códigos de SDD-64 si no hay navegador. Entra en la cola de ejecuciones de `fudic_test`/`fudic_spec_run` | `workbench` · `mcp` | `src/render.ts` (workbench, exportado) · `src/render.ts` |
+| [x] | 5 | 2 | **Render en happy-dom.** Dentro del vitest del proyecto, como `runTests` (SDD §8.1.3): `visit(url)` para una ruta y `mount` con el caso de la fixture más `props` para un componente; `outline`, `html` (DSD sin mapas ni scripts) y `select`; `calls` con las funciones llamadas y `FUD1423` para una sin handler; `FUD1420`, `FUD1421`, `FUD1422`. La vista previa en `_meta`, con las hojas globales en línea y sin scripts | `testing` · `mcp` | `src/render-run.ts` (`@fudic/testing/run`) · `src/render.ts` |
+| [x] | 6 | 5 | **Render en el navegador.** `engine: "browser"`: el montaje del banco y `outlineOf`; `FUD1428` para una prop que no es JSON; los códigos de SDD-64 si no hay navegador. Entra en la cola de ejecuciones de `fudic_test`/`fudic_spec_run` | `workbench` · `mcp` | `src/render.ts` (workbench, exportado) · `src/render.ts` |
 | [ ] | 7 | 5, 6 | **Los tests de la fase.** Criterios 2–6. **Prueba en Claude Web:** fila «Render» | `testing` · `workbench` · `mcp` | `test/**` |
 
 ## Fase 3 — el dev server: `fudic_preview` y `fudic_call` (5)

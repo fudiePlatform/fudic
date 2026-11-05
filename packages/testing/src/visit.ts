@@ -37,6 +37,16 @@ function pathnameOf(url: string, base: string): string {
   return path.startsWith(base) ? path.slice(base.length - 1) : path;
 }
 
+/** What the last visit's `load` or `layout` threw that was no `HttpError`: a bug, not an answer. */
+let unexpected: unknown;
+
+/** What the last visit threw unexpectedly, once; `undefined` when it threw nothing of the kind. */
+export function takeUnexpected(): unknown {
+  const error = unexpected;
+  unexpected = undefined;
+  return error;
+}
+
 /** What the dev server answers for `url`: the HTML, its status, and the page that painted it. */
 interface Answer {
   readonly html: string;
@@ -54,6 +64,7 @@ async function answer(url: string, data: unknown): Promise<Answer> {
     return { html: await renderPage(pageModuleOf(rb), routeFacts(rb), rb.route.pattern, pathname, data), status: 200, page: rb };
   } catch (error) {
     const failure = classifyError(error, true);
+    if (failure.kind === 'error' && failure.unexpected) unexpected = error;
     if (failure.kind === 'redirect') {
       throw new Error(`visit('${url}'): redirected with ${failure.status} to ${failure.location} — visit that URL instead`);
     }

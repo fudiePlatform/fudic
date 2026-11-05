@@ -5,7 +5,9 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { registerView } from './apps.js';
+import { registerAppTool } from '@modelcontextprotocol/ext-apps/server';
+import { registerView, VIEW_TOOL_META } from './apps.js';
+import { ENGINES, RENDER_AS, renderTool } from './render.js';
 import { checkProject } from './check.js';
 import { Checks } from './checks.js';
 import { FILE_TOOLS, registerFileTools } from './file-tools.js';
@@ -54,6 +56,7 @@ export function toolNames(entry: Entry): ReadonlySet<string> {
     'fudic_record',
     'fudic_test',
     'fudic_spec_run',
+    'fudic_render',
     ...(entry === 'http' ? FILE_TOOLS : []),
   ]);
 }
@@ -267,6 +270,44 @@ export function createServer(options: ServerOptions): McpServer {
   if (entry === 'http') registerFileTools(server, project, checks);
 
   registerView(server);
+
+  registerAppTool(
+    server,
+    'fudic_render',
+    {
+      title: 'fudic render',
+      description:
+        'Paints one fudic piece at once, with no server started, and answers what it reads: its outline (roles, names and ' +
+        'states, the words a .fudspec finds it by) or its HTML with the declarative shadow DOM; in a chat that draws it, ' +
+        'the piece itself. A component is painted with a case of its fixture — prefer "fixture", a state someone ' +
+        'approved, to "props" —, a route by a concrete URL. "engine": "browser" paints it in a real browser, for when ' +
+        'CSS or layout matter. Seeing is not approving.',
+      inputSchema: {
+        component: z.string().optional().describe('A component tag: acme-button'),
+        route: z.string().optional().describe('A concrete URL of a route: /products/42'),
+        fixture: z.string().optional().describe('A case of the component\'s fixture'),
+        props: z.record(z.string(), z.unknown()).optional().describe('Props, as JSON, on top of the case'),
+        as: z.enum(RENDER_AS).default('outline'),
+        select: z.string().optional().describe('A CSS selector, through shadow roots, that narrows what is answered'),
+        engine: z.enum(ENGINES).default('happy-dom'),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+      _meta: VIEW_TOOL_META,
+    },
+    async ({ component, route, fixture, props, as, select, engine }) =>
+      respond(
+        project,
+        await renderTool(project, checks, queue, {
+          as,
+          engine,
+          ...(component !== undefined ? { component } : {}),
+          ...(route !== undefined ? { route } : {}),
+          ...(fixture !== undefined ? { fixture } : {}),
+          ...(props !== undefined ? { props } : {}),
+          ...(select !== undefined ? { select } : {}),
+        }),
+      ),
+  );
 
   server.registerPrompt(
     'new-app',

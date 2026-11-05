@@ -298,3 +298,6 @@ function firstLine(value: unknown): string {
   const text = value instanceof Error ? value.message : String(value);
   return text.replace(COLOUR, '').split('\n')[0]!;
 }
+
+export { RENDER_DIR, renderPiece, renderSource, type RenderPieceOptions, type RenderPieceResult, type RenderPieceTarget } from './render-run.js';
+export type { PieceCall, RenderError, RenderOutcome } from './render.js';

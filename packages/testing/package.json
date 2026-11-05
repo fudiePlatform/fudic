@@ -43,6 +43,10 @@
       "types": "./dist/run.d.ts",
       "import": "./dist/run.js"
     },
+    "./render": {
+      "types": "./dist/render.d.ts",
+      "import": "./dist/render.js"
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,

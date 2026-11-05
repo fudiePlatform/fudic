@@ -74,6 +74,10 @@ type Workbench = typeof import('@fudic/workbench');
 export interface Runners {
   readonly runTests?: TestingRun['runTests'];
   readonly runSpecs?: Workbench['runSpecs'];
+  /** A piece painted by the project's vitest. Absent in a `@fudic/testing` older than this server. */
+  readonly renderPiece?: TestingRun['renderPiece'];
+  /** A piece painted in the bench's browser. Absent in a `@fudic/workbench` older than this server. */
+  readonly renderInBrowser?: Workbench['renderInBrowser'];
 }
 
 /** The runners the project installed; a missing one is absent, and its tool says so. */
@@ -82,9 +86,14 @@ export async function loadRunners(root: string, load: Importer = (url) => import
   const tests = testing === undefined ? undefined : exportedFile(testing, './run');
   const workbench = packageDir('@fudic/workbench', root);
   const specs = workbench === undefined ? undefined : exportedFile(workbench, '.');
-  const runTests = tests === undefined ? undefined : ((await load(pathToFileURL(tests).href)) as TestingRun).runTests;
-  const runSpecs = specs === undefined ? undefined : ((await load(pathToFileURL(specs).href)) as Workbench).runSpecs;
-  return { ...(runTests !== undefined ? { runTests } : {}), ...(runSpecs !== undefined ? { runSpecs } : {}) };
+  const run = tests === undefined ? undefined : ((await load(pathToFileURL(tests).href)) as Partial<TestingRun>);
+  const bench = specs === undefined ? undefined : ((await load(pathToFileURL(specs).href)) as Partial<Workbench>);
+  return {
+    ...(run?.runTests !== undefined ? { runTests: run.runTests } : {}),
+    ...(run?.renderPiece !== undefined ? { renderPiece: run.renderPiece } : {}),
+    ...(bench?.runSpecs !== undefined ? { runSpecs: bench.runSpecs } : {}),
+    ...(bench?.renderInBrowser !== undefined ? { renderInBrowser: bench.renderInBrowser } : {}),
+  };
 }
 
 /** The fudic of the project at `root`, or the server's own, piece by piece. */
