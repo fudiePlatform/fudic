@@ -38,6 +38,8 @@ y estado inicial de la página(load) en fudapi y fudspec
 Integrarlo con params y layout
 propagar @fudic:result=@hecho y @fudic:error en formularios y que puedan
 ser capturados desde la página en el host
+Generar una hoja de estilos desde la cli->El user colabora
+Exponer el fudic.json al igual que el sw.json en el mcp para que la IA sepa configurarlo.
 
 
 ## Analisis con sesión 
