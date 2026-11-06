@@ -1,6 +1,6 @@
 # SDD-79 — La guía de estilos: generada completa, cortada en trozos y compartida por la lib
 
-> **Estado:** `Listo` — [tareas](./SDD-79-Task.md).
+> **Estado:** `Hecho` — [tareas](./SDD-79-Task.md).
 > **Paquetes:** `@fudic/config` · `@fudic/compiler` · `@fudic/vite` · `@fudic/language-server` ·
 > `@fudic/cli` · `@fudic/mcp` · `@fudic/diagnostics` · `examples/workspace`
 > **Depende de:** 42 (la hoja del proyecto adoptada), 43 (librerías y la cadena de dependencias),
@@ -645,4 +645,5 @@ editor añade los dos trozos, y que quitar el `<details>` avisa sin quitar nada.
    qué revalidar) y el worker vuelve a guardar. 5 de 5 en verde.
 8. **Un test del banco de trabajo (`outline.test.ts`) fijaba un tiempo de 200 ms antes de cargar la
    página**, y con la máquina cargada era la carga la que se pasaba de tiempo y cortaba `pnpm test`
-   entero. El tiempo corto se fija después de cargar.
+   entero. El tiempo corto se fija después de cargar, y `workbench` y `terms`, que abren Chrome a
+   la vez bajo `pnpm test`, ganan el margen de tiempo que ya tienen otros paquetes (BUG-52).

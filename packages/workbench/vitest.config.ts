@@ -7,6 +7,9 @@ export default defineConfig({
     // Most files launch a browser whose every call waits at most five seconds: with one worker
     // per core they starve each other, and a screenshot or a wait times out at random.
     maxWorkers: 2,
+    // Launching and closing Chrome in `beforeAll`/`afterAll` while every other package holds
+    // the CPUs under `pnpm test` takes longer than the 10 s default (BUG-52, as in `terms`).
+    hookTimeout: 60_000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

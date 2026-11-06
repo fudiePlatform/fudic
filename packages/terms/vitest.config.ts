@@ -7,6 +7,9 @@ export default defineConfig({
     // A `beforeAll` launches Chrome, and under `pnpm test` every package has the CPUs: the 10 s
     // of the default is not enough to start a browser there (BUG-52).
     hookTimeout: 60_000,
+    // And the first test of a file drives that browser while every other package holds the
+    // CPUs too: a click and a settle take longer than the 5 s default there, never wrong.
+    testTimeout: 30_000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
