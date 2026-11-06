@@ -577,17 +577,31 @@ export function writeHeadElements(
      * sheet is written as the author wrote it.
      */
     readonly sheet?: (el: ElementNode) => string | null;
+    /**
+     * Where the style guide goes: called once, before the first stylesheet of this head, or
+     * before the route's contributions, or at the end — the guide defines and the sheets
+     * after it adjust. Absent when there is no guide.
+     */
+    readonly onGuide?: () => void;
   },
   w: CodeWriter,
 ): void {
   let injected = false;
+  let guided = options.onGuide === undefined;
+  const guide = (): void => {
+    if (guided) return;
+    guided = true;
+    options.onGuide!();
+  };
   for (const child of head.children) {
     if (options.injectAt !== undefined && child === options.injectAt) {
+      guide();
       options.onInject?.();
       injected = true;
       continue;
     }
     if (child.type !== 'element' || options.skip.has(child)) continue;
+    if (isStylesheet(child)) guide();
     // A framework link is the component/layout graph and is never output — in ANY role.
     // The `skip` set says so for the one role that collects them into a field; this says it
     // for the rest, which is what stops a misplaced one (FUD0438) from being published as
@@ -616,7 +630,26 @@ export function writeHeadElements(
   }
   // A layout whose `@RenderHead()` sits deeper than a direct child of `<head>` (or none at
   // all, FUD0425): the route's contributions still go out, at the end of the head.
+  guide();
   if (!injected && options.onInject !== undefined) options.onInject();
+}
+
+/** A `<style>`, or a `<link>` whose `rel` names a stylesheet: what the guide goes before. */
+function isStylesheet(el: ElementNode): boolean {
+  if (el.name === 'style') return true;
+  return el.name === 'link' && relTokens(el).includes('stylesheet');
+}
+
+/** The tokens of an element's literal `rel`, lower case. */
+function relTokens(el: ElementNode): readonly string[] {
+  return (literalAttr(el, 'rel') ?? '').toLowerCase().split(/\s+/u);
+}
+
+/** Whether a `<head>` links an icon of its own: the author's then wins over the guide's. */
+export function hasIcon(head: ElementNode | undefined): boolean {
+  return (head?.children ?? []).some(
+    (c) => c.type === 'element' && c.name === 'link' && relTokens(c).includes('icon'),
+  );
 }
 
 /**

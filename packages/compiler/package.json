@@ -44,6 +44,7 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@fudic/config": "workspace:*",
     "@fudic/diagnostics": "workspace:*",
     "@fudic/i18n": "workspace:*",
     "oxc-parser": "0.137.0"

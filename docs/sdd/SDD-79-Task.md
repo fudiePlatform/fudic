@@ -4,7 +4,8 @@
 > **Paquetes:** `config` · `compiler` · `vite` · `language-server` · `cli` · `mcp` · `diagnostics` ·
 > `examples/workspace`
 > **Rama:** `sdd-79-guia-de-estilos-generada`, desde `main`.
-> **Progreso:** 3 / 22 — `En curso`.
+> **Progreso:** 6 / 22 — `En curso`. Las tareas de tests (5, 8, 12, 13, 16, 18) las escribe la
+> sesión de test y se marcan cuando las entrega.
 
 **El orden manda en dos puntos.** El defecto de los `url()` (tarea 3) va antes que los trozos,
 porque un trozo de lib con un icono lo pisa. Y la plantilla de la guía (fase 4) se escribe después
@@ -46,10 +47,10 @@ del compilador y el build, porque sus criterios (25, 26) construyen la app gener
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 4 | 1, 2 | **`readGuide` y `piecesForTag`.** Aplanar con `flattenImports`; clasificar cada import directo según §4.3 (adoptable, no global, nombre válido → trozo; `FUD1442` si el nombre no vale); `piecesForTag` por el sujeto de cada selector (§4.5) | `compiler` | `src/css/guide.ts` (nuevo) · `src/index.ts` |
+| [x] | 4 | 1, 2 | **`readGuide` y `piecesForTag`.** Aplanar con `flattenImports`; clasificar cada import directo según §4.3 (adoptable, no global, nombre válido → trozo; `FUD1442` si el nombre no vale); `piecesForTag` por el sujeto de cada selector (§4.5) | `compiler` | `src/css/guide.ts` (nuevo) · `src/index.ts` |
 | [ ] | 5 | 4 | **Sus tests.** Criterios 2–5, sobre la plantilla real (`packages/cli/templates/guide`) cuando exista y sobre fixtures mínimas hasta entonces | `compiler` | `test/css/guide.test.ts` |
-| [ ] | 6 | 3, 4 | **El emit: `guides` e `icon`.** `pageSheets` añade cada `GuideSheet` como hoja de documento antes de las del layout, con ámbito `document` y la misma entrega que un `<link>` podado; el `<link rel="icon">` solo si el `<head>` no tiene uno (SDD §4.2, §4.7) | `compiler` | `src/emit/page-sheets.ts` · `src/emit/layout.ts` · `src/emit/module.ts` (`EmitOptions`) |
-| [ ] | 7 | 6 | **Vite: la cadena.** `ProjectStyleChains.guidesFor`/`iconFor`; los trozos en `choosableFor` con la comprobación de `FUD0741`; `FUD1443`; `FUD1440` y `FUD1441` para el componente de la entrada, junto a `adoptDiagnostics`; el fichero de la guía y sus imports entran en las dependencias del módulo para que editar un trozo repinte en dev | `vite` | `src/styles.ts` · `src/transform.ts` |
+| [x] | 6 | 3, 4 | **El emit: `guides` e `icon`.** `pageSheets` añade cada `GuideSheet` como hoja de documento antes de las del layout, con ámbito `document` y la misma entrega que un `<link>` podado; el `<link rel="icon">` solo si el `<head>` no tiene uno (SDD §4.2, §4.7) | `compiler` | `src/emit/page-sheets.ts` · `src/emit/layout.ts` · `src/emit/module.ts` (`EmitOptions`) |
+| [x] | 7 | 6 | **Vite: la cadena.** `ProjectStyleChains.guidesFor`/`iconFor`; los trozos en `choosableFor` con la comprobación de `FUD0741`; `FUD1443`; `FUD1440` y `FUD1441` para el componente de la entrada, junto a `adoptDiagnostics`; el fichero de la guía y sus imports entran en las dependencias del módulo para que editar un trozo repinte en dev | `vite` | `src/styles.ts` · `src/transform.ts` |
 | [ ] | 8 | 7 | **Tests del build.** Criterios 6–17 y 24 con un workspace de prueba (app + `libs/ui` + `libs/guide`); el 8 con el snapshot existente sin tocar | `vite` | `test/guide-*.test.ts` |
 
 ## Fase 3 — el editor (5)

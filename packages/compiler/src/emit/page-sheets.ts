@@ -18,10 +18,18 @@ import { isComponentLink, isLayoutLink, isSnippetLink } from '../document/index.
 import type { AssetLinker } from './assets.js';
 import { flattenImports, plainSheet, type FileDiagnostic, type FlatSheet } from '../css/index.js';
 import type { EmitOptions } from './module.js';
-import { asksInline, deliveredSheet, fixedSheetHref, linkWithHref, prunableHref, sheetKey } from './parts.js';
+import {
+  asksInline,
+  deliveredSheet,
+  fixedSheetHref,
+  hasIcon,
+  linkWithHref,
+  prunableHref,
+  sheetKey,
+} from './parts.js';
 import { compactStyleCss } from './css-compact.js';
 import type { StyleNode } from '../css/index.js';
-import { projectAdoptOf, projectCss, type ProjectStyle } from './project-styles.js';
+import { compactProjectCss, projectAdoptOf, projectCss, type ProjectStyle } from './project-styles.js';
 import { prunePage, sheetDiagnostics, type PageSheet } from './prune.js';
 import { allComponents, type DocumentGraph } from './resolve.js';
 import { documentSurface, pageTokenConsumers, shadowSurface, unionSurfaces } from './surface.js';
@@ -97,6 +105,52 @@ export interface PageSheets {
   readonly uses: readonly SheetUse[];
   /** The copies its head links, to hint before the page (SDD-70 §3.10), in document order. */
   readonly hints: readonly EarlyHint[];
+  /** The guides' elements and the guide's icon, as one JS expression; `null` with neither. */
+  readonly guide: string | null;
+}
+
+/** The guide expression of a page: the pruned one when it prunes, the whole guides when not. */
+export function guideOf(
+  graph: DocumentGraph,
+  options: EmitOptions,
+  linker: AssetLinker,
+  sheets: PageSheets | null,
+): string | null {
+  if (sheets !== null) return sheets.guide;
+  return pageGuide(graph, options, linker, (i) => compactProjectCss(options.guides![i]!.sheet.css)).expr;
+}
+
+/**
+ * The style guides and the icon a page writes into its head, as one JS expression, or `null`
+ * when it has neither. `cssOf` is what the page kept of each guide; whole when it prunes
+ * nothing. Each guide goes as a `<link>` to its copy when the host publishes copies, inside a
+ * `<style>` when it does not; one the page kept nothing of goes not at all.
+ */
+export function pageGuide(
+  graph: DocumentGraph,
+  options: EmitOptions,
+  linker: AssetLinker,
+  cssOf: (index: number) => string,
+): { readonly expr: string | null; readonly hints: readonly EarlyHint[] } {
+  const parts: string[] = [];
+  const hints: EarlyHint[] = [];
+  (options.guides ?? []).forEach((guide, i) => {
+    const css = cssOf(i);
+    if (css === '') return;
+    const url = linker.sheetRef(guide.spec, linker.cssLinked(css));
+    if (url === null) {
+      parts.push(`'<style' + $nonce + '>' + ${linker.cssTemplate(css)} + '</style>'`);
+      return;
+    }
+    parts.push(JSON.stringify(`<link rel="stylesheet" href="${url}">`));
+    hints.push({ href: url, rel: 'preload', as: 'style' });
+  });
+  const heads = [...graph.layouts.map((l) => l.doc.head), 'head' in graph.entry ? graph.entry.head : undefined];
+  if (options.icon !== undefined && !heads.some(hasIcon)) {
+    const href = linker.maybeRef(options.icon, 'head') ?? JSON.stringify(options.icon);
+    parts.push(`'<link rel="icon" href="' + ${href} + '">'`);
+  }
+  return { expr: parts.length === 0 ? null : parts.join(' + '), hints };
 }
 
 const isFrameworkLink = (el: ElementNode): boolean =>
@@ -253,12 +307,12 @@ export function planPageSheets(
 
   const document = documentSurface(graph);
   const linked = [...layoutSheets, ...ownSheets];
-  const sheets: PageSheet[] = linked.map((s) => ({
-    key: s.key,
-    sheet: s.flat,
-    scope: 'document',
-    surface: document,
-  }));
+  // The guides first: the page receives them before anything its heads link.
+  const guides = options.guides ?? [];
+  const sheets: PageSheet[] = [
+    ...guides.map((g, i): PageSheet => ({ key: `guide:${i}`, sheet: g.sheet, scope: 'document', surface: document })),
+    ...linked.map((s): PageSheet => ({ key: s.key, sheet: s.flat, scope: 'document', surface: document })),
+  ];
 
   const adopt = projectAdoptOf(options.projectStyles, options.styleChains);
   const components = allComponents(graph);
@@ -316,5 +370,13 @@ export function planPageSheets(
       css: adopted.get(s.specifier) ? cssOf.get(`project:${s.specifier}`)! : '',
     })),
   ];
-  return { layout, own: (el) => own.get(el) ?? null, projectStyles, uses, hints };
+  const guide = pageGuide(graph, options, linker, (i) => cssOf.get(`guide:${i}`)!);
+  return {
+    layout,
+    own: (el) => own.get(el) ?? null,
+    projectStyles,
+    uses,
+    hints: [...guide.hints, ...hints],
+    guide: guide.expr,
+  };
 }

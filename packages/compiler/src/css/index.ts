@@ -26,3 +26,5 @@ export type {
   CompoundSelector,
 } from './selectors.js';
 export { parseSelectorList } from './selectors.js';
+export type { Guide, GuidePiece } from './guide.js';
+export { piecesForTag, readGuide } from './guide.js';

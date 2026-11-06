@@ -183,7 +183,7 @@ export function parseImport(prelude: string): CssImport | null {
 // ---------------------------------------------------------------------------
 
 /** A URL the host can be asked to read: relative, with no scheme and not root-absolute. */
-function isRelative(url: string): boolean {
+export function isRelative(url: string): boolean {
   if (url === '' || url.startsWith('/') || url.startsWith('#')) return false;
   return !/^[a-z][a-z0-9+.-]*:/iu.test(url);
 }

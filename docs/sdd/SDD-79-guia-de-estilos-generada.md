@@ -560,3 +560,21 @@ editor añade los dos trozos, y que quitar el `<details>` avisa sin quitar nada.
 3. **La ruta absoluta de cada hoja viaja en el host** (`HostStyle.file`, en `@fudic/vite`) y cada
    entrada la convierte en su `spec` relativo al compilarse: la cadena se cachea por paquete y el
    `spec` cambia con cada entrada.
+4. **`@fudic/compiler` depende de `@fudic/config`** para `STYLE_NAME_PATTERN`: una sola definición
+   del nombre de hoja (`FUD1442` la usa).
+5. **Un trozo con `@import`, o solo con `@media` que envuelve `:root`,** se decide por lo que hay
+   dentro: un `@media` solo con reglas del documento no hace trozo; un `@import` sí (y da `FUD0854`).
+6. **Dónde va la guía en el `<head>`:** justo antes de la primera hoja (`<link rel="stylesheet">` o
+   `<style>`) del head del layout, o antes de lo que aporta la ruta, o al final. El layout pide a la
+   ruta `guide()` (como ya pide `sheet(key)`): la copia está podada para cada página y solo la ruta
+   la conoce. El layout escribe esa llamada solo si su propia cadena tiene guía o icono; sin guía,
+   ni una línea cambia.
+7. **El favicon** se busca en los `<head>` de los layouts y de la entrada (`rel` con el token
+   `icon`); si alguno lo trae, no se añade.
+8. **La guía no entra en el aviso de CSS muerto (`FUD0852`)**: es normal que una página no use la
+   mayoría de los trozos, y avisar de cada uno sería ruido.
+9. **`FUD1440` sale una vez por etiqueta**, sobre su primera aparición: diez `<button>` sin adoptar
+   son un solo arreglo. Los dos avisos los calcula una sola función del compilador
+   (`guideAdoptionDiagnostics`) que usan el build y el editor; el build le da la superficie del
+   shadow con los snippets ya expandidos (`shadowSurface`), el editor la del template solo
+   (`templateSurface`).

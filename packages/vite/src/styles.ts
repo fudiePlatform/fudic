@@ -16,7 +16,11 @@ import {
   lintProjectStyle,
   projectSheetDiagnostics,
   type Diagnostic,
+  type GuidePiece,
+  type GuideSheet,
 } from '@fudic/compiler';
+import { dirname } from 'node:path';
+import { entryGuide, readPackageGuide, specFrom, type PackageGuide } from './guide.js';
 import type { HostStyle } from './transform.js';
 import { FUD0741, type FileDiagnostic } from '@fudic/diagnostics';
 import {
@@ -37,6 +41,8 @@ export interface StylesResult {
   readonly errors: readonly FileDiagnostic[];
   /** `FUD0743`: a rule of the sheet that matches nothing where the sheet goes (§4.5). */
   readonly warnings: readonly FileDiagnostic[];
+  /** The style guide the package carries, when it declares one that is there. */
+  readonly guide?: PackageGuide;
 }
 
 /** A project that declares no sheet at all. */
@@ -71,6 +77,10 @@ export interface PackageSheets {
   readonly global: readonly HostStyle[];
   /** Name → sheet: what its root template may name, from any package of the chain. */
   readonly optional: ReadonlyMap<string, HostStyle>;
+  /** The guides of the chain, root first. */
+  readonly guides: readonly PackageGuide[];
+  /** Their pieces, in the same order: what the editor's advice and the build's is about. */
+  readonly pieces: readonly GuidePiece[];
 }
 
 /**
@@ -123,7 +133,18 @@ export class ProjectStyleChains {
     const key = toPosix(this.#io.realPath(toPosix(packageRoot)));
     const cached = this.#own.get(key);
     if (cached !== undefined) return cached;
-    const result = readStyles(key, readProjectConfig(key, this.#config).config, this.#config);
+    const config = readProjectConfig(key, this.#config).config;
+    const sheets = readStyles(key, config, this.#config);
+    const globals = sheets.global.flatMap((s) => (s.file === undefined ? [] : [s.file]));
+    const read = readPackageGuide(key, config, globals, this.#io);
+    // A piece is adopted like any sheet of `styles`, and is checked like one: no `@import`,
+    // and no rule that only the document can match.
+    const result: StylesResult = {
+      ...sheets,
+      errors: [...sheets.errors, ...read.errors, ...read.files.flatMap(importErrors)],
+      warnings: [...sheets.warnings, ...read.warnings, ...read.files.flatMap(lintOne)],
+      ...(read.guide === undefined ? {} : { guide: read.guide }),
+    };
     this.#own.set(key, result);
     if (key !== this.#root) this.#diagnostics.push(...result.errors);
     return result;
@@ -140,6 +161,30 @@ export class ProjectStyleChains {
   /** The sheets a component defined in `file` may choose by name, from its whole chain. */
   choosableFor(file: string): ReadonlyMap<string, HostStyle> {
     return this.#sheetsFor(file).optional;
+  }
+
+  /** The pieces of the guides of the chain of `file`: what its components may adopt from them. */
+  piecesFor(file: string): readonly GuidePiece[] {
+    return this.#sheetsFor(file).pieces;
+  }
+
+  /** Entry file → its guides, flattened from its folder. */
+  readonly #entryGuides = new Map<string, readonly GuideSheet[]>();
+
+  /** The guides the page `file` links, root of its chain first, as `file` sees them. */
+  guidesFor(file: string): readonly GuideSheet[] {
+    const key = toPosix(file);
+    const cached = this.#entryGuides.get(key);
+    if (cached !== undefined) return cached;
+    const guides = this.#sheetsFor(key).guides.map((g) => entryGuide(g, key, this.#io));
+    this.#entryGuides.set(key, guides);
+    return guides;
+  }
+
+  /** The icon of the nearest guide of the chain of `file` that has one, relative to `file`. */
+  iconFor(file: string): string | undefined {
+    const icon = this.#sheetsFor(file).guides.findLast((g) => g.icon !== undefined)?.icon;
+    return icon === undefined ? undefined : specFrom(dirname(toPosix(file)), icon);
   }
 
   #sheetsFor(file: string): PackageSheets {
@@ -186,6 +231,8 @@ export class ProjectStyleChains {
     if (cached !== undefined) return cached;
     const global: HostStyle[] = [];
     const optional = new Map<string, HostStyle>();
+    const guides: PackageGuide[] = [];
+    const pieces: GuidePiece[] = [];
     // Name → the package that already contributed it. Two sheets under one name cannot be
     // told apart in the module map, and one of them would silently replace the other — the
     // same `FUD0741` `@fudic/config` reports inside one project, across two. Global and
@@ -211,8 +258,17 @@ export class ProjectStyleChains {
       for (const sheet of own.optional) {
         if (claim(sheet, by)) optional.set(sheet.specifier, sheet);
       }
+      if (own.guide === undefined) continue;
+      guides.push(own.guide);
+      // The pieces are chosen by name like `styles`, and share their names: one module map.
+      for (const piece of own.guide.pieces) {
+        const sheet: HostStyle = { specifier: piece.name, css: piece.css, file: piece.path };
+        if (!claim(sheet, by)) continue;
+        optional.set(piece.name, sheet);
+        pieces.push(piece);
+      }
     }
-    const sheets = { global, optional };
+    const sheets = { global, optional, guides, pieces };
     this.#chain.set(packageRoot, sheets);
     return sheets;
   }
