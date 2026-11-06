@@ -552,4 +552,11 @@ editor añade los dos trozos, y que quitar el `<details>` avisa sin quitar nada.
 
 ### 8.2. Tomadas al implementar
 
-*(vacío)*
+1. **Las rutas de `guide` usan la regla de `readFolder`** extraída a un `insidePath` común: una
+   ruta vacía, absoluta o que sale del proyecto es `FUD0725` con el problema `guide` y su motivo.
+2. **Que existan `guide.sheet` y `guide.icon` no lo mira `readProjectConfig`**: varios lectores le
+   pasan un `exists` que siempre dice sí (el editor, el typecheck). Lo mira quien lee la guía con
+   disco de verdad (§4.2, tarea 7).
+3. **La ruta absoluta de cada hoja viaja en el host** (`HostStyle.file`, en `@fudic/vite`) y cada
+   entrada la convierte en su `spec` relativo al compilarse: la cadena se cachea por paquete y el
+   `spec` cambia con cada entrada.

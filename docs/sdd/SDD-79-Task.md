@@ -4,7 +4,7 @@
 > **Paquetes:** `config` · `compiler` · `vite` · `language-server` · `cli` · `mcp` · `diagnostics` ·
 > `examples/workspace`
 > **Rama:** `sdd-79-guia-de-estilos-generada`, desde `main`.
-> **Progreso:** 0 / 22 — `Listo`.
+> **Progreso:** 3 / 22 — `En curso`.
 
 **El orden manda en dos puntos.** El defecto de los `url()` (tarea 3) va antes que los trozos,
 porque un trozo de lib con un icono lo pisa. Y la plantilla de la guía (fase 4) se escribe después
@@ -38,9 +38,9 @@ del compilador y el build, porque sus criterios (25, 26) construyen la app gener
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **Los códigos.** `FUD1440`–`FUD1443`, cada uno con su `.ts` tipado, su `.md` de unas cinco líneas y su línea en `index.ts` (SDD §3.6). Rango `FUD1440`–`FUD1459` reservado | `diagnostics` | `src/codes/FUD144*.{ts,md}` · `src/index.ts` |
-| [ ] | 2 | — | **`guide` en `fudic.json`.** `GuideConfig`, lectura con `readFolder` para las rutas, `FUD0725` en las formas inválidas (SDD §3.1). Criterio 1 | `config` | `src/read.ts` · `test/read.test.ts` |
-| [ ] | 3 | — | **Los `url()` de una hoja adoptada desde su fichero.** `ProjectStyle.spec`; `renderProjectStyles`, la poda (`plainSheet`) y `sheetUrlsOf` reescriben contra él; el host lo rellena desde la ruta que hoy descarta ([styles.ts:57](../../packages/vite/src/styles.ts)) (SDD §4.6). Criterio 14 | `compiler` · `vite` | `src/emit/project-styles.ts` · `src/emit/page-sheets.ts` · `src/emit/module.ts` · `src/styles.ts` |
+| [x] | 1 | — | **Los códigos.** `FUD1440`–`FUD1443`, cada uno con su `.ts` tipado, su `.md` de unas cinco líneas y su línea en `index.ts` (SDD §3.6). Rango `FUD1440`–`FUD1459` reservado | `diagnostics` | `src/codes/FUD144*.{ts,md}` · `src/index.ts` |
+| [x] | 2 | — | **`guide` en `fudic.json`.** `GuideConfig`, lectura con `readFolder` para las rutas, `FUD0725` en las formas inválidas (SDD §3.1). Criterio 1 | `config` | `src/read.ts` · `test/read.test.ts` |
+| [x] | 3 | — | **Los `url()` de una hoja adoptada desde su fichero.** `ProjectStyle.spec`; `renderProjectStyles`, la poda (`plainSheet`) y `sheetUrlsOf` reescriben contra él; el host lo rellena desde la ruta que hoy descarta ([styles.ts:57](../../packages/vite/src/styles.ts)) (SDD §4.6). Criterio 14 | `compiler` · `vite` | `src/emit/project-styles.ts` · `src/emit/page-sheets.ts` · `src/emit/module.ts` · `src/styles.ts` |
 
 ## Fase 2 — el compilador y el build (5)
 

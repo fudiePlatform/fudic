@@ -16,8 +16,8 @@ import {
   lintProjectStyle,
   projectSheetDiagnostics,
   type Diagnostic,
-  type ProjectStyle,
 } from '@fudic/compiler';
+import type { HostStyle } from './transform.js';
 import { FUD0741, type FileDiagnostic } from '@fudic/diagnostics';
 import {
   readProjectConfig,
@@ -30,9 +30,9 @@ import { dependencyChain, owningPackage, type PackageFs } from '@fudic/resolve';
 
 export interface StylesResult {
   /** `globalStyles`, in adoption order: every component of the project adopts them. */
-  readonly global: readonly ProjectStyle[];
+  readonly global: readonly HostStyle[];
   /** `styles`: the ones a component names in its root template to adopt. */
-  readonly optional: readonly ProjectStyle[];
+  readonly optional: readonly HostStyle[];
   /** Fatal: the document would render with styles nobody declared (§4.1). */
   readonly errors: readonly FileDiagnostic[];
   /** `FUD0743`: a rule of the sheet that matches nothing where the sheet goes (§4.5). */
@@ -52,9 +52,9 @@ export function readStyles(
     return NO_SHEETS;
   }
   const { global, optional, diagnostics } = readProjectStyles(root, config, io);
-  // Only the two the emit needs: the path it was read from is the reader's business, and
-  // carrying it further would put a filesystem path inside the compiler's options.
-  const strip = ({ specifier, css }: ProjectStyleFile): ProjectStyle => ({ specifier, css });
+  // The path it was read from travels too: each entry turns it into its own relative `spec`,
+  // so the sheet's `url()` resolve from the sheet's file and not from the page.
+  const strip = ({ specifier, css, path }: ProjectStyleFile): HostStyle => ({ specifier, css, file: path });
   return {
     global: global.map(strip),
     optional: optional.map(strip),
@@ -68,9 +68,9 @@ export function readStyles(
 /** What a component of one package can adopt: the chain's global sheets, and what it may choose. */
 export interface PackageSheets {
   /** Every component adopts these, root of the chain first. */
-  readonly global: readonly ProjectStyle[];
+  readonly global: readonly HostStyle[];
   /** Name → sheet: what its root template may name, from any package of the chain. */
-  readonly optional: ReadonlyMap<string, ProjectStyle>;
+  readonly optional: ReadonlyMap<string, HostStyle>;
 }
 
 /**
@@ -133,12 +133,12 @@ export class ProjectStyleChains {
    * The sheets a component defined in `file` adopts, in cascade order: the root of its
    * package's dependency chain first, its own package last.
    */
-  chainFor(file: string): readonly ProjectStyle[] {
+  chainFor(file: string): readonly HostStyle[] {
     return this.#sheetsFor(file).global;
   }
 
   /** The sheets a component defined in `file` may choose by name, from its whole chain. */
-  choosableFor(file: string): ReadonlyMap<string, ProjectStyle> {
+  choosableFor(file: string): ReadonlyMap<string, HostStyle> {
     return this.#sheetsFor(file).optional;
   }
 
@@ -158,7 +158,7 @@ export class ProjectStyleChains {
    * what makes every sheet of the build, and everything reading them had to say, known before
    * the first module is emitted rather than halfway through the first transform.
    */
-  chainOfPackage(packageRoot: string): readonly ProjectStyle[] {
+  chainOfPackage(packageRoot: string): readonly HostStyle[] {
     return this.#chainOf(toPosix(this.#io.realPath(toPosix(packageRoot)))).global;
   }
 
@@ -184,14 +184,14 @@ export class ProjectStyleChains {
   #chainOf(packageRoot: string): PackageSheets {
     const cached = this.#chain.get(packageRoot);
     if (cached !== undefined) return cached;
-    const global: ProjectStyle[] = [];
-    const optional = new Map<string, ProjectStyle>();
+    const global: HostStyle[] = [];
+    const optional = new Map<string, HostStyle>();
     // Name → the package that already contributed it. Two sheets under one name cannot be
     // told apart in the module map, and one of them would silently replace the other — the
     // same `FUD0741` `@fudic/config` reports inside one project, across two. Global and
     // optional share it: the module map does not know which list a name came from.
     const claimed = new Map<string, string>();
-    const claim = (sheet: ProjectStyle, by: string): boolean => {
+    const claim = (sheet: HostStyle, by: string): boolean => {
       const owner = claimed.get(sheet.specifier);
       if (owner !== undefined) {
         this.#diagnostics.push(clash(sheet.specifier, owner, by));

@@ -468,6 +468,13 @@ export function flattenImports(spec: string, css: string, read: CssRead): FlatSh
   return flattener.result(root);
 }
 
+/** `css`, written in the file `from`, with every relative `url()` rewritten relative to the `.fud`. */
+export function rebaseUrls(css: string, from: string): string {
+  return css.replace(URL_RE, (whole, q: string, url: string) =>
+    isRelative(url) ? `url(${q}${joinSpec(from, url)}${q})` : whole,
+  );
+}
+
 /** A sheet of one file and no imports: a project sheet, as the prune takes it. */
 export function plainSheet(file: string, css: string): FlatSheet {
   return {

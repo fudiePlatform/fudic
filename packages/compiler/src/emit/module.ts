@@ -68,6 +68,7 @@ import {
 import {
   compactProjectCss,
   projectAdoptOf,
+  projectCss,
   renderProjectStyles,
   type ProjectStyle,
 } from './project-styles.js';
@@ -283,7 +284,7 @@ export function sheetUrlsOf(
   const publish = options.componentSheet;
   if (publish === undefined) return undefined;
   const adopt = projectAdoptOf(options.projectStyles, options.styleChains);
-  const project = new Map((options.projectStyles ?? []).map((s) => [s.specifier, s.css]));
+  const project = new Map((options.projectStyles ?? []).map((s) => [s.specifier, projectCss(s)]));
   const projectUrl = (specifier: string): string[] => {
     const css = project.get(specifier);
     return css === undefined ? [] : [publish(specifier, linker.cssLinked(compactProjectCss(css)))];

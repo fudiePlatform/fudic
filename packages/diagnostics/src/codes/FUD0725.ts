@@ -62,7 +62,13 @@ export type FUD0725Problem =
   /** `earlyHints` that is not a boolean (SDD-70 §3.10). */
   | { readonly problem: 'early-hints' }
   /** `css` that is neither `"inline"` nor `"link"` (SDD-73 §3.5). */
-  | { readonly problem: 'css' };
+  | { readonly problem: 'css' }
+  /** `guide` that is not `{ sheet, icon? }` with paths inside the project (SDD-79 §3.1). */
+  | {
+      readonly problem: 'guide';
+      /** What is wrong with it: not an object, no sheet, or a path that is not one or leaves. */
+      readonly reason: string;
+    };
 
 /** Parameters of `FUD0725`. */
 export type FUD0725Params = FileInput & FUD0725Problem;
@@ -103,6 +109,8 @@ function describe(p: FUD0725Problem): string {
       return 'fudic.json "earlyHints" must be true or false';
     case 'css':
       return 'fudic.json "css" must be "inline" (the CSS inside the page) or "link" (a file per sheet)';
+    case 'guide':
+      return `fudic.json "guide" must be { "sheet": "guide.css", "icon"?: "logo.svg" } with paths inside the project: ${p.reason}`;
   }
 }
 

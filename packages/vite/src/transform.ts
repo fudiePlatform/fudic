@@ -151,9 +151,25 @@ function buildMap(id: string, source: string, out: EmitOutput, map: OffsetMap): 
  */
 export interface ProjectStyles {
   /** The sheets a component defined in `file` adopts, cascade order, root of the chain first. */
-  chainFor(file: string): readonly ProjectStyle[];
+  chainFor(file: string): readonly HostStyle[];
   /** The sheets a component defined in `file` may choose by name on its root template. */
-  choosableFor(file: string): ReadonlyMap<string, ProjectStyle>;
+  choosableFor(file: string): ReadonlyMap<string, HostStyle>;
+}
+
+/**
+ * A project sheet as the host holds it: the emit's sheet plus the absolute path it was read
+ * from, which every entry turns into its own relative `spec` so the sheet's `url()` resolve
+ * from the sheet's file. Absent for a sheet that is not a file.
+ */
+export interface HostStyle extends ProjectStyle {
+  readonly file?: string;
+}
+
+/** The sheet as the entry at `entryPath` hands it to the emit: its file, relative to the entry. */
+function forEntry(sheet: HostStyle, entryPath: string): ProjectStyle {
+  if (sheet.file === undefined) return { specifier: sheet.specifier, css: sheet.css };
+  const rel = relative(dirname(entryPath), sheet.file).replace(/\\/gu, '/');
+  return { specifier: sheet.specifier, css: sheet.css, spec: rel.startsWith('..') ? rel : `./${rel}` };
 }
 
 /** A build with no style guide at all: the standalone emit, and every pre-SDD-42 project. */
@@ -164,7 +180,7 @@ export const NO_STYLES: ProjectStyles = { chainFor: () => [], choosableFor: () =
  * sheets, then the ones its root template names, in the order it names them. A name the
  * project does not declare is left out here and reported by `adoptDiagnostics`.
  */
-function projectSheetsOf(component: ResolvedComponent, styles: ProjectStyles): readonly ProjectStyle[] {
+function projectSheetsOf(component: ResolvedComponent, styles: ProjectStyles): readonly HostStyle[] {
   const global = styles.chainFor(component.path);
   const names = adoptedStylesOf(component.doc.template).names;
   if (names.length === 0) return global;
@@ -210,11 +226,11 @@ function styleOptions(
 ): { projectStyles?: readonly ProjectStyle[]; styleChains?: ReadonlyMap<string, readonly string[]> } {
   const hoisted: ProjectStyle[] = [];
   const seen = new Set<string>();
-  const hoist = (sheets: readonly ProjectStyle[]): void => {
+  const hoist = (sheets: readonly HostStyle[]): void => {
     for (const sheet of sheets) {
       if (seen.has(sheet.specifier)) continue;
       seen.add(sheet.specifier);
-      hoisted.push(sheet);
+      hoisted.push(forEntry(sheet, graph.entryPath));
     }
   };
 

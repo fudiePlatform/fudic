@@ -21,7 +21,7 @@ import type { EmitOptions } from './module.js';
 import { asksInline, deliveredSheet, fixedSheetHref, linkWithHref, prunableHref, sheetKey } from './parts.js';
 import { compactStyleCss } from './css-compact.js';
 import type { StyleNode } from '../css/index.js';
-import { projectAdoptOf, type ProjectStyle } from './project-styles.js';
+import { projectAdoptOf, projectCss, type ProjectStyle } from './project-styles.js';
 import { prunePage, sheetDiagnostics, type PageSheet } from './prune.js';
 import { allComponents, type DocumentGraph } from './resolve.js';
 import { documentSurface, pageTokenConsumers, shadowSurface, unionSurfaces } from './surface.js';
@@ -268,7 +268,7 @@ export function planPageSheets(
     adopted.set(style.specifier, adopters.length > 0);
     sheets.push({
       key: `project:${style.specifier}`,
-      sheet: plainSheet(style.specifier, style.css),
+      sheet: plainSheet(style.specifier, projectCss(style)),
       scope: 'shadow',
       surface: unionSurfaces(adopters.map((c) => shadowSurface(graph, c.tag))),
     });
