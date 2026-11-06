@@ -35,6 +35,7 @@
   "files": [
     "dist",
     "guide",
+    "!guide/es",
     "README.md"
   ],
   "publishConfig": {
