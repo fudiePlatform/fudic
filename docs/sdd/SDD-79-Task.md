@@ -7,6 +7,47 @@
 > **Progreso:** 12 / 22 — `En curso`. Las tareas de tests (5, 8, 12, 13, 16, 18) las escribe la
 > sesión de test y se marcan cuando las entrega.
 
+## Relevo (2026-11-06)
+
+**Estado.** Implementación completa en la rama `sdd-79-guia-de-estilos-generada` (origin), worktree
+`.claude/worktrees/sdd-79-guia-de-estilos-generada`. Commits: `1719c775` (fase 1), `23533193`
+(fase 2), `648b44a6` (fase 3), `a06ac4a7` (fase 4), `8713bb20` (fase 5). `pnpm typecheck` del
+código fuente y `pnpm build` en verde. **No hay ni un test escrito** de este SDD: la sesión de test
+emparejada no llegó a arrancar. Las decisiones tomadas al implementar están en SDD §8.2 (1–23).
+
+**Lo que falta, en este orden** (un commit por bloque, cobertura al cierre de cada uno):
+
+1. **Que compilen los tests rotos.** `FileChange` ganó la variante `{ kind: 'create', path, bytes }`
+   y `WriteIo` ganó `writeBytes`: ~40 ficheros de `packages/cli/test` (empezar por el `MemoryFs` de
+   `test/helpers.ts` y un helper que estreche a `contents`), más
+   `language-server/test/acceptance/formatting.test.ts`, `language-server/test/fudspec/same-file.test.ts`
+   y `mcp/test/format.test.ts`. Ver con `pnpm -r --no-bail typecheck`. Los fakes de `ProjectStyles`
+   en `vite/test` necesitan `guidesFor`, `iconFor` y `piecesFor`.
+2. **Compilador — criterios 2–5** (tarea 5): `readGuide` sobre `packages/cli/templates/guide` y sobre
+   fixtures mínimas; `piecesForTag`; `rebaseUrls`/`projectCss` (criterio 14 en el compilador);
+   `pageGuide`/`guideOf`, `onGuide` y `hasIcon` de `parts.ts`, `guideAdoptionDiagnostics`,
+   `templateSurface`. Ficheros nuevos al 100 %: `css/guide.ts`, `emit/guide-adoption.ts`.
+3. **Build — criterios 6–17 y 24** (tarea 8): un workspace de prueba (app + `libs/ui` +
+   `libs/guide`); el 8 con el snapshot existente sin tocar. `vite/src/guide.ts` al 100 %.
+4. **Editor y MCP — criterios 18–23** (tareas 12 y 13), por el plugin del LS; `language-server`
+   tiene que seguir al 100 %. Incluye `adoptionEditFor`, el completado de `owned.ts`, los arreglos
+   de `repairs.ts` (el de `FUD1441` con `manual`), `fudic_fix` y `problemsOf` del MCP.
+5. **CLI — criterios 25–32** (tareas 16 y 18): con `pnpm build` real de la app y del workspace
+   generados (como `new-build.test.ts`); el test de contraste lee `templates/guide/tokens.css`.
+   `plans/guide.ts` y `plans/guide-files.ts` al 100 %. Snapshots del árbol de `fudic new` y de su
+   `fudic.json` cambian a propósito (§8.2.14).
+6. **Diagnósticos y config**: `FUD1440`–`FUD1444` y el problema `guide` de `FUD0725` en los tests de
+   catálogo; criterio 1 en `config/test/read.test.ts` (umbral 100). `typecheck/tokens.ts` lee la guía
+   (§8.2.21): un test.
+7. **e2e del ejemplo** (tarea 19, criterio 33): `pnpm --filter @fudic/example-workspace test:e2e`.
+   La ejecución se cortó a medias: comprobar que no quedó un `serve.mjs` vivo en el puerto 4373. El
+   build del ejemplo ya da la guía, el favicon y `data-fud-adopt="base ui h2 …"`.
+8. **Prueba de Pedro** (tarea 21) y **cierre** (tarea 22).
+
+Antes de tocar `compiler`, `vite` y `cli`, medir su suelo de cobertura.
+
+---
+
 **El orden manda en dos puntos.** El defecto de los `url()` (tarea 3) va antes que los trozos,
 porque un trozo de lib con un icono lo pisa. Y la plantilla de la guía (fase 4) se escribe después
 del compilador y el build, porque sus criterios (25, 26) construyen la app generada.
