@@ -17,7 +17,8 @@ import {
   type CompletionList,
   type FullDocumentDiagnosticReport,
 } from 'vscode-languageserver-protocol/node';
-import { toPosix } from '@fudic/typecheck';
+import { LineMap } from '@fudic/diagnostics';
+import { createProjectChecker, toPosix } from '@fudic/typecheck';
 import { component } from '../_support.js';
 import { copyWorkspace, startHarness, type Harness } from './_harness.js';
 
@@ -83,6 +84,24 @@ describe('SDD-59 §6.7.7 — each .fudspec with the layer of its project', () =>
 
   it('in the project without it, visible is an unknown term', async () => {
     expect(await diagnosticsOf('sin/src/ui-button.fudspec', SPEC)).toEqual(['FUD0940@4']);
+  });
+
+  it('SDD-77 criterion 5: the project check says what the editor says, at the same place', async () => {
+    const relative = 'sin/src/ui-button.fudspec';
+    writeFileSync(`${root}/${relative}`, SPEC);
+    const uri = harness.uriOf(relative);
+    const version = versions.get(relative)!;
+    await harness.change(uri, SPEC, version + 1);
+    versions.set(relative, version + 1);
+    const editor = (await harness.client.sendRequest(DocumentDiagnosticRequest.type, { textDocument: { uri } })) as FullDocumentDiagnosticReport;
+    expect(editor.items.map((d) => d.code)).toEqual(['FUD0940']);
+    const report = createProjectChecker({ root: `${root}/sin` }).check();
+    const checked = report.problems.filter((p) => p.file.endsWith('.fudspec'));
+    expect(checked.map((p) => p.file)).toEqual([`${toPosix(root)}/${relative}`]);
+    const lines = new LineMap(SPEC);
+    expect(checked.map((p) => [p.code, p.severity, lines.positionAt(p.span.start), lines.positionAt(p.span.end)])).toEqual(
+      editor.items.map((d) => [d.code, d.severity === 1 ? 'error' : 'warning', d.range.start, d.range.end]),
+    );
   });
 
   it('completion after then offers the stock vocabulary where it is installed, and nothing where it is not', async () => {

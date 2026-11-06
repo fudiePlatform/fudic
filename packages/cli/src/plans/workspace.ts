@@ -12,7 +12,7 @@
  */
 
 import { GLOBALS_DTS, GLOBALS_FILE_NAME } from '@fudic/language-core';
-import { appFiles, scaffoldChanges, scaffoldRefusal, type ScaffoldFile } from './scaffold.js';
+import { agentFiles, appFiles, scaffoldChanges, scaffoldRefusal, type ScaffoldFile } from './scaffold.js';
 import { libFiles } from './lib.js';
 import { setupCommands, setupReport } from './new.js';
 import { joinPosix } from '../paths.js';
@@ -39,6 +39,7 @@ function rootFiles(name: string, opts: WorkspaceOptions): readonly ScaffoldFile[
     [joinPosix(name, GLOBALS_FILE_NAME), GLOBALS_DTS],
     [joinPosix(name, '.gitignore'), renderTemplate('gitignore.tmpl', {})],
     [joinPosix(name, '.gitattributes'), renderTemplate('gitattributes.tmpl', {})],
+    ...agentFiles(name),
     // `libs/` and `apps/` exist from the start, so the tree says where each goes: empty, or
     // with what `--lib`, `--uses` and `--app` asked for.
     ...(libraries(opts).length === 0

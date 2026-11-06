@@ -11,6 +11,14 @@ dist/
 *.local
 .DS_Store
 ",
+  "demo/.mcp.json": "{ "mcpServers": { "fudic": { "command": "pnpm", "args": ["exec", "fudic-mcp"] } } }
+",
+  "demo/AGENTS.md": "This is a fudic project. fudic is a framework you have no prior knowledge of.
+Use the fudic MCP server (it is configured in .mcp.json): call fudic_status first.
+To use it from a chat, run \`pnpm exec fudic-mcp --http --tunnel\` and add the URL as a connector.
+",
+  "demo/CLAUDE.md": "@AGENTS.md
+",
   "demo/README.md": "# demo
 
 A [fudic](https://github.com/fudiePlatform/fudic) app: pages and components written as \`.fud\`
@@ -264,11 +272,13 @@ interface $LoadContext<P extends string> {
   },
   "dependencies": {
     "@fudic/core": "0.0.1",
+    "@fudic/dom": "0.0.1",
     "@fudic/ssr": "0.0.1",
     "@fudic/transport": "0.0.1"
   },
   "devDependencies": {
     "@fudic/cli": "0.0.1",
+    "@fudic/mcp": "0.0.1",
     "@fudic/terms": "0.0.1",
     "@fudic/testing": "0.0.1",
     "@fudic/vite": "0.0.1",

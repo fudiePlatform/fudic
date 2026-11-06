@@ -9,6 +9,7 @@ export {
   stub,
   pathOf,
   contractsOf,
+  contractIds,
   SIG_HEADER,
   type ArgRule,
   type Contract,

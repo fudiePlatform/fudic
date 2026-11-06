@@ -35,6 +35,8 @@ export interface RunOptions {
   readonly onDiagnostic?: (diagnostic: FudDiagnostic) => void;
   /** Only the criteria that did not pass in the project's last report; all of them without one. */
   readonly failing?: boolean;
+  /** Only the criteria with these ids, in whichever `.fudspec` they are. */
+  readonly criteria?: readonly string[];
 }
 
 export interface RunSummary {
@@ -127,7 +129,10 @@ export async function runSpecs(paths: readonly string[], options: RunOptions = {
         // The pool answers in the order criteria finish; the reports keep the `.fudspec`'s.
         const found: { order: number; report: CriterionReport }[] = [];
         const spec = posix.relative(projectRoot, session.source.spec);
-        const criteria = last === undefined ? session.criteria : session.criteria.filter((c) => last.has(`${spec}#${c.id}`));
+        const named = options.criteria === undefined ? undefined : new Set(options.criteria);
+        const criteria = session.criteria.filter(
+          (c) => (last === undefined || last.has(`${spec}#${c.id}`)) && (named === undefined || named.has(c.id)),
+        );
         if (criteria.length > 0) {
           project.publish({ v: 2, type: 'running', tag: target.tag, ids: criteria.map((c) => c.id), trigger: { file: null, at: Date.now() } });
           await runPool({

@@ -1,0 +1,9 @@
+@code {
+  const { label = "none", disabled = false } = props<{ label?: string; disabled?: boolean }>();
+}
+
+<x-tile>
+  <template shadowrootmode="open">
+    <button disabled=@disabled>@label</button>
+  </template>
+</x-tile>

@@ -1,0 +1,14 @@
+@code {
+  // Throws while the markup is painted, through a read the view may make: with no `item`, reading
+  // its name is a TypeError; with an `item` whose name throws, whatever it throws.
+  interface Item {
+    name: string;
+  }
+  const { item } = props<{ item: Item }>();
+}
+
+<x-boom>
+  <template shadowrootmode="open">
+    <p>@item.name</p>
+  </template>
+</x-boom>

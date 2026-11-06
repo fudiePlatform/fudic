@@ -10,16 +10,14 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { FUD0973, type FudDiagnostic } from '@fudic/diagnostics';
 import {
-  TERMS_DIR,
-  createTermCatalog,
   parseSpec,
-  readFixtures,
+  specContextOf,
   validateSpec,
   type BlockKind,
+  type SpecContext,
   type SpecFile,
   type SpecFs,
   type TermCatalog,
-  type TermRoot,
 } from '@fudic/spec';
 import type { ViteDevServer } from 'vite';
 import { firstLine } from './browser.js';
@@ -92,8 +90,8 @@ const EMPTY_SPEC: SpecFile = { kind: 'spec', criteria: [], comments: [], span: {
 export async function loadSession(input: SessionInput): Promise<LoadedSession> {
   const { target, vite } = input;
   const runtime = input.runtime === undefined ? await resolveRuntime(target.projectRoot) : input.runtime;
-  const catalog = createTermCatalog(termRoots(target, runtime), nodeSpecFs);
-  const loadTerm = termLoader(catalog, vite);
+  const context = specContext(target, runtime);
+  const loadTerm = termLoader(context.terms, vite);
   const project = await loadProjectExtension(target.projectRoot, vite);
   const extensions: LoadedExtension[] = [runtime?.stock ?? missingRuntime(target.projectRoot)];
   if (project !== null && !('error' in project)) extensions.push(project);
@@ -113,7 +111,7 @@ export async function loadSession(input: SessionInput): Promise<LoadedSession> {
     specText = readText(target.spec) ?? '';
     const parsed = parseSpec(specText);
     spec = parsed.value;
-    const found = [...parsed.diagnostics, ...validateSpec(spec, specContext(target, catalog))];
+    const found = [...parsed.diagnostics, ...validateSpec(spec, context)];
     for (const diagnostic of found) diagnostics.push({ diagnostic, file: target.spec });
     // A file with errors is not run: half a file gives greens that mean nothing.
     if (found.some((d) => d.severity === 'error')) {
@@ -159,23 +157,16 @@ async function compileProblem(vite: ViteDevServer, component: string): Promise<P
   }
 }
 
-/** `fudic/terms/` of the project first, then the framework's: the editor's roots, in its order. */
-function termRoots(target: BenchTarget, runtime: TermsRuntime | null): TermRoot[] {
-  const roots: TermRoot[] = [{ layer: 'workspace', path: `${target.projectRoot}/${TERMS_DIR}` }];
-  if (runtime !== null) roots.push({ layer: 'framework', path: runtime.termsDir });
-  return roots;
-}
-
-function specContext(target: BenchTarget, terms: TermCatalog) {
-  return {
-    terms,
-    component: (tag: string) =>
-      tag === target.tag ? { tag, path: target.component, requiredProps: 'unknown' as const } : undefined,
-    fixtures: (tag: string) => {
-      const source = tag === target.tag && target.fixture !== null ? readText(target.fixture) : undefined;
-      return source === undefined ? undefined : readFixtures(source, target.fixture!);
-    },
-  };
+/**
+ * The editor's context, with the one component the bench mounts: `fudic/terms/` of the project
+ * first, then the framework's of the runtime it resolved.
+ */
+function specContext(target: BenchTarget, runtime: TermsRuntime | null): SpecContext {
+  return specContextOf(target.projectRoot, {
+    fs: nodeSpecFs,
+    component: (tag) => (tag === target.tag ? { tag, path: target.component, requiredProps: 'unknown' } : undefined),
+    frameworkTerms: runtime?.termsDir ?? null,
+  });
 }
 
 /** The fixture's `export default`, run by Vite after forgetting the last run. */

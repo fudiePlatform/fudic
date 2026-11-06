@@ -86,14 +86,19 @@ async function editorSet(texts: ReadonlyMap<string, string>): Promise<Set<Key>> 
   return found;
 }
 
-/** What the build reports. */
+/**
+ * What the build reports, but for the `.fudapi` and `.fudspec`: the editor side asks for each
+ * `.fud`. The build also checks those two (SDD-77 §8.2.9); the
+ * fixture's `src/blog/[slug].fudapi`, with `load` outside `src/routes`, is FUD1090 there, and
+ * the editor reports a `.fudapi` through its own documents, not through these.
+ */
 function buildSet(changed: readonly string[]): Set<Key> {
   for (const file of changed) checker.invalidate(`${root}/${file === API ? API_TYPES : file}`);
   const report = checker.check();
   expect(report.project).toEqual([]);
   const base = toPosix(URI.file(root).fsPath).toLowerCase();
   return new Set(
-    report.problems.map((problem) =>
+    report.problems.filter((problem) => !/\.fud(?:api|spec)$/u.test(problem.file)).map((problem) =>
       key(
         toPosix(problem.file).slice(base.length + 1),
         problem.span.start,

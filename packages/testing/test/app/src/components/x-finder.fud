@@ -1,0 +1,21 @@
+<link rel="server" href="./x-finder.fudapi">
+
+@code {
+  import { effect, signal } from "@fudic/core";
+
+  const found = signal("");
+
+  // Three calls as soon as the piece is in the browser: one with a handler, one still without,
+  // and one to a URL no function of the project answers.
+  effect(() => {
+    void find({ q: "a" }).then((value) => found.set(value));
+    void lost().then(() => found.set("never"), () => found.set("lost"));
+    void fetch("/_fudic/fn/nowhere/at-all").catch(() => undefined);
+  });
+}
+
+<x-finder>
+  <template shadowrootmode="open">
+    <output role="status">@found()</output>
+  </template>
+</x-finder>

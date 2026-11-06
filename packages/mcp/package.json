@@ -1,0 +1,80 @@
+{
+  "name": "@fudic/mcp",
+  "version": "0.0.1",
+  "description": "The fudic MCP server: lets an agent or a chat that knows nothing about fudic learn it and build with it, inside one project.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Pedro Hurtado",
+  "homepage": "https://github.com/fudiePlatform/fudic/tree/main/packages/mcp#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fudiePlatform/fudic.git",
+    "directory": "packages/mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/fudiePlatform/fudic/issues"
+  },
+  "keywords": [
+    "fudic",
+    "fudie",
+    "mcp",
+    "model-context-protocol"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "fudic-mcp": "dist/bin.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "guide",
+    "!guide/es",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@fudic/cli": "workspace:*",
+    "@fudic/conventions": "workspace:*",
+    "@fudic/diagnostics": "workspace:*",
+    "@fudic/history": "workspace:*",
+    "@fudic/language-server": "workspace:*",
+    "@fudic/spec": "workspace:*",
+    "@fudic/typecheck": "workspace:*",
+    "@modelcontextprotocol/ext-apps": "1.7.5",
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@fudic/core": "workspace:*",
+    "@fudic/dom": "workspace:*",
+    "@fudic/forms": "workspace:*",
+    "@fudic/http": "workspace:*",
+    "@fudic/ssr": "workspace:*",
+    "@fudic/terms": "workspace:*",
+    "@fudic/testing": "workspace:*",
+    "@fudic/transport": "workspace:*",
+    "@fudic/tsconfig": "workspace:*",
+    "@fudic/vite": "workspace:*",
+    "@fudic/workbench": "workspace:*",
+    "@types/node": "22.20.0",
+    "typescript": "5.9.3",
+    "vite": "8.0.16",
+    "vitest": "4.1.9"
+  }
+}

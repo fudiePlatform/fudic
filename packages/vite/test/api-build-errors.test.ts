@@ -4,10 +4,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { build } from 'vite';
+import { build, createLogger } from 'vite';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createProjectChecker } from '@fudic/typecheck';
 import { fudic } from '../src/index.js';
 import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
 
@@ -42,9 +43,12 @@ function project(files: Readonly<Record<string, string>>): string {
   return root;
 }
 
-/** The message `vite build` failed with. */
-async function failure(root: string): Promise<string> {
-  const error = await build({ root, logLevel: 'silent', resolve: { alias: httpAlias }, plugins: [fudic()] }).then(
+/** The message `vite build` failed with; what it logged as errors and warnings goes to `logged`. */
+async function failure(root: string, logged: string[] = []): Promise<string> {
+  const customLogger = createLogger('silent');
+  customLogger.error = (text) => void logged.push(text);
+  customLogger.warn = (text) => void logged.push(text);
+  const error = await build({ root, customLogger, resolve: { alias: httpAlias }, plugins: [fudic()] }).then(
     () => undefined,
     (e: unknown) => e as Error,
   );
@@ -68,9 +72,50 @@ describe('criterion 17: the registry stops the build', () => {
 });
 
 describe('a .fudapi that is wrong stops the build', () => {
-  it('with its code, its file and its line', async () => {
+  it('as the typecheck: its code, its file and its line in the log, then one failure with the count', async () => {
     const root = project({ 'src/server/users.ts': SAVE, 'src/rules/bad.fudapi': 'rule shout\n  on field str\n' });
-    expect(await failure(root)).toMatch(/src[\\/]rules[\\/]bad\.fudapi:1:\d+ - error FUD1097/u);
+    const logged: string[] = [];
+    const message = await failure(root, logged);
+    // The rule lacks `runs` and `fails`: two problems of one file, each printed once.
+    expect(message).toContain('the typecheck failed: 2 errors in 1 file');
+    expect(message).not.toContain('FUD1097');
+    const problems = logged.filter((text) => text.includes('FUD1097'));
+    expect(problems).toHaveLength(2);
+    for (const problem of problems) expect(problem).toMatch(/^src[\\/]rules[\\/]bad\.fudapi:1:6 - error FUD1097/u);
+    expect(problems.map((p) => p.split('\n')[0])).toEqual([
+      'src/rules/bad.fudapi:1:6 - error FUD1097: rule `shout` needs `fails`',
+      'src/rules/bad.fudapi:1:6 - error FUD1097: rule `shout` needs `runs`',
+    ]);
+  }, 300000);
+});
+
+describe('SDD-77 criterion 5: a broken .fudspec breaks the build too, once', () => {
+  it('with a .fudapi that is wrong: one failure, each problem once, where check() puts it', async () => {
+    const term = "export const meta = { name: 'shown', block: 'then', params: [] };\nexport async function run(ctx) {}\nexport const selfTest = [];\n";
+    const badge = '<app-badge>\n  <template shadowrootmode="open"><span>x</span></template>\n</app-badge>\n';
+    const root = project({
+      'src/server/users.ts': SAVE,
+      'src/rules/bad.fudapi': 'rule shout\n  on field str\n  runs server\n',
+      'fudic/terms/then/shown.js': term,
+      'src/components/app-badge.fud': badge,
+      'src/components/app-badge.fudspec': 'component app-badge\n\ncriterion shows\n  then\n    nowhere\n',
+    });
+    const logged: string[] = [];
+    const message = await failure(root, logged);
+    expect(message).toContain('the typecheck failed: 2 errors in 2 files');
+
+    const firstLines = logged.filter((t) => /FUD\d{4}/u.test(t)).map((t) => t.split('\n')[0]);
+    expect(firstLines).toEqual([
+      expect.stringMatching(/^src\/components\/app-badge\.fudspec:5:5 - error FUD0940: /u),
+      'src/rules/bad.fudapi:1:6 - error FUD1097: rule `shout` needs `fails`',
+    ]);
+
+    // The same codes at the same places as the project check the editor and the MCP read.
+    const report = createProjectChecker({ root }).check();
+    expect(report.problems.map((p) => [p.file.replace(/\\/gu, '/').slice(root.replace(/\\/gu, '/').length + 1), p.code])).toEqual([
+      ['src/components/app-badge.fudspec', 'FUD0940'],
+      ['src/rules/bad.fudapi', 'FUD1097'],
+    ]);
   }, 300000);
 });
 

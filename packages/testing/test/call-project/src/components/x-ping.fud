@@ -1,0 +1,7 @@
+<link rel="server" href="./x-ping.fudapi">
+
+<x-ping>
+  <template shadowrootmode="open">
+    <p>ping</p>
+  </template>
+</x-ping>

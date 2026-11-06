@@ -4,6 +4,8 @@ import { notFound, redirect } from '@fudic/http';
 import { layout, load } from 'fudic:routes/blog/[slug]';
 import { load as loadEspera } from 'fudic:routes/espera';
 import { load as loadMoved } from 'fudic:routes/moved';
+import { load as loadRoto } from 'fudic:routes/roto';
+import { like, load as loadTag, paths as pathsTag } from 'fudic:routes/tags/[tag]';
 import { findPost } from '../data/posts';
 
 load.handle(async (ctx) => {
@@ -19,3 +21,14 @@ loadMoved.handle(() => {
 });
 
 loadEspera.handle(() => ({ total: Promise.resolve(3) }));
+
+loadRoto.handle(() => {
+  throw new Error('the load broke');
+});
+
+loadTag.handle((ctx) => ({ tag: ctx.params.tag }));
+
+// The third entry names no param of `/tags/:tag`: no URL can be made of it.
+pathsTag.handle(() => ['uno', { tag: 'dos' }, { other: 'x' }] as never);
+
+like.handle(() => 'liked');

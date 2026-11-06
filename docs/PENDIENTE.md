@@ -29,15 +29,139 @@ Después: las SDD del MCP ([IDEA-07](sdd/ideas/IDEA-07-mcp-de-fudic.md)).
 
 ## Notas de pedro
 
-Deshabilitar diagnosticos
-Async Validators
-CSP configurable. Quitar todo lo de ligthouse
-Baseline
-Incluir FrontMater para definir props(componentes)
-y estado inicial de la página(load) en fudapi y fudspec
-Integrarlo con params y layout
-propagar @fudic:result=@hecho y @fudic:error en formularios y que puedan
-ser capturados desde la página en el host
+Aclaradas el 2026-11-05. Las dos primeras están desarrolladas en «Análisis con sesión», más abajo.
+
+| # | Qué | Tamaño |
+|---|---|---|
+| 1 | Silenciar o subir diagnósticos | Pequeña |
+| 2 | Validadores async contra el servidor (`runs remote`) | Mediana |
+| 3 | Cabeceras de seguridad configurables (fuera los avisos de Lighthouse) | Pequeña |
+| 4 | Nivel de Baseline en `fudic.json` | Pequeña o mediana |
+| 5 | Fixtures del `load` de las páginas | Mediana |
+| 6 | `@fudic:result` y `@fudic:error` en el host del componente | Pequeña |
+| 7 | Generar la hoja de estilos desde la CLI, con el usuario | Mediana |
+| 8 | `fudic.json` en la guía del MCP, como el `sw.json` | Pequeña |
+| — | Fake o log de llamadas al servidor | Después |
+
+### 1. Silenciar o subir diagnósticos
+
+Ver «Análisis con sesión» §1.
+
+### 2. Validadores async
+
+Ver «Análisis con sesión» §2.
+
+### 3. Cabeceras de seguridad configurables
+
+Lighthouse da 100 % en Buenas prácticas, pero saca avisos que no puntúan en «Confianza y
+seguridad». Hay que hacerlos desaparecer. No todos son de la CSP:
+
+| Aviso | Se quita con | ¿CSP? |
+|---|---|---|
+| La CSP no protege contra XSS | CSP estricta: nonces o hashes, `object-src 'none'`, `base-uri 'none'` | Sí |
+| Clickjacking | `frame-ancestors 'none'`. Lighthouse lo acepta igual que `X-Frame-Options`, que sobra | Sí |
+| DOM XSS: Trusted Types | `require-trusted-types-for 'script'` | Sí |
+| HSTS | `Strict-Transport-Security` | No |
+| Aislamiento de origen | `Cross-Origin-Opener-Policy: same-origin` | No |
+
+- La configuración va en `fudic.json`. Hoy la CSP está fija en `@fudic/vite` (`plugin.ts`,
+  `serve.ts`, `dev.ts`, `wrapper.ts`).
+- **Hay dos CSP, no una.** La de la página y la de `/sw.js`. El linker del SW usa `new Function`
+  (`transport/src/linker.ts:87`) y necesita `'unsafe-eval'`. Sin él, `canLink()` hace que la app
+  degrade a server/SSG en lugar de romperse.
+- **Trusted Types rompe dos `innerHTML` del runtime**: `dom/src/browser.ts:36` y
+  `forms/src/dom/summary.ts:39`. Hace falta una policy `fudic` que los envuelva.
+- Quitar de los docs lo que dependa de Lighthouse donde ya no aplique: SDD-32, BUG-07, BUG-42,
+  IDEA-07, INDEX.
+
+### 4. Baseline
+
+`fudic.json` fija el nivel: `"baseline": "widely" | "newly" | <año>`. Si la salida usa una feature
+por encima de ese nivel (DSD, `:state()`…), sale un diagnóstico. El trabajo está en mapear lo que
+emite el compilador a sus entradas en web-features.
+
+### 5. Fixtures del `load` de las páginas
+
+**Sin frontmatter** ni gramática nueva en `.fud` ni en `.fudapi`: costaría LSP, VS Code y otra
+dependencia. Se repite el patrón que ya tienen los componentes (SDD-52/53): `<tag>.fixture.ts` con
+`$Props`, y `props <x>` en la `.fudspec` con completado, hover, ir a la definición, `FUD0950`–`0953`
+y la bombilla. Para los componentes, esta nota ya está hecha.
+
+Para las páginas, junto al `.fudapi` de la ruta:
+
+```ts
+// routes/espera.fixture.ts
+import type { $Data } from './espera.fudapi';
+import { later } from '@fudic/spec';
+
+export default {
+  'todo-llega': {
+    title: 'Lo que tarda, llega después',
+    inicio: later(2000, 10),
+    resumen: later(5000, { personas: 12, activas: 9 }),
+    roto: later.fails(3000, 404, 'el servicio de avisos no responde'),
+  },
+  'al-instante': { title: 'Ya', inicio: 10, resumen: { personas: 1, activas: 1 }, roto: 'ok' },
+  'colgada': { title: 'Esperando', inicio: later.never(), resumen: later.never(), roto: later.never() },
+} satisfies Record<string, $Data>;
+```
+
+```
+criterion lista-vacia
+  given
+    route /usuarios
+    data vacia
+```
+
+- El `.fudapi` proyecta `$Data`: el tipo de lo que devuelve el `load`, igual que el `.fud`
+  proyecta `$Props`. Hoy esa forma solo existe como JSON (`api/src/data-shape.ts`).
+- La `.fudspec` tiene una línea `data <nombre>` en `given`, hermana de `props`, con su
+  validación y su LSP.
+- Quien monta la página usa la fixture en lugar de llamar al `load`. Lo usan la `.fudspec`, el
+  banco y la preview del MCP. `params` y `layout` salen solos, porque `layout` ya se resuelve con
+  lo que trajo el `load`.
+- **Los campos `later` entran desde el principio**, con sus tres estados:
+  - **llega**: el valor tal cual, o `later(ms, valor)`;
+  - **falla**: `later.fails(ms, status, title)`, que pinta el `@catch (e)`;
+  - **no llega nunca**: `later.never()`, para comprobar el hueco sin depender de relojes.
+- `later` devuelve datos, no una promesa (`{ $later: 2000, value: 10 }`). La fixture sigue siendo
+  serializable (SDD-52, decisión 2) y vale como semilla del fake. El montaje la convierte en la
+  promesa, como hoy hace a mano `server/espera.ts`.
+- `$Data` tipa un campo `later` como `T | Later<T>`. En un campo que no es `later`, `later(...)`
+  es un error de TS.
+- En el editor, el `import type` de un `.fud` es hoy `any` (SDD-52, decisión 1). Para `$Data`
+  pasaría lo mismo, salvo que se proyecte de verdad.
+
+### 6. `@fudic:result` y `@fudic:error` en el host
+
+Es solo semántica. El formulario sigue lanzando el evento, que recorre su camino entero, captura
+incluida. Lo único que cambia es dónde se escribe el handler: en el `<form>` o en el componente que
+lo envuelve:
+
+```html
+<app-user-form @fudic:result=@saved @fudic:error=@failed />
+```
+
+El compilador acepta esos dos eventos en el tag de un componente. Hay que revisar dos cosas:
+
+- Que el evento cruce el shadow root: necesita `composed: true` y `bubbles: true`.
+- Qué pasa con dos niveles de anidación.
+
+### 7. Hoja de estilos desde la CLI
+
+Un generador interactivo: el usuario elige o completa tokens, colores, etc. `fudic.json` ya adopta
+hojas en los shadow roots (`packages/mcp/guide/html-css.md:208`). Encaja con la SDD-66.
+
+### 8. `fudic.json` en el MCP
+
+El `sw.json` ya está en la guía (`guide/overview.md`, `guide/pages.md`). El `fudic.json` necesita
+su página o su esquema para que la IA sepa configurarlo, incluidas las claves nuevas de 1, 3 y 4.
+
+### Después: fake o log de llamadas
+
+Grabar todas las llamadas al servidor con sus respuestas y reproducirlas. Es el fake de IDEA-07
+(§3 camino 2, §10.6, §10.7). Va en su propia SDD. Encaja con la 5: lo grabado se vuelca en el
+mismo formato que el `.fixture.ts`, y una fixture es la semilla del fake.
 
 
 ## Analisis con sesión 

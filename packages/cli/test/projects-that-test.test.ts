@@ -92,6 +92,8 @@ describe('every app and every lib is born able to test itself (§4.2)', () => {
     for (const dir of APPS) {
       expect(json(`${dir}/package.json`)['devDependencies'], dir).toEqual({
         ...fudic,
+        // The MCP server goes where the repository is: a standalone app, a workspace's root.
+        ...(dir === 'solo' ? { '@fudic/mcp': FUDIC_VERSION } : {}),
         typescript: TYPESCRIPT_VERSION,
         vite: VITE_VERSION,
         vitest: VITEST_VERSION,
@@ -100,6 +102,8 @@ describe('every app and every lib is born able to test itself (§4.2)', () => {
     expect(json(`${LIB}/package.json`)['devDependencies']).toEqual({
       ...fudic,
       '@fudic/core': FUDIC_VERSION,
+      // `emit` lives in @fudic/dom: a library declares it to build its own events.
+      '@fudic/dom': FUDIC_VERSION,
       '@fudic/ssr': FUDIC_VERSION,
       vite: VITE_VERSION,
       vitest: VITEST_VERSION,

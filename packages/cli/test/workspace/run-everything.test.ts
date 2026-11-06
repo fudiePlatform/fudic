@@ -80,7 +80,7 @@ Next
       test: 'fudic test',
       spec: 'fudic spec',
     });
-    expect(pkg['devDependencies']).toEqual({ '@fudic/cli': FUDIC_VERSION, typescript: TYPESCRIPT_VERSION });
+    expect(pkg['devDependencies']).toEqual({ '@fudic/cli': FUDIC_VERSION, '@fudic/mcp': FUDIC_VERSION, typescript: TYPESCRIPT_VERSION });
   });
 
   it('writes a README of apps/, libs/ and those commands, and an empty libs/', async () => {

@@ -100,7 +100,7 @@ describe('the app of a workspace and a standalone app', () => {
       .map((path) => path.slice('ws/apps/demo/'.length));
 
     // The repository's files: the workspace keeps them at its root, once.
-    expect(standaloneFiles.filter((file) => !appFiles.includes(file))).toEqual(['.gitattributes', GLOBALS_FILE_NAME]);
+    expect(standaloneFiles.filter((file) => !appFiles.includes(file))).toEqual(['.gitattributes', '.mcp.json', 'AGENTS.md', 'CLAUDE.md', GLOBALS_FILE_NAME]);
     expect(workspace.paths()).toContain('ws/.gitattributes');
     expect(appFiles.filter((file) => !standaloneFiles.includes(file))).toEqual([]);
 

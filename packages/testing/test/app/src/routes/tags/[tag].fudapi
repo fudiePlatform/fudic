@@ -1,0 +1,9 @@
+load
+  tag  str
+
+# The tags a render can open: three entries, one of which names no param of the route.
+paths
+
+# A function of a route with a param: its id has a `[tag]` segment.
+post like
+  -> str

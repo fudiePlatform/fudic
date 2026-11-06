@@ -241,6 +241,43 @@ describe('startLiveCheck — which file events start a check', () => {
     live.dispose();
   });
 
+  it('a .fudapi or a .fudspec that appears or goes away re-checks, read or not (SDD-77 §8.2.10)', async () => {
+    const { watcher, checker, live } = await started();
+    watcher.emit('all', 'add', `${root}/src/routes/new.fudapi`);
+    watcher.emit('all', 'unlink', `${root}/src/routes/old.fudapi`);
+    watcher.emit('all', 'add', `${root}/src/components/app-x/app-x.fudspec`);
+    watcher.emit('all', 'unlink', `${root}/src/components/app-y/app-y.fudspec`);
+    expect(checker.invalidate.mock.calls.map(([path]) => path.slice(root.length + 1))).toEqual([
+      'src/routes/new.fudapi',
+      'src/routes/old.fudapi',
+      'src/components/app-x/app-x.fudspec',
+      'src/components/app-y/app-y.fudspec',
+    ]);
+    // A change to one nobody read is not news: the check that read it would list it.
+    watcher.emit('all', 'change', `${root}/src/routes/unread.fudapi`);
+    watcher.emit('all', 'change', `${root}/src/unread.fudspec`);
+    expect(checker.invalidate).toHaveBeenCalledTimes(4);
+    await settle();
+    expect(checker.check).toHaveBeenCalledTimes(1);
+    live.dispose();
+  });
+
+  it('any change under fudic/terms/ re-checks: a criterion may resolve a term now (SDD-77 §8.2.10)', async () => {
+    const { watcher, checker, live } = await started();
+    watcher.emit('all', 'change', `${root}/fudic/terms/then/shown.js`);
+    watcher.emit('all', 'add', `${root}/fudic/terms/given/logged-in.js`);
+    watcher.emit('all', 'unlink', 'fudic/terms/when/gone.js');
+    watcher.emit('all', 'change', `${root}\\fudic\\terms\\then\\shown.js`);
+    expect(checker.invalidate).toHaveBeenCalledTimes(4);
+    // A folder called terms elsewhere is not the project's terms.
+    watcher.emit('all', 'change', `${root}/src/terms/then/x.js`);
+    watcher.emit('all', 'change', `${root}/myfudic/terms-old/x.js`);
+    expect(checker.invalidate).toHaveBeenCalledTimes(4);
+    await settle();
+    expect(checker.check).toHaveBeenCalledTimes(1);
+    live.dispose();
+  });
+
   it('a tsconfig changes the options of the whole program', async () => {
     const { watcher, checker, live } = await started();
     watcher.emit('all', 'change', `${root}/tsconfig.json`);
@@ -597,6 +634,42 @@ describe('startLiveCheck over the real checker (criterion 19)', () => {
     expect((await live.current()).problems).toEqual([]);
     expect(told.sent[told.sent.length - 1]).toEqual({ type: 'full-reload' });
     expect(await live.blocking([pageFile, badgeFile])).toBeUndefined();
+    live.dispose();
+  }, 120_000);
+
+  it('a .fudspec that appears broken pushes the overlay with its code; fixing it reloads (SDD-77 criterion 5)', async () => {
+    vi.useRealTimers();
+    const project = toPosix(mkdtempSync(join(tmpdir(), 'fudic-live-spec-')));
+    const files: Record<string, string> = {
+      'tsconfig.json': TSCONFIG,
+      'src/components/app-badge.fud': BADGE(`'neutral' | 'info'`),
+      'src/routes/index.fud': PAGE,
+      'fudic/terms/then/shown.js': "export const meta = { name: 'shown', block: 'then', params: [] };\nexport async function run(ctx) {}\nexport const selfTest = [];\n",
+    };
+    for (const [relative, text] of Object.entries(files)) {
+      mkdirSync(dirname(join(project, relative)), { recursive: true });
+      writeFileSync(join(project, relative), text);
+    }
+    const specFile = `${project}/src/components/app-badge.fudspec`;
+    const SPEC = (term: string): string => `component app-badge\n\ncriterion shows-its-tone\n  then\n    ${term}\n`;
+    const { server, watcher, told } = fakeServer();
+    const live = startLiveCheck(server, project, createProjectChecker({ root: project }));
+    expect((await live.current()).problems).toEqual([]);
+
+    writeFileSync(specFile, SPEC('nowhere'));
+    watcher.emit('all', 'add', specFile);
+    const broken = await live.current();
+    expect(broken.problems.map((p) => [p.file, p.code])).toEqual([[specFile, 'FUD0940']]);
+    const pushed = told.sent.find((payload) => (payload as { type: string }).type === 'error') as { err: OverlayError } | undefined;
+    expect(pushed?.err.id).toBe(specFile);
+    expect(pushed?.err.loc).toEqual({ file: specFile, line: 5, column: 5 });
+    expect(pushed?.err.message).toContain('FUD0940');
+
+    // Its own file is now an input: a change to it is seen.
+    writeFileSync(specFile, SPEC('shown'));
+    watcher.emit('all', 'change', specFile);
+    expect((await live.current()).problems).toEqual([]);
+    expect(told.sent[told.sent.length - 1]).toEqual({ type: 'full-reload' });
     live.dispose();
   }, 120_000);
 });

@@ -139,7 +139,7 @@ function written(arg: Arg): string {
 }
 
 /** What a page mounts: the component (or its host), with the code and attributes of its props. */
-interface Mount {
+export interface Mount {
   readonly href: string;
   readonly tag: string;
   readonly code: string;
@@ -153,7 +153,7 @@ function bare(target: BenchTarget): Mount {
   return { href: target.component, tag: target.tag, code: '', attrs: '', content: '' };
 }
 
-function pageSource(tag: string, title: string, mount: Mount): string {
+export function pageSource(tag: string, title: string, mount: Mount): string {
   return (
     '<!DOCTYPE html>\n<html>\n  <head>\n' +
     `    <link rel="component" href="${mount.href}">\n` +

@@ -3,6 +3,7 @@
 import { inject } from '@fudic/di';
 import { setCookie } from '@fudic/http';
 import { save as saveAlias } from 'fudic:components/x-alias';
+import { find, item } from 'fudic:components/x-finder';
 import { whoami } from 'fudic:components/x-guarded';
 import { greet } from 'fudic:components/x-hello';
 import { save } from 'fudic:components/x-save';
@@ -30,3 +31,7 @@ visit.handle((ctx) => {
   setCookie(ctx, 'visits', String(visits));
   return visits;
 });
+
+find.handle((ctx) => `found ${ctx.args.q}`);
+
+item.handle(() => 'item');

@@ -1,0 +1,3 @@
+# A load with a bug: it throws what is no HttpError.
+load
+  never  bool

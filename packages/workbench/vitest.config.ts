@@ -4,6 +4,9 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     include: ['test/**/*.test.ts'],
+    // Most files launch a browser whose every call waits at most five seconds: with one worker
+    // per core they starve each other, and a screenshot or a wait times out at random.
+    maxWorkers: 2,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

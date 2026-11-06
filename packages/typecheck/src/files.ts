@@ -54,6 +54,13 @@ export interface CheckFs {
    * is not there. One spelling, and this is where it is chosen.
    */
   realPath(path: string): string;
+  /**
+   * Every `.fudspec` under `root`, as absolute paths. Absent, the check reads no criteria: an
+   * index driven from a map has none to give.
+   */
+  specFiles?(root: string): readonly string[];
+  /** The names in a folder, empty when it is not there: where the term modules are listed. */
+  readDirectory?(path: string): readonly string[];
 }
 
 /** Folders a `.fud` sweep must never walk into. */
@@ -74,26 +81,19 @@ export function nodeFileSystem(): CheckFs {
      * startup and never per keystroke.
      */
     fudFiles(root: string): readonly string[] {
-      const base = toPosix(root);
-      const found: string[] = [];
+      return sweep(root, '.fud');
+    },
 
-      const visit = (dir: string, prefix: string): void => {
-        let entries;
-        try {
-          entries = readdirSync(dir, { withFileTypes: true });
-        } catch {
-          return; // the folder is not there: an empty workspace, not an error
-        }
-        for (const entry of entries) {
-          if (SKIPPED.has(entry.name)) continue;
-          const relative = prefix === '' ? entry.name : `${prefix}/${entry.name}`;
-          if (entry.isDirectory()) visit(`${dir}/${entry.name}`, relative);
-          else if (entry.name.endsWith('.fud')) found.push(`${base}/${relative}`);
-        }
-      };
+    specFiles(root: string): readonly string[] {
+      return sweep(root, '.fudspec');
+    },
 
-      visit(root, '');
-      return found;
+    readDirectory(path: string): readonly string[] {
+      try {
+        return readdirSync(path);
+      } catch {
+        return []; // the folder is not there: nothing in it
+      }
     },
 
     readFile(path: string): string | undefined {
@@ -134,6 +134,30 @@ export function nodeFileSystem(): CheckFs {
       }
     },
   };
+}
+
+/** Every file under `root` with that extension, as absolute POSIX paths, the skipped folders pruned. */
+function sweep(root: string, extension: string): readonly string[] {
+  const base = toPosix(root);
+  const found: string[] = [];
+
+  const visit = (dir: string, prefix: string): void => {
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return; // the folder is not there: an empty workspace, not an error
+    }
+    for (const entry of entries) {
+      if (SKIPPED.has(entry.name)) continue;
+      const relative = prefix === '' ? entry.name : `${prefix}/${entry.name}`;
+      if (entry.isDirectory()) visit(`${dir}/${entry.name}`, relative);
+      else if (entry.name.endsWith(extension)) found.push(`${base}/${relative}`);
+    }
+  };
+
+  visit(root, '');
+  return found;
 }
 
 /** Whatever lists the `.fud` of a project: the editor's index, the build's. */

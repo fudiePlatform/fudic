@@ -69,6 +69,7 @@
     "@fudic/forms": "workspace:*",
     "@fudic/http": "workspace:*",
     "@fudic/ssr": "workspace:*",
+    "@fudic/terms": "workspace:*",
     "@fudic/transport": "workspace:*",
     "@fudic/tsconfig": "workspace:*",
     "@fudic/vite": "workspace:*",
