@@ -614,3 +614,21 @@ editor añade los dos trozos, y que quitar el `<details>` avisa sin quitar nada.
     `tienda-card`: con los tokens en `:root`, ponerlo en la página entera teñiría también la
     `ui-card` compartida, que es justo lo que el e2e comprueba que no pasa. `admin` sigue con su
     `globalStyles` en `:host`.
+
+### 8.3. Tomadas al escribir los tests
+
+1. **Los comentarios de la plantilla son de una línea.** La regla de lo generado (sin
+   comentarios de diseño de varias líneas) vale también para la guía: `tokens.css`, `guide.css` y
+   `document.css` dicen lo suyo en una línea, y el README de la lib lo explica entero. El patrón de
+   la zona oscura sigue en el comentario de `document.css` (`.promo { color-scheme: dark; }`).
+2. **Toda hoja del host viene de un fichero.** `HostStyle.file` pasa a obligatorio (las de
+   `globalStyles`/`styles` y los trozos lo tienen siempre); la rama «sin fichero» era código muerto.
+   Igual con `ActionDeps.pieces` en el editor: el plugin siempre los pasa (vacíos sin guía).
+3. **`verify:generated` cubre `g guide`** con una segunda guía al final del workspace, de la que no
+   depende nadie: dos guías en una misma cadena chocan por nombre de trozo (`FUD0741`).
+4. **El ejemplo ya no da tokens propios a `tienda`** (§8.2.23): los tests del editor y del MCP que
+   comprobaban «el token de la app sobre el de la guía» pasan a `admin`, que sigue sobrescribiendo
+   `--guia-accent` en una hoja de su proyecto.
+5. **`@fudic/compiler` depende de `@fudic/config`** (§8.2.4): el test que asegura que el
+   compilador no alcanza TypeScript lo admite porque `config` solo depende de `conventions` y
+   `diagnostics`, y lo comprueba.

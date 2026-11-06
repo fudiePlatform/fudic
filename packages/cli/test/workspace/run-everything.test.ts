@@ -51,7 +51,7 @@ Created workspace shop
   shop/
     README.md          what apps/ and libs/ are, and the commands below
     apps/web/          app web, served at /
-    libs/              empty — fudic g lib <name>
+    libs/guide/        the style guide, used by every app and library
 
   Installed dependencies (pnpm)
   Committed: "chore: create workspace shop"
@@ -83,14 +83,16 @@ Next
     expect(pkg['devDependencies']).toEqual({ '@fudic/cli': FUDIC_VERSION, '@fudic/mcp': FUDIC_VERSION, typescript: TYPESCRIPT_VERSION });
   });
 
-  it('writes a README of apps/, libs/ and those commands, and an empty libs/', async () => {
+  it('writes a README of apps/, libs/ and those commands, and libs/ holds the guide', async () => {
     const fs = await shop();
     const readme = fs.at('shop/README.md');
     expect(readme).toContain('- `apps/`: what you serve.');
     expect(readme).toContain('- `libs/`: components your apps use.');
     for (const script of ['dev', 'preview', 'build', 'test', 'spec']) expect(readme).toContain(`pnpm ${script} `);
     expect(readme).toContain('fudic add ui --project <app>');
-    expect(fs.at('shop/libs/.gitkeep')).toBe('');
+    // libs/ is never empty: the guide is there (SDD-79 §8.2.20).
+    expect(fs.paths()).not.toContain('shop/libs/.gitkeep');
+    expect(fs.paths()).toContain('shop/libs/guide/guide.css');
   });
 
   it('serves its first app at / on Vite\'s port: its vite.config.ts says nothing of either', async () => {
@@ -201,7 +203,7 @@ describe('fudic g app admin --uses ui (§6.4)', () => {
 Created app admin in apps/admin
 
   base URL   /admin/     web is at /. Change it with --base
-  uses       ui
+  uses       ui, guide
 
   Installed dependencies (pnpm)
 
@@ -229,7 +231,8 @@ Next
     expect(out).toContain('  base URL   /store/     web is at /, admin is at /admin/. Change it with --base\n');
     expect(out).toContain('every app:  http://localhost:5173/  ·  /admin/  ·  /store/\n');
     expect(out).toContain('only shopfront: http://localhost:5175/store/\n');
-    expect(out).not.toContain('uses');
+    // Nothing named with --uses: the guide of the workspace alone.
+    expect(out).toContain('  uses       guide\n');
   });
 
   it('puts the first app of a workspace that has none at /', async () => {
@@ -545,6 +548,7 @@ describe('fudic new shop --workspace --uses ui', () => {
     expect(out).toContain(`  shop/
     README.md          what apps/ and libs/ are, and the commands below
     apps/web/          app web, served at /
+    libs/guide/        the style guide, used by every app and library
     libs/ui/           library ui, used by web
     libs/kit/          library kit, used by web
 `);
@@ -590,17 +594,23 @@ describe('g app, among apps whose bases are as long', () => {
 });
 
 describe('the first library takes the place of libs/.gitkeep', () => {
-  for (const flags of [[], ['--styles-only']] as const) {
-    const kind = flags.length === 0 ? 'g lib' : 'g lib --styles-only';
+  // A workspace made before SDD-79 has it: since then libs/guide is always there.
+  const older = async (): Promise<MemoryFs> => {
+    const fs = await shop();
+    fs.write(`${SHOP}/libs/.gitkeep`, '');
+    return fs;
+  };
+  for (const command of ['lib', 'guide'] as const) {
+    const kind = `g ${command}`;
 
     it(`${kind} removes it when it is there, and only then`, async () => {
-      const fs = await shop();
+      const fs = await older();
       expect(fs.paths()).toContain('shop/libs/.gitkeep');
-      expect((await cli(fs, 'g', 'lib', 'ui', ...flags, '--cwd', SHOP)).code).toBe(0);
+      expect((await cli(fs, 'g', command, 'ui', '--cwd', SHOP)).code).toBe(0);
       expect(fs.paths()).not.toContain('shop/libs/.gitkeep');
 
       // The second one finds nothing to remove, and says nothing of it.
-      const parsed = parseArgs(['g', 'lib', 'kit', ...flags, '--cwd', SHOP]);
+      const parsed = parseArgs(['g', 'lib', 'kit', '--cwd', SHOP]);
       if (parsed.kind !== 'lib') throw new Error(parsed.kind);
       const { planLib } = await import('../../src/plans/lib.js');
       const plan = await planLib('kit', parsed.opts, fs);
@@ -609,8 +619,8 @@ describe('the first library takes the place of libs/.gitkeep', () => {
     });
 
     it(`${kind} --dry-run lists it, and removes nothing`, async () => {
-      const fs = await shop();
-      const { code, out } = await cli(fs, 'g', 'lib', 'ui', ...flags, '--dry-run', '--cwd', SHOP);
+      const fs = await older();
+      const { code, out } = await cli(fs, 'g', command, 'ui', '--dry-run', '--cwd', SHOP);
       expect(code).toBe(0);
       expect(out).toMatch(/delete\s+libs\/\.gitkeep/u);
       expect(fs.paths()).toContain('shop/libs/.gitkeep');

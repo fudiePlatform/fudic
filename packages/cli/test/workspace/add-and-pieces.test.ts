@@ -320,45 +320,7 @@ Created form contactUsForm in apps/admin/src/forms/
   });
 });
 
-describe('fudic g lib --styles-only and g style (§6.13)', () => {
-  it('fudic g lib guia --styles-only — exactly, no install, no tests', async () => {
-    const fs = await shop();
-    const { out, commands } = await ok(fs, 'g', 'lib', 'guia', '--styles-only', '--cwd', SHOP);
-    expect(out).toBe(`
-Created style library guia in libs/guia
-
-  tokens.css     global stylesheet, adopted by every component of whoever uses guia
-  no components, no tests, no spec
-
-Use it
-  fudic add guia --project ui      a library: its components read the tokens
-  fudic add guia --project web     an app
-`);
-    expect(commands).toEqual([]);
-    expect(fs.paths().filter((path) => path.startsWith('shop/libs/guia/'))).toEqual([
-      'shop/libs/guia/.gitignore',
-      'shop/libs/guia/README.md',
-      'shop/libs/guia/fudic.json',
-      'shop/libs/guia/package.json',
-      'shop/libs/guia/tokens.css',
-    ]);
-    expect(json(fs, 'shop/libs/guia/fudic.json')).toEqual({ kind: 'lib', globalStyles: { tokens: 'tokens.css' } });
-    expect(json(fs, 'shop/libs/guia/package.json')).toMatchObject({
-      name: '@shop/guia',
-      files: ['tokens.css', 'fudic.json'],
-      exports: { './fudic.json': './fudic.json', './tokens.css': './tokens.css' },
-    });
-    expect(fs.at('shop/libs/guia/tokens.css')).toContain('--guia-ink:');
-  });
-
-  it('names ui and web in its hints when the workspace has neither yet', async () => {
-    const fs = new MemoryFs({}, ROOT);
-    await ok(fs, 'new', 'shop', '--workspace', '--app', 'store', '--cwd', ROOT);
-    const { out } = await ok(fs, 'g', 'lib', 'guia', '--styles-only', '--cwd', SHOP);
-    expect(out).toContain('  fudic add guia --project ui        a library: its components read the tokens\n');
-    expect(out).toContain('  fudic add guia --project store     an app\n');
-  });
-
+describe('fudic g style (§6.13; the style library of §4.7 is `g guide` since SDD-79)', () => {
   it('fudic g style ui --project ui — exactly; the library publishes the sheet', async () => {
     const fs = await shop();
     const { out, commands } = await ok(fs, 'g', 'style', 'ui', '--project', 'ui', '--cwd', SHOP);
@@ -420,8 +382,6 @@ describe('parsing service, form and style', () => {
     expect(parseArgs(['g', 'service', 'cart', '--provided'])).toMatchObject({ kind: 'service', opts: { provided: true, test: true } });
     expect(parseArgs(['g', 'form', 'person', '--skip-test'])).toMatchObject({ kind: 'form', opts: { test: false } });
     expect(parseArgs(['g', 'style', 'theme', '--project', 'web'])).toMatchObject({ kind: 'style', name: 'theme', opts: { project: 'web' } });
-    expect(parseArgs(['g', 'lib', 'guia', '--styles-only'])).toMatchObject({ kind: 'lib', opts: { stylesOnly: true } });
-    expect(parseArgs(['g', 'lib', 'ui'])).not.toMatchObject({ opts: { stylesOnly: true } });
     const hint = (argv: readonly string[]): unknown => {
       const parsed = parseArgs(argv);
       return parsed.kind === 'error' ? parsed.hints[0] : parsed.kind;
@@ -440,15 +400,6 @@ describe('parsing service, form and style', () => {
 });
 
 describe('the corners of what they say and write', () => {
-  it('g lib --styles-only in a workspace with no app names "web"', async () => {
-    const fs = new MemoryFs(
-      { 'shop/pnpm-workspace.yaml': "packages:\n  - 'apps/*'\n  - 'libs/*'\n", 'shop/package.json': '{"name":"shop","private":true}' },
-      ROOT,
-    );
-    const { out } = await ok(fs, 'g', 'lib', 'guia', '--styles-only', '--cwd', SHOP);
-    expect(out).toContain('  fudic add guia --project web     an app\n');
-  });
-
   it('g form --skip-test writes the form alone', async () => {
     const fs = await shop();
     const { out } = await ok(fs, 'g', 'form', 'person', '--skip-test', '--project', 'web', '--cwd', SHOP);

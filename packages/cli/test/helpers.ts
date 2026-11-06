@@ -7,6 +7,14 @@
 import { resolve } from 'node:path';
 import type { CommandRunner, ReadIo, WriteIo } from '../src/io.js';
 import type { Streams } from '../src/run.js';
+import type { FileChange } from '../src/types.js';
+
+/** The text a planned change writes; a missing change or a binary one fails the test. */
+export function contentsOf(change: FileChange | undefined): string {
+  if (change === undefined) throw new Error('no such change');
+  if (!('contents' in change)) throw new Error(`${change.path} is binary`);
+  return change.contents;
+}
 
 // The drive letter in any case, as Windows reads it: `@fudic/typecheck` writes it in lower case.
 const key = (path: string): string => resolve(path).replace(/\\/gu, '/').replace(/^[a-z]:/u, (drive) => drive.toUpperCase());
@@ -73,6 +81,14 @@ export class MemoryFs implements ReadIo, WriteIo {
 
   write(path: string, contents: string): void {
     this.files.set(key(path), contents);
+  }
+
+  /** A binary file: its bytes are kept apart, and as text it reads empty. */
+  readonly bytes = new Map<string, Uint8Array>();
+
+  writeBytes(path: string, bytes: Uint8Array): void {
+    this.files.set(key(path), '');
+    this.bytes.set(key(path), bytes);
   }
 
   /** Paths relative to `cwd`, POSIX, sorted — the shape assertions read best in. */

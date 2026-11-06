@@ -7,7 +7,7 @@ import { createTermCatalog, parseSpec, termModule, validateSpec, type SpecFs } f
 import { parseArgs } from '../src/args.js';
 import { planTerm } from '../src/plans/term.js';
 import { run } from '../src/run.js';
-import { captureStreams, MemoryFs, projectFs, RecordingRunner } from './helpers.js';
+import { contentsOf, captureStreams, MemoryFs, projectFs, RecordingRunner } from './helpers.js';
 import type { TermOptions } from '../src/types.js';
 
 const CWD = '/project';
@@ -60,7 +60,7 @@ describe('g term (criterion 11)', () => {
     ]);
 
     const root = '/project/fudic/terms';
-    const files: Readonly<Record<string, string>> = { [`${root}/then/tiene-sombra.js`]: plan.changes[0]!.contents };
+    const files: Readonly<Record<string, string>> = { [`${root}/then/tiene-sombra.js`]: contentsOf(plan.changes[0]) };
     const fs: SpecFs = {
       readDirectory: (path) => (path === `${root}/then` ? ['tiene-sombra.js'] : []),
       readFile: (path) => files[path],
@@ -93,8 +93,8 @@ describe('g term — the type of run (SDD-59 §4.8)', () => {
 
   it('without fudic/bench.js, run takes the stock ctx', async () => {
     const plan = await planTerm('abre', options({ block: 'when', params: ['target:element'] }), projectFs({}, CWD));
-    expect(plan.changes[0]!.contents).toBe(termModule('when', 'abre', params));
-    expect(plan.changes[0]!.contents).not.toContain('bench.js');
+    expect(contentsOf(plan.changes[0])).toBe(termModule('when', 'abre', params));
+    expect(contentsOf(plan.changes[0])).not.toContain('bench.js');
   });
 
   it('with the project fudic/bench.js, run takes the ctx it leaves', async () => {
@@ -103,7 +103,7 @@ describe('g term — the type of run (SDD-59 §4.8)', () => {
       options({ block: 'when', params: ['target:element'] }),
       projectFs({ 'fudic/bench.js': 'export default {};\n' }, CWD),
     );
-    expect(plan.changes[0]!.contents).toBe(termModule('when', 'abre', params, { bench: true }));
+    expect(contentsOf(plan.changes[0])).toBe(termModule('when', 'abre', params, { bench: true }));
   });
 
   it('looks for the bench.js of the project it writes into, not of the workspace', async () => {
@@ -117,8 +117,7 @@ describe('g term — the type of run (SDD-59 §4.8)', () => {
       'libs/shop/fudic/bench.js': 'export default {};\n',
     };
     const into = async (project: string) =>
-      (await planTerm('abre', options({ cwd: '/ws', project, block: 'when', params: ['target:element'] }), new MemoryFs(files, '/ws')))
-        .changes[0]!.contents;
+      contentsOf((await planTerm('abre', options({ cwd: '/ws', project, block: 'when', params: ['target:element'] }), new MemoryFs(files, '/ws'))).changes[0]);
     expect(await into('shop')).toBe(termModule('when', 'abre', params, { bench: true }));
     expect(await into('ui')).toBe(termModule('when', 'abre', params));
   });

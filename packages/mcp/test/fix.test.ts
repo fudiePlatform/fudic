@@ -113,6 +113,19 @@ describe('fixProject', () => {
     expect(text()).toBe('A bbb CCCCC\n');
   });
 
+  it('a manual repair is never applied: FUD1440 adds, FUD1441 only offers (SDD-79 criterion 23)', async () => {
+    const checks = scripted([[problem('FUD1440', 0), problem('FUD1441', 4)], [problem('FUD1441', 4)]], {
+      FUD1440: [repair('FUD1440', "Adopt the guide's sheet for <h1>", [edit(0, 3, 'AAA')])],
+      FUD1441: [{ ...repair('FUD1441', 'Stop adopting h1', [edit(4, 7, '')]), manual: true }],
+    });
+    const answer = await fix(checks);
+    expect(text()).toBe('AAA bbb ccc\n');
+    expect((answer.body['applied'] as { code: string }[]).map((a) => a.code)).toEqual(['FUD1440']);
+    expect(answer.diagnostics?.map((d) => [d.code, (d as { options?: readonly string[] }).options])).toEqual([
+      ['FUD1441', ['Stop adopting h1']],
+    ]);
+  });
+
   it('what has no repair, or several, is left: several carry their options', async () => {
     const checks = scripted([[problem('FUD0001'), problem('FUD0002', 4)]], {
       FUD0002: [repair('FUD0002', 'One way', [edit(4, 7, '1')]), repair('FUD0002', 'Another', [edit(4, 7, '2')])],

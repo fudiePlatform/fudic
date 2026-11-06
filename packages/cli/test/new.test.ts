@@ -10,7 +10,7 @@ import { parseFud } from '../src/parse.js';
 import { commandFailed } from '../src/diagnostics.js';
 import { TYPESCRIPT_VERSION } from '../src/project.js';
 import { GLOBALS_DTS } from '@fudic/language-core';
-import { MemoryFs, RecordingRunner } from './helpers.js';
+import { MemoryFs, RecordingRunner, contentsOf } from './helpers.js';
 import type { NewOptions } from '../src/types.js';
 
 const CWD = '/workspace';
@@ -37,7 +37,8 @@ describe('fudic new', () => {
     const plan = await planNew('demo', options(), fs);
     expect(plan.errors).toEqual([]);
 
-    expect(plan.changes.map((change) => change.path)).toEqual([
+    // The guide (SDD-79 §4.1) is checked file by file in its own test; here, what surrounds it.
+    expect(plan.changes.map((change) => change.path).filter((path) => !path.startsWith('demo/src/guide/'))).toEqual([
       'demo/package.json',
       'demo/vite.config.ts',
       'demo/vitest.config.ts',
@@ -89,18 +90,18 @@ describe('fudic new', () => {
     // so no static host publishes it (BUG-09). Ignoring it is the other half of that —
     // without this line the first build commits `@server` code, and whatever it imports,
     // into the user's repository.
-    const gitignore = plan.changes.find((change) => change.path === 'demo/.gitignore')!.contents;
+    const gitignore = contentsOf(plan.changes.find((change) => change.path === 'demo/.gitignore'));
     expect(gitignore).toContain('.fudic/');
 
-    const layout = plan.changes.find((change) => change.path === 'demo/src/layouts/_layout.fud')!.contents;
-    const index = plan.changes.find((change) => change.path === 'demo/src/routes/index.fud')!.contents;
+    const layout = contentsOf(plan.changes.find((change) => change.path === 'demo/src/layouts/_layout.fud'));
+    const index = contentsOf(plan.changes.find((change) => change.path === 'demo/src/routes/index.fud'));
     expect(parseFud(layout).doc.type).toBe('layout-document');
     expect(parseFud(index).doc.type).toBe('route-document');
     // §6.2: byte for byte the href it was before the move. The four directories went down
     // together, so no relative depth changed (BUG-20 §4.4).
     expect(index).toContain('<link rel="layout" href="../layouts/_layout.fud">');
 
-    const pkg = JSON.parse(plan.changes[0]!.contents) as { name: string; scripts: Record<string, string> };
+    const pkg = JSON.parse(contentsOf(plan.changes[0])) as { name: string; scripts: Record<string, string> };
     expect(pkg.name).toBe('demo');
     expect(pkg.scripts['build']).toBe('vite build');
   });
@@ -108,7 +109,7 @@ describe('fudic new', () => {
   it('writes the ambient globals and a tsconfig that includes the .fud files', async () => {
     const plan = await planNew('demo', options(), new MemoryFs({}, CWD));
     const file = (path: string): string =>
-      plan.changes.find((change) => change.path === path)!.contents;
+      contentsOf(plan.changes.find((change) => change.path === path));
 
     // The very text the language server mounts in memory: one source, two consumers.
     expect(file('demo/fudic-globals.d.ts')).toBe(GLOBALS_DTS);
@@ -129,7 +130,7 @@ describe('fudic new', () => {
   it('writes the two SDD-60 folders empty, names them in fudic.json and types fudic:<id> (§3.15)', async () => {
     const plan = await planNew('demo', options(), new MemoryFs({}, CWD));
     const file = (path: string): string =>
-      plan.changes.find((change) => change.path === path)!.contents;
+      contentsOf(plan.changes.find((change) => change.path === path));
 
     expect(file('demo/src/server/.gitkeep')).toBe('');
     expect(file('demo/src/browser/.gitkeep')).toBe('');
@@ -141,7 +142,7 @@ describe('fudic new', () => {
 
   it('leaves the generated config empty and shows src/ in the README (§6.3, §6.4)', async () => {
     const plan = await planNew('demo', options({ prefix: 'demo' }), new MemoryFs({}, CWD));
-    const file = (path: string): string => plan.changes.find((change) => change.path === path)!.contents;
+    const file = (path: string): string => contentsOf(plan.changes.find((change) => change.path === path));
 
     // The scaffold configures nothing because it does not have to: the plugin's default and
     // the directory the CLI just wrote come from the same constant. A generated config that
@@ -247,9 +248,13 @@ describe('fudic new', () => {
 
 /** SDD-41 criterion 9: the project declares itself, and the prefix is optional. */
 describe('fudic new writes fudic.json', () => {
+  // The guide inside the app (SDD-79 §8.2.14): the app's fudic.json names it and its base.css.
+  const GUIDE = { sheet: 'src/guide/guide.css', icon: 'src/guide/logo.svg' };
+  const GUIDE_GLOBALS = { base: 'src/guide/base.css' };
+
   function written(overrides: Partial<NewOptions> = {}): Promise<string> {
     return planNew('tienda', options({ id: 'tienda', ...overrides }), new MemoryFs({}, CWD)).then(
-      (plan) => plan.changes.find((change) => change.path === 'tienda/fudic.json')?.contents ?? '',
+      (plan) => contentsOf(plan.changes.find((change) => change.path === 'tienda/fudic.json')),
     );
   }
 
@@ -260,13 +265,22 @@ describe('fudic new writes fudic.json', () => {
       prefix: 'app',
       server: 'src/server',
       browser: 'src/browser',
+      globalStyles: GUIDE_GLOBALS,
+      guide: GUIDE,
     });
   });
 
   it('omits the prefix entirely when none was given — the field is optional', async () => {
     const contents = await written();
 
-    expect(JSON.parse(contents)).toEqual({ id: 'tienda', kind: 'app', server: 'src/server', browser: 'src/browser' });
+    expect(JSON.parse(contents)).toEqual({
+      id: 'tienda',
+      kind: 'app',
+      server: 'src/server',
+      browser: 'src/browser',
+      globalStyles: GUIDE_GLOBALS,
+      guide: GUIDE,
+    });
     expect(contents).not.toContain('prefix');
   });
 

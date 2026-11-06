@@ -1,9 +1,4 @@
-/*
- * The style guide. The page gets all of it, flattened and pruned to what the page uses.
- * A component gets only the pieces it names in shadowrootadoptedstylesheets — the files
- * imported after base.css, each named after its file: <template shadowrootmode="open"
- * shadowrootadoptedstylesheets="button input">.
- */
+/* The page gets all of it; a component, the pieces it names: shadowrootadoptedstylesheets="button input". */
 @import "./tokens.css";
 @import "./document.css";
 @import "./base.css";

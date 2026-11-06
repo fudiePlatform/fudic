@@ -63,16 +63,18 @@ describe('over examples/workspace/apps/tienda (criteria 15 and 16)', () => {
     const tokens = body['symbols'] as Body[];
     expect(tokens.map((t) => [t['name'], t['from']])).toEqual([
       ['--guia-ink', '@fudic/example-guia'],
+      ['--guia-surface', '@fudic/example-guia'],
       ['--guia-line', '@fudic/example-guia'],
       ['--guia-accent', '@fudic/example-guia'],
       ['--guia-radius', '@fudic/example-guia'],
       ['--guia-pad', '@fudic/example-guia'],
-      ['--guia-accent', null],
+      ['--guia-font', '@fudic/example-guia'],
     ]);
-    expect(tokens[0]).toEqual({ kind: 'tokens', name: '--guia-ink', from: '@fudic/example-guia', value: '#1c1c1e', doc: 'Body text.', at: '@fudic/example-guia/tokens.css:9:3' });
+    expect(tokens[0]).toEqual({ kind: 'tokens', name: '--guia-ink', from: '@fudic/example-guia', value: 'light-dark(#1c1c1e, #ececf1)', doc: 'Body text.', at: '@fudic/example-guia/tokens.css:9:3' });
     // Two segments: no group.
     expect(tokens.some((t) => 'group' in t)).toBe(false);
-    expect(tokens.at(-1)).toMatchObject({ at: 'src/tienda.css:11:3' });
+    // tienda sets its green in a sheet its layout links, which is no project sheet (SDD-79 §8.2.23).
+    expect(tokens.some((t) => t['from'] === null)).toBe(false);
   }, 120_000);
 
   it('a library pipe is named by its package too', async () => {
@@ -112,7 +114,7 @@ describe('over examples/workspace/apps/tienda (criteria 15 and 16)', () => {
       defaultSlot: true,
       slots: [],
       events: [],
-      tokens: ['--guia-line', '--guia-accent', '--guia-radius', '--guia-pad'],
+      tokens: ['--guia-line', '--guia-accent', '--guia-radius', '--guia-pad', '--guia-surface'],
     });
     expect(body['usedIn']).toEqual([expect.stringMatching(/^src\/routes\/index\.fud:\d+:\d+$/u)]);
   }, 120_000);
@@ -132,7 +134,7 @@ describe('over examples/workspace/apps/tienda (criteria 15 and 16)', () => {
 
   it('describe a route and a token', async () => {
     expect((await call(client, 'fudic_describe', { name: '/catalogo' })).body).toMatchObject({ kind: 'route', name: '/catalogo', declares: [], at: 'src/routes/catalogo.fud' });
-    expect((await call(client, 'fudic_describe', { name: '--guia-ink' })).body).toMatchObject({ kind: 'token', value: '#1c1c1e', doc: 'Body text. Use it for anything read, never for a border.' });
+    expect((await call(client, 'fudic_describe', { name: '--guia-ink' })).body).toMatchObject({ kind: 'token', value: 'light-dark(#1c1c1e, #ececf1)', doc: 'Body text. Use it for anything read, never for a border.' });
   }, 120_000);
 
   it('a name nothing has: FUD1405, with the nearest one', async () => {

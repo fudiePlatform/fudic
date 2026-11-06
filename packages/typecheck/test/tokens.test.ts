@@ -169,19 +169,20 @@ describe('the two-app workspace (§6.8)', () => {
   const tienda = fileURLToPath(new URL('../../../examples/workspace/apps/tienda', import.meta.url));
   const { tokens, diagnostics } = projectTokens(tienda);
 
-  it("lists the guide's tokens before the app's own, with their package, path and span", () => {
+  it("lists the guide's tokens, with their package, path and span; the app declares none of its own", () => {
     expect(diagnostics).toEqual([]);
 
     const guide = tokens.filter((token) => token.from === '@fudic/example-guia');
     const own = tokens.filter((token) => token.from === null);
-    expect(names(guide)).toEqual(['--guia-ink', '--guia-line', '--guia-accent', '--guia-radius', '--guia-pad']);
-    expect(names(own)).toEqual(['--guia-accent']);
-    expect(tokens.indexOf(guide[0]!)).toBeLessThan(tokens.indexOf(own[0]!));
+    expect(names(guide)).toEqual(['--guia-ink', '--guia-surface', '--guia-line', '--guia-accent', '--guia-radius', '--guia-pad', '--guia-font']);
+    // tienda sets its accent in a sheet its layout links, on its own component (SDD-79 §8.2.23):
+    // that is no project sheet, so no token of the project.
+    expect(names(own)).toEqual([]);
 
-    const accent = guide[2]!;
-    expect(accent).toMatchObject({ value: '#0b5fff', style: { name: 'tokens', global: true } });
+    const accent = guide[3]!;
+    // tokens.css is no sheet of globalStyles: it is read because the guide imports it (SDD-79 §8.2.21).
+    expect(accent).toMatchObject({ value: 'light-dark(#0b5fff, #7aa2ff)', style: { name: 'tokens', global: true } });
     expect(accent.path.endsWith('/examples/workspace/libs/guia/tokens.css')).toBe(true);
-    expect(own[0]!.path.endsWith('/examples/workspace/apps/tienda/src/tienda.css')).toBe(true);
     expect(accent.span.end).toBeGreaterThan(accent.span.start);
   });
 
@@ -192,5 +193,36 @@ describe('the two-app workspace (§6.8)', () => {
     expect(guide.find((token) => token.name === '--guia-accent')?.doc).toBe(
       "The one colour that marks what matters: a link, an active item, a card's edge.",
     );
+  });
+});
+
+describe('the tokens of a style guide (SDD-79 §8.2.21)', () => {
+  it('reads the guide and the files it imports directly, before the sheets of the package', () => {
+    const files = {
+      [`${APP}/package.json`]: JSON.stringify({ name: 'app' }),
+      [`${APP}/fudic.json`]: JSON.stringify({ id: 'app', kind: 'app', globalStyles: { app: 'app.css' }, guide: { sheet: 'g/guide.css' } }),
+      [`${APP}/g/guide.css`]: [
+        '@import "./tokens.css";',
+        '@import url("https://cdn.example/x.css");',
+        '@import "/abs.css";',
+        '@import "./gone.css";',
+        '@import;',
+        ':root { --own: 0; }',
+      ].join('\n'),
+      [`${APP}/g/tokens.css`]: ':root { --ink: #111; }',
+      [`${APP}/app.css`]: ':host { --app: 1; }',
+    };
+    const { tokens, diagnostics } = projectTokens(APP, memoryPackages(files));
+    expect(diagnostics).toEqual([]);
+    expect(names(tokens)).toEqual(['--own', '--ink', '--app']);
+    expect(tokens.find((t) => t.name === '--ink')).toMatchObject({ path: `${APP}/g/tokens.css`, style: { name: 'tokens' } });
+  });
+
+  it('a guide whose sheet is not there gives no token', () => {
+    const files = {
+      [`${APP}/package.json`]: JSON.stringify({ name: 'app' }),
+      [`${APP}/fudic.json`]: JSON.stringify({ id: 'app', kind: 'app', guide: { sheet: 'guide.css' } }),
+    };
+    expect(projectTokens(APP, memoryPackages(files)).tokens).toEqual([]);
   });
 });

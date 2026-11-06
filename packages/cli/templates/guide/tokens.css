@@ -1,11 +1,4 @@
-/*
- * The design tokens. They live on :root, in the page: custom properties are the one thing that
- * crosses into a shadow root, so every component reads them, and a zone of the page can change
- * them (see document.css).
- *
- * Every colour is light-dark(light, dark) and meets WCAG 2.2 AA in both: 4.5:1 for text, 3:1
- * for lines and the focus ring.
- */
+/* On :root, so every component reads them; every colour is light-dark() and meets WCAG 2.2 AA. */
 @font-face {
   font-family: "Inter";
   font-style: normal;

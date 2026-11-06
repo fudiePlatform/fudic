@@ -11,7 +11,7 @@ import { planComponent } from '../../src/plans/component.js';
 import { planPage } from '../../src/plans/page.js';
 import { planLayout } from '../../src/plans/layout.js';
 import { apply } from '../../src/apply.js';
-import { MemoryFs, RecordingRunner } from '../helpers.js';
+import { contentsOf, MemoryFs, RecordingRunner } from '../helpers.js';
 import type { ComponentOptions, LayoutOptions, PageOptions } from '../../src/types.js';
 
 const ROOT = '/ws';
@@ -61,7 +61,7 @@ describe('the prefix of the target project (criteria 7 and 8)', () => {
 
     expect(plan.errors).toEqual([]);
     expect(plan.changes[0]?.path).toBe('src/components/ad-card/ad-card.fud');
-    expect(plan.changes[0]?.contents).toContain('<ad-card>');
+    expect(contentsOf(plan.changes[0])).toContain('<ad-card>');
   });
 
   it('--project ui from the root writes ui-card, in the library', async () => {
@@ -69,7 +69,7 @@ describe('the prefix of the target project (criteria 7 and 8)', () => {
 
     expect(plan.errors).toEqual([]);
     expect(plan.changes[0]?.path).toBe('libs/ui/src/components/ui-card/ui-card.fud');
-    expect(plan.changes[0]?.contents).toContain('<ui-card>');
+    expect(contentsOf(plan.changes[0])).toContain('<ui-card>');
   });
 
   it('--project reaches a sibling from inside another project', async () => {
@@ -173,6 +173,6 @@ describe('a route does not fit in a library (criterion 11)', () => {
 
     expect(plan.errors).toEqual([]);
     expect(plan.changes[0]?.path).toBe('apps/admin/src/routes/alta.fud');
-    expect(plan.changes[0]?.contents).toContain('rel="layout"');
+    expect(contentsOf(plan.changes[0])).toContain('rel="layout"');
   });
 });

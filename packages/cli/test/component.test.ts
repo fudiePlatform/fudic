@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { planComponent } from '../src/plans/component.js';
 import { apply } from '../src/apply.js';
 import { parseFud } from '../src/parse.js';
-import { projectFs } from './helpers.js';
+import { contentsOf, projectFs } from './helpers.js';
 import type { ComponentOptions } from '../src/types.js';
 
 const CWD = '/project';
@@ -46,7 +46,7 @@ describe('g component', () => {
     expect(change.kind).toBe('create');
     expect(change.path).toBe('components/app-card/app-card.fud');
 
-    const doc = parseFud(change.contents).doc;
+    const doc = parseFud(contentsOf(change)).doc;
     expect(doc.type).toBe('component-document');
     if (doc.type !== 'component-document') return;
     expect(doc.name).toBe('app-card');
@@ -56,19 +56,19 @@ describe('g component', () => {
     // No `@code` until there is something to write in it (BUG-50 §4.3): an empty one is text
     // the user has to read past, or delete.
     expect(doc.code).toBeUndefined();
-    expect(change.contents).not.toContain('@code');
+    expect(contentsOf(change)).not.toContain('@code');
 
     // And nothing invented on top of it: no placeholder node, no made-up CSS rule, no
     // comment standing in for markup. The `host=` marker is serialization's, not ours.
-    expect(change.contents).not.toContain('host=');
-    expect(change.contents).not.toContain('<div');
-    expect(change.contents).not.toContain('<!--');
-    expect(change.contents).toContain('<style></style>');
+    expect(contentsOf(change)).not.toContain('host=');
+    expect(contentsOf(change)).not.toContain('<div');
+    expect(contentsOf(change)).not.toContain('<!--');
+    expect(contentsOf(change)).toContain('<style></style>');
   });
 
   it('is written whole: exactly the file the user is shown', async () => {
     const plan = await planComponent('app-button', options(), projectFs());
-    expect(plan.changes[0]!.contents).toBe(`<head>
+    expect(contentsOf(plan.changes[0])).toBe(`<head>
   <style></style>
 </head>
 
@@ -82,7 +82,7 @@ describe('g component', () => {
   it('--no-style drops the head, --slot emits a slot', async () => {
     const fs = projectFs();
     const plan = await planComponent('app-icon', options({ style: false, slot: true }), fs);
-    const contents = plan.changes[0]!.contents;
+    const contents = contentsOf(plan.changes[0]);
     expect(contents).not.toContain('<style>');
     expect(contents).toContain('<slot></slot>');
     expect(parseFud(contents).doc.type).toBe('component-document');
@@ -114,7 +114,7 @@ describe('g component', () => {
     const wired = plan.changes.find((change) => change.path === 'components/app-card.fud');
     expect(wired?.kind).toBe('modify');
 
-    const contents = wired!.contents;
+    const contents = contentsOf(wired);
     expect(contents).toContain('<link rel="component" href="./app-icon/app-icon.fud">');
     expect(contents.indexOf('app-icon.fud')).toBeLessThan(contents.indexOf('@code'));
 
@@ -148,7 +148,7 @@ describe('g component', () => {
     });
     const plan = await planComponent('app-icon', options({ wireInto: ['components/bare.fud'] }), fs);
     const wired = plan.changes.find((change) => change.path === 'components/bare.fud')!;
-    expect(wired.contents.startsWith('<link rel="component" href="./app-icon/app-icon.fud">\n<app-bare>')).toBe(true);
+    expect(contentsOf(wired).startsWith('<link rel="component" href="./app-icon/app-icon.fud">\n<app-bare>')).toBe(true);
   });
 
   it('collides on an existing FILE even when the tag is free (§6.10)', async () => {

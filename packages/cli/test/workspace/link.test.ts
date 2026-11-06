@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest';
 import { planComponent } from '../../src/plans/component.js';
 import { componentLink } from '../../src/workspace/link.js';
-import { MemoryFs } from '../helpers.js';
+import { contentsOf, MemoryFs } from '../helpers.js';
 import type { ComponentOptions } from '../../src/types.js';
 
 const ROOT = '/ws';
@@ -60,12 +60,12 @@ describe('fudic g component --project <lib> --in <a file of an app>', () => {
 
     expect(plan.errors).toEqual([]);
     const route = plan.changes.find((change) => change.path === 'apps/web/src/routes/index.fud');
-    expect(route?.contents).toContain('<link rel="component" href="@mi-tienda/ui/ui-card.fud">');
+    expect(contentsOf(route)).toContain('<link rel="component" href="@mi-tienda/ui/ui-card.fud">');
     const manifest = plan.changes.find((change) => change.path === 'apps/web/package.json');
-    expect(manifest?.contents).toBe(
+    expect(contentsOf(manifest)).toBe(
       '{\n  "name": "@mi-tienda/web",\n  "dependencies": {\n    "@mi-tienda/ui": "workspace:*",\n    "@fudic/core": "1.0.0"\n  }\n}\n',
     );
-    expect(JSON.parse(manifest!.contents)).toBeTruthy();
+    expect(JSON.parse(contentsOf(manifest))).toBeTruthy();
   });
 
   it('wires two files of one app with one edit of its package.json', async () => {
@@ -91,7 +91,7 @@ describe('componentLink', () => {
   const link = (fs: MemoryFs, into = 'apps/web/src/routes/index.fud', component = 'libs/ui/src/components/ui-card/ui-card.fud') =>
     componentLink(into, component, ROOT, fs);
   const manifestOf = (result: ReturnType<typeof link>): string | undefined =>
-    'href' in result ? result.dependency?.contents : undefined;
+    'href' in result ? result.dependency && contentsOf(result.dependency) : undefined;
 
   it('is a path inside one package', () => {
     expect(link(workspace(WEB), 'apps/web/src/routes/index.fud', 'apps/web/src/components/web-card.fud')).toEqual({

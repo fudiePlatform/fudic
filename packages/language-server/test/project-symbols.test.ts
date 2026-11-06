@@ -368,9 +368,10 @@ describe('over examples/workspace/apps/tienda', () => {
 
   it('the tokens of the guide come from its package, the app\'s own from none; a library\'s pieces are not the project\'s', () => {
     const tokens = service.symbols('tokens');
-    // The guide declares them; the app may declare some again, over them, as its own.
+    // The guide declares them. tienda declares none of its own: it sets its green in a sheet its
+    // layout links, which is no project sheet (SDD-79 §8.2.23).
     expect(tokens.find((t) => t.name === '--guia-ink' && t.from === '@fudic/example-guia')).toBeDefined();
-    expect(tokens.some((t) => t.from === null)).toBe(true);
+    expect(tokens.some((t) => t.from === null)).toBe(false);
     expect(service.describe('--guia-ink')).toMatchObject({ from: '@fudic/example-guia' });
     expect(service.pieces().every((p) => !p.file.includes('node_modules'))).toBe(true);
   });

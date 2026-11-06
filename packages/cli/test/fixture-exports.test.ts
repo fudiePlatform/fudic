@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { renderTemplate } from '../src/templates.js';
 import { planSpec } from '../src/plans/spec.js';
 import { run } from '../src/run.js';
-import { captureStreams, MemoryFs, projectFs, RecordingRunner } from './helpers.js';
+import { contentsOf, captureStreams, MemoryFs, projectFs, RecordingRunner } from './helpers.js';
 
 async function cli(fs: MemoryFs, ...argv: string[]): Promise<number> {
   const capture = captureStreams();
@@ -77,7 +77,7 @@ describe('criterion 14: g spec writes the fixture as g component does', () => {
       ]);
     const plan = await planSpec('app-card', { cwd: '/project', force: false }, fs, props);
     expect(plan.errors).toEqual([]);
-    const fixture = plan.changes.find((change) => change.path.endsWith('.fixture.ts'))!.contents;
+    const fixture = contentsOf(plan.changes.find((change) => change.path.endsWith('.fixture.ts')));
     expect(fixture.startsWith("import type { Fixtures } from '@fudic/terms';\nimport type { $Props } from './app-card.fud';\n\n")).toBe(true);
     expect(fixture.trimEnd().endsWith('} satisfies Fixtures<$Props>;')).toBe(true);
     expect(fixture).not.toContain('Record<');

@@ -347,8 +347,8 @@ export interface ActionDeps {
   readonly apis?: ApiFiles;
   /** The project's TypeScript, which the loop-key repair asks for an element's type. */
   readonly typescript?: ts.LanguageService;
-  /** The style guide's pieces the file may adopt, which the guide's repairs add and remove. */
-  readonly pieces?: readonly GuidePiece[];
+  /** The style guide's pieces the file may adopt, which the guide's repairs add and remove; none without a guide. */
+  readonly pieces: readonly GuidePiece[];
 }
 
 /** The client command that opens an explanation in the markdown preview (`fudic-vscode`). */
@@ -407,7 +407,7 @@ export function codeActions(deps: ActionDeps): CodeAction[] {
       cached,
       index,
       ...(deps.typescript === undefined ? {} : { typescript: deps.typescript }),
-      ...(deps.pieces === undefined ? {} : { pieces: deps.pieces }),
+      pieces: deps.pieces,
     };
     for (const repair of repairsFor(input, diagnostic)) emit(repair);
 

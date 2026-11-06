@@ -356,3 +356,42 @@ describe('earlyHints and css (SDD-70 §3.10, SDD-73 §3.5)', () => {
     expect(old.diagnostics).toEqual([]);
   });
 });
+
+describe('guide (SDD-79 §3.1, criterion 1)', () => {
+  it('reads the sheet and the icon, as paths of the project', () => {
+    const result = readProjectConfig(ROOT, io('{"kind":"lib","guide":{"sheet":"./guide.css","icon":"assets\\\\logo.svg"}}'));
+    expect(result.diagnostics).toEqual([]);
+    expect(result.config?.guide).toEqual({ sheet: 'guide.css', icon: 'assets/logo.svg' });
+  });
+
+  it('the icon is optional, and an app may carry a guide too', () => {
+    expect(readProjectConfig(ROOT, io('{"id":"a","guide":{"sheet":"src/guide/guide.css"}}')).config?.guide).toEqual({
+      sheet: 'src/guide/guide.css',
+    });
+  });
+
+  it('is absent when the file does not declare it', () => {
+    expect(readProjectConfig(ROOT, io('{"id":"a"}')).config).not.toHaveProperty('guide');
+  });
+
+  it.each([
+    ['a text', '"x"', 'it is not an object'],
+    ['null', 'null', 'it is not an object'],
+    ['a list', '["guide.css"]', 'it is not an object'],
+    ['no sheet', '{}', '"sheet" is missing'],
+    ['a sheet that is a number', '{"sheet":1}', '"sheet": 1 is not a path'],
+    ['a sheet out of the project', '{"sheet":"../g.css"}', '"sheet": it leaves the project'],
+    ['an absolute sheet', '{"sheet":"/g.css"}', '"sheet": it is absolute'],
+    ['an icon that is not text', '{"sheet":"g.css","icon":true}', '"icon": true is not a path'],
+    ['an icon out of the project', '{"sheet":"g.css","icon":"../x.svg"}', '"icon": it leaves the project'],
+  ])('%s is FUD0725 problem guide over the field, and leaves no config', (_case, value, reason) => {
+    const text = `{"id":"shop","guide":${value}}`;
+    const result = readProjectConfig(ROOT, io(text));
+    expect(result.config).toBeNull();
+    const d = result.diagnostics[0]!;
+    expect(d.code).toBe('FUD0725');
+    expect(d.message).toContain('"guide" must be { "sheet": "guide.css", "icon"?: "logo.svg" } with paths inside the project');
+    expect(d.message).toContain(reason);
+    expect(text.slice(d.span!.start, d.span!.end)).toBe('"guide"');
+  });
+});

@@ -67,6 +67,9 @@ export default defineConfig({
         // The `.fudapi` a file links, and the server cut of a `@code` without regions (SDD-60).
         'src/emit/api-links.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/emit/server-cut.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // The style guide (SDD-79): reading it, and what a component adopts of it.
+        'src/css/guide.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/emit/guide-adoption.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
       },
     },
   },

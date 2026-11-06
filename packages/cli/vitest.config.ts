@@ -25,6 +25,9 @@ export default defineConfig({
         'src/version.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         // New code is born at 100 (CLAUDE.md): approve, accept and history (SDD-65).
         'src/plans/history.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // The style guide (SDD-79): the command, and the files it writes.
+        'src/plans/guide.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/plans/guide-files.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
       },
     },
   },

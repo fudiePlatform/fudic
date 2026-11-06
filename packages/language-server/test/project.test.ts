@@ -118,6 +118,36 @@ describe('openProject — repairs', () => {
   });
 });
 
+describe('openProject — the style guide (SDD-79 §4.9)', () => {
+  const GUIDE = {
+    'fudic.json': JSON.stringify({ kind: 'app', id: 'p', guide: { sheet: 'src/guide.css' } }),
+    'src/guide.css': '@import "./h1.css";',
+    'src/h1.css': ':where(h1) { margin: 0; }',
+  };
+  const HEAD = '<app-head>\n  <template shadowrootmode="open"><h1>t</h1></template>\n</app-head>\n';
+  const at = HEAD.indexOf('h1>');
+  const missing: SourceDiagnostic = { code: 'FUD1440', severity: 'warning', message: 'm', span: { start: at, end: at + 2 } };
+
+  it('FUD1440: adds the piece, as the light bulb does', () => {
+    const root = project({ ...GUIDE, 'src/components/app-head.fud': HEAD });
+    const [repair] = openProject(root).repairs(`${root}/src/components/app-head.fud`, missing);
+    expect(repair?.edits[0]?.newText).toBe(' shadowrootadoptedstylesheets="h1"');
+  });
+
+  it('reads the guide again when its fudic.json or a sheet changes', () => {
+    const root = project({ ...GUIDE, 'src/components/app-head.fud': HEAD });
+    const service = openProject(root);
+    const file = `${root}/src/components/app-head.fud`;
+    expect(service.repairs(file, missing)).toHaveLength(1);
+    write(root, { 'src/guide.css': '' });
+    service.invalidate(`${root}/src/guide.css`);
+    expect(service.repairs(file, missing)).toEqual([]);
+    write(root, { 'src/guide.css': '@import "./h1.css";', 'fudic.json': JSON.stringify({ kind: 'app', id: 'p' }) });
+    service.invalidate(`${root}/fudic.json`);
+    expect(service.repairs(file, missing)).toEqual([]);
+  });
+});
+
 describe('openProject — invalidate', () => {
   it('before the first question there is nothing to forget', () => {
     const root = project({});

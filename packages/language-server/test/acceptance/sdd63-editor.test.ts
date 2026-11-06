@@ -132,11 +132,11 @@ describe('§6.12 — the tokens in the `<style>` of a `.fud` of tienda', () => {
     // A custom property local to the `<style>` is not a token, and the CSS service still offers it.
     expect(items.some((item) => item.label === '--card-gap')).toBe(true);
 
-    expect(ink[0]?.detail).toBe('#1c1c1e');
+    expect(ink[0]?.detail).toBe('light-dark(#1c1c1e, #ececf1)');
     expect(JSON.stringify(ink[0]?.documentation)).toContain('Body text.');
-    // tienda redeclares `--guia-accent` in its own sheet, and the last declaration is the one
-    // that wins in CSS — so that is the one offered.
-    expect(accent?.detail).toBe('#0f7b3f');
+    // tienda sets its green in a sheet its layout links, which is no project sheet (SDD-79
+    // §8.2.23): the guide's is the one offered.
+    expect(accent?.detail).toBe('light-dark(#0b5fff, #7aa2ff)');
   });
 
   it('says on hover the value, the doc and the library, and goes to its declaration', async () => {
@@ -144,7 +144,7 @@ describe('§6.12 — the tokens in the `<style>` of a `.fud` of tienda', () => {
     const { uri } = await atApp.open(TIENDA_CARD, text);
     const hover = await hoverText(atApp, TIENDA_CARD, text, ink);
 
-    expect(hover).toContain('`--guia-ink: #1c1c1e`');
+    expect(hover).toContain('`--guia-ink: light-dark(#1c1c1e, #ececf1)`');
     expect(hover).toContain('Body text. Use it for anything read, never for a border.');
     expect(hover).toContain('From `@fudic/example-guia` · style `tokens`');
 
@@ -159,18 +159,20 @@ describe('§6.12 — the tokens in the `<style>` of a `.fud` of tienda', () => {
     expect(targets).toContainEqual({ uri: expect.stringMatching(/\/libs\/guia\/tokens\.css$/u), line: 8 });
   });
 
-  it("says over `--guia-accent` the app's value and doc, and the guide's value it overrides", async () => {
-    const original = (await atApp.open(TIENDA_CARD)).text;
+  it("says over `--guia-accent` the app's value, and the guide's value it overrides", async () => {
+    // admin redeclares the accent in a sheet of its project (tienda no longer does: SDD-79
+    // §8.2.23), and the last declaration is the one that wins in CSS.
+    const ADMIN_PANEL = 'apps/admin/src/components/admin-panel/admin-panel.fud';
+    const original = (await atRoot.open(ADMIN_PANEL)).text;
     const anchor = original.indexOf('display: block;');
     const text = `${original.slice(0, anchor)}color: var(--guia-accent); ${original.slice(anchor)}`;
-    const hover = await hoverText(atApp, TIENDA_CARD, text, anchor + 'color: var(--gu'.length);
+    const hover = await hoverText(atRoot, ADMIN_PANEL, text, anchor + 'color: var(--gu'.length);
 
     // Ours alone: the CSS service steps aside over a token.
     expect(hover).toBe(
-      '`--guia-accent: #0f7b3f`\n\n' +
-        "The storefront's green, over the guide's blue, for the components of this app.\n\n" +
-        'From this project · style `tienda`\n\n' +
-        'Overrides `#0b5fff` from `@fudic/example-guia` · style `tokens`',
+      '`--guia-accent: #7b0f5f`\n\n' +
+        'From this project · style `admin`\n\n' +
+        'Overrides `light-dark(#0b5fff, #7aa2ff)` from `@fudic/example-guia` · style `tokens`',
     );
   });
 });

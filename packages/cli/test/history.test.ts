@@ -11,7 +11,7 @@ import { planAccept, planApprove, findPiece, historyIo, nodeHistoryDeps, type Hi
 import { planNew } from '../src/plans/new.js';
 import { planWorkspace } from '../src/plans/workspace.js';
 import { run, type RunDeps } from '../src/run.js';
-import { MemoryFs, RecordingRunner, captureStreams, projectFs } from './helpers.js';
+import { contentsOf, MemoryFs, RecordingRunner, captureStreams, projectFs } from './helpers.js';
 import type { NewOptions } from '../src/types.js';
 
 const CWD = '/project';
@@ -66,13 +66,13 @@ describe('fudic approve (criterion 12)', () => {
 
     const [change] = plan.changes;
     expect(change?.kind).toBe('modify');
-    expect(change?.contents.startsWith(`${before}\n2026-10-22T10:02Z d4e5f6a approved`)).toBe(true);
+    expect(contentsOf(change).startsWith(`${before}\n2026-10-22T10:02Z d4e5f6a approved`)).toBe(true);
   });
 
   it('is the user of the system when git has no name, and -------- outside git', async () => {
     const fs = button();
     const plan = await planApprove(`${BUTTON}.fud`, base, fs, historyDeps(fakeGit({})));
-    expect(plan.changes[0]?.contents).toMatch(/^2026-10-22T10:02Z ------- approved {4}by sys-user {2}spec 2 hash [0-9a-f]{12}\n$/u);
+    expect(contentsOf(plan.changes[0])).toMatch(/^2026-10-22T10:02Z ------- approved {4}by sys-user {2}spec 2 hash [0-9a-f]{12}\n$/u);
   });
 
   it('is FUD1222 without a .fudspec, and writes nothing', async () => {
@@ -286,7 +286,7 @@ describe('fudic new and the history (criterion 15)', () => {
     const app = await planNew('demo', options, new MemoryFs({}, '/here'));
     const workspace = await planWorkspace('ws', { ...options, app: 'demo', uses: [], libs: [] }, new MemoryFs({}, '/here'));
     for (const [plan, path] of [[app, 'demo/.gitattributes'], [workspace, 'ws/.gitattributes']] as const) {
-      expect(plan.changes.find((change) => change.path === path)?.contents).toContain('\n*.fudlog merge=union\n');
+      expect(contentsOf(plan.changes.find((change) => change.path === path))).toContain('\n*.fudlog merge=union\n');
     }
   });
 });

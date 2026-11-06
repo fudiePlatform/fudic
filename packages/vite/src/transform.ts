@@ -169,15 +169,14 @@ export interface ProjectStyles {
 /**
  * A project sheet as the host holds it: the emit's sheet plus the absolute path it was read
  * from, which every entry turns into its own relative `spec` so the sheet's `url()` resolve
- * from the sheet's file. Absent for a sheet that is not a file.
+ * from the sheet's file. Every project sheet and every piece of a guide is one.
  */
 export interface HostStyle extends ProjectStyle {
-  readonly file?: string;
+  readonly file: string;
 }
 
 /** The sheet as the entry at `entryPath` hands it to the emit: its file, relative to the entry. */
 function forEntry(sheet: HostStyle, entryPath: string): ProjectStyle {
-  if (sheet.file === undefined) return { specifier: sheet.specifier, css: sheet.css };
   const rel = relative(dirname(entryPath), sheet.file).replace(/\\/gu, '/');
   return { specifier: sheet.specifier, css: sheet.css, spec: rel.startsWith('..') ? rel : `./${rel}` };
 }

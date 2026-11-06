@@ -135,7 +135,7 @@ export class ProjectStyleChains {
     if (cached !== undefined) return cached;
     const config = readProjectConfig(key, this.#config).config;
     const sheets = readStyles(key, config, this.#config);
-    const globals = sheets.global.flatMap((s) => (s.file === undefined ? [] : [s.file]));
+    const globals = sheets.global.map((s) => s.file);
     const read = readPackageGuide(key, config, globals, this.#io);
     // A piece is adopted like any sheet of `styles`, and is checked like one: no `@import`,
     // and no rule that only the document can match.

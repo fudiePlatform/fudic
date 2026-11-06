@@ -13,14 +13,16 @@ import { describe, expect, it } from 'vitest';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import ts from 'typescript';
 import { URI } from 'vscode-uri';
-import { span } from '@fudic/compiler';
+import { span, type GuidePiece } from '@fudic/compiler';
 import { FUD0056, FUD1160, type SourceDiagnostic } from '@fudic/diagnostics';
 import { clientFileName, GLOBALS_DTS } from '@fudic/language-core';
 import { fudicDiagnostics, portableTypeDiagnostics } from '@fudic/typecheck';
 import { DocumentCache, type CachedDocument } from '../src/document-cache.js';
+import { ProjectConfigs } from '../src/project-config.js';
 import { REPAIRED_CODES, repairsFor, type Repair } from '../src/repairs.js';
 import { RequestStats } from '../src/stats.js';
 import { createFudicService, placedDiagnostics } from '../src/services/plugin.js';
+import { guidePieceDiagnostics } from '../src/services/template-attrs.js';
 import { WorkspaceIndex } from '../src/workspace-index.js';
 import { fakeServiceContext, TOKEN } from './_lsp.js';
 import { component, LAYOUT, memoryFs } from './_support.js';
@@ -46,8 +48,16 @@ const UI = `@snippet card(title: string, tone: "a" | "b" = "a") {
 }
 `;
 
+// The project's style guide (SDD-79): one piece, `h1`, which a component may adopt.
+const GUIDE_FILES: Readonly<Record<string, string>> = {
+  '/p/fudic.json': JSON.stringify({ kind: 'app', id: 'p', guide: { sheet: 'guide.css' } }),
+  '/p/guide.css': '@import "./h1.css";',
+  '/p/h1.css': ':where(h1) { margin: 0; }',
+};
+
 const FILES: Readonly<Record<string, string>> = {
   '/p/components/app-badge.fud': component('app-badge'),
+  ...GUIDE_FILES,
   '/p/layouts/_layout.fud': LAYOUT,
   '/p/layouts/_frame.fud': FRAME_LAYOUT,
   '/p/snippets/ui.fud': UI,
@@ -81,21 +91,27 @@ interface Setup {
   readonly index: WorkspaceIndex;
   readonly typescript: ts.LanguageService | undefined;
   readonly diagnostics: readonly SourceDiagnostic[];
+  readonly pieces: readonly GuidePiece[];
 }
 
 /** `source` at `path`, parsed against the workspace; with `typed`, a real TypeScript over its projection. */
 function setup(source: string, path = ROUTE, typed = false): Setup {
-  const index = new WorkspaceIndex(memoryFs({ ...FILES, [path]: source }));
+  const fs = memoryFs({ ...FILES, [path]: source });
+  const index = new WorkspaceIndex(fs);
   index.scan('/p');
   const cached = new DocumentCache(index).get(path, 1, source);
   const client = cached.virtuals.find((v) => v.fileName === clientFileName(cached.path));
   const typescript = typed && client !== undefined ? projectionService(cached.path, client.text) : undefined;
-  return { cached, index, typescript, diagnostics: placedDiagnostics(path, fudicDiagnostics(cached, index)) };
+  // The guide's two warnings, as the editor adds them to the file's own.
+  const pieces = new ProjectConfigs(fs).guidePiecesFor(path);
+  const diagnostics = [...placedDiagnostics(path, fudicDiagnostics(cached, index)), ...guidePieceDiagnostics(cached, pieces)];
+  return { cached, index, typescript, diagnostics, pieces };
 }
 
-const inputOf = ({ cached, index, typescript }: Setup) => ({
+const inputOf = ({ cached, index, typescript, pieces }: Setup) => ({
   cached,
   index,
+  pieces,
   ...(typescript === undefined ? {} : { typescript }),
 });
 
@@ -291,6 +307,12 @@ describe('repairsFor answers what the editor offers, with no server (criterion 9
       source: `${frame}<link rel="snippet" href="../snippets/ui.fud">\n@code {\n  const name = 'x';\n  const on = true;\n}\n@section top {}\n@section bottom {}\n<p>@render card(name, tone: on ? "a" : "b")</p>\n`,
     },
     FUD1160: { source: `${layout}<div className="card"></div>\n` },
+    // The guide's two (SDD-79): an h1 its piece is not adopted for, and the piece with no h1.
+    FUD1440: { source: component('app-head').replace('<span>', '<h1>t</h1><span>'), path: '/p/components/app-head.fud' },
+    FUD1441: {
+      source: component('app-head').replace('shadowrootmode="open"', 'shadowrootmode="open" shadowrootadoptedstylesheets="h1"'),
+      path: '/p/components/app-head.fud',
+    },
   };
 
   it('has a sample for every code of the table', () => {
@@ -314,7 +336,8 @@ describe('repairsFor answers what the editor offers, with no server (criterion 9
         () => undefined,
         s.typescript === undefined ? {} : { 'typescript/languageService': s.typescript },
       );
-      const service = createFudicService({ index: s.index, stats: new RequestStats(), typescript: true }).create(context);
+      const configs = new ProjectConfigs(memoryFs({ ...FILES, [path]: sample.source }));
+      const service = createFudicService({ index: s.index, stats: new RequestStats(), typescript: true, configs }).create(context);
       const whole = { start: { line: 0, character: 0 }, end: { line: sample.source.split('\n').length, character: 0 } };
       const actions = (await service.provideCodeActions?.(document, whole, { diagnostics: [] }, TOKEN)) ?? [];
       const editor = actions

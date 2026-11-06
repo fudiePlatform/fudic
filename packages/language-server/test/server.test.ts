@@ -284,6 +284,23 @@ describe('watched files', () => {
     expect(server.configs.componentTagFor('/p/x.fud')).toBe('shop-button');
   });
 
+  it('reads the style guide again when one of its sheets changes (SDD-79 §8.2.11)', () => {
+    const { fake, server, files } = setup();
+    files['/p/fudic.json'] = JSON.stringify({ kind: 'app', id: 'p', guide: { sheet: 'guide.css' } });
+    files['/p/guide.css'] = '@import "./h1.css";';
+    files['/p/h1.css'] = 'h1 { margin: 0; }';
+    fake.onInitialize?.(params());
+    expect(server.configs.guidePiecesFor('/p/x.fud').map((p) => p.name)).toEqual(['h1']);
+
+    files['/p/guide.css'] = '@import "./h1.css";\n@import "./p.css";';
+    files['/p/p.css'] = 'p { margin: 0; }';
+    fake.onDidChangeWatchedFiles?.({
+      changes: [{ uri: URI.file('/p/guide.css').toString(), type: 2 }],
+    });
+
+    expect(server.configs.guidePiecesFor('/p/x.fud').map((p) => p.name)).toEqual(['h1', 'p']);
+  });
+
   it('takes a changed translation catalog without a restart (SDD-58 criterion 33)', () => {
     const { fake, server, files } = setup();
     files['/p/fudic.json'] = '{"locales":["es","en"]}';

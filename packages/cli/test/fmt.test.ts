@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { parseArgs } from '../src/args.js';
 import { filesOf, planFmt } from '../src/plans/fmt.js';
 import { run } from '../src/run.js';
-import { captureStreams, MemoryFs, RecordingRunner } from './helpers.js';
+import { contentsOf, captureStreams, MemoryFs, RecordingRunner } from './helpers.js';
 import type { FmtOptions } from '../src/types.js';
 
 const options = (over: Partial<FmtOptions> = {}): FmtOptions => ({
@@ -93,7 +93,7 @@ describe('planFmt', () => {
     const fs = new MemoryFs({ 'a.fud': MESSY, 'b.fud': TIDY });
     const plan = await planFmt(['.'], options(), fs);
     expect(plan.changes.map((c) => c.path)).toEqual(['a.fud']);
-    expect(plan.changes[0]?.contents).toBe(TIDY);
+    expect(contentsOf(plan.changes[0])).toBe(TIDY);
   });
 
   it('reports a file that does not parse and leaves it alone', async () => {
@@ -114,7 +114,7 @@ describe('planFmt', () => {
   it('passes the options straight through to the formatter', async () => {
     const fs = new MemoryFs({ 'a.fud': MESSY });
     const plan = await planFmt(['.'], options({ useTabs: true }), fs);
-    expect(plan.changes[0]?.contents).toContain('\t<template');
+    expect(contentsOf(plan.changes[0])).toContain('\t<template');
   });
 });
 

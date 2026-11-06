@@ -4,8 +4,8 @@
 > **Paquetes:** `config` · `compiler` · `vite` · `language-server` · `cli` · `mcp` · `diagnostics` ·
 > `examples/workspace`
 > **Rama:** `sdd-79-guia-de-estilos-generada`, desde `main`.
-> **Progreso:** 12 / 22 — `En curso`. Las tareas de tests (5, 8, 12, 13, 16, 18) las escribe la
-> sesión de test y se marcan cuando las entrega.
+> **Progreso:** 18 / 22 — `En curso`. Tests escritos (bloques 1–6 del relevo); faltan el e2e del
+> ejemplo (19), la prueba de Pedro (21) y el cierre (22).
 
 ## Relevo (2026-11-06)
 
@@ -89,10 +89,10 @@ del compilador y el build, porque sus criterios (25, 26) construyen la app gener
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [x] | 4 | 1, 2 | **`readGuide` y `piecesForTag`.** Aplanar con `flattenImports`; clasificar cada import directo según §4.3 (adoptable, no global, nombre válido → trozo; `FUD1442` si el nombre no vale); `piecesForTag` por el sujeto de cada selector (§4.5) | `compiler` | `src/css/guide.ts` (nuevo) · `src/index.ts` |
-| [ ] | 5 | 4 | **Sus tests.** Criterios 2–5, sobre la plantilla real (`packages/cli/templates/guide`) cuando exista y sobre fixtures mínimas hasta entonces | `compiler` | `test/css/guide.test.ts` |
+| [x] | 5 | 4 | **Sus tests.** Criterios 2–5, sobre la plantilla real (`packages/cli/templates/guide`) cuando exista y sobre fixtures mínimas hasta entonces | `compiler` | `test/css/guide.test.ts` |
 | [x] | 6 | 3, 4 | **El emit: `guides` e `icon`.** `pageSheets` añade cada `GuideSheet` como hoja de documento antes de las del layout, con ámbito `document` y la misma entrega que un `<link>` podado; el `<link rel="icon">` solo si el `<head>` no tiene uno (SDD §4.2, §4.7) | `compiler` | `src/emit/page-sheets.ts` · `src/emit/layout.ts` · `src/emit/module.ts` (`EmitOptions`) |
 | [x] | 7 | 6 | **Vite: la cadena.** `ProjectStyleChains.guidesFor`/`iconFor`; los trozos en `choosableFor` con la comprobación de `FUD0741`; `FUD1443`; `FUD1440` y `FUD1441` para el componente de la entrada, junto a `adoptDiagnostics`; el fichero de la guía y sus imports entran en las dependencias del módulo para que editar un trozo repinte en dev | `vite` | `src/styles.ts` · `src/transform.ts` |
-| [ ] | 8 | 7 | **Tests del build.** Criterios 6–17 y 24 con un workspace de prueba (app + `libs/ui` + `libs/guide`); el 8 con el snapshot existente sin tocar | `vite` | `test/guide-*.test.ts` |
+| [x] | 8 | 7 | **Tests del build.** Criterios 6–17 y 24 con un workspace de prueba (app + `libs/ui` + `libs/guide`); el 8 con el snapshot existente sin tocar | `vite` | `test/guide-*.test.ts` |
 
 ## Fase 3 — el editor (5)
 
@@ -101,8 +101,8 @@ del compilador y el build, porque sus criterios (25, 26) construyen la app gener
 | [x] | 9 | 4 | **La cadena en el servidor.** `choosableStylesFor` con `dependencyChain` y los trozos de cada guía, invalidado al cambiar cualquier `fudic.json` o fichero de guía de la cadena. Criterio 18 | `language-server` | `src/project-config.ts` |
 | [x] | 10 | 9 | **El completado añade el trozo.** En el template raíz, `additionalTextEdits` que añaden a `shadowrootadoptedstylesheets` o crean el atributo (SDD §4.8). Criterio 19 | `language-server` | `src/services/plugin.ts` · `src/services/template-attrs.ts` |
 | [x] | 11 | 9 | **Los avisos y sus arreglos.** `FUD1440` sobre la etiqueta, `FUD1441` sobre el nombre (con `prunePage` contra `shadowSurface`); `repairsFor` gana los dos, el de `FUD1441` marcado *manual* (SDD §4.9) | `language-server` | `src/services/template-attrs.ts` · `src/repairs.ts` |
-| [ ] | 12 | 10, 11 | **Sus tests.** Criterios 18–22 | `language-server` | `test/services/template-attrs.test.ts` · `test/repairs.test.ts` |
-| [ ] | 13 | 11 | **`fudic_fix` no quita.** Salta los arreglos marcados *manual*. Criterio 23 | `mcp` | `src/fix.ts` · `test/fix.test.ts` |
+| [x] | 12 | 10, 11 | **Sus tests.** Criterios 18–22 | `language-server` | `test/services/template-attrs.test.ts` · `test/repairs.test.ts` |
+| [x] | 13 | 11 | **`fudic_fix` no quita.** Salta los arreglos marcados *manual*. Criterio 23 | `mcp` | `src/fix.ts` · `test/fix.test.ts` |
 
 ## Fase 4 — la CLI (5)
 
@@ -110,9 +110,9 @@ del compilador y el build, porque sus criterios (25, 26) construyen la app gener
 |---|---|---|---|---|---|
 | [x] | 14 | — | **Ficheros binarios.** `FileChange` con `bytes`, `io.writeBytes`, `apply` y `--dry-run` con el tamaño; leer una plantilla como bytes. Criterio 31 | `cli` | `src/types.ts` · `src/io.ts` · `src/apply.ts` · `src/templates.ts` |
 | [x] | 15 | 14 | **La plantilla.** `templates/guide/**` según SDD §4.1, §4.4, §4.10, §4.11: `guide.css`, `tokens.css` con `light-dark()`, `document.css`, `base.css`, los trozos (lista cerrada contra las hojas UA de Chromium, Firefox y WebKit; anotar en §8.2 lo que se añada o quite), Inter 4.1 + `OFL.txt` de la release oficial, `logo.svg` provisional, `fudic.json`, `package.json`, `README.md` | `cli` | `templates/guide/**` |
-| [ ] | 16 | 15 | **El test de contraste.** Lee `tokens.css` de la plantilla, resuelve cada `light-dark()` y comprueba la tabla de §4.10 en los dos modos. Criterio 32 | `cli` | `test/guide-contrast.test.ts` |
+| [x] | 16 | 15 | **El test de contraste.** Lee `tokens.css` de la plantilla, resuelve cada `light-dark()` y comprueba la tabla de §4.10 en los dos modos. Criterio 32 | `cli` | `test/guide-contrast.test.ts` |
 | [x] | 17 | 15 | **Los comandos.** `g guide` (workspace y app suelta), `new` con `src/guide/`, `new --workspace` con `libs/guide` y las dependencias, `g app`/`g lib` dependen de las guías del workspace, `--styles-only` fuera con su sugerencia; ayuda (`help/commands.ts`, `usage.ts`), `README.md` de la CLI y `templates/README.md.tmpl` (SDD §3.5, §4.12). Enmienda en BUG-50 §4.7 | `cli` · docs | `src/args.ts` · `src/run.ts` · `src/plans/{guide,new,workspace,app,lib}.ts` · `src/help/*` · `README.md` · `docs/sdd/bugs/BUG-50-*.md` |
-| [ ] | 18 | 16, 17 | **Tests de la CLI.** Criterios 25–30, con `pnpm build` real de la app y del workspace generados (como `new-build.test.ts`) | `cli` | `test/generate/guide.test.ts` · `test/workspace/*.test.ts` |
+| [x] | 18 | 16, 17 | **Tests de la CLI.** Criterios 25–30, con `pnpm build` real de la app y del workspace generados (como `new-build.test.ts`) | `cli` | `test/generate/guide.test.ts` · `test/workspace/*.test.ts` |
 
 ## Fase 5 — ejemplo, documentación y cierre (4)
 
