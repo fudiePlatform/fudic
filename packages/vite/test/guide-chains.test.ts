@@ -97,6 +97,20 @@ describe('ProjectStyleChains and the guide', () => {
     expect(chains.iconFor(ROUTE)).toBe('../../node_modules/@acme/guide/logo.svg');
   });
 
+  it('guidedSheets: the global sheets of the chain a guide imports, and no other', () => {
+    const chains = new ProjectStyleChains(
+      APP,
+      fs({
+        ...WORKSPACE,
+        [`${APP}/fudic.json`]: json({ kind: 'app', id: 'tienda', globalStyles: { theme: 'theme.css' } }),
+        [`${APP}/theme.css`]: ':host {}',
+      }),
+    );
+    // base is the guide's and its guide.css imports it; theme is the app's and no guide reads it.
+    expect([...chains.guidedSheets(APP)]).toEqual(['base']);
+    expect(chains.guidedSheets('/p').size).toBe(0);
+  });
+
   it('FUD0741: a sheet of the app named like a piece of the guide (criterion 12)', () => {
     const chains = new ProjectStyleChains(
       APP,
@@ -197,7 +211,7 @@ describe('readPackageGuide', () => {
 
 describe('entryGuide and specFrom', () => {
   it('flattens the guide from the entry\'s folder', () => {
-    const guide = { sheet: '/g/guide.css', globals: ['/g/base.css'], pieces: [] };
+    const guide = { sheet: '/g/guide.css', globals: ['/g/base.css'], pieces: [], reads: [] };
     const files = fs({ '/g/guide.css': '@import "./h1.css";', '/g/h1.css': 'h1 { background: url(./x.png); }' });
     const sheet = entryGuide(guide, '/app/src/index.fud', files);
     expect(sheet.spec).toBe('../../g/guide.css');

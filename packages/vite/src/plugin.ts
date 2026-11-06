@@ -299,6 +299,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
   /** `_error.fud`, out of the route table (SDD-56 §4.8): one per locale (SDD-58 §4.5). */
   let errorPages: readonly RouteBuild[] = [];
   let swConfig: ResolvedSwConfig | null = null;
+  /**
+   * The project sheets a style guide of the chain imports, by their `fudic.json` entry: they
+   * reach every page through the guide, so no page keeping a rule of them is no dead CSS
+   * (SDD-79). Read in `buildStart`, with the chain.
+   */
+  let guidedSheets: ReadonlySet<string> = new Set();
   /** Who this project is (SDD-41). Empty until `configResolved` has run. */
   let project: ProjectResult = { config: null, errors: [] };
   /**
@@ -1492,6 +1498,7 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // component from it.
       if (styleChains !== null) {
         styleChains.chainOfPackage(root);
+        guidedSheets = new Set([...styleChains.guidedSheets(root)].map((s) => `fudic.json "${s}"`));
         await report(this, styleChains.diagnostics);
       }
       // The published runtime this build links instead of compiling (SDD-45 §4.2). Discovered
@@ -1601,9 +1608,11 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // same fact stated there would be one warning per route for a single mistake.
       // THIS project's own sheets, not the chain's: a library's guide is adopted by the
       // library's own components, and whether this project defines any says nothing about it.
+      // Nor a sheet its style guide imports (SDD-79): that one reaches every page through the
+      // guide, and a project just created has no component yet.
       if (
         styleChains !== null &&
-        styleChains.own(root).global.length + styleChains.own(root).optional.length > 0 &&
+        ownSheets(styleChains, root) > 0 &&
         discoverComponents(builds, io).length === 0
       ) {
         await report(this, [FUD0742()]);
@@ -2723,7 +2732,10 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       }
       // At the line that brings the sheet in, which is the one to remove; a `fudic.json`
       // entry has no line of its own here, and points at the file.
+      // A sheet a style guide imports reaches the pages through the guide (SDD-79): unused by
+      // the components of one build is no dead CSS.
       for (const { name, site } of linked.unusedSheets()) {
+        if (site === undefined && guidedSheets.has(name)) continue;
         sheets.push(
           site === undefined
             ? FUD0852({ file: join(root, CONFIG_FILE), sheet: name })
@@ -2977,4 +2989,11 @@ async function sendErrorPage(
   setLinkHeader(res, hints);
   res.setHeader('Content-Security-Policy', cspFor(csp, nonce));
   res.end(html);
+}
+
+/** How many sheets the project at `root` declares that only its components can use. */
+function ownSheets(chains: ProjectStyleChains, root: string): number {
+  const own = chains.own(root);
+  const guided = chains.guidedSheets(root);
+  return own.global.filter((s) => !guided.has(s.specifier)).length + own.optional.length;
 }

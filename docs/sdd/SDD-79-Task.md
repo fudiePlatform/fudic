@@ -7,6 +7,23 @@
 > **Progreso:** 18 / 22 — `En curso`. Tests escritos (bloques 1–6 del relevo); faltan el e2e del
 > ejemplo (19), la prueba de Pedro (21) y el cierre (22).
 
+## Relevo 2 (2026-11-06, segunda sesión)
+
+**Hecho.** Tests de todo el SDD escritos y en verde (commit `ef37e12a`); lo nuevo al 100 % con su
+umbral (compiler, vite, cli); `language-server`, `config`, `diagnostics`, `mcp` y `typecheck` al
+100 %. Arreglado que una app recién creada avisara `FUD0742`/`FUD0852` por el `base.css` de su guía
+(SDD §8.3.6), con sus tests (`vite/test/build-guide.test.ts`, `guide-chains.test.ts`); los ejemplos
+de la guía del MCP pasan. El e2e del ejemplo da 3 verdes y 2 rojos (`caches.spec.ts`, abrir sin
+conexión tras visitar la otra app) que **ya fallaban en `main`** (§8.3.7).
+
+**Falta, en este orden:**
+
+1. `pnpm typecheck`, `pnpm test` y `pnpm build` completos desde la raíz (por paquete ya pasan; con
+   la máquina cargada dos tests de `typecheck` se pasan de tiempo y pasan solos).
+2. Decidir con Pedro si el e2e de cachés va a un BUG aparte (§8.3.7) y marcar la tarea 19.
+3. La prueba de Pedro (tarea 21, §6.1).
+4. Cierre (tarea 22): estado `Hecho` aquí, en la spec y en `INDEX.md` (tabla y registro).
+
 ## Relevo (2026-11-06)
 
 **Estado.** Implementación completa en la rama `sdd-79-guia-de-estilos-generada` (origin), worktree

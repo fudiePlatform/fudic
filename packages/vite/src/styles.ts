@@ -207,6 +207,17 @@ export class ProjectStyleChains {
     return this.#chainOf(toPosix(this.#io.realPath(toPosix(packageRoot)))).global;
   }
 
+  /**
+   * The global sheets of the chain of a package that one of its guides imports: they reach
+   * every page through the guide, so a project with no component yet, or a page that renders
+   * none, does not make them unused. By specifier.
+   */
+  guidedSheets(packageRoot: string): ReadonlySet<string> {
+    const chain = this.#chainOf(toPosix(this.#io.realPath(toPosix(packageRoot))));
+    const read = new Set(chain.guides.flatMap((g) => g.reads));
+    return new Set(chain.global.filter((s) => read.has(s.file)).map((s) => s.specifier));
+  }
+
   /** What reading the OTHER packages' sheets had to say. The root's are `own(root)`'s. */
   get diagnostics(): readonly FileDiagnostic[] {
     return this.#diagnostics;

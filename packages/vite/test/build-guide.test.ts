@@ -256,6 +256,57 @@ describe('the favicon (criteria 15, 16)', () => {
   }, 300000);
 });
 
+describe('an app just created: its guide, and no component yet (§8.4)', () => {
+  /** A standalone app with its guide in src/guide/, base.css in globalStyles, one page. */
+  async function buildApp(extra: Readonly<Record<string, string>> = {}, config: Record<string, unknown> = {}): Promise<Built> {
+    const root = mkdtempSync(join(tmpdir(), 'fudic-solo-'));
+    const tree: Record<string, string> = {
+      'package.json': manifest('solo'),
+      'fudic.json': JSON.stringify({
+        kind: 'app',
+        id: 'solo',
+        globalStyles: { base: 'src/guide/base.css', ...((config['globalStyles'] as object | undefined) ?? {}) },
+        guide: { sheet: 'src/guide/guide.css' },
+      }),
+      'src/guide/guide.css': '@import "./base.css";\n@import "./h1.css";',
+      'src/guide/base.css': '*, *::before, *::after { box-sizing: border-box; }',
+      'src/guide/h1.css': ':where(h1) { margin: 0; }',
+      'src/routes/index.fud': '<!DOCTYPE html>\n<html><head><title>t</title></head><body><h1>Home</h1></body></html>\n',
+      ...extra,
+    };
+    for (const [path, contents] of Object.entries(tree)) {
+      mkdirSync(join(root, path, '..'), { recursive: true });
+      writeFileSync(join(root, path), contents);
+    }
+    const warnings: string[] = [];
+    const result = (await build({
+      root,
+      logLevel: 'warn',
+      customLogger: recorder(warnings),
+      resolve: { alias: { ...runtimeAlias } },
+      plugins: [fudic()],
+      build: { write: false, minify: false },
+    })) as unknown as { output: OutFile[] };
+    return { output: result.output, warnings };
+  }
+
+  it('says nothing of the guide\'s base: it reaches the page through the guide', async () => {
+    const built = await buildApp();
+    const said = built.warnings.join('\n');
+    expect(said).not.toContain('FUD0742');
+    expect(said).not.toContain('FUD0852');
+    expect(published(built, linksIn(page(built, 'index.html'))[0]!)).toContain('box-sizing');
+  }, 300000);
+
+  it('still says it of a sheet of its own that no guide reads', async () => {
+    const built = await buildApp({ 'src/theme.css': ':host { color: red; }' }, { globalStyles: { theme: 'src/theme.css' } });
+    const said = built.warnings.join('\n');
+    expect(said).toContain('FUD0742');
+    expect(said).toMatch(/FUD0852: fudic\.json "theme"/u);
+    expect(said).not.toMatch(/FUD0852: fudic\.json "base"/u);
+  }, 300000);
+});
+
 describe('two guides in the chain (criterion 9)', () => {
   it('both are linked, the library\'s first', async () => {
     const built = await buildWorkspace({

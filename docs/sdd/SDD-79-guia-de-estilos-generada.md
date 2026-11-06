@@ -632,3 +632,11 @@ editor añade los dos trozos, y que quitar el `<details>` avisa sin quitar nada.
 5. **`@fudic/compiler` depende de `@fudic/config`** (§8.2.4): el test que asegura que el
    compilador no alcanza TypeScript lo admite porque `config` solo depende de `conventions` y
    `diagnostics`, y lo comprueba.
+6. **Una hoja que la guía importa no dispara `FUD0742` ni `FUD0852`.** Con `base.css` en
+   `globalStyles` de una app recién creada (sin componentes todavía), el build avisaba dos veces sin
+   motivo: esa hoja llega a la página por la guía. `ProjectStyleChains.guidedSheets(root)` da las
+   hojas globales de la cadena que alguna guía importa (`PackageGuide.reads`), y los dos avisos las
+   saltan. Una hoja propia que ninguna guía lee sigue avisando igual.
+7. **El e2e del ejemplo (`caches.spec.ts`, «abre sin conexión tras visitar la otra app») ya fallaba
+   en `main` antes de este SDD**, igual que aquí (comprobado sobre `f167f5f2`): 3 verdes, 2 rojos.
+   No es de esta spec; queda anotado para su propio BUG.

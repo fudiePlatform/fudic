@@ -26,6 +26,11 @@ export interface PackageGuide {
   readonly globals: readonly string[];
   /** Its pieces, in import order; each `path` absolute. */
   readonly pieces: readonly GuidePiece[];
+  /**
+   * Every file the guide reads, its own sheet and what it imports: a sheet among them reaches
+   * every page through the guide, whatever its components adopt.
+   */
+  readonly reads: readonly string[];
 }
 
 export interface PackageGuideResult {
@@ -77,7 +82,13 @@ export function readPackageGuide(
     file: posix.normalize(file),
   }));
   return {
-    guide: { sheet, ...(icon === undefined ? {} : { icon }), globals, pieces },
+    guide: {
+      sheet,
+      ...(icon === undefined ? {} : { icon }),
+      globals,
+      pieces,
+      reads: read.value.sheet.files.map((f) => posix.join(root, f)),
+    },
     errors: [...errors, ...flat.filter((d) => d.severity === 'error')],
     warnings: flat.filter((d) => d.severity !== 'error'),
     files: pieces.map((p) => ({
