@@ -605,3 +605,12 @@ editor añade los dos trozos, y que quitar el `<details>` avisa sin quitar nada.
     JSON), nunca sus bytes. `g showcase` ve un binario como texto vacío.
 20. **`new --workspace` ya no deja `libs/.gitkeep`**: `libs/guide` siempre está. Un `--lib guide`
     o `--uses guide` no la duplica.
+21. **Los tokens de la guía son tokens** para el editor y el MCP (`fudic_symbols`, `var(--`):
+    `@fudic/typecheck/tokens` lee la hoja de la guía y sus imports directos antes que las hojas del
+    paquete. Sin esto, el agente no vería ningún token de un proyecto recién creado.
+22. **`fudic_generate` del MCP** gana `kind: "guide"` y pierde `stylesOnly`.
+23. **El ejemplo:** `libs/guia` sin fuente, con `h1`, `h2`, `p`, `code` y `a`; los tres componentes
+    adoptan `h2`. `tienda` pone su verde en una hoja que enlaza su layout, sobre su propio
+    `tienda-card`: con los tokens en `:root`, ponerlo en la página entera teñiría también la
+    `ui-card` compartida, que es justo lo que el e2e comprueba que no pasa. `admin` sigue con su
+    `globalStyles` en `:host`.

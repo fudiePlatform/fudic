@@ -2,7 +2,8 @@
  * `@fudic/typecheck/tokens` — the style tokens a project sees.
  *
  * A token is a custom property (`--x: …`) declared in a `:host` or `:root` rule of a sheet the
- * project lists in `globalStyles` or `styles`, or that a library of its chain lists. `:host` is
+ * project lists in `globalStyles` or `styles` or imports from its style guide, or that a library
+ * of its chain does. `:host` is
  * how a sheet adopted into a shadow root is written; `:root`, how a page's is. A custom property
  * in any other rule is a variable local to that rule, not a token.
  *
@@ -13,7 +14,8 @@
  */
 
 import { CONFIG_FILE, readProjectStyles, type ConfigIo } from '@fudic/config';
-import { parseCssRules, type CssDeclaration, type CssRule, type Span } from '@fudic/compiler';
+import { posix } from 'node:path';
+import { parseCssRules, parseImport, type CssDeclaration, type CssRule, type Span } from '@fudic/compiler';
 import type { FileDiagnostic } from '@fudic/diagnostics';
 import { dependencyChain, nodePackageFs, type PackageFs } from '@fudic/resolve';
 import { toPosix } from './paths.js';
@@ -75,7 +77,12 @@ export function projectTokens(root: string, io: TokenIo = nodePackageFs()): Proj
     for (const diagnostic of styles.diagnostics) {
       diagnostics.push({ ...diagnostic, file: `${pkg.root}/${CONFIG_FILE}` });
     }
+    const listed = new Set([...styles.global, ...styles.optional].map((sheet) => sheet.path));
     const sheets = [
+      // The style guide's files first: it defines, and every page and component reads it.
+      ...guideSheets(pkg.root, pkg.config.guide?.sheet, io)
+        .filter((sheet) => !listed.has(sheet.path))
+        .map((sheet) => ({ sheet, global: true })),
       ...styles.global.map((sheet) => ({ sheet, global: true })),
       ...styles.optional.map((sheet) => ({ sheet, global: false })),
     ];
@@ -99,6 +106,33 @@ export function projectTokens(root: string, io: TokenIo = nodePackageFs()): Proj
     }
   }
   return { tokens, diagnostics };
+}
+
+/**
+ * The style guide's sheet and every file it imports directly, by relative path, each named
+ * after its file: where its tokens are. One that cannot be read is not there.
+ */
+function guideSheets(root: string, sheet: string | undefined, io: TokenIo): readonly GuideFile[] {
+  if (sheet === undefined) return [];
+  const entry = posix.join(toPosix(root), sheet);
+  const css = io.readFile(entry);
+  if (css === undefined) return [];
+  const imported = parseCssRules(css).value.rules.flatMap((rule) => {
+    if (rule.type !== 'at-statement' || rule.name !== 'import') return [];
+    const url = parseImport(css.slice(rule.prelude.start, rule.prelude.end))?.url;
+    return url === undefined || /^(?:[a-z][a-z0-9+.-]*:|\/)/iu.test(url) ? [] : [posix.join(posix.dirname(entry), url)];
+  });
+  return [entry, ...imported].flatMap((path) => {
+    const text = io.readFile(path);
+    return text === undefined ? [] : [{ specifier: posix.basename(path, '.css'), path, css: text }];
+  });
+}
+
+/** A file of the style guide, as the token reader needs it. */
+interface GuideFile {
+  readonly specifier: string;
+  readonly path: string;
+  readonly css: string;
 }
 
 /**

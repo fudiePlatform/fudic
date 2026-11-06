@@ -247,8 +247,10 @@ con una hoja de estilos que el layout enlaza en su `<head>`: `<link rel="stylesh
 ## Design tokens
 
 Un token es una custom property declarada directamente en una regla `:host` o `:root` (también dentro de
-`@layer`) de una hoja listada en `globalStyles` o `styles`, del proyecto o de una librería que
-usa. Una custom property declarada en cualquier otra regla es local a esa regla, no un token.
+`@layer`) de una hoja listada en `globalStyles` o `styles`, o importada por la guía de estilos, del
+proyecto o de una librería que usa. Una custom property declarada en cualquier otra regla es local a
+esa regla, no un token. Los tokens de la guía están en `:root`, en la página: las custom properties
+atraviesan todos los shadow roots.
 
 Documenta cada token como se documenta una prop: un `/** … */` justo encima de su declaración.
 Nómbralo `--<prefix>-<group>-<name>`: el segundo segmento es su grupo (`color`, `space`).
@@ -274,28 +276,43 @@ Nómbralo `--<prefix>-<group>-<name>`: el segundo segmento es su grupo (`color`,
   recibe un nombre de token.
 - Ningún color, radio o espaciado literal cuando un token lo expresa; pregunta al usuario antes de añadir uno.
 
-## Tokens de una librería
+## La guía de estilos
 
-En un workspace, los design tokens suelen vivir en una **librería de estilos**: un `tokens.css` y
-nada más. `fudic_generate { kind: "lib", name: "tokens", stylesOnly: true }` la crea:
+Todo proyecto nace con una: una app suelta la tiene en `src/guide/`, un workspace en `libs/guide`,
+y toda app y librería que crea el workspace depende de ella. `fudic_generate { kind: "guide" }`
+crea una donde no la hay. Se nombra en `fudic.json`:
 
-```json path=libs/tokens/fudic.json
+```json path=libs/guide/fudic.json
 {
   "kind": "lib",
-  "globalStyles": { "tokens": "tokens.css" }
+  "globalStyles": { "base": "base.css" },
+  "guide": { "sheet": "guide.css", "icon": "logo.svg" }
 }
 ```
 
-```css path=libs/tokens/tokens.css
-/* Custom properties the components of whoever uses tokens can read: var(--tokens-ink). */
-:host {
-  /** Body text. Use it for anything read, never for a border. */
-  --tokens-ink: #1c1c1e;
-}
+`guide.css` son solo `@import`: `tokens.css` (los tokens en `:root`, la fuente), `document.css`
+(`html` y `body`), `base.css`, y después **un trozo por elemento**: `h1.css`, `button.css`,
+`input.css`, `table.css`…
+
+- **La página recibe la guía entera.** Toda página de un proyecto cuya cadena la contiene la
+  enlaza, podada a lo que la página usa, antes que las hojas de su layout. Ningún `<link>` que
+  escribir: depender de la librería basta. Su `icon` es el favicon de toda página cuyo `<head>` no
+  tiene uno.
+- **Un componente recibe solo los trozos que nombra**, por nombre de fichero, en su template raíz:
+
+```html
+<template shadowrootmode="open" shadowrootadoptedstylesheets="button input">
 ```
 
-Un proyecto los adopta dependiendo de la librería: `fudic_add { module: "tokens", project: "ui" }`
-para una librería de componentes, `fudic_add { module: "tokens", project: "web" }` para una app. A partir de entonces
-todo componente de ese proyecto adopta `tokens.css` primero, antes que sus propias hojas, y
-`fudic_symbols { kind: "tokens" }` lista los tokens de la librería antes que los del proyecto. Una librería de
-componentes que usa los tokens los transmite: una app que la usa recibe la cadena completa.
+- **El atributo es la verdad**: el build adopta exactamente lo que dice. Cuando escribas un
+  elemento que pinta un trozo, añade el trozo. `FUD1440` avisa de un trozo que falta para un
+  elemento del template, y su arreglo lo añade — `fudic_fix` lo aplica. `FUD1441` avisa de un trozo
+  adoptado que no pinta nada en el template. **Nunca quites un trozo por tu cuenta**: un script
+  puede crear lo que pinta. Su arreglo lo acepta el usuario; `fudic_fix` no lo toca.
+- Qué trozo pinta qué elemento se lee de sus selectores: una regla cuyo sujeto es el tipo del
+  elemento (`:where(button)`). Un trozo que pinta por clase o atributo (`popover`) se adopta a mano.
+- Cada color es `light-dark(claro, oscuro)` y la página sigue al sistema. Una zona fuerza un modo
+  con `color-scheme: dark`, y los componentes de dentro la siguen.
+- La guía se edita donde está: un token en `tokens.css`, un trozo en su fichero. Retocar una zona
+  o un componente de la app es poner un token sobre él, en una hoja que enlaza el layout:
+  `.promo { --guide-accent: #0f7b3f; }`.

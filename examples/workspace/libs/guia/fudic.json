@@ -1,4 +1,5 @@
 {
   "kind": "lib",
-  "globalStyles": { "tokens": "tokens.css" }
+  "globalStyles": { "base": "base.css" },
+  "guide": { "sheet": "guide.css", "icon": "logo.svg" }
 }

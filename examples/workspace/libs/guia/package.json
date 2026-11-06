@@ -3,13 +3,15 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "The style guide of the workspace: tokens and nothing else. A fudic library with no components, consumed by the one that has them.",
+  "description": "The style guide of the workspace: tokens, the document's reset and a few pieces, no components. Every page of a project whose chain holds it links it.",
   "files": [
-    "tokens.css",
+    "*.css",
+    "logo.svg",
     "fudic.json"
   ],
   "exports": {
     "./fudic.json": "./fudic.json",
-    "./tokens.css": "./tokens.css"
+    "./*.css": "./*.css",
+    "./logo.svg": "./logo.svg"
   }
 }

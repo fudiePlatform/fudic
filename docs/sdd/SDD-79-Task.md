@@ -78,6 +78,6 @@ del compilador y el build, porque sus criterios (25, 26) construyen la app gener
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
 | [ ] | 19 | 8 | **`examples/workspace`.** `libs/guia` al formato de §4.1; `tienda` mueve su `--guia-accent` a su hoja de documento; e2e en verde (SDD §4.13). Criterio 33 | `examples` | `examples/workspace/**` |
-| [ ] | 20 | 17 | **La guía del MCP.** `html-css.md` y su copia en español: la guía, los trozos, la adopción, la asimetría | `mcp` | `guide/html-css.md` · `guide/es/html-css.md` |
+| [x] | 20 | 17 | **La guía del MCP.** `html-css.md` y su copia en español: la guía, los trozos, la adopción, la asimetría | `mcp` | `guide/html-css.md` · `guide/es/html-css.md` |
 | [ ] | 21 | 18, 19 | **La prueba de Pedro** (SDD §6.1). Lo que salga va a §8.2 | — | — |
 | [ ] | 22 | 1–21 | **Cierre.** Criterio 34: `pnpm typecheck`, `pnpm test`, `pnpm build`; ficheros nuevos al 100 % con su umbral por fichero en `compiler`, `vite` y `cli`; `language-server` al 100 %. Estado `Hecho` en la SDD, aquí y en `INDEX.md`; entrada en el registro de progreso | docs | `docs/sdd/*` |

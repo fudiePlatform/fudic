@@ -20,6 +20,7 @@ export const GENERATE_KINDS = [
   'snippet',
   'app',
   'lib',
+  'guide',
   'spec',
   'term',
   'api',
@@ -74,7 +75,6 @@ const GENERATE_OPTIONS = {
   noSw: z.boolean().optional(),
   base: z.string().optional(),
   locale: z.string().optional(),
-  stylesOnly: z.boolean().optional(),
   app: z.string().optional().describe('showcase: the app it goes in'),
 };
 
@@ -130,7 +130,7 @@ export function registerProjectTools(server: McpServer, project: Project, checks
       title: 'fudic generate',
       description:
         'Creates a piece of the fudic project exactly as `fudic g <kind>` does: component, page, layout, snippet, app, lib, ' +
-        'spec, term, api, showcase, service, form, pipe or style. Never write these files from scratch. ' +
+        'guide, spec, term, api, showcase, service, form, pipe or style. Never write these files from scratch. ' +
         'A component or a page takes `purpose`: what the user asked for, in one sentence.',
       inputSchema: {
         kind: z.enum(GENERATE_KINDS),
