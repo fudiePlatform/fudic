@@ -1,0 +1,6 @@
+:where(blockquote) {
+  margin: 0 0 var(--{{project}}-space-4);
+  padding: var(--{{project}}-space-2) var(--{{project}}-space-4);
+  border-inline-start: 4px solid var(--{{project}}-line);
+  color: var(--{{project}}-muted);
+}

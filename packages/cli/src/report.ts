@@ -10,7 +10,13 @@ import { format } from '@fudic/diagnostics';
 import type { CliError, FileChange, Plan, PlanDiagnostic } from './types.js';
 
 export function formatChange(change: FileChange): string {
+  if ('bytes' in change) return `  create  ${change.path} (${sizeOf(change.bytes.length)})`;
   return change.kind === 'create' ? `  create  ${change.path}` : `  modify  ${change.path}`;
+}
+
+/** A file's size as a person reads it: bytes, or kilobytes with one decimal. */
+function sizeOf(bytes: number): string {
+  return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
 }
 
 export function formatPlan(plan: Plan): readonly string[] {
@@ -68,7 +74,12 @@ export function formatError(error: CliError): string {
 export function planToJson(plan: Plan): string {
   return JSON.stringify(
     {
-      changes: plan.changes.map((change) => ({ kind: change.kind, path: change.path, contents: change.contents })),
+      // A binary file is named with its size: its bytes are not text a reader can use.
+      changes: plan.changes.map((change) =>
+        'bytes' in change
+          ? { kind: change.kind, path: change.path, size: change.bytes.length }
+          : { kind: change.kind, path: change.path, contents: change.contents },
+      ),
       ...(plan.deletions === undefined ? {} : { deletions: plan.deletions }),
       commands: plan.commands,
       diagnostics: plan.diagnostics,

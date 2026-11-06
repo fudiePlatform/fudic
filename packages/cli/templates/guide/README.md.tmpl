@@ -1,0 +1,28 @@
+# {{name}}
+
+The style guide of the workspace: design tokens with a dark mode, a self-hosted font (Inter, under
+the SIL Open Font License in `fonts/OFL.txt`), a favicon, and one stylesheet per element the
+browser styles.
+
+**The page gets all of it.** Every page of a project that depends on this library links
+`guide.css` — tokens, the document's reset and every piece — pruned to what the page uses. No
+`<link>` to write: the dependency is enough.
+
+```sh
+fudic add {{project}} --project <app or library>
+```
+
+**A component gets the pieces it names.** A shadow root sees only what it adopts, so a
+component lists the pieces it needs, named after their files:
+
+```html
+<template shadowrootmode="open" shadowrootadoptedstylesheets="button input">
+```
+
+The editor adds a piece when you write its element, and warns both ways — a piece missing for an
+element, and a piece that styles nothing. It never removes one for you: a script may create what
+it styles.
+
+**Changing it.** The tokens are on `:root` in `tokens.css`, and every colour is
+`light-dark(light, dark)`; a zone of a page forces a mode with `color-scheme: dark`. Pieces are
+plain CSS, written with the tokens. Remove a piece by deleting its `@import`, and its file.

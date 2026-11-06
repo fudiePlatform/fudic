@@ -1,0 +1,32 @@
+:where(textarea) {
+  display: block;
+  width: 100%;
+  min-height: 6em;
+  margin: 0;
+  padding: var(--{{project}}-space-2) var(--{{project}}-space-3);
+  font: inherit;
+  color: inherit;
+  background: var(--{{project}}-surface);
+  border: 1px solid var(--{{project}}-line);
+  border-radius: var(--{{project}}-radius-md);
+  resize: vertical;
+}
+
+:where(textarea):focus-visible {
+  outline: var(--{{project}}-focus-width) solid var(--{{project}}-focus);
+  outline-offset: 1px;
+}
+
+:where(textarea):disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+:where(textarea[aria-invalid="true"]) {
+  border-color: var(--{{project}}-danger);
+}
+
+:where(textarea)::placeholder {
+  color: var(--{{project}}-muted);
+  opacity: 1;
+}

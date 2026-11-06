@@ -10,3 +10,6 @@ export const SNIPPETS_DIR = 'src/snippets';
 /** The two folders of a workspace: its applications and its libraries. */
 export const APPS_DIR = 'apps';
 export const LIBS_DIR = 'libs';
+
+/** The style guide a workspace is born with, and what `g guide` writes without a name. */
+export const GUIDE_NAME = 'guide';

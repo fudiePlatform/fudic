@@ -434,3 +434,4 @@ export * from './codes/FUD1440.js';
 export * from './codes/FUD1441.js';
 export * from './codes/FUD1442.js';
 export * from './codes/FUD1443.js';
+export * from './codes/FUD1444.js';

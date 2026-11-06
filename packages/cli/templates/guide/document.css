@@ -1,0 +1,22 @@
+/*
+ * The document: what only the page has. Light or dark follows the system; a zone of the page
+ * forces one with color-scheme, and the components inside it follow, because color-scheme is
+ * inherited into a shadow root and light-dark() is resolved where the token is used:
+ *
+ *   .promo { color-scheme: dark; }
+ */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--{{project}}-font-sans);
+  font-size: var(--{{project}}-text-base);
+  font-weight: var(--{{project}}-weight-normal);
+  line-height: var(--{{project}}-leading-normal);
+  color: var(--{{project}}-ink);
+  background: var(--{{project}}-surface);
+  -webkit-font-smoothing: antialiased;
+}

@@ -16,14 +16,20 @@ import { absolute, hrefBetween, joinPosix } from '../paths.js';
 import { FUDIC_VERSION, targetChange, TYPESCRIPT_VERSION, VITE_VERSION, VITEST_VERSION } from '../project.js';
 import { layoutTest, localesField, pageTest, prefixField, renderSectionBlocks, renderTemplate, viteSettings } from '../templates.js';
 import { ENV_DECLARATION, ENV_FILE } from './spec.js';
+import { APP_GUIDE_DIR, guideFiles } from './guide-files.js';
 import type { ReadIo } from '../io.js';
 import type { AppLayout, BaseOptions, CliError, FileChange, NewOptions } from '../types.js';
+
+/** The two fields a standalone app's `fudic.json` names its style guide with, as `fudic new` writes them. */
+const GUIDE_FIELDS_JSON = `,
+  "globalStyles": { "base": "${APP_GUIDE_DIR}/base.css" },
+  "guide": { "sheet": "${APP_GUIDE_DIR}/guide.css", "icon": "${APP_GUIDE_DIR}/logo.svg" }`;
 
 /** The only adapter that exists: none. Anything else is rejected, never ignored (§4.6). */
 export const AVAILABLE_TARGETS = ['static'];
 
-/** One file of a scaffold: where it goes, and what is in it. */
-export type ScaffoldFile = readonly [string, string];
+/** One file of a scaffold: where it goes, and what is in it — text, or bytes copied as they are. */
+export type ScaffoldFile = readonly [string, string | Uint8Array];
 
 /** Where a project tree hangs, and what it is called once it is there. */
 export interface ProjectSite {
@@ -165,6 +171,7 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
         run: runCommand(site, opts.pm),
         prefix: opts.prefix,
         frame: frameLine(frame),
+        guide: guideLine(site),
         routesDir: ROUTES_DIR,
         componentsDir: COMPONENTS_DIR,
       }),
@@ -178,8 +185,11 @@ export function appFiles(site: ProjectSite, opts: NewOptions): readonly Scaffold
         locales: localesField(locale),
         server: SERVER_DIR,
         browser: BROWSER_DIR,
+        // A standalone app carries its style guide; in a workspace it is the library's.
+        guide: site.up === null ? GUIDE_FIELDS_JSON : '',
       }),
     ],
+    ...(site.up === null ? guideFiles(joinPosix(site.dir, APP_GUIDE_DIR), site.pkgName) : []),
     [joinPosix(site.dir, 'tsconfig.json'), tsconfigFor(site)],
     // The ambient declarations the templates are typed against, written from the same
     // constant the language server mounts in memory (SDD-23 §3.3), so the editor and `tsc`
@@ -233,6 +243,14 @@ function frameOf(dir: string, layout: AppLayout, indexFile: string): Frame {
   if (layout === null) return { own: null, href: null };
   if ('href' in layout) return { own: null, href: layout.href };
   return { own: layout.own, href: hrefBetween(indexFile, joinPosix(dir, LAYOUTS_DIR, `${layout.own}.fud`)) };
+}
+
+/** The README's line about the style guide: the app's own, or the workspace's. */
+function guideLine(site: ProjectSite): string {
+  const adopt = 'a component adopts its pieces by name, `shadowrootadoptedstylesheets="button"`';
+  return site.up === null
+    ? `- \`${APP_GUIDE_DIR}/\`: the style guide — tokens with a dark mode, the font, the favicon and a sheet per element. Every page links it; ${adopt}.`
+    : `- The style guide is the workspace's \`libs/guide\`: every page links it; ${adopt}.`;
 }
 
 /** The README's line about the frame of the pages. */
@@ -298,6 +316,12 @@ export function scaffoldChanges(
   const changes: FileChange[] = [];
   const errors: CliError[] = [];
   for (const [file, contents] of files) {
+    if (typeof contents !== 'string') {
+      // Bytes are copied, never diffed: with `--force` an existing file is simply replaced.
+      if (io.exists(absolute(opts.cwd, file)) && !opts.force) errors.push(FUD0443({ file, target: 'file' }));
+      else changes.push({ kind: 'create', path: file, bytes: contents });
+      continue;
+    }
     const target = targetChange(opts.cwd, file, contents, opts.force, io);
     if (target.error !== undefined) errors.push(target.error);
     if (target.change !== undefined) changes.push(target.change);

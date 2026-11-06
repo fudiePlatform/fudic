@@ -38,6 +38,8 @@ export interface ReadIo {
 /** What `apply` may do. */
 export interface WriteIo {
   write(path: string, contents: string): void;
+  /** A file that is not text, written byte for byte. */
+  writeBytes(path: string, bytes: Uint8Array): void;
   remove(path: string): void;
 }
 
@@ -73,6 +75,10 @@ export function nodeWriteIo(): WriteIo {
     write: (path, contents) => {
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, contents, 'utf8');
+    },
+    writeBytes: (path, bytes) => {
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(path, bytes);
     },
     remove: (path) => rmSync(path, { force: true }),
   };

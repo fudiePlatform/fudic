@@ -1,0 +1,5 @@
+:where(output) {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--{{project}}-weight-medium);
+}

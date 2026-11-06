@@ -1,0 +1,88 @@
+/*
+ * The design tokens. They live on :root, in the page: custom properties are the one thing that
+ * crosses into a shadow root, so every component reads them, and a zone of the page can change
+ * them (see document.css).
+ *
+ * Every colour is light-dark(light, dark) and meets WCAG 2.2 AA in both: 4.5:1 for text, 3:1
+ * for lines and the focus ring.
+ */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(./fonts/InterVariable.woff2) format("woff2");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(./fonts/InterVariable-Italic.woff2) format("woff2");
+}
+
+:root {
+  color-scheme: light dark;
+
+  /* Colour */
+  --{{project}}-ink: light-dark(#1c1d21, #ececf1);
+  --{{project}}-muted: light-dark(#5b606b, #a4a9b4);
+  --{{project}}-surface: light-dark(#ffffff, #16171b);
+  --{{project}}-raised: light-dark(#f6f7f9, #202228);
+  --{{project}}-line: light-dark(#858a94, #6b707c);
+  --{{project}}-accent: light-dark(#2457d6, #7aa2ff);
+  --{{project}}-on-accent: light-dark(#ffffff, #0b1020);
+  --{{project}}-danger: light-dark(#c0262d, #ff7b7b);
+  --{{project}}-on-danger: light-dark(#ffffff, #1a0505);
+  --{{project}}-success: light-dark(#1f7a3d, #5fd38a);
+  --{{project}}-warning: light-dark(#8a5a00, #f0b44c);
+  --{{project}}-focus: light-dark(#2457d6, #7aa2ff);
+
+  /* Space */
+  --{{project}}-space-1: 0.25rem;
+  --{{project}}-space-2: 0.5rem;
+  --{{project}}-space-3: 0.75rem;
+  --{{project}}-space-4: 1rem;
+  --{{project}}-space-5: 1.5rem;
+  --{{project}}-space-6: 2rem;
+  --{{project}}-space-7: 3rem;
+  --{{project}}-space-8: 4rem;
+
+  /* Type */
+  --{{project}}-font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --{{project}}-font-mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, "Liberation Mono", monospace;
+  --{{project}}-text-xs: 0.75rem;
+  --{{project}}-text-sm: 0.875rem;
+  --{{project}}-text-base: 1rem;
+  --{{project}}-text-lg: 1.125rem;
+  --{{project}}-text-xl: 1.25rem;
+  --{{project}}-text-2xl: 1.5rem;
+  --{{project}}-text-3xl: 2rem;
+  --{{project}}-leading-tight: 1.25;
+  --{{project}}-leading-normal: 1.6;
+  --{{project}}-weight-normal: 400;
+  --{{project}}-weight-medium: 500;
+  --{{project}}-weight-bold: 700;
+
+  /* Shape */
+  --{{project}}-radius-sm: 0.25rem;
+  --{{project}}-radius-md: 0.5rem;
+  --{{project}}-radius-lg: 0.75rem;
+  --{{project}}-radius-full: 9999px;
+  --{{project}}-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.08);
+  --{{project}}-shadow-md: 0 4px 12px rgb(0 0 0 / 0.12);
+  --{{project}}-focus-width: 2px;
+
+  /* Motion */
+  --{{project}}-duration-fast: 120ms;
+  --{{project}}-duration: 200ms;
+  --{{project}}-easing: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --{{project}}-duration-fast: 0ms;
+    --{{project}}-duration: 0ms;
+  }
+}

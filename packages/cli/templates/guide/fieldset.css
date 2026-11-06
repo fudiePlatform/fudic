@@ -1,0 +1,12 @@
+:where(fieldset) {
+  min-width: 0;
+  margin: 0 0 var(--{{project}}-space-4);
+  padding: var(--{{project}}-space-3) var(--{{project}}-space-4) var(--{{project}}-space-4);
+  border: 1px solid var(--{{project}}-line);
+  border-radius: var(--{{project}}-radius-md);
+}
+
+:where(legend) {
+  padding: 0 var(--{{project}}-space-1);
+  font-weight: var(--{{project}}-weight-medium);
+}

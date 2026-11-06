@@ -1,0 +1,11 @@
+:where(pre) {
+  margin: 0 0 var(--{{project}}-space-4);
+  padding: var(--{{project}}-space-3) var(--{{project}}-space-4);
+  overflow: auto;
+  font-family: var(--{{project}}-font-mono);
+  font-size: var(--{{project}}-text-sm);
+  line-height: var(--{{project}}-leading-normal);
+  background: var(--{{project}}-raised);
+  border-radius: var(--{{project}}-radius-md);
+  tab-size: 2;
+}

@@ -1,0 +1,4 @@
+:where(p) {
+  margin: 0 0 var(--{{project}}-space-4);
+  text-wrap: pretty;
+}

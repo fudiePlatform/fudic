@@ -1,0 +1,9 @@
+:where(h6) {
+  margin: var(--{{project}}-space-4) 0 var(--{{project}}-space-1);
+  font-size: var(--{{project}}-text-sm);
+  font-weight: var(--{{project}}-weight-bold);
+  line-height: var(--{{project}}-leading-tight);
+  color: var(--{{project}}-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}

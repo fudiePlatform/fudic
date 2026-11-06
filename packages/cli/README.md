@@ -28,6 +28,12 @@ fudic new shop --workspace --app web            # … with its first app, at /
 fudic new shop --workspace --app web --uses ui  # … and a library ui it already uses
 ```
 
+Every project starts with a style guide: tokens with a dark mode, a self-hosted font, a favicon
+and a stylesheet per element. An app keeps its own in `src/guide/`; a workspace has `libs/guide`,
+and every app and library it creates depends on it. Every page links the guide, pruned to what
+it uses; a component adopts the pieces it names (`shadowrootadoptedstylesheets="button"`), and
+the editor adds a piece when you write its element.
+
 An app's pages render inside a layout of its own (`--layout <name>`, `_layout` by default), a
 library's (`--layout @shop/ui/layouts/main.fud`) or none (`--no-layout`). `fudic g page` puts a
 new page in the nearest layout of the app, or else in the one its home page uses.
@@ -45,7 +51,7 @@ fudic g snippet ui productCard --project ui   # a snippet in src/snippets/ui.fud
 fudic g service cart                     # a service you inject(), and its test
 fudic g form person --binary             # a form with typed controls, and its test
 fudic g style theme                      # a global stylesheet of the project
-fudic g lib guia --styles-only           # a library of design tokens and nothing else
+fudic g guide                            # the style guide: libs/guide, or src/guide/ in an app
 fudic g spec button --project ui         # the .fudspec criteria of a component and their fixture
 fudic g term then cart-has --param n:number   # a step of your own for .fudspec criteria
 fudic g api src/components/shop-cart     # its server: the .fudapi, its handler and its link

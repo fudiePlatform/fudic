@@ -1,0 +1,3 @@
+:where(small) {
+  font-size: var(--{{project}}-text-sm);
+}

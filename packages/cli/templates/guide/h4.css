@@ -1,0 +1,6 @@
+:where(h4) {
+  margin: var(--{{project}}-space-4) 0 var(--{{project}}-space-2);
+  font-size: var(--{{project}}-text-lg);
+  font-weight: var(--{{project}}-weight-medium);
+  line-height: var(--{{project}}-leading-tight);
+}

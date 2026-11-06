@@ -1,0 +1,13 @@
+:where(ol) {
+  margin: 0 0 var(--{{project}}-space-4);
+  padding-inline-start: var(--{{project}}-space-5);
+}
+
+:where(ol) > :where(li) {
+  margin-block: var(--{{project}}-space-1);
+}
+
+:where(ol) > :where(li)::marker {
+  color: var(--{{project}}-muted);
+  font-variant-numeric: tabular-nums;
+}

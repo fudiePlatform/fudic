@@ -91,7 +91,10 @@ function filesIn(dir: string, cwd: string, io: ReadIo): [string, string][] {
 
 /** A view of the disk with a plan's files already written: the app it creates, before it exists. */
 function overlay(io: ReadIo, cwd: string, changes: readonly FileChange[]): ReadIo {
-  const written = new Map(changes.map((change) => [toPosix(absolute(cwd, change.path)), change.contents]));
+  // A binary file is there, and nothing here reads its bytes: it reads as empty text.
+  const written = new Map(
+    changes.map((change) => [toPosix(absolute(cwd, change.path)), 'bytes' in change ? '' : change.contents]),
+  );
   const dirs = new Set<string>();
   for (const path of written.keys()) {
     for (let dir = dirname(path); !dirs.has(dir) && dir !== dirname(dir); dir = dirname(dir)) dirs.add(dir);

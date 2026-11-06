@@ -20,6 +20,7 @@ import { DEV_PORT, normalizeBase, servedApps, type ServedApp } from '../workspac
 import { placeProject } from '../workspace/place.js';
 import type { Project } from '../workspace/discover.js';
 import { appUses, packageOf, usesErrors } from '../workspace/uses.js';
+import { withGuides } from './lib.js';
 import { nodeReadIo, type ReadIo } from '../io.js';
 import { EMPTY_PLAN, type AppLayout, type AppOptions, type CliError, type NewOptions, type Plan } from '../types.js';
 import { isLayout } from '../layout.js';
@@ -95,7 +96,9 @@ export function planApp(name: string, opts: AppOptions, io: ReadIo = nodeReadIo(
   const port = Math.max(DEV_PORT - 1, ...others.map((app) => app.port)) + 1;
   const taken = others.find((app) => app.base === base);
   const frame = layoutLibrary(opts.layout, opts.cwd, io);
-  const uses = frame.library === undefined || opts.uses.includes(frame.library) ? opts.uses : [...opts.uses, frame.library];
+  const asked = frame.library === undefined || opts.uses.includes(frame.library) ? opts.uses : [...opts.uses, frame.library];
+  // Every style guide of the workspace comes with it: a new app looks like the others.
+  const uses = withGuides(asked, projects);
 
   const errors = [
     ...(frame.error === undefined ? [] : [frame.error]),

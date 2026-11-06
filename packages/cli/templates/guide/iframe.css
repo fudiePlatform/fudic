@@ -1,0 +1,6 @@
+:where(iframe) {
+  display: block;
+  max-width: 100%;
+  border: 0;
+  border-radius: var(--{{project}}-radius-md);
+}

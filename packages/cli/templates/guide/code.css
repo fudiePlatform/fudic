@@ -1,0 +1,21 @@
+:where(code, kbd, samp) {
+  font-family: var(--{{project}}-font-mono);
+  font-size: 0.9em;
+}
+
+:where(code) {
+  padding: 0.1em 0.3em;
+  background: var(--{{project}}-raised);
+  border-radius: var(--{{project}}-radius-sm);
+}
+
+:where(kbd) {
+  padding: 0.1em 0.4em;
+  border: 1px solid var(--{{project}}-line);
+  border-radius: var(--{{project}}-radius-sm);
+}
+
+:where(pre) :where(code) {
+  padding: 0;
+  background: none;
+}

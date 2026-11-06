@@ -212,6 +212,7 @@ la lista con su tamaño.
 | `FUD1441` | warning | An adopted piece styles nothing here | Un trozo adoptado que, podado contra el shadow del componente, no conserva ninguna regla, **sin duda** (§4.9). Arreglo: quitarlo |
 | `FUD1442` | error | A piece name that cannot be adopted | Un import adoptable de la guía cuyo nombre de fichero no cumple `STYLE_NAME_PATTERN` (`my-button.css`) |
 | `FUD1443` | error | The guide's icon is missing | `guide.icon` nombra un fichero que no existe |
+| `FUD1444` | error | The project already has a style guide | `fudic g guide` en una app suelta que ya tiene `guide` (§8.2.15) |
 
 Que falte `guide.sheet` es `FUD0740` (falta una hoja del proyecto: el mismo hecho). Un trozo con el
 mismo nombre que otra hoja de la cadena es `FUD0741`. Un trozo con `@import` es `FUD0854`.
@@ -588,3 +589,19 @@ editor añade los dos trozos, y que quitar el `<details>` avisa sin quitar nada.
     template raíz; la expansión de Emmet no lo añade (lo hará `FUD1440` y su arreglo).
 13. **El arreglo de `FUD1441` quita el nombre y, si era el único, el atributo entero.** Un arreglo
     *manual* sale en la bombilla, y en el MCP como opción (`options`), nunca como `fixable`.
+14. **En una app suelta, `src/guide/` no lleva `fudic.json`, `package.json` ni README**: sería otro
+    paquete dentro de la app, y sus ficheros dejarían de ser de la app. El `fudic.json` de la app
+    nombra la guía (`guide`) y su `base.css` (`globalStyles`). Los `.tmpl` de la plantilla son lo
+    que la hace librería, y en una app no se escriben.
+15. **`FUD1444`** (nuevo, del rango): `g guide` en una app que ya tiene `guide`.
+16. **La lista de trozos** es la de §4.4 tal cual; `select.css` trae su flecha en
+    `icons/arrow.svg`, que es el caso del criterio 14. `popover` no pinta ningún elemento por tipo
+    (`[popover]`): se adopta a mano.
+17. **Contraste:** `line` y `focus` llegan a 3:1 sobre `raised` con un gris más oscuro de lo
+    habitual para un borde (`#858a94` claro, `#6b707c` oscuro): es lo que pide la tabla de §4.10.
+18. **Las fuentes son las de `Inter-4.1.zip`** de la release oficial (`web/InterVariable*.woff2`);
+    su `LICENSE.txt` es el texto de la OFL y se guarda como `OFL.txt`.
+19. **`--dry-run` y `--json`** muestran un fichero binario con su tamaño (`344.0 KB`; `size` en
+    JSON), nunca sus bytes. `g showcase` ve un binario como texto vacío.
+20. **`new --workspace` ya no deja `libs/.gitkeep`**: `libs/guide` siempre está. Un `--lib guide`
+    o `--uses guide` no la duplica.
