@@ -10,7 +10,10 @@
  * what the prefix is, so this one calls `readProjectConfig` like the other two.
  */
 
+import { posix } from 'node:path';
+import { readGuide, type GuidePiece } from '@fudic/compiler';
 import { readProjectConfig, tagOf, type ProjectConfig } from '@fudic/config';
+import { dependencyChain, owningPackage } from '@fudic/resolve';
 import { toPosix } from '@fudic/typecheck';
 import type { FileSystemScanner } from './types.js';
 
@@ -40,8 +43,10 @@ export class ProjectConfigs {
    * opened on, and SDD-44 is what teaches the editor about those.
    */
   invalidate(path: string): void {
-    // Any `fudic.json` may be the nearest one of some file: forget them all, they are cheap.
+    // Any `fudic.json` may be the nearest one of some file, or a link of some chain: forget
+    // them all, they are cheap.
     this.#nearestByDir.clear();
+    this.#choiceByRoot.clear();
     const root = normalize(path.slice(0, path.lastIndexOf('/')));
     if (!this.#byRoot.has(root)) return;
     this.#byRoot.set(root, this.#read(root));
@@ -75,17 +80,74 @@ export class ProjectConfigs {
    * `fudic.json` governs the file, and then nothing is offered and nothing is checked.
    */
   choosableStylesFor(path: string): readonly string[] | null {
-    const config = this.#nearest(toPosix(path));
-    return config === null ? null : config.styles.map((style) => style.name);
+    return this.#choiceFor(toPosix(path))?.names ?? null;
   }
 
-  /** Directory → the config of the nearest `fudic.json` at or above it. Cleared on change. */
-  readonly #nearestByDir = new Map<string, ProjectConfig | null>();
+  /** The pieces of the style guides a component under `path` may adopt, root of its chain first. */
+  guidePiecesFor(path: string): readonly GuidePiece[] {
+    return this.#choiceFor(toPosix(path))?.pieces ?? [];
+  }
 
-  #nearest(file: string): ProjectConfig | null {
+  /**
+   * A stylesheet changed on disk: what the guides are made of may have changed with it. The
+   * pieces are read again on the next question; the configurations stay.
+   */
+  sheetChanged(): void {
+    this.#choiceByRoot.clear();
+  }
+
+  /** Package root → what a component of it may choose. Cleared on any change of a config or a sheet. */
+  readonly #choiceByRoot = new Map<string, StyleChoice>();
+
+  /**
+   * What a component under `file` may choose, as the build answers it: the `styles` and the
+   * guide's pieces of every package of its dependency chain, root first, a name kept the first
+   * time it appears. The chain of the package that owns the file; with no package around it, the
+   * nearest `fudic.json` alone. `null` when no `fudic.json` governs the file.
+   */
+  #choiceFor(file: string): StyleChoice | null {
+    const owner = owningPackage(file, this.#scanner);
+    const nearest = this.#nearest(file);
+    const key = owner ?? nearest?.root;
+    if (key === undefined) return null;
+    const cached = this.#choiceByRoot.get(key);
+    if (cached !== undefined) return cached;
+    const chain = owner === undefined ? [] : dependencyChain(owner, this.#scanner);
+    const links = chain.length > 0 ? chain : nearest === null ? [] : [nearest];
+    if (links.length === 0) return null;
+    const names: string[] = [];
+    const pieces: GuidePiece[] = [];
+    for (const { root, config } of links) {
+      for (const style of config.styles) if (!names.includes(style.name)) names.push(style.name);
+      for (const piece of this.#piecesOf(root, config)) {
+        if (names.includes(piece.name)) continue;
+        names.push(piece.name);
+        pieces.push(piece);
+      }
+    }
+    const choice = { names, pieces };
+    this.#choiceByRoot.set(key, choice);
+    return choice;
+  }
+
+  /** The pieces of the guide one package declares, read from its folder. */
+  #piecesOf(root: string, config: ProjectConfig): readonly GuidePiece[] {
+    if (config.guide === undefined) return [];
+    const local = (path: string): string => `./${posix.normalize(path)}`;
+    return readGuide(
+      local(config.guide.sheet),
+      (spec) => this.#scanner.readFile(posix.join(root, spec)),
+      new Set(config.globalStyles.map((style) => local(style.path))),
+    ).value.pieces;
+  }
+
+  /** Directory → the nearest `fudic.json` at or above it, with its folder. Cleared on change. */
+  readonly #nearestByDir = new Map<string, ConfigAt | null>();
+
+  #nearest(file: string): ConfigAt | null {
     const visited: string[] = [];
     let dir = file.slice(0, file.lastIndexOf('/'));
-    let found: ProjectConfig | null = null;
+    let found: ConfigAt | null = null;
     for (;;) {
       const cached = this.#nearestByDir.get(dir);
       if (cached !== undefined) {
@@ -94,7 +156,8 @@ export class ProjectConfigs {
       }
       visited.push(dir);
       if (this.#scanner.readFile(`${dir}/fudic.json`) !== undefined) {
-        found = this.#read(dir);
+        const config = this.#read(dir);
+        found = config === null ? null : { root: dir, config };
         break;
       }
       const up = dir.lastIndexOf('/');
@@ -112,6 +175,18 @@ export class ProjectConfigs {
     if (source === undefined) return null;
     return readProjectConfig(root, { exists: () => true, read: () => source }).config;
   }
+}
+
+/** A `fudic.json` read, with the folder it governs. */
+interface ConfigAt {
+  readonly root: string;
+  readonly config: ProjectConfig;
+}
+
+/** What a component may name in `shadowrootadoptedstylesheets`, and which of those are pieces. */
+interface StyleChoice {
+  readonly names: readonly string[];
+  readonly pieces: readonly GuidePiece[];
 }
 
 /** POSIX, and without the trailing slash a workspace folder URI sometimes carries. */

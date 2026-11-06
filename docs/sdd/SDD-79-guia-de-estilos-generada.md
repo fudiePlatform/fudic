@@ -578,3 +578,13 @@ editor añade los dos trozos, y que quitar el `<details>` avisa sin quitar nada.
    (`guideAdoptionDiagnostics`) que usan el build y el editor; el build le da la superficie del
    shadow con los snippets ya expandidos (`shadowSurface`), el editor la del template solo
    (`templateSurface`).
+10. **En el editor, un template que pinta un `@render` no recibe `FUD1441`**: el editor tiene el
+    fichero y no los snippets expandidos, así que no ve lo que el snippet escribe. `FUD1440` sobre
+    los elementos de un snippet lo da el build, que sí los expande.
+11. **El editor lee la cadena con `dependencyChain` del paquete que posee el fichero**; sin
+    `package.json` alrededor, el `fudic.json` más cercano solo. Se vuelve a leer al cambiar
+    cualquier `fudic.json` o cualquier `.css`.
+12. **El completado que añade el trozo es el de las etiquetas del servicio HTML** (tras `<`), en el
+    template raíz; la expansión de Emmet no lo añade (lo hará `FUD1440` y su arreglo).
+13. **El arreglo de `FUD1441` quita el nombre y, si era el único, el atributo entero.** Un arreglo
+    *manual* sale en la bombilla, y en el MCP como opción (`options`), nunca como `fixable`.

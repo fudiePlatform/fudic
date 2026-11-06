@@ -24,7 +24,10 @@ export async function problemsOf(report: CheckReport, checks: Checks): Promise<r
   const located = await Promise.all(
     report.problems.map(async (p): Promise<Problem> => {
       const repairs = await checks.repairs(p);
-      return { ...p, fixable: repairs.length === 1, ...(repairs.length > 1 ? { options: repairs.map((r) => r.title) } : {}) };
+      // A manual repair is never applied without asking: it is an option, not a fix.
+      const fixable = repairs.length === 1 && repairs[0]!.manual !== true;
+      const options = !fixable && repairs.length > 0 ? { options: repairs.map((r) => r.title) } : {};
+      return { ...p, fixable, ...options };
     }),
   );
   return [...report.project.filter((p) => p.severity === 'error' || p.severity === 'warning'), ...located];

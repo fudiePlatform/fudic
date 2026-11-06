@@ -4,7 +4,7 @@
 > **Paquetes:** `config` · `compiler` · `vite` · `language-server` · `cli` · `mcp` · `diagnostics` ·
 > `examples/workspace`
 > **Rama:** `sdd-79-guia-de-estilos-generada`, desde `main`.
-> **Progreso:** 6 / 22 — `En curso`. Las tareas de tests (5, 8, 12, 13, 16, 18) las escribe la
+> **Progreso:** 9 / 22 — `En curso`. Las tareas de tests (5, 8, 12, 13, 16, 18) las escribe la
 > sesión de test y se marcan cuando las entrega.
 
 **El orden manda en dos puntos.** El defecto de los `url()` (tarea 3) va antes que los trozos,
@@ -57,9 +57,9 @@ del compilador y el build, porque sus criterios (25, 26) construyen la app gener
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 9 | 4 | **La cadena en el servidor.** `choosableStylesFor` con `dependencyChain` y los trozos de cada guía, invalidado al cambiar cualquier `fudic.json` o fichero de guía de la cadena. Criterio 18 | `language-server` | `src/project-config.ts` |
-| [ ] | 10 | 9 | **El completado añade el trozo.** En el template raíz, `additionalTextEdits` que añaden a `shadowrootadoptedstylesheets` o crean el atributo (SDD §4.8). Criterio 19 | `language-server` | `src/services/plugin.ts` · `src/services/template-attrs.ts` |
-| [ ] | 11 | 9 | **Los avisos y sus arreglos.** `FUD1440` sobre la etiqueta, `FUD1441` sobre el nombre (con `prunePage` contra `shadowSurface`); `repairsFor` gana los dos, el de `FUD1441` marcado *manual* (SDD §4.9) | `language-server` | `src/services/template-attrs.ts` · `src/repairs.ts` |
+| [x] | 9 | 4 | **La cadena en el servidor.** `choosableStylesFor` con `dependencyChain` y los trozos de cada guía, invalidado al cambiar cualquier `fudic.json` o fichero de guía de la cadena. Criterio 18 | `language-server` | `src/project-config.ts` |
+| [x] | 10 | 9 | **El completado añade el trozo.** En el template raíz, `additionalTextEdits` que añaden a `shadowrootadoptedstylesheets` o crean el atributo (SDD §4.8). Criterio 19 | `language-server` | `src/services/plugin.ts` · `src/services/template-attrs.ts` |
+| [x] | 11 | 9 | **Los avisos y sus arreglos.** `FUD1440` sobre la etiqueta, `FUD1441` sobre el nombre (con `prunePage` contra `shadowSurface`); `repairsFor` gana los dos, el de `FUD1441` marcado *manual* (SDD §4.9) | `language-server` | `src/services/template-attrs.ts` · `src/repairs.ts` |
 | [ ] | 12 | 10, 11 | **Sus tests.** Criterios 18–22 | `language-server` | `test/services/template-attrs.test.ts` · `test/repairs.test.ts` |
 | [ ] | 13 | 11 | **`fudic_fix` no quita.** Salta los arreglos marcados *manual*. Criterio 23 | `mcp` | `src/fix.ts` · `test/fix.test.ts` |
 

@@ -19,7 +19,7 @@
 import type { CodeAction, CreateFile, Position, Range, TextDocumentEdit } from '@volar/language-service';
 import type * as ts from 'typescript';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
-import { CONTROL_NAME, span, type Diagnostic, type Span } from '@fudic/compiler';
+import { CONTROL_NAME, span, type Diagnostic, type GuidePiece, type Span } from '@fudic/compiler';
 import type { FudCode, SourceDiagnostic } from '@fudic/diagnostics';
 import { explanationFile } from '@fudic/diagnostics/explain';
 import { URI } from 'vscode-uri';
@@ -347,6 +347,8 @@ export interface ActionDeps {
   readonly apis?: ApiFiles;
   /** The project's TypeScript, which the loop-key repair asks for an element's type. */
   readonly typescript?: ts.LanguageService;
+  /** The style guide's pieces the file may adopt, which the guide's repairs add and remove. */
+  readonly pieces?: readonly GuidePiece[];
 }
 
 /** The client command that opens an explanation in the markdown preview (`fudic-vscode`). */
@@ -401,7 +403,12 @@ export function codeActions(deps: ActionDeps): CodeAction[] {
 
     // Every repair of the table edits the file it was asked about, so its edits go to Volar's
     // uri for it, which Volar maps back to the `.fud`.
-    const input = { cached, index, ...(deps.typescript === undefined ? {} : { typescript: deps.typescript }) };
+    const input = {
+      cached,
+      index,
+      ...(deps.typescript === undefined ? {} : { typescript: deps.typescript }),
+      ...(deps.pieces === undefined ? {} : { pieces: deps.pieces }),
+    };
     for (const repair of repairsFor(input, diagnostic)) emit(repair);
 
     // Every code also explains itself, once per code however many times it fires here. A
