@@ -4,8 +4,8 @@
 > **Paquetes:** `config` · `compiler` · `vite` · `language-server` · `cli` · `mcp` · `diagnostics` ·
 > `examples/workspace`
 > **Rama:** `sdd-79-guia-de-estilos-generada`, desde `main`.
-> **Progreso:** 18 / 22 — `En curso`. Tests escritos (bloques 1–6 del relevo); faltan el e2e del
-> ejemplo (19), la prueba de Pedro (21) y el cierre (22).
+> **Progreso:** 20 / 22 — `En curso`. e2e del ejemplo arreglado (SDD §8.3.7) y prueba de Pedro
+> aprobada (2026-11-06); falta el cierre (22).
 
 ## Relevo 2 (2026-11-06, segunda sesión)
 
@@ -135,7 +135,7 @@ del compilador y el build, porque sus criterios (25, 26) construyen la app gener
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 19 | 8 | **`examples/workspace`.** `libs/guia` al formato de §4.1; `tienda` mueve su `--guia-accent` a su hoja de documento; e2e en verde (SDD §4.13). Criterio 33 | `examples` | `examples/workspace/**` |
+| [x] | 19 | 8 | **`examples/workspace`.** `libs/guia` al formato de §4.1; `tienda` mueve su `--guia-accent` a su hoja de documento; e2e en verde (SDD §4.13). Criterio 33 | `examples` | `examples/workspace/**` |
 | [x] | 20 | 17 | **La guía del MCP.** `html-css.md` y su copia en español: la guía, los trozos, la adopción, la asimetría | `mcp` | `guide/html-css.md` · `guide/es/html-css.md` |
-| [ ] | 21 | 18, 19 | **La prueba de Pedro** (SDD §6.1). Lo que salga va a §8.2 | — | — |
+| [x] | 21 | 18, 19 | **La prueba de Pedro** (SDD §6.1). Lo que salga va a §8.2 | — | — |
 | [ ] | 22 | 1–21 | **Cierre.** Criterio 34: `pnpm typecheck`, `pnpm test`, `pnpm build`; ficheros nuevos al 100 % con su umbral por fichero en `compiler`, `vite` y `cli`; `language-server` al 100 %. Estado `Hecho` en la SDD, aquí y en `INDEX.md`; entrada en el registro de progreso | docs | `docs/sdd/*` |

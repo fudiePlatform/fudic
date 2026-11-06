@@ -60,8 +60,10 @@ describe('outlineOf — criterion 21', () => {
 
 describe('outlineOf — it never throws', () => {
   it('a selector that matches nothing in time is the first line of the error', async () => {
-    page.setDefaultTimeout(200);
+    // The content first, the short timeout after: it is the outline's wait that must time
+    // out, and a loaded machine can take longer than 200 ms just to set the page.
     await page.setContent('<p>x</p>');
+    page.setDefaultTimeout(200);
     expect(await outlineOf(page, 'nothing-here')).toMatch(/^error: .*Timeout 200ms exceeded/u);
   });
 

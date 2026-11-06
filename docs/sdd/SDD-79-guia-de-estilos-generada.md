@@ -638,5 +638,11 @@ editor añade los dos trozos, y que quitar el `<details>` avisa sin quitar nada.
    hojas globales de la cadena que alguna guía importa (`PackageGuide.reads`), y los dos avisos las
    saltan. Una hoja propia que ninguna guía lee sigue avisando igual.
 7. **El e2e del ejemplo (`caches.spec.ts`, «abre sin conexión tras visitar la otra app») ya fallaba
-   en `main` antes de este SDD**, igual que aquí (comprobado sobre `f167f5f2`): 3 verdes, 2 rojos.
-   No es de esta spec; queda anotado para su propio BUG.
+   en `main` antes de este SDD** (comprobado sobre `f167f5f2`), y se arregla aquí. La causa no era
+   del framework: el servidor del ejemplo (`serve.mjs`) respondía todo con `no-store`, y desde
+   SDD-69 el worker no guarda nada marcado así, así que ninguna página llegaba a abrir sin red.
+   Pasa a `no-cache`: sigue sin dejar que la caché HTTP responda por el worker (sin red no hay con
+   qué revalidar) y el worker vuelve a guardar. 5 de 5 en verde.
+8. **Un test del banco de trabajo (`outline.test.ts`) fijaba un tiempo de 200 ms antes de cargar la
+   página**, y con la máquina cargada era la carga la que se pasaba de tiempo y cortaba `pnpm test`
+   entero. El tiempo corto se fija después de cargar.
