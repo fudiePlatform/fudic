@@ -34,11 +34,11 @@ Aclaradas el 2026-11-05. Las dos primeras están desarrolladas en «Análisis co
 | # | Qué | Tamaño |
 |---|---|---|
 | 1 | Silenciar o subir diagnósticos | Pequeña |
-| 2 | Validadores async contra el servidor (`runs remote`) | Mediana |
+| 2 | Validadores async contra el servidor (`runs remote`) → [SDD-80](sdd/SDD-80-cierre-de-formularios-y-eventos.md) | Mediana |
 | 3 | Cabeceras de seguridad configurables (fuera los avisos de Lighthouse) | Pequeña |
 | 4 | Nivel de Baseline en `fudic.json` | Pequeña o mediana |
 | 5 | Fixtures del `load` de las páginas | Mediana |
-| 6 | `@fudic:result` y `@fudic:error` en el host del componente | Pequeña |
+| 6 | `@fudic:result` y `@fudic:error` en el host del componente → [SDD-80](sdd/SDD-80-cierre-de-formularios-y-eventos.md) | Pequeña |
 | 7 | Generar la hoja de estilos desde la CLI, con el usuario | Mediana |
 | 8 | `fudic.json` en la guía del MCP, como el `sw.json` | Pequeña |
 | — | Fake o log de llamadas al servidor | Después |
