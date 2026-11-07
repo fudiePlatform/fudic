@@ -71,9 +71,10 @@ export interface ApiIndex {
   messages(): readonly Declared<MessagesDecl>[];
   /**
    * The middlewares a level inherits: for a file's `chain`, the global one's; for a function
-   * or a `load`, the global and the file's, less what the file's skips.
+   * or a `load`, the global and the file's, less what the file's skips. A rule inherits the
+   * global one's only: the file of a rule has no `chain` (decision 180).
    */
-  inherited(source: ApiSource, level: ChainDecl | FnDecl | LoadDecl): readonly string[];
+  inherited(source: ApiSource, level: ChainDecl | FnDecl | LoadDecl | RuleDecl): readonly string[];
 }
 
 const KIND_OF: Readonly<Record<string, ProjectKind>> = {
@@ -172,7 +173,7 @@ export function createApiIndex(sources: readonly ApiSource[]): ApiIndex {
     messages: () => messages,
     inherited: (source, level) => {
       const outer = source === global ? [] : uses(chainOf(global));
-      if (level.kind === 'chain') return outer;
+      if (level.kind === 'chain' || level.kind === 'rule') return outer;
       const file = chainOf(source);
       const skipped = new Set(file?.skips.flatMap((s) => s.middlewares.map((m) => m.text)));
       const skipAll = file?.skips.some((s) => s.all !== undefined) === true;

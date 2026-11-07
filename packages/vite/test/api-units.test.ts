@@ -37,7 +37,8 @@ const PROJECT = {
   'src/broken.fudapi': 'get\n',
   'src/.hidden/x.fudapi': 'get hidden\n',
   'src/node_modules/y.fudapi': 'get vendored\n',
-  'node_modules/lib-a/fudapi/rules.fudapi': 'rule shout\n  on field str\n  runs both\n  fails loud\n',
+  'node_modules/lib-a/fudapi/rules.fudapi':
+    'rule shout\n  on field str\n  runs both\n  fails loud\n\nrule taken\n  on field str\n  runs remote\n  fails taken\n\nrule mine\n  on field str\n  runs server\n  fails mine\n',
   'node_modules/lib-a/browser/rules.js': '',
   'node_modules/lib-a/browser/rules.js.map': '{}',
   'node_modules/lib-b/index.js': '',
@@ -124,6 +125,10 @@ describe('ApiProject', () => {
         { url: '/_fudic/fn/routes/orphan/lonely/all', method: 'GET' },
       ]),
     );
+  });
+
+  it('every `runs remote` rule by URL, always POST; a `runs server` or `both` rule has none (SDD-80 §4.2)', () => {
+    expect(api.ruleTable()).toEqual([{ url: '/_fudic/rule/lib-a/rules/taken', method: 'POST' }]);
   });
 
   it('the diagnostics of the app files, and only of those that have some', () => {

@@ -112,8 +112,20 @@ function ruleDecl(d: RuleDecl, c: DeclCtx): string {
   const name = camel(d.name.text);
   const params = fieldsType(d.params, c);
   const codes = d.fails.length > 1 ? d.fails.map((f) => `'${f.code.text}'`).join(' | ') : 'never';
-  const args = `${ruleValue(d, c)}, ${params}, ${codes}`;
-  return `${I}export const ${name}: Rule<${args}>;\n${I}export type ${pascal(d.name.text)}Check = Check<${args}>;`;
+  const runs = d.runs?.value.text;
+  if (runs !== 'server' && runs !== 'remote') {
+    const args = `${ruleValue(d, c)}, ${params}, ${codes}`;
+    return `${I}export const ${name}: Rule<${args}>;\n${I}export type ${pascal(d.name.text)}Check = Check<${args}>;`;
+  }
+  // A rule the server runs is given the server's `ctx`, with what its middlewares add (SDD-80 §3.2).
+  c.http.add('ServerContext');
+  const prefix = pascal(d.name.text);
+  const args = `${ruleValue(d, c)}, ${params}, ${codes}, ${prefix}Ctx`;
+  return [
+    `${I}export type ${prefix}Ctx = ServerContext${addsOf(d, c)};`,
+    `${I}export const ${name}: Rule<${args}>;`,
+    `${I}export type ${prefix}Check = Check<${args}>;`,
+  ].join('\n');
 }
 
 /**
@@ -166,7 +178,7 @@ function formDecl(d: FormDecl, c: DeclCtx): string {
 }
 
 /** What the `use`s a level ends up with leave in `ctx`: `& AuthAdds`… */
-function addsOf(level: FnDecl | LoadDecl, c: DeclCtx): string {
+function addsOf(level: FnDecl | LoadDecl | RuleDecl, c: DeclCtx): string {
   return middlewaresOf(c, effective(c, level))
     .filter((m) => m.decl.adds !== undefined)
     .map((m) => ` & ${m.source === c.source ? '' : `import(${str(`fudic:${m.source.id}`)}).`}${pascal(m.decl.name.text)}Adds`)

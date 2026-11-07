@@ -175,10 +175,12 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
           "text": "both",
         },
       },
+      "skips": [],
       "span": "rule required
   on field str bool u8 i8 u16 i16 u32 i32 f32 f64 date uuid str[]
   runs both
   fails required",
+      "uses": [],
     },
     {
       "doc": "A number no smaller than \`min\`.",
@@ -304,11 +306,13 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
           "text": "both",
         },
       },
+      "skips": [],
       "span": "rule min
   on field u8 i8 u16 i16 u32 i32 f32 f64
   runs both
   n  f64
   fails min n",
+      "uses": [],
     },
     {
       "doc": "A number no bigger than \`max\`.",
@@ -434,11 +438,13 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
           "text": "both",
         },
       },
+      "skips": [],
       "span": "rule max
   on field u8 i8 u16 i16 u32 i32 f32 f64
   runs both
   n  f64
   fails max n",
+      "uses": [],
     },
     {
       "doc": "A text or a list with \`min\` items at least.",
@@ -520,11 +526,13 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
           "text": "both",
         },
       },
+      "skips": [],
       "span": "rule min-length
   on field str str[]
   runs both
   n  u32
   fails min-length n",
+      "uses": [],
     },
     {
       "doc": "A text or a list with \`max\` items at most.",
@@ -606,11 +614,13 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
           "text": "both",
         },
       },
+      "skips": [],
       "span": "rule max-length
   on field str str[]
   runs both
   n  u32
   fails max-length n",
+      "uses": [],
     },
     {
       "doc": "The whole text matches a pattern.",
@@ -675,11 +685,13 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
           "text": "both",
         },
       },
+      "skips": [],
       "span": "rule pattern
   on field str
   runs both
   regex  pattern
   fails pattern",
+      "uses": [],
     },
   ],
   "kind": "file",

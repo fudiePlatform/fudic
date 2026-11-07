@@ -38,6 +38,8 @@ export { fails, titleOf } from './fails.js';
 export { conform, conformAll, fromText, toText, type Primitive, type Ty } from './wire.js';
 export { folderOf, inTurn, loadingFile, resetRegistry, setFolders, takeRefusal, type Side } from '@fudic/forms/contract';
 export { HttpError } from '../errors.js';
+// The `ctx` a rule the server runs is given in its check (SDD-80 §3.2).
+export type { ServerContext } from '../types.js';
 // The halves of the built-in middlewares, for their implementations in `browser/` and `server/`.
 export { csrfClient } from '../csrf-client.js';
 export { csrfServer } from '../csrf-server.js';

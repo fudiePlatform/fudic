@@ -106,6 +106,20 @@ describe('the marks', () => {
     const r = rule({ id: 'rules/nif', name: 'nif-unique', fails: [['nif-unique', []]], server: true, never: true });
     expect(() => r.check(() => true)).toThrow('nif-unique of rules/nif must be implemented in src/server');
   });
+
+  it('a runs remote rule: the server implements it; the browser cannot, and skips it until it asks (SDD-80 §4.2)', () => {
+    const server = rule<string>({ id: 'rules/people', name: 'alias-taken', fails: [['alias-taken', []]], server: true, remote: true, async: true });
+    loadingFile('browser', 'src/browser/people.ts');
+    expect(() => server.check(() => true)).toThrow('alias-taken of rules/people must be implemented in src/server: src/browser/people.ts');
+    loadingFile('server', 'src/server/people.ts');
+    server.check((v) => v !== 'admin');
+    expect(isServerOnly(server.use())).toBe(true);
+
+    const browser = rule<string>({ id: 'rules/people', name: 'alias-taken', fails: [['alias-taken', []]], remote: true, async: true, debounce: 300 });
+    expect(() => browser.check(() => true)).toThrow('alias-taken of rules/people must be implemented in src/server');
+    const validator = browser.use();
+    expect([isServerOnly(validator), isAsync(validator)]).toEqual([true, true]);
+  });
 });
 
 describe('without an implementation', () => {

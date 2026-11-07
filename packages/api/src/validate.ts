@@ -24,6 +24,8 @@ import {
   FUD1100,
   FUD1101,
   FUD1010,
+  FUD1460,
+  FUD1461,
   type RelatedLocation,
   type SourceDiagnostic,
   type Span,
@@ -345,6 +347,16 @@ function rule(decl: RuleDecl, c: Ctx): void {
   for (const t of decl.on?.types ?? []) checkType(t, c.index, { any: true }, c.out);
   fields(decl.params, `rule ${decl.name.text}`, c, { pattern: true });
   failCodes(decl.fails, c);
+  const runs = decl.runs?.value.text;
+  if (decl.debounce !== undefined && runs !== 'remote') {
+    c.out.push(FUD1460({ span: decl.debounce.keyword, runs: runs ?? 'both' }));
+  }
+  if (runs === 'both') {
+    for (const clause of [...decl.uses, ...decl.skips]) {
+      c.out.push(FUD1461({ span: clause.keyword, clause: clause.kind }));
+    }
+  }
+  middlewares(decl.uses, decl.skips, c.index.inherited(c.source, decl), c);
   const params = decl.params.map((p) => p.name.text);
   for (const f of decl.fails) {
     for (const p of f.params) {

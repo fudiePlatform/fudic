@@ -511,6 +511,13 @@ export interface RuleFails extends Documented {
   readonly span: Span;
 }
 
+/** `debounce <ms>` of a `runs remote` rule: the wait before the browser asks (decision 180). */
+export interface RuleDebounce {
+  readonly keyword: Span;
+  readonly value: NumberLiteral;
+  readonly span: Span;
+}
+
 export interface RuleDecl extends Documented {
   readonly kind: 'rule';
   readonly keyword: Span;
@@ -518,6 +525,10 @@ export interface RuleDecl extends Documented {
   readonly on?: RuleOn;
   readonly runs?: RuleRuns;
   readonly async?: Span;
+  readonly debounce?: RuleDebounce;
+  /** The middlewares around its check, on the server (decision 180): as a function's. */
+  readonly uses: readonly UseClause[];
+  readonly skips: readonly SkipClause[];
   readonly params: readonly TypedField[];
   readonly fails: readonly RuleFails[];
   readonly span: Span;

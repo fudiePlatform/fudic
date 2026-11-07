@@ -8,13 +8,13 @@
  * in. It imports `@fudic/*\/contract` and other `fudic:<id>`, never anything of the developer's.
  */
 
-import type { CompressClause, Decl, FailsClause, FnDecl, LoadDecl, MiddlewareArg, MiddlewareDecl, PipeDecl, RuleUse, SkipClause, UseClause } from '../ast.js';
+import type { CompressClause, Decl, FailsClause, FnDecl, LoadDecl, MiddlewareArg, MiddlewareDecl, PipeDecl, RuleDecl, RuleUse, SkipClause, UseClause } from '../ast.js';
 import type { ApiIndex, ApiSource } from '../index-api.js';
 import type { ApiContext } from '../validate.js';
 import { localizedTexts, type ApiLocale } from '../messages.js';
 import { isArgRule } from '../validate-form.js';
 import { formCode } from './form.js';
-import { canonical, fnv1a } from './signature.js';
+import { askedType, canonical, fnv1a, ruleCanonical } from './signature.js';
 import {
   borrowedForms,
   camel,
@@ -107,13 +107,8 @@ function declaration(d: Decl, c: ModuleCtx): string {
       return `export const $${d.name.text} = { oneOf: [${d.members.map((m) => str(m.text)).join(', ')}] };`;
     case 'pattern':
       return `export const ${camel(d.name.text)} = new RegExp(${str(`^(?:${d.source.text})$`)});`;
-    case 'rule': {
-      c.forms.add('rule');
-      const fails = d.fails.map((f) => `[${str(f.code.text)}, [${f.params.map((p) => str(p.text)).join(', ')}]]`);
-      const server = d.runs?.value.text === 'server';
-      const flags = [...(server ? ['server: true'] : []), ...(d.async !== undefined ? ['async: true'] : []), ...(server && c.side === 'browser' ? ['never: true'] : [])];
-      return `export const ${camel(d.name.text)} = rule({ id: ${id}, name: ${str(d.name.text)}, fails: [${fails.join(', ')}]${flags.map((f) => `, ${f}`).join('')} });`;
-    }
+    case 'rule':
+      return ruleOf(d, c);
     case 'middleware':
       return middleware(d, c);
     case 'pipe':
@@ -137,6 +132,53 @@ function declaration(d: Decl, c: ModuleCtx): string {
 }
 
 const browser = (c: ModuleCtx): string => (c.side === 'browser' ? ', browser: true' : '');
+
+/** What the browser waits after the last keystroke before it asks a `runs remote` rule (decision 180). */
+const DEBOUNCE = 300;
+
+/**
+ * A rule (SDD-80 §4.2). `runs server`: the server checks it, the browser never. `runs remote`:
+ * the server checks it, and the browser asks it by HTTP while the user types — in the format of
+ * a function (`json` left in its chain, or `fud-bin` with its signature), with the types of what
+ * it sends (`value`, `params`). On the server a rule the server runs carries its chain: `$global`
+ * and its own level, which its middlewares run around its check in. The browser variant of a
+ * remote rule has no `never`: it has a validator, the question.
+ */
+function ruleOf(d: RuleDecl, c: ModuleCtx): string {
+  c.forms.add('rule');
+  const fails = d.fails.map((f) => `[${str(f.code.text)}, [${f.params.map((p) => str(p.text)).join(', ')}]]`);
+  const runs = d.runs?.value.text;
+  const remote = runs === 'remote';
+  const onServer = runs === 'server' || remote;
+  const json = remote && effective(c, d).includes('json');
+  if (remote) c.wires.add(json ? 'json' : 'bin');
+  const flags = [
+    ...(runs === 'server' || (remote && c.side === 'server') ? ['server: true'] : []),
+    ...(remote ? ['remote: true', 'async: true'] : d.async !== undefined ? ['async: true'] : []),
+    ...(runs === 'server' && c.side === 'browser' ? ['never: true'] : []),
+    ...(remote && c.side === 'browser' ? [`debounce: ${d.debounce?.value.value ?? DEBOUNCE}`] : []),
+    ...(remote ? [`value: ${ruleValue(d, c)}`, `params: ${descriptors(d.params, c)}`] : []),
+    ...(remote ? [`wire: ${json ? 'jsonWire' : 'binWire'}`] : []),
+    ...(remote && !json ? [`sig: ${str(fnv1a(ruleCanonical(d, c.index)))}`] : []),
+    ...(onServer && c.side === 'server' && (remote || d.uses.length > 0 || d.skips.length > 0)
+      ? [`chain: ${ruleChain(level(d.uses, d.skips, undefined, c), c)}`]
+      : []),
+  ];
+  return `export const ${camel(d.name.text)} = rule({ id: ${str(c.source.id)}, name: ${str(d.name.text)}, fails: [${fails.join(', ')}]${flags.map((f) => `, ${f}`).join('')} });`;
+}
+
+/** The type of what a remote rule asks about: one type of `on field`, or `any` for a union, a group or a form. */
+function ruleValue(d: RuleDecl, c: ModuleCtx): string {
+  const asked = askedType(d);
+  return asked === undefined ? str('any') : descriptor(asked, c);
+}
+
+/** The levels around a rule's check: global and its own. A rule's file has no `chain` of its own. */
+function ruleChain(own: string, c: ModuleCtx): string {
+  const global = globalChain(c);
+  if (global !== undefined) c.ref(global, '$chain');
+  return `[${[...(global !== undefined ? ['$global'] : []), own].join(', ')}]`;
+}
 
 /**
  * A pipe (SDD-71 §3.3): `implement` binds the implementation and hands back a `Pipe` — with

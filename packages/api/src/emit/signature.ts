@@ -9,7 +9,7 @@
  * `signature` of `@fudic/http/wire`, which a test or another backend computes it again with.
  */
 
-import type { ArgPlace, FnDecl, FormMember, TypeExpr } from '../ast.js';
+import type { ArgPlace, FnDecl, FormMember, RuleDecl, TypeExpr } from '../ast.js';
 import type { ApiIndex } from '../index-api.js';
 import { FLOATS, INTEGERS } from '../types-check.js';
 
@@ -32,6 +32,25 @@ export function canonical(d: FnDecl, index: ApiIndex): string {
   const body = form === undefined ? part('body') : `form${controls(form.fields)}`;
   const returns = d.returns === undefined ? '' : typeText(d.returns.type, index, []);
   return `route(${part('route')})|query(${part('query')})|body(${body})|->${returns}`;
+}
+
+/** The one type a rule's `on field` takes; `undefined` for a union, `*`, a group or a form: `any`. */
+export function askedType(d: RuleDecl): TypeExpr | undefined {
+  const types = d.on?.target.text === 'field' ? d.on.types : [];
+  const only = types.length === 1 ? types[0]! : undefined;
+  return only?.kind === 'named' && only.name.text === '*' ? undefined : only;
+}
+
+/**
+ * The canonical text of a `runs remote` rule (SDD-80 §3.3): what its question writes, the value
+ * and the parameters of the use, and what its answer reads, the code that failed or nothing.
+ * `rule(<types>)|params(<p>:<type>,…)|->str?`: a union of `on field`, `*`, a group or a form is
+ * `any`, as the value travels.
+ */
+export function ruleCanonical(d: RuleDecl, index: ApiIndex): string {
+  const asked = askedType(d);
+  const value = asked === undefined ? 'any' : typeText(asked, index, []);
+  return `rule(${value})|params(${d.params.map((p) => `${p.name.text}:${typeText(p.type, index, [])}`).join(',')})|->str?`;
 }
 
 /** A type with every project type unfolded; `within` is the types it is already inside of. */

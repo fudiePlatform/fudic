@@ -5,7 +5,7 @@
 > `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` ·
 > `@fudic/diagnostics` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `worktree-pendiente` (worktree `.claude/worktrees/pendiente`), nacida de `main` en `1375967c`.
-> **Progreso:** 1 / 30 — `En curso`.
+> **Progreso:** 4 / 30 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina, y entrega cada fase con `pnpm typecheck` y `pnpm build`.
 La otra escribe los tests de cada fase (las tareas «Los tests de…») contra los criterios de SDD §6,
@@ -61,9 +61,16 @@ test. Cada fase cerrada va a `origin`.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 2 | 1 | **Parser y validación.** `RUNS` con `remote`; `debounce` y `use`/`skip` en `ruleDecl` (reutiliza `useClause`); `RuleDecl` con `debounce`, `uses`, `skips`; `FUD1460`, `FUD1461`; middlewares comprobados como en una función; `{detail}` en el texto de una regla `remote`; `debounce` en el formateador (SDD §4.1) | `api` | `src/extensions.ts` · `src/ast.ts` · `src/validate.ts` · `src/validate-form.ts` · `src/format.ts` |
-| [ ] | 3 | 2 | **El módulo generado.** Servidor: `remote`, `chain`, `wire`, `sig`; navegador: `remote`, `debounce`, `wire`, `sig`, `base`, sin `never`; `.d.ts` con el tercer argumento del check en `server` y `remote`; tabla de rutas de las reglas `remote` (SDD §4.2) | `api` · `vite` | `src/emit/module.ts` · `src/emit/declarations.ts` · `vite/src/api-modules.ts` |
-| [ ] | 4 | 2, 3 | **Los tests de la fase.** Criterios 1–5 | `api` · `vite` | `test/**` |
+| [x] | 2 | 1 | **Parser y validación.** `RUNS` con `remote`; `debounce` y `use`/`skip` en `ruleDecl` (reutiliza `useClause`); `RuleDecl` con `debounce`, `uses`, `skips`; `FUD1460`, `FUD1461`; middlewares comprobados como en una función; `{detail}` en el texto de una regla `remote`; `debounce` en el formateador (SDD §4.1) | `api` | `src/extensions.ts` · `src/ast.ts` · `src/validate.ts` · `src/validate-form.ts` · `src/format.ts` |
+| [x] | 3 | 2 | **El módulo generado.** Servidor: `remote`, `chain`, `wire`, `sig`; navegador: `remote`, `debounce`, `wire`, `sig`, `base`, sin `never`; `.d.ts` con el tercer argumento del check en `server` y `remote`; tabla de rutas de las reglas `remote` (SDD §4.2) | `api` · `vite` | `src/emit/module.ts` · `src/emit/declarations.ts` · `vite/src/api-modules.ts` |
+| [x] | 4 | 2, 3 | **Los tests de la fase.** Criterios 1–5 | `api` · `vite` | `test/**` |
+
+*Adelantado a esta fase, porque la tarea 3 no se podía cerrar sin ello:* `RULE_PREFIX` en
+`@fudic/conventions` (de la 7), que la tabla de rutas necesita; y de la 6, solo los tipos —
+`Check<V, P, C, X>`, `Rule<…, X>` y los campos nuevos de `RuleSpec`— más lo justo del runtime para
+el criterio 5: la variante de navegador de una regla `remote` no admite `.check()` y, hasta la
+tarea 11, el navegador la salta como una `server`. `ServerContext` se exporta de
+`@fudic/http/contract` para el `<Nombre>Ctx` del `.d.ts`. Ver SDD §8.2.
 
 ## Fase 3 — el servidor (6)
 

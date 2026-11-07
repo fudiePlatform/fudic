@@ -40,7 +40,7 @@ import {
 } from '@fudic/typecheck/api';
 import type { PageApi } from './analyze.js';
 import type { LinkedApi } from '@fudic/compiler';
-import { FN_PREFIX } from '@fudic/conventions';
+import { FN_PREFIX, RULE_PREFIX } from '@fudic/conventions';
 
 export type { ApiLibrary };
 
@@ -156,6 +156,20 @@ export class ApiProject {
         const own = (d.route?.segments ?? []).map((seg) => (seg.kind === 'param' ? `:${seg.text}` : seg.text));
         return [{ url: [FN_PREFIX, ...id, d.name.text, ...own].join('/'), method: d.verb.toUpperCase() }];
       }),
+    );
+  }
+
+  /**
+   * Every `runs remote` rule of the project by URL, for an adapter to mount (SDD-80 §4.2):
+   * `/_fudic/rule/rules/people/alias-taken`, always `POST`. A `runs server` rule has none.
+   */
+  ruleTable(): readonly { readonly url: string; readonly method: 'POST' }[] {
+    return this.sources.flatMap((source) =>
+      source.file.declarations.flatMap((d) =>
+        d.kind === 'rule' && d.runs?.value.text === 'remote'
+          ? [{ url: [RULE_PREFIX, source.id, d.name.text].join('/'), method: 'POST' as const }]
+          : [],
+      ),
     );
   }
 

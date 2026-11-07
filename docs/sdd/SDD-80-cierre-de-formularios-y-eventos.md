@@ -605,3 +605,21 @@ Nada. Esta SDD cierra formularios y delegación de eventos.
     formularios hay dentro.
 16. **El botón nuevo de `usuarios.fud` es *Ver*, no *Modificar*.** Modificar exige una función de
     servidor más; *Ver* enseña lo mismo (dos `click` en la fila) sin inventar backend.
+
+### 8.2. Tomadas al implementar
+
+1. **El módulo lleva el tipo de lo que se pregunta.** `rule({ …, value, params })` con los
+   descriptores del valor y de los parámetros, en los dos lados: el navegador los necesita para
+   escribir la pregunta en `fud-bin` y el servidor para `conform` (§4.4). El valor es el único tipo
+   de `on field`; una unión, `*`, `on group` y `on form` viajan como `any`.
+2. **La firma de una regla** es FNV-1a sobre `rule(<valor>)|params(<p>:<tipo>,…)|->str?`, con los
+   tipos desplegados como en una función. Solo en `fud-bin`; con `use json`, sin firma.
+3. **`base` no se emite**, igual que en las funciones, cuyo stub toma `/` por defecto: la ruta de
+   la pregunta se arma igual que la de una función.
+4. **La cadena de una regla es `[$global, la suya]`**, sin la del fichero: un fichero de reglas no
+   tiene `chain`. Un `skip` de una regla se comprueba contra lo que hereda de `$global`. Una regla
+   `server` lleva `chain` solo si escribe `use` o `skip`; una `remote`, siempre.
+5. **El contexto del check en el `.d.ts`** es `<Nombre>Ctx = ServerContext & <los adds>`, y
+   `Check`/`Rule` ganan un cuarto parámetro: sin él (regla `both`), el check tiene dos argumentos.
+6. **`debounce` con algo que no es un entero** da `FUD1065` («`rápido` is not valid under
+   `debounce`»), como un valor de `runs` que no existe; un número negativo, también.

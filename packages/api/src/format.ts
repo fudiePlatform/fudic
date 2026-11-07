@@ -38,7 +38,7 @@ const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/u;
 /** Words a line starts with that make it something other than a `<name>  <type>` line. */
 const KEYWORDS = new Set([
   'use', 'skip', 'form', 'invalidates', 'compress', 'fails', 'query', 'validate-on', 'validity',
-  'catches', 'summary', 'range', 'require', 'when', 'on', 'runs', 'async', 'client', 'server',
+  'catches', 'summary', 'range', 'require', 'when', 'on', 'runs', 'debounce', 'async', 'client', 'server',
   'adds', 'messages', 'chain', 'load', 'paths', 'layout', 'type', 'enum', 'rule', 'middleware',
   'pattern', 'get', 'post', 'put', 'patch', 'delete',
 ]);

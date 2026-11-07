@@ -152,7 +152,7 @@ function args(use: RuleUse, rule: RuleDecl, c: Ctx): void {
 
   if (use.text === undefined) return;
   const offered = rule.fails.flatMap((f) => f.params.map((p) => p.text));
-  if (rule.runs?.value.text === 'server') offered.push('detail');
+  if (rule.runs?.value.text === 'server' || rule.runs?.value.text === 'remote') offered.push('detail');
   placeholders(use.text, offered, c);
 }
 

@@ -8,7 +8,7 @@
  */
 
 import type { Span } from '@fudic/diagnostics';
-import type { Decl, FnDecl, Literal, LoadDecl, MiddlewareDecl, SkipClause, StringLiteral, TypeExpr, UseClause } from '../ast.js';
+import type { Decl, FnDecl, Literal, LoadDecl, MiddlewareDecl, RuleDecl, SkipClause, StringLiteral, TypeExpr, UseClause } from '../ast.js';
 import { GLOBAL_ID, type ApiIndex, type ApiSource, type ProjectKind } from '../index-api.js';
 import { FLOATS, INTEGERS } from '../types-check.js';
 
@@ -132,7 +132,7 @@ export const clauses = (uses: readonly UseClause[], skips: readonly SkipClause[]
   [...uses, ...skips].sort((a, b) => a.span.start - b.span.start);
 
 /** The middlewares a function or `load` runs with: what it inherits, its skips, then its uses. */
-export function effective(c: EmitCtx, level: FnDecl | LoadDecl): readonly string[] {
+export function effective(c: EmitCtx, level: FnDecl | LoadDecl | RuleDecl): readonly string[] {
   let list = [...c.index.inherited(c.source, level)];
   for (const clause of clauses(level.uses, level.skips)) {
     if (clause.kind === 'use') list = [...list, ...clause.middlewares.map((m) => m.name.text)];

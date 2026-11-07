@@ -51,6 +51,8 @@ describe('@fudic/conventions', () => {
     // And what it answers with (SDD-70 §3.7).
     expect(conventions.DATA_FRAMES_TYPE).toBe('application/fud+frames');
     expect(conventions.ERROR_PREFIX).toBe('/_fudic/error');
+    // Where the browser asks a `runs remote` rule (SDD-80 §3.3).
+    expect(conventions.RULE_PREFIX).toBe('/_fudic/rule');
   });
 
   it('names the file of the global chain', () => {
@@ -105,6 +107,9 @@ describe('@fudic/conventions', () => {
     //
     // `HISTORY_EXTENSION` is SDD-65's (§3.1): the CLI writes the `.fudlog` and `@fudic/history`
     // reads it, and the `.gitattributes` of a new project names it.
+    //
+    // `RULE_PREFIX` is SDD-80's (§3.3): the browser asks a `runs remote` rule there, and the
+    // plugin and the adapters serve it next to `FN_PREFIX`.
     expect(Object.keys(conventions).sort()).toEqual([
       'API_DIR',
       'API_TYPES_DIR',
@@ -124,6 +129,7 @@ describe('@fudic/conventions', () => {
       'LOCALES_DIR',
       'PIPES_DIR',
       'ROUTES_DIR',
+      'RULE_PREFIX',
       'RUNTIME_CACHE_PREFIX',
       'RUNTIME_DIR',
       'SERVER_DIR',
