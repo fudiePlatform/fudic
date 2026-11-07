@@ -5,7 +5,7 @@
 > `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` ·
 > `@fudic/diagnostics` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `worktree-pendiente` (worktree `.claude/worktrees/pendiente`), nacida de `main` en `1375967c`.
-> **Progreso:** 10 / 30 — `En curso`.
+> **Progreso:** 12 / 30 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina, y entrega cada fase con `pnpm typecheck` y `pnpm build`.
 La otra escribe los tests de cada fase (las tareas «Los tests de…») contra los criterios de SDD §6,
@@ -92,8 +92,8 @@ async cualquiera; con la pregunta de verdad, en la fase 4. Ver SDD §8.2, 7–12
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 11 | 5, 7 | **El validador remoto.** Uno por uso: caché, `debounce`, `AbortController`, veredicto a errores, todo fallo pasa como válido sin guardarse; al enviar no pregunta y aborta la que esté en vuelo; en su propio módulo, importado solo por reglas `remote` (SDD §4.3) | `forms` | `src/contract/remote.ts` · `src/contract/rule.ts` |
-| [ ] | 12 | 11 | **Los tests de la fase.** Criterios 11–16, con un servidor en memoria y reloj falso | `forms` · `http` | `test/**` |
+| [x] | 11 | 5, 7 | **El validador remoto.** Uno por uso: caché, `debounce`, `AbortController`, veredicto a errores, todo fallo pasa como válido sin guardarse; al enviar no pregunta y aborta la que esté en vuelo; en su propio módulo, importado solo por reglas `remote` (SDD §4.3) | `forms` | `src/contract/remote.ts` · `src/contract/rule.ts` |
+| [x] | 12 | 11 | **Los tests de la fase.** Criterios 11–16, con un servidor en memoria y reloj falso | `forms` · `http` | `test/**` |
 
 ## Fase 5 — el compilador (3)
 

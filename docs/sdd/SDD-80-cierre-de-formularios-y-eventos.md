@@ -643,3 +643,14 @@ Nada. Esta SDD cierra formularios y delegación de eventos.
     que no existe dice `no such remote rule`.
 12. **`pending()` es «preguntada y sin contestar» para el valor actual**, no «sin veredicto»: un
     campo que nadie validó todavía no está pendiente, y no pinta «Comprobando…» al cargar.
+13. **El validador remoto entra por el módulo generado.** La variante de navegador de una regla
+    `remote` lleva `ask: askRemote`, importado de `@fudic/forms/contract`; `rule()` no lo importa.
+    `askRemote` es su propia pieza del runtime (`forms/remote`), así que solo la descarga una página
+    con una regla `remote` (§5). Una regla `remote` sin `ask` se salta como una `server`.
+14. **El envío se reconoce por la pasada, no por la regla.** `$validate()` en el navegador entrega
+    a sus validadores una marca (`whole-pass.ts`, en la pieza `flags`) como tercer argumento; el
+    validador remoto, al verla, contesta de la caché o pasa, y aborta la espera y la pregunta en
+    vuelo. `control.validate()` —lo que corre al escribir— no la lleva, y pregunta.
+15. **La caché es por valor** (`JSON.stringify`), porque los parámetros de un uso son fijos; una
+    respuesta cacheada contesta en el acto, sin promesa, y por eso un fallo conocido para el valor
+    actual para el envío como cualquier regla síncrona.

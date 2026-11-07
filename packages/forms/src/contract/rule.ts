@@ -10,6 +10,7 @@
 import { markAsync } from '../async-flag.js';
 import { markServer } from '../server-flag.js';
 import type { AnyValidator, Errors } from '../types.js';
+import type { Asking, Question } from './remote.js';
 import { Slot } from './registry.js';
 
 /**
@@ -52,6 +53,11 @@ export interface RuleSpec {
   readonly sig?: string;
   /** On the server, of a rule the server runs: the levels of middlewares around its check. */
   readonly chain?: readonly unknown[];
+  /**
+   * Of a remote rule, in the browser: the validator that asks the server (`askRemote`). The
+   * generated module hands it in, so only a page with a remote rule bundles it (SDD-80 §5).
+   */
+  readonly ask?: (question: Question) => Asking;
 }
 
 export interface Rule<V, P, C extends string = never, X = never> {
@@ -159,11 +165,28 @@ export function rule<V, P = {}, C extends string = never, X = never>(spec: RuleS
   return {
     check: (fn) => slot.set(fn as AnyCheck),
     use: (params = {} as P) => {
-      let validator = (value: V, _root?: unknown, ctx?: unknown): Errors | null | Promise<Errors | null> => {
+      // In the browser a remote rule asks the server (SDD-80 §4.3): one question per use.
+      if (remoteHere && spec.ask !== undefined) {
+        return markAsync(
+          spec.ask({
+            id: spec.id,
+            name: spec.name,
+            debounce: spec.debounce ?? 0,
+            value: spec.value,
+            params: spec.params,
+            wire: spec.wire,
+            ...(spec.sig !== undefined ? { sig: spec.sig } : {}),
+            args: params,
+            // A code the declaration does not have fails as the first one, as a check's does.
+            answer: (code) => errorFor(code ?? true, params),
+          }),
+        ) as AnyValidator<V>;
+      }
+      let validator =(value: V, _root?: unknown, ctx?: unknown): Errors | null | Promise<Errors | null> => {
         const verdict = checked(value, params, ctx, own);
         return verdict instanceof Promise ? verdict.then((v) => errorFor(v, params)) : errorFor(verdict, params);
       };
-      // Until the browser asks a remote rule (SDD-80 §4.3), it skips it as a server one: the submit checks it.
+      // A remote rule declared without `ask` is skipped by the browser as a server one: the submit checks it.
       if (spec.server === true || remoteHere) validator = markServer(validator);
       if (spec.async === true) validator = markAsync(validator);
       return validator;

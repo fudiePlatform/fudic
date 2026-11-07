@@ -48,6 +48,7 @@ export {
   type RuleSpec,
   type Verdict,
 } from './rule.js';
+export { askRemote, type Asking, type Question } from './remote.js';
 export {
   compare,
   contains,

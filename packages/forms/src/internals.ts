@@ -10,6 +10,7 @@
 import type { AnyForm, AnyNode, Errors, Issue, ValidateOptions } from './types.js';
 import type { ValidateOn } from './validate-on.js';
 import type { Validity } from './validity.js';
+import { WHOLE_PASS } from './whole-pass.js';
 
 /** The key under which every node carries its internals. Non-enumerable. */
 export const NODE = Symbol('fud.node');
@@ -24,11 +25,14 @@ export interface ValidateCtx {
   readonly ctx?: unknown;
 }
 
-/** The pass `validate(opts)` / `$validate(opts)` starts at `root`. */
-export const validation = (root: AnyForm, opts: ValidateOptions): ValidateCtx => ({
+/**
+ * The pass `validate(opts)` / `$validate(opts)` starts at `root`. A `$validate()` in the browser
+ * is `whole`: its validators are told, so a remote rule does not ask (SDD-80 §4.3).
+ */
+export const validation = (root: AnyForm, opts: ValidateOptions, whole = false): ValidateCtx => ({
   root,
   server: opts.server === true,
-  ...(opts.ctx !== undefined ? { ctx: opts.ctx } : {}),
+  ...(opts.ctx !== undefined ? { ctx: opts.ctx } : whole && opts.server !== true ? { ctx: WHOLE_PASS } : {}),
 });
 
 /** How a value is written: completely, or only where it is mentioned. */

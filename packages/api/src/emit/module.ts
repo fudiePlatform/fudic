@@ -152,11 +152,12 @@ function ruleOf(d: RuleDecl, c: ModuleCtx): string {
   const onServer = runs === 'server' || remote;
   const json = remote && effective(c, d).includes('json');
   if (remote) c.wires.add(json ? 'json' : 'bin');
+  if (remote && c.side === 'browser') c.forms.add('askRemote');
   const flags = [
     ...(runs === 'server' || (remote && c.side === 'server') ? ['server: true'] : []),
     ...(remote ? ['remote: true', 'async: true'] : d.async !== undefined ? ['async: true'] : []),
     ...(runs === 'server' && c.side === 'browser' ? ['never: true'] : []),
-    ...(remote && c.side === 'browser' ? [`debounce: ${d.debounce?.value.value ?? DEBOUNCE}`] : []),
+    ...(remote && c.side === 'browser' ? [`debounce: ${d.debounce?.value.value ?? DEBOUNCE}`, 'ask: askRemote'] : []),
     ...(remote ? [`value: ${ruleValue(d, c)}`, `params: ${descriptors(d.params, c)}`] : []),
     ...(remote ? [`wire: ${json ? 'jsonWire' : 'binWire'}`] : []),
     ...(remote && !json ? [`sig: ${str(fnv1a(ruleCanonical(d, c.index)))}`] : []),

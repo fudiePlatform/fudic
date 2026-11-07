@@ -91,6 +91,8 @@ const PIECES: Readonly<Record<string, string>> = {
   summary: 'bundle/summary.ts',
   // SDD-60: what the code generated from a `.fudapi` builds with, and the registry it fills.
   contract: 'bundle/contract.ts',
+  // SDD-80: the question of a `runs remote` rule, imported by the browser module of one alone.
+  remote: 'src/contract/remote.ts',
 };
 
 /**
@@ -180,6 +182,8 @@ const FRONTIERS: Readonly<Record<string, string>> = {
   'src/contract/require.ts': 'contract',
   'src/contract/text.ts': 'contract',
   'src/contract/registry.ts': 'contract',
+  'src/contract/remote.ts': 'remote',
+  'src/whole-pass.ts': 'flags',
 };
 
 /** Absolute path → the piece that owns it, resolved once so the hook below is a lookup. */

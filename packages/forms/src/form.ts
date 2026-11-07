@@ -361,7 +361,7 @@ export function build<S extends Schema>(
     },
 
     $validate: async (opts: ValidateOptions = {}): Promise<boolean> => {
-      await validateSubtree(validation(self as unknown as AnyForm, opts));
+      await validateSubtree(validation(self as unknown as AnyForm, opts, true));
       return untrack(clean);
     },
 

@@ -151,14 +151,14 @@ describe('the module generated (criterion 5, SDD §4.2)', () => {
     const browser = emit(ALIAS, 'browser');
     const sig = fnv1a(ruleCanonical(ruleOf(ALIAS), createApiIndex(project(ALIAS).sources)));
     expect(browser).toContain(
-      `export const aliasTaken = rule({ id: "rules/people", name: "alias-taken", fails: [["alias-taken", []]], remote: true, async: true, debounce: 300, value: "str", params: {  }, wire: binWire, sig: "${sig}" });`,
+      `export const aliasTaken = rule({ id: "rules/people", name: "alias-taken", fails: [["alias-taken", []]], remote: true, async: true, debounce: 300, ask: askRemote, value: "str", params: {  }, wire: binWire, sig: "${sig}" });`,
     );
     expect(browser).not.toContain('never');
     expect(browser).not.toContain('chain');
     expect(browser).toContain("import { binWire } from '@fudic/http/wire/bin';");
   });
 
-  it('criterion 5: `.check()` throws in the browser, and the browser does not run the rule', async () => {
+  it('criterion 5: `.check()` throws in the browser', async () => {
     const { sources } = project(ALIAS);
     const browser = load(createApiIndex(sources), sources, 'browser');
     const { aliasTaken } = await browser.module<{ aliasTaken: Rule<string, {}> }>('rules/people');
