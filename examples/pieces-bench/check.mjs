@@ -113,6 +113,10 @@ const EXCEPTIONS = {
       why: 'BUG-57: the server half of `@fudic/http` — serving the contracts, running `load`, the request of a handler, the server half of CSRF and the signature a backend computes. None of it reaches a browser; the browser half is `http/contract` and `http/json`.',
     },
     {
+      match: /^@fudic\/forms:src\/contract\/rule\.ts:(remoteRule|runRulesWith)$/,
+      why: 'SDD-80: the server half of a `runs remote` rule — the registry its route looks rules up in, and the runner `@fudic/http` installs for the middlewares around a check. Only `@fudic/http` on the server calls them; the browser half is `forms/remote`.',
+    },
+    {
       match: /^@fudic\/ssr:/,
       why: '§4.10: the renderer is one piece, `ssr/index`, and only the Service Worker asks for it — it enters `builtins` under the names `src/index.ts` exports, resolved by the linker the worker already has and never by a URL a browser writes.',
     },
@@ -121,7 +125,6 @@ const EXCEPTIONS = {
     { piece: 'dom/emit', why: 'No siblings: `@fudic/dom` publishes an adapter, a hydration walk and this, and none of the three is an alternative to another — whoever paints is not thereby whoever dispatches.' },
     { piece: 'di/token', why: 'No siblings, and identity IS the object: a second copy would be a second set of tokens that compare unequal to the first.' },
     { piece: 'di/seed', why: 'Holds the table a page publishes, hung off the root container. Merging it into a sibling would drag that sibling into every route that seeds.' },
-    { piece: 'forms/flags', why: 'Holds state, and it is the whole piece: the two `Symbol`s that mark a rule server-only or asynchronous. Two copies and a rule marked through one goes unrecognised by the other — a server rule would run on the client, an async one would be called by the validity. Reached by `control`, `form`, `run-rule` and the validators.' },
   ],
 };
 
