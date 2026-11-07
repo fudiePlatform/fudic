@@ -5,7 +5,7 @@
 > `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` ·
 > `@fudic/diagnostics` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `worktree-pendiente` (worktree `.claude/worktrees/pendiente`), nacida de `main` en `1375967c`.
-> **Progreso:** 0 / 30 — `Listo`.
+> **Progreso:** 1 / 30 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina, y entrega cada fase con `pnpm typecheck` y `pnpm build`.
 La otra escribe los tests de cada fase (las tareas «Los tests de…») contra los criterios de SDD §6,
@@ -55,7 +55,7 @@ test. Cada fase cerrada va a `origin`.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 1 | — | **Decisiones 178–180 y diagnósticos.** La 178 (`$value`), la 179 (handlers con nombre) y la 180 (`runs remote`, `debounce`, `use` en reglas) en sus secciones y en el índice; la 97 y la 176 con su «enmendada por». `FUD1460`–`FUD1466` con su función, su `.md` y su línea en `index.ts` (SDD §3.8) | docs · `diagnostics` | `docs/gramar/gramatica-v1-decisiones.md` · `src/codes/FUD146*.{ts,md}` · `src/index.ts` |
+| [x] | 1 | — | **Decisiones 178–180 y diagnósticos.** La 178 (`$value`), la 179 (handlers con nombre) y la 180 (`runs remote`, `debounce`, `use` en reglas) en sus secciones y en el índice; la 97 y la 176 con su «enmendada por». `FUD1460`–`FUD1466` con su función, su `.md` y su línea en `index.ts` (SDD §3.8) | docs · `diagnostics` | `docs/gramar/gramatica-v1-decisiones.md` · `src/codes/FUD146*.{ts,md}` · `src/index.ts` |
 
 ## Fase 2 — el `.fudapi` (3)
 
