@@ -36,6 +36,17 @@ export type Widen<T> = T extends string
       ? boolean
       : T;
 
+/** How a validation runs: `$validate(opts)` and `validate(opts)`. */
+export interface ValidateOptions {
+  /** Whether the server-only rules take part: what the server validates a request with. */
+  readonly server?: boolean;
+  /**
+   * The server's `ctx` of the request (SDD-80 §3.2): a rule the server runs is given it as the
+   * third argument of its check, with what its own middlewares add.
+   */
+  readonly ctx?: unknown;
+}
+
 /**
  * A leaf. Holds a value and the interaction state around it, and nothing else:
  * `disabled` belongs to the element, not to the model.
@@ -61,7 +72,7 @@ export interface Control<T> {
    * control is valid. A control that belongs to no form has no root: it rejects with a
    * `TypeError`.
    */
-  validate(opts?: { readonly server?: boolean }): Promise<boolean>;
+  validate(opts?: ValidateOptions): Promise<boolean>;
   /**
    * The text of the current error, or `''`. Tracked. Worded by this control's own
    * `messages`, then by `setMessages`, then by the rule's code.
@@ -78,6 +89,11 @@ export interface Control<T> {
    * Tracked and SILENT: reading it publishes nothing, marks nothing and changes no message.
    */
   readonly valid: Readable<boolean>;
+  /**
+   * True while an asynchronous rule of this control has not answered for the current value
+   * (SDD-80 §3.4): from the moment a validation asks it until it answers. Tracked.
+   */
+  readonly pending: Readable<boolean>;
 }
 
 /** What `control()` and the typed factories take besides the value and the rules. */
@@ -256,7 +272,7 @@ export interface FormApi<S extends Schema> {
   $patch(v: Patch<S>): void;
 
   /** Runs the validators and publishes the result. Resolves to whether the form is valid. */
-  $validate(opts?: { readonly server?: boolean }): Promise<boolean>;
+  $validate(opts?: ValidateOptions): Promise<boolean>;
   /** The error map by path of the last validation, or `null`. Tracked read. */
   readonly $errors: Readable<ErrorMap | null>;
   /** The form-level error — the union of every summary rule that failed — or `null`. Tracked. */
@@ -278,6 +294,8 @@ export interface FormApi<S extends Schema> {
    * Tracked and SILENT. A reading for the view, not the gate of the submit.
    */
   readonly $valid: Readable<boolean>;
+  /** True while any node of the form, or a rule of its own, is pending (SDD-80 §3.4). Tracked. */
+  readonly $pending: Readable<boolean>;
   /** Publishes errors that came from outside (a 422), indexed by path. */
   $setErrors(errors: ErrorMap | null, summary?: Errors | null): void;
   /** Whether a refusal with this status is this form's to paint (its `catches`). */

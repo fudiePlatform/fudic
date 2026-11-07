@@ -22,6 +22,7 @@ import {
   internalsOf,
   join,
   type NodeInternals,
+  validation,
   type ValidateCtx,
   type WriteMode,
 } from './internals.js';
@@ -42,6 +43,7 @@ import type {
   Patch,
   Positional,
   Schema,
+  ValidateOptions,
   Value,
 } from './types.js';
 import { verdicts } from './verdicts.js';
@@ -192,7 +194,7 @@ export function build<S extends Schema>(
    * at once, so a submit decides on it; the whole union follows when some rule answers later.
    */
   const summarise = (ctx: ValidateCtx, mine: number, at: number): Promise<void> | undefined => {
-    const { now, later } = allFailures(settle.watch(rules, at), untrack(read), ctx.root);
+    const { now, later } = allFailures(settle.watch(rules, at), untrack(read), ctx.root, ctx.ctx);
     if (later === undefined) {
       record(now, at);
       return undefined;
@@ -234,6 +236,17 @@ export function build<S extends Schema>(
     const at = valueEpoch();
     if (!holds(clientRules, read(), root, (rule) => settle.settled(rule, at))) return false;
     return summary() === null || publishedAt !== at;
+  });
+
+  /**
+   * Some node below is pending, or a rule of its own (a group's asynchronous rule) was asked for
+   * the current values and has not answered (SDD-80 §3.4). `read()` subscribes the values, which
+   * is what moves the epoch the own rules are stamped with.
+   */
+  const pending = computed((): boolean => {
+    if (children().some((node) => node.pending())) return true;
+    read();
+    return settle.pending(valueEpoch());
   });
 
   /** Its own texts, then — after a submit — the visible errors below, in declaration order. */
@@ -294,6 +307,7 @@ export function build<S extends Schema>(
     clean,
     valid,
     counts,
+    pending,
     epoch: valueEpoch,
     issues,
     markSubmitted: () => {
@@ -346,8 +360,8 @@ export function build<S extends Schema>(
       write(v as Record<string, unknown>, 'patch');
     },
 
-    $validate: async (opts: { readonly server?: boolean } = {}): Promise<boolean> => {
-      await validateSubtree({ root: self as unknown as AnyForm, server: opts.server === true });
+    $validate: async (opts: ValidateOptions = {}): Promise<boolean> => {
+      await validateSubtree(validation(self as unknown as AnyForm, opts));
       return untrack(clean);
     },
 
@@ -376,6 +390,8 @@ export function build<S extends Schema>(
     $submitted: (): boolean => submitted(),
 
     $valid: (): boolean => valid(),
+
+    $pending: (): boolean => pending(),
 
     $setErrors: (errors: ErrorMap | null, sum?: Errors | null): void => {
       if (errors === null) {

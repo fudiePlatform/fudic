@@ -16,6 +16,13 @@ describe('isFnPath', () => {
     expect(isFnPath('/_fudic/fnord', '/')).toBe(false);
     expect(isFnPath('/_fudic/data/a', '/')).toBe(false);
   });
+
+  it('and under base + /_fudic/rule/: the question of a remote rule (SDD-80 §4.4)', () => {
+    expect(isFnPath('/_fudic/rule/rules/people/alias-taken', '/')).toBe(true);
+    expect(isFnPath('/app/_fudic/rule/rules/people/alias-taken', '/app/')).toBe(true);
+    expect(isFnPath('/_fudic/rule/rules/people/alias-taken', '/app/')).toBe(false);
+    expect(isFnPath('/_fudic/rules', '/')).toBe(false);
+  });
 });
 
 describe('toRequest and sendResponse, over a real Node server', () => {

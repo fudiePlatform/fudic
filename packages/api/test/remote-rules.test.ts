@@ -5,7 +5,7 @@
 
 import type { SourceDiagnostic } from '@fudic/diagnostics';
 import { describe, expect, it } from 'vitest';
-import type { Rule } from '@fudic/forms/contract';
+import type { Rule, runRulesWith } from '@fudic/forms/contract';
 import {
   createApiIndex,
   emitDeclarations,
@@ -180,6 +180,9 @@ describe('the module generated (criterion 5, SDD §4.2)', () => {
     const server = load(createApiIndex(sources), sources, 'server');
     const { aliasTaken } = await server.module<{ aliasTaken: Rule<string, {}, never, unknown> }>('rules/people');
     aliasTaken.check((value) => value !== 'admin');
+    // Its chain runs through the runner `@fudic/http` installs on the server; here, one that only calls the check.
+    const forms = await server.entry<{ runRulesWith: typeof runRulesWith }>('@fudic/forms/contract');
+    forms.runRulesWith((_levels, ctx, inner) => inner(ctx));
     const validator = aliasTaken.use() as unknown as (value: string) => unknown;
     expect(await validator('admin')).toEqual({ aliasTaken: true });
     expect(await validator('pedro')).toBeNull();

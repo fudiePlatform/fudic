@@ -6,6 +6,7 @@
 
 import type { Container } from '@fudic/di';
 import type { AnyForm } from '@fudic/forms';
+import { ruleChains } from '../contract/rule-route.js';
 import { conform } from '../contract/wire.js';
 import { badRequest, ValidationError } from '../errors.js';
 import type { ServerContext } from '../types.js';
@@ -48,6 +49,10 @@ export function queryArgs(url: URL, wire: Wire, types: Readonly<Record<string, T
  * `.form(f)`, just before `handle` (§4.6, step 4): a fresh copy per request, assigned and
  * validated with the server's rules. What does not fit the schema is a 400; what does not
  * validate, a 422 with the form's errors.
+ *
+ * The rules are given the function's `ctx`, and a rule the server runs runs its own
+ * middlewares around its check with it (SDD-80 §4.4): `ctx.user` after its `use auth` is true
+ * here as in its question.
  */
 export async function withForm(form: AnyForm | undefined, ctx: ServerContext): Promise<ServerContext> {
   if (form === undefined) return ctx;
@@ -58,7 +63,8 @@ export async function withForm(form: AnyForm | undefined, ctx: ServerContext): P
     // `$set` only throws its own `TypeError` / `RangeError`, naming what does not fit.
     throw badRequest((e as Error).message);
   }
-  if (!(await copy.$validate({ server: true }))) {
+  ruleChains();
+  if (!(await copy.$validate({ server: true, ctx }))) {
     throw new ValidationError({
       status: 422,
       title: 'Unprocessable Content',

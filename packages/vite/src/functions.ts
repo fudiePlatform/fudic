@@ -9,10 +9,15 @@
 
 import { Readable } from 'node:stream';
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { FN_PREFIX, RULE_PREFIX } from '@fudic/conventions';
 
-/** Whether `pathname` is a server function's URL, `base` included. */
+/**
+ * Whether `pathname` is a server function's URL, or the question to a `runs remote` rule
+ * (SDD-80 §4.4), `base` included: the server root's handler answers both.
+ */
 export function isFnPath(pathname: string, base: string): boolean {
-  return pathname.startsWith(`${base.replace(/\/$/u, '')}/_fudic/fn/`);
+  const root = base.replace(/\/$/u, '');
+  return [FN_PREFIX, RULE_PREFIX].some((prefix) => pathname.startsWith(`${root}${prefix}/`));
 }
 
 /**

@@ -7,6 +7,7 @@
  *   folder.
  * - Criterion 17: two implementations of one piece answer 500 and reach the overlay.
  * - Criterion 22: with `"server": "src/backend"`, that folder answers and `src/server` is not loaded.
+ * - SDD-80, criterion 6: the question of a `runs remote` rule answers in dev too.
  */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -16,7 +17,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { type AddressInfo } from 'node:net';
 import { fudic } from '../src/index.js';
-import { binInit, binProblem, binValue } from './helpers/fud-bin.js';
+import { binInit, binProblem, binValue, type Ty } from './helpers/fud-bin.js';
 import { httpAlias, writeHttpTypecheckConfig } from './helpers/http-project.js';
 
 const API = `load ssr
@@ -88,6 +89,8 @@ beforeAll(async () => {
       'src/server/dup-a.ts': "import { twice } from 'fudic:routes/dup';\ntwice.handle(() => 'a');\n",
       'src/pipes/truncar.fudapi': 'pipe truncar\n  on str\n  max u32\n',
       'src/rules/empty.fudapi': '# Nothing yet.\n',
+      'src/rules/people.fudapi': 'rule alias-taken\n  on field str\n  runs remote\n  fails alias-taken\n',
+      'src/server/rules.ts': "import { aliasTaken } from 'fudic:rules/people';\naliasTaken.check((value) => value !== 'admin');\n",
     }),
     start({
       'fudic.json': JSON.stringify({ server: 'src/backend' }),
@@ -99,6 +102,25 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await Promise.all([app.server.close(), moved.server.close()]);
+});
+
+describe('the question of a remote rule in dev (SDD-80 criterion 6)', () => {
+  const QUESTION: Readonly<Record<string, Ty>> = { value: 'str', params: { fields: () => ({}) } };
+  const ask = (value: string) =>
+    fetch(`${app.origin}/_fudic/rule/rules/people/alias-taken`, binInit('rule(str)|params()|->str?', QUESTION, { value, params: {} }, { method: 'POST' }));
+
+  it('a taken alias answers its code, a free one null', async () => {
+    const taken = await ask('admin');
+    expect(taken.status).toBe(200);
+    expect(await binValue(taken, { opt: 'str' })).toBe('alias-taken');
+    expect(await binValue(await ask('pedro'), { opt: 'str' })).toBeUndefined();
+  });
+
+  it('a rule nobody declared is a 404 naming no function', async () => {
+    const response = await fetch(`${app.origin}/_fudic/rule/rules/people/nobody`, { method: 'POST' });
+    expect(response.status).toBe(404);
+    expect((await binProblem(response)).detail).toBe('no such remote rule');
+  });
 });
 
 describe('the functions of a .fudapi in dev', () => {

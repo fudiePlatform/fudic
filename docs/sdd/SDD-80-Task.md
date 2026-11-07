@@ -5,7 +5,7 @@
 > `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` ·
 > `@fudic/diagnostics` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `worktree-pendiente` (worktree `.claude/worktrees/pendiente`), nacida de `main` en `1375967c`.
-> **Progreso:** 4 / 30 — `En curso`.
+> **Progreso:** 10 / 30 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina, y entrega cada fase con `pnpm typecheck` y `pnpm build`.
 La otra escribe los tests de cada fase (las tareas «Los tests de…») contra los criterios de SDD §6,
@@ -76,12 +76,17 @@ tarea 11, el navegador la salta como una `server`. `ServerContext` se exporta de
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 5 | — | **`pending` y `$pending`.** `Control.pending` y `FormApi.$pending` públicos, sacados de la época de `verdicts`; en campos y en grupos (SDD §3.4) | `forms` | `src/types.ts` · `src/control.ts` · `src/form.ts` · `src/verdicts.ts` |
-| [ ] | 6 | 3 | **El contrato de la regla.** `RuleSpec` con `remote`, `debounce`, `chain`, `wire`, `sig`; `Check<V, P, C, X>` con el contexto; en el servidor, `use()` corre la cadena de la regla alrededor del check (SDD §3.2, §4.2) | `forms` | `src/contract/rule.ts` · `src/contract/registry.ts` |
-| [ ] | 7 | 6 | **La ruta.** `RULE_PREFIX`; `contractsHandler` sirve las reglas `remote`: 404 para las demás, firma, `conform`, cadena `$global` + la de la regla, veredicto en el `Wire` de la regla, problem en su formato (SDD §3.3, §4.4) | `conventions` · `http` | `conventions/src/index.ts` · `http/src/contract/server.ts` · `http/src/contract/rule-route.ts` |
-| [ ] | 8 | 6 | **El envío con contexto.** `withForm` pasa el contexto a `$validate({ server: true, ctx })` y cada regla `server`/`remote` corre sus middlewares con él (SDD §4.4, decisión 8.1.5) | `http` · `forms` | `http/src/server/dispatch.ts` · `forms/src/form.ts` · `forms/src/control.ts` |
-| [ ] | 9 | 7 | **Vite.** `RULE_PREFIX` en dev, en preview y en la tabla del build; el check sigue fuera del bundle (SDD §4.4) | `vite` | `src/functions.ts` · `src/plugin.ts` |
-| [ ] | 10 | 5–9 | **Los tests de la fase.** Criterios 6–10 y 15 | `forms` · `http` · `vite` | `test/**` |
+| [x] | 5 | — | **`pending` y `$pending`.** `Control.pending` y `FormApi.$pending` públicos, sacados de la época de `verdicts`; en campos y en grupos (SDD §3.4) | `forms` | `src/types.ts` · `src/control.ts` · `src/form.ts` · `src/verdicts.ts` |
+| [x] | 6 | 3 | **El contrato de la regla.** `RuleSpec` con `remote`, `debounce`, `chain`, `wire`, `sig`; `Check<V, P, C, X>` con el contexto; en el servidor, `use()` corre la cadena de la regla alrededor del check (SDD §3.2, §4.2) | `forms` | `src/contract/rule.ts` · `src/contract/registry.ts` |
+| [x] | 7 | 6 | **La ruta.** `RULE_PREFIX`; `contractsHandler` sirve las reglas `remote`: 404 para las demás, firma, `conform`, cadena `$global` + la de la regla, veredicto en el `Wire` de la regla, problem en su formato (SDD §3.3, §4.4) | `conventions` · `http` | `conventions/src/index.ts` · `http/src/contract/server.ts` · `http/src/contract/rule-route.ts` |
+| [x] | 8 | 6 | **El envío con contexto.** `withForm` pasa el contexto a `$validate({ server: true, ctx })` y cada regla `server`/`remote` corre sus middlewares con él (SDD §4.4, decisión 8.1.5) | `http` · `forms` | `http/src/server/dispatch.ts` · `forms/src/form.ts` · `forms/src/control.ts` |
+| [x] | 9 | 7 | **Vite.** `RULE_PREFIX` en dev, en preview y en la tabla del build; el check sigue fuera del bundle (SDD §4.4) | `vite` | `src/functions.ts` · `src/plugin.ts` |
+| [x] | 10 | 5–9 | **Los tests de la fase.** Criterios 6–10 y 15 | `forms` · `http` · `vite` | `test/**` |
+
+*Al cerrarla:* el registro de las reglas remotas y el runner de la cadena (`runRulesWith`) viven en
+`contract/rule.ts`, no en `registry.ts`; `@fudic/http` lo instala en `contract/rule-route.ts`, que
+también lleva el manejador de la ruta. El criterio 15 se prueba aquí en el modelo, con una regla
+async cualquiera; con la pregunta de verdad, en la fase 4. Ver SDD §8.2, 7–12.
 
 ## Fase 4 — el validador remoto (2)
 

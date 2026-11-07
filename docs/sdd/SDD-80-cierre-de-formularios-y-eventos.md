@@ -623,3 +623,23 @@ Nada. Esta SDD cierra formularios y delegación de eventos.
    `Check`/`Rule` ganan un cuarto parámetro: sin él (regla `both`), el check tiene dos argumentos.
 6. **`debounce` con algo que no es un entero** da `FUD1065` («`rápido` is not valid under
    `debounce`»), como un valor de `runs` que no existe; un número negativo, también.
+7. **El servidor pasa su cadena a `@fudic/forms` por inyección.** `@fudic/http` depende de
+   `@fudic/forms`, no al revés: `@fudic/forms/contract` declara `Around` y `runRulesWith(fn)`, y
+   `@fudic/http` instala su `compose` + `run` la primera vez que valida un envío o contesta una
+   pregunta (`ruleChains()`), sin efectos al importar. Una regla con niveles y sin ese runner
+   lanza: un `auth` declarado nunca se salta.
+8. **Al enviar, la regla corre solo su propio nivel; al preguntar, `[$global, el suyo]`.** En el
+   envío la función ya corrió `$global` alrededor de sí misma; repetirlo contaría dos veces un
+   `rate-limit` global. La pregunta no tiene a nadie delante y corre la cadena entera.
+9. **El contexto llega a los validadores como tercer argumento.** `$validate({ server, ctx })` y
+   `validate({ server, ctx })` lo llevan hasta cada regla; `Validator` público no cambia (dos
+   argumentos) y solo la regla de un `.fudapi` que corre en el servidor lo lee.
+10. **El registro de reglas remotas vive en `@fudic/forms/contract`** (`remoteRule(id, nombre)`),
+    junto a los slots: la variante de servidor de una regla `remote` se registra al evaluarse su
+    módulo, y la ruta la busca ahí. Una `server` no se registra, y por eso responde 404.
+11. **La respuesta.** En `fud-bin`, `str?` (el código o `null`), 200 siempre que el check conteste;
+    en JSON, `{ ok, fails? }`. Lleva las cabeceras que escribieron los middlewares, y
+    `cache-control: private, no-store` si se leyó la sesión, como una función. Un 404 de una regla
+    que no existe dice `no such remote rule`.
+12. **`pending()` es «preguntada y sin contestar» para el valor actual**, no «sin veredicto»: un
+    campo que nadie validó todavía no está pendiente, y no pinta «Comprobando…» al cargar.

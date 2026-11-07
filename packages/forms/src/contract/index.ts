@@ -36,7 +36,18 @@ export { date } from '../typed/date.js';
 export { arr } from '../typed/arr.js';
 export { uuid, UUID } from './uuid.js';
 export { formOf, type Bool, type DateField, type List, type Num, type Str, type Validated } from './form.js';
-export { rule, camel, type Check, type Rule, type RuleSpec, type Verdict } from './rule.js';
+export {
+  rule,
+  camel,
+  remoteRule,
+  runRulesWith,
+  type Around,
+  type Check,
+  type RemoteRule,
+  type Rule,
+  type RuleSpec,
+  type Verdict,
+} from './rule.js';
 export {
   compare,
   contains,

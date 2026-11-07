@@ -2105,7 +2105,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       const locale = localeContext();
       const edgeExtras = (): EdgeExtras => {
         const contracts = hasApi();
-        const table = contracts ? api.functionTable() : [];
+        // The questions of the `runs remote` rules ride with the functions (SDD-80 §4.4).
+        const table = contracts ? [...api.functionTable(), ...api.ruleTable()] : [];
         return {
           ...(errorPages.length > 0 ? { errorPages } : {}),
           ...(locale !== undefined ? { locale } : {}),

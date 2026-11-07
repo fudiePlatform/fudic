@@ -9,7 +9,7 @@
  * says what is missing, in a build nothing.
  */
 
-import { FN_PREFIX } from '@fudic/conventions';
+import { FN_PREFIX, RULE_PREFIX } from '@fudic/conventions';
 import { createRoot } from '@fudic/di';
 import { run } from '../compose.js';
 import { HttpError, notFound, type Problem } from '../errors.js';
@@ -22,6 +22,7 @@ import type { ServerContext } from '../types.js';
 import { contractIds, contractsOf, SIG_HEADER, type ServerContract } from './fn.js';
 import { compose } from './middleware.js';
 import type { PagePiece } from './page.js';
+import { rulesHandler } from './rule-route.js';
 import { checkRules } from './rules.js';
 import { conformAll, fromText, unmarked, type Ty } from './wire.js';
 
@@ -132,15 +133,18 @@ function targetOf(parts: readonly string[]): Target | undefined {
 }
 
 /**
- * The handler of every function of the `.fudapi` loaded in this process (SDD-60 §4.4): a
- * `Response`, or `null` for a URL outside `/_fudic/fn/`, which belongs to someone else. One
- * under it that names no function of theirs, by `<id>`, name and route, is a 404.
+ * The handler of every function of the `.fudapi` loaded in this process (SDD-60 §4.4), and of
+ * every question to a `runs remote` rule (SDD-80 §4.4): a `Response`, or `null` for a URL
+ * outside `/_fudic/fn/` and `/_fudic/rule/`, which belongs to someone else. One under them that
+ * names no function of theirs, by `<id>`, name and route, or no remote rule, is a 404.
  */
 export function contractsHandler(options: ContractsOptions = {}): (request: Request) => Promise<Response | null> {
-  const prefix = `${(options.base ?? '/').replace(/\/$/u, '')}${FN_PREFIX}/`;
+  const root = (options.base ?? '/').replace(/\/$/u, '');
+  const prefix = `${root}${FN_PREFIX}/`;
+  const rules = rulesHandler(`${root}${RULE_PREFIX}/`, options);
   return async (request) => {
     const { pathname } = new URL(request.url);
-    if (!pathname.startsWith(prefix)) return null;
+    if (!pathname.startsWith(prefix)) return rules(request);
     const target = targetOf(pathname.slice(prefix.length).split('/'));
     if (target === undefined) return noFunction(request);
     return serve({ request, ...target }, options);

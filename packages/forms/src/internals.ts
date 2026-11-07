@@ -7,7 +7,7 @@
  * has a single `if` and it is about writing, not about shape.
  */
 
-import type { AnyForm, AnyNode, Errors, Issue } from './types.js';
+import type { AnyForm, AnyNode, Errors, Issue, ValidateOptions } from './types.js';
 import type { ValidateOn } from './validate-on.js';
 import type { Validity } from './validity.js';
 
@@ -20,7 +20,16 @@ export interface ValidateCtx {
   readonly root: AnyForm;
   /** Whether the server-only validators take part. */
   readonly server: boolean;
+  /** The server's `ctx` of the request, for the rules the server runs (SDD-80 §3.2). */
+  readonly ctx?: unknown;
 }
+
+/** The pass `validate(opts)` / `$validate(opts)` starts at `root`. */
+export const validation = (root: AnyForm, opts: ValidateOptions): ValidateCtx => ({
+  root,
+  server: opts.server === true,
+  ...(opts.ctx !== undefined ? { ctx: opts.ctx } : {}),
+});
 
 /** How a value is written: completely, or only where it is mentioned. */
 export type WriteMode = 'set' | 'patch';
@@ -80,6 +89,8 @@ export interface NodeInternals {
   valid(): boolean;
   /** TRACKED: some control here or below counts for the validity. */
   counts(): boolean;
+  /** TRACKED: an asynchronous rule here or below has been asked and not answered for the current value. */
+  pending(): boolean;
   /**
    * Moves whenever a value here or below moves. A control's epoch; a form's is the sum of its
    * children's, which only grows and changes exactly when one of them does.

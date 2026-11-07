@@ -20,6 +20,11 @@ const fileOf = (id: string): string => `${id.replace(/[^A-Za-z0-9]/gu, '_')}.mjs
 export interface Loaded {
   /** The module of `id`, evaluated. */
   module<T = Record<string, unknown>>(id: string): Promise<T>;
+  /**
+   * A package entry as the modules see it: the same instance they import, not the one the test
+   * runner loads for the test file.
+   */
+  entry<T = Record<string, unknown>>(specifier: string): Promise<T>;
 }
 
 /** Writes every source of the project for `side` and returns the importer. */
@@ -37,5 +42,11 @@ export function load(
   }
   return {
     module: async <T>(id: string) => (await import(/* @vite-ignore */ pathToFileURL(join(dir, fileOf(id))).href)) as T,
+    entry: async <T>(specifier: string) => {
+      const file = join(dir, `entry-${specifier.replace(/[^A-Za-z0-9]/gu, '_')}.mjs`);
+      writeFileSync(file, `export * from ${JSON.stringify(specifier)};
+`);
+      return (await import(/* @vite-ignore */ pathToFileURL(file).href)) as T;
+    },
   };
 }
