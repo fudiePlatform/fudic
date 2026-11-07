@@ -684,3 +684,135 @@ describe('delegation — every code, out of the AST and out of the checker (§6.
     expect(Object.keys(config.dependencies)).toEqual(['@fudic/conventions', '@fudic/diagnostics']);
   });
 });
+
+/** The table of SDD-80 §1: three handlers, two of them named, on the `<tbody>`. */
+const NAMED_TABLE = `<tbody @change=@activar(p, $value) @click.borrar=@borrar(p) @click.ver=@ver(p)>
+  @foreach (const p of personas) key (p.id) {
+    <tr>
+      <td><input type="checkbox" delegate:p="change"></td>
+      <td><button delegate:p="click.borrar">Borrar</button></td>
+      <td><button delegate:p="click.ver">Ver</button></td>
+    </tr>
+  }
+</tbody>`;
+
+describe('$value (SDD-80 §3.5, criteria 20–23)', () => {
+  it('in the arguments of a handler on a control: no diagnostic', () => {
+    expect(codes('<input type="checkbox" @change=@f($value)>')).toEqual([]);
+    expect(codes(NAMED_TABLE)).toEqual([]);
+  });
+
+  it('criterion 20: a <div>, a bus: and @fudic:result have no control — FUD1462 on $value', () => {
+    expect(codes('<div @click=@f($value)></div>')).toEqual(['FUD1462']);
+    expect(blamed('<div @click=@f($value)></div>')).toBe('$value');
+    expect(report('<div @click=@f($value)></div>')[0]!.message).toContain('<div> has none');
+    expect(report('<button bus:alta=@f($value)></button>')[0]!.message).toContain('bus:alta has none');
+    expect(report('<button bus:(canal)=@f($value)></button>')[0]!.message).toContain('bus:(…) has none');
+    expect(report('<form @fudic:result=@f($value)></form>')[0]!.message).toContain('@fudic:result has none');
+    expect(codes('<input type="submit" @click=@f($value)>')).toEqual(['FUD1462']);
+    expect(codes('<app-x @change=@f($value)></app-x>')).toEqual(['FUD1462']);
+  });
+
+  it('criterion 21: an <input> with a dynamic type is FUD1463', () => {
+    expect(codes('<input type=@t @input=@f($value)>')).toEqual(['FUD1463']);
+  });
+
+  it('criterion 22: marks of two types serving one handler are FUD1464; listing the events, nothing', () => {
+    const two = (list: string) => `<tbody @change=@f(p, $value)>
+  @foreach (const p of personas) key (p.id) {
+    <tr><td><input type="checkbox" delegate:p></td><td><input type="number" delegate:p${list}></td></tr>
+  }
+</tbody>`;
+    expect(codes(two(''))).toEqual(['FUD1464']);
+    expect(report(two(''))[0]!.message).toContain('(boolean, number | null)');
+    expect(codes(`<tbody @change=@f(p, $value) @click=@g(p)>
+  @foreach (const p of personas) key (p.id) {
+    <tr><td><input type="checkbox" delegate:p></td><td><input type="number" delegate:p="click"></td></tr>
+  }
+</tbody>`)).toEqual([]);
+  });
+
+  it('a delegated handler served by a mark with no value, or with a dynamic type', () => {
+    const served = (mark: string) => `<ul @click=@f(p, $value)>
+  @foreach (const p of items) key (p) {
+    <li>${mark}</li>
+  }
+</ul>`;
+    expect(report(served('<button delegate:p>x</button>'))[0]!.message).toContain('<button> has none');
+    expect(codes(served('<input type=@t delegate:p>'))).toEqual(['FUD1463']);
+  });
+
+  it('criterion 23: $foo is still FUD1383 in a handler; $value outside one is FUD0666', () => {
+    expect(codes('<input @input=@f($foo)>')).toEqual(['FUD1383']);
+    expect(codes('<p>@$value</p>')).toEqual(['FUD0666']);
+    expect(codes('<p class:on=@$value></p>')).toEqual(['FUD0666']);
+    // In a handler but not among the arguments of its call: the callee, a lambda.
+    expect(codes('<input @input=@(() => f($value))>')).toEqual(['FUD0666']);
+  });
+});
+
+describe('named handlers (SDD-80 §3.6, criteria 26–28)', () => {
+  it('criterion 26: a named handler that reads no row is FUD1466 on its name', () => {
+    expect(codes('<button @click.x=@f()>b</button>')).toEqual(['FUD1466']);
+    expect(blamed('<button @click.x=@f()>b</button>')).toBe('@click.x');
+    expect(codes('<button @click.x=@f>b</button>')).toEqual(['FUD1466']);
+  });
+
+  it('criterion 27: a mark that lists a name nobody has is FUD1381', () => {
+    const inner = `<tbody @click.borrar=@borrar(p)>
+  @foreach (const p of personas) key (p.id) {
+    <tr><td><button delegate:p="click.borrar">B</button><button delegate:p="click.editar">E</button></td></tr>
+  }
+</tbody>`;
+    expect(codes(inner)).toEqual(['FUD1381']);
+    expect(report(inner)[0]!.message).toContain('@click.editar');
+  });
+
+  it('criterion 28: neither `delegate:p="click"` nor `delegate:p` is read by @click.borrar', () => {
+    const listed = `<tbody @click.borrar=@borrar(p)>
+  @foreach (const p of personas) key (p.id) {
+    <tr><td><button delegate:p="click">B</button></td></tr>
+  }
+</tbody>`;
+    // The mark serves a `click` nobody unnamed reads, and the handler is served by no mark.
+    expect(codes(listed)).toEqual(['FUD1381', 'FUD0660']);
+    const bare = listed.replace('delegate:p="click"', 'delegate:p');
+    expect(codes(bare)).toEqual(['FUD0661', 'FUD0660']);
+  });
+
+  it('a named handler of an event that does not bubble is FUD0665, on the event', () => {
+    const inner = `<ul @focus.x=@f(p)>
+  @foreach (const p of items) key (p) {
+    <li delegate:p="focus.x">x</li>
+  }
+</ul>`;
+    expect(codes(inner)).toEqual(['FUD0665']);
+    expect(report(inner)[0]!.message).toContain('`focus` does not bubble');
+  });
+
+  it('@click and @click.borrar live together on one element', () => {
+    expect(codes(`<tbody @click=@ver(p) @click.borrar=@borrar(p)>
+  @foreach (const p of personas) key (p.id) {
+    <tr><td delegate:p="click"><button delegate:p="click.borrar">B</button></td></tr>
+  }
+</tbody>`)).toEqual([]);
+  });
+
+  it('the editor is offered the named events above a marker', () => {
+    const source = component(NAMED_TABLE);
+    const input = inputFor(source);
+    const astOf = (node: Node) => {
+      const id = input.fragmentId(node);
+      return id === undefined ? undefined : (input.js.ast(id) as OxcNode);
+    };
+    const start = source.indexOf('<button');
+    const events = eventsReadingRow(
+      source,
+      documentRoots(input.document),
+      { headerAst: astOf, valueAst: astOf, spanOf: (n) => input.js.mapSpan(n.start, n.end), scope: new Set() },
+      { start, end: start + 7 },
+      'p',
+    );
+    expect(events).toEqual(['change', 'click.borrar', 'click.ver']);
+  });
+});

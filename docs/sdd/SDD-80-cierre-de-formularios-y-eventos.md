@@ -654,3 +654,15 @@ Nada. Esta SDD cierra formularios y delegación de eventos.
 15. **La caché es por valor** (`JSON.stringify`), porque los parámetros de un uso son fijos; una
     respuesta cacheada contesta en el acto, sin promesa, y por eso un fallo conocido para el valor
     actual para el envío como cualquier regla síncrona.
+16. **`$value` se decide dentro del plan de la delegación**, no en un analizador aparte: las marcas
+    que sirven a un handler son las de su emparejamiento. `semantic/value-argument.ts` decide el
+    lector y da `FUD1462`–`FUD1464`; el analizador `delegation` los informa y el emit escribe el
+    lector que el plan guarda por atributo (`plan.values`), con la misma respuesta para los dos.
+17. **`$value` fuera de los argumentos de la llamada**, aunque esté en un handler (el callee, el
+    cuerpo de una lambda), es `FUD0666`, no `FUD1383`: no es una fila con el `$` de antes.
+18. **Con varias filas en un handler**, `$value` lee el primer elemento marcado que encuentra el
+    recorrido de `composedPath()`, el más interior; el tipo se comprueba sobre todas las marcas que
+    sirven al handler.
+19. **El emparejamiento compara el texto entero del evento** (`click.borrar`) y el listener escucha
+    el evento base. `@click.` y compañía dan `FUD1465` y el binding se queda con su evento sin
+    nombre, para que el editor lo siga viendo.

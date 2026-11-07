@@ -1312,9 +1312,9 @@ export class ClientMarkupEmitter {
       const delegated = this.#hookup.delegation.reads.get(attr);
       const handler =
         delegated !== undefined
-          ? delegatedHandler(this.#source, at, this.#hookup, delegated)
+          ? delegatedHandler(this.#source, at, this.#hookup, delegated, this.#hookup.delegation.values.get(attr))
           : b.type === 'event'
-            ? eventHandler(this.#source, at, this.#hookup, b.name)
+            ? eventHandler(this.#source, at, this.#hookup, b.name, this.#hookup.delegation.values.get(attr))
             : busHandler(this.#source, at, this.#hookup);
       if (handler === undefined) {
         // The emit does not throw (§5): the binding is dropped and the page still emits.

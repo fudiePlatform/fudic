@@ -5,7 +5,7 @@
 > `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` ·
 > `@fudic/diagnostics` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `worktree-pendiente` (worktree `.claude/worktrees/pendiente`), nacida de `main` en `1375967c`.
-> **Progreso:** 12 / 30 — `En curso`.
+> **Progreso:** 15 / 30 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina, y entrega cada fase con `pnpm typecheck` y `pnpm build`.
 La otra escribe los tests de cada fase (las tareas «Los tests de…») contra los criterios de SDD §6,
@@ -99,9 +99,13 @@ async cualquiera; con la pregunta de verdad, en la fase 4. Ver SDD §8.2, 7–12
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 13 | 1 | **`$value`.** Fuera de `strayDollars`; el analizador que decide el control y da `FUD1462`–`FUD1464`; `control.ts` exporta el tipo del valor; el emit con el lector en línea, sin delegación (`currentTarget`) y con delegación (el elemento marcado que encontró el listener) (SDD §3.5, §4.5) | `compiler` | `src/semantic/delegation.ts` · `src/semantic/analyzers/value-argument.ts` · `src/binding/control.ts` · `src/emit/events.ts` · `src/emit/markup-client.ts` |
-| [ ] | 14 | 1 | **Handlers con nombre.** `classifyEvent` separa evento y nombre (`FUD1465`); `planDelegation` empareja por fila, evento y nombre, con `FUD1466`; tablas con el nombre en la clave; un listener del evento base por handler; `NON_BUBBLING`, `FUD0665`, `FUD1380` por el evento base (SDD §3.6, §4.6) | `compiler` | `src/binding/classify.ts` · `src/semantic/delegation.ts` · `src/semantic/analyzers/event-in-loop.ts` · `src/emit/**` |
-| [ ] | 15 | 13, 14 | **Los tests de la fase.** Criterios 17–28 (el DOM en happy-dom) | `compiler` | `test/**` |
+| [x] | 13 | 1 | **`$value`.** Fuera de `strayDollars`; el analizador que decide el control y da `FUD1462`–`FUD1464`; `control.ts` exporta el tipo del valor; el emit con el lector en línea, sin delegación (`currentTarget`) y con delegación (el elemento marcado que encontró el listener) (SDD §3.5, §4.5) | `compiler` | `src/semantic/delegation.ts` · `src/semantic/analyzers/value-argument.ts` · `src/binding/control.ts` · `src/emit/events.ts` · `src/emit/markup-client.ts` |
+| [x] | 14 | 1 | **Handlers con nombre.** `classifyEvent` separa evento y nombre (`FUD1465`); `planDelegation` empareja por fila, evento y nombre, con `FUD1466`; tablas con el nombre en la clave; un listener del evento base por handler; `NON_BUBBLING`, `FUD0665`, `FUD1380` por el evento base (SDD §3.6, §4.6) | `compiler` | `src/binding/classify.ts` · `src/semantic/delegation.ts` · `src/semantic/analyzers/event-in-loop.ts` · `src/emit/**` |
+| [x] | 15 | 13, 14 | **Los tests de la fase.** Criterios 17–28 (el DOM en happy-dom) | `compiler` | `test/**` |
+
+*Al cerrarla:* el análisis de `$value` vive en `src/semantic/value-argument.ts` y lo llama el plan
+de la delegación, cuyo analizador informa sus diagnósticos; no hay `analyzers/value-argument.ts`.
+Ver SDD §8.2, 16–19.
 
 ## Fase 6 — formularios en el host y la proyección (4)
 

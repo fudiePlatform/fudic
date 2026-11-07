@@ -46,7 +46,7 @@ export const eventInLoop: Analyzer = {
           report(
             FUD1380({
               // The attribute's NAME, `@` included: the value is the handler, not the mistake.
-              span: span(start, start + 1 + binding.name.length),
+              span: span(start, start + 1 + binding.name.length + (binding.label === undefined ? 0 : 1 + binding.label.length)),
               event: binding.name,
               ...(names.length === 1 ? { name: names[0]! } : {}),
               ...(substitute === undefined ? {} : { substitute }),

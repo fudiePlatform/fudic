@@ -72,7 +72,10 @@ export interface PropertyBinding extends Node {
  */
 export interface EventBinding extends Node {
   readonly type: 'event';
+  /** The event listened to: `click` of `@click.borrar` (decision 179). */
   readonly name: string;
+  /** The name of a handler that serves the marks `delegate:<row>="click.borrar"`: `borrar`. */
+  readonly label?: string;
   readonly value: RazorExpression;
 }
 
