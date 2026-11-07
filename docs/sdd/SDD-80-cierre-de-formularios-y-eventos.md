@@ -666,3 +666,15 @@ Nada. Esta SDD cierra formularios y delegación de eventos.
 19. **El emparejamiento compara el texto entero del evento** (`click.borrar`) y el listener escucha
     el evento base. `@click.` y compañía dan `FUD1465` y el binding se queda con su evento sin
     nombre, para que el editor lo siga viendo.
+20. **`$value` se proyecta con una aserción, no con una anotación**:
+    `const $value = $event as unknown as boolean`. Con `const $value: boolean = $event as never`
+    TypeScript estrecha la variable a `never`, que cabe en cualquier parámetro y esconde el error
+    del criterio 17. Donde el compilador no encuentra control (`FUD1462`–`FUD1464`) es `any`.
+21. **El registro `FudicFormResults` solo lleva entrada si hay algo que unir**: un componente sin
+    `form:=` ni componentes dentro no escribe bloque, y `$FormResult<'tag'>` de un tag sin entrada ya
+    da `never`. Solo registra un `form:=` que sea una ruta (`save`, `api.save`) cuya raíz nombra el
+    `@code`, porque `typeof` se escribe al final del módulo.
+22. **Sin formularios el handler falla en el sitio** porque `$onResultOf` pide, cuando el dato es
+    `never`, un tipo que ninguna función cumple (`$NoFormHere`): con `(value: never) => unknown`
+    cualquier función encajaría. `@fudic/typecheck` no necesitó cambios: cada proyección escribe su
+    entrada y el lote ya tiene todos los `.fud` en un programa.

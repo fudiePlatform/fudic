@@ -5,7 +5,7 @@
 > `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` ·
 > `@fudic/diagnostics` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `worktree-pendiente` (worktree `.claude/worktrees/pendiente`), nacida de `main` en `1375967c`.
-> **Progreso:** 15 / 30 — `En curso`.
+> **Progreso:** 19 / 30 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina, y entrega cada fase con `pnpm typecheck` y `pnpm build`.
 La otra escribe los tests de cada fase (las tareas «Los tests de…») contra los criterios de SDD §6,
@@ -111,10 +111,13 @@ Ver SDD §8.2, 16–19.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 16 | — | **`composed`.** `fudic:result` y `fudic:error` con `bubbles: true, composed: true` (SDD §3.7) | `forms` | `src/dom/bind-form.ts` |
-| [ ] | 17 | 13, 14 | **`$value` y el nombre en la proyección.** `const $value: <tipo>` antes de la llamada; `emitEventName` proyecta solo el evento base (SDD §4.7) | `language-core` | `src/template/attrs.ts` · `src/globals.ts` |
-| [ ] | 18 | 16 | **`FudicFormResults`.** Cada componente escribe la unión de sus `form:=` y de los componentes que usa; `$onResultOf<'tag'>` en el host; el lote de `typecheck` ve el registro (SDD §3.7, §4.7) | `language-core` · `typecheck` | `src/template/attrs.ts` · `src/emit-client.ts` · `src/globals.ts` · `typecheck/src/**` |
-| [ ] | 19 | 16–18 | **Los tests de la fase.** Criterios 29–31 y la parte de editor de 17–18 | `forms` · `language-core` · `language-server` · `typecheck` | `test/**` |
+| [x] | 16 | — | **`composed`.** `fudic:result` y `fudic:error` con `bubbles: true, composed: true` (SDD §3.7) | `forms` | `src/dom/bind-form.ts` |
+| [x] | 17 | 13, 14 | **`$value` y el nombre en la proyección.** `const $value: <tipo>` antes de la llamada; `emitEventName` proyecta solo el evento base (SDD §4.7) | `language-core` | `src/template/attrs.ts` · `src/globals.ts` |
+| [x] | 18 | 16 | **`FudicFormResults`.** Cada componente escribe la unión de sus `form:=` y de los componentes que usa; `$onResultOf<'tag'>` en el host; el lote de `typecheck` ve el registro (SDD §3.7, §4.7) | `language-core` · `typecheck` | `src/template/attrs.ts` · `src/emit-client.ts` · `src/globals.ts` · `typecheck/src/**` |
+| [x] | 19 | 16–18 | **Los tests de la fase.** Criterios 29–31 y la parte de editor de 17–18 | `forms` · `language-core` · `language-server` · `typecheck` | `test/**` |
+
+*Al cerrarla:* `@fudic/typecheck` no cambia: el registro lo escribe cada proyección y el lote lo ve. El
+hover sobre `$value` y el completado son de la fase 7 (tarea 21). Ver SDD §8.2, 20–22.
 
 ## Fase 7 — el editor (4)
 

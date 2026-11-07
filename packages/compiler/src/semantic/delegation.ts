@@ -509,7 +509,7 @@ function visitDollars(node: OxcNode, found: (node: OxcNode) => void): void {
 }
 
 /** Every `$value` in the ARGUMENTS of a handler's call, in source order (decision 178). */
-function valueMentions(call: OxcNode): readonly OxcNode[] {
+export function valueMentions(call: OxcNode): readonly OxcNode[] {
   const out: OxcNode[] = [];
   for (const arg of call['arguments'] as readonly OxcNode[]) {
     visitDollars(arg, (found) => {

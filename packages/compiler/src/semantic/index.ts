@@ -25,6 +25,7 @@ export { HTML_EVENT_ATTRIBUTES, isNativeEventAttribute } from './html-events.js'
 export {
   eventsReadingRow,
   planDelegation,
+  valueMentions,
   type DelegationJs,
   type DelegationMark,
   type DelegationPlan,

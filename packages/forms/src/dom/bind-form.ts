@@ -144,7 +144,7 @@ export function bindForm(
       // `@fudic:result` / `@fudic:error`.
       void send!(form).then(
         (value) => {
-          el.dispatchEvent(new CustomEvent('fudic:result', { detail: value, bubbles: true }));
+          el.dispatchEvent(new CustomEvent('fudic:result', { detail: value, bubbles: true, composed: true }));
         },
         (error: unknown) => {
           const status = statusOf(error);
@@ -154,7 +154,7 @@ export function bindForm(
             return;
           }
           if (isAbort(error)) return;
-          el.dispatchEvent(new CustomEvent('fudic:error', { detail: asError(error), bubbles: true }));
+          el.dispatchEvent(new CustomEvent('fudic:error', { detail: asError(error), bubbles: true, composed: true }));
         },
       );
     }),

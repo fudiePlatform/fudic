@@ -203,6 +203,19 @@ declare function $on<K extends keyof $Events>(
 type $Result<F> = F extends (...a: never[]) => infer R ? Awaited<R> : unknown;
 declare function $onResult<F>(fn: F, h: (value: $Result<F>) => unknown): void;
 declare function $onResultEvent<F>(fn: F, h: (ev: CustomEvent<$Result<F>>) => unknown): void;
+/**
+ * What the forms of a component return, by its tag (SDD-80 §3.7): the union of the \`-> T\` of each
+ * \`form:=\` of its template and of what the components it uses register. Every \`.fud\` of the
+ * program adds its own entry with \`declare global\`. On the host, \`<user-form @fudic:result=@alta>\`
+ * types \`alta\` with it; a component with no form gives \`never\`, and then no handler fits.
+ */
+interface FudicFormResults {}
+type $FormResult<K extends string> = K extends keyof FudicFormResults ? FudicFormResults[K] : never;
+interface $NoFormHere { readonly '$this component sends no form': never }
+type $ResultHandler<R, A> = [R] extends [never] ? $NoFormHere : (value: A) => unknown;
+declare function $onResultOf<K extends string>(h: $ResultHandler<$FormResult<K>, $FormResult<K>>): void;
+declare function $onResultOfEvent<K extends string>(
+  h: $ResultHandler<$FormResult<K>, CustomEvent<$FormResult<K>>>): void;
 declare function $onError(h: (error: Error) => unknown): void;
 declare function $onErrorEvent(h: (ev: CustomEvent<Error>) => unknown): void;
 /**

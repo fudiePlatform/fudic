@@ -310,3 +310,38 @@ describe('bindForm with a server function', () => {
     expect(submit().defaultPrevented).toBe(false);
   });
 });
+
+describe('the events reach the hosts outside (SDD-80 §3.7, criteria 29, 30)', () => {
+  /** A `<form>` inside the shadow of `<x-inner>`, which is inside the shadow of `<x-outer>`. */
+  function nested(send: (f: AnyForm) => Promise<unknown>) {
+    const outer = document.createElement('x-outer');
+    document.body.append(outer);
+    const inner = document.createElement('x-inner');
+    outer.attachShadow({ mode: 'open' }).append(inner);
+    const shadow = inner.attachShadow({ mode: 'open' });
+    shadow.innerHTML = '<form><input id="a"></form>';
+    const el = shadow.querySelector('form') as HTMLFormElement;
+    const f = form({ a: control('x') });
+    bindForm(el, f as unknown as AnyForm, null, null, send);
+    const heard: string[] = [];
+    for (const [name, host] of [['inner', inner], ['outer', outer]] as const) {
+      for (const type of ['fudic:result', 'fudic:error']) {
+        host.addEventListener(type, (e) => heard.push(`${name} ${type} ${String((e as CustomEvent).detail)}`));
+      }
+    }
+    el.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    return heard;
+  }
+
+  it('fudic:result crosses both shadow roots: each host hears the datum', async () => {
+    const heard = nested(() => Promise.resolve('persona'));
+    await flush();
+    expect(heard).toEqual(['inner fudic:result persona', 'outer fudic:result persona']);
+  });
+
+  it('and so does fudic:error, with the error', async () => {
+    const heard = nested(() => Promise.reject(new HttpError(500)));
+    await flush();
+    expect(heard).toEqual(['inner fudic:error Error: HTTP 500', 'outer fudic:error Error: HTTP 500']);
+  });
+});
