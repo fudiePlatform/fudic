@@ -247,8 +247,10 @@ by a stylesheet the layout links in its `<head>`: `<link rel="stylesheet" href="
 ## Design tokens
 
 A token is a custom property declared directly in a `:host` or `:root` rule (also inside
-`@layer`) of a sheet listed in `globalStyles` or `styles`, of the project or of a library it
-uses. A custom property declared in any other rule is local to that rule, not a token.
+`@layer`) of a sheet listed in `globalStyles` or `styles`, or imported by the style guide, of the
+project or of a library it uses. A custom property declared in any other rule is local to that
+rule, not a token. The guide's tokens are on `:root`, in the page: custom properties cross into
+every shadow root.
 
 Document each token the way a prop is documented: a `/** … */` right above its declaration.
 Name it `--<prefix>-<group>-<name>`: the second segment is its group (`color`, `space`).
@@ -274,28 +276,43 @@ Name it `--<prefix>-<group>-<name>`: the second segment is its group (`color`, `
   takes one token name.
 - No literal colour, radius or spacing when a token says it; ask the user before adding one.
 
-## Tokens from a library
+## The style guide
 
-In a workspace, the design tokens usually live in a **style library**: one `tokens.css` and
-nothing else. `fudic_generate { kind: "lib", name: "tokens", stylesOnly: true }` creates it:
+Every project starts with one: a standalone app has it in `src/guide/`, a workspace in
+`libs/guide`, and every app and library the workspace creates depends on it.
+`fudic_generate { kind: "guide" }` creates one where there is none. It is named in `fudic.json`:
 
-```json path=libs/tokens/fudic.json
+```json path=libs/guide/fudic.json
 {
   "kind": "lib",
-  "globalStyles": { "tokens": "tokens.css" }
+  "globalStyles": { "base": "base.css" },
+  "guide": { "sheet": "guide.css", "icon": "logo.svg" }
 }
 ```
 
-```css path=libs/tokens/tokens.css
-/* Custom properties the components of whoever uses tokens can read: var(--tokens-ink). */
-:host {
-  /** Body text. Use it for anything read, never for a border. */
-  --tokens-ink: #1c1c1e;
-}
+`guide.css` is only `@import`s: `tokens.css` (the tokens on `:root`, the font), `document.css`
+(`html` and `body`), `base.css`, and then **one piece per element**: `h1.css`, `button.css`,
+`input.css`, `table.css`…
+
+- **The page gets the whole guide.** Every page of a project whose chain holds it links it,
+  pruned to what the page uses, before the sheets of its layout. No `<link>` to write: depending
+  on the library is enough. Its `icon` is the favicon of every page whose `<head>` has none.
+- **A component gets only the pieces it names**, by file name, in its root template:
+
+```html
+<template shadowrootmode="open" shadowrootadoptedstylesheets="button input">
 ```
 
-A project adopts them by depending on the library: `fudic_add { module: "tokens", project: "ui" }`
-for a component library, `fudic_add { module: "tokens", project: "web" }` for an app. From then
-on every component of that project adopts `tokens.css` first, before its own sheets, and
-`fudic_symbols { kind: "tokens" }` lists the library's tokens before the project's. A component
-library that uses the tokens passes them on: an app that uses it gets the whole chain.
+- **The attribute is the truth**: the build adopts exactly what it says. When you write an
+  element a piece styles, add the piece. `FUD1440` warns of a piece missing for an element
+  of the template, and its repair adds it — `fudic_fix` applies it. `FUD1441` warns of an adopted
+  piece that styles nothing in the template. **Never remove a piece on your own**: a script may
+  create what it styles. Its repair is the user's to accept; `fudic_fix` leaves it.
+- Which piece styles which element is read from its selectors: a rule whose subject is the
+  element's type (`:where(button)`). A piece styled by class or attribute (`popover`) is adopted
+  by hand.
+- Every colour is `light-dark(light, dark)`, and the page follows the system. A zone forces a
+  mode with `color-scheme: dark`, and the components inside it follow.
+- Edit the guide where it is: change a token in `tokens.css`, a piece in its file. Restyling one
+  zone or one component of the app is setting a token on it, in a sheet the layout links:
+  `.promo { --guide-accent: #0f7b3f; }`.

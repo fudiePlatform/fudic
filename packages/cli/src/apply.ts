@@ -29,7 +29,11 @@ export function apply(
 ): Promise<ApplyResult> {
   if (plan.errors.length > 0) return Promise.resolve({ changes: [] });
 
-  for (const change of plan.changes) io.write(absolute(opts.cwd, change.path), change.contents);
+  for (const change of plan.changes) {
+    const path = absolute(opts.cwd, change.path);
+    if ('bytes' in change) io.writeBytes(path, change.bytes);
+    else io.write(path, change.contents);
+  }
   for (const path of plan.deletions ?? []) io.remove(absolute(opts.cwd, path));
 
   for (const command of plan.commands) {

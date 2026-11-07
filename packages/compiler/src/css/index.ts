@@ -17,7 +17,7 @@ export type {
 } from './rules.js';
 export { parseCssRules } from './rules.js';
 export type { CssImport, CssRead, FlatRegion, FileDiagnostic, FlatSheet, ImportSite } from './flatten.js';
-export { parseImport, flattenImports, originOf, plainSheet } from './flatten.js';
+export { parseImport, flattenImports, originOf, plainSheet, rebaseUrls } from './flatten.js';
 export type {
   AttributeOperator,
   AttributeSelector,
@@ -26,3 +26,5 @@ export type {
   CompoundSelector,
 } from './selectors.js';
 export { parseSelectorList } from './selectors.js';
+export type { Guide, GuidePiece } from './guide.js';
+export { piecesForTag, readGuide } from './guide.js';

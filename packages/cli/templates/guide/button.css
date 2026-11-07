@@ -1,0 +1,36 @@
+:where(button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--{{project}}-space-2);
+  margin: 0;
+  padding: var(--{{project}}-space-2) var(--{{project}}-space-4);
+  font: inherit;
+  font-weight: var(--{{project}}-weight-medium);
+  line-height: var(--{{project}}-leading-tight);
+  color: var(--{{project}}-on-accent);
+  background: var(--{{project}}-accent);
+  border: 1px solid transparent;
+  border-radius: var(--{{project}}-radius-md);
+  cursor: pointer;
+  transition: filter var(--{{project}}-duration-fast) var(--{{project}}-easing);
+}
+
+:where(button):hover {
+  filter: brightness(1.08);
+}
+
+:where(button):active {
+  filter: brightness(0.95);
+}
+
+:where(button):focus-visible {
+  outline: var(--{{project}}-focus-width) solid var(--{{project}}-focus);
+  outline-offset: 2px;
+}
+
+:where(button):disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  filter: none;
+}

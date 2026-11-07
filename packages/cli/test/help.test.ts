@@ -45,6 +45,7 @@ Add to a project
   generate layout <name>          a layout and its unit test
   generate app <name>             another app in the workspace
   generate lib <name>             a component library in the workspace
+  generate guide [name]           the style guide: tokens, a font, a favicon and a sheet per element
   generate service <name>         a service you can inject
   generate form <name>            a form and its unit test
   generate style <name>           a global stylesheet of the project
@@ -113,7 +114,7 @@ Examples
 const GENERATE_TEST = `
 error  fudic does not generate "test" on its own
        a component comes with its unit test:   fudic g component button
-       it generates: component, page, layout, app, lib, service, form, pipe, style, snippet, spec, term, api, showcase
+       it generates: component, page, layout, app, lib, guide, service, form, pipe, style, snippet, spec, term, api, showcase
 
 "fudic generate --help" for more.
 `;
@@ -279,8 +280,8 @@ describe('a usage error (§6.8)', () => {
       [['translate', 'es'], 'translate', 'fudic translate takes no argument: "es"', 'it translates the app you are in, or the one --project names'],
       [['new'], 'new', 'fudic new needs a project name', 'e.g. fudic new shop'],
       [['new', 'shop', '--pm', 'bun'], 'new', 'unknown package manager "bun"', 'use --pm pnpm, npm or yarn'],
-      [['g'], 'generate', 'fudic generate needs to know what to generate', 'it generates: component, page, layout, app, lib, service, form, pipe, style, snippet, spec, term, api, showcase'],
-      [['g', 'widget', 'x'], 'generate', 'fudic does not generate "widget"', 'it generates: component, page, layout, app, lib, service, form, pipe, style, snippet, spec, term, api, showcase'],
+      [['g'], 'generate', 'fudic generate needs to know what to generate', 'it generates: component, page, layout, app, lib, guide, service, form, pipe, style, snippet, spec, term, api, showcase'],
+      [['g', 'widget', 'x'], 'generate', 'fudic does not generate "widget"', 'it generates: component, page, layout, app, lib, guide, service, form, pipe, style, snippet, spec, term, api, showcase'],
       [['g', 'c'], 'generate component', 'fudic generate component needs a name', 'e.g. fudic g component button'],
       [['g', 'p'], 'generate page', 'fudic generate page needs a name', 'e.g. fudic g page about'],
       [['g', 'l'], 'generate layout', 'fudic generate layout needs a name', 'e.g. fudic g layout docs'],
@@ -308,7 +309,7 @@ describe('a usage error (§6.8)', () => {
       [['g', 'l', 'x', '--zz'], 'generate layout', '--project, --dir, --sections, --no-head, --skip-test, --dry-run, --force'],
       [['g', 'a', 'x', '--zz'], 'generate app', '--dir, --id, --prefix, --no-sw, --uses, --base, --layout, --no-layout, --locale, --dry-run, --force'],
       [['g', 'pipe', 'x', '--zz'], 'generate pipe', '--project, --on, --dry-run, --force'],
-      [['g', 'lib', 'x', '--zz'], 'generate lib', '--dir, --prefix, --uses, --styles-only, --dry-run, --force'],
+      [['g', 'lib', 'x', '--zz'], 'generate lib', '--dir, --prefix, --uses, --dry-run, --force'],
       [['g', 's', 'x', '--zz'], 'generate spec', '--project, --dry-run, --force'],
       [['g', 't', 'then', 'x', '--zz'], 'generate term', '--project, --param, --dry-run, --force'],
       [['g', 'api', 'x', '--zz'], 'generate api', '--project, --dry-run, --force'],

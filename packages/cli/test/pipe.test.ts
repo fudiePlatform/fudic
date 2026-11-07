@@ -5,12 +5,12 @@
 
 import { describe, expect, it } from 'vitest';
 import { planPipe } from '../src/plans/pipe.js';
-import { MemoryFs, projectFs } from './helpers.js';
+import { contentsOf, MemoryFs, projectFs } from './helpers.js';
 import type { PipeOptions } from '../src/types.js';
 
 const options = (overrides: Partial<PipeOptions> = {}): PipeOptions => ({ cwd: '/project', force: false, on: 'str', ...overrides });
 const created = (plan: Awaited<ReturnType<typeof planPipe>>): Record<string, string> =>
-  Object.fromEntries(plan.changes.filter((c) => c.kind === 'create').map((c) => [c.path, c.contents]));
+  Object.fromEntries(plan.changes.filter((c) => c.kind === 'create').map((c) => [c.path, contentsOf(c)]));
 
 describe('fudic g pipe in an app', () => {
   it('writes the contract, the implementation and its test in src/pipes, and adds @fudic/core', async () => {

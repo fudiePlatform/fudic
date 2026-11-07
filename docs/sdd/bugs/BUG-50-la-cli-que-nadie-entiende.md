@@ -257,6 +257,8 @@ como `@scope/ui/ui-button.fud`, sin repetir carpeta.
 - `g style ui --project ui` → `ui.css` y `"globalStyles": { "ui": "ui.css" }`.
 - `g lib guia --styles-only` → `tokens.css`, `"globalStyles": { "tokens": "tokens.css" }`,
   `exports` solo del CSS, sin componentes, sin tests ni spec.
+  **Enmienda de SDD-79:** `--styles-only` desaparece; es un flag desconocido cuyo mensaje sugiere
+  `fudic g guide`, que crea la guía de estilos completa ([SDD-79](../SDD-79-guia-de-estilos-generada.md)).
 
 ### 4.8. Lo generado es del usuario
 

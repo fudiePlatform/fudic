@@ -1,0 +1,9 @@
+/* The document: what only the page has. A zone forces a mode with `color-scheme: dark`. */
+body {
+  margin: 0;
+  padding: 1rem 1.5rem;
+  font-family: var(--guia-font);
+  line-height: 1.5;
+  color: var(--guia-ink);
+  background: var(--guia-surface);
+}

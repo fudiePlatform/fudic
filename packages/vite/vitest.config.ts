@@ -20,6 +20,8 @@ export default defineConfig({
         // The project's style guide, read by the host (SDD-42), and the registry that names
         // every file a `.fud` links (BUG-40). Same rule, same floor, from their first commit.
         'src/styles.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // The style guide of a package, as the build reads it (SDD-79).
+        'src/guide.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/linked-assets.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         // The libraries of SDD-43: what a `<link>` names before the graph is walked, and the
         // compiler range a library declares. Same rule, same floor, from their first commit.

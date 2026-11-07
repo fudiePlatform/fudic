@@ -75,6 +75,8 @@ export async function fixProject(project: Project, checks: Checks, input: FixInp
       const repairs = await checks.repairs(problem);
       if (repairs.length !== 1) continue;
       const [repair] = repairs as [(typeof repairs)[number]];
+      // A repair only the author may apply — one that removes what a script may still need.
+      if (repair.manual === true) continue;
       if (chosen.some((c) => c.edits.some((e) => repair.edits.some((f) => overlaps(e, f))))) continue;
       chosen.push({ problem, title: repair.title, edits: repair.edits });
     }

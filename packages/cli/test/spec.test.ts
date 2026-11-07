@@ -17,7 +17,7 @@ import { planComponent } from '../src/plans/component.js';
 import { ENV_DECLARATION, ENV_FILE, planSpec, type PropsReader } from '../src/plans/spec.js';
 import { run } from '../src/run.js';
 import { componentSpec } from '../src/templates.js';
-import { captureStreams, MemoryFs, projectFs, RecordingRunner } from './helpers.js';
+import { contentsOf, captureStreams, MemoryFs, projectFs, RecordingRunner } from './helpers.js';
 import type { ComponentOptions, SpecOptions } from '../src/types.js';
 
 const CWD = '/project';
@@ -114,11 +114,11 @@ describe('g spec (criterion 7)', () => {
       `create ${ENV_FILE}`,
     ]);
     const [spec, fixture, env] = plan.changes;
-    expect(spec?.contents).toBe(specSkeleton('app-card', true));
-    expect(spec?.contents).toContain('#     props base\n');
-    expect(fixture?.contents).toBe(FIXTURE);
-    expect(fixture?.contents).toContain("  base: { title: '', href: '' },\n");
-    expect(env?.contents).toBe(ENV_DECLARATION);
+    expect(contentsOf(spec)).toBe(specSkeleton('app-card', true));
+    expect(contentsOf(spec)).toContain('#     props base\n');
+    expect(contentsOf(fixture)).toBe(FIXTURE);
+    expect(contentsOf(fixture)).toContain("  base: { title: '', href: '' },\n");
+    expect(contentsOf(env)).toBe(ENV_DECLARATION);
     expect(props.calls).toEqual([[posix('/project'), posix('/project/src/components/app-card.fud')]]);
   });
 
@@ -163,8 +163,8 @@ describe('g spec without props (criterion 8)', () => {
     for (const fields of [optional, [], undefined]) {
       const plan = await planSpec('app-card', options(), project(), reader(fields));
       expect(created(plan)).toEqual(['create src/components/app-card.fudspec']);
-      expect(plan.changes[0]?.contents).toBe(specSkeleton('app-card', false));
-      expect(plan.changes[0]?.contents).not.toContain('props base');
+      expect(contentsOf(plan.changes[0])).toBe(specSkeleton('app-card', false));
+      expect(contentsOf(plan.changes[0])).not.toContain('props base');
     }
   });
 });
@@ -216,7 +216,7 @@ describe('g spec of a component that does not exist (criterion 10)', () => {
       'create src/components/app-nope/app-nope.fudspec',
       'create src/components/app-nope/app-nope.fixture.ts',
     ]);
-    expect(plan.changes[2]?.contents).toBe(componentSpec('app-nope'));
+    expect(contentsOf(plan.changes[2])).toBe(componentSpec('app-nope'));
     // A new component has no props to read: its fixture is the empty `base`.
     expect(asked.calls).toEqual([]);
   });
@@ -270,7 +270,7 @@ describe('g component writes its criteria unless --skip-spec (BUG-50 §4.3)', ()
       'create src/components/app-card/app-card.fudspec',
       'create src/components/app-card/app-card.fixture.ts',
     ]);
-    expect(plan.changes[1]?.contents).toBe(componentSpec('app-card'));
+    expect(contentsOf(plan.changes[1])).toBe(componentSpec('app-card'));
   });
 
   it('refuses an existing .fudspec with FUD0443, and replaces it with --force', async () => {

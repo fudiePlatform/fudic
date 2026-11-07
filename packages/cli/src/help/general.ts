@@ -20,6 +20,7 @@ Add to a project
   generate layout <name>          a layout and its unit test
   generate app <name>             another app in the workspace
   generate lib <name>             a component library in the workspace
+  generate guide [name]           the style guide: tokens, a font, a favicon and a sheet per element
   generate service <name>         a service you can inject
   generate form <name>            a form and its unit test
   generate style <name>           a global stylesheet of the project

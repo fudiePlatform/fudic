@@ -8,9 +8,13 @@
 import type { Diagnostic } from '@fudic/compiler';
 import type { FileDiagnostic, ProjectDiagnostic } from '@fudic/diagnostics';
 
-/** A file the plan creates, or an existing file it rewrites (`before` = its current text). */
+/**
+ * A file the plan creates, or an existing file it rewrites (`before` = its current text). A
+ * file that is not text — a font — is created from its `bytes`, copied as they are.
+ */
 export type FileChange =
   | { readonly kind: 'create'; readonly path: string; readonly contents: string }
+  | { readonly kind: 'create'; readonly path: string; readonly bytes: Uint8Array }
   | {
       readonly kind: 'modify';
       readonly path: string;
@@ -283,9 +287,11 @@ export interface ServeOptions extends TargetedOptions {
 }
 
 /** `fudic g lib` (SDD-44, BUG-50 §4.7). */
-export interface LibOptions extends ProjectOptions {
-  /** `--styles-only`: a global stylesheet and nothing else — no components, no tests, no spec. */
-  readonly stylesOnly?: true;
+export type LibOptions = ProjectOptions;
+
+/** `fudic g guide [name]`: where its library goes in a workspace (`--dir`, `libs` by default). */
+export interface GuideOptions extends BaseOptions {
+  readonly dir: string;
 }
 
 /** `fudic add <module>` (BUG-50 §4.6). */

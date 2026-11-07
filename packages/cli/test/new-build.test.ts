@@ -107,6 +107,18 @@ describe('fudic new → vite build (§6.1)', () => {
     expect(text).not.toContain('"/fudic-main.js"');
   });
 
+  it('links its own style guide, pruned, with its font and its favicon (SDD-79 criterion 25)', () => {
+    const text = String(output.find((file) => file.fileName === 'index.html')!.source);
+    const guide = /<link rel="stylesheet" href="\/assets\/(guide-[\w-]+\.css)">/u.exec(text)?.[1];
+    expect(guide, text).toBeDefined();
+    const css = String(output.find((file) => file.fileName === `assets/${guide}`)!.source);
+    expect(css).toContain('light-dark(');
+    // The page writes text, so it names the font: the face comes, from the published copy.
+    expect(css).toMatch(/url\("?\/assets\/InterVariable-[\w-]+\.woff2"?\)/u);
+    expect(output.some((file) => /^assets\/InterVariable-[\w-]+\.woff2$/u.test(file.fileName))).toBe(true);
+    expect(text).toMatch(/<link rel="icon" href="\/assets\/logo-[\w-]+\.svg">/u);
+  });
+
   it('publishes the route in the manifest', () => {
     const manifest = output.find((file) => file.fileName === 'fudic-routes.json');
     expect(manifest).toBeDefined();

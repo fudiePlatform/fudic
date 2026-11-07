@@ -49,6 +49,8 @@ export const STEPS = [
   { in: 'acme', argv: ['g', 'lib', 'kit'], covers: 'lib' },
   { in: 'acme', argv: ['g', 'app', 'admin'], covers: 'app' },
   { in: 'acme', argv: ['g', 'showcase', 'ui'], covers: 'showcase' },
+  // Last of the workspace: a second guide, used by no project (two would clash in one chain).
+  { in: 'acme', argv: ['g', 'guide', 'brand'], covers: 'guide' },
   { in: '.', argv: ['new', 'solo'] },
   { in: 'solo', argv: ['g', 'component', 'card'] },
   { in: 'solo', argv: ['g', 'api', 'src/components/solo-card'] },

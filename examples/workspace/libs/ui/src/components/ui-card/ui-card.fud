@@ -16,7 +16,7 @@
       border-left: 3px solid var(--guia-accent);
       border-radius: var(--guia-radius);
       padding: var(--guia-pad);
-      background: white;
+      background: var(--guia-surface);
       h2 {
         margin: 0 0 0.35rem;
         font-size: 1.05rem;
@@ -26,7 +26,7 @@
 </head>
 
 <ui-card>
-  <template shadowrootmode="open">
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="h2">
     <article class="card">
       <h2>@title</h2>
       <slot></slot>

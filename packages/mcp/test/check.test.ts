@@ -49,6 +49,22 @@ describe('problemsOf', () => {
   });
 });
 
+describe('problemsOf — a manual repair (SDD-79 §8.2.13)', () => {
+  it('is an option, never fixable', async () => {
+    const report: CheckReport = { problems: [at('/p/a.fud', 'FUD1441', 'warning'), at('/p/a.fud', 'FUD1440', 'warning')], project: [], inputs: [] };
+    const checks = {
+      run: () => Promise.resolve(report),
+      repairs: (p: CheckProblem) =>
+        Promise.resolve([{ title: `${p.code} repair`, edits: [], ...(p.code === 'FUD1441' ? { manual: true } : {}) }]),
+    } as unknown as Checks;
+    const problems = await problemsOf(report, checks);
+    expect(problems.map((p) => [p.code, p.fixable, p.options])).toEqual([
+      ['FUD1441', false, ['FUD1441 repair']],
+      ['FUD1440', true, undefined],
+    ]);
+  });
+});
+
 describe('inside and located', () => {
   it('a problem of the project is always listed; one of a file, when under what was asked', () => {
     const project: Problem = { code: 'FUD0870', severity: 'error', message: 'x' };

@@ -1,0 +1,16 @@
+/* Light or dark follows the system; a zone forces one, components included: .promo { color-scheme: dark; } */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--{{project}}-font-sans);
+  font-size: var(--{{project}}-text-base);
+  font-weight: var(--{{project}}-weight-normal);
+  line-height: var(--{{project}}-leading-normal);
+  color: var(--{{project}}-ink);
+  background: var(--{{project}}-surface);
+  -webkit-font-smoothing: antialiased;
+}

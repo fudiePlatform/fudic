@@ -23,10 +23,13 @@
  */
 
 import type { CompletionList, LanguageServicePlugin } from '@volar/language-service';
-import { isNativeEventAttribute, regionAt } from '@fudic/compiler';
+import { isNativeEventAttribute, regionAt, type GuidePiece } from '@fudic/compiler';
 import { fudicDocumentOf } from './plugin.js';
 import { hrefContextAt, ownedByProjection } from './position.js';
-import { atRootTemplateGap } from './template-attrs.js';
+import { adoptionEditFor, atRootTemplateGap } from './template-attrs.js';
+
+/** The caret right after `<` or inside a tag's name: where the list is of elements. */
+const TAG_NAME = /<[A-Za-z][A-Za-z0-9-]*$|<$/u;
 
 /**
  * The two attributes whose VALUES this server can name: the classes of the file's `<style>`
@@ -93,7 +96,11 @@ function htmlItems(list: CompletionList | null | undefined): CompletionList | nu
  * offsets are either harmless or already mapped, and a decorator that removed them would be
  * turning off features to fix a list.
  */
-export function silenceOwnedPositions(plugin: LanguageServicePlugin): LanguageServicePlugin {
+export function silenceOwnedPositions(
+  plugin: LanguageServicePlugin,
+  /** The style guide's pieces a component under the path may adopt; none when absent. */
+  piecesFor: (path: string) => readonly GuidePiece[] = () => [],
+): LanguageServicePlugin {
   return {
     ...plugin,
     create(context) {
@@ -121,7 +128,21 @@ export function silenceOwnedPositions(plugin: LanguageServicePlugin): LanguageSe
           // The reopening is a `.fud` fact — behind those quotes live the classes of THIS
           // file's `<style>` and the slots its parent declares — so a document that is not one
           // travels through as itself, list and identity intact.
-          return htmlItems(await inner(document, position, completionContext, token));
+          const list = htmlItems(await inner(document, position, completionContext, token));
+          // A tag of the root template that a piece of the guide styles brings the piece with it:
+          // the element and the sheet that makes it look like the page, in one keystroke.
+          if (list === undefined || list === null || !TAG_NAME.test(cached.source.slice(0, offset))) return list;
+          const pieces = piecesFor(cached.path);
+          if (pieces.length === 0) return list;
+          return {
+            ...list,
+            items: list.items.map((item) => {
+              const edit = adoptionEditFor(cached, offset, item.label, pieces);
+              if (edit === undefined) return item;
+              const range = { start: document.positionAt(edit.span.start), end: document.positionAt(edit.span.end) };
+              return { ...item, additionalTextEdits: [...(item.additionalTextEdits ?? []), { range, newText: edit.newText }] };
+            }),
+          };
         },
       };
     },

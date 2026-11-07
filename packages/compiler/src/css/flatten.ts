@@ -183,7 +183,7 @@ export function parseImport(prelude: string): CssImport | null {
 // ---------------------------------------------------------------------------
 
 /** A URL the host can be asked to read: relative, with no scheme and not root-absolute. */
-function isRelative(url: string): boolean {
+export function isRelative(url: string): boolean {
   if (url === '' || url.startsWith('/') || url.startsWith('#')) return false;
   return !/^[a-z][a-z0-9+.-]*:/iu.test(url);
 }
@@ -466,6 +466,13 @@ export function flattenImports(spec: string, css: string, read: CssRead): FlatSh
   const root = flattener.root(rootSpec, css);
   flattener.write(flattener.last(flattener.tree(root, rootSpec, [])), true);
   return flattener.result(root);
+}
+
+/** `css`, written in the file `from`, with every relative `url()` rewritten relative to the `.fud`. */
+export function rebaseUrls(css: string, from: string): string {
+  return css.replace(URL_RE, (whole, q: string, url: string) =>
+    isRelative(url) ? `url(${q}${joinSpec(from, url)}${q})` : whole,
+  );
 }
 
 /** A sheet of one file and no imports: a project sheet, as the prune takes it. */

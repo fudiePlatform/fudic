@@ -1,0 +1,16 @@
+:where(a) {
+  color: var(--{{project}}-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+:where(a):hover {
+  text-decoration-thickness: 2px;
+}
+
+:where(a):focus-visible {
+  outline: var(--{{project}}-focus-width) solid var(--{{project}}-focus);
+  outline-offset: 2px;
+  border-radius: var(--{{project}}-radius-sm);
+}

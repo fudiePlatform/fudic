@@ -13,6 +13,7 @@ export type Topic =
   | 'generate layout'
   | 'generate app'
   | 'generate lib'
+  | 'generate guide'
   | 'generate service'
   | 'generate form'
   | 'generate pipe'
@@ -52,12 +53,13 @@ const IN_PROJECT = ['--project <name>', 'the app or library to add it to   (defa
 const HELP: Readonly<Record<Topic, CommandHelp>> = {
   new: {
     usage: 'fudic new <name>',
-    about: `Creates an app in a new folder <name>, installs its dependencies and makes the
-first commit. With --workspace it creates a workspace instead: one repo with
-apps/ and libs/, empty or with the app and the libraries you name.`,
+    about: `Creates an app in a new folder <name>, with its style guide in src/guide/,
+installs its dependencies and makes the first commit. With --workspace it
+creates a workspace instead: one repo with apps/ and libs/, the style guide in
+libs/guide, and the app and the libraries you name.`,
     args: [['<name>', 'the folder, and the name of the app or the workspace']],
     options: [
-      ['--workspace', 'a workspace: apps/ and libs/, empty unless --app or --lib'],
+      ['--workspace', 'a workspace: apps/ and libs/ with the style guide, libs/guide'],
       ['--app <name>', 'with --workspace: its first app, served at /'],
       ['--lib <name>', 'with --workspace: a library in libs/; repeatable'],
       ['--uses <lib>', 'with --app: also create that library, used by the app; repeatable'],
@@ -86,6 +88,7 @@ apps/ and libs/, empty or with the app and the libraries you name.`,
       ['layout', 'a layout and its unit test   (l)'],
       ['app', 'another app in the workspace   (a)'],
       ['lib', 'a component library in the workspace'],
+      ['guide', 'the style guide: tokens, a font, a favicon and a sheet per element'],
       ['service', 'a service you can inject'],
       ['form', 'a form and its unit test'],
       ['pipe', 'a pipe: its contract, its implementation and its unit test'],
@@ -195,11 +198,22 @@ with what it needs to test them. It is not served.`,
     options: [
       ['--prefix <p>', 'what turns "button" into <p-button>   (default: <name>)'],
       ['--uses <lib>', 'another library of the workspace it uses; repeatable'],
-      ['--styles-only', 'a library with a global stylesheet and no components'],
       ['--dir <path>', 'another folder of the workspace   (default: libs)'],
       DRY_RUN,
     ],
-    examples: ['fudic g lib ui', 'fudic g lib guia --styles-only'],
+    examples: ['fudic g lib ui', 'fudic g lib forms --uses ui'],
+  },
+  'generate guide': {
+    usage: 'fudic generate guide [name]',
+    about: `Creates a style guide: tokens with a dark mode, a font, a favicon and one sheet
+per element. In a workspace it is a library under libs/, and every page of a
+project that depends on it links it. In an app it goes in src/guide/.`,
+    args: [['[name]', 'the folder and the name of the library   (default: guide)']],
+    options: [
+      ['--dir <path>', 'another folder of the workspace   (default: libs)'],
+      DRY_RUN,
+    ],
+    examples: ['fudic g guide', 'fudic g guide brand'],
   },
   'generate service': {
     usage: 'fudic generate service <name>',

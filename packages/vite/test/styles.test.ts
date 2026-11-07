@@ -36,13 +36,13 @@ describe('readStyles', () => {
     expect(readStyles('/p', CONFIG, io({}))).toEqual(EMPTY);
   });
 
-  it('hands the emit a specifier and CSS, and nothing else — no path travels on', () => {
+  it('hands the host a specifier, the CSS and the file it was read from (SDD-79 §8.2.3: its url() resolve from it)', () => {
     const result = readStyles(
       '/p',
       { ...CONFIG, globalStyles: theme('src/theme.css') },
       io({ '/p/src/theme.css': ':host{--gap:8px}' }),
     );
-    expect(result.global).toEqual([{ specifier: 'theme', css: ':host{--gap:8px}' }]);
+    expect(result.global).toEqual([{ specifier: 'theme', css: ':host{--gap:8px}', file: '/p/src/theme.css' }]);
     expect(result.errors).toEqual([]);
   });
 
@@ -123,7 +123,7 @@ describe('FUD0743 — read once per sheet, not once per route', () => {
     );
     // An advice, not a pruning: the emit is handed the sheet exactly as it was read.
     expect(result.global).toEqual([
-      { specifier: 'theme', css: ':host{--gap:8px}\n\nbody { margin: 0; }\n' },
+      { specifier: 'theme', css: ':host{--gap:8px}\n\nbody { margin: 0; }\n', file: '/p/src/styles/theme.css' },
     ]);
   });
 

@@ -96,6 +96,7 @@ import {
 import {
   adoptedStyleDiagnostics,
   adoptedStylesAt,
+  guidePieceDiagnostics,
   referenceTargetIdsAt,
   templateAttributeAt,
   templateAttributeOffers,
@@ -676,6 +677,7 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
                 ...placedDiagnostics(cached.path, fudicDiagnostics(cached, index)),
                 ...(program === undefined ? [] : placedDiagnostics(cached.path, portableTypeDiagnostics(program, cached))),
                 ...(choosable === null ? [] : adoptedStyleDiagnostics(cached, choosable)),
+                ...guidePieceDiagnostics(cached, deps.configs?.guidePiecesFor(cached.path) ?? []),
               ].map((diagnostic) => toLspDiagnostic(document, diagnostic, index.read.bind(index)));
             },
             undefined,
@@ -791,12 +793,16 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
               // edits the wrong stretch. Recomputing is free — the parse and the Oxc batch are
               // the cache's.
               const typescript = typeScriptService(context);
+              const pieces = deps.configs?.guidePiecesFor(cached.path) ?? [];
               return codeActions({
                 cached,
                 index,
                 document,
                 range,
-                diagnostics: placedDiagnostics(cached.path, fudicDiagnostics(cached, index)),
+                diagnostics: [
+                  ...placedDiagnostics(cached.path, fudicDiagnostics(cached, index)),
+                  ...guidePieceDiagnostics(cached, pieces),
+                ],
                 rangeOf,
                 overlaps,
                 // The same reader the card uses, for the same reason: what a prop TAKES is not
@@ -820,6 +826,8 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
                 ...(deps.apis === undefined ? {} : { apis: deps.apis }),
                 // What a loop's element can be keyed by is the checker's to say.
                 ...(typescript === undefined ? {} : { typescript }),
+                // The guide's pieces, which its two repairs add and remove.
+                pieces,
               });
             },
             undefined,

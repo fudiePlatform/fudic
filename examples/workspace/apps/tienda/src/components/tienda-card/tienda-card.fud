@@ -21,7 +21,7 @@
 </head>
 
 <tienda-card>
-  <template shadowrootmode="open">
+  <template shadowrootmode="open" shadowrootadoptedstylesheets="h2">
     <article class="card">
       <h2>@title</h2>
       <slot></slot>

@@ -40,7 +40,7 @@ import { layoutCodeOf, requiredLayoutProps, unresolvedLayoutProps } from './layo
 import { NO_SIGNALS, writeElementAttrs } from './attrs.js';
 import { holeSlot } from './compose.js';
 import { apiImports } from './api-links.js';
-import { planPageSheets, type PageSheets } from './page-sheets.js';
+import { guideOf, planPageSheets, type PageSheets } from './page-sheets.js';
 import type { Diagnostic } from '../types/index.js';
 import {
   deliveredSheet,
@@ -187,6 +187,10 @@ function buildLayoutModule(
       // A layout is compiled once and shared, so the answer cannot be baked into the route.
       onRuntime: (form) => headW.line(`head += ${SLOTS}.runtime(${form === 'inline'});`),
       ...(sheet === undefined ? {} : { sheet }),
+      // The guide is the route's too: it is pruned for the page, and only the route knows it.
+      ...((options.guides?.length ?? 0) > 0 || options.icon !== undefined
+        ? { onGuide: () => headW.line(`head += ${SLOTS}.guide?.() ?? '';`) }
+        : {}),
     },
     headW,
   );
@@ -299,6 +303,8 @@ function buildRouteModule(
   // the whole page, so the route decides — for its own head, for its layout's and for the
   // project's guide. Before the linker's imports are flushed, like the guide below.
   const sheets = planPageSheets(graph, options, linker);
+  // The style guides and the icon, built now for the same reason as the project's sheets.
+  const guideExpr = guideOf(graph, options, linker, sheets);
   // The project's guide (SDD-42), built before anything flushes the linker's imports —
   // compacting a sheet can register one, and a binding imported after the flush is a
   // module that does not parse.
@@ -490,6 +496,14 @@ function buildRouteModule(
   w.line('return head;');
   w.dedent();
   w.line('},');
+  // The style guides and the icon of THIS page, which the layout writes before its sheets.
+  if (guideExpr !== null) {
+    w.line('guide() {');
+    w.indent();
+    w.line(`return ${guideExpr};`);
+    w.dedent();
+    w.line('},');
+  }
   // What the layout's `fudic:runtime` marker becomes for THIS route (BUG-31 §T1). The
   // layout says where the runtime goes; only the route knows whether there is anything to
   // hydrate, because its graph is the one that reaches the whole chain.

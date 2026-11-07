@@ -37,7 +37,11 @@ import {
   remapDiagnostics,
   inlineRuntimeMarker,
   adoptedStylesOf,
+  guideAdoptionDiagnostics,
+  shadowSurface,
   type Diagnostic,
+  type GuidePiece,
+  type GuideSheet,
   type EarlyHint,
   type ElementNode,
   type DocumentGraph,
@@ -151,20 +155,47 @@ function buildMap(id: string, source: string, out: EmitOutput, map: OffsetMap): 
  */
 export interface ProjectStyles {
   /** The sheets a component defined in `file` adopts, cascade order, root of the chain first. */
-  chainFor(file: string): readonly ProjectStyle[];
+  chainFor(file: string): readonly HostStyle[];
   /** The sheets a component defined in `file` may choose by name on its root template. */
-  choosableFor(file: string): ReadonlyMap<string, ProjectStyle>;
+  choosableFor(file: string): ReadonlyMap<string, HostStyle>;
+  /** The style guides of the chain of `file`, root first, as the entry `file` sees them. */
+  guidesFor(file: string): readonly GuideSheet[];
+  /** The icon of the nearest guide of the chain of `file`, relative to `file`. */
+  iconFor(file: string): string | undefined;
+  /** The pieces of the guides a component defined in `file` may adopt, root of the chain first. */
+  piecesFor(file: string): readonly GuidePiece[];
+}
+
+/**
+ * A project sheet as the host holds it: the emit's sheet plus the absolute path it was read
+ * from, which every entry turns into its own relative `spec` so the sheet's `url()` resolve
+ * from the sheet's file. Every project sheet and every piece of a guide is one.
+ */
+export interface HostStyle extends ProjectStyle {
+  readonly file: string;
+}
+
+/** The sheet as the entry at `entryPath` hands it to the emit: its file, relative to the entry. */
+function forEntry(sheet: HostStyle, entryPath: string): ProjectStyle {
+  const rel = relative(dirname(entryPath), sheet.file).replace(/\\/gu, '/');
+  return { specifier: sheet.specifier, css: sheet.css, spec: rel.startsWith('..') ? rel : `./${rel}` };
 }
 
 /** A build with no style guide at all: the standalone emit, and every pre-SDD-42 project. */
-export const NO_STYLES: ProjectStyles = { chainFor: () => [], choosableFor: () => new Map() };
+export const NO_STYLES: ProjectStyles = {
+  chainFor: () => [],
+  choosableFor: () => new Map(),
+  guidesFor: () => [],
+  iconFor: () => undefined,
+  piecesFor: () => [],
+};
 
 /**
  * The sheets ONE component adopts from the project side, in cascade order: the chain's global
  * sheets, then the ones its root template names, in the order it names them. A name the
  * project does not declare is left out here and reported by `adoptDiagnostics`.
  */
-function projectSheetsOf(component: ResolvedComponent, styles: ProjectStyles): readonly ProjectStyle[] {
+function projectSheetsOf(component: ResolvedComponent, styles: ProjectStyles): readonly HostStyle[] {
   const global = styles.chainFor(component.path);
   const names = adoptedStylesOf(component.doc.template).names;
   if (names.length === 0) return global;
@@ -185,9 +216,13 @@ function adoptDiagnostics(graph: DocumentGraph, styles: ProjectStyles): readonly
   const own = entryComponent(graph);
   if (own === undefined) return [];
   const choosable = styles.choosableFor(own.path);
-  return adoptedStylesOf(own.doc.template)
-    .names.filter(({ name }) => !choosable.has(name))
-    .map(({ name, span }) => FUD0744({ span, name, choosable: [...choosable.keys()] }));
+  return [
+    ...adoptedStylesOf(own.doc.template)
+      .names.filter(({ name }) => !choosable.has(name))
+      .map(({ name, span }) => FUD0744({ span, name, choosable: [...choosable.keys()] })),
+    // `FUD1440`/`FUD1441`: the guide's pieces it needs and does not adopt, and the reverse.
+    ...guideAdoptionDiagnostics(own.doc.template, styles.piecesFor(own.path), shadowSurface(graph, own.tag)),
+  ];
 }
 
 /**
@@ -210,11 +245,11 @@ function styleOptions(
 ): { projectStyles?: readonly ProjectStyle[]; styleChains?: ReadonlyMap<string, readonly string[]> } {
   const hoisted: ProjectStyle[] = [];
   const seen = new Set<string>();
-  const hoist = (sheets: readonly ProjectStyle[]): void => {
+  const hoist = (sheets: readonly HostStyle[]): void => {
     for (const sheet of sheets) {
       if (seen.has(sheet.specifier)) continue;
       seen.add(sheet.specifier);
-      hoisted.push(sheet);
+      hoisted.push(forEntry(sheet, graph.entryPath));
     }
   };
 
@@ -234,6 +269,21 @@ function styleOptions(
     hoist(chain);
   }
   return hoisted.length === 0 ? {} : { projectStyles: hoisted, styleChains: chains };
+}
+
+/** Every file the guides of an entry read, as absolute paths. */
+function guideFiles(id: string, guides: readonly GuideSheet[]): readonly string[] {
+  return guides.flatMap((g) => g.sheet.files.map((f) => resolve(dirname(id), f)));
+}
+
+/** `guides` and `icon` for one entry, each omitted when its chain has none. */
+function guideOptions(id: string, styles: ProjectStyles): { guides?: readonly GuideSheet[]; icon?: string } {
+  const guides = styles.guidesFor(id);
+  const icon = styles.iconFor(id);
+  return {
+    ...(guides.length === 0 ? {} : { guides }),
+    ...(icon === undefined ? {} : { icon }),
+  };
 }
 
 /** The emit options for one `.fud`: asset linking and the injected specifiers. */
@@ -301,6 +351,8 @@ function emitOptionsFor(
     ...(routeName === undefined ? {} : { routeName }),
     // The project sheets this document hoists, and which of them each component adopts.
     ...styleOptions(graph, styles),
+    // The style guides of the entry's chain, and the icon of the nearest one.
+    ...guideOptions(id, styles),
     // The locale this module is compiled for (SDD-58), when it is compiled for one.
     ...(i18n === undefined ? {} : { i18n }),
     // Where each element was written, when the host asks for it (SDD-64).
@@ -414,7 +466,8 @@ export function transformFud(
     ...(out.hints === undefined ? {} : { hints: out.hints }),
     // The sheets this page was pruned against are inputs of this module too: an edit to one
     // has to prune the page again on the next navigation (SDD-49 §4.8).
-    watchFiles: [...graph.snippetFiles, ...sheetFiles],
+    // And so are the style guides it links, every file they import: editing a piece repaints.
+    watchFiles: [...graph.snippetFiles, ...sheetFiles, ...guideFiles(id, styles.guidesFor(id))],
     // The emit's own: a `@code` whose JS does not parse (BUG-13 §5.3). Without them the
     // module still gets written — degraded — and the build only trips later, in the
     // prerender, on an identifier the emit never declared.

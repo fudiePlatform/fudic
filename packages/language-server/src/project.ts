@@ -8,6 +8,7 @@ import type * as ts from 'typescript';
 import type { SourceDiagnostic } from '@fudic/diagnostics';
 import { nodeFileSystem, toPosix } from '@fudic/typecheck';
 import { DocumentCache } from './document-cache.js';
+import { ProjectConfigs } from './project-config.js';
 import { ProjectSymbols, type Description, type Handler, type Piece, type ProjectSymbol, type SymbolKind } from './project-symbols.js';
 import { repairsFor, type Repair } from './repairs.js';
 import type { FileSystemScanner } from './types.js';
@@ -67,6 +68,8 @@ export function openProject(root: string, options: ProjectOptions = {}): Project
   let next = 0;
 
   let known: ProjectSymbols | undefined;
+  /** What each file may adopt from the style guides, which the guide's repairs need. */
+  const configs = new ProjectConfigs(fs);
   const typescript = (): ts.LanguageService | undefined => options.typescript?.();
 
   const mounted = (): { index: WorkspaceIndex; cache: DocumentCache; symbols: ProjectSymbols } => {
@@ -90,7 +93,15 @@ export function openProject(root: string, options: ProjectOptions = {}): Project
       const { index: workspace, cache: documents } = mounted();
       const cached = documents.get(path, version, text);
       const service = typescript();
-      return repairsFor({ cached, index: workspace, ...(service !== undefined ? { typescript: service } : {}) }, diagnostic);
+      return repairsFor(
+        {
+          cached,
+          index: workspace,
+          ...(service !== undefined ? { typescript: service } : {}),
+          pieces: configs.guidePiecesFor(path),
+        },
+        diagnostic,
+      );
     },
 
     symbols: (kind) => mounted().symbols.symbols(kind),
@@ -100,8 +111,10 @@ export function openProject(root: string, options: ProjectOptions = {}): Project
     pieces: () => mounted().symbols.pieces(),
 
     invalidate(path) {
-      if (index === undefined || cache === undefined || known === undefined) return;
       const posix = toPosix(path);
+      if (posix.endsWith('/fudic.json')) configs.invalidate(posix);
+      if (posix.endsWith('.css')) configs.sheetChanged();
+      if (index === undefined || cache === undefined || known === undefined) return;
       known.invalidate(posix);
       if (posix.endsWith('.fud')) {
         // Read again, or dropped when it is gone: what a tag resolves to may have changed.

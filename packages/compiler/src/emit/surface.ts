@@ -276,6 +276,17 @@ function slottedInto(graph: DocumentGraph, tag: string): ScopeSurface {
 }
 
 /**
+ * What one template alone can hold, in every branch: the shadow root of a component read
+ * without its graph — by the editor, which has the file and not the page. What it projects
+ * into its hosts is unknown, so no `::slotted()` matches here, and any `::part()` may.
+ */
+export function templateSurface(nodes: readonly HtmlContent[]): ScopeSurface {
+  const b = new SurfaceBuilder();
+  b.markup(nodes);
+  return b.build(null, 'any');
+}
+
+/**
  * The shadow root of a component: its template in every branch, the snippets rendered there
  * (expanded into it), and the hosts it uses with the content it projects into them.
  */

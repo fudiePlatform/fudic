@@ -9,7 +9,8 @@
  * document you can read.
  */
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, type Dirent } from 'node:fs';
+import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /** `templates/` sits next to `src/` in dev and next to `dist/` once built. */
@@ -32,6 +33,19 @@ export function renderTemplate(file: string, vars: Readonly<Record<string, strin
     return value;
   });
   return out;
+}
+
+/** Every file under a folder of `templates/`, relative to it, with `/`, sorted. */
+export function templateTree(dir: string): readonly string[] {
+  return (readdirSync(templatePath(`${dir}/`), { recursive: true, withFileTypes: true }) as Dirent[])
+    .filter((entry) => entry.isFile())
+    .map((entry) => relative(templatePath(`${dir}/`), join(entry.parentPath, entry.name)).replace(/\\/gu, '/'))
+    .sort();
+}
+
+/** A template that is not text — a font — as its bytes, to be copied as it is. */
+export function templateBytes(file: string): Uint8Array {
+  return new Uint8Array(readFileSync(templatePath(file)));
 }
 
 /** The document role a `.fud` template must structure as, once materialized. */

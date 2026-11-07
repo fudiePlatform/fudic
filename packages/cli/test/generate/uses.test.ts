@@ -11,7 +11,7 @@ import { planApp } from '../../src/plans/app.js';
 import { planLib } from '../../src/plans/lib.js';
 import { apply } from '../../src/apply.js';
 import { workspaceScope } from '../../src/workspace/uses.js';
-import { MemoryFs, RecordingRunner } from '../helpers.js';
+import { contentsOf, MemoryFs, RecordingRunner } from '../helpers.js';
 import type { AppOptions, ProjectOptions } from '../../src/types.js';
 
 const ROOT = '/ws';
@@ -57,7 +57,7 @@ describe('fudic g app --uses', () => {
     await apply(plan, { cwd: ROOT, force: false }, fs, new RecordingRunner());
 
     for (const change of plan.changes.filter((candidate) => candidate.path.endsWith('.fud'))) {
-      expect(change.contents, change.path).not.toContain('rel="component"');
+      expect(contentsOf(change), change.path).not.toContain('rel="component"');
     }
     // And it modified nothing that was already there: every change is a new file of the
     // new app. A `--uses` that edited a `.fud` would be the thing §4.7 forbids.

@@ -1,0 +1,12 @@
+:where(ul) {
+  margin: 0 0 var(--{{project}}-space-4);
+  padding-inline-start: var(--{{project}}-space-5);
+}
+
+:where(ul) > :where(li) {
+  margin-block: var(--{{project}}-space-1);
+}
+
+:where(ul) > :where(li)::marker {
+  color: var(--{{project}}-muted);
+}

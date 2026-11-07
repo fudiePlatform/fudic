@@ -1,0 +1,7 @@
+:where(hr) {
+  height: 0;
+  margin: var(--{{project}}-space-6) 0;
+  border: 0;
+  border-top: 1px solid var(--{{project}}-line);
+  color: inherit;
+}

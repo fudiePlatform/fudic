@@ -242,7 +242,9 @@ export function createFudicServer(
       // TypeScript does not claim a position: without this, HTML's vocabulary filled every
       // silence the projection left — which is what a `.` on a component actually offered
       // (BUG-23, TODO 1).
-      silenceOwnedPositions(createHtmlService({ documentSelector: ['fud'] })),
+      silenceOwnedPositions(createHtmlService({ documentSelector: ['fud'] }), (path) =>
+        configs.guidePiecesFor(path),
+      ),
       // Inside a `.fud` only: a plain `.css` is open here for its tokens, and there the editor
       // already has a CSS service of its own.
       // And without repeating the tokens the service below answers for, with their value.
@@ -369,6 +371,8 @@ export function createFudicServer(
       translations.invalidate(path);
       // A sheet or a `fudic.json`: the next `var(--` reads the tokens again.
       tokens.invalidate(path);
+      // A sheet may be a style guide or one of its pieces: what a component may adopt follows.
+      if (path.endsWith('.css')) configs.sheetChanged();
       if (path.endsWith(`/${CONFIG_FILE}`)) {
         configs.invalidate(path);
         continue;

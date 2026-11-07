@@ -167,6 +167,7 @@ describe('ProjectStyleChains — what a component may choose (SDD-46 §4.2)', ()
     expect(chains.choosableFor(`${APP}/src/a.fud`).get('panel')).toEqual({
       specifier: 'panel',
       css: '.panel { padding: 1rem; }',
+      file: `${APP}/panel.css`,
     });
   });
 

@@ -26,7 +26,7 @@ import {
   type ResolvedComponent,
 } from './resolve.js';
 import type { ElementNode, HtmlContent } from '../html/index.js';
-import type { StyleNode } from '../css/index.js';
+import type { FlatSheet, StyleNode } from '../css/index.js';
 import type { PageDocument, ComponentDocument } from '../document/index.js';
 import type { Diagnostic } from '../types/index.js';
 import { spaceModeOf } from './space.js';
@@ -41,7 +41,7 @@ import {
   type AssetText,
   type AssetUrl,
 } from './assets.js';
-import { planPageSheets, rebaseSpec, type EarlyHint, type PageSheets, type SheetUse } from './page-sheets.js';
+import { guideOf, planPageSheets, rebaseSpec, type EarlyHint, type PageSheets, type SheetUse } from './page-sheets.js';
 import { compactStyleCss } from './css-compact.js';
 import { isRtl, type LocaleCompile } from '../i18n/localize.js';
 import { codeOf, codeOfDocument, diHelpers } from './oxc-code.js';
@@ -68,6 +68,7 @@ import {
 import {
   compactProjectCss,
   projectAdoptOf,
+  projectCss,
   renderProjectStyles,
   type ProjectStyle,
 } from './project-styles.js';
@@ -189,6 +190,24 @@ export interface EmitOptions {
    * Absent, the output is byte for byte what it was.
    */
   readonly sourceLocations?: SourceLocator;
+  /**
+   * The style guides of the entry's chain, root first (SDD-79): each linked by every page as a
+   * sheet of the document, pruned like one, before the sheets of its layout and its own. Absent,
+   * and the output is byte for byte what it was.
+   */
+  readonly guides?: readonly GuideSheet[];
+  /**
+   * Spec of the favicon to write when no `<head>` of the page links one: the guide's icon,
+   * relative to the entry. The author's own `<link rel="icon">` wins.
+   */
+  readonly icon?: string;
+}
+
+/** A style guide as the emit receives it: its entry sheet, flattened by the host's reads. */
+export interface GuideSheet {
+  /** Spec of the guide's entry sheet, relative to the entry being compiled. */
+  readonly spec: string;
+  readonly sheet: FlatSheet;
 }
 
 export type { ComponentSpecifier, LayoutSpecifier, ProjectStyle };
@@ -283,7 +302,7 @@ export function sheetUrlsOf(
   const publish = options.componentSheet;
   if (publish === undefined) return undefined;
   const adopt = projectAdoptOf(options.projectStyles, options.styleChains);
-  const project = new Map((options.projectStyles ?? []).map((s) => [s.specifier, s.css]));
+  const project = new Map((options.projectStyles ?? []).map((s) => [s.specifier, projectCss(s)]));
   const projectUrl = (specifier: string): string[] => {
     const css = project.get(specifier);
     return css === undefined ? [] : [publish(specifier, linker.cssLinked(compactProjectCss(css)))];
@@ -657,7 +676,10 @@ function buildPageModule(
   const styledComps = linkCss ? [] : comps.filter((c) => styled.has(c.tag));
   // The page's sheets, pruned (SDD-49). A page owns its whole shell, so it does alone what a
   // route and its layout share: prune, and write the result into its own head.
-  const sheets = planPageSheets('layouts' in graph ? (graph as DocumentGraph) : { ...graph, layouts: [], serverApis: [] }, options, linker);
+  const pageGraph = 'layouts' in graph ? (graph as DocumentGraph) : { ...graph, layouts: [], serverApis: [] };
+  const sheets = planPageSheets(pageGraph, options, linker);
+  // The style guides and the icon, before the linker flushes, like the project's sheets.
+  const guideExpr = guideOf(pageGraph, options, linker, sheets);
   // The project's guide (SDD-42), built here — before the body codegen and long before the
   // linker's imports are flushed — because compacting it can register an asset import.
   const projectStylesLine = linkCss
@@ -730,6 +752,7 @@ function buildPageModule(
           parted,
         ),
       ...(sheets === null ? {} : { sheet: sheets.own }),
+      ...(guideExpr === null ? {} : { onGuide: () => headW.line(`head += ${guideExpr};`) }),
     },
     headW,
   );

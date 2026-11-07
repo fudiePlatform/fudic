@@ -1,13 +1,11 @@
 /*
- * The storefront's own guide, adopted into the shadow roots of the components THIS project
- * defines — and only those (SDD-43 §4.6).
+ * The storefront's own touch, in the page: its layout links this sheet after the guide.
  *
- * Which is why it can say this and the shared `ui-card` is unaffected: an app cannot restyle
- * a library's component by dropping a sheet in its own project. The way to retheme one is the
- * custom properties the library reads.
+ * The guide's tokens live on :root, so whatever sets one in the page reaches every component
+ * under it — that is how a zone is themed. Here it is set on the hosts of the components THIS
+ * app defines, and the shared `ui-card` keeps the guide's blue.
  */
-:host {
-  /** The storefront's green, over the guide's blue, for the components of this app. */
+tienda-card {
+  /** The storefront's green, over the guide's blue. */
   --guia-accent: #0f7b3f;
-  font-family: system-ui, sans-serif;
 }

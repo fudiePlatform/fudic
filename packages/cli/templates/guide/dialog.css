@@ -1,0 +1,13 @@
+:where(dialog) {
+  max-width: min(32rem, calc(100vw - 2 * var(--{{project}}-space-4)));
+  padding: var(--{{project}}-space-5);
+  color: var(--{{project}}-ink);
+  background: var(--{{project}}-raised);
+  border: 1px solid var(--{{project}}-line);
+  border-radius: var(--{{project}}-radius-lg);
+  box-shadow: var(--{{project}}-shadow-md);
+}
+
+:where(dialog)::backdrop {
+  background: rgb(0 0 0 / 0.4);
+}

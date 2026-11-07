@@ -17,7 +17,7 @@
  * makes that true for free: `@media`, `@supports`, `@layer` and the rest stay literal.
  */
 
-import { parseStyle } from '../css/index.js';
+import { parseStyle, rebaseUrls } from '../css/index.js';
 import { compactStyleCss } from './css-compact.js';
 import type { AssetLinker } from './assets.js';
 
@@ -27,6 +27,16 @@ export interface ProjectStyle {
   readonly specifier: string;
   /** The CSS as written. The host read it; this module compacts and links it. */
   readonly css: string;
+  /**
+   * The sheet's file, relative to the entry being compiled: its relative `url()` resolve from
+   * it, as they do in the browser. Absent, they resolve from the entry, as they always did.
+   */
+  readonly spec?: string;
+}
+
+/** A project sheet's CSS with its relative `url()` written as the entry being compiled sees them. */
+export function projectCss(style: ProjectStyle): string {
+  return style.spec === undefined ? style.css : rebaseUrls(style.css, style.spec);
 }
 
 /**
@@ -62,7 +72,7 @@ export function renderProjectStyles(
   const entries = styles.map(
     (s) =>
       `{ specifier: ${JSON.stringify(s.specifier)}, css: ${linker.cssTemplate(
-        compactProjectCss(s.css),
+        compactProjectCss(projectCss(s)),
       )} }`,
   );
   return `const PROJECT_STYLES = [${entries.join(', ')}];`;

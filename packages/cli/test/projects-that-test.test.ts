@@ -315,7 +315,7 @@ describe('generated files carry no design comments (§4.8, §6.14)', () => {
     await cli(all, 'g', 'service', 'session', '--provided', '--project', 'web', '--cwd', SHOP);
     await cli(all, 'g', 'form', 'person', '--project', 'web', '--cwd', SHOP);
     await cli(all, 'g', 'page', 'news/:id', '--server', '--project', 'web', '--cwd', SHOP);
-    await cli(all, 'g', 'lib', 'guia', '--styles-only', '--cwd', SHOP);
+    await cli(all, 'g', 'guide', 'guia', '--cwd', SHOP);
     await cli(all, 'g', 'style', 'ui', '--project', 'ui', '--cwd', SHOP);
     await cli(all, 'g', 'style', 'theme', '--project', 'web', '--cwd', SHOP);
 

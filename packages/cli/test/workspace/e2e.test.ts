@@ -134,6 +134,10 @@ describe('a generated workspace builds (criterion 13)', () => {
     // `node_modules` to the library. A junction, so it needs no privilege on Windows.
     mkdirSync(join(ws, 'apps/web/node_modules/@mi-tienda'), { recursive: true });
     symlinkSync(join(ws, 'libs/ui'), join(ws, 'apps/web/node_modules/@mi-tienda/ui'), 'junction');
+    // And to the style guide every app and library of the workspace depends on (SDD-79).
+    symlinkSync(join(ws, 'libs/guide'), join(ws, 'apps/web/node_modules/@mi-tienda/guide'), 'junction');
+    mkdirSync(join(ws, 'libs/ui/node_modules/@mi-tienda'), { recursive: true });
+    symlinkSync(join(ws, 'libs/guide'), join(ws, 'libs/ui/node_modules/@mi-tienda/guide'), 'junction');
 
     const result = (await build({
       root: join(ws, 'apps/web'),
@@ -161,7 +165,19 @@ describe('a generated workspace builds (criterion 13)', () => {
     // shadow root inlined. The declarative template is what makes this the criterion rather
     // than a test of a string I typed: it is only there if the compiler followed the href
     // across the package boundary, read the library's `.fud` and serialized it.
-    expect(text).toMatch(/<ui-card><template shadowrootmode=/u);
+    expect(text).toMatch(/<ui-card[^>]*><template shadowrootmode=/u);
+  });
+
+  it('links the style guide of libs/guide and its favicon, and the library component adopts its base (SDD-79 criterion 26)', () => {
+    const text = String(output.find((file) => file.fileName === 'index.html')!.source);
+    const guide = /<link rel="stylesheet" href="\/assets\/(guide-[\w-]+\.css)">/u.exec(text)?.[1];
+    expect(guide, text).toBeDefined();
+    const css = String(output.find((file) => file.fileName === `assets/${guide}`)!.source);
+    expect(css).toContain('color-scheme');
+    expect(text).toMatch(/<link rel="icon" href="\/assets\/logo-[\w-]+\.svg">/u);
+    expect(text).toMatch(/<ui-card[^>]*><template shadowrootmode="open"[^>]*shadowrootadoptedstylesheets="base[ "]/u);
+    expect(webPkg['dependencies']).toMatchObject({ '@mi-tienda/guide': 'workspace:*' });
+    expect(appPkg['dependencies']).toMatchObject({ '@mi-tienda/guide': 'workspace:*' });
   });
 
   it('emits the client chunk of the library component', () => {

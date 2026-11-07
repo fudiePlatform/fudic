@@ -67,18 +67,8 @@ export function planLib(
   const keep = joinPosix(dirname(dir), KEEP);
   const deletions = io.exists(absolute(opts.cwd, keep)) ? { deletions: [keep] } : {};
 
-  if (opts.stylesOnly === true) {
-    const styles = scaffoldChanges(opts, stylesFiles(dir, packageOf(scope, name), name), io);
-    return Promise.resolve({
-      ...EMPTY_PLAN,
-      changes: styles.changes,
-      ...deletions,
-      errors: styles.errors,
-      report: stylesReport(name, dir, projects, mainApp(projects, io) ?? 'web'),
-    });
-  }
-
-  const files = libFiles({ dir, up, scope, name, prefix: opts.prefix, uses: opts.uses });
+  // Every style guide of the workspace comes with it: a new library looks like the others.
+  const files = libFiles({ dir, up, scope, name, prefix: opts.prefix, uses: withGuides(opts.uses, projects) });
 
   const built = scaffoldChanges(opts, files, io);
   return Promise.resolve({
@@ -155,35 +145,8 @@ export function libFiles({ dir, up, scope, name, prefix, uses }: LibSite): reado
   ];
 }
 
-/**
- * A style library (`--styles-only`, BUG-50 §4.7): `tokens.css` as its one global stylesheet,
- * published as itself, like `examples/workspace/libs/guia`. Nothing to test, so no test tooling.
- */
-function stylesFiles(dir: string, pkgName: string, name: string): readonly ScaffoldFile[] {
-  return [
-    [joinPosix(dir, 'package.json'), renderTemplate('styles/package.json.tmpl', { name: pkgName })],
-    [joinPosix(dir, 'README.md'), renderTemplate('styles/README.md.tmpl', { name: pkgName, project: name })],
-    [joinPosix(dir, '.gitignore'), renderTemplate('gitignore.tmpl', {})],
-    [joinPosix(dir, CONFIG_FILE), renderTemplate('styles/fudic.json.tmpl', {})],
-    [joinPosix(dir, 'tokens.css'), renderTemplate('styles/tokens.css.tmpl', { project: name })],
-  ];
-}
-
-/** What `g lib --styles-only` tells the user (BUG-50 §6.13). */
-function stylesReport(name: string, dir: string, projects: readonly Project[], app: string): readonly string[] {
-  const lib = projects.find((project) => project.config.kind === 'lib')?.name ?? 'ui';
-  const toLib = `fudic add ${name} --project ${lib}`;
-  const toApp = `fudic add ${name} --project ${app}`;
-  const width = Math.max(toLib.length, toApp.length) + 5;
-  return [
-    '',
-    `Created style library ${name} in ${dir}`,
-    '',
-    `  tokens.css     global stylesheet, adopted by every component of whoever uses ${name}`,
-    '  no components, no tests, no spec',
-    '',
-    'Use it',
-    `  ${toLib.padEnd(width)}a library: its components read the tokens`,
-    `  ${toApp.padEnd(width)}an app`,
-  ];
+/** `uses` and every style guide of the workspace — a project whose `fudic.json` has `guide`. */
+export function withGuides(uses: readonly string[], projects: readonly Project[]): readonly string[] {
+  const guides = projects.filter((project) => project.config.guide !== undefined).map((project) => project.name);
+  return [...uses, ...guides.filter((guide) => !uses.includes(guide))];
 }

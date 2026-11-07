@@ -56,7 +56,7 @@ async function cliOutput(): Promise<ReadonlyMap<string, string>> {
     endOfLine: 'lf',
   });
   const out = new Map<string, string>();
-  for (const change of plan.changes) out.set(change.path, change.contents);
+  for (const change of plan.changes) if ('contents' in change) out.set(change.path, change.contents);
   return out;
 }
 

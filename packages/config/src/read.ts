@@ -85,6 +85,20 @@ export interface ProjectConfig {
    * `inline` when the file declares none.
    */
   readonly css: 'inline' | 'link';
+  /**
+   * The style guide this project carries (SDD-79): the sheet every page of a project whose chain
+   * holds it links, and whose imports are the pieces a component may adopt. Absent when the file
+   * declares none.
+   */
+  readonly guide?: GuideConfig;
+}
+
+/** The `guide` of a `fudic.json`. Paths relative to the project root, inside it. */
+export interface GuideConfig {
+  /** The guide's entry sheet, relative to the project root. */
+  readonly sheet: string;
+  /** The favicon every page of a project whose chain holds this guide gets. */
+  readonly icon?: string;
 }
 
 /** One `"name": "path"` entry of `globalStyles` or `styles`. */
@@ -162,6 +176,7 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
   const api = kind === 'lib' ? readFolder(fields, 'api', API_DIR, ctx) : undefined;
   const earlyHints = readEarlyHints(fields, ctx);
   const css = readCss(fields, ctx);
+  const guide = readGuide(fields, ctx);
 
   // Fields are NOT rescued one by one (§4.2). Identity is a unit, and half an identity is
   // worse than none: an `id` that got through alone would namespace caches under a name
@@ -184,6 +199,7 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
       ...(api === undefined ? {} : { api }),
       earlyHints,
       css,
+      ...(guide === undefined ? {} : { guide }),
     },
     diagnostics: [],
   };
@@ -198,22 +214,65 @@ function readFolder(fields: Record<string, unknown>, field: string, fallback: st
   if (value === undefined) {
     return fallback;
   }
-  const refuse = (reason: string): string => {
-    ctx.diagnostics.push(malformed({ problem: 'folder', field, reason }, fieldSpan(ctx.text, field)));
+  const inside = insidePath(value);
+  if ('reason' in inside) {
+    ctx.diagnostics.push(
+      malformed({ problem: 'folder', field, reason: inside.reason }, fieldSpan(ctx.text, field)),
+    );
     return fallback;
+  }
+  return inside.path;
+}
+
+/**
+ * The style guide a project carries: its entry sheet and, maybe, its favicon. Both are paths
+ * inside the project, under the same rule as a folder. Whether the files exist is asked by
+ * whoever has a filesystem, not here.
+ */
+function readGuide(fields: Record<string, unknown>, ctx: Ctx): GuideConfig | undefined {
+  const value = fields['guide'];
+  if (value === undefined) {
+    return undefined;
+  }
+  const refuse = (reason: string): undefined => {
+    ctx.diagnostics.push(malformed({ problem: 'guide', reason }, fieldSpan(ctx.text, 'guide')));
+    return undefined;
   };
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return refuse('it is not an object');
+  }
+  const { sheet, icon } = value as Record<string, unknown>;
+  if (sheet === undefined) {
+    return refuse('"sheet" is missing');
+  }
+  const sheetPath = insidePath(sheet);
+  if ('reason' in sheetPath) {
+    return refuse(`"sheet": ${sheetPath.reason}`);
+  }
+  if (icon === undefined) {
+    return { sheet: sheetPath.path };
+  }
+  const iconPath = insidePath(icon);
+  if ('reason' in iconPath) {
+    return refuse(`"icon": ${iconPath.reason}`);
+  }
+  return { sheet: sheetPath.path, icon: iconPath.path };
+}
+
+/** A relative path that stays inside the project, kept without `./` or a trailing slash. */
+function insidePath(value: unknown): { readonly path: string } | { readonly reason: string } {
   if (typeof value !== 'string' || value.trim() === '') {
-    return refuse(`${JSON.stringify(value)} is not a path`);
+    return { reason: `${JSON.stringify(value)} is not a path` };
   }
   const path = value.replace(/\\/gu, '/');
   if (path.startsWith('/') || /^[A-Za-z]:/u.test(path)) {
-    return refuse('it is absolute');
+    return { reason: 'it is absolute' };
   }
   const segments = path.split('/').filter((s) => s !== '' && s !== '.');
   if (segments.length === 0 || segments.includes('..')) {
-    return refuse('it leaves the project');
+    return { reason: 'it leaves the project' };
   }
-  return segments.join('/');
+  return { path: segments.join('/') };
 }
 
 /**

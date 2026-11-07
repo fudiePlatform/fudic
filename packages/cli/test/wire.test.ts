@@ -9,7 +9,7 @@ import { planComponent } from '../src/plans/component.js';
 import { apply } from '../src/apply.js';
 import { parseFud } from '../src/parse.js';
 import { run } from '../src/run.js';
-import { captureStreams, projectFs, RecordingRunner } from './helpers.js';
+import { contentsOf, captureStreams, projectFs, RecordingRunner } from './helpers.js';
 import type { ComponentOptions } from '../src/types.js';
 
 const CWD = '/project';
@@ -56,7 +56,7 @@ async function wire(file: string, source: string): Promise<string> {
   expect(plan.errors).toEqual([]);
   const change = plan.changes.find((c) => c.path === file);
   expect(change, 'the target was not modified').toBeDefined();
-  return change!.contents;
+  return contentsOf(change);
 }
 
 describe('--in, by document role', () => {

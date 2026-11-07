@@ -126,7 +126,7 @@ test('a title is text, never markup', async () => {
 
 ## Opciones del shadow root y el árbol de accesibilidad
 
-`shadowOf(host)` devuelve aquello con lo que realmente se creó el shadow root: `mode`, `delegatesFocus`, `clonable`, `serializable`, `referenceTarget` y `adoptedStyleSheets` (`'self'` para el `<style>` propio del componente). Compruébalo una vez por `via`: el camino del servidor y el del cliente deben coincidir. `outline(root)` escribe lo que encuentra un lector de pantalla, en el formato de ARIA snapshot de Playwright: una línea por elemento con rol, su nombre y sus estados.
+`shadowOf(host)` devuelve aquello con lo que realmente se creó el shadow root: `mode`, `delegatesFocus`, `clonable`, `serializable`, `referenceTarget` y `adoptedStyleSheets` (`'base'`, el reset de la guía de estilos que adopta todo componente de una app nueva, y `'self'` para el `<style>` propio del componente). Compruébalo una vez por `via`: el camino del servidor y el del cliente deben coincidir. `outline(root)` escribe lo que encuentra un lector de pantalla, en el formato de ARIA snapshot de Playwright: una línea por elemento con rol, su nombre y sus estados.
 
 ```fud path=src/components/app-button/app-button.fud
 @code {
@@ -166,7 +166,7 @@ describe.each(['ssr', 'client'] as const)('via %s', (via) => {
       clonable: false,
       serializable: false,
       referenceTarget: null,
-      adoptedStyleSheets: ['self'],
+      adoptedStyleSheets: ['base', 'self'],
     });
   });
 });

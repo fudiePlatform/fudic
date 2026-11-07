@@ -42,6 +42,7 @@ export {
   type LayoutSpecifier,
   type EmitOptions,
   type EmitOutput,
+  type GuideSheet,
   type ProjectStyle,
 } from './module.js';
 export { lintProjectStyle } from './styles-lint.js';
@@ -127,6 +128,7 @@ export { spaceModeOf, collapseSpace, nestedSpaceMode, SPACE_ATTR, type SpaceMode
 export {
   documentSurface,
   shadowSurface,
+  templateSurface,
   unionSurfaces,
   frameworkAttributesOf,
   pageTokenConsumers,
@@ -140,3 +142,5 @@ export {
   type PageSheet,
   type PrunedSheet,
 } from './prune.js';
+// Whether a component adopts the pieces of the style guide it needs (SDD-79).
+export { guideAdoptionDiagnostics } from './guide-adoption.js';

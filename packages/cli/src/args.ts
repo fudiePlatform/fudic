@@ -11,13 +11,14 @@ import { COMMANDS, GENERATES, type UsageError } from './help/usage.js';
 import { prefixOf } from './tag.js';
 import type { CheckKind } from './plans/check.js';
 import { FRONT_PORT, type ServeKind } from './serve/workspace.js';
-import { APPS_DIR, LIBS_DIR, SNIPPETS_DIR } from './dirs.js';
+import { APPS_DIR, GUIDE_NAME, LIBS_DIR, SNIPPETS_DIR } from './dirs.js';
 import type {
   AppLayout,
   AppOptions,
   BaseOptions,
   ComponentOptions,
   FmtOptions,
+  GuideOptions,
   LayoutOptions,
   NewOptions,
   PackageManager,
@@ -57,6 +58,7 @@ export type ParsedCommand =
   | { readonly kind: 'form'; readonly name: string; readonly opts: FormOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'pipe'; readonly name: string; readonly opts: PipeOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'style'; readonly name: string; readonly opts: TargetedOptions; readonly flags: GlobalFlags }
+  | { readonly kind: 'guide'; readonly name: string; readonly opts: GuideOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'add'; readonly module: string; readonly opts: AddOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'component'; readonly tag: string; readonly opts: ComponentOptions; readonly flags: GlobalFlags }
   | { readonly kind: 'page'; readonly route: string; readonly opts: PageOptions; readonly flags: GlobalFlags }
@@ -77,7 +79,7 @@ export type ParsedCommand =
   | { readonly kind: 'help'; readonly topic: Topic | null }
   | ({ readonly kind: 'error' } & UsageError);
 
-export type GenerateType = 'component' | 'page' | 'layout' | 'app' | 'lib' | 'service' | 'form' | 'pipe' | 'style' | 'snippet' | 'spec' | 'term' | 'api' | 'showcase';
+export type GenerateType = 'component' | 'page' | 'layout' | 'app' | 'lib' | 'guide' | 'service' | 'form' | 'pipe' | 'style' | 'snippet' | 'spec' | 'term' | 'api' | 'showcase';
 
 /** Every spelling of a type `fudic generate` takes, aliases included. */
 export const GENERATE_TYPES: Readonly<Record<string, GenerateType>> = {
@@ -90,6 +92,7 @@ export const GENERATE_TYPES: Readonly<Record<string, GenerateType>> = {
   app: 'app',
   a: 'app',
   lib: 'lib',
+  guide: 'guide',
   spec: 'spec',
   s: 'spec',
   service: 'service',
@@ -110,6 +113,7 @@ const EXAMPLE: Readonly<Record<GenerateType, string>> = {
   layout: 'docs',
   app: 'admin',
   lib: 'ui',
+  guide: 'guide',
   spec: 'button',
   service: 'cart',
   form: 'person',
@@ -467,6 +471,12 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
     if (unknown !== null) return unknown;
     return { kind: 'showcase', opts: { ...base, ...(name === undefined ? {} : { library: name }), app: single(tokens, 'app', 'showcase') }, flags };
   }
+  // `g guide` alone is the library `guide`, or the app's own guide: its name is optional too.
+  if (type === 'guide') {
+    const unknown = unknownFlag(tokens, [...GLOBAL, 'dir'], topic);
+    if (unknown !== null) return unknown;
+    return { kind: 'guide', name: name ?? GUIDE_NAME, opts: { ...base, dir: single(tokens, 'dir', LIBS_DIR) }, flags };
+  }
   if (name === undefined) {
     return fail({ problem: 'generate-needs-name', type }, topic, `e.g. fudic g ${type} ${EXAMPLE[type]}`);
   }
@@ -492,7 +502,11 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
     }
 
     case 'lib': {
-      const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'prefix', 'uses', 'styles-only'], topic);
+      // The style library it used to make is a style guide now, and has a command of its own.
+      if (tokens.flags.has('styles-only')) {
+        return fail({ problem: 'unknown-flag', name: 'styles-only' }, topic, `a style guide is its own command:   fudic g guide ${name}`);
+      }
+      const unknown = unknownFlag(tokens, [...GLOBAL, 'dir', 'prefix', 'uses'], topic);
       if (unknown !== null) return unknown;
       const opts: ProjectOptions = {
         ...base,
@@ -500,7 +514,7 @@ function parseGenerate(tokens: Tokens, rest: readonly string[], base: Base, flag
         prefix: single(tokens, 'prefix', prefixOf(name)),
         uses: list(tokens, 'uses') ?? [],
       };
-      return { kind: 'lib', name, opts: bool(tokens, 'styles-only') ? { ...opts, stylesOnly: true } : opts, flags };
+      return { kind: 'lib', name, opts, flags };
     }
 
     case 'service': {

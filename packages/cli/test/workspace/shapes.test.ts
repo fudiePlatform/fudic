@@ -38,7 +38,7 @@ async function withLibraryLayout(): Promise<MemoryFs> {
 const files = (fs: MemoryFs, under: string): readonly string[] => fs.paths().filter((path) => path.startsWith(under));
 
 describe('fudic new --workspace: what it starts with', () => {
-  it('without --app or --lib, nothing — and it says what comes next, exactly', async () => {
+  it('without --app or --lib, only the guide — and it says what comes next, exactly', async () => {
     const fs = new MemoryFs({}, ROOT);
     const { code, out } = await cli(fs, 'new', 'shop', '--workspace', '--cwd', ROOT);
     expect(code).toBe(0);
@@ -48,7 +48,7 @@ Created workspace shop
   shop/
     README.md          what apps/ and libs/ are, and the commands below
     apps/              empty — fudic g app <name>
-    libs/              empty — fudic g lib <name>
+    libs/guide/        the style guide, used by every app and library
 
   Installed dependencies (pnpm)
   Committed: "chore: create workspace shop"
@@ -61,7 +61,7 @@ Next
   pnpm spec          .fudspec criteria of every project
 `);
     expect(files(fs, 'shop/apps/')).toEqual(['shop/apps/.gitkeep']);
-    expect(files(fs, 'shop/libs/')).toEqual(['shop/libs/.gitkeep']);
+    expect(files(fs, 'shop/libs/').every((path) => path.startsWith('shop/libs/guide/'))).toBe(true);
   });
 
   it('with --lib, that library and no app', async () => {
@@ -97,7 +97,8 @@ describe('fudic g app: its frame', () => {
     const fs = await withLibraryLayout();
     const { code, out } = await cli(fs, 'g', 'app', 'web', '--layout', MAIN, '--cwd', SHOP);
     expect(code).toBe(0);
-    expect(out).toContain('  uses       ui\n  layout     @shop/ui/layouts/main.fud\n');
+    // The guide of the workspace too: every app depends on it (SDD-79 §4.12).
+    expect(out).toContain('  uses       ui, guide\n  layout     @shop/ui/layouts/main.fud\n');
     expect(fs.at('shop/apps/web/src/routes/index.fud').split('\n')[0]).toBe(`<link rel="layout" href="${MAIN}">`);
     expect(fs.at('shop/apps/web/package.json')).toContain('"@shop/ui": "workspace:*"');
     expect(files(fs, 'shop/apps/web/src/layouts/')).toEqual([]);
@@ -116,7 +117,7 @@ describe('fudic g app: its frame', () => {
   it('does not name the library twice when --uses already does', async () => {
     const fs = await withLibraryLayout();
     const { out } = await cli(fs, 'g', 'app', 'web', '--uses', 'ui', '--layout', MAIN, '--cwd', SHOP);
-    expect(out).toContain('  uses       ui\n');
+    expect(out).toContain('  uses       ui, guide\n');
   });
 
   it('refuses an href that names no layout of the workspace (FUD0449)', async () => {

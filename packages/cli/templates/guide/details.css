@@ -1,0 +1,21 @@
+:where(details) {
+  margin: 0 0 var(--{{project}}-space-4);
+  padding: var(--{{project}}-space-2) var(--{{project}}-space-3);
+  border: 1px solid var(--{{project}}-line);
+  border-radius: var(--{{project}}-radius-md);
+}
+
+:where(summary) {
+  font-weight: var(--{{project}}-weight-medium);
+  cursor: pointer;
+}
+
+:where(summary):focus-visible {
+  outline: var(--{{project}}-focus-width) solid var(--{{project}}-focus);
+  outline-offset: 2px;
+  border-radius: var(--{{project}}-radius-sm);
+}
+
+:where(details[open]) > :where(summary) {
+  margin-bottom: var(--{{project}}-space-2);
+}

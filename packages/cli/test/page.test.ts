@@ -8,7 +8,7 @@ import { planPage } from '../src/plans/page.js';
 import { planLayout } from '../src/plans/layout.js';
 import { parseFud } from '../src/parse.js';
 import { routeToFile } from '../src/route.js';
-import { projectFs } from './helpers.js';
+import { contentsOf, projectFs } from './helpers.js';
 import type { PageOptions } from '../src/types.js';
 
 const CWD = '/project';
@@ -61,11 +61,11 @@ describe('g page', () => {
     expect(change.path).toBe('src/routes/perfil.fud');
     // Byte for byte what it was before the tree moved: `src/routes` and `src/layouts` went
     // down together, so the relative depth between them never changed (BUG-20 §4.4).
-    expect(change.contents).toContain('<link rel="layout" href="../layouts/_layout.fud">');
-    expect(change.contents).toContain('@section aside {');
-    expect(change.contents).toContain('@section scripts {');
+    expect(contentsOf(change)).toContain('<link rel="layout" href="../layouts/_layout.fud">');
+    expect(contentsOf(change)).toContain('@section aside {');
+    expect(contentsOf(change)).toContain('@section scripts {');
 
-    const parsed = parseFud(change.contents);
+    const parsed = parseFud(contentsOf(change));
     expect(parsed.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     expect(parsed.doc.type).toBe('route-document');
     if (parsed.doc.type !== 'route-document') return;
@@ -77,8 +77,8 @@ describe('g page', () => {
 
     const restricted = await planPage('perfil', options({ sections: ['scripts'] }), fs);
     expect(restricted.errors).toEqual([]);
-    expect(restricted.changes[0]!.contents).toContain('@section scripts {');
-    expect(restricted.changes[0]!.contents).not.toContain('@section aside {');
+    expect(contentsOf(restricted.changes[0])).toContain('@section scripts {');
+    expect(contentsOf(restricted.changes[0])).not.toContain('@section aside {');
 
     const unknown = await planPage('perfil', options({ sections: ['nope'] }), fs);
     expect(unknown.changes).toEqual([]);
@@ -103,8 +103,8 @@ describe('g page', () => {
     const fs = projectFs({ 'src/layouts/_layout.fud': LAYOUT, 'src/layouts/_layout-admin.fud': admin });
     const plan = await planPage('admin', options({ layout: 'src/layouts/_layout-admin.fud' }), fs);
     expect(plan.errors).toEqual([]);
-    expect(plan.changes[0]!.contents).toContain('@section admin {');
-    expect(plan.changes[0]!.contents).not.toContain('@section aside {');
+    expect(contentsOf(plan.changes[0])).toContain('@section admin {');
+    expect(contentsOf(plan.changes[0])).not.toContain('@section aside {');
   });
 
   it('surfaces FUD0439 as a plan diagnostic when the chosen layout names a layout', async () => {
@@ -131,17 +131,17 @@ describe('g page', () => {
   it('picks the nearest _layout.fud walking up from the page (§6.7)', async () => {
     const fs = projectFs({ 'src/layouts/_layout.fud': LAYOUT, 'src/routes/admin/_layout.fud': LAYOUT });
     const near = await planPage('admin/users', options(), fs);
-    expect(near.changes[0]!.contents).toContain('href="./_layout.fud"');
+    expect(contentsOf(near.changes[0])).toContain('href="./_layout.fud"');
 
     const far = await planPage('about', options(), fs);
-    expect(far.changes[0]!.contents).toContain('href="../layouts/_layout.fud"');
+    expect(contentsOf(far.changes[0])).toContain('href="../layouts/_layout.fud"');
   });
 
   it('falls back to a standalone page when the project has no layout', async () => {
     const fs = projectFs();
     const plan = await planPage('/', options(), fs);
     expect(plan.errors).toEqual([]);
-    const doc = parseFud(plan.changes[0]!.contents).doc;
+    const doc = parseFud(contentsOf(plan.changes[0])).doc;
     expect(doc.type).toBe('page-document');
     expect(plan.changes[0]!.path).toBe('src/routes/index.fud');
   });
@@ -154,13 +154,13 @@ describe('g page', () => {
     expect(plan.errors).toEqual([]);
     expect(plan.changes[0]!.path).toBe('routes/perfil.fud');
     // The walk-up cuts at `--dir`, so the layout next to the page is found there too.
-    expect(plan.changes[0]!.contents).toContain('<link rel="layout" href="./_layout.fud">');
+    expect(contentsOf(plan.changes[0])).toContain('<link rel="layout" href="./_layout.fud">');
   });
 
   it('--no-layout forces a standalone page even when a layout exists', async () => {
     const fs = projectFs({ 'src/layouts/_layout.fud': LAYOUT });
     const plan = await planPage('solo', options({ layout: null }), fs);
-    expect(parseFud(plan.changes[0]!.contents).doc.type).toBe('page-document');
+    expect(parseFud(contentsOf(plan.changes[0])).doc.type).toBe('page-document');
   });
 
   it('rejects a --layout that is not a layout (FUD0449)', async () => {
@@ -183,27 +183,27 @@ describe('g page', () => {
       // A `load` is called through @fudic/http (SDD-66): the project depends on it, then installs.
       'package.json',
     ]);
-    expect(route.changes[4]!.contents).toContain('"@fudic/http"');
+    expect(contentsOf(route.changes[4])).toContain('"@fudic/http"');
     expect(route.commands.map((c) => `${c.command} ${c.args.join(' ')}`)).toEqual(['pnpm install']);
-    const routeDoc = parseFud(route.changes[0]!.contents);
+    const routeDoc = parseFud(contentsOf(route.changes[0]));
     expect(routeDoc.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     expect(routeDoc.doc.type).toBe('route-document');
-    expect(route.changes[0]!.contents).toContain('<link rel="server" href="./[slug].fudapi">');
-    expect(route.changes[0]!.contents).not.toContain('@code');
-    expect(route.changes[1]!.contents).toBe(
+    expect(contentsOf(route.changes[0])).toContain('<link rel="server" href="./[slug].fudapi">');
+    expect(contentsOf(route.changes[0])).not.toContain('@code');
+    expect(contentsOf(route.changes[1])).toBe(
       '# The data of the page, read on the server: its handler is in src/server/routes/blog/[slug].ts.\nload\n  title  str\n',
     );
-    expect(route.changes[2]!.contents).toBe(
+    expect(contentsOf(route.changes[2])).toBe(
       "import { load } from 'fudic:routes/blog/[slug]';\n\nload.handle(() => ({ title: 'Untitled' }));\n",
     );
 
     const bare = projectFs(MANIFEST);
     const page = await planPage('blog', options({ server: true }), bare);
-    const pageDoc = parseFud(page.changes[0]!.contents);
+    const pageDoc = parseFud(contentsOf(page.changes[0]));
     expect(pageDoc.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     expect(pageDoc.doc.type).toBe('page-document');
     // Decision 60: inside <head>, with the other links.
-    expect(page.changes[0]!.contents).toContain('    <link rel="server" href="./blog.fudapi">\n  </head>');
+    expect(contentsOf(page.changes[0])).toContain('    <link rel="server" href="./blog.fudapi">\n  </head>');
   });
 });
 
@@ -214,7 +214,7 @@ describe('g layout', () => {
     const change = plan.changes[0]!;
     expect(change.path).toBe('layouts/_layout.fud');
 
-    const parsed = parseFud(change.contents);
+    const parsed = parseFud(contentsOf(change));
     expect(parsed.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     expect(parsed.doc.type).toBe('layout-document');
     if (parsed.doc.type !== 'layout-document') return;
@@ -226,7 +226,7 @@ describe('g layout', () => {
   it('--no-head omits @RenderHead()', async () => {
     const fs = projectFs();
     const plan = await planLayout('_layout', { cwd: CWD, force: false, dir: 'layouts', sections: [], head: false, test: true }, fs);
-    const parsed = parseFud(plan.changes[0]!.contents);
+    const parsed = parseFud(contentsOf(plan.changes[0]));
     expect(parsed.doc.type).toBe('layout-document');
     if (parsed.doc.type !== 'layout-document') return;
     expect(parsed.doc.renderHead).toBeUndefined();

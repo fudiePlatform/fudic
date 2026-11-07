@@ -1,0 +1,14 @@
+/*
+ * The guide of the workspace. Every page of a project whose chain holds this library links it,
+ * pruned to what the page uses. A component adopts the pieces it names — the files imported
+ * after base.css — in shadowrootadoptedstylesheets.
+ */
+@import "./tokens.css";
+@import "./document.css";
+@import "./base.css";
+
+@import "./h1.css";
+@import "./h2.css";
+@import "./p.css";
+@import "./code.css";
+@import "./a.css";

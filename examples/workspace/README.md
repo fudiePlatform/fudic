@@ -6,7 +6,7 @@ Two fudic applications published on **one origin**, and two libraries they share
 apps/tienda   →  /         id "tienda"
 apps/admin    →  /admin/   id "tienda-admin"
 
-libs/guia     tokens, no components          ← libs/ui ← both apps
+libs/guia     the style guide, no components  ← libs/ui ← both apps
 libs/ui       ui-card, .fud source, no dist
 ```
 
@@ -31,21 +31,25 @@ Both apps link the same component by package name:
 <link rel="component" href="@fudic/example-ui/ui-card.fud">
 ```
 
-and it comes out **identical in both**. Its stylesheets are the chain of the package that
-defines it — `libs/guia` then `libs/ui`, and then its own — so it reads the guide's tokens
-wherever it is used:
+and it comes out **identical in both**.
+
+`libs/guia` is the style guide. Every page of both apps links `guide.css` — the tokens on
+`:root`, the document's reset and a few pieces — pruned to what the page uses, without a
+`<link>` in any source: the apps reach it through `libs/ui`, which depends on it. A component
+adopts the global sheets of the chain of the package that defines it, then the pieces it names:
 
 ```
-ui-card        →  data-fud-adopt="_tokens _ui ui-card"
-tienda-card    →  data-fud-adopt="_tokens _ui _tienda tienda-card"
-admin-panel    →  data-fud-adopt="_tokens _ui _admin admin-panel"
+ui-card        →  data-fud-adopt="base ui h2 ui-card"
+tienda-card    →  data-fud-adopt="base ui h2 tienda-card"
+admin-panel    →  data-fud-adopt="base ui admin h2 admin-panel"
 ```
 
-The two apps set `--guia-accent` to different colours in their own guides, and the shared
-card is the same in both: an app's sheet is adopted into the shadow roots of the components
-**that app defines**, and `ui-card` is not one of them. An app cannot restyle a library by
-dropping a file in its own project — what a library offers for that is the custom
-properties it reads.
+The two apps set `--guia-accent` to their own colour, each for the components it defines, and
+the shared card keeps the guide's blue in both. The storefront does it in the page
+(`src/tienda.css`, linked by its layout, on the `tienda-card` host); the back office in a sheet
+its own components adopt (`src/admin.css`, `:host`). A token set on an element of the page
+reaches every component under it — that is how a zone is themed — and a library's component
+is only retinted by whoever sets the custom properties it reads.
 
 ## Run it
 
@@ -70,9 +74,9 @@ Worker, scoped to its own directory.
 
 ## Made with the CLI
 
-The tree is the one `fudic` writes: `fudic new --workspace --app tienda`, `g lib guia
---styles-only`, `g lib ui --uses guia`, `g app admin --uses ui`, `g style` and
-`g component` for each project. So every component sits in its own folder with its unit test,
+The tree is the one `fudic` writes: `fudic new --workspace --app tienda`, `g guide guia`
+(trimmed to a few pieces and the system font), `g lib ui --uses guia`, `g app admin --uses ui`,
+`g style` and `g component` for each project. So every component sits in its own folder with its unit test,
 its `.fudspec` and its fixture, and every project runs them:
 
 ```sh

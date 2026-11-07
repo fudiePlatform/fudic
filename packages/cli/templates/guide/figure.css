@@ -1,0 +1,9 @@
+:where(figure) {
+  margin: 0 0 var(--{{project}}-space-4);
+}
+
+:where(figcaption) {
+  margin-top: var(--{{project}}-space-2);
+  font-size: var(--{{project}}-text-sm);
+  color: var(--{{project}}-muted);
+}

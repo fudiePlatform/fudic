@@ -1,18 +1,22 @@
 /*
- * The tokens every component of this workspace adopts, wherever it is defined.
- *
- * It is adopted INTO shadow roots (SDD-42 §4.1), so the selector is `:host`: a rule about
- * `body` would match nothing where this sheet goes, and the build says so (FUD0743).
+ * The tokens every page and every component of this workspace read. They are on :root, in the
+ * page, because custom properties are what crosses into a shadow root — so a zone of a page can
+ * change them for every component inside it, and an app can change them for one of its own.
  */
-:host {
+:root {
+  color-scheme: light dark;
   /** Body text. Use it for anything read, never for a border. */
-  --guia-ink: #1c1c1e;
+  --guia-ink: light-dark(#1c1c1e, #ececf1);
+  /** What text sits on. */
+  --guia-surface: light-dark(#ffffff, #16171b);
   /** Hairlines and borders that separate, without drawing attention. */
-  --guia-line: #dcdcdc;
+  --guia-line: light-dark(#dcdcdc, #3a3d45);
   /** The one colour that marks what matters: a link, an active item, a card's edge. */
-  --guia-accent: #0b5fff;
+  --guia-accent: light-dark(#0b5fff, #7aa2ff);
   /** Corner radius of a surface. Smaller elements inside it use none. */
   --guia-radius: 10px;
   /** Padding inside a surface, block then inline. */
   --guia-pad: 1rem 1.15rem;
+  /** The system's own font: this example downloads none. */
+  --guia-font: system-ui, sans-serif;
 }

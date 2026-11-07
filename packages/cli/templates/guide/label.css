@@ -1,0 +1,6 @@
+:where(label) {
+  display: inline-block;
+  margin-bottom: var(--{{project}}-space-1);
+  font-size: var(--{{project}}-text-sm);
+  font-weight: var(--{{project}}-weight-medium);
+}

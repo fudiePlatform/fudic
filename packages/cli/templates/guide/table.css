@@ -1,0 +1,34 @@
+:where(table) {
+  width: 100%;
+  margin: 0 0 var(--{{project}}-space-4);
+  border-collapse: collapse;
+  text-indent: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+:where(caption) {
+  padding-bottom: var(--{{project}}-space-2);
+  font-size: var(--{{project}}-text-sm);
+  color: var(--{{project}}-muted);
+  text-align: start;
+}
+
+:where(thead, tbody, tfoot, tr) {
+  border-color: inherit;
+}
+
+:where(th, td) {
+  padding: var(--{{project}}-space-2) var(--{{project}}-space-3);
+  border-bottom: 1px solid var(--{{project}}-line);
+  text-align: start;
+  vertical-align: top;
+}
+
+:where(th) {
+  font-weight: var(--{{project}}-weight-medium);
+}
+
+:where(tfoot) :where(td, th) {
+  border-bottom: 0;
+  font-weight: var(--{{project}}-weight-medium);
+}

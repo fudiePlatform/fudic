@@ -58,7 +58,7 @@ export interface PlacementResult {
  */
 export function placeProject(
   name: string,
-  opts: ProjectOptions,
+  opts: Pick<ProjectOptions, 'cwd' | 'force' | 'dir'>,
   io: ReadIo,
 ): PlacementResult {
   const root = workspaceRoot(opts.cwd, io);

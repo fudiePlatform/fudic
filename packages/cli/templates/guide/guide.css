@@ -1,0 +1,51 @@
+/* The page gets all of it; a component, the pieces it names: shadowrootadoptedstylesheets="button input". */
+@import "./tokens.css";
+@import "./document.css";
+@import "./base.css";
+
+@import "./h1.css";
+@import "./h2.css";
+@import "./h3.css";
+@import "./h4.css";
+@import "./h5.css";
+@import "./h6.css";
+
+@import "./p.css";
+@import "./blockquote.css";
+@import "./pre.css";
+@import "./code.css";
+@import "./mark.css";
+@import "./small.css";
+@import "./abbr.css";
+@import "./hr.css";
+@import "./address.css";
+@import "./sub.css";
+
+@import "./a.css";
+
+@import "./ul.css";
+@import "./ol.css";
+@import "./dl.css";
+
+@import "./img.css";
+@import "./video.css";
+@import "./audio.css";
+@import "./iframe.css";
+@import "./svg.css";
+@import "./figure.css";
+
+@import "./table.css";
+
+@import "./fieldset.css";
+@import "./label.css";
+@import "./input.css";
+@import "./select.css";
+@import "./textarea.css";
+@import "./button.css";
+@import "./progress.css";
+@import "./meter.css";
+@import "./output.css";
+
+@import "./details.css";
+@import "./dialog.css";
+@import "./popover.css";

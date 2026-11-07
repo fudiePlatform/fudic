@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { planComponent } from '../src/plans/component.js';
-import { MemoryFs } from './helpers.js';
+import { contentsOf, MemoryFs } from './helpers.js';
 import type { ComponentOptions } from '../src/types.js';
 
 const CWD = '/project';
@@ -28,7 +28,7 @@ describe('fudic g component, with a prefix declared', () => {
 
     expect(plan.errors).toEqual([]);
     expect(plan.changes[0]?.path).toBe('components/app-card/app-card.fud');
-    expect(plan.changes[0]?.contents).toContain('<app-card>');
+    expect(contentsOf(plan.changes[0])).toContain('<app-card>');
   });
 
   it('respects a name that already carries a hyphen (criterion 8)', async () => {
@@ -36,7 +36,7 @@ describe('fudic g component, with a prefix declared', () => {
 
     expect(plan.errors).toEqual([]);
     expect(plan.changes[0]?.path).toBe('components/signal-counter/signal-counter.fud');
-    expect(plan.changes[0]?.contents).toContain('<signal-counter>');
+    expect(contentsOf(plan.changes[0])).toContain('<signal-counter>');
   });
 
   it('says nothing about a tag that departs from the prefix — it is a guide (§4.4)', async () => {

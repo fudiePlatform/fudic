@@ -14,10 +14,14 @@
 import {
   ADOPTED_STYLESHEETS_ATTR,
   adoptedStylesOf,
+  guideAdoptionDiagnostics,
+  piecesForTag,
   staticId,
+  templateSurface,
   walkBlocks,
   type Diagnostic,
   type ElementNode,
+  type GuidePiece,
   type Region,
   type Span,
 } from '@fudic/compiler';
@@ -97,6 +101,59 @@ export function adoptedStyleDiagnostics(
   return adoptedStylesOf(cached.document.template)
     .names.filter(({ name }) => !known.has(name))
     .map(({ name, span }) => FUD0744({ span, name, choosable }));
+}
+
+/**
+ * `FUD1440`/`FUD1441`: the pieces of the style guide the template needs and does not adopt,
+ * and the adopted ones that style nothing in it — the function the build calls. The editor
+ * holds the file and not its snippets expanded, so a template that renders one is not judged
+ * unused: what the snippet writes is not in sight.
+ */
+export function guidePieceDiagnostics(cached: CachedDocument, pieces: readonly GuidePiece[]): readonly Diagnostic[] {
+  if (cached.document.type !== 'component-document') return [];
+  const template = cached.document.template;
+  if (template === undefined) return [];
+  const text = cached.source.slice(template.span.start, template.span.end);
+  const surface = /@render\b/u.test(text) ? null : templateSurface(template.children);
+  return guideAdoptionDiagnostics(template, pieces, surface);
+}
+
+/**
+ * What writing `<tag>` at `offset` adds to the root template: the guide's pieces that style the
+ * tag and the attribute does not name yet, at the end of `shadowrootadoptedstylesheets` — or the
+ * attribute itself when there is none. `undefined` outside the root template of a component,
+ * for a tag no piece styles, when every piece is named, and when the value is an expression
+ * (`FUD0745`): nothing is added where it cannot be added cleanly.
+ */
+export function adoptionEditFor(
+  cached: CachedDocument,
+  offset: number,
+  tag: string,
+  pieces: readonly GuidePiece[],
+): { readonly span: Span; readonly newText: string } | undefined {
+  if (cached.document.type !== 'component-document') return undefined;
+  const template = cached.document.template;
+  if (template === undefined || offset < template.openSpan.end || offset > template.span.end) return undefined;
+  const written = adoptedStylesOf(template);
+  if (written.problems.length > 0) return undefined;
+  const named = new Set(written.names.map((n) => n.name));
+  const missing = piecesForTag(pieces, tag).filter((name) => !named.has(name));
+  if (missing.length === 0) return undefined;
+  const attr = template.attributes.find(
+    (a) => typeof a.name === 'string' && a.name.toLowerCase() === ADOPTED_STYLESHEETS_ATTR,
+  );
+  if (attr === undefined) {
+    const at = template.openSpan.end - 1;
+    return { span: { start: at, end: at }, newText: ` ${ADOPTED_STYLESHEETS_ATTR}="${missing.join(' ')}"` };
+  }
+  const last = attr.value[attr.value.length - 1];
+  if (last === undefined) {
+    // Bare or empty (`=""`): there is no text to append to, so the attribute is written whole.
+    return { span: attr.span, newText: `${ADOPTED_STYLESHEETS_ATTR}="${missing.join(' ')}"` };
+  }
+  const at = last.span.end;
+  const gap = /\S$/u.test(cached.source.slice(last.span.start, at)) ? ' ' : '';
+  return { span: { start: at, end: at }, newText: `${gap}${missing.join(' ')}` };
 }
 
 /** Whether this element is the root `<template>` of the component being edited. */

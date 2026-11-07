@@ -1,0 +1,7 @@
+:where(code) {
+  padding: 0.1em 0.3em;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.9em;
+  border: 1px solid var(--guia-line);
+  border-radius: 4px;
+}

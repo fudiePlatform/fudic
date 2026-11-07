@@ -25,6 +25,7 @@ export {
   readProjectConfig,
   type ConfigIo,
   type ConfigResult,
+  type GuideConfig,
   type NamedStyle,
   type ProjectConfig,
 } from './read.js';

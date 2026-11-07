@@ -43,7 +43,8 @@ describe('the CLI and the light bulb write the same file (criterion 13)', () => 
     const [spec, fixture] = plan.changes;
     expect(spec).toMatchObject({ path: 'src/components/app-probe.fudspec', contents: specSkeleton('app-probe', true) });
     expect(fixture?.path).toBe('src/components/app-probe.fixture.ts');
-    expect(fixture?.contents).toContain("  base: { label: '', tone: 'info', items: [] },\n");
+    const fixtureText = fixture !== undefined && 'contents' in fixture ? fixture.contents : '';
+    expect(fixtureText).toContain("  base: { label: '', tone: 'info', items: [] },\n");
 
     // The file the skeleton asks for, with its one criterion written: `props base`.
     const text = 'component app-probe\n\ncriterion a\n  given\n    props base\n  then\n    min-height app-probe 44\n';
@@ -58,6 +59,6 @@ describe('the CLI and the light bulb write the same file (criterion 13)', () => 
 
     const create = actions.find((a) => a.title === 'Create app-probe.fixture.ts');
     const [, write] = create?.edit?.documentChanges as [unknown, { edits: TextEdit[] }];
-    expect(write.edits[0]?.newText).toBe(fixture?.contents);
+    expect(write.edits[0]?.newText).toBe(fixtureText);
   });
 });

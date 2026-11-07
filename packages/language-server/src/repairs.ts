@@ -12,7 +12,7 @@
  */
 
 import type * as ts from 'typescript';
-import { span, type RouteDocument, type Span } from '@fudic/compiler';
+import { adoptedStylesOf, span, type GuidePiece, type RouteDocument, type Span } from '@fudic/compiler';
 import type { FudCode, SourceDiagnostic } from '@fudic/diagnostics';
 import type { OxcNode } from '@fudic/compiler';
 import { missingSections } from '@fudic/typecheck';
@@ -20,6 +20,7 @@ import type { CachedDocument } from './document-cache.js';
 import type { WorkspaceIndex } from './workspace-index.js';
 import { loopKeyAt } from './services/loop-key.js';
 import { linkInsertionFor } from './services/tags.js';
+import { adoptionEditFor } from './services/template-attrs.js';
 
 /** One change to one file. */
 export interface RepairEdit {
@@ -37,6 +38,12 @@ export interface Repair {
   /** The diagnostic it repairs. */
   readonly code: FudCode;
   readonly edits: readonly RepairEdit[];
+  /**
+   * Only when the author asks for it: the light bulb offers it, and nothing that fixes files on
+   * its own — `fudic_fix`, a «fix all» — applies it. A repair that removes what may still be
+   * needed for reasons no check can see.
+   */
+  readonly manual?: true;
 }
 
 /** What a repair is computed from. */
@@ -46,6 +53,8 @@ export interface RepairInput {
   readonly index: WorkspaceIndex;
   /** The project's TypeScript, which knows a loop's element type. Absent, a repair that needs a type degrades. */
   readonly typescript?: ts.LanguageService;
+  /** The style guide's pieces the file may adopt. Absent, the guide's repairs are not offered. */
+  readonly pieces?: readonly GuidePiece[];
 }
 
 /** One stretch of the file the repair is computed for. */
@@ -58,6 +67,7 @@ interface Edit {
 interface Fix {
   readonly title: string;
   readonly edits: readonly Edit[];
+  readonly manual?: true;
 }
 
 type Repairer = (input: RepairInput, diagnostic: SourceDiagnostic) => readonly Fix[];
@@ -187,6 +197,46 @@ const htmlName: Repairer = ({ cached }, diagnostic) => {
   return [{ title: `Change to ${html}`, edits: [{ span: diagnostic.span, newText: html }] }];
 };
 
+/**
+ * `FUD1440` — an element a piece of the guide styles, in a component that does not adopt it:
+ * add the piece, with the edit the tag completion writes. Adding is always safe.
+ */
+const adoptPiece: Repairer = ({ cached, pieces }, diagnostic) => {
+  const tag = cached.source.slice(diagnostic.span.start, diagnostic.span.end);
+  const edit = adoptionEditFor(cached, diagnostic.span.start, tag, pieces ?? []);
+  if (edit === undefined) return [];
+  return [{ title: `Adopt the guide's sheet for <${tag}>`, edits: [edit] }];
+};
+
+/**
+ * `FUD1441` — an adopted piece that styles nothing here: remove its name, and the attribute with
+ * it when it was the only one. Manual: a script may create what the piece styles, and only the
+ * author knows that, so nothing applies it without asking.
+ */
+const dropPiece: Repairer = ({ cached }, diagnostic) => {
+  const template = cached.document.type === 'component-document' ? cached.document.template : undefined;
+  const attr = template?.attributes.find(
+    (a) => a.span.start <= diagnostic.span.start && diagnostic.span.end <= a.span.end,
+  );
+  if (attr === undefined) return [];
+  const name = cached.source.slice(diagnostic.span.start, diagnostic.span.end);
+  const title = `Stop adopting ${name}`;
+  if (adoptedStylesOf(template).names.length === 1) {
+    // The only name: the attribute goes, with the space in front of it.
+    let start = attr.span.start;
+    while (start > 0 && /\s/u.test(cached.source.charAt(start - 1))) start -= 1;
+    return [{ title, manual: true, edits: [{ span: span(start, attr.span.end), newText: '' }] }];
+  }
+  let { start, end } = diagnostic.span;
+  // A space after the name goes with it; for the last name, the one before it.
+  if (/^\s*["']/u.test(cached.source.slice(end))) {
+    while (/\s/u.test(cached.source.charAt(start - 1))) start -= 1;
+  } else {
+    while (/\s/u.test(cached.source.charAt(end))) end += 1;
+  }
+  return [{ title, manual: true, edits: [{ span: span(start, end), newText: '' }] }];
+};
+
 /** A diagnostic code, and what repairs it. A code that is not here has no repair. */
 const REPAIRS: ReadonlyMap<FudCode, Repairer> = new Map<FudCode, Repairer>([
   ['FUD0894', addArgumentAt],
@@ -195,6 +245,8 @@ const REPAIRS: ReadonlyMap<FudCode, Repairer> = new Map<FudCode, Repairer>([
   ['FUD0890', addRequiredSections],
   ['FUD0540', addLoopKey],
   ['FUD1160', htmlName],
+  ['FUD1440', adoptPiece],
+  ['FUD1441', dropPiece],
 ]);
 
 /** The codes that have a repair. */
@@ -209,5 +261,6 @@ export function repairsFor(input: RepairInput, diagnostic: SourceDiagnostic): re
     title: fix.title,
     code: diagnostic.code,
     edits: fix.edits.map((edit) => ({ path, span: edit.span, newText: edit.newText })),
+    ...(fix.manual === undefined ? {} : { manual: fix.manual }),
   }));
 }

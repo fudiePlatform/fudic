@@ -1,0 +1,43 @@
+:where(input) {
+  margin: 0;
+  font: inherit;
+  color: inherit;
+}
+
+:where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="hidden"])) {
+  width: 100%;
+  padding: var(--{{project}}-space-2) var(--{{project}}-space-3);
+  background: var(--{{project}}-surface);
+  border: 1px solid var(--{{project}}-line);
+  border-radius: var(--{{project}}-radius-md);
+  transition: border-color var(--{{project}}-duration-fast) var(--{{project}}-easing);
+}
+
+:where(input):focus-visible {
+  outline: var(--{{project}}-focus-width) solid var(--{{project}}-focus);
+  outline-offset: 1px;
+}
+
+:where(input[type="checkbox"], input[type="radio"], input[type="range"]) {
+  accent-color: var(--{{project}}-accent);
+}
+
+:where(input[type="checkbox"], input[type="radio"]) {
+  width: 1.1em;
+  height: 1.1em;
+  vertical-align: middle;
+}
+
+:where(input):disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+:where(input[aria-invalid="true"]) {
+  border-color: var(--{{project}}-danger);
+}
+
+:where(input)::placeholder {
+  color: var(--{{project}}-muted);
+  opacity: 1;
+}

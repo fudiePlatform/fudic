@@ -38,7 +38,8 @@ async function formatted(path: string): Promise<{ contents: string; diff: string
   const command = cli.parseArgs(['fmt', path, '--cwd', dir.root]);
   if (command.kind !== 'fmt') throw new Error(command.kind);
   const plan = await cli.planFmt(command.paths, command.opts);
-  return { contents: plan.changes[0]!.contents, diff: plan.changes.flatMap((c) => cli.formatDiff(c)).join('\n') };
+  const first = plan.changes[0]!;
+  return { contents: 'contents' in first ? first.contents : '', diff: plan.changes.flatMap((c) => cli.formatDiff(c)).join('\n') };
 }
 
 describe('formatProject', () => {

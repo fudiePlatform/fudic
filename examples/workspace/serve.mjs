@@ -106,10 +106,12 @@ const server = createServer((req, res) => {
     }
     res.writeHead(200, {
       'content-type': TYPES.get(extname(file)) ?? 'application/octet-stream',
-      // No HTTP caching, on purpose: what this origin is here to measure is what the
+      // Always revalidated, on purpose: what this origin is here to measure is what the
       // Service Worker kept in `CacheStorage`. A browser cache in the middle would answer
-      // for it and hide exactly the defect under test.
-      'cache-control': 'no-store',
+      // for it and hide exactly the defect under test — and `no-cache` cannot answer offline,
+      // where there is nothing to revalidate against. Not `no-store`: since SDD-69 that tells
+      // the worker to keep nothing, and then no page could ever open offline.
+      'cache-control': 'no-cache',
     });
     createReadStream(file).pipe(res);
   });
