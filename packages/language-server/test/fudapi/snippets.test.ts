@@ -37,8 +37,8 @@ describe('snippets (SDD-75)', () => {
     });
     // The declarations with no snippet stay as keywords.
     expect(named(items('|'), 'paths')[0]!.kind).toBe(CompletionItemKind.Keyword);
-    expect(snippets(items('|'))).toEqual(DECLARATION_KEYWORDS.filter((k) => k in SNIPPETS.root));
-    expect(snippets(items('|'))).toHaveLength(Object.keys(SNIPPETS.root).length);
+    expect(snippets(items('|'))).toEqual([...DECLARATION_KEYWORDS.filter((k) => k in SNIPPETS.root), 'rule remote']);
+    expect(snippets(items('|'))).toHaveLength(Object.keys(SNIPPETS.root).length + 1);
   });
 
   it('criterion 2: no root snippet under a field; in a function, its own `form`', () => {

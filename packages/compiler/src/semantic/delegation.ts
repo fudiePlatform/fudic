@@ -53,7 +53,7 @@ import type { ValueReader } from '../binding/control.js';
 const EVENT_PREFIX = '@';
 
 /** `$event` belongs to SDD-15 (decisions 96–98): not a delegated read, and not ours to judge. */
-const EVENT_ARGUMENT = '$event';
+export const EVENT_ARGUMENT = '$event';
 
 /**
  * The runtime pieces of `@fudic/i18n` a locale's rewrite writes into the view (SDD-58 §4.4,
@@ -303,11 +303,39 @@ export function eventsReadingRow(
   return [...events];
 }
 
+/** What the editor says about one handler (SDD-80 §4.8). */
+export interface HandlerFacts {
+  /**
+   * What `$value` reads there: the reader the plan would give it if its call mentioned `$value`.
+   * Absent where it would be `FUD1462`–`FUD1464`.
+   */
+  readonly value?: ValueReader;
+  /** Delegated: the row it reads and how many marked elements serve it. */
+  readonly served?: { readonly name: string; readonly marks: number };
+}
+
+/**
+ * The facts of the handler whose attribute starts at `attribute`, from the same pairing and the
+ * same plan the emit writes — so `$value` is offered exactly where it compiles, and the marks a
+ * hover counts are the ones the listener reads.
+ */
+export function handlerAt(source: string, roots: readonly HtmlContent[], js: DelegationJs, attribute: Span): HandlerFacts {
+  const collected = collect(source, roots, js, attribute.start);
+  const served = collected.markers.length === 0 ? new Map<Attribute, Served>() : pair(collected, js.scope).served;
+  const { values } = planValues(collected.valueSites, (attr) => served.get(attr));
+  const value = [...values].find(([attr]) => attr.span.start === attribute.start)?.[1];
+  const own = [...served].find(([attr]) => attr.span.start === attribute.start)?.[1];
+  return {
+    ...(value === undefined ? {} : { value }),
+    ...(own === undefined ? {} : { served: { name: own.name, marks: own.elements.length } }),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Collection — one walk over the tree
 // ---------------------------------------------------------------------------
 
-function collect(source: string, roots: readonly HtmlContent[], js: DelegationJs): Collected {
+function collect(source: string, roots: readonly HtmlContent[], js: DelegationJs, probe?: number): Collected {
   const markers: Marker[] = [];
   const candidates: Candidate[] = [];
   const parentOf = new Map<ElementNode, ElementNode>();
@@ -357,10 +385,12 @@ function collect(source: string, roots: readonly HtmlContent[], js: DelegationJs
         const root = js.valueAst(binding.value);
         const call = handlerShape(root) === 'call' ? unwrapParens(root)! : undefined;
         const values = call === undefined ? [] : valueMentions(call);
+        // The handler the editor asks about (`valueAtHandler`) is read as if its call mentioned `$value`.
+        const site = values[0] === undefined ? (call !== undefined && probe === attr.span.start ? attr.span : undefined) : js.spanOf(values[0]);
         for (const v of values) allowed.add(v.start);
         if (binding.type === 'bus') {
           const written = typeof binding.eventName === 'string' ? `bus:${binding.eventName}` : 'bus:(…)';
-          if (values[0] !== undefined) valueSites.push({ attr, element: el, noControl: written, at: js.spanOf(values[0]) });
+          if (site !== undefined) valueSites.push({ attr, element: el, noControl: written, at: site });
           continue;
         }
         handlers.add(binding.value);
@@ -368,12 +398,12 @@ function collect(source: string, roots: readonly HtmlContent[], js: DelegationJs
         const start = attr.span.start + EVENT_PREFIX.length;
         const at = span(start, start + eventName.length);
         if (binding.label !== undefined) named.push({ attr, text: eventName, at: span(attr.span.start, at.end) });
-        if (values[0] !== undefined) {
+        if (site !== undefined) {
           valueSites.push({
             attr,
             element: el,
             ...(FORM_EVENTS.has(binding.name) ? { noControl: `@${binding.name}` } : {}),
-            at: js.spanOf(values[0]),
+            at: site,
           });
         }
         if (call === undefined) continue;

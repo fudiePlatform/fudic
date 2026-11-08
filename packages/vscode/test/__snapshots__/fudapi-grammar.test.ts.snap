@@ -131,7 +131,8 @@ exports[`the .fudapi grammar — snapshots > tokenises an extensions file 1`] = 
 1  "str"  support.type.primitive.fudapi
 2  "  "  -
 2  "runs"  keyword.other.clause.fudapi
-2  " server"  -
+2  " "  -
+2  "server"  constant.language.runs.fudapi
 3  "  "  -
 3  "async"  keyword.other.clause.fudapi
 4  "  "  -

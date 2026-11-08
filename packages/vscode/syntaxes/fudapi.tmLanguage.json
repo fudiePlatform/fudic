@@ -8,6 +8,7 @@
     { "include": "#function" },
     { "include": "#named-declaration" },
     { "include": "#bare-declaration" },
+    { "include": "#runs" },
     { "include": "#clause" },
     { "include": "#string" },
     { "include": "#arrow" },
@@ -72,9 +73,18 @@
       ]
     },
 
+    "runs": {
+      "comment": "`runs` and where the rule runs: `both`, `server`, `remote` (SDD-80).",
+      "match": "^[ ]+(runs)[ ]+(both|server|remote)(?=\\s|$)",
+      "captures": {
+        "1": { "name": "keyword.other.clause.fudapi" },
+        "2": { "name": "constant.language.runs.fudapi" }
+      }
+    },
+
     "clause": {
       "comment": "The first word of an indented line, when it is a keyword of some context.",
-      "match": "^[ ]+(use|skip|form|invalidates|compress|fails|query|validate-on|validity|catches|summary|range|require|when|on|runs|async|client|server|adds)(?=\\s|$)",
+      "match": "^[ ]+(use|skip|form|invalidates|compress|fails|query|validate-on|validity|catches|summary|range|require|when|on|runs|async|debounce|client|server|adds)(?=\\s|$)",
       "captures": {
         "1": { "name": "keyword.other.clause.fudapi" }
       }

@@ -16,7 +16,7 @@ import { parseControl } from '../../src/control/index.js';
 import { parseCodeBlock } from '../../src/code/index.js';
 import { structureDocument } from '../../src/document/index.js';
 import { JsBatch, type FragmentId, type OxcNode } from '../../src/oxc/index.js';
-import { eventsReadingRow } from '../../src/semantic/delegation.js';
+import { eventsReadingRow, handlerAt } from '../../src/semantic/delegation.js';
 import { documentRoots, walk, type SemanticInput } from '../../src/semantic/index.js';
 import type { Diagnostic, Node } from '../../src/types/index.js';
 import { delegation } from '../../src/semantic/analyzers/delegation.js';
@@ -814,5 +814,43 @@ describe('named handlers (SDD-80 §3.6, criteria 26–28)', () => {
       'p',
     );
     expect(events).toEqual(['change', 'click.borrar', 'click.ver']);
+  });
+});
+
+describe('handlerAt — what the editor says about one handler (SDD-80 §4.8)', () => {
+  /** The facts of the handler written at the first `needle` of `inner`. */
+  function factsAt(inner: string, needle: string) {
+    const source = component(inner);
+    const input = inputFor(source);
+    const astOf = (node: Node) => {
+      const id = input.fragmentId(node);
+      return id === undefined ? undefined : (input.js.ast(id) as OxcNode);
+    };
+    const start = source.indexOf(needle);
+    return handlerAt(
+      source,
+      documentRoots(input.document),
+      { headerAst: astOf, valueAst: astOf, spanOf: (n) => input.js.mapSpan(n.start, n.end), scope: new Set() },
+      { start, end: start + needle.length },
+    );
+  }
+
+  it('a delegated handler that does not write `$value` yet: what it would read, and its marks', () => {
+    const facts = factsAt(TABLE, '@change');
+    expect(facts.value?.type).toBe('boolean');
+    expect(facts.served).toEqual({ name: 'p', marks: 1 });
+    // `@click` is served by a button: a row, and no value.
+    expect(factsAt(TABLE, '@click')).toEqual({ served: { name: 'p', marks: 1 } });
+  });
+
+  it('a handler on its own element, with no marker anywhere', () => {
+    expect(factsAt('<input type="range" @input=@f()>', '@input').value?.type).toBe('number');
+    expect(factsAt('<div @click=@f()></div>', '@click')).toEqual({});
+  });
+
+  it('nothing for a handler that is no call, nor for one with no control to read', () => {
+    expect(factsAt('<input @input=@f>', '@input')).toEqual({});
+    expect(factsAt('<form @fudic:result=@f()></form>', '@fudic')).toEqual({});
+    expect(factsAt('<input bus:alta=@f()>', 'bus:')).toEqual({});
   });
 });

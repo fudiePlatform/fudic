@@ -21,10 +21,14 @@ export {
   type PortableRegions,
   type PortableRoot,
 } from './portable-regions.js';
+export { VALUE_ARGUMENT } from './value-argument.js';
 export { HTML_EVENT_ATTRIBUTES, isNativeEventAttribute } from './html-events.js';
 export {
   eventsReadingRow,
   planDelegation,
+  handlerAt,
+  type HandlerFacts,
+  EVENT_ARGUMENT,
   valueMentions,
   type DelegationJs,
   type DelegationMark,

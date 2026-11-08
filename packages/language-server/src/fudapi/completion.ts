@@ -23,7 +23,8 @@ import {
 import { CompletionItemKind, type CompletionItem, type CompletionList } from 'vscode-languageserver-protocol';
 import type { ApiDocument } from './document.js';
 import { lineOf, loadCompletions } from './load-line.js';
-import { SNIPPETS, ruleSnippet, withSnippets } from './snippets.js';
+import { RUNS_DOC } from './rule-hover.js';
+import { ROOT_EXTRA, SNIPPETS, ruleSnippet, withSnippets } from './snippets.js';
 
 const PRIMITIVES = ['str', 'html', 'bool', 'date', 'uuid', 'u8', 'i8', 'u16', 'i16', 'u32', 'i32', 'f32', 'f64'];
 const VERBS = new Set(['get', 'post', 'put', 'patch', 'delete']);
@@ -100,7 +101,7 @@ export function apiCompletions(doc: ApiDocument, offset: number): CompletionList
   if (/(?:^|\s)#/u.test(before)) return undefined;
 
   if (indent === 0) {
-    if (typing === 0) return list(withSnippets(DECLARATION_KEYWORDS, SNIPPETS.root, 0));
+    if (typing === 0) return list([...withSnippets(DECLARATION_KEYWORDS, SNIPPETS.root, 0), ...ROOT_EXTRA]);
     if (words[0] !== 'load') return undefined;
     // The rest of the line, without the rest of the word being typed.
     const after = lineOf(text, offset).split(/\s+/u).slice(1);
@@ -173,7 +174,8 @@ const CONTEXT_SNIPPETS: Partial<Record<Context, (typeof SNIPPETS)[keyof typeof S
 
 /** The first word of an indented line: what its parent takes, as snippets where there are. */
 function firstWord(doc: ApiDocument, offset: number, indent: number, chain: readonly Line[], context: Context): CompletionItem[] {
-  const items = withSnippets(CHILDREN[context], CONTEXT_SNIPPETS[context] ?? {}, indent);
+  const words = context === 'rule' ? ruleLines(doc, chain[0]!.start) : CHILDREN[context];
+  const items = withSnippets(words, CONTEXT_SNIPPETS[context] ?? {}, indent);
   if (context === 'field') {
     const field = fieldAt(formAt(doc, offset), chain[0]!.start);
     if (field !== undefined) items.push(...doc.index.rulesFor(field.type).map((r) => ruleSnippet(r.decl, indent)));
@@ -221,7 +223,7 @@ function argument(
     case 'form':
       return context === 'fn' ? list(index.all('form').map((f) => item(f.decl.name.text, CompletionItemKind.Variable))) : undefined;
     case 'runs':
-      return list(keywords(['both', 'server']));
+      return list(Object.entries(RUNS_DOC).map(([w, d]) => item(w, CompletionItemKind.Keyword, d)));
     case 'on':
       // A pipe's `on` takes types, as many as the union has (SDD-71 §3.2).
       if (context === 'pipe') return list(types(index));
@@ -297,7 +299,8 @@ function placeholders(doc: ApiDocument, before: string, head: string, context: C
   else if (context === 'field' || context === 'arg' || context === 'summary') {
     const rule = doc.index.lookup('rule', head)?.decl;
     offered = rule === undefined ? [] : rule.fails.flatMap((f) => f.params.map((p) => p.text));
-    if (rule?.runs?.value.text === 'server') offered.push('detail');
+    const runs = rule?.runs?.value.text;
+    if (runs === 'server' || runs === 'remote') offered.push('detail');
   }
   return list(offered.map((o) => item(o, CompletionItemKind.Variable)));
 }
@@ -349,9 +352,25 @@ function paths(doc: ApiDocument, offset: number, chain: readonly Line[]): Comple
   return out;
 }
 
-/** The function, `load` or `chain` whose block the cursor is in. */
-function levelAt(doc: ApiDocument, offset: number): FnDecl | LoadDecl | ChainDecl | undefined {
+/** The function, `load`, `chain` or rule whose block the cursor is in. */
+function levelAt(doc: ApiDocument, offset: number): FnDecl | LoadDecl | ChainDecl | RuleDecl | undefined {
   return doc.source.file.declarations
-    .filter((d): d is FnDecl | LoadDecl | ChainDecl => (d.kind === 'fn' || d.kind === 'load' || d.kind === 'chain') && d.span.start <= offset)
+    .filter(
+      (d): d is FnDecl | LoadDecl | ChainDecl | RuleDecl =>
+        (d.kind === 'fn' || d.kind === 'load' || d.kind === 'chain' || d.kind === 'rule') && d.span.start <= offset,
+    )
     .at(-1);
+}
+
+/**
+ * The lines of the rule declared at `start` (SDD-80 §4.8): the middlewares of a rule that runs on
+ * the server, `debounce` only when it is asked from the browser. Read from the tree, which holds
+ * the `runs` the developer already wrote.
+ */
+function ruleLines(doc: ApiDocument, start: number): readonly string[] {
+  const rule = doc.source.file.declarations.find((d) => d.kind === 'rule' && d.span.start === start);
+  const runs = rule?.kind === 'rule' ? rule.runs?.value.text : undefined;
+  if (runs === 'remote') return ['on', 'runs', 'async', 'debounce', 'use', 'skip', 'fails'];
+  if (runs === 'server') return ['on', 'runs', 'async', 'use', 'skip', 'fails'];
+  return CHILDREN.rule;
 }

@@ -400,7 +400,8 @@ contestó hasta que contesta (o se aborta y pasa como válido).
 **`.fudapi`:**
 
 - Detrás de `runs`: `both`, `server` y `remote`, cada uno con su explicación.
-- En una regla `remote`, las líneas `debounce`, `use` y `skip` se ofrecen; en las demás, no.
+- `debounce` se ofrece solo en una regla `remote`; `use` y `skip`, en una `server` o `remote` (§3.1);
+  en una `both`, ninguna (§8.2.23).
   Detrás de `use`/`skip`, los middlewares, como en una función.
 - El snippet `rule` ofrece `remote` en su lista de `runs`. Snippet nuevo `rule remote`:
   `rule ${1:name}\n  on field ${2:str}\n  runs remote\n  debounce ${3:300}\n  fails ${4:code}`.
@@ -678,3 +679,18 @@ Nada. Esta SDD cierra formularios y delegación de eventos.
     `never`, un tipo que ninguna función cumple (`$NoFormHere`): con `(value: never) => unknown`
     cualquier función encajaría. `@fudic/typecheck` no necesitó cambios: cada proyección escribe su
     entrada y el lote ya tiene todos los `.fud` en un programa.
+23. **`use` y `skip` se ofrecen también en una regla `server`.** §3.1 las admite ahí y el
+    validador no protesta; ofrecerlas solo en `remote` habría escondido algo válido. `debounce`
+    sigue siendo solo de `remote`, y una `both` no ofrece ninguna de las tres (criterio 32).
+24. **El editor pregunta al plan del compilador** (`handlerAt`): qué leería `$value` en un
+    handler que todavía no lo escribe y cuántas marcas lo sirven. Se ofrece `$value` exactamente
+    donde compila, y el hover de `@click.borrar` cuenta las mismas marcas que lee el listener.
+25. **`$event` y `$value` se añaden a la lista de TypeScript**, no la sustituyen: en los argumentos
+    sigue valiendo cualquier nombre del ámbito. Los dos llevan `$`, y el filtro de nombres del
+    andamiaje los quitaba; se devuelven solo en ese sitio.
+26. **El hover de `$value` se suma al de TypeScript.** TypeScript ya dice `const $value: boolean`;
+    el servidor añade qué lee y de qué elemento sale (el que lleva el evento, o el marcado
+    `delegate:<fila>`). Volar junta los dos.
+27. **La gramática pinta los tres valores de `runs`** con el mismo ámbito
+    (`constant.language.runs.fudapi`), no solo `remote`: es una palabra cerrada, como las
+    estrategias de `load`.

@@ -104,7 +104,7 @@ import {
 import { typeScriptService } from './ts-service.js';
 import { interpolates, scopeNames, templateScope } from './template-scope.js';
 import { styleClassNames } from './classes.js';
-import { delegateEvents, delegateNames } from './delegate.js';
+import { delegateEvents, delegateNames, handlerHover } from './delegate.js';
 import { sectionCompletions } from './sections.js';
 import { contractFunctionsAt } from './contract-functions.js';
 import { HOLE_TRIGGER_CHARACTERS, holeArgumentContextAt, slotsAround } from './hole-args.js';
@@ -733,6 +733,13 @@ export function createFudicService(deps: FudicServiceContext): LanguageServicePl
                     range: rangeOf(document, control.span),
                   };
                 }
+              }
+
+              // `` in a handler's arguments and the name of a named handler (SDD-80 §4.8):
+              // words of the compiler's, which only the delegation's plan can explain.
+              const handler = handlerHover(cached, offset, region);
+              if (handler !== undefined) {
+                return { contents: { kind: 'markdown' as const, value: handler.value }, range: rangeOf(document, handler.span) };
               }
 
               // The attributes of a component's root `<template>` (BUG-42 §4.11).

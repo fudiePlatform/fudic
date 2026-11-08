@@ -25,6 +25,7 @@ import type { ImplementationIndex } from './implementations.js';
 import type { ApiGenerated } from './generated.js';
 import { generatedLenses, implementationLenses, typeLenses } from './lenses.js';
 import { catchesHover } from './catches-hover.js';
+import { ruleHover } from './rule-hover.js';
 import { loadHover } from './load-line.js';
 import { apiDefinition, apiHover, declaredTypes } from './navigation.js';
 import { apiSemanticTokens } from './semantic-tokens.js';
@@ -135,7 +136,7 @@ export function createFudapiService(deps: FudapiServiceContext): LanguageService
             const doc = apiDocumentOf(context, document, host);
             if (doc === undefined) return undefined;
             const offset = document.offsetAt(position);
-            return apiHover(doc, offset, host) ?? loadHover(doc, offset) ?? catchesHover(doc, offset) ?? textHover(doc, offset, translations);
+            return apiHover(doc, offset, host) ?? loadHover(doc, offset) ?? catchesHover(doc, offset) ?? ruleHover(doc, offset) ?? textHover(doc, offset, translations);
           });
         },
 

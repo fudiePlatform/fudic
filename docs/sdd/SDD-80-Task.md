@@ -5,7 +5,7 @@
 > `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` ·
 > `@fudic/diagnostics` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `worktree-pendiente` (worktree `.claude/worktrees/pendiente`), nacida de `main` en `1375967c`.
-> **Progreso:** 19 / 30 — `En curso`.
+> **Progreso:** 23 / 30 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina, y entrega cada fase con `pnpm typecheck` y `pnpm build`.
 La otra escribe los tests de cada fase (las tareas «Los tests de…») contra los criterios de SDD §6,
@@ -123,10 +123,14 @@ hover sobre `$value` y el completado son de la fase 7 (tarea 21). Ver SDD §8.2,
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 20 | 2 | **El editor del `.fudapi`.** `runs` con `remote` y sus explicaciones; `debounce`, `use`, `skip` solo en una regla `remote` (con los middlewares detrás de `use`); `remote` en el snippet `rule` y snippet nuevo `rule remote`; hover sobre `remote` y `debounce` (SDD §4.8) | `language-server` | `src/fudapi/completion.ts` · `src/fudapi/snippets.ts` · `src/fudapi/navigation.ts` |
-| [ ] | 21 | 17, 18 | **El editor del `.fud`.** `$event` y `$value` (solo donde vale, con su tipo) en los argumentos de un handler; hover sobre `$value` y sobre `@click.borrar`; eventos con nombre en el valor del marcador, con `.` en la palabra; el contexto del handler acepta `.` y `:` en el nombre del evento (SDD §4.8) | `language-server` | `src/services/ts-completion.ts` · `src/services/position.ts` · `src/services/delegate.ts` · `src/services/plugin.ts` |
-| [ ] | 22 | — | **Las gramáticas TextMate.** `@click.borrar` y `@fudic:result` enteros como evento; `remote` y `debounce` en el `.fudapi` (SDD §4.8) | `vscode` | `syntaxes/fudic.tmLanguage.json` · `syntaxes/fudapi.tmLanguage.json` |
-| [ ] | 23 | 20–22 | **Los tests de la fase, por el plugin del language server.** Criterios 32–37; aceptación LSP para el completado de `$value` y de `click.borrar`; `grammar.test.ts` para el 37 | `language-server` · `vscode` | `test/services/**` · `test/acceptance/**` · `test/grammar.test.ts` |
+| [x] | 20 | 2 | **El editor del `.fudapi`.** `runs` con `remote` y sus explicaciones; `debounce`, `use`, `skip` solo en una regla `remote` (con los middlewares detrás de `use`); `remote` en el snippet `rule` y snippet nuevo `rule remote`; hover sobre `remote` y `debounce` (SDD §4.8) | `language-server` | `src/fudapi/completion.ts` · `src/fudapi/snippets.ts` · `src/fudapi/navigation.ts` |
+| [x] | 21 | 17, 18 | **El editor del `.fud`.** `$event` y `$value` (solo donde vale, con su tipo) en los argumentos de un handler; hover sobre `$value` y sobre `@click.borrar`; eventos con nombre en el valor del marcador, con `.` en la palabra; el contexto del handler acepta `.` y `:` en el nombre del evento (SDD §4.8) | `language-server` | `src/services/ts-completion.ts` · `src/services/position.ts` · `src/services/delegate.ts` · `src/services/plugin.ts` |
+| [x] | 22 | — | **Las gramáticas TextMate.** `@click.borrar` y `@fudic:result` enteros como evento; `remote` y `debounce` en el `.fudapi` (SDD §4.8) | `vscode` | `syntaxes/fudic.tmLanguage.json` · `syntaxes/fudapi.tmLanguage.json` |
+| [x] | 23 | 20–22 | **Los tests de la fase, por el plugin del language server.** Criterios 32–37; aceptación LSP para el completado de `$value` y de `click.borrar`; `grammar.test.ts` para el 37 | `language-server` · `vscode` | `test/services/**` · `test/acceptance/**` · `test/grammar.test.ts` |
+
+*Al cerrarla:* `use` y `skip` también se ofrecen en una regla `server`; el editor lee `$value` y las
+marcas de un handler del plan del compilador (`handlerAt`), y la gramática pinta los tres valores de
+`runs`. El hover de `remote` y `debounce` vive en `fudapi/rule-hover.ts`. Ver SDD §8.2, 23–27.
 
 ## Fase 8 — el ejemplo y la documentación (3)
 

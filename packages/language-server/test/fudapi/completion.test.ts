@@ -25,8 +25,9 @@ const labels = (marked: string, files?: Readonly<Record<string, string>>, path?:
 describe('completion (criterion 28)', () => {
   describe('at column 0', () => {
     it('the declarations', () => {
-      expect(labels('|')).toEqual(DECLARATION_KEYWORDS);
-      expect(labels('type A\n  x  str\nge|')).toEqual(DECLARATION_KEYWORDS);
+      // And `rule remote`, a snippet with no keyword of its own (SDD-80 §4.8).
+      expect(labels('|')).toEqual([...DECLARATION_KEYWORDS, 'rule remote']);
+      expect(labels('type A\n  x  str\nge|')).toEqual([...DECLARATION_KEYWORDS, 'rule remote']);
     });
 
     it('after `load`: modes, `ttl`, policies, `page` and `buffer`; after `page`, its values', () => {
@@ -133,7 +134,7 @@ describe('completion (criterion 28)', () => {
     });
 
     it('`runs`, `validate-on`, `validity` and `compress`: their values', () => {
-      expect(labels('rule r\n  runs |')).toEqual(['both', 'server']);
+      expect(labels('rule r\n  runs |')).toEqual(['both', 'server', 'remote']);
       expect(labels('form f\n  validate-on blur |')).toEqual(['submit', 'blur', 'input']);
       expect(labels('form f\n  validity |')).toEqual(['rules', 'interacted']);
       expect(labels('chain\n  compress |')).toEqual(['gzip', 'deflate', 'deflate-raw', 'off']);

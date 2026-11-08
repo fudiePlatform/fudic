@@ -32,11 +32,14 @@ import type { TextDocument } from 'vscode-languageserver-textdocument';
 import {
   CLASS_PREFIX,
   ERROR_NAME,
+  EVENT_ARGUMENT,
+  VALUE_ARGUMENT,
   PROPERTY_PREFIX,
   SUMMARY_NAME,
   regionAt,
   type ElementNode,
   type Region,
+  type ValueReader,
 } from '@fudic/compiler';
 import { clientFileName, mapToSource, type VirtualFile } from '@fudic/language-core';
 import { URI } from 'vscode-uri';
@@ -53,6 +56,7 @@ import {
   memberContextAt,
   eventContextAt,
   expressionValueContextAt,
+  handlerArgumentsAt,
   handlerContextAt,
   valueBegun,
   propertyContextAt,
@@ -78,6 +82,7 @@ import { contractFunctionsAt } from './contract-functions.js';
 import { styleClassNames } from './classes.js';
 import { scopeAt, snippetsAt } from './snippets.js';
 import { awaitedFieldAt, laterFields } from './await.js';
+import { handlerFacts } from './delegate.js';
 import { interpolates, scopeNames, templateScope, type TemplateScope } from './template-scope.js';
 import { inPortableView, portableItems } from './view-completion.js';
 
@@ -473,6 +478,17 @@ function allowedItems(
   // otherwise recognise its own shape in it and answer with a list where the compiler is
   // reporting an error.
   if (brokenValueContextAt(source.cached.source, offset, region)) return { items: [], at: offset };
+
+  // The arguments of a handler's call: `@change=@activar(p, |)` (SDD-80 §4.8). The names in scope
+  // stay what TypeScript says, and beside them the two the compiler gives a handler: `$event`
+  // always, `$value` only where the plan finds a control for it — with its type, so the list
+  // already says what the function will receive. Both are `$`, which is why the scaffolding
+  // filter took them out and they are put back here, in the one place they exist.
+  const args = handlerArgumentsAt(source.cached.source, offset, region);
+  if (args !== undefined) {
+    const range = plainAnchor(document, position, args);
+    return { items: [...visible, ...anchored(handlerArgumentItems(handlerFacts(source.cached, args.attribute).value), range)], at: offset };
+  }
 
   // Right of the `=`, with nothing opened yet: `.name=|`, `@click=|`. The value of a prop or an
   // event is an expression over what the TEMPLATE can see, so that scope IS the list — offered
@@ -1344,6 +1360,20 @@ function anchored(
     const newText = item.insertText ?? item.label;
     return { ...item, textEdit: { range, newText } };
   });
+}
+
+/**
+ * `$event` and, where there is a control to read, `$value` with its type (SDD-80 §4.8):
+ * `boolean — checked of the checkbox`. First in the list, as the names a handler's call is
+ * most often written with.
+ */
+function handlerArgumentItems(value: ValueReader | undefined): CompletionItem[] {
+  const event: CompletionItem = { label: EVENT_ARGUMENT, kind: CompletionItemKind.Variable, detail: 'Event — the event that fired', sortText: `0_${EVENT_ARGUMENT}` };
+  if (value === undefined) return [event];
+  return [
+    event,
+    { label: VALUE_ARGUMENT, kind: CompletionItemKind.Variable, detail: `${value.type} — ${value.what}`, sortText: `0_${VALUE_ARGUMENT}` },
+  ];
 }
 
 function escapeHatch(): CompletionItem {

@@ -33,7 +33,7 @@ const ROOT: Readonly<Record<string, Snippet>> = {
   form: { body: 'form ${1:name}\n\n  ${2:field}  ${3:str} = ${4:""}\n    required  "${5:Write it.}"$0', detail: 'A form and its rules' },
   type: { body: 'type ${1:Name}\n  ${2:field}  ${3:str}$0', detail: 'A type' },
   enum: { body: 'enum ${1:Name}\n  ${2:value}$0', detail: 'An enum' },
-  rule: { body: 'rule ${1:name}\n  on field ${2:str}\n  runs ${3|both,server|}\n  fails ${4:code}$0', detail: 'A validation rule' },
+  rule: { body: 'rule ${1:name}\n  on field ${2:str}\n  runs ${3|both,server,remote|}\n  fails ${4:code}$0', detail: 'A validation rule' },
   middleware: { body: 'middleware ${1:name}\n  fails ${2:code} ${3:401} "${4:detail}"$0', detail: 'A middleware' },
   pattern: { body: 'pattern ${1:name} "${2:regex}"$0', detail: 'A named pattern' },
   pipe: { body: 'pipe ${1:name}\n  on ${2:str}$0', detail: 'A pipe' },
@@ -57,6 +57,21 @@ const FORM: Readonly<Record<string, Snippet>> = {
   summary: { body: 'summary\n  ${1}', detail: 'Rules over the whole form' },
   'validate-on': { body: 'validate-on ${1|submit,blur,input|}', detail: 'When its rules run' },
 };
+
+/**
+ * The root snippets that are not the expansion of a keyword: `rule remote` (SDD-80 §4.8), offered
+ * beside `rule`, which keeps its own.
+ */
+export const ROOT_EXTRA: readonly CompletionItem[] = [
+  snippet(
+    'rule remote',
+    {
+      body: 'rule ${1:name}\n  on field ${2:str}\n  runs remote\n  debounce ${3:300}\n  fails ${4:code}$0',
+      detail: 'A rule the browser asks the server while typing',
+    },
+    0,
+  ),
+];
 
 /** The snippets of each place a line can be, by the name of its context. */
 export const SNIPPETS: Readonly<Record<'root' | 'fn' | 'form', Readonly<Record<string, Snippet>>>> = { root: ROOT, fn: FN, form: FORM };
