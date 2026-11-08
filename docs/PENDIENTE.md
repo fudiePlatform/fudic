@@ -82,6 +82,12 @@ emite el compilador a sus entradas en web-features.
 
 ### 5. Fixtures del `load` de las páginas
 
+> **Redactada el 2026-11-08** como [SDD-82](sdd/SDD-82-specs-de-pagina-y-de-flujo.md) (specs de
+> página y de flujo), que depende de [SDD-81](sdd/SDD-81-ficheros.md) (el tipo `file`). Lo de abajo
+> es la nota original. Dos cosas cambiaron: `$Data` no hace falta, porque el `.fudapi` ya genera
+> `LoadData` y ahora genera `Fixtures`; y `data` va en `given`, con la ruta en la cabecera
+> (`page /usuarios`).
+
 **Sin frontmatter** ni gramática nueva en `.fud` ni en `.fudapi`: costaría LSP, VS Code y otra
 dependencia. Se repite el patrón que ya tienen los componentes (SDD-52/53): `<tag>.fixture.ts` con
 `$Props`, y `props <x>` en la `.fudspec` con completado, hover, ir a la definición, `FUD0950`–`0953`
