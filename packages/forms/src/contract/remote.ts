@@ -42,6 +42,12 @@ export interface Question {
   readonly args: unknown;
   /** The errors of a verdict: `null` passes, a code fails with it. */
   readonly answer: (code: string | null) => Errors | null;
+  /**
+   * How the question is sent: the client halves of the rule's chain around `fetch`
+   * (`ruleSend` of `@fudic/http/contract`), so it carries the `csrf` header a function's call
+   * carries. A bare `fetch` when the module gives none.
+   */
+  readonly send?: (url: URL, init: RequestInit & { readonly headers: Headers; readonly signal: AbortSignal }) => Promise<Response>;
 }
 
 /** The validator of one use, as a control calls it: the value, its root, and the mark of the pass. */
@@ -66,6 +72,7 @@ export function askRemote(q: Question): Asking {
   const types = { value: q.value, params: { fields: () => q.params } };
   const path = `${RULE_PREFIX}/${q.id}/${q.name}`;
   const cache = new Map<string, Errors | null>();
+  const send = q.send ?? ((url: URL, init: RequestInit) => fetch(url, init));
   let waiting: Waiting | undefined;
 
   /** Stops the wait and the question in flight: what they were asked passes. */
@@ -84,7 +91,7 @@ export function askRemote(q: Question): Asking {
       if (q.sig !== undefined) headers.set(SIG_HEADER, q.sig);
       const body = wire.encodeArgs(types, { value, params: q.args }) as BodyInit;
       const url = new URL(path, globalThis.location.origin);
-      const response = await fetch(url, { method: 'POST', headers, body, signal, credentials: 'same-origin' });
+      const response = await send(url, { method: 'POST', headers, body, signal, credentials: 'same-origin' });
       if (response.status !== 200) return undefined;
       const bytes = new Uint8Array(await response.arrayBuffer());
       // `str?` reads a `null` back absent.

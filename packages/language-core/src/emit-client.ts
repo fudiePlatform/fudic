@@ -137,7 +137,7 @@ export function emitClientVirtual(
   if (ast !== undefined) {
     emitBusReceivers(w, fudPath, busReceivers(source, doc, template.topLevel ?? new Set(), ast));
   }
-  emitFormResults(w, formResults(source, doc));
+  emitFormResults(w, formResults(source, doc, servers));
 
   return w.build(clientFileName(fudPath), 'typescript');
 }

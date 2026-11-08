@@ -5,7 +5,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { emitClient } from './_support.js';
+import { emitClient, registryOf } from './_support.js';
+import type { FileRegistry } from '../src/index.js';
 
 const component = (tag: string, code: string, markup: string, before = ''): string =>
   `${before}@code {\n${code}\n}\n\n<${tag}>\n  <template shadowrootmode="open">\n    ${markup}\n  </template>\n</${tag}>\n`;
@@ -91,6 +92,13 @@ describe('the registry of form results (§4.7)', () => {
     );
     expect(entry(out)).toBe('"x-user": $Result<typeof save> | $Result<typeof api.update> | $FormResult<"x-address">');
     expect(out.trimEnd().endsWith('export {};')).toBe(true);
+  });
+
+  it('a form:= sent to a function of the contract the file links registers it too', () => {
+    // `user-form.fud` of the example: `save` comes from its `<link rel="server">`, not from the `@code`.
+    const servers: FileRegistry = { ...registryOf({}), servers: () => [{ id: 'components/x-user', load: false, names: ['save', 'personForm'] }] };
+    const out = emitClient(component('x-user', '  const x = 1;', '<form control=@personForm form:=@save></form>'), 'components/x-user.fud', servers).text;
+    expect(entry(out)).toBe('"x-user": $Result<typeof save>');
   });
 
   it('a form:= the @code does not name, or that is not a path, registers nothing', () => {

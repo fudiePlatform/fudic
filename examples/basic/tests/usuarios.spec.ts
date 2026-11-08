@@ -320,7 +320,8 @@ test.describe('user-form', () => {
     });
     await Promise.all([saved(page, 200), submit(page)]);
     await expect(form(page).getByText(/Guardado: Nuevo \(id \d+\)/u)).toBeVisible();
-    // The component emits the person on the bus and the route paints the row: no reload.
+    // The form's `fudic:result` reaches the host, `<user-form @fudic:result=@alta>`, and the
+    // route paints the row: no reload (SDD-80 criterion 29).
     await expect(row(page, 'Nuevo')).toContainText('nuevo@fudic.dev');
     // And the form is back as declared, ready for the next one.
     await expect(form(page).getByLabel('Nombre')).toHaveValue('');
@@ -375,8 +376,8 @@ test.describe('user-form', () => {
       await Promise.all([saved(page, 200), submit(page)]);
       await expect(row(page, name)).toHaveCount(1);
     }
-    // Seven more rows, each with a checkbox and a button, and not one more listener: the two
-    // on the `<tbody>` serve them all.
+    // Seven more rows, each with a checkbox and two buttons, and not one more listener: the
+    // three on the `<tbody>` serve them all (SDD-80 criterion 25).
     expect(await probe()).toMatchObject({ add: 0 });
 
     // A new row toggles like the old ones (its own person reaches the handler)…
@@ -393,5 +394,58 @@ test.describe('user-form', () => {
       await row(page, name).getByRole('button', { name: 'Borrar' }).click();
       await expect(row(page, name)).toHaveCount(0);
     }
+  });
+});
+
+test.describe('SDD-80: one row, three handlers, three listeners (criteria 24, 25, 39)', () => {
+  /** Every listener added to the `<tbody>`, by its event, counted before anything loads. */
+  async function countTbody(page: Page): Promise<() => Promise<string[]>> {
+    await page.addInitScript(() => {
+      const seen: string[] = [];
+      (window as unknown as { __tbody: string[] }).__tbody = seen;
+      const add = EventTarget.prototype.addEventListener;
+      EventTarget.prototype.addEventListener = function (this: EventTarget, ...args: Parameters<typeof add>) {
+        if (this instanceof Element && this.localName === 'tbody') seen.push(args[0]);
+        return add.apply(this, args);
+      };
+    });
+    return () => page.evaluate(() => [...(window as unknown as { __tbody: string[] }).__tbody].sort());
+  }
+
+  test('«Ver» paints the card and calls nothing; «Borrar» only deletes; the box only saves', async ({ page }) => {
+    const listeners = await countTbody(page);
+    await open(page, 'ana');
+    const calls: string[] = [];
+    page.on('request', (r) => {
+      if (r.url().includes(FN)) calls.push(new URL(r.url()).pathname.slice(FN.length + 1));
+    });
+
+    await row(page, 'Luis').getByRole('button', { name: 'Ver' }).click();
+    await expect(page.locator('.ficha')).toContainText('luis@fudic.dev');
+    await expect(row(page, 'Luis')).toHaveCount(1);
+    expect(calls).toEqual([]);
+
+    const marta = row(page, 'Marta').getByLabel('Activo');
+    const wasChecked = await marta.isChecked();
+    const saved = page.waitForResponse((r) => r.url().endsWith(`${FN}/save`));
+    await marta.click();
+    await saved;
+    await expect(marta).toBeChecked({ checked: !wasChecked });
+    // Back as it was, so the next test finds Marta as it always does.
+    const back = page.waitForResponse((r) => r.url().endsWith(`${FN}/save`));
+    await marta.click();
+    await back;
+    expect(calls).toEqual(['save', 'save']);
+
+    // Three on the `<tbody>`, however many rows: `change`, and a `click` per named handler.
+    expect(await listeners()).toEqual(['change', 'click', 'click']);
+  });
+
+  test('the search sends what was typed, read with `$value`', async ({ page }) => {
+    await open(page);
+    const searched = page.waitForRequest((r) => r.url().includes(`${FN}/search`));
+    await page.getByRole('searchbox', { name: 'Buscar por nombre' }).fill('Mar');
+    await searched;
+    await expect(page.locator('ul li', { hasText: 'Marta' })).toBeVisible();
   });
 });

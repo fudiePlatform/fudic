@@ -337,7 +337,7 @@ Uno por uso (un campo, una regla). Guarda un temporizador, un `AbortController` 
 
 1. Si la caché tiene el valor, contesta con lo guardado, sin red.
 2. Si no, espera `debounce` ms. Una llamada nueva antes de que venza reinicia la espera.
-3. Pregunta por `fetch` con su `AbortSignal`. Una llamada nueva aborta la pregunta en vuelo; la época
+3. Pregunta por `fetch` con su `AbortSignal`, a través de las mitades de cliente de su cadena (§8.2.28). Una llamada nueva aborta la pregunta en vuelo; la época
    de `control.ts` ya descarta lo que llegue tarde.
 4. Respuesta 200: el veredicto se convierte en errores igual que hoy (`errorFor`) y se guarda.
 5. **Cualquier otra cosa** (red caída, 401, 429, 500): pasa como válido, no se guarda y no pinta nada.
@@ -526,7 +526,8 @@ contestó hasta que contesta (o se aborta y pasa como válido).
 **Eventos del formulario en el host**
 
 29. Con `<user-form @fudic:result=@alta>`, dar de alta una persona llama a `alta` con la `Person`
-    que devolvió el servidor; con un 409, `@fudic:error=@fallo` recibe el `HttpError`.
+    que devolvió el servidor; con un status que el formulario no guarda, `@fudic:error=@fallo` recibe
+    el `HttpError` (un 409 que guarda su `catches` se pinta en el formulario, §8.2.30).
 30. Con dos niveles (un componente que envuelve `user-form`, con `@fudic:result` en los dos hosts),
     los dos handlers reciben el dato.
 31. En el editor, `alta(persona: Person)` no da error y el hover dice `Person`;
@@ -694,3 +695,22 @@ Nada. Esta SDD cierra formularios y delegación de eventos.
 27. **La gramática pinta los tres valores de `runs`** con el mismo ámbito
     (`constant.language.runs.fudapi`), no solo `remote`: es una palabra cerrada, como las
     estrategias de `load`.
+28. **La pregunta recorre las mitades de cliente de su cadena** (`[$global, la suya]`), como la
+    llamada de una función. Sin ellas el servidor la rechaza antes del check: en el ejemplo,
+    `csrf` daba 403 y la regla pasaba siempre como válida. `@fudic/http/contract` exporta
+    `ruleSend(nombre, () => cadena)`, que el módulo de navegador de una regla `remote` le pasa a
+    `askRemote` como `send`; está en la pieza `http/contract`, para que la cadena y el registro de
+    las mitades sean los de la página. La cadena se lee en la primera pregunta, no al cargar el
+    módulo: un build puede evaluar el de las reglas antes que el de `$global`. La respuesta vuelve
+    tal cual, sin `HttpError`, así que `error-pages` nunca saca de la página por una pregunta.
+29. **La primera pregunta sale al dejar el campo** cuando el formulario dice `validity interacted`
+    (el del ejemplo): `input` valida en cada cambio solo después de haber dejado el campo una vez
+    (SDD-34). A partir de ahí se pregunta mientras se escribe, que es el criterio 38.
+30. **Un status que el formulario se queda (`catches`) no llega al host.** El 409 del criterio 29
+    lo pinta el formulario y no se anuncia, como siempre (SDD-72). Lo que llega al host es
+    `fudic:error` para un status que el formulario no guarda; en el ejemplo `error-pages` se
+    queda con todos ellos, así que esa mitad se prueba en `@fudic/forms` (dos niveles de shadow
+    root), y el ejemplo prueba `fudic:result` en el host.
+31. **El registro `FudicFormResults` cuenta las funciones del contrato.** Un `form:=@save` cuyo
+    `save` llega por `<link rel="server">` (como en `user-form.fud`) también registra: esos
+    nombres se declaran arriba del módulo de la proyección, igual que los del `@code`.

@@ -152,12 +152,17 @@ function ruleOf(d: RuleDecl, c: ModuleCtx): string {
   const onServer = runs === 'server' || remote;
   const json = remote && effective(c, d).includes('json');
   if (remote) c.wires.add(json ? 'json' : 'bin');
-  if (remote && c.side === 'browser') c.forms.add('askRemote');
+  if (remote && c.side === 'browser') {
+    c.forms.add('askRemote');
+    c.http.add('ruleSend');
+  }
   const flags = [
     ...(runs === 'server' || (remote && c.side === 'server') ? ['server: true'] : []),
     ...(remote ? ['remote: true', 'async: true'] : d.async !== undefined ? ['async: true'] : []),
     ...(runs === 'server' && c.side === 'browser' ? ['never: true'] : []),
     ...(remote && c.side === 'browser' ? [`debounce: ${d.debounce?.value.value ?? DEBOUNCE}`, 'ask: askRemote'] : []),
+    // The question walks the client halves of the rule's chain, as a function's call does (§8.2.28).
+    ...(remote && c.side === 'browser' ? [`send: ruleSend(${str(d.name.text)}, () => ${ruleChain(level(d.uses, d.skips, undefined, c), c)})`] : []),
     ...(remote ? [`value: ${ruleValue(d, c)}`, `params: ${descriptors(d.params, c)}`] : []),
     ...(remote ? [`wire: ${json ? 'jsonWire' : 'binWire'}`] : []),
     ...(remote && !json ? [`sig: ${str(fnv1a(ruleCanonical(d, c.index)))}`] : []),

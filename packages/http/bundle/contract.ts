@@ -17,6 +17,8 @@
 
 export { fn, stub, pathOf, contractsOf, SIG_HEADER } from '../src/contract/fn.js';
 export { page } from '../src/contract/page.js';
+// The door a `runs remote` rule asks through: the client halves of its chain (SDD-80).
+export { ruleSend } from '../src/contract/rule-send.js';
 // What a `.fudapi` with `load` hands its `page` to read the data endpoint's frames with (SDD-70).
 export { readFrames } from '../src/wire/frames.js';
 export { compose, middleware, use } from '../src/contract/middleware.js';

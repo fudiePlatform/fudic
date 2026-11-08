@@ -244,6 +244,28 @@ emailTaken.check(async (value) => !taken.has(value));
   valid value (with several `fails`, `true` or the failing code).
 - `pattern <name>  <regex>`: the rest of the line (`#` too), matched whole; `""` passes. `email` is built in.
 
+```fudapi path=src/rules/aliases.fudapi
+# The alias is taken. The browser asks the server while the user types; the submit checks it again.
+rule alias-taken
+  on field str
+  runs remote
+  debounce 300
+  fails alias-taken
+```
+
+- `runs remote`: `.check` goes in `src/server`, as with `runs server`, and the browser asks it
+  while the user types — `POST /_fudic/rule/<id>/<name>` with the value the rule watches and the
+  parameters of its use, never the whole form; binary, JSON with `use json`. `debounce <ms>`
+  (300 when not written) is the wait after the last change; `async` is implied. A question that
+  fails (network, 401, 429, 500) passes as valid: the submit runs the rule on the server again.
+  In the view, `personForm.alias.pending()` (and the form's `$pending()`) is `true` until it answers.
+- A `runs server` or `runs remote` rule takes `use` and `skip` as a function does (`FUD1461` in a
+  `runs both` one). They run around its check on the submit and when it is asked, and its
+  `.check` gets a third argument, `ctx`, with what they add: `(value, params, ctx) => …` reads
+  `ctx.user` after `use auth`.
+- **Mind what a remote rule tells.** An endpoint that answers «is this email taken?» tells anyone
+  who is registered. If that matters, put a middleware on it (`use rate-limit`, written by you).
+
 ## Middlewares and the chain
 
 ```fudapi path=src/middlewares/auth.fudapi

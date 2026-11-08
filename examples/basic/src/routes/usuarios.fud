@@ -19,8 +19,8 @@
   const quitar = task(remove);
 
   // La tabla pinta esta señal, que arranca con lo que trajo `load`. Activar y borrar la ponen
-  // al día cuando el servidor dice que sí; las altas de `user-form` llegan por el bus con la
-  // persona que devolvió el servidor y se suman a ella. Nada recarga y nada pide la lista otra
+  // al día cuando el servidor dice que sí; las altas de `user-form` llegan en su `@fudic:result`
+  // con la persona que devolvió el servidor y se suman a ella. Nada recarga y nada pide la lista otra
   // vez.
   const personas = signal(data.users);
 
@@ -28,8 +28,9 @@
     personas.set([...personas(), persona]);
   }
 
-  function buscar(e: Event) {
-    texto.set((e.target as HTMLInputElement).value);
+  // `$value` es el valor del buscador, ya como `string`: sin `e.target` ni cast.
+  function buscar(q: string) {
+    texto.set(q);
   }
 
   function buscarLento() {
@@ -47,10 +48,10 @@
   // En optimista: primero la señal, luego el servidor, y si no sale bien se deshace. La casilla
   // sigue a la señal en cada repintado, así que no hay que tocarla a mano; el motivo de un error
   // que se queda en la página (`catches 409`) lo pinta la vista con `guardar.message()`.
-  // Las dos reciben la persona de la fila pulsada: la tabla tiene un listener por evento en el
+  // Las tres reciben la persona de la fila pulsada: la tabla tiene un listener por handler en el
   // `<tbody>`, no uno por fila, y cada fila se marca con `delegate:p` para el evento que sirve.
-  async function activar(p: Person, e: Event) {
-    const active = (e.target as HTMLInputElement).checked;
+  // `activar` recibe además `$value`, el `checked` de la casilla de esa fila, ya como `boolean`.
+  async function activar(p: Person, active: boolean) {
     marcar(p.id, active);
     const guardado = await guardar.run({ id: p.id, active });
     if (!guardado.ok) {
@@ -62,7 +63,17 @@
     const borrado = await quitar.run({ id: p.id });
     if (borrado.ok) {
       personas.set(personas().filter((x) => x.id !== p.id));
+      vista.set(vista().filter((x) => x.id !== p.id));
     }
+  }
+
+  // La ficha de la persona pulsada. *Borrar* y *Ver* son dos `click` en la misma fila: cada botón
+  // pide el suyo por nombre (`delegate:p="click.ver"`) y el `<tbody>` los separa
+  // (`@click.ver`, `@click.borrar`). Una lista de cero o una persona, para pintarla con su tipo.
+  const vista = signal<Person[]>([]);
+
+  function ver(p: Person) {
+    vista.set([p]);
   }
 
   // Entrar y salir son dos funciones del servidor: ponen y quitan la cookie. Las dos nombran
@@ -126,6 +137,15 @@
       border-collapse: collapse;
       width: 100%;
     }
+    .ficha {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.2rem 0.8rem;
+      margin: 0;
+    }
+    .ficha dd {
+      margin: 0;
+    }
     th, td {
       text-align: left;
       padding: 0.35rem 0.5rem;
@@ -168,29 +188,42 @@
 </div>
 
 <h2>Personas</h2>
-<div class="panel" bus:alta=@alta>
+<div class="panel">
   <table>
     <thead>
-      <tr><th>Nombre</th><th>Email</th><th>Edad</th><th>Activo</th><th></th></tr>
+      <tr><th>Nombre</th><th>Email</th><th>Edad</th><th>Activo</th><th></th><th></th></tr>
     </thead>
-    <tbody @change=@activar(p, $event) @click=@borrar(p)>
+    <tbody @change=@activar(p, $value) @click.borrar=@borrar(p) @click.ver=@ver(p)>
       @foreach (const p of personas()) key (p.id) {
         <tr>
           <td>@p.name</td>
           <td>@p.email</td>
           <td>@p.age</td>
           <td><input type="checkbox" checked=@p.active delegate:p="change" aria-label="Activo"></td>
-          <td><button delegate:p="click">Borrar</button></td>
+          <td><button delegate:p="click.ver">Ver</button></td>
+          <td><button delegate:p="click.borrar">Borrar</button></td>
         </tr>
       }
     </tbody>
   </table>
+  @foreach (const v of vista()) key (v.id) {
+    <dl class="ficha" aria-label="Ficha">
+      <dt>Nombre</dt><dd>@v.name</dd>
+      <dt>Email</dt><dd>@v.email</dd>
+      <dt>Edad</dt><dd>@v.age</dd>
+      <dt>Notas</dt><dd>@(v.notes === "" ? "—" : v.notes)</dd>
+    </dl>
+  }
   @if (guardar.message() !== "") {
     <p role="alert">@guardar.message()</p>
   }
   <p>
-    La tabla usa un listener por evento en el <code>&lt;tbody&gt;</code>, tenga las filas que
-    tenga. Marcar o desmarcar <em>Activo</em> y <em>Borrar</em> no recargan la página. En Network sale
+    La tabla usa un listener por handler en el <code>&lt;tbody&gt;</code>, tenga las filas que
+    tenga: <code>change</code> para la casilla y dos <code>click</code>, uno con nombre para cada
+    botón (<code>@@click.ver</code> y <code>@@click.borrar</code>), así que <em>Ver</em> nunca llega a
+    <em>Borrar</em>. La casilla pasa <code>$value</code>, su <code>checked</code>, ya como
+    <code>boolean</code>. <em>Ver</em> pinta la ficha de la persona debajo de la tabla. Marcar o
+    desmarcar <em>Activo</em> y <em>Borrar</em> no recargan la página. En Network sale
     el <code>save</code> o el <code>remove</code> y nada más: la tabla ya sabe qué cambió y se
     repinta sola, sin perder el scroll ni el foco. Si el servidor dice que no, la casilla vuelve
     a como estaba. Si marcas deprisa varias veces, los <code>save</code> salen en fila, uno
@@ -206,7 +239,7 @@
 <h2>Buscar</h2>
 <div class="panel">
   <div class="row">
-    <input type="search" placeholder="Nombre…" aria-label="Buscar por nombre" @input=@buscar>
+    <input type="search" placeholder="Nombre…" aria-label="Buscar por nombre" @input=@buscar($value)>
     <span role="status">@(found.pending() ? "Buscando…" : "")</span>
   </div>
   <p>
@@ -243,10 +276,11 @@
   El formulario es <code>user-form</code>, un componente con su propia función
   <code>save</code>. Sus controles son todos tipados, así que sube en binario; con unas notas
   largas, además comprimido. Prueba un email que ya existe: el error lo pone el servidor. Al
-  guardar, el componente emite la persona por el bus y la tabla de arriba la recoge, sin
-  recargar la página.
+  guardar, el <code>fudic:result</code> de su formulario sale del componente y esta página lo
+  escucha en el tag, <code>&lt;user-form @@fudic:result=@@alta&gt;</code>, con la persona ya
+  tipada: la tabla de arriba la recoge sin recargar la página.
 </p>
-<user-form></user-form>
+<user-form @fudic:result=@alta></user-form>
 
 <h2>Errores</h2>
 <div class="panel">

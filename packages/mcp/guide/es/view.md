@@ -51,7 +51,7 @@ No permitidos (`FUD1142`): `==`, `!=`, `typeof`, `instanceof`, `in`, `void`, `+`
 
 ## Llamadas: solo lecturas reactivas
 
-La única llamada que hace la vista es leer un valor reactivo, sin argumentos: una `signal`, un `computed`, un formulario o uno de sus controles (`count()`, `form.$valid()`, `field.errors()`). Más `t("…")` de `@fudic/i18n`, solo como valor de una prop, y las cinco operaciones de colección.
+La única llamada que hace la vista es leer un valor reactivo, sin argumentos: una `signal`, un `computed`, un formulario o uno de sus controles (`count()`, `form.$valid()`, `field.errors()`, `field.pending()` mientras una regla remota no ha contestado: `@if (form.alias.pending()) { <small>Comprobando…</small> }`). Más `t("…")` de `@fudic/i18n`, solo como valor de una prop, y las cinco operaciones de colección.
 
 Todo lo demás es `FUD1140`: una función de `@code` (`@format(x)`), un import, un método de cualquier prototipo (`find`, `some`, `includes`, `join`, `sort`, `slice`, `toFixed`, `toUpperCase`, `toLocaleString`), una llamada con `?.()`. `new` es `FUD1141`. Una arrow en cualquier sitio salvo como argumento de una operación de colección, y un template etiquetado, son `FUD0905`. `as`, `satisfies`, `x!` y los argumentos de tipo son `FUD1144`. Un literal de objeto o de array es `FUD1143`.
 

@@ -120,6 +120,18 @@
 
 <app-calendar-plain></app-calendar-plain>
 
+<h2>Dos botones con el mismo evento</h2>
+<p>
+  Una marca dice qué evento sirve, y con eso basta mientras cada evento tenga un solo handler.
+  Una fila con <em>Borrar</em> y <em>Ver</em> son dos <code>click</code>: para separarlos, cada
+  handler lleva un nombre detrás del evento, <code>@@click.borrar=@@borrar(p)</code> y
+  <code>@@click.ver=@@ver(p)</code>, y cada botón pide el suyo con el mismo texto,
+  <code>delegate:p="click.borrar"</code> o <code>delegate:p="click.ver"</code>. El
+  <code>&lt;tbody&gt;</code> tiene un listener de <code>click</code> por handler, no uno por
+  fila, y una marca sin nombre no la lee ningún handler con nombre: el <code>click</code> de
+  <em>Ver</em> nunca llega a <em>Borrar</em>. Lo tienes en <a href="/usuarios">/usuarios</a>.
+</p>
+
 <h2>Y lo mismo en un formulario</h2>
 <p>
   Doce campos. Cada uno necesita <code>input</code>, <code>change</code> y el momento en que

@@ -67,6 +67,17 @@ An `@event` inside a loop adds one listener per item, and the compiler warns abo
   reads it.
 - **One marker per variable**: `delegate:p delegate:i` lets the handler read `p` and `i`. A fixed
   value is written in the handler, `@remove(p.id, 123)`.
+- **`$value` is the value of the control**, typed, like `$event` only in the arguments of a
+  handler's call: `@change=@toggle(p, $value)` hands `toggle` the `checked` of the box of that
+  row, a `boolean`. Delegated, it reads the marked element that serves the handler, never the
+  `target`; on its own element, the element that carries the `@event`. The readers are the ones
+  `control=` binds with: a `number` is `number | null`, a `<select multiple>` `string[]`. Where
+  there is no control to read — a `<div>`, `bus:`, `@fudic:*` — it is `FUD1462`.
+- **Two handlers of one event take a name each**: `@click.remove=@remove(p) @click.view=@view(p)`
+  on the `<tbody>`, `delegate:p="click.remove"` and `delegate:p="click.view"` on the buttons. A
+  marker with a name is read only by the handler of that name, so *View* never reaches *Remove*.
+  A named handler exists only delegated (`FUD1466`), and each one is one listener of its event on
+  the parent, whatever the number of rows.
 - A click outside every row calls nothing. Nothing is written to the DOM for the marker.
 
 ### `@empty`

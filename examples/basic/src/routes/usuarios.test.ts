@@ -82,6 +82,9 @@ async function usuarios(options: Parameters<typeof visit>[1] = {}) {
 const rows = (): HTMLTableRowElement[] => [...document.querySelectorAll('tbody tr')] as HTMLTableRowElement[];
 const rowOf = (name: string): HTMLTableRowElement => rows().find((r) => r.cells[0]!.textContent === name)!;
 const activeOf = (name: string): HTMLInputElement => rowOf(name).querySelector('input[type="checkbox"]')!;
+/** The button of a row by its text: *Ver* and *Borrar* are both there (SDD-80). */
+const buttonOf = (name: string, text: string): HTMLButtonElement =>
+  [...rowOf(name).querySelectorAll('button')].find((b) => b.textContent === text)!;
 
 describe('criterion 15: unticking «Activo» repaints the row without reloading', () => {
   test('saves, asks for nothing else, and the row shows the new state', async () => {
@@ -235,11 +238,35 @@ describe('criterion 16: «Borrar» takes the row out, and the others stay the sa
     const page = await usuarios();
     const ana = rowOf('Ana');
     const marta = rowOf('Marta');
-    await page.click(rowOf('Luis').querySelector('button')!);
+    await page.click(buttonOf('Luis', 'Borrar'));
     expect(people.table.map((p) => p.name)).toEqual(['Ana', 'Marta']);
     expect(requests.filter((r) => r.startsWith('GET /_fudic/data/'))).toEqual([]);
     expect(rows()).toEqual([ana, marta]);
     expect(reload).not.toHaveBeenCalled();
+  });
+});
+
+describe('SDD-80 criterion 24: two `click` in one row, each to its own handler', () => {
+  const ficha = (): string => document.querySelector('.ficha')?.textContent ?? '';
+
+  test('«Ver» paints the card of the row and calls nothing else', async () => {
+    const page = await usuarios();
+    const before = rows();
+    await page.click(buttonOf('Luis', 'Ver'));
+    expect(ficha()).toContain('Luis');
+    // Not `borrar`, not `activar`: the table and the server are as they were.
+    expect(people.table.map((p) => p.name)).toEqual(['Ana', 'Luis', 'Marta']);
+    expect(requests.filter((r) => !r.startsWith('GET /_fudic/data/'))).toEqual([]);
+    expect(rows()).toEqual(before);
+  });
+
+  test('«Borrar» calls only `borrar`, and the card of the row it took out goes with it', async () => {
+    const page = await usuarios();
+    await page.click(buttonOf('Luis', 'Ver'));
+    await page.click(buttonOf('Luis', 'Borrar'));
+    expect(people.table.map((p) => p.name)).toEqual(['Ana', 'Marta']);
+    expect(requests.filter((r) => r.startsWith('PUT '))).toEqual([]);
+    expect(document.querySelector('.ficha')).toBeNull();
   });
 });
 

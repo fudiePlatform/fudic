@@ -125,6 +125,21 @@ describe('the question', () => {
     expect(q!.body).toEqual({ value: 'admin', params: {} });
   });
 
+  it('goes through the `send` the module gives, which adds what the chain adds (SDD-80 §8.2.28)', async () => {
+    const s = server();
+    const send = vi.fn((url: URL, init: RequestInit & { readonly headers: Headers; readonly signal: AbortSignal }) => {
+      init.headers.set('x-fudic-csrf', '1');
+      return fetch(url, init);
+    });
+    const { f, type } = aliasForm({ send });
+    const done = type('admin');
+    await wait(300);
+    expect(await done).toBe(false);
+    expect(f.alias.errors()).toEqual({ aliasTaken: true });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(s.asked[0]!.headers.get('x-fudic-csrf')).toBe('1');
+  });
+
   it('a free value passes', async () => {
     server();
     const { f, type } = aliasForm();

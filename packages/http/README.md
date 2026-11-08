@@ -180,6 +180,29 @@ auth.server((ctx, next) => {
 `browser/` and `server/`: installing `@fudic/http` makes them visible to every `.fudapi` of the
 app. So is `json`, which has no halves: it is a mark the compiler reads (see below).
 
+## Remote rules
+
+A rule of a `.fudapi` declared `runs remote` has a route, and only such a rule: a `runs server`
+one answers 404, so exposing a check is a decision written in the contract.
+
+```
+POST /_fudic/rule/<id>/<name>
+```
+
+The browser sends the value the rule watches and the parameters of that use — never the whole
+form — in the rule's format: `fud-bin` with its `fud-sig` by default, JSON with `use json`
+(`{ "value": "pedro", "params": {} }` → `{ "ok": true }` or `{ "ok": false, "fails": "alias-taken" }`).
+In front of the check run the signature (412), the shape of the value and of the parameters
+(400), the `$global` chain and the rule's own `use`; an error travels as a problem in the rule's
+format. The question walks the client halves of that chain too, as a function's call does, so it
+carries the `csrf` header; and since it is answered with the response as it came, `error-pages`
+never takes the page away for a question.
+
+Its own `use` run around the check on the submit as well (`withForm`; `$global` already ran
+around the function there), and the check reads what they add: `emailTaken.check(async (value, _params, ctx) => !(await inUse(value, ctx.user.id)))`
+after `use auth`. Mind what a remote rule tells: an endpoint that answers «is this email taken?»
+tells anyone who is registered. If that matters, put a middleware on it.
+
 ## Session
 
 The browser only talks to the app's own server, so the session lives in an `HttpOnly` cookie:

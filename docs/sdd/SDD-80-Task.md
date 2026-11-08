@@ -5,7 +5,7 @@
 > `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` ·
 > `@fudic/diagnostics` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `worktree-pendiente` (worktree `.claude/worktrees/pendiente`), nacida de `main` en `1375967c`.
-> **Progreso:** 23 / 30 — `En curso`.
+> **Progreso:** 26 / 30 — `En curso`.
 
 **Dos sesiones.** Una implementa y coordina, y entrega cada fase con `pnpm typecheck` y `pnpm build`.
 La otra escribe los tests de cada fase (las tareas «Los tests de…») contra los criterios de SDD §6,
@@ -136,9 +136,15 @@ marcas de un handler del plan del compilador (`handlerAt`), y la gramática pint
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 24 | 11, 15, 19 | **El ejemplo.** `alias-taken` en `runs remote`; «Comprobando…» con `pending()`; `usuarios.fud` con `$value` en `activar` y `buscar`, *Ver* con `@click.ver` y su ficha, `<user-form @fudic:result=@alta>` (y `user-form.fud` sin `emit("alta")` si nadie más lo escucha); párrafo en `delegacion.fud` (SDD §4.9) | `examples/basic` | `src/rules/people.fudapi` · `src/components/app-form.fud` · `src/routes/usuarios.fud` · `src/components/user-form.fud` · `src/routes/delegacion.fud` |
-| [ ] | 25 | 24 | **Los tests del ejemplo.** Criterios 38–39 en `dev`, `preview` y `nosw`; los de `usuarios.spec.ts` y `usuarios.test.ts` que miraban el bus o el cast, al día | `examples/basic` | `tests/**` · `src/**/*.test.ts` |
-| [ ] | 26 | 24 | **Guía y README.** `guide/fudapi.md`, `view.md`, `components.md` y `es/`, con el aviso de enumeración; README de `forms`, `compiler` y `http` (SDD §4.10) | `mcp` · varios | `packages/mcp/guide/**` · `packages/*/README.md` |
+| [x] | 24 | 11, 15, 19 | **El ejemplo.** `alias-taken` en `runs remote`; «Comprobando…» con `pending()`; `usuarios.fud` con `$value` en `activar` y `buscar`, *Ver* con `@click.ver` y su ficha, `<user-form @fudic:result=@alta>` (y `user-form.fud` sin `emit("alta")` si nadie más lo escucha); párrafo en `delegacion.fud` (SDD §4.9) | `examples/basic` | `src/rules/people.fudapi` · `src/components/app-form.fud` · `src/routes/usuarios.fud` · `src/components/user-form.fud` · `src/routes/delegacion.fud` |
+| [x] | 25 | 24 | **Los tests del ejemplo.** Criterios 38–39 en `dev`, `preview` y `nosw`; los de `usuarios.spec.ts` y `usuarios.test.ts` que miraban el bus o el cast, al día | `examples/basic` | `tests/**` · `src/**/*.test.ts` |
+| [x] | 26 | 24 | **Guía y README.** `guide/fudapi.md`, `view.md`, `components.md` y `es/`, con el aviso de enumeración; README de `forms`, `compiler` y `http` (SDD §4.10) | `mcp` · varios | `packages/mcp/guide/**` · `packages/*/README.md` |
+
+*Al cerrarla:* la pregunta de una regla remota recorre las mitades de cliente de su cadena
+(`ruleSend` en la pieza `http/contract`): sin ellas `csrf` la rechazaba con un 403. El registro
+`FudicFormResults` cuenta también las funciones del contrato (`user-form.fud`). `remote-rule.spec.ts`
+corre en las tres formas. El 409 del criterio 29 se queda en el formulario (`catches`); `fudic:error`
+en el host se prueba en `@fudic/forms`. Ver SDD §8.2, 28–31.
 
 ## Fase 9 — prueba y cierre (4)
 

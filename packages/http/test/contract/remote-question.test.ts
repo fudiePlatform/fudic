@@ -9,6 +9,10 @@ import { askRemote, control, form, rule, type RuleSpec } from '@fudic/forms/cont
 import { contractsHandler } from '../../src/contract/server.js';
 import { binWire } from '../../src/wire/bin.js';
 import { jsonWire } from '../../src/wire/json.js';
+import { middleware, use, type Level } from '../../src/contract/middleware.js';
+import { ruleSend, type RuleSend } from '../../src/contract/rule-send.js';
+import { CSRF_HEADER, csrfClient } from '../../src/csrf-client.js';
+import { csrfServer } from '../../src/csrf-server.js';
 
 const handle = contractsHandler();
 
@@ -154,5 +158,40 @@ describe('pending and the submit (criteria 15, 16)', () => {
     expect(await f.$validate()).toBe(true);
     await wait(300);
     expect(asked).toHaveLength(1);
+  });
+});
+
+describe('the question walks the client halves of its chain (SDD-80 §8.2.28, criterion 38)', () => {
+  /** `csrf` with both halves, as `@fudic/http` publishes it: the header, and its check. */
+  const csrf = middleware({ id: 'middlewares/question', name: 'csrf', client: true, server: true });
+  csrf.client(csrfClient);
+  csrf.server(csrfServer);
+  const global: Level = { steps: [{ use: [use(csrf)] }] };
+
+  function declareGuarded(id: string, send?: RuleSend) {
+    const shared = { id, name: 'alias-taken', fails: [['alias-taken', []]] as const, remote: true, async: true, value: 'str', params: {}, wire: binWire, sig: 'feedc0de' } satisfies RuleSpec;
+    rule<string>({ ...shared, server: true, chain: [global, { steps: [] }] }).check((v) => v !== 'admin');
+    return rule<string>({ ...shared, debounce: 0, ask: askRemote, ...(send !== undefined ? { send } : {}) });
+  }
+
+  it('through `ruleSend` it carries the csrf header, and the server answers the verdict', async () => {
+    const asked = serve();
+    const f = form({ alias: control('', [declareGuarded('rules/guarded', ruleSend('alias-taken', () => [global, { steps: [] }])).use()]) });
+    f.alias.set('admin');
+    const taken = f.alias.validate();
+    await wait(0);
+    expect(await taken).toBe(false);
+    expect(f.alias.errors()).toEqual({ aliasTaken: true });
+    expect(asked[0]!.headers.get(CSRF_HEADER)).toBe('1');
+  });
+
+  it('a bare fetch has no header: the server refuses it, and the refusal passes as valid', async () => {
+    const asked = serve();
+    const f = form({ alias: control('', [declareGuarded('rules/bare').use()]) });
+    f.alias.set('admin');
+    const answer = f.alias.validate();
+    await wait(0);
+    expect(await answer).toBe(true);
+    expect(asked[0]!.headers.has(CSRF_HEADER)).toBe(false);
   });
 });

@@ -58,6 +58,8 @@ export interface RuleSpec {
    * generated module hands it in, so only a page with a remote rule bundles it (SDD-80 §5).
    */
   readonly ask?: (question: Question) => Asking;
+  /** Of a remote rule, in the browser: how its question is sent, through its chain (`ruleSend`). */
+  readonly send?: Question['send'];
 }
 
 export interface Rule<V, P, C extends string = never, X = never> {
@@ -176,6 +178,7 @@ export function rule<V, P = {}, C extends string = never, X = never>(spec: RuleS
             params: spec.params,
             wire: spec.wire,
             ...(spec.sig !== undefined ? { sig: spec.sig } : {}),
+            ...(spec.send !== undefined ? { send: spec.send } : {}),
             args: params,
             // A code the declaration does not have fails as the first one, as a check's does.
             answer: (code) => errorFor(code ?? true, params),

@@ -16,8 +16,9 @@
  * export {};
  * ```
  *
- * Only a function the `@code` names — imported or declared — registers: `typeof` is written at
- * the end of the module, where nothing else exists. A component with no form and no component
+ * Only a function the module names at its top level registers — one the `@code` imports or
+ * declares, or one the file takes from its `<link rel="server">` —: `typeof` is written at the
+ * end of the module, where nothing else exists. A component with no form and no component
  * inside registers nothing, which reads as `never`.
  */
 
@@ -28,6 +29,7 @@ import {
   walk,
   type StructuredDocument,
 } from '@fudic/compiler';
+import type { ServerImport } from './types.js';
 import type { VirtualWriter } from './writer.js';
 
 /** The entry of one component: its tag and the members of its union. */
@@ -42,11 +44,14 @@ export interface FormResults {
 /** `save` or `api.save`: what `typeof` can be written over. */
 const PATH = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$/u;
 
-/** The entry of a component, or `undefined` for a page, a layout or a route. */
-export function formResults(source: string, doc: StructuredDocument): FormResults | undefined {
+/**
+ * The entry of a component, or `undefined` for a page, a layout or a route. `servers` are the
+ * contracts the file links: their names are declared at the top of the module too.
+ */
+export function formResults(source: string, doc: StructuredDocument, servers: readonly ServerImport[]): FormResults | undefined {
   if (doc.type !== 'component-document' || doc.host === undefined) return undefined;
   const tag = doc.host.name;
-  const names = doc.code === undefined ? new Set<string>() : codeNames(source, doc.code);
+  const names = new Set([...(doc.code === undefined ? [] : codeNames(source, doc.code)), ...servers.flatMap((s) => s.names)]);
   const sends = new Set<string>();
   const children = new Set<string>();
   walk(documentRoots(doc), {

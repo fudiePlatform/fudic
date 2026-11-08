@@ -65,6 +65,10 @@
     .error:empty {
       display: none;
     }
+    .comprobando {
+      color: var(--muted, #666);
+      font-size: 0.85rem;
+    }
     .resumen {
       border-left: 3px solid #b3261e;
       padding-left: 0.6rem;
@@ -104,6 +108,11 @@
       <div class="campo">
         <label for="ali">Alias <span aria-hidden="true">*</span></label>
         <app-input id="ali" .type="text" control=@userForm.alias></app-input>
+        @* `alias-taken` es remota: el navegador la pregunta al servidor mientras se escribe, y
+           `pending()` es verdad desde la tecla hasta la respuesta. *@
+        @if (userForm.alias.pending()) {
+          <small class="comprobando" role="status">Comprobando…</small>
+        }
         <app-error error=@userForm.alias></app-error>
       </div>
 

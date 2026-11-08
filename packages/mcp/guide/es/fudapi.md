@@ -244,6 +244,30 @@ emailTaken.check(async (value) => !taken.has(value));
   valor válido (con varios `fails`, `true` o el código que falla).
 - `pattern <name>  <regex>`: el resto de la línea (`#` incluido), que debe coincidir entero; `""` pasa. `email` viene incorporado.
 
+```fudapi path=src/rules/aliases.fudapi
+# The alias is taken. The browser asks the server while the user types; the submit checks it again.
+rule alias-taken
+  on field str
+  runs remote
+  debounce 300
+  fails alias-taken
+```
+
+- `runs remote`: `.check` va en `src/server`, como con `runs server`, y el navegador la pregunta
+  mientras se escribe — `POST /_fudic/rule/<id>/<name>` con el valor que la regla vigila y los
+  parámetros de ese uso, nunca el formulario entero; en binario, en JSON con `use json`.
+  `debounce <ms>` (300 si no se escribe) es la espera tras el último cambio; `async` va implícito.
+  Una pregunta que falla (red, 401, 429, 500) pasa como válida: el envío vuelve a ejecutar la regla
+  en el servidor. En la vista, `personForm.alias.pending()` (y `$pending()` del formulario) es
+  `true` hasta que contesta.
+- Una regla `runs server` o `runs remote` admite `use` y `skip` como una función (`FUD1461` en una
+  `runs both`). Corren alrededor de su check al enviar y al preguntar, y su `.check` recibe un
+  tercer argumento, `ctx`, con lo que añaden: `(value, params, ctx) => …` lee `ctx.user` tras
+  `use auth`.
+- **Ojo con lo que cuenta una regla remota.** Un endpoint que contesta «¿existe este email?» le dice
+  a cualquiera quién está registrado. Si importa, ponle un middleware (`use rate-limit`, escrito por
+  ti).
+
 ## Middlewares y la cadena
 
 ```fudapi path=src/middlewares/auth.fudapi

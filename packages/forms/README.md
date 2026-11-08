@@ -124,6 +124,29 @@ post.$setErrors({ 'seo.canonical': { protocol: true } });
 An overtaken async validation never publishes: each control carries an epoch, so a slow
 rule cannot paint the error of a value the user already changed.
 
+**A rule the browser asks the server about.** `runs remote` keeps the check on the server and
+has the browser ask it while the user types: one question per use, `debounce` ms after the
+last change (300 by default), the previous one aborted, and every answer cached by value, so
+going back to a value asks nothing. Anything but a 200 — the network down, a 401, a 429, a 500
+— passes as valid and paints nothing: the submit runs the rule on the server again, and the
+browser does not ask then (one request, the function's). While a question has not answered,
+the control is `pending()`:
+
+```
+rule alias-taken
+  on field str
+  runs remote
+  fails alias-taken
+```
+
+```html
+@if (userForm.alias.pending()) { <small>Checking…</small> }
+```
+
+`pending()` is true from the change to the answer, for the field and for the form
+(`$pending()`), and `valid()` / `$valid()` are false meanwhile. A field nobody validated yet is
+not pending.
+
 A single control validates on its own, against the root of the form it belongs to:
 
 ```ts
@@ -309,6 +332,11 @@ The editor types `person` from the `.fudapi`: declare a different type and `@sav
 underlined. `fudic:error` always carries an `Error`; a rejection that is not one arrives as its
 `cause`, and a cancelled call is not announced. A call keeps the event: `@saved($event.detail, 1)`.
 On an ancestor without `form:=`, the result is `unknown`.
+
+Both events cross the shadow root (`composed`), so the host of the component hears them too,
+at every level: `<user-form @fudic:result=@added>`. There the datum is typed by what the
+component's `form:=` return, adding up what the components it uses announce; on a component
+with no form the handler is an error.
 
 ### Four ways to write a field
 

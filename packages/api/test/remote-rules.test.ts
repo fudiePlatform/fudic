@@ -151,10 +151,14 @@ describe('the module generated (criterion 5, SDD §4.2)', () => {
     const browser = emit(ALIAS, 'browser');
     const sig = fnv1a(ruleCanonical(ruleOf(ALIAS), createApiIndex(project(ALIAS).sources)));
     expect(browser).toContain(
-      `export const aliasTaken = rule({ id: "rules/people", name: "alias-taken", fails: [["alias-taken", []]], remote: true, async: true, debounce: 300, ask: askRemote, value: "str", params: {  }, wire: binWire, sig: "${sig}" });`,
+      `export const aliasTaken = rule({ id: "rules/people", name: "alias-taken", fails: [["alias-taken", []]], remote: true, async: true, debounce: 300, ask: askRemote, send: ruleSend("alias-taken", () => [{ steps: [] }]), value: "str", params: {  }, wire: binWire, sig: "${sig}" });`,
     );
     expect(browser).not.toContain('never');
-    expect(browser).not.toContain('chain');
+    // No chain of its own to run around a check: the question walks the client halves (§8.2.28).
+    expect(browser).not.toContain('chain:');
+    expect(browser).toContain("import { ruleSend } from '@fudic/http/contract';");
+    // With a global chain, its client halves come first, imported as in a function.
+    expect(emit(ALIAS, 'browser', 'chain\n  use csrf')).toContain('send: ruleSend("alias-taken", () => [$global, { steps: [] }])');
     expect(browser).toContain("import { binWire } from '@fudic/http/wire/bin';");
   });
 
