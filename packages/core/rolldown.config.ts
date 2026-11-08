@@ -88,6 +88,8 @@ const PIECES: Readonly<Record<string, string>> = {
   number: 'src/pipes/number.ts',
   'relative-time': 'src/pipes/relative-time.ts',
   list: 'src/pipes/list.ts',
+  // BUG-60: a route chunk that reads `data` by its shape imports this by name.
+  data: 'src/hydrate/data.ts',
 };
 
 /**
@@ -120,6 +122,10 @@ const FRONTIERS: Readonly<Record<string, string>> = {
   'src/tracking.ts': 'tracking',
   'src/computed.ts': 'computed',
   'src/effect.ts': 'effect',
+  // `effect`, `task` and the route chunks all reach it, and its `current` must exist once: with
+  // a copy per piece, what `owned` collects is not what `own` registers into, and a route's
+  // effects outlive the route.
+  'src/owner.ts': 'owner',
   'src/subscribe.ts': 'subscribe',
   'src/element.ts': 'element',
   'src/pipe.ts': 'pipe',

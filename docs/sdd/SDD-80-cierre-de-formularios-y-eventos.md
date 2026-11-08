@@ -1,6 +1,6 @@
 # SDD-80 — Cierre de formularios y eventos: reglas remotas, `$value`, handlers con nombre y eventos del formulario en el host
 
-> **Estado:** `Listo` (2026-11-07) — [tareas](./SDD-80-Task.md).
+> **Estado:** `Hecho` (2026-11-08), a falta de la prueba de Pedro (criterio 40) — [tareas](./SDD-80-Task.md).
 > **Paquetes:** `@fudic/api` · `@fudic/forms` · `@fudic/http` · `@fudic/conventions` · `@fudic/vite` ·
 > `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` ·
 > `@fudic/diagnostics` · `@fudic/mcp` (guía) · `examples/basic`

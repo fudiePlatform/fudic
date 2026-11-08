@@ -37,9 +37,16 @@ test.describe('/di — a service shared by components that cannot see each other
   });
 
   test('the page publishes the container tree and the seed', async ({ page }) => {
-    await page.goto('/di');
-    const ioc = await page.locator('#fud-ioc').textContent();
-    const seed = await page.locator('#fud-di').textContent();
+    // From the document the server sent: the runtime removes each block once it has read it
+    // (SDD-70 §4.4), so the live DOM no longer has them by the time a locator looks.
+    const html = await (await page.request.get('/di', { headers: { accept: 'text/html' } })).text();
+    const [ioc, seed] = await page.evaluate(
+      (text) => {
+        const doc = new DOMParser().parseFromString(text, 'text/html');
+        return ['fud-ioc', 'fud-di'].map((id) => doc.getElementById(id)?.textContent ?? null);
+      },
+      html,
+    );
 
     // One owner below the root: its parent is node 0, and the tag says whose it is.
     expect(JSON.parse(ioc ?? '')).toEqual([

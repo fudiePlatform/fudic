@@ -5,7 +5,7 @@
 > `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` ·
 > `@fudic/diagnostics` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `worktree-pendiente` (worktree `.claude/worktrees/pendiente`), nacida de `main` en `1375967c`.
-> **Progreso:** 26 / 30 — `En curso`.
+> **Progreso:** 29 / 30 — `Hecho`, a falta de la prueba de Pedro (tarea 29).
 
 **Dos sesiones.** Una implementa y coordina, y entrega cada fase con `pnpm typecheck` y `pnpm build`.
 La otra escribe los tests de cada fase (las tareas «Los tests de…») contra los criterios de SDD §6,
@@ -150,7 +150,20 @@ en el host se prueba en `@fudic/forms`. Ver SDD §8.2, 28–31.
 
 | ✓ | # | dep | tarea | package | fichero |
 |---|---|---|---|---|---|
-| [ ] | 27 | 23 | **El `.vsix` de la rama.** Construirlo y dejar la ruta y el comando de instalación a Pedro | `vscode` | — |
-| [ ] | 28 | 26 | **`docs/PENDIENTE.md`.** Las notas 2 y 6 salen de la tabla (ya apuntan a SDD-80 desde la redacción) y su análisis de «Análisis con sesión» §2 se borra: vive en la SDD | docs | `docs/PENDIENTE.md` |
+| [x] | 27 | 23 | **El `.vsix` de la rama.** Construirlo y dejar la ruta y el comando de instalación a Pedro | `vscode` | — |
+| [x] | 28 | 26 | **`docs/PENDIENTE.md`.** Las notas 2 y 6 salen de la tabla (ya apuntan a SDD-80 desde la redacción) y su análisis de «Análisis con sesión» §2 se borra: vive en la SDD | docs | `docs/PENDIENTE.md` |
 | [ ] | 29 | 25, 27 | **Prueba de Pedro.** En el navegador (`dev`, `preview`, `nosw`) y en VS Code con el `.vsix` de la tarea 27 instalado, escribiendo a mano: una regla `remote` en el `.fudapi` (completado de `runs`, `debounce`, `use`; snippet `rule remote`; hover); su uso con `pending()` en la vista; un `$value` en una casilla y en un buscador (se ofrece, hover con su tipo, error si la función espera otro); dos botones con `@click.<nombre>` en una fila (completado del marcador, colores, hover); `@fudic:result` en el host de `user-form` (tipo `Person` en el hover). Lo que falle vuelve a su fase (criterio 40) | Pedro | — |
-| [ ] | 30 | 29 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; lo nuevo al 100 %; SDD-80 y este fichero en `Hecho`, registro del índice; merge a `main` cuando Pedro lo diga | varios | `docs/sdd/*` |
+| [x] | 30 | 29 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; lo nuevo al 100 %; SDD-80 y este fichero en `Hecho`, registro del índice; merge a `main` cuando Pedro lo diga | varios | `docs/sdd/*` |
+
+*Al cerrarla:* el `.vsix` de la rama queda instalado en el VS Code local
+(`pnpm --filter fudic-vscode install:vsix`). La prueba de Pedro (29) y el merge a `main` son suyos.
+`check.mjs` de `pieces-bench` destapó dos defectos de antes: `core/owner.ts` iba copiado en
+`core/effect`, `core/owner` y `core/task`, y `di/ambient.ts` en `di/ambient`, `di/resolve` y
+`di/seed`, cada copia con su propia variable (lo que `owned` recogía no era lo que `own` registraba;
+el contenedor instalado no era el que `resolve` leía). Los dos son frontera ahora. `unpackData`
+(BUG-60) gana su pieza `core/data` y `trustedHtml` sale de `dom/browser`, como `trustedUrl`; las
+excepciones que faltaban se escriben con su motivo, y `pnpm build` termina con el check, así que
+un fallo de las piezas rompe el build. `di.spec.ts` y `page-maps.spec.ts` leían los bloques del
+DOM vivo, que el runtime borra al leerlos desde SDD-70: ahora los leen del documento servido.
+`pnpm test`, `pnpm coverage` y `pnpm typecheck` de la raíz llevan `--no-bail`, y `pnpm test:e2e`
+corre Playwright.

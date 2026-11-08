@@ -19,12 +19,14 @@
   },
   "packageManager": "pnpm@11.9.0",
   "scripts": {
-    "build": "pnpm -r build",
+    "build": "pnpm -r build && node examples/pieces-bench/check.mjs .",
     "registry": "node scripts/local-registry.mjs",
     "verify:generated": "node scripts/verify-generated.mjs",
-    "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r --workspace-concurrency=1 test",
-    "coverage": "pnpm -r --workspace-concurrency=1 coverage"
+    "typecheck": "pnpm -r --no-bail typecheck",
+    "test": "pnpm -r --no-bail --workspace-concurrency=1 test",
+    "coverage": "pnpm -r --no-bail --workspace-concurrency=1 coverage",
+    "test:e2e": "pnpm --filter @fudic/example-basic test:e2e",
+    "check:pieces": "node examples/pieces-bench/check.mjs ."
   },
   "devDependencies": {
     "@fudic/tsconfig": "workspace:*",

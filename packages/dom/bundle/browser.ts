@@ -18,4 +18,6 @@ export { browserDom } from '../src/browser.js';
 // The guard travels inside the adapter that calls it; `trustedUrl` is published from the same
 // piece, so an application that marks a URL marks it for the very guard that reads the mark.
 export { trustedUrl } from '../src/url.js';
+// The same for HTML: `setHtml` reads the mark `trustedHtml` writes, so both come from here.
+export { trustedHtml } from '../src/html.js';
 export { NS, type Ns } from '../src/ns.js';

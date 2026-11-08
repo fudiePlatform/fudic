@@ -12,6 +12,9 @@ node examples/pieces-bench/check.mjs .        # the three checks, in a terminal
 node examples/pieces-bench/check.mjs . --json # the same, for something else to read
 ```
 
+`pnpm build` at the root runs `check.mjs` as its last step, and a failing check fails the
+build: run by hand, it drifted for several SDDs before anybody saw it.
+
 The first panel of the page is **the split**: the three checks of §6.5 — no module in two
 pieces, no exported value without a piece, no piece below its frontier — plus the guard that
 every import inside a piece resolves to a piece that exists. They run over the published files
