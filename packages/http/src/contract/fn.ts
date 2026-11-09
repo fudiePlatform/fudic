@@ -254,8 +254,9 @@ export function linkOf(spec: FnSpec, input: unknown, options: Pick<CallOptions, 
   const url = new URL(join(base, pathOf(spec, page, route)), 'http://link');
   for (const [key, value] of Object.entries(query)) url.searchParams.set(key, toText(value));
   if (Object.keys(types).length > 0) {
-    const out = spec.wire.encodeArgs(types, conformAll(types, record, 'argument'));
-    if (out !== undefined) url.searchParams.set('a', typeof out === 'string' ? out : toBase64url(out));
+    // With arguments to write, a wire always writes something (`undefined` is for none).
+    const out = spec.wire.encodeArgs(types, conformAll(types, record, 'argument'))!;
+    url.searchParams.set('a', typeof out === 'string' ? out : toBase64url(out));
   }
   return `${url.pathname}${url.search}`;
 }

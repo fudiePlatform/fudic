@@ -40,14 +40,14 @@ const malformed = (detail: string): HttpError => badRequest(`multipart body: ${d
 export function boundaryOf(contentType: string | null): string | undefined {
   if (contentType === null) return undefined;
   const [type, ...params] = splitParams(contentType);
-  if (type?.toLowerCase() !== 'multipart/form-data') return undefined;
+  if (type.toLowerCase() !== 'multipart/form-data') return undefined;
   const boundary = params.find(([key]) => key === 'boundary')?.[1];
   // RFC 2046 §5.1.1: 1 to 70 characters.
   return boundary !== undefined && boundary.length >= 1 && boundary.length <= 70 ? boundary : undefined;
 }
 
 /** `form-data; name="a"; filename="b"` → `['form-data', ['name', 'a'], ['filename', 'b']]`. */
-function splitParams(value: string): [string | undefined, ...(readonly [string, string])[]] {
+function splitParams(value: string): [string, ...(readonly [string, string])[]] {
   const out: (readonly [string, string])[] = [];
   let i = value.indexOf(';');
   const head = (i === -1 ? value : value.slice(0, i)).trim();
@@ -103,7 +103,7 @@ function headOf(block: string): PartHead {
   }
   if (disposition === undefined) throw malformed('a part without content-disposition');
   const [kind, ...params] = splitParams(disposition);
-  if (kind?.toLowerCase() !== 'form-data') throw malformed(`a part that is not form-data (${kind ?? ''})`);
+  if (kind.toLowerCase() !== 'form-data') throw malformed(`a part that is not form-data (${kind})`);
   const get = (key: string): string | undefined => params.find(([k]) => k === key)?.[1];
   const name = get('name');
   if (name === undefined) throw malformed('a part without a name');
