@@ -5,7 +5,7 @@
 > `@fudic/compiler` · `@fudic/config` · `@fudic/vite` · `@fudic/testing` · `@fudic/language-core` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/diagnostics` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-81-ficheros`, desde `worktree-pendiente`; al cerrar, merge `--no-ff` a `worktree-pendiente`.
-> **Progreso:** 0 / 37 — `Listo` (enmendada el 2026-11-09).
+> **Progreso:** 1 / 37 — `Listo` (enmendada el 2026-11-09).
 
 **Dos sesiones.** Una implementa y entrega cada fase con `pnpm typecheck` y `pnpm build`. La otra
 escribe los tests de cada fase (las tareas «Los tests de…») contra los criterios de SDD §6, en su
@@ -25,12 +25,11 @@ propio worktree desde esta rama. Si un test destapa un defecto, se corrige el c�
 
 ## Fase 1 — decisiones y diagnósticos
 
-- [ ] **1. Decisiones 181–182 y diagnósticos.**
+- [x] **1. Decisiones 181–182 y diagnósticos.**
   - La 181 (`file` en el `.fudapi`, dónde vale, `max-size`/`accept`, tamaños con unidad) y la 182
     (`<input type="file">`, `multiple`, `accept` escrito, `$value`) en sus secciones y en el índice.
   - La 178, con «enmendada por la 182».
   - `FUD1480`–`FUD1488`, cada uno con su función, su `.md` y su línea en `index.ts` (SDD §3.9).
-  - `FUD0592` sin el motivo `file`.
   - *Depende de:* —.
   - *Paquetes:* docs, `diagnostics`.
 
@@ -180,7 +179,9 @@ propio worktree desde esta rama. Si un test destapa un defecto, se corrige el c�
   - *Depende de:* 22.
   - *Paquete:* `forms`.
 - [ ] **24. El compilador.**
-  - `file` deja de ser `unsupported` y pasa a `bindFile`.
+  - `file` deja de ser `unsupported` y pasa a `bindFile`; `FUD0592` pierde el motivo `file` (se
+    mueve aquí desde la tarea 1: quitarlo antes dejaría el compilador sin nada que decir de un
+    `<input type="file">`).
   - `FUD1484`–`FUD1486`.
   - `accept` escrito desde la regla si el `<input>` no lo tiene.
   - `$value` de un `<input type="file">` (SDD §3.7).

@@ -1408,6 +1408,9 @@ argumentos de un handler sigue siendo un `$` reservado (`FUD0666`). *Por qué: `
 HTMLInputElement).checked` en cada handler, y un `ref` no se admite en un bucle ni da el valor; la
 forma de `$event` se explica y se lee igual (Pedro, 2026-11-07).*
 
+*Enmendada por la 182: en un `<input type="file">`, `$value` es `File | null`, y con `multiple`,
+`readonly File[]`.*
+
 **179.** **Handlers con nombre: `@<evento>.<nombre>`** (SDD-80 §3.6). Enmienda la 176: un event binding
 puede llevar un nombre tras el evento (`@click.borrar`), y el marcador lo pide con el mismo texto en
 su lista (`delegate:p="click.borrar"`). El evento es lo que va antes del primer `.`; el nombre,
@@ -1428,6 +1431,29 @@ por defecto es binario. `async` sobra y no se diagnostica. Se manda el valor que
 los parámetros del uso, nunca el formulario. Un fallo de la pregunta (red, 401, 429, 500) pasa como
 válido: la autoridad es el envío, que vuelve a ejecutar la regla con sus middlewares. *Por qué: un
 alias cogido solo se descubría al pulsar Guardar (Pedro, 2026-11-07).*
+
+**181.** **`file` es un tipo del `.fudapi`** (SDD-81 §3.1, §3.2). Se escribe `file`, `file?` y
+`file[]`, y en TypeScript es el `File` estándar (`File | null` en un campo de `form`, `readonly File[]`
+en la lista). Vale en un argumento de cuerpo (`post`, `put`, `patch`, `delete`), en un campo de
+`form`, en el `->` de cualquier función y en un campo de `type` que solo se usa donde vale. No vale
+en lo que viaja en la URL —argumentos de una `get`, de ruta o de query— (`FUD1480`), en lo que pinta
+una página —`load`, `layout`, `paths` y los `type` que alcanzan— (`FUD1481`, sobre el uso con
+`related` al campo), como valor inicial de un campo de `form` (`FUD1482`), como parámetro de una
+`rule` o un `fails` (`FUD1483`) ni como clave de `map` (`FUD1089`). Dos reglas nuevas, `runs both`,
+`on field file file[]`: `max-size n` y `accept types`, con la sintaxis del atributo HTML `accept`.
+Un argumento numérico de una regla admite tamaños con unidad pegada (`500kb`, `2mb`, `1.5gb`, base
+1024; otra unidad, `FUD1487`), y uno `str` se escribe entre comillas, con el texto de la regla
+detrás. *Por qué: un fichero se declara como cualquier otro dato y llega al handler ya comprobado,
+sin una API aparte (Pedro, 2026-11-08).*
+
+**182.** **`<input type="file">` ligado a un campo `file`** (SDD-81 §3.7). `:=@form.campo` en un
+`<input type="file">` se liga con `bindFile`; `control=` vale (la 34 lo dejaba fuera por multipart).
+`multiple` tiene que casar con el tipo: con un `file`, `FUD1484`; sin él con un `file[]`, `FUD1485`;
+un control de fichero ligado a lo que no es fichero, o al revés, `FUD1486`. Si el campo tiene la
+regla `accept` y el `<input>` no lleva el atributo, el compilador lo escribe con el valor de la
+regla; el del autor manda. Enmienda la 178: `$value` en un `<input type="file">` es `File | null`, y
+con `multiple`, `readonly File[]`. *Por qué: el diálogo del sistema filtra lo mismo que la regla, y el
+tipo del valor dice de verdad si hay uno o varios (Pedro, 2026-11-08).*
 
 ### Gramática de referencia
 
@@ -1752,6 +1778,8 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 175 | `.fudapi` | El servidor manda el código de un `fails`; la página pone su texto. En `load`, `FUD1360` (SDD-74) |
 | 176 | Interpolación | `delegate:nombre="click change"`: el marcador sirve solo a esos eventos; sin valor, a todos. Un `@evento` en un bucle avisa (`FUD1380`). Enmienda la 117 (SDD-72) (enmendada por la 179) |
 | 177 | Interpolación | La fila delegada se lee sin `$`, suelta o dentro de un argumento: `@borrar(p)`, `@borrar(p.id, i)`; `$p` es `FUD1383` y un nombre que choca, `FUD1382`. Enmienda la 118 (SDD-72) |
-| 178 | Interpolación | `$value` en los argumentos de un handler: el valor del control que disparó el evento (o del marcado, delegado), tipado como en `control=`; `FUD1462`–`FUD1464`. Enmienda la 97 (SDD-80) |
+| 178 | Interpolación | `$value` en los argumentos de un handler: el valor del control que disparó el evento (o del marcado, delegado), tipado como en `control=`; `FUD1462`–`FUD1464`. Enmienda la 97 (SDD-80) (enmendada por la 182) |
 | 179 | Interpolación | Handlers con nombre `@click.borrar`, pedidos por `delegate:p="click.borrar"`; solo delegados (`FUD1466`); nombre `[a-z][a-z0-9-]*` (`FUD1465`). Enmienda la 176 (SDD-80) |
 | 180 | `.fudapi` | `runs remote`: la regla la pregunta el navegador mientras se escribe; `debounce`, `use`/`skip` (`FUD1460`, `FUD1461`); solo `remote` tiene ruta (SDD-80) |
+| 181 | `.fudapi` | `file`, `file?`, `file[]`: en cuerpo, `form`, `->` y `type`; no en URL (`FUD1480`), datos de página (`FUD1481`), valor inicial (`FUD1482`), `rule`/`fails` (`FUD1483`). Reglas `max-size` y `accept`; tamaños con unidad (`FUD1487`) (SDD-81) |
+| 182 | Formularios | `<input type="file">` con `bindFile`; `multiple` casa con el tipo (`FUD1484`, `FUD1485`, `FUD1486`); `accept` escrito desde la regla; `$value` `File \| null` / `readonly File[]`. Enmienda la 178 (SDD-81) |
