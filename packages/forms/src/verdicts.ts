@@ -28,13 +28,17 @@ export interface Verdicts {
 
 export function verdicts(): Verdicts {
   const seen = signal<ReadonlyMap<unknown, number>>(new Map());
-  /** The epoch each marked rule was last asked for with an answer still to come. */
-  const asked = signal<ReadonlyMap<unknown, number>>(new Map());
-  const stamp = (map: typeof seen, rule: unknown, at: number): void => {
-    map.set(new Map(untrack(map)).set(rule, at));
-  };
-  const record = (rule: unknown, at: number): void => {
-    stamp(seen, rule, at);
+  /**
+   * The last question put to each marked rule: the epoch it was about and its ticket. Pending
+   * lasts until THAT question answers — an older one answering for the same value (a pass run
+   * twice: `change` and `blur` on leaving a field) does not end the wait of the newer one.
+   */
+  const asked = signal<ReadonlyMap<unknown, { readonly at: number; readonly ticket: number }>>(new Map());
+  /** The ticket of the last question each rule answered. */
+  const heard = signal<ReadonlyMap<unknown, number>>(new Map());
+  let tickets = 0;
+  const stamp = <V>(map: { (): ReadonlyMap<unknown, V>; set(v: ReadonlyMap<unknown, V>): void }, rule: unknown, v: V): void => {
+    map.set(new Map(untrack(map)).set(rule, v));
   };
   return {
     watch: <T>(rules: readonly AnyValidator<T>[], at: number): readonly AnyValidator<T>[] =>
@@ -44,20 +48,22 @@ export function verdicts(): Verdicts {
           const result = runRule(rule, value, root as AnyForm, ctx);
           // Marked and yet answering now: its verdict is on record as soon as it returns.
           if (!isPending(result)) {
-            record(rule, at);
+            stamp(seen, rule, at);
             return result;
           }
-          stamp(asked, rule, at);
+          const ticket = (tickets += 1);
+          stamp(asked, rule, { at, ticket });
           return result.then((found) => {
-            record(rule, at);
+            stamp(seen, rule, at);
+            stamp(heard, rule, ticket);
             return found;
           });
         };
       }),
     settled: (rule, epoch) => seen().get(rule) === epoch,
     pending: (epoch) => {
-      const answered = seen();
-      return [...asked()].some(([rule, at]) => at === epoch && answered.get(rule) !== epoch);
+      const answered = heard();
+      return [...asked()].some(([rule, { at, ticket }]) => at === epoch && answered.get(rule) !== ticket);
     },
   };
 }

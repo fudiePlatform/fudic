@@ -74,6 +74,20 @@ describe('pending() of a control (criterion 15)', () => {
     expect(f.alias.pending()).toBe(false);
   });
 
+  it('asked twice for the same value, the older answer does not end the wait of the newer question', async () => {
+    const { rule, answer } = deferred();
+    const f = form({ alias: control('', [rule]) });
+    f.alias.set('admin');
+    const first = f.alias.validate();
+    const second = f.alias.validate();
+    answer(null);
+    await first;
+    expect(f.alias.pending()).toBe(true);
+    answer(null);
+    await second;
+    expect(f.alias.pending()).toBe(false);
+  });
+
   it('a load of the same value also drops it', async () => {
     const { rule, answer } = deferred();
     const f = form({ alias: control('', [rule]) });

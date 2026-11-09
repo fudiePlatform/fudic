@@ -350,6 +350,26 @@ describe('pending (criterion 15)', () => {
     expect(f.$pending()).toBe(false);
     expect(f.$valid()).toBe(true);
   });
+
+  it('the same value validated twice (leaving a field: `change` and `blur`) joins the one question and stays pending', async () => {
+    const s = server();
+    s.hold();
+    const { f, type } = aliasForm();
+    const first = type('admin');
+    const second = f.alias.validate();
+    await wait(0);
+    expect(f.alias.pending()).toBe(true);
+    await wait(300);
+    // One question, still in flight, and still pending.
+    expect(s.asked).toHaveLength(1);
+    expect(s.asked[0]!.signal.aborted).toBe(false);
+    expect(f.alias.pending()).toBe(true);
+    s.release();
+    expect(await first).toBe(false);
+    expect(await second).toBe(false);
+    expect(f.alias.pending()).toBe(false);
+    expect(f.alias.errors()).toEqual({ aliasTaken: true });
+  });
 });
 
 describe('the submit does not ask (criterion 16)', () => {

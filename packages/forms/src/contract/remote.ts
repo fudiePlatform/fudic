@@ -61,6 +61,10 @@ const VERDICT = { opt: 'str' };
 
 /** What is waiting to be asked or is in flight: one per use at most. */
 interface Waiting {
+  /** The value it is about, as the cache keys it. */
+  readonly key: string;
+  /** What every caller asking about that value is handed: one question, however many ask. */
+  readonly answer: Promise<Errors | null>;
   readonly timer: ReturnType<typeof setTimeout>;
   readonly controller: AbortController;
   readonly resolve: (found: Errors | null) => void;
@@ -105,21 +109,28 @@ export function askRemote(q: Question): Asking {
   };
 
   return (value, _root, pass) => {
-    cancel();
     // The parameters are this use's, fixed: the value alone tells two questions apart.
     const key = JSON.stringify(value);
+    // The same value asked again while its question is waiting or in flight — leaving a field
+    // fires `change` and `blur`, and a wrapped control is bound on its host and on its input —
+    // joins that question: cancelling it would answer it as passed and ask the same thing twice.
+    if (waiting?.key === key && !isWholePass(pass)) return waiting.answer;
+    cancel();
     if (cache.has(key)) return cache.get(key)!;
     if (isWholePass(pass)) return null;
-    return new Promise((resolve) => {
-      const controller = new AbortController();
-      const timer = setTimeout(() => {
-        void ask(value, controller.signal).then((found) => {
-          if (found !== undefined) cache.set(key, found);
-          if (waiting?.controller === controller) waiting = undefined;
-          resolve(found ?? null);
-        });
-      }, q.debounce);
-      waiting = { timer, controller, resolve };
+    let resolve!: (found: Errors | null) => void;
+    const answer = new Promise<Errors | null>((done) => {
+      resolve = done;
     });
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      void ask(value, controller.signal).then((found) => {
+        if (found !== undefined) cache.set(key, found);
+        if (waiting?.controller === controller) waiting = undefined;
+        resolve(found ?? null);
+      });
+    }, q.debounce);
+    waiting = { key, answer, timer, controller, resolve };
+    return answer;
   };
 }
