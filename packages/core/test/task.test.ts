@@ -782,3 +782,59 @@ describe('SDD-74 criterion 7: the queue does not lie', () => {
     expect(t.error()).toBe(boom);
   });
 });
+
+describe('SDD-81 criterion 24: progress()', () => {
+  /** A `fn` that hands the test its `onProgress` along with the call. */
+  function reporting() {
+    const calls: { onProgress: (p: { loaded: number; total: number | null; phase: 'up' | 'down' } | null) => void; resolve: (v: string) => void; reject: (e: unknown) => void }[] = [];
+    const fn: Callable<number, string> = (_args, options) =>
+      new Promise<string>((resolve, reject) => {
+        calls.push({ onProgress: options.onProgress!, resolve, reject });
+      });
+    return { fn, calls };
+  }
+
+  it('null before any call; the call’s bytes up, then down; null when it says it is over', async () => {
+    const { fn, calls } = reporting();
+    const t = task(fn);
+    expect(t.progress()).toBeNull();
+    const run = t.run(1);
+    calls[0]!.onProgress({ loaded: 50, total: 100, phase: 'up' });
+    expect(t.progress()).toEqual({ loaded: 50, total: 100, phase: 'up' });
+    calls[0]!.onProgress({ loaded: 10, total: null, phase: 'down' });
+    expect(t.progress()).toEqual({ loaded: 10, total: null, phase: 'down' });
+    calls[0]!.onProgress(null);
+    calls[0]!.resolve('ok');
+    await run;
+    expect(t.progress()).toBeNull();
+  });
+
+  it('tracked: an effect that reads it runs again as it moves', async () => {
+    const { fn, calls } = reporting();
+    const t = task(fn);
+    const seen: unknown[] = [];
+    const stop = effect(() => void seen.push(t.progress()?.loaded ?? null));
+    void t.run(1);
+    calls[0]!.onProgress({ loaded: 1, total: 2, phase: 'up' });
+    await flush();
+    calls[0]!.onProgress({ loaded: 2, total: 2, phase: 'up' });
+    await flush();
+    expect(seen).toEqual([null, 1, 2]);
+    stop();
+  });
+
+  it('a call replaced by a newer one moves no bar; cancel puts it back to null', () => {
+    const { fn, calls } = reporting();
+    const t = task(fn);
+    void t.run(1);
+    void t.run(2);
+    calls[0]!.onProgress({ loaded: 99, total: 100, phase: 'up' });
+    expect(t.progress()).toBeNull();
+    calls[1]!.onProgress({ loaded: 5, total: 100, phase: 'up' });
+    expect(t.progress()).toEqual({ loaded: 5, total: 100, phase: 'up' });
+    t.cancel();
+    expect(t.progress()).toBeNull();
+    calls[1]!.onProgress({ loaded: 6, total: 100, phase: 'up' });
+    expect(t.progress()).toBeNull();
+  });
+});

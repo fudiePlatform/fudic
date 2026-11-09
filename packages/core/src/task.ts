@@ -33,7 +33,6 @@ import { untrack } from './tracking.js';
 export type TaskState = 'idle' | 'pending' | 'done' | 'cancelled' | 'failed';
 export type TaskMode = 'latest' | 'queue';
 
-/** Anything that takes its arguments and an AbortSignal: a server function is one. */
 /** The bytes a call in flight has moved (SDD-81 §3.4): the upload first, then the download. */
 export interface TaskProgress {
   readonly loaded: number;
@@ -48,6 +47,7 @@ export interface CallSignals {
   readonly onProgress?: (progress: TaskProgress | null) => void;
 }
 
+/** Anything that takes its arguments and an AbortSignal: a server function is one. */
 export type Callable<A, R> = ((args: A, options: CallSignals) => Promise<R>) & {
   /** The HTTP verb of a server function. Absent on any other callable. */
   readonly method?: string;
