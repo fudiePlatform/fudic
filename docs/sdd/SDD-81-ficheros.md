@@ -518,7 +518,9 @@ export function diskSpool(): Spool;
 3. Solo `GET` y `HEAD` siguen; lo demás es `null`.
 4. Redirección de idioma (SDD-58 §4.5), `302` con `Vary: Accept-Language`.
 5. `/_fudic/data/…`: el endpoint de datos (frames, o el problema en JSON).
-6. Sin `Accept: text/html`: `null`.
+6. Una página se sirve a cualquier `GET`, como un fichero que da un host estático: sin mirar
+   `Accept`, igual que hacía preview (dev lo miraba; ahora los tres hacen lo mismo). Solo `notFound`
+   pide `Accept: text/html`.
 7. `/_fudic/error/:status`: `_error.fud` del idioma, con su origen.
 8. Una ruta: el HTML prerenderizado con el nonce estampado, o el render en streaming
    (`prepare`, luego `load`); un `Redirect` o un error, su página. Sin ruta: `null` si hay un

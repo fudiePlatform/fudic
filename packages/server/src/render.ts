@@ -20,7 +20,7 @@ export type PendingResponse = NonNullable<RenderContext['response']>;
 
 /** Path segments of a URL path, query stripped and empty segments dropped. */
 function segmentsOf(path: string): string[] {
-  const pathname = path.split('?', 1)[0] ?? path;
+  const pathname = path.split('?', 1)[0]!;
   return pathname.split('/').filter((s) => s.length > 0);
 }
 
