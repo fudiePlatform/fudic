@@ -304,6 +304,15 @@ describe('criterion 4: sizes with a unit, and a text argument', () => {
     expect(mod).toContain('{ check: $accept("image/*"), name: "accept", args: ["image/*"], text: "Solo imágenes." }');
   });
 
+  it('fileLimits: the max-size of each file slot by its path, where the server cuts a part (SDD-81 §3.5)', () => {
+    const arg = checked(lines('put up', '  photo  file', '    max-size 2mb', '  docs  file[]', '    max-size 500kb', '  plain  file', '  note  str', ''));
+    expect(emitModule(arg.source, arg.index, arg.ctx, 'server')).toContain('fileLimits: { "photo": 2097152, "docs": 512000 }');
+    const form = checked(lines('form f', '  data  group', '    photo  file', '      max-size 1mb', '  other  file', '', 'post send', '  form f', ''));
+    expect(emitModule(form.source, form.index, form.ctx, 'server')).toContain('fileLimits: { "data.photo": 1048576 }');
+    const none = checked(lines('put up', '  photo  file', ''));
+    expect(emitModule(none.source, none.index, none.ctx, 'server')).not.toContain('fileLimits');
+  });
+
   it('max-size 2mo under a function argument: FUD1487 too', () => {
     expect(found(lines('put up', '  photo  file', '    max-size 2mo', ''))).toEqual([['FUD1487', '2mo']]);
   });
