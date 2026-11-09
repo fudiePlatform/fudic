@@ -41,27 +41,27 @@ exports[`criterion 11: the contract of every canonical > @fudic/forms/rules: the
 declare module "fudic:@fudic/forms/rules" {
   import type { Check, Rule } from '@fudic/forms/contract';
 
-  /** The value is not empty. */
-  export const required: Rule<string | boolean | number | null | Date | null | readonly string[], {}, never>;
-  export type RequiredCheck = Check<string | boolean | number | null | Date | null | readonly string[], {}, never>;
+  /** The value is there: neither "" nor null. \`false\` is a value: a box that must be ticked is a rule of its own. */
+  export const required: Rule<unknown, {}, never>;
+  export type RequiredCheck = Check<unknown, {}, never>;
 
-  /** A number no smaller than \`min\`. */
+  /** A number no smaller than n. An empty field is required's business. */
   export const min: Rule<number | null, { readonly n: number }, never>;
   export type MinCheck = Check<number | null, { readonly n: number }, never>;
 
-  /** A number no bigger than \`max\`. */
+  /** A number no bigger than n. An empty field is required's business. */
   export const max: Rule<number | null, { readonly n: number }, never>;
   export type MaxCheck = Check<number | null, { readonly n: number }, never>;
 
-  /** A text or a list with \`min\` items at least. */
-  export const minLength: Rule<string | readonly string[], { readonly n: number }, never>;
-  export type MinLengthCheck = Check<string | readonly string[], { readonly n: number }, never>;
+  /** A text or a list with n characters or items at least. An empty one is required's business. */
+  export const minLength: Rule<string | readonly unknown[], { readonly n: number }, never>;
+  export type MinLengthCheck = Check<string | readonly unknown[], { readonly n: number }, never>;
 
-  /** A text or a list with \`max\` items at most. */
-  export const maxLength: Rule<string | readonly string[], { readonly n: number }, never>;
-  export type MaxLengthCheck = Check<string | readonly string[], { readonly n: number }, never>;
+  /** A text or a list with n characters or items at most. */
+  export const maxLength: Rule<string | readonly unknown[], { readonly n: number }, never>;
+  export type MaxLengthCheck = Check<string | readonly unknown[], { readonly n: number }, never>;
 
-  /** The whole text matches a pattern. */
+  /** The whole text matches a pattern of the project. The empty text passes. */
   export const pattern: Rule<string, { readonly regex: RegExp }, never>;
   export type PatternCheck = Check<string, { readonly regex: RegExp }, never>;
 }

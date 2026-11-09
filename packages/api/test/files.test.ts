@@ -266,6 +266,30 @@ describe('criterion 4: sizes with a unit, and a text argument', () => {
     expect(mod).toContain('"Elige una foto."');
   });
 
+  it('a lone string fills a missing str? parameter too; a parameter of another type keeps it as the text', () => {
+    const rules = lines(
+      'rule tagged',
+      '  on field str',
+      '  runs both',
+      '  label  str?',
+      '  fails tagged label',
+      '',
+      'rule listed',
+      '  on field str',
+      '  runs both',
+      '  items  str[]',
+      '  fails listed',
+      '',
+    );
+    const text = lines('form f', '  a  str', '    tagged "x"', '', 'post send', '  form f', '');
+    const c = checked(text, { others: [app('rules/own', rules)] });
+    expect(c.diagnostics).toEqual([]);
+    expect(emitModule(c.source, c.index, c.ctx, 'browser')).toContain('tagged.use({ label: "x" })');
+    // `str[]` is not a text parameter: the lone string is the use's text, and the argument is missing.
+    const listed = checked(lines('form f', '  a  str', '    listed "x"', ''), { others: [app('rules/own', rules)] });
+    expect(listed.diagnostics.map((d) => d.code)).toEqual(['FUD1084']);
+  });
+
   it('accept with nothing: too few arguments', () => {
     expect(found(field('accept')).map(([code]) => code)).toEqual(['FUD1084']);
   });

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import type { SourceDiagnostic, Span } from '@fudic/diagnostics';
 import { parseApi } from '../src/index.js';
 
@@ -65,50 +66,11 @@ export const USER_FORM = [
   '',
 ].join('\n');
 
-/** `@fudic/forms` `fudapi/rules.fudapi` (SDD §3.10). */
-export const FORMS_RULES = [
-  '# The value is not empty.',
-  'rule required',
-  '  on field str bool u8 i8 u16 i16 u32 i32 f32 f64 date uuid str[]',
-  '  runs both',
-  '  fails required',
-  '',
-  '# A number no smaller than `min`.',
-  'rule min',
-  '  on field u8 i8 u16 i16 u32 i32 f32 f64',
-  '  runs both',
-  '  n  f64',
-  '  fails min n',
-  '',
-  '# A number no bigger than `max`.',
-  'rule max',
-  '  on field u8 i8 u16 i16 u32 i32 f32 f64',
-  '  runs both',
-  '  n  f64',
-  '  fails max n',
-  '',
-  '# A text or a list with `min` items at least.',
-  'rule min-length',
-  '  on field str str[]',
-  '  runs both',
-  '  n  u32',
-  '  fails min-length n',
-  '',
-  '# A text or a list with `max` items at most.',
-  'rule max-length',
-  '  on field str str[]',
-  '  runs both',
-  '  n  u32',
-  '  fails max-length n',
-  '',
-  '# The whole text matches a pattern.',
-  'rule pattern',
-  '  on field str',
-  '  runs both',
-  '  regex  pattern',
-  '  fails pattern',
-  '',
-].join('\n');
+/**
+ * `@fudic/forms` `fudapi/rules.fudapi` (SDD §3.10), read from the package: a copy here fell behind
+ * the real one (`required` on `*`, the lengths on `*[]`), and the tests checked rules nobody ships.
+ */
+export const FORMS_RULES = readFileSync(new URL('../../forms/fudapi/rules.fudapi', import.meta.url), 'utf8');
 
 /** `@fudic/forms` `fudapi/patterns.fudapi`: the email of WHATWG, `#` included (SDD §3.10). */
 export const FORMS_PATTERNS = [
