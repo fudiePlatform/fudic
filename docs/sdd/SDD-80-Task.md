@@ -5,7 +5,7 @@
 > `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` ·
 > `@fudic/diagnostics` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `worktree-pendiente` (worktree `.claude/worktrees/pendiente`), nacida de `main` en `1375967c`.
-> **Progreso:** 29 / 30 — `Hecho`, a falta de la prueba de Pedro (tarea 29).
+> **Progreso:** 30 / 30 — `Hecho` (2026-11-09).
 
 **Dos sesiones.** Una implementa y coordina, y entrega cada fase con `pnpm typecheck` y `pnpm build`.
 La otra escribe los tests de cada fase (las tareas «Los tests de…») contra los criterios de SDD §6,
@@ -152,7 +152,7 @@ en el host se prueba en `@fudic/forms`. Ver SDD §8.2, 28–31.
 |---|---|---|---|---|---|
 | [x] | 27 | 23 | **El `.vsix` de la rama.** Construirlo y dejar la ruta y el comando de instalación a Pedro | `vscode` | — |
 | [x] | 28 | 26 | **`docs/PENDIENTE.md`.** Las notas 2 y 6 salen de la tabla (ya apuntan a SDD-80 desde la redacción) y su análisis de «Análisis con sesión» §2 se borra: vive en la SDD | docs | `docs/PENDIENTE.md` |
-| [ ] | 29 | 25, 27 | **Prueba de Pedro.** En el navegador (`dev`, `preview`, `nosw`) y en VS Code con el `.vsix` de la tarea 27 instalado, escribiendo a mano: una regla `remote` en el `.fudapi` (completado de `runs`, `debounce`, `use`; snippet `rule remote`; hover); su uso con `pending()` en la vista; un `$value` en una casilla y en un buscador (se ofrece, hover con su tipo, error si la función espera otro); dos botones con `@click.<nombre>` en una fila (completado del marcador, colores, hover); `@fudic:result` en el host de `user-form` (tipo `Person` en el hover). Lo que falle vuelve a su fase (criterio 40) | Pedro | — |
+| [x] | 29 | 25, 27 | **Prueba de Pedro.** En el navegador (`dev`, `preview`, `nosw`) y en VS Code con el `.vsix` de la tarea 27 instalado, escribiendo a mano: una regla `remote` en el `.fudapi` (completado de `runs`, `debounce`, `use`; snippet `rule remote`; hover); su uso con `pending()` en la vista; un `$value` en una casilla y en un buscador (se ofrece, hover con su tipo, error si la función espera otro); dos botones con `@click.<nombre>` en una fila (completado del marcador, colores, hover); `@fudic:result` en el host de `user-form` (tipo `Person` en el hover). Lo que falle vuelve a su fase (criterio 40) Hecha el 2026-11-09: todo bien salvo «Comprobando…», que no se veía al salir del campo, y «Buscando…», que solo parpadeaba. Arreglado en §8.2.32–36 de la SDD, con lo que destapó (el `@if` que lee un import, dentro y fuera de un bloque, y el orden de dos construcciones seguidas) | Pedro | — |
 | [x] | 30 | 29 | **Cierre.** `pnpm typecheck`, `pnpm test` y `pnpm build` en verde; lo nuevo al 100 %; SDD-80 y este fichero en `Hecho`, registro del índice; merge a `main` cuando Pedro lo diga | varios | `docs/sdd/*` |
 
 *Al cerrarla:* el `.vsix` de la rama queda instalado en el VS Code local

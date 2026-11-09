@@ -1,6 +1,6 @@
 # SDD-80 — Cierre de formularios y eventos: reglas remotas, `$value`, handlers con nombre y eventos del formulario en el host
 
-> **Estado:** `Hecho` (2026-11-08), a falta de la prueba de Pedro (criterio 40) — [tareas](./SDD-80-Task.md).
+> **Estado:** `Hecho` (2026-11-09), con la prueba de Pedro (criterio 40) superada — [tareas](./SDD-80-Task.md).
 > **Paquetes:** `@fudic/api` · `@fudic/forms` · `@fudic/http` · `@fudic/conventions` · `@fudic/vite` ·
 > `@fudic/compiler` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` ·
 > `@fudic/diagnostics` · `@fudic/mcp` (guía) · `examples/basic`
@@ -714,3 +714,43 @@ Nada. Esta SDD cierra formularios y delegación de eventos.
 31. **El registro `FudicFormResults` cuenta las funciones del contrato.** Un `form:=@save` cuyo
     `save` llega por `<link rel="server">` (como en `user-form.fud`) también registra: esos
     nombres se declaran arriba del módulo de la proyección, igual que los del `@code`.
+32. **Una pregunta repetida para el mismo valor se une a la que está en marcha** (prueba de
+    Pedro, 2026-11-09: «Comprobando…» no se veía nunca al salir del campo). Al dejar un campo
+    saltan `change` y `blur`, y un control envuelto (`app-input`) está enlazado en el host y en
+    su `<input>`: el mismo valor se validaba varias veces seguidas. Cada validación cancelaba la
+    pregunta anterior, que se daba por contestada para ese valor, y `pending()` se apagaba con la
+    última aún en vuelo. Ahora el validador remoto devuelve la misma promesa si ya espera o
+    pregunta por ese valor (una sola petición), y `verdicts` guarda un ticket por pregunta:
+    solo deja de estar pendiente cuando contesta la última, también para una regla async del
+    autor.
+33. **La búsqueda del ejemplo tarda 400 ms a propósito**, como `slowSearch` tarda 3 s. El
+    servidor local contestaba en un par de milisegundos: «Buscando…» solo parpadeaba y nunca se
+    veía la búsqueda anterior *canceled*, que es lo que la página explica. `task` no cambia:
+    su `pending` ya duraba lo que la petición.
+34. **Lo que decide una construcción se vigila como un valor.** La segunda mitad de la 32: con
+    `pending()` ya bien, «Comprobando…» seguía sin salir al dejar el campo. El `@if
+    (userForm.alias.pending())` solo se volvía a evaluar cuando cambiaba un valor del formulario
+    (`$subIf(userForm, $u)`) o la expresión de un valor que lee un miembro de un import
+    (`watchImports`, BUG-42 §4.3); su condición no estaba entre esas expresiones. Al escribir
+    funcionaba de rebote, porque el valor cambia; al salir, no cambia nada más que `pending`.
+    Ahora cada construcción del nivel raíz aporta lo que la decide: las condiciones de un `@if`,
+    el sujeto y los casos de un `@switch`, y la cabecera de un `@foreach`/`@for` recorrida con
+    el cuerpo vacío. Un `@while` no (con el cuerpo vacío no acabaría), y un `@await` vigila ya su
+    campo.
+35. **Dentro de un bloque, cada instancia vigila lo que lee de un import.** Un valor o una
+    construcción dentro de una fila que lee un miembro de un formulario importado
+    (`@foreach … { @if (userForm.x.pending()) … }`) tampoco se enteraba: el padre solo repinta un
+    bloque cuando cambia un valor suyo. La raíz no puede vigilarlo, porque la expresión puede
+    nombrar la fila. Ahora la vigila la instancia, en su propio `$s`, con su repintado (`$rp`,
+    la misma pasada que `u`) y con la fila que tiene en ese momento; se suelta con la
+    instancia. Un nombre que declara la fila o un ancestro es local, no el import.
+36. **Dos construcciones seguidas guardan el orden de la fuente.** Salió al probar la 35, y ya
+    pasaba con props normales: una construcción era transparente como ancla, los bloques
+    seguidos compartían el nodo de detrás, y el orden entre ellos era el de inserción. Un `@if`
+    que se encendía después de que el `@switch` de detrás hubiera pintado quedaba detrás de él,
+    un árbol que el servidor nunca pinta. Ahora una actualización (`$uN` de un `@if`/`@switch`,
+    la reconciliación de un bucle) coloca lo que crea antes de donde empieza la siguiente
+    construcción que pinta algo (`$nNa()`, que recorre sus instancias con `move` sin mover
+    nada). Las instancias se siguen creando contra el ancla estática, porque su `$anchor` es el
+    final de su propio nivel y tiene que ser un nodo que no se va. La creación no cambia: ya
+    inserta en orden de fuente.
