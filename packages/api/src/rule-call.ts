@@ -14,15 +14,15 @@ export interface RuleCall {
   readonly text?: StringLiteral;
 }
 
-const isText = (param: TypedField | undefined): boolean => {
-  const type = param?.type;
-  const inner = type?.kind === 'optional' ? type.inner : type;
-  return inner?.kind === 'named' && inner.name.text === 'str';
+const isText = (param: TypedField): boolean => {
+  const inner = param.type.kind === 'optional' ? param.type.inner : param.type;
+  return inner.kind === 'named' && inner.name.text === 'str';
 };
 
 /** The arguments and the text of `use` for a rule with `params`. */
 export function ruleCall(use: RuleUse, params: readonly TypedField[]): RuleCall {
-  if (use.text !== undefined && use.args.length === params.length - 1 && isText(params[use.args.length])) {
+  // `params.length - 1` is a valid index whenever the lengths agree: the param is there.
+  if (use.text !== undefined && use.args.length === params.length - 1 && isText(params[use.args.length]!)) {
     return { args: [...use.args, use.text] };
   }
   return { args: use.args, ...(use.text !== undefined ? { text: use.text } : {}) };

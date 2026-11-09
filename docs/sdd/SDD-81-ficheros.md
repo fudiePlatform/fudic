@@ -695,7 +695,7 @@ En el ejemplo, con Playwright, en dev y en preview:
   `http/wire/vectors.json`, que no cambian).
 - **Lo que comprueba el navegador lo vuelve a comprobar el servidor.**
 - **Diagnósticos con span**: `FUD1480`–`FUD1483` sobre el tipo o el `= …`; `FUD1484`–`FUD1486` sobre
-  el atributo o el `:=`; `FUD1487` sobre el número; `FUD1488` sobre el valor en `fudic.json`.
+  el atributo o el `:=`; `FUD1487` sobre el número; `FUD1488` sobre la clave del campo en `fudic.json` (como `FUD0725`).
 - **Cobertura.** Todo fichero nuevo nace al 100 % en las cuatro métricas, con umbral por fichero en
   los paquetes con deuda (`compiler`, `vite`). `language-server` sigue al 100 %.
 
