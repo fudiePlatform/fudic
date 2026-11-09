@@ -79,6 +79,20 @@ test.describe('a remote rule while typing (SDD-80 criterion 38)', () => {
     expect(asked).toEqual([`POST ${QUESTION}`, `POST ${QUESTION}`]);
   });
 
+  test('leaving the field with a taken alias shows «Comprobando…» until the answer, with one question', async ({ page }) => {
+    await open(page);
+    const asked = record(page);
+    // Leaving fires `change` and `blur`, on the host and on its input: they all join one question.
+    const first = answered(page);
+    await alias(page).fill('admin');
+    await alias(page).blur();
+    await expect(checking(page)).toHaveText('Comprobando…');
+    await first;
+    await expect(aliasError(page)).toHaveText('Ese alias ya está cogido.');
+    await expect(checking(page)).toHaveCount(0);
+    expect(asked).toEqual([`POST ${QUESTION}`]);
+  });
+
   test('a free alias says nothing; going back to a known one asks no more', async ({ page }) => {
     await open(page);
     const asked = record(page);

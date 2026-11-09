@@ -19,7 +19,10 @@ logout.handle((ctx) => {
   deleteCookie(ctx, SESSION_COOKIE);
 });
 
-search.handle((ctx) => inject(Users).find(ctx.args.q));
+// A local server answers in a couple of milliseconds, and «Buscando…» would only flash. 400 ms
+// is what a real network costs: enough to see the status, and to see the old search cancelled
+// when the next key comes before the answer.
+search.handle((ctx) => inject(Users).find(ctx.args.q, 400));
 
 searchJson.handle((ctx) => inject(Users).find(ctx.args.q));
 

@@ -244,7 +244,9 @@
   </div>
   <p>
     Cada tecla lanza una búsqueda y cancela la anterior: en Network la vieja sale como
-    <em>canceled</em>, y lo que se pinta es siempre la respuesta de la última.
+    <em>canceled</em>, y lo que se pinta es siempre la respuesta de la última. El servidor del
+    ejemplo tarda 400 ms a propósito, lo que tardaría una red real: en local contestaría en un
+    par de milisegundos y «Buscando…» solo parpadearía.
   </p>
   <ul>
     @foreach (const p of found.value()) key (p.id) {
