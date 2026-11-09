@@ -5,7 +5,7 @@
 > `@fudic/compiler` · `@fudic/config` · `@fudic/vite` · `@fudic/testing` · `@fudic/language-core` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/diagnostics` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-81-ficheros`, desde `worktree-pendiente`; al cerrar, merge `--no-ff` a `worktree-pendiente`.
-> **Progreso:** 18 / 37 — `Listo` (enmendada el 2026-11-09).
+> **Progreso:** 21 / 37 — `Listo` (enmendada el 2026-11-09).
 
 **Dos sesiones.** Una implementa y entrega cada fase con `pnpm typecheck` y `pnpm build`. La otra
 escribe los tests de cada fase (las tareas «Los tests de…») contra los criterios de SDD §6, en su
@@ -65,6 +65,57 @@ del token es `csrfToken`; una página se sirve a cualquier `GET` (solo `notFound
 - `pnpm test` de `vite` en paralelo da timeouts en los tests de build: correrlos aislados.
 - Para parar servidores propios, por puerto (`Get-NetTCPConnection -LocalPort N`), nunca `taskkill node`.
 
+## Relevo (2026-11-09, sesión de tests `pendiente-7b`)
+
+**Dónde está.** Las tareas de tests 1, 8, 12 y 21 cerradas (fases 1–4), mezcladas en
+`sdd-81-ficheros` desde `sdd-81-tests` (worktree `.claude/worktrees/tests-81`, que ya no hace falta).
+La sesión de implementación se paró antes de acabar la fase 4; esta sesión cerró la 21 arreglando
+lo que destapó. Lo siguiente es la fase 5 (tarea 22).
+
+**Cobertura al cerrar.** Al 100 % en las cuatro métricas: `server` (127 tests), `http` (799), `api`
+(697), `config` (99), `diagnostics`, `core` (364), `testing` (341). `vite`, sin bajar de su suelo.
+
+**Dónde está cada criterio.**
+- 1–5: `api/test/files.test.ts`. 6–16, 18–22, 24, 25, 49: `http/test/contract/files.test.ts` (stub →
+  `contractsHandler` en un proceso), `http/test/wire/files.test.ts`, `http/test/server/multipart.test.ts`.
+- 12 de extremo a extremo, 17, 23: `server/test/uploads.test.ts`, un servidor de Node real con
+  `diskSpool` (temporal durante el handler y borrado después aunque lance; 200 MB arriba y abajo sin
+  pasar de 100 MB de RSS; el `413` llega antes de que el cliente termine de subir).
+- 24 (la mitad de `task`): `core/test/task.test.ts`. 34: `config/test/serve.test.ts`. 38–48:
+  `server/test/*`, `http/test/csrf-token.test.ts`, `http/test/cookies.test.ts`, `vite/test/plugin.test.ts`
+  (preview sobre un `server.mjs` generado), `examples/basic/src/node-server.test.ts` (41).
+
+**Lo que queda de esos criterios para fases siguientes.**
+- 15 completo y la mitad `form.$progress()` del 24: necesitan `max-size`/`accept` y los controles de
+  fichero de `@fudic/forms` (fase 5). Hoy el 15 está probado con una regla que hace de `accept`.
+- 22 (`<img src>` pintando) y la subida del 41: en el ejemplo, con Playwright (fase 7, tarea 32).
+- 17 y 23 también se pueden repetir con el ejemplo (§4.6) cuando tenga sus funciones.
+
+**Arreglos de código que hizo esta sesión.**
+- `server/src/node/index.ts`: un cuerpo que el servidor dejó sin leer ya no lleva `connection: close`.
+  Node destruía el socket con bytes del cliente sin leer, el RST tiraba el `413` y el cliente veía
+  `ECONNRESET`. Ahora la conexión espera `LINGER_MS` (2 s) tras la respuesta y se cierra, o sigue
+  abierta si el cliente termina a tiempo.
+- `http`: tres ramas que ninguna entrada alcanzaba (`splitParams` siempre da cabecera; `encodeArgs`
+  con argumentos siempre escribe; un `for … if` de una línea que el conversor de cobertura leía con
+  cuenta negativa). `core/src/task.ts`: el JSDoc de `Callable` había quedado encima de `TaskProgress`.
+- Antes (fases 2–3): `test/helpers.ts` de `api` lee el `rules.fudapi` real de `@fudic/forms`, en lugar
+  de una copia que se había quedado atrás.
+- La suite completa destapó dos huecos más, ya cerrados: `conventions/test/index.test.ts` no sabía de
+  `CSRF_PATH` (fase 2), y FUD1481 no tenía su par en `diagnostics/fixtures/` (lo exige `cli`, porque
+  su Fix trae un ejemplo): `fixtures/FUD1481/`.
+
+**Verificación al cerrar.** `pnpm build`, `pnpm typecheck` y `pnpm test` completo (todos los paquetes,
+sin parar en el primer fallo) en verde, con esos dos arreglos dentro.
+
+**Avisos.**
+- El criterio 10 dice «409» y la firma vieja da `412` (el de SDD-67): el test fija `412`. Hay que
+  corregir el texto del criterio, no el código.
+- `testing`: una ejecución cortada (un `timeout`) deja `test/*-project/.fudic/render/<uuid>.test.ts`, y
+  todos los tests de «nothing left behind» fallan después. Borrarlos antes de volver a ejecutar.
+- `api` lee `@fudic/diagnostics` desde su `dist`: tras cambiar un diagnóstico, reconstruir diagnostics.
+- `pnpm test` en la raíz ya lleva `--no-bail`; no se le añade otro (le llega a vitest y falla todo).
+
 ---
 
 ## Fase 1 — decisiones y diagnósticos
@@ -118,7 +169,7 @@ del token es `csrfToken`; una página se sirve a cualquier `GET` (solo `notFound
   - `plugin.ts` sin lógica de páginas; `secureCookies` según `https`; `FUDIC_SECRET` del entorno.
   - *Depende de:* 2–6.
   - *Paquetes:* `vite`, `config`, `server`.
-- [ ] **8. Los tests de la fase.** Criterios 38–48, y las e2e del ejemplo en dev y preview sin cambios.
+- [x] **8. Los tests de la fase.** Criterios 38–48, y las e2e del ejemplo en dev y preview sin cambios.
   - **Lo que hereda de la implementación.** Los tests unitarios de preview de `vite/test/plugin.test.ts`
     (`configurePreviewServer middleware`) y uno de `http-units.test.ts` probaban la lógica que preview
     tenía dentro; ahora preview monta `server.mjs` y esos casos se reescriben contra `@fudic/server`
@@ -153,7 +204,7 @@ del token es `csrfToken`; una página se sirve a cualquier `GET` (solo `notFound
   - El `FnSpec` dice si la firma puede llevar ficheros (`files: true`).
   - *Depende de:* 9, 10.
   - *Paquete:* `api`.
-- [ ] **12. Los tests de la fase.** Criterios 1–5.
+- [x] **12. Los tests de la fase.** Criterios 1–5.
   - *Depende de:* 9–11.
   - *Paquete:* `api`.
 
@@ -210,7 +261,7 @@ del token es `csrfToken`; una página se sirve a cualquier `GET` (solo `notFound
   - `@fudic/testing` deja de juntar el cuerpo en `call.ts`.
   - *Depende de:* 7, 15, 16, 17.
   - *Paquetes:* `config`, `vite`, `testing`.
-- [ ] **21. Los tests de la fase.**
+- [x] **21. Los tests de la fase.**
   - Criterios 6–25 y 49, con un servidor en memoria y uno de Node real para los de memoria residual (17, 23).
   - *Depende de:* 13–20.
   - *Paquetes:* `http`, `server`, `core`, `config`, `vite`, `testing`.

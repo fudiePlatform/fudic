@@ -46,6 +46,7 @@ describe('@fudic/conventions', () => {
   it('names the server-function and error-page prefixes, inside the runtime directory', () => {
     // SDD-56 §4.1 and §4.8: both sides derive these URLs, so they live here once.
     expect(conventions.FN_PREFIX).toBe('/_fudic/fn');
+    expect(conventions.CSRF_PATH).toBe('/_fudic/csrf');
     // The data endpoint's, which vite and transport each kept a copy of until then.
     expect(conventions.DATA_PREFIX).toBe('/_fudic/data');
     // And what it answers with (SDD-70 §3.7).
@@ -115,6 +116,8 @@ describe('@fudic/conventions', () => {
       'API_TYPES_DIR',
       'BROWSER_DIR',
       'COMPONENTS_DIR',
+      // The CSRF token's URL (SDD-81 §3.13), served beside the functions.
+      'CSRF_PATH',
       'DATA_FRAMES_TYPE',
       'DATA_PREFIX',
       'DATA_STALE_EVENT',
