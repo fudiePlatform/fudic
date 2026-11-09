@@ -166,6 +166,27 @@ export function headerSpans(node: IfNode | SwitchNode): readonly Span[] {
   return node.branches.map((branch) => branch.header.inner);
 }
 
+/**
+ * What the PARENT reads to decide a construct, as expressions it can watch: the conditions of
+ * an `@if`, the subject and the tests of a `@switch`, and the header of a `@foreach`/`@for`,
+ * walked with an empty body. A `@while` gives nothing — an empty body would never end it — and
+ * neither does an `@await`, which watches its field itself.
+ *
+ * What it is for: a construct at the root that decides on a MEMBER of an imported name —
+ * `@if (userForm.alias.pending())` — is as deaf as a value write was before `watchImports`
+ * (BUG-42 §4.3), because the name itself is no source. The expression is.
+ */
+export function headerReads(node: ControlConstruct, source: string): readonly string[] {
+  const text = (span: Span): string => `(${source.slice(span.start, span.end)})`;
+  if (node.type === 'foreach' || node.type === 'for') return [`(() => { ${loopHead(node, source)} {} })()`];
+  if (node.type === 'if') return headerSpans(node).map(text);
+  if (node.type === 'switch') {
+    const tests = node.cases.flatMap((c) => (c.test === undefined ? [] : [text(c.test)]));
+    return [text(node.header.inner), ...tests];
+  }
+  return [];
+}
+
 /** The wrapper each loop's header needs so a synthetic buffer of them stays valid JS. */
 const LOOP_KIND: Readonly<Record<'foreach' | 'for' | 'while', JsFragmentKind>> = {
   foreach: 'for-of-header',

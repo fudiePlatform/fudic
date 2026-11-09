@@ -62,6 +62,11 @@ export interface BlockContext {
    * `$host` is read — the three facts every walk of this file shares, block or component.
    */
   readonly hookup: HookupContext;
+  /**
+   * The names the file imports (and the forms of its linked `.fudapi`): what a block watches a
+   * member of, as the root does (`watchImports`), because the name itself is no source.
+   */
+  readonly imported: readonly string[];
   nextBlock(): number;
   nextConstruct(): number;
 }
@@ -87,6 +92,7 @@ export function blockContext(
   ids: NodeIds,
   usage: CoreUsage,
   hookup: HookupContext,
+  imported: readonly string[],
 ): BlockContext {
   let blocks = 0;
   let constructs = 0;
@@ -97,6 +103,7 @@ export function blockContext(
     ids,
     usage,
     hookup,
+    imported,
     nextBlock: () => blocks++,
     nextConstruct: () => constructs++,
   };
@@ -248,6 +255,14 @@ export class BlockEmitter implements BlockSink {
     });
     em.planInPlace(branch.body);
     em.emitBlockBody(branch.body, '$c', at.tail);
+    // What the body reads through an imported name — `@if (userForm.alias.pending())` in a row —
+    // is watched by the instance itself, in its `$s`, and repaints it with the row it holds now:
+    // the parent only repaints a block when a value of its own moves. A name the row declares,
+    // or an ancestor's, is a local and not the import.
+    const scoped = new Set([...this.#changeable, ...block.params]);
+    const imports = this.#ctx.imported.filter((name) => !scoped.has(name));
+    const watches = em.watchImports(imports, bodies.hook, '$rp');
+    if (watches) this.#ctx.usage.subscribes = true;
 
     const w = at.bodies.decls;
     w.line(`const ${block.name} = (${['$parent', '$anchor', ...block.params].join(', ')}) => {`);
@@ -260,6 +275,8 @@ export class BlockEmitter implements BlockSink {
     w.appendWriter(bodies.decls);
     writeClosure(w, '$a', bodies.apply, 'let $v;');
     writeClosure(w, '$s', bodies.hook);
+    // The pass `u` runs, with the parameters as they stand: what a watched read calls.
+    if (watches) w.line(`const $rp = () => { ${renderPass(em.inPlace, updateCalls(bodies.update))} };`);
     // The one place a root of this block reaches the tree, whichever way it got there. A node
     // already where it goes is left alone (SDD-68 §4.8): a reconciliation that keeps every row
     // in its order moves nothing, and moving the ancestor of the focused element blurs it.
@@ -412,6 +429,8 @@ export class BlockEmitter implements BlockSink {
     at: BlockSite,
   ): void {
     const args = block.params.join(', ');
+    // Rows are built against the static anchor, a node of the level that never goes: it becomes
+    // their `$anchor`, the end of their own level. Where they finally sit is the live one's.
     const anchor = anchorOf(at);
     const w = at.bodies.decls;
     w.line(`const $u${id} = () => {`);
@@ -444,7 +463,7 @@ export class BlockEmitter implements BlockSink {
     }
     w.line('for (const $i of $gone) $i.r();');
     w.line(
-      `for (let $j = $next.length - 1, $ref = ${anchor}; $j >= 0; $j -= 1) $ref = $next[$j].move($ref);`,
+      `for (let $j = $next.length - 1, $ref = ${liveAnchorOf(at)}; $j >= 0; $j -= 1) $ref = $next[$j].move($ref);`,
     );
     w.line(`${registry} = $next;`);
     w.dedent();
@@ -508,7 +527,9 @@ export class BlockEmitter implements BlockSink {
     w.line(`${registry} = [];`);
     w.line(`$x${id} = $q;`);
     w.line(`const $i = ${make}($q, ${anchorOf(at)});`);
-    w.line(`if ($i !== null) { $i.c(); $i.m(); $i.s(); ${registry}.push($i); }`);
+    // Built against the static anchor (its `$anchor` outlives any block), placed by the live one.
+    const place = at.liveAnchor === undefined ? '' : ` $i.move(${at.liveAnchor});`;
+    w.line(`if ($i !== null) { $i.c(); $i.m();${place} $i.s(); ${registry}.push($i); }`);
     w.dedent();
     w.line('};');
   }
@@ -607,6 +628,11 @@ const awaitArg = (id: number): string => `$aw${id}`;
 /** The anchor a block inserts before: the next node of its level, or the level's end (§3.4). */
 function anchorOf(at: BlockSite): string {
   return at.anchor ?? at.level.end ?? 'null';
+}
+
+/** What an update inserts before: the live anchor when constructs follow, else the static one. */
+function liveAnchorOf(at: BlockSite): string {
+  return at.liveAnchor ?? anchorOf(at);
 }
 
 /** `$dom.remove` reaches this closure's own nodes; a nested block retires its own. */
