@@ -18,6 +18,8 @@ export {
   type FormContext,
   type Handler,
   type ServerContract,
+  type Linkable,
+  type Progress,
 } from './fn.js';
 export { ruleSend, type RuleSend } from './rule-send.js';
 export { page, type BrowserLoadPiece, type PageContext, type PagePiece, type PageSpec } from './page.js';

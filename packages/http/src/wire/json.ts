@@ -58,6 +58,7 @@ export const jsonWire: Wire = {
   },
   encodeValue: (_ty, value) => JSON.stringify(value),
   decodeValue: (ty, body) => conform(ty, parse(body), 'value'),
+  decodeRest: (ty, body) => revive(ty, parse(body)),
   encodeProblem: (problem) => JSON.stringify(problem),
   decodeProblem: (body) => parse(body) as Problem,
 };

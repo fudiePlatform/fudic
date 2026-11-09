@@ -9,3 +9,4 @@ export { markPrivate, parseCookies, readsSession, type PendingResponse } from '.
 export { noFunction, problemOf, problemResponse, PROBLEM_TYPE } from './problem.js';
 export { withRequest } from './request.js';
 export type { Spool, UploadLimits } from './uploads.js';
+export { DEFAULT_LIMITS, memorySpool } from './upload.js';

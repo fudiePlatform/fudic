@@ -34,7 +34,21 @@ export type TaskState = 'idle' | 'pending' | 'done' | 'cancelled' | 'failed';
 export type TaskMode = 'latest' | 'queue';
 
 /** Anything that takes its arguments and an AbortSignal: a server function is one. */
-export type Callable<A, R> = ((args: A, options: { readonly signal: AbortSignal }) => Promise<R>) & {
+/** The bytes a call in flight has moved (SDD-81 §3.4): the upload first, then the download. */
+export interface TaskProgress {
+  readonly loaded: number;
+  /** `null` when the size is not known. */
+  readonly total: number | null;
+  readonly phase: 'up' | 'down';
+}
+
+/** What a task hands a call: its cancel, and where it tells how many bytes it moved. */
+export interface CallSignals {
+  readonly signal: AbortSignal;
+  readonly onProgress?: (progress: TaskProgress | null) => void;
+}
+
+export type Callable<A, R> = ((args: A, options: CallSignals) => Promise<R>) & {
   /** The HTTP verb of a server function. Absent on any other callable. */
   readonly method?: string;
 };
@@ -59,6 +73,11 @@ export interface Task<A, R, V = R | undefined> {
   readonly state: Readable<TaskState>;
   /** `state() === 'pending'`. Tracked. */
   readonly pending: Readable<boolean>;
+  /**
+   * The bytes the call in flight has moved, as a server function tells them (SDD-81 §3.4): the
+   * upload, then the download; `null` when no call is in flight. Tracked.
+   */
+  readonly progress: Readable<TaskProgress | null>;
   /** What the last call that settled rejected with; `undefined` if it succeeded. Tracked. */
   readonly error: Readable<unknown>;
   /**
@@ -105,6 +124,7 @@ export function task<A, R>(
   const value = signal<R | undefined>(options.initial);
   const state = signal<TaskState>('idle');
   const error = signal<unknown>(undefined);
+  const progress = signal<TaskProgress | null>(null);
 
   /** Bumped by every call in `latest` and by every `cancel`: an older call never writes or resolves. */
   let generation = 0;
@@ -119,10 +139,14 @@ export function task<A, R>(
   let disposed = false;
 
   /** Call `fn`. A synchronous throw becomes a rejection, and no outcome ever rejects. */
-  const invoke = (args: A, controller: AbortController): Promise<Outcome<R>> => {
+  const invoke = (args: A, controller: AbortController, mine: number): Promise<Outcome<R>> => {
     inFlight = controller;
+    // Only the current call speaks: one replaced or cancelled moves no bar.
+    const onProgress = (p: TaskProgress | null): void => {
+      if (mine === generation) progress.set(p);
+    };
     return new Promise<R>((resolve) => {
-      resolve(fn(args, { signal: controller.signal }));
+      resolve(fn(args, { signal: controller.signal, onProgress }));
     }).then(
       (answer): Outcome<R> => ({ ok: true, status: 'done', value: answer }),
       (reason: unknown): Outcome<R> => ({ ok: false, status: 'failed', error: reason }),
@@ -156,6 +180,7 @@ export function task<A, R>(
     outstanding = 0;
     inFlight?.abort();
     inFlight = null;
+    progress.set(null);
     // A call that ignores its abort must not hold back the ones that come after.
     tail = Promise.resolve();
     for (const resolve of waiting) {
@@ -181,7 +206,7 @@ export function task<A, R>(
         if (mine !== generation) {
           return;
         }
-        const outcome = await invoke(args, new AbortController());
+        const outcome = await invoke(args, new AbortController(), mine);
         if (mine !== generation) {
           return;
         }
@@ -231,6 +256,7 @@ export function task<A, R>(
     state: computed(() => state()),
     pending: computed(() => state() === 'pending'),
     error: computed(() => error()),
+    progress: computed(() => progress()),
     message: computed(() => messageOf(error())),
     run: (...args) => start(args[0] as A),
     cancel,

@@ -8,7 +8,7 @@
  * only exists inside a problem.
  */
 
-export type Primitive = 'str' | 'html' | 'bool' | 'u8' | 'i8' | 'u16' | 'i16' | 'u32' | 'i32' | 'f32' | 'f64' | 'date' | 'uuid';
+export type Primitive = 'str' | 'html' | 'bool' | 'u8' | 'i8' | 'u16' | 'i16' | 'u32' | 'i32' | 'f32' | 'f64' | 'date' | 'uuid' | 'file';
 
 export type Ty =
   | Primitive

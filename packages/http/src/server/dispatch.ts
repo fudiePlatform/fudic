@@ -12,9 +12,11 @@ import { badRequest, ValidationError } from '../errors.js';
 import type { ServerContext } from '../types.js';
 import { markPrivate } from './context.js';
 import type { ServerSettings } from './settings.js';
+import type { Spool, UploadLimits } from './uploads.js';
 import { fromBase64url } from '../wire/base64url.js';
 import type { Ty } from '../wire/ty.js';
 import type { Wire } from '../wire/wire.js';
+import { hasFiles, splitValue, VALUE_PART } from '../wire/files.js';
 
 export interface DispatchOptions {
   /** Dev: a 500 carries its message in `detail`. Never in a build. */
@@ -30,6 +32,10 @@ export interface DispatchOptions {
   readonly secureCookies?: boolean;
   /** What the CSRF token is signed with (SDD-81 §3.13). */
   readonly secret?: string;
+  /** The limits of a call that carries files (SDD-81 §3.5); each one absent is its default. */
+  readonly uploads?: Partial<UploadLimits>;
+  /** Where its files wait while the handler runs: the adapter's. Default: memory. */
+  readonly spool?: () => Spool;
 }
 
 /** What the code under this handler is told, out of its options (SDD-81 §3.11). */
@@ -98,8 +104,39 @@ export function valueResponse(value: unknown, ctx: ServerContext, wire: Wire, re
   const { headers } = ctx.response;
   const checked = returns === undefined ? undefined : conformed(returns, value);
   if (checked === undefined) return new Response(null, { status: 204, headers });
+  // `-> file`: the body is the file, streamed from wherever it is (SDD-81 §3.3, §4.3).
+  if (checked instanceof File) return fileResponse(checked, ctx.response.status, headers);
+  if (hasFiles(returns!)) return multipartValue(returns!, checked, ctx.response.status, headers, wire);
   headers.set('content-type', wire.type);
   return new Response(wire.encodeValue(returns!, checked) as BodyInit, { status: ctx.response.status, headers });
+}
+
+/** RFC 8187: what `filename*` takes. */
+const extValue = (name: string): string =>
+  encodeURIComponent(name).replace(/['()*]/gu, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+
+/**
+ * A file as the whole body: its type, `inline` with its name in UTF-8 — an `<img>` paints it, an
+ * `<a download>` saves it under that name —, its length and its date.
+ */
+function fileResponse(file: File, status: number, headers: Headers): Response {
+  headers.set('content-type', file.type === '' ? 'application/octet-stream' : file.type);
+  headers.set('content-disposition', file.name === '' ? 'inline' : `inline; filename*=UTF-8''${extValue(file.name)}`);
+  headers.set('content-length', String(file.size));
+  headers.set('last-modified', new Date(file.lastModified).toUTCString());
+  return new Response(file.stream(), { status, headers });
+}
+
+/** A value that carries files: `$value` in the function's format, then a part per file, by its path. */
+function multipartValue(returns: Ty, value: unknown, status: number, headers: Headers, wire: Wire): Response {
+  const { rest, files } = splitValue(returns, value);
+  const form = new FormData();
+  form.append(VALUE_PART, new Blob([wire.encodeValue(returns, rest) as BlobPart], { type: wire.type }));
+  for (const [path, file] of files) form.append(path, file);
+  // The `Response` writes the boundary into its own `content-type`.
+  headers.delete('content-type');
+  const response = new Response(form, { status, headers });
+  return response;
 }
 
 function conformed(returns: Ty, value: unknown): unknown {

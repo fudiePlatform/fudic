@@ -8,6 +8,7 @@
  */
 
 import { request as httpRequest } from 'node:http';
+import { Readable } from 'node:stream';
 import { answerWith } from './fetch.js';
 
 /** What a function of the generated module is: a call with the options of `$fn`. */
@@ -34,23 +35,22 @@ export function forward(origin: string, headers: Readonly<Record<string, string>
   return async (request) => {
     const url = new URL(request.url);
     const target = new URL(url.pathname + url.search, origin);
-    const body = Buffer.from(await request.arrayBuffer());
     const sent: Record<string, string> = { ...Object.fromEntries(request.headers), origin, 'sec-fetch-site': 'same-origin', ...headers };
-    if (body.length > 0) sent['content-length'] = String(body.length);
     return new Promise((resolve, reject) => {
       const req = httpRequest(target, { method: request.method, headers: sent }, (res) => {
-        const chunks: Buffer[] = [];
-        res.on('data', (chunk: Buffer) => chunks.push(chunk));
-        res.on('end', () => {
-          const out = new Headers();
-          for (const [name, value] of Object.entries(res.headers)) if (typeof value === 'string') out.set(name, value);
-          const status = res.statusCode!;
-          // A body with a status that has none is refused by `Response`.
-          resolve(new Response(status === 204 || status === 304 ? null : Buffer.concat(chunks), { status, headers: out }));
-        });
+        const out = new Headers();
+        for (const [name, value] of Object.entries(res.headers)) if (typeof value === 'string') out.set(name, value);
+        const status = res.statusCode!;
+        // As it comes, never gathered (SDD-81 §3.5). A status without a body is refused one by `Response`.
+        if (status === 204 || status === 304) {
+          res.resume();
+          resolve(new Response(null, { status, headers: out }));
+        } else resolve(new Response(Readable.toWeb(res) as ReadableStream<Uint8Array>, { status, headers: out }));
       });
       req.on('error', reject);
-      req.end(body);
+      // The body goes out as it is read, a file included: never gathered either.
+      if (request.body === null) req.end();
+      else Readable.fromWeb(request.body as import('node:stream/web').ReadableStream<Uint8Array>).pipe(req);
     });
   };
 }

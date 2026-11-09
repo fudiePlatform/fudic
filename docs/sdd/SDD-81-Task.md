@@ -5,7 +5,7 @@
 > `@fudic/compiler` · `@fudic/config` · `@fudic/vite` · `@fudic/testing` · `@fudic/language-core` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/diagnostics` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-81-ficheros`, desde `worktree-pendiente`; al cerrar, merge `--no-ff` a `worktree-pendiente`.
-> **Progreso:** 10 / 37 — `Listo` (enmendada el 2026-11-09).
+> **Progreso:** 18 / 37 — `Listo` (enmendada el 2026-11-09).
 
 **Dos sesiones.** Una implementa y entrega cada fase con `pnpm typecheck` y `pnpm build`. La otra
 escribe los tests de cada fase (las tareas «Los tests de…») contra los criterios de SDD §6, en su
@@ -115,7 +115,7 @@ propio worktree desde esta rama. Si un test destapa un defecto, se corrige el c�
 
 ## Fase 4 — el cable
 
-- [ ] **13. `Ty` y los dos `Wire`.**
+- [x] **13. `Ty` y los dos `Wire`.**
   - `'file'` en `Primitive`.
   - `fud-bin` y JSON saltan los huecos `file`, también su bit de nulo.
   - `conform` acepta `File` o `Blob` con nombre.
@@ -123,14 +123,14 @@ propio worktree desde esta rama. Si un test destapa un defecto, se corrige el c�
   - Los vectores existentes, sin cambios (SDD §3.3).
   - *Depende de:* 11.
   - *Paquete:* `http`.
-- [ ] **14. El lector de multipart.**
+- [x] **14. El lector de multipart.**
   - En streaming, con Boyer-Moore-Horspool sobre ventana.
   - Cabeceras de parte (`name`, `filename`, `filename*`, `content-type`).
   - Cada cuerpo como `ReadableStream`, uno detrás de otro.
   - `400 multipart body:` ante cualquier forma mala (SDD §4.4).
   - *Depende de:* —.
   - *Paquete:* `http`.
-- [ ] **15. El servidor recibe.**
+- [x] **15. El servidor recibe.**
   - `serve()` exige `multipart/form-data` si `files`; multipart de otro sitio, `403` (SDD §3.13).
   - `$args` primero y hasta `maxArgs`.
   - Cada fichero pasa por `Spool.put` contando bytes contra `max-size`/`maxFileSize`; `maxFiles`.
@@ -139,28 +139,28 @@ propio worktree desde esta rama. Si un test destapa un defecto, se corrige el c�
   - `UploadLimits`, `Spool`, `memorySpool` y las opciones `uploads`/`spool` (SDD §3.5, §4.2).
   - *Depende de:* 13, 14.
   - *Paquete:* `http`.
-- [ ] **16. `diskSpool`.**
+- [x] **16. `diskSpool`.**
   - Temporal en `os.tmpdir()`, `fs.openAsBlob`, borrado en `release`.
   - *Depende de:* 15, 3.
   - *Paquete:* `server` (`/node`).
-- [ ] **17. La vuelta.**
+- [x] **17. La vuelta.**
   - `-> file` con `stream()` y sus cabeceras; `-> file?` ausente, `204`.
   - Un valor con ficheros, en multipart con `$value`.
   - En el cliente: `decode` construye el `File` o lee `formData()` y recompone (SDD §3.3, §4.3).
   - *Depende de:* 13.
   - *Paquete:* `http`.
-- [ ] **18. El cliente sube.**
+- [x] **18. El cliente sube.**
   - `encode` separa los ficheros y arma el `FormData`; `compress` no aplica.
   - La llamada multipart sale por `XMLHttpRequest`, con `abort` por la señal.
   - `progress` de subida y de bajada.
   - `url(args)` en todo stub de `get` (SDD §3.4, §4.1).
   - *Depende de:* 13, 17.
   - *Paquete:* `http`.
-- [ ] **19. `progress()` en `task`.**
+- [x] **19. `progress()` en `task`.**
   - La señal que alimenta el stub, a `null` al terminar o cancelar.
   - *Depende de:* 18.
   - *Paquete:* `core`.
-- [ ] **20. `fudic.json`, Vite y testing.**
+- [x] **20. `fudic.json`, Vite y testing.**
   - `serve.uploads` en `@fudic/config` con `FUD1488`.
   - El plugin lo pasa en dev; el build lo deja en `config` de `server.mjs`; preview y dev con `diskSpool`.
   - `@fudic/testing` deja de juntar el cuerpo en `call.ts`.

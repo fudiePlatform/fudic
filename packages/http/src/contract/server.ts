@@ -19,6 +19,7 @@ import { bodyArgs } from '../server/body.js';
 import { queryArgs, settingsOf, valueResponse, withForm, type DispatchOptions } from '../server/dispatch.js';
 import { noFunction, problemOf, problemResponse } from '../server/problem.js';
 import { withRequest } from '../server/request.js';
+import { DEFAULT_LIMITS, memorySpool, multipartArgs, refuseCrossSite, releasing } from '../server/upload.js';
 import type { ServerContext } from '../types.js';
 import { contractIds, contractsOf, SIG_HEADER, type ServerContract } from './fn.js';
 import { compose } from './middleware.js';
@@ -61,17 +62,26 @@ export async function serve(input: ServeInput, options: DispatchOptions = {}): P
   const { wire } = spec;
   // What the handler wrote before it threw still goes out with the error (SDD-69 §4.2).
   let response: ServerContext['response'] | undefined;
+  // A call that may carry files gets a spool, released once its response is done (SDD-81 §3.5).
+  const spool = spec.files === true ? (options.spool ?? memorySpool)() : undefined;
+  const released = (out: Response): Response => (spool === undefined ? out : releasing(out, spool));
   try {
     if (request.method !== spec.method) throw new HttpError({ status: 405, title: 'Method Not Allowed' });
     const handler = contract.slot.get();
     if (handler === undefined) throw missing(contract.slot.missing(), options.dev === true);
 
     const url = new URL(request.url);
+    if (spool !== undefined) refuseCrossSite(request, url);
     const params = { ...input.page, ...typed(spec.params ?? {}, (name) => input.route[name] ?? null) };
     const query = typed(spec.query ?? {}, (name) => url.searchParams.get(name));
     if (request.headers.get(SIG_HEADER) !== (spec.sig ?? null)) throw stale();
     const types = spec.args ?? {};
-    const raw = request.method === 'GET' ? queryArgs(url, wire, types) : await bodyArgs(request, wire, types);
+    const raw =
+      request.method === 'GET'
+        ? queryArgs(url, wire, types)
+        : spool !== undefined
+          ? await multipartArgs(request, wire, types, { limits: { ...DEFAULT_LIMITS, ...options.uploads }, ...(spec.fileLimits !== undefined ? { fileLimits: spec.fileLimits } : {}) }, spool)
+          : await bodyArgs(request, wire, types);
     const args = spec.form !== undefined ? raw : spec.args !== undefined ? conformAll(spec.args, raw, 'argument') : undefined;
     await checkRules(spec.rules, { ...params, ...query, ...args });
 
@@ -85,10 +95,10 @@ export async function serve(input: ServeInput, options: DispatchOptions = {}): P
         return (handler as (c: ServerContext) => unknown)(done);
       }),
     );
-    return valueResponse(value, ctx, wire, spec.returns);
+    return released(valueResponse(value, ctx, wire, spec.returns));
   } catch (e) {
     if (!(e instanceof HttpError)) options.onError?.(e);
-    return problemResponse(problemOf(e, options.dev === true), wire, response);
+    return released(problemResponse(problemOf(e, options.dev === true), wire, response));
   }
 }
 

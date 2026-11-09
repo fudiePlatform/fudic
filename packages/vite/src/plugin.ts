@@ -38,7 +38,7 @@ import { API_SCHEME, ApiProject, nothingToImplement } from './api-modules.js';
 import { BROWSER_ROOT_ID, ROOT_FILE_PREFIX, SERVER_ROOT_ID, emitRoot } from './api-root.js';
 import { emitFunctionsModule, isFnPath, noFunction, type ContractsHandler } from './functions.js';
 import { createServer, type FudicServer, type ServerApp, type ServerOptions } from '@fudic/server';
-import { nodeMiddleware, staticPages } from '@fudic/server/node';
+import { diskSpool, nodeMiddleware, staticPages } from '@fudic/server/node';
 import { emitServerModule } from './server-module.js';
 import { loadWithSourceMap } from './inputmaps.js';
 import {
@@ -533,6 +533,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
    */
   const serveOptions = (https: boolean, serve: ServeConfig = project.config?.serve ?? {}): ServerOptions => ({
     secureCookies: https,
+    // On Node an upload waits on disk, never in memory (SDD-81 §3.5).
+    spool: diskSpool,
     ...(serve.trustProxy === true ? { trustProxy: true } : {}),
     ...(serve.uploads !== undefined ? { uploads: serve.uploads } : {}),
     ...(process.env['FUDIC_SECRET'] !== undefined ? { secret: process.env['FUDIC_SECRET'] } : {}),

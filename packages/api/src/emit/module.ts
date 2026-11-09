@@ -350,6 +350,7 @@ function fn(d: FnDecl, c: ModuleCtx): string {
     ...(d.returns !== undefined ? [`returns: ${descriptor(d.returns.type, c)}`] : []),
     // A call that may carry a file travels as multipart, carrying one this time or not (SDD-81 §3.3).
     ...(carriesFiles(d, c) ? ['files: true'] : []),
+    ...(fileLimits(d, c) ?? []),
     ...(rules !== undefined ? [`rules: ${rules}`] : []),
     `chain: ${chainOf(level(d.uses, d.skips, d.compress, c), c)}`,
     ...(d.invalidates.length > 0 ? [`invalidates: [${d.invalidates.flatMap((i) => i.routes).map((r) => str(r.text)).join(', ')}]`] : []),
@@ -372,4 +373,29 @@ function carriesFiles(d: FnDecl, c: ModuleCtx): boolean {
     members.some((m) => (m.kind === 'form-group' ? inForm(m.fields) : isFile(m.type)));
   if (form?.decl.kind === 'form' && inForm(form.decl.fields)) return true;
   return d.args.some((a) => a.place === 'body' && fileIn(a.type, c.index, c.source.path) !== undefined);
+}
+
+/**
+ * The `max-size` of each file slot that declares one, by path (SDD-81 §3.5): the server cuts a
+ * part at it while it reads, instead of after. A `file[]` says it once for all its elements.
+ */
+function fileLimits(d: FnDecl, c: ModuleCtx): string[] | undefined {
+  const out: string[] = [];
+  const add = (path: string, rules: readonly RuleUse[]): void => {
+    const use = rules.find((r) => r.name.text === 'max-size');
+    const rule = use === undefined ? undefined : c.index.lookup('rule', 'max-size');
+    const n = use === undefined || rule?.decl.kind !== 'rule' ? undefined : ruleCall(use, rule.decl.params).args[0];
+    if (n?.kind === 'number') out.push(`${str(path)}: ${n.value}`);
+  };
+  const form = d.form === undefined ? undefined : c.index.lookup('form', d.form.name.text);
+  const walk = (members: readonly FormMember[], prefix: string): void => {
+    for (const m of members) {
+      const path = prefix === '' ? m.name.text : `${prefix}.${m.name.text}`;
+      if (m.kind === 'form-group') walk(m.fields, path);
+      else if (isFile(m.type)) add(path, m.rules);
+    }
+  };
+  if (form?.decl.kind === 'form') walk(form.decl.fields, '');
+  for (const a of d.args) if (a.place === 'body' && isFile(a.type)) add(a.name.text, a.rules);
+  return out.length === 0 ? undefined : [`fileLimits: { ${out.join(', ')} }`];
 }

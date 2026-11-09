@@ -55,6 +55,25 @@ export interface CallOptions {
   readonly signal?: AbortSignal;
   /** A route function's params. Default: the params of the page the browser is on. */
   readonly params?: Readonly<Record<string, string>>;
+  /**
+   * Told the bytes the call has moved as it moves them (SDD-81 §3.4): the upload first, then the
+   * download, and `null` once it is over. `task` and `form:=` give it.
+   */
+  readonly onProgress?: (progress: Progress | null) => void;
+}
+
+/** The bytes a call in flight has moved. */
+export interface Progress {
+  readonly loaded: number;
+  /** `null` when the size is not known (a download without `content-length`). */
+  readonly total: number | null;
+  readonly phase: 'up' | 'down';
+}
+
+/** What a `get` gains (SDD-81 §3.4): its URL, for a `href`, a `src`, a `<video>`. */
+export interface Linkable<A> {
+  /** The URL that calls it with `args`, the page's params and the app's `base` already in. */
+  url(...args: [A] extends [void] ? [args?: A, options?: Pick<CallOptions, 'params'>] : [args: A, options?: Pick<CallOptions, 'params'>]): string;
 }
 
 /** What the name of a server function is in the browser. */

@@ -17,6 +17,7 @@ import { join, pageParams } from '../client/url.js';
 import { isForm } from '../client/form.js';
 import { announceStale, invalidate } from '../client/invalidate.js';
 import { runPipeline } from '../client/pipeline.js';
+import { multipartBody, send } from '../client/send.js';
 import { STAGES } from '../client/stages/index.js';
 import { run } from '../compose.js';
 import { ValidationError } from '../errors.js';
@@ -28,6 +29,7 @@ import { checkRules, type ArgRule } from './rules.js';
 import { conformAll, toText, type Ty } from './wire.js';
 
 export type { ArgRule } from './rules.js';
+export type { Linkable, Progress } from '../types.js';
 
 /** The header that carries a function's signature (SDD-67 §3.3). */
 export const SIG_HEADER = 'fud-sig';
@@ -55,6 +57,8 @@ export interface FnSpec {
   readonly sig?: string;
   /** Whether a call may carry a file: then it travels as `multipart/form-data` (SDD-81 §3.3). */
   readonly files?: boolean;
+  /** The `max-size` of each file slot that declares one, by path: where the server cuts a part (SDD-81 §3.5). */
+  readonly fileLimits?: Readonly<Record<string, number>>;
   /** The type of `->`; absent when it returns nothing (204). */
   readonly returns?: Ty;
   /** The rules under its arguments, by argument, in declaration order. */
@@ -105,7 +109,14 @@ const labelOf = (spec: FnSpec): string => `${spec.name} of ${spec.id}`;
 export function fn(spec: FnSpec): ServerContract {
   const slot = new Slot<Handler<never, unknown>>(labelOf(spec), 'server');
   const call = (): Promise<never> => Promise.reject(new Error(`${labelOf(spec)} is called from the browser`));
-  const contract = Object.assign(call, { spec, slot, method: spec.method, handle: (h: Handler<never, unknown>) => slot.set(h) });
+  const contract = Object.assign(call, {
+    spec,
+    slot,
+    method: spec.method,
+    handle: (h: Handler<never, unknown>) => slot.set(h),
+    // Painted by the server's render too: `<img src=@avatar.url(…)>` (SDD-81 §3.4).
+    url: (input?: unknown, options?: Pick<CallOptions, 'params'>) => linkOf(spec, input, options),
+  });
   const byName = contracts.get(spec.id) ?? new Map<string, ServerContract>();
   contracts.set(spec.id, byName);
   byName.set(spec.name, contract as unknown as ServerContract);
@@ -159,11 +170,23 @@ export function stub<C, R, A>(spec: FnSpec): Contract<C, R, A> {
       catches: spec.catches ?? [],
     };
     const value = await run(steps as never, ctx, async (c: ClientContext) => {
+      try {
+        return await network(c);
+      } finally {
+        // Whatever it came to, the call moves no more bytes (SDD-81 §3.4).
+        options.onProgress?.(null);
+      }
+    });
+    async function network(c: ClientContext): Promise<unknown> {
       const target = new URL(c.url);
       const headers = new Headers(c.headers);
       if (spec.sig !== undefined) headers.set(SIG_HEADER, spec.sig);
       let sent: BodyInit | undefined;
-      if (c.args !== undefined && Object.keys(types).length > 0) {
+      if (spec.files === true && c.method !== 'GET') {
+        // A call that may carry files is always multipart, carrying one this time or not, and is
+        // never compressed: its files are compressed already, or will not be (SDD-81 §3.3).
+        sent = multipartBody(wire, types, (isForm(c.args) ? c.args.$value() : (c.args ?? {})) as Readonly<Record<string, unknown>>);
+      } else if (c.args !== undefined && Object.keys(types).length > 0) {
         if (c.method === 'GET') {
           const out = wire.encodeArgs(types, (isForm(c.args) ? c.args.$value() : c.args) as Readonly<Record<string, unknown>>)!;
           target.searchParams.set('a', typeof out === 'string' ? out : toBase64url(out));
@@ -173,15 +196,13 @@ export function stub<C, R, A>(spec: FnSpec): Contract<C, R, A> {
           sent = out.value as string | Uint8Array<ArrayBuffer>;
         }
       }
-      const response = await fetch(target, {
-        method: c.method,
-        headers,
-        signal: c.signal,
-        credentials: 'same-origin',
-        ...(sent !== undefined ? { body: sent } : {}),
-      });
+      const response = await send(
+        target,
+        { method: c.method, headers, signal: c.signal, credentials: 'same-origin', ...(sent !== undefined ? { body: sent } : {}) },
+        options.onProgress,
+      );
       return decode(response, { wire, ...(spec.returns !== undefined ? { returns: spec.returns } : {}), ...(spec.fails !== undefined ? { fails: spec.fails } : {}) });
-    });
+    }
     const own = (spec.invalidates ?? []).map((path) => join(base, path));
     const stale = spec.method === 'GET' ? own : [globalThis.location.pathname, ...own];
     await invalidate(stale);
@@ -194,7 +215,12 @@ export function stub<C, R, A>(spec: FnSpec): Contract<C, R, A> {
     await announceStale(own);
     return value;
   };
-  return Object.assign(call, { spec, method: spec.method, handle: (h: unknown) => slot.set(h) }) as unknown as Contract<C, R, A>;
+  return Object.assign(call, {
+    spec,
+    method: spec.method,
+    handle: (h: unknown) => slot.set(h),
+    url: (input?: unknown, options?: Pick<CallOptions, 'params'>) => linkOf(spec, input, options),
+  }) as unknown as Contract<C, R, A>;
 }
 
 /** `/_fudic/fn/<id with the page's values>/<name>/<route with its values>`. */
@@ -209,4 +235,27 @@ export function pathOf(
   });
   const own = (spec.route ?? []).map((seg) => (seg.startsWith(':') ? encodeURIComponent(toText(route[seg.slice(1)])) : seg));
   return [FN_PREFIX, ...id, spec.name, ...own].join('/');
+}
+
+/**
+ * The URL that calls a `get` with `input` (SDD-81 §3.4): its route and query filled, its body
+ * arguments in `?a=` in its format, the page's params and the app's `base`, as the call writes
+ * it. For a `href`, a `src`: the browser asks it without any script. Path and query only: it is
+ * of this origin wherever it is painted, the server's render included.
+ */
+export function linkOf(spec: FnSpec, input: unknown, options: Pick<CallOptions, 'params'> = {}): string {
+  if (spec.method !== 'GET') throw new TypeError(`${labelOf(spec)} is not a get: only a get has a URL`);
+  const base = spec.base ?? '/';
+  const types = spec.args ?? {};
+  const record = (input ?? {}) as Readonly<Record<string, unknown>>;
+  const route = conformAll(spec.params ?? {}, record, 'argument');
+  const query = conformAll(spec.query ?? {}, record, 'argument');
+  const page = options.params ?? pageParams(spec.page, base, (globalThis as { readonly location?: Location }).location?.pathname ?? '/');
+  const url = new URL(join(base, pathOf(spec, page, route)), 'http://link');
+  for (const [key, value] of Object.entries(query)) url.searchParams.set(key, toText(value));
+  if (Object.keys(types).length > 0) {
+    const out = spec.wire.encodeArgs(types, conformAll(types, record, 'argument'));
+    if (out !== undefined) url.searchParams.set('a', typeof out === 'string' ? out : toBase64url(out));
+  }
+  return `${url.pathname}${url.search}`;
 }

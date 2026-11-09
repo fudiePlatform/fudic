@@ -256,10 +256,13 @@ function fnDecl(d: FnDecl, c: DeclCtx): string {
         ? 'void'
         : fieldsType([...places, ...body], c);
 
+  // A `get` is a URL too, for a `href` or a `src` (SDD-81 §3.4).
+  if (d.verb === 'get') c.http.add('Linkable');
+  const linkable = d.verb === 'get' ? ` & Linkable<${call}>` : '';
   const lines = [
     `${I}export type ${prefix}Ctx = ${ctx}${addsOf(d, c)};`,
     `${I}export type ${prefix}Handler = (ctx: ${prefix}Ctx) => ${R} | Promise<${R}>;`,
-    `${I}export const ${d.name.text}: Contract<${prefix}Ctx, ${R}, ${call}>;`,
+    `${I}export const ${d.name.text}: Contract<${prefix}Ctx, ${R}, ${call}>${linkable};`,
   ];
   if (d.fails.length > 0) lines.push(`${I}export const ${prefix}Fails: ${failsType(d.fails, c)};`);
   return lines.join('\n');

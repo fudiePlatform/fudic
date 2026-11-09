@@ -9,6 +9,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { isAbsolute, join, relative } from 'node:path';
 import type { EarlyHints, FetchHooks, FudicServer } from '../types.js';
 
+export { diskSpool } from './spool.js';
+
 /**
  * A Node request as a `Request`, whose `signal` aborts when the client goes away before the
  * response is written (SDD-56 §4.12).
@@ -166,7 +168,13 @@ export function nodeMiddleware(server: FudicServer, options: NodeMiddlewareOptio
     server
       .fetch(request, hooks)
       .then((response) => (response === null && options.notFound === true ? server.notFound(request, hooks) : response))
-      .then((response) => (response === null ? next() : sendResponse(res, response)))
+      .then((response) => {
+        if (response === null) return next();
+        // A body the server stopped reading (a limit, SDD-81 §3.5): over HTTP/1.1 Node would read
+        // the rest to keep the connection; closed instead, the rest is never read.
+        if (req.httpVersionMajor === 1 && !req.complete && req.method !== 'GET' && req.method !== 'HEAD') res.setHeader('connection', 'close');
+        return sendResponse(res, response);
+      })
       .catch(next);
   };
 }

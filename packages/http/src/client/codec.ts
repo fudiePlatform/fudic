@@ -6,6 +6,8 @@
  */
 
 import { CODE_HEADER, HttpError, Redirect, ValidationError, type Problem } from '../errors.js';
+import { conform } from '../contract/wire.js';
+import { joinValue, VALUE_PART } from '../wire/files.js';
 import type { Ty } from '../wire/ty.js';
 import type { Wire } from '../wire/wire.js';
 
@@ -34,6 +36,11 @@ const bytesOf = async (response: Response): Promise<Uint8Array> => new Uint8Arra
 export async function decode(response: Response, spec: Returns): Promise<unknown> {
   if (response.ok) {
     if (response.status === 204 || spec.returns === undefined) return undefined;
+    const type = (response.headers.get('content-type') ?? '').split(';')[0]!.trim().toLowerCase();
+    // `-> file`: the body is the file (SDD-81 §3.3).
+    if (isFileType(spec.returns)) return fileOf(response);
+    // A value that carries files: `$value`, then its files in their places.
+    if (type === 'multipart/form-data') return valueWithFiles(response, spec.returns, spec.wire);
     return spec.wire.decodeValue(spec.returns, await bytesOf(response));
   }
   const problem = await problemOf(response, spec.wire);
@@ -42,6 +49,44 @@ export async function decode(response: Response, spec: Returns): Promise<unknown
   const text = code !== undefined && spec.fails !== undefined && Object.hasOwn(spec.fails, code) ? spec.fails[code] : undefined;
   const coded = code === undefined ? problem : { ...problem, code };
   throw fromProblem(text === undefined ? coded : { ...coded, detail: text });
+}
+
+/** `file` or `file?`: the response is the file. */
+const isFileType = (ty: Ty): boolean => ty === 'file' || (typeof ty !== 'string' && 'opt' in ty && isFileType(ty.opt));
+
+/** The name in `content-disposition`: `filename*` (RFC 8187) first, then `filename`; `''` with none. */
+export function filenameOf(disposition: string | null): string {
+  if (disposition === null) return '';
+  const star = /filename\*\s*=\s*(?:utf-8|UTF-8)'[^']*'([^;]+)/u.exec(disposition)?.[1];
+  if (star !== undefined) {
+    try {
+      return decodeURIComponent(star.trim());
+    } catch {
+      // A name that does not decode: the plain one, if there is one.
+    }
+  }
+  return /filename\s*=\s*"?([^";]*)"?/u.exec(disposition)?.[1] ?? '';
+}
+
+/** The body as a `File`, with the name, type and date its headers give. */
+async function fileOf(response: Response): Promise<File> {
+  const modified = response.headers.get('last-modified');
+  const lastModified = modified === null ? Number.NaN : Date.parse(modified);
+  return new File([await response.blob()], filenameOf(response.headers.get('content-disposition')), {
+    type: response.headers.get('content-type') ?? '',
+    ...(Number.isNaN(lastModified) ? {} : { lastModified }),
+  });
+}
+
+/** A multipart value: `$value` read in the function's format, each file put back where its part says. */
+async function valueWithFiles(response: Response, returns: Ty, wire: Wire): Promise<unknown> {
+  const form = await response.formData();
+  const value = form.get(VALUE_PART);
+  if (!(value instanceof Blob)) throw new HttpError({ status: 502, title: 'Bad Gateway', detail: `a multipart value without ${VALUE_PART}` });
+  const parts = new Map<string, File>();
+  for (const [name, part] of form) if (name !== VALUE_PART && part instanceof File) parts.set(name, part);
+  const rest = wire.decodeRest(returns, new Uint8Array(await value.arrayBuffer()));
+  return conform(returns, joinValue(returns, rest, parts), 'value');
 }
 
 /** The body of a failed response by its type, or a `Problem` made of its status when it is neither. */
