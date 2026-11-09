@@ -170,13 +170,31 @@ export function nodeMiddleware(server: FudicServer, options: NodeMiddlewareOptio
       .then((response) => (response === null && options.notFound === true ? server.notFound(request, hooks) : response))
       .then((response) => {
         if (response === null) return next();
-        // A body the server stopped reading (a limit, SDD-81 §3.5): over HTTP/1.1 Node would read
-        // the rest to keep the connection; closed instead, the rest is never read.
-        if (req.httpVersionMajor === 1 && !req.complete && req.method !== 'GET' && req.method !== 'HEAD') res.setHeader('connection', 'close');
+        if (req.httpVersionMajor === 1 && !req.complete && req.method !== 'GET' && req.method !== 'HEAD') lingerUnread(req, res);
         return sendResponse(res, response);
       })
       .catch(next);
   };
+}
+
+/** How long a connection whose body was left unread waits for the client to stop sending. */
+export const LINGER_MS = 2000;
+
+/**
+ * A body the server stopped reading (a limit, SDD-81 §3.5). The response goes out first and the
+ * rest of the body stays unread. Closing at once would not do: a socket destroyed with bytes of
+ * the client still unread is reset, and a reset throws away the response the client has not read
+ * yet — it would see a broken connection instead of its `413`. So the connection lingers: the
+ * client reads the answer and stops sending, and LINGER_MS after the response it goes, whatever
+ * the client did. A body that the client does finish in time leaves it open, as usual.
+ */
+function lingerUnread(req: IncomingMessage, res: ServerResponse): void {
+  res.once('finish', () => {
+    if (req.complete) return;
+    const timer = setTimeout(() => req.socket.destroy(), LINGER_MS);
+    timer.unref();
+    req.once('end', () => clearTimeout(timer));
+  });
 }
 
 /** `/` → `index.html`, `/about` → `about/index.html`: where the build writes a prerendered page. */

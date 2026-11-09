@@ -20,6 +20,7 @@ import { FUD0870, span } from '@fudic/diagnostics';
 import { toPosix, type CheckReport } from '@fudic/typecheck';
 import { fudic } from '../src/index.js';
 import { WRAPPER_PREFIX, SW_ID, MAIN_ID, BOOT_ID } from '../src/constants.js';
+import { emitServerModule, type ServerModuleInput } from '../src/server-module.js';
 import { fakeDevServerParts } from './helpers/dev-server.js';
 
 /** What the scripted typecheck answers; clean unless a test says otherwise. */
@@ -372,8 +373,6 @@ const fakeRes = (): FakeRes => ({
   },
 });
 const flush = (): Promise<void> => new Promise((r) => setImmediate(r));
-/** A dynamic `import()` of a built chunk outside the root needs real time, not ticks. */
-const settle = (): Promise<void> => new Promise((r) => setTimeout(r, 1500));
 
 describe('configureServer middleware', () => {
   async function withServer(
@@ -616,133 +615,215 @@ describe('hotUpdate — an edit the server graph sees reloads the browser (BUG-5
 });
 
 describe('configurePreviewServer middleware', () => {
-  // Preview is the production edge: the prerendered file when there is one, with the
-  // CSP header and this response's nonce stamped into the document.
-  function withPreview(
-    outDir: string,
-    previewRoot: string = root,
-  ): (req: { url: string; method: string; headers: Record<string, string> }, res: FakeRes, next: () => void) => void {
-    let handler!: (
-      req: { url: string; method: string; headers: Record<string, string> },
-      res: FakeRes,
-      next: () => void,
-    ) => void;
+  // Preview is the production edge, and since SDD-81 it runs what an adapter runs: the
+  // `.fudic/edge/server.mjs` of the build, given to `createServer` with the prerendered pages of
+  // `outDir`. These build that module by hand, with `emitServerModule`, and drive the two
+  // middlewares the plugin registers: the app first, and `_error.fud` as a 404 after Vite's files.
+  type Req = { url?: string; method: string; headers: Record<string, string> };
+  type Middleware = (req: Req, res: FakeRes, next: (error?: unknown) => void) => void;
+
+  interface Preview {
+    readonly app: Middleware;
+    readonly notFound: Middleware;
+  }
+
+  function withPreview(outDir: string, previewRoot: string, https = false): Preview {
+    const used: Middleware[] = [];
     const plugin = fudic({ routesDir: 'fixtures' }) as AnyHook;
     plugin.config({});
     plugin.configResolved({ root: previewRoot, base: '/', command: 'build', build: { outDir } });
-    plugin.configurePreviewServer({ middlewares: { use: (fn: typeof handler) => (handler = fn) } });
-    return handler;
+    const after = plugin.configurePreviewServer({
+      config: { preview: { https } },
+      middlewares: { use: (fn: Middleware) => used.push(fn) },
+    }) as () => void;
+    after();
+    return { app: used[0]!, notFound: used[1]! };
   }
 
-  const navigation = (
-    url: string,
-  ): { url: string; method: string; headers: Record<string, string> } => ({
-    url,
-    method: 'GET',
-    headers: { accept: 'text/html,application/xhtml+xml' },
-  });
+  const navigation = (url: string): Req => ({ url, method: 'GET', headers: { accept: 'text/html,application/xhtml+xml', host: 'localhost:4173' } });
 
-  /** A built output dir: the manifest plus one prerendered page. */
-  function outputWith(routes: unknown[]): string {
-    const outDir = mkdtempSync(join(tmpdir(), 'fudic-preview-'));
+  /** A response whose end the test can wait for. */
+  function endingRes(): FakeRes & { readonly ended: Promise<void> } {
+    let done!: () => void;
+    const ended = new Promise<void>((r) => (done = r));
+    const res = fakeRes();
+    const end = res.end.bind(res);
+    return Object.assign(res, {
+      ended,
+      end(b?: string) {
+        end(b);
+        done();
+      },
+    });
+  }
+
+  /** What `next` was called with, as a promise. */
+  function nextCall(): { readonly next: (error?: unknown) => void; readonly called: Promise<unknown> } {
+    let resolve!: (error: unknown) => void;
+    const called = new Promise<unknown>((r) => (resolve = r));
+    return { next: (error?: unknown) => resolve(error), called };
+  }
+
+  /**
+   * A project root whose `.fudic/edge` holds `server.mjs` and the chunks it names, and an
+   * `outDir` beside it.
+   */
+  function built(input: Partial<ServerModuleInput>, chunks: Record<string, string> = {}): { root: string; outDir: string } {
+    const previewRoot = mkdtempSync(join(tmpdir(), 'fudic-preview-root-'));
+    const edge = join(previewRoot, '.fudic', 'edge');
+    mkdirSync(edge, { recursive: true });
+    for (const [file, text] of Object.entries(chunks)) writeFileSync(join(edge, file), text);
     writeFileSync(
-      join(outDir, 'fudic-routes.json'),
-      JSON.stringify({
-        build: 'b1',
-        csp: { document: "script-src 'nonce-{nonce}'", sw: "script-src 'unsafe-eval'" },
-        routes,
+      join(edge, 'server.mjs'),
+      emitServerModule({
+        base: '/',
+        locales: [],
+        csp: "script-src 'nonce-{nonce}'",
+        statics: {},
+        routes: [],
+        errorPages: [],
+        errorHints: [],
+        config: {},
+        ...input,
       }),
     );
-    return outDir;
+    const outDir = join(previewRoot, 'dist');
+    mkdirSync(outDir, { recursive: true });
+    return { root: previewRoot, outDir };
   }
 
-  it('BUG-02 §6.13 serves the prerendered file with a CSP and a fresh nonce, without record.html', () => {
-    // The record carries NO html URL: the edge locates the file by convention
-    // (`htmlPathFor`), which is why removing it from the manifest costs the edge nothing.
-    const outDir = outputWith([{ pattern: '/about', mode: 'ssg', chunk: '/sw/c/about.js' }]);
+  it('BUG-02 §6.13 serves the prerendered file with a CSP and a fresh nonce, without record.html', async () => {
+    // The edge locates the file by convention (`htmlPathFor`): the route has no chunk at all.
+    const { root: r, outDir } = built({ routes: [{ pattern: '/about', hints: ['</a.css>; rel=preload; as=style'] }] });
     mkdirSync(join(outDir, 'about'), { recursive: true });
     writeFileSync(join(outDir, 'about', 'index.html'), '<script nonce="__FUDIC_NONCE__"></script>');
-    const handler = withPreview(outDir);
-    const res = fakeRes();
-    handler(navigation('/about'), res, () => expect.unreachable('should not fall through'));
+    const { app } = withPreview(outDir, r);
+    const res = endingRes();
+    app(navigation('/about'), res, () => expect.unreachable('should not fall through'));
+    await res.ended;
     expect(res.statusCode).toBe(200);
     expect(res.body).not.toContain('__FUDIC_NONCE__');
     const nonce = /nonce="([^"]+)"/u.exec(res.body)?.[1] ?? '';
+    expect(nonce).not.toBe('');
     expect(res.headers['content-security-policy']).toContain(`'nonce-${nonce}'`);
+    expect(res.headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
+    expect(res.headers['link']).toBe('</a.css>; rel=preload; as=style');
   });
 
   it('BUG-02 the generated data endpoint answers for an `ssg` route too', async () => {
-    // A prerendered route with `@server load` needs its endpoint: the SW renders it
-    // from chunk + data like any other, and `load` never ships to the client (§4.6.4).
-    //
-    // BUG-09: the wrapper that answers it lives OUTSIDE the published output and is found
-    // by convention — there is no `esm` URL in the manifest any more.
-    const outDir = outputWith([{ pattern: '/about', mode: 'ssg' }]);
-    const previewRoot = mkdtempSync(join(tmpdir(), 'fudic-preview-root-'));
-    mkdirSync(join(previewRoot, '.fudic', 'edge'), { recursive: true });
-    writeFileSync(
-      join(previewRoot, '.fudic', 'edge', 'about.js'),
-      'export function data(ctx) { return new Response(ctx.url.pathname).body; }\nexport function render() {}\n',
+    const { root: r, outDir } = built(
+      { routes: [{ pattern: '/about', hints: [], file: 'about.js' }] },
+      { 'about.js': 'export function data(ctx) { return Promise.resolve(new Response(ctx.url.pathname).body); }\nexport function render() {}\n' },
     );
-    const handler = withPreview(outDir, previewRoot);
-    const res = fakeRes();
-    handler(
-      { url: '/_fudic/data/about', method: 'GET', headers: {} },
-      res,
-      () => expect.unreachable('should not fall through'),
-    );
-    await settle();
+    const { app } = withPreview(outDir, r);
+    const res = endingRes();
+    app({ url: '/_fudic/data/about', method: 'GET', headers: {} }, res, () => expect.unreachable('should not fall through'));
+    await res.ended;
     // The frames as the wrapper wrote them, passed on untouched (SDD-70 §3.7).
     expect(res.body).toBe('/about');
     expect(res.headers['content-type']).toBe('application/fud+frames');
   });
 
   it('SDD-70 criterion 17: preview sends what is rendered before the rest is ready', async () => {
-    const outDir = outputWith([{ pattern: '/espera', mode: 'ssr' }]);
-    const previewRoot = mkdtempSync(join(tmpdir(), 'fudic-preview-root-'));
-    mkdirSync(join(previewRoot, '.fudic', 'edge'), { recursive: true });
-    // A render whose second part waits for a promise the test settles.
-    writeFileSync(
-      join(previewRoot, '.fudic', 'edge', 'espera.js'),
-      [
-        'export function render() {',
-        '  const enc = new TextEncoder();',
-        '  return new ReadableStream({ async start(c) {',
-        "    c.enqueue(enc.encode('<html><head></head><body><h1>t</h1><!--fud-end-->'));",
-        '    await globalThis.__sdd70preview;',
-        "    c.enqueue(enc.encode('<p>tarde</p></body></html>'));",
-        '    c.close();',
-        '  } });',
-        '}',
-        '',
-      ].join('\n'),
+    const { root: r, outDir } = built(
+      { routes: [{ pattern: '/espera', hints: [], file: 'espera.js' }] },
+      {
+        'espera.js': [
+          'export function render() {',
+          '  const enc = new TextEncoder();',
+          '  return new ReadableStream({ async start(c) {',
+          "    c.enqueue(enc.encode('<html><head></head><body><h1>t</h1><!--fud-end-->'));",
+          '    await globalThis.__sdd70preview;',
+          "    c.enqueue(enc.encode('<p>tarde</p></body></html>'));",
+          '    c.close();',
+          '  } });',
+          '}',
+          '',
+        ].join('\n'),
+      },
     );
     let release!: () => void;
-    (globalThis as { __sdd70preview?: Promise<void> }).__sdd70preview = new Promise<void>((r) => (release = r));
-    const handler = withPreview(outDir, previewRoot);
-    const res = fakeRes();
-    handler(navigation('/espera'), res, () => expect.unreachable('should not fall through'));
+    (globalThis as { __sdd70preview?: Promise<void> }).__sdd70preview = new Promise<void>((done) => (release = done));
+    const { app } = withPreview(outDir, r);
+    const res = endingRes();
+    app(navigation('/espera'), res, () => expect.unreachable('should not fall through'));
     await vi.waitFor(() => expect(res.body).toContain('<h1>t</h1><!--fud-end-->'), { timeout: 5000 });
     expect(res.body).not.toContain('tarde');
     release();
-    await vi.waitFor(() => expect(res.body).toContain('<p>tarde</p></body></html>'), { timeout: 5000 });
+    await res.ended;
+    expect(res.body).toContain('<p>tarde</p></body></html>');
   });
 
-  it('falls through for an unknown route, a non-GET, and a route with no output', () => {
-    const outDir = outputWith([{ pattern: '/blog', mode: 'sw' }]);
-    const handler = withPreview(outDir);
-    const next = vi.fn();
-    handler(navigation('/blog'), fakeRes(), next); // no html, no esm
-    handler(navigation('/nope'), fakeRes(), next);
-    handler({ url: '/', method: 'POST', headers: { accept: 'text/html' } }, fakeRes(), next);
-    expect(next).toHaveBeenCalledTimes(3);
+  it('falls through for an unknown route, a non-GET, and a route with no output', async () => {
+    const { root: r, outDir } = built({ routes: [{ pattern: '/blog', hints: [] }] });
+    const { app } = withPreview(outDir, r);
+    for (const req of [navigation('/blog'), navigation('/nope'), { url: '/', method: 'POST', headers: { accept: 'text/html' } }]) {
+      const { next, called } = nextCall();
+      app(req, fakeRes(), next);
+      expect(await called).toBeUndefined();
+    }
   });
 
-  it('falls through when there is no manifest at all', () => {
-    const handler = withPreview(mkdtempSync(join(tmpdir(), 'fudic-empty-')));
-    const next = vi.fn();
-    handler(navigation('/about'), fakeRes(), next);
-    expect(next).toHaveBeenCalled();
+  it('falls through when the build left no server.mjs', async () => {
+    const empty = mkdtempSync(join(tmpdir(), 'fudic-empty-'));
+    const { app, notFound } = withPreview(join(empty, 'dist'), empty);
+    for (const mw of [app, notFound]) {
+      const { next, called } = nextCall();
+      mw(navigation('/about'), fakeRes(), next);
+      expect(await called).toBeUndefined();
+    }
+  });
+
+  it('SDD-73 §4.3: after Vite’s files, a navigation nothing answered is _error.fud as a 404', async () => {
+    const { root: r, outDir } = built({});
+    const { notFound } = withPreview(outDir, r);
+    const res = endingRes();
+    notFound(navigation('/nope'), res, () => expect.unreachable('should not fall through'));
+    await res.ended;
+    expect(res.statusCode).toBe(404);
+    // No `_error.fud` in this build: the minimal page.
+    expect(res.body).toContain('<h1>404</h1>');
+  });
+
+  it('the app’s own static files get their headers and go on to Vite', async () => {
+    const { root: r, outDir } = built({ statics: { '/sw.js': { 'cache-control': 'no-cache' } } });
+    const { app } = withPreview(outDir, r);
+    const res = fakeRes();
+    const { next, called } = nextCall();
+    app({ url: '/sw.js', method: 'GET', headers: {} }, res, next);
+    await called;
+    expect(res.headers['cache-control']).toBe('no-cache');
+  });
+
+  it('criterion 43: preview over http hands the functions Secure-less cookies, and a secret of its own', async () => {
+    const handler = 'export const handler = (o) => async () => new Response(JSON.stringify({ secure: o.secureCookies, secret: typeof o.secret }));\n';
+    const { root: r, outDir } = built({ functions: 'functions.mjs' }, { 'functions.mjs': handler });
+    for (const https of [false, true]) {
+      const { app } = withPreview(outDir, r, https);
+      const res = endingRes();
+      app({ url: '/_fudic/fn/x', method: 'POST', headers: { host: '192.168.1.20:4173' } }, res, () => expect.unreachable('a function'));
+      await res.ended;
+      expect(JSON.parse(res.body)).toEqual({ secure: https, secret: 'string' });
+    }
+  });
+
+  it('SDD-81 §3.5: preview hands the functions fudic.json’s upload limits and the disk spool of Node', async () => {
+    const handler = 'export const handler = (o) => async () => new Response(JSON.stringify({ uploads: o.uploads, spool: o.spool?.name }));\n';
+    const { root: r, outDir } = built({ functions: 'functions.mjs', config: { uploads: { maxFiles: 3, maxFileSize: 1024 } } }, { 'functions.mjs': handler });
+    const { app } = withPreview(outDir, r);
+    const res = endingRes();
+    app({ url: '/_fudic/fn/x', method: 'POST', headers: {} }, res, () => expect.unreachable('a function'));
+    await res.ended;
+    expect(JSON.parse(res.body)).toEqual({ uploads: { maxFiles: 3, maxFileSize: 1024 }, spool: 'diskSpool' });
+  });
+
+  it('a server.mjs that fails to load goes to next(error)', async () => {
+    const { root: r, outDir } = built({ routes: [{ pattern: '/x', hints: [], file: 'x.js' }] });
+    writeFileSync(join(r, '.fudic', 'edge', 'server.mjs'), 'throw new Error("broken server.mjs");\n');
+    const { app } = withPreview(outDir, r);
+    const { next, called } = nextCall();
+    app(navigation('/x'), fakeRes(), next);
+    expect(String(await called)).toContain('broken server.mjs');
   });
 });
 

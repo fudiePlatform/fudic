@@ -215,6 +215,20 @@ const CASES: readonly (readonly [FudDiagnostic, string])[] = [
   [c.FUD1426({ file: F, reason: 'no-cases' }), 'its fixture has no cases'],
   [c.FUD1427({ file: F }), `the look of ${F} as it is now was never shown: run fudic_look first`],
   [c.FUD1428({ prop: 'onClick' }), 'the prop onClick is not JSON, so it cannot be rendered in the browser'],
+  [c.FUD1480({ span: S, where: 'an argument of a get' }), '`file` is not allowed as an argument of a get; use `post`'],
+  [c.FUD1480({ span: S, where: 'a query parameter' }), '`file` is not allowed as a query parameter'],
+  [c.FUD1481({ span: S, where: 'load' }), '`load` reaches a `file`'],
+  [c.FUD1481({ span: S, where: 'paths' }), '`paths` reaches a `file`'],
+  [c.FUD1482({ span: S }), 'a file field has no initial value: it starts empty (`null`, or `[]` for `file[]`)'],
+  [c.FUD1483({ span: S, where: 'rule' }), 'a rule cannot take a file'],
+  [c.FUD1483({ span: S, where: 'fails' }), 'a failure cannot take a file'],
+  [c.FUD1484({ span: S }), 'the input has `multiple` and its field is `file`'],
+  [c.FUD1485({ span: S }), 'the field is `file[]` and the input has no `multiple`'],
+  [c.FUD1486({ span: S, field: 'str', fileInput: true }), 'a file input bound to something that is not a file: the field is `str`'],
+  [c.FUD1486({ span: S, field: 'file', fileInput: false }), 'a `file` field needs `<input type="file">`'],
+  [c.FUD1487({ span: S, text: '2mo' }), '`2mo` is a size with an unknown unit'],
+  [c.FUD1488({ file: 'fudic.json', field: 'serve.trustProxy', expected: 'true or false' }), 'fudic.json: `serve.trustProxy` has to be true or false'],
+  [c.FUD1488({ file: 'fudic.json', field: 'serve.uploads.maxFileSize', expected: 'a size' }), '`serve.uploads.maxFileSize` has to be a size'],
 ];
 
 describe('every variant says its own sentence', () => {

@@ -148,6 +148,9 @@ describe('the ./server entry', () => {
   it('exports what the plugin and the adapters use', () => {
     expect(Object.keys(server).sort()).toEqual(
       [
+        // The limits and the spool of an upload (SDD-81 §3.5).
+        'DEFAULT_LIMITS',
+        'memorySpool',
         'PROBLEM_TYPE',
         'markPrivate',
         'readsSession',

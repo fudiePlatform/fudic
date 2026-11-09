@@ -78,7 +78,9 @@ describe('an answer (criterion 7)', () => {
     expect(received).toHaveLength(1);
     expect(received[0]).toMatchObject({ method: 'POST', url: '/_fudic/fn/components/x-hello/greet' });
     expect(received[0]!.headers).toMatchObject({ origin, 'sec-fetch-site': 'same-origin' });
-    expect(received[0]!.headers['content-length']).toBe(String(Buffer.byteLength(received[0]!.body)));
+    // The body streams through, a file included (SDD-81 §3.5): chunked, never gathered to count it.
+    expect(received[0]!.headers['content-length']).toBeUndefined();
+    expect(received[0]!.headers['transfer-encoding']).toBe('chunked');
     expect(sides).toContain('halves:client');
   });
 
@@ -191,6 +193,6 @@ describe('forward', () => {
     expect(response.status).toBe(500);
     expect(await response.text()).toBe('broke');
     expect(received.at(-1)).toMatchObject({ method: 'POST', body: 'hi' });
-    expect(received.at(-1)!.headers).toMatchObject({ 'x-door': 'open', 'content-length': '2', origin });
+    expect(received.at(-1)!.headers).toMatchObject({ 'x-door': 'open', 'transfer-encoding': 'chunked', origin });
   });
 });

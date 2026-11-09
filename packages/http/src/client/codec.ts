@@ -84,7 +84,9 @@ async function valueWithFiles(response: Response, returns: Ty, wire: Wire): Prom
   const value = form.get(VALUE_PART);
   if (!(value instanceof Blob)) throw new HttpError({ status: 502, title: 'Bad Gateway', detail: `a multipart value without ${VALUE_PART}` });
   const parts = new Map<string, File>();
-  for (const [name, part] of form) if (name !== VALUE_PART && part instanceof File) parts.set(name, part);
+  for (const [name, part] of form) {
+    if (name !== VALUE_PART && part instanceof File) parts.set(name, part);
+  }
   const rest = wire.decodeRest(returns, new Uint8Array(await value.arrayBuffer()));
   return conform(returns, joinValue(returns, rest, parts), 'value');
 }

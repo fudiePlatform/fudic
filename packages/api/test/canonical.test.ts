@@ -33,12 +33,12 @@ describe('the canonical files (criterion 1)', () => {
       ['type', undefined],
     ]);
     expect(docs(FORMS_RULES)).toEqual([
-      ['rule', 'The value is not empty.'],
-      ['rule', 'A number no smaller than `min`.'],
-      ['rule', 'A number no bigger than `max`.'],
-      ['rule', 'A text or a list with `min` items at least.'],
-      ['rule', 'A text or a list with `max` items at most.'],
-      ['rule', 'The whole text matches a pattern.'],
+      ['rule', 'The value is there: neither "" nor null. `false` is a value: a box that must be ticked is a rule of its own.'],
+      ['rule', "A number no smaller than n. An empty field is required's business."],
+      ['rule', "A number no bigger than n. An empty field is required's business."],
+      ['rule', "A text or a list with n characters or items at least. An empty one is required's business."],
+      ['rule', 'A text or a list with n characters or items at most.'],
+      ['rule', 'The whole text matches a pattern of the project. The empty text passes.'],
     ]);
     expect(docs(FORMS_PATTERNS)).toEqual([['pattern', 'The address `input type=email` accepts (WHATWG).']]);
     expect(docs(HTTP_MIDDLEWARES)).toEqual([

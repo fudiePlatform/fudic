@@ -39,8 +39,9 @@ describe('the functions middleware, before anything else (§4.15)', () => {
   it.each(['configureServer', 'configurePreviewServer'] as const)('%s: a request without url is not a function’s', async (hook) => {
     const [first] = await middlewares(hook);
     const next = vi.fn();
-    first!({}, {}, next);
-    expect(next).toHaveBeenCalledOnce();
+    first!({}, { on: () => undefined }, next);
+    // Preview mounts the build's server.mjs first, so it answers on a later tick (SDD-81 §3.10).
+    await vi.waitFor(() => expect(next).toHaveBeenCalledOnce());
   });
 });
 
