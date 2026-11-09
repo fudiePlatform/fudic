@@ -23,6 +23,50 @@ propio worktree desde esta rama. Si un test destapa un defecto, se corrige el c�
 
 ---
 
+## Relevo (2026-11-09, sesión de implementación `pendiente-6d`)
+
+**Dónde está.** Rama `sdd-81-ficheros` (worktree `.claude/worktrees/pendiente`), fases 1–4 de
+implementación comiteadas (último `bfd4d510`), `pnpm build` en verde, e2e del ejemplo 304/304 tras la
+fase 2. La fase 5 **no ha empezado** (árbol limpio). Se mezcla a `worktree-pendiente` al cerrar.
+
+**Cómo se trabaja.** Esta sesión implementa y comitea cada fase; la sesión de tests `pendiente-7b`
+(rama `sdd-81-tests`, worktree `.claude/worktrees/tests-81`) escribe las tareas «Los tests de…». Al
+comitear una fase se le manda por `SendMessage` qué cambió (ficheros, funciones, casos); no se la
+espera. Si encuentra un defecto, lo arregla esta sesión en el código. Ya ha cerrado las tareas 1, 8 y
+12 (api, http, config, server, diagnostics al 100 %) y tiene la 21 en curso; los tests rojos que
+esperan la salida vieja (`Linkable` en los `.d.ts`, exportaciones de `./server`, `content-length` en
+`testing`) se los pasé a ella.
+
+**Lo que cambió al implementar (ya en la spec, §8.2.9–13).** `serve` (no `server`) en `fudic.json`;
+preview firma el CSRF con un secreto propio si no hay `FUDIC_SECRET`; un texto suelto tras una regla
+es su argumento `str` si falta (`ruleCall` de `api/src/rule-call.ts`); `file[]` en un form es control
+propio (`FileListField`, factoría `files`); `file` con `required` llega como `File`; el código de fallo
+del token es `csrfToken`; una página se sirve a cualquier `GET` (solo `notFound` mira `Accept`).
+
+**Piezas que la fase 5 usa (ya hechas).**
+- El `.fudapi` genera para un campo `file`: tipo de control `FileField`, factoría `file`, valor
+  `File | null` (o `File` con `required`), inicial `null`; para `file[]`: `FileListField`, `files(...)`,
+  `readonly File[]`. Las reglas bajo argumento importan `maxSize` y `accept` de `@fudic/forms/contract`
+  (`VALIDATORS` de `api/src/emit/module.ts`). **Nada de esto existe aún en `@fudic/forms`**: es la tarea 22.
+- `formTypes(form.$schema)` (`http/src/wire/schema.ts`, `tyOfSchema`) tiene que dar `'file'` y
+  `{ list: 'file' }` para esos controles: sin eso, `files: true` no lleva ficheros de un form.
+- `CallOptions.onProgress` y `Progress` (`http/src/types.ts`); `task.progress()` en `core`. `$progress()`
+  del form debe pasar `onProgress` en el envío de `form:=`.
+- `max-size n` (bytes; `2mb` ya se lee como número) y `accept types` (`str`, sintaxis del atributo
+  HTML) van a `forms/fudapi/rules.fudapi` y a `forms/impl/browser/rules.ts`; tras tocar el `.fudapi`,
+  regenerar con `FUDIC_UPDATE_GENERATED=1 pnpm --filter @fudic/api exec vitest run test/emit/built-ins.test.ts`.
+  El texto `{n}` de `max-size` se pinta con unidad (`2 MB`).
+
+**Avisos.**
+- No usar `perl -0pi` con `|` como delimitador si el reemplazo lleva `||`: dos veces escribió basura al
+  principio del fichero. Para cambios con `||` o `${}`, la herramienta Edit.
+- Un `pnpm build` completo tarda ~6 min; la comprobación de piezas del final falla si un módulo de un
+  paquete con runtime (`http`, `forms`…) exporta algo que nadie importa.
+- `pnpm test` de `vite` en paralelo da timeouts en los tests de build: correrlos aislados.
+- Para parar servidores propios, por puerto (`Get-NetTCPConnection -LocalPort N`), nunca `taskkill node`.
+
+---
+
 ## Fase 1 — decisiones y diagnósticos
 
 - [x] **1. Decisiones 181–182 y diagnósticos.**
