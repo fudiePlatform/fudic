@@ -900,10 +900,17 @@ Nada.
     camino → `{ type, accept? }`, que el plugin saca del `.fudapi` (`formFields` de `@fudic/api`).
     Un nodo se resuelve solo si está escrito como `forma.camino`; por una variable o un prop no se
     sabe, y `FUD1484`–`FUD1486` callan, como el resto de comprobaciones que dependen del host.
-18. **`accept` lo escribe el compilador donde escribe `novalidate` y `aria-describedby`** (fase 5):
-    en las dos ramas de un componente (lo pinta el servidor y lo fabrica el cliente). El HTML de
-    servidor de una ruta no lleva hoy ningún atributo añadido por el compilador, tampoco esos dos;
-    el ejemplo (§4.5) pone el formulario en el componente `user-form`.
+18. **`accept` lo escribe el compilador donde escribe `novalidate` y `aria-describedby`** (fase 5),
+    también en el HTML que el servidor pinta para una ruta o una página. Ese HTML no llevaba
+    ninguno de esos atributos: un formulario puesto directamente en una página llegaba sin
+    `novalidate` (el navegador podía cortar el envío con su burbuja antes de que validara el
+    formulario) y sin el enlace de cada campo con su mensaje de error, porque el script de una
+    página adopta el HTML del servidor y nunca lo crea. Arreglado en la misma fase.
+21. **Un `204` no se cuenta como bajada** (fase 5, defecto de la fase 4 que destaparon las pruebas
+    del ejemplo): Chrome entrega un `204` con un cuerpo vacío en lugar de `null`, y rehacer la
+    respuesta para contar sus bytes es un `TypeError`. Todo `put` sin `->` llamado con `task` (que
+    siempre pide progreso) acababa en `_error.fud` con un 500. Las respuestas sin cuerpo (`204`,
+    `205`, `304`…) pasan sin contar.
 19. **`$progress()` está en `FormApi`** y lo alimenta `bindForm`, que pasa `{ onProgress }` como
     segundo argumento al enviar con `form:=` (fase 5). El stub de la función ya lo aceptaba.
 20. **El hover que dice el tipo del campo es el del nodo** (`f.avatar` → `FileField`), que TypeScript

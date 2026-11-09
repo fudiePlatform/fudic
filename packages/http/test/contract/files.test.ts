@@ -816,6 +816,19 @@ describe('the corners of the client', () => {
     expect(await response.text()).toBe('ok');
     expect(made[0].method).toBe('POST');
   });
+
+  it('a 204 that the browser hands with an empty body is not rebuilt: counting it would be a TypeError', async () => {
+    // What Chrome does: a 204 whose `body` is an empty stream, not `null`. Rebuilding a Response
+    // with that body and status 204 throws, and a `put` that answered nothing failed on the way back.
+    const { send } = await import('../../src/client/send.js');
+    const answer = new Response(null, { status: 204 });
+    Object.defineProperty(answer, 'body', { value: new ReadableStream() });
+    vi.stubGlobal('fetch', async () => answer);
+    const seen: (Progress | null)[] = [];
+    const response = await send(new URL(`${ORIGIN}/x`), { method: 'PUT', signal: new AbortController().signal }, (p) => seen.push(p));
+    expect(response).toBe(answer);
+    expect(seen).toEqual([]);
+  });
 });
 
 describe('the corners of the wire', () => {

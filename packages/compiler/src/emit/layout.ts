@@ -34,12 +34,13 @@ import { needsRuntime, packIo, routeBlocksOf, writeMapConstants, writeHydrationB
 import type { DocumentGraph, ResolvedLayout } from './resolve.js';
 import { pageHintsOf, styledTags, withSheets, type EmitOptions, type EmitOutput } from './module.js';
 import { projectAdoptOf, renderProjectStyles } from './project-styles.js';
-import { codeOfDocument, type Prop } from './oxc-code.js';
+import { codeOfDocument, templateRootsOf, type Prop } from './oxc-code.js';
+import { planControls } from './controls.js';
 import { propDefaults, restGroups } from './rest.js';
 import { layoutCodeOf, requiredLayoutProps, unresolvedLayoutProps } from './layout-code.js';
 import { NO_SIGNALS, writeElementAttrs } from './attrs.js';
 import { holeSlot } from './compose.js';
-import { apiImports } from './api-links.js';
+import { apiFields, apiImports } from './api-links.js';
 import { guideOf, planPageSheets, type PageSheets } from './page-sheets.js';
 import type { Diagnostic } from '../types/index.js';
 import {
@@ -336,6 +337,14 @@ function buildRouteModule(
   const parts = parted ? { parts: PARTS } : {};
   const bodyW = new CodeWriter();
   const stamp = stampOption(options, graph.entryPath, graph.entryMap);
+  // The attributes the compiler adds to a bound element — `novalidate`, `aria-describedby`, the id a
+  // summary links to, `accept` — painted by the server as on a component: the client chunk of the
+  // route ADOPTS this markup and never fabricates it, so what the server leaves out is never there.
+  const controls = planControls(source, templateRootsOf(route), {
+    isComponent,
+    isFormAssociated: (t) => formAssociated.has(t),
+    field: apiFields(graph),
+  });
   const em = new MarkupEmitter({
     source,
     ...stamp,
@@ -350,6 +359,7 @@ function buildRouteModule(
     shadowOptions: shadow,
     styled,
     projectAdopt,
+    controls,
     ...fileSheets,
     ...parts,
   });
@@ -378,6 +388,7 @@ function buildRouteModule(
     shadowOptions: shadow,
     styled,
     projectAdopt,
+    controls,
     ...fileSheets,
     ...parts,
   });

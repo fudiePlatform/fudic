@@ -26,9 +26,16 @@ export function multipartBody(wire: Wire, types: Readonly<Record<string, Ty>>, a
 
 type Listener = ((progress: Progress | null) => void) | undefined;
 
+/**
+ * The statuses whose response has no body (Fetch, «null body status»). A browser may still hand
+ * one a `body` — an empty stream — and a `Response` rebuilt from it with that status is a
+ * `TypeError`: a 204 of a `put` would fail on the way back.
+ */
+const NULL_BODY: ReadonlySet<number> = new Set([101, 103, 204, 205, 304]);
+
 /** `response`, its body counted against its `content-length` as it is read. */
 function counted(response: Response, onProgress: Listener): Response {
-  if (onProgress === undefined || response.body === null) return response;
+  if (onProgress === undefined || response.body === null || NULL_BODY.has(response.status)) return response;
   const length = response.headers.get('content-length');
   const total = length === null ? null : Number(length);
   let loaded = 0;

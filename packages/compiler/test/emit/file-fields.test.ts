@@ -10,6 +10,7 @@ import {
   apiDiagnostics,
   emitComponentClientModule,
   emitComponentModule,
+  emitPageModule,
   emitRouteClientModule,
   emitRouteModuleMapped,
   entryComponent,
@@ -134,6 +135,22 @@ describe('criterion 30: accept written from the rule', () => {
   it('a route links the same .fudapi: its client chunk binds the file input', () => {
     expect(emitRouteClientModule(graphOf('<input type="file" control=@alta.avatar>'), {})).toContain('bindFile(');
     expect(emitRouteModuleMapped(graphOf('<input type="file" control=@alta.avatar>'), {}).diagnostics).toEqual([]);
+  });
+
+  it('a route paints on the server what the compiler adds: its chunk adopts that markup and never fabricates it', () => {
+    const { code } = emitRouteModuleMapped(graphOf('<input type="file" control=@alta.avatar><span error=@alta.avatar></span>'), {});
+    expect(code).toContain(ACCEPT);
+    expect(code).toContain(`'novalidate', ''`);
+    expect(code).toContain(`'aria-describedby', "fud-e-alta-avatar"`);
+    expect(code).toContain(`'id', "fud-e-alta-avatar"`);
+  });
+
+  it('and so does a page', () => {
+    const page = `<!DOCTYPE html><html><head><link rel="server" href="./r.fudapi"></head><body><form control=@alta><input type="file" control=@alta.avatar></form></body></html>`;
+    const io = { ...memoryIo({ '/p.fud': page }), api: (path: string) => (path === '/r.fudapi' ? API : undefined) };
+    const code = emitPageModule(resolveDocument('/p.fud', io).value, {});
+    expect(code).toContain(ACCEPT);
+    expect(code).toContain(`'novalidate', ''`);
   });
 });
 

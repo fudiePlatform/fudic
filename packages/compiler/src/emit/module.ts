@@ -702,6 +702,12 @@ function buildPageModule(
     w: bodyW,
     isComponent: (t) => graph.components.has(t),
     linker,
+    // What the compiler adds to a bound element, painted by the server as a route paints it.
+    controls: planControls(source, page.body.children, {
+      isComponent: (t) => graph.components.has(t),
+      isFormAssociated: (t) => formAssociatedTags(graph).has(t),
+      field: apiFields(graph),
+    }),
     // The page's markup hangs from the `<body>` the module fabricates, and a `<body>` is a
     // block container: its leading and trailing whitespace is trimmed by every browser.
     container: tagDisplay('body'),
