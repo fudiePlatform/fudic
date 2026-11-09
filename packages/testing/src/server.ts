@@ -16,6 +16,9 @@ import { overridden } from './providers.js';
 let handler: ((request: Request) => Promise<Response | null>) | undefined;
 
 /** The handler of `/_fudic/fn/`, armed once per test file. */
+/** What a run signs CSRF tokens with: one per process, as dev. */
+const SECRET = crypto.randomUUID();
+
 export function functions(): (request: Request) => Promise<Response | null> {
   if (handler === undefined) {
     const { base } = projectOf();
@@ -24,7 +27,9 @@ export function functions(): (request: Request) => Promise<Response | null> {
       const api = await serverRoot();
       // An app without a `.fudapi` has no function to call: the 404 its dispatcher would give.
       if (api === undefined) return noFunction(request);
-      return api.handler({ base, dev: true, container })(request);
+      // A test runs as dev does: cookies without `Secure` over its `http://localhost`, and a CSRF
+      // token signed with a secret of the run (SDD-81 §3.11, §3.13).
+      return api.handler({ base, dev: true, container, secureCookies: false, secret: SECRET })(request);
     };
   }
   return handler;

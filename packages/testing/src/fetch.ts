@@ -12,7 +12,7 @@
  *    out to the network.
  */
 
-import { DATA_PREFIX, FN_PREFIX } from '@fudic/conventions';
+import { CSRF_PATH, DATA_PREFIX, FN_PREFIX } from '@fudic/conventions';
 import { inject } from 'vitest';
 import { OPTIONS_KEY } from './constants.js';
 import { track } from './pending.js';
@@ -75,7 +75,9 @@ async function answer(request: Request): Promise<Response> {
   if (override !== undefined) return override(request);
   const url = new URL(request.url);
   const base = inject(OPTIONS_KEY).base.replace(/\/$/u, '');
-  if (url.origin === location.origin && url.pathname.startsWith(`${base}${FN_PREFIX}/`)) {
+  // A function's URL, or the CSRF token's, which the same handler answers (SDD-81 §3.13).
+  const fn = url.pathname.startsWith(`${base}${FN_PREFIX}/`) || url.pathname === `${base}${CSRF_PATH}`;
+  if (url.origin === location.origin && fn) {
     // Loaded on the first call: most test files never make one, and the setup stays light.
     const { functions } = await import('./server.js');
     // The prefix was just checked, which is the only case in which the handler answers `null`.

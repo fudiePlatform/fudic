@@ -329,7 +329,7 @@ export function diskSpool(): Spool;
 ```jsonc
 // fudic.json
 {
-  "server": {
+  "serve": {
     "uploads": { "maxFileSize": "50mb", "maxFiles": 10, "maxArgs": "1mb" }
   }
 }
@@ -352,7 +352,7 @@ de memoria o uno propio.
   de `os.tmpdir()` y el `File` es `fs.openAsBlob`, que no lo carga en memoria. `release()` se llama
   cuando el cuerpo de la respuesta termina o se cancela —un `TransformStream` alrededor del cuerpo,
   no un evento del servidor—, así funciona igual en cualquier runtime, haya ido bien o mal.
-- **`fudic.json`** gana `server.uploads`, con tamaños como número de bytes o como texto con unidad.
+- **`fudic.json`** gana `serve.uploads`, con tamaños como número de bytes o como texto con unidad.
   El build lo deja en el módulo del servidor (§3.10) y el plugin lo pasa en dev.
 - **La respuesta en streaming.** `-> file` responde con `file.stream()`. El volcado a Node de
   `@fudic/server/node` escribe por partes, nunca junta la respuesta.
@@ -420,7 +420,7 @@ de memoria o uno propio.
 | `FUD1485` | error | Many files, one chosen | `<input type="file">` sin `multiple` ligado a `file[]` |
 | `FUD1486` | error | A file input bound to something that is not a file | El control y el campo no son los dos de fichero |
 | `FUD1487` | error | A size with an unknown unit | `2mo`, `3tb`: la unidad no es `kb`, `mb` ni `gb` |
-| `FUD1488` | error | Server options in fudic.json | `server` con una forma inválida: `uploads` con un tamaño o un número que no lo son, `trustProxy` que no es booleano, una clave desconocida |
+| `FUD1488` | error | Server options in fudic.json | `serve` con una forma inválida: `uploads` con un tamaño o un número que no lo son, `trustProxy` que no es booleano, una clave desconocida |
 
 `FUD1089` (clave de `map`) y `FUD0592` (control sin valor) ya existen.
 
@@ -481,11 +481,18 @@ export interface ServerOptions {
   readonly transformHtml?: (url: string, html: string) => Promise<string>;
 }
 
+export interface FetchHooks {
+  /** Called at most once, before the answer: what a 103 may say, with the nonce the page will carry. */
+  readonly earlyHints?: (hints: EarlyHints) => void;
+}
+
 export interface FudicServer {
   /** The response, or null when the URL is not the app's (a static file). */
-  fetch(request: Request): Promise<Response | null>;
-  /** What a 103 may say before fetch answers: its Link values and policies, or null. */
-  earlyHints(request: Request): Promise<EarlyHints | null>;
+  fetch(request: Request, hooks?: FetchHooks): Promise<Response | null>;
+  /** _error.fud as a 404, for a navigation nothing answered: the host calls it after its own files. */
+  notFound(request: Request, hooks?: FetchHooks): Promise<Response | null>;
+  /** The extra headers of one of the app's own static files (manifest, worker), or null. */
+  staticHeaders(request: Request): Readonly<Record<string, string>> | null;
 }
 
 export function createServer(app: ServerApp, options?: ServerOptions): FudicServer;
@@ -496,10 +503,10 @@ export function createServer(app: ServerApp, options?: ServerOptions): FudicServ
 export function toRequest(req: IncomingMessage, res: ServerResponse): Request;
 /** Streams the body: never gathers it. Cancels it when the client goes away. */
 export function sendResponse(res: ServerResponse, response: Response): Promise<void>;
-/** A connect middleware: 103 when the client speaks HTTP/2 or later, then fetch, next() on null. */
-export function nodeMiddleware(server: FudicServer): (req, res, next: (error?: unknown) => void) => void;
+/** A connect middleware: static headers, 103 over HTTP/2 or later, then fetch; next() on null, or notFound. */
+export function nodeMiddleware(server: FudicServer, options?: { readonly notFound?: boolean }): NodeMiddleware;
 /** The prerendered pages of a directory: what preview and a Node adapter hand to the app. */
-export function staticPages(dir: string, base: string): ServerApp['prerendered'];
+export function staticPages(dir: string): ServerApp['prerendered'];
 export function diskSpool(): Spool;
 ```
 
@@ -554,7 +561,7 @@ los dos `ServerApp` y monta el middleware.
 
 ### 3.12. Detrás de un proxy
 
-- `trustProxy` (opción del servidor, o `server.trustProxy` en `fudic.json`). Solo con él se leen las
+- `trustProxy` (opción del servidor, o `serve.trustProxy` en `fudic.json`). Solo con él se leen las
   cabeceras: sin él, cualquiera las podría falsear.
 - Se lee `Forwarded` (RFC 7239, la primera entrada: `proto`, `host`); si no viene, `X-Forwarded-Proto`
   y `X-Forwarded-Host` (su primer valor). El resultado reemplaza el esquema y el host de la URL del
@@ -587,7 +594,7 @@ chain
   No va en un `<meta>`: una página prerenderizada o pintada por el Service Worker no puede llevar un
   token por usuario, y dos canales son dos formas de equivocarse.
 - La mitad de cliente lo pide la primera vez que una llamada lo necesita, lo guarda para la vida de
-  la página y lo manda en `x-fudic-csrf`. Si el servidor responde `403` con el código `csrf-token`,
+  la página y lo manda en `x-fudic-csrf`. Si el servidor responde `403` con el código `csrfToken`,
   lo pide otra vez y reintenta una sola vez.
 - Sin `secret`: en dev, uno al azar por proceso; en otro caso, la llamada es un `500` con el mensaje
   `csrf token mode needs a secret (FUDIC_SECRET)`. El adaptador de Node y preview leen
@@ -761,7 +768,7 @@ En el ejemplo, con Playwright, en dev y en preview:
 
 33. El completado ofrece `file`; dentro de `accept "` ofrece tipos MIME; `max-size` solo en un campo
     `file`; los colores y el hover funcionan; la gramática TextMate colorea `file` y `html`.
-34. `fudic.json` con `server: { uploads: { maxFileSize: "x" } }` o `server: { trustProxy: 1 }` da `FUD1488`.
+34. `fudic.json` con `serve: { uploads: { maxFileSize: "x" } }` o `serve: { trustProxy: 1 }` da `FUD1488`.
 35. El ejemplo de §4.5 y las pruebas de §4.6 en verde, en dev y en preview.
 36. La guía del MCP (`fudapi.md`, `components.md` y sus copias en español) explica `file`, las reglas,
     el progreso, `url()` y los límites.
@@ -778,7 +785,8 @@ En el ejemplo, con Playwright, en dev y en preview:
     están en `@fudic/server`.
 41. Un script de Node de una docena de líneas monta `.fudic/edge/server.mjs` con `node:http` y
     `@fudic/server/node`, y sirve el ejemplo construido: una página, una función, una subida.
-42. `fetch` devuelve `null` para un fichero estático; `earlyHints` da los `Link` de una ruta.
+42. `fetch` devuelve `null` para un fichero estático; con `hooks.earlyHints`, una ruta da sus `Link` y la
+    CSP con el nonce que lleva la página; `notFound` pinta `_error.fud` con `404`.
 
 **Cookies, proxy y CSRF (§3.11–§3.13)**
 
@@ -790,7 +798,7 @@ En el ejemplo, con Playwright, en dev y en preview:
     `trustProxy`, la cabecera no cambia nada.
 46. `Forwarded: proto=https;host=app.example` gana a `X-Forwarded-*`; un `proto=ftp` se ignora.
 47. Con `token true`: `GET /_fudic/csrf` crea la cookie `HttpOnly` y da un token; una llamada con él
-    pasa; con otro, o sin cookie, `403` con el código `csrf-token`; el cliente reintenta una vez con
+    pasa; con otro, o sin cookie, `403` con el código `csrfToken`; el cliente reintenta una vez con
     uno nuevo y la llamada termina bien si la cookie se había perdido.
 48. Con `token true` y sin `secret` fuera de dev: `500` con el mensaje de §3.13.
 49. Un `<form enctype="multipart/form-data">` de otro origen contra una función con `file` y sin
@@ -865,3 +873,8 @@ Nada.
    token firmado contra una cookie `HttpOnly` no necesita guardar nada en el servidor.
 8. **Una llamada multipart de otro sitio se rechaza siempre.** Es la protección que un formato propio
    daba por accidente y que multipart quitaría.
+9. **`serve` en `fudic.json`, no `server`** (al implementar). `server` ya es la carpeta de las
+   implementaciones del servidor (SDD-60 §3.15); las opciones de servir van en `serve`.
+10. **Preview sin `FUDIC_SECRET` firma con uno al azar por proceso** (al implementar), como dev:
+    preview es una comprobación local y un `500` ahí solo confundiría. Un adaptador de producción
+    sigue exigiéndolo.

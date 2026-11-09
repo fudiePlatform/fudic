@@ -14,7 +14,7 @@ import { run } from '../compose.js';
 import { HttpError, notFound } from '../errors.js';
 import { bodyArgs } from '../server/body.js';
 import { markPrivate, serverContext } from '../server/context.js';
-import type { DispatchOptions } from '../server/dispatch.js';
+import { settingsOf, type DispatchOptions } from '../server/dispatch.js';
 import { noFunction, problemOf, problemResponse } from '../server/problem.js';
 import { withRequest } from '../server/request.js';
 import type { ServerContext } from '../types.js';
@@ -78,7 +78,7 @@ export async function serveRule(request: Request, rule: RemoteRule, options: Dis
     const raw = await bodyArgs(request, wire, questionTypes(asked));
     const value = conform(asked.value, raw['value'], 'value');
     const params = conformAll(asked.params, raw['params'], 'parameter');
-    const ctx = serverContext({ method: 'POST', name: spec.name, url: new URL(request.url), params: {}, args: { value, params }, request });
+    const ctx = serverContext({ method: 'POST', name: spec.name, url: new URL(request.url), params: {}, args: { value, params }, request, settings: settingsOf(options) });
     response = ctx.response;
     ruleChains();
     const code = await withRequest((options.container ?? createRoot)(), () => rule.ask(value, params, ctx));

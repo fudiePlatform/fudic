@@ -1,92 +1,31 @@
 /**
- * Server functions in the plugin (SDD-56 §4.15): served by the dev server and by `vite
- * preview`, and bundled by the build into `.fudic/edge/functions.mjs`.
+ * Server functions in the plugin (SDD-56 §4.15, SDD-81 §3.10): the dev server and `vite preview`
+ * serve them through `@fudic/server`, and the build bundles them into `.fudic/edge/functions.mjs`.
  *
  * Where a request goes is the `handler` of the generated server root (SDD-60 §4.4), in all
- * three: this module carries a Node request into a `Request` and a `Response` back out, and
- * writes the module the build bundles.
+ * three: this module only writes the module the build bundles, and says which URLs are theirs.
  */
 
-import { Readable } from 'node:stream';
-import type { IncomingMessage, ServerResponse } from 'node:http';
-import { FN_PREFIX, RULE_PREFIX } from '@fudic/conventions';
+import { CSRF_PATH, FN_PREFIX, RULE_PREFIX } from '@fudic/conventions';
+import type { FunctionsOptions, Handler } from '@fudic/server';
 
 /**
- * Whether `pathname` is a server function's URL, or the question to a `runs remote` rule
- * (SDD-80 §4.4), `base` included: the server root's handler answers both.
+ * Whether `pathname` is a server function's URL, the question to a `runs remote` rule (SDD-80
+ * §4.4) or the CSRF token's (SDD-81 §3.13), `base` included: the server root's handler answers
+ * all three.
  */
 export function isFnPath(pathname: string, base: string): boolean {
   const root = base.replace(/\/$/u, '');
-  return [FN_PREFIX, RULE_PREFIX].some((prefix) => pathname.startsWith(`${root}${prefix}/`));
-}
-
-/**
- * A Node request as a `Request`, whose `signal` aborts when the client goes away before the
- * response is written (§4.12).
- */
-export function toRequest(req: IncomingMessage, res: ServerResponse): Request {
-  const controller = new AbortController();
-  res.on('close', () => {
-    if (!res.writableFinished) controller.abort();
-  });
-  const headers = new Headers();
-  for (const [name, value] of Object.entries(req.headers)) {
-    // HTTP/2 hands its pseudo-headers (`:method`, `:path`, `:authority`) over with the rest, and
-    // no `Headers` takes a name with a colon: the preview over HTTP/2 answered every page `500`.
-    if (value === undefined || name.startsWith(':')) continue;
-    for (const one of Array.isArray(value) ? value : [value]) headers.append(name, one);
-  }
-  const method = req.method ?? 'GET';
-  const body = method === 'GET' || method === 'HEAD' ? undefined : (Readable.toWeb(req) as ReadableStream);
-  // `originalUrl`: Connect's, with the app's `base` still on it.
-  const path = (req as IncomingMessage & { readonly originalUrl?: string }).originalUrl ?? req.url ?? '/';
-  // HTTP/2 has no `host`: it travels as `:authority`. A TLS socket is `https`.
-  const host = req.headers.host ?? (req.headers[':authority'] as string | undefined) ?? 'localhost';
-  const scheme = (req.socket as { readonly encrypted?: boolean } | undefined)?.encrypted === true ? 'https' : 'http';
-  return new Request(new URL(path, `${scheme}://${host}`), {
-    method,
-    headers,
-    signal: controller.signal,
-    ...(body !== undefined ? { body, duplex: 'half' } : {}),
-  } as RequestInit);
-}
-
-/**
- * A `Response`, written to a Node response. `set-cookie` keeps its several values. `null` is
- * the handler's «not mine», and the request goes on to `next`.
- */
-export async function sendResponse(res: ServerResponse, response: Response | null, next: () => void): Promise<void> {
-  if (response === null) {
-    next();
-    return;
-  }
-  res.statusCode = response.status;
-  writeHeaders(res, response.headers);
-  res.end(Buffer.from(await response.arrayBuffer()));
-}
-
-/**
- * Headers, written to a Node response, `set-cookie` with its several values. A page and its
- * data endpoint write what `load` wrote with it (SDD-69 §4.2), before fudic's own headers.
- */
-export function writeHeaders(res: ServerResponse, headers: Headers): void {
-  headers.forEach((value, name) => {
-    if (name !== 'set-cookie') res.setHeader(name, value);
-  });
-  const cookies = headers.getSetCookie();
-  if (cookies.length > 0) res.setHeader('set-cookie', cookies);
+  return pathname === `${root}${CSRF_PATH}` || [FN_PREFIX, RULE_PREFIX].some((prefix) => pathname.startsWith(`${root}${prefix}/`));
 }
 
 /** The server root's `handler` (SDD-60 §4.4), as the plugin calls it out of the dev graph. */
-export type ContractsHandler = (options: {
-  readonly base: string;
-  readonly dev: boolean;
-  readonly onError: (error: unknown) => void;
-}) => (request: Request) => Promise<Response | null>;
+export type ContractsHandler = (options: FunctionsOptions) => Handler;
 
 /**
  * The `.fudic/edge/functions.mjs` module: every function of the `.fudapi` of the app behind one
- * handler, the server root's (SDD-60 §4.4).
+ * handler, the server root's (SDD-60 §4.4), and the root's factory itself, which
+ * `server.mjs` hands to `createServer` with the server's options (SDD-81 §3.10).
  */
 export function emitFunctionsModule(input: {
   /** The id of the server root, whose `handler` answers them. */
@@ -97,6 +36,8 @@ export function emitFunctionsModule(input: {
 }): string {
   return [
     `import { handler as $api } from ${JSON.stringify(input.api)};`,
+    '/** The server root\'s handler factory: what `createServer` of `@fudic/server` is given. */',
+    'export const handler = $api;',
     '/** Every server function of the app: a `Request` in, a `Response` out, `null` when not ours. */',
     `export const handle = $api({ base: ${JSON.stringify(input.base)} });`,
     '/** Each function by URL pattern and method, for an adapter to mount. */',

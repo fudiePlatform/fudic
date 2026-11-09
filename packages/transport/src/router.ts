@@ -16,7 +16,7 @@
  * request — two rows in the Network panel for one URL. That was a real bug.
  */
 
-import { coversPath, FN_PREFIX } from '@fudic/conventions';
+import { coversPath, CSRF_PATH, FN_PREFIX } from '@fudic/conventions';
 import { applyNonce, applyNonceStream, cspFor, newNonce, NONCE_TOKEN } from './csp.js';
 import { type Linker } from './linker.js';
 import {
@@ -255,6 +255,9 @@ export function createRouter(config: RouterConfig): Router {
    * worker's: not cached, not intercepted, whatever `sw.json` says.
    */
   const fnPrefix = new URL(abs(table.urls.assetUrl(`${FN_PREFIX.slice(1)}/`))).pathname;
+  /** The CSRF token of a page (SDD-81 §3.13): per user, so never cached and never intercepted. */
+  const csrfPath = new URL(abs(table.urls.assetUrl(CSRF_PATH.slice(1)))).pathname;
+  const notMine = (url: URL): boolean => url.pathname.startsWith(fnPrefix) || url.pathname === csrfPath;
 
   /**
    * Serve a page this Service Worker rendered earlier (`page.cache: 'persist'`).
@@ -571,7 +574,7 @@ export function createRouter(config: RouterConfig): Router {
   return {
     handle(event: FetchEvent): void {
       const url = new URL(event.request.url);
-      if (url.pathname.startsWith(fnPrefix)) return;
+      if (notMine(url)) return;
       if (event.request.method === 'GET' && event.request.mode !== 'navigate') {
         handleResource(event, url);
         return;
@@ -582,7 +585,7 @@ export function createRouter(config: RouterConfig): Router {
 
     respond(event: FetchEvent): Promise<Response> {
       const url = new URL(event.request.url);
-      if (url.pathname.startsWith(fnPrefix)) return net(event.request);
+      if (notMine(url)) return net(event.request);
       return decide(event, url) ?? net(event.request);
     },
 

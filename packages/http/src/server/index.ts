@@ -8,3 +8,4 @@ export { pageContext, type PageInput } from './load.js';
 export { markPrivate, parseCookies, readsSession, type PendingResponse } from './context.js';
 export { noFunction, problemOf, problemResponse, PROBLEM_TYPE } from './problem.js';
 export { withRequest } from './request.js';
+export type { Spool, UploadLimits } from './uploads.js';

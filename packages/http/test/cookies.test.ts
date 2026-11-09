@@ -18,9 +18,9 @@ describe('setCookie', () => {
     expect(cookiesOf(ctx)).toEqual(['sid=a%20b; Path=/; HttpOnly; Secure; SameSite=Lax']);
   });
 
-  it('criterion 1: without Secure on a loopback host', () => {
+  it('criterion 1 (SDD-81 §3.11): Secure on a loopback host too, unless the server says otherwise', () => {
     for (const url of ['http://localhost:5173/', 'http://127.0.0.1:4173/', 'http://[::1]:5173/']) {
-      const ctx = ctxAt(url);
+      const ctx = serverContext({ method: 'POST', name: 'login', url: new URL(url), params: {}, args: undefined, settings: { secureCookies: false } });
       setCookie(ctx, 'sid', 'a b');
       expect(cookiesOf(ctx)).toEqual(['sid=a%20b; Path=/; HttpOnly; SameSite=Lax']);
     }
@@ -70,7 +70,7 @@ describe('deleteCookie', () => {
     const ctx = ctxAt('https://app.dev/');
     deleteCookie(ctx, 'sid');
     deleteCookie(ctx, 'sid', { path: '/cuenta', domain: 'app.dev' });
-    expect(cookiesOf(ctx)).toEqual(['sid=; Path=/; Max-Age=0', 'sid=; Path=/cuenta; Domain=app.dev; Max-Age=0']);
+    expect(cookiesOf(ctx)).toEqual(['sid=; Path=/; Max-Age=0; Secure', 'sid=; Path=/cuenta; Domain=app.dev; Max-Age=0; Secure']);
   });
 });
 
@@ -79,7 +79,7 @@ describe('serializeCookie', () => {
     for (const url of ['https://app.dev/', 'http://localhost:5173/']) {
       const ctx = ctxAt(url);
       setCookie(ctx, 'sid', 'a b', { maxAge: 5 });
-      expect(serializeCookie('sid', 'a b', { maxAge: 5, host: new URL(url).hostname })).toBe(cookiesOf(ctx)[0]);
+      expect(serializeCookie('sid', 'a b', { maxAge: 5, secureByDefault: true })).toBe(cookiesOf(ctx)[0]);
     }
   });
 });

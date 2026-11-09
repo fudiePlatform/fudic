@@ -61,6 +61,7 @@
     "@fudic/conventions": "workspace:*",
     "@fudic/i18n": "workspace:*",
     "@fudic/resolve": "workspace:*",
+    "@fudic/server": "workspace:*",
     "@fudic/ssr": "workspace:*",
     "@fudic/transport": "workspace:*",
     "@fudic/typecheck": "workspace:*"

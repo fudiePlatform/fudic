@@ -4,11 +4,14 @@
 declare module "fudic:@fudic/http/middlewares" {
   import type { ClientHalf, HttpError, MiddlewarePiece, ServerHalf } from '@fudic/http/contract';
 
-  /** A header on every call that a page of another site cannot set; an unsafe call without it is refused. */
-  export const csrf: MiddlewarePiece<{}, {}>;
-  export type CsrfClient = ClientHalf<{}>;
-  export type CsrfServer = ServerHalf<{}, {}>;
-  export const CsrfFails: { readonly crossSite: () => HttpError };
+  /**
+   * A header on every call that a page of another site cannot set; an unsafe call without it is refused.
+   * With token, the header carries a token signed against an HttpOnly cookie, asked once per page.
+   */
+  export const csrf: MiddlewarePiece<{ readonly token?: boolean }, {}>;
+  export type CsrfClient = ClientHalf<{ readonly token?: boolean }>;
+  export type CsrfServer = ServerHalf<{ readonly token?: boolean }, {}>;
+  export const CsrfFails: { readonly crossSite: () => HttpError; readonly csrfToken: () => HttpError };
 
   /**
    * What a call does with an error nobody caught: a status with a route goes there, any other to

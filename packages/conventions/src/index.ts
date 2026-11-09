@@ -134,6 +134,12 @@ export const FN_PREFIX = '/_fudic/fn';
 export const RULE_PREFIX = '/_fudic/rule';
 
 /**
+ * Where a page asks for its CSRF token when its chain says `use csrf` with `token true` (SDD-81
+ * §3.13): `GET`, answered by the same handler as the functions, never cached.
+ */
+export const CSRF_PATH = '/_fudic/csrf';
+
+/**
  * The only URL of `_error.fud` (SDD-56 §4.8): `errorPages` navigates to it from the browser
  * and the server paints it.
  */

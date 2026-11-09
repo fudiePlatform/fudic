@@ -786,6 +786,25 @@ importers:
         specifier: workspace:*
         version: link:../tsconfig
 
+  packages/server:
+    dependencies:
+      '@fudic/conventions':
+        specifier: workspace:*
+        version: link:../conventions
+      '@fudic/http':
+        specifier: workspace:*
+        version: link:../http
+      '@fudic/transport':
+        specifier: workspace:*
+        version: link:../transport
+    devDependencies:
+      '@fudic/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/node':
+        specifier: 22.20.0
+        version: 22.20.0
+
   packages/spec:
     dependencies:
       '@fudic/diagnostics':
@@ -1012,6 +1031,9 @@ importers:
       '@fudic/resolve':
         specifier: workspace:*
         version: link:../resolve
+      '@fudic/server':
+        specifier: workspace:*
+        version: link:../server
       '@fudic/ssr':
         specifier: workspace:*
         version: link:../ssr

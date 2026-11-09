@@ -10,12 +10,13 @@
  */
 
 import { FN_PREFIX, RULE_PREFIX } from '@fudic/conventions';
+import { csrfEndpoint, isCsrfPath } from '../csrf-token.js';
 import { createRoot } from '@fudic/di';
 import { run } from '../compose.js';
 import { HttpError, notFound, type Problem } from '../errors.js';
 import { serverContext } from '../server/context.js';
 import { bodyArgs } from '../server/body.js';
-import { queryArgs, valueResponse, withForm, type DispatchOptions } from '../server/dispatch.js';
+import { queryArgs, settingsOf, valueResponse, withForm, type DispatchOptions } from '../server/dispatch.js';
 import { noFunction, problemOf, problemResponse } from '../server/problem.js';
 import { withRequest } from '../server/request.js';
 import type { ServerContext } from '../types.js';
@@ -74,7 +75,7 @@ export async function serve(input: ServeInput, options: DispatchOptions = {}): P
     const args = spec.form !== undefined ? raw : spec.args !== undefined ? conformAll(spec.args, raw, 'argument') : undefined;
     await checkRules(spec.rules, { ...params, ...query, ...args });
 
-    const base = serverContext({ method: spec.method, name: spec.name, url, params: {}, args, request });
+    const base = serverContext({ method: spec.method, name: spec.name, url, params: {}, args, request, settings: settingsOf(options) });
     const ctx = Object.assign(base, { params, query }) as unknown as ServerContext;
     response = ctx.response;
     const { steps } = compose(spec.chain, 'server');
@@ -144,6 +145,10 @@ export function contractsHandler(options: ContractsOptions = {}): (request: Requ
   const rules = rulesHandler(`${root}${RULE_PREFIX}/`, options);
   return async (request) => {
     const { pathname } = new URL(request.url);
+    // The CSRF token of `use csrf` with `token true` (SDD-81 §3.13), in JSON whatever the app speaks.
+    if (isCsrfPath(pathname, root)) {
+      return csrfEndpoint(request, settingsOf(options)).catch((e: unknown) => problemResponse(problemOf(e, options.dev === true)));
+    }
     if (!pathname.startsWith(prefix)) return rules(request);
     const target = targetOf(pathname.slice(prefix.length).split('/'));
     if (target === undefined) return noFunction(request);

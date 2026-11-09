@@ -5,7 +5,7 @@
 > `@fudic/compiler` · `@fudic/config` · `@fudic/vite` · `@fudic/testing` · `@fudic/language-core` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/diagnostics` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-81-ficheros`, desde `worktree-pendiente`; al cerrar, merge `--no-ff` a `worktree-pendiente`.
-> **Progreso:** 1 / 37 — `Listo` (enmendada el 2026-11-09).
+> **Progreso:** 7 / 37 — `Listo` (enmendada el 2026-11-09).
 
 **Dos sesiones.** Una implementa y entrega cada fase con `pnpm typecheck` y `pnpm build`. La otra
 escribe los tests de cada fase (las tareas «Los tests de…») contra los criterios de SDD §6, en su
@@ -35,7 +35,7 @@ propio worktree desde esta rama. Si un test destapa un defecto, se corrige el c�
 
 ## Fase 2 — el servidor portable
 
-- [ ] **2. `@fudic/server`.**
+- [x] **2. `@fudic/server`.**
   - Paquete nuevo con umbrales al 100 %. `createServer(app, options)`, `ServerApp`, `AppRoute`,
     `FudicServer` (SDD §3.10).
   - Lo que hoy está en el plugin, sin cambiar de comportamiento: el render en streaming, el endpoint
@@ -44,30 +44,30 @@ propio worktree desde esta rama. Si un test destapa un defecto, se corrige el c�
   - `earlyHints(request)` y `notFound(request)`.
   - *Depende de:* —.
   - *Paquetes:* `server`, `vite` (lo que se mueve sale de ahí).
-- [ ] **3. `@fudic/server/node`.**
+- [x] **3. `@fudic/server/node`.**
   - `toRequest`, `sendResponse` en streaming con cancelación, `nodeMiddleware` con el `103`,
     `staticPages`.
   - *Depende de:* 2.
   - *Paquete:* `server`.
-- [ ] **4. Las cookies.**
+- [x] **4. Las cookies.**
   - `secureCookies` del servidor al `ctx` por símbolo registrado; fuera la detección por `Host`.
   - Prefijos `__Host-`/`__Secure-`; `deleteCookie` con `Secure` (SDD §3.11).
   - *Depende de:* 2.
   - *Paquetes:* `http`, `server`.
-- [ ] **5. El proxy.**
+- [x] **5. El proxy.**
   - `trustProxy`: `Forwarded` y `X-Forwarded-*` reescriben la URL pública antes de nada (SDD §3.12).
   - *Depende de:* 2.
   - *Paquete:* `server`.
-- [ ] **6. El CSRF con token.**
+- [x] **6. El CSRF con token.**
   - `token bool?` y `fails csrf-token` en el `middleware csrf`.
   - `GET /_fudic/csrf` en el handler de funciones.
   - Cookie y HMAC con `crypto.subtle`; el secreto por las opciones.
   - La mitad de cliente pide, guarda y reintenta una vez (SDD §3.13).
   - *Depende de:* 4, 5.
   - *Paquetes:* `http`, `conventions`, `server`.
-- [ ] **7. El build y el plugin sobre `createServer`.**
+- [x] **7. El build y el plugin sobre `createServer`.**
   - `.fudic/edge/server.mjs` (`createApp`, `config`); `functions.mjs` exporta además `handler`.
-  - `server` en `fudic.json` (`trustProxy`) con `FUD1488`.
+  - `serve` en `fudic.json` (`trustProxy`) con `FUD1488`.
   - Preview = `nodeMiddleware(createServer(createApp(staticPages(…))))`.
   - Dev = `createServer` con su `ServerApp` sobre `ssrLoadModule`, `prepare`, `transformHtml`,
     `onError`.
@@ -75,6 +75,12 @@ propio worktree desde esta rama. Si un test destapa un defecto, se corrige el c�
   - *Depende de:* 2–6.
   - *Paquetes:* `vite`, `config`, `server`.
 - [ ] **8. Los tests de la fase.** Criterios 38–48, y las e2e del ejemplo en dev y preview sin cambios.
+  - **Lo que hereda de la implementación.** Los tests unitarios de preview de `vite/test/plugin.test.ts`
+    (`configurePreviewServer middleware`) y uno de `http-units.test.ts` probaban la lógica que preview
+    tenía dentro; ahora preview monta `server.mjs` y esos casos se reescriben contra `@fudic/server`
+    (con un `ServerApp` de prueba) y contra el `server.mjs` de un build. Los de `toRequest`/`sendResponse`
+    de `vite/test/http-functions.test.ts` pasan a `server/test`. `vite/test/early-hints.test.ts` se borró
+    con su módulo: el `103` es de `@fudic/server/node`. `@fudic/server` no tiene tests aún (umbral 100).
   - *Depende de:* 2–7.
   - *Paquetes:* `server`, `http`, `config`, `vite`, `examples/basic`.
 
@@ -155,7 +161,7 @@ propio worktree desde esta rama. Si un test destapa un defecto, se corrige el c�
   - *Depende de:* 18.
   - *Paquete:* `core`.
 - [ ] **20. `fudic.json`, Vite y testing.**
-  - `server.uploads` en `@fudic/config` con `FUD1488`.
+  - `serve.uploads` en `@fudic/config` con `FUD1488`.
   - El plugin lo pasa en dev; el build lo deja en `config` de `server.mjs`; preview y dev con `diskSpool`.
   - `@fudic/testing` deja de juntar el cuerpo en `call.ts`.
   - *Depende de:* 7, 15, 16, 17.

@@ -6,7 +6,8 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createServer, type Server } from 'node:http';
-import { isFnPath, noFunction, sendResponse, toRequest } from '../src/functions.js';
+import { sendResponse, toRequest } from '@fudic/server/node';
+import { isFnPath, noFunction } from '../src/functions.js';
 
 describe('isFnPath', () => {
   it('under base + /_fudic/fn/ only', () => {
@@ -38,10 +39,12 @@ describe('toRequest and sendResponse, over a real Node server', () => {
         const text = request.method === 'GET' || request.method === 'HEAD' ? '' : await request.clone().text();
         seen = { request, text, aborted: () => request.signal.aborted };
         // `next`: what Connect does when nobody answers — here, a plain 404.
-        await sendResponse(res, await answer(request), () => {
+        const response = await answer(request);
+        if (response !== null) await sendResponse(res, response);
+        else {
           res.statusCode = 404;
           res.end('next');
-        });
+        }
       })();
     });
     await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));

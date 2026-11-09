@@ -1,8 +1,11 @@
 # A header on every call that a page of another site cannot set; an unsafe call without it is refused.
+# With token, the header carries a token signed against an HttpOnly cookie, asked once per page.
 middleware csrf
   client
   server
+  token  bool?
   fails cross-site 403 "cross-site request"
+  fails csrf-token 403 "invalid CSRF token"
 
 # What a call does with an error nobody caught: a status with a route goes there, any other to
 # the error page. A redirect is followed; a cancelled call and a 422 are left alone.

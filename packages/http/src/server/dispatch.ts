@@ -11,6 +11,7 @@ import { conform } from '../contract/wire.js';
 import { badRequest, ValidationError } from '../errors.js';
 import type { ServerContext } from '../types.js';
 import { markPrivate } from './context.js';
+import type { ServerSettings } from './settings.js';
 import { fromBase64url } from '../wire/base64url.js';
 import type { Ty } from '../wire/ty.js';
 import type { Wire } from '../wire/wire.js';
@@ -25,6 +26,18 @@ export interface DispatchOptions {
    * `@fudic/testing` hands one with the test's services in it (SDD-57).
    */
   readonly container?: () => Container;
+  /** The default `Secure` of the cookies a function sets (SDD-81 §3.11). Default true. */
+  readonly secureCookies?: boolean;
+  /** What the CSRF token is signed with (SDD-81 §3.13). */
+  readonly secret?: string;
+}
+
+/** What the code under this handler is told, out of its options (SDD-81 §3.11). */
+export function settingsOf(options: DispatchOptions): ServerSettings {
+  return {
+    secureCookies: options.secureCookies ?? true,
+    ...(options.secret !== undefined ? { secret: options.secret } : {}),
+  };
 }
 
 const utf8 = new TextEncoder();
