@@ -1,9 +1,9 @@
-# SDD-81 — Ficheros: el tipo `file` del `.fudapi`, de la vista al servidor y de vuelta
+# SDD-81 — Ficheros: el tipo `file` del `.fudapi`, de la vista al servidor y de vuelta; y un servidor que no depende de Vite
 
-> **Estado:** `Listo` (2026-11-08) — [tareas](./SDD-81-Task.md).
-> **Paquetes:** `@fudic/api` · `@fudic/http` · `@fudic/core` · `@fudic/forms` · `@fudic/compiler` · `@fudic/config` ·
-> `@fudic/vite` · `@fudic/testing` · `@fudic/language-core` · `@fudic/language-server` · `@fudic/vscode` ·
-> `@fudic/diagnostics` · `@fudic/mcp` (guía) · `examples/basic`
+> **Estado:** `Listo` (2026-11-08; enmendada el 2026-11-09, §3.10–§3.13 y §8.2) — [tareas](./SDD-81-Task.md).
+> **Paquetes:** `@fudic/api` · `@fudic/http` · `@fudic/server` (nuevo) · `@fudic/core` · `@fudic/forms` ·
+> `@fudic/compiler` · `@fudic/config` · `@fudic/vite` · `@fudic/testing` · `@fudic/language-core` ·
+> `@fudic/language-server` · `@fudic/vscode` · `@fudic/diagnostics` · `@fudic/mcp` (guía) · `examples/basic`
 > **Depende de:** 34 (formularios), 56 (funciones de servidor, `form:=`), 60 (reglas del `.fudapi`),
 > 67 (`fud-bin` por defecto, `use json`, el pipeline de subida), 68 (`task`), 74 (`catches`, `fails`),
 > 80 (`$value`). Todas en `Hecho` salvo la 80, que tiene que estar en `Hecho` antes de empezar.
@@ -11,7 +11,8 @@
 > **Decisiones de gramática:** 181 (`file` en el `.fudapi`), 182 (`<input type="file">` y `$value`).
 > Enmienda la 178.
 > **Origen:** conversación con Pedro del 2026-11-08, al estudiar la nota 5 de `docs/PENDIENTE.md`.
-> **Rama sugerida:** `sdd-81-ficheros`, desde `main`.
+> La enmienda, del estudio del 2026-11-09 ([estudio-servidor-portable.md](../arquitecture/estudio-servidor-portable.md)).
+> **Rama sugerida:** `sdd-81-ficheros`, desde `worktree-pendiente`, y merge a ella al cerrar.
 >
 > **Qué añade en una frase.** Un fichero se declara en el `.fudapi` como cualquier otro tipo
 > (`avatar file`, `docs file[]`, `-> file`), se elige con un `<input type="file">` ligado a un
@@ -41,6 +42,21 @@
   tipo.
 - **Una función `get` no da su URL.** El stub la construye para llamar
   ([fn.ts:146](../../packages/http/src/contract/fn.ts)), pero no hay forma de ponerla en un `href`.
+- **Las páginas solo se sirven desde Vite.** Las funciones ya son portables (`handle(request)` de
+  `.fudic/edge/functions.mjs`), pero el render de una ruta, su endpoint de datos, la redirección de
+  idioma, `_error.fud`, la CSP con nonce y los `103` están dos veces en
+  [plugin.ts](../../packages/vite/src/plugin.ts) (dev y preview), sobre `IncomingMessage`. Un
+  adaptador no tiene qué montar.
+- **`Secure` se decide por el `Host`.** `serializeCookie` lo quita si el host de la petición es
+  loopback ([cookies.ts](../../packages/http/src/cookies.ts)): detrás de un proxy que no reescribe
+  `Host`, las cookies de producción salen sin `Secure`; en dev por la IP de la red local, salen con
+  `Secure` sobre `http` y el navegador las tira. `deleteCookie` no repite `Secure`, y una cookie
+  `__Host-` no se puede borrar así.
+- **No hay proxy de confianza.** `toRequest` arma la URL con el esquema del socket. Detrás de un
+  proxy TLS la URL dice `http` y el navegador manda `Origin: https://…`: el `csrf` rechaza todo POST.
+- **El CSRF tiene un solo modo** y ninguna forma de token. Y una función sin `use csrf` hoy está
+  protegida por accidente: un `<form>` de otro sitio no puede mandar `fud-bin` ni JSON (415).
+  `multipart/form-data` sí lo puede mandar.
 
 ### 1.2. Lo que decidió la conversación
 
@@ -49,6 +65,22 @@
    de argumentos va en una parte, `$args`, en el formato de la función (`fud-bin` o JSON); cada
    fichero, en su parte. Nuestro formato no se abandona: va dentro. Se descartó meter los bytes del
    fichero en `fud-bin` por cuatro motivos (§8.1.1).
+
+La enmienda del 2026-11-09 añade lo que el estudio destapó al mirar dónde iba a vivir el lector de
+multipart:
+
+3. **Servir una app no depende de Vite.** Las páginas (render, datos, idioma, error, CSP, `103`)
+   estaban escritas dos veces dentro del plugin, sobre la petición de Node. Pasan a un paquete
+   nuevo, `@fudic/server`, que habla `Request → Response` y sirve igual en Node, Deno, Bun o el
+   borde. Dev, preview y cualquier adaptador futuro son configuraciones de ese mismo servidor (§3.10).
+4. **`Secure` en una cookie lo decide quien monta el servidor, no el `Host` de la petición** (§3.11).
+5. **Detrás de un proxy la app sabe su URL pública** si se le dice que confíe en él (§3.12).
+6. **CSRF con dos modos**: el de hoy (cabecera propia + `Sec-Fetch-Site` + `Origin`) y uno con
+   token firmado contra una cookie `HttpOnly`. Y una llamada multipart de otro sitio se rechaza
+   siempre, lleve `use csrf` o no (§3.13).
+7. **Dónde guarda el proyecto un fichero no es asunto de fudic.** El handler recibe `File`; lo
+   que haga con él es suyo. Lo único que fudic decide es dónde esperan los bytes mientras el
+   handler corre, y eso lo elige el adaptador (§3.5).
 
 ### 1.3. El objetivo
 
@@ -116,6 +148,7 @@ exportar.handle(() => new File([inject(Users).csv()], 'personas.csv', { type: 't
 | 68 | `task`: `run`, `cancel`, `pending`, `value`, `state` |
 | 74 | `catches`, los `fails` con código |
 | 80 | `$value` en los argumentos de un handler (decisión 178) |
+| 20, 56, 58, 69, 70, 73 | Lo que el plugin sirve hoy y pasa a `@fudic/server` sin cambiar de comportamiento: el render en el edge y el endpoint de datos (20), `_error.fud` y `errorPages` (56), la redirección de idioma (58), las cookies y `markPrivate` (69), el streaming (70), los `103` y el `Referrer-Policy` (73) |
 
 Ninguna dependencia npm nueva. El lector de multipart es propio (§4.4).
 
@@ -221,7 +254,7 @@ content-type: image/png
 - **La firma** (`sig`, SDD-67) cambia para estas funciones: el `file` entra en la firma canónica con su
   propia etiqueta. Un cliente viejo contra un servidor nuevo da el 409 de firma de siempre.
 - **Sin `compress`.** Una llamada multipart no pasa por la etapa `compress` (§8.1.4).
-- **CSRF**: el mismo de toda llamada.
+- **CSRF**: el de la cadena de la función, y además una llamada multipart de otro sitio se rechaza siempre (§3.13).
 
 **La vuelta:**
 
@@ -265,7 +298,7 @@ interface Task<A, R> {
 ### 3.5. El servidor
 
 ```ts
-// @fudic/http/contract
+// @fudic/http/server
 export interface UploadLimits {
   /** Per file, unless its field says max-size. Bytes. Default 10 MB. */
   readonly maxFileSize: number;
@@ -275,27 +308,36 @@ export interface UploadLimits {
   readonly maxArgs: number;
 }
 
-/** Where an incoming file's bytes go while the handler runs. */
-export interface FileStore {
-  /** Takes the part's bytes as they arrive and gives back the File the handler sees. */
+/**
+ * Where an incoming file waits while the handler runs: the adapter's choice, never the
+ * project's. It takes the part's bytes as they arrive and gives back the File the handler sees,
+ * and what it kept goes when `release` is called.
+ */
+export interface Spool {
   put(bytes: ReadableStream<Uint8Array>, meta: { readonly name: string; readonly type: string }): Promise<File>;
-  /** Called once the response is sent: what put kept can go. */
   release(): Promise<void>;
 }
 
-export interface HandlerOptions {
-  // …lo que ya tiene…
-  readonly uploads?: Partial<UploadLimits>;
-  readonly files?: () => FileStore;
-}
+/** In memory: portable, the default. */
+export function memorySpool(): Spool;
+
+// @fudic/server/node
+/** To a temporary file, read back by fs.openAsBlob: the File never sits in memory. */
+export function diskSpool(): Spool;
 ```
 
 ```jsonc
 // fudic.json
 {
-  "uploads": { "maxFileSize": "50mb", "maxFiles": 10, "maxArgs": "1mb" }
+  "server": {
+    "uploads": { "maxFileSize": "50mb", "maxFiles": 10, "maxArgs": "1mb" }
+  }
 }
 ```
+
+El proyecto no ve `Spool`: recibe `File` en el handler y lo guarda donde quiera. Lo pasa quien
+monta el servidor (§3.10): el adaptador de Node y el plugin de Vite, `diskSpool`; uno de borde, el
+de memoria o uno propio.
 
 - **Lector propio de multipart, en streaming** (§4.4). Lee `$args` primero, si no es la primera parte
   es `400`.
@@ -305,14 +347,15 @@ export interface HandlerOptions {
 - **`accept` se comprueba en el servidor** contra el `content-type` de la parte y la extensión del
   nombre, como en el navegador. Es lo que dice el cliente; mirar los bytes (la firma de un PNG) es una
   regla propia del proyecto (`rule es-png`, `runs server`, sobre `file`).
-- **Dónde quedan los bytes.** `FileStore` por defecto en Node: cada fichero va a un temporal de
-  `os.tmpdir()` y el `File` es `fs.openAsBlob` (Node ≥ 22), que no lo carga en memoria. Fuera de
-  Node (el borde), en memoria. `release()` borra los temporales al terminar la respuesta, haya ido
-  bien o mal. Un proyecto pone el suyo (S3, por ejemplo) con `files`.
-- **`fudic.json`** gana `uploads`, con tamaños como número de bytes o como texto con unidad. El plugin
-  de Vite lo pasa a `handler` en dev, en preview y en el módulo de funciones del build.
-- **La respuesta en streaming.** `-> file` responde con `file.stream()`. `sendResponse` de Vite deja de
-  juntar la respuesta entera: la vuelca por partes.
+- **Dónde esperan los bytes.** Lo decide el `Spool` que pasa el adaptador; `@fudic/http` no
+  pregunta en qué runtime está ni importa `node:fs`. `diskSpool` escribe cada fichero en un temporal
+  de `os.tmpdir()` y el `File` es `fs.openAsBlob`, que no lo carga en memoria. `release()` se llama
+  cuando el cuerpo de la respuesta termina o se cancela —un `TransformStream` alrededor del cuerpo,
+  no un evento del servidor—, así funciona igual en cualquier runtime, haya ido bien o mal.
+- **`fudic.json`** gana `server.uploads`, con tamaños como número de bytes o como texto con unidad.
+  El build lo deja en el módulo del servidor (§3.10) y el plugin lo pasa en dev.
+- **La respuesta en streaming.** `-> file` responde con `file.stream()`. El volcado a Node de
+  `@fudic/server/node` escribe por partes, nunca junta la respuesta.
 
 ### 3.6. Los formularios
 
@@ -377,9 +420,184 @@ export interface HandlerOptions {
 | `FUD1485` | error | Many files, one chosen | `<input type="file">` sin `multiple` ligado a `file[]` |
 | `FUD1486` | error | A file input bound to something that is not a file | El control y el campo no son los dos de fichero |
 | `FUD1487` | error | A size with an unknown unit | `2mo`, `3tb`: la unidad no es `kb`, `mb` ni `gb` |
-| `FUD1488` | error | Upload limits in fudic.json | `uploads` con una forma o un tamaño inválidos |
+| `FUD1488` | error | Server options in fudic.json | `server` con una forma inválida: `uploads` con un tamaño o un número que no lo son, `trustProxy` que no es booleano, una clave desconocida |
 
 `FUD1089` (clave de `map`) y `FUD0592` (control sin valor) ya existen.
+
+### 3.10. El servidor portable: `@fudic/server`
+
+Un paquete nuevo, sin dependencia de Vite ni de Node en su entrada principal. Sirve una app entera
+—funciones, reglas remotas, token de CSRF, páginas, datos, idioma, errores— a partir de un
+`Request`, y devuelve un `Response`, o `null` cuando la URL no es suya (un fichero estático, que
+sirve quien lo monta).
+
+```ts
+// @fudic/server
+export interface ServerApp {
+  /** Vite's base, with its trailing slash. */
+  readonly base: string;
+  /** The app's locales; empty, or one, when URLs carry no prefix. */
+  readonly locales: readonly string[];
+  /** The document CSP, with its {nonce}. Absent: no CSP (dev). */
+  readonly csp?: string;
+  /** The routes, most specific first. Asked on each request: dev adds and removes files. */
+  routes(): readonly AppRoute[];
+  /** A route's render module, by pattern. */
+  module(pattern: string): Promise<RenderModule>;
+  /** The error page of a locale, or null for the minimal page. */
+  errorPage(locale: string | undefined): Promise<{ readonly module: RenderModule; readonly hints: readonly string[] } | null>;
+  /** The prerendered HTML of a path, or null. */
+  prerendered(pathname: string): Promise<string | null>;
+  /** The server root's handler factory: functions, remote rules, the CSRF token. */
+  functions(options: FunctionsOptions): (request: Request) => Promise<Response | null>;
+}
+
+export interface AppRoute {
+  readonly pattern: string;
+  readonly locale?: string;
+  /** Whether the server can render it on demand (it has a render module). */
+  readonly renders: boolean;
+  /** Its Link values, for the 103 and the final response. */
+  hints(): Promise<readonly string[]>;
+}
+
+export interface ServerOptions {
+  /** A 500 carries its message; errors go to onError. Never in production. */
+  readonly dev?: boolean;
+  /** Read Forwarded / X-Forwarded-* to know the public URL (§3.12). Default false. */
+  readonly trustProxy?: boolean;
+  /** Default Secure of every cookie fudic or the app sets (§3.11). Default true. */
+  readonly secureCookies?: boolean;
+  /** Signs the CSRF token (§3.13). Dev without one: random per process. */
+  readonly secret?: string;
+  readonly uploads?: Partial<UploadLimits>;
+  /** Where an upload waits while its handler runs (§3.5). Default: memory. */
+  readonly spool?: () => Spool;
+  /** Told about every error that is not an HttpError. */
+  readonly onError?: (error: unknown) => void;
+  /** Before a page is rendered: dev refuses one whose graph has errors by throwing here. */
+  readonly prepare?: (route: AppRoute) => Promise<void>;
+  /** The HTML before it goes out, head or whole: dev injects its client here. */
+  readonly transformHtml?: (url: string, html: string) => Promise<string>;
+}
+
+export interface FudicServer {
+  /** The response, or null when the URL is not the app's (a static file). */
+  fetch(request: Request): Promise<Response | null>;
+  /** What a 103 may say before fetch answers: its Link values and policies, or null. */
+  earlyHints(request: Request): Promise<EarlyHints | null>;
+}
+
+export function createServer(app: ServerApp, options?: ServerOptions): FudicServer;
+```
+
+```ts
+// @fudic/server/node — the glue to node:http, for Vite and for a Node adapter
+export function toRequest(req: IncomingMessage, res: ServerResponse): Request;
+/** Streams the body: never gathers it. Cancels it when the client goes away. */
+export function sendResponse(res: ServerResponse, response: Response): Promise<void>;
+/** A connect middleware: 103 when the client speaks HTTP/2 or later, then fetch, next() on null. */
+export function nodeMiddleware(server: FudicServer): (req, res, next: (error?: unknown) => void) => void;
+/** The prerendered pages of a directory: what preview and a Node adapter hand to the app. */
+export function staticPages(dir: string, base: string): ServerApp['prerendered'];
+export function diskSpool(): Spool;
+```
+
+**Qué hace `fetch`, en orden** (el comportamiento de hoy, en un solo sitio):
+
+1. Con `trustProxy`, la URL pública (§3.12). Todo lo que sigue la ve.
+2. Bajo `/_fudic/fn/`, `/_fudic/rule/` o `/_fudic/csrf`: `app.functions(…)` con las opciones de
+   cookies, secreto, límites y spool.
+3. Solo `GET` y `HEAD` siguen; lo demás es `null`.
+4. Redirección de idioma (SDD-58 §4.5), `302` con `Vary: Accept-Language`.
+5. `/_fudic/data/…`: el endpoint de datos (frames, o el problema en JSON).
+6. Sin `Accept: text/html`: `null`.
+7. `/_fudic/error/:status`: `_error.fud` del idioma, con su origen.
+8. Una ruta: el HTML prerenderizado con el nonce estampado, o el render en streaming
+   (`prepare`, luego `load`); un `Redirect` o un error, su página. Sin ruta: `null` si hay un
+   fichero estático que servir, y si no, quien monta llama a `notFound(request)`, que pinta
+   `_error.fud` como `404` (el plugin de Vite lo pone después de sus ficheros).
+9. Toda página lleva CSP con nonce (si `app.csp`), `Referrer-Policy`, `Link` y lo que escribieron
+   `load` y `layout`, con `markPrivate`.
+
+**El build** deja `.fudic/edge/server.mjs`:
+
+```js
+/** The app, given where its prerendered pages are. */
+export function createApp(io: { prerendered(pathname: string): Promise<string | null> }): ServerApp;
+/** fudic.json's server options: uploads, trustProxy. */
+export const config;
+```
+
+Los módulos de cada ruta se importan por `import()` con texto fijo: un empaquetador de un
+adaptador los sigue. `vite preview` deja de tener lógica propia: es
+`nodeMiddleware(createServer(createApp(staticPages(outDir, base)), { ...config, spool: diskSpool, secureCookies, secret }))`
+más los ficheros que sirve Vite. El servidor de dev es `createServer` con un `ServerApp` sobre
+`ssrLoadModule`, `prepare` (la comprobación viva), `transformHtml` (el cliente de Vite) y
+`onError` (el overlay). La lógica de las páginas sale de `plugin.ts`: el plugin solo construye
+los dos `ServerApp` y monta el middleware.
+
+`.fudic/edge/functions.mjs` se queda como está (SDD-56), y además exporta `handler`.
+
+### 3.11. Las cookies
+
+- **`Secure` por defecto lo decide el servidor** (`secureCookies`, `true` si no se dice). Ningún
+  código mira el `Host` de la petición. El plugin de Vite lo pone a `false` en dev y en preview
+  cuando no sirven `https`; un adaptador lo deja en `true`.
+- El valor viaja en el `ctx` (en `ctx.response`, con un símbolo registrado, como la nota de sesión
+  de SDD-69): `setCookie` y `deleteCookie` lo leen. `CookieOptions.secure` sigue ganando.
+- **Prefijos.** Un nombre `__Host-` sale siempre con `Secure` y `Path=/`, y con `domain` o con otra
+  `path` es `TypeError`. Un `__Secure-`, siempre con `Secure`. Los navegadores aceptan `Secure` en
+  `http://localhost`, así que funcionan en dev.
+- **`deleteCookie`** repite `Secure` cuando la cookie lo llevaría: sin él, el navegador no borra una
+  `__Host-` ni una `__Secure-`.
+
+### 3.12. Detrás de un proxy
+
+- `trustProxy` (opción del servidor, o `server.trustProxy` en `fudic.json`). Solo con él se leen las
+  cabeceras: sin él, cualquiera las podría falsear.
+- Se lee `Forwarded` (RFC 7239, la primera entrada: `proto`, `host`); si no viene, `X-Forwarded-Proto`
+  y `X-Forwarded-Host` (su primer valor). El resultado reemplaza el esquema y el host de la URL del
+  `Request` antes de nada: el `csrf` compara con el `Origin` público, las URLs absolutas de una
+  página (SDD-58) salen con él, y `pageOriginOf` también.
+- Un valor que no es `http`/`https` o un host que no es un host se ignora.
+
+### 3.13. CSRF
+
+**`use csrf`** (sin parámetros) es el modo de hoy, sin cambios: cabecera `x-fudic-csrf`, y
+`Sec-Fetch-Site`, si viene, `same-origin`, y `Origin`, si viene, el público (§3.12). Es el patrón
+«cabecera propia + fetch metadata»: un formulario de otro sitio no puede poner la cabecera, y un
+`fetch` de otro sitio con ella dispara un preflight que nadie contesta. El valor de la cabecera no
+importa, y no es un token.
+
+**`use csrf` con `token true`** añade un token firmado (doble envío firmado, OWASP):
+
+```
+chain
+  use csrf
+    token true
+```
+
+- La cookie `__Host-fudic-csrf` (`fudic-csrf` cuando `secureCookies` es `false`): 32 bytes al azar,
+  `HttpOnly`, `SameSite=Strict`, `Path=/`, de sesión.
+- El token es `HMAC-SHA256(secret, cookie)` en base64url. El servidor lo comprueba con
+  `crypto.subtle.verify` (tiempo constante). El JS de la página nunca ve la cookie.
+- **El canal es `GET {base}_fudic/csrf`**, que crea la cookie si falta y responde
+  `{ "token": "…" }` con `cache-control: no-store`. Con `Sec-Fetch-Site` que no es `same-origin`, `403`.
+  No va en un `<meta>`: una página prerenderizada o pintada por el Service Worker no puede llevar un
+  token por usuario, y dos canales son dos formas de equivocarse.
+- La mitad de cliente lo pide la primera vez que una llamada lo necesita, lo guarda para la vida de
+  la página y lo manda en `x-fudic-csrf`. Si el servidor responde `403` con el código `csrf-token`,
+  lo pide otra vez y reintenta una sola vez.
+- Sin `secret`: en dev, uno al azar por proceso; en otro caso, la llamada es un `500` con el mensaje
+  `csrf token mode needs a secret (FUDIC_SECRET)`. El adaptador de Node y preview leen
+  `FUDIC_SECRET` del entorno.
+- `fails csrf-token 403 "invalid CSRF token"` se añade al `middleware csrf`.
+
+**Una llamada multipart de otro sitio se rechaza siempre**, lleve `use csrf` o no: `serve()` de una
+función con `files` responde `403` si `Sec-Fetch-Site` viene y no es `same-origin`, o si `Origin`
+viene y no es el público. `curl` no manda ninguno de los dos. Con `use csrf` en la cadena, `curl`
+necesita además `-H 'x-fudic-csrf: 1'` (en modo token, el token).
 
 ---
 
@@ -406,10 +624,10 @@ export interface HandlerOptions {
 2. El lector va parte a parte (§4.4). `$args` se lee entero (hasta `maxArgs`) y se decodifica con el
    `Wire`. Cada parte de fichero se busca por su camino en los tipos: un camino que no corresponde a
    ningún hueco `file` es `400`.
-3. Cada fichero pasa por `FileStore.put` mientras llega, contando bytes contra su límite.
+3. Cada fichero pasa por `Spool.put` mientras llega, contando bytes contra su límite.
 4. Se recompone el valor y pasa por `conform` y por las reglas como siempre. `max-size` y `accept`
    del servidor ya tienen el `File` con su tamaño real.
-5. El handler recibe `File`. Al terminar la respuesta, `release()`.
+5. El handler recibe `File`. Cuando el cuerpo de la respuesta termina o se cancela, `release()` (§3.5).
 
 ### 4.3. `-> file`
 
@@ -458,8 +676,12 @@ En el ejemplo, con Playwright, en dev y en preview:
 ## 5. Invariantes
 
 - **Un fichero nunca se carga entero en memoria** en el navegador al subir, ni en el servidor con el
-  `FileStore` de Node.
+  `diskSpool` de Node.
 - **Ningún límite se comprueba después de leer**: se corta en el byte que lo pasa.
+- **Servir una página o una función es el mismo código en dev, en preview y en un adaptador**:
+  `createServer` de `@fudic/server`. El plugin de Vite no sirve nada por su cuenta.
+- **Nada decide por el `Host` de la petición** si una cookie es `Secure`, ni lee `X-Forwarded-*` sin
+  `trustProxy`.
 - **Una función sin `file` en su firma viaja byte a byte como antes** (lo fijan los vectores de
   `http/wire/vectors.json`, que no cambian).
 - **Lo que comprueba el navegador lo vuelve a comprobar el servidor.**
@@ -489,7 +711,7 @@ En el ejemplo, con Playwright, en dev y en preview:
 7. Un `file?` sin fichero manda multipart sin esa parte, y el handler recibe `undefined`.
 8. Una función sin `file` manda lo mismo que antes, byte a byte (vectores sin cambios).
 9. `curl -F '$args=@args.json;type=application/json' -F avatar=@yo.png` contra una función `use json`
-   funciona.
+   funciona (con `-H 'x-fudic-csrf: 1'` si su cadena lleva `csrf`).
 10. La firma de una función con `file` cambia; con la vieja, `409`.
 
 **El servidor**
@@ -504,7 +726,7 @@ En el ejemplo, con Playwright, en dev y en preview:
 16. Una parte con un nombre que no es un hueco `file`: `400` `multipart body:`.
 17. En Node, un fichero de 200 MB no sube la memoria residual más de 100 MB; el temporal existe
     durante el handler y no después, tanto si va bien como si lanza.
-18. Un `FileStore` propio pasado en `files` recibe los bytes y su `File` llega al handler.
+18. Un `Spool` propio pasado al servidor recibe los bytes y su `File` llega al handler; sin `spool`, en memoria.
 
 **La vuelta**
 
@@ -539,18 +761,48 @@ En el ejemplo, con Playwright, en dev y en preview:
 
 33. El completado ofrece `file`; dentro de `accept "` ofrece tipos MIME; `max-size` solo en un campo
     `file`; los colores y el hover funcionan; la gramática TextMate colorea `file` y `html`.
-34. `fudic.json` con `uploads: { maxFileSize: "x" }` da `FUD1488`.
+34. `fudic.json` con `server: { uploads: { maxFileSize: "x" } }` o `server: { trustProxy: 1 }` da `FUD1488`.
 35. El ejemplo de §4.5 y las pruebas de §4.6 en verde, en dev y en preview.
 36. La guía del MCP (`fudapi.md`, `components.md` y sus copias en español) explica `file`, las reglas,
     el progreso, `url()` y los límites.
 37. `pnpm typecheck`, `pnpm test`, `pnpm build` en verde; ficheros nuevos al 100 %; `language-server`
-    al 100 %.
+    al 100 %; `@fudic/server` nace al 100 %.
+
+**El servidor portable (§3.10)**
+
+38. `@fudic/server` no importa `vite` ni, en su entrada principal, nada de `node:`; se carga en un
+    entorno con solo `Request`/`Response`/`crypto` (un test lo importa sin módulos de Node).
+39. Las pruebas de extremo a extremo que ya existen del ejemplo pasan sin cambios en dev y en preview:
+    páginas, datos, idioma, `_error.fud`, `103`, CSP, streaming, funciones.
+40. `plugin.ts` no tiene lógica de páginas: el render, los datos, el idioma, el error y la CSP solo
+    están en `@fudic/server`.
+41. Un script de Node de una docena de líneas monta `.fudic/edge/server.mjs` con `node:http` y
+    `@fudic/server/node`, y sirve el ejemplo construido: una página, una función, una subida.
+42. `fetch` devuelve `null` para un fichero estático; `earlyHints` da los `Link` de una ruta.
+
+**Cookies, proxy y CSRF (§3.11–§3.13)**
+
+43. En dev y en preview sobre `http`, `setCookie` sin opciones sale sin `Secure` también entrando por
+    la IP de la red local; con `secureCookies: true`, con `Secure` aunque el `Host` sea `localhost`.
+44. `setCookie(ctx, '__Host-s', v)` sale con `Secure` y `Path=/` aunque `secureCookies` sea `false`;
+    con `domain`, `TypeError`. `deleteCookie(ctx, '__Host-s')` lleva `Secure`.
+45. Con `trustProxy` y `X-Forwarded-Proto: https`, un POST con `Origin: https://…` pasa el `csrf`; sin
+    `trustProxy`, la cabecera no cambia nada.
+46. `Forwarded: proto=https;host=app.example` gana a `X-Forwarded-*`; un `proto=ftp` se ignora.
+47. Con `token true`: `GET /_fudic/csrf` crea la cookie `HttpOnly` y da un token; una llamada con él
+    pasa; con otro, o sin cookie, `403` con el código `csrf-token`; el cliente reintenta una vez con
+    uno nuevo y la llamada termina bien si la cookie se había perdido.
+48. Con `token true` y sin `secret` fuera de dev: `500` con el mensaje de §3.13.
+49. Un `<form enctype="multipart/form-data">` de otro origen contra una función con `file` y sin
+    `use csrf`: `403`.
 
 ### 6.1. La prueba de Pedro
 
 En `examples/basic`, en dev y en preview: dar de alta a alguien con foto y verla en la tabla; probar
 una foto demasiado grande y un PDF; subir algo grande y ver la barra; cancelar; exportar el CSV.
-Con `curl -F`, llamar a una función `use json` con un fichero.
+Con `curl -F`, llamar a una función `use json` con un fichero. Entrar al dev por la IP de la red
+local desde el móvil y que el login funcione. Montar el build con el script de Node del criterio 41.
+Con `token true` en la cadena, ver la cookie `HttpOnly` y la llamada pasar.
 
 ---
 
@@ -577,7 +829,7 @@ Nada.
    entero recomprime los ficheros. `$args` es pequeño.
 5. **`XMLHttpRequest` solo para subir ficheros.** Es la única forma de tener progreso de subida en los
    tres motores (`fetch` con cuerpo en streaming solo lo da Chromium y con HTTP/2).
-6. **`FileStore` con temporales en Node**, en memoria en el borde. `fs.openAsBlob` da un `File` que
+6. **Temporales en Node**, en memoria en el borde (enmendada en §8.2.5: lo elige el adaptador). `fs.openAsBlob` da un `File` que
    no carga el fichero.
 7. **Límites por defecto** (10 MB por fichero, 20 ficheros, 1 MB de `$args`), cambiables sin tope en
    `fudic.json`. Son el mismo tipo de límite que tiene cualquier servidor HTTP; no quitan ninguna
@@ -591,3 +843,25 @@ Nada.
 11. **`url()` en toda `get`**, no solo en las que devuelven `file`: un enlace a un CSV o a un JSON vale
     igual.
 12. **Lector de multipart propio.** `request.formData()` junta el cuerpo en memoria en Node.
+
+### 8.2. Tomadas en la enmienda (2026-11-09, con Pedro)
+
+1. **Un servidor, tres configuraciones.** Dev, preview y un adaptador montan el mismo
+   `createServer`; lo que cambia es el `ServerApp` (de dónde salen los módulos y las páginas) y unos
+   ganchos de dev. Así lo que funciona en preview funciona en un adaptador, porque es el mismo código.
+2. **`@fudic/server` es un paquete aparte**, no una parte de `@fudic/http`: `http` lo importa el
+   navegador y el servidor de funciones; servir páginas necesita `@fudic/transport`, el render y
+   la CSP, que nada del navegador debe arrastrar.
+3. **`Secure` lo declara quien monta el servidor.** Mirar el `Host` falla en las dos direcciones
+   (proxy en producción, IP de la red local en dev). Los prefijos `__Host-`/`__Secure-` mandan sobre
+   esa opción porque el navegador los exige.
+4. **`trustProxy` explícito.** Leer `X-Forwarded-*` sin saber que hay un proxy delante deja a
+   cualquiera falsear el origen.
+5. **El proyecto no ve dónde esperan los bytes.** El handler recibe `File` y lo guarda donde quiera;
+   `Spool` es del adaptador. Sustituye a `FileStore`/`files` de la redacción original.
+6. **El token de CSRF por un endpoint y no por `<meta>`.** Ver §3.13: las páginas prerenderizadas y
+   las del Service Worker no pueden llevar un token por usuario.
+7. **Doble envío firmado y no token sincronizado en sesión.** fudic no tiene almacén de sesiones; el
+   token firmado contra una cookie `HttpOnly` no necesita guardar nada en el servidor.
+8. **Una llamada multipart de otro sitio se rechaza siempre.** Es la protección que un formato propio
+   daba por accidente y que multipart quitaría.
