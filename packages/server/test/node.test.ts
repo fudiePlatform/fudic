@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { Readable } from 'node:stream';
 import { createServer, type FetchHooks, type FudicServer } from '../src/index.js';
-import { htmlPathFor, nodeMiddleware, sendResponse, staticPages, toRequest, wantsEarlyHints, type NodeMiddleware } from '../src/node/index.js';
+import { htmlPathFor, LINGER_MS, nodeMiddleware, sendResponse, staticPages, toRequest, wantsEarlyHints, type NodeMiddleware } from '../src/node/index.js';
 import { pageModule, testApp } from './helpers.js';
 
 describe('toRequest and sendResponse, over a real Node server', () => {
@@ -312,6 +312,86 @@ function run(mw: NodeMiddleware, req: never, res: FakeRes = new FakeRes()): Prom
     mw(req, res as never, (...args: unknown[]) => resolve({ res, next: args }));
   });
 }
+
+describe('a body left unread lingers, then goes (SDD-81 §3.5)', () => {
+  /** A PUT whose body the server stops reading, and its socket. */
+  function unreadPut() {
+    const destroy = vi.fn();
+    const req = Object.assign(new EventEmitter(), {
+      headers: { host: 'h' },
+      method: 'PUT',
+      url: '/x',
+      httpVersionMajor: 1,
+      complete: false,
+      socket: { destroy },
+    });
+    return { req, destroy };
+  }
+
+  const answering = nodeMiddleware(fakeServer({ fetch: async () => new Response('413', { status: 413 }) }));
+
+  it('the client never finishes: the connection goes LINGER_MS after the response, not before', async () => {
+    vi.useFakeTimers();
+    try {
+      const { req, destroy } = unreadPut();
+      await run(answering, req as never);
+      expect(destroy).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(LINGER_MS - 1);
+      expect(destroy).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1);
+      expect(destroy).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('the client finishes in time: the connection stays', async () => {
+    vi.useFakeTimers();
+    try {
+      const { req, destroy } = unreadPut();
+      await run(answering, req as never);
+      req.emit('end');
+      vi.advanceTimersByTime(LINGER_MS * 2);
+      expect(destroy).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a body that was done by the time the response ended: nothing to wait for', async () => {
+    vi.useFakeTimers();
+    try {
+      const { req, destroy } = unreadPut();
+      const res = new FakeRes();
+      // The last bytes of the body arrive while the response is being written.
+      const write = res.write.bind(res);
+      res.write = (chunk: Uint8Array): boolean => {
+        req.complete = true;
+        return write(chunk);
+      };
+      await run(answering, req as never, res);
+      vi.advanceTimersByTime(LINGER_MS * 2);
+      expect(destroy).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a complete body, a GET, or HTTP/2 never linger', async () => {
+    vi.useFakeTimers();
+    try {
+      for (const over of [{ complete: true }, { method: 'GET' }, { httpVersionMajor: 2 }]) {
+        const { req, destroy } = unreadPut();
+        Object.assign(req, over);
+        await run(answering, req as never);
+        vi.advanceTimersByTime(LINGER_MS * 2);
+        expect(destroy).not.toHaveBeenCalled();
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
 
 describe('nodeMiddleware', () => {
   it('the extra headers of the app’s static files, then on to the host', async () => {
