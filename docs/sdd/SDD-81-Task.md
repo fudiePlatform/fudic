@@ -5,7 +5,7 @@
 > `@fudic/compiler` · `@fudic/config` · `@fudic/vite` · `@fudic/testing` · `@fudic/language-core` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/diagnostics` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-81-ficheros`, desde `worktree-pendiente`; al cerrar, merge `--no-ff` a `worktree-pendiente`.
-> **Progreso:** 7 / 37 — `Listo` (enmendada el 2026-11-09).
+> **Progreso:** 10 / 37 — `Listo` (enmendada el 2026-11-09).
 
 **Dos sesiones.** Una implementa y entrega cada fase con `pnpm typecheck` y `pnpm build`. La otra
 escribe los tests de cada fase (las tareas «Los tests de…») contra los criterios de SDD §6, en su
@@ -86,7 +86,7 @@ propio worktree desde esta rama. Si un test destapa un defecto, se corrige el c�
 
 ## Fase 3 — el `.fudapi`
 
-- [ ] **9. El tipo y sus sitios.**
+- [x] **9. El tipo y sus sitios.**
   - `file` en `PRIMITIVES`.
   - `FUD1480` en los argumentos de `get`, de ruta y de query (`scalar()`).
   - `FUD1481` en `load`, `layout`, `paths` y en los `type` que alcanzan, sobre el uso con `related`.
@@ -94,13 +94,13 @@ propio worktree desde esta rama. Si un test destapa un defecto, se corrige el c�
   - `FUD1483` en los parámetros de `rule` y `fails` (SDD §3.1).
   - *Depende de:* 1.
   - *Paquete:* `api`.
-- [ ] **10. Tamaños y argumentos de texto en las reglas.**
+- [x] **10. Tamaños y argumentos de texto en las reglas.**
   - `2mb`/`500kb`/`1.5gb` en un argumento numérico, en bytes, con `FUD1487`.
   - Un argumento `str` entre comillas, seguido del texto de la regla.
   - El formateador los respeta (SDD §3.2).
   - *Depende de:* 1.
   - *Paquete:* `api`.
-- [ ] **11. El módulo generado.**
+- [x] **11. El módulo generado.**
   - `tsType` según el sitio (§3.1) y `descriptor` con `'file'`.
   - En los formularios: `controlType`, `valueType`, `initial`, `factory` con `FileField` y
     `FileListField`.
