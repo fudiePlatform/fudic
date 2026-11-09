@@ -807,6 +807,16 @@ describe('configurePreviewServer middleware', () => {
     }
   });
 
+  it('SDD-81 §3.5: preview hands the functions fudic.json’s upload limits and the disk spool of Node', async () => {
+    const handler = 'export const handler = (o) => async () => new Response(JSON.stringify({ uploads: o.uploads, spool: o.spool?.name }));\n';
+    const { root: r, outDir } = built({ functions: 'functions.mjs', config: { uploads: { maxFiles: 3, maxFileSize: 1024 } } }, { 'functions.mjs': handler });
+    const { app } = withPreview(outDir, r);
+    const res = endingRes();
+    app({ url: '/_fudic/fn/x', method: 'POST', headers: {} }, res, () => expect.unreachable('a function'));
+    await res.ended;
+    expect(JSON.parse(res.body)).toEqual({ uploads: { maxFiles: 3, maxFileSize: 1024 }, spool: 'diskSpool' });
+  });
+
   it('a server.mjs that fails to load goes to next(error)', async () => {
     const { root: r, outDir } = built({ routes: [{ pattern: '/x', hints: [], file: 'x.js' }] });
     writeFileSync(join(r, '.fudic', 'edge', 'server.mjs'), 'throw new Error("broken server.mjs");\n');
