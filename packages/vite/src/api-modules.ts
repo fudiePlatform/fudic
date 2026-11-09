@@ -22,6 +22,7 @@ import {
   dataShape,
   framesShape,
   emitModule,
+  formFields,
   type ApiContext,
   type ApiLocale,
   type ApiSource,
@@ -131,6 +132,14 @@ export class ApiProject {
     const route = this.context(source).route === undefined ? undefined : `${path.slice(0, -API_EXTENSION.length)}.fud`;
     const data = dataShape(source, this.#read().index);
     const later = decls.flatMap((d) => (d.kind === 'load' ? d.fields.filter((f) => f.later !== undefined) : []));
+    // The fields of each form it gives, wherever the form is declared (SDD-81 §3.7).
+    const index = this.#read().index;
+    const fields = Object.fromEntries(
+      [...new Set(forms)].flatMap((name) => {
+        const found = index.lookup('form', name);
+        return found === undefined ? [] : [[name, formFields(found.decl)] as const];
+      }),
+    );
     return {
       id: source.id,
       load: has('load'),
@@ -141,6 +150,7 @@ export class ApiProject {
       ...(route !== undefined ? { route } : {}),
       ...(data !== undefined ? { data } : {}),
       ...(later.length > 0 ? { later: later.map((f) => f.name.text) } : {}),
+      ...(Object.keys(fields).length > 0 ? { fields } : {}),
     };
   }
 

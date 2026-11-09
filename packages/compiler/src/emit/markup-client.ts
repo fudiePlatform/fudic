@@ -1156,6 +1156,7 @@ export class ClientMarkupEmitter {
       this.#fab.line(`$dom.setAttr(${v}, 'aria-describedby', ${JSON.stringify(site.describedBy)});`);
     }
     if (site.noValidate) this.#fab.line(`$dom.setAttr(${v}, 'novalidate', '');`);
+    if (site.accept !== undefined) this.#fab.line(`$dom.setAttr(${v}, 'accept', ${JSON.stringify(site.accept)});`);
   }
 
   /**

@@ -9,7 +9,7 @@ declare module "fudic:@fudic/forms/patterns" {
 declare module "fudic:@fudic/forms/rules" {
   import type { Check, Rule } from '@fudic/forms/contract';
 
-  /** The value is there: neither "" nor null. `false` is a value: a box that must be ticked is a rule of its own. */
+  /** The value is there: neither "", null nor an empty list. `false` is a value: a box that must be ticked is a rule of its own. */
   export const required: Rule<unknown, {}, never>;
   export type RequiredCheck = Check<unknown, {}, never>;
 
@@ -32,4 +32,12 @@ declare module "fudic:@fudic/forms/rules" {
   /** The whole text matches a pattern of the project. The empty text passes. */
   export const pattern: Rule<string, { readonly regex: RegExp }, never>;
   export type PatternCheck = Check<string, { readonly regex: RegExp }, never>;
+
+  /** The file is no bigger than n bytes. An empty field is required's business. */
+  export const maxSize: Rule<File | readonly File[], { readonly n: number }, never>;
+  export type MaxSizeCheck = Check<File | readonly File[], { readonly n: number }, never>;
+
+  /** The file's type is one the list accepts: the syntax of the HTML accept attribute. */
+  export const accept: Rule<File | readonly File[], { readonly types: string }, never>;
+  export type AcceptCheck = Check<File | readonly File[], { readonly types: string }, never>;
 }

@@ -1446,7 +1446,7 @@ Un argumento numérico de una regla admite tamaños con unidad pegada (`500kb`, 
 detrás. *Por qué: un fichero se declara como cualquier otro dato y llega al handler ya comprobado,
 sin una API aparte (Pedro, 2026-11-08).*
 
-**182.** **`<input type="file">` ligado a un campo `file`** (SDD-81 §3.7). `:=@form.campo` en un
+**182.** **`<input type="file">` ligado a un campo `file`** (SDD-81 §3.7). `control=@form.campo` en un
 `<input type="file">` se liga con `bindFile`; `control=` vale (la 34 lo dejaba fuera por multipart).
 `multiple` tiene que casar con el tipo: con un `file`, `FUD1484`; sin él con un `file[]`, `FUD1485`;
 un control de fichero ligado a lo que no es fichero, o al revés, `FUD1486`. Si el campo tiene la

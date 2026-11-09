@@ -97,6 +97,8 @@ describe('ApiProject', () => {
       route: `${root}/src/routes/blog/[slug].fud`,
       // The shape of `data`, which the page writes `fud-data` with (BUG-60 §3.1).
       data: { fields: { title: 'str' }, types: {} },
+      // The fields of its forms, wherever they are declared (SDD-81 §3.7).
+      fields: { person: { name: { type: 'str' } } },
     });
     expect(api.linked(`${root}/src/components/c.fudapi`)).toEqual({
       id: 'components/c',
@@ -105,6 +107,7 @@ describe('ApiProject', () => {
       layout: false,
       functions: ['check'],
       forms: ['person'],
+      fields: { person: { name: { type: 'str' } } },
     });
     expect(api.linked(`${root}/src/none.fudapi`)).toBeUndefined();
   });

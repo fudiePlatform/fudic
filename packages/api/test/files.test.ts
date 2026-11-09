@@ -2,39 +2,20 @@
  * SDD-81 §3.1–§3.2, criteria 1–5: `file` in the `.fudapi` — where it goes and where it does not,
  * how the `.d.ts` and the module type it, the rules of a file and their sizes with a unit.
  *
- * The rules are `@fudic/forms`'s own `rules.fudapi`, read from the package, with `max-size` and
- * `accept` as §3.2 writes them: they land in that file with phase 5.
+ * The rules are `@fudic/forms`'s own `rules.fudapi`, read from the package, `max-size` and
+ * `accept` included.
  */
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { createApiIndex, emitDeclarations, emitModule, parseApi, validateApi, type ApiSource } from '../src/index.js';
+import { createApiIndex, emitDeclarations, emitModule, formFields, parseApi, validateApi, type ApiSource, type FormDecl } from '../src/index.js';
 import { FORMS_PATTERNS, HTTP_MIDDLEWARES, slice } from './helpers.js';
 import { app, lib } from './project.js';
 
-const FILE_RULES = [
-  '',
-  '# The file is no bigger than n bytes. An empty field is required\'s business.',
-  'rule max-size',
-  '  on field file file[]',
-  '  runs both',
-  '  n  f64',
-  '  fails max-size n',
-  '',
-  "# The file's type is one the list accepts: the syntax of the HTML accept attribute.",
-  'rule accept',
-  '  on field file file[]',
-  '  runs both',
-  '  types  str',
-  '  fails accept types',
-  '',
-].join('\n');
-
 const RULES = readFileSync(new URL('../../forms/fudapi/rules.fudapi', import.meta.url), 'utf8');
-const RULES_WITH_FILES = RULES.includes('rule max-size') ? RULES : `${RULES}${FILE_RULES}`;
 
 const BUILT_INS: readonly ApiSource[] = [
-  lib('@fudic/forms', 'rules', RULES_WITH_FILES),
+  lib('@fudic/forms', 'rules', RULES),
   lib('@fudic/forms', 'patterns', FORMS_PATTERNS),
   lib('@fudic/http', 'middlewares', HTTP_MIDDLEWARES),
 ];
@@ -315,6 +296,57 @@ describe('criterion 4: sizes with a unit, and a text argument', () => {
 
   it('max-size 2mo under a function argument: FUD1487 too', () => {
     expect(found(lines('put up', '  photo  file', '    max-size 2mo', ''))).toEqual([['FUD1487', '2mo']]);
+  });
+
+  it('the {n} of max-size is painted with its unit, in a form and under an argument', () => {
+    expect(moduleOf(field('max-size 2mb  "Como mucho {n}."'))).toContain('maxSize: text("Como mucho 2 MB.")');
+    expect(moduleOf(field('max-size 1.5gb  "{n} o menos"'))).toContain('text("1.5 GB o menos")');
+    expect(moduleOf(field('max-size 1536  "{n}"'))).toContain('text("1.5 KB")');
+    expect(moduleOf(field('max-size 300  "{n}"'))).toContain('text("300 bytes")');
+    // Another rule keeps its {n} for the runtime to fill.
+    expect(moduleOf(lines('form f', '  docs  file[]', '    max-length 3  "Como mucho {n}."', '', 'post send', '  form f', ''))).toContain(
+      'text("Como mucho {n}.")',
+    );
+    const c = checked(lines('put up', '  photo  file', '    max-size 2mb  "Como mucho {n}."', ''));
+    expect(emitModule(c.source, c.index, c.ctx, 'browser')).toContain('text: "Como mucho 2 MB."');
+  });
+});
+
+describe('the fields of a form, for the compiler (SDD-81 §3.7)', () => {
+  it('each field by its path, its type as written, and the types of its accept', () => {
+    const parsed = parseApi(
+      lines(
+        'form f',
+        '  name    str = ""',
+        '  avatar  file?',
+        '    accept "image/png, image/jpeg"  "PNG o JPEG."',
+        '  docs    file[]',
+        '    accept ".pdf"',
+        '  tags    str[]',
+        '  data    group',
+        '    proof  file',
+        '',
+      ),
+    );
+    const form = parsed.value.declarations[0] as FormDecl;
+    expect(formFields(form)).toEqual({
+      name: { type: 'str' },
+      avatar: { type: 'file', accept: 'image/png, image/jpeg' },
+      docs: { type: 'file[]', accept: '.pdf' },
+      tags: { type: 'str[]' },
+      'data.proof': { type: 'file' },
+    });
+  });
+
+  it('a map, which a form does not take, is named so rather than guessed', () => {
+    const name = { text: 'extra', span: { start: 0, end: 0 } };
+    const extra = { kind: 'form-field', name, rules: [], type: { kind: 'map' } } as unknown as FormDecl['fields'][number];
+    expect(formFields({ fields: [extra] })).toEqual({ extra: { type: 'map' } });
+  });
+
+  it('an accept with nothing written gives no types', () => {
+    const parsed = parseApi(lines('form f', '  avatar  file', '    accept', ''));
+    expect(formFields(parsed.value.declarations[0] as FormDecl)).toEqual({ avatar: { type: 'file' } });
   });
 });
 

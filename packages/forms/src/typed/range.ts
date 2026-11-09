@@ -56,6 +56,14 @@ export const typeOf =
     return typeof v === expected ? null : fail(tag);
   };
 
+/** A file is a `Blob`: a `File`, or what a drop or a `fetch` gives (SDD-81 §3.6). */
+const isFile = (v: unknown): boolean => v instanceof Blob;
+
+export const fileRange: RangeCheck = (v) => (v === null || isFile(v) ? null : fail('file'));
+
+/** A `file[]` is never `null`: nothing chosen is `[]`. */
+export const filesRange: RangeCheck = (v) => (Array.isArray(v) && v.every(isFile) ? null : fail('file[]'));
+
 export const dateRange: RangeCheck = (v) => {
   if (v === null) {
     return null;

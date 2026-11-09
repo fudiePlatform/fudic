@@ -15,6 +15,8 @@ import type { Progress } from '../../src/types.js';
 import { binWire } from '../../src/wire/bin.js';
 import { jsonWire } from '../../src/wire/json.js';
 import type { Ty } from '../../src/wire/ty.js';
+import { formTypes } from '../../src/wire/schema.js';
+import { accept, file, files as fileList, formOf, str } from '@fudic/forms/contract';
 
 const ORIGIN = 'https://app.test';
 const MB = 1024 * 1024;
@@ -246,9 +248,7 @@ describe('the server receives (criteria 11–16, 18)', () => {
     expect((args as HttpError).problem.detail).toBe('$args is larger than 1024 bytes');
   });
 
-  it('criterion 15 (its server half): a rule under the file is checked with the File it received', async () => {
-    // `accept` itself is @fudic/forms's (phase 5); here a rule of the same shape stands in for it.
-    const accept = (types: string) => (v: File | null) => (v === null || types.split(',').some((t) => v.name.endsWith(t.trim())) ? null : { code: 'accept' });
+  it('criterion 15 (an argument): accept under the file is checked with the File it received', async () => {
     const { call } = pair(
       { args: { avatar: 'file' }, files: true, rules: { avatar: [{ check: accept('.png, .jpg') as never, name: 'accept', args: ['.png, .jpg'], text: 'Solo imágenes.' }] } },
       () => undefined,
@@ -257,6 +257,19 @@ describe('the server receives (criteria 11–16, 18)', () => {
     const refused = await call({ avatar: new File(['MZ'], 'virus.exe') }).catch((e: unknown) => e as HttpError);
     expect(refused).toMatchObject({ status: 400 });
     expect((refused as HttpError).problem.detail).toBe('Solo imágenes.');
+  });
+
+  it('criterion 15 (a form): an .exe sent past the browser rule is a 422 with the code accept', async () => {
+    const form = formOf({ avatar: file(null, [accept('image/png, image/jpeg')]) });
+    const { handle, url } = pair({ args: formTypes(form.$schema), form: form as never, files: true }, () => expect.unreachable());
+    // What a client that skips the browser rule sends: `$args` with nothing (the one field is a file slot).
+    const { body, headers } = multipart([
+      { name: '$args', type: 'application/fud+bin', body: '' },
+      { name: 'avatar', filename: 'virus.exe', type: 'application/x-msdownload', body: 'MZ' },
+    ]);
+    const response = (await handle(new Request(url, { method: 'PUT', body, headers: { ...headers, origin: ORIGIN } })))!;
+    expect(response.status).toBe(422);
+    expect((await problemOf(response)).errors).toEqual({ avatar: { accept: 'image/png, image/jpeg' } });
   });
 
   it('criterion 16: a part whose name is no file slot is a 400 multipart body:', async () => {
@@ -745,12 +758,24 @@ describe('the corners of the client', () => {
     const { call, spec } = pair({ args: { cover: { opt: 'file' } }, files: true }, (ctx) => void (got = ctx.args));
     await call();
     expect(got).toEqual({});
-    // The browser half of a `form:=` call: the value sent is the form's. (The file controls of a
-    // form are phase 5's; the server here takes the same arguments without one.)
-    const form = { $validate: async () => true, $schema: {}, $value: () => ({ cover: png('f.png') }) };
+    // The browser half of a `form:=` call: the value sent is the form's, its file control in its part.
+    const form = formOf({ cover: file() });
+    form.cover.set(png('f.png'));
     const withForm = stub<never, any, any>({ ...spec, form: form as never }) as unknown as (a: unknown) => Promise<unknown>;
     await withForm(form);
     expect(got.cover.name).toBe('f.png');
+  });
+
+  it('a form with file[]: its control travels as a list of file parts, and the server gets readonly File[]', async () => {
+    let got: any;
+    const form = formOf({ title: str(''), docs: fileList() });
+    const { call, seen } = pair({ args: formTypes(form.$schema), form: form as never, files: true }, (ctx) => void (got = ctx.form.$value()));
+    form.title.set('Informe');
+    form.docs.set([png('a.png'), png('b.png')]);
+    await call(form);
+    expect((await partsOf(seen[0]!)).map((p) => p.name)).toEqual(['$args', 'docs.0', 'docs.1']);
+    expect(got.title).toBe('Informe');
+    expect(got.docs.map((f: File) => f.name)).toEqual(['a.png', 'b.png']);
   });
 
   it('XMLHttpRequest: an upload whose size is unknown, a download whose size is known', async () => {

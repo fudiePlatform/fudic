@@ -13,7 +13,8 @@ import { describe, expect, it } from 'vitest';
 import { control } from '../../src/control.js';
 import { bindByType } from '../../src/dom/bind-by-type.js';
 import type { Control } from '../../src/types.js';
-import { field, fire } from './_dom.js';
+import { file } from '../../src/typed/file.js';
+import { field, fire, inForm } from './_dom.js';
 
 /** Bind an `<input type=…>` through the dispatch, as the emit does. */
 function bound<T>(type: string, c: Control<T>): HTMLInputElement {
@@ -78,28 +79,35 @@ describe('it picks what the compiler would have picked', () => {
 });
 
 describe('a type it does not know binds nothing', () => {
-  // `file` is not in this list because the DOM refuses a programmatic `value` on it at all —
-  // which is the shape of the reason it is out of scope. It has its own assertion below.
+  // `file` is not in this list: it binds, through `bindFile` (SDD-81 §3.7). Below.
   it.each(['tex', 'submit', 'button', 'image', 'reset'])('%s is inert', (type) => {
     const c = control('');
     const el = bound(type, c);
     el.value = 'ignored';
     fire(el, 'input');
-    // Not «bound as text»: a `type` nobody planned for must not half work. `file` and the
-    // valueless four are the same set `FUD0592` still rejects when the type is static.
+    // Not «bound as text»: a `type` nobody planned for must not half work. The valueless four
+    // are the same set `FUD0592` still rejects when the type is static.
     expect(c()).toBe('');
   });
 
-  it('`file` binds nothing, and its cleanup is a no-op that can be called', () => {
-    const c = control('');
+});
+
+describe('`file` binds the files the input holds (SDD-81 §3.7)', () => {
+  it('a chosen file reaches the control, and undoing stops it', () => {
+    const c = inForm(file());
     const { el, slot } = field('<input type="file">');
-    const undo = bindByType(el as HTMLInputElement, c as Control<unknown>, slot, 'file');
-    fire(el, 'input');
-    fire(el, 'change');
-    expect(c()).toBe('');
-    expect(() => {
-      undo();
-    }).not.toThrow();
+    const input = el as HTMLInputElement;
+    const undo = bindByType(input, c as Control<unknown>, slot, 'FILE');
+    const one = new File(['a'], 'a.png', { type: 'image/png' });
+    const transfer = new DataTransfer();
+    transfer.items.add(one);
+    input.files = transfer.files;
+    fire(input, 'change');
+    expect(c()).toBe(one);
+    undo();
+    input.value = '';
+    fire(input, 'change');
+    expect(c()).toBe(one);
   });
 });
 
@@ -112,5 +120,14 @@ describe('the cleanup is the chosen binding’s own', () => {
     (el as HTMLInputElement).value = 'after';
     fire(el, 'input');
     expect(c()).toBe('');
+  });
+
+  it('and its cleanup is a no-op that can be called', () => {
+    const c = control('');
+    const { el, slot } = field('<input type="submit">');
+    const undo = bindByType(el as HTMLInputElement, c as Control<unknown>, slot, 'submit');
+    expect(() => {
+      undo();
+    }).not.toThrow();
   });
 });

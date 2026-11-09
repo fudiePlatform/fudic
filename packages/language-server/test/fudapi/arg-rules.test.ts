@@ -16,7 +16,8 @@ import { apiDefinition, apiHover } from '../../src/fudapi/navigation.js';
 import { apiSemanticTokens } from '../../src/fudapi/semantic-tokens.js';
 import { FILES, FORMS, SRC, apiDocument, cursor, world } from './_api.js';
 
-const SIX = ['required', 'min', 'max', 'min-length', 'max-length', 'pattern'];
+// The six of SDD-67 and the two of a file (SDD-81 §3.2): argument rules too.
+const ARG_RULES = ['required', 'min', 'max', 'min-length', 'max-length', 'pattern', 'max-size', 'accept'];
 
 const FORMS_RULES = readFileSync(new URL('../../../forms/fudapi/rules.fudapi', import.meta.url), 'utf8');
 
@@ -43,17 +44,17 @@ const hoverText = (marked: string): string | undefined => {
 };
 
 describe('criterion 19: completion under an argument', () => {
-  it('the six rules and none of the project, under a body argument', () => {
-    expect(labels('put save\n  name  str\n    |')).toEqual(SIX);
+  it('the argument rules and none of the project, under a body argument', () => {
+    expect(labels('put save\n  name  str\n    |')).toEqual(ARG_RULES);
   });
 
   it('the same under an argument of the route and of query', () => {
-    expect(labels('put save /:id\n  id  uuid\n    |')).toEqual(SIX);
-    expect(labels('get search\n  query q  str\n    |')).toEqual(SIX);
+    expect(labels('put save /:id\n  id  uuid\n    |')).toEqual(ARG_RULES);
+    expect(labels('get search\n  query q  str\n    |')).toEqual(ARG_RULES);
   });
 
-  it('the six whatever the type: the validator says what applies, not the completion', () => {
-    expect(labels('put save\n  age  u8\n    |')).toEqual(SIX);
+  it('all of them whatever the type: the validator says what applies, not the completion', () => {
+    expect(labels('put save\n  age  u8\n    |')).toEqual(ARG_RULES);
   });
 
   it('under a field, the project rule is still offered: only an argument leaves it out', () => {

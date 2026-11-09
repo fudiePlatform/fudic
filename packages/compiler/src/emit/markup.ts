@@ -660,6 +660,7 @@ export class MarkupEmitter {
       this.#w.line(`$dom.setAttr(${v}, 'aria-describedby', ${JSON.stringify(site.describedBy)});`);
     }
     if (site.noValidate) this.#w.line(`$dom.setAttr(${v}, 'novalidate', '');`);
+    if (site.accept !== undefined) this.#w.line(`$dom.setAttr(${v}, 'accept', ${JSON.stringify(site.accept)});`);
     if (site.target.kind !== 'value') return;
     // Touched, exactly as the client's effect asks: an untouched field is unfilled, not wrong,
     // and the two branches cannot disagree about that or the hydration would repaint.

@@ -30,3 +30,6 @@ export { min } from '../src/validators/min.js';
 export { max } from '../src/validators/max.js';
 export { pattern } from '../src/validators/pattern.js';
 export { asyncValidator } from '../src/validators/async.js';
+export { maxSize } from '../src/validators/max-size.js';
+export { accept } from '../src/validators/accept.js';
+export { accepted, withinSize } from '../src/validators/file-checks.js';

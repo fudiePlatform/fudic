@@ -49,7 +49,7 @@ import { stampOption } from './source-locations.js';
 import type { DocumentGraph } from './resolve.js';
 import type { RouteDocument, PageDocument } from '../document/index.js';
 import type { DataShape, Diagnostic } from '../types/index.js';
-import { apiForms, apiImports, dataShapeOf, loadImport } from './api-links.js';
+import { apiFields, apiForms, apiImports, dataShapeOf, loadImport } from './api-links.js';
 
 /**
  * The three leading slots of a route's array: `$dom`, `$root` and `$data`. One more than a
@@ -217,6 +217,7 @@ function buildRouteClientModule(
     planControls(source, roots, {
       isComponent: (t) => graph.components.has(t),
       isFormAssociated: (t) => formAssociatedTags(graph).has(t),
+      field: apiFields(graph),
     }),
     new Set<string>(), // and no `control` node can have crossed into it
     delegation,

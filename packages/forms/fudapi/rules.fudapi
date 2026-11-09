@@ -1,4 +1,4 @@
-# The value is there: neither "" nor null. `false` is a value: a box that must be ticked is a rule of its own.
+# The value is there: neither "", null nor an empty list. `false` is a value: a box that must be ticked is a rule of its own.
 rule required
   on field *
   runs both
@@ -38,3 +38,17 @@ rule pattern
   runs both
   regex  pattern
   fails pattern
+
+# The file is no bigger than n bytes. An empty field is required's business.
+rule max-size
+  on field file file[]
+  runs both
+  n  f64
+  fails max-size n
+
+# The file's type is one the list accepts: the syntax of the HTML accept attribute.
+rule accept
+  on field file file[]
+  runs both
+  types  str
+  fails accept types

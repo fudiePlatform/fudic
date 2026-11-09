@@ -115,3 +115,12 @@ describe('the registry of form results (§4.7)', () => {
     expect(text(page)).not.toContain('FudicFormResults');
   });
 });
+
+describe('$value of a file input (SDD-81 §3.7, decision 182)', () => {
+  it('is File | null, and readonly File[] with multiple', () => {
+    const one = text(component('x-a', '  function f(v: File | null) {}', '<input type="file" @change=@f($value)>'));
+    expect(one).toContain('const $value = $event as unknown as File | null;');
+    const many = text(component('x-a', '  function f(v: readonly File[]) {}', '<input type="file" multiple @change=@f($value)>'));
+    expect(many).toContain('const $value = $event as unknown as readonly File[];');
+  });
+});

@@ -42,6 +42,7 @@ import type {
   Issue,
   Patch,
   Positional,
+  Progress,
   Schema,
   ValidateOptions,
   Value,
@@ -85,6 +86,8 @@ export function build<S extends Schema>(
   const submitted = signal(false);
   /** The ids of its fields by path, once a `<form>` binds it: what `$issues()` links to. */
   const fieldIds = signal<Readonly<Record<string, string>>>({});
+  /** The bytes the send of `form:=` has moved, while it is in flight (SDD-81 §3.6). */
+  const progress = signal<Progress | null>(null);
   /** Bumped by every validation pass over this form; an overtaken pass publishes nothing. */
   let epoch = 0;
   /** The value epoch (`valueEpoch()`) the summary on record belongs to. */
@@ -319,6 +322,9 @@ export function build<S extends Schema>(
     linkFields: (ids) => {
       fieldIds.set(ids);
     },
+    progress: (p) => {
+      progress.set(p);
+    },
     touchAll: () => {
       each((_, node) => {
         node.touchAll();
@@ -392,6 +398,8 @@ export function build<S extends Schema>(
     $valid: (): boolean => valid(),
 
     $pending: (): boolean => pending(),
+
+    $progress: (): Progress | null => progress(),
 
     $setErrors: (errors: ErrorMap | null, sum?: Errors | null): void => {
       if (errors === null) {

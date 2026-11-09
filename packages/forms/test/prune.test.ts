@@ -95,12 +95,14 @@ const TYPED = [
   'str',
   'date',
   'arr',
+  'file',
+  'files',
 ] as const;
 
 describe('the package prunes by route (§6.16)', () => {
   it('exports every factory and validator from its own module', async () => {
     const map = await exportMap();
-    const own = [...TYPED, 'control', 'group', 'required', 'pattern', 'min', 'max', 'minLength', 'maxLength', 'validator', 'serverValidator', 'asyncValidator'];
+    const own = [...TYPED, 'control', 'group', 'required', 'pattern', 'min', 'max', 'minLength', 'maxLength', 'validator', 'serverValidator', 'asyncValidator', 'maxSize', 'accept'];
     const modules = new Set(own.map((name) => map.get(name)));
     // One export per module is the whole mechanism: two names sharing a module
     // means importing one drags the other.

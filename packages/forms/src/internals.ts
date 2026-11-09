@@ -7,7 +7,7 @@
  * has a single `if` and it is about writing, not about shape.
  */
 
-import type { AnyForm, AnyNode, Errors, Issue, ValidateOptions } from './types.js';
+import type { AnyForm, AnyNode, Errors, Issue, Progress, ValidateOptions } from './types.js';
 import type { ValidateOn } from './validate-on.js';
 import type { Validity } from './validity.js';
 import { WHOLE_PASS } from './whole-pass.js';
@@ -109,6 +109,11 @@ export interface NodeInternals {
    * `bindForm` calls with the map the compiler wrote; a form only.
    */
   linkFields?(ids: Readonly<Record<string, string>>): void;
+  /**
+   * The bytes the send of `form:=` has moved, or `null` once it moves no more (SDD-81 §3.6):
+   * what `bindForm` hands the call as its `onProgress`. A form only.
+   */
+  progress?(p: Progress | null): void;
   touchAll(): void;
   resetAll(): void;
   clearAll(): void;

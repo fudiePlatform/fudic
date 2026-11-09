@@ -5,7 +5,7 @@
 > `@fudic/compiler` · `@fudic/config` · `@fudic/vite` · `@fudic/testing` · `@fudic/language-core` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/diagnostics` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-81-ficheros`, desde `worktree-pendiente`; al cerrar, merge `--no-ff` a `worktree-pendiente`.
-> **Progreso:** 21 / 37 — `Listo` (enmendada el 2026-11-09).
+> **Progreso:** 26 / 37 — `Listo` (enmendada el 2026-11-09).
 
 **Dos sesiones.** Una implementa y entrega cada fase con `pnpm typecheck` y `pnpm build`. La otra
 escribe los tests de cada fase (las tareas «Los tests de…») contra los criterios de SDD §6, en su
@@ -115,6 +115,18 @@ sin parar en el primer fallo) en verde, con esos dos arreglos dentro.
   todos los tests de «nothing left behind» fallan después. Borrarlos antes de volver a ejecutar.
 - `api` lee `@fudic/diagnostics` desde su `dist`: tras cambiar un diagnóstico, reconstruir diagnostics.
 - `pnpm test` en la raíz ya lleva `--no-bail`; no se le añade otro (le llega a vitest y falla todo).
+
+## Relevo (2026-11-09, fase 5)
+
+**Hecha en esta rama, sin worktree aparte**, tareas 22–26 con sus tests (criterios 26–32, el 15
+completo y la mitad `form.$progress()` del 24). Lo que cambió va en la spec, §8.2.14–20: `:=` era
+`control=`; `required` rechaza `[]`; el `{n}` de `max-size` sale con unidad desde el emit; el
+compilador sabe el tipo de cada campo por `LinkedApi.fields`; `accept` se escribe en los
+componentes, donde ya se escriben `novalidate` y `aria-describedby`.
+
+**Para la fase 6.** `FUD1484`–`FUD1486` salen de `apiDiagnostics` (grafo), no del análisis
+semántico: el language server los verá cuando pase por ahí. `controlWants` ya ofrece `control` en un
+`<input type="file">` (es `controlTarget`). El completado de reglas bajo un argumento ofrece ya `max-size` y `accept` en cualquier tipo (`arg-rules.test.ts` lo fija así): la tarea 27 los deja solo en un campo `file`.
 
 ---
 
@@ -268,18 +280,18 @@ sin parar en el primer fallo) en verde, con esos dos arreglos dentro.
 
 ## Fase 5 — formularios y vista
 
-- [ ] **22. Los controles de fichero.**
+- [x] **22. Los controles de fichero.**
   - `TypeTag` `'file'`/`'file[]'`; `FileField`, `FileListField`.
   - Valor `null`/`[]` y `$reset`. `set` con `File`. `$progress()` en `FormApi`.
   - `max-size` y `accept` en `rules.fudapi` y en `impl/browser/rules.ts` (SDD §3.6).
   - *Depende de:* 11, 18.
   - *Paquete:* `forms`.
-- [ ] **23. `bindFile`.**
+- [x] **23. `bindFile`.**
   - Elegir → `set`; `$set` → `DataTransfer`; `null` vacía.
   - En `bind-by-type.ts` y en su trozo de `rolldown.config.ts`.
   - *Depende de:* 22.
   - *Paquete:* `forms`.
-- [ ] **24. El compilador.**
+- [x] **24. El compilador.**
   - `file` deja de ser `unsupported` y pasa a `bindFile`; `FUD0592` pierde el motivo `file` (se
     mueve aquí desde la tarea 1: quitarlo antes dejaría el compilador sin nada que decir de un
     `<input type="file">`).
@@ -288,11 +300,11 @@ sin parar en el primer fallo) en verde, con esos dos arreglos dentro.
   - `$value` de un `<input type="file">` (SDD §3.7).
   - *Depende de:* 1, 23.
   - *Paquete:* `compiler`.
-- [ ] **25. La proyección.**
-  - `$value` tipado como `File | null` / `readonly File[]`. El hover de `:=`.
+- [x] **25. La proyección.**
+  - `$value` tipado como `File | null` / `readonly File[]`. El hover del nodo de `control=`.
   - *Depende de:* 24.
   - *Paquete:* `language-core`.
-- [ ] **26. Los tests de la fase.** Criterios 26–32.
+- [x] **26. Los tests de la fase.** Criterios 26–32.
   - *Depende de:* 22–25.
   - *Paquetes:* `forms`, `compiler`, `language-core`.
 

@@ -87,6 +87,8 @@ const PIECES: Readonly<Record<string, string>> = {
   'bind-select': 'src/dom/bind-select.ts',
   'bind-select-multiple': 'src/dom/bind-select-multiple.ts',
   'bind-group': 'src/dom/bind-group.ts',
+  // SDD-81: `<input type="file">`, a binder of its own like the others.
+  'bind-file': 'src/dom/bind-file.ts',
   'bind-by-type': 'src/dom/bind-by-type.ts',
   summary: 'bundle/summary.ts',
   // SDD-60: what the code generated from a `.fudapi` builds with, and the registry it fills.
@@ -161,6 +163,12 @@ const FRONTIERS: Readonly<Record<string, string>> = {
   'src/typed/str.ts': 'typed',
   'src/typed/date.ts': 'typed',
   'src/typed/arr.ts': 'typed',
+  'src/typed/file.ts': 'typed',
+  'src/typed/files.ts': 'typed',
+  'src/validators/max-size.ts': 'validators',
+  'src/validators/accept.ts': 'validators',
+  'src/validators/file-checks.ts': 'validators',
+  'src/dom/bind-file.ts': 'bind-file',
   'src/dom/wiring.ts': 'wiring',
   'src/dom/delegation.ts': 'wiring',
   'src/dom/bind-form.ts': 'bind-form',

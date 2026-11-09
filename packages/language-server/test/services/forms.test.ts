@@ -269,7 +269,9 @@ describe('controlOfferAt — whether `control` belongs in this attribute list', 
   });
 
   it('refuses it on an element that can make nothing of one', () => {
-    expect(offerFor('<form control="@f"><input type="file"></form>', 'input')).toBeUndefined();
+    expect(offerFor('<form control="@f"><input type="submit"></form>', 'input')).toBeUndefined();
+    // A file input binds since SDD-81 (decision 182): it is offered like any field.
+    expect(offerFor('<form control="@f"><input type="file"></form>', 'input')).toEqual({ wants: 'control', label: 'control' });
   });
 
   it('refuses it in a LAYOUT, which has no `@code` to name a node from', () => {

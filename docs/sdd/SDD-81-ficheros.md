@@ -28,7 +28,7 @@
 
 - **El `.fudapi` no tiene tipo para un fichero.** `PRIMITIVES` ([types-check.ts:20](../../packages/api/src/types-check.ts))
   no lo tiene; `avatar file` es `FUD1080` (tipo desconocido).
-- **La vista lo rechaza.** `<input type="file" :=@form.avatar>` da `FUD0592` con el motivo `file`
+- **La vista lo rechaza.** `<input type="file" control=@form.avatar>` da `FUD0592` con el motivo `file`
   ([control.ts:158](../../packages/compiler/src/binding/control.ts)): SDD-34 §7 lo dejó fuera por
   multipart.
 - **Todo el cuerpo en memoria, en los dos lados.** El cliente codifica los argumentos en un
@@ -109,9 +109,9 @@ form personForm
 ```
 
 ```html
-<form form:=@form @fudic:result=@guardado>
-  <input name="name" :=@form.name>
-  <input type="file" :=@form.avatar>
+<form control=@form form:=@save @fudic:result=@guardado>
+  <input name="name" control=@form.name>
+  <input type="file" control=@form.avatar>
   @if (form.$progress()) {
     <progress value=@form.$progress().loaded max=@form.$progress().total></progress>
   }
@@ -383,7 +383,7 @@ de memoria o uno propio.
 
 ### 3.7. La vista (decisión 182)
 
-- **`<input type="file" :=@form.avatar>`** se liga con `bindFile` de `@fudic/forms/dom`. Elegir un
+- **`<input type="file" control=@form.avatar>`** se liga con `bindFile` de `@fudic/forms/dom`. Elegir un
   fichero hace `set`; `$set` desde código pone el fichero en el `<input>` por `DataTransfer` (lo
   admiten los tres motores), o lo vacía con `null`.
 - **`multiple` tiene que casar con el tipo:** `multiple` con un campo `file` es `FUD1484`; sin
@@ -405,7 +405,7 @@ de memoria o uno propio.
   con arreglo rápido donde lo hay (quitar el `= …` de `FUD1482`; pasar la `get` a `post` en
   `FUD1480`).
 - La gramática TextMate del `.fudapi` gana `file` (y `html`, que faltaba).
-- `.fud`: `$value` tipado en un `<input type="file">`; el hover de `:=` dice el tipo del campo;
+- `.fud`: `$value` tipado en un `<input type="file">`; el hover del nodo de `control=` dice el tipo del campo;
   `FUD1484`–`FUD1486` con su arreglo.
 
 ### 3.9. Los códigos
@@ -695,7 +695,7 @@ En el ejemplo, con Playwright, en dev y en preview:
   `http/wire/vectors.json`, que no cambian).
 - **Lo que comprueba el navegador lo vuelve a comprobar el servidor.**
 - **Diagnósticos con span**: `FUD1480`–`FUD1483` sobre el tipo o el `= …`; `FUD1484`–`FUD1486` sobre
-  el atributo o el `:=`; `FUD1487` sobre el número; `FUD1488` sobre la clave del campo en `fudic.json` (como `FUD0725`).
+  el atributo o el `control=`; `FUD1487` sobre el número; `FUD1488` sobre la clave del campo en `fudic.json` (como `FUD0725`).
 - **Cobertura.** Todo fichero nuevo nace al 100 % en las cuatro métricas, con umbral por fichero en
   los paquetes con deuda (`compiler`, `vite`). `language-server` sigue al 100 %.
 
@@ -754,7 +754,7 @@ En el ejemplo, con Playwright, en dev y en preview:
 
 **Formularios y vista**
 
-26. `<input type="file" :=@form.avatar>` compila sin `FUD0592`; elegir un fichero hace
+26. `<input type="file" control=@form.avatar>` compila sin `FUD0592`; elegir un fichero hace
     `form.avatar()` igual a ese `File`; `$reset()` vacía el `<input>`.
 27. `form.avatar.set(file)` desde código pone el fichero en el `<input>`.
 28. `required`, `accept` y `max-size` dan su texto al elegir, sin enviar.
@@ -888,3 +888,23 @@ Nada.
     de controles `file`: su valor es `readonly File[]` y un solo `<input multiple>` lo llena.
 13. **`file` con `required` en un `form` llega al handler como `File`**, sin `null`, como un número
     requerido.
+14. **`:=@form.x` era una errata por `control=@form.x`** (fase 5): el lenguaje no tiene `:=`; el
+    enlace de un campo es `control=`. Corregido en esta spec, en la decisión 182 y en el INDEX.
+15. **`required` rechaza la lista vacía en cualquier lista**, no solo en `file[]` (fase 5): «el valor
+    está ahí» no se cumple con `[]`, sea de ficheros o de textos. El validador y la regla de
+    `rules.fudapi` dicen lo mismo.
+16. **El `{n}` de `max-size` se escribe con su unidad al generar el módulo** (fase 5), en el texto del
+    formulario y en el `detail` de un argumento: el tamaño es un literal del uso. Base 1024, dos
+    decimales como mucho, y `bytes` por debajo de 1 KB (`300 bytes`).
+17. **El compilador conoce el tipo de cada campo por el host** (fase 5): `LinkedApi.fields`, forma →
+    camino → `{ type, accept? }`, que el plugin saca del `.fudapi` (`formFields` de `@fudic/api`).
+    Un nodo se resuelve solo si está escrito como `forma.camino`; por una variable o un prop no se
+    sabe, y `FUD1484`–`FUD1486` callan, como el resto de comprobaciones que dependen del host.
+18. **`accept` lo escribe el compilador donde escribe `novalidate` y `aria-describedby`** (fase 5):
+    en las dos ramas de un componente (lo pinta el servidor y lo fabrica el cliente). El HTML de
+    servidor de una ruta no lleva hoy ningún atributo añadido por el compilador, tampoco esos dos;
+    el ejemplo (§4.5) pone el formulario en el componente `user-form`.
+19. **`$progress()` está en `FormApi`** y lo alimenta `bindForm`, que pasa `{ onProgress }` como
+    segundo argumento al enviar con `form:=` (fase 5). El stub de la función ya lo aceptaba.
+20. **El hover que dice el tipo del campo es el del nodo** (`f.avatar` → `FileField`), que TypeScript
+    ya da sobre la proyección (fase 5). El nombre del atributo no tiene hover propio.

@@ -51,7 +51,7 @@ import { cellSlots, childTargets, reactiveScope } from './state.js';
 import { bridgeIds, formAssociatedTags, hydratableTags, shadowOptions } from './level.js';
 import { needsRuntime, packIo, routeBlocksOf, writeMapConstants, writeHydrationBlocks, writePartsOpen } from './maps.js';
 import { planControls } from './controls.js';
-import { apiImports } from './api-links.js';
+import { apiFields, apiImports } from './api-links.js';
 import { STYLE_POLYFILL_MIN } from './polyfill.min.js';
 import {
   type ComponentSpecifier,
@@ -447,6 +447,7 @@ function buildComponentModule(
   const controls = planControls(comp.source, comp.doc.template!.children, {
     isComponent: (t) => graph.components.has(t),
     isFormAssociated: (t) => associated.has(t),
+    field: apiFields(graph),
     template: comp.doc.template!,
   });
   const em = new MarkupEmitter({

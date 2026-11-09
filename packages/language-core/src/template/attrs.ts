@@ -655,7 +655,7 @@ function crossesAsRead(ctx: TemplateContext, value: readonly AttributeValuePart[
  * tag never reaches here — over there the binding is the `ctrl` prop and the child's own
  * contract does the checking.
  *
- * An element the compiler rejects — `FUD0592`'s two faces — is still projected as a control:
+ * An element the compiler rejects — `FUD0592`, a `submit` and the like — is still projected as a control:
  * the `FUD` is already on the author's screen, and a second complaint about the same three
  * characters, in TypeScript's words, would be the same mistake said twice.
  */

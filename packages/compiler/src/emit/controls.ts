@@ -41,6 +41,7 @@ import {
   type MarkerKind,
   type MarkerName,
 } from '../binding/index.js';
+import { acceptOf, type FieldOf } from './file-fields.js';
 import { walkElements } from './level.js';
 
 /** What one element with a `control` binding turns into, on both branches. */
@@ -65,6 +66,12 @@ export interface ControlSite {
    * configured.
    */
   readonly noValidate: boolean;
+  /**
+   * The `accept` the compiler writes on a file input whose field has the rule `accept` and whose
+   * author wrote no attribute (SDD-81 §3.7): the dialog of the system filters as the rule does.
+   * Absent everywhere else.
+   */
+  readonly accept?: string;
   /**
    * The `@fudic/forms/dom` function THIS element calls, or `null` when it calls none.
    *
@@ -168,6 +175,8 @@ export interface PlanContext {
   readonly isFormAssociated: (tag: string) => boolean;
   /** The root `<template>` of the component, for its bridge; absent for a page. */
   readonly template?: ElementNode;
+  /** The field a node names in a linked form (SDD-81 §3.7); absent when nothing is known. */
+  readonly field?: FieldOf;
 }
 
 /** One element as the first pass sees it, before the radio groups are folded. */
@@ -180,7 +189,7 @@ interface Found {
 /**
  * Resolve the `control` bindings and the markers of a template.
  *
- * An element the compiler cannot bind — `FUD0592`'s three faces — is simply absent from the
+ * An element the compiler cannot bind — `FUD0592`, a `submit` and the like — is simply absent from the
  * plan, and so is a marker `pairMarkers` rejected. Both were already reported by the semantic
  * pass, and the emit does not stop for them: it omits THAT binding and goes on.
  */
@@ -264,6 +273,8 @@ export function planControls(
     const describedBy = marker === null ? (entries.get(one.el) ?? []) : [markers.get(marker)!.id];
     const send = one.target.kind === 'form' ? sendOf(one.el, source) : undefined;
     const fields = one.target.kind === 'form' ? fieldIdsOf(one.node, found, ids) : undefined;
+    const isFile = one.target.kind === 'value' && one.target.bind === 'bindFile';
+    const accept = isFile && ctx.field !== undefined ? acceptOf(one.el, one.node, ctx.field) : undefined;
     sites.set(one.el, {
       target: one.target,
       node: one.node,
@@ -277,6 +288,7 @@ export function planControls(
       group: group.length > 0 && last ? group : [],
       ...(send !== undefined ? { send } : {}),
       ...(fields !== undefined ? { fields } : {}),
+      ...(accept !== undefined ? { accept } : {}),
     });
   }
   return { sites, markers, ids, field: bridge?.id ?? null };

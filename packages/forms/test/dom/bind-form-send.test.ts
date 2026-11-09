@@ -64,13 +64,40 @@ class HttpError extends Error {
 }
 
 describe('bindForm with a server function', () => {
+  it('SDD-81 criterion 24: $progress() follows the bytes of the send, and is null once it moves no more', async () => {
+    const seen: unknown[] = [];
+    let finish!: () => void;
+    const send = vi.fn((f: AnyForm, options?: { onProgress: (p: unknown) => void }) => {
+      options!.onProgress({ loaded: 5, total: 10, phase: 'up' });
+      seen.push(f.$progress());
+      options!.onProgress({ loaded: 2, total: null, phase: 'down' });
+      seen.push(f.$progress());
+      return new Promise<unknown>((resolve) => {
+        finish = () => {
+          options!.onProgress(null);
+          resolve(1);
+        };
+      });
+    });
+    const { f, submit } = setup(send as never);
+    f.a.set('Pedro');
+    submit();
+    expect(seen).toEqual([
+      { loaded: 5, total: 10, phase: 'up' },
+      { loaded: 2, total: null, phase: 'down' },
+    ]);
+    finish();
+    await flush();
+    expect(f.$progress()).toBeNull();
+  });
+
   it('a valid submit is prevented, sends the form, and emits fudic:result with the value', async () => {
     const send = vi.fn(async () => ({ id: 7 }));
     const { f, events, submit } = setup(send);
     f.a.set('Pedro');
     const event = submit();
     expect(event.defaultPrevented).toBe(true);
-    expect(send).toHaveBeenCalledWith(f);
+    expect(send).toHaveBeenCalledWith(f, { onProgress: expect.any(Function) });
     await flush();
     expect(events).toEqual([{ type: 'fudic:result', detail: { id: 7 } }]);
   });

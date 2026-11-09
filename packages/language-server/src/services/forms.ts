@@ -85,7 +85,7 @@ const FORM_TAG = 'form';
  * `controlTarget` is the compiler's, and asking it here rather than re-reading the tag is the
  * whole point: the emit picks its bind module off that answer and the semantic pass reports
  * `FUD0592` off it, so an editor with a rule of its own is BUG-23 §2.4 again. `unsupported` —
- * an `<input type="submit">`, an `<input type="file">` — has no answer, and offering the
+ * an `<input type="submit">` — has no answer, and offering the
  * attribute there would be offering the error.
  */
 export function controlWants(el: ElementNode, isComponent: boolean): ControlWants | undefined {

@@ -17,7 +17,7 @@
 
 import { internalsOf } from '../internals.js';
 import { SERVER_RULE } from '../messages.js';
-import type { AnyForm, AnyNode, ErrorMap, Errors } from '../types.js';
+import type { AnyForm, AnyNode, ErrorMap, Errors, Progress } from '../types.js';
 import { bindSummary } from './summary.js';
 import type { Cleanup } from './types.js';
 import { onSelf, undo } from './wiring.js';
@@ -52,6 +52,11 @@ interface Refusal {
   readonly summary?: Errors | null;
   /** The problem (RFC 9457) it came with: `{ status, title, detail? }`. */
   readonly problem?: { readonly status: number; readonly title: string; readonly detail?: string };
+}
+
+/** What the send of `form:=` is given besides the form: the options of a function's call. */
+interface SendOptions {
+  readonly onProgress: (p: Progress | null) => void;
 }
 
 /** A cancelled call is not a failure: nobody hears about it, as with `error-pages`. */
@@ -99,7 +104,7 @@ export function bindForm(
   form: AnyForm,
   summary: HTMLElement | null,
   links: Readonly<Record<string, string>> | null = null,
-  send?: (form: AnyForm) => Promise<unknown>,
+  send?: (form: AnyForm, options: SendOptions) => Promise<unknown>,
   fields: Readonly<Record<string, string>> | null = null,
 ): Cleanup {
   if (fields !== null) internalsOf(form as unknown as AnyNode).linkFields?.(fields);
@@ -142,7 +147,10 @@ export function bindForm(
       // form keeps (`catches`: 400, 409 and 422 unless it says otherwise) goes into it like a
       // client error; anything else is announced on the `<form>`, where the view listens with
       // `@fudic:result` / `@fudic:error`.
-      void send!(form).then(
+      // Its bytes feed `$progress()` while it is in flight (SDD-81 §3.6): the call says `null` once
+      // it moves no more, whatever it came to.
+      const internals = internalsOf(form as unknown as AnyNode);
+      void send!(form, { onProgress: (p) => internals.progress!(p) }).then(
         (value) => {
           el.dispatchEvent(new CustomEvent('fudic:result', { detail: value, bubbles: true, composed: true }));
         },

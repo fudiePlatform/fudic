@@ -95,7 +95,8 @@ describe('$value in the editor (criteria 17, 18)', () => {
     ['<input type="number" @input=@f($value)>', 'number | null', 'number'],
     ['<input type="range" @input=@f($value)>', 'number', 'string'],
     ['<input @input=@f($value)>', 'string', 'number'],
-    ['<input type="file" @change=@f($value)>', 'File[]', 'string'],
+    ['<input type="file" @change=@f($value)>', 'File | null', 'string'],
+    ['<input type="file" multiple @change=@f($value)>', 'readonly File[]', 'string'],
     ['<select multiple @change=@f($value)></select>', 'string[]', 'string'],
   ])('%s is a %s, and a function that wants a %s is TS2345 on $value', (markup, right, wrong) => {
     expect(check({ 'src/x-field.fud': field(markup, right) })).toEqual([]);

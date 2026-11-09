@@ -9,6 +9,7 @@
  */
 
 import { ruleCall } from '../rule-call.js';
+import { withSize } from '../size-text.js';
 import type { CompressClause, Decl, FailsClause, FnDecl, FormMember, LoadDecl, MiddlewareArg, MiddlewareDecl, PipeDecl, RuleDecl, RuleUse, SkipClause, UseClause } from '../ast.js';
 import { fileIn } from '../types-check.js';
 import type { ApiIndex, ApiSource } from '../index-api.js';
@@ -307,7 +308,7 @@ function argRule(use: RuleUse, c: ModuleCtx): string | undefined {
   const call = ruleCall(use, found.decl.params);
   const values = call.args.map((a) => (a.kind === 'word' ? (projectRef(c, 'pattern', a.text) ?? 'undefined') : literal(a)));
   const check = name === 'required' ? '$required' : `$${name}(${values.join(', ')})`;
-  const text = call.text === undefined ? '' : `, text: ${str(call.text.text)}`;
+  const text = call.text === undefined ? '' : `, text: ${str(withSize(use.name.text, call.text.text, call.args))}`;
   return `{ check: ${check}, name: ${str(use.name.text)}, args: [${call.args.map(literal).join(', ')}]${text} }`;
 }
 

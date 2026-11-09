@@ -83,8 +83,21 @@ describe('$value without delegation (criteria 17, 18)', () => {
     expect(log()).toEqual([[expected]]);
   });
 
-  it('a file input gives its files as an array, empty with none', () => {
+  it('SDD-81 criterion 31: a file input gives its file, null with none (decision 182)', () => {
     const { shadow, client } = mount('<input type="file" @change=@f($value)>');
+    expect(client).toContain('($event.currentTarget.files?.[0] ?? null)');
+    const input = shadow.querySelector('input')!;
+    fire(input, 'change');
+    const one = new File(['x'], 'a.png');
+    const transfer = new DataTransfer();
+    transfer.items.add(one);
+    input.files = transfer.files;
+    fire(input, 'change');
+    expect(log()).toEqual([[null], [one]]);
+  });
+
+  it('with multiple, its files as a list, empty with none', () => {
+    const { shadow, client } = mount('<input type="file" multiple @change=@f($value)>');
     expect(client).toContain('Array.from($event.currentTarget.files ?? [])');
     fire(shadow.querySelector('input')!, 'change');
     expect(log()).toEqual([[[]]]);

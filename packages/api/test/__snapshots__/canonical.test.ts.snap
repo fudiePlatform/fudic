@@ -30,7 +30,7 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
 {
   "declarations": [
     {
-      "doc": "The value is there: neither "" nor null. \`false\` is a value: a box that must be ticked is a rule of its own.",
+      "doc": "The value is there: neither "", null nor an empty list. \`false\` is a value: a box that must be ticked is a rule of its own.",
       "fails": [
         {
           "code": {
@@ -593,10 +593,186 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
   fails pattern",
       "uses": [],
     },
+    {
+      "doc": "The file is no bigger than n bytes. An empty field is required's business.",
+      "fails": [
+        {
+          "code": {
+            "span": "max-size",
+            "text": "max-size",
+          },
+          "keyword": "fails",
+          "params": [
+            {
+              "span": "n",
+              "text": "n",
+            },
+          ],
+          "span": "fails max-size n",
+        },
+      ],
+      "keyword": "rule",
+      "kind": "rule",
+      "name": {
+        "span": "max-size",
+        "text": "max-size",
+      },
+      "on": {
+        "keyword": "on",
+        "span": "on field file file[]",
+        "target": {
+          "span": "field",
+          "text": "field",
+        },
+        "types": [
+          {
+            "kind": "named",
+            "name": {
+              "span": "file",
+              "text": "file",
+            },
+            "span": "file",
+          },
+          {
+            "element": {
+              "kind": "named",
+              "name": {
+                "span": "file",
+                "text": "file",
+              },
+              "span": "file",
+            },
+            "kind": "list",
+            "span": "file[]",
+          },
+        ],
+      },
+      "params": [
+        {
+          "kind": "field",
+          "name": {
+            "span": "n",
+            "text": "n",
+          },
+          "span": "n  f64",
+          "type": {
+            "kind": "named",
+            "name": {
+              "span": "f64",
+              "text": "f64",
+            },
+            "span": "f64",
+          },
+        },
+      ],
+      "runs": {
+        "keyword": "runs",
+        "span": "runs both",
+        "value": {
+          "span": "both",
+          "text": "both",
+        },
+      },
+      "skips": [],
+      "span": "rule max-size
+  on field file file[]
+  runs both
+  n  f64
+  fails max-size n",
+      "uses": [],
+    },
+    {
+      "doc": "The file's type is one the list accepts: the syntax of the HTML accept attribute.",
+      "fails": [
+        {
+          "code": {
+            "span": "accept",
+            "text": "accept",
+          },
+          "keyword": "fails",
+          "params": [
+            {
+              "span": "types",
+              "text": "types",
+            },
+          ],
+          "span": "fails accept types",
+        },
+      ],
+      "keyword": "rule",
+      "kind": "rule",
+      "name": {
+        "span": "accept",
+        "text": "accept",
+      },
+      "on": {
+        "keyword": "on",
+        "span": "on field file file[]",
+        "target": {
+          "span": "field",
+          "text": "field",
+        },
+        "types": [
+          {
+            "kind": "named",
+            "name": {
+              "span": "file",
+              "text": "file",
+            },
+            "span": "file",
+          },
+          {
+            "element": {
+              "kind": "named",
+              "name": {
+                "span": "file",
+                "text": "file",
+              },
+              "span": "file",
+            },
+            "kind": "list",
+            "span": "file[]",
+          },
+        ],
+      },
+      "params": [
+        {
+          "kind": "field",
+          "name": {
+            "span": "types",
+            "text": "types",
+          },
+          "span": "types  str",
+          "type": {
+            "kind": "named",
+            "name": {
+              "span": "str",
+              "text": "str",
+            },
+            "span": "str",
+          },
+        },
+      ],
+      "runs": {
+        "keyword": "runs",
+        "span": "runs both",
+        "value": {
+          "span": "both",
+          "text": "both",
+        },
+      },
+      "skips": [],
+      "span": "rule accept
+  on field file file[]
+  runs both
+  types  str
+  fails accept types",
+      "uses": [],
+    },
   ],
   "kind": "file",
   "role": "extensions",
-  "span": "# The value is there: neither "" nor null. \`false\` is a value: a box that must be ticked is a rule of its own.
+  "span": "# The value is there: neither "", null nor an empty list. \`false\` is a value: a box that must be ticked is a rule of its own.
 rule required
   on field *
   runs both
@@ -636,6 +812,20 @@ rule pattern
   runs both
   regex  pattern
   fails pattern
+
+# The file is no bigger than n bytes. An empty field is required's business.
+rule max-size
+  on field file file[]
+  runs both
+  n  f64
+  fails max-size n
+
+# The file's type is one the list accepts: the syntax of the HTML accept attribute.
+rule accept
+  on field file file[]
+  runs both
+  types  str
+  fails accept types
 ",
 }
 `;

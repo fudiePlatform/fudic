@@ -25,6 +25,8 @@ export { bindCheckbox } from './bind-checkbox.js';
 export { bindRadio } from './bind-radio.js';
 export { bindSelect } from './bind-select.js';
 export { bindSelectMultiple } from './bind-select-multiple.js';
+// `<input type="file">`: a `file`, or with `multiple` a `file[]` (SDD-81 §3.7).
+export { bindFile } from './bind-file.js';
 // The one that chooses at runtime, for an `<input type="@t">`. It imports four of the five
 // above, so it is the one module that is NOT free — and it is only ever imported by the chunk
 // of a component that wrote a dynamic `type` (§4.2).

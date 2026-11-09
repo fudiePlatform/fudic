@@ -1,7 +1,7 @@
 /**
  * A form's schema as the type it travels as (SDD-67 §3.1): a group is a `type`; `u8`…`f64`,
- * `date` and `arr` are optional, since an empty field is `null`; `bool` and `str` are not; an
- * `arr` of `T` is `T[]`. With that, a form is one more level and its bytes are those of SDD-56.
+ * `date`, `file` and `arr` are optional, since an empty field is `null`; `bool` and `str` are not;
+ * an `arr` of `T` is `T[]`, and `file[]` is a list of files. With that, a form is one more level and its bytes are those of SDD-56.
  *
  * Its own module: only a page with a function that takes a form imports it.
  */
@@ -28,6 +28,8 @@ function tyOfNode(name: string, node: AnyNode): Ty {
   if (type === undefined) {
     throw new TypeError(`control "${name}" declares no type: a form travels by the types of its controls`);
   }
-  const ty: Ty = type === 'arr' ? { list: of as Exclude<TypeTag, 'arr'> } : type;
+  // `file[]` is one control of several files, never `null`: a list of file slots (SDD-81 §3.3).
+  if (type === 'file[]') return { list: 'file' };
+  const ty: Ty = type === 'arr' ? { list: of as Exclude<TypeTag, 'arr' | 'file[]'> } : type;
   return REQUIRED.has(type) ? ty : { opt: ty };
 }

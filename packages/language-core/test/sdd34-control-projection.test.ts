@@ -295,3 +295,26 @@ describe('`control=` with the value still open', () => {
     expect(diags.filter((d) => d.message.includes('ctrl'))).toEqual([]);
   });
 });
+
+describe('SDD-81 §3.8: a file input in the editor', () => {
+  /** The hover TypeScript shows over the node a `control` names, in the route. */
+  function hoverOfControl(to: string): string {
+    const files = corpus(to);
+    const source = files[SLUG]!;
+    const virtual = projectCorpus(files).find((p) => p.file.path === SLUG)!.virtuals[0]!;
+    const { service, pathOf } = languageServiceFor(files);
+    const at = mapToGenerated(virtual, source.indexOf('title', source.indexOf(to)), 'navigation');
+    expect(at, 'the node maps into the projection').toBeDefined();
+    const info = service.getQuickInfoAtPosition(pathOf(virtual.fileName), at!);
+    return (info?.displayParts ?? []).map((p) => p.text).join('').replace(/\s+/gu, ' ');
+  }
+
+  it('the hover of the bound node says what the field holds', () => {
+    expect(hoverOfControl('<input type="file" control="@f.title">')).toBe('(property) title: Control<string>');
+  });
+
+  it('control on an <input type="file"> projects and checks like any other field', () => {
+    expect(typecheckCorpus(corpus('<input type="file" control="@f.title">')).map(describeDiag)).toEqual([]);
+    expect(typecheckCorpus(corpus('<input type="file" control="@f.titulo">')).map((d) => d.sourceText)).toEqual(['titulo']);
+  });
+});

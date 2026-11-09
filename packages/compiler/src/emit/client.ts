@@ -43,7 +43,7 @@ import {
   type EmitOutput,
 } from './module.js';
 import type { Diagnostic } from '../types/index.js';
-import { apiForms, apiImports } from './api-links.js';
+import { apiFields, apiForms, apiImports } from './api-links.js';
 
 /**
  * The positional destructuring of `$props` (§4.2) — the exact mirror of the `Object.values`
@@ -276,6 +276,7 @@ function buildComponentClientModule(
     planControls(comp.source, comp.doc.template!.children, {
       isComponent: (t) => graph.components.has(t),
       isFormAssociated: (t) => formAssociatedTags(graph).has(t),
+      field: apiFields(graph),
       template: comp.doc.template!,
     }),
     // What tells a `control` whose node CROSSED from the parent (decision 112) from one this

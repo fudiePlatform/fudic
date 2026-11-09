@@ -6,6 +6,7 @@
  */
 
 import { ruleCall } from '../rule-call.js';
+import { withSize } from '../size-text.js';
 import type { Expr, FieldDecl, FormDecl, FormGroup, FormMember, RequireRule, RuleUse, StringLiteral, SummaryBlock, TypeExpr, ValidateOnOption, ValidityOption } from '../ast.js';
 import { FLOATS, INTEGERS } from '../types-check.js';
 import { camel, literal, projectRef, str, textOf, tsType, type EmitCtx } from './shared.js';
@@ -112,7 +113,12 @@ function ruleUse(use: RuleUse, f: FormCtx, texts: string[]): string | undefined 
     const isPattern = p.type.kind === 'named' && p.type.name.text === 'pattern' && arg.kind === 'word';
     return [`${p.name.text}: ${isPattern ? (projectRef(f.c, 'pattern', arg.text) ?? 'undefined') : literal(arg)}`];
   });
-  if (call.text !== undefined) for (const fail of found.decl.fails) texts.push(textEntry(camel(fail.code.text), call.text, f));
+  if (call.text !== undefined) {
+    // Translated first, sized after: the `{n}` of `max-size` reads `2 MB` in every language.
+    const said = withSize(use.name.text, textOf(f.c, call.text), call.args);
+    f.used.add('text');
+    for (const fail of found.decl.fails) texts.push(`${camel(fail.code.text)}: text(${str(said)})`);
+  }
   return `${ref}.use(${params.length === 0 ? '' : `{ ${params.join(', ')} }`})`;
 }
 
