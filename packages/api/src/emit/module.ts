@@ -8,11 +8,13 @@
  * in. It imports `@fudic/*\/contract` and other `fudic:<id>`, never anything of the developer's.
  */
 
-import type { CompressClause, Decl, FailsClause, FnDecl, LoadDecl, MiddlewareArg, MiddlewareDecl, PipeDecl, RuleDecl, RuleUse, SkipClause, UseClause } from '../ast.js';
+import { ruleCall } from '../rule-call.js';
+import type { CompressClause, Decl, FailsClause, FnDecl, FormMember, LoadDecl, MiddlewareArg, MiddlewareDecl, PipeDecl, RuleDecl, RuleUse, SkipClause, UseClause } from '../ast.js';
+import { fileIn } from '../types-check.js';
 import type { ApiIndex, ApiSource } from '../index-api.js';
 import type { ApiContext } from '../validate.js';
 import { localizedTexts, type ApiLocale } from '../messages.js';
-import { isArgRule } from '../validate-form.js';
+import { isArgRule, isFile } from '../validate-form.js';
 import { formCode } from './form.js';
 import { askedType, canonical, fnv1a, ruleCanonical } from './signature.js';
 import {
@@ -291,6 +293,8 @@ const VALIDATORS: Readonly<Record<string, string>> = {
   'min-length': 'minLength',
   'max-length': 'maxLength',
   pattern: 'pattern',
+  'max-size': 'maxSize',
+  accept: 'accept',
 };
 
 /** One rule under an argument (SDD-67 §3.5): its validator built with its arguments, as written. */
@@ -300,10 +304,11 @@ function argRule(use: RuleUse, c: ModuleCtx): string | undefined {
   const name = VALIDATORS[use.name.text]!;
   c.forms.add(`${name} as $${name}`);
   // `pattern` names a pattern of the project, as in a form: its RegExp is what the validator takes.
-  const values = use.args.map((a) => (a.kind === 'word' ? (projectRef(c, 'pattern', a.text) ?? 'undefined') : literal(a)));
+  const call = ruleCall(use, found.decl.params);
+  const values = call.args.map((a) => (a.kind === 'word' ? (projectRef(c, 'pattern', a.text) ?? 'undefined') : literal(a)));
   const check = name === 'required' ? '$required' : `$${name}(${values.join(', ')})`;
-  const text = use.text === undefined ? '' : `, text: ${str(use.text.text)}`;
-  return `{ check: ${check}, name: ${str(use.name.text)}, args: [${use.args.map(literal).join(', ')}]${text} }`;
+  const text = call.text === undefined ? '' : `, text: ${str(call.text.text)}`;
+  return `{ check: ${check}, name: ${str(use.name.text)}, args: [${call.args.map(literal).join(', ')}]${text} }`;
 }
 
 /** The rules of a function's arguments, by argument in declaration order; `undefined` with none. */
@@ -343,6 +348,8 @@ function fn(d: FnDecl, c: ModuleCtx): string {
     `wire: ${json ? 'jsonWire' : 'binWire'}`,
     ...(json ? [] : [`sig: ${str(fnv1a(canonical(d, c.index)))}`]),
     ...(d.returns !== undefined ? [`returns: ${descriptor(d.returns.type, c)}`] : []),
+    // A call that may carry a file travels as multipart, carrying one this time or not (SDD-81 §3.3).
+    ...(carriesFiles(d, c) ? ['files: true'] : []),
     ...(rules !== undefined ? [`rules: ${rules}`] : []),
     `chain: ${chainOf(level(d.uses, d.skips, d.compress, c), c)}`,
     ...(d.invalidates.length > 0 ? [`invalidates: [${d.invalidates.flatMap((i) => i.routes).map((r) => str(r.text)).join(', ')}]`] : []),
@@ -353,4 +360,16 @@ function fn(d: FnDecl, c: ModuleCtx): string {
       : []),
   ];
   return `export const ${d.name.text} = ${kind}({ ${fields.join(', ')} });${failsOf(pascal(d.name.text), d.fails, c)}`;
+}
+
+/**
+ * Whether a call of `d` may carry a file (SDD-81 §3.3): one of its body arguments reaches a
+ * `file`, or a field of its form is one.
+ */
+function carriesFiles(d: FnDecl, c: ModuleCtx): boolean {
+  const form = d.form === undefined ? undefined : c.index.lookup('form', d.form.name.text);
+  const inForm = (members: readonly FormMember[]): boolean =>
+    members.some((m) => (m.kind === 'form-group' ? inForm(m.fields) : isFile(m.type)));
+  if (form?.decl.kind === 'form' && inForm(form.decl.fields)) return true;
+  return d.args.some((a) => a.place === 'body' && fileIn(a.type, c.index, c.source.path) !== undefined);
 }

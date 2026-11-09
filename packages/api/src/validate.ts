@@ -26,6 +26,9 @@ import {
   FUD1010,
   FUD1460,
   FUD1461,
+  FUD1480,
+  FUD1481,
+  FUD1483,
   type RelatedLocation,
   type SourceDiagnostic,
   type Span,
@@ -48,7 +51,7 @@ import type {
   UseClause,
 } from './ast.js';
 import { closest, type ApiIndex, type ApiSource, type Declared, type ProjectKind } from './index-api.js';
-import { checkType, literalFits, PRIMITIVES } from './types-check.js';
+import { checkType, fileIn, literalFits, PRIMITIVES } from './types-check.js';
 import { checkArgRules, checkForm } from './validate-form.js';
 
 /** What the host knows of the file and the parser cannot: where it sits. */
@@ -204,6 +207,19 @@ function failCodes(list: readonly { readonly code: Name }[], c: Ctx): void {
   }
 }
 
+/**
+ * A `file` where it cannot go (SDD-81 §3.1): on the `file` itself when it is written here, and on
+ * the use with a `related` to the field when a `type` brings it. `true` when it reported.
+ */
+function noFile(type: TypeExpr, c: Ctx, report: (span: Span, related?: readonly RelatedLocation[]) => void): boolean {
+  const at = fileIn(type, c.index, c.source.path);
+  if (at === undefined) return false;
+  const own = at.path === c.source.path && at.span.start >= type.span.start && at.span.end <= type.span.end;
+  if (own) report(at.span);
+  else report(type.span, [{ span: at.span, message: 'the `file` it carries', ...(at.path === c.source.path ? {} : { file: at.path }) }]);
+  return true;
+}
+
 function fn(decl: FnDecl, c: Ctx): void {
   const label = `${decl.verb} ${decl.name.text}`;
   // `_error` is painted with the error as its `data` and has no URL of its own (FUD1010).
@@ -226,6 +242,10 @@ function fn(decl: FnDecl, c: Ctx): void {
     if (segment.kind === 'param' && !args.has(segment.text)) c.out.push(FUD1099({ span: segment.span, param: segment.text }));
   }
   for (const a of decl.args) {
+    // What travels in the URL cannot be a file (SDD-81 §3.1): a `get`'s every argument, and a
+    // route or query parameter of any verb. Said once, instead of `FUD1101` for the same type.
+    const where = a.place === 'route' ? 'a route parameter' : a.place === 'query' ? 'a query parameter' : decl.verb === 'get' ? 'an argument of a get' : undefined;
+    if (where !== undefined && noFile(a.type, c, (span, related) => c.out.push(FUD1480({ span, where, ...(related !== undefined ? { related } : {}) })))) continue;
     if (a.place === 'body') continue;
     if (a.place === 'route' && c.api.route?.params.includes(a.name.text) === true) {
       c.out.push(FUD1100({ span: a.name.span, name: a.name.text }));
@@ -248,6 +268,11 @@ function load(decl: LoadDecl, c: Ctx): void {
   routeOnly(decl.keyword, 'load', c);
   if (c.api.route?.error === true) c.out.push(FUD1010({ span: decl.keyword, name: 'load' }));
   fields(decl.fields, 'load', c);
+  // What a page renders from is not a file (SDD-81 §3.1): `layout` and `paths` declare no shape
+  // here, so `load` is where one could appear.
+  for (const f of decl.fields) {
+    noFile(f.type, c, (span, related) => c.out.push(FUD1481({ span, where: 'load', ...(related !== undefined ? { related } : {}) })));
+  }
   middlewares(decl.uses, decl.skips, c.index.inherited(c.source, decl), c);
 }
 
@@ -346,6 +371,10 @@ function rule(decl: RuleDecl, c: Ctx): void {
   if (decl.fails.length === 0) c.out.push(FUD1097({ span: decl.name.span, rule: decl.name.text, missing: 'fails' }));
   for (const t of decl.on?.types ?? []) checkType(t, c.index, { any: true }, c.out);
   fields(decl.params, `rule ${decl.name.text}`, c, { pattern: true });
+  // A rule's parameters are written beside the field and travel in its message (SDD-81 §3.1).
+  for (const p of decl.params) {
+    noFile(p.type, c, (span, related) => c.out.push(FUD1483({ span, where: 'rule', ...(related !== undefined ? { related } : {}) })));
+  }
   failCodes(decl.fails, c);
   const runs = decl.runs?.value.text;
   if (decl.debounce !== undefined && runs !== 'remote') {

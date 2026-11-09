@@ -64,6 +64,8 @@ export function tsType(t: TypeExpr, c: EmitCtx): string {
       if (name === 'date') return 'Date';
       if (name in INTEGERS || FLOATS.has(name)) return 'number';
       if (name === 'pattern') return 'RegExp';
+      // The platform's own (SDD-81 §3.1): the browser, Node and the edge all have it.
+      if (name === 'file') return 'File';
       return projectRef(c, 'type', name, name) ?? 'unknown';
     }
   }
@@ -103,7 +105,7 @@ export function descriptor(t: TypeExpr, c: EmitCtx): string {
       return `{ map: [${descriptor(t.key, c)}, ${descriptor(t.value, c)}] }`;
     case 'named': {
       const name = t.name.text;
-      if (name === 'str' || name === 'html' || name === 'uuid' || name === 'bool' || name === 'date' || name in INTEGERS || FLOATS.has(name)) return str(name);
+      if (name === 'str' || name === 'html' || name === 'uuid' || name === 'bool' || name === 'date' || name === 'file' || name in INTEGERS || FLOATS.has(name)) return str(name);
       return projectRef(c, 'type', name, `$${name}`) ?? str('str');
     }
   }

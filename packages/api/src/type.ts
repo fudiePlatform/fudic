@@ -74,11 +74,23 @@ export function stringLiteral(t: Token): StringLiteral | undefined {
 
 const NUMBER = /^-?\d+(?:\.\d+)?$/u;
 
+/** A number with a unit stuck to it: a size. */
+const SIZE = /^(\d+(?:\.\d+)?)(kb|mb|gb)$/u;
+
+/** What looks like a size with a unit that is not one (`FUD1487`): digits, then letters. */
+export const SIZE_LIKE = /^\d+(?:\.\d+)?[a-z]+$/iu;
+
+/** Bytes per unit, base 1024: what a file system shows the user who chooses the file. */
+const UNITS: Readonly<Record<string, number>> = { kb: 1024, mb: 1024 ** 2, gb: 1024 ** 3 };
+
 /** Any token as the literal it reads as. A token always reads as something: a word, at worst. */
 export function literal(t: Token): Literal {
   const str = stringLiteral(t);
   if (str !== undefined) return str;
   if (NUMBER.test(t.raw)) return { kind: 'number', value: Number(t.raw), span: t.span };
+  // A size, in base 1024 and whole bytes (SDD-81 §3.2): `2mb`, `500kb`, `1.5gb`.
+  const size = SIZE.exec(t.raw.toLowerCase());
+  if (size !== null) return { kind: 'number', value: Math.floor(Number(size[1]) * UNITS[size[2]!]!), span: t.span };
   if (t.raw === 'true' || t.raw === 'false') return { kind: 'bool', value: t.raw === 'true', span: t.span };
   if (t.raw === '[]') return { kind: 'empty-list', span: t.span };
   return { kind: 'word', text: t.raw, span: t.span };

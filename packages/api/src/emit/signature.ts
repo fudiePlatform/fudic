@@ -86,8 +86,8 @@ function control(type: TypeExpr): string {
   return name === 'bool' || name === 'str' ? name : `${name}?`;
 }
 
-/** The tag of a control's factory: a number, `bool`, `date`, or `str` for every text. */
+/** The tag of a control's factory: a number, `bool`, `date`, `file` (SDD-81 §3.3), or `str` for every text. */
 function tag(type: TypeExpr): string {
   const name = type.kind === 'named' ? type.name.text : 'str';
-  return name === 'bool' || name === 'date' || name in INTEGERS || FLOATS.has(name) ? name : 'str';
+  return name === 'bool' || name === 'date' || name === 'file' || name in INTEGERS || FLOATS.has(name) ? name : 'str';
 }

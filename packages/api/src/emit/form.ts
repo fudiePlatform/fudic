@@ -5,6 +5,7 @@
  * once validated, without `null` where the field is `required`.
  */
 
+import { ruleCall } from '../rule-call.js';
 import type { Expr, FieldDecl, FormDecl, FormGroup, FormMember, RequireRule, RuleUse, StringLiteral, SummaryBlock, TypeExpr, ValidateOnOption, ValidityOption } from '../ast.js';
 import { FLOATS, INTEGERS } from '../types-check.js';
 import { camel, literal, projectRef, str, textOf, tsType, type EmitCtx } from './shared.js';
@@ -14,6 +15,8 @@ const bare = (t: TypeExpr): TypeExpr => (t.kind === 'optional' ? t.inner : t);
 const nameOf = (t: TypeExpr): string => (t.kind === 'named' ? t.name.text : 'str');
 const isNumber = (name: string): boolean => name in INTEGERS || FLOATS.has(name);
 const isRequired = (f: FieldDecl): boolean => f.rules.some((r) => r.name.text === 'required');
+/** `file[]`: a control of its own, not a list of `file` controls (SDD-81 §3.6). */
+const isFileList = (t: TypeExpr): boolean => t.kind === 'list' && nameOf(bare(t.element)) === 'file';
 
 // ---------------------------------------------------------------------------------------------
 // Types
@@ -22,12 +25,17 @@ const isRequired = (f: FieldDecl): boolean => f.rules.some((r) => r.name.text ==
 /** The control type of a field: `Str`, `Num`, `List<string>`… `used` collects the names. */
 function controlType(t: TypeExpr, c: EmitCtx, used: Set<string>): string {
   const type = bare(t);
+  // A field of files (SDD-81 §3.6): its own controls, which an `<input type="file">` binds.
+  if (isFileList(type)) {
+    used.add('FileListField');
+    return 'FileListField';
+  }
   if (type.kind === 'list') {
     used.add('List');
     return `List<${tsType(type.element, c)}>`;
   }
   const name = nameOf(type);
-  const control = name === 'bool' ? 'Bool' : name === 'date' ? 'DateField' : isNumber(name) ? 'Num' : 'Str';
+  const control = name === 'bool' ? 'Bool' : name === 'date' ? 'DateField' : name === 'file' ? 'FileField' : isNumber(name) ? 'Num' : 'Str';
   used.add(control);
   return control;
 }
@@ -45,8 +53,8 @@ export function valueType(members: readonly FormMember[], c: EmitCtx): string {
     if (m.kind === 'form-group') return `readonly ${m.name.text}: ${valueType(m.fields, c)}`;
     const type = bare(m.type);
     const name = nameOf(type);
-    const nullable = type.kind === 'named' && (isNumber(name) || name === 'date') && !isRequired(m);
-    const ts = type.kind === 'named' && !isNumber(name) && name !== 'date' && name !== 'bool' ? 'string' : tsType(type, c);
+    const nullable = type.kind === 'named' && (isNumber(name) || name === 'date' || name === 'file') && !isRequired(m);
+    const ts = type.kind === 'named' && !isNumber(name) && name !== 'date' && name !== 'bool' && name !== 'file' ? 'string' : tsType(type, c);
     return `readonly ${m.name.text}: ${ts}${nullable ? ' | null' : ''}`;
   });
   return `{ ${fields.join('; ')} }`;
@@ -97,13 +105,14 @@ function ruleUse(use: RuleUse, f: FormCtx, texts: string[]): string | undefined 
   const found = f.c.index.lookup('rule', use.name.text);
   if (found === undefined) return undefined;
   const ref = projectRef(f.c, 'rule', use.name.text)!;
+  const call = ruleCall(use, found.decl.params);
   const params = found.decl.params.flatMap((p, i) => {
-    const arg = use.args[i];
+    const arg = call.args[i];
     if (arg === undefined) return [];
     const isPattern = p.type.kind === 'named' && p.type.name.text === 'pattern' && arg.kind === 'word';
     return [`${p.name.text}: ${isPattern ? (projectRef(f.c, 'pattern', arg.text) ?? 'undefined') : literal(arg)}`];
   });
-  if (use.text !== undefined) for (const fail of found.decl.fails) texts.push(textEntry(camel(fail.code.text), use.text, f));
+  if (call.text !== undefined) for (const fail of found.decl.fails) texts.push(textEntry(camel(fail.code.text), call.text, f));
   return `${ref}.use(${params.length === 0 ? '' : `{ ${params.join(', ')} }`})`;
 }
 
@@ -122,13 +131,13 @@ function initial(field: FieldDecl, type: TypeExpr): string {
   }
   if (type.kind === 'list') return '[]';
   if (name === 'bool') return 'false';
-  return isNumber(name) || name === 'date' ? 'null' : '""';
+  return isNumber(name) || name === 'date' || name === 'file' ? 'null' : '""';
 }
 
 /** The factory of a type: `str`, `u8`, `uuid`… */
 function factory(type: TypeExpr, f: FormCtx): string {
   const name = nameOf(type);
-  const fn = name === 'bool' || name === 'date' || name === 'uuid' || isNumber(name) ? name : 'str';
+  const fn = name === 'bool' || name === 'date' || name === 'uuid' || name === 'file' || isNumber(name) ? name : 'str';
   f.used.add(fn);
   return fn;
 }
@@ -148,6 +157,10 @@ function field(m: FieldDecl, path: string, f: FormCtx): string {
   }
   const opts = options([messagesOf(texts), validateOn(m.validateOn), validity(m.validity)]);
   const args = [initial(m, type), ...(rules.length > 0 || opts !== undefined ? [`[${rules.join(', ')}]`] : []), ...(opts !== undefined ? [opts] : [])];
+  if (isFileList(type)) {
+    f.used.add('files');
+    return `files(${args.join(', ')})`;
+  }
   if (type.kind === 'list') {
     f.used.add('arr');
     return `arr(${factory(bare(type.element), f)}, ${args.join(', ')})`;

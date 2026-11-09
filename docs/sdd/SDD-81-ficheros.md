@@ -359,7 +359,7 @@ de memoria o uno propio.
 
 ### 3.6. Los formularios
 
-- `TypeTag` gana `'file'` y `'file[]'`. Factorías `FileField` y `FileListField` en
+- `TypeTag` gana `'file'` y `'file[]'`. Tipos de control `FileField` y `FileListField` y factorías `file` y `files` en
   `@fudic/forms/contract`, como `Str` o `Bool`.
 - Valor: `File | null` y `readonly File[]`. Inicial: `null` y `[]`. `$reset()` vuelve a eso y vacía el
   `<input>`.
@@ -878,3 +878,11 @@ Nada.
 10. **Preview sin `FUDIC_SECRET` firma con uno al azar por proceso** (al implementar), como dev:
     preview es una comprobación local y un `500` ahí solo confundiría. Un adaptador de producción
     sigue exigiéndolo.
+11. **Un solo texto entre comillas tras una regla** (al implementar): es el argumento si la regla
+    espera uno `str` que falta (`accept "image/*"`), y si no, el texto de la regla. Se decide con la
+    regla delante (`ruleCall`). La extracción de mensajes para traducir lee un fichero solo y no
+    conoce la regla: ofrecerá ese argumento como texto traducible, sin efecto en lo que se genera.
+12. **`file[]` en un `form` es un control propio** (`FileListField`, factoría `files`), no una lista
+    de controles `file`: su valor es `readonly File[]` y un solo `<input multiple>` lo llena.
+13. **`file` con `required` en un `form` llega al handler como `File`**, sin `null`, como un número
+    requerido.

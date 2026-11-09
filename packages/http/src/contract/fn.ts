@@ -53,6 +53,8 @@ export interface FnSpec {
   readonly wire: Wire;
   /** Its signature, present with `binWire`. */
   readonly sig?: string;
+  /** Whether a call may carry a file: then it travels as `multipart/form-data` (SDD-81 §3.3). */
+  readonly files?: boolean;
   /** The type of `->`; absent when it returns nothing (204). */
   readonly returns?: Ty;
   /** The rules under its arguments, by argument, in declaration order. */
