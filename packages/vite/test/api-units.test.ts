@@ -308,6 +308,8 @@ describe('functions.mjs with the functions of the .fudapi', () => {
     const text = emitFunctionsModule({ api: SERVER_ROOT_ID, base: '/app/', table });
     expect(text).toContain(`import { handler as $api } from "${SERVER_ROOT_ID}";`);
     expect(text).toContain('export const handle = $api({ base: "/app/" });');
+    // And the factory itself, which server.mjs hands to createServer with its options (SDD-81 §3.10).
+    expect(text).toContain('export const handler = $api;');
     expect(text).toContain(JSON.stringify(table));
   });
 });
