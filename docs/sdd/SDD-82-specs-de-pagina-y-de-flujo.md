@@ -818,3 +818,12 @@ Nada.
 13. **Grabar sustituye**, no fusiona: un nombre es un caso, y volver a grabarlo lo pone al día.
 14. **El backend que no es TS lee la cookie y pregunta al banco**: el banco no puede inyectar clases
     en otro lenguaje, pero sí decir qué caso toca.
+
+### 8.2. Tomadas al implementar
+
+1. **`FUD0923` también cambia de texto**: con tres cabeceras, «el componente ya está declarado» pasa a
+   «la cabecera ya está escrita».
+2. **`FUD0950`, `FUD0952` y `FUD0953` llevan la línea o el fichero en sus parámetros** (`line`,
+   `fixture`): el mismo código sirve a `props`, `data`, `answers`, `services`, `path` y `url`.
+3. **`FUD1508`, `FUD1514` y `FUD1515` son de fichero** (la `.fudspec` o la fixture, con span si lo
+   hay): los emite el banco, no el validador.

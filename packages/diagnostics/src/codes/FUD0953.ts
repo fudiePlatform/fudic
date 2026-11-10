@@ -3,9 +3,10 @@ import type { SourceDiagnostic, SourceInput } from '../types.js';
 
 /** Parameters of `FUD0953`. */
 export interface FUD0953Params extends SourceInput {
-  readonly tag: string;
+  /** The name of the fixture file the line reads: `app-card.fixture.ts`. */
+  readonly fixture: string;
 }
 
-/** `props` with no fixture file next to the component (SDD-52). */
+/** A fixture line with no fixture file beside the spec (SDD-52, SDD-82). */
 export const FUD0953 = (p: FUD0953Params): SourceDiagnostic =>
-  source('FUD0953', 'error', `no ${p.tag}.fixture.ts next to the component`, p);
+  source('FUD0953', 'error', `no ${p.fixture} beside the spec`, p);

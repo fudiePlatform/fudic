@@ -5,7 +5,7 @@
 > `@fudic/testing` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` ·
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `sdd-82-specs-de-pagina-y-de-flujo`, desde `main` con SDD-81 ya mezclada.
-> **Progreso:** 0 / 36 — `Listo`.
+> **Progreso:** 1 / 36 — `En curso`.
 
 **Dos sesiones.** Una implementa y entrega cada fase con `pnpm typecheck` y `pnpm build`. La otra
 escribe los tests de cada fase (las tareas «Los tests de…») contra los criterios de SDD §6, en su
@@ -25,7 +25,7 @@ Cada fase cerrada va a `origin`.
 
 ## Fase 1 — diagnósticos
 
-- [ ] **1. Diagnósticos.**
+- [x] **1. Diagnósticos.**
   - `FUD1500`–`FUD1515`, cada uno con su función, su `.md` y su línea en `index.ts`.
   - Textos nuevos de `FUD0922`, `FUD0930`, `FUD0933`, `FUD0950`, `FUD0952` y `FUD0953` (SDD §3.11).
   - *Depende de:* —.

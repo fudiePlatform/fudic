@@ -154,7 +154,7 @@ function checkProps(
   out: SourceDiagnostic[],
 ): void {
   if (block !== 'given' || seen) {
-    out.push(FUD0952({ span: term.name.span }));
+    out.push(FUD0952({ span: term.name.span, line: PROPS }));
     return;
   }
   const [arg] = term.args;
@@ -162,10 +162,10 @@ function checkProps(
   if (!checkArgs(term, PROPS_PARAMS, out) || arg === undefined || arg.kind === 'role' || tag === undefined) return;
   const fixtures = ctx.fixtures(tag.text);
   if (fixtures === undefined) {
-    out.push(FUD0953({ span: term.name.span, tag: tag.text }));
+    out.push(FUD0953({ span: term.name.span, fixture: `${tag.text}.fixture.ts` }));
     return;
   }
   if (!fixtures.names.some((n) => n.text === arg.text)) {
-    out.push(FUD0950({ span: arg.span, fixture: arg.text, available: fixtures.names.map((n) => n.text) }));
+    out.push(FUD0950({ span: arg.span, line: PROPS, fixture: arg.text, available: fixtures.names.map((n) => n.text) }));
   }
 }
