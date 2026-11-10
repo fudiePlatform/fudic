@@ -45,6 +45,9 @@ Aclaradas el 2026-11-05. Las dos primeras están desarrolladas en «Análisis co
 
 ### 1. Silenciar o subir diagnósticos
 
+> **Redactada el 2026-11-10** como [SDD-83](sdd/SDD-83-diagnosticos-a-medida-y-baseline.md), junto
+> con la nota 4.
+
 Ver «Análisis con sesión» §1.
 
 ### 2. Validadores async
@@ -76,9 +79,111 @@ seguridad». Hay que hacerlos desaparecer. No todos son de la CSP:
 
 ### 4. Baseline
 
+> **Redactada el 2026-11-10** como [SDD-83](sdd/SDD-83-diagnosticos-a-medida-y-baseline.md), junto
+> con la nota 1. Lo de abajo es el análisis previo; donde no coincida, manda la SDD (el anidamiento
+> CSS sí es «widely», y el corte sale de la fecha de los datos, no del reloj).
+
 `fudic.json` fija el nivel: `"baseline": "widely" | "newly" | <año>`. Si la salida usa una feature
 por encima de ese nivel (DSD, `:state()`…), sale un diagnóstico. El trabajo está en mapear lo que
 emite el compilador a sus entradas en web-features.
+
+#### Análisis con sesión (2026-11-10)
+
+Va en la misma SDD que la nota 1: los avisos de Baseline son warnings, y se suben a error o se
+silencian con la misma política (`"FUDxxxx": "error"`, `"warnings": "error"`, `fud-disable`).
+
+**Los datos.** `web-features` 3.45.0 (5 MB, sin dependencias): 1236 features y unas 16 000 claves
+de BCD. Cada clave trae su propio estado en `status.by_compat_key` (`high`/`low`/`false` y sus
+fechas). Con eso basta: no hacen falta `compute-baseline` ni `@mdn/browser-compat-data`. También
+trae `browsers` con las fechas de cada versión, que sirve para traducir el nivel a versiones.
+
+- `"widely"`: `baseline_low_date` + 30 meses ≤ hoy. `"newly"`: tiene `baseline_low_date`.
+  `2024`: `baseline_low_date` ≤ 2024-12-31. Una feature `false` no entra en ningún nivel.
+
+**Lo que emite fudic, medido con esos datos:**
+
+| Qué | Clave | Estado | Widely desde |
+|---|---|---|---|
+| DSD (`shadowrootmode`) | `html.elements.template.shadowrootmode` | high | 2026-08-20 |
+| `shadowrootdelegatesfocus` (todo control de formulario) | `html.elements.template.shadowrootdelegatesfocus` | **low** | 2027-03-16 |
+| `shadowrootclonable` / `serializable` (si el autor lo pide) | `html.elements.template.*` | low | 2027-03-16 |
+| `shadowrootreferencetarget` (si el autor lo pide) | `referencetarget` | **false** | — |
+| Controles form-associated | `form-associated-custom-elements` | high | 2025-09-27 |
+| `adoptedStyleSheets`, `replaceSync` | `constructed-stylesheets` | high | 2025-09-27 |
+| `<style type="module" specifier>` | no está en web-features | — | lleva polyfill |
+| `Promise.withResolvers` (frames de `@await`) | `promise-withresolvers` | high | 2026-09-05 |
+| `requestIdleCallback` | `requestidlecallback` | false | con alternativa |
+| `CompressionStream` | `compression-streams` | high | con detección |
+
+- **El suelo de fudic es Baseline 2024** (DSD y `withResolvers`). Un `"baseline": 2023` no se
+  puede cumplir: diagnóstico sobre `fudic.json` que dice qué features lo impiden.
+- **Hoy, una app con formularios no es «widely»** hasta el 2027-03-16, por
+  `shadowrootdelegatesfocus`. El aviso cae sobre el componente que lo provoca, no sobre el runtime.
+- Lo que fudic usa con alternativa (polyfill, detección) no avisa. Lo declara un manifiesto del
+  runtime, con test que lo ate al código.
+
+**Lo que escribe el autor, de más fácil a más difícil:**
+
+1. **Marcado del `.fud`**: elementos y atributos (`popover`, `commandfor`, `<search>`…). Ya hay AST
+   con spans: `html.elements.<x>`, `html.elements.<x>.<attr>`, `html.global_attributes.<attr>`.
+2. **CSS** (`<style>` del `.fud`, la guía de SDD-79, las hojas de `styles`): hoy el compilador no
+   lee reglas, solo equilibra llaves. Hace falta un tokenizador propio que saque propiedades,
+   valores (`css.properties.<p>.<valor>`), funciones (`light-dark()`), selectores (`:state()`,
+   `:has()`) y at-rules (`@scope`). **Dentro de `@supports` no se avisa**: es el caso limpio de
+   mejora progresiva.
+3. **TS del navegador** (`@code` de cliente, `src/browser`, pipes): la sintaxis la baja Vite según
+   su `build.target`; las APIs no. Para saber que `x.showPopover()` es `api.HTMLElement.showPopover`
+   hace falta el tipo de `x`: el `@fudic/typecheck` que ya existe. Un `'x' in obj` o
+   `typeof X === 'function'` alrededor cuenta como detección. `src/server` no se mira (corre en Node).
+
+**Vite.** Vite 8 compila por defecto a `baseline-widely-available`, fijo a 2026-01-01 (Chrome 111,
+Firefox 114, Safari 16.4). Si `fudic.json` dice otro nivel y el usuario no ha puesto
+`build.target`, el plugin lo calcula desde `browsers` de web-features y lo pasa. Comprobar si el
+CSS inline de los `.fud` pasa por el `cssTarget` de Vite; si no, lo que no se baja se avisa.
+
+**Librerías.** El nivel es del producto que se sirve. Una lib declara el suyo, que es lo que
+promete. Si la app compila una lib con un nivel por encima del suyo, un solo aviso sobre la
+dependencia, no uno por línea en `node_modules`, que el usuario no puede tocar.
+
+**Editor y `explain`.** El hover del aviso dice la feature, su estado, las fechas, el soporte por
+navegador y el enlace a `webstatus.dev/features/<id>`.
+
+**Bombillas: el usuario no tiene que acordarse de nada.** Cada aviso de Baseline trae:
+
+- «Permitir `popover` en todo el proyecto»: escribe la feature en `allow` de `fudic.json`, y pasa
+  `"baseline": "widely"` a la forma de objeto si hace falta.
+- «Silenciar aquí»: escribe el `fud-disable-next-line` con su código y deja el cursor en el motivo,
+  que es obligatorio.
+- «Silenciar en este fichero»: lo mismo, arriba del todo.
+- En CSS, «Envolver en `@supports`»: rodea la regla con la comprobación de esa propiedad.
+- En `fudic.json`, con un nivel por debajo del suelo de fudic: «Subir a 2024».
+
+Las tres primeras valen para cualquier warning, no solo los de Baseline.
+
+**Decisiones a cerrar:**
+
+1. **Sin `baseline` en `fudic.json`, se comprueba contra `widely`**, como Vite. Si callara, solo lo
+   usaría quien ya sabe que existe. Para que no haya ruido, lo que pone fudic no avisa al usuario:
+   - fudic se compromete a funcionar en todo navegador de Baseline 2024, y donde no llega pone su
+     propio remedio, como ya hace con `<style type="module">` y `requestIdleCallback`;
+   - `shadowrootdelegatesfocus`: al hidratar, si el navegador no entiende el atributo, el control
+     pasa el foco a su `<input>` interno (los controles ya llevan JS). Comprobar al redactar;
+   - el único aviso por culpa de fudic es un nivel por debajo de 2024 en `fudic.json`, con la
+     bombilla «Subir a 2024»;
+   - el manifiesto de lo que emite fudic pasa a ser una garantía: cada entrada por encima de 2024
+     tiene que llevar remedio, y su test lo comprueba.
+
+   Una app nueva sin tocar nada no da ningún aviso. El primero sale cuando el usuario escribe algo
+   reciente.
+2. **Permitir por feature**: `"baseline": { "target": "widely", "allow": ["view-transitions"] }`,
+   con el id de web-features. Silenciar el código entero silencia todas las features a la vez; esto
+   deja usar una a sabiendas. Un id desconocido da warning, como un código desconocido.
+3. **`widely` se mueve con el tiempo.** Propuesta: calcularlo por fecha (`low` + 30 meses contra
+   hoy), no con el `high` guardado en el paquete. Solo puede aflojar, nunca romper un build, y no
+   depende de subir de versión `web-features` (`:state()` pasa a widely el 2026-11-17).
+4. **Dónde viven los datos**: dependencia exacta de `web-features` en un paquete `@fudic/baseline`,
+   o una tabla compacta generada al construir fudic (unos 800 KB con todas las claves, menos con
+   solo CSS, HTML y JS). Lo segundo pesa menos en el `.vsix`.
 
 ### 5. Fixtures del `load` de las páginas
 
