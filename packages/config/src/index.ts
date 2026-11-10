@@ -21,6 +21,7 @@ export {
   type ProjectStyleFile,
   type ProjectStylesResult,
 } from './styles.js';
+export { readServe, sizeOf, type ServeConfig, type UploadsConfig } from './serve.js';
 export {
   readProjectConfig,
   type ConfigIo,

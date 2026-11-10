@@ -3,18 +3,17 @@
 
 @code {
   import { signal } from "@fudic/core";
-  import { emit } from "@fudic/dom";
   import type { Person } from "fudic:routes/usuarios";
 
   const aviso = signal("");
 
   // `hecho` recibe lo que devolvió el handler de `save`: la `Person` de su `.fudapi`. Un 400,
   // 409 o 422 no llega aquí: el formulario se los queda (`catches` de person.fudapi) y ya están
-  // pintados en él. La persona guardada sale por el bus: quien pinte la lista la recoge, sin
-  // recargar nada. Y el formulario vuelve a como está declarado, listo para la siguiente alta.
+  // pintados en él. La persona guardada sale del componente con el propio `fudic:result`, que
+  // cruza el shadow root: quien lo use la recoge en su tag, con `@fudic:result` (/usuarios).
+  // Y el formulario vuelve a como está declarado, listo para la siguiente alta.
   function hecho(persona: Person) {
     aviso.set(`Guardado: ${persona.name} (id ${String(persona.id)}).`);
-    emit("alta", persona);
     personForm.$reset();
   }
 }
@@ -102,6 +101,17 @@
         <label for="notas">Notas</label>
         <textarea id="notas" control=@personForm.notes rows="3"></textarea>
       </div>
+
+      <div class="campo">
+        <label for="foto">Foto</label>
+        @* Sin `accept`: el compilador lo escribe con el de la regla, y el diálogo filtra igual. *@
+        <input id="foto" type="file" control=@personForm.avatar>
+        <small class="error" error=@personForm.avatar></small>
+      </div>
+
+      @if (personForm.$progress() !== null) {
+        <progress aria-label="Subiendo" value=@(personForm.$progress()?.loaded) max=@(personForm.$progress()?.total)></progress>
+      }
 
       <button type="submit">Dar de alta</button>
       <p class="aviso" role="status">@aviso()</p>

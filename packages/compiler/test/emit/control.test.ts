@@ -556,4 +556,24 @@ describe('BUG-42 — a view that reads through an imported form (§4.3)', () => 
     expect(client).toContain('$d.push($subIf(count, $u));');
     expect(client).not.toContain('$sub(() =>');
   });
+
+  // SDD-80 §8.2.34: «Comprobando…» never showed on leaving the field — nothing but the value of
+  // the form woke the `@if`, and leaving it moves no value.
+  it('watches what decides a construct at the root, as it watches a value', () => {
+    const { client } = emit(
+      '<form control="@f"><input control="@f.name">' +
+        '@if (f.name.pending()) { <small>…</small> } else if (f.$pending()) { <i>…</i> }' +
+        '@switch (f.name.errors()) { case f.empty: <b>x</b> default: <b>y</b> }' +
+        '@foreach (const e of f.$issues()) key (e.path) { <p>@e.path</p> }' +
+        '@while (f.$valid()) { <p>w</p> }' +
+        '</form>',
+    );
+    expect(client).toContain('$d.push($sub(() => ((f.name.pending())), $u));');
+    expect(client).toContain('$d.push($sub(() => ((f.$pending())), $u));');
+    expect(client).toContain('$d.push($sub(() => ((f.name.errors())), $u));');
+    expect(client).toContain('$d.push($sub(() => ((f.empty)), $u));');
+    expect(client).toContain('$d.push($sub(() => ((() => { for (const e of f.$issues()) {} })()), $u));');
+    // A `@while` with an empty body would never end: it is not watched.
+    expect(client).not.toContain('$sub(() => ((f.$valid()))');
+  });
 });

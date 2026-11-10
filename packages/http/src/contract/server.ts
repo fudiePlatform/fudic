@@ -9,19 +9,22 @@
  * says what is missing, in a build nothing.
  */
 
-import { FN_PREFIX } from '@fudic/conventions';
+import { FN_PREFIX, RULE_PREFIX } from '@fudic/conventions';
+import { csrfEndpoint, isCsrfPath } from '../csrf-token.js';
 import { createRoot } from '@fudic/di';
 import { run } from '../compose.js';
 import { HttpError, notFound, type Problem } from '../errors.js';
 import { serverContext } from '../server/context.js';
 import { bodyArgs } from '../server/body.js';
-import { queryArgs, valueResponse, withForm, type DispatchOptions } from '../server/dispatch.js';
+import { queryArgs, settingsOf, valueResponse, withForm, type DispatchOptions } from '../server/dispatch.js';
 import { noFunction, problemOf, problemResponse } from '../server/problem.js';
 import { withRequest } from '../server/request.js';
+import { DEFAULT_LIMITS, memorySpool, multipartArgs, refuseCrossSite, releasing } from '../server/upload.js';
 import type { ServerContext } from '../types.js';
-import { contractIds, contractsOf, SIG_HEADER, type ServerContract } from './fn.js';
+import { contractIds, contractsOf, SIG_HEADER, SIG_PARAM, type ServerContract } from './fn.js';
 import { compose } from './middleware.js';
 import type { PagePiece } from './page.js';
+import { rulesHandler } from './rule-route.js';
 import { checkRules } from './rules.js';
 import { conformAll, fromText, unmarked, type Ty } from './wire.js';
 
@@ -59,21 +62,32 @@ export async function serve(input: ServeInput, options: DispatchOptions = {}): P
   const { wire } = spec;
   // What the handler wrote before it threw still goes out with the error (SDD-69 §4.2).
   let response: ServerContext['response'] | undefined;
+  // A call that may carry files gets a spool, released once its response is done (SDD-81 §3.5).
+  const spool = spec.files === true ? (options.spool ?? memorySpool)() : undefined;
+  const released = (out: Response): Response => (spool === undefined ? out : releasing(out, spool));
   try {
     if (request.method !== spec.method) throw new HttpError({ status: 405, title: 'Method Not Allowed' });
     const handler = contract.slot.get();
     if (handler === undefined) throw missing(contract.slot.missing(), options.dev === true);
 
     const url = new URL(request.url);
+    if (spool !== undefined) refuseCrossSite(request, url);
     const params = { ...input.page, ...typed(spec.params ?? {}, (name) => input.route[name] ?? null) };
     const query = typed(spec.query ?? {}, (name) => url.searchParams.get(name));
-    if (request.headers.get(SIG_HEADER) !== (spec.sig ?? null)) throw stale();
+    // A link carries it in its query: a `get` a browser asks for by `href` or `src` (§3.4).
+    const sig = request.headers.get(SIG_HEADER) ?? (request.method === 'GET' ? url.searchParams.get(SIG_PARAM) : null);
+    if (sig !== (spec.sig ?? null)) throw stale();
     const types = spec.args ?? {};
-    const raw = request.method === 'GET' ? queryArgs(url, wire, types) : await bodyArgs(request, wire, types);
+    const raw =
+      request.method === 'GET'
+        ? queryArgs(url, wire, types)
+        : spool !== undefined
+          ? await multipartArgs(request, wire, types, { limits: { ...DEFAULT_LIMITS, ...options.uploads }, ...(spec.fileLimits !== undefined ? { fileLimits: spec.fileLimits } : {}) }, spool)
+          : await bodyArgs(request, wire, types);
     const args = spec.form !== undefined ? raw : spec.args !== undefined ? conformAll(spec.args, raw, 'argument') : undefined;
     await checkRules(spec.rules, { ...params, ...query, ...args });
 
-    const base = serverContext({ method: spec.method, name: spec.name, url, params: {}, args, request });
+    const base = serverContext({ method: spec.method, name: spec.name, url, params: {}, args, request, settings: settingsOf(options) });
     const ctx = Object.assign(base, { params, query }) as unknown as ServerContext;
     response = ctx.response;
     const { steps } = compose(spec.chain, 'server');
@@ -83,10 +97,10 @@ export async function serve(input: ServeInput, options: DispatchOptions = {}): P
         return (handler as (c: ServerContext) => unknown)(done);
       }),
     );
-    return valueResponse(value, ctx, wire, spec.returns);
+    return released(valueResponse(value, ctx, wire, spec.returns));
   } catch (e) {
     if (!(e instanceof HttpError)) options.onError?.(e);
-    return problemResponse(problemOf(e, options.dev === true), wire, response);
+    return released(problemResponse(problemOf(e, options.dev === true), wire, response));
   }
 }
 
@@ -132,15 +146,22 @@ function targetOf(parts: readonly string[]): Target | undefined {
 }
 
 /**
- * The handler of every function of the `.fudapi` loaded in this process (SDD-60 §4.4): a
- * `Response`, or `null` for a URL outside `/_fudic/fn/`, which belongs to someone else. One
- * under it that names no function of theirs, by `<id>`, name and route, is a 404.
+ * The handler of every function of the `.fudapi` loaded in this process (SDD-60 §4.4), and of
+ * every question to a `runs remote` rule (SDD-80 §4.4): a `Response`, or `null` for a URL
+ * outside `/_fudic/fn/` and `/_fudic/rule/`, which belongs to someone else. One under them that
+ * names no function of theirs, by `<id>`, name and route, or no remote rule, is a 404.
  */
 export function contractsHandler(options: ContractsOptions = {}): (request: Request) => Promise<Response | null> {
-  const prefix = `${(options.base ?? '/').replace(/\/$/u, '')}${FN_PREFIX}/`;
+  const root = (options.base ?? '/').replace(/\/$/u, '');
+  const prefix = `${root}${FN_PREFIX}/`;
+  const rules = rulesHandler(`${root}${RULE_PREFIX}/`, options);
   return async (request) => {
     const { pathname } = new URL(request.url);
-    if (!pathname.startsWith(prefix)) return null;
+    // The CSRF token of `use csrf` with `token true` (SDD-81 §3.13), in JSON whatever the app speaks.
+    if (isCsrfPath(pathname, root)) {
+      return csrfEndpoint(request, settingsOf(options)).catch((e: unknown) => problemResponse(problemOf(e, options.dev === true)));
+    }
+    if (!pathname.startsWith(prefix)) return rules(request);
     const target = targetOf(pathname.slice(prefix.length).split('/'));
     if (target === undefined) return noFunction(request);
     return serve({ request, ...target }, options);

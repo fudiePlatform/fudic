@@ -25,6 +25,9 @@ import type { ImplementationIndex } from './implementations.js';
 import type { ApiGenerated } from './generated.js';
 import { generatedLenses, implementationLenses, typeLenses } from './lenses.js';
 import { catchesHover } from './catches-hover.js';
+import { ruleHover } from './rule-hover.js';
+import { fileHover } from './file-hover.js';
+import { apiRepairs } from './repairs.js';
 import { loadHover } from './load-line.js';
 import { apiDefinition, apiHover, declaredTypes } from './navigation.js';
 import { apiSemanticTokens } from './semantic-tokens.js';
@@ -107,7 +110,10 @@ export function createFudapiService(deps: FudapiServiceContext): LanguageService
             const doc = apiDocumentOf(context, document, host);
             if (doc === undefined) return undefined;
             // Its own diagnostics, as the `.fud` does: the ones the client sends may be stale.
-            return explainActions(generated.check(doc.path, doc.text, doc), document.offsetAt(range.start), document.offsetAt(range.end));
+            const diagnostics = generated.check(doc.path, doc.text, doc);
+            const start = document.offsetAt(range.start);
+            const end = document.offsetAt(range.end);
+            return [...apiRepairs(doc, document.uri, diagnostics, start, end), ...explainActions(diagnostics, start, end)];
           });
         },
 
@@ -135,7 +141,7 @@ export function createFudapiService(deps: FudapiServiceContext): LanguageService
             const doc = apiDocumentOf(context, document, host);
             if (doc === undefined) return undefined;
             const offset = document.offsetAt(position);
-            return apiHover(doc, offset, host) ?? loadHover(doc, offset) ?? catchesHover(doc, offset) ?? textHover(doc, offset, translations);
+            return apiHover(doc, offset, host) ?? fileHover(doc, offset) ?? loadHover(doc, offset) ?? catchesHover(doc, offset) ?? ruleHover(doc, offset) ?? textHover(doc, offset, translations);
           });
         },
 

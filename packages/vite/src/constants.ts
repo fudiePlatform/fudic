@@ -191,6 +191,12 @@ export const EDGE_DIR = '.fudic/edge';
 /** The server functions of the app, inside `EDGE_DIR` (SDD-56 §4.15). */
 export const FUNCTIONS_FILE = 'functions.mjs';
 
+/**
+ * The app for `createServer` of `@fudic/server`, inside `EDGE_DIR` (SDD-81 §3.10): what preview
+ * mounts, and what an adapter mounts with the prerendered pages of `outDir`.
+ */
+export const SERVER_FILE = 'server.mjs';
+
 /** The id of the module the edge pass builds `FUNCTIONS_FILE` from. */
 export const FUNCTIONS_ID = '\0fudic:functions';
 

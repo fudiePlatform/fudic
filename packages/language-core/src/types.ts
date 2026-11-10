@@ -123,6 +123,19 @@ export interface ServerImport {
   readonly names: readonly string[];
   /** The fields of its `load` marked `later` (SDD-70): what `@await` takes. Absent: none. */
   readonly later?: readonly LaterField[];
+  /**
+   * The fields of the forms it gives, by form and then by path (`data.proof`), with their type
+   * as written: what tells a file input bound to a `file` from one bound to a `str` (SDD-81
+   * §3.7). A form the host could not find is left out, and its controls go unchecked.
+   */
+  readonly fields?: Readonly<Record<string, Readonly<Record<string, FormFieldType>>>>;
+}
+
+/** One field of a linked form: its type as the `.fudapi` writes it, without `?` (`file[]`). */
+export interface FormFieldType {
+  readonly type: string;
+  /** The types of its `accept` rule. */
+  readonly accept?: string;
 }
 
 /** A field of `load` marked `later`, as the editor offers it after `@await data.` (SDD-70). */

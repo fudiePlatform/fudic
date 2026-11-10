@@ -22,6 +22,7 @@ import {
   dataShape,
   framesShape,
   emitModule,
+  formFields,
   type ApiContext,
   type ApiLocale,
   type ApiSource,
@@ -40,7 +41,7 @@ import {
 } from '@fudic/typecheck/api';
 import type { PageApi } from './analyze.js';
 import type { LinkedApi } from '@fudic/compiler';
-import { FN_PREFIX } from '@fudic/conventions';
+import { FN_PREFIX, RULE_PREFIX } from '@fudic/conventions';
 
 export type { ApiLibrary };
 
@@ -131,6 +132,14 @@ export class ApiProject {
     const route = this.context(source).route === undefined ? undefined : `${path.slice(0, -API_EXTENSION.length)}.fud`;
     const data = dataShape(source, this.#read().index);
     const later = decls.flatMap((d) => (d.kind === 'load' ? d.fields.filter((f) => f.later !== undefined) : []));
+    // The fields of each form it gives, wherever the form is declared (SDD-81 §3.7).
+    const index = this.#read().index;
+    const fields = Object.fromEntries(
+      [...new Set(forms)].flatMap((name) => {
+        const found = index.lookup('form', name);
+        return found === undefined ? [] : [[name, formFields(found.decl)] as const];
+      }),
+    );
     return {
       id: source.id,
       load: has('load'),
@@ -141,6 +150,7 @@ export class ApiProject {
       ...(route !== undefined ? { route } : {}),
       ...(data !== undefined ? { data } : {}),
       ...(later.length > 0 ? { later: later.map((f) => f.name.text) } : {}),
+      ...(Object.keys(fields).length > 0 ? { fields } : {}),
     };
   }
 
@@ -156,6 +166,20 @@ export class ApiProject {
         const own = (d.route?.segments ?? []).map((seg) => (seg.kind === 'param' ? `:${seg.text}` : seg.text));
         return [{ url: [FN_PREFIX, ...id, d.name.text, ...own].join('/'), method: d.verb.toUpperCase() }];
       }),
+    );
+  }
+
+  /**
+   * Every `runs remote` rule of the project by URL, for an adapter to mount (SDD-80 §4.2):
+   * `/_fudic/rule/rules/people/alias-taken`, always `POST`. A `runs server` rule has none.
+   */
+  ruleTable(): readonly { readonly url: string; readonly method: 'POST' }[] {
+    return this.sources.flatMap((source) =>
+      source.file.declarations.flatMap((d) =>
+        d.kind === 'rule' && d.runs?.value.text === 'remote'
+          ? [{ url: [RULE_PREFIX, source.id, d.name.text].join('/'), method: 'POST' as const }]
+          : [],
+      ),
     );
   }
 

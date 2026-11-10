@@ -32,7 +32,13 @@ import { defineConfig } from '@playwright/test';
 //
 // `/usuarios` runs in all three because SDD-60 §6.32 asks for it in dev, build and preview: its
 // functions are dispatched by the dev server in one and by the edge bundle in the other two.
-const THREE_WAY = /(hydration|routes|di|usuarios)\.spec\.ts/u;
+//
+// The remote rule of `/formularios` runs in all three for the same reason (SDD-80 criterion 38):
+// its question is answered by the dev server in one and by the edge in the other two.
+//
+// Files run in all three (SDD-81 §4.6): an upload is read by the dev server in one and by the
+// server of the build, with its disk spool, in the other two.
+const THREE_WAY = /(hydration|routes|di|usuarios|remote-rule|ficheros)\.spec\.ts/u;
 
 // The concurrency suite runs in ONE shape, and it is the only one that can run it: two
 // responses of one page overlap only where a server answers two requests at the same time.

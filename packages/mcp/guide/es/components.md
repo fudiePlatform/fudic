@@ -165,6 +165,12 @@ Un handler, en cualquier elemento, es una referencia (`@click=@save`: `save` rec
 
 **Eventos dentro de un bucle: delega.** Un `@event` dentro de `@foreach` añade un listener por fila (`FUD1380`, un warning). Pon el handler en un elemento fuera del bucle, pásale la fila por su nombre en el bucle, y marca el elemento de la fila con `delegate:name="click"` (los eventos a los que sirve, separados por espacios; sin valor los sirve todos). La fila llega tipada, también dentro de un argumento (`@remove(p.id, p.name)`). `$p` es `FUD1383`; un marcador que ningún handler lee para ese evento es `FUD1381`; fuera de un bucle, `FUD0663`.
 
+**`$value`: el valor del control, tipado.** Como `$event`, solo existe en los argumentos de la llamada de un handler, y es el valor del control del que vino el evento: `<input type="checkbox" @change=@activate($value)>` le da a `activate` un `boolean`, `<input type="search" @input=@search($value)>` un `string`. Un `number` da `number | null` (vacío es `null`), un `range` `number`, un `file` `File | null` (con `multiple`, `readonly File[]`), un `<select multiple>` `string[]`, cualquier otro campo `string`. Delegado, lee el elemento marcado `delegate:<fila>` que sirve al handler, nunca el `target`: `<tbody @change=@activate(p, $value)>` con la casilla marcada `delegate:p="change"`. En un elemento sin valor (`<div>`, `<button>`, un tag de componente), en `bus:` o en `@fudic:*` es `FUD1462`; con `type=@expr`, `FUD1463`; marcas de tipos distintos para un handler, `FUD1464`.
+
+**Dos botones con el mismo evento en una fila: pon nombre a los handlers.** `<tbody @click.remove=@remove(p) @click.view=@view(p)>` y, en la fila, `<button delegate:p="click.remove">` y `<button delegate:p="click.view">`. El evento es lo de antes del `.`, el nombre lo de después (`[a-z][a-z0-9-]*`, si no `FUD1465`). Un handler con nombre solo existe delegado (`FUD1466` si no lee ninguna fila), una marca con nombre solo la lee el handler de ese nombre, y una sin nombre nunca un handler con nombre: el `click` de *View* nunca llega a *Remove*. Un listener por handler en el padre, tenga las filas que tenga.
+
+**Los eventos de un formulario salen del componente.** `fudic:result` y `fudic:error` cruzan el shadow root, así que el host de un componente oye lo que anuncian sus formularios: `<user-form @fudic:result=@added @fudic:error=@failed>`. El dato va tipado por lo que devuelven los `form:=@fn` del componente (`-> Person` da `added(person: Person)`), sumando lo que anuncian los componentes que usa; en un componente sin formularios el handler es un error. Un status que el formulario se queda (`catches`) se queda en el formulario y no se anuncia.
+
 ```fud path=src/components/app-choice/app-choice.fud
 @code {
   /** A row of buttons, one per option. Picking one calls `onPick` and announces `picked`. */
@@ -285,6 +291,8 @@ search.handle((ctx) => [{ id: 1, name: ctx.args.q }]);
   </template>
 </app-search>
 ```
+
+**Ficheros.** Un campo `file` de un formulario se liga a `<input type="file" control=@photoForm.photo>`, un `file[]` a uno con `multiple` (`FUD1484` / `FUD1485` si no casan; un input de fichero sobre un campo que no es fichero es `FUD1486`). El compilador escribe su `accept` con la regla del campo. `photoForm.photo.set(file)` pone un fichero desde código, como hace una zona de soltar. Mientras `form:=` envía, `photoForm.$progress()` es `{ loaded, total, phase }` (`"up"` y luego `"down"`) y `null` el resto del tiempo, para un `<progress>`; `photoForm.$cancel()` corta el envío. Un `task` tiene el mismo `progress()`, y `cancel()`. Declarar ficheros, y un componente que sube uno: topic `fudapi`.
 
 ## Formularios: un control form-associated
 

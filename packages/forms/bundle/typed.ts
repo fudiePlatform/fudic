@@ -27,3 +27,5 @@ export { bool } from '../src/typed/bool.js';
 export { str } from '../src/typed/str.js';
 export { date } from '../src/typed/date.js';
 export { arr } from '../src/typed/arr.js';
+export { file } from '../src/typed/file.js';
+export { files } from '../src/typed/files.js';

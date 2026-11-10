@@ -37,8 +37,8 @@ describe('snippets (SDD-75)', () => {
     });
     // The declarations with no snippet stay as keywords.
     expect(named(items('|'), 'paths')[0]!.kind).toBe(CompletionItemKind.Keyword);
-    expect(snippets(items('|'))).toEqual(DECLARATION_KEYWORDS.filter((k) => k in SNIPPETS.root));
-    expect(snippets(items('|'))).toHaveLength(Object.keys(SNIPPETS.root).length);
+    expect(snippets(items('|'))).toEqual([...DECLARATION_KEYWORDS.filter((k) => k in SNIPPETS.root), 'rule remote']);
+    expect(snippets(items('|'))).toHaveLength(Object.keys(SNIPPETS.root).length + 1);
   });
 
   it('criterion 2: no root snippet under a field; in a function, its own `form`', () => {
@@ -80,7 +80,7 @@ describe('snippets (SDD-75)', () => {
   });
 
   it('in a group, the snippets of a form; elsewhere, bare keywords', () => {
-    expect(snippets(items('form f\n  g  group\n    |'))).toEqual(['validate-on', 'summary']);
+    expect(snippets(items('form f\n  g  group\n    |'))).toEqual(['validate-on', 'summary', 'file field']);
     expect(snippets(items('chain\n  |'))).toEqual([]);
   });
 

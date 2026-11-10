@@ -7,3 +7,5 @@ export const max = rule({ id: "@fudic/forms/rules", name: "max", fails: [["max",
 export const minLength = rule({ id: "@fudic/forms/rules", name: "min-length", fails: [["min-length", ["n"]]] });
 export const maxLength = rule({ id: "@fudic/forms/rules", name: "max-length", fails: [["max-length", ["n"]]] });
 export const pattern = rule({ id: "@fudic/forms/rules", name: "pattern", fails: [["pattern", []]] });
+export const maxSize = rule({ id: "@fudic/forms/rules", name: "max-size", fails: [["max-size", ["n"]]] });
+export const accept = rule({ id: "@fudic/forms/rules", name: "accept", fails: [["accept", ["types"]]] });

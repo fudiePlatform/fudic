@@ -11,8 +11,10 @@
  */
 
 import { FUD1113 } from '@fudic/diagnostics';
-import type { DataShape, Diagnostic } from '../types/index.js';
+import type { StructuredDocument } from '../document/index.js';
+import type { DataShape, Diagnostic, LinkedField } from '../types/index.js';
 import { formSendDiagnostics } from './controls.js';
+import { fieldsOf, fileFieldDiagnostics, formFieldsOf, type FieldOf } from './file-fields.js';
 import { codeOfDocument, templateRootsOf } from './oxc-code.js';
 import type { ComponentGraph, DocumentGraph } from './resolve.js';
 
@@ -42,7 +44,24 @@ export function apiDiagnostics(graph: DocumentGraph): readonly Diagnostic[] {
     const functions = new Set(apis.flatMap((a) => a.api!.functions));
     out.push(...formSendDiagnostics(graph.entrySource, templateRootsOf(entry), functions));
   }
+  // A file input and its field (SDD-81 §3.7): over the fields the host could say.
+  out.push(...fileFieldDiagnostics(graph.entrySource, templateRootsOf(entry), (t) => graph.components.has(t), fieldsOf(apis)));
   return out;
+}
+
+/**
+ * `FUD1484`–`FUD1486` of one document, with no graph (SDD-81 §3.7): what the editor and the
+ * project check ask, holding the parse and the fields of the forms its links give — the same
+ * rule the build runs inside `apiDiagnostics`, so the three say the same thing.
+ */
+export function fileInputDiagnostics(
+  source: string,
+  document: StructuredDocument,
+  isComponent: (tag: string) => boolean,
+  forms: readonly Readonly<Record<string, Readonly<Record<string, LinkedField>>>>[],
+): readonly Diagnostic[] {
+  if (document.type !== 'component-document' && document.type !== 'route-document' && document.type !== 'page-document') return [];
+  return fileFieldDiagnostics(source, templateRootsOf(document), isComponent, formFieldsOf(forms));
 }
 
 /**
@@ -92,6 +111,15 @@ export function dataShapeOf(graph: ComponentGraph): DataShape | undefined {
 export function laterFieldsOf(graph: ComponentGraph): readonly string[] {
   const apis = 'serverApis' in graph ? (graph as DocumentGraph).serverApis : [];
   return apis.find((a) => a.api?.load === true)?.api?.later ?? [];
+}
+
+/**
+ * The fields of the forms the `.fudapi` of the graph's entry give, by node (SDD-81 §3.7): what a
+ * file input's `accept` is written from. Forms are names of the project, one each (`FUD1081`), so
+ * a component of the graph reads them off the entry's links as the entry does.
+ */
+export function apiFields(graph: ComponentGraph): FieldOf {
+  return fieldsOf('serverApis' in graph ? (graph as DocumentGraph).serverApis : []);
 }
 
 /**

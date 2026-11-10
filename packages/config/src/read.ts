@@ -17,6 +17,7 @@
 import { CONFIG_FILE, ID_PATTERN, PREFIX_PATTERN, STYLE_NAME_PATTERN } from './constants.js';
 import { API_DIR, BROWSER_DIR, DEFAULT_LOCALE, PIPES_DIR, SERVER_DIR } from '@fudic/conventions';
 import { FUD0725, type FUD0725Problem, type FileDiagnostic, type Span } from '@fudic/diagnostics';
+import { readServe, type ServeConfig } from './serve.js';
 
 /** What the file declares, with every default already filled. */
 export interface ProjectConfig {
@@ -91,6 +92,8 @@ export interface ProjectConfig {
    * declares none.
    */
   readonly guide?: GuideConfig;
+  /** How the app is served (SDD-81): a trusted proxy, the limits of an upload. Absent when the file declares none. */
+  readonly serve?: ServeConfig;
 }
 
 /** The `guide` of a `fudic.json`. Paths relative to the project root, inside it. */
@@ -177,6 +180,7 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
   const earlyHints = readEarlyHints(fields, ctx);
   const css = readCss(fields, ctx);
   const guide = readGuide(fields, ctx);
+  const serve = readServe(fields, ctx.diagnostics, (field) => fieldSpan(ctx.text, field));
 
   // Fields are NOT rescued one by one (§4.2). Identity is a unit, and half an identity is
   // worse than none: an `id` that got through alone would namespace caches under a name
@@ -200,6 +204,7 @@ export function readProjectConfig(root: string, io: ConfigIo): ConfigResult {
       earlyHints,
       css,
       ...(guide === undefined ? {} : { guide }),
+      ...(fields['serve'] === undefined ? {} : { serve }),
     },
     diagnostics: [],
   };

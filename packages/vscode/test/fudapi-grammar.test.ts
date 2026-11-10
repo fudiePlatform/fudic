@@ -181,3 +181,32 @@ describe('the .fudapi grammar — scopes', () => {
     expect(scopeAt(t, 1, '0')).toBe('constant.numeric.buffer.fudapi');
   });
 });
+
+describe('a remote rule (SDD-80 criterion 37)', () => {
+  it('paints where a rule runs, `remote` included, and `debounce` as a clause', async () => {
+    const t = await api('rule alias-taken\n  on field str\n  runs remote\n  debounce 300\n  use auth\n  fails alias-taken\nrule r\n  runs both');
+    expect(scopeAt(t, 2, 'runs')).toBe('keyword.other.clause.fudapi');
+    expect(scopeAt(t, 2, 'remote')).toBe('constant.language.runs.fudapi');
+    expect(scopeAt(t, 7, 'both')).toBe('constant.language.runs.fudapi');
+    expect(scopeAt(t, 3, 'debounce')).toBe('keyword.other.clause.fudapi');
+    expect(scopeAt(t, 3, '300')).toBe('constant.numeric.fudapi');
+    expect(scopeAt(t, 4, 'use')).toBe('keyword.other.clause.fudapi');
+  });
+});
+
+describe('files (SDD-81 criterion 33)', () => {
+  it('paints `file`, `file?`, `file[]` and `html` as types of the language', async () => {
+    const t = await api('form f\n  avatar  file?\n  docs  file[]\n  bio  html\nput save\n  doc  file\n  -> file');
+    expect(scopeAt(t, 1, 'file?')).toBe('support.type.primitive.fudapi');
+    expect(scopeAt(t, 2, 'file[]')).toBe('support.type.primitive.fudapi');
+    expect(scopeAt(t, 3, 'html')).toBe('support.type.primitive.fudapi');
+    expect(scopeAt(t, 5, 'file')).toBe('support.type.primitive.fudapi');
+  });
+
+  it('paints a size with its unit as a number', async () => {
+    const t = await api('form f\n  avatar  file?\n    max-size 2mb  "At most {n}."\n    max-size 1.5gb\n    max-size 500kb');
+    expect(scopeAt(t, 2, '2mb')).toBe('constant.numeric.fudapi');
+    expect(scopeAt(t, 3, '1.5gb')).toBe('constant.numeric.fudapi');
+    expect(scopeAt(t, 4, '500kb')).toBe('constant.numeric.fudapi');
+  });
+});

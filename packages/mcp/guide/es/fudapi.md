@@ -218,6 +218,110 @@ form personForm
 - Un formulario llega a la vista de todo `.fud` que enlaza un `.fudapi` cuya función lo usa, por su
   nombre: `<form control=@personForm form:=@create>`. Enlazarlo es el topic view.
 
+## Ficheros
+
+```fudapi path=src/components/app-photo/app-photo.fudapi
+# A photo: up with a form, back as a link an <img> paints.
+put upload
+  form photoForm
+  -> Photo
+
+get photo
+  id  i32
+  -> file?
+
+form photoForm
+  title  str = ""
+  photo  file
+    required                        "Choose a photo."
+    accept "image/png, image/jpeg"  "A PNG or a JPEG."
+    max-size 2mb                    "At most {n}."
+
+type Photo
+  id     i32
+  title  str
+```
+
+```ts path=src/server/components/app-photo/app-photo.ts
+import { photo, upload } from 'fudic:components/app-photo/app-photo';
+
+const photos = new Map<number, File>();
+
+upload.handle(async (ctx) => {
+  // A File, its type and size already checked. It lives while the handler runs: keep its bytes.
+  const { title, photo: chosen } = ctx.form.$value();
+  const id = photos.size + 1;
+  photos.set(id, new File([await chosen.arrayBuffer()], chosen.name, { type: chosen.type }));
+  return { id, title };
+});
+
+photo.handle((ctx) => photos.get(ctx.args.id));
+```
+
+```fud path=src/components/app-photo/app-photo.fud
+<link rel="server" href="./app-photo.fudapi">
+
+@code {
+  /** Uploads a photo with its bar, and shows it once saved. */
+  import { signal } from "@fudic/core";
+  import type { Photo } from "fudic:components/app-photo/app-photo";
+
+  const saved = signal<Photo[]>([]);
+
+  function done(p: Photo) {
+    saved.set([p]);
+    photoForm.$reset();
+  }
+
+  function cancel() {
+    photoForm.$cancel();
+  }
+}
+
+<app-photo>
+  <template shadowrootmode="open">
+    <form control=@photoForm form:=@upload @fudic:result=@done>
+      <label for="title">Title</label>
+      <input id="title" control=@photoForm.title>
+      <label for="photo">Photo</label>
+      <input id="photo" type="file" control=@photoForm.photo>
+      <small error=@photoForm.photo></small>
+      @if (photoForm.$progress() !== null) {
+        <progress aria-label="Uploading" value=@(photoForm.$progress()?.loaded) max=@(photoForm.$progress()?.total)></progress>
+        <button type="button" @click=@cancel>Cancel</button>
+      }
+      <button>Upload</button>
+    </form>
+    @foreach (const p of saved()) key (p.id) {
+      <img src=@photo.url({ id: p.id }) alt=@p.title>
+    }
+  </template>
+</app-photo>
+```
+
+- `file`, `file?` y `file[]` son el `File` de la plataforma: `File`, `File | undefined`,
+  `readonly File[]`; en un formulario `File | null` (`File` con `required`) y `readonly File[]`.
+- Dónde: un argumento de cuerpo de `post`, `put`, `patch`, `delete`; un campo de formulario; el
+  `->` de cualquier función; un `type` que solo se usa ahí. En los argumentos de una `get` (viajan
+  en la URL) es `FUD1480`; en `load`, `layout` o `paths`, `FUD1481`; `= valor` en él, `FUD1482`;
+  un parámetro de `rule` o de `fails`, `FUD1483`.
+- Reglas: `max-size n` con `kb`, `mb`, `gb` (base 1024; en un `file[]`, cada fichero) y
+  `accept "<tipos>"` con la sintaxis del atributo HTML (`image/png`, `image/*`, `.pdf`). En un
+  `file[]`, `min-length` / `max-length` cuentan ficheros y `required` rechaza `[]`. Corren en el
+  navegador al elegir, y otra vez en el servidor mientras lee.
+- En el cable, una función que puede llevar un fichero es siempre `multipart/form-data`: primero
+  `$args`, el resto de argumentos en el formato de la función, y luego cada fichero con su camino
+  por nombre (`photo`, `docs.0`, `doc.attachment`). Desde fuera, contra una función `use json`:
+  `curl -X PUT -H 'x-fudic-csrf: 1' -F '$args=@args.json;type=application/json' -F photo=@yo.png <url>`
+  (la cabecera solo si su cadena usa `csrf`). Una llamada multipart de otro sitio es un `403`.
+- Límites: 10 MB por fichero salvo que su campo diga `max-size`, 20 ficheros, 1 MB de `$args`; se
+  cambian en `fudic.json`: `"serve": { "uploads": { "maxFileSize": "50mb", "maxFiles": 10, "maxArgs": "1mb" } }`.
+  Pasado uno, un `413` que nombra el campo, antes de leer el resto.
+- `-> file` responde con el fichero como cuerpo: su tipo, su nombre, su tamaño. Un `-> file?` que
+  devuelve `undefined` es un `204`. Un `type` que lleva ficheros vuelve entero como multipart.
+- Toda `get` tiene `url(args)`, para un `href` o un `src`: `<img src=@photo.url({ id: p.id })>`,
+  `<a href=@report.url() download>`. El navegador la pide sin script.
+
 ## Reglas y patterns
 
 ```fudapi path=src/rules/people.fudapi
@@ -243,6 +347,30 @@ emailTaken.check(async (value) => !taken.has(value));
   `src/server`; `runs both`: en `src/browser`, ejecutada en ambos lados. `.check` devuelve `true` para un
   valor válido (con varios `fails`, `true` o el código que falla).
 - `pattern <name>  <regex>`: el resto de la línea (`#` incluido), que debe coincidir entero; `""` pasa. `email` viene incorporado.
+
+```fudapi path=src/rules/aliases.fudapi
+# The alias is taken. The browser asks the server while the user types; the submit checks it again.
+rule alias-taken
+  on field str
+  runs remote
+  debounce 300
+  fails alias-taken
+```
+
+- `runs remote`: `.check` va en `src/server`, como con `runs server`, y el navegador la pregunta
+  mientras se escribe — `POST /_fudic/rule/<id>/<name>` con el valor que la regla vigila y los
+  parámetros de ese uso, nunca el formulario entero; en binario, en JSON con `use json`.
+  `debounce <ms>` (300 si no se escribe) es la espera tras el último cambio; `async` va implícito.
+  Una pregunta que falla (red, 401, 429, 500) pasa como válida: el envío vuelve a ejecutar la regla
+  en el servidor. En la vista, `personForm.alias.pending()` (y `$pending()` del formulario) es
+  `true` hasta que contesta.
+- Una regla `runs server` o `runs remote` admite `use` y `skip` como una función (`FUD1461` en una
+  `runs both`). Corren alrededor de su check al enviar y al preguntar, y su `.check` recibe un
+  tercer argumento, `ctx`, con lo que añaden: `(value, params, ctx) => …` lee `ctx.user` tras
+  `use auth`.
+- **Ojo con lo que cuenta una regla remota.** Un endpoint que contesta «¿existe este email?» le dice
+  a cualquiera quién está registrado. Si importa, ponle un middleware (`use rate-limit`, escrito por
+  ti).
 
 ## Middlewares y la cadena
 
@@ -271,9 +399,9 @@ auth.server((ctx, next) => {
 ```fudapi path=src/http.fudapi
 # The global chain: every function of the app walks it, load included.
 chain
-  use csrf
   use error-pages
     routes  401 /
+  use csrf
 ```
 
 - Un middleware tiene `client` (`.client` en `src/browser`), `server` (`.server` en `src/server`)
@@ -282,7 +410,9 @@ chain
 - Tres niveles, de fuera hacia dentro: `chain` en `src/http.fudapi` (la app), `chain` en otro fichero de
   contrato (ese fichero), `use` / `skip` en una función. Un `chain` por fichero. `skip x` de un middleware
   que la función no hereda es `FUD1086`. Los parámetros van en líneas bajo el `use`
-  (`FUD1087`): `routes  401 /` envía un 401 a `/`.
+  (`FUD1087`): `routes  401 /` envía un 401 a `/`. En una lista la primera es la más exterior:
+  `error-pages` antes que `csrf`, así ve también lo que falla en el propio `csrf`, y `csrf` reintenta
+  un token caducado antes de que un `403` se lleve a ningún sitio.
 - Incorporados con `@fudic/http`: `csrf` (rechaza una llamada que la página de otro sitio hace con las
   cookies del usuario), `error-pages` (un error que nadie capturó va a `_error.fud`, o a sus `routes`) y
   `json`. `fudic add http` escribe un `src/http.fudapi` con `use csrf`.

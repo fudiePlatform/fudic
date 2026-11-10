@@ -19,6 +19,7 @@ import type {
 } from '@fudic/compiler';
 import { codeNames, collectTemplateJs, planDelegation, span, unwrapParens } from '@fudic/compiler';
 import { busReceivers, emitBusReceivers } from './bus-receivers.js';
+import { emitFormResults, formResults } from './form-results.js';
 import { codeChunks } from './code.js';
 import { emitDataDeclaration } from './data.js';
 import { emitImports, emitSnippetImports, templateContent } from './imports.js';
@@ -136,6 +137,7 @@ export function emitClientVirtual(
   if (ast !== undefined) {
     emitBusReceivers(w, fudPath, busReceivers(source, doc, template.topLevel ?? new Set(), ast));
   }
+  emitFormResults(w, formResults(source, doc, servers));
 
   return w.build(clientFileName(fudPath), 'typescript');
 }

@@ -46,7 +46,19 @@ export function contractFunctionsAt(cached: CachedDocument, offset: number, apis
   const written = task?.[1] ?? form?.[1];
   if (written === undefined) return undefined;
 
+  const names = linkedFunctions(cached, apis);
+  if (names.size === 0) return undefined;
+  return { names, prefix: task === null ? '@' : '', span: { start: offset - written.length, end: offset } };
+}
+
+/**
+ * The functions the `.fudapi` files this one links declare: names the template sees as much as
+ * those of its `@code` — `@avatar.url(…)`, `@click=@login` — because the projection imports them.
+ * None without the contract files to read them from.
+ */
+export function linkedFunctions(cached: CachedDocument, apis: ApiFiles | undefined): ReadonlySet<string> {
   const names = new Set<string>();
+  if (apis === undefined) return names;
   for (const link of serverLinksOf(cached.document)) {
     const attribute = attributeOf(link, 'href');
     const value = attribute === undefined ? undefined : attributeValueSpan(cached.source, attribute);
@@ -56,6 +68,5 @@ export function contractFunctionsAt(cached: CachedDocument, offset: number, apis
       if (declaration.kind === 'fn') names.add(declaration.name.text);
     }
   }
-  if (names.size === 0) return undefined;
-  return { names, prefix: task === null ? '@' : '', span: { start: offset - written.length, end: offset } };
+  return names;
 }

@@ -17,8 +17,10 @@ import type {
   TypeExpr,
   UseClause,
 } from '@fudic/api';
+import { PRIMITIVES } from '@fudic/api';
 
-const PRIMITIVES = new Set(['str', 'html', 'bool', 'date', 'uuid', 'u8', 'i8', 'u16', 'i16', 'u32', 'i32', 'f32', 'f64', '*', 'pattern']);
+/** The names a type is written with that are no project type: the language's, and what a rule's `on` and parameters add. */
+const BUILT_IN: ReadonlySet<string> = new Set([...PRIMITIVES, '*', 'pattern']);
 
 export interface ApiRef {
   readonly name: Name;
@@ -28,14 +30,25 @@ export interface ApiRef {
 }
 
 export function apiRefs(file: ApiFile, index: ApiIndex): readonly ApiRef[] {
+  return walkRefs(file, index).refs;
+}
+
+/** Every type of the language a `.fudapi` writes (`str`, `file`), by its name: what has a hover of its own. */
+export function builtInTypes(file: ApiFile, index: ApiIndex): readonly Name[] {
+  return walkRefs(file, index).builtIns;
+}
+
+function walkRefs(file: ApiFile, index: ApiIndex): { readonly refs: readonly ApiRef[]; readonly builtIns: readonly Name[] } {
   const refs: ApiRef[] = [];
+  const builtIns: Name[] = [];
   const use = (name: Name, kind: ProjectKind): void => {
     refs.push({ name, kind, declaration: false });
   };
   const type = (t: TypeExpr): void => {
     switch (t.kind) {
       case 'named':
-        if (!PRIMITIVES.has(t.name.text)) use(t.name, 'type');
+        if (BUILT_IN.has(t.name.text)) builtIns.push(t.name);
+        else use(t.name, 'type');
         return;
       case 'list':
         return type(t.element);
@@ -127,5 +140,5 @@ export function apiRefs(file: ApiFile, index: ApiIndex): readonly ApiRef[] {
         break;
     }
   }
-  return refs.sort((a, b) => a.name.span.start - b.name.span.start);
+  return { refs: refs.sort((a, b) => a.name.span.start - b.name.span.start), builtIns };
 }

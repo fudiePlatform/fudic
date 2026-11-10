@@ -194,8 +194,8 @@ export function delegateContextAt(
  * An event being typed inside the value of a marker: `delegate:p="cl|"`, `delegate:p="change |"`.
  *
  * The value is a list of event names separated by blanks (decision 176), so only the word under
- * the cursor is replaced. A name may hold a `-` or a `:` — `my-event`, `fudic:result` — and both
- * belong to the word.
+ * the cursor is replaced. A name may hold a `-`, a `:` or the `.` of a named handler — `my-event`,
+ * `fudic:result`, `click.borrar` (decision 179) — and all three belong to the word.
  */
 export interface DelegateValueContext extends PartialName {
   /** The marker's name, after `delegate:`. */
@@ -216,7 +216,7 @@ export function delegateValueContextAt(
   const attribute = region.attribute!;
   if (typeof attribute.name !== 'string' || !attribute.name.startsWith('delegate:')) return undefined;
 
-  const start = runStart(source, offset, /[-\w:]/u);
+  const start = runStart(source, offset, /[-\w:.]/u);
   const value = source.slice(region.span.start, region.span.end);
   const word = source.slice(start, offset);
   return {
@@ -866,11 +866,44 @@ export function handlerContextAt(
 
   // `@name=`, an optional quote, the `@` that opens the handler, and what has been written of
   // it. A chain is allowed (`@click=@this.onPick`), so the dot is part of the name.
-  const match = /@[A-Za-z][-\w]*[ \t]*=[ \t]*["']?@([\w$.]*)$/.exec(source.slice(0, offset));
+  // The event may carry the name of its handler or a namespace: `@click.borrar=@`,
+  // `@fudic:result=@` (SDD-80 §4.8).
+  const match = /@[A-Za-z][-\w]*(?:[.:][-\w]+)*[ \t]*=[ \t]*["']?@([\w$.]*)$/.exec(source.slice(0, offset));
   if (match === null) return undefined;
 
   const text = match[1] as string;
   return { span: span(offset - text.length, offset), text };
+}
+
+/** The arguments of a handler's call, and the attribute of the handler. */
+export interface HandlerArguments extends PartialName {
+  /** The `@event=` attribute whose call the cursor is in. */
+  readonly attribute: Span;
+}
+
+/**
+ * Inside the ARGUMENTS of a handler's call: `@change=@activar(p, |)` (SDD-80 §4.8). The one place
+ * `$event` and `$value` exist, so the one place they are offered. The word being typed keeps its
+ * `$`: `$va|` is `$value` half written.
+ *
+ * Text, read from the start of the value: the call is open when the `(` after the callee has not
+ * been closed before the caret.
+ */
+export function handlerArgumentsAt(source: string, offset: number, region: Region): HandlerArguments | undefined {
+  const attribute = region.attribute;
+  if (attribute === undefined || typeof attribute.name !== 'string' || !attribute.name.startsWith(EVENT_PREFIX)) return undefined;
+  const value = attributeValueSpan(source, attribute);
+  if (value === undefined || offset < value.start) return undefined;
+
+  const written = source.slice(value.start, offset);
+  const callee = /^@[\w$.]+\(/u.exec(written);
+  if (callee === null) return undefined;
+  let depth = 0;
+  for (const char of written.slice(callee[0].length - 1)) depth += char === '(' ? 1 : char === ')' ? -1 : 0;
+  if (depth <= 0) return undefined;
+
+  const text = /[\w$]*$/u.exec(written)![0];
+  return { span: span(offset - text.length, offset), text, attribute: attribute.span };
 }
 
 /**
@@ -974,7 +1007,9 @@ export function bareBindingValueContextAt(
   // value. The tail excludes `@` on purpose: once one is there the position belongs to
   // `handlerContextAt` or `expressionValueContextAt`, whose lists are real. And it cannot BEGIN
   // with a `.`: `.name=.` is `FUD0056`, not a value being typed — see `brokenValueContextAt`.
-  const match = /([.@])[\w-]*[ \t]*=[ \t]*["']?([\w$][\w$.]*|)$/.exec(source.slice(0, offset));
+  // An event may carry a handler name or a namespace, `@click.borrar=`, `@fudic:result=`: read
+  // from its `@`, so the `.borrar` is never taken for a prop (SDD-80 §4.8).
+  const match = /([.@])[\w-]*(?:[.:][\w-]+)*[ \t]*=[ \t]*["']?([\w$][\w$.]*|)$/.exec(source.slice(0, offset));
   if (match === null) return undefined;
 
   const text = match[2] as string;

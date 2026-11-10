@@ -10,6 +10,9 @@
  * - Criterion 19: an error in a handler names the `.ts` of `src/server` and its line.
  * - Criterion 20: Oxc never reads `src/server` nor `src/browser` (a spy on the parser).
  * - Criterion 21: nothing of `src/server` reaches the client bundle.
+ * - SDD-80, criteria 6, 7 and 9: a `runs remote` rule answers its question at
+ *   `/_fudic/rule/<id>/<name>`, its check given what its `use auth` adds; a `runs server` rule
+ *   has no route; the table of `functions.mjs` lists the question; its check stays on the server.
  */
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -109,6 +112,24 @@ const AUTH_SERVER = `import { auth } from 'fudic:middlewares/auth';
 auth.server((ctx, next) => next(Object.assign(ctx, { user: ctx.headers.get('x-user') ?? 'nadie' })));
 `;
 
+const RULES_API = `rule alias-taken
+  on field str
+  runs remote
+  use auth
+  fails alias-taken
+
+rule email-taken
+  on field str
+  runs server
+  fails email-taken
+`;
+
+const RULES_SERVER = `import { aliasTaken, emailTaken } from 'fudic:rules/people';
+// What auth added is typed: ctx.user is a str (SDD-80 criterion 9).
+aliasTaken.check((value, _params, ctx) => value !== 'admin' && value !== ctx.user && 'RULE_SECRET_MARK'.length > 0);
+emailTaken.check(() => true);
+`;
+
 const PLAIN_SERVER = `import { load } from 'fudic:routes/plain';
 load.handle(() => ({ n: 7 }));
 `;
@@ -154,6 +175,8 @@ beforeAll(async () => {
     'src/server/secret.ts': "export const SECRET = 'SERVER_SECRET_MARK';\n",
     'src/server/auth.ts': AUTH_SERVER,
     'src/server/plain.ts': PLAIN_SERVER,
+    'src/rules/people.fudapi': RULES_API,
+    'src/server/rules.ts': RULES_SERVER,
   });
   await build(config(root));
   server = await preview(config(root));
@@ -230,6 +253,40 @@ describe('the functions, served by preview from functions.mjs, in fud-bin', () =
   });
 });
 
+describe('SDD-80: the question of a remote rule, served by preview', () => {
+  /** The canonical text of the rule's signature (SDD-80 §8.2.2), written by hand. */
+  const ALIAS = 'rule(str)|params()|->str?';
+  const QUESTION: Readonly<Record<string, Ty>> = { value: 'str', params: { fields: () => ({}) } };
+  const ask = (name: string, value: string, headers: Record<string, string> = {}) =>
+    fetch(`${origin}/_fudic/rule/rules/people/${name}`, binInit(ALIAS, QUESTION, { value, params: {} }, { method: 'POST', headers }));
+
+  it('criterion 6: a taken alias answers its code, a free one null; the check reads ctx.user', async () => {
+    const taken = await ask('alias-taken', 'admin');
+    expect(taken.status).toBe(200);
+    expect(await binValue(taken, { opt: 'str' })).toBe('alias-taken');
+    expect(await binValue(await ask('alias-taken', 'pedro'), { opt: 'str' })).toBeUndefined();
+    expect(await binValue(await ask('alias-taken', 'ana', { 'x-user': 'ana' }), { opt: 'str' })).toBe('alias-taken');
+  });
+
+  it('criterion 7: a runs server rule has no route; another signature is a 412', async () => {
+    expect((await ask('email-taken', 'a@b.es')).status).toBe(404);
+    const stale = await fetch(
+      `${origin}/_fudic/rule/rules/people/alias-taken`,
+      binInit(`${ALIAS}x`, QUESTION, { value: 'admin', params: {} }, { method: 'POST' }),
+    );
+    expect(stale.status).toBe(412);
+  });
+
+  it('functions.mjs lists the question for an adapter to mount, and not the server rule', async () => {
+    const mod = (await import(pathToFileURL(join(root, '.fudic/edge/functions.mjs')).href)) as {
+      functions: readonly { url: string; method: string }[];
+    };
+    const urls = mod.functions.map((f) => `${f.method} ${f.url}`);
+    expect(urls).toContain('POST /_fudic/rule/rules/people/alias-taken');
+    expect(urls.some((u) => u.includes('email-taken'))).toBe(false);
+  });
+});
+
 describe('criterion 19: sourcemaps of the server bundle', () => {
   it('a throw in a handler names src/server/blog.ts and its line', async () => {
     const edge = join(root, '.fudic/edge');
@@ -255,5 +312,7 @@ describe('criteria 20 and 21: nobody reads the handlers, and the browser never g
     const client = filesUnder(join(root, 'dist')).map((f) => f.text).join('\n');
     expect(client).not.toContain('SERVER_SECRET_MARK');
     expect(client).not.toContain('BOOM_MARK');
+    // Nor the check of a rule, remote or not (SDD-80 §5).
+    expect(client).not.toContain('RULE_SECRET_MARK');
   });
 });

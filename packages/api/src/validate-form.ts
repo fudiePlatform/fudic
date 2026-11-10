@@ -11,6 +11,8 @@ import {
   FUD1084,
   FUD1085,
   FUD1094,
+  FUD1482,
+  FUD1487,
   FUD1095,
   FUD1098,
   FUD1260,
@@ -29,9 +31,12 @@ import type {
   StringLiteral,
   SummaryBlock,
   TypeExpr,
+  TypedField,
 } from './ast.js';
 import { typeText, type ApiIndex, type Declared } from './index-api.js';
 import { checkType, fitsWidth, isNumeric, literalFits } from './types-check.js';
+import { ruleCall } from './rule-call.js';
+import { SIZE_LIKE } from './type.js';
 
 interface Ctx {
   readonly index: ApiIndex;
@@ -57,7 +62,9 @@ function members(list: readonly FormMember[], c: Ctx): void {
 
 function field(f: FieldDecl, c: Ctx): void {
   checkType(f.type, c.index, {}, c.out);
-  if (f.initial !== undefined && !initialFits(f.initial, f.type)) {
+  // A file field starts empty: there is nothing to write as its value (SDD-81 §3.1).
+  if (f.initial !== undefined && isFile(f.type)) c.out.push(FUD1482({ span: f.initial.span }));
+  else if (f.initial !== undefined && !initialFits(f.initial, f.type)) {
     c.out.push(FUD1094({ span: f.initial.span, value: written(f.initial), type: typeText(f.type) }));
   }
   if (f.range !== undefined) placeholders(f.range, ['min', 'max'], c);
@@ -73,16 +80,16 @@ function field(f: FieldDecl, c: Ctx): void {
 }
 
 /** The rules an argument takes: the built-ins of `@fudic/forms` (SDD-67 §3.5). */
-const ARG_RULES: ReadonlySet<string> = new Set(['required', 'min', 'max', 'min-length', 'max-length', 'pattern']);
+const ARG_RULES: ReadonlySet<string> = new Set(['required', 'min', 'max', 'min-length', 'max-length', 'pattern', 'max-size', 'accept']);
 
-/** Whether a declared rule is one of the six of `@fudic/forms`, the only ones an argument takes. */
+/** Whether a declared rule is one of the eight of `@fudic/forms`, the only ones an argument takes. */
 export const isArgRule = (found: Declared<RuleDecl>): boolean =>
   typeof found.source.origin === 'object' && found.source.origin.package === '@fudic/forms' && ARG_RULES.has(found.decl.name.text);
 
 /**
  * The rules under a function's argument, checked as those under a field (SDD-67 §3.5): they
  * exist, apply to its type, take those arguments and fill their text; and a rule that is not one
- * of the six of `@fudic/forms` is `FUD1260`.
+ * of the eight of `@fudic/forms` is `FUD1260`.
  */
 export function checkArgRules(arg: ArgDecl, index: ApiIndex, out: SourceDiagnostic[]): void {
   const c: Ctx = { index, out };
@@ -146,15 +153,23 @@ function args(use: RuleUse, rule: RuleDecl, c: Ctx): void {
   const report = (problem: 'many' | 'few' | 'type'): void => {
     c.out.push(FUD1084({ span: use.name.span, rule: use.name.text, signature, problem }));
   };
-  if (use.args.length > rule.params.length) report('many');
-  else if (use.args.length < rule.params.length) report('few');
-  else if (use.args.some((a, i) => !literalFits(a, rule.params[i]!.type, c.index))) report('type');
+  const call = ruleCall(use, rule.params);
+  // A size whose unit is not one (SDD-81 §3.2): said as such, not as an argument of the wrong type.
+  const badSize = call.args.find((a, i) => a.kind === 'word' && SIZE_LIKE.test(a.text) && isNumericParam(rule.params[i]));
+  if (badSize !== undefined && badSize.kind === 'word') c.out.push(FUD1487({ span: badSize.span, text: badSize.text }));
+  else if (call.args.length > rule.params.length) report('many');
+  else if (call.args.length < rule.params.length) report('few');
+  else if (call.args.some((a, i) => !literalFits(a, rule.params[i]!.type, c.index))) report('type');
 
-  if (use.text === undefined) return;
+  if (call.text === undefined) return;
   const offered = rule.fails.flatMap((f) => f.params.map((p) => p.text));
-  if (rule.runs?.value.text === 'server') offered.push('detail');
-  placeholders(use.text, offered, c);
+  if (rule.runs?.value.text === 'server' || rule.runs?.value.text === 'remote') offered.push('detail');
+  placeholders(call.text, offered, c);
 }
+
+/** Whether a rule parameter takes a number: where a size may be written. */
+const isNumericParam = (param: TypedField | undefined): boolean =>
+  param?.type.kind === 'named' && isNumeric(param.type.name.text);
 
 /** Reports the first `{x}` of a text that is not among `offered` (`FUD1085`). */
 function placeholders(text: StringLiteral, offered: readonly string[], c: Ctx): void {
@@ -268,4 +283,10 @@ function expect(expr: Expr, kind: Kind, op: string, scope: readonly FormMember[]
   if (got === kind) return true;
   mismatch(expr.span, op, c);
   return false;
+}
+
+/** `file`, `file?` or `file[]`: a field the user fills by choosing files. */
+export function isFile(type: TypeExpr): boolean {
+  const inner = type.kind === 'optional' ? type.inner : type.kind === 'list' ? type.element : type;
+  return inner.kind === 'named' && inner.name.text === 'file';
 }

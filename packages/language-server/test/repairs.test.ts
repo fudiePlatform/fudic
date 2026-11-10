@@ -61,7 +61,21 @@ const FILES: Readonly<Record<string, string>> = {
   '/p/layouts/_layout.fud': LAYOUT,
   '/p/layouts/_frame.fud': FRAME_LAYOUT,
   '/p/snippets/ui.fud': UI,
+  // A contract with a form of files (SDD-81), for the file inputs bound to it.
+  '/p/src/components/up-load.fudapi': 'put save\n  form upForm\n\nform upForm\n  avatar  file?\n  docs  file[]\n  name  str\n',
 };
+
+/** A component whose form binds `controls` (SDD-81). */
+const upload = (controls: string): string => `<link rel="server" href="./up-load.fudapi">
+<up-load>
+  <template shadowrootmode="open">
+    <form control=@upForm form:=@save>
+      ${controls}
+    </form>
+  </template>
+</up-load>
+`;
+const UPLOAD = '/p/src/components/up-load.fud';
 
 /**
  * A TypeScript over one projection, as the server's: the projection and the globals in memory,
@@ -313,6 +327,10 @@ describe('repairsFor answers what the editor offers, with no server (criterion 9
       source: component('app-head').replace('shadowrootmode="open"', 'shadowrootmode="open" shadowrootadoptedstylesheets="h1"'),
       path: '/p/components/app-head.fud',
     },
+    // A file input against its field (SDD-81 criterion 29).
+    FUD1484: { source: upload('<input type="file" control=@upForm.avatar multiple>'), path: UPLOAD },
+    FUD1485: { source: upload('<input type="file" control=@upForm.docs>'), path: UPLOAD },
+    FUD1486: { source: upload('<input type="file" control=@upForm.name>'), path: UPLOAD },
   };
 
   it('has a sample for every code of the table', () => {

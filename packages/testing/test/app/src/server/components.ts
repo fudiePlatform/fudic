@@ -8,6 +8,7 @@ import { whoami } from 'fudic:components/x-guarded';
 import { greet } from 'fudic:components/x-hello';
 import { save } from 'fudic:components/x-save';
 import { stamp } from 'fudic:components/x-stamp';
+import { upload } from 'fudic:components/x-upload';
 import { visit } from 'fudic:components/x-visits';
 import { greetingFor, handled } from '../data/greetings';
 import { NOW } from '../services/now';
@@ -24,6 +25,8 @@ greet.handle((ctx) => {
 save.handle(() => 'saved');
 
 stamp.handle(() => inject(NOW));
+
+upload.handle((ctx) => ({ name: ctx.args.doc.name, size: ctx.args.doc.size }));
 
 visit.handle((ctx) => {
   const visits = Number(ctx.cookies.get('visits') ?? '0') + 1;

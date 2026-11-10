@@ -84,9 +84,18 @@ const EXCEPTIONS = {
    */
   otherRealm: {
     piece: 'ssr/index',
-    modules: /^packages\/di\/src\//,
-    why: '§4.10: the worker cannot import, so the renderer it links is CommonJS with `@fudic/di` inside it. Documents import DI as pieces; the worker cannot. Two realms, two module systems, and the bytes twice on the origin is the price.',
+    // DI, and the three stateless helpers the renderer shares with `dom/browser`: the URL
+    // guard, the HTML escape and the attribute spread. Their marks come from `Symbol.for`
+    // precisely so that two copies agree (`url.ts`, `html.ts`).
+    modules: /^packages\/(di\/src\/|dom\/src\/(url|html|attrs)\.ts$)/,
+    why: '§4.10: the worker cannot import, so the renderer it links is CommonJS with `@fudic/di` and the adapter helpers inside it. Documents import them as pieces; the worker cannot. Two realms, two module systems, and the bytes twice on the origin is the price.',
   },
+  /**
+   * `@fudic/conventions` is constants — URL prefixes, header and media-type names — and every
+   * piece that speaks to the server inlines the few it needs. There is no state to split and
+   * nothing a frontier could save: a piece for them would weigh less than its own request.
+   */
+  inlinedConstants: /^packages\/conventions\/dist\//,
   unpieced: [
     {
       match: /^@fudic\/transport:(?!.*\/urls\.ts$)/,
@@ -113,6 +122,22 @@ const EXCEPTIONS = {
       why: 'BUG-57: the server half of `@fudic/http` — serving the contracts, running `load`, the request of a handler, the server half of CSRF and the signature a backend computes. None of it reaches a browser; the browser half is `http/contract` and `http/json`.',
     },
     {
+      match: /^@fudic\/forms:src\/contract\/rule\.ts:(remoteRule|runRulesWith)$/,
+      why: 'SDD-80: the server half of a `runs remote` rule — the registry its route looks rules up in, and the runner `@fudic/http` installs for the middlewares around a check. Only `@fudic/http` on the server calls them; the browser half is `forms/remote`.',
+    },
+    {
+      match: /^@fudic\/dom:src\/(url\.ts:(isTrustedUrl|safeUrl|guardUrl|INERT_URL)|html\.ts:(isTrustedHtml|htmlOf)|attrs\.ts:)/,
+      why: 'The adapter\'s own helpers: `dom/browser` and the renderer call them inside themselves, and the emit reaches the guard as `io.guardUrl`, never by name. What an author imports — `trustedUrl`, `trustedHtml` — is published from `dom/browser`.',
+    },
+    {
+      match: /^@fudic\/http:src\/(cookies\.ts|errors\.ts:CODE_HEADER$|contract\/fn\.ts:contractIds$|wire\/frames\.ts:)/,
+      why: 'Server and tooling halves of `@fudic/http`: cookies are written on a request context, `CODE_HEADER` is inlined in the client codec that reads it, `contractIds` is for `@fudic/testing`, and the frames are written by the server and read inside the Service Worker, where `@fudic/transport` bundles them (§4.10).',
+    },
+    {
+      match: /^@fudic\/i18n:src\/(catalog|icu|compiled-away)\.ts:/,
+      why: 'SDD-58: catalogs and ICU messages are compiled at build time by the compiler, the CLI, the plugin and the language server, and `t` is replaced in every module of a locale. None of it reaches a browser.',
+    },
+    {
       match: /^@fudic\/ssr:/,
       why: '§4.10: the renderer is one piece, `ssr/index`, and only the Service Worker asks for it — it enters `builtins` under the names `src/index.ts` exports, resolved by the linker the worker already has and never by a URL a browser writes.',
     },
@@ -120,8 +145,11 @@ const EXCEPTIONS = {
   underweight: [
     { piece: 'dom/emit', why: 'No siblings: `@fudic/dom` publishes an adapter, a hydration walk and this, and none of the three is an alternative to another — whoever paints is not thereby whoever dispatches.' },
     { piece: 'di/token', why: 'No siblings, and identity IS the object: a second copy would be a second set of tokens that compare unequal to the first.' },
-    { piece: 'di/seed', why: 'Holds the table a page publishes, hung off the root container. Merging it into a sibling would drag that sibling into every route that seeds.' },
-    { piece: 'forms/flags', why: 'Holds state, and it is the whole piece: the two `Symbol`s that mark a rule server-only or asynchronous. Two copies and a rule marked through one goes unrecognised by the other — a server rule would run on the client, an async one would be called by the validity. Reached by `control`, `form`, `run-rule` and the validators.' },
+    { piece: 'di/ambient', why: 'State that must not exist twice: the one variable `resolve` and `seed` read the installed container through.' },
+    { piece: 'core/owner', why: 'State that must not exist twice: `owned` collects what `own` registers, from `effect`, `task` and every route chunk.' },
+    { piece: 'core/pipe', why: 'SDD-71 §4.3: what the presets share. Merged into one preset, every other preset would download that one.' },
+    { piece: 'core/date', why: 'SDD-71 §4.3: one piece per preset, so a page downloads only the `Intl` formatter it formats with.' },
+    { piece: 'core/list', why: 'SDD-71 §4.3: one piece per preset, so a page downloads only the `Intl` formatter it formats with.' },
   ],
 };
 
@@ -301,6 +329,7 @@ export const runChecks = (root = '.') => {
     ) {
       continue;
     }
+    if (EXCEPTIONS.inlinedConstants.test(module)) continue;
     const allowed = EXCEPTIONS.sharedModules.find(
       (e) => e.module === module && [...pieces].sort().join() === [...e.pieces].sort().join(),
     );

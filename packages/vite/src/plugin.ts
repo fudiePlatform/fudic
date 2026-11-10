@@ -9,26 +9,20 @@
  */
 
 import { existsSync, readFileSync, realpathSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
-import type { ServerResponse } from 'node:http';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import { dirname, join, relative, resolve as resolvePath } from 'node:path';
 import { type EnvironmentModuleGraph, type Logger, type Plugin, type ViteDevServer, transformWithOxc } from 'vite';
 import {
-  applyNonce,
   createUrlResolver,
-  cspFor,
-  newNonce,
   DEFAULT_CSP,
-  type ManifestFile,
-  type RouteRecord,
 } from '@fudic/transport';
 import { type FudicOptions, type ResolvedOptions, resolveOptions } from './options.js';
 import { discoverRoutes, type RouteBuild } from './discover.js';
 import { buildManifest } from './manifest.js';
 import { routeHints } from './hints.js';
-import { sendEarlyHints, setLinkHeader, type EarlyPolicies } from './early-hints.js';
 import { emitRenderChunk, routeApi } from './wrapper.js';
 import { emitBootBootstrap, emitSwBootstrap } from './bootstrap.js';
 import {
@@ -42,7 +36,10 @@ import { toPosix } from '@fudic/typecheck/problems';
 import { API_EXTENSION } from '@fudic/api';
 import { API_SCHEME, ApiProject, nothingToImplement } from './api-modules.js';
 import { BROWSER_ROOT_ID, ROOT_FILE_PREFIX, SERVER_ROOT_ID, emitRoot } from './api-root.js';
-import { emitFunctionsModule, isFnPath, noFunction, sendResponse, toRequest, writeHeaders, type ContractsHandler } from './functions.js';
+import { emitFunctionsModule, isFnPath, noFunction, type ContractsHandler } from './functions.js';
+import { createServer, type FudicServer, type ServerApp, type ServerOptions } from '@fudic/server';
+import { diskSpool, nodeMiddleware, staticPages } from '@fudic/server/node';
+import { emitServerModule } from './server-module.js';
 import { loadWithSourceMap } from './inputmaps.js';
 import {
   CLIENT_QUERY,
@@ -75,49 +72,32 @@ import {
   alternatesOf,
   catalogFileOf,
   chunkDir,
-  errorLocaleOf,
   errorPageFor,
   handedOn,
   hasQuery,
   localeOf,
   idWithoutLocale,
-  localeOfPath,
   negotiate,
   pageModuleOf,
-  prefixPattern,
   resolveForLocale,
   compilesPerLocale,
   mayLocalize,
   soleLocale,
-  localeRedirect,
   redirectHtml,
   unprefixedPages,
   withLocale,
   withoutLocale,
-  withoutLocalePrefix,
   type LocaleContext,
 } from './i18n.js';
 import {
   BROWSER_DIR,
-  DATA_FRAMES_TYPE as FRAMES_TYPE,
   DEFAULT_LOCALE,
-  ERROR_PREFIX,
   PIPES_DIR,
   SERVER_DIR,
   RUNTIME_CACHE_PREFIX,
   RUNTIME_DIR,
   runtimeMarkerUrl,
 } from '@fudic/conventions';
-import {
-  classifyError,
-  ERROR_PATTERN,
-  PAGE_REFERRER_POLICY,
-  pageOriginOf,
-  problemOfStatus,
-  renderErrorPage,
-  type PageOrigin,
-  type PageProblem,
-} from './page-errors.js';
 import { nodeIo, nodeLinkCheckIo, nodeRuntimeFs } from './io.js';
 import { buildIo } from './build-memory.js';
 import { compileFud } from './compile.js';
@@ -152,7 +132,7 @@ import { readSwConfig, type ResolvedSwConfig } from './swconfig.js';
 import { nodeConfigIo, readProject, type ProjectResult } from './config.js';
 import { ProjectStyleChains } from './styles.js';
 import { nodePackageFs } from '@fudic/resolve';
-import { CONFIG_FILE } from '@fudic/config';
+import { CONFIG_FILE, type ServeConfig } from '@fudic/config';
 import { LinkedAssets } from './linked-assets.js';
 import { runLinkPass, safeName, type LinkResult } from './link.js';
 import { runEdgePass, type EdgeExtras } from './edge.js';
@@ -190,12 +170,6 @@ import {
 import { devUrl, devManifest, devClientTag, devClientPrefix, withInlineSourceMap } from './dev.js';
 import {
   documentFiles,
-  matchRouteBuild,
-  renderRouteStream,
-  type OpenedPage,
-  loadRouteData,
-  pendingResponse,
-  type PendingResponse,
   type RenderModule,
 } from './serve.js';
 import { asError, NO_LIVE_CHECK, startLiveCheck } from './dev-typecheck.js';
@@ -206,8 +180,8 @@ import {
   COORD_PREFIX,
   MAIN_ID,
   BOOT_ID,
-  DATA_PREFIX,
   FUNCTIONS_FILE,
+  SERVER_FILE,
   BUILD_TOKEN,
   BUILD_ID_LENGTH,
   DEV_MAIN_URL,
@@ -221,6 +195,12 @@ import { chunkNamesOf } from './names.js';
 import { runtimeUrls, type RuntimeEntries } from './constants.js';
 import { planRename, rewriteReferences, mapNameOf, isHashedChunk } from './rename.js';
 import { keepSet, reachableChunks, type PruneItem } from './prune.js';
+
+/** What `server.mjs` exports (SDD-81 §3.10), as preview imports it. */
+interface BuiltServer {
+  readonly createApp: (io: { readonly prerendered: (pathname: string) => Promise<string | null> }) => ServerApp;
+  readonly config: ServeConfig;
+}
 
 /**
  * The placeholder a head carries where the preloads of what its page hydrates at load go, one
@@ -365,42 +345,6 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           ioFor: (baseIo, locale) => localeIos!.for(baseIo, locale),
           compileFor: (locale) => catalogs!.compileFor(locale),
         };
-  /**
-   * The locale `_error.fud` is asked in by `req` at `pathname` (§4.5): the URL's prefix, else
-   * the page it comes from.
-   */
-  const errorLocale = (pathname: string, referer: string | undefined): string | undefined =>
-    errorLocaleOf(
-      pathname,
-      referer !== undefined && URL.canParse(referer) ? pathnameOf(new URL(referer).pathname, base) : undefined,
-      locales,
-    );
-  /**
-   * The pattern the `_error.fud` of `locale` is built under: prefixed with two or more locales,
-   * and the first locale's for a request in none (§4.5).
-   */
-  const errorPatternOf = (locale: string | undefined): string =>
-    prefixPattern(ERROR_PATTERN, locale ?? locales[0]!, locales);
-  /**
-   * The redirect of a URL with no locale prefix (§4.5) — `/`, or a page of the app asked
-   * without its prefix — or false when there is none. `isPage` is the route table of whoever
-   * asks: the dev server's builds, or the manifest preview serves.
-   */
-  const localeRedirectOf = (
-    pathname: string,
-    acceptLanguage: string | undefined,
-    isPage: (pathname: string) => boolean,
-  ): string | false => {
-    const to = localeRedirect(pathname, acceptLanguage, locales, isPage);
-    return to === false ? false : devUrl(base, to);
-  };
-  /** Answer with that redirect. It varies by `Accept-Language`, and a cache has to know. */
-  const sendRedirect = (res: ServerResponse, location: string): void => {
-    res.statusCode = 302;
-    res.setHeader('Location', location);
-    res.setHeader('Vary', 'Accept-Language');
-    res.end();
-  };
   /** How a module is compiled for `locale`, for the emit's own use (`lang`, alternates). */
   const compileFor = (locale: string | undefined): LocaleCompile | undefined => {
     const target = locale ?? soleLocale(locales);
@@ -581,6 +525,20 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
     rb === undefined || project.config?.earlyHints === false
       ? []
       : routeHints(pageHints.get(pageHintKey(rb.absPath, rb.locale)) ?? [], [devBootUrl(), devMainUrl(rb.locale)]);
+  /**
+   * What dev and preview tell `createServer` (SDD-81 §3.11–§3.12). Over `http` both are local, and
+   * their cookies go out without `Secure` so the app also works from another device of the
+   * network; over `https`, as in production. A proxy is trusted when `fudic.json` says so, and
+   * the CSRF secret is `FUDIC_SECRET` when there is one.
+   */
+  const serveOptions = (https: boolean, serve: ServeConfig = project.config?.serve ?? {}): ServerOptions => ({
+    secureCookies: https,
+    // On Node an upload waits on disk, never in memory (SDD-81 §3.5).
+    spool: diskSpool,
+    ...(serve.trustProxy === true ? { trustProxy: true } : {}),
+    ...(serve.uploads !== undefined ? { uploads: serve.uploads } : {}),
+    ...(process.env['FUDIC_SECRET'] !== undefined ? { secret: process.env['FUDIC_SECRET'] } : {}),
+  });
   /**
    * Route pattern → what its page hydrates at LOAD, by the name the runtime asks for it, the
    * locale's directory included (BUG-53 §4.3). Filled with the coordinators, and only in a
@@ -1022,31 +980,87 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
         [devUrl(base, DEV_SW_URL), SW_ID],
         ...[...devMains()].map(([url, id]) => [devUrl(base, url), id] as const),
       ]);
-      // Server functions (SDD-56 §4.15), with any method, before anything else gets a turn.
-      // The handler is loaded through the SSR graph and not imported here: the user's
-      // modules reach `@fudic/http` and `@fudic/di` through that graph, and the request's
-      // container has to be kept by the same `AsyncLocalStorage` they read.
-      server.middlewares.use((req, res, next) => {
-        if (!isFnPath(pathnameOf(req.url ?? '/', '/'), base)) {
-          next();
-          return;
-        }
-        // What is not an `HttpError` is a bug of the app: to the overlay, as a page's.
-        const onError = (error: unknown): void => toOverlay(server, error);
-        const request = toRequest(req, res);
+      // Serving is `@fudic/server`'s (SDD-81 §3.10): dev is a `ServerApp` over the SSR graph,
+      // with the hooks only dev has — the live check that refuses a page, the client Vite
+      // injects, the overlay. The same `createServer` answers in preview and behind an adapter.
+      //
+      // The handler is loaded through the SSR graph and not imported here: the user's modules
+      // reach `@fudic/http` and `@fudic/di` through that graph, and the request's container has
+      // to be kept by the same `AsyncLocalStorage` they read.
+      const devLoad = (pattern: string): Promise<RenderModule> =>
+        server.ssrLoadModule(WRAPPER_PREFIX + pattern) as Promise<RenderModule>;
+      // The routes of the last `routes()`, by pattern: what `prepare` checks the graph of.
+      const devBuilds = new Map<string, RouteBuild>();
+      // In an app with languages, the first locale's root: the one its pages load, so the
+      // functions and the pages read and write the same modules (as the edge pass does).
+      const rootId = locales.length < 2 ? SERVER_ROOT_ID : withLocale(SERVER_ROOT_ID, locales[0]!);
+      const devApp: ServerApp = {
+        base,
+        locales,
+        // Route discovery is cheap and dev adds/removes files: re-read on each request so a new
+        // `.fud` is routable without restarting the server.
+        routes: () => {
+          ({ routes: builds, errorPages } = discover());
+          devBuilds.clear();
+          return builds
+            .filter((rb) => rb.decision.mode !== 'excluded')
+            .map((rb) => {
+              devBuilds.set(rb.route.pattern, rb);
+              return {
+                pattern: rb.route.pattern,
+                renders: true,
+                // Known once its module is loaded: that is when its head was compiled (SDD-73 §4.1).
+                hints: async () => {
+                  await devLoad(rb.route.pattern);
+                  return devHintsOf(rb);
+                },
+              };
+            });
+        },
+        module: devLoad,
+        errorPage: async (locale) => {
+          const page = errorPageFor(errorPages, locale);
+          return page === undefined ? null : { module: await devLoad(page.route.pattern), hints: devHintsOf(page) };
+        },
+        prerendered: () => Promise.resolve(null),
         // The functions of the `.fudapi` (SDD-60 §4.4): the root, loaded the first time a request
-        // needs it, answers them. A root that cannot load — two implementations of one piece, one
-        // in the wrong folder — goes to the overlay with its message. Without a `.fudapi` there is
-        // no function to answer.
-        // In an app with languages, the first locale's root: the one its pages load, so the
-        // functions and the pages read and write the same modules (as the edge pass does).
-        const rootId = locales.length < 2 ? SERVER_ROOT_ID : withLocale(SERVER_ROOT_ID, locales[0]!);
-        const answered = hasApi()
-          ? (server.ssrLoadModule(rootId) as Promise<Record<string, unknown>>).then((mod) =>
-              (mod['handler'] as ContractsHandler)({ base, dev: true, onError })(request),
-            )
-          : Promise.resolve(noFunction());
-        answered.then((response) => sendResponse(res, response, next)).catch(next);
+        // needs it, answers them. A root that cannot load goes to the overlay with its message.
+        // Without a `.fudapi` there is no function to answer.
+        functions: (fnOptions) => async (request) =>
+          hasApi()
+            ? ((await server.ssrLoadModule(rootId)) as { readonly handler: ContractsHandler }).handler(fnOptions)(request)
+            : noFunction(),
+      };
+      const devServer = createServer(devApp, {
+        dev: true,
+        ...serveOptions(Boolean(server.config?.server?.https)),
+        // What is not an `HttpError` is a bug of the app: to the overlay.
+        onError: (error) => toOverlay(server, error),
+        // A page whose graph has an error is not served (SDD-35 §4.5): the overlay goes in its
+        // place, with the same position and message the editor shows. A check in flight is
+        // waited for, so a save followed by a reload never sees the previous verdict.
+        prepare: async (route) => {
+          const rb = devBuilds.get(route.pattern);
+          const blocked = rb === undefined ? undefined : await live.blocking(documentFiles(rb.absPath, io));
+          if (blocked === undefined) return;
+          const error = asError(blocked);
+          server.ssrFixStacktrace(error);
+          throw error;
+        },
+        // The dev client, injected by Vite. A streamed page shows Vite only its head, closed so
+        // Vite can parse it; the body streams behind it untouched (SDD-70 §4.3).
+        transformHtml: async (url, html, whole) => {
+          if (whole) return server.transformIndexHtml(url, html);
+          const head = await server.transformIndexHtml(url, `${html}</html>`);
+          return head.slice(0, head.lastIndexOf('</html>'));
+        },
+      });
+      // Functions, remote rules and the CSRF token, with any method, before anything else gets
+      // a turn.
+      const devFunctions = nodeMiddleware(devServer);
+      server.middlewares.use((req, res, next) => {
+        if (isFnPath(pathnameOf(req.url ?? '/', '/'), base)) devFunctions(req, res, next);
+        else next();
       });
       // The files a `.fud` links, at the SAME URL the build publishes them under (BUG-40).
       // Dev has no bundle to put them in, and a page that works built and 404s in dev — or
@@ -1097,347 +1111,41 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           });
       });
 
-      // The dev server IS the edge (§4.11): data endpoints and on-demand navigation
-      // rendering. Registered with `post` so it runs after Vite's own middlewares.
+      // The dev server IS the edge (§4.11): data endpoints, on-demand navigation rendering and,
+      // for what nothing answered, `_error.fud` as a `404` (SDD-73 §4.3). Registered with `post`
+      // so it runs after Vite's own middlewares, and every file Vite serves is served first.
       return () => {
-        server.middlewares.use((req, res, next) => {
-          if (req.method !== 'GET' && req.method !== 'HEAD') {
-            next();
-            return;
-          }
-          const url = req.url ?? '/';
-          const pathname = pathnameOf(url, base);
-          // Route discovery is cheap and dev adds/removes files: re-read on each request
-          // so a new `.fud` is routable without restarting the server.
-          ({ routes: builds, errorPages } = discover());
-
-          // `/` and a page without its prefix, with two or more locales: off to the same page
-          // in the browser's language (SDD-58 §4.5). A URL with a prefix decides by itself.
-          const redirect = localeRedirectOf(pathname, req.headers['accept-language'], (path) =>
-            matchRouteBuild(builds, path) !== null,
-          );
-          if (redirect !== false) {
-            sendRedirect(res, redirect);
-            return;
-          }
-
-          // The generated `@server load` endpoint (§4.5).
-          if (pathname.startsWith(DATA_PREFIX)) {
-            const routePath = pathname.slice(DATA_PREFIX.length) || '/';
-            const rb = matchRouteBuild(builds, routePath);
-            if (rb === null) {
-              next();
-              return;
-            }
-            const pending = pendingResponse();
-            loadRouteData(
-              (id) => server.ssrLoadModule(id) as Promise<RenderModule>,
-              WRAPPER_PREFIX + rb.route.pattern,
-              rb.route.pattern,
-              routePath,
-              toRequest(req, res),
-              pending,
-            )
-              .then((data) => sendData(res, pending, data))
-              .catch((err: unknown) => {
-                const failure = classifyError(err, true);
-                if (failure.kind === 'error' && failure.unexpected) toOverlay(server, err);
-                sendDataProblem(res, pending, failure);
-              });
-            return;
-          }
-
-          if (!(req.headers.accept ?? '').includes('text/html')) {
-            next();
-            return;
-          }
-          // `_error.fud`'s own URL, where `errorPages` sends a call that failed (SDD-56 §4.8),
-          // in the locale it is asked in (SDD-58 §4.5).
-          const errorPath = withoutLocalePrefix(pathname, locales);
-          if (errorPath.startsWith(`${ERROR_PREFIX}/`)) {
-            const status = Number(errorPath.slice(ERROR_PREFIX.length + 1));
-            if (!Number.isInteger(status) || status < 400 || status > 599) {
-              next();
-              return;
-            }
-            const page = errorPageFor(errorPages, errorLocale(pathname, req.headers.referer));
-            const origin = pageOriginOf(toRequest(req, res), base, true);
-            sendDevErrorPage(server, req, res, page, problemOfStatus(status), origin, devHintsOf).catch(next);
-            return;
-          }
-          const rb = matchRouteBuild(builds, pathname);
-          if (rb === null) {
-            // No route: `_error.fud` as a `404`, after every file Vite serves (SDD-73 §4.3).
-            const page = errorPageFor(errorPages, localeOfPath(pathname, locales));
-            const origin = pageOriginOf(toRequest(req, res), base, false);
-            sendDevErrorPage(server, req, res, page, problemOfStatus(404), origin, devHintsOf).catch(next);
-            return;
-          }
-          const nonce = newNonce();
-          // A page whose graph has an error is not served (SDD-35 §4.5): the overlay goes in
-          // its place, with the same position and message the editor shows. A check in flight
-          // is waited for, so a save followed by a reload never sees the previous verdict.
-          const request = toRequest(req, res);
-          const pending = pendingResponse();
-          live
-            .blocking(documentFiles(rb.absPath, io))
-            .then(async (blocked): Promise<{ status: number; html?: string; location?: string; opened?: OpenedPage; hints: readonly string[] }> => {
-              if (blocked !== undefined) throw asError(blocked);
-              try {
-                // The `103` before `load` runs (SDD-73 §4.1): the module first, which compiles the
-                // head whose sheets are hinted, and is what the render loads anyway.
-                await server.ssrLoadModule(WRAPPER_PREFIX + rb.route.pattern);
-                const hints = devHintsOf(rb);
-                // Dev ships no CSP (below), so the `103` carries none either.
-                sendEarlyHints(req, res, hints, { 'referrer-policy': PAGE_REFERRER_POLICY });
-                // Opened, not drained (SDD-70 §4.3): what decides the status has run once the
-                // head is in, and the rest goes out as it is rendered.
-                const opened = await renderRouteStream(
-                  (id) => server.ssrLoadModule(id) as Promise<RenderModule>,
-                  WRAPPER_PREFIX + rb.route.pattern,
-                  rb.route.pattern,
-                  pathname,
-                  nonce,
-                  request,
-                  pending,
-                  // A rejected `later` field with no `@catch` (SDD-70 §3.4).
-                  (error) => toOverlay(server, error),
-                );
-                return { status: pending.status, opened, hints };
-              } catch (err) {
-                // What `load` or `layout` threw (SDD-56 §4.8): a redirect, or the error page
-                // with its status — and what is not an `HttpError`, in the overlay as well.
-                const failure = classifyError(err, true);
-                if (failure.kind === 'redirect') return { status: failure.status, location: failure.location, hints: [] };
-                if (failure.unexpected) toOverlay(server, err);
-                const errorPage = errorPageFor(errorPages, rb.locale);
-                const html = await devErrorPage(server, errorPage, failure.problem, pageOriginOf(request, base, false));
-                // The `Link` of what is painted: the error page's, whatever the `103` said.
-                return { status: failure.problem.status, html, hints: devHintsOf(errorPage) };
-              }
-            })
-            .then(async (page) => {
-              // What `load` wrote, also before it threw (SDD-69 §4.2); fudic's own go after it.
-              writeHeaders(res, pending.headers);
-              // fudic wins in the CSP, and in dev its CSP is none (below).
-              res.removeHeader('Content-Security-Policy');
-              res.setHeader('Referrer-Policy', PAGE_REFERRER_POLICY);
-              setLinkHeader(res, page.hints);
-              res.statusCode = page.status;
-              if (page.location !== undefined) {
-                res.setHeader('Location', page.location);
-                res.end();
-                return;
-              }
-              res.setHeader('Content-Type', 'text/html; charset=utf-8');
-              // In dev the HMR client is injected inline and evaluates at load; a strict
-              // policy would kill it. The CSP is exercised in preview and production,
-              // which is where the emitted output is what ships.
-              const opened = page.opened;
-              if (opened === undefined || opened.whole) {
-                res.end(await server.transformIndexHtml(url, page.html ?? opened!.head)); // injects the dev client
-                return;
-              }
-              // The dev client goes in the head, which is all of the page Vite gets to see; the
-              // body streams behind it untouched (SDD-70 §4.3).
-              const head = await server.transformIndexHtml(url, `${opened.head}</html>`);
-              res.write(head.slice(0, head.lastIndexOf('</html>')));
-              res.on('close', () => {
-                if (!res.writableEnded) opened.cancel();
-              });
-              try {
-                for await (const chunk of opened.rest) res.write(chunk);
-              } catch (err) {
-                // After the first byte the status is out: an error can only be reported (§3.4).
-                toOverlay(server, err);
-              }
-              res.end();
-            })
-            .catch((err: Error) => {
-              server.ssrFixStacktrace(err);
-              next(err); // Vite's error middleware shows it in the browser overlay
-            });
-        });
+        server.middlewares.use(nodeMiddleware(devServer, { notFound: true }));
       };
     },
 
     configurePreviewServer(server) {
-      // Preview is the production edge: it serves what a static host serves, adds the
-      // CSP with a fresh nonce, and stamps that nonce into the prerendered HTML.
-      const manifestPath = join(outDir, manifestFileName);
-      const readManifest = (): ManifestFile | null => {
-        try {
-          return JSON.parse(readFileSync(manifestPath, 'utf8')) as ManifestFile;
-        } catch {
-          return null;
-        }
+      // Preview is the production edge, and it runs exactly what an adapter runs: the
+      // `server.mjs` the build left beside the edge chunks, given to `createServer` with the
+      // prerendered pages of `outDir` (SDD-81 §3.10). What a static host serves, Vite serves.
+      const serverFile = join(edgeDir, SERVER_FILE);
+      let mounted: Promise<FudicServer | null> | undefined;
+      const fudicServer = (): Promise<FudicServer | null> =>
+        (mounted ??= !existsSync(serverFile)
+          ? Promise.resolve(null)
+          : (import(pathToFileURL(serverFile).href) as Promise<BuiltServer>).then(({ createApp, config }) =>
+              createServer(createApp({ prerendered: staticPages(outDir) }), {
+                ...serveOptions(Boolean(server.config?.preview?.https), config),
+                // Preview is a local check: without `FUDIC_SECRET` it signs with one of its own
+                // (SDD-81 §8.2.10). An adapter in production is given one.
+                secret: process.env['FUDIC_SECRET'] ?? randomUUID(),
+              }),
+            ));
+      const mount = (notFound: boolean) => (req: IncomingMessage, res: ServerResponse, next: (error?: unknown) => void): void => {
+        fudicServer()
+          .then((fudic) => (fudic === null ? next() : nodeMiddleware(fudic, { notFound })(req, res, next)))
+          .catch(next);
       };
-      // Server functions, from the module the build left beside the edge chunks (SDD-56
-      // §4.15): the same file an adapter mounts in production.
-      server.middlewares.use((req, res, next) => {
-        const file = join(edgeDir, FUNCTIONS_FILE);
-        if (!isFnPath(pathnameOf(req.url ?? '/', '/'), base) || !existsSync(file)) {
-          next();
-          return;
-        }
-        (import(pathToFileURL(file).href) as Promise<{ handle: (r: Request) => Promise<Response | null> }>)
-          .then(async ({ handle }) => {
-            await sendResponse(res, await handle(toRequest(req, res)), next);
-          })
-          .catch(next);
-      });
-      server.middlewares.use((req, res, next) => {
-        if (req.method !== 'GET' && req.method !== 'HEAD') {
-          next();
-          return;
-        }
-        const manifest = readManifest();
-        const url = req.url ?? '/';
-        const pathname = pathnameOf(url, base);
-        if (manifest === null) {
-          next();
-          return;
-        }
-        if (pathname === `/${manifestFileName}` || pathname === `/${DEV_SW_URL}`) {
-          res.setHeader('Cache-Control', 'no-cache');
-          if (pathname === `/${DEV_SW_URL}`) {
-            res.setHeader('Service-Worker-Allowed', base);
-            res.setHeader('Content-Security-Policy', manifest.csp.sw);
-          }
-          next();
-          return;
-        }
-
-        // The generated data endpoint (§4.5): run the built ESM chunk's `data(ctx)`
-        // in process. This is what the Service Worker fetches before rendering.
-        if (pathname.startsWith(DATA_PREFIX)) {
-          const routePath = pathname.slice(DATA_PREFIX.length) || '/';
-          const dataRecord = matchRecord(manifest.routes, routePath);
-          if (dataRecord === null || !existsSync(edgeChunkPath(edgeDir, dataRecord.pattern))) {
-            next();
-            return;
-          }
-          const pending = pendingResponse();
-          previewData(edgeDir, dataRecord, routePath, toRequest(req, res), pending)
-            .then((data) => sendData(res, pending, data))
-            .catch((err: unknown) => sendDataProblem(res, pending, classifyError(err, false)));
-          return;
-        }
-
-        // `/` and a page without its prefix: to the language that fits (SDD-58 §4.5), as the
-        // edge does — the static `index.html` of each is the answer of a host that cannot.
-        const redirect = localeRedirectOf(pathname, req.headers['accept-language'], (path) =>
-          matchRecord(manifest.routes, path) !== null,
-        );
-        if (redirect !== false) {
-          sendRedirect(res, redirect);
-          return;
-        }
-
-        const nonce = newNonce();
-        // `_error.fud`'s own URL (SDD-56 §4.8), in the locale it is asked in (SDD-58 §4.5).
-        const errorPath = withoutLocalePrefix(pathname, locales);
-        if (errorPath.startsWith(`${ERROR_PREFIX}/`)) {
-          const status = Number(errorPath.slice(ERROR_PREFIX.length + 1));
-          if (!Number.isInteger(status) || status < 400 || status > 599) {
-            next();
-            return;
-          }
-          const pattern = errorPatternOf(errorLocale(pathname, req.headers.referer));
-          const origin = pageOriginOf(toRequest(req, res), base, true);
-          const errorHints = manifest.errorHints ?? [];
-          sendEarlyHints(req, res, errorHints, pagePolicies(manifest.csp.document, nonce));
-          sendErrorPage(edgeDir, res, problemOfStatus(status), nonce, manifest.csp.document, pattern, origin, errorHints)
-            .catch(next);
-          return;
-        }
-
-        const record = matchRecord(manifest.routes, pathname);
-        if (record === null) {
-          next();
-          return;
-        }
-        const file = join(outDir, htmlPathFor(pathname));
-        // What this page needs before its body (SDD-73 §3.2), and what the error page needs if
-        // `load` throws: the `103` goes before anything is known, the `Link` says what was painted.
-        const hints = record.hints ?? [];
-        const errorHints = manifest.errorHints ?? [];
-        if (existsSync(file)) {
-          sendEarlyHints(req, res, hints, pagePolicies(manifest.csp.document, nonce));
-          res.statusCode = 200;
-          res.setHeader('Content-Type', 'text/html; charset=utf-8');
-          res.setHeader('Content-Security-Policy', cspFor(manifest.csp.document, nonce));
-          res.setHeader('Referrer-Policy', PAGE_REFERRER_POLICY);
-          setLinkHeader(res, hints);
-          res.end(applyNonce(readFileSync(file, 'utf8'), nonce));
-          return;
-        }
-        // No prerendered file and no edge wrapper: this route produced nothing to serve.
-        // Checked before importing so the fall-through stays synchronous.
-        if (!existsSync(edgeChunkPath(edgeDir, record.pattern))) {
-          next();
-          return;
-        }
-        const pending = pendingResponse();
-        const request = toRequest(req, res);
-        // Before `load` runs: that is the whole point of the `103`.
-        sendEarlyHints(req, res, hints, pagePolicies(manifest.csp.document, nonce));
-        previewRender(edgeDir, record, pathname, nonce, request, pending)
-          .then(async (opened) => {
-            // What `load` wrote first (SDD-69 §4.2): fudic's Content-Type and CSP win over it.
-            writeHeaders(res, pending.headers);
-            res.statusCode = pending.status;
-            res.setHeader('Content-Type', 'text/html; charset=utf-8');
-            res.setHeader('Content-Security-Policy', cspFor(manifest.csp.document, nonce));
-            res.setHeader('Referrer-Policy', PAGE_REFERRER_POLICY);
-            setLinkHeader(res, hints);
-            // The page as it is rendered (SDD-70 §4.3): the head now, each part when it is in.
-            res.write(opened.head);
-            res.on('close', () => {
-              if (!res.writableEnded) opened.cancel();
-            });
-            try {
-              for await (const chunk of opened.rest) res.write(chunk);
-            } catch {
-              // After the first byte the status is out: what fails now can only be cut short.
-            }
-            res.end();
-          })
-          .catch(async (err: unknown) => {
-            // What `load` or `layout` threw (SDD-56 §4.8): the redirect, or the error page —
-            // with what `load` wrote before it threw (SDD-69 §4.2).
-            writeHeaders(res, pending.headers);
-            const failure = classifyError(err, false);
-            if (failure.kind === 'redirect') {
-              res.statusCode = failure.status;
-              res.setHeader('Location', failure.location);
-              res.end();
-              return;
-            }
-            const pattern = errorPatternOf(localeOfPath(pathname, locales));
-            const origin = pageOriginOf(request, base, false);
-            await sendErrorPage(edgeDir, res, failure.problem, nonce, manifest.csp.document, pattern, origin, errorHints);
-          })
-          .catch(next);
-      });
+      server.middlewares.use(mount(false));
       // No route and no file: `_error.fud` as a `404` (SDD-73 §4.3). After Vite's own
       // middlewares, so everything `dist` holds is still served as a file.
       return () => {
-        server.middlewares.use((req, res, next) => {
-          const manifest = readManifest();
-          if (manifest === null || req.method !== 'GET' || !(req.headers.accept ?? '').includes('text/html')) {
-            next();
-            return;
-          }
-          const pathname = pathnameOf(req.url ?? '/', base);
-          const pattern = errorPatternOf(localeOfPath(pathname, locales));
-          const origin = pageOriginOf(toRequest(req, res), base, false);
-          const errorHints = manifest.errorHints ?? [];
-          const nonce = newNonce();
-          sendEarlyHints(req, res, errorHints, pagePolicies(manifest.csp.document, nonce));
-          sendErrorPage(edgeDir, res, problemOfStatus(404), nonce, manifest.csp.document, pattern, origin, errorHints)
-            .catch(next);
-        });
+        server.middlewares.use(mount(true));
       };
     },
 
@@ -2105,7 +1813,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       const locale = localeContext();
       const edgeExtras = (): EdgeExtras => {
         const contracts = hasApi();
-        const table = contracts ? api.functionTable() : [];
+        // The questions of the `runs remote` rules ride with the functions (SDD-80 §4.4).
+        const table = contracts ? [...api.functionTable(), ...api.ruleTable()] : [];
         return {
           ...(errorPages.length > 0 ? { errorPages } : {}),
           ...(locale !== undefined ? { locale } : {}),
@@ -2634,6 +2343,44 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       this.emitFile({ type: 'asset', fileName: manifestFileName, source: JSON.stringify(file) });
       emitted.add(manifestFileName);
 
+      // 4-bis. The app for `createServer` (SDD-81 §3.10), beside the edge chunks it imports:
+      //     what preview mounts, and what an adapter mounts the same way. Never in `outDir`.
+      if (writeToDisk) {
+        const edgeFiles = new Set(edge.chunks.map((c) => c.fileName));
+        const chunkOf = (pattern: string): string | undefined => {
+          const name = `${safeName(pattern)}.js`;
+          return edgeFiles.has(name) ? name : undefined;
+        };
+        const server = emitServerModule({
+          base,
+          locales: locales.length < 2 ? [] : locales,
+          csp: file.csp.document,
+          // The two files that govern updates (SDD-20 §4.11): never cached, and the worker
+          // allowed the app's whole scope with its own policy.
+          statics: {
+            [`/${manifestFileName}`]: { 'cache-control': 'no-cache' },
+            [`/${DEV_SW_URL}`]: {
+              'cache-control': 'no-cache',
+              'service-worker-allowed': base,
+              'content-security-policy': file.csp.sw,
+            },
+          },
+          routes: file.routes.map((record) => {
+            const chunk = edge.entries.get(record.pattern);
+            return { pattern: record.pattern, hints: record.hints ?? [], ...(chunk !== undefined ? { file: chunk } : {}) };
+          }),
+          errorPages: errorPages.flatMap((page) => {
+            const chunk = chunkOf(page.route.pattern);
+            return chunk === undefined ? [] : [{ locale: locales.length < 2 ? '' : (page.locale ?? locales[0]!), file: chunk }];
+          }),
+          errorHints: file.errorHints ?? [],
+          ...(edgeFiles.has(FUNCTIONS_FILE) ? { functions: FUNCTIONS_FILE } : {}),
+          config: project.config?.serve ?? {},
+        });
+        mkdirSync(edgeDir, { recursive: true });
+        writeFileSync(join(edgeDir, SERVER_FILE), server);
+      }
+
       // 5. Prerender: run each prerenderable route's BUILT chunk and write its `.html`.
       const prerenders = builds.filter((b) => b.decision.prerender);
       // Every route that broke, and not only the first: one build tells all of them (SDD-35).
@@ -2797,35 +2544,6 @@ export function missingShellEntries(
   return missing;
 }
 
-/** First-hit match of a manifest record against a concrete path (preview server). */
-function matchRecord(routes: readonly RouteRecord[], pathname: string): RouteRecord | null {
-  const parts = pathname.split('/').filter((s) => s.length > 0);
-  for (const record of routes) {
-    const pattern = record.pattern.split('/').filter((s) => s.length > 0);
-    if (pattern.length === parts.length && pattern.every((seg, i) => seg.startsWith(':') || seg === parts[i])) {
-      return record;
-    }
-  }
-  return null;
-}
-
-/** Where a route's edge wrapper lives: by convention, outside `outDir` (BUG-09 §3.2). */
-function edgeChunkPath(edgeDir: string, pattern: string): string {
-  return join(edgeDir, `${safeName(pattern)}.js`);
-}
-
-/**
- * Import a route's built EDGE wrapper — by CONVENTION, from outside `outDir`.
- *
- * It used to be `join(outDir, record.esm)`: a URL published in the manifest, pointing at a
- * file inside the directory a static host serves. That is the shape BUG-09 removes. The
- * name is derived exactly as the edge pass derives it, so nothing has to be announced.
- */
-async function importEdgeChunk(edgeDir: string, pattern: string): Promise<RenderModule> {
-  const { pathToFileURL } = await import('node:url');
-  return (await import(pathToFileURL(edgeChunkPath(edgeDir, pattern)).href)) as RenderModule;
-}
-
 /**
  * An error of the app's own code, in Vite's overlay — while the page still answers with its
  * status (SDD-56 §4.8): the overlay is for the developer, the error page for the visitor.
@@ -2839,156 +2557,6 @@ function toOverlay(server: ViteDevServer, error: unknown): void {
       stack: error instanceof Error ? (error.stack ?? '') : '',
     },
   });
-}
-
-/** `_error.fud` with `problem`, through the dev server's graph, or the minimal page. */
-async function devErrorPage(
-  server: ViteDevServer,
-  errorPage: RouteBuild | undefined,
-  problem: PageProblem,
-  origin: PageOrigin,
-): Promise<string> {
-  const mod =
-    errorPage === undefined
-      ? null
-      : ((await server.ssrLoadModule(WRAPPER_PREFIX + errorPage.route.pattern)) as RenderModule);
-  return renderErrorPage(mod, problem, newNonce(), origin);
-}
-
-/**
- * The policies a page's `103` carries in preview (SDD-73 §3.2): its CSP, with the nonce the final
- * response will carry, and its `Referrer-Policy`.
- */
-function pagePolicies(csp: Parameters<typeof cspFor>[0], nonce: string): EarlyPolicies {
-  return { 'content-security-policy': cspFor(csp, nonce), 'referrer-policy': PAGE_REFERRER_POLICY };
-}
-
-/**
- * The dev server's error page, whole, with the dev client in it and its status — and its hints
- * (SDD-73 §4.1), known once its module is loaded: `hintsOf` reads them then.
- */
-async function sendDevErrorPage(
-  server: ViteDevServer,
-  req: import('node:http').IncomingMessage,
-  res: import('node:http').ServerResponse,
-  errorPage: RouteBuild | undefined,
-  problem: PageProblem,
-  origin: PageOrigin,
-  hintsOf: (page: RouteBuild | undefined) => readonly string[],
-): Promise<void> {
-  const page = await devErrorPage(server, errorPage, problem, origin);
-  const hints = hintsOf(errorPage);
-  sendEarlyHints(req, res, hints, { 'referrer-policy': PAGE_REFERRER_POLICY });
-  // A request the dev server routed has its URL: Connect matched on it.
-  const html = await server.transformIndexHtml(req.url!, page);
-  res.statusCode = problem.status;
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.setHeader('Referrer-Policy', PAGE_REFERRER_POLICY);
-  setLinkHeader(res, hints);
-  res.end(html);
-}
-
-/** Render a route in preview by importing its built ESM chunk. */
-async function previewRender(
-  edgeDir: string,
-  record: RouteRecord,
-  pathname: string,
-  nonce: string,
-  request: Request,
-  response: PendingResponse,
-): Promise<OpenedPage> {
-  const mod = await importEdgeChunk(edgeDir, record.pattern);
-  const { openStream, edgeContext, withRequest } = await import('./serve.js');
-  return openStream(mod.render(withRequest(edgeContext(record.pattern, pathname, nonce), request, response)));
-}
-
-/** Run a route's `@server load` in preview — the generated data endpoint. */
-async function previewData(
-  edgeDir: string,
-  record: RouteRecord,
-  pathname: string,
-  request: Request,
-  response: PendingResponse,
-): Promise<ReadableStream<Uint8Array> | null> {
-  const mod = await importEdgeChunk(edgeDir, record.pattern);
-  if (typeof mod.data !== 'function') {
-    return null;
-  }
-  const { edgeContext, withRequest } = await import('./serve.js');
-  const { nonce: _nonce, ...ctx } = withRequest(edgeContext(record.pattern, pathname, ''), request, response);
-  return mod.data(ctx);
-}
-
-/**
- * The data endpoint's answer (§4.5): what `load` wrote, then its frames as they come (SDD-70
- * §3.7). A route that resolves nothing has no endpoint.
- */
-async function sendData(
-  res: import('node:http').ServerResponse,
-  pending: PendingResponse,
-  frames: ReadableStream<Uint8Array> | null,
-): Promise<void> {
-  if (frames === null) {
-    res.statusCode = 404;
-    res.end();
-    return;
-  }
-  writeHeaders(res, pending.headers);
-  res.statusCode = pending.status;
-  res.setHeader('Content-Type', FRAMES_TYPE);
-  const reader = frames.getReader();
-  res.on('close', () => {
-    if (!res.writableEnded) void reader.cancel();
-  });
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    res.write(value);
-  }
-  res.end();
-}
-
-/**
- * The status of what `load` threw, as a problem, with what it wrote before: the Service
- * Worker leaves the navigation to the network on any error, and the network answers it with
- * the page (SDD-56 §4.8).
- */
-function sendDataProblem(
-  res: import('node:http').ServerResponse,
-  pending: PendingResponse,
-  failure: ReturnType<typeof classifyError>,
-): void {
-  const problem =
-    failure.kind === 'redirect'
-      ? { status: failure.status, title: 'Redirect', location: failure.location }
-      : failure.problem;
-  writeHeaders(res, pending.headers);
-  res.statusCode = problem.status;
-  res.setHeader('Content-Type', 'application/problem+json');
-  res.end(JSON.stringify(problem));
-}
-
-/** `_error.fud` from the edge pass — or the minimal page — written with its status. */
-async function sendErrorPage(
-  edgeDir: string,
-  res: import('node:http').ServerResponse,
-  problem: PageProblem,
-  nonce: string,
-  csp: Parameters<typeof cspFor>[0],
-  /** The pattern of the locale's `_error.fud` (SDD-58 §4.5); the one pattern without locales. */
-  pattern: string,
-  origin: PageOrigin,
-  /** The error page's hints, for the `Link` of what this response paints (SDD-73 §3.2). */
-  hints: readonly string[],
-): Promise<void> {
-  const mod = existsSync(edgeChunkPath(edgeDir, pattern)) ? await importEdgeChunk(edgeDir, pattern) : null;
-  const html = await renderErrorPage(mod, problem, nonce, origin);
-  res.statusCode = problem.status;
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.setHeader('Referrer-Policy', PAGE_REFERRER_POLICY);
-  setLinkHeader(res, hints);
-  res.setHeader('Content-Security-Policy', cspFor(csp, nonce));
-  res.end(html);
 }
 
 /** How many sheets the project at `root` declares that only its components can use. */

@@ -12,12 +12,15 @@ import type {
   PatternDecl,
   PipeDecl,
   PipeOn,
+  RuleDebounce,
   RuleDecl,
   RuleFails,
   RuleOn,
   RuleRuns,
+  SkipClause,
   TypeExpr,
   TypedField,
+  UseClause,
 } from './ast.js';
 import {
   blockSpan,
@@ -27,9 +30,11 @@ import {
   name,
   repeated,
   shaped,
+  skipClause,
   trailing,
   typedField,
   unexpected,
+  useClause,
   type Ctx,
 } from './clauses.js';
 import type { LineNode, Token } from './line.js';
@@ -46,8 +51,8 @@ function flag(node: LineNode, c: Ctx): boolean {
 }
 
 const TARGETS = ['field', 'group', 'form'];
-const RUNS = ['both', 'server'];
-const RULE_LINES = ['on', 'runs', 'async', 'fails', '<param> <type>'];
+const RUNS = ['both', 'server', 'remote'];
+const RULE_LINES = ['on', 'runs', 'async', 'debounce', 'use', 'skip', 'fails', '<param> <type>'];
 
 /** `rule <name>`: where it applies, where it runs, its parameters and its failures. */
 export function ruleDecl(node: LineNode, c: Ctx): RuleDecl | undefined {
@@ -59,6 +64,10 @@ export function ruleDecl(node: LineNode, c: Ctx): RuleDecl | undefined {
   let on: RuleOn | undefined;
   let runs: RuleRuns | undefined;
   let async: Token | undefined;
+  let debounce: RuleDebounce | undefined;
+  let debounceLine: Token | undefined;
+  const uses: UseClause[] = [];
+  const skips: SkipClause[] = [];
   const params: TypedField[] = [];
   const fails: RuleFails[] = [];
 
@@ -85,6 +94,21 @@ export function ruleDecl(node: LineNode, c: Ctx): RuleDecl | undefined {
       case 'async':
         if (!repeated(async, head, c) && flag(child, c)) async = head;
         break;
+      case 'debounce':
+        if (repeated(debounceLine, head, c)) break;
+        debounceLine = head;
+        debounce = ruleDebounce(child, c);
+        break;
+      case 'use': {
+        const use = useClause(child, c);
+        if (use !== undefined) uses.push(use);
+        break;
+      }
+      case 'skip': {
+        const skip = skipClause(child, c);
+        if (skip !== undefined) skips.push(skip);
+        break;
+      }
       case 'fails': {
         leaf(child, c);
         const code = declName(child, 'kebab', 'error code', c);
@@ -112,11 +136,30 @@ export function ruleDecl(node: LineNode, c: Ctx): RuleDecl | undefined {
     ...(on !== undefined ? { on } : {}),
     ...(runs !== undefined ? { runs } : {}),
     ...(async !== undefined ? { async: async.span } : {}),
+    ...(debounce !== undefined ? { debounce } : {}),
+    uses,
+    skips,
     params,
     fails,
     ...doc(node),
     span: blockSpan(node),
   };
+}
+
+/** `debounce <ms>`: a whole number of milliseconds, `0` included. */
+function ruleDebounce(node: LineNode, c: Ctx): RuleDebounce | undefined {
+  leaf(node, c);
+  const [keyword, value] = node.tokens as [Token, Token?];
+  if (value === undefined) {
+    c.out.push(FUD1063({ span: keyword.span, keyword: keyword.raw }));
+    return undefined;
+  }
+  if (!/^\d+$/u.test(value.raw)) {
+    unexpected({ ...node, tokens: [value] }, { ...node, tokens: [keyword] }, ['<milliseconds>'], c);
+    return undefined;
+  }
+  trailing(node, 2, c);
+  return { keyword: keyword.span, value: { kind: 'number', value: Number(value.raw), span: value.span }, span: node.span };
 }
 
 /** `on field <type>+`, `on group` or `on form`. */

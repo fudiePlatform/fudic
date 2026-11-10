@@ -58,6 +58,20 @@ export interface LinkedApi {
   readonly data?: DataShape;
   /** The fields of its `load` marked `later` (SDD-70), in declaration order. Absent: none. */
   readonly later?: readonly string[];
+  /**
+   * The fields of each of its `forms`, by form and then by path (`data.proof`): what tells a
+   * `<input type="file">` bound to a `file` from one bound to a `str`, and which `accept` it gets
+   * (SDD-81 §3.7). Absent: the host cannot say, and those checks stay silent.
+   */
+  readonly fields?: Readonly<Record<string, Readonly<Record<string, LinkedField>>>>;
+}
+
+/** One field of a linked form (SDD-81 §3.7). */
+export interface LinkedField {
+  /** As written in the `.fudapi`, without `?`: `str`, `file`, `file[]`. */
+  readonly type: string;
+  /** The types of its `accept` rule: `image/png, image/jpeg`. */
+  readonly accept?: string;
 }
 
 /** A type of `data`: a primitive by its name, or one of the shapes around it (BUG-60 §3). */

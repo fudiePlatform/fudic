@@ -8,6 +8,8 @@ export type {
   BaseContext,
   CallOptions,
   ClientContext,
+  Linkable,
+  Progress,
   ClientStep,
   CompressOptions,
   Method,

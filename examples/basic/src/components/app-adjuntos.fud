@@ -1,0 +1,70 @@
+<link rel="server" href="./app-adjuntos.fudapi">
+
+@code {
+  import { signal } from "@fudic/core";
+  import type { Recibidos } from "fudic:components/app-adjuntos";
+
+  const aviso = signal("");
+
+  // El servidor dice cuántos llegaron y cuánto pesan: lo que vio, no lo que eligió el navegador.
+  function recibidos(r: Recibidos) {
+    aviso.set(`Llegaron ${String(r.count)} (${String(r.bytes)} bytes): ${r.names.join(", ")}.`);
+    adjuntosForm.$reset();
+  }
+
+  // Corta la subida en curso: el navegador deja de mandar bytes, y el servidor tira lo que ya
+  // había guardado de ella.
+  function cancelar() {
+    adjuntosForm.$cancel();
+    aviso.set("Subida cancelada.");
+  }
+}
+
+<head>
+  <style>
+    form {
+      display: grid;
+      gap: var(--gap);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-box);
+      padding: 1.1rem;
+      background: var(--surface);
+      margin-bottom: 1rem;
+    }
+    label {
+      font-weight: 500;
+    }
+    .error {
+      color: #b3261e;
+      font-size: 0.85rem;
+    }
+    .error:empty, .aviso:empty {
+      display: none;
+    }
+    button {
+      justify-self: start;
+      font: inherit;
+      padding: 0.35rem 0.8rem;
+      border: 1px solid var(--brand);
+      border-radius: var(--radius);
+      background: var(--brand);
+      color: white;
+    }
+  </style>
+</head>
+
+<app-adjuntos>
+  <template shadowrootmode="open">
+    <form control=@adjuntosForm form:=@adjuntar @fudic:result=@recibidos>
+      <label for="docs">Documentos</label>
+      <input id="docs" type="file" multiple control=@adjuntosForm.docs>
+      <small class="error" error=@adjuntosForm.docs></small>
+      @if (adjuntosForm.$progress() !== null) {
+        <progress aria-label="Subiendo" value=@(adjuntosForm.$progress()?.loaded) max=@(adjuntosForm.$progress()?.total)></progress>
+        <button type="button" @click=@cancelar>Cancelar</button>
+      }
+      <button type="submit">Adjuntar</button>
+      <p class="aviso" role="status">@aviso()</p>
+    </form>
+  </template>
+</app-adjuntos>

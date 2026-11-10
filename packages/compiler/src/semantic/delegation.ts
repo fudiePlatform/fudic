@@ -36,6 +36,7 @@ import {
   FUD1381,
   FUD1382,
   FUD1383,
+  FUD1466,
 } from '@fudic/diagnostics';
 import { span, type Diagnostic, type Span } from '../types/index.js';
 import { classifyAttribute } from '../binding/classify.js';
@@ -45,12 +46,14 @@ import type { RazorExpression } from '../at/index.js';
 import type { Attribute, ElementNode, HtmlContent } from '../html/index.js';
 import type { ControlNode, ForeachNode, ForNode, WhileNode } from '../control/index.js';
 import { walk } from './walk.js';
+import { planValues, VALUE_ARGUMENT, type Served, type ValueSite } from './value-argument.js';
+import type { ValueReader } from '../binding/control.js';
 
 /** The event prefix, as the attribute writes it. */
 const EVENT_PREFIX = '@';
 
 /** `$event` belongs to SDD-15 (decisions 96–98): not a delegated read, and not ours to judge. */
-const EVENT_ARGUMENT = '$event';
+export const EVENT_ARGUMENT = '$event';
 
 /**
  * The runtime pieces of `@fudic/i18n` a locale's rewrite writes into the view (SDD-58 §4.4,
@@ -58,6 +61,9 @@ const EVENT_ARGUMENT = '$event';
  * `$event`, and never a delegated read. A pipe writes none: it is `euros.format(precio, "en")`.
  */
 const I18N_PIECES: ReadonlySet<string> = new Set(['$message', '$href']);
+
+/** The events fudic dispatches with a datum and no control (decision 173): `$value` has nothing to read. */
+const FORM_EVENTS: ReadonlySet<string> = new Set(['fudic:result', 'fudic:error']);
 
 /** The prefix of the tables (§4.1). One per name a handler reads, in the ancestor's closure. */
 const TABLE_PREFIX = '$t';
@@ -147,6 +153,8 @@ export interface DelegationPlan {
   readonly reads: ReadonlyMap<Attribute, readonly DelegationRead[]>;
   /** Every table to declare, in the order it was named. */
   readonly tables: readonly string[];
+  /** What the `$value` of each handler reads (SDD-80 §3.5), by the attribute that spells it. */
+  readonly values: ReadonlyMap<Attribute, ValueReader>;
 }
 
 /** An empty plan: what a document with no marker and no `$name` produces. */
@@ -155,6 +163,7 @@ const EMPTY: DelegationPlan = {
   marks: new Map(),
   reads: new Map(),
   tables: [],
+  values: new Map(),
 };
 
 /** One enclosing loop and the names its header declares. */
@@ -194,7 +203,15 @@ interface Mention {
 interface Candidate {
   readonly attr: Attribute;
   readonly element: ElementNode;
+  /**
+   * The event as written, with the name of its handler: `click`, `click.borrar` (decision 179).
+   * What a marker's list names and what the pairing matches, as text.
+   */
   readonly eventName: string;
+  /** The event listened to, `click`: what bubbles or does not. */
+  readonly base: string;
+  /** Whether it has a handler name: only a marker that lists it serves it. */
+  readonly named: boolean;
   readonly at: Span;
   readonly mentions: readonly Mention[];
   /** What the loops around the HANDLER declare: a row of the same name would clash. */
@@ -208,6 +225,8 @@ interface Reader {
   readonly attr: Attribute;
   readonly element: ElementNode;
   readonly eventName: string;
+  readonly base: string;
+  readonly named: boolean;
   readonly at: Span;
   readonly reads: readonly Mention[];
 }
@@ -219,6 +238,10 @@ interface Collected {
   /** Nearest ancestor element, control bodies seen through. The chain the pairing walks up. */
   readonly parentOf: ReadonlyMap<ElementNode, ElementNode>;
   readonly diagnostics: readonly Diagnostic[];
+  /** Every `@event.name` of any shape, with the span of its name: `FUD1466` if it reads no row. */
+  readonly named: readonly { readonly attr: Attribute; readonly text: string; readonly at: Span }[];
+  /** The handlers whose call mentions `$value`. */
+  readonly valueSites: readonly ValueSite[];
 }
 
 /** Pair every marker with its reader, over one walk of `roots`. */
@@ -229,10 +252,26 @@ export function planDelegation(
 ): DelegationPlan {
   const collected = collect(source, roots, js);
   // With no marker no name is a row, so nothing can be read and nothing paired.
-  if (collected.markers.length === 0) {
-    return collected.diagnostics.length === 0 ? EMPTY : { ...EMPTY, diagnostics: collected.diagnostics };
-  }
-  return pair(collected, js.scope);
+  const paired: Paired =
+    collected.markers.length === 0
+      ? { plan: { ...EMPTY, diagnostics: collected.diagnostics }, served: new Map(), readers: new Set() }
+      : pair(collected, js.scope);
+  // A named handler only exists to serve marks (decision 179): one that reads no row is `FUD1466`.
+  const unserving = collected.named
+    .filter((n) => !paired.readers.has(n.attr))
+    .map((n) => FUD1466({ span: n.at, text: n.text }));
+  const { values, diagnostics } = planValues(collected.valueSites, (attr) => paired.served.get(attr));
+  const all = [...paired.plan.diagnostics, ...unserving, ...diagnostics];
+  return { ...paired.plan, diagnostics: all, values };
+}
+
+/** The pairing, with what the `$value` of its handlers and `FUD1466` read off it. */
+interface Paired {
+  readonly plan: DelegationPlan;
+  /** The marks bound to each delegated handler. */
+  readonly served: ReadonlyMap<Attribute, Served>;
+  /** Every handler that reads a row. */
+  readonly readers: ReadonlySet<Attribute>;
 }
 
 /**
@@ -264,11 +303,39 @@ export function eventsReadingRow(
   return [...events];
 }
 
+/** What the editor says about one handler (SDD-80 §4.8). */
+export interface HandlerFacts {
+  /**
+   * What `$value` reads there: the reader the plan would give it if its call mentioned `$value`.
+   * Absent where it would be `FUD1462`–`FUD1464`.
+   */
+  readonly value?: ValueReader;
+  /** Delegated: the row it reads and how many marked elements serve it. */
+  readonly served?: { readonly name: string; readonly marks: number };
+}
+
+/**
+ * The facts of the handler whose attribute starts at `attribute`, from the same pairing and the
+ * same plan the emit writes — so `$value` is offered exactly where it compiles, and the marks a
+ * hover counts are the ones the listener reads.
+ */
+export function handlerAt(source: string, roots: readonly HtmlContent[], js: DelegationJs, attribute: Span): HandlerFacts {
+  const collected = collect(source, roots, js, attribute.start);
+  const served = collected.markers.length === 0 ? new Map<Attribute, Served>() : pair(collected, js.scope).served;
+  const { values } = planValues(collected.valueSites, (attr) => served.get(attr));
+  const value = [...values].find(([attr]) => attr.span.start === attribute.start)?.[1];
+  const own = [...served].find(([attr]) => attr.span.start === attribute.start)?.[1];
+  return {
+    ...(value === undefined ? {} : { value }),
+    ...(own === undefined ? {} : { served: { name: own.name, marks: own.elements.length } }),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Collection — one walk over the tree
 // ---------------------------------------------------------------------------
 
-function collect(source: string, roots: readonly HtmlContent[], js: DelegationJs): Collected {
+function collect(source: string, roots: readonly HtmlContent[], js: DelegationJs, probe?: number): Collected {
   const markers: Marker[] = [];
   const candidates: Candidate[] = [];
   const parentOf = new Map<ElementNode, ElementNode>();
@@ -280,6 +347,10 @@ function collect(source: string, roots: readonly HtmlContent[], js: DelegationJs
    * a `class:` value, an interpolation — a name the compiler reserves (`FUD0666`).
    */
   const handlers = new Set<RazorExpression>();
+  /** Where a `$value` sits in the arguments of a handler's call: the one place it is legal. */
+  const allowed = new Set<number>();
+  const named: { attr: Attribute; text: string; at: Span }[] = [];
+  const valueSites: ValueSite[] = [];
 
   const loops: Enclosing[] = [];
 
@@ -310,34 +381,56 @@ function collect(source: string, roots: readonly HtmlContent[], js: DelegationJs
           });
           continue;
         }
-        if (binding.type !== 'event') continue;
-        handlers.add(binding.value);
-
+        if (binding.type !== 'event' && binding.type !== 'bus') continue;
         const root = js.valueAst(binding.value);
-        if (handlerShape(root) !== 'call') continue;
+        const call = handlerShape(root) === 'call' ? unwrapParens(root)! : undefined;
+        const values = call === undefined ? [] : valueMentions(call);
+        // The handler the editor asks about (`valueAtHandler`) is read as if its call mentioned `$value`.
+        const site = values[0] === undefined ? (call !== undefined && probe === attr.span.start ? attr.span : undefined) : js.spanOf(values[0]);
+        for (const v of values) allowed.add(v.start);
+        if (binding.type === 'bus') {
+          const written = typeof binding.eventName === 'string' ? `bus:${binding.eventName}` : 'bus:(…)';
+          if (site !== undefined) valueSites.push({ attr, element: el, noControl: written, at: site });
+          continue;
+        }
+        handlers.add(binding.value);
+        const eventName = binding.label === undefined ? binding.name : `${binding.name}.${binding.label}`;
         const start = attr.span.start + EVENT_PREFIX.length;
+        const at = span(start, start + eventName.length);
+        if (binding.label !== undefined) named.push({ attr, text: eventName, at: span(attr.span.start, at.end) });
+        if (site !== undefined) {
+          valueSites.push({
+            attr,
+            element: el,
+            ...(FORM_EVENTS.has(binding.name) ? { noControl: `@${binding.name}` } : {}),
+            at: site,
+          });
+        }
+        if (call === undefined) continue;
         candidates.push({
           attr,
           element: el,
-          eventName: binding.name,
-          at: span(start, start + binding.name.length),
-          mentions: mentionsOf(js, unwrapParens(root)!),
+          eventName,
+          base: binding.name,
+          named: binding.label !== undefined,
+          at,
+          mentions: mentionsOf(js, call),
           enclosingNames: new Set(loops.flatMap((at) => at.names)),
-          retired: retiredRows(unwrapParens(root)!),
+          retired: retiredRows(call),
         });
       }
     },
     // Every expression of an attribute: a `$name` is never a row any more, and what it is
     // instead depends on whether the expression is a handler.
     binding(expr) {
-      strayDollars(js, expr, handlers.has(expr), diagnostics);
+      strayDollars(js, expr, handlers.has(expr), allowed, diagnostics);
     },
     interpolation(expr) {
-      strayDollars(js, expr, false, diagnostics);
+      strayDollars(js, expr, false, allowed, diagnostics);
     },
   });
 
-  return { markers, candidates, parentOf, diagnostics };
+  return { markers, candidates, parentOf, diagnostics, named, valueSites };
 }
 
 function isLoop(node: ControlNode): node is LoopNode {
@@ -401,13 +494,22 @@ function visitMentions(js: DelegationJs, node: OxcNode, hidden: ReadonlySet<stri
  * Every `$name` of an expression: in a handler, the retired spelling of a row (`FUD1383`, with
  * the plain name as the fix); anywhere else, a name the compiler reserves (`FUD0666`).
  */
-function strayDollars(js: DelegationJs, expr: RazorExpression, handler: boolean, out: Diagnostic[]): void {
+function strayDollars(
+  js: DelegationJs,
+  expr: RazorExpression,
+  handler: boolean,
+  allowed: ReadonlySet<number>,
+  out: Diagnostic[],
+): void {
   const root = js.valueAst(expr);
   if (root === undefined) return;
   visitDollars(root, (found) => {
     const name = String(found['name']);
+    // `$value` is the compiler's in the arguments of a handler's call, and nowhere else (decision 178).
+    const value = name === VALUE_ARGUMENT;
+    if (value && allowed.has(found.start)) return;
     out.push(
-      handler
+      handler && !value
         ? FUD1383({ span: js.spanOf(found), name: name.slice(1) })
         : FUD0666({ span: js.spanOf(found), name }),
     );
@@ -436,10 +538,23 @@ function visitDollars(node: OxcNode, found: (node: OxcNode) => void): void {
   }
 }
 
+/** Every `$value` in the ARGUMENTS of a handler's call, in source order (decision 178). */
+export function valueMentions(call: OxcNode): readonly OxcNode[] {
+  const out: OxcNode[] = [];
+  for (const arg of call['arguments'] as readonly OxcNode[]) {
+    visitDollars(arg, (found) => {
+      if (found['name'] === VALUE_ARGUMENT) out.push(found);
+    });
+  }
+  return out;
+}
+
 /** The `$name`s of a handler's call, without the `$`. */
 function retiredRows(call: OxcNode): ReadonlySet<string> {
   const out = new Set<string>();
-  visitDollars(call, (found) => out.add(String(found['name']).slice(1)));
+  visitDollars(call, (found) => {
+    if (found['name'] !== VALUE_ARGUMENT) out.add(String(found['name']).slice(1));
+  });
   return out;
 }
 
@@ -451,12 +566,13 @@ function isNode(value: unknown): value is OxcNode {
 // Pairing (§3.2) — the five rules about a marker and its reader
 // ---------------------------------------------------------------------------
 
-function pair(collected: Collected, scope: ReadonlySet<string>): DelegationPlan {
+function pair(collected: Collected, scope: ReadonlySet<string>): Paired {
   const { markers, candidates, parentOf } = collected;
   const diagnostics = [...collected.diagnostics];
   const marks = new Map<ElementNode, DelegationMark[]>();
   const reads = new Map<Attribute, DelegationRead[]>();
   const tables: string[] = [];
+  const served = new Map<Attribute, Served>();
 
   // The names marked below each element: what turns a mention in its handlers into a row.
   const markedBelow = new Map<ElementNode, Set<string>>();
@@ -477,8 +593,8 @@ function pair(collected: Collected, scope: ReadonlySet<string>): DelegationPlan 
     const below = markedBelow.get(candidate.element);
     const rows = candidate.mentions.filter((m) => below?.has(m.name) === true);
     if (rows.length === 0) continue;
-    const { attr, element, eventName, at } = candidate;
-    const reader: Reader = { attr, element, eventName, at, reads: rows };
+    const { attr, element, eventName, base, named, at } = candidate;
+    const reader: Reader = { attr, element, eventName, base, named, at, reads: rows };
     for (const row of rows) {
       if (!scope.has(row.name) && !candidate.enclosingNames.has(row.name)) continue;
       // A clash with a name of `@code` is the loop's own `FUD0918`, renamed away the same way;
@@ -513,7 +629,8 @@ function pair(collected: Collected, scope: ReadonlySet<string>): DelegationPlan 
     const events = new Set<string>();
     for (let at = parentOf.get(from); at !== undefined; at = parentOf.get(at)) {
       for (const r of readersOf.get(at) ?? []) {
-        if (r.reads.some((x) => x.name === name)) events.add(r.eventName);
+        // A named handler is served only by the marks that list it (decision 179).
+        if (!r.named && r.reads.some((x) => x.name === name)) events.add(r.eventName);
       }
     }
     return [...events];
@@ -526,7 +643,13 @@ function pair(collected: Collected, scope: ReadonlySet<string>): DelegationPlan 
    */
   const bound = new Map<
     string,
-    { readonly table: string; readonly headers: readonly Span[]; readonly loops: ControlNode[] }
+    {
+      readonly table: string;
+      readonly headers: readonly Span[];
+      readonly loops: ControlNode[];
+      /** The marked elements, for the `$value` of the handler they serve. */
+      readonly elements: ElementNode[];
+    }
   >();
   const keyOf = (el: ElementNode, name: string, event: string): string => `${el.span.start} ${name} ${event}`;
 
@@ -566,6 +689,7 @@ function pair(collected: Collected, scope: ReadonlySet<string>): DelegationPlan 
           // to open them in this order or the inner header names something nobody declared.
           headers: marker.enclosing.slice(0, depth + 1).map((at) => at.loop.header.inner),
           loops: [],
+          elements: [],
         };
         tables.push(entry.table);
         bound.set(key, entry);
@@ -579,6 +703,7 @@ function pair(collected: Collected, scope: ReadonlySet<string>): DelegationPlan 
         continue;
       }
       entry.loops.push(declaring.loop);
+      entry.elements.push(marker.element);
       marks.set(marker.element, [
         ...(marks.get(marker.element) ?? []),
         { name: marker.name, table: entry.table },
@@ -605,22 +730,27 @@ function pair(collected: Collected, scope: ReadonlySet<string>): DelegationPlan 
     // A handler whose reads did not all resolve delegates nothing: it is dropped by the emit
     // rather than written with a name that is not there (§5, invariant 5). Nor does one whose
     // row clashes with a name in scope: which of the two the author meant is not ours to say.
-    if (resolved.length === reader.reads.length && !clashing.has(reader)) reads.set(reader.attr, resolved);
+    if (resolved.length === reader.reads.length && !clashing.has(reader)) {
+      reads.set(reader.attr, resolved);
+      const elements = [...new Set(reader.reads.flatMap((read) => bound.get(keyOf(reader.element, read.name, reader.eventName))!.elements))];
+      served.set(reader.attr, { event: reader.eventName, name: reader.reads[0]!.name, elements });
+    }
 
     // Only a handler that delegates needs its event to bubble: the same `@mouseenter` with no
     // `$name` is an ordinary listener on that very element, and stays legal.
-    const substitute = NON_BUBBLING.get(reader.eventName);
+    const substitute = NON_BUBBLING.get(reader.base);
     if (substitute === undefined) continue;
     diagnostics.push(
       FUD0665({
         span: reader.at,
-        event: reader.eventName,
+        event: reader.base,
         ...(substitute === null ? {} : { substitute }),
       }),
     );
   }
 
-  return { diagnostics, marks, reads, tables };
+  const readers = new Set([...readersOf.values()].flat().map((r) => r.attr));
+  return { plan: { diagnostics, marks, reads, tables, values: new Map() }, served, readers };
 }
 
 function notAHeaderBinding(marker: Marker): Diagnostic {

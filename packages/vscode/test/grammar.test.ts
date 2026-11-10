@@ -423,3 +423,18 @@ describe('snippets inside markup (SDD-48)', () => {
     expect(has(findExact(tokens, 'pie'), 'entity.name.function')).toBe(true);
   });
 });
+
+describe('the name of an event, whole (SDD-80 criterion 37)', () => {
+  it('gives `@click`, `@click.borrar` and `@fudic:result` the same scope, name included', async () => {
+    const tokens = await tokenize(
+      '<tbody @click=@f(p) @click.borrar=@borrar(p)><user-form @fudic:result=@alta></user-form></tbody>\n',
+    );
+    const scope = 'entity.other.attribute-name.binding.event';
+
+    expect(has(findExact(tokens, 'click'), scope)).toBe(true);
+    expect(has(findExact(tokens, 'click.borrar'), scope)).toBe(true);
+    expect(has(findExact(tokens, 'fudic:result'), scope)).toBe(true);
+    // The handler after it is still TypeScript's.
+    expect(has(find(tokens, 'borrar(p)'), 'variable.other')).toBe(true);
+  });
+});

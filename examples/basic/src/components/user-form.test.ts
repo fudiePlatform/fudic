@@ -1,7 +1,7 @@
 import { beforeEach, expect, test, vi } from 'vitest';
 import { mount } from '@fudic/testing';
 import { personForm } from 'fudic:components/user-form';
-import { login, logout } from 'fudic:routes/usuarios';
+import { avatar, login, logout } from 'fudic:routes/usuarios';
 import * as UserForm from './user-form.fud';
 
 // The data edge, mocked: the rule `email-taken` reads it, on the in-memory server.
@@ -64,15 +64,15 @@ test('without a session, the server half of auth stops the call before the form'
   expect(t.errorOf('Email')).toBeNull();
 });
 
-test('a save that goes through: the notice names the person, and the bus carries it (SDD-72)', async () => {
+test('a save that goes through: the notice names the person, and the host hears it (SDD-80 criterion 29)', async () => {
   const t = await mounted('ana');
-  // What `hecho` emits on `alta` is the person it was given, not an event: a listener on the
-  // document reads it in the `detail` of the bus event, which is what a receiver is handed.
+  // `fudic:result` crosses the shadow root: a listener on the host of `user-form` reads the
+  // person in its `detail`, which is what `<user-form @fudic:result=@alta>` is handed.
   const carried: unknown[] = [];
   const listener = (e: Event): void => {
     carried.push((e as CustomEvent).detail);
   };
-  document.addEventListener('alta', listener);
+  t.host.addEventListener('fudic:result', listener);
   try {
     await fill(t, 'pedro@fudic.dev');
     await t.submit();
@@ -81,6 +81,42 @@ test('a save that goes through: the notice names the person, and the bus carries
     const id = (carried[0] as { id: number }).id;
     expect(t.query('.aviso')?.textContent).toBe(`Guardado: Pedro (id ${String(id)}).`);
   } finally {
-    document.removeEventListener('alta', listener);
+    t.host.removeEventListener('fudic:result', listener);
   }
+});
+
+/** An image of `size` bytes, of `type`. */
+function image(size: number, name = 'yo.png', type = 'image/png'): File {
+  return new File([new Uint8Array(size)], name, { type });
+}
+
+test('SDD-81 criterion 28: a photo too big, or not an image, is said on choosing, before anything is sent', async () => {
+  const t = await mounted('ana');
+  await t.upload(t.getByLabelText('Foto'), image(3 * 1024 * 1024));
+  expect(t.errorOf('Foto')).toBe('Como mucho 2 MB.');
+  await t.upload(t.getByLabelText('Foto'), image(10, 'cv.pdf', 'application/pdf'));
+  expect(t.errorOf('Foto')).toBe('Tiene que ser PNG o JPEG.');
+  await t.upload(t.getByLabelText('Foto'), image(10));
+  expect(t.errorOf('Foto')).toBeNull();
+});
+
+test('SDD-81: the input says what the rule accepts, written by the compiler', async () => {
+  const t = await mounted();
+  expect(t.getByLabelText('Foto').getAttribute('accept')).toBe('image/png, image/jpeg');
+});
+
+test('SDD-81 §4.5: a sign-up with a photo keeps it, and `avatar` gives it back', async () => {
+  const t = await mounted('ana');
+  const carried: { id: number; avatar: boolean }[] = [];
+  t.host.addEventListener('fudic:result', (e) => carried.push((e as CustomEvent).detail));
+  await fill(t, 'foto@fudic.dev');
+  await t.upload(t.getByLabelText('Foto'), image(1024));
+  await t.submit();
+  expect(carried).toHaveLength(1);
+  expect(carried[0]!.avatar).toBe(true);
+  const photo = await avatar({ id: carried[0]!.id });
+  expect([photo?.name, photo?.type, photo?.size]).toEqual(['yo.png', 'image/png', 1024]);
+  // The form is back as declared: no photo, and the input empty.
+  expect(personForm.avatar()).toBeNull();
+  expect((t.getByLabelText('Foto') as HTMLInputElement).files?.length).toBe(0);
 });

@@ -30,6 +30,7 @@ import {
   FUD0667,
   FUD0991,
   FUD1005,
+  FUD1465,
 } from '@fudic/diagnostics';
 import type { RazorExpression } from '../at/index.js';
 import type { Attribute, AttributeValuePart } from '../html/index.js';
@@ -183,8 +184,24 @@ function classifyBusLiteral(attr: Attribute, eventName: string): ParseResult<Bin
   );
 }
 
-function classifyEvent(attr: Attribute, eventName: string): ParseResult<Binding> {
+/** The name of a handler, after the event and one `.` (decision 179): `borrar` of `@click.borrar`. */
+const HANDLER_NAME = /^[a-z][a-z0-9-]*$/u;
+
+/**
+ * `@click=…` and `@click.borrar=…` (decision 179). What goes before the first `.` is the event;
+ * what goes after it, the name of a handler the marks `delegate:<row>="click.borrar"` ask for. A
+ * name that is empty or not `[a-z][a-z0-9-]*` is `FUD1465`, and the binding keeps its event
+ * without one: hiding the handler from the editor over a mistake in its name helps nobody.
+ */
+function classifyEvent(attr: Attribute, written: string): ParseResult<Binding> {
   const diagnostics: Diagnostic[] = [];
+  const dot = written.indexOf('.');
+  const eventName = dot < 0 ? written : written.slice(0, dot);
+  const label = dot < 0 ? undefined : written.slice(dot + 1);
+  const named = label !== undefined && HANDLER_NAME.test(label) ? { label } : {};
+  if (label !== undefined && named.label === undefined) {
+    diagnostics.push(FUD1465({ span: nameSpan(attr, EVENT_PREFIX + written), text: written }));
+  }
 
   if (eventName.length === 0) {
     diagnostics.push(FUD0099({ span: nameSpan(attr, EVENT_PREFIX + eventName), binding: 'event' }));
@@ -193,10 +210,10 @@ function classifyEvent(attr: Attribute, eventName: string): ParseResult<Binding>
   const handler = requireSingleExpression(attr);
   if (handler.reason !== null) diagnostics.push(FUD0092({ span: valueSpan(attr) }));
   if (handler.expr === null) {
-    return withDiagnostics(plainAttribute(attr, EVENT_PREFIX + eventName), diagnostics);
+    return withDiagnostics(plainAttribute(attr, EVENT_PREFIX + written), diagnostics);
   }
   return withDiagnostics(
-    { type: 'event', span: attr.span, name: eventName, value: handler.expr },
+    { type: 'event', span: attr.span, name: eventName, ...named, value: handler.expr },
     diagnostics,
   );
 }

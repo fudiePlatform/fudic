@@ -24,3 +24,7 @@ export type Bool = TypedControl<boolean>;
 export type Num = TypedControl<number | null>;
 export type DateField = TypedControl<Date | null>;
 export type List<T> = TypedControl<readonly T[]>;
+/** `file` (SDD-81 §3.6): one file, `null` until one is chosen. */
+export type FileField = TypedControl<File | null>;
+/** `file[]`: the files of one `<input multiple>`, `[]` until some are chosen. */
+export type FileListField = TypedControl<readonly File[]>;

@@ -19,7 +19,7 @@
  */
 
 import { computed, signal, untrack } from '@fudic/core';
-import { attach, type NodeInternals, type ValidateCtx } from './internals.js';
+import { attach, validation, type NodeInternals, type ValidateCtx } from './internals.js';
 import { messageOf } from './messages.js';
 import { firstFailure, holds, isPending } from './run-rule.js';
 import { isServerOnly } from './server-flag.js';
@@ -33,6 +33,7 @@ import type {
   ControlOptions,
   Errors,
   Readable,
+  ValidateOptions,
   Widen,
 } from './types.js';
 
@@ -45,10 +46,11 @@ interface Mutable<T> {
   dirty: Readable<boolean>;
   touch(): void;
   reset(v?: T): void;
-  validate(opts?: { readonly server?: boolean }): Promise<boolean>;
+  validate(opts?: ValidateOptions): Promise<boolean>;
   message: Readable<string>;
   validateOn: () => ValidateOn;
   valid: Readable<boolean>;
+  pending: Readable<boolean>;
 }
 
 /**
@@ -99,6 +101,11 @@ function build<T>(
   let baseline = initial;
   /** Bumped whenever the value moves. A validation older than the current one is dropped. */
   let epoch = 0;
+  /**
+   * The epoch, tracked: what `pending` subscribes to. A load of the same value moves the epoch
+   * without moving the value, and the rule asked before it is no longer waited for.
+   */
+  const moved = signal(0);
   /** The outermost form this control lives in. `null` for a control that is still a template. */
   let root: AnyForm | null = null;
   /** The policy of the nearest form that chose one, handed down with the root. */
@@ -129,6 +136,7 @@ function build<T>(
       return;
     }
     epoch += 1;
+    moved.set(epoch);
     value.set(next);
     dirty.set(!Object.is(next, baseline));
     edited.set(true);
@@ -138,6 +146,7 @@ function build<T>(
   const rebase = (to: T): void => {
     baseline = to;
     epoch += 1;
+    moved.set(epoch);
     value.set(to);
     errors.set(null);
     touched.set(false);
@@ -157,7 +166,7 @@ function build<T>(
   const validateSubtree = (ctx: ValidateCtx): Promise<void> | undefined => {
     const mine = epoch;
     const rules = settle.watch(ctx.server ? validators : clientRules, mine);
-    const found = firstFailure(rules, untrack(value), ctx.root);
+    const found = firstFailure(rules, untrack(value), ctx.root, ctx.ctx);
     if (!isPending(found)) {
       record(found);
       return undefined;
@@ -195,6 +204,9 @@ function build<T>(
     }
     return errors() === null || publishedAt !== at;
   });
+
+  /** An asynchronous rule was asked for the current value and has not answered (SDD-80 §3.4). */
+  const pending = computed((): boolean => settle.pending(moved()));
 
   const internals: NodeInternals = {
     kind: 'control',
@@ -235,6 +247,7 @@ function build<T>(
     clean: () => untrack(errors) === null,
     valid,
     counts,
+    pending,
     epoch: () => epoch,
     issues: (path, out) => {
       if (touched() && errors() !== null) out.push({ path, message: self.message() });
@@ -264,7 +277,7 @@ function build<T>(
   };
   self.reset = reset;
   self.validate = async (opts = {}) => {
-    const late = validateSubtree({ root: rootOf('validate'), server: opts.server === true });
+    const late = validateSubtree(validation(rootOf('validate'), opts));
     // The summaries above speak at the moments their fields do (BUG-42 §0.6, §4.7).
     above();
     await late;
@@ -276,6 +289,7 @@ function build<T>(
   };
   self.validateOn = () => options.validateOn ?? inherited ?? DEFAULT_VALIDATE_ON;
   self.valid = () => valid();
+  self.pending = () => pending();
 
   return attach(self, internals);
 }

@@ -37,7 +37,8 @@ const PROJECT = {
   'src/broken.fudapi': 'get\n',
   'src/.hidden/x.fudapi': 'get hidden\n',
   'src/node_modules/y.fudapi': 'get vendored\n',
-  'node_modules/lib-a/fudapi/rules.fudapi': 'rule shout\n  on field str\n  runs both\n  fails loud\n',
+  'node_modules/lib-a/fudapi/rules.fudapi':
+    'rule shout\n  on field str\n  runs both\n  fails loud\n\nrule taken\n  on field str\n  runs remote\n  fails taken\n\nrule mine\n  on field str\n  runs server\n  fails mine\n',
   'node_modules/lib-a/browser/rules.js': '',
   'node_modules/lib-a/browser/rules.js.map': '{}',
   'node_modules/lib-b/index.js': '',
@@ -96,6 +97,8 @@ describe('ApiProject', () => {
       route: `${root}/src/routes/blog/[slug].fud`,
       // The shape of `data`, which the page writes `fud-data` with (BUG-60 §3.1).
       data: { fields: { title: 'str' }, types: {} },
+      // The fields of its forms, wherever they are declared (SDD-81 §3.7).
+      fields: { person: { name: { type: 'str' } } },
     });
     expect(api.linked(`${root}/src/components/c.fudapi`)).toEqual({
       id: 'components/c',
@@ -104,6 +107,7 @@ describe('ApiProject', () => {
       layout: false,
       functions: ['check'],
       forms: ['person'],
+      fields: { person: { name: { type: 'str' } } },
     });
     expect(api.linked(`${root}/src/none.fudapi`)).toBeUndefined();
   });
@@ -124,6 +128,10 @@ describe('ApiProject', () => {
         { url: '/_fudic/fn/routes/orphan/lonely/all', method: 'GET' },
       ]),
     );
+  });
+
+  it('every `runs remote` rule by URL, always POST; a `runs server` or `both` rule has none (SDD-80 §4.2)', () => {
+    expect(api.ruleTable()).toEqual([{ url: '/_fudic/rule/lib-a/rules/taken', method: 'POST' }]);
   });
 
   it('the diagnostics of the app files, and only of those that have some', () => {
@@ -303,6 +311,8 @@ describe('functions.mjs with the functions of the .fudapi', () => {
     const text = emitFunctionsModule({ api: SERVER_ROOT_ID, base: '/app/', table });
     expect(text).toContain(`import { handler as $api } from "${SERVER_ROOT_ID}";`);
     expect(text).toContain('export const handle = $api({ base: "/app/" });');
+    // And the factory itself, which server.mjs hands to createServer with its options (SDD-81 §3.10).
+    expect(text).toContain('export const handler = $api;');
     expect(text).toContain(JSON.stringify(table));
   });
 });

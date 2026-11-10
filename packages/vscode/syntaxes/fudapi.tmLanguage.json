@@ -8,6 +8,7 @@
     { "include": "#function" },
     { "include": "#named-declaration" },
     { "include": "#bare-declaration" },
+    { "include": "#runs" },
     { "include": "#clause" },
     { "include": "#string" },
     { "include": "#arrow" },
@@ -72,9 +73,18 @@
       ]
     },
 
+    "runs": {
+      "comment": "`runs` and where the rule runs: `both`, `server`, `remote` (SDD-80).",
+      "match": "^[ ]+(runs)[ ]+(both|server|remote)(?=\\s|$)",
+      "captures": {
+        "1": { "name": "keyword.other.clause.fudapi" },
+        "2": { "name": "constant.language.runs.fudapi" }
+      }
+    },
+
     "clause": {
       "comment": "The first word of an indented line, when it is a keyword of some context.",
-      "match": "^[ ]+(use|skip|form|invalidates|compress|fails|query|validate-on|validity|catches|summary|range|require|when|on|runs|async|client|server|adds)(?=\\s|$)",
+      "match": "^[ ]+(use|skip|form|invalidates|compress|fails|query|validate-on|validity|catches|summary|range|require|when|on|runs|async|debounce|client|server|adds)(?=\\s|$)",
       "captures": {
         "1": { "name": "keyword.other.clause.fudapi" }
       }
@@ -114,7 +124,7 @@
 
     "primitive": {
       "name": "support.type.primitive.fudapi",
-      "match": "(?<=\\s)(map|str|bool|date|uuid|u8|i8|u16|i16|u32|i32|f32|f64|group|\\*)((?:\\[\\])*\\??)(?=\\s|$)"
+      "match": "(?<=\\s)(map|str|html|bool|date|uuid|file|u8|i8|u16|i16|u32|i32|f32|f64|group|\\*)((?:\\[\\])*\\??)(?=\\s|$)"
     },
 
     "project-type": {
@@ -124,7 +134,8 @@
 
     "number": {
       "name": "constant.numeric.fudapi",
-      "match": "(?<=\\s)-?\\d+(?:\\.\\d+)?(?=\\s|$)"
+      "comment": "A size takes its unit next to it, in base 1024 (SDD-81 §3.2): `2mb`, `1.5gb`.",
+      "match": "(?<=\\s)-?\\d+(?:\\.\\d+)?(?:kb|mb|gb)?(?=\\s|$)"
     }
   }
 }

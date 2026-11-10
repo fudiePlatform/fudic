@@ -27,7 +27,7 @@ const LISTS = [[], ['a'], ['a', 'b', 'c']];
 const NUMBERS = [null, -1, 0, 17, 18, 120, 121, 1.5];
 
 describe('criterion 23: the built-in rules behave as today', () => {
-  it('required: "" and null fail; false, 0 and a list do not', () => {
+  it('required: "", null and [] fail; false, 0 and a list with items do not', () => {
     for (const value of ['', null, 'x', false, true, 0, [], ['a']]) {
       expect(run(requiredRule.use(), value), String(value)).toEqual(required(value, ROOT));
     }

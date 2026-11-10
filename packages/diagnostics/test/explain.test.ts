@@ -78,7 +78,10 @@ describe('explain', () => {
     expect(explain('FUD9999')).toBeUndefined();
   });
 
-  it('reads every .md the package ships, each with exactly one of fix and replacedBy', () => {
+  // Its own time limit: it reads the whole catalogue from disk, one file after another. Alone it
+  // takes a third of a second; with every package of the workspace testing at once it took six,
+  // past the default five — the disk is shared, the work is not slower.
+  it('reads every .md the package ships, each with exactly one of fix and replacedBy', { timeout: 30_000 }, () => {
     for (const f of readdirSync(CODES).filter((n) => n.endsWith('.md'))) {
       const e = explain(f.slice(0, -3));
       expect(e, f).toBeDefined();

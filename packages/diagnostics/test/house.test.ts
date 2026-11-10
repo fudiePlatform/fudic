@@ -4,7 +4,7 @@
  *
  * Outside `packages/diagnostics/src`, no source file writes a `'FUDnnnn'` string: a diagnostic
  * is made by calling its code. Comments do not count — they are references — and neither do
- * the three tables that READ a code already emitted to decide something.
+ * the tables that READ a code already emitted to decide something.
  */
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -19,6 +19,7 @@ const PACKAGES = fileURLToPath(new URL('../../', import.meta.url));
 const READERS: Readonly<Record<string, string>> = {
   'language-server/src/repairs.ts': 'REPAIRS',
   'language-server/src/fudspec/actions.ts': 'REPAIRS',
+  'language-server/src/fudapi/repairs.ts': 'REPAIRS',
   'formatter/src/format.ts': 'KEY_RULES',
   'cli/src/run.ts': 'BROKEN_SOURCE',
 };
@@ -179,7 +180,7 @@ describe('one house (invariant 1, criterion 5)', () => {
     ]);
   });
 
-  it('no source outside @fudic/diagnostics writes a code, but the three tables that read one', () => {
+  it('no source outside @fudic/diagnostics writes a code, but the tables that read one', () => {
     const strays: string[] = [];
     for (const { key, text } of FILES) {
       const table = READERS[key];

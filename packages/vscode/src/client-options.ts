@@ -58,6 +58,9 @@ export const buildClientLaunch = (
     // And a `.css`, for the tokens its `var(--` offers (SDD-63 §3.5). Volar's CSS service stays
     // out of it: VS Code has its own there.
     { scheme: 'file', language: 'css' },
+    // And the `fudic.json` of a project, for what the build says about it (SDD-81). By name:
+    // any other JSON is none of this server's business.
+    { scheme: 'file', pattern: '**/fudic.json' },
   ],
   fileEvents: FILE_EVENTS,
   initializationOptions: {

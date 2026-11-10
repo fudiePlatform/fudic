@@ -185,17 +185,11 @@ describe('controlTarget — one function per shape of element (§4.2)', () => {
 // ---------------------------------------------------------------------------
 
 describe('FUD0592 — an element that carries no user value (§6.5)', () => {
-  it('rejects file and the valueless types, each with its own message', () => {
-    const seen = new Set<string>();
-    for (const markup of [
-      '<input type="file" control="@f.doc">',
-      '<input type="submit" control="@f.go">',
-    ]) {
-      const found = diags(component(markup));
-      expect(found.map((d) => d.code)).toEqual(['FUD0592']);
-      seen.add(found[0]!.message);
-    }
-    expect(seen.size).toBe(2);
+  it('SDD-81 criterion 26: a file input is no longer one of them, and binds through bindFile', () => {
+    expect(codes(component('<input type="file" control="@f.doc">'))).toEqual([]);
+    expect(codes(component('<input type="file" multiple control=@f.docs>'))).toEqual([]);
+    expect(controlTarget(element('<input type="file" control="@f.doc">', 'input'), false)).toEqual({ kind: 'value', bind: 'bindFile' });
+    expect(diags(component('<input type="submit" control="@f.go">'))[0]!.message).toContain('`submit`, `reset`, `button` and `image`');
   });
 
   it('a DYNAMIC type is not one of them any more (decision 109)', () => {

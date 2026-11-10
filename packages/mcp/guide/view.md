@@ -51,7 +51,7 @@ Not allowed (`FUD1142`): `==`, `!=`, `typeof`, `instanceof`, `in`, `void`, unary
 
 ## Calls: only reactive reads
 
-The one call the view makes is reading a reactive value, with no arguments: a `signal`, a `computed`, a form or one of its controls (`count()`, `form.$valid()`, `field.errors()`). Plus `t("…")` from `@fudic/i18n`, only as the value of a prop, and the five collection operations.
+The one call the view makes is reading a reactive value, with no arguments: a `signal`, a `computed`, a form or one of its controls (`count()`, `form.$valid()`, `field.errors()`, `field.pending()` while a remote rule has not answered: `@if (form.alias.pending()) { <small>Checking…</small> }`). Plus `t("…")` from `@fudic/i18n`, only as the value of a prop; the link of a server function, `photo.url({ id: p.id })` (an object of plain fields, or `url()` with no arguments), anywhere; and the five collection operations.
 
 Everything else is `FUD1140`: a function of `@code` (`@format(x)`), an import, a method of any prototype (`find`, `some`, `includes`, `join`, `sort`, `slice`, `toFixed`, `toUpperCase`, `toLocaleString`), a call with `?.()`. `new` is `FUD1141`. An arrow anywhere except as the argument of a collection operation, and a tagged template, are `FUD0905`. `as`, `satisfies`, `x!` and type arguments are `FUD1144`. An object or array literal is `FUD1143`.
 

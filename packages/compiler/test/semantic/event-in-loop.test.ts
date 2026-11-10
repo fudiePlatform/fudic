@@ -131,3 +131,12 @@ describe('several bindings or none (criterion 34)', () => {
     expect(d!.message).toContain('`delegate:name`');
   });
 });
+
+describe('FUD1380 — a named handler inside a loop (SDD-80 §4.6)', () => {
+  it('is blamed on the whole name, and judged by its event', () => {
+    const LOOP = '@foreach (const p of ps) key (p.id) { <button @click.borrar=@borrar(p)>x</button> }';
+    const [d] = report(LOOP);
+    expect(blamed(LOOP, d!)).toBe('@click.borrar');
+    expect(d!.message).toContain('an `@click` inside a loop');
+  });
+});

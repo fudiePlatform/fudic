@@ -29,16 +29,14 @@ Después: las SDD del MCP ([IDEA-07](sdd/ideas/IDEA-07-mcp-de-fudic.md)).
 
 ## Notas de pedro
 
-Aclaradas el 2026-11-05. Las dos primeras están desarrolladas en «Análisis con sesión», más abajo.
+Aclaradas el 2026-11-05. La primera está desarrollada en «Análisis con sesión», más abajo. La 2 y la 6 se cerraron en SDD-80.
 
 | # | Qué | Tamaño |
 |---|---|---|
 | 1 | Silenciar o subir diagnósticos | Pequeña |
-| 2 | Validadores async contra el servidor (`runs remote`) | Mediana |
 | 3 | Cabeceras de seguridad configurables (fuera los avisos de Lighthouse) | Pequeña |
 | 4 | Nivel de Baseline en `fudic.json` | Pequeña o mediana |
 | 5 | Fixtures del `load` de las páginas | Mediana |
-| 6 | `@fudic:result` y `@fudic:error` en el host del componente | Pequeña |
 | 7 | Generar la hoja de estilos desde la CLI, con el usuario | Mediana |
 | 8 | `fudic.json` en la guía del MCP, como el `sw.json` | Pequeña |
 | — | Fake o log de llamadas al servidor | Después |
@@ -49,10 +47,6 @@ Aclaradas el 2026-11-05. Las dos primeras están desarrolladas en «Análisis co
 > con la nota 4.
 
 Ver «Análisis con sesión» §1.
-
-### 2. Validadores async
-
-Ver «Análisis con sesión» §2.
 
 ### 3. Cabeceras de seguridad configurables
 
@@ -188,7 +182,8 @@ Las tres primeras valen para cualquier warning, no solo los de Baseline.
 ### 5. Fixtures del `load` de las páginas
 
 > **Redactada el 2026-11-08** como [SDD-82](sdd/SDD-82-specs-de-pagina-y-de-flujo.md) (specs de
-> página y de flujo), que depende de [SDD-81](sdd/SDD-81-ficheros.md) (el tipo `file`). Lo de abajo
+> página y de flujo), que depende de [SDD-81](sdd/SDD-81-ficheros.md) (el tipo `file`, `Hecho` el
+> 2026-11-10 a falta de la prueba de Pedro: la 82 ya puede empezar tras su merge). Lo de abajo
 > es la nota original. Dos cosas cambiaron: `$Data` no hace falta, porque el `.fudapi` ya genera
 > `LoadData` y ahora genera `Fixtures`; y `data` va en `given`, con la ruta en la cabecera
 > (`page /usuarios`).
@@ -243,21 +238,6 @@ criterion lista-vacia
 - En el editor, el `import type` de un `.fud` es hoy `any` (SDD-52, decisión 1). Para `$Data`
   pasaría lo mismo, salvo que se proyecte de verdad.
 
-### 6. `@fudic:result` y `@fudic:error` en el host
-
-Es solo semántica. El formulario sigue lanzando el evento, que recorre su camino entero, captura
-incluida. Lo único que cambia es dónde se escribe el handler: en el `<form>` o en el componente que
-lo envuelve:
-
-```html
-<app-user-form @fudic:result=@saved @fudic:error=@failed />
-```
-
-El compilador acepta esos dos eventos en el tag de un componente. Hay que revisar dos cosas:
-
-- Que el evento cruce el shadow root: necesita `composed: true` y `bubbles: true`.
-- Qué pasa con dos niveles de anidación.
-
 ### 7. Hoja de estilos desde la CLI
 
 Un generador interactivo: el usuario elige o completa tokens, colores, etc. `fudic.json` ya adopta
@@ -277,10 +257,9 @@ mismo formato que el `.fixture.ts`, y una fixture es la semilla del fake.
 
 ## Analisis con sesión 
 
-Las dos ideas encajan bien con lo que ya hay. Lo más importante que he encontrado:
+La idea encaja bien con lo que ya hay. Lo más importante que he encontrado:
 
 Diagnósticos: de los 377 códigos, 344 son errores. Solo hay 31 warnings y 2 info, que son los que de verdad se pueden silenciar.
-Validadores async: runs server + async ya existe, pero en el navegador la regla se emite con never: true (module.ts:114). O sea, alias-taken solo se comprueba al enviar el formulario, nunca mientras se escribe.
 1. Silenciar o subir diagnósticos
 Proyecto (fudic.json) — vale igual para lib y para app; cada uno manda solo sobre sus propios ficheros:
 
@@ -319,66 +298,3 @@ La lib no impone nada a la app	La config de una lib solo cuenta al compilar sus 
 Esto no rompe la regla actual de que "la severidad pertenece al código" (types.ts:10-12). El código conserva su severidad por defecto, la política solo cambia cómo se informa, y explain muestra las dos.
 
 Coste: una función applyPolicy(diags, policy, suppressions) en @fudic/diagnostics que usen compilador, vite y LSP por igual. Además, recoger los comentarios fud-disable con su span y 3 o 4 códigos nuevos. Y de propina para el LSP, un quick-fix: "Silenciar FUD1380 en esta línea".
-
-2. Validadores async contra el servidor
-Hoy:
-
-
-rule alias-taken
-  on field str
-  runs server      ← en el navegador: never: true, se salta
-  async
-  fails alias-taken
-Propuesta: un tercer valor de runs, que es lo único que cambia en el .fudapi:
-
-
-rule alias-taken
-  on field str
-  runs remote          ← el servidor la ejecuta; el navegador la pregunta mientras escribes
-  debounce 300         ← opcional, 300 por defecto
-  fails alias-taken
-El check no cambia (server/rules.ts):
-
-
-aliasTaken.check(async (value) => !(await aliasInUse(value)));
-El form tampoco cambia (forms/user.fudapi): alias-taken "Ese alias ya está cogido." sigue igual.
-
-En la vista solo hace falta una señal nueva:
-
-
-<input :=@form.alias>
-@if (form.alias.pending()) { <small>Comprobando…</small> }
-<button disabled=@(!form.valid())>Guardar</button>   @* pendiente = no válido *@
-Qué genera el plugin:
-
-
-POST /_fudic/rule/rules/people/alias-taken   { value: "pedro", root?: {...} }
-  → 200 { ok: true }
-  → 200 { ok: false, fails: "alias-taken" }
-En el lado del navegador, el stub es un asyncValidator que llama a fetch. Hace esto:
-
-debounce, para no mandar una petición por tecla;
-AbortController: si se escribe otra tecla, la petición anterior se cancela y su respuesta no pisa a la nueva;
-caché por valor: volver a "pedro" no repite la llamada;
-su veredicto alimenta verdicts.ts, que ya trata un resultado pendiente como no válido.
-Ya tenemos: declarar rule … async, asyncValidator, el veredicto pendiente en valid(), los endpoints de función /_fudic/fn/... con su stub, y que el check del servidor no llegue al bundle.
-
-Falta:
-
-runs remote y debounce en el parser de extensions.ts:49.
-El emit del stub en navegador en lugar de never: true.
-La ruta /_fudic/rule/... en el servidor.
-La señal pending() en el control, que hoy no existe en la API pública.
-Decisiones abiertas:
-
-Si falla la red, propongo que no se marque como inválido sino como desconocido: no se muestra error y el submit lo vuelve a comprobar en el servidor. La validación remota es comodidad, nunca la autoridad; el submit sigue ejecutando todo en el servidor.
-Seguridad. El endpoint es un oráculo: si responde "¿existe este email?", sirve para enumerar usuarios. Propongo que runs remote acepte use de middleware, igual que un fn, para poder poner use auth o un rate-limit:
-
-rule email-taken
-  on field str
-  runs remote
-  use rate-limit
-  fails email-taken
-  
-root. ¿Se manda el form entero o solo el valor? Propongo solo el valor, salvo que la regla declare de qué campos depende.
-Coste relativo: la 1 es pequeña y aislada, buena para un SDD corto. La 2 es mediana: casi todo es juntar piezas existentes, y lo que lleva trabajo de verdad es el endpoint y decidir lo del oráculo y el middleware.

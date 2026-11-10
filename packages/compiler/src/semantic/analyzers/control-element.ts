@@ -2,15 +2,11 @@
  * `control-element` (decision 109, SDD-34 §4.2): a `control` on an element that cannot carry
  * a user value.
  *
- * Three faces, one code, three messages — because the fix is different in each case and a
- * shared sentence would name none of them:
+ * One face left: **`submit` / `reset` / `button` / `image`** have no user value at all. There is
+ * nothing to read out of them and nothing to write into them.
  *
- * - **`submit` / `reset` / `button` / `image`** have no user value at all. There is nothing to
- *   read out of them and nothing to write into them.
- * - **`file`** is out of scope in v1 (SDD-34 §7): it needs `multipart/form-data` and a value
- *   that is not JSON-serializable.
- *
- * A dynamic `type` used to be the third, and is not any more (decision 109): it binds through
+ * `file` was the second until SDD-81 bound it (`bindFile`, decision 182). A dynamic `type` used
+ * to be the third, and is not any more (decision 109): it binds through
  * `bindByType`, and the chunk of the component that wrote it carries the dispatch. What the
  * closed design keeps out of the bundle is a table nobody asked for — a page with one text
  * field still downloads one function.
@@ -35,7 +31,7 @@ export const controlElement: Analyzer = {
           if (binding.type !== 'control') continue;
           const target = controlTarget(el, input.components.has(el.name));
           if (target.kind !== 'unsupported') continue;
-          report(FUD0592({ span: attr.span, reason: target.reason }));
+          report(FUD0592({ span: attr.span }));
         }
       },
     });

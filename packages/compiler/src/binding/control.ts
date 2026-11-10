@@ -72,14 +72,15 @@ export type BindFunction =
   | 'bindRadio'
   | 'bindSelect'
   | 'bindSelectMultiple'
+  /** `<input type="file">`: a `file`, or with `multiple` a `file[]` (SDD-81 §3.7). */
+  | 'bindFile'
   | 'bindByType';
 
-/** Why an element carrying `control` cannot be bound — the two faces of `FUD0592`. */
-export type UnsupportedControl =
-  /** `submit`, `reset`, `button`, `image`: no user value to carry. */
-  | 'no-value'
-  /** `file`: out of scope in SDD-34 §7 — multipart, and a value that is not JSON. */
-  | 'file';
+/**
+ * Why an element carrying `control` cannot be bound — `FUD0592`. `submit`, `reset`, `button` and
+ * `image` have no user value to carry. `file` was the second face until SDD-81 gave it a binding.
+ */
+export type UnsupportedControl = 'no-value';
 
 /**
  * What the element makes of the binding. The four cases of decision 109, plus the rejection
@@ -155,7 +156,7 @@ function inputBind(type: string | null | undefined): ControlTarget {
   // wrote it pays for the dispatch in its own chunk (§4.2). What the closed design keeps out
   // of the bundle is a table nobody asked for; this one is asked for, by name, in one file.
   if (type === null) return { kind: 'value', bind: 'bindByType', dynamicType: true };
-  if (type === 'file') return { kind: 'unsupported', reason: 'file' };
+  if (type === 'file') return { kind: 'value', bind: 'bindFile' };
   if (type !== undefined && NO_VALUE_TYPES.has(type)) return { kind: 'unsupported', reason: 'no-value' };
   if (type !== undefined && NUMERIC_TYPES.has(type)) return { kind: 'value', bind: 'bindNumber' };
   if (type === 'checkbox') return { kind: 'value', bind: 'bindCheckbox' };
@@ -194,4 +195,61 @@ export function controlTarget(el: ElementNode, isComponent: boolean): ControlTar
 /** Whether this element is a radio input — the one shape decision 110 lets share a node. */
 export function isRadio(el: ElementNode): boolean {
   return el.name.toLowerCase() === 'input' && staticType(el) === 'radio';
+}
+
+/**
+ * What `$value` reads off a control and the type it has (SDD-80 §3.5, decision 178): the same
+ * readers `control=` binds with, so an empty `number` is `null` in both places. `read` writes
+ * the expression over the element `el` — `$event.currentTarget`, or the marked element the
+ * delegated listener found.
+ */
+export interface ValueReader {
+  readonly kind: 'value';
+  /** Its TypeScript type, as the projection writes it. */
+  readonly type: string;
+  /** What it reads, for the editor: `checked of the checkbox`. */
+  readonly what: string;
+  read(el: string): string;
+}
+
+/** The value of an element: a reader, none (`FUD1462`), or a `type` only known at runtime (`FUD1463`). */
+export type ValueOf = ValueReader | { readonly kind: 'none' } | { readonly kind: 'dynamic' };
+
+const reader = (type: string, what: string, read: (el: string) => string): ValueReader => ({ kind: 'value', type, what, read });
+
+const TEXT = reader('string', 'value of the field', (el) => `${el}.value`);
+
+const INPUT_VALUES: ReadonlyMap<string, ValueReader> = new Map([
+  ['checkbox', reader('boolean', 'checked of the checkbox', (el) => `${el}.checked`)],
+  ['radio', reader('string', 'value of the radio', (el) => `${el}.value`)],
+  ['number', reader('number | null', 'value of the number, null when empty', (el) => `(${el}.value === '' ? null : Number(${el}.value))`)],
+  ['range', reader('number', 'value of the range', (el) => `Number(${el}.value)`)],
+]);
+
+/**
+ * `<input type="file">` (decision 182, amending 178): the file chosen, or `null`; with `multiple`,
+ * the list. The same shapes `bindFile` writes into a `file` and a `file[]`.
+ */
+const ONE_FILE = reader('File | null', 'file chosen, null when none', (el) => `(${el}.files?.[0] ?? null)`);
+const FILES = reader('readonly File[]', 'files chosen', (el) => `Array.from(${el}.files ?? [])`);
+
+/** What `$value` is on `el`: the element that fires the event, or the marked one that serves it. */
+export function valueOf(el: ElementNode): ValueOf {
+  switch (el.name.toLowerCase()) {
+    case 'input': {
+      const type = staticType(el);
+      if (type === null) return { kind: 'dynamic' };
+      if (type !== undefined && NO_VALUE_TYPES.has(type)) return { kind: 'none' };
+      if (type === 'file') return hasMultiple(el) ? FILES : ONE_FILE;
+      return (type === undefined ? undefined : INPUT_VALUES.get(type)) ?? TEXT;
+    }
+    case 'textarea':
+      return TEXT;
+    case 'select':
+      return hasMultiple(el)
+        ? reader('string[]', 'values of the selected options', (e) => `Array.from(${e}.selectedOptions, ($o) => $o.value)`)
+        : reader('string', 'value of the select', (e) => `${e}.value`);
+    default:
+      return { kind: 'none' };
+  }
 }

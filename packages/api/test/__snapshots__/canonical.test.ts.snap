@@ -30,7 +30,7 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
 {
   "declarations": [
     {
-      "doc": "The value is not empty.",
+      "doc": "The value is there: neither "", null nor an empty list. \`false\` is a value: a box that must be ticked is a rule of its own.",
       "fails": [
         {
           "code": {
@@ -50,7 +50,7 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
       },
       "on": {
         "keyword": "on",
-        "span": "on field str bool u8 i8 u16 i16 u32 i32 f32 f64 date uuid str[]",
+        "span": "on field *",
         "target": {
           "span": "field",
           "text": "field",
@@ -59,110 +59,10 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
           {
             "kind": "named",
             "name": {
-              "span": "str",
-              "text": "str",
+              "span": "*",
+              "text": "*",
             },
-            "span": "str",
-          },
-          {
-            "kind": "named",
-            "name": {
-              "span": "bool",
-              "text": "bool",
-            },
-            "span": "bool",
-          },
-          {
-            "kind": "named",
-            "name": {
-              "span": "u8",
-              "text": "u8",
-            },
-            "span": "u8",
-          },
-          {
-            "kind": "named",
-            "name": {
-              "span": "i8",
-              "text": "i8",
-            },
-            "span": "i8",
-          },
-          {
-            "kind": "named",
-            "name": {
-              "span": "u16",
-              "text": "u16",
-            },
-            "span": "u16",
-          },
-          {
-            "kind": "named",
-            "name": {
-              "span": "i16",
-              "text": "i16",
-            },
-            "span": "i16",
-          },
-          {
-            "kind": "named",
-            "name": {
-              "span": "u32",
-              "text": "u32",
-            },
-            "span": "u32",
-          },
-          {
-            "kind": "named",
-            "name": {
-              "span": "i32",
-              "text": "i32",
-            },
-            "span": "i32",
-          },
-          {
-            "kind": "named",
-            "name": {
-              "span": "f32",
-              "text": "f32",
-            },
-            "span": "f32",
-          },
-          {
-            "kind": "named",
-            "name": {
-              "span": "f64",
-              "text": "f64",
-            },
-            "span": "f64",
-          },
-          {
-            "kind": "named",
-            "name": {
-              "span": "date",
-              "text": "date",
-            },
-            "span": "date",
-          },
-          {
-            "kind": "named",
-            "name": {
-              "span": "uuid",
-              "text": "uuid",
-            },
-            "span": "uuid",
-          },
-          {
-            "element": {
-              "kind": "named",
-              "name": {
-                "span": "str",
-                "text": "str",
-              },
-              "span": "str",
-            },
-            "kind": "list",
-            "span": "str[]",
+            "span": "*",
           },
         ],
       },
@@ -175,13 +75,15 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
           "text": "both",
         },
       },
+      "skips": [],
       "span": "rule required
-  on field str bool u8 i8 u16 i16 u32 i32 f32 f64 date uuid str[]
+  on field *
   runs both
   fails required",
+      "uses": [],
     },
     {
-      "doc": "A number no smaller than \`min\`.",
+      "doc": "A number no smaller than n. An empty field is required's business.",
       "fails": [
         {
           "code": {
@@ -304,14 +206,16 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
           "text": "both",
         },
       },
+      "skips": [],
       "span": "rule min
   on field u8 i8 u16 i16 u32 i32 f32 f64
   runs both
   n  f64
   fails min n",
+      "uses": [],
     },
     {
-      "doc": "A number no bigger than \`max\`.",
+      "doc": "A number no bigger than n. An empty field is required's business.",
       "fails": [
         {
           "code": {
@@ -434,14 +338,16 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
           "text": "both",
         },
       },
+      "skips": [],
       "span": "rule max
   on field u8 i8 u16 i16 u32 i32 f32 f64
   runs both
   n  f64
   fails max n",
+      "uses": [],
     },
     {
-      "doc": "A text or a list with \`min\` items at least.",
+      "doc": "A text or a list with n characters or items at least. An empty one is required's business.",
       "fails": [
         {
           "code": {
@@ -466,7 +372,7 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
       },
       "on": {
         "keyword": "on",
-        "span": "on field str str[]",
+        "span": "on field str *[]",
         "target": {
           "span": "field",
           "text": "field",
@@ -484,13 +390,13 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
             "element": {
               "kind": "named",
               "name": {
-                "span": "str",
-                "text": "str",
+                "span": "*",
+                "text": "*",
               },
-              "span": "str",
+              "span": "*",
             },
             "kind": "list",
-            "span": "str[]",
+            "span": "*[]",
           },
         ],
       },
@@ -520,14 +426,16 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
           "text": "both",
         },
       },
+      "skips": [],
       "span": "rule min-length
-  on field str str[]
+  on field str *[]
   runs both
   n  u32
   fails min-length n",
+      "uses": [],
     },
     {
-      "doc": "A text or a list with \`max\` items at most.",
+      "doc": "A text or a list with n characters or items at most.",
       "fails": [
         {
           "code": {
@@ -552,7 +460,7 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
       },
       "on": {
         "keyword": "on",
-        "span": "on field str str[]",
+        "span": "on field str *[]",
         "target": {
           "span": "field",
           "text": "field",
@@ -570,13 +478,13 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
             "element": {
               "kind": "named",
               "name": {
-                "span": "str",
-                "text": "str",
+                "span": "*",
+                "text": "*",
               },
-              "span": "str",
+              "span": "*",
             },
             "kind": "list",
-            "span": "str[]",
+            "span": "*[]",
           },
         ],
       },
@@ -606,14 +514,16 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
           "text": "both",
         },
       },
+      "skips": [],
       "span": "rule max-length
-  on field str str[]
+  on field str *[]
   runs both
   n  u32
   fails max-length n",
+      "uses": [],
     },
     {
-      "doc": "The whole text matches a pattern.",
+      "doc": "The whole text matches a pattern of the project. The empty text passes.",
       "fails": [
         {
           "code": {
@@ -675,55 +585,247 @@ exports[`the canonical files (criterion 1) > formsRules has no diagnostics and t
           "text": "both",
         },
       },
+      "skips": [],
       "span": "rule pattern
   on field str
   runs both
   regex  pattern
   fails pattern",
+      "uses": [],
+    },
+    {
+      "doc": "The file is no bigger than n bytes. An empty field is required's business.",
+      "fails": [
+        {
+          "code": {
+            "span": "max-size",
+            "text": "max-size",
+          },
+          "keyword": "fails",
+          "params": [
+            {
+              "span": "n",
+              "text": "n",
+            },
+          ],
+          "span": "fails max-size n",
+        },
+      ],
+      "keyword": "rule",
+      "kind": "rule",
+      "name": {
+        "span": "max-size",
+        "text": "max-size",
+      },
+      "on": {
+        "keyword": "on",
+        "span": "on field file file[]",
+        "target": {
+          "span": "field",
+          "text": "field",
+        },
+        "types": [
+          {
+            "kind": "named",
+            "name": {
+              "span": "file",
+              "text": "file",
+            },
+            "span": "file",
+          },
+          {
+            "element": {
+              "kind": "named",
+              "name": {
+                "span": "file",
+                "text": "file",
+              },
+              "span": "file",
+            },
+            "kind": "list",
+            "span": "file[]",
+          },
+        ],
+      },
+      "params": [
+        {
+          "kind": "field",
+          "name": {
+            "span": "n",
+            "text": "n",
+          },
+          "span": "n  f64",
+          "type": {
+            "kind": "named",
+            "name": {
+              "span": "f64",
+              "text": "f64",
+            },
+            "span": "f64",
+          },
+        },
+      ],
+      "runs": {
+        "keyword": "runs",
+        "span": "runs both",
+        "value": {
+          "span": "both",
+          "text": "both",
+        },
+      },
+      "skips": [],
+      "span": "rule max-size
+  on field file file[]
+  runs both
+  n  f64
+  fails max-size n",
+      "uses": [],
+    },
+    {
+      "doc": "The file's type is one the list accepts: the syntax of the HTML accept attribute.",
+      "fails": [
+        {
+          "code": {
+            "span": "accept",
+            "text": "accept",
+          },
+          "keyword": "fails",
+          "params": [
+            {
+              "span": "types",
+              "text": "types",
+            },
+          ],
+          "span": "fails accept types",
+        },
+      ],
+      "keyword": "rule",
+      "kind": "rule",
+      "name": {
+        "span": "accept",
+        "text": "accept",
+      },
+      "on": {
+        "keyword": "on",
+        "span": "on field file file[]",
+        "target": {
+          "span": "field",
+          "text": "field",
+        },
+        "types": [
+          {
+            "kind": "named",
+            "name": {
+              "span": "file",
+              "text": "file",
+            },
+            "span": "file",
+          },
+          {
+            "element": {
+              "kind": "named",
+              "name": {
+                "span": "file",
+                "text": "file",
+              },
+              "span": "file",
+            },
+            "kind": "list",
+            "span": "file[]",
+          },
+        ],
+      },
+      "params": [
+        {
+          "kind": "field",
+          "name": {
+            "span": "types",
+            "text": "types",
+          },
+          "span": "types  str",
+          "type": {
+            "kind": "named",
+            "name": {
+              "span": "str",
+              "text": "str",
+            },
+            "span": "str",
+          },
+        },
+      ],
+      "runs": {
+        "keyword": "runs",
+        "span": "runs both",
+        "value": {
+          "span": "both",
+          "text": "both",
+        },
+      },
+      "skips": [],
+      "span": "rule accept
+  on field file file[]
+  runs both
+  types  str
+  fails accept types",
+      "uses": [],
     },
   ],
   "kind": "file",
   "role": "extensions",
-  "span": "# The value is not empty.
+  "span": "# The value is there: neither "", null nor an empty list. \`false\` is a value: a box that must be ticked is a rule of its own.
 rule required
-  on field str bool u8 i8 u16 i16 u32 i32 f32 f64 date uuid str[]
+  on field *
   runs both
   fails required
 
-# A number no smaller than \`min\`.
+# A number no smaller than n. An empty field is required's business.
 rule min
   on field u8 i8 u16 i16 u32 i32 f32 f64
   runs both
   n  f64
   fails min n
 
-# A number no bigger than \`max\`.
+# A number no bigger than n. An empty field is required's business.
 rule max
   on field u8 i8 u16 i16 u32 i32 f32 f64
   runs both
   n  f64
   fails max n
 
-# A text or a list with \`min\` items at least.
+# A text or a list with n characters or items at least. An empty one is required's business.
 rule min-length
-  on field str str[]
+  on field str *[]
   runs both
   n  u32
   fails min-length n
 
-# A text or a list with \`max\` items at most.
+# A text or a list with n characters or items at most.
 rule max-length
-  on field str str[]
+  on field str *[]
   runs both
   n  u32
   fails max-length n
 
-# The whole text matches a pattern.
+# The whole text matches a pattern of the project. The empty text passes.
 rule pattern
   on field str
   runs both
   regex  pattern
   fails pattern
+
+# The file is no bigger than n bytes. An empty field is required's business.
+rule max-size
+  on field file file[]
+  runs both
+  n  f64
+  fails max-size n
+
+# The file's type is one the list accepts: the syntax of the HTML accept attribute.
+rule accept
+  on field file file[]
+  runs both
+  types  str
+  fails accept types
 ",
 }
 `;

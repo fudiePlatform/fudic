@@ -7,9 +7,10 @@
  * has a single `if` and it is about writing, not about shape.
  */
 
-import type { AnyForm, AnyNode, Errors, Issue } from './types.js';
+import type { AnyForm, AnyNode, Errors, Issue, Progress, ValidateOptions } from './types.js';
 import type { ValidateOn } from './validate-on.js';
 import type { Validity } from './validity.js';
+import { WHOLE_PASS } from './whole-pass.js';
 
 /** The key under which every node carries its internals. Non-enumerable. */
 export const NODE = Symbol('fud.node');
@@ -20,7 +21,19 @@ export interface ValidateCtx {
   readonly root: AnyForm;
   /** Whether the server-only validators take part. */
   readonly server: boolean;
+  /** The server's `ctx` of the request, for the rules the server runs (SDD-80 §3.2). */
+  readonly ctx?: unknown;
 }
+
+/**
+ * The pass `validate(opts)` / `$validate(opts)` starts at `root`. A `$validate()` in the browser
+ * is `whole`: its validators are told, so a remote rule does not ask (SDD-80 §4.3).
+ */
+export const validation = (root: AnyForm, opts: ValidateOptions, whole = false): ValidateCtx => ({
+  root,
+  server: opts.server === true,
+  ...(opts.ctx !== undefined ? { ctx: opts.ctx } : whole && opts.server !== true ? { ctx: WHOLE_PASS } : {}),
+});
 
 /** How a value is written: completely, or only where it is mentioned. */
 export type WriteMode = 'set' | 'patch';
@@ -70,6 +83,11 @@ export interface NodeInternals {
   ): void;
   /** Publishes an error that came from outside. A control also marks itself touched. */
   publish(e: Errors | null): void;
+  /**
+   * The signal of a send of `form:=`: the one every send in flight shares, until `$cancel()`
+   * aborts them all (SDD-81 §3.6). A form only.
+   */
+  send?(): AbortSignal;
   /** A child by name, for resolving a path. `undefined` when there is no such field. */
   child(name: string): AnyNode | undefined;
   /** Collects control errors into `out`, keyed by path. TRACKED. */
@@ -80,6 +98,8 @@ export interface NodeInternals {
   valid(): boolean;
   /** TRACKED: some control here or below counts for the validity. */
   counts(): boolean;
+  /** TRACKED: an asynchronous rule here or below has been asked and not answered for the current value. */
+  pending(): boolean;
   /**
    * Moves whenever a value here or below moves. A control's epoch; a form's is the sum of its
    * children's, which only grows and changes exactly when one of them does.
@@ -94,6 +114,11 @@ export interface NodeInternals {
    * `bindForm` calls with the map the compiler wrote; a form only.
    */
   linkFields?(ids: Readonly<Record<string, string>>): void;
+  /**
+   * The bytes the send of `form:=` has moved, or `null` once it moves no more (SDD-81 §3.6):
+   * what `bindForm` hands the call as its `onProgress`. A form only.
+   */
+  progress?(p: Progress | null): void;
   touchAll(): void;
   resetAll(): void;
   clearAll(): void;

@@ -18,9 +18,9 @@ function fudFiles(dir: string): string[] {
   });
 }
 
-/** Every `@fudic:result`, `@fudic:error` and `bus:` binding of `source`: its name and value. */
+/** Every `@fudic:result`, `@fudic:error` and `bus:` binding of `source`: its name and value. An `@@` is text. */
 function bindings(source: string): { name: string; value: string }[] {
-  const found = source.matchAll(/(@fudic:result|@fudic:error|bus:(?:[\w-]+|\([^)]*\)))=("[^"]*"|@[^\s>]+)/gu);
+  const found = source.matchAll(/(?<!@)(@fudic:result|@fudic:error|bus:(?:[\w-]+|\([^)]*\)))=("[^"]*"|@[^\s>]+)/gu);
   return [...found].map((m) => ({ name: m[1]!, value: m[2]!.replace(/^"|"$/gu, '') }));
 }
 
@@ -44,9 +44,9 @@ const handlers = fudFiles(SRC).flatMap((file) => {
   });
 });
 
-test('the migrated handlers are found: user-form, usuarios, shopping-cart and bus-log', () => {
+test('the migrated handlers are found: user-form, usuarios (on the host, SDD-80), shopping-cart and bus-log', () => {
   const names = handlers.map((h) => `${h.name}=${h.value}`);
-  expect(names).toEqual(expect.arrayContaining(['@fudic:result=@hecho', 'bus:alta=@alta', 'bus:carrito=@onCarrito', 'bus:picked=@onPicked']));
+  expect(names).toEqual(expect.arrayContaining(['@fudic:result=@hecho', '@fudic:result=@alta', 'bus:carrito=@onCarrito', 'bus:picked=@onPicked']));
 });
 
 test('no handler of the three reads detail or types a CustomEvent', () => {

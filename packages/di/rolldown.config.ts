@@ -87,6 +87,9 @@ const FRONTIERS: Readonly<Record<string, string>> = {
   'src/registry.ts': 'registry',
   'src/resolve.ts': 'resolve',
   'src/seed.ts': 'seed',
+  // The one variable `resolve` and `seed` share: a copy in each would be two ambients, and the
+  // container a page installs would be invisible to the resolution that asks for it.
+  'src/ambient.ts': 'ambient',
 };
 
 /** Absolute path → published URL, resolved once so the hook below is a lookup. */

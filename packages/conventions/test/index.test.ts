@@ -46,11 +46,14 @@ describe('@fudic/conventions', () => {
   it('names the server-function and error-page prefixes, inside the runtime directory', () => {
     // SDD-56 §4.1 and §4.8: both sides derive these URLs, so they live here once.
     expect(conventions.FN_PREFIX).toBe('/_fudic/fn');
+    expect(conventions.CSRF_PATH).toBe('/_fudic/csrf');
     // The data endpoint's, which vite and transport each kept a copy of until then.
     expect(conventions.DATA_PREFIX).toBe('/_fudic/data');
     // And what it answers with (SDD-70 §3.7).
     expect(conventions.DATA_FRAMES_TYPE).toBe('application/fud+frames');
     expect(conventions.ERROR_PREFIX).toBe('/_fudic/error');
+    // Where the browser asks a `runs remote` rule (SDD-80 §3.3).
+    expect(conventions.RULE_PREFIX).toBe('/_fudic/rule');
   });
 
   it('names the file of the global chain', () => {
@@ -105,11 +108,16 @@ describe('@fudic/conventions', () => {
     //
     // `HISTORY_EXTENSION` is SDD-65's (§3.1): the CLI writes the `.fudlog` and `@fudic/history`
     // reads it, and the `.gitattributes` of a new project names it.
+    //
+    // `RULE_PREFIX` is SDD-80's (§3.3): the browser asks a `runs remote` rule there, and the
+    // plugin and the adapters serve it next to `FN_PREFIX`.
     expect(Object.keys(conventions).sort()).toEqual([
       'API_DIR',
       'API_TYPES_DIR',
       'BROWSER_DIR',
       'COMPONENTS_DIR',
+      // The CSRF token's URL (SDD-81 §3.13), served beside the functions.
+      'CSRF_PATH',
       'DATA_FRAMES_TYPE',
       'DATA_PREFIX',
       'DATA_STALE_EVENT',
@@ -124,6 +132,7 @@ describe('@fudic/conventions', () => {
       'LOCALES_DIR',
       'PIPES_DIR',
       'ROUTES_DIR',
+      'RULE_PREFIX',
       'RUNTIME_CACHE_PREFIX',
       'RUNTIME_DIR',
       'SERVER_DIR',

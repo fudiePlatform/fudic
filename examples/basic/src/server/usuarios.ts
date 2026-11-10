@@ -2,7 +2,8 @@
 
 import { inject } from '@fudic/di';
 import { deleteCookie, setCookie } from '@fudic/http';
-import { crash, load, login, logout, remove, save, SaveFails, search, searchJson, slowSearch } from 'fudic:routes/usuarios';
+import { avatar, crash, exportar, load, login, logout, remove, save, SaveFails, search, searchJson, slowSearch } from 'fudic:routes/usuarios';
+import { Avatars } from '../services/avatars';
 import { SESSION_COOKIE } from '../services/sessions';
 import { Users } from '../services/users';
 
@@ -19,7 +20,10 @@ logout.handle((ctx) => {
   deleteCookie(ctx, SESSION_COOKIE);
 });
 
-search.handle((ctx) => inject(Users).find(ctx.args.q));
+// A local server answers in a couple of milliseconds, and «Buscando…» would only flash. 400 ms
+// is what a real network costs: enough to see the status, and to see the old search cancelled
+// when the next key comes before the answer.
+search.handle((ctx) => inject(Users).find(ctx.args.q, 400));
 
 searchJson.handle((ctx) => inject(Users).find(ctx.args.q));
 
@@ -34,7 +38,13 @@ save.handle((ctx) => {
 
 remove.handle((ctx) => {
   inject(Users).remove(ctx.args.id);
+  inject(Avatars).remove(ctx.args.id);
 });
+
+// The photo goes out as the body of the response, with its type and its name; nobody's, a 204.
+avatar.handle((ctx) => inject(Avatars).get(ctx.args.id));
+
+exportar.handle(() => new File([inject(Users).csv()], 'personas.csv', { type: 'text/csv' }));
 
 crash.handle(() => {
   throw new Error('fallo a propósito');

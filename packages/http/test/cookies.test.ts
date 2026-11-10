@@ -18,9 +18,9 @@ describe('setCookie', () => {
     expect(cookiesOf(ctx)).toEqual(['sid=a%20b; Path=/; HttpOnly; Secure; SameSite=Lax']);
   });
 
-  it('criterion 1: without Secure on a loopback host', () => {
+  it('criterion 1 (SDD-81 §3.11): Secure on a loopback host too, unless the server says otherwise', () => {
     for (const url of ['http://localhost:5173/', 'http://127.0.0.1:4173/', 'http://[::1]:5173/']) {
-      const ctx = ctxAt(url);
+      const ctx = serverContext({ method: 'POST', name: 'login', url: new URL(url), params: {}, args: undefined, settings: { secureCookies: false } });
       setCookie(ctx, 'sid', 'a b');
       expect(cookiesOf(ctx)).toEqual(['sid=a%20b; Path=/; HttpOnly; SameSite=Lax']);
     }
@@ -70,7 +70,7 @@ describe('deleteCookie', () => {
     const ctx = ctxAt('https://app.dev/');
     deleteCookie(ctx, 'sid');
     deleteCookie(ctx, 'sid', { path: '/cuenta', domain: 'app.dev' });
-    expect(cookiesOf(ctx)).toEqual(['sid=; Path=/; Max-Age=0', 'sid=; Path=/cuenta; Domain=app.dev; Max-Age=0']);
+    expect(cookiesOf(ctx)).toEqual(['sid=; Path=/; Max-Age=0; Secure', 'sid=; Path=/cuenta; Domain=app.dev; Max-Age=0; Secure']);
   });
 });
 
@@ -79,7 +79,70 @@ describe('serializeCookie', () => {
     for (const url of ['https://app.dev/', 'http://localhost:5173/']) {
       const ctx = ctxAt(url);
       setCookie(ctx, 'sid', 'a b', { maxAge: 5 });
-      expect(serializeCookie('sid', 'a b', { maxAge: 5, host: new URL(url).hostname })).toBe(cookiesOf(ctx)[0]);
+      expect(serializeCookie('sid', 'a b', { maxAge: 5, secureByDefault: true })).toBe(cookiesOf(ctx)[0]);
     }
+  });
+});
+
+describe('the server says Secure, never the Host (SDD-81 §3.11, criteria 43 and 44)', () => {
+  const ctxWith = (url: string, secureCookies?: boolean) =>
+    serverContext({
+      method: 'POST',
+      name: 'login',
+      url: new URL(url),
+      params: {},
+      args: undefined,
+      ...(secureCookies !== undefined ? { settings: { secureCookies } } : {}),
+    });
+
+  it('criterion 43: secureCookies false, no Secure even from an address of the local network', () => {
+    const ctx = ctxWith('http://192.168.1.20:5173/', false);
+    setCookie(ctx, 'sid', 'v');
+    deleteCookie(ctx, 'sid');
+    expect(cookiesOf(ctx)).toEqual(['sid=v; Path=/; HttpOnly; SameSite=Lax', 'sid=; Path=/; Max-Age=0']);
+  });
+
+  it('criterion 43: secureCookies true, Secure even when the Host is localhost', () => {
+    const ctx = ctxWith('http://localhost:5173/', true);
+    setCookie(ctx, 'sid', 'v');
+    expect(cookiesOf(ctx)).toEqual(['sid=v; Path=/; HttpOnly; Secure; SameSite=Lax']);
+  });
+
+  it('criterion 44: __Host- goes out Secure with Path=/ although secureCookies is false', () => {
+    const ctx = ctxWith('http://localhost:5173/', false);
+    setCookie(ctx, '__Host-s', 'v');
+    setCookie(ctx, '__Host-s', 'v', { secure: false, path: '/' });
+    setCookie(ctx, '__Secure-t', 'v', { path: '/cuenta', domain: 'app.dev' });
+    expect(cookiesOf(ctx)).toEqual([
+      '__Host-s=v; Path=/; HttpOnly; Secure; SameSite=Lax',
+      '__Host-s=v; Path=/; HttpOnly; Secure; SameSite=Lax',
+      '__Secure-t=v; Domain=app.dev; Path=/cuenta; HttpOnly; Secure; SameSite=Lax',
+    ]);
+  });
+
+  it('criterion 44: a __Host- cookie with a Domain or another Path is a TypeError', () => {
+    const ctx = ctxWith('https://app.dev/');
+    expect(() => setCookie(ctx, '__Host-s', 'v', { domain: 'app.dev' })).toThrow(/a __Host- cookie has no Domain and its Path is \//u);
+    expect(() => setCookie(ctx, '__Host-s', 'v', { path: '/cuenta' })).toThrow(TypeError);
+    expect(cookiesOf(ctx)).toEqual([]);
+  });
+
+  it('criterion 44: deleteCookie carries Secure for a prefixed name, or when the cookie would carry it', () => {
+    const ctx = ctxWith('http://localhost/', false);
+    deleteCookie(ctx, '__Host-s');
+    deleteCookie(ctx, '__Secure-t');
+    deleteCookie(ctx, 'sid', { secure: true });
+    deleteCookie(ctx, 'plain');
+    expect(cookiesOf(ctx)).toEqual([
+      '__Host-s=; Path=/; Max-Age=0; Secure',
+      '__Secure-t=; Path=/; Max-Age=0; Secure',
+      'sid=; Path=/; Max-Age=0; Secure',
+      'plain=; Path=/; Max-Age=0',
+    ]);
+  });
+
+  it('a response nobody settled reads production’s default: Secure', async () => {
+    const { serverSettings } = await import('../src/server/settings.js');
+    expect(serverSettings({})).toEqual({ secureCookies: true });
   });
 });

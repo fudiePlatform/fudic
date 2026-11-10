@@ -21,7 +21,7 @@
  *
  * An unknown or unsupported `type` binds NOTHING and returns a no-op cleanup, which is the
  * same answer `FUD0592` gives at compile time for a static one: `submit`, `reset`, `button`,
- * `image` carry no user value and `file` is out of scope in v1 (SDD-33 §7). It does not throw
+ * `image` carry no user value. `file` binds through `bindFile` (SDD-81 §3.7). It does not throw
  * — a `type` that arrives from a prop is data, and the runtime does not take a page down over
  * data.
  */
@@ -32,6 +32,7 @@ import { bindText } from './bind-text.js';
 import { bindNumber } from './bind-number.js';
 import { bindCheckbox } from './bind-checkbox.js';
 import { bindRadio } from './bind-radio.js';
+import { bindFile } from './bind-file.js';
 
 /** Nothing bound, nothing to undo. */
 const NOTHING: Cleanup = () => {};
@@ -85,5 +86,6 @@ export function bindByType(
   // Binding it alone is still right: the group is what the author writes, not what the type
   // string says, and a single radio is a legitimate — if unusual — control.
   if (kind === 'radio') return bindRadio([el], control as Control<string>, slot);
+  if (kind === 'file') return bindFile(el, control as Control<File | null>, slot);
   return NOTHING;
 }

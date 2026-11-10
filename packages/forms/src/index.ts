@@ -50,6 +50,7 @@ export type {
   Schema,
   TypeTag,
   TypedControl,
+  ValidateOptions,
   Validator,
   Value,
   ValueOf,

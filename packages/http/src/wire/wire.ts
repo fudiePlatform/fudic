@@ -17,6 +17,8 @@ export interface Wire {
   decodeArgs(types: Readonly<Record<string, Ty>>, body: Uint8Array): Record<string, unknown>;
   encodeValue(ty: Ty, value: unknown): Uint8Array | string;
   decodeValue(ty: Ty, body: Uint8Array): unknown;
+  /** The `$value` part of a value that carries files: read, not checked, for its files to go in first (SDD-81 §3.3). */
+  decodeRest(ty: Ty, body: Uint8Array): unknown;
   encodeProblem(problem: Problem): Uint8Array | string;
   decodeProblem(body: Uint8Array): Problem;
 }

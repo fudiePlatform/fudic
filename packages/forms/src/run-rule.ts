@@ -13,11 +13,19 @@
 import { isAsync } from './async-flag.js';
 import type { AnyForm, AnyValidator, Errors, Validator } from './types.js';
 
+/**
+ * A validator as it is called: the server's `ctx` goes as a third argument, and only a rule the
+ * server runs reads it (SDD-80 §3.2). Every other validator ignores what it does not declare.
+ */
+type WithCtx<T> = (value: T, root: AnyForm, ctx: unknown) => Errors | null | Promise<Errors | null>;
+
 export const runRule = <T>(
   rule: AnyValidator<T>,
   value: T,
   root: AnyForm,
-): Errors | null | Promise<Errors | null> => (rule as Validator<T, AnyForm>)(value, root);
+  ctx?: unknown,
+): Errors | null | Promise<Errors | null> =>
+  (rule as Validator<T, AnyForm> as WithCtx<T>)(value, root, ctx);
 
 /** Whether a rule answered later rather than now. */
 export const isPending = <T>(v: T | Promise<T>): v is Promise<T> =>
@@ -36,12 +44,13 @@ export function firstFailure<T>(
   rules: readonly AnyValidator<T>[],
   value: T,
   root: AnyForm,
+  ctx?: unknown,
 ): Errors | null | Promise<Errors | null> {
   for (const [i, rule] of rules.entries()) {
-    const result = runRule(rule, value, root);
+    const result = runRule(rule, value, root, ctx);
     if (isPending(result)) {
       return result.then(
-        (found) => found ?? firstFailure(rules.slice(i + 1), value, root),
+        (found) => found ?? firstFailure(rules.slice(i + 1), value, root, ctx),
       );
     }
     // One error per field, not a list: the first failure stops the run.
@@ -80,8 +89,9 @@ export function allFailures<T>(
   rules: readonly AnyValidator<T>[],
   value: T,
   root: AnyForm,
+  ctx?: unknown,
 ): Failures {
-  const results = rules.map((rule) => runRule(rule, value, root));
+  const results = rules.map((rule) => runRule(rule, value, root, ctx));
   const now = union(results.filter((r): r is Errors | null => !isPending(r)));
   if (!results.some(isPending)) return { now };
   return { now, later: Promise.all(results).then(union) };

@@ -47,7 +47,7 @@ const t = await mount(AppCounter, { props: { start: 2 } });
 
 **Las queries** llegan a todos los shadow roots de debajo: `getByRole(role, { name })`, `getByLabelText(text)`, `getByText(text)` (lanzan salvo que haya exactamente uno), `queryByRole(role, { name })` (`null` si no hay ninguno), `query(selector)` (CSS, la primera coincidencia o `null`), `errorOf(label)` (el texto del slot de error de un control de formulario, o `null`).
 
-**Los gestos** se resuelven cuando todo lo que iniciaron ha terminado (peticiones al servidor en memoria, chunks, signals): `click(el)`, `type(el, text)`, `clear(el)`, `blur(el)`, `submit(form?)` (el único formulario bajo el root si no se indica ninguno). No hay gesto de teclado ni de foco: eso es un criterio.
+**Los gestos** se resuelven cuando todo lo que iniciaron ha terminado (peticiones al servidor en memoria, chunks, signals): `click(el)`, `type(el, text)`, `clear(el)`, `blur(el)`, `upload(el, file | files)` (elige ficheros en un input de fichero, como su diálogo: `t.upload(t.getByLabelText("Foto"), new File([bytes], "yo.png", { type: "image/png" }))`), `submit(form?)` (el único formulario bajo el root si no se indica ninguno). No hay gesto de teclado ni de foco: eso es un criterio.
 
 Las aserciones son el `expect` de vitest más los matchers de jest-dom (`toBeInTheDocument`, `toHaveTextContent`, `toHaveAttribute`, `toHaveClass`…).
 

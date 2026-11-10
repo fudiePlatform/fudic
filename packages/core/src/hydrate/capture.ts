@@ -24,7 +24,7 @@
  * replay, which here would be a second execution.
  */
 
-import { replayer } from './replay.js';
+import { opensPicker, replayer } from './replay.js';
 import { ID_ATTR, idOf, type ElementRegistry, type InstanceState } from './registry.js';
 
 export interface CaptureConfig {
@@ -83,9 +83,13 @@ function isEditable(target: EventTarget): boolean {
   return el.localName === 'input' && !NON_TEXT_INPUTS.has((target as HTMLInputElement).type);
 }
 
-/** Cancel a gesture the handler is not there to see, keeping what the user typed. */
+/**
+ * Cancel a gesture the handler is not there to see, keeping what the user typed — and the file
+ * dialog a click on a file input opens: the browser shows it only for the user's own click, so a
+ * cancelled one would leave the user with no dialog, and the choice arrives later as a `change`.
+ */
 function withhold(event: Event, target: EventTarget): void {
-  if (!isEditable(target)) event.preventDefault();
+  if (!isEditable(target) && !opensPicker(target)) event.preventDefault();
   event.stopImmediatePropagation();
 }
 

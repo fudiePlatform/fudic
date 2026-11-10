@@ -90,11 +90,24 @@ function htmlItems(list: CompletionList | null | undefined): CompletionList | nu
 }
 
 /**
+ * Whether a link the HTML service found sits in a value that is code, not a path.
+ *
+ * The HTML service links every `href` and `src` by its text, so `src=@avatar.url({ id })` became
+ * a link to a file called `@avatar.url({`, and Ctrl+Click offered to create it. A value with a
+ * Razor part is computed when the page runs: the editor cannot know where it goes, and the
+ * name inside it is already TypeScript's to follow.
+ */
+function linksToCode(cached: NonNullable<ReturnType<typeof fudicDocumentOf>>, offset: number): boolean {
+  const attribute = regionAt(cached.source, cached.html, offset).attribute;
+  return attribute !== undefined && attribute.value.some((part) => part.type === 'razor-expression');
+}
+
+/**
  * Wrap a service so it declines the positions that belong to the projection.
  *
- * Completion only: hover, diagnostics and the rest of what the HTML service does at those
- * offsets are either harmless or already mapped, and a decorator that removed them would be
- * turning off features to fix a list.
+ * Completion, and the links of values that are code. Hover, diagnostics and the rest of what
+ * the HTML service does at those offsets are either harmless or already mapped, and a
+ * decorator that removed them would be turning off features to fix a list.
  */
 export function silenceOwnedPositions(
   plugin: LanguageServicePlugin,
@@ -107,9 +120,20 @@ export function silenceOwnedPositions(
       const instance = plugin.create(context);
       const inner = instance.provideCompletionItems?.bind(instance);
       if (inner === undefined) return instance;
+      const links = instance.provideDocumentLinks?.bind(instance);
 
       return {
         ...instance,
+        ...(links === undefined
+          ? {}
+          : {
+              async provideDocumentLinks(document, token) {
+                const found = await links(document, token);
+                const cached = fudicDocumentOf(context, document);
+                if (cached === undefined || found === undefined || found === null) return found;
+                return found.filter((link) => !linksToCode(cached, document.offsetAt(link.range.start)));
+              },
+            }),
         async provideCompletionItems(document, position, completionContext, token) {
           const cached = fudicDocumentOf(context, document);
           if (cached === undefined) return inner(document, position, completionContext, token);

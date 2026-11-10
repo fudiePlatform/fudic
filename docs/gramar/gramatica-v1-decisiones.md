@@ -268,6 +268,7 @@ compilador no le da un significado especial.
 exactamente una variable que el compilador inyecta. Solo tiene sentido dentro de la lista de
 argumentos de un event binding; fuera es un identificador libre como cualquier otro y no se
 sustituye.
+*Enmendada por la 178: `$value`, el valor del control que disparó el evento, vive junto a `$event`.*
 
 **98.** **La referencia desnuda sigue valiendo.** `@click="@toggle"` —sin paréntesis— suscribe
 `toggle` tal cual, y el DOM lo invoca con el evento nativo. Es la única forma de un solo frame y
@@ -1290,6 +1291,8 @@ etiqueta, desestructuración de objetos con resto, y una sola llamada: leer un v
 de objeto y de lista y la sintaxis de TS (`FUD1140`–`FUD1148`). `@{ }` solo declara y reasigna. El
 spread de un nativo escribe sus atributos ordenados por nombre en el sitio del primer spread.
 Enmienda la 137, la 138 y la 141; `FUD0911` queda retirado.
+*Ampliada por la 182 (SDD-81 §8.2.28): el enlace de una función del servidor, `fn.url({ campo: valor })`
+o `fn.url()`, también vale; todo backend lo escribe con el camino y los argumentos codificados.*
 
 **163.** **`@empty`** (SDD-61 §3.7). Tras el cuerpo de `@foreach`, `@for` o `@while`, se pinta
 cuando el bucle no da ninguna vuelta; en el cliente es una rama más del constructo. Mal colocado o
@@ -1381,6 +1384,8 @@ admite, además de ir sin valor, un texto literal con nombres de evento separado
 dentro de un bucle avisa con `FUD1380` y sugiere delegar. *Por qué: una fila con una casilla y un
 botón no se podía delegar, porque el `click` de la casilla llegaba al handler de borrar; y una tabla
 de muchas filas con un listener por fila no escala (Pedro, 2026-11-01).*
+*Enmendada por la 179: la lista admite eventos con nombre (`click.borrar`), que solo lee el handler
+`@click.borrar`.*
 
 **177.** **La fila delegada se lee sin `$`** (SDD-72 §3.4.b). Enmienda la 118: en los argumentos de un
 handler, un nombre suelto que coincide con un `delegate:<nombre>` de un descendiente es esa fila,
@@ -1391,6 +1396,68 @@ vale dentro de cualquier argumento (`@borrar(p.id, p.name)`), y se leen tantas f
 escribe en el handler, y un valor fijo no se delega (`@borrar(p.id, 123)`). *Por qué: «ya tenemos
 bastantes dólares» (Pedro, 2026-11-01); y pasar a la función solo los datos que necesita, no la fila
 entera (Pedro, 2026-11-02).*
+
+**178.** **`$value` es el valor del control que disparó el evento** (SDD-80 §3.5). Enmienda la 97: en
+la lista de argumentos de un event binding, además de `$event`, el compilador inyecta `$value`, con
+su tipo. El control es el elemento que lleva el `@evento`; con delegación, el marcado con
+`delegate:<fila>` que sirve a ese evento, no el `target`. El valor se lee como lo lee `control=`: una
+casilla da `boolean` (`checked`), un `number` da `number | null`, un `range` `number`, un `file`
+`File[]`, un `<select multiple>` `string[]`, y el resto de `<input>`, `<textarea>` y `<select>`,
+`string`. Vale en cualquier evento del control, con el valor del DOM en el momento del disparo. Sin
+control (un `<div>`, un `<button>`, un tag de componente, `bus:`, `@fudic:*`), `FUD1462`; con un
+`type` dinámico, `FUD1463`; con marcas delegadas de tipos distintos, `FUD1464`. Fuera de los
+argumentos de un handler sigue siendo un `$` reservado (`FUD0666`). *Por qué: `(e.target as
+HTMLInputElement).checked` en cada handler, y un `ref` no se admite en un bucle ni da el valor; la
+forma de `$event` se explica y se lee igual (Pedro, 2026-11-07).*
+
+*Enmendada por la 182: en un `<input type="file">`, `$value` es `File | null`, y con `multiple`,
+`readonly File[]`.*
+
+**179.** **Handlers con nombre: `@<evento>.<nombre>`** (SDD-80 §3.6). Enmienda la 176: un event binding
+puede llevar un nombre tras el evento (`@click.borrar`), y el marcador lo pide con el mismo texto en
+su lista (`delegate:p="click.borrar"`). El evento es lo que va antes del primer `.`; el nombre,
+`[a-z][a-z0-9-]*` (si no, `FUD1465`). Un handler con nombre solo existe delegado: si no lee ninguna
+fila, `FUD1466`. Una marca con nombre solo la lee el handler de ese nombre; una sin nombre, o sin
+lista, solo los handlers sin nombre. `@click` y `@click.borrar` conviven en el mismo elemento, y cada
+handler tiene su listener del evento base, nunca uno por fila. Un evento con `.` en su nombre ya no
+se escucha con `@`. *Por qué: una fila con *Borrar* y *Ver*, los dos `click`, no se podía delegar
+(Pedro, 2026-11-07). Ningún evento del navegador lleva `.`, y la decisión 27 (sin modificadores) lo
+dejaba libre.*
+
+**180.** **`runs remote` en una regla del `.fudapi`** (SDD-80 §3.1). Un tercer valor de `runs`: la
+regla se ejecuta en el servidor, al enviar y cuando el navegador la pregunta mientras se escribe
+(`POST /_fudic/rule/<id>/<nombre>`). Solo una regla `remote` tiene ruta; una `server` no se expone.
+Admite `debounce <ms>` (300 por defecto; en otra regla, `FUD1460`) y `use`/`skip` de middlewares
+como una función (en una regla `both`, `FUD1461`); `use json` cambia el formato de la pregunta, que
+por defecto es binario. `async` sobra y no se diagnostica. Se manda el valor que la regla vigila y
+los parámetros del uso, nunca el formulario. Un fallo de la pregunta (red, 401, 429, 500) pasa como
+válido: la autoridad es el envío, que vuelve a ejecutar la regla con sus middlewares. *Por qué: un
+alias cogido solo se descubría al pulsar Guardar (Pedro, 2026-11-07).*
+
+**181.** **`file` es un tipo del `.fudapi`** (SDD-81 §3.1, §3.2). Se escribe `file`, `file?` y
+`file[]`, y en TypeScript es el `File` estándar (`File | null` en un campo de `form`, `readonly File[]`
+en la lista). Vale en un argumento de cuerpo (`post`, `put`, `patch`, `delete`), en un campo de
+`form`, en el `->` de cualquier función y en un campo de `type` que solo se usa donde vale. No vale
+en lo que viaja en la URL —argumentos de una `get`, de ruta o de query— (`FUD1480`), en lo que pinta
+una página —`load`, `layout`, `paths` y los `type` que alcanzan— (`FUD1481`, sobre el uso con
+`related` al campo), como valor inicial de un campo de `form` (`FUD1482`), como parámetro de una
+`rule` o un `fails` (`FUD1483`) ni como clave de `map` (`FUD1089`). Dos reglas nuevas, `runs both`,
+`on field file file[]`: `max-size n` y `accept types`, con la sintaxis del atributo HTML `accept`.
+Un argumento numérico de una regla admite tamaños con unidad pegada (`500kb`, `2mb`, `1.5gb`, base
+1024; otra unidad, `FUD1487`), y uno `str` se escribe entre comillas, con el texto de la regla
+detrás. *Por qué: un fichero se declara como cualquier otro dato y llega al handler ya comprobado,
+sin una API aparte (Pedro, 2026-11-08).*
+
+**182.** **`<input type="file">` ligado a un campo `file`** (SDD-81 §3.7). `control=@form.campo` en un
+`<input type="file">` se liga con `bindFile`; `control=` vale (la 34 lo dejaba fuera por multipart).
+`multiple` tiene que casar con el tipo: con un `file`, `FUD1484`; sin él con un `file[]`, `FUD1485`;
+un control de fichero ligado a lo que no es fichero, o al revés, `FUD1486`. Si el campo tiene la
+regla `accept` y el `<input>` no lleva el atributo, el compilador lo escribe con el valor de la
+regla; el del autor manda. Enmienda la 178: `$value` en un `<input type="file">` es `File | null`, y
+con `multiple`, `readonly File[]`. *Por qué: el diálogo del sistema filtra lo mismo que la regla, y el
+tipo del valor dice de verdad si hay uno o varios (Pedro, 2026-11-08).* *Ampliada al implementar (SDD-81 §8.2.28,
+§8.2.31): elegir un fichero marca el campo y lo valida, y `fn.url(args)` es parte de la vista
+portable (amplía la 162).*
 
 ### Gramática de referencia
 
@@ -1646,7 +1713,7 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 94 | Control flujo | `@if` / `@switch` no llevan key (`FUD0542`): su identidad es la rama tomada |
 | 95 | Control flujo | Key duplicada no es error de compilación; gana la primera aparición |
 | 96 | Interpolación | Un event binding es una **invocación**: `$event` + datos, handler plano (revisa la 26; retira la forma curried) |
-| 97 | Interpolación | `$event` lo inyecta el compilador y vive en la reserva `$`; solo en la lista de argumentos de un event binding |
+| 97 | Interpolación | `$event` lo inyecta el compilador y vive en la reserva `$`; solo en la lista de argumentos de un event binding (enmendada por la 178) |
 | 98 | Interpolación | La referencia desnuda (`@click="@toggle"`) sigue valiendo: el DOM la invoca con el evento (enmendada por la 173) |
 | 99 | Interpolación | ~~La expresión implícita admite un sufijo de llamada balanceado, solo en valor de `@evento` / `bus:`~~ — **derogada por la 100**, que la absorbe |
 | 100 | Interpolación | La expresión implícita es una **cadena**: `.n`, `?.n`, `( … )` y `[ … ]` repetidos y en cualquier orden |
@@ -1713,5 +1780,10 @@ Una vez localizado el límite, se pasa el substring a Oxc para parsing y validac
 | 173 | Interpolación | En `@fudic:result`, `@fudic:error` y `bus:`, referencia y lambda reciben el `detail`; la llamada, igual. Tipado por el `form:=` y por los receptores del bus. Enmienda la 98 (SDD-72) |
 | 174 | `.fudapi` | `catches <status>+` en una función: ese error llega a quien llamó, no a `error-pages`; con un form, la unión (SDD-74) |
 | 175 | `.fudapi` | El servidor manda el código de un `fails`; la página pone su texto. En `load`, `FUD1360` (SDD-74) |
-| 176 | Interpolación | `delegate:nombre="click change"`: el marcador sirve solo a esos eventos; sin valor, a todos. Un `@evento` en un bucle avisa (`FUD1380`). Enmienda la 117 (SDD-72) |
+| 176 | Interpolación | `delegate:nombre="click change"`: el marcador sirve solo a esos eventos; sin valor, a todos. Un `@evento` en un bucle avisa (`FUD1380`). Enmienda la 117 (SDD-72) (enmendada por la 179) |
 | 177 | Interpolación | La fila delegada se lee sin `$`, suelta o dentro de un argumento: `@borrar(p)`, `@borrar(p.id, i)`; `$p` es `FUD1383` y un nombre que choca, `FUD1382`. Enmienda la 118 (SDD-72) |
+| 178 | Interpolación | `$value` en los argumentos de un handler: el valor del control que disparó el evento (o del marcado, delegado), tipado como en `control=`; `FUD1462`–`FUD1464`. Enmienda la 97 (SDD-80) (enmendada por la 182) |
+| 179 | Interpolación | Handlers con nombre `@click.borrar`, pedidos por `delegate:p="click.borrar"`; solo delegados (`FUD1466`); nombre `[a-z][a-z0-9-]*` (`FUD1465`). Enmienda la 176 (SDD-80) |
+| 180 | `.fudapi` | `runs remote`: la regla la pregunta el navegador mientras se escribe; `debounce`, `use`/`skip` (`FUD1460`, `FUD1461`); solo `remote` tiene ruta (SDD-80) |
+| 181 | `.fudapi` | `file`, `file?`, `file[]`: en cuerpo, `form`, `->` y `type`; no en URL (`FUD1480`), datos de página (`FUD1481`), valor inicial (`FUD1482`), `rule`/`fails` (`FUD1483`). Reglas `max-size` y `accept`; tamaños con unidad (`FUD1487`) (SDD-81) |
+| 182 | Formularios | `<input type="file">` con `bindFile`; `multiple` casa con el tipo (`FUD1484`, `FUD1485`, `FUD1486`); `accept` escrito desde la regla; `$value` `File \| null` / `readonly File[]`. Enmienda la 178 (SDD-81) |

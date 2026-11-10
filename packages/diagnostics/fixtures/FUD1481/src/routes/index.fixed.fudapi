@@ -1,0 +1,8 @@
+# What identifies the photo; its bytes come from the get below, linked with url().
+load ssr
+  title    str
+  photoId  str
+
+get photo /:id
+  id  str
+  -> file

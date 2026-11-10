@@ -362,7 +362,8 @@
     },
 
     "binding-event": {
-      "match": "(?<=\\s)(@)([A-Za-z_][\\w-]*)",
+      "comment": "The event with the name of its handler or its namespace, whole: `@click.borrar`, `@fudic:result` (SDD-80).",
+      "match": "(?<=\\s)(@)([A-Za-z_][\\w-]*(?:[.:][\\w-]+)*)",
       "captures": {
         "1": { "name": "punctuation.definition.binding.fudic" },
         "2": { "name": "entity.other.attribute-name.binding.event.fudic" }

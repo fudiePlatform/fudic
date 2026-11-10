@@ -1,0 +1,26 @@
+<link rel="server" href="./app-days.fudapi">
+
+@code {
+  import type { Day } from "fudic:components/app-days";
+
+  const { days } = props<{ days: Day[] }>();
+
+  function pick(day: Day): void {
+    console.log(day.n);
+  }
+
+  function clear(): void {
+    console.log("clear");
+  }
+}
+
+<app-days>
+  <template shadowrootmode="open">
+    <div @click.pick=@pick(day)>
+      @foreach (const day of days) key (day.id) {
+        <button delegate:day="click.pick">@day.n</button>
+      }
+    </div>
+    <button @click.clear=@clear()>Clear</button>
+  </template>
+</app-days>

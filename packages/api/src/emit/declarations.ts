@@ -112,8 +112,20 @@ function ruleDecl(d: RuleDecl, c: DeclCtx): string {
   const name = camel(d.name.text);
   const params = fieldsType(d.params, c);
   const codes = d.fails.length > 1 ? d.fails.map((f) => `'${f.code.text}'`).join(' | ') : 'never';
-  const args = `${ruleValue(d, c)}, ${params}, ${codes}`;
-  return `${I}export const ${name}: Rule<${args}>;\n${I}export type ${pascal(d.name.text)}Check = Check<${args}>;`;
+  const runs = d.runs?.value.text;
+  if (runs !== 'server' && runs !== 'remote') {
+    const args = `${ruleValue(d, c)}, ${params}, ${codes}`;
+    return `${I}export const ${name}: Rule<${args}>;\n${I}export type ${pascal(d.name.text)}Check = Check<${args}>;`;
+  }
+  // A rule the server runs is given the server's `ctx`, with what its middlewares add (SDD-80 §3.2).
+  c.http.add('ServerContext');
+  const prefix = pascal(d.name.text);
+  const args = `${ruleValue(d, c)}, ${params}, ${codes}, ${prefix}Ctx`;
+  return [
+    `${I}export type ${prefix}Ctx = ServerContext${addsOf(d, c)};`,
+    `${I}export const ${name}: Rule<${args}>;`,
+    `${I}export type ${prefix}Check = Check<${args}>;`,
+  ].join('\n');
 }
 
 /**
@@ -166,7 +178,7 @@ function formDecl(d: FormDecl, c: DeclCtx): string {
 }
 
 /** What the `use`s a level ends up with leave in `ctx`: `& AuthAdds`… */
-function addsOf(level: FnDecl | LoadDecl, c: DeclCtx): string {
+function addsOf(level: FnDecl | LoadDecl | RuleDecl, c: DeclCtx): string {
   return middlewaresOf(c, effective(c, level))
     .filter((m) => m.decl.adds !== undefined)
     .map((m) => ` & ${m.source === c.source ? '' : `import(${str(`fudic:${m.source.id}`)}).`}${pascal(m.decl.name.text)}Adds`)
@@ -244,10 +256,13 @@ function fnDecl(d: FnDecl, c: DeclCtx): string {
         ? 'void'
         : fieldsType([...places, ...body], c);
 
+  // A `get` is a URL too, for a `href` or a `src` (SDD-81 §3.4).
+  if (d.verb === 'get') c.http.add('Linkable');
+  const linkable = d.verb === 'get' ? ` & Linkable<${call}>` : '';
   const lines = [
     `${I}export type ${prefix}Ctx = ${ctx}${addsOf(d, c)};`,
     `${I}export type ${prefix}Handler = (ctx: ${prefix}Ctx) => ${R} | Promise<${R}>;`,
-    `${I}export const ${d.name.text}: Contract<${prefix}Ctx, ${R}, ${call}>;`,
+    `${I}export const ${d.name.text}: Contract<${prefix}Ctx, ${R}, ${call}>${linkable};`,
   ];
   if (d.fails.length > 0) lines.push(`${I}export const ${prefix}Fails: ${failsType(d.fails, c)};`);
   return lines.join('\n');

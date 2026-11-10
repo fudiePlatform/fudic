@@ -47,7 +47,7 @@ describe('criterion 18: the rules under an argument', () => {
         [
           'FUD1260',
           'email-taken',
-          'rule `email-taken` cannot check an argument: only required, min, max, min-length, max-length and pattern can',
+          'rule `email-taken` cannot check an argument: only required, min, max, min-length, max-length, pattern, max-size and accept can',
         ],
       ]);
     }

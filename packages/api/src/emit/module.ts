@@ -8,13 +8,16 @@
  * in. It imports `@fudic/*\/contract` and other `fudic:<id>`, never anything of the developer's.
  */
 
-import type { CompressClause, Decl, FailsClause, FnDecl, LoadDecl, MiddlewareArg, MiddlewareDecl, PipeDecl, RuleUse, SkipClause, UseClause } from '../ast.js';
+import { ruleCall } from '../rule-call.js';
+import { withSize } from '../size-text.js';
+import type { CompressClause, Decl, FailsClause, FnDecl, FormMember, LoadDecl, MiddlewareArg, MiddlewareDecl, PipeDecl, RuleDecl, RuleUse, SkipClause, UseClause } from '../ast.js';
+import { fileIn } from '../types-check.js';
 import type { ApiIndex, ApiSource } from '../index-api.js';
 import type { ApiContext } from '../validate.js';
 import { localizedTexts, type ApiLocale } from '../messages.js';
-import { isArgRule } from '../validate-form.js';
+import { isArgRule, isFile } from '../validate-form.js';
 import { formCode } from './form.js';
-import { canonical, fnv1a } from './signature.js';
+import { askedType, canonical, fnv1a, ruleCanonical } from './signature.js';
 import {
   borrowedForms,
   camel,
@@ -107,13 +110,8 @@ function declaration(d: Decl, c: ModuleCtx): string {
       return `export const $${d.name.text} = { oneOf: [${d.members.map((m) => str(m.text)).join(', ')}] };`;
     case 'pattern':
       return `export const ${camel(d.name.text)} = new RegExp(${str(`^(?:${d.source.text})$`)});`;
-    case 'rule': {
-      c.forms.add('rule');
-      const fails = d.fails.map((f) => `[${str(f.code.text)}, [${f.params.map((p) => str(p.text)).join(', ')}]]`);
-      const server = d.runs?.value.text === 'server';
-      const flags = [...(server ? ['server: true'] : []), ...(d.async !== undefined ? ['async: true'] : []), ...(server && c.side === 'browser' ? ['never: true'] : [])];
-      return `export const ${camel(d.name.text)} = rule({ id: ${id}, name: ${str(d.name.text)}, fails: [${fails.join(', ')}]${flags.map((f) => `, ${f}`).join('')} });`;
-    }
+    case 'rule':
+      return ruleOf(d, c);
     case 'middleware':
       return middleware(d, c);
     case 'pipe':
@@ -137,6 +135,59 @@ function declaration(d: Decl, c: ModuleCtx): string {
 }
 
 const browser = (c: ModuleCtx): string => (c.side === 'browser' ? ', browser: true' : '');
+
+/** What the browser waits after the last keystroke before it asks a `runs remote` rule (decision 180). */
+const DEBOUNCE = 300;
+
+/**
+ * A rule (SDD-80 §4.2). `runs server`: the server checks it, the browser never. `runs remote`:
+ * the server checks it, and the browser asks it by HTTP while the user types — in the format of
+ * a function (`json` left in its chain, or `fud-bin` with its signature), with the types of what
+ * it sends (`value`, `params`). On the server a rule the server runs carries its chain: `$global`
+ * and its own level, which its middlewares run around its check in. The browser variant of a
+ * remote rule has no `never`: it has a validator, the question.
+ */
+function ruleOf(d: RuleDecl, c: ModuleCtx): string {
+  c.forms.add('rule');
+  const fails = d.fails.map((f) => `[${str(f.code.text)}, [${f.params.map((p) => str(p.text)).join(', ')}]]`);
+  const runs = d.runs?.value.text;
+  const remote = runs === 'remote';
+  const onServer = runs === 'server' || remote;
+  const json = remote && effective(c, d).includes('json');
+  if (remote) c.wires.add(json ? 'json' : 'bin');
+  if (remote && c.side === 'browser') {
+    c.forms.add('askRemote');
+    c.http.add('ruleSend');
+  }
+  const flags = [
+    ...(runs === 'server' || (remote && c.side === 'server') ? ['server: true'] : []),
+    ...(remote ? ['remote: true', 'async: true'] : d.async !== undefined ? ['async: true'] : []),
+    ...(runs === 'server' && c.side === 'browser' ? ['never: true'] : []),
+    ...(remote && c.side === 'browser' ? [`debounce: ${d.debounce?.value.value ?? DEBOUNCE}`, 'ask: askRemote'] : []),
+    // The question walks the client halves of the rule's chain, as a function's call does (§8.2.28).
+    ...(remote && c.side === 'browser' ? [`send: ruleSend(${str(d.name.text)}, () => ${ruleChain(level(d.uses, d.skips, undefined, c), c)})`] : []),
+    ...(remote ? [`value: ${ruleValue(d, c)}`, `params: ${descriptors(d.params, c)}`] : []),
+    ...(remote ? [`wire: ${json ? 'jsonWire' : 'binWire'}`] : []),
+    ...(remote && !json ? [`sig: ${str(fnv1a(ruleCanonical(d, c.index)))}`] : []),
+    ...(onServer && c.side === 'server' && (remote || d.uses.length > 0 || d.skips.length > 0)
+      ? [`chain: ${ruleChain(level(d.uses, d.skips, undefined, c), c)}`]
+      : []),
+  ];
+  return `export const ${camel(d.name.text)} = rule({ id: ${str(c.source.id)}, name: ${str(d.name.text)}, fails: [${fails.join(', ')}]${flags.map((f) => `, ${f}`).join('')} });`;
+}
+
+/** The type of what a remote rule asks about: one type of `on field`, or `any` for a union, a group or a form. */
+function ruleValue(d: RuleDecl, c: ModuleCtx): string {
+  const asked = askedType(d);
+  return asked === undefined ? str('any') : descriptor(asked, c);
+}
+
+/** The levels around a rule's check: global and its own. A rule's file has no `chain` of its own. */
+function ruleChain(own: string, c: ModuleCtx): string {
+  const global = globalChain(c);
+  if (global !== undefined) c.ref(global, '$chain');
+  return `[${[...(global !== undefined ? ['$global'] : []), own].join(', ')}]`;
+}
 
 /**
  * A pipe (SDD-71 §3.3): `implement` binds the implementation and hands back a `Pipe` — with
@@ -243,6 +294,8 @@ const VALIDATORS: Readonly<Record<string, string>> = {
   'min-length': 'minLength',
   'max-length': 'maxLength',
   pattern: 'pattern',
+  'max-size': 'maxSize',
+  accept: 'accept',
 };
 
 /** One rule under an argument (SDD-67 §3.5): its validator built with its arguments, as written. */
@@ -252,10 +305,11 @@ function argRule(use: RuleUse, c: ModuleCtx): string | undefined {
   const name = VALIDATORS[use.name.text]!;
   c.forms.add(`${name} as $${name}`);
   // `pattern` names a pattern of the project, as in a form: its RegExp is what the validator takes.
-  const values = use.args.map((a) => (a.kind === 'word' ? (projectRef(c, 'pattern', a.text) ?? 'undefined') : literal(a)));
+  const call = ruleCall(use, found.decl.params);
+  const values = call.args.map((a) => (a.kind === 'word' ? (projectRef(c, 'pattern', a.text) ?? 'undefined') : literal(a)));
   const check = name === 'required' ? '$required' : `$${name}(${values.join(', ')})`;
-  const text = use.text === undefined ? '' : `, text: ${str(use.text.text)}`;
-  return `{ check: ${check}, name: ${str(use.name.text)}, args: [${use.args.map(literal).join(', ')}]${text} }`;
+  const text = call.text === undefined ? '' : `, text: ${str(withSize(use.name.text, call.text.text, call.args))}`;
+  return `{ check: ${check}, name: ${str(use.name.text)}, args: [${call.args.map(literal).join(', ')}]${text} }`;
 }
 
 /** The rules of a function's arguments, by argument in declaration order; `undefined` with none. */
@@ -295,6 +349,9 @@ function fn(d: FnDecl, c: ModuleCtx): string {
     `wire: ${json ? 'jsonWire' : 'binWire'}`,
     ...(json ? [] : [`sig: ${str(fnv1a(canonical(d, c.index)))}`]),
     ...(d.returns !== undefined ? [`returns: ${descriptor(d.returns.type, c)}`] : []),
+    // A call that may carry a file travels as multipart, carrying one this time or not (SDD-81 §3.3).
+    ...(carriesFiles(d, c) ? ['files: true'] : []),
+    ...(fileLimits(d, c) ?? []),
     ...(rules !== undefined ? [`rules: ${rules}`] : []),
     `chain: ${chainOf(level(d.uses, d.skips, d.compress, c), c)}`,
     ...(d.invalidates.length > 0 ? [`invalidates: [${d.invalidates.flatMap((i) => i.routes).map((r) => str(r.text)).join(', ')}]`] : []),
@@ -305,4 +362,41 @@ function fn(d: FnDecl, c: ModuleCtx): string {
       : []),
   ];
   return `export const ${d.name.text} = ${kind}({ ${fields.join(', ')} });${failsOf(pascal(d.name.text), d.fails, c)}`;
+}
+
+/**
+ * Whether a call of `d` may carry a file (SDD-81 §3.3): one of its body arguments reaches a
+ * `file`, or a field of its form is one.
+ */
+function carriesFiles(d: FnDecl, c: ModuleCtx): boolean {
+  const form = d.form === undefined ? undefined : c.index.lookup('form', d.form.name.text);
+  const inForm = (members: readonly FormMember[]): boolean =>
+    members.some((m) => (m.kind === 'form-group' ? inForm(m.fields) : isFile(m.type)));
+  if (form?.decl.kind === 'form' && inForm(form.decl.fields)) return true;
+  return d.args.some((a) => a.place === 'body' && fileIn(a.type, c.index, c.source.path) !== undefined);
+}
+
+/**
+ * The `max-size` of each file slot that declares one, by path (SDD-81 §3.5): the server cuts a
+ * part at it while it reads, instead of after. A `file[]` says it once for all its elements.
+ */
+function fileLimits(d: FnDecl, c: ModuleCtx): string[] | undefined {
+  const out: string[] = [];
+  const add = (path: string, rules: readonly RuleUse[]): void => {
+    const use = rules.find((r) => r.name.text === 'max-size');
+    const rule = use === undefined ? undefined : c.index.lookup('rule', 'max-size');
+    const n = use === undefined || rule?.decl.kind !== 'rule' ? undefined : ruleCall(use, rule.decl.params).args[0];
+    if (n?.kind === 'number') out.push(`${str(path)}: ${n.value}`);
+  };
+  const form = d.form === undefined ? undefined : c.index.lookup('form', d.form.name.text);
+  const walk = (members: readonly FormMember[], prefix: string): void => {
+    for (const m of members) {
+      const path = prefix === '' ? m.name.text : `${prefix}.${m.name.text}`;
+      if (m.kind === 'form-group') walk(m.fields, path);
+      else if (isFile(m.type)) add(path, m.rules);
+    }
+  };
+  if (form?.decl.kind === 'form') walk(form.decl.fields, '');
+  for (const a of d.args) if (a.place === 'body' && isFile(a.type)) add(a.name.text, a.rules);
+  return out.length === 0 ? undefined : [`fileLimits: { ${out.join(', ')} }`];
 }

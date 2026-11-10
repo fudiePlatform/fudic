@@ -85,13 +85,6 @@ describe('the batch sees every receiver (task 12)', () => {
 
 describe('examples/basic, as its build checks it (criterion 26)', () => {
   const ROOT = toPosix(fileURLToPath(new URL('../../../examples/basic', import.meta.url)));
-  const USER_FORM = `${ROOT}/src/components/user-form.fud`;
-
-  /** The real filesystem, with `user-form.fud` read as `edit` makes it. */
-  function editing(edit: (source: string) => string): CheckFs {
-    const fs = nodeFileSystem();
-    return { ...fs, readFile: (path) => (toPosix(path) === USER_FORM ? edit(fs.readFile(path)!) : fs.readFile(path)) };
-  }
 
   it('is clean in user-form and usuarios as it is', { timeout: 120_000 }, () => {
     const report = createProjectChecker({ root: ROOT }).check();
@@ -118,10 +111,31 @@ describe('examples/basic, as its build checks it (criterion 26)', () => {
     expect(report.problems.some((p) => p.file.endsWith('usuarios.fud') && p.span.start === handler && p.code === 'TS2345')).toBe(true);
   });
 
-  it('emit("alta", "x") in user-form is TS2345 on the "x"', { timeout: 120_000 }, () => {
-    const fs = editing((source) => source.replace('emit("alta", persona);', 'emit("alta", "x");'));
+  it('emit("carrito", "x") in product-list is TS2345 on the "x"', { timeout: 120_000 }, () => {
+    // `user-form` no longer emits on the bus: its `fudic:result` reaches the host (SDD-80 §3.7).
+    const PRODUCTS = `${ROOT}/src/components/product-list.fud`;
+    const base = nodeFileSystem();
+    const fs: CheckFs = {
+      ...base,
+      readFile: (path) =>
+        toPosix(path) === PRODUCTS ? base.readFile(path)!.replace('emit("carrito", precio);', 'emit("carrito", "x");') : base.readFile(path),
+    };
     const report = createProjectChecker({ root: ROOT }, fs).check();
-    const mine = shown(report, ROOT, fs.readFile).filter((line) => line.startsWith('src/components/user-form.fud'));
-    expect(mine).toEqual(['src/components/user-form.fud TS2345 "x"']);
+    const mine = shown(report, ROOT, fs.readFile).filter((line) => line.startsWith('src/components/product-list.fud'));
+    expect(mine).toEqual(['src/components/product-list.fud TS2345 "x"']);
+  });
+
+  it('SDD-80 criterion 31, in the example: alta(n: number) on the host of user-form is an error on @alta', { timeout: 120_000 }, () => {
+    const USUARIOS = `${ROOT}/src/routes/usuarios.fud`;
+    const base = nodeFileSystem();
+    const fs: CheckFs = {
+      ...base,
+      readFile: (path) =>
+        toPosix(path) === USUARIOS ? base.readFile(path)!.replace('function alta(persona: Person)', 'function alta(persona: number)') : base.readFile(path),
+    };
+    const report = createProjectChecker({ root: ROOT }, fs).check();
+    const source = fs.readFile(USUARIOS)!;
+    const handler = source.indexOf('@fudic:result=@alta') + '@fudic:result=@'.length;
+    expect(report.problems.some((p) => p.file.endsWith('usuarios.fud') && p.span.start === handler)).toBe(true);
   });
 });

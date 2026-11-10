@@ -27,6 +27,7 @@ import {
   isNativeEventAttribute,
   isUrlAttr,
   unwrapParens,
+  valueMentions,
   type Attribute,
   type AttributeValuePart,
   type Binding,
@@ -654,7 +655,7 @@ function crossesAsRead(ctx: TemplateContext, value: readonly AttributeValuePart[
  * tag never reaches here — over there the binding is the `ctrl` prop and the child's own
  * contract does the checking.
  *
- * An element the compiler rejects — `FUD0592`'s two faces — is still projected as a control:
+ * An element the compiler rejects — `FUD0592`, a `submit` and the like — is still projected as a control:
  * the `FUD` is already on the author's screen, and a second complaint about the same three
  * characters, in TypeScript's words, would be the same mistake said twice.
  */
@@ -841,8 +842,15 @@ function emitFormEvent(
   if (name === 'fudic:error') {
     ctx.w.scaffold(call ? '$onErrorEvent(' : '$onError(', attr.span);
   } else {
-    ctx.w.scaffold(call ? '$onResultEvent(' : '$onResult(', attr.span);
-    ctx.w.scaffold(`${formSendText(ctx, el) ?? 'undefined'}, `);
+    const send = formSendText(ctx, el);
+    if (send === undefined && isComponent(el.name)) {
+      // On a component's host the datum is what ITS forms return (SDD-80 §3.7): the union the
+      // component registered in `FudicFormResults`, and a handler is an error where it has none.
+      ctx.w.scaffold(`${call ? '$onResultOfEvent' : '$onResultOf'}<'${el.name}'>(`, attr.span);
+    } else {
+      ctx.w.scaffold(call ? '$onResultEvent(' : '$onResult(', attr.span);
+      ctx.w.scaffold(`${send ?? 'undefined'}, `);
+    }
   }
   emitHandler(ctx, attr, value);
   ctx.w.scaffold(');\n');
@@ -938,9 +946,24 @@ function finishedLiteral(
  * about the AST, and without one the honest answer is to change nothing.
  */
 function emitHandler(ctx: TemplateContext, attr: Attribute, value: RazorExpression): void {
-  const deferred = handlerShape(rootAt(ctx, value.expr)) === 'call';
+  const root = rootAt(ctx, value.expr);
+  const deferred = handlerShape(root) === 'call';
   const reads = ctx.delegation.reads.get(attr) ?? [];
+  // `$value` (decision 178) is declared before the call with the type of the control it reads —
+  // by an assertion and not an annotation: `const v: boolean = x as never` narrows `v` to `never`,
+  // which fits every parameter and would hide the very error this is for. Where the compiler
+  // finds no control (`FUD1462`–`FUD1464`) it is `any`, so the mistake is said once.
+  const valueDecl =
+    deferred && valueMentions(root!).length > 0
+      ? `const $value = $event as unknown as ${ctx.delegation.values.get(attr)?.type ?? 'any'}; `
+      : '';
   if (reads.length === 0) {
+    if (valueDecl !== '') {
+      ctx.w.scaffold(`($event) => { ${valueDecl}return `);
+      copyRazor(ctx, value);
+      ctx.w.scaffold('; }');
+      return;
+    }
     if (deferred) ctx.w.scaffold('($event) => ');
     copyRazor(ctx, value);
     return;
@@ -965,7 +988,7 @@ function emitHandler(ctx: TemplateContext, attr: Attribute, value: RazorExpressi
   for (const read of reads) for (const at of read.loopHeaders) byStart.set(at.start, at);
   const headers = [...byStart.values()].sort((a, b) => a.start - b.start);
 
-  ctx.w.scaffold('($event) => { ');
+  ctx.w.scaffold(`($event) => { ${valueDecl}`);
   for (const at of headers) {
     ctx.w.scaffold(`for (${ctx.source.slice(at.start, at.end)}) { `);
   }

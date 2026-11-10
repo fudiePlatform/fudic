@@ -51,12 +51,25 @@ function snapshot(page: import('@playwright/test').Page): Promise<Snapshot> {
   });
 }
 
+/**
+ * The document the server sent, as text. The blocks are read from HERE and not from the live
+ * DOM: the runtime removes each block once it has read it (SDD-70 §4.4), so a locator on the
+ * page races the hydration and loses whenever the runtime is the faster of the two.
+ */
+async function served(page: import('@playwright/test').Page): Promise<string> {
+  return (await page.request.get(page.url(), { headers: { accept: 'text/html' } })).text();
+}
+
 /** The parsed content of one block, or `undefined` when the page does not publish it. */
-function block(page: import('@playwright/test').Page, id: string): Promise<unknown> {
-  return page.evaluate((blockId) => {
-    const el = document.getElementById(blockId);
-    return el === null ? undefined : (JSON.parse(el.textContent ?? '') as unknown);
-  }, id);
+async function block(page: import('@playwright/test').Page, id: string): Promise<unknown> {
+  const html = await served(page);
+  return page.evaluate(
+    ([text, blockId]) => {
+      const el = new DOMParser().parseFromString(text, 'text/html').getElementById(blockId);
+      return el === null ? undefined : (JSON.parse(el.textContent ?? '') as unknown);
+    },
+    [html, id] as const,
+  );
 }
 
 test.describe('the page publishes its maps', () => {
@@ -65,14 +78,16 @@ test.describe('the page publishes its maps', () => {
   });
 
   test('the three blocks travel inside the document, at the end of the body', async ({ page }) => {
-    const where = await page.evaluate(() =>
-      ['fud-state', 'fud-tree', 'fud-bus'].map((id) => {
-        const el = document.getElementById(id);
+    const html = await served(page);
+    const where = await page.evaluate((text) => {
+      const doc = new DOMParser().parseFromString(text, 'text/html');
+      return ['fud-state', 'fud-tree', 'fud-bus'].map((id) => {
+        const el = doc.getElementById(id);
         return el === null
           ? null
-          : { type: el.getAttribute('type'), inBody: el.parentElement === document.body };
-      }),
-    );
+          : { type: el.getAttribute('type'), inBody: el.parentElement === doc.body };
+      });
+    }, html);
     for (const entry of where) {
       expect(entry).not.toBeNull();
       expect(entry?.type).toBe('application/json');

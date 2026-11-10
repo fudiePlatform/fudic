@@ -87,10 +87,14 @@ const PIECES: Readonly<Record<string, string>> = {
   'bind-select': 'src/dom/bind-select.ts',
   'bind-select-multiple': 'src/dom/bind-select-multiple.ts',
   'bind-group': 'src/dom/bind-group.ts',
+  // SDD-81: `<input type="file">`, a binder of its own like the others.
+  'bind-file': 'src/dom/bind-file.ts',
   'bind-by-type': 'src/dom/bind-by-type.ts',
   summary: 'bundle/summary.ts',
   // SDD-60: what the code generated from a `.fudapi` builds with, and the registry it fills.
   contract: 'bundle/contract.ts',
+  // SDD-80: the question of a `runs remote` rule, imported by the browser module of one alone.
+  remote: 'src/contract/remote.ts',
 };
 
 /**
@@ -159,6 +163,12 @@ const FRONTIERS: Readonly<Record<string, string>> = {
   'src/typed/str.ts': 'typed',
   'src/typed/date.ts': 'typed',
   'src/typed/arr.ts': 'typed',
+  'src/typed/file.ts': 'typed',
+  'src/typed/files.ts': 'typed',
+  'src/validators/max-size.ts': 'validators',
+  'src/validators/accept.ts': 'validators',
+  'src/validators/file-checks.ts': 'validators',
+  'src/dom/bind-file.ts': 'bind-file',
   'src/dom/wiring.ts': 'wiring',
   'src/dom/delegation.ts': 'wiring',
   'src/dom/bind-form.ts': 'bind-form',
@@ -180,6 +190,8 @@ const FRONTIERS: Readonly<Record<string, string>> = {
   'src/contract/require.ts': 'contract',
   'src/contract/text.ts': 'contract',
   'src/contract/registry.ts': 'contract',
+  'src/contract/remote.ts': 'remote',
+  'src/whole-pass.ts': 'flags',
 };
 
 /** Absolute path → the piece that owns it, resolved once so the hook below is a lookup. */
@@ -315,6 +327,9 @@ export default defineConfig(
          * `sourceMappingURL` line and nothing else.
          */
         sourcemap: true,
+        // `@fudic/conventions` is a few constants inlined here, not code anyone debugs: marked
+        // ignored, so devtools does not list the whole file as if the page had loaded it.
+        sourcemapIgnoreList: /conventions[\\/]dist[\\/]/u,
         comments: false,
       },
     };

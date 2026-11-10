@@ -69,4 +69,7 @@ export {
   isFormAssociated,
   FORM_ASSOCIATED_ATTR,
   CONTROL_PROP,
+  valueOf,
+  type ValueOf,
+  type ValueReader,
 } from './control.js';

@@ -47,6 +47,18 @@ export function unmarked(value: unknown): unknown {
   return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, unmarked(v)]));
 }
 
+/**
+ * A value as a `File` (SDD-81 §4.1): a `File` as it is, a `Blob` as a `File` with the name it
+ * carries (`''` when it has none: a handler that returns bytes without a name), anything else
+ * `undefined`.
+ */
+export function fileOf(v: unknown): File | undefined {
+  if (v instanceof File) return v;
+  if (!(v instanceof Blob)) return undefined;
+  const name = (v as { readonly name?: unknown }).name;
+  return new File([v], typeof name === 'string' ? name : '', { type: v.type });
+}
+
 /** What a type is called in a `detail`. */
 function nameOf(ty: Ty): string {
   if (typeof ty === 'string') return ty;
@@ -71,6 +83,8 @@ function primitive(ty: Primitive, v: unknown, path: string): unknown {
       return typeof v === 'boolean' ? v : refuse(path, ty);
     case 'uuid':
       return typeof v === 'string' && UUID.test(v) ? v : refuse(path, ty);
+    case 'file':
+      return fileOf(v) ?? refuse(path, ty);
     case 'date': {
       const d = v instanceof Date ? v : typeof v === 'string' ? new Date(v) : undefined;
       return d !== undefined && Math.abs(d.getTime()) < DATE_LIMIT ? d : refuse(path, ty);

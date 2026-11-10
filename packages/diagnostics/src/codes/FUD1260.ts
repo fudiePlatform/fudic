@@ -12,6 +12,6 @@ export const FUD1260 = (p: FUD1260Params): SourceDiagnostic =>
   source(
     'FUD1260',
     'error',
-    `rule \`${p.rule}\` cannot check an argument: only required, min, max, min-length, max-length and pattern can`,
+    `rule \`${p.rule}\` cannot check an argument: only required, min, max, min-length, max-length, pattern, max-size and accept can`,
     p,
   );

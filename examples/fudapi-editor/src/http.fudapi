@@ -1,7 +1,9 @@
-# The global level of every function's chain.
+# The global level of every function's chain. The first is the outermost: error-pages before
+# csrf, so it sees what csrf fails at itself.
 chain
-  use log csrf
+  use log
   use error-pages
     routes  403 /entrar
     routes  404 /no-existe
+  use csrf
   compress gzip 200

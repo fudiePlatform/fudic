@@ -37,6 +37,14 @@ export function memoryFs(
     hrefFailure: (_fromFile, href) => failures[href],
     // No symlinks in a Record: a path is already its own real name.
     realPath: (path) => toPosix(path),
+    // The names right under a folder: where the forms of the project are looked for.
+    readDirectory: (path) => [
+      ...new Set(
+        Object.keys(files)
+          .filter((file) => file.startsWith(`${path}/`))
+          .map((file) => file.slice(path.length + 1).split('/')[0]!),
+      ),
+    ],
   };
 }
 

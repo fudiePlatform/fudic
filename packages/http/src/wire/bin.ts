@@ -23,12 +23,21 @@ const isOpt = (ty: Ty): ty is { readonly opt: Ty } => typeof ty !== 'string' && 
 const inner = (ty: Ty): Ty => (isOpt(ty) ? ty.opt : ty);
 const absent = (v: unknown): boolean => v === undefined || v === null;
 
+/**
+ * A slot that travels in a part of its own and writes nothing here (SDD-81 §3.3): a `file`, a
+ * `file?`, a `file[]`. Not even its null bit — both ends know the types, and the parts say the rest.
+ */
+const isFileSlot = (ty: Ty): boolean => {
+  const bare = inner(ty);
+  return bare === 'file' || (typeof bare !== 'string' && 'list' in bare && isFileSlot(bare.list));
+};
+
 /** One level, in line: null map, bits, values. `values` is absent when reading. */
 function level(slots: readonly Ty[], values: readonly unknown[] | undefined, io: Io): unknown[] {
   const out = new Array<unknown>(slots.length);
-  const done = new Set<number>();
+  const done = new Set<number>(slots.flatMap((ty, i) => (isFileSlot(ty) ? [i] : [])));
 
-  const opts = slots.flatMap((ty, i) => (isOpt(ty) ? [i] : []));
+  const opts = slots.flatMap((ty, i) => (isOpt(ty) && !done.has(i) ? [i] : []));
   const nulls = io.bits(opts.length, values && opts.map((i) => absent(values[i])));
   opts.forEach((i, k) => {
     if (nulls[k] === true) {
@@ -193,6 +202,7 @@ export const binWire: Wire = {
   encodeValue: (ty, value) => write([ty], [value]),
   // An optional slot reads back as `null`; `conform` turns it into the absent key the type says.
   decodeValue: (ty, body) => conform(ty, read([ty], body)[0], 'value'),
+  decodeRest: (ty, body) => read([ty], body)[0],
   encodeProblem: (problem) => write([PROBLEM], [problem]),
   decodeProblem: (body) => binWire.decodeValue(PROBLEM, body) as Problem,
 };

@@ -43,10 +43,11 @@ export function problemResponse(problem: Problem, wire: Wire = jsonWire, respons
 }
 
 /**
- * The 404 of a URL under `/_fudic/fn/` that names no function: it has no chain to read a format
- * from, so it answers in JSON to whoever accepts it, and in `fud-bin` to everyone else.
+ * The 404 of a URL under `/_fudic/fn/` that names no function, or under `/_fudic/rule/` that
+ * names no remote rule: it has no chain to read a format from, so it answers in JSON to whoever
+ * accepts it, and in `fud-bin` to everyone else.
  */
-export function noFunction(request: Request): Response {
+export function noFunction(request: Request, detail = 'no such server function'): Response {
   const json = (request.headers.get('accept') ?? '').includes(jsonWire.type);
-  return problemResponse({ status: 404, title: 'Not Found', detail: 'no such server function' }, json ? jsonWire : binWire);
+  return problemResponse({ status: 404, title: 'Not Found', detail }, json ? jsonWire : binWire);
 }

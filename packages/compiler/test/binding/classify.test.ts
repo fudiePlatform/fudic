@@ -640,3 +640,33 @@ describe('interpolate', () => {
     expect(interpolate(expr, true).span).toEqual(expr.span);
   });
 });
+
+describe('classifyAttribute — named handlers (decision 179, SDD-80 §3.6)', () => {
+  it('`@click.borrar` is the event `click` with the handler name `borrar`', () => {
+    const { binding, diagnostics } = classifyOne('<x @click.borrar="@borrar(p)"></x>');
+    expect(diagnostics).toEqual([]);
+    expect(binding).toMatchObject({ type: 'event', name: 'click', label: 'borrar' });
+  });
+
+  it('a name with digits and dashes is a name', () => {
+    expect(classifyOne('<x @click.ver-2="@f"></x>').binding).toMatchObject({ name: 'click', label: 'ver-2' });
+  });
+
+  it('`@fudic:result` has no `.`, so no name', () => {
+    const { binding } = classifyOne('<x @fudic:result="@f"></x>');
+    expect(binding).toMatchObject({ type: 'event', name: 'fudic:result' });
+    expect(binding).not.toHaveProperty('label');
+  });
+
+  it.each(['click.', 'click.a.b', 'click.Borrar', 'click.1x'])('FUD1465: `@%s`, on the name, and the event survives', (written) => {
+    const { binding, diagnostics, source } = classifyOne(`<x @${written}="@f"></x>`);
+    expect(codes(diagnostics)).toEqual(['FUD1465']);
+    expect(source.slice(diagnostics[0]!.span.start, diagnostics[0]!.span.end)).toBe(`@${written}`);
+    expect(binding).toMatchObject({ type: 'event', name: 'click' });
+    expect(binding).not.toHaveProperty('label');
+  });
+
+  it('a broken value keeps the attribute as written', () => {
+    expect(classifyOne('<x @click.b="@a @b"></x>').binding).toMatchObject({ type: 'attr', name: '@click.b' });
+  });
+});

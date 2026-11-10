@@ -60,7 +60,7 @@ import {
   type PropTarget,
   type ValueSink,
 } from './attrs.js';
-import { blocksOf, rawChild, refTarget } from './constructs.js';
+import { blocksOf, headerReads, rawChild, refTarget } from './constructs.js';
 import { isConstructNode, markerSite } from './marker.js';
 import { adoptListOf, type ProjectAdopt } from './project-styles.js';
 import { writeStamp, type SourceStamp } from './source-locations.js';
@@ -121,6 +121,14 @@ export interface BlockSite {
    * a row created by an update inserts before, and no marker is needed to find it.
    */
   readonly anchor: string | null;
+  /**
+   * What an UPDATE inserts before, when other constructs follow this one before `anchor`: a
+   * call that answers where the first of them that renders something begins, or `anchor` when
+   * none does. Without it, an `@if` that turns on after the `@switch` behind it rendered lands
+   * after that `@switch` — the order of insertion, not of the source (SDD-80 §8.2.36). Absent
+   * when nothing but `anchor` follows. Creation needs none: it inserts in source order.
+   */
+  readonly liveAnchor?: string;
   /**
    * Where the construct sits, for the walk of its BODY: the whitespace mode in force
    * (BUG-07 §4.4) and the box that holds it, with its edges already narrowed to the
@@ -510,10 +518,13 @@ export class ClientMarkupEmitter {
    * the expression can: `$sub` over a function watches everything it reads, through `computed`
    * and all, and its first pass only READS, so a hydration still writes nothing.
    *
-   * Only member reads, and only this walk's writes: a bare imported name is `$subIf`'s, and a
-   * block's writes may name its own locals, which do not exist where `$s` runs.
+   * Only member reads, and only this walk's: a bare imported name is `$subIf`'s, and a block's
+   * reads may name its own locals, which do not exist where the root's `$s` runs. A block calls
+   * this for its own walk, in its own `$s`, with `update` its repaint (SDD-80 §8.2.35).
+   *
+   * What decides a construct counts as one of these reads (`headerReads`, SDD-80 §8.2.34).
    */
-  watchImports(imported: readonly string[], hook: CodeWriter): boolean {
+  watchImports(imported: readonly string[], hook: CodeWriter, update = '$u'): boolean {
     const member = imported.map(
       (name) => new RegExp(`(?<![\\w$.])${name.replace(/\$/gu, '\\$')}\\s*\\??\\.`, 'u'),
     );
@@ -521,7 +532,7 @@ export class ClientMarkupEmitter {
     for (const value of this.#expressions) {
       const text = value.map((part) => (typeof part === 'string' ? part : part.text)).join('');
       if (!member.some((re) => re.test(text))) continue;
-      hook.mappedLine('$d.push($sub(() => (', ...value, '), $u));');
+      hook.mappedLine('$d.push($sub(() => (', ...value, `), ${update}));`);
       watched = true;
     }
     return watched;
@@ -743,6 +754,23 @@ export class ClientMarkupEmitter {
       if (name !== undefined) anchor = name;
     }
 
+    // The constructs that follow each construct before its anchor, and the registry each one
+    // ends up with: what its live anchor walks (`BlockSite.liveAnchor`).
+    const registries: (string | undefined)[] = [];
+    const live: { readonly name: string; readonly base: string; readonly after: readonly number[] }[] = [];
+    const liveAnchors: (string | undefined)[] = items.map((item, i) => {
+      if (item.kind !== 'node' || !isControl(item.node)) return undefined;
+      const after: number[] = [];
+      for (let j = i + 1; j < items.length && names[j] === undefined; j += 1) {
+        const next = items[j]!;
+        if (next.kind === 'node' && isControl(next.node)) after.push(j);
+      }
+      if (after.length === 0) return undefined;
+      const name = `${this.#ids.next()}a`;
+      live.push({ name, base: anchors[i] ?? level.end ?? 'null', after });
+      return `${name}()`;
+    });
+
     items.forEach((item, i) => {
       const at = tails[i]!;
       if (marker !== undefined && marker.at === i) this.#marker(marker, level);
@@ -752,7 +780,8 @@ export class ClientMarkupEmitter {
         // The body of a construct is at the container's edge only when nothing of the level
         // renders on that side of it — which is a fact about this list (BUG-21 §4.2.b).
         const body = bodyContext(this.#at, i === 0, i === items.length - 1);
-        const registry = this.#construct(asControl(item.node), level, at, anchors[i] ?? null, body);
+        const registry = this.#construct(asControl(item.node), level, at, anchors[i] ?? null, body, liveAnchors[i]);
+        registries[i] = registry;
         if (this.#tracked(level)) this.#rootItems.push({ kind: 'block', registry });
       } else {
         this.#node(item.node, level, names[i]);
@@ -760,6 +789,15 @@ export class ClientMarkupEmitter {
       const name = names[i];
       if (name !== undefined && this.#tracked(level)) this.#rootItems.push({ kind: 'node', name });
     });
+    // Back to front, as `move` places: what each step hands back is where that block begins,
+    // and a block already in place is not moved — this only finds the reference.
+    for (const { name, base, after } of live) {
+      const steps = after
+        .toReversed()
+        .map((j) => `for (let $j = ${registries[j]!}.length - 1; $j >= 0; $j -= 1) $ref = ${registries[j]!}[$j].move($ref);`)
+        .join(' ');
+      this.#bodies.decls.line(`const ${name} = () => { let $ref = ${base}; ${steps} return $ref; };`);
+    }
   }
 
   /**
@@ -1118,6 +1156,7 @@ export class ClientMarkupEmitter {
       this.#fab.line(`$dom.setAttr(${v}, 'aria-describedby', ${JSON.stringify(site.describedBy)});`);
     }
     if (site.noValidate) this.#fab.line(`$dom.setAttr(${v}, 'novalidate', '');`);
+    if (site.accept !== undefined) this.#fab.line(`$dom.setAttr(${v}, 'accept', ${JSON.stringify(site.accept)});`);
   }
 
   /**
@@ -1312,9 +1351,9 @@ export class ClientMarkupEmitter {
       const delegated = this.#hookup.delegation.reads.get(attr);
       const handler =
         delegated !== undefined
-          ? delegatedHandler(this.#source, at, this.#hookup, delegated)
+          ? delegatedHandler(this.#source, at, this.#hookup, delegated, this.#hookup.delegation.values.get(attr))
           : b.type === 'event'
-            ? eventHandler(this.#source, at, this.#hookup, b.name)
+            ? eventHandler(this.#source, at, this.#hookup, b.name, this.#hookup.delegation.values.get(attr))
             : busHandler(this.#source, at, this.#hookup);
       if (handler === undefined) {
         // The emit does not throw (§5): the binding is dropped and the page still emits.
@@ -1606,11 +1645,15 @@ export class ClientMarkupEmitter {
     tail: Tail,
     anchor: string | null,
     at: RunContext,
+    liveAnchor?: string,
   ): string {
+    // What decides the construct is read by the parent, like a value write: watched the same way.
+    for (const read of headerReads(node, this.#source)) this.#expressions.push([read]);
     return this.#sink.construct(node, {
       level,
       tail,
       anchor,
+      ...(liveAnchor === undefined ? {} : { liveAnchor }),
       at,
       bodies: this.#bodies,
       deferredMount: level.fab === null,

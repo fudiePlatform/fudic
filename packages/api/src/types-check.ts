@@ -4,6 +4,7 @@
  */
 
 import { FUD1080, FUD1089, type SourceDiagnostic } from '@fudic/diagnostics';
+import type { Span } from '@fudic/diagnostics';
 import type { Literal, TypeExpr } from './ast.js';
 import { typeText, type ApiIndex } from './index-api.js';
 
@@ -17,7 +18,7 @@ export const INTEGERS: Readonly<Record<string, readonly [number, number]>> = {
 };
 export const FLOATS: ReadonlySet<string> = new Set(['f32', 'f64']);
 export const WIDTHS: readonly string[] = [...Object.keys(INTEGERS), ...FLOATS];
-export const PRIMITIVES: ReadonlySet<string> = new Set(['str', 'html', 'bool', 'date', 'uuid', ...WIDTHS]);
+export const PRIMITIVES: ReadonlySet<string> = new Set(['str', 'html', 'bool', 'date', 'uuid', 'file', ...WIDTHS]);
 const MAP_KEYS: ReadonlySet<string> = new Set(['str', 'uuid', ...Object.keys(INTEGERS)]);
 
 /** Whether `name` is a number type. */
@@ -77,4 +78,38 @@ export function literalFits(lit: Literal, type: TypeExpr, index: ApiIndex): bool
   if (name === 'pattern') return lit.kind === 'word' && index.lookup('pattern', lit.text) !== undefined;
   const declared = index.lookup('type', name)?.decl;
   return declared?.kind === 'enum' && lit.kind === 'word' && declared.members.some((m) => m.text === lit.text);
+}
+
+/** Where a type reaches a `file` (SDD-81 §3.1): the `file` itself, in the source that writes it. */
+export interface FileAt {
+  readonly span: Span;
+  /** The source's path when the `file` is in a `type` of another file. */
+  readonly path: string;
+}
+
+/**
+ * The first `file` that `type` reaches — itself, an element, a value, or a field of a `type` it
+ * names, at any depth — or `undefined`. `path` is the source `type` is written in.
+ */
+export function fileIn(type: TypeExpr, index: ApiIndex, path: string, seen: Set<string> = new Set()): FileAt | undefined {
+  switch (type.kind) {
+    case 'list':
+      return fileIn(type.element, index, path, seen);
+    case 'optional':
+      return fileIn(type.inner, index, path, seen);
+    case 'map':
+      return fileIn(type.value, index, path, seen);
+    case 'named': {
+      const name = type.name.text;
+      if (name === 'file') return { span: type.name.span, path };
+      const found = index.lookup('type', name);
+      if (found?.decl.kind !== 'type' || seen.has(name)) return undefined;
+      seen.add(name);
+      for (const field of found.decl.fields) {
+        const at = fileIn(field.type, index, found.source.path, seen);
+        if (at !== undefined) return at;
+      }
+      return undefined;
+    }
+  }
 }

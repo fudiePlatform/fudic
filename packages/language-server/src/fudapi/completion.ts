@@ -10,6 +10,7 @@
 
 import {
   DECLARATION_KEYWORDS,
+  PRIMITIVES,
   isArgRule,
   typeText,
   type ApiIndex,
@@ -21,11 +22,42 @@ import {
   type RuleDecl,
 } from '@fudic/api';
 import { CompletionItemKind, type CompletionItem, type CompletionList } from 'vscode-languageserver-protocol';
-import type { ApiDocument } from './document.js';
+import { rangeOf, type ApiDocument } from './document.js';
 import { lineOf, loadCompletions } from './load-line.js';
-import { SNIPPETS, ruleSnippet, withSnippets } from './snippets.js';
+import { RUNS_DOC } from './rule-hover.js';
+import { ROOT_EXTRA, SNIPPETS, fileSnippet, ruleSnippet, withSnippets } from './snippets.js';
 
-const PRIMITIVES = ['str', 'html', 'bool', 'date', 'uuid', 'u8', 'i8', 'u16', 'i16', 'u32', 'i32', 'f32', 'f64'];
+/**
+ * Sizes for `max-size` (SDD-81 §3.2): in base 1024, the unit written next to the number. What a
+ * developer reaches for first; any other is typed.
+ */
+const SIZES = ['500kb', '1mb', '2mb', '5mb', '10mb', '50mb', '100mb', '1gb'];
+/**
+ * What the `accept` of a file takes (SDD-81 §3.2): the syntax of the HTML attribute — MIME types,
+ * wildcards and extensions —, the common ones.
+ */
+const MEDIA = [
+  'image/*',
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+  'image/svg+xml',
+  'audio/*',
+  'video/*',
+  'video/mp4',
+  'application/pdf',
+  'application/zip',
+  'application/json',
+  'text/plain',
+  'text/csv',
+  '.pdf',
+  '.png',
+  '.jpg',
+  '.csv',
+  '.docx',
+  '.xlsx',
+];
 const VERBS = new Set(['get', 'post', 'put', 'patch', 'delete']);
 const EXPRESSION = ['and', 'or', 'not', 'contains', 'valid', 'empty', 'length'];
 
@@ -96,11 +128,11 @@ export function apiCompletions(doc: ApiDocument, offset: number): CompletionList
   const chain = parents(text, lineStart, indent);
   const context = contextOf(chain);
 
-  if (quotes(before) % 2 === 1) return placeholders(doc, before, words[0]!, context);
+  if (quotes(before) % 2 === 1) return placeholders(doc, offset, before, words[0]!, context);
   if (/(?:^|\s)#/u.test(before)) return undefined;
 
   if (indent === 0) {
-    if (typing === 0) return list(withSnippets(DECLARATION_KEYWORDS, SNIPPETS.root, 0));
+    if (typing === 0) return list([...withSnippets(DECLARATION_KEYWORDS, SNIPPETS.root, 0), ...ROOT_EXTRA]);
     if (words[0] !== 'load') return undefined;
     // The rest of the line, without the rest of the word being typed.
     const after = lineOf(text, offset).split(/\s+/u).slice(1);
@@ -173,12 +205,20 @@ const CONTEXT_SNIPPETS: Partial<Record<Context, (typeof SNIPPETS)[keyof typeof S
 
 /** The first word of an indented line: what its parent takes, as snippets where there are. */
 function firstWord(doc: ApiDocument, offset: number, indent: number, chain: readonly Line[], context: Context): CompletionItem[] {
-  const items = withSnippets(CHILDREN[context], CONTEXT_SNIPPETS[context] ?? {}, indent);
+  const words = context === 'rule' ? ruleLines(doc, chain[0]!.start) : CHILDREN[context];
+  const items = withSnippets(words, CONTEXT_SNIPPETS[context] ?? {}, indent);
+  // A file travels in a body: not under a `get` (`FUD1480`).
+  if (context === 'fn' && chain.at(-1)!.words[0] !== 'get') items.push(fileSnippet('argument', indent));
+  if (context === 'form' || context === 'group') items.push(fileSnippet('field', indent));
   if (context === 'field') {
     const field = fieldAt(formAt(doc, offset), chain[0]!.start);
     if (field !== undefined) items.push(...doc.index.rulesFor(field.type).map((r) => ruleSnippet(r.decl, indent)));
   } else if (context === 'arg') {
-    items.push(...rules(doc.index.all('rule').filter(isArgRule).map((r) => r.decl)));
+    // The rules of `@fudic/forms` that apply to the argument's type, as under a field: `max-size`
+    // and `accept` only under a file (SDD-81 §3.8). All of them while the type is not known yet.
+    const arg = argAt(doc, offset, chain[0]!.start);
+    const fit = arg === undefined ? undefined : new Set(doc.index.rulesFor(arg.type).map((r) => r.decl));
+    items.push(...rules(doc.index.all('rule').filter((r) => isArgRule(r) && (fit === undefined || fit.has(r.decl))).map((r) => r.decl)));
   } else if (context === 'summary') {
     const target = chain.some((l) => l.words[1] === 'group') ? 'group' : 'form';
     items.push(...rules(doc.index.all('rule').map((r) => r.decl).filter((r) => r.on?.target.text === target)));
@@ -221,7 +261,7 @@ function argument(
     case 'form':
       return context === 'fn' ? list(index.all('form').map((f) => item(f.decl.name.text, CompletionItemKind.Variable))) : undefined;
     case 'runs':
-      return list(keywords(['both', 'server']));
+      return list(Object.entries(RUNS_DOC).map(([w, d]) => item(w, CompletionItemKind.Keyword, d)));
     case 'on':
       // A pipe's `on` takes types, as many as the union has (SDD-71 §3.2).
       if (context === 'pipe') return list(types(index));
@@ -273,7 +313,7 @@ function typeLength(words: readonly string[], at: number): number | undefined {
 /** The primitives, then the project's types and enums. */
 function types(index: ApiIndex): CompletionItem[] {
   return [
-    ...PRIMITIVES.map((p) => item(p, CompletionItemKind.TypeParameter)),
+    ...[...PRIMITIVES].map((p) => item(p, CompletionItemKind.TypeParameter)),
     ...index
       .all('type')
       .map((t) => item(t.decl.name.text, t.decl.kind === 'enum' ? CompletionItemKind.Enum : CompletionItemKind.Class)),
@@ -282,6 +322,7 @@ function types(index: ApiIndex): CompletionItem[] {
 
 /** After a rule's name: what its next parameter takes, when it is a closed list. */
 function ruleArgument(index: ApiIndex, name: string, typing: number): CompletionList | undefined {
+  if (name === 'max-size' && typing === 1) return list(SIZES.map((s) => item(s, CompletionItemKind.Value, 'bytes, base 1024')));
   const param = index.lookup('rule', name)?.decl.params[typing - 1]?.type;
   if (param?.kind !== 'named') return undefined;
   if (param.name.text === 'pattern') return list(index.all('pattern').map((p) => item(p.decl.name.text, CompletionItemKind.Constant)));
@@ -290,16 +331,34 @@ function ruleArgument(index: ApiIndex, name: string, typing: number): Completion
 }
 
 /** Inside a text, after `{`: what the rule of the line fills in. */
-function placeholders(doc: ApiDocument, before: string, head: string, context: Context): CompletionList | undefined {
+function placeholders(doc: ApiDocument, offset: number, before: string, head: string, context: Context): CompletionList | undefined {
+  const ruled = context === 'field' || context === 'arg' || context === 'summary';
+  // The types of `accept`, in its first string: the text after it is the rule's message.
+  if (ruled && head === 'accept' && quotes(before) === 1) return media(doc, offset, before);
   if (!/\{[A-Za-z_]*$/u.test(before)) return undefined;
   let offered: string[] = [];
   if (head === 'range') offered = ['min', 'max'];
-  else if (context === 'field' || context === 'arg' || context === 'summary') {
+  else if (ruled) {
     const rule = doc.index.lookup('rule', head)?.decl;
     offered = rule === undefined ? [] : rule.fails.flatMap((f) => f.params.map((p) => p.text));
-    if (rule?.runs?.value.text === 'server') offered.push('detail');
+    const runs = rule?.runs?.value.text;
+    if (runs === 'server' || runs === 'remote') offered.push('detail');
   }
   return list(offered.map((o) => item(o, CompletionItemKind.Variable)));
+}
+
+/**
+ * The media types inside the string of `accept`, for the entry being typed: everything after the
+ * opening quote or the last comma, its blanks left out. Each replaces the whole entry — a `/` is
+ * not a word character to the editor, so `image/p` would otherwise become `image/image/png`.
+ */
+function media(doc: ApiDocument, offset: number, before: string): CompletionList {
+  const typed = /[^",\s]*$/u.exec(before)![0];
+  const range = rangeOf(doc.path, doc.text, { start: offset - typed.length, end: offset });
+  const written = new Set(before.slice(before.indexOf('"') + 1).split(',').map((t) => t.trim()));
+  return list(
+    MEDIA.filter((m) => !written.has(m)).map((m) => ({ ...item(m, CompletionItemKind.Value), textEdit: { range, newText: m } })),
+  );
 }
 
 /** The form whose block the cursor is in: the last one that starts before it. */
@@ -349,9 +408,32 @@ function paths(doc: ApiDocument, offset: number, chain: readonly Line[]): Comple
   return out;
 }
 
-/** The function, `load` or `chain` whose block the cursor is in. */
-function levelAt(doc: ApiDocument, offset: number): FnDecl | LoadDecl | ChainDecl | undefined {
+/** The argument of the function the cursor is in whose line starts at `start`. */
+function argAt(doc: ApiDocument, offset: number, start: number): FnDecl['args'][number] | undefined {
+  const fn = levelAt(doc, offset);
+  const end = doc.text.slice(start).search(/[\r\n]/u) + start;
+  return fn?.kind === 'fn' ? fn.args.find((a) => start <= a.span.start && a.span.start < end) : undefined;
+}
+
+/** The function, `load`, `chain` or rule whose block the cursor is in. */
+function levelAt(doc: ApiDocument, offset: number): FnDecl | LoadDecl | ChainDecl | RuleDecl | undefined {
   return doc.source.file.declarations
-    .filter((d): d is FnDecl | LoadDecl | ChainDecl => (d.kind === 'fn' || d.kind === 'load' || d.kind === 'chain') && d.span.start <= offset)
+    .filter(
+      (d): d is FnDecl | LoadDecl | ChainDecl | RuleDecl =>
+        (d.kind === 'fn' || d.kind === 'load' || d.kind === 'chain' || d.kind === 'rule') && d.span.start <= offset,
+    )
     .at(-1);
+}
+
+/**
+ * The lines of the rule declared at `start` (SDD-80 §4.8): the middlewares of a rule that runs on
+ * the server, `debounce` only when it is asked from the browser. Read from the tree, which holds
+ * the `runs` the developer already wrote.
+ */
+function ruleLines(doc: ApiDocument, start: number): readonly string[] {
+  const rule = doc.source.file.declarations.find((d) => d.kind === 'rule' && d.span.start === start);
+  const runs = rule?.kind === 'rule' ? rule.runs?.value.text : undefined;
+  if (runs === 'remote') return ['on', 'runs', 'async', 'debounce', 'use', 'skip', 'fails'];
+  if (runs === 'server') return ['on', 'runs', 'async', 'use', 'skip', 'fails'];
+  return CHILDREN.rule;
 }

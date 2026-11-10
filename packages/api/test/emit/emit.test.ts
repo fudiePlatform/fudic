@@ -71,7 +71,7 @@ describe('a file that stands alone', () => {
     const source = app('components/c', 'get f\n');
     const index = createApiIndex([source]);
     expect(emitModule(source, index, {}, 'server')).toContain('chain: [{ steps: [] }]');
-    expect(emitDeclarations(source, index, {})).toContain('export const f: Contract<FCtx, void, void>;');
+    expect(emitDeclarations(source, index, {})).toContain('export const f: Contract<FCtx, void, void> & Linkable<void>;');
   });
 
   it('html is a TrustedHTML for the view and text on the wire (SDD-61 §4.7)', () => {

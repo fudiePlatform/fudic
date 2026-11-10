@@ -94,3 +94,15 @@ describe('SDD-47 §4.3 — what the handler reads travels with the replay', () =
     expect(e.cancelable).toBe(true);
   });
 });
+
+describe('a file input (SDD-81)', () => {
+  it('a keydown keeps its class: only a click would open a second dialog', () => {
+    const el = document.createElement('input');
+    el.type = 'file';
+    const heard: Event[] = [];
+    el.addEventListener('keydown', (e) => heard.push(e));
+    replayer(new KeyboardEvent('keydown', { key: 'Enter' }), el)();
+    expect(heard[0]).toBeInstanceOf(KeyboardEvent);
+    expect((heard[0] as KeyboardEvent).key).toBe('Enter');
+  });
+});

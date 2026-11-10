@@ -39,6 +39,7 @@ import { EMPTY_CONTROLS, type ControlPlan } from './controls.js';
 import type { DelegationJs, DelegationPlan, DelegationRead } from '../semantic/delegation.js';
 import { CodeWriter } from './writer.js';
 import { codeNames, type CodeBlockNode } from '../code/index.js';
+import type { ValueReader } from '../binding/control.js';
 
 /**
  * What the hookup needs beyond the markup, shared by every walk of ONE file.
@@ -135,6 +136,7 @@ const EMPTY_DELEGATION: DelegationPlan = {
   marks: new Map(),
   reads: new Map(),
   tables: [],
+  values: new Map(),
 };
 
 /**
@@ -181,12 +183,20 @@ function rootOf(ast: FragmentAst): OxcNode | undefined {
  */
 const DATUM_EVENTS: ReadonlySet<string> = new Set(['fudic:result', 'fudic:error']);
 
-/** The listener a plain `@event` binding subscribes, or `undefined` for `FUD0291`. */
+/**
+ * The listener a plain `@event` binding subscribes, or `undefined` for `FUD0291`.
+ *
+ * A call whose arguments mention `$value` (decision 178) reads it first, in line, off the element
+ * that carries the binding — `$event.currentTarget`, with the reader `control=` binds with:
+ * `($event) => { const $value = $event.currentTarget.checked; return f($value); }`. Nothing is
+ * added to the runtime.
+ */
 export function eventHandler(
   source: string,
   at: Span,
   ctx: HookupContext,
   event: string,
+  value?: ValueReader,
 ): string | undefined {
   const root = rootOf(ctx.template.ast(at));
   const text = source.slice(at.start, at.end);
@@ -194,8 +204,11 @@ export function eventHandler(
   switch (handlerShape(root)) {
     // Invoked at DISPATCH, inside an arrow whose parameter is spelled `$event`: the argument
     // list is copied character for character, so what the author wrote is what runs.
-    case 'call':
-      return `($event) => ${withCellRead(text, at, root!, ctx)}`;
+    case 'call': {
+      const call = withCellRead(text, at, root!, ctx);
+      if (value === undefined) return `($event) => ${call}`;
+      return `($event) => { const $value = ${value.read('$event.currentTarget')}; return ${call}; }`;
+    }
     // A bare reference to a callback prop has to be read at dispatch too, and the arrow is
     // what defers it: the cell may still be empty when this listener is registered.
     case 'reference':
@@ -234,6 +247,7 @@ export function delegatedHandler(
   at: Span,
   ctx: HookupContext,
   reads: readonly DelegationRead[],
+  value?: ValueReader,
 ): string | undefined {
   const root = rootOf(ctx.template.ast(at));
   // A read is only ever collected from the argument list of a call, so a value of any other
@@ -254,12 +268,24 @@ export function delegatedHandler(
     call = call.slice(0, start) + value + call.slice(read.at.end - at.start);
   }
 
-  const lookups = tables.map((table, i) => `${getters[i]!} ??= ${table}.get($y);`).join(' ');
   const guard = getters.map((g) => `${g} === undefined`).join(' || ');
+  if (value === undefined) {
+    const lookups = tables.map((table, i) => `${getters[i]!} ??= ${table}.get($y);`).join(' ');
+    return (
+      `($event) => { let ${getters.join(', ')}; ` +
+      `for (const $y of $event.composedPath()) { ${lookups} } ` +
+      `if (${guard}) return; return ${call}; }`
+    );
+  }
+  // `$value` reads the MARKED element the path went through (decision 178, SDD-80 §8.1.9), not
+  // the `target`, which could be a child of it: the first one found, the innermost.
+  const lookups = tables
+    .map((table, i) => `if (${getters[i]!} === undefined && ${table}.has($y)) { ${getters[i]!} = ${table}.get($y); $x ??= $y; }`)
+    .join(' ');
   return (
-    `($event) => { let ${getters.join(', ')}; ` +
+    `($event) => { let ${getters.join(', ')}, $x; ` +
     `for (const $y of $event.composedPath()) { ${lookups} } ` +
-    `if (${guard}) return; return ${call}; }`
+    `if (${guard}) return; const $value = ${value.read('$x')}; return ${call}; }`
   );
 }
 

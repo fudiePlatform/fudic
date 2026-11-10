@@ -11,6 +11,7 @@
  */
 
 import type { Method, ServerContext } from '../types.js';
+import { settle, type ServerSettings } from './settings.js';
 
 /** What a response carries besides its body: its status and headers. */
 export type PendingResponse = ServerContext['response'];
@@ -25,6 +26,8 @@ export interface ContextInput {
   readonly request?: Request;
   /** Where the context writes its status and headers. Default: a new one. */
   readonly response?: PendingResponse;
+  /** What the server says (SDD-81 §3.11), settled on a new `response`. */
+  readonly settings?: ServerSettings;
 }
 
 /**
@@ -39,6 +42,7 @@ const SESSION_HEADERS = new Set(['cookie', 'authorization']);
 export function serverContext(input: ContextInput): ServerContext {
   const headers = input.request?.headers ?? new Headers();
   const response = input.response ?? { status: 200, headers: new Headers() };
+  if (input.response === undefined && input.settings !== undefined) settle(response, input.settings);
   const read = (): void => void Object.defineProperty(response, READ, { value: true, configurable: true });
   return {
     side: 'server',

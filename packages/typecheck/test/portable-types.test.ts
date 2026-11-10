@@ -80,8 +80,12 @@ const CASES: Readonly<Record<string, string>> = {
   const leer = {} as Readable<number>;
   const quizas = {} as Control<string> | undefined;
   const alguno = {} as Control<string> | null;
-  function hora() { return 1; }`,
-    `<p>@hora() @count() @(form.$valid()) @campo.errors() @campo() @nombre() @leer() @(quizas?.()) @alguno() @(xs.sort()) @((hora)())</p>`,
+  function hora() { return 1; }
+  interface Linkable<A> { url(args?: A): string }
+  interface Enlace { url(): string }
+  const { exportar, enlace } = props<{ exportar: Linkable<void>; enlace: Enlace }>();`,
+    `<p>@hora() @count() @(form.$valid()) @campo.errors() @campo() @nombre() @leer() @(quizas?.()) @alguno() @(xs.sort()) @((hora)())</p>
+<a href=@exportar.url()></a> <a href=@enlace.url()></a>`,
   ),
   // Criterion 6: no truthiness.
   conditions: component(
@@ -300,7 +304,8 @@ function found(name: string, over: CheckReport = report): readonly string[] {
 describe('calls (criteria 2 and 38)', () => {
   it('a call with no arguments reads a signal, a computed, a Readable or a control; anything else is FUD1140', () => {
     // `quizas?.()` and `(hora)()` are the compiler's FUD1140: the pass does not say them again.
-    expect(found('calls')).toEqual(['FUD1140 hora', 'FUD1140 quizas', 'FUD1140 xs.sort', 'FUD1140 (hora)']);
+    // The `url()` of a server function is a link (SDD-81 §3.4); a `url` of anything else is not.
+    expect(found('calls')).toEqual(['FUD1140 hora', 'FUD1140 quizas', 'FUD1140 xs.sort', 'FUD1140 (hora)', 'FUD1140 enlace.url']);
   });
 
   it('the message names the callee as written', () => {
@@ -417,7 +422,9 @@ describe('portableTypeDiagnostics, alone', () => {
     expect(portableTypeDiagnostics(program, { ...document, virtuals: [] })).toEqual([]);
   });
 
-  it('asks nothing of a projection whose stretches allow no diagnostic', () => {
+  // Six TypeScript programs, each over the standard library: under the whole suite with coverage
+  // they take more than the default minute, as the corpus does.
+  it('asks nothing of a projection whose stretches allow no diagnostic', { timeout: 180_000 }, () => {
     for (const name of ['literals', 'snippets', 'props', 'operands', 'collections', 'places']) {
       const path = `/p/app-${name}.ts`;
       const document = projectParsed(path, parseSource(CASES[name]!), indexOf({}));

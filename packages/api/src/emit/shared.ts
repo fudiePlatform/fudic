@@ -8,7 +8,7 @@
  */
 
 import type { Span } from '@fudic/diagnostics';
-import type { Decl, FnDecl, Literal, LoadDecl, MiddlewareDecl, SkipClause, StringLiteral, TypeExpr, UseClause } from '../ast.js';
+import type { Decl, FnDecl, Literal, LoadDecl, MiddlewareDecl, RuleDecl, SkipClause, StringLiteral, TypeExpr, UseClause } from '../ast.js';
 import { GLOBAL_ID, type ApiIndex, type ApiSource, type ProjectKind } from '../index-api.js';
 import { FLOATS, INTEGERS } from '../types-check.js';
 
@@ -64,6 +64,8 @@ export function tsType(t: TypeExpr, c: EmitCtx): string {
       if (name === 'date') return 'Date';
       if (name in INTEGERS || FLOATS.has(name)) return 'number';
       if (name === 'pattern') return 'RegExp';
+      // The platform's own (SDD-81 §3.1): the browser, Node and the edge all have it.
+      if (name === 'file') return 'File';
       return projectRef(c, 'type', name, name) ?? 'unknown';
     }
   }
@@ -103,7 +105,7 @@ export function descriptor(t: TypeExpr, c: EmitCtx): string {
       return `{ map: [${descriptor(t.key, c)}, ${descriptor(t.value, c)}] }`;
     case 'named': {
       const name = t.name.text;
-      if (name === 'str' || name === 'html' || name === 'uuid' || name === 'bool' || name === 'date' || name in INTEGERS || FLOATS.has(name)) return str(name);
+      if (name === 'str' || name === 'html' || name === 'uuid' || name === 'bool' || name === 'date' || name === 'file' || name in INTEGERS || FLOATS.has(name)) return str(name);
       return projectRef(c, 'type', name, `$${name}`) ?? str('str');
     }
   }
@@ -132,7 +134,7 @@ export const clauses = (uses: readonly UseClause[], skips: readonly SkipClause[]
   [...uses, ...skips].sort((a, b) => a.span.start - b.span.start);
 
 /** The middlewares a function or `load` runs with: what it inherits, its skips, then its uses. */
-export function effective(c: EmitCtx, level: FnDecl | LoadDecl): readonly string[] {
+export function effective(c: EmitCtx, level: FnDecl | LoadDecl | RuleDecl): readonly string[] {
   let list = [...c.index.inherited(c.source, level)];
   for (const clause of clauses(level.uses, level.skips)) {
     if (clause.kind === 'use') list = [...list, ...clause.middlewares.map((m) => m.name.text)];

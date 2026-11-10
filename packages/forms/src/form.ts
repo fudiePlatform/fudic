@@ -22,6 +22,7 @@ import {
   internalsOf,
   join,
   type NodeInternals,
+  validation,
   type ValidateCtx,
   type WriteMode,
 } from './internals.js';
@@ -41,7 +42,9 @@ import type {
   Issue,
   Patch,
   Positional,
+  Progress,
   Schema,
+  ValidateOptions,
   Value,
 } from './types.js';
 import { verdicts } from './verdicts.js';
@@ -79,10 +82,14 @@ export function build<S extends Schema>(
   );
 
   const summary = signal<Errors | null>(null);
+  // The sends of `form:=` in flight share one signal, which `$cancel()` aborts.
+  let sending: AbortController | undefined;
   /** A submit was attempted (BUG-42 §4.7). Only `bindForm` sets it, through `markSubmitted`. */
   const submitted = signal(false);
   /** The ids of its fields by path, once a `<form>` binds it: what `$issues()` links to. */
   const fieldIds = signal<Readonly<Record<string, string>>>({});
+  /** The bytes the send of `form:=` has moved, while it is in flight (SDD-81 §3.6). */
+  const progress = signal<Progress | null>(null);
   /** Bumped by every validation pass over this form; an overtaken pass publishes nothing. */
   let epoch = 0;
   /** The value epoch (`valueEpoch()`) the summary on record belongs to. */
@@ -192,7 +199,7 @@ export function build<S extends Schema>(
    * at once, so a submit decides on it; the whole union follows when some rule answers later.
    */
   const summarise = (ctx: ValidateCtx, mine: number, at: number): Promise<void> | undefined => {
-    const { now, later } = allFailures(settle.watch(rules, at), untrack(read), ctx.root);
+    const { now, later } = allFailures(settle.watch(rules, at), untrack(read), ctx.root, ctx.ctx);
     if (later === undefined) {
       record(now, at);
       return undefined;
@@ -234,6 +241,17 @@ export function build<S extends Schema>(
     const at = valueEpoch();
     if (!holds(clientRules, read(), root, (rule) => settle.settled(rule, at))) return false;
     return summary() === null || publishedAt !== at;
+  });
+
+  /**
+   * Some node below is pending, or a rule of its own (a group's asynchronous rule) was asked for
+   * the current values and has not answered (SDD-80 §3.4). `read()` subscribes the values, which
+   * is what moves the epoch the own rules are stamped with.
+   */
+  const pending = computed((): boolean => {
+    if (children().some((node) => node.pending())) return true;
+    read();
+    return settle.pending(valueEpoch());
   });
 
   /** Its own texts, then — after a submit — the visible errors below, in declaration order. */
@@ -294,6 +312,7 @@ export function build<S extends Schema>(
     clean,
     valid,
     counts,
+    pending,
     epoch: valueEpoch,
     issues,
     markSubmitted: () => {
@@ -304,6 +323,13 @@ export function build<S extends Schema>(
     },
     linkFields: (ids) => {
       fieldIds.set(ids);
+    },
+    progress: (p) => {
+      progress.set(p);
+    },
+    send: () => {
+      sending ??= new AbortController();
+      return sending.signal;
     },
     touchAll: () => {
       each((_, node) => {
@@ -346,8 +372,8 @@ export function build<S extends Schema>(
       write(v as Record<string, unknown>, 'patch');
     },
 
-    $validate: async (opts: { readonly server?: boolean } = {}): Promise<boolean> => {
-      await validateSubtree({ root: self as unknown as AnyForm, server: opts.server === true });
+    $validate: async (opts: ValidateOptions = {}): Promise<boolean> => {
+      await validateSubtree(validation(self as unknown as AnyForm, opts, true));
       return untrack(clean);
     },
 
@@ -376,6 +402,15 @@ export function build<S extends Schema>(
     $submitted: (): boolean => submitted(),
 
     $valid: (): boolean => valid(),
+
+    $pending: (): boolean => pending(),
+
+    $progress: (): Progress | null => progress(),
+
+    $cancel: (): void => {
+      sending?.abort();
+      sending = undefined;
+    },
 
     $setErrors: (errors: ErrorMap | null, sum?: Errors | null): void => {
       if (errors === null) {

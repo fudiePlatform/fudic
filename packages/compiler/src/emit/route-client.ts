@@ -49,7 +49,7 @@ import { stampOption } from './source-locations.js';
 import type { DocumentGraph } from './resolve.js';
 import type { RouteDocument, PageDocument } from '../document/index.js';
 import type { DataShape, Diagnostic } from '../types/index.js';
-import { apiForms, apiImports, dataShapeOf, loadImport } from './api-links.js';
+import { apiFields, apiForms, apiImports, dataShapeOf, loadImport } from './api-links.js';
 
 /**
  * The three leading slots of a route's array: `$dom`, `$root` and `$data`. One more than a
@@ -217,6 +217,7 @@ function buildRouteClientModule(
     planControls(source, roots, {
       isComponent: (t) => graph.components.has(t),
       isFormAssociated: (t) => formAssociatedTags(graph).has(t),
+      field: apiFields(graph),
     }),
     new Set<string>(), // and no `control` node can have crossed into it
     delegation,
@@ -224,7 +225,8 @@ function buildRouteClientModule(
   for (const table of delegation.tables) bodies.decls.line(`const ${table} = new WeakMap();`);
   const ids = nodeIds();
   const usage = coreUsage();
-  const ctx = blockContext(source, scope, linker, ids, usage, hookup);
+  const imported = [...new Set([...code.clientImports, ...apiForms(graph)])];
+  const ctx = blockContext(source, scope, linker, ids, usage, hookup, imported);
   // The same defaults the SERVER branch of a route starts from (`buildRouteModule` builds its
   // `MarkupEmitter` with no space, no container and no boxes): the two walks have to drop the
   // same whitespace nodes, or `h` adopts a tree that is one node out of step.
@@ -249,12 +251,12 @@ function buildRouteClientModule(
 
   const reactive = code.signals.flatMap((s) => (s.kind === 'signal' ? [s.name] : []));
   // With the forms of a linked `.fudapi`, which the `@code` used to import (SDD-60 §3.14).
-  const imported = [...new Set([...code.clientImports, ...apiForms(graph)])];
   const renews =
     (reactive.length > 0 || imported.length > 0 || code.tasks.length > 0) && (em.writes > 0 || !bodies.update.empty);
   const reconcile = bodies.update.empty ? '' : ` ${lines(bodies.update)}`;
   if (renews) {
-    usage.subscribes = reactive.length > 0;
+    // `||=`: a block of the walk may already have subscribed what it reads through an import.
+    usage.subscribes ||= reactive.length > 0;
     usage.guarded = imported.length > 0;
     for (const name of reactive) bodies.hook.line(`$d.push($sub(${name}, $u));`);
     for (const name of imported) bodies.hook.line(`$d.push($subIf(${name}, $u));`);

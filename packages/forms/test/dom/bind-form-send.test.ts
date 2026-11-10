@@ -64,13 +64,40 @@ class HttpError extends Error {
 }
 
 describe('bindForm with a server function', () => {
+  it('SDD-81 criterion 24: $progress() follows the bytes of the send, and is null once it moves no more', async () => {
+    const seen: unknown[] = [];
+    let finish!: () => void;
+    const send = vi.fn((f: AnyForm, options?: { onProgress: (p: unknown) => void }) => {
+      options!.onProgress({ loaded: 5, total: 10, phase: 'up' });
+      seen.push(f.$progress());
+      options!.onProgress({ loaded: 2, total: null, phase: 'down' });
+      seen.push(f.$progress());
+      return new Promise<unknown>((resolve) => {
+        finish = () => {
+          options!.onProgress(null);
+          resolve(1);
+        };
+      });
+    });
+    const { f, submit } = setup(send as never);
+    f.a.set('Pedro');
+    submit();
+    expect(seen).toEqual([
+      { loaded: 5, total: 10, phase: 'up' },
+      { loaded: 2, total: null, phase: 'down' },
+    ]);
+    finish();
+    await flush();
+    expect(f.$progress()).toBeNull();
+  });
+
   it('a valid submit is prevented, sends the form, and emits fudic:result with the value', async () => {
     const send = vi.fn(async () => ({ id: 7 }));
     const { f, events, submit } = setup(send);
     f.a.set('Pedro');
     const event = submit();
     expect(event.defaultPrevented).toBe(true);
-    expect(send).toHaveBeenCalledWith(f);
+    expect(send).toHaveBeenCalledWith(f, { onProgress: expect.any(Function), signal: expect.any(AbortSignal) });
     await flush();
     expect(events).toEqual([{ type: 'fudic:result', detail: { id: 7 } }]);
   });
@@ -165,6 +192,29 @@ describe('bindForm with a server function', () => {
     submit();
     await flush();
     expect(events).toEqual([]);
+  });
+
+  it('SDD-81: $cancel() aborts every send in flight; a second submit goes out beside the first', async () => {
+    const signals: AbortSignal[] = [];
+    const send = vi.fn((_f: AnyForm, options?: { signal: AbortSignal }) => {
+      signals.push(options!.signal);
+      return new Promise<unknown>((_resolve, reject) => {
+        options!.signal.addEventListener('abort', () => reject(new DOMException('', 'AbortError')));
+      });
+    });
+    const { f, events, submit } = setup(send as never);
+    f.$cancel(); // nothing in flight: nothing happens
+    f.a.set('Pedro');
+    submit();
+    submit();
+    expect(signals.map((s) => s.aborted)).toEqual([false, false]);
+    f.$cancel();
+    expect(signals.map((s) => s.aborted)).toEqual([true, true]);
+    await flush();
+    expect(events).toEqual([]);
+    // After a cancel, the next send is not born cancelled.
+    submit();
+    expect(signals[2]!.aborted).toBe(false);
   });
 
   it('another DOMException is a failure like any Error, announced as itself', async () => {
@@ -308,5 +358,40 @@ describe('bindForm with a server function', () => {
     const { f, submit } = setup();
     f.a.set('Pedro');
     expect(submit().defaultPrevented).toBe(false);
+  });
+});
+
+describe('the events reach the hosts outside (SDD-80 §3.7, criteria 29, 30)', () => {
+  /** A `<form>` inside the shadow of `<x-inner>`, which is inside the shadow of `<x-outer>`. */
+  function nested(send: (f: AnyForm) => Promise<unknown>) {
+    const outer = document.createElement('x-outer');
+    document.body.append(outer);
+    const inner = document.createElement('x-inner');
+    outer.attachShadow({ mode: 'open' }).append(inner);
+    const shadow = inner.attachShadow({ mode: 'open' });
+    shadow.innerHTML = '<form><input id="a"></form>';
+    const el = shadow.querySelector('form') as HTMLFormElement;
+    const f = form({ a: control('x') });
+    bindForm(el, f as unknown as AnyForm, null, null, send);
+    const heard: string[] = [];
+    for (const [name, host] of [['inner', inner], ['outer', outer]] as const) {
+      for (const type of ['fudic:result', 'fudic:error']) {
+        host.addEventListener(type, (e) => heard.push(`${name} ${type} ${String((e as CustomEvent).detail)}`));
+      }
+    }
+    el.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    return heard;
+  }
+
+  it('fudic:result crosses both shadow roots: each host hears the datum', async () => {
+    const heard = nested(() => Promise.resolve('persona'));
+    await flush();
+    expect(heard).toEqual(['inner fudic:result persona', 'outer fudic:result persona']);
+  });
+
+  it('and so does fudic:error, with the error', async () => {
+    const heard = nested(() => Promise.reject(new HttpError(500)));
+    await flush();
+    expect(heard).toEqual(['inner fudic:error Error: HTTP 500', 'outer fudic:error Error: HTTP 500']);
   });
 });

@@ -79,7 +79,7 @@ alta—, que el editor ayude en cada línea, y que el banco, la CLI y el MCP los
 | 70 | `later`, `@await`, el endpoint de datos por frames |
 | 77, 78 | `fudic_spec_run`, `fudic_render`, `fudic_preview`, la guía |
 | 80 | Las reglas `runs remote` y su ruta `/_fudic/rule/…` |
-| 81 | `file`, `-> file`, `url()` de una `get` |
+| 81 | `file`, `-> file`, `url()` de una `get` (con su firma en `$sig`), el gesto `upload` de `@fudic/testing` y `$cancel()` de un formulario |
 
 ---
 

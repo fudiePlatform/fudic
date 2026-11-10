@@ -44,6 +44,8 @@ export {
   type TaskMode,
   type TaskOptions,
   type Callable,
+  type CallSignals,
+  type TaskProgress,
 } from './task.js';
 export { untrack } from './tracking.js';
 export { now } from './now.js';

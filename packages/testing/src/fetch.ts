@@ -12,7 +12,7 @@
  *    out to the network.
  */
 
-import { DATA_PREFIX, FN_PREFIX } from '@fudic/conventions';
+import { CSRF_PATH, DATA_PREFIX, FN_PREFIX } from '@fudic/conventions';
 import { inject } from 'vitest';
 import { OPTIONS_KEY } from './constants.js';
 import { track } from './pending.js';
@@ -75,7 +75,9 @@ async function answer(request: Request): Promise<Response> {
   if (override !== undefined) return override(request);
   const url = new URL(request.url);
   const base = inject(OPTIONS_KEY).base.replace(/\/$/u, '');
-  if (url.origin === location.origin && url.pathname.startsWith(`${base}${FN_PREFIX}/`)) {
+  // A function's URL, or the CSRF token's, which the same handler answers (SDD-81 §3.13).
+  const fn = url.pathname.startsWith(`${base}${FN_PREFIX}/`) || url.pathname === `${base}${CSRF_PATH}`;
+  if (url.origin === location.origin && fn) {
     // Loaded on the first call: most test files never make one, and the setup stays light.
     const { functions } = await import('./server.js');
     // The prefix was just checked, which is the only case in which the handler answers `null`.
@@ -93,14 +95,61 @@ async function answer(request: Request): Promise<Response> {
   );
 }
 
+/**
+ * `form` as the bytes of a `multipart/form-data` body (RFC 7578). The page's `FormData` is the
+ * DOM environment's and the `Request` is Node's, which does not know it and would send
+ * `[object Object]`: the harness writes the body a browser would.
+ */
+async function multipart(form: FormData): Promise<{ readonly body: Uint8Array<ArrayBuffer>; readonly type: string }> {
+  const boundary = `----fudic${crypto.randomUUID().replaceAll('-', '')}`;
+  const text = new TextEncoder();
+  const chunks: Uint8Array<ArrayBuffer>[] = [];
+  const quoted = (value: string): string => value.replace(/["\r\n]/gu, (c) => encodeURIComponent(c));
+  for (const [name, value] of form.entries()) {
+    let head = `--${boundary}\r\ncontent-disposition: form-data; name="${quoted(name)}"`;
+    if (typeof value === 'string') {
+      chunks.push(text.encode(`${head}\r\n\r\n`), text.encode(value));
+    } else {
+      // As a browser writes it: a quote or a line break of the name, percent-encoded.
+      head += `; filename="${quoted(value.name)}"`;
+      chunks.push(text.encode(`${head}\r\ncontent-type: ${value.type || 'application/octet-stream'}\r\n\r\n`));
+      chunks.push(new Uint8Array(await value.arrayBuffer()));
+    }
+    chunks.push(text.encode('\r\n'));
+  }
+  chunks.push(text.encode(`--${boundary}--\r\n`));
+  const body = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
+  let at = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, at);
+    at += chunk.length;
+  }
+  return { body, type: `multipart/form-data; boundary=${boundary}` };
+}
+
+/** The request the page meant: a `FormData` body written out as multipart. */
+async function requestOf(input: RequestInfo | URL, init?: RequestInit): Promise<Request> {
+  if (input instanceof Request) return input;
+  const url = new URL(String(input), location.href);
+  if (!(init?.body instanceof FormData)) return new Request(url, init);
+  const { body, type } = await multipart(init.body);
+  const headers = new Headers(init.headers);
+  headers.set('content-type', type);
+  return new Request(url, { ...init, body, headers });
+}
+
 /** The environment's `fetch`: a request in, the answer out, counted as pending meanwhile. */
 export function harnessFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const request = input instanceof Request ? input : new Request(new URL(String(input), location.href), init);
-  return track(answer(request));
+  return track(requestOf(input, init).then(answer));
 }
 
 /** Put the harness's `fetch` in place of the environment's. Once per environment. */
 export function installFetch(): void {
   globalThis.fetch = harnessFetch;
   window.fetch = harnessFetch;
+  // A call that carries files goes out through `XMLHttpRequest` where there is one (SDD-81
+  // §3.4), and happy-dom's would take it to the network. A test has none, so it comes here too.
+  for (const scope of [globalThis, window]) {
+    Object.defineProperty(scope, 'XMLHttpRequest', { value: undefined, configurable: true, writable: true });
+  }
 }

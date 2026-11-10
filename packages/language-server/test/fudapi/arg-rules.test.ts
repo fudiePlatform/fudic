@@ -16,7 +16,8 @@ import { apiDefinition, apiHover } from '../../src/fudapi/navigation.js';
 import { apiSemanticTokens } from '../../src/fudapi/semantic-tokens.js';
 import { FILES, FORMS, SRC, apiDocument, cursor, world } from './_api.js';
 
-const SIX = ['required', 'min', 'max', 'min-length', 'max-length', 'pattern'];
+// The six of SDD-67 and the two of a file (SDD-81 §3.2): argument rules too.
+const ARG_RULES = ['required', 'min', 'max', 'min-length', 'max-length', 'pattern', 'max-size', 'accept'];
 
 const FORMS_RULES = readFileSync(new URL('../../../forms/fudapi/rules.fudapi', import.meta.url), 'utf8');
 
@@ -43,17 +44,24 @@ const hoverText = (marked: string): string | undefined => {
 };
 
 describe('criterion 19: completion under an argument', () => {
-  it('the six rules and none of the project, under a body argument', () => {
-    expect(labels('put save\n  name  str\n    |')).toEqual(SIX);
+  it('the argument rules that apply to its type and none of the project, under a body argument', () => {
+    expect(labels('put save\n  name  str\n    |')).toEqual(['required', 'min-length', 'max-length', 'pattern']);
   });
 
   it('the same under an argument of the route and of query', () => {
-    expect(labels('put save /:id\n  id  uuid\n    |')).toEqual(SIX);
-    expect(labels('get search\n  query q  str\n    |')).toEqual(SIX);
+    expect(labels('put save /:id\n  id  uuid\n    |')).toEqual(['required']);
+    expect(labels('get search\n  query q  str\n    |')).toEqual(['required', 'min-length', 'max-length', 'pattern']);
   });
 
-  it('the six whatever the type: the validator says what applies, not the completion', () => {
-    expect(labels('put save\n  age  u8\n    |')).toEqual(SIX);
+  it('by the type, as under a field (SDD-81 §3.8): `max-size` and `accept` only under a file', () => {
+    expect(labels('put save\n  age  u8\n    |')).toEqual(['required', 'min', 'max']);
+    expect(labels('put save\n  doc  file\n    |')).toEqual(['required', 'max-size', 'accept']);
+  });
+
+  it('all of them while the line above names no argument yet, or the function is not one yet', () => {
+    expect(labels('put save\n  -> str\n    |')).toEqual(ARG_RULES);
+    // A verb with no name is no function to the parser: the block above is the `load`'s.
+    expect(labels('load\n  x  str\nput\n  a  str\n    |')).toEqual(ARG_RULES);
   });
 
   it('under a field, the project rule is still offered: only an argument leaves it out', () => {

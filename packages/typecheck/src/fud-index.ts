@@ -15,7 +15,7 @@
  * would turn each scaffolding into a full repaint of the project.
  */
 
-import { API_EXTENSION, parseApi } from '@fudic/api';
+import { API_EXTENSION, formFields, parseApi, type Decl } from '@fudic/api';
 import {
   documentRoots,
   span,
@@ -300,6 +300,7 @@ export class FudIndex<E extends IndexedFud = IndexedFud> implements LinkIndex, F
       d.kind === 'fn' ? [d.name.text, ...(d.form === undefined ? [] : [d.form.name.text])] : d.kind === 'form' ? [d.name.text] : [],
     );
     const later = declarations.flatMap((d) => (d.kind === 'load' ? d.fields.filter((f) => f.later !== undefined) : []));
+    const fields = this.#formFields(root, declarations);
     return {
       id: path.slice(root.length + SRC_DIR.length + 2, -API_EXTENSION.length),
       load: declarations.some((d) => d.kind === 'load'),
@@ -307,7 +308,44 @@ export class FudIndex<E extends IndexedFud = IndexedFud> implements LinkIndex, F
       ...(later.length === 0
         ? {}
         : { later: later.map((f) => ({ name: f.name.text, type: text.slice(f.type.span.start, f.type.span.end) })) }),
+      ...(Object.keys(fields).length === 0 ? {} : { fields }),
     };
+  }
+
+  /**
+   * The fields of the forms a `.fudapi` gives (SDD-81 §3.7): its own, and those its functions
+   * take by name, found in the other `.fudapi` of the app's `src/` — a form is one per project
+   * (`FUD1081`). The other files are walked only when a form is not declared here, and a form
+   * that is in none of them (a library's) is left out.
+   */
+  #formFields(root: string, declarations: readonly Decl[]): Record<string, ReturnType<typeof formFields>> {
+    const out: Record<string, ReturnType<typeof formFields>> = {};
+    for (const d of declarations) if (d.kind === 'form') out[d.name.text] = formFields(d);
+    const wanted = new Set(declarations.flatMap((d) => (d.kind === 'fn' && d.form !== undefined ? [d.form.name.text] : [])));
+    for (const name of Object.keys(out)) wanted.delete(name);
+    if (wanted.size === 0) return out;
+    for (const file of this.#apiFiles(`${root}/${SRC_DIR}`)) {
+      const text = this.fs.readFile(file);
+      // Cheap before the parse: a file that declares none of the forms wanted is not read further.
+      if (text === undefined || ![...wanted].some((name) => new RegExp(`^form\\s+${name}\\b`, 'mu').test(text))) continue;
+      for (const d of parseApi(text).value.declarations) {
+        if (d.kind !== 'form' || !wanted.has(d.name.text)) continue;
+        out[d.name.text] = formFields(d);
+        wanted.delete(d.name.text);
+      }
+      if (wanted.size === 0) break;
+    }
+    return out;
+  }
+
+  /** Every `.fudapi` under `dir`, `node_modules` pruned; none when the filesystem cannot list. */
+  #apiFiles(dir: string): readonly string[] {
+    const names = this.fs.readDirectory?.(dir) ?? [];
+    return names.flatMap((name) => {
+      if (name === 'node_modules' || name.startsWith('.')) return [];
+      const path = `${dir}/${name}`;
+      return name.endsWith(API_EXTENSION) ? [path] : this.#apiFiles(path);
+    });
   }
 
   /**

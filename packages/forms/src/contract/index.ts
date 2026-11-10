@@ -34,9 +34,37 @@ export { bool } from '../typed/bool.js';
 export { str } from '../typed/str.js';
 export { date } from '../typed/date.js';
 export { arr } from '../typed/arr.js';
+export { file } from '../typed/file.js';
+export { files } from '../typed/files.js';
+export { maxSize } from '../validators/max-size.js';
+export { accept } from '../validators/accept.js';
+// What the implementations of `rules.fudapi` answer `max-size` and `accept` with (SDD-81 §3.2).
+export { accepted, withinSize, type Files } from '../validators/file-checks.js';
 export { uuid, UUID } from './uuid.js';
-export { formOf, type Bool, type DateField, type List, type Num, type Str, type Validated } from './form.js';
-export { rule, camel, type Check, type Rule, type RuleSpec, type Verdict } from './rule.js';
+export {
+  formOf,
+  type Bool,
+  type DateField,
+  type FileField,
+  type FileListField,
+  type List,
+  type Num,
+  type Str,
+  type Validated,
+} from './form.js';
+export {
+  rule,
+  camel,
+  remoteRule,
+  runRulesWith,
+  type Around,
+  type Check,
+  type RemoteRule,
+  type Rule,
+  type RuleSpec,
+  type Verdict,
+} from './rule.js';
+export { askRemote, type Asking, type Question } from './remote.js';
 export {
   compare,
   contains,

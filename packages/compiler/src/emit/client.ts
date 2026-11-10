@@ -43,7 +43,7 @@ import {
   type EmitOutput,
 } from './module.js';
 import type { Diagnostic } from '../types/index.js';
-import { apiForms, apiImports } from './api-links.js';
+import { apiFields, apiForms, apiImports } from './api-links.js';
 
 /**
  * The positional destructuring of `$props` (§4.2) — the exact mirror of the `Object.values`
@@ -276,6 +276,7 @@ function buildComponentClientModule(
     planControls(comp.source, comp.doc.template!.children, {
       isComponent: (t) => graph.components.has(t),
       isFormAssociated: (t) => formAssociatedTags(graph).has(t),
+      field: apiFields(graph),
       template: comp.doc.template!,
     }),
     // What tells a `control` whose node CROSSED from the parent (decision 112) from one this
@@ -290,7 +291,9 @@ function buildComponentClientModule(
   for (const table of delegation.tables) bodies.decls.line(`const ${table} = new WeakMap();`);
   const ids = nodeIds();
   const usage = coreUsage();
-  const ctx = blockContext(comp.source, scope, linker, ids, usage, hookup);
+  // The forms of a linked `.fudapi` are such modules too (SDD-60 §3.14): before, the `@code` imported them.
+  const imported = [...new Set([...clientImports, ...apiForms(graph)])];
+  const ctx = blockContext(comp.source, scope, linker, ids, usage, hookup, imported);
   const em = new ClientMarkupEmitter({
     source: comp.source,
     bodies,
@@ -350,8 +353,6 @@ function buildComponentClientModule(
   //
   // Framework imports are already out (`clientImports`), so what is left is the author's own
   // modules — where a store is the whole reason to have one.
-  // The forms of a linked `.fudapi` are such modules too (SDD-60 §3.14): before, the `@code` imported them.
-  const imported = [...new Set([...clientImports, ...apiForms(graph)])];
   // Nothing to renew: a component with signals but no value write and no construct has no
   // rendering that a `set` could change.
   // A `control` whose node crossed as a prop is bound from `$cb` and not from `$s`, because
@@ -366,7 +367,8 @@ function buildComponentClientModule(
     (reactive.length > 0 || imported.length > 0 || tasks.length > 0) && (em.writes > 0 || !bodies.update.empty);
   const reconcile = bodies.update.empty ? '' : ` ${lines(bodies.update)}`;
   if (renews) {
-    usage.subscribes = reactive.length > 0;
+    // `||=`: a block of the walk may already have subscribed what it reads through an import.
+    usage.subscribes ||= reactive.length > 0;
     usage.guarded = imported.length > 0;
     // Into `$s`, which is where create and hydrate converge — and `$sub` does NOT deliver on
     // subscribe (SDD-31 §4.8), so `h` stays as paint-free as it is today: no text node is

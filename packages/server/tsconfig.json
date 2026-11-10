@@ -1,0 +1,12 @@
+{
+  "extends": "@fudic/tsconfig/tsconfig.base.json",
+  "compilerOptions": {
+    // `DOM` for the platform's `Request`, `Response`, `Headers`, `URL` and streams, which every
+    // runtime this package serves from has. Not a licence to touch `document`: nothing here does.
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    // `node` for `src/node/` alone, the glue to `node:http`. The main entry imports nothing of
+    // Node, and a test loads it without (SDD-81 §6, criterion 38).
+    "types": ["node"]
+  },
+  "include": ["src", "test"]
+}
