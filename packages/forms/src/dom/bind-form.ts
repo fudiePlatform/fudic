@@ -57,6 +57,8 @@ interface Refusal {
 /** What the send of `form:=` is given besides the form: the options of a function's call. */
 interface SendOptions {
   readonly onProgress: (p: Progress | null) => void;
+  /** Aborted by `$cancel()`, or by the next send. */
+  readonly signal: AbortSignal;
 }
 
 /** A cancelled call is not a failure: nobody hears about it, as with `error-pages`. */
@@ -150,7 +152,7 @@ export function bindForm(
       // Its bytes feed `$progress()` while it is in flight (SDD-81 §3.6): the call says `null` once
       // it moves no more, whatever it came to.
       const internals = internalsOf(form as unknown as AnyNode);
-      void send!(form, { onProgress: (p) => internals.progress!(p) }).then(
+      void send!(form, { onProgress: (p) => internals.progress!(p), signal: internals.send!() }).then(
         (value) => {
           el.dispatchEvent(new CustomEvent('fudic:result', { detail: value, bubbles: true, composed: true }));
         },

@@ -10,6 +10,7 @@ import { isAbsolute, join, relative } from 'node:path';
 import type { EarlyHints, FetchHooks, FudicServer } from '../types.js';
 
 export { diskSpool } from './spool.js';
+export { staticFiles } from './files.js';
 
 /**
  * A Node request as a `Request`, whose `signal` aborts when the client goes away before the

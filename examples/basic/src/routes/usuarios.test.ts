@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { task } from '@fudic/core';
 import { ValidationError } from '@fudic/http';
 import { respondProblem, visit } from '@fudic/testing';
-import { crash, login, search } from 'fudic:routes/usuarios';
+import { avatar, crash, exportar, login, search } from 'fudic:routes/usuarios';
 
 // SDD-68 §6, criteria 11, 15–17 and 19, on the page itself: its `load`, its functions and their
 // chain (`auth`, `error-pages`) run on the in-memory server. A mutation does not make the page
@@ -13,7 +13,7 @@ import { crash, login, search } from 'fudic:routes/usuarios';
 // The people table, mocked so every test starts from the same three rows: the real one is
 // module state, and a `remove` in one test would be missing from the next.
 const people = vi.hoisted(() => {
-  type Person = { id: number; name: string; email: string; age: number; active: boolean; notes: string };
+  type Person = { id: number; name: string; email: string; age: number; active: boolean; notes: string; avatar: boolean };
   const table: Person[] = [];
   return {
     table,
@@ -21,9 +21,9 @@ const people = vi.hoisted(() => {
       table.splice(
         0,
         table.length,
-        { id: 1, name: 'Ana', email: 'ana@fudic.dev', age: 34, active: true, notes: '' },
-        { id: 2, name: 'Luis', email: 'luis@fudic.dev', age: 41, active: false, notes: '' },
-        { id: 3, name: 'Marta', email: 'marta@fudic.dev', age: 29, active: true, notes: '' },
+        { id: 1, name: 'Ana', email: 'ana@fudic.dev', age: 34, active: true, notes: '', avatar: false },
+        { id: 2, name: 'Luis', email: 'luis@fudic.dev', age: 41, active: false, notes: '', avatar: false },
+        { id: 3, name: 'Marta', email: 'marta@fudic.dev', age: 29, active: true, notes: '', avatar: false },
       );
     },
   };
@@ -387,5 +387,23 @@ describe('criterion 19: what the page shows', () => {
     expect([...h2.nextElementSibling!.querySelectorAll('li')].map((li) => li.textContent)).toEqual([
       'Marta — marta@fudic.dev',
     ]);
+  });
+});
+
+describe('SDD-81 §4.5: the photo and the CSV are links', () => {
+  test('nobody has a photo yet: `avatar` answers nothing, and the table paints no <img>', async () => {
+    await usuarios();
+    expect(await avatar({ id: 1 })).toBeUndefined();
+    expect(document.querySelectorAll('tbody img')).toHaveLength(0);
+    expect(avatar.url({ id: 1 })).toMatch(/^\/_fudic\/fn\/routes\/usuarios\/avatar\?a=/u);
+  });
+
+  test('«Exportar CSV» links to `exportar`, which gives the table as a file', async () => {
+    await usuarios();
+    const link = document.querySelector<HTMLAnchorElement>('a[download]')!;
+    expect(link.getAttribute('href')).toBe(exportar.url());
+    const csv = await exportar();
+    expect([csv.name, csv.type.split(';')[0]]).toEqual(['personas.csv', 'text/csv']);
+    expect((await csv.text()).split('\n').slice(0, 2)).toEqual(['id,name,email,age,active,notes', '1,Ana,ana@fudic.dev,34,true,']);
   });
 });

@@ -141,7 +141,8 @@ describe('inPlace', () => {
   });
 });
 
-describe('fudic_new (criterion 18)', () => {
+// It runs the commands it writes, as `fudic new` does: under a full suite that takes more than 5 s.
+describe('fudic_new (criterion 18)', { timeout: 60_000 }, () => {
   it('writes in its own folder what `fudic new` writes in <name>/, and runs its commands', async () => {
     const { mcp } = await twinApps();
     const cli = folder('cli');

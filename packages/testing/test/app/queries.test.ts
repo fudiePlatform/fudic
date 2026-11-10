@@ -6,6 +6,7 @@
 
 import { describe, expect, test } from 'vitest';
 import { mount } from '../../src/index.js';
+import * as XPick from './src/components/x-pick.fud';
 import * as XSignup from './src/components/x-signup.fud';
 
 describe('criterion 6: queries go down through shadow roots', () => {
@@ -51,5 +52,14 @@ describe('gestures wait for what they set off', () => {
     expect(t.getByRole('status')).toHaveTextContent('1');
     await t.submit(t.query('form')!);
     expect(t.getByRole('status')).toHaveTextContent('2');
+  });
+});
+
+describe('upload: choosing files, as the dialog does (SDD-81)', () => {
+  test('one file, or a list into a multiple input; $value is the File, or the list', async () => {
+    const t = await mount(XPick);
+    await t.upload(t.getByLabelText('One'), new File(['a'], 'a.txt'));
+    await t.upload(t.getByLabelText('Many'), [new File(['b'], 'b.png'), new File(['c'], 'c.pdf')]);
+    expect(t.getByLabelText('Chosen')).toHaveTextContent('a.txt|b.png,c.pdf');
   });
 });

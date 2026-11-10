@@ -1,0 +1,22 @@
+@code {
+  import { signal } from "@fudic/core";
+
+  const one = signal("");
+  const many = signal("");
+
+  function pickOne(file: File | null) {
+    one.set(file === null ? "" : file.name);
+  }
+
+  function pickMany(files: readonly File[]) {
+    many.set(files.map((f) => f.name).join(","));
+  }
+}
+
+<x-pick>
+  <template shadowrootmode="open">
+    <input type="file" aria-label="One" @change=@pickOne($value)>
+    <input type="file" multiple aria-label="Many" @change=@pickMany($value)>
+    <output aria-label="Chosen">@one()|@many()</output>
+  </template>
+</x-pick>

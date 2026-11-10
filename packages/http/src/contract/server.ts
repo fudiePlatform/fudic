@@ -21,7 +21,7 @@ import { noFunction, problemOf, problemResponse } from '../server/problem.js';
 import { withRequest } from '../server/request.js';
 import { DEFAULT_LIMITS, memorySpool, multipartArgs, refuseCrossSite, releasing } from '../server/upload.js';
 import type { ServerContext } from '../types.js';
-import { contractIds, contractsOf, SIG_HEADER, type ServerContract } from './fn.js';
+import { contractIds, contractsOf, SIG_HEADER, SIG_PARAM, type ServerContract } from './fn.js';
 import { compose } from './middleware.js';
 import type { PagePiece } from './page.js';
 import { rulesHandler } from './rule-route.js';
@@ -74,7 +74,9 @@ export async function serve(input: ServeInput, options: DispatchOptions = {}): P
     if (spool !== undefined) refuseCrossSite(request, url);
     const params = { ...input.page, ...typed(spec.params ?? {}, (name) => input.route[name] ?? null) };
     const query = typed(spec.query ?? {}, (name) => url.searchParams.get(name));
-    if (request.headers.get(SIG_HEADER) !== (spec.sig ?? null)) throw stale();
+    // A link carries it in its query: a `get` a browser asks for by `href` or `src` (§3.4).
+    const sig = request.headers.get(SIG_HEADER) ?? (request.method === 'GET' ? url.searchParams.get(SIG_PARAM) : null);
+    if (sig !== (spec.sig ?? null)) throw stale();
     const types = spec.args ?? {};
     const raw =
       request.method === 'GET'

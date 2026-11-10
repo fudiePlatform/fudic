@@ -1291,6 +1291,8 @@ etiqueta, desestructuración de objetos con resto, y una sola llamada: leer un v
 de objeto y de lista y la sintaxis de TS (`FUD1140`–`FUD1148`). `@{ }` solo declara y reasigna. El
 spread de un nativo escribe sus atributos ordenados por nombre en el sitio del primer spread.
 Enmienda la 137, la 138 y la 141; `FUD0911` queda retirado.
+*Ampliada por la 182 (SDD-81 §8.2.28): el enlace de una función del servidor, `fn.url({ campo: valor })`
+o `fn.url()`, también vale; todo backend lo escribe con el camino y los argumentos codificados.*
 
 **163.** **`@empty`** (SDD-61 §3.7). Tras el cuerpo de `@foreach`, `@for` o `@while`, se pinta
 cuando el bucle no da ninguna vuelta; en el cliente es una rama más del constructo. Mal colocado o
@@ -1453,7 +1455,9 @@ un control de fichero ligado a lo que no es fichero, o al revés, `FUD1486`. Si 
 regla `accept` y el `<input>` no lleva el atributo, el compilador lo escribe con el valor de la
 regla; el del autor manda. Enmienda la 178: `$value` en un `<input type="file">` es `File | null`, y
 con `multiple`, `readonly File[]`. *Por qué: el diálogo del sistema filtra lo mismo que la regla, y el
-tipo del valor dice de verdad si hay uno o varios (Pedro, 2026-11-08).*
+tipo del valor dice de verdad si hay uno o varios (Pedro, 2026-11-08).* *Ampliada al implementar (SDD-81 §8.2.28,
+§8.2.31): elegir un fichero marca el campo y lo valida, y `fn.url(args)` es parte de la vista
+portable (amplía la 162).*
 
 ### Gramática de referencia
 

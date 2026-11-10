@@ -373,6 +373,7 @@
     "reactive": false,
     "hydration": "gesture",
     "hydrates": [
+      "app-adjuntos",
       "app-counter",
       "app-field",
       "app-form",

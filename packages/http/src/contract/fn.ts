@@ -34,6 +34,12 @@ export type { Linkable, Progress } from '../types.js';
 /** The header that carries a function's signature (SDD-67 §3.3). */
 export const SIG_HEADER = 'fud-sig';
 
+/**
+ * The query parameter that carries it in a link (SDD-81 §3.4): a `<a href>` or an `<img src>`
+ * sends no header of ours. `$` is no name of a `.fudapi`, so no argument can take it.
+ */
+export const SIG_PARAM = '$sig';
+
 export interface FnSpec {
   /** `<id>` of its `.fudapi`: `routes/blog/[slug]`. */
   readonly id: string;
@@ -258,5 +264,6 @@ export function linkOf(spec: FnSpec, input: unknown, options: Pick<CallOptions, 
     const out = spec.wire.encodeArgs(types, conformAll(types, record, 'argument'))!;
     url.searchParams.set('a', typeof out === 'string' ? out : toBase64url(out));
   }
+  if (spec.sig !== undefined) url.searchParams.set(SIG_PARAM, spec.sig);
   return `${url.pathname}${url.search}`;
 }

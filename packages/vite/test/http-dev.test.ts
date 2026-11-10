@@ -195,6 +195,15 @@ afterAll(async () => {
 });
 
 const page = (path: string) => fetch(`${origin}${path}`, { headers: { accept: 'text/html' }, redirect: 'manual' });
+/**
+ * The headers of a page, its body read to the end: a response left unread holds its connection,
+ * and under a loaded suite the next request can find one the server has closed (ECONNRESET).
+ */
+const headersOf = async (path: string): Promise<Headers> => {
+  const res = await page(path);
+  await res.arrayBuffer();
+  return res.headers;
+};
 /** A navigation that comes from `referer`, as the browser says it. */
 const refered = (path: string, referer: string) =>
   fetch(`${origin}${path}`, { headers: { accept: 'text/html', referer }, redirect: 'manual' });
@@ -384,18 +393,18 @@ describe('errors that reach a page (§4.8)', () => {
 
   it('SDD-73 §4.1: in dev the Link names the entries at their stable URLs; over HTTP/1.1, no 103', async () => {
     // Vite's dev server is HTTP/1.1 here: the `Link` goes out, the `103` does not.
-    const link = (await page('/usuarios')).headers.get('link');
+    const link = (await headersOf('/usuarios')).get('link');
     expect(link).toContain('</fudic-main.js>; rel=modulepreload');
     // What `load` threw paints the error page, and the `Link` is that page's.
-    expect((await page('/missing')).headers.get('link')).toContain('</fudic-main.js>; rel=modulepreload');
-    expect((await page('/test')).headers.get('link')).toContain('</fudic-main.js>; rel=modulepreload');
+    expect((await headersOf('/missing')).get('link')).toContain('</fudic-main.js>; rel=modulepreload');
+    expect((await headersOf('/test')).get('link')).toContain('</fudic-main.js>; rel=modulepreload');
     // A redirect paints nothing.
-    expect((await page('/go')).headers.get('link')).toBeNull();
+    expect((await headersOf('/go')).get('link')).toBeNull();
   });
 
   it('criterion 14: page responses state their Referrer-Policy', async () => {
     for (const path of ['/missing', '/_fudic/error/401', '/test']) {
-      expect((await page(path)).headers.get('referrer-policy')).toBe('strict-origin-when-cross-origin');
+      expect((await headersOf(path)).get('referrer-policy')).toBe('strict-origin-when-cross-origin');
     }
   });
 

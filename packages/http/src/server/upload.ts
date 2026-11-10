@@ -27,7 +27,9 @@ const tooLarge = (detail: string): HttpError => new HttpError({ status: 413, tit
 /** In memory: portable, the default. What it kept goes with the request. */
 export function memorySpool(): Spool {
   return {
-    put: async (bytes, meta) => new File([await new Response(bytes).blob()], meta.name, { type: meta.type }),
+    // The bytes, not a `Blob`: the `Response` and the `File` may come from two implementations (a
+    // DOM environment in a test), and a `Blob` of one is text to the other.
+    put: async (bytes, meta) => new File([await new Response(bytes).arrayBuffer()], meta.name, { type: meta.type }),
     release: () => Promise.resolve(),
   };
 }

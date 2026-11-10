@@ -223,11 +223,15 @@ logout.handle((ctx) => {
 });
 ```
 
-`setCookie` writes `Path=/; HttpOnly; Secure; SameSite=Lax` unless told otherwise, and leaves
-`Secure` out on `localhost`, `127.0.0.1` and `[::1]`, where the dev server speaks `http`. It
-throws a `TypeError` on what a browser would drop without a word: a name that is not an HTTP
-token, and `sameSite: 'none'` or `partitioned` without `secure`. `serializeCookie` gives the same
-text without a `ctx`. Reading is `ctx.cookies.get(name)`.
+`setCookie` writes `Path=/; HttpOnly; Secure; SameSite=Lax` unless told otherwise. Whether
+`Secure` goes is the server's to say (`secureCookies` of `@fudic/server`, `true` unless said),
+never the `Host` of the request: dev and preview over `http` leave it out, a deployed server
+puts it. A `__Host-` name always goes with `Secure` and `Path=/`, and with a `domain` or another
+`path` it is a `TypeError`; a `__Secure-` one always with `Secure`. `deleteCookie` repeats
+`Secure` where the cookie had it, or the browser would not remove it. It throws a `TypeError` on
+what a browser would drop without a word: a name that is not an HTTP token, and
+`sameSite: 'none'` or `partitioned` without `secure`. `serializeCookie` gives the same text
+without a `ctx`. Reading is `ctx.cookies.get(name)`.
 
 A `load` writes its cookies, status and headers the same way, and they reach the browser with
 the page and with its data, also when it throws: a `deleteCookie` before `throw unauthorized()`
@@ -263,9 +267,45 @@ of `@fudic/http`: `{ status, title, detail? }`.
 `inject` and `publish` from `@fudic/di` work without `ctx` anywhere server code runs during a
 request: `load`, `layout`, a handler, a middleware's server half, and whatever they call.
 
-`csrf` requires a header a foreign page cannot send. A call that is not a GET invalidates the
-cached data of the current page and of `invalidates`, and waits for the Service Worker to
-confirm it.
+`csrf` requires a header a foreign page cannot send, and refuses a `Sec-Fetch-Site` that is not
+`same-origin` or an `Origin` that is not the app's public one. Written with `token true` under
+it, it also wants a token signed against an `HttpOnly` cookie (signed double submit): the
+browser half fetches it from `GET {base}_fudic/csrf` the first time a call needs it, sends it in
+`x-fudic-csrf`, and fetches it again once on a `403` with the code `csrfToken`. The server signs
+with its `secret` (`FUDIC_SECRET`). A call that is not a GET invalidates the cached data of the
+current page and of `invalidates`, and waits for the Service Worker to confirm it.
+
+## Files
+
+`file`, `file?` and `file[]` in a `.fudapi` are the platform's `File`. A function whose arguments
+can hold one always travels as `multipart/form-data`: first the part `$args`, the other arguments
+in the function's own format, then each file named by its path in the arguments (`avatar`,
+`docs.0`, `doc.attachment`). Nothing of a file is in `$args`, not even its null bit. A call
+without files is byte for byte what it was.
+
+In the browser such a call goes out through `XMLHttpRequest`, the one API that reports the
+progress of an upload in every engine; anything else through `fetch`. `onProgress` of the call
+options, `progress()` of a `task` and `$progress()` of a form give `{ loaded, total, phase }`,
+the upload and then the download, and `null` once it moves no more. The browser reads each file
+from the disk as it sends it.
+
+The server reads the body as it arrives, with its own multipart reader: `$args` first (else
+`400`), each file into the `Spool` the server was given (`memorySpool` by default, `diskSpool` of
+`@fudic/server/node` on Node), counting bytes against the field's `max-size` or `maxFileSize`.
+Past a limit (`UploadLimits`: 10 MB a file, 20 files, 1 MB of `$args` unless `serve.uploads` in
+`fudic.json` says otherwise) it stops reading and answers `413`, naming the limit and the field.
+A part whose name is no file of the arguments is a `400 multipart body:`. What the spool kept
+goes once the response is done or cancelled. A multipart call from another site is a `403`,
+with `csrf` in the chain or not: a `<form>` of another page can send multipart.
+
+`-> file` answers with the file as the body: its `content-type`, `content-disposition: inline`
+with its name, `content-length` and `last-modified`; `undefined` from a `-> file?` is a `204`. A
+value that holds files comes back as multipart, `$value` and a part per file, and the client
+puts it back together.
+
+Every `get` has `url(args)`: the URL that calls it, base, route, query, `?a=` and its signature
+in `$sig` included, for a `href` or a `src` the browser asks with no script. The server takes the
+signature from the query only for a `get`.
 
 ## On the wire
 
@@ -298,4 +338,6 @@ of `@fudic/testing` write the response in the function's own format.
 
 The build writes `.fudic/edge/functions.mjs`: a `handle(request)` that answers every server
 function with a `Response`, and the table of URLs and methods for an adapter to mount. It
-carries sourcemaps, so an error in a handler points at its `.ts`. `vite preview` serves it.
+carries sourcemaps, so an error in a handler points at its `.ts`. The whole app, pages
+included, is `.fudic/edge/server.mjs`, which `@fudic/server` serves: that is what `vite preview`
+and any adapter mount.

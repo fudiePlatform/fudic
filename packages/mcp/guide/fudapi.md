@@ -218,6 +218,110 @@ form personForm
 - A form reaches the view of every `.fud` that links a `.fudapi` whose function uses it, by its
   name: `<form control=@personForm form:=@create>`. Binding it is the topic view.
 
+## Files
+
+```fudapi path=src/components/app-photo/app-photo.fudapi
+# A photo: up with a form, back as a link an <img> paints.
+put upload
+  form photoForm
+  -> Photo
+
+get photo
+  id  i32
+  -> file?
+
+form photoForm
+  title  str = ""
+  photo  file
+    required                        "Choose a photo."
+    accept "image/png, image/jpeg"  "A PNG or a JPEG."
+    max-size 2mb                    "At most {n}."
+
+type Photo
+  id     i32
+  title  str
+```
+
+```ts path=src/server/components/app-photo/app-photo.ts
+import { photo, upload } from 'fudic:components/app-photo/app-photo';
+
+const photos = new Map<number, File>();
+
+upload.handle(async (ctx) => {
+  // A File, its type and size already checked. It lives while the handler runs: keep its bytes.
+  const { title, photo: chosen } = ctx.form.$value();
+  const id = photos.size + 1;
+  photos.set(id, new File([await chosen.arrayBuffer()], chosen.name, { type: chosen.type }));
+  return { id, title };
+});
+
+photo.handle((ctx) => photos.get(ctx.args.id));
+```
+
+```fud path=src/components/app-photo/app-photo.fud
+<link rel="server" href="./app-photo.fudapi">
+
+@code {
+  /** Uploads a photo with its bar, and shows it once saved. */
+  import { signal } from "@fudic/core";
+  import type { Photo } from "fudic:components/app-photo/app-photo";
+
+  const saved = signal<Photo[]>([]);
+
+  function done(p: Photo) {
+    saved.set([p]);
+    photoForm.$reset();
+  }
+
+  function cancel() {
+    photoForm.$cancel();
+  }
+}
+
+<app-photo>
+  <template shadowrootmode="open">
+    <form control=@photoForm form:=@upload @fudic:result=@done>
+      <label for="title">Title</label>
+      <input id="title" control=@photoForm.title>
+      <label for="photo">Photo</label>
+      <input id="photo" type="file" control=@photoForm.photo>
+      <small error=@photoForm.photo></small>
+      @if (photoForm.$progress() !== null) {
+        <progress aria-label="Uploading" value=@(photoForm.$progress()?.loaded) max=@(photoForm.$progress()?.total)></progress>
+        <button type="button" @click=@cancel>Cancel</button>
+      }
+      <button>Upload</button>
+    </form>
+    @foreach (const p of saved()) key (p.id) {
+      <img src=@photo.url({ id: p.id }) alt=@p.title>
+    }
+  </template>
+</app-photo>
+```
+
+- `file`, `file?`, `file[]` are the platform's `File`: `File`, `File | undefined`,
+  `readonly File[]`; in a form `File | null` (`File` with `required`) and `readonly File[]`.
+- Where: a body argument of `post`, `put`, `patch`, `delete`; a form field; the `->` of any
+  function; a `type` used only there. In a `get`'s arguments (they travel in the URL) it is
+  `FUD1480`; in `load`, `layout` or `paths` `FUD1481`; `= value` on it `FUD1482`; a parameter of a
+  `rule` or a `fails` `FUD1483`.
+- Rules: `max-size n` with `kb`, `mb`, `gb` (base 1024; in a `file[]`, each file) and
+  `accept "<types>"` in the syntax of the HTML attribute (`image/png`, `image/*`, `.pdf`). In a
+  `file[]`, `min-length` / `max-length` count files and `required` refuses `[]`. They run in the
+  browser on choosing, and again on the server while it reads.
+- On the wire a function that can carry a file is always `multipart/form-data`: first `$args`,
+  the other arguments in the function's format, then each file named by its path (`photo`,
+  `docs.0`, `doc.attachment`). From outside, against a `use json` function:
+  `curl -X PUT -H 'x-fudic-csrf: 1' -F '$args=@args.json;type=application/json' -F photo=@me.png <url>`
+  (the header only when its chain uses `csrf`). A multipart call from another site is a `403`.
+- Limits: 10 MB a file unless its field says `max-size`, 20 files, 1 MB of `$args`; change them
+  in `fudic.json`: `"serve": { "uploads": { "maxFileSize": "50mb", "maxFiles": 10, "maxArgs": "1mb" } }`.
+  Past one, a `413` that names the field, before the rest is read.
+- `-> file` answers with the file as the body: its type, its name, its length. `-> file?` that
+  returns `undefined` is a `204`. A `type` that holds files comes back whole as multipart.
+- Every `get` has `url(args)`, for a `href` or a `src`: `<img src=@photo.url({ id: p.id })>`,
+  `<a href=@report.url() download>`. The browser asks it with no script.
+
 ## Rules and patterns
 
 ```fudapi path=src/rules/people.fudapi

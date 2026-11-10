@@ -12,12 +12,13 @@ export interface Person {
   readonly age: number;
   readonly active: boolean;
   readonly notes: string;
+  readonly avatar: boolean;
 }
 
 const people: Person[] = [
-  { id: 1, name: 'Ana', email: 'ana@fudic.dev', age: 34, active: true, notes: '' },
-  { id: 2, name: 'Luis', email: 'luis@fudic.dev', age: 41, active: false, notes: '' },
-  { id: 3, name: 'Marta', email: 'marta@fudic.dev', age: 29, active: true, notes: '' },
+  { id: 1, name: 'Ana', email: 'ana@fudic.dev', age: 34, active: true, notes: '', avatar: false },
+  { id: 2, name: 'Luis', email: 'luis@fudic.dev', age: 41, active: false, notes: '', avatar: false },
+  { id: 3, name: 'Marta', email: 'marta@fudic.dev', age: 29, active: true, notes: '', avatar: false },
 ];
 
 let next = people.length + 1;

@@ -47,7 +47,7 @@ const t = await mount(AppCounter, { props: { start: 2 } });
 
 **Queries** reach into every shadow root below: `getByRole(role, { name })`, `getByLabelText(text)`, `getByText(text)` (throw unless exactly one), `queryByRole(role, { name })` (`null` when none), `query(selector)` (CSS, first match or `null`), `errorOf(label)` (the text of a form control's error slot, or `null`).
 
-**Gestures** resolve once everything they started has finished (requests to the in-memory server, chunks, signals): `click(el)`, `type(el, text)`, `clear(el)`, `blur(el)`, `submit(form?)` (the one form under the root when none is given). There is no keyboard or focus gesture: that is a criterion.
+**Gestures** resolve once everything they started has finished (requests to the in-memory server, chunks, signals): `click(el)`, `type(el, text)`, `clear(el)`, `blur(el)`, `upload(el, file | files)` (chooses files in a file input, as its dialog does: `t.upload(t.getByLabelText("Photo"), new File([bytes], "me.png", { type: "image/png" }))`), `submit(form?)` (the one form under the root when none is given). There is no keyboard or focus gesture: that is a criterion.
 
 Assertions are vitest's `expect` plus jest-dom's matchers (`toBeInTheDocument`, `toHaveTextContent`, `toHaveAttribute`, `toHaveClass`…).
 

@@ -108,6 +108,24 @@ describe('one file (criterion 26)', () => {
   });
 });
 
+describe('criterion 28: the rules speak on choosing', () => {
+  it('a file the rules refuse paints its error at the change, with no blur', async () => {
+    const big = (v: File | null) => (v !== null && v.size > 2 ? { 'max-size': 2 } : null);
+    const f = formOf({ avatar: file(null, [big]) });
+    const { el, slot } = field('<input type="file">');
+    const input = el as HTMLInputElement;
+    bindFile(input, f.avatar as Control<File | null>, slot);
+    choose(input, [png()]);
+    await Promise.resolve();
+    expect(f.avatar.touched()).toBe(true);
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(slot.textContent).toBe('max-size');
+    choose(input, [new File(['a'], 'a.png', { type: 'image/png' })]);
+    await Promise.resolve();
+    expect(input.hasAttribute('aria-invalid')).toBe(false);
+  });
+});
+
 describe('several files, with multiple', () => {
   it('choosing makes the control the list; none makes it []', () => {
     const { f, input } = setup(true);

@@ -13,6 +13,8 @@ export interface Gestures {
   type(target: Element, text: string): Promise<void>;
   clear(target: Element): Promise<void>;
   blur(target: Element): Promise<void>;
+  /** Choose `files` in a file input, as the user does in its dialog: one, or a list for `multiple`. */
+  upload(target: Element, files: File | readonly File[]): Promise<void>;
   /** Submit `form`, or the one form under the root. */
   submit(form?: Element): Promise<void>;
   /** Wait until nothing is pending. */
@@ -33,7 +35,9 @@ export function gesturesOf(root: ParentNode): Gestures {
   // Set up on the first gesture, since most mounts only read; and with no delay between
   // keystrokes: a unit test waits for what the gesture set off, not for a clock.
   let session: ReturnType<typeof userEvent.setup> | undefined;
-  const user = (): ReturnType<typeof userEvent.setup> => (session ??= userEvent.setup({ delay: null, document }));
+  // `applyAccept: false`: the dialog filters by `accept`, but the user can ask it for every file,
+  // and what the rules of a field say about one that does not fit is worth a test.
+  const user = (): ReturnType<typeof userEvent.setup> => (session ??= userEvent.setup({ delay: null, document, applyAccept: false }));
   const then = async (gesture: Promise<void>): Promise<void> => {
     await gesture;
     await settled();
@@ -47,6 +51,14 @@ export function gesturesOf(root: ParentNode): Gestures {
     clear: (target) => {
       const length = (target as HTMLInputElement).value.length;
       return then(user().type(target, '{Backspace}', { initialSelectionStart: 0, initialSelectionEnd: length }));
+    },
+    upload: async (target, files) => {
+      // The dialog takes the user seconds: the component is up before the `change`, which does
+      // not cross a shadow root and so is no gesture the runtime holds for it. The focus the
+      // click gives raises it first, as it would while the dialog is open.
+      (target as HTMLElement).focus();
+      await settled();
+      await then(user().upload(target as HTMLElement, files instanceof File ? files : [...files]));
     },
     blur: (target) => {
       // A control loses the focus it has: it is given it first, as the user's tab did.

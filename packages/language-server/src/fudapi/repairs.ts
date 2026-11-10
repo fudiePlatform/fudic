@@ -37,12 +37,15 @@ function dropInitial(doc: ApiDocument, uri: string, d: SourceDiagnostic): CodeAc
   return action(doc, uri, 'Remove the initial value', { start, end: d.span.end }, '');
 }
 
+/** Who repairs each code: the one table of this file that reads a code (`@fudic/diagnostics` house rule). */
+const REPAIRS: ReadonlyMap<string, (doc: ApiDocument, uri: string, d: SourceDiagnostic) => CodeAction | undefined> = new Map([['FUD1480', toPost], ['FUD1482', dropInitial]]);
+
 /** The repairs of the diagnostics whose span meets `[start, end]`. */
 export function apiRepairs(doc: ApiDocument, uri: string, diagnostics: readonly SourceDiagnostic[], start: number, end: number): CodeAction[] {
   const out: CodeAction[] = [];
   for (const d of diagnostics) {
     if (d.span.start > end || start > d.span.end) continue;
-    const fix = d.code === 'FUD1480' ? toPost(doc, uri, d) : d.code === 'FUD1482' ? dropInitial(doc, uri, d) : undefined;
+    const fix = REPAIRS.get(d.code)?.(doc, uri, d);
     if (fix !== undefined) out.push(fix);
   }
   return out;

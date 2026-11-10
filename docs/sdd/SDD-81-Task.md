@@ -5,7 +5,7 @@
 > `@fudic/compiler` · `@fudic/config` · `@fudic/vite` · `@fudic/testing` · `@fudic/language-core` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/diagnostics` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-81-ficheros`, desde `worktree-pendiente`; al cerrar, merge `--no-ff` a `worktree-pendiente`.
-> **Progreso:** 30 / 37 — `Listo` (enmendada el 2026-11-09).
+> **Progreso:** 35 / 37 — `Hecho`, a falta de la prueba de Pedro (36) y del merge (37).
 
 **Dos sesiones.** Una implementa y entrega cada fase con `pnpm typecheck` y `pnpm build`. La otra
 escribe los tests de cada fase (las tareas «Los tests de…») contra los criterios de SDD §6, en su
@@ -135,6 +135,26 @@ semántico: el language server los verá cuando pase por ahí. `controlWants` ya
 reglas bajo un argumento se ofrecen por su tipo; el editor revisa el `fudic.json` (`FUD0725`,
 `FUD1488`); el criterio 10 decía `409` y es `412`. Para la fase 7: el `.vsix` (tarea 34) lleva el
 selector nuevo del `fudic.json` en `client-options.ts`.
+
+## Relevo (2026-11-10, fase 7)
+
+**Hecha en esta rama**, tareas 31–35, y de la 37 lo que no espera a Pedro: `pnpm typecheck`,
+`pnpm test`, `pnpm build` y las e2e del ejemplo en verde, ficheros nuevos al 100 %. Quedan la
+prueba de Pedro (36) y el merge `--no-ff` a `worktree-pendiente` (37). El ejemplo destapó nueve
+huecos, todos cerrados y anotados en la spec, §8.2.28–36: el `url()` de la vista era `FUD1140`;
+todo enlace a una `get` en binario daba `412` (la firma va ahora en `$sig`); un formulario no
+podía cancelar su envío (`$cancel()`); el error de un fichero no salía al elegirlo; el primer clic
+en un campo de fichero de un componente sin activar no abría el diálogo; `@fudic/testing` no
+podía elegir ni subir un fichero; el script de Node no servía el JS del build ni encontraba las
+páginas en una carpeta con espacios (`staticFiles`, `fileURLToPath`).
+
+**Dónde está cada criterio de la fase.** 35 y §4.6: `examples/basic/tests/ficheros.spec.ts`, en
+dev, preview y el build sin Service Worker (15 pruebas), más `src/components/user-form.test.ts`,
+`app-adjuntos.test.ts` y `routes/usuarios.test.ts`. 41: `src/node-server.test.ts` (una página, sus
+ficheros, una función y una subida). 36: la guía del MCP (`fudapi`, `components`, `view`,
+`pages`, `testing`, y en español) y los README de `api`, `http`, `server` y `forms`.
+
+**Para la prueba de Pedro.** El `.vsix` de la rama está instalado. `examples/basic` construido.
 
 ---
 
@@ -339,7 +359,7 @@ selector nuevo del `fudic.json` en `client-options.ts`.
 
 ## Fase 7 — ejemplo, guía y cierre
 
-- [ ] **31. El ejemplo.**
+- [x] **31. El ejemplo.**
   - `user-form` con `avatar file?` y `<progress>`.
   - El servicio `Avatars`.
   - `get avatar` y `get exportar` en `/usuarios`, con `<img src>` y el enlace de descarga.
@@ -347,19 +367,19 @@ selector nuevo del `fudic.json` en `client-options.ts`.
   - El script de Node del criterio 41.
   - *Depende de:* 20, 24.
   - *Paquete:* `examples/basic`.
-- [ ] **32. Los tests del ejemplo.** Las pruebas de §4.6 con Playwright, en dev y en preview; criterios 35 y 41.
+- [x] **32. Los tests del ejemplo.** Las pruebas de §4.6 con Playwright, en dev y en preview; criterios 35 y 41.
   - *Depende de:* 31.
   - *Paquete:* `examples/basic`.
-- [ ] **33. La guía del MCP y los README.**
+- [x] **33. La guía del MCP y los README.**
   - `fudapi.md`, `components.md` y `testing.md`, con sus copias en español: `file`, reglas, progreso,
     `url()`, límites, cookies, `trustProxy`, `csrf` con token, cómo montar `server.mjs`.
   - `api`, `http`, `server` y `forms/README.md` (criterio 36).
   - *Depende de:* 31.
   - *Paquetes:* `mcp`, `api`, `http`, `server`, `forms`.
-- [ ] **34. El `.vsix` de la rama.**
+- [x] **34. El `.vsix` de la rama.**
   - *Depende de:* 30.
   - *Paquete:* `vscode`.
-- [ ] **35. `docs/PENDIENTE.md` e INDEX.** El estado, el registro de progreso y la nota 5.
+- [x] **35. `docs/PENDIENTE.md` e INDEX.** El estado, el registro de progreso y la nota 5.
   - *Depende de:* 32, 33.
   - *Paquete:* docs.
 - [ ] **36. La prueba de Pedro.** SDD §6.1, con el `.vsix` de la rama.

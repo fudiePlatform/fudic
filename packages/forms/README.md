@@ -400,6 +400,23 @@ decides the base class (`FudicControlElement`), `delegatesFocus`, loading the co
 page, and the fallback of the bridge: the bridge itself is the standard attribute, and the
 component's author writes it. The day every browser has it, the fallback goes and no wrapper changes.
 
+### Files
+
+A field `file` is a `FileField`: `File | null`, `null` to start (`File` once validated with
+`required`). A `file[]` is one control, a `FileListField`: `readonly File[]`, `[]` to start,
+filled by one `<input multiple>`. `<input type="file" control=@form.avatar>` binds it with
+`bindFile`: choosing sets it, and since choosing is the whole gesture, the field counts as
+visited and its rules speak at once. `set(file)` from code — a drop zone — puts the file in the
+input through a `DataTransfer`; `$reset()` empties it. `max-size n` (bytes; each file of a
+list) and `accept "<types>"` (the syntax of the HTML attribute, checked against the type and the
+extension) are rules here, `runs both`; `min-length` and `max-length` count files, and
+`required` refuses `[]` in any list. The compiler writes `accept` on the input from the rule
+unless the author wrote one.
+
+While `form:=` sends, `$progress()` is `{ loaded, total, phase }` — the upload, then the
+download — and `null` otherwise; `$cancel()` stops the send, and a cancelled send announces
+nothing. It stops every send in flight: a second submit goes out beside the first, as always.
+
 ## One declaration, a copy per request
 
 Both ends build the form from the same declaration. The browser keeps one; the server

@@ -2,7 +2,8 @@
 
 import { inject } from '@fudic/di';
 import { deleteCookie, setCookie } from '@fudic/http';
-import { crash, load, login, logout, remove, save, SaveFails, search, searchJson, slowSearch } from 'fudic:routes/usuarios';
+import { avatar, crash, exportar, load, login, logout, remove, save, SaveFails, search, searchJson, slowSearch } from 'fudic:routes/usuarios';
+import { Avatars } from '../services/avatars';
 import { SESSION_COOKIE } from '../services/sessions';
 import { Users } from '../services/users';
 
@@ -37,7 +38,13 @@ save.handle((ctx) => {
 
 remove.handle((ctx) => {
   inject(Users).remove(ctx.args.id);
+  inject(Avatars).remove(ctx.args.id);
 });
+
+// The photo goes out as the body of the response, with its type and its name; nobody's, a 204.
+avatar.handle((ctx) => inject(Avatars).get(ctx.args.id));
+
+exportar.handle(() => new File([inject(Users).csv()], 'personas.csv', { type: 'text/csv' }));
 
 crash.handle(() => {
   throw new Error('fallo a propósito');

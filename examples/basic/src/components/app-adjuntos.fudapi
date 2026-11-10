@@ -1,0 +1,26 @@
+# Several files at once: one `<input multiple>` fills the list, and the browser says «como mucho
+# tres» before anything leaves. The handler answers what arrived.
+#
+# In JSON, so a client that is not a fudic page can call it too:
+#   echo {} > args.json
+#   curl -X PUT -H "x-fudic-csrf: 1" -F "$args=@args.json;type=application/json" \
+#     -F docs.0=@a.pdf http://localhost:5173/_fudic/fn/components/app-adjuntos/adjuntar
+put adjuntar
+  use json
+  form adjuntosForm
+  -> Recibidos
+
+form adjuntosForm
+  catches 400 413 422
+
+  docs  file[]
+    required        "Elige al menos un fichero."
+    max-length 3    "Como mucho {n} ficheros."
+    # Over the 10 MB a file may weigh by default (fudic.json, serve.uploads): this field says its own.
+    max-size 300mb  "Cada uno, como mucho {n}."
+
+# What the server saw: how many, and how big in all.
+type Recibidos
+  count  u32
+  bytes  f64
+  names  str[]

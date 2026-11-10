@@ -329,14 +329,45 @@ the Service Worker's data for the current page. Paths may be patterns: `invalida
 An `HttpOnly` cookie only server code writes, as `login` does above; read it with
 `ctx.cookies.get(name)` in a `load`, a handler or a middleware.
 
-- `setCookie(ctx, name, value, options?)` writes `Path=/; HttpOnly; Secure; SameSite=Lax`
-  (no `Secure` on localhost); options `maxAge`, `expires`, `path`, `domain`, `sameSite`,
-  `secure`, `httpOnly`, `partitioned`. `deleteCookie(ctx, name)` removes it. Both work in a
-  `load` too, even right before a `throw`.
+- `setCookie(ctx, name, value, options?)` writes `Path=/; HttpOnly; Secure; SameSite=Lax`;
+  options `maxAge`, `expires`, `path`, `domain`, `sameSite`, `secure`, `httpOnly`,
+  `partitioned`. `deleteCookie(ctx, name)` removes it. Both work in a `load` too, even right
+  before a `throw`.
+- Whether `Secure` goes is the server's to say, never the request's host: dev and preview over
+  `http` leave it out (so a phone on the local network signs in), a deployed server puts it.
+  A `__Host-` name always goes `Secure` with `Path=/` (with `domain` or another `path` it is a
+  `TypeError`), a `__Secure-` one always `Secure`; browsers accept both on `http://localhost`.
 - An answer that read the session (`ctx.cookies`, or the `cookie` or `authorization` header)
   goes out `Cache-Control: private, no-store` unless the handler set its own, and the Service
   Worker never keeps it: one user's cached page never reaches another.
 - A prerendered page whose `load` or `layout` reads the session is `FUD1300`: write `load ssr`.
+
+## Serving the app
+
+`vite build` leaves `.fudic/edge/server.mjs`: the whole app — pages, their data, the redirect to
+a locale, `_error.fud`, functions — as `Request` in, `Response` out, the same code dev and
+preview run. On Node, with `@fudic/server`:
+
+```js
+import { createServer as listen } from 'node:http';
+import { createServer } from '@fudic/server';
+import { diskSpool, nodeMiddleware, staticPages } from '@fudic/server/node';
+import { config, createApp } from './.fudic/edge/server.mjs';
+
+const app = createApp({ prerendered: staticPages('dist') });
+const serve = nodeMiddleware(createServer(app, { ...config, spool: diskSpool, secret: process.env.FUDIC_SECRET }), { notFound: true });
+listen((req, res) => serve(req, res, () => res.writeHead(404).end())).listen(3000);
+```
+
+- `fetch` answers `null` for what is not the app's (a file of `dist`): serve those first, or
+  put the static files in front.
+- Options: `secureCookies` (default `true`), `trustProxy` (read `Forwarded` / `X-Forwarded-*`
+  for the public URL, behind a proxy you trust; also `"serve": { "trustProxy": true }` in
+  `fudic.json`), `secret` (signs the CSRF token), `uploads` and `spool` (where an upload waits
+  while its handler runs: `diskSpool` writes it to a temporary file; the default is memory).
+- `use csrf` checks a header of its own plus `Sec-Fetch-Site` and `Origin`. With a token as
+  well, the function's chain says `use csrf` and under it `token true`: the browser fetches it
+  from `/_fudic/csrf` against an `HttpOnly` cookie, and the server needs `FUDIC_SECRET`.
 
 ## Translations, briefly
 

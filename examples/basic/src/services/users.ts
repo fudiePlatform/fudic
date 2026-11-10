@@ -29,5 +29,15 @@ export class Users {
   remove(id: number): void {
     if (!removePerson(id)) throw notFound(`no hay nadie con id ${String(id)}`);
   }
+
+  /** The table as CSV, one row per person: what «Exportar CSV» downloads. */
+  csv(): string {
+    const cell = (value: string | number | boolean): string => {
+      const text = String(value);
+      return /[",\n]/u.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+    };
+    const rows = allPeople().map((p) => [p.id, p.name, p.email, p.age, p.active, p.notes].map(cell).join(','));
+    return ['id,name,email,age,active,notes', ...rows].join('\n') + '\n';
+  }
 }
 Service(Users);

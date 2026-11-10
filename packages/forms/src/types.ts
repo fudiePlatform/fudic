@@ -315,6 +315,12 @@ export interface FormApi<S extends Schema> {
    * download; `null` when none is (SDD-81 §3.6). What a `<progress>` reads. Tracked.
    */
   readonly $progress: Readable<Progress | null>;
+  /**
+   * Stops the send of `form:=` in flight, the upload included: its call is aborted, nobody hears
+   * a result or an error, and `$progress()` goes back to `null` (SDD-81 §3.6). Nothing in flight:
+   * nothing happens.
+   */
+  $cancel(): void;
   /** Publishes errors that came from outside (a 422), indexed by path. */
   $setErrors(errors: ErrorMap | null, summary?: Errors | null): void;
   /** Whether a refusal with this status is this form's to paint (its `catches`). */

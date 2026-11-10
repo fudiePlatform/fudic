@@ -1,7 +1,7 @@
 import { beforeEach, expect, test, vi } from 'vitest';
 import { mount } from '@fudic/testing';
 import { personForm } from 'fudic:components/user-form';
-import { login, logout } from 'fudic:routes/usuarios';
+import { avatar, login, logout } from 'fudic:routes/usuarios';
 import * as UserForm from './user-form.fud';
 
 // The data edge, mocked: the rule `email-taken` reads it, on the in-memory server.
@@ -83,4 +83,40 @@ test('a save that goes through: the notice names the person, and the host hears 
   } finally {
     t.host.removeEventListener('fudic:result', listener);
   }
+});
+
+/** An image of `size` bytes, of `type`. */
+function image(size: number, name = 'yo.png', type = 'image/png'): File {
+  return new File([new Uint8Array(size)], name, { type });
+}
+
+test('SDD-81 criterion 28: a photo too big, or not an image, is said on choosing, before anything is sent', async () => {
+  const t = await mounted('ana');
+  await t.upload(t.getByLabelText('Foto'), image(3 * 1024 * 1024));
+  expect(t.errorOf('Foto')).toBe('Como mucho 2 MB.');
+  await t.upload(t.getByLabelText('Foto'), image(10, 'cv.pdf', 'application/pdf'));
+  expect(t.errorOf('Foto')).toBe('Tiene que ser PNG o JPEG.');
+  await t.upload(t.getByLabelText('Foto'), image(10));
+  expect(t.errorOf('Foto')).toBeNull();
+});
+
+test('SDD-81: the input says what the rule accepts, written by the compiler', async () => {
+  const t = await mounted();
+  expect(t.getByLabelText('Foto').getAttribute('accept')).toBe('image/png, image/jpeg');
+});
+
+test('SDD-81 §4.5: a sign-up with a photo keeps it, and `avatar` gives it back', async () => {
+  const t = await mounted('ana');
+  const carried: { id: number; avatar: boolean }[] = [];
+  t.host.addEventListener('fudic:result', (e) => carried.push((e as CustomEvent).detail));
+  await fill(t, 'foto@fudic.dev');
+  await t.upload(t.getByLabelText('Foto'), image(1024));
+  await t.submit();
+  expect(carried).toHaveLength(1);
+  expect(carried[0]!.avatar).toBe(true);
+  const photo = await avatar({ id: carried[0]!.id });
+  expect([photo?.name, photo?.type, photo?.size]).toEqual(['yo.png', 'image/png', 1024]);
+  // The form is back as declared: no photo, and the input empty.
+  expect(personForm.avatar()).toBeNull();
+  expect((t.getByLabelText('Foto') as HTMLInputElement).files?.length).toBe(0);
 });

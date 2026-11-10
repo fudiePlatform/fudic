@@ -77,7 +77,8 @@ emite el compilador a sus entradas en web-features.
 ### 5. Fixtures del `load` de las páginas
 
 > **Redactada el 2026-11-08** como [SDD-82](sdd/SDD-82-specs-de-pagina-y-de-flujo.md) (specs de
-> página y de flujo), que depende de [SDD-81](sdd/SDD-81-ficheros.md) (el tipo `file`). Lo de abajo
+> página y de flujo), que depende de [SDD-81](sdd/SDD-81-ficheros.md) (el tipo `file`, `Hecho` el
+> 2026-11-10 a falta de la prueba de Pedro: la 82 ya puede empezar tras su merge). Lo de abajo
 > es la nota original. Dos cosas cambiaron: `$Data` no hace falta, porque el `.fudapi` ya genera
 > `LoadData` y ahora genera `Fixtures`; y `data` va en `given`, con la ruta en la cabecera
 > (`page /usuarios`).

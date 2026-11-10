@@ -352,6 +352,19 @@ export class PortableCheck {
     else if (origin === 'code' || origin === 'neutral-let') this.#reads.push(node);
   }
 
+  /**
+   * Whether `node` names a server function: one a linked `.fudapi` brings into the view, or one
+   * the `@code` imports from a `fudic:` module. Its `url(args)` is a link every backend writes
+   * from the function's path and the encoded arguments (SDD-81 §3.4): what a `<img src>` or a
+   * `<a href>` of the view points at.
+   */
+  #isFunction(node: OxcNode): boolean {
+    if (node.type !== 'Identifier' || this.#local(nameOf(node)) !== undefined) return false;
+    const name = nameOf(node);
+    const origin = this.#view.resolve(name, this.#template);
+    return origin === 'api' || (origin === 'code' && this.#view.imported(name)?.startsWith('fudic:') === true);
+  }
+
   /** The `@code` import a name of the view stands for, unless the fragment shadows it. */
   #catalogue(node: OxcNode): string | undefined {
     if (node.type !== 'Identifier' || this.#local(nameOf(node)) !== undefined) return undefined;
@@ -540,6 +553,10 @@ export class PortableCheck {
       this.#translate(args);
       return;
     }
+    if (!optional && method === 'url' && this.#isFunction(child(callee, 'object')!)) {
+      this.#translate(args);
+      return;
+    }
     // A read of a reactive value — or a method of a name nobody provides, `Math.max(a, b)`,
     // whose fault is the name and is said once, as `FUD0907` (criterion 3).
     if (!optional && isPath(callee) && (args.length === 0 || this.#unknownRoot(callee))) {
@@ -588,7 +605,10 @@ export class PortableCheck {
     if (shape.args === 2) this.#expression(args[1]!);
   }
 
-  /** `t("…", { holes })` as the value of a prop (decision 161): its one object literal (§3.13). */
+  /**
+   * The arguments of `t("…", { holes })` as the value of a prop (decision 161), or of a server
+   * function's `url({ args })` (SDD-81 §3.4): an object literal of plain properties (§3.13).
+   */
   #translate(args: readonly OxcNode[]): void {
     for (const arg of args) {
       if (arg.type !== 'ObjectExpression') {

@@ -334,18 +334,20 @@ test.describe('user-form', () => {
 
   test('SDD-72 criterion 40: seven sign-ups add no listener, and the delegated rows still toggle and delete', async ({ page }) => {
     // The counter of `/delegacion` (`public/probe-listeners.js`), installed before anything
-    // loads: every `addEventListener` and `removeEventListener` of the page, counted.
+    // loads: every `addEventListener` and `removeEventListener` of the page's nodes, counted.
+    // Not the call's own: a sign-up with a photo field goes through XMLHttpRequest, which
+    // listens to its signal while it is in flight and stops when it is done (SDD-81).
     await page.addInitScript(() => {
       const probe = { add: 0, remove: 0 };
       (window as unknown as { __probe: typeof probe }).__probe = probe;
       const add = EventTarget.prototype.addEventListener;
       const remove = EventTarget.prototype.removeEventListener;
-      EventTarget.prototype.addEventListener = function (...args: Parameters<typeof add>) {
-        probe.add += 1;
+      EventTarget.prototype.addEventListener = function (this: EventTarget, ...args: Parameters<typeof add>) {
+        if (this instanceof Node || this === window) probe.add += 1;
         return add.apply(this, args);
       };
-      EventTarget.prototype.removeEventListener = function (...args: Parameters<typeof remove>) {
-        probe.remove += 1;
+      EventTarget.prototype.removeEventListener = function (this: EventTarget, ...args: Parameters<typeof remove>) {
+        if (this instanceof Node || this === window) probe.remove += 1;
         return remove.apply(this, args);
       };
     });

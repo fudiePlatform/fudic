@@ -1,0 +1,19 @@
+<link rel="server" href="./x-upload.fudapi">
+
+@code {
+  import { signal } from "@fudic/core";
+
+  const state = signal("");
+
+  async function go() {
+    const got = await upload({ doc: new File(["hello"], "a.txt", { type: "text/plain" }) });
+    state.set(`${got.name} ${String(got.size)}`);
+  }
+}
+
+<x-upload>
+  <template shadowrootmode="open">
+    <button @click=@go>Upload</button>
+    <output role="status">@state()</output>
+  </template>
+</x-upload>

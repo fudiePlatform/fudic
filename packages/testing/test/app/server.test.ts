@@ -4,6 +4,7 @@ import { handled } from './src/data/greetings';
 import { sides } from './src/data/sides';
 import * as XAlias from './src/components/x-alias.fud';
 import * as XHello from './src/components/x-hello.fud';
+import * as XUpload from './src/components/x-upload.fud';
 
 // The data edge, mocked: the server validator reads it, and the mock reaches it (§4.1).
 vi.mock('./src/data/aliases', () => ({ aliasTaken: async (alias: string) => alias === 'admin' }));
@@ -97,5 +98,36 @@ describe('criterion 27: one test does not see the fetch of the one before', () =
   test('the second is served by the in-memory server again', async () => {
     const response = await fetch('/_fudic/fn/components/x-hello/nope', { method: 'POST' });
     expect(response.status).toBe(404);
+  });
+});
+
+describe('a call that carries a file (SDD-81 §3.4)', () => {
+  test('goes as multipart to the in-memory server, which a browser would send through XMLHttpRequest', async () => {
+    const t = await mount(XUpload);
+    await t.click(t.getByRole('button'));
+    expect(t.getByRole('status')).toHaveTextContent('a.txt 5');
+    expect(typeof XMLHttpRequest).toBe('undefined');
+  });
+});
+
+describe('a FormData body is written out as the multipart a browser sends', () => {
+  test('texts, files with and without a type, each in its part', async () => {
+    let seen: FormData | undefined;
+    let type = '';
+    await mount(XHello, {
+      fetch: async (request) => {
+        type = request.headers.get('content-type') ?? '';
+        seen = await request.formData();
+        return new Response(null, { status: 204 });
+      },
+    });
+    const form = new FormData();
+    form.append('note', 'hola "a"');
+    form.append('doc', new File(['abc'], 'x"y.txt'));
+    await fetch('/anything', { method: 'POST', body: form, headers: { 'x-a': '1' } });
+    expect(type).toMatch(/^multipart\/form-data; boundary=/u);
+    expect(seen?.get('note')).toBe('hola "a"');
+    const doc = seen?.get('doc') as File;
+    expect([doc.name, doc.type, await doc.text()]).toEqual(['x"y.txt', 'application/octet-stream', 'abc']);
   });
 });

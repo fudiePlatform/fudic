@@ -44,6 +44,16 @@ delete remove
   use auth audit
   id  i32
 
+# The photo of a person, as a file: the table paints it with `<img src=@avatar.url(…)>`, and
+# the browser asks for it with no script. Nobody's photo: a 204.
+get avatar
+  id  i32
+  -> file?
+
+# The table as a CSV, for a link with `download`.
+get exportar
+  -> file
+
 # A failure nobody catches: error-pages takes the page to _error.fud with a 500.
 get crash
   -> str
@@ -55,3 +65,5 @@ type Person
   age     u8
   active  bool
   notes   str
+  # Whether `avatar` has a photo of this person.
+  avatar  bool

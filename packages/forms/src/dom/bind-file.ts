@@ -31,19 +31,29 @@ function holds(el: HTMLInputElement, files: readonly File[]): boolean {
 
 export function bindFile(el: HTMLInputElement, control: Control<FileValue>, slot: ErrorSlot): Cleanup {
   const many = Array.isArray(untrack(control));
+  // A file the input held before the binding existed is read, not chosen: nobody was through it.
+  let bound = false;
+  const followed = follow(
+    [el],
+    control,
+    () => {
+      // A file input fires `input` and `change` for one choice: the second write would be a
+      // new list of the same files, and a moved value for nothing.
+      if (holds(el, listOf(untrack(control)))) return;
+      const chosen = [...el.files!];
+      control.set(many ? chosen : (chosen[0] ?? null));
+      if (!bound) return;
+      // Choosing in the dialog is the whole gesture: the user has been through the field, and its
+      // rules say what they make of the file at once (SDD-81 criterion 28), not at a blur a file
+      // input may never get.
+      control.touch();
+      void control.validate();
+    },
+    el.files!.length > 0,
+  );
+  bound = true;
   return undo([
-    ...follow(
-      [el],
-      control,
-      () => {
-        // A file input fires `input` and `change` for one choice: the second write would be a
-        // new list of the same files, and a moved value for nothing.
-        if (holds(el, listOf(untrack(control)))) return;
-        const chosen = [...el.files!];
-        control.set(many ? chosen : (chosen[0] ?? null));
-      },
-      el.files!.length > 0,
-    ),
+    ...followed,
     effect(() => {
       const files = listOf(control());
       if (holds(el, files)) return;

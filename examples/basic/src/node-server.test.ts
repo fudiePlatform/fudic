@@ -1,7 +1,7 @@
 /**
  * SDD-81 criterion 41: `node-server.mjs`, a dozen lines of `node:http` and `@fudic/server/node`
- * around `.fudic/edge/server.mjs`, serves the built example — a page, a function. It runs on the
- * build `pnpm build` left; without one it says so.
+ * around `.fudic/edge/server.mjs`, serves the built example — a page, a function, an upload. It runs on the
+ * build `pnpm build` left; without one it says so. And an upload (SDD-81 §4.5).
  */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -79,12 +79,45 @@ describe('criterion 41: a Node adapter in a dozen lines', () => {
     expect(response.body).not.toContain('__FUDIC_NONCE__');
   });
 
+  it('serves the files of the build: what a page loads to come alive', async () => {
+    const html = (await ask(`/usuarios`, { headers: { accept: 'text/html' } })).body;
+    const script = /<script[^>]+src="([^"]+\.js)"/u.exec(html)?.[1] ?? /href="([^"]+\.js)"/u.exec(html)?.[1];
+    expect(script).toBeDefined();
+    const response = await ask(script!);
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toBe('text/javascript; charset=utf-8');
+  });
+
   it('serves a function', async () => {
     const a = encodeURIComponent(JSON.stringify({ q: 'mar' }));
     const response = await ask(`/_fudic/fn/routes/usuarios/searchJson?a=${a}`);
     expect(response.status).toBe(200);
     const people = JSON.parse(response.body) as readonly { readonly name: string }[];
     expect(people.map((p) => p.name)).toEqual(['Marta']);
+  });
+
+  it('takes an upload: multipart, $args first, then each file by its path', async () => {
+    const boundary = 'fudic-test';
+    const part = (name: string, type: string, body: string, file?: string): string => {
+      const filename = file === undefined ? '' : `; filename="${file}"`;
+      return `--${boundary}\r\ncontent-disposition: form-data; name="${name}"${filename}\r\ncontent-type: ${type}\r\n\r\n${body}\r\n`;
+    };
+    const upload = (count: number): Promise<Answer> => {
+      let body = part('$args', 'application/json', '{}');
+      for (let i = 0; i < count; i++) body += part(`docs.${String(i)}`, 'text/plain', 'hola', `d${String(i)}.txt`);
+      return ask('/_fudic/fn/components/app-adjuntos/adjuntar', {
+        method: 'PUT',
+        headers: { 'content-type': `multipart/form-data; boundary=${boundary}`, 'x-fudic-csrf': '1' },
+        body: `${body}--${boundary}--\r\n`,
+      });
+    };
+    const two = await upload(2);
+    expect(two.status).toBe(200);
+    expect(JSON.parse(two.body)).toEqual({ count: 2, bytes: 8, names: ['d0.txt', 'd1.txt'] });
+    // The rule of the field runs on the server too: four files are one too many.
+    const four = await upload(4);
+    expect(four.status).toBe(422);
+    expect(four.body).toContain('docs');
   });
 
   it('a navigation nothing answers is _error.fud as a 404', async () => {

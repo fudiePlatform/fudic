@@ -16,7 +16,7 @@ import { viewInput } from './_view.js';
 const OWN = /^FUD09[01]\d$|^FUD0461$|^FUD114\d$|^FUD115[0-3]$/u;
 
 /** The forms the cases read come from a linked `.fudapi`, as an app's do (SDD-60 §3.14). */
-const FORMS = { data: false, names: new Set(['form', 'campo']) };
+const FORMS = { data: false, names: new Set(['form', 'campo', 'avatar']) };
 
 /** What every case can read: the catalogue, a few values, functions and reactive ones. */
 const CODE = `
@@ -70,6 +70,21 @@ describe('calls (criterion 2, §3.3)', () => {
     expect(portable('<p>@count() @(form.$valid()) @campo.errors()</p>')).toEqual([]);
     expect(portable('<x-b .label=@(t("Hola"))></x-b>')).toEqual([]);
     expect(portable('<x-b .label=@(t("Hola {n}", { n: a, b }))></x-b>')).toEqual([]);
+  });
+
+  it("a server function's url(args) is a link, anywhere in the view (SDD-81 §3.4)", () => {
+    expect(portable('<img src=@avatar.url({ id: a })>')).toEqual([]);
+    expect(portable('<a href=@avatar.url({})>x</a> <a href=@avatar.url()>y</a>')).toEqual([]);
+    expect(portable('<a href=@buscar.url({ q: s })>x</a>', "import { search as buscar } from 'fudic:routes/x';")).toEqual([]);
+    // Its arguments follow the list; a name that is not a function keeps FUD1140.
+    expect(portable('<img src=@avatar.url({ [k]: a, id: formatea(1) })>')).toEqual(['FUD1140 formatea', 'FUD1143 [k]: a']);
+    expect(portable('<img src=@avatar.url(xs.find(x => x.ok))>')).toEqual(['FUD1140 xs.find']);
+    expect(portable('<img src=@(o.url({}))>')).toEqual(['FUD1140 o.url']);
+    expect(portable('<img src=@(reloj.url({}))>')).toEqual(['FUD1140 reloj.url']);
+    expect(portable('<img src=@(avatar.url?.({}))>')).toEqual(['FUD1140 avatar.url']);
+    // A name of the template that shadows the function is not one (and FUD0918 says so).
+    expect(portable('@foreach (const avatar of xs) { <img src=@avatar.url({})> }')).toContain('FUD1140 avatar.url');
+    expect(portable('<img src=@(form.x.url({}))>')).toEqual(['FUD1140 form.x.url']);
   });
 
   it('the holes object of t() holds plain properties only', () => {

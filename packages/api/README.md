@@ -33,6 +33,30 @@ load.handle(async () => ({ title: 'Users', users: db.listUsers() }));
 The generated type is `readonly users: Promise<readonly Person[]>`. `later` only applies to the
 fields of `load`; anywhere else it is `FUD1324`.
 
+## Files
+
+`file`, `file?` and `file[]` are the platform's `File` (SDD-81). They go where a body travels:
+a body argument of `post`, `put`, `patch` or `delete`, a field of a `form`, the `->` of any
+function, a `type` used only there. A `get`'s arguments (`FUD1480`), page data (`FUD1481`), an
+initial value (`FUD1482`) and a parameter of a `rule` or a `fails` (`FUD1483`) cannot hold one.
+
+```
+put save
+  form personForm
+  -> Person
+
+form personForm
+  avatar  file?
+    accept "image/png, image/jpeg"  "A PNG or a JPEG."
+    max-size 2mb                     "At most {n}."
+```
+
+`max-size` and `accept` are rules of `@fudic/forms`, `runs both`. A numeric argument of a rule
+takes `kb`, `mb` and `gb` (base 1024, stored in bytes; another unit is `FUD1487`), and `{n}` of
+`max-size` is written with its unit (`2 MB`). A `str` argument goes between quotes, and the text
+of the rule after it. A function whose arguments can hold a file says so in its spec
+(`files: true`), and its signature changes.
+
 ## Pipes
 
 A pipe formats a value as text. It is an extension, like a rule: its own file, in `src/pipes`.

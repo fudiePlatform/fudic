@@ -175,7 +175,7 @@ describe('SDD-47 §4.3 — what the user writes is not cancelled', () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
-  it.each(['checkbox', 'radio', 'button', 'submit', 'reset', 'image', 'file', 'color', 'range', 'hidden'])(
+  it.each(['checkbox', 'radio', 'button', 'submit', 'reset', 'image', 'color', 'range', 'hidden'])(
     'an input of type %s is not written into, so its gesture is cancelled',
     (type) => {
       install();
@@ -183,6 +183,18 @@ describe('SDD-47 §4.3 — what the user writes is not cancelled', () => {
       expect(event.defaultPrevented).toBe(true);
     },
   );
+
+  it('a file input keeps its click: the dialog opens, and the replay opens nothing (SDD-81)', () => {
+    const h = install();
+    const field = coldWith('cap-edit', 25, input('file'));
+    const heard: string[] = [];
+    field.addEventListener('click', (e) => heard.push(e.constructor.name));
+    const event = click(field);
+    expect(event.defaultPrevented).toBe(false);
+    expect(heard).toEqual([]);
+    h.replay!();
+    expect(heard).toEqual(['Event']);
+  });
 
   it('a button is not written into either', () => {
     install();

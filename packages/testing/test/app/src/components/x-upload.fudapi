@@ -1,0 +1,8 @@
+# A call that carries a file: multipart, through the in-memory server like any other.
+post upload
+  doc  file
+  -> Got
+
+type Got
+  name  str
+  size  f64

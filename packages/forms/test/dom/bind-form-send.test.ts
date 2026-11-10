@@ -97,7 +97,7 @@ describe('bindForm with a server function', () => {
     f.a.set('Pedro');
     const event = submit();
     expect(event.defaultPrevented).toBe(true);
-    expect(send).toHaveBeenCalledWith(f, { onProgress: expect.any(Function) });
+    expect(send).toHaveBeenCalledWith(f, { onProgress: expect.any(Function), signal: expect.any(AbortSignal) });
     await flush();
     expect(events).toEqual([{ type: 'fudic:result', detail: { id: 7 } }]);
   });
@@ -192,6 +192,29 @@ describe('bindForm with a server function', () => {
     submit();
     await flush();
     expect(events).toEqual([]);
+  });
+
+  it('SDD-81: $cancel() aborts every send in flight; a second submit goes out beside the first', async () => {
+    const signals: AbortSignal[] = [];
+    const send = vi.fn((_f: AnyForm, options?: { signal: AbortSignal }) => {
+      signals.push(options!.signal);
+      return new Promise<unknown>((_resolve, reject) => {
+        options!.signal.addEventListener('abort', () => reject(new DOMException('', 'AbortError')));
+      });
+    });
+    const { f, events, submit } = setup(send as never);
+    f.$cancel(); // nothing in flight: nothing happens
+    f.a.set('Pedro');
+    submit();
+    submit();
+    expect(signals.map((s) => s.aborted)).toEqual([false, false]);
+    f.$cancel();
+    expect(signals.map((s) => s.aborted)).toEqual([true, true]);
+    await flush();
+    expect(events).toEqual([]);
+    // After a cancel, the next send is not born cancelled.
+    submit();
+    expect(signals[2]!.aborted).toBe(false);
   });
 
   it('another DOMException is a failure like any Error, announced as itself', async () => {

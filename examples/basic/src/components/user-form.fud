@@ -102,6 +102,17 @@
         <textarea id="notas" control=@personForm.notes rows="3"></textarea>
       </div>
 
+      <div class="campo">
+        <label for="foto">Foto</label>
+        @* Sin `accept`: el compilador lo escribe con el de la regla, y el diálogo filtra igual. *@
+        <input id="foto" type="file" control=@personForm.avatar>
+        <small class="error" error=@personForm.avatar></small>
+      </div>
+
+      @if (personForm.$progress() !== null) {
+        <progress aria-label="Subiendo" value=@(personForm.$progress()?.loaded) max=@(personForm.$progress()?.total)></progress>
+      }
+
       <button type="submit">Dar de alta</button>
       <p class="aviso" role="status">@aviso()</p>
     </form>

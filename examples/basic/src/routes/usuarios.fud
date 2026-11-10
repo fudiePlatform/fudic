@@ -146,6 +146,13 @@
     .ficha dd {
       margin: 0;
     }
+    .foto {
+      width: 2.2rem;
+      height: 2.2rem;
+      object-fit: cover;
+      border-radius: 50%;
+      display: block;
+    }
     th, td {
       text-align: left;
       padding: 0.35rem 0.5rem;
@@ -191,12 +198,17 @@
 <div class="panel">
   <table>
     <thead>
-      <tr><th>Nombre</th><th>Email</th><th>Edad</th><th>Activo</th><th></th><th></th></tr>
+      <tr><th>Nombre</th><th>Foto</th><th>Email</th><th>Edad</th><th>Activo</th><th></th><th></th></tr>
     </thead>
     <tbody @change=@activar(p, $value) @click.borrar=@borrar(p) @click.ver=@ver(p)>
       @foreach (const p of personas()) key (p.id) {
         <tr>
           <td>@p.name</td>
+          <td>
+            @if (p.avatar) {
+              <img class="foto" src=@avatar.url({ id: p.id }) alt=@(`Foto de ${p.name}`)>
+            }
+          </td>
           <td>@p.email</td>
           <td>@p.age</td>
           <td><input type="checkbox" checked=@p.active delegate:p="change" aria-label="Activo"></td>
@@ -206,6 +218,7 @@
       }
     </tbody>
   </table>
+  <p><a href=@exportar.url() download>Exportar CSV</a></p>
   @foreach (const v of vista()) key (v.id) {
     <dl class="ficha" aria-label="Ficha">
       <dt>Nombre</dt><dd>@v.name</dd>
@@ -281,6 +294,14 @@
   guardar, el <code>fudic:result</code> de su formulario sale del componente y esta página lo
   escucha en el tag, <code>&lt;user-form @@fudic:result=@@alta&gt;</code>, con la persona ya
   tipada: la tabla de arriba la recoge sin recargar la página.
+</p>
+<p>
+  La foto es un campo <code>file?</code>: el formulario sube entonces como
+  <code>multipart/form-data</code>, con el resto de campos dentro en binario, y la barra dice cuánto
+  lleva. Una foto de más de 2 MB o que no sea PNG ni JPEG la rechaza el navegador al elegirla, y
+  el servidor otra vez mientras lee. La tabla la pinta con un <code>&lt;img src&gt;</code> que
+  apunta a la función <code>avatar</code>, y <em>Exportar CSV</em> es un enlace a
+  <code>exportar</code>: ninguno de los dos necesita JavaScript.
 </p>
 <user-form @fudic:result=@alta></user-form>
 

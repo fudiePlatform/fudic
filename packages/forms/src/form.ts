@@ -82,6 +82,8 @@ export function build<S extends Schema>(
   );
 
   const summary = signal<Errors | null>(null);
+  // The sends of `form:=` in flight share one signal, which `$cancel()` aborts.
+  let sending: AbortController | undefined;
   /** A submit was attempted (BUG-42 §4.7). Only `bindForm` sets it, through `markSubmitted`. */
   const submitted = signal(false);
   /** The ids of its fields by path, once a `<form>` binds it: what `$issues()` links to. */
@@ -325,6 +327,10 @@ export function build<S extends Schema>(
     progress: (p) => {
       progress.set(p);
     },
+    send: () => {
+      sending ??= new AbortController();
+      return sending.signal;
+    },
     touchAll: () => {
       each((_, node) => {
         node.touchAll();
@@ -400,6 +406,11 @@ export function build<S extends Schema>(
     $pending: (): boolean => pending(),
 
     $progress: (): Progress | null => progress(),
+
+    $cancel: (): void => {
+      sending?.abort();
+      sending = undefined;
+    },
 
     $setErrors: (errors: ErrorMap | null, sum?: Errors | null): void => {
       if (errors === null) {

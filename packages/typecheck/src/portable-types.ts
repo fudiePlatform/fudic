@@ -302,7 +302,7 @@ class PortableTypes {
       // `f?.()` and a callee that is not a path are the compiler's `FUD1140` already.
       if (!isPath(callee) || field(node, 'optional') === true) return;
       const type = this.#typeOf(callee);
-      if (type !== undefined && !this.#isAny(type) && !this.#isReactive(type)) {
+      if (type !== undefined && !this.#isAny(type) && !this.#isReactive(type) && !isLink(type)) {
         const at = this.#span(callee);
         this.#report(FUD1140({ span: at, callee: this.document.source.slice(at.start, at.end) }));
       }
@@ -848,4 +848,12 @@ function dataOf(init: OxcNode): OxcNode {
   if (callee.type === 'Identifier' && PRESETS.has(nameOf(callee))) return value;
   const first = children(value, 'arguments')[0];
   return first === undefined ? value : unwrap(first);
+}
+
+/**
+ * Whether `type` is the `url` of a server function (`Linkable` of `@fudic/http`, SDD-81 §3.4):
+ * a link every backend writes from the function's path, which ports like a read.
+ */
+function isLink(type: ts.Type): boolean {
+  return (type.getSymbol()?.declarations ?? []).some((d) => (d.parent as { readonly name?: { readonly text?: string } }).name?.text === 'Linkable');
 }

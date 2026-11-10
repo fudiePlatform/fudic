@@ -82,6 +82,17 @@ function initOf(event: Event): EventInit {
 }
 
 /**
+ * Whether `target` is a file input: its click and its Enter open the file dialog, which the
+ * browser shows only for a gesture of the user (SDD-81). The capturer does not cancel one, and
+ * its click is replayed as a plain `Event`, which a listener hears and which opens nothing: a
+ * replayed `MouseEvent` would be a second dialog.
+ */
+export function opensPicker(target: EventTarget): boolean {
+  const el = target as Partial<HTMLInputElement>;
+  return el.localName === 'input' && el.type === 'file';
+}
+
+/**
  * Snapshot the gesture NOW and hand back the one function that repeats it.
  *
  * Snapshotting is not an optimization: by the time the replay runs, several `await`s have
@@ -92,7 +103,7 @@ function initOf(event: Event): EventInit {
 export function replayer(event: Event, target: EventTarget): () => void {
   const type = event.type;
   const init = initOf(event);
-  const Ctor = event.constructor as EventCtor;
+  const Ctor = type === 'click' && opensPicker(target) ? Event : (event.constructor as EventCtor);
   return () => {
     let replay: Event;
     try {

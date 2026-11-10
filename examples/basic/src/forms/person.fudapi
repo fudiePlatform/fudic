@@ -19,3 +19,8 @@ form personForm
     max 120              "Como mucho {n} años."
   active  bool = true
   notes  str = ""
+  # A photo, optional. It goes up as multipart with the rest of the fields still in binary; the
+  # browser checks both rules on choosing, and the server again while it reads.
+  avatar  file?
+    accept "image/png, image/jpeg"  "Tiene que ser PNG o JPEG."
+    max-size 2mb                     "Como mucho {n}."

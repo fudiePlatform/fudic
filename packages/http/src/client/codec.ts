@@ -72,7 +72,8 @@ export function filenameOf(disposition: string | null): string {
 async function fileOf(response: Response): Promise<File> {
   const modified = response.headers.get('last-modified');
   const lastModified = modified === null ? Number.NaN : Date.parse(modified);
-  return new File([await response.blob()], filenameOf(response.headers.get('content-disposition')), {
+  // The bytes, not a `Blob`: a `Blob` of another implementation would be text to this `File`.
+  return new File([await response.arrayBuffer()], filenameOf(response.headers.get('content-disposition')), {
     type: response.headers.get('content-type') ?? '',
     ...(Number.isNaN(lastModified) ? {} : { lastModified }),
   });

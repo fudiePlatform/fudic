@@ -477,6 +477,23 @@ describe('criterion 22: url() of a get', () => {
     expect(bare.call.url(undefined, { params: { slug: 'hola' } })).toBe('/_fudic/fn/routes/blog/hola/grab');
   });
 
+  it('a signed get carries its signature in the link, which the server takes in place of the header', async () => {
+    const { call, handle } = pair({ method: 'GET', name: 'grab', args: { q: 'str' }, sig: 'new-sig', returns: 'str' }, () => 'ok');
+    const link = call.url({ q: 'x' });
+    expect(new URLSearchParams(link.split('?')[1]).get('$sig')).toBe('new-sig');
+    // Asked as an `<img src>` asks it: no header of ours.
+    expect((await handle(new Request(new URL(link, 'http://localhost'))))!.status).toBe(200);
+    expect((await handle(new Request(new URL(link.replace('new-sig', 'old-sig'), 'http://localhost'))))!.status).toBe(412);
+  });
+
+  it('only a get takes the signature from the query: a body call needs the header', async () => {
+    const { handle, url } = pair({ method: 'PUT', args: { n: 'i32' }, sig: 'new-sig' }, () => undefined);
+    const target = new URL(url);
+    target.searchParams.set('$sig', 'new-sig');
+    const response = await handle(new Request(target, { method: 'PUT', body: binWire.encodeArgs({ n: 'i32' }, { n: 1 }) as BodyInit, headers: { 'content-type': binWire.type, 'x-fudic-csrf': '1' } }));
+    expect(response!.status).toBe(412);
+  });
+
   it('a function that is not a get has no URL: TypeError, in the browser and on the server', () => {
     const spec: FnSpec = { id: nextId(), name: 'save', method: 'PUT', chain: [], wire: binWire };
     expect(() => (stub(spec) as unknown as { url: () => string }).url()).toThrow(TypeError);

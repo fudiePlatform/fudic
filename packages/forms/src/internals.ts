@@ -83,6 +83,11 @@ export interface NodeInternals {
   ): void;
   /** Publishes an error that came from outside. A control also marks itself touched. */
   publish(e: Errors | null): void;
+  /**
+   * The signal of a send of `form:=`: the one every send in flight shares, until `$cancel()`
+   * aborts them all (SDD-81 §3.6). A form only.
+   */
+  send?(): AbortSignal;
   /** A child by name, for resolving a path. `undefined` when there is no such field. */
   child(name: string): AnyNode | undefined;
   /** Collects control errors into `out`, keyed by path. TRACKED. */

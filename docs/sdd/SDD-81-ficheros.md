@@ -1,6 +1,6 @@
 # SDD-81 — Ficheros: el tipo `file` del `.fudapi`, de la vista al servidor y de vuelta; y un servidor que no depende de Vite
 
-> **Estado:** `Listo` (2026-11-08; enmendada el 2026-11-09, §3.10–§3.13 y §8.2) — [tareas](./SDD-81-Task.md).
+> **Estado:** `Hecho` (2026-11-10), a falta de la prueba de Pedro (§6.1) y del merge. Redactada el 2026-11-08; enmendada el 2026-11-09, §3.10–§3.13 y §8.2 — [tareas](./SDD-81-Task.md).
 > **Paquetes:** `@fudic/api` · `@fudic/http` · `@fudic/server` (nuevo) · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/compiler` · `@fudic/config` · `@fudic/vite` · `@fudic/testing` · `@fudic/language-core` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/diagnostics` · `@fudic/mcp` (guía) · `examples/basic`
@@ -119,7 +119,7 @@ form personForm
 </form>
 
 <img src=@avatar.url({ id: p.id }) alt="">
-<a href=@exportar.url({}) download>Exportar CSV</a>
+<a href=@exportar.url() download>Exportar CSV</a>
 ```
 
 ```ts
@@ -285,7 +285,7 @@ interface Task<A, R> {
 ```
 
 - `url(args)` existe en toda función `get`. Codifica los argumentos como la llamada (`?a=` en el
-  formato de la función). Es lo que un `<a href>`, un `<img src>` o un `<video src>` necesitan, y el
+  formato de la función) y lleva su firma en `$sig` (§8.2.29). Es lo que un `<a href>`, un `<img src>` o un `<video src>` necesitan, y el
   navegador hace la petición sin JS.
 - **La subida con progreso.** Una llamada multipart sale por `XMLHttpRequest`, la única API del
   navegador que da el progreso de subida en todos los motores. El resto sigue con `fetch`. La
@@ -379,7 +379,7 @@ de memoria o uno propio.
   navegador al elegir el fichero, antes de enviar, y otra vez en el servidor.
 - `$value()` lleva los `File`; el stub los pone en sus partes.
 - `$progress()` en el formulario: lo mismo que `task.progress()` (§3.4) para el envío que hace
-  `form:=`.
+  `form:=`. `$cancel()` lo corta (§8.2.30).
 
 ### 3.7. La vista (decisión 182)
 
@@ -664,9 +664,9 @@ En `examples/basic`:
   `<progress>` mientras sube.
 - `Avatars` (servicio): guarda cada avatar en memoria por id.
 - `/usuarios` pinta el avatar de cada persona con `<img src=@avatar.url({ id: p.id })>` y gana
-  «Exportar CSV» con `<a href=@exportar.url({}) download>`.
+  «Exportar CSV» con `<a href=@exportar.url() download>`.
 - Un `put adjuntar` con `docs file[]`, `max-length 3`, en `/formularios`, que dice cuántos llegaron y
-  su tamaño.
+  su tamaño. Es `use json`, con `max-size 300mb` y un botón *Cancelar* (§8.2.35).
 
 ### 4.6. Las pruebas de extremo a extremo
 
@@ -676,7 +676,7 @@ En el ejemplo, con Playwright, en dev y en preview:
 - Subir una de 3 MB: el formulario la rechaza sin enviar; forzando el envío (sin la regla del
   navegador), el servidor responde `413` antes de leer el cuerpo entero.
 - Subir un fichero de 200 MB con `max-size 300mb`: el proceso de Node no pasa de 100 MB de memoria
-  residual durante la subida (el fichero va a un temporal).
+  residual durante la subida (el fichero va a un temporal); se mide en `@fudic/server` (§8.2.36).
 - Cancelar a mitad: el temporal desaparece.
 - Descargar el CSV con el enlace.
 
@@ -936,3 +936,46 @@ Nada.
     y `html` entre los tipos (fase 6).
 27. **El criterio 10 y §3.3 decían `409`** para una firma vieja; es el `412` de SDD-67 §3.3, que
     es lo que el código responde y el test fija. Corregido el texto.
+28. **`fn.url(args)` es parte de la vista portable** (fase 7). La vista solo llamaba a lecturas
+    reactivas (SDD-61), así que el `<img src=@avatar.url({ id: p.id })>` de §1.3 era `FUD1140`. El
+    compilador y la pasada tipada admiten ahora el `url` de una función del servidor (un nombre
+    que trae un `.fudapi` enlazado o un import de `fudic:`), con un objeto de campos simples como
+    argumento, en cualquier atributo: todo backend escribe el enlace con el camino y los
+    argumentos codificados. Una función sin argumentos se enlaza con `url()`: `url({})`, que
+    decían §1.3 y §4.5, no lo admite su tipo. Corregido el texto.
+29. **El enlace lleva la firma en `$sig`** (fase 7). Un `<img src>` o un `<a href>` no mandan la
+    cabecera `fud-sig`, así que todo enlace a una `get` en binario respondía `412`. `url()` escribe
+    la firma en el parámetro `$sig` (`$` no es nombre del `.fudapi`: ningún argumento lo pisa), y
+    el servidor la toma de ahí solo en una `get`.
+30. **`$cancel()` en `FormApi`** (fase 7). La prueba de §6.1 pide cancelar una subida y un envío
+    de `form:=` no tenía forma de pararse. `$cancel()` aborta los envíos en curso (comparten una
+    señal hasta que se cancela); uno cancelado no anuncia nada y `$progress()` vuelve a `null`.
+    Un segundo envío sigue saliendo junto al primero, como siempre.
+31. **Elegir un fichero es el gesto entero** (fase 7). `bindFile` marca el campo como visitado y
+    lo valida al elegir: el criterio 28 dice «al elegir, sin enviar», y un `<input type="file">`
+    puede no recibir nunca el `blur` que esperaban los demás controles.
+32. **El primer clic en un campo de fichero de un componente sin activar no se cancela** (fase 7).
+    La hidratación retenía el clic para repetirlo después, y un clic cancelado no abre el diálogo
+    de ficheros (el navegador solo lo abre por un gesto del usuario). Ahora se deja pasar, como se
+    deja escribir en un campo de texto, y al repetirlo se manda un `Event` simple, que oye un
+    listener y no abre un segundo diálogo.
+33. **`@fudic/testing` sube ficheros** (fase 7). Tres huecos que destapó el ejemplo: el gesto
+    `upload(el, files)` (enfoca primero, como el clic que abre el diálogo, y no filtra por
+    `accept`, porque el usuario puede pedir «todos los ficheros»); el entorno no tiene
+    `XMLHttpRequest`, así que una llamada con ficheros va por el `fetch` del banco, que escribe él
+    el cuerpo multipart (el `FormData` del DOM simulado y el `Request` de Node no se entienden); y
+    el `File` recibido o devuelto se arma con los bytes y no con un `Blob`, que entre dos
+    implementaciones salía como el texto «[object Blob]».
+34. **`staticFiles(dir)` en `@fudic/server/node`** (fase 7). `fetch` devuelve `null` a los ficheros
+    del build y el script del criterio 41 los contestaba con `404`: la página llegaba sin su JS y
+    no se podía subir nada desde ella. `staticFiles` los sirve detrás de `nodeMiddleware`. El
+    script toma además `dist` con `fileURLToPath`: con `.pathname`, una carpeta con espacios
+    salía con `%20` y no se encontraba ninguna página prerenderizada.
+35. **El ejemplo, para la prueba de §6.1** (fase 7). `adjuntar` es `use json`, para el `curl -F`;
+    su `docs` lleva `max-size 300mb`, para subir algo grande, y el componente un botón *Cancelar*.
+    `Person` gana `avatar bool`: la tabla solo pinta `<img>` de quien tiene foto, y una `get` sin
+    foto responde `204`.
+36. **La memoria de una subida de 200 MB se mide en `@fudic/server`** (fase 7): el servidor de
+    Playwright no deja leer su memoria. `server/test/uploads.test.ts` monta un servidor de Node de
+    verdad con `diskSpool`, que es el mismo código que preview; las pruebas del ejemplo suben
+    200 MB por dev y por preview y comprueban que el temporal desaparece al cancelar.
