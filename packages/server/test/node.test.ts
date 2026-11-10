@@ -5,10 +5,11 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { EventEmitter } from 'node:events';
+import { EventEmitter, once } from 'node:events';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { createServer as createH2Server, connect } from 'node:http2';
-import { createServer as createHttpServer, type Server } from 'node:http';
+import { Agent, createServer as createHttpServer, request, type IncomingMessage, type Server } from 'node:http';
+import { type AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { Readable } from 'node:stream';
@@ -164,6 +165,35 @@ describe('a body read only as it is read', () => {
     const res = { on: () => res, writableFinished: true };
     const request = toRequest(req as never, res as never);
     return request.body!.cancel().then(() => expect(paused).toHaveBeenCalledOnce());
+  });
+
+  /** A POST whose body comes in `chunks`, as a Node request carries it. */
+  const posted = (chunks: string[]): Readable & { headers: Record<string, string>; method: string; url: string } =>
+    Object.assign(Readable.from(chunks.map((c) => Buffer.from(c)), { objectMode: false }), { headers: { host: 'h' }, method: 'POST', url: '/x' });
+  const res = { on: () => res, writableFinished: true };
+
+  it('a body of several chunks, read to the end', async () => {
+    const request = toRequest(posted(['a', 'b', 'c']) as never, res as never);
+    expect(await request.text()).toBe('abc');
+  });
+
+  it('cancelled after a chunk: the request is let go and paused, and feeds nothing more', async () => {
+    const req = posted(['a', 'b']);
+    const reader = toRequest(req as never, res as never).body!.getReader();
+    expect(new TextDecoder().decode((await reader.read()).value)).toBe('a');
+    await reader.cancel();
+    expect(req.listenerCount('data')).toBe(0);
+    expect(req.listenerCount('end')).toBe(0);
+    expect(req.listenerCount('error')).toBe(0);
+    expect(req.isPaused()).toBe(true);
+  });
+
+  it('a request that fails fails its body', async () => {
+    const req = new Readable({ read() {} });
+    Object.assign(req, { headers: { host: 'h' }, method: 'POST', url: '/x' });
+    const reading = toRequest(req as never, res as never).text();
+    req.destroy(new Error('gone'));
+    await expect(reading).rejects.toThrow('gone');
   });
 });
 
@@ -324,6 +354,7 @@ describe('a body left unread lingers, then goes (SDD-81 §3.5)', () => {
       httpVersionMajor: 1,
       complete: false,
       socket: { destroy },
+      resume: vi.fn(),
     });
     return { req, destroy };
   }
@@ -374,6 +405,32 @@ describe('a body left unread lingers, then goes (SDD-81 §3.5)', () => {
       expect(destroy).not.toHaveBeenCalled();
     } finally {
       vi.useRealTimers();
+    }
+  });
+
+  it('over a real socket, a body the client finishes after the response ends the request and keeps the connection', async () => {
+    let served: IncomingMessage | undefined;
+    const server = createHttpServer((req, res) => {
+      served = req;
+      answering(req, res, () => undefined);
+    });
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    const agent = new Agent({ keepAlive: true });
+    try {
+      const { port } = server.address() as AddressInfo;
+      const client = request({ port, host: '127.0.0.1', method: 'PUT', agent, headers: { 'content-length': '4' } });
+      client.write('ab');
+      const response = await new Promise<IncomingMessage>((r) => client.once('response', r));
+      response.resume();
+      await once(response, 'end');
+      expect(response.statusCode).toBe(413);
+      client.end('cd');
+      await once(served!, 'end');
+      expect(served!.socket.destroyed).toBe(false);
+    } finally {
+      agent.destroy();
+      server.closeAllConnections();
+      await new Promise<void>((r) => server.close(() => r()));
     }
   });
 
