@@ -7,6 +7,42 @@
 > **Rama:** `sdd-82-specs-de-pagina-y-de-flujo`, desde `main` con SDD-81 ya mezclada.
 > **Progreso:** 15 / 36 — `En curso`. La tarea 16 espera la decisión de SDD §8.3.1 (criterio 22).
 
+## Relevo (2026-11-10, al cerrar las fases 3 y 4)
+
+**Dónde estamos.** Fases 1–4 commiteadas en la rama (sin push): `2c2636d6` (fase 3, hooks del banco
+en servidor y plugin) y `d1ef21af` (fase 4, el banco ejecuta páginas y flujos). `typecheck` en verde;
+`workbench`, `http`, `server`, `ssr` y `api` al 100 %; `vite` por encima de su suelo y
+`bench-hooks.ts` al 100 %.
+
+**Lo único abierto: tarea 16, criterio 22 (SDD §8.3.1). Espera decisión de Pedro.** En dev todas las
+rutas son `ssr` y el SW no pinta ninguna página: sin red, una página **ya visitada** no se abre desde
+el SW. Lo que sí está probado: el SW se instala en el banco (modo preview forzado) y una página
+**nunca vista** falla como en el navegador (`test/browser/app-offline.test.ts`; el caso de la
+visitada está como `it.todo`). Dos caminos:
+
+- **(a)** El SW guarda las navegaciones que sirvió por red y las da sin red. Cambia el SW también en
+  producción.
+- **(b)** Los criterios con `offline` corren contra un build con `vite preview`. Más lento, uno por
+  ejecución. **Recomendado.**
+
+Decidido el camino: implementarlo, quitar el `it.todo`, marcar la tarea 16, pasar §8.3.1 a §8.2 en
+la spec y seguir con la fase 5.
+
+**Para quien siga.**
+
+- Las decisiones tomadas al implementar están en SDD §8.2.13–23 (forma final de `BenchHooks`,
+  `codes` en el módulo de servidor, `benchRoot` en `@fudic/ssr`, `fails(0)` como `Response.error()`,
+  id de criterio, `as` abre la URL del criterio, `meta.negative`, etc.).
+- Los términos de §3.7 (fase 5) aún no existen: las pruebas de la fase 4 traen los suyos en el
+  `fudic/terms/` del proyecto temporal. Al escribir `count`, `hidden` y demás negativos, declarar
+  `meta.negative` (o una función de los argumentos, p. ej. `count … 0`).
+- Una página de la app solo carga el runtime y el SW si su `<head>` lleva
+  `<script type="module" src="fudic:runtime">`.
+- **Entorno Windows:** lanzar las pruebas desde la ruta con `C:` mayúscula
+  (`cd /c/Users/...`). Con el cwd en `c:\…` minúscula, los `vi.mock` de Vitest no casan y fallan
+  ~40 pruebas del workbench que no tienen nada roto.
+- Bajo carga, `workbench.test.ts > the shell paints one card…` puede agotar su espera; pasa sola.
+
 **Una sesión.** La misma que implementa escribe los tests de cada fase (las tareas «Los tests
 de…») contra los criterios de SDD §6, y la fase cierra con `typecheck`, `test` y `coverage` en
 verde. Si un test destapa un defecto, se corrige el código, no el test. Cada fase cerrada va a
