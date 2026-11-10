@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isFailure } from '../src/index.js';
-import { resolveTarget, slashes, type TargetFs } from '../src/target.js';
+import { resolveTarget, routeTag, slashes, type TargetFs } from '../src/target.js';
 
 const CARD = `<link rel="component" href="./app-badge.fud">
 
@@ -161,5 +161,55 @@ describe('resolveTarget — criterion 2', () => {
       ...EXPECTED,
       fixture: null,
     });
+  });
+});
+
+describe('resolveTarget — pages and flows (SDD-82 §3.1)', () => {
+  const ROUTES = {
+    'C:/proj/fudic.json': '{}',
+    'C:/proj/src/routes/usuarios.fud': '<!DOCTYPE html>\n<html><body></body></html>',
+    'C:/proj/src/routes/usuarios.fudspec': 'page /usuarios\n',
+    'C:/proj/src/routes/usuarios.fixture.ts': 'export default {};\n',
+    'C:/proj/src/routes/index.fud': '<!DOCTYPE html>\n<html><body></body></html>',
+    'C:/proj/src/routes/index.fudspec': 'page /\n',
+    'C:/proj/src/flows/alta-de-usuario.fudspec': 'flow alta-de-usuario\n',
+    'C:/proj/src/flows/sin-nombre.fudspec': 'flow\n',
+  };
+
+  it('a page, from its .fudspec or its route .fud, is the route with its fixture', () => {
+    const fs = memoryFs(ROUTES);
+    const page = {
+      kind: 'page',
+      tag: 'page-usuarios',
+      component: 'C:/proj/src/routes/usuarios.fud',
+      route: '/usuarios',
+      spec: 'C:/proj/src/routes/usuarios.fudspec',
+      fixture: 'C:/proj/src/routes/usuarios.fixture.ts',
+      projectRoot: 'C:/proj',
+    };
+    expect(resolveTarget('C:/proj/src/routes/usuarios.fudspec', fs)).toEqual(page);
+    expect(resolveTarget('C:/proj/src/routes/usuarios.fud', fs)).toEqual(page);
+    expect(resolveTarget('C:/proj/src/routes/index.fudspec', fs)).toMatchObject({ tag: 'page-index', route: '/', fixture: null });
+  });
+
+  it('a flow is its .fudspec', () => {
+    expect(resolveTarget('C:/proj/src/flows/alta-de-usuario.fudspec', memoryFs(ROUTES))).toEqual({
+      kind: 'flow',
+      tag: 'flow-alta-de-usuario',
+      component: 'C:/proj/src/flows/alta-de-usuario.fudspec',
+      spec: 'C:/proj/src/flows/alta-de-usuario.fudspec',
+      fixture: null,
+      projectRoot: 'C:/proj',
+    });
+  });
+
+  it('a header without its name is no page nor flow; outside a project, FUD0971', () => {
+    expect(codeOf('C:/proj/src/flows/sin-nombre.fudspec', memoryFs(ROUTES))).toBe('FUD0970');
+    expect(codeOf('C:/x/a.fudspec', memoryFs({ 'C:/x/a.fudspec': 'flow a\n' }))).toBe('FUD0971');
+  });
+
+  it('routeTag makes a path segment of a route or a name', () => {
+    expect(routeTag('page', '/blog/[slug]')).toBe('page-blog-slug');
+    expect(routeTag('flow', 'Alta_de usuario')).toBe('flow-alta-de-usuario');
   });
 });

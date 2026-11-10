@@ -9,6 +9,7 @@
 
 import { FUD0972, FUD0974, FUD1207, type FudDiagnostic } from '@fudic/diagnostics';
 import { argText, normalizeTerm, type BlockKind, type Criterion, type SpecFile } from '@fudic/spec';
+import type { Bench, CriterionNames, CriterionSetup } from '@fudic/vite';
 import { fixtureOf } from './access.js';
 import { hostComponent } from './host.js';
 import { caseShape, propAttrs, signalLiterals } from './mount-source.js';
@@ -40,10 +41,23 @@ export interface PlannedCriterion {
   /** The file its steps are written in: the `.fudspec`, or the component on the bare card. */
   readonly spec: string;
   readonly steps: readonly PlannedStep[];
+  /** A page's or a flow's: it runs on the app's Vite, with what its fixture lines name (SDD-82 §4.2). */
+  readonly app?: AppCriterion;
   /** Present when the criterion cannot run: it ends in error without opening its page. */
   readonly error?: string;
   /** With `error`: the same cause, as a diagnostic with its code. */
   readonly problem?: FudDiagnostic;
+}
+
+/** What a page's or a flow's criterion runs with. */
+export interface AppCriterion {
+  /** The app's origin: `route` is opened on it. */
+  readonly origin: string;
+  readonly bench: Bench;
+  /** The run's id: the criterion's cookie is `<run>.<tag>.<slug>`. */
+  readonly run: string;
+  readonly setup: CriterionSetup;
+  readonly names: CriterionNames;
 }
 
 export interface BenchPlan {
@@ -115,22 +129,42 @@ export function planBench(input: PlanInput): BenchPlan {
   return { criteria, files, diagnostics };
 }
 
-function readCriterion(criterion: Criterion): { fixture: string | null; propsOffset?: number; steps: PlannedStep[] } {
+/** The fixture lines of a page or a flow (SDD-82 §3.6): read by the bench, never run as terms. */
+export interface FixtureLines {
+  readonly data?: readonly string[];
+  readonly answers?: readonly string[];
+  readonly services?: string;
+  readonly path?: string;
+  readonly url?: string;
+}
+
+/** The lines of `given` that name the fixture or the URL; `url` elsewhere is the `then` term. */
+const FIXTURE_LINES = new Set(['data', 'answers', 'services', 'path', 'url']);
+
+/** `as <who>`: a step of the engine's own, in any block (SDD-82 §3.7). */
+export const AS = 'as';
+
+/** A criterion as the engine runs it: its fixture lines apart, its steps in order. */
+export function readCriterion(criterion: Criterion): { fixture: string | null; propsOffset?: number; steps: PlannedStep[]; lines: FixtureLines } {
   let fixture: string | null = null;
   let propsOffset: number | undefined;
   const steps: PlannedStep[] = [];
+  const lines: Record<string, string | readonly string[]> = {};
   for (const block of criterion.blocks) {
     for (const line of block.terms) {
       const args = line.args.map(argText);
-      if (line.name.text === PROPS) {
+      const name = line.name.text;
+      if (name === PROPS) {
         fixture = args[0] ?? null;
         propsOffset = line.span.start;
+      } else if (block.block === 'given' && FIXTURE_LINES.has(name)) {
+        lines[name] = name === 'data' || name === 'answers' ? args : args[0]!;
       } else {
-        steps.push({ block: block.block, term: normalizeTerm(line.name.text), args, offset: line.span.start });
+        steps.push({ block: block.block, term: normalizeTerm(name), args, offset: line.span.start });
       }
     }
   }
-  return { fixture, ...(propsOffset !== undefined ? { propsOffset } : {}), steps };
+  return { fixture, ...(propsOffset !== undefined ? { propsOffset } : {}), steps, lines: lines as FixtureLines };
 }
 
 /** What a page mounts: the component (or its host), with the code and attributes of its props. */

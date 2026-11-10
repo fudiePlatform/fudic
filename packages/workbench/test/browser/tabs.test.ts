@@ -114,8 +114,11 @@ describe('criterion 11 — the first click is served (bug A)', () => {
 
   it('is red without the wait for the gesture', async () => {
     // The action returns as soon as the click does: no wait for `fud:hydrated`, no frame.
-    const careless = patched(() => ({ waitFor: async () => undefined, evaluate: async <R>() => undefined as R }));
-    bench.slow = CHUNK;
+    // Nor the quiet page of SDD-82: it sees no request on its way. And the chunk is held past the
+    // time a positive `then` keeps trying (§4.5), so only the careless run can see it red.
+    const LONG = { ...CHUNK, ms: 7000 };
+    const careless = patched(() => ({ waitFor: async () => undefined, evaluate: async <R>() => undefined as R, pending: () => [] }));
+    bench.slow = LONG;
     try {
       const result = await runCriterion(careless, bench.origin, byId('cambia-de-pestana'), loader(0), extensions);
       expect(result.verdict).toBe('fail');

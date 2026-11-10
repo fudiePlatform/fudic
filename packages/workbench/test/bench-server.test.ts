@@ -301,3 +301,27 @@ describe('the shell page', () => {
     expect(html).toContain('@media (prefers-color-scheme: dark)');
   });
 });
+
+describe('a backend that is not fudic’s — SDD-82 §3.8, criterion 34', () => {
+  it('GET /__bench/criterion/<id> answers the names a running criterion runs with', async () => {
+    server = await startBenchServer({ port: 0 });
+    const names = new Map([['r-1.alta', { services: 'dos-personas', answers: ['entra-ana'] }], ['r-2.otra', {}]]);
+    // Before the app's bench is known, the path is nobody's.
+    expect((await fetch(`${server.origin}/__bench/criterion/r-1.alta`)).status).toBe(404);
+    server.serveCriteria({ names: (id) => names.get(id) });
+    const asked = await fetch(`${server.origin}/__bench/criterion/${encodeURIComponent('r-1.alta')}`);
+    expect(asked.headers.get('content-type')).toBe('application/json');
+    expect(await asked.json()).toEqual({ services: 'dos-personas', answers: ['entra-ana'], clock: null });
+    expect(await (await fetch(`${server.origin}/__bench/criterion/r-2.otra`)).json()).toEqual({ services: null, answers: [], clock: null });
+    const gone = await fetch(`${server.origin}/__bench/criterion/nadie`);
+    expect([gone.status, await gone.json()]).toEqual([404, { error: 'no criterion "nadie" is running' }]);
+    // `/__bench/criterion/` without an id is a component's shell path like any other.
+    expect((await fetch(`${server.origin}/__bench/criterion/`)).status).toBe(200);
+  });
+
+  it('a clock is said as the fixture names it', async () => {
+    server = await startBenchServer({ port: 0 });
+    server.serveCriteria({ names: () => ({ clock: '2026-11-08T10:00:00Z' }) });
+    expect(await (await fetch(`${server.origin}/__bench/criterion/x`)).json()).toEqual({ services: null, answers: [], clock: '2026-11-08T10:00:00Z' });
+  });
+});

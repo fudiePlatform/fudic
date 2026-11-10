@@ -32,7 +32,7 @@ export function fakeLocator(ref: string): Locator {
 
 export function fakePage(
   elements: (css: string) => FakeElement = () => ({}),
-  options: { status?: number | null; goto?: () => Promise<never> } = {},
+  options: { status?: number | null; goto?: () => Promise<never>; pending?: () => readonly string[] } = {},
 ): FakePage {
   const calls: string[] = [];
   let listener: (message: string) => void = () => undefined;
@@ -92,6 +92,10 @@ export function fakePage(
     onPageError(next) {
       listener = next;
     },
+    async addCookie(name, value, url) {
+      calls.push(`cookie ${name}=${value} ${url}`);
+    },
+    pending: () => options.pending?.() ?? [],
     async close() {
       page.closed = true;
       calls.push('close');

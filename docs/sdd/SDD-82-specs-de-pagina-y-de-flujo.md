@@ -292,19 +292,25 @@ Lo de hoy sigue. Lo nuevo, cada uno un módulo `.js` con su `meta`, como los de 
 ### 3.8. El banco
 
 ```ts
-// @fudic/vite — lo que el plugin lee del banco, si está (§4.3)
+// @fudic/http/contract/server — lo que el servidor lee del banco, si está (§4.3, §8.2.13)
 export interface BenchHooks {
   /** The criterion a request belongs to: from its cookie. */
   criterionOf(request: Request): string | undefined;
-  /** The data of the nth data request of the criterion for this route; undefined runs load. */
-  data(criterion: string, route: string, nth: number): unknown;
-  /** The answer of a call or a remote rule; undefined runs it. Every call is logged, answered or not. */
-  answer(criterion: string, name: string, args: unknown): Answer | undefined;
+  /** The data of the next data request of the criterion for the route `<id>`; absent runs load. */
+  data(criterion: string, route: string): Held | undefined;
+  /** The answer of a call or a remote rule by its name; absent runs it. */
+  answer(criterion: string, name: string, args: Readonly<Record<string, unknown>>): Held | undefined;
+  /** A call is done, answered or not: the log of §4.4. */
+  called(criterion: string, call: BenchCall): void;
   /** The criterion's services, put into the request's root container. */
-  services(criterion: string): readonly ProviderOverride[];
+  services(criterion: string): readonly ServiceOverride[];
   /** The criterion's clock, for the server's Date. */
   now(criterion: string): number | undefined;
+  /** Resolves `ms` later on the criterion's clock: what a `later` of the fixture waits on. */
+  after(criterion: string, ms: number): Promise<void>;
 }
+/** Present even when it holds `undefined`: the answer of a `void` function. */
+export interface Held { readonly value: unknown }
 ```
 
 - **Dos Vite por proyecto**: el de hoy para los componentes y otro, el de la app, para páginas y
@@ -851,3 +857,41 @@ Nada.
     escapados; antes un nombre con comillas se rompía al pasar al banco.
 12. **Un `url` fuera de `given` es el término `then url`**: una línea de fixture solo lo es en
     `given`, o donde no hay un término con su nombre.
+13. **`BenchHooks` queda así** (en `@fudic/http/contract/server`, y por forma en `@fudic/vite`):
+    `data(criterio, ruta)` cuenta él mismo la enésima petición; `answer` devuelve `{ value }` o
+    nada, porque `undefined` es una respuesta válida de una función `void`; `called(criterio,
+    llamada)` registra cada llamada al acabar, con su estado; `after(criterio, ms)` es el reloj
+    del criterio para los `later`; `now` sigue. La implementación es `createBench()` de
+    `@fudic/vite`, que el banco instala con `installBench()`.
+14. **El módulo de servidor de una función lleva `codes`** (`{ ana: [409, 'detalle'] }`): con él
+    `fails('ana')` de la fixture responde con el estado y el código que la función declara.
+15. **Los servicios del render los pone `benchRoot` de `@fudic/ssr`**, no de `@fudic/http`: una
+    ruta con DI y sin `.fudapi` no depende de `@fudic/http`. Las funciones y las reglas usan el de
+    `@fudic/http`. Solo en dev: el wrapper de un build no lo escribe.
+16. **`fails(0, …)` es `Response.error()`**, y el adaptador de Node corta la conexión: el
+    navegador ve un fallo de red, sin respuesta.
+17. **El `Date` del servidor lo cambia `installBench`** con un `AsyncLocalStorage` guardado en
+    `globalThis`: el plugin que abre el ámbito de cada petición puede ser otra copia del paquete.
+18. **Con el banco instalado, el plugin sirve el SW en modo preview** aunque `sw.json` diga
+    `"dev": "off"`. Solo en dev, y solo en el Vite que arranca con el banco ya instalado.
+19. **El id de un criterio es `<ejecución>-<n>.<slug>`**: el mismo criterio ejecutado dos veces
+    no comparte servicios ni registro.
+20. **Una persona nueva (`as`) abre la URL del criterio** en su propio contexto: un `go` relativo
+    necesita una página de la app desde la que resolverse.
+21. **La página quieta cuenta las peticiones desde el contexto del navegador** (documentos y SW),
+    no desde un script; una respuesta `later.never()` que el banco retiene no cuenta; la página de
+    error del navegador (sin red) no cuenta; una navegación en curso bajo la mirada es algo
+    pendiente.
+22. **Un `then` en negativo lo dice su término**: `meta.negative`, `true` o una función de sus
+    argumentos (`count … 0`). Los demás se reintentan hasta el tiempo límite.
+23. **El Vite de la app escucha en su propio puerto**; `/__bench/criterion/<id>` lo sirven los dos
+    servidores. Una página que responde un 4xx/5xx no corta el criterio: lo lee `then status`.
+
+### 8.3. Pendiente de decidir
+
+1. **§4.7 y criterio 22, «una página visitada se abre desde el SW sin red».** En dev todas las
+   rutas son `ssr` (el manifiesto de dev no tiene chunks enlazables) y el SW no pinta ninguna: sin
+   red, toda navegación falla. Lo que sí funciona: el SW se instala, y una página nunca vista
+   falla como en el navegador. Caminos: (a) el SW guarda las navegaciones servidas por red y las
+   da sin red (cambia el SW también en producción), o (b) el criterio con `offline` corre contra
+   un build con `vite preview` (lento, uno por ejecución).

@@ -6,6 +6,7 @@
 
 import { posix } from 'node:path';
 import { LineMap, type FilePosition } from '@fudic/diagnostics';
+import type { BenchCall } from '@fudic/vite';
 import type { CriterionResult } from './engine.js';
 import type { PlannedCriterion, PlannedStep } from './pages.js';
 import { toWire, type StepPassed, type StepResult, type Verdict, type WireDiagnostic } from './protocol.js';
@@ -53,6 +54,8 @@ export interface CriterionReport {
   /** Screenshots on disk, relative to the project root. Only when the verdict is not `pass`. */
   readonly shots?: { readonly before?: string; readonly after?: string };
   readonly pageErrors: readonly string[];
+  /** A page's or a flow's: every call it made, answered by the fixture or not (SDD-82 §4.4). */
+  readonly calls?: readonly BenchCall[];
 }
 
 /** What the report reads of a session: its `.fudspec` and what each step's term says it checks. */
@@ -108,6 +111,7 @@ export function reportOf(session: ReportSession, result: CriterionResult, shots:
     ...(element !== undefined ? { source: element } : {}),
     ...(result.verdict !== 'pass' && (shots.before !== undefined || shots.after !== undefined) ? { shots } : {}),
     pageErrors: result.pageErrors,
+    ...(result.calls !== undefined ? { calls: result.calls } : {}),
   };
 
   function failedStep(): { step: FailedStep; index: number } | undefined {

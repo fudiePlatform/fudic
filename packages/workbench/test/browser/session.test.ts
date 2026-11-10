@@ -268,3 +268,45 @@ describe('loadSession — SDD-59 §4.2, who loads the extensions', () => {
     expect(loaded.extensions.map((e) => e.file)).toEqual([`${TERMS_PACKAGE}/dist/index.js`]);
   }, 60_000);
 });
+
+/** A flow of one criterion. */
+const FLOW_SPEC = 'flow alta\n\ncriterion entra\n  given\n    url /\n  then\n    text role:main "x"\n';
+
+describe('loadSession — a page or a flow (SDD-82 §4.2, §4.3)', () => {
+  /** A flow of one criterion, with or without the app's Vite. */
+  async function flowSession(p: TempProject, app?: () => Promise<never>) {
+    p.write('src/flows/alta.fudspec', FLOW_SPEC);
+    const target: BenchTarget = { kind: 'flow', tag: 'flow-alta', component: p.path('src/flows/alta.fudspec'), spec: p.path('src/flows/alta.fudspec'), fixture: null, projectRoot: p.root };
+    http = createServer();
+    vite = await startVite({ root: p.root, routesDir: benchRoutesDir(), http });
+    const dir = benchDir(p.root);
+    emptyBenchDir(dir);
+    return loadSession({ target, vite, dir, ...(app !== undefined ? { app } : {}) });
+  }
+
+  it('without the app’s Vite every criterion is in error, saying so', async () => {
+    project = tempProject('session-no-app');
+    const loaded = await flowSession(project);
+    expect(loaded.criteria).toMatchObject([{ id: 'entra', error: expect.stringContaining("the app's Vite is not running") }]);
+    expect(loaded.problem).toBeUndefined();
+  });
+
+  it('a fixture that throws leaves each criterion in error with FUD0973', async () => {
+    project = tempProject('session-app-fixture');
+    project.write('src/flows/alta.fixture.ts', "throw new Error('mal');\n");
+    project.write('src/flows/alta.fudspec', FLOW_SPEC);
+    const target: BenchTarget = {
+      kind: 'flow',
+      tag: 'flow-alta',
+      component: project.path('src/flows/alta.fudspec'),
+      spec: project.path('src/flows/alta.fudspec'),
+      fixture: project.path('src/flows/alta.fixture.ts'),
+      projectRoot: project.root,
+    };
+    http = createServer();
+    vite = await startVite({ root: project.root, routesDir: benchRoutesDir(), http });
+    const app = { vite, origin: 'http://127.0.0.1:9', bench: {} as never, run: 'r', close: async () => undefined };
+    const loaded = await loadSession({ target, vite, dir: benchDir(project.root), app: async () => app });
+    expect(loaded.criteria).toMatchObject([{ id: 'entra', problem: { code: 'FUD0973' } }]);
+  });
+});

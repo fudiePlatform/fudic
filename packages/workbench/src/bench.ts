@@ -6,6 +6,7 @@
  */
 
 import type { ViteDevServer } from 'vite';
+import type { App } from './app.js';
 import type { BrowserLike } from './browser.js';
 import { runCriterion, type CriterionResult } from './engine.js';
 import { problemOf, type BenchMessage, type RunCommand, type ShotRef, type Verdict } from './protocol.js';
@@ -24,6 +25,8 @@ export interface ShotStore {
 export interface BenchInput {
   readonly target: BenchTarget;
   readonly vite: ViteDevServer;
+  /** The app's Vite, for a page or a flow (SDD-82 §3.8). */
+  readonly app: () => Promise<App>;
   /** The process's workbench folder. */
   readonly dir: string;
   readonly browser: BrowserLike;
@@ -69,7 +72,7 @@ export async function openBench(input: BenchInput): Promise<Bench> {
     // A `.fudspec` written after the workbench opened is picked up here.
     const again = resolveTarget(target.component, input.fs);
     if (!isFailure(again)) target = again;
-    const loaded = await loadSession({ target, vite: input.vite, dir: input.dir });
+    const loaded = await loadSession({ target, vite: input.vite, dir: input.dir, app: input.app });
     input.publish({ ...loaded.message, browser: input.browser.name, viewport: input.browser.viewport });
     if (loaded.problem !== undefined) input.publish(loaded.problem);
     return loaded;

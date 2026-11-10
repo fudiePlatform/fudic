@@ -121,7 +121,7 @@ export async function runSpecs(paths: readonly string[], options: RunOptions = {
     const projectReports: CriterionReport[] = [];
     try {
       for (const target of targets) {
-        const session = await loadSession({ target, vite: project.vite, dir: project.dir });
+        const session = await loadSession({ target, vite: project.vite, dir: project.dir, app: project.app });
         project.publish({ ...session.message, browser: project.browser.name, viewport: project.browser.viewport });
         if (session.problem !== undefined) project.publish(session.problem);
         // A `.fudspec` with errors runs nothing, and that is an error of the run.

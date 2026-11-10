@@ -8,7 +8,7 @@
  */
 
 import { FUD1207, render, type FudCode, type FudDiagnostic, type WireDiagnostic } from '@fudic/diagnostics';
-import { isFudicCompileError } from '@fudic/vite';
+import { isFudicCompileError, type BenchCall } from '@fudic/vite';
 import type { BlockKind, Layer } from '@fudic/spec';
 import type { BrowserName } from './browser.js';
 import type { CriterionReport } from './report-of.js';
@@ -133,6 +133,8 @@ export interface ResultMessage {
   readonly pageErrors: readonly string[];
   /** Why the criterion could not run at all: its page did not load, its fixture failed. */
   readonly error?: string;
+  /** A page's or a flow's: every call it made, in order, answered by the fixture or not (SDD-82 §4.4). */
+  readonly calls?: readonly BenchCall[];
 }
 
 /** What the runs of a component are doing: pinned, paused, and how many saves wait. */

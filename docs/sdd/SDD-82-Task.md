@@ -5,7 +5,7 @@
 > `@fudic/testing` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` ·
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `sdd-82-specs-de-pagina-y-de-flujo`, desde `main` con SDD-81 ya mezclada.
-> **Progreso:** 8 / 36 — `En curso`.
+> **Progreso:** 15 / 36 — `En curso`. La tarea 16 espera la decisión de SDD §8.3.1 (criterio 22).
 
 **Una sesión.** La misma que implementa escribe los tests de cada fase (las tareas «Los tests
 de…») contra los criterios de SDD §6, y la fase cierra con `typecheck`, `test` y `coverage` en
@@ -83,7 +83,7 @@ verde. Si un test destapa un defecto, se corrige el código, no el test. Cada fa
 
 ## Fase 3 — el plugin y el servidor del banco
 
-- [ ] **9. `BenchHooks` en el plugin.**
+- [x] **9. `BenchHooks` en el plugin.**
   - Se leen de `globalThis[Symbol.for('fudic.bench')]`.
   - Render y endpoint de datos con `ctx.data` (los `later` a promesas; `Failed` y `Redirected`).
   - Llamadas y reglas `remote` con `answer`, en el formato de la función y sin handler.
@@ -93,12 +93,12 @@ verde. Si un test destapa un defecto, se corrige el código, no el test. Cada fa
   - *Paquetes:* `vite`, `http`.
   - *Ficheros:* `vite/src/bench-hooks.ts`, `vite/src/plugin.ts`, `vite/src/serve.ts`,
     `vite/src/wrapper.ts`, `http/src/contract/server.ts`.
-- [ ] **10. El registro de llamadas.**
+- [x] **10. El registro de llamadas.**
   - Por criterio: nombre, argumentos decodificados, falsa o de verdad, estado (SDD §4.4).
   - *Depende de:* 9.
   - *Paquete:* `vite`.
   - *Fichero:* `src/bench-hooks.ts`.
-- [ ] **11. Los tests de la fase.**
+- [x] **11. Los tests de la fase.**
   - Criterios 10–17 y 23 en el modelo, con los hooks y un servidor en memoria.
   - *Depende de:* 9, 10.
   - *Paquetes:* `vite`, `http`.
@@ -106,7 +106,7 @@ verde. Si un test destapa un defecto, se corrige el código, no el test. Cada fa
 
 ## Fase 4 — el banco
 
-- [ ] **12. La página quieta.**
+- [x] **12. La página quieta.**
   - Un script de inicio que cuenta peticiones, temporizadores cortos y frames, en el documento y en
     el SW.
   - La espera tras cada `when` y antes de cada `then`, con `FUD1508`.
@@ -114,7 +114,7 @@ verde. Si un test destapa un defecto, se corrige el código, no el test. Cada fa
   - *Depende de:* 1.
   - *Paquetes:* `workbench`, `terms`.
   - *Ficheros:* `workbench/src/settle.ts`, `workbench/src/engine.ts`, `terms/src/types.ts`.
-- [ ] **13. Destinos de página y de flujo.**
+- [x] **13. Destinos de página y de flujo.**
   - `resolveTarget` para `page` y `flow`.
   - El segundo Vite, el de la app, con la configuración del usuario, su `routesDir` y el SW en modo
     preview.
@@ -122,7 +122,7 @@ verde. Si un test destapa un defecto, se corrige el código, no el test. Cada fa
   - *Depende de:* 9.
   - *Paquete:* `workbench`.
   - *Ficheros:* `src/target.ts`, `src/project.ts`, `src/vite.ts`.
-- [ ] **14. Montar un criterio.**
+- [x] **14. Montar un criterio.**
   - Contexto nuevo con la cookie `fudic-bench`.
   - Las líneas de fixture del criterio en los hooks.
   - `services` instanciados al empezar y soltados al acabar.
@@ -132,11 +132,13 @@ verde. Si un test destapa un defecto, se corrige el código, no el test. Cada fa
   - *Paquete:* `workbench`.
   - *Ficheros:* `src/session.ts`, `src/engine.ts`, `src/pages.ts`, `src/browser.ts`,
     `src/report-of.ts`, `src/report.ts`.
-- [ ] **15. El contrato para otros backends.** `GET /__bench/criterion/<id>` (SDD §3.8).
+- [x] **15. El contrato para otros backends.** `GET /__bench/criterion/<id>` (SDD §3.8).
   - *Depende de:* 14.
   - *Paquete:* `workbench`.
   - *Fichero:* `src/bench-server.ts`.
 - [ ] **16. Los tests de la fase.** Criterios 19–22, 29–31 y 34, con Playwright.
+  - Hechos 19–21, 29–31 y 34, y la mitad de 22 (una página nunca vista falla sin red). La otra
+    mitad —una visitada se abre desde el SW— espera SDD §8.3.1.
   - *Depende de:* 12–15.
   - *Paquetes:* `workbench`.
   - *Ficheros:* `test/**`.

@@ -56,10 +56,11 @@ export async function openWorkbench(
 
   async function add(target: BenchTarget): Promise<OpenedComponent> {
     // Its bare page first: a component opened late is new to the plugin's next look too.
-    writePlanFiles(project.dir, target.tag, mountFiles(target));
+    if (target.kind === undefined) writePlanFiles(project.dir, target.tag, mountFiles(target));
     const bench = await openBench({
       target,
       vite: project.vite,
+      app: project.app,
       dir: project.dir,
       browser: project.browser,
       origin: project.server.origin,

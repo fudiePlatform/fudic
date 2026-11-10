@@ -8,7 +8,7 @@
  */
 
 import { readdirSync, readFileSync } from 'node:fs';
-import { FUD0973, type FudDiagnostic } from '@fudic/diagnostics';
+import { FUD0973, FUD1207, type FudDiagnostic } from '@fudic/diagnostics';
 import {
   parseSpec,
   specContextOf,
@@ -20,6 +20,8 @@ import {
   type TermCatalog,
 } from '@fudic/spec';
 import type { ViteDevServer } from 'vite';
+import type { App } from './app.js';
+import { planApp, type AppFixtures } from './app-plan.js';
 import { firstLine } from './browser.js';
 import { MissingTermError, namedArgs, type LoadedTerm, type TermLoader } from './engine.js';
 import type { LoadedExtension } from './extension.js';
@@ -49,6 +51,8 @@ export interface SessionInput {
    * Injected by the tests that need one project with and without it.
    */
   readonly runtime?: TermsRuntime | null;
+  /** The app's Vite, for a page or a flow (SDD-82 §3.8): started on the first call. */
+  readonly app?: () => Promise<App>;
 }
 
 export interface LoadedSession {
@@ -120,15 +124,23 @@ export async function loadSession(input: SessionInput): Promise<LoadedSession> {
     }
   }
 
-  const executed = await executeFixture(target, vite);
+  // A page or a flow runs on the app's Vite: its fixture is executed there, so a service it
+  // replaces is the very class the app's server injects (SDD-82 §4.3).
+  const app = target.kind === undefined ? undefined : await input.app?.();
+  const appVite = app?.vite ?? vite;
+  const executed = await executeFixture(target, appVite);
   if (executed.error !== undefined) diagnostics.push({ diagnostic: executed.error, file: target.fixture });
 
-  const plan = planBench({ target, spec, fixtures: executed.fixtures, dir: input.dir });
-  for (const diagnostic of plan.diagnostics) diagnostics.push({ diagnostic, file: null });
-  writePlanFiles(input.dir, target.tag, plan.files);
-  for (const name of plan.files.keys()) invalidateFile(vite, `${input.dir}/${name}`);
-
-  const fixtureOk = executed.error === undefined ? plan.criteria : failProps(plan, executed.error);
+  let fixtureOk: readonly PlannedCriterion[];
+  if (target.kind === undefined) {
+    const plan = planBench({ target, spec, fixtures: executed.fixtures, dir: input.dir });
+    for (const diagnostic of plan.diagnostics) diagnostics.push({ diagnostic, file: null });
+    writePlanFiles(input.dir, target.tag, plan.files);
+    for (const name of plan.files.keys()) invalidateFile(vite, `${input.dir}/${name}`);
+    fixtureOk = executed.error === undefined ? plan.criteria : failProps(plan, executed.error);
+  } else {
+    fixtureOk = appCriteria(target, spec, executed, app, context);
+  }
   // A `fudic/bench.js` that does not load leaves every criterion in error, saying why.
   const criteria =
     project !== null && 'error' in project
@@ -139,7 +151,8 @@ export async function loadSession(input: SessionInput): Promise<LoadedSession> {
   const described = await Promise.all(criteria.map((c) => describeCriterion(c, lineOf, loadTerm)));
   const expectations = new Map(described.map((d) => [d.criterion.id, d.expectations]));
   const message = sessionMessage(target, diagnostics, described.map((d) => d.criterion));
-  const problem = await compileProblem(vite, target.component);
+  // A flow has no page of its own to compile.
+  const problem = target.kind === 'flow' ? undefined : await compileProblem(appVite, target.component);
   return { criteria, message, loadTerm, extensions, reads, source: source(expectations), ...(problem !== undefined ? { problem } : {}) };
 }
 
@@ -184,6 +197,29 @@ async function executeFixture(
   }
 }
 
+/**
+ * The criteria of a page or a flow: each one on the app's Vite, with what its fixture lines
+ * name. Without the app, or with a fixture that threw, every one ends in error saying why.
+ */
+function appCriteria(
+  target: BenchTarget,
+  spec: SpecFile,
+  executed: { fixtures: ExecutedFixtures; error?: FudDiagnostic },
+  app: App | undefined,
+  context: SpecContext,
+): readonly PlannedCriterion[] {
+  const pattern = target.route === undefined ? undefined : context.page(target.route)?.pattern;
+  const planned = planApp({
+    target,
+    spec,
+    fixtures: executed.fixtures as AppFixtures,
+    app: app ?? { origin: '', bench: undefined as never, run: '' },
+    ...(pattern !== undefined ? { pattern } : {}),
+  });
+  const problem = executed.error ?? (app === undefined ? FUD1207({ reason: "the app's Vite is not running" }) : undefined);
+  return problem === undefined ? planned : planned.map((c) => ({ ...c, error: problem.message, problem }));
+}
+
 /** A fixture that threw leaves the criteria that mount with props in error; the rest still run. */
 function failProps(plan: BenchPlan, problem: FudDiagnostic): PlannedCriterion[] {
   return plan.criteria.map((c) => (c.fixture === null ? c : { ...c, error: problem.message, problem }));
@@ -195,12 +231,13 @@ function termLoader(catalog: TermCatalog, vite: ViteDevServer): TermLoader {
     const module = catalog.resolve(block, name);
     if (module === undefined) throw new MissingTermError(block, name);
     const loaded = await vite.ssrLoadModule(module.path);
-    const meta = loaded['meta'] as { describe?: LoadedTerm['describe'] } | undefined;
+    const meta = loaded['meta'] as { describe?: LoadedTerm['describe']; negative?: LoadedTerm['negative'] } | undefined;
     return {
       path: module.path,
       layer: module.layer,
       params: module.params,
       ...(typeof meta?.describe === 'function' ? { describe: meta.describe } : {}),
+      ...(meta?.negative !== undefined ? { negative: meta.negative } : {}),
       run: loaded['run'] as LoadedTerm['run'],
     };
   };

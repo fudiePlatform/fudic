@@ -8,7 +8,7 @@
  */
 
 import { FUD0975 } from '@fudic/diagnostics';
-import { chromium, firefox, webkit, type Browser, type Locator, type Page } from 'playwright-core';
+import { chromium, firefox, webkit, type Browser, type BrowserContext, type Locator, type Page, type Request } from 'playwright-core';
 import type { Viewport } from './protocol.js';
 import type { WorkbenchFailure } from './types.js';
 
@@ -64,6 +64,13 @@ export interface PageLike {
   /** Answers by nobody the WebSockets whose URL matches. */
   silenceWebSockets(matches: (url: URL) => boolean): Promise<void>;
   onPageError(listener: (message: string) => void): void;
+  /** A cookie in this page's own context, for `url` (SDD-82 §4.2). */
+  addCookie(name: string, value: string, url: string): Promise<void>;
+  /**
+   * The requests of this page's context still on their way — of its documents and of its Service
+   * Worker — as `GET /path`. An `EventSource` or a WebSocket is never on its way (SDD-82 §4.5).
+   */
+  pending(): readonly string[];
   close(): Promise<void>;
 }
 
@@ -177,8 +184,27 @@ function inPage(script: PageScript, params: string): () => unknown {
   return new Function(params, `return (${script})(${params});`) as () => unknown;
 }
 
+/** What a request is, in a list of what is pending. */
+const requestLine = (request: Request): string => `${request.method()} ${new URL(request.url()).pathname}`;
+
+/** Resources that stay open by design: no gesture waits for them to end. */
+const STREAMS = new Set(['eventsource', 'websocket']);
+
+/** The requests of a context on their way, kept from now on. */
+export function inFlight(context: Pick<BrowserContext, 'on'>): () => readonly string[] {
+  const open = new Set<Request>();
+  context.on('request', (request) => {
+    if (!STREAMS.has(request.resourceType())) open.add(request);
+  });
+  const done = (request: Request): void => void open.delete(request);
+  context.on('requestfinished', done);
+  context.on('requestfailed', done);
+  return () => [...open].map(requestLine);
+}
+
 function adaptPage(page: Page, closed: () => void): PageLike {
   let closing: Promise<void> | undefined;
+  const pending = inFlight(page.context());
   return {
     page,
     adopt: adaptLocator,
@@ -200,6 +226,8 @@ function adaptPage(page: Page, closed: () => void): PageLike {
     onPageError(listener) {
       page.on('pageerror', (error) => listener(firstLine(error)));
     },
+    addCookie: (name, value, url) => page.context().addCookies([{ name, value, url }]),
+    pending,
     // Closed once, whoever asks first (a cancel and the engine's `finally` both do): the context
     // goes with the page.
     close: () =>

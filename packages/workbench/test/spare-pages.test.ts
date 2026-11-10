@@ -20,6 +20,8 @@ function fakeBrowser(failing: (n: number) => boolean = () => false) {
       if (failing(n)) throw new Error(`context ${n} refused`);
       const context = {
         n,
+        // The requests in flight are counted from the context (SDD-82 §4.5): none here.
+        on: () => undefined,
         close: async () => {
           record.closed += 1;
         },
