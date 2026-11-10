@@ -5,7 +5,7 @@
 > `@fudic/testing` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` ·
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `sdd-82-specs-de-pagina-y-de-flujo`, desde `main` con SDD-81 ya mezclada.
-> **Progreso:** 1 / 36 — `En curso`.
+> **Progreso:** 7 / 36 — `En curso`.
 
 **Dos sesiones.** Una implementa y entrega cada fase con `pnpm typecheck` y `pnpm build`. La otra
 escribe los tests de cada fase (las tareas «Los tests de…») contra los criterios de SDD §6, en su
@@ -35,27 +35,27 @@ Cada fase cerrada va a `origin`.
 
 ## Fase 2 — la `.fudspec`
 
-- [ ] **2. Cabeceras y orden de bloques.**
+- [x] **2. Cabeceras y orden de bloques.**
   - `page` y `flow` en `levelOf`; `HeaderDecl` en lugar de `ComponentDecl`.
   - El orden de §3.2 en lugar del índice creciente.
   - El formateador con las cabeceras nuevas.
   - *Depende de:* 1.
   - *Paquete:* `spec`.
   - *Ficheros:* `src/line.ts`, `src/parse.ts`, `src/ast.ts`, `src/format.ts`.
-- [ ] **3. Referencias con `>` y `~`.**
+- [x] **3. Referencias con `>` y `~`.**
   - `RoleArg.steps` con su modo de nombre y `FUD1509`.
   - `locatorOf` encadena los pasos y aplica `exact: false` con `~`.
   - *Depende de:* 2.
   - *Paquetes:* `spec`, `terms`.
   - *Ficheros:* `spec/src/line.ts`, `spec/src/ast.ts`, `terms/src/locate.ts`.
-- [ ] **4. La fixture leída sin ejecutar.**
+- [x] **4. La fixture leída sin ejecutar.**
   - `readFixtures` da `data`, `paths` (valores), `calls`, `services` y la forma de componente.
   - `FUD1510`.
   - `fixturePathOf` para páginas y flujos.
   - *Depende de:* 2.
   - *Paquete:* `spec`.
   - *Ficheros:* `src/fixtures.ts`, `src/context.ts`.
-- [ ] **5. El validador.**
+- [x] **5. El validador.**
   - `SpecContext` con `page(route)` y `functions(scope)`.
   - Las líneas de fixture de §3.6 y `as`.
   - `FUD1500`–`FUD1507`, `FUD1511`–`FUD1513`.
@@ -63,13 +63,13 @@ Cada fase cerrada va a `origin`.
   - *Depende de:* 3, 4.
   - *Paquete:* `spec`.
   - *Ficheros:* `src/validate.ts`, `src/context.ts`.
-- [ ] **6. Los ayudantes y los tipos de fixture.**
+- [x] **6. Los ayudantes y los tipos de fixture.**
   - `later`, `later.never`, `later.fails`, `fails`, `redirects` y `file`, como datos.
   - `FixtureOf`, `Answer`, `Failed`, `Redirected` y `FlowFixtures`.
   - *Depende de:* —.
   - *Paquete:* `spec`.
   - *Ficheros:* `src/helpers.ts`, `src/fixture-types.ts`, `src/index.ts`.
-- [ ] **7. `Fixtures` en el `.d.ts` de una ruta.**
+- [x] **7. `Fixtures` en el `.d.ts` de una ruta.**
   - `data` si hay `load`, `paths` si hay `paths`.
   - `calls` con cada función de la ruta y de sus componentes, y las reglas `remote`.
   - Los `fails` por código (SDD §3.4).

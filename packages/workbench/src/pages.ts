@@ -8,7 +8,7 @@
  */
 
 import { FUD0972, FUD0974, FUD1207, type FudDiagnostic } from '@fudic/diagnostics';
-import { normalizeTerm, type Arg, type BlockKind, type Criterion, type SpecFile } from '@fudic/spec';
+import { argText, normalizeTerm, type BlockKind, type Criterion, type SpecFile } from '@fudic/spec';
 import { fixtureOf } from './access.js';
 import { hostComponent } from './host.js';
 import { caseShape, propAttrs, signalLiterals } from './mount-source.js';
@@ -121,7 +121,7 @@ function readCriterion(criterion: Criterion): { fixture: string | null; propsOff
   const steps: PlannedStep[] = [];
   for (const block of criterion.blocks) {
     for (const line of block.terms) {
-      const args = line.args.map(written);
+      const args = line.args.map(argText);
       if (line.name.text === PROPS) {
         fixture = args[0] ?? null;
         propsOffset = line.span.start;
@@ -131,11 +131,6 @@ function readCriterion(criterion: Criterion): { fixture: string | null; propsOff
     }
   }
   return { fixture, ...(propsOffset !== undefined ? { propsOffset } : {}), steps };
-}
-
-function written(arg: Arg): string {
-  if (arg.kind !== 'role') return arg.text;
-  return `role:${arg.role.text}` + (arg.name === undefined ? '' : `/"${arg.name.text}"`);
 }
 
 /** What a page mounts: the component (or its host), with the code and attributes of its props. */

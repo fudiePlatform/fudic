@@ -17,6 +17,7 @@ import {
   fixtureEntry,
   fixtureModule,
   formatSpec,
+  componentTag,
   normalizeTerm,
   termModule,
   validateSpec,
@@ -112,7 +113,7 @@ function argumentText(text: string): string {
 
 /** The tag of the `component` line; every caller runs on a code that needs it. */
 function declaredTag(repair: Repair): Name {
-  return repair.spec.file.component!.tag!;
+  return componentTag(repair.spec.file)!;
 }
 
 /** The props of the declared component, which exists, or none when no program can read them. */

@@ -7,7 +7,7 @@
  * asked about, and the parser would rightly call most of them broken.
  */
 
-import { normalizeTerm, type BlockKind } from '@fudic/spec';
+import { componentTag, normalizeTerm, type BlockKind } from '@fudic/spec';
 import {
   CompletionItemKind,
   InsertTextFormat,
@@ -42,7 +42,7 @@ function snippet(label: string, detail: string, insertText: string): CompletionI
 function topLevel(spec: SpecDocument, host: SpecHost): CompletionList {
   // In a file still without its component line, that line is what comes first (criterion 14).
   const first: CompletionItem[] =
-    spec.file.component === undefined
+    spec.file.header === undefined
       ? [{ ...snippet('component', 'component <tag>', componentSnippet(spec, host)), preselect: true, sortText: '0' }]
       : [];
   const items = [...first, ...TOP_LEVEL.map(keyword)];
@@ -115,7 +115,7 @@ function terms(spec: SpecDocument, block: BlockKind, host: SpecHost): Completion
 
 /** After `props`: the keys of the component's fixture file. */
 function fixtureNames(spec: SpecDocument, position: number, host: SpecHost): CompletionList | undefined {
-  const tag = spec.file.component?.tag?.text;
+  const tag = componentTag(spec.file)?.text;
   const fixtures = position === 0 && tag !== undefined ? host.fixtures(tag) : undefined;
   if (fixtures === undefined) return undefined;
   return {

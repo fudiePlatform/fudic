@@ -12,7 +12,7 @@
  */
 
 import type { SourceDiagnostic } from '@fudic/diagnostics';
-import { levelOf, lines, readLine } from './line.js';
+import { TOP_LEVEL, levelOf, lines, readLine } from './line.js';
 
 export interface FormatSpecResult {
   /** False when the text cannot be formatted safely; `text` is then the input unchanged. */
@@ -25,7 +25,7 @@ interface Row {
   /** Undefined for a line that is only a comment: it takes its level from its neighbours. */
   readonly level: number | undefined;
   readonly text: string;
-  /** A `component` or `criterion` line: it starts a group, set apart by one blank line. */
+  /** A header or `criterion` line: it starts a group, set apart by one blank line. */
   readonly opens: boolean;
 }
 
@@ -46,7 +46,7 @@ export function formatSpec(source: string): FormatSpecResult {
     rows.push({
       level,
       text: comment === undefined ? words : `${words} ${comment}`,
-      opens: level === 0 && (head.raw === 'component' || head.raw === 'criterion'),
+      opens: level === 0 && TOP_LEVEL.has(head.raw),
     });
   }
   // The line reader reports one thing only, an unclosed quote: any report is a refusal.
@@ -83,7 +83,7 @@ function commentLevels(rows: readonly Row[]): readonly number[] {
   return levels;
 }
 
-/** The rows that start a group: each `component`/`criterion`, moved up over the comments above it. */
+/** The rows that start a group: each header or `criterion`, moved up over the comments above it. */
 function groupStarts(rows: readonly Row[]): ReadonlySet<number> {
   const starts = new Set<number>();
   rows.forEach((row, i) => {

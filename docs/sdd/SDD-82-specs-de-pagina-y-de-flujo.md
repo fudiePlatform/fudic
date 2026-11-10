@@ -827,3 +827,27 @@ Nada.
    `fixture`): el mismo código sirve a `props`, `data`, `answers`, `services`, `path` y `url`.
 3. **`FUD1508`, `FUD1514` y `FUD1515` son de fichero** (la `.fudspec` o la fixture, con span si lo
    hay): los emite el banco, no el validador.
+4. **`FUD0924`, `FUD0925`, `FUD0926` y `FUD0928` también hablan de las tres cabeceras.**
+5. **Los tipos de la fixture viven en `@fudic/http/contract`** (`Answer`, `Failed`, `Later`,
+   `Redirected`, `FileAnswer`, `FixtureOf`, `ServiceOverride`) y `@fudic/spec` los reexporta junto
+   a sus ayudantes. El `.d.ts` de una ruta solo importa del contrato (la regla de SDD-60), y el
+   servidor del banco lee esas mismas marcas.
+6. **El `.d.ts` de una ruta exporta también `Calls`**, el tipo de un grupo de `calls`, que es lo
+   que importa la fixture de un flujo del ejemplo.
+7. **«Los componentes que usa» son los que la ruta enlaza con `<link rel="component">` por una ruta
+   relativa de la app**, leídos del texto de su `.fud`, como ya se lee su `layout`. El componente de
+   un paquete no aporta funciones. Las reglas `remote` que alcanza son todas las del proyecto (su
+   nombre es único en él).
+8. **`page /x` es `routes/x.fud` o `routes/x/index.fud`**; `/x/index` también vale. Un fichero
+   que empieza por `_` no es una página. Las páginas se leen del disco, sin compilarlas: un
+   componente guardado bajo `routes/` cuenta como página.
+9. **Lo que alcanza una página y si declara `paths` lo da el anfitrión** (`SpecIo.reach`,
+   `SpecIo.functions`), que lee el `.fudapi`. Sin él es «desconocido», como hoy los props requeridos
+   de un componente sin tipo, y `FUD1506`, `FUD1507` y `FUD1513` no se comprueban.
+10. **`FUD1510` sale en la línea de la `.fudspec` que nombra el grupo ilegible**, con el sitio en la
+    fixture como relacionado, igual que el error de un módulo de término. El valor de cada entrada
+    no se exige literal: solo el grupo (`data`, `calls`, `services`) y `paths`.
+11. **Una referencia viaja al término en una forma canónica** (`argText`), con `\"` y `\\`
+    escapados; antes un nombre con comillas se rompía al pasar al banco.
+12. **Un `url` fuera de `given` es el término `then url`**: una línea de fixture solo lo es en
+    `given`, o donde no hay un término con su nombre.

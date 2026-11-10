@@ -6,7 +6,7 @@
  * Every builder returns the text of an LSP snippet; completion decides where it is offered.
  */
 
-import { SPEC_EXTENSION, type TermModule } from '@fudic/spec';
+import { SPEC_EXTENSION, componentTag, type TermModule } from '@fudic/spec';
 import type { SpecDocument } from './document.js';
 import type { SpecHost } from './host.js';
 
@@ -46,7 +46,7 @@ export function componentSnippet(spec: SpecDocument, host: SpecHost): string {
 
 /** The keys a `props` line can name: the fixture's, or `base` when there is no fixture file. */
 function fixtureKeys(spec: SpecDocument, host: SpecHost): readonly string[] {
-  const tag = spec.file.component?.tag?.text;
+  const tag = componentTag(spec.file)?.text;
   const names = tag === undefined ? [] : (host.fixtures(tag)?.names ?? []).map((name) => name.text);
   return names.length === 0 ? [BASE_FIXTURE] : names;
 }
@@ -58,7 +58,7 @@ export function propsSnippet(spec: SpecDocument, host: SpecHost, n = 1): string 
 
 /** Whether the declared component has props a criterion must mount it with. */
 function needsProps(spec: SpecDocument, host: SpecHost): boolean {
-  const tag = spec.file.component?.tag?.text;
+  const tag = componentTag(spec.file)?.text;
   const required = tag === undefined ? undefined : host.component(tag)?.requiredProps;
   return Array.isArray(required) && required.length > 0;
 }

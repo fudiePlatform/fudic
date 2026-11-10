@@ -1,5 +1,6 @@
 /**
- * The props a route's `layout` resolves, as its `.d.ts` names them (SDD-60 §3.4).
+ * What a route's `.d.ts` reads off the route's `.fud`: the props its `layout` resolves (SDD-60
+ * §3.4), and the components it links, whose functions its fixture answers (SDD-82 §3.4).
  *
  * The type comes out of the `<link rel="layout">` of the route's `.fud`, as `$LayoutProps` did:
  * `import('../../../src/layouts/_layout.fud').$Props`, relative to the `.d.ts` that carries it.
@@ -27,6 +28,22 @@ export function layoutPropsType(pagePath: string, pageSource: string, typesFile:
     return `import('${relative(dirOf(typesFile), layout)}').$Props`;
   }
   return undefined;
+}
+
+const REL_COMPONENT = /\brel\s*=\s*(["'])component\1/iu;
+
+/**
+ * The components `pageSource` links by a path of the app — `<link rel="component" href="…">` —
+ * as absolute paths of their `.fud`, in order. A link to a package's component is not here.
+ */
+export function linkedComponents(pagePath: string, pageSource: string): readonly string[] {
+  const found: string[] = [];
+  for (const [tag] of pageSource.matchAll(LINK)) {
+    if (!REL_COMPONENT.test(tag)) continue;
+    const href = HREF.exec(tag)?.[2];
+    if (href !== undefined && href.startsWith('.')) found.push(join(dirOf(pagePath), href));
+  }
+  return found;
 }
 
 const dirOf = (path: string): string => path.slice(0, path.lastIndexOf('/'));

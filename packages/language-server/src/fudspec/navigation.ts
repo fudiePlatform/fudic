@@ -8,7 +8,7 @@
  */
 
 import type { Span } from '@fudic/diagnostics';
-import { normalizeTerm, type ComponentInfo, type Fixtures, type Name, type TermModule } from '@fudic/spec';
+import { componentTag, normalizeTerm, type ComponentInfo, type Fixtures, type Name, type TermModule } from '@fudic/spec';
 import type { Hover, LocationLink, Range } from 'vscode-languageserver-protocol';
 import { pathToUri } from '../uri.js';
 import { rangeIn, signatureOf, spanRange, termLines, touches, type SpecDocument } from './document.js';
@@ -22,7 +22,7 @@ type Target =
 const PROPS = 'props';
 
 function targetAt(spec: SpecDocument, offset: number, host: SpecHost): Target | undefined {
-  const tag = spec.file.component?.tag;
+  const tag = componentTag(spec.file);
   if (tag !== undefined && touches(tag.span, offset)) {
     const component = host.component(tag.text);
     return component === undefined ? undefined : { kind: 'component', span: tag.span, component };

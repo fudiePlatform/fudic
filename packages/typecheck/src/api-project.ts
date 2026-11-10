@@ -14,6 +14,7 @@ import {
   createApiIndex,
   emitDeclarations,
   layoutPropsType,
+  linkedComponents,
   parseApi,
   validateApi,
   type ApiContext,
@@ -104,8 +105,23 @@ export function apiContextOf(root: string, source: ApiSource): ApiContext {
   const params = segments.map((s) => PARAM.exec(s)?.[1]).filter((p): p is string => p !== undefined);
   const error = `${segments[segments.length - 1]}.fud` === ERROR_FILE;
   const pattern = `/${segments.filter((s, i) => !(s === 'index' && i === segments.length - 1)).map((s) => s.replace(PARAM, ':$1')).join('/')}`;
-  const layoutProps = layoutPropsType(page, readFileSync(page, 'utf8'), `${base}/${API_TYPES_DIR}/${source.id}.d.ts`);
-  return { route: { params, pattern, ...(error ? { error: true } : {}), ...(layoutProps !== undefined ? { layoutProps } : {}) } };
+  const text = readFileSync(page, 'utf8');
+  const layoutProps = layoutPropsType(page, text, `${base}/${API_TYPES_DIR}/${source.id}.d.ts`);
+  const src = `${base}/${SRC_DIR}/`;
+  // A component's functions are in the `.fudapi` beside its `.fud`, whose `<id>` is its path in `src/`.
+  const components = linkedComponents(page, text)
+    .map((fud) => fud.slice(0, -'.fud'.length))
+    .filter((stem) => stem.startsWith(src) && existsSync(`${stem}${API_EXTENSION}`))
+    .map((stem) => stem.slice(src.length));
+  return {
+    route: {
+      params,
+      pattern,
+      ...(error ? { error: true } : {}),
+      ...(layoutProps !== undefined ? { layoutProps } : {}),
+      ...(components.length > 0 ? { components } : {}),
+    },
+  };
 }
 
 /**

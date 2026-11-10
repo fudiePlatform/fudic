@@ -66,6 +66,8 @@ export interface ApiContext {
     readonly error?: boolean;
     /** The TS type of the props of its layout, from its `<link rel="layout">`. */
     readonly layoutProps?: string;
+    /** The `<id>` of the `.fudapi` of each component it links: whose functions it can call. */
+    readonly components?: readonly string[];
   };
 }
 
