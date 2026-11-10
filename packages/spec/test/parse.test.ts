@@ -14,7 +14,7 @@ describe('parseSpec — the canonical file (criterion 1)', () => {
   });
 
   it('reads the component', () => {
-    expect(value.component?.tag?.text).toBe('fud-button');
+    expect(value.header).toMatchObject({ kind: 'header', header: 'component', name: { text: 'fud-button' } });
   });
 
   it('reads two criteria with their blocks in order', () => {
@@ -25,14 +25,14 @@ describe('parseSpec — the canonical file (criterion 1)', () => {
 
   it('reads every term with its arguments', () => {
     expect(term(first, 0, 0).name.text).toBe('route');
-    expect(term(first, 0, 0).args.map((a) => [a.kind, a.kind === 'role' ? a.role.text : a.text])).toEqual([
+    expect(term(first, 0, 0).args.map((a) => [a.kind, a.kind === 'role' ? a.steps.length : a.text])).toEqual([
       ['bare', '/playground/button'],
     ]);
     expect(term(first, 1, 0).name.text).toBe('min-height');
     expect(term(first, 1, 0).args.map((a) => a.kind === 'bare' && a.text)).toEqual(['fud-button', '44']);
     expect(term(second, 0, 0).args.map((a) => a.kind)).toEqual(['bare', 'bare', 'string']);
     const role = term(second, 1, 0).args[0];
-    expect(role?.kind === 'role' && [role.role.text, role.name?.text]).toEqual(['button', 'Buscar']);
+    expect(role?.kind === 'role' && role.steps).toMatchObject([{ kind: 'role', role: { text: 'button' }, name: { text: 'Buscar', match: 'exact' } }]);
   });
 
   it('keeps the comment', () => {
@@ -49,9 +49,9 @@ describe('parseSpec — spans (criterion 4)', () => {
     expect(value.span).toEqual({ start: 0, end: CANONICAL.length });
   });
 
-  it('gives the component its keyword, tag and line', () => {
-    const c = value.component;
-    expect(c && [at(c.keyword), at(c.tag!.span), at(c.span)]).toEqual(['component', 'fud-button', 'component fud-button']);
+  it('gives the header its keyword, name and line', () => {
+    const c = value.header;
+    expect(c && [at(c.keyword), at(c.name!.span), at(c.span)]).toEqual(['component', 'fud-button', 'component fud-button']);
   });
 
   it('ends a criterion and a block at their last term, not at a blank line', () => {
@@ -79,7 +79,8 @@ describe('parseSpec — spans (criterion 4)', () => {
     const str = set.args[2];
     expect(str?.kind === 'string' && at(str.contentSpan)).toBe('search');
     const role = term(second, 1, 0).args[0];
-    expect(role?.kind === 'role' && [at(role.span), at(role.role.span), at(role.name!.span)]).toEqual([
+    const step = role?.kind === 'role' ? role.steps[0] : undefined;
+    expect(role && step?.kind === 'role' && [at(role.span), at(step.role.span), at(step.name!.span)]).toEqual([
       'role:button/"Buscar"',
       'button',
       '"Buscar"',

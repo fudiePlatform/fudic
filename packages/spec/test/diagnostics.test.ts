@@ -37,13 +37,13 @@ describe('each parser code (criterion 7)', () => {
     expect(d.code).toBe('FUD0923');
     expect(d.span).toEqual({ start: C.length, end: C.length + 'component'.length });
     expect(d.related?.map((r) => slice(source, r.span))).toEqual(['component fud-x']);
-    expect(parseSpec(source).value.component?.tag?.text).toBe('fud-x');
+    expect(parseSpec(source).value.header?.name?.text).toBe('fud-x');
   });
 
   it('FUD0924 — the first component after a criterion still counts', () => {
     const source = `${OK}component fud-x\n`;
     expect(at(source, 'FUD0924')).toBe('component');
-    expect(parseSpec(source).value.component?.tag?.text).toBe('fud-x');
+    expect(parseSpec(source).value.header?.name?.text).toBe('fud-x');
   });
 
   it.each(['component', 'criterion'])('FUD0925 — a bare `%s`, on the keyword', (keyword) => {
@@ -77,12 +77,30 @@ describe('each parser code (criterion 7)', () => {
 
   it.each([
     ['repeated', 'then', `${C}criterion a\n  then\n    t\n  then\n    u\n`],
-    ['out of order', 'given', `${C}criterion a\n  then\n    t\n  given\n    u\n`],
+    ['repeated when', 'when', `${C}criterion a\n  when\n    t\n  when\n    u\n  then\n    v\n`],
+    ['given after then', 'given', `${C}criterion a\n  then\n    t\n  given\n    u\n  then\n    v\n`],
+    ['given after when', 'given', `${C}criterion a\n  when\n    t\n  given\n    u\n  then\n    v\n`],
+    ['second given', 'given', `${C}criterion a\n  given\n    t\n  given\n    u\n  then\n    v\n`],
   ])('FUD0930 — a %s block, on its keyword, still in the tree', (_, keyword, source) => {
     const d = only(source);
     expect(d.code).toBe('FUD0930');
-    expect(d.span).toEqual({ start: source.lastIndexOf(`  ${keyword}`) + 2, end: source.lastIndexOf(`  ${keyword}`) + 2 + keyword.length });
-    expect(parseSpec(source).value.criteria[0]?.blocks.map((b) => b.terms[0]?.name.text)).toEqual(['t', 'u']);
+    const at = source.indexOf(`  ${keyword}\n    u`) + 2;
+    expect(d.span).toEqual({ start: at, end: at + keyword.length });
+    expect(parseSpec(source).value.criteria[0]?.blocks.map((b) => b.terms[0]?.name.text).slice(0, 2)).toEqual(['t', 'u']);
+  });
+
+  it('when and then take turns as many times as the criterion needs (criterion 2)', () => {
+    const source = `${C}criterion a\n  given\n    g\n  when\n    w\n  then\n    t\n  when\n    x\n  then\n    u\n`;
+    const { value, diagnostics } = parseSpec(source);
+    expect(diagnostics).toEqual([]);
+    expect(value.criteria[0]?.blocks.map((b) => b.block)).toEqual(['given', 'when', 'then', 'when', 'then']);
+  });
+
+  it('FUD0933 — a criterion that ends in when, on its slug', () => {
+    const source = `${C}criterion a\n  when\n    w\n  then\n    t\n  when\n    x\n`;
+    const d = only(source);
+    expect([d.code, slice(source, d.span)]).toEqual(['FUD0933', 'a']);
+    expect(d.message).toContain('does not end in `then`');
   });
 
   it('FUD0931 — a block before any criterion', () => {
@@ -111,7 +129,7 @@ describe('each parser code (criterion 7)', () => {
   });
 
   it('keeps a quoted name as written', () => {
-    expect(parseSpec(`component "fud-x"\n${OK}`).value.component?.tag?.text).toBe('"fud-x"');
+    expect(parseSpec(`component "fud-x"\n${OK}`).value.header?.name?.text).toBe('"fud-x"');
   });
 
   it('an unclosed quote in a name is only FUD0920', () => {

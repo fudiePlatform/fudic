@@ -5,12 +5,12 @@
 > `@fudic/testing` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` ·
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `sdd-82-specs-de-pagina-y-de-flujo`, desde `main` con SDD-81 ya mezclada.
-> **Progreso:** 7 / 36 — `En curso`.
+> **Progreso:** 8 / 36 — `En curso`.
 
-**Dos sesiones.** Una implementa y entrega cada fase con `pnpm typecheck` y `pnpm build`. La otra
-escribe los tests de cada fase (las tareas «Los tests de…») contra los criterios de SDD §6, en su
-propio worktree desde esta rama. Si un test destapa un defecto, se corrige el código, no el test.
-Cada fase cerrada va a `origin`.
+**Una sesión.** La misma que implementa escribe los tests de cada fase (las tareas «Los tests
+de…») contra los criterios de SDD §6, y la fase cierra con `typecheck`, `test` y `coverage` en
+verde. Si un test destapa un defecto, se corrige el código, no el test. Cada fase cerrada va a
+`origin`.
 
 **El orden manda en tres puntos.**
 
@@ -76,25 +76,9 @@ Cada fase cerrada va a `origin`.
   - *Depende de:* 6.
   - *Paquetes:* `api`, `vite`.
   - *Ficheros:* `api/src/emit/declarations.ts`, `vite/src/api-modules.ts`.
-- [ ] **8. Los tests de la fase.** Criterios 1–9.
-  - **Por dónde seguir** (estado al cerrar las tareas 2–7, commit `3a0d1954`). Lo que hoy falla es
-    la forma nueva que pide la spec, no regresiones:
-    - `spec`: no compilan `test/helpers.ts`, `test/terms.ts`, `args`, `diagnostics`, `parse`,
-      `recovery` y `scaffold/spec` (`SpecFile.component` → `header`; `RoleArg.role`/`name` →
-      `steps`; `SpecContext` gana `page`, `flow`, `routes`, `functions` y `exists`). Fallan 16 tests,
-      todos por eso, salvo uno de `diagnostics.test.ts` («FUD0930 — a out of order block»):
-      `then` + `given` ahora también da `FUD0933`, porque el criterio no acaba en `then`.
-    - `cli`: no compilan `test/fixes/pairs.ts` y `test/term.test.ts` (construyen `SpecContext` a mano).
-    - `api`: 6 instantáneas de `.d.ts` (`test/emit/cases.test.ts`, `test/emit/emit.test.ts`) ganan
-      `Calls` y `Fixtures`. `cases.test.ts` pasa un `CTX` con ruta a todos los ficheros, y por eso
-      también los ganan `ext/rules` y `mixed/here`.
-    - Sin tests todavía: `spec/src/routes.ts`, `helpers.ts`, `fixtures.ts` (grupos, `paths` y
-      `FUD1510`), `args.ts` (pasos y `FUD1509`), las ramas nuevas de `validate.ts` (`FUD1500`–`FUD1507`,
-      `FUD1511`–`FUD1513`, líneas de fixture, `as`), `argText`, `componentTag`, `linkedComponents`
-      (`api`), `components` en `apiContextOf` (`typecheck`), y los pasos de `locatorOf` (`terms`).
-    - Decisiones tomadas al implementar: SDD §8.2.
+- [x] **8. Los tests de la fase.** Criterios 1–9.
   - *Depende de:* 2–7.
-  - *Paquetes:* `spec`, `terms`, `api`.
+  - *Paquetes:* `spec`, `terms`, `api`, `typecheck`, `cli`.
   - *Ficheros:* `test/**`.
 
 ## Fase 3 — el plugin y el servidor del banco

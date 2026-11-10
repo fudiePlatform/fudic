@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createTermCatalog, parseSpec, termModule, validateSpec, type SpecFs } from '@fudic/spec';
+import { createTermCatalog, parseSpec, specContextOf, termModule, validateSpec, type SpecFs } from '@fudic/spec';
 import { parseArgs } from '../src/args.js';
 import { planTerm } from '../src/plans/term.js';
 import { run } from '../src/run.js';
@@ -70,7 +70,8 @@ describe('g term (criterion 11)', () => {
     const parsed = parseSpec(spec);
     expect(parsed.diagnostics).toEqual([]);
     const component = { tag: 'app-card', path: '/project/app-card.fud', requiredProps: [] };
-    expect(validateSpec(parsed.value, { terms, component: () => component, fixtures: () => undefined })).toEqual([]);
+    const context = specContextOf('/project', { fs, component: () => component, frameworkTerms: null });
+    expect(validateSpec(parsed.value, { ...context, terms })).toEqual([]);
   });
 
   it('writes into the project named by --project', async () => {

@@ -35,7 +35,7 @@ describe('specSkeleton (criterion 1)', () => {
     const source = specSkeleton(component.tag, props);
     const parsed = parseSpec(source);
     expect(parsed.diagnostics).toEqual([]);
-    expect(parsed.value.component?.tag?.text).toBe(component.tag);
+    expect(parsed.value.header?.name?.text).toBe(component.tag);
     expect(parsed.value.criteria).toEqual([]);
     expect(validate(source, { components: [component] })).toEqual([]);
   });
