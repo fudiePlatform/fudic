@@ -15,6 +15,7 @@ export type {
   FileRegistry,
   ServerImport,
   LaterField,
+  FormFieldType,
   SnippetImport,
 } from './types.js';
 export {

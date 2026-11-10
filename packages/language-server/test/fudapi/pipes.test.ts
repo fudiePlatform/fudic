@@ -13,7 +13,7 @@ import { apiDefinition, apiHover, pipeDefinition } from '../../src/fudapi/naviga
 import { apiSemanticTokens } from '../../src/fudapi/semantic-tokens.js';
 import { APP, FILES, ROOT, SRC, apiDocument, cursor, world } from './_api.js';
 
-const PRIMITIVES = ['str', 'html', 'bool', 'date', 'uuid', 'u8', 'i8', 'u16', 'i16', 'u32', 'i32', 'f32', 'f64'];
+const PRIMITIVES = ['str', 'html', 'bool', 'date', 'uuid', 'file', 'u8', 'i8', 'u16', 'i16', 'u32', 'i32', 'f32', 'f64'];
 const TYPES = [...PRIMITIVES, 'DevOnly', 'Person', 'Role'];
 const PIPES = `${SRC}/pipes`;
 

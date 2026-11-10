@@ -44,17 +44,24 @@ const hoverText = (marked: string): string | undefined => {
 };
 
 describe('criterion 19: completion under an argument', () => {
-  it('the argument rules and none of the project, under a body argument', () => {
-    expect(labels('put save\n  name  str\n    |')).toEqual(ARG_RULES);
+  it('the argument rules that apply to its type and none of the project, under a body argument', () => {
+    expect(labels('put save\n  name  str\n    |')).toEqual(['required', 'min-length', 'max-length', 'pattern']);
   });
 
   it('the same under an argument of the route and of query', () => {
-    expect(labels('put save /:id\n  id  uuid\n    |')).toEqual(ARG_RULES);
-    expect(labels('get search\n  query q  str\n    |')).toEqual(ARG_RULES);
+    expect(labels('put save /:id\n  id  uuid\n    |')).toEqual(['required']);
+    expect(labels('get search\n  query q  str\n    |')).toEqual(['required', 'min-length', 'max-length', 'pattern']);
   });
 
-  it('all of them whatever the type: the validator says what applies, not the completion', () => {
-    expect(labels('put save\n  age  u8\n    |')).toEqual(ARG_RULES);
+  it('by the type, as under a field (SDD-81 §3.8): `max-size` and `accept` only under a file', () => {
+    expect(labels('put save\n  age  u8\n    |')).toEqual(['required', 'min', 'max']);
+    expect(labels('put save\n  doc  file\n    |')).toEqual(['required', 'max-size', 'accept']);
+  });
+
+  it('all of them while the line above names no argument yet, or the function is not one yet', () => {
+    expect(labels('put save\n  -> str\n    |')).toEqual(ARG_RULES);
+    // A verb with no name is no function to the parser: the block above is the `load`'s.
+    expect(labels('load\n  x  str\nput\n  a  str\n    |')).toEqual(ARG_RULES);
   });
 
   it('under a field, the project rule is still offered: only an argument leaves it out', () => {

@@ -252,7 +252,7 @@ content-type: image/png
   (la clave no está). Los dos extremos conocen los tipos: un `file?` sin parte es ausente; un `file[]`
   son las partes `x.0`, `x.1`… seguidas, y sin ninguna es `[]`.
 - **La firma** (`sig`, SDD-67) cambia para estas funciones: el `file` entra en la firma canónica con su
-  propia etiqueta. Un cliente viejo contra un servidor nuevo da el 409 de firma de siempre.
+  propia etiqueta. Un cliente viejo contra un servidor nuevo da el 412 de firma de siempre (SDD-67 §3.3).
 - **Sin `compress`.** Una llamada multipart no pasa por la etapa `compress` (§8.1.4).
 - **CSRF**: el de la cadena de la función, y además una llamada multipart de otro sitio se rechaza siempre (§3.13).
 
@@ -721,7 +721,7 @@ En el ejemplo, con Playwright, en dev y en preview:
 8. Una función sin `file` manda lo mismo que antes, byte a byte (vectores sin cambios).
 9. `curl -F '$args=@args.json;type=application/json' -F avatar=@yo.png` contra una función `use json`
    funciona (con `-H 'x-fudic-csrf: 1'` si su cadena lleva `csrf`).
-10. La firma de una función con `file` cambia; con la vieja, `409`.
+10. La firma de una función con `file` cambia; con la vieja, `412`.
 
 **El servidor**
 
@@ -915,3 +915,24 @@ Nada.
     segundo argumento al enviar con `form:=` (fase 5). El stub de la función ya lo aceptaba.
 20. **El hover que dice el tipo del campo es el del nodo** (`f.avatar` → `FileField`), que TypeScript
     ya da sobre la proyección (fase 5). El nombre del atributo no tiene hover propio.
+22. **`FUD1484`–`FUD1486` también en el editor y en `fudic check`** (fase 6). Hasta aquí solo los
+    decía el build (`apiDiagnostics` sobre el grafo): el editor no los pintaba y no había dónde
+    colgar su arreglo. El host del editor y del check (`FudIndex.server`) da ahora los campos de
+    los formularios de cada `.fudapi` enlazado (`ServerImport.fields`, buscando el formulario en
+    los `.fudapi` de `src/` cuando la función solo lo nombra), y `fudicDiagnostics` corre la misma
+    regla del compilador (`fileInputDiagnostics`). Un formulario de una librería no se busca: ahí
+    callan, como cuando el host no puede decir.
+23. **El arreglo de `FUD1486` cambia el `type` del `<input>` al que pide el campo** (fase 6):
+    `file` para un `file`/`file[]` (con `multiple` en el segundo), `checkbox` para `bool`, `number`
+    para un número, `date` para `date`, sin `type` para `str`. Un `<select>`, un `<textarea>` o un
+    campo de otro tipo (un `enum`) no tienen arreglo: cambiar el elemento es del autor.
+24. **Las reglas bajo un argumento se ofrecen por su tipo, como bajo un campo** (fase 6). SDD-67
+    las ofrecía todas fuera cual fuera el tipo; con `max-size` y `accept` eso era ofrecer en un
+    `str` dos reglas que solo valen en un fichero. Mientras la línea no nombra un argumento, todas.
+25. **El editor revisa el `fudic.json`** (fase 6): el criterio 34 «en el editor» no tenía quién lo
+    dijera, porque el cliente no mandaba ningún `fudic.json` al servidor. Ahora lo manda (por
+    nombre) y un servicio le pasa el mismo lector que el build: `FUD0725` y `FUD1488` con su span.
+26. **La gramática pinta un tamaño con su unidad como número** (`2mb`, `1.5gb`), además de `file`
+    y `html` entre los tipos (fase 6).
+27. **El criterio 10 y §3.3 decían `409`** para una firma vieja; es el `412` de SDD-67 §3.3, que
+    es lo que el código responde y el test fija. Corregido el texto.

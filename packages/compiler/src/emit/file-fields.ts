@@ -26,8 +26,16 @@ const PATH = /^([A-Za-z_$][\w$]*)\.([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)$/u;
 
 /** The fields of every form the linked `.fudapi` give, by node. */
 export function fieldsOf(apis: readonly ResolvedApi[]): FieldOf {
+  return formFieldsOf(apis.map(({ api }) => api?.fields ?? {}));
+}
+
+/**
+ * The fields of the forms in `given`, by node: each a record of forms by name, then of fields by
+ * path, as `LinkedApi.fields` holds them. What the editor hands in, which has no graph.
+ */
+export function formFieldsOf(given: readonly Readonly<Record<string, Readonly<Record<string, LinkedField>>>>[]): FieldOf {
   const forms = new Map<string, Readonly<Record<string, LinkedField>>>();
-  for (const { api } of apis) for (const [name, fields] of Object.entries(api?.fields ?? {})) forms.set(name, fields);
+  for (const record of given) for (const [name, fields] of Object.entries(record)) forms.set(name, fields);
   return (node) => {
     const match = PATH.exec(node.trim());
     return match === null ? undefined : forms.get(match[1]!)?.[match[2]!];

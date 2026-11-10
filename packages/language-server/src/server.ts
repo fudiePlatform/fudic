@@ -40,6 +40,7 @@ import { ImplementationIndex } from './fudapi/implementations.js';
 import { definitionsWithoutPreview } from './services/no-preview.js';
 import { createFudapiLanguagePlugin } from './fudapi/language-plugin.js';
 import { createFudapiService } from './fudapi/service.js';
+import { createConfigFileService } from './services/config-file.js';
 import { mountApiTypes } from './fudapi/types-mount.js';
 import { createFudspecLanguagePlugin } from './fudspec/language-plugin.js';
 import { SpecHost } from './fudspec/host.js';
@@ -262,6 +263,8 @@ export function createFudicServer(
       createFudspecService({ host: specs, stats }),
       // Contract files: likewise, only in a `.fudapi` (SDD-60).
       createFudapiService({ host: apis, stats, implementations, generated, translations }),
+      // A `fudic.json`: what the build says about it, while it is written (SDD-81).
+      createConfigFileService({ stats }),
     ];
 
     // Nothing speaks over a library's file (SDD-43 §4.4): read-only means every service,

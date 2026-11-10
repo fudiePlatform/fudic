@@ -32,7 +32,7 @@ export type {
   ResolvedApi,
   DocumentGraph,
 } from './resolve.js';
-export { apiDiagnostics } from './api-links.js';
+export { apiDiagnostics, fileInputDiagnostics } from './api-links.js';
 export {
   emitComponentModule,
   emitComponentModuleMapped,
@@ -144,3 +144,4 @@ export {
 } from './prune.js';
 // Whether a component adopts the pieces of the style guide it needs (SDD-79).
 export { guideAdoptionDiagnostics } from './guide-adoption.js';
+export { formFieldsOf, type FieldOf } from './file-fields.js';

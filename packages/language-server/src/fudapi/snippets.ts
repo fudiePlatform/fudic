@@ -73,6 +73,24 @@ export const ROOT_EXTRA: readonly CompletionItem[] = [
   ),
 ];
 
+/**
+ * A file, as an argument of a function that has a body and as a field of a form (SDD-81 §3.8):
+ * the line and the two rules of a file under it, which a file nearly always wants.
+ */
+export function fileSnippet(where: 'argument' | 'field', indent: number): CompletionItem {
+  const argument = where === 'argument';
+  return snippet(
+    `file ${where}`,
+    {
+      body: argument
+        ? '${1:file}  file\n  max-size ${2:10mb}  "${3:At most {n\\}.}"$0'
+        : '${1:avatar}  file?\n  accept "${2:image/png, image/jpeg}"  "${3:It has to be PNG or JPEG.}"\n  max-size ${4:2mb}  "${5:At most {n\\}.}"$0',
+      detail: argument ? 'An argument that is a file' : 'A field that is a file',
+    },
+    indent,
+  );
+}
+
 /** The snippets of each place a line can be, by the name of its context. */
 export const SNIPPETS: Readonly<Record<'root' | 'fn' | 'form', Readonly<Record<string, Snippet>>>> = { root: ROOT, fn: FN, form: FORM };
 

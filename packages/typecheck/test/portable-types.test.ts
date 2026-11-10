@@ -417,7 +417,9 @@ describe('portableTypeDiagnostics, alone', () => {
     expect(portableTypeDiagnostics(program, { ...document, virtuals: [] })).toEqual([]);
   });
 
-  it('asks nothing of a projection whose stretches allow no diagnostic', () => {
+  // Six TypeScript programs, each over the standard library: under the whole suite with coverage
+  // they take more than the default minute, as the corpus does.
+  it('asks nothing of a projection whose stretches allow no diagnostic', { timeout: 180_000 }, () => {
     for (const name of ['literals', 'snippets', 'props', 'operands', 'collections', 'places']) {
       const path = `/p/app-${name}.ts`;
       const document = projectParsed(path, parseSource(CASES[name]!), indexOf({}));

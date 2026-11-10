@@ -80,7 +80,7 @@ describe('snippets (SDD-75)', () => {
   });
 
   it('in a group, the snippets of a form; elsewhere, bare keywords', () => {
-    expect(snippets(items('form f\n  g  group\n    |'))).toEqual(['validate-on', 'summary']);
+    expect(snippets(items('form f\n  g  group\n    |'))).toEqual(['validate-on', 'summary', 'file field']);
     expect(snippets(items('chain\n  |'))).toEqual([]);
   });
 

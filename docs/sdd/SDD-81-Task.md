@@ -5,7 +5,7 @@
 > `@fudic/compiler` · `@fudic/config` · `@fudic/vite` · `@fudic/testing` · `@fudic/language-core` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/diagnostics` · `@fudic/mcp` · `examples/basic`
 > **Rama:** `sdd-81-ficheros`, desde `worktree-pendiente`; al cerrar, merge `--no-ff` a `worktree-pendiente`.
-> **Progreso:** 26 / 37 — `Listo` (enmendada el 2026-11-09).
+> **Progreso:** 30 / 37 — `Listo` (enmendada el 2026-11-09).
 
 **Dos sesiones.** Una implementa y entrega cada fase con `pnpm typecheck` y `pnpm build`. La otra
 escribe los tests de cada fase (las tareas «Los tests de…») contra los criterios de SDD §6, en su
@@ -127,6 +127,14 @@ componentes, donde ya se escriben `novalidate` y `aria-describedby`.
 **Para la fase 6.** `FUD1484`–`FUD1486` salen de `apiDiagnostics` (grafo), no del análisis
 semántico: el language server los verá cuando pase por ahí. `controlWants` ya ofrece `control` en un
 `<input type="file">` (es `controlTarget`). El completado de reglas bajo un argumento ofrece ya `max-size` y `accept` en cualquier tipo (`arg-rules.test.ts` lo fija así): la tarea 27 los deja solo en un campo `file`.
+
+## Relevo (2026-11-10, fase 6)
+
+**Hecha en esta rama**, tareas 27–30. Lo que cambió va en la spec, §8.2.22–27: el editor y
+`fudic check` dicen ya `FUD1484`–`FUD1486` (antes solo el build) y el editor los arregla; las
+reglas bajo un argumento se ofrecen por su tipo; el editor revisa el `fudic.json` (`FUD0725`,
+`FUD1488`); el criterio 10 decía `409` y es `412`. Para la fase 7: el `.vsix` (tarea 34) lleva el
+selector nuevo del `fudic.json` en `client-options.ts`.
 
 ---
 
@@ -310,22 +318,22 @@ semántico: el language server los verá cuando pase por ahí. `controlWants` ya
 
 ## Fase 6 — el editor
 
-- [ ] **27. El editor del `.fudapi`.**
+- [x] **27. El editor del `.fudapi`.**
   - `file` en `PRIMITIVES` de completado y de `refs`.
   - `max-size`/`accept` solo en un campo `file`, con unidades y tipos MIME dentro de las comillas.
   - Hover. Snippets `argumento de fichero` y `campo de fichero`.
   - Arreglos de `FUD1480` (a `post`) y `FUD1482` (quitar el valor).
   - *Depende de:* 9, 10.
   - *Paquete:* `language-server`.
-- [ ] **28. El editor del `.fud`.**
+- [x] **28. El editor del `.fud`.**
   - Arreglos de `FUD1484`–`FUD1486` (poner o quitar `multiple`).
   - `control` ofrecido en un `<input type="file">`.
   - *Depende de:* 24, 25.
   - *Paquete:* `language-server`.
-- [ ] **29. Gramáticas TextMate.** `file` y `html` en los primitivos del `.fudapi`.
+- [x] **29. Gramáticas TextMate.** `file` y `html` en los primitivos del `.fudapi`.
   - *Depende de:* —.
   - *Paquete:* `vscode`.
-- [ ] **30. Los tests de la fase.** Criterio 33 por el plugin del language server; criterios 29 y 34 en el editor.
+- [x] **30. Los tests de la fase.** Criterio 33 por el plugin del language server; criterios 29 y 34 en el editor.
   - *Depende de:* 27–29.
   - *Paquetes:* `language-server`, `vscode`.
 

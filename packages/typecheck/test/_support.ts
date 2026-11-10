@@ -29,6 +29,14 @@ export function memoryFs(
     resolveHref: (fromFile, href) => packages[href] ?? resolveFrom(toPosix(fromFile), href),
     hrefFailure: (_fromFile, href) => failures[href],
     realPath: (path) => toPosix(path),
+    // The names right under a folder: where the forms of the project are looked for.
+    readDirectory: (path) => [
+      ...new Set(
+        Object.keys(files)
+          .filter((file) => file.startsWith(`${path}/`))
+          .map((file) => file.slice(path.length + 1).split('/')[0]!),
+      ),
+    ],
   };
 }
 

@@ -44,12 +44,13 @@ describe('buildClientLaunch', () => {
     ]);
   });
 
-  it('selects file-scheme fudic, fudspec, fudapi and css documents only (SDD-52 criterion 26, SDD-60 §4.10, SDD-63 §3.5)', () => {
+  it('selects file-scheme fudic, fudspec, fudapi and css documents and fudic.json only (SDD-52 criterion 26, SDD-60 §4.10, SDD-63 §3.5, SDD-81 criterion 34)', () => {
     expect(buildClientLaunch(settings, '/srv.js', '/lib').documentSelector).toEqual([
       { scheme: 'file', language: 'fudic' },
       { scheme: 'file', language: 'fudspec' },
       { scheme: 'file', language: 'fudapi' },
       { scheme: 'file', language: 'css' },
+      { scheme: 'file', pattern: '**/fudic.json' },
     ]);
   });
 

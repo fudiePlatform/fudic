@@ -257,7 +257,8 @@ export interface CaretPort {
 /** What the client is asked to launch. Everything here is already resolved. */
 export interface ClientLaunch {
   readonly serverPath: string;
-  readonly documentSelector: readonly { readonly scheme: string; readonly language: string }[];
+  /** Each by its language, or by the name of the file (`fudic.json`). */
+  readonly documentSelector: readonly ({ readonly scheme: string; readonly language: string } | { readonly scheme: string; readonly pattern: string })[];
   /** Glob patterns the server wants file events for. */
   readonly fileEvents: readonly string[];
   readonly initializationOptions: {

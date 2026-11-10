@@ -16,6 +16,12 @@ import {
   entryComponent,
 } from '../../src/emit/index.js';
 import { fieldsOf } from '../../src/emit/file-fields.js';
+import { fileInputDiagnostics } from '../../src/emit/api-links.js';
+import { parseDocument } from '../../src/html/index.js';
+import { parseControl } from '../../src/control/index.js';
+import { parseCodeBlock } from '../../src/code/index.js';
+import { parseDirective } from '../../src/layout/index.js';
+import { structureDocument } from '../../src/document/index.js';
 import type { LinkedApi } from '../../src/types/io.js';
 import { memoryIo } from './_support.js';
 
@@ -161,5 +167,26 @@ describe('fieldsOf', () => {
     expect(field('alta')).toBeUndefined();
     expect(field('alta["avatar"]')).toBeUndefined();
     expect(field('other.avatar')).toBeUndefined();
+  });
+});
+
+describe('fileInputDiagnostics: the same rule with no graph (the editor and the project check)', () => {
+  const structured = (source: string) =>
+    structureDocument(source, parseDocument(source, { atConstructs: { parseControl, parseCodeBlock, parseDirective } }).value).value;
+
+  it('says over a document what apiDiagnostics says over its graph', () => {
+    const graph = graphOf('<input type="file" control=@alta.avatar multiple><input type="file" control=@alta.docs>');
+    const codes = fileInputDiagnostics(graph.entrySource, graph.entry, (tag) => graph.components.has(tag), [API.fields!]).map((d) => d.code);
+    expect(codes).toEqual(['FUD1484', 'FUD1485']);
+  });
+
+  it('the forms of several links are read together', () => {
+    const source = COMPONENT('<input type="file" control=@alta.name>');
+    const codes = fileInputDiagnostics(source, structured(source), () => false, [{}, API.fields!]).map((d) => d.code);
+    expect(codes).toEqual(['FUD1486']);
+  });
+
+  it('nothing for a layout, which has no form of its own to bind', () => {
+    expect(fileInputDiagnostics(LAYOUT, structured(LAYOUT), () => false, [API.fields!])).toEqual([]);
   });
 });

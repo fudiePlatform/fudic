@@ -16,6 +16,7 @@ import {
   checkRenderCalls,
   declaredPropsOf,
   documentRoots,
+  fileInputDiagnostics,
   propChannelDiagnostics,
   SnippetRegistry,
   type ComponentRegistry,
@@ -148,5 +149,16 @@ export function fudicDiagnostics(document: ProjectedFud, index: LinkIndex): read
     ...hrefDiagnostics(document, index),
     ...holeDiagnostics(document, index),
     ...reservedDollarDiagnostics(document),
+    ...fileInputs(document),
   ];
+}
+
+/**
+ * A file input against the field it is bound to (`FUD1484`–`FUD1486`, SDD-81 §3.7): the rule the
+ * build runs over the graph, here over the fields the linked `.fudapi` give.
+ */
+function fileInputs(document: ProjectedFud): readonly Diagnostic[] {
+  const forms = (document.registry.servers()).flatMap((s) => (s.fields === undefined ? [] : [s.fields]));
+  if (forms.length === 0) return [];
+  return fileInputDiagnostics(document.source, document.document, (tag) => document.registry.component(tag) !== undefined, forms);
 }

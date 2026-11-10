@@ -8,7 +8,7 @@ import type { CompletionItem } from 'vscode-languageserver-protocol';
 import { apiCompletions } from '../../src/fudapi/completion.js';
 import { FILES, SRC, apiDocument, cursor, world } from './_api.js';
 
-const PRIMITIVES = ['str', 'html', 'bool', 'date', 'uuid', 'u8', 'i8', 'u16', 'i16', 'u32', 'i32', 'f32', 'f64'];
+const PRIMITIVES = ['str', 'html', 'bool', 'date', 'uuid', 'file', 'u8', 'i8', 'u16', 'i16', 'u32', 'i32', 'f32', 'f64'];
 /** The primitives, then the project's types: a library's first (`@fudic/dev`, a devDependency), then the app's. */
 const TYPES = [...PRIMITIVES, 'DevOnly', 'Person', 'Role'];
 
@@ -50,11 +50,12 @@ describe('completion (criterion 28)', () => {
       expect(labels('load\n  |')).toEqual(['use', 'skip']);
       expect(labels('chain\n  |')).toEqual(['use', 'skip', 'compress']);
       expect(labels('type A\n  |')).toEqual([]);
-      expect(labels('form f\n  |')).toEqual(['validate-on', 'validity', 'catches', 'summary']);
+      // And a file field (SDD-81 §3.8), as a snippet.
+      expect(labels('form f\n  |')).toEqual(['validate-on', 'validity', 'catches', 'summary', 'file field']);
       expect(labels('rule r\n  |')).toEqual(['on', 'runs', 'async', 'fails']);
       expect(labels('middleware m\n  |')).toEqual(['client', 'server', 'adds', 'fails']);
       expect(labels('middleware m\n  adds\n    |')).toEqual([]);
-      expect(labels('form f\n  g  group\n    |')).toEqual(['validate-on', 'validity', 'summary']);
+      expect(labels('form f\n  g  group\n    |')).toEqual(['validate-on', 'validity', 'summary', 'file field']);
       expect(labels('form f\n  a  str\n  summary\n    when a\n      |')).toEqual(['require']);
     });
 

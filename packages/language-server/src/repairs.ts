@@ -17,6 +17,7 @@ import type { FudCode, SourceDiagnostic } from '@fudic/diagnostics';
 import type { OxcNode } from '@fudic/compiler';
 import { missingSections } from '@fudic/typecheck';
 import type { CachedDocument } from './document-cache.js';
+import { addMultiple, fieldInputType, removeMultiple } from './file-input-repairs.js';
 import type { WorkspaceIndex } from './workspace-index.js';
 import { loopKeyAt } from './services/loop-key.js';
 import { linkInsertionFor } from './services/tags.js';
@@ -247,6 +248,9 @@ const REPAIRS: ReadonlyMap<FudCode, Repairer> = new Map<FudCode, Repairer>([
   ['FUD1160', htmlName],
   ['FUD1440', adoptPiece],
   ['FUD1441', dropPiece],
+  ['FUD1484', ({ cached }, diagnostic) => removeMultiple(cached, diagnostic)],
+  ['FUD1485', ({ cached }, diagnostic) => addMultiple(cached, diagnostic)],
+  ['FUD1486', ({ cached }, diagnostic) => fieldInputType(cached, diagnostic)],
 ]);
 
 /** The codes that have a repair. */
