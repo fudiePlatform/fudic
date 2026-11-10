@@ -76,6 +76,11 @@ export interface FnSpec {
   readonly catches?: readonly number[];
   /** The text of each of its `fails` codes, in the language of the page its module was written for. */
   readonly fails?: Readonly<Record<string, string>>;
+  /**
+   * The server variant: the status and the detail of each of its `fails` codes, by code — what a
+   * fixture's `fails('code')` answers with in the workbench (SDD-82 §3.4).
+   */
+  readonly codes?: Readonly<Record<string, readonly [number, string?]>>;
   /** The app's `base`. Default `/`. */
   readonly base?: string;
 }

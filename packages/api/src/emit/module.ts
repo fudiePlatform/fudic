@@ -360,6 +360,10 @@ function fn(d: FnDecl, c: ModuleCtx): string {
     ...(c.side === 'browser' && d.fails.some((f) => f.detail !== undefined)
       ? [`fails: { ${d.fails.flatMap((f) => (f.detail === undefined ? [] : [`${str(f.code.text)}: ${str(textOf(c, f.detail))}`])).join(', ')} }`]
       : []),
+    // What a fixture's `fails('code')` answers with in the workbench (SDD-82 §3.4).
+    ...(c.side === 'server' && d.fails.length > 0
+      ? [`codes: { ${d.fails.map((f) => `${str(f.code.text)}: [${f.status.value}${f.detail === undefined ? '' : `, ${str(f.detail.text)}`}]`).join(', ')} }`]
+      : []),
   ];
   return `export const ${d.name.text} = ${kind}({ ${fields.join(', ')} });${failsOf(pascal(d.name.text), d.fails, c)}`;
 }

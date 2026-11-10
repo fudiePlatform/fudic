@@ -68,6 +68,9 @@ describe('criterion 4: what is generated', () => {
     const { dts, server, browser } = emitted('post save\n  catches 409\n  fails full 409 "x"\n  fails gone 410\n');
     expect(dts).toContain('export const SaveFails: { readonly full: () => HttpError; readonly gone: () => HttpError };');
     expect(server).toContain('SaveFails = fails({ full: [409, "x"], gone: [410] })');
+    // What a fixture's `fails('full')` answers with in the workbench (SDD-82 §3.4): server only.
+    expect(server).toContain('codes: { "full": [409, "x"], "gone": [410] }');
+    expect(browser).not.toContain('codes:');
     expect(browser).toContain('fails: { "full": "x" }');
     // A code with no text has nothing for the page to put: the stub leaves it out.
     expect(browser).not.toMatch(/"gone":/u);

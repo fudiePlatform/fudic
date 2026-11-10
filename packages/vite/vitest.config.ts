@@ -39,6 +39,8 @@ export default defineConfig({
         // SDD-60: the `.fudapi` of a project and the root that loads their implementations.
         'src/api-modules.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/api-root.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // SDD-82: the workbench's hooks, born at 100.
+        'src/bench-hooks.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
       },
     },
   },

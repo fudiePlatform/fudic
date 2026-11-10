@@ -25,8 +25,12 @@ import { contractIds, contractsOf, SIG_HEADER, SIG_PARAM, type ServerContract } 
 import { compose } from './middleware.js';
 import type { PagePiece } from './page.js';
 import { rulesHandler } from './rule-route.js';
+import { benchOf, benchRoot, isNetworkFailure, settleAnswer, settleData, type Bench } from './bench.js';
 import { checkRules } from './rules.js';
 import { conformAll, fromText, unmarked, type Ty } from './wire.js';
+
+// The workbench's hooks (SDD-82 §3.8): the route wrapper of dev puts the services in its root.
+export { BENCH_KEY, benchHooks, benchRoot, type BenchCall, type BenchHooks, type Held } from './bench.js';
 
 /** What the dispatcher read off the URL. */
 export interface ServeInput {
@@ -56,7 +60,57 @@ function typed(types: Readonly<Record<string, Ty>>, read: (name: string) => stri
 const stale = (): HttpError =>
   new HttpError({ status: 412, title: 'Precondition Failed', detail: 'the page is older than the server' });
 
+/** Whether `returns` is a file: what a fixture answers with `file(…)` (SDD-82 §3.4). */
+const returnsFile = (returns: Ty | undefined): boolean =>
+  returns === 'file' || (typeof returns === 'object' && 'opt' in returns && returns.opt === 'file');
+
+/**
+ * A call of a criterion of the workbench (SDD-82 §4.2): what its fixture answers, in the
+ * function's format and without its handler or its middlewares, or `undefined` when the fixture
+ * does not name it and it runs for real. A file where the function returns none, or the other
+ * way round, is the fixture's fault: a 500, logged as a mismatch.
+ */
+async function benchAnswer(
+  bench: Bench,
+  spec: ServerContract['spec'],
+  args: Readonly<Record<string, unknown>>,
+  ctx: ServerContext,
+  signal: AbortSignal,
+): Promise<{ readonly response: Response; readonly mismatch: boolean } | undefined> {
+  const held = bench.hooks.answer(bench.criterion, spec.name, args);
+  if (held === undefined) return undefined;
+  if (isNetworkFailure(held.value)) return { response: Response.error(), mismatch: false };
+  const value = await settleAnswer(bench, held.value, spec.codes, signal);
+  if (value instanceof File !== returnsFile(spec.returns)) {
+    const detail = value instanceof File ? 'the fixture answers a file to a function without -> file' : 'the fixture answers a function with -> file without a file';
+    throw Object.assign(new HttpError({ status: 500, title: 'Internal Server Error', detail }), { mismatch: true });
+  }
+  return { response: valueResponse(value, ctx, spec.wire, spec.returns), mismatch: false };
+}
+
 export async function serve(input: ServeInput, options: DispatchOptions = {}): Promise<Response> {
+  const bench = benchOf(input.request, options.dev === true);
+  if (bench === undefined) return dispatch(input, options);
+  const log: { args: Readonly<Record<string, unknown>>; faked: boolean; mismatch: boolean } = { args: {}, faked: false, mismatch: false };
+  const out = await dispatch(input, options, bench, log);
+  const { spec } = input.contract;
+  bench.hooks.called(bench.criterion, {
+    id: spec.id,
+    name: spec.name,
+    args: log.args,
+    faked: log.faked,
+    status: out.status,
+    ...(log.mismatch ? { mismatch: true } : {}),
+  });
+  return out;
+}
+
+async function dispatch(
+  input: ServeInput,
+  options: DispatchOptions,
+  bench?: Bench,
+  log?: { args: Readonly<Record<string, unknown>>; faked: boolean; mismatch: boolean },
+): Promise<Response> {
   const { request, contract } = input;
   const { spec } = contract;
   const { wire } = spec;
@@ -68,7 +122,8 @@ export async function serve(input: ServeInput, options: DispatchOptions = {}): P
   try {
     if (request.method !== spec.method) throw new HttpError({ status: 405, title: 'Method Not Allowed' });
     const handler = contract.slot.get();
-    if (handler === undefined) throw missing(contract.slot.missing(), options.dev === true);
+    // A criterion's fixture may answer a function nobody implemented yet.
+    if (handler === undefined && bench === undefined) throw missing(contract.slot.missing(), options.dev === true);
 
     const url = new URL(request.url);
     if (spool !== undefined) refuseCrossSite(request, url);
@@ -85,13 +140,27 @@ export async function serve(input: ServeInput, options: DispatchOptions = {}): P
           ? await multipartArgs(request, wire, types, { limits: { ...DEFAULT_LIMITS, ...options.uploads }, ...(spec.fileLimits !== undefined ? { fileLimits: spec.fileLimits } : {}) }, spool)
           : await bodyArgs(request, wire, types);
     const args = spec.form !== undefined ? raw : spec.args !== undefined ? conformAll(spec.args, raw, 'argument') : undefined;
-    await checkRules(spec.rules, { ...params, ...query, ...args });
-
+    const all = { ...params, ...query, ...args };
     const base = serverContext({ method: spec.method, name: spec.name, url, params: {}, args, request, settings: settingsOf(options) });
     const ctx = Object.assign(base, { params, query }) as unknown as ServerContext;
     response = ctx.response;
+    if (bench !== undefined) {
+      log!.args = all;
+      const answered = await benchAnswer(bench, spec, all, ctx, request.signal).catch((e: unknown) => {
+        log!.faked = true;
+        log!.mismatch = (e as { readonly mismatch?: boolean }).mismatch === true;
+        throw e;
+      });
+      if (answered !== undefined) {
+        log!.faked = true;
+        return released(answered.response);
+      }
+      if (handler === undefined) throw missing(contract.slot.missing(), true);
+    }
+    await checkRules(spec.rules, all);
+
     const { steps } = compose(spec.chain, 'server');
-    const value = await withRequest((options.container ?? createRoot)(), () =>
+    const value = await withRequest(benchRoot((options.container ?? createRoot)(), request, options.dev === true), () =>
       run(steps as never, ctx, async (inner: ServerContext) => {
         const done = await withForm(spec.form, inner);
         return (handler as (c: ServerContext) => unknown)(done);
@@ -183,10 +252,16 @@ export function implementation<F>(piece: PagePiece<F>): F {
  * with what is missing in `detail` only in dev.
  */
 export function runLoad(load: PagePiece<(ctx: never) => unknown>, ctx: ServerContext, dev = false): Promise<unknown> {
+  const later = load.spec.later ?? [];
+  // The workbench's `data` takes its place, `later` fields and all (SDD-82 §4.2).
+  const bench = benchOf((ctx as { readonly request?: Request }).request, dev);
+  const held = bench?.hooks.data(bench.criterion, load.spec.id);
+  if (held !== undefined) {
+    return settleData(bench!, held.value, later).then((data) => (later.length === 0 ? data : settleLater(data as Record<string, unknown>, later, dev)));
+  }
   const handler = load.slot.get();
   if (handler === undefined) return Promise.reject(missing(load.slot.missing(), dev));
   const { steps } = compose(load.spec.chain ?? [], 'server');
-  const later = load.spec.later ?? [];
   return run(steps as never, ctx, (inner: ServerContext) => (handler as (c: ServerContext) => unknown)(inner))
     .then(unmarked)
     .then((data) => (later.length === 0 ? data : settleLater(data as Record<string, unknown>, later, dev)));

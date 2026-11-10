@@ -96,3 +96,21 @@ export {
 export { type FudicCompileError, compileDiagnosticsOf, isFudicCompileError } from './report.js';
 export { fudic } from './plugin.js';
 export { fudic as default } from './plugin.js';
+// The workbench's hooks (SDD-82 §3.8): what the bench installs before it starts the app's Vite.
+export {
+  BENCH_COOKIE,
+  BENCH_KEY,
+  benchScope,
+  cookieOf,
+  createBench,
+  criterionOfRequest,
+  installBench,
+  installedBench,
+  type Bench,
+  type BenchCall,
+  type BenchHooks,
+  type CriterionNames,
+  type CriterionSetup,
+  type Held,
+  type ServiceOverride,
+} from './bench-hooks.js';

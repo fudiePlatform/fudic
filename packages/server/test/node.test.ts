@@ -57,6 +57,11 @@ describe('toRequest and sendResponse, over a real Node server', () => {
     expect(seen!.aborted()).toBe(false);
   });
 
+  it('Response.error() is no response at all: the connection is cut (SDD-82 §3.5)', async () => {
+    answer = () => Response.error();
+    await expect(fetch(`${origin}/cut`)).rejects.toThrow();
+  });
+
   it('a PUT carries its body, and several set-cookie come back as several', async () => {
     answer = () => {
       const headers = new Headers({ 'content-type': 'text/plain' });

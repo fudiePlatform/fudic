@@ -19,6 +19,7 @@ import { noFunction, problemOf, problemResponse } from '../server/problem.js';
 import { withRequest } from '../server/request.js';
 import type { ServerContext } from '../types.js';
 import type { Wire } from '../wire/wire.js';
+import { benchOf, benchRoot, isNetworkFailure, settleVerdict, type Bench } from './bench.js';
 import { SIG_HEADER } from './fn.js';
 import { compose, type Level } from './middleware.js';
 import { conform, conformAll, type Ty } from './wire.js';
@@ -66,6 +67,21 @@ const stale = (): HttpError =>
 
 /** Answers one question to `rule`. */
 export async function serveRule(request: Request, rule: RemoteRule, options: DispatchOptions = {}): Promise<Response> {
+  const bench = benchOf(request, options.dev === true);
+  if (bench === undefined) return question(request, rule, options);
+  const log = { args: {} as Readonly<Record<string, unknown>>, faked: false };
+  const out = await question(request, rule, options, bench, log);
+  bench.hooks.called(bench.criterion, { id: rule.spec.id, name: rule.spec.name, args: log.args, faked: log.faked, status: out.status });
+  return out;
+}
+
+async function question(
+  request: Request,
+  rule: RemoteRule,
+  options: DispatchOptions,
+  bench?: Bench,
+  log?: { args: Readonly<Record<string, unknown>>; faked: boolean },
+): Promise<Response> {
   const { spec } = rule;
   const wire = spec.wire as Wire;
   // The generated module writes both for every remote rule (SDD-80 §8.2.1).
@@ -73,15 +89,27 @@ export async function serveRule(request: Request, rule: RemoteRule, options: Dis
   let response: ServerContext['response'] | undefined;
   try {
     if (request.method !== 'POST') throw new HttpError({ status: 405, title: 'Method Not Allowed' });
-    if (!rule.implemented()) throw notFound(options.dev === true ? rule.missing() : undefined);
+    // A criterion's fixture may answer a rule nobody implemented yet.
+    if (!rule.implemented() && bench === undefined) throw notFound(options.dev === true ? rule.missing() : undefined);
     if (request.headers.get(SIG_HEADER) !== (spec.sig ?? null)) throw stale();
     const raw = await bodyArgs(request, wire, questionTypes(asked));
     const value = conform(asked.value, raw['value'], 'value');
     const params = conformAll(asked.params, raw['params'], 'parameter');
     const ctx = serverContext({ method: 'POST', name: spec.name, url: new URL(request.url), params: {}, args: { value, params }, request, settings: settingsOf(options) });
     response = ctx.response;
+    if (bench !== undefined) {
+      log!.args = { value, params };
+      // What the criterion's fixture answers, without the check or its middlewares (SDD-82 §4.2).
+      const held = bench.hooks.answer(bench.criterion, spec.name, log!.args);
+      if (held !== undefined) {
+        log!.faked = true;
+        if (isNetworkFailure(held.value)) return Response.error();
+        return verdictResponse(await settleVerdict(bench, held.value, request.signal), ctx, wire);
+      }
+      if (!rule.implemented()) throw notFound(rule.missing());
+    }
     ruleChains();
-    const code = await withRequest((options.container ?? createRoot)(), () => rule.ask(value, params, ctx));
+    const code = await withRequest(benchRoot((options.container ?? createRoot)(), request, options.dev === true), () => rule.ask(value, params, ctx));
     return verdictResponse(code, ctx, wire);
   } catch (e) {
     if (!(e instanceof HttpError)) options.onError?.(e);

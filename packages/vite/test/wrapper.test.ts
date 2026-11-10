@@ -20,6 +20,20 @@ const api = (over: { load?: boolean; paths?: boolean; layout?: boolean } = {}) =
   ...over,
 });
 
+describe('emitRenderChunk — the workbench’s root (SDD-82 §4.2)', () => {
+  it('dev hands every request root through benchRoot, render and data alike', () => {
+    const code = emitRenderChunk({ pageModule: './a.fud', withLoad: true, bench: true, api: api({ load: true }) });
+    expect(code).toContain('import { benchRoot as $benchRoot } from "@fudic/ssr";');
+    expect(code.match(/const \$root = \$benchRoot\(iocRoot\(\), ctx\.request\);/gu)).toHaveLength(2);
+  });
+
+  it('a page that opens no root, or a build, writes none', () => {
+    expect(emitRenderChunk({ pageModule: './a.fud', withLoad: true, bench: true })).not.toContain('benchRoot');
+    expect(emitRenderChunk({ pageModule: './a.fud', withLoad: true, hasDi: true })).not.toContain('benchRoot');
+    expect(emitRenderChunk({ pageModule: './a.fud', withLoad: true, bench: true, hasDi: true })).toContain('$benchRoot(iocRoot(), ctx.request)');
+  });
+});
+
 describe('emitRenderChunk — the edge variant', () => {
   const code = emitRenderChunk({
     pageModule: './customer/[id].fud',

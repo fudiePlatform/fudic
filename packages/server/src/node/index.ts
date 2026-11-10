@@ -115,6 +115,11 @@ function writable(res: ServerResponse): Promise<void> {
  * released). A body that fails half-way cuts the connection: its status is already out.
  */
 export async function sendResponse(res: ServerResponse, response: Response): Promise<void> {
+  // `Response.error()`: no response at all, as a network failure looks to the client (SDD-82 §3.5).
+  if (response.type === 'error') {
+    res.destroy();
+    return;
+  }
   res.statusCode = response.status;
   writeHeaders(res, response.headers);
   if (response.body === null) {

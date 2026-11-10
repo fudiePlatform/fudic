@@ -24,6 +24,7 @@ import { discoverRoutes, type RouteBuild } from './discover.js';
 import { buildManifest } from './manifest.js';
 import { routeHints } from './hints.js';
 import { emitRenderChunk, routeApi } from './wrapper.js';
+import { benchScope, criterionOfRequest, installedBench } from './bench-hooks.js';
 import { emitBootBootstrap, emitSwBootstrap } from './bootstrap.js';
 import {
   transformFudClient,
@@ -871,6 +872,9 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
       // No `sw.json`, no Service Worker: everything is server/SSG (SDD-20 §4.7).
       const configIo = nodeConfigIo();
       swConfig = options.sw ? readSwConfig(root, configIo).config : null;
+      // The workbench's app (SDD-82 §3.8): its pages and flows run with the Service Worker, as
+      // `"dev": "preview"` serves it. Dev only, and only with the bench installed in the process.
+      if (swConfig !== null && isDev && installedBench() !== undefined) swConfig = { ...swConfig, dev: 'preview' };
       edgeDir = resolvePath(root, options.edgeDir);
       // Who this project is (SDD-41). Read here, next to `sw.json`, and reported in
       // `buildStart`, which is the first hook with a context to report through.
@@ -1054,6 +1058,12 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           const head = await server.transformIndexHtml(url, `${html}</html>`);
           return head.slice(0, head.lastIndexOf('</html>'));
         },
+      });
+      // A request of a criterion of the workbench runs in its scope (SDD-82 §3.8): the server's
+      // `Date` reads the criterion's clock. Without the bench installed, nothing changes.
+      server.middlewares.use((req, _res, next) => {
+        // A request without a criterion — or one a test hands in bare — is not the bench's.
+        benchScope(criterionOfRequest((req.headers as IncomingMessage['headers'] | undefined)?.cookie), next);
       });
       // Functions, remote rules and the CSRF token, with any method, before anything else gets
       // a turn.
@@ -1594,7 +1604,8 @@ export function fudic(userOptions: FudicOptions = {}): Plugin {
           // output, and the client never gets `load` (BUG-09 §4.1) — the edge pass builds
           // the variant that does, outside `outDir`.
           withLoad: isDev,
-          // Dev has no build and no id: the two entries are served at their stable URLs.
+          // The workbench's services in the request's root (SDD-82 §4.2): only dev serves it.
+          bench: isDev,
           // Dev has no build and no id: the two entries are served at their stable URLs,
           // there is nothing to preload — the dev server hands the runtime out of the module
           // graph — and nothing to embed, so a layout that asks for `?inline` keeps the file
