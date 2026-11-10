@@ -77,6 +77,22 @@ Cada fase cerrada va a `origin`.
   - *Paquetes:* `api`, `vite`.
   - *Ficheros:* `api/src/emit/declarations.ts`, `vite/src/api-modules.ts`.
 - [ ] **8. Los tests de la fase.** Criterios 1–9.
+  - **Por dónde seguir** (estado al cerrar las tareas 2–7, commit `3a0d1954`). Lo que hoy falla es
+    la forma nueva que pide la spec, no regresiones:
+    - `spec`: no compilan `test/helpers.ts`, `test/terms.ts`, `args`, `diagnostics`, `parse`,
+      `recovery` y `scaffold/spec` (`SpecFile.component` → `header`; `RoleArg.role`/`name` →
+      `steps`; `SpecContext` gana `page`, `flow`, `routes`, `functions` y `exists`). Fallan 16 tests,
+      todos por eso, salvo uno de `diagnostics.test.ts` («FUD0930 — a out of order block»):
+      `then` + `given` ahora también da `FUD0933`, porque el criterio no acaba en `then`.
+    - `cli`: no compilan `test/fixes/pairs.ts` y `test/term.test.ts` (construyen `SpecContext` a mano).
+    - `api`: 6 instantáneas de `.d.ts` (`test/emit/cases.test.ts`, `test/emit/emit.test.ts`) ganan
+      `Calls` y `Fixtures`. `cases.test.ts` pasa un `CTX` con ruta a todos los ficheros, y por eso
+      también los ganan `ext/rules` y `mixed/here`.
+    - Sin tests todavía: `spec/src/routes.ts`, `helpers.ts`, `fixtures.ts` (grupos, `paths` y
+      `FUD1510`), `args.ts` (pasos y `FUD1509`), las ramas nuevas de `validate.ts` (`FUD1500`–`FUD1507`,
+      `FUD1511`–`FUD1513`, líneas de fixture, `as`), `argText`, `componentTag`, `linkedComponents`
+      (`api`), `components` en `apiContextOf` (`typecheck`), y los pasos de `locatorOf` (`terms`).
+    - Decisiones tomadas al implementar: SDD §8.2.
   - *Depende de:* 2–7.
   - *Paquetes:* `spec`, `terms`, `api`.
   - *Ficheros:* `test/**`.
