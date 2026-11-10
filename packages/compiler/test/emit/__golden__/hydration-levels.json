@@ -1,4 +1,9 @@
 {
+  "examples/basic/src/components/app-adjuntos.fud": {
+    "kind": "component",
+    "tag": "app-adjuntos",
+    "hydrates": true
+  },
   "examples/basic/src/components/app-badge.fud": {
     "kind": "component",
     "tag": "app-badge",
@@ -976,6 +981,11 @@
     "tag": "x-hello",
     "hydrates": true
   },
+  "packages/testing/test/app/src/components/x-pick.fud": {
+    "kind": "component",
+    "tag": "x-pick",
+    "hydrates": true
+  },
   "packages/testing/test/app/src/components/x-save.fud": {
     "kind": "component",
     "tag": "x-save",
@@ -1025,6 +1035,11 @@
     "kind": "component",
     "tag": "x-tpl-target",
     "hydrates": false
+  },
+  "packages/testing/test/app/src/components/x-upload.fud": {
+    "kind": "component",
+    "tag": "x-upload",
+    "hydrates": true
   },
   "packages/testing/test/app/src/components/x-visits.fud": {
     "kind": "component",

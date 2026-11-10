@@ -47,20 +47,41 @@ export function toRequest(req: IncomingMessage, res: ServerResponse): Request {
   } as RequestInit);
 }
 
-/** The body of `req`, pulled from it only as it is read. Cancelled: the rest is left unread. */
+/**
+ * The body of `req`, pulled from it only as it is read. Cancelled: the rest is left unread.
+ *
+ * It reads through `data` and `pause`, never an async iterator: an iterator holds the stream for
+ * good, and the rest of a body could no longer be thrown away once the response is out.
+ */
 function lazyBody(req: IncomingMessage): ReadableStream<Uint8Array> {
-  let chunks: AsyncIterator<Buffer> | undefined;
-  return new ReadableStream<Uint8Array>({
-    async pull(controller) {
-      chunks ??= req[Symbol.asyncIterator]() as AsyncIterator<Buffer>;
-      const next = await chunks.next();
-      if (next.done === true) controller.close();
-      else controller.enqueue(new Uint8Array(next.value.buffer, next.value.byteOffset, next.value.byteLength));
+  let detach: (() => void) | undefined;
+  return new ReadableStream<Uint8Array>(
+    {
+      pull(controller) {
+        detach ??= listen(req, controller);
+        req.resume();
+      },
+      cancel() {
+        detach?.();
+        req.pause();
+      },
     },
-    cancel() {
-      req.pause();
-    },
-  });
+    { highWaterMark: 0 },
+  );
+}
+
+/** Feeds `controller` from `req`, one chunk per pull. Returns what stops it. */
+function listen(req: IncomingMessage, controller: ReadableStreamDefaultController<Uint8Array>): () => void {
+  const data = (chunk: Buffer): void => {
+    req.pause();
+    controller.enqueue(new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength));
+  };
+  const end = (): void => controller.close();
+  const error = (cause: Error): void => controller.error(cause);
+  req.on('data', data).once('end', end).once('error', error);
+  return () => {
+    req.off('data', data).off('end', end).off('error', error);
+  };
 }
 
 /**
@@ -187,7 +208,8 @@ export const LINGER_MS = 2000;
  * the client still unread is reset, and a reset throws away the response the client has not read
  * yet — it would see a broken connection instead of its `413`. So the connection lingers: the
  * client reads the answer and stops sending, and LINGER_MS after the response it goes, whatever
- * the client did. A body that the client does finish in time leaves it open, as usual.
+ * the client did. A body that the client does finish in time leaves it open, as usual: once the
+ * response is out, what is left of the body is read and thrown away, so the request can end.
  */
 function lingerUnread(req: IncomingMessage, res: ServerResponse): void {
   res.once('finish', () => {
@@ -195,6 +217,8 @@ function lingerUnread(req: IncomingMessage, res: ServerResponse): void {
     const timer = setTimeout(() => req.socket.destroy(), LINGER_MS);
     timer.unref();
     req.once('end', () => clearTimeout(timer));
+    req.removeAllListeners('data');
+    req.resume();
   });
 }
 
