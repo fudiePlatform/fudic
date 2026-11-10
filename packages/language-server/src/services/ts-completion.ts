@@ -78,7 +78,7 @@ import {
 } from './forms.js';
 import { typeScriptService } from './ts-service.js';
 import type { ApiFiles } from './href.js';
-import { contractFunctionsAt } from './contract-functions.js';
+import { contractFunctionsAt, linkedFunctions } from './contract-functions.js';
 import { styleClassNames } from './classes.js';
 import { scopeAt, snippetsAt } from './snippets.js';
 import { awaitedFieldAt, laterFields } from './await.js';
@@ -166,6 +166,11 @@ function inTemplateScope(item: CompletionItem, scope: TemplateScope, portable: b
     return true;
   }
   return scope.has(item.label);
+}
+
+/** What the template sees at `offset`, the functions of its `.fudapi` included. */
+function scopeWithFunctions(cached: CachedDocument, offset: number, apis: ApiFiles | undefined): TemplateScope {
+  return templateScope(cached, offset, linkedFunctions(cached, apis));
 }
 
 /** What opens an expression: the value of a prop and of an event is one (decision 1). */
@@ -388,6 +393,7 @@ function allowedItems(
         offset,
         { service: typeScriptService(context), file: source.cached.path, projected: document.offsetAt(position) },
         reply,
+        linkedFunctions(source.cached, apis),
       )
     : reply;
   // What the view's list took out: the template scope below must not put it back.
@@ -512,7 +518,7 @@ function allowedItems(
     // expansion of a tag stops halfway through (BUG-23 task 25).
     if (valueBegun(bare.text)) return { items: [], at: offset };
 
-    const scope = templateScope(source.cached, offset);
+    const scope = scopeWithFunctions(source.cached, offset, apis);
     return {
       items: openingItems(scope, bare.event, plainAnchor(document, position, bare)),
       at: offset,
@@ -667,7 +673,7 @@ function allowedItems(
   // what keeps `@()` and the callable-only narrowing on the positions they belong to.
   const value = expressionValueContextAt(source.cached.source, offset, region);
   if (value !== undefined) {
-    const scope = templateScope(source.cached, offset);
+    const scope = scopeWithFunctions(source.cached, offset, apis);
     // An EVENT takes the same list, minus everything that cannot be called: what goes after
     // `@click=` has to be a listener, so a `const` holding a number is not a candidate however
     // legitimately it is in scope. Any other binding keeps the whole scope — a value is a value.
@@ -715,7 +721,7 @@ function allowedItems(
   }
 
   if (directive !== undefined && directiveScope === 'markup') {
-    const scope = templateScope(source.cached, offset);
+    const scope = scopeWithFunctions(source.cached, offset, apis);
     // A LAYOUT keeps its props — in the head, where `templateScope` offers them — and the
     // three `@Render*` snippets: no `data`, no local TypeScript happens to know, and no `@()`.
     // See `interpolates`.
@@ -1206,7 +1212,7 @@ function openingItems(
       label: `${EXPRESSION_PREFIX}${name}`,
       filterText: name,
       kind:
-        scope.get(name) === 'function' ? CompletionItemKind.Function : CompletionItemKind.Variable,
+        scope.get(name) !== 'value' ? CompletionItemKind.Function : CompletionItemKind.Variable,
       detail: 'in scope',
       sortText: `1_${name}`,
       textEdit: { range, newText: `@${name}` },
@@ -1308,7 +1314,7 @@ function missingNames(
     .filter((name) => !offered.has(name) && !(portable && scope.get(name) === 'function'))
     .map((name) => ({
       label: name,
-      kind: scope.get(name) === 'function' ? CompletionItemKind.Function : CompletionItemKind.Variable,
+      kind: scope.get(name) !== 'value' ? CompletionItemKind.Function : CompletionItemKind.Variable,
       detail: 'in scope',
       // Between the constructs a `@` may open (`0_`) and the way out of them (`zz_`).
       sortText: `1_${name}`,

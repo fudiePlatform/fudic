@@ -106,7 +106,7 @@ import { interpolates, scopeNames, templateScope } from './template-scope.js';
 import { styleClassNames } from './classes.js';
 import { delegateEvents, delegateNames, handlerHover } from './delegate.js';
 import { sectionCompletions } from './sections.js';
-import { contractFunctionsAt } from './contract-functions.js';
+import { contractFunctionsAt, linkedFunctions } from './contract-functions.js';
 import { HOLE_TRIGGER_CHARACTERS, holeArgumentContextAt, slotsAround } from './hole-args.js';
 import { parameterNames, renderArgContextAt, renderContextAt, renderOffers, signatureOf } from './render.js';
 import { scopeAt, snippetsAt } from './snippets.js';
@@ -481,7 +481,7 @@ export function createFudicTagService(deps: FudicServiceContext): LanguageServic
               // `form:=|`: the contract's functions, which the root service lists (BUG-59).
               if (deps.apis !== undefined && contractFunctionsAt(cached, offset, deps.apis) !== undefined) return undefined;
 
-              const items = scopeItems(cached, document, binding, false, false);
+              const items = scopeItems(cached, linkedFunctions(cached, deps.apis), document, binding, false, false);
               // Incomplete: the next character decides between these names and silence.
               return items.length === 0 ? undefined : list(items, true);
             },
@@ -900,7 +900,7 @@ function completions(
   // view can see — or the name of a parameter the call has not given yet (SDD-48).
   if (renderArg !== undefined) {
     const range = rangeOf(document, renderArg.span);
-    const items: CompletionItem[] = [...templateScope(cached, offset).keys()].map((name) => ({
+    const items: CompletionItem[] = [...templateScope(cached, offset, linkedFunctions(cached, apis)).keys()].map((name) => ({
       label: `@${name}`,
       kind: CompletionItemKind.Variable,
       detail: 'value of this view',
@@ -1140,7 +1140,7 @@ function completions(
     const callableOnly = handlerContextAt(cached.source, offset, region) !== undefined;
     // Incomplete: the next character decides between these names and silence, and a complete
     // list is one VS Code never asks about again. See `list`.
-    return list(scopeItems(cached, document, value, callableOnly), true);
+    return list(scopeItems(cached, linkedFunctions(cached, apis), document, value, callableOnly), true);
   }
   if (ownedByProjection(cached.source, offset, region)) return undefined;
 
@@ -1171,7 +1171,7 @@ function completions(
       ...(alone || !inMarkup
         ? snippetItems(cached, document, directive, (label) => label.startsWith('@'))
         : []),
-      ...(alone && inMarkup ? scopeItems(cached, document, directive, false) : []),
+      ...(alone && inMarkup ? scopeItems(cached, linkedFunctions(cached, apis), document, directive, false) : []),
     ];
     if (items.length > 0) return list(items);
   }
@@ -1253,7 +1253,7 @@ function completions(
           // Unconditionally, and not behind `alone` like the branches above: literal text is
           // projected NOWHERE — only an interpolation and a dangling `@` are — so TypeScript is
           // never asked at this offset and there is nobody to defer to.
-          ...scopeItems(cached, document, text, false, false),
+          ...scopeItems(cached, linkedFunctions(cached, apis), document, text, false, false),
         ]),
   ];
   if (ours.length === 0) return emmet;
@@ -1577,6 +1577,8 @@ function delegateBindingItems(
  */
 function scopeItems(
   cached: CachedDocument,
+  /** The functions of the `.fudapi` the file links: the template sees them too. */
+  functions: Iterable<string>,
   document: TextDocument,
   context: PartialName,
   callableOnly: boolean,
@@ -1591,7 +1593,7 @@ function scopeItems(
   atTyped = true,
 ): readonly CompletionItem[] {
   // At the CONTEXT's offset, so the bindings of the loops around it are in the list too.
-  const scope = templateScope(cached, context.span.end);
+  const scope = templateScope(cached, context.span.end, functions);
   // What is REPLACED is the name alone, never the `@`. See the note above: with the `@` inside
   // the range VS Code filters the labels against `@t` and drops every one of them.
   const typed = atTyped ? context.text.length - 1 : context.text.length;
@@ -1608,7 +1610,7 @@ function scopeItems(
       // above — it is the same trap, and this is the other half of it.
       filterText: name,
       kind:
-        scope.get(name) === 'function' ? CompletionItemKind.Function : CompletionItemKind.Variable,
+        scope.get(name) !== 'value' ? CompletionItemKind.Function : CompletionItemKind.Variable,
       detail: 'in scope',
       sortText: `1_${name}`,
       textEdit: { range, newText: `${open}${name}` },

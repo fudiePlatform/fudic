@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { DocumentCache } from '../src/document-cache.js';
-import { contractFunctionsAt, type ContractFunctions } from '../src/services/contract-functions.js';
+import { contractFunctionsAt, linkedFunctions, type ContractFunctions } from '../src/services/contract-functions.js';
 import { WorkspaceIndex } from '../src/workspace-index.js';
 import { memoryFs } from './_support.js';
 
@@ -54,5 +54,18 @@ describe('contractFunctionsAt', () => {
     // No href, an empty one, a contract that is not there, and one with only a `load`.
     const links = '<link rel="server">\n<link rel="server" href>\n<link rel="server" href="./none.fudapi">\n<link rel="server" href="./data.fudapi">';
     expect(offered(links, 'task(|')).toBeUndefined();
+  });
+});
+
+describe('linkedFunctions', () => {
+  const source = `${BOTH}\n@code {\n  const t = 0;\n}\n<app-card><template shadowrootmode="open"></template></app-card>\n`;
+  const doc = () => new DocumentCache(new WorkspaceIndex(memoryFs({ [PATH]: source }))).get(PATH, 1, source);
+
+  it('the functions of every linked contract, which the view sees too', () => {
+    expect([...linkedFunctions(doc(), apis)]).toEqual(['save', 'search']);
+  });
+
+  it('none without the contract files to read', () => {
+    expect(linkedFunctions(doc(), undefined).size).toBe(0);
   });
 });

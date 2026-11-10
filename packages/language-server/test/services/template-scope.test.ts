@@ -39,6 +39,13 @@ describe('templateScope', () => {
     expect([...scope.keys()]).toEqual(['tone', 'size']);
   });
 
+  it('sees the functions of the linked `.fudapi` as functions, and the `@code` wins a name both declare', () => {
+    // `@avatar.url(…)` and `@click=@login` are written in the view: the projection imports them.
+    const scope = templateScope(cached(page('  const avatar = 1;')), undefined, ['avatar', 'exportar']);
+
+    expect([...scope]).toEqual([['avatar', 'value'], ['exportar', 'server'], ['data', 'value']]);
+  });
+
   it('reads the reactives and the handlers of the `@code`', () => {
     const scope = codeScope(
       [

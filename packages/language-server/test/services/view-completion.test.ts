@@ -107,13 +107,18 @@ interface Options {
   readonly answer?: readonly CompletionItem[];
   /** More declarations for the `@code`. */
   readonly code?: string;
+  /** A `.fudapi` the page links, by its text. */
+  readonly contract?: string;
 }
+
+const SERVER_LINK = '<link rel="server" href="./index.fudapi">\n@code {';
 
 /** The labels the decorator lets through at the `|` of `markup`. */
 async function labelsAt(markup: string, options: Options = {}): Promise<readonly string[]> {
   // The LAST `|`: the `@code` writes a union of its own before the caret.
-  const source = page(markup.replace('|', ''), options.code?.replace('|', ''));
-  const at = page(markup, options.code).lastIndexOf('|');
+  const linked = (text: string): string => (options.contract === undefined ? text : text.replace('@code {', SERVER_LINK));
+  const source = linked(page(markup.replace('|', ''), options.code?.replace('|', '')));
+  const at = linked(page(markup, options.code)).lastIndexOf('|');
   const index = new WorkspaceIndex(
     memoryFs({
       '/p/layouts/_layout.fud': LAYOUT,
@@ -134,7 +139,9 @@ async function labelsAt(markup: string, options: Options = {}): Promise<readonly
     capabilities: { completionProvider: {} },
     create: () => ({ provideCompletionItems: () => ({ isIncomplete: false, items: [...answer] }) }),
   };
-  const [wrapped] = filterTypeScriptCompletions([plugin]);
+  const contract = options.contract;
+  const apis = contract === undefined ? undefined : { appFiles: () => [], read: (path: string) => (path === '/p/pages/index.fudapi' ? contract : undefined) };
+  const [wrapped] = filterTypeScriptCompletions([plugin], apis);
   const provided = options.typescript === false ? {} : { 'typescript/languageService': service };
   const instance = wrapped!.create(fakeServiceContext({ [FUD_URI.toString()]: cached }, () => [FUD_URI, CLIENT_CODE_ID], provided));
 
@@ -199,7 +206,7 @@ describe('on a name in the view', () => {
     const labels = await labelsAt('@(|)');
 
     expect(labels).toEqual(expect.arrayContaining(['xs', 's', 'count', 'row', 'undefined', 'true']));
-    expect(labels).not.toContain('onClick');
+    expect(labels).not.toContain('@onClick');
     expect(labels).not.toContain('helper');
     expect(labels).not.toContain('JSON');
     expect(labels).not.toContain('typeof');
@@ -290,5 +297,33 @@ describe('inPortableView', () => {
 
   it('is never the view in CSS', () => {
     expect(inPortableView('a { }', 2, { kind: 'css', span: span(0, 5) })).toBe(false);
+  });
+});
+
+describe('the functions of the linked `.fudapi` in the view (SDD-81 §3.4)', () => {
+  const contract = 'get avatar\n  id  i32\n  -> file?\n\nget exportar\n  -> file\n';
+  // Imported, so TypeScript files them outside the local bands, and as functions.
+  const server = [
+    { label: 'avatar', kind: CompletionItemKind.Function, sortText: '16' },
+    { label: 'exportar', kind: CompletionItemKind.Function, sortText: '16' },
+  ];
+
+  it('offers them after `=@` and in a `@`: the view writes their `url(…)`', async () => {
+    const answer = [...server, { label: 'onClick', kind: CompletionItemKind.Function, sortText: '11' }];
+    expect(await labelsAt('<a href=@|></a>', { contract, answer })).toEqual(expect.arrayContaining(['@avatar', '@exportar']));
+    expect(await labelsAt('<a href=@|></a>', { contract, answer })).not.toContain('@onClick');
+    expect(await labelsAt('@|', { contract, answer })).toEqual(expect.arrayContaining(['@avatar', '@exportar']));
+  });
+
+  it('offers `url` after one of them, and nothing else it holds', async () => {
+    const answer = [
+      { label: 'url', kind: CompletionItemKind.Property },
+      { label: 'call', kind: CompletionItemKind.Method },
+    ];
+    expect(await labelsAt('<img src=@avatar.|>', { contract, answer, typescript: false })).toEqual(['url']);
+  });
+
+  it('a name that is not one of them is narrowed as before', async () => {
+    expect(await labelsAt('<img src=@xs.|>', { contract, answer: [{ label: 'find', kind: CompletionItemKind.Method }], typescript: false })).toEqual([]);
   });
 });

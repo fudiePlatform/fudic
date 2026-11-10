@@ -216,3 +216,40 @@ describe('silenceOwnedPositions', () => {
     expect(service.provideCompletionItems).toBeUndefined();
   });
 });
+
+describe('silenceOwnedPositions — links', () => {
+  /** The wrapped service over one whose links are every `href`/`src` value, as HTML's are. */
+  function linksOf(markup: string, uri = FUD_URI.toString(), answer?: null) {
+    const source = page(markup);
+    const index = new WorkspaceIndex(memoryFs({ '/p/layouts/_layout.fud': LAYOUT, [PATH]: source }));
+    index.scan('/p');
+    const cached = new DocumentCache(index).get(PATH, 1, source);
+    const document = TextDocument.create(uri, 'fud', 1, source);
+    const values = [...source.matchAll(/(?:href|src)="?([^"\s>]+)/gu)].map((m) => {
+      const start = m.index + m[0].length - m[1]!.length;
+      return { range: { start: document.positionAt(start), end: document.positionAt(start + m[1]!.length) }, target: m[1]! };
+    });
+    const plugin: LanguageServicePlugin = {
+      name: 'html-double',
+      capabilities: { completionProvider: {}, documentLinkProvider: {} },
+      create: () => ({ provideCompletionItems: () => HTML_LIST, provideDocumentLinks: () => (answer === null ? null : values) }),
+    };
+    const service = silenceOwnedPositions(plugin).create(fakeServiceContext({ [FUD_URI.toString()]: cached }));
+    return service.provideDocumentLinks?.(document, TOKEN);
+  }
+
+  it('drops the link of a value that is code: `@avatar.url(…)` is not a file to open', async () => {
+    const links = await linksOf('<img src=@avatar.url({ id: 1 })><a href="/a/@data.slug">x</a><a href="/plain">y</a>');
+
+    expect(links?.map((link) => link.target)).toEqual(['../layouts/_layout.fud', '../components/app-badge.fud', '/plain']);
+  });
+
+  it('lets a document that is not a `.fud`, and an empty answer, through untouched', async () => {
+    expect((await linksOf('<img src=@x>', 'file:///p/index.html'))?.map((link) => link.target)).toEqual([
+      '../layouts/_layout.fud',
+      '../components/app-badge.fud',
+      '@x',
+    ]);
+    expect(await linksOf('<img src=@x>', FUD_URI.toString(), null)).toBeNull();
+  });
+});

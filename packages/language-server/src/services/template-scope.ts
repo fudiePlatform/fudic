@@ -32,8 +32,11 @@ import type { CachedDocument } from '../document-cache.js';
  * fits, so a `const` holding a number is not a candidate however legitimately it is in scope.
  * Everything that is not visibly a function is a value — a name whose type only TypeScript
  * knows is not guessed at here.
+ *
+ * `server` is a function of the linked `.fudapi`: callable like any other, and — unlike one of
+ * the `@code` — readable in the portable view, which writes its `.url(…)` (SDD-81 §3.4).
  */
-export type ScopeKind = 'function' | 'value';
+export type ScopeKind = 'function' | 'server' | 'value';
 
 /** The names the template sees, each with its kind. */
 export type TemplateScope = ReadonlyMap<string, ScopeKind>;
@@ -50,9 +53,16 @@ export type TemplateScope = ReadonlyMap<string, ScopeKind>;
  * Since SDD-48 it reads them in its `<body>` too — that is where it hands them to the
  * component that wraps the route — and a loop there declares names like anywhere else.
  */
-export function templateScope(cached: CachedDocument, offset?: number): TemplateScope {
+export function templateScope(
+  cached: CachedDocument,
+  offset?: number,
+  /** The functions of the `.fudapi` files it links (`linkedFunctions`), which it also sees. */
+  functions: Iterable<string> = [],
+): TemplateScope {
   const layout = cached.document.type === 'layout-document';
   const names = declaredNames(cached, cached.js.code);
+  // A name the `@code` declares again is the `@code`'s, whatever it holds.
+  for (const name of functions) if (!names.has(name)) names.set(name, 'server');
   if (!layout && cached.document.type !== 'component-document') names.set('data', 'value');
   if (offset !== undefined) addLoopBindings(cached, offset, names);
   return names;
@@ -138,7 +148,7 @@ export function interpolates(cached: CachedDocument): boolean {
 export function scopeNames(scope: TemplateScope, callableOnly: boolean): readonly string[] {
   const names: string[] = [];
   for (const [name, kind] of scope) {
-    if (callableOnly && kind !== 'function') continue;
+    if (callableOnly && kind === 'value') continue;
     names.push(name);
   }
   return names;

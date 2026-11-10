@@ -34,6 +34,9 @@ const TEXT_MEMBERS: ReadonlySet<string> = new Set(['length']);
  */
 const KEPT_WORDS: ReadonlySet<string> = new Set(['undefined', 'true', 'false', 'null']);
 
+/** A bare name and the `.` after it, right before the caret: `@avatar.` or `@avatar.u`. */
+const SERVER_MEMBER = /(?<![\w$.])([\w$]+)\.[\w$]*$/u;
+
 /** The `sortText` bands of a name declared where the caret is (see `ts-completion.ts`). */
 const LOCAL_BANDS: ReadonlySet<string> = new Set(['10', '11']);
 
@@ -110,12 +113,21 @@ export function portableItems(
   offset: number,
   program: ViewProgram,
   items: readonly CompletionItem[],
+  /**
+   * The functions of the linked `.fudapi`. Callable, and still the view's: what it writes of one
+   * is its `url(…)`, the link an `<img src>` or an `<a href>` points at (SDD-81 §3.4).
+   */
+  functions: ReadonlySet<string> = new Set(),
 ): CompletionItem[] {
   const ts = program.service?.getProgram();
   const file = ts?.getSourceFile(program.file);
   const checker = ts?.getTypeChecker();
 
-  const member = /(\?)?\.([\w$]*)$/.exec(source.slice(0, offset));
+  const before = source.slice(0, offset);
+  const onFunction = SERVER_MEMBER.exec(before);
+  if (onFunction !== null && functions.has(onFunction[1]!)) return items.filter((item) => item.label === 'url');
+
+  const member = /(\?)?\.([\w$]*)$/.exec(before);
   if (member !== null) {
     if (checker === undefined || file === undefined) return items.filter((item) => !callableKind(item));
     // The receiver ends just before the `.` (and its `?`); the projection copied it as written,
@@ -126,7 +138,7 @@ export function portableItems(
 
   const inScope = checker === undefined || file === undefined ? undefined : scopeTypes(checker, nodeAt(file, program.projected));
   return items.filter((item) => {
-    if (KEPT_WORDS.has(item.label)) return true;
+    if (KEPT_WORDS.has(item.label) || functions.has(item.label)) return true;
     if (!isLocal(item)) return false;
     const type = inScope?.get(item.label);
     if (type === undefined || checker === undefined) return !callableKind(item);

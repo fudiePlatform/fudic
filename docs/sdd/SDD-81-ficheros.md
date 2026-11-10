@@ -1,6 +1,6 @@
 # SDD-81 — Ficheros: el tipo `file` del `.fudapi`, de la vista al servidor y de vuelta; y un servidor que no depende de Vite
 
-> **Estado:** `Hecho` (2026-11-10), a falta de la prueba de Pedro (§6.1) y del merge. Redactada el 2026-11-08; enmendada el 2026-11-09, §3.10–§3.13 y §8.2 — [tareas](./SDD-81-Task.md).
+> **Estado:** `Hecho` (2026-11-10), probada por Pedro (§6.1) y mergeada a `worktree-pendiente`. Redactada el 2026-11-08; enmendada el 2026-11-09, §3.10–§3.13 y §8.2 — [tareas](./SDD-81-Task.md).
 > **Paquetes:** `@fudic/api` · `@fudic/http` · `@fudic/server` (nuevo) · `@fudic/core` · `@fudic/forms` ·
 > `@fudic/compiler` · `@fudic/config` · `@fudic/vite` · `@fudic/testing` · `@fudic/language-core` ·
 > `@fudic/language-server` · `@fudic/vscode` · `@fudic/diagnostics` · `@fudic/mcp` (guía) · `examples/basic`
