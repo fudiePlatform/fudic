@@ -80,6 +80,7 @@ function withPipe(shown: Hover, pipe: PipeTarget): Hover {
 function redirected(host: ApiHost, fud: string, document: TextDocument, link: LocationLink): LocationLink | undefined {
   if (link.targetUri === document.uri) return contractLink(host, fud, document, link);
   const path = uriToPath(URI.parse(link.targetUri));
+  if (isLinkUrl(host, path, link)) return urlLink(host, fud, document, link);
   if (!path.includes(`/${API_TYPES_DIR}/`)) return retarget(link, pipeDefinition(host, path)?.link);
   const { line, character } = link.targetSelectionRange.start;
   return retarget(link, generatedDefinition(host, path, line, character));
@@ -96,6 +97,28 @@ function contractLink(host: ApiHost, fud: string, document: TextDocument, link: 
   if (id === undefined) return undefined;
 
   return retarget(link, serverDefinition(host, fud, id, what));
+}
+
+/** Whether a target is the `url` of `Linkable` (`@fudic/http`): the link of a `get` (SDD-81 §3.4). */
+function isLinkUrl(host: ApiHost, path: string, link: LocationLink): boolean {
+  const text = host.read(path);
+  const line = text?.split('\n')[link.targetSelectionRange.start.line] ?? '';
+  return /^\s*url\(/u.test(line) && text!.includes('interface Linkable<');
+}
+
+/**
+ * `save.url(…)` opens the `get` it links to, in the `.fudapi`: the method is the framework's, the
+ * function is what the developer wrote. The name is what stands right before `.url` in the
+ * projection; a name the scaffolding does not declare (an import of `@code`) keeps its target.
+ */
+function urlLink(host: ApiHost, fud: string, document: TextDocument, link: LocationLink): LocationLink | undefined {
+  // TypeScript's definitions always say what was clicked: `definitionAndBoundSpan`.
+  const origin = link.originSelectionRange!;
+  const before = document.getText({ start: { line: origin.start.line, character: 0 }, end: origin.start });
+  const name = /([A-Za-z_$][\w$]*)\s*\.\s*$/u.exec(before)?.[1];
+  const declared = name === undefined ? undefined : new RegExp(`^declare const ${name.replace(/\$/gu, '\\$')}: typeof import\\('fudic:([^']+)'\\)`, 'mu').exec(document.getText());
+  if (declared === null || declared === undefined) return undefined;
+  return retarget(link, serverDefinition(host, fud, declared[1]!, { name: name! }));
 }
 
 /** What was clicked stays TypeScript's (`originSelectionRange`); where it goes is the contract. */

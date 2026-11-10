@@ -979,3 +979,18 @@ Nada.
     Playwright no deja leer su memoria. `server/test/uploads.test.ts` monta un servidor de Node de
     verdad con `diskSpool`, que es el mismo código que preview; las pruebas del ejemplo suben
     200 MB por dev y por preview y comprueban que el temporal desaparece al cancelar.
+37. **`error-pages` va antes que `csrf` en la cadena** (prueba de Pedro). En una lista el primero es
+    el más exterior, y el ejemplo, la guía y el README ponían `csrf` primero. Con `token true` eso
+    rompía dos cosas: si el servidor no podía dar el token (sin `FUDIC_SECRET`), el error salía
+    de `csrf` sin que `error-pages` lo viera, y la página quedaba con un error sin capturar; y un
+    `403` de un token caducado lo habría llevado `error-pages` a su ruta antes de que `csrf`
+    pidiera otro y reintentara. El orden nuevo, explicado en la guía, en el README y en el
+    ejemplo.
+38. **El error de pedir el token lleva lo que dijo el servidor** (prueba de Pedro): el navegador
+    se quedaba con «CSRF token unavailable» y tiraba el `detail` del problema
+    (`csrf token mode needs a secret (FUDIC_SECRET)`), que es lo que la página de error tiene que
+    decir.
+39. **Ctrl+Click en el `url` de una `get` abre esa `get`** en su `.fudapi` (prueba de Pedro), como
+    el nombre de la función (BUG-59). Llevaba al `Linkable` de `@fudic/http`, que es del framework
+    y no lo que se quiere leer. Un `url` sobre algo que la vista no toma de su enlace (un import
+    del `@code`, una expresión) sigue llevando al método.

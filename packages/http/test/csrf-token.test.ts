@@ -300,6 +300,21 @@ describe('criterion 47: the client half asks once, keeps it, and retries once', 
     expect(asks).toHaveBeenCalledTimes(2);
   });
 
+  it('a failed ask carries what the server said: the error page shows why', async () => {
+    const problem = (body: object) =>
+      new Response(JSON.stringify(body), { status: 500, headers: { 'content-type': 'application/problem+json' } });
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(problem({ status: 500, detail: 'csrf token mode needs a secret (FUDIC_SECRET)' }))
+      .mockResolvedValueOnce(problem({ status: 500, detail: 7 })) as never;
+    const ctx = { ...clientCtx('PUT'), url: new URL(`${ORIGIN}/said/_fudic/fn/a`) };
+    const step = [(c: never, next: never) => csrfClient(c, next, { token: true })] as never;
+    const first = await run(step, ctx, async () => 'done').catch((e: unknown) => e);
+    expect((first as HttpError).problem).toMatchObject({ status: 500, title: 'CSRF token unavailable', detail: 'csrf token mode needs a secret (FUDIC_SECRET)' });
+    const second = await run(step, ctx, async () => 'done').catch((e: unknown) => e);
+    expect((second as HttpError).problem).not.toHaveProperty('detail');
+  });
+
   it('a GET, or the plain mode, sends the plain header and asks nothing', async () => {
     const asks = vi.fn();
     globalThis.fetch = asks as never;

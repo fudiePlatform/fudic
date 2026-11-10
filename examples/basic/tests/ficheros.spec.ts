@@ -11,6 +11,7 @@
 
 import { test, expect, type Page } from '@playwright/test';
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { request } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -63,6 +64,26 @@ function bigFile(size: number, name: string): string {
 /** The temporary directories of the disk spool (`@fudic/server/node`) there are now. */
 function spools(): Set<string> {
   return new Set(readdirSync(tmpdir()).filter((name) => name.startsWith('fudic-upload-')));
+}
+
+/**
+ * A PUT whose answer is read as soon as it comes, as a browser reads it: a server that stops at a
+ * limit answers before the body is all sent, and stops reading it. Playwright's own client waits
+ * to finish writing first, and can find the connection closed by then.
+ */
+function earlyAnswer(url: string, body: Buffer, headers: Record<string, string>): Promise<{ status: number; body: Buffer }> {
+  return new Promise((resolve, reject) => {
+    let answered = false;
+    const req = request(url, { method: 'PUT', headers: { ...headers, 'content-length': String(body.length) } }, (res) => {
+      answered = true;
+      const chunks: Buffer[] = [];
+      res.on('data', (chunk: Buffer) => chunks.push(chunk));
+      res.on('end', () => resolve({ status: res.statusCode ?? 0, body: Buffer.concat(chunks) }));
+    });
+    // What the server no longer reads fails to send once it closes: that is not the answer.
+    req.on('error', (error) => (answered ? undefined : reject(error)));
+    req.end(body);
+  });
 }
 
 const row = (page: Page, name: string) => page.locator('tbody tr', { hasText: name });
@@ -183,17 +204,16 @@ test.describe('the photo of user-form', () => {
       png(3 * MB),
       Buffer.from(`\r\n--${boundary}--\r\n`),
     ]);
-    const forced = await page.request.put(good!.url, {
-      headers: {
-        'content-type': `multipart/form-data; boundary=${boundary}`,
-        'x-fudic-csrf': good!.headers['x-fudic-csrf']!,
-        'fud-sig': good!.headers['fud-sig']!,
-      },
-      data: body,
+    const cookie = (await page.context().cookies()).map((c) => `${c.name}=${c.value}`).join('; ');
+    const forced = await earlyAnswer(good!.url, body, {
+      'content-type': `multipart/form-data; boundary=${boundary}`,
+      'x-fudic-csrf': good!.headers['x-fudic-csrf']!,
+      'fud-sig': good!.headers['fud-sig']!,
+      cookie,
     });
-    expect(forced.status()).toBe(413);
+    expect(forced.status).toBe(413);
     // A problem travels in the function's format, `fud-bin` here: the field is in it as text.
-    expect((await forced.body()).toString('latin1')).toContain('avatar');
+    expect(forced.body.toString('latin1')).toContain('avatar');
     await page.unroute('**/save');
     await page.goto('/usuarios');
     await expect(row(page, 'Ana')).toBeVisible();

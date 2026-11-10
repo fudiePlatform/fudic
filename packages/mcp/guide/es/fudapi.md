@@ -399,9 +399,9 @@ auth.server((ctx, next) => {
 ```fudapi path=src/http.fudapi
 # The global chain: every function of the app walks it, load included.
 chain
-  use csrf
   use error-pages
     routes  401 /
+  use csrf
 ```
 
 - Un middleware tiene `client` (`.client` en `src/browser`), `server` (`.server` en `src/server`)
@@ -410,7 +410,9 @@ chain
 - Tres niveles, de fuera hacia dentro: `chain` en `src/http.fudapi` (la app), `chain` en otro fichero de
   contrato (ese fichero), `use` / `skip` en una función. Un `chain` por fichero. `skip x` de un middleware
   que la función no hereda es `FUD1086`. Los parámetros van en líneas bajo el `use`
-  (`FUD1087`): `routes  401 /` envía un 401 a `/`.
+  (`FUD1087`): `routes  401 /` envía un 401 a `/`. En una lista la primera es la más exterior:
+  `error-pages` antes que `csrf`, así ve también lo que falla en el propio `csrf`, y `csrf` reintenta
+  un token caducado antes de que un `403` se lleve a ningún sitio.
 - Incorporados con `@fudic/http`: `csrf` (rechaza una llamada que la página de otro sitio hace con las
   cookies del usuario), `error-pages` (un error que nadie capturó va a `_error.fud`, o a sus `routes`) y
   `json`. `fudic add http` escribe un `src/http.fudapi` con `use csrf`.

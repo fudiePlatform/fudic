@@ -156,6 +156,17 @@ ficheros, una función y una subida). 36: la guía del MCP (`fudapi`, `component
 
 **Para la prueba de Pedro.** El `.vsix` de la rama está instalado. `examples/basic` construido.
 
+## Relevo (2026-11-10, primera vuelta de la prueba de Pedro)
+
+Tres cosas que vio Pedro, arregladas (§8.2.37–39): con `token true` y el script de Node sin
+`FUDIC_SECRET`, la página quedaba con un error sin capturar que no decía por qué — `error-pages`
+iba detrás de `csrf` en la cadena y el navegador tiraba el motivo del servidor; y Ctrl+Click en
+`avatar.url` llevaba al `Linkable` del framework, que en su editor no se abría, en lugar de a la
+`get`. La prueba de `curl` contra dev la hice yo: un fichero da `{"count":1,…}`, cuatro dan el
+`422` de `max-length`, y `GET /_fudic/csrf` crea la cookie `fudic-csrf` `HttpOnly`. En las e2e, la
+prueba del `413` forzado manda la petición con un cliente que lee la respuesta en cuanto llega
+(el de Playwright esperaba a terminar de escribir y a veces encontraba la conexión cerrada).
+
 ---
 
 ## Fase 1 — decisiones y diagnósticos

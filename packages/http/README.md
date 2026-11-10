@@ -132,9 +132,10 @@ Three levels, from the outside in:
 ```
 # src/http.fudapi — every function of the app, `load` included
 chain
-  use log csrf
+  use log
   use error-pages
     routes  401 /login
+  use csrf
 
 # any other .fudapi — every function of that file
 chain

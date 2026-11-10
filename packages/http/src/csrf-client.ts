@@ -34,7 +34,12 @@ function token(url: URL, fresh: boolean): Promise<string> {
   const kept = fresh ? undefined : tokens.get(at);
   if (kept !== undefined) return kept;
   const asked = fetch(at, { credentials: 'same-origin', cache: 'no-store' }).then(async (response) => {
-    if (!response.ok) throw new HttpError({ status: response.status, title: 'CSRF token unavailable' });
+    if (!response.ok) {
+      // The server says why (no secret, another site): that is what the error page shows.
+      const said = response.headers.get('content-type')?.includes('json') === true ? ((await response.json()) as { readonly detail?: unknown }) : {};
+      const detail = typeof said.detail === 'string' ? said.detail : undefined;
+      throw new HttpError({ status: response.status, title: 'CSRF token unavailable', ...(detail !== undefined ? { detail } : {}) });
+    }
     return ((await response.json()) as { readonly token: string }).token;
   });
   tokens.set(at, asked);
