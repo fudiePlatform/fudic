@@ -1,5 +1,86 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`the .fudspec grammar — pages and flows (SDD-82 §3.10) > tokenises a page and a flow 1`] = `
+"0  "page"  keyword.control.fudspec
+0  " "  -
+0  "/blog/[slug]"  entity.name.type.fudspec
+1  "flow"  keyword.control.fudspec
+1  " "  -
+1  "alta-de-usuario"  entity.name.type.fudspec
+2  "criterion"  keyword.control.fudspec
+2  " "  -
+2  "pages"  entity.name.section.fudspec
+3  "  "  -
+3  "given"  keyword.other.block.fudspec
+4  "    "  -
+4  "data"  support.function.fudspec
+4  " dos-personas con-ana"  -
+5  "    "  -
+5  "answers"  support.function.fudspec
+5  " busca-luis"  -
+6  "    "  -
+6  "services"  support.function.fudspec
+6  " memoria"  -
+7  "    "  -
+7  "path"  support.function.fudspec
+7  " hola-fudic"  -
+8  "    "  -
+8  "url"  support.function.fudspec
+8  " /usuarios"  -
+9  "    "  -
+9  "as"  keyword.other.as.fudspec
+9  " "  -
+9  "luis"  variable.other.person.fudspec
+10  "  "  -
+10  "when"  keyword.other.block.fudspec
+11  "    "  -
+11  "uncheck"  entity.name.function.fudspec
+11  " "  -
+11  "role:"  keyword.operator.role.fudspec
+11  "row"  entity.name.tag.fudspec
+11  "/"  -
+11  "~"  keyword.operator.contains.fudspec
+11  "\\""  string.quoted.double.fudspec punctuation.definition.string.begin.fudspec
+11  "Ana"  string.quoted.double.fudspec
+11  "\\""  string.quoted.double.fudspec punctuation.definition.string.end.fudspec
+11  ">"  keyword.operator.step.fudspec
+11  "role:"  keyword.operator.role.fudspec
+11  "checkbox"  entity.name.tag.fudspec
+11  "/"  -
+11  "\\""  string.quoted.double.fudspec punctuation.definition.string.begin.fudspec
+11  "Activo"  string.quoted.double.fudspec
+11  "\\""  string.quoted.double.fudspec punctuation.definition.string.end.fudspec
+12  "    "  -
+12  "click"  entity.name.function.fudspec
+12  " "  -
+12  "fud-list"  entity.name.tag.fudspec
+12  ">"  keyword.operator.step.fudspec
+12  "role:"  keyword.operator.role.fudspec
+12  "button"  entity.name.tag.fudspec
+13  "    "  -
+13  "click"  entity.name.function.fudspec
+13  " "  -
+13  "role:"  keyword.operator.role.fudspec
+13  "list"  entity.name.tag.fudspec
+13  ">"  keyword.operator.step.fudspec
+13  "fud-item"  entity.name.tag.fudspec
+14  "  "  -
+14  "then"  keyword.other.block.fudspec
+15  "    "  -
+15  "as"  keyword.other.as.fudspec
+15  " "  -
+15  "main"  variable.other.person.fudspec
+16  "    "  -
+16  "text"  entity.name.function.fudspec
+16  " a"  -
+16  ">"  keyword.operator.step.fudspec
+16  "b "  -
+16  "\\""  string.quoted.double.fudspec punctuation.definition.string.begin.fudspec
+16  "x>y"  string.quoted.double.fudspec
+16  "\\""  string.quoted.double.fudspec punctuation.definition.string.end.fudspec
+17  ""  -"
+`;
+
 exports[`the .fudspec grammar — snapshots (criterion 20) > tokenises a file with every case 1`] = `
 "0  "component"  keyword.control.fudspec
 0  " "  -

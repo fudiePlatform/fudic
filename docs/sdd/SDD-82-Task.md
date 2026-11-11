@@ -5,7 +5,7 @@
 > `@fudic/testing` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` ·
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `sdd-82-specs-de-pagina-y-de-flujo`, desde `main` con SDD-81 ya mezclada.
-> **Progreso:** 26 / 36 — `En curso`. Fases 1–7 hechas; sigue la fase 8 (el editor).
+> **Progreso:** 29 / 36 — `En curso`. Fases 1–8 hechas; sigue la fase 9 (ejemplo, guía y cierre).
 
 ## Relevo (2026-11-11, al cerrar las fases 4 y 5)
 
@@ -38,6 +38,11 @@ camino (b) de Pedro: los criterios con `offline` corren contra el build del banc
   que `fudic g spec /<ruta>`: `pageFixtureModule` de `@fudic/spec` con los campos de `loadFields`
   (`@fudic/typecheck/api`). Los e2e del MCP (`spec-run-e2e`, `render-e2e`, `preview-e2e`) abren
   navegador y Vite: no lanzarlos a la vez que otra cobertura pesada, o agotan sus esperas.
+- **Fase 8 (SDD §8.2.47–50):** lo que alcanza una página sale de `routeCallables` de `@fudic/api`
+  (el mismo `Calls` del `.d.ts`); el `check` y el editor ya lo pasan a `specContextOf`, así que
+  `FUD1506`/`FUD1507`/`FUD1513` salen de verdad: los `sent`/`called` del ejemplo (fase 9) tienen
+  que nombrar funciones y argumentos que existen. La gramática ya pinta `page`, `flow`, las líneas
+  de fixture, `as`, `>` y `~`.
 
 **Una sesión.** La misma que implementa escribe los tests de cada fase (las tareas «Los tests
 de…») contra los criterios de SDD §6, y la fase cierra con `typecheck`, `test` y `coverage` en
@@ -247,7 +252,7 @@ verde. Si un test destapa un defecto, se corrige el código, no el test. Cada fa
 
 ## Fase 8 — el editor
 
-- [ ] **27. El servicio de la `.fudspec`.**
+- [x] **27. El servicio de la `.fudspec`.**
   - Completado de cabeceras, líneas de fixture, `path`, `url`/`go`, `called`/`sent` y `as`.
   - Hover e ir a la definición a la fixture, al `.fudapi` y a la ruta.
   - Las bombillas de SDD §3.10.
@@ -256,11 +261,11 @@ verde. Si un test destapa un defecto, se corrige el código, no el test. Cada fa
   - *Paquete:* `language-server`.
   - *Ficheros:* `src/fudspec/completion.ts`, `src/fudspec/navigation.ts`, `src/fudspec/actions.ts`,
     `src/fudspec/host.ts`, `src/fudspec/snippets.ts`, `src/fudspec/semantic-tokens.ts`.
-- [ ] **28. La gramática TextMate.** `page`, `flow`, las líneas de fixture, `as`, `>` y `~`.
+- [x] **28. La gramática TextMate.** `page`, `flow`, las líneas de fixture, `as`, `>` y `~`.
   - *Depende de:* —.
   - *Paquete:* `vscode`.
   - *Fichero:* `syntaxes/fudspec.tmLanguage.json`.
-- [ ] **29. Los tests de la fase.** Criterio 36, por el plugin del language server.
+- [x] **29. Los tests de la fase.** Criterio 36, por el plugin del language server.
   - *Depende de:* 27, 28.
   - *Paquetes:* `language-server`, `vscode`.
   - *Ficheros:* `test/**`.

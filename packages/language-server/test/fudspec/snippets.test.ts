@@ -100,9 +100,11 @@ describe('criterionSnippet (criterion 15)', () => {
     expect(criterionSnippet(specDocument('component fud-button\n'), host)).toBe(plain);
     expect(criterionSnippet(specDocument(''), host)).toBe(plain);
     expect(criterionSnippet(specDocument('component nope\n'), host)).toBe(plain);
+    const component = { tag: 'x-y', path: '/x-y.fud', requiredProps: 'unknown' };
     const unknown = {
-      component: () => ({ tag: 'x-y', path: '/x-y.fud', requiredProps: 'unknown' }),
+      component: () => component,
       fixtures: () => undefined,
+      subject: () => ({ kind: 'component', name: { text: 'x-y', span: { start: 10, end: 13 } }, component }),
     } as unknown as SpecHost;
     expect(criterionSnippet(specDocument('component x-y\n'), unknown)).toBe(plain);
   });

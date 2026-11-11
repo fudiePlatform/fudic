@@ -40,8 +40,8 @@ export type { FixtureGroup, Fixtures, GroupKey } from './fixtures.js';
 export { readFixtures } from './fixtures.js';
 export type { RouteFile } from './routes.js';
 export { findRoute, matchesPattern, routeFiles } from './routes.js';
-export type { ComponentInfo, FlowInfo, FunctionInfo, PageInfo, SpecContext } from './validate.js';
-export { normalizeTerm, validateSpec } from './validate.js';
+export type { ComponentInfo, FixtureLine, FlowInfo, FunctionInfo, PageInfo, SpecContext } from './validate.js';
+export { AS_LINE, FIXTURE_LINES, fixtureLineOf, normalizeTerm, validateSpec } from './validate.js';
 
 export type {
   Answer,
@@ -58,7 +58,7 @@ export type {
 export { fails, file, later, redirects } from './helpers.js';
 
 export type { PropField, PropShape } from './scaffold/shape.js';
-export { sampleValue } from './scaffold/shape.js';
+export { objectOf, sampleValue } from './scaffold/shape.js';
 export type { FixtureKind, PageFixtureParts, RecordedEntry, RecordGroup } from './scaffold/fixture.js';
 export { emptyFixture, fixtureEntry, fixtureKindOf, fixtureModule, flowFixtureModule, pageFixtureModule, recordFixture } from './scaffold/fixture.js';
 export type { Helper, Literal, Unwritable } from './scaffold/literal.js';

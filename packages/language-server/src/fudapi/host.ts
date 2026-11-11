@@ -22,8 +22,20 @@ import {
   type ParseResult,
 } from '@fudic/api';
 import type { SourceDiagnostic } from '@fudic/diagnostics';
+import { CONFIG_FILE } from '@fudic/config';
 import { API_DIR, API_TYPES_DIR, ERROR_FILE, PIPES_DIR, ROUTES_DIR, SRC_DIR } from '@fudic/conventions';
+import type { PropField, SpecIo } from '@fudic/spec';
+import { linkedComponentIds, loadFields, specReach } from '@fudic/typecheck/api';
 import type { ApiFs } from './fs.js';
+
+/** What a page's `.fudapi` says its fixture holds. */
+export interface PageContract {
+  /** Its `<id>`: `routes/usuarios`, what its `Fixtures` are imported from. */
+  readonly id: string;
+  /** The fields of its `load`; absent when it declares none. */
+  readonly load?: readonly PropField[];
+  readonly paths: boolean;
+}
 
 export interface ApiHostDeps {
   readonly fs: ApiFs;
@@ -231,18 +243,63 @@ export class ApiHost {
     return out;
   }
 
-  /** Whether the file is the sibling of a route, and that route's parameters. */
+  /**
+   * Whether the file is the sibling of a route: its parameters, its pattern, its layout's props
+   * and the components it links — whose functions its `Calls` lists, as the build's does.
+   */
   #context(project: string, path: string): ApiContext {
     const routes = `${project}/${ROUTES_DIR}/`;
     const page = `${path.slice(0, -API_EXTENSION.length)}.fud`;
-    const text = path.startsWith(routes) ? this.#deps.fs.readFile(page) : undefined;
+    const text = path.startsWith(routes) ? this.read(page) : undefined;
     if (text === undefined) return {};
     const segments = page.slice(routes.length, -'.fud'.length).split('/');
     const params = segments.map((s) => PARAM.exec(s)?.[1]).filter((p): p is string => p !== undefined);
     const error = `${segments[segments.length - 1]}.fud` === ERROR_FILE;
     const pattern = `/${segments.filter((s, i) => !(s === 'index' && i === segments.length - 1)).map((s) => s.replace(PARAM, ':$1')).join('/')}`;
     const layoutProps = layoutPropsType(page, text, `${project}/${API_TYPES_DIR}/${idOf(project, path)}.d.ts`);
-    return { route: { params, pattern, ...(error ? { error: true } : {}), ...(layoutProps !== undefined ? { layoutProps } : {}) } };
+    const components = linkedComponentIds(project, page, text, (api) => this.read(api) !== undefined);
+    return {
+      route: {
+        params,
+        pattern,
+        ...(error ? { error: true } : {}),
+        ...(layoutProps !== undefined ? { layoutProps } : {}),
+        ...(components.length > 0 ? { components } : {}),
+      },
+    };
+  }
+
+  /** Every `.fudapi` of a project, each with the text the editor has, and their index. */
+  #sources(project: string): { readonly sources: readonly ApiSource[]; readonly index: ApiIndex } {
+    const sources = this.#filesOf(project).map((f) => this.#source(f, this.read(f.path) ?? '').source);
+    return { sources, index: createApiIndex(sources) };
+  }
+
+  /**
+   * What a `.fudspec` of the project at `folder` can call (SDD-82 §8.2.9): the `reach` and
+   * `functions` of its `SpecIo`, read from the `.fudapi` as the editor has them at each question.
+   */
+  specReach(folder: string): Required<Pick<SpecIo, 'reach' | 'functions'>> {
+    const now = (): ReturnType<typeof specReach> => {
+      const project = this.projectOf(`${folder}/${CONFIG_FILE}`);
+      const { sources, index } = this.#sources(project);
+      return specReach({ root: project, index, source: (path) => sources.find((s) => s.path === path), read: (path) => this.read(path) });
+    };
+    return { reach: (page) => now().reach(page), functions: () => now().functions() };
+  }
+
+  /**
+   * What the `.fudapi` beside the page at `page` (its `.fud`) says a new fixture holds: its
+   * `<id>`, the fields of its `load` and whether it declares `paths`. Undefined when the page has
+   * no `.fudapi`: nothing to fake, and no `Fixtures` to type a fixture by (SDD-82 §8.2.42).
+   */
+  pageContract(page: string): PageContract | undefined {
+    const path = `${page.slice(0, -'.fud'.length)}${API_EXTENSION}`;
+    const { sources, index } = this.#sources(this.projectOf(path));
+    const source = sources.find((s) => s.path === path);
+    if (source === undefined) return undefined;
+    const load = loadFields(source, index);
+    return { id: source.id, ...(load !== undefined ? { load } : {}), paths: source.file.declarations.some((d) => d.kind === 'paths') };
   }
 
   /**
@@ -252,9 +309,7 @@ export class ApiHost {
    * Answers the paths written.
    */
   generate(project: string): readonly string[] {
-    const found = this.#filesOf(project);
-    const sources = found.map((f) => this.#source(f, this.read(f.path) ?? '').source);
-    const index = createApiIndex(sources);
+    const { sources, index } = this.#sources(project);
     const written: string[] = [];
     for (const source of sources) {
       const target = typesPath(project, source.id);
@@ -291,8 +346,7 @@ export class ApiHost {
    */
   regenerate(path: string): readonly string[] {
     const project = this.#typesProject(path);
-    const sources = this.#filesOf(project).map((f) => this.#source(f, this.read(f.path) ?? '').source);
-    const index = createApiIndex(sources);
+    const { sources, index } = this.#sources(project);
     const id = this.#idIn(project, path);
     const written: string[] = [];
     for (const source of sources) {

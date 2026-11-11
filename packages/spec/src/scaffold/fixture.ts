@@ -29,10 +29,10 @@ export function fixtureModule(tag: string, keys: readonly string[], props: reado
   );
 }
 
-/** The groups `record` writes into (SDD-82 §3.9). */
-export type RecordGroup = 'data' | 'calls';
+/** The groups `record` (SDD-82 §3.9) and the editor's light bulb (§8.2.50) write into. */
+export type RecordGroup = 'data' | 'calls' | 'services';
 
-/** One entry `record` writes: `<group>['<name>'] = <value>`, the value already as source. */
+/** One entry written into a fixture: `<group>['<name>'] = <value>`, the value already as source. */
 export interface RecordedEntry {
   readonly group: RecordGroup;
   readonly name: string;

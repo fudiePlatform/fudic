@@ -6,7 +6,7 @@
 import { parseSpec, type SpecFs } from '@fudic/spec';
 import { URI } from 'vscode-uri';
 import type { SpecDocument } from '../../src/fudspec/document.js';
-import { SpecHost } from '../../src/fudspec/host.js';
+import { SpecHost, type SpecApi } from '../../src/fudspec/host.js';
 import { WorkspaceIndex } from '../../src/workspace-index.js';
 import { component, propsComponent, memoryFs } from '../_support.js';
 
@@ -85,6 +85,8 @@ export interface WorldOptions {
   readonly frameworkTerms?: string | null;
   /** The framework folder by project folder; it wins over `frameworkTerms`. */
   readonly framework?: (folder: string) => string | undefined;
+  /** The `.fudapi` side: what a page reaches and what its fixture holds. */
+  readonly api?: SpecApi;
 }
 
 /** A spec host over an in-memory workspace. `frameworkTerms: null` leaves the layer to the host. */
@@ -100,6 +102,7 @@ export function world(options: WorldOptions = {}) {
     fs,
     roots: () => roots,
     ...(framework !== undefined ? { frameworkTerms: framework } : {}),
+    ...(options.api !== undefined ? { api: options.api } : {}),
   });
   return { host, fs, index };
 }

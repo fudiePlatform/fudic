@@ -158,3 +158,60 @@ describe('the .fudspec grammar — scopes', () => {
     expect(render(await spec(CANONICAL.replaceAll('\n', '\r\n')))).toBe(render(await spec(CANONICAL)));
   });
 });
+
+const PAGES = [
+  'page /blog/[slug]',
+  'flow alta-de-usuario',
+  'criterion pages',
+  '  given',
+  '    data dos-personas con-ana',
+  '    answers busca-luis',
+  '    services memoria',
+  '    path hola-fudic',
+  '    url /usuarios',
+  '    as luis',
+  '  when',
+  '    uncheck role:row/~"Ana">role:checkbox/"Activo"',
+  '    click fud-list>role:button',
+  '    click role:list>fud-item',
+  '  then',
+  '    as main',
+  '    text a>b "x>y"',
+  '',
+].join('\n');
+
+describe('the .fudspec grammar — pages and flows (SDD-82 §3.10)', () => {
+  it('tokenises a page and a flow', async () => {
+    expect(render(await spec(PAGES))).toMatchSnapshot();
+  });
+
+  it('scopes the page and flow headers and their names', async () => {
+    const t = await spec(PAGES);
+    expect(scopeAt(t, 0, 'page')).toBe('keyword.control.fudspec');
+    expect(scopeOf(t, '/blog/[slug]')).toBe('entity.name.type.fudspec');
+    expect(scopeAt(t, 1, 'flow')).toBe('keyword.control.fudspec');
+    expect(scopeOf(t, 'alta-de-usuario')).toBe('entity.name.type.fudspec');
+  });
+
+  it('scopes the fixture lines as props, and as with its person', async () => {
+    const t = await spec(PAGES);
+    for (const line of ['data', 'answers', 'services', 'path', 'url']) expect(scopeOf(t, line)).toBe('support.function.fudspec');
+    expect(scopeAt(t, 9, 'as')).toBe('keyword.other.as.fudspec');
+    expect(scopeOf(t, 'luis')).toBe('variable.other.person.fudspec');
+    expect(scopeOf(t, 'main')).toBe('variable.other.person.fudspec');
+  });
+
+  it('scopes > between steps, ~ before a name, and the tag steps', async () => {
+    const t = await spec(PAGES);
+    const steps = t.filter((x) => x.scopes.includes('keyword.operator.step.fudspec')).map((x) => x.line);
+    expect(steps).toEqual([11, 12, 13, 16]);
+    expect(scopeAt(t, 11, '~')).toBe('keyword.operator.contains.fudspec');
+    expect(scopeOf(t, 'row')).toBe('entity.name.tag.fudspec');
+    expect(scopeOf(t, 'checkbox')).toBe('entity.name.tag.fudspec');
+    expect(scopeOf(t, 'fud-list')).toBe('entity.name.tag.fudspec');
+    expect(scopeOf(t, 'fud-item')).toBe('entity.name.tag.fudspec');
+    expect(scopeAt(t, 13, 'list')).toBe('entity.name.tag.fudspec');
+    // A `>` inside a string is text of the string.
+    expect(t.filter((x) => x.line === 16 && x.text.includes('x>y')).every((x) => x.scopes.includes('string.quoted.double.fudspec'))).toBe(true);
+  });
+});

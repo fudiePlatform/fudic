@@ -186,17 +186,19 @@ export function createFudicServer(
   const logger = loggerFor(connection);
   const server = deps.createServer(connection);
   let workspaceRoots: readonly string[] = [];
-  const specs = new SpecHost({
-    index,
-    fs: deps.specFs,
-    roots: () => workspaceRoots,
-    ...(deps.frameworkTerms !== undefined ? { frameworkTerms: deps.frameworkTerms } : {}),
-  });
   const apis = new ApiHost({
     fs: deps.apiFs,
     roots: () => workspaceRoots,
     // A `.fudapi` being edited speaks with its unsaved text to the ones that use it.
     open: (path) => server.documents.get(pathToUri(path))?.getText(),
+  });
+  const specs = new SpecHost({
+    index,
+    fs: deps.specFs,
+    roots: () => workspaceRoots,
+    ...(deps.frameworkTerms !== undefined ? { frameworkTerms: deps.frameworkTerms } : {}),
+    // What a page or a flow can call, and what a new fixture holds: the `.fudapi` as the editor has them.
+    api: apis,
   });
   const implementations = new ImplementationIndex(deps.apiFs);
   const generated = new ApiGenerated(apis);

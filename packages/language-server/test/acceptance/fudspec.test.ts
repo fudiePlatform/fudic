@@ -114,6 +114,8 @@ describe('criterion 22 — completion', () => {
     expect(items.map((i) => [i.label, i.labelDetails?.description])).toEqual([
       ['min-height', 'workspace'],
       ['visible', 'framework'],
+      // `as` is a line of every block, not a term (SDD-82 §3.7).
+      ['as', undefined],
     ]);
   });
 

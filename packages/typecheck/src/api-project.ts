@@ -14,7 +14,6 @@ import {
   createApiIndex,
   emitDeclarations,
   layoutPropsType,
-  linkedComponents,
   parseApi,
   validateApi,
   type ApiContext,
@@ -23,8 +22,10 @@ import {
 } from '@fudic/api';
 import { API_DIR, API_TYPES_DIR, ERROR_FILE, PIPES_DIR, ROUTES_DIR, SRC_DIR } from '@fudic/conventions';
 import type { SourceDiagnostic } from '@fudic/diagnostics';
+import { linkedComponentIds } from './spec-reach.js';
 
 export { loadFields } from './load-fields.js';
+export { linkedComponentIds, routeParams, specReach, type SpecReachInput } from './spec-reach.js';
 
 /** A dependency that publishes `.fudapi`, and where its compiled implementations are. */
 export interface ApiLibrary {
@@ -109,12 +110,8 @@ export function apiContextOf(root: string, source: ApiSource): ApiContext {
   const pattern = `/${segments.filter((s, i) => !(s === 'index' && i === segments.length - 1)).map((s) => s.replace(PARAM, ':$1')).join('/')}`;
   const text = readFileSync(page, 'utf8');
   const layoutProps = layoutPropsType(page, text, `${base}/${API_TYPES_DIR}/${source.id}.d.ts`);
-  const src = `${base}/${SRC_DIR}/`;
   // A component's functions are in the `.fudapi` beside its `.fud`, whose `<id>` is its path in `src/`.
-  const components = linkedComponents(page, text)
-    .map((fud) => fud.slice(0, -'.fud'.length))
-    .filter((stem) => stem.startsWith(src) && existsSync(`${stem}${API_EXTENSION}`))
-    .map((stem) => stem.slice(src.length));
+  const components = linkedComponentIds(base, page, text, existsSync);
   return {
     route: {
       params,

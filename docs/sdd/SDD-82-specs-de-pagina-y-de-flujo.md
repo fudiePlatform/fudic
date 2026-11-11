@@ -1008,6 +1008,26 @@ Nada.
     las clases que inyecta el servidor), y la URL pasa antes por `/_fudic/preview-fixture/<id>`,
     que pone la cookie y redirige. Cada vista previa termina las fixtures anteriores: un navegador
     con la cookie vieja ve la app real.
+47. **Lo que alcanza una página tiene una sola respuesta**: `routeCallables` y `projectCallables`
+    de `@fudic/api`, las mismas que escriben el `Calls` del `.d.ts`. Una función se registra con
+    los parámetros de la ruta, sus argumentos y, si lleva `form`, los campos de primer nivel del
+    formulario; una regla `remote`, con `value` y `params` (lo que `sent` puede leer). El `check`
+    del proyecto y el editor las conectan a `SpecIo.reach`/`functions` (`specReach` de
+    `@fudic/typecheck/api`; en el editor, `ApiHost.specReach`, que lee los `.fudapi` abiertos):
+    hasta ahora ningún anfitrión lo hacía y `FUD1506`, `FUD1507` y `FUD1513` no salían nunca. El
+    banco sigue sin ellos («desconocido»): lo que valida al ejecutar ya lo dijeron el editor y el
+    `check`.
+48. **Los tipos que escribe el editor listan las funciones de los componentes en `Calls`**, como
+    los del build: el `ApiContext` del editor no llevaba `components`.
+49. **En el editor, las líneas de fixture y `as` no son términos**: no se tachan como término
+    desconocido (se tachaban), `as` se ofrece en todos los bloques, y la cabecera que se propone
+    primero sale del sitio del fichero (`page` junto a una ruta, `flow` en `src/flows`). El hover
+    de una línea de fixture va por nombre: sobre el nombre, ese nombre; sobre la palabra de la
+    línea, el primero, con la línea entera como rango.
+50. **«Añadir la entrada que falta» reescribe la fixture con `recordFixture`**, el mismo escritor
+    que `record` (su grupo admite también `services`): una `data` con la muestra del `load`, un
+    `calls` vacío (`{}`) y un `services` sin servicios (`[]`); un grupo que no existe se crea. La
+    bombilla de `FUD1504` solo sale si la fixture trae algún valor en `paths`.
 
 ### 8.3. Pendiente de decidir
 

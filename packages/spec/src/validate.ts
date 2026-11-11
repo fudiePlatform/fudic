@@ -111,27 +111,37 @@ export function normalizeTerm(term: string): string {
 }
 
 /** A fixture line: the kinds of spec it belongs to, its parameter, and whether it takes several. */
-interface FixtureLine {
+export interface FixtureLine {
   readonly kinds: readonly HeaderKind[];
-  readonly param: string;
+  readonly param: 'fixture' | 'value' | 'url';
   readonly many: boolean;
+  /** The group of a page's or a flow's fixture it names into; absent for `props`, `path` and `url`. */
+  readonly group?: GroupKey;
 }
 
-/** The lines that are not terms: the validator resolves them against the fixture and the page. */
-const LINES: Readonly<Record<string, FixtureLine>> = {
+/** The lines that are not terms (SDD-82 §3.6): the validator resolves them against the fixture and the page. */
+export const FIXTURE_LINES: Readonly<Record<string, FixtureLine>> = {
   props: { kinds: ['component'], param: 'fixture', many: false },
-  data: { kinds: ['page'], param: 'fixture', many: true },
-  answers: { kinds: ['page', 'flow'], param: 'fixture', many: true },
-  services: { kinds: ['page', 'flow'], param: 'fixture', many: false },
+  data: { kinds: ['page'], param: 'fixture', many: true, group: 'data' },
+  answers: { kinds: ['page', 'flow'], param: 'fixture', many: true, group: 'calls' },
+  services: { kinds: ['page', 'flow'], param: 'fixture', many: false, group: 'services' },
   path: { kinds: ['page'], param: 'value', many: false },
   url: { kinds: ['page', 'flow'], param: 'url', many: false },
 };
 
-/** The group of the fixture each line names into. */
-const GROUP_OF: Readonly<Record<string, GroupKey>> = { data: 'data', answers: 'calls', services: 'services' };
-
 /** `as <who>`: a line of any block, the person what follows is done by. */
-const AS = 'as';
+export const AS_LINE = 'as';
+
+/**
+ * The fixture line a line of `block` is, or undefined when it is a term (SDD-82 §8.2.12): in
+ * `given` the name decides, and elsewhere only where no term of the block has that name —
+ * `then url` is a term.
+ */
+export function fixtureLineOf(name: string, block: BlockKind, terms: TermCatalog): FixtureLine | undefined {
+  const line = FIXTURE_LINES[name];
+  return line !== undefined && (block === 'given' || terms.resolve(block, name) === undefined) ? line : undefined;
+}
+
 const AS_PARAMS: readonly TermParam[] = [{ name: 'who', type: 'token' }];
 const BLOCKS: readonly BlockKind[] = ['given', 'when', 'then'];
 
@@ -188,10 +198,10 @@ function checkCriterion(criterion: Criterion, env: Env): void {
   for (const block of criterion.blocks) {
     for (const term of block.terms) {
       const name = term.name.text;
-      const line = LINES[name];
-      if (name === AS) {
+      const line = fixtureLineOf(name, block.block, env.ctx.terms);
+      if (name === AS_LINE) {
         checkAs(term, env);
-      } else if (line !== undefined && (block.block === 'given' || env.ctx.terms.resolve(block.block, name) === undefined)) {
+      } else if (line !== undefined) {
         named.add(name);
         checkLine(term, line, block.block !== 'given' || placed.has(name), env);
         placed.add(name);
@@ -326,7 +336,7 @@ function fixturesOf(term: TermLine, env: Env): Fixtures | undefined {
 function checkNames(term: TermLine, env: Env): void {
   const fixtures = fixturesOf(term, env);
   if (fixtures === undefined) return;
-  const group: FixtureGroup | undefined = fixtures[GROUP_OF[term.name.text] as GroupKey];
+  const group: FixtureGroup | undefined = fixtures[FIXTURE_LINES[term.name.text]!.group!];
   for (const arg of term.args as readonly (Arg & { text: string })[]) {
     if (group?.names.some((n) => n.text === arg.text) === true) continue;
     if (group?.problem !== undefined) out(env, relocate(group.problem, arg.span, fixtures.path, 'in the fixture'));

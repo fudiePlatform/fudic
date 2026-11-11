@@ -9,6 +9,7 @@
 
 import type { Decl, EnumDecl, FailsClause, FnDecl, FormDecl, LayoutDecl, LoadDecl, MiddlewareDecl, PathsDecl, PatternDecl, PipeDecl, RuleDecl, TypeDecl, TypeExpr } from '../ast.js';
 import type { ApiIndex, ApiSource } from '../index-api.js';
+import { routeCallables } from '../reach.js';
 import type { ApiContext } from '../validate.js';
 import { schemaType, valueType } from './form.js';
 import { borrowedForms, effective, fieldsType, jsdoc, middlewaresOf, pageParams, pascal, camel, projectRef, str, tsType, type EmitCtx } from './shared.js';
@@ -242,16 +243,10 @@ function fixturesDecl(c: DeclCtx): string {
 
 /** Every function and rule the route reaches, with the type of the answer a fixture gives it. */
 function callsOf(c: DeclCtx): readonly (readonly [string, string])[] {
-  const own = (source: ApiSource): readonly FnDecl[] => source.file.declarations.flatMap((d) => (d.kind === 'fn' ? [d] : []));
-  const linked = (c.api.route?.components ?? []).flatMap((id) => c.index.sources.filter((s) => s.id === id));
-  const found = new Map<string, string>();
-  for (const fn of [c.source, ...linked].flatMap(own)) {
-    if (!found.has(fn.name.text)) found.set(fn.name.text, answerType(fn.returns?.type, fn.fails, c));
-  }
-  for (const { decl } of c.index.all('rule')) {
-    if (decl.runs?.value.text === 'remote' && !found.has(decl.name.text)) found.set(decl.name.text, answerType(undefined, decl.fails, c));
-  }
-  return [...found];
+  // Only a route has fixtures: `route` is there.
+  const route = c.api.route!;
+  const reach = routeCallables(c.index, { source: c.source, components: route.components ?? [], params: route.params });
+  return reach.map(({ name, decl }) => [name, answerType(decl.kind === 'fn' ? decl.returns?.type : undefined, decl.fails, c)]);
 }
 
 /** `Answer<R, 'code' | …>`: what returns `R` and fails with those codes; a file is answered with `file(…)`. */

@@ -46,8 +46,8 @@ describe('hover', () => {
 
   it('shows the component and the fixture', () => {
     expect(hoverText('fud-card', 4)).toBe(`\`<fud-card>\`\n\n\`${ROOT}/components/fud-card.fud\``);
-    expect(hoverText('props', 1)).toBe(`fixture \`vacio\`\n\n\`${ROOT}/components/fud-card.fixture.ts\``);
-    expect(hoverText('vacio', 2)).toContain('fixture `vacio`');
+    expect(hoverText('props', 1)).toBe(`props \`vacio\`\n\n\`${ROOT}/components/fud-card.fixture.ts\``);
+    expect(hoverText('vacio', 2)).toContain("props `vacio`");
   });
 
   it('ranges over what it is about', () => {
@@ -112,7 +112,7 @@ describe('definition', () => {
       targetUri: URI.file(`${ROOT}/components/fud-card.fixture.ts`).toString(),
       targetRange: key,
       targetSelectionRange: key,
-      originSelectionRange: { start: { line: 3, character: 4 }, end: { line: 3, character: 15 } },
+      originSelectionRange: { start: { line: 3, character: 10 }, end: { line: 3, character: 15 } },
     });
   });
 
