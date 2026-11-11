@@ -59,7 +59,23 @@ export interface BenchHooks {
   now(criterion: string): number | undefined;
   /** Resolves `ms` milliseconds later on the criterion's clock. */
   after(criterion: string, ms: number): Promise<void>;
+  /**
+   * What the real server answered, for `record` (SDD-82 §3.9): a `load` that ran, a function or
+   * a remote rule whose handler ran. Absent on a bench that does not record.
+   */
+  record?(criterion: string, entry: Recorded): void;
 }
+
+/**
+ * One real answer, in the fixture's vocabulary: the value itself, or the marker of a failure
+ * (`{ $fails }`) or a redirect (`{ $redirects }`). A `File` stays a `File`: the bench writes its
+ * bytes beside the fixture.
+ */
+export type Recorded =
+  /** What `load` gave the route `<id>`, its `later` fields settled: a promise that never rejects. */
+  | { readonly kind: 'data'; readonly route: string; readonly value: Promise<unknown> }
+  /** What a function or a remote rule answered, by its name. */
+  | { readonly kind: 'call'; readonly name: string; readonly value: unknown };
 
 /** The hooks and the criterion of one request. */
 export interface Bench {
@@ -113,6 +129,42 @@ export function failedError(marker: unknown, codes: Readonly<Record<string, read
   }
   const [status, detail] = declared;
   return new HttpError({ status, title: titleOf(status), code: failed.code, ...(detail !== undefined ? { detail } : {}) });
+}
+
+/**
+ * What a real failure is in a fixture (SDD-82 §3.9): a redirect, `redirects(location, status)`;
+ * an error with a code of the function's `fails`, `fails(code)`; any other error, `fails(status,
+ * title)` — what is not an `HttpError` is the 500 the client saw.
+ */
+export function recordedFailure(error: unknown): unknown {
+  if (error instanceof Redirect) return { $redirects: error.location, status: error.status };
+  if (!(error instanceof HttpError)) return { $fails: { status: 500, title: titleOf(500) } };
+  const { code } = error.problem;
+  return code !== undefined ? { $fails: { code } } : { $fails: { status: error.status, title: error.problem.title } };
+}
+
+/**
+ * What a real `load` gave, for `record`: its `later` fields awaited — one that failed is
+ * `later.fails(0, …)` — and what it threw as its marker. Never rejects.
+ */
+export function recordedData(loaded: Promise<unknown>, later: readonly string[]): Promise<unknown> {
+  return loaded.then(
+    async (data) => {
+      if (!isObject(data) || later.length === 0) return data;
+      const out: Record<string, unknown> = { ...data };
+      for (const name of later) {
+        out[name] = await Promise.resolve(data[name]).then(
+          (ok: unknown) => ok,
+          (cause: unknown) => ({
+            $later: 0,
+            fails: cause instanceof HttpError ? { status: cause.status, title: cause.problem.title } : { status: 500, title: titleOf(500) },
+          }),
+        );
+      }
+      return out;
+    },
+    (cause: unknown) => recordedFailure(cause),
+  );
 }
 
 /** A network failure: the request never gets a response (`fails(0, …)`). */

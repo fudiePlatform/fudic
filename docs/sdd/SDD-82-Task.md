@@ -5,7 +5,7 @@
 > `@fudic/testing` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` ·
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `sdd-82-specs-de-pagina-y-de-flujo`, desde `main` con SDD-81 ya mezclada.
-> **Progreso:** 20 / 36 — `En curso`. Fases 1–5 hechas; sigue la fase 6 (grabar).
+> **Progreso:** 22 / 36 — `En curso`. Fases 1–6 hechas; sigue la fase 7 (CLI, testing y MCP).
 
 ## Relevo (2026-11-11, al cerrar las fases 4 y 5)
 
@@ -30,6 +30,10 @@ camino (b) de Pedro: los criterios con `offline` corren contra el build del banc
   (`cd /c/Users/...`). Con el cwd en `c:\…` minúscula, los `vi.mock` de Vitest no casan y fallan
   ~40 pruebas del workbench que no tienen nada roto.
 - Bajo carga, `workbench.test.ts > the shell paints one card…` puede agotar su espera; pasa sola.
+- **Grabar (fase 6, SDD §8.2.35–40):** `runSpecs(paths, { record: true })` devuelve `recording`
+  (grabados, no grabados, diagnósticos); es lo que `fudic_spec_run { record: true }` de la fase 7
+  tiene que llamar. Lo que escribe vive en `@fudic/spec` (`literalOf`, `recordFixture`,
+  `recordLines`, `emptyFixture`) y en `workbench/src/record.ts`.
 
 **Una sesión.** La misma que implementa escribe los tests de cada fase (las tareas «Los tests
 de…») contra los criterios de SDD §6, y la fase cierra con `typecheck`, `test` y `coverage` en
@@ -198,7 +202,7 @@ verde. Si un test destapa un defecto, se corrige el código, no el test. Cada fa
 
 ## Fase 6 — grabar
 
-- [ ] **21. `record`.**
+- [x] **21. `record`.**
   - `fudic-workbench record` ejecuta sin `data` ni `answers`.
   - Escribe `data` y `calls` con el nombre del criterio; los ficheros, con sus bytes.
   - Reescribe las líneas de la `.fudspec`.
@@ -206,7 +210,7 @@ verde. Si un test destapa un defecto, se corrige el código, no el test. Cada fa
   - *Depende de:* 14.
   - *Paquetes:* `workbench`, `spec`.
   - *Ficheros:* `workbench/src/record.ts`, `workbench/src/run-cli.ts`, `spec/src/scaffold/fixture.ts`.
-- [ ] **22. Los tests de la fase.** Criterios 32–33.
+- [x] **22. Los tests de la fase.** Criterios 32–33.
   - *Depende de:* 21.
   - *Paquete:* `workbench`.
   - *Ficheros:* `test/**`.

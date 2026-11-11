@@ -58,7 +58,13 @@ export interface BenchHooks {
   services(criterion: string): readonly ServiceOverride[];
   now(criterion: string): number | undefined;
   after(criterion: string, ms: number): Promise<void>;
+  record?(criterion: string, entry: Recorded): void;
 }
+
+/** One real answer of the server, for `record` (SDD-82 §3.9): a marker or a value, a `File` as it is. */
+export type Recorded =
+  | { readonly kind: 'data'; readonly route: string; readonly value: Promise<unknown> }
+  | { readonly kind: 'call'; readonly name: string; readonly value: unknown };
 
 /** What a criterion runs with: the fixture lines of its `given`, resolved. */
 export interface CriterionSetup {
@@ -74,6 +80,8 @@ export interface CriterionSetup {
   readonly clock?: number;
   /** Where the fixture is: what a `file(…)` path is relative to. */
   readonly dir?: string;
+  /** It records (SDD-82 §3.9): what the real server answers is kept, for `recorded`. */
+  readonly record?: boolean;
 }
 
 /** The names of what a criterion runs with: what a backend that is not fudic's asks (§3.8). */
@@ -106,6 +114,8 @@ export interface Bench extends BenchHooks {
    * moved (`later` under `clock`). The quiet page does not wait for them (SDD-82 §4.5, §4.6).
    */
   held(criterion: string): number;
+  /** What the real server answered it so far, in order, when it was begun to record. */
+  recorded(criterion: string): readonly Recorded[];
 }
 
 /** A `later` waiting on a criterion's clock. */
@@ -119,6 +129,7 @@ interface Running {
   names: CriterionNames;
   readonly services: readonly ServiceOverride[];
   readonly calls: BenchCall[];
+  readonly recorded: Recorded[];
   /** Data requests so far, by route. */
   readonly asked: Map<string, number>;
   now: number | undefined;
@@ -201,6 +212,11 @@ export function createBench(): Bench {
     called: (criterion, call) => {
       of(criterion)?.calls.push({ ...call, args: logged(call.args) as Readonly<Record<string, unknown>> });
     },
+    record: (criterion, entry) => {
+      const state = of(criterion);
+      if (state?.setup.record === true) state.recorded.push(entry);
+    },
+    recorded: (criterion) => of(criterion)?.recorded ?? [],
     services: (criterion) => of(criterion)?.services ?? [],
     now: (criterion) => of(criterion)?.now,
     after: (criterion, ms) => {
@@ -217,7 +233,7 @@ export function createBench(): Bench {
         let made: { readonly value: unknown } | undefined;
         return { provide, use: () => (made ??= { value: use() }).value };
       });
-      running.set(criterion, { setup, names, services, calls: [], asked: new Map(), now: setup.clock, timers: [], held: 0 });
+      running.set(criterion, { setup, names, services, calls: [], recorded: [], asked: new Map(), now: setup.clock, timers: [], held: 0 });
     },
     end: (criterion) => {
       running.delete(criterion);

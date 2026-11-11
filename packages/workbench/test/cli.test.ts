@@ -6,7 +6,8 @@ import type { WorkbenchSession } from '../src/types.js';
 const open = vi.hoisted(() => vi.fn());
 vi.mock('../src/open.js', () => ({ openWorkbench: open, nodeTargetFs: {} }));
 const runMain = vi.hoisted(() => vi.fn());
-vi.mock('../src/run-cli.js', () => ({ runMain }));
+const recordMain = vi.hoisted(() => vi.fn());
+vi.mock('../src/run-cli.js', () => ({ runMain, recordMain }));
 
 const { main, parseArgs, processIo, USAGE } = await import('../src/cli.js');
 
@@ -320,6 +321,13 @@ describe('main — run', () => {
     const t = io();
     await main(['run', 'src', '--json'], t.io);
     expect(runMain).toHaveBeenCalledWith(['src', '--json'], { write: t.io.write, exit: t.io.exit, cwd: 'C:/p' });
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  it('hands `record` and the rest of its arguments to recordMain (SDD-82 §3.9)', async () => {
+    const t = io();
+    await main(['record', 'routes/usuarios.fudspec', '--criterion', 'a'], t.io);
+    expect(recordMain).toHaveBeenCalledWith(['routes/usuarios.fudspec', '--criterion', 'a'], { write: t.io.write, exit: t.io.exit, cwd: 'C:/p' });
     expect(open).not.toHaveBeenCalled();
   });
 });

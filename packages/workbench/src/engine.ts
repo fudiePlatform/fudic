@@ -18,7 +18,7 @@ import {
   FUD1514,
   type FudDiagnostic,
 } from '@fudic/diagnostics';
-import type { BenchCall } from '@fudic/vite';
+import type { BenchCall, Recorded } from '@fudic/vite';
 import type { BlockKind, Layer, TermParam } from '@fudic/spec';
 import { CALL_TIMEOUT, firstLine, type BrowserLike, type LocatorLike, type PageLike, type PageScript } from './browser.js';
 import { chainContext, ExtensionError, setUp, type LoadedExtension, type TermHost } from './extension.js';
@@ -78,6 +78,8 @@ export interface CriterionResult {
   readonly diagnostics: readonly FudDiagnostic[];
   /** A page's or a flow's: the calls it made, in order (SDD-82 §4.4). */
   readonly calls?: readonly BenchCall[];
+  /** A criterion that records: what the real server answered it, in order (SDD-82 §3.9). */
+  readonly recorded?: readonly Recorded[];
 }
 
 /** The workbench's own paths: the only WebSockets the measuring page may open. */
@@ -184,12 +186,20 @@ interface ClockLike {
 }
 
 /**
+ * How long before `at` the clock is installed. Installed, Playwright's clock flows at real speed
+ * until it is paused, and pausing at an instant it has already passed is "fast-forward to the
+ * past": on a loaded machine the two calls can be that far apart. Installed earlier, the pause
+ * always moves it forward — over a blank page, so no timer of the app runs on the way.
+ */
+export const CLOCK_LEAD = 60_000;
+
+/**
  * Stands a person's browser at `at`, still: it moves only with `wait`, as the criterion's server
- * does. Playwright's clock, once installed, would flow on its own.
+ * does. Called before the person's page opens anything.
  */
 async function standAt(page: PageLike, at: number): Promise<void> {
   const clock: ClockLike = page.page.clock;
-  await clock.install({ time: at });
+  await clock.install({ time: at - CLOCK_LEAD });
   await clock.pauseAt(at);
 }
 
@@ -210,6 +220,7 @@ export async function runCriterion(
   const done = (ending: Ending, shots: Shots = {}, marks: readonly Mark[] = []): CriterionResult => {
     // Read before the criterion ends: its log goes with it.
     const calls = app?.bench.calls(id);
+    const recorded = app?.setup.record === true ? app.bench.recorded(id) : undefined;
     return {
       id: criterion.id,
       verdict: ending.verdict,
@@ -225,6 +236,7 @@ export async function runCriterion(
         ...mismatches(calls ?? [], criterion.spec),
       ],
       ...(calls !== undefined ? { calls } : {}),
+      ...(recorded !== undefined ? { recorded } : {}),
     };
   };
   if (criterion.error !== undefined) {

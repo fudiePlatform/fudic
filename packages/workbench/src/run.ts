@@ -9,10 +9,11 @@
 
 import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, posix, resolve } from 'node:path';
-import { FUD0972, FUD0976, type FudDiagnostic } from '@fudic/diagnostics';
+import { FUD0972, FUD0976, FUD1207, type FudDiagnostic } from '@fudic/diagnostics';
 import { SPEC_EXTENSION } from '@fudic/spec';
 import type { BrowserChoice, BrowserName } from './browser.js';
-import { runCriterion, type Shots } from './engine.js';
+import { runCriterion, type CriterionResult, type Shots } from './engine.js';
+import { writeRecording, type RecordedCriterion, type Recording, type SkippedCriterion } from './record.js';
 import { reportOf, type CriterionReport, type ShotPaths } from './report-of.js';
 import { nodeTargetFs } from './open.js';
 import { startProject } from './project.js';
@@ -37,6 +38,11 @@ export interface RunOptions {
   readonly failing?: boolean;
   /** Only the criteria with these ids, in whichever `.fudspec` they are. */
   readonly criteria?: readonly string[];
+  /**
+   * Record (SDD-82 §3.9): only pages and flows, run against the real server without `data` or
+   * `answers`, and what it answered each criterion that passed written into its fixture.
+   */
+  readonly record?: boolean;
 }
 
 export interface RunSummary {
@@ -49,6 +55,8 @@ export interface RunSummary {
   readonly results: readonly ResultMessage[];
   /** One per criterion that ran: by `.fudspec` path, and in each in the order of its criteria. */
   readonly reports: readonly CriterionReport[];
+  /** With `record`: what was written, and what was not. */
+  readonly recording?: Recording;
 }
 
 /** Folders a search never enters: dependencies, builds, and anything hidden. */
@@ -84,6 +92,7 @@ export async function runSpecs(paths: readonly string[], options: RunOptions = {
   const results: ResultMessage[] = [];
   const reports: CriterionReport[] = [];
   const diagnose = (diagnostic: FudDiagnostic) => options.onDiagnostic?.(diagnostic);
+  const recording = { recorded: [] as RecordedCriterion[], skipped: [] as SkippedCriterion[], diagnostics: [] as FudDiagnostic[] };
 
   // Components, once each, grouped by project.
   const projects = new Map<string, Map<string, BenchTarget>>();
@@ -96,6 +105,11 @@ export async function runSpecs(paths: readonly string[], options: RunOptions = {
     }
     if (target.spec === null) {
       diagnose(FUD0972({ file: target.component }));
+      continue;
+    }
+    if (options.record === true && target.kind === undefined) {
+      diagnose(FUD1207({ reason: `${target.spec} is a component's: only a page or a flow is recorded` }));
+      tally.error++;
       continue;
     }
     const components = projects.get(target.projectRoot) ?? new Map<string, BenchTarget>();
@@ -121,7 +135,14 @@ export async function runSpecs(paths: readonly string[], options: RunOptions = {
     const projectReports: CriterionReport[] = [];
     try {
       for (const target of targets) {
-        const session = await loadSession({ target, vite: project.vite, dir: project.dir, app: project.app });
+        const session = await loadSession({
+          target,
+          vite: project.vite,
+          dir: project.dir,
+          app: project.app,
+          ...(options.record === true ? { record: true } : {}),
+        });
+        const ran: CriterionResult[] = [];
         project.publish({ ...session.message, browser: project.browser.name, viewport: project.browser.viewport });
         if (session.problem !== undefined) project.publish(session.problem);
         // A `.fudspec` with errors runs nothing, and that is an error of the run.
@@ -141,7 +162,8 @@ export async function runSpecs(paths: readonly string[], options: RunOptions = {
             signal: new AbortController().signal,
             run: (criterion, signal) => runCriterion(project.browser, project.server.origin, criterion, session.loadTerm, session.extensions, signal),
             done: (result) => {
-              const { shots, diagnostics: _diagnostics, ...rest } = result;
+              ran.push(result);
+              const { shots, diagnostics: _diagnostics, recorded: _recorded, ...rest } = result;
               const message: ResultMessage = { v: 2, type: 'result', tag: target.tag, ...rest, shots: {} };
               tally[result.verdict]++;
               results.push(message);
@@ -153,6 +175,15 @@ export async function runSpecs(paths: readonly string[], options: RunOptions = {
           });
         }
         projectReports.push(...found.sort((a, b) => a.order - b.order).map((f) => f.report));
+        if (options.record === true) {
+          // In the order of the `.fudspec`: `<id>-2` follows `<id>`, criterion after criterion.
+          const order = (r: CriterionResult) => session.criteria.findIndex((c) => c.id === r.id);
+          const written = await writeRecording(target, ran.sort((a, b) => order(a) - order(b)));
+          written.diagnostics.forEach(diagnose);
+          recording.recorded.push(...written.recorded);
+          recording.skipped.push(...written.skipped);
+          recording.diagnostics.push(...written.diagnostics);
+        }
         options.onDone?.(target.tag);
       }
     } finally {
@@ -161,7 +192,7 @@ export async function runSpecs(paths: readonly string[], options: RunOptions = {
     keepReport(projectRoot, projectReports);
     reports.push(...projectReports);
   }
-  return { ...tally, ms: Date.now() - started, browser, results, reports };
+  return { ...tally, ms: Date.now() - started, browser, results, reports, ...(options.record === true ? { recording } : {}) };
 }
 
 /** Where a run keeps what it leaves for the next look, relative to the project root. */

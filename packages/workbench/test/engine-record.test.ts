@@ -193,10 +193,10 @@ describe('the clocks (SDD-82 §4.6)', () => {
     expect(result.verdict).toBe('pass');
     const clocks = browser.pages.map((p) => p.calls.filter((c) => c.startsWith('clock')));
     expect(clocks).toEqual([
-      ['clock install 1000', 'clock pause 1000', 'clock runFor 500'],
-      ['clock install 1000', 'clock pause 1000', 'clock runFor 500'],
+      ['clock install -59000', 'clock pause 1000', 'clock runFor 500'],
+      ['clock install -59000', 'clock pause 1000', 'clock runFor 500'],
       // Marta came after `wait`: she starts where the server's clock stands.
-      ['clock install 1500', 'clock pause 1500'],
+      ['clock install -58500', 'clock pause 1500'],
     ]);
     // Under a clock each one opens once the document answers: it may wait on that clock.
     expect(browser.pages.map((p) => p.calls.find((c) => c.startsWith('goto')))).toEqual(Array(3).fill(`goto ${APP_ORIGIN}/usuarios (commit)`));
@@ -252,7 +252,7 @@ describe('the clocks (SDD-82 §4.6)', () => {
       [HOST],
     );
     expect(result.verdict).toBe('pass');
-    expect(browser.pages.map((p) => p.calls.filter((c) => c.startsWith('clock')))).toEqual([['clock install 3000', 'clock pause 3000', 'clock runFor 10'], ['clock install 3000', 'clock pause 3000']]);
+    expect(browser.pages.map((p) => p.calls.filter((c) => c.startsWith('clock')))).toEqual([['clock install -57000', 'clock pause 3000', 'clock runFor 10'], ['clock install -57000', 'clock pause 3000']]);
   });
 
   it('without clock, wait waits for real', async () => {

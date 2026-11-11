@@ -19,7 +19,7 @@ import { noFunction, problemOf, problemResponse } from '../server/problem.js';
 import { withRequest } from '../server/request.js';
 import type { ServerContext } from '../types.js';
 import type { Wire } from '../wire/wire.js';
-import { benchAllowed, benchOf, benchRoot, isNetworkFailure, settleVerdict, type Bench } from './bench.js';
+import { benchAllowed, benchOf, benchRoot, isNetworkFailure, recordedFailure, settleVerdict, type Bench } from './bench.js';
 import { SIG_HEADER } from './fn.js';
 import { compose, type Level } from './middleware.js';
 import { conform, conformAll, type Ty } from './wire.js';
@@ -109,7 +109,16 @@ async function question(
       if (!rule.implemented()) throw notFound(rule.missing());
     }
     ruleChains();
-    const code = await withRequest(benchRoot((options.container ?? createRoot)(), request, benchAllowed(options)), () => rule.ask(value, params, ctx));
+    // From here on it runs for real: its verdict, or what it fails with, is what `record` keeps
+    // (SDD-82 §3.9) — a pass is `undefined`, a code its `fails(code)`.
+    const record = bench?.hooks.record === undefined ? undefined : (value: unknown) => bench.hooks.record!(bench.criterion, { kind: 'call', name: spec.name, value });
+    const code = await withRequest(benchRoot((options.container ?? createRoot)(), request, benchAllowed(options)), () => rule.ask(value, params, ctx)).catch(
+      (e: unknown) => {
+        record?.(recordedFailure(e));
+        throw e;
+      },
+    );
+    record?.(code === null ? undefined : { $fails: { code } });
     return verdictResponse(code, ctx, wire);
   } catch (e) {
     if (!(e instanceof HttpError)) options.onError?.(e);

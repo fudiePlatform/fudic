@@ -25,12 +25,22 @@ import { contractIds, contractsOf, SIG_HEADER, SIG_PARAM, type ServerContract } 
 import { compose } from './middleware.js';
 import type { PagePiece } from './page.js';
 import { rulesHandler } from './rule-route.js';
-import { benchAllowed, benchOf, benchRoot, isNetworkFailure, settleAnswer, settleData, type Bench } from './bench.js';
+import {
+  benchAllowed,
+  benchOf,
+  benchRoot,
+  isNetworkFailure,
+  recordedData,
+  recordedFailure,
+  settleAnswer,
+  settleData,
+  type Bench,
+} from './bench.js';
 import { checkRules } from './rules.js';
 import { conformAll, fromText, unmarked, type Ty } from './wire.js';
 
 // The workbench's hooks (SDD-82 §3.8): the route wrapper of dev puts the services in its root.
-export { BENCH_KEY, benchHooks, benchRoot, type BenchCall, type BenchHooks, type Held } from './bench.js';
+export { BENCH_KEY, benchHooks, benchRoot, type BenchCall, type BenchHooks, type Held, type Recorded } from './bench.js';
 
 /** What the dispatcher read off the URL. */
 export interface ServeInput {
@@ -157,16 +167,23 @@ async function dispatch(
       }
       if (handler === undefined) throw missing(contract.slot.missing(), true);
     }
-    await checkRules(spec.rules, all);
-
-    const { steps } = compose(spec.chain, 'server');
-    const value = await withRequest(benchRoot((options.container ?? createRoot)(), request, benchAllowed(options)), () =>
-      run(steps as never, ctx, async (inner: ServerContext) => {
-        const done = await withForm(spec.form, inner);
-        return (handler as (c: ServerContext) => unknown)(done);
-      }),
-    );
-    return released(valueResponse(value, ctx, wire, spec.returns));
+    // From here on it runs for real: what it answers, or fails with, is what `record` keeps.
+    const record = bench?.hooks.record === undefined ? undefined : (value: unknown) => bench.hooks.record!(bench.criterion, { kind: 'call', name: spec.name, value });
+    try {
+      await checkRules(spec.rules, all);
+      const { steps } = compose(spec.chain, 'server');
+      const value = await withRequest(benchRoot((options.container ?? createRoot)(), request, benchAllowed(options)), () =>
+        run(steps as never, ctx, async (inner: ServerContext) => {
+          const done = await withForm(spec.form, inner);
+          return (handler as (c: ServerContext) => unknown)(done);
+        }),
+      );
+      record?.(value);
+      return released(valueResponse(value, ctx, wire, spec.returns));
+    } catch (e) {
+      record?.(recordedFailure(e));
+      throw e;
+    }
   } catch (e) {
     if (!(e instanceof HttpError)) options.onError?.(e);
     return released(problemResponse(problemOf(e, options.dev === true), wire, response));
@@ -263,9 +280,10 @@ export function runLoad(load: PagePiece<(ctx: never) => unknown>, ctx: ServerCon
   const handler = load.slot.get();
   if (handler === undefined) return Promise.reject(missing(load.slot.missing(), dev));
   const { steps } = compose(load.spec.chain ?? [], 'server');
-  return run(steps as never, ctx, (inner: ServerContext) => (handler as (c: ServerContext) => unknown)(inner))
-    .then(unmarked)
-    .then((data) => (later.length === 0 ? data : settleLater(data as Record<string, unknown>, later, dev)));
+  const loaded = run(steps as never, ctx, (inner: ServerContext) => (handler as (c: ServerContext) => unknown)(inner)).then(unmarked);
+  // What it really gave, for `record` (SDD-82 §3.9).
+  benched?.hooks.record?.(benched.criterion, { kind: 'data', route: load.spec.id, value: recordedData(loaded, later) });
+  return loaded.then((data) => (later.length === 0 ? data : settleLater(data as Record<string, unknown>, later, dev)));
 }
 
 /**

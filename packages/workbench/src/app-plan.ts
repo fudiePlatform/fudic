@@ -29,6 +29,11 @@ export interface AppPlanInput {
   readonly pattern?: string;
   /** Where the app built is served: the origin of every criterion without network (§4.7). */
   readonly offline?: string;
+  /**
+   * It records (SDD-82 §3.9): every criterion runs against the real server, without its `data`
+   * and its `answers` — what they name need not exist yet — and its bench keeps what it answers.
+   */
+  readonly record?: boolean;
 }
 
 /** The term that cuts the network, in `given` or in `when`. */
@@ -99,12 +104,20 @@ export function planApp(input: AppPlanInput): PlannedCriterion[] {
   const { target, app } = input;
   const spec = target.spec as string;
   const dir = spec.slice(0, spec.lastIndexOf('/'));
-  const base: CriterionSetup = { dir, ...(target.kind === 'page' ? { route: routeId(target.component, target.projectRoot) } : {}) };
+  const base: CriterionSetup = {
+    dir,
+    ...(target.kind === 'page' ? { route: routeId(target.component, target.projectRoot) } : {}),
+    ...(input.record === true ? { record: true } : {}),
+  };
   const planned: PlannedCriterion[] = [];
   for (const criterion of input.spec.criteria) {
     if (criterion.slug === undefined) continue;
     const id = criterion.slug.text;
-    const { steps, lines } = readCriterion(criterion);
+    const read = readCriterion(criterion);
+    const { steps } = read;
+    // Recording runs against the real server: what `data` and `answers` name is left out.
+    const { data: _data, answers: _answers, ...unfaked } = read.lines;
+    const lines: FixtureLines = input.record === true ? unfaked : read.lines;
     const route = lines.url ?? (lines.path !== undefined ? fillPattern(input.pattern ?? '/', lines.path) : (input.pattern ?? '/'));
     const names: CriterionNames = {
       ...(lines.services !== undefined ? { services: lines.services } : {}),

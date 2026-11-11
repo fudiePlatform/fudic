@@ -1,6 +1,6 @@
 /**
- * `fudic-workbench <file> [options]`, and `fudic-workbench run …` (run-cli.ts), which runs and
- * exits. The workbench's protocol with whoever launched it is JSON
+ * `fudic-workbench <file> [options]`, and `fudic-workbench run …` and `record …` (run-cli.ts),
+ * which run and exit. The workbench's protocol with whoever launched it is JSON
  * lines. The first one on stdout says where the shell of `<file>` is, or why it could not open;
  * after it, every message the shells receive, one per line. On stdin it reads commands, one per
  * line (`open` another component, `close` one). It lives until stdin closes — which is what
@@ -17,7 +17,7 @@ import { obey } from './control.js';
 import { openWorkbench } from './open.js';
 import { parseCommand, type BenchMessage } from './protocol.js';
 import { BenchConsole } from './report.js';
-import { runMain } from './run-cli.js';
+import { recordMain, runMain } from './run-cli.js';
 import { isFailure, type WorkbenchOptions, type WorkbenchSession } from './types.js';
 
 /** The process, as the binary uses it; injected so `main` runs without spawning anything. */
@@ -76,6 +76,10 @@ export function parseArgs(argv: readonly string[]): CliArgs | undefined {
 export async function main(argv: readonly string[], io: CliIo): Promise<void> {
   if (argv[0] === 'run') {
     await runMain(argv.slice(1), { write: io.write, exit: io.exit, cwd: io.cwd });
+    return;
+  }
+  if (argv[0] === 'record') {
+    await recordMain(argv.slice(1), { write: io.write, exit: io.exit, cwd: io.cwd });
     return;
   }
   const fail = (error: { readonly code?: string; readonly message: string }) => {

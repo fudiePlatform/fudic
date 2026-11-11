@@ -127,6 +127,25 @@ describe('a criterion of the bench', () => {
   });
 });
 
+describe('a criterion that records (§3.9)', () => {
+  it('keeps what the real server answered, in order, only when begun to record', () => {
+    const bench = createBench();
+    const data = Promise.resolve({ users: [] });
+    bench.begin('graba', { record: true });
+    bench.begin('no', {});
+    for (const id of ['graba', 'no', 'nadie']) {
+      bench.record!(id, { kind: 'data', route: 'routes/usuarios', value: data });
+      bench.record!(id, { kind: 'call', name: 'login', value: undefined });
+    }
+    expect(bench.recorded('graba')).toEqual([
+      { kind: 'data', route: 'routes/usuarios', value: data },
+      { kind: 'call', name: 'login', value: undefined },
+    ]);
+    expect(bench.recorded('no')).toEqual([]);
+    expect(bench.recorded('nadie')).toEqual([]);
+  });
+});
+
 describe('the clock of a criterion (§4.6)', () => {
   it('stands still until advanced, firing the laters it passes in order', async () => {
     const bench = createBench();

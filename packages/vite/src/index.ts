@@ -112,6 +112,7 @@ export {
   type CriterionNames,
   type CriterionSetup,
   type Held,
+  type Recorded,
   type ServiceOverride,
 } from './bench-hooks.js';
 /** The id dev loads a route's wrapper by: `<prefix><pattern>`, with its `paths()` (SDD-82 §3.7). */

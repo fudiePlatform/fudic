@@ -8,7 +8,7 @@
  */
 
 import { readdirSync, readFileSync } from 'node:fs';
-import { FUD0973, FUD1207, type FudDiagnostic } from '@fudic/diagnostics';
+import { FUD0950, FUD0953, FUD0973, FUD1207, type FudDiagnostic, type SourceDiagnostic } from '@fudic/diagnostics';
 import {
   parseSpec,
   specContextOf,
@@ -53,6 +53,8 @@ export interface SessionInput {
   readonly runtime?: TermsRuntime | null;
   /** The app's Vite, for a page or a flow (SDD-82 §3.8): started on the first call. */
   readonly app?: () => Promise<App>;
+  /** It records (SDD-82 §3.9): a page's or a flow's criteria run without `data` and `answers`. */
+  readonly record?: boolean;
 }
 
 export interface LoadedSession {
@@ -115,7 +117,8 @@ export async function loadSession(input: SessionInput): Promise<LoadedSession> {
     specText = readText(target.spec) ?? '';
     const parsed = parseSpec(specText);
     spec = parsed.value;
-    const found = [...parsed.diagnostics, ...validateSpec(spec, context)];
+    const validated = validateSpec(spec, context);
+    const found = [...parsed.diagnostics, ...(input.record === true ? validated.filter((d) => !aboutRecorded(spec, d)) : validated)];
     for (const diagnostic of found) diagnostics.push({ diagnostic, file: target.spec });
     // A file with errors is not run: half a file gives greens that mean nothing.
     if (found.some((d) => d.severity === 'error')) {
@@ -139,7 +142,7 @@ export async function loadSession(input: SessionInput): Promise<LoadedSession> {
     for (const name of plan.files.keys()) invalidateFile(vite, `${input.dir}/${name}`);
     fixtureOk = executed.error === undefined ? plan.criteria : failProps(plan, executed.error);
   } else {
-    fixtureOk = await appCriteria(target, spec, executed, app, context);
+    fixtureOk = await appCriteria(target, spec, executed, app, context, input.record === true);
   }
   // A `fudic/bench.js` that does not load leaves every criterion in error, saying why.
   const criteria =
@@ -207,6 +210,7 @@ async function appCriteria(
   executed: { fixtures: ExecutedFixtures; error?: FudDiagnostic },
   app: App | undefined,
   context: SpecContext,
+  record: boolean,
 ): Promise<readonly PlannedCriterion[]> {
   const pattern = target.route === undefined ? undefined : context.page(target.route)?.pattern;
   // The criteria without network run on the app built (§4.7): built only when one of them is here.
@@ -216,6 +220,7 @@ async function appCriteria(
     spec,
     fixtures: executed.fixtures as AppFixtures,
     app: app ?? { origin: '', bench: undefined as never, run: '', paths: undefined as never },
+    ...(record ? { record } : {}),
     ...(pattern !== undefined ? { pattern } : {}),
     ...(typeof offline === 'string' ? { offline } : {}),
   });
@@ -224,6 +229,24 @@ async function appCriteria(
   // A build that failed leaves the criteria without network in error, saying why; the rest run.
   if (offline === undefined || typeof offline === 'string') return planned;
   return planned.map((c) => (needsOffline(c.steps) ? { ...c, error: offline.message, problem: offline } : c));
+}
+
+/** The codes of a fixture line that names nothing, taken from the codes themselves. */
+const NAMES_NOTHING = new Set([
+  FUD0950({ span: { start: 0, end: 0 }, line: '', fixture: '', available: [] }).code,
+  FUD0953({ span: { start: 0, end: 0 }, fixture: '' }).code,
+]);
+
+/**
+ * Whether a diagnostic says that a `data` or `answers` line names nothing: what recording is
+ * about to write (SDD-82 §3.9), so it does not stop the criterion from running.
+ */
+function aboutRecorded(spec: SpecFile, diagnostic: SourceDiagnostic): boolean {
+  if (!NAMES_NOTHING.has(diagnostic.code)) return false;
+  const { start } = diagnostic.span;
+  return spec.criteria.some((c) =>
+    c.blocks.some((b) => b.terms.some((t) => (t.name.text === 'data' || t.name.text === 'answers') && t.span.start <= start && start <= t.span.end)),
+  );
 }
 
 /** The origin of the app built, or why it could not be built. */

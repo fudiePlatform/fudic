@@ -158,7 +158,11 @@ describe('criterion 14 — the measuring page does not listen to Vite', () => {
   it('and it would, if its WebSockets were not silenced', async () => {
     const listening = patched(() => ({ silenceWebSockets: async () => undefined }));
     const result = await runCriterion(listening, bench.origin, byId('recarga-a-mitad'), loader(0), extensions);
-    expect(result.verdict).toBe('fail');
-    expect(result.steps.at(-1)).toMatchObject({ term: 'text', pass: false, evidence: { expected: 'contains "panel B"', actual: '"panel A"' } });
+    // The reload breaks it: the `then` reads the page reloaded (a fail), or, on a loaded machine,
+    // the reload lands on an earlier step and destroys what it was doing (an error). Never green.
+    expect(result.verdict).not.toBe('pass');
+    if (result.verdict === 'fail') {
+      expect(result.steps.at(-1)).toMatchObject({ term: 'text', pass: false, evidence: { expected: 'contains "panel B"', actual: '"panel A"' } });
+    }
   }, 60_000);
 });

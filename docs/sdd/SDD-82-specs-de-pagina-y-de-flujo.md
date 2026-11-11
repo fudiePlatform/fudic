@@ -308,6 +308,8 @@ export interface BenchHooks {
   now(criterion: string): number | undefined;
   /** Resolves `ms` later on the criterion's clock: what a `later` of the fixture waits on. */
   after(criterion: string, ms: number): Promise<void>;
+  /** What the real server answered, for `record` (§3.9, §8.2.35). */
+  record?(criterion: string, entry: Recorded): void;
 }
 /** Present even when it holds `undefined`: the answer of a `void` function. */
 export interface Held { readonly value: unknown }
@@ -944,6 +946,36 @@ Nada.
 34. **El banco del servidor no es una pieza del navegador.** Los hooks de `@fudic/http`
     (`contract/bench.ts`) entran en la excepción de la mitad de servidor de la comprobación de
     piezas, con `contract/server.ts`.
+
+35. **El servidor le cuenta al banco lo que responde de verdad** con un hook opcional más,
+    `record?(criterio, entrada)` en `BenchHooks`: la `data` de un `load` que corrió (una promesa
+    con sus campos `later` ya resueltos; uno que falló es `later.fails(0, …)`) y lo que respondió
+    una función o una regla `remote` cuyo handler corrió. Un fallo llega como su marca:
+    `redirects(…)`, `fails(código)` si el error lleva código, `fails(estado, título)` si no, y lo
+    que no es un `HttpError` es el 500 que vio el cliente. Una regla que pasa es `undefined`. Lo
+    que respondió la fixture no se graba. `createBench()` solo lo guarda en un criterio empezado
+    con `record: true`, y lo da `recorded(criterio)`.
+36. **Solo se graba un criterio que pasa** contra el servidor de verdad: uno que falla congelaría
+    lo que está mal. El resto se informa como «no grabado» con el motivo, y la orden sale con 1.
+37. **Una función llamada varias veces se graba con su última respuesta**: un grupo de `calls`
+    da un valor por nombre, y la última es como `answers` resuelve dos respuestas a lo mismo.
+38. **Al grabar, la línea que no nombra nada se quita.** Si la ruta no pidió `data`, o ninguna
+    llamada se pudo grabar, la línea `data` o `answers` del criterio desaparece: el criterio se
+    ejecutó así y así seguirá. Una `data` que no se puede escribir corta la lista ahí (las
+    siguientes se nombran en orden); una llamada que no se puede escribir solo se deja fuera.
+    Una respuesta de `load` que no llega en el tiempo de llamada también es `FUD1515`.
+39. **Grabar no exige que existan los nombres de `data` y `answers`** ni la fixture: los
+    `FUD0950`/`FUD0953` de esas dos líneas no paran el criterio, porque es justo lo que se va a
+    escribir. Sin fixture se crea una, tipada con `Fixtures` de la ruta o con `FlowFixtures`.
+    `services`, `path`, `url` y `clock` siguen valiendo.
+40. **La orden es `fudic-workbench record [<ruta>…] [--criterion <id>]… [--browser <b>]
+    [--json]`**, y sin rutas graba todas las páginas y flujos de la carpeta. Una spec de
+    componente no se graba: `FUD1207` y error. `runSpecs({ record: true })` hace lo mismo y
+    devuelve `recording` (grabados, no grabados y diagnósticos), que es lo que usará el MCP.
+41. **El reloj del navegador se instala un minuto antes del instante y se para en él** (corrige
+    §8.2.27). Instalado, el de Playwright corre a velocidad real hasta que se para, y pararlo en
+    un instante que ya pasó es «avanzar al pasado»: en una máquina cargada, `clock` daba error.
+    Instalado antes, la pausa siempre avanza, sobre una página en blanco.
 
 ### 8.3. Pendiente de decidir
 
