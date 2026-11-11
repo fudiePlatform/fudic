@@ -53,6 +53,8 @@ fudic g form person --binary             # a form with typed controls, and its t
 fudic g style theme                      # a global stylesheet of the project
 fudic g guide                            # the style guide: libs/guide, or src/guide/ in an app
 fudic g spec button --project ui         # the .fudspec criteria of a component and their fixture
+fudic g spec /usuarios                   # those of a page: its fixture samples what load returns
+fudic g flow alta-de-usuario             # those of a flow between pages, in src/flows/
 fudic g term then cart-has --param n:number   # a step of your own for .fudspec criteria
 fudic g api src/components/shop-cart     # its server: the .fudapi, its handler and its link
 fudic g showcase ui                      # an app with a page per component, a block per case

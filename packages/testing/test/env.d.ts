@@ -33,3 +33,7 @@ declare module 'fudic:components/x-guarded' {
 declare module 'fudic:routes/tags/[tag]' {
   export const like: import('@fudic/http').ServerFunction<void, string>;
 }
+declare module 'fudic:routes/gente' {
+  export const rename: import('@fudic/http').ServerFunction<void, string>;
+  export const clock: import('@fudic/http').ServerFunction<void, string>;
+}

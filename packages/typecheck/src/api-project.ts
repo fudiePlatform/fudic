@@ -24,6 +24,8 @@ import {
 import { API_DIR, API_TYPES_DIR, ERROR_FILE, PIPES_DIR, ROUTES_DIR, SRC_DIR } from '@fudic/conventions';
 import type { SourceDiagnostic } from '@fudic/diagnostics';
 
+export { loadFields } from './load-fields.js';
+
 /** A dependency that publishes `.fudapi`, and where its compiled implementations are. */
 export interface ApiLibrary {
   readonly name: string;

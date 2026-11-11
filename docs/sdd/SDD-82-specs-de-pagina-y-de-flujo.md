@@ -388,6 +388,8 @@ nombre se sustituye. El MCP lo hace con `fudic_spec_run { record: true }`.
 | `FUD1513` | error | No paths to list | `lists` en una ruta sin `paths` |
 | `FUD1514` | error | A fixture answer of the wrong kind | El banco: `answers` responde con un fichero una función sin `-> file`, o al revés |
 | `FUD1515` | warning | A value that cannot be recorded | `record` con un valor que no se escribe como literal |
+| `FUD1516` | error | A name the route's fixture does not have | `fudic_render`/`fudic_preview` con un nombre que la fixture de la ruta no tiene (§8.2.46) |
+| `FUD1517` | error | The route has no fixture | `fudic_render`/`fudic_preview` con `fixture` y sin `<ruta>.fixture.ts` (§8.2.46) |
 
 `FUD0922`, `FUD0930`, `FUD0933`, `FUD0950`, `FUD0952` y `FUD0953` cambian de texto (§3.1, §3.2,
 §3.6).
@@ -976,6 +978,36 @@ Nada.
     §8.2.27). Instalado, el de Playwright corre a velocidad real hasta que se para, y pararlo en
     un instante que ya pasó es «avanzar al pasado»: en una máquina cargada, `clock` daba error.
     Instalado antes, la pausa siempre avanza, sobre una página en blanco.
+42. **`fudic g spec /<ruta>` no crea la página**: la busca con las mismas reglas que la cabecera
+    `page` (§8.2.8) y, si no está, `FUD1500` sobre la carpeta de rutas (el código acepta también
+    la forma de fichero, sin span). Qué layout y qué secciones lleva es de `fudic g page`. Una
+    página sin `.fudapi` recibe solo su `.fudspec`: no tiene `Fixtures` con que tipar una fixture
+    ni nada que falsear. El esqueleto comentado abre con `data base` si hay `load`, y con `path
+    <value>` o `url <url>` si la ruta tiene parámetros (según declare `paths` o no).
+43. **El `data` de ejemplo sale del `.fudapi`, no de TypeScript** (`loadFields` de
+    `@fudic/typecheck/api`, que usarán también las bombillas del editor): un campo `later` por lo
+    que resuelve; un `date`, un `html`, un `file` o un tipo no declarado no tienen literal y se
+    dejan fuera, como hace la fixture de un componente con lo que no se puede escribir. Un nombre de
+    flujo es kebab-case (`FUD0448`, variante `flow-name`).
+44. **`visit` aplica la fixture con el banco del workbench**, no con una copia de su significado:
+    cada `visit` con `fixture`, `answers` o `services` es un criterio de un banco instalado en el
+    proceso del test, con su cookie en la jarra de la página. El wrapper de los tests se escribe con
+    `bench: true` (sin banco o sin cookie, nada cambia) y el render recibe la petición. Al acabar
+    cada test, los criterios terminan y el banco se desinstala. `fixture` acepta varios nombres,
+    como `data a b`, y `services` existe también: un grupo de la fixture que el test no pudiera
+    aplicar sería un fleco.
+45. **`fudic_spec_run`** acepta una ruta por su patrón o como la escribe la cabecera
+    (`/blog/:slug`, `/blog/[slug]`) y un flujo por su nombre; devuelve `calls` (por criterio, cada
+    llamada con `fn`, `args`, `faked` y `status`) y, con `record`, `recording`. Una grabación no se
+    escribe en el historial de las piezas: corre sin sus fixtures.
+46. **`fudic_render` y `fudic_preview` de una ruta aceptan `fixture: { data, answers, services }`**
+    (en `fudic_render`, un nombre suelto es `data`). Los nombres se comprueban leyendo la fixture
+    sin ejecutarla: `FUD1516` y `FUD1517`. `fudic_render` lo pasa a `visit`; un `load` falseado no
+    cuenta como llamada. `fudic_preview` abre la fixture como un criterio del banco en el proceso
+    del servidor de desarrollo (la fixture se carga por su grafo de módulos, así sus servicios son
+    las clases que inyecta el servidor), y la URL pasa antes por `/_fudic/preview-fixture/<id>`,
+    que pone la cookie y redirige. Cada vista previa termina las fixtures anteriores: un navegador
+    con la cookie vieja ve la app real.
 
 ### 8.3. Pendiente de decidir
 

@@ -57,6 +57,8 @@ const FILES: Readonly<Record<string, string>> = {
   'src/routes/productos/[id].fudapi': 'load\n  name  str\n\npaths\n',
   'src/routes/sin.fud': '<link rel="layout" href="../layouts/_layout.fud">\n<link rel="server" href="./sin.fudapi">\n\n<h1>@data.name</h1>\n',
   'src/routes/sin.fudapi': 'load\n  name  str\n',
+  // The fixture of /sin (SDD-82 §3.4): its load has no handler yet, and the fixture answers in its place.
+  'src/routes/sin.fixture.ts': "import type { Fixtures } from 'fudic:routes/sin';\n\nexport default { data: { nadie: { name: 'Nadie' } } } satisfies Fixtures;\n",
   // Links its contract, and on hydration calls a function whose handler is not written yet.
   'src/components/app-finder/app-finder.fud': [
     '<link rel="server" href="./app-finder.fudapi">',
@@ -170,6 +172,20 @@ describe('a route (criterion 3)', () => {
     expect(r.body).toMatchObject({ status: 404, calls: [{ fn: 'routes/sin.load', status: 404 }] });
     expect(r.diagnostics).toEqual([expect.objectContaining({ code: 'FUD1423', message: 'routes/sin.load has no handler yet' })]);
     expect(r.body['next']).toBe('routes/sin.load has no handler yet: fudic_contract says what to write.');
+  }, SLOW);
+});
+
+describe('a route with its fixture (SDD-82 criterion 37)', () => {
+  it('what the fixture names, painted in place of load; no call to a load that did not run', async () => {
+    const r = await render({ route: '/sin', fixture: { data: 'nadie' } });
+    expect(r.isError).toBe(false);
+    expect(r.body).toMatchObject({ route: '/sin', fixture: { data: 'nadie' }, status: 200, outline: '- main:\n  - heading "Nadie" [level=1]', calls: [] });
+    expect(r.diagnostics).toEqual([]);
+  }, SLOW);
+
+  it('a name the fixture does not have: FUD1516, nothing painted', async () => {
+    const r = await render({ route: '/sin', fixture: 'todos' });
+    expect(r.diagnostics).toEqual([expect.objectContaining({ code: 'FUD1516', message: 'the fixture has no data "todos"; it has: [nadie]' })]);
   }, SLOW);
 });
 

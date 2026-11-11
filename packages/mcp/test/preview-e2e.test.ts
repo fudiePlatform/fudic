@@ -47,6 +47,9 @@ const FILES: Readonly<Record<string, string>> = {
   'src/routes/productos.fudapi': ['get search', '  q  str', '    max-length 5', '  -> str[]', '', 'get mine', '  use auth', '  -> str', '', 'post fresh', '  -> str', ''].join('\n'),
   'src/routes/productos/[id].fud': '<link rel="layout" href="../../layouts/_layout.fud">\n<link rel="server" href="./[id].fudapi">\n\n<h1>@data.name</h1>\n',
   'src/routes/productos/[id].fudapi': 'load\n  name  str\n\npaths\n',
+  // Its fixture (SDD-82 §3.4), typed by the route's `.fudapi`: what fudic_preview opens it with.
+  'src/routes/productos/[id].fixture.ts':
+    "import type { Fixtures } from 'fudic:routes/productos/[id]';\n\nexport default { data: { vacio: { name: 'Vacío' } } } satisfies Fixtures;\n",
   'src/routes/clientes/[id].fud': '<link rel="layout" href="../../layouts/_layout.fud">\n\n<h1>Cliente</h1>\n',
   'src/middlewares/auth.fudapi': 'middleware auth\n  server\n',
   'src/server/handlers.ts': HANDLERS,
@@ -131,6 +134,24 @@ describe('over stdio', () => {
       const page = await fetch(`${local}/productos/1`, { headers: { accept: 'text/html' } });
       expect(page.status).toBe(200);
       expect(await page.text()).toContain('Producto 1');
+    }, SLOW);
+
+    it("with its fixture: the URL hands the browser the criterion, the page is the fixture's; without, the real one again (SDD-82 criterion 37)", async () => {
+      const local = site.dev.local!;
+      const r = await preview({ route: '/productos/1', fixture: { data: 'vacio' } });
+      expect(r.isError).toBe(false);
+      const url = r.body['local'] as string;
+      expect(url).toMatch(new RegExp(`^${local}/_fudic/preview-fixture/preview-\\d+\\?to=%2Fproductos%2F1$`, 'u'));
+      const door = await fetch(url, { redirect: 'manual' });
+      expect(door.status).toBe(303);
+      expect(door.headers.get('location')).toBe('/productos/1');
+      const cookie = door.headers.get('set-cookie')!.split(';')[0]!;
+      const html = async (headers: Record<string, string> = {}): Promise<string> =>
+        (await fetch(`${local}/productos/1`, { headers: { accept: 'text/html', ...headers } })).text();
+      expect(await html({ cookie })).toContain('Vacío');
+      expect(await html()).toContain('Producto 1');
+      await preview({ route: '/productos/1' });
+      expect(await html({ cookie })).toContain('Producto 1');
     }, SLOW);
 
     it('a route no route answers: FUD1422; a pattern: FUD1422 with its paths()', async () => {

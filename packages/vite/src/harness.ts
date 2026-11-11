@@ -8,7 +8,9 @@
  */
 
 export { emitRenderChunk, routeApi, type RenderChunkOptions } from './wrapper.js';
-export { drainStream, edgeContext, loadRouteData, matchRouteBuild, type RenderModule } from './serve.js';
+export { drainStream, edgeContext, loadRouteData, matchRouteBuild, withRequest, type RenderModule } from './serve.js';
+// The workbench's hooks (SDD-82 §3.10): `visit` applies a route's fixture with the same bench.
+export { BENCH_COOKIE, createBench, installBench, type Bench, type ServiceOverride } from './bench-hooks.js';
 export { classifyError, renderErrorPage } from './page-errors.js';
 export { routeUsesDi } from './client.js';
 export { discoverRoutes, type RouteBuild } from './discover.js';

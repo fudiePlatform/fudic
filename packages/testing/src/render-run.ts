@@ -14,12 +14,14 @@ import { compileDiagnosticsOf } from '@fudic/vite';
 import type { Reporter, TestModule } from 'vitest/node';
 import type { CallOutcome } from './call.js';
 import type { RenderOutcome } from './render.js';
+import type { FixtureLines } from './fixture.js';
 
 /** Where the render's files are written, relative to the project. */
 export const RENDER_DIR = '.fudic/render';
 
 export type RenderPieceTarget =
-  | { readonly route: string }
+  /** A route by its URL, with the lines of its fixture to apply (SDD-82 §3.10): JSON, written as a literal. */
+  | { readonly route: string; readonly fixture?: FixtureLines }
   | {
       /** The component's `.fud`, absolute. */
       readonly component: string;
@@ -59,7 +61,7 @@ export function renderSource(options: RenderPieceOptions, out: string): string {
   const { target } = options;
   const imports = ["import { writeFileSync } from 'node:fs';", "import { test } from 'vitest';", "import { renderJob } from '@fudic/testing/render';"];
   let job: string;
-  if ('route' in target) job = `{ route: ${JSON.stringify(target.route)} }`;
+  if ('route' in target) job = JSON.stringify(target);
   else {
     imports.push(`import * as piece from ${from(out, target.component)};`);
     if (target.fixture !== undefined) imports.push(`import fixture from ${from(out, target.fixture)};`);

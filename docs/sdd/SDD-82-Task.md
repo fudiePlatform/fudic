@@ -5,7 +5,7 @@
 > `@fudic/testing` · `@fudic/language-server` · `@fudic/vscode` · `@fudic/cli` · `@fudic/mcp` ·
 > `@fudic/diagnostics` · `examples/basic`
 > **Rama:** `sdd-82-specs-de-pagina-y-de-flujo`, desde `main` con SDD-81 ya mezclada.
-> **Progreso:** 22 / 36 — `En curso`. Fases 1–6 hechas; sigue la fase 7 (CLI, testing y MCP).
+> **Progreso:** 26 / 36 — `En curso`. Fases 1–7 hechas; sigue la fase 8 (el editor).
 
 ## Relevo (2026-11-11, al cerrar las fases 4 y 5)
 
@@ -34,6 +34,10 @@ camino (b) de Pedro: los criterios con `offline` corren contra el build del banc
   (grabados, no grabados, diagnósticos); es lo que `fudic_spec_run { record: true }` de la fase 7
   tiene que llamar. Lo que escribe vive en `@fudic/spec` (`literalOf`, `recordFixture`,
   `recordLines`, `emptyFixture`) y en `workbench/src/record.ts`.
+- **Fase 7 (SDD §8.2.42–46):** la bombilla «crear la fixture» de una página (fase 8) escribe lo mismo
+  que `fudic g spec /<ruta>`: `pageFixtureModule` de `@fudic/spec` con los campos de `loadFields`
+  (`@fudic/typecheck/api`). Los e2e del MCP (`spec-run-e2e`, `render-e2e`, `preview-e2e`) abren
+  navegador y Vite: no lanzarlos a la vez que otra cobertura pesada, o agotan sus esperas.
 
 **Una sesión.** La misma que implementa escribe los tests de cada fase (las tareas «Los tests
 de…») contra los criterios de SDD §6, y la fase cierra con `typecheck`, `test` y `coverage` en
@@ -217,7 +221,7 @@ verde. Si un test destapa un defecto, se corrige el código, no el test. Cada fa
 
 ## Fase 7 — CLI, testing y MCP
 
-- [ ] **23. La CLI.**
+- [x] **23. La CLI.**
   - `fudic g spec /<ruta>`, con la fixture hecha desde `LoadData` y `paths`.
   - `fudic g flow <nombre>`.
   - `run` con las tres clases.
@@ -226,17 +230,17 @@ verde. Si un test destapa un defecto, se corrige el código, no el test. Cada fa
   - *Paquetes:* `cli`, `spec`.
   - *Ficheros:* `cli/src/plans/spec.ts`, `cli/src/plans/flow.ts`, `cli/src/help/commands.ts`,
     `spec/src/scaffold/spec.ts`, `spec/src/scaffold/fixture.ts`.
-- [ ] **24. `@fudic/testing`.** `visit(url, { fixture, answers })` aplica la fixture de la ruta como el banco.
+- [x] **24. `@fudic/testing`.** `visit(url, { fixture, answers })` aplica la fixture de la ruta como el banco.
   - *Depende de:* 9.
   - *Paquete:* `testing`.
   - *Ficheros:* `src/visit.ts`, `src/page.ts`, `src/server.ts`.
-- [ ] **25. El MCP.**
+- [x] **25. El MCP.**
   - `fudic_spec_run` con página, flujo, `record` y el registro de llamadas.
   - `fudic_render` y `fudic_preview` con `fixture`.
   - *Depende de:* 14, 21.
   - *Paquete:* `mcp`.
   - *Ficheros:* `src/runs.ts`, `src/render.ts`, `src/preview.ts`, `src/server.ts`.
-- [ ] **26. Los tests de la fase.** Criterios 35, 37 y 38.
+- [x] **26. Los tests de la fase.** Criterios 35, 37 y 38.
   - *Depende de:* 23–25.
   - *Paquetes:* `cli`, `testing`, `mcp`.
   - *Ficheros:* `test/**`.

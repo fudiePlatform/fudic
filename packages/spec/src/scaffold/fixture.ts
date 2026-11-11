@@ -53,6 +53,35 @@ export function fixtureKindOf(kind: 'page' | 'flow', route?: string): FixtureKin
   return kind === 'page' ? { type: 'Fixtures', from: `fudic:${route as string}` } : { type: 'FlowFixtures', from: '@fudic/spec' };
 }
 
+/** What a new page fixture holds besides its empty `calls` (SDD-82 §3.10). */
+export interface PageFixtureParts {
+  /** One `data` entry by this name, sampled from these fields: the route declares `load`. */
+  readonly data?: { readonly name: string; readonly fields: readonly PropField[] };
+  /** An empty `paths`: the route declares `paths`. */
+  readonly paths?: boolean;
+}
+
+/**
+ * The whole `<route>.fixture.ts` of a page, typed by its `.fudapi` (`route` is its id:
+ * `routes/usuarios`): a sample `data` with the shape of `LoadData`, `paths` when the route
+ * declares it, and `calls` with nothing yet — every function runs for real until one is named.
+ */
+export function pageFixtureModule(route: string, parts: PageFixtureParts): string {
+  const kind = fixtureKindOf('page', route);
+  const groups = [
+    ...(parts.data !== undefined ? [`  data: {\n    ${fixtureEntry(parts.data.name, parts.data.fields)},\n  },\n`] : []),
+    ...(parts.paths === true ? ['  paths: [],\n'] : []),
+    '  calls: {},\n',
+  ];
+  return `import type { ${kind.type} } from '${kind.from}';\n\nexport default {\n${groups.join('')}} satisfies ${kind.type};\n`;
+}
+
+/** The whole `<name>.fixture.ts` of a flow: `services` with nothing yet, every service the real one. */
+export function flowFixtureModule(): string {
+  const kind = fixtureKindOf('flow');
+  return `import type { ${kind.type} } from '${kind.from}';\n\nexport default {\n  services: {},\n} satisfies ${kind.type};\n`;
+}
+
 /** A page's or a flow's fixture with nothing in it yet: what `record` writes into when there is none. */
 export function emptyFixture(kind: FixtureKind): string {
   return `import type { ${kind.type} } from '${kind.from}';\n\nexport default {} satisfies ${kind.type};\n`;

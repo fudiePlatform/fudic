@@ -23,7 +23,7 @@ const INDEX = 'index';
 const PARAM = /^\[(.+)\]$/u;
 
 /** Every page under `dir`, the routes folder, in a stable order. */
-export function routeFiles(fs: SpecFs, dir: string): readonly RouteFile[] {
+export function routeFiles(fs: Pick<SpecFs, 'readDirectory'>, dir: string): readonly RouteFile[] {
   const found: RouteFile[] = [];
   const walk = (folder: string, segments: readonly string[]): void => {
     for (const name of [...fs.readDirectory(folder)].sort()) {

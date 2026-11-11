@@ -18,8 +18,13 @@ import { settled } from './pending.js';
 import { projectOf } from './project.js';
 import type { ProviderOverride } from './providers.js';
 import { enterWorld, harnessOf, type Harness, type WorldOptions } from './session.js';
+import { applyFixture, type FixtureLines } from './fixture.js';
 
-export interface VisitOptions extends WorldOptions {
+/**
+ * `data` hands `load`'s place a value of the test; `fixture`, `answers` and `services` name what the
+ * route's fixture holds, applied as the workbench applies them (SDD-82 §3.10).
+ */
+export interface VisitOptions extends WorldOptions, FixtureLines {
   /** Takes the place of what `load` returns. `layout(ctx, data)` runs all the same, with it. */
   readonly data?: unknown;
 }
@@ -54,14 +59,17 @@ interface Answer {
   readonly page: RouteBuild;
 }
 
-/** The page the dev server answers for `url`, with its status. */
-async function answer(url: string, data: unknown): Promise<Answer> {
+/** The page the dev server answers for `url`, with its status; the route's fixture applied first. */
+async function answer(url: string, options: VisitOptions): Promise<Answer> {
   const { base, routes, errorPage } = projectOf();
   const pathname = pathnameOf(url, base);
   const rb = matchRouteBuild(routes, pathname);
   if (rb === null) throw new Error(`visit('${url}'): no route matches ${pathname}`);
+  const cookie = await applyFixture(url, rb, options, options.data);
+  // The request a browser would send for it: what carries the criterion of the fixture.
+  const request = cookie === undefined ? undefined : new Request(new URL(url, location.origin), { headers: { cookie } });
   try {
-    return { html: await renderPage(pageModuleOf(rb), routeFacts(rb), rb.route.pattern, pathname, data), status: 200, page: rb };
+    return { html: await renderPage(pageModuleOf(rb), routeFacts(rb), rb.route.pattern, pathname, options.data, undefined, request), status: 200, page: rb };
   } catch (error) {
     const failure = classifyError(error, true);
     if (failure.kind === 'error' && failure.unexpected) unexpected = error;
@@ -100,6 +108,6 @@ export async function showDocument(
 export async function visit(url: string, options: VisitOptions = {}): Promise<Visited> {
   const providers = enterWorld(options, url);
   await serverRoot();
-  const { html, status, page } = await answer(url, options.data);
+  const { html, status, page } = await answer(url, options);
   return showDocument(html, page.absPath, status, providers, page.locale);
 }

@@ -87,6 +87,7 @@ const CASES: readonly (readonly [FudDiagnostic, string])[] = [
   [c.FUD0448({ problem: 'unknown-type', type: 'zz' }), 'fudic does not generate "zz"'],
   [c.FUD0448({ problem: 'generate-test' }), 'fudic does not generate "test" on its own'],
   [c.FUD0448({ problem: 'term-block', value: 'thn' }), 'unknown block "thn": expected given, when or then'],
+  [c.FUD0448({ problem: 'flow-name', value: 'Alta' }), 'invalid flow name "Alta": lowercase words joined by hyphens, like alta-de-usuario'],
   [c.FUD0448({ problem: 'route-segment', part: '[', route: '/a/[' }), 'invalid route segment "[" in "/a/["'],
   [c.FUD0448({ problem: 'unexpected-argument', command: 'translate', value: 'x' }), 'fudic translate takes no argument: "x"'],
   [c.FUD0451({ line: 'pnpm i', status: null }), 'could not run `pnpm i`: is it installed and on your PATH?'],
@@ -278,5 +279,24 @@ describe('FUD1425 keeps the place where the server failed, when there is one', (
 
   it('a file and a span: both', () => {
     expect(c.FUD1425({ reason: 'boom', file: F, span: S })).toMatchObject({ file: F, span: S });
+  });
+});
+
+describe('FUD1500 on a header, and from fudic g spec about the routes folder', () => {
+  it('a span: on the header', () => {
+    expect(c.FUD1500({ span: S, route: '/x' })).toEqual({ severity: 'error', code: 'FUD1500', message: 'no page `/x`: the routes folder has no page by that path', span: S });
+  });
+
+  it('the routes folder and no span: the file alone', () => {
+    const d = c.FUD1500({ file: 'src/routes', route: '/x' });
+    expect(d).toMatchObject({ code: 'FUD1500', file: 'src/routes' });
+    expect(d).not.toHaveProperty('span');
+  });
+});
+
+describe('FUD1516 and FUD1517: a route painted with its fixture', () => {
+  it('a name the group does not have, and a fixture that is not there', () => {
+    expect(c.FUD1516({ file: F, group: 'data', name: 'x', available: ['a', 'b'] })).toEqual({ severity: 'error', code: 'FUD1516', message: 'the fixture has no data "x"; it has: [a, b]', file: F });
+    expect(c.FUD1517({ file: F })).toEqual({ severity: 'error', code: 'FUD1517', message: `the route has no fixture: ${F} is not there`, file: F });
   });
 });

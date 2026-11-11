@@ -18,6 +18,7 @@ import { mount, type MountTarget } from './mount.js';
 import { outline } from './outline.js';
 import { settled } from './pending.js';
 import { loadWrapper, routeFacts } from './page.js';
+import type { FixtureLines } from './fixture.js';
 import { projectOf } from './project.js';
 import { previewDocument, serialize } from './serialize.js';
 import { takeUnexpected, visit } from './visit.js';
@@ -58,9 +59,9 @@ function thrownOf(error: unknown): RenderOutcome {
   return { kind: 'threw', error: { message: thrown.message, stack: String(thrown.stack) } };
 }
 
-/** What to paint. */
+/** What to paint: a route by its URL, with the lines of its fixture to apply (SDD-82 §3.10); or a component. */
 export type RenderTarget =
-  | { readonly route: string }
+  | { readonly route: string; readonly fixture?: FixtureLines }
   | {
       readonly component: MountTarget;
       /** The fixture's `export default`, when the piece has one. */
@@ -161,7 +162,7 @@ async function paint(job: RenderJob): Promise<RenderOutcome> {
       const pattern = projectOf().routes.find((r) => r.route.pattern === target.route);
       return { kind: 'no-route', paths: pattern === undefined ? [] : await pathsOf(pattern) };
     }
-    const page = await visit(target.route);
+    const page = await visit(target.route, target.fixture);
     const unexpected = takeUnexpected();
     if (unexpected !== undefined) return thrownOf(unexpected);
     root = page.document.body;

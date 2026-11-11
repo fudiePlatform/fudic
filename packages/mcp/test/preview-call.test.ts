@@ -56,14 +56,25 @@ function checks(pieces: readonly Piece[] = [route('/'), route('/productos'), rou
 
 interface FakeSite extends Site {
   readonly waited: (number | undefined)[];
+  /** What the dev server was asked to open with a fixture, and how many times the fixtures ended. */
+  readonly fixtures: { readonly opened: unknown[]; ended: number };
 }
 
 function site(state: DevState, over: { errors?: DevError[]; app?: string; public?: boolean } = {}): FakeSite {
   const waited: (number | undefined)[] = [];
+  const fixtures = { opened: [] as unknown[], ended: 0 };
   let errors = over.errors ?? [];
   return {
     waited,
+    fixtures,
     dev: {
+      openWithFixture: async (page: string, lines: unknown) => {
+        fixtures.opened.push([page, lines]);
+        return `preview-${String(fixtures.opened.length)}`;
+      },
+      endFixtures: () => {
+        fixtures.ended += 1;
+      },
       app: over.app ?? root,
       failure: 'port 4318 is in use',
       ready: async (ms?: number) => {
@@ -198,6 +209,45 @@ describe('fudic_preview', () => {
   it('still starting: the state, the routes, and to call again', async () => {
     const answer = await previewTool(project, checks(), site('starting'), {}, runners().deps);
     expect(answer).toEqual({ body: { state: 'starting', routes: ROUTES }, next: 'The preview is still starting: call fudic_preview again in a moment.' });
+  });
+});
+
+describe('fudic_preview with a fixture (SDD-82 §3.10, criterion 37)', () => {
+  const page = (): string => join(root, 'src/routes/gente.fud').replace(/\\/gu, '/');
+  const gente = (): Piece => ({ ...route('/gente'), file: page() });
+
+  beforeAll(() => {
+    mkdirSync(join(root, 'src/routes'), { recursive: true });
+    writeFileSync(join(root, 'src/routes/gente.fixture.ts'), 'export default { data: { nadie: {} }, calls: { busca: {} } };\n');
+  });
+
+  it('the URL first hands the browser its criterion, then opens the route; the fixture is echoed', async () => {
+    const s = site('ready');
+    const answer = await previewTool(project, checks([route('/'), gente()]), s, { route: '/gente', fixture: { data: 'nadie', answers: ['busca'] } }, runners().deps);
+    expect(s.fixtures.opened).toEqual([[page(), { fixture: ['nadie'], answers: ['busca'] }]]);
+    expect(answer.body).toMatchObject({ local: 'http://127.0.0.1:4318/_fudic/preview-fixture/preview-1?to=%2Fgente', fixture: { data: 'nadie' } });
+    expect(s.fixtures.ended).toBe(0);
+  });
+
+  it('without one, the fixtures the preview opened end: the app is the real one', async () => {
+    const s = site('ready');
+    await previewTool(project, checks([route('/'), gente()]), s, { route: '/gente' }, runners().deps);
+    expect(s.fixtures).toEqual({ opened: [], ended: 1 });
+  });
+
+  it('a name its fixture does not have, or no fixture: the diagnostic, before anything starts', async () => {
+    const s = site('ready');
+    const wrong = await previewTool(project, checks([gente()]), s, { route: '/gente', fixture: { services: 'nope' } }, runners().deps);
+    expect(wrong.diagnostics).toEqual([expect.objectContaining({ code: 'FUD1516' })]);
+    expect(wrong.body).toEqual({ route: '/gente', fixture: { services: 'nope' } });
+    const none = await previewTool(project, checks([route('/'), gente()]), s, { fixture: { data: 'nadie' } }, runners().deps);
+    expect(none.diagnostics).toEqual([expect.objectContaining({ code: 'FUD1517' })]);
+    expect(s.waited).toEqual([]);
+  });
+
+  it('a fixture with no route at / to open it on: FUD1422', async () => {
+    const answer = await previewTool(project, checks([gente()]), site('ready'), { fixture: { data: 'nadie' } }, runners().deps);
+    expect(answer.diagnostics).toEqual([expect.objectContaining({ code: 'FUD1422', message: '/ is not a concrete URL of a route' })]);
   });
 });
 

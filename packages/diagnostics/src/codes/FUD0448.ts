@@ -35,6 +35,8 @@ export type FUD0448Params =
   | { readonly problem: 'generate-test' }
   /** `fudic g term` with a block that is not given, when or then. */
   | { readonly problem: 'term-block'; readonly value: string }
+  /** `fudic g flow` with a name that is not lowercase words joined by hyphens. */
+  | { readonly problem: 'flow-name'; readonly value: string }
   /** A route with a segment that cannot be a file name. */
   | { readonly problem: 'route-segment'; readonly part: string; readonly route: string }
   /** An argument a command that takes none was given (`fudic translate x`). */
@@ -76,6 +78,8 @@ function describe(p: FUD0448Params): string {
       return 'fudic does not generate "test" on its own';
     case 'term-block':
       return `unknown block "${p.value}": expected given, when or then`;
+    case 'flow-name':
+      return `invalid flow name "${p.value}": lowercase words joined by hyphens, like alta-de-usuario`;
     case 'route-segment':
       return `invalid route segment "${p.part}" in "${p.route}"`;
     case 'unexpected-argument':

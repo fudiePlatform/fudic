@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import {
   drainStream,
   edgeContext,
+  withRequest,
   emitRenderChunk,
   nodeIo,
   routeApi,
@@ -38,7 +39,9 @@ const PROVIDERS = fileURLToPath(new URL(`./providers${extname(fileURLToPath(impo
  * `vite dev` opens.
  */
 function wrapperOf(file: string, facts: PageFacts): string {
-  const source = emitRenderChunk({ ...facts, pageModule: file, withLoad: true });
+  // `bench`: a visit with a fixture is a criterion of the workbench's bench (SDD-82 §3.10). Without
+  // one installed, or for a request without its cookie, the wrapper runs as it always did.
+  const source = emitRenderChunk({ ...facts, pageModule: file, withLoad: true, bench: true });
   return `import { overridden as $overridden } from ${JSON.stringify(PROVIDERS)};\n${source.replaceAll('iocRoot()', '$overridden(iocRoot())')}`;
 }
 
@@ -59,7 +62,8 @@ export function routeFacts(rb: RouteBuild): PageFacts {
 /**
  * The HTML `vite dev` would answer for `url` with the page at `file`, matched by `pattern`.
  * With `data`, the page is handed it in place of what `load` would resolve; with `layout`, the
- * props of its layout in place of what `layout` would resolve.
+ * props of its layout in place of what `layout` would resolve. With `request`, the page is
+ * painted for it: what `load` reads of its cookies, and the criterion a fixture began.
  */
 export async function renderPage(
   file: string,
@@ -68,8 +72,9 @@ export async function renderPage(
   url: string,
   data?: unknown,
   layout?: unknown,
+  request?: Request,
 ): Promise<string> {
   const mod = await loadWrapper(file, facts);
-  // `undefined` is what the wrapper reads as «resolve it»: no branch here.
-  return drainStream(mod.render({ ...edgeContext(pattern, url, ''), data, layout }));
+  // `undefined` is what the wrapper reads as «resolve it», and `withRequest` as «no request»: no branch here.
+  return drainStream(mod.render({ ...withRequest(edgeContext(pattern, url, ''), request), data, layout }));
 }

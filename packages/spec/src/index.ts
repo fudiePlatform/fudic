@@ -59,14 +59,15 @@ export { fails, file, later, redirects } from './helpers.js';
 
 export type { PropField, PropShape } from './scaffold/shape.js';
 export { sampleValue } from './scaffold/shape.js';
-export type { FixtureKind, RecordedEntry, RecordGroup } from './scaffold/fixture.js';
-export { emptyFixture, fixtureEntry, fixtureKindOf, fixtureModule, recordFixture } from './scaffold/fixture.js';
+export type { FixtureKind, PageFixtureParts, RecordedEntry, RecordGroup } from './scaffold/fixture.js';
+export { emptyFixture, fixtureEntry, fixtureKindOf, fixtureModule, flowFixtureModule, pageFixtureModule, recordFixture } from './scaffold/fixture.js';
 export type { Helper, Literal, Unwritable } from './scaffold/literal.js';
 export { isLiteral, literalOf } from './scaffold/literal.js';
 export type { RecordedLines } from './scaffold/record-lines.js';
 export { recordLines } from './scaffold/record-lines.js';
 export { BENCH_FILE, termModule } from './scaffold/term.js';
-export { specSkeleton } from './scaffold/spec.js';
+export type { PageGiven } from './scaffold/spec.js';
+export { flowSpecSkeleton, pageSpecSkeleton, specSkeleton } from './scaffold/spec.js';
 export { closest } from './scaffold/closest.js';
 export type { FormatSpecResult } from './format.js';
 export { formatSpec } from './format.js';
