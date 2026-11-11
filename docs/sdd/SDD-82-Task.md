@@ -42,7 +42,15 @@ camino (b) de Pedro: los criterios con `offline` corren contra el build del banc
   (el mismo `Calls` del `.d.ts`); el `check` y el editor ya lo pasan a `specContextOf`, así que
   `FUD1506`/`FUD1507`/`FUD1513` salen de verdad: los `sent`/`called` del ejemplo (fase 9) tienen
   que nombrar funciones y argumentos que existen. La gramática ya pinta `page`, `flow`, las líneas
-  de fixture, `as`, `>` y `~`.
+  de fixture, `as`, `>` y `~`. El banco sigue sin hacer esa comprobación (SDD §8.2.47): la hacen el
+  editor y el `check`.
+- **Pendiente de comprobar (visto al cerrar la fase 8):** en una pasada completa de `pnpm --filter
+  @fudic/mcp test`, `preview-e2e.test.ts > a handler that throws while it runs…` falló una vez: `GET
+  /productos/roto` dio 404 en vez de 500. No se reprodujo (el fichero solo y otra pasada completa,
+  en verde). Un 404 ahí es «ninguna ruta casó» (el `notFound` del middleware de dev), así que puede
+  ser una carrera real del servidor de desarrollo mientras vuelve a leer las rutas, no solo carga.
+  Hay que buscar la causa antes del cierre (tarea 36): no vale volver a lanzarlo hasta que salga
+  verde.
 
 **Una sesión.** La misma que implementa escribe los tests de cada fase (las tareas «Los tests
 de…») contra los criterios de SDD §6, y la fase cierra con `typecheck`, `test` y `coverage` en
@@ -300,5 +308,7 @@ verde. Si un test destapa un defecto, se corrige el código, no el test. Cada fa
 - [ ] **36. Cierre.**
   - `pnpm typecheck`, `pnpm test`, `pnpm build` en verde (criterio 41).
   - Cobertura al 100 % de §5.
+  - El 404 intermitente de `preview-e2e` del MCP, explicado y corregido (ver «Pendiente de
+    comprobar» en el relevo).
   - Estado `Hecho` y merge `--no-ff` a `main`.
   - *Depende de:* 35.
